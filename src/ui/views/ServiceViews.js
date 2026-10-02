@@ -87,15 +87,18 @@ function certList(state, serviceId) {
 }
 
 export function emergencyView(state) {
-  const cards = SERVICE_LIST.map((svc) => {
+  const open = SERVICE_LIST.filter((svc) => !state.emergency[svc.id]).map((svc) => {
+    const check = joinEligibility(state, svc.id);
+    const top = svc.ranks[svc.ranks.length - 1].title;
+    return `<li class="job-row ${check.ok ? '' : 'locked'}">
+      <span class="job-icon" aria-hidden="true">${svc.icon}</span>
+      <div class="job-info"><b>${esc(svc.name)}</b><small>${esc(svc.ranks[0].title)} → ${esc(top)} · ${svc.minAge}+ · ${Object.entries(svc.requirements).map(([k, v]) => `${v}+ ${k}`).join(', ')} · ${svc.callsPerYear[0]}–${svc.callsPerYear[1]} calls/yr${svc.stipendPerCall ? ` · $${svc.stipendPerCall}/call` : ' · unpaid'}</small></div>
+      ${button('Join', 'emergency.join', { arg: svc.id, disabled: !check.ok, variant: 'small' })}
+      ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
+    </li>`;
+  }).join('');
+  const cards = SERVICE_LIST.filter((svc) => state.emergency[svc.id]).map((svc) => {
     const member = state.emergency[svc.id];
-    if (!member) {
-      const check = joinEligibility(state, svc.id);
-      return card(svc.name, `
-        <p class="muted">${svc.ranks[0].title} → ${svc.ranks[6].title}. Runs alongside your job, school or reserve duty. Certifications you earn here count toward paid careers.</p>
-        ${kv([['Min age', `${svc.minAge}+`], ['Requirements', Object.entries(svc.requirements).map(([k, v]) => `${v}+ ${k}`).join(', ')], ['Call volume', `${svc.callsPerYear[0]}–${svc.callsPerYear[1]}/yr${svc.stipendPerCall ? ` · $${svc.stipendPerCall}/call` : ' · unpaid'}`], ['Training budget', `$${svc.trainingBudget.toLocaleString()}/yr`]])}
-        <div class="row-end">${button(`${svc.icon} Join`, 'emergency.join', { arg: svc.id, disabled: !check.ok, variant: 'primary' })}${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}</div>`, { icon: svc.icon });
-    }
     const rank = rankOfMember(svc.id, member);
     const next = nextRankStatus(state, svc.id, member);
     const nextXp = next.next?.xp ?? member.xp;
@@ -116,10 +119,11 @@ export function emergencyView(state) {
         ${button('🏋️ Extra Training', 'emergency.train', { arg: svc.id, hint: '+25 XP, once/yr', disabled: member.onLeave })}
         ${button('📟 Pick Up Shifts', 'emergency.shift', { arg: svc.id, hint: 'More calls, +XP', disabled: member.onLeave })}
         ${button('🚪 Resign', 'emergency.resign', { arg: svc.id, variant: 'danger' })}
-      </div>`, { icon: svc.icon, accent: svc.id === 'fire' ? 'red' : svc.id === 'police' ? 'blue' : 'orange' });
+      </div>`, { icon: svc.icon, accent: { fire: 'red', police: 'blue', ambulance: 'cyan', wildland: 'green', auxiliary: 'blue' }[svc.id] ?? 'orange' });
   }).join('');
+  const join = open ? card('Join a Service', `<p class="muted">Volunteer and reserve services run alongside your job, school or military reserve duty. Certifications you earn here count toward paid careers.</p><ul class="job-board">${open}</ul>`, { icon: '🚨' }) : '';
   const history = state.emergency.history.length
     ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
-  return `<div class="grid-2">${cards}</div>${history}`;
+  return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${history}`;
 }

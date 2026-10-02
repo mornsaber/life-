@@ -25,11 +25,17 @@ import { credentialName } from '../credentials/CredentialRegistry.js';
 import { FireVolunteer } from './FireVolunteer.js';
 import { PoliceReserves } from './PoliceReserves.js';
 import { SearchAndRescue, K9_NAMES, K9_BREEDS, K9_RETIREMENT_AGE } from './SearchAndRescue.js';
+import { AmbulanceCorps } from './AmbulanceCorps.js';
+import { WildlandCrew } from './WildlandCrew.js';
+import { CoastGuardAuxiliary } from './CoastGuardAuxiliary.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
   police: PoliceReserves,
   sar: SearchAndRescue,
+  ambulance: AmbulanceCorps,
+  wildland: WildlandCrew,
+  auxiliary: CoastGuardAuxiliary,
 };
 export const SERVICE_LIST = Object.values(SERVICES);
 
@@ -259,6 +265,7 @@ export const EmergencyEngine = {
 
   init(state) {
     state.emergency ??= { fire: null, police: null, sar: null, history: [] };
+    for (const id of Object.keys(SERVICES)) state.emergency[id] ??= null;
   },
 
   setup(engine) {
