@@ -21,6 +21,8 @@ import { changeRegion } from '../src/modules/life/Regions.js';
 import { stateIncomeTax } from '../src/modules/life/States.js';
 import { quote } from '../src/modules/realestate/MortgageSystem.js';
 import { annualTuition } from '../src/modules/education/EducationEngine.js';
+import { Finances } from '../src/modules/life/Finances.js';
+import { BrokerageEngine } from '../src/modules/investing/index.js';
 
 const memory = () => {
   const m = new Map();
@@ -315,6 +317,54 @@ const tests = {
     changeRegion(ctx, 'seattle', 'Test');
     assert.ok(annualTuition('bachelor', 'state', state) > inState * 2);
     assert.equal(annualTuition('bachelor', 'private', state), annualTuition('bachelor', 'private'));
+  },
+
+  'long-term gains are taxed at preferential rates; short-term as ordinary income'() {
+    const run = (ltcg) => {
+      const { engine, state } = setup(21, 40);
+      state.character.regionId = Object.keys(state.housing.market)[0] ?? state.character.regionId;
+      const ctx = engine.context();
+      ctx.earn(90000, 'Salary', { wage: true });
+      ctx.earn(50000, 'Gain', { ltcg });
+      Finances.onYearEnd(ctx);
+      return state.finances.lastYear.federalTax;
+    };
+    const longTerm = run(true);
+    const shortTerm = run(false);
+    assert.ok(longTerm < shortTerm, `LTCG ${longTerm} should be taxed less than short-term ${shortTerm}`);
+    assert.ok(longTerm - run(true) === 0, 'deterministic');
+  },
+
+  'selling a long-held position realizes a long-term gain; insider profits are disgorged on conviction'() {
+    const { engine, state } = setup(22, 30);
+    state.finances.cash = 20000;
+    engine.dispatch('investing.buy', 'index:10000');
+    state.character.age = 32;
+    state.investing.holdings.index.value = 15000;
+    engine.dispatch('investing.sell', 'index');
+    const gain = state.finances.ledger.income.find((i) => /capital gain/.test(i.source));
+    assert.equal(gain.amount, 5000);
+    assert.equal(gain.ltcg, true);
+    assert.equal(state.finances.cash, 25000);
+    const ctx = engine.context();
+    ctx.emit('investing:windfall', { asset: 'finance', amount: 80000 });
+    assert.equal(state.investing.holdings.finance.value, 80000);
+    ctx.emit('legal:convicted', { offenseId: 'insiderTrading' });
+    assert.ok(!(state.investing.holdings.finance?.value > 0), 'insider profits clawed back');
+  },
+
+  'auto-invest sweeps surplus cash and sells to cover card debt'() {
+    const { engine, state } = setup(23, 30);
+    state.finances.cash = 100000;
+    state.finances.lastYear = { tax: 5000, living: 20000, insurance: 0 };
+    engine.dispatch('investing.toggleAuto');
+    const ctx = engine.context();
+    BrokerageEngine.onYearEnd(ctx);
+    const invested = Object.values(state.investing.holdings).reduce((s, h) => s + h.value, 0);
+    assert.ok(invested > 50000 && state.finances.cash >= 35000, `swept ${invested}, kept ${state.finances.cash}`);
+    state.finances.cash = -10000;
+    BrokerageEngine.onAgeUp(ctx);
+    assert.ok(state.finances.cash >= 0, 'debt covered');
   },
 
   'evicted young adults move back in with family or get vouchers'() {

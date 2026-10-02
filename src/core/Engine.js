@@ -193,13 +193,15 @@ export class Engine {
        * Taxable income. Cash arrives now; tax is settled at year end.
        * `wage` marks earned income (Social Security); `ssCovered: false`
        * marks jobs outside Social Security (e.g. many police/fire plans).
+       * `ltcg` marks long-term capital gains / qualified dividends, taxed at
+       * the preferential rate.
        */
-      earn(amount, source, { wage = false, ssCovered = true } = {}) {
+      earn(amount, source, { wage = false, ssCovered = true, ltcg = false } = {}) {
         const value = Math.round(amount);
         if (value <= 0) return 0;
         state.finances.cash += value;
         state.finances.lifetimeEarnings += value;
-        state.finances.ledger.income.push({ source, amount: value, wage, ssCovered });
+        state.finances.ledger.income.push(ltcg ? { source, amount: value, wage: false, ssCovered, ltcg: true } : { source, amount: value, wage, ssCovered });
         return value;
       },
       /** Pre-tax deduction (retirement contributions) reducing taxable income. */

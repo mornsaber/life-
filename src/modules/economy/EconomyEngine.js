@@ -20,10 +20,10 @@ import { clamp } from '../../core/Random.js';
 const rnd = (x, p = 1000) => Math.round(x * p) / p + 0;
 
 export const PHASES = {
-  expansion: { label: 'Expansion', icon: '📈', gdp: [0.015, 0.035], unemployment: 0.042, inflation: 0.025, rate: 0.035, market: [0.1, 0.15] },
+  expansion: { label: 'Expansion', icon: '📈', gdp: [0.015, 0.035], unemployment: 0.042, inflation: 0.025, rate: 0.035, market: [0.085, 0.15] },
   peak: { label: 'Peak', icon: '⛰️', gdp: [0.005, 0.02], unemployment: 0.037, inflation: 0.04, rate: 0.05, market: [0.03, 0.16] },
-  recession: { label: 'Recession', icon: '📉', gdp: [-0.035, -0.005], unemployment: 0.08, inflation: 0.015, rate: 0.01, market: [-0.2, 0.15] },
-  recovery: { label: 'Recovery', icon: '🌱', gdp: [0.02, 0.045], unemployment: 0.06, inflation: 0.02, rate: 0.015, market: [0.18, 0.15] },
+  recession: { label: 'Recession', icon: '📉', gdp: [-0.035, -0.005], unemployment: 0.08, inflation: 0.015, rate: 0.01, market: [-0.18, 0.15] },
+  recovery: { label: 'Recovery', icon: '🌱', gdp: [0.02, 0.045], unemployment: 0.06, inflation: 0.02, rate: 0.015, market: [0.15, 0.15] },
 };
 
 /** Sector betas for individual stocks. */
@@ -112,11 +112,17 @@ export const EconomyEngine = {
     const index = clamp(mu + rng.float(-sigma, sigma), -0.45, 0.6);
     const rateMove = e.interestRate - prevRate;
     const bonds = clamp(prevRate + 0.01 - rateMove * 6 + rng.float(-0.02, 0.02), -0.15, 0.2);
+    // Crypto: manias inflate a bubble that bursts when they end.
+    let crypto;
     if (!e.cryptoMania && rng.chance(0.12)) {
       e.cryptoMania = true;
       ctx.log('🪙 Crypto mania! Everyone\'s cousin is buying coins.', '🪙', 'warn');
-    } else if (e.cryptoMania && rng.chance(0.45)) e.cryptoMania = false;
-    const crypto = e.cryptoMania ? rng.float(0.5, 2.5) : clamp(index * 2 + rng.float(-0.6, 0.5), -0.8, 1.5);
+      crypto = rng.float(0.4, 1.5);
+    } else if (e.cryptoMania && rng.chance(0.5)) {
+      e.cryptoMania = false;
+      ctx.log('🪙 The crypto bubble burst.', '💥', 'warn');
+      crypto = rng.float(-0.85, -0.55);
+    } else crypto = e.cryptoMania ? rng.float(0.2, 1.2) : clamp(index * 1.5 + rng.float(-0.45, 0.35), -0.8, 1.2);
     const sectors = {};
     for (const [id, s] of Object.entries(SECTORS)) {
       sectors[id] = rnd(clamp(0.02 + (index - 0.02) * s.beta + (s.inflationHedge ? (e.inflation - 0.025) * 4 : 0) + rng.float(-s.vol, s.vol), -0.7, 1.2));

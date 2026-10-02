@@ -136,7 +136,12 @@ export function resolveTemptation(ctx, data, optionId) {
   }
   const take = t.take;
   ctx.log(take.text, '😈', 'warn');
-  if (take.money) ctx.earn(rng.int(...take.money), 'Undisclosed income');
+  if (take.money) {
+    const amount = rng.int(...take.money);
+    // Insider profits land in the brokerage account (zero basis) — and are clawed back on conviction.
+    if (take.offenseId === 'insiderTrading' && ctx.state.investing) ctx.emit('investing:windfall', { asset: 'finance', amount });
+    else ctx.earn(amount, 'Undisclosed income');
+  }
   if (take.perf) ctx.emit('career:adjust', { performance: take.perf });
   if (take.crash) {
     ctx.stat('health', -rng.int(3, 12));

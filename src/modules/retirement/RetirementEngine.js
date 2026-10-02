@@ -14,10 +14,10 @@
 import { clamp } from '../../core/Random.js';
 import { PENSION_PLANS, annuityFor } from './PensionPlans.js';
 import { OFFICES } from '../politics/Offices.js';
+import { DC_FUNDS, profileReturn, realReturn } from '../investing/Assets.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
-const DC_GROWTH = 0.06;
 const EMPLOYEE_DC_RATE = 0.06;
 
 /* ------------------------------------------------------------------ */
@@ -124,7 +124,8 @@ export const RetirementEngine = {
     const { state } = ctx;
     const r = state.retirement;
     const age = state.character.age;
-    r.dc = Math.round(r.dc * (1 + DC_GROWTH));
+    // 401(k)/TSP balances ride the market through the chosen fund.
+    r.dc = Math.max(0, Math.round(r.dc * (1 + realReturn(state.economy, profileReturn(state.economy, r.dcFund ?? 'balanced')))));
 
     // COLAs track inflation, capped by each plan's COLA ceiling; Social Security gets full CPI.
     const inflation = Math.max(0, state.economy.inflation);
@@ -185,6 +186,11 @@ export const RetirementEngine = {
   },
 
   actions: {
+    setDcFund(ctx, fundId) {
+      if (!DC_FUNDS[fundId]) return;
+      ctx.state.retirement.dcFund = fundId;
+      ctx.toast(`401(k)/TSP now in the ${DC_FUNDS[fundId].name}.`, 'good');
+    },
     retire(ctx) {
       const { state } = ctx;
       if (state.character.age < 50) return ctx.toast('Too young to retire (50+).', 'warn');

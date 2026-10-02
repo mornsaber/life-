@@ -79,7 +79,7 @@ export function createInitialState(rng, options = {}) {
     military: { service: null, history: [] },
     emergency: { fire: null, police: null, sar: null, history: [] },
     legal: { record: [], investigations: [], incarceration: null, probationYears: 0, flags: {} },
-    retirement: { retired: false, dc: 0, pensions: [], plans: {}, ssEarnings: [], socialSecurity: null },
+    retirement: { retired: false, dc: 0, dcFund: 'balanced', pensions: [], plans: {}, ssEarnings: [], socialSecurity: null },
     housing: {
       withParents: true,
       everOwned: false,
@@ -205,7 +205,16 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) - f.loans);
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) - f.loans);
+}
+
+/** Brokerage holdings, speculative positions and IRAs. */
+export function investmentsValue(state) {
+  const inv = state.investing;
+  if (!inv) return 0;
+  const holdings = Object.values(inv.holdings).reduce((s, h) => s + h.value, 0);
+  const spec = inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0);
+  return holdings + spec + inv.ira.roth.value + inv.ira.traditional.value;
 }
 
 /** Academic rank of each degree type. Certificates/diplomas sit beside high school. */

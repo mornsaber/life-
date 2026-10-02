@@ -8,6 +8,7 @@ import { calculateIncomeTax } from '../career/CareerEngine.js';
 import { isOnActiveDuty } from '../../core/State.js';
 import { regionOf, stateIdOf } from './Regions.js';
 import { stateIncomeTax, STATES } from './States.js';
+import { ltcgTax } from '../investing/Assets.js';
 
 const LOAN_RATE = 0.05;
 const DEBT_RATE = 0.15;
@@ -35,10 +36,14 @@ export const Finances = {
     const f = state.finances;
     const age = state.character.age;
     const gross = f.ledger.income.reduce((sum, i) => sum + i.amount, 0);
+    const ltcg = f.ledger.income.reduce((sum, i) => sum + (i.ltcg ? i.amount : 0), 0);
+    const ordinary = gross - ltcg;
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
-    const taxable = Math.max(0, gross - deductions);
-    let federalTax = calculateIncomeTax(taxable);
-    let stateTax = stateIncomeTax(stateIdOf(state), Math.max(0, taxable - 5000));
+    const taxable = Math.max(0, ordinary - deductions);
+    const capitalGainsTax = ltcgTax(taxable, ltcg);
+    let federalTax = calculateIncomeTax(taxable) + capitalGainsTax;
+    // States tax capital gains as ordinary income.
+    let stateTax = stateIncomeTax(stateIdOf(state), Math.max(0, taxable + ltcg - 5000));
     if (state.legal.flags.taxCheatAge === age) {
       federalTax = Math.round(federalTax * 0.7);
       stateTax = Math.round(stateTax * 0.7);
@@ -59,9 +64,9 @@ export const Finances = {
       else {
         // Housing (rent, mortgage, upkeep) is charged by the housing module;
         // this is everything else, nudged by the state's sales tax.
-        living = Math.round((9000 + gross * 0.3) * region.col * (1 - HOUSING_SHARE) * (1 + STATES[region.state].salesTax / 2));
+        living = Math.round((9000 + ordinary * 0.3) * region.col * (1 - HOUSING_SHARE) * (1 + STATES[region.state].salesTax / 2));
       }
-      insurance = healthPremium(state, gross);
+      insurance = healthPremium(state, ordinary);
     }
 
     f.cash -= tax + living + insurance;
@@ -98,7 +103,7 @@ export const Finances = {
 
     if (gross > 0 || living > 0) {
       ctx.log(
-        `Year-end finances: earned $${gross.toLocaleString()}${deductions ? ` ($${deductions.toLocaleString()} pre-tax to retirement)` : ''}, paid $${federalTax.toLocaleString()} federal${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
+        `Year-end finances: earned $${gross.toLocaleString()}${deductions ? ` ($${deductions.toLocaleString()} pre-tax to retirement)` : ''}, paid $${federalTax.toLocaleString()} federal${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
           (insurance ? `, $${insurance.toLocaleString()} health insurance` : '') +
           (loanPayment ? `, $${loanPayment.toLocaleString()} toward loans` : '') +
           (interest ? `, $${interest.toLocaleString()} card interest` : '') +
@@ -108,7 +113,7 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
+    f.lastYear = { gross, ltcg, capitalGainsTax, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
     f.ledger = { income: [], expenses: [], deductions: [] };
   },
 };

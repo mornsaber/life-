@@ -25,6 +25,8 @@ import { Renderer, VIEWS } from '../src/ui/Renderer.js';
 import { OFFICES } from '../src/modules/politics/index.js';
 import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestate/index.js';
 import { promptModal } from '../src/ui/Components.js';
+import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
+import { netWorth } from '../src/core/State.js';
 
 const LIVES = Number(process.argv[2] ?? 300);
 const SEED = Number(process.argv[3] ?? 1);
@@ -56,7 +58,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -101,6 +103,16 @@ function checkInvariants(state) {
   assert.ok(['expansion', 'peak', 'recession', 'recovery'].includes(e.phase), 'economy phase');
   for (const k of ['gdpGrowth', 'unemployment', 'inflation', 'interestRate', 'marketIndex', 'cpi']) assert.ok(Number.isFinite(e[k]), `economy ${k}`);
   assert.ok(e.marketIndex > 0 && e.unemployment > 0, 'economy ranges');
+  for (const k of ['index', 'bonds', 'treasuries', 'crypto']) assert.ok(Number.isFinite(e.returns[k]), `return ${k}`);
+  const inv = state.investing;
+  for (const [id, h] of Object.entries(inv.holdings)) {
+    assert.ok(ASSETS[id], `asset ${id}`);
+    assert.ok(Number.isFinite(h.value) && h.value >= 0 && Number.isFinite(h.basis), `holding ${id} finite`);
+  }
+  for (const p of inv.speculative) assert.ok(Number.isFinite(p.value) && p.value >= 0, 'speculative finite');
+  for (const a of [inv.ira.roth.value, inv.ira.roth.basis, inv.ira.traditional.value, state.retirement.dc]) assert.ok(Number.isFinite(a) && a >= 0, 'retirement accounts finite');
+  assert.ok(PROFILES[inv.auto.profile] && DC_FUNDS[state.retirement.dcFund], 'profiles');
+  assert.ok(Number.isFinite(netWorth(state)), 'net worth finite');
 }
 
 function act(id, arg) {
@@ -170,6 +182,16 @@ function randomActions(state) {
   }
   if (state.education.enrolled) tries.push(() => act(player.pick(['education.study', 'education.study', 'education.switchPace'])));
   if (player.chance(0.06)) tries.push(() => act(`legal.${player.pick(RISKY_ACTIONS).id}`));
+  // Investing
+  if (age >= 18) {
+    if (player.chance(0.12)) tries.push(() => act('investing.buy', `${player.pick(Object.keys(ASSETS))}:${player.pick([500, 1000, 5000, 20000])}`));
+    const held = Object.keys(state.investing.holdings);
+    if (held.length && player.chance(0.06)) tries.push(() => act('investing.sell', player.pick(held)));
+    if (player.chance(0.03)) tries.push(() => act(player.pick(['investing.rebalance', 'investing.toggleAuto', 'investing.iraWithdraw'])));
+    if (player.chance(0.04)) tries.push(() => act('investing.setProfile', player.pick(Object.keys(PROFILES))));
+    if (player.chance(0.04)) tries.push(() => act('retirement.setDcFund', player.pick(Object.keys(DC_FUNDS))));
+    if (player.chance(0.1)) tries.push(() => act('investing.iraContribute', player.pick(['roth', 'traditional'])));
+  }
   tries.push(() => act('activities.do', player.pick(['gym', 'library', 'meditate', 'doctor', 'vacation', 'salon'])));
 
   for (const t of player.shuffle(tries).slice(0, 5)) {
@@ -204,13 +226,23 @@ for (let life = 0; life < LIVES; life++) {
   const state = engine.newLife();
   let years = 0;
   let managed = false;
+  let autoYears = 0;
+  let peakNetWorth = 0;
+  // A third of lives play as disciplined investors: auto-invest on from the first job, Roth every year.
+  const investor = life % 3 === 0;
   while (state.character.alive) {
     randomActions(state);
+    if (investor && state.career.job && state.character.age >= 18) {
+      if (!state.investing.auto.enabled) act('investing.toggleAuto');
+      act('investing.iraContribute', 'roth');
+    }
     resolveAllPrompts(state);
     if (!state.character.alive) break;
     assert.ok(engine.ageUp(), 'ageUp should succeed when no prompts pending');
     checkInvariants(state);
     if (state.career.job?.department) managed = true;
+    if (state.investing.auto.enabled) autoYears += 1;
+    peakNetWorth = Math.max(peakNetWorth, netWorth(state));
     if (years % 7 === 0 || state.prompts.length) renderAll(state);
     if (state.career.job?.professionId === 'foreignService') totals.fso += 1;
     years += 1;
@@ -234,6 +266,11 @@ for (let life = 0; life < LIVES; life++) {
   if (state.politics.history.length || state.politics.office) totals.officeHolders += 1;
   if ([...state.politics.history.map((h) => h.officeId), state.politics.office?.id].includes('governor')) totals.governors += 1;
   if (state.housing.homelessYears) totals.homeless += 1;
+  if (peakNetWorth >= 1e6) totals.millionaires += 1;
+  if (investor && autoYears >= 20) {
+    totals.investors += 1;
+    if (peakNetWorth >= 1e6) totals.investorMillionaires += 1;
+  }
   const hist = state.economy.history;
   totals.econYears += hist.length;
   totals.recessions += hist.filter((h, i) => h.phase === 'recession' && hist[i - 1]?.phase !== 'recession').length;
@@ -251,6 +288,7 @@ console.log(`  avg lifespan ${(totals.years / LIVES).toFixed(1)}, max age ${tota
 console.log(`  avg credentials ${(totals.credentials / LIVES).toFixed(1)}, avg degrees ${(totals.degrees / LIVES).toFixed(1)}, lives w/ pensions ${totals.pensions}, managers ${totals.managers}, cleared ${totals.clearances}`);
 console.log(`  convictions ${totals.convictions}, lives with prison ${totals.prison}, immunity prompts ${totals.immunity}, FSO-years ${totals.fso}`);
 console.log(`  economy: a recession every ${(totals.econYears / Math.max(1, totals.recessions)).toFixed(1)} yrs, ${totals.layoffs} layoffs`);
+console.log(`  investing: ${totals.millionaires} lives peaked as millionaires (${((totals.millionaires / LIVES) * 100).toFixed(0)}%); disciplined investors ${totals.investorMillionaires}/${totals.investors} (${((totals.investorMillionaires / Math.max(1, totals.investors)) * 100).toFixed(0)}%)`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);

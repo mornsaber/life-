@@ -4,7 +4,8 @@
  * where you live (cost of living, locality, relocation).
  */
 import { esc, money, button, card, chip, kv, empty } from '../Components.js';
-import { netWorth } from '../../core/State.js';
+import { netWorth, investmentsValue } from '../../core/State.js';
+import { investView } from './InvestView.js';
 import { planStatus, socialSecurityEstimate, primaryInsuranceAmount, SS_FULL_AGE } from '../../modules/retirement/RetirementEngine.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS, MOVE_COST, regionOf } from '../../modules/life/Regions.js';
@@ -19,6 +20,7 @@ export function moneyView(state) {
   const finances = card('Finances', `${kv([
     ['Cash', `<b class="${f.cash < 0 ? 'neg' : 'pos'}">${money(f.cash)}</b>`],
     ['Retirement accounts', money(r.dc)],
+    state.investing ? ['Investments', money(investmentsValue(state))] : null,
     ['Student loans', f.loans ? `<span class="neg">${money(f.loans)}</span>` : '$0'],
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
     ['Lifetime earnings', money(f.lifetimeEarnings)],
@@ -26,7 +28,7 @@ export function moneyView(state) {
     ['Credit score', state.housing.credit.score],
     f.bankruptcies ? ['Bankruptcies', `<span class="neg">${f.bankruptcies}</span>`] : null,
   ])}
-  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ['State income tax', money(ly.stateTax ?? 0)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
+  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ['State income tax', money(ly.stateTax ?? 0)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
 
   const plans = Object.keys(r.plans).map((id) => {
     const s = planStatus(state, id);
@@ -63,5 +65,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     <ul class="history">${rows}</ul>`, { icon: '🗺️' });
 
-  return `${finances}${retirement}`;
+  return `${finances}${investView(state)}${retirement}`;
 }
