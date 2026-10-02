@@ -424,6 +424,9 @@ export function getCommitments(state) {
     const micro = job.department ? Object.values(job.department.delegation).filter((d) => !d).length * (job.department.headcount >= 8 ? 0.5 : 0) : 0;
     list.push({ id: 'job', label: job.department ? `${job.title} (+team)` : job.title, load: 3 + micro });
   }
+  const k12 = state.k12;
+  if (k12?.job && state.character.age < 18) list.push({ id: 'teenJob', label: 'Part-time job', load: 1 });
+  if (k12?.activities.length && state.character.age < 18) list.push({ id: 'activities', label: `${k12.activities.length} activit${k12.activities.length > 1 ? 'ies' : 'y'}`, load: 0.5 * k12.activities.length });
   const school = state.education.enrolled;
   if (school) list.push({ id: 'school', label: `School (${school.pace === 'part' ? 'part-time' : 'full-time'})`, load: school.pace === 'part' ? 1.5 : 3 });
   for (const t of state.credentials.training) list.push({ id: `train.${t.id}`, label: `Training: ${t.name}`, load: 1 });

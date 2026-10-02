@@ -17,7 +17,6 @@ export function campusView(state) {
   if (!e) {
     const extras = [
       c.mentors.length ? `<h4 class="sub">Mentors</h4><ul class="history">${c.mentors.map((m) => `<li>🧑‍🏫 <b>${esc(m.name)}</b> · ${esc(m.employerName)}</li>`).join('')}</ul>` : '',
-      age >= 16 && age <= 23 ? `<div class="toggle-row">${button(c.nomination ? '🏛️ Nominated to the academies' : '🏛️ Seek a congressional nomination', 'campus.seekNomination', { variant: c.nomination ? 'small on' : 'small', disabled: c.nomination, hint: 'Required for West Point, Annapolis, USAFA and USCGA' })}</div>` : '',
     ].join('');
     return extras ? card('Campus & Network', extras, { icon: '🎒' }) : '';
   }

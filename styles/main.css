@@ -778,5 +778,5 @@ select:focus { border-color: var(--cyan); }
 .heirs { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
 .heirs h3 { margin: 0 0 4px; }
 .fund-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px dashed var(--line, #ddd); }
-.fund-row > span { flex: 1 1 auto; min-width: 140px; }
+.fund-row > span:first-child { flex: 1 1 auto; min-width: 140px; }
 @media (max-width: 560px) { .person-row { grid-template-columns: 28px minmax(0, 1fr); } .person-row .meter { grid-column: 1 / -1; } }

@@ -167,6 +167,8 @@ export async function playLives({ from, to, seed }) {
         if (extra && choose.chance(extra[0])) persona.edu.push(extra[1]);
         else if (!p.edu.some(([prog]) => prog === 'bachelor') && s.stats.smarts >= 55 && choose.chance(0.1)) persona.edu.unshift(['bachelor', 'state', 'business']);
       }
+      // Dropouts usually come back for a GED.
+      if (age >= 17 && !s.education.degrees.some((d) => d.type === 'highschool') && s.k12?.dropout && choose.chance(0.6)) engine.dispatch('k12.ged');
       const plan = PLANS[persona.plan];
       if (plan && age >= 15) {
         for (const c of plan.creds) if (!hasCredential(s, c) && !s.credentials.training.some((t) => t.id === c)) engine.dispatch('credentials.pursue', c);

@@ -14,6 +14,7 @@ import { clamp } from '../../core/Random.js';
 import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js';
 import { residencyYears } from '../life/Regions.js';
 import { campusGpaAdjustment } from '../campus/Network.js';
+import { prepBonus } from './K12.js';
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -73,7 +74,8 @@ export function admissionChance(state, programId, schoolId) {
   const bar = Math.max(school.admission, p.minSmarts ?? 0) + (school.prestige >= 3 && p.type !== 'certificate' ? 8 : 0);
   const score = state.stats.smarts + (lastGpa(state) - 3) * 12;
   const expelled = state.campus?.expelledAge != null ? 0.25 : 0;
-  return clamp(0.5 + (score - bar) / 25 - expelled, school.admission === 0 ? 1 : 0.03, 0.98);
+  const prep = state.education.degrees.some((d) => ['bachelor', 'associate', 'master'].includes(d.type)) ? 0 : prepBonus(state);
+  return clamp(0.5 + (score - bar) / 25 - expelled + prep, school.admission === 0 ? 1 : 0.03, 0.98);
 }
 
 export const OUT_OF_STATE_MULTIPLIER = 2.5;

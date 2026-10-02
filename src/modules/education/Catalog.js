@@ -94,7 +94,7 @@ export function majorsFor(programId) {
 
 export function degreeLabel(degree) {
   const program = PROGRAMS[degree.programId];
-  const name = degree.type === 'highschool' ? 'High School Diploma' : degree.type === 'ged' ? 'GED' : program?.name ?? degree.type;
+  const name = degree.programId === 'ged' || degree.type === 'ged' ? 'GED' : degree.type === 'highschool' ? 'High School Diploma' : program?.name ?? degree.type;
   return `${name}${degree.major && program?.major === 'choose' ? ` — ${MAJORS[degree.major].name}` : ''}`;
 }
 

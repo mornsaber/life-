@@ -201,6 +201,8 @@ export function candidateBonus(state, profession) {
     const exam = examStatus(state, profession.exam);
     bonus += clamp((exam.rankedScore - 75) / 100, -0.05, 0.2);
   }
+  // Teen part-time work counts as experience for a first real job.
+  if (!state.career.history.length) bonus += Math.min(0.08, (state.k12?.jobYears ?? 0) * 0.02);
   bonus -= backgroundCheck(state, profession).penalty ?? 0;
   return bonus;
 }

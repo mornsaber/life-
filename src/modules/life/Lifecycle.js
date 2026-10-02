@@ -31,10 +31,9 @@ const CHILDHOOD_EVENTS = [
   { minAge: 11, maxAge: 16, text: 'Your parents went through a rough divorce.', icon: '💔', stats: { happiness: -8, stress: 6 } },
   { minAge: 11, maxAge: 17, text: 'You got braces. Two years of metal smiles.', icon: '😬', stats: { looks: -2 } },
   { minAge: 12, maxAge: 17, text: 'You had an awkward growth spurt.', icon: '📏', stats: { looks: -3 } },
-  { minAge: 12, maxAge: 17, text: 'You started babysitting for the neighbors.', icon: '🍼', stats: { happiness: 2 } },
   { minAge: 13, maxAge: 17, text: 'You joined the Civil Air Patrol cadets.', icon: '✈️', stats: { fitness: 3, smarts: 2 } },
   { minAge: 13, maxAge: 17, text: 'You got your heart broken for the first time.', icon: '💔', stats: { happiness: -5 } },
-  { minAge: 13, maxAge: 17, text: 'You got a part-time job bagging groceries.', icon: '🛒', stats: { happiness: 1 } },
+  { minAge: 13, maxAge: 17, text: 'You got your learner\'s permit and terrified your parents.', icon: '🚗', stats: { happiness: 2, stress: 2 } },
   { minAge: 14, maxAge: 17, text: 'You glowed up over the summer.', icon: '✨', stats: { looks: 6, happiness: 3 } },
   { minAge: 14, maxAge: 17, text: 'You made varsity as a sophomore.', icon: '🏆', stats: { fitness: 4, happiness: 4 } },
   { minAge: 15, maxAge: 17, text: 'You went to prom. The photos are mortifying.', icon: '🕺', stats: { happiness: 4 } },
@@ -71,15 +70,7 @@ export const Lifecycle = {
     const { state, rng } = ctx;
     const age = state.character.age;
 
-    // Milestones
-    if (age === 5) ctx.log('You started kindergarten.', '🎒', 'milestone');
-    if (age === 14) ctx.log('You started high school.', '🏫', 'milestone');
-    if (age === 18 && !state.legal.incarceration && !state.education.degrees.some((d) => d.type === 'highschool')) {
-      state.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: age });
-      ctx.log('You graduated from high school! 🎓 Your family chipped in $2,000 to get you started.', '🎓', 'milestone');
-      state.finances.cash += 2000;
-      ctx.stat('happiness', 5);
-    }
+    // Kindergarten, high school and graduation live in the K-12 module.
 
     // Childhood development
     if (age < 18) {

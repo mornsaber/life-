@@ -28,6 +28,7 @@ import { promptModal } from '../src/ui/Components.js';
 import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
+import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { CLUBS, ROTC_BRANCHES } from '../src/modules/campus/index.js';
 import { living, livingChildren, partnerOf, spouseOf, WEDDINGS, WILL_PLANS } from '../src/modules/people/index.js';
 
@@ -61,7 +62,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0, dropouts: 0, geds: 0, privateSchool: 0, teenWorkers: 0, gpaSum: 0, gpaN: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -148,6 +149,13 @@ function checkInvariants(state) {
     assert.ok(!(c.treated && !c.diagnosed), `treated but undiagnosed ${c.id}`);
   }
   assert.ok(Number.isFinite(hl.medicalDebt) && hl.medicalDebt >= 0, 'medical debt');
+  const k = state.k12;
+  assert.ok(SCHOOL_TYPES[k.type], `k12 type ${k.type}`);
+  assert.ok(k.activities.length <= MAX_ACTIVITIES && k.activities.every((a) => ACTIVITIES[a]) && new Set(k.activities).size === k.activities.length, 'k12 activities');
+  assert.ok(k.gpa == null || (k.gpa >= 0 && k.gpa <= 4), `k12 gpa ${k.gpa}`);
+  assert.ok(!k.job || (TEEN_JOBS[k.job.id] && state.character.age < 18), 'teen job');
+  assert.ok(!(k.dropout && state.education.degrees.some((d) => d.type === 'highschool' && d.programId !== 'ged')), 'dropout with a diploma');
+  assert.ok(state.education.degrees.filter((d) => d.type === 'highschool' || d.type === 'ged').length <= 1, 'one diploma');
   assert.ok(hl.trauma >= 0 && [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(hl.va.rating), 'trauma / VA rating');
 }
 
@@ -235,6 +243,17 @@ function randomActions(state) {
     if (state.people.arrears && player.chance(0.5)) tries.push(() => act('people.payArrears'));
     if (player.chance(0.03)) tries.push(() => act(player.pick(['people.makeFriend', 'people.adopt', 'people.askForMoney']), player.pick(folks)?.id));
   }
+  // K-12
+  if (age >= 5 && age < 18) {
+    if (player.chance(0.08)) tries.push(() => act('k12.transfer', player.pick(Object.keys(SCHOOL_TYPES))));
+    if (player.chance(0.4)) tries.push(() => act('k12.study'));
+    if (player.chance(0.1)) tries.push(() => act('k12.skip'));
+    if (player.chance(0.2)) tries.push(() => act('k12.toggleActivity', player.pick(Object.keys(ACTIVITIES))));
+    if (age >= 12 && player.chance(0.2)) tries.push(() => act(state.k12.job && player.chance(0.3) ? 'k12.quitJob' : 'k12.takeJob', player.pick(Object.keys(TEEN_JOBS))));
+    if (age >= 16 && player.chance(0.02)) tries.push(() => act('k12.dropOut'));
+    if (state.k12.dropout && player.chance(0.3)) tries.push(() => act('k12.reenroll'));
+  }
+  if (age >= 16 && state.k12.dropout && player.chance(0.4)) tries.push(() => act('k12.ged'));
   // Campus
   if (state.education.enrolled) {
     if (player.chance(0.3)) tries.push(() => act(`campus.${player.pick(['rush', 'runForStudentGov', 'tryOut', 'party', 'party', 'studyAbroad', 'moveIntoDorm', 'moveOffCampus'])}`));
@@ -383,6 +402,12 @@ for (let life = 0; life < LIVES; life++) {
   assert.deepEqual(restored, state);
   checkEstate(state);
   totals.estates += 1;
+  if (state.k12.history.length || state.k12.type !== 'public') totals.privateSchool += state.k12.history.some((h) => ['private', 'boarding', 'religious', 'militaryPrep'].includes(h.type)) || ['private', 'boarding', 'religious', 'militaryPrep'].includes(state.k12.type) ? 1 : 0;
+  if (state.k12.jobYears) totals.teenWorkers += 1;
+  if (state.k12.dropout || state.education.degrees.some((d) => d.programId === 'ged')) totals.dropouts += 1;
+  if (state.education.degrees.some((d) => d.programId === 'ged')) totals.geds += 1;
+  const hsDiploma = state.education.degrees.find((d) => d.type === 'highschool' && d.programId === 'highschool');
+  if (hsDiploma?.gpa != null) { totals.gpaSum += hsDiploma.gpa; totals.gpaN += 1; }
   if (state.people.marriages) totals.married += 1;
   if (state.people.divorces) totals.divorced += 1;
   if (state.people.list.some((p) => p.relation === 'child')) totals.parents += 1;
@@ -410,6 +435,7 @@ console.log(`  investing: ${totals.millionaires} lives peaked as millionaires ($
 const rate = ([n, d]) => `${n}/${d} (${((n / Math.max(1, d)) * 100).toFixed(0)}%)`;
 console.log(`  health: PTSD combat ${rate(totals.ptsd.combat)}, first responders ${rate(totals.ptsd.responder)}, others ${rate(totals.ptsd.other)}; disability ${totals.onDisability}, VA-rated ${totals.vaRated}, rehab ${totals.rehab}`);
 console.log(`  campus: interned ${totals.interns}, return-offer hires ${totals.returnHires}, mentored ${totals.mentored}, Greek alumni ${totals.greek}, honors college ${totals.honorsCollege}, studied abroad ${totals.abroad}, expelled ${totals.expelled}, ROTC officers ${totals.rotcOfficers}, academy grads ${totals.academyGrads}`);
+console.log(`  k12: ${totals.privateSchool} attended private/religious/boarding/military schools · ${totals.teenWorkers} held teen jobs · ${totals.dropouts} dropped out (${totals.geds} earned a GED) · mean high-school GPA ${(totals.gpaSum / Math.max(1, totals.gpaN)).toFixed(2)}`);
 console.log(`  people: ${totals.married} ever married, ${totals.divorced} divorced, ${totals.parents} parents · ${totals.generations} heirs continued, deepest line ${totals.maxGeneration} generations · ${totals.estates} estates settled and balanced`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);

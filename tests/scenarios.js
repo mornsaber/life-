@@ -28,6 +28,8 @@ import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
+import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
+import { admissionChance } from '../src/modules/education/EducationEngine.js';
 import { settleEstate, spouseOf, livingChildren, byId, ARREARS_HOLD } from '../src/modules/people/index.js';
 
 /** Give the test character a spouse (and optionally children) directly. */
@@ -705,6 +707,117 @@ const tests = {
     }
     const reloaded = new Store(engine.store.storage).load();
     assert.deepEqual(reloaded, engine.state, 'round trip after three generations');
+  },
+
+  'high school: GPA, the diploma and where you went shape college admission'() {
+    const kid = (seed, type) => {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+      const state = engine.newLife({ firstName: 'Kid', lastName: 'Case' });
+      state.character.age = 13;
+      state.people.wealth = 'upper';
+      state.stats.smarts = 82;
+      if (type !== 'public') engine.dispatch('k12.transfer', type);
+      engine.rng.float = (a, b) => (a + b) / 2;
+      for (let y = 0; y < 5; y++) {
+        state.prompts = [];
+        state.k12.dropout = false;
+        engine.dispatch('k12.study');
+        state.stats.smarts = 82;
+        engine.ageUp();
+      }
+      state.prompts = [];
+      return { engine, state };
+    };
+    const pub = kid(31, 'public');
+    const board = kid(31, 'boarding');
+    assert.equal(board.state.k12.type, 'boarding', 'admitted to boarding school');
+    const pubHs = pub.state.education.degrees.find((d) => d.type === 'highschool');
+    assert.ok(pubHs, 'graduated at 18');
+    assert.ok(pubHs.gpa >= 2.5 && pubHs.gpa <= 4, `GPA ${pubHs.gpa}`);
+    assert.equal(board.state.education.degrees.find((d) => d.type === 'highschool').k12, 'boarding');
+    // Same smarts and similar grades: the prep school opens more doors.
+    board.state.education.degrees.find((d) => d.type === 'highschool').gpa = pubHs.gpa;
+    assert.ok(admissionChance(board.state, 'bachelor', 'elite') > admissionChance(pub.state, 'bachelor', 'elite'), 'prep bonus');
+  },
+
+  'private school needs money or a scholarship; dropouts can earn a GED'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(5), modules: MODULES });
+    const state = engine.newLife({ firstName: 'Kid', lastName: 'Case' });
+    state.character.age = 15;
+    state.people.wealth = 'low';
+    state.stats.smarts = 60;
+    state.finances.cash = 0;
+    assert.equal(schoolAccess(state, 'private').ok, false, 'low-income family cannot pay $28k');
+    state.stats.smarts = 85;
+    assert.equal(schoolAccess(state, 'private').payer, 'aid', 'strong students get need-based aid');
+    assert.equal(schoolAccess(state, 'religious').ok, false);
+    state.character.age = 16;
+    engine.dispatch('k12.dropOut');
+    assert.equal(state.k12.dropout, true);
+    for (let y = 0; y < 2; y++) {
+      state.prompts = [];
+      engine.ageUp();
+    }
+    assert.ok(!state.education.degrees.length, 'no diploma for a dropout');
+    state.prompts = [];
+    const before = state.finances.cash;
+    engine.rng.chance = () => true;
+    engine.dispatch('k12.ged');
+    assert.ok(state.education.degrees.some((d) => d.programId === 'ged'), 'GED earned');
+    assert.equal(state.finances.cash, before, 'GED is free under 21');
+  },
+
+  'teen jobs pay, count as experience, and end at 18'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(9), modules: MODULES });
+    const state = engine.newLife({ firstName: 'Kid', lastName: 'Case' });
+    state.character.age = 15;
+    state.stats.fitness = 40;
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => true;
+    engine.dispatch('k12.takeJob', 'lifeguard');
+    assert.equal(state.k12.job, null, 'swim test needs fitness');
+    engine.dispatch('k12.takeJob', 'fastFood');
+    assert.equal(state.k12.job.id, 'fastFood');
+    engine.rng.chance = chance;
+    const cash = state.finances.cash;
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.finances.lastYear.gross, teenJobPay(TEEN_JOBS.fastFood), 'paid for the year');
+    assert.ok(state.finances.cash > cash + teenJobPay(TEEN_JOBS.fastFood) * 0.9, 'little or no tax');
+    assert.equal(state.k12.jobYears, 1);
+    while (state.character.age < 18 && state.character.alive) {
+      state.prompts = [];
+      engine.ageUp();
+    }
+    assert.equal(state.k12.job, null, 'teen job ends at 18');
+    assert.ok(state.k12.jobYears >= 3);
+  },
+
+  'service academies: nomination, fitness and a diploma lead to an appointment'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(12), modules: MODULES });
+    const state = engine.newLife({ firstName: 'Cadet', lastName: 'Case' });
+    state.character.age = 14;
+    state.stats.smarts = 85;
+    state.stats.fitness = 70;
+    engine.dispatch('k12.toggleActivity', 'jrotc');
+    for (let y = 0; y < 4; y++) {
+      state.prompts = [];
+      state.stats.fitness = 70;
+      state.stats.health = 90;
+      state.k12.dropout = false;
+      engine.dispatch('k12.study');
+      engine.ageUp();
+    }
+    state.prompts = [];
+    assert.equal(state.character.age, 18);
+    assert.ok(state.education.degrees.some((d) => d.type === 'highschool'));
+    engine.dispatch('education.enroll', 'bachelor:academy:engineering:full');
+    assert.equal(state.education.enrolled, null, 'needs a nomination first');
+    engine.rng.chance = () => true;
+    engine.dispatch('campus.seekNomination');
+    assert.equal(state.campus.nomination, true);
+    engine.dispatch('education.enroll', 'bachelor:academy:engineering:full');
+    assert.equal(state.education.enrolled?.schoolId, 'academy', 'appointed');
   },
 
   'evicted young adults move back in with family or get vouchers'() {
