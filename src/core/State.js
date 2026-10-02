@@ -7,7 +7,8 @@
  * *read* other slices through the selectors exported here, but only mutates
  * its own. Cross-domain effects travel over the engine's event bus.
  */
-import { clamp } from './Random.js';
+import { migrate } from './Migrations.js';
+import { clamp, Random } from './Random.js';
 
 export const STATE_VERSION = 4;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -119,43 +120,172 @@ function defaultStorage() {
   };
 }
 
+export const SAVE_INDEX_KEY = 'lifesim.saves';
+const SLOT_PREFIX = 'lifesim.slot.';
+const LEGACY_KEYS = ['lifesim.save.v4', 'lifesim.save.v3', 'lifesim.save.v2', 'lifesim.save.v1'];
+export const EXPORT_FORMAT = 'lifesim-life';
+
+/** A fresh state used as the shape template for migrations. */
+const migrationTemplate = () => createInitialState(new Random(1));
+
+/**
+ * Persistence with multiple save slots. Each slot holds one life under
+ * `lifesim.slot.<id>`; `lifesim.saves` indexes them ({ active, slots }).
+ * Saves from any earlier STATE_VERSION are migrated on load (Migrations.js),
+ * and pre-slot saves are adopted into a slot the first time the game runs.
+ *
+ * Passing an explicit `key` keeps the old single-key behavior (tests, tools).
+ */
 export class Store {
-  constructor(storage = defaultStorage(), key = SAVE_KEY) {
+  constructor(storage = defaultStorage(), key = null) {
     this.storage = storage;
-    this.key = key;
+    this.fixedKey = key;
     this.state = null;
+    this.migratedFrom = null;
   }
 
-  load() {
+  /* ---- raw storage ---- */
+  read(key) {
     try {
-      const raw = this.storage.getItem(this.key);
-      if (!raw) return null;
-      const parsed = JSON.parse(raw);
-      if (parsed?.version !== STATE_VERSION) return null;
-      this.state = parsed;
-      return parsed;
+      const raw = this.storage.getItem(key);
+      return raw ? JSON.parse(raw) : null;
     } catch {
       return null;
     }
   }
 
-  save() {
-    if (!this.state) return;
+  write(key, value) {
     try {
-      this.storage.setItem(this.key, JSON.stringify(this.state));
+      this.storage.setItem(key, JSON.stringify(value));
+      return true;
     } catch {
-      /* quota exceeded or storage unavailable — game keeps running in memory */
+      return false; /* quota exceeded or storage unavailable — game keeps running in memory */
     }
   }
 
-  clear() {
-    this.state = null;
+  remove(key) {
     try {
-      this.storage.removeItem(this.key);
+      this.storage.removeItem(key);
     } catch {
       /* ignore */
     }
   }
+
+  /* ---- slot index ---- */
+  index() {
+    if (this.fixedKey) return { active: 'fixed', slots: {} };
+    let idx = this.read(SAVE_INDEX_KEY);
+    if (!idx?.slots) {
+      idx = { active: 'slot1', slots: {} };
+      // Adopt a pre-slot save (any version) into the first slot.
+      for (const key of LEGACY_KEYS) {
+        const legacy = this.read(key);
+        if (legacy?.character) {
+          this.write(SLOT_PREFIX + idx.active, legacy);
+          idx.slots[idx.active] = slotMeta(legacy);
+          this.remove(key);
+          break;
+        }
+      }
+      this.write(SAVE_INDEX_KEY, idx);
+    }
+    return idx;
+  }
+
+  get activeSlot() {
+    return this.index().active;
+  }
+
+  get key() {
+    return this.fixedKey ?? SLOT_PREFIX + this.activeSlot;
+  }
+
+  listSlots() {
+    const idx = this.index();
+    return Object.entries(idx.slots).map(([id, meta]) => ({ id, ...meta, active: id === idx.active }));
+  }
+
+  /** Switch to a slot (creating it if new). Returns the loaded state or null for an empty slot. */
+  useSlot(id) {
+    const idx = this.index();
+    idx.active = id;
+    idx.slots[id] ??= { empty: true, updated: Date.now() };
+    this.write(SAVE_INDEX_KEY, idx);
+    this.state = null;
+    return this.load();
+  }
+
+  newSlotId() {
+    const ids = Object.keys(this.index().slots);
+    let n = ids.length + 1;
+    while (ids.includes(`slot${n}`)) n += 1;
+    return `slot${n}`;
+  }
+
+  deleteSlot(id) {
+    const idx = this.index();
+    delete idx.slots[id];
+    this.remove(SLOT_PREFIX + id);
+    if (idx.active === id) {
+      idx.active = Object.keys(idx.slots)[0] ?? 'slot1';
+      this.state = null;
+    }
+    this.write(SAVE_INDEX_KEY, idx);
+  }
+
+  /* ---- life load/save ---- */
+  load() {
+    const raw = this.read(this.key);
+    if (!raw) return null;
+    const result = migrate(raw, STATE_VERSION, migrationTemplate());
+    if (!result) return null;
+    this.state = result.state;
+    this.migratedFrom = result.from < STATE_VERSION ? result.from : null;
+    return this.state;
+  }
+
+  save() {
+    if (!this.state) return;
+    this.write(this.key, this.state);
+    if (this.fixedKey) return;
+    const idx = this.index();
+    idx.slots[idx.active] = slotMeta(this.state);
+    this.write(SAVE_INDEX_KEY, idx);
+  }
+
+  clear() {
+    this.state = null;
+    this.remove(this.key);
+    if (this.fixedKey) return;
+    const idx = this.index();
+    idx.slots[idx.active] = { empty: true, updated: Date.now() };
+    this.write(SAVE_INDEX_KEY, idx);
+  }
+
+  /* ---- export / import ---- */
+  exportLife(state = this.state) {
+    return JSON.stringify({ format: EXPORT_FORMAT, version: state.version, exportedAt: new Date().toISOString(), state }, null, 1);
+  }
+
+  /** Parse an exported life (or a bare saved state). Returns { state, from } or throws with a readable reason. */
+  parseImport(text) {
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      throw new Error('That file is not valid JSON.');
+    }
+    const raw = data?.format === EXPORT_FORMAT ? data.state : data;
+    if (raw?.version > STATE_VERSION) throw new Error(`That life was saved by a newer version (v${raw.version}).`);
+    const result = migrate(raw, STATE_VERSION, migrationTemplate());
+    if (!result) throw new Error('That file is not a LIFE//SIM save.');
+    return result;
+  }
+}
+
+function slotMeta(state) {
+  const c = state.character;
+  return { name: `${c.firstName} ${c.lastName}`, age: c.age, alive: c.alive, version: state.version, updated: Date.now() };
 }
 
 /* ------------------------------------------------------------------ */
@@ -167,7 +297,25 @@ export function currentYearBlock(state) {
 }
 
 export function addLog(state, text, icon = '•', kind = 'info') {
-  currentYearBlock(state).entries.push({ text, icon, kind });
+  const entries = currentYearBlock(state).entries;
+  if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text, icon, kind });
+}
+
+/** Log growth caps: full detail for recent years; older years keep only their headline moments. */
+export const LOG_DETAIL_YEARS = 25;
+export const LOG_MAX_PER_YEAR = 60;
+const LOG_HEADLINE_KINDS = new Set(['milestone', 'death', 'good', 'bad', 'honor']);
+const LOG_HEADLINES_KEPT = 4;
+
+export function compactLog(state) {
+  const cutoff = state.log.length - LOG_DETAIL_YEARS;
+  for (let i = 0; i < cutoff; i++) {
+    const block = state.log[i];
+    if (block.compacted) continue;
+    const headlines = block.entries.filter((e) => LOG_HEADLINE_KINDS.has(e.kind)).slice(0, LOG_HEADLINES_KEPT);
+    block.entries = headlines.length ? headlines : block.entries.slice(0, 1);
+    block.compacted = true;
+  }
 }
 
 export function adjustStat(state, key, delta) {

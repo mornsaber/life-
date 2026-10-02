@@ -226,7 +226,7 @@ export const LicensingEngine = {
       ctx.state.credentials.logbook.flightHours += hours;
     });
     engine.bus.on('credential:grant', ({ ctx, id, silent }) => {
-      if (!hasCredential(ctx.state, id)) grantCredential(ctx, id, { silent });
+      if (CREDENTIALS[id] && !hasCredential(ctx.state, id)) grantCredential(ctx, id, { silent });
     });
     engine.bus.on('credential:revoke', ({ ctx, ids, reason }) => {
       for (const id of ids) revoke(ctx, id, 'revoked', 0, reason);

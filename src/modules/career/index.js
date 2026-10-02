@@ -4,7 +4,11 @@
  * `career.` namespace, and listens for cross-domain events.
  */
 import { clamp } from '../../core/Random.js';
-import { careerOnAgeUp, leaveJob, recalcSalary, promote } from './CareerEngine.js';
+import { careerOnAgeUp, leaveJob, recalcSalary, promote, hire } from './CareerEngine.js';
+import { getProfession } from './JobTrees.js';
+import { ladderFor } from './Ladder.js';
+import { createEmployer } from './Employers.js';
+import { REGIONS } from '../life/Regions.js';
 import { InterviewSystem } from './InterviewSystem.js';
 import { WorkplaceActions } from './WorkplaceActions.js';
 import { ManagementActions, ManagementResolvers } from './ManagementEngine.js';
@@ -17,6 +21,23 @@ export const CareerModule = {
 
   setup(engine) {
     const bus = engine.bus;
+    // Old saves: v1 jobs were tier-based; re-create them on today's ladder at the same employer name.
+    bus.on('save:migrated', ({ ctx }) => {
+      const { state } = ctx;
+      const old = state.career.legacyJob;
+      delete state.career.legacyJob;
+      const job = state.career.job;
+      if (job?.employer && !job.employer.stateId) job.employer.stateId = (REGIONS[state.character.regionId] ?? REGIONS.midcity).state;
+      const profession = old && getProfession(old.professionId);
+      if (!profession) return;
+      const employer = createEmployer(ctx.rng, state, profession, state.character.regionId);
+      if (old.company) employer.name = old.company;
+      const ladder = ladderFor(profession, employer.size);
+      const level = ladder[Math.min(old.tier ?? 0, ladder.length - 1)];
+      hire(ctx, { professionId: profession.id, levelId: level.id, employer });
+      Object.assign(state.career.job, { startAge: old.startAge ?? state.character.age, yearsAtEmployer: old.yearsAtCompany ?? 0, performance: old.performance ?? 60, boss: old.boss ?? 60 });
+      state.prompts = state.prompts.filter((p) => p.type !== 'career.chooseTrack');
+    });
     // Other domains (active duty, relocation, councils, prisons) can end a job.
     bus.on('career:resign', ({ ctx, reason, fired }) => leaveJob(ctx, reason, { fired }));
     // Gubernatorial appointment to an appointed post (superintendent, director...).

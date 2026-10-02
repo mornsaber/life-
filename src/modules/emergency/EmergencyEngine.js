@@ -262,6 +262,15 @@ export const EmergencyEngine = {
 
   setup(engine) {
     const bus = engine.bus;
+    // Old saves: v1 members had no training budget, and their certifications move to the credentials registry.
+    bus.on('save:migrated', ({ ctx }) => {
+      const { state } = ctx;
+      for (const [id, member] of Object.entries(state.emergency)) {
+        if (member && SERVICES[id] && !member.budget) member.budget = { annual: SERVICES[id].trainingBudget, left: SERVICES[id].trainingBudget };
+      }
+      for (const certId of state.legacyCerts ?? []) ctx.emit('credential:grant', { id: certId, silent: true });
+      delete state.legacyCerts;
+    });
     bus.on('budget:charge', ({ ctx, sponsor, amount }) => {
       const member = sponsor.type === 'unit' && ctx.state.emergency[sponsor.serviceId];
       if (member) member.budget.left = Math.max(0, member.budget.left - amount);

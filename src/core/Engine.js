@@ -20,7 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
-import { createInitialState, addLog, adjustStat, currentYear, START_YEAR } from './State.js';
+import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR } from './State.js';
 import { Random } from './Random.js';
 
 export class EventBus {
@@ -47,6 +47,11 @@ export class Engine {
     this.modules = [];
     this.actions = new Map();
     this.resolvers = new Map();
+    /** Snapshots taken before each age-up (debug "undo last year"). In memory only. */
+    this.undoStack = [];
+    this.undoDepth = 5;
+    /** Optional (prompt) => optionId | null, applied to prompts raised during an age-up. */
+    this.autoResolver = null;
     modules.forEach((m) => this.register(m));
     this.modules.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
     this.modules.forEach((m) => m.setup?.(this));
@@ -71,13 +76,75 @@ export class Engine {
   boot() {
     const saved = this.store.load();
     if (!saved) return false;
-    this.modules.forEach((m) => m.init?.(saved, this.rng));
+    this.hydrate(saved, this.store.migratedFrom);
     this.bus.emit('change', saved);
+    return true;
+  }
+
+  /** Bring a loaded (possibly migrated) state up to date with every module. */
+  hydrate(state, migratedFrom = null) {
+    this.undoStack = [];
+    this.modules.forEach((m) => m.init?.(state, this.rng));
+    // Decisions whose type no longer exists can't be answered — drop them.
+    state.prompts = state.prompts.filter((p) => this.resolvers.has(p.type) && p.options?.some((o) => !o.disabled));
+    if (migratedFrom != null) {
+      this.bus.emit('save:migrated', { ctx: this.context(), from: migratedFrom });
+      addLog(state, `This life was upgraded from save version ${migratedFrom}.`, '🔧', 'muted');
+      this.store.save();
+    }
+  }
+
+  /* ---- save slots ---- */
+  switchSlot(id) {
+    const state = this.store.useSlot(id);
+    if (state) this.hydrate(state, this.store.migratedFrom);
+    this.undoStack = [];
+    this.bus.emit('change', state);
+    return state;
+  }
+
+  newSlot() {
+    return this.switchSlot(this.store.newSlotId());
+  }
+
+  deleteSlot(id) {
+    this.store.deleteSlot(id);
+    return this.switchSlot(this.store.activeSlot);
+  }
+
+  exportLife() {
+    return this.state ? this.store.exportLife(this.state) : null;
+  }
+
+  /** Import a life file (into the current slot when empty, else a new one). Throws with a readable message on bad input. */
+  importLife(text) {
+    const { state, from } = this.store.parseImport(text);
+    // Fill the current slot if it's empty; otherwise open a new one.
+    if (this.state) this.store.useSlot(this.store.newSlotId());
+    this.store.state = state;
+    this.hydrate(state, from < state.version ? from : null);
+    this.commit();
+    return state;
+  }
+
+  /* ---- debug undo ---- */
+  canUndo() {
+    return this.undoStack.length > 0;
+  }
+
+  undoYear() {
+    const snapshot = this.undoStack.pop();
+    if (!snapshot) return false;
+    const state = JSON.parse(snapshot);
+    this.store.state = state;
+    this.modules.forEach((m) => m.init?.(state, this.rng));
+    this.commit();
     return true;
   }
 
   newLife(options = {}) {
     const state = createInitialState(this.rng, options);
+    this.undoStack = [];
     this.store.state = state;
     this.modules.forEach((m) => m.init?.(state, this.rng));
     this.commit();
@@ -97,6 +164,8 @@ export class Engine {
   ageUp() {
     if (!this.canAgeUp()) return false;
     const state = this.state;
+    this.undoStack.push(JSON.stringify(state));
+    if (this.undoStack.length > this.undoDepth) this.undoStack.shift();
     const ctx = this.context();
 
     state.character.age += 1;
@@ -112,7 +181,9 @@ export class Engine {
       m.onYearEnd?.(ctx);
     }
 
+    this.autoResolve();
     if (currentYearEntries(state).length === 0) addLog(state, 'A quiet year passed.', '🍃', 'muted');
+    compactLog(state);
     this.commit();
     this.bus.emit('ageUp', state);
     return true;
@@ -157,6 +228,22 @@ export class Engine {
     resolver(this.context(), prompt.data ?? {}, optionId, prompt);
     this.commit();
     return true;
+  }
+
+  /** Answer routine decisions automatically when the player opted in (see core/Routine.js). */
+  autoResolve() {
+    if (!this.autoResolver) return;
+    const state = this.state;
+    for (let guard = 0; guard < 20 && state.prompts.length && state.character.alive; guard++) {
+      const prompt = state.prompts.find((p) => this.autoResolver(p));
+      if (!prompt) return;
+      const optionId = this.autoResolver(prompt);
+      const option = prompt.options.find((o) => o.id === optionId && !o.disabled);
+      if (!option) return;
+      state.prompts.splice(state.prompts.indexOf(prompt), 1);
+      this.resolvers.get(prompt.type)(this.context(), prompt.data ?? {}, optionId, prompt);
+      addLog(state, `Auto-decided "${prompt.title}": ${option.label.replace(/^\S+\s/, '')}`, '🤖', 'muted');
+    }
   }
 
   /* ---------------------------------------------------------------- */

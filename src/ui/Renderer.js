@@ -6,8 +6,9 @@
 import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
-  esc, money, compactMoney, button, card, chip, meter, statPanel, kv, ribbonRack, medalCase, logView, promptModal, newLifeForm, tombstone,
+  esc, money, compactMoney, button, card, chip, meter, statPanel, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
 } from './Components.js';
+import { savesPanel, settingsPanel, helpPanel } from './views/SystemViews.js';
 import { getProfession } from '../modules/career/JobTrees.js';
 import { BRANCHES, rankOf } from '../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../modules/military/MedalEngine.js';
@@ -61,7 +62,11 @@ function readTab() {
 }
 
 export const VIEWS = {
-  life: (state) => card('Life Story', logView(state.log), { icon: '📜' }),
+  life: (state, ui = {}) => {
+    const limit = ui.logLimit ?? 40;
+    const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
+    return card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' });
+  },
   career: careerView,
   gov: govView,
   military: militaryView,
@@ -98,6 +103,15 @@ export class Renderer {
     this.engine = engine;
     this.tab = readTab();
     this.nameRng = new Random();
+    /** Transient UI state: open panel, log paging and filter, settings. */
+    this.panel = null;
+    this.ui = { logLimit: 40, logFilter: { query: '', kind: 'all' } };
+    this.settings = {};
+  }
+
+  openPanel(panel) {
+    this.panel = this.panel === panel ? null : panel;
+    this.render(this.engine.state);
   }
 
   setTab(tab) {
@@ -120,27 +134,89 @@ export class Renderer {
     setTimeout(() => el.remove(), 3200);
   }
 
+  /**
+   * The whole app re-renders from state on every change (synchronous, no
+   * diffing). Only the active tab's view is built. Keyboard focus survives
+   * re-renders: the focused control is found again by its action/arg.
+   */
   render(state) {
+    if (!this.root) return;
+    const focusKey = focusKeyOf(document.activeElement);
+    this.root.innerHTML = this.html(state);
+    this.restoreFocus(focusKey, state);
+    this.applyLogFilter();
+  }
+
+  html(state) {
+    const panel = this.panel ? this.panelHtml(state) : '';
     if (!state) {
-      this.root.innerHTML = newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])));
-      this.root.querySelector('input[name=firstName]')?.focus();
-      return;
+      return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      this.root.innerHTML = `${this.topbar(state)}${tombstone(this.obituary(state))}<div class="layout single">${card('Life Story', logView(state.log), { icon: '📜' })}</div>`;
-      return;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state))}<div class="layout single">${VIEWS.life(state, this.ui)}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
-    this.root.innerHTML = `
+    return `
+      <a class="skip-link" href="#tabpanel">Skip to content</a>
       ${this.topbar(state)}
-      <main class="layout">
-        <aside class="sidebar">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
+      <main class="layout" id="main">
+        <aside class="sidebar" aria-label="Character">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
         <section class="main">
-          <nav class="tabs" role="tablist">${TABS.map((t) => `<button role="tab" class="tab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" title="${t.label}"><span>${t.icon}</span><span class="tab-label">${t.label}</span></button>`).join('')}</nav>
-          <div class="tab-panel">${VIEWS[this.tab](state)}</div>
+          <nav class="tabs" role="tablist" aria-label="Sections">${TABS.map((t) => `<button role="tab" id="tab-${t.id}" class="tab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel" tabindex="${t.id === this.tab ? 0 : -1}" title="${t.label}"><span aria-hidden="true">${t.icon}</span><span class="tab-label">${t.label}</span></button>`).join('')}</nav>
+          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="tab-${this.tab}" tabindex="-1">${VIEWS[this.tab](state, this.ui)}</div>
         </section>
       </main>
-      ${prompt ? promptModal(prompt, state.prompts.length) : ''}`;
+      ${prompt ? promptModal(prompt, state.prompts.length) : panel}`;
+  }
+
+  panelHtml(state) {
+    switch (this.panel) {
+      case 'saves': return savesPanel(this.engine.store, state);
+      case 'settings': return settingsPanel(this.settings, { canUndo: this.engine.canUndo() });
+      case 'help': return helpPanel();
+      default: return '';
+    }
+  }
+
+  restoreFocus(key, state) {
+    const doc = this.root.ownerDocument;
+    // An open dialog takes focus.
+    const dialog = this.root.querySelector('.overlay[role="dialog"]');
+    if (dialog && !dialog.contains(doc.activeElement)) {
+      const target = (key && dialog.querySelector(key)) || dialog.querySelector('button:not([disabled]), input, select');
+      target?.focus();
+      return;
+    }
+    if (!key) {
+      if (!state) this.root.querySelector('input[name=firstName]')?.focus();
+      return;
+    }
+    const el = this.root.querySelector(key);
+    if (el && !el.disabled) el.focus({ preventScroll: true });
+    else if (state && key.includes('engine.resolve')) this.root.querySelector('#tabpanel')?.focus({ preventScroll: true });
+  }
+
+  /** Hide log entries that don't match the search box / kind filter. */
+  applyLogFilter() {
+    const log = this.root.querySelector('#life-log');
+    if (!log) return;
+    const { query, kind } = this.ui.logFilter;
+    const q = query.trim().toLowerCase();
+    let shown = 0;
+    for (const year of log.querySelectorAll('.log-year')) {
+      let any = false;
+      for (const li of year.querySelectorAll('li')) {
+        const match = (kind === 'all' || li.dataset.kind === kind) && (!q || li.textContent.toLowerCase().includes(q));
+        li.hidden = !match;
+        if (match) {
+          any = true;
+          shown += 1;
+        }
+      }
+      year.hidden = !any;
+    }
+    const count = this.root.querySelector('#log-count');
+    if (count) count.textContent = q || kind !== 'all' ? `${shown} match${shown === 1 ? '' : 'es'}` : '';
   }
 
   /* -------------------------------------------------------------- */
@@ -159,7 +235,13 @@ export class Renderer {
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
       <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}</div>
-      <button class="btn ghost small" data-action="engine.abandon">↺ New Life</button>
+      <nav class="topbar-actions" aria-label="Game">
+        ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo year</button>` : ''}
+        <button class="btn ghost small" data-action="ui.panel" data-arg="saves" aria-haspopup="dialog"><span aria-hidden="true">💾</span> <span class="tab-label">Saves</span></button>
+        <button class="btn ghost small" data-action="ui.panel" data-arg="settings" aria-haspopup="dialog" aria-label="Settings"><span aria-hidden="true">⚙️</span></button>
+        <button class="btn ghost small" data-action="ui.panel" data-arg="help" aria-haspopup="dialog" aria-label="Keyboard shortcuts"><span aria-hidden="true">⌨️</span></button>
+        <button class="btn ghost small" data-action="engine.abandon">↺ New Life</button>
+      </nav>
     </header>`;
   }
 
@@ -253,4 +335,16 @@ export class Renderer {
       ],
     };
   }
+}
+
+/** A CSS selector that finds the "same" control after a re-render. */
+function focusKeyOf(el) {
+  if (!el || el === el.ownerDocument?.body) return null;
+  if (el.id) return `#${CSS.escape(el.id)}`;
+  const action = el.dataset?.action;
+  if (!action) return null;
+  let key = `[data-action="${CSS.escape(action)}"]`;
+  if (el.dataset.arg != null) key += `[data-arg="${CSS.escape(el.dataset.arg)}"]`;
+  if (el.dataset.option != null) key += `[data-option="${CSS.escape(el.dataset.option)}"]`;
+  return key;
 }
