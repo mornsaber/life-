@@ -5,6 +5,7 @@
  */
 import { esc, money, button, card, meter, kv, empty, select } from '../Components.js';
 import { SCHOOLS, MAJORS, PROGRAMS, PROGRAM_GROUPS, majorsFor, degreeLabel } from '../../modules/education/Catalog.js';
+import { campusView } from './CampusView.js';
 import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa } from '../../modules/education/EducationEngine.js';
 
 function programRow(state, id) {
@@ -41,9 +42,9 @@ export function schoolView(state) {
   }
   const catalog = PROGRAM_GROUPS.map((g) => `<h4 class="sub">${g.label}</h4><ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`).join('');
   const degrees = state.education.degrees.length
-    ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}</small>` : ''}</li>`).join('')}</ul>`
+    ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');
-  return `${current}
+  return `${current}${campusView(state)}
     ${card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
     ${card('Diplomas', degrees, { icon: '📜' })}`;
 }

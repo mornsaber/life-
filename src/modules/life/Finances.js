@@ -58,7 +58,7 @@ export const Finances = {
       if (isOnActiveDuty(state)) living = 3000 + Math.round(gross * 0.1);
       else if (state.education.enrolled?.pace === 'full' && !state.career.job) {
         // Full-time students borrow for living costs — unless the GI Bill housing allowance covers them.
-        if (!state.education.enrolled.giBillThisYear) f.loans += 8000;
+        if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += 8000;
       }
       else {
         // Housing (rent, mortgage, upkeep) is charged by the housing module;

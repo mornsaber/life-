@@ -9,10 +9,11 @@
  *   giBillYearsUsed,
  * }
  */
-import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree } from '../../core/State.js';
+import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js';
 import { residencyYears } from '../life/Regions.js';
+import { campusGpaAdjustment } from '../campus/Network.js';
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -55,6 +56,12 @@ export function enrollmentEligibility(state, programId, schoolId, major) {
   if (state.education.degrees.some((d) => d.programId === programId && (d.major ?? null) === (major ?? null))) return { ok: false, reason: 'Already earned' };
   if (p.minSmarts && state.stats.smarts < p.minSmarts) return { ok: false, reason: `Needs ${p.minSmarts}+ smarts` };
   if (p.minGpa && lastGpa(state) < p.minGpa) return { ok: false, reason: `Needs ${p.minGpa.toFixed(1)}+ GPA` };
+  if (school.academy) {
+    if (state.character.age > 23) return { ok: false, reason: 'Academies admit ages 17–23' };
+    if (hasFelony(state) || state.education.degrees.some((d) => d.type === 'bachelor')) return { ok: false, reason: 'Not eligible for an academy appointment' };
+    if (state.stats.fitness < 55 || state.stats.health < 50) return { ok: false, reason: 'Fails the candidate fitness assessment' };
+    if (!state.campus?.nomination) return { ok: false, reason: 'Needs a congressional nomination' };
+  }
   if (yearlyCount(state, 'education.apply') >= APPLICATIONS_PER_YEAR) return { ok: false, reason: 'Application limit this year' };
   return { ok: true };
 }
@@ -65,7 +72,8 @@ export function admissionChance(state, programId, schoolId) {
   const p = PROGRAMS[programId];
   const bar = Math.max(school.admission, p.minSmarts ?? 0) + (school.prestige >= 3 && p.type !== 'certificate' ? 8 : 0);
   const score = state.stats.smarts + (lastGpa(state) - 3) * 12;
-  return clamp(0.5 + (score - bar) / 25, school.admission === 0 ? 1 : 0.03, 0.98);
+  const expelled = state.campus?.expelledAge != null ? 0.25 : 0;
+  return clamp(0.5 + (score - bar) / 25 - expelled, school.admission === 0 ? 1 : 0.03, 0.98);
 }
 
 export const OUT_OF_STATE_MULTIPLIER = 2.5;
@@ -97,6 +105,14 @@ function fundTuition(ctx, e) {
     const aid = Math.round(due * 0.6);
     due -= aid;
     notes.push(`$${aid.toLocaleString()} need-based aid`);
+  }
+  // Merit, athletic, honors and ROTC scholarships (campus module) — some need a minimum GPA.
+  for (const s of state.campus?.scholarships ?? []) {
+    if (due <= 0) break;
+    const covered = Math.min(due, s.full ? due : s.annual);
+    due -= covered;
+    s.received = (s.received ?? 0) + covered;
+    notes.push(`$${covered.toLocaleString()} ${s.name}`);
   }
   if (giBillEligible(state)) {
     const covered = Math.min(due, GI_BILL.annualCap);
@@ -143,6 +159,7 @@ export const EducationEngine = {
       if (ctx.state.education.enrolled) {
         ctx.state.education.enrolled = null;
         ctx.log('Your school withdrew your enrollment.', '🏫', 'bad');
+        ctx.emit('education:left', { reason: 'incarcerated' });
       }
     });
   },
@@ -157,8 +174,11 @@ export const EducationEngine = {
     if (program.stipend && e.pace === 'full') ctx.earn(program.stipend, 'Graduate research stipend');
 
     const studied = e.studiedThisYear ? 0.45 : 0;
-    const yearGpa = clamp(0.6 + state.stats.smarts / 33 + studied + rng.float(-0.45, 0.35) - Math.max(0, state.stats.stress - 60) / 60, 0, 4);
+    const yearGpa = clamp(0.6 + state.stats.smarts / 33 + studied + rng.float(-0.45, 0.35) - Math.max(0, state.stats.stress - 60) / 60 + campusGpaAdjustment(state), 0, 4);
     e.gpa = Math.round(((e.gpa * e.yearsAttended + yearGpa) / (e.yearsAttended + 1)) * 100) / 100;
+    // Campus: academic probation, dismissal, scholarship GPA floors.
+    ctx.emit('education:term', { yearGpa, gpa: e.gpa });
+    if (state.education.enrolled !== e) return;
     e.yearsAttended += 1;
     e.progress += e.pace === 'part' ? 0.5 : 1;
     e.studiedThisYear = false;
@@ -170,13 +190,16 @@ export const EducationEngine = {
       state.education.enrolled = null;
       if (e.gpa >= 2.0) {
         const honors = e.gpa >= 3.9 ? 'summa cum laude' : e.gpa >= 3.7 ? 'magna cum laude' : e.gpa >= 3.5 ? 'cum laude' : null;
-        state.education.degrees.push({ type: program.type, programId: e.programId, major: e.major, schoolId: e.schoolId, gpa: e.gpa, year: state.character.age, honors });
+        const degree = { type: program.type, programId: e.programId, major: e.major, schoolId: e.schoolId, gpa: e.gpa, year: state.character.age, honors };
+        state.education.degrees.push(degree);
         ctx.log(`You graduated from ${SCHOOLS[e.schoolId].name}: ${label} (GPA ${e.gpa.toFixed(2)}${honors ? `, ${honors}` : ''})! 🎓`, '🎓', 'milestone');
         ctx.toast(`Graduated: ${label}`, 'good');
         ctx.stat('happiness', 10);
+        ctx.emit('education:graduated', { degree });
       } else {
         ctx.log(`Your GPA of ${e.gpa.toFixed(2)} was too low to graduate from the ${label} program.`, '📉', 'bad');
         ctx.stat('happiness', -12);
+        ctx.emit('education:left', { reason: 'failed' });
       }
     } else {
       ctx.log(`${label}: finished a ${e.pace === 'part' ? 'part-time ' : ''}year (${e.progress}/${e.totalYears}) with a ${yearGpa.toFixed(2)} GPA. Tuition: ${notes.join(', ') || 'none'}.`, '📘');
@@ -204,6 +227,7 @@ export const EducationEngine = {
       state.education.enrolled = { programId, schoolId, major, pace: pace === 'part' ? 'part' : 'full', progress: 0, totalYears, gpa: 0, yearsAttended: 0, studiedThisYear: false };
       const label = degreeLabel({ programId, major, type: program.type });
       ctx.log(`You were admitted to ${school.name} and enrolled ${pace === 'part' ? 'part-time' : 'full-time'}: ${label}.`, school.icon, 'milestone');
+      ctx.emit('education:enrolled', { programId, schoolId, major });
       ctx.toast(`Enrolled: ${label}`, 'good');
     },
 
@@ -222,6 +246,7 @@ export const EducationEngine = {
       const e = ctx.state.education.enrolled;
       if (!e) return;
       if (e.pace === 'part' && ctx.state.military.service?.component === 'active') return ctx.toast('Active duty: part-time only.', 'warn');
+      if (SCHOOLS[e.schoolId].academy) return ctx.toast('Academy cadets and midshipmen study full-time.', 'warn');
       e.pace = e.pace === 'part' ? 'full' : 'part';
       ctx.toast(`Now studying ${e.pace === 'part' ? 'part-time' : 'full-time'}`, 'info');
     },
@@ -231,6 +256,7 @@ export const EducationEngine = {
       if (!e) return;
       ctx.state.education.enrolled = null;
       ctx.log(`You dropped out of ${PROGRAMS[e.programId].name}.`, '🚪', 'bad');
+      ctx.emit('education:left', { reason: 'dropout' });
       ctx.stat('happiness', -5);
     },
   },

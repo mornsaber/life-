@@ -25,6 +25,7 @@ import { Finances } from '../src/modules/life/Finances.js';
 import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
+import { housingStatus } from '../src/modules/realestate/index.js';
 
 const memory = () => {
   const m = new Map();
@@ -460,6 +461,101 @@ const tests = {
     resolve(engine, 'health.duty', 'retire');
     assert.equal(state.career.job, null);
     assert.ok(state.retirement.pensions.some((p) => p.id === 'disability_policeFire' && p.annual > 25000));
+  },
+
+  'freshmen live in the dorms; graduation ends campus life and moves them out'() {
+    const { engine, state } = setup(41, 18);
+    state.stats.smarts = 90;
+    state.education.degrees[0].gpa = 3.8;
+    engine.dispatch('education.enroll', 'bachelor:state:computerScience:full');
+    assert.ok(state.education.enrolled, 'admitted');
+    assert.equal(housingStatus(state), 'dorm');
+    assert.ok(state.campus.scholarships.some((s) => s.id === 'merit'), 'merit scholarship');
+    engine.dispatch('campus.club', 'robotics');
+    state.education.enrolled.progress = 3;
+    state.prompts = [];
+    engine.ageUp();
+    state.prompts = [];
+    assert.equal(state.education.enrolled, null, 'graduated');
+    assert.notEqual(housingStatus(state), 'dorm');
+    assert.equal(state.campus.clubs.length, 0);
+  },
+
+  'two years under 2.0 means academic dismissal'() {
+    const { engine, state } = setup(42, 18);
+    state.stats.smarts = 60;
+    engine.dispatch('education.enroll', 'associate:community:business:full');
+    assert.ok(state.education.enrolled, 'enrolled');
+    const ctx = engine.context();
+    ctx.emit('education:term', { yearGpa: 1.5, gpa: 1.5 });
+    assert.equal(state.campus.probation, 1);
+    ctx.emit('education:term', { yearGpa: 1.4, gpa: 1.45 });
+    assert.equal(state.education.enrolled, null, 'dismissed');
+  },
+
+  'a strong internship yields a return offer that starts above normal entry'() {
+    const { engine, state } = setup(43, 20);
+    state.stats.smarts = 95;
+    engine.dispatch('education.enroll', 'bachelor:state:computerScience:full');
+    state.education.enrolled.yearsAttended = 2;
+    state.education.enrolled.gpa = 3.9;
+    let offered = false;
+    for (let i = 0; i < 12 && !offered; i++) {
+      state.yearly = {};
+      engine.dispatch('campus.applyInternship', 'tech');
+      if (state.prompts.some((p) => p.type === 'campus.internship')) resolve(engine, 'campus.internship', 'impress');
+      offered = state.campus.offers.length > 0;
+    }
+    assert.ok(offered, 'got a return offer');
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'computerScience', schoolId: 'state', gpa: 3.9, year: 22 });
+    state.education.enrolled = null;
+    state.prompts = [];
+    engine.context().emit('education:graduated', { degree: state.education.degrees.at(-1) });
+    resolve(engine, 'campus.returnOffer', '0');
+    const job = state.career.job;
+    assert.ok(job && job.professionId === 'tech');
+    const profession = getProfession('tech');
+    assert.ok(job.grade > profession.levels[0].grade || job.levelId !== profession.levels[0].id, `level ${job.levelId}`);
+  },
+
+  'an academy graduate is commissioned with a five-year obligation'() {
+    const { engine, state } = setup(44, 18);
+    state.stats.smarts = 92;
+    state.stats.fitness = 80;
+    state.campus.nomination = true;
+    state.education.degrees[0].gpa = 3.9;
+    for (let i = 0; i < 4 && !state.education.enrolled; i++) {
+      state.yearly = {};
+      engine.dispatch('education.enroll', 'bachelor:academy:engineering:full');
+    }
+    assert.ok(state.education.enrolled, 'appointed');
+    resolve(engine, 'campus.academy', 'navy');
+    assert.equal(housingStatus(state), 'dorm');
+    state.education.enrolled.progress = 3;
+    state.education.enrolled.gpa = 3.2;
+    state.education.enrolled.yearsAttended = 3;
+    state.prompts = [];
+    engine.ageUp();
+    resolve(engine, 'campus.commission', 'logistics');
+    assert.equal(state.military.service?.track, 'officer');
+    assert.equal(state.military.service.contractYearsLeft, 5);
+    assert.equal(state.finances.loans, 0, 'tuition-free');
+  },
+
+  'quitting a contracted ROTC scholarship means repaying it'() {
+    const { engine, state } = setup(45, 18);
+    state.stats.fitness = 75;
+    engine.dispatch('education.enroll', 'bachelor:state:history:full');
+    if (!state.education.enrolled) engine.dispatch('education.enroll', 'bachelor:state:business:full');
+    assert.ok(state.education.enrolled, 'enrolled');
+    engine.dispatch('campus.joinRotc', 'army');
+    assert.ok(state.campus.rotc);
+    state.campus.rotc.contracted = true;
+    state.campus.scholarships.push({ id: 'rotc', name: 'Army ROTC scholarship', full: true, minGpa: 2.5, received: 23000 });
+    const before = state.finances.loans;
+    engine.dispatch('campus.quitRotc');
+    assert.equal(state.campus.rotc, null);
+    assert.equal(state.finances.loans - before, 23000);
   },
 
   'evicted young adults move back in with family or get vouchers'() {

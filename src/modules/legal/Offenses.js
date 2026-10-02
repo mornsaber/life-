@@ -11,6 +11,7 @@
  *   escalate:   { after: n, to: offenseId } repeat offenders get charged harder
  */
 export const OFFENSES = {
+  underageDrinking: { name: 'Minor in Possession of Alcohol', icon: '🍻', severity: 'infraction', fine: [200, 600] },
   speeding: { name: 'Speeding', icon: '🚨', severity: 'infraction', fine: [150, 450] },
   reckless: { name: 'Reckless Driving', icon: '🚗', severity: 'misdemeanor', fine: [500, 2000], probation: 1 },
   dui: { name: 'DUI', icon: '🍺', severity: 'misdemeanor', fine: [1500, 5000], probation: 2, escalate: { after: 2, to: 'felonyDui' } },

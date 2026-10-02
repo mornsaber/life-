@@ -29,6 +29,7 @@ export const STATUS_LABEL = {
   employerProvided: { label: 'Employer-provided housing', icon: '🏕️' },
   owner: { label: 'Homeowner', icon: '🏡' },
   renting: { label: 'Renting', icon: '🔑' },
+  dorm: { label: 'Campus housing', icon: '🛏️' },
   parents: { label: 'Living with parents', icon: '🛋️' },
   homeless: { label: 'Homeless', icon: '🥶' },
 };
@@ -43,6 +44,7 @@ export function housingStatus(state) {
   if (hasHousingBenefit(state)) return 'employerProvided';
   if (primaryHome(state)) return 'owner';
   if (state.housing.rental) return 'renting';
+  if (state.campus?.housing === 'dorm' && state.education.enrolled) return 'dorm';
   if (state.housing.withParents || state.character.age < 18) return 'parents';
   return 'homeless';
 }
@@ -294,7 +296,12 @@ export const HousingEngine = {
       const recentEviction = state.housing.credit.events.some((e) => e.type === 'eviction' && state.character.age - e.age < 3);
       if (recentEviction && ctx.rng.chance(0.6)) return ctx.toast('The landlord saw your eviction record and passed.', 'bad');
       if (state.housing.credit.score < 560 && tier === 'house') return ctx.toast('Landlords want a 560+ credit score for a house.', 'warn');
+      if (state.campus?.academy) return ctx.toast('Academy cadets live in the barracks.', 'warn');
       if (state.housing.rental) endLease(ctx, null);
+      if (state.campus?.housing === 'dorm') {
+        state.campus.housing = null;
+        ctx.log('You moved out of the dorms.', '📦');
+      }
       startRental(ctx, tier);
     },
     moveInWithParents(ctx) {

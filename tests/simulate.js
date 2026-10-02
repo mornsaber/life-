@@ -28,6 +28,7 @@ import { promptModal } from '../src/ui/Components.js';
 import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
+import { CLUBS, ROTC_BRANCHES } from '../src/modules/campus/index.js';
 
 const LIVES = Number(process.argv[2] ?? 300);
 const SEED = Number(process.argv[3] ?? 1);
@@ -59,7 +60,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -114,6 +115,16 @@ function checkInvariants(state) {
   for (const a of [inv.ira.roth.value, inv.ira.roth.basis, inv.ira.traditional.value, state.retirement.dc]) assert.ok(Number.isFinite(a) && a >= 0, 'retirement accounts finite');
   assert.ok(PROFILES[inv.auto.profile] && DC_FUNDS[state.retirement.dcFund], 'profiles');
   assert.ok(Number.isFinite(netWorth(state)), 'net worth finite');
+  const cp = state.campus;
+  assert.ok(cp.housing === null || cp.housing === 'dorm', 'campus housing');
+  if (!state.education.enrolled) {
+    assert.ok(!cp.greek && !cp.sport && !cp.studentGov && cp.clubs.length === 0, 'campus memberships end with school');
+  }
+  assert.ok(cp.clubs.every((id) => CLUBS[id]) && cp.clubs.length <= 2, 'clubs');
+  for (const o of cp.offers) assert.ok(getProfession(o.professionId) && o.employer?.name, 'offer refs');
+  for (const m of cp.mentors) assert.ok(getProfession(m.professionId), 'mentor refs');
+  assert.ok(!(cp.rotc && cp.academy), 'one officer pipeline');
+  assert.ok(Number.isFinite(state.finances.loans) && state.finances.loans >= 0, 'loans');
   const hl = state.health;
   const seen = new Set();
   for (const c of hl.conditions) {
@@ -195,6 +206,17 @@ function randomActions(state) {
   }
   if (state.education.enrolled) tries.push(() => act(player.pick(['education.study', 'education.study', 'education.switchPace'])));
   if (player.chance(0.06)) tries.push(() => act(`legal.${player.pick(RISKY_ACTIONS).id}`));
+  // Campus
+  if (state.education.enrolled) {
+    if (player.chance(0.3)) tries.push(() => act(`campus.${player.pick(['rush', 'runForStudentGov', 'tryOut', 'party', 'party', 'studyAbroad', 'moveIntoDorm', 'moveOffCampus'])}`));
+    if (player.chance(0.2)) tries.push(() => act('campus.club', player.pick(Object.keys(CLUBS))));
+    if (!state.campus.greek && player.chance(0.25)) tries.push(() => act('campus.rush'));
+    if (player.chance(0.3)) tries.push(() => act('campus.applyInternship', player.pick(PROFESSION_LIST).id));
+    if (player.chance(0.06)) tries.push(() => act('campus.joinRotc', player.pick(ROTC_BRANCHES)));
+    if (player.chance(0.03)) tries.push(() => act(player.pick(['campus.cheat', 'campus.quitRotc', 'campus.leaveGreek', 'campus.quitTeam'])));
+  }
+  if (age >= 16 && age <= 22 && player.chance(0.05)) tries.push(() => act('campus.seekNomination'));
+  if (state.campus.nomination && !state.education.enrolled && player.chance(0.5)) tries.push(() => act('education.enroll', `bachelor:academy:${player.pick(majorsFor('bachelor'))}:full`));
   // Health
   if (player.chance(0.15)) tries.push(() => act('health.checkup'));
   for (const c of state.health.conditions) {
@@ -296,6 +318,15 @@ for (let life = 0; life < LIVES; life++) {
   if (state.health.history.some((e) => /disability/.test(e.text))) totals.onDisability += 1;
   if (state.health.va.rating) totals.vaRated += 1;
   if (state.health.rehabs) totals.rehab += 1;
+  if (state.campus.internships.length) totals.interns += 1;
+  if (state.campus.mentors.length) totals.mentored += 1;
+  if (state.campus.expelledAge != null) totals.expelled += 1;
+  if (state.campus.greekAlumni) totals.greek += 1;
+  if (state.campus.abroad.length) totals.abroad += 1;
+  if (state.education.degrees.some((d) => d.honorsCollege)) totals.honorsCollege += 1;
+  if (state.campus.returnHire) totals.returnHires += 1;
+  if (state.campus.commissionedVia === 'academy') totals.academyGrads += 1;
+  if (state.campus.commissionedVia === 'rotc') totals.rotcOfficers += 1;
   if (investor && autoYears >= 20) {
     totals.investors += 1;
     if (peakNetWorth >= 1e6) totals.investorMillionaires += 1;
@@ -320,6 +351,7 @@ console.log(`  economy: a recession every ${(totals.econYears / Math.max(1, tota
 console.log(`  investing: ${totals.millionaires} lives peaked as millionaires (${((totals.millionaires / LIVES) * 100).toFixed(0)}%); disciplined investors ${totals.investorMillionaires}/${totals.investors} (${((totals.investorMillionaires / Math.max(1, totals.investors)) * 100).toFixed(0)}%)`);
 const rate = ([n, d]) => `${n}/${d} (${((n / Math.max(1, d)) * 100).toFixed(0)}%)`;
 console.log(`  health: PTSD combat ${rate(totals.ptsd.combat)}, first responders ${rate(totals.ptsd.responder)}, others ${rate(totals.ptsd.other)}; disability ${totals.onDisability}, VA-rated ${totals.vaRated}, rehab ${totals.rehab}`);
+console.log(`  campus: interned ${totals.interns}, return-offer hires ${totals.returnHires}, mentored ${totals.mentored}, Greek alumni ${totals.greek}, honors college ${totals.honorsCollege}, studied abroad ${totals.abroad}, expelled ${totals.expelled}, ROTC officers ${totals.rotcOfficers}, academy grads ${totals.academyGrads}`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);

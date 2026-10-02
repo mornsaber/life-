@@ -15,6 +15,7 @@ import { applicationEligibility, bestEntryLevel, backgroundCheck, levelCheck, hi
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { educationFields, schoolPrestige } from '../education/Catalog.js';
+import { networkBonus } from '../campus/Network.js';
 
 export const APPLICATIONS_PER_YEAR = 3;
 
@@ -190,6 +191,7 @@ export function candidateBonus(state, profession) {
   if ((profession.id === 'parkService' || profession.id === 'ems') && state.emergency.sar) bonus += 0.06;
   if (educationFields(state).has(profession.id)) bonus += 0.08;
   bonus += schoolPrestige(state) * 0.03;
+  bonus += networkBonus(state, profession);
   bonus += Math.min(0.12, (profession.valued ?? []).filter((c) => hasCredential(state, c)).length * 0.04);
   bonus += Math.min(0.08, prestige(state) / 800);
   if (profession.exam) {

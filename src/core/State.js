@@ -281,6 +281,14 @@ export function getCommitments(state) {
   for (const t of state.credentials.training) list.push({ id: `train.${t.id}`, label: `Training: ${t.name}`, load: 1 });
   const svc = state.military.service;
   if (svc) list.push({ id: 'military', label: svc.component === 'active' ? 'Active duty' : 'Military reserves', load: svc.component === 'active' ? 4 : 1.5 });
+  const c = state.campus;
+  if (c && school) {
+    if (c.greek) list.push({ id: 'greek', label: c.greek.name, load: 0.5 });
+    if (c.sport) list.push({ id: 'sport', label: `Varsity ${c.sport.name}`, load: 1 });
+    if (c.rotc) list.push({ id: 'rotc', label: 'ROTC', load: 1 });
+    if (c.studentGov) list.push({ id: 'studentGov', label: 'Student government', load: 0.5 });
+    if (c.clubs.length) list.push({ id: 'clubs', label: `${c.clubs.length} club${c.clubs.length > 1 ? 's' : ''}`, load: 0.25 * c.clubs.length });
+  }
   for (const key of ['fire', 'police', 'sar']) {
     const member = state.emergency[key];
     if (member && !member.onLeave) list.push({ id: key, label: member.serviceName, load: 1.5 });

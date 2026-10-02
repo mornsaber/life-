@@ -14,6 +14,7 @@ export const SCHOOLS = {
   online: { name: 'Summit Online University', icon: '💻', type: 'Online university', tuition: 9500, admission: 20, prestige: -1, onlineOnly: true },
   state: { name: 'State University', icon: '🎓', type: 'Public university', tuition: 11500, admission: 40, prestige: 1, public: true },
   private: { name: 'Whitmore College', icon: '🏛️', type: 'Private college', tuition: 39000, admission: 58, prestige: 2 },
+  academy: { name: 'U.S. Service Academy', icon: '⚓', type: 'Service academy', tuition: 0, admission: 72, prestige: 3, public: true, academy: true },
   elite: { name: 'Ivy Crest University', icon: '🦉', type: 'Elite university', tuition: 62000, admission: 80, prestige: 3, needBasedAid: true },
 };
 
@@ -63,7 +64,7 @@ export const PROGRAMS = {
   plumbingTech: { name: 'Plumbing Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['plumbing'] },
   culinaryArts: { name: 'Culinary Arts Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1, fields: ['culinary'] },
   associate: { name: "Associate's Degree", type: 'associate', years: 2, requires: { level: 'highschool' }, major: 'choose', schools: ['community', 'online'], costFactor: 1 },
-  bachelor: { name: "Bachelor's Degree", type: 'bachelor', years: 4, requires: { level: 'highschool' }, major: 'choose', schools: ['online', 'state', 'private', 'elite'], costFactor: 1 },
+  bachelor: { name: "Bachelor's Degree", type: 'bachelor', years: 4, requires: { level: 'highschool' }, major: 'choose', schools: ['online', 'state', 'private', 'elite', 'academy'], costFactor: 1 },
   master: { name: "Master's Degree", type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'choose', schools: ['online', 'state', 'private', 'elite'], costFactor: 1.1, minSmarts: 45, minGpa: 2.8 },
   mba: { name: 'Master of Business Administration', type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'business', schools: ['online', 'state', 'private', 'elite'], costFactor: 1.4, minSmarts: 50, minGpa: 2.8, fields: ['corporate', 'finance'] },
   mpa: { name: 'Master of Public Administration', type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'publicAdministration', schools: ['online', 'state', 'elite'], costFactor: 1.1, minSmarts: 45, minGpa: 2.8, fields: ['municipalAdmin', 'regulatory', 'publicWorks', 'planning'] },
