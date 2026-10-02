@@ -56,7 +56,7 @@ for (const file of ['life/LifeEvents.js', 'career/WorkplaceEvents.js', 'campus/U
   for (const [, id] of src.matchAll(/offenseId: '([a-zA-Z]+)'/g)) if (!OFFENSES[id]) problems.push(`${file}: unknown offense ${id}`);
   for (const [, id] of src.matchAll(/conditionId: '([a-zA-Z]+)'/g)) if (!CONDITIONS[id]) problems.push(`${file}: unknown condition ${id}`);
 }
-for (const type of Object.keys(ROUTINE)) assert.ok(/^[a-zA-Z]+\.[a-zA-Z]+$/.test(type), `routine ${type}`);
+for (const type of Object.keys(ROUTINE)) assert.ok(/^[a-zA-Z][a-zA-Z0-9]*\.[a-zA-Z]+$/.test(type), `routine ${type}`);
 
 if (problems.length) {
   console.log(problems.map((p) => `  ✘ ${p}`).join('\n'));

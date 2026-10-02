@@ -28,7 +28,8 @@ function switchComponent(ctx, svc) {
   svc.contractYearsLeft = ENLIST_CONTRACT[to];
   svc.deploymentRequested = false;
   if (to === 'active' && BRANCHES[svc.branch].reserveOnly) return ctx.toast('The Guard has no active component here.', 'warn');
-  if (to === 'active' && state.career.job) ctx.emit('career:resign', { reason: 'Transferred to active duty' });
+  if (to === 'active' && state.career.job) ctx.emit('career:militaryLeave', { reason: 'transferred to active duty' });
+  if (to === 'reserve') ctx.emit('military:releasedFromActive', {});
   ctx.log(to === 'active' ? 'You transferred to full-time active duty.' : 'You transferred to the Reserve. Weekend drills from here on.', BRANCHES[svc.branch].icon, 'milestone');
   ctx.toast(to === 'active' ? 'Now on active duty' : 'Now in the Reserves', 'good');
 }

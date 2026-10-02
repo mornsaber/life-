@@ -4,10 +4,10 @@
  * `career.` namespace, and listens for cross-domain events.
  */
 import { clamp } from '../../core/Random.js';
-import { careerOnAgeUp, leaveJob, recalcSalary, promote, hire } from './CareerEngine.js';
+import { careerOnAgeUp, leaveJob, recalcSalary, promote, hire, startMilitaryLeave, endMilitaryLeave, returnFromLeave, offerReturn } from './CareerEngine.js';
 import { getProfession } from './JobTrees.js';
 import { ladderFor } from './Ladder.js';
-import { createEmployer } from './Employers.js';
+import { createEmployer, cityName, stateNameOf } from './Employers.js';
 import { REGIONS } from '../life/Regions.js';
 import { InterviewSystem } from './InterviewSystem.js';
 import { WorkplaceActions } from './WorkplaceActions.js';
@@ -41,6 +41,14 @@ export const CareerModule = {
     });
     // Other domains (active duty, relocation, councils, prisons) can end a job.
     bus.on('career:resign', ({ ctx, reason, fired }) => leaveJob(ctx, reason, { fired }));
+    // Active duty: USERRA military leave instead of resigning; offer the job back when it ends.
+    bus.on('career:militaryLeave', ({ ctx, reason }) => startMilitaryLeave(ctx, reason));
+    bus.on('military:discharged', ({ ctx, type }) => {
+      if (!ctx.state.career.leave) return;
+      if (type === 'dishonorable') endMilitaryLeave(ctx, 'A dishonorable discharge ended your reemployment rights');
+      else offerReturn(ctx);
+    });
+    bus.on('military:releasedFromActive', ({ ctx }) => offerReturn(ctx));
     // Gubernatorial appointment to an appointed post (superintendent, director...).
     bus.on('career:appoint', ({ ctx, levelId }) => {
       if (ctx.state.career.job && promote(ctx, levelId)) ctx.log('The governor appointed you. The press release went out that afternoon.', '⭐', 'milestone');
@@ -89,6 +97,15 @@ export const CareerModule = {
 
   init(state) {
     state.career ??= { job: null, history: [] };
+    state.career.leave ??= null;
+    // Older saves kept the old city in a transferred city department's name.
+    const job = state.career.job;
+    const profession = job && getProfession(job.professionId);
+    const city = cityName(state.character.regionId);
+    if (job?.sector === 'municipal' && profession?.employerName && job.employer.cityName && job.employer.cityName !== city && !job.remote) {
+      job.employer.name = profession.employerName(city, null, stateNameOf(state.character.regionId));
+      job.employer.cityName = city;
+    }
   },
 
   onAgeUp(ctx) {
@@ -97,6 +114,13 @@ export const CareerModule = {
   },
 
   actions: {
+    returnFromLeave(ctx) {
+      if (ctx.state.military.service?.component === 'active') return ctx.toast('You are still on active duty.', 'warn');
+      returnFromLeave(ctx);
+    },
+    resignFromLeave(ctx) {
+      endMilitaryLeave(ctx, 'Resigned while on military leave');
+    },
     ...InterviewSystem.actions,
     ...WorkplaceActions.actions,
     ...ManagementActions,
@@ -109,6 +133,10 @@ export const CareerModule = {
     },
   },
   resolvers: {
+    userra(ctx, _data, optionId) {
+      if (optionId === 'return') returnFromLeave(ctx);
+      else endMilitaryLeave(ctx, 'Chose not to return after military service');
+    },
     ...InterviewSystem.resolvers,
     ...WorkplaceActions.resolvers,
     ...ManagementResolvers,

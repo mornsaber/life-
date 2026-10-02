@@ -81,6 +81,26 @@ function startPlanAnnuity(ctx, planId, reason) {
   ctx.log(`${reason} Your ${def.short} pension begins: $${annual.toLocaleString()}/yr (${plan.years} yrs of service credit).`, '🏦', 'finance');
 }
 
+/** Can the current job's pension pay out right now (before 50)? */
+export function earlyRetirementEligible(state) {
+  const planId = state.career.job?.employer.benefits.pension;
+  return Boolean(planId && state.retirement.plans[planId] && planStatus(state, planId).eligibleNow);
+}
+
+function retireNow(ctx, note = '') {
+  const { state } = ctx;
+  if (state.retirement.retired) return;
+  state.retirement.retired = true;
+  if (state.career.job) ctx.emit('career:resign', { reason: 'Retired' });
+  for (const planId of Object.keys(state.retirement.plans)) {
+    const s = planStatus(state, planId);
+    if (s.eligibleNow) startPlanAnnuity(ctx, planId, 'You retired.');
+  }
+  ctx.log(`${note}You retired from the workforce. 🏖️`, '🏖️', 'milestone');
+  ctx.stat('happiness', 10);
+  ctx.stat('stress', -20);
+}
+
 /* ------------------------------------------------------------------ */
 /* Module                                                              */
 /* ------------------------------------------------------------------ */
@@ -106,6 +126,8 @@ export const RetirementEngine = {
     engine.bus.on('career:hired', ({ ctx }) => {
       ctx.state.retirement.retired = false;
     });
+    // Mandatory retirement (federal law enforcement at 57, Foreign Service at 65).
+    engine.bus.on('retirement:mandatory', ({ ctx, age }) => retireNow(ctx, `You reached the mandatory retirement age of ${age}. `));
     engine.bus.on('career:separated', ({ ctx, job, reason }) => {
       // Leaving a job before 59½: roll the 401(k) over, or cash it out (taxes + 10% penalty).
       const { state } = ctx;
@@ -235,17 +257,9 @@ export const RetirementEngine = {
     },
     retire(ctx) {
       const { state } = ctx;
-      if (state.character.age < 50) return ctx.toast('Too young to retire (50+).', 'warn');
-      if (state.retirement.retired) return;
-      state.retirement.retired = true;
-      if (state.career.job) ctx.emit('career:resign', { reason: 'Retired' });
-      for (const planId of Object.keys(state.retirement.plans)) {
-        const s = planStatus(state, planId);
-        if (s.eligibleNow) startPlanAnnuity(ctx, planId, 'You retired.');
-      }
-      ctx.log('You retired from the workforce. 🏖️', '🏖️', 'milestone');
-      ctx.stat('happiness', 10);
-      ctx.stat('stress', -20);
+      // Under 50 you can only retire into an immediate pension (police & fire "20 and out", FERS-LEO 25 yrs).
+      if (state.character.age < 50 && !earlyRetirementEligible(state)) return ctx.toast('Too young to retire (50+, or earlier with a pension you qualify for).', 'warn');
+      retireNow(ctx);
     },
 
     unretire(ctx) {

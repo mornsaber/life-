@@ -6,7 +6,7 @@
 import { esc, money, button, card, chip, kv, empty } from '../Components.js';
 import { netWorth, investmentsValue } from '../../core/State.js';
 import { investView } from './InvestView.js';
-import { planStatus, socialSecurityEstimate, primaryInsuranceAmount, SS_FULL_AGE } from '../../modules/retirement/RetirementEngine.js';
+import { planStatus, socialSecurityEstimate, primaryInsuranceAmount, SS_FULL_AGE, earlyRetirementEligible } from '../../modules/retirement/RetirementEngine.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS, MOVE_COST, regionOf } from '../../modules/life/Regions.js';
 import { hasHousingBenefit, healthPremium } from '../../modules/life/Finances.js';
@@ -47,7 +47,7 @@ export function moneyView(state) {
     <h4 class="sub">Pension plans</h4>${plans ? `<ul class="history">${plans}</ul>` : empty('No pension service credit. Public employers and some union/corporate jobs offer pensions.')}
     <h4 class="sub">Income in retirement</h4>${pensions ? `<ul class="history">${pensions}</ul>` : empty('No pensions or benefits yet.')}
     <div class="action-grid">
-      ${button('🏖️ Retire', 'retirement.retire', { disabled: r.retired || age < 50, hint: 'Ends your job; eligible pensions start' })}
+      ${button('🏖️ Retire', 'retirement.retire', { disabled: r.retired || (age < 50 && !earlyRetirementEligible(state)), hint: age < 50 && earlyRetirementEligible(state) ? 'Early retirement: your pension pays out now' : 'Ends your job; eligible pensions start' })}
       ${r.retired ? button('💼 Un-retire', 'retirement.unretire') : ''}
       ${button('🇺🇸 Claim Social Security', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' })}
       ${button('🏧 Withdraw $10K', 'retirement.withdraw', { disabled: r.dc <= 0, hint: age < 60 ? '10% early penalty' : 'Penalty-free' })}

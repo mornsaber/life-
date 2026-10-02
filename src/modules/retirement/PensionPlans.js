@@ -7,6 +7,8 @@
  *   eligible:    (age, years) → may retire with an immediate annuity
  *   normalAge:   when a vested, deferred annuity starts if you leave early
  *   ssCovered:   false = job doesn't pay into Social Security
+ *
+ * Mandatory retirement ages are set per profession (`mandatoryRetirement`).
  */
 export const PENSION_PLANS = {
   fers: {
@@ -31,8 +33,9 @@ export const PENSION_PLANS = {
   publicSafety: {
     name: 'Police & Fire Pension Fund', short: 'P&F', vest: 5, cap: 0.8, cola: 0.02, normalAge: 55, ssCovered: false,
     multiplier: () => 0.025,
-    eligible: (age, years) => (age >= 50 && years >= 20) || years >= 25,
-    rule: '50 w/20 yrs · any age w/25 — no Social Security',
+    // Most big-city police and fire systems: "20 and out" at half pay, at any age.
+    eligible: (age, years) => years >= 20 || (age >= 50 && years >= 10),
+    rule: '20 yrs at any age ("20 and out") · 50 w/10 — no Social Security',
   },
   stateGov: {
     name: 'State Employees Retirement System', short: 'SERS', vest: 5, cap: 0.75, cola: 0.015, normalAge: 62, ssCovered: true,

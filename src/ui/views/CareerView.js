@@ -4,6 +4,7 @@
  * workforce model), job board grouped by sector, and history.
  */
 import { teenJobsCard } from './K12View.js';
+import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
 import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
 import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck } from '../../modules/career/CareerEngine.js';
@@ -68,6 +69,7 @@ function currentJob(state) {
     ? `🌟 Eligible for ${status.options.map((o) => `${esc(o.title)} [G${o.grade}]`).join(' or ')} — reviews trigger at 75%+ performance`
     : `🪜 Next: ${esc(status.reason)}`;
   const needs = status.all?.map((l) => ({ l, c: levelCheck(state, l) })).filter((x) => x.c.clearanceNeeded);
+  const trainee = traineeProgram(job);
 
   return card(esc(job.title), `
     <div class="job-head">
@@ -78,7 +80,8 @@ function currentJob(state) {
           ['Salary', `<b>${money(job.salary)}</b>/yr`],
           ['Rating', ratingLabel(job.performance)],
           ['In level', `${job.yearsInLevel} yr`],
-          ['Tenure', `${job.yearsAtEmployer} yr`],
+          ['Seniority', `${job.yearsAtEmployer} yr`],
+          trainee ? ['Training', `<span class="warn-text">${esc(trainee.label)}</span>`] : job.probationLeft > 0 ? ['Status', `<span class="warn-text">Probation · ${job.probationLeft} yr left</span>`] : isTenured(job) ? ['Status', '🎓 Tenured'] : null,
           ['Warnings', job.warnings ? `<span class="neg">${job.warnings}</span>` : '0'],
           job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>`] : null,
           ['Training budget', `${money(job.employer.budget.left)} of ${money(job.employer.budget.annual)}`],
@@ -129,6 +132,16 @@ function jobBoard(state, ui = {}) {
     <ul class="job-board">${rows || '<li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li>'}</ul>`;
 }
 
+/** A civilian job held for you while on active duty (USERRA). */
+function militaryLeaveCard(state) {
+  const leave = state.career.leave;
+  if (!leave) return '';
+  const years = state.character.age - leave.startAge;
+  const active = state.military.service?.component === 'active';
+  return card('Military Leave (USERRA)', `<p>Your job as <b>${esc(leave.job.title)}</b> at <b>${esc(leave.job.employer.name)}</b> is protected while you serve: ${years} of ${USERRA_YEARS} years used. You'll come back with the seniority, steps and pension credit you would have earned.</p>
+    <div class="toggle-row">${button('🏢 Return to work', 'career.returnFromLeave', { variant: 'small primary', disabled: active, hint: active ? 'After your active duty ends' : '' })}${button('🚪 Resign', 'career.resignFromLeave', { variant: 'small ghost' })}</div>`, { icon: '🛡️', accent: 'green' });
+}
+
 export function careerView(state, ui = {}) {
   const job = state.career.job;
   const current = job
@@ -137,7 +150,7 @@ export function careerView(state, ui = {}) {
   const history = state.career.history.length
     ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${teenJobsCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${militaryLeaveCard(state)}${teenJobsCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 export { compactMoney };

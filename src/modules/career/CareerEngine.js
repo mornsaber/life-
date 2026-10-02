@@ -23,6 +23,7 @@ import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publ
 import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
+import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -139,6 +140,7 @@ function applyLevel(job, level) {
 export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0 }) {
   const { state } = ctx;
   if (state.career.job) leaveJob(ctx, 'Resigned for a new opportunity');
+  if (state.career.leave) endMilitaryLeave(ctx, 'Took a new job instead of returning from military leave');
   const profession = getProfession(professionId);
   const station = resolveDutyStation(ctx.rng, profession, state.character.regionId);
   if (station) ctx.emit('region:relocate', { regionId: station, reason: `${employer.name} assigned your duty station${employer.benefits.housing ? ' (government housing provided)' : ''}.` });
@@ -170,11 +172,93 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   recalcSalary(state, job);
   ensureDepartment(job, level);
   state.career.job = job;
+  const program = traineeProgram(job);
+  // Trainees start probation when they graduate.
+  job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
 
-  ctx.log(`You were hired as ${level.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.`, profession.icon, 'milestone');
+  ctx.log(`You were hired as ${level.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.${job.probationLeft ? ` Probationary period: ${job.probationLeft} yr.` : ''}`, profession.icon, 'milestone');
   ctx.toast(`Hired: ${level.title}`, 'good');
   ctx.stat('happiness', 8);
   ctx.emit('career:hired', { job });
+  if (program?.academy) {
+    const next = levelById(profession, program.next);
+    if (next) {
+      ctx.log(`${employer.name} enrolled you in ${program.label}.`, '🎓');
+      runAcademy(ctx, next);
+    }
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Military leave (USERRA)                                             */
+/* ------------------------------------------------------------------ */
+
+/** Active duty: the civilian job is held for you instead of ending. */
+export function startMilitaryLeave(ctx, reason) {
+  const { state } = ctx;
+  const job = state.career.job;
+  if (!job) return;
+  state.career.leave = { job, startAge: state.character.age, regionId: state.character.regionId, reason };
+  state.career.job = null;
+  ctx.log(`${job.employer.name} placed you on military leave (${reason}). USERRA protects your job for up to ${USERRA_YEARS} years of service.`, '🛡️', 'milestone');
+}
+
+/** Give up the held job (new job, expired rights, declined to return). */
+export function endMilitaryLeave(ctx, reason) {
+  const { state } = ctx;
+  const leave = state.career.leave;
+  if (!leave) return;
+  const current = state.career.job;
+  state.career.leave = null;
+  state.career.job = leave.job;
+  leaveJob(ctx, reason);
+  state.career.job = current;
+}
+
+/** Return from service: the "escalator" — seniority, steps and pension credit as if you never left. */
+export function returnFromLeave(ctx) {
+  const { state } = ctx;
+  const leave = state.career.leave;
+  if (!leave || state.military.service?.component === 'active' || state.legal.incarceration) return false;
+  if (state.career.job) {
+    endMilitaryLeave(ctx, 'Did not return from military leave');
+    return false;
+  }
+  const years = Math.max(0, state.character.age - leave.startAge);
+  const job = leave.job;
+  state.career.leave = null;
+  if (leave.regionId && leave.regionId !== state.character.regionId && !job.remote) {
+    ctx.emit('region:relocate', { regionId: leave.regionId, reason: `You moved back to return to ${job.employer.name}.` });
+  }
+  job.yearsAtEmployer += years;
+  job.yearsInLevel += years;
+  job.step = Math.min(MAX_STEP, job.step + years);
+  job.probationLeft = 0;
+  resetBudget(state, job.employer, job.sector);
+  state.career.job = job;
+  recalcSalary(state, job);
+  const planId = job.employer.benefits.pension;
+  if (planId) for (let i = 0; i < years; i++) ctx.emit('retirement:accrue', { planId, salary: job.salary, employer: job.employer.name });
+  ctx.log(`You returned to ${job.employer.name} as ${job.title}: ${years} year${years === 1 ? '' : 's'} of seniority${planId ? ' and pension credit' : ''} for your service. $${job.salary.toLocaleString()}/yr.`, '🛡️', 'good');
+  ctx.emit('career:hired', { job, returning: true });
+  return true;
+}
+
+/** When active duty ends, offer the job back. */
+export function offerReturn(ctx) {
+  const { state } = ctx;
+  const leave = state.career.leave;
+  if (!leave || state.prompts.some((p) => p.type === 'career.userra')) return;
+  ctx.prompt({
+    type: 'career.userra',
+    icon: '🛡️',
+    title: 'Your Old Job Is Waiting',
+    text: `Under USERRA, ${leave.job.employer.name} must rehire you as ${leave.job.title} with the seniority you would have earned.`,
+    options: [
+      { id: 'return', label: `🏢 Return to ${leave.job.employer.name}` },
+      { id: 'decline', label: '🚪 Move on to something new' },
+    ],
+  });
 }
 
 export function leaveJob(ctx, reason, { fired = false } = {}) {
@@ -216,6 +300,12 @@ export function promotionStatus(state) {
   const next = nextLevels(profession, job.employer.size, job.levelId);
   const all = next.filter((l) => !l.appointed);
   if (!next.length) return { eligible: false, reason: 'Top of the ladder here', options: [], all };
+  const program = traineeProgram(job);
+  if (program) {
+    const target = levelById(profession, program.next);
+    const left = Math.max(0, level.years - job.yearsInLevel);
+    return { eligible: false, reason: `Finish ${program.label} — ${left ? `${left} yr to go, then ` : ''}automatic promotion to ${target?.title ?? 'the next level'}`, options: [], all, trainee: program };
+  }
   if (!all.length) return { eligible: false, reason: 'The next post is a gubernatorial appointment', options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
   if (job.yearsInLevel < level.years) {
@@ -293,6 +383,8 @@ export function layoffRisk(state, job) {
   else if (job.sector === 'municipal' && (state.publicService.city?.fiscalHealth ?? 50) < 25) risk = 0.05;
   else if (job.sector === 'state' && state.economy.phase === 'recession') risk = 0.02;
   if (job.abilities.includes('tenure')) risk = 0;
+  else if (job.tenured) risk *= 0.3;
+  if (job.probationLeft > 0) risk *= 1.5; // last in, first out
   if (job.unionMember && job.yearsAtEmployer >= 5) risk *= 0.3; // seniority
   if (job.performance >= 80) risk *= 0.5;
   if (job.performance < 40) risk *= 1.5;
@@ -350,9 +442,38 @@ export function performanceTarget(state, rng, departmentEffect = 0) {
   return 24 + aptitude + job.boss * 0.2 + job.coworkers * 0.05 + effort + major + departmentEffect + rng.int(-10, 10) - stressPenalty - overload;
 }
 
+/** Graduates trainees whose next level is unlocked; lets go of those past the deadline. Returns true if the job ended. */
+function traineeTick(ctx, job, profession, program) {
+  const { state } = ctx;
+  const level = levelById(profession, job.levelId);
+  const next = levelById(profession, program.next);
+  if (!next) return false;
+  if (program.academy) runAcademy(ctx, next);
+  if (job.yearsInLevel < level.years) return false;
+  const check = levelCheck(state, next);
+  if (check.ok) {
+    if (promote(ctx, next.id)) {
+      job.probationLeft = probationYears(profession);
+      ctx.log(`You completed ${program.label}.${job.probationLeft ? ` Probation: ${job.probationLeft} yr.` : ''}`, '🎓', 'milestone');
+    }
+    return false;
+  }
+  const left = level.years + program.grace - job.yearsInLevel;
+  if (left <= 0) {
+    leaveJob(ctx, `You didn't complete ${program.label} in time (still missing ${check.missing.join(', ')})`, { fired: true });
+    return true;
+  }
+  ctx.log(`You still need ${check.missing.join(', ')} to finish ${program.label}. ${left} year${left > 1 ? 's' : ''} left before you're let go.`, '⏳', 'warn');
+  return false;
+}
+
 export function careerOnAgeUp(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
+  const leave = state.career.leave;
+  if (leave && state.character.age - leave.startAge > USERRA_YEARS && state.military.service?.component === 'active') {
+    endMilitaryLeave(ctx, `Your USERRA reemployment rights ran out after ${USERRA_YEARS} years of service`);
+  }
   if (!job) return;
   const profession = getProfession(job.professionId);
   job.paidThisYear = false;
@@ -379,6 +500,15 @@ export function careerOnAgeUp(ctx) {
   job.paidThisYear = true;
   if (profession.flightHoursPerYear) ctx.emit('logbook:add', { hours: profession.flightHoursPerYear });
 
+  if (profession.mandatoryRetirement && state.character.age >= profession.mandatoryRetirement) {
+    ctx.emit('retirement:mandatory', { age: profession.mandatoryRetirement });
+    return;
+  }
+
+  // Training positions graduate automatically — or wash out.
+  const program = traineeProgram(job);
+  if (program && traineeTick(ctx, job, profession, program)) return;
+
   // Evaluation
   const target = performanceTarget(state, rng, departmentEffect);
   job.performance = Math.round(clamp(job.performance * 0.55 + target * 0.45, 0, 100));
@@ -395,6 +525,22 @@ export function careerOnAgeUp(ctx) {
 
   if (layoffCheck(ctx, job)) return;
 
+  // Probation: any poor review ends the job; finishing it brings civil-service protection (and tenure for teachers).
+  // (Not in the year you graduated from a training program: probation starts then.)
+  if (job.probationLeft > 0 && job.yearsInLevel > 0) {
+    if (job.performance < PROBATION_BAR) {
+      leaveJob(ctx, `Released during your probationary period (rated ${rating})`, { fired: true });
+      return;
+    }
+    job.probationLeft -= 1;
+    if (!job.probationLeft) {
+      if (TENURE_PROFESSIONS.includes(job.professionId)) {
+        job.tenured = true;
+        ctx.log(`You completed probation at ${job.employer.name} and earned tenure.`, '🎓', 'good');
+      } else ctx.log(`You passed your probationary period at ${job.employer.name}.${job.sector === 'private' ? '' : ' Civil-service protections now apply.'}`, '✅', 'good');
+    }
+  }
+
   const status = promotionStatus(state);
   const grievanceLimit = job.unionMember ? 3 : 2;
   if (job.performance >= 75 && status.eligible) {
@@ -405,7 +551,7 @@ export function careerOnAgeUp(ctx) {
   } else if (job.performance < 35) {
     job.warnings += 1;
     job.lowYears += 1;
-    if (job.abilities.includes('tenure')) {
+    if (isTenured(job)) {
       job.warnings = Math.min(job.warnings, 1);
       ctx.log(`Annual review: ${rating}. Tenure protects your position.`, '🎓', 'warn');
       return;

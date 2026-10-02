@@ -24,7 +24,7 @@ export const MUNICIPAL_PROFESSIONS = {
     valued: ['postReserve', 'cit', 'emt', 'fto'],
     levels: [
       L('recruit', 'Police Recruit', 3, { years: 1 }),
-      L('officer', 'Police Officer', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest'] }),
+      L('officer', 'Police Officer', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest'], years: 3 }),
       L('senior', 'Senior Patrol Officer', 5, { req: { credentials: ['post'] }, abilities: ['arrest'] }),
       L('detective', 'Detective', 5, { track: 'ic', abilities: ['arrest', 'audit'] }),
       L('seniorDetective', 'Senior Detective', 6, { track: 'ic', minSize: 'medium', abilities: ['arrest', 'audit'] }),

@@ -15,6 +15,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor } from '../src/modules/credentials/LicensingEngine.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
+import { traineeProgram } from '../src/modules/career/Tenure.js';
 import { passChance, pursueEligibility, ATTEMPTS_PER_YEAR, retakeCost } from '../src/modules/credentials/LicensingEngine.js';
 import { planStatus } from '../src/modules/retirement/RetirementEngine.js';
 import { salaryBreakdown } from '../src/modules/career/PayGrades.js';
@@ -886,6 +887,123 @@ const tests = {
     assert.deepEqual(sous.req.credentials, ['servSafe']);
     assert.equal(getCredential('servSafe').category, 'hospitality');
     assert.ok(pursueEligibility(state, 'servSafe').ok);
+  },
+
+  'fire recruits go through the academy and graduate automatically — or wash out'() {
+    const pass = setup(51, 22);
+    const chance = pass.engine.rng.chance;
+    pass.engine.rng.chance = () => true;
+    const job = giveJob(pass.engine, 'fire', 'recruit');
+    pass.engine.rng.chance = chance;
+    assert.ok(traineeProgram(job), 'recruit is a training position');
+    for (const id of ['ff1', 'ff2', 'emt']) assert.equal(pass.state.credentials.held[id]?.status, 'active', `academy granted ${id}`);
+    assert.equal(pass.state.yearly['cred.attempts'] ?? 0, 0, 'academy courses do not use your own yearly limit');
+    pass.state.prompts = [];
+    pass.engine.ageUp();
+    assert.equal(pass.state.career.job.levelId, 'firefighter', 'graduated');
+    assert.equal(pass.state.career.job.probationLeft, 1, 'probation starts after the academy');
+
+    const fail = setup(52, 22);
+    fail.engine.rng.chance = () => false;
+    giveJob(fail.engine, 'fire', 'recruit');
+    fail.engine.rng.chance = chance;
+    for (let y = 0; y < 3 && fail.state.career.job; y++) {
+      fail.state.prompts = [];
+      fail.engine.rng.chance = (p) => (p > 0.5 && p < 0.99 ? false : chance.call(fail.engine.rng, p));
+      fail.engine.ageUp();
+    }
+    assert.equal(fail.state.career.job, null, 'washed out');
+    assert.match(fail.state.career.history.at(-1).reason, /didn't complete the fire academy/);
+  },
+
+  'probation: poor first-year reviews end public jobs; teachers earn tenure'() {
+    const { engine, state } = setup(53, 30);
+    const job = giveJob(engine, 'municipalAdmin', getProfession('municipalAdmin').levels[0].id);
+    assert.equal(job.probationLeft, 1);
+    job.performance = 5;
+    state.stats.smarts = 1;
+    state.stats.stress = 100;
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.career.job, null, 'released during probation');
+    assert.match(state.career.history.at(-1).reason, /probationary/);
+
+    const t = setup(54, 26);
+    t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'education', year: 22, gpa: 3.4 });
+    t.state.credentials.held.teachingCert = { earnedAge: 23, renewedAge: 23, status: 'active', states: [] };
+    const teacher = giveJob(t.engine, 'education', getProfession('education').levels.find((l) => l.entry).id);
+    assert.equal(teacher.probationLeft, 3, 'three-year probation');
+    for (let y = 0; y < 3; y++) {
+      t.state.prompts = [];
+      teacher.performance = 80;
+      t.state.stats.smarts = 85;
+      t.engine.ageUp();
+    }
+    assert.ok(t.state.career.job?.tenured, 'tenured after probation');
+  },
+
+  'active duty puts your job on USERRA leave; you return with seniority and pension credit'() {
+    const { engine, state } = setup(55, 24);
+    const job = giveJob(engine, 'police', 'officer', 'chicago');
+    job.probationLeft = 0;
+    const years = job.yearsAtEmployer;
+    engine.dispatch('military.enlist', 'army:enlisted:active');
+    const specialty = state.prompts.find((p) => p.type === 'military.chooseSpecialty');
+    engine.resolvePrompt(specialty.id, specialty.options.find((o) => !o.disabled).id);
+    assert.ok(state.military.service, 'enlisted');
+    assert.equal(state.career.job, null);
+    assert.equal(state.career.leave?.job.employer.name, job.employer.name, 'job held on military leave');
+    state.prompts = [];
+    for (let y = 0; y < 2; y++) {
+      state.prompts = [];
+      engine.ageUp();
+    }
+    state.prompts = [];
+    discharge(engine.context(), 'honorable', 'End of enlistment.');
+    const offer = state.prompts.find((p) => p.type === 'career.userra');
+    assert.ok(offer, 'reemployment offered');
+    engine.resolvePrompt(offer.id, 'return');
+    assert.equal(state.career.job?.employer.name, job.employer.name);
+    assert.ok(state.career.job.yearsAtEmployer >= years + 2, 'seniority credited');
+    assert.ok(state.retirement.plans.publicSafety?.years >= 2, 'pension credit for service');
+  },
+
+  'city jobs transfer laterally to the new city; state jobs stay in their state'() {
+    const { engine, state } = setup(56, 30);
+    state.character.regionId = 'chicago';
+    const job = giveJob(engine, 'fire', 'firefighter', 'chicago');
+    assert.match(job.employer.name, /Chicago/);
+    job.performance = 80;
+    engine.rng.chance = () => true;
+    engine.dispatch('career.transfer', 'denver');
+    assert.equal(state.character.regionId, 'denver');
+    assert.match(state.career.job.employer.name, /^Denver Fire Department$/, `renamed: ${state.career.job.employer.name}`);
+    assert.equal(state.career.job.levelId, 'firefighter', 'kept rank');
+    assert.equal(state.career.job.probationLeft, 1, 'lateral hires serve probation');
+
+    const s2 = setup(57, 30);
+    s2.state.character.regionId = 'midcity';
+    s2.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'accounting', year: 22, gpa: 3.4 });
+    giveJob(s2.engine, 'revenue', getProfession('revenue').levels[0].id, 'midcity');
+    s2.engine.dispatch('career.transfer', 'denver');
+    assert.equal(s2.state.character.regionId, 'midcity', 'an Ohio agency cannot move you to Colorado');
+  },
+
+  'police and fire can retire after 20 years at any age; federal agents must retire at 57'() {
+    const { engine, state } = setup(58, 41);
+    giveJob(engine, 'police', 'officer');
+    state.retirement.plans.publicSafety = { years: 20, salaries: [90000, 92000, 94000], employers: ['PD'], started: false };
+    engine.dispatch('retirement.retire');
+    assert.equal(state.retirement.retired, true, '20 and out');
+    const pension = state.retirement.pensions.find((p) => p.id === 'plan.publicSafety');
+    assert.ok(pension && pension.annual >= 45000, `half pay: ${pension?.annual}`);
+
+    const fed = setup(59, 56);
+    fed.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'accounting', year: 22, gpa: 3.4 });
+    giveJob(fed.engine, 'oig', getProfession('oig').levels[0].id);
+    fed.state.prompts = [];
+    fed.engine.ageUp();
+    assert.equal(fed.state.retirement.retired, true, 'mandatory retirement at 57');
   },
 
   'evicted young adults move back in with family or get vouchers'() {

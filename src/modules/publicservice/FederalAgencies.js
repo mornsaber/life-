@@ -35,6 +35,7 @@ export const FEDERAL_PROFESSIONS = {
   foreignService: {
     ...FED, id: 'foreignService', name: 'U.S. Foreign Service', icon: '🌐', sector: 'federal', payMultiplier: 1.0, minAge: 21, background: 'strict', exam: 'foreignService',
     benefits: { pension: 'fersSpecial' },
+    mandatoryRetirement: 65,
     employers: ['U.S. Department of State'],
     entry: { education: { level: 'bachelor' } },
     valued: ['languageProficiency'],
@@ -52,6 +53,9 @@ export const FEDERAL_PROFESSIONS = {
   },
   oig: {
     ...FED, id: 'oig', name: 'Office of Inspector General', icon: '🔍', sector: 'federal', payMultiplier: 1.0, minAge: 21, background: 'strict', exam: 'federal',
+    // Criminal investigators are federal law-enforcement officers: LEO retirement, mandatory at 57.
+    benefits: { pension: 'fersSpecial' },
+    mandatoryRetirement: 57,
     employers: ['Department of Defense OIG', 'Department of Health & Human Services OIG', 'Department of Homeland Security OIG'],
     entry: { education: { level: 'bachelor' } },
     valued: ['cpa', 'cissp', 'cgfm'],
@@ -259,8 +263,8 @@ export const FederalAgencies = {
   order: 24,
 
   setup(engine) {
-    engine.bus.on('career:hired', ({ ctx, job }) => {
-      if (job.professionId === 'foreignService') postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
+    engine.bus.on('career:hired', ({ ctx, job, returning }) => {
+      if (job.professionId === 'foreignService' && !returning) postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
     });
   },
 

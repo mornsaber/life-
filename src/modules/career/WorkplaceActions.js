@@ -6,6 +6,8 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
+import { createEmployer, cityName } from './Employers.js';
+import { STATES } from '../life/States.js';
 import { getProfession } from './JobTrees.js';
 import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
 import { MAX_STEP } from './PayGrades.js';
@@ -43,6 +45,32 @@ function trackPrompt(ctx, options) {
     text: 'You\'ve reached the fork in the ladder. Stay hands-on as a specialist, or move into management?',
     options: options.map((l) => ({ id: l.id, label: `${l.track === 'mgmt' ? '👥' : '🧠'} ${l.title} [G${l.grade}]`, hint: `${TRACK_LABEL[l.track]} track${l.abilities.length ? ` · ${l.abilities.join(', ')}` : ''}` })),
   });
+}
+
+/**
+ * Lateral transfer between city departments: a new employer in the new city.
+ * You keep your rank but start over on seniority and serve a new probation.
+ */
+function lateralTransfer(ctx, job, profession, regionId) {
+  const { state, rng } = ctx;
+  const city = cityName(regionId);
+  if (job.performance < 50 || !rng.chance(0.7)) {
+    ctx.log(`${city} had no lateral openings for a ${job.title} this year.`, '🔀', 'warn');
+    return ctx.toast('No lateral opening this year', 'warn');
+  }
+  const from = job.employer.name;
+  ctx.emit('region:relocate', { regionId, reason: `You made a lateral move from ${from}.` });
+  const employer = createEmployer(rng, state, profession, regionId);
+  job.employer = employer;
+  job.yearsAtEmployer = 0;
+  job.probationLeft = 1;
+  job.passovers = 0;
+  job.step = Math.max(1, job.step - 1);
+  job.unionMember = false;
+  recalcSalary(state, job);
+  ctx.log(`You joined ${employer.name} as ${job.title} (lateral entry): $${job.salary.toLocaleString()}/yr. Seniority starts over with a one-year probation.`, profession.icon, 'milestone');
+  ctx.emit('career:hired', { job, returning: true });
+  return undefined;
 }
 
 export const WorkplaceActions = {
@@ -189,7 +217,15 @@ export const WorkplaceActions = {
       if (!job || !REGIONS[regionId] || state.character.regionId === regionId) return;
       const profession = getProfession(job.professionId);
       if (profession.dutyStation || job.posting) return ctx.toast('Your agency assigns your duty station.', 'warn');
-      if (!(job.remote || job.sector === 'federal' || ['large', 'enterprise'].includes(job.employer.size))) return ctx.toast(`${job.employer.name} has no office there.`, 'warn');
+      const target = REGIONS[regionId];
+      // City departments can't send you elsewhere: you apply laterally to the other city's department.
+      if (job.sector === 'municipal' && !job.remote) {
+        if (yearlyCount(state, 'career.transfer')) return ctx.toast('One transfer request per year.', 'warn');
+        bumpYearly(state, 'career.transfer');
+        return lateralTransfer(ctx, job, profession, regionId);
+      }
+      if (job.sector === 'state' && !job.remote && target.state !== job.employer.stateId) return ctx.toast(`${job.employer.name} only operates in ${STATES[job.employer.stateId].name}. Apply to ${STATES[target.state].name}'s agency instead.`, 'warn');
+      if (!(job.remote || job.sector === 'federal' || job.sector === 'state' || ['large', 'enterprise'].includes(job.employer.size))) return ctx.toast(`${job.employer.name} has no office there.`, 'warn');
       if (yearlyCount(state, 'career.transfer')) return ctx.toast('One transfer request per year.', 'warn');
       bumpYearly(state, 'career.transfer');
       ctx.emit('region:relocate', { regionId, reason: `${job.employer.name} approved your transfer.` });

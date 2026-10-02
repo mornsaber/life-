@@ -25,7 +25,7 @@ export const STATE_PROFESSIONS = {
     valued: ['postReserve', 'emt', 'trafficEnforcement'],
     levels: [
       L('cadet', 'Trooper Cadet', 3, { years: 1 }),
-      L('trooper', 'State Trooper', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest'] }),
+      L('trooper', 'State Trooper', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest'], years: 3 }),
       L('senior', 'Senior Trooper', 5, { abilities: ['arrest'] }),
       L('investigator', 'Criminal Investigator', 6, { track: 'ic', abilities: ['arrest', 'audit'] }),
       L('majorCrimes', 'Major Crimes Investigator', 7, { track: 'ic', abilities: ['arrest', 'audit'] }),

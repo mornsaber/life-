@@ -138,7 +138,7 @@ export function credentialStatus(state, id) {
 }
 
 /** Can the player start this credential now, and who pays? */
-export function pursueEligibility(state, id) {
+export function pursueEligibility(state, id, { academy = false } = {}) {
   const cred = getCredential(id);
   const held = state.credentials.held[id];
   if (held?.status === 'active') return { ok: false, reason: validHere(state, id) ? 'Held' : `Held in ${held.states.join('/')} — transfer it` };
@@ -149,13 +149,15 @@ export function pursueEligibility(state, id) {
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };
-  if (yearlyCount(state, 'cred.attempts') >= ATTEMPTS_PER_YEAR) return { ok: false, reason: `No time for more than ${ATTEMPTS_PER_YEAR} new credentials a year` };
+  if (!academy && yearlyCount(state, 'cred.attempts') >= ATTEMPTS_PER_YEAR) return { ok: false, reason: `No time for more than ${ATTEMPTS_PER_YEAR} new credentials a year` };
   const check = checkRequirements(state, cred.requires);
   if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
   // Failed a training program's final exam recently: retest without retraining.
   const retake = state.credentials.retake?.[id];
   if (retake != null && state.character.age - retake <= RETAKE_WINDOW) {
     const cost = retakeCost(cred);
+    const academySponsor = findSponsor(state, cred);
+    if (academySponsor?.academy) return { ok: true, cred, sponsor: academySponsor, payer: 'sponsor', cost, retake: true };
     if (cost > CREDIT_LIMIT && state.finances.cash < cost) return { ok: false, reason: `Retest costs $${cost.toLocaleString()}` };
     return { ok: true, cred, sponsor: null, payer: 'self', cost, retake: true };
   }
@@ -218,16 +220,16 @@ function takeExam(ctx, cred) {
 }
 
 /** Start (or immediately sit) a credential. Returns true on progress. */
-export function pursueCredential(ctx, id) {
+export function pursueCredential(ctx, id, { academy = false, quiet = false } = {}) {
   const { state } = ctx;
-  const elig = pursueEligibility(state, id);
+  const elig = pursueEligibility(state, id, { academy });
   if (!elig.ok) {
-    ctx.toast(elig.reason, 'warn');
+    if (!quiet) ctx.toast(elig.reason, 'warn');
     return false;
   }
   const cred = elig.cred;
   bumpYearly(state, `cred.${id}`);
-  bumpYearly(state, 'cred.attempts');
+  if (!academy) bumpYearly(state, 'cred.attempts');
   const payer = chargeCost(ctx, elig, elig.retake ? `${cred.name} retest` : cred.name);
   const paidNote = payer === 'free' ? '' : payer === 'you' ? ` You paid $${cred.cost.toLocaleString()}${elig.budgetSpent ? ' (training budget was exhausted)' : ''}.` : ` ${payer} covered the $${cred.cost.toLocaleString()} cost.`;
 

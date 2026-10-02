@@ -168,7 +168,7 @@ export function enlist(ctx, { branch, track, component, specialty }) {
   state.military.service = svc;
 
   if (component === 'active') {
-    if (state.career.job) ctx.emit('career:resign', { reason: `Entered active duty with the ${b.name}` });
+    if (state.career.job) ctx.emit('career:militaryLeave', { reason: `active duty with the ${b.name}` });
   }
   const verb = track === 'officer' ? 'accepted a commission' : 'enlisted';
   const comp = component === 'active' ? 'active duty' : 'the Reserve';

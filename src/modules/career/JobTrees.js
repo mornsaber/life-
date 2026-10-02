@@ -65,10 +65,10 @@ export const PRIVATE_PROFESSIONS = {
     valued: ['oshaSafety', 'driverLicense'],
     levels: [
       L('apprentice', 'Apprentice Electrician', 2, { req: { education: { level: 'highschool' } }, years: 4 }),
-      L('journeyman', 'Journeyman Electrician', 4, { entry: true, req: { credentials: ['journeymanElectrician'] } }),
+      L('journeyman', 'Journeyman Electrician', 4, { entry: true, req: { credentials: ['journeymanElectrician'] }, years: 5 }),
       L('master', 'Master Electrician', 5, { track: 'ic', req: { credentials: ['masterElectrician'] } }),
       L('estimator', 'Senior Estimator', 6, { track: 'ic', minSize: 'medium' }),
-      L('foreman', 'Foreman', 5, { track: 'mgmt', req: { credentials: ['journeymanElectrician'] }, abilities: ['supervise'], reports: 8 }),
+      L('foreman', 'Foreman', 5, { track: 'mgmt', req: { credentials: ['journeymanElectrician'] }, abilities: ['supervise'], reports: 8, years: 4 }),
       L('super', 'Site Superintendent', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'inspect'], reports: 25 }),
       L('pm', 'Construction Project Manager', 7, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'sign'], reports: 60 }),
       L('owner', 'Owner / President', 8, { track: 'mgmt', req: { credentials: ['masterElectrician'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'delegate', 'exec'], reports: 80 }),
@@ -307,7 +307,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
     valued: ['oshaSafety', 'driverLicense'],
     levels: [
       L('apprentice', 'Apprentice Plumber', 2, { req: { education: { level: 'highschool' } }, years: 4 }),
-      L('journeyman', 'Journeyman Plumber', 4, { entry: true, req: { credentials: ['journeymanPlumber'] } }),
+      L('journeyman', 'Journeyman Plumber', 4, { entry: true, req: { credentials: ['journeymanPlumber'] }, years: 5 }),
       L('master', 'Master Plumber', 5, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['sign'] }),
       L('inspector', 'Plumbing Inspector', 6, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['inspect'] }),
       L('foreman', 'Plumbing Foreman', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
