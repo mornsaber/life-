@@ -19,7 +19,8 @@
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
-import { stateOf } from '../life/Regions.js';
+import { stateOf, stateIdOf } from '../life/Regions.js';
+import { deathRowTick } from './Prison.js';
 
 const STATUTE_OF_LIMITATIONS = 7;
 
@@ -146,10 +147,26 @@ function sentence(ctx, offenseId, { plea, abroad }) {
   ctx.stat('stress', 10);
 
   ctx.emit('legal:convicted', { offenseId, severity: offense.severity, name: offense.name, jobRelated: Boolean(offense.jobRelated) });
+  // A recaptured fugitive also serves the rest of the old sentence.
+  const fugitive = state.legal.fugitive;
+  if (fugitive && state.character.age >= 18) {
+    prison += fugitive.yearsLeft;
+    state.legal.fugitive = null;
+  }
   if (prison > 0) {
     const facility = abroad ? 'a foreign prison' : offense.federal ? FACILITIES.federal : FACILITIES[offense.severity];
-    state.legal.incarceration = { yearsLeft: prison, total: prison, facility, served: 0 };
-    ctx.log(`You were taken into custody at ${facility}.`, '🔒', 'death');
+    const inc = { yearsLeft: prison, total: prison, facility, served: 0 };
+    state.legal.incarceration = inc;
+    // Capital punishment: only for capital crimes, only after a trial, only in states that have it — and rarely even then.
+    const death = stateOf(state).deathPenalty;
+    const odds = { active: 0.03, moratorium: 0.02, rare: 0.01 }[death] ?? 0;
+    if (!abroad && ((offense.capital && !plea && odds > 0 && rng.chance(odds)) || fugitive?.deathRow)) {
+      inc.deathRow = { state: stateIdOf(state), sentencedAge: state.character.age };
+      inc.yearsLeft = inc.total = 99;
+      inc.facility = `death row in ${stateOf(state).name}`;
+      state.legal.record[state.legal.record.length - 1].sentence = 'death sentence';
+      ctx.log(`The jury sentenced you to death. You were transferred to ${inc.facility}.`, '⛓️', 'death');
+    } else ctx.log(`You were taken into custody at ${facility}.`, '🔒', 'death');
     ctx.emit('legal:incarcerated', { years: prison });
   }
   state.legal.probationYears = Math.max(state.legal.probationYears, probation);
@@ -230,11 +247,18 @@ export function justiceTick(ctx) {
 
   // Prison
   const inc = legal.incarceration;
+  if (inc?.deathRow) {
+    inc.served += 1;
+    ctx.stat('happiness', -6);
+    deathRowTick(ctx);
+    return;
+  }
   if (inc) {
     inc.yearsLeft -= 1;
     inc.served += 1;
     ctx.stat('happiness', -6);
-    const parole = inc.served >= Math.ceil(inc.total / 2) && rng.chance(0.25 + (inc.goodBehavior ?? 0) * 0.1);
+    // Life terms (25+ years) carry no parole.
+    const parole = inc.total < 25 && inc.served >= Math.ceil(inc.total / 2) && rng.chance(0.25 + (inc.goodBehavior ?? 0) * 0.1);
     if (inc.yearsLeft <= 0 || parole) {
       legal.incarceration = null;
       legal.probationYears = Math.max(legal.probationYears, 2);
@@ -242,7 +266,7 @@ export function justiceTick(ctx) {
       ctx.toast('Released from prison', 'good');
     } else {
       ctx.log(`Year ${inc.served} at ${inc.facility}. ${inc.yearsLeft} to go.`, '🔒', 'bad');
-      if (rng.chance(0.6)) {
+      if (rng.chance(0.35)) {
         const hasDiploma = state.education.degrees.some((d) => d.type === 'highschool');
         ctx.prompt({
           type: 'legal.prisonEvent',

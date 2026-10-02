@@ -429,6 +429,15 @@ export const HealthEngine = {
 
   setup(engine) {
     const { bus } = engine;
+    // Free treatment programs (prison RDAP, drug courts): a real shot at recovery.
+    bus.on('health:treatAddiction', ({ ctx }) => {
+      const c = activeConditions(ctx.state).find((x) => CONDITIONS[x.id].kind === 'addiction');
+      if (!c || !ctx.rng.chance(0.4)) return;
+      c.remission = true;
+      c.treated = false;
+      c.severity = 10;
+      ctx.log(`The program worked: you're in recovery from ${CONDITIONS[c.id].name.toLowerCase()}.`, '🌱', 'good');
+    });
     bus.on('health:trauma', ({ ctx, amount, source }) => {
       const h = ctx.state.health;
       h.trauma = Math.round(h.trauma + amount);

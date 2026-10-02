@@ -36,12 +36,13 @@ function strike(ctx, kind, reason) {
 function expel(ctx, why) {
   const { state } = ctx;
   if (!enrolled(state)) return;
-  const school = SCHOOLS[enrolled(state).schoolId];
+  const enrollment = enrolled(state);
+  const school = SCHOOLS[enrollment.schoolId];
   state.education.enrolled = null;
   state.campus.expelledAge = state.character.age;
   ctx.log(`${school.name} expelled you (${why}). It will follow you on future applications.`, '🚫', 'bad');
   ctx.stat('happiness', -15);
-  ctx.emit('education:left', { reason: 'expelled' });
+  ctx.emit('education:left', { reason: 'expelled', enrollment });
 }
 
 /** Clears campus-only memberships when you're no longer a student. */
@@ -102,11 +103,12 @@ export const UniversityLife = {
       if (yearGpa < 2.0) {
         c.probation += 1;
         if (c.probation >= 2) {
-          const school = SCHOOLS[enrolled(state).schoolId];
+          const enrollment = enrolled(state);
+          const school = SCHOOLS[enrollment.schoolId];
           state.education.enrolled = null;
           ctx.log(`Academic dismissal: a second year below 2.0 ended your time at ${school.name}.`, '📉', 'bad');
           ctx.stat('happiness', -12);
-          ctx.emit('education:left', { reason: 'dismissed' });
+          ctx.emit('education:left', { reason: 'dismissed', enrollment });
           return;
         }
         ctx.log(`A ${yearGpa.toFixed(2)} GPA put you on academic probation. Another year like that and you're out.`, '📉', 'warn');

@@ -11,7 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
-import { commitmentLoad, isDeployed, hasFelony, bumpYearly } from '../../core/State.js';
+import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
@@ -70,8 +70,9 @@ export function levelCheck(state, level) {
 
 export function backgroundCheck(state, profession) {
   const age = state.character.age;
-  const felonies = state.legal.record.filter((r) => r.severity === 'felony');
-  const recentMisd = state.legal.record.filter((r) => r.severity === 'misdemeanor' && age - r.age <= 5).length;
+  const record = visibleRecord(state);
+  const felonies = record.filter((r) => r.severity === 'felony');
+  const recentMisd = record.filter((r) => r.severity === 'misdemeanor' && age - r.age <= 5).length;
   if (profession.background === 'strict' && felonies.length) return { ok: false, reason: 'Fails background check (felony record)' };
   if (profession.background === 'standard' && felonies.some((f) => age - f.age <= 10)) return { ok: false, reason: 'Fails background check (recent felony)' };
   const penalty = profession.background === 'lenient' ? felonies.length * 0.05 : recentMisd * (profession.background === 'strict' ? 0.12 : 0.06);

@@ -162,6 +162,14 @@ export const RISKY_ACTIONS = [
   { id: 'barFight', label: 'Start a Bar Fight', icon: '👊', minAge: 18, desc: 'Assault charge risk' },
   { id: 'drugs', label: 'Try Recreational Drugs', icon: '💊', minAge: 16, desc: 'Ruins clearances for 7 yrs' },
   { id: 'taxCheat', label: 'Fudge Your Taxes', icon: '🧾', minAge: 18, desc: 'Save now, audit later' },
+  { id: 'vandalism', label: 'Vandalize Property', icon: '🎨', minAge: 10, desc: 'Cheap thrill, misdemeanor' },
+  { id: 'affair', label: 'Cheat on Your Partner', icon: '💋', minAge: 18, desc: 'Not a crime — but it can end a marriage', needsPartner: true },
+  { id: 'scam', label: 'Run an Online Scam', icon: '📧', minAge: 16, desc: 'Prey on strangers; federal wire fraud' },
+  { id: 'insuranceFraud', label: 'Fake an Insurance Claim', icon: '🩼', minAge: 18, desc: 'Easy payout, felony fraud' },
+  { id: 'burglary', label: 'Burglarize a House', icon: '🏚️', minAge: 14, desc: 'Felony; prison likely if caught' },
+  { id: 'carTheft', label: 'Steal a Car', icon: '🚙', minAge: 14, desc: 'Felony auto theft' },
+  { id: 'dealDrugs', label: 'Sell Drugs', icon: '💰', minAge: 15, desc: 'Big money, long sentences' },
+  { id: 'armedRobbery', label: 'Rob a Store at Gunpoint', icon: '🔫', minAge: 16, desc: 'Violent felony — if someone dies, it\'s murder' },
 ];
 
 function once(ctx, id) {
@@ -171,6 +179,16 @@ function once(ctx, id) {
   }
   bumpYearly(ctx.state, `risky.${id}`);
   return true;
+}
+
+/** Commit a crime for money: caught on the spot, or it may surface later. */
+function crimeForMoney(ctx, { offenseId, money, caughtNow, discovery, evidence, context, text, icon }) {
+  const { rng } = ctx;
+  if (rng.chance(caughtNow)) return commitOffense(ctx, { offenseId, caught: true, context, evidence });
+  ctx.earn(rng.int(...money), 'Undisclosed income');
+  ctx.log(text, icon, 'warn');
+  if (discovery) commitOffense(ctx, { offenseId, context, discovery, evidence });
+  return undefined;
 }
 
 export const RiskyActions = {
@@ -218,6 +236,60 @@ export const RiskyActions = {
     }
     if (rng.chance(0.1)) return commitOffense(ctx, { offenseId: 'drugPossession', caught: true, context: 'searched at a concert', evidence: 0.85 });
     ctx.log('You had a wild night. (Security clearance investigators ask about the last 7 years.)', '💊', 'warn');
+  },
+  vandalism(ctx) {
+    if (!once(ctx, 'vandalism')) return;
+    ctx.stat('happiness', 2);
+    if (ctx.rng.chance(0.25)) return commitOffense(ctx, { offenseId: 'vandalism', caught: true, context: 'caught on a doorbell camera', evidence: 0.85 });
+    ctx.log('You spray-painted an overpass. It wasn\'t art.', '🎨', 'warn');
+  },
+  affair(ctx) {
+    const { state, rng } = ctx;
+    const partner = (state.people?.list ?? []).find((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
+    if (!partner) return ctx.toast('You\'re single — that\'s just dating.', 'warn');
+    if (!once(ctx, 'affair')) return;
+    ctx.stat('happiness', 3);
+    if (rng.chance(0.4)) {
+      partner.relationship = Math.max(0, partner.relationship - rng.int(35, 60));
+      ctx.stat('happiness', -10);
+      ctx.stat('stress', 10);
+      return ctx.log(`${partner.firstName} found the messages. ${partner.relationship < 20 ? 'They\'re talking to a lawyer.' : 'Trust is shattered.'}`, '💔', 'bad');
+    }
+    ctx.log(`You cheated on ${partner.firstName}. Nobody found out — yet.`, '💋', 'warn');
+    state.legal.flags.affairAge = state.character.age;
+  },
+  scam(ctx) {
+    if (!once(ctx, 'scam')) return;
+    crimeForMoney(ctx, { offenseId: 'wireFraud', money: [3000, 25000], caughtNow: 0.05, discovery: 0.25, evidence: 0.85, context: 'online romance scam', text: 'You scammed lonely strangers out of their savings.', icon: '📧' });
+  },
+  insuranceFraud(ctx) {
+    if (!once(ctx, 'insuranceFraud')) return;
+    crimeForMoney(ctx, { offenseId: 'insuranceFraud', money: [5000, 30000], caughtNow: 0.1, discovery: 0.2, evidence: 0.8, context: 'staged injury claim', text: 'You faked a slip-and-fall and the insurer paid.', icon: '🩼' });
+  },
+  burglary(ctx) {
+    if (!once(ctx, 'burglary')) return;
+    ctx.stat('stress', 4);
+    crimeForMoney(ctx, { offenseId: 'burglary', money: [500, 8000], caughtNow: 0.25, discovery: 0.12, evidence: 0.75, context: 'neighborhood break-in', text: 'You broke into a house and fenced what you took.', icon: '🏚️' });
+  },
+  carTheft(ctx) {
+    if (!once(ctx, 'carTheft')) return;
+    crimeForMoney(ctx, { offenseId: 'autoTheft', money: [1000, 6000], caughtNow: 0.3, discovery: 0.1, evidence: 0.8, context: 'stolen car', text: 'You stole a car and sold it to a chop shop.', icon: '🚙' });
+  },
+  dealDrugs(ctx) {
+    if (!once(ctx, 'dealDrugs')) return;
+    ctx.stat('stress', 6);
+    crimeForMoney(ctx, { offenseId: 'drugDistribution', money: [5000, 40000], caughtNow: 0.2, discovery: 0.2, evidence: 0.8, context: 'undercover buy', text: 'You moved product all year. The money was good.', icon: '💰' });
+  },
+  armedRobbery(ctx) {
+    const { rng } = ctx;
+    if (!once(ctx, 'armedRobbery')) return;
+    ctx.stat('stress', 10);
+    // Robberies that go wrong: someone dies, and it's felony murder.
+    if (rng.chance(0.03)) {
+      ctx.log('The clerk reached under the counter. In the chaos, someone was killed.', '⚰️', 'death');
+      return commitOffense(ctx, { offenseId: 'felonyMurder', caught: rng.chance(0.8), context: 'a robbery that turned deadly', discovery: 0.5, evidence: 0.9, yearsLeft: 99 });
+    }
+    crimeForMoney(ctx, { offenseId: 'armedRobbery', money: [300, 5000], caughtNow: 0.45, discovery: 0.3, evidence: 0.85, context: 'convenience store robbery', text: 'You robbed a convenience store at gunpoint and got away.', icon: '🔫' });
   },
   taxCheat(ctx) {
     const { state } = ctx;

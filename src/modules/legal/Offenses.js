@@ -9,19 +9,31 @@
  *   federal:    prosecuted by your home country even if committed abroad
  *               (diplomatic immunity only shields you from the *host* country)
  *   escalate:   { after: n, to: offenseId } repeat offenders get charged harder
+ *   violent:    can never be sealed or expunged
+ *   noSeal:     excluded from record sealing (DUI in most states)
+ *   capital:    a death-penalty-eligible offense in states that have it
  */
 export const OFFENSES = {
+  vandalism: { name: 'Vandalism', icon: '🎨', severity: 'misdemeanor', fine: [300, 2000], probation: 1 },
+  burglary: { name: 'Residential Burglary', icon: '🏚️', severity: 'felony', fine: [1000, 10000], prison: [1, 4], probation: 2 },
+  autoTheft: { name: 'Motor Vehicle Theft', icon: '🚙', severity: 'felony', fine: [1000, 8000], prison: [1, 3], probation: 2 },
+  wireFraud: { name: 'Wire Fraud', icon: '📧', severity: 'felony', fine: [5000, 50000], prison: [1, 5], probation: 3, federal: true },
+  insuranceFraud: { name: 'Insurance Fraud', icon: '🩼', severity: 'felony', fine: [5000, 30000], prison: [0, 3], probation: 3 },
+  drugDistribution: { name: 'Drug Distribution', icon: '💰', severity: 'felony', fine: [5000, 50000], prison: [2, 8], probation: 3 },
+  armedRobbery: { name: 'Armed Robbery', icon: '🔫', severity: 'felony', fine: [2000, 15000], prison: [3, 10], probation: 3, violent: true },
+  felonyMurder: { name: 'Felony Murder', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [25, 40], probation: 0, violent: true, capital: true },
+  escape: { name: 'Escape from Custody', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 5], probation: 1 },
   desertion: { name: 'Desertion (UCMJ Art. 85)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 3], probation: 1, federal: true },
   trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
   underageDrinking: { name: 'Minor in Possession of Alcohol', icon: '🍻', severity: 'infraction', fine: [200, 600] },
   speeding: { name: 'Speeding', icon: '🚨', severity: 'infraction', fine: [150, 450] },
   reckless: { name: 'Reckless Driving', icon: '🚗', severity: 'misdemeanor', fine: [500, 2000], probation: 1 },
-  dui: { name: 'DUI', icon: '🍺', severity: 'misdemeanor', fine: [1500, 5000], probation: 2, escalate: { after: 2, to: 'felonyDui' } },
-  felonyDui: { name: 'Felony DUI', icon: '🍺', severity: 'felony', fine: [5000, 15000], prison: [1, 4], probation: 3 },
+  dui: { name: 'DUI', icon: '🍺', severity: 'misdemeanor', fine: [1500, 5000], probation: 2, escalate: { after: 2, to: 'felonyDui' }, noSeal: true },
+  felonyDui: { name: 'Felony DUI', icon: '🍺', severity: 'felony', fine: [5000, 15000], prison: [1, 4], probation: 3, noSeal: true },
   unlicensed: { name: 'Driving Without a License', icon: '🪪', severity: 'misdemeanor', fine: [300, 1000] },
   shoplifting: { name: 'Shoplifting', icon: '🛒', severity: 'misdemeanor', fine: [200, 1000], probation: 1, escalate: { after: 2, to: 'grandTheft' } },
   grandTheft: { name: 'Grand Theft', icon: '💰', severity: 'felony', fine: [2000, 10000], prison: [1, 3], probation: 2 },
-  assault: { name: 'Assault', icon: '👊', severity: 'misdemeanor', fine: [500, 2500], probation: 2 },
+  assault: { name: 'Assault', icon: '👊', severity: 'misdemeanor', fine: [500, 2500], probation: 2, violent: true },
   drugPossession: { name: 'Drug Possession', icon: '💊', severity: 'misdemeanor', fine: [500, 2500], probation: 2 },
   taxEvasion: { name: 'Tax Evasion', icon: '🧾', severity: 'felony', fine: [20000, 100000], prison: [1, 3], probation: 2, federal: true },
   expenseFraud: { name: 'Expense Fraud', icon: '🧾', severity: 'misdemeanor', fine: [2000, 10000], probation: 1, jobRelated: true },
@@ -32,7 +44,7 @@ export const OFFENSES = {
   securitiesFraud: { name: 'Securities Fraud', icon: '🪙', severity: 'felony', fine: [25000, 150000], prison: [1, 4], probation: 3, federal: true },
   insiderTrading: { name: 'Insider Trading', icon: '📈', severity: 'felony', fine: [50000, 250000], prison: [1, 5], probation: 2, jobRelated: true, federal: true },
   prescriptionFraud: { name: 'Prescription Fraud', icon: '💊', severity: 'felony', fine: [20000, 80000], prison: [2, 6], probation: 3, jobRelated: true, federal: true },
-  excessiveForce: { name: 'Deprivation of Rights Under Color of Law', icon: '🚔', severity: 'felony', fine: [5000, 20000], prison: [1, 4], probation: 2, jobRelated: true, federal: true },
+  excessiveForce: { name: 'Deprivation of Rights Under Color of Law', icon: '🚔', severity: 'felony', fine: [5000, 20000], prison: [1, 4], probation: 2, jobRelated: true, federal: true, violent: true },
   falseStatement: { name: 'False Statements to Federal Investigators', icon: '🕵️', severity: 'felony', fine: [5000, 25000], prison: [0, 2], probation: 2, federal: true },
   leak: { name: 'Unauthorized Disclosure of Classified Information', icon: '📰', severity: 'felony', fine: [10000, 50000], prison: [3, 10], probation: 3, jobRelated: true, federal: true },
   visaFraud: { name: 'Visa Fraud Conspiracy', icon: '🛂', severity: 'felony', fine: [20000, 80000], prison: [3, 8], probation: 3, jobRelated: true, federal: true },

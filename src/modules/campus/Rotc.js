@@ -8,7 +8,7 @@
  */
 import { nominationBonus } from '../education/K12.js';
 import { BRANCHES, SPECIALTIES, enlist, specialtyName } from '../military/MilitaryEngine.js';
-import { hasFelony, yearlyCount, bumpYearly } from '../../core/State.js';
+import { hasFelony, yearlyCount, bumpYearly, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { onCampus } from './Network.js';
 import { moveIntoDorm } from './HousingDorms.js';
@@ -90,7 +90,7 @@ export function seekNomination(ctx) {
   if (state.character.age < 16 || state.character.age > 23) return ctx.toast('Nominations are for ages 16–23.', 'warn');
   if (yearlyCount(state, 'campus.nomination')) return ctx.toast('You already applied this year.', 'warn');
   bumpYearly(state, 'campus.nomination');
-  const chance = clamp(0.15 + (state.stats.smarts - 70) / 60 + (state.stats.fitness - 60) / 120 + state.campus.resume * 0.02 + nominationBonus(state) - (state.legal.record.length ? 0.3 : 0), 0.02, 0.8);
+  const chance = clamp(0.15 + (state.stats.smarts - 70) / 60 + (state.stats.fitness - 60) / 120 + state.campus.resume * 0.02 + nominationBonus(state) - (visibleRecord(state).length ? 0.3 : 0), 0.02, 0.8);
   if (rng.chance(chance)) {
     state.campus.nomination = true;
     ctx.log('Your congressional representative nominated you to the service academies!', '🏛️', 'milestone');

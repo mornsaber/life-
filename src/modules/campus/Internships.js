@@ -8,7 +8,7 @@ import { levelById, nextLevels } from '../career/Ladder.js';
 import { bestEntryLevel, hire, levelCheck } from '../career/CareerEngine.js';
 import { createEmployer } from '../career/Employers.js';
 import { schoolPrestige, educationFields, MAJORS } from '../education/Catalog.js';
-import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { yearlyCount, bumpYearly, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { CLUBS } from './Network.js';
 
@@ -37,7 +37,7 @@ export function internshipChance(state, professionId) {
   chance += schoolPrestige(state) * 0.04 + Math.min(0.1, c.resume * 0.01);
   if (c.mentors.some((m) => m.professionId === professionId)) chance += 0.1;
   if (state.economy.phase === 'recession') chance -= 0.1;
-  if (profession.background === 'strict' && state.legal.record.length) chance -= 0.2;
+  if (profession.background === 'strict' && visibleRecord(state).length) chance -= 0.2;
   return clamp(chance, 0.05, 0.9);
 }
 

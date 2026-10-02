@@ -34,6 +34,31 @@ export function giBillEligible(state) {
   return years >= GI_BILL.minService && (state.education.giBillYearsUsed ?? 0) < GI_BILL.maxYears;
 }
 
+/**
+ * Partial credit from programs you left without finishing (dropped out,
+ * dismissed, expelled, incarcerated): courses passed with a C or better
+ * transfer. Bachelor's programs accept up to 3 years from another
+ * bachelor's or 2 from an associate's; credit older than 10 years counts half.
+ */
+const TRANSFER_RULES = {
+  bachelor: { bachelor: 3, associate: 2 },
+  associate: { associate: 1.5, bachelor: 1.5 },
+};
+
+export function transferCredit(state, programId) {
+  const program = PROGRAMS[programId];
+  const rules = TRANSFER_RULES[program.type] ?? { [program.type]: program.years - 0.5 };
+  let best = { years: 0, credit: null };
+  for (const c of state.education.credits ?? []) {
+    const cap = c.programId === programId ? Math.max(rules[c.type] ?? 0, program.years - 1) : rules[c.type];
+    if (!cap) continue;
+    const decay = state.character.age - c.age > 10 ? 0.5 : 1;
+    const years = Math.min(cap, Math.floor(c.years * decay * 2) / 2);
+    if (years > best.years) best = { years, credit: c };
+  }
+  return best;
+}
+
 /** Years a program will take for this student (transfer credit, second degrees). */
 export function programYears(state, programId, major) {
   const p = PROGRAMS[programId];
@@ -42,7 +67,20 @@ export function programYears(state, programId, major) {
     if (state.education.degrees.some((d) => d.type === 'bachelor')) years = 2; // second bachelor's
     else if (state.education.degrees.some((d) => d.type === 'associate')) years = 2; // transfer credit
   }
-  return years;
+  return Math.max(Math.min(1, years), years - transferCredit(state, programId).years);
+}
+
+/** Leaving a program early banks the credit you earned (half if your GPA was below 2.0). */
+function bankCredit(state, e) {
+  if (!e || e.progress <= 0) return;
+  const program = PROGRAMS[e.programId];
+  const years = Math.floor(e.progress * (e.gpa >= 2 ? 1 : 0.5) * 2) / 2;
+  if (years <= 0) return;
+  const credits = (state.education.credits ??= []);
+  const existing = credits.find((c) => c.programId === e.programId);
+  if (existing && existing.years >= years) return;
+  if (existing) credits.splice(credits.indexOf(existing), 1);
+  credits.push({ programId: e.programId, type: program.type, years, gpa: e.gpa, schoolId: e.schoolId, age: state.character.age });
 }
 
 export function enrollmentEligibility(state, programId, schoolId, major) {
@@ -155,6 +193,7 @@ export const EducationEngine = {
 
   init(state) {
     state.education ??= { degrees: [], enrolled: null };
+    state.education.credits ??= [];
     state.education.giBillYearsUsed ??= 0;
   },
 
@@ -164,11 +203,13 @@ export const EducationEngine = {
       ctx.state.education.degrees.push({ type: 'highschool', programId: type, major: null, year: ctx.state.character.age });
       ctx.log(note, '🎓', 'milestone');
     });
+    engine.bus.on('education:left', ({ ctx, enrollment }) => bankCredit(ctx.state, enrollment));
     engine.bus.on('legal:incarcerated', ({ ctx }) => {
-      if (ctx.state.education.enrolled) {
+      const enrollment = ctx.state.education.enrolled;
+      if (enrollment) {
         ctx.state.education.enrolled = null;
         ctx.log('Your school withdrew your enrollment.', '🏫', 'bad');
-        ctx.emit('education:left', { reason: 'incarcerated' });
+        ctx.emit('education:left', { reason: 'incarcerated', enrollment });
       }
     });
   },
@@ -208,7 +249,7 @@ export const EducationEngine = {
       } else {
         ctx.log(`Your GPA of ${e.gpa.toFixed(2)} was too low to graduate from the ${label} program.`, '📉', 'bad');
         ctx.stat('happiness', -12);
-        ctx.emit('education:left', { reason: 'failed' });
+        ctx.emit('education:left', { reason: 'failed', enrollment: e });
       }
     } else {
       ctx.log(`${label}: finished a ${e.pace === 'part' ? 'part-time ' : ''}year (${e.progress}/${e.totalYears}) with a ${yearGpa.toFixed(2)} GPA. Tuition: ${notes.join(', ') || 'none'}.`, '📘');
@@ -233,9 +274,11 @@ export const EducationEngine = {
         return ctx.toast(`Rejected by ${school.name}`, 'bad');
       }
       const totalYears = programYears(state, programId, major);
+      const transfer = transferCredit(state, programId);
+      if (transfer.credit) state.education.credits = state.education.credits.filter((c) => c !== transfer.credit);
       state.education.enrolled = { programId, schoolId, major, pace: pace === 'part' ? 'part' : 'full', progress: 0, totalYears, gpa: 0, yearsAttended: 0, studiedThisYear: false };
       const label = degreeLabel({ programId, major, type: program.type });
-      ctx.log(`You were admitted to ${school.name} and enrolled ${pace === 'part' ? 'part-time' : 'full-time'}: ${label}.`, school.icon, 'milestone');
+      ctx.log(`You were admitted to ${school.name} and enrolled ${pace === 'part' ? 'part-time' : 'full-time'}: ${label}.${transfer.years ? ` ${transfer.years} yr of transfer credit applied.` : ''}`, school.icon, 'milestone');
       ctx.emit('education:enrolled', { programId, schoolId, major });
       ctx.toast(`Enrolled: ${label}`, 'good');
     },
@@ -265,7 +308,7 @@ export const EducationEngine = {
       if (!e) return;
       ctx.state.education.enrolled = null;
       ctx.log(`You dropped out of ${PROGRAMS[e.programId].name}.`, '🚪', 'bad');
-      ctx.emit('education:left', { reason: 'dropout' });
+      ctx.emit('education:left', { reason: 'dropout', enrollment: e });
       ctx.stat('happiness', -5);
     },
   },

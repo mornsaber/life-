@@ -30,6 +30,9 @@ import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
 import { charge } from '../src/modules/legal/JusticeSystem.js';
+import { deathRowTick, paroleEligibility } from '../src/modules/legal/Prison.js';
+import { sealStatus } from '../src/modules/legal/Clemency.js';
+import { hasFelony } from '../src/core/State.js';
 import { separationPay } from '../src/modules/military/Separation.js';
 import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
 import { creditLimit } from '../src/core/State.js';
@@ -1143,6 +1146,125 @@ const tests = {
     assert.ok(crisis, 'debt crisis decision');
     s2.engine.resolvePrompt(crisis.id, 'ch7');
     assert.ok(s2.state.finances.cash >= 0, 'filed Chapter 7');
+  },
+
+  'prison: study, work and programs; parole hearings; everything else is off limits'() {
+    const { engine, state } = setup(81, 30);
+    state.education.degrees = [];
+    charge(engine.context(), { offenseId: 'burglary', context: 'test', evidence: 0.95 });
+    const court = state.prompts.find((p) => p.type === 'legal.court');
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => true;
+    engine.resolvePrompt(court.id, 'plead');
+    engine.rng.chance = chance;
+    const inc = state.legal.incarceration;
+    assert.ok(inc, 'in prison');
+    inc.yearsLeft = inc.total = 6;
+    engine.dispatch('career.apply', 'retail');
+    assert.equal(state.career.job, null, 'no job applications from prison');
+    engine.rng.chance = () => true;
+    engine.dispatch('legal.prisonStudy');
+    assert.ok(state.education.degrees.some((d) => d.programId === 'ged'), 'GED behind bars');
+    engine.dispatch('legal.prisonWork');
+    engine.dispatch('legal.prisonProgram');
+    engine.rng.chance = chance;
+    assert.equal(inc.yearsLeft, 5, 'treatment program took a year off');
+    assert.ok(inc.goodBehavior >= 4);
+    assert.match(paroleEligibility(state).reason, /Eligible after 2/);
+    inc.served = 2;
+    engine.rng.chance = () => true;
+    engine.dispatch('legal.prisonParole');
+    engine.rng.chance = chance;
+    assert.equal(state.legal.incarceration, null, 'paroled');
+  },
+
+  'dropping out banks transfer credit toward a later degree'() {
+    const { engine, state } = setup(82, 19);
+    engine.rng.chance = () => true;
+    engine.dispatch('education.enroll', 'bachelor:state:business:full');
+    engine.rng.chance = Math.random.bind(Math);
+    const e = state.education.enrolled;
+    assert.ok(e, 'enrolled');
+    e.progress = 2;
+    e.gpa = 3.1;
+    engine.dispatch('education.dropOut');
+    assert.equal(state.education.credits[0].years, 2, 'two years banked');
+    state.yearly = {};
+    engine.rng.chance = () => true;
+    engine.dispatch('education.enroll', 'bachelor:online:business:full');
+    assert.equal(state.education.enrolled.totalYears, 2, 'finishes in two more years');
+    assert.equal(state.education.credits.length, 0, 'credit used');
+  },
+
+  'records can be sealed or pardoned; violent crimes cannot be sealed'() {
+    const { engine, state } = setup(83, 40);
+    state.legal.record.push(
+      { offenseId: 'shoplifting', name: 'Shoplifting', severity: 'misdemeanor', age: 30, sentence: '$500 fine' },
+      { offenseId: 'burglary', name: 'Residential Burglary', severity: 'felony', age: 31, sentence: '2 yr prison' },
+      { offenseId: 'armedRobbery', name: 'Armed Robbery', severity: 'felony', age: 32, sentence: '4 yr prison' },
+      { offenseId: 'wireFraud', name: 'Wire Fraud', severity: 'felony', age: 25, sentence: '1 yr prison' },
+    );
+    const [shop, burg, rob, fraud] = state.legal.record;
+    assert.ok(sealStatus(state, shop).ok && sealStatus(state, burg).ok);
+    assert.match(sealStatus(state, rob).reason, /Violent/);
+    assert.match(sealStatus(state, fraud).reason, /pardoned/);
+    state.finances.cash = 5000;
+    engine.rng.chance = () => true;
+    engine.dispatch('legal.sealRecord');
+    assert.ok(shop.sealed && burg.sealed && !rob.sealed);
+    assert.ok(hasFelony(state), 'the robbery still counts');
+    engine.dispatch('legal.seekPardon');
+    assert.ok(rob.pardoned, 'the most serious felony was pardoned');
+    state.yearly = {};
+    engine.dispatch('legal.seekPardon');
+    assert.ok(fraud.pardoned, 'federal pardon');
+    assert.equal(hasFelony(state), false, 'rights restored');
+  },
+
+  'the death penalty: only in some states, only after trial, and executions only where they happen'() {
+    const tx = setup(84, 30);
+    tx.state.character.regionId = 'sunbelt';
+    charge(tx.engine.context(), { offenseId: 'felonyMurder', context: 'test', evidence: 0.95 });
+    const court = tx.state.prompts.find((p) => p.type === 'legal.court');
+    tx.engine.rng.chance = () => true;
+    tx.engine.resolvePrompt(court.id, 'publicDefender');
+    const inc = tx.state.legal.incarceration;
+    assert.ok(inc?.deathRow, 'sentenced to death in Texas');
+    assert.equal(tx.state.legal.record.at(-1).sentence, 'death sentence');
+    inc.deathRow.sentencedAge = tx.state.character.age - 12;
+    tx.engine.rng.chance = (p) => p > 0.05;
+    deathRowTick(tx.engine.context());
+    assert.equal(tx.state.character.alive, false);
+    assert.match(tx.state.character.causeOfDeath, /Executed by the State of Texas/);
+
+    const il = setup(85, 30);
+    il.state.character.regionId = 'chicago';
+    charge(il.engine.context(), { offenseId: 'felonyMurder', context: 'test', evidence: 0.95 });
+    const c2 = il.state.prompts.find((p) => p.type === 'legal.court');
+    il.engine.rng.chance = () => true;
+    il.engine.resolvePrompt(c2.id, 'publicDefender');
+    assert.ok(il.state.legal.incarceration && !il.state.legal.incarceration.deathRow, 'Illinois abolished the death penalty');
+
+    const ca = setup(86, 30);
+    ca.state.character.regionId = 'sf';
+    ca.state.legal.incarceration = { yearsLeft: 99, total: 99, facility: 'death row', served: 20, deathRow: { state: 'CA', sentencedAge: 10 } };
+    ca.engine.rng.chance = (p) => p > 0.05;
+    deathRowTick(ca.engine.context());
+    assert.equal(ca.state.character.alive, true, 'California has a moratorium on executions');
+  },
+
+  'new crimes pay — until they catch up with you; an affair is not a crime but it costs'() {
+    const { engine, state } = setup(87, 30);
+    const cash = state.finances.cash;
+    engine.rng.chance = (p) => p > 0.2 && p < 0.99 ? false : false;
+    engine.dispatch('legal.scam');
+    assert.ok(state.finances.cash > cash, 'scam paid');
+    assert.ok(state.legal.investigations.some((i) => i.offenseId === 'wireFraud'), 'wire fraud may surface later');
+    state.people.list.push({ id: 'sp', firstName: 'Ana', lastName: 'Case', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: 50000, careerIncome: 50000, nationality: 'US', since: 25, compatibility: 70 });
+    engine.rng.chance = () => true;
+    engine.dispatch('legal.affair');
+    assert.ok(byId(state, 'sp').relationship <= 45, 'caught cheating');
+    assert.equal(state.legal.record.length, 0, 'not a crime');
   },
 
   'evicted young adults move back in with family or get vouchers'() {

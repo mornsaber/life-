@@ -4,8 +4,10 @@
  */
 import { commitOffense, justiceTick, JusticeResolvers } from './JusticeSystem.js';
 import { temptationTick, resolveTemptation, RiskyActions, RISKY_ACTIONS } from './Misconduct.js';
+import { PrisonActions } from './Prison.js';
+import { ClemencyActions } from './Clemency.js';
 
-const ALLOWED_IN_PRISON = new Set(['retirement.claimSocialSecurity', 'retirement.withdraw']);
+const ALLOWED_IN_PRISON = new Set(['retirement.claimSocialSecurity', 'retirement.withdraw', 'legal.seekPardon', ...Object.keys(PrisonActions).map((id) => `legal.${id}`)]);
 
 export const LegalModule = {
   id: 'legal',
@@ -13,6 +15,7 @@ export const LegalModule = {
 
   init(state) {
     state.legal ??= { record: [], investigations: [], incarceration: null, probationYears: 0, flags: {} };
+    state.legal.fugitive ??= null;
   },
 
   setup(engine) {
@@ -33,7 +36,7 @@ export const LegalModule = {
     if (!ctx.state.legal.incarceration) temptationTick(ctx);
   },
 
-  actions: { ...RiskyActions },
+  actions: { ...RiskyActions, ...PrisonActions, ...ClemencyActions },
 
   resolvers: {
     ...JusticeResolvers,

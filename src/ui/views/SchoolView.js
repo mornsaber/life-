@@ -7,7 +7,7 @@ import { esc, money, button, card, meter, kv, empty, select } from '../Component
 import { SCHOOLS, MAJORS, PROGRAMS, PROGRAM_GROUPS, majorsFor, degreeLabel } from '../../modules/education/Catalog.js';
 import { campusView } from './CampusView.js';
 import { k12View, academyCard } from './K12View.js';
-import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa } from '../../modules/education/EducationEngine.js';
+import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa, transferCredit } from '../../modules/education/EducationEngine.js';
 
 function programRow(state, id) {
   const p = PROGRAMS[id];
@@ -17,8 +17,9 @@ function programRow(state, id) {
   const check = enrollmentEligibility(state, id, probeSchool, probeMajor);
   const blocking = !check.ok && !['Not offered there'].includes(check.reason);
   const fieldsText = p.fields ? ` · Prepares for: ${p.fields.join(', ')}` : '';
+  const credit = transferCredit(state, id).years;
   return `<li class="program ${blocking ? 'locked' : ''}" data-collect-root>
-    <div><b>${esc(p.name)}</b><small>${p.years} yr full-time${p.stipend ? ` · funded + ${money(p.stipend)} stipend` : ''}${p.minGpa ? ` · GPA ${p.minGpa}+` : ''}${p.minSmarts ? ` · smarts ${p.minSmarts}+` : ''}${esc(fieldsText)}</small>
+    <div><b>${esc(p.name)}</b><small>${p.years} yr full-time${credit ? ` (−${credit} yr transfer credit)` : ''}${p.stipend ? ` · funded + ${money(p.stipend)} stipend` : ''}${p.minGpa ? ` · GPA ${p.minGpa}+` : ''}${p.minSmarts ? ` · smarts ${p.minSmarts}+` : ''}${esc(fieldsText)}</small>
       ${blocking ? `<small class="why">${esc(check.reason)}</small>` : ''}</div>
     <div class="enroll-form">
       <input type="hidden" data-part="program" value="${id}">
@@ -45,8 +46,10 @@ export function schoolView(state) {
   const degrees = state.education.degrees.length
     ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');
+  const credits = state.education.credits ?? [];
+  const banked = credits.length ? `<h4 class="sub">Transfer credit</h4><ul class="history">${credits.map((c) => `<li>📑 ${c.years} yr toward ${esc(PROGRAMS[c.programId].name)} <small>from age ${c.age}${state.character.age - c.age > 10 ? ' · older than 10 yrs, counts half' : ''}</small></li>`).join('')}</ul>` : '';
   const kid = state.character.age < 17 && !state.education.degrees.length;
   return `${k12View(state)}${current}${academyCard(state)}${campusView(state)}
     ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
-    ${card('Diplomas', degrees, { icon: '📜' })}`;
+    ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
 }

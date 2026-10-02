@@ -18,7 +18,7 @@
  * bus (credential:suspend/reinstate, career:clearanceRevoked, legal:offense,
  * retirement:addPension, housing:sell).
  */
-import { randomName, yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
+import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf } from '../life/Regions.js';
@@ -394,7 +394,7 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
   }
   // Custody of minor children.
   for (const child of minorChildren(state).filter((c) => c.otherParentId === spouse.id || !c.otherParentId)) {
-    const record = state.legal.record.some((r) => r.severity === 'felony') || isIncarcerated(state);
+    const record = hasFelony(state) || isIncarcerated(state);
     const addiction = state.health?.conditions.some((c) => !c.remission && ['alcohol', 'opioids'].includes(c.id));
     const roll = rng.float(0, 1) + (record || addiction ? 0.4 : 0) - (child.relationship - 70) / 200;
     child.custody = roll < 0.35 ? 'you' : roll < 0.75 ? 'joint' : 'ex';
@@ -642,7 +642,7 @@ export const PeopleEngine = {
       const { state } = ctx;
       if (state.character.age < 25) return ctx.toast('Adoptive parents must be 25+.', 'warn');
       if (state.people.expecting) return ctx.toast('A child is already on the way.', 'warn');
-      if (state.legal.record.some((r) => r.severity === 'felony')) return ctx.toast('Agencies won\'t approve applicants with a felony record.', 'warn');
+      if (hasFelony(state)) return ctx.toast('Agencies won\'t approve applicants with a felony record.', 'warn');
       if (state.finances.cash < 25000) return ctx.toast('Adoption costs about $25,000.', 'warn');
       ctx.spend(25000, 'Adoption fees');
       state.people.expecting = { since: state.character.age, adopted: true };

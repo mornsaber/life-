@@ -20,6 +20,7 @@ import { CREDENTIALS } from '../src/modules/credentials/CredentialRegistry.js';
 import { EXAMS } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { RISKY_ACTIONS } from '../src/modules/legal/index.js';
 import { REGIONS } from '../src/modules/life/Regions.js';
+import { STATES } from '../src/modules/life/States.js';
 import { DUTIES } from '../src/modules/career/ManagementEngine.js';
 import { Renderer, VIEWS } from '../src/ui/Renderer.js';
 import { OFFICES } from '../src/modules/politics/index.js';
@@ -164,6 +165,10 @@ function checkInvariants(state) {
   }
   assert.ok(!(state.military.deserter && svcNow), 'deserter still serving');
   assert.ok(!(state.career.leave && state.career.job), 'military leave and a job at once');
+  const inc = state.legal.incarceration;
+  if (inc?.deathRow) assert.ok(['active', 'moratorium', 'rare'].includes(STATES[inc.deathRow.state]?.deathPenalty), `death row in ${inc.deathRow.state}`);
+  assert.ok(!(inc && state.legal.fugitive), 'fugitive in prison');
+  assert.ok((state.education.credits ?? []).every((c) => PROGRAMS[c.programId] && c.years > 0), 'transfer credits');
   const plan = state.finances.ch13;
   assert.ok(!plan || (plan.yearsLeft > 0 && plan.annual > 0), 'chapter 13 plan');
   assert.ok(Number.isFinite(state.finances.cash), 'cash finite');
@@ -187,6 +192,12 @@ function randomActions(state) {
   const age = state.character.age;
   const tries = [];
   const job = state.career.job;
+  if (state.legal.incarceration) {
+    for (const id of ['prisonStudy', 'prisonWork', 'prisonProgram', 'prisonVisit', 'prisonWorkout', 'prisonParole']) if (player.chance(0.5)) tries.push(() => act(`legal.${id}`));
+    if (player.chance(0.1)) tries.push(() => act('legal.prisonAppeal', player.pick(['lawyer', 'proSe'])));
+    if (player.chance(0.05)) tries.push(() => act(player.pick(['legal.prisonGang', 'legal.prisonEscape', 'legal.seekPardon'])));
+  }
+  if (state.legal.record.length && player.chance(0.1)) tries.push(() => act(player.pick(['legal.sealRecord', 'legal.seekPardon'])));
   if (age >= 15) tries.push(() => act('credentials.pursue', player.pick(CRED_IDS)));
   if (age >= 18 && player.chance(0.02)) tries.push(() => act('finances.fileBankruptcy', player.pick(['7', '13'])));
   if (state.career.leave && player.chance(0.3)) tries.push(() => act(player.chance(0.8) ? 'career.returnFromLeave' : 'career.resignFromLeave'));

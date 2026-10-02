@@ -397,7 +397,9 @@ export function highestDegree(state) {
   return state.education.degrees.reduce((best, d) => (!best || DEGREE_RANK[d.type] > DEGREE_RANK[best.type] ? d : best), null);
 }
 
-export const hasFelony = (state) => state.legal.record.some((r) => r.severity === 'felony');
+/** Convictions employers, licensing boards and recruiters can see: sealed records are hidden and pardons restore your rights. */
+export const visibleRecord = (state) => state.legal.record.filter((r) => !r.sealed && !r.pardoned);
+export const hasFelony = (state) => visibleRecord(state).some((r) => r.severity === 'felony');
 export const isIncarcerated = (state) => Boolean(state.legal.incarceration);
 
 /**

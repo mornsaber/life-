@@ -3,7 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
-import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName } from '../core/State.js';
+import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
   esc, money, compactMoney, button, card, chip, meter, statPanel, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
@@ -84,7 +84,8 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    const risky = RISKY_ACTIONS.map((r) => button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: state.character.age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: r.desc })).join('');
+    const partnered = (state.people?.list ?? []).some((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
+    const risky = RISKY_ACTIONS.map((r) => button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: state.character.age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered), hint: r.desc })).join('');
     return `${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances.</p><div class="action-grid">${risky}</div>`, { icon: '😈', accent: 'red' })}`;
   },
@@ -316,7 +317,7 @@ export class Renderer {
     const responders = [...state.emergency.history, ...activeResponders];
     const responder = responders.sort((a, b) => b.saves - a.saves)[0];
     const moh = state.honors.some((h) => h.id === 'moh');
-    const felon = state.legal.record.some((r) => r.severity === 'felony');
+    const felon = hasFelony(state);
 
     let epitaph = 'They lived a quiet life.';
     if (moh) epitaph = 'Above and beyond the call of duty.';

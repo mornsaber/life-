@@ -18,7 +18,7 @@
  * }
  */
 import { pickFresh } from '../../core/Pools.js';
-import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony } from '../../core/State.js';
+import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { credentialName } from '../credentials/CredentialRegistry.js';
@@ -53,7 +53,7 @@ export function joinEligibility(state, serviceId) {
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (isOnActiveDuty(state)) return { ok: false, reason: 'On active duty' };
   if (hasFelony(state)) return { ok: false, reason: 'Fails background check' };
-  if (serviceId === 'police' && state.legal.record.some((r) => r.severity === 'misdemeanor' && state.character.age - r.age <= 5)) return { ok: false, reason: 'Recent criminal record' };
+  if (serviceId === 'police' && visibleRecord(state).some((r) => r.severity === 'misdemeanor' && state.character.age - r.age <= 5)) return { ok: false, reason: 'Recent criminal record' };
   if (svc.excludesProfession && state.career.job?.professionId === svc.excludesProfession) return { ok: false, reason: 'Sworn officers can\'t join' };
   for (const [stat, min] of Object.entries(svc.requirements)) {
     if (state.stats[stat] < min) return { ok: false, reason: `Needs ${min}+ ${stat}` };
