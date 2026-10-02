@@ -85,5 +85,50 @@ export const FireVolunteer = {
         { id: 'deny', label: 'Deny entry and wait for regional HazMat', success: 0.92, risk: 0.04, xp: 12, successText: 'Textbook isolation. The team arrived and mitigated it.', failText: 'The driver died before the team arrived.' },
       ],
     },
+
+    {
+      id: 'chimney', title: '🏚️ Chimney Fire',
+      text: 'Flames are shooting from a chimney on an old farmhouse. The family is outside in their pajamas.',
+      options: [
+        { id: 'attic', label: 'Check the attic for extension', cert: 'ff1', success: 0.78, risk: 0.35, xp: 22, successText: 'You caught fire creeping into the rafters and opened it up before it took the roof.', failText: 'The attic flashed while you were up there; you bailed down a ladder.' },
+        { id: 'chimney', label: 'Drop a chimney bomb from the roof', cert: 'ff2', success: 0.8, risk: 0.3, xp: 20, successText: 'The chimney fire died in seconds. The family slept at home that night.', failText: 'The flue was cracked and fire got into the walls.' },
+        { id: 'outside', label: 'Protect the house from outside and wait', success: 0.9, risk: 0.05, xp: 10, successText: 'It burned itself out in the flue.', failText: 'The roof caught. The family lost the upstairs.' },
+      ],
+    },
+    {
+      id: 'ice', title: '🧊 Ice Rescue',
+      text: 'A teenager broke through the ice on the reservoir chasing a dog. He is clinging to the edge.',
+      options: [
+        { id: 'suit', label: 'Suit up and go out on a tethered line', cert: 'ff2', success: 0.75, risk: 0.45, xp: 32, stat: 'fitness', heroic: true, save: true, successText: 'You reached him with seconds to spare. The dog made it out on its own, of course.', failText: 'The ice gave way twice; your crew hauled you both back half-frozen.' },
+        { id: 'reach', label: 'Reach-throw-row from shore', success: 0.6, risk: 0.1, xp: 20, save: true, successText: 'He caught the throw bag on the third try.', failText: 'His hands were too numb to hold the rope. Divers recovered him later.' },
+      ],
+    },
+    {
+      id: 'elevator', title: '🛗 Stuck Elevator',
+      text: 'An elevator stalled between floors at the senior center. A woman inside is having chest pains.',
+      options: [
+        { id: 'emt', label: 'Talk her through it and assess through the gap', cert: 'emt', success: 0.85, risk: 0, xp: 18, stat: 'smarts', save: true, successText: 'Your calm voice and aspirin kept her stable until the car was moved.', failText: 'She went into arrest just as the doors opened.' },
+        { id: 'force', label: 'Force the hoistway doors and pull her out', success: 0.7, risk: 0.25, xp: 20, stat: 'fitness', successText: 'Out in four minutes.', failText: 'The car shifted; you jumped back just in time.' },
+        { id: 'tech', label: 'Wait for the elevator technician', success: 0.8, risk: 0, xp: 8, successText: 'The tech got it moving. She was fine.', failText: 'The tech took ninety minutes. It was a rough wait.' },
+      ],
+    },
+    {
+      id: 'barn', title: '🐄 Barn Fire',
+      text: 'A dairy barn is fully involved. Forty cows are still inside and the farmer is trying to go back in.',
+      options: [
+        { id: 'animals', label: 'Open the far doors and drive the herd out', success: 0.55, risk: 0.55, xp: 28, stat: 'fitness', heroic: true, successText: 'The herd stampeded out the back. The farmer cried.', failText: 'The smoke drove you back. Only some made it.' },
+        { id: 'farmer', label: 'Physically stop the farmer from going in', success: 0.85, risk: 0.1, xp: 15, save: true, successText: 'He fought you, then hugged you.', failText: 'He slipped past you; you had to go in after him.' },
+        { id: 'tender', label: 'Run the water tender shuttle', success: 0.92, risk: 0.04, xp: 12, successText: 'You kept water flowing all night.', failText: 'The draft site froze and the attack lines went dry.' },
+      ],
+    },
+    {
+      id: 'co', title: '🫥 Carbon Monoxide Alarm',
+      text: 'A CO alarm is sounding at a duplex. The tenant says it is "just broken." Her kids look sleepy.',
+      options: [
+        { id: 'meter', label: 'Meter the building and evacuate', cert: 'hazmatOps', success: 0.92, risk: 0.05, xp: 18, stat: 'smarts', save: true, successText: '400 ppm. A cracked furnace exchanger. You got everyone out.', failText: 'Your meter needed calibrating; you nearly cleared the house.' },
+        { id: 'evac', label: 'Get everyone outside to fresh air first', success: 0.85, risk: 0.1, xp: 15, save: true, successText: 'The kids perked up outside. The utility shut off the gas.', failText: 'One child had to be transported.' },
+        { id: 'leave', label: 'Reset the alarm and clear', success: 0.3, risk: 0, xp: 2, successText: 'It really was a bad detector.', failText: 'You were called back the next morning. It was not a bad detector.' },
+      ],
+    },
   ],
 };

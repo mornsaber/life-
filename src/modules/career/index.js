@@ -14,6 +14,7 @@ import { WorkplaceActions } from './WorkplaceActions.js';
 import { ManagementActions, ManagementResolvers } from './ManagementEngine.js';
 import { ContractingResolvers, setWorkforce } from './ContractingSystem.js';
 import { UnionActions, UnionResolvers } from './UnionsAndLabor.js';
+import { workplaceEvent, resolveWorkEvent } from './WorkplaceEvents.js';
 
 export const CareerModule = {
   id: 'career',
@@ -90,7 +91,10 @@ export const CareerModule = {
     state.career ??= { job: null, history: [] };
   },
 
-  onAgeUp: careerOnAgeUp,
+  onAgeUp(ctx) {
+    careerOnAgeUp(ctx);
+    workplaceEvent(ctx);
+  },
 
   actions: {
     ...InterviewSystem.actions,
@@ -110,5 +114,6 @@ export const CareerModule = {
     ...ManagementResolvers,
     ...ContractingResolvers,
     ...UnionResolvers,
+    workEvent: resolveWorkEvent,
   },
 };

@@ -87,5 +87,41 @@ export const SearchAndRescue = {
         { id: 'creek', label: 'Search the creek bed alone', success: 0.55, risk: 0.25, xp: 20, save: true, successText: 'You heard crying near the creek and found him.', failText: 'You slipped on the rocks; another team found the child.' },
       ],
     },
+
+    {
+      id: 'dementia', title: '👴 Missing Man with Dementia',
+      text: 'An 81-year-old with dementia walked away from home at dusk. It will drop below freezing tonight.',
+      options: [
+        { id: 'k9', label: 'Run your K9 from his front door', cert: 'k9Handler', success: 0.88, risk: 0.05, xp: 26, save: true, successText: 'Your dog found him in a drainage culvert, cold but alive.', failText: 'The scent pool was too contaminated by family members.' },
+        { id: 'hasty', label: 'Hasty search of likely routes', cert: 'landNav', success: 0.72, risk: 0.1, xp: 22, stat: 'smarts', save: true, successText: 'He was walking toward his childhood home, two miles away. You found him.', failText: 'He was found at dawn by a newspaper carrier.' },
+        { id: 'flyers', label: 'Coordinate volunteers and flyers', success: 0.6, risk: 0, xp: 14, save: true, successText: 'A gas station clerk called it in.', failText: 'Nobody had seen him.' },
+      ],
+    },
+    {
+      id: 'mine', title: '⛏️ Abandoned Mine Shaft',
+      text: 'Two teenagers went exploring an abandoned mine. One fell; the other ran for help.',
+      options: [
+        { id: 'rope', label: 'Rig a lowering system into the shaft', cert: 'ropeRescue', success: 0.75, risk: 0.45, xp: 36, stat: 'smarts', heroic: true, save: true, successText: 'You brought him up with a broken leg and a lifetime lesson.', failText: 'Bad air at the bottom forced you back up.' },
+        { id: 'meter', label: 'Wait for gas monitoring and a mine rescue team', success: 0.85, risk: 0.05, xp: 15, save: true, successText: 'The team found pockets of methane; waiting saved lives.', failText: 'By the time they arrived, he was hypothermic.' },
+      ],
+    },
+    {
+      id: 'kayak', title: '🛶 Overdue Kayakers',
+      text: 'Two kayakers are overdue on a whitewater run. Their car is still at the put-in.',
+      options: [
+        { id: 'swift', label: 'Swiftwater team down the river corridor', cert: 'swiftwater', success: 0.78, risk: 0.4, xp: 32, stat: 'fitness', heroic: true, save: true, successText: 'You found them on a gravel bar, one with a dislocated shoulder.', failText: 'The river was too high; you had to call a helicopter.' },
+        { id: 'banks', label: 'Search from the banks', cert: 'wfr', success: 0.65, risk: 0.1, xp: 20, save: true, successText: 'You spotted their signal mirror.', failText: 'They hiked out on their own the next morning.' },
+        { id: 'base', label: 'Staff base camp and the radio', success: 0.9, risk: 0, xp: 10, successText: 'You logged every team in and out. Clean operation.', failText: 'A team checked in late and you lost track of them for an hour.' },
+      ],
+    },
+    {
+      id: 'stormLost', title: '⛈️ Scouts in a Storm',
+      text: 'A scout troop is pinned down on a ridge by a lightning storm. One scout has a broken ankle.',
+      options: [
+        { id: 'carry', label: 'Litter carry down in the storm', cert: 'wfr', success: 0.7, risk: 0.35, xp: 30, stat: 'fitness', save: true, successText: 'Six hours of carrying. Every scout came home.', failText: 'Lightning struck close; the team retreated and sheltered overnight.' },
+        { id: 'shelter', label: 'Talk the troop leader through sheltering in place', success: 0.8, risk: 0.05, xp: 14, stat: 'smarts', successText: 'They rode out the storm in a low saddle. Everyone walked down at dawn.', failText: 'The radio cut out mid-instruction; it was a long night.' },
+        { id: 'icp', label: 'Run the incident from the trailhead', cert: 'ics300', success: 0.88, risk: 0.05, xp: 22, stat: 'smarts', successText: 'You staged teams for the weather window. Clean rescue at dawn.', failText: 'Radio coverage failed and teams lost contact.' },
+      ],
+    },
   ],
 };

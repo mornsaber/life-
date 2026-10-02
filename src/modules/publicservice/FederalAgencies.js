@@ -6,6 +6,7 @@
  *
  * state.publicService.federal = { stability: 0–100, shutdown: bool }
  */
+import { pickFresh } from '../../core/Pools.js';
 import { L } from '../career/Ladder.js';
 import { addHonor } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -147,7 +148,7 @@ function awardCivil(ctx, awardId, citation) {
   ctx.toast(`${a.icon} ${a.name}`, 'honor');
 }
 
-const AGENCY_EVENTS = {
+export const AGENCY_EVENTS = {
   regulatory: [
     { id: 'hearing', title: 'Congressional Hearing', text: 'You\'ve been called to testify before a House oversight subcommittee about a bank failure your team examined.', options: [
       { id: 'prepare', label: '📚 Prepare exhaustively and testify candidly', check: 'smarts', perf: 8, award: 'superiorHonor', stability: 2 },
@@ -156,6 +157,10 @@ const AGENCY_EVENTS = {
     { id: 'reorg', title: 'Agency Reorganization', text: 'Leadership is merging two divisions and asking for volunteers to stand up the new office.', options: [
       { id: 'volunteer', label: '🙋 Volunteer to build the new office', perf: 6, stress: 8, boss: 4 },
       { id: 'stay', label: '🪑 Stay where you are', perf: 0 },
+    ] },
+    { id: 'revolving', title: 'Job Offer from a Bank', text: 'A bank you supervise offers you a senior job at triple your salary — while your exam of them is still open.', options: [
+      { id: 'recuse', label: '📋 Recuse yourself and report the offer', perf: 4, boss: 2 },
+      { id: 'soften', label: '🤫 Soften the findings and take the job later', perf: 2, stress: 6 },
     ] },
   ],
   foreignService: [
@@ -167,11 +172,23 @@ const AGENCY_EVENTS = {
       { id: 'firm', label: '🧊 Firm, precise and by the book', check: 'smarts', perf: 6 },
       { id: 'improvise', label: '🎭 Soften it to preserve the relationship', perf: -2, boss: -6, stability: 1 },
     ] },
+    { id: 'visa', title: 'Visa Line', text: 'A desperate family asks you to "make an exception" on a visa refusal; a local fixer offers cash.', options: [
+      { id: 'rules', label: '📜 Apply the law and refer the bribe attempt', perf: 4 },
+      { id: 'review', label: '🔍 Re-interview them fairly', check: 'smarts', perf: 3 },
+    ] },
+    { id: 'detained', title: 'American Detained', text: 'An American student was arrested at a protest. Consular access is being delayed.', options: [
+      { id: 'press', label: '🏛️ Press the ministry every day', perf: 6, stress: 6, stability: 1 },
+      { id: 'quiet', label: '🤝 Work quiet channels', check: 'smarts', perf: 5 },
+    ] },
   ],
   oig: [
     { id: 'appointee', title: 'Investigating an Appointee', text: 'Your audit points to a politically connected appointee steering contracts to a donor.', options: [
       { id: 'pursue', label: '🔍 Pursue it to the end', perf: 8, stability: -4, boss: -4, award: 'distinguished', risk: 0.3 },
       { id: 'close', label: '📁 Close it as "insufficient evidence"', perf: -6, boss: 6 },
+    ] },
+    { id: 'whistle', title: 'Whistleblower', text: 'A frightened employee brings you proof that a program director falsified safety data.', options: [
+      { id: 'protect', label: '🛡️ Open a case and shield the whistleblower', perf: 7, award: 'superiorHonor', stress: 6 },
+      { id: 'refer', label: '📨 Refer it back to the agency', perf: -3 },
     ] },
   ],
   parkService: [
@@ -183,11 +200,19 @@ const AGENCY_EVENTS = {
       { id: 'haze', label: '📢 Step in and haze the bear away', perf: 6, danger: 0.05, check: 'fitness' },
       { id: 'close', label: '🚫 Close the trail and clear the area', perf: 3 },
     ] },
+    { id: 'bearJam', title: 'Bear Jam', text: 'A grizzly and two cubs are on the road; tourists are out of their cars with phones.', options: [
+      { id: 'clear', label: '📢 Clear the crowd and move the bears along', perf: 5, danger: 0.05 },
+      { id: 'close', label: '🚧 Close the road for the afternoon', perf: 3 },
+    ] },
   ],
   intelligence: [
     { id: 'dissent', title: 'Analytic Dissent', text: 'Senior leadership wants your assessment rewritten to support a policy they\'ve already announced.', options: [
       { id: 'stand', label: '📑 Stand by your analysis', perf: 2, boss: -10, award: 'superiorHonor', stability: 2 },
       { id: 'rewrite', label: '✏️ Soften the conclusions', perf: 0, boss: 8, stability: -4 },
+    ] },
+    { id: 'source', title: 'Source in Danger', text: 'Your best source thinks she has been discovered and wants out tonight.', options: [
+      { id: 'exfil', label: '🚨 Push for an emergency exfiltration', perf: 8, stress: 10, award: 'distinguished' },
+      { id: 'calm', label: '🧊 Calm her down and keep her in place', check: 'smarts', perf: 4, stress: 6 },
     ] },
   ],
 };
@@ -272,7 +297,7 @@ export const FederalAgencies = {
     if (job.abilities.includes('policy') && rng.chance(0.5)) {
       ctx.prompt({ type: 'federal.policy', icon: '📜', title: POLICY_DECISION.title, text: `Political stability: ${fed.stability}/100.\n${POLICY_DECISION.text}`, options: POLICY_DECISION.options.map((o) => ({ id: o.id, label: o.label })) });
     } else if (AGENCY_EVENTS[job.professionId] && rng.chance(0.4)) {
-      const event = rng.pick(AGENCY_EVENTS[job.professionId]);
+      const event = pickFresh(rng, state, `federal.${job.professionId}`, AGENCY_EVENTS[job.professionId]);
       ctx.prompt({
         type: 'federal.event',
         icon: '🦅',

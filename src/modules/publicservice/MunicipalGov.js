@@ -8,6 +8,7 @@
  * choices; everyone experiences the consequences through training budgets,
  * staffing and community approval.
  */
+import { pickFresh } from '../../core/Pools.js';
 import { L } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 
@@ -140,7 +141,7 @@ const BUDGET_CHOICES = [
   { id: 'balanced', label: '⚖️ Hold the line on a balanced budget', fiscal: 4, approval: 0, perf: 3 },
 ];
 
-const MUNICIPAL_EVENTS = {
+export const MUNICIPAL_EVENTS = {
   police: {
     title: 'Viral Arrest Video', text: 'A bystander video of your department making a rough arrest is trending. The community is demanding answers.',
     options: [
@@ -194,6 +195,73 @@ function adjustCity(state, { fiscal = 0, approval = 0 }) {
   city.fiscalHealth = Math.round(clamp(city.fiscalHealth + fiscal, 0, 100));
   city.approval = Math.round(clamp(city.approval + approval, 0, 100));
 }
+
+/** More municipal events per department, so city careers don't repeat one scenario. */
+const MORE_MUNICIPAL_EVENTS = {
+  police: [
+    { id: 'bodycam', title: 'Body Camera Footage', text: 'Your partner\'s body camera "malfunctioned" during a use-of-force incident. Yours was recording.', options: [
+      { id: 'release', label: '📼 Turn your footage over to internal affairs', approval: 5, perf: 4, coworkers: -10 },
+      { id: 'delete', label: '🗑️ Let your footage "auto-delete"', approval: -2, coworkers: 6, stress: 8 },
+    ] },
+    { id: 'community', title: 'Community Policing Grant', text: 'A federal grant would fund foot patrols in the neighborhood with the most shootings.', options: [
+      { id: 'walk', label: '🚶 Volunteer to walk the beat', approval: 6, perf: 5, stress: 4 },
+      { id: 'pass', label: '🚓 Stay on patrol in your car', approval: 0 },
+    ] },
+  ],
+  fire: [
+    { id: 'cancer', title: 'Turnout Gear Study', text: 'A study links your department\'s old turnout gear to cancer. Replacing it costs $2 million.', options: [
+      { id: 'push', label: '📣 Push the union and council to replace it', approval: 3, fiscal: -4, perf: 3, boss: -2 },
+      { id: 'wait', label: '⏳ Wait for next year\'s budget', coworkers: -4 },
+    ] },
+    { id: 'school', title: 'Fire Safety Week', text: 'The schools want a crew for fire safety week, during your days off.', options: [
+      { id: 'yes', label: '🧯 Do it on your own time', approval: 5, perf: 2, stress: 2 },
+      { id: 'no', label: '🛋️ Enjoy your days off', approval: 0 },
+    ] },
+  ],
+  ems: [
+    { id: 'frequent', title: 'Frequent Flyer', text: 'The same caller has dialed 911 forty times this year — loneliness more than illness.', options: [
+      { id: 'refer', label: '🤝 Connect him with community paramedicine', approval: 4, perf: 4, fiscal: 1 },
+      { id: 'transport', label: '🚑 Keep transporting every time', fiscal: -2 },
+    ] },
+    { id: 'mci', title: 'Bus Crash', text: 'A school bus overturned. Twenty-two kids, four ambulances.', options: [
+      { id: 'triage', label: '🏷️ Run START triage as first-in medic', perf: 8, approval: 4, stress: 10, check: 'smarts' },
+      { id: 'transport', label: '🚑 Load the worst patient and go', perf: 3, stress: 6 },
+    ] },
+  ],
+  municipalAdmin: [
+    { id: 'contract', title: 'Garbage Contract', text: 'The low bidder for the city garbage contract is the mayor\'s brother-in-law.', options: [
+      { id: 'rebid', label: '📑 Recommend rebidding it', approval: 4, boss: -6 },
+      { id: 'award', label: '✍️ Award it to the low bidder', fiscal: 2, approval: -3, boss: 4 },
+    ] },
+    { id: 'ransomware', title: 'Ransomware', text: 'Hackers encrypted the city\'s billing systems and want $400,000 in bitcoin.', options: [
+      { id: 'restore', label: '💾 Refuse and rebuild from backups', fiscal: -3, approval: 2, perf: 4, stress: 8 },
+      { id: 'pay', label: '💸 Pay the ransom quietly', fiscal: -5, approval: -4, perf: -2 },
+    ] },
+  ],
+  publicWorks: [
+    { id: 'mainBreak', title: 'Water Main Break', text: 'A 36-inch main burst downtown on the coldest night of the year.', options: [
+      { id: 'night', label: '🔧 Lead the crew through the night', perf: 7, approval: 4, stress: 8 },
+      { id: 'contract', label: '📞 Call in an emergency contractor', fiscal: -4, perf: 3 },
+    ] },
+    { id: 'lead', title: 'Lead Service Lines', text: 'Testing finds lead above the action level in an older neighborhood.', options: [
+      { id: 'announce', label: '📢 Notify residents today and hand out filters', approval: 3, perf: 5, boss: -3 },
+      { id: 'retest', label: '🧪 Quietly retest first', approval: -6, perf: -2 },
+    ] },
+  ],
+  planning: [
+    { id: 'housing', title: 'Affordable Housing Fight', text: 'A 200-unit affordable project faces a packed hearing of angry neighbors.', options: [
+      { id: 'recommend', label: '🏘️ Recommend approval', approval: -2, fiscal: 2, perf: 4 },
+      { id: 'shrink', label: '✂️ Recommend cutting it to 80 units', approval: 2, perf: 1 },
+    ] },
+    { id: 'historic', title: 'Historic District', text: 'A developer wants to demolish a crumbling 1890s storefront for a parking garage.', options: [
+      { id: 'protect', label: '🏛️ Recommend historic designation', approval: 3, fiscal: -1, perf: 3 },
+      { id: 'garage', label: '🚗 Recommend the garage', fiscal: 3, approval: -3 },
+    ] },
+  ],
+};
+
+export const municipalPool = (professionId) => [{ id: 'main', ...MUNICIPAL_EVENTS[professionId] }, ...(MORE_MUNICIPAL_EVENTS[professionId] ?? [])];
+const findMunicipalEvent = (professionId, eventId = 'main') => municipalPool(professionId).find((e) => e.id === eventId) ?? municipalPool(professionId)[0];
 
 function applyEventOption(ctx, option) {
   const { state, rng } = ctx;
@@ -256,14 +324,14 @@ export const MunicipalGov = {
         options: BUDGET_CHOICES.map((c) => ({ id: c.id, label: c.label, hint: `Fiscal ${c.fiscal >= 0 ? '+' : ''}${c.fiscal} · Approval ${c.approval >= 0 ? '+' : ''}${c.approval}` })),
       });
     } else if (MUNICIPAL_EVENTS[job.professionId] && rng.chance(0.35)) {
-      const event = MUNICIPAL_EVENTS[job.professionId];
+      const event = pickFresh(rng, state, `municipal.${job.professionId}`, municipalPool(job.professionId));
       ctx.prompt({
         type: 'municipal.event',
         icon: '🏙️',
         title: event.title,
         text: `${city.name}\n${event.text}`,
         options: event.options.map((o) => ({ id: o.id, label: o.label })),
-        data: { professionId: job.professionId },
+        data: { professionId: job.professionId, eventId: event.id },
       });
     }
 
@@ -282,7 +350,7 @@ export const MunicipalGov = {
       ctx.emit('career:adjust', { performance: choice.perf + Math.round((city.approval - 50) / 10), boss: 0 });
     },
     event(ctx, data, optionId) {
-      const option = MUNICIPAL_EVENTS[data.professionId].options.find((o) => o.id === optionId);
+      const option = findMunicipalEvent(data.professionId, data.eventId).options.find((o) => o.id === optionId);
       applyEventOption(ctx, option);
       ctx.log(`You chose: ${option.label.slice(2).trim()}.`, '🏙️');
     },

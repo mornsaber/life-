@@ -17,6 +17,7 @@
  *   complaints, onLeave, joinedAge, budget: { annual, left }, k9: { name, breed, age } | null
  * }
  */
+import { pickFresh } from '../../core/Pools.js';
 import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -104,7 +105,7 @@ function dispatchPrompt(ctx, serviceId) {
   const { state } = ctx;
   const svc = SERVICES[serviceId];
   const member = state.emergency[serviceId];
-  const call = ctx.rng.pick(svc.dispatches);
+  const call = pickFresh(ctx.rng, state, `dispatch.${serviceId}`, svc.dispatches);
   ctx.prompt({
     type: 'emergency.dispatch',
     icon: svc.icon,

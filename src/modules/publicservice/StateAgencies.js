@@ -8,6 +8,7 @@
  * gubernatorial appointment (politics module). Tenured professors can't be
  * fired or demoted for performance.
  */
+import { pickFresh } from '../../core/Pools.js';
 import { L } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 
@@ -226,7 +227,7 @@ export const STATE_PROFESSIONS = {
 /* Agency events                                                       */
 /* ------------------------------------------------------------------ */
 
-const EVENTS = {
+export const EVENTS = {
   statePolice: { title: 'High-Speed Pursuit', text: 'A stolen car flees at 110 mph toward a school zone.', options: [
     { id: 'pursue', label: '🚔 Stay on him', perf: 6, risk: 0.2 },
     { id: 'terminate', label: '🛑 Terminate the pursuit and track by air', perf: 2 },
@@ -283,6 +284,107 @@ const EVENTS = {
   ] },
 };
 
+/** More events per agency so careers don't repeat one scenario every year. */
+const MORE_EVENTS = {
+  statePolice: [
+    { id: 'crash', title: 'Interstate Pileup', text: 'Fog caused a 30-car pileup. A minivan is burning in the median.', options: [
+      { id: 'van', label: '🔥 Get the family out of the minivan', perf: 8, risk: 0.3, stress: 6 },
+      { id: 'scene', label: '🚧 Lock down the scene and stop more crashes', perf: 5 },
+    ] },
+    { id: 'trooperDui', title: 'A Fellow Trooper', text: 'You stop a weaving car. The driver is an off-duty trooper from your own post, clearly drunk.', options: [
+      { id: 'arrest', label: '⚖️ Arrest him like anyone else', perf: 4, boss: -4, stress: 5 },
+      { id: 'ride', label: '🚗 Drive him home and say nothing', perf: 0, boss: 3 },
+    ] },
+  ],
+  corrections: [
+    { id: 'contraband', title: 'Contraband Ring', text: 'You find phones and drugs hidden in the laundry carts. The trail leads to a coworker.', options: [
+      { id: 'report', label: '📋 Report it to internal affairs', perf: 7, boss: 2, stress: 4 },
+      { id: 'warn', label: '🤐 Warn your coworker to stop', perf: -2, stress: 6 },
+    ] },
+    { id: 'suicideWatch', title: 'Suicide Watch', text: 'An inmate on watch hasn\'t moved in his cell for twenty minutes.', options: [
+      { id: 'enter', label: '🚪 Enter the cell now, alone', perf: 6, risk: 0.15 },
+      { id: 'backup', label: '📻 Call for backup first, per policy', perf: 3 },
+    ] },
+  ],
+  revenue: [
+    { id: 'hardship', title: 'Hardship Case', text: 'A widow owes $40,000 in back taxes from her late husband\'s business. She is clearly overwhelmed.', options: [
+      { id: 'plan', label: '🤝 Set up an affordable payment plan', perf: 3, boss: -1 },
+      { id: 'levy', label: '🏦 Levy her bank account', perf: 5, boss: 3, stress: 4 },
+    ] },
+  ],
+  cps: [
+    { id: 'reunify', title: 'Reunification Hearing', text: 'A mother finished rehab and wants her kids back. The foster family wants to adopt.', options: [
+      { id: 'reunify', label: '🏠 Recommend reunification', perf: 3, outcome: 'plan' },
+      { id: 'adopt', label: '📄 Recommend termination and adoption', perf: 3, outcome: 'removal' },
+    ] },
+    { id: 'caseload', title: 'Caseload Crisis', text: 'Two caseworkers quit. You now carry 34 families.', options: [
+      { id: 'overtime', label: '⏰ Work nights to see every family', perf: 6, stress: 12 },
+      { id: 'triage', label: '🗂️ Triage and tell your supervisor what\'s slipping', perf: 2, boss: 2, check: 'smarts' },
+    ] },
+  ],
+  gameWarden: [
+    { id: 'poachers', title: 'Night Poachers', text: 'Spotlights in the field after midnight. Three men with rifles and a pickup.', options: [
+      { id: 'approach', label: '🔦 Approach and make contact', perf: 7, risk: 0.2 },
+      { id: 'plate', label: '📸 Get the plate and arrest them tomorrow', perf: 4, check: 'smarts' },
+    ] },
+  ],
+  environmental: [
+    { id: 'spill', title: 'Chemical Spill', text: 'A plant upstream "accidentally" released solvent into the river. Fish are dying for three miles.', options: [
+      { id: 'maxfine', label: '⚖️ Push for the maximum penalty', perf: 6, boss: -3 },
+      { id: 'consent', label: '🤝 Negotiate a cleanup consent order', perf: 4, check: 'smarts' },
+    ] },
+  ],
+  forester: [
+    { id: 'burn', title: 'Prescribed Burn', text: 'Conditions are marginal for a planned burn. Wait and the window may close for a year.', options: [
+      { id: 'light', label: '🔥 Light it', perf: 5, risk: 0.15, check: 'smarts' },
+      { id: 'scrub', label: '🛑 Scrub the burn', perf: 1 },
+    ] },
+  ],
+  dot: [
+    { id: 'bridge', title: 'Bridge Inspection', text: 'Your inspection finds section loss on a bridge carrying 40,000 cars a day. Closing it means gridlock.', options: [
+      { id: 'close', label: '🚧 Close it today', perf: 6, boss: -2, stress: 6 },
+      { id: 'limit', label: '⚖️ Post a weight limit and monitor it', perf: 3, check: 'smarts' },
+    ] },
+  ],
+  courts: [
+    { id: 'evict', title: 'Eviction Docket', text: 'Eighty eviction cases are on today\'s docket. Most tenants have no lawyer.', options: [
+      { id: 'mediate', label: '🤝 Push every case to mediation first', perf: 4, stress: 6 },
+      { id: 'move', label: '📂 Keep the docket moving', perf: 3, boss: 2 },
+    ] },
+  ],
+  prosecution: [
+    { id: 'plea', title: 'Plea Offer', text: 'A teenager is charged with armed robbery. The evidence is solid but he has no record.', options: [
+      { id: 'youth', label: '🧑‍⚖️ Offer youthful-offender treatment', perf: 2 },
+      { id: 'trial', label: '⚖️ Take it to trial for the full sentence', perf: 6, stress: 6, check: 'smarts' },
+    ] },
+    { id: 'brady', title: 'Late Evidence', text: 'The night before trial, a detective hands you a report that undermines your key witness.', options: [
+      { id: 'disclose', label: '📨 Disclose it to the defense', perf: 1, boss: -2 },
+      { id: 'bury', label: '🗄️ Leave it in the file', perf: 6, stress: 8, offense: 'prosecutorialMisconduct' },
+    ] },
+  ],
+  publicDefender: [
+    { id: 'innocent', title: 'An Innocent Client', text: 'You are sure your client is innocent, but the DA offers time served if he pleads guilty today.', options: [
+      { id: 'trial', label: '⚖️ Advise him to go to trial', perf: 6, stress: 8, check: 'smarts' },
+      { id: 'plead', label: '🤝 Advise him to take the deal', perf: 2 },
+    ] },
+  ],
+  legislativeStaff: [
+    { id: 'lobbyist', title: 'Lobbyist Lunch', text: 'A lobbyist offers you dinner at the best steakhouse in the capital "to talk about the bill."', options: [
+      { id: 'decline', label: '🙅 Decline and meet in the office', perf: 3 },
+      { id: 'dinner', label: '🥩 Accept the dinner', perf: 4, boss: 2, stress: 2 },
+    ] },
+  ],
+  university: [
+    { id: 'student', title: 'Struggling Student', text: 'A brilliant first-generation student is about to drop out to support her family.', options: [
+      { id: 'mentor', label: '🎓 Find her a paid research position', perf: 4, stress: 4 },
+      { id: 'refer', label: '📋 Refer her to student services', perf: 1 },
+    ] },
+  ],
+};
+
+export const eventPool = (professionId) => [{ id: 'main', ...EVENTS[professionId] }, ...(MORE_EVENTS[professionId] ?? [])];
+const findEvent = (professionId, eventId = 'main') => eventPool(professionId).find((e) => e.id === eventId) ?? eventPool(professionId)[0];
+
 export const StateAgencies = {
   id: 'stateAgencies',
   order: 27,
@@ -291,21 +393,22 @@ export const StateAgencies = {
     const job = ctx.state.career.job;
     if (!job || !STATE_PROFESSIONS[job.professionId] || !ctx.rng.chance(0.35)) return;
     if (job.professionId === 'cps') ctx.stat('stress', 6);
-    const e = EVENTS[job.professionId];
+    const e = pickFresh(ctx.rng, ctx.state, `agency.${job.professionId}`, eventPool(job.professionId));
     ctx.prompt({
       type: 'stateAgencies.event',
       icon: STATE_PROFESSIONS[job.professionId].icon,
       title: e.title,
       text: `${job.employer.name}\n${e.text}`,
       options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.risk ? 'danger' : undefined })),
-      data: { professionId: job.professionId },
+      data: { professionId: job.professionId, eventId: e.id },
     });
   },
 
   resolvers: {
     event(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const o = EVENTS[data.professionId].options.find((x) => x.id === optionId);
+      const event = findEvent(data.professionId, data.eventId);
+      const o = event.options.find((x) => x.id === optionId);
       let perf = o.perf ?? 0;
       if (o.check && state.stats[o.check] + rng.int(-15, 15) < 55) {
         perf = -3;
@@ -329,7 +432,8 @@ export const StateAgencies = {
         } else ctx.log('Your judgment held up.', '🧸', 'good');
       }
       if (o.stress) ctx.stat('stress', o.stress);
-      ctx.log(`${EVENTS[data.professionId].title}: ${o.label.slice(2).trim()}.`, '🏛️');
+      if (o.offense) ctx.emit('legal:offense', { offenseId: o.offense, context: event.title.toLowerCase(), discovery: 0.3, evidence: 0.7 });
+      ctx.log(`${event.title}: ${o.label.slice(2).trim()}.`, '🏛️');
       ctx.emit('career:adjust', { performance: clamp(perf, -30, 30), boss: o.boss ?? 0 });
     },
   },

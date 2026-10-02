@@ -3,6 +3,7 @@
  * combat / duty scenarios. Deployments are shared with the Reserves (a
  * mobilized reservist deploys exactly like an active-duty member).
  */
+import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
@@ -64,6 +65,26 @@ export const COMBAT_SCENARIOS = {
         { id: 'danger', label: '💥 Hold your sector and call danger-close fires', success: 0.75, risk: 0.45, valor: 60 },
       ],
     },
+
+    {
+      id: 'culvert', title: 'Route Clearance',
+      text: 'Your convoy halts at a culvert. The lead vehicle\'s detector is chirping and the road ahead is the only way to the outpost.',
+      options: [
+        { id: 'dismount', label: '🔍 Dismount and sweep the culvert by hand', success: 0.6, risk: 0.75, valor: 84, specialty: 'engineer' },
+        { id: 'robot', label: '🤖 Send the robot and wait it out', success: 0.85, risk: 0.2, valor: 25 },
+        { id: 'detour', label: '🧭 Take the long way through the village', success: 0.65, risk: 0.45, valor: 40 },
+      ],
+    },
+    {
+      id: 'nightAttack', title: 'Night Attack on the Outpost',
+      text: 'At 0300 your combat outpost is hit from three sides. The mortar pit is taking direct fire.',
+      options: [
+        { id: 'mortar', label: '💥 Run to the mortar pit and keep it firing', success: 0.55, risk: 0.85, valor: 100 },
+        { id: 'wall', label: '🧱 Hold your sector of the wall', success: 0.75, risk: 0.5, valor: 60, specialty: 'infantry' },
+        { id: 'casualties', label: '⛑️ Run casualties to the aid station', success: 0.7, risk: 0.6, valor: 85, medicOnly: true },
+        { id: 'radio', label: '📻 Coordinate close air support', success: 0.85, risk: 0.25, valor: 45 },
+      ],
+    },
   ],
   naval: [
     {
@@ -91,6 +112,24 @@ export const COMBAT_SCENARIOS = {
         { id: 'bridge', label: '⚔️ Charge the bridge', success: 0.5, risk: 0.85, valor: 92 },
         { id: 'treat', label: '⛑️ Treat your wounded teammate under fire', success: 0.75, risk: 0.6, valor: 85, medicOnly: true },
         { id: 'hold', label: '🛡️ Hold the deck and call the helo for overwatch', success: 0.82, risk: 0.3, valor: 40 },
+      ],
+    },
+    {
+      id: 'collision', title: 'Collision at Sea',
+      text: 'A merchant ship strikes your destroyer at night. Berthing compartments are flooding with sailors inside.',
+      options: [
+        { id: 'berthing', label: '🌊 Go back into flooding berthing for survivors', success: 0.5, risk: 0.9, valor: 104 },
+        { id: 'shoring', label: '🪵 Shore the bulkhead to save the ship', success: 0.7, risk: 0.5, valor: 70, specialty: 'engineer' },
+        { id: 'muster', label: '📋 Run the muster and account for every sailor', success: 0.9, risk: 0.1, valor: 20 },
+      ],
+    },
+    {
+      id: 'strait', title: 'Swarm in the Strait',
+      text: 'A dozen armed fast boats charge your ship in a narrow strait.',
+      options: [
+        { id: 'gun', label: '🎯 Man the exposed deck gun', success: 0.6, risk: 0.7, valor: 82 },
+        { id: 'maneuver', label: '🧭 Recommend evasive maneuvers to the bridge', success: 0.75, risk: 0.35, valor: 48 },
+        { id: 'warn', label: '📢 Fire warning shots and hail them', success: 0.8, risk: 0.3, valor: 30 },
       ],
     },
   ],
@@ -123,6 +162,24 @@ export const COMBAT_SCENARIOS = {
         { id: 'evac', label: '📢 Sound the alarm and evacuate the dorms', success: 0.85, risk: 0.2, valor: 40 },
       ],
     },
+    {
+      id: 'medevac', title: 'Hot Landing Zone',
+      text: 'A medevac call comes in from a patrol under fire. The LZ is a dusty field ringed by tree lines.',
+      options: [
+        { id: 'land', label: '🚁 Land in the hot LZ', success: 0.6, risk: 0.75, valor: 90, specialty: 'aviation' },
+        { id: 'flight', label: '⛑️ Ride along as the flight medic', success: 0.65, risk: 0.65, valor: 86, medicOnly: true },
+        { id: 'secure', label: '⏳ Wait for the gunships to secure it', success: 0.8, risk: 0.3, valor: 35 },
+      ],
+    },
+    {
+      id: 'drone', title: 'Drone Strike Inbound',
+      text: 'Radar picks up a swarm of drones heading for the airfield\'s fuel farm.',
+      options: [
+        { id: 'counter', label: '📡 Run the counter-drone system by hand', success: 0.7, risk: 0.45, valor: 62 },
+        { id: 'fuel', label: '⛽ Shut off fuel valves in the open', success: 0.6, risk: 0.65, valor: 78, specialty: 'engineer' },
+        { id: 'bunker', label: '🛡️ Get your people into the bunkers', success: 0.9, risk: 0.1, valor: 18 },
+      ],
+    },
   ],
   maritime: [
     {
@@ -150,6 +207,24 @@ export const COMBAT_SCENARIOS = {
         { id: 'hoist', label: '🚁 Hoist down onto the burning deck', success: 0.55, risk: 0.85, valor: 98, specialty: 'aviation' },
         { id: 'treat', label: '⛑️ Treat burn victims on the cutter\'s flight deck', success: 0.85, risk: 0.2, valor: 55, medicOnly: true },
         { id: 'boom', label: '🚒 Fight the fire from the cutter\'s monitors', success: 0.75, risk: 0.4, valor: 60, specialty: 'engineer' },
+      ],
+    },
+    {
+      id: 'migrants', title: 'Overloaded Migrant Boat',
+      text: 'An overloaded wooden boat is taking on water. Two hundred people, many children, are aboard.',
+      options: [
+        { id: 'raft', label: '🛟 Deploy rafts and transfer people in the swell', success: 0.65, risk: 0.5, valor: 76 },
+        { id: 'swim', label: '🏊 Swim children across to the cutter', success: 0.55, risk: 0.7, valor: 88, specialty: 'aviation' },
+        { id: 'pump', label: '🔧 Board and run dewatering pumps', success: 0.75, risk: 0.35, valor: 50, specialty: 'engineer' },
+      ],
+    },
+    {
+      id: 'iceBreaker', title: 'Trapped in the Ice',
+      text: 'A research vessel is trapped in pack ice with an injured crewman and a storm coming.',
+      options: [
+        { id: 'walk', label: '🧊 Lead a team across the ice', success: 0.6, risk: 0.65, valor: 80 },
+        { id: 'helo', label: '🚁 Hoist from the deck in the wind', success: 0.6, risk: 0.7, valor: 84, specialty: 'aviation' },
+        { id: 'escort', label: '🚢 Break a channel and escort them out', success: 0.85, risk: 0.2, valor: 30 },
       ],
     },
   ],
@@ -199,6 +274,57 @@ export const DUTY_EVENTS = [
       { id: 'fudge', label: '🙈 Backdate the records', effects: {}, risky: { chance: 0.4, text: 'The IG caught the falsified records. You received non-judicial punishment.', eval: -15, disciplinary: 2 }, text: 'It held up. This time.' },
     ],
   },
+
+  {
+    id: 'pcsFamily', title: 'Family Emergency',
+    text: 'Your mother is in the hospital back home. Your unit is three weeks from a major exercise.',
+    options: [
+      { id: 'leave', label: '✈️ Request emergency leave', effects: { eval: -2, stats: { happiness: 4, stress: -4 } }, text: 'Your first sergeant signed it in an hour. You were there when she woke up.' },
+      { id: 'stay', label: '🪖 Stay for the exercise', effects: { eval: 5, stats: { happiness: -6, stress: 6 } }, text: 'The exercise went well. The phone calls home were hard.' },
+    ],
+  },
+  {
+    id: 'hazing', title: 'New Guy',
+    text: 'Senior soldiers are "initiating" a new private — making him low-crawl through mud at 2 a.m.',
+    options: [
+      { id: 'stop', label: '✋ Step in and stop it', effects: { eval: 4, stats: { happiness: 2 } }, text: 'It stopped. The private never forgot it.' },
+      { id: 'join', label: '😏 Join in — it happened to you', effects: {}, risky: { chance: 0.3, text: 'The private filed an EO complaint. You were named.', eval: -10, disciplinary: 1 }, text: 'Nobody complained. This time.' },
+      { id: 'ignore', label: '🙈 Walk away', effects: { stats: { happiness: -2 } }, text: 'You told yourself it wasn\'t your business.' },
+    ],
+  },
+  {
+    id: 'marksmanship', title: 'Range Qualification',
+    text: 'Annual rifle qualification. Expert earns a badge and bragging rights.',
+    options: [
+      { id: 'practice', label: '🎯 Spend weekends dry-firing', check: { stat: 'fitness', min: 45 }, effects: { eval: 5, stats: { stress: 3 } }, failEffects: { eval: 1 }, text: 'Expert. 38 of 40.', failText: 'Sharpshooter. Close.' },
+      { id: 'wing', label: '🤷 Wing it', check: { stat: 'fitness', min: 70 }, effects: { eval: 2 }, failEffects: { eval: -3 }, text: 'Natural talent: Expert.', failText: 'You barely qualified.' },
+    ],
+  },
+  {
+    id: 'barracksParty', title: 'Barracks Party',
+    text: 'There is a party in the barracks with alcohol, and the duty NCO is your friend.',
+    options: [
+      { id: 'shut', label: '📋 Shut it down by the book', effects: { eval: 4, stats: { happiness: -3 } }, text: 'Unpopular, but nobody got hurt.' },
+      { id: 'join', label: '🍻 Join the party', effects: { stats: { happiness: 5 } }, risky: { chance: 0.25, text: 'Someone got hurt and the investigation found you there.', eval: -8, disciplinary: 1 }, text: 'Great night. Nobody found out.' },
+    ],
+  },
+  {
+    id: 'mentorship', title: 'Struggling Soldier',
+    text: 'A young soldier in your section is failing PT and talks about "not being around much longer."',
+    options: [
+      { id: 'help', label: '🫂 Walk them to behavioral health yourself', effects: { eval: 6, stats: { happiness: 4 } }, text: 'They got help. A year later they reenlisted.' },
+      { id: 'pt', label: '🏃 Run extra PT with them', effects: { eval: 3, stats: { fitness: 2 } }, text: 'Their scores improved. You hope the rest did too.' },
+      { id: 'report', label: '📋 Report it up the chain and move on', effects: { eval: 1 }, text: 'Your NCO took it from there.' },
+    ],
+  },
+  {
+    id: 'ceremony', title: 'Color Guard',
+    text: 'You are asked to join the color guard for a fallen soldier\'s funeral back home.',
+    options: [
+      { id: 'yes', label: '🇺🇸 Accept the honor', effects: { eval: 4, stats: { happiness: -2 } }, text: 'You folded the flag and handed it to his mother. You will never forget it.' },
+      { id: 'no', label: '🙅 Ask someone else to go', effects: {}, text: 'Someone else carried the flag.' },
+    ],
+  },
 ];
 
 export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55 ? 'High risk' : risk >= 0.3 ? 'Moderate risk' : 'Low risk');
@@ -209,7 +335,7 @@ export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55
 
 function combatPrompt(ctx, svc, theaterName) {
   const branch = BRANCHES[svc.branch];
-  const scenario = ctx.rng.pick(COMBAT_SCENARIOS[branch.theater]);
+  const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, COMBAT_SCENARIOS[branch.theater]);
   const options = scenario.options
     .filter((o) => !o.medicOnly || svc.specialty === 'medic')
     .map((o) => ({
@@ -304,7 +430,7 @@ function resolveCombat(ctx, data, optionId) {
 }
 
 function dutyEventPrompt(ctx) {
-  const event = ctx.rng.pick(DUTY_EVENTS);
+  const event = pickFresh(ctx.rng, ctx.state, 'duty', DUTY_EVENTS);
   ctx.prompt({
     type: 'military.dutyEvent',
     icon: '📯',

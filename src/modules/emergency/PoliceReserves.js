@@ -89,5 +89,47 @@ export const PoliceReserves = {
         { id: 'key', label: 'Wait for the landlord\'s key', success: 0.5, risk: 0, xp: 12, save: true, successText: 'You found him dehydrated but alive.', failText: 'The delay cost him.' },
       ],
     },
+
+    {
+      id: 'shoplift', title: '🛒 Shoplifter in Custody',
+      text: 'Store security is holding a teenager who stole baby formula. She says it is for her little sister.',
+      options: [
+        { id: 'divert', label: 'Refer her to a diversion program', cert: 'cit', success: 0.85, risk: 0, xp: 15, stat: 'smarts', successText: 'The store agreed. You left her with a food bank card.', failText: 'The store insisted on charges.' },
+        { id: 'cite', label: 'Write the citation and move on', success: 0.95, risk: 0, xp: 8, successText: 'By the book.', failText: 'She ran while you wrote it.' },
+        { id: 'pay', label: 'Quietly pay for the formula yourself', success: 0.9, risk: 0, xp: 12, successText: 'The manager let it go. She thanked you twice.', failText: 'Your sergeant said you can\'t do that every time.' },
+      ],
+    },
+    {
+      id: 'missing', title: '🧒 Missing Child at the Mall',
+      text: 'A four-year-old has been missing for twenty minutes. The parents are frantic.',
+      options: [
+        { id: 'lockdown', label: 'Lock down the exits and check the cameras', cert: 'fto', success: 0.85, risk: 0.05, xp: 25, stat: 'smarts', save: true, successText: 'Camera 14: he was asleep in a furniture display. Reunited in minutes.', failText: 'It took hours; he was found two stores over, safe.' },
+        { id: 'search', label: 'Search the stores yourself', success: 0.6, risk: 0, xp: 15, save: true, successText: 'You found him in the toy aisle.', failText: 'Security found him first.' },
+      ],
+    },
+    {
+      id: 'parade', title: '🎉 Parade Detail',
+      text: 'You are working the holiday parade. A driver ignores the barricade and rolls toward the crowd.',
+      options: [
+        { id: 'stop', label: 'Step in front and command the stop', success: 0.65, risk: 0.45, xp: 30, heroic: true, save: true, successText: 'He stopped a foot from you. Confused, elderly, and very sorry.', failText: 'He clipped you before stopping.' },
+        { id: 'clear', label: 'Clear the crowd out of the path', success: 0.8, risk: 0.15, xp: 22, save: true, successText: 'People scattered just in time.', failText: 'Two spectators were bumped and bruised.' },
+      ],
+    },
+    {
+      id: 'overdose', title: '💉 Overdose in a Parked Car',
+      text: 'A man is slumped over the wheel, lips blue, needle in his lap.',
+      options: [
+        { id: 'narcan', label: 'Administer naloxone and rescue breaths', success: 0.82, risk: 0.05, xp: 22, save: true, successText: 'He gasped back to life. He was not grateful, but he was alive.', failText: 'Fentanyl; it took three doses and he still went to the ICU.' },
+        { id: 'ems', label: 'Wait for EMS', success: 0.4, risk: 0, xp: 6, save: true, successText: 'EMS arrived in time.', failText: 'EMS was eight minutes out. Too late.' },
+      ],
+    },
+    {
+      id: 'scam', title: '📞 Elder Fraud Report',
+      text: 'An 84-year-old says "the IRS" made her buy $9,000 in gift cards.',
+      options: [
+        { id: 'trace', label: 'Trace the gift cards before they are drained', cert: 'trafficEnforcement', success: 0.5, risk: 0, xp: 20, stat: 'smarts', successText: 'You froze $6,000 of it. She baked the station a pie.', failText: 'Drained within the hour.' },
+        { id: 'report', label: 'Take the report and connect her with Adult Protective Services', success: 0.95, risk: 0, xp: 12, successText: 'APS set up safeguards on her accounts.', failText: 'She was scammed again a month later.' },
+      ],
+    },
   ],
 };
