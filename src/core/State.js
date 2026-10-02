@@ -205,7 +205,7 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) - f.loans);
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) - f.loans - (state.health?.medicalDebt ?? 0));
 }
 
 /** Brokerage holdings, speculative positions and IRAs. */

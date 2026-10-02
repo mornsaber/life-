@@ -9,17 +9,16 @@ import { isOnActiveDuty } from '../../core/State.js';
 import { regionOf, stateIdOf } from './Regions.js';
 import { stateIncomeTax, STATES } from './States.js';
 import { ltcgTax } from '../investing/Assets.js';
+import { coverage } from '../health/Insurance.js';
 
 const LOAN_RATE = 0.05;
 const DEBT_RATE = 0.15;
 const HOUSING_SHARE = 0.45;
 
-/** Marketplace health premiums when no employer plan covers you (subsidized at low incomes). */
+/** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {
-  const age = state.character.age;
-  if (age < 26 || age >= 65 || isOnActiveDuty(state) || state.legal.incarceration) return 0;
-  if (state.career.job?.employer.benefits.health) return 0;
-  return income < 40000 ? 1500 : 6500;
+  if (state.character.age < 18) return 0;
+  return coverage(state, income).premium;
 }
 
 export function hasHousingBenefit(state) {

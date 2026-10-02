@@ -283,16 +283,14 @@ export function discharge(ctx, type, reason) {
     ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${BRANCHES[svc.branch].name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
   }
-  if (type === 'medical') {
-    const annual = Math.round(12000 + svc.wounds * 9000);
-    ctx.emit('retirement:addPension', { pension: { id: 'va', label: 'VA disability compensation', annual, startAge: state.character.age, source: 'va', cola: 0.025 } });
-  }
   if (militaryHonors(state).some((h) => h.id === 'moh') && !state.retirement.pensions.some((p) => p.id === 'moh')) {
     ctx.emit('retirement:addPension', { pension: { id: 'moh', label: 'Medal of Honor special pension', annual: MOH_ANNUAL_PENSION, startAge: state.character.age, source: 'military', cola: 0.025 } });
   }
 
   ctx.log(`You were discharged from the ${BRANCHES[svc.branch].name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');
   ctx.toast(`Discharged: ${DISCHARGE_LABEL[type]}`, type === 'dishonorable' ? 'bad' : 'info');
+  // The VA rates service-connected conditions (health module).
+  ctx.emit('military:discharged', { type, wounds: svc.wounds });
 }
 
 export const isVeteran = (state) => state.military.history.some((h) => h.discharge !== 'dishonorable');

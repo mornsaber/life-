@@ -231,6 +231,18 @@ export const LicensingEngine = {
     engine.bus.on('credential:revoke', ({ ctx, ids, reason }) => {
       for (const id of ids) revoke(ctx, id, 'revoked', 0, reason);
     });
+    engine.bus.on('credential:suspend', ({ ctx, ids, years, reason }) => {
+      for (const id of ids) revoke(ctx, id, 'suspended', years, reason);
+    });
+    engine.bus.on('credential:reinstate', ({ ctx, ids, reason }) => {
+      for (const id of ids) {
+        const held = ctx.state.credentials.held[id];
+        if (held?.status !== 'suspended') continue;
+        held.status = 'active';
+        delete held.until;
+        ctx.log(`Your ${getCredential(id).name} was reinstated (${reason}).`, '🪪', 'good');
+      }
+    });
     engine.bus.on('region:changed', ({ ctx, toState, fromState }) => {
       if (toState === fromState) return;
       const { state } = ctx;

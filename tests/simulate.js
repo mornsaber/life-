@@ -27,6 +27,7 @@ import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestat
 import { promptModal } from '../src/ui/Components.js';
 import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
+import { CONDITIONS } from '../src/modules/health/index.js';
 
 const LIVES = Number(process.argv[2] ?? 300);
 const SEED = Number(process.argv[3] ?? 1);
@@ -182,6 +183,12 @@ function randomActions(state) {
   }
   if (state.education.enrolled) tries.push(() => act(player.pick(['education.study', 'education.study', 'education.switchPace'])));
   if (player.chance(0.06)) tries.push(() => act(`legal.${player.pick(RISKY_ACTIONS).id}`));
+  // Health
+  if (player.chance(0.15)) tries.push(() => act('health.checkup'));
+  for (const c of state.health.conditions) {
+    if (!c.remission && c.diagnosed && !c.treated && player.chance(0.25)) tries.push(() => act(CONDITIONS[c.id].kind === 'addiction' ? 'health.rehab' : 'health.treat', c.id));
+  }
+  if (player.chance(0.02)) tries.push(() => act(player.pick(['health.toggleMarketplace', 'health.toggleDisabilityPolicy', 'health.claimDisability', 'health.payMedicalDebt', 'health.vaClaim'])));
   // Investing
   if (age >= 18) {
     if (player.chance(0.12)) tries.push(() => act('investing.buy', `${player.pick(Object.keys(ASSETS))}:${player.pick([500, 1000, 5000, 20000])}`));

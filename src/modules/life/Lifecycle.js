@@ -4,6 +4,7 @@
  */
 import { commitmentLoad, getCommitments } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
+import { healthMortality, DEATH_CAUSE } from '../health/Conditions.js';
 
 const CHILDHOOD_EVENTS = [
   { minAge: 3, maxAge: 9, text: 'You learned to ride a bike after skinning both knees.', icon: '🚲', stats: { fitness: 3, happiness: 3 } },
@@ -85,10 +86,17 @@ export const Lifecycle = {
 
     let risk = 0;
     if (age >= 45) risk += 0.002;
-    if (age >= 60) risk += 0.01 + (age - 60) * 0.003;
+    if (age >= 60) risk += 0.006 + (age - 60) * 0.002; // named diseases add their own risk (health module)
     if (age >= 80) risk += (age - 80) * 0.015;
     if (health < 25) risk += (25 - health) * 0.008;
     if (age >= 110) risk = 1;
-    if (rng.chance(risk)) ctx.die(age >= 75 ? 'Old age' : rng.pick(['Heart attack', 'Stroke', 'Cancer', 'Car accident']));
+    // Diagnosed (or silent) conditions add their own risk and name the cause.
+    const conditions = state.health ? healthMortality(state) : { total: 0, parts: [] };
+    if (!rng.chance(risk + conditions.total)) return;
+    let roll = rng.float(0, risk + conditions.total);
+    for (const p of conditions.parts) {
+      if ((roll -= p.risk) <= 0) return ctx.die(DEATH_CAUSE[p.id] ?? 'Illness');
+    }
+    ctx.die(age >= 75 ? 'Old age' : rng.pick(['Heart attack', 'Stroke', 'Cancer', 'Car accident']));
   },
 };

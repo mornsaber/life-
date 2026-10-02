@@ -137,6 +137,7 @@ function resolveDispatch(ctx, data, optionId) {
   if (member.k9 && option.cert === 'k9Handler') chance += 0.05;
   const success = rng.chance(clamp(chance, 0.05, 0.97));
   member.calls += 1;
+  ctx.emit('health:trauma', { amount: (option.risk ?? 0) >= 0.4 || !success ? 6 : 3, source: 'dispatch' });
 
   if (success) {
     member.xp += option.xp;
@@ -160,6 +161,7 @@ function resolveDispatch(ctx, data, optionId) {
       member.injuries += 1;
       ctx.stat('health', -dmg);
       ctx.log(`You were injured on the call (−${dmg} health).`, '🩹', 'bad');
+      if (rng.chance(0.2)) ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(25, 55) });
       if (rng.chance(option.risk * 0.012)) {
         ctx.die(`Line-of-duty death — ${call.title.replace(/^\S+\s/, '')}`);
         return;
