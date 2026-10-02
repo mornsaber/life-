@@ -31,9 +31,10 @@ export const Lifecycle = {
     // Milestones
     if (age === 5) ctx.log('You started kindergarten.', '🎒', 'milestone');
     if (age === 14) ctx.log('You started high school.', '🏫', 'milestone');
-    if (age === 18 && !state.education.degrees.some((d) => d.type === 'highschool')) {
-      state.education.degrees.push({ type: 'highschool', major: null, year: age });
-      ctx.log('You graduated from high school! 🎓', '🎓', 'milestone');
+    if (age === 18 && !state.legal.incarceration && !state.education.degrees.some((d) => d.type === 'highschool')) {
+      state.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: age });
+      ctx.log('You graduated from high school! 🎓 Your family chipped in $2,000 to get you started.', '🎓', 'milestone');
+      state.finances.cash += 2000;
       ctx.stat('happiness', 5);
     }
 

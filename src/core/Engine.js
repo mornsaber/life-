@@ -7,6 +7,7 @@
  *     id: 'career',                  // namespace for actions/resolvers
  *     order: 30,                     // tick order (lower runs first)
  *     setup(engine) {},              // once, after registration (bus wiring)
+ *     guard(state, actionId) {},     // return a reason string to block an action (e.g. in prison)
  *     init(state) {},                // on new life / loaded save (slice migration)
  *     onAgeUp(ctx) {},               // yearly simulation
  *     onYearEnd(ctx) {},             // after every module's onAgeUp
@@ -130,6 +131,13 @@ export class Engine {
       this.toast('Make your decision first.', 'warn');
       return false;
     }
+    for (const m of this.modules) {
+      const blocked = m.guard?.(state, actionId);
+      if (blocked) {
+        this.toast(blocked, 'warn');
+        return false;
+      }
+    }
     fn(this.context(), arg);
     this.commit();
     return true;
@@ -181,14 +189,22 @@ export class Engine {
         state.prompts.push(prompt);
         return prompt;
       },
-      /** Taxable income. Cash arrives now; tax is settled at year end. */
-      earn(amount, source) {
+      /**
+       * Taxable income. Cash arrives now; tax is settled at year end.
+       * `wage` marks earned income (Social Security); `ssCovered: false`
+       * marks jobs outside Social Security (e.g. many police/fire plans).
+       */
+      earn(amount, source, { wage = false, ssCovered = true } = {}) {
         const value = Math.round(amount);
         if (value <= 0) return 0;
         state.finances.cash += value;
         state.finances.lifetimeEarnings += value;
-        state.finances.ledger.income.push({ source, amount: value });
+        state.finances.ledger.income.push({ source, amount: value, wage, ssCovered });
         return value;
+      },
+      /** Pre-tax deduction (retirement contributions) reducing taxable income. */
+      deduct(amount, reason) {
+        state.finances.ledger.deductions.push({ reason, amount: Math.round(amount) });
       },
       /** Deduct cash. Returns false (and spends nothing) when unaffordable unless allowDebt. */
       spend(amount, reason, { allowDebt = false } = {}) {

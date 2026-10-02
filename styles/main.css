@@ -566,3 +566,47 @@ fieldset.gender label { flex-direction: row; align-items: center; color: var(--i
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
 }
+
+/* ---------- Step 2: tracks, management, forms ---------- */
+
+.tracks { display: flex; flex-direction: column; gap: 6px; margin-top: 12px; }
+.track-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); align-items: center; gap: 8px; }
+.track-label { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.tracks .ladder { margin: 0; grid-template-columns: repeat(auto-fill, minmax(78px, 1fr)); }
+.tracks .ladder-dot { width: auto; min-width: 30px; padding: 0 4px; border-radius: 6px; font-size: 8px; }
+.ladder li.na { opacity: 0.35; }
+.ladder li.na .ladder-title { text-decoration: line-through; }
+
+.abilities, .benefits { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.union { margin-top: 12px; padding: 10px 12px; border: 2px dashed var(--orange); border-radius: 8px; background: rgba(255, 157, 61, 0.08); }
+.union b { margin-right: 6px; }
+.union .btn { margin-top: 6px; }
+
+.toggle-row { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px; }
+.btn.on { border-color: var(--green); background: rgba(62, 240, 138, 0.12); }
+
+.row-end .transfer { display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+
+select {
+  max-width: 100%;
+  padding: 6px 8px;
+  background: #0a0d1c;
+  color: var(--ink);
+  border: 2px solid var(--line);
+  border-radius: 6px;
+  font: inherit;
+  font-size: 13px;
+}
+select:focus { outline: none; border-color: var(--cyan); }
+.sel { flex-direction: row; align-items: center; gap: 6px; }
+.enroll-form { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.enroll-form .sel { flex: 1 1 200px; min-width: 0; }
+.enroll-form select { width: 100%; }
+
+.exam-row, .region-row { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 8px; }
+.exam-row > div, .region-row > span { display: flex; flex-direction: column; min-width: 0; flex: 1 1 240px; }
+.exam-row small, .region-row small { color: var(--muted); }
+.region-row.here { background: rgba(62, 240, 138, 0.06); }
+
+.cert .cert-action { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+.cert .fine { margin: 0; }

@@ -1,13 +1,20 @@
 /**
- * Interactive hiring: a two-question, scenario-based interview followed by a
- * salary negotiation. Each answer scores 0–3; the total, the candidate's
- * stats and their service record (veterans, volunteer responders, medals)
- * drive the hiring roll.
+ * Interactive hiring: application screening (requirements, civil-service
+ * exam rank, criminal background), a two-question scenario interview, an
+ * offer (private-sector salary negotiation, or a higher starting step in the
+ * public sector) and — for cleared positions — the SF-86 security
+ * investigation, where honesty is a real choice.
  */
 import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
-import { clamp, round } from '../../core/Random.js';
+import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
-import { applicationEligibility, companyFor, hire } from './CareerEngine.js';
+import { levelById } from './Ladder.js';
+import { salaryBreakdown } from './PayGrades.js';
+import { createEmployer } from './Employers.js';
+import { applicationEligibility, bestEntryLevel, backgroundCheck, levelCheck, hire } from './CareerEngine.js';
+import { hasCredential } from '../credentials/LicensingEngine.js';
+import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
+import { educationFields, schoolPrestige } from '../education/Catalog.js';
 
 export const APPLICATIONS_PER_YEAR = 3;
 
@@ -127,6 +134,17 @@ export const QUESTIONS = [
     { id: 'b', label: 'Go hands-on immediately', score: 0 },
     { id: 'c', label: 'Walk away', score: 1 },
   ] },
+  // Government
+  { id: 'donorPermit', field: 'government', text: '"A council member asks you to fast-track a permit for a major donor. What do you do?"', options: [
+    { id: 'a', label: 'Process it in normal order and document the request', score: 3 },
+    { id: 'b', label: 'Quietly move it up the pile', score: 0 },
+    { id: 'c', label: 'Ask your supervisor how to handle it', score: 2 },
+  ] },
+  { id: 'angryResident', field: 'government', text: '"Explain an unpopular new regulation to a room of angry residents."', options: [
+    { id: 'a', label: 'Lay out the why, the tradeoffs and how to give feedback', score: 3, stat: 'smarts' },
+    { id: 'b', label: 'Read the regulation aloud', score: 1 },
+    { id: 'c', label: '"Take it up with your representative."', score: 0 },
+  ] },
   { id: 'cpat', field: 'publicSafety', text: 'Physical ability test: 75-lb stair climb with a hose pack.', options: [
     { id: 'a', label: 'Steady pace, controlled breathing', score: 3, stat: 'fitness' },
     { id: 'b', label: 'Sprint the first flights', score: 1 },
@@ -134,41 +152,117 @@ export const QUESTIONS = [
   ] },
 ];
 
-function pickQuestions(rng, field) {
+
+const QUESTION_FIELD = {
+  retail: 'service', culinary: 'service', realestate: 'service', trades: 'trades', trucking: 'trades', aviation: 'trades', engineering: 'trades', publicWorks: 'trades',
+  tech: 'tech', intelligence: 'tech', corporate: 'corporate', finance: 'finance', accounting: 'finance', medical: 'medical', nursing: 'medical',
+  law: 'law', legalSupport: 'law', education: 'education', police: 'publicSafety', fire: 'publicSafety', ems: 'publicSafety', parkService: 'publicSafety',
+  municipalAdmin: 'government', planning: 'government', regulatory: 'government', oig: 'government', foreignService: 'government',
+};
+
+function pickQuestions(rng, professionId) {
+  const field = QUESTION_FIELD[professionId] ?? 'any';
   const fieldPool = rng.shuffle(QUESTIONS.filter((q) => q.field === field));
   const generic = rng.shuffle(QUESTIONS.filter((q) => q.field === 'any'));
   return [fieldPool[0] ?? generic[1], generic[0]].map((q) => q.id);
 }
 
 function questionPrompt(ctx, data) {
-  const profession = getProfession(data.professionId);
+  const level = levelById(getProfession(data.professionId), data.levelId);
   const question = QUESTIONS.find((q) => q.id === data.questions[data.step]);
   ctx.prompt({
     type: 'career.interview',
     icon: '🤝',
-    title: `Interview — ${profession.tiers[data.tier].title}`,
-    text: `${data.company} · Question ${data.step + 1}/${data.questions.length}\n${question.text}`,
+    title: `Interview — ${level.title} [G${level.grade}]`,
+    text: `${data.employer.name} · Question ${data.step + 1}/${data.questions.length}\n${question.text}`,
     options: ctx.rng.shuffle(question.options).map((o) => ({ id: o.id, label: o.label })),
     data,
   });
 }
 
-/** Bonuses for veterans, volunteer responders and decorated candidates. */
-export function serviceRecordBonus(state, profession) {
+/** Everything about the candidate beyond the interview answers. */
+export function candidateBonus(state, profession) {
   let bonus = 0;
   const veteran = state.military.history.length > 0 || state.military.service?.component === 'reserve';
-  if (veteran) bonus += profession.field === 'publicSafety' ? 0.1 : 0.05;
-  if (profession.id === 'fire' && state.emergency.fire) bonus += 0.12;
-  if (profession.id === 'police' && state.emergency.police) bonus += 0.12;
-  if (profession.field === 'publicSafety' && state.emergency.sar) bonus += 0.05;
-  bonus += Math.min(0.1, prestige(state) / 600);
+  if (veteran) bonus += profession.sector === 'private' ? 0.04 : 0.08;
+  if (profession.id === 'fire' && state.emergency.fire) bonus += 0.1;
+  if (profession.id === 'police' && state.emergency.police) bonus += 0.1;
+  if ((profession.id === 'parkService' || profession.id === 'ems') && state.emergency.sar) bonus += 0.06;
+  if (educationFields(state).has(profession.id)) bonus += 0.08;
+  bonus += schoolPrestige(state) * 0.03;
+  bonus += Math.min(0.12, (profession.valued ?? []).filter((c) => hasCredential(state, c)).length * 0.04);
+  bonus += Math.min(0.08, prestige(state) / 800);
+  if (profession.exam) {
+    const exam = examStatus(state, profession.exam);
+    bonus += clamp((exam.rankedScore - 75) / 100, -0.05, 0.2);
+  }
+  bonus -= backgroundCheck(state, profession).penalty ?? 0;
   return bonus;
 }
 
-export function hireChance(state, profession, tier, score, maxScore) {
-  const base = 0.2 + (score / maxScore) * 0.5;
-  const stats = (state.stats.smarts - 50) / 250 + (state.stats.looks - 50) / 400;
-  return clamp(base + stats + serviceRecordBonus(state, profession) - tier * 0.06, 0.05, 0.95);
+export function hireChance(state, profession, level, score, maxScore) {
+  const base = 0.22 + (score / maxScore) * 0.45;
+  const stats = (state.stats.smarts - 50) / 250 + (state.stats.looks - 50) / 500;
+  const seniority = Math.max(0, level.grade - profession.levels[0].grade) * 0.04;
+  return clamp(base + stats + candidateBonus(state, profession) - seniority, 0.05, 0.95);
+}
+
+function offerSalary(state, profession, level, employer, step, merit) {
+  return salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: profession.dutyStation ?? state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
+}
+
+function offerPrompt(ctx, data) {
+  const { state } = ctx;
+  const profession = getProfession(data.professionId);
+  const level = levelById(profession, data.levelId);
+  const salary = offerSalary(state, profession, level, data.employer, data.step, data.merit);
+  const isPublic = profession.sector !== 'private';
+  ctx.prompt({
+    type: 'career.negotiate',
+    icon: '💰',
+    title: 'Job Offer!',
+    text: `${data.employer.name} offers you ${level.title} [G${level.grade}, step ${data.step}] at $${salary.toLocaleString()}/yr.` +
+      (profession.dutyStation ? '\nDuty station: a remote park with government housing provided.' : '') +
+      (state.career.job ? `\nAccepting means resigning as ${state.career.job.title}.` : ''),
+    options: isPublic
+      ? [
+          { id: 'accept', label: '✅ Accept the offer' },
+          { id: 'step', label: '📈 Request a higher step (superior qualifications)', hint: 'Pay is set by law — steps are negotiable' },
+          { id: 'decline', label: '❌ Decline' },
+        ]
+      : [
+          { id: 'accept', label: '✅ Accept the offer' },
+          { id: 'modest', label: '💬 Counter at +8%', hint: 'Usually fine' },
+          { id: 'bold', label: '🎲 Counter at +20%', hint: 'They may walk' },
+          { id: 'decline', label: '❌ Decline' },
+        ],
+    data,
+  });
+}
+
+/** Final step: cleared positions go through an SF-86 investigation first. */
+function finalizeHire(ctx, data) {
+  const { state } = ctx;
+  const profession = getProfession(data.professionId);
+  const level = levelById(profession, data.levelId);
+  const needed = levelCheck(state, level).clearanceNeeded;
+  if (needed) {
+    const issues = backgroundIssues(state).filter((i) => !i.hidden);
+    ctx.prompt({
+      type: 'career.clearance',
+      icon: CLEARANCES[needed].icon,
+      title: `SF-86: ${CLEARANCES[needed].name} Investigation`,
+      text: `Your offer is contingent on a ${CLEARANCES[needed].name} clearance${CLEARANCES[needed].polygraph ? ', including a polygraph' : ''}.\n` +
+        (issues.length ? `Your background includes: ${issues.map((i) => i.label).join('; ')}.` : 'Your background is clean.'),
+      options: [
+        { id: 'disclose', label: '📝 Disclose everything truthfully', hint: issues.length ? 'Candor mitigates issues' : 'Nothing to hide' },
+        { id: 'omit', label: '🙈 Leave the problems off the form', hint: issues.length ? 'Lying on an SF-86 is a federal crime' : 'Nothing to hide', tone: issues.length ? 'danger' : undefined },
+      ],
+      data: { ...data, clearance: needed },
+    });
+    return;
+  }
+  hire(ctx, { professionId: data.professionId, levelId: data.levelId, employer: data.employer, step: data.step, merit: data.merit });
 }
 
 export const InterviewSystem = {
@@ -181,15 +275,17 @@ export const InterviewSystem = {
       bumpYearly(state, 'career.apply');
 
       const profession = getProfession(professionId);
-      // Returning to a field you've climbed before: re-enter one tier below your peak.
-      const prior = state.career.history.filter((h) => h.professionId === professionId);
-      const tier = prior.length ? Math.max(0, Math.max(...prior.map((h) => h.peakTier)) - 1) : 0;
+      const employer = createEmployer(rng, state, profession, profession.dutyStation ?? state.character.regionId);
+      const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
+      const priorYears = state.career.history.filter((h) => h.professionId === professionId).reduce((s, h) => s + h.endAge - h.startAge, 0);
 
       questionPrompt(ctx, {
         professionId,
-        tier,
-        company: companyFor(rng, profession),
-        questions: pickQuestions(rng, profession.field),
+        levelId: level.id,
+        employer,
+        step: 1 + Math.min(4, Math.floor(priorYears / 2)),
+        merit: 0,
+        questions: pickQuestions(rng, professionId),
         step: 0,
         score: 0,
       });
@@ -204,62 +300,75 @@ export const InterviewSystem = {
       let score = option.score;
       if (option.stat && state.stats[option.stat] >= 60) score += 1;
       const next = { ...data, step: data.step + 1, score: data.score + Math.min(3, score) };
-
       if (next.step < next.questions.length) return questionPrompt(ctx, next);
 
       const profession = getProfession(data.professionId);
-      const tier = profession.tiers[data.tier];
-      const chance = hireChance(state, profession, data.tier, next.score, next.questions.length * 3);
-      if (!rng.chance(chance)) {
-        ctx.log(`${data.company} passed on you for ${tier.title}.`, '📭', 'bad');
+      const level = levelById(profession, data.levelId);
+      if (!rng.chance(hireChance(state, profession, level, next.score, next.questions.length * 3))) {
+        ctx.log(`${data.employer.name} passed on you for ${level.title}.`, '📭', 'bad');
         ctx.toast('Application rejected', 'bad');
         ctx.stat('happiness', -3);
         return;
       }
-
-      const offer = round(tier.salary * rng.float(0.94, 1.04), 500);
-      ctx.prompt({
-        type: 'career.negotiate',
-        icon: '💰',
-        title: 'Job Offer!',
-        text: `${data.company} offers you the ${tier.title} role at $${offer.toLocaleString()}/yr.` +
-          (state.career.job ? `\nAccepting means resigning as ${state.career.job.title}.` : ''),
-        options: [
-          { id: 'accept', label: '✅ Accept the offer' },
-          { id: 'modest', label: '💬 Counter at +8%', hint: 'Usually fine' },
-          { id: 'bold', label: '🎲 Counter at +20%', hint: 'They may walk' },
-          { id: 'decline', label: '❌ Decline' },
-        ],
-        data: { ...next, offer },
-      });
+      offerPrompt(ctx, next);
     },
 
     negotiate(ctx, data, optionId) {
       const { rng } = ctx;
-      const scoreBonus = data.score * 0.04;
-      const accept = (salary, note) => {
-        if (note) ctx.log(note, '💬');
-        hire(ctx, { professionId: data.professionId, tier: data.tier, salary, company: data.company });
-      };
-
-      if (optionId === 'accept') return accept(data.offer);
+      const bonus = data.score * 0.04;
+      if (optionId === 'accept') return finalizeHire(ctx, data);
       if (optionId === 'decline') {
-        ctx.log(`You turned down the offer from ${data.company}.`, '🙅');
+        ctx.log(`You turned down the offer from ${data.employer.name}.`, '🙅');
         return;
       }
-      if (optionId === 'modest') {
-        if (rng.chance(0.5 + scoreBonus)) return accept(round(data.offer * 1.08, 500), 'They met your counter-offer.');
-        return accept(data.offer, 'They held firm on the original number. You took it.');
+      if (optionId === 'step') {
+        if (rng.chance(0.35 + bonus)) {
+          const steps = rng.int(2, 4);
+          ctx.log(`HR approved a superior-qualifications appointment: starting at step ${data.step + steps}.`, '📈', 'good');
+          return finalizeHire(ctx, { ...data, step: Math.min(10, data.step + steps) });
+        }
+        ctx.log('HR declined the higher step. You took the standard offer.', '📄');
+        return finalizeHire(ctx, data);
       }
-      // bold
-      if (rng.chance(0.2 + scoreBonus)) return accept(round(data.offer * 1.2, 500), 'Bold move — they agreed to +20%!');
+      if (optionId === 'modest') {
+        if (rng.chance(0.5 + bonus)) {
+          ctx.log('They met your counter-offer.', '💬');
+          return finalizeHire(ctx, { ...data, merit: 0.08 });
+        }
+        ctx.log('They held firm on the original number. You took it.', '💬');
+        return finalizeHire(ctx, data);
+      }
+      if (rng.chance(0.2 + bonus)) {
+        ctx.log('Bold move — they agreed to +20%!', '💬');
+        return finalizeHire(ctx, { ...data, merit: 0.2 });
+      }
       if (rng.chance(0.35)) {
-        ctx.log(`${data.company} rescinded the offer after your counter.`, '💥', 'bad');
+        ctx.log(`${data.employer.name} rescinded the offer after your counter.`, '💥', 'bad');
         ctx.toast('Offer rescinded!', 'bad');
         ctx.stat('happiness', -6);
         return;
       }
-      return accept(round(data.offer * 1.04, 500), 'They split the difference at +4%.');
+      ctx.log('They split the difference at +4%.', '💬');
+      return finalizeHire(ctx, { ...data, merit: 0.04 });
+    },
+
+    clearance(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const result = adjudicate(state, data.clearance, optionId === 'disclose', rng);
+      const name = CLEARANCES[data.clearance].name;
+      if (result.caught) {
+        ctx.log(`${result.reason}. Your offer was rescinded and the case was referred for prosecution.`, '🕵️', 'bad');
+        ctx.toast('Caught lying on your SF-86', 'bad');
+        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'SF-86 omission', caught: true });
+        return;
+      }
+      if (!result.granted) {
+        ctx.log(`Your ${name} clearance was denied (${result.reason}). The offer was withdrawn.`, '🚫', 'bad');
+        ctx.toast('Clearance denied', 'bad');
+        return;
+      }
+      ctx.emit('clearance:grant', { level: data.clearance, concealed: result.concealed });
+      hire(ctx, { professionId: data.professionId, levelId: data.levelId, employer: data.employer, step: data.step, merit: data.merit });
     },
   },
 };

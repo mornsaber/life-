@@ -19,50 +19,42 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
 
 ```text
 /src
-  core/
-    Engine.js        Event bus, module registry, age-up loop, action dispatch, decision queue
-    State.js         State shape, LocalStorage persistence, shared selectors/mutators
-    Random.js        Seedable PRNG + gameplay helpers
+  core/        Engine (bus, modules, guards, prompts) · State (slices, selectors) · Random
   modules/
-    registry.js      The list of modules the engine runs
-    career/          JobTrees · CareerEngine · InterviewSystem · WorkplaceActions · index
-    military/        MilitaryEngine · ActiveDuty · Reserves · MedalEngine · index
+    registry.js
+    life/            Lifecycle · Regions (locality, relocation) · Finances · Activities
+    education/       Catalog (schools, programs, majors) · EducationEngine (admissions, aid, GI Bill)
+    credentials/     CredentialRegistry (every license/cert, one place) · LicensingEngine
+    career/          JobTrees · Ladder (IC/mgmt tracks, abilities) · PayGrades (G1–G10, steps)
+                     Employers (size, benefits, budgets, unions) · Compensation · CareerEngine
+                     InterviewSystem · WorkplaceActions · ManagementEngine · ContractingSystem · UnionsAndLabor
+    publicservice/   PublicServiceEngine (exams, clearances) · MunicipalGov · FederalAgencies
+    legal/           Offenses · JusticeSystem (courts, prison, immunity) · Misconduct (temptations, risky acts)
+    retirement/      PensionPlans · RetirementEngine (pensions, 401k/TSP, Social Security)
+    military/        MilitaryEngine · ActiveDuty · Reserves · MedalEngine
     emergency/       EmergencyEngine · FireVolunteer · PoliceReserves · SearchAndRescue
-    education/       EducationEngine (Step 1 preview: degrees for gated careers)
-    life/            Lifecycle (aging, stress, death) · Finances (tax, costs, debt) · Activities
-  ui/
-    Components.js    Pure HTML-string view helpers (stat bars, rank badges, ribbons, modal, tombstone)
-    Renderer.js      DOM driver: tabs, toasts, re-render on every change
-  index.js           Entry point and the single delegated input handler
+  ui/          Components · Renderer · views/ (one file per tab)
+tests/         scenarios.js (deterministic mechanics) · simulate.js (randomized lives + render every tab)
 ```
 
-### Module contract
-
-```js
-{
-  id: 'career', order: 30,
-  setup(engine) {},          // subscribe to bus events
-  init(state) {},            // migrate/ensure this module's state slice
-  onAgeUp(ctx) {},           // yearly simulation
-  onYearEnd(ctx) {},         // runs after every module's onAgeUp
-  actions:   { apply(ctx, arg) {} },                 // engine.dispatch('career.apply', 'tech')
-  resolvers: { interview(ctx, data, optionId) {} },  // decisions of type 'career.interview'
-}
-```
-
-`ctx` exposes `state, rng, log, toast, stat, earn, spend, prompt, emit, die`. Each module mutates only its own slice of state. It can read other slices through the selectors in `State.js`, and it reaches other domains through bus events. For example, enlisting on active duty emits `career:resign`. Decisions are stored in state as plain data, so a pending choice survives a page reload.
-
-Each year runs in this order: life → activities → education → military → career → emergency → finances. The military tick runs before career, so a mobilized reservist's civilian job sees that year's deployment (the job is protected under USERRA).
+Modules mutate only their own slice; cross-domain effects travel over the bus
+(`career:resign`, `budget:charge`, `legal:convicted`, `credential:earned`,
+`retirement:addPension`, `region:relocate`, …). The `guard` hook lets a module block
+actions (e.g. while incarcerated).
 
 ## Systems
 
-- **Career:** 11 professions, each with a 7-tier ladder (Jr. Analyst → CEO, QA Tester → CTO, Medical Resident → Chief of Medicine, Police Recruit → Chief of Police, and more). Some tiers require a specific degree. A yearly performance review (0–100%) weighs smarts or fitness, your relationship with your boss, effort, stress and how many other commitments you carry. Scoring 75% or more triggers an interactive promotion review. Low scores bring warnings and then termination. Hiring is a scenario-based interview followed by a salary negotiation, and veterans, volunteer responders and decorated candidates get a hiring bonus. Pay includes a 401(k) with employer match, and income tax uses progressive brackets.
-- **Military:** 5 branches with real rank names (E-1 to E-9, and O-1 to O-10 for officers, which requires a degree). Six specialties set your combat exposure. Active duty and Reserve service both work: you can switch between them, apply to OCS, request a deployment and re-enlist for a bonus. Promotion boards check time in grade and your evaluation, and the general and flag-officer boards are very selective. Combat and garrison decisions decide wounds and valor. The medal engine awards Medal of Honor, Service Crosses, Silver Star, Bronze Star with "V", Purple Heart, commendations and service medals. Medals add prestige and multiply your pension. Retirement pay starts at 20 years of service; for Reserve retirees it starts at age 60.
-- **Emergency reserves:** Volunteer Fire, Police Reserves and Search & Rescue each have 7 ranks, plus certification trees (EMT, HazMat, Rope Rescue, K9 Handler with a dog partner, Command College, and others). Each year brings drills, a volume of calls and interactive dispatches. Some choices are locked until you hold the right certification. Services pay you civil awards for valor and lifesaving. These memberships are paused while you're on active duty or deployed.
-- **Life:** stats, aging, stress driven by your total time commitments, mortality, cost of living, student loans, credit-card debt and bankruptcy, and yearly activities.
+- **Careers:** 27 professions across private, municipal, state and federal sectors. Ladders vary in length, fork into specialist and management tracks, and bigger employers expose more levels. Pay uses G1–G10 grades × steps × employer size × regional market/locality × merit. Levels grant abilities (supervise, sign, inspect, arrest, diplomatic…). Sustained low ratings demote before they fire; senior promotions plateau after three pass-overs.
+- **Management:** departments with morale/productivity/budget; delegate hiring, reviews and scheduling at an overhead cost; direct staff vs. mixed vs. contractors; vendor renewals.
+- **Unions:** join/leave, dues, grievance protection, contract votes, strikes (picket or cross), no-strike arbitration, wildcat sick-outs; as a manager, organizing drives (union-busting can be an unfair labor practice) and labor disputes.
+- **Credentials:** one registry (driving/CDL, pilot ratings with a flight logbook, healthcare, fire/police/SAR, bar, CPA, PE, teaching, trades, corporate/internal, government). Employers, agencies and volunteer units pay from annual training budgets; police/fire/EMS/federal/airline academies are employer-funded. Renewals, suspensions (DUI) and revocations (felonies).
+- **Education:** certificates, trade diplomas, community college, online/state/private/elite universities, master's/MBA/MPA, law, medicine, PhD. Admissions odds, part-time study, transfer credit, multiple degrees, need-based aid, employer tuition assistance, GI Bill.
+- **Public service:** civil-service exams with veterans' preference, SF-86 clearances (honesty matters), city budgets and approval, federal stability and shutdowns, Foreign Service postings with hardship/danger pay and diplomatic immunity, park rangers with rural housing.
+- **Legal:** risky behavior, job-specific temptations, delayed investigations, courts with plea/defense choices, probation, prison life, immunity (which never covers crimes against the U.S.).
+- **Retirement:** FERS, municipal, police & fire (no Social Security), teachers, union and corporate pensions with vesting and deferred annuities; 401(k)/403(b)/457/TSP with match; Social Security; military retired pay, VA disability, Medal of Honor pension.
+- **Military & emergency reserves:** as in Step 1, now wired into credentials, pensions and the legal system.
 
 ## Roadmap
 
-- **Step 2:** full `/education` (UniversityLife, HousingDorms, Internships that let you skip entry tiers)
 - **Step 3:** `/realestate` (PropertyMarket, MortgageSystem, Maintenance)
 - **Step 4:** `/relationships` (Dynamics, Interactions)

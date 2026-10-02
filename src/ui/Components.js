@@ -22,8 +22,9 @@ export const compactMoney = (n) => {
 /* Primitives                                                          */
 /* ------------------------------------------------------------------ */
 
-export function button(label, action, { arg, variant = '', disabled = false, hint = '', title = '' } = {}) {
-  return `<button class="btn ${variant}" data-action="${esc(action)}"${arg !== undefined ? ` data-arg="${esc(arg)}"` : ''}${disabled ? ' disabled' : ''}${title ? ` title="${esc(title)}"` : ''}>
+/** `collect: true` builds the arg from the <select data-part> fields in the nearest [data-collect-root]. */
+export function button(label, action, { arg, variant = '', disabled = false, hint = '', title = '', collect = false } = {}) {
+  return `<button class="btn ${variant}" data-action="${esc(action)}"${arg !== undefined ? ` data-arg="${esc(arg)}"` : ''}${collect ? ' data-collect' : ''}${disabled ? ' disabled' : ''}${title ? ` title="${esc(title)}"` : ''}>
     <span class="btn-label">${label}</span>${hint ? `<span class="btn-hint">${esc(hint)}</span>` : ''}
   </button>`;
 }
@@ -227,4 +228,39 @@ export function tombstone({ name, born, died, age, cause, epitaph, facts, honors
       <button class="btn primary huge" data-action="engine.abandon" data-arg="skipConfirm">▶ NEW LIFE</button>
     </div>
   </div>`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Forms & career ladders                                              */
+/* ------------------------------------------------------------------ */
+
+/** A <select> whose value is collected into the action arg (see index.js data-collect). */
+export function select(part, options, { label = '', value = '' } = {}) {
+  return `<label class="sel">${label ? `<span>${esc(label)}</span>` : ''}<select data-part="${part}">${options
+    .map((o) => `<option value="${esc(o.value)}"${o.value === value ? ' selected' : ''}${o.disabled ? ' disabled' : ''}>${esc(o.label)}</option>`)
+    .join('')}</select></label>`;
+}
+
+/**
+ * Branching ladder: shared levels, then Specialist and Management rows.
+ * `available(level)` → false greys out levels this employer doesn't have.
+ */
+export function trackLadder(levels, currentId, available = () => true) {
+  const row = (list, label) => {
+    if (!list.length) return '';
+    const currentIdx = list.findIndex((l) => l.id === currentId);
+    return `<div class="track-row"><span class="track-label">${label}</span><ol class="ladder compact">${list
+      .map((l, i) => {
+        const cls = l.id === currentId ? 'now' : currentIdx > -1 && i < currentIdx ? 'done' : available(l) ? 'todo' : 'na';
+        return `<li class="${cls}" title="${esc(l.title)} [G${l.grade}]${available(l) ? '' : ' — not at this employer'}">
+          <span class="ladder-dot">G${l.grade}</span><span class="ladder-title">${esc(l.title)}</span></li>`;
+      })
+      .join('')}</ol></div>`;
+  };
+  return `<div class="tracks">${row(levels.filter((l) => l.track === 'shared'), 'Core')}${row(levels.filter((l) => l.track === 'ic'), '🧠 Specialist')}${row(levels.filter((l) => l.track === 'mgmt'), '👥 Management')}</div>`;
+}
+
+export function statusPill(status) {
+  const tone = { active: 'good', suspended: 'warn', expired: 'warn', revoked: 'bad', training: 'cyan' }[status] ?? '';
+  return chip(status, tone);
 }

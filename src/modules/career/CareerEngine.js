@@ -1,19 +1,36 @@
 /**
- * Career core: requirements, hiring/leaving, annual performance evaluation
- * (0–100%), salary payment, income tax and promotion/termination logic.
+ * Career core: eligibility (requirements, civil-service exams, background
+ * checks), hiring and separation, pay (grade × step × size × locality ×
+ * merit), annual evaluation, step increases, promotions across IC and
+ * management tracks, demotions and termination, and income tax.
  *
- * Interactive pieces (interviews, workplace actions, promotion reviews) live
- * in InterviewSystem.js and WorkplaceActions.js and call into this file.
+ * Interactive pieces live in sibling files:
+ *   InterviewSystem   applications, interviews, offers, SF-86
+ *   WorkplaceActions  daily actions, promotion reviews, track switches
+ *   ManagementEngine  departments, delegation           (supervisory levels)
+ *   ContractingSystem direct staff vs. contractors
+ *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
-import { hasDegree, commitmentLoad, isDeployed } from '../../core/State.js';
+import { commitmentLoad, isDeployed, hasFelony, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
-import { getProfession, getTier, TIER_COUNT, describeRequirement } from './JobTrees.js';
+import { getProfession } from './JobTrees.js';
+import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
+import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
+import { recalcSalary } from './Compensation.js';
+import { resetBudget } from './Employers.js';
+import { checkRequirements } from '../credentials/LicensingEngine.js';
+import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
+import { educationFields } from '../education/Catalog.js';
+import { ensureDepartment, departmentTick } from './ManagementEngine.js';
+import { unionEmployeeTick } from './UnionsAndLabor.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
 /* ------------------------------------------------------------------ */
 
 export const STANDARD_DEDUCTION = 15000;
+/** Failed senior (G7+) promotion reviews before you plateau at an employer. */
+export const PLATEAU_AFTER = 3;
 /** [upper bound of bracket, marginal rate] — single filer, simplified. */
 export const TAX_BRACKETS = [
   [11925, 0.1],
@@ -40,75 +57,121 @@ export function calculateIncomeTax(gross) {
 }
 
 /* ------------------------------------------------------------------ */
-/* Requirements                                                        */
+/* Requirements & eligibility                                          */
 /* ------------------------------------------------------------------ */
 
-export function meetsRequirement(state, req = {}) {
-  const missing = [];
-  if (req.degree && !hasDegree(state, req.degree, req.majors)) missing.push(describeRequirement({ degree: req.degree, majors: req.majors }));
-  if (req.smarts && state.stats.smarts < req.smarts) missing.push(`${req.smarts}+ smarts`);
-  if (req.fitness && state.stats.fitness < req.fitness) missing.push(`${req.fitness}+ fitness`);
-  return { ok: missing.length === 0, missing };
+/** Level requirements. A missing clearance is reported separately: it's granted through investigation. */
+export function levelCheck(state, level) {
+  const { clearance, ...rest } = level.req ?? {};
+  const check = checkRequirements(state, rest);
+  return { ok: check.ok, missing: check.missing, clearanceNeeded: clearance && !hasClearance(state, clearance) ? clearance : null };
+}
+
+export function backgroundCheck(state, profession) {
+  const age = state.character.age;
+  const felonies = state.legal.record.filter((r) => r.severity === 'felony');
+  const recentMisd = state.legal.record.filter((r) => r.severity === 'misdemeanor' && age - r.age <= 5).length;
+  if (profession.background === 'strict' && felonies.length) return { ok: false, reason: 'Fails background check (felony record)' };
+  if (profession.background === 'standard' && felonies.some((f) => age - f.age <= 10)) return { ok: false, reason: 'Fails background check (recent felony)' };
+  const penalty = profession.background === 'lenient' ? felonies.length * 0.05 : recentMisd * (profession.background === 'strict' ? 0.12 : 0.06);
+  return { ok: true, penalty };
+}
+
+/** Highest entry level the candidate qualifies for at an employer of this size (ignoring clearance). */
+export function bestEntryLevel(state, profession, size) {
+  const candidates = entryLevels(profession, size).filter((l) => levelCheck(state, l).ok);
+  return candidates.sort((a, b) => b.grade - a.grade)[0] ?? null;
 }
 
 export function applicationEligibility(state, professionId) {
   const profession = getProfession(professionId);
   if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
+  if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.military.service?.component === 'active') return { ok: false, reason: 'On active duty' };
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
-  const check = meetsRequirement(state, profession.entry);
-  if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
-  return { ok: true };
+  const entry = checkRequirements(state, profession.entry);
+  if (!entry.ok) return { ok: false, reason: `Needs ${entry.missing.join(', ')}` };
+  if (profession.exam) {
+    const exam = examStatus(state, profession.exam);
+    if (!exam.passed) return { ok: false, reason: `Pass the ${EXAMS[profession.exam].name}` };
+  }
+  const bg = backgroundCheck(state, profession);
+  if (!bg.ok) return bg;
+  const sizeProbe = profession.sector === 'federal' ? 'large' : 'small';
+  const level = bestEntryLevel(state, profession, sizeProbe) ?? bestEntryLevel(state, profession, 'enterprise');
+  if (!level) {
+    const first = profession.levels[0];
+    return { ok: false, reason: `Needs ${levelCheck(state, first).missing.join(', ')}` };
+  }
+  return { ok: true, level };
+}
+
+/* ------------------------------------------------------------------ */
+/* Pay                                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Smallest step at a new grade that keeps pay from going backwards. */
+function stepForAtLeast(state, job, minimum) {
+  for (let step = 1; step <= MAX_STEP; step++) {
+    job.step = step;
+    if (recalcSalary(state, job) >= minimum) return step;
+  }
+  return MAX_STEP;
 }
 
 /* ------------------------------------------------------------------ */
 /* Job lifecycle                                                       */
 /* ------------------------------------------------------------------ */
 
-const COMPANIES = {
-  service: ['Target Point', 'Bayside Market', 'The Copper Pot', 'Harvest Table', 'Northgate Outfitters'],
-  trades: ['Volt Brothers Electric', 'Keystone Builders', 'Ironline Contracting'],
-  tech: ['Nimbus Labs', 'ByteForge', 'Quantal Systems', 'Pixelridge'],
-  corporate: ['Sterling & Rowe', 'Meridian Holdings', 'Apex Consolidated'],
-  finance: ['Goldbridge Partners', 'Harrow Capital', 'Whitlock Securities'],
-  medical: ['St. Brigid Medical Center', 'Mercy General', 'Lakeshore University Hospital'],
-  law: ['Crane, Abbott & Vance LLP', 'Okoro Whitfield LLP', 'Hale & Marsh'],
-  education: ['Lincoln Unified School District', 'Riverside Academy', 'Westbrook ISD'],
-  publicSafety: ['Metro City', 'Harbor County', 'Pine Valley'],
-};
-
-export function companyFor(rng, profession) {
-  const base = rng.pick(COMPANIES[profession.field]);
-  if (profession.id === 'police') return `${base} Police Department`;
-  if (profession.id === 'fire') return `${base} Fire Department`;
-  return base;
+function applyLevel(job, level) {
+  job.levelId = level.id;
+  job.title = level.title;
+  job.track = level.track;
+  job.grade = level.grade;
+  job.abilities = [...level.abilities];
+  job.clearance = level.req?.clearance ?? job.clearance ?? null;
+  job.yearsInLevel = 0;
+  job.peakGrade = Math.max(job.peakGrade ?? 0, level.grade);
 }
 
-export function hire(ctx, { professionId, tier = 0, salary, company }) {
+export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0 }) {
   const { state } = ctx;
   if (state.career.job) leaveJob(ctx, 'Resigned for a new opportunity');
   const profession = getProfession(professionId);
-  const t = profession.tiers[tier];
-  state.career.retired = false;
-  state.career.job = {
+  if (profession.dutyStation) ctx.emit('region:relocate', { regionId: profession.dutyStation, reason: `${employer.name} assigned you a duty station with government housing.` });
+
+  const level = levelById(profession, levelId);
+  const job = {
     professionId,
-    tier,
-    title: t.title,
-    company,
-    salary: Math.round(salary ?? t.salary),
+    sector: profession.sector,
+    employer,
+    remote: employer.remote,
+    step,
+    merit,
+    posting: null,
+    postingYears: 0,
     performance: 55,
     boss: 50,
+    coworkers: 55,
     effort: 0,
     warnings: 0,
-    yearsInTier: 0,
-    yearsAtCompany: 0,
+    lowYears: 0,
+    yearsAtEmployer: 0,
     startAge: state.character.age,
     lastRaiseAge: state.character.age,
-    peakTier: tier,
+    unionMember: false,
+    department: null,
+    paidThisYear: false,
   };
-  ctx.log(`You were hired as a ${t.title} at ${company} for $${state.career.job.salary.toLocaleString()}/yr.`, profession.icon, 'milestone');
-  ctx.toast(`Hired: ${t.title}`, 'good');
+  applyLevel(job, level);
+  recalcSalary(state, job);
+  ensureDepartment(job, level);
+  state.career.job = job;
+
+  ctx.log(`You were hired as ${level.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.`, profession.icon, 'milestone');
+  ctx.toast(`Hired: ${level.title}`, 'good');
   ctx.stat('happiness', 8);
+  ctx.emit('career:hired', { job });
 }
 
 export function leaveJob(ctx, reason, { fired = false } = {}) {
@@ -118,69 +181,112 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
   state.career.history.push({
     professionId: job.professionId,
     title: job.title,
-    company: job.company,
-    peakTier: job.peakTier,
+    levelId: job.levelId,
+    employerName: job.employer.name,
+    sector: job.sector,
+    peakGrade: job.peakGrade,
     startAge: job.startAge,
     endAge: state.character.age,
     reason,
+    fired,
   });
   state.career.job = null;
   if (fired) {
-    ctx.log(`You were fired from ${job.company}. ${reason}`, '📦', 'bad');
-    ctx.toast(`Fired from ${job.company}`, 'bad');
+    ctx.log(`You were terminated by ${job.employer.name}. ${reason}`, '📦', 'bad');
+    ctx.toast(`Terminated: ${job.employer.name}`, 'bad');
     ctx.stat('happiness', -15);
   } else {
-    ctx.log(`You left your job as ${job.title} at ${job.company}. ${reason}.`, '🚪');
+    ctx.log(`You left your job as ${job.title} at ${job.employer.name}. ${reason}.`, '🚪');
   }
+  ctx.emit('career:separated', { job, reason });
 }
 
 /* ------------------------------------------------------------------ */
-/* Promotion                                                           */
+/* Promotion & demotion                                                */
 /* ------------------------------------------------------------------ */
 
 export function promotionStatus(state) {
   const job = state.career.job;
-  if (!job) return { eligible: false, reason: 'Unemployed' };
-  if (job.tier >= TIER_COUNT - 1) return { eligible: false, reason: 'Top of the ladder' };
-  const current = getTier(job.professionId, job.tier);
-  const next = getTier(job.professionId, job.tier + 1);
-  if (job.yearsInTier < current.years) {
-    const left = current.years - job.yearsInTier;
-    return { eligible: false, next, reason: `${left} more year${left > 1 ? 's' : ''} in role` };
+  if (!job) return { eligible: false, reason: 'Unemployed', options: [], all: [] };
+  const profession = getProfession(job.professionId);
+  const level = levelById(profession, job.levelId);
+  const all = nextLevels(profession, job.employer.size, job.levelId);
+  if (!all.length) return { eligible: false, reason: 'Top of the ladder here', options: [], all };
+  if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
+  if (job.yearsInLevel < level.years) {
+    const left = level.years - job.yearsInLevel;
+    return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
   }
-  const check = meetsRequirement(state, next.req);
-  if (!check.ok) return { eligible: false, next, reason: `Needs ${check.missing.join(', ')}` };
-  return { eligible: true, next };
+  const options = all.filter((l) => levelCheck(state, l).ok);
+  if (!options.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options, all };
+  return { eligible: true, options, all };
 }
 
-export function promote(ctx) {
-  const { state } = ctx;
+/** Promote into `levelId`. Runs a clearance upgrade investigation when required. */
+export function promote(ctx, levelId) {
+  const { state, rng } = ctx;
   const job = state.career.job;
-  const next = getTier(job.professionId, job.tier + 1);
-  job.tier += 1;
-  job.peakTier = Math.max(job.peakTier, job.tier);
-  job.title = next.title;
-  job.salary = Math.round(Math.max(job.salary * 1.12, next.salary));
-  job.yearsInTier = 0;
+  const profession = getProfession(job.professionId);
+  const level = levelById(profession, levelId);
+  const check = levelCheck(state, level);
+  if (check.clearanceNeeded) {
+    const honest = !state.publicService.clearance?.concealed;
+    const result = adjudicate(state, check.clearanceNeeded, honest, rng);
+    if (result.caught) {
+      ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'clearance upgrade', caught: true });
+      return false;
+    }
+    if (!result.granted) {
+      ctx.log(`Your promotion to ${level.title} fell through: the ${CLEARANCES[check.clearanceNeeded].name} upgrade was denied.`, '🚫', 'bad');
+      return false;
+    }
+    ctx.emit('clearance:grant', { level: check.clearanceNeeded, concealed: result.concealed });
+  }
+  const oldSalary = job.salary;
+  applyLevel(job, level);
+  stepForAtLeast(state, job, Math.round(oldSalary * 1.06));
   job.warnings = 0;
+  job.lowYears = 0;
+  job.passovers = 0;
   job.performance = Math.round(clamp(job.performance - 15, 40, 100));
   job.lastRaiseAge = state.character.age;
-  ctx.log(`Promoted to ${next.title}! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
-  ctx.toast(`Promoted: ${next.title}`, 'good');
+  ensureDepartment(job, level);
+  ctx.log(`Promoted to ${level.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
+  ctx.toast(`Promoted: ${level.title}`, 'good');
   ctx.stat('happiness', 10);
+  return true;
+}
+
+export function demote(ctx, reason) {
+  const { state } = ctx;
+  const job = state.career.job;
+  const profession = getProfession(job.professionId);
+  const prev = previousLevel(profession, job.employer.size, job.levelId);
+  if (!prev) return false;
+  applyLevel(job, prev);
+  job.step = Math.max(1, job.step - 2);
+  recalcSalary(state, job);
+  job.warnings = 0;
+  job.lowYears = 0;
+  ensureDepartment(job, prev);
+  ctx.log(`You were demoted to ${prev.title} [G${prev.grade}] (${reason}). Salary: $${job.salary.toLocaleString()}.`, '⬇️', 'bad');
+  ctx.toast(`Demoted: ${prev.title}`, 'bad');
+  ctx.stat('happiness', -10);
+  return true;
 }
 
 /** Queue the interactive promotion review (resolved in WorkplaceActions). */
 export function openPromotionReview(ctx, initiatedByPlayer = false) {
   const job = ctx.state.career.job;
-  const { next } = promotionStatus(ctx.state);
+  const { options } = promotionStatus(ctx.state);
+  const target = options.length > 1 ? `${options.map((o) => o.title).join(' or ')}` : options[0].title;
   ctx.prompt({
     type: 'career.promotionReview',
     icon: '📋',
     title: 'Promotion Review',
     text: initiatedByPlayer
-      ? `You asked your boss for a shot at ${next.title}. They close the door and ask why you deserve it.`
-      : `Your manager at ${job.company} pulls you aside: "Leadership has their eye on you for ${next.title}. Make your case."`,
+      ? `You asked for a shot at ${target}. Your boss closes the door and asks why you deserve it.`
+      : `Your manager at ${job.employer.name} pulls you aside: "Leadership has their eye on you for ${target}. Make your case."`,
     options: [
       { id: 'results', label: '📊 Walk through your results', hint: 'Smarts + performance' },
       { id: 'team', label: '🤝 Credit the team, pitch your leadership', hint: 'Boss relationship' },
@@ -194,69 +300,85 @@ export function openPromotionReview(ctx, initiatedByPlayer = false) {
 /* Annual evaluation                                                   */
 /* ------------------------------------------------------------------ */
 
-export function performanceTarget(state, rng) {
+const PHYSICAL_FIELDS = ['police', 'fire', 'ems', 'trades', 'trucking', 'parkService', 'culinary', 'publicWorks'];
+
+export function performanceTarget(state, rng, departmentEffect = 0) {
   const job = state.career.job;
-  const profession = getProfession(job.professionId);
-  const physical = profession.field === 'publicSafety' || profession.field === 'trades';
+  const physical = PHYSICAL_FIELDS.includes(job.professionId);
   const aptitude = physical ? state.stats.smarts * 0.15 + state.stats.fitness * 0.15 : state.stats.smarts * 0.3;
   const effort = Math.min(job.effort, 3) * 6;
   const stressPenalty = Math.max(0, state.stats.stress - 60) * 0.4;
-  const overload = Math.max(0, commitmentLoad(state) - 3) * 2.5;
-  return 25 + aptitude + job.boss * 0.25 + effort + rng.int(-10, 10) - stressPenalty - overload;
+  const overload = Math.max(0, commitmentLoad(state) - 3.5) * 2.5;
+  const major = educationFields(state).has(job.professionId) ? 4 : 0;
+  return 24 + aptitude + job.boss * 0.2 + job.coworkers * 0.05 + effort + major + departmentEffect + rng.int(-10, 10) - stressPenalty - overload;
 }
 
 export function careerOnAgeUp(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   if (!job) return;
+  const profession = getProfession(job.professionId);
+  job.paidThisYear = false;
+  resetBudget(state, job.employer, job.sector);
+  if (job.professionId === 'foreignService') job.postingYears += 1;
 
   if (isDeployed(state)) {
-    ctx.log(`Your position at ${job.company} is protected under USERRA while you're mobilized.`, '🛡️');
+    ctx.log(`Your position at ${job.employer.name} is protected under USERRA while you're mobilized.`, '🛡️');
     job.effort = 0;
     return;
   }
 
-  job.yearsInTier += 1;
-  job.yearsAtCompany += 1;
+  job.yearsInLevel += 1;
+  job.yearsAtEmployer += 1;
 
-  // Pay: 6% pre-tax 401(k) contribution, matched 100% by the employer.
-  const contribution = Math.round(job.salary * 0.06);
-  ctx.earn(job.salary - contribution, `Salary — ${job.title}`);
-  state.finances.retirement += contribution * 2;
+  const departmentEffect = departmentTick(ctx, job);
+  unionEmployeeTick(ctx, job);
+  if (state.career.job !== job) return;
+
+  // Pay (commission jobs swing with the market)
+  recalcSalary(state, job);
+  const gross = profession.commission ? Math.round(job.salary * rng.float(0.5, 1.6)) : job.salary;
+  ctx.earn(gross, `${profession.commission ? 'Commissions' : 'Salary'} — ${job.title}`, { wage: true, ssCovered: job.employer.benefits.ssCovered });
+  job.paidThisYear = true;
+  if (profession.flightHoursPerYear) ctx.emit('logbook:add', { hours: profession.flightHoursPerYear });
 
   // Evaluation
-  const target = performanceTarget(state, rng);
+  const target = performanceTarget(state, rng, departmentEffect);
   job.performance = Math.round(clamp(job.performance * 0.55 + target * 0.45, 0, 100));
   job.effort = 0;
   job.boss = Math.round(clamp(job.boss + (50 - job.boss) * 0.1 + (job.performance - 50) * 0.1, 0, 100));
+  job.coworkers = Math.round(clamp(job.coworkers + (55 - job.coworkers) * 0.15, 0, 100));
+  const rating = ratingLabel(job.performance);
+
+  // Within-grade steps (and a small private-sector merit bump)
+  const steps = stepIncrease(job.performance);
+  if (steps && job.step < MAX_STEP) job.step = Math.min(MAX_STEP, job.step + steps);
+  if (job.sector === 'private' && job.performance >= 80) job.merit = Math.round((job.merit + 0.01) * 1000) / 1000;
+  recalcSalary(state, job);
 
   const status = promotionStatus(state);
+  const grievanceLimit = job.unionMember ? 3 : 2;
   if (job.performance >= 75 && status.eligible) {
-    ctx.log(`Annual review: ${job.performance}% — outstanding. You're up for promotion.`, '🌟', 'good');
+    job.lowYears = 0;
+    ctx.log(`Annual review: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');
+    bumpYearly(state, 'career.requestPromotion');
     openPromotionReview(ctx);
-  } else if (job.performance < 30) {
+  } else if (job.performance < 35) {
     job.warnings += 1;
-    if (job.warnings >= 2 || (job.performance < 15 && rng.chance(0.5))) {
-      leaveJob(ctx, `Performance rated ${job.performance}% after repeated warnings.`, { fired: true });
+    job.lowYears += 1;
+    // Sustained low performance: demotion first, termination when there's nowhere lower to go.
+    if (job.lowYears >= 2 && demote(ctx, `rated ${rating} two years running`)) return;
+    if (job.warnings >= grievanceLimit || (job.performance < 12 && rng.chance(0.5))) {
+      leaveJob(ctx, `Rated ${rating} after repeated warnings${job.unionMember ? ' (the union grievance failed)' : ''}.`, { fired: true });
       return;
     }
-    ctx.log(`Annual review: ${job.performance}%. HR issued a formal written warning.`, '⚠️', 'warn');
+    ctx.log(`Annual review: ${rating} (${job.performance}%). HR issued a formal written warning (${job.warnings}/${grievanceLimit}).`, '⚠️', 'warn');
     ctx.stat('stress', 6);
   } else {
-    if (job.performance >= 50) {
-      job.warnings = Math.max(0, job.warnings - 1);
-      job.salary = Math.round(job.salary * 1.02);
-    }
-    ctx.log(`Annual review at ${job.company}: ${job.performance}% performance.`, '📈');
+    job.lowYears = 0;
+    if (job.performance >= 50) job.warnings = Math.max(0, job.warnings - 1);
+    ctx.log(`Annual review at ${job.employer.name}: ${rating} (${job.performance}%). Step ${job.step}, $${job.salary.toLocaleString()}/yr.`, '📈');
   }
 }
 
-export function retire(ctx) {
-  const { state } = ctx;
-  if (!state.career.job) return;
-  leaveJob(ctx, 'Retired');
-  state.career.retired = true;
-  ctx.log('You retired. Time to enjoy the 401(k).', '🏖️', 'milestone');
-  ctx.stat('happiness', 10);
-  ctx.stat('stress', -20);
-}
+export { ladderFor, levelById, hasFelony, recalcSalary };

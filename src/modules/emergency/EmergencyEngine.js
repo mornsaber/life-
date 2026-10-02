@@ -4,16 +4,23 @@
  *
  * Each service (FireVolunteer, PoliceReserves, SearchAndRescue) is a data
  * definition; this engine supplies the shared mechanics: joining, drills,
- * call volume, interactive dispatches, certifications, rank progression,
- * civil awards and military-leave suspension.
+ * call volume, interactive dispatches, rank progression, civil awards and
+ * military-leave suspension.
+ *
+ * Certifications are *not* defined here: services list ids from the shared
+ * CredentialRegistry. Earning EMT or Firefighter II as a volunteer counts for
+ * a paid fire/EMS career and vice versa. Each unit has an annual training
+ * budget that sponsors its members' courses (via LicensingEngine).
  *
  * state.emergency[serviceId] = {
- *   serviceName, unit, rankIndex, xp, years, certs[], calls, saves,
- *   injuries, complaints, onLeave, joinedAge, k9: { name, breed, age } | null
+ *   serviceName, unit, rankIndex, xp, years, calls, saves, injuries,
+ *   complaints, onLeave, joinedAge, budget: { annual, left }, k9: { name, breed, age } | null
  * }
  */
-import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed } from '../../core/State.js';
+import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
+import { hasCredential } from '../credentials/LicensingEngine.js';
+import { credentialName } from '../credentials/CredentialRegistry.js';
 import { FireVolunteer } from './FireVolunteer.js';
 import { PoliceReserves } from './PoliceReserves.js';
 import { SearchAndRescue, K9_NAMES, K9_BREEDS, K9_RETIREMENT_AGE } from './SearchAndRescue.js';
@@ -26,7 +33,6 @@ export const SERVICES = {
 export const SERVICE_LIST = Object.values(SERVICES);
 
 export const rankOfMember = (serviceId, member) => SERVICES[serviceId].ranks[member.rankIndex];
-export const certName = (serviceId, certId) => SERVICES[serviceId].certifications.find((c) => c.id === certId)?.name ?? certId;
 
 /* ------------------------------------------------------------------ */
 /* Eligibility                                                         */
@@ -37,7 +43,10 @@ export function joinEligibility(state, serviceId) {
   if (!svc) return { ok: false, reason: 'Unknown service' };
   if (state.emergency[serviceId]) return { ok: false, reason: 'Already a member' };
   if (state.character.age < svc.minAge) return { ok: false, reason: `Must be ${svc.minAge}+` };
+  if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (isOnActiveDuty(state)) return { ok: false, reason: 'On active duty' };
+  if (hasFelony(state)) return { ok: false, reason: 'Fails background check' };
+  if (serviceId === 'police' && state.legal.record.some((r) => r.severity === 'misdemeanor' && state.character.age - r.age <= 5)) return { ok: false, reason: 'Recent criminal record' };
   if (svc.excludesProfession && state.career.job?.professionId === svc.excludesProfession) return { ok: false, reason: 'Sworn officers can\'t join' };
   for (const [stat, min] of Object.entries(svc.requirements)) {
     if (state.stats[stat] < min) return { ok: false, reason: `Needs ${min}+ ${stat}` };
@@ -45,25 +54,13 @@ export function joinEligibility(state, serviceId) {
   return { ok: true };
 }
 
-export function certEligibility(state, serviceId, certId) {
-  const member = state.emergency[serviceId];
-  const cert = SERVICES[serviceId].certifications.find((c) => c.id === certId);
-  if (!member || !cert) return { ok: false, reason: 'Unavailable' };
-  if (member.certs.includes(certId)) return { ok: false, reason: 'Certified' };
-  if (cert.requires && !member.certs.includes(cert.requires)) return { ok: false, reason: `Needs ${certName(serviceId, cert.requires)}` };
-  if (member.onLeave) return { ok: false, reason: 'On leave' };
-  if (yearlyCount(state, `emergency.cert.${serviceId}`)) return { ok: false, reason: 'One course per year' };
-  if (cert.cost > 0 && state.finances.cash < cert.cost) return { ok: false, reason: `Costs $${cert.cost.toLocaleString()}` };
-  return { ok: true };
-}
-
-export function nextRankStatus(serviceId, member) {
+export function nextRankStatus(state, serviceId, member) {
   const ranks = SERVICES[serviceId].ranks;
   const next = ranks[member.rankIndex + 1];
   if (!next) return { next: null, ready: false, reason: 'Top rank' };
   const missing = [];
   if (member.xp < next.xp) missing.push(`${next.xp - member.xp} XP`);
-  if (next.cert && !member.certs.includes(next.cert)) missing.push(certName(serviceId, next.cert));
+  if (next.cert && !hasCredential(state, next.cert)) missing.push(credentialName(next.cert));
   if (next.minYears && member.years < next.minYears) missing.push(`${next.minYears - member.years} yrs`);
   return { next, ready: missing.length === 0, reason: missing.join(' · ') };
 }
@@ -89,7 +86,7 @@ function awardCivil(ctx, serviceId, kind, citation) {
 }
 
 function checkPromotion(ctx, serviceId, member) {
-  const status = nextRankStatus(serviceId, member);
+  const status = nextRankStatus(ctx.state, serviceId, member);
   if (!status.ready || !ctx.rng.chance(0.85)) return;
   member.rankIndex += 1;
   ctx.log(`${SERVICES[serviceId].short}: promoted to ${status.next.title}!`, '⬆️', 'good');
@@ -101,9 +98,12 @@ function checkPromotion(ctx, serviceId, member) {
 /* Dispatch                                                            */
 /* ------------------------------------------------------------------ */
 
+const optionLocked = (state, member, o) => (o.cert && !hasCredential(state, o.cert)) || (o.cert === 'k9Handler' && !member.k9);
+
 function dispatchPrompt(ctx, serviceId) {
+  const { state } = ctx;
   const svc = SERVICES[serviceId];
-  const member = ctx.state.emergency[serviceId];
+  const member = state.emergency[serviceId];
   const call = ctx.rng.pick(svc.dispatches);
   ctx.prompt({
     type: 'emergency.dispatch',
@@ -111,11 +111,11 @@ function dispatchPrompt(ctx, serviceId) {
     title: `${svc.short} Dispatch — ${call.title}`,
     text: `${member.unit}\n${call.text}`,
     options: call.options.map((o) => {
-      const locked = o.cert && !member.certs.includes(o.cert);
+      const locked = optionLocked(state, member, o);
       return {
         id: o.id,
         label: o.label,
-        hint: locked ? `🔒 Requires ${certName(serviceId, o.cert)}` : `${o.risk >= 0.7 ? 'Extreme risk' : o.risk >= 0.45 ? 'High risk' : o.risk >= 0.2 ? 'Some risk' : 'Low risk'}${o.cert ? ` · ${certName(serviceId, o.cert)}` : ''}`,
+        hint: locked ? `🔒 Requires ${o.cert === 'k9Handler' && hasCredential(state, 'k9Handler') ? 'a K9 partner' : credentialName(o.cert)}` : `${o.risk >= 0.7 ? 'Extreme risk' : o.risk >= 0.45 ? 'High risk' : o.risk >= 0.2 ? 'Some risk' : 'Low risk'}${o.cert ? ` · ${credentialName(o.cert)}` : ''}`,
         disabled: Boolean(locked),
         tone: o.risk >= 0.7 ? 'danger' : o.risk <= 0.1 ? 'safe' : undefined,
       };
@@ -134,7 +134,7 @@ function resolveDispatch(ctx, data, optionId) {
 
   let chance = option.success + member.rankIndex * 0.025 + Math.min(member.years, 10) * 0.005;
   if (option.stat) chance += (state.stats[option.stat] - 50) / 250;
-  if (member.k9 && option.cert === 'k9') chance += 0.05;
+  if (member.k9 && option.cert === 'k9Handler') chance += 0.05;
   const success = rng.chance(clamp(chance, 0.05, 0.97));
   member.calls += 1;
 
@@ -196,9 +196,14 @@ function leaveService(ctx, serviceId, reason) {
   ctx.log(`You left the ${SERVICES[serviceId].name}. ${reason}.`, '🚪');
 }
 
+function newK9(rng) {
+  return { name: rng.pick(K9_NAMES), breed: rng.pick(K9_BREEDS), age: 1 };
+}
+
 function serviceTick(ctx, serviceId, member) {
   const { state, rng } = ctx;
   const svc = SERVICES[serviceId];
+  member.budget.left = member.budget.annual;
 
   if (isOnActiveDuty(state) || isDeployed(state)) {
     if (!member.onLeave) ctx.log(`${member.unit} placed you on military leave.`, svc.icon, 'muted');
@@ -209,12 +214,10 @@ function serviceTick(ctx, serviceId, member) {
   member.onLeave = false;
   member.years += 1;
 
-  // Drills
   member.xp += 20;
   ctx.stat('fitness', 2);
   ctx.log(`${svc.short}: ${rng.pick(svc.drills)}`, '🧯', 'muted');
 
-  // Call volume
   const [min, max] = svc.callsPerYear;
   const calls = rng.int(min, max);
   member.calls += calls;
@@ -222,17 +225,18 @@ function serviceTick(ctx, serviceId, member) {
   if (svc.stipendPerCall) ctx.earn(calls * svc.stipendPerCall, `${svc.short} call stipend`);
   ctx.log(`${svc.short}: you ran ${calls} calls with ${member.unit}.`, svc.icon);
 
-  // K9 partner ages and eventually retires.
+  // K9 partner ages, retires, and is replaced for certified handlers.
   if (member.k9) {
     member.k9.age += 1;
     if (member.k9.age >= K9_RETIREMENT_AGE) {
       ctx.log(`Your K9 partner ${member.k9.name} retired after a long career and now naps on your couch full time. 🐕`, '🐕', 'milestone');
       member.k9 = null;
-      member.certs = member.certs.filter((c) => c !== 'k9');
     }
+  } else if (serviceId === 'sar' && hasCredential(state, 'k9Handler') && rng.chance(0.7)) {
+    member.k9 = newK9(rng);
+    ctx.log(`Your team paired you with a new K9 pup: ${member.k9.name}, a ${member.k9.breed}.`, '🐕', 'milestone');
   }
 
-  // Interactive dispatch(es)
   if (rng.chance(0.75)) dispatchPrompt(ctx, serviceId);
   if (rng.chance(0.2)) dispatchPrompt(ctx, serviceId);
 
@@ -252,6 +256,30 @@ export const EmergencyEngine = {
 
   init(state) {
     state.emergency ??= { fire: null, police: null, sar: null, history: [] };
+  },
+
+  setup(engine) {
+    const bus = engine.bus;
+    bus.on('budget:charge', ({ ctx, sponsor, amount }) => {
+      const member = sponsor.type === 'unit' && ctx.state.emergency[sponsor.serviceId];
+      if (member) member.budget.left = Math.max(0, member.budget.left - amount);
+    });
+    bus.on('credential:earned', ({ ctx, onEarn }) => {
+      const member = ctx.state.emergency.sar;
+      if (onEarn === 'k9' && member && !member.k9) {
+        member.k9 = newK9(ctx.rng);
+        ctx.log(`Meet your new partner: ${member.k9.name}, a ${member.k9.breed}. 🐕`, '🐕', 'milestone');
+      }
+    });
+    bus.on('legal:convicted', ({ ctx, severity, name }) => {
+      for (const id of Object.keys(SERVICES)) {
+        if (!ctx.state.emergency[id]) continue;
+        if (severity === 'felony' || (id === 'police' && severity === 'misdemeanor')) leaveService(ctx, id, `Dismissed after a ${name} conviction`);
+      }
+    });
+    bus.on('legal:incarcerated', ({ ctx }) => {
+      for (const id of Object.keys(SERVICES)) if (ctx.state.emergency[id]) leaveService(ctx, id, 'Membership terminated during incarceration');
+    });
   },
 
   onAgeUp(ctx) {
@@ -274,13 +302,13 @@ export const EmergencyEngine = {
         rankIndex: 0,
         xp: 0,
         years: 0,
-        certs: [],
         calls: 0,
         saves: 0,
         injuries: 0,
         complaints: 0,
         onLeave: false,
         joinedAge: ctx.state.character.age,
+        budget: { annual: svc.trainingBudget, left: svc.trainingBudget },
         k9: null,
       };
       ctx.log(`You were sworn in as a ${svc.ranks[0].title} with ${unit}.`, svc.icon, 'milestone');
@@ -312,31 +340,6 @@ export const EmergencyEngine = {
       if (svc.stipendPerCall) ctx.earn(calls * svc.stipendPerCall, `${svc.short} call stipend`);
       ctx.log(`${svc.short}: you covered extra shifts and ran ${calls} more calls.`, svc.icon);
       if (ctx.rng.chance(0.35)) dispatchPrompt(ctx, serviceId);
-    },
-
-    /** arg: 'serviceId:certId' */
-    certify(ctx, arg) {
-      const { state, rng } = ctx;
-      const [serviceId, certId] = String(arg).split(':');
-      const check = certEligibility(state, serviceId, certId);
-      if (!check.ok) return ctx.toast(check.reason, 'warn');
-      const member = state.emergency[serviceId];
-      const cert = SERVICES[serviceId].certifications.find((c) => c.id === certId);
-      bumpYearly(state, `emergency.cert.${serviceId}`);
-      if (cert.cost) ctx.spend(cert.cost, cert.name);
-      const chance = clamp(0.55 + (state.stats[cert.stat] - 50) / 120, 0.15, 0.95);
-      if (!rng.chance(chance)) {
-        ctx.log(`You failed the ${cert.name} course. You can retest next year.`, '📝', 'bad');
-        return ctx.toast(`Failed: ${cert.name}`, 'bad');
-      }
-      member.certs.push(certId);
-      member.xp += 15;
-      ctx.log(`You earned your ${cert.name} certification.`, cert.icon, 'good');
-      ctx.toast(`Certified: ${cert.name}`, 'good');
-      if (certId === 'k9') {
-        member.k9 = { name: rng.pick(K9_NAMES), breed: rng.pick(K9_BREEDS), age: 2 };
-        ctx.log(`Meet your new partner: ${member.k9.name}, a ${member.k9.breed}. 🐕`, '🐕', 'milestone');
-      }
     },
 
     resign(ctx, serviceId) {

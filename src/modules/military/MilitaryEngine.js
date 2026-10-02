@@ -11,7 +11,7 @@
  *   disciplinary, deployedThisYear, deploymentRequested, joinedAge, isNew
  * }
  */
-import { hasDegree, prestige, addLog } from '../../core/State.js';
+import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
 
@@ -119,13 +119,15 @@ export function enlistmentEligibility(state, branchId, track) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
   if (state.military.service) return { ok: false, reason: 'Already serving' };
-  if (state.military.history.some((h) => h.discharge === 'dishonorable')) return { ok: false, reason: 'Barred: dishonorable discharge' };
+  if (state.military.history.some((h) => h.discharge === 'dishonorable' || h.discharge === 'oth')) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
+  if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
+  if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (track === 'officer') {
     if (age < 19 || age > 39) return { ok: false, reason: 'Officers: age 19–39' };
-    if (!hasDegree(state, 'bachelor')) return { ok: false, reason: "Officers need a bachelor's" };
+    if (!meetsEducation(state, { level: 'bachelor' })) return { ok: false, reason: "Officers need a bachelor's" };
   } else {
     if (age < 17 || age > 39) return { ok: false, reason: 'Enlistment: age 17–39' };
-    if (age >= 18 && !hasDegree(state, 'highschool')) return { ok: false, reason: 'Needs diploma' };
+    if (age >= 18 && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   }
   if (state.stats.health < 40) return { ok: false, reason: 'Fails MEPS medical (health)' };
   if (state.stats.fitness < 30) return { ok: false, reason: 'Fails fitness test' };
@@ -136,7 +138,7 @@ export function enlist(ctx, { branch, track, component, specialty }) {
   const { state } = ctx;
   const b = BRANCHES[branch];
   // College grads who enlist start a few grades up.
-  const startGrade = track === 'enlisted' && hasDegree(state, 'bachelor') ? (branch === 'army' ? 3 : 2) : 0;
+  const startGrade = track === 'enlisted' && meetsEducation(state, { level: 'bachelor' }) ? (branch === 'army' ? 3 : 2) : 0;
   const svc = {
     branch,
     track,
@@ -234,6 +236,7 @@ export const DISCHARGE_LABEL = {
   general: 'General (Under Honorable Conditions)',
   medical: 'Medical',
   retired: 'Retired',
+  oth: 'Other Than Honorable',
   dishonorable: 'Dishonorable',
   kia: 'Killed in Action',
 };
@@ -270,15 +273,15 @@ export function discharge(ctx, type, reason) {
     const reserve = svc.component === 'reserve';
     const annual = Math.round(basePay * 0.025 * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
     const startAge = reserve ? Math.max(60, state.character.age) : state.character.age;
-    state.military.benefits.push({ label: `${BRANCHES[svc.branch].name} retired pay`, annual, startAge });
+    ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${BRANCHES[svc.branch].name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
   }
   if (type === 'medical') {
     const annual = Math.round(12000 + svc.wounds * 9000);
-    state.military.benefits.push({ label: 'VA disability compensation', annual, startAge: state.character.age });
+    ctx.emit('retirement:addPension', { pension: { id: 'va', label: 'VA disability compensation', annual, startAge: state.character.age, source: 'va', cola: 0.025 } });
   }
-  if (militaryHonors(state).some((h) => h.id === 'moh') && !state.military.benefits.some((b) => b.label.includes('Medal of Honor'))) {
-    state.military.benefits.push({ label: 'Medal of Honor special pension', annual: MOH_ANNUAL_PENSION, startAge: state.character.age });
+  if (militaryHonors(state).some((h) => h.id === 'moh') && !state.retirement.pensions.some((p) => p.id === 'moh')) {
+    ctx.emit('retirement:addPension', { pension: { id: 'moh', label: 'Medal of Honor special pension', annual: MOH_ANNUAL_PENSION, startAge: state.character.age, source: 'military', cola: 0.025 } });
   }
 
   ctx.log(`You were discharged from the ${BRANCHES[svc.branch].name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');

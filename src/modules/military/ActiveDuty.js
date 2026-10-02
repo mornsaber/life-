@@ -386,7 +386,8 @@ export function activeDutyTick(ctx, svc) {
   svc.contractYearsLeft -= 1;
 
   const rank = rankOf(svc);
-  ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`);
+  ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`, { wage: true });
+  if (svc.specialty === 'aviation') ctx.emit('logbook:add', { hours: 250 });
   updateEvaluation(ctx, svc);
 
   const exposure = SPECIALTIES[svc.specialty].exposure;

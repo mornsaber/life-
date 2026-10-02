@@ -1,7 +1,8 @@
 /**
  * Search & Rescue team — service definition consumed by EmergencyEngine.
- * The K9 Handler certification pairs you with a search dog (tracked in the
- * member record) that unlocks the strongest search options until it retires.
+ * The K9 Handler credential pairs you with a search dog (tracked in the
+ * member record) that unlocks the strongest search options. When a dog
+ * retires, certified handlers are paired with a new pup.
  */
 export const K9_NAMES = ['Ranger', 'Juno', 'Koda', 'Maple', 'Blue', 'Tracker', 'Nova', 'Bear', 'Willow', 'Ace'];
 export const K9_BREEDS = ['German Shepherd', 'Belgian Malinois', 'Bloodhound', 'Labrador Retriever', 'Border Collie'];
@@ -20,21 +21,14 @@ export const SearchAndRescue = {
   ranks: [
     { title: 'SAR Trainee', xp: 0 },
     { title: 'Field Team Member', xp: 50, cert: 'wfr' },
-    { title: 'Senior Field Member', xp: 150, cert: 'landnav' },
-    { title: 'Team Leader', xp: 300, cert: 'rope' },
-    { title: 'Field Coordinator', xp: 480, cert: 'ics' },
-    { title: 'Operations Chief', xp: 700, cert: 'ics', minYears: 6 },
-    { title: 'SAR Commander', xp: 1000, cert: 'ics', minYears: 10 },
+    { title: 'Senior Field Member', xp: 150, cert: 'landNav' },
+    { title: 'Team Leader', xp: 300, cert: 'ropeRescue' },
+    { title: 'Field Coordinator', xp: 480, cert: 'ics300' },
+    { title: 'Operations Chief', xp: 700, cert: 'ics300', minYears: 6 },
+    { title: 'SAR Commander', xp: 1000, cert: 'ics300', minYears: 10 },
   ],
-  certifications: [
-    { id: 'wfr', name: 'Wilderness First Responder', icon: '🩹', cost: 700, stat: 'smarts', desc: 'Backcountry patient care.' },
-    { id: 'landnav', name: 'Land Navigation', icon: '🧭', cost: 0, stat: 'smarts', desc: 'Map, compass and GPS search tactics.' },
-    { id: 'rope', name: 'Rope Rescue Technician', icon: '🪢', cost: 600, stat: 'fitness', requires: 'landnav', desc: 'High-angle raises and lowers.' },
-    { id: 'swiftwater', name: 'Swiftwater Rescue Technician', icon: '🌊', cost: 500, stat: 'fitness', desc: 'Moving-water rescue.' },
-    { id: 'k9', name: 'K9 Handler', icon: '🐕', cost: 2500, stat: 'smarts', requires: 'landnav', desc: 'Partner with an air-scent / trailing dog.' },
-    { id: 'avalanche', name: 'Avalanche Rescue', icon: '🏔️', cost: 450, stat: 'fitness', requires: 'rope', desc: 'Beacon, probe and shovel ops.' },
-    { id: 'ics', name: 'Incident Command (ICS-300)', icon: '📡', cost: 200, stat: 'smarts', requires: 'wfr', desc: 'Run large multi-agency searches.' },
-  ],
+  credentials: ['wfr', 'landNav', 'ropeRescue', 'swiftwater', 'k9Handler', 'avalanche', 'ics300', 'emt'],
+  trainingBudget: 1800,
   drills: [
     'Monthly training: rope systems at the quarry.',
     'Night navigation exercise in the national forest.',
@@ -51,8 +45,8 @@ export const SearchAndRescue = {
       id: 'lostHiker', title: '🥾 Overdue Hiker',
       text: 'A hiker is overdue at dusk. Temperatures are dropping below freezing.',
       options: [
-        { id: 'k9', label: 'Deploy your K9 on the last known point', cert: 'k9', success: 0.9, risk: 0.05, xp: 28, save: true, successText: 'Your dog alerted within an hour. Hypothermic but alive.', failText: 'Rain washed the scent away.' },
-        { id: 'grid', label: 'Run a methodical grid search', cert: 'landnav', success: 0.8, risk: 0.1, xp: 22, stat: 'smarts', save: true, successText: 'Your team found her in a drainage two miles off-trail.', failText: 'The search stretched to three days.' },
+        { id: 'k9', label: 'Deploy your K9 on the last known point', cert: 'k9Handler', success: 0.9, risk: 0.05, xp: 28, save: true, successText: 'Your dog alerted within an hour. Hypothermic but alive.', failText: 'Rain washed the scent away.' },
+        { id: 'grid', label: 'Run a methodical grid search', cert: 'landNav', success: 0.8, risk: 0.1, xp: 22, stat: 'smarts', save: true, successText: 'Your team found her in a drainage two miles off-trail.', failText: 'The search stretched to three days.' },
         { id: 'hasty', label: 'Hasty search along the trail', success: 0.6, risk: 0.15, xp: 20, stat: 'fitness', save: true, successText: 'You found him sheltering under a rock ledge.', failText: 'You searched until 3 AM with nothing.' },
         { id: 'wait', label: 'Wait for first light', success: 0.8, risk: 0, xp: 8, successText: 'Found at dawn — cold, but okay.', failText: 'He spent a brutal night out. Frostbite.' },
       ],
@@ -61,7 +55,7 @@ export const SearchAndRescue = {
       id: 'climber', title: '🧗 Stranded Climber',
       text: 'A climber is stranded on a ledge 300 feet up a granite face with a broken leg.',
       options: [
-        { id: 'lower', label: 'Rig a technical lowering system', cert: 'rope', success: 0.8, risk: 0.35, xp: 35, stat: 'smarts', heroic: true, save: true, successText: 'A flawless litter lower in the dark. Textbook.', failText: 'A rock fall forced the team to abort and wait for a hoist.' },
+        { id: 'lower', label: 'Rig a technical lowering system', cert: 'ropeRescue', success: 0.8, risk: 0.35, xp: 35, stat: 'smarts', heroic: true, save: true, successText: 'A flawless litter lower in the dark. Textbook.', failText: 'A rock fall forced the team to abort and wait for a hoist.' },
         { id: 'freeclimb', label: 'Free-climb up to stabilize them', success: 0.4, risk: 0.85, xp: 30, stat: 'fitness', heroic: true, save: true, successText: 'You reached the ledge and kept them alive until the hoist.', failText: 'You slipped and fell 20 feet onto a lower ledge.' },
         { id: 'hoist', label: 'Request a helicopter hoist', success: 0.7, risk: 0.08, xp: 15, save: true, successText: 'The helicopter plucked them off at first light.', failText: 'Winds grounded the helicopter until morning.' },
       ],
@@ -80,7 +74,7 @@ export const SearchAndRescue = {
       text: 'An avalanche buried two backcountry skiers. The clock is running — survival odds drop fast after 15 minutes.',
       options: [
         { id: 'beacon', label: 'Beacon search and probe line', cert: 'avalanche', success: 0.8, risk: 0.35, xp: 35, heroic: true, save: true, successText: 'You located and dug out both skiers alive.', failText: 'You got one out alive. The other was too deep.' },
-        { id: 'k9', label: 'Run your K9 across the debris', cert: 'k9', success: 0.75, risk: 0.3, xp: 30, save: true, successText: 'Your dog pinpointed the first victim in four minutes.', failText: 'Wind-loaded snow masked the scent.' },
+        { id: 'k9', label: 'Run your K9 across the debris', cert: 'k9Handler', success: 0.75, risk: 0.3, xp: 30, save: true, successText: 'Your dog pinpointed the first victim in four minutes.', failText: 'Wind-loaded snow masked the scent.' },
         { id: 'dig', label: 'Dig where the debris looks deepest', success: 0.3, risk: 0.3, xp: 15, save: true, successText: 'A lucky guess — you hit a ski pole and dug down to them.', failText: 'Wrong spot. A second slide forced everyone off the slope.' },
       ],
     },
@@ -88,8 +82,8 @@ export const SearchAndRescue = {
       id: 'child', title: '🧸 Missing Child',
       text: 'A 6-year-old wandered away from a campsite two hours ago. Hundreds of volunteers are showing up.',
       options: [
-        { id: 'k9', label: 'Trail with your K9 from the tent', cert: 'k9', success: 0.9, risk: 0.02, xp: 30, save: true, successText: 'Your dog found him asleep under a fallen log.', failText: 'The trail went cold at a road.' },
-        { id: 'ics', label: 'Organize the volunteers into search segments', cert: 'ics', success: 0.85, risk: 0.02, xp: 25, stat: 'smarts', save: true, successText: 'Segment 14 found her. Your plan worked.', failText: 'Volunteers trampled the scene and it took two days.' },
+        { id: 'k9', label: 'Trail with your K9 from the tent', cert: 'k9Handler', success: 0.9, risk: 0.02, xp: 30, save: true, successText: 'Your dog found him asleep under a fallen log.', failText: 'The trail went cold at a road.' },
+        { id: 'ics', label: 'Organize the volunteers into search segments', cert: 'ics300', success: 0.85, risk: 0.02, xp: 25, stat: 'smarts', save: true, successText: 'Segment 14 found her. Your plan worked.', failText: 'Volunteers trampled the scene and it took two days.' },
         { id: 'creek', label: 'Search the creek bed alone', success: 0.55, risk: 0.25, xp: 20, save: true, successText: 'You heard crying near the creek and found him.', failText: 'You slipped on the rocks; another team found the child.' },
       ],
     },

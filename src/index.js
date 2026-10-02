@@ -34,9 +34,16 @@ function startNewLife(form) {
   });
 }
 
+/** Buttons marked data-collect build their arg from the <select>/<input data-part> fields beside them. */
+function collectArg(el) {
+  const root = el.closest('[data-collect-root]');
+  if (!root) return el.dataset.arg;
+  return [...root.querySelectorAll('[data-part]')].map((field) => field.value).join(':');
+}
+
 function handleAction(el) {
   const action = el.dataset.action;
-  const arg = el.dataset.arg;
+  const arg = el.hasAttribute('data-collect') ? collectArg(el) : el.dataset.arg;
   switch (action) {
     case 'ui.tab':
       return renderer.setTab(arg);

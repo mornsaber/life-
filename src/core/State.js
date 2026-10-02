@@ -3,13 +3,14 @@
  *
  * The state tree is plain JSON — no functions, no class instances — so it can
  * be saved after every mutation and restored verbatim. Each domain module owns
- * one top-level slice (career, military, emergency, ...) and may *read* other
- * slices through the selectors exported here, but only mutates its own.
+ * one top-level slice (career, military, credentials, legal, ...) and may
+ * *read* other slices through the selectors exported here, but only mutates
+ * its own. Cross-domain effects travel over the engine's event bus.
  */
 import { clamp } from './Random.js';
 
-export const STATE_VERSION = 1;
-export const SAVE_KEY = 'lifesim.save.v1';
+export const STATE_VERSION = 2;
+export const SAVE_KEY = 'lifesim.save.v2';
 export const START_YEAR = 2026;
 
 export const STAT_KEYS = ['health', 'happiness', 'smarts', 'looks', 'fitness', 'stress'];
@@ -28,6 +29,7 @@ const FIRST_NAMES = {
   female: ['Ava', 'Maya', 'Sofia', 'Zoe', 'Priya', 'Harper', 'Elena', 'Nia', 'Chloe', 'Grace', 'Aaliyah', 'Mei', 'Riley', 'Camila'],
 };
 const LAST_NAMES = ['Carter', 'Nguyen', 'Okafor', 'Ramirez', 'Kowalski', 'Bennett', 'Hayes', 'Patel', 'Morales', 'Sullivan', 'Kim', 'Reyes', 'Brooks', 'Lindqvist', 'Washington', 'Adeyemi'];
+const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago'];
 
 export function randomName(rng, gender) {
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
@@ -50,6 +52,7 @@ export function createInitialState(rng, options = {}) {
       birthYear: START_YEAR,
       alive: true,
       causeOfDeath: null,
+      regionId: rng.pick(HOMETOWNS),
     },
     stats: {
       health: rng.int(75, 100),
@@ -62,16 +65,20 @@ export function createInitialState(rng, options = {}) {
     finances: {
       cash: 0,
       loans: 0,
-      retirement: 0,
       lifetimeEarnings: 0,
       taxesPaid: 0,
-      ledger: { income: [], expenses: [] },
+      bankruptcies: 0,
+      ledger: { income: [], expenses: [], deductions: [] },
       lastYear: null,
     },
     education: { degrees: [], enrolled: null },
-    career: { job: null, history: [], retired: false },
-    military: { service: null, history: [], benefits: [] },
+    credentials: { held: {}, training: [], logbook: { flightHours: 0 } },
+    career: { job: null, history: [] },
+    publicService: { exams: {}, clearance: null, federal: { stability: 60, shutdown: false } },
+    military: { service: null, history: [] },
     emergency: { fire: null, police: null, sar: null, history: [] },
+    legal: { record: [], investigations: [], incarceration: null, probationYears: 0, flags: {} },
+    retirement: { retired: false, dc: 0, pensions: [], plans: {}, ssEarnings: [], socialSecurity: null },
     honors: [],
     yearly: {},
     prompts: [],
@@ -179,27 +186,43 @@ export const currentYear = (state) => state.character.birthYear + state.characte
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + f.retirement - f.loans);
+  return Math.round(f.cash + state.retirement.dc - f.loans);
 }
 
-const DEGREE_RANK = { highschool: 1, bachelor: 2, mba: 3, jd: 4, md: 4 };
+/** Academic rank of each degree type. Certificates/diplomas sit beside high school. */
+export const DEGREE_RANK = {
+  highschool: 1,
+  certificate: 1,
+  vocational: 1,
+  associate: 2,
+  bachelor: 3,
+  master: 4,
+  professional: 5,
+  doctorate: 5,
+};
 
 /**
- * `degree` is a degree type ('highschool', 'bachelor', 'mba', 'jd', 'md').
- * Holding any graduate degree implies a bachelor's. `majors` optionally
- * restricts which bachelor's majors qualify.
+ * Education requirement check. `req` may be:
+ *   { level: 'bachelor' }                         — any degree at or above that rank
+ *   { level: 'bachelor', majors: ['nursing'] }    — at/above rank in one of these majors
+ *   { program: 'jd' }                             — a specific program (jd, md, mba, paralegal...)
+ *   { anyOf: [req, req] }                         — any alternative satisfies
  */
-export function hasDegree(state, degree, majors = null) {
-  if (!degree || degree === 'none') return true;
+export function meetsEducation(state, req) {
+  if (!req) return true;
+  if (req.anyOf) return req.anyOf.some((r) => meetsEducation(state, r));
   const degrees = state.education.degrees;
-  if (degree === 'bachelor' && majors?.length) {
-    return degrees.some((d) => d.type === 'bachelor' && majors.includes(d.major));
-  }
-  if (degree === 'highschool' || degree === 'bachelor') {
-    return degrees.some((d) => DEGREE_RANK[d.type] >= DEGREE_RANK[degree]);
-  }
-  return degrees.some((d) => d.type === degree);
+  if (req.program) return degrees.some((d) => d.programId === req.program);
+  const rank = DEGREE_RANK[req.level] ?? 0;
+  return degrees.some((d) => DEGREE_RANK[d.type] >= rank && (!req.majors?.length || req.majors.includes(d.major)));
 }
+
+export function highestDegree(state) {
+  return state.education.degrees.reduce((best, d) => (!best || DEGREE_RANK[d.type] > DEGREE_RANK[best.type] ? d : best), null);
+}
+
+export const hasFelony = (state) => state.legal.record.some((r) => r.severity === 'felony');
+export const isIncarcerated = (state) => Boolean(state.legal.incarceration);
 
 export function isOnActiveDuty(state) {
   return state.military.service?.component === 'active';
@@ -209,11 +232,25 @@ export function isDeployed(state) {
   return Boolean(state.military.service?.deployedThisYear);
 }
 
+/** Total years worked in any of the given professions (past jobs + current). */
+export function yearsInProfession(state, professionIds) {
+  const ids = Array.isArray(professionIds) ? professionIds : [professionIds];
+  const past = state.career.history.filter((h) => ids.includes(h.professionId)).reduce((sum, h) => sum + (h.endAge - h.startAge), 0);
+  const job = state.career.job;
+  return past + (job && ids.includes(job.professionId) ? job.yearsAtEmployer : 0);
+}
+
 /** Everything competing for the character's time this year. */
 export function getCommitments(state) {
   const list = [];
-  if (state.career.job) list.push({ id: 'job', label: 'Civilian job', load: 3 });
-  if (state.education.enrolled) list.push({ id: 'school', label: 'University', load: 3 });
+  const job = state.career.job;
+  if (job) {
+    const micro = job.department ? Object.values(job.department.delegation).filter((d) => !d).length * (job.department.headcount >= 8 ? 0.5 : 0) : 0;
+    list.push({ id: 'job', label: job.department ? `${job.title} (+team)` : job.title, load: 3 + micro });
+  }
+  const school = state.education.enrolled;
+  if (school) list.push({ id: 'school', label: `School (${school.pace === 'part' ? 'part-time' : 'full-time'})`, load: school.pace === 'part' ? 1.5 : 3 });
+  for (const t of state.credentials.training) list.push({ id: `train.${t.id}`, label: `Training: ${t.name}`, load: 1 });
   const svc = state.military.service;
   if (svc) list.push({ id: 'military', label: svc.component === 'active' ? 'Active duty' : 'Military reserves', load: svc.component === 'active' ? 4 : 1.5 });
   for (const key of ['fire', 'police', 'sar']) {

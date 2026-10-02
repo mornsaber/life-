@@ -3,7 +3,7 @@
  *
  * Dispatch option fields:
  *   success  base success chance        risk   0–1 danger of injury
- *   xp       experience on success      cert   certification required
+ *   xp       experience on success      cert   credential id required (CredentialRegistry)
  *   stat     stat that shifts success   heroic eligible for valor award on success
  *   save     a life is on the line (lifesaving award eligible)
  */
@@ -21,20 +21,13 @@ export const FireVolunteer = {
     { title: 'Probationary Firefighter', xp: 0 },
     { title: 'Firefighter I', xp: 50, cert: 'ff1' },
     { title: 'Firefighter II', xp: 150, cert: 'ff2' },
-    { title: 'Driver/Operator', xp: 300, cert: 'driver' },
-    { title: 'Lieutenant', xp: 480, cert: 'officer1' },
-    { title: 'Captain', xp: 700, cert: 'officer2' },
-    { title: 'Volunteer Fire Chief', xp: 1000, cert: 'officer2', minYears: 10 },
+    { title: 'Driver/Operator', xp: 300, cert: 'driverOperator' },
+    { title: 'Lieutenant', xp: 480, cert: 'fireOfficer1' },
+    { title: 'Captain', xp: 700, cert: 'fireOfficer2' },
+    { title: 'Volunteer Fire Chief', xp: 1000, cert: 'fireOfficer2', minYears: 10 },
   ],
-  certifications: [
-    { id: 'ff1', name: 'Firefighter I', icon: '🧑‍🚒', cost: 0, stat: 'fitness', desc: 'Basic interior firefighting.' },
-    { id: 'emt', name: 'EMT-Basic', icon: '🚑', cost: 900, stat: 'smarts', desc: 'Unlocks medical calls.' },
-    { id: 'ff2', name: 'Firefighter II', icon: '🔥', cost: 0, stat: 'fitness', requires: 'ff1', desc: 'Extrication, ventilation, command of a crew.' },
-    { id: 'hazmat', name: 'HazMat Operations', icon: '☣️', cost: 300, stat: 'smarts', requires: 'ff1', desc: 'Hazardous materials response.' },
-    { id: 'driver', name: 'Driver/Operator', icon: '🚛', cost: 0, stat: 'smarts', requires: 'ff2', desc: 'Pump operations and apparatus driving.' },
-    { id: 'officer1', name: 'Fire Officer I', icon: '🎖️', cost: 500, stat: 'smarts', requires: 'driver', desc: 'Company-level command.' },
-    { id: 'officer2', name: 'Fire Officer II', icon: '⭐', cost: 700, stat: 'smarts', requires: 'officer1', desc: 'Senior command and administration.' },
-  ],
+  credentials: ['ff1', 'ff2', 'emt', 'hazmatOps', 'driverOperator', 'fireOfficer1', 'fireOfficer2', 'ropeRescue', 'swiftwater', 'ics300'],
+  trainingBudget: 3000,
   drills: [
     'Monthly drills: SCBA confidence course, ladder raises and hose advances.',
     'Live-burn training at the county burn tower.',
@@ -87,7 +80,7 @@ export const FireVolunteer = {
       id: 'hazmat', title: '☣️ Tanker Rollover',
       text: 'A tanker rolled on the interstate, leaking an unknown chemical. The driver is slumped in the cab.',
       options: [
-        { id: 'identify', label: 'Identify the product and set the hot zone', cert: 'hazmat', success: 0.85, risk: 0.2, xp: 30, stat: 'smarts', successText: 'You identified anhydrous ammonia and evacuated downwind in time.', failText: 'The zone was too small; two bystanders were exposed.' },
+        { id: 'identify', label: 'Identify the product and set the hot zone', cert: 'hazmatOps', success: 0.85, risk: 0.2, xp: 30, stat: 'smarts', successText: 'You identified anhydrous ammonia and evacuated downwind in time.', failText: 'The zone was too small; two bystanders were exposed.' },
         { id: 'rescue', label: 'Grab the driver from the hot zone', success: 0.5, risk: 0.85, xp: 35, heroic: true, save: true, successText: 'You dragged the driver out on one breath. Both of you survived.', failText: 'Fumes overwhelmed you; your crew had to rescue you.' },
         { id: 'deny', label: 'Deny entry and wait for regional HazMat', success: 0.92, risk: 0.04, xp: 12, successText: 'Textbook isolation. The team arrived and mitigated it.', failText: 'The driver died before the team arrived.' },
       ],

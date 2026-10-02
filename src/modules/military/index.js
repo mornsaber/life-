@@ -1,6 +1,7 @@
 /**
  * Military domain module: routes the yearly tick to ActiveDuty or Reserves,
- * pays retirement/disability benefits, and exposes service actions.
+ * reacts to civilian convictions, and exposes service actions. Retired pay
+ * and VA benefits are paid by the retirement module.
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -33,16 +34,28 @@ export const MilitaryModule = {
   id: 'military',
   order: 20,
 
+  setup(engine) {
+    engine.bus.on('legal:convicted', ({ ctx, severity, name }) => {
+      const svc = ctx.state.military.service;
+      if (!svc) return;
+      if (severity === 'felony') discharge(ctx, 'oth', `Separated after a civilian ${name} conviction.`);
+      else if (severity === 'misdemeanor') {
+        svc.disciplinary += 1;
+        svc.eval = Math.max(0, svc.eval - 10);
+        ctx.log(`Your command learned of your ${name} conviction. Non-judicial punishment followed.`, '⚖️', 'bad');
+      }
+    });
+    engine.bus.on('legal:incarcerated', ({ ctx }) => {
+      if (ctx.state.military.service) discharge(ctx, 'oth', 'Administratively separated while incarcerated.');
+    });
+  },
+
   init(state) {
-    state.military ??= { service: null, history: [], benefits: [] };
-    state.military.benefits ??= [];
+    state.military ??= { service: null, history: [] };
   },
 
   onAgeUp(ctx) {
     const { state } = ctx;
-    for (const benefit of state.military.benefits) {
-      if (state.character.age >= benefit.startAge) ctx.earn(benefit.annual, benefit.label);
-    }
     const svc = state.military.service;
     if (!svc) return;
     svc.deployedThisYear = false;

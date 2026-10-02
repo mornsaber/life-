@@ -38,10 +38,11 @@ export function reserveTick(ctx, svc) {
   const exposure = SPECIALTIES[svc.specialty].exposure;
   const mobilizeChance = 0.08 * exposure + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
-    ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`);
+    ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
     runDeployment(ctx, svc, { mobilized: true });
   } else {
-    ctx.earn(monthlyBasePay(svc) * DRILL_PAY_MONTHS, `Reserve drill pay — ${rankOf(svc).code}`);
+    ctx.earn(monthlyBasePay(svc) * DRILL_PAY_MONTHS, `Reserve drill pay — ${rankOf(svc).code}`, { wage: true });
+    if (svc.specialty === 'aviation') ctx.emit('logbook:add', { hours: 60 });
     ctx.log(`${rng.pick(DRILL_FLAVOR)} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
     ctx.stat('fitness', 1);
   }
