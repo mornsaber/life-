@@ -1,0 +1,14 @@
+{
+  "name": "lifesim",
+  "version": "0.1.0",
+  "description": "A deep, text-based life simulator with careers, military service, emergency reserves and more.",
+  "type": "module",
+  "private": true,
+  "scripts": {
+    "start": "node server.js",
+    "test": "node tests/simulate.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
