@@ -223,7 +223,7 @@ export function newLifeForm(rngName) {
   return `<div class="splash">
     <div class="splash-card">
       <h1 class="logo big">LIFE<span>//</span>SIM</h1>
-      <p class="tagline">Careers · Military · Emergency Reserves · Medals</p>
+      <p class="tagline">Careers · Service · School · Home · Health · Money</p>
       <form id="new-life-form" autocomplete="off">
         <div class="form-row">
           <label>First name<input name="firstName" maxlength="20" placeholder="${esc(rngName.firstName)}"></label>

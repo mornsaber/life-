@@ -8,7 +8,7 @@ import { Random } from '../core/Random.js';
 import {
   esc, money, compactMoney, button, card, chip, meter, statPanel, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
 } from './Components.js';
-import { savesPanel, settingsPanel, helpPanel } from './views/SystemViews.js';
+import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession } from '../modules/career/JobTrees.js';
 import { BRANCHES, rankOf } from '../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../modules/military/MedalEngine.js';
@@ -32,23 +32,19 @@ import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 
-export const TABS = [
-  { id: 'life', label: 'Life', icon: '📜' },
-  { id: 'career', label: 'Career', icon: '💼' },
-  { id: 'gov', label: 'Gov', icon: '🏛️' },
-  { id: 'politics', label: 'Politics', icon: '🗳️' },
-  { id: 'military', label: 'Military', icon: '🎖️' },
-  { id: 'emergency', label: 'Reserves', icon: '🚨' },
-  { id: 'school', label: 'School', icon: '🎓' },
-  { id: 'licenses', label: 'Licenses', icon: '🪪' },
-  { id: 'home', label: 'Home', icon: '🏠' },
-  { id: 'move', label: 'Move', icon: '🗺️' },
-  { id: 'health', label: 'Health', icon: '🩺' },
-  { id: 'money', label: 'Money', icon: '💰' },
-  { id: 'legal', label: 'Legal', icon: '⚖️' },
-  { id: 'activities', label: 'Activities', icon: '🏃' },
-  { id: 'honors', label: 'Honors', icon: '🏅' },
+/** Seven sections across the top; related screens sit in a compact sub-tab row. */
+export const SECTIONS = [
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
+  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
+  { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }] },
+  { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
+  { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
+  { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }, { id: 'health', label: 'Health', icon: '🩺' }] },
+  { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Legal', icon: '⚖️' }] },
 ];
+/** Every screen, in section order (keyboard [ ] walks this list). */
+export const TABS = SECTIONS.flatMap((s) => s.tabs.map((t) => ({ ...t, section: s.id })));
+export const sectionOf = (tabId) => SECTIONS.find((s) => s.tabs.some((t) => t.id === tabId)) ?? SECTIONS[0];
 
 const TAB_KEY = 'lifesim.ui.tab';
 
@@ -117,6 +113,7 @@ export class Renderer {
   setTab(tab) {
     if (!VIEWS[tab]) return;
     this.tab = tab;
+    (this.lastTab ??= {})[sectionOf(tab).id] = tab;
     try {
       localStorage.setItem(TAB_KEY, tab);
     } catch {
@@ -162,15 +159,30 @@ export class Renderer {
       <main class="layout" id="main">
         <aside class="sidebar" aria-label="Character">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
         <section class="main">
-          <nav class="tabs" role="tablist" aria-label="Sections">${TABS.map((t) => `<button role="tab" id="tab-${t.id}" class="tab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel" tabindex="${t.id === this.tab ? 0 : -1}" title="${t.label}"><span aria-hidden="true">${t.icon}</span><span class="tab-label">${t.label}</span></button>`).join('')}</nav>
-          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="tab-${this.tab}" tabindex="-1">${VIEWS[this.tab](state, this.ui)}</div>
+          ${this.tabNav()}
+          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${VIEWS[this.tab](state, this.ui)}</div>
         </section>
       </main>
       ${prompt ? promptModal(prompt, state.prompts.length) : panel}`;
   }
 
+  /** Section bar plus (when the section has several screens) a compact sub-tab row. */
+  tabNav() {
+    const section = sectionOf(this.tab);
+    const top = SECTIONS.map((s) => {
+      const on = s.id === section.id;
+      const target = this.lastTab?.[s.id] ?? s.tabs[0].id;
+      return `<button role="tab" id="section-${s.id}" data-section="${s.id}" class="tab ${on ? 'active' : ''}" data-action="ui.tab" data-arg="${target}" aria-selected="${on}" aria-controls="tabpanel" tabindex="${on ? 0 : -1}" title="${s.label}"><span aria-hidden="true">${s.icon}</span><span class="tab-label">${s.label}</span></button>`;
+    }).join('');
+    const subs = section.tabs.length > 1
+      ? `<nav class="subtabs" role="tablist" aria-label="${section.label}">${section.tabs.map((t) => `<button role="tab" id="tab-${t.id}" class="subtab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel" tabindex="${t.id === this.tab ? 0 : -1}"><span aria-hidden="true">${t.icon}</span> ${t.label}</button>`).join('')}</nav>`
+      : '';
+    return `<nav class="tabs" role="tablist" aria-label="Sections">${top}</nav>${subs}`;
+  }
+
   panelHtml(state) {
     switch (this.panel) {
+      case 'menu': return menuPanel(state, { canUndo: this.engine.canUndo(), debugUndo: this.settings.debugUndo });
       case 'saves': return savesPanel(this.engine.store, state);
       case 'settings': return settingsPanel(this.settings, { canUndo: this.engine.canUndo() });
       case 'help': return helpPanel();
@@ -235,12 +247,10 @@ export class Renderer {
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
       <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}</div>
+      <div class="mobile-status" aria-hidden="true">${esc(state.character.firstName)} · ${state.character.age} · <span class="${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span></div>
       <nav class="topbar-actions" aria-label="Game">
-        ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo year</button>` : ''}
-        <button class="btn ghost small" data-action="ui.panel" data-arg="saves" aria-haspopup="dialog"><span aria-hidden="true">💾</span> <span class="tab-label">Saves</span></button>
-        <button class="btn ghost small" data-action="ui.panel" data-arg="settings" aria-haspopup="dialog" aria-label="Settings"><span aria-hidden="true">⚙️</span></button>
-        <button class="btn ghost small" data-action="ui.panel" data-arg="help" aria-haspopup="dialog" aria-label="Keyboard shortcuts"><span aria-hidden="true">⌨️</span></button>
-        <button class="btn ghost small" data-action="engine.abandon">↺ New Life</button>
+        ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo</button>` : ''}
+        <button class="btn ghost small" data-action="ui.panel" data-arg="menu" aria-haspopup="dialog"><span aria-hidden="true">☰</span> Menu</button>
       </nav>
     </header>`;
   }

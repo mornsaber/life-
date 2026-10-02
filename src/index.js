@@ -14,7 +14,7 @@ import { Store } from './core/State.js';
 import { Random } from './core/Random.js';
 import { routineChoice } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
-import { Renderer, TABS } from './ui/Renderer.js';
+import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
 
 const store = new Store();
@@ -81,6 +81,15 @@ async function importLife(file) {
   }
 }
 
+/** Arrow keys on the section bar move between sections (remembering each section's screen). */
+function setSectionByOffset(offset, absolute = null) {
+  const ids = SECTIONS.map((s) => s.id);
+  const current = ids.indexOf(sectionOf(renderer.tab).id);
+  const next = SECTIONS[absolute ?? (current + offset + ids.length) % ids.length];
+  renderer.setTab(renderer.lastTab?.[next.id] ?? next.tabs[0].id);
+  document.getElementById(`section-${next.id}`)?.focus();
+}
+
 function setTabByOffset(offset) {
   const ids = TABS.map((t) => t.id);
   const next = ids[(ids.indexOf(renderer.tab) + offset + ids.length) % ids.length];
@@ -99,6 +108,9 @@ function handleAction(el) {
     case 'ui.closePanel':
       renderer.panel = null;
       return renderer.render(engine.state);
+    case 'ui.jobField':
+      renderer.ui.jobField = arg;
+      return renderer.render(engine.state);
     case 'ui.logMore':
       renderer.ui.logLimit += 40;
       return renderer.render(engine.state);
@@ -112,6 +124,7 @@ function handleAction(el) {
     case 'engine.newLife':
       return startNewLife(el.closest('form'));
     case 'engine.abandon':
+      renderer.panel = null;
       if (arg === 'skipConfirm' || window.confirm('Abandon this life and start over? This cannot be undone.')) engine.abandonLife();
       return undefined;
     case 'save.switch':
@@ -207,16 +220,26 @@ document.addEventListener('keydown', (event) => {
   if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return undefined;
 
   // Tab bar: roving focus with arrows / Home / End.
+  if (event.target.dataset?.section && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+    event.preventDefault();
+    if (event.key === 'Home') return setSectionByOffset(0, 0);
+    if (event.key === 'End') return setSectionByOffset(0, SECTIONS.length - 1);
+    return setSectionByOffset(event.key === 'ArrowLeft' ? -1 : 1);
+  }
   if (event.target.getAttribute?.('role') === 'tab' && ['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
     event.preventDefault();
-    if (event.key === 'Home') return setTabByOffset(-TABS.findIndex((t) => t.id === renderer.tab));
-    if (event.key === 'End') return setTabByOffset(TABS.length - 1 - TABS.findIndex((t) => t.id === renderer.tab));
-    return setTabByOffset(event.key === 'ArrowLeft' ? -1 : 1);
+    const tabs = sectionOf(renderer.tab).tabs;
+    const i = tabs.findIndex((t) => t.id === renderer.tab);
+    const j = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 : (i + (event.key === 'ArrowLeft' ? -1 : 1) + tabs.length) % tabs.length;
+    renderer.setTab(tabs[j].id);
+    document.getElementById(`tab-${tabs[j].id}`)?.focus();
+    return undefined;
   }
 
   const state = engine.state;
   if (event.key === '?') return renderer.openPanel('help');
   if (event.key === 's' || event.key === 'S') return renderer.openPanel('saves');
+  if (event.key === 'm' || event.key === 'M') return renderer.openPanel('menu');
   if (!state?.character.alive || renderer.panel) return undefined;
 
   const prompt = state.prompts[0];

@@ -62,10 +62,11 @@ export function settingsPanel(settings, { canUndo = false } = {}) {
 export const SHORTCUTS = [
   ['Space / Enter', 'Age up (when nothing else is focused)'],
   ['1 – 9', 'Choose an option in an open decision'],
-  ['← → (on the tab bar)', 'Move between tabs; Home / End jump to the first / last'],
-  ['[ and ]', 'Previous / next tab from anywhere'],
+  ['← → (on the section bar or sub-tabs)', 'Move between sections or screens; Home / End jump to the ends'],
+  ['[ and ]', 'Previous / next screen from anywhere'],
   ['/', 'Search your life story'],
   ['S', 'Saves'],
+  ['M', 'Menu'],
   ['Esc', 'Close a panel'],
   ['Tab / Shift+Tab', 'Move through controls (focus stays inside open dialogs)'],
   ['?', 'This list'],
@@ -74,4 +75,15 @@ export const SHORTCUTS = [
 export function helpPanel() {
   return dialog('help', '⌨️ Keyboard Shortcuts', `<dl class="kv shortcuts">${SHORTCUTS.map(([k, v]) => `<div><dt><kbd>${esc(k)}</kbd></dt><dd>${esc(v)}</dd></div>`).join('')}</dl>
     <p class="fine">Every control is a real button or form field, so screen readers and switch access work throughout.</p>`);
+}
+
+/** The ☰ menu: everything that isn't part of playing a year. */
+export function menuPanel(state, { canUndo = false, debugUndo = false } = {}) {
+  return dialog('menu', '☰ Menu', `<div class="menu-list">
+    ${button('💾 Saved lives', 'ui.panel', { arg: 'saves', hint: 'Slots, export, import' })}
+    ${button('⚙️ Settings', 'ui.panel', { arg: 'settings', hint: 'Theme, auto-decisions, debug' })}
+    ${button('⌨️ Keyboard shortcuts', 'ui.panel', { arg: 'help' })}
+    ${debugUndo ? button('↶ Undo last year', 'engine.undo', { disabled: !canUndo }) : ''}
+    ${state ? button('↺ Start a new life', 'engine.abandon', { variant: 'danger', hint: 'Abandons this life' }) : ''}
+  </div>`);
 }

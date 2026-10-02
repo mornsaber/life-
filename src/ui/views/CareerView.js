@@ -4,7 +4,7 @@
  * workforce model), job board grouped by sector, and history.
  */
 import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
-import { PROFESSION_LIST, getProfession, SECTOR_LABEL } from '../../modules/career/JobTrees.js';
+import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
@@ -104,23 +104,31 @@ function currentJob(state) {
     <p class="fine">Applications this year: ${state.yearly['career.apply'] ?? 0}/${APPLICATIONS_PER_YEAR}</p>`, { icon: profession.icon, accent: 'cyan' });
 }
 
-function jobBoard(state) {
-  const groups = {};
-  for (const p of PROFESSION_LIST) (groups[p.sector] ??= []).push(p);
-  return Object.entries(groups).map(([sector, list]) => `<h4 class="sub">${SECTOR_LABEL[sector]}</h4><ul class="job-board">${list.map((p) => {
-    const check = applicationEligibility(state, p.id);
-    const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
-    return `<li class="job-row ${check.ok ? '' : 'locked'}">
-      <span class="job-icon">${p.icon}</span>
-      <div class="job-info"><b>${esc(p.name)}</b><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
+function jobRow(state, p) {
+  const check = applicationEligibility(state, p.id);
+  const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
+  return `<li class="job-row ${check.ok ? '' : 'locked'}">
+      <span class="job-icon" aria-hidden="true">${p.icon}</span>
+      <div class="job-info"><b>${esc(p.name)}</b> <small class="muted">${SECTOR_LABEL[p.sector]}</small><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
         ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
-  }).join('')}</ul>`).join('');
 }
 
-export function careerView(state) {
+/** Field filter chips; "Open to me" (default) lists only jobs you can apply for right now. */
+function jobBoard(state, ui = {}) {
+  const field = ui.jobField ?? 'open';
+  const open = PROFESSION_LIST.filter((p) => applicationEligibility(state, p.id).ok);
+  const chips = [['open', `✅ Open to me (${open.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label}`])]
+    .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('');
+  const list = field === 'open' ? open : JOB_FIELDS[field].ids.map(getProfession);
+  const rows = list.map((p) => jobRow(state, p)).join('');
+  return `<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>
+    <ul class="job-board">${rows || '<li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li>'}</ul>`;
+}
+
+export function careerView(state, ui = {}) {
   const job = state.career.job;
   const current = job
     ? currentJob(state) + managementConsole(job)
@@ -128,7 +136,7 @@ export function careerView(state) {
   const history = state.career.history.length
     ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${card('Job Board', jobBoard(state), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 export { compactMoney };

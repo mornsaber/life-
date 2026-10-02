@@ -403,6 +403,19 @@ Object.assign(PRIVATE_PROFESSIONS, {
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
 
+/** Career fields for the job board (every profession appears in exactly one). */
+export const JOB_FIELDS = {
+  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology'] },
+  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'trucking', 'aviation', 'publicWorks', 'forester'] },
+  business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },
+  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'engineering', 'dot', 'planning', 'environmental'] },
+  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'pharmacy', 'ems', 'socialWork', 'cps'] },
+  safety: { label: 'Public Safety', icon: '🚓', ids: ['police', 'statePolice', 'fire', 'corrections', 'gameWarden', 'parkService'] },
+  law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
+  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'journalism'] },
+  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'foreignService', 'intelligence'] },
+};
+
 export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };
 
 export function getProfession(id) {
