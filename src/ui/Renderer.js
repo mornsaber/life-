@@ -134,23 +134,25 @@ export class Renderer {
     this.root.innerHTML = `
       ${this.topbar(state)}
       <main class="layout">
-        <aside class="sidebar">${this.sidebar(state)}</aside>
+        <aside class="sidebar">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
         <section class="main">
           <nav class="tabs" role="tablist">${TABS.map((t) => `<button role="tab" class="tab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" title="${t.label}"><span>${t.icon}</span><span class="tab-label">${t.label}</span></button>`).join('')}</nav>
           <div class="tab-panel">${VIEWS[this.tab](state)}</div>
         </section>
       </main>
-      <footer class="agebar">
-        <button class="btn age-up" data-action="engine.ageUp"${this.engine.canAgeUp() ? '' : ' disabled'}>
-          <span class="age-plus">AGE +1</span><span class="age-sub">${prompt ? 'Decide first' : `Turn ${state.character.age + 1} · Space`}</span>
-        </button>
-      </footer>
       ${prompt ? promptModal(prompt, state.prompts.length) : ''}`;
   }
 
   /* -------------------------------------------------------------- */
   /* Chrome                                                          */
   /* -------------------------------------------------------------- */
+
+  /** Top of the sticky sidebar on desktop; a small corner button on phones. */
+  ageButton(state, prompt) {
+    return `<button class="btn age-up" data-action="engine.ageUp" aria-keyshortcuts="Space" aria-label="Age up to ${state.character.age + 1}"${this.engine.canAgeUp() ? '' : ' disabled'}>
+      <span class="age-plus">AGE +1</span><span class="age-sub">${prompt ? 'Decide first' : `Turn ${state.character.age + 1} · Space`}</span>
+    </button>`;
+  }
 
   topbar(state) {
     const region = regionOf(state);
