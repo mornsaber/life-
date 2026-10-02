@@ -22,10 +22,23 @@ import { stateIncomeTax } from '../src/modules/life/States.js';
 import { quote } from '../src/modules/realestate/MortgageSystem.js';
 import { annualTuition } from '../src/modules/education/EducationEngine.js';
 import { Finances } from '../src/modules/life/Finances.js';
+import { PeopleEngine } from '../src/modules/people/index.js';
+const PeopleEngineOnAgeUp = (ctx) => PeopleEngine.onAgeUp(ctx);
 import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
+import { settleEstate, spouseOf, livingChildren, byId, ARREARS_HOLD } from '../src/modules/people/index.js';
+
+/** Give the test character a spouse (and optionally children) directly. */
+function family(engine, { spouseIncome = 0, kids = 0, kidAge = 5, foreign = false } = {}) {
+  const s = engine.state;
+  const spouse = { id: 'sp1', firstName: 'Sam', lastName: 'Case', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: spouseIncome, careerIncome: spouseIncome || 60000, job: spouseIncome ? 'Nurse' : null, sector: 'private', nationality: foreign ? 'Germany' : 'US', since: s.character.age - 5, dcAtMarriage: 0 };
+  s.people.list = s.people.list.filter((p) => !['spouse', 'partner', 'fiance', 'child'].includes(p.relation));
+  s.people.list.push(spouse);
+  for (let i = 0; i < kids; i++) s.people.list.push({ id: `kid${i}`, firstName: `Kid${i}`, lastName: 'Case', gender: i % 2 ? 'male' : 'female', relation: 'child', ageOffset: kidAge + i - s.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: 'sp1', custody: 'you' });
+  return spouse;
+}
 
 const memory = () => {
   const m = new Map();
@@ -558,6 +571,140 @@ const tests = {
     engine.dispatch('campus.quitRotc');
     assert.equal(state.campus.rotc, null);
     assert.equal(state.finances.loans - before, 23000);
+  },
+
+  'estates pay funeral, debts and tax before heirs — and every dollar is accounted for'() {
+    const { engine, state } = setup(51, 70);
+    family(engine, { kids: 2, kidAge: 40 });
+    state.finances.cash = 250000;
+    state.retirement.dc = 400000;
+    state.finances.loans = 20000;
+    const l = settleEstate(state);
+    assert.equal(l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
+    assert.equal(l.tax, 0, 'under the exemption');
+    // Intestacy: spouse half, children split the other half.
+    assert.equal(l.bequests.find((b) => b.to === 'sp1').amount, Math.floor(l.net / 2) + (l.net - l.bequests.reduce((s, b) => s + b.amount, 0)) || l.bequests.find((b) => b.to === 'sp1').amount);
+    assert.equal(l.bequests.length, 3);
+    assert.ok(Math.abs(l.bequests[1].amount - l.bequests[2].amount) <= 1);
+  },
+
+  'large estates pay federal and state estate tax; a will can leave half to charity'() {
+    const { engine, state } = setup(52, 75);
+    state.character.regionId = Object.keys(REGIONS).find((id) => REGIONS[id].state === 'NY');
+    family(engine, { kids: 1, kidAge: 45 });
+    state.finances.cash = 20000000;
+    engine.dispatch('people.writeWill', 'charity');
+    const l = settleEstate(state);
+    const taxable = l.assets - l.funeral - l.debtsPaid;
+    assert.equal(l.tax, Math.round((taxable - 13990000) * 0.4) + Math.round((taxable - 7160000) * 0.12));
+    assert.equal(l.bequests.find((b) => b.to === 'charity').amount, Math.floor(l.net / 2) + (l.net - l.bequests.reduce((s, b) => s + b.amount, 0)));
+    assert.equal(l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
+  },
+
+  'married couples file jointly; children earn the child tax credit'() {
+    const run = (married, kids) => {
+      const { engine, state } = setup(53, 35);
+      if (married) family(engine, { kids, kidAge: 4 });
+      else state.people.list = state.people.list.filter((p) => p.relation !== 'spouse');
+      const ctx = engine.context();
+      ctx.earn(90000, 'Salary', { wage: true });
+      Finances.onYearEnd(ctx);
+      return state.finances.lastYear.federalTax;
+    };
+    const single = run(false, 0);
+    const joint = run(true, 0);
+    const withKids = run(true, 2);
+    assert.ok(joint < single, `MFJ ${joint} < single ${single}`);
+    assert.equal(joint - withKids, 4000);
+  },
+
+  'divorce splits marital property; unpaid child support suspends licenses until paid'() {
+    const { engine, state } = setup(54, 40);
+    const spouse = family(engine, { spouseIncome: 30000, kids: 1, kidAge: 8 });
+    giveJob(engine, 'tech', getProfession('tech').levels[2].id);
+    state.career.job.salary = 120000;
+    state.credentials.held.driverLicense = { earnedAge: 17, status: 'active', renewedAge: 37, states: ['TX'] };
+    state.finances.cash = 100000;
+    state.people.prenup = false;
+    const ctx = engine.context();
+    engine.rng.chance = () => false; // custody to the ex (roll ≥ 0.75), counseling never reconciles
+    engine.rng.float = (a, b) => b;
+    engine.dispatch('people.fileForDivorce');
+    assert.equal(spouse.relation, 'ex');
+    assert.ok(state.finances.cash <= (100000 - 8000) / 2 + 1, `cash after split ${state.finances.cash}`);
+    const kid = livingChildren(state)[0];
+    assert.equal(kid.custody, 'ex');
+    // Broke: support goes unpaid and licenses are held.
+    state.finances.cash = 0;
+    state.yearly = {};
+    PeopleEngineOnAgeUp(ctx);
+    assert.ok(state.people.arrears >= ARREARS_HOLD, `arrears ${state.people.arrears}`);
+    assert.equal(state.credentials.held.driverLicense.status, 'suspended');
+    state.finances.cash = state.people.arrears + 1000;
+    engine.dispatch('people.payArrears');
+    assert.equal(state.people.arrears, 0);
+    assert.equal(state.credentials.held.driverLicense.status, 'active');
+  },
+
+  'an unreported foreign-national spouse eventually costs a clearance'() {
+    const { engine, state } = setup(55, 30);
+    giveJob(engine, 'intelligence', getProfession('intelligence').levels[0].id);
+    state.publicService.clearance = { level: 'TS/SCI', since: 28 };
+    state.people.list.push({ id: 'p9', firstName: 'Lena', lastName: 'Vogel', gender: 'female', relation: 'partner', ageOffset: 0, relationship: 90, alive: true, income: 50000, careerIncome: 50000, nationality: 'Germany', since: 27, compatibility: 90 });
+    engine.rng.chance = () => true;
+    engine.dispatch('people.propose', 'p9');
+    resolve(engine, 'people.foreignContact', 'hide');
+    const ctx = engine.context();
+    state.prompts = [];
+    PeopleEngineOnAgeUp(ctx);
+    assert.equal(state.publicService.clearance, null);
+    assert.ok(state.legal.record.some((r) => r.offenseId === 'falseStatement') || state.legal.investigations.length || state.prompts.some((p) => p.type.startsWith('legal.')), 'false statement pursued');
+  },
+
+  'a spouse with low earnings claims a spousal benefit; widows collect life insurance and survivor benefits'() {
+    const { engine, state } = setup(56, 66);
+    const spouse = family(engine, { spouseIncome: 0 });
+    spouse.careerIncome = 100000;
+    state.retirement.ssEarnings = [12000, 12000];
+    engine.dispatch('retirement.claimSocialSecurity');
+    assert.equal(state.retirement.socialSecurity.basis, 'spousal');
+    state.people.lifeInsurance.spouse = { benefit: 500000, premium: 100, endsAge: 90 };
+    const before = state.finances.cash;
+    engine.rng.chance = () => true;
+    state.yearly = {};
+    PeopleEngineOnAgeUp(engine.context());
+    assert.equal(spouse.alive, false);
+    assert.ok(state.finances.cash - before >= 500000 - 20000, 'life insurance paid');
+    assert.equal(state.retirement.socialSecurity.annual, 40000, 'survivor benefit = spouse benefit');
+  },
+
+  'you can continue as your child for three generations, inheriting the estate and 529'() {
+    const { engine, state } = setup(57, 60);
+    family(engine, { kids: 2, kidAge: 17 });
+    state.finances.cash = 300000;
+    state.people.fund529.kid0 = 40000;
+    let s = state;
+    for (let gen = 1; gen <= 3; gen++) {
+      const kid = livingChildren(s)[0];
+      engine.context().die('Old age');
+      assert.ok(s.legacy && s.legacy.bequests.some((b) => b.to === kid.id));
+      const heir = engine.continueAsChild(kid.id);
+      assert.ok(heir, `generation ${gen + 1} started`);
+      assert.equal(heir.lineage.generation, gen + 1);
+      assert.equal(heir.lineage.ancestors.length, gen);
+      assert.ok(heir.finances.cash > 0, 'inherited cash');
+      if (gen === 1) assert.equal(heir.education.fund529, 40000);
+      assert.ok(heir.people.list.some((p) => ['mother', 'father'].includes(p.relation) && !p.alive), 'deceased parent remembered');
+      s = heir;
+      // Give the heir a family of their own and age them up a little.
+      s.character.age = Math.max(s.character.age, 45);
+      family(engine, { kids: 1, kidAge: 15 });
+      s.finances.cash = 100000;
+      engine.ageUp();
+      s.prompts = [];
+    }
+    const reloaded = new Store(engine.store.storage).load();
+    assert.deepEqual(reloaded, engine.state, 'round trip after three generations');
   },
 
   'evicted young adults move back in with family or get vouchers'() {

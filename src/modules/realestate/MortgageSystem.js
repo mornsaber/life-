@@ -10,6 +10,7 @@
  * Underwriting checks score, down payment and debt-to-income. Payments
  * amortize yearly; two missed years → foreclosure. Refinance and HELOC.
  */
+import { spouseIncome } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
 
 export const LOAN_TYPES = {
@@ -96,7 +97,8 @@ export function qualifyingIncome(state) {
   const salary = state.career.job?.salary ?? 0;
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
   const ss = state.retirement.socialSecurity?.annual ?? 0;
-  const steady = salary + pensions + ss;
+  // Dual-income households qualify on both incomes.
+  const steady = salary + pensions + ss + spouseIncome(state);
   if (steady > 0) return Math.round(steady);
   const ly = state.finances.lastYear;
   return Math.round(Math.max(0, (ly?.gross ?? 0) - (ly?.ltcg ?? 0)) * 0.5);

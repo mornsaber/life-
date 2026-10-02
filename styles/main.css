@@ -765,3 +765,18 @@ select:focus { border-color: var(--cyan); }
 @media (max-width: 560px) {
   .mobile-status { display: block; flex: 1; text-align: right; font-weight: 700; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
+
+/* ---------- People ---------- */
+.people { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.person-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) minmax(120px, 180px); gap: 4px 12px; align-items: center; padding-bottom: 10px; border-bottom: 1px dashed var(--line); }
+.person-row.gone { opacity: 0.6; }
+.person-icon { font-size: 22px; }
+.person-info { display: flex; flex-direction: column; min-width: 0; }
+.person-info small { color: var(--muted); }
+.person-actions { grid-column: 2 / -1; display: flex; flex-wrap: wrap; gap: 6px; }
+.person-actions .btn { flex: 0 0 auto; width: auto; }
+.heirs { display: flex; flex-direction: column; gap: 8px; margin: 0 0 14px; }
+.heirs h3 { margin: 0 0 4px; }
+.fund-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px dashed var(--line, #ddd); }
+.fund-row > span { flex: 1 1 auto; min-width: 140px; }
+@media (max-width: 560px) { .person-row { grid-template-columns: 28px minmax(0, 1fr); } .person-row .meter { grid-column: 1 / -1; } }

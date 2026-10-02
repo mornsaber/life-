@@ -219,7 +219,7 @@ export const HousingEngine = {
   init(state) {
     const h = state.housing;
     h.withParents ??= true;
-    h.credit.score = computeCreditScore(state);
+    h.credit.score ??= computeCreditScore(state);
   },
 
   setup(engine) {
@@ -251,6 +251,11 @@ export const HousingEngine = {
       ctx.state.housing.withParents = false;
     });
     bus.on('disaster:struck', ({ ctx, disaster }) => disasterDamage(ctx, disaster));
+    // Court-ordered sales (divorce).
+    bus.on('housing:sell', ({ ctx, propertyId }) => {
+      const property = ctx.state.housing.properties.find((x) => x.id === propertyId);
+      if (property) sellProperty(ctx, property, { forced: true });
+    });
   },
 
   onAgeUp(ctx) {

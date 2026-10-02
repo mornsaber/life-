@@ -29,6 +29,7 @@ import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { CLUBS, ROTC_BRANCHES } from '../src/modules/campus/index.js';
+import { living, livingChildren, partnerOf, spouseOf, WEDDINGS, WILL_PLANS } from '../src/modules/people/index.js';
 
 const LIVES = Number(process.argv[2] ?? 300);
 const SEED = Number(process.argv[3] ?? 1);
@@ -60,7 +61,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -115,6 +116,17 @@ function checkInvariants(state) {
   for (const a of [inv.ira.roth.value, inv.ira.roth.basis, inv.ira.traditional.value, state.retirement.dc]) assert.ok(Number.isFinite(a) && a >= 0, 'retirement accounts finite');
   assert.ok(PROFILES[inv.auto.profile] && DC_FUNDS[state.retirement.dcFund], 'profiles');
   assert.ok(Number.isFinite(netWorth(state)), 'net worth finite');
+  const pp = state.people;
+  const ids = new Set(pp.list.map((p) => p.id));
+  assert.equal(ids.size, pp.list.length, 'unique person ids');
+  for (const p of pp.list) {
+    assert.ok(Number.isInteger(p.relationship) && p.relationship >= 0 && p.relationship <= 100, `relationship 0–100 (${p.relationship})`);
+    if (p.otherParentId) assert.ok(ids.has(p.otherParentId), 'child.otherParentId refers to a known person');
+    if (p.custody) assert.ok(['you', 'joint', 'ex'].includes(p.custody) && p.relation === 'child', 'custody only on children');
+  }
+  assert.ok(living(state).filter((p) => ['partner', 'fiance', 'spouse'].includes(p.relation)).length <= 1, 'at most one partner');
+  for (const [id, bal] of Object.entries(pp.fund529)) assert.ok(ids.has(id) && Number.isFinite(bal) && bal >= 0, '529 refs/finite');
+  assert.ok(Number.isFinite(pp.arrears) && pp.arrears >= 0, 'arrears');
   const cp = state.campus;
   assert.ok(cp.housing === null || cp.housing === 'dorm', 'campus housing');
   if (!state.education.enrolled) {
@@ -206,6 +218,23 @@ function randomActions(state) {
   }
   if (state.education.enrolled) tries.push(() => act(player.pick(['education.study', 'education.study', 'education.switchPace'])));
   if (player.chance(0.06)) tries.push(() => act(`legal.${player.pick(RISKY_ACTIONS).id}`));
+  // People
+  if (state.people) {
+    const folks = living(state).filter((p) => state.character.age + p.ageOffset >= 0);
+    if (folks.length && player.chance(0.4)) tries.push(() => act(`people.${player.pick(['spendTime', 'spendTime', 'gift', 'argue'])}`, player.pick(folks).id));
+    const partner = partnerOf(state);
+    if (!partner && age >= 16 && player.chance(0.3)) tries.push(() => act('people.date'));
+    if (partner?.relation === 'partner' && player.chance(0.3)) tries.push(() => act(player.chance(0.8) ? 'people.propose' : 'people.breakUp', partner.id));
+    if (partner?.relation === 'fiance' && player.chance(0.5)) tries.push(() => act('people.wed', player.pick(Object.keys(WEDDINGS))));
+    if (partner && player.chance(0.25)) tries.push(() => act('people.tryForBaby'));
+    if (spouseOf(state) && player.chance(0.01)) tries.push(() => act('people.fileForDivorce'));
+    if (age >= 18 && player.chance(0.04)) tries.push(() => act('people.writeWill', player.pick(Object.keys(WILL_PLANS))));
+    if (age >= 18 && player.chance(0.03)) tries.push(() => act('people.lifeInsurance', `${player.pick(['self', 'spouse'])}:${player.pick([0, 250000, 500000])}`));
+    const kids = livingChildren(state);
+    if (kids.length && player.chance(0.1)) tries.push(() => act('people.contribute529', `${player.pick(kids).id}:${player.pick([1000, 5000])}`));
+    if (state.people.arrears && player.chance(0.5)) tries.push(() => act('people.payArrears'));
+    if (player.chance(0.03)) tries.push(() => act(player.pick(['people.makeFriend', 'people.adopt', 'people.askForMoney']), player.pick(folks)?.id));
+  }
   // Campus
   if (state.education.enrolled) {
     if (player.chance(0.3)) tries.push(() => act(`campus.${player.pick(['rush', 'runForStudentGov', 'tryOut', 'party', 'party', 'studyAbroad', 'moveIntoDorm', 'moveOffCampus'])}`));
@@ -263,8 +292,19 @@ function resolveAllPrompts(state) {
   }
 }
 
+/** Estate conservation: gross estate = funeral + debts paid + estate tax + bequests. */
+function checkEstate(state) {
+  const l = state.legacy;
+  assert.ok(l, 'estate settled at death');
+  const out = l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0);
+  assert.equal(out, l.assets, `estate conserves assets (${l.assets} → ${out})`);
+  assert.ok(l.bequests.every((b) => b.amount >= 0) && l.tax >= 0 && l.debtsPaid <= l.debts, 'estate amounts sane');
+}
+
 for (let life = 0; life < LIVES; life++) {
-  const state = engine.newLife();
+  let state = engine.newLife();
+  let generation = 1;
+  for (;;) {
   let years = 0;
   let managed = false;
   let autoYears = 0;
@@ -341,6 +381,24 @@ for (let life = 0; life < LIVES; life++) {
   renderAll(state);
   const restored = new Store(engine.store.storage).load();
   assert.deepEqual(restored, state);
+  checkEstate(state);
+  totals.estates += 1;
+  if (state.people.marriages) totals.married += 1;
+  if (state.people.divorces) totals.divorced += 1;
+  if (state.people.list.some((p) => p.relation === 'child')) totals.parents += 1;
+  // Continue as a child (up to four generations).
+  const heirs = livingChildren(state);
+  if (generation >= 4 || !heirs.length || !player.chance(0.6)) break;
+  const heir = player.pick(heirs);
+  state = engine.continueAsChild(heir.id);
+  assert.ok(state?.character.alive, 'heir is alive');
+  assert.equal(state.lineage.generation, generation + 1, 'lineage generation');
+  assert.equal(state.character.firstName, heir.firstName);
+  checkInvariants(state);
+  generation += 1;
+  totals.generations += 1;
+  totals.maxGeneration = Math.max(totals.maxGeneration, generation);
+  }
 }
 
 console.log(`✔ Simulated ${LIVES} lives (${totals.years} years, ${totals.prompts} decisions) without errors.`);
@@ -352,6 +410,7 @@ console.log(`  investing: ${totals.millionaires} lives peaked as millionaires ($
 const rate = ([n, d]) => `${n}/${d} (${((n / Math.max(1, d)) * 100).toFixed(0)}%)`;
 console.log(`  health: PTSD combat ${rate(totals.ptsd.combat)}, first responders ${rate(totals.ptsd.responder)}, others ${rate(totals.ptsd.other)}; disability ${totals.onDisability}, VA-rated ${totals.vaRated}, rehab ${totals.rehab}`);
 console.log(`  campus: interned ${totals.interns}, return-offer hires ${totals.returnHires}, mentored ${totals.mentored}, Greek alumni ${totals.greek}, honors college ${totals.honorsCollege}, studied abroad ${totals.abroad}, expelled ${totals.expelled}, ROTC officers ${totals.rotcOfficers}, academy grads ${totals.academyGrads}`);
+console.log(`  people: ${totals.married} ever married, ${totals.divorced} divorced, ${totals.parents} parents · ${totals.generations} heirs continued, deepest line ${totals.maxGeneration} generations · ${totals.estates} estates settled and balanced`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);

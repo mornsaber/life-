@@ -11,6 +11,7 @@
  * This module only *reads* the job and service records; it accrues service
  * credit and contributions itself at year end.
  */
+import { spousalBenefit } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
 import { PENSION_PLANS, annuityFor } from './PensionPlans.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -257,8 +258,11 @@ export const RetirementEngine = {
       const r = state.retirement;
       if (r.socialSecurity) return;
       if (state.character.age < 62) return ctx.toast('Social Security starts at 62.', 'warn');
-      if (!r.ssEarnings.length) return ctx.toast('No covered earnings on record.', 'warn');
-      r.socialSecurity = { annual: socialSecurityEstimate(state), claimAge: state.character.age };
+      if (!r.ssEarnings.length && !spousalBenefit(state) && !r.survivorBenefit) return ctx.toast('No covered earnings on record.', 'warn');
+      // Your own benefit, or a spousal / survivor benefit if that's larger.
+      const own = socialSecurityEstimate(state);
+      const family = Math.max(spousalBenefit(state), r.survivorBenefit ?? 0);
+      r.socialSecurity = { annual: Math.max(own, family), claimAge: state.character.age, basis: family > own ? (r.survivorBenefit ? 'survivor' : 'spousal') : 'own' };
       ctx.log(`You claimed Social Security at ${state.character.age}: $${r.socialSecurity.annual.toLocaleString()}/yr.`, '🇺🇸', 'milestone');
     },
 

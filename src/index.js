@@ -116,6 +116,13 @@ function handleAction(el) {
       return renderer.render(engine.state);
     case 'engine.ageUp':
       return engine.ageUp();
+    case 'engine.continueAs':
+      renderer.panel = null;
+      if (engine.continueAsChild?.(arg)) {
+        renderer.setTab('people');
+        renderer.toast('A new generation begins.', 'good');
+      }
+      return undefined;
     case 'engine.undo':
       if (engine.undoYear()) renderer.toast('Rewound one year.', 'info');
       return undefined;

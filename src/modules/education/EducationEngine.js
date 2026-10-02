@@ -106,6 +106,13 @@ function fundTuition(ctx, e) {
     due -= aid;
     notes.push(`$${aid.toLocaleString()} need-based aid`);
   }
+  // A 529 college fund (from a parent) pays first.
+  if (state.education.fund529 > 0) {
+    const covered = Math.min(due, state.education.fund529);
+    state.education.fund529 -= covered;
+    due -= covered;
+    notes.push(`$${covered.toLocaleString()} from your 529 plan`);
+  }
   // Merit, athletic, honors and ROTC scholarships (campus module) — some need a minimum GPA.
   for (const s of state.campus?.scholarships ?? []) {
     if (due <= 0) break;

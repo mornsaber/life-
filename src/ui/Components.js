@@ -242,7 +242,7 @@ export function newLifeForm(rngName) {
   </div>`;
 }
 
-export function tombstone({ name, born, died, age, cause, epitaph, facts, honors }) {
+export function tombstone({ name, born, died, age, cause, epitaph, facts, honors }, extra = '') {
   return `<div class="tombstone-wrap">
     <div class="tombstone">
       <div class="rip">R.I.P.</div>
@@ -252,7 +252,8 @@ export function tombstone({ name, born, died, age, cause, epitaph, facts, honors
       <p class="epitaph">“${esc(epitaph)}”</p>
       ${honors.length ? `<div class="tomb-rack">${ribbonRack(honors)}</div>` : ''}
       ${kv(facts)}
-      <button class="btn primary huge" data-action="engine.abandon" data-arg="skipConfirm">▶ NEW LIFE</button>
+      ${extra}
+      <button class="btn ${extra ? '' : 'primary'} huge" data-action="engine.abandon" data-arg="skipConfirm">▶ ${extra ? 'Start a brand-new life' : 'NEW LIFE'}</button>
     </div>
   </div>`;
 }

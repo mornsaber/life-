@@ -310,6 +310,8 @@ export class Engine {
         state.prompts = [];
         addLog(state, `${state.character.firstName} died at age ${state.character.age}. Cause: ${cause}.`, '🪦', 'death');
         engine.bus.emit('death', state);
+        // Estates settle with full module context (people/Legacy).
+        engine.bus.emit('life:ended', { ctx: engine.context() });
       },
     };
   }

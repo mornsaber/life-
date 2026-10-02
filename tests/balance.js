@@ -33,11 +33,14 @@ export const TARGETS = {
   unemployment: { band: [0.035, 0.07], ref: '≈4–6% long-run average', fmt: pct },
   retireAge: { band: [60, 68], ref: '≈62–65 median retirement age', fmt: (x) => x.toFixed(1) },
   dbPension: { band: [0.15, 0.4], ref: '≈25–30% of retirees receive a DB pension', fmt: pct },
-  millionaire: { band: [0.08, 0.3], ref: '≈15–20% of households near retirement worth $1M+', fmt: pct },
+  millionaire: { band: [0.08, 0.3], ref: '≈15–20% of households near retirement (peak through 70) worth $1M+', fmt: pct },
   medianNetWorth65: { band: [150000, 650000], ref: '≈$400k median net worth, ages 65–74', fmt: money },
   supervisor: { band: [0.35, 0.6], ref: '≈36% of workers supervise others at any one time; more have at some point', fmt: pct },
   veterans: { band: [0.04, 0.12], ref: '≈6–7% of adults are veterans', fmt: pct },
   ptsdVets: { band: [0.1, 0.35], ref: '≈15–30% of combat veterans', fmt: pct },
+  everMarried: { band: [0.6, 0.92], ref: '≈80% of adults have married by 45 (Census ACS)', fmt: pct },
+  divorced: { band: [0.25, 0.55], ref: '≈35–45% of first marriages end in divorce', fmt: pct },
+  parents: { band: [0.55, 0.9], ref: '≈85% of women 40–44 have had a child (lower for men)', fmt: pct },
   repeatRate: { band: [0, 0.2], ref: 'design target: under 20% repeated story events', fmt: pct },
 };
 
@@ -105,6 +108,9 @@ export async function playLives({ from, to, seed }) {
       military: choose.chance(0.08),
       owner: choose.chance(0.85),
       retireAt: choose.int(60, 68),
+      // Family plans: most people marry; ≈85% want children (0–3, mostly 2).
+      marry: choose.chance(0.85),
+      kids: choose.weighted([{ n: 0, w: 15 }, { n: 1, w: 20 }, { n: 2, w: 40 }, { n: 3, w: 25 }], (x) => x.w).n,
     };
     let eduIdx = 0;
     let stats = { salaryAt40: null, employedAt40: false, firstHomeAge: null, supervised: false, combat: false, everHomeless: false, retiredAge: null, nw65: null, peakNw: 0, storyEvents: 0, storyRepeats: 0 };
@@ -121,6 +127,8 @@ export async function playLives({ from, to, seed }) {
         } else if (p.type === 'career.negotiate') id = (options.find((o) => o.id === 'step' || o.id === 'modest') ?? options[0]).id;
         else if (p.type === 'housing.financing') id = (options.find((o) => !['cash', 'cancel', 'fraud'].includes(o.id)) ?? options.find((o) => o.id === 'cash') ?? options.find((o) => o.id === 'cancel') ?? options[0]).id;
         else if (p.type === 'health.bankruptcy') id = 'file';
+        else if (p.type === 'people.date') id = persona.marry && choose.chance(0.7) ? options.find((o) => o.id === '0')?.id : options.find((o) => !/^\d$/.test(o.id))?.id;
+        else if (p.type === 'people.meetCute') id = persona.marry && !s.people.list.some((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation)) ? 'ask' : options.find((o) => o.id !== 'ask')?.id;
         else if (p.type === 'retirement.rollover') id = choose.chance(p.data.amount < 20000 ? 0.55 : 0.12) ? 'cashout' : 'rollover';
         else if (p.type === 'career.promotionReview') id = options.find((o) => o.id === 'results')?.id ?? options[0].id;
         else if (p.type === 'housing.distress') id = options.find((o) => o.id === (choose.chance(0.5) ? 'modify' : 'sell'))?.id ?? options[0].id;
@@ -209,6 +217,15 @@ export async function playLives({ from, to, seed }) {
         engine.dispatch('housing.buy', listing.id);
         solve();
       }
+      // Love and family.
+      if (persona.marry && age >= 20 && age <= 50) {
+        const partner = s.people.list.find((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation));
+        if (!partner && choose.chance(0.5)) engine.dispatch('people.date');
+        else if (partner?.relation === 'partner' && age - partner.since >= 2 && choose.chance(0.5)) engine.dispatch('people.propose', partner.id);
+        else if (partner?.relation === 'fiance') engine.dispatch('people.wed', s.finances.cash > 30000 ? 'small' : 'courthouse');
+        if (partner && (partner.relation === 'spouse' || age >= 27) && age <= 42 && s.people.list.filter((x) => x.relation === 'child').length < persona.kids) engine.dispatch('people.tryForBaby');
+        solve();
+      }
       // Health & money habits.
       if (age >= 30 && age % 2 === 0) engine.dispatch('health.checkup');
       for (const c of s.health.conditions) if (c.diagnosed && !c.remission && !c.treated) engine.dispatch(CONDITIONS[c.id].kind === 'addiction' ? 'health.rehab' : 'health.treat', c.id);
@@ -231,7 +248,7 @@ export async function playLives({ from, to, seed }) {
       if (s.housing.homelessYears) stats.everHomeless = true;
       if (s.military.service?.combatTours) stats.combat = true;
       const nw = netWorth(s);
-      stats.peakNw = Math.max(stats.peakNw, nw);
+      if (s.character.age <= 70) stats.peakNw = Math.max(stats.peakNw, nw);
       if (s.character.age === 65) stats.nw65 = nw;
       if (process.env.BALANCE_DEBUG === 'wealth' && s.character.age === 65) console.log(JSON.stringify({ plan: persona.plan, saver: persona.saver, cash: Math.round(s.finances.cash), dc: s.retirement.dc, equity: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0)), inv: Math.round(Object.values(s.investing.holdings).reduce((t, h) => t + h.value, 0)), nw }));
       if (process.env.BALANCE_DEBUG === 'grade' && s.character.age === 40 && s.career.job) console.log(JSON.stringify({ plan: persona.plan, prof: s.career.job.professionId, level: s.career.job.levelId, grade: s.career.job.grade, salary: s.career.job.salary, dept: Boolean(s.career.job.department) }));
@@ -267,6 +284,10 @@ export async function playLives({ from, to, seed }) {
       unemploymentAvg: hist.reduce((a, h) => a + h.unemployment, 0) / Math.max(1, hist.length),
       econYears: hist.length,
       recessions: hist.filter((h, k) => h.phase === 'recession' && hist[k - 1]?.phase !== 'recession').length,
+      everMarried: (s.people?.marriages ?? 0) > 0,
+      everDivorced: (s.people?.divorces ?? 0) > 0,
+      hadKids: (s.people?.list ?? []).some((p) => p.relation === 'child'),
+      wealth: s.people?.wealth,
       plan: persona.plan,
       ...stats,
     });
@@ -313,6 +334,9 @@ export function aggregate(rs) {
     supervisor: share(at40, (r) => r.supervised),
     veterans: share(adults, (r) => r.veteran),
     ptsdVets: combatVets.length ? share(combatVets, (r) => r.ptsd) : NaN,
+    everMarried: share(at45, (r) => r.everMarried),
+    divorced: share(at45.filter((r) => r.everMarried), (r) => r.everDivorced),
+    parents: share(at45, (r) => r.hadKids),
     repeatRate: rs.reduce((a, r) => a + r.storyRepeats, 0) / Math.max(1, rs.reduce((a, r) => a + r.storyEvents, 0)),
   };
 }

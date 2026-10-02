@@ -28,13 +28,14 @@ import { homeView } from './views/HomeView.js';
 import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
 import { healthView } from './views/HealthView.js';
+import { peopleView, heirChoices } from './views/PeopleView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
-  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
@@ -71,6 +72,7 @@ export const VIEWS = {
   licenses: licensesView,
   money: moneyView,
   health: healthView,
+  people: peopleView,
   legal: legalView,
   home: homeView,
   move: moveView,
@@ -150,7 +152,7 @@ export class Renderer {
       return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state))}<div class="layout single">${VIEWS.life(state, this.ui)}</div></main>${panel}`;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="layout single">${VIEWS.life(state, this.ui)}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
     return `

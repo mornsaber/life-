@@ -10,6 +10,10 @@ import { regionOf, stateIdOf } from './Regions.js';
 import { stateIncomeTax, STATES } from './States.js';
 import { ltcgTax } from '../investing/Assets.js';
 import { coverage } from '../health/Insurance.js';
+import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
+
+/** Child Tax Credit per child under 17 (non-refundable here). */
+export const CHILD_TAX_CREDIT = 2000;
 
 const LOAN_RATE = 0.05;
 const DEBT_RATE = 0.15;
@@ -21,6 +25,8 @@ const LIVING_MINIMUM = 6000;
 /** Living at home: parents cover most of it. */
 const LIVING_AT_HOME = 2000;
 const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
+/** Kids, support and premiums come off the top before lifestyle spending, like housing. */
+const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium)|personal spending$/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {
@@ -37,7 +43,7 @@ export function hasHousingBenefit(state) {
 function steadyIncome(state) {
   const age = state.character.age;
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
-  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0);
+  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state);
 }
 
 export const Finances = {
@@ -54,9 +60,13 @@ export const Finances = {
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
     const taxable = Math.max(0, ordinary - deductions);
     const capitalGainsTax = ltcgTax(taxable, ltcg);
-    let federalTax = calculateIncomeTax(taxable) + capitalGainsTax;
+    // Married filing jointly: brackets and the standard deduction double (≈ splitting income in half).
+    const married = isMarried(state);
+    const joint = (fn, amount) => (married ? 2 * fn(amount / 2) : fn(amount));
+    const kidsCredit = minorChildren(state).filter((c) => ageOf(state, c) < 17 && c.custody !== 'ex').length * CHILD_TAX_CREDIT;
+    let federalTax = Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
     // States tax capital gains as ordinary income.
-    let stateTax = stateIncomeTax(stateIdOf(state), Math.max(0, taxable + ltcg - 5000));
+    let stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, taxable + ltcg - (married ? 10000 : 5000)));
     if (state.legal.flags.taxCheatAge === age) {
       federalTax = Math.round(federalTax * 0.7);
       stateTax = Math.round(stateTax * 0.7);
@@ -78,7 +88,7 @@ export const Finances = {
         // Housing (rent, mortgage, upkeep) is charged by the housing module.
         // Everything else is spent out of what's left after taxes, housing and
         // retirement saving — people with big mortgages spend less elsewhere.
-        const housing = f.ledger.expenses.filter((x) => HOUSING_EXPENSE.test(x.reason)).reduce((s, x) => s + x.amount, 0);
+        const housing = f.ledger.expenses.filter((x) => HOUSING_EXPENSE.test(x.reason) || FAMILY_EXPENSE.test(x.reason)).reduce((s, x) => s + x.amount, 0);
         // Card debt: interest plus a real effort to pay it down.
         const cardDebt = Math.max(0, -f.cash);
         const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardDebt * (DEBT_RATE + 0.25);
@@ -87,7 +97,9 @@ export const Finances = {
         const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - deductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
         const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;
-        const lifestyle = (LIVING_FLOOR * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
+        // A second adult adds about half again to household needs (OECD equivalence scale).
+        const household = married ? 1.5 : 1;
+        const lifestyle = (LIVING_FLOOR * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
         // Spending flexes down when money is tight, but never below the bare minimum.
         living = Math.round(Math.max(minimum, Math.min(lifestyle, discretionary * 0.92)));
       }
@@ -138,7 +150,7 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, ltcg, capitalGainsTax, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
+    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
     f.ledger = { income: [], expenses: [], deductions: [] };
   },
 };
