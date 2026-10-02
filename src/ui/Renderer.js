@@ -28,6 +28,7 @@ import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
+import { PHASES } from '../modules/economy/EconomyEngine.js';
 
 export const TABS = [
   { id: 'life', label: 'Life', icon: '📜' },
@@ -152,7 +153,7 @@ export class Renderer {
     const region = regionOf(state);
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
-      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}</div>
+      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}</div>
       <button class="btn ghost small" data-action="engine.abandon">↺ New Life</button>
     </header>`;
   }

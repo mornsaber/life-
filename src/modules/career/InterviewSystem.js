@@ -204,7 +204,8 @@ export function hireChance(state, profession, level, score, maxScore) {
   const base = 0.22 + (score / maxScore) * 0.45;
   const stats = (state.stats.smarts - 50) / 250 + (state.stats.looks - 50) / 500;
   const seniority = Math.max(0, level.grade - profession.levels[0].grade) * 0.04;
-  return clamp(base + stats + candidateBonus(state, profession) - seniority, 0.05, 0.95);
+  const market = (state.economy.unemployment - 0.045) * 2; // slack labor markets are brutal
+  return clamp(base + stats + candidateBonus(state, profession) - seniority - market, 0.05, 0.95);
 }
 
 function offerSalary(state, profession, level, employer, step, merit) {

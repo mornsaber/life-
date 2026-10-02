@@ -30,7 +30,7 @@ export function landlordTick(ctx, property) {
   const managed = state.housing.manager;
 
   // Fill vacancies
-  const fillChance = 0.55 + property.condition / 300 + (managed ? 0.1 : 0) + (state.housing.cycle?.phase === 'bust' ? -0.15 : 0);
+  const fillChance = 0.55 + property.condition / 300 + (managed ? 0.1 : 0) + (state.economy.phase === 'recession' ? -0.15 : 0);
   while (property.tenants.length < units && rng.chance(fillChance)) property.tenants.push(newTenant(ctx, property));
 
   let collected = 0;

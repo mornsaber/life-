@@ -50,7 +50,7 @@ function listings(state) {
       ${button('Make offer', 'housing.buy', { arg: l.id, variant: 'small' })}
     </li>`;
   }).join('');
-  return card('Listings', `<p class="muted">Base mortgage rate ${(state.housing.rates.base * 100).toFixed(2)}% · market ${state.housing.cycle?.phase ?? 'normal'}. Selling costs ${Math.round(sellingCostRate(state) * 100)}%${sellingCostRate(state) < 0.05 ? ' (you\'re a licensed agent)' : ''}.</p><ul class="job-board">${rows || '<li>No listings this year.</li>'}</ul>`, { icon: '🪧' });
+  return card('Listings', `<p class="muted">Base mortgage rate ${(state.housing.rates.base * 100).toFixed(2)}% · economy in ${state.economy.phase}. Selling costs ${Math.round(sellingCostRate(state) * 100)}%${sellingCostRate(state) < 0.05 ? ' (you\'re a licensed agent)' : ''}.</p><ul class="job-board">${rows || '<li>No listings this year.</li>'}</ul>`, { icon: '🪧' });
 }
 
 function propertyCard(state, p) {

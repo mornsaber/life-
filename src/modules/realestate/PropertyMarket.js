@@ -1,14 +1,16 @@
 /**
  * Property market: types, regional prices and rents, a per-region market
- * index with national boom/bust cycles, mortgage-rate drift, yearly listings,
+ * index driven by the shared economy (booms at the peak, busts in recessions),
+ * mortgage rates tied to the economy's interest rate, yearly listings,
  * and selling costs (agent commission — 1% if you hold a real estate
  * license and represent yourself).
  *
- * state.housing.market = { [regionId]: index }, state.housing.cycle = { phase, years }
+ * state.housing.market = { [regionId]: index }
  */
 import { REGIONS } from '../life/Regions.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
+import { PHASES } from '../economy/EconomyEngine.js';
 
 export const PROPERTY_TYPES = {
   condo: { name: 'Condo', icon: '🏢', base: 285000, hoa: 3000, units: 1, rent: 1500 },
@@ -69,26 +71,17 @@ export function generateListings(ctx) {
   state.housing.listings = listings.sort((a, b) => a.price - b.price);
 }
 
-/** Yearly market move: national cycle + regional noise; rates drift with the cycle. */
+/** Yearly market move: follows the economic cycle plus regional noise. */
 export function marketTick(ctx) {
   const { state, rng } = ctx;
   const h = state.housing;
-  h.cycle ??= { phase: 'normal', years: 0 };
-  const c = h.cycle;
-  c.years += 1;
-  if (c.phase === 'normal') {
-    if (rng.chance(0.06)) Object.assign(c, { phase: 'bust', years: 0 });
-    else if (rng.chance(0.08)) Object.assign(c, { phase: 'boom', years: 0 });
-  } else if (c.phase === 'boom' && c.years >= 2 && rng.chance(0.3)) Object.assign(c, { phase: 'bust', years: 0 });
-  else if (c.phase === 'bust' && c.years >= 2) Object.assign(c, { phase: 'normal', years: 0 });
-  if (c.years === 0 && c.phase !== 'normal') ctx.log(c.phase === 'bust' ? '📉 The housing market is crashing. Prices are falling nationwide.' : '📈 A housing boom is underway. Prices are surging.', '🏘️', 'warn');
-
-  const drift = { normal: 0.035, boom: 0.09, bust: -0.09 }[c.phase];
+  const e = state.economy;
+  const drift = { expansion: 0.04, peak: 0.07, recession: -0.08, recovery: 0.02 }[e.phase];
   for (const regionId of Object.keys(REGIONS)) {
-    h.market[regionId] = Math.round(clamp(marketIndex(state, regionId) * (1 + drift + rng.float(-0.03, 0.03)), 0.4, 6) * 1000) / 1000;
+    h.market[regionId] = Math.round(clamp(marketIndex(state, regionId) * (1 + drift + e.inflation * 0.3 + rng.float(-0.03, 0.03)), 0.4, 8) * 1000) / 1000;
   }
-  const rateTarget = { normal: 0.065, boom: 0.07, bust: 0.045 }[c.phase];
-  h.rates.base = Math.round(clamp(h.rates.base + (rateTarget - h.rates.base) * 0.3 + rng.float(-0.004, 0.004), 0.025, 0.1) * 10000) / 10000;
+  // Mortgage rates ride on the economy's interest rate.
+  h.rates.base = Math.round(clamp(e.interestRate + 0.027 + rng.float(-0.003, 0.003), 0.025, 0.11) * 10000) / 10000;
 
   for (const p of h.properties) p.value = Math.round(priceOf(state, p.type, p.regionId) * (p.valueAdj ?? 1) * (0.7 + p.condition / 333));
 }

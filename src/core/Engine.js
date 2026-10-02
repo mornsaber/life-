@@ -8,7 +8,7 @@
  *     order: 30,                     // tick order (lower runs first)
  *     setup(engine) {},              // once, after registration (bus wiring)
  *     guard(state, actionId) {},     // return a reason string to block an action (e.g. in prison)
- *     init(state) {},                // on new life / loaded save (slice migration)
+ *     init(state, rng) {},           // on new life / loaded save (create/migrate slice)
  *     onAgeUp(ctx) {},               // yearly simulation
  *     onYearEnd(ctx) {},             // after every module's onAgeUp
  *     actions:   { name(ctx, arg) },              // -> engine.dispatch('career.name', arg)
@@ -71,7 +71,7 @@ export class Engine {
   boot() {
     const saved = this.store.load();
     if (!saved) return false;
-    this.modules.forEach((m) => m.init?.(saved));
+    this.modules.forEach((m) => m.init?.(saved, this.rng));
     this.bus.emit('change', saved);
     return true;
   }
@@ -79,7 +79,7 @@ export class Engine {
   newLife(options = {}) {
     const state = createInitialState(this.rng, options);
     this.store.state = state;
-    this.modules.forEach((m) => m.init?.(state));
+    this.modules.forEach((m) => m.init?.(state, this.rng));
     this.commit();
     return state;
   }

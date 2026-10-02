@@ -242,7 +242,7 @@ export const MunicipalGov = {
     // Drift and shocks
     city.approval = Math.round(clamp(city.approval + (50 - city.approval) * 0.15 + rng.int(-5, 5), 0, 100));
     city.fiscalHealth = Math.round(clamp(city.fiscalHealth + rng.int(-6, 5), 0, 100));
-    if (rng.chance(0.07)) {
+    if (state.economy.phase === 'recession' && state.economy.phaseYears === 0) {
       city.fiscalHealth = Math.max(0, city.fiscalHealth - 20);
       ctx.log(`A recession hammered ${city.name}'s tax revenue. Budgets are being cut.`, '📉', 'warn');
     }

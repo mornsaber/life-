@@ -126,10 +126,17 @@ export const RetirementEngine = {
     const age = state.character.age;
     r.dc = Math.round(r.dc * (1 + DC_GROWTH));
 
+    // COLAs track inflation, capped by each plan's COLA ceiling; Social Security gets full CPI.
+    const inflation = Math.max(0, state.economy.inflation);
     for (const p of r.pensions) {
-      if (age >= p.startAge) ctx.earn(Math.round(p.annual * (1 + p.cola) ** (age - p.startAge)), p.label);
+      if (age < p.startAge) continue;
+      if (age > p.startAge) p.colaFactor = Math.round((p.colaFactor ?? 1) * (1 + Math.min(inflation, p.cola)) * 10000) / 10000;
+      ctx.earn(Math.round(p.annual * (p.colaFactor ?? 1)), p.label);
     }
-    if (r.socialSecurity) ctx.earn(Math.round(r.socialSecurity.annual * 1.02 ** (age - r.socialSecurity.claimAge)), 'Social Security');
+    if (r.socialSecurity) {
+      if (age > r.socialSecurity.claimAge) r.socialSecurity.colaFactor = Math.round((r.socialSecurity.colaFactor ?? 1) * (1 + inflation) * 10000) / 10000;
+      ctx.earn(Math.round(r.socialSecurity.annual * (r.socialSecurity.colaFactor ?? 1)), 'Social Security');
+    }
 
     // Deferred annuities start automatically at the plan's normal age.
     for (const [planId, plan] of Object.entries(r.plans)) {

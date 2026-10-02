@@ -43,7 +43,8 @@ export function unionEmployeeTick(ctx, job) {
   union.contractYearsLeft -= 1;
   if (union.contractYearsLeft <= 0) {
     union.contractYearsLeft = 3;
-    const offer = rng.int(2, 6);
+    // Contracts chase inflation plus a real raise.
+    const offer = Math.max(1, Math.round(ctx.state.economy.inflation * 100)) + rng.int(0, 3);
     if (job.unionMember && !isSupervisor(job)) {
       ctx.prompt({
         type: 'career.cbaVote',

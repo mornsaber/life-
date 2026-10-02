@@ -280,6 +280,38 @@ export function demote(ctx, reason) {
   return true;
 }
 
+/* ------------------------------------------------------------------ */
+/* Layoffs                                                             */
+/* ------------------------------------------------------------------ */
+
+const LAYOFF_RATE = { expansion: 0.01, peak: 0.015, recession: 0.09, recovery: 0.03 };
+
+/** Annual reduction-in-force risk. Returns true if you were laid off. */
+export function layoffRisk(state, job) {
+  let risk = 0;
+  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase];
+  else if (job.sector === 'municipal' && (state.publicService.city?.fiscalHealth ?? 50) < 25) risk = 0.05;
+  else if (job.sector === 'state' && state.economy.phase === 'recession') risk = 0.02;
+  if (job.abilities.includes('tenure')) risk = 0;
+  if (job.unionMember && job.yearsAtEmployer >= 5) risk *= 0.3; // seniority
+  if (job.performance >= 80) risk *= 0.5;
+  if (job.performance < 40) risk *= 1.5;
+  return risk;
+}
+
+function layoffCheck(ctx, job) {
+  if (!ctx.rng.chance(layoffRisk(ctx.state, job))) return false;
+  const severance = Math.round((job.salary / 26) * Math.min(job.yearsAtEmployer, 26));
+  const ui = Math.round(Math.min(job.salary * 0.45, 30000) * 0.5);
+  leaveJob(ctx, 'Laid off in a reduction in force');
+  if (severance) ctx.earn(severance, 'Severance pay', { wage: true });
+  ctx.earn(ui, 'Unemployment insurance');
+  ctx.toast('Laid off', 'bad');
+  ctx.stat('happiness', -10);
+  ctx.stat('stress', 10);
+  return true;
+}
+
 /** Queue the interactive promotion review (resolved in WorkplaceActions). */
 export function openPromotionReview(ctx, initiatedByPlayer = false) {
   const job = ctx.state.career.job;
@@ -360,6 +392,8 @@ export function careerOnAgeUp(ctx) {
   if (steps && job.step < MAX_STEP) job.step = Math.min(MAX_STEP, job.step + steps);
   if (job.sector === 'private' && job.performance >= 80) job.merit = Math.round((job.merit + 0.01) * 1000) / 1000;
   recalcSalary(state, job);
+
+  if (layoffCheck(ctx, job)) return;
 
   const status = promotionStatus(state);
   const grievanceLimit = job.unionMember ? 3 : 2;

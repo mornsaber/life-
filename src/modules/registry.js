@@ -2,11 +2,12 @@
  * Every domain module the engine runs, in one place. Tick order is set by
  * each module's `order` field, not by its position here:
  *
- *   life 0 · region 4 · activities 5 · education 10 · credentials 12 ·
+ *   economy 1 · life 0 · region 4 · activities 5 · education 10 · credentials 12 ·
  *   military 20 · federal 24 · publicservice 25 · municipal 26 · career 30 ·
  *   politics 33 · legal 35 · emergency 40 · housing 45 · retirement 85 · finances 90
  */
 import { Lifecycle } from './life/Lifecycle.js';
+import { EconomyEngine } from './economy/EconomyEngine.js';
 import { Relocation } from './life/Regions.js';
 import { Disasters } from './life/Disasters.js';
 import { Activities } from './life/Activities.js';
@@ -23,7 +24,7 @@ import { HousingEngine } from './realestate/index.js';
 import { PoliticsEngine } from './politics/index.js';
 
 export const MODULES = [
-  Lifecycle, Disasters, Relocation, Activities, EducationEngine, CredentialsModule, MilitaryModule,
+  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, EducationEngine, CredentialsModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, PoliticsEngine, LegalModule,
   EmergencyModule, HousingEngine, RetirementEngine, Finances,
 ];

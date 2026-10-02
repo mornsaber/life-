@@ -9,8 +9,8 @@
  */
 import { clamp } from './Random.js';
 
-export const STATE_VERSION = 3;
-export const SAVE_KEY = 'lifesim.save.v3';
+export const STATE_VERSION = 4;
+export const SAVE_KEY = 'lifesim.save.v4';
 export const START_YEAR = 2026;
 
 export const STAT_KEYS = ['health', 'happiness', 'smarts', 'looks', 'fitness', 'stress'];

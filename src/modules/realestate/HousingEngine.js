@@ -192,7 +192,6 @@ export const HousingEngine = {
   init(state) {
     const h = state.housing;
     h.withParents ??= true;
-    h.cycle ??= { phase: 'normal', years: 0 };
     h.credit.score = computeCreditScore(state);
   },
 

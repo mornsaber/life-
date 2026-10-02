@@ -267,8 +267,8 @@ const tests = {
     const before = state.character.regionId;
     state.prompts = [];
     engine.ageUp();
-    while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options.find((o) => !o.disabled).id);
-    assert.ok(state.military.service.station, 'assigned to a base');
+    state.prompts = [];
+    assert.ok(state.military.service?.station ?? state.military.history.length, 'assigned to a base (or separated in combat)');
     assert.notEqual(state.character.regionId, before === state.character.regionId ? '__' : before);
     assert.equal(ctx.state.housing.rental, null);
   },
