@@ -164,6 +164,9 @@ function checkInvariants(state) {
   }
   assert.ok(!(state.military.deserter && svcNow), 'deserter still serving');
   assert.ok(!(state.career.leave && state.career.job), 'military leave and a job at once');
+  const plan = state.finances.ch13;
+  assert.ok(!plan || (plan.yearsLeft > 0 && plan.annual > 0), 'chapter 13 plan');
+  assert.ok(Number.isFinite(state.finances.cash), 'cash finite');
   assert.ok(!state.career.leave || state.career.leave.job?.employer, 'military leave holds a job');
   assert.ok(!state.career.job || state.career.job.probationLeft == null || state.career.job.probationLeft >= 0, 'probation');
   assert.ok(state.yearly['cred.attempts'] == null || state.yearly['cred.attempts'] <= 2, 'credential attempts per year');
@@ -185,6 +188,7 @@ function randomActions(state) {
   const tries = [];
   const job = state.career.job;
   if (age >= 15) tries.push(() => act('credentials.pursue', player.pick(CRED_IDS)));
+  if (age >= 18 && player.chance(0.02)) tries.push(() => act('finances.fileBankruptcy', player.pick(['7', '13'])));
   if (state.career.leave && player.chance(0.3)) tries.push(() => act(player.chance(0.8) ? 'career.returnFromLeave' : 'career.resignFromLeave'));
   if (state.career.job && player.chance(0.03)) tries.push(() => act('career.transfer', player.pick(Object.keys(REGIONS))));
   if (age >= 15 && player.chance(0.1)) tries.push(() => act('credentials.prep', player.pick(CRED_IDS)));

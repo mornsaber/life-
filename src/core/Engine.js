@@ -20,7 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
-import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR } from './State.js';
+import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford } from './State.js';
 import { Random } from './Random.js';
 
 export class EventBus {
@@ -295,10 +295,15 @@ export class Engine {
       deduct(amount, reason) {
         state.finances.ledger.deductions.push({ reason, amount: Math.round(amount) });
       },
-      /** Deduct cash. Returns false (and spends nothing) when unaffordable unless allowDebt. */
-      spend(amount, reason, { allowDebt = false } = {}) {
+      /**
+       * Deduct cash. Returns false (and spends nothing) when unaffordable:
+       *   allowDebt  bills and obligations — always paid, even deep into debt
+       *   credit     purchases you choose — may go on cards up to your credit limit
+       */
+      spend(amount, reason, { allowDebt = false, credit = false } = {}) {
         const value = Math.round(amount);
-        if (!allowDebt && state.finances.cash < value) return false;
+        if (credit && !allowDebt && !canAfford(state, value)) return false;
+        if (!allowDebt && !credit && state.finances.cash < value) return false;
         state.finances.cash -= value;
         state.finances.ledger.expenses.push({ reason, amount: value });
         return true;

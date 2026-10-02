@@ -184,7 +184,7 @@ export const PublicServiceEngine = {
       if (state.character.age < exam.minAge) return ctx.toast(`Must be ${exam.minAge}+.`, 'warn');
       if (state.legal.incarceration) return ctx.toast('Not from prison.', 'warn');
       if (yearlyCount(state, `exam.${examId}`)) return ctx.toast('You can retake it next year.', 'warn');
-      if (exam.cost) ctx.spend(exam.cost, exam.name, { allowDebt: true });
+      if (exam.cost && !ctx.spend(exam.cost, exam.name, { credit: true })) return ctx.toast(`The exam fee is $${exam.cost} — card declined.`, 'warn');
       bumpYearly(state, `exam.${examId}`);
       const score = rawExamScore(state, examId, rng);
 

@@ -27,6 +27,7 @@ const EVENT_IMPACT = {
   foreclosure: { points: 140, years: 7 },
   eviction: { points: 70, years: 7 },
   bankruptcy: { points: 170, years: 10 },
+  chapter13: { points: 130, years: 7 },
 };
 
 export const CARD_CAPACITY = 15000;

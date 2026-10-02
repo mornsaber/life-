@@ -14,7 +14,7 @@
  * state.housing = { withParents, rental, properties[], listings[], credit,
  *                   market, cycle, rates, homelessYears, manager }
  */
-import { isOnActiveDuty, yearlyCount, bumpYearly } from '../../core/State.js';
+import { isOnActiveDuty, yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
 import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
@@ -62,11 +62,15 @@ function endLease(ctx, reason, { fee = true } = {}) {
 function startRental(ctx, tier, { auto = false } = {}) {
   const { state } = ctx;
   const rent = tierRent(state, tier, state.character.regionId);
-  if (!RENT_TIERS[tier].subsidized) ctx.spend(rent * 2, 'Security deposit + first month', { allowDebt: true });
+  if (!RENT_TIERS[tier].subsidized && !ctx.spend(rent * 2, 'Security deposit + first month', auto ? { allowDebt: true } : { credit: true })) {
+    ctx.toast(`Deposit and first month: $${(rent * 2).toLocaleString()} — more than your cash and credit.`, 'warn');
+    return false;
+  }
   state.housing.rental = { tier, rent, leaseYearsLeft: 1, regionId: state.character.regionId };
   state.housing.withParents = false;
   state.housing.homelessYears = 0;
   ctx.log(`${auto ? 'You found a place: ' : 'You signed a lease: '}${RENT_TIERS[tier].name} in ${regionOf(state).name} for $${rent.toLocaleString()}/mo.`, RENT_TIERS[tier].icon);
+  return true;
 }
 
 function sellProperty(ctx, property, { forced = false } = {}) {
@@ -333,6 +337,8 @@ export const HousingEngine = {
       if (recentEviction && ctx.rng.chance(0.6)) return ctx.toast('The landlord saw your eviction record and passed.', 'bad');
       if (state.housing.credit.score < 560 && tier === 'house') return ctx.toast('Landlords want a 560+ credit score for a house.', 'warn');
       if (state.campus?.academy) return ctx.toast('Academy cadets live in the barracks.', 'warn');
+      const rentNeeded = tierRent(state, tier, state.character.regionId) * 2;
+      if (!canAfford(state, rentNeeded)) return ctx.toast(`Deposit and first month: $${rentNeeded.toLocaleString()} — more than your cash and credit.`, 'warn');
       if (state.housing.rental) endLease(ctx, null);
       if (state.campus?.housing === 'dorm') {
         state.campus.housing = null;

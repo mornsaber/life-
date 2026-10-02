@@ -11,6 +11,7 @@ import { stateIncomeTax, STATES } from './States.js';
 import { ltcgTax } from '../investing/Assets.js';
 import { coverage } from '../health/Insurance.js';
 import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
+import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
@@ -119,17 +120,17 @@ export const Finances = {
       }
     }
 
+    ch13Tick(ctx);
+
     let interest = 0;
     if (f.cash < 0) {
       interest = Math.round(-f.cash * DEBT_RATE);
       f.cash -= interest;
       if (-f.cash > Math.max(60000, gross * 1.5)) {
-        ctx.log(`You declared bankruptcy, wiping out $${(-f.cash).toLocaleString()} in debt. Your credit is wrecked.`, '💸', 'bad');
-        ctx.toast('Declared bankruptcy', 'bad');
-        f.cash = 0;
-        f.bankruptcies += 1;
-        ctx.emit('credit:event', { type: 'bankruptcy' });
-        ctx.stat('happiness', -15);
+        // Unmanageable debt: a bankruptcy attorney lays out the options (or collectors keep calling).
+        debtCrisisPrompt(ctx);
+        ctx.log(`You owe $${(-f.cash).toLocaleString()} on credit cards — more than you can ever pay off at 15% interest.`, '💸', 'bad');
+        ctx.stat('happiness', -6);
         ctx.stat('stress', 10);
       } else if (f.cash < -25000) {
         ctx.stat('stress', 8);
@@ -152,5 +153,20 @@ export const Finances = {
 
     f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
     f.ledger = { income: [], expenses: [], deductions: [] };
+  },
+
+  actions: {
+    /** arg: '7' | '13' */
+    fileBankruptcy(ctx, chapter) {
+      fileBankruptcy(ctx, Number(chapter) === 13 ? 13 : 7);
+    },
+  },
+
+  resolvers: {
+    debtCrisis(ctx, _data, optionId) {
+      if (optionId === 'ch7') fileBankruptcy(ctx, 7);
+      else if (optionId === 'ch13') fileBankruptcy(ctx, 13);
+      else ctx.log('You decided to keep paying what you can. The collectors keep calling.', '📞', 'warn');
+    },
   },
 };

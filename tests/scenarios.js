@@ -31,6 +31,8 @@ import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } fro
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
 import { charge } from '../src/modules/legal/JusticeSystem.js';
 import { separationPay } from '../src/modules/military/Separation.js';
+import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
+import { creditLimit } from '../src/core/State.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1069,6 +1071,78 @@ const tests = {
     t.engine.resolvePrompt(court.id, 'plead');
     assert.equal(t.state.military.history.at(-1).discharge, 'dishonorable', 'court-martial upgrades to dishonorable');
     assert.equal(t.state.military.deserter, null);
+  },
+
+  'purchases stop at your credit limit; bills do not'() {
+    const { engine, state } = setup(71, 30);
+    state.housing.credit.score = 560;
+    state.finances.lastYear = { gross: 20000 };
+    state.finances.cash = 0;
+    assert.equal(creditLimit(state), 600, 'subprime: 3% of income');
+    state.people.list.push({ id: 'pf', firstName: 'Sam', lastName: 'Lee', gender: 'male', relation: 'fiance', ageOffset: 0, relationship: 90, alive: true, income: 40000, careerIncome: 40000, nationality: 'US', since: 28, compatibility: 80 });
+    engine.dispatch('people.wed', 'small');
+    assert.equal(byId(state, 'pf').relation, 'fiance', 'a $12,000 wedding is declined');
+    assert.equal(state.finances.cash, 0);
+    state.housing.credit.score = 760;
+    state.finances.lastYear = { gross: 90000 };
+    assert.equal(creditLimit(state), 27000);
+    engine.dispatch('people.wed', 'small');
+    assert.equal(byId(state, 'pf').relation, 'spouse', 'good credit can put it on cards');
+    assert.equal(state.finances.cash, -12000);
+    // Bills still go through past the limit.
+    assert.ok(engine.context().spend(50000, 'Hospital bill', { allowDebt: true }));
+  },
+
+  'Chapter 7 wipes card and medical debt, keeps retirement, and sells non-exempt assets'() {
+    const { engine, state } = setup(72, 40);
+    state.finances.lastYear = { gross: 35000 };
+    state.finances.cash = -40000;
+    state.health.medicalDebt = 20000;
+    state.finances.loans = 15000;
+    state.retirement.dc = 80000;
+    state.investing.holdings = { sp500: { value: 30000, basis: 20000 } };
+    const opts = bankruptcyOptions(state);
+    assert.ok(opts.ch7.ok, `ch7 eligible: ${opts.ch7.reason}`);
+    assert.equal(opts.debt, 60000);
+    engine.dispatch('finances.fileBankruptcy', '7');
+    assert.equal(state.health.medicalDebt, 0);
+    assert.equal(state.finances.cash, WILDCARD_EXEMPTION - CH7_FEE, 'keeps the wildcard exemption, pays the attorney');
+    assert.equal(state.retirement.dc, 80000, 'retirement protected');
+    assert.equal(state.finances.loans, 15000, 'student loans survive');
+    assert.deepEqual(state.investing.holdings, {});
+    assert.equal(state.finances.lastBankruptcy.chapter, 7);
+    state.finances.cash = -20000;
+    assert.match(bankruptcyOptions(state).ch7.reason, /8 required/);
+  },
+
+  'above the median you get Chapter 13: a plan, then discharge; unmanageable debt prompts a decision'() {
+    const { engine, state } = setup(73, 40);
+    giveJob(engine, 'tech', getProfession('tech').levels.find((l) => l.entry).id);
+    state.career.job.salary = 150000;
+    state.finances.lastYear = { gross: 150000 };
+    state.finances.cash = -90000;
+    const opts = bankruptcyOptions(state);
+    assert.ok(!opts.ch7.ok && /means test/.test(opts.ch7.reason));
+    assert.ok(opts.ch13.ok && opts.ch13.years === 5);
+    engine.dispatch('finances.fileBankruptcy', '13');
+    assert.ok(state.finances.ch13, 'plan started');
+    assert.ok(state.finances.cash > -10000, 'debt moved into the plan');
+    for (let y = 0; y < 5 && state.finances.ch13; y++) {
+      state.prompts = [];
+      state.finances.cash = Math.max(state.finances.cash, 0);
+      engine.ageUp();
+    }
+    assert.equal(state.finances.ch13, null, 'plan completed');
+
+    const s2 = setup(74, 35);
+    s2.state.finances.cash = -200000;
+    s2.state.finances.lastYear = { gross: 0 };
+    s2.state.prompts = [];
+    s2.engine.ageUp();
+    const crisis = s2.state.prompts.find((p) => p.type === 'finances.debtCrisis');
+    assert.ok(crisis, 'debt crisis decision');
+    s2.engine.resolvePrompt(crisis.id, 'ch7');
+    assert.ok(s2.state.finances.cash >= 0, 'filed Chapter 7');
   },
 
   'evicted young adults move back in with family or get vouchers'() {

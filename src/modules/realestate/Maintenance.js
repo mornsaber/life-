@@ -75,8 +75,12 @@ export function resolveRepair(ctx, data, optionId) {
   const { state, rng } = ctx;
   const p = state.housing.properties.find((x) => x.id === data.propertyId);
   if (!p) return;
+  if (optionId === 'contractor' && !ctx.spend(data.cost, 'Home repair', { credit: true })) {
+    ctx.log(`You couldn't pay the contractor $${data.cost.toLocaleString()}, so the repair waits.`, '💳', 'warn');
+    p.condition = Math.max(0, p.condition - 5);
+    return;
+  }
   if (optionId === 'contractor') {
-    ctx.spend(data.cost, 'Home repair', { allowDebt: true });
     p.condition = Math.min(100, p.condition + 10);
     ctx.log(`Contractors fixed it for $${data.cost.toLocaleString()}.`, '👷');
   } else if (optionId === 'diy') {

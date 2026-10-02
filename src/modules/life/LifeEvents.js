@@ -73,14 +73,14 @@ export const LIFE_EVENTS = [
     { id: 'skip', label: '📚 Keep studying', resolve: () => 'You watched it on social media.' },
   ] },
   { id: 'springBreak', minAge: 18, maxAge: 26, when: onCampus, title: 'Spring Break', text: 'Your friends are going to Cancún.', options: [
-    { id: 'go', label: '🏖️ Go ($1,200)', resolve: (ctx) => { ctx.spend(1200, 'Spring break', { allowDebt: true }); stats(ctx, { happiness: 8, stress: -10 }); return 'Legendary.'; } },
+    { id: 'go', label: '🏖️ Go ($1,200)', resolve: (ctx) => { if (!ctx.spend(1200, 'Spring break', { credit: true })) return 'Your card was declined at the airport. You watched it all on Instagram.'; stats(ctx, { happiness: 8, stress: -10 }); return 'Legendary.'; } },
     { id: 'work', label: '💼 Work extra shifts', resolve: (ctx) => { ctx.earn(800, 'Spring break shifts', { wage: true }); return 'You banked $800.'; } },
   ] },
 
   /* ---------------- Adult life ---------------- */
   { id: 'lottery', minAge: 18, when: free, title: 'Lottery Fever', text: 'The jackpot is $640 million. Everyone at work is buying tickets.', options: [
     { id: 'buy', label: '🎟️ Buy $20 of tickets', resolve: (ctx) => {
-      ctx.spend(20, 'Lottery tickets', { allowDebt: true });
+      if (!ctx.spend(20, 'Lottery tickets', { credit: true })) return 'Card declined. Not even for a lottery ticket.';
       const roll = ctx.rng.next();
       if (roll < 0.0004) { ctx.earn(2_500_000, 'Lottery prize (lump sum)'); stats(ctx, { happiness: 25 }); ctx.toast('You won the lottery!', 'good'); return 'You matched five numbers plus the Powerball multiplier. $2.5 million, lump sum, before taxes!'; }
       if (roll < 0.006) { ctx.earn(10000, 'Lottery prize'); stats(ctx, { happiness: 8 }); return 'Four numbers! $10,000.'; }
@@ -138,7 +138,7 @@ export const LIFE_EVENTS = [
   ] },
   { id: 'dogBite', minAge: 4, when: free, title: 'Dog Bite', text: '', run: (ctx) => { ctx.stat('health', -5); ctx.spend(400, 'Urgent care', { allowDebt: true }); return ['🐕', 'A neighbor\'s dog bit your calf. Six stitches.', 'warn']; } },
   { id: 'friendLoan', minAge: 22, when: free, title: 'A Friend Needs Money', text: 'Your college friend needs $5,000 to cover rent after a layoff.', options: [
-    { id: 'lend', label: '🤝 Lend it', resolve: (ctx) => { ctx.spend(5000, 'Loan to a friend', { allowDebt: true }); return ctx.rng.chance(0.55) ? (ctx.state.finances.cash += 5000, 'They paid you back within a year, with a bottle of good bourbon.') : (stats(ctx, { happiness: -4 }), 'They never paid it back. The friendship cooled.'); } },
+    { id: 'lend', label: '🤝 Lend it', resolve: (ctx) => { if (!ctx.spend(5000, 'Loan to a friend', { credit: true })) return 'You didn\'t have $5,000 to lend, even on credit.'; return ctx.rng.chance(0.55) ? (ctx.state.finances.cash += 5000, 'They paid you back within a year, with a bottle of good bourbon.') : (stats(ctx, { happiness: -4 }), 'They never paid it back. The friendship cooled.'); } },
     { id: 'no', label: '🙅 Say no kindly', resolve: (ctx) => { stats(ctx, { happiness: -2 }); return 'They understood. Mostly.'; } },
   ] },
 ];

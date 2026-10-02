@@ -598,8 +598,8 @@ export const PeopleEngine = {
     togglePrenup(ctx) {
       const p = ctx.state.people;
       if (!partnerOf(ctx.state) || partnerOf(ctx.state).relation !== 'fiance') return;
+      if (!p.prenup && !ctx.spend(2500, 'Prenuptial agreement', { credit: true })) return ctx.toast('A prenup costs $2,500 — card declined.', 'warn');
       p.prenup = !p.prenup;
-      if (p.prenup) ctx.spend(2500, 'Prenuptial agreement', { allowDebt: true });
       ctx.log(p.prenup ? 'You signed a prenup.' : 'You tore up the prenup.', '📝');
     },
     /** arg: courthouse | small | big */
@@ -608,8 +608,7 @@ export const PeopleEngine = {
       const person = partnerOf(state);
       const w = WEDDINGS[kind];
       if (!person || person.relation !== 'fiance' || !w) return;
-      if (state.finances.cash < w.cost && w.cost > 1000) return ctx.toast(`A ${w.label.toLowerCase()} costs $${w.cost.toLocaleString()}.`, 'warn');
-      ctx.spend(w.cost, w.label, { allowDebt: true });
+      if (!ctx.spend(w.cost, w.label, { credit: true })) return ctx.toast(`A ${w.label.toLowerCase()} costs $${w.cost.toLocaleString()} — more than your cash and credit.`, 'warn');
       person.relation = 'spouse';
       person.since = state.character.age;
       person.dcAtMarriage = state.retirement.dc;
@@ -686,7 +685,7 @@ export const PeopleEngine = {
       if (!WILL_PLANS[plan]) return;
       if (state.character.age < 18) return ctx.toast('You must be 18 to make a will.', 'warn');
       const first = !state.people.will;
-      ctx.spend(first ? 1500 : 300, 'Estate attorney', { allowDebt: true });
+      if (!ctx.spend(first ? 1500 : 300, 'Estate attorney', { credit: true })) return ctx.toast(`The estate attorney charges $${first ? '1,500' : '300'} — card declined.`, 'warn');
       state.people.will = { plan, age: state.character.age };
       ctx.log(`You ${first ? 'made' : 'updated'} your will: ${WILL_PLANS[plan].label.toLowerCase()}.`, '📜');
     },
@@ -725,8 +724,7 @@ export const PeopleEngine = {
       const { state, rng } = ctx;
       const spouse = byId(state, data.personId);
       if (!spouse || spouse.relation !== 'spouse') return;
-      if (optionId === 'contest' && rng.chance(0.25)) {
-        ctx.spend(6000, 'Marriage counseling', { allowDebt: true });
+      if (optionId === 'contest' && rng.chance(0.25) && ctx.spend(6000, 'Marriage counseling', { credit: true })) {
         spouse.relationship = clampRel(spouse.relationship + 30);
         return ctx.log(`Counseling worked. You and ${spouse.firstName} are giving it another try.`, '💞', 'good');
       }

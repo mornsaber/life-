@@ -127,6 +127,7 @@ export async function playLives({ from, to, seed }) {
         } else if (p.type === 'career.negotiate') id = (options.find((o) => o.id === 'step' || o.id === 'modest') ?? options[0]).id;
         else if (p.type === 'housing.financing') id = (options.find((o) => !['cash', 'cancel', 'fraud'].includes(o.id)) ?? options.find((o) => o.id === 'cash') ?? options.find((o) => o.id === 'cancel') ?? options[0]).id;
         else if (p.type === 'health.bankruptcy') id = 'file';
+        else if (p.type === 'finances.debtCrisis') id = (options.find((o) => o.id === 'ch7') ?? options.find((o) => o.id === 'ch13') ?? options[0]).id;
         else if (p.type === 'people.date') id = persona.marry && choose.chance(0.7) ? options.find((o) => o.id === '0')?.id : options.find((o) => !/^\d$/.test(o.id))?.id;
         else if (p.type === 'people.meetCute') id = persona.marry && !s.people.list.some((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation)) ? 'ask' : options.find((o) => o.id !== 'ask')?.id;
         else if (p.type === 'retirement.rollover') id = choose.chance(p.data.amount < 20000 ? 0.55 : 0.12) ? 'cashout' : 'rollover';

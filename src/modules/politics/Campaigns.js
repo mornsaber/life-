@@ -89,7 +89,7 @@ export const CampaignActions = {
     const check = runEligibility(state, officeId);
     if (!check.ok) return ctx.toast(check.reason, 'warn');
     const office = OFFICES[officeId];
-    ctx.spend(Math.round(office.cost * 0.01), 'Filing fees', { allowDebt: true });
+    if (!ctx.spend(Math.round(office.cost * 0.01), 'Filing fees', { credit: true })) return ctx.toast(`Filing fees: $${Math.round(office.cost * 0.01).toLocaleString()} — card declined.`, 'warn');
     // Statewide seats are usually held by an entrenched incumbent.
     state.politics.campaign = { officeId, funds: 0, endorsements: [], startAge: state.character.age, vsIncumbent: Boolean(office.statewide) && ctx.rng.chance(0.6) };
     ctx.log(`You declared your candidacy for ${office.name}${state.politics.campaign.vsIncumbent ? ' against a popular incumbent' : ' for an open seat'}! The election is next year.`, office.icon, 'milestone');

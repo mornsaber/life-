@@ -400,6 +400,27 @@ export function highestDegree(state) {
 export const hasFelony = (state) => state.legal.record.some((r) => r.severity === 'felony');
 export const isIncarcerated = (state) => Boolean(state.legal.incarceration);
 
+/**
+ * Credit-card limit: what you can put on cards for things you choose to buy.
+ * Set by credit score and income; a recent bankruptcy leaves only a secured card.
+ * Bills, fines and taxes still pile up past it — they aren't purchases.
+ */
+export function creditLimit(state) {
+  if (state.character.age < 18) return 0;
+  const score = state.housing?.credit?.score ?? 650;
+  const f = state.finances;
+  const income = Math.max(state.career?.job?.salary ?? 0, f.lastYear?.gross ?? 0);
+  if (f.lastBankruptcy && state.character.age - f.lastBankruptcy.age < 2) return 500;
+  const share = score >= 740 ? 0.3 : score >= 670 ? 0.2 : score >= 580 ? 0.1 : 0.03;
+  return Math.round(Math.min(60000, Math.max(score >= 580 ? 1000 : 300, income * share)));
+}
+
+/** Remaining room on your cards (0 once you're past the limit). */
+export const availableCredit = (state) => Math.max(0, creditLimit(state) + Math.min(0, state.finances.cash));
+
+/** Can you pay for a purchase with cash plus remaining credit? */
+export const canAfford = (state, amount) => state.finances.cash - amount >= -creditLimit(state);
+
 export function isOnActiveDuty(state) {
   return state.military.service?.component === 'active';
 }

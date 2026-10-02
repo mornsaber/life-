@@ -12,6 +12,7 @@
  * corporate transfer — goes through changeRegion(), which emits
  * `region:changed` so housing, licenses, careers and residency can react.
  */
+import { canAfford } from '../../core/State.js';
 import { STATES } from './States.js';
 
 export const REGIONS = {
@@ -65,7 +66,10 @@ export function changeRegion(ctx, regionId, reason, { voluntary = false } = {}) 
 function completeMove(ctx, regionId) {
   const { state } = ctx;
   const region = REGIONS[regionId];
-  ctx.spend(MOVE_COST, 'Moving costs', { allowDebt: true });
+  if (!ctx.spend(MOVE_COST, 'Moving costs', { credit: true })) {
+    ctx.toast(`Moving costs $${MOVE_COST.toLocaleString()} — more than your cash and credit.`, 'warn');
+    return false;
+  }
   const job = state.career.job;
   if (job && !job.remote) ctx.emit('career:resign', { reason: `Moved to ${region.name}` });
   changeRegion(ctx, regionId, 'You packed up the truck.', { voluntary: true });
@@ -117,6 +121,8 @@ export const Relocation = {
   resolvers: {
     homeDecision(ctx, data, optionId) {
       if (optionId === 'cancel') return;
+      // Selling raises the money; keeping the house means paying the movers from cash or credit.
+      if (optionId !== 'sell' && !canAfford(ctx.state, MOVE_COST)) return ctx.toast(`Moving costs $${MOVE_COST.toLocaleString()} — more than your cash and credit.`, 'warn');
       ctx.emit('housing:leavingPrimary', { decision: optionId });
       completeMove(ctx, data.regionId);
     },

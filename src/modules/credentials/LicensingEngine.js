@@ -17,13 +17,12 @@
  * unit). This module never mutates them directly — it reads the remaining
  * budget and emits `budget:charge`, which the owning module applies.
  */
-import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly } from '../../core/State.js';
+import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK } from './CredentialRegistry.js';
 import { stateIdOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 
-export const CREDIT_LIMIT = 1500;
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
 export const MAX_TRAINING = 2;
@@ -158,7 +157,7 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
     const cost = retakeCost(cred);
     const academySponsor = findSponsor(state, cred);
     if (academySponsor?.academy) return { ok: true, cred, sponsor: academySponsor, payer: 'sponsor', cost, retake: true };
-    if (cost > CREDIT_LIMIT && state.finances.cash < cost) return { ok: false, reason: `Retest costs $${cost.toLocaleString()}` };
+    if (!canAfford(state, cost)) return { ok: false, reason: `Retest costs $${cost.toLocaleString()} — more than your cash and credit` };
     return { ok: true, cred, sponsor: null, payer: 'self', cost, retake: true };
   }
   if (cred.trainingYears && state.credentials.training.length >= MAX_TRAINING) return { ok: false, reason: `Already in ${MAX_TRAINING} training programs` };
@@ -168,8 +167,8 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   if (cred.sponsoredOnly) {
     return { ok: false, reason: sponsor ? `${sponsor.label}'s training budget is spent this year` : 'Requires employer sponsorship' };
   }
-  // Small fees can go on a credit card; big-ticket training needs cash.
-  if (cred.cost > CREDIT_LIMIT && state.finances.cash < cred.cost) return { ok: false, reason: `Costs $${cred.cost.toLocaleString()}${sponsor ? ' (sponsor budget spent)' : ''}` };
+  // Self-paid courses go on cash or cards, up to your credit limit.
+  if (!canAfford(state, cred.cost)) return { ok: false, reason: `Costs $${cred.cost.toLocaleString()} — more than your cash and credit${sponsor ? ' (sponsor budget spent)' : ''}` };
   return { ok: true, cred, sponsor: null, payer: 'self', cost: cred.cost, budgetSpent: Boolean(sponsor) };
 }
 
@@ -183,7 +182,7 @@ function chargeCost(ctx, eligibility, what) {
     ctx.emit('budget:charge', { sponsor: eligibility.sponsor, amount: eligibility.cost, reason: what });
     return eligibility.sponsor.label;
   }
-  ctx.spend(eligibility.cost, what, { allowDebt: true });
+  ctx.spend(eligibility.cost, what, { credit: true });
   return 'you';
 }
 
@@ -383,7 +382,7 @@ export const LicensingEngine = {
       if (state.credentials.held[id]?.status === 'active' || hasCredential(state, id)) return ctx.toast('You already hold it.', 'warn');
       if (state.credentials.prep[id]) return ctx.toast('You already took a prep course.', 'warn');
       const cost = prepCost(cred);
-      if (!ctx.spend(cost, `${cred.name} prep course`)) return ctx.toast(`A prep course costs $${cost.toLocaleString()}.`, 'warn');
+      if (!ctx.spend(cost, `${cred.name} prep course`, { credit: true })) return ctx.toast(`A prep course costs $${cost.toLocaleString()}.`, 'warn');
       state.credentials.prep[id] = true;
       ctx.stat('stress', 2);
       ctx.log(`You took a prep course for the ${cred.name} exam.`, '📚');

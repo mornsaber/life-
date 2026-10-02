@@ -16,6 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
+import { fileBankruptcy } from '../life/Bankruptcy.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
@@ -214,7 +215,7 @@ function medicalDebtTick(ctx) {
       title: 'Buried in Medical Bills',
       text: `You owe $${h.medicalDebt.toLocaleString()} in medical debt — more than you can ever pay on your income.`,
       options: [
-        { id: 'file', label: '⚖️ File Chapter 7 bankruptcy', hint: 'Wipes medical and card debt; brokerage accounts go to creditors; retirement accounts and your home are protected', tone: 'danger' },
+        { id: 'file', label: '⚖️ File for bankruptcy', hint: 'Chapter 7 wipes medical and card debt (non-exempt assets are sold); above the median income it becomes a Chapter 13 plan. Retirement accounts are protected.', tone: 'danger' },
         { id: 'plan', label: '🤝 Negotiate a payment plan', hint: 'Hospitals often settle for less' },
       ],
     });
@@ -617,18 +618,8 @@ export const HealthEngine = {
         h.medicalDebt -= settled;
         return;
       }
-      const f = state.finances;
-      const inv = state.investing;
-      const seized = inv ? Object.values(inv.holdings).reduce((s, x) => s + x.value, 0) : 0;
-      if (inv) inv.holdings = {};
-      ctx.log(`You filed for Chapter 7 bankruptcy. $${(h.medicalDebt + Math.max(0, -f.cash)).toLocaleString()} in debt was discharged${seized ? `; the trustee liquidated $${seized.toLocaleString()} of brokerage holdings` : ''}. Retirement accounts and your home were protected.`, '⚖️', 'bad');
-      h.medicalDebt = 0;
-      h.collections = false;
-      f.cash = Math.max(0, f.cash);
-      f.bankruptcies += 1;
-      ctx.emit('credit:event', { type: 'bankruptcy' });
-      ctx.stat('happiness', -10);
-      ctx.stat('stress', -5);
+      // Chapter 7 if you pass the means test, otherwise a Chapter 13 plan.
+      if (!fileBankruptcy(ctx, 7) && !fileBankruptcy(ctx, 13)) ctx.log("A bankruptcy attorney said you can't file right now. The medical bills stay with you.", '⚖️', 'bad');
     },
   },
 };
