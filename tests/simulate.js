@@ -156,6 +156,9 @@ function checkInvariants(state) {
   assert.ok(!k.job || (TEEN_JOBS[k.job.id] && state.character.age < 18), 'teen job');
   assert.ok(!(k.dropout && state.education.degrees.some((d) => d.type === 'highschool' && d.programId !== 'ged')), 'dropout with a diploma');
   assert.ok(state.education.degrees.filter((d) => d.type === 'highschool' || d.type === 'ged').length <= 1, 'one diploma');
+  assert.ok(state.yearly['cred.attempts'] == null || state.yearly['cred.attempts'] <= 2, 'credential attempts per year');
+  assert.ok(state.credentials.training.length <= 2, 'training programs');
+  assert.ok(Object.values(state.credentials.failures).every((n) => Number.isInteger(n) && n > 0), 'failure counts');
   assert.ok(hl.trauma >= 0 && [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(hl.va.rating), 'trauma / VA rating');
 }
 
@@ -172,6 +175,7 @@ function randomActions(state) {
   const tries = [];
   const job = state.career.job;
   if (age >= 15) tries.push(() => act('credentials.pursue', player.pick(CRED_IDS)));
+  if (age >= 15 && player.chance(0.1)) tries.push(() => act('credentials.prep', player.pick(CRED_IDS)));
   if (age >= 15 && player.chance(0.3)) tries.push(() => act('credentials.pursue', player.pick(['learnerPermit', 'driverLicense', 'emt', 'realEstate', 'cdlA'])));
   if (age >= 16 && player.chance(0.05)) tries.push(() => act('credentials.fly'));
   if (age >= 18 && player.chance(0.25)) tries.push(() => act('publicservice.takeExam', player.pick(Object.keys(EXAMS))));

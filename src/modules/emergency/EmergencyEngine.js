@@ -212,6 +212,7 @@ function newK9(rng) {
 function serviceTick(ctx, serviceId, member) {
   const { state, rng } = ctx;
   const svc = SERVICES[serviceId];
+  member.budget.annual = svc.trainingBudget;
   member.budget.left = member.budget.annual;
 
   if (isOnActiveDuty(state) || isDeployed(state)) {

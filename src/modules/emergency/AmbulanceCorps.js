@@ -23,7 +23,7 @@ export const AmbulanceCorps = {
     { title: 'Chief of EMS', xp: 1000, cert: 'paramedic', minYears: 8 },
   ],
   credentials: ['emr', 'emt', 'paramedic', 'evoc', 'ics300', 'hazmatOps'],
-  trainingBudget: 1400,
+  trainingBudget: 1500,
   drills: [
     'Monthly skills night: airway, splinting and spinal motion restriction.',
     'Emergency vehicle operations course on the closed track.',

@@ -27,7 +27,7 @@ export const FireVolunteer = {
     { title: 'Volunteer Fire Chief', xp: 1000, cert: 'fireOfficer2', minYears: 10 },
   ],
   credentials: ['ff1', 'ff2', 'emt', 'hazmatOps', 'driverOperator', 'fireOfficer1', 'fireOfficer2', 'ropeRescue', 'swiftwater', 'ics300'],
-  trainingBudget: 3000,
+  trainingBudget: 2500,
   drills: [
     'Monthly drills: SCBA confidence course, ladder raises and hose advances.',
     'Live-burn training at the county burn tower.',

@@ -14,6 +14,7 @@ export const ROUTINE = {
   'career.cbaVote': 'ratify',
   'politics.donorFavor': 'legal',
   'retirement.rollover': 'rollover',
+  'k12.dropoutRisk': 'stay',
 };
 
 /** The option to pick automatically, or null when the player should decide. */

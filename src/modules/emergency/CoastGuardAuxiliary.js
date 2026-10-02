@@ -20,7 +20,7 @@ export const CoastGuardAuxiliary = {
     { title: 'Division Commander', xp: 750, cert: 'ics300', minYears: 6 },
   ],
   credentials: ['boatCrew', 'coxswain', 'swiftwater', 'ics300', 'emr'],
-  trainingBudget: 1200,
+  trainingBudget: 1000,
   drills: [
     'Man-overboard and towing drills in the harbor.',
     'Night navigation patrol.',

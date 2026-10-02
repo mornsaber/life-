@@ -198,9 +198,23 @@ export const K12Engine = {
           const risk = 0.025 + (k.gpa < 1.4 ? 0.25 : k.gpa < 2.2 ? 0.08 : 0) + (state.people?.wealth === 'low' ? 0.04 : 0)
             + (state.stats.happiness < 30 ? 0.05 : 0) + (k.job && TEEN_JOBS[k.job.id].hours >= 15 ? 0.02 : 0);
           if (rng.chance(risk)) {
-            k.dropout = true;
-            k.activities = [];
-            ctx.log(k.gpa < 2.2 ? 'Failing and fed up, you dropped out of high school.' : 'You dropped out of high school to work and help out at home.', '🚪', 'bad');
+            if (k.gpa < 1.4) {
+              k.dropout = true;
+              k.activities = [];
+              ctx.log('Failing and fed up, you dropped out of high school.', '🚪', 'bad');
+            } else {
+              const why = k.gpa < 2.2 ? "You're falling behind and school feels pointless." : state.people?.wealth === 'low' ? 'Money is tight at home and a full-time paycheck would help.' : "You're miserable at school and want out.";
+              ctx.prompt({
+                type: 'k12.dropoutRisk',
+                icon: '🚪',
+                title: 'Thinking About Dropping Out',
+                text: `${why}\nDo you stay in school?`,
+                options: [
+                  { id: 'stay', label: '🏫 Stick it out', hint: '+Stress — but you keep your shot at a diploma' },
+                  { id: 'leave', label: '🚪 Drop out', hint: 'No diploma; a GED later is possible', tone: 'danger' },
+                ],
+              });
+            }
           }
         }
       }
@@ -224,6 +238,20 @@ export const K12Engine = {
       k.activities = [];
       graduate(ctx);
     }
+  },
+
+  resolvers: {
+    dropoutRisk(ctx, _data, optionId) {
+      const k = ctx.state.k12;
+      if (optionId === 'leave') {
+        k.dropout = true;
+        k.activities = [];
+        ctx.log('You dropped out of high school.', '🚪', 'bad');
+      } else {
+        ctx.stat('stress', 5);
+        ctx.log('You decided to stick it out and finish high school.', '🏫');
+      }
+    },
   },
 
   actions: {

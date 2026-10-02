@@ -51,7 +51,7 @@ export const PRIVATE_PROFESSIONS = {
       L('partie', 'Chef de Partie', 3, { track: 'ic' }),
       L('pastry', 'Pastry Chef', 4, { track: 'ic' }),
       L('masterChef', 'Master Chef', 6, { track: 'ic', minSize: 'medium' }),
-      L('sous', 'Sous Chef', 3, { track: 'mgmt', abilities: ['supervise'], reports: 6 }),
+      L('sous', 'Sous Chef', 3, { track: 'mgmt', req: { credentials: ['servSafe'] }, abilities: ['supervise'], reports: 6 }),
       L('cdc', 'Chef de Cuisine', 4, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 12 }),
       L('exec', 'Executive Chef', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 25 }),
       L('director', 'Culinary Director', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign'], reports: 120 }),
@@ -363,7 +363,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
     levels: [
       L('leasing', 'Leasing Agent', 2),
       L('assistant', 'Assistant Property Manager', 3),
-      L('manager', 'Property Manager', 4, { abilities: ['supervise', 'sign'], reports: 5 }),
+      L('manager', 'Property Manager', 4, { req: { credentials: ['realEstate'] }, abilities: ['supervise', 'sign'], reports: 5 }),
       L('portfolio', 'Portfolio Manager', 6, { track: 'ic', abilities: ['sign', 'budget'] }),
       L('regional', 'Regional Property Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 30 }),
       L('vp', 'VP of Property Operations', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec'], reports: 200 }),

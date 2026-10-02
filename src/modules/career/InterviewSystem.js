@@ -5,6 +5,7 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { valuedCredentials } from '../credentials/CredentialRegistry.js';
 import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
@@ -195,7 +196,7 @@ export function candidateBonus(state, profession) {
   if (educationFields(state).has(profession.id)) bonus += 0.08;
   bonus += schoolPrestige(state) * 0.03;
   bonus += networkBonus(state, profession);
-  bonus += Math.min(0.12, (profession.valued ?? []).filter((c) => hasCredential(state, c)).length * 0.04);
+  bonus += Math.min(0.12, valuedCredentials(profession).filter((c) => hasCredential(state, c)).length * 0.04);
   bonus += Math.min(0.08, prestige(state) / 800);
   if (profession.exam) {
     const exam = examStatus(state, profession.exam);

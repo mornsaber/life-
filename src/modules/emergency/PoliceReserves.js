@@ -24,7 +24,7 @@ export const PoliceReserves = {
     { title: 'Reserve Inspector', xp: 1000, cert: 'commandCollege', minYears: 10 },
   ],
   credentials: ['postReserve', 'fto', 'cit', 'trafficEnforcement', 'firearmsInstructor', 'supervisorCourse', 'commandCollege', 'hazmatOps'],
-  trainingBudget: 2500,
+  trainingBudget: 2000,
   drills: [
     'Monthly in-service: defensive tactics and legal updates.',
     'Range day: quarterly firearms qualification.',

@@ -22,7 +22,7 @@ export const WildlandCrew = {
     { title: 'Division Supervisor', xp: 1000, cert: 'ics300', minYears: 10 },
   ],
   credentials: ['wildlandFF2', 'wildlandFF1', 'ics300', 'wfr', 'evoc'],
-  trainingBudget: 2000,
+  trainingBudget: 1500,
   drills: [
     'Fireline construction drills — the pack test is three miles in 45 minutes with 45 pounds.',
     'Fire-shelter deployment practice.',

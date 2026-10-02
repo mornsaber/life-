@@ -15,6 +15,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor } from '../src/modules/credentials/LicensingEngine.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
+import { passChance, pursueEligibility, ATTEMPTS_PER_YEAR, retakeCost } from '../src/modules/credentials/LicensingEngine.js';
 import { planStatus } from '../src/modules/retirement/RetirementEngine.js';
 import { salaryBreakdown } from '../src/modules/career/PayGrades.js';
 import { changeRegion, REGIONS } from '../src/modules/life/Regions.js';
@@ -818,6 +819,73 @@ const tests = {
     assert.equal(state.campus.nomination, true);
     engine.dispatch('education.enroll', 'bachelor:academy:engineering:full');
     assert.equal(state.education.enrolled?.schoolId, 'academy', 'appointed');
+  },
+
+  'license exams can be failed; prep courses help and failed academies allow a cheaper retest'() {
+    const { engine, state } = setup(41, 30);
+    state.stats.smarts = 75;
+    const cpa = getCredential('cpa');
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'accounting', year: 22, gpa: 3.3 });
+    const base = passChance(state, cpa);
+    assert.ok(base > 0.4 && base < 0.6, `CPA pass odds ${base}`);
+    assert.ok(passChance(state, getCredential('rn')) > 0.8, 'NCLEX passes far more often');
+    state.finances.cash = 10000;
+    engine.dispatch('credentials.prep', 'cpa');
+    assert.ok(state.credentials.prep.cpa);
+    assert.ok(passChance(state, cpa) > base + 0.1, 'prep raises the odds');
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => false;
+    engine.dispatch('credentials.pursue', 'cpa');
+    assert.equal(state.credentials.held.cpa, undefined, 'failed');
+    assert.equal(state.credentials.failures.cpa, 1);
+    assert.ok(!state.credentials.prep.cpa, 'prep used up');
+    // Training program final exam: fail, then retest without retraining.
+    state.credentials.training.push({ id: 'paramedic', name: 'Paramedic', yearsLeft: 1, sponsor: 'you' });
+    state.credentials.held.emt = { earnedAge: 25, renewedAge: 29, status: 'active', states: [] };
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.credentials.retake.paramedic, state.character.age, 'retake window opens');
+    const elig = pursueEligibility(state, 'paramedic');
+    assert.ok(elig.ok && elig.retake && elig.cost === retakeCost(getCredential('paramedic')), 'cheap retest');
+    engine.rng.chance = () => true;
+    engine.dispatch('credentials.pursue', 'paramedic');
+    engine.rng.chance = chance;
+    assert.equal(state.credentials.held.paramedic?.status, 'active', 'passed the retest without retraining');
+    assert.equal(state.credentials.training.length, 0);
+  },
+
+  'credential restrictions: yearly limit, agency membership and medical exams'() {
+    const { engine, state } = setup(42, 30);
+    state.finances.cash = 50000;
+    engine.rng.chance = () => true;
+    for (const id of ['oshaSafety', 'ics300', 'landNav']) engine.dispatch('credentials.pursue', id);
+    const held = ['oshaSafety', 'ics300', 'landNav'].filter((id) => state.credentials.held[id]);
+    assert.equal(held.length, ATTEMPTS_PER_YEAR, 'only two new credentials a year');
+    assert.match(pursueEligibility(state, 'landNav').reason, /No time/);
+    state.yearly = {};
+    state.credentials.held.ff2 = { earnedAge: 25, renewedAge: 25, status: 'active', states: [] };
+    state.credentials.held.driverLicense = { earnedAge: 16, renewedAge: 28, status: 'active', states: [] };
+    state.credentials.held.driverOperator = { earnedAge: 26, renewedAge: 26, status: 'active', states: [] };
+    assert.match(pursueEligibility(state, 'fireOfficer1').reason, /membership in a fire department/);
+    engine.dispatch('emergency.join', 'fire');
+    state.prompts = [];
+    assert.ok(state.emergency.fire, 'joined the volunteer fire department');
+    assert.ok(!/membership/.test(pursueEligibility(state, 'fireOfficer1').reason ?? ''), 'members may take it');
+    state.stats.health = 40;
+    assert.match(pursueEligibility(state, 'studentPilot').reason, /medical exam/);
+    state.stats.health = 80;
+    assert.ok(pursueEligibility(state, 'studentPilot').ok);
+  },
+
+  'new careers have their own credentials: a sous chef needs ServSafe'() {
+    const { engine, state } = setup(43, 26);
+    const job = giveJob(engine, 'culinary', 'partie');
+    assert.ok(job);
+    const culinary = getProfession('culinary');
+    const sous = culinary.levels.find((l) => l.id === 'sous');
+    assert.deepEqual(sous.req.credentials, ['servSafe']);
+    assert.equal(getCredential('servSafe').category, 'hospitality');
+    assert.ok(pursueEligibility(state, 'servSafe').ok);
   },
 
   'evicted young adults move back in with family or get vouchers'() {

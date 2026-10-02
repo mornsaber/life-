@@ -28,7 +28,7 @@ export const SearchAndRescue = {
     { title: 'SAR Commander', xp: 1000, cert: 'ics300', minYears: 10 },
   ],
   credentials: ['wfr', 'landNav', 'ropeRescue', 'swiftwater', 'k9Handler', 'avalanche', 'ics300', 'emt'],
-  trainingBudget: 1800,
+  trainingBudget: 1500,
   drills: [
     'Monthly training: rope systems at the quarry.',
     'Night navigation exercise in the national forest.',

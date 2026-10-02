@@ -8,6 +8,9 @@
  *   held:     { [id]: { earnedAge, status: 'active'|'suspended'|'expired'|'revoked', until?, renewedAge, sponsor } },
  *   training: [{ id, name, yearsLeft, sponsor }],
  *   logbook:  { flightHours },
+ *   prep:     { [id]: true }        exam-prep course taken (used up by the next exam)
+ *   retake:   { [id]: lastAge }     failed a training final — retest without retraining
+ *   failures: { [id]: count }
  * }
  *
  * Budgets are owned by the sponsoring domain (career employer, emergency
@@ -21,6 +24,14 @@ import { stateIdOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 
 export const CREDIT_LIMIT = 1500;
+/** New credentials you can take on in a year (courses take time, not just money). */
+export const ATTEMPTS_PER_YEAR = 2;
+export const MAX_TRAINING = 2;
+/** After failing a training program's final exam you may retest (exam only) within this many years. */
+export const RETAKE_WINDOW = 2;
+export const PREP_BONUS = 0.12;
+export const prepCost = (cred) => Math.max(100, Math.round(cred.cost * 0.2));
+export const retakeCost = (cred) => Math.max(50, Math.round(cred.cost * 0.15));
 
 /* ------------------------------------------------------------------ */
 /* Queries                                                             */
@@ -81,7 +92,18 @@ export function checkRequirements(state, req = {}) {
   if (req.noFelony && hasFelony(state)) missing.push('clean record (no felonies)');
   if (req.smarts && state.stats.smarts < req.smarts) missing.push(`${req.smarts}+ smarts`);
   if (req.fitness && state.stats.fitness < req.fitness) missing.push(`${req.fitness}+ fitness`);
+  if (req.health && state.stats.health < req.health) missing.push(`${req.health}+ health (medical exam)`);
+  if (req.affiliation && !affiliated(state, req.affiliation)) missing.push(`membership in ${req.affiliation.map(affiliationLabel).join(' / ')}`);
   return { ok: missing.length === 0, missing };
+}
+
+const AFFILIATION_LABEL = { fire: 'a fire department', police: 'a police department', statePolice: 'the state police', sar: 'a SAR team', auxiliary: 'the Coast Guard Auxiliary', wildland: 'a wildland crew', ambulance: 'an ambulance corps', parkService: 'the Park Service', gameWarden: 'Fish & Wildlife', forester: 'State Forestry', publicWorks: 'Public Works', ems: 'an EMS agency', corrections: 'Corrections', oig: 'an Inspector General', socialWork: 'social services', cps: 'CPS' };
+const affiliationLabel = (id) => AFFILIATION_LABEL[id] ?? id;
+
+/** Agency-internal courses are only open to members: your job's profession or an active volunteer service. */
+export function affiliated(state, ids) {
+  if (ids.includes(state.career.job?.professionId)) return true;
+  return ids.some((id) => state.emergency[id] && id !== 'history' && !state.emergency[id].onLeave);
 }
 
 const LEVEL_LABEL = { highschool: 'high school diploma', associate: "associate's", bachelor: "bachelor's", master: "master's", doctorate: 'doctorate' };
@@ -127,8 +149,17 @@ export function pursueEligibility(state, id) {
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };
+  if (yearlyCount(state, 'cred.attempts') >= ATTEMPTS_PER_YEAR) return { ok: false, reason: `No time for more than ${ATTEMPTS_PER_YEAR} new credentials a year` };
   const check = checkRequirements(state, cred.requires);
   if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
+  // Failed a training program's final exam recently: retest without retraining.
+  const retake = state.credentials.retake?.[id];
+  if (retake != null && state.character.age - retake <= RETAKE_WINDOW) {
+    const cost = retakeCost(cred);
+    if (cost > CREDIT_LIMIT && state.finances.cash < cost) return { ok: false, reason: `Retest costs $${cost.toLocaleString()}` };
+    return { ok: true, cred, sponsor: null, payer: 'self', cost, retake: true };
+  }
+  if (cred.trainingYears && state.credentials.training.length >= MAX_TRAINING) return { ok: false, reason: `Already in ${MAX_TRAINING} training programs` };
 
   const sponsor = findSponsor(state, cred);
   if (sponsor && sponsor.left >= cred.cost) return { ok: true, cred, sponsor, payer: 'sponsor', cost: cred.cost };
@@ -165,10 +196,25 @@ export function grantCredential(ctx, id, { sponsor = null, silent = false } = {}
   ctx.emit('credential:earned', { id, onEarn: cred.onEarn });
 }
 
+/**
+ * Odds of passing, calibrated to real first-attempt pass rates for a typical
+ * candidate (driver's road test ≈60%, NCLEX ≈85%, bar ≈60%, CPA section ≈50%).
+ * Smarts exams center on 75, physical tests on 60; a prep course adds 12 points.
+ */
+export function passChance(state, cred, { prepped = Boolean(state.credentials.prep?.[cred.id]) } = {}) {
+  const stat = state.stats[cred.exam.stat] ?? 50;
+  const center = cred.exam.stat === 'smarts' ? 75 : 60;
+  return clamp(0.97 - cred.exam.difficulty * 1.1 + (stat - center) / 140 + (prepped ? PREP_BONUS : 0), 0.05, 0.97);
+}
+
 function takeExam(ctx, cred) {
-  const stat = ctx.state.stats[cred.exam.stat] ?? 50;
-  const chance = clamp(0.92 - cred.exam.difficulty + (stat - 50) / 120, 0.1, 0.97);
-  return ctx.rng.chance(chance);
+  const { state } = ctx;
+  const passed = ctx.rng.chance(passChance(state, cred));
+  if (state.credentials.prep?.[cred.id]) delete state.credentials.prep[cred.id];
+  if (passed) {
+    if (state.credentials.retake?.[cred.id] != null) delete state.credentials.retake[cred.id];
+  } else state.credentials.failures[cred.id] = (state.credentials.failures[cred.id] ?? 0) + 1;
+  return passed;
 }
 
 /** Start (or immediately sit) a credential. Returns true on progress. */
@@ -181,10 +227,11 @@ export function pursueCredential(ctx, id) {
   }
   const cred = elig.cred;
   bumpYearly(state, `cred.${id}`);
-  const payer = chargeCost(ctx, elig, cred.name);
+  bumpYearly(state, 'cred.attempts');
+  const payer = chargeCost(ctx, elig, elig.retake ? `${cred.name} retest` : cred.name);
   const paidNote = payer === 'free' ? '' : payer === 'you' ? ` You paid $${cred.cost.toLocaleString()}${elig.budgetSpent ? ' (training budget was exhausted)' : ''}.` : ` ${payer} covered the $${cred.cost.toLocaleString()} cost.`;
 
-  if (cred.trainingYears) {
+  if (cred.trainingYears && !elig.retake) {
     state.credentials.training.push({ id, name: cred.name, yearsLeft: cred.trainingYears, sponsor: payer });
     ctx.log(`You started training for your ${cred.name} (${cred.trainingYears} yr).${paidNote}`, cred.icon);
     ctx.toast(`Training started: ${cred.name}`, 'good');
@@ -194,7 +241,8 @@ export function pursueCredential(ctx, id) {
     if (paidNote) ctx.log(paidNote.trim(), '💳', 'finance');
     grantCredential(ctx, id, { sponsor: payer });
   } else {
-    ctx.log(`You failed the ${cred.name} exam. You can retest next year.${paidNote}`, '📝', 'bad');
+    const fails = state.credentials.failures[id];
+    ctx.log(`You failed the ${cred.name} exam${fails > 1 ? ` (attempt ${fails})` : ''}. You can retest next year${state.credentials.prep?.[id] ? '' : ' — a prep course would help'}.${paidNote}`, '📝', 'bad');
     ctx.toast(`Failed: ${cred.name}`, 'bad');
   }
   return true;
@@ -219,6 +267,9 @@ export const LicensingEngine = {
 
   init(state) {
     state.credentials ??= { held: {}, training: [], logbook: { flightHours: 0 } };
+    state.credentials.prep ??= {};
+    state.credentials.retake ??= {};
+    state.credentials.failures ??= {};
   },
 
   setup(engine) {
@@ -288,7 +339,9 @@ export const LicensingEngine = {
       const cred = getCredential(t.id);
       if (checkRequirements(state, cred.requires).ok && takeExam(ctx, cred)) grantCredential(ctx, t.id, { sponsor: t.sponsor });
       else {
-        ctx.log(`You completed ${cred.name} training but failed the final exam. You can try again.`, '📝', 'bad');
+        state.credentials.retake[t.id] = age;
+        ctx.log(`You completed ${cred.name} training but failed the final exam. You can retest within ${RETAKE_WINDOW} years without repeating the training.`, '📝', 'bad');
+        ctx.emit('credential:failed', { id: t.id, training: true });
       }
     }
 
@@ -319,6 +372,19 @@ export const LicensingEngine = {
   actions: {
     pursue(ctx, id) {
       pursueCredential(ctx, id);
+    },
+
+    /** Exam-prep course: costs about a fifth of the credential and boosts your next attempt. */
+    prep(ctx, id) {
+      const { state } = ctx;
+      const cred = getCredential(id);
+      if (state.credentials.held[id]?.status === 'active' || hasCredential(state, id)) return ctx.toast('You already hold it.', 'warn');
+      if (state.credentials.prep[id]) return ctx.toast('You already took a prep course.', 'warn');
+      const cost = prepCost(cred);
+      if (!ctx.spend(cost, `${cred.name} prep course`)) return ctx.toast(`A prep course costs $${cost.toLocaleString()}.`, 'warn');
+      state.credentials.prep[id] = true;
+      ctx.stat('stress', 2);
+      ctx.log(`You took a prep course for the ${cred.name} exam.`, '📚');
     },
 
     /** Reinstate an expired credential by paying renewal + continuing education. */
