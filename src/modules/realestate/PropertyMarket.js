@@ -76,9 +76,13 @@ export function marketTick(ctx) {
   const { state, rng } = ctx;
   const h = state.housing;
   const e = state.economy;
-  const drift = { expansion: 0.04, peak: 0.07, recession: -0.08, recovery: 0.02 }[e.phase];
+  // Prices are in today's dollars (like wages): booms and busts around a
+  // flat real trend, with overheated markets drifting back to fundamentals.
+  const drift = { expansion: 0.02, peak: 0.04, recession: -0.06, recovery: 0.01 }[e.phase];
   for (const regionId of Object.keys(REGIONS)) {
-    h.market[regionId] = Math.round(clamp(marketIndex(state, regionId) * (1 + drift + e.inflation * 0.3 + rng.float(-0.03, 0.03)), 0.4, 8) * 1000) / 1000;
+    const idx = marketIndex(state, regionId);
+    const pull = (1 - idx) * 0.1;
+    h.market[regionId] = Math.round(clamp(idx * (1 + drift + pull + rng.float(-0.03, 0.03)), 0.4, 4) * 1000) / 1000;
   }
   // Mortgage rates ride on the economy's interest rate.
   h.rates.base = Math.round(clamp(e.interestRate + 0.027 + rng.float(-0.003, 0.003), 0.025, 0.11) * 10000) / 10000;

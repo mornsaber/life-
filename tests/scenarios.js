@@ -240,7 +240,9 @@ const tests = {
   },
 
   'VA loans allow 0% down for veterans; others need a down payment'() {
-    const { state } = setup(4, 30);
+    const { engine, state } = setup(4, 30);
+    giveJob(engine, 'tech', getProfession('tech').levels[0].id);
+    state.career.job.salary = 90000; // lenders count steady salary
     state.finances.cash = 20000;
     state.finances.lastYear = { gross: 90000 };
     state.housing.credit.score = 720;

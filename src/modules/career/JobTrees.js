@@ -58,7 +58,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   trades: {
-    id: 'trades', name: 'Electrical Trades', icon: '⚡', sector: 'private', payMultiplier: 1.05, minAge: 18, sizes: { small: 4, medium: 3, large: 1 }, background: 'lenient',
+    id: 'trades', name: 'Electrical Trades', icon: '⚡', sector: 'private', payMultiplier: 0.86, promotionOdds: 0.7, minAge: 18, sizes: { small: 4, medium: 3, large: 1 }, background: 'lenient',
     union: { chance: 0.45, name: 'IBEW Local 98', strike: true },
     benefits: { unionPension: 'union' },
     employers: ['Volt Brothers Electric', 'Keystone Builders', 'Ironline Contracting', 'Summit Electrical'],
@@ -75,7 +75,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   trucking: {
-    id: 'trucking', name: 'Trucking & Logistics', icon: '🚛', sector: 'private', payMultiplier: 0.95, minAge: 21, sizes: { small: 2, medium: 3, large: 3, enterprise: 1 }, background: 'standard',
+    id: 'trucking', name: 'Trucking & Logistics', icon: '🚛', sector: 'private', payMultiplier: 0.85, minAge: 21, sizes: { small: 2, medium: 3, large: 3, enterprise: 1 }, background: 'standard',
     union: { chance: 0.3, name: 'Teamsters Local 710', strike: true },
     benefits: { unionPension: 'union' },
     employers: ['Interstate Freight Lines', 'Prairie Haulers', 'BlueLine Logistics', 'Apex Carriers'],
@@ -149,7 +149,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   accounting: {
-    id: 'accounting', name: 'Accounting', icon: '🧮', sector: 'private', payMultiplier: 1.08, minAge: 21, sizes: ALL_SIZES, background: 'strict',
+    id: 'accounting', name: 'Accounting', icon: '🧮', sector: 'private', payMultiplier: 1.0, promotionOdds: 0.75, minAge: 21, sizes: ALL_SIZES, background: 'strict',
     employers: ['Carver & Lin CPAs', 'Northfield Advisory', 'Big Four Partners LLP'],
     valued: ['cpa', 'cgfm'],
     entry: { education: { level: 'bachelor' } },
@@ -165,7 +165,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   engineering: {
-    id: 'engineering', name: 'Civil Engineering', icon: '🏗️', sector: 'private', payMultiplier: 1.12, minAge: 21, sizes: ALL_SIZES, background: 'standard',
+    id: 'engineering', name: 'Civil Engineering', icon: '🏗️', sector: 'private', payMultiplier: 1.04, minAge: 21, sizes: ALL_SIZES, background: 'standard',
     employers: ['Granite & Steel Engineering', 'Riverbend Consulting', 'Atlas Infrastructure'],
     valued: ['fe', 'pe', 'pmp', 'oshaSafety'],
     entry: { education: { level: 'bachelor', majors: ['engineering'] } },
@@ -180,7 +180,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   medical: {
-    id: 'medical', name: 'Medicine', icon: '⚕️', sector: 'private', payMultiplier: 1.55, minAge: 25, sizes: { medium: 2, large: 3, enterprise: 1 }, background: 'strict',
+    id: 'medical', name: 'Medicine', icon: '⚕️', sector: 'private', payMultiplier: 1.8, minAge: 25, sizes: { medium: 2, large: 3, enterprise: 1 }, background: 'strict',
     employers: ['St. Brigid Medical Center', 'Mercy General', 'Lakeshore University Hospital'],
     valued: ['boardCertified'],
     entry: { education: { program: 'md' } },
@@ -195,7 +195,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   nursing: {
-    id: 'nursing', name: 'Nursing', icon: '🩺', sector: 'private', payMultiplier: 1.08, minAge: 18, sizes: { small: 1, medium: 3, large: 3, enterprise: 1 }, background: 'strict',
+    id: 'nursing', name: 'Nursing', icon: '🩺', sector: 'private', payMultiplier: 0.98, promotionOdds: 0.85, minAge: 18, sizes: { small: 1, medium: 3, large: 3, enterprise: 1 }, background: 'strict',
     union: { chance: 0.25, name: 'National Nurses United', strike: true },
     employers: ['St. Brigid Medical Center', 'Mercy General', 'Sunrise Care Homes', 'Lakeshore University Hospital'],
     levels: [
@@ -224,7 +224,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   law: {
-    id: 'law', name: 'Law', icon: '⚖️', sector: 'private', payMultiplier: 1.35, minAge: 24, sizes: ALL_SIZES, background: 'strict',
+    id: 'law', name: 'Law', icon: '⚖️', sector: 'private', payMultiplier: 1.15, minAge: 24, sizes: ALL_SIZES, background: 'strict',
     employers: ['Crane, Abbott & Vance LLP', 'Okoro Whitfield LLP', 'Hale & Marsh', 'Sullivan Reyes LLP'],
     entry: { education: { program: 'jd' } },
     levels: [
@@ -238,7 +238,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   education: {
-    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'municipal', employerName: (city) => `${city} Public Schools`, payMultiplier: 0.92, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
+    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'municipal', employerName: (city) => `${city} Public Schools`, payMultiplier: 0.88, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
     union: { chance: 0.7, name: 'State Education Association', strike: true },
     benefits: { pension: 'teachers', dcPlan: '403(b)', match: 0 },
     employers: ['Lincoln Unified School District', 'Riverside School District', 'Westbrook ISD'],
@@ -300,7 +300,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
     ],
   },
   plumbing: {
-    id: 'plumbing', name: 'Plumbing & Pipefitting', icon: '🚰', sector: 'private', payMultiplier: 1.03, minAge: 18, sizes: { small: 4, medium: 3, large: 1 }, background: 'lenient',
+    id: 'plumbing', name: 'Plumbing & Pipefitting', icon: '🚰', sector: 'private', payMultiplier: 0.85, promotionOdds: 0.7, minAge: 18, sizes: { small: 4, medium: 3, large: 1 }, background: 'lenient',
     union: { chance: 0.4, name: 'UA Plumbers & Pipefitters Local 130', strike: true },
     benefits: { unionPension: 'union' },
     employers: ['Flow Masters Plumbing', 'Riverside Mechanical', 'Keystone Pipe & Steam'],
@@ -385,7 +385,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
     ],
   },
   hospitality: {
-    id: 'hospitality', name: 'Hotels & Hospitality', icon: '🏨', sector: 'private', payMultiplier: 0.85, minAge: 16, sizes: ALL_SIZES, background: 'lenient',
+    id: 'hospitality', name: 'Hotels & Hospitality', icon: '🏨', sector: 'private', payMultiplier: 0.68, promotionOdds: 0.4, minAge: 16, sizes: ALL_SIZES, background: 'lenient',
     union: { chance: 0.15, name: 'UNITE HERE Local 11', strike: true },
     employers: ['Meridian Hotel Group', 'Harborview Resort', 'Grand Plaza Hotel', 'Summit Lodge'],
     levels: [

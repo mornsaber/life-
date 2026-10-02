@@ -45,11 +45,13 @@ function defaultBenefits(rng, profession, size, union) {
       return { health: true, pension: o.pension ?? 'stateGov', match: o.match ?? 0, dcPlan: o.dcPlan ?? '457(b)', tuition: 3000, housing: false, ssCovered: o.ssCovered ?? true };
     default: {
       const pension = union && o.unionPension ? o.unionPension : size === 'enterprise' && rng.chance(0.15) ? 'corporate' : null;
+      // About half of small businesses offer no retirement plan at all.
+      const offersPlan = size === 'small' ? rng.chance(0.5) : size === 'medium' ? rng.chance(0.85) : true;
       return {
         health: size !== 'small' || rng.chance(0.5),
         pension,
-        match: { small: 0.02, medium: 0.04, large: 0.05, enterprise: 0.06 }[size],
-        dcPlan: '401(k)',
+        match: offersPlan ? { small: 0.02, medium: 0.035, large: 0.045, enterprise: 0.05 }[size] : 0,
+        dcPlan: offersPlan ? '401(k)' : null,
         tuition: { small: 0, medium: 2500, large: 5250, enterprise: 10000 }[size],
         housing: false,
         ssCovered: true,

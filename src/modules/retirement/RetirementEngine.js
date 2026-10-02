@@ -18,7 +18,11 @@ import { DC_FUNDS, profileReturn, realReturn } from '../investing/Assets.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
-const EMPLOYEE_DC_RATE = 0.06;
+/** Default 401(k) deferral (typical auto-enrollment); players can change it. */
+export const DEFAULT_DC_RATE = 0.04;
+export const DC_RATES = [0, 0.02, 0.04, 0.06, 0.1, 0.15];
+const DC_FEE = 0.005;
+const dcRate = (state) => state.retirement.dcRate ?? DEFAULT_DC_RATE;
 
 /* ------------------------------------------------------------------ */
 /* Social Security                                                     */
@@ -102,6 +106,23 @@ export const RetirementEngine = {
       ctx.state.retirement.retired = false;
     });
     engine.bus.on('career:separated', ({ ctx, job, reason }) => {
+      // Leaving a job before 59½: roll the 401(k) over, or cash it out (taxes + 10% penalty).
+      const { state } = ctx;
+      const stint = state.character.age - (job.startAge ?? state.character.age);
+      const fromThisJob = Math.min(state.retirement.dc, Math.round(job.salary * (dcRate(state) + Math.min(dcRate(state), job.employer.benefits.match ?? 0)) * Math.max(1, stint) * 1.15));
+      if (job.employer.benefits.dcPlan && fromThisJob >= 1000 && state.character.age < 59 && !/Retired|disability/i.test(reason ?? '')) {
+        ctx.prompt({
+          type: 'retirement.rollover',
+          icon: '🏦',
+          title: `Your ${job.employer.benefits.dcPlan} from ${job.employer.name}`,
+          text: `You have about $${fromThisJob.toLocaleString()} from this job in your retirement account.`,
+          options: [
+            { id: 'rollover', label: '🔁 Roll it over and keep it invested' },
+            { id: 'cashout', label: '💸 Cash it out', hint: 'Taxed as income, plus a 10% penalty', tone: 'danger' },
+          ],
+          data: { amount: fromThisJob },
+        });
+      }
       const planId = job.employer.benefits.pension;
       const plan = planId && ctx.state.retirement.plans[planId];
       if (!plan || plan.started) return;
@@ -125,7 +146,7 @@ export const RetirementEngine = {
     const r = state.retirement;
     const age = state.character.age;
     // 401(k)/TSP balances ride the market through the chosen fund.
-    r.dc = Math.max(0, Math.round(r.dc * (1 + realReturn(state.economy, profileReturn(state.economy, r.dcFund ?? 'balanced')))));
+    r.dc = Math.max(0, Math.round(r.dc * (1 + realReturn(state.economy, profileReturn(state.economy, r.dcFund ?? 'balanced')) - DC_FEE)));
 
     // COLAs track inflation, capped by each plan's COLA ceiling; Social Security gets full CPI.
     const inflation = Math.max(0, state.economy.inflation);
@@ -176,8 +197,9 @@ export const RetirementEngine = {
         if (!plan.employers.includes(job.employer.name)) plan.employers.push(job.employer.name);
       }
       if (benefits.match > 0 || benefits.dcPlan) {
-        const employee = Math.round(job.salary * EMPLOYEE_DC_RATE);
-        const match = Math.round(job.salary * benefits.match);
+        // Employers match what you put in, up to their match rate.
+        const employee = Math.round(job.salary * dcRate(state));
+        const match = Math.round(job.salary * Math.min(dcRate(state), benefits.match));
         ctx.spend(employee, `${benefits.dcPlan ?? '401(k)'} contribution`, { allowDebt: true });
         ctx.deduct(employee, `${benefits.dcPlan ?? '401(k)'} pre-tax contribution`);
         r.dc += employee + match;
@@ -185,7 +207,26 @@ export const RetirementEngine = {
     }
   },
 
+  resolvers: {
+    rollover(ctx, data, optionId) {
+      const r = ctx.state.retirement;
+      if (optionId !== 'cashout') return ctx.log('You rolled your old 401(k) into an IRA.', '🔁');
+      const amount = Math.min(r.dc, data.amount);
+      r.dc -= amount;
+      const penalty = Math.round(amount * 0.1);
+      ctx.earn(amount - penalty, '401(k) cash-out');
+      ctx.log(`You cashed out $${amount.toLocaleString()} from your 401(k) — $${penalty.toLocaleString()} went to the early-withdrawal penalty, and the rest is taxable.`, '💸', 'warn');
+    },
+  },
+
   actions: {
+    /** arg: contribution rate as a fraction, e.g. '0.06'. */
+    setDcRate(ctx, arg) {
+      const rate = Number(arg);
+      if (!DC_RATES.includes(rate)) return;
+      ctx.state.retirement.dcRate = rate;
+      ctx.toast(`401(k) contribution: ${Math.round(rate * 100)}% of pay.`, 'good');
+    },
     setDcFund(ctx, fundId) {
       if (!DC_FUNDS[fundId]) return;
       ctx.state.retirement.dcFund = fundId;

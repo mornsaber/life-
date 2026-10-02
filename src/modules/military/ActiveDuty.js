@@ -412,7 +412,7 @@ function resolveCombat(ctx, data, optionId) {
     ctx.stat('happiness', -8);
     ctx.stat('stress', 8);
   }
-  ctx.emit('health:trauma', { amount: success ? 16 : 28, source: 'combat' });
+  ctx.emit('health:trauma', { amount: success ? 22 : 34, source: 'combat' });
   if (rng.chance(0.15)) ctx.emit('health:injury', { conditionId: 'hearingLoss', severity: rng.int(20, 50), serviceConnected: true });
   if (wounded) {
     ctx.emit('health:injury', { conditionId: rng.pick(['backInjury', 'tbi']), severity: rng.int(35, 75), serviceConnected: true });

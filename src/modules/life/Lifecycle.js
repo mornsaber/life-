@@ -45,6 +45,24 @@ function applyStats(ctx, stats) {
   for (const [key, delta] of Object.entries(stats)) ctx.stat(key, delta);
 }
 
+/** Yearly background death risk by age (before named conditions and poor health). */
+export function backgroundMortality(age) {
+  const young = age >= 15 && age < 40 ? 0.0006 : 0;
+  return young + (age >= 25 ? 0.0009 * Math.exp(0.085 * (age - 40)) : 0.0002);
+}
+
+/** Causes for background deaths, weighted like U.S. cause-of-death shares by age. */
+const BACKGROUND_CAUSES = [
+  { cause: 'Heart attack', weight: (a) => (a < 35 ? 0.05 : 0.32) },
+  { cause: 'Cancer', weight: (a) => (a < 35 ? 0.1 : 0.3) },
+  { cause: 'Stroke', weight: (a) => (a < 45 ? 0.02 : 0.1) },
+  { cause: 'Car accident', weight: (a) => (a < 30 ? 0.35 : 0.04) },
+  { cause: 'Accidental fall', weight: (a) => (a < 65 ? 0.01 : 0.06) },
+  { cause: 'Accident', weight: (a) => (a < 40 ? 0.25 : 0.05) },
+  { cause: 'Respiratory illness', weight: (a) => (a < 50 ? 0.02 : 0.08) },
+  { cause: 'Kidney failure', weight: (a) => (a < 50 ? 0.01 : 0.03) },
+];
+
 export const Lifecycle = {
   id: 'life',
   order: 0,
@@ -79,7 +97,7 @@ export const Lifecycle = {
     // Ageing
     if (age > 30) ctx.stat('fitness', -rng.int(0, 2));
     if (age > 40) ctx.stat('health', -rng.int(0, 2));
-    if (age > 60) ctx.stat('health', -rng.int(1, 4));
+    if (age > 60) ctx.stat('health', -rng.int(0, age > 75 ? 4 : 2));
     if (age > 50) ctx.stat('looks', -rng.int(0, 2));
     if (state.stats.fitness > 70) ctx.stat('health', 1);
 
@@ -107,19 +125,18 @@ export const Lifecycle = {
       return;
     }
 
-    let risk = 0;
-    if (age >= 45) risk += 0.002;
-    if (age >= 60) risk += 0.006 + (age - 60) * 0.002; // named diseases add their own risk (health module)
-    if (age >= 80) risk += (age - 80) * 0.015;
+    // Background mortality: a Gompertz curve shaped like U.S. life tables
+    // (≈1%/yr at 60, ≈2.5% at 70, ≈6% at 80). Diagnosed conditions add their
+    // own named risk on top, so the background carries ~60% of the total.
+    let risk = backgroundMortality(age);
     if (health < 25) risk += (25 - health) * 0.008;
     if (age >= 110) risk = 1;
-    // Diagnosed (or silent) conditions add their own risk and name the cause.
     const conditions = state.health ? healthMortality(state) : { total: 0, parts: [] };
     if (!rng.chance(risk + conditions.total)) return;
     let roll = rng.float(0, risk + conditions.total);
     for (const p of conditions.parts) {
       if ((roll -= p.risk) <= 0) return ctx.die(DEATH_CAUSE[p.id] ?? 'Illness');
     }
-    ctx.die(age >= 75 ? 'Old age' : rng.pick(['Heart attack', 'Stroke', 'Cancer', 'Car accident']));
+    ctx.die(age >= 85 ? 'Old age' : rng.weighted(BACKGROUND_CAUSES, (c) => c.weight(age)).cause);
   },
 };

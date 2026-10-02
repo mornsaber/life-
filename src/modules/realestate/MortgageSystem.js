@@ -86,8 +86,20 @@ export function vaEligible(state) {
 }
 
 /** Annual qualifying income: last year's gross or current salary. */
+/**
+ * Income a lender counts: steady pay (salary, pensions, Social Security).
+ * One-off windfalls — severance, bonuses, capital gains — don't count; other
+ * income without a job (gig work, rents) counts at half.
+ */
 export function qualifyingIncome(state) {
-  return Math.max(state.finances.lastYear?.gross ?? 0, state.career.job?.salary ?? 0);
+  const age = state.character.age;
+  const salary = state.career.job?.salary ?? 0;
+  const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
+  const ss = state.retirement.socialSecurity?.annual ?? 0;
+  const steady = salary + pensions + ss;
+  if (steady > 0) return Math.round(steady);
+  const ly = state.finances.lastYear;
+  return Math.round(Math.max(0, (ly?.gross ?? 0) - (ly?.ltcg ?? 0)) * 0.5);
 }
 
 export function existingDebtService(state) {
@@ -190,6 +202,20 @@ export function serviceDebt(ctx, property) {
       foreclose(ctx, property);
       return false;
     }
+    // One year to fix it: sell while there's equity, or ask for a modification.
+    const equity = Math.round(property.value * 0.92 - m.balance - (property.heloc?.balance ?? 0));
+    ctx.prompt({
+      type: 'housing.distress',
+      icon: '📬',
+      title: 'Notice of Default',
+      text: `You're a year behind on the ${property.typeName}. Another missed year and the bank forecloses.${equity > 0 ? `\nSelling now would leave you about $${equity.toLocaleString()} after paying off the loan.` : '\nYou owe more than a sale would bring.'}`,
+      options: [
+        { id: 'sell', label: '🪧 Sell before the bank forecloses', hint: equity > 0 ? `≈$${equity.toLocaleString()} back` : 'Short sale — the bank may forgive the rest', disabled: false },
+        { id: 'modify', label: '🤝 Apply for a loan modification', hint: 'Longer term, lower rate; needs income' },
+        { id: 'hold', label: '🤞 Hope next year is better', tone: 'danger' },
+      ],
+      data: { propertyId: property.id },
+    });
     return true;
   }
   ctx.spend(due, `Mortgage — ${property.typeName}`, { allowDebt: true });
@@ -253,4 +279,21 @@ export function repayHeloc(ctx, property) {
   h.balance -= pay;
   if (h.balance <= 0) property.heloc = null;
   ctx.log(`You paid down $${pay.toLocaleString()} of your HELOC.`, '🏦');
+}
+
+/** Loan modification: lenders stretch the term and trim the rate when you have income to pay something. */
+export function modifyLoan(ctx, property) {
+  const { state, rng } = ctx;
+  const m = property.mortgage;
+  if (!m) return false;
+  const income = qualifyingIncome(state);
+  const newRate = Math.max(0.02, m.rate - 0.01);
+  const newPayment = annualPayment(m.balance, newRate, 40);
+  if (income <= 0 || newPayment > income * 0.45 || !rng.chance(0.7)) {
+    ctx.log(`The lender denied your loan modification on the ${property.typeName}.`, '🏦', 'bad');
+    return false;
+  }
+  Object.assign(m, { rate: newRate, payment: newPayment, yearsLeft: 40, termYears: 40, armResetIn: null, delinquent: 0 });
+  ctx.log(`The lender modified your loan: 40 years at ${(newRate * 100).toFixed(2)}%, $${Math.round(newPayment / 12).toLocaleString()}/mo.`, '🤝', 'good');
+  return true;
 }

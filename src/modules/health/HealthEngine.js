@@ -94,7 +94,7 @@ function onsetChance(state, id, h) {
     case 'asthma': return age < 12 ? 0.005 : 0;
     case 'depression': return age < 13 ? 0 : 0.003 + (happiness < 35 ? 0.02 : 0) + (stress > 75 ? 0.012 : 0) + (state.housing.homelessYears ? 0.02 : 0) + (isIncarcerated(state) ? 0.02 : 0);
     case 'anxiety': return age < 13 ? 0 : 0.003 + (stress > 65 ? 0.015 : 0);
-    case 'ptsd': return h.trauma <= 30 ? 0 : Math.min(0.25, (h.trauma - 30) * 0.003) * (happiness > 70 ? 0.7 : 1);
+    case 'ptsd': return h.trauma <= 26 ? 0 : Math.min(0.25, (h.trauma - 26) * 0.003) * (happiness > 70 ? 0.7 : 1);
     case 'alcohol': return age < 16 ? 0 : 0.0025 + (stress > 75 ? 0.006 : 0) + (has('ptsd') ? 0.03 : 0) + (has('depression') ? 0.01 : 0);
     case 'opioids': return age < 16 ? 0 : 0.0005 + (has('backInjury') ? 0.012 : 0) + (has('ptsd') ? 0.004 : 0);
     case 'gambling': return age < 18 ? 0 : 0.0015;

@@ -14,6 +14,13 @@ import { coverage } from '../health/Insurance.js';
 const LOAN_RATE = 0.05;
 const DEBT_RATE = 0.15;
 const HOUSING_SHARE = 0.45;
+/** Lifestyle spending: a regional floor plus a share of discretionary income (after tax, housing and 401k). */
+export const LIVING_FLOOR = 8000;
+export const LIFESTYLE_SHARE = 0.85;
+const LIVING_MINIMUM = 6000;
+/** Living at home: parents cover most of it. */
+const LIVING_AT_HOME = 2000;
+const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {
@@ -24,6 +31,13 @@ export function healthPremium(state, income) {
 export function hasHousingBenefit(state) {
   const job = state.career.job;
   return Boolean(job?.employer.benefits.housing || job?.posting?.housing);
+}
+
+/** Salary, pensions and Social Security: the income people set their lifestyle by. */
+function steadyIncome(state) {
+  const age = state.character.age;
+  const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
+  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0);
 }
 
 export const Finances = {
@@ -61,9 +75,21 @@ export const Finances = {
         if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += 8000;
       }
       else {
-        // Housing (rent, mortgage, upkeep) is charged by the housing module;
-        // this is everything else, nudged by the state's sales tax.
-        living = Math.round((9000 + ordinary * 0.3) * region.col * (1 - HOUSING_SHARE) * (1 + STATES[region.state].salesTax / 2));
+        // Housing (rent, mortgage, upkeep) is charged by the housing module.
+        // Everything else is spent out of what's left after taxes, housing and
+        // retirement saving — people with big mortgages spend less elsewhere.
+        const housing = f.ledger.expenses.filter((x) => HOUSING_EXPENSE.test(x.reason)).reduce((s, x) => s + x.amount, 0);
+        // Card debt: interest plus a real effort to pay it down.
+        const cardDebt = Math.max(0, -f.cash);
+        const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardDebt * (DEBT_RATE + 0.25);
+        // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
+        const base = Math.min(ordinary, Math.max(steadyIncome(state), ordinary * 0.5));
+        const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - deductions - obligations;
+        const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
+        const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;
+        const lifestyle = (LIVING_FLOOR * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
+        // Spending flexes down when money is tight, but never below the bare minimum.
+        living = Math.round(Math.max(minimum, Math.min(lifestyle, discretionary * 0.92)));
       }
       insurance = healthPremium(state, ordinary);
     }

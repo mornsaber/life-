@@ -13,7 +13,8 @@ import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, re
 
 const DIMINISH = [1, 0.6, 0.3, 0];
 /** Promotion odds multiplier by the grade being competed for. */
-const COMPETITION = { 6: 0.85, 7: 0.65, 8: 0.45, 9: 0.28, 10: 0.15 };
+// Fewer seats at each rung: calibrated so ~1 in 3 workers ever supervises and mid-career pay lands near real medians.
+const COMPETITION = { 3: 0.9, 4: 0.75, 5: 0.6, 6: 0.5, 7: 0.38, 8: 0.26, 9: 0.17, 10: 0.1 };
 
 function withJob(ctx) {
   const job = ctx.state.career.job;
@@ -227,6 +228,8 @@ export const WorkplaceActions = {
       // The air gets thinner near the top: fewer seats, more rivals.
       const nextGrade = Math.max(...status.options.map((o) => o.grade));
       chance *= COMPETITION[nextGrade] ?? 1;
+      // Some fields have few management seats per worker (hotels, the trades).
+      chance *= getProfession(job.professionId).promotionOdds ?? 1;
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
 
       if (rng.chance(clamp(chance, 0.05, 0.95))) {

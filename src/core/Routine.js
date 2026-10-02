@@ -13,6 +13,7 @@ export const ROUTINE = {
   'housing.repair': 'contractor',
   'career.cbaVote': 'ratify',
   'politics.donorFavor': 'legal',
+  'retirement.rollover': 'rollover',
 };
 
 /** The option to pick automatically, or null when the player should decide. */

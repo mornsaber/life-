@@ -19,7 +19,7 @@ import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
 import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick } from './PropertyMarket.js';
-import { LOAN_TYPES, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover } from './MortgageSystem.js';
+import { LOAN_TYPES, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan } from './MortgageSystem.js';
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 
@@ -187,6 +187,31 @@ function disasterDamage(ctx, { type, severity, stateId, name }) {
 /* Module                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Before an eviction: renters move to the cheapest unit they can still
+ * afford, and seniors on fixed incomes can get into subsidized senior housing.
+ */
+function downsize(ctx, h) {
+  const { state, rng } = ctx;
+  const regionId = state.character.regionId;
+  const current = tierRent(state, h.rental.tier, regionId);
+  const cheaper = Object.keys(RENT_TIERS).filter((t) => !RENT_TIERS[t].subsidized && tierRent(state, t, regionId) < current && canCover(state, tierRent(state, t, regionId) * 12));
+  if (cheaper.length) {
+    const tier = cheaper.sort((a, b) => tierRent(state, b, regionId) - tierRent(state, a, regionId))[0];
+    h.rental = null;
+    ctx.log(`Rent was more than you could keep up with, so you moved to a cheaper place: ${RENT_TIERS[tier].name.toLowerCase()}.`, '📦', 'warn');
+    startRental(ctx, tier, { auto: true });
+    return true;
+  }
+  if (state.character.age >= 62 && rng.chance(0.7)) {
+    h.rental = null;
+    ctx.log('You moved into subsidized senior housing.', '🏘️', 'warn');
+    startRental(ctx, 'subsidized', { auto: true });
+    return true;
+  }
+  return false;
+}
+
 export const HousingEngine = {
   id: 'housing',
   order: 45,
@@ -247,7 +272,13 @@ export const HousingEngine = {
         ctx.spend(annual, 'Rent', { allowDebt: true });
         h.credit.onTime += 1;
         h.rental.leaseYearsLeft = 1;
-        if (!RENT_TIERS[h.rental.tier].subsidized) h.rental.rent = Math.round(h.rental.rent * (1 + rng.float(0.02, 0.05)));
+        // Renewals track the local market (in today's dollars), with a little landlord drift.
+        if (!RENT_TIERS[h.rental.tier].subsidized) {
+          const market = tierRent(state, h.rental.tier, h.rental.regionId ?? state.character.regionId);
+          h.rental.rent = Math.round((h.rental.rent * 0.5 + market * 0.5) * (1 + rng.float(-0.01, 0.025)));
+        }
+      } else if (downsize(ctx, h)) {
+        // Moved somewhere cheaper before it came to an eviction.
       } else {
         recordCreditEvent(state, 'eviction');
         h.rental = null;
@@ -385,6 +416,15 @@ export const HousingEngine = {
   },
 
   resolvers: {
+    distress(ctx, data, optionId) {
+      const property = ctx.state.housing.properties.find((p) => p.id === data.propertyId);
+      if (!property?.mortgage) return;
+      if (optionId === 'sell') {
+        sellProperty(ctx, property, { forced: true });
+        if (!ctx.state.housing.properties.some((p) => p.use === 'primary') && !ctx.state.housing.rental) ctx.state.housing.withParents = ctx.state.character.age < 45;
+      } else if (optionId === 'modify') modifyLoan(ctx, property);
+      else ctx.log('You held on and hoped for a better year.', '🤞', 'warn');
+    },
     financing(ctx, data, optionId) {
       const { state } = ctx;
       const listing = data.listing;
