@@ -5,7 +5,8 @@
  */
 import { esc, money, button, card, chip, statusPill } from '../Components.js';
 import { CREDENTIAL_LIST, CATEGORIES, FLIGHT_BLOCK } from '../../modules/credentials/CredentialRegistry.js';
-import { pursueEligibility, hasCredential, findSponsor } from '../../modules/credentials/LicensingEngine.js';
+import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere } from '../../modules/credentials/LicensingEngine.js';
+import { RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
 
 function payerHint(state, cred) {
   const sponsor = findSponsor(state, cred);
@@ -20,7 +21,9 @@ function credentialRow(state, cred) {
   const training = state.credentials.training.find((t) => t.id === cred.id);
   const implied = !held && hasCredential(state, cred.id);
   let action = '';
-  if (training) action = chip(`📚 ${training.yearsLeft} yr training left`, 'cyan');
+  const transfer = held?.status === 'active' && !validHere(state, cred.id) ? transferStatus(state, cred.id) : null;
+  if (transfer?.needed) action = `${button(transfer.exam ? 'Take transfer exam' : 'Apply by motion', 'credentials.transfer', { arg: cred.id, variant: 'tiny', hint: money(transfer.cost) })}<span class="why">${esc(RECIPROCITY_LABEL[transfer.method])}</span>`;
+  else if (training) action = chip(`📚 ${training.yearsLeft} yr training left`, 'cyan');
   else if (held?.status === 'expired') action = button('Reinstate', 'credentials.renew', { arg: cred.id, variant: 'tiny', hint: money(cred.renewCost * 2) });
   else if (!held && !implied) {
     const elig = pursueEligibility(state, cred.id);
@@ -30,6 +33,7 @@ function credentialRow(state, cred) {
   return `<li class="cert ${held?.status === 'active' || implied ? 'done' : ''}" title="${esc(cred.kind)}">
     <span>${cred.icon} ${esc(cred.name)}</span> ${status}
     ${cred.renewYears && held?.status === 'active' ? `<small class="fine">renews every ${cred.renewYears} yr</small>` : ''}
+    ${cred.jurisdiction === 'state' ? `<small class="fine">📍 ${held?.states ? held.states.join(', ') : 'state-issued'}</small>` : ''}
     <span class="cert-action">${action}</span>
   </li>`;
 }

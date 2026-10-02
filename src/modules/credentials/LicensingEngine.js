@@ -17,6 +17,8 @@
 import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK } from './CredentialRegistry.js';
+import { stateIdOf } from '../life/Regions.js';
+import { STATES } from '../life/States.js';
 
 export const CREDIT_LIMIT = 1500;
 
@@ -24,10 +26,31 @@ export const CREDIT_LIMIT = 1500;
 /* Queries                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Is a held credential usable in the state you live in now? */
+export function validHere(state, id, held = state.credentials.held[id]) {
+  const cred = CREDENTIALS[id];
+  if (!held || cred.jurisdiction !== 'state' || !held.states) return true;
+  const here = stateIdOf(state);
+  if (held.states?.includes(here)) return true;
+  if (cred.reciprocity === 'compact') return Boolean(STATES[here].nlc && held.states?.some((s) => STATES[s].nlc));
+  return false;
+}
+
 export function hasCredential(state, id) {
   const held = state.credentials.held;
-  if (held[id]?.status === 'active') return true;
-  return Object.entries(held).some(([hid, h]) => h.status === 'active' && CREDENTIALS[hid]?.implies?.includes(id));
+  if (held[id]?.status === 'active' && validHere(state, id)) return true;
+  return Object.entries(held).some(([hid, h]) => h.status === 'active' && CREDENTIALS[hid]?.implies?.includes(id) && validHere(state, hid, h));
+}
+
+/** What it takes to use a held state credential here. */
+export function transferStatus(state, id) {
+  const cred = getCredential(id);
+  const held = state.credentials.held[id];
+  if (!held || held.status !== 'active' || validHere(state, id)) return { needed: false };
+  const method = cred.reciprocity;
+  if (method === 'motion' && yearsInProfession(state, ['law', 'prosecution', 'publicDefender']) >= 5) return { needed: true, method, cost: 1200, exam: false };
+  if (method === 'motion' || method === 'restart') return { needed: true, method, cost: cred.cost, exam: true, difficulty: cred.exam.difficulty };
+  return { needed: true, method, cost: Math.max(150, Math.round(cred.cost * 0.4)), exam: true, difficulty: cred.exam.difficulty * 0.5 };
 }
 
 export function totalWorkYears(state) {
@@ -96,7 +119,7 @@ export function credentialStatus(state, id) {
 export function pursueEligibility(state, id) {
   const cred = getCredential(id);
   const held = state.credentials.held[id];
-  if (held?.status === 'active') return { ok: false, reason: 'Held' };
+  if (held?.status === 'active') return { ok: false, reason: validHere(state, id) ? 'Held' : `Held in ${held.states.join('/')} — transfer it` };
   if (held?.status === 'revoked') return { ok: false, reason: 'Revoked' };
   if (held?.status === 'suspended') return { ok: false, reason: `Suspended until ${held.until}` };
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
@@ -134,7 +157,7 @@ function chargeCost(ctx, eligibility, what) {
 export function grantCredential(ctx, id, { sponsor = null, silent = false } = {}) {
   const { state } = ctx;
   const cred = getCredential(id);
-  state.credentials.held[id] = { earnedAge: state.character.age, renewedAge: state.character.age, status: 'active', sponsor };
+  state.credentials.held[id] = { earnedAge: state.character.age, renewedAge: state.character.age, status: 'active', sponsor, states: [stateIdOf(state)] };
   if (!silent) {
     ctx.log(`You earned your ${cred.name}.`, cred.icon, 'good');
     ctx.toast(`${cred.icon} ${cred.name}`, 'good');
@@ -208,12 +231,30 @@ export const LicensingEngine = {
     engine.bus.on('credential:revoke', ({ ctx, ids, reason }) => {
       for (const id of ids) revoke(ctx, id, 'revoked', 0, reason);
     });
+    engine.bus.on('region:changed', ({ ctx, toState, fromState }) => {
+      if (toState === fromState) return;
+      const { state } = ctx;
+      const needs = [];
+      for (const [id, held] of Object.entries(state.credentials.held)) {
+        const cred = CREDENTIALS[id];
+        if (held.status !== 'active' || cred.jurisdiction !== 'state' || validHere(state, id)) continue;
+        if (cred.reciprocity === 'automatic') {
+          held.states.push(toState);
+          ctx.spend(60, `${cred.name} transfer`, { allowDebt: true });
+        } else needs.push(cred.name);
+      }
+      if (needs.length) ctx.log(`New state, new rules: ${needs.join(', ')} must be transferred to ${STATES[toState].name} before you can use ${needs.length > 1 ? 'them' : 'it'} (see Licenses).`, '🪪', 'warn');
+    });
     engine.bus.on('legal:convicted', ({ ctx, offenseId, severity, name }) => {
       for (const [id, held] of Object.entries(ctx.state.credentials.held)) {
         if (held.status === 'revoked') continue;
         const cred = CREDENTIALS[id];
         if (cred.revokeOn?.includes(severity) || cred.revokeOn?.includes(offenseId)) revoke(ctx, id, 'revoked', 0, name);
-        else if (cred.suspendOn?.[offenseId]) revoke(ctx, id, 'suspended', cred.suspendOn[offenseId], name);
+        else if (cred.suspendOn?.[offenseId]) {
+          // State law sets DUI suspension length; repeat offenders lose it longer.
+          const years = offenseId === 'dui' ? Math.max(cred.suspendOn.dui, STATES[stateIdOf(ctx.state)].dui.suspendYears + ctx.state.legal.record.filter((r) => r.offenseId === 'dui').length - 1) : cred.suspendOn[offenseId];
+          revoke(ctx, id, 'suspended', years, name);
+        }
       }
       // A conviction also ends any training in progress for revocable credentials.
       ctx.state.credentials.training = ctx.state.credentials.training.filter((t) => !CREDENTIALS[t.id].revokeOn?.includes(severity));
@@ -278,6 +319,26 @@ export const LicensingEngine = {
       held.status = 'active';
       held.renewedAge = ctx.state.character.age;
       ctx.log(`You reinstated your ${cred.name}.`, cred.icon, 'good');
+    },
+
+    /** Carry a state credential into the state you now live in. */
+    transfer(ctx, id) {
+      const { state } = ctx;
+      const t = transferStatus(state, id);
+      if (!t.needed) return;
+      if (yearlyCount(state, `cred.transfer.${id}`)) return ctx.toast('One transfer attempt per year.', 'warn');
+      bumpYearly(state, `cred.transfer.${id}`);
+      const cred = getCredential(id);
+      ctx.spend(t.cost, `${cred.name} transfer`, { allowDebt: true });
+      const here = stateIdOf(state);
+      const stat = state.stats[cred.exam.stat] ?? 50;
+      if (t.exam && !ctx.rng.chance(clamp(0.92 - t.difficulty + (stat - 50) / 120, 0.1, 0.97))) {
+        ctx.log(`You failed the ${STATES[here].name} ${t.method === 'transferExam' ? 'reciprocity exam' : 'licensing exam'} for your ${cred.name}.`, '📝', 'bad');
+        return ctx.toast('Transfer exam failed', 'bad');
+      }
+      state.credentials.held[id].states.push(here);
+      ctx.log(`Your ${cred.name} is now valid in ${STATES[here].name}${t.method === 'motion' && !t.exam ? ' (admitted by motion)' : ''}.`, cred.icon, 'good');
+      ctx.toast(`Transferred: ${cred.name}`, 'good');
     },
 
     /** Rent aircraft time to build hours toward pilot ratings. */

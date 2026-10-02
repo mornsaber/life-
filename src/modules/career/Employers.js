@@ -9,12 +9,25 @@
  */
 import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
+import { STATES } from '../life/States.js';
 
-const MUNICIPAL_SIZE_BY_REGION = { rural: 'small', smalltown: 'small', midcity: 'medium', sunbelt: 'large', chicago: 'enterprise', dc: 'large', nyc: 'enterprise', sf: 'enterprise' };
+const MUNICIPAL_SIZE_BY_REGION = { rural: 'small', smalltown: 'small', midcity: 'medium', sunbelt: 'large', chicago: 'enterprise', dc: 'large', nyc: 'enterprise', sf: 'enterprise', miami: 'large', seattle: 'large', denver: 'large', gunnison: 'small' };
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
 
+export const stateNameOf = (regionId) => STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].name;
+
+/** Where a job with a duty station puts you (null = where you already live). */
+export function resolveDutyStation(rng, profession, regionId) {
+  const stateId = (REGIONS[regionId] ?? REGIONS.midcity).state;
+  const inState = Object.values(REGIONS).filter((r) => r.state === stateId);
+  if (profession.dutyStation === 'statewide') return rng.pick(inState).id;
+  if (profession.dutyStation === 'stateRural') return (inState.find((r) => r.type === 'Rural') ?? rng.pick(inState)).id;
+  return profession.dutyStation ?? null;
+}
+
 function pickSize(rng, profession, regionId) {
+  if (profession.stateAgency) return STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].population;
   if (profession.sector === 'municipal') return MUNICIPAL_SIZE_BY_REGION[regionId] ?? 'medium';
   if (profession.sector === 'federal') return rng.pick(['large', 'enterprise']);
   const entries = Object.entries(profession.sizes ?? { medium: 1 });
@@ -29,7 +42,7 @@ function defaultBenefits(rng, profession, size, union) {
     case 'municipal':
       return { health: true, pension: o.pension ?? 'municipal', match: o.match ?? 0, dcPlan: '457(b)', tuition: 2000, housing: false, ssCovered: o.ssCovered ?? true };
     case 'state':
-      return { health: true, pension: o.pension ?? 'municipal', match: o.match ?? 0, dcPlan: o.dcPlan ?? '403(b)', tuition: 1500, housing: false, ssCovered: true };
+      return { health: true, pension: o.pension ?? 'stateGov', match: o.match ?? 0, dcPlan: o.dcPlan ?? '457(b)', tuition: 3000, housing: false, ssCovered: o.ssCovered ?? true };
     default: {
       const pension = union && o.unionPension ? o.unionPension : size === 'enterprise' && rng.chance(0.15) ? 'corporate' : null;
       return {
@@ -51,7 +64,7 @@ export function publicBudgetFactor(state, sector) {
     const fed = state.publicService.federal;
     return fed.shutdown ? 0.3 : 0.5 + fed.stability / 100;
   }
-  if (sector === 'municipal' || sector === 'state') {
+  if (sector === 'municipal') {
     const city = state.publicService.city;
     return city ? 0.5 + city.fiscalHealth / 100 : 1;
   }
@@ -61,18 +74,21 @@ export function publicBudgetFactor(state, sector) {
 export function createEmployer(rng, state, profession, regionId) {
   const size = pickSize(rng, profession, regionId);
   const unionDef = profession.union;
-  const union = unionDef && rng.chance(unionDef.chance)
-    ? { name: unionDef.name, strike: unionDef.strike, duesRate: 0.013, contractYearsLeft: rng.int(1, 3) }
+  // Right-to-work states have roughly half the union density.
+  const rtw = STATES[REGIONS[regionId]?.state]?.rightToWork;
+  const union = unionDef && rng.chance(unionDef.chance * (rtw ? 0.5 : 1))
+    ? { name: unionDef.name, strike: unionDef.strike, duesRate: 0.013, agencyFee: !rtw, contractYearsLeft: rng.int(1, 3) }
     : null;
   let name;
-  if (profession.employerName) name = profession.employerName(cityName(regionId), rng);
+  if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId));
   else name = rng.pick(profession.employers);
   const benefits = defaultBenefits(rng, profession, size, union);
   const annual = Math.round(EMPLOYER_SIZES[size].budget * (profession.sector === 'private' ? 1 : 1.3) * publicBudgetFactor(state, profession.sector));
   return {
     id: rng.id('emp_'),
     name,
-    cityName: profession.sector === 'municipal' || profession.sector === 'state' ? cityName(regionId) : null,
+    cityName: profession.sector === 'municipal' ? cityName(regionId) : null,
+    stateId: (REGIONS[regionId] ?? REGIONS.midcity).state,
     size,
     sector: profession.sector,
     union,

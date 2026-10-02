@@ -26,6 +26,7 @@ export const EXAM_VALID_YEARS = 4;
 export const EXAMS = {
   municipal: { name: 'Municipal Civil Service Exam', icon: '📝', cost: 25, minAge: 18, desc: 'Clerical, public works and planning jobs.' },
   publicSafety: { name: 'Public Safety Entrance Exam', icon: '🚓', cost: 40, minAge: 18, desc: 'Written + physical ability test for police, fire and EMS.' },
+  state: { name: 'State Civil Service Exam', icon: '🏛️', cost: 30, minAge: 18, desc: 'State agencies: police, corrections, revenue, CPS, natural resources, DOT, courts.' },
   federal: { name: 'Federal Occupational Assessment', icon: '🦅', cost: 0, minAge: 18, desc: 'USA Hire assessment for federal agencies.' },
   foreignService: { name: 'Foreign Service Officer Test (FSOT)', icon: '🌐', cost: 0, minAge: 20, desc: 'Followed by an oral assessment. Notoriously hard.' },
 };
@@ -87,6 +88,8 @@ export function backgroundIssues(state) {
   if (state.legal.flags.drugUseAge != null && age - state.legal.flags.drugUseAge <= 7) issues.push({ id: 'drugs', label: 'Illegal drug use in the last 7 years', weight: 18 });
   if (state.finances.cash < -15000) issues.push({ id: 'debt', label: 'Delinquent debt', weight: 15 });
   if (state.finances.bankruptcies) issues.push({ id: 'bankruptcy', label: 'Bankruptcy', weight: 10 });
+  const recentCredit = state.housing.credit.events.filter((e) => ['foreclosure', 'eviction', 'default'].includes(e.type) && age - e.age <= 7);
+  if (recentCredit.length) issues.push({ id: 'credit', label: `${recentCredit.length} foreclosure/eviction/default${recentCredit.length > 1 ? 's' : ''} in 7 years`, weight: recentCredit.length * 8 });
   if (state.legal.investigations.length) issues.push({ id: 'pending', label: 'Undisclosed misconduct', weight: 0, hidden: true });
   return issues;
 }

@@ -4,7 +4,7 @@
  * `career.` namespace, and listens for cross-domain events.
  */
 import { clamp } from '../../core/Random.js';
-import { careerOnAgeUp, leaveJob, recalcSalary } from './CareerEngine.js';
+import { careerOnAgeUp, leaveJob, recalcSalary, promote } from './CareerEngine.js';
 import { InterviewSystem } from './InterviewSystem.js';
 import { WorkplaceActions } from './WorkplaceActions.js';
 import { ManagementActions, ManagementResolvers } from './ManagementEngine.js';
@@ -19,6 +19,10 @@ export const CareerModule = {
     const bus = engine.bus;
     // Other domains (active duty, relocation, councils, prisons) can end a job.
     bus.on('career:resign', ({ ctx, reason, fired }) => leaveJob(ctx, reason, { fired }));
+    // Gubernatorial appointment to an appointed post (superintendent, director...).
+    bus.on('career:appoint', ({ ctx, levelId }) => {
+      if (ctx.state.career.job && promote(ctx, levelId)) ctx.log('The governor appointed you. The press release went out that afternoon.', '⭐', 'milestone');
+    });
     bus.on('career:adjust', ({ ctx, performance = 0, boss = 0, coworkers = 0 }) => {
       const job = ctx.state.career.job;
       if (!job) return;
@@ -51,6 +55,14 @@ export const CareerModule = {
       }
     });
     bus.on('legal:incarcerated', ({ ctx }) => leaveJob(ctx, 'You were incarcerated', { fired: true }));
+    // Remote workers and transferred employees are re-priced for the new region.
+    bus.on('region:changed', ({ ctx }) => {
+      const job = ctx.state.career.job;
+      if (!job) return;
+      const before = job.salary;
+      recalcSalary(ctx.state, job);
+      if (job.remote && job.salary !== before) ctx.log(`${job.employer.name} geo-adjusted your remote pay: $${before.toLocaleString()} → $${job.salary.toLocaleString()}.`, '🌐', job.salary < before ? 'warn' : 'good');
+    });
   },
 
   init(state) {

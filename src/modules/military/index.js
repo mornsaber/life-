@@ -10,6 +10,8 @@ import {
   enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName,
 } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
+import { monthlyBasePay } from './MilitaryEngine.js';
+import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
 
 function withService(ctx) {
@@ -25,6 +27,7 @@ function switchComponent(ctx, svc) {
   svc.component = to;
   svc.contractYearsLeft = ENLIST_CONTRACT[to];
   svc.deploymentRequested = false;
+  if (to === 'active' && BRANCHES[svc.branch].reserveOnly) return ctx.toast('The Guard has no active component here.', 'warn');
   if (to === 'active' && state.career.job) ctx.emit('career:resign', { reason: 'Transferred to active duty' });
   ctx.log(to === 'active' ? 'You transferred to full-time active duty.' : 'You transferred to the Reserve. Weekend drills from here on.', BRANCHES[svc.branch].icon, 'milestone');
   ctx.toast(to === 'active' ? 'Now on active duty' : 'Now in the Reserves', 'good');
@@ -44,6 +47,16 @@ export const MilitaryModule = {
         svc.eval = Math.max(0, svc.eval - 10);
         ctx.log(`Your command learned of your ${name} conviction. Non-judicial punishment followed.`, '⚖️', 'bad');
       }
+    });
+    // Governors activate their National Guard for in-state disasters.
+    engine.bus.on('disaster:struck', ({ ctx, disaster }) => {
+      const svc = ctx.state.military.service;
+      if (!svc || svc.branch !== 'guard' || svc.deployedThisYear) return;
+      ctx.earn(Math.round(monthlyBasePay(svc) * (1 + disaster.severity)), 'State active duty pay', { wage: true });
+      svc.eval = Math.min(100, svc.eval + 5);
+      ctx.stat('stress', 5);
+      ctx.log(`The governor activated your Guard unit for ${disaster.name}: ${ctx.rng.pick(['sandbagging levees through the night', 'running supply convoys to cut-off towns', 'evacuating nursing homes', 'clearing roads with engineer equipment'])}.`, '🛡️', 'military');
+      if (disaster.severity >= 2) awardMedal(ctx, 'humanitarian', { branch: 'army', citation: `State active duty — ${disaster.name}.` });
     });
     engine.bus.on('legal:incarcerated', ({ ctx }) => {
       if (ctx.state.military.service) discharge(ctx, 'oth', 'Administratively separated while incarcerated.');
@@ -67,7 +80,7 @@ export const MilitaryModule = {
     /** arg: 'branch:track:component' — opens the specialty selection. */
     enlist(ctx, arg) {
       const [branch, track, component] = String(arg).split(':');
-      const check = enlistmentEligibility(ctx.state, branch, track);
+      const check = enlistmentEligibility(ctx.state, branch, track, component);
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (component === 'active' && ctx.state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
       const b = BRANCHES[branch];

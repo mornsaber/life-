@@ -271,6 +271,25 @@ export const EmergencyEngine = {
         ctx.log(`Meet your new partner: ${member.k9.name}, a ${member.k9.breed}. 🐕`, '🐕', 'milestone');
       }
     });
+    // Disasters in your state call out the volunteers.
+    bus.on('disaster:struck', ({ ctx, disaster }) => {
+      for (const id of ['fire', 'sar']) {
+        const member = ctx.state.emergency[id];
+        if (!member || member.onLeave) continue;
+        ctx.prompt({
+          type: 'emergency.disasterCallout',
+          icon: '🆘',
+          title: `${SERVICES[id].short} Callout — ${disaster.name}`,
+          text: `${member.unit} has been activated for ${disaster.name}. Families are trapped and the situation is getting worse.`,
+          options: [
+            { id: 'frontline', label: '🦺 Join the front-line rescue teams', hint: 'High risk', tone: 'danger' },
+            { id: 'support', label: '📋 Run the staging area and logistics', hint: 'Low risk' },
+          ],
+          data: { serviceId: id, severity: disaster.severity, name: disaster.name },
+        });
+        return;
+      }
+    });
     bus.on('legal:convicted', ({ ctx, severity, name }) => {
       for (const id of Object.keys(SERVICES)) {
         if (!ctx.state.emergency[id]) continue;
@@ -350,5 +369,28 @@ export const EmergencyEngine = {
 
   resolvers: {
     dispatch: resolveDispatch,
+    disasterCallout(ctx, data, optionId) {
+      const { rng } = ctx;
+      const member = ctx.state.emergency[data.serviceId];
+      if (!member) return;
+      member.calls += rng.int(10, 40);
+      if (optionId === 'frontline') {
+        member.xp += 40 * data.severity;
+        const saves = rng.int(1, 3 * data.severity);
+        member.saves += saves;
+        ctx.log(`During ${data.name} you pulled ${saves} people to safety.`, '🆘', 'good');
+        if (rng.chance(0.15 * data.severity)) {
+          const dmg = rng.int(5, 20);
+          ctx.stat('health', -dmg);
+          member.injuries += 1;
+          ctx.log(`You were injured in the rescue (−${dmg} health).`, '🩹', 'bad');
+        }
+        if (rng.chance(0.25)) awardCivil(ctx, data.serviceId, 'valor', `Rescues during ${data.name}.`);
+      } else {
+        member.xp += 20 * data.severity;
+        ctx.log(`You kept the ${data.name} response organized from the staging area.`, '📋');
+        if (rng.chance(0.2)) awardCivil(ctx, data.serviceId, 'merit', `Logistics during ${data.name}.`);
+      }
+    },
   },
 };

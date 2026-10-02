@@ -22,6 +22,8 @@ import { RISKY_ACTIONS } from '../src/modules/legal/index.js';
 import { REGIONS } from '../src/modules/life/Regions.js';
 import { DUTIES } from '../src/modules/career/ManagementEngine.js';
 import { Renderer, VIEWS } from '../src/ui/Renderer.js';
+import { OFFICES } from '../src/modules/politics/index.js';
+import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestate/index.js';
 import { promptModal } from '../src/ui/Components.js';
 
 const LIVES = Number(process.argv[2] ?? 300);
@@ -54,7 +56,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0 };
+const totals = { homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -82,6 +84,19 @@ function checkInvariants(state) {
     if (m) assert.ok(SERVICES[id].ranks[m.rankIndex] && m.budget.left >= 0, 'emergency member');
   }
   for (const p of state.retirement.pensions) assert.ok(p.annual >= 0 && Number.isFinite(p.annual), 'pension');
+  const credit = state.housing.credit.score;
+  assert.ok(Number.isInteger(credit) && credit >= 300 && credit <= 850, `credit ${credit}`);
+  for (const p of state.housing.properties) {
+    assert.ok(Number.isFinite(p.value) && p.value > 0, 'property value');
+    if (p.mortgage) assert.ok(p.mortgage.balance >= 0 && Number.isFinite(p.mortgage.payment), 'mortgage');
+    if (p.heloc) assert.ok(p.heloc.balance >= 0, 'heloc');
+  }
+  assert.ok(state.housing.properties.filter((p) => p.use === 'primary' && p.regionId === state.character.regionId).length <= 1, 'one primary home here');
+  for (const [id, h] of Object.entries(state.credentials.held)) {
+    assert.ok(['state', 'national'].includes(CREDENTIALS[id].jurisdiction), `jurisdiction ${id}`);
+    if (CREDENTIALS[id].jurisdiction === 'state') assert.ok(Array.isArray(h.states) && h.states.length > 0, `states for ${id}`);
+  }
+  if (state.politics.office) assert.ok(OFFICES[state.politics.office.id], 'office');
 }
 
 function act(id, arg) {
@@ -110,7 +125,29 @@ function randomActions(state) {
   if (age > 55 && player.chance(0.15)) tries.push(() => act('retirement.retire'));
   if (age >= 62) tries.push(() => act('retirement.claimSocialSecurity'));
   if (player.chance(0.02)) tries.push(() => act('retirement.withdraw'));
-  if (age >= 18 && player.chance(0.03)) tries.push(() => act('region.move', player.pick(Object.keys(REGIONS))));
+  if (age >= 18 && player.chance(0.04)) tries.push(() => act('region.move', player.pick(Object.keys(REGIONS))));
+  // Housing
+  if (age >= 18) {
+    const h = state.housing;
+    if (player.chance(0.2)) tries.push(() => act('housing.rent', player.pick(Object.keys(RENT_TIERS))));
+    if (h.listings.length && player.chance(0.2)) tries.push(() => act('housing.buy', player.pick(h.listings).id));
+    if (player.chance(0.02)) tries.push(() => act('housing.moveInWithParents'));
+    for (const p of h.properties) {
+      if (player.chance(0.15)) tries.push(() => act(player.pick(['housing.refinance', 'housing.heloc', 'housing.repayHeloc', 'housing.floodInsurance']), p.id));
+      if (player.chance(0.1)) tries.push(() => act('housing.renovate', `${p.id}:${player.pick(Object.keys(RENOVATIONS))}`));
+      if (player.chance(0.06)) tries.push(() => act('housing.setUse', `${p.id}:${player.pick(['primary', 'rental', 'vacant'])}`));
+      if (player.chance(0.04)) tries.push(() => act('housing.sell', p.id));
+      if (player.chance(0.005)) tries.push(() => act('housing.arson', p.id));
+    }
+    if (h.properties.length && player.chance(0.05)) tries.push(() => act('housing.toggleManager'));
+  }
+  // License transfers after moving
+  for (const [id, h] of Object.entries(state.credentials.held)) {
+    if (h.status === 'active' && CREDENTIALS[id].jurisdiction === 'state' && player.chance(0.3)) tries.push(() => act('credentials.transfer', id));
+  }
+  // Politics
+  if (age >= 18 && !state.politics.campaign && player.chance(0.04)) tries.push(() => act('politics.run', player.pick(Object.keys(OFFICES))));
+  if (state.politics.campaign) tries.push(() => act(`politics.${player.pick(['fundraise', 'selfFund', 'canvass', 'debate'])}`), () => act('politics.endorse', player.pick(['labor', 'veterans', 'lawEnforcement', 'party', 'editorial', 'bar'])));
   if (age >= 17 && age < 40 && !state.military.service && player.chance(0.06)) {
     tries.push(() => act('military.enlist', `${player.pick(Object.keys(BRANCHES))}:${player.pick(['enlisted', 'officer'])}:${player.pick(['active', 'reserve'])}`));
   }
@@ -187,6 +224,12 @@ for (let life = 0; life < LIVES; life++) {
   totals.degrees += state.education.degrees.filter((d) => d.type !== 'highschool').length;
   if (state.retirement.pensions.length) totals.pensions += 1;
   if (managed) totals.managers += 1;
+  if (state.housing.everOwned) totals.homeowners += 1;
+  if (state.housing.credit.events.some((e) => e.type === 'foreclosure')) totals.foreclosures += 1;
+  if (state.politics.everRan) totals.ranForOffice += 1;
+  if (state.politics.history.length || state.politics.office) totals.officeHolders += 1;
+  if ([...state.politics.history.map((h) => h.officeId), state.politics.office?.id].includes('governor')) totals.governors += 1;
+  if (state.housing.homelessYears) totals.homeless += 1;
   if (state.publicService.clearance || state.career.history.some((h) => ['foreignService', 'intelligence', 'oig', 'regulatory'].includes(h.professionId))) totals.clearances += 1;
 
   renderer.obituary(state);
@@ -199,6 +242,7 @@ console.log(`✔ Simulated ${LIVES} lives (${totals.years} years, ${totals.promp
 console.log(`  avg lifespan ${(totals.years / LIVES).toFixed(1)}, max age ${totals.maxAge}`);
 console.log(`  avg credentials ${(totals.credentials / LIVES).toFixed(1)}, avg degrees ${(totals.degrees / LIVES).toFixed(1)}, lives w/ pensions ${totals.pensions}, managers ${totals.managers}, cleared ${totals.clearances}`);
 console.log(`  convictions ${totals.convictions}, lives with prison ${totals.prison}, immunity prompts ${totals.immunity}, FSO-years ${totals.fso}`);
+console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);
 console.log(`  prompt types seen (${promptTypes.size}):`, [...promptTypes].sort().join(', '));

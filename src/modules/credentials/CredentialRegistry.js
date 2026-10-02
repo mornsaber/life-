@@ -19,6 +19,8 @@
  *               their own hires (outside the discretionary training budget)
  *   revokeOn:   offense severities/ids that revoke it
  *   suspendOn:  { offenseId: years } temporary suspensions
+ *   jurisdiction / reciprocity: derived below from STATE_ISSUED — state-issued
+ *               credentials are valid only in the states that issued them
  */
 
 const D = (stat, difficulty) => ({ stat, difficulty });
@@ -69,7 +71,8 @@ export const CREDENTIALS = {
   fireOfficer2: { name: 'Fire Officer II', icon: '⭐', category: 'publicSafety', kind: 'certification', requires: { credentials: ['fireOfficer1'] }, cost: 900, exam: D('smarts', 0.3), implies: ['fireOfficer1'], sponsors: { professions: ['fire'], services: ['fire'] } },
   fireInspector: { name: 'Fire Inspector I', icon: '🔎', category: 'publicSafety', kind: 'certification', requires: { credentials: ['ff2'] }, cost: 500, exam: D('smarts', 0.25), sponsors: { professions: ['fire', 'publicWorks'] } },
   postReserve: { name: 'Reserve Peace Officer (POST Level II)', icon: '🎓', category: 'publicSafety', kind: 'certification', requires: { age: 21, noFelony: true }, cost: 1200, exam: D('smarts', 0.25), sponsors: { professions: ['police'], services: ['police'] }, revokeOn: ['felony', 'excessiveForce'] },
-  post: { name: 'Peace Officer (POST Basic Academy)', icon: '🚓', category: 'publicSafety', kind: 'license', requires: { age: 21, noFelony: true, credentials: ['driverLicense'] }, trainingYears: 1, cost: 9000, exam: D('fitness', 0.2), implies: ['postReserve'], sponsoredOnly: true, academy: ['police'], sponsors: { professions: ['police'] }, revokeOn: ['felony', 'excessiveForce'] },
+  post: { name: 'Peace Officer (POST Basic Academy)', icon: '🚓', category: 'publicSafety', kind: 'license', requires: { age: 21, noFelony: true, credentials: ['driverLicense'] }, trainingYears: 1, cost: 9000, exam: D('fitness', 0.2), implies: ['postReserve'], sponsoredOnly: true, academy: ['police', 'statePolice', 'gameWarden'], sponsors: { professions: ['police', 'statePolice', 'gameWarden'] }, revokeOn: ['felony', 'excessiveForce'] },
+  correctionsAcademy: { name: 'Corrections Officer Academy', icon: '🔐', category: 'publicSafety', kind: 'certification', requires: { age: 21, noFelony: true }, cost: 6000, exam: D('fitness', 0.15), sponsoredOnly: true, academy: ['corrections'], sponsors: { professions: ['corrections'] }, revokeOn: ['felony', 'contraband'] },
   fto: { name: 'Field Training Officer Program', icon: '🚔', category: 'publicSafety', kind: 'certification', requires: { credentials: ['postReserve'] }, cost: 300, exam: D('smarts', 0.2), sponsors: { professions: ['police'], services: ['police'] } },
   cit: { name: 'Crisis Intervention Team (CIT)', icon: '🧠', category: 'publicSafety', kind: 'certification', requires: { credentials: ['postReserve'] }, cost: 200, exam: D('smarts', 0.15), sponsors: { professions: ['police', 'ems'], services: ['police'] } },
   trafficEnforcement: { name: 'Traffic Enforcement & DUI', icon: '🚦', category: 'publicSafety', kind: 'certification', requires: { credentials: ['postReserve'] }, cost: 150, exam: D('smarts', 0.15), sponsors: { professions: ['police'], services: ['police'] } },
@@ -88,7 +91,7 @@ export const CREDENTIALS = {
   ics300: { name: 'Incident Command (ICS-300)', icon: '📡', category: 'rescue', kind: 'certification', requires: { age: 18 }, cost: 200, exam: D('smarts', 0.15), sponsors: { services: ['sar', 'fire'], professions: ['fire', 'ems', 'police', 'municipalAdmin', 'publicWorks', 'parkService'] } },
 
   /* ---------------- Professional licenses ---------------- */
-  barLicense: { name: 'State Bar License', icon: '⚖️', category: 'professional', kind: 'license', requires: { education: { program: 'jd' }, noFelony: true }, cost: 2000, exam: D('smarts', 0.45), renewYears: 3, renewCost: 450, sponsors: { professions: ['law'] }, revokeOn: ['felony'] },
+  barLicense: { name: 'State Bar License', icon: '⚖️', category: 'professional', kind: 'license', requires: { education: { program: 'jd' }, noFelony: true }, cost: 2000, exam: D('smarts', 0.45), renewYears: 3, renewCost: 450, sponsors: { professions: ['law', 'prosecution', 'publicDefender'] }, revokeOn: ['felony', 'prosecutorialMisconduct'] },
   paralegalCP: { name: 'Certified Paralegal (CP)', icon: '📑', category: 'professional', kind: 'certification', requires: { education: { anyOf: [{ program: 'paralegal' }, { level: 'bachelor' }] } }, cost: 300, exam: D('smarts', 0.2), renewYears: 5, renewCost: 100, sponsors: { professions: ['legalSupport'] } },
   cpa: { name: 'Certified Public Accountant (CPA)', icon: '🧮', category: 'professional', kind: 'license', requires: { education: { anyOf: [{ level: 'bachelor', majors: ['accounting', 'business', 'economics'] }, { program: 'msAccounting' }] }, noFelony: true }, cost: 3500, exam: D('smarts', 0.5), renewYears: 3, renewCost: 400, sponsors: { professions: ['accounting', 'oig'] }, revokeOn: ['felony'] },
   fe: { name: 'Engineer in Training (FE exam)', icon: '📐', category: 'professional', kind: 'certification', requires: { education: { level: 'bachelor', majors: ['engineering'] } }, cost: 225, exam: D('smarts', 0.35), sponsors: { professions: ['engineering', 'publicWorks'] } },
@@ -97,9 +100,16 @@ export const CREDENTIALS = {
   realEstate: { name: 'Real Estate Salesperson License', icon: '🏠', category: 'professional', kind: 'license', requires: { age: 18 }, cost: 900, exam: D('smarts', 0.2), renewYears: 2, renewCost: 150, revokeOn: ['felony'] },
   brokerLicense: { name: 'Real Estate Broker License', icon: '🏘️', category: 'professional', kind: 'license', requires: { credentials: ['realEstate'], experience: { professions: ['realestate'], years: 3 } }, cost: 1200, exam: D('smarts', 0.3), renewYears: 2, renewCost: 200, implies: ['realEstate'], revokeOn: ['felony'] },
 
+  lcsw: { name: 'Licensed Clinical Social Worker (LCSW)', icon: '🤝', category: 'professional', kind: 'license', requires: { education: { program: 'msw' }, experience: { professions: ['socialWork', 'cps'], years: 2 } }, cost: 500, exam: D('smarts', 0.3), renewYears: 2, renewCost: 150, sponsors: { professions: ['socialWork', 'cps'] }, revokeOn: ['felony'] },
+  pharmacistLicense: { name: 'Pharmacist License (NAPLEX + MPJE)', icon: '💊', category: 'health', kind: 'license', requires: { education: { program: 'pharmd' }, noFelony: true }, cost: 1200, exam: D('smarts', 0.4), renewYears: 2, renewCost: 250, sponsors: { professions: ['pharmacy'] }, revokeOn: ['felony', 'prescriptionFraud'] },
+  insuranceProducer: { name: 'Insurance Producer License', icon: '🛡️', category: 'professional', kind: 'license', requires: { age: 18 }, cost: 400, exam: D('smarts', 0.2), renewYears: 2, renewCost: 100, sponsors: { professions: ['insurance'] }, revokeOn: ['felony'] },
+
   /* ---------------- Trades ---------------- */
   journeymanElectrician: { name: 'Journeyman Electrician License', icon: '⚡', category: 'trades', kind: 'license', requires: { anyOf: [{ experience: { professions: ['trades'], years: 4 } }, { education: { program: 'electricalTech' }, experience: { professions: ['trades'], years: 2 } }] }, cost: 250, exam: D('smarts', 0.3), renewYears: 3, renewCost: 100, sponsors: { professions: ['trades'] } },
   masterElectrician: { name: 'Master Electrician License', icon: '🔌', category: 'trades', kind: 'license', requires: { credentials: ['journeymanElectrician'], experience: { professions: ['trades'], years: 6 } }, cost: 400, exam: D('smarts', 0.4), renewYears: 3, renewCost: 150, implies: ['journeymanElectrician'], sponsors: { professions: ['trades'] } },
+  journeymanPlumber: { name: 'Journeyman Plumber License', icon: '🚰', category: 'trades', kind: 'license', requires: { anyOf: [{ experience: { professions: ['plumbing'], years: 4 } }, { education: { program: 'plumbingTech' }, experience: { professions: ['plumbing'], years: 2 } }] }, cost: 250, exam: D('smarts', 0.3), renewYears: 3, renewCost: 100, sponsors: { professions: ['plumbing'] } },
+  masterPlumber: { name: 'Master Plumber License', icon: '🛁', category: 'trades', kind: 'license', requires: { credentials: ['journeymanPlumber'], experience: { professions: ['plumbing'], years: 6 } }, cost: 400, exam: D('smarts', 0.4), renewYears: 3, renewCost: 150, implies: ['journeymanPlumber'], sponsors: { professions: ['plumbing'] } },
+  cosmetologyLicense: { name: 'Cosmetology License', icon: '💇', category: 'trades', kind: 'license', requires: { education: { program: 'cosmetologySchool' } }, cost: 250, exam: D('smarts', 0.15), renewYears: 2, renewCost: 80 },
   oshaSafety: { name: 'OSHA 30 Construction Safety', icon: '🦺', category: 'trades', kind: 'certification', requires: { age: 18 }, cost: 200, exam: D('smarts', 0.05), sponsors: { professions: ['trades', 'publicWorks', 'engineering'] } },
 
   /* ---------------- Corporate & internal ---------------- */
@@ -117,6 +127,38 @@ export const CREDENTIALS = {
   cgfm: { name: 'Certified Government Financial Manager', icon: '🏛️', category: 'government', kind: 'certification', requires: { education: { level: 'bachelor' }, workYears: 2 }, cost: 600, exam: D('smarts', 0.3), renewYears: 3, renewCost: 100, sponsors: { professions: ['municipalAdmin', 'oig', 'regulatory'] } },
   aicp: { name: 'Certified Planner (AICP)', icon: '🗺️', category: 'government', kind: 'certification', requires: { education: { level: 'bachelor' }, experience: { professions: ['planning'], years: 2 } }, cost: 700, exam: D('smarts', 0.35), renewYears: 2, renewCost: 150, sponsors: { professions: ['planning'] } },
   buildingInspector: { name: 'ICC Building Inspector', icon: '🏚️', category: 'government', kind: 'certification', requires: { age: 18 }, cost: 450, exam: D('smarts', 0.25), renewYears: 3, renewCost: 120, sponsors: { professions: ['publicWorks'] }, revokeOn: ['felony', 'falsifiedInspection'] },
+};
+
+/**
+ * State-issued credentials and how they cross state lines:
+ *   automatic     reissued by the new state for a fee (driver licenses, CPA mobility)
+ *   compact       valid in every compact member state (Nurse Licensure Compact)
+ *   motion        admission by motion after 5 years of practice, otherwise re-examine (bar)
+ *   transferExam  reciprocity exam / jurisprudence test at reduced cost
+ *   restart       must be earned again (agency-specific reserve academies)
+ * Everything not listed is national (NREMT, FAA, FINRA, NFPA, ICC…).
+ */
+export const STATE_ISSUED = {
+  learnerPermit: 'automatic', driverLicense: 'automatic', motorcycle: 'automatic', cdlA: 'automatic', hazmatEndorsement: 'automatic', cpa: 'automatic', insuranceProducer: 'automatic',
+  rn: 'compact',
+  barLicense: 'motion',
+  teachingCert: 'transferExam', realEstate: 'transferExam', brokerLicense: 'transferExam', journeymanElectrician: 'transferExam', masterElectrician: 'transferExam',
+  journeymanPlumber: 'transferExam', masterPlumber: 'transferExam', cosmetologyLicense: 'transferExam', post: 'transferExam', pe: 'transferExam',
+  medicalLicense: 'transferExam', np: 'transferExam', cna: 'transferExam', lcsw: 'transferExam', pharmacistLicense: 'transferExam', correctionsAcademy: 'transferExam',
+  postReserve: 'restart',
+};
+
+for (const [id, c] of Object.entries(CREDENTIALS)) {
+  c.jurisdiction = STATE_ISSUED[id] ? 'state' : 'national';
+  c.reciprocity = STATE_ISSUED[id] ?? null;
+}
+
+export const RECIPROCITY_LABEL = {
+  automatic: 'Transfers automatically',
+  compact: 'Nurse Licensure Compact',
+  motion: 'Admission by motion (5 yrs practice)',
+  transferExam: 'Reciprocity exam',
+  restart: 'Must re-qualify',
 };
 
 export const CREDENTIAL_LIST = Object.entries(CREDENTIALS).map(([id, c]) => ({ id, ...c }));

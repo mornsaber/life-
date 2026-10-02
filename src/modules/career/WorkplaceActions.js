@@ -230,6 +230,22 @@ export const WorkplaceActions = {
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
 
       if (rng.chance(clamp(chance, 0.05, 0.95))) {
+        // Big employers often attach a relocation to senior promotions.
+        if (job.sector === 'private' && !job.remote && ['large', 'enterprise'].includes(job.employer.size) && nextGrade >= 6 && rng.chance(0.35)) {
+          const regionId = rng.pick(Object.keys(REGIONS).filter((r) => r !== state.character.regionId));
+          ctx.prompt({
+            type: 'career.relocationOffer',
+            icon: '📦',
+            title: 'Promotion — With a Catch',
+            text: `${job.employer.name} approved your promotion, but the role is based in ${REGIONS[regionId].name}. Relocation is paid.`,
+            options: [
+              { id: 'accept', label: `📦 Accept and move to ${REGIONS[regionId].name}` },
+              { id: 'decline', label: '🏠 Decline — stay put and pass on the promotion' },
+            ],
+            data: { regionId, options: status.options.map((o) => o.id) },
+          });
+          return;
+        }
         if (status.options.length > 1) trackPrompt(ctx, status.options);
         else promote(ctx, status.options[0].id);
         return;
@@ -248,6 +264,21 @@ export const WorkplaceActions = {
       }
       ctx.stat('happiness', -4);
       ctx.toast('Promotion denied', 'bad');
+    },
+
+    relocationOffer(ctx, data, optionId) {
+      const job = ctx.state.career.job;
+      if (!job) return;
+      if (optionId === 'decline') {
+        job.passovers = (job.passovers ?? 0) + 1;
+        ctx.log('You turned down the promotion to stay where you are.', '🏠');
+        return;
+      }
+      ctx.emit('region:relocate', { regionId: data.regionId, reason: `${job.employer.name} relocated you for the promotion.` });
+      const profession = getProfession(job.professionId);
+      const options = data.options.map((id) => levelById(profession, id)).filter(Boolean);
+      if (options.length > 1) trackPrompt(ctx, options);
+      else if (options[0]) promote(ctx, options[0].id);
     },
 
     chooseTrack(ctx, _data, optionId) {

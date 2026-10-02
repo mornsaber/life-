@@ -13,6 +13,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { PENSION_PLANS, annuityFor } from './PensionPlans.js';
+import { OFFICES } from '../politics/Offices.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
@@ -89,6 +90,14 @@ export const RetirementEngine = {
 
   setup(engine) {
     engine.bus.on('retirement:addPension', ({ ctx, pension }) => addPension(ctx.state, pension));
+    // Non-job service credit (elected office) accrues through the bus.
+    engine.bus.on('retirement:accrue', ({ ctx, planId, salary, employer }) => {
+      const plan = (ctx.state.retirement.plans[planId] ??= { years: 0, salaries: [], employers: [], started: false });
+      if (plan.started) return;
+      plan.years += 1;
+      plan.salaries.push(salary);
+      if (!plan.employers.includes(employer)) plan.employers.push(employer);
+    });
     engine.bus.on('career:hired', ({ ctx }) => {
       ctx.state.retirement.retired = false;
     });
@@ -125,7 +134,8 @@ export const RetirementEngine = {
     // Deferred annuities start automatically at the plan's normal age.
     for (const [planId, plan] of Object.entries(r.plans)) {
       const def = PENSION_PLANS[planId];
-      const activeInPlan = state.career.job?.employer.benefits.pension === planId;
+      const officePlan = state.politics.office ? OFFICES[state.politics.office.id].pension : null;
+      const activeInPlan = state.career.job?.employer.benefits.pension === planId || officePlan === planId;
       if (!plan.started && !activeInPlan && plan.years >= def.vest && age >= def.normalAge) startPlanAnnuity(ctx, planId, 'You reached the plan\'s normal retirement age.');
     }
 

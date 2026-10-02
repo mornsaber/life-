@@ -9,8 +9,8 @@
  */
 import { clamp } from './Random.js';
 
-export const STATE_VERSION = 2;
-export const SAVE_KEY = 'lifesim.save.v2';
+export const STATE_VERSION = 3;
+export const SAVE_KEY = 'lifesim.save.v3';
 export const START_YEAR = 2026;
 
 export const STAT_KEYS = ['health', 'happiness', 'smarts', 'looks', 'fitness', 'stress'];
@@ -29,7 +29,7 @@ const FIRST_NAMES = {
   female: ['Ava', 'Maya', 'Sofia', 'Zoe', 'Priya', 'Harper', 'Elena', 'Nia', 'Chloe', 'Grace', 'Aaliyah', 'Mei', 'Riley', 'Camila'],
 };
 const LAST_NAMES = ['Carter', 'Nguyen', 'Okafor', 'Ramirez', 'Kowalski', 'Bennett', 'Hayes', 'Patel', 'Morales', 'Sullivan', 'Kim', 'Reyes', 'Brooks', 'Lindqvist', 'Washington', 'Adeyemi'];
-const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago'];
+const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami'];
 
 export function randomName(rng, gender) {
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
@@ -53,6 +53,7 @@ export function createInitialState(rng, options = {}) {
       alive: true,
       causeOfDeath: null,
       regionId: rng.pick(HOMETOWNS),
+      residencySince: 0,
     },
     stats: {
       health: rng.int(75, 100),
@@ -79,6 +80,19 @@ export function createInitialState(rng, options = {}) {
     emergency: { fire: null, police: null, sar: null, history: [] },
     legal: { record: [], investigations: [], incarceration: null, probationYears: 0, flags: {} },
     retirement: { retired: false, dc: 0, pensions: [], plans: {}, ssEarnings: [], socialSecurity: null },
+    housing: {
+      withParents: true,
+      everOwned: false,
+      rental: null,
+      properties: [],
+      listings: [],
+      credit: { score: 680, onTime: 0, events: [] },
+      market: {},
+      rates: { base: 0.065 },
+      homelessYears: 0,
+      manager: false,
+    },
+    politics: { office: null, campaign: null, history: [], recognition: 0 },
     honors: [],
     yearly: {},
     prompts: [],
@@ -184,9 +198,14 @@ export const fullName = (state) => `${state.character.firstName} ${state.charact
 
 export const currentYear = (state) => state.character.birthYear + state.character.age;
 
+/** Market value minus mortgage and HELOC balances across all properties. */
+export function homeEquity(state) {
+  return state.housing.properties.reduce((sum, p) => sum + p.value - (p.mortgage?.balance ?? 0) - (p.heloc?.balance ?? 0), 0);
+}
+
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc - f.loans);
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) - f.loans);
 }
 
 /** Academic rank of each degree type. Certificates/diplomas sit beside high school. */

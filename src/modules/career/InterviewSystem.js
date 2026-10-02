@@ -10,7 +10,7 @@ import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById } from './Ladder.js';
 import { salaryBreakdown } from './PayGrades.js';
-import { createEmployer } from './Employers.js';
+import { createEmployer, resolveDutyStation } from './Employers.js';
 import { applicationEligibility, bestEntryLevel, backgroundCheck, levelCheck, hire } from './CareerEngine.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
@@ -208,7 +208,7 @@ export function hireChance(state, profession, level, score, maxScore) {
 }
 
 function offerSalary(state, profession, level, employer, step, merit) {
-  return salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: profession.dutyStation ?? state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
+  return salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
 }
 
 function offerPrompt(ctx, data) {
@@ -275,7 +275,7 @@ export const InterviewSystem = {
       bumpYearly(state, 'career.apply');
 
       const profession = getProfession(professionId);
-      const employer = createEmployer(rng, state, profession, profession.dutyStation ?? state.character.regionId);
+      const employer = createEmployer(rng, state, profession, resolveDutyStation(rng, profession, state.character.regionId) ?? state.character.regionId);
       const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
       const priorYears = state.career.history.filter((h) => h.professionId === professionId).reduce((s, h) => s + h.endAge - h.startAge, 0);
 

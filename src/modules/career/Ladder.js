@@ -32,6 +32,8 @@ export const ABILITIES = {
   diplomatic: { label: 'Diplomatic status', icon: '🛂' },
   classified: { label: 'Classified access', icon: '🔐' },
   command: { label: 'Incident command', icon: '📡' },
+  custody: { label: 'Custody of inmates', icon: '🔐' },
+  tenure: { label: 'Tenured — can\'t be fired for performance', icon: '🎓' },
 };
 
 const DEFAULT_YEARS = (grade) => (grade <= 3 ? 1 : grade <= 5 ? 2 : grade <= 7 ? 3 : 4);

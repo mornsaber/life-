@@ -8,6 +8,7 @@ import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
 } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
+import { BASES } from '../life/Regions.js';
 
 const THEATERS = {
   ground: ['eastern Syria', 'the Sahel', 'northern Iraq', 'the Horn of Africa', 'the Baltic frontier'],
@@ -369,6 +370,15 @@ export function openContractReview(ctx, svc) {
 /* Annual loop                                                         */
 /* ------------------------------------------------------------------ */
 
+function pcs(ctx, svc) {
+  const options = (BASES[svc.branch] ?? []).filter(([regionId]) => regionId !== ctx.state.character.regionId);
+  if (!options.length) return;
+  const [regionId, base] = ctx.rng.pick(options);
+  svc.stationYears = 0;
+  svc.station = base;
+  ctx.emit('region:relocate', { regionId, reason: `PCS orders: report to ${base}.` });
+}
+
 export function activeDutyTick(ctx, svc) {
   const { rng } = ctx;
   const branch = BRANCHES[svc.branch];
@@ -384,6 +394,10 @@ export function activeDutyTick(ctx, svc) {
   svc.yearsOfService += 1;
   svc.yearsInGrade += 1;
   svc.contractYearsLeft -= 1;
+
+  // Permanent change of station every ~3 years, starting right after training.
+  svc.stationYears = (svc.stationYears ?? 99) + 1;
+  if (svc.stationYears >= 3) pcs(ctx, svc);
 
   const rank = rankOf(svc);
   ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`, { wage: true });

@@ -17,6 +17,10 @@ import { hasCredential, findSponsor } from '../src/modules/credentials/Licensing
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
 import { planStatus } from '../src/modules/retirement/RetirementEngine.js';
 import { salaryBreakdown } from '../src/modules/career/PayGrades.js';
+import { changeRegion } from '../src/modules/life/Regions.js';
+import { stateIncomeTax } from '../src/modules/life/States.js';
+import { quote } from '../src/modules/realestate/MortgageSystem.js';
+import { annualTuition } from '../src/modules/education/EducationEngine.js';
 
 const memory = () => {
   const m = new Map();
@@ -209,7 +213,125 @@ const tests = {
     job.passovers = 3;
     assert.equal(promotionStatus(state).plateaued, true);
   },
+
+  'moving states: driver license auto-transfers, RN compact holds, bar needs motion or exam'() {
+    const { engine, state, ctx } = setup(3, 30);
+    state.character.regionId = 'midcity'; // OH (NLC member)
+    for (const id of ['driverLicense', 'rn', 'barLicense']) state.credentials.held[id] = { status: 'active', earnedAge: 25, renewedAge: 29, states: ['OH'] };
+    changeRegion(ctx, 'denver', 'Test move'); // CO (NLC member)
+    assert.ok(hasCredential(state, 'driverLicense'), 'driver license reissued');
+    assert.ok(hasCredential(state, 'rn'), 'RN valid via compact');
+    assert.ok(!hasCredential(state, 'barLicense'), 'bar not valid in CO');
+    changeRegion(ctx, 'chicago', 'Test move'); // IL (not NLC)
+    assert.ok(!hasCredential(state, 'rn'), 'IL is not a compact state');
+    state.career.history.push({ professionId: 'law', startAge: 25, endAge: 31, peakGrade: 6 });
+    engine.dispatch('credentials.transfer', 'barLicense');
+    assert.ok(hasCredential(state, 'barLicense'), 'admitted by motion after 5+ years');
+  },
+
+  'Texas has no state income tax; California does'() {
+    assert.equal(stateIncomeTax('TX', 150000), 0);
+    assert.ok(stateIncomeTax('CA', 150000) > 8000);
+  },
+
+  'VA loans allow 0% down for veterans; others need a down payment'() {
+    const { state } = setup(4, 30);
+    state.finances.cash = 20000;
+    state.finances.lastYear = { gross: 90000 };
+    state.housing.credit.score = 720;
+    assert.equal(quote(state, 300000, 'va').ok, false, 'not a veteran');
+    state.military.history.push({ branch: 'army', track: 'enlisted', component: 'active', yearsOfService: 4, discharge: 'honorable', rankCode: 'E-4', rankTitle: 'Specialist', deployments: 0, startAge: 18, endAge: 22 });
+    const q = quote(state, 300000, 'va');
+    assert.ok(q.ok, q.reason);
+    assert.equal(q.down, 0);
+  },
+
+  'two years of missed mortgage payments end in foreclosure'() {
+    const { engine, state } = setup(6, 35);
+    state.housing.properties.push({ id: 'p1', type: 'starter', typeName: 'Starter Home', regionId: state.character.regionId, value: 300000, valueAdj: 1, purchasePrice: 300000, purchaseAge: 33, condition: 80, use: 'primary', mortgage: { type: 'conv30', rate: 0.07, termYears: 30, yearsLeft: 28, balance: 280000, original: 285000, payment: 22000, mip: 0, delinquent: 0, armResetIn: null }, heloc: null, tenants: [], insured: true });
+    state.finances.cash = -60000;
+    for (let i = 0; i < 2; i++) {
+      state.prompts = [];
+      engine.ageUp();
+      state.finances.cash = Math.min(state.finances.cash, -60000);
+    }
+    assert.equal(state.housing.properties.length, 0, 'foreclosed');
+    assert.ok(state.housing.credit.events.some((e) => e.type === 'foreclosure'));
+    assert.ok(state.housing.credit.score < 600, `score ${state.housing.credit.score}`);
+  },
+
+  'active duty gets PCS orders and base housing'() {
+    const { engine, state, ctx } = setup(8, 22);
+    engine.dispatch('military.enlist', 'army:enlisted:active');
+    resolve(engine, 'military.chooseSpecialty', 'logistics');
+    const before = state.character.regionId;
+    state.prompts = [];
+    engine.ageUp();
+    while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options.find((o) => !o.disabled).id);
+    assert.ok(state.military.service.station, 'assigned to a base');
+    assert.notEqual(state.character.regionId, before === state.character.regionId ? '__' : before);
+    assert.equal(ctx.state.housing.rental, null);
+  },
+
+  'the governor activates the National Guard for disasters'() {
+    const { engine, state, ctx } = setup(9, 25);
+    engine.dispatch('military.enlist', 'guard:enlisted:reserve');
+    resolve(engine, 'military.chooseSpecialty', 'engineer');
+    const cash = state.finances.cash;
+    ctx.emit('disaster:struck', { disaster: { type: 'flood', severity: 2, stateId: 'OH', regionId: 'midcity', name: 'The Great Flood' } });
+    assert.ok(state.finances.cash > cash, 'state active duty pay');
+    assert.equal(enlistOk(state), false);
+  },
+
+  'top agency posts come only by gubernatorial appointment'() {
+    const { engine, state, ctx } = setup(10, 45);
+    state.credentials.held.driverLicense = { status: 'active', earnedAge: 18, renewedAge: 44 };
+    const job = giveJob(engine, 'statePolice', 'major');
+    job.yearsInLevel = 10;
+    const status = promotionStatus(state);
+    assert.equal(status.eligible, false);
+    assert.ok(status.appointable?.length, 'superintendent is appointable');
+    ctx.emit('career:appoint', { levelId: 'superintendent' });
+    assert.equal(state.career.job.levelId, 'superintendent');
+  },
+
+  'tenured professors are not fired for poor performance'() {
+    const { engine, state } = setup(11, 45);
+    const job = giveJob(engine, 'university', 'professor');
+    job.performance = 5;
+    job.warnings = 5;
+    job.lowYears = 5;
+    state.stats.smarts = 1;
+    state.stats.stress = 100;
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.career.job, 'still employed');
+  },
+
+  'public universities charge out-of-state tuition for the first year'() {
+    const { state, ctx } = setup(12, 25);
+    state.character.residencySince = 0;
+    const inState = annualTuition('bachelor', 'state', state);
+    changeRegion(ctx, 'seattle', 'Test');
+    assert.ok(annualTuition('bachelor', 'state', state) > inState * 2);
+    assert.equal(annualTuition('bachelor', 'private', state), annualTuition('bachelor', 'private'));
+  },
+
+  'evicted young adults move back in with family or get vouchers'() {
+    const { engine, state } = setup(14, 24);
+    state.housing.withParents = false;
+    state.housing.rental = { tier: 'house', rent: 3000, leaseYearsLeft: 1, regionId: state.character.regionId };
+    state.finances.cash = -80000;
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.housing.rental?.tier === 'house', false, 'lease ended');
+    assert.ok(state.housing.credit.events.some((e) => e.type === 'eviction'));
+  },
 };
+
+function enlistOk(state) {
+  return state.military.service.component === 'active';
+}
 
 let failed = 0;
 for (const [name, fn] of Object.entries(tests)) {

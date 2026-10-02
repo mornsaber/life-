@@ -23,9 +23,10 @@ export function moneyView(state) {
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
     ['Lifetime earnings', money(f.lifetimeEarnings)],
     ['Lifetime taxes', money(f.taxesPaid)],
+    ['Credit score', state.housing.credit.score],
     f.bankruptcies ? ['Bankruptcies', `<span class="neg">${f.bankruptcies}</span>`] : null,
   ])}
-  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Income tax', money(ly.tax)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
+  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ['State income tax', money(ly.stateTax ?? 0)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
 
   const plans = Object.keys(r.plans).map((id) => {
     const s = planStatus(state, id);
@@ -62,5 +63,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     <ul class="history">${rows}</ul>`, { icon: '🗺️' });
 
-  return `${finances}${retirement}${home}`;
+  return `${finances}${retirement}`;
 }

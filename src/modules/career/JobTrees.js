@@ -19,6 +19,7 @@
 import { L } from './Ladder.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
+import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
 
 const ALL_SIZES = { small: 4, medium: 3, large: 2, enterprise: 1 };
 
@@ -237,7 +238,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   education: {
-    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'state', payMultiplier: 0.92, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
+    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'municipal', employerName: (city) => `${city} Public Schools`, payMultiplier: 0.92, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
     union: { chance: 0.7, name: 'State Education Association', strike: true },
     benefits: { pension: 'teachers', dcPlan: '403(b)', match: 0 },
     employers: ['Lincoln Unified School District', 'Riverside School District', 'Westbrook ISD'],
@@ -284,10 +285,125 @@ export const PRIVATE_PROFESSIONS = {
   },
 };
 
-export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...FEDERAL_PROFESSIONS };
+Object.assign(PRIVATE_PROFESSIONS, {
+  cosmetology: {
+    id: 'cosmetology', name: 'Cosmetology & Salon', icon: '💇', sector: 'private', payMultiplier: 0.85, minAge: 18, sizes: { small: 5, medium: 2, large: 1 }, background: 'lenient',
+    employers: ['Mane Street Salon', 'Glow Studio', 'Shear Genius', 'Luxe Day Spa'],
+    entry: { credentials: ['cosmetologyLicense'] },
+    levels: [
+      L('stylist', 'Junior Stylist', 2),
+      L('senior', 'Senior Stylist', 3),
+      L('master', 'Master Stylist', 4, { track: 'ic' }),
+      L('educator', 'Platform Artist & Educator', 5, { track: 'ic', minSize: 'medium' }),
+      L('manager', 'Salon Manager', 4, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 8 }),
+      L('owner', 'Salon Owner', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 20 }),
+    ],
+  },
+  plumbing: {
+    id: 'plumbing', name: 'Plumbing & Pipefitting', icon: '🚰', sector: 'private', payMultiplier: 1.03, minAge: 18, sizes: { small: 4, medium: 3, large: 1 }, background: 'lenient',
+    union: { chance: 0.4, name: 'UA Plumbers & Pipefitters Local 130', strike: true },
+    benefits: { unionPension: 'union' },
+    employers: ['Flow Masters Plumbing', 'Riverside Mechanical', 'Keystone Pipe & Steam'],
+    valued: ['oshaSafety', 'driverLicense'],
+    levels: [
+      L('apprentice', 'Apprentice Plumber', 2, { req: { education: { level: 'highschool' } }, years: 4 }),
+      L('journeyman', 'Journeyman Plumber', 4, { entry: true, req: { credentials: ['journeymanPlumber'] } }),
+      L('master', 'Master Plumber', 5, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['sign'] }),
+      L('inspector', 'Plumbing Inspector', 6, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['inspect'] }),
+      L('foreman', 'Plumbing Foreman', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
+      L('owner', 'Plumbing Contractor (Owner)', 8, { track: 'mgmt', req: { credentials: ['masterPlumber'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 40 }),
+    ],
+  },
+  socialWork: {
+    id: 'socialWork', name: 'Social Work & Counseling', icon: '🤝', sector: 'private', payMultiplier: 0.9, minAge: 21, sizes: { small: 3, medium: 3, large: 1 }, background: 'strict',
+    union: { chance: 0.2, name: 'SEIU Healthcare', strike: true },
+    employers: ['Harbor Family Services', 'Lakeshore Behavioral Health', 'Hope Community Center'],
+    entry: { education: { level: 'bachelor' } },
+    valued: ['lcsw', 'cit'],
+    levels: [
+      L('caseManager', 'Case Manager', 3),
+      L('socialWorker', 'Social Worker', 4, { entry: true, req: { education: { program: 'msw' } } }),
+      L('clinician', 'Licensed Clinical Social Worker', 6, { track: 'ic', entry: true, req: { credentials: ['lcsw'] } }),
+      L('therapist', 'Psychotherapist (Private Practice)', 7, { track: 'ic', req: { credentials: ['lcsw'] } }),
+      L('supervisor', 'Clinical Supervisor', 6, { track: 'mgmt', req: { credentials: ['lcsw'] }, abilities: ['supervise'], reports: 10 }),
+      L('director', 'Program Director', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 50 }),
+    ],
+  },
+  pharmacy: {
+    id: 'pharmacy', name: 'Pharmacy', icon: '💊', sector: 'private', payMultiplier: 1.25, minAge: 18, sizes: { small: 2, medium: 2, large: 3, enterprise: 2 }, background: 'strict',
+    employers: ['CornerCare Pharmacy', 'Mercy General Pharmacy', 'ValuMart Pharmacy'],
+    levels: [
+      L('tech', 'Pharmacy Technician', 1),
+      L('intern', 'Pharmacy Intern', 3, { req: { education: { program: 'pharmd' } } }),
+      L('pharmacist', 'Staff Pharmacist', 7, { entry: true, req: { credentials: ['pharmacistLicense'] }, abilities: ['prescribe'] }),
+      L('clinical', 'Clinical Pharmacist Specialist', 8, { track: 'ic', abilities: ['prescribe'] }),
+      L('pic', 'Pharmacist in Charge', 7, { track: 'mgmt', abilities: ['prescribe', 'supervise', 'sign'], reports: 8 }),
+      L('director', 'Director of Pharmacy', 8, { track: 'mgmt', minSize: 'large', abilities: ['prescribe', 'supervise', 'budget', 'delegate'], reports: 60 }),
+    ],
+  },
+  insurance: {
+    id: 'insurance', name: 'Insurance', icon: '🛡️', sector: 'private', payMultiplier: 1.0, minAge: 18, sizes: ALL_SIZES, background: 'standard',
+    employers: ['Shieldwell Insurance', 'Prairie Mutual', 'Guardian Point Agency'],
+    valued: ['insuranceProducer', 'cpa'],
+    levels: [
+      L('csr', 'Customer Service Rep', 2),
+      L('agent', 'Insurance Agent', 3, { entry: true, req: { credentials: ['insuranceProducer'] }, abilities: ['sign'] }),
+      L('underwriter', 'Underwriter', 4, { req: { education: { level: 'bachelor' } }, abilities: ['sign'] }),
+      L('actuary', 'Actuary', 6, { track: 'ic', req: { smarts: 70 } }),
+      L('chiefActuary', 'Chief Actuary', 8, { track: 'ic', minSize: 'large', req: { smarts: 75 } }),
+      L('claimsManager', 'Claims Manager', 5, { track: 'mgmt', abilities: ['supervise', 'sign'], reports: 15 }),
+      L('vp', 'VP of Underwriting', 7, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate', 'sign'], reports: 80 }),
+      L('ceo', 'Insurance CEO', 10, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec', 'policy'], reports: 3000 }),
+    ],
+  },
+  propertyManagement: {
+    id: 'propertyManagement', name: 'Property Management', icon: '🔑', sector: 'private', payMultiplier: 0.95, minAge: 18, sizes: { small: 3, medium: 3, large: 2 }, background: 'standard',
+    employers: ['Keystone Property Group', 'Urban Nest Management', 'Lakeside Residential'],
+    valued: ['realEstate', 'brokerLicense'],
+    levels: [
+      L('leasing', 'Leasing Agent', 2),
+      L('assistant', 'Assistant Property Manager', 3),
+      L('manager', 'Property Manager', 4, { abilities: ['supervise', 'sign'], reports: 5 }),
+      L('portfolio', 'Portfolio Manager', 6, { track: 'ic', abilities: ['sign', 'budget'] }),
+      L('regional', 'Regional Property Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 30 }),
+      L('vp', 'VP of Property Operations', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec'], reports: 200 }),
+    ],
+  },
+  journalism: {
+    id: 'journalism', name: 'Journalism & Media', icon: '📰', sector: 'private', payMultiplier: 0.9, minAge: 21, sizes: ALL_SIZES, background: 'lenient', remote: true,
+    union: { chance: 0.3, name: 'NewsGuild', strike: true },
+    employers: ['The Daily Ledger', 'Metro Public Radio', 'Channel 7 News', 'The Capitol Dispatch'],
+    entry: { education: { level: 'bachelor' } },
+    levels: [
+      L('reporter', 'Staff Reporter', 3),
+      L('senior', 'Senior Reporter', 4),
+      L('investigative', 'Investigative Reporter', 5, { track: 'ic' }),
+      L('columnist', 'Columnist / Anchor', 7, { track: 'ic', minSize: 'medium' }),
+      L('editor', 'Section Editor', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
+      L('managing', 'Managing Editor', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 40 }),
+      L('editorInChief', 'Editor-in-Chief', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 150 }),
+    ],
+  },
+  hospitality: {
+    id: 'hospitality', name: 'Hotels & Hospitality', icon: '🏨', sector: 'private', payMultiplier: 0.85, minAge: 16, sizes: ALL_SIZES, background: 'lenient',
+    union: { chance: 0.15, name: 'UNITE HERE Local 11', strike: true },
+    employers: ['Meridian Hotel Group', 'Harborview Resort', 'Grand Plaza Hotel', 'Summit Lodge'],
+    levels: [
+      L('frontDesk', 'Front Desk Agent', 1),
+      L('supervisor', 'Front Office Supervisor', 2, { abilities: ['supervise'], reports: 4 }),
+      L('revenue', 'Revenue Manager', 5, { track: 'ic', req: { education: { level: 'bachelor' } } }),
+      L('sales', 'Director of Sales', 6, { track: 'ic', minSize: 'medium' }),
+      L('frontManager', 'Front Office Manager', 4, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 15 }),
+      L('gm', 'General Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 120 }),
+      L('regional', 'Regional VP of Operations', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec'], reports: 1500 }),
+    ],
+  },
+});
+
+export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
 
-export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Municipal government', state: 'State / school district', federal: 'Federal government' };
+export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };
 
 export function getProfession(id) {
   const profession = PROFESSIONS[id];

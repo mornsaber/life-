@@ -44,6 +44,12 @@ export const BRANCHES = {
     enlisted: ['Airman Basic', 'Airman', 'Airman First Class', 'Senior Airman', 'Staff Sergeant', 'Technical Sergeant', 'Master Sergeant', 'Senior Master Sergeant', 'Chief Master Sergeant'],
     officer: ARMY_OFFICERS,
   },
+  guard: {
+    id: 'guard', name: 'Army National Guard', icon: '🛡️', motto: 'Always Ready, Always There', theater: 'ground', reserveOnly: true,
+    basic: 'Basic Combat Training at Fort Jackson', officerSchool: 'State Officer Candidate School',
+    enlisted: ['Private (PV1)', 'Private (PV2)', 'Private First Class', 'Specialist', 'Sergeant', 'Staff Sergeant', 'Sergeant First Class', 'Master Sergeant', 'Sergeant Major'],
+    officer: ARMY_OFFICERS,
+  },
   coastguard: {
     id: 'coastguard', name: 'U.S. Coast Guard', icon: '🛟', motto: 'Semper Paratus', theater: 'maritime',
     basic: 'Recruit Training at Cape May', officerSchool: 'Officer Candidate School at New London',
@@ -115,9 +121,10 @@ export function timeInGradeRequired(svc) {
 /* Enlistment                                                          */
 /* ------------------------------------------------------------------ */
 
-export function enlistmentEligibility(state, branchId, track) {
+export function enlistmentEligibility(state, branchId, track, component = 'reserve') {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
+  if (BRANCHES[branchId].reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
   if (state.military.service) return { ok: false, reason: 'Already serving' };
   if (state.military.history.some((h) => h.discharge === 'dishonorable' || h.discharge === 'oth')) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };

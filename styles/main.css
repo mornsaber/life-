@@ -610,3 +610,27 @@ select:focus { outline: none; border-color: var(--cyan); }
 
 .cert .cert-action { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
 .cert .fine { margin: 0; }
+
+/* ---------- Step 3: home, credit, move, politics ---------- */
+
+.big-status { font-size: 16px; margin: 0 0 10px; }
+.credit { display: flex; align-items: center; gap: 16px; margin-bottom: 10px; }
+.credit-score { font-family: var(--pixel); font-size: 26px; padding: 12px 14px; border: 3px solid currentColor; border-radius: 10px; }
+.credit-score.good { color: var(--green); }
+.credit-score.mid { color: var(--yellow); }
+.credit-score.bad { color: var(--red); }
+.credit-meta { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.credit-meta small { color: var(--muted); font-size: 11px; letter-spacing: 0.5px; }
+.credit-meta .meter { margin: 4px 0; }
+
+.listing { display: grid; grid-template-columns: 36px 1fr auto; gap: 10px; align-items: center; padding: 10px 0; border-bottom: 1px dashed var(--line); }
+.listing:last-child { border-bottom: none; }
+.listing-icon { font-size: 26px; text-align: center; }
+
+.move-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.move-row { display: flex; flex-direction: column; gap: 6px; padding: 10px; border: 2px solid var(--line); border-radius: 8px; background: #0f1328; }
+.move-row.here { border-color: var(--green); }
+.move-head { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.move-head small { color: var(--muted); }
+.move-stats { display: flex; flex-wrap: wrap; gap: 4px; }
+.move-stats .chip { font-size: 11px; padding: 2px 7px; }

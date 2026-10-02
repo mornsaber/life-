@@ -35,6 +35,9 @@ export function unionEmployeeTick(ctx, job) {
   if (job.unionMember) {
     const dues = Math.round(job.salary * union.duesRate);
     ctx.spend(dues, `${union.name} dues`, { allowDebt: true });
+  } else if (union.agencyFee && !isSupervisor(job) && job.sector === 'private') {
+    // Outside right-to-work states, covered non-members pay an agency fee.
+    ctx.spend(Math.round(job.salary * union.duesRate * 0.6), `${union.name} agency fee`, { allowDebt: true });
   }
 
   union.contractYearsLeft -= 1;

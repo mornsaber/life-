@@ -12,6 +12,7 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { commitOffense } from './JusticeSystem.js';
+import { stateOf } from '../life/Regions.js';
 
 /**
  * when(job): does this temptation apply?
@@ -77,6 +78,30 @@ export const TEMPTATIONS = [
     text: 'A journalist wants documents showing your agency misled Congress. You believe the public deserves to know.',
     take: { label: '📰 Leak the documents', offenseId: 'leak', discovery: 0.35, evidence: 0.85, text: 'You leaked classified documents to the press.' },
     honest: { label: '📣 File a protected whistleblower complaint with the IG', perf: -4, text: 'You went through lawful whistleblower channels. Your boss is furious, but you\'re protected.' },
+  },
+  {
+    id: 'contraband', when: (job) => job.abilities.includes('custody'), title: 'A Favor for an Inmate',
+    text: 'A gang shot-caller offers $2,000 a week if you carry phones and drugs through the staff entrance.',
+    take: { label: '📦 Carry the package', offenseId: 'contraband', money: [20000, 60000], discovery: 0.35, evidence: 0.85, text: 'You smuggled contraband into the prison.' },
+    honest: { label: '🚨 Report the offer to Internal Affairs', perf: 5, text: 'You reported it. The investigation took down a smuggling ring.' },
+  },
+  {
+    id: 'visits', when: (job) => job.professionId === 'cps', title: 'Impossible Caseload',
+    text: 'You have 34 open cases and can\'t possibly make every monthly home visit. Coworkers just mark them "completed."',
+    take: { label: '📝 Log visits you didn\'t make', offenseId: 'falsifiedRecords', perf: 5, discovery: 0.25, evidence: 0.8, text: 'You falsified home-visit records.' },
+    honest: { label: '📢 Document the backlog and tell your supervisor', perf: -2, text: 'You flagged the backlog. Nobody thanked you, but the record is honest.' },
+  },
+  {
+    id: 'brady', when: (job) => job.professionId === 'prosecution', title: 'Exculpatory Evidence',
+    text: 'Days before trial you find a witness statement that undercuts your case. The defense doesn\'t know it exists.',
+    take: { label: '🗄️ Leave it in the file', offenseId: 'prosecutorialMisconduct', perf: 6, discovery: 0.3, evidence: 0.8, text: 'You withheld exculpatory evidence and won the conviction.' },
+    honest: { label: '📤 Turn it over to the defense', perf: -2, text: 'You disclosed it. The case got harder, but it was the right call.' },
+  },
+  {
+    id: 'lobbying', when: (job) => job.professionId === 'legislativeStaff', title: 'The Lobbying Offer',
+    text: 'A lobbying firm offers you $300K — starting next month — to work your old boss on a bill. State law requires a two-year cooling-off period.',
+    take: { label: '🚪 Take the job and start calling your old office', offenseId: 'illegalLobbying', money: [60000, 120000], discovery: 0.3, evidence: 0.75, text: 'You started lobbying your former colleagues right away.' },
+    honest: { label: '⏳ Wait out the cooling-off period', perf: 0, text: 'You turned it down for now.' },
   },
   {
     id: 'revolvingDoor', when: (job) => job.sector === 'federal' && job.abilities.includes('inspect'), title: 'The Revolving Door',
@@ -182,6 +207,10 @@ export const RiskyActions = {
     state.legal.flags.drugUseAge = state.character.age;
     ctx.stat('happiness', 5);
     ctx.stat('health', -3);
+    if (stateOf(state).cannabis && rng.chance(0.7)) {
+      ctx.log(`You bought legal cannabis at a ${stateOf(state).name} dispensary. (Still illegal federally — clearance investigators will ask.)`, '🌿', 'warn');
+      return;
+    }
     if (rng.chance(0.1)) return commitOffense(ctx, { offenseId: 'drugPossession', caught: true, context: 'searched at a concert', evidence: 0.85 });
     ctx.log('You had a wild night. (Security clearance investigators ask about the last 7 years.)', '💊', 'warn');
   },

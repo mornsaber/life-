@@ -6,7 +6,8 @@
  */
 import { calculateIncomeTax } from '../career/CareerEngine.js';
 import { isOnActiveDuty } from '../../core/State.js';
-import { regionOf } from './Regions.js';
+import { regionOf, stateIdOf } from './Regions.js';
+import { stateIncomeTax, STATES } from './States.js';
 
 const LOAN_RATE = 0.05;
 const DEBT_RATE = 0.15;
@@ -35,8 +36,14 @@ export const Finances = {
     const age = state.character.age;
     const gross = f.ledger.income.reduce((sum, i) => sum + i.amount, 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
-    let tax = calculateIncomeTax(Math.max(0, gross - deductions));
-    if (state.legal.flags.taxCheatAge === age) tax = Math.round(tax * 0.7);
+    const taxable = Math.max(0, gross - deductions);
+    let federalTax = calculateIncomeTax(taxable);
+    let stateTax = stateIncomeTax(stateIdOf(state), Math.max(0, taxable - 5000));
+    if (state.legal.flags.taxCheatAge === age) {
+      federalTax = Math.round(federalTax * 0.7);
+      stateTax = Math.round(stateTax * 0.7);
+    }
+    const tax = federalTax + stateTax;
 
     // Cost of living: lifestyle scales with income and region; housing benefits
     // (park housing, embassy quarters, base housing) waive the rent share.
@@ -50,8 +57,9 @@ export const Finances = {
         if (!state.education.enrolled.giBillThisYear) f.loans += 8000;
       }
       else {
-        living = Math.round((7000 + gross * 0.25) * region.col);
-        if (hasHousingBenefit(state)) living = Math.round(living * (1 - HOUSING_SHARE));
+        // Housing (rent, mortgage, upkeep) is charged by the housing module;
+        // this is everything else, nudged by the state's sales tax.
+        living = Math.round((9000 + gross * 0.3) * region.col * (1 - HOUSING_SHARE) * (1 + STATES[region.state].salesTax / 2));
       }
       insurance = healthPremium(state, gross);
     }
@@ -78,6 +86,7 @@ export const Finances = {
         ctx.toast('Declared bankruptcy', 'bad');
         f.cash = 0;
         f.bankruptcies += 1;
+        ctx.emit('credit:event', { type: 'bankruptcy' });
         ctx.stat('happiness', -15);
         ctx.stat('stress', 10);
       } else if (f.cash < -25000) {
@@ -89,7 +98,7 @@ export const Finances = {
 
     if (gross > 0 || living > 0) {
       ctx.log(
-        `Year-end finances: earned $${gross.toLocaleString()}${deductions ? ` ($${deductions.toLocaleString()} pre-tax to retirement)` : ''}, paid $${tax.toLocaleString()} tax and $${living.toLocaleString()} living costs` +
+        `Year-end finances: earned $${gross.toLocaleString()}${deductions ? ` ($${deductions.toLocaleString()} pre-tax to retirement)` : ''}, paid $${federalTax.toLocaleString()} federal${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
           (insurance ? `, $${insurance.toLocaleString()} health insurance` : '') +
           (loanPayment ? `, $${loanPayment.toLocaleString()} toward loans` : '') +
           (interest ? `, $${interest.toLocaleString()} card interest` : '') +
@@ -99,7 +108,7 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, deductions, tax, living, insurance, loanPayment, interest };
+    f.lastYear = { gross, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
     f.ledger = { income: [], expenses: [], deductions: [] };
   },
 };

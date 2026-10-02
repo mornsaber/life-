@@ -6,13 +6,14 @@ import { esc, button, card, chip, meter, kv, empty } from '../Components.js';
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues } from '../../modules/publicservice/PublicServiceEngine.js';
 import { MUNICIPAL_PROFESSIONS } from '../../modules/publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../../modules/publicservice/FederalAgencies.js';
+import { STATE_PROFESSIONS } from '../../modules/publicservice/StateAgencies.js';
 
 export function govView(state) {
   const ps = state.publicService;
   const vet = veteranPreference(state);
   const exams = Object.entries(EXAMS).map(([id, exam]) => {
     const st = examStatus(state, id);
-    const usedBy = [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)].filter((p) => p.exam === id).map((p) => p.name);
+    const usedBy = [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(STATE_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)].filter((p) => p.exam === id).map((p) => p.name);
     return `<li class="exam-row">
       <div><b>${exam.icon} ${exam.name}</b><small>${esc(exam.desc)} Used by: ${esc(usedBy.join(', '))}.</small>
         ${st.taken ? `<small>Score <b class="${st.passed ? 'pos' : 'neg'}">${st.score}</b>${vet ? ` (+${vet} veterans' preference = ${st.rankedScore})` : ''} · ${st.valid ? `valid until age ${st.expiresAge}` : 'expired'}</small>` : ''}</div>

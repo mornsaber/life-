@@ -5,6 +5,7 @@
  */
 import { getProfession } from './JobTrees.js';
 import { salaryBreakdown } from './PayGrades.js';
+import { stateOf } from '../life/Regions.js';
 
 export function recalcSalary(state, job) {
   const profession = getProfession(job.professionId);
@@ -19,6 +20,8 @@ export function recalcSalary(state, job) {
     posting: job.posting,
     exec: job.abilities.includes('exec'),
   });
-  job.salary = job.pay.total;
+  // State minimum wage floors full-time pay (2,080 hours).
+  const floor = Math.round(stateOf(state).minWage * 2080);
+  job.salary = Math.max(job.pay.total, job.sector === 'federal' ? 0 : floor);
   return job.salary;
 }

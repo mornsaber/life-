@@ -12,6 +12,7 @@
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js';
+import { residencyYears } from '../life/Regions.js';
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -67,8 +68,17 @@ export function admissionChance(state, programId, schoolId) {
   return clamp(0.5 + (score - bar) / 25, school.admission === 0 ? 1 : 0.03, 0.98);
 }
 
-export function annualTuition(programId, schoolId) {
-  return Math.round(SCHOOLS[schoolId].tuition * PROGRAMS[programId].costFactor);
+export const OUT_OF_STATE_MULTIPLIER = 2.5;
+
+/** Public schools charge out-of-state tuition until you've lived in the state a year. */
+export function isInState(state) {
+  return residencyYears(state) >= 1;
+}
+
+export function annualTuition(programId, schoolId, state = null) {
+  const school = SCHOOLS[schoolId];
+  const outOfState = state && school.public && !isInState(state);
+  return Math.round(school.tuition * PROGRAMS[programId].costFactor * (outOfState ? OUT_OF_STATE_MULTIPLIER : 1));
 }
 
 /* ------------------------------------------------------------------ */
@@ -78,7 +88,7 @@ export function annualTuition(programId, schoolId) {
 function fundTuition(ctx, e) {
   const { state } = ctx;
   const program = PROGRAMS[e.programId];
-  let due = Math.round(annualTuition(e.programId, e.schoolId) * (e.pace === 'part' ? 0.5 : 1));
+  let due = Math.round(annualTuition(e.programId, e.schoolId, state) * (e.pace === 'part' ? 0.5 : 1));
   const notes = [];
   e.giBillThisYear = false;
   if (!due) return notes;

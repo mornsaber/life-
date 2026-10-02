@@ -1,0 +1,31 @@
+/**
+ * Elected (and appointed) offices.
+ *
+ *   level      rung on the political ladder (stepping stones help)
+ *   term       years per term · termLimit: max terms (0 = none)
+ *   fullTime   full-time offices end your civilian job
+ *   residency  years living in the state before you can run
+ *   cost       what a competitive campaign costs
+ *   pension    retirement plan service credit accrues to
+ */
+export const OFFICES = {
+  cityCouncil: { name: 'City Council Member', icon: '🏙️', level: 1, term: 4, termLimit: 3, salary: 35000, fullTime: false, minAge: 18, residency: 1, cost: 25000, pension: 'electedOfficials' },
+  mayor: { name: 'Mayor', icon: '🏛️', level: 2, term: 4, termLimit: 2, salary: 140000, fullTime: true, minAge: 21, residency: 2, cost: 250000, pension: 'electedOfficials' },
+  stateRep: { name: 'State Representative', icon: '📜', level: 2, term: 2, termLimit: 4, salary: 65000, fullTime: false, minAge: 21, residency: 1, cost: 120000, pension: 'electedOfficials' },
+  stateSenator: { name: 'State Senator', icon: '🏛️', level: 3, term: 4, termLimit: 2, salary: 78000, fullTime: false, minAge: 25, residency: 2, cost: 400000, pension: 'electedOfficials' },
+  judge: { name: 'State Trial Court Judge', icon: '⚖️', level: 3, term: 6, termLimit: 0, salary: 185000, fullTime: true, minAge: 30, residency: 2, cost: 150000, pension: 'electedOfficials', judicial: true },
+  usRep: { name: 'U.S. Representative', icon: '🇺🇸', level: 4, term: 2, termLimit: 0, salary: 174000, fullTime: true, minAge: 25, residency: 1, cost: 2000000, pension: 'fers' },
+  governor: { name: 'Governor', icon: '⭐', level: 5, term: 4, termLimit: 2, salary: 190000, fullTime: true, minAge: 30, residency: 5, cost: 9000000, pension: 'electedOfficials', executive: true, statewide: true },
+  usSenator: { name: 'U.S. Senator', icon: '🦅', level: 5, term: 6, termLimit: 0, salary: 174000, fullTime: true, minAge: 30, residency: 3, cost: 18000000, pension: 'fers', statewide: true },
+};
+
+export const OFFICE_ORDER = ['cityCouncil', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
+
+export const ENDORSEMENTS = {
+  labor: { name: 'Labor unions', icon: '✊' },
+  veterans: { name: 'Veterans groups', icon: '🎖️' },
+  lawEnforcement: { name: 'Police & firefighter unions', icon: '🚓' },
+  party: { name: 'Party establishment', icon: '🐘' },
+  editorial: { name: 'Newspaper editorial boards', icon: '📰' },
+  bar: { name: 'State Bar Association', icon: '⚖️' },
+};

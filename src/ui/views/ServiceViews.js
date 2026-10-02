@@ -15,7 +15,10 @@ function recruitingOffice(state) {
   const rows = Object.values(BRANCHES).map((b) => {
     const enlisted = enlistmentEligibility(state, b.id, 'enlisted');
     const officer = enlistmentEligibility(state, b.id, 'officer');
-    const btn = (track, component, check, label) => button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
+    const btn = (track, component, base, label) => {
+      const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : base;
+      return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
+    };
     return `<li class="branch-row">
       <div class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${esc(b.motto)}</small></div></div>
       <div class="branch-btns">

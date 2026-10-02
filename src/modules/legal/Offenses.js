@@ -33,6 +33,14 @@ export const OFFENSES = {
   leak: { name: 'Unauthorized Disclosure of Classified Information', icon: '📰', severity: 'felony', fine: [10000, 50000], prison: [3, 10], probation: 3, jobRelated: true, federal: true },
   visaFraud: { name: 'Visa Fraud Conspiracy', icon: '🛂', severity: 'felony', fine: [20000, 80000], prison: [3, 8], probation: 3, jobRelated: true, federal: true },
   smuggling: { name: 'Smuggling via Diplomatic Pouch', icon: '🎒', severity: 'felony', fine: [10000, 50000], prison: [2, 6], probation: 2, jobRelated: true, federal: true },
+  mortgageFraud: { name: 'Mortgage Fraud', icon: '🏦', severity: 'felony', fine: [10000, 50000], prison: [1, 4], probation: 3, federal: true },
+  arson: { name: 'Arson & Insurance Fraud', icon: '🔥', severity: 'felony', fine: [10000, 50000], prison: [2, 8], probation: 3 },
+  contraband: { name: 'Smuggling Contraband into a Prison', icon: '📦', severity: 'felony', fine: [5000, 20000], prison: [1, 5], probation: 2, jobRelated: true },
+  falsifiedRecords: { name: 'Falsifying Official Records', icon: '📝', severity: 'misdemeanor', fine: [2000, 8000], probation: 2, jobRelated: true },
+  prosecutorialMisconduct: { name: 'Prosecutorial Misconduct (Brady Violation)', icon: '⚖️', severity: 'misdemeanor', fine: [5000, 20000], probation: 1, jobRelated: true },
+  campaignFinance: { name: 'Campaign Finance Fraud (Straw Donors)', icon: '🗳️', severity: 'felony', fine: [20000, 100000], prison: [1, 3], probation: 2, federal: true },
+  publicCorruption: { name: 'Honest-Services Fraud (Selling Official Acts)', icon: '💼', severity: 'felony', fine: [50000, 250000], prison: [3, 10], probation: 3, jobRelated: true, federal: true },
+  illegalLobbying: { name: 'Illegal Lobbying Contact (Revolving Door)', icon: '🚪', severity: 'misdemeanor', fine: [10000, 50000], probation: 1 },
   unfairLaborPractice: { name: 'Unfair Labor Practice (NLRB)', icon: '⚖️', severity: 'civil', fine: [10000, 60000] },
 };
 

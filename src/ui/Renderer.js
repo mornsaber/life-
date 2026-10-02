@@ -23,15 +23,23 @@ import { schoolView } from './views/SchoolView.js';
 import { moneyView } from './views/MoneyView.js';
 import { legalView } from './views/LegalView.js';
 import { militaryView, emergencyView } from './views/ServiceViews.js';
+import { homeView } from './views/HomeView.js';
+import { moveView } from './views/MoveView.js';
+import { politicsView } from './views/PoliticsView.js';
+import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
+import { homeEquity } from '../core/State.js';
 
 export const TABS = [
   { id: 'life', label: 'Life', icon: '📜' },
   { id: 'career', label: 'Career', icon: '💼' },
   { id: 'gov', label: 'Gov', icon: '🏛️' },
+  { id: 'politics', label: 'Politics', icon: '🗳️' },
   { id: 'military', label: 'Military', icon: '🎖️' },
   { id: 'emergency', label: 'Reserves', icon: '🚨' },
   { id: 'school', label: 'School', icon: '🎓' },
   { id: 'licenses', label: 'Licenses', icon: '🪪' },
+  { id: 'home', label: 'Home', icon: '🏠' },
+  { id: 'move', label: 'Move', icon: '🗺️' },
   { id: 'money', label: 'Money', icon: '💰' },
   { id: 'legal', label: 'Legal', icon: '⚖️' },
   { id: 'activities', label: 'Activities', icon: '🏃' },
@@ -59,6 +67,9 @@ export const VIEWS = {
   licenses: licensesView,
   money: moneyView,
   legal: legalView,
+  home: homeView,
+  move: moveView,
+  politics: politicsView,
   activities(state) {
     const items = ACTIVITIES.map((a) => {
       const done = Boolean(state.yearly[`activity.${a.id}`]);
@@ -158,7 +169,10 @@ export class Renderer {
       const m = state.emergency[s.id];
       if (m) parts.push(`${s.icon} ${rankOfMember(s.id, m).title}`);
     }
+    if (state.politics.office) parts.push(`🗳️ ${state.politics.office.id === 'governor' ? 'Governor' : state.politics.office.id}`.replace('cityCouncil', 'City Council').replace('stateRep', 'State Rep').replace('stateSenator', 'State Senator').replace('usRep', 'U.S. Rep').replace('usSenator', 'U.S. Senator').replace('mayor', 'Mayor').replace('judge', 'Judge'));
     if (!parts.length) parts.push(state.character.age < 18 ? '🧒 Kid' : state.retirement.retired ? '🏖️ Retired' : '🛋️ Unemployed');
+    const hs = STATUS_LABEL[housingStatus(state)];
+    parts.push(`${hs.icon} ${hs.label}`);
     return parts.map((p) => `<li>${esc(p)}</li>`).join('');
   }
 
@@ -178,6 +192,8 @@ export class Renderer {
       ${card('Money', kv([
         ['Cash', `<b class="${f.cash < 0 ? 'neg' : 'pos'}">${money(f.cash)}</b>`],
         ['Retirement', money(state.retirement.dc)],
+        state.housing.properties.length ? ['Home equity', money(homeEquity(state))] : null,
+        ['Credit', `${state.housing.credit.score}`],
         f.loans ? ['Student loans', `<span class="neg">${money(f.loans)}</span>`] : null,
         ['Net worth', `<b>${money(netWorth(state))}</b>`],
       ]), { icon: '💰' })}

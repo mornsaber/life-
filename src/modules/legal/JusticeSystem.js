@@ -19,6 +19,7 @@
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
+import { stateOf } from '../life/Regions.js';
 
 const STATUTE_OF_LIMITATIONS = 7;
 
@@ -123,7 +124,7 @@ function sentence(ctx, offenseId, { plea, abroad }) {
   const { state, rng } = ctx;
   const offense = OFFENSES[offenseId];
   const lowHalf = (range) => (plea ? rng.int(range[0], Math.round((range[0] + range[1]) / 2)) : rng.int(...range));
-  const fine = lowHalf(offense.fine);
+  const fine = Math.round(lowHalf(offense.fine) * (offenseId.toLowerCase().includes('dui') ? stateOf(state).dui.fineMult : 1));
   let prison = offense.prison ? lowHalf(offense.prison) : 0;
   const probation = offense.probation ?? 0;
   // Repeat misdemeanors and probation violations land you in jail.
@@ -265,7 +266,10 @@ export function justiceTick(ctx) {
   legal.investigations = [];
   let charged = false;
   for (const inv of open) {
-    if (!charged && rng.chance(inv.discovery)) {
+    let discovery = inv.discovery;
+    // Revenue departments audit their own staff, and income-tax states audit harder.
+    if (inv.offenseId === 'taxEvasion') discovery *= (stateOf(state).incomeTax.length ? 1.3 : 1) * (state.career.job?.professionId === 'revenue' ? 3 : 1);
+    if (!charged && rng.chance(discovery)) {
       charged = true;
       ctx.log(`Investigators uncovered your past misconduct: ${OFFENSES[inv.offenseId].name}${inv.context ? ` (${inv.context})` : ''}.`, '🕵️', 'bad');
       if (OFFENSES[inv.offenseId].jobRelated && state.career.job) ctx.emit('career:resign', { reason: 'Terminated pending criminal investigation', fired: true });

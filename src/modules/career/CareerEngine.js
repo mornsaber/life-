@@ -17,7 +17,7 @@ import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
-import { resetBudget } from './Employers.js';
+import { resetBudget, resolveDutyStation } from './Employers.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
 import { educationFields } from '../education/Catalog.js';
@@ -88,6 +88,8 @@ export function applicationEligibility(state, professionId) {
   if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.military.service?.component === 'active') return { ok: false, reason: 'On active duty' };
+  if (state.politics.office?.fullTime) return { ok: false, reason: 'You hold full-time elected office' };
+  if (profession.sector === 'federal' && state.politics.campaign) return { ok: false, reason: 'Hatch Act: you\'re running for office' };
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
   const entry = checkRequirements(state, profession.entry);
   if (!entry.ok) return { ok: false, reason: `Needs ${entry.missing.join(', ')}` };
@@ -138,7 +140,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   const { state } = ctx;
   if (state.career.job) leaveJob(ctx, 'Resigned for a new opportunity');
   const profession = getProfession(professionId);
-  if (profession.dutyStation) ctx.emit('region:relocate', { regionId: profession.dutyStation, reason: `${employer.name} assigned you a duty station with government housing.` });
+  const station = resolveDutyStation(ctx.rng, profession, state.character.regionId);
+  if (station) ctx.emit('region:relocate', { regionId: station, reason: `${employer.name} assigned your duty station${employer.benefits.housing ? ' (government housing provided)' : ''}.` });
 
   const level = levelById(profession, levelId);
   const job = {
@@ -210,8 +213,10 @@ export function promotionStatus(state) {
   if (!job) return { eligible: false, reason: 'Unemployed', options: [], all: [] };
   const profession = getProfession(job.professionId);
   const level = levelById(profession, job.levelId);
-  const all = nextLevels(profession, job.employer.size, job.levelId);
-  if (!all.length) return { eligible: false, reason: 'Top of the ladder here', options: [], all };
+  const next = nextLevels(profession, job.employer.size, job.levelId);
+  const all = next.filter((l) => !l.appointed);
+  if (!next.length) return { eligible: false, reason: 'Top of the ladder here', options: [], all };
+  if (!all.length) return { eligible: false, reason: 'The next post is a gubernatorial appointment', options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
   if (job.yearsInLevel < level.years) {
     const left = level.years - job.yearsInLevel;
@@ -366,6 +371,11 @@ export function careerOnAgeUp(ctx) {
   } else if (job.performance < 35) {
     job.warnings += 1;
     job.lowYears += 1;
+    if (job.abilities.includes('tenure')) {
+      job.warnings = Math.min(job.warnings, 1);
+      ctx.log(`Annual review: ${rating}. Tenure protects your position.`, '🎓', 'warn');
+      return;
+    }
     // Sustained low performance: demotion first, termination when there's nowhere lower to go.
     if (job.lowYears >= 2 && demote(ctx, `rated ${rating} two years running`)) return;
     if (job.warnings >= grievanceLimit || (job.performance < 12 && rng.chance(0.5))) {

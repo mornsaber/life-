@@ -34,6 +34,18 @@ export const PENSION_PLANS = {
     eligible: (age, years) => (age >= 50 && years >= 20) || years >= 25,
     rule: '50 w/20 yrs · any age w/25 — no Social Security',
   },
+  stateGov: {
+    name: 'State Employees Retirement System', short: 'SERS', vest: 5, cap: 0.75, cola: 0.015, normalAge: 62, ssCovered: true,
+    multiplier: () => 0.0185,
+    eligible: (age, years) => (age >= 62 && years >= 5) || (age >= 55 && years >= 30),
+    rule: '62 w/5 yrs · 55 w/30',
+  },
+  electedOfficials: {
+    name: 'Elected Officials Retirement Plan', short: 'EORP', vest: 6, cap: 0.8, cola: 0.02, normalAge: 60, ssCovered: true,
+    multiplier: () => 0.03,
+    eligible: (age, years) => (age >= 60 && years >= 6) || (age >= 55 && years >= 12),
+    rule: '60 w/6 yrs · 55 w/12',
+  },
   teachers: {
     name: 'State Teachers Retirement System', short: 'STRS', vest: 5, cap: 0.8, cola: 0.015, normalAge: 60, ssCovered: true,
     multiplier: () => 0.02,

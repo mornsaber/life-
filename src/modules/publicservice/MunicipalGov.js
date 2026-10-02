@@ -213,7 +213,7 @@ export const MunicipalGov = {
 
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx, job }) => {
-      if (job.sector !== 'municipal' && job.sector !== 'state') {
+      if (job.sector !== 'municipal') {
         ctx.state.publicService.city = null;
         return;
       }
@@ -221,6 +221,12 @@ export const MunicipalGov = {
       const existing = ctx.state.publicService.city;
       if (existing?.employerName === name) return;
       ctx.state.publicService.city = { name: job.employer.cityName ?? name, employerName: name, approval: ctx.rng.int(40, 65), fiscalHealth: ctx.rng.int(40, 70) };
+    });
+    engine.bus.on('disaster:struck', ({ ctx, disaster }) => {
+      const city = ctx.state.publicService.city;
+      if (!city) return;
+      city.fiscalHealth = Math.max(0, city.fiscalHealth - disaster.severity * 8);
+      ctx.log(`${disaster.name} blew a hole in ${city.name}'s budget.`, '🏛️', 'warn');
     });
     engine.bus.on('career:separated', ({ ctx }) => {
       ctx.state.publicService.city = null;
