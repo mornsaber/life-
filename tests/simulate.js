@@ -59,7 +59,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -114,6 +114,18 @@ function checkInvariants(state) {
   for (const a of [inv.ira.roth.value, inv.ira.roth.basis, inv.ira.traditional.value, state.retirement.dc]) assert.ok(Number.isFinite(a) && a >= 0, 'retirement accounts finite');
   assert.ok(PROFILES[inv.auto.profile] && DC_FUNDS[state.retirement.dcFund], 'profiles');
   assert.ok(Number.isFinite(netWorth(state)), 'net worth finite');
+  const hl = state.health;
+  const seen = new Set();
+  for (const c of hl.conditions) {
+    assert.ok(CONDITIONS[c.id], `condition ${c.id}`);
+    assert.ok(!seen.has(c.id), `duplicate condition ${c.id}`);
+    seen.add(c.id);
+    assert.ok(Number.isInteger(c.severity) && c.severity >= 0 && c.severity <= 100, `severity ${c.id}`);
+    assert.ok(!(c.treated && c.remission), `treated+remission ${c.id}`);
+    assert.ok(!(c.treated && !c.diagnosed), `treated but undiagnosed ${c.id}`);
+  }
+  assert.ok(Number.isFinite(hl.medicalDebt) && hl.medicalDebt >= 0, 'medical debt');
+  assert.ok(hl.trauma >= 0 && [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(hl.va.rating), 'trauma / VA rating');
 }
 
 function act(id, arg) {
@@ -237,6 +249,8 @@ for (let life = 0; life < LIVES; life++) {
   let peakNetWorth = 0;
   // A third of lives play as disciplined investors: auto-invest on from the first job, Roth every year.
   const investor = life % 3 === 0;
+  let combat = false;
+  let responder = false;
   while (state.character.alive) {
     randomActions(state);
     if (investor && state.career.job && state.character.age >= 18) {
@@ -249,6 +263,8 @@ for (let life = 0; life < LIVES; life++) {
     checkInvariants(state);
     if (state.career.job?.department) managed = true;
     if (state.investing.auto.enabled) autoYears += 1;
+    if (state.military.service?.combatTours) combat = true;
+    if (['police', 'statePolice', 'fire', 'ems', 'corrections'].includes(state.career.job?.professionId) || Object.values(state.emergency).some((m) => m?.calls >= 10)) responder = true;
     peakNetWorth = Math.max(peakNetWorth, netWorth(state));
     if (years % 7 === 0 || state.prompts.length) renderAll(state);
     if (state.career.job?.professionId === 'foreignService') totals.fso += 1;
@@ -274,6 +290,12 @@ for (let life = 0; life < LIVES; life++) {
   if ([...state.politics.history.map((h) => h.officeId), state.politics.office?.id].includes('governor')) totals.governors += 1;
   if (state.housing.homelessYears) totals.homeless += 1;
   if (peakNetWorth >= 1e6) totals.millionaires += 1;
+  const group = totals.ptsd[combat ? 'combat' : responder ? 'responder' : 'other'];
+  group[1] += 1;
+  if (state.health.conditions.some((c) => c.id === 'ptsd')) group[0] += 1;
+  if (state.health.history.some((e) => /disability/.test(e.text))) totals.onDisability += 1;
+  if (state.health.va.rating) totals.vaRated += 1;
+  if (state.health.rehabs) totals.rehab += 1;
   if (investor && autoYears >= 20) {
     totals.investors += 1;
     if (peakNetWorth >= 1e6) totals.investorMillionaires += 1;
@@ -296,6 +318,8 @@ console.log(`  avg credentials ${(totals.credentials / LIVES).toFixed(1)}, avg d
 console.log(`  convictions ${totals.convictions}, lives with prison ${totals.prison}, immunity prompts ${totals.immunity}, FSO-years ${totals.fso}`);
 console.log(`  economy: a recession every ${(totals.econYears / Math.max(1, totals.recessions)).toFixed(1)} yrs, ${totals.layoffs} layoffs`);
 console.log(`  investing: ${totals.millionaires} lives peaked as millionaires (${((totals.millionaires / LIVES) * 100).toFixed(0)}%); disciplined investors ${totals.investorMillionaires}/${totals.investors} (${((totals.investorMillionaires / Math.max(1, totals.investors)) * 100).toFixed(0)}%)`);
+const rate = ([n, d]) => `${n}/${d} (${((n / Math.max(1, d)) * 100).toFixed(0)}%)`;
+console.log(`  health: PTSD combat ${rate(totals.ptsd.combat)}, first responders ${rate(totals.ptsd.responder)}, others ${rate(totals.ptsd.other)}; disability ${totals.onDisability}, VA-rated ${totals.vaRated}, rehab ${totals.rehab}`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);

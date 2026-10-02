@@ -137,7 +137,7 @@ function resolveDispatch(ctx, data, optionId) {
   if (member.k9 && option.cert === 'k9Handler') chance += 0.05;
   const success = rng.chance(clamp(chance, 0.05, 0.97));
   member.calls += 1;
-  ctx.emit('health:trauma', { amount: (option.risk ?? 0) >= 0.4 || !success ? 6 : 3, source: 'dispatch' });
+  ctx.emit('health:trauma', { amount: (option.risk ?? 0) >= 0.4 || !success ? 4 : 2, source: 'dispatch' });
 
   if (success) {
     member.xp += option.xp;

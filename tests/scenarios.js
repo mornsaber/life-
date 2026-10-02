@@ -17,12 +17,14 @@ import { hasCredential, findSponsor } from '../src/modules/credentials/Licensing
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
 import { planStatus } from '../src/modules/retirement/RetirementEngine.js';
 import { salaryBreakdown } from '../src/modules/career/PayGrades.js';
-import { changeRegion } from '../src/modules/life/Regions.js';
+import { changeRegion, REGIONS } from '../src/modules/life/Regions.js';
 import { stateIncomeTax } from '../src/modules/life/States.js';
 import { quote } from '../src/modules/realestate/MortgageSystem.js';
 import { annualTuition } from '../src/modules/education/EducationEngine.js';
 import { Finances } from '../src/modules/life/Finances.js';
 import { BrokerageEngine } from '../src/modules/investing/index.js';
+import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
+import { discharge } from '../src/modules/military/MilitaryEngine.js';
 
 const memory = () => {
   const m = new Map();
@@ -365,6 +367,99 @@ const tests = {
     state.finances.cash = -10000;
     BrokerageEngine.onAgeUp(ctx);
     assert.ok(state.finances.cash >= 0, 'debt covered');
+  },
+
+  'coverage follows circumstance: parent plan, employer, Medicaid, marketplace, Medicare'() {
+    const { engine, state } = setup(31, 22);
+    state.character.regionId = Object.keys(REGIONS).find((id) => REGIONS[id].state === 'NY');
+    assert.equal(coverageId(state, 30000), 'parents');
+    state.character.age = 30;
+    assert.equal(coverageId(state, 15000), 'medicaid');
+    assert.equal(coverageId(state, 60000), 'marketplace');
+    state.health.marketplace = false;
+    assert.equal(coverageId(state, 60000), 'none');
+    giveJob(engine, 'nursing', 'rn');
+    assert.equal(coverageId(state, 60000), 'employer');
+    state.career.job = null;
+    state.character.age = 66;
+    assert.equal(coverageId(state, 60000), 'medicare');
+    state.character.age = 40;
+    state.character.regionId = Object.keys(REGIONS).find((id) => REGIONS[id].state === 'TX');
+    assert.equal(coverageId(state, 15000), 'none', 'no Medicaid expansion in Texas');
+  },
+
+  'uninsured medical bills become debt that can be discharged in bankruptcy'() {
+    const { engine, state } = setup(32, 35);
+    state.health.marketplace = false;
+    state.finances.cash = 2000;
+    state.finances.lastYear = { gross: 30000, ltcg: 0 };
+    const ctx = engine.context();
+    const oop = medicalBill(ctx, 90000, 'Emergency surgery');
+    assert.equal(oop, 90000);
+    assert.equal(state.finances.cash, 0);
+    assert.equal(state.health.medicalDebt, 88000);
+    state.prompts = [];
+    state.yearly = {};
+    HealthEngine.onAgeUp(ctx);
+    state.prompts = state.prompts.filter((p) => p.type === 'health.bankruptcy');
+    resolve(engine, 'health.bankruptcy', 'file');
+    assert.equal(state.health.medicalDebt, 0);
+    assert.equal(state.finances.bankruptcies, 1);
+    assert.ok(state.housing.credit.events.some((e) => e.type === 'bankruptcy'));
+  },
+
+  'combat trauma leads to service-connected PTSD and a VA rating at separation'() {
+    const { engine, state } = setup(33, 20);
+    engine.dispatch('military.enlist', 'army:enlisted:active');
+    resolve(engine, 'military.chooseSpecialty', 'logistics');
+    state.prompts = [];
+    assert.ok(state.military.service, 'enlisted');
+    const ctx = engine.context();
+    ctx.emit('health:trauma', { amount: 90, source: 'combat' });
+    let ptsd;
+    for (let i = 0; i < 25 && !(ptsd = getCondition(state, 'ptsd')); i++) {
+      state.health.trauma = 90;
+      state.health.serviceTrauma = 90;
+      HealthEngine.onAgeUp(ctx);
+      state.prompts = [];
+    }
+    assert.ok(ptsd, 'PTSD developed');
+    assert.ok(ptsd.serviceConnected);
+    ptsd.severity = 75;
+    discharge(ctx, 'honorable', 'Contract complete.');
+    assert.ok(state.health.va.rating >= 50, `rating ${state.health.va.rating}`);
+    assert.ok(state.retirement.pensions.some((p) => p.id === 'va' && p.annual > 10000));
+  },
+
+  'addiction suspends a nursing license; completing rehab reinstates it'() {
+    const { engine, state } = setup(34, 30);
+    const ctx = engine.context();
+    state.credentials.held.rn = { earnedAge: 24, status: 'active', renewedAge: 28, states: [state.character.regionId ? 'TX' : 'TX'] };
+    addCondition(ctx, 'opioids', { severity: 60 });
+    ctx.emit('credential:suspend', { ids: ['rn'], years: 3, reason: 'test' });
+    state.health.boardSuspended = ['rn'];
+    assert.equal(state.credentials.held.rn.status, 'suspended');
+    state.finances.cash = 100000;
+    for (let i = 0; i < 12 && getCondition(state, 'opioids').remission === false; i++) {
+      state.yearly = {};
+      engine.dispatch('health.rehab', 'opioids');
+    }
+    assert.ok(getCondition(state, 'opioids').remission, 'in recovery');
+    assert.equal(state.credentials.held.rn.status, 'active');
+  },
+
+  'a firefighter with severe heart disease faces fitness-for-duty and can take a disability retirement'() {
+    const { engine, state } = setup(35, 45);
+    giveJob(engine, 'fire', engine.state && 'firefighter');
+    const ctx = engine.context();
+    state.retirement.plans.policeFire = { years: 15, salaries: [70000, 72000, 75000], employers: [], started: false };
+    addCondition(ctx, 'heartDisease', { severity: 85, diagnosed: true });
+    state.prompts = [];
+    state.yearly = {};
+    HealthEngine.onAgeUp(ctx);
+    resolve(engine, 'health.duty', 'retire');
+    assert.equal(state.career.job, null);
+    assert.ok(state.retirement.pensions.some((p) => p.id === 'disability_policeFire' && p.annual > 25000));
   },
 
   'evicted young adults move back in with family or get vouchers'() {

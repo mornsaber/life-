@@ -265,6 +265,7 @@ export function discharge(ctx, type, reason) {
     rankTitle: rank.title,
     yearsOfService: svc.yearsOfService,
     deployments: svc.deployments,
+    combatTours: svc.combatTours,
     startAge: svc.joinedAge,
     endAge: state.character.age,
     discharge: type,

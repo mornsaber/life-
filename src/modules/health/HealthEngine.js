@@ -25,7 +25,7 @@ import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
-export const OCCUPATIONAL_TRAUMA = { police: 5, statePolice: 5, fire: 5, ems: 6, corrections: 5, cps: 5, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
+export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
 
 /** Jobs with fitness-for-duty standards, and the medical standard each uses. */
 export const DUTY_STANDARD = { police: 'protective', statePolice: 'protective', fire: 'protective', ems: 'protective', corrections: 'protective', gameWarden: 'protective', aviation: 'faa', trucking: 'dot' };
@@ -94,7 +94,7 @@ function onsetChance(state, id, h) {
     case 'asthma': return age < 12 ? 0.005 : 0;
     case 'depression': return age < 13 ? 0 : 0.003 + (happiness < 35 ? 0.02 : 0) + (stress > 75 ? 0.012 : 0) + (state.housing.homelessYears ? 0.02 : 0) + (isIncarcerated(state) ? 0.02 : 0);
     case 'anxiety': return age < 13 ? 0 : 0.003 + (stress > 65 ? 0.015 : 0);
-    case 'ptsd': return h.trauma <= 22 ? 0 : Math.min(0.3, (h.trauma - 22) * 0.0045) * (happiness > 70 ? 0.7 : 1);
+    case 'ptsd': return h.trauma <= 30 ? 0 : Math.min(0.25, (h.trauma - 30) * 0.003) * (happiness > 70 ? 0.7 : 1);
     case 'alcohol': return age < 16 ? 0 : 0.0025 + (stress > 75 ? 0.006 : 0) + (has('ptsd') ? 0.03 : 0) + (has('depression') ? 0.01 : 0);
     case 'opioids': return age < 16 ? 0 : 0.0005 + (has('backInjury') ? 0.012 : 0) + (has('ptsd') ? 0.004 : 0);
     case 'gambling': return age < 18 ? 0 : 0.0015;

@@ -634,3 +634,10 @@ select:focus { outline: none; border-color: var(--cyan); }
 .move-head small { color: var(--muted); }
 .move-stats { display: flex; flex-wrap: wrap; gap: 4px; }
 .move-stats .chip { font-size: 11px; padding: 2px 7px; }
+
+/* Health: condition rows */
+.cond-row { display: grid; grid-template-columns: 1fr minmax(110px, 160px) auto; gap: 4px 12px; align-items: center; }
+.cond-row .cond-name { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
+.cond-row .cond-name .chip { flex: 0 0 auto; }
+.cond-row > small { grid-column: 1 / -1; color: var(--muted); }
+@media (max-width: 560px) { .cond-row { grid-template-columns: 1fr auto; } .cond-row .meter { grid-column: 1 / -1; } }

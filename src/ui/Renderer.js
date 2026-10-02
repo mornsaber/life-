@@ -26,6 +26,7 @@ import { militaryView, emergencyView } from './views/ServiceViews.js';
 import { homeView } from './views/HomeView.js';
 import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
+import { healthView } from './views/HealthView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
@@ -41,6 +42,7 @@ export const TABS = [
   { id: 'licenses', label: 'Licenses', icon: '🪪' },
   { id: 'home', label: 'Home', icon: '🏠' },
   { id: 'move', label: 'Move', icon: '🗺️' },
+  { id: 'health', label: 'Health', icon: '🩺' },
   { id: 'money', label: 'Money', icon: '💰' },
   { id: 'legal', label: 'Legal', icon: '⚖️' },
   { id: 'activities', label: 'Activities', icon: '🏃' },
@@ -67,6 +69,7 @@ export const VIEWS = {
   school: schoolView,
   licenses: licensesView,
   money: moneyView,
+  health: healthView,
   legal: legalView,
   home: homeView,
   move: moveView,
