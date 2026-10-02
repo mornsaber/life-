@@ -201,9 +201,22 @@ export function promotionOutlook(svc) {
   return { eligible: true };
 }
 
+/** Officer grades where two non-selections end a career (O-2→O-3, O-3→O-4, O-4→O-5). */
+const UP_OR_OUT = [1, 2, 3];
+
+function notSelected(ctx, svc) {
+  if (svc.track !== 'officer' || !UP_OR_OUT.includes(svc.grade)) return;
+  svc.passovers = (svc.passovers ?? 0) + 1;
+  if (svc.passovers < 2) ctx.log(`Not selected for ${rankTitles(svc)[svc.grade + 1]} (1/2). A second non-selection means separation.`, '📋', 'warn');
+}
+
 export function tryPromotion(ctx, svc) {
   const outlook = promotionOutlook(svc);
-  if (!outlook.eligible) return false;
+  if (!outlook.eligible) {
+    // In the zone but not competitive: the board still meets, and passes you over.
+    if (svc.grade < rankTitles(svc).length - 1 && svc.yearsInGrade >= timeInGradeRequired(svc)) notSelected(ctx, svc);
+    return false;
+  }
   const flagBoard = svc.track === 'officer' && svc.grade >= 5;
   if (flagBoard && (svc.flagPassovers ?? 0) >= 3) return false;
   let chance = 0.55 + (svc.eval - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
@@ -212,12 +225,14 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.6;
   if (!ctx.rng.chance(clamp(chance, 0.02, 0.95))) {
     if (flagBoard) svc.flagPassovers = (svc.flagPassovers ?? 0) + 1;
+    notSelected(ctx, svc);
     ctx.log(`The promotion board passed you over for ${rankTitles(svc)[svc.grade + 1]}.${flagBoard && svc.flagPassovers >= 3 ? ' You will not be considered again.' : ''}`, '📋', 'warn');
     return false;
   }
   svc.grade += 1;
   svc.yearsInGrade = 0;
   svc.flagPassovers = 0;
+  svc.passovers = 0;
   const rank = rankOf(svc);
   ctx.log(`Promoted to ${rank.title} (${rank.code})!`, '⬆️', 'good');
   ctx.toast(`Promoted: ${rank.title}`, 'good');

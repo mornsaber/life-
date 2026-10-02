@@ -1,12 +1,13 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
-import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
 import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, annualActivePay, DISCHARGE_LABEL, RETIREMENT_YEARS,
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
+import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
 import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember } from '../../modules/emergency/EmergencyEngine.js';
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
@@ -31,12 +32,26 @@ function recruitingOffice(state) {
   return card('Recruiting Office', `<p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
 }
 
+/** Inter-service transfer: pick a branch; the odds are shown because they're low. */
+function transferForm(state) {
+  const svc = state.military.service;
+  const options = Object.values(BRANCHES).filter((b) => b.id !== svc.branch).map((b) => {
+    const check = transferEligibility(state, b.id);
+    return { value: b.id, label: `${b.icon} ${b.name} — ${check.ok ? `${Math.round(transferChance(state, b.id) * 100)}% odds` : check.reason}` };
+  });
+  return `<h4 class="sub">Inter-service transfer</h4><p class="fine">Needs a conditional release from your current service. Enlisted members usually lose a grade; you start a new obligation.</p>
+    <div class="enroll-form" data-collect-root>${select('branch', options)}${button('🔀 Request transfer', 'military.transferBranch', { variant: 'small', collect: true, disabled: Boolean(state.yearly['military.transferBranch']) })}</div>`;
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
     ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${BRANCHES[h.branch].icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${BRANCHES[h.branch].name} ${h.component === 'reserve' ? 'Reserve' : ''} <small>age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
-  if (!svc) return `${recruitingOffice(state)}${history}`;
+  const deserter = state.military.deserter
+    ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
+    : '';
+  if (!svc) return `${deserter}${recruitingOffice(state)}${history}`;
 
   const branch = BRANCHES[svc.branch];
   const rank = rankOf(svc);
@@ -56,6 +71,7 @@ export function militaryView(state) {
           ['Deployments', `${svc.deployments} (${svc.combatTours} combat)`],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
           svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}</span>`] : null,
+          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}max ${serviceLimit(svc)} yrs at this grade${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
         ])}
       </div>
     </div>
@@ -69,7 +85,9 @@ export function militaryView(state) {
       ${svc.track === 'enlisted' ? button('🎓 Apply to OCS', 'military.applyOCS', { hint: hasBachelor ? 'Become an officer' : "Needs bachelor's", disabled: !hasBachelor }) : ''}
       ${button(svc.component === 'active' ? '🏡 Transfer to Reserves' : '🪖 Go Active Duty', 'military.switchComponent', { hint: svc.yearsOfService < 2 ? 'After 2 yrs' : 'Resets contract', disabled: svc.yearsOfService < 2 })}
       ${button('🎖️ Retire', 'military.retire', { hint: `${RETIREMENT_YEARS}+ yrs · ×${pensionMultiplier(state).toFixed(2)} pension`, disabled: svc.yearsOfService < RETIREMENT_YEARS })}
+      ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
+    ${transferForm(state)}
     <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${history}`;
 }
 

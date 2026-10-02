@@ -49,11 +49,11 @@ function hasImmunity(state, offense) {
  * investigation opens with `discovery` chance per year until the statute of
  * limitations runs out.
  */
-export function commitOffense(ctx, { offenseId, context = '', caught = false, discovery = 0.2, evidence = 0.75 }) {
+export function commitOffense(ctx, { offenseId, context = '', caught = false, discovery = 0.2, evidence = 0.75, yearsLeft = STATUTE_OF_LIMITATIONS }) {
   const { state } = ctx;
   const abroad = Boolean(state.career.job?.posting);
   if (caught) return charge(ctx, { offenseId, context, evidence, abroad });
-  state.legal.investigations.push({ offenseId, context, discovery, evidence, abroad, yearsLeft: STATUTE_OF_LIMITATIONS });
+  state.legal.investigations.push({ offenseId, context, discovery, evidence, abroad, yearsLeft });
 }
 
 export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = false }) {

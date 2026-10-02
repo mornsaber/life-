@@ -156,6 +156,13 @@ function checkInvariants(state) {
   assert.ok(!k.job || (TEEN_JOBS[k.job.id] && state.character.age < 18), 'teen job');
   assert.ok(!(k.dropout && state.education.degrees.some((d) => d.type === 'highschool' && d.programId !== 'ged')), 'dropout with a diploma');
   assert.ok(state.education.degrees.filter((d) => d.type === 'highschool' || d.type === 'ged').length <= 1, 'one diploma');
+  const svcNow = state.military.service;
+  if (svcNow) {
+    assert.ok(BRANCHES[svcNow.branch] && Number.isInteger(svcNow.grade) && svcNow.grade >= 0 && svcNow.grade < BRANCHES[svcNow.branch][svcNow.track].length, 'military grade');
+    assert.ok(!(BRANCHES[svcNow.branch].reserveOnly && svcNow.component === 'active'), 'active Guard');
+    assert.ok((svcNow.passovers ?? 0) >= 0 && (svcNow.passovers ?? 0) <= 2, 'passovers');
+  }
+  assert.ok(!(state.military.deserter && svcNow), 'deserter still serving');
   assert.ok(!(state.career.leave && state.career.job), 'military leave and a job at once');
   assert.ok(!state.career.leave || state.career.leave.job?.employer, 'military leave holds a job');
   assert.ok(!state.career.job || state.career.job.probationLeft == null || state.career.job.probationLeft >= 0, 'probation');
@@ -221,6 +228,8 @@ function randomActions(state) {
     tries.push(() => act('military.enlist', `${player.pick(Object.keys(BRANCHES))}:${player.pick(['enlisted', 'officer'])}:${player.pick(['active', 'reserve'])}`));
   }
   if (state.military.service) tries.push(() => act(`military.${player.pick(['pt', 'extraDuty', 'requestDeployment', 'applyOCS', 'switchComponent', 'retire'])}`));
+  if (state.military.service && player.chance(0.05)) tries.push(() => act('military.transferBranch', player.pick(Object.keys(BRANCHES))));
+  if (state.military.service && player.chance(0.02)) tries.push(() => act('military.leaveService'));
   for (const id of Object.keys(SERVICES)) {
     if (!state.emergency[id] && player.chance(0.06)) tries.push(() => act('emergency.join', id));
     if (state.emergency[id]) {

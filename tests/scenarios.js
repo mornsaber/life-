@@ -29,6 +29,8 @@ const PeopleEngineOnAgeUp = (ctx) => PeopleEngine.onAgeUp(ctx);
 import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
 import { discharge } from '../src/modules/military/MilitaryEngine.js';
+import { charge } from '../src/modules/legal/JusticeSystem.js';
+import { separationPay } from '../src/modules/military/Separation.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1004,6 +1006,69 @@ const tests = {
     fed.state.prompts = [];
     fed.engine.ageUp();
     assert.equal(fed.state.retirement.retired, true, 'mandatory retirement at 57');
+  },
+
+  'military up-or-out: twice passed-over officers and enlisted past high-year tenure are separated'() {
+    const join = (seed, arg) => {
+      const t = setup(seed, 30);
+      t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22, gpa: 3.2 });
+      t.engine.dispatch('military.enlist', arg);
+      const p = t.state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+      t.engine.resolvePrompt(p.id, 'logistics');
+      return t;
+    };
+    const o = join(61, 'army:officer:active');
+    const svc = o.state.military.service;
+    Object.assign(svc, { grade: 2, yearsInGrade: 5, yearsOfService: 9, eval: 5, contractYearsLeft: 9, isNew: false, stationYears: 0 });
+    o.engine.rng.chance = (p) => (p >= 0.5 ? false : false);
+    for (let y = 0; y < 3 && o.state.military.service; y++) {
+      o.state.prompts = [];
+      o.state.military.service.eval = 5;
+      o.state.stats.fitness = 1;
+      o.engine.ageUp();
+    }
+    assert.equal(o.state.military.service, null, 'separated');
+    const rec = o.state.military.history.at(-1);
+    assert.equal(rec.discharge, 'honorable');
+    assert.match(rec.reason, /up-or-out/);
+    assert.ok(separationPay({ yearsOfService: 10, track: 'officer', grade: 2, component: 'active' }) > 50000, 'separation pay: 10% × years × base pay');
+    assert.equal(separationPay({ yearsOfService: 4, track: 'officer', grade: 2, component: 'active' }), 0, 'none under 6 years');
+
+    const e = join(62, 'army:enlisted:active');
+    Object.assign(e.state.military.service, { grade: 3, yearsInGrade: 1, yearsOfService: 9, eval: 30, contractYearsLeft: 3, isNew: false, stationYears: 0 });
+    e.state.prompts = [];
+    e.engine.ageUp();
+    assert.equal(e.state.military.service, null, 'high-year tenure for a Specialist');
+    assert.match(e.state.military.history.at(-1).reason, /high-year tenure/);
+  },
+
+  'inter-service transfers are hard and usually cost a stripe; deserters face court-martial'() {
+    const t = setup(63, 26);
+    t.engine.dispatch('military.enlist', 'army:enlisted:active');
+    const p = t.state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+    t.engine.resolvePrompt(p.id, 'logistics');
+    const svc = t.state.military.service;
+    Object.assign(svc, { grade: 4, yearsOfService: 3, eval: 80, isNew: false });
+    t.engine.rng.chance = () => true;
+    t.engine.dispatch('military.transferBranch', 'navy');
+    assert.equal(svc.branch, 'navy');
+    assert.equal(svc.grade, 3, 'reduced one grade');
+    t.engine.dispatch('military.transferBranch', 'army');
+    assert.equal(svc.branch, 'navy', 'one request a year');
+
+    t.engine.dispatch('military.leaveService');
+    const leave = t.state.prompts.find((x) => x.type === 'military.leaveService');
+    t.engine.resolvePrompt(leave.id, 'desert');
+    assert.equal(t.state.military.service, null);
+    assert.equal(t.state.military.history.at(-1).discharge, 'oth');
+    const inv = t.state.legal.investigations.find((i) => i.offenseId === 'desertion');
+    assert.ok(inv && inv.yearsLeft > 50, 'no statute of limitations');
+    assert.ok(t.state.military.deserter);
+    charge(t.engine.context(), { offenseId: 'desertion', context: 'caught', evidence: 0.95 });
+    const court = t.state.prompts.find((x) => x.type === 'legal.court');
+    t.engine.resolvePrompt(court.id, 'plead');
+    assert.equal(t.state.military.history.at(-1).discharge, 'dishonorable', 'court-martial upgrades to dishonorable');
+    assert.equal(t.state.military.deserter, null);
   },
 
   'evicted young adults move back in with family or get vouchers'() {

@@ -3,6 +3,7 @@
  * combat / duty scenarios. Deployments are shared with the Reserves (a
  * mobilized reservist deploys exactly like an active-duty member).
  */
+import { upOrOut } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
@@ -481,11 +482,11 @@ export function openContractReview(ctx, svc) {
     ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
     : [
         { id: 'reenlist', label: `✍️ ${svc.track === 'officer' ? 'Continue service' : 'Re-enlist'} (${svc.component === 'active' ? 4 : 6} yrs)`, hint: svc.track === 'enlisted' && svc.eval >= 60 ? 'Bonus eligible' : undefined },
-        { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'You will resign your civilian job' : undefined },
+        BRANCHES[svc.branch].reserveOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
         svc.yearsOfService >= RETIREMENT_YEARS
           ? { id: 'retire', label: `🎖️ Retire (${svc.yearsOfService} yrs)` }
           : { id: 'separate', label: '🎗️ Separate from service' },
-      ];
+      ].filter(Boolean);
   ctx.prompt({
     type: 'military.contractEnd',
     icon: '📜',
@@ -541,6 +542,7 @@ export function activeDutyTick(ctx, svc) {
 
   annualReview(ctx, svc);
   tryPromotion(ctx, svc);
+  if (upOrOut(ctx, svc)) return;
   if (svc.contractYearsLeft <= 0 || svc.yearsOfService >= 30 || ctx.state.character.age >= 62) openContractReview(ctx, svc);
 }
 

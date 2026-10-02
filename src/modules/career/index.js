@@ -45,7 +45,7 @@ export const CareerModule = {
     bus.on('career:militaryLeave', ({ ctx, reason }) => startMilitaryLeave(ctx, reason));
     bus.on('military:discharged', ({ ctx, type }) => {
       if (!ctx.state.career.leave) return;
-      if (type === 'dishonorable') endMilitaryLeave(ctx, 'A dishonorable discharge ended your reemployment rights');
+      if (type === 'dishonorable' || type === 'oth') endMilitaryLeave(ctx, 'Your discharge characterization ended your reemployment rights');
       else offerReturn(ctx);
     });
     bus.on('military:releasedFromActive', ({ ctx }) => offerReturn(ctx));

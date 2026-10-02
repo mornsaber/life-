@@ -16,7 +16,7 @@ export const LegalModule = {
   },
 
   setup(engine) {
-    engine.bus.on('legal:offense', ({ ctx, offenseId, context, caught, discovery, evidence }) => commitOffense(ctx, { offenseId, context, caught, discovery, evidence }));
+    engine.bus.on('legal:offense', ({ ctx, offenseId, context, caught, discovery, evidence, yearsLeft }) => commitOffense(ctx, { offenseId, context, caught, discovery, evidence, yearsLeft }));
   },
 
   guard(state, actionId) {

@@ -11,6 +11,7 @@
  *   escalate:   { after: n, to: offenseId } repeat offenders get charged harder
  */
 export const OFFENSES = {
+  desertion: { name: 'Desertion (UCMJ Art. 85)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 3], probation: 1, federal: true },
   trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
   underageDrinking: { name: 'Minor in Possession of Alcohol', icon: '🍻', severity: 'infraction', fine: [200, 600] },
   speeding: { name: 'Speeding', icon: '🚨', severity: 'infraction', fine: [150, 450] },
