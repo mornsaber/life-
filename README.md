@@ -1,33 +1,46 @@
 # LIFE//SIM
 
-A deep, text-based life simulator inspired by BitLife. It adds 7-tier career ladders, military service with a medal engine, volunteer and reserve emergency services that run alongside your day job, and (coming next) higher education and real estate.
+A deep, text-based life simulator inspired by BitLife: careers on real pay grades, public service and politics, military service with medals, volunteer emergency reserves, education and campus life, housing, health, investing — balanced against real-world data.
 
 Pure ES modules, zero dependencies, no build step. Every click updates the screen right away, with no added delay.
 
 ## Run it
 
 ```bash
-npm start        # → http://localhost:8080
-npm test         # headless: simulates 300 full lives and checks state invariants
+npm start                    # → http://localhost:8080
+npm test                     # headless: simulates 300 full lives and checks state invariants
+node tests/scenarios.js      # deterministic mechanics
+node tests/saves.js          # save slots, export/import, migration of real saves from every past version
+node tests/content.js        # event-pool lint (unique ids, pickable options, valid references)
+node tests/balance.js 4000   # thousands of plausible lives vs. real-world reference bands (all cores)
 ```
 
 You need Node 18+ for the dev server and the tests. The browser won't load ES modules over `file://`, so you need some local server; any static server works.
 
-**Controls:** click, or press **Space/Enter** to age up and **1–9** to pick a choice in a decision.
+**Controls:** everything is a real button or form field. Keyboard: **Space/Enter** age up · **1–9** pick a decision option · **←/→, Home/End** on the tab bar · **[ ]** previous/next tab · **/** search your life story · **S** saves · **?** shortcuts · **Esc** close a panel (focus stays inside open dialogs and survives re-renders).
+
+**Saves:** multiple slots (💾), export a life as a `.json` file and import it into any slot. Saves from every earlier version are migrated, not wiped.
+
+**Settings (⚙️):** light / dark / follow-the-OS theme, *auto-resolve routine decisions* (only choices with one obviously safe answer — each one is noted in your story), and a debug *undo last year*.
 
 ## Architecture
 
 ```text
 /src
-  core/        Engine (bus, modules, guards, prompts) · State (slices, selectors) · Random
+  core/        Engine (bus, modules, guards, prompts, slots, undo) · State (slices, selectors, Store)
+               Migrations (save upgrades) · Pools (non-repeating event picks) · Routine · Random
   modules/
     registry.js
-    life/            Lifecycle · States (taxes, laws, disasters) · Regions (relocation) · Disasters · Finances · Activities
+    economy/         EconomyEngine (business cycle, markets, inflation, rates)
+    life/            Lifecycle · LifeEvents · States (taxes, laws, disasters) · Regions (relocation) · Disasters · Finances · Activities
+    investing/       Assets · Brokerage (accounts, IRAs, auto-invest)
+    health/          Conditions · Insurance · HealthEngine (PTSD, addiction, disability, VA)
+    campus/          UniversityLife · HousingDorms · Internships · Rotc · Network
     education/       Catalog (schools, programs, majors) · EducationEngine (admissions, aid, GI Bill)
     credentials/     CredentialRegistry (every license/cert, one place) · LicensingEngine
     career/          JobTrees · Ladder (IC/mgmt tracks, abilities) · PayGrades (G1–G10, steps)
                      Employers (size, benefits, budgets, unions) · Compensation · CareerEngine
-                     InterviewSystem · WorkplaceActions · ManagementEngine · ContractingSystem · UnionsAndLabor
+                     InterviewSystem · WorkplaceActions · WorkplaceEvents · ManagementEngine · ContractingSystem · UnionsAndLabor
     publicservice/   PublicServiceEngine (exams, clearances) · MunicipalGov · StateAgencies · FederalAgencies
     politics/        Offices · Campaigns · PoliticsEngine (elections, terms, appointments, scandals)
     realestate/      HousingEngine · PropertyMarket · MortgageSystem · Maintenance · Landlording
@@ -36,7 +49,8 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
     military/        MilitaryEngine · ActiveDuty · Reserves · MedalEngine
     emergency/       EmergencyEngine · FireVolunteer · PoliceReserves · SearchAndRescue
   ui/          Components · Renderer · views/ (one file per tab)
-tests/         scenarios.js (deterministic mechanics) · simulate.js (randomized lives + render every tab)
+tests/         scenarios · simulate (randomized lives + render every tab) · saves (+ fixtures/ from past versions)
+               content (pool lint) · balance (persona lives vs. real-world bands)
 ```
 
 Modules mutate only their own slice; cross-domain effects travel over the bus
@@ -60,8 +74,17 @@ actions (e.g. while incarcerated).
 - **Politics:** City Council → Mayor / State Rep → State Senate → U.S. House → Governor / U.S. Senate, plus judgeships (by election or appointment). Campaigns run on fundraising, endorsements, canvassing and debates. Primaries, incumbents, term limits, approval, floor votes and executive decisions; legislative salaries and an elected-officials pension. Scandals come from your legal record, and corruption runs through the misconduct system.
 - **Disasters:** hurricanes, wildfires, floods, blizzards and earthquakes by state. They damage property (standard policies exclude floods and earthquakes), call out volunteer fire and SAR, activate the Guard, strain city budgets and test governors and mayors.
 - **Housing:** parents, renting, owning, employer- or military-provided housing, incarceration, or homelessness, with eviction and voucher safety nets. Regional markets have boom/bust cycles; listings range from condos and fixer-uppers to rural acreage, luxury homes and fourplexes. Credit score runs 300–850. Loans: 30/15-yr fixed, 5/1 ARM, FHA and VA, with DTI and reserves underwriting, PMI, amortization, delinquency leading to foreclosure, refinancing and HELOCs. Also property tax, disaster-priced insurance, HOA fees, repairs (DIY discount for the trades), renovations and flipping, tenants, vacancies and evictions, and an optional property manager. Mortgage fraud and insurance arson are possible crimes.
-- **Military & emergency reserves:** as in Step 1, now wired into credentials, pensions and the legal system.
+- **Military & emergency reserves:** as in Step 1, now wired into credentials, pensions, health and the legal system.
+- **Economy:** expansion → peak → recession → recovery (a recession about every 10 years) drives stock and bond returns, unemployment, layoffs, interest and mortgage rates, inflation and COLAs, home prices and public budgets. All money is in today's dollars.
+- **Investing:** brokerage (index, bonds, T-bills, crypto, sector stocks), Roth and Traditional IRAs, risk profiles, auto-invest that also sells to clear card debt, 0/15/20% long-term capital-gains rates, meme stocks and pump-and-dumps, insider trading disgorged on conviction; 401(k)/TSP fund choice and contribution rate.
+- **Health:** chronic, mental-health, addiction and acute conditions that start, get diagnosed (checkups catch silent ones), are treated or not, and drive named causes of death. Coverage by circumstance (employer, TRICARE, parent's plan, Medicare, Medicaid, marketplace, uninsured) with deductibles and out-of-pocket maximums; medical debt → collections → bankruptcy. PTSD from combat, emergency calls and first-responder/CPS work; addiction → DUIs, license suspensions, rehab; fitness-for-duty evaluations; disability insurance, SSDI, disability retirement and VA ratings.
+- **Campus:** dorms, Greek life, clubs, student government, varsity sports and scholarships, parties, academic/disciplinary probation, plagiarism and expulsion, honors college, study abroad, internships with mentors and return offers, ROTC and the service academies.
+- **Life events:** 200+ events across 35 pools — childhood moments and dilemmas, workplace and agency events, dispatches, combat, campus, and random life (lotteries, lawsuits, viral fame, accidents, scams, inheritances). Pools avoid recent repeats.
+
+## Balance
+
+`tests/balance.js` plays thousands of complete lives with plausible personas (careers weighted by real employment shares) and checks the results against U.S. reference figures: life expectancy, pay at 40 by career, employment, degree attainment, homeownership and first-home age, foreclosure, homelessness, felony and prison rates, bankruptcy, recession frequency, unemployment, retirement age, DB pensions, net worth and millionaire share near retirement, supervision, veterans and PTSD — plus how often story events repeat.
 
 ## Roadmap
 
-- **Step 4:** `/relationships` (Dynamics, Interactions)
+- **Step 4E–4G (not built yet):** people and relationships, family finances, children and legacy ("continue as your child"); businesses; achievements, Hall of Fame and challenge modes.
