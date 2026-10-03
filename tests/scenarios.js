@@ -47,6 +47,7 @@ import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles
 import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
 import { cardApr, minimumPayoff, DEFAULT_APR } from '../src/modules/life/CreditCards.js';
 import { gigEligibility } from '../src/modules/career/GigWork.js';
+import { benchEligibility, currentCourt, selectionFor } from '../src/modules/legal/Judiciary.js';
 import { makeOffer, acceptOffer } from '../src/modules/career/JobMarket.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
@@ -1752,6 +1753,69 @@ const tests = {
     const h = state.career.claims.history.at(-1);
     assert.ok(['settled'].includes(h.result), h.result);
     assert.equal(h.net, h.gross - Math.round(h.gross * 0.33));
+  },
+  'judges: eligibility, state selection methods, Senate confirmation, rulings and senior status at full pay'() {
+    const { engine, state, ctx } = setup(73, 50);
+    giveJob(engine, 'law', 'associate');
+    assert.match(benchEligibility(state, 'magistrate').reason, /license/);
+    state.credentials.held.barLicense = { status: 'active', earnedAge: 25 };
+    state.career.job.yearsAtEmployer = 12;
+    assert.ok(benchEligibility(state, 'fedMagistrate').ok);
+    assert.match(benchEligibility(state, 'fedCircuit').reason, /appellate|trial/);
+    state.character.regionId = Object.keys(REGIONS).find((id) => REGIONS[id].state === 'CO');
+    assert.equal(selectionFor(state, 'stateAppellate'), 'merit');
+    assert.equal(selectionFor(state, 'fedDistrict'), 'appointed');
+    // Nominated to the federal district court; the hearing goes well.
+    ctx.prompt({ type: 'judiciary.nomination', title: 'x', text: '', options: [{ id: 'accept', label: 'a' }, { id: 'decline', label: 'b' }], data: { court: 'fedDistrict', method: 'appointed' } });
+    resolve(engine, 'judiciary.nomination', 'accept');
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => true;
+    resolve(engine, 'judiciary.hearing', 'decline');
+    engine.rng.chance = chance;
+    assert.equal(currentCourt(state), 'fedDistrict');
+    assert.equal(state.career.job, null, 'judges hold no other job');
+    // A year on the bench: salary and a case on the docket.
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.finances.lastYear.gross >= 243000);
+    const docket = state.prompts.find((p) => p.type === 'judiciary.case');
+    assert.ok(docket, 'a case to rule on');
+    resolve(engine, 'judiciary.case', docket.options[0].id);
+    assert.equal(state.judiciary.seat.rulings, 1);
+    // Rule of 80: senior status at full salary.
+    state.character.age = 70;
+    state.judiciary.seat.since = 55;
+    ctx.prompt({ type: 'judiciary.senior', title: 'x', text: '', options: [{ id: 'senior', label: 'a' }, { id: 'stay', label: 'b' }], data: {} });
+    resolve(engine, 'judiciary.senior', 'senior');
+    assert.ok(state.retirement.pensions.some((p) => p.annual === 243000), 'full salary for life');
+  },
+
+  'civil courts: ignored suits become default judgments and garnishment; small claims; jury duty'() {
+    const { engine, state, ctx } = setup(74, 35);
+    giveJob(engine, 'retail', 'associate');
+    state.finances.cash = 0;
+    ctx.prompt({ type: 'civil.sued', title: 'x', text: '', options: [{ id: 'settle', label: 'a' }, { id: 'fight', label: 'b' }, { id: 'ignore', label: 'c' }], data: { suit: { id: 's1', role: 'defendant', kind: 'debt', amount: 10000, stage: 'filed', years: 0 } } });
+    resolve(engine, 'civil.sued', 'ignore');
+    assert.equal(state.civil.judgments, 11000, 'default judgment plus costs');
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.civil.judgments < 11000, 'wages garnished');
+    // Small claims: cheap to file, decided within a year.
+    state.yearly = {};
+    state.prompts = [];
+    state.finances.cash = 1000;
+    engine.dispatch('civil.sue', 'smallClaims');
+    assert.equal(state.civil.suits.length, 1);
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.civil.suits.filter((s) => s.role === 'plaintiff').length, 0, 'decided');
+    // Jury duty.
+    ctx.prompt({ type: 'civil.jury', title: 'x', text: '', options: [{ id: 'serve', label: 'a' }, { id: 'postpone', label: 'b' }], data: {} });
+    engine.rng.chance = () => true;
+    state.prompts = state.prompts.filter((p) => p.type === 'civil.jury');
+    resolve(engine, 'civil.jury', 'serve');
+    resolve(engine, 'civil.verdict', state.prompts.find((p) => p.type === 'civil.verdict').options[0].id);
+    assert.equal(state.civil.juries, 1);
   },
 };
 

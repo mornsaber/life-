@@ -60,7 +60,7 @@ export function estateBalance(state) {
   const debts = Math.max(0, -state.finances.cash)
     + state.housing.properties.reduce((s, p) => s + (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0), 0)
     + state.finances.loans + (state.health?.medicalDebt ?? 0) + (state.people?.arrears ?? 0)
-    + owned.reduce((s, v) => s + (v.loan?.balance ?? 0), 0) + (state.finances.tax?.debt ?? 0);
+    + owned.reduce((s, v) => s + (v.loan?.balance ?? 0), 0) + (state.finances.tax?.debt ?? 0) + (state.civil?.judgments ?? 0);
   return { assets: Math.round(assets), debts: Math.round(debts) };
 }
 

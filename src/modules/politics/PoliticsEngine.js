@@ -146,6 +146,8 @@ export const PoliticsEngine = {
 
   setup(engine) {
     const bus = engine.bus;
+    // Other modules can end a term (e.g. a trial judge elevated to a higher court).
+    bus.on('politics:leave', ({ ctx, reason }) => leaveOffice(ctx, reason));
     bus.on('legal:convicted', ({ ctx, severity, name }) => {
       const p = ctx.state.politics;
       p.scandals += severity === 'felony' ? 3 : severity === 'misdemeanor' ? 1 : 0;

@@ -188,7 +188,7 @@ function accidentTick(ctx) {
     if (atFault) {
       r.accidents.push(age);
       if (drives) r.points += 3;
-    }
+    } else (state.vehicles.injuries ??= []).push({ age, severe }); // grounds for a personal-injury suit
     if (v.insured || !atFault) {
       if (atFault) ctx.spend(Math.min(DEDUCTIBLE, damage), 'Insurance deductible', { allowDebt: true });
       r.claims.push(age);

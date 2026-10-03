@@ -91,6 +91,7 @@ export function applicationEligibility(state, professionId) {
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.military.service?.component === 'active') return { ok: false, reason: 'On active duty' };
   if (state.politics.office?.fullTime) return { ok: false, reason: 'You hold full-time elected office' };
+  if (state.judiciary?.seat) return { ok: false, reason: 'Judges can\'t hold another job' };
   if (profession.sector === 'federal' && state.politics.campaign) return { ok: false, reason: 'Hatch Act: you\'re running for office' };
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
   const entry = checkRequirements(state, profession.entry);

@@ -353,7 +353,7 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) - f.loans - (state.health?.medicalDebt ?? 0) - (f.tax?.debt ?? 0));
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) - f.loans - (state.health?.medicalDebt ?? 0) - (f.tax?.debt ?? 0) - (state.civil?.judgments ?? 0));
 }
 
 /** Vehicles you own, net of their loans (leases carry no equity). Mirrors vehicles/Vehicles.js. */
@@ -468,6 +468,7 @@ export function getCommitments(state) {
     const delegated = biz.staff.headcount >= 8 ? Object.values(biz.staff.delegation).filter(Boolean).length : 0;
     list.push({ id: 'business', label: biz.role === 'operator' ? `Running ${biz.name}` : `Owner of ${biz.name}`, load: biz.role === 'operator' ? 3 - delegated * 0.5 : 0.5 });
   }
+  if (state.judiciary?.seat) list.push({ id: 'bench', label: 'On the bench', load: 3 });
   const gig = state.gig?.active;
   if (gig) list.push({ id: 'gig', label: gig.hours === 'full' ? 'Gig work (full time)' : 'Side hustle', load: gig.hours === 'full' ? 3 : 1 });
   const k12 = state.k12;
