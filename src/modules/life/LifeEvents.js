@@ -128,14 +128,6 @@ export const LIFE_EVENTS = [
     { id: 'help', label: '🛞 Pull over and help', resolve: (ctx) => { stats(ctx, { happiness: 5 }); return ctx.rng.chance(0.1) ? 'Her husband turned out to own a business — he offered you a job lead.' : 'You changed her tire in the rain. She hugged you.'; } },
     { id: 'call', label: '📞 Call it in and keep driving', resolve: () => 'Highway patrol was there in ten minutes.' },
   ] },
-  { id: 'audit', minAge: 25, when: (s) => (s.finances.lastYear?.gross ?? 0) > 80000, title: 'IRS Audit Letter', text: 'The IRS is auditing last year\'s return.', options: [
-    { id: 'cpa', label: '🧮 Hire a CPA ($2,500)', resolve: (ctx) => { ctx.spend(2500, 'CPA fees', { allowDebt: true }); return ctx.state.legal.flags.taxCheatAge ? (ctx.spend(8000, 'Back taxes and penalties', { allowDebt: true }), 'The CPA limited the damage: $8,000 in back taxes and penalties.') : 'No change. Your records were clean.'; } },
-    { id: 'self', label: '📂 Handle it yourself', resolve: (ctx) => (ctx.rng.chance(ctx.state.legal.flags.taxCheatAge ? 0.8 : 0.25) ? (ctx.spend(6000, 'Back taxes and penalties', { allowDebt: true }), stats(ctx, { stress: 8 }), 'You missed a deduction rule. $6,000 owed.') : 'You survived the audit.') },
-  ] },
-  { id: 'reunion', minAge: 28, when: free, title: 'Class Reunion', text: 'Your high school reunion is this weekend.', options: [
-    { id: 'go', label: '🎉 Go', resolve: (ctx) => { const job = ctx.state.career.job; stats(ctx, { happiness: job ? 5 : -2 }); return job ? `Everyone asked about your job as ${job.title}.` : 'Everyone asked what you\'re doing now. It was awkward.'; } },
-    { id: 'skip', label: '🛋️ Skip it', resolve: () => 'You looked at the photos online.' },
-  ] },
   { id: 'dogBite', minAge: 4, when: free, title: 'Dog Bite', text: '', run: (ctx) => { ctx.stat('health', -5); ctx.spend(400, 'Urgent care', { allowDebt: true }); return ['🐕', 'A neighbor\'s dog bit your calf. Six stitches.', 'warn']; } },
   { id: 'friendLoan', minAge: 22, when: free, title: 'A Friend Needs Money', text: 'Your college friend needs $5,000 to cover rent after a layoff.', options: [
     { id: 'lend', label: '🤝 Lend it', resolve: (ctx) => { if (!ctx.spend(5000, 'Loan to a friend', { credit: true })) return 'You didn\'t have $5,000 to lend, even on credit.'; return ctx.rng.chance(0.55) ? (ctx.state.finances.cash += 5000, 'They paid you back within a year, with a bottle of good bourbon.') : (stats(ctx, { happiness: -4 }), 'They never paid it back. The friendship cooled.'); } },

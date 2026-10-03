@@ -44,6 +44,7 @@ import { membership, clergyEligibility } from '../src/modules/community/Religion
 import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
 import { careBill } from '../src/modules/people/ElderCare.js';
 import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles/Vehicles.js';
+import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -721,6 +722,7 @@ const tests = {
       s.finances.cash = 100000;
       engine.ageUp();
       s.prompts = [];
+      engine.commit();
     }
     const reloaded = new Store(engine.store.storage).load();
     assert.deepEqual(reloaded, engine.state, 'round trip after three generations');
@@ -1564,6 +1566,52 @@ const tests = {
     assert.equal(state.vehicles.owned.length, 0, 'repossessed');
     assert.equal(state.vehicles.repos.length, 1);
     assert.ok(state.housing.credit.events.some((e) => e.type === 'default'));
+  },
+  'taxes: itemizing beats the standard deduction; unpaid tax becomes IRS debt; liens and levies follow'() {
+    const { engine, state } = setup(66, 40);
+    // Itemized deductions: SALT capped at $40k (phasing down over $500k), mortgage interest, charity.
+    state.finances.ledger.itemize = [{ kind: 'mortgageInterest', amount: 18000 }, { kind: 'propertyTax', amount: 9000 }];
+    state.community.givenThisYear = 6000;
+    let it = itemizedDeductions(state, { stateTax: 12000, agi: 200000 });
+    assert.equal(it.salt, 21000);
+    assert.equal(it.total, 18000 + 21000 + 6000);
+    it = itemizedDeductions(state, { stateTax: 60000, agi: 300000 });
+    assert.equal(it.salt, SALT_CAP);
+    it = itemizedDeductions(state, { stateTax: 60000, agi: 700000 });
+    assert.equal(it.salt, 10000, 'phased down to the floor');
+    // A year you can't pay your taxes: the IRS, not the card, carries it.
+    giveJob(engine, 'tech', 'swe');
+    state.finances.cash = -50000;
+    state.prompts = [];
+    engine.ageUp();
+    state.prompts = [];
+    assert.ok(state.finances.tax.debt > 0, 'tax debt');
+    const debt = state.finances.tax.debt;
+    // Ignore it: lien after two years, levies after three.
+    state.finances.tax.unpaidYears = 1;
+    engine.ageUp();
+    state.prompts = [];
+    assert.ok(state.finances.tax.lien != null, 'lien filed');
+    assert.ok(state.housing.credit.events.some((e) => e.type === 'lien'));
+    engine.ageUp();
+    state.prompts = [];
+    assert.ok(state.finances.tax.unpaidYears >= 3);
+    // A payment plan stops collection.
+    engine.dispatch('taxes.requestPlan');
+    assert.ok(state.finances.tax.plan?.annual > 0);
+    assert.equal(state.finances.tax.unpaidYears, 0);
+    assert.ok(debt > 0);
+  },
+
+  'IRS audits: cheaters pay fraud penalties and risk a criminal referral; a CPA softens it'() {
+    const { engine, state, ctx } = setup(67, 45);
+    state.finances.lastYear = { gross: 300000, federalTax: 70000 };
+    state.legal.flags.taxCheatAge = 44;
+    ctx.prompt({ type: 'taxes.audit', title: 'Audit', text: '', options: [{ id: 'cpa', label: 'a' }, { id: 'self', label: 'b' }], data: { cheated: true, federalTax: 70000, big: false } });
+    engine.rng.chance = () => false;
+    resolve(engine, 'taxes.audit', 'self');
+    assert.equal(state.finances.tax.audits[0].result, 'fraud');
+    assert.equal(state.finances.tax.debt, Math.round(30000 * 1.75), '75% civil fraud penalty');
   },
 };
 

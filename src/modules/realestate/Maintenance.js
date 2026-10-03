@@ -51,6 +51,7 @@ export function maintenanceTick(ctx, property) {
   const c = carryingCosts(property);
   ctx.spend(c.tax + c.insurance + c.hoa + c.upkeep, `Property costs — ${property.typeName}`, { allowDebt: true });
   property.lastCosts = c;
+  if (property.use === 'primary') (ctx.state.finances.ledger.itemize ??= []).push({ kind: 'propertyTax', amount: c.tax });
   property.condition = Math.round(clamp(property.condition - rng.int(2, 5), 0, 100));
 
   if (rng.chance(0.18)) {

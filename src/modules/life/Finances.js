@@ -12,6 +12,7 @@ import { ltcgTax } from '../investing/Assets.js';
 import { coverage } from '../health/Insurance.js';
 import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
 import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
+import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
@@ -27,7 +28,7 @@ const LIVING_MINIMUM = 6000;
 const LIVING_AT_HOME = 2000;
 const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
 /** Kids, support, premiums — and money you pour into your own business — come off the top before lifestyle spending. */
-const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Payroll tax \(FICA\)|Elder care|Vehicle)|personal spending$/;
+const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Payroll tax \(FICA\)|Elder care|Vehicle|IRS)|personal spending$/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {
@@ -62,15 +63,19 @@ export const Finances = {
     // Pass-through business profit left in the business is taxed but never reaches your wallet.
     const retained = f.ledger.income.reduce((sum, i) => sum + (i.retained ? i.amount : 0), 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
-    const taxable = Math.max(0, ordinary - deductions);
-    const capitalGainsTax = ltcgTax(taxable, ltcg);
+    const agi = Math.max(0, ordinary - deductions);
     // Married filing jointly: brackets and the standard deduction double (≈ splitting income in half).
     const married = isMarried(state);
     const joint = (fn, amount) => (married ? 2 * fn(amount / 2) : fn(amount));
+    // States tax capital gains as ordinary income.
+    let stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, agi + ltcg - (married ? 10000 : 5000)));
+    // Itemize when mortgage interest, state and local taxes, charity and big medical bills beat the standard deduction.
+    const itemized = itemizedDeductions(state, { stateTax, agi: agi + ltcg });
+    const itemizing = itemized.total > standardDeduction(married);
+    const taxable = Math.max(0, agi - (itemizing ? itemized.total - standardDeduction(married) : 0));
+    const capitalGainsTax = ltcgTax(taxable, ltcg);
     const kidsCredit = minorChildren(state).filter((c) => ageOf(state, c) < 17 && c.custody !== 'ex').length * CHILD_TAX_CREDIT;
     let federalTax = Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
-    // States tax capital gains as ordinary income.
-    let stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, taxable + ltcg - (married ? 10000 : 5000)));
     if (state.legal.flags.taxCheatAge === age) {
       federalTax = Math.round(federalTax * 0.7);
       stateTax = Math.round(stateTax * 0.7);
@@ -113,6 +118,8 @@ export const Finances = {
 
     f.cash -= tax + living + insurance;
     f.taxesPaid += tax;
+    // Taxes you can't pay become IRS debt (see Taxes), not credit-card debt.
+    const unpaidTax = carryUnpaidTax(ctx, tax);
 
     let loanPayment = 0;
     if (f.loans > 0) {
@@ -155,8 +162,8 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest };
-    f.ledger = { income: [], expenses: [], deductions: [] };
+    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
+    f.ledger = { income: [], expenses: [], deductions: [], itemize: [] };
   },
 
   actions: {

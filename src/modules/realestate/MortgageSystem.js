@@ -28,6 +28,7 @@ const EVENT_IMPACT = {
   eviction: { points: 70, years: 7 },
   bankruptcy: { points: 170, years: 10 },
   chapter13: { points: 130, years: 7 },
+  lien: { points: 60, years: 7 },
 };
 
 export const CARD_CAPACITY = 15000;
@@ -226,6 +227,8 @@ export function serviceDebt(ctx, property) {
   }
   ctx.spend(due, `Mortgage — ${property.typeName}`, { allowDebt: true });
   const interest = Math.round(m.balance * m.rate);
+  // Interest on your home (first $750k of debt) is an itemized deduction.
+  if (property.use === 'primary') (state.finances.ledger.itemize ??= []).push({ kind: 'mortgageInterest', amount: Math.round(interest * Math.min(1, 750000 / Math.max(1, m.balance))) });
   m.balance = Math.max(0, m.balance - Math.max(0, m.payment - interest));
   m.yearsLeft -= 1;
   m.delinquent = 0;

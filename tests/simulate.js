@@ -198,6 +198,8 @@ function checkInvariants(state) {
     assert.ok(!v.loan || (v.loan.balance > 0 && v.loan.yearsLeft > 0 && v.loan.payment > 0), `vehicle loan ${JSON.stringify(v.loan)}`);
     assert.ok(!v.lease || v.lease.yearsLeft >= 0, 'lease term');
   }
+  const tx = state.finances.tax;
+  assert.ok(Number.isFinite(tx.debt) && tx.debt >= 0 && (!tx.plan || tx.plan.annual > 0), `tax debt ${JSON.stringify(tx)}`);
   assert.ok(state.vehicles.owned.length <= 6 && state.vehicles.record.points >= 0, 'garage');
   for (const [id, c] of Object.entries(state.elderCare.cases)) {
     assert.ok(['help', 'full'].includes(c.level) && (!c.arrangement || ARRANGEMENTS[c.arrangement]) && c.personId === id, 'care case');
@@ -250,6 +252,9 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Taxes
+  if (state.finances.tax.debt && player.chance(0.2)) tries.push(() => act(player.pick(['taxes.payDebt', 'taxes.requestPlan'])));
+  if (age >= 18 && player.chance(0.01)) tries.push(() => act('legal.taxCheat'));
   // Vehicles
   if (age >= 16 && player.chance(0.08)) tries.push(() => act('vehicles.buy', `${player.pick(Object.keys(VEHICLE_TYPES))}:${player.pick(['cash', 'loan', 'lease'])}`));
   if (state.vehicles.owned.length && player.chance(0.1)) tries.push(() => act(`vehicles.${player.pick(['sell', 'toggleInsurance', 'payoff'])}`, player.pick(state.vehicles.owned).id));
