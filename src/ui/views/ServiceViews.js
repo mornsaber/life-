@@ -2,6 +2,8 @@
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
+import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
+import { getProfession } from '../../modules/career/JobTrees.js';
 import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
 import {
@@ -134,13 +136,14 @@ export function emergencyView(state) {
       ${ladder(svc.ranks.map((r) => ({ title: r.title, sub: `${r.xp} XP` })), member.rankIndex, { compact: true })}
       ${member.k9 ? `<div class="k9">🐕 <b>K9 ${esc(member.k9.name)}</b> · ${esc(member.k9.breed)}, age ${member.k9.age}</div>` : ''}
       <h4 class="sub">Certifications</h4><ul class="certs">${certList(state, svc.id)}</ul>
+      ${PATHWAYS[svc.id] ? `<p class="fine">💼 Experienced members get offered paid work${PATHWAYS[svc.id].gig ? ` (${esc(PATHWAYS[svc.id].gig.label.toLowerCase())})` : ''}${PATHWAYS[svc.id].jobs.length ? ` and job offers in ${PATHWAYS[svc.id].jobs.map((id) => esc(getProfession(id).name)).join(' or ')}` : ''}.</p>` : ''}
       <div class="action-grid">
         ${button('🏋️ Extra Training', 'emergency.train', { arg: svc.id, hint: '+25 XP, once/yr', disabled: member.onLeave })}
         ${button('📟 Pick Up Shifts', 'emergency.shift', { arg: svc.id, hint: 'More calls, +XP', disabled: member.onLeave })}
         ${button('🚪 Resign', 'emergency.resign', { arg: svc.id, variant: 'danger' })}
       </div>`, { icon: svc.icon, accent: { fire: 'red', police: 'blue', ambulance: 'cyan', wildland: 'green', auxiliary: 'blue' }[svc.id] ?? 'orange' });
   }).join('');
-  const join = open ? card('Join a Service', `<p class="muted">Volunteer and reserve services run alongside your job, school or military reserve duty. Certifications you earn here count toward paid careers.</p><ul class="job-board">${open}</ul>`, { icon: '🚨' }) : '';
+  const join = open ? card('Join a Service', `<p class="muted">Volunteer and reserve services run alongside your job, school or military reserve duty. Certifications you earn here count toward paid careers — and units often hire their own volunteers for paid gigs and jobs.</p><ul class="job-board">${open}</ul>`, { icon: '🚨' }) : '';
   const history = state.emergency.history.length
     ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';

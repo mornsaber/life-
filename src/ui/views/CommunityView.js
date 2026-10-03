@@ -24,7 +24,7 @@ function faithCard(state) {
       ['Attendance', `${ATTENDANCE[f.attendance].icon} ${ATTENDANCE[f.attendance].label}${f.attendance === 'devout' ? ` · ${f.devoutYears} yr` : ''}`],
       f.role ? ['Lay role', esc(f.role)] : null,
       ['Giving', c.giving ? `${c.giving}% of income${c.givenThisYear ? ` · ${money(c.givenThisYear)} this year` : ''}` : 'None'],
-      ['Ordination', elig.ok ? 'Eligible — apply under Career → Ministry' : `<span class="why">${esc(elig.reason)}</span>`],
+      ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
     ])}
     ${t.schism ? `<p class="fine">Tensions over ${esc(t.schism.issue)} could split this ${t.house.toLowerCase()}.</p>` : ''}
     ${t.fundamentalist ? '<p class="fine">Leaving a high-control group usually means being shunned by the congregation and by family who stay.</p>' : ''}

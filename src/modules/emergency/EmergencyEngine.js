@@ -31,6 +31,7 @@ import { AmbulanceCorps } from './AmbulanceCorps.js';
 import { WildlandCrew } from './WildlandCrew.js';
 import { CoastGuardAuxiliary } from './CoastGuardAuxiliary.js';
 import { CivilAirPatrol } from './CivilAirPatrol.js';
+import { opportunityTick, OpportunityResolvers } from './PaidOpportunities.js';
 import { CommunityResponse } from './CommunityResponse.js';
 import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
@@ -339,6 +340,8 @@ export const EmergencyEngine = {
       const member = ctx.state.emergency[serviceId];
       if (member) serviceTick(ctx, serviceId, member);
       if (!ctx.state.character.alive) return;
+      // Volunteering can lead to paid gigs and job offers.
+      if (ctx.state.emergency[serviceId]) opportunityTick(ctx, serviceId, ctx.state.emergency[serviceId], SERVICES[serviceId]);
     }
   },
 
@@ -402,6 +405,7 @@ export const EmergencyEngine = {
 
   resolvers: {
     dispatch: resolveDispatch,
+    ...OpportunityResolvers,
     disasterCallout(ctx, data, optionId) {
       const { rng } = ctx;
       const member = ctx.state.emergency[data.serviceId];

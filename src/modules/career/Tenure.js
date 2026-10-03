@@ -45,6 +45,8 @@ export const TRAINEE_LEVELS = {
   'medical.resident': { next: 'chiefResident', grace: 1, label: 'residency (medical license)' },
   'pharmacy.intern': { next: 'pharmacist', grace: 1, label: 'your internship (pharmacist license)' },
   'regulatory.trainee': { next: 'examiner', grace: 0, label: 'examiner training' },
+  'catholicClergy.seminarian': { next: 'deacon', grace: 1, label: 'priestly formation in seminary' },
+  'catholicClergy.deacon': { next: 'vicar', grace: 0, label: 'your diaconate year before priestly ordination' },
 };
 export const traineeProgram = (job) => (job ? TRAINEE_LEVELS[`${job.professionId}.${job.levelId}`] ?? null : null);
 

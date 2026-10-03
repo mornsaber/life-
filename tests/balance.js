@@ -155,6 +155,8 @@ export async function playLives({ from, to, seed }) {
         else if (p.type === 'civil.sued') id = (options.find((o) => o.id === 'insurer') ?? options.find((o) => o.id === (s.finances.cash > p.data.suit.amount * 0.4 ? 'settle' : 'fight'))).id;
         else if (p.type === 'judiciary.nomination') id = 'accept';
         else if (p.type === 'judiciary.hearing') id = 'decline';
+        else if (p.type === 'emergency.gig') id = choose.chance(0.5) ? 'take' : 'pass';
+        else if (p.type === 'emergency.jobOffer') id = !s.career.job || choose.chance(0.3) ? 'accept' : 'decline';
         else if (p.type === 'mental.crisis') id = choose.weighted([{ id: 'call988', w: 4 }, { id: 'er', w: 2 }, { id: 'friend', w: 2 }, { id: 'alone', w: 2 }], (x) => x.w).id;
         else if (p.type === 'ssdi.denied') id = (options.find((o) => o.id === (choose.chance(0.6) ? 'lawyer' : 'appeal')) ?? options.find((o) => o.id === 'appeal') ?? options.find((o) => o.id === 'reapply')).id;
         else if (p.type === 'taxes.audit') id = s.finances.cash > 30000 ? 'cpa' : 'self';

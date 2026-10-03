@@ -213,8 +213,9 @@ export const MentalHealth = {
       if (!m) return;
       if (m.anxietyOnly && id !== 'anxiety') return ctx.toast('That\'s prescribed for anxiety.', 'warn');
       if (m.ptsdOnly && id !== 'ptsd') return ctx.toast('That\'s prescribed for PTSD.', 'warn');
+      if (c.care?.meds && c.care.meds !== type) stopMeds(ctx, c, { taper: false });
+      // (Stopping the old drug may have cleared an otherwise empty plan.)
       c.care ??= { therapy: null, meds: null, fit: 1, inNetwork: true, medYears: 0 };
-      if (c.care.meds && c.care.meds !== type) stopMeds(ctx, c, { taper: false });
       c.care.meds = type;
       c.care.medYears = 0;
       c.care.taper = false;

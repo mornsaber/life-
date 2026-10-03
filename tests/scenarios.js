@@ -10,7 +10,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { hire, promotionStatus } from '../src/modules/career/CareerEngine.js';
+import { hire, promotionStatus, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor } from '../src/modules/credentials/LicensingEngine.js';
@@ -1435,8 +1435,12 @@ const tests = {
     state.character.gender = 'male';
     state.career.job = null;
     state.community.faith = membership('catholic', "St. Mark's Parish", 20);
-    const priest = giveJob(engine, 'clergy', 'minister');
-    assert.equal(priest.title, 'Parish Priest');
+    assert.match(applicationEligibility(state, 'clergy').reason, /diocese/);
+    assert.ok(applicationEligibility(state, 'catholicClergy').ok);
+    const priest = giveJob(engine, 'catholicClergy', 'vicar');
+    assert.equal(priest.title, 'Parochial Vicar');
+    assert.match(priest.employer.name, /Diocese of/);
+    assert.equal(traineeProgram({ professionId: 'catholicClergy', levelId: 'seminarian' }).next, 'deacon');
     state.people.list.push({ id: 'per_sp', firstName: 'Ann', lastName: 'X', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: 0 });
     state.prompts = [];
     engine.ageUp();
@@ -1942,6 +1946,53 @@ const tests = {
     u.engine.rng.chance = chance;
     u.engine.ageUp();
     assert.equal(u.state.publicService.clearance?.status, 'current');
+  },
+  'catholic hierarchy: diocesan ladder from seminarian to cardinal, and the conclave'() {
+    const { engine, state } = setup(82, 60);
+    state.community.faith = membership('catholic', 'Holy Cross Parish', 0, { raised: true });
+    const job = giveJob(engine, 'catholicClergy', 'archbishop');
+    assert.equal(job.employer.size === 'enterprise' ? /Archdiocese/.test(job.employer.name) : true, true);
+    const levels = getProfession('catholicClergy').levels.map((l) => l.title);
+    assert.deepEqual(levels.slice(0, 4), ['Seminarian', 'Transitional Deacon', 'Parochial Vicar', 'Pastor']);
+    assert.ok(levels.includes('Cardinal') && levels.includes('Monsignor') && levels.includes('Vicar General'));
+    // A cardinal under 80 at a conclave that elects them.
+    job.levelId = 'cardinal';
+    job.title = 'Cardinal';
+    job.employer.size = 'enterprise';
+    const chance = engine.rng.chance.bind(engine.rng);
+    engine.rng.chance = (p) => (p === 0.06 ? true : chance(p));
+    state.prompts = [];
+    engine.ageUp();
+    engine.rng.chance = chance;
+    if (state.career.job) {
+      assert.match(state.career.job.title, /^Pope /);
+      assert.ok(state.honors.some((h) => h.id === 'catholic.pope'));
+    }
+  },
+  'volunteer services lead to paid gigs and job offers (civil-service exam waived)'() {
+    const { engine, state, ctx } = setup(83, 26);
+    state.stats.fitness = 80;
+    state.stats.health = 80;
+    engine.dispatch('emergency.join', 'fire');
+    const m = state.emergency.fire;
+    m.years = 3;
+    m.rankIndex = 1;
+    const chance = engine.rng.chance.bind(engine.rng);
+    // A paid gig first (no job offer this year).
+    engine.rng.chance = (p) => (Math.abs(p - (0.04 + 0.02 + Math.min(0.04, m.saves * 0.004))) < 1e-9 ? false : p >= 0.15 && p <= 0.2 ? true : chance(p));
+    state.prompts = [];
+    engine.ageUp();
+    engine.rng.chance = chance;
+    const gig = state.prompts.find((p) => p.type === 'emergency.gig');
+    assert.ok(gig, `gig offered: ${state.prompts.map((p) => p.type)}`);
+    state.prompts = state.prompts.filter((p) => p === gig);
+    resolve(engine, 'emergency.gig', 'take');
+    assert.ok(state.finances.ledger.income.some((i) => /Paid-on-call/.test(i.source)));
+    // A job offer straight into the fire department (other requirements, like a driver's license, still apply).
+    state.credentials.held.driverLicense = { status: 'active', earnedAge: 18 };
+    ctx.prompt({ type: 'emergency.jobOffer', title: 'x', text: '', options: [{ id: 'accept', label: 'a' }, { id: 'decline', label: 'b' }], data: { professionId: 'fire', levelId: 'recruit', employer: createEmployer(engine.rng, state, getProfession('fire'), state.character.regionId), serviceId: 'fire' } });
+    resolve(engine, 'emergency.jobOffer', 'accept');
+    assert.equal(state.career.job?.professionId, 'fire', `hired without the civil-service exam: ${JSON.stringify(applicationEligibility(state, 'fire'))}`);
   },
 };
 

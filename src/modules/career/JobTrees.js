@@ -22,6 +22,9 @@ import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
 
+/** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
+const HIERARCHICAL = ['catholic', 'tradCatholic'];
+
 const ALL_SIZES = { small: 4, medium: 3, large: 2, enterprise: 1 };
 
 export const PRIVATE_PROFESSIONS = {
@@ -389,7 +392,8 @@ Object.assign(PRIVATE_PROFESSIONS, {
     id: 'clergy', name: 'Clergy & Ministry', icon: '🙏', sector: 'private', payMultiplier: 0.75, minAge: 18, sizes: { small: 6, medium: 3, large: 1 }, background: 'standard', promotionOdds: 0.5,
     employers: ['Community Congregation'],
     // Ordination depends on your tradition; titles come from it too (Parish Priest, Rabbi, Imam…).
-    eligible: clergyEligibility,
+    // Catholic priests are ordained through a diocese (see catholicClergy).
+    eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? { ok: false, reason: 'Catholic priests are ordained through a diocese — see Catholic Priesthood' } : clergyEligibility(state)),
     prepare: (state, job) => {
       const t = TRADITIONS[state.community?.faith?.traditionId];
       if (t) {
@@ -404,6 +408,28 @@ Object.assign(PRIVATE_PROFESSIONS, {
       L('chaplain', 'Chaplain', 5, { track: 'ic', req: { education: { program: 'seminary' } } }),
       L('senior', 'Senior Minister', 6, { track: 'mgmt', req: { education: { program: 'seminary' } }, abilities: ['supervise', 'hire', 'budget'], reports: 6 }),
       L('regional', 'Regional Leader', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 40 }),
+    ],
+  },
+  catholicClergy: {
+    id: 'catholicClergy', name: 'Catholic Priesthood', icon: '✝️', sector: 'private', payMultiplier: 0.4, minAge: 18, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.35,
+    // A diocese (archdiocese for the biggest sees) employs and assigns its priests.
+    employerName: (city, _rng, _state) => `Diocese of ${city}`,
+    eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? clergyEligibility(state) : { ok: false, reason: 'Belong to the Catholic Church' }),
+    prepare: (state, job) => {
+      job.tradition = state.community.faith.traditionId;
+      if (job.employer.size === 'enterprise') job.employer.name = job.employer.name.replace('Diocese', 'Archdiocese');
+    },
+    levels: [
+      L('seminarian', 'Seminarian', 1, { years: 5 }),
+      L('deacon', 'Transitional Deacon', 2, { years: 1 }),
+      L('vicar', 'Parochial Vicar', 3, { years: 3 }),
+      L('pastor', 'Pastor', 4, { abilities: ['supervise'], reports: 6 }),
+      L('monsignor', 'Monsignor', 5, { track: 'ic' }),
+      L('vicarGeneral', 'Vicar General', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 40 }),
+      L('auxBishop', 'Auxiliary Bishop', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate'], reports: 120 }),
+      L('bishop', 'Bishop', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 300 }),
+      L('archbishop', 'Archbishop', 9, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 900 }),
+      L('cardinal', 'Cardinal', 10, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 900 }),
     ],
   },
   hospitality: {
@@ -434,7 +460,7 @@ export const JOB_FIELDS = {
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'pharmacy', 'ems', 'socialWork', 'cps'] },
   safety: { label: 'Public Safety', icon: '🚓', ids: ['police', 'statePolice', 'fire', 'corrections', 'gameWarden', 'parkService'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'journalism', 'clergy'] },
+  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'journalism', 'clergy', 'catholicClergy'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'foreignService', 'intelligence'] },
 };
 
