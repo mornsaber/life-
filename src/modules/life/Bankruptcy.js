@@ -118,6 +118,7 @@ export function fileBankruptcy(ctx, chapter) {
     const wiped = opts.debt;
     // The trustee sells non-exempt property; you keep the homestead amount and the wildcard.
     for (const rental of state.housing.properties.filter((x) => x.use !== 'primary')) ctx.emit('housing:sell', { propertyId: rental.id });
+    ctx.emit('bankruptcy:liquidate', {});
     if (p.homeLost) ctx.emit('housing:sell', { propertyId: state.housing.properties.find((x) => x.use === 'primary').id });
     const inv = state.investing;
     let investments = 0;

@@ -40,10 +40,13 @@ export function estateBalance(state) {
   const iras = inv ? inv.ira.roth.value + inv.ira.traditional.value : 0;
   const homes = state.housing.properties.reduce((s, p) => s + p.value, 0);
   const business = businessEquity(state);
-  const assets = Math.max(0, state.finances.cash) + holdings + iras + state.retirement.dc + homes + business;
+  const owned = (state.vehicles?.owned ?? []).filter((v) => !v.lease);
+  const vehicles = owned.reduce((s, v) => s + v.value, 0);
+  const assets = Math.max(0, state.finances.cash) + holdings + iras + state.retirement.dc + homes + business + vehicles;
   const debts = Math.max(0, -state.finances.cash)
     + state.housing.properties.reduce((s, p) => s + (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0), 0)
-    + state.finances.loans + (state.health?.medicalDebt ?? 0) + (state.people?.arrears ?? 0);
+    + state.finances.loans + (state.health?.medicalDebt ?? 0) + (state.people?.arrears ?? 0)
+    + owned.reduce((s, v) => s + (v.loan?.balance ?? 0), 0);
   return { assets: Math.round(assets), debts: Math.round(debts) };
 }
 

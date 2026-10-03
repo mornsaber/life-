@@ -31,6 +31,7 @@ import { netWorth } from '../src/core/State.js';
 import { TRADITIONS, VOLUNTEER_ORGS, ATTENDANCE } from '../src/modules/community/Community.js';
 import { CIRCLES, FRIEND_CAP, friendsOf, circleFriends } from '../src/modules/people/Friends.js';
 import { ARRANGEMENTS } from '../src/modules/people/ElderCare.js';
+import { VEHICLE_TYPES } from '../src/modules/vehicles/Vehicles.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
@@ -191,6 +192,13 @@ function checkInvariants(state) {
   assert.ok(circleFriends(state).length <= FRIEND_CAP, 'friend cap');
   assert.ok(friendsOf(state).every((f) => !f.circle || CIRCLES[f.circle]), 'friend circles');
   if (state.career.job?.professionId === 'clergy') assert.ok(cm.faith || !state.character.alive, 'clergy belong to a faith');
+  for (const v of state.vehicles.owned) {
+    assert.ok(VEHICLE_TYPES[v.typeId] && Number.isFinite(v.value) && v.value > 0, 'vehicle value');
+    assert.ok(!(v.loan && v.lease), 'loan and lease at once');
+    assert.ok(!v.loan || (v.loan.balance > 0 && v.loan.yearsLeft > 0 && v.loan.payment > 0), `vehicle loan ${JSON.stringify(v.loan)}`);
+    assert.ok(!v.lease || v.lease.yearsLeft >= 0, 'lease term');
+  }
+  assert.ok(state.vehicles.owned.length <= 6 && state.vehicles.record.points >= 0, 'garage');
   for (const [id, c] of Object.entries(state.elderCare.cases)) {
     assert.ok(['help', 'full'].includes(c.level) && (!c.arrangement || ARRANGEMENTS[c.arrangement]) && c.personId === id, 'care case');
     assert.ok(!(c.arrangement === 'assisted' && c.level === 'full'), 'assisted living is for help-level care');
@@ -242,6 +250,10 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Vehicles
+  if (age >= 16 && player.chance(0.08)) tries.push(() => act('vehicles.buy', `${player.pick(Object.keys(VEHICLE_TYPES))}:${player.pick(['cash', 'loan', 'lease'])}`));
+  if (state.vehicles.owned.length && player.chance(0.1)) tries.push(() => act(`vehicles.${player.pick(['sell', 'toggleInsurance', 'payoff'])}`, player.pick(state.vehicles.owned).id));
+  if (player.chance(0.05)) tries.push(() => act('vehicles.trafficSchool'));
   // Elder care
   for (const id of Object.keys(state.elderCare.cases)) if (player.chance(0.2)) tries.push(() => act('elderCare.arrange', `${id}:${player.pick(Object.keys(ARRANGEMENTS))}`));
   if (player.chance(0.05)) tries.push(() => act(player.pick(['elderCare.poa', 'elderCare.guardianship']), player.pick(state.people.list)?.id));

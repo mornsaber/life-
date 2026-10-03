@@ -353,7 +353,12 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) - f.loans - (state.health?.medicalDebt ?? 0));
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) - f.loans - (state.health?.medicalDebt ?? 0));
+}
+
+/** Vehicles you own, net of their loans (leases carry no equity). Mirrors vehicles/Vehicles.js. */
+export function vehicleEquity(state) {
+  return (state.vehicles?.owned ?? []).reduce((s, v) => s + (v.lease ? 0 : v.value - (v.loan?.balance ?? 0)), 0);
 }
 
 /** Your share of your business's equity value (valuation is already net of business debt). */

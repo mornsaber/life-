@@ -43,6 +43,7 @@ import { creditLimit } from '../src/core/State.js';
 import { membership, clergyEligibility } from '../src/modules/community/Religions.js';
 import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
 import { careBill } from '../src/modules/people/ElderCare.js';
+import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles/Vehicles.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1531,6 +1532,38 @@ const tests = {
     state.prompts = [];
     engine.ageUp();
     if (mom.alive) assert.ok(state.elderCare.caregiverYears >= 1);
+  },
+  'vehicles: financing follows credit; insurance follows your record; repossession leaves a deficiency'() {
+    const { engine, state } = setup(65, 30);
+    giveJob(engine, 'tech', 'swe');
+    state.finances.cash = 20000;
+    state.housing.credit.score = 790;
+    assert.ok(autoRate(state, false) < 0.06);
+    state.housing.credit.score = 520;
+    assert.ok(autoRate(state, false) >= 0.14, 'subprime');
+    assert.match(purchaseCheck(state, 'sedan', 'lease').reason, /620/);
+    state.housing.credit.score = 700;
+    engine.dispatch('vehicles.buy', 'sedan:loan');
+    const car = state.vehicles.owned[0];
+    assert.ok(car.loan && car.loan.balance === 27000);
+    assert.equal(state.finances.cash, 17000);
+    // A clean record vs points and a DUI.
+    const clean = riskMultiplier(state);
+    state.vehicles.record.points = 6;
+    state.legal.record.push({ offenseId: 'dui', age: 29, severity: 'misdemeanor' });
+    assert.ok(riskMultiplier(state) > clean * 2, 'points and a DUI more than double premiums');
+    // Lenders won't let you drop coverage.
+    engine.dispatch('vehicles.toggleInsurance', car.id);
+    assert.equal(car.insured, true);
+    // Deep in debt: the car is repossessed and the shortfall stays with you.
+    state.finances.cash = -200000;
+    const chance = engine.rng.chance.bind(engine.rng);
+    engine.rng.chance = (p) => (p === 0.45 ? true : p < 0.2 ? false : chance(p));
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.vehicles.owned.length, 0, 'repossessed');
+    assert.equal(state.vehicles.repos.length, 1);
+    assert.ok(state.housing.credit.events.some((e) => e.type === 'default'));
   },
 };
 
