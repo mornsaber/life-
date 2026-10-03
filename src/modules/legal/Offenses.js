@@ -14,6 +14,8 @@
  *   capital:    a death-penalty-eligible offense in states that have it
  */
 export const OFFENSES = {
+  payrollTaxEvasion: { name: 'Failure to Pay Over Payroll Taxes', icon: '💸', severity: 'felony', fine: [10000, 100000], prison: [0, 3], probation: 2, federal: true },
+  wageTheft: { name: 'Wage Theft (FLSA Overtime Violations)', icon: '⏱️', severity: 'misdemeanor', fine: [5000, 50000], probation: 1 },
   vandalism: { name: 'Vandalism', icon: '🎨', severity: 'misdemeanor', fine: [300, 2000], probation: 1 },
   burglary: { name: 'Residential Burglary', icon: '🏚️', severity: 'felony', fine: [1000, 10000], prison: [1, 4], probation: 2 },
   autoTheft: { name: 'Motor Vehicle Theft', icon: '🚙', severity: 'felony', fine: [1000, 8000], prison: [1, 3], probation: 2 },

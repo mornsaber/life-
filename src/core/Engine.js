@@ -283,12 +283,20 @@ export class Engine {
        * `ltcg` marks long-term capital gains / qualified dividends, taxed at
        * the preferential rate.
        */
-      earn(amount, source, { wage = false, ssCovered = true, ltcg = false } = {}) {
+      /**
+       * Income for the year. `retained`: taxable to you but kept in your
+       * business (pass-through profit left in an LLC or S-corp) — no cash.
+       */
+      earn(amount, source, { wage = false, ssCovered = true, ltcg = false, retained = false } = {}) {
         const value = Math.round(amount);
         if (value <= 0) return 0;
-        state.finances.cash += value;
-        state.finances.lifetimeEarnings += value;
-        state.finances.ledger.income.push(ltcg ? { source, amount: value, wage: false, ssCovered, ltcg: true } : { source, amount: value, wage, ssCovered });
+        if (!retained) {
+          state.finances.cash += value;
+          state.finances.lifetimeEarnings += value;
+        }
+        const entry = ltcg ? { source, amount: value, wage: false, ssCovered, ltcg: true } : { source, amount: value, wage, ssCovered };
+        if (retained) entry.retained = true;
+        state.finances.ledger.income.push(entry);
         return value;
       },
       /** Pre-tax deduction (retirement contributions) reducing taxable income. */

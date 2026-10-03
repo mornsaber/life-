@@ -34,6 +34,9 @@ import { deathRowTick, paroleEligibility } from '../src/modules/legal/Prison.js'
 import { sealStatus } from '../src/modules/legal/Clemency.js';
 import { hasFelony } from '../src/core/State.js';
 import { separationPay } from '../src/modules/military/Separation.js';
+import { startEligibility, yearFinancials, exitProceeds } from '../src/modules/business/Business.js';
+import { closeBusiness } from '../src/modules/business/BusinessEngine.js';
+import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
 import { creditLimit } from '../src/core/State.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
@@ -1265,6 +1268,120 @@ const tests = {
     engine.dispatch('legal.affair');
     assert.ok(byId(state, 'sp').relationship <= 45, 'caught cheating');
     assert.equal(state.legal.record.length, 0, 'not a crime');
+  },
+
+  'businesses are license-gated and funded with cash or an SBA loan'() {
+    const { engine, state } = setup(91, 35);
+    state.finances.cash = 20000;
+    state.housing.credit.score = 720;
+    assert.match(startEligibility(state, 'lawFirm').reason, /State Bar/);
+    assert.match(startEligibility(state, 'restaurant').reason, /ServSafe/);
+    assert.ok(!startEligibility(state, 'retail', 'cash').ok, '$150k cash needed');
+    assert.ok(startEligibility(state, 'retail', 'sba').ok, '10% down with an SBA loan');
+    engine.dispatch('business.start', 'retail:sba:llc');
+    const biz = state.business.current;
+    assert.ok(biz && biz.debts.sba.balance === 135000 && biz.debts.sba.guaranteed);
+    assert.equal(state.finances.cash, 5000);
+    assert.ok(startEligibility(state, 'cpaFirm').reason.includes('already own'));
+  },
+
+  'entity choice: sole proprietors pay self-employment tax; C-corps pay corporate tax; LLCs shield you except guarantees'() {
+    const { engine, state } = setup(92, 40);
+    state.finances.cash = 1000000;
+    state.credentials.held.cpa = { earnedAge: 30, renewedAge: 38, status: 'active' };
+    engine.dispatch('business.start', 'cpaFirm:cash:sole');
+    const biz = state.business.current;
+    biz.years = 4;
+    biz.fit = 1.1;
+    biz.quality = 70;
+    biz.reputation = 70;
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(biz.lastYear.netIncome > 0, 'profitable');
+    assert.ok(biz.lastYear.seTax > 0, 'self-employment tax');
+    const fakeRng = { float: (a, b) => (a + b) / 2 };
+    biz.entity = 'ccorp';
+    const c = yearFinancials(state, biz, fakeRng);
+    assert.ok(c.corporateTax > 0 && c.ownerSalary > 0, 'C-corp: salary plus 21% on the rest');
+    // Limited liability: an LLC that fails owes only what you guaranteed.
+    const t = setup(93, 40);
+    t.state.finances.cash = 200000;
+    t.engine.dispatch('business.start', 'retail:cash:llc');
+    const b2 = t.state.business.current;
+    b2.cash = -300000;
+    b2.debts.loc = 50000;
+    const before = t.state.finances.cash;
+    closeBusiness(t.engine.context(), 'test');
+    assert.equal(before - t.state.finances.cash, 50000, 'only the guaranteed credit line follows you');
+    const u = setup(94, 40);
+    u.state.finances.cash = 200000;
+    u.engine.dispatch('business.start', 'retail:cash:sole');
+    u.state.business.current.cash = -300000;
+    const b4 = u.state.finances.cash;
+    closeBusiness(u.engine.context(), 'test');
+    assert.ok(b4 - u.state.finances.cash > 200000, 'sole proprietors owe it all');
+    assert.equal(u.state.business.current, null);
+  },
+
+  'startups need a C-corp to raise; rounds dilute you; QSBS makes long-held exits tax-free'() {
+    const { engine, state } = setup(95, 28);
+    state.finances.cash = 50000;
+    engine.dispatch('business.start', 'techStartup:cash:llc');
+    const biz = state.business.current;
+    engine.rng.chance = () => true;
+    engine.dispatch('business.raise');
+    assert.equal(biz.investors.length, 0, 'LLCs can\'t take venture money');
+    engine.dispatch('business.convert', 'ccorp');
+    engine.dispatch('business.raise');
+    assert.equal(biz.investors.length, 1, 'seed round closed');
+    assert.ok(biz.ownerPct < 0.86 && biz.ownerPct >= 0.75, `diluted to ${biz.ownerPct}`);
+    assert.ok(biz.cash >= 500000 && biz.staff.headcount > 0, 'cash in the bank, team hired');
+    engine.dispatch('business.convert', 'llc');
+    assert.equal(biz.entity, 'ccorp', 'investors lock you into a C-corp');
+    biz.years = 6;
+    biz.basis = 25000;
+    const e = exitProceeds(biz, 20000000);
+    assert.equal(e.taxable, Math.max(0, e.gain - 10000000), 'up to $10M of gain excluded');
+  },
+
+  'the family business passes to your heir; relatives can work in it'() {
+    const { engine, state } = setup(96, 50);
+    state.finances.cash = 300000;
+    engine.dispatch('business.start', 'retail:cash:llc');
+    const biz = state.business.current;
+    const kid = { id: 'kid1', firstName: 'Sam', lastName: 'Case', gender: 'male', relation: 'child', ageOffset: -25, relationship: 80, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: null, custody: 'you' };
+    state.people.list.push(kid);
+    engine.dispatch('business.hireRelative', 'kid1');
+    assert.ok(biz.family.includes('kid1') && kid.job.includes(biz.name));
+    biz.valuation = 200000;
+    state.character.alive = false;
+    const legacy = settleEstate(state);
+    assert.ok(legacy.assets >= 200000, 'business equity is in the estate');
+    const heir = buildHeirState(engine.rng, state, 'kid1');
+    assert.equal(heir.business.current.name, biz.name);
+    assert.equal(heir.business.current.role, 'absentee');
+    assert.ok(heir.finances.cash <= Math.max(0, legacy.bequests.find((b) => b.to === 'kid1').amount - 200000) + 1, 'the business counts against the heir\'s share');
+  },
+
+  'payroll-tax evasion and wage theft are crimes; failing health inspections close restaurants'() {
+    const { engine, state } = setup(97, 40);
+    state.finances.cash = 300000;
+    state.credentials.held.servSafe = { earnedAge: 30, renewedAge: 38, status: 'active' };
+    engine.dispatch('business.start', 'foodTruck:cash:llc');
+    const biz = state.business.current;
+    biz.lastYear = { payroll: 100000 };
+    state.prompts = [];
+    engine.context().prompt({ type: 'business.temptation', title: 't', text: 't', options: [{ id: 'take', label: 't' }, { id: 'honest', label: 'h' }], data: { id: 'payrollTax' } });
+    engine.resolvePrompt(state.prompts[0].id, 'take');
+    assert.ok(state.legal.investigations.some((i) => i.offenseId === 'payrollTaxEvasion'));
+    biz.violations = [state.character.age, state.character.age];
+    biz.quality = 0;
+    engine.rng.chance = (p) => p === 0.6;
+    engine.rng.int = (a) => a;
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.business.current, null, 'health department revoked the permit');
+    assert.match(state.business.history.at(-1).outcome, /health department/);
   },
 
   'evicted young adults move back in with family or get vouchers'() {

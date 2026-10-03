@@ -30,6 +30,7 @@ import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
+import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
 import { CLUBS, ROTC_BRANCHES } from '../src/modules/campus/index.js';
 import { living, livingChildren, partnerOf, spouseOf, WEDDINGS, WILL_PLANS } from '../src/modules/people/index.js';
 
@@ -63,7 +64,7 @@ function renderAll(state) {
   for (const p of state.prompts) promptModal(p, 1);
 }
 
-const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0, dropouts: 0, geds: 0, privateSchool: 0, teenWorkers: 0, gpaSum: 0, gpaN: 0 };
+const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0, owners: 0, bizExits: 0, bizFailures: 0, dropouts: 0, geds: 0, privateSchool: 0, teenWorkers: 0, gpaSum: 0, gpaN: 0 };
 const promptTypes = new Set();
 
 function checkInvariants(state) {
@@ -169,6 +170,17 @@ function checkInvariants(state) {
   if (inc?.deathRow) assert.ok(['active', 'moratorium', 'rare'].includes(STATES[inc.deathRow.state]?.deathPenalty), `death row in ${inc.deathRow.state}`);
   assert.ok(!(inc && state.legal.fugitive), 'fugitive in prison');
   assert.ok((state.education.credits ?? []).every((c) => PROGRAMS[c.programId] && c.years > 0), 'transfer credits');
+  const b = state.business.current;
+  if (b) {
+    assert.ok(BUSINESS_TYPES[b.typeId] && ENTITIES[b.entity], 'business type/entity');
+    for (const k of ['cash', 'assets', 'valuation', 'arr', 'quality', 'reputation']) assert.ok(Number.isFinite(b[k]), `business ${k} finite`);
+    assert.ok(b.valuation >= 0 && b.assets >= 0 && b.arr >= 0, 'business values non-negative');
+    assert.ok(b.ownerPct > 0 && b.ownerPct <= 1, `owner stake ${b.ownerPct}`);
+    assert.ok(Number.isInteger(b.staff.headcount) && b.staff.headcount >= 0, 'headcount');
+    assert.ok(b.staff.morale >= 0 && b.staff.morale <= 100 && b.staff.unionRisk >= 0 && b.staff.unionRisk <= 100, 'staff meters');
+    assert.ok(debtOk(b), 'business debts');
+    assert.ok(b.family.every((id) => state.people.list.some((p) => p.id === id)), 'family employees exist');
+  }
   const plan = state.finances.ch13;
   assert.ok(!plan || (plan.yearsLeft > 0 && plan.annual > 0), 'chapter 13 plan');
   assert.ok(Number.isFinite(state.finances.cash), 'cash finite');
@@ -178,6 +190,11 @@ function checkInvariants(state) {
   assert.ok(state.credentials.training.length <= 2, 'training programs');
   assert.ok(Object.values(state.credentials.failures).every((n) => Number.isInteger(n) && n > 0), 'failure counts');
   assert.ok(hl.trauma >= 0 && [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].includes(hl.va.rating), 'trauma / VA rating');
+}
+
+function debtOk(b) {
+  const sba = b.debts.sba;
+  return (!sba || (sba.balance > 0 && Number.isFinite(sba.annual))) && (b.debts.loc ?? 0) >= 0 && (b.debts.payables ?? 0) >= 0;
 }
 
 function act(id, arg) {
@@ -199,6 +216,17 @@ function randomActions(state) {
   }
   if (state.legal.record.length && player.chance(0.1)) tries.push(() => act(player.pick(['legal.sealRecord', 'legal.seekPardon'])));
   if (age >= 15) tries.push(() => act('credentials.pursue', player.pick(CRED_IDS)));
+  // Business
+  const biz = state.business.current;
+  if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
+  if (!biz && state.business.listings.length && player.chance(0.05)) tries.push(() => act('business.buy', `${player.pick(state.business.listings).id}:${player.pick(['cash', 'sba'])}`));
+  if (biz) {
+    if (player.chance(0.3)) tries.push(() => act(`business.${player.pick(['setRole', 'setMarketing', 'setDraw', 'setWorkforce', 'toggleDelegation', 'toggleHealth', 'setMatch'])}`, player.pick(['operator', 'absentee', '0', '1', '2', '3', '0.5', 'direct', 'mixed', 'contracted', 'hiring', 'reviews', '0.03', '0.05'])));
+    if (player.chance(0.3)) tries.push(() => act(`business.${player.pick(['raise', 'hire', 'layoff', 'expand', 'loan'])}`, player.pick(['5', 'cash', 'sba'])));
+    if (player.chance(0.05)) tries.push(() => act('business.convert', player.pick(Object.keys(ENTITIES))));
+    if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
+    if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
+  }
   if (age >= 18 && player.chance(0.02)) tries.push(() => act('finances.fileBankruptcy', player.pick(['7', '13'])));
   if (state.career.leave && player.chance(0.3)) tries.push(() => act(player.chance(0.8) ? 'career.returnFromLeave' : 'career.resignFromLeave'));
   if (state.career.job && player.chance(0.03)) tries.push(() => act('career.transfer', player.pick(Object.keys(REGIONS))));
@@ -436,6 +464,10 @@ for (let life = 0; life < LIVES; life++) {
   checkEstate(state);
   totals.estates += 1;
   if (state.k12.history.length || state.k12.type !== 'public') totals.privateSchool += state.k12.history.some((h) => ['private', 'boarding', 'religious', 'militaryPrep'].includes(h.type)) || ['private', 'boarding', 'religious', 'militaryPrep'].includes(state.k12.type) ? 1 : 0;
+  const bh = state.business.history;
+  if (bh.length || state.business.current) totals.owners += 1;
+  totals.bizExits += bh.filter((h) => /Sold|IPO/.test(h.outcome)).length;
+  totals.bizFailures += bh.filter((h) => /Closed|bankruptcy|Shut|fire|Forced/i.test(h.outcome)).length;
   if (state.k12.jobYears) totals.teenWorkers += 1;
   if (state.k12.dropout || state.education.degrees.some((d) => d.programId === 'ged')) totals.dropouts += 1;
   if (state.education.degrees.some((d) => d.programId === 'ged')) totals.geds += 1;
@@ -468,6 +500,7 @@ console.log(`  investing: ${totals.millionaires} lives peaked as millionaires ($
 const rate = ([n, d]) => `${n}/${d} (${((n / Math.max(1, d)) * 100).toFixed(0)}%)`;
 console.log(`  health: PTSD combat ${rate(totals.ptsd.combat)}, first responders ${rate(totals.ptsd.responder)}, others ${rate(totals.ptsd.other)}; disability ${totals.onDisability}, VA-rated ${totals.vaRated}, rehab ${totals.rehab}`);
 console.log(`  campus: interned ${totals.interns}, return-offer hires ${totals.returnHires}, mentored ${totals.mentored}, Greek alumni ${totals.greek}, honors college ${totals.honorsCollege}, studied abroad ${totals.abroad}, expelled ${totals.expelled}, ROTC officers ${totals.rotcOfficers}, academy grads ${totals.academyGrads}`);
+console.log(`  business: ${totals.owners} owners · ${totals.bizExits} sold or went public · ${totals.bizFailures} closed or failed`);
 console.log(`  k12: ${totals.privateSchool} attended private/religious/boarding/military schools · ${totals.teenWorkers} held teen jobs · ${totals.dropouts} dropped out (${totals.geds} earned a GED) · mean high-school GPA ${(totals.gpaSum / Math.max(1, totals.gpaN)).toFixed(2)}`);
 console.log(`  people: ${totals.married} ever married, ${totals.divorced} divorced, ${totals.parents} parents · ${totals.generations} heirs continued, deepest line ${totals.maxGeneration} generations · ${totals.estates} estates settled and balanced`);
 console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosures}, ever homeless ${totals.homeless}, ran for office ${totals.ranForOffice}, held office ${totals.officeHolders}, governors ${totals.governors}`);

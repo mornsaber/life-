@@ -21,6 +21,7 @@ import { careerView } from './views/CareerView.js';
 import { govView } from './views/GovView.js';
 import { licensesView } from './views/LicensesView.js';
 import { schoolView } from './views/SchoolView.js';
+import { businessView } from './views/BusinessView.js';
 import { moneyView } from './views/MoneyView.js';
 import { legalView } from './views/LegalView.js';
 import { militaryView, emergencyView } from './views/ServiceViews.js';
@@ -36,7 +37,7 @@ import { PHASES } from '../modules/economy/EconomyEngine.js';
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
   { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
-  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
+  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
   { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
@@ -65,6 +66,7 @@ export const VIEWS = {
     return card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' });
   },
   career: careerView,
+  business: businessView,
   gov: govView,
   military: militaryView,
   emergency: emergencyView,
@@ -264,6 +266,8 @@ export class Renderer {
     if (state.education.enrolled) parts.push(`🎓 ${PROGRAMS[state.education.enrolled.programId].name} student`);
     const job = state.career.job;
     if (job) parts.push(`${getProfession(job.professionId).icon} ${job.title} [G${job.grade}]`);
+    const biz = state.business?.current;
+    if (biz) parts.push(`🏪 ${biz.role === 'operator' ? 'Running' : 'Owner of'} ${biz.name}`);
     const svc = state.military.service;
     if (svc) parts.push(`${BRANCHES[svc.branch].icon} ${rankOf(svc).code} ${rankOf(svc).title}${svc.component === 'reserve' ? ' (Res.)' : ''}`);
     for (const s of SERVICE_LIST) {

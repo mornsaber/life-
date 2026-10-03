@@ -44,7 +44,8 @@ export function hasHousingBenefit(state) {
 function steadyIncome(state) {
   const age = state.character.age;
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
-  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state);
+  const ownerPay = state.business?.current?.lastYear?.ownerPay ?? 0;
+  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state) + ownerPay;
 }
 
 export const Finances = {
@@ -58,6 +59,8 @@ export const Finances = {
     const gross = f.ledger.income.reduce((sum, i) => sum + i.amount, 0);
     const ltcg = f.ledger.income.reduce((sum, i) => sum + (i.ltcg ? i.amount : 0), 0);
     const ordinary = gross - ltcg;
+    // Pass-through business profit left in the business is taxed but never reaches your wallet.
+    const retained = f.ledger.income.reduce((sum, i) => sum + (i.retained ? i.amount : 0), 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
     const taxable = Math.max(0, ordinary - deductions);
     const capitalGainsTax = ltcgTax(taxable, ltcg);
@@ -94,7 +97,8 @@ export const Finances = {
         const cardDebt = Math.max(0, -f.cash);
         const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardDebt * (DEBT_RATE + 0.25);
         // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
-        const base = Math.min(ordinary, Math.max(steadyIncome(state), ordinary * 0.5));
+        const spendable = ordinary - retained;
+        const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
         const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - deductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
         const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;

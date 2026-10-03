@@ -781,3 +781,9 @@ select:focus { border-color: var(--cyan); }
 .fund-row { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; padding: 6px 0; border-bottom: 1px dashed var(--line, #ddd); }
 .fund-row > span:first-child { flex: 1 1 auto; min-width: 140px; }
 @media (max-width: 560px) { .person-row { grid-template-columns: 28px minmax(0, 1fr); } .person-row .meter { grid-column: 1 / -1; } }
+
+/* Business P&L */
+.pnl { width: 100%; border-collapse: collapse; font-size: 14px; margin: 4px 0 8px; }
+.pnl td { padding: 3px 4px; border-bottom: 1px dashed var(--line); }
+.pnl td:last-child { text-align: right; font-variant-numeric: tabular-nums; }
+.pnl tr.total td { font-weight: 700; border-bottom: 0; border-top: 2px solid var(--line); }

@@ -353,7 +353,13 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) - f.loans - (state.health?.medicalDebt ?? 0));
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) - f.loans - (state.health?.medicalDebt ?? 0));
+}
+
+/** Your share of your business's equity value (valuation is already net of business debt). */
+export function businessEquity(state) {
+  const b = state.business?.current;
+  return b ? Math.max(0, Math.round(b.valuation * b.ownerPct)) : 0;
 }
 
 /** Brokerage holdings, speculative positions and IRAs. */
@@ -446,6 +452,11 @@ export function getCommitments(state) {
   if (job) {
     const micro = job.department ? Object.values(job.department.delegation).filter((d) => !d).length * (job.department.headcount >= 8 ? 0.5 : 0) : 0;
     list.push({ id: 'job', label: job.department ? `${job.title} (+team)` : job.title, load: 3 + micro });
+  }
+  const biz = state.business?.current;
+  if (biz) {
+    const delegated = biz.staff.headcount >= 8 ? Object.values(biz.staff.delegation).filter(Boolean).length : 0;
+    list.push({ id: 'business', label: biz.role === 'operator' ? `Running ${biz.name}` : `Owner of ${biz.name}`, load: biz.role === 'operator' ? 3 - delegated * 0.5 : 0.5 });
   }
   const k12 = state.k12;
   if (k12?.job && state.character.age < 18) list.push({ id: 'teenJob', label: 'Part-time job', load: 1 });

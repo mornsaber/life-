@@ -11,7 +11,7 @@
  * will, intestacy applies: spouse and children share, then parents and
  * siblings, then the state.
  */
-import { createInitialState, currentYear, addLog, START_YEAR } from '../../core/State.js';
+import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 
 export const FUNERAL_COST = 9000;
@@ -38,7 +38,8 @@ export function estateBalance(state) {
   const holdings = inv ? Object.values(inv.holdings).reduce((s, h) => s + h.value, 0) + inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0) : 0;
   const iras = inv ? inv.ira.roth.value + inv.ira.traditional.value : 0;
   const homes = state.housing.properties.reduce((s, p) => s + p.value, 0);
-  const assets = Math.max(0, state.finances.cash) + holdings + iras + state.retirement.dc + homes;
+  const business = businessEquity(state);
+  const assets = Math.max(0, state.finances.cash) + holdings + iras + state.retirement.dc + homes + business;
   const debts = Math.max(0, -state.finances.cash)
     + state.housing.properties.reduce((s, p) => s + (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0), 0)
     + state.finances.loans + (state.health?.medicalDebt ?? 0) + (state.people?.arrears ?? 0);
@@ -176,6 +177,16 @@ export function buildHeirState(rng, old, childId) {
     lifeInsurance: {},
     generated: true,
   };
+  // The family business passes to the heir in kind: it counts against their share of the estate.
+  const biz = old.business?.current;
+  if (biz) {
+    const equity = businessEquity(old);
+    s.finances.cash = Math.max(0, inheritance - equity);
+    const ids = new Set(list.map((p) => p.id));
+    s.business = { current: { ...structuredClone(biz), role: 'absentee', family: biz.family.filter((id) => ids.has(id) && id !== child.id) }, history: [], listings: [] };
+    addLog(s, `You inherited the family business, ${biz.name}${equity ? ` (worth about $${equity.toLocaleString()} to you)` : ''}. A manager runs it for now.`, '🏪', 'milestone');
+  }
+
   // Minors live with the surviving parent (or a guardian); young adults may still be at home.
   s.housing.withParents = childAge < 18 || (childAge < 26 && Boolean(otherParent?.alive));
   s.lineage = {
