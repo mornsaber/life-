@@ -51,6 +51,7 @@ export const offerSummary = (o) => `${o.employer.name} (${o.employer.size}) · $
 /** Take an offer: a new employer in the same field (resigning the old job). */
 export function acceptOffer(ctx, offer) {
   const { state } = ctx;
+  if (state.legal.incarceration) return ctx.log(`${offer.employer.name} withdrew its offer.`, '📭', 'bad');
   hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
   const job = state.career.job;
   stepForAtLeast(state, job, offer.salary);

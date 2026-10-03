@@ -38,6 +38,7 @@ import { WORK_MODES } from '../src/modules/career/JobMarket.js';
 import { BASES } from '../src/modules/career/WorkplaceClaims.js';
 import { CLAIMS } from '../src/modules/legal/CivilCourts.js';
 import { COURTS } from '../src/modules/legal/Judiciary.js';
+import { THERAPIES, MEDS } from '../src/modules/health/MentalHealth.js';
 const BASES_OK = Object.keys(BASES);
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
@@ -210,6 +211,13 @@ function checkInvariants(state) {
   if (state.career.job) assert.ok(WORK_MODES[state.career.job.workMode ?? 'onsite'] && Boolean(state.career.job.remote) === (state.career.job.workMode === 'remote' || (!state.career.job.workMode && Boolean(state.career.job.remote))), `work mode ${state.career.job.workMode}/${state.career.job.remote}`);
   const cl = state.career.claims;
   assert.ok(cl && (!cl.active || BASES_OK.includes(cl.active.basis)) && cl.history.every((h) => h.net >= 0), 'claims');
+  for (const c of state.health.conditions) {
+    if (!c.care) continue;
+    assert.ok((!c.care.therapy || THERAPIES[c.care.therapy]) && (!c.care.meds || MEDS[c.care.meds]), 'care plan');
+    if (!c.remission) assert.equal(c.treated, Boolean((c.care.therapy && !c.care.waitlist) || c.care.meds || (c.care.waitlist && c.treated)), `treated mirrors care ${JSON.stringify(c.care)}`);
+  }
+  const claim = state.health.disability.ssdiClaim;
+  assert.ok(!claim || (['initial', 'reconsideration', 'hearing', 'council'].includes(claim.stage) && !state.health.disability.benefits.some((b) => b.source === 'ssdi')), 'ssdi claim');
   const jd = state.judiciary;
   assert.ok(!jd.seat || (COURTS[jd.seat.court] && jd.seat.reputation >= 0 && jd.seat.reputation <= 100 && !(state.politics.office?.id === 'judge')), 'bench seat');
   assert.ok(!(jd.seat && state.career.job), 'judge with a job');
@@ -274,6 +282,13 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Mental health & SSDI
+  const mental = state.health.conditions.filter((c) => ['depression', 'anxiety', 'ptsd'].includes(c.id) && !c.remission && c.diagnosed);
+  if (mental.length && player.chance(0.3)) {
+    const cid = player.pick(mental).id;
+    tries.push(() => act(player.chance(0.5) ? 'mental.therapy' : 'mental.meds', `${cid}:${player.pick([...Object.keys(THERAPIES), ...Object.keys(MEDS), 'none', 'stop', 'taper'])}`));
+  }
+  if (player.chance(0.05)) tries.push(() => act('ssdi.apply'));
   // Courts
   if (age >= 18 && player.chance(0.04)) tries.push(() => act('civil.sue', player.pick(Object.keys(CLAIMS))));
   if (state.judiciary.seat && player.chance(0.02)) tries.push(() => act('judiciary.resign'));

@@ -21,7 +21,6 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
 import { coverage, outOfPocket } from './Insurance.js';
-import { primaryInsuranceAmount } from '../retirement/RetirementEngine.js';
 import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
 
@@ -189,7 +188,8 @@ export function medicalBill(ctx, cost, reason, condition) {
 function treatmentBills(ctx) {
   for (const c of activeConditions(ctx.state)) {
     const def = CONDITIONS[c.id];
-    if (c.treated && def.annualCost) medicalBill(ctx, def.annualCost, def.name, c);
+    // Mental-health care plans are billed by MentalHealth (therapy and medication separately).
+    if (c.treated && def.annualCost && !c.care) medicalBill(ctx, def.annualCost, def.name, c);
   }
 }
 
@@ -252,9 +252,8 @@ export function goOnDisability(ctx, why) {
     const last = state.career.history[state.career.history.length - 1];
     h.disability.benefits.push({ source: 'ltd', label: 'Long-term disability insurance', annual: Math.round((last.salary ?? 30000) * 0.6), endAge: 65 });
   }
-  if (state.retirement.ssEarnings.length >= 5 && age < 67 && !h.disability.benefits.some((b) => b.source === 'ssdi')) {
-    h.disability.benefits.push({ source: 'ssdi', label: 'Social Security Disability (SSDI)', annual: primaryInsuranceAmount(state.retirement.ssEarnings) * 12, endAge: 67 });
-  }
+  // SSDI is an application, not an automatic benefit (see SSDI.js).
+  if (age < 67 && !h.disability.benefits.some((b) => b.source === 'ssdi')) ctx.emit('ssdi:apply', { onsetAge: age, why });
   for (const [planId, plan] of Object.entries(state.retirement.plans)) {
     if (plan.started || plan.years < 5) continue;
     plan.started = true;
@@ -500,6 +499,7 @@ export const HealthEngine = {
       if (!c || c.remission || !c.diagnosed) return;
       if (CONDITIONS[id].kind === 'addiction') return ctx.toast('Addiction treatment means rehab.', 'warn');
       c.treated = !c.treated;
+      if (!c.treated) delete c.care; // a mental-health care plan ends with treatment
       ctx.log(c.treated ? `You started ${CONDITIONS[id].kind === 'mental' ? 'therapy and medication' : 'treatment'} for ${CONDITIONS[id].name.toLowerCase()}.` : `You stopped treating your ${CONDITIONS[id].name.toLowerCase()}.`, CONDITIONS[id].icon);
     },
     rehab(ctx, id) {

@@ -48,6 +48,7 @@ import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
 import { cardApr, minimumPayoff, DEFAULT_APR } from '../src/modules/life/CreditCards.js';
 import { gigEligibility } from '../src/modules/career/GigWork.js';
 import { benchEligibility, currentCourt, selectionFor } from '../src/modules/legal/Judiciary.js';
+import { ssdiEligibility, approvalOdds } from '../src/modules/health/SSDI.js';
 import { makeOffer, acceptOffer } from '../src/modules/career/JobMarket.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
@@ -1816,6 +1817,62 @@ const tests = {
     resolve(engine, 'civil.jury', 'serve');
     resolve(engine, 'civil.verdict', state.prompts.find((p) => p.type === 'civil.verdict').options[0].id);
     assert.equal(state.civil.juries, 1);
+  },
+  'mental health: therapy and medication trade-offs, tapering vs cold turkey, and 988 in a crisis'() {
+    const { engine, state, ctx } = setup(75, 30);
+    addCondition(ctx, 'anxiety', { severity: 60, diagnosed: true });
+    engine.dispatch('mental.meds', 'anxiety:benzo');
+    const c = getCondition(state, 'anxiety');
+    assert.equal(c.care.meds, 'benzo');
+    assert.equal(c.treated, true);
+    engine.dispatch('mental.meds', 'depression:ssri');
+    // Two years on a benzo: dependence. Cold turkey means withdrawal.
+    c.care.medYears = 3;
+    const stress = state.stats.stress;
+    engine.dispatch('mental.meds', 'anxiety:stop');
+    assert.equal(c.care.meds, null);
+    assert.ok(state.stats.stress > stress, 'withdrawal');
+    // Therapy: in network vs out of network.
+    engine.dispatch('mental.therapy', 'anxiety:cbt');
+    assert.equal(c.care.therapy, 'cbt');
+    // A crisis: 988 connects you with care.
+    addCondition(ctx, 'depression', { severity: 85, diagnosed: true });
+    ctx.prompt({ type: 'mental.crisis', title: 'x', text: '', options: [{ id: 'call988', label: 'a' }, { id: 'alone', label: 'b' }], data: { id: 'depression' } });
+    resolve(engine, 'mental.crisis', 'call988');
+    const d = getCondition(state, 'depression');
+    assert.ok(d.care?.therapy && !d.care.waitlist, '988 referral skips the waitlist');
+    assert.ok(d.severity < 85);
+  },
+
+  'SSDI: apply, get denied, appeal to a hearing with an attorney, collect back pay'() {
+    const { engine, state, ctx } = setup(76, 52);
+    state.retirement.ssEarnings = Array.from({ length: 25 }, () => 60000);
+    addCondition(ctx, 'backInjury', { severity: 95, diagnosed: true });
+    assert.ok(ssdiEligibility(state).ok, ssdiEligibility(state).reason);
+    engine.dispatch('ssdi.apply');
+    assert.equal(state.health.disability.ssdiClaim.stage, 'initial');
+    assert.ok(!state.health.disability.benefits.some((b) => b.source === 'ssdi'), 'not automatic');
+    const chance = engine.rng.chance.bind(engine.rng);
+    engine.rng.chance = (p) => (p >= 0.03 && p <= 0.9 && state.health.disability.ssdiClaim?.stage !== 'hearing' ? false : chance(p));
+    state.prompts = [];
+    engine.ageUp();
+    resolve(engine, 'ssdi.denied', 'appeal');
+    assert.equal(state.health.disability.ssdiClaim.stage, 'reconsideration');
+    state.prompts = state.prompts.filter((p) => p.type === 'ssdi.denied');
+    engine.ageUp();
+    resolve(engine, 'ssdi.denied', 'lawyer');
+    const claim = state.health.disability.ssdiClaim;
+    assert.equal(claim.stage, 'hearing');
+    assert.ok(claim.lawyer);
+    // The hearing a year later goes your way: benefits plus back pay, minus the capped fee.
+    state.character.age += 1;
+    state.prompts = [];
+    const odds = approvalOdds(state, 'hearing', true);
+    engine.rng.chance = (p) => (p === odds ? true : chance(p));
+    engine.ageUp();
+    assert.ok(state.character.alive);
+    assert.ok(state.health.disability.benefits.some((b) => b.source === 'ssdi'), 'approved');
+    assert.ok(state.finances.ledger.income.length === 0 && state.finances.lastYear.gross > 50000, 'back pay counted as income');
   },
 };
 

@@ -468,6 +468,8 @@ export function getCommitments(state) {
     const delegated = biz.staff.headcount >= 8 ? Object.values(biz.staff.delegation).filter(Boolean).length : 0;
     list.push({ id: 'business', label: biz.role === 'operator' ? `Running ${biz.name}` : `Owner of ${biz.name}`, load: biz.role === 'operator' ? 3 - delegated * 0.5 : 0.5 });
   }
+  const therapy = (state.health?.conditions ?? []).filter((c) => c.care?.therapy && !c.care.waitlist && !c.remission).length;
+  if (therapy) list.push({ id: 'therapy', label: 'Therapy', load: 0.25 * therapy });
   if (state.judiciary?.seat) list.push({ id: 'bench', label: 'On the bench', load: 3 });
   const gig = state.gig?.active;
   if (gig) list.push({ id: 'gig', label: gig.hours === 'full' ? 'Gig work (full time)' : 'Side hustle', load: gig.hours === 'full' ? 3 : 1 });

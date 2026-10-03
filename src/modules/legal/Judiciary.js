@@ -275,6 +275,7 @@ export const Judiciary = {
     nomination(ctx, data, optionId) {
       const { state, rng } = ctx;
       const c = COURTS[data.court];
+      if (state.legal.incarceration) return ctx.log('Your nomination was withdrawn.', '📭', 'bad');
       if (optionId !== 'accept') return ctx.log(`You declined to be considered for ${c.name}.`, '🙅');
       if (c.system === 'federal' && c.rank >= 2) {
         ctx.prompt({
