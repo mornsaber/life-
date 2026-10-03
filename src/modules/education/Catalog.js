@@ -42,6 +42,7 @@ export const MAJORS = {
   communications: { name: 'Communications & Journalism', icon: '📣', fields: ['journalism', 'corporate', 'retail', 'foreignService', 'municipalAdmin', 'legislativeStaff'], levels: ['bachelor'] },
   socialWork: { name: 'Social Work', icon: '🤝', fields: ['socialWork', 'cps', 'legalSupport'], levels: ['bachelor', 'master'] },
   hospitalityMgmt: { name: 'Hospitality Management', icon: '🏨', fields: ['hospitality', 'culinary', 'retail'], levels: ['associate', 'bachelor'] },
+  religiousStudies: { name: 'Religious Studies / Theology', icon: '📜', fields: ['clergy', 'socialWork'], levels: ['bachelor', 'master'] },
   liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService'], levels: ['associate', 'bachelor'] },
 };
 
@@ -69,6 +70,7 @@ export const PROGRAMS = {
   mba: { name: 'Master of Business Administration', type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'business', schools: ['online', 'state', 'private', 'elite'], costFactor: 1.4, minSmarts: 50, minGpa: 2.8, fields: ['corporate', 'finance'] },
   mpa: { name: 'Master of Public Administration', type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'publicAdministration', schools: ['online', 'state', 'elite'], costFactor: 1.1, minSmarts: 45, minGpa: 2.8, fields: ['municipalAdmin', 'regulatory', 'publicWorks', 'planning'] },
   msw: { name: 'Master of Social Work', type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'socialWork', schools: ['online', 'state', 'private'], costFactor: 1.1, minSmarts: 45, minGpa: 2.8, fields: ['socialWork', 'cps'] },
+  seminary: { name: 'Master of Divinity (Seminary)', type: 'master', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['online', 'private', 'elite'], costFactor: 0.6, fields: ['clergy'] },
   msAccounting: { name: 'M.S. Accounting', type: 'master', years: 1, requires: { level: 'bachelor' }, major: 'accounting', schools: ['state', 'private'], costFactor: 1.1, minSmarts: 50, fields: ['accounting'] },
   jd: { name: 'Juris Doctor (Law School)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.5, minSmarts: 60, minGpa: 3.0, fields: ['law'] },
   md: { name: 'Doctor of Medicine (Medical School)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.6, minSmarts: 70, minGpa: 3.3, fields: ['medical'] },
@@ -79,7 +81,7 @@ export const PROGRAMS = {
 export const PROGRAM_GROUPS = [
   { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'cosmetologySchool', 'culinaryArts', 'teacherPrep', 'premedPostbacc'] },
   { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor'] },
-  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'jd', 'md', 'pharmd', 'phd'] },
+  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'jd', 'md', 'pharmd', 'phd'] },
 ];
 
 /** Majors offered for a program ('choose' programs list them by level). */

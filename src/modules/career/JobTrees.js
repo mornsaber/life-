@@ -20,6 +20,7 @@ import { L } from './Ladder.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
+import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
 
 const ALL_SIZES = { small: 4, medium: 3, large: 2, enterprise: 1 };
 
@@ -384,6 +385,27 @@ Object.assign(PRIVATE_PROFESSIONS, {
       L('editorInChief', 'Editor-in-Chief', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 150 }),
     ],
   },
+  clergy: {
+    id: 'clergy', name: 'Clergy & Ministry', icon: '🙏', sector: 'private', payMultiplier: 0.75, minAge: 18, sizes: { small: 6, medium: 3, large: 1 }, background: 'standard', promotionOdds: 0.5,
+    employers: ['Community Congregation'],
+    // Ordination depends on your tradition; titles come from it too (Parish Priest, Rabbi, Imam…).
+    eligible: clergyEligibility,
+    prepare: (state, job) => {
+      const t = TRADITIONS[state.community?.faith?.traditionId];
+      if (t) {
+        job.tradition = state.community.faith.traditionId;
+        job.titleMap = t.clergy.titles;
+      }
+    },
+    levels: [
+      L('seminarian', 'Seminarian', 1, { years: 2 }),
+      L('associate', 'Associate Minister', 3, { entry: true, req: { education: { program: 'seminary' } } }),
+      L('minister', 'Minister', 4),
+      L('chaplain', 'Chaplain', 5, { track: 'ic', req: { education: { program: 'seminary' } } }),
+      L('senior', 'Senior Minister', 6, { track: 'mgmt', req: { education: { program: 'seminary' } }, abilities: ['supervise', 'hire', 'budget'], reports: 6 }),
+      L('regional', 'Regional Leader', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 40 }),
+    ],
+  },
   hospitality: {
     id: 'hospitality', name: 'Hotels & Hospitality', icon: '🏨', sector: 'private', payMultiplier: 0.68, promotionOdds: 0.4, minAge: 16, sizes: ALL_SIZES, background: 'lenient',
     union: { chance: 0.15, name: 'UNITE HERE Local 11', strike: true },
@@ -412,7 +434,7 @@ export const JOB_FIELDS = {
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'pharmacy', 'ems', 'socialWork', 'cps'] },
   safety: { label: 'Public Safety', icon: '🚓', ids: ['police', 'statePolice', 'fire', 'corrections', 'gameWarden', 'parkService'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'journalism'] },
+  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'journalism', 'clergy'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'foreignService', 'intelligence'] },
 };
 

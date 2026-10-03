@@ -40,6 +40,8 @@ import { closeBusiness } from '../src/modules/business/BusinessEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
 import { creditLimit } from '../src/core/State.js';
+import { membership, clergyEligibility } from '../src/modules/community/Religions.js';
+import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1400,6 +1402,94 @@ const tests = {
     engine.ageUp();
     assert.equal(state.housing.rental?.tier === 'house', false, 'lease ended');
     assert.ok(state.housing.credit.events.some((e) => e.type === 'eviction'));
+  },
+  'clergy: ordination depends on the tradition; titles follow it; celibate priests who marry are laicized'() {
+    const { engine, state } = setup(61, 30);
+    state.character.gender = 'female';
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'religiousStudies', year: 22 }, { type: 'master', programId: 'seminary', major: null, year: 27 });
+    state.community.faith = null;
+    assert.equal(clergyEligibility(state).ok, false, 'needs a congregation');
+    state.community.faith = membership('catholic', "St. Mark's Parish", 20);
+    assert.match(clergyEligibility(state).reason, /only men/);
+    state.community.faith = membership('lds', 'Oak Grove Ward', 20);
+    assert.match(clergyEligibility(state).reason, /lay/);
+    state.community.faith = membership('reformJewish', 'Beth Shalom Temple', 29);
+    assert.match(clergyEligibility(state).reason, /3 years/);
+    state.community.faith.joinedAge = 20;
+    assert.ok(clergyEligibility(state).ok);
+    const job = giveJob(engine, 'clergy', 'associate');
+    assert.equal(job.title, 'Assistant Rabbi');
+    assert.equal(job.tradition, 'reformJewish');
+    // A celibate Catholic priest who marries is removed from ministry.
+    state.character.gender = 'male';
+    state.career.job = null;
+    state.community.faith = membership('catholic', "St. Mark's Parish", 20);
+    const priest = giveJob(engine, 'clergy', 'minister');
+    assert.equal(priest.title, 'Parish Priest');
+    state.people.list.push({ id: 'per_sp', firstName: 'Ann', lastName: 'X', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: 0 });
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.career.job, null, 'laicized');
+  },
+
+  'leaving a high-control group means shunning; schisms split congregations'() {
+    const { engine, state, ctx } = setup(62, 30);
+    state.community.faith = membership('ifb', 'Bible Baptist Church', 0, { raised: true, attendance: 'devout' });
+    state.community.upbringing = 'ifb';
+    const mom = state.people.list.find((p) => p.relation === 'mother');
+    mom.relationship = 80;
+    addFriend(ctx, 'faith', { relationship: 70 });
+    assert.equal(friendsOf(state).filter((f) => f.circle === 'faith').length, 1);
+    engine.dispatch('community.leave');
+    assert.equal(state.community.faith, null);
+    assert.equal(friendsOf(state).filter((f) => f.circle === 'faith').length, 0, 'congregation cut you off');
+    assert.ok(mom.relationship <= 55, 'family shuns you');
+    assert.equal(state.community.former.at(-1).traditionId, 'ifb');
+    // Schism: follow the breakaway.
+    state.yearly = {};
+    engine.dispatch('community.join', 'mainline');
+    assert.equal(state.community.faith.traditionId, 'mainline');
+    ctx.prompt({ type: 'community.schism', title: 'Split', text: '', options: [{ id: 'stay', label: 'a' }, { id: 'follow', label: 'b' }, { id: 'leave', label: 'c' }], data: { from: 'mainline', to: 'conservativeMethodist' } });
+    resolve(engine, 'community.schism', 'follow');
+    assert.equal(state.community.faith.traditionId, 'conservativeMethodist');
+    // Giving is a share of last year's income, never into debt.
+    state.finances.lastYear = { gross: 100000 };
+    state.finances.cash = 50000;
+    engine.dispatch('community.give', '10');
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.community.givenThisYear, 10000);
+  },
+
+  'friends: circles, moving away, help requests, reunions; a co-parent is never dropped'() {
+    const { engine, state, ctx } = setup(63, 28);
+    state.education.degrees[0].year = 18;
+    const f = addFriend(ctx, 'college', { relationship: 9 });
+    const coParent = addFriend(ctx, 'neighborhood', { relationship: 5 });
+    state.people.list.push({ id: 'per_kid', firstName: 'Kid', lastName: 'Case', gender: 'male', relation: 'child', ageOffset: -2, relationship: 70, alive: true, income: 0, otherParentId: coParent.id });
+    f.away = true;
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(!state.people.list.includes(f), 'lost touch with a distant, neglected friend');
+    assert.ok(state.people.list.includes(coParent), 'the other parent of your child stays');
+    // At 28 + 2 the 10-year-from-18 mark already passed; jump to the 20-year reunion.
+    state.prompts = [];
+    state.character.age = 37;
+    engine.ageUp();
+    resolve(engine, 'friends.reunion', 'go');
+    // Help request: lend money, then it gets paid back or written off.
+    const buddy = addFriend(ctx, 'work', { relationship: 60 });
+    ctx.prompt({ type: 'friends.help', title: 'x', text: '', options: [{ id: 'help', label: 'a' }, { id: 'no', label: 'b' }], data: { personId: buddy.id, kind: 'loan', amount: 3000 } });
+    state.finances.cash = 10000;
+    resolve(engine, 'friends.help', 'help');
+    assert.equal(buddy.owes.amount, 3000);
+    assert.equal(state.finances.cash, 7000);
+    // Visiting a friend who moved away costs a trip.
+    buddy.away = true;
+    state.yearly = {};
+    state.prompts = [];
+    engine.dispatch('people.spendTime', buddy.id);
+    assert.equal(state.finances.cash, 6600);
   },
 };
 

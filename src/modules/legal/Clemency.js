@@ -48,7 +48,7 @@ export function pardonStatus(state, r) {
   if (r.severity !== 'felony') return { ok: false, reason: 'Pardons are for felonies' };
   if (sinceLastConviction(state) < PARDON_WAIT) return { ok: false, reason: `Needs ${PARDON_WAIT} crime-free years` };
   const federal = Boolean(OFFENSES[r.offenseId]?.federal);
-  const service = Object.entries(state.emergency ?? {}).some(([k, m]) => k !== 'history' && m) || state.military.history.some((h) => ['honorable', 'retired', 'medical'].includes(h.discharge));
+  const service = Object.entries(state.emergency ?? {}).some(([k, m]) => k !== 'history' && m) || state.military.history.some((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)) || (state.community?.volunteerYears ?? 0) >= 3 || (state.community?.mentorYears ?? 0) >= 3;
   const chance = clamp((federal ? 0.02 : 0.08) + (service ? 0.05 : 0) + Math.min(0.05, prestige(state) / 2000) + Math.min(0.05, (sinceLastConviction(state) - PARDON_WAIT) * 0.005), 0.01, 0.25);
   return { ok: true, federal, chance, by: federal ? 'the President' : `the Governor of ${stateOf(state).name}` };
 }

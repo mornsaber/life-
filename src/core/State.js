@@ -474,6 +474,13 @@ export function getCommitments(state) {
     if (c.studentGov) list.push({ id: 'studentGov', label: 'Student government', load: 0.5 });
     if (c.clubs.length) list.push({ id: 'clubs', label: `${c.clubs.length} club${c.clubs.length > 1 ? 's' : ''}`, load: 0.25 * c.clubs.length });
   }
+  const cm = state.community;
+  if (cm) {
+    const faith = cm.faith;
+    if (faith && faith.attendance !== 'occasional' && job?.professionId !== 'clergy') list.push({ id: 'faith', label: faith.congregation, load: (faith.attendance === 'devout' ? 0.5 : 0.25) + (faith.role ? 0.25 : 0) });
+    if (cm.volunteering.length) list.push({ id: 'volunteer', label: `Volunteering (${cm.volunteering.length})`, load: 0.5 * cm.volunteering.length });
+    if (cm.mentoring) list.push({ id: 'mentor', label: 'Mentoring', load: 0.5 });
+  }
   for (const [key, member] of Object.entries(state.emergency)) {
     if (key === 'history') continue;
     if (member && !member.onLeave) list.push({ id: key, label: member.serviceName, load: 1.5 });

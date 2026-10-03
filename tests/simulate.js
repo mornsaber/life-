@@ -28,6 +28,8 @@ import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestat
 import { promptModal } from '../src/ui/Components.js';
 import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
+import { TRADITIONS, VOLUNTEER_ORGS, ATTENDANCE } from '../src/modules/community/Community.js';
+import { CIRCLES, FRIEND_CAP, friendsOf, circleFriends } from '../src/modules/people/Friends.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
@@ -181,6 +183,13 @@ function checkInvariants(state) {
     assert.ok(debtOk(b), 'business debts');
     assert.ok(b.family.every((id) => state.people.list.some((p) => p.id === id)), 'family employees exist');
   }
+  const cm = state.community;
+  assert.ok(cm && Array.isArray(cm.volunteering) && cm.volunteering.length <= 2 && cm.volunteering.every((v) => VOLUNTEER_ORGS[v]), 'volunteering');
+  assert.ok(!cm.faith || (TRADITIONS[cm.faith.traditionId] && ATTENDANCE[cm.faith.attendance] && cm.faith.congregation), 'faith membership');
+  assert.ok([0, 2, 5, 10].includes(cm.giving) && cm.givenThisYear >= 0, 'giving');
+  assert.ok(circleFriends(state).length <= FRIEND_CAP, 'friend cap');
+  assert.ok(friendsOf(state).every((f) => !f.circle || CIRCLES[f.circle]), 'friend circles');
+  if (state.career.job?.professionId === 'clergy') assert.ok(cm.faith || !state.character.alive, 'clergy belong to a faith');
   const plan = state.finances.ch13;
   assert.ok(!plan || (plan.yearsLeft > 0 && plan.annual > 0), 'chapter 13 plan');
   assert.ok(Number.isFinite(state.finances.cash), 'cash finite');
@@ -227,6 +236,16 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Community
+  if (age >= 16 && player.chance(0.04)) tries.push(() => act('community.join', player.pick(Object.keys(TRADITIONS))));
+  if (state.community.faith && player.chance(0.03)) tries.push(() => act('community.leave'));
+  if (state.community.faith && player.chance(0.1)) tries.push(() => act('community.attendance', player.pick(Object.keys(ATTENDANCE))));
+  if (player.chance(0.05)) tries.push(() => act('community.give', player.pick(['0', '2', '5', '10'])));
+  if (age >= 12 && player.chance(0.08)) tries.push(() => act('community.volunteer', player.pick(Object.keys(VOLUNTEER_ORGS))));
+  if (age >= 21 && player.chance(0.04)) tries.push(() => act('community.mentor'));
+  if (player.chance(0.02)) tries.push(() => act('community.stepDown'));
+  if (age >= 18 && state.community.faith && player.chance(0.05)) tries.push(() => act('career.apply', 'clergy'));
+  if (age >= 18 && player.chance(0.2)) tries.push(() => act('people.makeFriend'));
   if (age >= 18 && player.chance(0.02)) tries.push(() => act('finances.fileBankruptcy', player.pick(['7', '13'])));
   if (state.career.leave && player.chance(0.3)) tries.push(() => act(player.chance(0.8) ? 'career.returnFromLeave' : 'career.resignFromLeave'));
   if (state.career.job && player.chance(0.03)) tries.push(() => act('career.transfer', player.pick(Object.keys(REGIONS))));

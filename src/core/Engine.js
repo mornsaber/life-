@@ -270,7 +270,8 @@ export class Engine {
           id: `p${state.flags.promptSeq}`,
           icon: '❓',
           ...spec,
-          options: spec.options.map((o) => ({ ...o })),
+          // Undefined fields don't survive a save, so never store them.
+          options: spec.options.map((o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))),
         };
         if (!prompt.options.some((o) => !o.disabled)) throw new Error(`Prompt ${spec.type} has no selectable option`);
         state.prompts.push(prompt);

@@ -101,6 +101,10 @@ export function applicationEligibility(state, professionId) {
   }
   const bg = backgroundCheck(state, profession);
   if (!bg.ok) return bg;
+  if (profession.eligible) {
+    const extra = profession.eligible(state);
+    if (!extra.ok) return extra;
+  }
   const sizeProbe = profession.sector === 'federal' ? 'large' : 'small';
   const level = bestEntryLevel(state, profession, sizeProbe) ?? bestEntryLevel(state, profession, 'enterprise');
   if (!level) {
@@ -129,7 +133,7 @@ function stepForAtLeast(state, job, minimum) {
 
 function applyLevel(job, level) {
   job.levelId = level.id;
-  job.title = level.title;
+  job.title = job.titleMap?.[level.id] ?? level.title;
   job.track = level.track;
   job.grade = level.grade;
   job.abilities = [...level.abilities];
@@ -169,6 +173,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
     department: null,
     paidThisYear: false,
   };
+  profession.prepare?.(state, job);
   applyLevel(job, level);
   recalcSalary(state, job);
   ensureDepartment(job, level);
@@ -177,8 +182,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   // Trainees start probation when they graduate.
   job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
 
-  ctx.log(`You were hired as ${level.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.${job.probationLeft ? ` Probationary period: ${job.probationLeft} yr.` : ''}`, profession.icon, 'milestone');
-  ctx.toast(`Hired: ${level.title}`, 'good');
+  ctx.log(`You were hired as ${job.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.${job.probationLeft ? ` Probationary period: ${job.probationLeft} yr.` : ''}`, profession.icon, 'milestone');
+  ctx.toast(`Hired: ${job.title}`, 'good');
   ctx.stat('happiness', 8);
   ctx.emit('career:hired', { job });
   if (program?.academy) {
@@ -347,8 +352,8 @@ export function promote(ctx, levelId) {
   job.performance = Math.round(clamp(job.performance - 15, 40, 100));
   job.lastRaiseAge = state.character.age;
   ensureDepartment(job, level);
-  ctx.log(`Promoted to ${level.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
-  ctx.toast(`Promoted: ${level.title}`, 'good');
+  ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
+  ctx.toast(`Promoted: ${job.title}`, 'good');
   ctx.stat('happiness', 10);
   return true;
 }
@@ -365,8 +370,8 @@ export function demote(ctx, reason) {
   job.warnings = 0;
   job.lowYears = 0;
   ensureDepartment(job, prev);
-  ctx.log(`You were demoted to ${prev.title} [G${prev.grade}] (${reason}). Salary: $${job.salary.toLocaleString()}.`, '⬇️', 'bad');
-  ctx.toast(`Demoted: ${prev.title}`, 'bad');
+  ctx.log(`You were demoted to ${job.title} [G${prev.grade}] (${reason}). Salary: $${job.salary.toLocaleString()}.`, '⬇️', 'bad');
+  ctx.toast(`Demoted: ${job.title}`, 'bad');
   ctx.stat('happiness', -10);
   return true;
 }

@@ -11,6 +11,7 @@
  * will, intestacy applies: spouse and children share, then parents and
  * siblings, then the state.
  */
+import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 
@@ -186,6 +187,10 @@ export function buildHeirState(rng, old, childId) {
     s.business = { current: { ...structuredClone(biz), role: 'absentee', family: biz.family.filter((id) => ids.has(id) && id !== child.id) }, history: [], listings: [] };
     addLog(s, `You inherited the family business, ${biz.name}${equity ? ` (worth about $${equity.toLocaleString()} to you)` : ''}. A manager runs it for now.`, '🏪', 'milestone');
   }
+
+  // Children are raised in the family's faith.
+  const faith = old.community?.faith;
+  if (faith) s.community = newCommunity(faith.traditionId, faith.congregation, childAge);
 
   // Minors live with the surviving parent (or a guardian); young adults may still be at home.
   s.housing.withParents = childAge < 18 || (childAge < 26 && Boolean(otherParent?.alive));

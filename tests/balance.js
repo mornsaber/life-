@@ -40,6 +40,7 @@ export const TARGETS = {
   ptsdVets: { band: [0.1, 0.35], ref: '≈15–30% of combat veterans', fmt: pct },
   selfEmployed: { band: [0.02, 0.12], ref: '≈5% of workers own an incorporated or employer business (BLS); gig work is separate', fmt: pct },
   everOwner: { band: [0.06, 0.3], ref: 'about 1 in 6 adults own a business at some point', fmt: pct },
+  affiliated: { band: [0.55, 0.8], ref: '≈70% of U.S. adults identify with a religion (Pew 2023–24)', fmt: pct },
   everMarried: { band: [0.6, 0.92], ref: '≈80% of adults have married by 45 (Census ACS)', fmt: pct },
   divorced: { band: [0.25, 0.55], ref: '≈35–45% of first marriages end in divorce', fmt: pct },
   parents: { band: [0.55, 0.9], ref: '≈85% of women 40–44 have had a child (lower for men)', fmt: pct },
@@ -291,6 +292,7 @@ export async function playLives({ from, to, seed }) {
       if (s.character.age <= 70) stats.peakNw = Math.max(stats.peakNw, nw);
       if (s.character.age === 65) stats.nw65 = nw;
       if (s.character.age === 45) stats.ownerAt45 = Boolean(s.business.current);
+      if (s.character.age === 40) stats.faithAt40 = Boolean(s.community?.faith);
       if (process.env.BALANCE_DEBUG === 'wealth' && s.character.age === 65) console.log(JSON.stringify({ plan: persona.plan, saver: persona.saver, cash: Math.round(s.finances.cash), dc: s.retirement.dc, equity: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0)), inv: Math.round(Object.values(s.investing.holdings).reduce((t, h) => t + h.value, 0)), nw }));
       if (process.env.BALANCE_DEBUG === 'grade' && s.character.age === 40 && s.career.job) console.log(JSON.stringify({ plan: persona.plan, prof: s.career.job.professionId, level: s.career.job.levelId, grade: s.career.job.grade, salary: s.career.job.salary, dept: Boolean(s.career.job.department) }));
     }
@@ -331,6 +333,7 @@ export async function playLives({ from, to, seed }) {
       recessions: hist.filter((h, k) => h.phase === 'recession' && hist[k - 1]?.phase !== 'recession').length,
       everOwner: Boolean(s.business.current || s.business.history.length),
       ownerAt45: Boolean(stats.ownerAt45),
+      faithAt40: Boolean(stats.faithAt40),
       everMarried: (s.people?.marriages ?? 0) > 0,
       everDivorced: (s.people?.divorces ?? 0) > 0,
       hadKids: (s.people?.list ?? []).some((p) => p.relation === 'child'),
@@ -383,6 +386,7 @@ export function aggregate(rs) {
     ptsdVets: combatVets.length ? share(combatVets, (r) => r.ptsd) : NaN,
     selfEmployed: share(at45, (r) => r.ownerAt45),
     everOwner: share(rs.filter((r) => r.age >= 60), (r) => r.everOwner),
+    affiliated: share(at40, (r) => r.faithAt40),
     everMarried: share(at45, (r) => r.everMarried),
     divorced: share(at45.filter((r) => r.everMarried), (r) => r.everDivorced),
     parents: share(at45, (r) => r.hadKids),

@@ -27,6 +27,7 @@ import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
 } from './People.js';
 import { settleEstate, buildHeirState, setStateLookup, WILL_PLANS } from './Legacy.js';
+import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 
 const NATIONALITIES = ['Canada', 'Mexico', 'Germany', 'India', 'the Philippines', 'Brazil', 'South Korea', 'Nigeria', 'Ukraine', 'France'];
 const JOBS = [['Teacher', 62000, 'public'], ['Nurse', 82000, 'private'], ['Accountant', 78000, 'private'], ['Electrician', 64000, 'private'], ['Software developer', 120000, 'private'], ['Police officer', 72000, 'public'], ['Retail manager', 52000, 'private'], ['Paralegal', 55000, 'private'], ['Graphic designer', 58000, 'private'], ['Chef', 46000, 'private'], ['Social worker', 54000, 'public'], ['Engineer', 105000, 'private'], ['Barista', 30000, 'private'], ['Firefighter', 66000, 'public'], ['Dental hygienist', 82000, 'private'], ['Realtor', 60000, 'private']];
@@ -43,7 +44,7 @@ const HOLD_LICENSES = ['driverLicense', 'cdlA', 'realEstate', 'barLicense', 'cpa
 /* People factory                                                      */
 /* ------------------------------------------------------------------ */
 
-function makePerson(ctx, { relation, gender, age, lastName, relationship = 60, ...extra }) {
+export function makePerson(ctx, { relation, gender, age, lastName, relationship = 60, ...extra }) {
   const { rng, state } = ctx;
   const g = gender ?? rng.pick(['male', 'female']);
   const name = randomName(rng, g);
@@ -198,6 +199,8 @@ function partnerTick(ctx) {
   // Endings: dating partners drift away; unhappy spouses file.
   if (partner.relation !== 'spouse' && partner.relationship < 25 && rng.chance(0.45)) {
     partner.relation = 'friend';
+    partner.circle = 'neighborhood';
+    partner.formerPartner = true;
     partner.relationship = clampRel(partner.relationship - 10);
     ctx.log(`${partner.firstName} broke up with you.`, '💔', 'bad');
     ctx.stat('happiness', -8);
@@ -451,6 +454,8 @@ export const PeopleEngine = {
       partner.relationship = clampRel(partner.relationship - amount);
       if (partner.relation !== 'spouse' && ctx.rng.chance(partnerLeaves)) {
         partner.relation = 'friend';
+        partner.circle = 'neighborhood';
+        partner.formerPartner = true;
         ctx.log(`${partner.firstName} ended things.`, '💔', 'bad');
       }
     };
@@ -488,6 +493,13 @@ export const PeopleEngine = {
       if (!person?.alive || ageOf(state, person) < 0) return;
       if (yearlyCount(state, `people.time.${id}`)) return ctx.toast('You already made time for them this year.', 'warn');
       bumpYearly(state, `people.time.${id}`);
+      // Friends who moved away: a visit costs a trip; otherwise it's a video call.
+      if (person.away) {
+        const visited = ctx.spend(400, `Visit to ${person.firstName}`, { credit: true });
+        person.relationship = clampRel(person.relationship + (visited ? rng.int(6, 12) : rng.int(2, 5)));
+        ctx.log(visited ? `You flew out to see ${person.firstName}.` : `You caught up with ${person.firstName} over a long video call.`, visited ? '✈️' : '📱');
+        return;
+      }
       person.relationship = clampRel(person.relationship + rng.int(5, 12));
       ctx.stat('happiness', 2);
       ctx.log(rng.pick([`You spent a weekend with ${person.firstName}.`, `You and ${person.firstName} got dinner and talked for hours.`, `You took ${person.firstName} on a day trip.`]), '🫶');
@@ -535,8 +547,8 @@ export const PeopleEngine = {
       if (state.character.age < 5) return;
       if (yearlyCount(state, 'people.friend')) return ctx.toast('Making friends takes time — try again next year.', 'warn');
       bumpYearly(state, 'people.friend');
-      if (living(state).filter((p) => p.relation === 'friend').length >= 6) return ctx.toast('Your friend circle is full.', 'warn');
-      const friend = makePerson(ctx, { relation: 'friend', age: Math.max(5, state.character.age + rng.int(-4, 4)), relationship: rng.int(45, 70) });
+      if (circleFriends(state).length >= FRIEND_CAP) return ctx.toast('Your friend circle is full.', 'warn');
+      const friend = makePerson(ctx, { relation: 'friend', age: Math.max(5, state.character.age + rng.int(-4, 4)), relationship: rng.int(45, 70), circle: currentCircle(state), metAge: state.character.age });
       state.people.list.push(friend);
       ctx.stat('happiness', 3);
       ctx.log(`You became friends with ${friend.firstName}.`, '🤝', 'good');
@@ -572,6 +584,8 @@ export const PeopleEngine = {
       const person = byId(state, id);
       if (!person || !['partner', 'fiance'].includes(person.relation)) return;
       person.relation = 'friend';
+      person.circle = 'neighborhood';
+      person.formerPartner = true;
       person.relationship = clampRel(person.relationship - 25);
       ctx.stat('happiness', -6);
       ctx.log(`You broke up with ${person.firstName}.`, '💔', 'warn');

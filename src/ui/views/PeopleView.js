@@ -6,6 +6,7 @@ import { esc, money, button, card, meter, kv, empty } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
+import { CIRCLES } from '../../modules/people/Friends.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
@@ -18,6 +19,8 @@ function personRow(state, p) {
     p.alive && p.job ? p.job : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
     p.nationality && p.nationality !== 'US' ? `from ${p.nationality}` : null,
+    p.alive && p.away ? 'moved away' : null,
+    p.owes ? `owes you ${money(p.owes.amount)}` : null,
     p.relation === 'child' && age < 18 && p.custody ? CUSTODY[p.custody] : null,
     p.relation === 'child' && p.degree ? `college grad` : null,
   ].filter(Boolean).join(' · ');
@@ -40,6 +43,18 @@ function personRow(state, p) {
 function group(title, icon, list, state, note = '') {
   if (!list.length && !note) return '';
   return card(title, `${note}${list.length ? `<ul class="people">${list.map((p) => personRow(state, p)).join('')}</ul>` : ''}`, { icon });
+}
+
+/** Friends grouped by where you met them. */
+function friendsCard(state, friends) {
+  const groups = Object.entries(CIRCLES).map(([id, c]) => {
+    const list = friends.filter((f) => (f.circle ?? 'neighborhood') === id);
+    return list.length ? `<h4 class="sub">${c.icon} ${esc(c.label)}</h4><ul class="people">${list.map((p) => personRow(state, p)).join('')}</ul>` : '';
+  }).join('');
+  const close = friends.filter((f) => f.relationship >= 50).length;
+  const note = state.character.age >= 25 && !close ? '<p class="why">No close friends — loneliness takes a toll on happiness and health.</p>' : '';
+  return card('Friends', `${note}<div class="toggle-row">${button('🤝 Make a new friend', 'people.makeFriend', { variant: 'small', disabled: Boolean(state.yearly['people.friend']) })}</div>${groups}
+    <p class="fine">Spending time with a friend who moved away means a trip (≈$400) or a video call.</p>`, { icon: '🤝' });
 }
 
 function romance(state) {
@@ -119,7 +134,7 @@ export function peopleView(state) {
     ${group('Partner', '💑', by('partner', 'fiance', 'spouse').filter((p) => p.alive), state)}
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${group('Family', '🏡', family, state)}
-    ${group('Friends', '🤝', by('friend').filter((p) => p.alive), state, `<div class="toggle-row">${button('🤝 Make a new friend', 'people.makeFriend', { variant: 'small', disabled: Boolean(state.yearly['people.friend']) })}</div>`)}
+    ${friendsCard(state, by('friend').filter((p) => p.alive))}
     ${group('Exes', '💔', by('ex'), state)}
     ${legacyCard(state)}
     ${lineage(state)}

@@ -30,13 +30,14 @@ import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
 import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
+import { communityView } from './views/CommunityView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
-  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
@@ -67,6 +68,7 @@ export const VIEWS = {
   },
   career: careerView,
   business: businessView,
+  community: communityView,
   gov: govView,
   military: militaryView,
   emergency: emergencyView,
