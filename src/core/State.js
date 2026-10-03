@@ -474,6 +474,13 @@ export function getCommitments(state) {
     if (c.studentGov) list.push({ id: 'studentGov', label: 'Student government', load: 0.5 });
     if (c.clubs.length) list.push({ id: 'clubs', label: `${c.clubs.length} club${c.clubs.length > 1 ? 's' : ''}`, load: 0.25 * c.clubs.length });
   }
+  // Elder care (see people/ElderCare ARRANGEMENTS — kept in sync by hand to avoid an import cycle).
+  const CARE_LOAD = { self: { help: 1, full: 2.5 }, moveIn: { help: 0.75, full: 2 }, aide: { help: 0.25, full: 0.5 }, assisted: { help: 0.25, full: 0.25 }, nursing: { help: 0.25, full: 0.25 } };
+  for (const c of Object.values(state.elderCare?.cases ?? {})) {
+    const load = CARE_LOAD[c.arrangement]?.[c.level];
+    const parent = state.people?.list.find((p) => p.id === c.personId);
+    if (load && parent?.alive) list.push({ id: `care.${c.personId}`, label: `Caring for ${parent.firstName}`, load });
+  }
   const cm = state.community;
   if (cm) {
     const faith = cm.faith;

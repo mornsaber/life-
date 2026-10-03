@@ -42,6 +42,7 @@ import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/l
 import { creditLimit } from '../src/core/State.js';
 import { membership, clergyEligibility } from '../src/modules/community/Religions.js';
 import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
+import { careBill } from '../src/modules/people/ElderCare.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1490,6 +1491,46 @@ const tests = {
     state.prompts = [];
     engine.dispatch('people.spendTime', buddy.id);
     assert.equal(state.finances.cash, 6600);
+  },
+  'elder care: parents pay first, then you; dementia without a POA means guardianship; Medicaid after spend-down'() {
+    const { engine, state } = setup(64, 50);
+    const mom = state.people.list.find((p) => p.relation === 'mother');
+    mom.alive = true;
+    mom.ageOffset = 30;
+    mom.relationship = 70;
+    state.housing.withParents = false;
+    state.people.parentAssets = 50000;
+    state.elderCare.cases[mom.id] = { personId: mom.id, level: 'help', dementia: false, arrangement: 'aide', since: 50 };
+    // Competent parent: income + savings cover a part-time aide.
+    let bill = careBill(state, state.elderCare.cases[mom.id]);
+    assert.equal(bill.you, 0);
+    assert.equal(bill.parentPays, 35000);
+    // Sign the POA while she still can.
+    engine.dispatch('elderCare.poa', mom.id);
+    assert.ok(state.elderCare.poa.includes(mom.id));
+    // Dementia: full care in a nursing home; savings spend down, then Medicaid.
+    const c = state.elderCare.cases[mom.id];
+    c.level = 'full';
+    c.dementia = true;
+    c.arrangement = 'nursing';
+    bill = careBill(state, c);
+    assert.equal(bill.fromSavings, 50000);
+    assert.equal(bill.medicaid, 105000 - 20000 - 50000);
+    assert.equal(bill.you, 0, 'children are not billed for a nursing home');
+    // In-home care is different: without a POA you can't draw on an incapacitated parent's savings.
+    state.elderCare.poa = [];
+    c.arrangement = 'aide';
+    assert.equal(careBill(state, c).fromSavings, 0);
+    assert.equal(careBill(state, c).you, 75000 - 20000);
+    c.arrangement = 'nursing';
+    engine.dispatch('elderCare.poa', mom.id);
+    assert.equal(state.elderCare.poa.length, 0, 'too late to sign');
+    // Hands-on caregiving adds to your time commitments and stress.
+    c.arrangement = 'self';
+    state.stats.stress = 20;
+    state.prompts = [];
+    engine.ageUp();
+    if (mom.alive) assert.ok(state.elderCare.caregiverYears >= 1);
   },
 };
 

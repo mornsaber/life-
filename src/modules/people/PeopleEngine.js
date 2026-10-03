@@ -91,7 +91,7 @@ const preferredGender = (state) => {
 /* Yearly life of the people around you                               */
 /* ------------------------------------------------------------------ */
 
-function personDies(ctx, person, cause) {
+export function personDies(ctx, person, cause) {
   const { state } = ctx;
   person.alive = false;
   person.diedAge = ageOf(state, person);
@@ -129,7 +129,8 @@ function widowed(ctx, spouse) {
 function lastParentDied(ctx) {
   const { state, rng } = ctx;
   const [lo, hi] = INHERITANCE[state.people.wealth] ?? INHERITANCE.low;
-  const estate = rng.int(lo, hi);
+  // Long-term care spends down what parents would have left (see ElderCare).
+  const estate = state.people.parentAssets != null ? Math.max(0, Math.min(rng.int(lo, hi), state.people.parentAssets)) : rng.int(lo, hi);
   const heirs = 1 + living(state).filter((x) => x.relation === 'sibling').length;
   const share = Math.round(estate / heirs);
   if (share > 0) {

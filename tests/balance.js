@@ -144,6 +144,12 @@ export async function playLives({ from, to, seed }) {
           if (id === 'loc') persona.loc = true;
         } else if (p.type === 'business.offer') id = p.data.price * (s.business.current?.ownerPct ?? 1) > 1000000 ? 'accept' : 'decline';
         else if (p.type === 'business.ipo') id = 'ipo';
+        else if (p.type === 'elderCare.arrange') {
+          // Most care is family care; those who can afford it pay for help.
+          const pick = (...ids) => ids.map((x) => options.find((o) => o.id === x)).find(Boolean);
+          id = (choose.chance(0.4) && pick('sibling')) || (s.finances.cash > 150000 && pick('aide', 'assisted', 'nursing')) || pick(choose.chance(0.5) ? 'self' : 'moveIn', 'self', 'nursing', 'aide') || options[0];
+          id = id.id;
+        }
         else if (p.type === 'business.temptation') id = persona.risky ? 'take' : 'honest';
         else if (p.type === 'finances.debtCrisis') id = (options.find((o) => o.id === 'ch7') ?? options.find((o) => o.id === 'ch13') ?? options[0]).id;
         else if (p.type === 'people.date') id = persona.marry && choose.chance(0.7) ? options.find((o) => o.id === '0')?.id : options.find((o) => !/^\d$/.test(o.id))?.id;

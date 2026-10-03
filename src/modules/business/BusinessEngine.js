@@ -738,8 +738,11 @@ export const BusinessEngine = {
         const cut = Math.round(biz.staff.headcount / 3);
         biz.staff.headcount -= cut;
         bump(biz.staff, 'morale', -15);
-        biz.debts.payables = (biz.debts.payables ?? 0) + Math.round(-biz.cash);
-        biz.cash = 0;
+        // Vendors only carry what's actually short (cash may have recovered since the crunch).
+        if (biz.cash < 0) {
+          biz.debts.payables = (biz.debts.payables ?? 0) + Math.round(-biz.cash);
+          biz.cash = 0;
+        }
         ctx.log(`You laid off ${cut} people at ${biz.name}; vendors agreed to wait a year.`, '✂️', 'warn');
       } else if (optionId === 'bankrupt') {
         closeBusiness(ctx, 'Business bankruptcy', { liquidation: 0.35, bankruptcy: true });

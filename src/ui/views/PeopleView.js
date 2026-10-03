@@ -7,6 +7,7 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, POA_COST, GUARDIANSHIP_COST } from '../../modules/people/ElderCare.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
@@ -55,6 +56,31 @@ function friendsCard(state, friends) {
   const note = state.character.age >= 25 && !close ? '<p class="why">No close friends — loneliness takes a toll on happiness and health.</p>' : '';
   return card('Friends', `${note}<div class="toggle-row">${button('🤝 Make a new friend', 'people.makeFriend', { variant: 'small', disabled: Boolean(state.yearly['people.friend']) })}</div>${groups}
     <p class="fine">Spending time with a friend who moved away means a trip (≈$400) or a video call.</p>`, { icon: '🤝' });
+}
+
+/** Aging parents: care arrangements, who pays, and legal authority. */
+function elderCareCard(state) {
+  const parents = living(state).filter((p) => ['mother', 'father'].includes(p.relation) && ageOf(state, p) >= 60);
+  if (!parents.length || state.character.age < 18 || !state.elderCare) return '';
+  const cases = careCases(state);
+  const rows = parents.map((p) => {
+    const c = cases.find((x) => x.personId === p.id);
+    const authority = state.elderCare.poa.includes(p.id) ? '📜 POA on file' : state.elderCare.guardianship.includes(p.id) ? '⚖️ You are guardian' : '';
+    const legal = hasAuthority(state, p.id) ? '' : c?.dementia
+      ? button('⚖️ Petition for guardianship', 'elderCare.guardianship', { arg: p.id, variant: 'tiny', hint: money(GUARDIANSHIP_COST) })
+      : button('📜 Power of attorney', 'elderCare.poa', { arg: p.id, variant: 'tiny', hint: `${money(POA_COST)} · while they can still sign` });
+    if (!c) return `<li><b>${esc(p.firstName)}</b> (${ageOf(state, p)}) — living independently. ${authority} ${legal}</li>`;
+    const bill = c.arrangement ? careBill(state, c) : null;
+    const opts = arrangementOptions(state, c.level).map((id) => button(`${ARRANGEMENTS[id].icon} ${ARRANGEMENTS[id].label}`, 'elderCare.arrange', { arg: `${p.id}:${id}`, variant: c.arrangement === id ? 'tiny on' : 'tiny', disabled: Boolean(state.yearly[`elderCare.arrange.${p.id}`]) })).join('');
+    return `<li><b>${esc(p.firstName)}</b> (${ageOf(state, p)}) — ${c.level === 'full' ? (c.dementia ? 'dementia, full-time care' : 'full-time care') : 'needs help with daily life'}
+      ${bill ? `<small>· ${money(bill.total)}/yr: they pay ${money(bill.parentPays)}${bill.medicaid ? `, Medicaid ${money(bill.medicaid)}` : ''}, you pay ${money(bill.you)}</small>` : ''} ${authority}
+      <div class="toggle-row">${opts}${legal}</div></li>`;
+  }).join('');
+  const hands = cases.some((c) => ['self', 'moveIn'].includes(c.arrangement));
+  return card('Aging Parents', `<ul class="history">${rows}</ul>
+    ${state.people.parentAssets != null ? `<p class="fine">Your parents' savings: ${money(state.people.parentAssets)} — care is paid from it before you, and what's left is your inheritance.</p>` : ''}
+    ${hands ? `<div class="toggle-row">${button('🌤️ Book respite care', 'elderCare.respite', { variant: 'small', disabled: Boolean(state.yearly['elderCare.respite']), hint: '$3,000 · −15 stress' })}</div>` : ''}
+    <p class="fine">Sign a power of attorney while a parent can still sign it — after a dementia diagnosis you need a court guardianship to manage their money or move them.</p>`, { icon: '👵', accent: 'yellow' });
 }
 
 function romance(state) {
@@ -134,6 +160,7 @@ export function peopleView(state) {
     ${group('Partner', '💑', by('partner', 'fiance', 'spouse').filter((p) => p.alive), state)}
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${group('Family', '🏡', family, state)}
+    ${elderCareCard(state)}
     ${friendsCard(state, by('friend').filter((p) => p.alive))}
     ${group('Exes', '💔', by('ex'), state)}
     ${legacyCard(state)}

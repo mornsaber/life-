@@ -206,7 +206,8 @@ const UP_OR_OUT = [1, 2, 3];
 
 function notSelected(ctx, svc) {
   if (svc.track !== 'officer' || !UP_OR_OUT.includes(svc.grade)) return;
-  svc.passovers = (svc.passovers ?? 0) + 1;
+  // Capped: officers in the retirement sanctuary can keep being passed over without it mattering.
+  svc.passovers = Math.min(2, (svc.passovers ?? 0) + 1);
   if (svc.passovers < 2) ctx.log(`Not selected for ${rankTitles(svc)[svc.grade + 1]} (1/2). A second non-selection means separation.`, '📋', 'warn');
 }
 

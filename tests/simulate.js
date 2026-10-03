@@ -30,6 +30,7 @@ import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { TRADITIONS, VOLUNTEER_ORGS, ATTENDANCE } from '../src/modules/community/Community.js';
 import { CIRCLES, FRIEND_CAP, friendsOf, circleFriends } from '../src/modules/people/Friends.js';
+import { ARRANGEMENTS } from '../src/modules/people/ElderCare.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
@@ -180,7 +181,7 @@ function checkInvariants(state) {
     assert.ok(b.ownerPct > 0 && b.ownerPct <= 1, `owner stake ${b.ownerPct}`);
     assert.ok(Number.isInteger(b.staff.headcount) && b.staff.headcount >= 0, 'headcount');
     assert.ok(b.staff.morale >= 0 && b.staff.morale <= 100 && b.staff.unionRisk >= 0 && b.staff.unionRisk <= 100, 'staff meters');
-    assert.ok(debtOk(b), 'business debts');
+    assert.ok(debtOk(b), `business debts ${JSON.stringify(b.debts)}`);
     assert.ok(b.family.every((id) => state.people.list.some((p) => p.id === id)), 'family employees exist');
   }
   const cm = state.community;
@@ -190,6 +191,11 @@ function checkInvariants(state) {
   assert.ok(circleFriends(state).length <= FRIEND_CAP, 'friend cap');
   assert.ok(friendsOf(state).every((f) => !f.circle || CIRCLES[f.circle]), 'friend circles');
   if (state.career.job?.professionId === 'clergy') assert.ok(cm.faith || !state.character.alive, 'clergy belong to a faith');
+  for (const [id, c] of Object.entries(state.elderCare.cases)) {
+    assert.ok(['help', 'full'].includes(c.level) && (!c.arrangement || ARRANGEMENTS[c.arrangement]) && c.personId === id, 'care case');
+    assert.ok(!(c.arrangement === 'assisted' && c.level === 'full'), 'assisted living is for help-level care');
+  }
+  assert.ok(state.people.parentAssets == null || state.people.parentAssets >= 0, 'parent assets');
   const plan = state.finances.ch13;
   assert.ok(!plan || (plan.yearsLeft > 0 && plan.annual > 0), 'chapter 13 plan');
   assert.ok(Number.isFinite(state.finances.cash), 'cash finite');
@@ -236,6 +242,10 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Elder care
+  for (const id of Object.keys(state.elderCare.cases)) if (player.chance(0.2)) tries.push(() => act('elderCare.arrange', `${id}:${player.pick(Object.keys(ARRANGEMENTS))}`));
+  if (player.chance(0.05)) tries.push(() => act(player.pick(['elderCare.poa', 'elderCare.guardianship']), player.pick(state.people.list)?.id));
+  if (player.chance(0.05)) tries.push(() => act('elderCare.respite'));
   // Community
   if (age >= 16 && player.chance(0.04)) tries.push(() => act('community.join', player.pick(Object.keys(TRADITIONS))));
   if (state.community.faith && player.chance(0.03)) tries.push(() => act('community.leave'));
