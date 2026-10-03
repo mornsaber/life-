@@ -468,6 +468,8 @@ export function getCommitments(state) {
     const delegated = biz.staff.headcount >= 8 ? Object.values(biz.staff.delegation).filter(Boolean).length : 0;
     list.push({ id: 'business', label: biz.role === 'operator' ? `Running ${biz.name}` : `Owner of ${biz.name}`, load: biz.role === 'operator' ? 3 - delegated * 0.5 : 0.5 });
   }
+  const gig = state.gig?.active;
+  if (gig) list.push({ id: 'gig', label: gig.hours === 'full' ? 'Gig work (full time)' : 'Side hustle', load: gig.hours === 'full' ? 3 : 1 });
   const k12 = state.k12;
   if (k12?.job && state.character.age < 18) list.push({ id: 'teenJob', label: 'Part-time job', load: 1 });
   if (k12?.activities.length && state.character.age < 18) list.push({ id: 'activities', label: `${k12.activities.length} activit${k12.activities.length > 1 ? 'ies' : 'y'}`, load: 0.5 * k12.activities.length });

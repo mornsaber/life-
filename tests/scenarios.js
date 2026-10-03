@@ -46,6 +46,8 @@ import { careBill } from '../src/modules/people/ElderCare.js';
 import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles/Vehicles.js';
 import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
 import { cardApr, minimumPayoff, DEFAULT_APR } from '../src/modules/life/CreditCards.js';
+import { gigEligibility } from '../src/modules/career/GigWork.js';
+import { makeOffer, acceptOffer } from '../src/modules/career/JobMarket.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1684,6 +1686,72 @@ const tests = {
     const heir = engine.continueAsChild('kid0');
     assert.deepEqual(heir.finances.trustPayouts.map((p) => p.age), [25, 30]);
     assert.ok(heir.finances.cash > 19000, 'a third now plus lifetime gifts');
+  },
+  'gig work: 1099 pay with self-employment tax, no benefits, gated by license and car, and deactivation'() {
+    const { engine, state } = setup(70, 25);
+    assert.match(gigEligibility(state, 'rideshare').reason, /car/);
+    assert.match(gigEligibility(state, 'freelance').reason, /bachelor/);
+    engine.dispatch('gig.start', 'petCare:full');
+    assert.equal(state.gig.active.gigId, 'petCare');
+    state.prompts = [];
+    engine.ageUp();
+    const ly = state.gig.lastYear;
+    assert.ok(ly.net > 20000 && ly.net < 60000, `pet care full time nets ${ly.net}`);
+    // Getting a real job turns it into a side hustle.
+    giveJob(engine, 'retail', 'associate');
+    assert.equal(state.gig.active.hours, 'side');
+    // A low rating gets you deactivated.
+    state.gig.active.rating = 4.25;
+    engine.rng.chance = () => true;
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.gig.active, null);
+    assert.ok(state.gig.deactivated.petCare);
+  },
+
+  'job market: competing offers in your own field, switching employers, and non-competes that follow you'() {
+    const { engine, state, ctx } = setup(71, 32);
+    const job = giveJob(engine, 'tech', 'swe');
+    const salary = job.salary;
+    const offer = { ...makeOffer(ctx), nonCompete: 1, workMode: 'remote' };
+    assert.equal(offer.professionId, 'tech');
+    acceptOffer(ctx, offer);
+    const now = state.career.job;
+    assert.notEqual(now.employer.id, job.employer.id, 'new company, same career');
+    assert.ok(now.salary >= offer.salary * 0.99 && now.salary > salary);
+    assert.equal(now.workMode, 'remote');
+    assert.equal(now.remote, true);
+    // Leaving with a non-compete binds you; going to a competitor can get you sued (not in California).
+    now.employer.stateId = 'TX';
+    acceptOffer(ctx, { ...makeOffer(ctx), nonCompete: 0 });
+    assert.equal(state.career.nonCompete.untilAge, 33);
+    state.career.nonCompete.stateId = 'CA';
+    state.prompts = [];
+    engine.rng.chance = () => true;
+    acceptOffer(ctx, makeOffer(ctx));
+    assert.equal(state.career.nonCompete, null, 'California won\'t enforce it');
+    assert.ok(!state.prompts.some((p) => p.type === 'jobMarket.nonCompete'));
+  },
+
+  'workplace claims: EEOC, lawyers on contingency, retaliation and taxable settlements'() {
+    const { engine, state, ctx } = setup(72, 40);
+    giveJob(engine, 'corporate', 'analyst');
+    ctx.prompt({ type: 'claims.incident', title: 'x', text: '', options: [{ id: 'lawyer', label: 'a' }, { id: 'endure', label: 'b' }], data: { basis: 'age' } });
+    const chance = engine.rng.chance.bind(engine.rng);
+    engine.rng.chance = (p) => (p === 0.3 ? true : p === 0.4 ? false : chance(p));
+    resolve(engine, 'claims.incident', 'lawyer');
+    const c = state.career.claims.active;
+    assert.equal(c.stage, 'lawsuit');
+    assert.equal(c.retaliated, true, 'retaliation after complaining');
+    assert.ok(state.career.job, 'retaliated against, not fired');
+    // Settle: the lawyer takes a third; the rest is taxable income.
+    engine.rng.chance = () => true;
+    c.years = 2;
+    state.prompts = [];
+    engine.ageUp();
+    const h = state.career.claims.history.at(-1);
+    assert.ok(['settled'].includes(h.result), h.result);
+    assert.equal(h.net, h.gross - Math.round(h.gross * 0.33));
   },
 };
 

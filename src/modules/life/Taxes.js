@@ -128,9 +128,9 @@ function debtTick(ctx) {
 
 function auditTick(ctx) {
   const { state, rng } = ctx;
-  if (state.legal.incarceration || state.prompts.some((p) => p.type === 'taxes.audit')) return;
-  if (!rng.chance(auditOdds(state))) return;
   const ly = state.finances.lastYear;
+  if (!ly || state.legal.incarceration || state.prompts.some((p) => p.type === 'taxes.audit')) return;
+  if (!rng.chance(auditOdds(state))) return;
   const big = (ly.gross ?? 0) > 1000000;
   ctx.prompt({
     type: 'taxes.audit', icon: '🔎', title: 'IRS Audit',

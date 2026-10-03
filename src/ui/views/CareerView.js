@@ -17,6 +17,54 @@ import { DUTIES, canDelegate } from '../../modules/career/ManagementEngine.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS } from '../../modules/life/Regions.js';
+import { WORK_MODES, workModeOf, NONCOMPETE_BANS } from '../../modules/career/JobMarket.js';
+import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
+import { BASES } from '../../modules/career/WorkplaceClaims.js';
+
+/** Shop your skills, set where you work, and see non-competes and open claims. */
+function jobMarketCard(state) {
+  const job = state.career.job;
+  const nc = state.career.nonCompete;
+  const claims = state.career.claims;
+  if (!job && !nc && !claims?.active && !claims?.history.length) return '';
+  const mode = workModeOf(job);
+  const modes = job ? Object.entries(WORK_MODES).map(([id, m]) => button(`${m.icon} ${m.label}`, 'jobMarket.workMode', { arg: id, variant: mode === id ? 'small on' : 'small', disabled: mode === id || Boolean(state.yearly['jobMarket.mode']), hint: m.desc })).join('') : '';
+  const c = claims?.active;
+  const stage = c && { reported: 'Reported to HR', eeoc: 'EEOC investigation', rightToSue: 'Right-to-sue letter issued', lawsuit: 'Lawsuit pending' }[c.stage];
+  return card('Job Market', `
+    ${kv([
+      job ? ['Where you work', `${WORK_MODES[mode].icon} ${WORK_MODES[mode].label}`] : null,
+      job?.nonCompete ? ['Your contract', `${job.nonCompete.years}-year non-compete if you leave${NONCOMPETE_BANS.includes(job.employer.stateId) ? ' (unenforceable in this state)' : ''}`] : null,
+      nc ? ['Non-compete', `Bars you from ${esc(getProfession(nc.professionId).name)} until age ${nc.untilAge} (${esc(nc.employer)})`] : null,
+      c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
+      claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
+    ])}
+    ${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: 'Same career, different company: up to 3 offers' })}</div>
+    <h4 class="sub">Work arrangement</h4><div class="toggle-row">${modes}</div>` : ''}
+    <p class="fine">Strong performers get calls from recruiters. A competing offer can win you a raise where you are — but your boss will remember. Remote work means no commute, but you're out of sight when promotions come up.</p>`, { icon: '📨' });
+}
+
+/** Rideshare, delivery and freelance work: 1099 income, no benefits, your hours. */
+function gigCard(state) {
+  if (state.character.age < 16 || !state.gig) return '';
+  const a = state.gig.active;
+  const ly = state.gig.lastYear;
+  const rows = Object.entries(GIGS).map(([id, g]) => {
+    const side = gigEligibility(state, id, 'side');
+    const full = gigEligibility(state, id, 'full');
+    return `<li class="fund-row"><span>${g.icon} <b>${esc(g.name)}</b> <small>≈$${g.rate}/hr gross · ${Math.round(g.expenses * 100)}% costs · ${esc(g.desc)}</small>${side.ok ? '' : ` <span class="why">${esc(side.reason)}</span>`}</span>
+      ${button('Side hustle', 'gig.start', { arg: `${id}:side`, variant: a?.gigId === id && a.hours === 'side' ? 'tiny on' : 'tiny', disabled: !side.ok })}
+      ${button('Full time', 'gig.start', { arg: `${id}:full`, variant: a?.gigId === id && a.hours === 'full' ? 'tiny on' : 'tiny', disabled: !full.ok, title: full.reason ?? '' })}</li>`;
+  }).join('');
+  return card('Gig Work', `
+    ${a ? `${kv([
+      ['Working', `${GIGS[a.gigId].icon} ${esc(GIGS[a.gigId].name)} · ${HOURS[a.hours].label.toLowerCase()} since ${a.since}`],
+      ['Rating', `${a.rating.toFixed(2)} ★${a.rating < 4.7 ? ' <span class="neg">— near deactivation</span>' : ''}`],
+      ly ? ['Last year', `${money(ly.gross)} gross − ${money(ly.expenses)} costs = ${money(ly.net)} (before self-employment tax)`] : null,
+    ])}<div class="toggle-row">${button('Log off for good', 'gig.stop', { variant: 'small ghost' })}</div>` : ''}
+    <ul class="history">${rows}</ul>
+    <p class="fine">Gig pay is 1099 income: you owe 15.3% self-employment tax, there's no employer health plan or 401(k) match, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱' });
+}
 
 function payBreakdown(job) {
   const p = job.pay;
@@ -150,7 +198,7 @@ export function careerView(state, ui = {}) {
   const history = state.career.history.length
     ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${militaryLeaveCard(state)}${teenJobsCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${jobMarketCard(state)}${militaryLeaveCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 export { compactMoney };

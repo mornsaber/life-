@@ -33,6 +33,10 @@ import { CIRCLES, FRIEND_CAP, friendsOf, circleFriends } from '../src/modules/pe
 import { ARRANGEMENTS } from '../src/modules/people/ElderCare.js';
 import { VEHICLE_TYPES } from '../src/modules/vehicles/Vehicles.js';
 import { CARD_TYPES } from '../src/modules/life/CreditCards.js';
+import { GIGS } from '../src/modules/career/GigWork.js';
+import { WORK_MODES } from '../src/modules/career/JobMarket.js';
+import { BASES } from '../src/modules/career/WorkplaceClaims.js';
+const BASES_OK = Object.keys(BASES);
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
@@ -199,6 +203,11 @@ function checkInvariants(state) {
     assert.ok(!v.loan || (v.loan.balance > 0 && v.loan.yearsLeft > 0 && v.loan.payment > 0), `vehicle loan ${JSON.stringify(v.loan)}`);
     assert.ok(!v.lease || v.lease.yearsLeft >= 0, 'lease term');
   }
+  const g = state.gig.active;
+  assert.ok(!g || (GIGS[g.gigId] && g.rating >= 4.2 && g.rating <= 5 && !(g.hours === 'full' && state.career.job)), 'gig');
+  if (state.career.job) assert.ok(WORK_MODES[state.career.job.workMode ?? 'onsite'] && Boolean(state.career.job.remote) === (state.career.job.workMode === 'remote' || (!state.career.job.workMode && Boolean(state.career.job.remote))), `work mode ${state.career.job.workMode}/${state.career.job.remote}`);
+  const cl = state.career.claims;
+  assert.ok(cl && (!cl.active || BASES_OK.includes(cl.active.basis)) && cl.history.every((h) => h.net >= 0), 'claims');
   const ep = state.people.plan;
   assert.ok(ep && ep.exemptionUsed >= 0 && Object.values(ep.gifts).every((g) => g >= 0), 'estate plan');
   assert.ok((state.finances.trustPayouts ?? []).every((p) => p.amount >= 0 && p.age > state.character.age - 1), 'trust payouts');
@@ -258,6 +267,11 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Job market, gig work
+  if (state.career.job && player.chance(0.15)) tries.push(() => act('jobMarket.search'));
+  if (state.career.job && player.chance(0.05)) tries.push(() => act('jobMarket.workMode', player.pick(Object.keys(WORK_MODES))));
+  if (age >= 16 && player.chance(0.06)) tries.push(() => act('gig.start', `${player.pick(Object.keys(GIGS))}:${player.pick(['side', 'full'])}`));
+  if (state.gig.active && player.chance(0.05)) tries.push(() => act(player.chance(0.5) ? 'gig.stop' : 'gig.hours', player.pick(['side', 'full'])));
   // Estate planning
   if (age >= 25 && player.chance(0.03)) tries.push(() => act('estate.trust', player.pick(['trust', 'ilit', 'minorsTrust'])));
   if (age >= 25 && player.chance(0.03)) tries.push(() => act('estate.beneficiary', player.pick(['none', 'children', ...state.people.list.map((p) => p.id)])));

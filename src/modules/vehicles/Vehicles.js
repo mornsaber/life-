@@ -177,7 +177,9 @@ function accidentTick(ctx) {
     const t = typeOf(v);
     const drives = t.category === 'car' || t.category === 'bike';
     const base = drives ? 0.035 : 0.01;
-    const odds = base * (t.risk ?? 1) * (age < 25 ? 1.8 : age >= 80 ? 1.6 : 1) * (1 + r.points * 0.05) * (state.stats.stress >= 75 ? 1.3 : 1);
+    // Gig drivers put far more miles on (and wear out) their cars.
+    const gigMiles = drives && state.gig?.active && ['rideshare', 'delivery', 'shopper'].includes(state.gig.active.gigId) ? (state.gig.active.hours === 'full' ? 2 : 1.4) : 1;
+    const odds = base * gigMiles * (t.risk ?? 1) * (age < 25 ? 1.8 : age >= 80 ? 1.6 : 1) * (1 + r.points * 0.05) * (state.stats.stress >= 75 ? 1.3 : 1);
     if (!rng.chance(odds)) continue;
     const atFault = rng.chance(age < 25 ? 0.65 : 0.5);
     const severe = rng.chance(0.15);

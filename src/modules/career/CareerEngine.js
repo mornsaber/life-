@@ -119,7 +119,7 @@ export function applicationEligibility(state, professionId) {
 /* ------------------------------------------------------------------ */
 
 /** Smallest step at a new grade that keeps pay from going backwards. */
-function stepForAtLeast(state, job, minimum) {
+export function stepForAtLeast(state, job, minimum) {
   for (let step = 1; step <= MAX_STEP; step++) {
     job.step = step;
     if (recalcSalary(state, job) >= minimum) return step;

@@ -145,6 +145,12 @@ export async function playLives({ from, to, seed }) {
         } else if (p.type === 'business.offer') id = p.data.price * (s.business.current?.ownerPct ?? 1) > 1000000 ? 'accept' : 'decline';
         else if (p.type === 'business.ipo') id = 'ipo';
         else if (p.type === 'taxes.debt') id = 'plan';
+        else if (p.type === 'jobMarket.headhunter') id = choose.chance(0.5) ? 'accept' : (options.find((o) => o.id === 'counter') ?? options.find((o) => o.id === 'decline')).id;
+        else if (p.type === 'jobMarket.offers') id = choose.chance(0.5) ? '0' : 'stay';
+        else if (p.type === 'jobMarket.rto') id = 'comply';
+        else if (p.type === 'jobMarket.nonCompete') id = 'settle';
+        else if (p.type === 'claims.incident') id = choose.weighted([{ id: 'hr', w: 3 }, { id: 'endure', w: 4 }, { id: 'eeoc', w: 1 }, { id: 'lawyer', w: 1 }, { id: 'quit', w: 1 }], (x) => x.w).id;
+        else if (p.type === 'claims.accused') id = 'cooperate';
         else if (p.type === 'taxes.audit') id = s.finances.cash > 30000 ? 'cpa' : 'self';
         else if (p.type === 'elderCare.arrange') {
           // Most care is family care; those who can afford it pay for help.

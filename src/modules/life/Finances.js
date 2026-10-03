@@ -46,7 +46,8 @@ function steadyIncome(state) {
   const age = state.character.age;
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
   const ownerPay = state.business?.current?.lastYear?.ownerPay ?? 0;
-  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state) + ownerPay;
+  const gig = state.gig?.active ? state.gig.lastYear?.net ?? 0 : 0;
+  return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state) + ownerPay + gig;
 }
 
 export const Finances = {
