@@ -2,7 +2,7 @@
  * Every domain module the engine runs, in one place. Tick order is set by
  * each module's `order` field, not by its position here:
  *
- *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 ·
+ *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 · estate 16 ·
  *   military 20 · federal 24 · publicservice 25 · municipal 26 · career 30 · business 31 ·
  *   politics 33 · legal 35 · emergency 40 · health 42 · housing 45 · vehicles 46 · retirement 85 · taxes 88 · cards 89 · investing 86 · finances 90
  */
@@ -34,10 +34,11 @@ import { BusinessEngine } from './business/BusinessEngine.js';
 import { Vehicles } from './vehicles/Vehicles.js';
 import { Friends } from './people/Friends.js';
 import { ElderCare } from './people/ElderCare.js';
+import { EstatePlanning } from './people/EstatePlanning.js';
 import { Community } from './community/Community.js';
 
 export const MODULES = [
-  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, K12Engine, EducationEngine, UniversityLife, CredentialsModule, MilitaryModule,
+  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, BusinessEngine, PoliticsEngine, LegalModule,
   EmergencyModule, HealthEngine, HousingEngine, Vehicles, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

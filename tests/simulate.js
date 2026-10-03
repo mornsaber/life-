@@ -199,6 +199,9 @@ function checkInvariants(state) {
     assert.ok(!v.loan || (v.loan.balance > 0 && v.loan.yearsLeft > 0 && v.loan.payment > 0), `vehicle loan ${JSON.stringify(v.loan)}`);
     assert.ok(!v.lease || v.lease.yearsLeft >= 0, 'lease term');
   }
+  const ep = state.people.plan;
+  assert.ok(ep && ep.exemptionUsed >= 0 && Object.values(ep.gifts).every((g) => g >= 0), 'estate plan');
+  assert.ok((state.finances.trustPayouts ?? []).every((p) => p.amount >= 0 && p.age > state.character.age - 1), 'trust payouts');
   const cc = state.finances.cards;
   assert.ok(cc.held.length <= 5 && cc.held.every((c) => CARD_TYPES[c.typeId]) && ['payoff', 'minimum'].includes(cc.strategy) && (!cc.transfer || cc.transfer.amount >= 0), 'cards');
   const tx = state.finances.tax;
@@ -255,9 +258,16 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Estate planning
+  if (age >= 25 && player.chance(0.03)) tries.push(() => act('estate.trust', player.pick(['trust', 'ilit', 'minorsTrust'])));
+  if (age >= 25 && player.chance(0.03)) tries.push(() => act('estate.beneficiary', player.pick(['none', 'children', ...state.people.list.map((p) => p.id)])));
+  if (age >= 25 && state.finances.cash > 20000 && player.chance(0.05)) tries.push(() => act('estate.gift', `${player.pick(state.people.list)?.id}:${player.pick([5000, 19000, 50000])}`));
   // Credit cards
   if (age >= 18 && player.chance(0.06)) tries.push(() => act('cards.apply', player.pick(Object.keys(CARD_TYPES))));
-  if (state.finances.cards.held.length && player.chance(0.03)) tries.push(() => act('cards.close', player.pick(state.finances.cards.held).id));
+  if (state.finances.cards.held.length && player.chance(0.03)) {
+    const cid = player.pick(state.finances.cards.held).id;
+    tries.push(() => act('cards.close', cid));
+  }
   if (player.chance(0.05)) tries.push(() => act('cards.strategy', player.pick(['payoff', 'minimum'])));
   if (state.finances.cash < 0 && player.chance(0.1)) tries.push(() => act('cards.transfer'));
   // Taxes
@@ -265,7 +275,10 @@ function randomActions(state) {
   if (age >= 18 && player.chance(0.01)) tries.push(() => act('legal.taxCheat'));
   // Vehicles
   if (age >= 16 && player.chance(0.08)) tries.push(() => act('vehicles.buy', `${player.pick(Object.keys(VEHICLE_TYPES))}:${player.pick(['cash', 'loan', 'lease'])}`));
-  if (state.vehicles.owned.length && player.chance(0.1)) tries.push(() => act(`vehicles.${player.pick(['sell', 'toggleInsurance', 'payoff'])}`, player.pick(state.vehicles.owned).id));
+  if (state.vehicles.owned.length && player.chance(0.1)) {
+    const vid = player.pick(state.vehicles.owned).id;
+    tries.push(() => act(`vehicles.${player.pick(['sell', 'toggleInsurance', 'payoff'])}`, vid));
+  }
   if (player.chance(0.05)) tries.push(() => act('vehicles.trafficSchool'));
   // Elder care
   for (const id of Object.keys(state.elderCare.cases)) if (player.chance(0.2)) tries.push(() => act('elderCare.arrange', `${id}:${player.pick(Object.keys(ARRANGEMENTS))}`));
@@ -430,9 +443,9 @@ function resolveAllPrompts(state) {
 function checkEstate(state) {
   const l = state.legacy;
   assert.ok(l, 'estate settled at death');
-  const out = l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0);
+  const out = l.funeral + l.debtsPaid + l.probate + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0);
   assert.equal(out, l.assets, `estate conserves assets (${l.assets} → ${out})`);
-  assert.ok(l.bequests.every((b) => b.amount >= 0) && l.tax >= 0 && l.debtsPaid <= l.debts, 'estate amounts sane');
+  assert.ok(l.bequests.every((b) => b.amount >= 0 && (b.heirTax ?? 0) <= b.amount) && l.probate >= 0 && l.tax >= 0 && l.debtsPaid <= l.debts, 'estate amounts sane');
 }
 
 for (let life = 0; life < LIVES; life++) {

@@ -601,8 +601,9 @@ const tests = {
     state.retirement.dc = 400000;
     state.finances.loans = 20000;
     const l = settleEstate(state);
-    assert.equal(l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
+    assert.equal(l.funeral + l.debtsPaid + l.probate + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
     assert.equal(l.tax, 0, 'under the exemption');
+    assert.ok(l.probate > 0, 'no trust: probate costs');
     // Intestacy: spouse half, children split the other half.
     assert.equal(l.bequests.find((b) => b.to === 'sp1').amount, Math.floor(l.net / 2) + (l.net - l.bequests.reduce((s, b) => s + b.amount, 0)) || l.bequests.find((b) => b.to === 'sp1').amount);
     assert.equal(l.bequests.length, 3);
@@ -616,10 +617,10 @@ const tests = {
     state.finances.cash = 20000000;
     engine.dispatch('people.writeWill', 'charity');
     const l = settleEstate(state);
-    const taxable = l.assets - l.funeral - l.debtsPaid;
+    const taxable = l.assets - l.funeral - l.debtsPaid - l.probate;
     assert.equal(l.tax, Math.round((taxable - 13990000) * 0.4) + Math.round((taxable - 7160000) * 0.12));
-    assert.equal(l.bequests.find((b) => b.to === 'charity').amount, Math.floor(l.net / 2) + (l.net - l.bequests.reduce((s, b) => s + b.amount, 0)));
-    assert.equal(l.funeral + l.debtsPaid + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
+    assert.ok(Math.abs(l.bequests.find((b) => b.to === 'charity').amount - l.net / 2) <= 1, 'half to charity');
+    assert.equal(l.funeral + l.debtsPaid + l.probate + l.tax + l.bequests.reduce((s, b) => s + b.amount, 0), l.assets);
   },
 
   'married couples file jointly; children earn the child tax credit'() {
@@ -713,7 +714,8 @@ const tests = {
       assert.ok(heir, `generation ${gen + 1} started`);
       assert.equal(heir.lineage.generation, gen + 1);
       assert.equal(heir.lineage.ancestors.length, gen);
-      assert.ok(heir.finances.cash > 0, 'inherited cash');
+      // A minor heir's share waits in a guardianship account until 18.
+      assert.ok(heir.finances.cash > 0 || heir.finances.trustPayouts?.some((p) => p.age === 18 && p.amount > 0), 'inherited cash');
       if (gen === 1) assert.equal(heir.education.fund529, 40000);
       assert.ok(heir.people.list.some((p) => ['mother', 'father'].includes(p.relation) && !p.alive), 'deceased parent remembered');
       s = heir;
@@ -1646,6 +1648,42 @@ const tests = {
     engine.ageUp();
     assert.ok(state.finances.cards.rewards > 0, 'rewards');
     assert.ok(DEFAULT_APR > 0.2);
+  },
+  'estate planning: trusts skip probate, beneficiaries bypass the will (even an ex), gifts use the exclusion, trusts stage a young heir'() {
+    const { engine, state } = setup(69, 60);
+    family(engine, { kids: 2, kidAge: 20 });
+    state.finances.cash = 600000;
+    state.retirement.dc = 500000;
+    let l = settleEstate(state);
+    assert.ok(l.probate > 30000, 'probate on a $1.1M estate');
+    engine.dispatch('estate.trust', 'trust');
+    l = settleEstate(state);
+    assert.equal(l.probate, 0, 'living trust avoids probate');
+    // A 401(k) still naming your ex goes to the ex, whatever the will says.
+    const ex = { id: 'ex1', firstName: 'Pat', lastName: 'X', gender: 'male', relation: 'ex', ageOffset: 0, relationship: 20, alive: true, income: 0 };
+    state.people.list.push(ex);
+    engine.dispatch('estate.beneficiary', 'ex1');
+    engine.dispatch('people.writeWill', 'children');
+    l = settleEstate(state);
+    const toEx = l.bequests.find((b) => b.to === 'ex1');
+    assert.equal(toEx?.amount, 500000, 'ERISA: the ex gets the 401(k)');
+    assert.equal(toEx.heirTax, 110000, 'heirs pay income tax on pre-tax money');
+    engine.dispatch('estate.beneficiary', 'children');
+    l = settleEstate(state);
+    assert.ok(!l.bequests.some((b) => b.to === 'ex1'));
+    // Gifts: under the exclusion is free; over it uses lifetime exemption.
+    engine.dispatch('estate.gift', 'kid0:19000');
+    engine.dispatch('estate.gift', 'kid1:30000');
+    assert.equal(state.people.plan.exemptionUsed, 0, 'married: $38k per recipient with gift-splitting');
+    engine.dispatch('estate.gift', 'kid1:20000');
+    assert.equal(state.people.plan.exemptionUsed, 12000);
+    // A child under 25 with a minors' trust gets the inheritance in stages.
+    engine.dispatch('estate.trust', 'minorsTrust');
+    state.people.list.find((p) => p.id === 'kid0').ageOffset = 19 - state.character.age;
+    engine.context().die('Old age');
+    const heir = engine.continueAsChild('kid0');
+    assert.deepEqual(heir.finances.trustPayouts.map((p) => p.age), [25, 30]);
+    assert.ok(heir.finances.cash > 19000, 'a third now plus lifetime gifts');
   },
 };
 

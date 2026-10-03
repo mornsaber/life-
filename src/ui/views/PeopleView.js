@@ -7,6 +7,37 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
+import { probateAssets, designatedPayees, PROBATE_RATE } from '../../modules/people/Legacy.js';
+
+/** Trusts, beneficiaries and lifetime gifts. */
+function planSection(state) {
+  const plan = state.people.plan;
+  if (!plan) return '';
+  const probate = Math.round(probateAssets(state) * PROBATE_RATE);
+  const trusts = Object.entries(TRUSTS).map(([id, t]) => button(`${t.icon} ${t.label}`, 'estate.trust', { arg: id, variant: plan[id] ? 'small on' : 'small', hint: plan[id] ? (id === 'ilit' ? 'In place (irrevocable)' : 'In place · tap to dissolve') : `${money(TRUST_COSTS[id])} · ${t.desc}` })).join('');
+  const kids = livingChildren(state);
+  const options = [['none', 'Nobody (my estate)'], ...(kids.length > 1 ? [['children', 'My children equally']] : []), ...living(state).filter((p) => ['spouse', 'child', 'ex', 'sibling', 'mother', 'father'].includes(p.relation)).map((p) => [p.id, `${fullName(p)} (${RELATION_LABEL[p.relation]})`])];
+  const current = plan.beneficiary ?? 'none';
+  const payees = designatedPayees(state);
+  const exTrap = payees.some((p) => /ex-spouse/.test(p.label));
+  const ex = exclusionFor(state);
+  const gifts = giftRecipients(state).map((p) => {
+    const given = plan.giftedThisYear[p.id] ?? 0;
+    return `<li class="fund-row"><span>🎁 ${esc(p.firstName)} <small>${RELATION_LABEL[p.relation]} · given ${money(plan.gifts[p.id] ?? 0)} so far${given ? ` · ${money(given)} this year` : ''}</small></span>
+      ${[5000, ex, 50000].map((a) => button(`+${money(a)}`, 'estate.gift', { arg: `${p.id}:${a}`, variant: 'tiny', disabled: state.finances.cash < a })).join('')}</li>`;
+  }).join('');
+  return `<h4 class="sub">Estate plan</h4>
+    ${kv([
+      ['Probate if you died today', probate ? `<span class="neg">≈${money(probate)}</span> in court and attorney fees` : 'None — your trust holds everything'],
+      ['401(k) & IRA beneficiary', `${payees.length ? payees.map((p) => esc(p.label)).join(', ') : 'Your estate (probate, faster forced withdrawals)'}${exTrap ? ' <span class="neg">— your ex still collects the 401(k)</span>' : ''}`],
+      plan.exemptionUsed ? ['Lifetime exemption used', money(plan.exemptionUsed)] : null,
+    ])}
+    <div class="toggle-row">${trusts}</div>
+    <h4 class="sub">Retirement-account beneficiary</h4>
+    <div class="toggle-row chips-row">${options.map(([id, label]) => button(esc(label), 'estate.beneficiary', { arg: id, variant: current === id ? 'tiny on' : 'tiny' })).join('')}</div>
+    ${gifts ? `<h4 class="sub">Lifetime gifts (${money(ex)} per person per year is tax-free)</h4><ul class="history">${gifts}</ul>` : ''}`;
+}
 import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, POA_COST, GUARDIANSHIP_COST } from '../../modules/people/ElderCare.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
@@ -139,9 +170,10 @@ function legacyCard(state) {
       ${spouse ? amounts.slice(0, 2).map((a) => button(`🛡️ ${money(a)} on ${esc(spouse.firstName)}`, 'people.lifeInsurance', { arg: `spouse:${a}`, variant: li.spouse?.benefit === a ? 'small on' : 'small' })).join('') : ''}
       ${li.self ? button('Cancel your policy', 'people.lifeInsurance', { arg: 'self:0', variant: 'small ghost' }) : ''}
     </div>
+    ${planSection(state)}
     ${fundRows ? `<h4 class="sub">College savings</h4><ul class="history">${fundRows}</ul>` : ''}
     ${p.arrears ? `<div class="toggle-row">${button('⚖️ Pay support arrears', 'people.payArrears', { variant: 'small', disabled: state.finances.cash <= 0 })}</div>` : ''}
-    <p class="fine">Estates pay the funeral, then debts, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
+    <p class="fine">Estates pay the funeral, then debts, then probate, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
 }
 
 function lineage(state) {

@@ -5,17 +5,31 @@
  * settleEstate() runs once at death. Order of payment (and the conservation
  * identity the tests check):
  *
- *   gross estate = funeral + debts paid + estate tax + Σ bequests
+ *   gross estate = funeral + debts paid + probate + estate tax + Σ bequests
  *
- * Life insurance pays beneficiaries directly, outside the estate. Without a
- * will, intestacy applies: spouse and children share, then parents and
- * siblings, then the state.
+ * Life insurance pays beneficiaries directly, outside probate (but it counts
+ * toward estate tax unless an irrevocable life-insurance trust owns it).
+ * Without a will, intestacy applies: spouse and children share, then
+ * parents and siblings, then the state.
+ *
+ * Estate planning (state.people.plan, see EstatePlanning.js):
+ *   trust        revocable living trust — skips probate (≈3% of probate assets)
+ *   ilit         irrevocable life-insurance trust — policy proceeds leave the taxable estate
+ *   minorsTrust  heirs under 25 get a third now, a third at 25, the rest at 30
+ *                (without it, a minor's share goes through a court guardianship)
+ *   beneficiary  401(k)/IRA designation: a person id, 'children', or null (the estate)
+ *   exemptionUsed  lifetime gift-tax exemption spent on gifts above the annual exclusion
+ *   gifts        { [personId]: balance } given during your life
  */
 import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 
 export const FUNERAL_COST = 9000;
+export const PROBATE_RATE = 0.03;
+export const GUARDIANSHIP_RATE = 0.05;
+/** Income tax heirs pay on inherited pre-tax accounts: spread over 10 years when named, 5 when they pass through the estate. */
+export const HEIR_TAX = { named: 0.22, estate: 0.3 };
 export const FEDERAL_ESTATE_EXEMPTION = 13990000;
 export const FEDERAL_ESTATE_RATE = 0.4;
 /** State estate taxes (simplified flat rate above the exemption) for states that have one. */
@@ -51,7 +65,9 @@ export function estateBalance(state) {
 }
 
 export function estateTax(state, taxable) {
-  const federal = Math.max(0, taxable - FEDERAL_ESTATE_EXEMPTION) * FEDERAL_ESTATE_RATE;
+  // Gifts above the annual exclusion use up part of the lifetime exemption.
+  const exemption = Math.max(0, FEDERAL_ESTATE_EXEMPTION - (state.people?.plan?.exemptionUsed ?? 0));
+  const federal = Math.max(0, taxable - exemption) * FEDERAL_ESTATE_RATE;
   const st = STATE_ESTATE_TAX[stateOfResidence(state)];
   const stateTax = st ? Math.max(0, taxable - st.exemption) * st.rate : 0;
   return { federal: Math.round(federal), state: Math.round(stateTax), total: Math.round(federal + stateTax) };
@@ -94,21 +110,75 @@ export function heirShares(state) {
   return shares;
 }
 
+/** Retirement accounts and who they pass to by beneficiary designation (outside the will and probate). */
+export function retirementAccounts(state) {
+  const inv = state.investing;
+  return { k401: state.retirement.dc, traditional: inv?.ira.traditional.value ?? 0, roth: inv?.ira.roth.value ?? 0 };
+}
+
+/**
+ * Resolve the designation into payees. A 401(k) still naming an ex-spouse
+ * pays the ex (federal ERISA law beats state revocation-on-divorce); an IRA
+ * naming an ex reverts to the estate.
+ */
+export function designatedPayees(state) {
+  const plan = state.people?.plan;
+  const acct = retirementAccounts(state);
+  const who = plan?.beneficiary;
+  if (!who) return [];
+  if (who === 'children') {
+    const kids = livingChildren(state);
+    const total = acct.k401 + acct.traditional + acct.roth;
+    return kids.map((k) => ({ to: k.id, label: fullName(k), amount: total / kids.length, pretax: (acct.k401 + acct.traditional) / kids.length }));
+  }
+  const person = (state.people?.list ?? []).find((p) => p.id === who && p.alive);
+  if (!person) return [];
+  if (person.relation === 'ex') return acct.k401 ? [{ to: person.id, label: `${fullName(person)} (ex-spouse, still named on your 401(k))`, amount: acct.k401, pretax: acct.k401 }] : [];
+  return [{ to: person.id, label: fullName(person), amount: acct.k401 + acct.traditional + acct.roth, pretax: acct.k401 + acct.traditional }];
+}
+
+/** Assets that would go through probate (everything not in a trust or passing by designation). */
+export function probateAssets(state) {
+  const { assets } = estateBalance(state);
+  const designated = designatedPayees(state).reduce((s, p) => s + p.amount, 0);
+  if (state.people?.plan?.trust) return 0;
+  return Math.max(0, assets - designated);
+}
+
 /** Settle the estate at death. Stores the result on state.legacy and returns it. */
 export function settleEstate(state) {
   const { assets, debts } = estateBalance(state);
+  const plan = state.people?.plan ?? {};
   const funeral = Math.min(assets, FUNERAL_COST);
   const debtsPaid = Math.min(assets - funeral, debts);
-  const taxable = assets - funeral - debtsPaid;
-  const tax = Math.min(taxable, estateTax(state, taxable).total);
-  const net = taxable - tax;
-  const shares = heirShares(state);
-  // Round every bequest down, then give the remainder to the first heir so dollars are conserved exactly.
-  const bequests = shares.map((s) => ({ to: s.to, label: s.label, amount: Math.floor(net * s.share) }));
-  const rounding = net - bequests.reduce((s, b) => s + b.amount, 0);
-  if (bequests.length) bequests[0].amount += rounding;
+  const probate = Math.min(assets - funeral - debtsPaid, Math.round(probateAssets(state) * PROBATE_RATE));
+  const taxable = assets - funeral - debtsPaid - probate;
   const insurance = lifeInsurancePayouts(state);
-  const legacy = { assets, debts, funeral, debtsPaid, unpaidDebts: debts - debtsPaid, tax, net, bequests, insurance, will: Boolean(state.people?.will), settledYear: currentYear(state) };
+  // Policies you own count toward estate tax (not probate) unless an ILIT owns them.
+  const insured = plan.ilit ? 0 : insurance.reduce((s, x) => s + x.amount, 0);
+  const tax = Math.min(taxable, Math.max(0, estateTax(state, taxable + insured).total - estateTax(state, insured).total));
+  const net = taxable - tax;
+  // Retirement accounts go to their named beneficiaries first; the will divides the rest.
+  const acct = retirementAccounts(state);
+  const pretaxTotal = acct.k401 + acct.traditional;
+  const designated = designatedPayees(state);
+  let left = net;
+  const bequests = [];
+  for (const d of designated) {
+    const amount = Math.floor(Math.min(left, d.amount));
+    left -= amount;
+    bequests.push({ to: d.to, label: d.label, amount, heirTax: Math.round(Math.min(amount, d.pretax) * HEIR_TAX.named), designated: true });
+  }
+  // Pre-tax money left in the estate is withdrawn faster (5 years) and taxed harder.
+  const designatedPretax = designated.reduce((s, d) => s + d.pretax, 0);
+  const estatePretaxShare = left > 0 ? Math.min(1, Math.max(0, pretaxTotal - designatedPretax) / left) : 0;
+  const shares = heirShares(state);
+  const residual = shares.map((s) => ({ to: s.to, label: s.label, amount: Math.floor(left * s.share) }));
+  const rounding = left - residual.reduce((s, b) => s + b.amount, 0);
+  if (residual.length) residual[0].amount += rounding;
+  for (const r of residual) r.heirTax = ['charity', 'state'].includes(r.to) ? 0 : Math.round(r.amount * estatePretaxShare * HEIR_TAX.estate);
+  bequests.push(...residual);
+  const legacy = { assets, debts, funeral, debtsPaid, probate, unpaidDebts: debts - debtsPaid, tax, net, bequests, insurance, will: Boolean(state.people?.will), trust: Boolean(plan.trust), settledYear: currentYear(state) };
   state.legacy = legacy;
   return legacy;
 }
@@ -126,7 +196,7 @@ function lifeInsurancePayouts(state) {
 
 /** Total a given person receives from the estate and life insurance. */
 export function inheritanceFor(legacy, personId) {
-  const b = legacy?.bequests.filter((x) => x.to === personId).reduce((s, x) => s + x.amount, 0) ?? 0;
+  const b = legacy?.bequests.filter((x) => x.to === personId).reduce((s, x) => s + x.amount - (x.heirTax ?? 0), 0) ?? 0;
   const i = legacy?.insurance.filter((x) => x.to === personId).reduce((s, x) => s + x.amount, 0) ?? 0;
   return b + i;
 }
@@ -154,7 +224,23 @@ export function buildHeirState(rng, old, childId) {
   s.log = [{ age: childAge, year, entries: [] }];
   const inheritance = inheritanceFor(legacy, child.id);
   const fund529 = Math.round(old.people.fund529?.[child.id] ?? 0);
-  s.finances.cash = inheritance;
+  // Young heirs: a trust pays out in stages; without one, a minor's share sits with a court-appointed guardian until 18.
+  const payouts = [];
+  let now = inheritance;
+  if (old.people.plan?.minorsTrust && childAge < 30 && inheritance > 0) {
+    const stages = [[childAge < 25 ? childAge : null, 1], [childAge < 25 ? 25 : null, 1], [30, 1]].filter(([age]) => age != null);
+    const each = Math.floor(inheritance / stages.length);
+    now = inheritance - each * (stages.length - 1);
+    for (const [age] of stages.slice(1)) payouts.push({ age, amount: each, label: 'Family trust distribution' });
+  } else if (childAge < 18 && inheritance > 0) {
+    const fee = Math.round(inheritance * GUARDIANSHIP_RATE);
+    payouts.push({ age: 18, amount: inheritance - fee, label: 'Guardianship account released' });
+    now = 0;
+  }
+  // What your parent gave you while alive was yours all along.
+  const gifted = Math.round(old.people.plan?.gifts?.[child.id] ?? 0);
+  s.finances.cash = now + gifted;
+  if (payouts.length) s.finances.trustPayouts = payouts;
   if (childAge >= 18) s.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: Math.min(18, childAge) });
   if (child.degree && childAge >= 22) s.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: child.degree, schoolId: 'state', gpa: 3.1, year: 22 });
   if (fund529) s.education.fund529 = fund529;
@@ -185,7 +271,7 @@ export function buildHeirState(rng, old, childId) {
   const biz = old.business?.current;
   if (biz) {
     const equity = businessEquity(old);
-    s.finances.cash = Math.max(0, inheritance - equity);
+    s.finances.cash = Math.max(0, s.finances.cash - equity);
     const ids = new Set(list.map((p) => p.id));
     s.business = { current: { ...structuredClone(biz), role: 'absentee', family: biz.family.filter((id) => ids.has(id) && id !== child.id) }, history: [], listings: [] };
     addLog(s, `You inherited the family business, ${biz.name}${equity ? ` (worth about $${equity.toLocaleString()} to you)` : ''}. A manager runs it for now.`, '🏪', 'milestone');
@@ -206,7 +292,8 @@ export function buildHeirState(rng, old, childId) {
     }],
   };
   addLog(s, `You are ${child.firstName} ${child.lastName}, ${childAge} years old. Your ${old.character.gender === 'female' ? 'mother' : 'father'}, ${old.character.firstName}, has died.`, '🕯️', 'milestone');
-  if (inheritance) addLog(s, `You inherited $${inheritance.toLocaleString()}${legacy.insurance.some((x) => x.to === child.id) ? ' (including life insurance)' : ''}.`, '📜', 'good');
+  if (inheritance) addLog(s, `You inherited $${inheritance.toLocaleString()}${legacy.insurance.some((x) => x.to === child.id) ? ' (including life insurance)' : ''}${payouts.length ? ` — $${now.toLocaleString()} now, the rest ${payouts.map((p) => `$${p.amount.toLocaleString()} at ${p.age}`).join(', ')}` : ''}.`, '📜', 'good');
+  if (gifted) addLog(s, `Over the years your ${old.character.gender === 'female' ? 'mother' : 'father'} gave you $${gifted.toLocaleString()}.`, '🎁', 'good');
   if (fund529) addLog(s, `Your 529 college fund holds $${fund529.toLocaleString()}.`, '🎓', 'good');
   return s;
 }
