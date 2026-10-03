@@ -756,14 +756,13 @@ select:focus { border-color: var(--cyan); }
   .chips-row::-webkit-scrollbar { display: none; }
 }
 
-/* Phones & tablets: menus first, character panel after. The top bar and tabs
-   scroll away with the page so they never sit on top of buttons and choices. */
+/* Phones & tablets: menus first, character panel after. The top bar stays
+   pinned; the section tabs (Life, Work…) scroll away with the page so they
+   never sit on top of buttons and choices. */
 @media (max-width: 960px) {
   .main { order: 1; }
   .sidebar { order: 2; }
-  .topbar { position: static; backdrop-filter: none; }
   .main > .tabs { position: static; }
-  .toasts { top: calc(12px + env(safe-area-inset-top)); }
 }
 .mobile-status { display: none; }
 @media (max-width: 560px) {
