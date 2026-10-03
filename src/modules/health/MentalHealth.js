@@ -88,6 +88,7 @@ function stopMeds(ctx, c, { taper }) {
   care.meds = null;
   care.medYears = 0;
   sync(c);
+  if (!care.therapy && !care.waitlist) c.care = null;
   if (dependent) {
     ctx.stat('stress', 15);
     ctx.stat('health', -3);
@@ -187,7 +188,10 @@ export const MentalHealth = {
       const c = getCondition(state, id);
       if (!isMental(c) || c.remission || !c.diagnosed) return;
       if (type === 'none') {
-        if (c.care) c.care.therapy = null;
+        if (c.care) {
+          c.care.therapy = null;
+          c.care.waitlist = false;
+        }
         sync(c);
         if (c.care && !c.care.meds) c.care = null;
         return ctx.log(`You stopped going to therapy for ${CONDITIONS[id].name.toLowerCase()}.`, '🛋️');

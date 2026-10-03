@@ -10,7 +10,8 @@ import {
   enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName,
 } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
-import { monthlyBasePay } from './MilitaryEngine.js';
+import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEngine.js';
+import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
@@ -40,6 +41,18 @@ export const MilitaryModule = {
   order: 20,
 
   setup(engine) {
+    // Losing your clearance: enlisted members are reclassified; officers are separated.
+    engine.bus.on('career:clearanceRevoked', ({ ctx }) => {
+      const svc = ctx.state.military.service;
+      if (!svc?.clearance) return;
+      svc.clearance = null;
+      if (svc.track === 'officer') return discharge(ctx, 'general', 'Separated after your security clearance was revoked.');
+      if (SPECIALTIES[svc.specialty].clearance) {
+        svc.specialty = 'logistics';
+        svc.eval = Math.max(0, svc.eval - 15);
+        ctx.log('Without a clearance, you were pulled from your specialty and reclassified into Logistics.', '🚫', 'bad');
+      }
+    });
     engine.bus.on('legal:convicted', ({ ctx, severity, name }) => {
       const svc = ctx.state.military.service;
       if (!svc) return;
@@ -106,7 +119,7 @@ export const MilitaryModule = {
           ...Object.entries(SPECIALTIES).map(([id, s]) => ({
             id,
             label: `${s.icon} ${specialtyName({ ...svcPreview, specialty: id })}`,
-            hint: s.desc,
+            hint: `${s.desc}${requiredClearance({ track, specialty: id }) ? ` · ${CLEARANCES[requiredClearance({ track, specialty: id })].name} clearance` : ''}`,
             disabled: Boolean(s.minSmarts && ctx.state.stats.smarts < s.minSmarts),
           })),
           { id: 'cancel', label: '↩️ Walk out of the recruiter\'s office' },
@@ -193,7 +206,39 @@ export const MilitaryModule = {
       if (optionId === 'cancel') return;
       const check = enlistmentEligibility(ctx.state, data.branch, data.track);
       if (!check.ok) return ctx.toast(check.reason, 'warn');
+      // Cleared specialties (and all officers) go through an SF-86. With anything in your background, honesty is a choice.
+      const level = requiredClearance({ track: data.track, specialty: optionId });
+      const issues = backgroundIssues(ctx.state).filter((i) => !i.hidden);
+      if (level && !hasClearance(ctx.state, level) && issues.length) {
+        ctx.prompt({
+          type: 'military.clearance', icon: CLEARANCES[level].icon,
+          title: `SF-86: ${CLEARANCES[level].name} Investigation`,
+          text: `Your ${data.track === 'officer' ? 'commission' : 'specialty'} requires a ${CLEARANCES[level].name} clearance${CLEARANCES[level].polygraph ? ', including a polygraph' : ''}.\nYour background includes: ${issues.map((i) => i.label).join('; ')}.`,
+          options: [
+            { id: 'disclose', label: '📝 Disclose everything truthfully', hint: 'Candor mitigates issues' },
+            { id: 'omit', label: '🙈 Leave the problems off the form', hint: 'Lying on an SF-86 is a federal crime', tone: 'danger' },
+          ],
+          data: { ...data, specialty: optionId, level },
+        });
+        return;
+      }
       enlist(ctx, { ...data, specialty: optionId });
+    },
+
+    clearance(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const r = adjudicate(state, data.level, optionId === 'disclose', rng);
+      if (r.caught) {
+        ctx.log(`${r.reason}. The recruiter tore up your contract and referred the false statement to federal prosecutors.`, '🕵️', 'bad');
+        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'lying on a military SF-86', caught: true, evidence: 0.85 });
+        return;
+      }
+      if (r.granted) {
+        ctx.emit('clearance:grant', { level: data.level, concealed: r.concealed });
+        return enlist(ctx, { ...data, cleared: true });
+      }
+      const specialty = clearanceDenied(ctx, data.track, data.level);
+      if (specialty) enlist(ctx, { ...data, specialty, cleared: true });
     },
 
     ...ActiveDutyResolvers,

@@ -1830,7 +1830,7 @@ const tests = {
     c.care.medYears = 3;
     const stress = state.stats.stress;
     engine.dispatch('mental.meds', 'anxiety:stop');
-    assert.equal(c.care.meds, null);
+    assert.equal(c.care?.meds ?? null, null, 'off medication (no plan left)');
     assert.ok(state.stats.stress > stress, 'withdrawal');
     // Therapy: in network vs out of network.
     engine.dispatch('mental.therapy', 'anxiety:cbt');
@@ -1900,6 +1900,48 @@ const tests = {
     j3.yearsAtEmployer = 15;
     e2.context().emit('career:resign', { reason: 'Took a job elsewhere' });
     assert.ok(!s2.career.emeritus);
+  },
+  'military clearances: cleared specialties investigate you, honesty matters, revocation reclassifies, and the clearance follows you out'() {
+    const { engine, state, ctx } = setup(79, 22);
+    state.stats.smarts = 80;
+    // Clean background: Intelligence gets TS/SCI automatically.
+    engine.dispatch('military.enlist', 'army:enlisted:active');
+    const chance = engine.rng.chance.bind(engine.rng);
+    engine.rng.chance = (p) => (p === 0.97 ? true : chance(p));
+    resolve(engine, 'military.chooseSpecialty', 'intel');
+    engine.rng.chance = chance;
+    const svc = state.military.service;
+    assert.equal(svc.clearance, 'topSecret');
+    assert.equal(state.publicService.clearance.level, 'topSecret');
+    // A drug conviction revokes it; intel analysts are reclassified.
+    ctx.emit('legal:convicted', { severity: 'misdemeanor', offenseId: 'drugPossession', name: 'Drug possession' });
+    assert.equal(state.publicService.clearance, null);
+    assert.equal(svc.clearance, null);
+    assert.equal(svc.specialty, 'logistics');
+    // With a record, the SF-86 is a choice — lying and getting caught is a federal crime.
+    const t = setup(80, 22);
+    t.state.stats.smarts = 80;
+    t.state.legal.flags.drugUseAge = 20;
+    t.engine.dispatch('military.enlist', 'navy:enlisted:active');
+    resolve(t.engine, 'military.chooseSpecialty', 'cyber');
+    const sf86 = t.state.prompts.find((p) => p.type === 'military.clearance');
+    assert.ok(sf86, 'SF-86 prompt');
+    t.engine.rng.chance = () => true;
+    resolve(t.engine, 'military.clearance', 'omit');
+    assert.equal(t.state.military.service, null, 'contract torn up');
+    assert.ok(t.state.prompts.some((p) => p.type.startsWith('legal.')) || t.state.legal.investigations.length || t.state.legal.record.some((r) => r.offenseId === 'falseStatement'), `false statement: ${t.state.prompts.map((p) => p.type)}`);
+    // Honorable discharge: the clearance stays current for two years, so veterans walk into cleared jobs.
+    const u = setup(81, 22);
+    u.state.stats.smarts = 80;
+    u.engine.dispatch('military.enlist', 'airforce:enlisted:active');
+    u.engine.rng.chance = (p) => (p === 0.97 ? true : chance(p));
+    resolve(u.engine, 'military.chooseSpecialty', 'cyber');
+    discharge(u.ctx, 'honorable', 'Contract complete');
+    assert.equal(u.state.publicService.clearance.level, 'topSecret');
+    u.state.prompts = [];
+    u.engine.rng.chance = chance;
+    u.engine.ageUp();
+    assert.equal(u.state.publicService.clearance?.status, 'current');
   },
 };
 

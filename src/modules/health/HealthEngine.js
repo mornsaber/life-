@@ -499,7 +499,7 @@ export const HealthEngine = {
       if (!c || c.remission || !c.diagnosed) return;
       if (CONDITIONS[id].kind === 'addiction') return ctx.toast('Addiction treatment means rehab.', 'warn');
       c.treated = !c.treated;
-      if (!c.treated) delete c.care; // a mental-health care plan ends with treatment
+      delete c.care; // the generic toggle resets any mental-health plan (MentalHealth assigns a default one)
       ctx.log(c.treated ? `You started ${CONDITIONS[id].kind === 'mental' ? 'therapy and medication' : 'treatment'} for ${CONDITIONS[id].name.toLowerCase()}.` : `You stopped treating your ${CONDITIONS[id].name.toLowerCase()}.`, CONDITIONS[id].icon);
     },
     rehab(ctx, id) {

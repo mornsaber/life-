@@ -1,6 +1,7 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
+import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
 import {
@@ -62,7 +63,7 @@ export function militaryView(state) {
     <div class="job-head">
       ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon })}
       <div class="job-meta">
-        <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip(svc.track === 'officer' ? 'Officer' : 'Enlisted')} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
+        <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip(svc.track === 'officer' ? 'Officer' : 'Enlisted')} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
         ${kv([
           ['Base pay', `${money(annualActivePay(svc))}/yr${svc.component === 'reserve' ? ' (active rate)' : ''}`],
           ['Service', `${svc.yearsOfService} yrs`],

@@ -2,7 +2,9 @@
  * Emergency-services dispatcher: runs every volunteer/reserve membership in
  * parallel with your career, school or reserve military service.
  *
- * Each service (FireVolunteer, PoliceReserves, SearchAndRescue) is a data
+ * Each service (fire, police reserves, SAR, ambulance, wildland, Coast Guard
+ * Auxiliary, Civil Air Patrol, CERT, Red Cross, ski patrol, Medical Reserve
+ * Corps) is a data
  * definition; this engine supplies the shared mechanics: joining, drills,
  * call volume, interactive dispatches, rank progression, civil awards and
  * military-leave suspension.
@@ -28,6 +30,11 @@ import { SearchAndRescue, K9_NAMES, K9_BREEDS, K9_RETIREMENT_AGE } from './Searc
 import { AmbulanceCorps } from './AmbulanceCorps.js';
 import { WildlandCrew } from './WildlandCrew.js';
 import { CoastGuardAuxiliary } from './CoastGuardAuxiliary.js';
+import { CivilAirPatrol } from './CivilAirPatrol.js';
+import { CommunityResponse } from './CommunityResponse.js';
+import { RedCross } from './RedCross.js';
+import { SkiPatrol } from './SkiPatrol.js';
+import { MedicalReserveCorps } from './MedicalReserveCorps.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
@@ -36,6 +43,11 @@ export const SERVICES = {
   ambulance: AmbulanceCorps,
   wildland: WildlandCrew,
   auxiliary: CoastGuardAuxiliary,
+  cap: CivilAirPatrol,
+  cert: CommunityResponse,
+  redcross: RedCross,
+  skiPatrol: SkiPatrol,
+  mrc: MedicalReserveCorps,
 };
 export const SERVICE_LIST = Object.values(SERVICES);
 
@@ -55,6 +67,7 @@ export function joinEligibility(state, serviceId) {
   if (hasFelony(state)) return { ok: false, reason: 'Fails background check' };
   if (serviceId === 'police' && visibleRecord(state).some((r) => r.severity === 'misdemeanor' && state.character.age - r.age <= 5)) return { ok: false, reason: 'Recent criminal record' };
   if (svc.excludesProfession && state.career.job?.professionId === svc.excludesProfession) return { ok: false, reason: 'Sworn officers can\'t join' };
+  if (svc.requiresCredentials && !svc.requiresCredentials.some((id) => hasCredential(state, id))) return { ok: false, reason: 'Requires a medical license or certification (EMT, RN, MD…)' };
   for (const [stat, min] of Object.entries(svc.requirements)) {
     if (state.stats[stat] < min) return { ok: false, reason: `Needs ${min}+ ${stat}` };
   }

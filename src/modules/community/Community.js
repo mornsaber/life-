@@ -239,6 +239,8 @@ export const Community = {
       // Clergy serve a congregation of their own tradition.
       if (job.professionId !== 'clergy') return;
       const faith = ctx.state.community?.faith;
+      // Returning from military leave to a pulpit you no longer believe in: the right to return lapses.
+      if (!faith) return ctx.emit('career:resign', { reason: 'No longer a member of the faith' });
       if (faith) job.employer.name = job.employer.size === 'small' ? faith.congregation : congregationName(ctx.rng, faith.traditionId);
     });
   },

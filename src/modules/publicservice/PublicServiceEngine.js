@@ -134,6 +134,12 @@ export const PublicServiceEngine = {
       ctx.state.publicService.clearance = { level, status: 'active', sinceAge: age, grantedAge: age, lastInvestigationAge: age, concealed };
       ctx.log(`You were granted a ${CLEARANCES[level].name} security clearance.`, CLEARANCES[level].icon, 'good');
     });
+    engine.bus.on('military:discharged', ({ ctx, type }) => {
+      const c = ctx.state.publicService.clearance;
+      if (!c || !['oth', 'dishonorable'].includes(type)) return;
+      ctx.state.publicService.clearance = null;
+      ctx.log(`Your ${CLEARANCES[c.level].name} clearance was revoked with your ${type === 'oth' ? 'Other Than Honorable' : 'Dishonorable'} discharge.`, '🚫', 'bad');
+    });
     engine.bus.on('legal:convicted', ({ ctx, severity, offenseId, name }) => {
       const c = ctx.state.publicService.clearance;
       if (!c) return;
@@ -150,7 +156,8 @@ export const PublicServiceEngine = {
     const c = state.publicService.clearance;
     if (!c) return;
     const age = state.character.age;
-    const needsIt = Boolean(state.career.job?.clearance);
+    // Cleared civilian jobs and cleared military service both keep a clearance active.
+    const needsIt = Boolean(state.career.job?.clearance) || Boolean(state.military?.service?.clearance);
 
     if (needsIt) {
       if (c.status !== 'active') c.status = 'active';

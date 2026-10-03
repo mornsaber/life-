@@ -200,7 +200,7 @@ function checkInvariants(state) {
   assert.ok([0, 2, 5, 10].includes(cm.giving) && cm.givenThisYear >= 0, 'giving');
   assert.ok(circleFriends(state).length <= FRIEND_CAP, 'friend cap');
   assert.ok(friendsOf(state).every((f) => !f.circle || CIRCLES[f.circle]), 'friend circles');
-  if (state.career.job?.professionId === 'clergy') assert.ok(cm.faith || !state.character.alive, 'clergy belong to a faith');
+  if (state.career.job?.professionId === 'clergy') assert.ok(cm.faith || !state.character.alive, `clergy belong to a faith (age ${state.character.age}, job since ${state.career.job.startAge}, former ${JSON.stringify(cm.former)}, log: ${state.log.at(-1).entries.map((e) => e.text).join(' | ')})`);
   for (const v of state.vehicles.owned) {
     assert.ok(VEHICLE_TYPES[v.typeId] && Number.isFinite(v.value) && v.value > 0, 'vehicle value');
     assert.ok(!(v.loan && v.lease), 'loan and lease at once');
@@ -219,6 +219,8 @@ function checkInvariants(state) {
   }
   const claim = state.health.disability.ssdiClaim;
   assert.ok(!claim || (['initial', 'reconsideration', 'hearing', 'council'].includes(claim.stage) && !state.health.disability.benefits.some((b) => b.source === 'ssdi')), 'ssdi claim');
+  const msvc = state.military.service;
+  if (msvc?.clearance) assert.ok(['secret', 'topSecret'].includes(msvc.clearance) && state.publicService.clearance && ['secret', 'topSecret'].includes(state.publicService.clearance.level), `military clearance ${msvc.clearance}/${JSON.stringify(state.publicService.clearance)}`);
   const em = state.career.emeritus;
   assert.ok(!em || (/Emerit(us|a)$/.test(em.title) && em.publications >= 0 && !hasFelonyNow(state)), 'emeritus');
   const jd = state.judiciary;

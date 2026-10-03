@@ -96,7 +96,7 @@ export function checkRequirements(state, req = {}) {
   return { ok: missing.length === 0, missing };
 }
 
-const AFFILIATION_LABEL = { fire: 'a fire department', police: 'a police department', statePolice: 'the state police', sar: 'a SAR team', auxiliary: 'the Coast Guard Auxiliary', wildland: 'a wildland crew', ambulance: 'an ambulance corps', parkService: 'the Park Service', gameWarden: 'Fish & Wildlife', forester: 'State Forestry', publicWorks: 'Public Works', ems: 'an EMS agency', corrections: 'Corrections', oig: 'an Inspector General', socialWork: 'social services', cps: 'CPS' };
+const AFFILIATION_LABEL = { fire: 'a fire department', police: 'a police department', statePolice: 'the state police', sar: 'a SAR team', auxiliary: 'the Coast Guard Auxiliary', wildland: 'a wildland crew', ambulance: 'an ambulance corps', parkService: 'the Park Service', gameWarden: 'Fish & Wildlife', forester: 'State Forestry', publicWorks: 'Public Works', ems: 'an EMS agency', corrections: 'Corrections', oig: 'an Inspector General', socialWork: 'social services', cps: 'CPS', cap: 'Civil Air Patrol', cert: 'a CERT team', redcross: 'the Red Cross', skiPatrol: 'a ski patrol', mrc: 'the Medical Reserve Corps' };
 const affiliationLabel = (id) => AFFILIATION_LABEL[id] ?? id;
 
 /** Agency-internal courses are only open to members: your job's profession or an active volunteer service. */

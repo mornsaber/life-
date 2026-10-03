@@ -14,6 +14,7 @@
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
+import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -59,11 +60,12 @@ export const BRANCHES = {
 };
 
 export const SPECIALTIES = {
-  infantry: { name: 'Combat Arms', icon: '🎯', exposure: 1.6, names: { navy: 'Special Warfare', airforce: 'Security Forces', coastguard: 'Maritime Enforcement' }, desc: 'Highest combat exposure and valor opportunities.' },
+  infantry: { name: 'Combat Arms', icon: '🎯', exposure: 1.6, clearance: 'secret', names: { navy: 'Special Warfare', airforce: 'Security Forces', coastguard: 'Maritime Enforcement' }, desc: 'Highest combat exposure and valor opportunities.' },
   medic: { name: 'Combat Medic', icon: '⛑️', exposure: 1.2, names: { navy: 'Hospital Corpsman', marines: 'Hospital Corpsman (FMF)', coastguard: 'Health Services Technician' }, desc: 'Unlocks life-saving combat choices.' },
-  engineer: { name: 'Combat Engineer', icon: '🧨', exposure: 1.0, names: { navy: 'Seabee', airforce: 'Civil Engineer', coastguard: 'Damage Controlman' }, desc: 'Breaching, demolition, construction.' },
-  aviation: { name: 'Aviation', icon: '🚁', exposure: 0.9, names: { airforce: 'Aircrew', coastguard: 'Aviation Survival Technician' }, desc: 'Air operations and rescue.' },
-  intel: { name: 'Intelligence', icon: '🛰️', exposure: 0.6, minSmarts: 55, names: {}, desc: 'Low exposure, strong evaluations. Needs 55+ smarts.' },
+  engineer: { name: 'Combat Engineer', icon: '🧨', exposure: 1.0, clearance: 'secret', names: { navy: 'Seabee', airforce: 'Civil Engineer', coastguard: 'Damage Controlman' }, desc: 'Breaching, demolition, construction.' },
+  aviation: { name: 'Aviation', icon: '🚁', exposure: 0.9, clearance: 'secret', names: { airforce: 'Aircrew', coastguard: 'Aviation Survival Technician' }, desc: 'Air operations and rescue.' },
+  intel: { name: 'Intelligence', icon: '🛰️', exposure: 0.6, minSmarts: 55, clearance: 'topSecret', names: {}, desc: 'Low exposure, strong evaluations. Needs 55+ smarts and a TS/SCI clearance.' },
+  cyber: { name: 'Cyber Operations', icon: '💻', exposure: 0.4, minSmarts: 60, clearance: 'topSecret', names: { army: 'Cyber Operations Specialist', navy: 'Cryptologic Technician (Networks)', airforce: 'Cyber Warfare Operations', marines: 'Cyber Network Operator', coastguard: 'Cyber Mission Specialist' }, desc: 'Offensive and defensive network operations. Needs 60+ smarts and TS/SCI; the clearance is gold in civilian life.' },
   logistics: { name: 'Logistics', icon: '📦', exposure: 0.5, names: { navy: 'Logistics Specialist' }, desc: 'Keeps the force supplied. Lowest exposure.' },
 };
 
@@ -141,9 +143,44 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   return { ok: true };
 }
 
-export function enlist(ctx, { branch, track, component, specialty }) {
+/** Clearance a service member needs: their specialty's, and at least Secret for any officer. */
+export function requiredClearance(svc) {
+  const s = SPECIALTIES[svc.specialty]?.clearance ?? null;
+  if (svc.track !== 'officer') return s;
+  return s && CLEARANCES[s].rank > CLEARANCES.secret.rank ? s : 'secret';
+}
+
+/**
+ * The background investigation at entry. A clean candidate is simply
+ * investigated; `cleared` means the SF-86 prompt already ran. Returns the
+ * specialty to serve in, or null if the commission is withdrawn.
+ */
+function entryClearance(ctx, { track, specialty, cleared }) {
+  const { state, rng } = ctx;
+  const level = requiredClearance({ track, specialty });
+  if (!level || hasClearance(state, level) || cleared) return specialty;
+  const r = adjudicate(state, level, true, rng);
+  if (r.granted) {
+    ctx.emit('clearance:grant', { level, concealed: false });
+    return specialty;
+  }
+  return clearanceDenied(ctx, track, level);
+}
+
+export function clearanceDenied(ctx, track, level) {
+  if (track === 'officer') {
+    ctx.log(`Your ${CLEARANCES[level].name} clearance was denied, and with it your commission.`, '🚫', 'bad');
+    return null;
+  }
+  ctx.log(`Your ${CLEARANCES[level].name} clearance was denied. The recruiter reclassified you into Logistics.`, '🚫', 'warn');
+  return 'logistics';
+}
+
+export function enlist(ctx, { branch, track, component, specialty: wanted, cleared = false }) {
   const { state } = ctx;
   const b = BRANCHES[branch];
+  const specialty = entryClearance(ctx, { track, specialty: wanted, cleared });
+  if (!specialty) return false;
   // College grads who enlist start a few grades up.
   const startGrade = track === 'enlisted' && meetsEducation(state, { level: 'bachelor' }) ? (branch === 'army' ? 3 : 2) : 0;
   const svc = {
@@ -165,6 +202,8 @@ export function enlist(ctx, { branch, track, component, specialty }) {
     joinedAge: state.character.age,
     isNew: true,
   };
+  const level = requiredClearance(svc);
+  svc.clearance = level && hasClearance(state, level) ? level : null;
   state.military.service = svc;
 
   if (component === 'active') {
@@ -174,6 +213,7 @@ export function enlist(ctx, { branch, track, component, specialty }) {
   const comp = component === 'active' ? 'active duty' : 'the Reserve';
   ctx.log(`You ${verb} in the ${b.name} (${comp}) as a ${rankOf(svc).title}, ${specialtyName(svc)}. ${b.motto}!`, b.icon, 'milestone');
   ctx.toast(`Joined the ${b.name}`, 'good');
+  return true;
 }
 
 /* ------------------------------------------------------------------ */

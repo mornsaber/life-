@@ -146,7 +146,7 @@ export function resolveCommission(ctx, data, optionId) {
   if (optionId === 'decline') return ctx.log('You turned down your commission.', '🙅');
   if (state.military.service) return;
   if (state.career.job) ctx.emit('career:militaryLeave', { reason: `commissioned in the ${BRANCHES[data.branch].name}` });
-  enlist(ctx, { branch: data.branch, track: 'officer', component: 'active', specialty: optionId });
+  if (!enlist(ctx, { branch: data.branch, track: 'officer', component: 'active', specialty: optionId })) return;
   state.military.service.contractYearsLeft = OBLIGATION[data.pipeline];
   state.military.service.source = data.pipeline === 'academy' ? 'academy' : 'rotc';
   c.commissionedVia = state.military.service.source;
