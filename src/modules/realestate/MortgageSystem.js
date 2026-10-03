@@ -29,6 +29,7 @@ const EVENT_IMPACT = {
   bankruptcy: { points: 170, years: 10 },
   chapter13: { points: 130, years: 7 },
   lien: { points: 60, years: 7 },
+  inquiry: { points: 5, years: 1 },
 };
 
 export const CARD_CAPACITY = 15000;

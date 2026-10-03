@@ -11,6 +11,56 @@ import { planStatus, socialSecurityEstimate, primaryInsuranceAmount, SS_FULL_AGE
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS, MOVE_COST, regionOf } from '../../modules/life/Regions.js';
 import { hasHousingBenefit, healthPremium } from '../../modules/life/Finances.js';
+import { CARD_TYPES, cardApr, applyCheck, minimumPayoff } from '../../modules/life/CreditCards.js';
+import { standardDeduction, auditOdds, PASSPORT_THRESHOLD } from '../../modules/life/Taxes.js';
+
+/** Your wallet: cards, rewards, payoff strategy and balance transfers. */
+function walletSection(state) {
+  const c = state.finances.cards;
+  if (!c) return '';
+  const debt = Math.max(0, -state.finances.cash);
+  const held = c.held.map((x) => {
+    const t = CARD_TYPES[x.typeId];
+    return `<li class="fund-row"><span>${t.icon} <b>${esc(t.name)}</b> <small>${(t.apr * 100).toFixed(1)}% APR${t.fee ? ` · ${money(t.fee)}/yr fee` : ''}${t.rewards ? ` · ${(t.rewards * 100).toFixed(1)}% back` : ''} · since ${x.opened}</small></span>${button('Close', 'cards.close', { arg: x.id, variant: 'tiny ghost' })}</li>`;
+  }).join('');
+  const offers = Object.entries(CARD_TYPES).filter(([id]) => !c.held.some((x) => x.typeId === id)).map(([id, t]) => {
+    const ok = applyCheck(state, id);
+    return button(`${t.icon} ${t.name}`, 'cards.apply', { arg: id, variant: 'tiny', disabled: !ok.ok, hint: ok.ok ? t.desc : ok.reason });
+  }).join('');
+  const trap = debt > 1000 ? minimumPayoff(debt, cardApr(state)) : null;
+  const hasPromoCard = c.held.some((x) => CARD_TYPES[x.typeId].promo);
+  return `<h4 class="sub">Wallet</h4>
+    ${held ? `<ul class="history">${held}</ul>` : '<p class="muted">No cards of your own yet — you\'re on a basic bank card.</p>'}
+    ${c.rewards ? `<p class="fine">Lifetime rewards earned: ${money(c.rewards)}.</p>` : ''}
+    ${c.transfer ? `<p>🔁 ${money(c.transfer.amount)} at 0% until age ${c.transfer.untilAge}.</p>` : ''}
+    <h4 class="sub">Paying it down</h4><div class="toggle-row">
+      ${button('🔥 Pay it down hard', 'cards.strategy', { arg: 'payoff', variant: c.strategy !== 'minimum' ? 'small on' : 'small', hint: 'Tighter budget, out of debt fast' })}
+      ${button('🐌 Minimum payments', 'cards.strategy', { arg: 'minimum', variant: c.strategy === 'minimum' ? 'small on' : 'small', hint: trap ? `${trap.years >= 60 ? 'Never' : `${trap.years} yr`} to clear · ${money(trap.interest)} interest` : 'More to spend now, much more interest' })}
+      ${hasPromoCard && !c.transfer && debt >= 500 ? button('🔁 Transfer balance to 0%', 'cards.transfer', { variant: 'small', hint: `4% fee (${money(debt * 0.04)}) · 2 years interest-free` }) : ''}
+    </div>
+    <h4 class="sub">Apply for a card</h4><div class="toggle-row">${offers}</div>`;
+}
+
+/** Last return, deductions, IRS debt and audits. */
+function taxCard(state) {
+  const f = state.finances;
+  const t = f.tax;
+  const ly = f.lastYear;
+  if (state.character.age < 18 || !t) return '';
+  const it = ly?.itemized;
+  const married = Boolean(ly?.married);
+  return card('Taxes', `${kv([
+    ly ? ['Last return', `${money(ly.federalTax ?? 0)} federal + ${money(ly.stateTax ?? 0)} state · ${it ? 'itemized' : 'standard deduction'}`] : null,
+    it ? ['Itemized', `${money(it.total)} (mortgage interest ${money(it.mortgageInterest)}, SALT ${money(it.salt)}, charity ${money(it.charity)}${it.medical ? `, medical ${money(it.medical)}` : ''}) vs. standard ${money(standardDeduction(married))}`] : ['Standard deduction', money(standardDeduction(married))],
+    ['Audit risk this year', `${(auditOdds(state) * 100).toFixed(1)}%`],
+    t.debt ? ['Owed to the IRS', `<span class="neg">${money(t.debt)}</span>${t.plan ? ` · plan ${money(t.plan.annual)}/yr` : ' · no payment plan'}`] : null,
+    t.lien != null ? ['Federal tax lien', `<span class="neg">filed at ${t.lien}</span>`] : null,
+    t.passport ? ['Passport', `<span class="neg">certified seriously delinquent (over ${money(PASSPORT_THRESHOLD)})</span>`] : null,
+    t.audits.length ? ['Audits', t.audits.map((a) => `${a.age}: ${a.result}${a.owed ? ` (${money(a.owed)})` : ''}`).join(' · ')] : null,
+  ])}
+  ${t.debt ? `<div class="toggle-row">${button('💵 Pay the IRS', 'taxes.payDebt', { variant: 'small', disabled: f.cash <= 0 })}${t.plan ? '' : button('📅 Request an installment plan', 'taxes.requestPlan', { variant: 'small', hint: '$130 setup · stops liens and levies' })}</div>` : ''}
+  <p class="fine">You itemize automatically when mortgage interest, state and local taxes (capped at $40,000), charity and large medical bills beat the standard deduction. Taxes you can't pay become IRS debt with penalties and interest.</p>`, { icon: '🧾' });
+}
 
 /** Credit cards, debt and bankruptcy. */
 function debtCard(state) {
@@ -24,14 +74,15 @@ function debtCard(state) {
   const option = (o, chapter, label, hint) => button(label, 'finances.fileBankruptcy', { arg: String(chapter), variant: 'small danger', disabled: !o.ok, hint: o.ok ? hint : o.reason });
   return card('Credit & Debt', `${kv([
     ['Credit limit', `${money(limit)} <small>(score ${state.housing.credit.score})</small>`],
-    ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at 15% APR` : '$0'],
+    ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at ${(cardApr(state) * 100).toFixed(1)}% APR` : '$0'],
     ['Available credit', money(availableCredit(state))],
     medical ? ['Medical debt', `<span class="neg">${money(medical)}</span>`] : null,
     f.loans ? ['Student loans', `${money(f.loans)} <small>(not dischargeable)</small>`] : null,
     f.ch13 ? ['Chapter 13 plan', `${money(f.ch13.annual)}/yr · ${f.ch13.yearsLeft} yr left`] : null,
     f.lastBankruptcy ? ['Last bankruptcy', `Chapter ${f.lastBankruptcy.chapter} at age ${f.lastBankruptcy.age}`] : null,
   ])}
-  <p class="fine">Purchases you choose go on cash, then cards up to your limit — past it, they're declined. Bills, taxes and fines still pile up.</p>
+  <p class="fine">Purchases you choose go on cash, then cards up to your limit — past it, they're declined. Bills and fines still pile up.</p>
+  ${walletSection(state)}
   ${filing ? `<h4 class="sub">Bankruptcy</h4>
     <p class="fine">Means test: income ${money(opts.income)} vs. your state median ${money(opts.median)}. Homestead exemption: ${Number.isFinite(opts.preview.exemption) ? money(opts.preview.exemption) : 'unlimited'}${opts.preview.homeLost ? ' — Chapter 7 would sell your home' : ''}. Student loans and child support survive either chapter.</p>
     <div class="toggle-row">${option(opts.ch7, 7, '⚖️ File Chapter 7', 'Wipes card & medical debt; non-exempt assets sold; 10 yrs on credit')}${option(opts.ch13, 13, '📆 File Chapter 13', opts.ch13.ok ? `${opts.ch13.years} yrs × ${money(opts.ch13.annual)}; keep your property` : '')}</div>` : ''}`, { icon: '💳', accent: cardDebt > limit ? 'red' : '' });
@@ -91,5 +142,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     <ul class="history">${rows}</ul>`, { icon: '🗺️' });
 
-  return `${finances}${debtCard(state)}${investView(state)}${retirement}`;
+  return `${finances}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }

@@ -32,6 +32,7 @@ import { TRADITIONS, VOLUNTEER_ORGS, ATTENDANCE } from '../src/modules/community
 import { CIRCLES, FRIEND_CAP, friendsOf, circleFriends } from '../src/modules/people/Friends.js';
 import { ARRANGEMENTS } from '../src/modules/people/ElderCare.js';
 import { VEHICLE_TYPES } from '../src/modules/vehicles/Vehicles.js';
+import { CARD_TYPES } from '../src/modules/life/CreditCards.js';
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
@@ -198,6 +199,8 @@ function checkInvariants(state) {
     assert.ok(!v.loan || (v.loan.balance > 0 && v.loan.yearsLeft > 0 && v.loan.payment > 0), `vehicle loan ${JSON.stringify(v.loan)}`);
     assert.ok(!v.lease || v.lease.yearsLeft >= 0, 'lease term');
   }
+  const cc = state.finances.cards;
+  assert.ok(cc.held.length <= 5 && cc.held.every((c) => CARD_TYPES[c.typeId]) && ['payoff', 'minimum'].includes(cc.strategy) && (!cc.transfer || cc.transfer.amount >= 0), 'cards');
   const tx = state.finances.tax;
   assert.ok(Number.isFinite(tx.debt) && tx.debt >= 0 && (!tx.plan || tx.plan.annual > 0), `tax debt ${JSON.stringify(tx)}`);
   assert.ok(state.vehicles.owned.length <= 6 && state.vehicles.record.points >= 0, 'garage');
@@ -252,6 +255,11 @@ function randomActions(state) {
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
   }
+  // Credit cards
+  if (age >= 18 && player.chance(0.06)) tries.push(() => act('cards.apply', player.pick(Object.keys(CARD_TYPES))));
+  if (state.finances.cards.held.length && player.chance(0.03)) tries.push(() => act('cards.close', player.pick(state.finances.cards.held).id));
+  if (player.chance(0.05)) tries.push(() => act('cards.strategy', player.pick(['payoff', 'minimum'])));
+  if (state.finances.cash < 0 && player.chance(0.1)) tries.push(() => act('cards.transfer'));
   // Taxes
   if (state.finances.tax.debt && player.chance(0.2)) tries.push(() => act(player.pick(['taxes.payDebt', 'taxes.requestPlan'])));
   if (age >= 18 && player.chance(0.01)) tries.push(() => act('legal.taxCheat'));

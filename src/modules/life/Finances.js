@@ -13,12 +13,12 @@ import { coverage } from '../health/Insurance.js';
 import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
 import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
 import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.js';
+import { cardObligation, settleCards } from './CreditCards.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
 
 const LOAN_RATE = 0.05;
-const DEBT_RATE = 0.15;
 const HOUSING_SHARE = 0.45;
 /** Lifestyle spending: a regional floor plus a share of discretionary income (after tax, housing and 401k). */
 export const LIVING_FLOOR = 8000;
@@ -98,9 +98,9 @@ export const Finances = {
         // Everything else is spent out of what's left after taxes, housing and
         // retirement saving — people with big mortgages spend less elsewhere.
         const housing = f.ledger.expenses.filter((x) => HOUSING_EXPENSE.test(x.reason) || FAMILY_EXPENSE.test(x.reason)).reduce((s, x) => s + x.amount, 0);
-        // Card debt: interest plus a real effort to pay it down.
+        // Card debt: interest plus a real effort to pay it down — or just the minimum (see CreditCards).
         const cardDebt = Math.max(0, -f.cash);
-        const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardDebt * (DEBT_RATE + 0.25);
+        const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardObligation(state, cardDebt);
         // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
         const spendable = ordinary - retained;
         const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
@@ -134,13 +134,14 @@ export const Finances = {
     ch13Tick(ctx);
 
     let interest = 0;
+    const cards = state.character.age >= 18 ? settleCards(ctx, { living }) : { interest: 0 };
     if (f.cash < 0) {
-      interest = Math.round(-f.cash * DEBT_RATE);
+      interest = cards.interest;
       f.cash -= interest;
       if (-f.cash > Math.max(60000, gross * 1.5)) {
         // Unmanageable debt: a bankruptcy attorney lays out the options (or collectors keep calling).
         debtCrisisPrompt(ctx);
-        ctx.log(`You owe $${(-f.cash).toLocaleString()} on credit cards — more than you can ever pay off at 15% interest.`, '💸', 'bad');
+        ctx.log(`You owe $${(-f.cash).toLocaleString()} on credit cards — more than you can ever pay off at these interest rates.`, '💸', 'bad');
         ctx.stat('happiness', -6);
         ctx.stat('stress', 10);
       } else if (f.cash < -25000) {

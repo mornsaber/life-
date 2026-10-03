@@ -425,7 +425,12 @@ export function creditLimit(state) {
   const income = Math.max(state.career?.job?.salary ?? 0, f.lastYear?.gross ?? 0);
   if (f.lastBankruptcy && state.character.age - f.lastBankruptcy.age < 2) return 500;
   const share = score >= 740 ? 0.3 : score >= 670 ? 0.2 : score >= 580 ? 0.1 : 0.03;
-  return Math.round(Math.min(60000, Math.max(score >= 580 ? 1000 : 300, income * share)));
+  const base = Math.min(60000, Math.max(score >= 580 ? 1000 : 300, income * share));
+  // Cards in your wallet (life/CreditCards): a secured card alone is its deposit; each extra card adds 40%.
+  const held = f.cards?.held ?? [];
+  const regular = held.filter((c) => c.typeId !== 'secured').length;
+  if (held.length && !regular) return held.reduce((s, c) => s + (c.deposit ?? 0), 0);
+  return Math.round(Math.min(120000, base * (1 + Math.max(0, regular - 1) * 0.4)));
 }
 
 /** Remaining room on your cards (0 once you're past the limit). */

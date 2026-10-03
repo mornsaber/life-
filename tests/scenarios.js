@@ -45,6 +45,7 @@ import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
 import { careBill } from '../src/modules/people/ElderCare.js';
 import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles/Vehicles.js';
 import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
+import { cardApr, minimumPayoff, DEFAULT_APR } from '../src/modules/life/CreditCards.js';
 import { housingStatus } from '../src/modules/realestate/index.js';
 import { K12Engine, schoolAccess, TEEN_JOBS, teenJobPay } from '../src/modules/education/K12.js';
 import { admissionChance } from '../src/modules/education/EducationEngine.js';
@@ -1612,6 +1613,39 @@ const tests = {
     resolve(engine, 'taxes.audit', 'self');
     assert.equal(state.finances.tax.audits[0].result, 'fraud');
     assert.equal(state.finances.tax.debt, Math.round(30000 * 1.75), '75% civil fraud penalty');
+  },
+  'credit cards: approval by score, bigger limits, rewards when paid in full, the minimum-payment trap and 0% transfers'() {
+    const { engine, state } = setup(68, 30);
+    giveJob(engine, 'tech', 'swe');
+    state.finances.lastYear = { gross: 100000 };
+    state.housing.credit.score = 600;
+    engine.dispatch('cards.apply', 'cashback');
+    assert.equal(state.finances.cards.held.length, 0, 'denied below 670');
+    const base = creditLimit(state);
+    state.housing.credit.score = 760;
+    engine.dispatch('cards.apply', 'cashback');
+    engine.dispatch('cards.apply', 'transfer');
+    assert.equal(state.finances.cards.held.length, 2);
+    assert.ok(creditLimit(state) > base, 'two cards, bigger limit');
+    assert.ok(state.housing.credit.events.filter((e) => e.type === 'inquiry').length >= 2, 'hard inquiries');
+    assert.equal(cardApr(state), 0.24);
+    // Minimum payments on $10k at ~24% take years and cost thousands.
+    const trap = minimumPayoff(10000, 0.24);
+    assert.ok(trap.years >= 10 && trap.interest > 10000, `trap ${JSON.stringify(trap)}`);
+    // Balance transfer: 4% fee, and no interest on the promo balance this year.
+    state.finances.cash = -10000;
+    engine.dispatch('cards.transfer');
+    assert.equal(state.finances.cards.transfer.amount, 10400);
+    state.prompts = [];
+    engine.ageUp();
+    assert.equal(state.finances.lastYear.interest, 0, '0% promo');
+    // Paid in full: cash-back rewards.
+    state.finances.cards.transfer = null;
+    state.finances.cash = 50000;
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.finances.cards.rewards > 0, 'rewards');
+    assert.ok(DEFAULT_APR > 0.2);
   },
 };
 
