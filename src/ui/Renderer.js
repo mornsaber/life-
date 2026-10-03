@@ -279,6 +279,7 @@ export class Renderer {
       if (m) parts.push(`${s.icon} ${rankOfMember(s.id, m).title}`);
     }
     if (state.politics.office) parts.push(`🗳️ ${state.politics.office.id === 'governor' ? 'Governor' : state.politics.office.id}`.replace('cityCouncil', 'City Council').replace('stateRep', 'State Rep').replace('stateSenator', 'State Senator').replace('usRep', 'U.S. Rep').replace('usSenator', 'U.S. Senator').replace('mayor', 'Mayor').replace('judge', 'Judge'));
+    if (state.career.emeritus && !job) parts.push(`🎓 ${state.career.emeritus.title}`);
     if (!parts.length) parts.push(state.character.age < 18 ? '🧒 Kid' : state.retirement.retired ? '🏖️ Retired' : '🛋️ Unemployed');
     const hs = STATUS_LABEL[housingStatus(state)];
     parts.push(`${hs.icon} ${hs.label}`);

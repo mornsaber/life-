@@ -1874,6 +1874,33 @@ const tests = {
     assert.ok(state.health.disability.benefits.some((b) => b.source === 'ssdi'), 'approved');
     assert.ok(state.finances.ledger.income.length === 0 && state.finances.lastYear.gross > 50000, 'back pay counted as income');
   },
+  'emeritus: tenured faculty who retire after 10+ years keep the title; resigning or a felony doesn\'t'() {
+    const { engine, state, ctx } = setup(77, 66);
+    const job = giveJob(engine, 'university', 'professor');
+    job.yearsAtEmployer = 4;
+    engine.dispatch('retirement.retire');
+    assert.ok(!state.career.emeritus, 'too few years');
+    state.retirement.retired = false;
+    const job2 = giveJob(engine, 'university', 'professor');
+    job2.yearsAtEmployer = 22;
+    engine.dispatch('retirement.retire');
+    const e = state.career.emeritus;
+    assert.ok(e && /^Professor Emerit(us|a)$/.test(e.title), e?.title);
+    assert.ok(state.honors.some((h) => h.id === 'university.emeritus'));
+    engine.dispatch('emeritus.teach');
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.finances.lastYear.gross >= 9000, 'course stipend');
+    // A felony revokes it.
+    ctx.emit('legal:convicted', { severity: 'felony', name: 'Fraud' });
+    assert.equal(state.career.emeritus, null);
+    // Resigning (not retiring) confers nothing.
+    const { engine: e2, state: s2 } = setup(78, 64);
+    const j3 = giveJob(e2, 'university', 'dean');
+    j3.yearsAtEmployer = 15;
+    e2.context().emit('career:resign', { reason: 'Took a job elsewhere' });
+    assert.ok(!s2.career.emeritus);
+  },
 };
 
 function enlistOk(state) {

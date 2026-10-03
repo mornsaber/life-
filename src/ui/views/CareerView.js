@@ -20,6 +20,28 @@ import { REGIONS } from '../../modules/life/Regions.js';
 import { WORK_MODES, workModeOf, NONCOMPETE_BANS } from '../../modules/career/JobMarket.js';
 import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
 import { BASES } from '../../modules/career/WorkplaceClaims.js';
+import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS } from '../../modules/career/Emeritus.js';
+
+/** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
+function emeritusCard(state) {
+  const e = state.career.emeritus;
+  if (e) {
+    return card(e.title, `${kv([
+      ['Institution', esc(e.employer)],
+      ['Emeritus since', `age ${e.sinceAge}`],
+      e.publications ? ['Publications since retiring', String(e.publications)] : null,
+    ])}
+    <div class="toggle-row">
+      ${button('🧑‍🏫 Teach a seminar each year', 'emeritus.teach', { variant: e.teaching ? 'small on' : 'small', hint: `${money(COURSE_STIPEND)} stipend` })}
+      ${button('🔬 Keep researching', 'emeritus.research', { variant: e.research ? 'small on' : 'small', hint: 'Office, lab access, the odd paper' })}
+      ${button('🎤 Give a guest lecture', 'emeritus.lecture', { variant: 'small', disabled: Boolean(state.yearly['emeritus.lecture']) })}
+    </div>`, { icon: '🎓', accent: 'yellow' });
+  }
+  const job = state.career.job;
+  if (job?.professionId !== 'university') return '';
+  const check = emeritusEligibility(state);
+  return `<p class="fine">🎓 ${check.ok ? `Retire from here and you'll be named <b>${esc(check.title)}</b>.` : `Emeritus status on retirement needs: ${esc(check.reason)}.`} (${MIN_YEARS}+ years, Associate Professor or higher.)</p>`;
+}
 
 /** Shop your skills, set where you work, and see non-competes and open claims. */
 function jobMarketCard(state) {
@@ -198,7 +220,7 @@ export function careerView(state, ui = {}) {
   const history = state.career.history.length
     ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${jobMarketCard(state)}${militaryLeaveCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 export { compactMoney };

@@ -39,6 +39,7 @@ import { BASES } from '../src/modules/career/WorkplaceClaims.js';
 import { CLAIMS } from '../src/modules/legal/CivilCourts.js';
 import { COURTS } from '../src/modules/legal/Judiciary.js';
 import { THERAPIES, MEDS } from '../src/modules/health/MentalHealth.js';
+import { hasFelony as hasFelonyNow } from '../src/core/State.js';
 const BASES_OK = Object.keys(BASES);
 import { CONDITIONS } from '../src/modules/health/index.js';
 import { SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES } from '../src/modules/education/K12.js';
@@ -218,6 +219,8 @@ function checkInvariants(state) {
   }
   const claim = state.health.disability.ssdiClaim;
   assert.ok(!claim || (['initial', 'reconsideration', 'hearing', 'council'].includes(claim.stage) && !state.health.disability.benefits.some((b) => b.source === 'ssdi')), 'ssdi claim');
+  const em = state.career.emeritus;
+  assert.ok(!em || (/Emerit(us|a)$/.test(em.title) && em.publications >= 0 && !hasFelonyNow(state)), 'emeritus');
   const jd = state.judiciary;
   assert.ok(!jd.seat || (COURTS[jd.seat.court] && jd.seat.reputation >= 0 && jd.seat.reputation <= 100 && !(state.politics.office?.id === 'judge')), 'bench seat');
   assert.ok(!(jd.seat && state.career.job), 'judge with a job');
@@ -289,6 +292,8 @@ function randomActions(state) {
     tries.push(() => act(player.chance(0.5) ? 'mental.therapy' : 'mental.meds', `${cid}:${player.pick([...Object.keys(THERAPIES), ...Object.keys(MEDS), 'none', 'stop', 'taper'])}`));
   }
   if (player.chance(0.05)) tries.push(() => act('ssdi.apply'));
+  // Emeritus faculty
+  if (state.career.emeritus && player.chance(0.2)) tries.push(() => act(`emeritus.${player.pick(['teach', 'research', 'lecture'])}`));
   // Courts
   if (age >= 18 && player.chance(0.04)) tries.push(() => act('civil.sue', player.pick(Object.keys(CLAIMS))));
   if (state.judiciary.seat && player.chance(0.02)) tries.push(() => act('judiciary.resign'));

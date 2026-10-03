@@ -3,7 +3,7 @@
  * each module's `order` field, not by its position here:
  *
  *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 · estate 16 ·
- *   military 20 · federal 24 · publicservice 25 · municipal 26 · career 30 · business 31 · jobMarket 32 · gig 32.5 · claims 33.5 ·
+ *   military 20 · federal 24 · publicservice 25 · municipal 26 · career 30 · business 31 · emeritus 31.5 · jobMarket 32 · gig 32.5 · claims 33.5 ·
  *   politics 33 · judiciary 34 · legal 35 · civil 36 · emergency 40 · health 42 · mental 43 · ssdi 43.5 · housing 45 · vehicles 46 · retirement 85 · taxes 88 · cards 89 · investing 86 · finances 90
  */
 import { Lifecycle } from './life/Lifecycle.js';
@@ -38,6 +38,7 @@ import { BusinessEngine } from './business/BusinessEngine.js';
 import { JobMarket } from './career/JobMarket.js';
 import { GigWork } from './career/GigWork.js';
 import { WorkplaceClaims } from './career/WorkplaceClaims.js';
+import { Emeritus } from './career/Emeritus.js';
 import { Vehicles } from './vehicles/Vehicles.js';
 import { Friends } from './people/Friends.js';
 import { ElderCare } from './people/ElderCare.js';
@@ -46,6 +47,6 @@ import { Community } from './community/Community.js';
 
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, MilitaryModule,
-  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, JobMarket, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts,
+  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, Emeritus, JobMarket, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts,
   EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

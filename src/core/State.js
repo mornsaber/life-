@@ -470,6 +470,8 @@ export function getCommitments(state) {
   }
   const therapy = (state.health?.conditions ?? []).filter((c) => c.care?.therapy && !c.care.waitlist && !c.remission).length;
   if (therapy) list.push({ id: 'therapy', label: 'Therapy', load: 0.25 * therapy });
+  const emeritus = state.career?.emeritus;
+  if (emeritus?.teaching || emeritus?.research) list.push({ id: 'emeritus', label: `${emeritus.title}${emeritus.teaching ? ' (teaching)' : ''}`, load: (emeritus.teaching ? 0.5 : 0) + (emeritus.research ? 0.25 : 0) });
   if (state.judiciary?.seat) list.push({ id: 'bench', label: 'On the bench', load: 3 });
   const gig = state.gig?.active;
   if (gig) list.push({ id: 'gig', label: gig.hours === 'full' ? 'Gig work (full time)' : 'Side hustle', load: gig.hours === 'full' ? 3 : 1 });
