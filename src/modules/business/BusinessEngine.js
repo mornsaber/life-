@@ -407,7 +407,7 @@ function buyBusiness(ctx, listingId, funding) {
   const type = BUSINESS_TYPES[listing.typeId];
   if (currentBusiness(state)) return ctx.toast('You already own a business.', 'warn');
   if (LICENSEE_ONLY.includes(listing.typeId) && !holdsLicense(state, type)) return ctx.toast(`Only a licensee can own a ${type.name.toLowerCase()}.`, 'warn');
-  const check = fundingCheck(state, listing.price, funding, type);
+  const check = fundingCheck(state, listing.price, funding, type, { cashFlow: listing.profit });
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const { sbaLoan, basis } = fund(ctx, listing.price, check);
   const biz = newBusiness(rng, state, listing.typeId, { name: listing.name, years: listing.years, scale: listing.scale, quality: listing.quality, reputation: listing.reputation, fit: listing.fit, cash: Math.round(listing.price * 0.1), assets: Math.round(listing.price * 0.4), sbaLoan, basis });

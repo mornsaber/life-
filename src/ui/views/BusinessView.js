@@ -54,7 +54,7 @@ function listingsCard(state) {
     const t = BUSINESS_TYPES[l.typeId];
     const lic = LICENSEE_ONLY.includes(l.typeId) && !holdsLicense(state, t);
     const cash = fundingCheck(state, l.price, 'cash', t);
-    const sba = fundingCheck(state, l.price, 'sba', t);
+    const sba = fundingCheck(state, l.price, 'sba', t, { cashFlow: l.profit });
     return `<li class="program ${lic || (!cash.ok && !sba.ok) ? 'locked' : ''}">
       <div><b>${t.icon} ${esc(l.name)}</b><small>${l.years} yrs old · ${l.scale > 1 ? `${l.scale} locations · ` : ''}${money(l.revenue)} revenue · ≈${money(l.profit)}/yr before a manager · asking ${money(l.price)}</small>
         ${lic ? `<small class="why">Only a ${esc(t.credentials.map(credentialName).join(' or '))} holder can own it</small>` : !cash.ok && !sba.ok ? `<small class="why">${esc(sba.reason)}</small>` : ''}</div>

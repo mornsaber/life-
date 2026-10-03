@@ -34,7 +34,8 @@ import { deathRowTick, paroleEligibility } from '../src/modules/legal/Prison.js'
 import { sealStatus } from '../src/modules/legal/Clemency.js';
 import { hasFelony } from '../src/core/State.js';
 import { separationPay } from '../src/modules/military/Separation.js';
-import { startEligibility, yearFinancials, exitProceeds } from '../src/modules/business/Business.js';
+import { startEligibility, yearFinancials, exitProceeds, fundingCheck } from '../src/modules/business/Business.js';
+import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { closeBusiness } from '../src/modules/business/BusinessEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
@@ -1277,11 +1278,17 @@ const tests = {
     assert.match(startEligibility(state, 'lawFirm').reason, /State Bar/);
     assert.match(startEligibility(state, 'restaurant').reason, /ServSafe/);
     assert.ok(!startEligibility(state, 'retail', 'cash').ok, '$150k cash needed');
-    assert.ok(startEligibility(state, 'retail', 'sba').ok, '10% down with an SBA loan');
-    engine.dispatch('business.start', 'retail:sba:llc');
+    assert.match(startEligibility(state, 'retail', 'sba').reason, /experience/, 'SBA lenders want industry experience');
+    state.career.history.push({ professionId: 'retail', title: 'Store Manager', levelId: 'x', employerName: 'Mart', sector: 'private', peakGrade: 4, startAge: 25, endAge: 33, reason: 'Left' });
+    const retailLoan = startEligibility(state, 'retail', 'sba');
+    assert.ok(retailLoan.ok || /cash flow/.test(retailLoan.reason), `experience clears the first hurdle: ${retailLoan.reason}`);
+    assert.match(fundingCheck(state, 150000, 'sba', BUSINESS_TYPES.retail, { cashFlow: 20000 }).reason, /cash flow/, 'lenders check debt-service coverage');
+    state.credentials.held.masterElectrician = { earnedAge: 30, renewedAge: 34, status: 'active' };
+    assert.ok(startEligibility(state, 'electrical', 'sba').ok, '10% down with an SBA loan');
+    engine.dispatch('business.start', 'electrical:sba:llc');
     const biz = state.business.current;
-    assert.ok(biz && biz.debts.sba.balance === 135000 && biz.debts.sba.guaranteed);
-    assert.equal(state.finances.cash, 5000);
+    assert.ok(biz && biz.debts.sba.balance === 54000 && biz.debts.sba.guaranteed);
+    assert.equal(state.finances.cash, 14000);
     assert.ok(startEligibility(state, 'cpaFirm').reason.includes('already own'));
   },
 

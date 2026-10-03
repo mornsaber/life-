@@ -38,6 +38,8 @@ export const TARGETS = {
   supervisor: { band: [0.35, 0.6], ref: '≈36% of workers supervise others at any one time; more have at some point', fmt: pct },
   veterans: { band: [0.04, 0.12], ref: '≈6–7% of adults are veterans', fmt: pct },
   ptsdVets: { band: [0.1, 0.35], ref: '≈15–30% of combat veterans', fmt: pct },
+  selfEmployed: { band: [0.02, 0.12], ref: '≈5% of workers own an incorporated or employer business (BLS); gig work is separate', fmt: pct },
+  everOwner: { band: [0.06, 0.3], ref: 'about 1 in 6 adults own a business at some point', fmt: pct },
   everMarried: { band: [0.6, 0.92], ref: '≈80% of adults have married by 45 (Census ACS)', fmt: pct },
   divorced: { band: [0.25, 0.55], ref: '≈35–45% of first marriages end in divorce', fmt: pct },
   parents: { band: [0.55, 0.9], ref: '≈85% of women 40–44 have had a child (lower for men)', fmt: pct },
@@ -69,6 +71,8 @@ export async function playLives({ from, to, seed }) {
   const { routineChoice } = await import('../src/core/Routine.js');
   const { CONDITIONS } = await import('../src/modules/health/index.js');
   const { RENT_TIERS } = await import('../src/modules/realestate/index.js');
+  const { startEligibility } = await import('../src/modules/business/Business.js');
+  const { BUSINESS_TYPES } = await import('../src/modules/business/BusinessTypes.js');
 
   const memory = () => {
     const m = new Map();
@@ -110,6 +114,9 @@ export async function playLives({ from, to, seed }) {
       retireAt: choose.int(60, 68),
       // Family plans: most people marry; ≈85% want children (0–3, mostly 2).
       marry: choose.chance(0.85),
+      // ≈15% try running their own business at some point.
+      entrepreneur: choose.chance(0.2),
+      bizAge: choose.int(28, 48),
       kids: choose.weighted([{ n: 0, w: 15 }, { n: 1, w: 20 }, { n: 2, w: 40 }, { n: 3, w: 25 }], (x) => x.w).n,
     };
     let eduIdx = 0;
@@ -127,6 +134,16 @@ export async function playLives({ from, to, seed }) {
         } else if (p.type === 'career.negotiate') id = (options.find((o) => o.id === 'step' || o.id === 'modest') ?? options[0]).id;
         else if (p.type === 'housing.financing') id = (options.find((o) => !['cash', 'cancel', 'fraud'].includes(o.id)) ?? options.find((o) => o.id === 'cash') ?? options.find((o) => o.id === 'cancel') ?? options[0]).id;
         else if (p.type === 'health.bankruptcy') id = 'file';
+        else if (p.type === 'career.confirmQuit') id = 'quit';
+        else if (p.type === 'business.cashCrunch') {
+          const need = p.data.need;
+          const inject = s.finances.cash - need >= 20000 && (persona.injected ?? 0) + need <= 100000;
+          id = ((inject && options.find((o) => o.id === 'inject')) || options.find((o) => o.id === 'bridge') || (!persona.loc && options.find((o) => o.id === 'loc')) || options.find((o) => o.id === 'close')).id;
+          if (id === 'inject') persona.injected = (persona.injected ?? 0) + need;
+          if (id === 'loc') persona.loc = true;
+        } else if (p.type === 'business.offer') id = p.data.price * (s.business.current?.ownerPct ?? 1) > 1000000 ? 'accept' : 'decline';
+        else if (p.type === 'business.ipo') id = 'ipo';
+        else if (p.type === 'business.temptation') id = persona.risky ? 'take' : 'honest';
         else if (p.type === 'finances.debtCrisis') id = (options.find((o) => o.id === 'ch7') ?? options.find((o) => o.id === 'ch13') ?? options[0]).id;
         else if (p.type === 'people.date') id = persona.marry && choose.chance(0.7) ? options.find((o) => o.id === '0')?.id : options.find((o) => !/^\d$/.test(o.id))?.id;
         else if (p.type === 'people.meetCute') id = persona.marry && !s.people.list.some((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation)) ? 'ask' : options.find((o) => o.id !== 'ask')?.id;
@@ -193,7 +210,8 @@ export async function playLives({ from, to, seed }) {
         solve();
       }
       const retired = s.retirement.retired;
-      if (age >= 16 && !retired && !s.military.service && !(s.education.enrolled?.pace === 'full' && age < 23)) {
+      const runsBusiness = s.business.current?.role === 'operator';
+      if (age >= 16 && !retired && !s.military.service && !runsBusiness && !(s.education.enrolled?.pace === 'full' && age < 23)) {
         if (!s.career.job || (s.career.job.professionId !== persona.plan && choose.chance(0.4))) {
           engine.dispatch('career.apply', s.career.job || choose.chance(0.75) ? persona.plan : choose.pick(['retail', 'hospitality', 'culinary']));
           solve();
@@ -211,15 +229,33 @@ export async function playLives({ from, to, seed }) {
       }
       // Housing: move out once working, buy when the numbers work.
       const housed = s.housing.rental || s.housing.properties.some((p) => p.use === 'primary');
-      if (age >= 21 && s.career.job && !housed && (choose.chance(0.6) || !s.housing.withParents)) {
-        engine.dispatch('housing.rent', s.career.job.salary > 55000 ? 'apartment' : 'roommates');
+      const income = s.career.job?.salary ?? (runsBusiness ? s.business.current.lastYear?.ownerPay ?? 0 : 0);
+      if (age >= 21 && (s.career.job || runsBusiness) && !housed && (choose.chance(0.6) || !s.housing.withParents)) {
+        engine.dispatch('housing.rent', income > 55000 ? 'apartment' : 'roommates');
         solve();
       }
-      if (persona.owner && age >= 23 && age <= 55 && s.career.job && !s.housing.properties.some((p) => p.use === 'primary') && s.housing.listings.length && choose.chance(0.5)) {
+      if (persona.owner && age >= 23 && age <= 55 && (s.career.job || runsBusiness) && !s.housing.properties.some((p) => p.use === 'primary') && s.housing.listings.length && choose.chance(0.5)) {
         const listing = [...s.housing.listings].sort((a, b) => a.price - b.price)[0];
         engine.dispatch('housing.buy', listing.id);
         solve();
       }
+      // Entrepreneurs open a business in their field (or a startup / retail store).
+      if (persona.entrepreneur && age >= persona.bizAge && age <= 55 && !s.business.current && !s.business.history.length) {
+        const own = { trades: 'electrical', plumbing: 'plumbing', law: 'lawFirm', accounting: 'cpaFirm', medical: 'practice', nursing: 'practice', culinary: 'foodTruck', hospitality: 'foodTruck', retail: 'retail', tech: 'techStartup', trucking: 'trucking', corporate: 'retail' }[persona.plan] ?? 'retail';
+        for (const typeId of [own, 'foodTruck', 'propertyMgmt', 'retail']) {
+          const funding = startEligibility(s, typeId, 'cash').ok && s.finances.cash >= BUSINESS_TYPES[typeId].cost + 25000 ? 'cash' : 'sba';
+          const check = startEligibility(s, typeId, funding);
+          // Sensible founders keep about six months of living costs in the bank.
+          if (!check.ok || s.finances.cash - check.down < 25000) continue;
+          if (s.career.job) engine.dispatch('career.quit');
+          solve();
+          engine.dispatch('business.start', `${typeId}:${funding}:${typeId === 'techStartup' ? 'ccorp' : 'llc'}`);
+          break;
+        }
+      }
+      // Would-be owners pick up the cheap credentials a few years ahead.
+      if (persona.entrepreneur && age >= persona.bizAge - 3 && age < persona.bizAge) for (const c of ['servSafe', 'realEstate']) if (!hasCredential(s, c)) engine.dispatch('credentials.pursue', c);
+      if (s.business.current?.typeId === 'techStartup') engine.dispatch('business.raise');
       // Love and family.
       if (persona.marry && age >= 20 && age <= 50) {
         const partner = s.people.list.find((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation));
@@ -234,7 +270,8 @@ export async function playLives({ from, to, seed }) {
       for (const c of s.health.conditions) if (c.diagnosed && !c.remission && !c.treated) engine.dispatch(CONDITIONS[c.id].kind === 'addiction' ? 'health.rehab' : 'health.treat', c.id);
       if (persona.saver && age >= 25 && !s.investing.auto.enabled) engine.dispatch('investing.toggleAuto');
       if (persona.risky && age >= 16 && choose.chance(0.15)) engine.dispatch(choose.pick(['legal.shoplift', 'legal.speed', 'legal.driveDrunk', 'legal.barFight', 'legal.drugs', 'legal.taxCheat']));
-      if (!retired && age >= persona.retireAt) {
+      // People in card debt keep working (until 70).
+      if (!retired && age >= persona.retireAt && (s.finances.cash > -10000 || age >= 70)) {
         engine.dispatch('retirement.retire');
         if (s.retirement.retired) stats.retiredAge = age;
       }
@@ -253,17 +290,22 @@ export async function playLives({ from, to, seed }) {
       const nw = netWorth(s);
       if (s.character.age <= 70) stats.peakNw = Math.max(stats.peakNw, nw);
       if (s.character.age === 65) stats.nw65 = nw;
+      if (s.character.age === 45) stats.ownerAt45 = Boolean(s.business.current);
       if (process.env.BALANCE_DEBUG === 'wealth' && s.character.age === 65) console.log(JSON.stringify({ plan: persona.plan, saver: persona.saver, cash: Math.round(s.finances.cash), dc: s.retirement.dc, equity: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0)), inv: Math.round(Object.values(s.investing.holdings).reduce((t, h) => t + h.value, 0)), nw }));
       if (process.env.BALANCE_DEBUG === 'grade' && s.character.age === 40 && s.career.job) console.log(JSON.stringify({ plan: persona.plan, prof: s.career.job.professionId, level: s.career.job.levelId, grade: s.career.job.grade, salary: s.career.job.salary, dept: Boolean(s.career.job.department) }));
+    }
+    if (process.env.BALANCE_DEBUG === 'business' && s.business.history.length) {
+      const h = s.business.history[0];
+      console.log(JSON.stringify({ plan: persona.plan, type: h.typeId, outcome: h.outcome, years: h.years, startAge: h.startAge, bankrupt: s.finances.bankruptcies, lines: s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /founded|Founded|SBA|closed|bankrupt|guarantee|personally|crunch|Capital injection|credit line|You put/i.test(t)).slice(0, 8) }));
     }
     if (process.env.BALANCE_DEBUG === 'bankrupt' && s.finances.bankruptcies) {
       const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /bankrupt|Year-end|Laid off|homeless|Retired|hired|job as/i.test(t));
       console.log(`--- life ${i} plan ${persona.plan}\n${lines.slice(0, 30).join('\n')}`);
     }
     if (process.env.BALANCE_DEBUG === 'homeless' && stats.everHomeless) {
-      const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /homeless|evict|lease|Year-end|Laid off|terminated|left your job|hired|parents|sold|prison|sentenced|foreclos/i.test(t));
+      const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /homeless|evict|lease|Year-end|Laid off|terminated|left your job|hired|parents|sold|prison|sentenced|foreclos|founded|closed|revenue|Capital|credit line|on the hook/i.test(t));
       const first = lines.findIndex((t) => /homeless|evict/i.test(t));
-      console.log(`--- life ${i} plan ${persona.plan}\n${lines.slice(Math.max(0, first - 6), first + 4).join('\n')}`);
+      if ((process.env.OWNERS && !s.business.history.length && !s.business.current) || (process.env.NONOWNERS && (s.business.history.length || s.business.current))) { /* skip */ } else console.log(`--- life ${i} plan ${persona.plan}\n${lines.slice(Math.max(0, first - 6), first + 4).join("\n")}`);
     }
     if (process.env.BALANCE_DEBUG === 'foreclosure' && s.housing.credit.events.some((e) => e.type === 'foreclosure')) {
       const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /foreclos|mortgage|bought|Year-end|delinquent|laid off|Laid off|terminated|resigned|left your job/i.test(t));
@@ -287,6 +329,8 @@ export async function playLives({ from, to, seed }) {
       unemploymentAvg: hist.reduce((a, h) => a + h.unemployment, 0) / Math.max(1, hist.length),
       econYears: hist.length,
       recessions: hist.filter((h, k) => h.phase === 'recession' && hist[k - 1]?.phase !== 'recession').length,
+      everOwner: Boolean(s.business.current || s.business.history.length),
+      ownerAt45: Boolean(stats.ownerAt45),
       everMarried: (s.people?.marriages ?? 0) > 0,
       everDivorced: (s.people?.divorces ?? 0) > 0,
       hadKids: (s.people?.list ?? []).some((p) => p.relation === 'child'),
@@ -337,6 +381,8 @@ export function aggregate(rs) {
     supervisor: share(at40, (r) => r.supervised),
     veterans: share(adults, (r) => r.veteran),
     ptsdVets: combatVets.length ? share(combatVets, (r) => r.ptsd) : NaN,
+    selfEmployed: share(at45, (r) => r.ownerAt45),
+    everOwner: share(rs.filter((r) => r.age >= 60), (r) => r.everOwner),
     everMarried: share(at45, (r) => r.everMarried),
     divorced: share(at45.filter((r) => r.everMarried), (r) => r.everDivorced),
     parents: share(at45, (r) => r.hadKids),

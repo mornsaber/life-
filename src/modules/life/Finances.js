@@ -26,8 +26,8 @@ const LIVING_MINIMUM = 6000;
 /** Living at home: parents cover most of it. */
 const LIVING_AT_HOME = 2000;
 const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
-/** Kids, support and premiums come off the top before lifestyle spending, like housing. */
-const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium)|personal spending$/;
+/** Kids, support, premiums — and money you pour into your own business — come off the top before lifestyle spending. */
+const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Payroll tax \(FICA\))|personal spending$/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {

@@ -98,8 +98,11 @@ export function qualifyingIncome(state) {
   const salary = state.career.job?.salary ?? 0;
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
   const ss = state.retirement.socialSecurity?.annual ?? 0;
+  // Self-employed: lenders average what the business paid you (two years of returns, simplified to last year).
+  const biz = state.business?.current;
+  const business = biz && biz.years >= 2 ? Math.max(0, biz.lastYear?.ownerPay ?? 0) : 0;
   // Dual-income households qualify on both incomes.
-  const steady = salary + pensions + ss + spouseIncome(state);
+  const steady = salary + pensions + ss + spouseIncome(state) + business;
   if (steady > 0) return Math.round(steady);
   const ly = state.finances.lastYear;
   return Math.round(Math.max(0, (ly?.gross ?? 0) - (ly?.ltcg ?? 0)) * 0.5);

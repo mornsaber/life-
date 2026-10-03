@@ -29,8 +29,6 @@ import { BUSINESS_TYPES, ENTITIES, MARKETING, SBA } from './BusinessTypes.js';
 export const SS_WAGE_CAP = 176100;
 export const CORPORATE_TAX = 0.21;
 export const PHASE_DEMAND = { expansion: 1.05, peak: 1.08, recession: 0.8, recovery: 0.95 };
-/** A general manager to run the place when you're not there. */
-export const GM_SALARY = 75000;
 export const LICENSED_MANAGER = 95000;
 /** Types that must be owned by a licensee (no lay owners of law firms or medical practices). */
 export const LICENSEE_ONLY = ['lawFirm', 'practice', 'cpaFirm'];
@@ -53,13 +51,28 @@ export function startEligibility(state, typeId, funding = 'cash') {
   if (currentBusiness(state)) return { ok: false, reason: 'You already own a business' };
   if (!holdsLicense(state, type)) return { ok: false, reason: `Needs ${type.credentials.map(credentialName).join(' or ')}` };
   if (type.minExperience && experienceYears(state, type) < type.minExperience) return { ok: false, reason: `Needs ${type.minExperience} yrs of industry experience` };
-  return fundingCheck(state, type.cost, funding, type);
+  return fundingCheck(state, type.cost, funding, type, { cashFlow: type.startup ? 0 : projectedCashFlow(state, typeId) });
 }
 
-/** Paying a price with cash or an SBA 7(a) loan. */
-export function fundingCheck(state, price, funding, type = null) {
+/** Typical yearly cash flow before debt service once established (a lender's projection). */
+export function projectedCashFlow(state, typeId) {
+  const mean = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), pick: (xs) => xs[0], id: () => 'probe' };
+  const probe = newBusiness(mean, state, typeId, { name: 'probe', years: 3, quality: 55, reputation: 50, fit: 1 });
+  probe.role = 'operator';
+  const ly = yearFinancials(state, probe, mean);
+  return ly.operatingIncome;
+}
+
+/** Lenders want cash flow to cover the loan payment and still pay you something. */
+export const DSCR = 1.5;
+
+/** Paying a price with cash or an SBA 7(a) loan (underwritten on cash flow and experience). */
+export function fundingCheck(state, price, funding, type = null, { cashFlow = null } = {}) {
   if (funding === 'sba') {
     if (type?.startup) return { ok: false, reason: 'Banks don\'t lend to pre-revenue startups — raise from investors' };
+    if (type && !type.credentials.length && experienceYears(state, type) < 2) return { ok: false, reason: 'SBA lenders want 2+ years of industry experience' };
+    const annual = annualPayment(price * (1 - SBA.downPayment), SBA.rate, SBA.years);
+    if (cashFlow != null && cashFlow < annual * DSCR) return { ok: false, reason: `Lender: projected cash flow ($${Math.round(Math.max(0, cashFlow)).toLocaleString()}) can't cover $${annual.toLocaleString()}/yr payments` };
     if (state.housing.credit.score < SBA.minScore) return { ok: false, reason: `SBA lenders want a ${SBA.minScore}+ credit score` };
     const last = state.finances.lastBankruptcy;
     if (last && state.character.age - last.age < 3) return { ok: false, reason: 'Recent bankruptcy' };
@@ -104,7 +117,8 @@ export function yearFinancials(state, biz, rng) {
   const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy));
   const delegated = Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]);
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
-  const management = (biz.role === 'absentee' ? Math.round(GM_SALARY * Math.sqrt(biz.scale)) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
+  // A manager's pay scales with the operation: a food truck's lead isn't paid like a restaurant group's GM.
+  const management = (biz.role === 'absentee' ? Math.round(clamp(revenue * 0.08, 40000, 120000)) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
   const rent = Math.round(type.rent * biz.scale * col);
   const insurance = Math.round(type.insurance * biz.scale);
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
