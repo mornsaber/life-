@@ -18,6 +18,7 @@
  * bus (credential:suspend/reinstate, career:clearanceRevoked, legal:offense,
  * retirement:addPension, housing:sell).
  */
+import { PROFESSIONS } from '../career/JobTrees.js';
 import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
@@ -172,6 +173,9 @@ function relationshipTick(ctx) {
       if (rng.chance(0.08)) delta -= rng.int(10, 30);
       if (stress >= 75) delta -= 4;
       if (state.military.service?.deployedThisYear) delta -= 6;
+      // Months at sea or on trips: the relationship runs on phone calls.
+      const away = state.career.job ? PROFESSIONS[state.career.job.professionId]?.rotation?.away ?? 0 : 0;
+      if (away) delta -= Math.round(away * 6);
       if (state.health?.conditions.some((c) => !c.remission && ['alcohol', 'opioids', 'gambling'].includes(c.id))) delta -= 8;
       if (!state.career.job && !state.retirement.retired && state.character.age < 60) delta -= 2;
     }

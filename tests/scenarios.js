@@ -15,6 +15,8 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
+import { bestEntryLevel } from '../src/modules/career/CareerEngine.js';
+import { hasHousingBenefit } from '../src/modules/life/Finances.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
 import { traineeProgram } from '../src/modules/career/Tenure.js';
 import { passChance, pursueEligibility, ATTEMPTS_PER_YEAR, retakeCost } from '../src/modules/credentials/LicensingEngine.js';
@@ -2060,7 +2062,77 @@ const tests = {
     // Transfers keep the same corps where the new branch has it.
     assert.equal(MOS['navy.2500'].direct, 'jag');
   },
+  'air & sea: flight attendants train on the job, mariners license up, pilots face the medical, the age-65 rule and furloughs'() {
+    const quiet = (t) => { t.state.prompts = []; };
+    // Flight attendant: hired as a trainee, the airline's academy issues the certificate, then reserve.
+    const fa = setup(101, 22);
+    giveJob(fa.engine, 'flightAttendant', 'trainee');
+    fa.engine.ageUp(); quiet(fa);
+    fa.engine.ageUp(); quiet(fa);
+    assert.ok(hasCredential(fa.state, 'faCertificate'), 'FA certificate');
+    assert.equal(fa.state.career.job?.levelId, 'reserve');
+    // Maritime academy graduates with a license start as Third Mate.
+    const mm = setup(102, 22);
+    mm.state.education.degrees.push({ type: 'bachelor', programId: 'maritimeAcademy', major: 'marineTransportation', year: 22 });
+    for (const id of ['twic', 'mmc', 'stcw', 'mateLicense']) grantCredential(mm.ctx, id, { silent: true });
+    assert.equal(bestEntryLevel(mm.state, getProfession('merchantMarine'), 'large').id, 'thirdMate');
+    // Cruise crews live aboard.
+    const cr = setup(103, 23);
+    giveJob(cr.engine, 'cruise', 'steward');
+    assert.ok(hasHousingBenefit(cr.state));
+    // A pilot who loses the first-class medical is grounded, then out — with loss-of-license insurance.
+    const p = setup(104, 40);
+    for (const id of ['atp', 'typeRating']) grantCredential(p.ctx, id, { silent: true });
+    giveJob(p.engine, 'aviation', 'captain');
+    p.state.career.job.unionMember = true;
+    p.state.stats.health = 30;
+    p.state.stats.fitness = 30;
+    p.engine.ageUp(); quiet(p);
+    if (p.state.career.job) {
+      assert.ok(p.state.career.job.grounded, 'grounded');
+      p.state.stats.health = 30;
+      p.engine.ageUp(); quiet(p);
+    }
+    assert.notEqual(p.state.career.job?.professionId, 'aviation', 'lost the medical');
+    assert.ok(p.state.career.history.some((h) => /FAA medical/.test(h.reason ?? '')), JSON.stringify(p.state.career.history.at(-1)));
+    // Age 65: off the line, into corporate flying.
+    const old = setup(105, 64);
+    old.state.stats.health = 80;
+    for (const id of ['atp', 'typeRating']) grantCredential(old.ctx, id, { silent: true });
+    giveJob(old.engine, 'aviation', 'captain');
+    old.state.character.age = 65;
+    old.engine.ageUp();
+    const ask = old.state.prompts.find((x) => x.type === 'transport.age65');
+    assert.ok(ask, `age-65 prompt: ${old.state.prompts.map((x) => x.type)}`);
+    old.state.prompts = [ask];
+    resolve(old.engine, 'transport.age65', 'corporate');
+    assert.equal(old.state.career.job?.professionId, 'charterAviation');
+    // Furlough in a recession, recalled with seniority in the recovery.
+    const f = setup(106, 30);
+    f.state.stats.health = 80;
+    giveJob(f.engine, 'flightAttendant', 'line');
+    f.state.career.job.yearsAtEmployer = 2;
+    f.state.economy.phase = 'recession';
+    const chance = f.engine.rng.chance.bind(f.engine.rng);
+    f.engine.rng.chance = (x) => (x === 0.25 ? true : chance(x));
+    f.ctx.state.prompts = [];
+    TransportModuleTick(f);
+    f.engine.rng.chance = chance;
+    assert.equal(f.state.career.job, null, 'furloughed');
+    assert.ok(f.state.transport.recall);
+    f.state.economy.phase = 'expansion';
+    f.engine.rng.chance = () => true;
+    TransportModuleTick(f);
+    resolve(f.engine, 'transport.recall', 'return');
+    assert.equal(f.state.career.job?.professionId, 'flightAttendant');
+    assert.equal(f.state.career.job.yearsAtEmployer, 2, 'seniority intact');
+  },
 };
+
+function TransportModuleTick(t) {
+  const mod = MODULES.find((m) => m.id === 'transport');
+  mod.onAgeUp(t.engine.context());
+}
 
 function enlistOk(state) {
   return state.military.service.component === 'active';

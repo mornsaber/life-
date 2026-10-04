@@ -21,6 +21,7 @@ import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
+import { TRANSPORT_PROFESSIONS } from './TransportProfessions.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -259,17 +260,18 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   aviation: {
-    id: 'aviation', name: 'Aviation', icon: '🛫', sector: 'private', payMultiplier: 1.2, minAge: 18, sizes: { small: 2, medium: 3, large: 2, enterprise: 2 }, background: 'strict',
+    id: 'aviation', name: 'Airline Pilot', icon: '🛫', sector: 'private', payMultiplier: 1.2, minAge: 18, sizes: { small: 2, medium: 3, large: 2, enterprise: 2 }, background: 'strict',
     union: { chance: 0.6, name: 'Air Line Pilots Association', strike: true },
-    employers: ['SkyBridge Regional', 'Horizon Flight Academy', 'TransAmerica Airways', 'Pacific Crest Air'],
-    flightHoursPerYear: 700,
+    employers: ['SkyBridge Regional', 'Horizon Flight Academy', 'TransAmerica Airways', 'Pacific Crest Air', 'Bluewing Airlines'],
+    flightHoursPerYear: 700, seniority: true, furlough: true, rotation: { label: 'on trips', away: 0.4 },
     levels: [
-      L('cfi', 'Flight Instructor', 3, { req: { credentials: ['cfi'] } }),
-      L('fo', 'Regional First Officer', 4, { entry: true, req: { credentials: ['atp'] } }),
-      L('captain', 'Regional Captain', 6, { req: { credentials: ['atp'] } }),
-      L('majorFo', 'Major Airline First Officer', 7, { track: 'ic', minSize: 'large' }),
-      L('majorCaptain', 'Major Airline Captain', 8, { track: 'ic', minSize: 'large' }),
-      L('checkAirman', 'Check Airman', 7, { track: 'mgmt', abilities: ['supervise'], reports: 20 }),
+      L('cfi', 'Flight Instructor', 3, { req: { credentials: ['cfi'] }, flying: true }),
+      L('fo', 'Regional First Officer', 4, { entry: true, req: { credentials: ['atp'] }, flying: true, part121: true }),
+      L('captain', 'Regional Captain', 6, { req: { credentials: ['atp', 'typeRating'] }, flying: true, part121: true }),
+      L('majorFo', 'Major Airline First Officer', 7, { track: 'ic', minSize: 'large', flying: true, part121: true }),
+      L('majorCaptain', 'Major Airline Captain', 8, { track: 'ic', minSize: 'large', req: { credentials: ['atp', 'typeRating'] }, flying: true, part121: true }),
+      L('widebodyCaptain', 'International Widebody Captain', 9, { track: 'ic', minSize: 'enterprise', req: { credentials: ['atp', 'typeRating'] }, flying: true, part121: true }),
+      L('checkAirman', 'Check Airman / Simulator Instructor', 7, { track: 'mgmt', abilities: ['supervise'], reports: 20 }),
       L('chiefPilot', 'Chief Pilot', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 300 }),
       L('dfo', 'Director of Flight Operations', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec'], reports: 2000 }),
     ],
@@ -448,13 +450,16 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS);
+
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
 
 /** Career fields for the job board (every profession appears in exactly one). */
 export const JOB_FIELDS = {
-  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology'] },
-  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'trucking', 'aviation', 'publicWorks', 'forester'] },
+  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise'] },
+  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'trucking', 'publicWorks', 'forester'] },
+  travel: { label: 'Air & Sea', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'merchantMarine'] },
   business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },
   tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'engineering', 'dot', 'planning', 'environmental'] },
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'pharmacy', 'ems', 'socialWork', 'cps'] },

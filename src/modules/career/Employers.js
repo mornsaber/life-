@@ -53,7 +53,7 @@ function defaultBenefits(rng, profession, size, union) {
         match: offersPlan ? { small: 0.02, medium: 0.035, large: 0.045, enterprise: 0.05 }[size] : 0,
         dcPlan: offersPlan ? '401(k)' : null,
         tuition: { small: 0, medium: 2500, large: 5250, enterprise: 10000 }[size],
-        housing: false,
+        housing: Boolean(o.housing),
         ssCovered: true,
       };
     }
