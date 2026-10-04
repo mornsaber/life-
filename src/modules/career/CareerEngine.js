@@ -24,6 +24,7 @@ import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
 import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
+import { vacancyTick, hasOpening, openingReason, claimOpening } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 
 /* ------------------------------------------------------------------ */
@@ -183,7 +184,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   recalcSalary(state, job);
   ensureDepartment(job, level);
   state.career.job = job;
-  chainOfCommand(state, job);
+  job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   const program = traineeProgram(job);
   // Trainees start probation when they graduate.
   job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
@@ -325,8 +326,11 @@ export function promotionStatus(state) {
     const left = level.years - job.yearsInLevel;
     return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
   }
-  const options = all.filter((l) => levelCheck(state, l).ok);
-  if (!options.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options, all };
+  const qualified = all.filter((l) => levelCheck(state, l).ok);
+  if (!qualified.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options: qualified, all };
+  // Promotions need an open seat.
+  const options = qualified.filter((l) => hasOpening(job, l));
+  if (!options.length) return { eligible: false, reason: openingReason(job, qualified[0]), options, all, noOpening: true };
   return { eligible: true, options, all };
 }
 
@@ -359,7 +363,8 @@ export function promote(ctx, levelId) {
   job.performance = Math.round(clamp(job.performance - 15, 40, 100));
   job.lastRaiseAge = state.character.age;
   ensureDepartment(job, level);
-  chainOfCommand(state, job);
+  claimOpening(state, job, level.id);
+  job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
   ctx.toast(`Promoted: ${job.title}`, 'good');
   ctx.stat('happiness', 10);
@@ -378,7 +383,7 @@ export function demote(ctx, reason) {
   job.warnings = 0;
   job.lowYears = 0;
   ensureDepartment(job, prev);
-  chainOfCommand(state, job);
+  job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   ctx.log(`You were demoted to ${job.title} [G${prev.grade}] (${reason}). Salary: $${job.salary.toLocaleString()}.`, '⬇️', 'bad');
   ctx.toast(`Demoted: ${job.title}`, 'bad');
   ctx.stat('happiness', -10);
@@ -504,6 +509,7 @@ export function careerOnAgeUp(ctx) {
 
   job.yearsInLevel += 1;
   job.yearsAtEmployer += 1;
+  vacancyTick(ctx, job);
 
   const departmentEffect = departmentTick(ctx, job);
   unionEmployeeTick(ctx, job);
@@ -532,6 +538,8 @@ export function careerOnAgeUp(ctx) {
   job.boss = Math.round(clamp(job.boss + (50 - job.boss) * 0.1 + (job.performance - 50) * 0.1, 0, 100));
   job.coworkers = Math.round(clamp(job.coworkers + (55 - job.coworkers) * 0.15, 0, 100));
   const rating = ratingLabel(job.performance);
+  const reviewer = chainOfCommand(state, job, { generate: false })?.supervisor;
+  const by = reviewer && !reviewer.body ? ` (${reviewer.name}, ${reviewer.title})` : '';
 
   // Within-grade steps (and a small private-sector merit bump)
   const steps = stepIncrease(job.performance);
@@ -561,7 +569,7 @@ export function careerOnAgeUp(ctx) {
   const grievanceLimit = job.unionMember ? 3 : 2;
   if (job.performance >= 75 && status.eligible) {
     job.lowYears = 0;
-    ctx.log(`Annual review: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');
+    ctx.log(`Annual review${by}: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');
     bumpYearly(state, 'career.requestPromotion');
     openPromotionReview(ctx);
   } else if (job.performance < 35) {
@@ -578,12 +586,12 @@ export function careerOnAgeUp(ctx) {
       leaveJob(ctx, `Rated ${rating} after repeated warnings${job.unionMember ? ' (the union grievance failed)' : ''}.`, { fired: true });
       return;
     }
-    ctx.log(`Annual review: ${rating} (${job.performance}%). HR issued a formal written warning (${job.warnings}/${grievanceLimit}).`, '⚠️', 'warn');
+    ctx.log(`Annual review${by}: ${rating} (${job.performance}%). HR issued a formal written warning (${job.warnings}/${grievanceLimit}).`, '⚠️', 'warn');
     ctx.stat('stress', 6);
   } else {
     job.lowYears = 0;
     if (job.performance >= 50) job.warnings = Math.max(0, job.warnings - 1);
-    ctx.log(`Annual review at ${job.employer.name}: ${rating} (${job.performance}%). Step ${job.step}, $${job.salary.toLocaleString()}/yr.`, '📈');
+    ctx.log(`Annual review at ${job.employer.name}${by}: ${rating} (${job.performance}%). Step ${job.step}, $${job.salary.toLocaleString()}/yr.${job.performance >= 75 && status.noOpening ? ` Ready to move up — but ${status.reason.charAt(0).toLowerCase()}${status.reason.slice(1)}.` : ''}`, '📈');
   }
 }
 

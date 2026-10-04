@@ -5,6 +5,7 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { reentryPenalty, rehireStanding, ownerEntryLevel, ownerExperienceBonus } from '../org/Reentry.js';
 import { valuedCredentials } from '../credentials/CredentialRegistry.js';
 import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -208,12 +209,14 @@ export function candidateBonus(state, profession) {
   return bonus;
 }
 
-export function hireChance(state, profession, level, score, maxScore) {
+export function hireChance(state, profession, level, score, maxScore, employer = null) {
   const base = 0.22 + (score / maxScore) * 0.45;
   const stats = (state.stats.smarts - 50) / 250 + (state.stats.looks - 50) / 500;
   const seniority = Math.max(0, level.grade - profession.levels[0].grade) * 0.04;
   const market = (state.economy.unemployment - 0.045) * 2; // slack labor markets are brutal
-  return clamp(base + stats + candidateBonus(state, profession) - seniority - market, 0.05, 0.95);
+  // Time out of work counts against you; a good record with this employer counts for you.
+  const history = -reentryPenalty(state) + (employer?.orgId ? rehireStanding(state, employer.orgId).bonus : 0) + ownerExperienceBonus(state, profession);
+  return clamp(base + stats + candidateBonus(state, profession) - seniority - market + history, 0.05, 0.95);
 }
 
 function offerSalary(state, profession, level, employer, step, merit) {
@@ -285,7 +288,11 @@ export const InterviewSystem = {
 
       const profession = getProfession(professionId);
       const employer = createEmployer(rng, state, profession, resolveDutyStation(rng, profession, state.character.regionId) ?? state.character.regionId);
-      const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
+      const level = ownerEntryLevel(state, profession, employer.size) ?? bestEntryLevel(state, profession, employer.size) ?? check.level;
+      if (rehireStanding(state, employer.orgId).blocked) {
+        ctx.log(`${employer.name} (${employer.orgName}) flagged you as not eligible for rehire.`, '⛔', 'bad');
+        return ctx.toast('Not eligible for rehire there', 'bad');
+      }
       const priorYears = state.career.history.filter((h) => h.professionId === professionId).reduce((s, h) => s + h.endAge - h.startAge, 0);
 
       questionPrompt(ctx, {
@@ -313,7 +320,7 @@ export const InterviewSystem = {
 
       const profession = getProfession(data.professionId);
       const level = levelById(profession, data.levelId);
-      if (!rng.chance(hireChance(state, profession, level, next.score, next.questions.length * 3))) {
+      if (!rng.chance(hireChance(state, profession, level, next.score, next.questions.length * 3, data.employer))) {
         ctx.log(`${data.employer.name} passed on you for ${level.title}.`, '📭', 'bad');
         ctx.toast('Application rejected', 'bad');
         ctx.stat('happiness', -3);

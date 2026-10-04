@@ -30,7 +30,7 @@ import { Random } from '../../core/Random.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
-import { ORG_TYPES, orgTypesFor, soloType } from './OrgTypes.js';
+import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 
@@ -54,6 +54,7 @@ export const deptOf = (state, job) => orgOf(state, job?.employer)?.departments[j
 export const personOf = (org, id) => (id ? org?.people[id] ?? null : null);
 
 export function orgType(typeId) {
+  if (typeId?.startsWith('biz:')) return businessOrgType(typeId.slice(4));
   if (typeId?.startsWith('solo:')) {
     const p = getProfession(typeId.slice(5));
     return p ? soloType(p) : null;
@@ -97,6 +98,12 @@ export function newPerson(rng, org, fields) {
 export function findOrCreateOrg(state, profession, regionId, { size, name } = {}) {
   initOrgs(state);
   const rng = sideRng(state);
+  // Private careers: sometimes the opening is at a business someone in town owns (an NPC's, or one you sold).
+  if (profession.sector === 'private') {
+    const local = Object.values(state.orgs.byId).filter((o) => o.business && !o.closed && o.owner?.kind === 'npc' && o.regionId === regionId
+      && Object.values(o.departments).some((d) => !d.branch && orgType(o.typeId)?.departments.find((x) => x.id === d.id)?.occupations.includes(profession.id)));
+    if (local.length && rng.chance(0.25)) return rng.pick(local);
+  }
   const types = candidateTypes(profession);
   // Prefer an organization type that already exists here (one city government, not three).
   const stateId = stateOfRegion(regionId);
@@ -141,6 +148,10 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
 /** The department of `org` that employs this profession. */
 export function departmentFor(org, professionId) {
   const t = orgType(org.typeId);
+  if (org.business) {
+    const d = t?.departments.find((x) => x.occupations.includes(professionId) && org.departments[x.id]);
+    return d ? org.departments[d.id] : Object.values(org.departments).find((x) => !x.branch) ?? null;
+  }
   const d = t?.departments.find((x) => x.occupations.includes(professionId)) ?? t?.departments[0];
   return d ? org.departments[d.id] : null;
 }
@@ -159,6 +170,7 @@ export function attachOrg(state, employer, profession, regionId) {
   const dept = departmentFor(org, profession.id);
   employer.orgId = org.id;
   employer.deptId = dept?.id ?? null;
+  if (org.business) employer.name = org.name;
   employer.orgName = org.name;
   employer.deptName = dept?.name ?? null;
   employer.division = dept ? divisionName(org, dept.id, profession.id) : null;
@@ -207,6 +219,11 @@ function levelsAbove(profession, size, levelId) {
   return ladder.slice(idx + 1).filter((l) => supervises(l) && l.grade > current.grade && !l.appointed && (l.track === 'mgmt' || l.track === 'shared' || l.track === current.track));
 }
 
+/** A business's owner, shown at the top of the chain. */
+function ownerOf(org) {
+  return org.owner ? { id: null, name: org.owner.name, title: org.owner.kind === 'player' ? 'Owner (you)' : 'Owner', selection: 'owner', rel: 50, years: 0 } : null;
+}
+
 /** The body a top executive answers to (a board, an elected official, the voters). */
 function overseer(t) {
   const by = t.head.appointedBy ?? (t.head.selection === 'elected' ? 'the voters' : 'the board');
@@ -231,7 +248,7 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   // The player holds the organization's top job: they answer to whoever appointed or elected them.
   const isHead = t?.head.occupation === job.professionId && t.head.levelId === job.levelId;
   const deptHead = isHead ? null : personOf(org, dept.head);
-  const orgHead = isHead ? overseer(t) : personOf(org, org.head);
+  const orgHead = isHead ? overseer(t) : personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org);
   const supervisor = chain[0] ?? (deptHead && !job.abilities?.includes('exec') ? deptHead : orgHead);
   const manager = chain[1] ?? (chain[0] ? deptHead : supervisor === deptHead ? orgHead : null);
   const peers = job.abilities?.includes('exec') ? 1 : 3;

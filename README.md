@@ -42,6 +42,13 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
                      Employers (size, benefits, budgets, unions) · Compensation · CareerEngine
                      InterviewSystem · WorkplaceActions · WorkplaceEvents · ManagementEngine · ContractingSystem · UnionsAndLabor
     publicservice/   PublicServiceEngine (exams, clearances) · MunicipalGov · StateAgencies · FederalAgencies
+    org/             Organizations: every employer and every business is one — OrgTypes (departments → careers)
+                     Organizations (persistent orgs, named people, chain of command) · Vacancies (seats, openings, contests)
+                     Reentry (time away, rehire standing, internal moves) · Supervision (powers over named reports)
+                     Government (elected/appointed heads, a player-official's appointments) · Churn (hiring, attrition, boomerangs)
+                     Businesses (player and NPC businesses as orgs: owner seat, growth layers, branches, rivals, exits)
+    business/        BusinessTypes (career → business config, sizes) · OwnershipRules (who may own/run what)
+                     Business (P&L, valuation) · BusinessEngine · OwnerActions (people, policy, deals) · Franchising
     politics/        Offices · Campaigns · PoliticsEngine (elections, terms, appointments, scandals)
     realestate/      HousingEngine · PropertyMarket · MortgageSystem · Maintenance · Landlording
     legal/           Offenses · JusticeSystem (courts, prison, immunity) · Misconduct (temptations, risky acts)
@@ -50,7 +57,8 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
     emergency/       EmergencyEngine · FireVolunteer · PoliceReserves · SearchAndRescue
   ui/          Components · Renderer · views/ (one file per tab)
 tests/         scenarios · simulate (randomized lives + render every tab) · saves (+ fixtures/ from past versions)
-               content (pool lint) · balance (persona lives vs. real-world bands)
+               content (pool lint) · balance (persona lives vs. real-world bands) · business (business outcomes)
+               careers (career ↔ credential audit) · orgs (organizations) · businessorgs (businesses as organizations)
 ```
 
 Modules mutate only their own slice; cross-domain effects travel over the bus

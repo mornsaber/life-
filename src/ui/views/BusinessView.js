@@ -4,7 +4,11 @@
  * and exits.
  */
 import { esc, money, button, card, chip, kv, meter, select, empty } from '../Components.js';
-import { BUSINESS_TYPES, ENTITIES, MARKETING, ROUNDS, SBA } from '../../modules/business/BusinessTypes.js';
+import { BUSINESS_TYPES, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
+import { ownershipRules } from '../../modules/business/OwnershipRules.js';
+import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice } from '../../modules/business/OwnerActions.js';
+import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
+import { REGIONS } from '../../modules/life/Regions.js';
 import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY } from '../../modules/business/Business.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { DUTIES } from '../../modules/career/ManagementEngine.js';
@@ -22,15 +26,26 @@ function estimate(state, typeId) {
   return ly.netIncome + ly.ownerSalary;
 }
 
+/** Careers you have (or had): their businesses are listed first. */
+function yourCareers(state) {
+  return new Set([state.career.job?.professionId, ...state.career.history.map((h) => h.professionId)].filter(Boolean));
+}
+
 function startCard(state) {
-  const rows = Object.entries(BUSINESS_TYPES).map(([id, t]) => {
+  const mine = yourCareers(state);
+  const fromCareer = new Set([...mine].flatMap((p) => businessesFor(p)));
+  const rules = ownershipRules(state);
+  const order = Object.entries(BUSINESS_TYPES).sort(([a], [b]) => (fromCareer.has(b) ? 1 : 0) - (fromCareer.has(a) ? 1 : 0));
+  const rows = order.map(([id, t]) => {
     const cash = startEligibility(state, id, 'cash');
     const sba = startEligibility(state, id, 'sba');
+    const sizes = sizesFor(t);
+    const costs = sizes.map((z) => money(startupCostFor(t, z))).join(' – ');
     const blocked = !cash.ok && !sba.ok;
     const needs = t.credentials.length ? `Needs ${t.credentials.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No license needed';
     const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established`;
     return `<li class="program ${blocked ? 'locked' : ''}" data-collect-root>
-      <div><b>${t.icon} ${esc(t.name)}</b><small>${money(t.cost)} to start · ${esc(needs)} · ${esc(est)}</small>
+      <div><b>${t.icon} ${esc(t.name)}</b> ${fromCareer.has(id) ? chip('From your career', 'cyan') : ''}<small>${costs} to start · ${esc(needs)} · ${esc(est)}</small>
         ${blocked ? `<small class="why">${esc(cash.reason)}</small>` : ''}</div>
       <div class="enroll-form">
         <input type="hidden" data-part="type" value="${id}">
@@ -39,11 +54,13 @@ function startCard(state) {
           ...(!t.startup ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
         ])}
         ${select('entity', entityOptions(t.startup ? 'ccorp' : 'llc'))}
+        ${select('size', sizes.map((z) => ({ value: z, label: `${SIZE_OPTIONS[z].label} · ${money(startupCostFor(t, z))}` })), { value: 'standard' })}
+        <input type="text" data-part="name" maxlength="40" placeholder="Business name (optional)" aria-label="Business name">
         ${button('Start', 'business.start', { variant: 'small primary', collect: true, disabled: blocked })}
       </div>
     </li>`;
   }).join('');
-  return card('Start a Business', `<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
+  return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
     <ul class="programs">${rows}</ul>
     <h4 class="sub">Legal structures</h4><ul class="history">${Object.values(ENTITIES).map((e) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
 }
@@ -100,7 +117,82 @@ function listingsCard(state) {
 function historyCard(state) {
   const h = state.business.history;
   if (!h.length) return '';
-  return card('Business History', `<ul class="history">${[...h].reverse().map((b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${esc(b.name)}</b> <small>age ${b.startAge}–${b.endAge} · ${esc(b.outcome)}${b.proceeds ? ` · ${money(b.proceeds)}` : ''}</small></li>`).join('')}</ul>`, { icon: '🗂️' });
+  return card('Business History', `<ul class="history">${[...h].reverse().map((b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${esc(b.name)}</b> <small>age ${b.startAge}–${b.endAge} · ${esc(b.outcome)}${b.proceeds ? ` · ${money(b.proceeds)}` : ''}${orgFate(state, b)}</small></li>`).join('')}</ul>`, { icon: '🗂️' });
+}
+
+/** What became of a business you owned (organizations outlive their owners). */
+function orgFate(state, b) {
+  const org = b.orgId && state.orgs?.byId?.[b.orgId];
+  if (!org) return '';
+  if (org.mergedInto) return ' · merged into another company';
+  if (org.closed) return ' · closed';
+  return org.owner?.kind === 'npc' ? ` · still open under ${esc(org.owner.name)}` : '';
+}
+
+/** The organization: your seat, who runs what, and what you can do about each person. */
+function orgCard(state, biz) {
+  const org = businessOrg(state, biz);
+  if (!org) return '';
+  const pos = ownerPosition(state, biz);
+  const used = state.yearly['business.decide'] ?? 0;
+  const left = OWNER_DECISIONS - used;
+  const depts = businessRoster(state, biz);
+  const otherDepts = Object.values(org.departments);
+  const personRow = (p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(p.title)} · age ${p.age} · ${p.years} yr · performance ${p.performance} · likes you ${p.rel}%</small></div>
+    <div class="toggle-row">${[
+      ['🏅', 'Commend', 'business.staffCommend'], ['💵', 'Raise', 'business.staffRaise'], ['⬆️', 'Promote', 'business.staffPromote'], ['⬇️', 'Demote', 'business.staffDemote'],
+    ].map(([i, l, a]) => button(`${i} ${l}`, a, { arg: p.id, variant: 'tiny', disabled: left <= 0 })).join('')}
+    ${otherDepts.length > 1 ? `<span data-collect-root><input type="hidden" data-part="p" value="${p.id}">${select('dept', otherDepts.filter((d) => d.id !== p.deptId).map((d) => ({ value: d.id, label: d.name })))}${button('🔀 Move', 'business.staffTransfer', { variant: 'tiny', collect: true, disabled: left <= 0 })}</span>` : ''}
+    ${button('🚪 Fire', 'business.staffFire', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`;
+  const sections = depts.map(({ dept, head, people }) => `<h4 class="sub">${esc(dept.name)} <small class="muted">~${dept.headcount} staff</small></h4>
+    ${head ? `<p class="fine">👤 ${esc(head.name)}, ${esc(head.title)}</p>` : `<p class="fine">Reports directly to you.</p>`}
+    ${people.length ? `<ul class="history">${people.map(personRow).join('')}</ul>` : ''}`).join('');
+  const ceo = pos.ceo;
+  return card('Organization', `
+    <p>${chip(`👑 ${pos.title}`, 'honor')} ${chip(pos.stake)} ${chip(`${biz.staff.headcount} staff`)}${org.branches.length ? ` ${chip(`${org.branches.length + 1} locations`)}` : ''}</p>
+    ${ceo ? `<p>👔 <b>${esc(ceo.name)}</b> runs it day to day as ${esc(ceo.title)} (performance ${ceo.performance}).</p>` : '<p class="muted">You run it day to day.</p>'}
+    <p class="fine">The structure grows with you: a manager layer at ${TIERS.manager}+ staff, executives and finance/HR departments at ${TIERS.executives}+. ${left > 0 ? `${left} people decision${left > 1 ? 's' : ''} left this year.` : 'No more people decisions this year.'}</p>
+    <div class="action-grid">${button(ceo ? '👔 Replace the chief executive' : '👔 Hire someone to run it', 'business.appointCeo', { hint: 'You stay the owner' })}${ceo ? button('🗂️ Step back to a passive owner', 'business.makePassive', { hint: 'Frees you to start or buy another business' }) : ''}</div>
+    ${sections}`, { icon: '🏢' });
+}
+
+/** Rivals in your market, and deals you can make with them. */
+function marketCard(state, biz) {
+  const rivals = competitorsOf(state, biz);
+  if (!rivals.length) return '';
+  const rows = rivals.map((o) => {
+    const price = acquisitionPrice(biz, o);
+    return `<li class="report-row"><div><b>${esc(o.name)}</b> <small class="muted">owner ${esc(o.owner.name)} · ~${o.business.staff} staff · reputation ${o.business.reputation} · ${o.business.years ?? 0} yrs${o.business.founderId ? ' · founded by a former employee' : ''}</small></div>
+      <div class="toggle-row">${button(`🤝 Acquire · ${money(price)}`, 'business.acquire', { arg: o.id, variant: 'tiny', disabled: biz.cash < price, hint: 'From the business account' })}${button('🔗 Merge (stock)', 'business.merge', { arg: o.id, variant: 'tiny' })}</div></li>`;
+  }).join('');
+  return card('Your Market', `<p class="muted">Competitors take a share of customers; your reputation against theirs decides who wins. They grow, fail and open around you.</p><ul class="history">${rows}</ul>`, { icon: '🏁' });
+}
+
+/** Prices, pay, suppliers, investment, debt and locations. */
+function policyCard(state, biz) {
+  const org = businessOrg(state, biz);
+  const type = typeOf(biz);
+  const regions = Object.values(REGIONS);
+  return card('Strategy & Policy', `
+    <h4 class="sub">Prices</h4><div class="toggle-row chips-row">${Object.entries(PRICE_LEVELS).map(([id, l]) => button(l.label, 'business.setPrice', { arg: id, variant: (biz.priceLevel ?? 'standard') === id ? 'tiny on' : 'tiny', hint: id === 'premium' ? 'Pays when quality is high' : id === 'budget' ? 'Wins volume' : '' })).join('')}</div>
+    <h4 class="sub">Wages</h4><div class="toggle-row chips-row">${Object.entries(PAY_LEVELS).map(([id, l]) => button(l.label, 'business.setPay', { arg: id, variant: (biz.payLevel ?? 'market') === id ? 'tiny on' : 'tiny', hint: `${l.payroll > 1 ? '+' : ''}${Math.round((l.payroll - 1) * 100)}% payroll · morale ${l.morale >= 0 ? '+' : ''}${l.morale}` })).join('')}</div>
+    <h4 class="sub">Suppliers</h4><div class="toggle-row chips-row">${Object.entries(SUPPLIERS).map(([id, l]) => button(l.label, 'business.setSupplier', { arg: id, variant: (biz.supplier ?? 'standard') === id ? 'tiny on' : 'tiny' })).join('')}</div>
+    <div class="action-grid">${button('🛠️ Buy equipment', 'business.invest', { arg: 'equipment', hint: `${money(type.cost * 0.15 * Math.max(1, biz.scale))} · +quality` })}${button('🖥️ Invest in technology', 'business.invest', { arg: 'technology', hint: `${money(type.cost * 0.08 * Math.max(1, biz.scale))} · +quality` })}${button('🏦 Pay down debt', 'business.payDown', { disabled: !biz.debts.sba })}</div>
+    ${!type.startup ? `<h4 class="sub">Locations</h4>
+      <ul class="history"><li>📍 Main location${org ? ` · ${esc((REGIONS[org.regionId] ?? REGIONS.midcity).name.split(',')[0])}` : ''}</li>${(org?.branches ?? []).map((b) => `<li>📍 ${esc(org.departments[b.deptId]?.name ?? b.city)} ${button('Close', 'business.closeLocation', { arg: b.deptId, variant: 'tiny danger' })}</li>`).join('')}</ul>
+      <p class="fine">Next location opens in: ${regions.map((r) => button(r.name.split(',')[0], 'business.expandTo', { arg: r.id, variant: (biz.expandTo ?? state.character.regionId) === r.id ? 'tiny on' : 'tiny' })).join(' ')}</p>` : ''}`, { icon: '🧭' });
+}
+
+/** Businesses you own but don't run. */
+function holdingsCard(state) {
+  const hs = state.business.holdings ?? [];
+  if (!hs.length) return '';
+  return card('Your Holdings', `<p class="muted">Businesses you own while their management runs them. Profits come to you as distributions.</p><ul class="history">${hs.map((h) => {
+    const org = businessOrg(state, h);
+    const ceo = org?.people?.[org.ceo];
+    return `<li class="report-row"><div><b>${BUSINESS_TYPES[h.typeId]?.icon ?? '🏪'} ${esc(h.name)}</b> <small class="muted">${Math.round(h.ownerPct * 100)}% · valued ${money(h.valuation)} · ${h.staff.headcount} staff${ceo ? ` · run by ${esc(ceo.name)}` : ''}${h.lastYear ? ` · last year ${money(h.lastYear.netIncome)}` : ''}</small></div>
+      <div class="toggle-row">${button('🧑‍💼 Take it back', 'business.takeBack', { arg: h.id, variant: 'tiny', disabled: Boolean(currentBusiness(state)) })}${button('🪧 Sell', 'business.sellHolding', { arg: h.id, variant: 'tiny' })}</div></li>`;
+  }).join('')}</ul>`, { icon: '🗂️' });
 }
 
 function pnl(ly) {
@@ -162,14 +254,15 @@ function ownedView(state, biz) {
     ${biz.investors.length ? `<h4 class="sub">Investors</h4><ul class="history">${biz.investors.map((i) => `<li>💼 ${esc(i.round)} · ${money(i.invested)} for ${Math.round(i.pct * 100)}%</li>`).join('')}</ul>` : ''}`, { icon: '🏦' });
 
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
+    <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${ops}${funding}${exit}`;
+  return `${overview}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {
   if (!state.business) return '';
   const biz = currentBusiness(state);
-  if (biz) return `${ownedView(state, biz)}${historyCard(state)}`;
+  if (biz) return `${ownedView(state, biz)}${holdingsCard(state)}${historyCard(state)}`;
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
-  return `${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
+  return `${holdingsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
 }

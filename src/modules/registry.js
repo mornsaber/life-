@@ -27,7 +27,7 @@ import { EducationEngine } from './education/EducationEngine.js';
 import { K12Engine } from './education/K12.js';
 import { CredentialsModule } from './credentials/index.js';
 import { CareerModule } from './career/index.js';
-import { OrganizationsModule } from './org/Organizations.js';
+import { OrgModule } from './org/index.js';
 import { MilitaryModule } from './military/index.js';
 import { EmergencyModule } from './emergency/index.js';
 import { PublicServiceEngine, MunicipalGov, StateAgencies, FederalAgencies } from './publicservice/index.js';
@@ -58,6 +58,6 @@ import { Community } from './community/Community.js';
 
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
-  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrganizationsModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
+  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
   EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

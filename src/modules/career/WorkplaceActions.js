@@ -3,6 +3,7 @@
  * track-choice and quit-confirmation resolvers. Repeating an action within a
  * year has diminishing returns.
  */
+import { promotionContest, awardToRival } from '../org/Vacancies.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
@@ -264,6 +265,10 @@ export const WorkplaceActions = {
       // The air gets thinner near the top: fewer seats, more rivals.
       const nextGrade = Math.max(...status.options.map((o) => o.grade));
       chance *= COMPETITION[nextGrade] ?? 1;
+      // You're up against named rivals for the opening (and outsiders for senior posts).
+      const target = status.options.reduce((a, b) => (b.grade > a.grade ? b : a));
+      const contest = promotionContest(state, job, target);
+      chance *= contest.factor;
       // Some fields have few management seats per worker (hotels, the trades).
       chance *= getProfession(job.professionId).promotionOdds ?? 1;
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
@@ -299,7 +304,7 @@ export const WorkplaceActions = {
         ctx.log('Your ultimatum fell flat. Your boss will remember that.', '🧊', 'bad');
       } else {
         adjustJob(job, 'boss', -2);
-        ctx.log('"Not this cycle." The promotion went to someone else.', '😞', 'warn');
+        ctx.log(`"Not this cycle." ${awardToRival(state, job, target, contest.best)}`, '😞', 'warn');
       }
       ctx.stat('happiness', -4);
       ctx.toast('Promotion denied', 'bad');

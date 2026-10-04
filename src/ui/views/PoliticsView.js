@@ -6,6 +6,7 @@ import { esc, money, button, card, chip, meter, kv, empty } from '../Components.
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
+import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Government.js';
 
 export function politicsView(state) {
   const p = state.politics;
@@ -47,7 +48,20 @@ export function politicsView(state) {
     </li>`;
   }).join('');
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${campaign}
+  return `${current}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
     ${card('Political History', history, { icon: '🗂️' })}`;
+}
+
+/** The agency heads your office appoints, and who holds each post now. */
+function appointmentsCard(state) {
+  const posts = appointmentsInReach(state, { ensure: false });
+  if (!posts.length) return '';
+  const used = state.yearly['orgs.appoint'] ?? 0;
+  const rows = posts.map((a) => {
+    const arg = `${a.org.id}|${a.deptId ?? '-'}`;
+    return `<li class="report-row"><div><b>${esc(a.title)}</b> <small class="muted">${esc(a.org.name)}${a.org.performance != null ? ` · performance ${a.org.performance}` : ''}</small><br><small>${a.holder ? `${esc(a.holder.name)}${a.holder.appointedByPlayer ? ' (your appointee)' : ''}` : 'Vacant'}</small></div>
+      <div class="toggle-row">${Object.entries(APPOINTEE_KINDS).map(([kind, k]) => button(k.label, 'orgs.appoint', { arg: `${arg}|${kind}`, variant: 'tiny', hint: k.hint, disabled: used >= 2 })).join('')}</div></li>`;
+  }).join('');
+  return card('Your Appointments', `<p class="fine">Your office names these leaders. Their results shape your approval. ${2 - used} appointment${2 - used === 1 ? '' : 's'} left this year.</p><ul class="history">${rows}</ul>`, { icon: '⭐' });
 }

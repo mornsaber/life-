@@ -22,6 +22,7 @@ import { clamp } from '../../core/Random.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById, nextLevels } from '../career/Ladder.js';
 import { orgOf, orgType, sideRng, newPerson, seatHolders, supervises, chainOfCommand } from './Organizations.js';
+import { rememberDeparture, churnTick } from './Churn.js';
 
 /** Typical staff of one occupation in a department, by employer size. */
 const POOL = { small: 30, medium: 220, large: 2000, enterprise: 12000 };
@@ -44,7 +45,7 @@ export function seatsAt(org, deptId, profession, level, size) {
 }
 
 /** Why a named holder leaves this year (null = stays). */
-function departure(rng, p) {
+export function departure(rng, p) {
   if (p.age >= 66) return rng.chance(0.6) ? 'retired' : null;
   if (p.age >= 58 && rng.chance(0.14)) return 'retired';
   if (p.performance < 40 && rng.chance(0.2)) return 'was let go';
@@ -178,6 +179,7 @@ export function vacancyTick(ctx, job) {
       const why = departure(rng, p);
       if (!why) continue;
       removeSeat(dept, job.professionId, levelId, id);
+      rememberDeparture(state, org, p, why);
       delete org.people[id];
       if (seats <= NAMED_SEATS || id === supervisorBefore) dept.vacancies.push({ professionId: job.professionId, levelId, since: state.character.age, why });
       if (id === supervisorBefore) ctx.log(`Your supervisor, ${p.name} (${p.title}), ${why}.`, '🪑');
@@ -192,6 +194,8 @@ export function vacancyTick(ctx, job) {
     else if (seats <= NAMED_SEATS) job.openings[level.id] = seatHolders(state, org, dept.id, job.professionId, level.id, seats)[0]?.name ?? 'open';
     else job.openings[level.id] = rng.chance(1 - (1 - TURNOVER) ** seats) ? 'open' : 'filled';
   }
+
+  churnTick(ctx, job);
 
   // A new boss: the relationship starts over.
   const chain = chainOfCommand(state, job);

@@ -17,6 +17,8 @@ import { clamp } from '../../core/Random.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { WORKFORCE_MODES, vendorTick } from './ContractingSystem.js';
 import { unionManagerTick } from './UnionsAndLabor.js';
+import { teamTick, weakestReport, removeFromTeam, hireOntoTeam, reportsOf } from '../org/Supervision.js';
+import { randomName } from '../../core/State.js';
 
 export const DUTIES = {
   hiring: { label: 'Hiring', icon: '🤝', overhead: 0.025 },
@@ -78,7 +80,8 @@ export function departmentTick(ctx, job) {
 
   // Productivity
   const quality = mode.fixedQuality ?? 38 + dept.morale * 0.35;
-  dept.productivity = Math.round(clamp(quality + state.stats.smarts * 0.1 + micromanaged.length * 2 - (dept.delegation.reviews && delegable ? 2 : 0) - (dept.transitionPenalty ?? 0) + rng.int(-8, 8), 0, 100));
+  const team = teamTick(state, job);
+  dept.productivity = Math.round(clamp(quality + team + state.stats.smarts * 0.1 + micromanaged.length * 2 - (dept.delegation.reviews && delegable ? 2 : 0) - (dept.transitionPenalty ?? 0) + rng.int(-8, 8), 0, 100));
   dept.transitionPenalty = 0;
 
   if (micromanaged.length) ctx.stat('stress', micromanaged.length * 3);
@@ -91,7 +94,7 @@ export function departmentTick(ctx, job) {
   const duties = delegable ? micromanaged : Object.keys(DUTIES);
   if (duties.length && rng.chance(0.55)) {
     const duty = rng.pick(duties);
-    MANAGEMENT_EVENTS[duty](ctx, dept);
+    MANAGEMENT_EVENTS[duty](ctx, dept, job);
   }
   vendorTick(ctx, job);
   unionManagerTick(ctx, job);
@@ -101,20 +104,25 @@ export function departmentTick(ctx, job) {
 
 const MANAGEMENT_EVENTS = {
   hiring(ctx) {
+    const { rng } = ctx;
+    const names = [0, 1, 2].map(() => { const g = rng.pick(['male', 'female']); const n = randomName(rng, g); return { name: `${n.firstName} ${n.lastName}`, gender: g }; });
     ctx.prompt({
       type: 'career.mgmtHiring', icon: '🤝', title: 'Hiring Decision',
       text: 'You have one open position and three finalists.',
       options: [
-        { id: 'veteran', label: '🧓 The seasoned pro who wants top dollar', hint: 'Strong, pricey' },
-        { id: 'promising', label: '🌱 The promising new grad', hint: 'Cheap, upside' },
-        { id: 'nephew', label: '👔 Your boss\'s nephew', hint: 'Politics' },
+        { id: 'veteran', label: `🧓 ${names[0].name}, the seasoned pro who wants top dollar`, hint: 'Strong, pricey' },
+        { id: 'promising', label: `🌱 ${names[1].name}, the promising new grad`, hint: 'Cheap, upside' },
+        { id: 'nephew', label: `👔 ${names[2].name}, your boss's nephew`, hint: 'Politics' },
       ],
+      data: { names },
     });
   },
-  reviews(ctx) {
+  reviews(ctx, _dept, job) {
+    const weak = job && weakestReport(ctx.state, job);
     ctx.prompt({
       type: 'career.mgmtReview', icon: '📋', title: 'Underperformer',
-      text: 'One of your reports has missed every target this year and morale around them is slipping.',
+      text: `${weak ? weak.name : 'One of your reports'} has missed every target this year and morale around them is slipping.`,
+      data: { personId: weak?.id ?? null },
       options: [
         { id: 'coach', label: '🧑‍🏫 Coach them personally', hint: 'Smarts check' },
         { id: 'pip', label: '📄 Put them on a performance plan' },
@@ -122,7 +130,23 @@ const MANAGEMENT_EVENTS = {
       ],
     });
   },
-  scheduling(ctx) {
+  scheduling(ctx, _dept, job) {
+    const team = job ? reportsOf(ctx.state, job) : [];
+    // Sometimes it's one person's leave request rather than the holiday roster.
+    if (team.length && ctx.rng.chance(0.4)) {
+      const p = ctx.rng.pick(team);
+      ctx.prompt({
+        type: 'career.mgmtLeave', icon: '🗓️', title: 'Leave Request',
+        text: `${p.name} asks for three weeks off for a family emergency, during your busiest stretch.`,
+        options: [
+          { id: 'approve', label: '✅ Approve it' },
+          { id: 'partial', label: '🤝 Approve one week, revisit later' },
+          { id: 'deny', label: '❌ Deny — the work has to get done' },
+        ],
+        data: { personId: p.id },
+      });
+      return;
+    }
     ctx.prompt({
       type: 'career.mgmtScheduling', icon: '🗓️', title: 'Holiday Coverage',
       text: 'Half the team requested the same holiday week off. Someone has to cover.',
@@ -140,20 +164,28 @@ function bump(dept, key, delta) {
 }
 
 export const ManagementResolvers = {
-  mgmtHiring(ctx, _data, optionId) {
+  mgmtHiring(ctx, data, optionId) {
     const job = ctx.state.career.job;
     const dept = job?.department;
     if (!dept) return;
+    const pick = data?.names?.[{ veteran: 0, promising: 1, nephew: 2 }[optionId]];
+    if (pick) hireOntoTeam(ctx.state, job, { name: pick.name, gender: pick.gender, performance: { veteran: 72, promising: 58, nephew: 42 }[optionId], age: { veteran: 48, promising: 23, nephew: 27 }[optionId] });
     if (optionId === 'veteran') { bump(dept, 'productivity', 5); dept.costPremium = (dept.costPremium ?? 0) + 0.01; }
     if (optionId === 'promising') { bump(dept, 'productivity', 2); bump(dept, 'morale', 2); }
     if (optionId === 'nephew') { job.boss = Math.min(100, job.boss + 8); bump(dept, 'productivity', -5); bump(dept, 'morale', -4); }
     ctx.log({ veteran: 'You hired the seasoned pro.', promising: 'You took a chance on the new grad.', nephew: 'You hired the boss\'s nephew. Your boss is delighted; your team is not.' }[optionId], '🤝');
   },
-  mgmtReview(ctx, _data, optionId) {
+  mgmtReview(ctx, data, optionId) {
     const { state, rng } = ctx;
     const job = state.career.job;
     const dept = job?.department;
     if (!dept) return;
+    const person = data?.personId ? reportsOf(state, job).find((p) => p.id === data.personId) : null;
+    if (person) {
+      if (optionId === 'coach') { person.rel = Math.min(100, person.rel + 8); person.performance = Math.min(98, person.performance + 6); }
+      if (optionId === 'pip') { person.rel = Math.max(0, person.rel - 8); person.discipline = (person.discipline ?? 0) + 1; }
+      if (optionId === 'fire') removeFromTeam(state, job, person);
+    }
     if (optionId === 'coach') {
       if (state.stats.smarts + rng.int(-15, 15) >= 50) { bump(dept, 'productivity', 4); bump(dept, 'morale', 4); ctx.log('Your coaching turned them around.', '🧑‍🏫', 'good'); }
       else { ctx.stat('stress', 4); ctx.log('Hours of coaching went nowhere.', '🧑‍🏫', 'warn'); }
@@ -165,6 +197,18 @@ export const ManagementResolvers = {
       if (dept.unionized) { job.coworkers = Math.max(0, job.coworkers - 10); dept.unionRisk = Math.min(100, dept.unionRisk + 10); ctx.log('You terminated them. The union filed a grievance.', '✊', 'warn'); }
       else ctx.log('You let them go. The team is rattled.', '🚪');
     }
+  },
+  mgmtLeave(ctx, data, optionId) {
+    const { state } = ctx;
+    const job = state.career.job;
+    const dept = job?.department;
+    if (!dept) return;
+    const p = reportsOf(state, job).find((x) => x.id === data?.personId);
+    const delta = { approve: 12, partial: 3, deny: -15 }[optionId] ?? 0;
+    if (p) p.rel = Math.round(clamp(p.rel + delta, 0, 100));
+    if (optionId === 'approve') { bump(dept, 'productivity', -3); bump(dept, 'morale', 3); }
+    if (optionId === 'deny') { bump(dept, 'productivity', 2); bump(dept, 'morale', -4); }
+    ctx.log(`${optionId === 'deny' ? 'You denied' : optionId === 'partial' ? 'You approved part of' : 'You approved'} ${p ? `${p.name}'s` : 'the'} leave request.`, '🗓️');
   },
   mgmtScheduling(ctx, _data, optionId) {
     const dept = ctx.state.career.job?.department;

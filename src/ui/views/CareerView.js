@@ -16,6 +16,11 @@ import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/c
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
 import { chainOfCommand } from '../../modules/org/Organizations.js';
+import { BUSINESS_TYPES, businessesFor } from '../../modules/business/BusinessTypes.js';
+import { ownershipRules } from '../../modules/business/OwnershipRules.js';
+import { ownerPosition } from '../../modules/org/Businesses.js';
+import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
+import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
 import { APPLICATIONS_PER_YEAR } from '../../modules/career/InterviewSystem.js';
 import { DUTIES, canDelegate } from '../../modules/career/ManagementEngine.js';
@@ -197,14 +202,60 @@ function organizationCard(state, job) {
   const people = (list) => list.map((p) => `<li>${esc(p.name)} <small class="muted">${esc(p.title)} · ${p.years} yr</small></li>`).join('');
   return card('🏢 Organization', `${kv([
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}`],
-    ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff</small>`],
+    ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
     ['Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
     c.manager ? ['Manager', who(c.manager)] : null,
     c.deptHead ? ['Department head', who(c.deptHead)] : null,
     c.orgHead ? ['Leadership', who(c.orgHead)] : null,
   ])}
   ${c.coworkers.length ? `<p class="fine">👥 Coworkers at your level</p><ul class="mini-list">${people(c.coworkers)}</ul>` : ''}
-  ${c.reports.length ? `<p class="fine">🧑‍💼 Your direct reports${job.department ? ` (${job.department.headcount} staff in all)` : ''}</p><ul class="mini-list">${people(c.reports)}</ul>` : ''}`, { icon: '🏢' });
+  ${c.reports.length ? reportsPanel(state, job, c.reports) : ''}
+  ${openingsLine(job)}
+  ${internalMovesRow(state)}`, { icon: '🏢' });
+}
+
+/** Your named reports, with what a supervisor can do about each. */
+function reportsPanel(state, job, reports) {
+  const used = state.yearly['orgs.supervise'] ?? 0;
+  const left = SUPERVISION_PER_YEAR - used;
+  const fire = canTerminate(job);
+  const rows = reports.map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(p.title)} · ${p.years} yr · rated ${ratingLabel(p.performance)} · likes you ${p.rel}%${p.discipline ? ` · ${p.discipline} write-up${p.discipline > 1 ? 's' : ''}` : ''}</small></div>
+    <div class="toggle-row">${[
+      ['🏅', 'Commend', 'orgs.commend'],
+      ['📝', 'Write up', 'orgs.discipline'],
+      ['⬆️', 'Recommend for promotion', 'orgs.recommend'],
+      ['🔀', 'Approve transfer', 'orgs.transferOut'],
+      ['🚪', fire ? 'Terminate' : 'Recommend termination', 'orgs.terminate'],
+    ].map(([icon, label, action]) => button(`${icon} ${label}`, action, { arg: p.id, variant: action === 'orgs.terminate' ? 'tiny danger' : 'tiny', disabled: left <= 0 })).join('')}</div></li>`).join('');
+  return `<p class="fine">🧑‍💼 Your direct reports${job.department ? ` (${job.department.headcount} staff in all)` : ''} — ${left > 0 ? `${left} management action${left > 1 ? 's' : ''} left this year` : 'no management time left this year'}${fire ? '' : ' · firing needs your manager\'s sign-off'}</p><ul class="history">${rows}</ul>`;
+}
+
+/** Posts one rung up this year: open, or who holds them. */
+function openingsLine(job) {
+  const o = Object.entries(job.openings ?? {});
+  if (!o.length) return '';
+  const profession = getProfession(job.professionId);
+  return `<p class="fine">🪑 Above you: ${o.map(([id, v]) => `${esc(profession.levels.find((l) => l.id === id)?.title ?? id)} — ${v === 'open' ? '<b class="pos">opening this year</b>' : v === 'filled' ? 'no opening this year' : `held by ${esc(v)}`}`).join(' · ')}</p>`;
+}
+
+/** Other occupations in the same organization (keep your seniority). */
+function internalMovesRow(state) {
+  const moves = internalMoves(state);
+  if (!moves.length) return '';
+  return `<p class="fine">🔀 Move to another occupation here (keeps your seniority):</p><div class="toggle-row">${moves.map((m) => button(`${m.profession.icon} ${esc(m.profession.name)}`, 'orgs.internalMove', { arg: m.profession.id, variant: 'tiny', disabled: !m.check.ok, title: m.check.ok ? (m.dept?.name ?? '') : m.check.reason })).join('')}</div>`;
+}
+
+/** Former employers you could go back to. */
+function formerEmployersCard(state) {
+  const list = formerEmployers(state);
+  if (!list.length) return '';
+  const gap = workforceGap(state);
+  const rows = list.map((e) => {
+    const check = rehireCheck(state, e);
+    return `<li class="job-row ${check.ok ? '' : 'locked'}"><div class="job-info"><b>${esc(e.employerName)}</b> <small class="muted">${esc(e.orgName ?? '')}</small><small>${esc(e.title)} · left ${e.yearsAgo} yr ago · ${e.standing === 'good' ? '✅ eligible for rehire' : e.standing === 'ineligible' ? '⛔ not eligible for rehire' : '➖ neutral reference'}</small></div>
+      ${button(check.ok ? '🔁 Ask to return' : '🔒', 'orgs.rehire', { arg: e.orgId, variant: 'small', disabled: !check.ok, title: check.reason ?? '' })}</li>`;
+  }).join('');
+  return card('Former Employers', `${gap > 1 ? `<p class="fine">⏳ ${gap} years out of the workforce — employers will ask about the gap.</p>` : ''}<ul class="job-board">${rows}</ul>`, { icon: '🔁' });
 }
 
 function jobRow(state, p) {
@@ -246,10 +297,21 @@ export function careerView(state, ui = {}) {
   const current = job
     ? currentJob(state) + organizationCard(state, job) + managementConsole(job)
     : card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
-  const history = state.career.history.length
-    ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)}${h.orgName && h.orgName !== h.employerName ? ` <small class="muted">(${esc(h.orgName)})</small>` : ''}${h.standing ? ` ${chip(h.standing === 'good' ? '✅ Eligible for rehire' : h.standing === 'ineligible' ? '⛔ Not eligible for rehire' : '➖ Neutral reference', h.standing === 'good' ? 'green' : h.standing === 'ineligible' ? 'bad' : '')}` : ''} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
+  // Jobs and businesses you ran, one timeline.
+  const stints = [
+    ...state.career.history.map((h) => ({ kind: 'job', h, end: h.endAge })),
+    ...(state.business?.history ?? []).map((b) => ({ kind: 'biz', b, end: b.endAge })),
+  ].sort((a, b) => b.end - a.end);
+  const bizLine = (b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${b.role === 'operator' ? 'Owner-operator' : 'Owner'}</b> · ${esc(b.name)} <small>(age ${b.ownedFromAge ?? b.startAge}–${b.endAge}) — ${esc(b.outcome)}</small></li>`;
+  const history = stints.length
+    ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+}
+
+/** One past job in the history list. */
+function jobLine(h) {
+  return `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)}${h.orgName && h.orgName !== h.employerName ? ` <small class="muted">(${esc(h.orgName)})</small>` : ''}${h.standing ? ` ${chip(h.standing === 'good' ? '✅ Eligible for rehire' : h.standing === 'ineligible' ? '⛔ Not eligible for rehire' : '➖ Neutral reference', h.standing === 'good' ? 'green' : h.standing === 'ineligible' ? 'bad' : '')}` : ''} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`;
 }
 
 export { compactMoney };
@@ -288,4 +350,30 @@ function teachingRows(state, job) {
 function summerPanel(state, job) {
   if (!isClassroom(job) || !state.teaching) return '';
   return `<h4 class="sub">Summer plans</h4><div class="toggle-row chips-row">${Object.entries(SUMMER_JOBS).map(([id, j]) => button(j.label, 'teaching.summer', { arg: id, variant: state.teaching.summer === id ? 'tiny on' : 'tiny', hint: j.desc })).join('')}</div>`;
+}
+
+/** Owning a business is a position too: shown alongside (or instead of) a job. */
+function ownerSeatCard(state) {
+  const biz = state.business?.current;
+  const holdings = state.business?.holdings ?? [];
+  if (!biz && !holdings.length) return '';
+  const rows = [biz, ...holdings].filter(Boolean).map((b) => {
+    const pos = ownerPosition(state, b);
+    return `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${esc(pos.title)}</b> · ${esc(b.name)} <small>${esc(pos.stake)} · ${b.staff.headcount} staff${pos.ceo ? ` · run by ${esc(pos.ceo.name)}` : ''}${b === biz ? '' : ' · passive holding'}</small></li>`;
+  }).join('');
+  return card('Ownership', `<ul class="history">${rows}</ul><p class="fine">Manage it from the Business tab. Running your own business counts as work experience if you return to employment.</p>`, { icon: '👑' });
+}
+
+/** Businesses your current career could grow into, and whether your position allows it. */
+function fieldBusinessesCard(state) {
+  const job = state.career.job;
+  if (!job || state.business?.current) return '';
+  const ids = businessesFor(job.professionId);
+  if (!ids.length) return '';
+  const items = ids.map((id) => {
+    const r = ownershipRules(state, id);
+    return `${chip(`${BUSINESS_TYPES[id].icon} ${BUSINESS_TYPES[id].name}`, r.ok ? 'green' : 'bad')}${r.ok ? '' : ` <small class="why">${esc(r.reason)}</small>`}`;
+  }).join(' ');
+  const rule = ownershipRules(state);
+  return card('Businesses in Your Field', `<p>${items}</p><p class="fine">Start one from the Business tab. ${rule.canOperate ? '' : esc(rule.notes.at(-1) ?? '')}</p>`, { icon: '🏪' });
 }

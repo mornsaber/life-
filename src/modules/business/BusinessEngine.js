@@ -12,10 +12,16 @@
  * before Finances settles taxes.
  */
 import { clamp } from '../../core/Random.js';
+import { REGIONS } from '../life/Regions.js';
 import { yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
-import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING } from './BusinessTypes.js';
+import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor } from './BusinessTypes.js';
+import { ownershipRules } from './OwnershipRules.js';
+import {
+  ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf,
+} from '../org/Businesses.js';
+import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import {
   currentBusiness, typeOf, holdsLicense, startEligibility, fundingCheck, ownerSkill, debtBalance, guaranteedDebt,
   yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND,
@@ -40,7 +46,7 @@ function staffTick(ctx, biz) {
   const mode = WORKFORCE_MODES[s.workforce];
   const delegated = s.headcount >= 8 ? Object.keys(DUTIES).filter((d) => s.delegation[d]) : [];
   if (mode.fixedQuality === null) {
-    const target = 50 + (biz.benefits.health ? 6 : 0) + biz.benefits.match * 100 + (s.unionized ? 4 : 0) - (biz.family.length > 2 ? 3 : 0);
+    const target = 50 + (biz.benefits.health ? 6 : 0) + biz.benefits.match * 100 + (s.unionized ? 4 : 0) - (biz.family.length > 2 ? 3 : 0) + ({ below: -8, above: 8 }[biz.payLevel] ?? 0);
     s.morale = Math.round(clamp(s.morale + (target - s.morale) * 0.25 + delegated.length + rng.int(-6, 6), 0, 100));
   }
   const quality = mode.fixedQuality ?? 38 + s.morale * 0.35;
@@ -132,7 +138,15 @@ function businessTick(ctx, biz) {
   const { state, rng } = ctx;
   const type = typeOf(biz);
   biz.years += 1;
-  if (biz.role === 'operator' && (state.legal.incarceration || state.career.job)) biz.role = 'absentee';
+  if (biz.role === 'operator' && (state.legal.incarceration || state.career.job || !ownershipRules(state).canOperate)) biz.role = 'absentee';
+  // A conflict of interest from a new job: divest within a year.
+  if (biz.divestBy != null && ownershipRules(state, biz.typeId).ok) biz.divestBy = null;
+  if (biz.divestBy != null && state.character.age >= biz.divestBy) {
+    ctx.log(`Ethics rules forced you to sell ${biz.name}.`, '⚖️', 'warn');
+    exitBusiness(ctx, Math.round(biz.valuation * 0.85), 'Forced sale (conflict of interest)');
+    return;
+  }
+  ensureBusinessOrg(state, biz);
 
   // You need the license to run it. Law firms, practices and CPA firms must be owned by a licensee.
   if (!holdsLicense(state, type) && !biz.franchise?.waiveLicense) {
@@ -146,9 +160,10 @@ function businessTick(ctx, biz) {
   } else biz.licensedManager = false;
 
   staffTick(ctx, biz);
-  const skill = biz.role === 'operator' ? ownerSkill(state, type) : 10;
+  // Absentee owners rely on the general manager or CEO they hired.
+  const skill = biz.role === 'operator' ? ownerSkill(state, type) : managerSkill(state, biz);
   // A franchisor's operations manual and field consultants stand in for experience.
-  const target = biz.staff.productivity * 0.55 + Math.max(skill, biz.franchise ? 22 : 0) * 0.6 + 12 + (biz.licensedManager ? -5 : 0);
+  const target = biz.staff.productivity * 0.55 + Math.max(skill, biz.franchise ? 22 : 0) * 0.6 + 12 + (biz.licensedManager ? -5 : 0) + ({ cheap: -3, premium: 3 }[biz.supplier] ?? 0);
   biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
   biz.reputation = Math.round(clamp(biz.reputation + (biz.quality - biz.reputation) * 0.25 + rng.int(-3, 3), 0, 100));
   biz.fit = Math.round(clamp((biz.fit ?? 1) + rng.float(-0.05, 0.05), 0.5, 1.4) * 100) / 100;
@@ -166,6 +181,10 @@ function businessTick(ctx, biz) {
 
   inspectionTick(ctx, biz, type);
   if (state.business.current !== biz) return;
+  // The organization: staff come and go, rivals rise and fall, the structure follows the headcount.
+  businessStaffTick(ctx, biz);
+  marketTick(ctx, biz);
+  syncBusinessOrg(state, biz);
   if (biz.franchise) {
     const notice = franchiseeTick(ctx, biz);
     if (notice) ctx.prompt(notice);
@@ -281,7 +300,9 @@ function offerTick(ctx, biz) {
   if (!chance || !rng.chance(chance)) return;
   const price = Math.round(biz.valuation * rng.float(type.startup ? 0.6 : 0.85, type.startup ? 1.3 : 1.25));
   if (price <= 0) return;
-  ctx.prompt({ type: 'business.offer', icon: '🤝', title: `${biz.name}: Acquisition Offer`, text: `${rng.pick(['A private-equity firm', 'A larger competitor', 'A strategic buyer', 'A family office'])} offered ${money(price)} for the whole business. Your share: ${money(price * biz.ownerPct)}.`, options: [{ id: 'accept', label: '✍️ Sell' }, { id: 'decline', label: '🙅 Not for sale' }], data: { price } });
+  const who = rng.pick(['A private-equity firm', 'A larger competitor', 'A strategic buyer', 'A family office']);
+  const rival = who === 'A larger competitor' ? competitorsOf(state, biz).sort((a, b) => b.business.staff - a.business.staff)[0] : null;
+  ctx.prompt({ type: 'business.offer', icon: '🤝', title: `${biz.name}: Acquisition Offer`, text: `${rival ? rival.name : who} offered ${money(price)} for the whole business. Your share: ${money(price * biz.ownerPct)}.`, options: [{ id: 'accept', label: '✍️ Sell' }, { id: 'decline', label: '🙅 Not for sale' }], data: { price, buyer: rival?.name ?? null } });
 }
 
 function cashCrunch(ctx, biz) {
@@ -318,15 +339,16 @@ function releaseFamily(state, biz) {
   }
 }
 
-function retire(state, biz, outcome, proceeds) {
+function retire(state, biz, outcome, proceeds, { closed = false, buyer = null } = {}) {
   releaseFamily(state, biz);
-  state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome, proceeds: Math.round(proceeds) });
+  const org = releaseBusinessOrg(state, biz, { closed, buyer });
+  state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome, proceeds: Math.round(proceeds), orgId: org?.id ?? null, role: biz.role, ownedFromAge: biz.ownedFromAge ?? biz.foundedAge, peakStaff: Math.max(biz.peakStaff ?? 0, biz.staff.headcount) });
   if (state.business.history.length > 20) state.business.history.shift();
   state.business.current = null;
 }
 
 /** Sell your stake for `price` (whole-company equity value). */
-export function exitBusiness(ctx, price, outcome) {
+export function exitBusiness(ctx, price, outcome, { buyer = null } = {}) {
   const { state } = ctx;
   const biz = currentBusiness(state);
   // Franchisors charge a transfer fee (and must approve the buyer).
@@ -335,7 +357,7 @@ export function exitBusiness(ctx, price, outcome) {
   state.finances.cash += e.basisBack + e.qsbs;
   if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${biz.name}`, { ltcg: true });
   ctx.log(`${outcome}: you received ${money(e.proceeds)} for your ${Math.round(biz.ownerPct * 100)}% of ${biz.name}${e.qsbs ? ` (${money(e.qsbs)} of the gain tax-free as qualified small business stock)` : ''}.`, '💰', 'milestone');
-  retire(state, biz, outcome, e.proceeds);
+  retire(state, biz, outcome, e.proceeds, { buyer });
 }
 
 /**
@@ -364,7 +386,7 @@ export function closeBusiness(ctx, outcome, { liquidation = 0.5, bankruptcy = fa
     ctx.log(`${biz.name} ${bankruptcy ? 'went through bankruptcy' : 'closed'} owing ${money(shortfall)}.${personal ? ` You're personally on the hook for ${money(personal)}${ENTITIES[biz.entity].liability ? ' you guaranteed' : ' (sole proprietors have no shield)'}.` : ' Your LLC/corporation shielded your personal assets.'}`, bankruptcy ? '⚖️' : '🔒', 'bad');
   }
   ctx.stat('happiness', -10);
-  retire(state, biz, outcome, Math.max(0, net));
+  retire(state, biz, outcome, Math.max(0, net), { closed: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -377,14 +399,19 @@ function fund(ctx, price, check) {
   return { sbaLoan: check.loan, basis: check.down };
 }
 
-function startBusiness(ctx, typeId, funding, entity) {
+function startBusiness(ctx, typeId, funding, entity, size = 'standard', name = '') {
   const { state, rng } = ctx;
-  const check = startEligibility(state, typeId, funding);
+  if (!SIZE_OPTIONS[size]) size = 'standard';
+  const check = startEligibility(state, typeId, funding, size);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const type = BUSINESS_TYPES[typeId];
-  const { sbaLoan, basis } = fund(ctx, type.cost, check);
-  const biz = newBusiness(rng, state, typeId, { entity: ENTITIES[entity] ? entity : 'llc', cash: Math.round(type.cost * 0.4), assets: Math.round(type.cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
+  const cost = startupCostFor(type, size);
+  const { sbaLoan, basis } = fund(ctx, cost, check);
+  const clean = String(name ?? '').replace(/[<>]/g, '').trim().slice(0, 40);
+  const biz = newBusiness(rng, state, typeId, { name: clean || undefined, scale: SIZE_OPTIONS[size].scale, entity: ENTITIES[entity] ? entity : 'llc', cash: Math.round(cost * 0.4), assets: Math.round(cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
   state.business.current = biz;
+  ensureBusinessOrg(state, biz);
+  seedCompetitors(state, biz);
   ctx.log(`You founded ${biz.name} (${ENTITIES[biz.entity].name})${sbaLoan ? ` with a ${money(sbaLoan)} SBA loan you personally guaranteed` : ''}.`, type.icon, 'milestone');
   ctx.toast(`Founded ${biz.name}`, 'good');
   ctx.stat('stress', 6);
@@ -410,6 +437,8 @@ function buyFranchise(ctx, brandId, funding, entity) {
   });
   biz.franchise = { brandId, name: brand.name, royalty: brand.royalty, adFund: brand.adFund, lift: brand.lift, term: brand.term, signedYears: 0, waiveLicense: Boolean(brand.waiveLicense) };
   state.business.current = biz;
+  ensureBusinessOrg(state, biz);
+  seedCompetitors(state, biz);
   ctx.log(`You signed a ${brand.term}-year franchise agreement and opened ${biz.name} (${money(brand.fee)} franchise fee, ${money(price)} all-in${sbaLoan ? `, ${money(sbaLoan)} SBA loan` : ''}). Royalties: ${Math.round((brand.royalty + brand.adFund) * 1000) / 10}% of revenue.`, brand.icon, 'milestone');
   ctx.toast(`Opened ${brand.name}`, 'good');
   ctx.stat('stress', 5);
@@ -448,10 +477,49 @@ function buyBusiness(ctx, listingId, funding) {
   const { sbaLoan, basis } = fund(ctx, listing.price, check);
   const biz = newBusiness(rng, state, listing.typeId, { name: listing.name, years: listing.years, scale: listing.scale, quality: listing.quality, reputation: listing.reputation, fit: listing.fit, cash: Math.round(listing.price * 0.1), assets: Math.round(listing.price * 0.4), sbaLoan, basis });
   state.business.current = biz;
+  biz.ownedFromAge = state.character.age;
+  ensureBusinessOrg(state, biz);
+  seedCompetitors(state, biz);
   state.business.listings = state.business.listings.filter((l) => l !== listing);
   biz.valuation = Math.max(0, listing.price - sbaLoan);
   ctx.log(`You bought ${biz.name} for ${money(listing.price)}${sbaLoan ? ` (${money(sbaLoan)} SBA loan, personally guaranteed)` : ''}.`, type.icon, 'milestone');
   ctx.toast(`Bought ${biz.name}`, 'good');
+}
+
+/* ------------------------------------------------------------------ */
+/* Passive holdings: businesses you own but someone else runs          */
+/* ------------------------------------------------------------------ */
+
+/** A year for a business you hold passively: hired management, books, distributions. */
+function holdingTick(ctx, biz) {
+  const { state, rng } = ctx;
+  biz.years += 1;
+  biz.role = 'absentee';
+  ensureBusinessOrg(state, biz);
+  const target = biz.staff.productivity * 0.55 + managerSkill(state, biz) * 0.6 + 12;
+  biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
+  biz.reputation = Math.round(clamp(biz.reputation + (biz.quality - biz.reputation) * 0.25 + rng.int(-3, 3), 0, 100));
+  if (typeOf(biz).startup) startupGrowth(ctx, biz);
+  const ly = yearFinancials(state, biz, rng);
+  biz.cash += ly.netIncome;
+  payDebts(biz);
+  biz.assets = Math.round(biz.assets * 0.9);
+  ly.ownerPay = payOwner(ctx, biz, ly);
+  biz.lastYear = ly;
+  biz.valuation = valuation(biz, ly);
+  businessStaffTick(ctx, biz);
+  syncBusinessOrg(state, biz);
+  ctx.log(`${biz.name} (held): ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; ${money(ly.ownerPay)} to you` : ''}.`, typeOf(biz).icon, 'finance');
+  // Hired management can run it into the ground: a deep hole closes it.
+  if (biz.cash < -Math.max(50000, (ly.revenue ?? 0) * 0.3)) {
+    const owed = debtBalance(biz) + Math.max(0, -biz.cash) - Math.round(biz.assets * 0.4);
+    const personal = ENTITIES[biz.entity].liability ? Math.min(Math.max(0, owed), guaranteedDebt(biz)) : Math.max(0, owed);
+    if (personal) state.finances.cash -= personal;
+    ctx.log(`${biz.name} failed under its managers and closed.${personal ? ` You owed ${money(personal)} you had guaranteed.` : ''}`, '🔒', 'bad');
+    releaseBusinessOrg(state, biz, { closed: true });
+    state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome: 'Failed (held passively)', proceeds: 0, orgId: biz.orgId, role: 'absentee' });
+    state.business.holdings = state.business.holdings.filter((h) => h !== biz);
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -472,12 +540,20 @@ export const BusinessEngine = {
   order: 31,
 
   init(state) {
-    state.business ??= { current: null, history: [], listings: [] };
+    state.business ??= { current: null, history: [], listings: [], holdings: [] };
+    state.business.holdings ??= [];
+    for (const h of state.business.holdings) if (!h.orgId && state.character) ensureBusinessOrg(state, h);
+    // Saves from before businesses were organizations.
+    if (state.business.current && !state.business.current.orgId && state.character) ensureBusinessOrg(state, state.business.current);
   },
 
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx }) => {
       const biz = currentBusiness(ctx.state);
+      if (biz && !ownershipRules(ctx.state, biz.typeId).ok && biz.divestBy == null) {
+        biz.divestBy = ctx.state.character.age + 1;
+        ctx.log(`${ownershipRules(ctx.state, biz.typeId).reason}. You have a year to sell ${biz.name}.`, '⚖️', 'warn');
+      }
       if (biz?.role === 'operator') {
         biz.role = 'absentee';
         ctx.log(`You took a job, so a general manager now runs ${biz.name} day to day.`, '🏪');
@@ -489,13 +565,15 @@ export const BusinessEngine = {
     listingsTick(ctx);
     const biz = currentBusiness(ctx.state);
     if (biz) businessTick(ctx, biz);
+    for (const h of [...(ctx.state.business.holdings ?? [])]) holdingTick(ctx, h);
   },
 
   actions: {
-    /** arg: 'typeId:cash|sba:entity' */
+    ...OwnerActions,
+    /** arg: 'typeId:cash|sba:entity[:size[:name]]' */
     start(ctx, arg) {
-      const [typeId, funding = 'cash', entity = 'llc'] = String(arg).split(':');
-      startBusiness(ctx, typeId, funding, entity);
+      const [typeId, funding = 'cash', entity = 'llc', size = 'standard', ...name] = String(arg).split(':');
+      startBusiness(ctx, typeId, funding, entity, size, name.join(':'));
     },
     /** arg: 'brandId:cash|sba:entity' */
     franchise(ctx, arg) {
@@ -526,6 +604,7 @@ export const BusinessEngine = {
       if (!biz || !['operator', 'absentee'].includes(role)) return;
       if (role === 'operator' && ctx.state.career.job) return ctx.toast('Quit your job to run the business full-time.', 'warn');
       if (role === 'operator' && ctx.state.legal.incarceration) return;
+      if (role === 'operator' && !ownershipRules(ctx.state).canOperate) return ctx.toast(ownershipRules(ctx.state).notes.at(-1) ?? 'You can\'t run it yourself right now.', 'warn');
       biz.role = role;
       ctx.toast(role === 'operator' ? 'You run it yourself' : 'A general manager runs it', 'info');
     },
@@ -602,7 +681,9 @@ export const BusinessEngine = {
       biz.assets += Math.round(cost * 0.6);
       biz.staff.headcount = Math.round(type.staff * biz.scale) + biz.family.length;
       bump(biz, 'quality', -5);
-      ctx.log(`${biz.name} opened location #${biz.scale}.`, type.icon, 'milestone');
+      const branch = openBranch(state, biz, biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : state.character.regionId);
+      biz.expandTo = null;
+      ctx.log(`${biz.name} opened location #${biz.scale}: the ${branch.name}, run by a branch manager.`, type.icon, 'milestone');
     },
     /** SBA working-capital loan for an established, profitable business. */
     loan(ctx) {
@@ -674,6 +755,58 @@ export const BusinessEngine = {
       p.relationship = Math.min(100, p.relationship + 8);
       ctx.log(`${p.firstName} came to work at ${biz.name}.`, '👨‍👩‍👧', 'good');
     },
+    /** Step back to a passive owner: your hired chief executive runs it, and you're free to start or buy another. */
+    makePassive(ctx) {
+      const { state } = ctx;
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      const org = ensureBusinessOrg(state, biz);
+      if (!org.ceo) return ctx.toast('Hire someone to run it first.', 'warn');
+      if ((state.business.holdings ?? []).length >= 4) return ctx.toast('That\'s as many businesses as you can keep an eye on.', 'warn');
+      biz.role = 'absentee';
+      state.business.holdings.push(biz);
+      state.business.current = null;
+      ctx.log(`You stepped back from ${biz.name}. It's now a passive holding run by its management.`, '🗂️', 'milestone');
+    },
+    /** arg: business id — take a holding back as the business you actively manage. */
+    takeBack(ctx, id) {
+      const { state } = ctx;
+      const h = (state.business.holdings ?? []).find((x) => x.id === id);
+      if (!h) return;
+      if (currentBusiness(state)) return ctx.toast('Step back from your current business first.', 'warn');
+      state.business.holdings = state.business.holdings.filter((x) => x !== h);
+      state.business.current = h;
+      ctx.log(`You took back the reins at ${h.name}.`, '🗂️');
+    },
+    /** arg: business id — sell a passive holding. */
+    sellHolding(ctx, id) {
+      const { state, rng } = ctx;
+      const h = (state.business.holdings ?? []).find((x) => x.id === id);
+      if (!h) return;
+      if (h.valuation <= 0) return ctx.toast('No buyer for a business with no value.', 'warn');
+      const price = Math.round(h.valuation * rng.float(0.85, 1.1));
+      const e = exitProceeds(h, price);
+      state.finances.cash += e.basisBack + e.qsbs;
+      if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${h.name}`, { ltcg: true });
+      const org = releaseBusinessOrg(state, h, {});
+      state.business.history.push({ name: h.name, typeId: h.typeId, startAge: h.foundedAge, endAge: state.character.age, years: h.years, outcome: 'Sold (held passively)', proceeds: e.proceeds, orgId: org?.id ?? null, role: 'absentee' });
+      state.business.holdings = state.business.holdings.filter((x) => x !== h);
+      ctx.log(`You sold your ${Math.round(h.ownerPct * 100)}% of ${h.name} for ${money(e.proceeds)}.`, '💰', 'milestone');
+    },
+    /** arg: personId — hand the business to a family member (a gift; it stays in the family). */
+    giveToFamily(ctx, personId) {
+      const { state } = ctx;
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      const p = state.people?.list.find((x) => x.id === personId && x.alive && FAMILY_RELATIONS.includes(x.relation));
+      if (!p) return;
+      if (state.character.age + (p.ageOffset ?? 0) < 18) return ctx.toast('They\'re too young to own it.', 'warn');
+      if (debtBalance(biz) > 0 && guaranteedDebt(biz)) ctx.log(`You're still the guarantor on ${money(guaranteedDebt(biz))} of ${biz.name}'s loans.`, '🏦', 'warn');
+      p.job = `Owner, ${biz.name}`;
+      p.relationship = Math.min(100, p.relationship + 10);
+      ctx.log(`You handed ${biz.name} to ${p.firstName}. It stays in the family.`, '👨‍👩‍👧', 'milestone');
+      retire(state, biz, `Passed to ${p.firstName}`, 0, { buyer: `${p.firstName} ${p.lastName ?? state.character.lastName}` });
+    },
     sell(ctx) {
       const { state, rng } = ctx;
       const biz = withBiz(ctx);
@@ -695,6 +828,7 @@ export const BusinessEngine = {
   },
 
   resolvers: {
+    ...OwnerResolvers,
     franchiseDefault(ctx, data, optionId) {
       const biz = currentBusiness(ctx.state);
       if (!biz?.franchise) return;
@@ -771,7 +905,7 @@ export const BusinessEngine = {
     },
     offer(ctx, data, optionId) {
       if (optionId !== 'accept' || !currentBusiness(ctx.state)) return;
-      exitBusiness(ctx, data.price, 'Sold');
+      exitBusiness(ctx, data.price, data.buyer ? `Sold to ${data.buyer}` : 'Sold', { buyer: data.buyer });
     },
     ipo(ctx, data, optionId) {
       const { state } = ctx;

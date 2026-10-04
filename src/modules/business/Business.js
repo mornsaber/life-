@@ -24,10 +24,17 @@ import { credentialName } from '../credentials/CredentialRegistry.js';
 import { regionOf } from '../life/Regions.js';
 import { WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
-import { BUSINESS_TYPES, ENTITIES, MARKETING, SBA } from './BusinessTypes.js';
+import { BUSINESS_TYPES, ENTITIES, MARKETING, SBA, SIZE_OPTIONS, sizesFor, startupCostFor } from './BusinessTypes.js';
+import { ownershipRules } from './OwnershipRules.js';
+import { competitionFactor } from '../org/Businesses.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 
 export const SS_WAGE_CAP = 176100;
+/** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
+/** Premium prices pay when quality earns them; budget prices win volume when it doesn't. */
+export const priceFactor = (level, quality) => (level === 'premium' ? 0.94 + (quality - 40) / 300 : level === 'budget' ? 0.96 + (50 - quality) / 500 : 1);
+const SUPPLIER_COGS = { cheap: 0.95, standard: 1, premium: 1.05 };
+const PAY_POLICY = { below: 0.92, market: 1, above: 1.08 };
 export const CORPORATE_TAX = 0.21;
 export const PHASE_DEMAND = { expansion: 1.05, peak: 1.08, recession: 0.8, recovery: 0.95 };
 export const LICENSED_MANAGER = 95000;
@@ -44,7 +51,7 @@ export const holdsLicense = (state, type) => !type.credentials.length || type.cr
 export const experienceYears = (state, type) => yearsInProfession(state, type.professions);
 
 /** Starting a business: what's required and how you'd pay for it. */
-export function startEligibility(state, typeId, funding = 'cash') {
+export function startEligibility(state, typeId, funding = 'cash', size = 'standard') {
   const type = BUSINESS_TYPES[typeId];
   if (!type) return { ok: false, reason: 'Unknown business' };
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18' };
@@ -52,7 +59,13 @@ export function startEligibility(state, typeId, funding = 'cash') {
   if (currentBusiness(state)) return { ok: false, reason: 'You already own a business' };
   if (!holdsLicense(state, type)) return { ok: false, reason: `Needs ${type.credentials.map(credentialName).join(' or ')}` };
   if (type.minExperience && experienceYears(state, type) < type.minExperience) return { ok: false, reason: `Needs ${type.minExperience} yrs of industry experience` };
-  return fundingCheck(state, type.cost, funding, type, { cashFlow: type.startup ? 0 : projectedCashFlow(state, typeId) });
+  const rules = ownershipRules(state, typeId);
+  if (!rules.ok) return { ok: false, reason: rules.reason };
+  if (!sizesFor(type).includes(size)) return { ok: false, reason: `Can't open as ${SIZE_OPTIONS[size]?.label ?? size}` };
+  const minExp = SIZE_OPTIONS[size]?.minExperience ?? 0;
+  if (minExp && experienceYears(state, type) + (state.business?.history?.length ?? 0) * 3 < minExp) return { ok: false, reason: `A ${SIZE_OPTIONS[size].label.toLowerCase()} needs ${minExp}+ yrs of industry or ownership experience` };
+  const scale = SIZE_OPTIONS[size]?.scale ?? 1;
+  return fundingCheck(state, startupCostFor(type, size), funding, type, { cashFlow: type.startup ? 0 : projectedCashFlow(state, typeId) * scale });
 }
 
 /** Typical yearly cash flow before debt service once established (a lender's projection). */
@@ -87,7 +100,10 @@ export function fundingCheck(state, price, funding, type = null, { cashFlow = nu
 
 /** Your skill as an operator: relevant experience and smarts. */
 export function ownerSkill(state, type) {
-  return Math.min(30, experienceYears(state, type) * 3) + state.stats.smarts * 0.25;
+  // Past businesses and management experience help a little on top of industry years.
+  const owned = Math.min(4, (state.business?.history ?? []).reduce((s, h) => s + (h.years ?? 0), 0) * 0.5);
+  const managed = state.career.history.some((h) => (h.peakGrade ?? 0) >= 6) ? 2 : 0;
+  return Math.min(30, experienceYears(state, type) * 3) + state.stats.smarts * 0.25 + owned + managed;
 }
 
 export function debtBalance(biz) {
@@ -108,14 +124,18 @@ export function yearFinancials(state, biz, rng) {
   const col = regionOf(state).col;
   const mode = WORKFORCE_MODES[biz.staff.workforce];
   const phase = PHASE_DEMAND[state.economy.phase] ?? 1;
-  const demand = (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1);
+  // Rivals in the same market take a share of customers (see org/Businesses).
+  const competition = biz.orgId ? competitionFactor(state, biz) : 1;
+  const demand = (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition;
   const ramp = biz.years <= 1 ? 0.7 : biz.years === 2 ? 0.9 : 1;
-  const revenue = Math.round(type.startup ? biz.arr : type.revenue * biz.scale ** 0.95 * demand * ramp * rng.float(0.88, 1.12) * Math.sqrt(col));
-  const cogs = Math.round(revenue * type.cogs);
+  // Owner policies: price point, supplier quality, pay level (OwnerActions).
+  const price = priceFactor(biz.priceLevel ?? 'standard', biz.quality);
+  const revenue = Math.round(type.startup ? biz.arr : type.revenue * biz.scale ** 0.95 * demand * price * ramp * rng.float(0.88, 1.12) * Math.sqrt(col));
+  const cogs = Math.round(revenue * type.cogs * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1));
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
   const busy = type.startup ? 1 : clamp(revenue / Math.max(1, type.revenue * biz.scale ** 0.95 * Math.sqrt(col)), 0.5, 1.6);
-  const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy));
+  const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy) * (PAY_POLICY[biz.payLevel ?? 'market'] ?? 1));
   const delegated = Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]);
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
   // A manager's pay scales with the operation: a food truck's lead isn't paid like a restaurant group's GM.

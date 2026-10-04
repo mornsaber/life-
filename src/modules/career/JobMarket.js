@@ -15,6 +15,7 @@ import { levelById, nextLevels } from './Ladder.js';
 import { createEmployer } from './Employers.js';
 import { hire, stepForAtLeast, levelCheck } from './CareerEngine.js';
 import { recalcSalary } from './Compensation.js';
+import { candidateScore } from '../org/Vacancies.js';
 
 export const WORK_MODES = {
   onsite: { label: 'On-site', icon: '🏢', desc: 'Full commute; best visibility for promotions.' },
@@ -37,7 +38,9 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false } = {}
   const employer = createEmployer(rng, state, profession, state.character.regionId);
   // Sometimes the new title is a step up.
   const up = nextLevels(profession, employer.size, job.levelId).filter((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);
-  const level = up.length && rng.chance(headhunter ? 0.45 : 0.25) ? rng.pick(up) : levelById(profession, job.levelId) ?? profession.levels[0];
+  // Outside hiring for a step up weighs your record: performance, references, tenure, credentials.
+  const record = clamp(candidateScore(state, job) / 55, 0.5, 1.5);
+  const level = up.length && rng.chance((headhunter ? 0.45 : 0.25) * record) ? rng.pick(up) : levelById(profession, job.levelId) ?? profession.levels[0];
   const modes = ['onsite', ...(canGoHybrid(profession, employer) ? ['hybrid'] : []), ...(canGoRemote(profession) ? ['remote'] : [])];
   const workMode = rng.pick(modes);
   const salary = Math.round(job.salary * (1 + rng.float(...raise)) * (workMode === 'remote' ? 0.95 : 1));

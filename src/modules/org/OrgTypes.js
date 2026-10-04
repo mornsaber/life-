@@ -19,6 +19,8 @@
  * not listed gets a generated single-department type (see orgTypesFor).
  */
 
+import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
+
 const city = (c) => c.city;
 
 export const ORG_TYPES = {
@@ -306,5 +308,34 @@ export function soloType(profession) {
     head: { title: 'Owner / Chief Executive', selection: profession.sector === 'private' ? 'internal' : 'appointed', appointedBy: 'the agency\'s oversight board' },
     departments: [{ id: 'main', name: profession.name, occupations: [profession.id], head: { title: 'Department Head', selection: 'internal' } }],
     solo: true,
+  };
+}
+
+/**
+ * Businesses are organizations too. A business type's `staffing` config says
+ * which careers staff which departments; departments that only appear as a
+ * company grows (finance, HR, sales) are listed with `minStaff`.
+ *   staffing: { deptId: { name, occupations: [professionId], head, minStaff? } }
+ * Without one, operations are staffed by the type's first related career and
+ * a small front office by corporate staff.
+ */
+export const GROWTH_DEPARTMENTS = {
+  finance: { name: 'Finance & Accounting', occupations: ['accounting'], head: 'Chief Financial Officer', minStaff: 50 },
+  hr: { name: 'Human Resources', occupations: ['corporate'], head: 'HR Director', minStaff: 50 },
+  sales: { name: 'Sales & Marketing', occupations: ['corporate'], head: 'VP of Sales & Marketing', minStaff: 120 },
+};
+
+export function businessOrgType(typeId) {
+  const t = BUSINESS_TYPES[typeId];
+  if (!t) return null;
+  const staffing = t.staffing ?? {
+    operations: { name: 'Operations', occupations: [t.professions[0] ?? 'corporate'], head: 'Operations Manager' },
+    office: { name: 'Front Office & Administration', occupations: ['corporate'], head: 'Office Manager', minStaff: 4 },
+  };
+  const all = { ...staffing, ...Object.fromEntries(Object.entries(GROWTH_DEPARTMENTS).filter(([id]) => !staffing[id])) };
+  return {
+    name: null, scope: 'market', sector: 'private', business: true,
+    head: { title: 'Owner', selection: 'owner' },
+    departments: Object.entries(all).map(([id, d]) => ({ id, name: d.name, occupations: d.occupations, minStaff: d.minStaff ?? 0, head: { title: d.head ?? `${d.name} Manager`, selection: 'internal' } })),
   };
 }
