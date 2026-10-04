@@ -225,9 +225,49 @@ const NOAA = {
   ],
 };
 
+/**
+ * Warrant officers: technical experts and (in the Army) most helicopter
+ * pilots. `feeder` lists the enlisted specialties a candidate must come from
+ * (none: open to anyone, like Army flight school, which even takes civilians).
+ */
+const WARRANT = {
+  army: [
+    M('153A', 'Rotary Wing Aviator (Warrant)', 'aviation', { pilot: true, minSmarts: 55, minFitness: 45, grants: ['commercialPilot', 'instrumentRating'], civilian: 'aviation', flight: true, desc: 'Army flight school: Black Hawks, Apaches and Chinooks. Civilians can apply straight in.' }),
+    M('170A', 'Cyber Operations Technician', 'cyber', { minSmarts: 60, feeder: ['cyber', 'intel'], clearance: 'topSecret', civilian: 'tech' }),
+    M('350F', 'All-Source Intelligence Technician', 'intel', { minSmarts: 55, feeder: ['intel'], clearance: 'topSecret' }),
+    M('255A', 'Information Services Technician', 'logistics', { exposure: 0.4, feeder: ['logistics', 'cyber'], civilian: 'tech' }),
+    M('311A', 'CID Special Agent', 'infantry', { exposure: 0.6, feeder: ['infantry'], civilian: 'police', desc: 'Felony investigations as an Army criminal investigator.' }),
+    M('920A', 'Property Accounting Technician', 'logistics', { feeder: ['logistics'] }),
+    M('180A', 'Special Forces Warrant Officer', 'infantry', { exposure: 2.0, minFitness: 60, sofOnly: 'greenBeret', desc: 'Assistant detachment commander of a Green Beret A-team.' }),
+  ],
+  marines: [
+    M('0306', 'Infantry Weapons Officer (Gunner)', 'infantry', { minFitness: 55, feeder: ['infantry'] }),
+    M('0204', 'Counterintelligence / HUMINT Officer', 'intel', { feeder: ['intel'], clearance: 'topSecret' }),
+    M('1705', 'Cyberspace Warfare Development Officer', 'cyber', { minSmarts: 60, feeder: ['cyber', 'intel'], civilian: 'tech' }),
+    M('3510', 'Motor Transport Maintenance Officer', 'logistics', { feeder: ['logistics'] }),
+  ],
+  navy: [
+    M('715X', 'Special Warfare Technician', 'infantry', { exposure: 1.8, sofOnly: 'seal' }),
+    M('784X', 'Cyber Warrior (CWO)', 'cyber', { minSmarts: 60, feeder: ['cyber', 'intel'], clearance: 'topSecret', civilian: 'tech' }),
+    M('711X', 'Boatswain (CWO)', 'logistics', { feeder: ['logistics'], civilian: 'merchantMarine' }),
+    M('733X', 'Aviation Maintenance Technician (CWO)', 'aviation', { feeder: ['aviation'], civilian: 'aviation' }),
+  ],
+  airforce: [
+    M('17W', 'Cyber Warfare Warrant Officer', 'cyber', { minSmarts: 60, feeder: ['cyber', 'intel'], clearance: 'topSecret', civilian: 'tech', desc: 'The Air Force brought back warrant officers in 2024 for cyber and IT.' }),
+  ],
+  coastguard: [
+    M('BOSN', 'Boatswain (CWO)', 'logistics', { feeder: ['infantry', 'logistics'], civilian: 'merchantMarine' }),
+    M('ISM', 'Information Systems Management (CWO)', 'cyber', { feeder: ['cyber', 'logistics'], civilian: 'tech' }),
+    M('INV', 'CGIS Special Agent (CWO)', 'infantry', { exposure: 0.5, feeder: ['infantry'], civilian: 'police' }),
+  ],
+};
+
 const RAW = { army: ARMY, guard: ARMY, marines: MARINES, navy: NAVY, airforce: AIRFORCE, spaceforce: SPACEFORCE, coastguard: COASTGUARD, usphs: USPHS, noaa: NOAA };
 
 /** Flat lookup: 'army.68W' → MOS entry (with id, branch, track). */
+for (const [branch, list] of Object.entries(WARRANT)) RAW[branch] = { ...RAW[branch], warrant: list };
+RAW.guard = { ...RAW.guard, warrant: WARRANT.army };
+
 export const MOS = {};
 for (const [branch, tracks] of Object.entries(RAW)) {
   for (const [track, list] of Object.entries(tracks)) {

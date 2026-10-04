@@ -15,6 +15,7 @@ import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { belowZone, boardScore } from './MilitaryLife.js';
 import { pmeBlock, schoolName, qualBoardBonus, qualPay, PME } from './Schools.js';
+import { offerBranchDetail } from './CareerFields.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
@@ -24,6 +25,7 @@ import { grantCredential } from '../credentials/LicensingEngine.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
+const WARRANT_RANKS = ['Warrant Officer 1', 'Chief Warrant Officer 2', 'Chief Warrant Officer 3', 'Chief Warrant Officer 4', 'Chief Warrant Officer 5'];
 const NAVAL_ENLISTED = ['Seaman Recruit', 'Seaman Apprentice', 'Seaman', 'Petty Officer 3rd Class', 'Petty Officer 2nd Class', 'Petty Officer 1st Class', 'Chief Petty Officer', 'Senior Chief Petty Officer', 'Master Chief Petty Officer'];
 
 export const BRANCHES = {
@@ -32,36 +34,42 @@ export const BRANCHES = {
     basic: 'Basic Combat Training at Fort Jackson', officerSchool: 'Officer Candidate School at Fort Moore',
     enlisted: ['Private (PV1)', 'Private (PV2)', 'Private First Class', 'Specialist', 'Sergeant', 'Staff Sergeant', 'Sergeant First Class', 'Master Sergeant', 'Sergeant Major'],
     officer: ARMY_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
   marines: {
     id: 'marines', name: 'U.S. Marine Corps', icon: '🦅', motto: 'Semper Fidelis', theater: 'ground',
     basic: 'Recruit Training at MCRD Parris Island', officerSchool: 'Officer Candidates School at Quantico',
     enlisted: ['Private', 'Private First Class', 'Lance Corporal', 'Corporal', 'Sergeant', 'Staff Sergeant', 'Gunnery Sergeant', 'Master Sergeant', 'Sergeant Major'],
     officer: ARMY_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
   navy: {
     id: 'navy', name: 'U.S. Navy', icon: '⚓', motto: 'Semper Fortis', theater: 'naval',
     basic: 'Recruit Training Command at Great Lakes', officerSchool: 'Officer Candidate School at Newport',
     enlisted: NAVAL_ENLISTED,
     officer: NAVAL_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
   airforce: {
     id: 'airforce', name: 'U.S. Air Force', icon: '✈️', motto: 'Aim High… Fly-Fight-Win', theater: 'air',
     basic: 'Basic Military Training at JBSA-Lackland', officerSchool: 'Officer Training School at Maxwell AFB',
     enlisted: ['Airman Basic', 'Airman', 'Airman First Class', 'Senior Airman', 'Staff Sergeant', 'Technical Sergeant', 'Master Sergeant', 'Senior Master Sergeant', 'Chief Master Sergeant'],
     officer: ARMY_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
   guard: {
     id: 'guard', name: 'Army National Guard', icon: '🛡️', motto: 'Always Ready, Always There', theater: 'ground', reserveOnly: true,
     basic: 'Basic Combat Training at Fort Jackson', officerSchool: 'State Officer Candidate School',
     enlisted: ['Private (PV1)', 'Private (PV2)', 'Private First Class', 'Specialist', 'Sergeant', 'Staff Sergeant', 'Sergeant First Class', 'Master Sergeant', 'Sergeant Major'],
     officer: ARMY_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
   spaceforce: {
     id: 'spaceforce', name: 'U.S. Space Force', icon: '🛰️', motto: 'Semper Supra', theater: 'air', activeOnly: true,
     basic: 'Basic Military Training at JBSA-Lackland', officerSchool: 'Officer Training School at Maxwell AFB',
     enlisted: ['Specialist 1', 'Specialist 2', 'Specialist 3', 'Specialist 4', 'Sergeant', 'Technical Sergeant', 'Master Sergeant', 'Senior Master Sergeant', 'Chief Master Sergeant'],
     officer: ARMY_OFFICERS,
+    warrant: [],
     desc: 'Guardians: satellite operations, missile warning, space domain awareness, orbital warfare and cyber. Few deployments; high entry standards.',
   },
   coastguard: {
@@ -69,6 +77,7 @@ export const BRANCHES = {
     basic: 'Recruit Training at Cape May', officerSchool: 'Officer Candidate School at New London',
     enlisted: NAVAL_ENLISTED,
     officer: NAVAL_OFFICERS,
+    warrant: WARRANT_RANKS,
   },
 };
 
@@ -81,13 +90,13 @@ BRANCHES.usphs = {
   id: 'usphs', name: 'U.S. Public Health Service Commissioned Corps', icon: '⚕️', motto: 'In Officio Salutis', theater: 'publicHealth',
   officerOnly: true, activeOnly: true, nonCombat: true, maxAge: 44,
   basic: 'Officer Basic Course', officerSchool: 'the USPHS Officer Basic Course in Rockville',
-  enlisted: [], officer: ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral (Surgeon General)', 'Admiral (Assistant Secretary for Health)'],
+  enlisted: [], warrant: [], officer: ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral (Surgeon General)', 'Admiral (Assistant Secretary for Health)'],
 };
 BRANCHES.noaa = {
   id: 'noaa', name: 'NOAA Commissioned Officer Corps', icon: '🌊', motto: 'Science, Service, Stewardship', theater: 'science',
   officerOnly: true, activeOnly: true, nonCombat: true, maxAge: 42,
   basic: 'Basic Officer Training Class', officerSchool: 'Basic Officer Training Class at the Coast Guard Academy',
-  enlisted: [], officer: NAVAL_OFFICERS.slice(0, 9).map((t, i) => (i === 8 ? 'Vice Admiral (NOAA Corps Director)' : t)),
+  enlisted: [], warrant: [], officer: NAVAL_OFFICERS.slice(0, 9).map((t, i) => (i === 8 ? 'Vice Admiral (NOAA Corps Director)' : t)),
 };
 export const isNonCombat = (branchId) => Boolean(BRANCHES[branchId]?.nonCombat);
 
@@ -110,16 +119,19 @@ export const SPECIALTIES = {
 const PAY = {
   enlisted: [2100, 2350, 2480, 2750, 3000, 3300, 3800, 5400, 6600],
   officer: [3950, 4550, 5250, 5980, 6930, 8320, 10970, 12470, 15900, 18000],
+  warrant: [4100, 4650, 5300, 6000, 7600],
 };
 /** Minimum years in grade before eligibility for the next grade. */
 const TIME_IN_GRADE = {
   enlisted: [1, 1, 1, 2, 3, 4, 3, 3, 0],
   officer: [2, 2, 4, 4, 4, 4, 3, 3, 3, 0],
+  warrant: [2, 4, 5, 5, 0],
 };
 /** Minimum evaluation score to be competitive for the next grade. */
 const BOARD_THRESHOLD = {
   enlisted: [35, 40, 45, 60, 66, 72, 78, 85, 0],
   officer: [40, 45, 65, 70, 76, 82, 88, 90, 94, 0],
+  warrant: [45, 60, 70, 80, 0],
 };
 
 export const ENLIST_CONTRACT = { active: 4, reserve: 6 };
@@ -141,7 +153,10 @@ export const RETIREMENT_YEARS = 20;
 export const branchOf = (svc) => BRANCHES[svc.branch];
 
 /** Rank tables for a service member's branch (both tracks). */
-export const ranksOf = (svc) => ({ enlisted: BRANCHES[svc.branch].enlisted, officer: BRANCHES[svc.branch].officer });
+export const ranksOf = (svc) => ({ enlisted: BRANCHES[svc.branch].enlisted, officer: BRANCHES[svc.branch].officer, warrant: BRANCHES[svc.branch].warrant ?? [] });
+
+/** Officers and warrant officers (as opposed to enlisted). */
+export const commissioned = (svc) => svc.track !== 'enlisted';
 
 export function rankTitles(svc) {
   return branchOf(svc)[svc.track];
@@ -149,7 +164,7 @@ export function rankTitles(svc) {
 
 export function rankOf(svc) {
   const titles = rankTitles(svc);
-  const prefix = svc.track === 'officer' ? 'O' : 'E';
+  const prefix = svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E';
   return { code: `${prefix}-${svc.grade + 1}`, title: titles[svc.grade], grade: svc.grade, max: titles.length - 1 };
 }
 
@@ -204,7 +219,7 @@ export function completeTraining(ctx, svc) {
     grantCredential(ctx, id, { sponsor: 'military', silent: true });
     earned.push(id);
   }
-  if (m.pilot && svc.track === 'officer') ctx.emit('logbook:add', { hours: 200 });
+  if (m.pilot && svc.track !== 'enlisted') ctx.emit('logbook:add', { hours: 200 });
   if (earned.length) ctx.log(`Your ${m.title} training carried over to civilian life: ${earned.length} credential${earned.length > 1 ? 's' : ''} earned.`, '📜', 'good');
 }
 
@@ -242,7 +257,12 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (state.military.history.some((h) => ['dishonorable', 'bcd', 'oth'].includes(h.discharge))) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
-  if (track === 'officer') {
+  if (track === 'warrant') {
+    if (!b.warrant?.length) return { ok: false, reason: 'No warrant officers' };
+    if (branchId !== 'army' && branchId !== 'guard') return { ok: false, reason: 'Warrant officers come from the enlisted ranks' };
+    if (age < 18 || age > 32) return { ok: false, reason: 'Flight school: age 18–32' };
+    if (!meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
+  } else if (track === 'officer') {
     if (age < 19 || age > maxOfficerAge) return { ok: false, reason: `Officers: age 19–${maxOfficerAge}` };
     if (!meetsEducation(state, { level: 'bachelor' })) return { ok: false, reason: "Officers need a bachelor's" };
   } else {
@@ -259,7 +279,7 @@ export function requiredClearance(svc) {
   const m = svc.mos ? MOS[svc.mos] : null;
   if (isNonCombat(svc.branch ?? m?.branch)) return m?.clearance ?? null;
   const s = m?.clearance ?? SPECIALTIES[svc.specialty]?.clearance ?? null;
-  if (svc.track !== 'officer') return s;
+  if (svc.track === 'enlisted') return s;
   return s && CLEARANCES[s].rank > CLEARANCES.secret.rank ? s : 'secret';
 }
 
@@ -318,7 +338,7 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
     yearsInGrade: 0,
     yearsOfService: prior,
     priorYears: prior,
-    contractYearsLeft: track === 'officer' ? ENLIST_CONTRACT[component] + (component === 'active' ? 0 : 2) : ENLIST_CONTRACT[component],
+    contractYearsLeft: track === 'warrant' ? 6 : track === 'officer' ? ENLIST_CONTRACT[component] + (component === 'active' ? 0 : 2) : ENLIST_CONTRACT[component],
     eval: 60,
     deployments: 0,
     combatTours: 0,
@@ -346,10 +366,11 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
     svc.direct = job.direct;
     if (dc.bonus) ctx.earn(dc.bonus, `${dc.name} accession bonus`);
   }
-  const verb = direct != null ? `received a direct commission into the ${DIRECT_COMMISSIONS[job.direct].name}` : track === 'officer' ? 'accepted a commission' : 'enlisted';
+  const verb = direct != null ? `received a direct commission into the ${DIRECT_COMMISSIONS[job.direct].name}` : track === 'officer' ? 'accepted a commission' : track === 'warrant' ? 'were accepted for warrant officer flight training' : 'enlisted';
   const comp = component === 'active' ? 'active duty' : 'the Reserve';
   ctx.log(`You ${verb} in the ${b.name} (${comp}) as a ${rankOf(svc).title}, ${specialtyName(svc)}. ${b.motto}!`, b.icon, 'milestone');
   ctx.toast(`Joined the ${b.name}`, 'good');
+  offerBranchDetail(ctx, svc);
   return true;
 }
 
@@ -519,5 +540,6 @@ export const isVeteran = (state) => state.military.history.some((h) => h.dischar
 /** Name of the school a new member just finished. */
 export function entrySchool(svc) {
   if (svc.direct) return DIRECT_COMMISSIONS[svc.direct].school;
+  if (svc.track === 'warrant') return `${branchOf(svc).basic}, then Warrant Officer Candidate School`;
   return svc.track === 'officer' ? branchOf(svc).officerSchool : branchOf(svc).basic;
 }

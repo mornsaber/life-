@@ -64,7 +64,7 @@ export function reportMisconduct(ctx, offenseId, context = '') {
     type: 'military.njpOffer',
     icon: '⚖️',
     title: `${njpName(svc.branch)[0].toUpperCase()}${njpName(svc.branch).slice(1)}: ${o.name}`,
-    text: `${context ? `${context}\n` : ''}Your commander intends to impose non-judicial punishment under Article 15 for ${o.name.toLowerCase()} (Art. ${o.article}).\n${svc.track === 'officer' ? 'For an officer, even an Article 15 usually ends any chance of promotion.' : 'Likely punishment: reduction in rank, forfeiture of pay and extra duty.'} You may refuse and demand trial by court-martial.`,
+    text: `${context ? `${context}\n` : ''}Your commander intends to impose non-judicial punishment under Article 15 for ${o.name.toLowerCase()} (Art. ${o.article}).\n${svc.track !== 'enlisted' ? 'For an officer, even an Article 15 usually ends any chance of promotion.' : 'Likely punishment: reduction in rank, forfeiture of pay and extra duty.'} You may refuse and demand trial by court-martial.`,
     options: [
       { id: 'accept', label: '🫡 Accept the Article 15', hint: 'Not a criminal conviction' },
       { id: 'refuse', label: '🧑‍⚖️ Refuse and demand a court-martial', hint: `${COURTS[o.court === 'summary' ? 'summary' : 'special'].name}: a conviction is a federal record`, tone: 'danger' },
@@ -85,7 +85,7 @@ export function imposeNjp(ctx, offenseId) {
   const forfeit = Math.round(monthlyBasePay(svc) * 0.5 * rng.int(1, 2));
   ctx.spend(forfeit, 'Forfeiture of pay (Article 15)', { allowDebt: true });
   parts.push(`forfeiture of $${forfeit.toLocaleString()}`);
-  if (svc.track === 'officer') {
+  if (svc.track !== 'enlisted') {
     svc.reprimand = true;
     parts.push('a letter of reprimand in your official file');
   } else if (svc.grade > 0 && rng.chance(svc.grade <= 3 ? 0.75 : 0.45)) {
@@ -117,7 +117,7 @@ export function preferCharges(ctx, offenseId, context = '', courtId = null) {
   const svc = ctx.state.military.service;
   const o = UCMJ_OFFENSES[offenseId];
   let court = courtId ?? o.court;
-  if (court === 'summary' && svc.track === 'officer') court = 'special';
+  if (court === 'summary' && svc.track !== 'enlisted') court = 'special';
   const c = COURTS[court];
   ctx.prompt({
     type: 'military.courtMartial',
@@ -160,9 +160,9 @@ function courtMartialVerdict(ctx, data, optionId) {
   if (svc.track === 'enlisted' && svc.grade > 0) {
     const to = data.court === 'summary' ? Math.max(0, svc.grade - 1) : 0;
     if (to < svc.grade) { reduce(svc, svc.grade - to); parts.push(`reduction to ${rankTitles(svc)[svc.grade]}`); }
-  } else if (svc.track === 'officer') svc.reprimand = true;
+  } else if (svc.track !== 'enlisted') svc.reprimand = true;
   if (months) parts.push(`${months} month${months > 1 ? 's' : ''} of confinement`);
-  if (punitive) parts.push(c.discharge === 'dd' ? (svc.track === 'officer' ? 'dismissal from the service' : 'a dishonorable discharge') : 'a bad-conduct discharge');
+  if (punitive) parts.push(c.discharge === 'dd' ? (svc.track !== 'enlisted' ? 'dismissal from the service' : 'a dishonorable discharge') : 'a bad-conduct discharge');
   const sentenceText = parts.join(', ') || 'a reprimand';
   ctx.log(`Convicted at a ${c.name.toLowerCase()} of ${o.name.toLowerCase()} (Art. ${o.article}). Sentence: ${sentenceText}.`, '⚖️', 'bad');
   ctx.toast(`Court-martial: convicted`, 'bad');

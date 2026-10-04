@@ -14,6 +14,7 @@ import { BASES } from '../life/Regions.js';
 import { spouseOf, partnerOf, minorChildren, livingChildren, ageOf, clampRel } from '../people/People.js';
 import { warFactor, atWar } from '../world/War.js';
 import { BRANCHES, monthlyBasePay, annualActivePay } from './MilitaryEngine.js';
+import { branchDetailTick } from './CareerFields.js';
 
 /** Overseas duty stations: [country, base, tour years, accompanied tour possible]. */
 export const OVERSEAS = {
@@ -45,7 +46,7 @@ const REPORT = {
   airforce: { enlisted: 'EPB', officer: 'OPB' }, spaceforce: { enlisted: 'EPB', officer: 'OPB' },
   coastguard: { enlisted: 'EER', officer: 'OER' },
 };
-export const reportName = (svc) => REPORT[svc.branch]?.[svc.track] ?? 'evaluation';
+export const reportName = (svc) => REPORT[svc.branch]?.[svc.track === 'warrant' ? 'officer' : svc.track] ?? 'evaluation';
 export const blockFor = (score) => (score >= 88 ? 'Most Qualified' : score >= 75 ? 'Highly Qualified' : score >= 55 ? 'Qualified' : 'Not Qualified');
 
 /* ------------------------------------------------------------------ */
@@ -166,7 +167,7 @@ export function boardScore(svc) {
 /** Top performers can be promoted a year early ("below the zone"). */
 export function belowZone(svc, tig, threshold) {
   if (svc.yearsInGrade !== tig - 1 || tig < 2) return false;
-  const window = svc.track === 'officer' ? [1, 4] : [2, 5];
+  const window = svc.track === 'officer' ? [1, 4] : svc.track === 'warrant' ? [1, 3] : [2, 5];
   if (svc.grade < window[0] || svc.grade > window[1]) return false;
   return boardScore(svc) >= threshold + 15 && (svc.reports ?? []).slice(-2).every((r) => r.block === 'Most Qualified');
 }
@@ -255,6 +256,7 @@ export function militaryLifeTick(ctx) {
 /** Called in the active/reserve tick, after evaluations. */
 export function serviceLifeTick(ctx, svc) {
   writeReport(ctx, svc);
+  branchDetailTick(ctx, svc);
   overseasTick(ctx, svc);
   brsTick(ctx, svc);
   if (svc.component === 'active' && svc.yearsOfService === 2 && !svc.retirementPlan && !ctx.state.prompts.some((p) => p.type === 'military.brs')) {

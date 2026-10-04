@@ -147,7 +147,7 @@ export function endOfTourAwards(ctx, svc, { sawCombat }) {
   if (sawCombat && !hasMedal(ctx.state, 'combatAction')) {
     awardMedal(ctx, 'combatAction', { branch, citation: 'For satisfactory performance under enemy fire.' });
   }
-  const senior = (svc.track === 'enlisted' && svc.grade >= 6) || (svc.track === 'officer' && svc.grade >= 2);
+  const senior = (svc.track === 'enlisted' && svc.grade >= 6) || (svc.track !== 'enlisted' && svc.grade >= 2);
   if (senior && svc.eval >= 80 && ctx.rng.chance(0.5)) {
     awardMedal(ctx, 'bronzeStar', { branch, citation: 'For meritorious service in a combat zone.' });
   }

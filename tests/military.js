@@ -19,6 +19,8 @@ import { tryPromotion, discharge } from '../src/modules/military/MilitaryEngine.
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { promotionOutlook } from '../src/modules/military/MilitaryEngine.js';
 import { qualBoardBonus } from '../src/modules/military/Schools.js';
+import { retrainEligibility, warrantEligibility } from '../src/modules/military/CareerFields.js';
+import { rankOf } from '../src/modules/military/MilitaryEngine.js';
 import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -340,6 +342,49 @@ const tests = {
     t.state.military.academyCredit = 4;
     const o = enlist(t.engine, 'army:officer:active');
     assert.equal(o.yearsOfService, 4);
+  },
+
+  'career fields: retrain into cyber, go to flight school, become a warrant officer'() {
+    const { engine, state } = setup(16, 24);
+    Object.assign(state.stats, { smarts: 85 });
+    const svc = enlist(engine, 'army:enlisted:active');
+    svc.isNew = false;
+    assert.equal(retrainEligibility(state, 'army.17C').ok, false, 'not in the first two years');
+    Object.assign(svc, { yearsOfService: 3, grade: 3, eval: 85 });
+    assert.ok(retrainEligibility(state, 'army.17C').ok, retrainEligibility(state, 'army.17C').reason);
+    for (let i = 0; i < 20 && svc.mos !== 'army.17C'; i++) { state.yearly = {}; svc.lastRetrain = null; engine.dispatch('military.retrain', 'army.17C'); }
+    assert.equal(svc.mos, 'army.17C', 'now a cyber operations specialist');
+    assert.equal(svc.specialty, 'cyber');
+    // Warrant officer: a cyber NCO can become a 170A technician.
+    Object.assign(svc, { grade: 4, yearsOfService: 6, disciplinary: 0 });
+    assert.ok(warrantEligibility(state, 'army.170A').ok, warrantEligibility(state, 'army.170A').reason);
+    assert.equal(warrantEligibility(state, 'army.311A').ok, false, 'CID needs a police background');
+    for (let i = 0; i < 30 && svc.track !== 'warrant'; i++) { state.yearly = {}; engine.dispatch('military.applyWarrant', 'army.170A'); }
+    assert.equal(svc.track, 'warrant');
+    assert.equal(rankOf(svc).code, 'W-1');
+    assert.equal(retrainEligibility(state, 'army.153A').ok, false, 'warrants stay in their field');
+    // Straight to flight school as a civilian.
+    const t = setup(17, 20);
+    const w = enlist(t.engine, 'army:warrant:active');
+    assert.equal(w.track, 'warrant');
+    assert.equal(w.mos, 'army.153A');
+  },
+
+  'branch detail: support-branch lieutenants serve two years in combat arms first'() {
+    const { engine, state, ctx } = setup(18, 23);
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    engine.dispatch('military.enlist', 'army:officer:active');
+    const p = state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+    engine.resolvePrompt(p.id, 'army.35D');
+    const d = state.prompts.find((x) => x.type === 'military.branchDetail');
+    assert.ok(d, 'detail offered');
+    engine.resolvePrompt(d.id, 'accept');
+    const svc = state.military.service;
+    assert.ok(['army.11A', 'army.12A'].includes(svc.mos), 'detailed to combat arms');
+    svc.isNew = false;
+    svc.yearsOfService = 2;
+    serviceLifeTick(ctx, svc);
+    assert.equal(svc.mos, 'army.35D', 'back to Military Intelligence');
   },
 };
 

@@ -28,7 +28,8 @@ export const UP_OR_OUT_GRADES = [1, 2, 3];
 export const PASSOVER_LIMIT = 2;
 export const SANCTUARY_YEARS = 18;
 
-export const serviceLimit = (svc) => (svc.track === 'officer' ? OFFICER_MAX_SERVICE : ENLISTED_HYT)[svc.grade] ?? 30;
+export const WARRANT_MAX_SERVICE = [12, 20, 24, 30, 30];
+export const serviceLimit = (svc) => ({ officer: OFFICER_MAX_SERVICE, warrant: WARRANT_MAX_SERVICE }[svc.track] ?? ENLISTED_HYT)[svc.grade] ?? 30;
 
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
 export function separationPay(svc) {
@@ -107,7 +108,7 @@ export function transferBranch(ctx, branchId) {
   if (reduced) svc.grade -= 1;
   svc.yearsInGrade = 0;
   svc.passovers = 0;
-  svc.contractYearsLeft = ENLIST_CONTRACT[svc.component] + (svc.track === 'officer' ? 1 : 0);
+  svc.contractYearsLeft = ENLIST_CONTRACT[svc.component] + (svc.track !== 'enlisted' ? 1 : 0);
   svc.isNew = true;
   svc.stationYears = 99;
   ctx.log(`Inter-service transfer approved: you left the ${from.name} for the ${to.name} as a ${rankOf(svc).title}${reduced ? ' (reduced one grade to match their structure)' : ''}. New ${svc.contractYearsLeft}-year obligation.`, to.icon, 'milestone');

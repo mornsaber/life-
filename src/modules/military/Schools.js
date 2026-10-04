@@ -35,8 +35,13 @@ export const PME = {
     { id: 'opme2', forGrade: 4, names: { ground: 'Command and General Staff College', marines: 'Command and Staff College', naval: 'Naval Command and Staff College', air: 'Air Command and Staff College' } },
     { id: 'opme3', forGrade: 5, names: { ground: 'Army War College', marines: 'Marine Corps War College', naval: 'Naval War College', air: 'Air War College' }, selective: true },
   ],
+  warrant: [
+    { id: 'wpme1', forGrade: 2, names: { ground: 'Warrant Officer Advanced Course', marines: 'Warrant Officer Career Course', naval: 'Chief Warrant Officer Leadership Course', air: 'Warrant Officer Advanced Course' } },
+    { id: 'wpme2', forGrade: 3, names: { ground: 'Warrant Officer Intermediate Level Education', marines: 'Warrant Officer Advanced Course', naval: 'Senior Warrant Officer Course', air: 'Warrant Officer Intermediate Course' } },
+    { id: 'wpme3', forGrade: 4, names: { ground: 'Warrant Officer Senior Service Education', marines: 'Chief Warrant Officer 5 Course', naval: 'Warrant Officer Senior Course', air: 'Warrant Officer Senior Course' } },
+  ],
 };
-const PME_LIST = [...PME.enlisted.map((p) => ({ ...p, track: 'enlisted' })), ...PME.officer.map((p) => ({ ...p, track: 'officer' }))];
+const PME_LIST = Object.entries(PME).flatMap(([track, list]) => list.map((p) => ({ ...p, track })));
 
 /**
  * Skill qualifications. board: promotion-board points; pay: yearly special pay
@@ -109,7 +114,7 @@ export function schoolEligibility(state, id) {
   if (q.specialty && !q.specialty.includes(svc.specialty)) return { ok: false, reason: 'Combat arms only' };
   for (const r of q.requires ?? []) if (!hasSchool(svc, r)) return { ok: false, reason: `Needs ${QUALS[r].name}` };
   const min = q.minGrade?.[svc.track];
-  if (min != null && svc.grade < min) return { ok: false, reason: `Rank ${svc.track === 'officer' ? 'O' : 'E'}-${min + 1}+` };
+  if (min != null && svc.grade < min) return { ok: false, reason: `Rank ${{ officer: 'O', warrant: 'W' }[svc.track] ?? 'E'}-${min + 1}+` };
   const max = q.maxGrade?.[svc.track];
   if (max != null && svc.grade > max) return { ok: false, reason: 'Too senior' };
   if (q.minFitness && state.stats.fitness < q.minFitness) return { ok: false, reason: `Needs ${q.minFitness}+ fitness` };

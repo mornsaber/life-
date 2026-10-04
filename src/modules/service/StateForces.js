@@ -72,7 +72,7 @@ function startingRank(state) {
   const last = [...state.military.history].reverse().find((h) => !['dishonorable', 'bcd', 'oth'].includes(h.discharge));
   if (!last) return 0;
   const n = Number(last.rankCode.slice(2));
-  return last.track === 'officer' ? Math.min(9, 5 + n) : Math.min(5, Math.max(1, n - 2));
+  return last.track === 'officer' ? Math.min(9, 5 + n) : last.track === 'warrant' ? 5 : Math.min(5, Math.max(1, n - 2));
 }
 
 function guardsman(rng, org, rankIndex) {

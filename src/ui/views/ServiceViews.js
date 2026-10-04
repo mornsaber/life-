@@ -4,6 +4,7 @@
 import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
+import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
 import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRank } from '../../modules/service/StateForces.js';
@@ -38,7 +39,7 @@ function recruitingOffice(state) {
       <div class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${esc(b.motto)}</small></div></div>
       <div class="branch-btns">
         ${b.officerOnly ? '' : `${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}`}
-        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}
+        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}${b.id === 'army' ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
       </div>
       ${b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
       <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
@@ -107,7 +108,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -288,8 +289,19 @@ function schoolsCard(state, svc) {
     const check = schoolEligibility(state, id);
     return `<li class="cert">${label}${extra} ${button('Attend', 'military.attendSchool', { arg: id, variant: 'tiny', disabled: !check.ok, title: check.reason ?? '' })} <span class="${check.ok ? 'fine' : 'why'}">${check.ok ? `${Math.round(passOdds(state, id) * 100)}% to pass` : esc(check.reason)}</span></li>`;
   };
-  const pme = (PME[svc.track] ?? []).map((p) => row(p.id, `${need?.id === p.id ? '⚠️ ' : ''}${esc(schoolName(svc, p.id))} <small class="muted">(for ${esc(svc.track === 'officer' ? BRANCHES[svc.branch].officer[p.forGrade] : BRANCHES[svc.branch].enlisted[p.forGrade])})</small>`)).join('');
+  const pme = (PME[svc.track] ?? []).map((p) => row(p.id, `${need?.id === p.id ? '⚠️ ' : ''}${esc(schoolName(svc, p.id))} <small class="muted">(for ${esc(BRANCHES[svc.branch][svc.track][p.forGrade])})</small>`)).join('');
   const quals = Object.entries(QUALS).filter(([, q]) => q.branches.includes(svc.branch)).map(([id, q]) => row(id, `${q.icon} ${esc(q.name)}`, ` <small class="muted">${esc(q.badge)}${q.pay ? ` · +${money(q.pay)}/yr` : ''}</small>`)).join('');
   if (!pme && !quals) return '';
   return card('Schools & Qualifications', `${pme ? `<h4 class="sub">Professional military education</h4><ul class="certs">${pme}</ul><p class="fine">You can't pin on the next grade without its course. Your command offers seats when you're due.</p>` : ''}${quals ? `<h4 class="sub">Skill qualifications</h4><ul class="certs">${quals}</ul><p class="fine">Badges and tabs strengthen your file at promotion boards; some carry incentive pay. One school a year.</p>` : ''}`, { icon: '🎓' });
+}
+
+/** Change your career field: retrain, apply for warrant officer, and any branch detail. */
+function careerFieldCard(state, svc) {
+  const row = (m, check, odds, action) => `<li class="job-row ${check.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${SPECIALTIES[m.specialty].icon}</span><div class="job-info"><b>${esc(m.code)} ${esc(m.title)}</b><small>${esc(m.desc ?? SPECIALTIES[m.specialty].desc)}</small></div>${button(action === 'military.applyWarrant' ? 'Apply' : 'Retrain', action, { arg: m.id, disabled: !check.ok, variant: 'small' })}<span class="${check.ok ? 'fine' : 'why'}">${check.ok ? `~${Math.round(odds * 100)}% approval` : esc(check.reason)}</span></li>`;
+  const retrain = retrainTargets(svc).map((m) => ({ m, check: retrainEligibility(state, m.id) }));
+  const shown = retrain.filter((x) => x.check.ok).concat(retrain.filter((x) => !x.check.ok).slice(0, 4)).slice(0, 10);
+  const warrant = svc.track === 'enlisted' ? warrantTargets(svc).map((m) => row(m, warrantEligibility(state, m.id), warrantEligibility(state, m.id).ok ? warrantOdds(state, m.id) : 0, 'military.applyWarrant')).join('') : '';
+  const detail = svc.branchDetail ? `<p>${chip(`🔀 Branch detail until ${svc.branchDetail.untilYos} years of service, then ${esc(MOS[svc.branchDetail.home]?.title ?? '')}`, 'warn')}</p>` : '';
+  if (!shown.length && !warrant && !detail) return '';
+  return card('Career Field', `${detail}${shown.length ? `<h4 class="sub">Retrain into a new job</h4><ul class="job-board">${shown.map((x) => row(x.m, x.check, x.check.ok ? retrainOdds(state, x.m.id) : 0, 'military.retrain')).join('')}</ul><p class="fine">Enlisted through E-6 and officers through O-3 can change fields once every 3 years. Flight school has an age limit (32), an aptitude test and a board, and aviators owe 8 years.</p>` : ''}${warrant ? `<h4 class="sub">Become a warrant officer</h4><ul class="job-board">${warrant}</ul><p class="fine">Warrant officers are the technical experts of their field: NCOs (E-5+, 5 years) with experience in it, or anyone young enough for Army flight school.</p>` : ''}`, { icon: '🔁' });
 }

@@ -21,6 +21,7 @@ import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
 import { UcmjResolvers, imposeNjp } from './UCMJ.js';
 import { MilitaryLifeActions, MilitaryLifeResolvers, militaryLifeTick } from './MilitaryLife.js';
 import { SchoolActions, SchoolResolvers } from './Schools.js';
+import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -78,7 +79,7 @@ export const MilitaryModule = {
       const svc = ctx.state.military.service;
       if (!svc?.clearance) return;
       svc.clearance = null;
-      if (svc.track === 'officer') return discharge(ctx, 'general', 'Separated after your security clearance was revoked.');
+      if (svc.track !== 'enlisted') return discharge(ctx, 'general', 'Separated after your security clearance was revoked.');
       if (SPECIALTIES[svc.specialty].clearance) {
         svc.specialty = 'logistics';
         svc.eval = Math.max(0, svc.eval - 15);
@@ -129,6 +130,7 @@ export const MilitaryModule = {
     ...SpecialOpsActions,
     ...MilitaryLifeActions,
     ...SchoolActions,
+    ...CareerFieldActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -141,13 +143,13 @@ export const MilitaryModule = {
       ctx.prompt({
         type: 'military.chooseSpecialty',
         icon: b.icon,
-        title: `${b.name} — Choose Your ${track === 'officer' ? 'Officer Specialty' : 'Job (MOS/Rating)'}`,
+        title: `${b.name} — Choose Your ${track === 'officer' ? 'Officer Specialty' : track === 'warrant' ? 'Warrant Officer Specialty' : 'Job (MOS/Rating)'}`,
         text: `${component === 'active' ? 'Active duty' : 'Reserve'} ${track} contract.` +
           (component === 'active' && state.career.job ? `\nYou'll resign as ${state.career.job.title}.` : '') +
           '\nHigher combat exposure means more deployments, more danger, and more chances for valor.' +
           (track === 'officer' ? '\nLawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a direct commission at a rank that reflects their experience.' : ''),
         options: [
-          ...mosOptions(state, branch, track),
+          ...mosOptions(state, branch, track).filter((o) => track !== 'warrant' || MOS[o.id]?.flight),
           { id: 'cancel', label: '↩️ Walk out of the recruiter\'s office' },
         ],
         data: { branch, track, component },
@@ -231,6 +233,7 @@ export const MilitaryModule = {
     ...UcmjResolvers,
     ...MilitaryLifeResolvers,
     ...SchoolResolvers,
+    ...CareerFieldResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {
