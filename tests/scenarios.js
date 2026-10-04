@@ -2421,6 +2421,35 @@ const tests = {
     assert.equal(cm.state.politics.office?.id, 'cityManager');
     assert.ok(runEligibility(setup(196, 30).state, 'countyCommissioner').ok);
   },
+  'health & science: travel nurses live on assignment, CRNAs need nurse-anesthesia school, grants fund labs, postdocs age out'() {
+    const tn = setup(201, 30);
+    tn.state.career.history.push({ professionId: 'nursing', startAge: 24, endAge: 29, peakGrade: 5 });
+    grantCredential(tn.ctx, 'rn', { silent: true });
+    assert.ok(applicationEligibility(tn.state, 'travelNursing').ok);
+    giveJob(tn.engine, 'travelNursing', 'travel');
+    assert.ok(hasHousingBenefit(tn.state), 'housing on assignment');
+    assert.equal(levelCheck(tn.state, levelById(getProfession('nursing'), 'crna')).ok, false);
+    // A PI without funding gets a grant prompt; funding resets the clock.
+    const pi = setup(202, 40);
+    pi.state.education.degrees.push({ type: 'doctorate', programId: 'phd', major: 'biology', year: 30 });
+    giveJob(pi.engine, 'research', 'pi');
+    const science = MODULES.find((m) => m.id === 'healthScience');
+    pi.state.career.job.paidThisYear = true;
+    pi.state.prompts = [];
+    science.onAgeUp(pi.engine.context());
+    assert.ok(pi.state.prompts.some((p) => p.type === 'healthScience.grant'));
+    pi.engine.rng.chance = () => true;
+    resolve(pi.engine, 'healthScience.grant', 'big');
+    assert.ok(pi.state.science.grant?.yearsLeft === 5);
+    // Postdocs: five years, then out.
+    const pd = setup(203, 32);
+    pd.state.education.degrees.push({ type: 'doctorate', programId: 'phd', major: 'biology', year: 30 });
+    giveJob(pd.engine, 'research', 'postdoc');
+    pd.state.career.job.yearsInLevel = 5;
+    pd.state.career.job.paidThisYear = true;
+    science.onAgeUp(pd.engine.context());
+    assert.equal(pd.state.career.job, null, 'aged out');
+  },
 };
 
 function giveJobKeepPrompts(engine, professionId, levelId) {

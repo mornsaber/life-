@@ -26,6 +26,7 @@ import { JUSTICE_PROFESSIONS } from './JusticeCareers.js';
 import { MORE_PROFESSIONS } from './MoreProfessions.js';
 import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
+import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -211,8 +212,11 @@ export const PRIVATE_PROFESSIONS = {
       L('cna', 'Certified Nursing Assistant', 1, { req: { credentials: ['cna'] } }),
       L('rn', 'Registered Nurse', 4, { entry: true, req: { credentials: ['rn'] } }),
       L('seniorRn', 'Senior Staff Nurse', 5, { req: { credentials: ['rn'] } }),
+      L('icu', 'ICU Nurse', 6, { track: 'ic', req: { credentials: ['ccrn'] } }),
+      L('flightNurse', 'Flight Nurse', 7, { track: 'ic', minSize: 'large', req: { credentials: ['ccrn'] }, airMedical: true }),
       L('cns', 'Clinical Nurse Specialist', 6, { track: 'ic', req: { education: { level: 'bachelor', majors: ['nursing'] } } }),
       L('np', 'Nurse Practitioner', 7, { track: 'ic', entry: true, req: { credentials: ['np'] }, abilities: ['prescribe'] }),
+      L('crna', 'Certified Registered Nurse Anesthetist', 9, { track: 'ic', entry: true, req: { credentials: ['crnaLicense'] }, abilities: ['prescribe'] }),
       L('charge', 'Charge Nurse', 5, { track: 'mgmt', abilities: ['supervise'], reports: 10 }),
       L('manager', 'Nurse Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 30 }),
       L('director', 'Director of Nursing', 7, { track: 'mgmt', minSize: 'medium', req: { education: { level: 'bachelor', majors: ['nursing'] } }, abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 120 }),
@@ -457,7 +461,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -469,8 +473,8 @@ export const JOB_FIELDS = {
   travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
   transit: { label: 'Public Transit & Driving', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus', 'paratransit'] },
   business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },
-  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'engineering', 'dot', 'planning', 'environmental'] },
-  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'socialWork', 'cps'] },
+  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'research', 'engineering', 'dot', 'planning', 'environmental'] },
+  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'publicHealth', 'socialWork', 'cps'] },
   safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'fire', 'dispatch', 'gameWarden', 'parkService', 'tsa', 'privateSecurity'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },

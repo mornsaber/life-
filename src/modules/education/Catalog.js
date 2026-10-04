@@ -87,13 +87,15 @@ export const PROGRAMS = {
   dpt: { name: 'Doctor of Physical Therapy (DPT)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private'], costFactor: 1.3, minSmarts: 55, minGpa: 3.0, fields: ['physicalTherapy'] },
   paMaster: { name: 'Master of Physician Assistant Studies', type: 'master', years: 2, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state', 'private'], costFactor: 1.4, minSmarts: 60, minGpa: 3.2, fields: ['physicianAssistant', 'medical'] },
   dvm: { name: 'Doctor of Veterinary Medicine (Vet School)', type: 'professional', years: 4, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state'], costFactor: 1.5, minSmarts: 65, minGpa: 3.3, fields: ['veterinary'] },
+  mph: { name: 'Master of Public Health (MPH)', type: 'master', years: 2, requires: { level: 'bachelor' }, major: null, schools: ['online', 'state', 'private', 'elite'], costFactor: 1.2, minSmarts: 50, minGpa: 3.0, fields: ['publicHealth', 'regulatory'] },
+  crnaProgram: { name: 'Doctor of Nurse Anesthesia Practice (CRNA)', type: 'doctorate', years: 3, requires: { level: 'bachelor', majors: ['nursing'] }, major: null, schools: ['state', 'private'], costFactor: 1.5, minSmarts: 65, minGpa: 3.3, fields: ['nursing'] },
   phd: { name: 'Doctor of Philosophy (Ph.D.)', type: 'doctorate', years: 5, requires: { level: 'bachelor' }, major: 'choose', majorLevel: 'master', schools: ['state', 'elite'], costFactor: 0, stipend: 32000, minSmarts: 75, minGpa: 3.4 },
 };
 
 export const PROGRAM_GROUPS = [
   { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'teacherPrep', 'premedPostbacc'] },
   { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor', 'maritimeAcademy'] },
-  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'paMaster', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd'] },
+  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'mph', 'paMaster', 'crnaProgram', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd'] },
 ];
 
 /** Majors offered for a program ('choose' programs list them by level). */

@@ -106,7 +106,7 @@ export function affiliated(state, ids) {
 }
 
 const LEVEL_LABEL = { highschool: 'high school diploma', associate: "associate's", bachelor: "bachelor's", master: "master's", doctorate: 'doctorate' };
-const PROGRAM_LABEL = { jd: 'J.D.', md: 'M.D.', mba: 'MBA', paralegal: 'paralegal certificate', teacherPrep: 'teacher-prep program', electricalTech: 'electrical tech diploma', msAccounting: 'M.S. Accounting', premedPostbacc: 'pre-med post-bacc', maritimeAcademy: 'maritime academy degree', dds: 'D.D.S.', dpt: 'D.P.T.', paMaster: 'PA master\'s', dvm: 'D.V.M.', autoTech: 'automotive tech diploma' };
+const PROGRAM_LABEL = { jd: 'J.D.', md: 'M.D.', mba: 'MBA', paralegal: 'paralegal certificate', teacherPrep: 'teacher-prep program', electricalTech: 'electrical tech diploma', msAccounting: 'M.S. Accounting', premedPostbacc: 'pre-med post-bacc', maritimeAcademy: 'maritime academy degree', dds: 'D.D.S.', dpt: 'D.P.T.', paMaster: 'PA master\'s', dvm: 'D.V.M.', autoTech: 'automotive tech diploma', mph: 'MPH', crnaProgram: 'nurse anesthesia doctorate' };
 
 export function describeEducation(req) {
   if (!req) return '';

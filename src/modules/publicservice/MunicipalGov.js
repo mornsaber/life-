@@ -66,7 +66,7 @@ export const MUNICIPAL_PROFESSIONS = {
       L('emt', 'EMT', 2, { req: { credentials: ['emt'] } }),
       L('paramedic', 'Paramedic', 4, { entry: true, req: { credentials: ['paramedic'] }, abilities: ['prescribe'] }),
       L('criticalCare', 'Critical Care Paramedic', 5, { track: 'ic', abilities: ['prescribe'] }),
-      L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', abilities: ['prescribe'] }),
+      L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', req: { credentials: ['flightParamedic'] }, abilities: ['prescribe'], airMedical: true }),
       L('fto', 'Field Training Officer', 5, { track: 'mgmt', abilities: ['supervise'], reports: 4 }),
       L('supervisor', 'EMS Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 18 }),
       L('captain', 'EMS Captain', 6, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'command'], reports: 50 }),
