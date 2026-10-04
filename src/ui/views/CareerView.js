@@ -7,6 +7,9 @@ import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
 import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
 import { currentLevel, seniorityTier, AGE_LIMIT_121 } from '../../modules/career/Transport.js';
+import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
+import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
+import { hasCredential as holds } from '../../modules/credentials/LicensingEngine.js';
 import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
@@ -156,6 +159,8 @@ function currentJob(state) {
           ['Warnings', job.warnings ? `<span class="neg">${job.warnings}</span>` : '0'],
           job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>`] : null,
           ...transportRows(state, job, profession),
+          ...medicineRows(state, job),
+          ...teachingRows(state, job),
           ['Training budget', `${money(job.employer.budget.left)} of ${money(job.employer.budget.annual)}`],
         ])}
       </div>
@@ -170,6 +175,7 @@ function currentJob(state) {
     ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}
     <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
     ${unionPanel(job)}
+    ${summerPanel(state, job)}
     <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' && job.sector !== 'private' ? 'Quality Step Increase' : a.desc })).join('')}
       ${button(`🔀 ${lateral ? `Move to ${esc(lateral.title)}` : 'Switch track'}`, 'career.switchTrack', { hint: lateral ? `${TRACK_LABEL[lateral.track]} track` : 'Available after the fork', disabled: !lateral })}
     </div>
@@ -236,4 +242,28 @@ function transportRows(state, job, profession) {
   if (level?.part121) rows.push(['Age-65 rule', `${Math.max(0, AGE_LIMIT_121 - state.character.age)} yr of airline flying left`]);
   if (profession.rotation) rows.push(['Time away', `${Math.round(profession.rotation.away * 100)}% of the year ${esc(profession.rotation.label)}`]);
   return rows;
+}
+
+/** Specialty, fellowship and malpractice for physicians. */
+function medicineRows(state, job) {
+  if (!isDoctor(job) || !state.medicine) return [];
+  const m = state.medicine;
+  const s = MED_SPECIALTIES[m.specialty];
+  const rows = [['Specialty', s ? `${s.icon} ${esc(s.name)}${TRAINING_LEVELS.includes(job.levelId) ? ` · ${s.years}-yr residency` : ''}` : '<span class="warn-text">Unmatched</span>']];
+  if (m.fellowship) rows.push(['Fellowship', `${esc(FELLOWSHIPS[m.fellowship].name)}${m.fellowshipYearsLeft ? ` · ${m.fellowshipYearsLeft} yr left (fellow's pay)` : ' · complete'}`]);
+  if (!TRAINING_LEVELS.includes(job.levelId)) {
+    rows.push(['Malpractice', `${employerCoversPremium(job) ? 'Covered by your hospital' : `${money(malpracticePremium(state))}/yr premium`} · ${paidClaims(state)} paid claim${paidClaims(state) === 1 ? '' : 's'} (10 yrs)`]);
+  }
+  return rows;
+}
+
+/** Salary-schedule lane and step for classroom teachers. */
+function teachingRows(state, job) {
+  if (!isClassroom(job)) return [];
+  return [['Salary schedule', `${laneOf(state).label} · step ${contractStep(state)}${holds(state, 'nationalBoard') ? ` · +${NBCT_STIPEND * 100}% National Board stipend` : ''}`]];
+}
+
+function summerPanel(state, job) {
+  if (!isClassroom(job) || !state.teaching) return '';
+  return `<h4 class="sub">Summer plans</h4><div class="toggle-row chips-row">${Object.entries(SUMMER_JOBS).map(([id, j]) => button(j.label, 'teaching.summer', { arg: id, variant: state.teaching.summer === id ? 'tiny on' : 'tiny', hint: j.desc })).join('')}</div>`;
 }

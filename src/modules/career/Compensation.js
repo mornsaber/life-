@@ -13,7 +13,8 @@ export function recalcSalary(state, job) {
     grade: job.grade,
     step: job.step,
     merit: job.merit,
-    payMultiplier: profession.payMultiplier,
+    // Job-specific adjustments (a physician's specialty) ride on top of the profession's market premium.
+    payMultiplier: profession.payMultiplier * (job.payAdjust ?? 1),
     sector: job.sector,
     size: job.employer.size,
     regionId: state.character.regionId,

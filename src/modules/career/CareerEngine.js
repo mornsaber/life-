@@ -62,6 +62,9 @@ export function calculateIncomeTax(gross) {
 /* ------------------------------------------------------------------ */
 
 /** Level requirements. A missing clearance is reported separately: it's granted through investigation. */
+/** Years a level takes — residency length depends on the physician's specialty. */
+export const levelYears = (job, level) => (level.id === 'resident' && job.residencyYears ? job.residencyYears : level.years);
+
 export function levelCheck(state, level) {
   const { clearance, ...rest } = level.req ?? {};
   const check = checkRequirements(state, rest);
@@ -315,7 +318,7 @@ export function promotionStatus(state) {
   }
   if (!all.length) return { eligible: false, reason: 'The next post is a gubernatorial appointment', options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
-  if (job.yearsInLevel < level.years) {
+  if (job.yearsInLevel < levelYears(job, level)) {
     const left = level.years - job.yearsInLevel;
     return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
   }
@@ -456,7 +459,7 @@ function traineeTick(ctx, job, profession, program) {
   const next = levelById(profession, program.next);
   if (!next) return false;
   if (program.academy) runAcademy(ctx, next);
-  if (job.yearsInLevel < level.years) return false;
+  if (job.yearsInLevel < levelYears(job, level)) return false;
   const check = levelCheck(state, next);
   if (check.ok) {
     if (promote(ctx, next.id)) {

@@ -290,6 +290,7 @@ function randomActions(state) {
   // Business
   const biz = state.business.current;
   if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
+  if (state.career.job?.professionId === 'education' && player.chance(0.2)) tries.push(() => act('teaching.summer', player.pick(['rest', 'summerSchool', 'camp', 'tutoring', 'seasonal', 'curriculum'])));
   const cv = state.civic;
   if (age >= 14 && player.chance(0.04)) tries.push(() => act('civic.joinCause', player.pick(Object.keys(CAUSES))));
   if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));

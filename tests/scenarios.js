@@ -17,7 +17,10 @@ import { hasCredential, findSponsor, grantCredential } from '../src/modules/cred
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
 import { voteShare, runEligibility } from '../src/modules/politics/Campaigns.js';
 import { assignFacility } from '../src/modules/legal/JusticeSystem.js';
-import { bestEntryLevel } from '../src/modules/career/CareerEngine.js';
+import { bestEntryLevel, levelCheck } from '../src/modules/career/CareerEngine.js';
+import { levelById } from '../src/modules/career/Ladder.js';
+import { applyPhysicianPay, malpracticePremium } from '../src/modules/career/Medicine.js';
+import { applySchedule, contractStep } from '../src/modules/career/Teaching.js';
 import { hasHousingBenefit } from '../src/modules/life/Finances.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
 import { traineeProgram } from '../src/modules/career/Tenure.js';
@@ -2292,7 +2295,69 @@ const tests = {
     dds.state.education.degrees.push({ type: 'professional', programId: 'dds', major: null, year: 26 });
     assert.ok(pursueEligibility(dds.state, 'dentalLicense').ok);
   },
+  'medicine: the Match by specialty, fellowship pay, malpractice premiums and the medical board'() {
+    const t = setup(161, 26);
+    t.state.education.degrees.push({ type: 'professional', programId: 'md', major: null, year: 26, schoolId: 'elite' });
+    t.state.stats.smarts = 95;
+    giveJobKeepPrompts(t.engine, 'medical', 'resident');
+    assert.ok(t.state.prompts.some((p) => p.type === 'medicine.match'), 'match day');
+    t.engine.rng.chance = () => true;
+    resolve(t.engine, 'medicine.match', 'orthopedics');
+    assert.equal(t.state.medicine.specialty, 'orthopedics');
+    assert.equal(t.state.career.job.residencyYears, 4, '5-year residency incl. chief year');
+    // An unlucky applicant scrambles.
+    const u = setup(162, 26);
+    u.state.education.degrees.push({ type: 'professional', programId: 'md', major: null, year: 26 });
+    giveJobKeepPrompts(u.engine, 'medical', 'resident');
+    u.engine.rng.chance = () => false;
+    resolve(u.engine, 'medicine.match', 'dermatology');
+    resolve(u.engine, 'medicine.soap', 'familyMedicine');
+    assert.equal(u.state.medicine.specialty, 'familyMedicine');
+    // Attendings: specialty pay, premiums at small employers, board review after three paid claims.
+    const a = setup(163, 40);
+    for (const id of ['medicalLicense', 'boardCertified']) grantCredential(a.ctx, id, { silent: true });
+    a.state.medicine.specialty = 'neurosurgery';
+    const fm = setup(164, 40);
+    for (const id of ['medicalLicense', 'boardCertified']) grantCredential(fm.ctx, id, { silent: true });
+    fm.state.medicine.specialty = 'familyMedicine';
+    giveJob(a.engine, 'medical', 'attending');
+    giveJob(fm.engine, 'medical', 'attending');
+    a.state.career.job.employer = { ...a.state.career.job.employer, size: fm.state.career.job.employer.size };
+    applyPhysicianPay(a.state, a.state.career.job);
+    assert.ok(a.state.career.job.salary > fm.state.career.job.salary * 2, 'neurosurgeons out-earn family doctors');
+    const before = malpracticePremium(a.state);
+    a.state.medicine.claims.push({ age: 38, paid: true }, { age: 39, paid: true });
+    assert.ok(malpracticePremium(a.state) > before * 1.9, 'claims raise premiums');
+    a.state.prompts = [];
+    a.engine.context().prompt({ type: 'medicine.claim', icon: 'x', title: 'x', text: 'x', options: [{ id: 'settle', label: 'x' }], data: { what: 'x' } });
+    resolve(a.engine, 'medicine.claim', 'settle');
+    assert.notEqual(a.state.credentials.held.medicalLicense.status, 'active', 'board suspension');
+  },
+
+  'teaching: the salary schedule pays by step and degree lane, admin needs a credential, summers pay'() {
+    const t = setup(171, 30);
+    t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'education', year: 22 });
+    grantCredential(t.ctx, 'teachingCert', { silent: true });
+    t.state.career.history.push({ professionId: 'education', startAge: 22, endAge: 29, peakGrade: 3 });
+    giveJob(t.engine, 'education', 'teacher');
+    const ba = t.state.career.job.salary;
+    assert.equal(t.state.career.job.step, contractStep(t.state));
+    t.state.education.degrees.push({ type: 'master', programId: 'master', major: 'education', year: 29 });
+    applySchedule(t.state, t.state.career.job);
+    assert.ok(t.state.career.job.salary > ba * 1.05, 'master\'s lane');
+    assert.equal(levelCheck(t.state, levelById(getProfession('education'), 'principal')).ok, false, 'principals need an admin credential');
+    t.engine.dispatch('teaching.summer', 'summerSchool');
+    t.engine.ageUp();
+    assert.ok(t.state.finances.ledger.income.some((i) => /Summer/.test(i.source)) || t.state.finances.lastYear, 'summer pay');
+  },
 };
+
+function giveJobKeepPrompts(engine, professionId, levelId) {
+  const ctx = engine.context();
+  const profession = getProfession(professionId);
+  hire(ctx, { professionId, levelId, employer: createEmployer(engine.rng, engine.state, profession, engine.state.character.regionId) });
+  return engine.state.career.job;
+}
 
 function voteShareFor(state, officeId) {
   return voteShare(state, officeId, { funds: 0, endorsements: [] });
