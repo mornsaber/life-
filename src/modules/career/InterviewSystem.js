@@ -5,6 +5,7 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { serviceHiringBonus } from '../service/NationalService.js';
 import { reentryPenalty, rehireStanding, ownerEntryLevel, ownerExperienceBonus } from '../org/Reentry.js';
 import { valuedCredentials } from '../credentials/CredentialRegistry.js';
 import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
@@ -188,6 +189,7 @@ export function candidateBonus(state, profession) {
   let bonus = 0;
   const veteran = state.military.history.length > 0 || state.military.service?.component === 'reserve';
   if (veteran) bonus += profession.sector === 'private' ? 0.04 : 0.08;
+  bonus += serviceHiringBonus(state, profession);
   if (profession.id === 'fire' && state.emergency.fire) bonus += 0.1;
   if (profession.id === 'police' && state.emergency.police) bonus += 0.1;
   if ((profession.id === 'parkService' || profession.id === 'ems') && state.emergency.sar) bonus += 0.06;

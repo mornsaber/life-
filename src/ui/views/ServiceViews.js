@@ -4,6 +4,12 @@
 import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
+import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
+import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
+import { STATE_DEFENSE_FORCES, SDF_RANKS, sdfEligibility } from '../../modules/service/StateForces.js';
+import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
+import { POSTS, POST_RANKS, postEligibility, postLeader } from '../../modules/service/VeteranPosts.js';
+import { stateIdOf } from '../../modules/life/Regions.js';
 import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
@@ -143,6 +149,7 @@ export function emergencyView(state) {
       ${next.next ? meter(member.xp, { max: nextXp, label: `XP → ${esc(next.next.title)}`, suffix: ` / ${nextXp}`, tone: next.ready ? 'good' : 'mid' }) : '<p class="promo ready">⭐ Highest rank achieved</p>'}
       ${next.next && !next.ready ? `<p class="promo">🪜 Needs: ${esc(next.reason)}</p>` : ''}
       ${ladder(svc.ranks.map((r) => ({ title: r.title, sub: `${r.xp} XP` })), member.rankIndex, { compact: true })}
+      ${volunteerOrgSection(state, svc, member)}
       ${member.k9 ? `<div class="k9">🐕 <b>K9 ${esc(member.k9.name)}</b> · ${esc(member.k9.breed)}, age ${member.k9.age}</div>` : ''}
       <h4 class="sub">Certifications</h4><ul class="certs">${certList(state, svc.id)}</ul>
       ${PATHWAYS[svc.id] ? `<p class="fine">💼 Experienced members get offered paid work${PATHWAYS[svc.id].gig ? ` (${esc(PATHWAYS[svc.id].gig.label.toLowerCase())})` : ''}${PATHWAYS[svc.id].jobs.length ? ` and job offers in ${PATHWAYS[svc.id].jobs.map((id) => esc(getProfession(id).name)).join(' or ')}` : ''}.</p>` : ''}
@@ -156,7 +163,72 @@ export function emergencyView(state) {
   const history = state.emergency.history.length
     ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
-  return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${history}`;
+  return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${serviceCards(state)}${history}`;
+}
+
+/** Your volunteer organization: officers (elected or appointed), members, and your powers if you lead it. */
+function volunteerOrgSection(state, svc, member) {
+  const org = state.orgs?.byId?.[member.orgId];
+  if (!org) return '';
+  const lead = leadsOrg(org, svc.id);
+  const L = LEADERSHIP[svc.id];
+  const left = CHIEF_ACTIONS - (state.yearly['emergency.lead'] ?? 0);
+  const offs = officers(org, svc.ranks).map((o) => `<li><small class="muted">${esc(o.title)}${isElectedRank(svc.id, o.idx) ? ' (elected)' : ''}</small> <b>${o.person === 'PLAYER' ? 'You' : o.person ? esc(o.person.name) : '<span class="muted">vacant</span>'}</b></li>`).join('');
+  const members = roster(org).sort((a, b) => b.years - a.years).slice(0, lead ? 8 : 0).map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(svc.ranks[p.rankIndex]?.title ?? '')} · ${p.years} yrs · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} suspension${p.discipline > 1 ? 's' : ''}` : ''}</small></div>
+    <div class="toggle-row">${button('🎖️ Recognize', 'emergency.commendMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⭐ Appoint officer', 'emergency.appointMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⚖️ Discipline', 'emergency.disciplineMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`).join('');
+  return `<h4 class="sub">${esc(org.name)} · ${Object.keys(org.people).length + 1} members · readiness ${org.readiness}%${lead ? ` · funds ${money(org.funds)}` : ''}</h4>
+    <ul class="history">${offs}</ul>
+    <p class="fine">${L?.elected.length ? `The membership elects its ${svc.ranks[L.elected.at(-1)].title}${L.elected.length > 1 ? ` and ${svc.ranks[L.elected[0]].title}` : ''} every two years (next at age ${org.nextElection}).` : 'Officer seats open when someone steps down.'} Officer ranks need an open seat as well as experience.</p>
+    ${lead ? `<div class="action-grid">${button('📣 Recruitment drive', 'emergency.recruit', { arg: svc.id, disabled: left <= 0 })}${button('🥞 Fundraiser', 'emergency.fundraise', { arg: svc.id, disabled: left <= 0 })}${button('🏛️ Apply for a federal grant', 'emergency.grant', { arg: svc.id, disabled: left <= 0 })}</div><p class="fine">${left} leadership action${left === 1 ? '' : 's'} left this year.</p><ul class="history">${members}</ul>` : ''}`;
+}
+
+/** National service, state guards, federal disaster teams and veterans' posts. */
+function serviceCards(state) {
+  const s = state.service;
+  if (!s) return '';
+  const out = [];
+  // AmeriCorps / Peace Corps
+  if (s.program) {
+    const p = PROGRAMS[s.program.id];
+    out.push(card(p.name, `<p>${chip(`${p.icon} ${esc(p.tracks[s.program.track].name)}`, 'green')} ${chip(esc(s.program.site))}</p>${kv([['Year', `${s.program.years + 1} of ${s.program.term}`], ['Living allowance', `${money(p.stipend)}/yr`], ['On completion', p.award ? `${money(p.award)} Segal Education Award per year` : `${money(p.readjustment)} readjustment allowance`]])}<p class="fine">Federal student loans are in forbearance while you serve.</p><div class="action-grid">${button('🚪 Leave early', 'service.quitProgram', { variant: 'danger', hint: 'No award' })}</div>`, { icon: p.icon, accent: 'green' }));
+  } else {
+    const rows = Object.entries(PROGRAMS).flatMap(([id, p]) => Object.entries(p.tracks).map(([tid, t]) => {
+      const check = programEligibility(state, id, tid);
+      return `<li class="job-row ${check.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${p.icon}</span><div class="job-info"><b>${esc(t.name)}</b><small>${esc(t.desc)} · ${p.termYears === 1 ? '1-year terms' : '27 months'} · ${money(p.stipend)}/yr stipend</small></div>${button('Serve', 'service.joinProgram', { arg: `${id}:${tid}`, disabled: !check.ok, variant: 'small' })}${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}</li>`;
+    })).join('');
+    out.push(card('National Service', `<p class="muted">A year (or two) of full-time service with a living stipend. Finish and you get an education award (AmeriCorps) or a readjustment allowance (Peace Corps), plus <b>noncompetitive eligibility</b> for federal jobs${(s.nceUntil ?? 0) >= state.character.age ? ` — <b>yours runs through age ${s.nceUntil}</b>` : ''}. Returned Peace Corps Volunteers have an edge in the Foreign Service.${state.education.segalAward ? ` Saved education award: ${money(state.education.segalAward)}.` : ''}</p><ul class="job-board">${rows}</ul>`, { icon: '🤝' }));
+  }
+  // State Defense Force
+  const sdfName = STATE_DEFENSE_FORCES[stateIdOf(state)];
+  if (s.sdf) {
+    out.push(card(s.sdf.name, `<p>${chip(`🛡️ ${SDF_RANKS[s.sdf.rankIndex]}`, 'green')}</p>${kv([['Years', s.sdf.years], ['State activations', s.sdf.activations]])}<p class="fine">A volunteer state force: monthly drills, called up by the governor for emergencies. It can never be federalized or sent overseas.</p><div class="action-grid">${button('🚪 Resign', 'service.leaveSdf', { variant: 'danger' })}</div>`, { icon: '🛡️' }));
+  } else if (sdfName) {
+    const check = sdfEligibility(state);
+    out.push(card(sdfName, `<p class="muted">Your state's volunteer defense force: shelters, communications and search and rescue when the governor calls. Unpaid except on state active duty; prior service keeps its rank.</p><div class="action-grid">${button('🛡️ Join', 'service.joinSdf', { disabled: !check.ok, hint: check.reason ?? 'Ages 18–65' })}</div>`, { icon: '🛡️' }));
+  }
+  // FEMA / DMAT
+  const teamRows = Object.entries(TEAMS).map(([id, t]) => {
+    const m = s.teams[id];
+    if (m) return `<li class="job-row"><span class="job-icon" aria-hidden="true">${t.icon}</span><div class="job-info"><b>${esc(t.name)}</b><small>${esc(t.ranks[m.rankIndex])} · ${m.years} yrs · ${m.deployments} deployments</small></div>${button('Resign', 'service.leaveTeam', { arg: id, variant: 'small danger' })}</li>`;
+    const check = teamEligibility(state, id);
+    return `<li class="job-row ${check.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${t.icon}</span><div class="job-info"><b>${esc(t.name)}</b><small>${esc(t.desc)} · ≈${money(t.dailyPay)}/day deployed</small></div>${button('Join', 'service.joinTeam', { arg: id, disabled: !check.ok, variant: 'small' })}${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}</li>`;
+  }).join('');
+  out.push(card('Federal Disaster Teams', `<p class="muted">Intermittent federal service: keep your job, deploy for weeks when disasters strike anywhere in the country.</p><ul class="job-board">${teamRows}</ul>`, { icon: '🏕️' }));
+  // Veterans' posts
+  const postRows = Object.entries(POSTS).map(([id, p]) => {
+    const m = s.posts[id];
+    const org = m && state.orgs?.byId?.[m.orgId];
+    if (org) {
+      const lead = postLeader(org);
+      const left = 3 - (state.yearly['service.post'] ?? 0);
+      return `<li class="job-row"><span class="job-icon" aria-hidden="true">${p.icon}</span><div class="job-info"><b>${esc(org.name)}</b><small>${esc(POST_RANKS[m.rankIndex])} · ${m.years} yrs · ${org.members} members · standing ${m.standing}${lead ? ` · post funds ${money(org.funds)}` : ''} · officers elected yearly</small>
+        <div class="toggle-row">${button('🐟 Volunteer', 'service.postActivity', { arg: `${id}:volunteer`, variant: 'tiny', disabled: left <= 0 })}${button('🎺 Honor guard', 'service.postActivity', { arg: `${id}:honorGuard`, variant: 'tiny', disabled: left <= 0 })}${button('📋 Help a vet with a claim', 'service.postActivity', { arg: `${id}:mentor`, variant: 'tiny', disabled: left <= 0 })}${lead ? `${button('💵 Fundraiser', 'service.postActivity', { arg: `${id}:fundraise`, variant: 'tiny', disabled: left <= 0 })}${button('🎓 Fund a scholarship', 'service.postActivity', { arg: `${id}:scholarship`, variant: 'tiny', disabled: left <= 0 })}${button('🏛️ Testify for veterans', 'service.postActivity', { arg: `${id}:advocate`, variant: 'tiny', disabled: left <= 0 })}` : ''}</div></div>${button('Leave', 'service.leavePost', { arg: id, variant: 'small danger' })}</li>`;
+    }
+    const check = postEligibility(state, id);
+    return `<li class="job-row ${check.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${p.icon}</span><div class="job-info"><b>${esc(p.name)}</b><small>${esc(p.needs)} · $${p.dues}/yr dues</small></div>${button('Join', 'service.joinPost', { arg: id, disabled: !check.ok, variant: 'small' })}${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}</li>`;
+  }).join('');
+  out.push(card('Veterans Posts', `<p class="muted">Your local VFW and American Legion posts: fish fries, honor guards and helping younger veterans. Members elect officers every year, and a post commander is a voice in local politics.</p><ul class="job-board">${postRows}</ul>`, { icon: '🎖️' }));
+  return out.join('');
 }
 
 /** Your unit: billet, chain of command, the people you lead, readiness, command tours. */

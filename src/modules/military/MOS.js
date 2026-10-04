@@ -355,6 +355,11 @@ export function enlistedStartGrade(state, branch, mos) {
   let grade = 0;
   if (meetsEducation(state, { level: 'bachelor' })) grade = branch === 'army' || branch === 'guard' ? 3 : 2;
   else if (meetsEducation(state, { level: 'associate' })) grade = 2;
+  // JROTC (and Sea Cadets, for the sea services) graduates enlist a grade or two up.
+  const jrotc = state.k12?.jrotcYears ?? 0;
+  const sea = state.k12?.seaCadetYears ?? 0;
+  if (jrotc >= 3 || (sea >= 2 && ['navy', 'coastguard'].includes(branch))) grade = Math.max(grade, 2);
+  else if (jrotc >= 2 || sea >= 2) grade = Math.max(grade, 1);
   const skill = mos?.skill;
   if (skill && skill.credentials.some((c) => hasCredential(state, c))) grade = Math.max(grade, skill.grade);
   return grade;

@@ -93,16 +93,7 @@ export const MilitaryModule = {
         imposeNjp(ctx, /dui/i.test(name) ? 'dui' : 'disobey');
       }
     });
-    // Governors activate their National Guard for in-state disasters.
-    engine.bus.on('disaster:struck', ({ ctx, disaster }) => {
-      const svc = ctx.state.military.service;
-      if (!svc || svc.branch !== 'guard' || svc.deployedThisYear) return;
-      ctx.earn(Math.round(monthlyBasePay(svc) * (1 + disaster.severity)), 'State active duty pay', { wage: true });
-      svc.eval = Math.min(100, svc.eval + 5);
-      ctx.stat('stress', 5);
-      ctx.log(`The governor activated your Guard unit for ${disaster.name}: ${ctx.rng.pick(['sandbagging levees through the night', 'running supply convoys to cut-off towns', 'evacuating nursing homes', 'clearing roads with engineer equipment'])}.`, '🛡️', 'military');
-      if (disaster.severity >= 2) awardMedal(ctx, 'humanitarian', { branch: 'army', citation: `State active duty — ${disaster.name}.` });
-    });
+    // Governors activate the Guard for disasters, unrest and border missions (service/StateForces.js).
     // Caught deserters: the court-martial upgrades the discharge to dishonorable.
     engine.bus.on('legal:convicted', ({ ctx, offenseId }) => {
       if (offenseId !== 'desertion') return;

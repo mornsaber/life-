@@ -55,9 +55,11 @@ import { Friends } from './people/Friends.js';
 import { ElderCare } from './people/ElderCare.js';
 import { EstatePlanning } from './people/EstatePlanning.js';
 import { Community } from './community/Community.js';
+import { ServiceModule } from './service/index.js';
+import { ContractorModule } from './career/Contractors.js';
 
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
-  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
-  EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
+  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
+  EmergencyModule, ServiceModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

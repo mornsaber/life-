@@ -38,6 +38,7 @@ export const ACTIVITIES = {
   drama: { name: 'Theater', icon: '🎭', minAge: 10, stats: { looks: 1, happiness: 2 }, resume: 1 },
   council: { name: 'Student council', icon: '🗳️', minAge: 12, stats: { happiness: 1 }, resume: 2 },
   jrotc: { name: 'JROTC', icon: '🎖️', minAge: 14, stats: { fitness: 2 }, resume: 1.5, nomination: 0.1 },
+  seaCadets: { name: 'Sea Cadets', icon: '⚓', minAge: 13, stats: { fitness: 2, smarts: 1 }, resume: 1.3, nomination: 0.06 },
   scouts: { name: 'Scouting', icon: '⛺', minAge: 8, stats: { fitness: 1, happiness: 1 }, resume: 1 },
   volunteer: { name: 'Community service', icon: '🤝', minAge: 12, stats: { happiness: 2 }, resume: 1 },
 };
@@ -73,11 +74,28 @@ export function prepBonus(state) {
   return ((type?.collegeBonus ?? 0) + Math.min(4, state.k12?.resume ?? 0)) / 25;
 }
 
+/** JROTC cadet rank from years in the program (and leadership: grades and fitness). Sea Cadets use Navy rates. */
+export function cadetRank(state) {
+  const k = state.k12;
+  const j = k?.jrotcYears ?? 0;
+  const s = k?.seaCadetYears ?? 0;
+  if (!j && !s) return { title: null, lead: false };
+  const merit = (state.stats.fitness >= 60 ? 1 : 0) + ((k.gpa ?? 0) >= 3.3 ? 1 : 0);
+  if (j >= s) {
+    const t = ['Cadet Private', 'Cadet Corporal', 'Cadet Sergeant', 'Cadet Lieutenant', 'Cadet Captain', 'Cadet Battalion Commander (Lt. Colonel)'];
+    const i = Math.min(t.length - 1, j + merit - 1);
+    return { title: t[i], program: 'JROTC', lead: i >= 4 };
+  }
+  const t = ['Seaman Recruit', 'Seaman Apprentice', 'Seaman', 'Petty Officer 3rd Class', 'Petty Officer 2nd Class', 'Chief Petty Officer'];
+  const i = Math.min(t.length - 1, s + merit - 1);
+  return { title: t[i], program: 'Sea Cadets', lead: i >= 4 };
+}
+
 /** Extra odds of a congressional nomination from high school (JROTC, military prep, activities). */
 export function nominationBonus(state) {
   const k = state.k12;
   if (!k) return 0;
-  return (SCHOOL_TYPES[k.type]?.nomination ?? 0) + (k.activities.includes('jrotc') || k.jrotcYears ? 0.1 : 0) + Math.min(0.12, k.resume * 0.015) + (k.gpa != null ? (k.gpa - 3) * 0.08 : 0);
+  return (SCHOOL_TYPES[k.type]?.nomination ?? 0) + (k.activities.includes('jrotc') || k.jrotcYears ? 0.1 : 0) + (k.seaCadetYears ? 0.05 : 0) + (cadetRank(state).lead ? 0.05 : 0) + Math.min(0.12, k.resume * 0.015) + (k.gpa != null ? (k.gpa - 3) * 0.08 : 0);
 }
 
 /** Who pays tuition at a school type, or why you can't go. */
@@ -182,6 +200,7 @@ export const K12Engine = {
         for (const [stat, d] of Object.entries(a.stats)) ctx.stat(stat, d);
         k.resume = Math.round((k.resume + a.resume * (prev >= 14 ? 1 : 0.4)) * 10) / 10;
         if (id === 'jrotc') k.jrotcYears = (k.jrotcYears ?? 0) + 1;
+        if (id === 'seaCadets') k.seaCadetYears = (k.seaCadetYears ?? 0) + 1;
       }
       // High school (grades 9–12) is graded.
       if (prev >= 14 && prev <= 17) {

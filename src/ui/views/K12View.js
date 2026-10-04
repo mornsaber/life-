@@ -5,7 +5,7 @@
  */
 import { esc, money, button, card, kv, select } from '../Components.js';
 import {
-  SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES, gedFee, gradeLabel, inK12, hasDiploma, schoolAccess, teenJobPay,
+  cadetRank, SCHOOL_TYPES, ACTIVITIES, TEEN_JOBS, MAX_ACTIVITIES, gedFee, gradeLabel, inK12, hasDiploma, schoolAccess, teenJobPay,
 } from '../../modules/education/K12.js';
 import { MAJORS, majorsFor } from '../../modules/education/Catalog.js';
 import { admissionChance, enrollmentEligibility } from '../../modules/education/EducationEngine.js';
@@ -57,7 +57,8 @@ function activitiesCard(state) {
   const chips = Object.entries(ACTIVITIES).map(([id, a]) => button(`${a.icon} ${a.name}`, 'k12.toggleActivity', {
     arg: id, variant: k.activities.includes(id) ? 'tiny on' : 'tiny', disabled: age < a.minAge || (!k.activities.includes(id) && k.activities.length >= MAX_ACTIVITIES), hint: age < a.minAge ? `Ages ${a.minAge}+` : '',
   })).join('');
-  return card('Extracurriculars', `<p class="muted">Up to ${MAX_ACTIVITIES}. They build stats and a résumé that colleges and academy nominations notice.</p><div class="toggle-row chips-row">${chips}</div>`, { icon: '🏅' });
+  const cadet = cadetRank(state);
+  return card('Extracurriculars', `<p class="muted">Up to ${MAX_ACTIVITIES}. They build stats and a résumé that colleges and academy nominations notice.</p><div class="toggle-row chips-row">${chips}</div>${cadet.title ? `<p class="fine">🎖️ ${esc(cadet.program)}: <b>${esc(cadet.title)}</b>. Cadets get stronger academy nominations and ROTC scholarship odds, and enlist up to two grades higher.</p>` : ''}`, { icon: '🏅' });
 }
 
 /** Part-time jobs for ages 12–17 (shown on the School and Work tabs). */

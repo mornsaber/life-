@@ -123,7 +123,8 @@ export const Finances = {
     const unpaidTax = carryUnpaidTax(ctx, tax);
 
     let loanPayment = 0;
-    if (f.loans > 0) {
+    // National service (AmeriCorps, Peace Corps) puts federal student loans in forbearance.
+    if (f.loans > 0 && !state.service?.program) {
       f.loans = Math.round(f.loans * (1 + LOAN_RATE));
       if (!state.education.enrolled && f.cash > 0) {
         loanPayment = Math.min(f.loans, Math.max(3000, Math.round(f.loans * 0.12)), f.cash);

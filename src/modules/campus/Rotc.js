@@ -53,7 +53,7 @@ export function rotcTick(ctx) {
   ctx.stat('fitness', 2);
   ctx.stat('stress', 2);
   // Scholarships are awarded on fitness and grades; accepting one is a service contract.
-  if (!r.scholarship && r.years <= 2 && state.stats.fitness >= 60 && (state.education.enrolled?.gpa ?? 0) >= 2.8 && rng.chance(0.5)) {
+  if (!r.scholarship && r.years <= 2 && state.stats.fitness >= 60 && (state.education.enrolled?.gpa ?? 0) >= 2.8 && rng.chance((state.k12?.jrotcYears ?? 0) >= 3 ? 0.7 : 0.5)) {
     r.scholarship = true;
     r.contracted = true;
     state.campus.scholarships.push({ id: 'rotc', name: `${BRANCHES[r.branch].name} ROTC scholarship`, full: true, minGpa: 2.5 });

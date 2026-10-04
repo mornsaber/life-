@@ -336,8 +336,16 @@ const tests = {
     const { engine, state, ctx } = setup(9, 25);
     engine.dispatch('military.enlist', 'guard:enlisted:reserve');
     resolve(engine, 'military.chooseSpecialty', 'guard.12B');
+    state.military.service.isNew = false;
     const cash = state.finances.cash;
-    ctx.emit('disaster:struck', { disaster: { type: 'flood', severity: 2, stateId: 'OH', regionId: 'midcity', name: 'The Great Flood' } });
+    let mission = null;
+    for (let i = 0; i < 10 && !mission; i++) {
+      state.prompts = [];
+      ctx.emit('disaster:struck', { disaster: { type: 'flood', severity: 2, stateId: 'OH', regionId: 'midcity', name: 'The Great Flood' } });
+      mission = state.prompts.find((p) => p.type === 'service.guardMission');
+    }
+    assert.ok(mission, 'the governor activates the Guard');
+    engine.resolvePrompt(mission.id, 'supply');
     assert.ok(state.finances.cash > cash, 'state active duty pay');
     assert.equal(enlistOk(state), false);
   },

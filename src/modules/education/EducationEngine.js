@@ -171,6 +171,13 @@ function fundTuition(ctx, e) {
     e.giBillThisYear = true;
     notes.push(`$${covered.toLocaleString()} GI Bill`);
   }
+  // An AmeriCorps Segal Education Award you saved.
+  if (due > 0 && state.education.segalAward > 0) {
+    const covered = Math.min(due, state.education.segalAward);
+    due -= covered;
+    state.education.segalAward -= covered;
+    notes.push(`$${covered.toLocaleString()} Segal Education Award`);
+  }
   const job = state.career.job;
   const benefit = job?.employer.benefits.tuition ?? 0;
   if (due > 0 && benefit > 0 && program.type !== 'vocational') {

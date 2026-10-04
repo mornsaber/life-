@@ -59,8 +59,24 @@ function check(state, where) {
   if (state.military.service?.njp?.length) seenPaths.add('article 15');
   if (state.legal.record.some((r) => r.court === 'court-martial')) seenPaths.add('court-martial conviction');
   if (state.military.selection && !state.prompts.some((p) => p.type === 'military.selectionPhase')) flag('selection course with no phase prompt', where);
+  // Volunteer organizations and veterans posts: one seat at most, only where you're a member.
   for (const org of Object.values(orgs)) {
-    if (org.military) continue;
+    if (!org.volunteer && !org.veteranPost) continue;
+    const n = Object.values(org.seats).flat().filter((x) => x === 'PLAYER').length;
+    if (n > 1) flag(`player holds ${n} seats in ${org.name}`, where);
+    const member = org.volunteer ? state.emergency[org.serviceId] : state.service.posts[org.typeId.split(':')[1]];
+    if (n && member?.orgId !== org.id) flag('player holds a seat in an organization they left', where);
+    if (n && org.volunteer && !(org.seats[member.rankIndex] ?? []).includes('PLAYER')) flag('volunteer seat does not match rank', where);
+    for (const seats of Object.values(org.seats)) for (const id of seats) if (id && id !== 'PLAYER' && !org.people[id]) flag('seat holder missing from roster', where);
+    if (n && org.volunteer && (org.seats[6] ?? org.seats[4] ?? []).includes('PLAYER')) seenPaths.add('elected volunteer chief');
+    if (n && org.veteranPost && org.seats[4].includes('PLAYER')) seenPaths.add('post commander');
+  }
+  if (state.service?.program) seenPaths.add(`national service ${state.service.program.id}`);
+  if (Object.values(state.service?.teams ?? {}).some((t) => t?.deployments)) seenPaths.add('disaster team deployment');
+  if (state.service?.sdf) seenPaths.add('state defense force');
+  if (state.career.job?.professionId === 'privateMilitary') seenPaths.add('military contractor');
+  for (const org of Object.values(orgs)) {
+    if (org.military || org.volunteer || org.veteranPost) continue;
     if (org.branches?.length) seenPaths.add('branches');
     if (org.mergedInto) seenPaths.add('merged/acquired');
     if (org.business && org.owner?.kind === 'npc' && org.business.founderId) seenPaths.add('employee founded rival');
@@ -161,6 +177,8 @@ const ACTIONS = [
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
   ['orgs.appoint', 'appoint', 0.5], ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier'], ['military.volunteerSelection', 'pipeline'], ['military.transferGiBill', null, 0.2], ['military.leaveSof', null, 0.05], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['emergency.join', 'volService', 0.3], ['emergency.fundraise', 'volService'], ['emergency.recruit', 'volService'], ['emergency.grant', 'volService'], ['emergency.disciplineMember', 'volMember'], ['emergency.appointMember', 'volMember'], ['emergency.commendMember', 'volMember'], ['emergency.resign', 'volService', 0.03],
+  ['service.joinProgram', 'program', 0.1], ['service.quitProgram', null, 0.05], ['service.joinSdf', null, 0.1], ['service.joinTeam', 'team', 0.2], ['service.joinPost', 'post', 0.3], ['service.postActivity', 'postAct'],
 ];
 
 function argFor(kind, state, rng) {
@@ -190,6 +208,12 @@ function argFor(kind, state, rng) {
     case 'officeStaff': { const r = officeRoster(state); return r ? rng.pick(r.staff.concat(r.deputy ? [r.deputy] : []).map((p) => p.id).concat(['none'])) : 'none'; }
     case 'pipeline': return rng.pick(['ranger', 'greenBeret', 'seal', 'pararescue', 'raider', 'orbitalWarfare']);
     case 'soldier': { const v = state.military.service && unitView(state, state.military.service); return v ? rng.pick(v.team.map((p) => p.id).concat(['none'])) : 'none'; }
+    case 'volService': return rng.pick(['fire', 'ambulance', 'sar', 'auxiliary', 'police', 'cert']);
+    case 'volMember': { const id = rng.pick(Object.keys(state.emergency).filter((k) => state.emergency[k]?.orgId)); const o = id && state.orgs.byId[state.emergency[id].orgId]; return o ? `${id}:${rng.pick(Object.keys(o.people).concat(['none']))}` : 'none'; }
+    case 'program': return rng.pick(['americorps:state', 'americorps:vista', 'americorps:nccc', 'peaceCorps:health', 'peaceCorps:education']);
+    case 'team': return rng.pick(['fema', 'dmat']);
+    case 'post': return rng.pick(['vfw', 'legion']);
+    case 'postAct': return `${rng.pick(['vfw', 'legion'])}:${rng.pick(['volunteer', 'honorGuard', 'mentor', 'fundraise', 'scholarship', 'advocate'])}`;
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;

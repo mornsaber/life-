@@ -36,6 +36,7 @@ import { CommunityResponse } from './CommunityResponse.js';
 import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
 import { MedicalReserveCorps } from './MedicalReserveCorps.js';
+import { ensureVolunteerOrg, volunteerOrgTick, releaseVolunteerOrg, seatOpen, takeSeat, isSeatRank, isElectedRank, resolveElection, leaderAction } from '../org/VolunteerOrgs.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
@@ -83,6 +84,11 @@ export function nextRankStatus(state, serviceId, member) {
   if (member.xp < next.xp) missing.push(`${next.xp - member.xp} XP`);
   if (next.cert && !hasCredential(state, next.cert)) missing.push(credentialName(next.cert));
   if (next.minYears && member.years < next.minYears) missing.push(`${next.minYears - member.years} yrs`);
+  // Officer ranks are seats: elected by the membership, or open only when someone steps down.
+  const idx = member.rankIndex + 1;
+  if (isElectedRank(serviceId, idx)) return { next, ready: false, elected: true, reason: `Elected by the membership${missing.length ? ` · ${missing.join(' · ')}` : ''}` };
+  const org = state.orgs?.byId?.[member.orgId];
+  if (org && isSeatRank(serviceId, idx) && !seatOpen(org, serviceId, idx)) missing.push('an open seat');
   return { next, ready: missing.length === 0, reason: missing.join(' · ') };
 }
 
@@ -110,6 +116,7 @@ function checkPromotion(ctx, serviceId, member) {
   const status = nextRankStatus(ctx.state, serviceId, member);
   if (!status.ready || !ctx.rng.chance(0.85)) return;
   member.rankIndex += 1;
+  if (isSeatRank(serviceId, member.rankIndex)) takeSeat(ensureVolunteerOrg(ctx.state, SERVICES[serviceId], member), member.rankIndex);
   ctx.log(`${SERVICES[serviceId].short}: promoted to ${status.next.title}!`, '⬆️', 'good');
   ctx.toast(`Promoted: ${status.next.title}`, 'good');
   ctx.stat('happiness', 5);
@@ -216,6 +223,7 @@ function leaveService(ctx, serviceId, reason) {
     reason,
   });
   state.emergency[serviceId] = null;
+  if (member.orgId) releaseVolunteerOrg(state, member.orgId);
   ctx.log(`You left the ${SERVICES[serviceId].name}. ${reason}.`, '🚪');
 }
 
@@ -237,6 +245,7 @@ function serviceTick(ctx, serviceId, member) {
   if (member.onLeave) ctx.log(`You returned from military leave to ${member.unit}.`, svc.icon);
   member.onLeave = false;
   member.years += 1;
+  volunteerOrgTick(ctx, svc, member);
 
   member.xp += 20;
   ctx.stat('fitness', 2);
@@ -366,6 +375,7 @@ export const EmergencyEngine = {
         budget: { annual: svc.trainingBudget, left: svc.trainingBudget },
         k9: null,
       };
+      ensureVolunteerOrg(ctx.state, svc, ctx.state.emergency[serviceId]);
       ctx.log(`You were sworn in as a ${svc.ranks[0].title} with ${unit}.`, svc.icon, 'milestone');
       ctx.toast(`Joined ${svc.name}`, 'good');
     },
@@ -397,6 +407,13 @@ export const EmergencyEngine = {
       if (ctx.rng.chance(0.35)) dispatchPrompt(ctx, serviceId);
     },
 
+    recruit: (ctx, arg) => leaderAction(ctx, SERVICES, 'recruit', arg),
+    fundraise: (ctx, arg) => leaderAction(ctx, SERVICES, 'fundraise', arg),
+    grant: (ctx, arg) => leaderAction(ctx, SERVICES, 'grant', arg),
+    commendMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'commend', arg),
+    disciplineMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'discipline', arg),
+    appointMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'appoint', arg),
+
     resign(ctx, serviceId) {
       if (!ctx.state.emergency[serviceId]) return;
       leaveService(ctx, serviceId, 'Resigned');
@@ -405,6 +422,11 @@ export const EmergencyEngine = {
 
   resolvers: {
     dispatch: resolveDispatch,
+    election(ctx, data, optionId) {
+      const member = ctx.state.emergency[data.serviceId];
+      if (!member) return;
+      resolveElection(ctx, SERVICES[data.serviceId], member, data.post, optionId === 'run');
+    },
     ...OpportunityResolvers,
     disasterCallout(ctx, data, optionId) {
       const { rng } = ctx;

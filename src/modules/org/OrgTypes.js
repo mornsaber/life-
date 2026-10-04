@@ -372,6 +372,15 @@ export const ORG_TYPES = {
       { id: 'tech', name: 'Logistics Technology', occupations: ['tech', 'dataScience', 'cybersecurity'], head: { title: 'Chief Technology Officer', selection: 'board' } },
     ],
   },
+  militaryContractor: {
+    name: (c) => c.rng.pick(['Triton Global Security', 'Blackridge Defense Services', 'Sentinel Protective Group', 'Aegis Training Solutions']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    departments: [
+      { id: 'protective', name: 'Protective Services', occupations: ['privateMilitary'], head: { title: 'VP of Protective Operations', selection: 'internal', occupation: 'privateMilitary', levelId: 'vpOps' } },
+      { id: 'training', name: 'Training Programs', occupations: ['privateMilitary'], head: { title: 'Director of Training', selection: 'internal' } },
+      { id: 'security', name: 'Static Security', occupations: ['privateSecurity'], head: { title: 'Director of Site Security', selection: 'internal' } },
+    ],
+  },
   architectureFirm: {
     name: (c) => c.rng.pick(['Stone & Glass Architects', 'Meridian Design Partners', 'Northgate Architecture', 'Keystone Studio']), scope: 'market', sector: 'private',
     head: { title: 'Managing Principal', selection: 'internal', occupation: 'architecture', levelId: 'managing' },

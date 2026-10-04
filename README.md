@@ -49,6 +49,7 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
                      Businesses (player and NPC businesses as orgs: owner seat, growth layers, branches, rivals, exits)
                      Executives (department/organization head posts, appointments, executive search)
                      ElectedOffices (sheriff, DA, county chair, city manager run their organizations)
+                     MilitaryUnits (units, billets, command boards) · VolunteerOrgs (seats, elected chiefs)
     business/        BusinessTypes (career → business config, sizes) · OwnershipRules (who may own/run what)
                      BusinessLicenses (operating licenses & permits) · Advisor (forecast, profit suggestions)
                      Business (P&L, valuation) · BusinessEngine · OwnerActions (people, policy, deals) · Franchising
@@ -56,13 +57,18 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
     realestate/      HousingEngine · PropertyMarket · MortgageSystem · Maintenance · Landlording
     legal/           Offenses · JusticeSystem (courts, prison, immunity) · Misconduct (temptations, risky acts)
     retirement/      PensionPlans · RetirementEngine (pensions, 401k/TSP, Social Security)
-    military/        MilitaryEngine · ActiveDuty · Reserves · MedalEngine
-    emergency/       EmergencyEngine · FireVolunteer · PoliceReserves · SearchAndRescue
+    military/        MilitaryEngine · ActiveDuty · Reserves · MedalEngine · MOS · Separation
+                     SpecialOps (selection pipelines) · UCMJ (Article 15s, courts-martial, the brig)
+                     MilitaryLife (overseas tours, fitness reports & BTZ, BRS, GI Bill transfer, recall)
+    emergency/       EmergencyEngine · FireVolunteer · PoliceReserves · SearchAndRescue · …
+    service/         NationalService (AmeriCorps, Peace Corps) · StateForces (Guard state activations,
+                     State Defense Forces) · DisasterTeams (FEMA reservists, DMAT) · VeteranPosts (VFW, Legion)
   ui/          Components · Renderer · views/ (one file per tab)
 tests/         scenarios · simulate (randomized lives + render every tab) · saves (+ fixtures/ from past versions)
                content (pool lint) · balance (persona lives vs. real-world bands) · business (business outcomes)
                careers (career ↔ credential audit) · orgs (organizations) · businessorgs (businesses as organizations)
                orgfuzz (random lives checking organization invariants) · executives (head posts & executive search)
+               military (units, special ops, UCMJ, tours, boards) · service (volunteer orgs, national & state service)
 ```
 
 Modules mutate only their own slice; cross-domain effects travel over the bus
@@ -87,6 +93,8 @@ actions (e.g. while incarcerated).
 - **Disasters:** hurricanes, wildfires, floods, blizzards and earthquakes by state. They damage property (standard policies exclude floods and earthquakes), call out volunteer fire and SAR, activate the Guard, strain city budgets and test governors and mayors.
 - **Housing:** parents, renting, owning, employer- or military-provided housing, incarceration, or homelessness, with eviction and voucher safety nets. Regional markets have boom/bust cycles; listings range from condos and fixer-uppers to rural acreage, luxury homes and fourplexes. Credit score runs 300–850. Loans: 30/15-yr fixed, 5/1 ARM, FHA and VA, with DTI and reserves underwriting, PMI, amortization, delinquency leading to foreclosure, refinancing and HELOCs. Also property tax, disaster-priced insurance, HOA fees, repairs (DIY discount for the trades), renovations and flipping, tenants, vacancies and evictions, and an optional property manager. Mortgage fraud and insurance arson are possible crimes.
 - **Military & emergency reserves:** as in Step 1, now wired into credentials, pensions, health and the legal system.
+- **Military depth:** seven branches including the Space Force; units with a named chain of command and selection boards for command; special operations pipelines (Ranger, Green Beret, SEAL, Pararescue, Raider, Space Force orbital warfare); military justice (Article 15s, courts-martial, punitive discharges, the brig); overseas tours with family and spouse-career effects; fitness reports and below-the-zone promotion; the Blended Retirement System, GI Bill transfer and retiree recall.
+- **Service beyond a job:** Guard state activations (disasters, unrest, border missions) and State Defense Forces; AmeriCorps and the Peace Corps (stipends, education awards, federal hiring eligibility); FEMA reservists and DMATs; elected volunteer fire chiefs and squad captains; VFW and American Legion posts; JROTC and Sea Cadets; private military contracting.
 - **Economy:** expansion → peak → recession → recovery (a recession about every 10 years) drives stock and bond returns, unemployment, layoffs, interest and mortgage rates, inflation and COLAs, home prices and public budgets. All money is in today's dollars.
 - **Investing:** brokerage (index, bonds, T-bills, crypto, sector stocks), Roth and Traditional IRAs, risk profiles, auto-invest that also sells to clear card debt, 0/15/20% long-term capital-gains rates, meme stocks and pump-and-dumps, insider trading disgorged on conviction; 401(k)/TSP fund choice and contribution rate.
 - **Health:** chronic, mental-health, addiction and acute conditions that start, get diagnosed (checkups catch silent ones), are treated or not, and drive named causes of death. Coverage by circumstance (employer, TRICARE, parent's plan, Medicare, Medicaid, marketplace, uninsured) with deductibles and out-of-pocket maximums; medical debt → collections → bankruptcy. PTSD from combat, emergency calls and first-responder/CPS work; addiction → DUIs, license suspensions, rehab; fitness-for-duty evaluations; disability insurance, SSDI, disability retirement and VA ratings.
