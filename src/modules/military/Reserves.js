@@ -4,8 +4,9 @@
  * (involuntarily or by volunteering), at which point they deploy exactly like
  * active-duty members and their civilian job is protected under USERRA.
  */
+import { unitTick } from '../org/MilitaryUnits.js';
 import { clamp } from '../../core/Random.js';
-import { BRANCHES, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
+import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
 import { warFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
@@ -36,6 +37,7 @@ export function reserveTick(ctx, svc) {
   svc.yearsInGrade += 1;
   svc.contractYearsLeft -= 1;
   updateEvaluation(ctx, svc);
+  svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
 
   const exposure = exposureOf(svc);
   const mobilizeChance = 0.08 * exposure * warFactor(ctx.state) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);

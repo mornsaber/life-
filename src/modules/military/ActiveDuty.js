@@ -3,11 +3,13 @@
  * combat / duty scenarios. Deployments are shared with the Reserves (a
  * mobilized reservist deploys exactly like an active-duty member).
  */
+import { unitTick } from '../org/MilitaryUnits.js';
 import { warFactor, combatFactor } from '../world/War.js';
 import { upOrOut } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
+  ranksOf,
   BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
 } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
@@ -575,6 +577,8 @@ export function activeDutyTick(ctx, svc) {
   ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`, { wage: true });
   if (flightHoursOf(svc)) ctx.emit('logbook:add', { hours: flightHoursOf(svc) });
   updateEvaluation(ctx, svc);
+  // Your unit: the people you lead, your chain of command, and command boards.
+  svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
 
   const exposure = exposureOf(svc);
   const deployChance = 0.22 * exposure * warFactor(ctx.state) + (svc.deploymentRequested ? 0.5 : 0);

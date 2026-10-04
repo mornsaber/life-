@@ -34,6 +34,8 @@ export const ORG_TYPES = {
       { id: 'publicWorks', name: 'Department of Public Works', occupations: ['publicWorks'], head: { title: 'Director of Public Works', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'planning', name: 'Department of Planning & Development', occupations: ['planning'], head: { title: 'Planning Director', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'administration', name: 'City Administration', occupations: ['municipalAdmin'], head: { title: 'Assistant City Manager', selection: 'appointed', appointedBy: 'the city manager' } },
+      { id: 'library', name: 'Public Library System', occupations: ['library'], head: { title: 'Library Director', selection: 'appointed', appointedBy: 'the library board', occupation: 'library', levelId: 'director' } },
+      { id: 'utilities', name: 'Water & Sewer Utilities', occupations: ['waterUtility'], head: { title: 'Director of Water Utilities', selection: 'appointed', appointedBy: 'the city manager', occupation: 'waterUtility', levelId: 'director' } },
     ],
   },
   countyGov: {
@@ -44,6 +46,7 @@ export const ORG_TYPES = {
         divisions: { sheriff: 'Patrol & Investigations', jail: 'Detention Division' } },
       { id: 'health', name: 'County Health Department', occupations: ['publicHealth'], head: { title: 'Director of Public Health', selection: 'appointed', appointedBy: 'the county commission' } },
       { id: 'da', name: 'District Attorney\'s Office', occupations: ['prosecution'], head: { title: 'District Attorney', selection: 'elected', office: 'districtAttorney' } },
+      { id: 'animalServices', name: 'County Animal Services', occupations: ['animalControl'], head: { title: 'Animal Services Director', selection: 'appointed', appointedBy: 'the county commission', occupation: 'animalControl', levelId: 'director' } },
     ],
   },
   schoolDistrict: {
@@ -54,6 +57,7 @@ export const ORG_TYPES = {
       { id: 'transportation', name: 'Student Transportation', occupations: ['schoolBus'], head: { title: 'Director of Student Transportation', selection: 'internal', occupation: 'schoolBus', levelId: 'director' } },
       { id: 'health', name: 'Health Services', occupations: ['nursing'], head: { title: 'Director of Health Services', selection: 'internal' } },
       { id: 'studentServices', name: 'Student Services (Counselors & Psychologists)', occupations: ['socialWork'], head: { title: 'Director of Student Services', selection: 'internal' } },
+      { id: 'earlyChildhood', name: 'Pre-K & Early Childhood', occupations: ['childcare'], head: { title: 'Director of Early Childhood Programs', selection: 'internal' } },
     ],
   },
   transitAuthority: {
@@ -129,6 +133,7 @@ export const ORG_TYPES = {
     head: { title: 'Secretary of Homeland Security', selection: 'appointed', appointedBy: 'the President, with Senate confirmation' },
     departments: [
       { id: 'tsa', name: 'Transportation Security Administration', occupations: ['tsa'], head: { title: 'TSA Administrator', selection: 'appointed', appointedBy: 'the President' } },
+      { id: 'cbp', name: 'U.S. Border Patrol (CBP)', occupations: ['borderPatrol'], head: { title: 'Chief of the U.S. Border Patrol', selection: 'appointed', appointedBy: 'the CBP Commissioner' } },
       { id: 'usss', name: 'U.S. Secret Service', occupations: ['usss'], head: { title: 'Director of the Secret Service', selection: 'appointed', appointedBy: 'the President' } },
     ],
   },
@@ -160,6 +165,9 @@ export const ORG_TYPES = {
       { id: 'pharmacy', name: 'Pharmacy', occupations: ['pharmacy'], head: { title: 'Director of Pharmacy', selection: 'internal' } },
       { id: 'rehab', name: 'Rehabilitation Services', occupations: ['physicalTherapy'], head: { title: 'Director of Rehabilitation', selection: 'internal' } },
       { id: 'social', name: 'Care Management & Social Work', occupations: ['socialWork'], head: { title: 'Director of Care Management', selection: 'internal' } },
+      { id: 'homeCare', name: 'Home & Community Care', occupations: ['caregiving'], head: { title: 'Director of Home Care', selection: 'internal' } },
+      { id: 'it', name: 'Information Technology', occupations: ['cybersecurity', 'dataScience'], head: { title: 'Chief Information Officer', selection: 'board' } },
+      { id: 'people', name: 'Human Resources', occupations: ['humanResources'], head: { title: 'Chief People Officer', selection: 'board' } },
       { id: 'security', name: 'Hospital Police & Security', occupations: ['privateSecurity', 'privatePolice'], head: { title: 'Director of Security', selection: 'internal' } },
     ],
   },
@@ -172,6 +180,10 @@ export const ORG_TYPES = {
       { id: 'technology', name: 'Technology', occupations: ['tech'], head: { title: 'Chief Technology Officer', selection: 'board' } },
       { id: 'legal', name: 'Legal Department', occupations: ['law', 'legalSupport'], head: { title: 'General Counsel', selection: 'board' } },
       { id: 'security', name: 'Corporate Security', occupations: ['privateSecurity', 'privateInvestigator'], head: { title: 'Chief Security Officer', selection: 'internal' } },
+      { id: 'marketing', name: 'Marketing', occupations: ['marketing', 'design'], head: { title: 'Chief Marketing Officer', selection: 'board', occupation: 'marketing', levelId: 'cmo' } },
+      { id: 'sales', name: 'Sales', occupations: ['sales'], head: { title: 'Chief Revenue Officer', selection: 'board', occupation: 'sales', levelId: 'cro' } },
+      { id: 'people', name: 'Human Resources', occupations: ['humanResources'], head: { title: 'Chief Human Resources Officer', selection: 'board', occupation: 'humanResources', levelId: 'chro' } },
+      { id: 'it', name: 'IT, Security & Data', occupations: ['cybersecurity', 'dataScience'], head: { title: 'Chief Information Officer', selection: 'board' } },
     ],
   },
   techCompany: {
@@ -179,8 +191,12 @@ export const ORG_TYPES = {
     head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
     departments: [
       { id: 'engineering', name: 'Engineering', occupations: ['tech'], head: { title: 'Chief Technology Officer', selection: 'internal', occupation: 'tech', levelId: 'cto' } },
-      { id: 'business', name: 'Product, Sales & Operations', occupations: ['corporate'], head: { title: 'Chief Operating Officer', selection: 'board' } },
+      { id: 'business', name: 'Product, Sales & Operations', occupations: ['corporate', 'sales', 'marketing'], head: { title: 'Chief Operating Officer', selection: 'board' } },
       { id: 'finance', name: 'Finance', occupations: ['accounting'], head: { title: 'Chief Financial Officer', selection: 'board' } },
+      { id: 'design', name: 'Design & Research', occupations: ['design'], head: { title: 'VP of Design', selection: 'internal', occupation: 'design', levelId: 'vpDesign' } },
+      { id: 'data', name: 'Data & AI', occupations: ['dataScience'], head: { title: 'Chief Data Officer', selection: 'board', occupation: 'dataScience', levelId: 'cdo' } },
+      { id: 'security', name: 'Security', occupations: ['cybersecurity'], head: { title: 'Chief Information Security Officer', selection: 'board', occupation: 'cybersecurity', levelId: 'ciso' } },
+      { id: 'people', name: 'People', occupations: ['humanResources'], head: { title: 'Chief People Officer', selection: 'board' } },
     ],
   },
   bank: {
@@ -190,6 +206,8 @@ export const ORG_TYPES = {
       { id: 'investment', name: 'Investment Banking', occupations: ['finance'], head: { title: 'Head of Investment Banking', selection: 'internal' } },
       { id: 'finance', name: 'Finance & Controllership', occupations: ['accounting'], head: { title: 'Chief Financial Officer', selection: 'board' } },
       { id: 'operations', name: 'Operations', occupations: ['corporate'], head: { title: 'Chief Operating Officer', selection: 'board' } },
+      { id: 'technology', name: 'Technology & Cybersecurity', occupations: ['cybersecurity', 'dataScience'], head: { title: 'Chief Information Security Officer', selection: 'board', occupation: 'cybersecurity', levelId: 'ciso' } },
+      { id: 'sales', name: 'Commercial Banking & Sales', occupations: ['sales', 'marketing'], head: { title: 'Head of Commercial Banking', selection: 'internal' } },
     ],
   },
   insurer: {
@@ -245,7 +263,8 @@ export const ORG_TYPES = {
     head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
     departments: [
       { id: 'stores', name: 'Store Operations', occupations: ['retail'], head: { title: 'VP of Store Operations', selection: 'internal' } },
-      { id: 'logistics', name: 'Distribution & Logistics', occupations: ['trucking'], head: { title: 'VP of Logistics', selection: 'internal' } },
+      { id: 'logistics', name: 'Distribution & Logistics', occupations: ['logistics', 'trucking'], head: { title: 'VP of Supply Chain', selection: 'internal', occupation: 'logistics', levelId: 'vpSupply' } },
+      { id: 'marketing', name: 'Marketing & Merchandising', occupations: ['marketing', 'design'], head: { title: 'Chief Marketing Officer', selection: 'board', occupation: 'marketing', levelId: 'cmo' } },
       { id: 'lossPrevention', name: 'Asset Protection', occupations: ['privateSecurity'], head: { title: 'Director of Asset Protection', selection: 'internal' } },
     ],
   },
@@ -288,6 +307,98 @@ export const ORG_TYPES = {
     name: (c) => c.rng.pick(['Brightwater Research Institute', 'Helix Biosciences', 'National Laboratory for Applied Physics']), scope: 'market', sector: 'private',
     head: { title: 'Institute Director', selection: 'board', appointedBy: 'the board of trustees', occupation: 'research', levelId: 'director' },
     departments: [{ id: 'labs', name: 'Research Labs', occupations: ['research'], head: { title: 'Scientific Director', selection: 'internal' } }],
+  },
+  /* ---------------- Arts, sports, industry, care and civil society ---------------- */
+  productionStudio: {
+    name: (c) => c.rng.pick(['Silver Screen Studios', 'Northlight Pictures', 'Harbor Lights Entertainment', `${city(c)} Repertory Theatre`]), scope: 'market', sector: 'private',
+    head: { title: 'Studio Chief', selection: 'board', appointedBy: 'the board of directors', occupation: 'acting', levelId: 'studioHead' },
+    departments: [
+      { id: 'talent', name: 'Productions & Talent', occupations: ['acting'], head: { title: 'Head of Production', selection: 'internal' } },
+      { id: 'creative', name: 'Art & Design', occupations: ['design'], head: { title: 'Production Designer', selection: 'internal' } },
+      { id: 'distribution', name: 'Marketing & Distribution', occupations: ['marketing', 'sales'], head: { title: 'President of Distribution', selection: 'board' } },
+    ],
+  },
+  recordLabel: {
+    name: (c) => c.rng.pick(['Blue Note Records', 'Northwind Music Group', 'Velvet Room Records', 'Harbor Sound Collective']), scope: 'market', sector: 'private',
+    head: { title: 'Label President', selection: 'board', appointedBy: 'the owners', occupation: 'music', levelId: 'labelHead' },
+    departments: [
+      { id: 'artists', name: 'Artists & Repertoire', occupations: ['music'], head: { title: 'Head of A&R', selection: 'internal' } },
+      { id: 'marketing', name: 'Marketing & Promotion', occupations: ['marketing', 'design'], head: { title: 'VP of Marketing', selection: 'internal', occupation: 'marketing', levelId: 'vp' } },
+    ],
+  },
+  sportsTeam: {
+    name: (c) => `${city(c)} ${c.rng.pick(['Thunder', 'Hawks', 'Rockets', 'FC', 'Kings', 'Storm'])}`, scope: 'region', sector: 'private',
+    head: { title: 'Team President', selection: 'board', appointedBy: 'the ownership group' },
+    departments: [
+      { id: 'roster', name: 'Players & Coaching Staff', occupations: ['athletics'], head: { title: 'Team General Manager', selection: 'board', occupation: 'athletics', levelId: 'gm' } },
+      { id: 'performance', name: 'Sports Performance & Medicine', occupations: ['fitness', 'physicalTherapy'], head: { title: 'Director of Sports Performance', selection: 'internal' } },
+      { id: 'business', name: 'Ticketing, Sponsorship & Marketing', occupations: ['sales', 'marketing'], head: { title: 'Chief Revenue Officer', selection: 'board', occupation: 'sales', levelId: 'cro' } },
+    ],
+  },
+  fitnessChain: {
+    name: (c) => c.rng.pick(['PeakFit Clubs', 'Momentum Fitness', 'Iron Temple Gyms', 'Pulse Athletic Clubs']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    departments: [
+      { id: 'clubs', name: 'Club Operations', occupations: ['fitness'], head: { title: 'Regional Director of Clubs', selection: 'internal', occupation: 'fitness', levelId: 'regional' } },
+      { id: 'sales', name: 'Membership Sales', occupations: ['sales', 'marketing'], head: { title: 'VP of Membership', selection: 'internal' } },
+    ],
+  },
+  adAgency: {
+    name: (c) => c.rng.pick(['Signal & Noise', 'Brightline Agency', 'Clearwater Creative', 'Northstar Communications']), scope: 'market', sector: 'private',
+    head: { title: 'Agency CEO', selection: 'board', appointedBy: 'the partners' },
+    departments: [
+      { id: 'creative', name: 'Creative', occupations: ['design'], head: { title: 'Executive Creative Director', selection: 'internal' } },
+      { id: 'accounts', name: 'Accounts & Strategy', occupations: ['marketing', 'sales'], head: { title: 'Head of Client Services', selection: 'internal' } },
+      { id: 'analytics', name: 'Data & Analytics', occupations: ['dataScience'], head: { title: 'Head of Analytics', selection: 'internal' } },
+    ],
+  },
+  manufacturer: {
+    name: (c) => c.rng.pick(['Keystone Manufacturing', 'Great Lakes Precision', 'Summit Auto Parts', 'Northfield Fabricated Metals']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    departments: [
+      { id: 'production', name: 'Plant Operations', occupations: ['manufacturing', 'welding'], head: { title: 'VP of Manufacturing', selection: 'internal', occupation: 'manufacturing', levelId: 'vpMfg' } },
+      { id: 'engineering', name: 'Engineering', occupations: ['engineering'], head: { title: 'VP of Engineering', selection: 'internal' } },
+      { id: 'supply', name: 'Supply Chain', occupations: ['logistics', 'trucking'], head: { title: 'VP of Supply Chain', selection: 'internal', occupation: 'logistics', levelId: 'vpSupply' } },
+      { id: 'sales', name: 'Sales', occupations: ['sales'], head: { title: 'VP of Sales', selection: 'internal', occupation: 'sales', levelId: 'vpSales' } },
+      { id: 'people', name: 'Human Resources', occupations: ['humanResources'], head: { title: 'HR Director', selection: 'internal', occupation: 'humanResources', levelId: 'director' } },
+    ],
+  },
+  logisticsCompany: {
+    name: (c) => c.rng.pick(['Prime Logistics', 'Swift Fulfillment', 'Midwest Distribution Co.', 'Harbor Freight Terminals']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    departments: [
+      { id: 'warehouses', name: 'Fulfillment Centers', occupations: ['logistics'], head: { title: 'VP of Fulfillment', selection: 'internal', occupation: 'logistics', levelId: 'vpSupply' } },
+      { id: 'fleet', name: 'Fleet & Line Haul', occupations: ['trucking'], head: { title: 'VP of Transportation', selection: 'internal' } },
+      { id: 'tech', name: 'Logistics Technology', occupations: ['tech', 'dataScience', 'cybersecurity'], head: { title: 'Chief Technology Officer', selection: 'board' } },
+    ],
+  },
+  architectureFirm: {
+    name: (c) => c.rng.pick(['Stone & Glass Architects', 'Meridian Design Partners', 'Northgate Architecture', 'Keystone Studio']), scope: 'market', sector: 'private',
+    head: { title: 'Managing Principal', selection: 'internal', occupation: 'architecture', levelId: 'managing' },
+    departments: [
+      { id: 'studios', name: 'Design Studios', occupations: ['architecture'], head: { title: 'Design Principal', selection: 'internal' } },
+      { id: 'engineering', name: 'Structural & MEP Engineering', occupations: ['engineering'], head: { title: 'Engineering Principal', selection: 'internal' } },
+      { id: 'interiors', name: 'Interiors & Visualization', occupations: ['design'], head: { title: 'Director of Interiors', selection: 'internal' } },
+    ],
+  },
+  childcareCenter: {
+    name: (c) => c.rng.pick(['Little Sprouts Learning Centers', 'Bright Beginnings', 'KinderCare Academy', `${city(c)} Children's Center`]), scope: 'market', sector: 'private',
+    head: { title: 'Executive Director', selection: 'board', appointedBy: 'the owners' },
+    departments: [{ id: 'classrooms', name: 'Classrooms', occupations: ['childcare'], head: { title: 'Regional Director', selection: 'internal', occupation: 'childcare', levelId: 'regional' } }],
+  },
+  homeCareAgency: {
+    name: (c) => c.rng.pick(['Comfort Keepers', 'Home Instead', 'Visiting Angels', 'Golden Years Home Care']), scope: 'market', sector: 'private',
+    head: { title: 'Agency Owner', selection: 'board', appointedBy: 'the owners' },
+    departments: [{ id: 'care', name: 'Client Care', occupations: ['caregiving', 'nursing'], head: { title: 'Agency Director', selection: 'internal', occupation: 'caregiving', levelId: 'director' } }],
+  },
+  charity: {
+    name: (c) => c.rng.pick(['Hope Community Foundation', 'Greater Good Alliance', `${city(c)} Food Bank`, 'United Way of the Region']), scope: 'market', sector: 'private',
+    head: { title: 'President & CEO', selection: 'board', appointedBy: 'the board of trustees', occupation: 'nonprofit', levelId: 'ceo' },
+    departments: [
+      { id: 'programs', name: 'Programs & Services', occupations: ['nonprofit', 'socialWork'], head: { title: 'Chief Program Officer', selection: 'internal' } },
+      { id: 'development', name: 'Development & Fundraising', occupations: ['nonprofit', 'marketing'], head: { title: 'Chief Development Officer', selection: 'internal' } },
+      { id: 'finance', name: 'Finance & Operations', occupations: ['accounting'], head: { title: 'Chief Financial Officer', selection: 'board' } },
+    ],
   },
 };
 

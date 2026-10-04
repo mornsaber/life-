@@ -1,6 +1,7 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
+import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
@@ -93,7 +94,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -150,4 +151,21 @@ export function emergencyView(state) {
     ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
   return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${history}`;
+}
+
+/** Your unit: billet, chain of command, the people you lead, readiness, command tours. */
+function unitCard(state, svc) {
+  const v = unitView(state, svc);
+  if (!v) return '';
+  const left = LEADER_ACTIONS - (state.yearly['military.lead'] ?? 0);
+  const iLead = leads(v.billet);
+  const chain = v.chain.map((c) => `<li><small class="muted">${esc(c.label)}</small> <b>${esc(c.person.rank)} ${esc(c.person.name)}</b></li>`).join('');
+  const team = v.team.map((p) => `<li class="report-row"><div><b>${esc(p.rank)} ${esc(p.name)}</b> <small class="muted">${esc(p.title.split(' — ')[1] ?? '')} · performance ${p.performance} · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} Article 15${p.discipline > 1 ? 's' : ''}` : ''}${p.awards ? ` · ${p.awards} award${p.awards > 1 ? 's' : ''}` : ''}</small></div>
+    ${iLead ? `<div class="toggle-row">${button('🗣️ Counsel', 'military.counsel', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${button('🎖️ Award', 'military.award', { arg: p.id, variant: 'tiny', disabled: left <= 0, hint: canImposeNjp(v.billet) ? 'You approve it' : 'Recommend to your commander' })}${button(canImposeNjp(v.billet) ? '⚖️ Article 15' : '⚖️ Recommend Article 15', 'military.njp', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div>` : ''}</li>`).join('');
+  return card(esc(v.org.name), `
+    <p>${chip(`🎖️ ${esc(billetTitle(svc, v.billet))}`, v.command ? 'honor' : '')} ${chip(esc(v.dept.name))}${v.command ? ` ${chip(`Command tour ends at age ${v.command.until}`, 'warn')}` : ''}</p>
+    ${meter(v.readiness, { label: '🛡️ Unit readiness' })}
+    <h4 class="sub">Chain of command</h4><ul class="history">${chain || '<li class="muted">You answer to higher headquarters.</li>'}</ul>
+    ${v.team.length ? `<h4 class="sub">${iLead ? 'Your soldiers' : 'Your team'}</h4><ul class="history">${team}</ul>` : ''}
+    <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts (company command, first sergeant, battalion command, command sergeant major) are filled by selection boards; commanding well is what gets you promoted.</p>`, { icon: '🪖' });
 }

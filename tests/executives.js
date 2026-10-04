@@ -15,7 +15,8 @@ import { MODULES } from '../src/modules/registry.js';
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { hire, leaveJob, promotionStatus } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
-import { chainOfCommand, orgOf, personOf } from '../src/modules/org/Organizations.js';
+import { chainOfCommand, orgOf, personOf, ensureOrgOfType } from '../src/modules/org/Organizations.js';
+import { employerAt } from '../src/modules/org/Reentry.js';
 import { postTick, nextPost, executiveEligibility, refreshExecutiveSearch, takePost } from '../src/modules/org/Executives.js';
 import { politicalTurnover } from '../src/modules/org/Government.js';
 import { officeRoster, officeTick, OFFICE_SEATS } from '../src/modules/org/ElectedOffices.js';
@@ -29,8 +30,12 @@ function setup(seed, age = 45) {
   state.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: 18 }, { type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
   return { engine, state, ctx: engine.context() };
 }
+/** Hire into a ladder level, at a given organization type when it matters (nursing → a hospital). */
+const AT_TYPE = { nursing: 'hospitalSystem', tech: 'techCompany', corporate: 'corporation', education: 'schoolDistrict', police: 'cityGov' };
 const at = (ctx, state, pid, levelId, size = 'enterprise') => {
-  const e = createEmployer(new Random(7), state, PROFESSIONS[pid], state.character.regionId);
+  const typeId = AT_TYPE[pid];
+  const org = typeId ? ensureOrgOfType(state, typeId, state.character.regionId, { size }) : null;
+  const e = org ? employerAt(ctx, org.id, PROFESSIONS[pid]) : createEmployer(new Random(7), state, PROFESSIONS[pid], state.character.regionId);
   e.size = size;
   hire(ctx, { professionId: pid, levelId, employer: e });
   state.prompts = [];

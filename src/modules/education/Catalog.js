@@ -23,31 +23,37 @@ export const SCHOOLS = {
  * levels: degree types the major is offered at.
  */
 export const MAJORS = {
-  computerScience: { name: 'Computer Science', icon: '💻', fields: ['tech', 'intelligence'], levels: ['associate', 'bachelor', 'master'] },
-  engineering: { name: 'Engineering', icon: '📐', fields: ['engineering', 'publicWorks', 'tech', 'aviation', 'dot'], levels: ['bachelor', 'master'], science: true },
+  computerScience: { name: 'Computer Science', icon: '💻', fields: ['tech', 'intelligence', 'cybersecurity', 'dataScience'], levels: ['associate', 'bachelor', 'master'] },
+  engineering: { name: 'Engineering', icon: '📐', fields: ['engineering', 'publicWorks', 'tech', 'aviation', 'dot', 'manufacturing'], levels: ['bachelor', 'master'], science: true },
   nursing: { name: 'Nursing', icon: '🩺', fields: ['nursing', 'medical', 'ems'], levels: ['associate', 'bachelor', 'master'], science: true },
   biology: { name: 'Biology / Pre-Med', icon: '🧬', fields: ['medical', 'nursing', 'parkService', 'pharmacy', 'environmental'], levels: ['bachelor', 'master'], science: true },
-  business: { name: 'Business Administration', icon: '📈', fields: ['corporate', 'finance', 'retail', 'realestate', 'accounting', 'trucking'], levels: ['associate', 'bachelor'] },
+  business: { name: 'Business Administration', icon: '📈', fields: ['corporate', 'finance', 'retail', 'realestate', 'accounting', 'trucking', 'marketing', 'sales', 'humanResources', 'logistics', 'nonprofit'], levels: ['associate', 'bachelor'] },
   accounting: { name: 'Accounting', icon: '🧮', fields: ['accounting', 'finance', 'oig', 'regulatory', 'revenue', 'insurance'], levels: ['associate', 'bachelor'] },
-  economics: { name: 'Economics', icon: '💹', fields: ['finance', 'corporate', 'regulatory', 'foreignService'], levels: ['bachelor', 'master'] },
+  economics: { name: 'Economics', icon: '💹', fields: ['finance', 'corporate', 'regulatory', 'foreignService', 'dataScience'], levels: ['bachelor', 'master'] },
   politicalScience: { name: 'Political Science', icon: '🗳️', fields: ['law', 'legalSupport', 'foreignService', 'municipalAdmin', 'regulatory', 'legislativeStaff', 'prosecution', 'publicDefender', 'courts'], levels: ['bachelor'] },
   internationalRelations: { name: 'International Relations', icon: '🌐', fields: ['foreignService', 'intelligence'], levels: ['bachelor', 'master'] },
-  criminalJustice: { name: 'Criminal Justice', icon: '🚓', fields: ['police', 'statePolice', 'corrections', 'gameWarden', 'courts', 'oig', 'legalSupport', 'intelligence', 'parkService'], levels: ['associate', 'bachelor', 'master'] },
+  criminalJustice: { name: 'Criminal Justice', icon: '🚓', fields: ['police', 'statePolice', 'corrections', 'gameWarden', 'courts', 'oig', 'legalSupport', 'intelligence', 'parkService', 'borderPatrol', 'animalControl'], levels: ['associate', 'bachelor', 'master'] },
   education: { name: 'Education', icon: '🍎', fields: ['education'], levels: ['bachelor', 'master'] },
   publicAdministration: { name: 'Public Administration', icon: '🏛️', fields: ['municipalAdmin', 'publicWorks', 'planning', 'regulatory', 'fire', 'police'], levels: ['bachelor'] },
-  environmentalScience: { name: 'Environmental Science', icon: '🌲', fields: ['parkService', 'planning', 'regulatory', 'environmental', 'forester', 'gameWarden'], levels: ['bachelor', 'master'], science: true },
+  environmentalScience: { name: 'Environmental Science', icon: '🌲', fields: ['parkService', 'planning', 'regulatory', 'environmental', 'forester', 'gameWarden', 'waterUtility'], levels: ['bachelor', 'master'], science: true },
   urbanStudies: { name: 'Urban Studies & Planning', icon: '🗺️', fields: ['planning', 'municipalAdmin', 'realestate'], levels: ['bachelor', 'master'] },
   fireScience: { name: 'Fire Science / EMS', icon: '🚒', fields: ['fire', 'ems'], levels: ['associate', 'bachelor'] },
   aviation: { name: 'Aviation / Aeronautics', icon: '✈️', fields: ['aviation', 'charterAviation', 'flightAttendant'], levels: ['associate', 'bachelor'] },
   marineTransportation: { name: 'Marine Transportation & Engineering', icon: '⚓', fields: ['merchantMarine', 'cruise'], levels: ['bachelor'] },
-  communications: { name: 'Communications & Journalism', icon: '📣', fields: ['journalism', 'corporate', 'retail', 'foreignService', 'municipalAdmin', 'legislativeStaff'], levels: ['bachelor'] },
+  communications: { name: 'Communications & Journalism', icon: '📣', fields: ['journalism', 'corporate', 'retail', 'foreignService', 'municipalAdmin', 'legislativeStaff', 'marketing', 'nonprofit'], levels: ['bachelor'] },
   socialWork: { name: 'Social Work', icon: '🤝', fields: ['socialWork', 'cps', 'legalSupport'], levels: ['bachelor', 'master'] },
   hospitalityMgmt: { name: 'Hospitality Management', icon: '🏨', fields: ['hospitality', 'culinary', 'retail', 'cruise', 'flightAttendant'], levels: ['associate', 'bachelor'] },
   religiousStudies: { name: 'Religious Studies / Theology', icon: '📜', fields: ['clergy', 'socialWork'], levels: ['bachelor', 'master'] },
   agriculture: { name: 'Agricultural Science', icon: '🌾', fields: ['agriculture', 'environmental', 'forester'], levels: ['associate', 'bachelor', 'master'], science: true },
-  mathematics: { name: 'Mathematics & Statistics', icon: '➗', fields: ['actuary', 'finance', 'tech', 'insurance', 'education'], levels: ['bachelor', 'master'], science: true },
+  mathematics: { name: 'Mathematics & Statistics', icon: '➗', fields: ['actuary', 'finance', 'tech', 'insurance', 'education', 'dataScience'], levels: ['bachelor', 'master'], science: true },
   forensicScience: { name: 'Forensic Science', icon: '🧬', fields: ['forensics', 'police', 'sheriff', 'privateInvestigator'], levels: ['bachelor', 'master'], science: true },
-  liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService'], levels: ['associate', 'bachelor'] },
+  arts: { name: 'Fine & Performing Arts', icon: '🎭', fields: ['acting', 'music', 'design'], levels: ['associate', 'bachelor', 'master'] },
+  architecture: { name: 'Architecture', icon: '🏛️', fields: ['architecture', 'engineering', 'planning'], levels: ['bachelor', 'master'] },
+  kinesiology: { name: 'Kinesiology & Exercise Science', icon: '🏃', fields: ['fitness', 'athletics', 'physicalTherapy'], levels: ['bachelor', 'master'], science: true },
+  marketing: { name: 'Marketing', icon: '📣', fields: ['marketing', 'sales', 'design', 'retail'], levels: ['associate', 'bachelor'] },
+  earlyChildhood: { name: 'Early Childhood Education', icon: '🧸', fields: ['childcare', 'education'], levels: ['associate', 'bachelor'] },
+  supplyChain: { name: 'Supply Chain Management', icon: '📦', fields: ['logistics', 'manufacturing', 'trucking'], levels: ['associate', 'bachelor'] },
+  liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService', 'library', 'nonprofit'], levels: ['associate', 'bachelor'] },
 };
 
 export const SCIENCE_MAJORS = Object.entries(MAJORS).filter(([, m]) => m.science).map(([id]) => id);
@@ -73,6 +79,9 @@ export const PROGRAMS = {
   linemanSchool: { name: 'Pre-Apprentice Lineworker School', type: 'certificate', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1.2, fields: ['lineworker'] },
   culinaryArts: { name: 'Culinary Arts Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1, fields: ['culinary'] },
   maritimeAcademy: { name: 'Maritime Academy (B.S. + license track)', type: 'bachelor', years: 4, requires: { level: 'highschool' }, major: 'marineTransportation', schools: ['state'], costFactor: 1.15, minSmarts: 45, fields: ['merchantMarine'] },
+  mortuaryScience: { name: 'Mortuary Science Degree', type: 'associate', years: 2, requires: { level: 'highschool' }, schools: ['community', 'technical'], costFactor: 1.1, fields: ['funeral'] },
+  machinistTech: { name: 'Machining & CNC Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['manufacturing'] },
+  mls: { name: 'Master of Library & Information Science', type: 'master', years: 2, requires: { level: 'bachelor' }, schools: ['online', 'state'], costFactor: 1, minSmarts: 45, minGpa: 2.8, fields: ['library'] },
   associate: { name: "Associate's Degree", type: 'associate', years: 2, requires: { level: 'highschool' }, major: 'choose', schools: ['community', 'online'], costFactor: 1 },
   bachelor: { name: "Bachelor's Degree", type: 'bachelor', years: 4, requires: { level: 'highschool' }, major: 'choose', schools: ['online', 'state', 'private', 'elite', 'academy'], costFactor: 1 },
   master: { name: "Master's Degree", type: 'master', years: 2, requires: { level: 'bachelor' }, major: 'choose', schools: ['online', 'state', 'private', 'elite'], costFactor: 1.1, minSmarts: 45, minGpa: 2.8 },
@@ -94,9 +103,9 @@ export const PROGRAMS = {
 };
 
 export const PROGRAM_GROUPS = [
-  { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'teacherPrep', 'premedPostbacc'] },
-  { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor', 'maritimeAcademy'] },
-  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'mph', 'paMaster', 'crnaProgram', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd'] },
+  { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'machinistTech', 'teacherPrep', 'premedPostbacc'] },
+  { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor', 'maritimeAcademy', 'mortuaryScience'] },
+  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'mls', 'msAccounting', 'seminary', 'mph', 'paMaster', 'crnaProgram', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd'] },
 ];
 
 /** Majors offered for a program ('choose' programs list them by level). */

@@ -19,6 +19,7 @@ import { levelById } from '../src/modules/career/Ladder.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { appointmentsInReach } from '../src/modules/org/Government.js';
 import { officeRoster, officeSeat } from '../src/modules/org/ElectedOffices.js';
+import { unitView } from '../src/modules/org/MilitaryUnits.js';
 import { licensesFor } from '../src/modules/business/BusinessLicenses.js';
 import { businessAdvice } from '../src/modules/business/Advisor.js';
 
@@ -41,7 +42,20 @@ function nanScan(obj, path, depth = 0) {
 function check(state, where) {
   const orgs = state.orgs?.byId ?? {};
   if (Object.keys(orgs).length > 600) flag('organizations pile up (>600)', where);
+  // Military units: you hold exactly one slot, in your current unit only.
+  let slots = 0;
   for (const org of Object.values(orgs)) {
+    if (!org.military) continue;
+    const json = JSON.stringify(org);
+    const n = (json.match(/"PLAYER"/g) ?? []).length;
+    slots += n;
+    if (n && state.military.service?.unit?.orgId !== org.id) flag('player still holds a slot in a unit they left', where);
+    for (const d of Object.values(org.departments)) for (const k of ['head', 'firstSergeant']) if (d[k] && d[k] !== 'PLAYER' && !org.people[d[k]]) flag(`unit ${k} missing from people`, where);
+  }
+  if (slots > 1) flag(`player holds ${slots} unit slots`, where);
+  if (state.military.service?.unit) seenPaths.add(`military billet ${state.military.service.unit.billet}`);
+  for (const org of Object.values(orgs)) {
+    if (org.military) continue;
     if (org.branches?.length) seenPaths.add('branches');
     if (org.mergedInto) seenPaths.add('merged/acquired');
     if (org.business && org.owner?.kind === 'npc' && org.business.founderId) seenPaths.add('employee founded rival');
@@ -141,7 +155,7 @@ const ACTIONS = [
   ['business.appointCeo'], ['business.makePassive'], ['business.takeBack', 'holding'], ['business.sellHolding', 'holding', 0.1],
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
-  ['orgs.appoint', 'appoint', 0.5], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['orgs.appoint', 'appoint', 0.5], ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier'], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
 ];
 
 function argFor(kind, state, rng) {
@@ -169,6 +183,7 @@ function argFor(kind, state, rng) {
     case 'exec': return rng.pick((state.career.execSearch?.listings ?? []).map((l) => l.id).concat(['none']));
     case 'deputyKind': return rng.pick(['professional', 'loyalist', 'reformer']);
     case 'officeStaff': { const r = officeRoster(state); return r ? rng.pick(r.staff.concat(r.deputy ? [r.deputy] : []).map((p) => p.id).concat(['none'])) : 'none'; }
+    case 'soldier': { const v = state.military.service && unitView(state, state.military.service); return v ? rng.pick(v.team.map((p) => p.id).concat(['none'])) : 'none'; }
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;
@@ -184,6 +199,8 @@ function life(seed) {
   while (state.character.alive && state.character.age < 85) {
     const age = state.character.age;
     if (age >= 18) {
+      // Join the military now and then.
+      if (!state.military.service && !state.career.job && age <= 32 && rng.chance(0.08)) tryDo(() => { engine.dispatch('military.enlist', `${rng.pick(['army', 'navy', 'airforce', 'marines', 'guard'])}:${rng.pick(['enlisted', 'enlisted', 'officer'])}:${rng.pick(['active', 'reserve'])}`); solve(); }, 'enlist');
       // Get a job now and then.
       if (!state.career.job && rng.chance(0.6)) tryDo(() => { engine.dispatch('career.apply', rng.pick(PROFESSION_LIST).id); solve(); }, 'apply');
       // Start a business now and then.

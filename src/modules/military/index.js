@@ -16,6 +16,7 @@ import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
 import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
+import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -127,6 +128,7 @@ export const MilitaryModule = {
   },
 
   actions: {
+    ...LeadershipActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -224,6 +226,7 @@ export const MilitaryModule = {
   },
 
   resolvers: {
+    ...LeadershipResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {

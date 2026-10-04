@@ -114,6 +114,7 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
   const pick = existing ?? rng.pick(keys);
   if (state.orgs.byId[pick.key]) {
     const org = state.orgs.byId[pick.key];
+    addMissingDepartments(state, org);
     if (size && SIZE_RANK[size] > SIZE_RANK[org.size]) org.size = size;
     return org;
   }
@@ -135,11 +136,11 @@ export function ensureOrgOfType(state, typeId, regionId, { size = 'medium' } = {
   // Private (market) types: reuse a firm of this kind in town before founding another.
   if (t.scope === 'market') {
     const local = Object.values(state.orgs.byId).find((o) => o.typeId === typeId && o.regionId === regionId && !o.closed);
-    if (local) return local;
+    if (local) return addMissingDepartments(state, local);
   }
   const name = t.scope === 'market' && t.name ? t.name({ city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng }) : undefined;
   const key = orgKey(typeId, t, regionId, stateId, name);
-  if (state.orgs.byId[key]) return state.orgs.byId[key];
+  if (state.orgs.byId[key]) return addMissingDepartments(state, state.orgs.byId[key]);
   const profession = getProfession(t.departments[0]?.occupations[0]);
   return buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession });
 }
@@ -172,6 +173,20 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     org.departments[d.id] = dept;
   }
   state.orgs.byId[org.id] = org;
+  return org;
+}
+
+/** Organizations from older saves gain departments their type has added since. */
+export function addMissingDepartments(state, org) {
+  if (!org || org.business || org.closed) return org;
+  const t = orgType(org.typeId);
+  let added = false;
+  for (const d of t?.departments ?? []) {
+    if (org.departments[d.id]) continue;
+    org.departments[d.id] = { id: d.id, name: d.name, head: null, headcount: Math.round((HEADCOUNT[org.size ?? 'medium'][0] + HEADCOUNT[org.size ?? 'medium'][1]) / 2 / t.departments.length), seats: {} };
+    added = true;
+  }
+  if (added) ensureHeads(state, org);
   return org;
 }
 

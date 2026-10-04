@@ -64,6 +64,8 @@ export const TRAINEE_LEVELS = {
   'railroad.trainee': { next: 'conductor', grace: 1, academy: true, label: 'conductor training' },
   'schoolBus.trainee': { next: 'driver', grace: 1, academy: true, label: 'school bus driver training' },
   'postal.cca': { next: 'carrier', grace: 1, label: 'your City Carrier Assistant years before conversion to career' },
+  'waterUtility.trainee': { next: 'operator', grace: 1, academy: true, label: 'operator-in-training certification' },
+  'borderPatrol.trainee': { next: 'agent', grace: 0, academy: true, label: 'the Border Patrol Academy in Artesia' },
   'fbi.trainee': { next: 'agent', grace: 0, academy: true, label: 'the FBI Academy at Quantico' },
   'dea.trainee': { next: 'agent', grace: 0, academy: true, label: 'the DEA Academy at Quantico' },
   'atf.trainee': { next: 'agent', grace: 0, academy: true, label: 'ATF special agent training at FLETC' },

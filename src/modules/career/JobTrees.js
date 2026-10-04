@@ -29,6 +29,7 @@ import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
 import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
 import { TRADE_PROFESSIONS } from './TradeCareers.js';
+import { WORKFORCE_PROFESSIONS } from './WorkforceCareers.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -463,7 +464,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -482,20 +483,21 @@ for (const [credId, careers] of Object.entries(REQUIRED_BY)) for (const id of ca
 
 /** Career fields for the job board (every profession appears in exactly one). */
 export const JOB_FIELDS = {
-  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise'] },
-  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'automotive', 'lineworker', 'trucking', 'publicWorks', 'forester'] },
+  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise', 'funeral'] },
+  arts: { label: 'Arts, Sports & Fitness', icon: '🎭', ids: ['acting', 'music', 'athletics', 'fitness', 'design'] },
+  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'automotive', 'lineworker', 'trucking', 'publicWorks', 'forester', 'manufacturing', 'logistics', 'waterUtility'] },
   construction: { label: 'Construction, Energy & Land', icon: '🏗️', ids: ['carpentry', 'ironworking', 'craneOperator', 'oilGas', 'fishing', 'agriculture'] },
   travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
   transit: { label: 'Public Transit & Driving', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus', 'paratransit'] },
-  business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },
-  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'research', 'engineering', 'dot', 'planning', 'environmental'] },
-  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'publicHealth', 'socialWork', 'cps'] },
-  safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'fire', 'dispatch', 'gameWarden', 'parkService', 'tsa', 'privateSecurity'] },
+  business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'marketing', 'sales', 'humanResources', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory', 'nonprofit'] },
+  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'research', 'engineering', 'architecture', 'dot', 'planning', 'environmental'] },
+  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'publicHealth', 'socialWork', 'cps', 'caregiving', 'childcare'] },
+  safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'fire', 'dispatch', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'animalControl'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'journalism', 'clergy', 'catholicClergy'] },
+  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'library', 'journalism', 'clergy', 'catholicClergy'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService', 'intelligence'] },
-  federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss'] },
+  federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };
 
 export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };

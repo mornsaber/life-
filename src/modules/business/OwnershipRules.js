@@ -33,6 +33,7 @@ export const PROFESSION_RULES = {
   atf: { restricted: POLICE_CONFLICTS },
   usms: { restricted: POLICE_CONFLICTS },
   usss: { restricted: POLICE_CONFLICTS },
+  borderPatrol: { restricted: POLICE_CONFLICTS },
   prosecution: { restricted: ['lawFirm', 'piAgency'], note: 'Prosecutors can\'t run a private practice.' },
   publicDefender: { restricted: ['lawFirm'], note: 'Public defenders can\'t take private clients.' },
   courts: { restricted: ['lawFirm'] },

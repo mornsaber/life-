@@ -11,6 +11,7 @@
  *   disciplinary, deployedThisYear, deploymentRequested, joinedAge, isNew
  * }
  */
+import { releaseUnit } from '../org/MilitaryUnits.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
@@ -115,6 +116,9 @@ export const ENLIST_CONTRACT = { active: 4, reserve: 6 };
 export const RETIREMENT_YEARS = 20;
 
 export const branchOf = (svc) => BRANCHES[svc.branch];
+
+/** Rank tables for a service member's branch (both tracks). */
+export const ranksOf = (svc) => ({ enlisted: BRANCHES[svc.branch].enlisted, officer: BRANCHES[svc.branch].officer });
 
 export function rankTitles(svc) {
   return branchOf(svc)[svc.track];
@@ -356,6 +360,8 @@ export function tryPromotion(ctx, svc) {
   const flagBoard = svc.track === 'officer' && svc.grade >= 5;
   if (flagBoard && (svc.flagPassovers ?? 0) >= 3) return false;
   let chance = 0.55 + (svc.eval - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
+  // Boards promote people who have commanded (or served as first sergeant) at their grade.
+  if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
   // General/flag officer and senior NCO boards are brutally selective.
   if (flagBoard) chance = 0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200;
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.6;
@@ -401,6 +407,7 @@ export const DISCHARGE_LABEL = {
 };
 
 export function discharge(ctx, type, reason) {
+  if (ctx.state.military.service?.unit?.orgId) releaseUnit(ctx.state, ctx.state.military.service.unit.orgId);
   const { state } = ctx;
   const svc = state.military.service;
   if (!svc) return;
