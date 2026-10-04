@@ -69,7 +69,7 @@ export const CareerModule = {
     });
     bus.on('budget:charge', ({ ctx, sponsor, amount }) => {
       const job = ctx.state.career.job;
-      if (sponsor.type === 'employer' && !sponsor.academy && job) job.employer.budget.left = Math.max(0, job.employer.budget.left - amount);
+      if (sponsor.type === 'employer' && !sponsor.academy && !sponsor.required && job) job.employer.budget.left = Math.max(0, job.employer.budget.left - amount);
     });
     bus.on('career:clearanceRevoked', ({ ctx }) => {
       if (ctx.state.career.job?.clearance) leaveJob(ctx, 'Your security clearance was revoked', { fired: true });

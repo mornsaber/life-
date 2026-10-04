@@ -17,6 +17,7 @@
  *   levels            the ladder (see Ladder.js)
  */
 import { L } from './Ladder.js';
+import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
@@ -27,6 +28,7 @@ import { MORE_PROFESSIONS } from './MoreProfessions.js';
 import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
 import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
+import { TRADE_PROFESSIONS } from './TradeCareers.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -461,15 +463,28 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
+
+// Index which careers require which credentials (employers fund what their own ladders demand).
+for (const p of PROFESSION_LIST) {
+  for (const l of p.levels) for (const c of l.req?.credentials ?? []) (REQUIRED_BY[c] ??= new Set()).add(p.id);
+}
+// A course your own ladder requires is always open to you: add the career to any membership gate.
+const openTo = (req, id) => {
+  if (!req) return;
+  if (req.anyOf) return req.anyOf.forEach((r) => openTo(r, id));
+  if (req.affiliation && !req.affiliation.includes(id)) req.affiliation.push(id);
+};
+for (const [credId, careers] of Object.entries(REQUIRED_BY)) for (const id of careers) openTo(CREDENTIALS[credId]?.requires, id);
 
 /** Career fields for the job board (every profession appears in exactly one). */
 export const JOB_FIELDS = {
   service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise'] },
   trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'automotive', 'lineworker', 'trucking', 'publicWorks', 'forester'] },
+  construction: { label: 'Construction, Energy & Land', icon: '🏗️', ids: ['carpentry', 'ironworking', 'craneOperator', 'oilGas', 'fishing', 'agriculture'] },
   travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
   transit: { label: 'Public Transit & Driving', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus', 'paratransit'] },
   business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },

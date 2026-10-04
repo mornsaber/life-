@@ -93,7 +93,7 @@ export const STATE_PROFESSIONS = {
     benefits: { pension: 'publicSafety', ssCovered: true },
     employerName: agency('Fish & Wildlife Department'),
     entry: { education: { level: 'associate' }, credentials: ['driverLicense'], fitness: 50 },
-    valued: ['wfr', 'landNav', 'swiftwater', 'environmentalScience'],
+    valued: ['wfr', 'landNav', 'swiftwater', 'boatCrew'],
     levels: [
       L('cadet', 'Game Warden Cadet', 3, { years: 1 }),
       L('warden', 'Game Warden', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest', 'inspect'] }),

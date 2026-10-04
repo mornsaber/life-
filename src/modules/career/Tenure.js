@@ -70,7 +70,11 @@ export const TRAINEE_LEVELS = {
   'usms.trainee': { next: 'agent', grace: 0, academy: true, label: 'Deputy Marshal training at FLETC' },
   'usss.trainee': { next: 'agent', grace: 0, academy: true, label: 'Secret Service training at FLETC and Beltsville' },
   'benefitsClaims.trainee': { next: 'specialist', grace: 0, label: 'claims specialist training' },
-  'flightAttendant.trainee': { next: 'reserve', grace: 0, academy: true, label: 'flight attendant initial training' },
+  'carpentry.apprentice': { next: 'journeyman', grace: 1, academy: true, label: 'your carpentry apprenticeship' },
+  'ironworking.apprentice': { next: 'journeyman', grace: 1, academy: true, label: 'your ironworker apprenticeship' },
+  'craneOperator.oiler': { next: 'operator', grace: 1, academy: true, label: 'NCCCO crane operator certification' },
+  'fishing.greenhorn': { next: 'deckhand', grace: 0, label: 'your greenhorn season' },
+  'flightAttendant.trainee': { next: 'reserve', grace: 1, academy: true, label: 'flight attendant initial training' },
   'merchantMarine.ordinary': { next: 'able', grace: 1, academy: true, label: 'your first sea time and Able Seaman endorsement' },
   'cruise.steward': { next: 'waiter', grace: 1, academy: true, label: 'STCW safety training and your first contract' },
   'catholicClergy.deacon': { next: 'vicar', grace: 0, label: 'your diaconate year before priestly ordination' },
@@ -78,12 +82,20 @@ export const TRAINEE_LEVELS = {
 export const traineeProgram = (job) => (job ? TRAINEE_LEVELS[`${job.professionId}.${job.levelId}`] ?? null : null);
 
 /** Credentials in the order they must be earned (prerequisites first). */
+/** Prerequisite credentials; for either/or requirements, the branch you're closest to. */
+function prerequisites(state, req) {
+  if (!req) return [];
+  if (!req.anyOf) return req.credentials ?? [];
+  const missing = (r) => (r.credentials ?? []).filter((c) => !hasCredential(state, c)).length;
+  return [...req.anyOf].sort((a, b) => missing(a) - missing(b))[0].credentials ?? [];
+}
+
 export function credentialPlan(state, ids, seen = new Set()) {
   const plan = [];
   for (const id of ids) {
     if (seen.has(id) || hasCredential(state, id) || !CREDENTIALS[id]) continue;
     seen.add(id);
-    plan.push(...credentialPlan(state, CREDENTIALS[id].requires?.credentials ?? [], seen), id);
+    plan.push(...credentialPlan(state, prerequisites(state, CREDENTIALS[id].requires), seen), id);
   }
   return plan;
 }

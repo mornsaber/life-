@@ -82,8 +82,8 @@ export const CREDENTIALS = {
   postReserve: { name: 'Reserve Peace Officer (POST Level II)', icon: '🎓', category: 'publicSafety', kind: 'certification', requires: { age: 21, noFelony: true }, cost: 3500, exam: D('smarts', 0.25), sponsors: { professions: ['police'], services: ['police'] }, revokeOn: ['felony', 'excessiveForce'] },
   post: { name: 'Peace Officer (POST Basic Academy)', icon: '🚓', category: 'publicSafety', kind: 'license', requires: { fitness: 45, age: 21, noFelony: true, credentials: ['driverLicense'] }, trainingYears: 1, cost: 9000, exam: D('fitness', 0.2), implies: ['postReserve'], sponsoredOnly: true, academy: ['police', 'statePolice', 'gameWarden', 'sheriff', 'privatePolice', 'transitPolice'], sponsors: { professions: ['police', 'statePolice', 'sheriff', 'privatePolice', 'transitPolice', 'gameWarden'] }, revokeOn: ['felony', 'excessiveForce'] },
   correctionsAcademy: { name: 'Corrections Officer Academy', icon: '🔐', category: 'publicSafety', kind: 'certification', requires: { fitness: 40, age: 21, noFelony: true }, cost: 6000, exam: D('fitness', 0.15), sponsoredOnly: true, academy: ['corrections', 'jail', 'privatePrisons'], sponsors: { professions: ['corrections', 'jail', 'privatePrisons', 'sheriff'] }, revokeOn: ['felony', 'contraband'] },
-  fto: { name: 'Field Training Officer Program', icon: '🚔', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice', 'gameWarden'], credentials: ['postReserve'] }, cost: 1200, exam: D('smarts', 0.2), sponsors: { professions: ['police'], services: ['police'] } },
-  cit: { name: 'Crisis Intervention Team (CIT)', icon: '🧠', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice', 'corrections', 'ems', 'socialWork', 'cps'], credentials: ['postReserve'] }, cost: 1100, exam: D('smarts', 0.15), sponsors: { professions: ['police', 'ems'], services: ['police'] } },
+  fto: { name: 'Field Training Officer Program', icon: '🚔', category: 'publicSafety', kind: 'certification', requires: { anyOf: [{ affiliation: ['police', 'statePolice', 'gameWarden'], credentials: ['postReserve'] }, { affiliation: ['corrections'], credentials: ['correctionsAcademy'] }] }, cost: 1200, exam: D('smarts', 0.2), sponsors: { professions: ['police'], services: ['police'] } },
+  cit: { name: 'Crisis Intervention Team (CIT)', icon: '🧠', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice', 'corrections', 'ems', 'socialWork', 'cps'] }, cost: 1100, exam: D('smarts', 0.15), sponsors: { professions: ['police', 'ems'], services: ['police'] } },
   trafficEnforcement: { name: 'Traffic Enforcement & DUI', icon: '🚦', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice'], credentials: ['postReserve'] }, cost: 900, exam: D('smarts', 0.15), sponsors: { professions: ['police'], services: ['police'] } },
   firearmsInstructor: { name: 'Firearms Instructor', icon: '🎯', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice', 'corrections', 'gameWarden', 'oig', 'parkService'], credentials: ['fto'] }, cost: 1500, exam: D('fitness', 0.25), sponsors: { professions: ['police', 'oig', 'parkService'], services: ['police'] } },
   supervisorCourse: { name: 'Law Enforcement Supervisory Course', icon: '📋', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['police', 'statePolice', 'corrections', 'gameWarden', 'oig', 'parkService'], credentials: ['fto'] }, cost: 1600, exam: D('smarts', 0.2), sponsors: { professions: ['police'], services: ['police'] } },
@@ -110,6 +110,12 @@ export const CREDENTIALS = {
   flightParamedic: { name: 'Certified Flight Paramedic (FP-C)', icon: '🚁', category: 'health', kind: 'certification', requires: { credentials: ['paramedic'], experience: { professions: ['ems', 'fire'], years: 3 } }, cost: 500, exam: D('smarts', 0.35), renewYears: 4, renewCost: 200, sponsors: { professions: ['ems'] } },
   rehs: { name: 'Registered Environmental Health Specialist (REHS)', icon: '🧫', category: 'government', kind: 'license', requires: { education: { level: 'bachelor' }, experience: { professions: ['publicHealth'], years: 1 } }, cost: 400, exam: D('smarts', 0.3), renewYears: 2, renewCost: 100, sponsors: { professions: ['publicHealth'] } },
   cph: { name: 'Certified in Public Health (CPH)', icon: '🧫', category: 'government', kind: 'certification', requires: { education: { program: 'mph' } }, cost: 400, exam: D('smarts', 0.3), renewYears: 2, renewCost: 100, sponsors: { professions: ['publicHealth'] }, valuedBy: ['publicHealth', 'regulatory'] },
+  journeymanCarpenter: { name: 'Journeyman Carpenter Card', icon: '🪚', category: 'trades', kind: 'certification', requires: { experience: { professions: ['carpentry'], years: 4 } }, cost: 500, exam: D('smarts', 0.2), sponsoredOnly: true, academy: ['carpentry'], sponsors: { professions: ['carpentry'] } },
+  ironworkerCard: { name: 'Journeyman Ironworker Card', icon: '🏗️', category: 'trades', kind: 'certification', requires: { experience: { professions: ['ironworking'], years: 3 }, fitness: 50 }, cost: 500, exam: D('fitness', 0.25), sponsoredOnly: true, academy: ['ironworking'], sponsors: { professions: ['ironworking'] } },
+  nccco: { name: 'NCCCO Certified Crane Operator', icon: '🏗️', category: 'trades', kind: 'certification', requires: { age: 18, health: 50 }, cost: 2500, exam: D('smarts', 0.3), renewYears: 5, renewCost: 500, academy: ['craneOperator'], sponsors: { professions: ['craneOperator'] }, suspendOn: { dui: 1 } },
+  h2s: { name: 'H2S Awareness & Rig Safety', icon: '☠️', category: 'trades', kind: 'certification', requires: { age: 18 }, cost: 250, exam: D('smarts', 0.1), renewYears: 1, renewCost: 150, sponsors: { professions: ['oilGas'] } },
+  wellControl: { name: 'IADC Well Control (WellSharp)', icon: '🛢️', category: 'trades', kind: 'certification', requires: { credentials: ['h2s'], experience: { professions: ['oilGas'], years: 3 } }, cost: 1800, exam: D('smarts', 0.35), renewYears: 2, renewCost: 900, sponsors: { professions: ['oilGas'] } },
+  fishingMaster: { name: 'USCG Master License (Fishing Vessels)', icon: '🎣', category: 'maritime', kind: 'license', requires: { experience: { professions: ['fishing'], years: 4 }, health: 45 }, cost: 1500, exam: D('smarts', 0.3), renewYears: 5, renewCost: 200, suspendOn: { dui: 1 } },
   /* ---------------- Rail & transit ---------------- */
   railOperatorCert: { name: 'Transit Rail Operator Certification', icon: '🚇', category: 'transit', kind: 'internal', requires: { credentials: ['passengerEndorsement'], experience: { professions: ['transit'], years: 2 } }, trainingYears: 1, cost: 6000, exam: D('smarts', 0.3), sponsoredOnly: true, sponsors: { professions: ['transit'] }, suspendOn: { dui: 2 } },
   conductorCert: { name: 'FRA Certified Conductor (Part 242)', icon: '🚂', category: 'transit', kind: 'certification', requires: { age: 18, health: 45 }, cost: 8000, exam: D('smarts', 0.3), sponsoredOnly: true, academy: ['railroad'], sponsors: { professions: ['railroad'] }, suspendOn: { dui: 1 }, revokeOn: ['felony'] },
@@ -237,6 +243,46 @@ export const RECIPROCITY_LABEL = {
   transferExam: 'Reciprocity exam',
   restart: 'Must re-qualify',
 };
+
+/**
+ * Careers whose own ladder requires each credential (filled in by JobTrees).
+ * An employer pays for credentials its own promotions require out of its
+ * operating budget — a jet type rating or a locomotive-engineer course costs
+ * far more than the discretionary training budget.
+ */
+export const REQUIRED_BY = {};
+
+/**
+ * Agency families: agency-only courses (field training, supervisor school,
+ * command college…) are open to every agency of the same kind, and those
+ * agencies pay for them. A sheriff's deputy goes to the same supervisor
+ * course as a city police sergeant.
+ */
+export const AGENCY_FAMILIES = {
+  sworn: ['police', 'sheriff', 'statePolice', 'privatePolice', 'transitPolice', 'gameWarden', 'parkService', 'oig', 'fbi', 'dea', 'atf', 'usms', 'usss'],
+  custody: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'sheriff', 'probation'],
+  crisis: ['ems', 'fire', 'dispatch', 'socialWork', 'cps', 'nursing', 'publicHealth'],
+  patrol: ['police', 'sheriff', 'statePolice', 'transitPolice', 'privatePolice'],
+};
+const COURSE_FAMILIES = {
+  fto: ['sworn', 'custody'],
+  cit: ['sworn', 'custody', 'crisis'],
+  trafficEnforcement: ['patrol'],
+  firearmsInstructor: ['sworn', 'custody'],
+  supervisorCourse: ['sworn', 'custody'],
+  commandCollege: ['sworn', 'custody'],
+  k9Handler: ['patrol', 'custody'],
+};
+for (const [id, families] of Object.entries(COURSE_FAMILIES)) {
+  const members = [...new Set(families.flatMap((f) => AGENCY_FAMILIES[f]))];
+  const c = CREDENTIALS[id];
+  const widen = (req) => {
+    if (req.anyOf) return req.anyOf.forEach(widen);
+    if (req.affiliation) req.affiliation = [...new Set([...req.affiliation, ...members])];
+  };
+  widen(c.requires);
+  if (c.sponsors) c.sponsors.professions = [...new Set([...(c.sponsors.professions ?? []), ...members])];
+}
 
 export const CREDENTIAL_LIST = Object.entries(CREDENTIALS).map(([id, c]) => ({ id, ...c }));
 

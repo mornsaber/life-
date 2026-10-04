@@ -389,7 +389,7 @@ const LAYOFF_RATE = { expansion: 0.01, peak: 0.015, recession: 0.09, recovery: 0
 /** Annual reduction-in-force risk. Returns true if you were laid off. */
 export function layoffRisk(state, job) {
   let risk = 0;
-  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase];
+  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? getProfession(job.professionId).cyclical ?? 1 : 1);
   else if (job.sector === 'municipal' && (state.publicService.city?.fiscalHealth ?? 50) < 25) risk = 0.05;
   else if (job.sector === 'state' && state.economy.phase === 'recession') risk = 0.02;
   if (job.abilities.includes('tenure')) risk = 0;

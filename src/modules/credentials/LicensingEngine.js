@@ -19,7 +19,7 @@
  */
 import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
-import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK } from './CredentialRegistry.js';
+import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK, REQUIRED_BY } from './CredentialRegistry.js';
 import { stateIdOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 
@@ -92,11 +92,11 @@ export function checkRequirements(state, req = {}) {
   if (req.smarts && state.stats.smarts < req.smarts) missing.push(`${req.smarts}+ smarts`);
   if (req.fitness && state.stats.fitness < req.fitness) missing.push(`${req.fitness}+ fitness`);
   if (req.health && state.stats.health < req.health) missing.push(`${req.health}+ health (medical exam)`);
-  if (req.affiliation && !affiliated(state, req.affiliation)) missing.push(`membership in ${req.affiliation.map(affiliationLabel).join(' / ')}`);
+  if (req.affiliation && !affiliated(state, req.affiliation)) missing.push(req.affiliation.length > 4 ? 'a job at a law-enforcement, corrections or emergency agency' : `membership in ${req.affiliation.map(affiliationLabel).join(' / ')}`);
   return { ok: missing.length === 0, missing };
 }
 
-const AFFILIATION_LABEL = { fire: 'a fire department', police: 'a police department', statePolice: 'the state police', sar: 'a SAR team', auxiliary: 'the Coast Guard Auxiliary', wildland: 'a wildland crew', ambulance: 'an ambulance corps', parkService: 'the Park Service', gameWarden: 'Fish & Wildlife', forester: 'State Forestry', publicWorks: 'Public Works', ems: 'an EMS agency', corrections: 'Corrections', oig: 'an Inspector General', socialWork: 'social services', cps: 'CPS', cap: 'Civil Air Patrol', cert: 'a CERT team', redcross: 'the Red Cross', skiPatrol: 'a ski patrol', mrc: 'the Medical Reserve Corps' };
+const AFFILIATION_LABEL = { fire: 'a fire department', police: 'a police department', statePolice: 'the state police', sar: 'a SAR team', auxiliary: 'the Coast Guard Auxiliary', wildland: 'a wildland crew', ambulance: 'an ambulance corps', parkService: 'the Park Service', gameWarden: 'Fish & Wildlife', forester: 'State Forestry', publicWorks: 'Public Works', ems: 'an EMS agency', corrections: 'Corrections', oig: 'an Inspector General', socialWork: 'social services', cps: 'CPS', cap: 'Civil Air Patrol', cert: 'a CERT team', redcross: 'the Red Cross', skiPatrol: 'a ski patrol', mrc: 'the Medical Reserve Corps', sheriff: 'a sheriff\'s office', jail: 'a county jail', federalPrisons: 'the Bureau of Prisons', privatePrisons: 'a private prison', privatePolice: 'a private police force', transitPolice: 'the transit police', probation: 'probation & parole', dispatch: 'a 911 center', fbi: 'the FBI', dea: 'the DEA', atf: 'the ATF', usms: 'the Marshals', usss: 'the Secret Service' };
 const affiliationLabel = (id) => AFFILIATION_LABEL[id] ?? id;
 
 /** Agency-internal courses are only open to members: your job's profession or an active volunteer service. */
@@ -117,10 +117,15 @@ export function describeEducation(req) {
 
 /** Who will pay for this credential, if anyone? Returns null or { type, label, left, serviceId? }. */
 export function findSponsor(state, credential) {
-  const s = credential.sponsors;
-  if (!s) return null;
   const job = state.career.job;
   if (job && credential.academy?.includes(job.professionId)) return { type: 'employer', label: `${job.employer.name} academy`, left: Infinity, academy: true };
+  // Credentials your own career ladder requires: the employer pays from its operating budget, not the training budget.
+  const id = credential.id ?? Object.keys(CREDENTIALS).find((k) => CREDENTIALS[k] === credential);
+  if (job && REQUIRED_BY[id]?.has(job.professionId) && (credential.sponsors?.professions?.includes(job.professionId) || credential.sponsoredOnly)) {
+    return { type: 'employer', label: job.employer.name, left: Infinity, required: true };
+  }
+  const s = credential.sponsors;
+  if (!s) return null;
   if (job) {
     const relevant = s.professions?.includes(job.professionId) || (s.anyEmployer && job.employer.size !== 'small');
     if (relevant) return { type: 'employer', label: job.employer.name, left: job.employer.budget.left };

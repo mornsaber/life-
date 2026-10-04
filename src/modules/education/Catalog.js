@@ -44,6 +44,7 @@ export const MAJORS = {
   socialWork: { name: 'Social Work', icon: '🤝', fields: ['socialWork', 'cps', 'legalSupport'], levels: ['bachelor', 'master'] },
   hospitalityMgmt: { name: 'Hospitality Management', icon: '🏨', fields: ['hospitality', 'culinary', 'retail', 'cruise', 'flightAttendant'], levels: ['associate', 'bachelor'] },
   religiousStudies: { name: 'Religious Studies / Theology', icon: '📜', fields: ['clergy', 'socialWork'], levels: ['bachelor', 'master'] },
+  agriculture: { name: 'Agricultural Science', icon: '🌾', fields: ['agriculture', 'environmental', 'forester'], levels: ['associate', 'bachelor', 'master'], science: true },
   mathematics: { name: 'Mathematics & Statistics', icon: '➗', fields: ['actuary', 'finance', 'tech', 'insurance', 'education'], levels: ['bachelor', 'master'], science: true },
   forensicScience: { name: 'Forensic Science', icon: '🧬', fields: ['forensics', 'police', 'sheriff', 'privateInvestigator'], levels: ['bachelor', 'master'], science: true },
   liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService'], levels: ['associate', 'bachelor'] },
