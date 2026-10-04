@@ -322,7 +322,10 @@ export const JUSTICE_EVENTS = {
   ],
 };
 
-/** Plays the yearly incidents above for whoever holds one of these jobs. */
+/** Icons for incident prompts (other career files register theirs). */
+export const INCIDENT_ICONS = Object.fromEntries(Object.entries(JUSTICE_PROFESSIONS).map(([id, p]) => [id, p.icon]));
+
+/** Plays the yearly incidents above (and those other career files register) for whoever holds one of these jobs. */
 export const JusticeJobs = {
   id: 'justiceJobs',
   order: 30.6,
@@ -335,7 +338,7 @@ export const JusticeJobs = {
     const i = rng.int(0, pool.length - 1);
     const ev = pool[i];
     ctx.prompt({
-      type: 'justiceJobs.event', icon: JUSTICE_PROFESSIONS[job.professionId].icon, title: ev.title, text: ev.text,
+      type: 'justiceJobs.event', icon: INCIDENT_ICONS[job.professionId] ?? '💼', title: ev.title, text: ev.text,
       options: ev.options.map((o) => ({ id: o.id, label: o.label, hint: o.risk ? 'Risky' : o.offense ? 'Against the law' : undefined, tone: o.offense ? 'danger' : undefined })),
       data: { professionId: job.professionId, index: i },
     });
@@ -356,7 +359,7 @@ export const JusticeJobs = {
         ctx.log('You were hurt on the job.', '🩹', 'bad');
       }
       if (o.offense) ctx.emit('legal:offense', { offenseId: o.offense, context: `on the job at ${job.employer.name}`, discovery: 0.25, evidence: 0.6 });
-      ctx.log(`${o.label.replace(/^\S+ /, '')}.${o.perf > 0 ? ' Your supervisors noticed.' : ''}`, JUSTICE_PROFESSIONS[data.professionId].icon, o.perf > 0 ? 'good' : 'info');
+      ctx.log(`${o.label.replace(/^\S+ /, '')}.${o.perf > 0 ? ' Your supervisors noticed.' : ''}`, INCIDENT_ICONS[data.professionId] ?? '💼', o.perf > 0 ? 'good' : 'info');
     },
   },
 };

@@ -17,6 +17,7 @@ import { MEASURES, localPolicy, eligibleMeasures, enact, playerPush } from './Lo
 import { VIOLATIONS, MONTHLY_FINE, LIEN_AT, hoaFor, newHoa, boardOdds } from './HOA.js';
 import { homeKey, makeNeighbor, avgRel, bumpRel, LIFE_EVENTS, SITUATIONS, TRAITS } from './Neighbors.js';
 import { CAUSES, TACTICS } from './Activism.js';
+import { transitBoardEligibility, boardTick, resolveBoardDecision } from './TransitBoard.js';
 
 const recognize = (state, n) => {
   state.politics.recognition = Math.min(100, state.politics.recognition + n);
@@ -253,6 +254,7 @@ export const CivicModule = {
     ptaTick(ctx);
     activismTick(ctx);
     watchTick(ctx);
+    boardTick(ctx);
     localTick(ctx);
   },
 
@@ -392,6 +394,19 @@ export const CivicModule = {
       return undefined;
     },
 
+    /** Ask the mayor for a seat on the transit authority board. */
+    transitBoard(ctx) {
+      const { state, rng } = ctx;
+      const check = transitBoardEligibility(state);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      if (yearlyCount(state, 'civic.transitBoard')) return ctx.toast('The mayor\'s office will get back to you next year.', 'warn');
+      bumpYearly(state, 'civic.transitBoard');
+      if (rng.chance(0.25 + state.politics.recognition / 200)) {
+        state.civic.transitBoard = { regionId: state.character.regionId, years: 0, chair: false };
+        ctx.log('You were appointed to the regional transit authority board.', '🚇', 'good');
+      } else ctx.log('The mayor appointed someone else to the transit board.', '📭', 'warn');
+    },
+
     watchJoin(ctx) {
       const { state } = ctx;
       if (!state.civic.neighbors.length || state.character.age < 18) return ctx.toast('You need a home to watch.', 'warn');
@@ -408,6 +423,10 @@ export const CivicModule = {
   },
 
   resolvers: {
+    transitDecision(ctx, data, optionId) {
+      resolveBoardDecision(ctx, data, optionId, localPolicy(ctx.state));
+    },
+
     ballot(ctx, data, optionId) {
       const { state, rng } = ctx;
       const m = MEASURES[data.measureId];

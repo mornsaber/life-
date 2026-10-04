@@ -30,7 +30,7 @@ export const TRANSIT_TAX_BOOST = 15;
 export function transitQuality(state) {
   const region = regionOf(state);
   const local = state.civic?.local?.[region.id];
-  return Math.min(100, (region.transit ?? 0) + (local?.passed?.includes('transitTax') ? TRANSIT_TAX_BOOST : 0));
+  return Math.max(0, Math.min(100, (region.transit ?? 0) + (local?.passed?.includes('transitTax') ? TRANSIT_TAX_BOOST : 0) + (local?.transitBoost ?? 0)));
 }
 
 export const ownsCar = (state) => (state.vehicles?.owned ?? []).some((v) => ['car', 'bike'].includes(VEHICLE_TYPES[v.typeId]?.category));

@@ -15,8 +15,11 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
-import { resolvedMode } from '../src/modules/transit/Transit.js';
-import { voteShare, runEligibility } from '../src/modules/politics/Campaigns.js';
+import { resolvedMode, transitQuality } from '../src/modules/transit/Transit.js';
+import { railBoard } from '../src/modules/career/Transport.js';
+import { transitBoardEligibility } from '../src/modules/civic/TransitBoard.js';
+import { approvalOdds as ssdiOdds } from '../src/modules/health/SSDI.js';
+import { voteShare, runEligibility, appointmentEligibility } from '../src/modules/politics/Campaigns.js';
 import { assignFacility } from '../src/modules/legal/JusticeSystem.js';
 import { bestEntryLevel, levelCheck } from '../src/modules/career/CareerEngine.js';
 import { levelById } from '../src/modules/career/Ladder.js';
@@ -2378,6 +2381,45 @@ const tests = {
     const ta = setup(184, 30);
     grantCredential(ta.ctx, 'cdlA', { silent: true });
     assert.ok(hasCredential(ta.state, 'cdlB'), 'Class A covers Class B');
+  },
+  'rail boards, the transit board, federal agents, postal carriers, claims staff and appointed city managers'() {
+    const r = setup(191, 25);
+    giveJob(r.engine, 'railroad', 'conductor');
+    assert.equal(railBoard(r.state.career.job), 'extra', 'junior conductors work the extra board');
+    r.state.career.job.yearsAtEmployer = 12;
+    assert.equal(railBoard(r.state.career.job), 'regular');
+    // Transit board: appointed directors change service for everyone.
+    const tb = setup(192, 40);
+    tb.state.character.regionId = 'chicago';
+    tb.state.politics.recognition = 50;
+    assert.ok(transitBoardEligibility(tb.state).ok);
+    const before = transitQuality(tb.state);
+    tb.engine.rng.chance = () => true;
+    tb.engine.dispatch('civic.transitBoard');
+    assert.ok(tb.state.civic.transitBoard);
+    tb.engine.context().prompt({ type: 'civic.transitDecision', icon: 'x', title: 'x', text: 'x', options: [{ id: 'build', label: 'x' }], data: { index: 1 } });
+    resolve(tb.engine, 'civic.transitDecision', 'build');
+    assert.ok(transitQuality(tb.state) > before, 'rail extension improves service');
+    // Federal agents: hired before 37, Top Secret with polygraph, academy at Quantico.
+    assert.equal(applicationEligibility(setup(193, 38).state, 'fbi').ok, false);
+    assert.equal(getProfession('fbi').levels[0].req.clearance, 'topSecret');
+    assert.equal(getProfession('fbi').mandatoryRetirement, 57);
+    // Former claims staff do better with their own SSDI claim.
+    const c = setup(194, 50);
+    addCondition(c.ctx, 'backInjury', { severity: 85, quiet: true });
+    const base = ssdiOdds(c.state, 'initial', false);
+    c.state.career.history.push({ professionId: 'benefitsClaims', startAge: 40, endAge: 45, peakGrade: 5 });
+    assert.ok(ssdiOdds(c.state, 'initial', false) > base);
+    // City manager: hired by the council, not elected; county commissioner: elected.
+    const cm = setup(195, 45);
+    assert.equal(runEligibility(cm.state, 'cityManager').ok, false);
+    cm.state.education.degrees.push({ type: 'master', programId: 'mpa', major: 'publicAdministration', year: 30 });
+    cm.state.career.history.push({ professionId: 'municipalAdmin', startAge: 30, endAge: 44, peakGrade: 7 });
+    assert.ok(appointmentEligibility(cm.state, 'cityManager').ok);
+    cm.engine.rng.chance = () => true;
+    cm.engine.dispatch('politics.applyAppointed', 'cityManager');
+    assert.equal(cm.state.politics.office?.id, 'cityManager');
+    assert.ok(runEligibility(setup(196, 30).state, 'countyCommissioner').ok);
   },
 };
 

@@ -22,6 +22,7 @@ export function runEligibility(state, officeId) {
   if (!office) return { ok: false, reason: 'Unknown office' };
   if (p.campaign) return { ok: false, reason: 'Already campaigning' };
   if (p.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
+  if (office.appointedBy) return { ok: false, reason: `Hired by ${office.appointedBy}, not elected` };
   if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
   if (residencyYears(state) < office.residency) return { ok: false, reason: `${office.residency} yr residency in ${stateOf(state).name}` };
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
@@ -90,6 +91,20 @@ function endorsementEligible(state, id) {
     case 'activists': return (state.civic?.activism?.influence ?? 0) >= 30;
     default: return false;
   }
+}
+
+/** Appointed offices (city manager): apply, and the council decides. */
+export function appointmentEligibility(state, officeId) {
+  const office = OFFICES[officeId];
+  if (!office?.appointedBy) return { ok: false, reason: 'Not an appointed office' };
+  if (state.politics.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
+  if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
+  if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
+  if (office.req) {
+    const check = checkRequirements(state, office.req);
+    if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
+  }
+  return { ok: true };
 }
 
 export const CampaignActions = {

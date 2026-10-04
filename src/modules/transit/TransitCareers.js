@@ -65,7 +65,7 @@ export const TRANSIT_PROFESSIONS = {
     benefits: { unionPension: 'union' },
     employers: ['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail'],
     entry: { education: { level: 'highschool' } },
-    rotation: { label: 'on call for trains', away: 0.3 },
+    rotation: { label: 'on call for trains', away: 0.3 }, seniority: true, furlough: true,
     levels: [
       L('trainee', 'Conductor Trainee', 3, { years: 1 }),
       L('conductor', 'Conductor', 5, { req: { credentials: ['conductorCert'] } }),
@@ -74,6 +74,21 @@ export const TRANSIT_PROFESSIONS = {
       L('trainmaster', 'Trainmaster', 6, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 60 }),
       L('roadForeman', 'Road Foreman of Engines', 7, { track: 'mgmt', req: { credentials: ['locomotiveEngineer'] }, abilities: ['supervise', 'hire'], reports: 120 }),
       L('superintendent', 'Division Superintendent', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 1500 }),
+    ],
+  },
+  paratransit: {
+    id: 'paratransit', name: 'Paratransit & Medical Transport', icon: '♿', sector: 'private', background: 'strict', payMultiplier: 0.8, minAge: 21,
+    sizes: { small: 3, medium: 3, large: 1 },
+    union: { chance: 0.35, name: 'Amalgamated Transit Union Local 1181', strike: true },
+    employers: ['MobilityLink Paratransit', 'Accessible Transit Services', 'CareRide Medical Transport', 'Senior Express Shuttle'],
+    entry: { credentials: ['driverLicense'] },
+    valued: ['passengerEndorsement', 'cdlB', 'emr', 'emt'],
+    levels: [
+      L('driver', 'Paratransit Driver', 2),
+      L('senior', 'Senior Paratransit Operator', 3),
+      L('travelTrainer', 'Travel Trainer', 4, { track: 'ic' }),
+      L('dispatcher', 'Paratransit Dispatcher', 3, { track: 'mgmt', abilities: ['supervise'], reports: 20 }),
+      L('opsManager', 'Paratransit Operations Manager', 5, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 120 }),
     ],
   },
   schoolBus: {

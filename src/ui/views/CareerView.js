@@ -6,7 +6,7 @@
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
 import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
-import { currentLevel, seniorityTier, AGE_LIMIT_121 } from '../../modules/career/Transport.js';
+import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } from '../../modules/career/Transport.js';
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
 import { hasCredential as holds } from '../../modules/credentials/LicensingEngine.js';
@@ -237,7 +237,8 @@ export { compactMoney };
 function transportRows(state, job, profession) {
   const level = currentLevel(job);
   const rows = [];
-  if (profession.seniority) rows.push(['Seniority list', { junior: '🗓️ Junior — reserve & holidays', mid: '📅 Mid-list', senior: '⭐ Senior — holds the best trips' }[seniorityTier(job)]]);
+  if (profession.id === 'railroad' && level?.track !== 'mgmt') rows.push(['Seniority board', RAIL_BOARDS[railBoard(job)].label]);
+  else if (profession.seniority) rows.push(['Seniority list', { junior: '🗓️ Junior — reserve & holidays', mid: '📅 Mid-list', senior: '⭐ Senior — holds the best trips' }[seniorityTier(job)]]);
   if (level?.flying) rows.push(['FAA medical', job.grounded ? '<span class="neg">Deferred — grounded</span>' : '✅ First-class, current']);
   if (level?.part121) rows.push(['Age-65 rule', `${Math.max(0, AGE_LIMIT_121 - state.character.age)} yr of airline flying left`]);
   if (profession.rotation) rows.push(['Time away', `${Math.round(profession.rotation.away * 100)}% of the year ${esc(profession.rotation.label)}`]);

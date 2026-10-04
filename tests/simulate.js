@@ -292,6 +292,7 @@ function randomActions(state) {
   if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
   if (state.career.job?.professionId === 'education' && player.chance(0.2)) tries.push(() => act('teaching.summer', player.pick(['rest', 'summerSchool', 'camp', 'tutoring', 'seasonal', 'curriculum'])));
   if (age >= 16 && player.chance(0.05)) tries.push(() => act('transit.setMode', player.pick(['auto', 'drive', 'transit', 'bike', 'walk', 'rideshare'])));
+  if (age >= 25 && player.chance(0.02)) tries.push(() => act('civic.transitBoard'), () => act('politics.applyAppointed', 'cityManager'));
   const cv = state.civic;
   if (age >= 14 && player.chance(0.04)) tries.push(() => act('civic.joinCause', player.pick(Object.keys(CAUSES))));
   if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));

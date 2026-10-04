@@ -9,11 +9,16 @@
  *   pension    retirement plan service credit accrues to
  *   req        credentials/experience the law requires of candidates (sheriffs must be
  *              certified peace officers; district attorneys must be practicing lawyers)
+ *   appointedBy  not elected: you apply and the body named here hires you; at the end
+ *              of each contract it renews you if your approval holds up
  *   kind       decision style in office (legislative, executive, judicial, prosecutor, sheriff)
  */
 export const OFFICES = {
   schoolBoard: { name: 'School Board Member', icon: '🏫', level: 1, term: 4, termLimit: 0, salary: 6000, fullTime: false, minAge: 18, residency: 1, cost: 8000, pension: 'electedOfficials' },
   cityCouncil: { name: 'City Council Member', icon: '🏙️', level: 1, term: 4, termLimit: 3, salary: 35000, fullTime: false, minAge: 18, residency: 1, cost: 25000, pension: 'electedOfficials' },
+  countyCommissioner: { name: 'County Commissioner', icon: '🏞️', level: 1, term: 4, termLimit: 0, salary: 55000, fullTime: false, minAge: 18, residency: 1, cost: 40000, pension: 'electedOfficials', kind: 'executive' },
+  cityManager: { name: 'City Manager', icon: '🏢', level: 2, term: 4, termLimit: 0, salary: 210000, fullTime: true, minAge: 25, residency: 0, cost: 0, pension: 'electedOfficials', kind: 'executive', appointedBy: 'the city council',
+    req: { education: { level: 'bachelor' }, experience: { professions: ['municipalAdmin', 'planning', 'publicWorks'], years: 8 } } },
   sheriff: { name: 'County Sheriff', icon: '⭐', level: 2, term: 4, termLimit: 0, salary: 135000, fullTime: true, minAge: 21, residency: 1, cost: 120000, pension: 'electedOfficials', kind: 'sheriff',
     req: { credentials: ['post'], experience: { professions: ['sheriff', 'police', 'statePolice', 'privatePolice', 'jail', 'corrections'], years: 5 } } },
   districtAttorney: { name: 'District Attorney', icon: '👩‍⚖️', level: 2, term: 4, termLimit: 0, salary: 185000, fullTime: true, minAge: 25, residency: 1, cost: 180000, pension: 'electedOfficials', kind: 'prosecutor',
@@ -27,7 +32,7 @@ export const OFFICES = {
   usSenator: { name: 'U.S. Senator', icon: '🦅', level: 5, term: 6, termLimit: 0, salary: 174000, fullTime: true, minAge: 30, residency: 3, cost: 18000000, pension: 'fers', statewide: true },
 };
 
-export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'sheriff', 'districtAttorney', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
+export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'countyCommissioner', 'cityManager', 'sheriff', 'districtAttorney', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
 
 export const ENDORSEMENTS = {
   labor: { name: 'Labor unions', icon: '✊' },

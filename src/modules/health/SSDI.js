@@ -19,7 +19,7 @@
 import { clamp } from '../../core/Random.js';
 import { primaryInsuranceAmount } from '../retirement/RetirementEngine.js';
 import { disablingConditions } from './HealthEngine.js';
-import { DEGREE_RANK } from '../../core/State.js';
+import { DEGREE_RANK, yearsInProfession } from '../../core/State.js';
 
 export const STAGES = {
   initial: { label: 'Initial application', odds: 0.35 },
@@ -50,7 +50,9 @@ export function approvalOdds(state, stage, lawyer) {
   const age = state.character.age;
   const educated = state.education.degrees.some((d) => (DEGREE_RANK[d.type] ?? 0) >= (DEGREE_RANK.bachelor ?? 4));
   const grid = age >= 55 ? 0.2 : age >= 50 ? 0.12 : 0;
-  return clamp(STAGES[stage].odds + (worst - 80) / 150 + grid * (educated ? 0.5 : 1) + (lawyer && stage === 'hearing' ? 0.15 : 0), 0.03, 0.9);
+  // Former SSA/VA claims staff know exactly what a complete file looks like.
+  const insider = yearsInProfession(state, ['benefitsClaims']) >= 2 ? 0.08 : 0;
+  return clamp(STAGES[stage].odds + (worst - 80) / 150 + grid * (educated ? 0.5 : 1) + (lawyer && stage === 'hearing' ? 0.15 : 0) + insider, 0.03, 0.9);
 }
 
 function file(ctx, onsetAge) {

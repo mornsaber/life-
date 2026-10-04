@@ -66,6 +66,34 @@ const BIDS = {
   senior: ['You held the best trips on the bid: long layovers in good cities, every holiday at home.', 'Top of the seniority list. You fly the schedule you want.'],
 };
 
+/**
+ * Railroad seniority boards: junior crews work the extra board — on call
+ * around the clock, called with two hours' notice for any train, any time.
+ * Seniority eventually holds a regular assignment with predictable days off.
+ */
+export function railBoard(job) {
+  if (job.yearsAtEmployer < 4) return 'extra';
+  if (job.yearsAtEmployer < 10) return 'pool';
+  return 'regular';
+}
+export const RAIL_BOARDS = {
+  extra: { label: '📟 Extra board — on call 24/7', stress: 5, happy: -3, text: ['Extra board: called at 2 a.m. for a coal train, 14 hours on duty, a motel in another state, and called again before you were rested.', 'You missed your kid\'s birthday, two weddings and Thanksgiving waiting for the phone to ring.'] },
+  pool: { label: '🔁 Pool freight — first in, first out', stress: 2, happy: -1, text: ['Pool service: you never knew which day you\'d be home, but at least you knew the route.'] },
+  regular: { label: '📅 Regular assignment — your own job and days off', stress: -1, happy: 2, text: ['Your seniority finally holds a regular job: same train, same days off, home every night.'] },
+};
+
+function railBoardTick(ctx, job) {
+  const b = RAIL_BOARDS[railBoard(job)];
+  ctx.stat('stress', b.stress);
+  ctx.stat('happiness', b.happy);
+  if (ctx.rng.chance(0.5)) ctx.log(ctx.rng.pick(b.text), '🚂');
+  // Fatigue: the extra board is where the close calls happen.
+  if (railBoard(job) === 'extra' && ctx.rng.chance(0.04)) {
+    job.performance = Math.max(0, job.performance - 10);
+    ctx.log('Exhausted after a 13-hour call, you missed a signal. The train stopped short of the red — barely. The FRA investigation went in your file.', '🚦', 'bad');
+  }
+}
+
 function medicalTick(ctx, job, level) {
   const { state } = ctx;
   const problem = medicalProblem(state);
@@ -233,6 +261,7 @@ export const TransportModule = {
       ctx.stat('happiness', tier === 'senior' ? 3 : tier === 'junior' ? -2 : 0);
       ctx.stat('stress', tier === 'junior' ? 3 : 0);
     }
+    if (profession.id === 'railroad' && level.track !== 'mgmt') railBoardTick(ctx, job);
     if (profession.rotation) rotationTick(ctx, job, profession, level);
     if (['aviation', 'flightAttendant'].includes(profession.id) && rng.chance(0.5)) {
       ctx.log(rng.pick(['You flew standby to Rome on your days off — free.', 'Nonrev trip to Tokyo with your pass riders.', 'A long weekend in Hawaii, courtesy of your travel benefits.']), '🌴', 'good');

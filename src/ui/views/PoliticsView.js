@@ -4,6 +4,7 @@
  */
 import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
+import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
 
 export function politicsView(state) {
@@ -34,13 +35,14 @@ export function politicsView(state) {
     : '';
   const ladder = OFFICE_ORDER.map((id) => {
     const of = OFFICES[id];
-    const check = runEligibility(state, id);
-    const est = check.ok ? Math.round(voteShare(state, id, { funds: of.cost * 0.4, endorsements: [] }) * 100) : null;
+    const appointed = Boolean(of.appointedBy);
+    const check = appointed ? appointmentEligibility(state, id) : runEligibility(state, id);
+    const est = check.ok && !appointed ? Math.round(voteShare(state, id, { funds: of.cost * 0.4, endorsements: [] }) * 100) : null;
     return `<li class="job-row ${check.ok ? '' : 'locked'}">
       <span class="job-icon">${of.icon}</span>
-      <div class="job-info"><b>${of.name}</b><small>${money(of.salary)}/yr · ${of.term}-yr term${of.termLimit ? `, ${of.termLimit}-term limit` : ''} · ${of.fullTime ? 'full-time' : 'part-time'} · campaign ~${money(of.cost)}${of.judicial ? ' · usually filled by appointment' : ''}</small>
+      <div class="job-info"><b>${of.name}</b><small>${money(of.salary)}/yr · ${appointed ? `${of.term}-yr contract · hired by ${of.appointedBy}` : `${of.term}-yr term${of.termLimit ? `, ${of.termLimit}-term limit` : ''} · campaign ~${money(of.cost)}`} · ${of.fullTime ? 'full-time' : 'part-time'}${of.judicial ? ' · usually filled by appointment' : ''}</small>
         ${est !== null ? `<small class="req">Projected ≈${est}% with a typical campaign</small>` : ''}</div>
-      ${button(check.ok ? 'Run' : '🔒', 'politics.run', { arg: id, variant: 'small', disabled: !check.ok || Boolean(c), title: check.reason ?? '' })}
+      ${appointed ? button(check.ok ? 'Apply' : '🔒', 'politics.applyAppointed', { arg: id, variant: 'small', disabled: !check.ok, title: check.reason ?? '' }) : button(check.ok ? 'Run' : '🔒', 'politics.run', { arg: id, variant: 'small', disabled: !check.ok || Boolean(c), title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
   }).join('');

@@ -15,7 +15,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { stateOf, regionOf } from '../life/Regions.js';
 import { promotionStatus } from '../career/CareerEngine.js';
 import { OFFICES } from './Offices.js';
-import { voteShare, CampaignActions, CampaignResolvers } from './Campaigns.js';
+import { voteShare, CampaignActions, CampaignResolvers, appointmentEligibility } from './Campaigns.js';
 
 function takeOffice(ctx, officeId, { appointed = false } = {}) {
   const { state } = ctx;
@@ -242,7 +242,14 @@ export const PoliticsEngine = {
       if (o.termYearsLeft <= 0) {
         const served = p.history.filter((h) => h.officeId === o.id).reduce((s, h) => s + h.terms, 0) + o.terms;
         if (office.termLimit && served >= office.termLimit) leaveOffice(ctx, 'Term-limited');
-        else {
+        else if (office.appointedBy) {
+          // Appointed: the council renews your contract if things are going well.
+          if (o.approval >= 45) {
+            o.terms += 1;
+            o.termYearsLeft = office.term;
+            ctx.log(`${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} renewed your contract as ${office.name}.`, '✍️', 'good');
+          } else leaveOffice(ctx, `${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} declined to renew your contract`);
+        } else {
           ctx.prompt({
             type: 'politics.reelection',
             icon: '🗳️',
@@ -286,6 +293,19 @@ export const PoliticsEngine = {
 
   actions: {
     ...CampaignActions,
+    /** Apply for an appointed office (city manager). */
+    applyAppointed(ctx, officeId) {
+      const { state, rng } = ctx;
+      const check = appointmentEligibility(state, officeId);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      if (state.yearly[`politics.apply.${officeId}`]) return ctx.toast('You already interviewed this year.', 'warn');
+      state.yearly[`politics.apply.${officeId}`] = 1;
+      const office = OFFICES[officeId];
+      const odds = 0.25 + (state.career.job?.performance ?? 50) / 300 + yearsInProfession(state, ['municipalAdmin']) * 0.015;
+      if (!rng.chance(Math.min(0.75, odds))) return ctx.log(`${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} hired another candidate as ${office.name}.`, '📭', 'warn');
+      takeOffice(ctx, officeId, { appointed: true });
+      return undefined;
+    },
     resign(ctx) {
       if (ctx.state.politics.office) leaveOffice(ctx, 'Resigned');
     },

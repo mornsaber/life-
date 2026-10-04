@@ -11,6 +11,7 @@ import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
 import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
 import { atWar } from '../../modules/world/War.js';
+import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 
 function faithCard(state) {
   const c = state.community;
@@ -145,6 +146,7 @@ function localCard(state) {
     ['Public safety', `${local?.safety ?? 50}/100`],
     ['National', war ? `⚔️ At war: ${esc(war.operation)}${war.draft ? ' · draft in effect' : ''}` : '🕊️ At peace'],
   ])}
+    <h4 class="sub">Transit authority board</h4>${state.civic.transitBoard ? `<p class="fine">🚇 ${state.civic.transitBoard.chair ? 'Board chair' : 'Director'} · ${state.civic.transitBoard.years} yr · $12,000 stipend</p>` : `<div class="toggle-row">${button('🚇 Seek an appointment', 'civic.transitBoard', { variant: 'small', hint: transitBoardEligibility(state).ok ? 'The mayor appoints directors' : transitBoardEligibility(state).reason, disabled: !transitBoardEligibility(state).ok })}</div>`}
     ${recent.length ? `<h4 class="sub">Recent ballot measures</h4><ul class="history">${recent.map((h) => `<li>${MEASURES[h.id].icon} ${esc(MEASURES[h.id].name)} <small>age ${h.age} · ${h.passed ? 'passed' : 'failed'} (${h.yes}% yes)</small></li>`).join('')}</ul>` : '<p class="fine">Local measures appear on your ballot most years.</p>'}`, { icon: '🗳️' });
 }
 
