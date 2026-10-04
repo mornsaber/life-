@@ -292,3 +292,16 @@ export function statusPill(status) {
   const tone = { active: 'good', suspended: 'warn', expired: 'warn', revoked: 'bad', training: 'cyan' }[status] ?? '';
   return chip(status, tone);
 }
+
+/**
+ * A collapsible section. `key` lets the renderer keep it open (or closed)
+ * across re-renders, since the whole view is rebuilt on every change.
+ */
+export function disclosure(key, summary, body, { open = false, count = null } = {}) {
+  return `<details class="disclosure" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${summary}${count != null ? ` <span class="count">${count}</span>` : ''}</summary><div class="disclosure-body">${body}</div></details>`;
+}
+
+/** A compact choice row: icon, title, one line of detail, a status line (odds or what's missing) and an action. */
+export function optionRow({ icon = '', title, sub = '', meta = '', tone = '', action = '', locked = false }) {
+  return `<li class="job-row opt-row ${locked ? 'locked' : ''}"><span class="job-icon" aria-hidden="true">${icon}</span><div class="job-info"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}${meta ? `<small class="opt-meta ${tone}">${meta}</small>` : ''}</div>${action}</li>`;
+}

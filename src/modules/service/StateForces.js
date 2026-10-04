@@ -56,13 +56,13 @@ export function sdfEligibility(state) {
  */
 export const SDF_SLOTS = [Infinity, Infinity, 10, 6, 4, 2, 4, 3, 2, 1];
 export const SDF_SCHOOLS = {
-  bot: { name: 'Basic Orientation Training', forRank: 1, stat: 'fitness', base: 0.95 },
-  mems: { name: 'Military Emergency Management Specialist (MEMS) Basic Badge', forRank: 2, stat: 'smarts', base: 0.85 },
-  nco: { name: 'State Guard NCO Academy', forRank: 3, stat: 'smarts', base: 0.85 },
-  woc: { name: 'Warrant Officer Candidate Course', forRank: 5, stat: 'smarts', base: 0.8 },
-  ocs: { name: 'State Guard Officer Candidate School', forRank: 6, stat: 'smarts', base: 0.8 },
-  memsSenior: { name: 'MEMS Senior Badge', forRank: 7, stat: 'smarts', base: 0.8 },
-  staff: { name: 'State Guard Command and Staff Course', forRank: 8, stat: 'smarts', base: 0.75 },
+  bot: { short: 'Orientation', name: 'Basic Orientation Training', forRank: 1, stat: 'fitness', base: 0.95 },
+  mems: { short: 'MEMS Basic', name: 'Military Emergency Management Specialist (MEMS) Basic Badge', forRank: 2, stat: 'smarts', base: 0.85 },
+  nco: { short: 'NCO Academy', name: 'State Guard NCO Academy', forRank: 3, stat: 'smarts', base: 0.85 },
+  woc: { short: 'Warrant Candidate', name: 'Warrant Officer Candidate Course', forRank: 5, stat: 'smarts', base: 0.8 },
+  ocs: { short: 'OCS', name: 'State Guard Officer Candidate School', forRank: 6, stat: 'smarts', base: 0.8 },
+  memsSenior: { short: 'MEMS Senior', name: 'MEMS Senior Badge', forRank: 7, stat: 'smarts', base: 0.8 },
+  staff: { short: 'Command & Staff', name: 'State Guard Command and Staff Course', forRank: 8, stat: 'smarts', base: 0.75 },
 };
 export const sdfSchoolFor = (rank) => Object.entries(SDF_SCHOOLS).find(([, s]) => s.forRank === rank)?.[0] ?? null;
 export const timeInRank = (rank) => (rank <= 1 ? 1 : 2);

@@ -793,3 +793,20 @@ select:focus { border-color: var(--cyan); }
 .mini-list small { color: var(--muted); }
 .report-row { display: flex; flex-direction: column; gap: 4px; }
 .report-row .toggle-row { flex-wrap: wrap; }
+
+/* ---------- Disclosures & compact option rows ---------- */
+.disclosure { margin: 8px 0; border: 1px solid var(--line); border-radius: 8px; background: var(--sunken); }
+.disclosure > summary { cursor: pointer; padding: 8px 12px; font-weight: 600; font-size: 13px; list-style: none; display: flex; align-items: center; gap: 8px; }
+.disclosure > summary::-webkit-details-marker { display: none; }
+.disclosure > summary::before { content: '▸'; color: var(--muted); transition: transform .15s; }
+.disclosure[open] > summary::before { transform: rotate(90deg); }
+.disclosure > summary .count { margin-left: auto; font-size: 11px; font-weight: 600; color: var(--muted); background: var(--panel, transparent); border: 1px solid var(--line); border-radius: 999px; padding: 1px 8px; }
+.disclosure-body { padding: 0 12px 8px; }
+.opt-row { padding: 8px 0; }
+.opt-row .opt-meta { color: var(--muted); font-size: 11.5px; margin-top: 2px; }
+.opt-row .opt-meta.good { color: var(--good, #1a7f37); }
+.opt-row .opt-meta.warn { color: var(--warn, #b26a00); }
+.job-info .toggle-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
+.next-step { padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; margin: 6px 0; font-size: 13px; }
+.chip-row .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

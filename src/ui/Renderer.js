@@ -25,6 +25,7 @@ import { businessView } from './views/BusinessView.js';
 import { moneyView } from './views/MoneyView.js';
 import { legalView } from './views/LegalView.js';
 import { militaryView, emergencyView } from './views/ServiceViews.js';
+import { civicServiceView } from './views/CivicServiceView.js';
 import { homeView } from './views/HomeView.js';
 import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
@@ -41,7 +42,7 @@ import { PHASES } from '../modules/economy/EconomyEngine.js';
 export const SECTIONS = [
   { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
-  { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }] },
+  { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
   { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
   { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }, { id: 'health', label: 'Health', icon: '🩺' }] },
@@ -76,6 +77,7 @@ export const VIEWS = {
   gov: govView,
   military: militaryView,
   emergency: emergencyView,
+  civic: civicServiceView,
   school: schoolView,
   licenses: licensesView,
   money: moneyView,
@@ -150,7 +152,11 @@ export class Renderer {
   render(state) {
     if (!this.root) return;
     const focusKey = focusKeyOf(document.activeElement);
+    // Collapsible sections remember whether you opened or closed them.
+    this.disclosures ??= {};
+    for (const d of this.root.querySelectorAll('details[data-key]')) this.disclosures[d.dataset.key] = d.open;
     this.root.innerHTML = this.html(state);
+    for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
     this.applyLogFilter();
   }
