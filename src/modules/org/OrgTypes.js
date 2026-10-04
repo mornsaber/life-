@@ -165,9 +165,9 @@ export const ORG_TYPES = {
   },
   corporation: {
     name: (c) => c.rng.pick(['Meridian Holdings', 'Apex Global Industries', 'Keystone Corporation', 'Summit Brands Inc.', 'Northwind Group']), scope: 'market', sector: 'private',
-    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors', occupation: 'corporate', levelId: 'ceo' },
     departments: [
-      { id: 'operations', name: 'Operations', occupations: ['corporate'], head: { title: 'Chief Operating Officer', selection: 'internal', occupation: 'corporate', levelId: 'ceo' } },
+      { id: 'operations', name: 'Operations', occupations: ['corporate'], head: { title: 'Chief Operating Officer', selection: 'board' } },
       { id: 'finance', name: 'Finance', occupations: ['accounting', 'finance', 'actuary'], head: { title: 'Chief Financial Officer', selection: 'board' } },
       { id: 'technology', name: 'Technology', occupations: ['tech'], head: { title: 'Chief Technology Officer', selection: 'board' } },
       { id: 'legal', name: 'Legal Department', occupations: ['law', 'legalSupport'], head: { title: 'General Counsel', selection: 'board' } },
@@ -194,7 +194,7 @@ export const ORG_TYPES = {
   },
   insurer: {
     name: (c) => c.rng.pick(['Mutual Life Assurance', 'Keystone Insurance Group', 'Great Lakes Re', 'Shield Casualty']), scope: 'market', sector: 'private',
-    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors', occupation: 'insurance', levelId: 'ceo' },
     departments: [
       { id: 'underwriting', name: 'Underwriting & Claims', occupations: ['insurance'], head: { title: 'Chief Underwriting Officer', selection: 'internal' } },
       { id: 'actuarial', name: 'Actuarial', occupations: ['actuary'], head: { title: 'Chief Actuary', selection: 'internal', occupation: 'actuary', levelId: 'chief' } },

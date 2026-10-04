@@ -78,6 +78,18 @@ function check(state, where) {
     if (org.ceo && !org.people[org.ceo]) flag('business ceo missing from people', where);
     if (org.business && !orgType(org.typeId)) flag(`business org with unknown type ${org.typeId}`, where);
   }
+  // Head posts: the player's seat is marked exactly where they hold it.
+  const job0 = state.career.job;
+  for (const org of Object.values(orgs)) {
+    const mine = job0?.headOf?.orgId === org.id;
+    if (org.playerHead && !(mine && !job0.headOf.deptId)) flag('org marked as player-headed but the player is not its head', where);
+    if (org.playerHead && org.head) flag('player-headed org also has an NPC head', where);
+    for (const d of Object.values(org.departments)) {
+      if (d.playerHead && !(mine && job0.headOf.deptId === d.id)) flag('department marked as player-headed but the player is not its head', where);
+      if (d.playerHead && d.head) flag('player-headed department also has an NPC head', where);
+    }
+  }
+  if (job0?.headOf) seenPaths.add(job0.headOf.deptId ? 'department head' : 'organization head');
   const job = state.career.job;
   if (job) {
     nanScan(job, 'job');
@@ -117,7 +129,7 @@ const ACTIONS = [
   ['business.appointCeo'], ['business.makePassive'], ['business.takeBack', 'holding'], ['business.sellHolding', 'holding', 0.1],
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
-  ['orgs.appoint', 'appoint', 0.5], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['orgs.appoint', 'appoint', 0.5], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
 ];
 
 function argFor(kind, state, rng) {
@@ -142,6 +154,7 @@ function argFor(kind, state, rng) {
     case 'stake': return rng.pick(['0.25', '0.49']);
     case 'appoint': { const a = rng.pick(appointmentsInReach(state, { ensure: false }).concat([null])); return a ? `${a.org.id}|${a.deptId ?? '-'}|${rng.pick(['professional', 'loyalist', 'reformer'])}` : 'none'; }
     case 'license': return biz ? rng.pick(licensesFor(biz.typeId)) : 'none';
+    case 'exec': return rng.pick((state.career.execSearch?.listings ?? []).map((l) => l.id).concat(['none']));
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;

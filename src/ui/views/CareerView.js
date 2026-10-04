@@ -19,6 +19,7 @@ import { chainOfCommand } from '../../modules/org/Organizations.js';
 import { BUSINESS_TYPES, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
+import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS } from '../../modules/org/Executives.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
@@ -200,10 +201,12 @@ function organizationCard(state, job) {
   if (!c) return '';
   const who = (p, extra = '') => (p ? `<b>${esc(p.name)}</b> <small class="muted">${esc(p.title)}${p.body ? '' : `${p.selection && p.selection !== 'internal' ? ` · ${SELECTION_LABEL[p.selection] ?? p.selection}` : ''}`}${extra}</small>` : '—');
   const people = (list) => list.map((p) => `<li>${esc(p.name)} <small class="muted">${esc(p.title)} · ${p.years} yr</small></li>`).join('');
-  return card('🏢 Organization', `${kv([
+  const lead = c.leads === 'org' ? `<p>${chip(`👑 You run ${esc(c.org.name)}`, 'honor')} ${job.headOf.appointedBy ? chip(`Serves at the pleasure of ${esc(job.headOf.appointedBy)}`, job.headOf.selection === 'appointed' ? 'warn' : '') : ''}</p>`
+    : c.leads === 'dept' ? `<p>${chip(`🏢 You head ${esc(c.dept.name)}`, 'honor')} ${job.headOf.selection === 'appointed' && job.headOf.appointedBy ? chip(`Appointed by ${esc(job.headOf.appointedBy)}`, 'warn') : ''}</p>` : '';
+  return card('🏢 Organization', `${lead}${kv([
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}`],
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
-    ['Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
+    [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
     c.manager ? ['Manager', who(c.manager)] : null,
     c.deptHead ? ['Department head', who(c.deptHead)] : null,
     c.orgHead ? ['Leadership', who(c.orgHead)] : null,
@@ -228,6 +231,24 @@ function reportsPanel(state, job, reports) {
       ['🚪', fire ? 'Terminate' : 'Recommend termination', 'orgs.terminate'],
     ].map(([icon, label, action]) => button(`${icon} ${label}`, action, { arg: p.id, variant: action === 'orgs.terminate' ? 'tiny danger' : 'tiny', disabled: left <= 0 })).join('')}</div></li>`).join('');
   return `<p class="fine">🧑‍💼 Your direct reports${job.department ? ` (${job.department.headcount} staff in all)` : ''} — ${left > 0 ? `${left} management action${left > 1 ? 's' : ''} left this year` : 'no management time left this year'}${fire ? '' : ' · firing needs your manager\'s sign-off'}</p><ul class="history">${rows}</ul>`;
+}
+
+/** Executive openings at other organizations, and how you stack up. */
+function executiveSearchCard(state) {
+  const search = state.career.execSearch;
+  if (!search?.listings?.length || state.character.age < 30) return '';
+  const r = executiveRecord(state);
+  const used = state.yearly['orgs.applyExec'] ?? 0;
+  const rows = search.listings.map((l) => {
+    const e = executiveEligibility(state, l);
+    const odds = e.ok ? Math.round(executiveOdds(state, l) * 100) : 0;
+    return `<li class="job-row ${e.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">👔</span>
+      <div class="job-info"><b>${esc(l.title)}</b> <small class="muted">${esc(l.orgName)}${l.deptName ? ` · ${esc(l.deptName)}` : ''}</small><small>${l.selection === 'appointed' ? `Appointed by ${esc(l.appointedBy)}` : l.selection === 'board' ? 'Chosen by the board' : 'Executive search'} · ${l.deptId ? `6+ yrs in ${esc(l.occupations.map((o) => getProfession(o)?.name ?? o).join(' / '))}` : '15+ yrs, graduate degree (MBA) or senior-executive record'}</small>
+        ${e.ok ? `<small class="req">≈${odds}% chance the search committee picks you</small>` : ''}</div>
+      ${button(e.ok ? 'Apply' : '🔒', 'orgs.applyExec', { arg: l.id, variant: 'small', disabled: !e.ok || used >= EXEC_APPLICATIONS, title: e.reason ?? '' })}
+      ${e.ok ? '' : `<span class="why">${esc(e.reason)}</span>`}</li>`;
+  }).join('');
+  return card('Executive Search', `<p class="muted">Leadership posts open at other organizations this year. Your record: ${r.years} yrs of work · peak grade G${r.peakGrade}${r.headed ? ' · has led a department or organization' : ''}${r.ownerYears ? ` · ran a business ${r.ownerYears} yrs` : ''}${r.mba ? ' · MBA' : r.graduate ? ' · graduate degree' : ''}. ${EXEC_APPLICATIONS - used} application${EXEC_APPLICATIONS - used === 1 ? '' : 's'} left this year.</p><ul class="job-board">${rows}</ul>`, { icon: '👔' });
 }
 
 /** Posts one rung up this year: open, or who holds them. */
@@ -306,7 +327,7 @@ export function careerView(state, ui = {}) {
   const history = stints.length
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

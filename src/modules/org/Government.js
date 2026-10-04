@@ -25,6 +25,10 @@ import { OFFICES } from '../politics/Offices.js';
 import { orgOf, orgType, sideRng, newPerson, personOf, initOrgs, ensureOrgOfType } from './Organizations.js';
 import { ORG_TYPES } from './OrgTypes.js';
 import { getProfession } from '../career/JobTrees.js';
+import { levelById } from '../career/Ladder.js';
+import { leavePost } from './Executives.js';
+import { ensureDepartment } from '../career/ManagementEngine.js';
+import { recalcSalary } from '../career/Compensation.js';
 import { REGIONS } from '../life/Regions.js';
 
 /** Which elected office holds the power behind an "appointed by …" phrase. */
@@ -110,6 +114,17 @@ export function politicalTurnover(ctx, job) {
   const newAdministration = rng.chance(0.4);
   const replace = (current, head, deptId) => {
     if (officeHeld(state, org, deptId)) return current;
+    // You hold this post: an appointee serves at the pleasure of the administration.
+    const playerHere = deptId ? org.departments[deptId]?.playerHead : org.playerHead;
+    if (playerHere) {
+      if (!(head.selection === 'appointed' && newAdministration && rng.chance(0.55))) return current;
+      leavePost(state, job);
+      ensureDepartment(job, levelById(getProfession(job.professionId), job.levelId));
+      recalcSalary(state, job);
+      ctx.log(`The new administration replaced you as ${head.title}. You returned to your previous rank as ${job.title}.`, '🏛️', 'bad');
+      ctx.stat('happiness', -6);
+      return null;
+    }
     const losesElection = head.selection === 'elected' && rng.chance(0.25);
     const swept = head.selection === 'appointed' && newAdministration && rng.chance(0.55);
     if (!losesElection && !swept) return current;

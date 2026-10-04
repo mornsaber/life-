@@ -24,6 +24,7 @@ import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
 import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
+import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 
@@ -184,6 +185,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   recalcSalary(state, job);
   ensureDepartment(job, level);
   state.career.job = job;
+  // Reaching a level that *is* a department or organization head makes you that head.
+  syncPostForLevel(ctx, job);
   job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   computeOpenings(state, job);
   const program = traineeProgram(job);
@@ -291,7 +294,9 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
     reason,
     fired,
     ...historyOrgFields(job, fired),
+    headed: job.headOf ? (job.headOf.deptId ? 'dept' : 'org') : job.headedBefore ?? null,
   });
+  if (job.headOf) leavePost(state, job);
   state.career.job = null;
   if (fired) {
     ctx.log(`You were terminated by ${job.employer.name}. ${reason}`, '📦', 'bad');
@@ -314,7 +319,11 @@ export function promotionStatus(state) {
   const level = levelById(profession, job.levelId);
   const next = nextLevels(profession, job.employer.size, job.levelId);
   const all = next.filter((l) => !l.appointed);
-  if (!next.length) return { eligible: false, reason: 'Top of the ladder here', options: [], all };
+  if (!next.length) {
+    const post = nextPost(state, job);
+    const reason = post ? `Top of the ladder — next: ${post.def.title}, ${post.def.appointedBy ? `appointed by ${post.def.appointedBy}` : 'chosen by the board'} when the post opens` : job.headOf ? `You lead ${job.headOf.deptId ? 'the department' : 'the organization'}` : 'Top of the ladder here';
+    return { eligible: false, reason, options: [], all, nextPost: post };
+  }
   const program = traineeProgram(job);
   if (program) {
     const target = levelById(profession, program.next);
@@ -365,6 +374,7 @@ export function promote(ctx, levelId) {
   job.lastRaiseAge = state.character.age;
   ensureDepartment(job, level);
   claimOpening(state, job, level.id);
+  syncPostForLevel(ctx, job);
   job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   computeOpenings(state, job);
   ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
@@ -376,6 +386,17 @@ export function promote(ctx, levelId) {
 export function demote(ctx, reason) {
   const { state } = ctx;
   const job = state.career.job;
+  // A head post above the ladder: you lose the post and return to your previous rank.
+  if (job.headOf && !job.headOf.mapped) {
+    const title = job.headOf.title;
+    leavePost(state, job);
+    ensureDepartment(job, levelById(getProfession(job.professionId), job.levelId));
+    recalcSalary(state, job);
+    ctx.log(`You were removed as ${title} (${reason}) and returned to your role as ${job.title}.`, '⬇️', 'bad');
+    ctx.toast(`Removed as ${title}`, 'bad');
+    ctx.stat('happiness', -10);
+    return true;
+  }
   const profession = getProfession(job.professionId);
   const prev = previousLevel(profession, job.employer.size, job.levelId);
   if (!prev) return false;
@@ -427,7 +448,7 @@ function layoffCheck(ctx, job) {
 }
 
 /** Another employer in your field offers the post you can't get at home. */
-function outsidePromotionOffer(ctx, job, profession) {
+export function outsidePromotionOffer(ctx, job, profession) {
   const { state } = ctx;
   if (state.prompts.some((p) => p.type === 'career.outsidePromotion')) return;
   const target = nextLevels(profession, job.employer.size, job.levelId).find((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);

@@ -49,8 +49,9 @@ for (const [pid, p] of Object.entries(PROFESSIONS)) {
       if (!c.supervisor) flag(`${pid}.${level.id}`, 'nobody to report to');
       if (c.supervisor?.levelId === level.id) flag(`${pid}.${level.id}`, 'reports to their own level');
       const seatsHere = seatsAt(orgOf(state, employer), employer.deptId, p, level, size);
-      if (!c.coworkers.length && seatsHere > 1) flag(`${pid}.${level.id}`, `no coworkers (${seatsHere} seats)`);
-      if (c.coworkers.length >= seatsHere && seatsHere <= 3) flag(`${pid}.${level.id}`, `${c.coworkers.length} coworkers in a ${seatsHere}-seat post`);
+      // Heads' coworkers are the other department heads.
+      if (!c.leads && !c.coworkers.length && seatsHere > 1) flag(`${pid}.${level.id}`, `no coworkers (${seatsHere} seats)`);
+      if (!c.leads && c.coworkers.length >= seatsHere && seatsHere <= 3) flag(`${pid}.${level.id}`, `${c.coworkers.length} coworkers in a ${seatsHere}-seat post`);
     }
   }
 }
@@ -267,35 +268,25 @@ if (s2.orgs.seed === before2.seed) flag('rng', 'org generation did not advance i
 
 // 11. Stuck: a strong performer with no opening above gets an outside promotion offer.
 {
+  const { outsidePromotionOffer, promotionStatus } = await import('../src/modules/career/CareerEngine.js');
   const e6 = new Engine({ store: new Store(memory()), rng: new Random(51), modules: MODULES });
   const s = e6.newLife({ firstName: 'St', lastName: 'Uck', gender: 'female' });
   s.character.age = 35;
-  Object.assign(s.stats, { smarts: 90, health: 90, happiness: 80 });
   s.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: 18 });
   const c6 = e6.context();
-  const retail = PROFESSIONS.retail;
-  const employer = createEmployer(e6.rng, s, retail, s.character.regionId);
-  employer.size = 'small';
+  const employer = createEmployer(e6.rng, s, PROFESSIONS.retail, s.character.regionId);
   employer.size = 'large';
   hire(c6, { professionId: 'retail', levelId: 'storeManager', employer });
   s.prompts = [];
-  let offered = false;
-  for (let y = 0; y < 30 && !offered; y++) {
-    const job = s.career.job;
-    if (!job) break;
-    job.performance = 95;
-    job.yearsInLevel = 10;
-    s.prompts = [];
-    e6.ageUp();
-    offered = s.prompts.some((p) => p.type === 'career.outsidePromotion');
-    // Decline promotion reviews at home so the test stays at this level.
-    for (const p of s.prompts.filter((x) => x.type !== 'career.outsidePromotion')) e6.resolvePrompt(p.id, p.options.at(-1).id);
-    if (s.career.job?.levelId !== 'storeManager') break;
-  }
-  if (!offered) flag('stuck', 'no outside promotion offer after years with no opening');
+  const job = s.career.job;
+  Object.assign(job, { performance: 95, yearsInLevel: 10, openings: { districtManager: 'Someone Else' } });
+  const st = promotionStatus(s);
+  if (!st.noOpening) flag('stuck', `a held one-seat post should block promotion (${st.reason})`);
+  outsidePromotionOffer(c6, job, PROFESSIONS.retail);
+  const pr = s.prompts.find((p) => p.type === 'career.outsidePromotion');
+  if (!pr) flag('stuck', 'no outside promotion offer');
   else {
-    const pr = s.prompts.find((p) => p.type === 'career.outsidePromotion');
-    const before = s.career.job.grade;
+    const before = job.grade;
     e6.resolvePrompt(pr.id, 'accept');
     if (!(s.career.job?.grade > before)) flag('stuck', 'accepting did not promote');
   }

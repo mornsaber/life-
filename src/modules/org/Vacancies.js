@@ -23,6 +23,7 @@ import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById, nextLevels } from '../career/Ladder.js';
 import { orgOf, orgType, sideRng, newPerson, seatHolders, supervises, chainOfCommand } from './Organizations.js';
 import { rememberDeparture, churnTick } from './Churn.js';
+import { postTick } from './Executives.js';
 
 /** Typical staff of one occupation in a department, by employer size. */
 const POOL = { small: 30, medium: 220, large: 2000, enterprise: 12000 };
@@ -212,6 +213,7 @@ export function vacancyTick(ctx, job) {
   computeOpenings(state, job);
 
   churnTick(ctx, job);
+  postTick(ctx, job);
 
   // A new boss: the relationship starts over.
   const chain = chainOfCommand(state, job);

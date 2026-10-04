@@ -126,15 +126,22 @@ function orgKey(typeId, t, regionId, stateId, name) {
 }
 
 /** Find or create a specific organization type in a place (e.g. every state agency a governor runs). */
-export function ensureOrgOfType(state, typeId, regionId) {
+export function ensureOrgOfType(state, typeId, regionId, { size = 'medium' } = {}) {
   initOrgs(state);
   const t = orgType(typeId);
-  if (!t || t.scope === 'market') return null;
+  if (!t || t.business) return null;
   const stateId = stateOfRegion(regionId);
-  const key = orgKey(typeId, t, regionId, stateId);
+  const rng = sideRng(state);
+  // Private (market) types: reuse a firm of this kind in town before founding another.
+  if (t.scope === 'market') {
+    const local = Object.values(state.orgs.byId).find((o) => o.typeId === typeId && o.regionId === regionId && !o.closed);
+    if (local) return local;
+  }
+  const name = t.scope === 'market' && t.name ? t.name({ city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng }) : undefined;
+  const key = orgKey(typeId, t, regionId, stateId, name);
   if (state.orgs.byId[key]) return state.orgs.byId[key];
   const profession = getProfession(t.departments[0]?.occupations[0]);
-  return buildOrg(state, sideRng(state), typeId, key, regionId, stateId, { size: 'medium', profession });
+  return buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession });
 }
 
 function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession }) {
@@ -250,7 +257,20 @@ function ownerOf(org) {
 /** The body a top executive answers to (a board, an elected official, the voters). */
 function overseer(t) {
   const by = t.head.appointedBy ?? (t.head.selection === 'elected' ? 'the voters' : 'the board');
-  return { id: null, name: by.charAt(0).toUpperCase() + by.slice(1), title: t.head.selection === 'elected' ? 'Electorate' : 'Appointing authority', body: true, rel: 50 };
+  return { id: null, name: by.charAt(0).toUpperCase() + by.slice(1), title: t.head.selection === 'elected' ? 'Electorate' : t.head.selection === 'board' ? 'Board' : 'Appointing authority', body: true, rel: 50 };
+}
+
+/** Re-seat NPC heads where nobody (and not the player) holds the post. */
+export function ensureHeads(state, org) {
+  if (!org || org.business || org.closed) return;
+  const t = orgType(org.typeId);
+  if (!t) return;
+  const rng = sideRng(state);
+  if (!org.head && !org.playerHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
+  for (const d of t.departments) {
+    const dept = org.departments[d.id];
+    if (dept && !dept.head && !dept.playerHead) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
+  }
 }
 
 /**
@@ -265,6 +285,8 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   if (!org) return null;
   const dept = org.departments[job.employer.deptId];
   if (!dept) return null;
+  if (generate) ensureHeads(state, org);
+  if (job.headOf && job.headOf.orgId === org.id) return headChain(state, org, dept, job, generate);
   const profession = getProfession(job.professionId);
   const size = job.employer.size;
   // A post that's vacant (waiting to be filled) has no holder: report to the next one up.
@@ -305,6 +327,31 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
     coworkers,
     reports,
   };
+}
+
+/** The chain for a player who heads a department or the whole organization. */
+function headChain(state, org, dept, job, generate) {
+  const t = orgType(org.typeId);
+  const h = job.headOf;
+  const size = job.employer.size;
+  const headOfDept = (id) => personOf(org, org.departments[id]?.head);
+  if (!h.deptId) {
+    // You run the organization: you answer to the board or whoever appointed you; department heads report to you.
+    const reports = t.departments.map((d) => headOfDept(d.id)).filter(Boolean);
+    return { org, dept, division: null, supervisor: overseer(t), manager: null, deptHead: null, orgHead: null, coworkers: [], reports, leads: 'org' };
+  }
+  const hdept = org.departments[h.deptId] ?? dept;
+  const orgHead = personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org) ?? overseer(t);
+  const coworkers = t.departments.filter((d) => d.id !== h.deptId).map((d) => headOfDept(d.id)).filter(Boolean).slice(0, 4);
+  // Your reports: the senior managers of each career in your department.
+  const def = t.departments.find((d) => d.id === h.deptId);
+  const reports = (def?.occupations ?? []).flatMap((occ) => {
+    const prof = getProfession(occ);
+    if (!prof) return [];
+    const top = [...ladderFor(prof, size)].reverse().find((l) => supervises(l) && !l.appointed && !(occ === job.professionId && l.id === job.levelId) && !l.abilities.includes('exec'));
+    return top ? seatHolders(state, org, hdept.id, occ, top.id, 1, generate) : [];
+  }).slice(0, 4);
+  return { org, dept: hdept, division: null, supervisor: orgHead, manager: null, deptHead: null, orgHead: null, coworkers, reports, leads: 'dept' };
 }
 
 /* ------------------------------------------------------------------ */
