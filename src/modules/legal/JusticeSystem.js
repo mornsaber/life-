@@ -19,12 +19,30 @@
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
-import { stateOf, stateIdOf } from '../life/Regions.js';
+import { stateOf, stateIdOf, regionOf } from '../life/Regions.js';
+import { PRIVATE_PRISON_SHARE } from '../career/JusticeCareers.js';
 import { deathRowTick } from './Prison.js';
 
 const STATUTE_OF_LIMITATIONS = 7;
 
 export const FACILITIES = { misdemeanor: 'County Jail', felony: 'State Correctional Institution', federal: 'Federal Correctional Institution' };
+const PRIVATE_FACILITY = ['Crossroads Correctional Center', 'Prairie Correctional Facility', 'Red Rock Correctional Center', 'Bayside Detention Center'];
+
+/** Where you serve: county jail for short terms, a state or federal prison — or a privately run one under contract. */
+export function assignFacility(state, rng, offense, years) {
+  if (offense.federal) return { facility: FACILITIES.federal, kind: 'federal' };
+  if (years <= 1 || offense.severity === 'misdemeanor') return { facility: `${regionOf(state).name.split(',')[0]} County Jail`, kind: 'jail' };
+  if (rng.chance(PRIVATE_PRISON_SHARE[stateIdOf(state)] ?? 0)) return { facility: `${rng.pick(PRIVATE_FACILITY)} (privately operated)`, kind: 'private' };
+  return { facility: FACILITIES.felony, kind: 'state' };
+}
+
+/** How the facility itself shapes a year inside. */
+export const FACILITY_EFFECTS = {
+  jail: { stress: 4, note: 'County jails are built for short stays: no programs, no yard most days.' },
+  state: { stress: 0 },
+  federal: { stress: -2, happiness: 2, note: 'Federal prison: cleaner, calmer, real education programs.' },
+  private: { stress: 3, health: -3, note: 'The private prison ran short-staffed again; lockdowns and fights were routine.' },
+};
 
 function priorCount(state, offenseId) {
   return state.legal.record.filter((r) => r.offenseId === offenseId).length;
@@ -154,8 +172,9 @@ function sentence(ctx, offenseId, { plea, abroad }) {
     state.legal.fugitive = null;
   }
   if (prison > 0) {
-    const facility = abroad ? 'a foreign prison' : offense.federal ? FACILITIES.federal : FACILITIES[offense.severity];
-    const inc = { yearsLeft: prison, total: prison, facility, served: 0 };
+    const placed = abroad ? { facility: 'a foreign prison', kind: 'foreign' } : assignFacility(state, rng, offense, prison);
+    const { facility } = placed;
+    const inc = { yearsLeft: prison, total: prison, facility, kind: placed.kind, served: 0 };
     state.legal.incarceration = inc;
     // Capital punishment: only for capital crimes, only after a trial, only in states that have it — and rarely even then.
     const death = stateOf(state).deathPenalty;
@@ -266,6 +285,13 @@ export function justiceTick(ctx) {
       ctx.toast('Released from prison', 'good');
     } else {
       ctx.log(`Year ${inc.served} at ${inc.facility}. ${inc.yearsLeft} to go.`, '🔒', 'bad');
+      const fx = FACILITY_EFFECTS[inc.kind];
+      if (fx) {
+        if (fx.stress) ctx.stat('stress', fx.stress);
+        if (fx.happiness) ctx.stat('happiness', fx.happiness);
+        if (fx.health) ctx.stat('health', fx.health);
+        if (fx.note && rng.chance(0.3)) ctx.log(fx.note, '🔒');
+      }
       if (rng.chance(0.35)) {
         const hasDiploma = state.education.degrees.some((d) => d.type === 'highschool');
         ctx.prompt({

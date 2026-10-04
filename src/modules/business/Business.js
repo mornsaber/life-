@@ -32,7 +32,7 @@ export const CORPORATE_TAX = 0.21;
 export const PHASE_DEMAND = { expansion: 1.05, peak: 1.08, recession: 0.8, recovery: 0.95 };
 export const LICENSED_MANAGER = 95000;
 /** Types that must be owned by a licensee (no lay owners of law firms or medical practices). */
-export const LICENSEE_ONLY = ['lawFirm', 'practice', 'cpaFirm'];
+export const LICENSEE_ONLY = ['lawFirm', 'practice', 'cpaFirm', 'dentalPractice'];
 
 export const currentBusiness = (state) => state.business?.current ?? null;
 export const typeOf = (biz) => BUSINESS_TYPES[biz.typeId];

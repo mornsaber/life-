@@ -93,6 +93,27 @@ const DECISIONS = {
       { id: 'delay', label: '🗄️ Commission a study', approval: -3 },
     ],
   },
+  prosecutor: {
+    title: 'Charging Decision',
+    text: 'As District Attorney you have to decide on {issue}.',
+    issues: ['charging a police officer who shot an unarmed man', 'seeking the death penalty in a triple homicide', 'ending cash bail for misdemeanors', 'a plea deal for a well-connected developer', 'reopening a 20-year-old conviction with new DNA evidence'],
+    options: [
+      { id: 'law', label: '📖 Follow the evidence wherever it leads', approval: 1, recognition: 4 },
+      { id: 'tough', label: '🔨 Take the tough-on-crime line', approval: 3, gamble: 8 },
+      { id: 'reform', label: '⚖️ Take the reform line', approval: -1, gamble: 10 },
+      { id: 'donors', label: '💼 Do what your donors want', approval: -4, funds: 0.15 },
+    ],
+  },
+  sheriff: {
+    title: 'Sheriff\'s Decision',
+    text: 'Your office has to decide on {issue}.',
+    issues: ['honoring federal immigration detainers at the jail', 'jail overcrowding and early releases', 'a deputy caught on video beating a handcuffed man', 'buying an armored vehicle with a federal grant', 'enforcing a state gun law you disagree with'],
+    options: [
+      { id: 'popular', label: '📊 Go with the county\'s mood', approval: 5 },
+      { id: 'principle', label: '🧭 Do what you think is right', approval: -2, recognition: 4 },
+      { id: 'bold', label: '⚡ Make a bold public stand', approval: 0, gamble: 14 },
+    ],
+  },
   judicial: {
     title: 'High-Profile Ruling',
     text: 'A case on {issue} has the whole state watching.',
@@ -107,7 +128,7 @@ const DECISIONS = {
 function officeDecision(ctx) {
   const { state, rng } = ctx;
   const office = OFFICES[state.politics.office.id];
-  const kind = office.judicial ? 'judicial' : office.executive || state.politics.office.id === 'mayor' ? 'executive' : 'legislative';
+  const kind = office.kind ?? (office.judicial ? 'judicial' : office.executive || state.politics.office.id === 'mayor' ? 'executive' : 'legislative');
   const d = DECISIONS[kind];
   ctx.prompt({
     type: 'politics.decision',

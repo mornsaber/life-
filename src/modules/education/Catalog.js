@@ -44,6 +44,8 @@ export const MAJORS = {
   socialWork: { name: 'Social Work', icon: '🤝', fields: ['socialWork', 'cps', 'legalSupport'], levels: ['bachelor', 'master'] },
   hospitalityMgmt: { name: 'Hospitality Management', icon: '🏨', fields: ['hospitality', 'culinary', 'retail', 'cruise', 'flightAttendant'], levels: ['associate', 'bachelor'] },
   religiousStudies: { name: 'Religious Studies / Theology', icon: '📜', fields: ['clergy', 'socialWork'], levels: ['bachelor', 'master'] },
+  mathematics: { name: 'Mathematics & Statistics', icon: '➗', fields: ['actuary', 'finance', 'tech', 'insurance', 'education'], levels: ['bachelor', 'master'], science: true },
+  forensicScience: { name: 'Forensic Science', icon: '🧬', fields: ['forensics', 'police', 'sheriff', 'privateInvestigator'], levels: ['bachelor', 'master'], science: true },
   liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService'], levels: ['associate', 'bachelor'] },
 };
 
@@ -64,6 +66,10 @@ export const PROGRAMS = {
   electricalTech: { name: 'Electrical Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['trades'] },
   cosmetologySchool: { name: 'Cosmetology School', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1.2, fields: ['cosmetology'] },
   plumbingTech: { name: 'Plumbing Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['plumbing'] },
+  hvacTech: { name: 'HVAC Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['hvac'] },
+  weldingTech: { name: 'Welding Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1.1, fields: ['welding'] },
+  autoTech: { name: 'Automotive Technology Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical', 'community'], costFactor: 1, fields: ['automotive'] },
+  linemanSchool: { name: 'Pre-Apprentice Lineworker School', type: 'certificate', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1.2, fields: ['lineworker'] },
   culinaryArts: { name: 'Culinary Arts Diploma', type: 'vocational', years: 1, requires: { level: 'highschool' }, schools: ['technical'], costFactor: 1, fields: ['culinary'] },
   maritimeAcademy: { name: 'Maritime Academy (B.S. + license track)', type: 'bachelor', years: 4, requires: { level: 'highschool' }, major: 'marineTransportation', schools: ['state'], costFactor: 1.15, minSmarts: 45, fields: ['merchantMarine'] },
   associate: { name: "Associate's Degree", type: 'associate', years: 2, requires: { level: 'highschool' }, major: 'choose', schools: ['community', 'online'], costFactor: 1 },
@@ -77,13 +83,17 @@ export const PROGRAMS = {
   jd: { name: 'Juris Doctor (Law School)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.5, minSmarts: 60, minGpa: 3.0, fields: ['law'] },
   md: { name: 'Doctor of Medicine (Medical School)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.6, minSmarts: 70, minGpa: 3.3, fields: ['medical'] },
   pharmd: { name: 'Doctor of Pharmacy (Pharm.D.)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private'], costFactor: 1.4, minSmarts: 62, minGpa: 3.0, fields: ['pharmacy'] },
+  dds: { name: 'Doctor of Dental Surgery (Dental School)', type: 'professional', years: 4, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state', 'private'], costFactor: 1.6, minSmarts: 65, minGpa: 3.2, fields: ['dentistry'] },
+  dpt: { name: 'Doctor of Physical Therapy (DPT)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private'], costFactor: 1.3, minSmarts: 55, minGpa: 3.0, fields: ['physicalTherapy'] },
+  paMaster: { name: 'Master of Physician Assistant Studies', type: 'master', years: 2, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state', 'private'], costFactor: 1.4, minSmarts: 60, minGpa: 3.2, fields: ['physicianAssistant', 'medical'] },
+  dvm: { name: 'Doctor of Veterinary Medicine (Vet School)', type: 'professional', years: 4, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state'], costFactor: 1.5, minSmarts: 65, minGpa: 3.3, fields: ['veterinary'] },
   phd: { name: 'Doctor of Philosophy (Ph.D.)', type: 'doctorate', years: 5, requires: { level: 'bachelor' }, major: 'choose', majorLevel: 'master', schools: ['state', 'elite'], costFactor: 0, stipend: 32000, minSmarts: 75, minGpa: 3.4 },
 };
 
 export const PROGRAM_GROUPS = [
-  { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'cosmetologySchool', 'culinaryArts', 'teacherPrep', 'premedPostbacc'] },
+  { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'teacherPrep', 'premedPostbacc'] },
   { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor', 'maritimeAcademy'] },
-  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'jd', 'md', 'pharmd', 'phd'] },
+  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'msAccounting', 'seminary', 'paMaster', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd'] },
 ];
 
 /** Majors offered for a program ('choose' programs list them by level). */

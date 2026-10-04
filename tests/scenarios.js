@@ -15,7 +15,8 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
-import { voteShare } from '../src/modules/politics/Campaigns.js';
+import { voteShare, runEligibility } from '../src/modules/politics/Campaigns.js';
+import { assignFacility } from '../src/modules/legal/JusticeSystem.js';
 import { bestEntryLevel } from '../src/modules/career/CareerEngine.js';
 import { hasHousingBenefit } from '../src/modules/life/Finances.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
@@ -2240,6 +2241,56 @@ const tests = {
     resolve(m.engine, 'military.chooseSpecialty', 'noaa.SHIP');
     assert.equal(m.state.military.service.branch, 'noaa');
     assert.equal(transferEligibility(m.state, 'navy').ok, false);
+  },
+  'justice careers: security guard cards, private police where legal, no bail agents in Illinois, elected sheriff and DA, jail vs. prison'() {
+    const g = setup(141, 20);
+    giveJob(g.engine, 'privateSecurity', 'trainee');
+    g.engine.ageUp(); g.state.prompts = [];
+    g.engine.ageUp(); g.state.prompts = [];
+    assert.ok(hasCredential(g.state, 'guardCard'), 'guard card through employer training');
+    assert.equal(g.state.career.job?.levelId, 'officer');
+    // Private police: only railroads in Montana.
+    const mt = setup(142, 25);
+    mt.state.character.regionId = 'rural';
+    const pp = getProfession('privatePolice');
+    for (let i = 0; i < 10; i++) assert.match(createEmployer(mt.engine.rng, mt.state, pp, 'rural').name, /Railroad Police/);
+    // No commercial bail in Illinois.
+    const il = setup(143, 30);
+    il.state.character.regionId = 'chicago';
+    assert.equal(applicationEligibility(il.state, 'bailBonds').ok, false);
+    // Sheriff: must be a certified peace officer with experience; DA: a practicing lawyer.
+    const d = setup(144, 40);
+    assert.equal(runEligibility(d.state, 'sheriff').ok, false);
+    grantCredential(d.ctx, 'post', { silent: true });
+    d.state.career.history.push({ professionId: 'sheriff', startAge: 30, endAge: 38, peakGrade: 6 });
+    d.state.politics.residencySince = 0;
+    assert.ok(runEligibility(d.state, 'sheriff').ok, JSON.stringify(runEligibility(d.state, 'sheriff')));
+    assert.equal(runEligibility(d.state, 'districtAttorney').ok, false);
+    grantCredential(d.ctx, 'barLicense', { silent: true });
+    d.state.career.history.push({ professionId: 'prosecution', startAge: 25, endAge: 30, peakGrade: 6 });
+    assert.ok(runEligibility(d.state, 'districtAttorney').ok);
+    // Short sentences are served in the county jail; federal crimes in federal prison; Montana contracts out to private prisons.
+    const j = setup(145, 30);
+    assert.equal(assignFacility(j.state, j.engine.rng, { severity: 'misdemeanor' }, 1).kind, 'jail');
+    assert.equal(assignFacility(j.state, j.engine.rng, { severity: 'felony', federal: true }, 5).kind, 'federal');
+    j.state.character.regionId = 'rural';
+    j.engine.rng.chance = () => true;
+    assert.equal(assignFacility(j.state, j.engine.rng, { severity: 'felony' }, 5).kind, 'private');
+  },
+  'more careers: FAA hires controllers under 31, lineworkers top out after the apprenticeship, dentists need dental school'() {
+    const old = setup(151, 31);
+    assert.equal(applicationEligibility(old.state, 'airTrafficControl').ok, false);
+    const lw = setup(152, 22);
+    grantCredential(lw.ctx, 'driverLicense', { silent: true });
+    grantCredential(lw.ctx, 'cdlA', { silent: true });
+    giveJob(lw.engine, 'lineworker', 'apprentice');
+    for (let y = 0; y < 5 && lw.state.career.job?.levelId === 'apprentice'; y++) { lw.state.prompts = []; lw.engine.ageUp(); }
+    assert.equal(lw.state.career.job?.levelId, 'journeyman', JSON.stringify(lw.state.career.job?.levelId));
+    const dds = setup(153, 26);
+    dds.state.finances.cash = 10000;
+    assert.equal(pursueEligibility(dds.state, 'dentalLicense').ok, false);
+    dds.state.education.degrees.push({ type: 'professional', programId: 'dds', major: null, year: 26 });
+    assert.ok(pursueEligibility(dds.state, 'dentalLicense').ok);
   },
 };
 

@@ -11,7 +11,7 @@
 import { prestige, yearlyCount, bumpYearly, isOnActiveDuty, isIncarcerated } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { residencyYears, stateOf } from '../life/Regions.js';
-import { hasCredential } from '../credentials/LicensingEngine.js';
+import { hasCredential, checkRequirements } from '../credentials/LicensingEngine.js';
 import { yearsInProfession } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
 import { influenceVoteBonus } from '../civic/Activism.js';
@@ -27,6 +27,10 @@ export function runEligibility(state, officeId) {
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
   if (isOnActiveDuty(state)) return { ok: false, reason: 'Active duty can\'t run (Hatch Act)' };
   if (state.career.job?.sector === 'federal') return { ok: false, reason: 'Federal employees can\'t run (Hatch Act)' };
+  if (office.req) {
+    const check = checkRequirements(state, office.req);
+    if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
+  }
   if (office.judicial) {
     if (!hasCredential(state, 'barLicense')) return { ok: false, reason: 'Needs a bar license' };
     if (yearsInProfession(state, ['law', 'prosecution', 'publicDefender', 'courts']) < 7) return { ok: false, reason: '7 yrs legal practice' };
@@ -78,7 +82,7 @@ function endorsementEligible(state, id) {
   switch (id) {
     case 'labor': return Boolean(job?.unionMember) || state.politics.laborVotes > 1;
     case 'veterans': return state.military.history.length > 0 || Boolean(state.military.service);
-    case 'lawEnforcement': return ['police', 'fire', 'statePolice', 'corrections', 'ems'].some((p) => job?.professionId === p || hist.some((h) => h.professionId === p)) || Object.values(state.emergency).some((m) => m && m.serviceName);
+    case 'lawEnforcement': return ['police', 'fire', 'statePolice', 'corrections', 'ems', 'sheriff', 'jail', 'privatePolice', 'federalPrisons', 'probation', 'dispatch'].some((p) => job?.professionId === p || hist.some((h) => h.professionId === p)) || Object.values(state.emergency).some((m) => m && m.serviceName);
     case 'party': return state.politics.recognition >= 25;
     case 'editorial': return state.stats.smarts >= 60;
     case 'bar': return hasCredential(state, 'barLicense');
