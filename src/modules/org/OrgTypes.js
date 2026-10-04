@@ -33,7 +33,7 @@ export const ORG_TYPES = {
         divisions: { police: 'Police Division', fire: 'Fire Division', ems: 'Emergency Medical Services', dispatch: 'Emergency Communications' } },
       { id: 'publicWorks', name: 'Department of Public Works', occupations: ['publicWorks'], head: { title: 'Director of Public Works', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'planning', name: 'Department of Planning & Development', occupations: ['planning'], head: { title: 'Planning Director', selection: 'appointed', appointedBy: 'the city manager' } },
-      { id: 'administration', name: 'City Administration', occupations: ['municipalAdmin'], head: { title: 'City Manager', selection: 'appointed', appointedBy: 'the city council' } },
+      { id: 'administration', name: 'City Administration', occupations: ['municipalAdmin'], head: { title: 'Assistant City Manager', selection: 'appointed', appointedBy: 'the city manager' } },
     ],
   },
   countyGov: {
@@ -50,7 +50,7 @@ export const ORG_TYPES = {
     name: (c) => `${city(c)} Public Schools`, scope: 'region', sector: 'municipal',
     head: { title: 'Superintendent', selection: 'board', appointedBy: 'the school board', occupation: 'education', levelId: 'superintendent' },
     departments: [
-      { id: 'instruction', name: 'Schools & Instruction', occupations: ['education'], head: { title: 'Superintendent', selection: 'board', appointedBy: 'the school board', occupation: 'education', levelId: 'superintendent' } },
+      { id: 'instruction', name: 'Schools & Instruction', occupations: ['education'], head: { title: 'Deputy Superintendent for Instruction', selection: 'internal', occupation: 'education', levelId: 'assistantSuper' } },
       { id: 'transportation', name: 'Student Transportation', occupations: ['schoolBus'], head: { title: 'Director of Student Transportation', selection: 'internal', occupation: 'schoolBus', levelId: 'director' } },
       { id: 'health', name: 'Health Services', occupations: ['nursing'], head: { title: 'Director of Health Services', selection: 'internal' } },
       { id: 'studentServices', name: 'Student Services (Counselors & Psychologists)', occupations: ['socialWork'], head: { title: 'Director of Student Services', selection: 'internal' } },

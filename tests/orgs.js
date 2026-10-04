@@ -8,6 +8,7 @@
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { ORG_TYPES, orgTypesFor } from '../src/modules/org/OrgTypes.js';
 import { chainOfCommand, orgOf, standingWith, OrganizationsModule } from '../src/modules/org/Organizations.js';
+import { seatsAt } from '../src/modules/org/Vacancies.js';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
@@ -47,7 +48,9 @@ for (const [pid, p] of Object.entries(PROFESSIONS)) {
       if (!c) { flag(`${pid}.${level.id}`, 'no chain of command'); continue; }
       if (!c.supervisor) flag(`${pid}.${level.id}`, 'nobody to report to');
       if (c.supervisor?.levelId === level.id) flag(`${pid}.${level.id}`, 'reports to their own level');
-      if (!c.coworkers.length) flag(`${pid}.${level.id}`, 'no coworkers');
+      const seatsHere = seatsAt(orgOf(state, employer), employer.deptId, p, level, size);
+      if (!c.coworkers.length && seatsHere > 1) flag(`${pid}.${level.id}`, `no coworkers (${seatsHere} seats)`);
+      if (c.coworkers.length >= seatsHere && seatsHere <= 3) flag(`${pid}.${level.id}`, `${c.coworkers.length} coworkers in a ${seatsHere}-seat post`);
     }
   }
 }
@@ -252,11 +255,50 @@ if (s2.orgs.seed === before2.seed) flag('rng', 'org generation did not advance i
   const org = orgOf(s, s.career.job.employer);
   const dept = org.departments[s.career.job.employer.deptId];
   const coworker = chainOfCommand(s, s.career.job).coworkers[0];
+  // They leave (seat and all), then may come back.
+  for (const byLevel of Object.values(dept.seats)) for (const k of Object.keys(byLevel)) byLevel[k] = byLevel[k].filter((id) => id !== coworker.id);
+  delete org.people[coworker.id];
   rememberDeparture(s, org, coworker, 'resigned for another job');
   let back = false;
-  for (let y = 0; y < 40 && !back; y++) { s.character.age += 1; churnTick(c5, s.career.job); back = Object.values(org.people).some((p) => p.returned); if (org.alumni?.length === 0) rememberDeparture(s, org, coworker, 'resigned for another job'); }
+  for (let y = 0; y < 40 && !back; y++) { s.character.age += 1; churnTick(c5, s.career.job); back = Object.values(org.people).some((p) => p.returned); const al = org.alumni?.find((x) => x.id === coworker.id); if (al && s.character.age - al.leftAge > 5) al.leftAge = s.character.age - 1; }
   if (!dept.lastYear) flag('churn', 'no hiring/attrition recorded');
   if (!back) flag('churn', 'nobody ever came back');
+}
+
+// 11. Stuck: a strong performer with no opening above gets an outside promotion offer.
+{
+  const e6 = new Engine({ store: new Store(memory()), rng: new Random(51), modules: MODULES });
+  const s = e6.newLife({ firstName: 'St', lastName: 'Uck', gender: 'female' });
+  s.character.age = 35;
+  Object.assign(s.stats, { smarts: 90, health: 90, happiness: 80 });
+  s.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: 18 });
+  const c6 = e6.context();
+  const retail = PROFESSIONS.retail;
+  const employer = createEmployer(e6.rng, s, retail, s.character.regionId);
+  employer.size = 'small';
+  employer.size = 'large';
+  hire(c6, { professionId: 'retail', levelId: 'storeManager', employer });
+  s.prompts = [];
+  let offered = false;
+  for (let y = 0; y < 30 && !offered; y++) {
+    const job = s.career.job;
+    if (!job) break;
+    job.performance = 95;
+    job.yearsInLevel = 10;
+    s.prompts = [];
+    e6.ageUp();
+    offered = s.prompts.some((p) => p.type === 'career.outsidePromotion');
+    // Decline promotion reviews at home so the test stays at this level.
+    for (const p of s.prompts.filter((x) => x.type !== 'career.outsidePromotion')) e6.resolvePrompt(p.id, p.options.at(-1).id);
+    if (s.career.job?.levelId !== 'storeManager') break;
+  }
+  if (!offered) flag('stuck', 'no outside promotion offer after years with no opening');
+  else {
+    const pr = s.prompts.find((p) => p.type === 'career.outsidePromotion');
+    const before = s.career.job.grade;
+    e6.resolvePrompt(pr.id, 'accept');
+    if (!(s.career.job?.grade > before)) flag('stuck', 'accepting did not promote');
+  }
 }
 
 if (problems.length) {

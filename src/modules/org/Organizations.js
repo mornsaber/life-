@@ -33,6 +33,7 @@ import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
+import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
 const HEADCOUNT = { small: [12, 45], medium: [50, 400], large: [400, 4000], enterprise: [4000, 40000] };
 const SIZE_RANK = { small: 0, medium: 1, large: 2, enterprise: 3 };
@@ -107,7 +108,7 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
   const types = candidateTypes(profession);
   // Prefer an organization type that already exists here (one city government, not three).
   const stateId = stateOfRegion(regionId);
-  const keyFor = (typeId, t) => (t.scope === 'nation' ? typeId : t.scope === 'state' ? `${typeId}:${stateId}` : t.scope === 'region' ? `${typeId}:${regionId}` : `${typeId}:${regionId}:${name ?? 'firm'}`);
+  const keyFor = (typeId, t) => orgKey(typeId, t, regionId, stateId, name);
   const keys = types.map((typeId) => ({ typeId, t: orgType(typeId), key: keyFor(typeId, orgType(typeId)) }));
   const existing = keys.find((k) => state.orgs.byId[k.key]);
   const pick = existing ?? rng.pick(keys);
@@ -116,12 +117,34 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
     if (size && SIZE_RANK[size] > SIZE_RANK[org.size]) org.size = size;
     return org;
   }
-  const t = pick.t;
+  return buildOrg(state, rng, pick.typeId, pick.key, regionId, stateId, { size, name, profession });
+}
+
+/** The key an organization of this type has in a place. */
+function orgKey(typeId, t, regionId, stateId, name) {
+  return t.scope === 'nation' ? typeId : t.scope === 'state' ? `${typeId}:${stateId}` : t.scope === 'region' ? `${typeId}:${regionId}` : `${typeId}:${regionId}:${name ?? 'firm'}`;
+}
+
+/** Find or create a specific organization type in a place (e.g. every state agency a governor runs). */
+export function ensureOrgOfType(state, typeId, regionId) {
+  initOrgs(state);
+  const t = orgType(typeId);
+  if (!t || t.scope === 'market') return null;
+  const stateId = stateOfRegion(regionId);
+  const key = orgKey(typeId, t, regionId, stateId);
+  if (state.orgs.byId[key]) return state.orgs.byId[key];
+  const profession = getProfession(t.departments[0]?.occupations[0]);
+  return buildOrg(state, sideRng(state), typeId, key, regionId, stateId, { size: 'medium', profession });
+}
+
+function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession }) {
+  const t = orgType(typeId);
+  const pick = { typeId, key };
   const ctx = { city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng };
   const org = {
     id: pick.key,
     typeId: pick.typeId,
-    name: t.scope === 'market' || t.solo || !t.name ? name ?? profession.name : t.name(ctx),
+    name: t.scope === 'market' || t.solo || !t.name ? name ?? profession?.name ?? 'Organization' : t.name(ctx),
     scope: t.scope,
     sector: t.sector,
     regionId: t.scope === 'nation' ? null : regionId,
@@ -241,9 +264,17 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   const org = orgOf(state, job?.employer);
   if (!org) return null;
   const dept = org.departments[job.employer.deptId];
+  if (!dept) return null;
   const profession = getProfession(job.professionId);
-  const above = levelsAbove(profession, job.employer.size, job.levelId);
-  const chain = above.slice(0, 2).map((l) => seatHolders(state, org, dept.id, job.professionId, l.id, 1, generate)[0]);
+  const size = job.employer.size;
+  // A post that's vacant (waiting to be filled) has no holder: report to the next one up.
+  const vacant = (levelId) => (dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === levelId);
+  const chain = [];
+  for (const l of levelsAbove(profession, size, job.levelId)) {
+    if (chain.length >= 2) break;
+    const holder = vacant(l.id) ? seatHolders(state, org, dept.id, job.professionId, l.id, 1, false)[0] : seatHolders(state, org, dept.id, job.professionId, l.id, 1, generate)[0];
+    if (holder) chain.push(holder);
+  }
   const t = orgType(org.typeId);
   // The player holds the organization's top job: they answer to whoever appointed or elected them.
   const isHead = t?.head.occupation === job.professionId && t.head.levelId === job.levelId;
@@ -251,12 +282,18 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   const orgHead = isHead ? overseer(t) : personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org);
   const supervisor = chain[0] ?? (deptHead && !job.abilities?.includes('exec') ? deptHead : orgHead);
   const manager = chain[1] ?? (chain[0] ? deptHead : supervisor === deptHead ? orgHead : null);
-  const peers = job.abilities?.includes('exec') ? 1 : 3;
-  const coworkers = seatHolders(state, org, dept.id, job.professionId, job.levelId, peers, generate);
+  // Named posts have few seats, and you hold one of them.
+  const cap = (levelId, wanted, includesPlayer) => {
+    const level = levelById(profession, levelId);
+    const seats = level && !org.business ? seatsAt(org, dept.id, profession, level, size) : Infinity;
+    return seats <= NAMED_SEATS ? Math.max(0, Math.min(wanted, seats - (includesPlayer ? 1 : 0))) : wanted;
+  };
+  const peers = cap(job.levelId, job.abilities?.includes('exec') ? 1 : 3, true);
+  const coworkers = peers ? seatHolders(state, org, dept.id, job.professionId, job.levelId, peers, generate) : [];
   const ladder = ladderFor(profession, job.employer.size);
   const idx = ladder.findIndex((l) => l.id === job.levelId);
   const below = idx > 0 ? ladder.slice(0, idx).reverse().find((l) => l.track === 'shared' || l.track === ladder[idx].track) : null;
-  const reports = job.department && below ? seatHolders(state, org, dept.id, job.professionId, below.id, Math.min(4, job.department.headcount), generate) : [];
+  const reports = job.department && below ? seatHolders(state, org, dept.id, job.professionId, below.id, cap(below.id, Math.min(4, job.department.headcount), false), generate) : [];
   return {
     org,
     dept,

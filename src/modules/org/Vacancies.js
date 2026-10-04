@@ -71,8 +71,15 @@ export function seat(org, deptId, professionId, levelId, person, title) {
 }
 
 /** Someone else wins an opening: a coworker moves up, or an outside hire arrives. */
-function fillWithRival(state, org, deptId, profession, level, rival) {
+function fillWithRival(state, org, deptId, profession, level, rival, size = org.size) {
   const rng = sideRng(state);
+  // A named post never holds more people than it has seats.
+  const seats = seatsAt(org, deptId, profession, level, size);
+  const holders = (org.departments[deptId]?.seats[profession.id]?.[level.id] ?? []).filter((id) => org.people[id]);
+  if (seats <= NAMED_SEATS && holders.length >= seats && !holders.includes(rival?.person?.id)) {
+    org.departments[deptId].vacancies = (org.departments[deptId].vacancies ?? []).filter((v) => !(v.professionId === profession.id && v.levelId === level.id));
+    return org.people[holders[0]];
+  }
   const person = rival?.person ?? newPerson(rng, org, { selection: 'hired', years: 0, age: Math.min(62, 30 + level.grade * 3 + rng.int(0, 8)) });
   if (rival?.external || !rival?.person) {
     person.selection = 'hired';
@@ -87,7 +94,8 @@ export function rivalsFor(state, job, level) {
   const org = orgOf(state, job.employer);
   if (!org) return [];
   const rng = sideRng(state);
-  const coworkers = seatHolders(state, org, job.employer.deptId, job.professionId, job.levelId, 3).filter((p) => p.age < 64);
+  // Your coworkers at your level (as many as the post has seats).
+  const coworkers = (chainOfCommand(state, job)?.coworkers ?? []).filter((p) => p.age < 64);
   const rivals = coworkers.slice(0, rng.int(1, 3)).map((p) => ({ person: p, external: false, score: p.performance * 0.5 + 12 + Math.min(15, p.years * 1.5) + rng.float(-8, 8) }));
   const senior = level.grade >= 7 || level.abilities?.includes('exec') || level.abilities?.includes('delegate');
   if (senior && rng.chance(job.sector === 'private' ? 0.75 : 0.5)) rivals.push({ person: null, external: true, score: rng.float(48, 72) });
@@ -125,7 +133,7 @@ export function awardToRival(state, job, level, best) {
   const org = orgOf(state, job.employer);
   if (!org) return 'The promotion went to someone else.';
   const profession = getProfession(job.professionId);
-  const person = fillWithRival(state, org, job.employer.deptId, profession, level, best);
+  const person = fillWithRival(state, org, job.employer.deptId, profession, level, best, job.employer.size);
   if (job.openings) job.openings[level.id] = person.name;
   return best?.external || !best ? `The ${level.title} post went to ${person.name}, an outside hire.` : `The ${level.title} post went to ${person.name}, one of your coworkers.`;
 }
@@ -136,6 +144,23 @@ export function openingReason(job, level) {
   const v = job.openings?.[level.id];
   if (v === 'filled' || v === undefined) return `No ${level.title} opening this year`;
   return `No ${level.title} opening — ${v} holds the post`;
+}
+
+/** This year's openings one rung up from the player's level. */
+export function computeOpenings(state, job) {
+  const org = orgOf(state, job.employer);
+  const dept = org?.departments[job.employer.deptId];
+  if (!dept) return;
+  const rng = sideRng(state);
+  const profession = getProfession(job.professionId);
+  const size = job.employer.size;
+  job.openings = {};
+  for (const level of nextLevels(profession, size, job.levelId).filter((l) => !l.appointed)) {
+    const seats = seatsAt(org, dept.id, profession, level, size);
+    if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
+    else if (seats <= NAMED_SEATS) job.openings[level.id] = seatHolders(state, org, dept.id, job.professionId, level.id, seats)[0]?.name ?? 'open';
+    else job.openings[level.id] = rng.chance(1 - (1 - TURNOVER) ** seats) ? 'open' : 'filled';
+  }
 }
 
 /**
@@ -159,7 +184,7 @@ export function vacancyTick(ctx, job) {
     if (!level) continue;
     const rivals = level.grade > job.grade ? rivalsFor(state, job, level) : [];
     const best = rivals.length ? rivals.reduce((a, b) => (b.score > a.score ? b : a)) : null;
-    const person = fillWithRival(state, org, dept.id, profession, level, best);
+    const person = fillWithRival(state, org, dept.id, profession, level, best, size);
     if (nextLevels(profession, size, job.levelId).some((l) => l.id === level.id)) ctx.log(`${person.name} ${best && !best.external ? 'was promoted' : 'was hired'} as ${level.title} at ${job.employer.name}.`, '🪑');
   }
   dept.vacancies = dept.vacancies.filter((x) => x.since >= state.character.age || x.professionId !== job.professionId);
@@ -186,14 +211,7 @@ export function vacancyTick(ctx, job) {
     }
   }
 
-  // This year's openings one rung up.
-  job.openings = {};
-  for (const level of nextLevels(profession, size, job.levelId).filter((l) => !l.appointed)) {
-    const seats = seatsAt(org, dept.id, profession, level, size);
-    if (dept.vacancies.some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
-    else if (seats <= NAMED_SEATS) job.openings[level.id] = seatHolders(state, org, dept.id, job.professionId, level.id, seats)[0]?.name ?? 'open';
-    else job.openings[level.id] = rng.chance(1 - (1 - TURNOVER) ** seats) ? 'open' : 'filled';
-  }
+  computeOpenings(state, job);
 
   churnTick(ctx, job);
 

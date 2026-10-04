@@ -22,7 +22,8 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { OFFICES } from '../politics/Offices.js';
-import { orgOf, orgType, sideRng, newPerson, personOf, initOrgs, findOrCreateOrg } from './Organizations.js';
+import { orgOf, orgType, sideRng, newPerson, personOf, initOrgs, ensureOrgOfType } from './Organizations.js';
+import { ORG_TYPES } from './OrgTypes.js';
 import { getProfession } from '../career/JobTrees.js';
 import { REGIONS } from '../life/Regions.js';
 
@@ -75,10 +76,12 @@ export function appointmentsInReach(state, { ensure = true } = {}) {
 /** Make sure the governments you run exist even if you never worked for them. */
 function ensureJurisdictionOrgs(state, officeId) {
   initOrgs(state);
-  const region = state.character.regionId;
-  const probe = { mayor: 'police', cityCouncil: 'police', cityManager: 'publicWorks', countyCommissioner: 'publicHealth', schoolBoard: 'education', governor: 'corrections' }[officeId];
-  const p = probe && getProfession(probe);
-  if (p) findOrCreateOrg(state, p, region, { size: 'medium' });
+  const scope = JURISDICTION[officeId];
+  for (const [typeId, t] of Object.entries(ORG_TYPES)) {
+    if (t.scope !== scope) continue;
+    const appoints = [t.head, ...t.departments.map((d) => d.head)].some((h) => APPOINTING_OFFICE[h.appointedBy] === officeId);
+    if (appoints) ensureOrgOfType(state, typeId, state.character.regionId);
+  }
 }
 
 /** Elected department heads the player personally holds (sheriff, DA). */
@@ -150,7 +153,7 @@ export const GovernmentActions = {
     else org.head = p.id;
     org.performance = Math.round(clamp((org.performance ?? 55) + choice.perf, 0, 100));
     state.politics.office.approval = Math.round(clamp(state.politics.office.approval + choice.approval, 0, 100));
-    ctx.log(`You appointed ${p.name} as ${post.title} (${org.name}) — ${choice.label.slice(2).toLowerCase()}.${post.holder ? ` ${post.holder.name} is out.` : ''}`, '⭐', 'milestone');
+    ctx.log(`You appointed ${p.name} as ${post.title} (${org.name}) — ${choice.label.replace(/^\S+\s+/, '').toLowerCase()}.${post.holder ? ` ${post.holder.name} is out.` : ''}`, '⭐', 'milestone');
     // If you also work there, the rank and file react.
     const job = state.career.job;
     if (job?.employer?.orgId === org.id && job.department) job.department.morale = Math.round(clamp(job.department.morale + (kind === 'reformer' ? -6 : kind === 'professional' ? 3 : -2), 0, 100));

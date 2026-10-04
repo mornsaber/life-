@@ -12,7 +12,7 @@ import { STATES } from '../life/States.js';
 import { getProfession } from './JobTrees.js';
 import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
 import { MAX_STEP } from './PayGrades.js';
-import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary } from './CareerEngine.js';
+import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast } from './CareerEngine.js';
 
 const DIMINISH = [1, 0.6, 0.3, 0];
 /** Promotion odds multiplier by the grade being competed for. */
@@ -251,6 +251,24 @@ export const WorkplaceActions = {
   },
 
   resolvers: {
+    /** Taking a promotion with another employer when there's no opening at yours. */
+    outsidePromotion(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const job = state.career.job;
+      if (!job || optionId !== 'accept') return;
+      const profession = getProfession(job.professionId);
+      const level = levelById(profession, data.levelId);
+      if (!level || !levelCheck(state, level).ok) return;
+      const old = job.salary;
+      const employer = createEmployer(rng, state, profession, state.character.regionId);
+      hire(ctx, { professionId: profession.id, levelId: level.id, employer });
+      const now = state.career.job;
+      if (now) {
+        stepForAtLeast(state, now, Math.round(old * 1.06));
+        recalcSalary(state, now);
+        ctx.log(`You moved to ${employer.name} as ${now.title} — the promotion you couldn't get at home. $${now.salary.toLocaleString()}/yr.`, '🪜', 'good');
+      }
+    },
     promotionReview(ctx, data, optionId) {
       const { state, rng } = ctx;
       const job = state.career.job;

@@ -150,7 +150,8 @@ export function syncBusinessOrg(state, biz) {
       if (!level) continue;
       const have = (d.seats[occ]?.[level.id] ?? []).filter((id) => org.people[id]);
       if (have.length > count) {
-        for (const id of have.slice(count)) delete org.people[id];
+        const leaders = new Set([org.ceo, ...Object.values(org.departments).map((x) => x.head)]);
+        for (const id of have.slice(count)) if (!leaders.has(id)) delete org.people[id];
         d.seats[occ][level.id] = have.slice(0, count);
       } else if (count) {
         for (const p of seatHolders(state, org, d.id, occ, level.id, count)) if (p.selection === 'internal' && p.years > 0 && !p.hiredBy) { p.selection = 'hired'; p.hiredBy = 'founder'; }
@@ -299,27 +300,45 @@ export function competitionFactor(state, biz) {
   return clamp(1 + ((biz.reputation ?? 50) - avg) / 250 - (rivals.length - 3) * 0.02, 0.85, 1.12);
 }
 
-/** NPC businesses grow, shrink, fail and open each year. Returns notable lines. */
-export function marketTick(ctx, biz) {
+/**
+ * NPC businesses everywhere grow, shrink and fail once a year, whether or not
+ * you own a competitor. If one you work for closes, you're laid off.
+ */
+export function npcBusinessesTick(ctx) {
   const { state } = ctx;
+  const age = state.character.age;
   const rng = sideRng(state);
   const phase = state.economy?.phase ?? 'expansion';
   const failBase = phase === 'recession' ? 0.09 : 0.04;
-  for (const o of competitorsOf(state, biz)) {
+  const mine = state.business?.current;
+  const myRivals = new Set(mine ? competitorsOf(state, mine).map((o) => o.id) : []);
+  for (const o of Object.values(state.orgs?.byId ?? {})) {
+    if (!o.business || o.closed || o.owner?.kind !== 'npc' || o.business.tickedAge === age) continue;
     const b = o.business;
+    b.tickedAge = age;
     b.years = (b.years ?? 0) + 1;
-    b.reputation = Math.round(clamp(b.reputation + rng.int(-5, 5), 10, 95));
-    b.staff = Math.max(1, Math.round(b.staff * (1 + (b.reputation - 50) / 300 + rng.float(-0.08, 0.1))));
+    b.reputation = Math.round(clamp((b.reputation ?? 50) + rng.int(-5, 5), 10, 95));
+    b.staff = Math.max(1, Math.round((b.staff ?? 3) * (1 + (b.reputation - 50) / 300 + rng.float(-0.08, 0.1))));
     o.size = sizeForHeadcount(b.staff);
     const fail = failBase * (b.years <= 3 ? 2 : 1) * (b.reputation < 35 ? 2 : 1);
-    if (rng.chance(fail)) {
-      o.closed = state.character.age;
-      ctx.log(`${o.name}, a competitor of ${biz.name}, closed its doors.`, '🔒');
-    }
+    if (!rng.chance(fail)) continue;
+    dissolve(o, age);
+    const job = state.career.job;
+    if (job?.employer?.orgId === o.id) {
+      ctx.log(`${o.name} went out of business.`, '🔒', 'bad');
+      ctx.emit('career:resign', { reason: `Laid off — ${o.name} went out of business` });
+    } else if (myRivals.has(o.id)) ctx.log(`${o.name}, a competitor of ${mine.name}, closed its doors.`, '🔒');
   }
-  // Someone new opens now and then.
-  if (rng.chance(phase === 'recession' ? 0.04 : 0.1)) {
+}
+
+/** Your market each year: the NPC economy moves, and now and then a new rival opens. */
+export function marketTick(ctx, biz) {
+  const { state } = ctx;
+  npcBusinessesTick(ctx);
+  const rng = sideRng(state);
+  if (rng.chance(state.economy?.phase === 'recession' ? 0.04 : 0.1)) {
     const o = npcBusiness(state, biz.typeId, businessOrg(state, biz)?.regionId ?? state.character.regionId);
+    o.business.tickedAge = state.character.age;
     ctx.log(`A new competitor opened: ${o.name}.`, '🏁');
   }
 }
@@ -332,7 +351,10 @@ export function marketTick(ctx, biz) {
 export function openBranch(state, biz, regionId) {
   const org = ensureBusinessOrg(state, biz);
   const city = (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
-  const deptId = `branch${org.branches.length + 2}`;
+  // Branch ids are never reused (closed branches leave gaps).
+  org.nextBranch = Math.max(org.nextBranch ?? 2, org.branches.length + 2);
+  const deptId = `branch${org.nextBranch}`;
+  org.nextBranch += 1;
   org.departments[deptId] = { id: deptId, name: `${city} Branch`, head: null, headcount: 0, seats: {}, branch: true, regionId };
   org.branches.push({ deptId, regionId, city, openedAge: state.character.age });
   syncBusinessOrg(state, biz);
@@ -362,9 +384,7 @@ export function releaseBusinessOrg(state, biz, { closed = false, buyer = null } 
   const org = businessOrg(state, biz);
   if (!org) return null;
   if (closed) {
-    org.closed = state.character.age;
-    org.people = {};
-    for (const d of Object.values(org.departments)) d.seats = {};
+    dissolve(org, state.character.age);
     return org;
   }
   const rng = sideRng(state);
@@ -373,6 +393,18 @@ export function releaseBusinessOrg(state, biz, { closed = false, buyer = null } 
   org.business = { ...org.business, staff: biz.staff.headcount, years: biz.years, reputation: biz.reputation };
   if (!personOf(org, org.ceo)) org.ceo = newPerson(rng, org, { title: 'General Manager', selection: 'hired', age: rng.int(38, 58), years: 0 }).id;
   return org;
+}
+
+/** A closed organization employs nobody: no people, no seats, no heads. */
+export function dissolve(org, age) {
+  org.closed = age;
+  org.people = {};
+  org.ceo = null;
+  org.head = null;
+  for (const d of Object.values(org.departments)) {
+    d.seats = {};
+    d.head = null;
+  }
 }
 
 /** Businesses you've owned that still exist under other owners (for the history view). */

@@ -11,7 +11,9 @@
  */
 import { clamp } from '../../core/Random.js';
 import { orgOf, sideRng } from './Organizations.js';
-import { seat } from './Vacancies.js';
+import { seat, seatsAt, NAMED_SEATS } from './Vacancies.js';
+import { getProfession } from '../career/JobTrees.js';
+import { levelById } from '../career/Ladder.js';
 
 const ALUMNI_KEPT = 12;
 const RETURNABLE = /resigned|transferred/;
@@ -40,7 +42,18 @@ export function churnTick(ctx, job) {
   dept.lastYear = { hired, left };
 
   // Boomerangs: someone who resigned or transferred comes back to their old post.
-  const back = (org.alumni ?? []).filter((a) => RETURNABLE.test(a.why) && state.character.age - a.leftAge >= 1 && state.character.age - a.leftAge <= 6 && a.professionId === job.professionId);
+  // Only into a post with room (named posts have few seats) and never as someone already here.
+  const hasRoom = (a) => {
+    const profession = getProfession(a.professionId);
+    const level = profession && levelById(profession, a.levelId);
+    const d = org.departments[a.deptId ?? dept.id];
+    if (!level || !d || org.people[a.id]) return false;
+    if (org.business) return true;
+    const seats = seatsAt(org, d.id, profession, level, job.employer.size);
+    const held = (d.seats[a.professionId]?.[a.levelId] ?? []).filter((id) => org.people[id]).length + (job.levelId === a.levelId && job.employer.deptId === d.id ? 1 : 0);
+    return seats > NAMED_SEATS || held < seats;
+  };
+  const back = (org.alumni ?? []).filter((a) => RETURNABLE.test(a.why) && state.character.age - a.leftAge >= 1 && state.character.age - a.leftAge <= 6 && a.professionId === job.professionId && hasRoom(a));
   if (back.length && rng.chance(0.12)) {
     const a = rng.pick(back);
     org.alumni = org.alumni.filter((x) => x !== a);

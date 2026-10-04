@@ -31,6 +31,8 @@ import {
 } from './Franchising.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
+/** Venture investors hold C-corp preferred stock (private stake buyers and merger partners don't lock your structure). */
+export const ventureBacked = (biz) => biz.investors.some((i) => ROUNDS.some((r) => r.id === i.round));
 const PHASE_STARTUP = { expansion: 0.1, peak: 0.15, recession: -0.25, recovery: 0 };
 const FAMILY_RELATIONS = ['spouse', 'partner', 'fiance', 'child', 'sibling', 'mother', 'father'];
 const MAX_HEADCOUNT = 400;
@@ -493,6 +495,16 @@ function buyBusiness(ctx, listingId, funding) {
 /** A year for a business you hold passively: hired management, books, distributions. */
 function holdingTick(ctx, biz) {
   const { state, rng } = ctx;
+  // The same rules as an active business: licensee-only types and conflicts of interest.
+  const type = typeOf(biz);
+  const conflict = !ownershipRules(state, biz.typeId).ok;
+  if ((LICENSEE_ONLY.includes(biz.typeId) && !holdsLicense(state, type)) || (conflict && biz.divestBy != null && state.character.age >= biz.divestBy)) {
+    ctx.log(`You had to sell your stake in ${biz.name} (${conflict ? 'conflict of interest' : 'license lost'}).`, '⚖️', 'warn');
+    sellHoldingAt(ctx, biz, Math.round(biz.valuation * 0.8), 'Forced sale (held)');
+    return;
+  }
+  if (conflict && biz.divestBy == null) biz.divestBy = state.character.age + 1;
+  if (!conflict) biz.divestBy = null;
   biz.years += 1;
   biz.role = 'absentee';
   ensureBusinessOrg(state, biz);
@@ -520,6 +532,18 @@ function holdingTick(ctx, biz) {
     state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome: 'Failed (held passively)', proceeds: 0, orgId: biz.orgId, role: 'absentee' });
     state.business.holdings = state.business.holdings.filter((h) => h !== biz);
   }
+}
+
+/** Sell a passive holding for `price` (whole-company equity value). */
+function sellHoldingAt(ctx, h, price, outcome) {
+  const { state } = ctx;
+  const e = exitProceeds(h, price);
+  state.finances.cash += e.basisBack + e.qsbs;
+  if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${h.name}`, { ltcg: true });
+  const org = releaseBusinessOrg(state, h, {});
+  state.business.history.push({ name: h.name, typeId: h.typeId, startAge: h.foundedAge, endAge: state.character.age, years: h.years, outcome, proceeds: e.proceeds, orgId: org?.id ?? null, role: 'absentee' });
+  state.business.holdings = state.business.holdings.filter((x) => x !== h);
+  return e;
 }
 
 /* ------------------------------------------------------------------ */
@@ -735,7 +759,7 @@ export const BusinessEngine = {
     convert(ctx, entity) {
       const biz = withBiz(ctx);
       if (!biz || !ENTITIES[entity] || biz.entity === entity) return;
-      if (biz.investors.length && entity !== 'ccorp') return ctx.toast('Your investors hold C-corp stock — you can\'t convert away.', 'warn');
+      if (ventureBacked(biz) && entity !== 'ccorp') return ctx.toast('Your investors hold C-corp stock — you can\'t convert away.', 'warn');
       if (!ctx.spend(1500, 'Business conversion legal fees', { credit: true })) return ctx.toast('The attorney wants $1,500.', 'warn');
       biz.entity = entity;
       ctx.log(`${biz.name} is now a${entity === 'llc' ? 'n' : ''} ${ENTITIES[entity].name}.`, ENTITIES[entity].icon);
@@ -784,13 +808,7 @@ export const BusinessEngine = {
       const h = (state.business.holdings ?? []).find((x) => x.id === id);
       if (!h) return;
       if (h.valuation <= 0) return ctx.toast('No buyer for a business with no value.', 'warn');
-      const price = Math.round(h.valuation * rng.float(0.85, 1.1));
-      const e = exitProceeds(h, price);
-      state.finances.cash += e.basisBack + e.qsbs;
-      if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${h.name}`, { ltcg: true });
-      const org = releaseBusinessOrg(state, h, {});
-      state.business.history.push({ name: h.name, typeId: h.typeId, startAge: h.foundedAge, endAge: state.character.age, years: h.years, outcome: 'Sold (held passively)', proceeds: e.proceeds, orgId: org?.id ?? null, role: 'absentee' });
-      state.business.holdings = state.business.holdings.filter((x) => x !== h);
+      const e = sellHoldingAt(ctx, h, Math.round(h.valuation * rng.float(0.85, 1.1)), 'Sold (held passively)');
       ctx.log(`You sold your ${Math.round(h.ownerPct * 100)}% of ${h.name} for ${money(e.proceeds)}.`, '💰', 'milestone');
     },
     /** arg: personId — hand the business to a family member (a gift; it stays in the family). */

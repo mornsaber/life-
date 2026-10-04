@@ -14,7 +14,7 @@ import { ladderFor } from '../career/Ladder.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { currentBusiness, typeOf, valuation, exitProceeds, debtBalance } from './Business.js';
 import {
-  businessOrg, syncBusinessOrg, competitorsOf, closeBranch, openBranch, sizeForHeadcount, ownerPosition,
+  businessOrg, syncBusinessOrg, competitorsOf, closeBranch, openBranch, sizeForHeadcount, ownerPosition, dissolve,
 } from '../org/Businesses.js';
 import { personOf, sideRng, newPerson } from '../org/Organizations.js';
 import { seat } from '../org/Vacancies.js';
@@ -63,6 +63,8 @@ function staffMember(state, biz, personId) {
 
 /** Move a person one rung up (or down) their career's ladder inside the business. */
 function moveRung(org, p, dir) {
+  // Department heads and branch managers sit above the ladder.
+  if (!p.levelId || Object.values(org.departments).some((d) => d.head === p.id)) return null;
   const profession = getProfession(p.professionId);
   if (!profession) return null;
   const ladder = ladderFor(profession, org.size);
@@ -113,7 +115,7 @@ export const OwnerActions = {
     const { org, p } = biz ? staffMember(ctx.state, biz, personId) : {};
     if (!p || !decide(ctx)) return;
     const next = moveRung(org, p, 1);
-    if (!next) return ctx.toast(`There's nowhere higher for ${p.name} here.`, 'warn');
+    if (!next) return ctx.toast(`There's no rung above ${p.name} here.`, 'warn');
     p.rel = Math.min(100, p.rel + 15);
     biz.staff.costPremium = Math.round(((biz.staff.costPremium ?? 0) + 0.05 / Math.max(1, biz.staff.headcount)) * 10000) / 10000;
     ctx.log(`You promoted ${p.name} to ${next.title}.`, '⬆️', 'good');
@@ -123,7 +125,7 @@ export const OwnerActions = {
     const { org, p } = biz ? staffMember(ctx.state, biz, personId) : {};
     if (!p || !decide(ctx)) return;
     const prev = moveRung(org, p, -1);
-    if (!prev) return ctx.toast(`${p.name} is already at the bottom rung.`, 'warn');
+    if (!prev) return ctx.toast(`${p.name} can't be moved down a rung here.`, 'warn');
     p.rel = Math.max(0, p.rel - 25);
     biz.staff.morale = Math.max(0, biz.staff.morale - 3);
     ctx.log(`You demoted ${p.name} to ${prev.title}.`, '⬇️', 'warn');
@@ -160,8 +162,11 @@ export const OwnerActions = {
     if (!personOf(org, to.head)) {
       to.head = p.id;
       p.deptId = deptId;
+      p.levelId = null;
       p.title = to.branch ? 'Branch Manager' : `${to.name} Manager`;
       ctx.log(`You put ${p.name} in charge of ${to.name}.`, '🔀', 'good');
+    } else if (!p.levelId) {
+      return ctx.toast(`${to.name} already has a manager.`, 'warn');
     } else {
       const level = p.levelId;
       p.levelId = null;
@@ -317,9 +322,8 @@ function absorb(state, biz, target, how) {
     org.people[p.id] = { ...p, deptId: branch.id };
     seat(org, branch.id, p.professionId, p.levelId, org.people[p.id], p.title);
   }
-  target.closed = state.character.age;
+  dissolve(target, state.character.age);
   target.mergedInto = org.id;
-  target.people = {};
   org.size = sizeForHeadcount(biz.staff.headcount);
   syncBusinessOrg(state, biz);
 }

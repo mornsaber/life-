@@ -24,7 +24,7 @@ import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
 import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
-import { vacancyTick, hasOpening, openingReason, claimOpening } from '../org/Vacancies.js';
+import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 
 /* ------------------------------------------------------------------ */
@@ -185,6 +185,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   ensureDepartment(job, level);
   state.career.job = job;
   job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
+  computeOpenings(state, job);
   const program = traineeProgram(job);
   // Trainees start probation when they graduate.
   job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
@@ -365,6 +366,7 @@ export function promote(ctx, levelId) {
   ensureDepartment(job, level);
   claimOpening(state, job, level.id);
   job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
+  computeOpenings(state, job);
   ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
   ctx.toast(`Promoted: ${job.title}`, 'good');
   ctx.stat('happiness', 10);
@@ -422,6 +424,25 @@ function layoffCheck(ctx, job) {
   ctx.stat('happiness', -10);
   ctx.stat('stress', 10);
   return true;
+}
+
+/** Another employer in your field offers the post you can't get at home. */
+function outsidePromotionOffer(ctx, job, profession) {
+  const { state } = ctx;
+  if (state.prompts.some((p) => p.type === 'career.outsidePromotion')) return;
+  const target = nextLevels(profession, job.employer.size, job.levelId).find((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);
+  if (!target) return;
+  ctx.prompt({
+    type: 'career.outsidePromotion',
+    icon: '🪜',
+    title: 'Promotion — Somewhere Else',
+    text: `There's no ${target.title} opening at ${job.employer.name}, but another ${profession.sector === 'private' ? 'employer' : 'agency'} in your field has one, and they want you. You'd start over on seniority${profession.sector === 'private' ? '' : ' and serve a new probation'}.`,
+    options: [
+      { id: 'accept', label: `🪜 Take the ${target.title} job` },
+      { id: 'stay', label: `🏠 Stay at ${job.employer.name} and wait` },
+    ],
+    data: { levelId: target.id },
+  });
 }
 
 /** Queue the interactive promotion review (resolved in WorkplaceActions). */
@@ -567,6 +588,9 @@ export function careerOnAgeUp(ctx) {
 
   const status = promotionStatus(state);
   const grievanceLimit = job.unionMember ? 3 : 2;
+  // Ready to move up with nowhere to go: after a couple of years, another employer offers the promotion.
+  job.stuckYears = job.performance >= 75 && status.noOpening ? (job.stuckYears ?? 0) + 1 : 0;
+  if (job.stuckYears >= 2 && rng.chance(0.4)) outsidePromotionOffer(ctx, job, profession);
   if (job.performance >= 75 && status.eligible) {
     job.lowYears = 0;
     ctx.log(`Annual review${by}: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');

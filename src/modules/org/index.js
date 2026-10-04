@@ -9,6 +9,7 @@ import { OrganizationsModule } from './Organizations.js';
 import { ReentryActions, ReentryResolvers } from './Reentry.js';
 import { SupervisionActions } from './Supervision.js';
 import { GovernmentActions, politicalTurnover, oversightTick } from './Government.js';
+import { npcBusinessesTick } from './Businesses.js';
 
 export const OrgModule = {
   ...OrganizationsModule,
@@ -19,5 +20,6 @@ export const OrgModule = {
     // Elections and new administrations reach into the agency you work for; your own appointees shape your approval.
     if (ctx.state.career.job) politicalTurnover(ctx, ctx.state.career.job);
     oversightTick(ctx);
+    npcBusinessesTick(ctx);
   },
 };

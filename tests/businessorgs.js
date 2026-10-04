@@ -15,7 +15,7 @@ import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { BUSINESS_TYPES, businessesFor, SIZE_OPTIONS, startupCostFor } from '../src/modules/business/BusinessTypes.js';
 import { startEligibility } from '../src/modules/business/Business.js';
 import { ownershipRules } from '../src/modules/business/OwnershipRules.js';
-import { businessOrg, ownerPosition, competitorsOf, businessRoster, syncBusinessOrg, businessStaffTick, TIERS } from '../src/modules/org/Businesses.js';
+import { businessOrg, ownerPosition, competitorsOf, businessRoster, syncBusinessOrg, businessStaffTick, npcBusinessesTick, TIERS } from '../src/modules/org/Businesses.js';
 import { orgType, chainOfCommand } from '../src/modules/org/Organizations.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
@@ -241,6 +241,25 @@ const tests = {
     hire(engine.context(), { professionId: 'plumbing', levelId: 'journeyman', employer: atBusiness });
     const chain = chainOfCommand(state, state.career.job);
     assert.ok(chain?.orgHead || chain?.supervisor, 'you report up to the owner');
+  },
+
+  'when an NPC business you work for fails, you are laid off'() {
+    const { engine, state, ctx } = setup(12);
+    plumber(state);
+    engine.dispatch('business.start', 'plumbing:cash:llc');
+    const rival = competitorsOf(state, state.business.current)[0];
+    engine.dispatch('business.close');
+    // Work for the rival.
+    const e = createEmployer(new Random(5), state, PROFESSIONS.plumbing, state.character.regionId);
+    Object.assign(e, { orgId: rival.id, deptId: Object.keys(rival.departments)[0], name: rival.name, orgName: rival.name });
+    hire(ctx, { professionId: 'plumbing', levelId: 'journeyman', employer: e });
+    rival.business.reputation = 10;
+    rival.business.years = 1;
+    let closed = false;
+    for (let i = 0; i < 80 && !closed; i++) { rival.business.tickedAge = null; npcBusinessesTick(ctx); closed = Boolean(rival.closed); rival.business.reputation = 10; rival.business.years = 1; }
+    assert.ok(closed, 'the rival failed');
+    assert.equal(state.career.job, null, 'laid off');
+    assert.match(state.career.history.at(-1).reason, /went out of business/);
   },
 
   'old saves: an existing business gets an organization on load'() {

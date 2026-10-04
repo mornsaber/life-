@@ -18,6 +18,7 @@ import { getProfession } from '../career/JobTrees.js';
 import { levelById, previousLevel, ladderFor } from '../career/Ladder.js';
 import { createEmployer } from '../career/Employers.js';
 import { applicationEligibility, bestEntryLevel, levelCheck, hire } from '../career/CareerEngine.js';
+import { traineeProgram } from '../career/Tenure.js';
 import { orgOf, orgType, standingWith, departmentFor, divisionName, supervises } from './Organizations.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 
@@ -78,7 +79,8 @@ export function formerEmployers(state) {
     if (!h.orgId || seen.has(h.orgId)) continue;
     seen.add(h.orgId);
     if (state.career.job?.employer?.orgId === h.orgId) continue;
-    if (!orgOf(state, h.orgId) || !getProfession(h.professionId)) continue;
+    // Closed (or merged-away) employers can't take you back.
+    if (!orgOf(state, h.orgId) || orgOf(state, h.orgId).closed || !getProfession(h.professionId)) continue;
     const years = state.character.age - h.endAge;
     list.push({ ...h, yearsAgo: years, h });
   }
@@ -189,8 +191,8 @@ export const ReentryActions = {
     const now = state.career.job;
     if (now) {
       now.yearsAtEmployer = seniority;
-      // Same employer: no new probation unless the job needs training.
-      if (!now.probationLeft) now.probationLeft = 0;
+      // Same employer: no new probation (training programs still run their course).
+      if (!traineeProgram(now)) now.probationLeft = 0;
       ctx.log(`You moved from ${from} to ${now.title} inside ${employer.orgName ?? employer.name}, keeping ${seniority} years of seniority.`, '🔀', 'milestone');
     }
     return undefined;
