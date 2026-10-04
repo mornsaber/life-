@@ -13,6 +13,7 @@
  */
 import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
+import { belowZone, boardScore } from './MilitaryLife.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
@@ -361,6 +362,17 @@ function notSelected(ctx, svc) {
 }
 
 export function tryPromotion(ctx, svc) {
+  // Top performers can be picked up a year early.
+  if (svc.track && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
+    svc.grade += 1;
+    svc.yearsInGrade = 0;
+    svc.passovers = 0;
+    const rank = rankOf(svc);
+    ctx.log(`Selected below the zone: promoted to ${rank.title} (${rank.code}) a year ahead of your peers!`, '🚀', 'good');
+    ctx.toast(`Promoted early: ${rank.title}`, 'good');
+    ctx.stat('happiness', 10);
+    return true;
+  }
   const outlook = promotionOutlook(svc);
   if (!outlook.eligible) {
     // In the zone but not competitive: the board still meets, and passes you over.
@@ -369,7 +381,7 @@ export function tryPromotion(ctx, svc) {
   }
   const flagBoard = svc.track === 'officer' && svc.grade >= 5;
   if (flagBoard && (svc.flagPassovers ?? 0) >= 3) return false;
-  let chance = 0.55 + (svc.eval - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
+  let chance = 0.55 + (boardScore(svc) - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
   // Boards promote people who have commanded (or served as first sergeant) at their grade.
   if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
   // An officer's reprimand (or any Article 15 for a senior NCO) sits in the file the board reads.
@@ -455,7 +467,7 @@ export function discharge(ctx, type, reason) {
   const basePay = annualActivePay(svc);
   if (type === 'retired') {
     const reserve = svc.component === 'reserve';
-    const annual = Math.round(basePay * 0.025 * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
+    const annual = Math.round(basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
     const startAge = reserve ? Math.max(60, state.character.age) : state.character.age;
     ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${BRANCHES[svc.branch].name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');

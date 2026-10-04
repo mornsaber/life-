@@ -244,6 +244,8 @@ export function buildHeirState(rng, old, childId) {
   if (childAge >= 18) s.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: Math.min(18, childAge) });
   if (child.degree && childAge >= 22) s.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: child.degree, schoolId: 'state', gpa: 3.1, year: 22 });
   if (fund529) s.education.fund529 = fund529;
+  // A parent's transferred GI Bill.
+  if (child.giBill) s.education.giBillTransferred = child.giBill;
 
   // Family: the parent who died, the other parent, and siblings — ages re-based on the heir.
   const rebase = ({ custody, since, dcAtMarriage, otherParentId, ...p }, relation, extra = {}) => ({ ...p, relation, ageOffset: p.ageOffset - child.ageOffset, ...extra });

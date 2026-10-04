@@ -3,6 +3,7 @@
  */
 import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
+import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
 import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
@@ -75,7 +76,10 @@ export function militaryView(state) {
           ['Service', `${svc.yearsOfService} yrs`],
           ['Time in grade', `${svc.yearsInGrade} yrs`],
           ['Contract', svc.contractYearsLeft > 0 ? `${svc.contractYearsLeft} yrs left` : 'Up for renewal'],
+          ['Duty station', svc.overseas ? `🌍 ${esc(svc.overseas.base)}, ${esc(svc.overseas.country)} (${svc.overseas.accompanied ? 'accompanied' : 'unaccompanied'}, until ${svc.overseas.until})` : esc(svc.station ?? 'Initial training')],
           ['Deployments', `${svc.deployments} (${svc.combatTours} combat)`],
+          svc.reports?.length ? [`Last ${reportName(svc)}s`, svc.reports.slice(-3).map((r) => `<span class="${r.block === 'Most Qualified' ? 'pos' : r.block === 'Not Qualified' ? 'neg' : ''}">${esc(r.block)}</span>`).join(' · ')] : null,
+          ['Retirement', svc.retirementPlan === 'brs' ? 'Blended (2%/yr + matched TSP)' : svc.retirementPlan === 'legacy' ? 'Legacy (2.5%/yr at 20)' : 'Legacy until year 2'],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
           svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} Article 15${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
           ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}max ${serviceLimit(svc)} yrs at this grade${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
@@ -91,6 +95,7 @@ export function militaryView(state) {
       ${button(svc.deploymentRequested ? '✋ Withdraw Request' : '✈️ Request Deployment', 'military.requestDeployment', { hint: svc.component === 'reserve' ? 'Volunteer for mobilization' : 'Higher deploy odds' })}
       ${svc.track === 'enlisted' ? button('🎓 Apply to OCS', 'military.applyOCS', { hint: hasBachelor ? 'Become an officer' : "Needs bachelor's", disabled: !hasBachelor }) : ''}
       ${button(svc.component === 'active' ? '🏡 Transfer to Reserves' : '🪖 Go Active Duty', 'military.switchComponent', { hint: svc.yearsOfService < 2 ? 'After 2 yrs' : 'Resets contract', disabled: svc.yearsOfService < 2 })}
+      ${((g) => button('🎓 Transfer GI Bill', 'military.transferGiBill', { hint: g.ok ? 'To your children · +4 yrs' : g.reason, disabled: !g.ok }))(giBillTransferEligibility(state))}
       ${button('🎖️ Retire', 'military.retire', { hint: `${RETIREMENT_YEARS}+ yrs · ×${pensionMultiplier(state).toFixed(2)} pension`, disabled: svc.yearsOfService < RETIREMENT_YEARS })}
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>

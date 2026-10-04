@@ -6,6 +6,7 @@
  */
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
+import { serviceLifeTick } from './MilitaryLife.js';
 import { clamp } from '../../core/Random.js';
 import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
@@ -40,6 +41,7 @@ export function reserveTick(ctx, svc) {
   updateEvaluation(ctx, svc);
   svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
   sofTick(ctx, svc);
+  serviceLifeTick(ctx, svc);
 
   const exposure = exposureOf(svc);
   const mobilizeChance = 0.08 * exposure * warFactor(ctx.state) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);

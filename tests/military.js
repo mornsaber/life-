@@ -14,6 +14,10 @@ import { unitView, unitTick, billetFor, syncUnit, PLAYER } from '../src/modules/
 import { ranksOf, annualActivePay, exposureOf } from '../src/modules/military/MilitaryEngine.js';
 import { PIPELINES, selectionEligibility, courseOdds } from '../src/modules/military/SpecialOps.js';
 import { reportMisconduct, preferCharges } from '../src/modules/military/UCMJ.js';
+import { pcsOrders, serviceLifeTick, belowZone, giBillTransferEligibility } from '../src/modules/military/MilitaryLife.js';
+import { tryPromotion, discharge } from '../src/modules/military/MilitaryEngine.js';
+import { buildHeirState } from '../src/modules/people/Legacy.js';
+import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 22) {
@@ -228,6 +232,71 @@ const tests = {
     }
     assert.ok(dd >= 5, `dishonorable discharges: ${dd}`);
     assert.ok(brig >= 3, `confined: ${brig}`);
+  },
+
+  'overseas tours: family or alone, a spouse\'s job, and coming home'() {
+    let sawOrders = false;
+    let lostJob = 0;
+    for (let i = 0; i < 30; i++) {
+      const { engine, state, ctx } = setup(300 + i);
+      state.people.list.push({ id: 'sp', firstName: 'Ana', lastName: 'Case', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: 50000, careerIncome: 50000, job: 'Nurse', sector: 'private', nationality: 'US', since: 20 });
+      const svc = enlist(engine);
+      svc.isNew = false;
+      state.prompts = [];
+      pcsOrders(ctx, svc);
+      const p = state.prompts.find((x) => x.type === 'military.overseasOrders');
+      if (p) {
+        sawOrders = true;
+        engine.resolvePrompt(p.id, i % 2 ? 'family' : 'alone');
+        assert.ok(svc.overseas, 'serving abroad');
+        assert.equal(svc.overseas.accompanied, Boolean(i % 2));
+        const rel = state.people.list.find((x) => x.id === 'sp').relationship;
+        serviceLifeTick(ctx, svc);
+        if (!svc.overseas.accompanied) assert.ok(state.people.list.find((x) => x.id === 'sp').relationship < rel, 'unaccompanied tours strain a marriage');
+        const region = state.character.regionId;
+        pcsOrders(ctx, svc);
+        assert.equal(svc.overseas, null, 'home again');
+        assert.ok(svc.station, region);
+      }
+      if (!state.people.list.find((x) => x.id === 'sp').job) lostJob += 1;
+    }
+    assert.ok(sawOrders, 'some orders go overseas');
+    assert.ok(lostJob > 0, 'military spouses lose jobs to moves');
+  },
+
+  'boards: fitness reports, below-the-zone promotion; BRS; GI Bill to your kids'() {
+    const { engine, state, ctx } = setup(12);
+    const svc = enlist(engine);
+    svc.isNew = false;
+    svc.grade = 3;
+    svc.yearsInGrade = 1; // E-4 needs 2 years: in the BTZ window
+    svc.eval = 95;
+    svc.reports = [{ age: 20, score: 95, block: 'Most Qualified' }, { age: 21, score: 96, block: 'Most Qualified' }];
+    assert.ok(belowZone(svc, 2, 60), 'eligible below the zone');
+    let early = false;
+    for (let i = 0; i < 30 && !early; i++) { svc.grade = 3; svc.yearsInGrade = 1; early = tryPromotion(ctx, svc); }
+    assert.ok(early, 'promoted early');
+    // BRS at year 2.
+    svc.yearsOfService = 2;
+    state.prompts = [];
+    serviceLifeTick(ctx, svc);
+    const brs = state.prompts.find((x) => x.type === 'military.brs');
+    assert.ok(brs, 'BRS choice');
+    engine.resolvePrompt(brs.id, 'brs');
+    const dc = state.retirement.dc;
+    serviceLifeTick(ctx, svc);
+    assert.ok(state.retirement.dc > dc, 'TSP match');
+    // GI Bill transfer: six years, a child, four more years.
+    assert.equal(giBillTransferEligibility(state).ok, false);
+    svc.yearsOfService = 7;
+    state.people.list.push({ id: 'kid1', firstName: 'Sam', lastName: 'Case', gender: 'male', relation: 'child', ageOffset: -20, relationship: 80, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: null, custody: 'you' });
+    engine.dispatch('military.transferGiBill');
+    assert.ok(svc.giBillTransferred);
+    assert.ok(state.people.list.find((p) => p.id === 'kid1').giBill >= 1);
+    discharge(ctx, 'honorable', 'test');
+    state.character.age += 1;
+    const heir = buildHeirState(engine.rng, state, 'kid1');
+    assert.ok(heir && giBillEligible(heir), 'your child can use it');
   },
 };
 

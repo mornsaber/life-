@@ -19,6 +19,7 @@ import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separ
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
 import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
 import { UcmjResolvers, imposeNjp } from './UCMJ.js';
+import { MilitaryLifeActions, MilitaryLifeResolvers, militaryLifeTick } from './MilitaryLife.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -122,6 +123,7 @@ export const MilitaryModule = {
 
   onAgeUp(ctx) {
     const { state } = ctx;
+    militaryLifeTick(ctx);
     const svc = state.military.service;
     if (!svc) return;
     svc.deployedThisYear = false;
@@ -132,6 +134,7 @@ export const MilitaryModule = {
   actions: {
     ...LeadershipActions,
     ...SpecialOpsActions,
+    ...MilitaryLifeActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -232,6 +235,7 @@ export const MilitaryModule = {
     ...LeadershipResolvers,
     ...SpecialOpsResolvers,
     ...UcmjResolvers,
+    ...MilitaryLifeResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {

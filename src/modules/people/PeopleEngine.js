@@ -233,7 +233,7 @@ function childrenTick(ctx) {
   let childcare = 0;
   for (const child of livingChildren(state)) {
     const age = ageOf(state, child);
-    if (age === 22 && !child.degree && rng.chance(0.42)) child.degree = rng.pick(MAJORS);
+    if (age === 22 && !child.degree && rng.chance(child.giBill ? 0.75 : 0.42)) child.degree = rng.pick(MAJORS);
     if (age < 18 && child.custody !== 'ex') {
       const share = child.custody === 'joint' ? 0.5 : 1;
       costs += 7000 * share;

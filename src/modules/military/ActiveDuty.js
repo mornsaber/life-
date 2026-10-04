@@ -5,6 +5,7 @@
  */
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
+import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
 import { reportMisconduct } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
@@ -17,7 +18,6 @@ import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
 } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
-import { BASES } from '../life/Regions.js';
 
 const THEATERS = {
   ground: ['eastern Syria', 'the Sahel', 'northern Iraq', 'the Horn of Africa', 'the Baltic frontier'],
@@ -582,14 +582,6 @@ function missionTick(ctx, svc) {
 /* Annual loop                                                         */
 /* ------------------------------------------------------------------ */
 
-function pcs(ctx, svc) {
-  const options = (BASES[svc.branch] ?? []).filter(([regionId]) => regionId !== ctx.state.character.regionId);
-  if (!options.length) return;
-  const [regionId, base] = ctx.rng.pick(options);
-  svc.stationYears = 0;
-  svc.station = base;
-  ctx.emit('region:relocate', { regionId, reason: `PCS orders: report to ${base}.` });
-}
 
 export function activeDutyTick(ctx, svc) {
   const { rng } = ctx;
@@ -607,9 +599,9 @@ export function activeDutyTick(ctx, svc) {
   svc.yearsInGrade += 1;
   svc.contractYearsLeft -= 1;
 
-  // Permanent change of station every ~3 years, starting right after training.
+  // Permanent change of station every ~3 years (or at the end of an overseas tour), starting right after training.
   svc.stationYears = (svc.stationYears ?? 99) + 1;
-  if (svc.stationYears >= 3) pcs(ctx, svc);
+  if (svc.stationYears >= (svc.tourLength ?? 3)) pcsOrders(ctx, svc);
 
   const rank = rankOf(svc);
   ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`, { wage: true });
@@ -618,6 +610,7 @@ export function activeDutyTick(ctx, svc) {
   // Your unit: the people you lead, your chain of command, and command boards.
   svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
   sofTick(ctx, svc);
+  serviceLifeTick(ctx, svc);
   // Random urinalysis: addiction shows up in the cup.
   if ((hasCondition(ctx.state, 'opioids') && rng.chance(0.35)) || (hasCondition(ctx.state, 'alcohol') && rng.chance(0.08))) {
     if (!ctx.state.military.service) return;

@@ -54,6 +54,11 @@ function check(state, where) {
   }
   if (slots > 1) flag(`player holds ${slots} unit slots`, where);
   if (state.military.service?.unit) seenPaths.add(`military billet ${state.military.service.unit.billet}`);
+  if (state.military.service?.sof) seenPaths.add(`special operations ${state.military.service.sof.pipeline}`);
+  if (state.military.service?.overseas) seenPaths.add('overseas tour');
+  if (state.military.service?.njp?.length) seenPaths.add('article 15');
+  if (state.legal.record.some((r) => r.court === 'court-martial')) seenPaths.add('court-martial conviction');
+  if (state.military.selection && !state.prompts.some((p) => p.type === 'military.selectionPhase')) flag('selection course with no phase prompt', where);
   for (const org of Object.values(orgs)) {
     if (org.military) continue;
     if (org.branches?.length) seenPaths.add('branches');
@@ -155,7 +160,7 @@ const ACTIONS = [
   ['business.appointCeo'], ['business.makePassive'], ['business.takeBack', 'holding'], ['business.sellHolding', 'holding', 0.1],
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
-  ['orgs.appoint', 'appoint', 0.5], ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier'], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['orgs.appoint', 'appoint', 0.5], ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier'], ['military.volunteerSelection', 'pipeline'], ['military.transferGiBill', null, 0.2], ['military.leaveSof', null, 0.05], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
 ];
 
 function argFor(kind, state, rng) {
@@ -183,6 +188,7 @@ function argFor(kind, state, rng) {
     case 'exec': return rng.pick((state.career.execSearch?.listings ?? []).map((l) => l.id).concat(['none']));
     case 'deputyKind': return rng.pick(['professional', 'loyalist', 'reformer']);
     case 'officeStaff': { const r = officeRoster(state); return r ? rng.pick(r.staff.concat(r.deputy ? [r.deputy] : []).map((p) => p.id).concat(['none'])) : 'none'; }
+    case 'pipeline': return rng.pick(['ranger', 'greenBeret', 'seal', 'pararescue', 'raider', 'orbitalWarfare']);
     case 'soldier': { const v = state.military.service && unitView(state, state.military.service); return v ? rng.pick(v.team.map((p) => p.id).concat(['none'])) : 'none'; }
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
@@ -200,7 +206,7 @@ function life(seed) {
     const age = state.character.age;
     if (age >= 18) {
       // Join the military now and then.
-      if (!state.military.service && !state.career.job && age <= 32 && rng.chance(0.08)) tryDo(() => { engine.dispatch('military.enlist', `${rng.pick(['army', 'navy', 'airforce', 'marines', 'guard'])}:${rng.pick(['enlisted', 'enlisted', 'officer'])}:${rng.pick(['active', 'reserve'])}`); solve(); }, 'enlist');
+      if (!state.military.service && !state.career.job && age <= 32 && rng.chance(0.08)) tryDo(() => { engine.dispatch('military.enlist', `${rng.pick(['army', 'navy', 'airforce', 'marines', 'guard', 'spaceforce'])}:${rng.pick(['enlisted', 'enlisted', 'officer'])}:${rng.pick(['active', 'reserve'])}`); solve(); }, 'enlist');
       // Get a job now and then.
       if (!state.career.job && rng.chance(0.6)) tryDo(() => { engine.dispatch('career.apply', rng.pick(PROFESSION_LIST).id); solve(); }, 'apply');
       // Start a business now and then.

@@ -31,7 +31,10 @@ export function lastGpa(state) {
 export function giBillEligible(state) {
   const honorable = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge));
   const years = honorable.reduce((sum, h) => sum + h.yearsOfService, 0);
-  return years >= GI_BILL.minService && (state.education.giBillYearsUsed ?? 0) < GI_BILL.maxYears;
+  const used = state.education.giBillYearsUsed ?? 0;
+  // Benefits transferred by a parent who served.
+  if (used < (state.education.giBillTransferred ?? 0)) return true;
+  return years >= GI_BILL.minService && used < GI_BILL.maxYears;
 }
 
 /**
