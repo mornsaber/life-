@@ -9,6 +9,7 @@ import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { DUTIES } from '../../modules/career/ManagementEngine.js';
 import { credentialName } from '../../modules/credentials/CredentialRegistry.js';
+import { FRANCHISE_BRANDS, FDD_COST, startupCost, franchiseEligibility, franchisorEligibility } from '../../modules/business/Franchising.js';
 
 const MEAN_RNG = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), chance: () => false, pick: (xs) => xs[0], id: () => 'probe' };
 const entityOptions = (value = 'llc') => Object.entries(ENTITIES).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
@@ -47,6 +48,38 @@ function startCard(state) {
     <h4 class="sub">Legal structures</h4><ul class="history">${Object.values(ENTITIES).map((e) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
 }
 
+function franchiseCard(state) {
+  if (state.character.age < 21) return '';
+  const rows = Object.entries(FRANCHISE_BRANDS).map(([id, b]) => {
+    const t = BUSINESS_TYPES[b.typeId];
+    const elig = franchiseEligibility(state, id);
+    const price = startupCost(b);
+    const cash = fundingCheck(state, price, 'cash', t);
+    const sba = fundingCheck(state, price, 'sba', { ...t, credentials: ['franchise'] });
+    const blocked = !elig.ok || (!cash.ok && !sba.ok);
+    return `<li class="program ${blocked ? 'locked' : ''}">
+      <div><b>${b.icon} ${esc(b.name)}</b><small>${esc(t.name)} · ${money(price)} all-in (${money(b.fee)} fee) · royalties ${Math.round((b.royalty + b.adFund) * 1000) / 10}% of revenue · ${b.term}-yr term · ${money(b.minNetWorth)} net worth</small>
+        ${!elig.ok ? `<small class="why">${esc(elig.reason)}</small>` : !cash.ok && !sba.ok ? `<small class="why">${esc(sba.reason)}</small>` : ''}</div>
+      <div class="toggle-row">${button('💵 Cash', 'business.franchise', { arg: `${id}:cash:llc`, variant: 'tiny', disabled: !elig.ok || !cash.ok })}${button('🏦 SBA', 'business.franchise', { arg: `${id}:sba:llc`, variant: 'tiny', disabled: !elig.ok || !sba.ok, hint: sba.ok ? `${money(sba.down)} down` : '' })}</div>
+    </li>`;
+  }).join('');
+  return card('Buy a Franchise', `<p class="muted">A proven brand brings customers and a playbook — no industry experience needed — in exchange for a franchise fee, a pricier build-out, and royalties off the top of every sale. The franchisor inspects you, and the agreement runs a fixed term.</p><ul class="programs">${rows}</ul>`, { icon: '🍔' });
+}
+
+function franchiseStatus(state, biz) {
+  if (biz.franchise) {
+    const f = biz.franchise;
+    return `<h4 class="sub">Franchise</h4>${kv([['Brand', esc(f.name)], ['Royalties + ad fund', `${Math.round((f.royalty + f.adFund) * 1000) / 10}% of revenue`], ['Agreement', `${Math.max(0, f.term - f.signedYears)} of ${f.term} yrs left`]])}<p class="fine">Keep quality above 40 or face a default notice. Selling requires the franchisor's approval and a transfer fee.</p>`;
+  }
+  if (biz.franchisor) {
+    const fr = biz.franchisor;
+    return `<h4 class="sub">Franchise system</h4>${kv([['Franchised units', fr.units], ['Opened / closed', `${fr.opened} / ${fr.failed}`], ['Fee per unit', money(fr.fee)], ['Royalty', `${Math.round(fr.royalty * 100)}%`]])}`;
+  }
+  const elig = franchisorEligibility(state, biz);
+  if (typeOf(biz).startup) return '';
+  return `<h4 class="sub">Franchise it</h4><div class="toggle-row">${button(`🗺️ Franchise ${esc(biz.name)}`, 'business.franchiseOut', { variant: 'small', disabled: !elig.ok, hint: elig.ok ? `${money(FDD_COST)} for the FDD and registrations` : elig.reason })}</div>`;
+}
+
 function listingsCard(state) {
   const listings = state.business.listings;
   if (!listings.length || state.character.age < 21) return '';
@@ -74,7 +107,7 @@ function pnl(ly) {
   if (!ly) return '<p class="muted">First results come at the end of the year.</p>';
   const rows = [
     ['Revenue', ly.revenue], ['Cost of goods', -ly.cogs], ['Payroll & benefits', -ly.payroll], ['HR / delegation overhead', -ly.overhead], ['Managers', -ly.management],
-    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Filings & accounting', -ly.admin], ['Interest', -ly.interest],
+    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Interest', -ly.interest],
     ['Your salary', -ly.ownerSalary], ['Payroll tax on your salary', -ly.payrollTax], ['Corporate tax', -ly.corporateTax],
   ].filter(([, v]) => v);
   return `<table class="pnl">${rows.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'neg' : ''}">${money(v)}</td></tr>`).join('')}
@@ -103,6 +136,7 @@ function ownedView(state, biz) {
     ])}
     ${meter(biz.quality, { label: '⭐ Quality' })}
     ${meter(biz.reputation, { label: '📣 Reputation' })}
+    ${franchiseStatus(state, biz)}
     <h4 class="sub">Last year</h4>${pnl(biz.lastYear)}`, { icon: type.icon, accent: 'green' });
 
   const ops = card('Operations', `
@@ -137,5 +171,5 @@ export function businessView(state) {
   const biz = currentBusiness(state);
   if (biz) return `${ownedView(state, biz)}${historyCard(state)}`;
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
-  return `${startCard(state)}${listingsCard(state)}${historyCard(state)}`;
+  return `${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
 }

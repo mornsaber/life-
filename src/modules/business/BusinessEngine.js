@@ -18,8 +18,11 @@ import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING } from './BusinessTypes.js';
 import {
   currentBusiness, typeOf, holdsLicense, startEligibility, fundingCheck, ownerSkill, debtBalance, guaranteedDebt,
-  yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY,
+  yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND,
 } from './Business.js';
+import {
+  FRANCHISE_BRANDS, FDD_COST, TRANSFER_FEE, startupCost, franchiseEligibility, franchisorEligibility, franchisorTick, franchiseeTick, deBrand,
+} from './Franchising.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const PHASE_STARTUP = { expansion: 0.1, peak: 0.15, recession: -0.25, recovery: 0 };
@@ -132,7 +135,7 @@ function businessTick(ctx, biz) {
   if (biz.role === 'operator' && (state.legal.incarceration || state.career.job)) biz.role = 'absentee';
 
   // You need the license to run it. Law firms, practices and CPA firms must be owned by a licensee.
-  if (!holdsLicense(state, type)) {
+  if (!holdsLicense(state, type) && !biz.franchise?.waiveLicense) {
     if (LICENSEE_ONLY.includes(biz.typeId)) {
       ctx.log(`Without your ${type.name.toLowerCase()} license you can't own ${biz.name}. You had to sell it fast.`, '🪪', 'bad');
       exitBusiness(ctx, Math.round(biz.valuation * 0.7), 'Forced sale (license lost)');
@@ -144,11 +147,13 @@ function businessTick(ctx, biz) {
 
   staffTick(ctx, biz);
   const skill = biz.role === 'operator' ? ownerSkill(state, type) : 10;
-  const target = biz.staff.productivity * 0.55 + skill * 0.6 + 12 + (biz.licensedManager ? -5 : 0);
+  // A franchisor's operations manual and field consultants stand in for experience.
+  const target = biz.staff.productivity * 0.55 + Math.max(skill, biz.franchise ? 22 : 0) * 0.6 + 12 + (biz.licensedManager ? -5 : 0);
   biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
   biz.reputation = Math.round(clamp(biz.reputation + (biz.quality - biz.reputation) * 0.25 + rng.int(-3, 3), 0, 100));
   biz.fit = Math.round(clamp((biz.fit ?? 1) + rng.float(-0.05, 0.05), 0.5, 1.4) * 100) / 100;
   if (type.startup) startupGrowth(ctx, biz);
+  if (biz.franchisor) franchisorTick(ctx, biz, PHASE_DEMAND[state.economy.phase] ?? 1);
 
   const ly = yearFinancials(state, biz, rng);
   biz.cash += ly.netIncome;
@@ -161,6 +166,10 @@ function businessTick(ctx, biz) {
 
   inspectionTick(ctx, biz, type);
   if (state.business.current !== biz) return;
+  if (biz.franchise) {
+    const notice = franchiseeTick(ctx, biz);
+    if (notice) ctx.prompt(notice);
+  }
   if (biz.staff.unionRisk >= 100 && !biz.staff.unionized) unionDrive(ctx, biz);
   else if (rng.chance(0.35)) eventPrompt(ctx, biz);
   if (rng.chance(0.08)) temptationPrompt(ctx, biz);
@@ -320,6 +329,8 @@ function retire(state, biz, outcome, proceeds) {
 export function exitBusiness(ctx, price, outcome) {
   const { state } = ctx;
   const biz = currentBusiness(state);
+  // Franchisors charge a transfer fee (and must approve the buyer).
+  if (biz.franchise) price = Math.max(0, price - TRANSFER_FEE);
   const e = exitProceeds(biz, price);
   state.finances.cash += e.basisBack + e.qsbs;
   if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${biz.name}`, { ltcg: true });
@@ -377,6 +388,31 @@ function startBusiness(ctx, typeId, funding, entity) {
   ctx.log(`You founded ${biz.name} (${ENTITIES[biz.entity].name})${sbaLoan ? ` with a ${money(sbaLoan)} SBA loan you personally guaranteed` : ''}.`, type.icon, 'milestone');
   ctx.toast(`Founded ${biz.name}`, 'good');
   ctx.stat('stress', 6);
+  ctx.emit('business:started', { biz });
+  return undefined;
+}
+
+function buyFranchise(ctx, brandId, funding, entity) {
+  const { state, rng } = ctx;
+  const brand = FRANCHISE_BRANDS[brandId];
+  const elig = franchiseEligibility(state, brandId);
+  if (!elig.ok) return ctx.toast(elig.reason, 'warn');
+  const type = BUSINESS_TYPES[brand.typeId];
+  const price = startupCost(brand);
+  // Lenders like franchises: the brand's track record substitutes for your own.
+  const check = fundingCheck(state, price, funding, { ...type, credentials: ['franchise'] }, { cashFlow: null });
+  if (!check.ok) return ctx.toast(check.reason, 'warn');
+  const { sbaLoan, basis } = fund(ctx, price, check);
+  const biz = newBusiness(rng, state, brand.typeId, {
+    name: `${brand.name} — ${state.character.lastName} Unit`, entity: ENTITIES[entity] ? entity : 'llc', scale: brand.scale,
+    cash: Math.round(price * 0.3), assets: Math.round((price - brand.fee) * 0.6), sbaLoan, basis,
+    quality: 55, reputation: 50, fit: Math.round(rng.float(0.92, 1.12) * 100) / 100,
+  });
+  biz.franchise = { brandId, name: brand.name, royalty: brand.royalty, adFund: brand.adFund, lift: brand.lift, term: brand.term, signedYears: 0, waiveLicense: Boolean(brand.waiveLicense) };
+  state.business.current = biz;
+  ctx.log(`You signed a ${brand.term}-year franchise agreement and opened ${biz.name} (${money(brand.fee)} franchise fee, ${money(price)} all-in${sbaLoan ? `, ${money(sbaLoan)} SBA loan` : ''}). Royalties: ${Math.round((brand.royalty + brand.adFund) * 1000) / 10}% of revenue.`, brand.icon, 'milestone');
+  ctx.toast(`Opened ${brand.name}`, 'good');
+  ctx.stat('stress', 5);
   ctx.emit('business:started', { biz });
   return undefined;
 }
@@ -460,6 +496,25 @@ export const BusinessEngine = {
     start(ctx, arg) {
       const [typeId, funding = 'cash', entity = 'llc'] = String(arg).split(':');
       startBusiness(ctx, typeId, funding, entity);
+    },
+    /** arg: 'brandId:cash|sba:entity' */
+    franchise(ctx, arg) {
+      const [brandId, funding = 'cash', entity = 'llc'] = String(arg).split(':');
+      buyFranchise(ctx, brandId, funding, entity);
+    },
+    /** File an FDD and start selling franchises of your own business. */
+    franchiseOut(ctx) {
+      const { state } = ctx;
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      const check = franchisorEligibility(state, biz);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      const fromBiz = Math.min(Math.max(0, biz.cash), FDD_COST);
+      biz.cash -= fromBiz;
+      state.finances.cash -= FDD_COST - fromBiz;
+      biz.franchisor = { units: 0, opened: 0, failed: 0, fee: Math.round((25000 + typeOf(biz).cost * 0.08) / 500) * 500, royalty: 0.05, startYears: biz.years, newUnits: 0 };
+      ctx.log(`You filed a Franchise Disclosure Document and registered ${biz.name} to sell franchises: ${money(biz.franchisor.fee)} per unit plus 5% royalties.`, '🗺️', 'milestone');
+      ctx.toast('Now franchising', 'good');
     },
     /** arg: 'listingId:cash|sba' */
     buy(ctx, arg) {
@@ -640,6 +695,29 @@ export const BusinessEngine = {
   },
 
   resolvers: {
+    franchiseDefault(ctx, data, optionId) {
+      const biz = currentBusiness(ctx.state);
+      if (!biz?.franchise) return;
+      if (optionId === 'cure') {
+        biz.cash -= data.cure;
+        bump(biz, 'quality', 15);
+        biz.staff.productivity = Math.min(100, biz.staff.productivity + 5);
+        return ctx.log(`You remodeled and retrained. ${biz.franchise.name} withdrew the default notice.`, '🧹', 'good');
+      }
+      if (ctx.rng.chance(0.6)) deBrand(ctx, biz, `${biz.franchise.name} terminated your franchise agreement.`);
+      else ctx.log(`${biz.franchise.name} let it slide — this time.`, '📋', 'warn');
+    },
+    franchiseRenewal(ctx, data, optionId) {
+      const biz = currentBusiness(ctx.state);
+      if (!biz?.franchise) return;
+      if (optionId === 'renew') {
+        biz.cash -= data.cost;
+        biz.franchise.signedYears = 0;
+        bump(biz, 'quality', 6);
+        return ctx.log(`You renewed with ${biz.franchise.name} for another ${biz.franchise.term} years and refreshed the store.`, '✍️', 'good');
+      }
+      deBrand(ctx, biz, `You let your ${biz.franchise.name} agreement expire.`);
+    },
     event(ctx, data, optionId) {
       const biz = currentBusiness(ctx.state);
       const event = BUSINESS_EVENTS.find((e) => e.id === data.eventId);

@@ -25,6 +25,7 @@ import { regionOf } from '../life/Regions.js';
 import { WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, MARKETING, SBA } from './BusinessTypes.js';
+import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 
 export const SS_WAGE_CAP = 176100;
 export const CORPORATE_TAX = 0.21;
@@ -107,7 +108,7 @@ export function yearFinancials(state, biz, rng) {
   const col = regionOf(state).col;
   const mode = WORKFORCE_MODES[biz.staff.workforce];
   const phase = PHASE_DEMAND[state.economy.phase] ?? 1;
-  const demand = (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1);
+  const demand = (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1);
   const ramp = biz.years <= 1 ? 0.7 : biz.years === 2 ? 0.9 : 1;
   const revenue = Math.round(type.startup ? biz.arr : type.revenue * biz.scale ** 0.95 * demand * ramp * rng.float(0.88, 1.12) * Math.sqrt(col));
   const cogs = Math.round(revenue * type.cogs);
@@ -125,7 +126,10 @@ export function yearFinancials(state, biz, rng) {
   const admin = ENTITIES[biz.entity].admin;
   const sba = biz.debts.sba;
   const interest = Math.round((sba?.balance ?? 0) * (sba?.rate ?? 0) + (biz.debts.loc ?? 0) * 0.12);
-  const operatingIncome = revenue - cogs - payroll - overhead - management - rent - insurance - marketing - admin;
+  // Franchisees pay royalties and the ad fund off the top; franchisors collect fees and royalties and pay for support.
+  const royalties = royaltiesOn(biz, revenue);
+  const { franchiseFees, royaltyIncome, franchiseSupport } = franchisorFinancials(biz, type);
+  const operatingIncome = revenue - cogs - payroll - overhead - management - rent - insurance - marketing - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport;
   // S- and C-corp owners who work in the business take a W-2 salary (employer payroll tax applies).
   const entity = ENTITIES[biz.entity];
   // Funded startup founders pay themselves a modest salary out of the raise.
@@ -136,7 +140,7 @@ export function yearFinancials(state, biz, rng) {
   const pretax = operatingIncome - interest - ownerSalary - payrollTax;
   const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, pretax) * CORPORATE_TAX);
   const netIncome = pretax - corporateTax;
-  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, admin, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome };
+  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome };
 }
 
 /**
@@ -153,7 +157,8 @@ export function valuation(biz, ly = biz.lastYear) {
     return Math.max(0, Math.round(ev + Math.max(0, biz.cash) - debt));
   }
   const sde = (ly?.netIncome ?? 0) + (ly?.ownerSalary ?? 0) + (ly?.corporateTax ?? 0);
-  const multiple = 2.5 * (0.7 + biz.reputation / 170);
+  // Proven brands sell for more; a franchise system's royalty stream is worth more still.
+  const multiple = 2.5 * (0.7 + biz.reputation / 170) * (biz.franchise ? 1.15 : 1) * (biz.franchisor?.units ? 1.3 : 1);
   const ev = Math.max(0, sde) * multiple + biz.assets;
   return Math.max(0, Math.round(ev + Math.max(0, biz.cash) - debt));
 }
@@ -207,6 +212,8 @@ export function newBusiness(rng, state, typeId, { name, entity = 'llc', scale = 
     violations: [],
     lastYear: null,
     valuation: 0,
+    franchise: null,
+    franchisor: null,
   };
   biz.valuation = Math.max(0, Math.round(cash + assets - sbaLoan));
   return biz;

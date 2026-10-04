@@ -27,6 +27,9 @@ export const BUSINESS_TYPES = {
   cpaFirm: { name: 'CPA Firm', icon: '🧮', credentials: ['cpa'], cost: 30000, revenue: 500000, cogs: 0.05, staff: 4, wage: 60000, rent: 40000, insurance: 12000, cyclical: 0.3, inspection: 'board', professions: ['accounting'] },
   brokerage: { name: 'Real Estate Brokerage', icon: '🏘️', credentials: ['brokerLicense'], cost: 40000, revenue: 700000, cogs: 0.55, staff: 3, wage: 45000, rent: 40000, insurance: 10000, cyclical: 1.0, inspection: 'board', professions: ['realestate'] },
   propertyMgmt: { name: 'Property Management Company', icon: '🏢', credentials: ['realEstate'], cost: 20000, revenue: 300000, cogs: 0.1, staff: 3, wage: 45000, rent: 24000, insurance: 8000, cyclical: 0.3, inspection: null, professions: ['propertyManagement', 'realestate'] },
+  gym: { name: 'Fitness Gym', icon: '🏋️', credentials: [], cost: 350000, revenue: 650000, cogs: 0.05, staff: 9, wage: 32000, rent: 140000, insurance: 15000, cyclical: 0.6, inspection: null, professions: ['hospitality', 'retail'] },
+  cleaning: { name: 'Cleaning Service', icon: '🧽', credentials: [], cost: 25000, revenue: 340000, cogs: 0.08, staff: 6, wage: 30000, rent: 6000, insurance: 10000, cyclical: 0.5, inspection: null, professions: ['hospitality', 'propertyManagement'] },
+  tutoring: { name: 'Tutoring Center', icon: '📚', credentials: [], cost: 80000, revenue: 320000, cogs: 0.05, staff: 5, wage: 34000, rent: 36000, insurance: 5000, cyclical: 0.3, inspection: null, professions: ['education', 'university'] },
   techStartup: { name: 'Tech Startup', icon: '🚀', credentials: [], cost: 25000, revenue: 0, cogs: 0.2, staff: 0, wage: 140000, rent: 6000, insurance: 2000, cyclical: 0.6, inspection: null, professions: ['tech', 'engineering'], startup: true },
 };
 

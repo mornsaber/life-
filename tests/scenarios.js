@@ -2127,6 +2127,45 @@ const tests = {
     assert.equal(f.state.career.job?.professionId, 'flightAttendant');
     assert.equal(f.state.career.job.yearsAtEmployer, 2, 'seniority intact');
   },
+  'franchising: buy into a brand (fees, royalties, standards) or franchise your own business'() {
+    const t = setup(111, 35);
+    t.state.finances.cash = 900000;
+    t.engine.dispatch('business.franchise', 'pizza:cash:llc');
+    const biz = t.state.business.current;
+    assert.ok(biz?.franchise, 'franchisee');
+    assert.equal(biz.typeId, 'restaurant', 'no restaurant experience needed');
+    t.engine.ageUp(); t.state.prompts = [];
+    assert.ok(biz.lastYear.royalties > biz.lastYear.revenue * 0.08, 'royalties off the top');
+    // Standards: a default notice when quality slips.
+    biz.quality = 20;
+    biz.franchise.signedYears = 1;
+    t.state.prompts = [];
+    t.engine.ageUp();
+    const notice = t.state.prompts.find((p) => p.type === 'business.franchiseDefault');
+    if (notice) {
+      t.state.prompts = [notice];
+      resolve(t.engine, 'business.franchiseDefault', 'cure');
+      assert.ok(biz.quality >= 30);
+    }
+    // Net-worth screen.
+    const poor = setup(112, 35);
+    poor.state.finances.cash = 50000;
+    poor.engine.dispatch('business.franchise', 'burger:cash:llc');
+    assert.equal(poor.state.business.current, null);
+    // Franchisor: an established, well-regarded business sells units and collects royalties.
+    const f = setup(113, 40);
+    f.state.finances.cash = 400000;
+    f.engine.dispatch('business.start', 'cleaning:cash:llc');
+    const own = f.state.business.current;
+    Object.assign(own, { years: 4, reputation: 85, quality: 80, cash: 200000 });
+    own.lastYear = { netIncome: 50000 };
+    f.engine.dispatch('business.franchiseOut');
+    assert.ok(own.franchisor, 'franchising');
+    f.engine.rng.chance = () => true;
+    f.engine.ageUp();
+    f.state.prompts = [];
+    assert.ok(own.franchisor.units > 0 && own.lastYear.franchiseFees > 0, `units ${own.franchisor.units}`);
+  },
 };
 
 function TransportModuleTick(t) {

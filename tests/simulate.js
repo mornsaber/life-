@@ -6,6 +6,7 @@
  *
  *   node tests/simulate.js [lives=300] [seed=1]
  */
+import { FRANCHISE_BRANDS } from '../src/modules/business/Franchising.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store, STAT_KEYS } from '../src/core/State.js';
@@ -193,6 +194,9 @@ function checkInvariants(state) {
     assert.ok(b.staff.morale >= 0 && b.staff.morale <= 100 && b.staff.unionRisk >= 0 && b.staff.unionRisk <= 100, 'staff meters');
     assert.ok(debtOk(b), `business debts ${JSON.stringify(b.debts)}`);
     assert.ok(b.family.every((id) => state.people.list.some((p) => p.id === id)), 'family employees exist');
+    assert.ok(!(b.franchise && b.franchisor), 'franchisee and franchisor at once');
+    if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
+    if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
   }
   const cm = state.community;
   assert.ok(cm && Array.isArray(cm.volunteering) && cm.volunteering.length <= 2 && cm.volunteering.every((v) => VOLUNTEER_ORGS[v]), 'volunteering');
@@ -279,6 +283,8 @@ function randomActions(state) {
   // Business
   const biz = state.business.current;
   if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
+  if (!biz && age >= 21 && player.chance(0.03)) tries.push(() => act('business.franchise', `${player.pick(Object.keys(FRANCHISE_BRANDS))}:${player.pick(['cash', 'sba'])}:llc`));
+  if (biz && player.chance(0.05)) tries.push(() => act('business.franchiseOut'));
   if (!biz && state.business.listings.length && player.chance(0.05)) tries.push(() => act('business.buy', `${player.pick(state.business.listings).id}:${player.pick(['cash', 'sba'])}`));
   if (biz) {
     if (player.chance(0.3)) tries.push(() => act(`business.${player.pick(['setRole', 'setMarketing', 'setDraw', 'setWorkforce', 'toggleDelegation', 'toggleHealth', 'setMatch'])}`, player.pick(['operator', 'absentee', '0', '1', '2', '3', '0.5', 'direct', 'mixed', 'contracted', 'hiring', 'reviews', '0.03', '0.05'])));
