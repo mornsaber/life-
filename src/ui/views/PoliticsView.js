@@ -7,6 +7,8 @@ import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandal
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
 import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Government.js';
+import { officeRoster, DEPUTY_KINDS, OFFICE_ACTIONS } from '../../modules/org/ElectedOffices.js';
+import { ratingLabel } from '../../modules/career/PayGrades.js';
 
 export function politicsView(state) {
   const p = state.politics;
@@ -48,7 +50,7 @@ export function politicsView(state) {
     </li>`;
   }).join('');
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${appointmentsCard(state)}${campaign}
+  return `${current}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
     ${card('Political History', history, { icon: '🗂️' })}`;
 }
@@ -64,4 +66,29 @@ function appointmentsCard(state) {
       <div class="toggle-row">${Object.entries(APPOINTEE_KINDS).map(([kind, k]) => button(k.label, 'orgs.appoint', { arg: `${arg}|${kind}`, variant: 'tiny', hint: k.hint, disabled: used >= 2 })).join('')}</div></li>`;
   }).join('');
   return card('Your Appointments', `<p class="fine">Your office names these leaders. Their results shape your approval. ${2 - used} appointment${2 - used === 1 ? '' : 's'} left this year.</p><ul class="history">${rows}</ul>`, { icon: '⭐' });
+}
+
+/** The organization your office runs: performance, your second-in-command, named staff (or department heads). */
+function officeCard(state) {
+  const r = officeRoster(state);
+  if (!r) return '';
+  const s = r.seat;
+  const h = s.holder;
+  const left = OFFICE_ACTIONS - (state.yearly['orgs.officeAct'] ?? 0);
+  const person = (p, deputy = false) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(p.title)} · ${p.years} yr · rated ${ratingLabel(p.performance)} · likes you ${p.rel}%${p.discipline ? ` · ${p.discipline} on file` : ''}${p.appointedByPlayer ? ' · your appointee' : ''}</small></div>
+    <div class="toggle-row">${button('🏅 Commend', 'orgs.officeCommend', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${button('📝 Discipline', 'orgs.officeDiscipline', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${deputy ? '' : button('⬆️ Promote', 'orgs.officePromote', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${button('🚪 Fire', 'orgs.officeFire', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`;
+  const name = s.deptId ? s.dept.name : s.org.name;
+  const body = s.deptId
+    ? `<h4 class="sub">${esc(r.deputyTitle)}</h4>
+      ${r.deputy ? `<ul class="history">${person(r.deputy, true)}</ul>` : '<p class="warn-text">Vacant — appoint someone.</p>'}
+      <div class="toggle-row">${Object.entries(DEPUTY_KINDS).map(([k, d]) => button(`${d.label}`, 'orgs.officeAppoint', { arg: k, variant: 'tiny', disabled: left <= 0, hint: r.deputy ? 'Replace your deputy' : 'Fill the post' })).join('')}</div>
+      <h4 class="sub">Staff</h4><ul class="history">${r.staff.map((p) => person(p)).join('')}</ul>
+      <p class="fine">Deputies and staff attorneys are civil servants: firing one without cause usually ends in a grievance that reinstates them. Your own appointee serves at your pleasure.</p>`
+    : `<h4 class="sub">Departments</h4><ul class="history">${r.heads.map((x) => `<li>${esc(x.dept.name)} <small class="muted">${x.person ? `${esc(x.person.name)}, ${esc(x.person.title)}` : x.def.head.office ? 'elected separately' : 'vacant'}${x.def.head.appointedBy ? ` · appointed by ${esc(x.def.head.appointedBy)}` : ''}</small></li>`).join('')}</ul>
+      <p class="fine">Appoint department heads in "Your Appointments" below.</p>`;
+  return card(`You run ${esc(name)}`, `
+    ${meter(h.performance ?? 55, { label: '📊 Office performance' })}
+    ${meter(h.morale ?? 60, { label: '😊 Staff morale' })}
+    <p class="fine">How well the office runs moves your approval every year. ${left > 0 ? `${left} management action${left > 1 ? 's' : ''} left this year.` : 'No management actions left this year.'}</p>
+    ${body}`, { icon: '🏛️', accent: 'yellow' });
 }

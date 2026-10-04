@@ -18,6 +18,7 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { levelById } from '../src/modules/career/Ladder.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { appointmentsInReach } from '../src/modules/org/Government.js';
+import { officeRoster, officeSeat } from '../src/modules/org/ElectedOffices.js';
 import { licensesFor } from '../src/modules/business/BusinessLicenses.js';
 import { businessAdvice } from '../src/modules/business/Advisor.js';
 
@@ -90,6 +91,17 @@ function check(state, where) {
     }
   }
   if (job0?.headOf) seenPaths.add(job0.headOf.deptId ? 'department head' : 'organization head');
+  // Elected seats: marked only where the player's current office sits.
+  const seatNow = officeSeat(state);
+  for (const org of Object.values(orgs)) {
+    if (org.officeHead && !(seatNow && seatNow.org === org && !seatNow.deptId)) flag('org marked as run by the player\'s office, but it is not', where);
+    if (org.officeHead && org.head) flag('office-run org also has an NPC head', where);
+    for (const d of Object.values(org.departments)) {
+      if (d.officeHead && !(seatNow && seatNow.org === org && seatNow.deptId === d.id)) flag('department marked as run by the player\'s office, but it is not', where);
+      if (d.officeHead && d.head) flag('office-run department also has an NPC head', where);
+    }
+  }
+  if (seatNow?.holder.officeHead) seenPaths.add(`runs ${seatNow.officeId}`);
   const job = state.career.job;
   if (job) {
     nanScan(job, 'job');
@@ -129,7 +141,7 @@ const ACTIONS = [
   ['business.appointCeo'], ['business.makePassive'], ['business.takeBack', 'holding'], ['business.sellHolding', 'holding', 0.1],
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
-  ['orgs.appoint', 'appoint', 0.5], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['orgs.appoint', 'appoint', 0.5], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
 ];
 
 function argFor(kind, state, rng) {
@@ -155,6 +167,8 @@ function argFor(kind, state, rng) {
     case 'appoint': { const a = rng.pick(appointmentsInReach(state, { ensure: false }).concat([null])); return a ? `${a.org.id}|${a.deptId ?? '-'}|${rng.pick(['professional', 'loyalist', 'reformer'])}` : 'none'; }
     case 'license': return biz ? rng.pick(licensesFor(biz.typeId)) : 'none';
     case 'exec': return rng.pick((state.career.execSearch?.listings ?? []).map((l) => l.id).concat(['none']));
+    case 'deputyKind': return rng.pick(['professional', 'loyalist', 'reformer']);
+    case 'officeStaff': { const r = officeRoster(state); return r ? rng.pick(r.staff.concat(r.deputy ? [r.deputy] : []).map((p) => p.id).concat(['none'])) : 'none'; }
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;
@@ -189,8 +203,9 @@ function life(seed) {
         check(state, `${action} @${state.character.age} seed ${seed}`);
       }
     }
+    if (state.politics.office && rng.chance(0.08)) state.politics.office = null;
     // Sometimes hold an office that appoints agency heads.
-    if (age >= 30 && !state.politics.office && rng.chance(0.03)) state.politics.office = { id: rng.pick(['mayor', 'governor', 'countyCommissioner', 'schoolBoard']), termYearsLeft: 4, terms: 1, approval: 55, startAge: age, fullTime: true };
+    if (age >= 30 && !state.politics.office && rng.chance(0.03)) state.politics.office = { id: rng.pick(['mayor', 'governor', 'countyCommissioner', 'schoolBoard', 'sheriff', 'districtAttorney', 'cityManager']), termYearsLeft: 4, terms: 1, approval: 55, startAge: age, fullTime: true };
     // Every tab renders, and rendering changes nothing.
     if (age % 3 === 0) tryDo(() => {
       const before = JSON.stringify(state);

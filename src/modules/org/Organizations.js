@@ -266,10 +266,10 @@ export function ensureHeads(state, org) {
   const t = orgType(org.typeId);
   if (!t) return;
   const rng = sideRng(state);
-  if (!org.head && !org.playerHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
+  if (!org.head && !org.playerHead && !org.officeHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
   for (const d of t.departments) {
     const dept = org.departments[d.id];
-    if (dept && !dept.head && !dept.playerHead) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
+    if (dept && !dept.head && !dept.playerHead && !dept.officeHead) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
   }
 }
 

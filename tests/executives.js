@@ -18,6 +18,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { chainOfCommand, orgOf, personOf } from '../src/modules/org/Organizations.js';
 import { postTick, nextPost, executiveEligibility, refreshExecutiveSearch, takePost } from '../src/modules/org/Executives.js';
 import { politicalTurnover } from '../src/modules/org/Government.js';
+import { officeRoster, officeTick, OFFICE_SEATS } from '../src/modules/org/ElectedOffices.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed, age = 45) {
@@ -145,6 +146,63 @@ const tests = {
     }
     assert.ok(hired, 'landed an executive post');
     assert.ok(chainOfCommand(state, state.career.job).leads);
+  },
+
+  'elected sheriff runs the Sheriff\'s Office: appoints an undersheriff, manages deputies, and results move approval'() {
+    assert.ok(OFFICE_SEATS.sheriff && OFFICE_SEATS.districtAttorney && OFFICE_SEATS.cityManager && OFFICE_SEATS.countyCommissioner);
+    assert.ok(!OFFICE_SEATS.stateRep, 'legislators don\'t run an organization');
+    const { engine, state, ctx } = setup(8);
+    state.politics.office = { id: 'sheriff', termYearsLeft: 4, terms: 1, approval: 55, startAge: 45, fullTime: true };
+    ctx.emit('politics:officeChanged', {});
+    const r = officeRoster(state);
+    assert.ok(r, 'the office has a roster');
+    assert.ok(r.seat.dept.officeHead && !r.seat.dept.head, 'you are the sheriff (no NPC sheriff)');
+    assert.ok(r.staff.length >= 4, 'named deputies and jail staff');
+    assert.ok(r.staff.some((p) => p.professionId === 'sheriff') && r.staff.some((p) => p.professionId === 'jail'));
+    assert.equal(r.deputyTitle, 'Undersheriff');
+    engine.dispatch('orgs.officeAppoint', 'professional');
+    assert.equal(officeRoster(state).deputy?.appointedByPlayer, 'professional');
+    // Firing a good deputy without cause: usually a grievance puts them back.
+    const good = officeRoster(state).staff.find((p) => p.performance >= 50) ?? officeRoster(state).staff[0];
+    good.performance = 80;
+    let reinstated = 0;
+    for (let i = 0; i < 6; i++) {
+      state.yearly = {};
+      const target = officeRoster(state).staff.find((p) => p.performance >= 50);
+      if (!target) break;
+      target.performance = 80;
+      const id = target.id;
+      engine.dispatch('orgs.officeFire', id);
+      if (officeRoster(state).staff.some((p) => p.id === id)) reinstated += 1;
+    }
+    assert.ok(reinstated >= 1, 'civil-service grievances reinstate some');
+    // A well-run office lifts approval; a badly run one drags it.
+    state.politics.office.approval = 50;
+    r.seat.dept.performance = 90;
+    for (const p of officeRoster(state).staff) p.performance = 95;
+    officeTick(ctx);
+    assert.ok(state.politics.office.approval > 50, 'approval up');
+    const hi = state.politics.office.approval;
+    r.seat.dept.performance = 10;
+    for (const p of officeRoster(state).staff) p.performance = 15;
+    officeTick(ctx);
+    assert.ok(state.politics.office.approval < hi, 'approval down');
+    // Leave office: an NPC sheriff again.
+    state.politics.office = null;
+    ctx.emit('politics:officeChanged', {});
+    assert.ok(!r.seat.dept.officeHead && r.seat.org.people[r.seat.dept.head]?.title === 'Sheriff');
+  },
+
+  'DA, county chair and city manager seats'() {
+    for (const [officeId, expectDept] of [['districtAttorney', true], ['countyCommissioner', false], ['cityManager', false]]) {
+      const { state, ctx } = setup(9);
+      state.politics.office = { id: officeId, termYearsLeft: 4, terms: 1, approval: 55, startAge: 45, fullTime: true };
+      ctx.emit('politics:officeChanged', {});
+      const r = officeRoster(state);
+      assert.ok(r, `${officeId} has an office`);
+      if (expectDept) { assert.ok(r.staff.some((p) => p.professionId === 'prosecution')); assert.match(r.deputyTitle, /First|Chief/); }
+      else { assert.ok(r.heads.length >= 2, `${officeId}: department heads listed`); assert.ok(r.seat.org.officeHead); }
+    }
   },
 
   'no management record, no executive search'() {

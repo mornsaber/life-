@@ -48,6 +48,7 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
                      Government (elected/appointed heads, a player-official's appointments) · Churn (hiring, attrition, boomerangs)
                      Businesses (player and NPC businesses as orgs: owner seat, growth layers, branches, rivals, exits)
                      Executives (department/organization head posts, appointments, executive search)
+                     ElectedOffices (sheriff, DA, county chair, city manager run their organizations)
     business/        BusinessTypes (career → business config, sizes) · OwnershipRules (who may own/run what)
                      BusinessLicenses (operating licenses & permits) · Advisor (forecast, profit suggestions)
                      Business (P&L, valuation) · BusinessEngine · OwnerActions (people, policy, deals) · Franchising

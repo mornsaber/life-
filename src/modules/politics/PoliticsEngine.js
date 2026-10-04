@@ -29,6 +29,7 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
   ctx.log(`${appointed ? 'Appointed' : 'Sworn in'} as ${office.name} (${where}). ${office.fullTime ? '' : 'It\'s a part-time citizen office — keep your day job.'}`, office.icon, 'milestone');
   ctx.toast(`${office.icon} ${office.name}`, 'honor');
   ctx.stat('happiness', 10);
+  ctx.emit('politics:officeChanged', { officeId });
 }
 
 function leaveOffice(ctx, reason) {
@@ -38,6 +39,7 @@ function leaveOffice(ctx, reason) {
   p.history.push({ officeId: p.office.id, startAge: p.office.startAge, endAge: state.character.age, terms: p.office.terms, reason });
   ctx.log(`You left office as ${OFFICES[p.office.id].name}: ${reason}.`, '🏛️');
   p.office = null;
+  ctx.emit('politics:officeChanged', { officeId: null });
 }
 
 function resolveElection(ctx) {
