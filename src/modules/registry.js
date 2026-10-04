@@ -18,6 +18,7 @@ import { Judiciary } from './legal/Judiciary.js';
 import { CivilCourts } from './legal/CivilCourts.js';
 import { CivicModule } from './civic/index.js';
 import { TransitModule } from './transit/Transit.js';
+import { FarmModule } from './farm/Farm.js';
 import { WarModule } from './world/War.js';
 import { MentalHealth } from './health/MentalHealth.js';
 import { SSDI } from './health/SSDI.js';
@@ -57,5 +58,5 @@ import { Community } from './community/Community.js';
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
-  EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
+  EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

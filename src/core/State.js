@@ -353,7 +353,13 @@ export function homeEquity(state) {
 
 export function netWorth(state) {
   const f = state.finances;
-  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) - f.loans - (state.health?.medicalDebt ?? 0) - (f.tax?.debt ?? 0) - (state.civil?.judgments ?? 0));
+  return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) + farmlandEquity(state) - f.loans - (state.health?.medicalDebt ?? 0) - (f.tax?.debt ?? 0) - (state.civil?.judgments ?? 0));
+}
+
+/** Farmland you own, net of its loan. Mirrors farm/Farm.js. */
+export function farmlandEquity(state) {
+  const f = state.farm;
+  return f?.acres ? Math.max(0, Math.round(f.acres * f.valuePerAcre - (f.loan?.balance ?? 0))) : 0;
 }
 
 /** Vehicles you own, net of their loans (leases carry no equity). Mirrors vehicles/Vehicles.js. */

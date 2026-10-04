@@ -14,6 +14,7 @@
  * state.oil = { price (index, 1 = normal), phase: 'boom'|'normal'|'bust' }
  */
 import { L } from './Ladder.js';
+import { Random } from '../../core/Random.js';
 import { leaveJob } from './CareerEngine.js';
 import { JUSTICE_EVENTS, INCIDENT_ICONS } from './JusticeCareers.js';
 
@@ -79,7 +80,7 @@ export const TRADE_PROFESSIONS = {
     ],
   },
   fishing: {
-    id: 'fishing', name: 'Commercial Fishing', icon: '🎣', sector: 'private', payMultiplier: 0.95, minAge: 18, sizes: { small: 4, medium: 2 }, background: 'lenient', commission: true,
+    id: 'fishing', name: 'Commercial Fishing', icon: '🎣', sector: 'private', payMultiplier: 0.75, minAge: 18, sizes: { small: 4, medium: 2 }, background: 'lenient',
     employers: ['F/V Northern Dawn', 'F/V Bering Star', 'F/V Lady Grace', 'Gulf Shrimp Partners', 'Gloucester Groundfish Co.'],
     rotation: { label: 'at sea for the season', away: 0.45 },
     hazard: { injury: 0.06, death: 0.001, cause: 'Lost at sea' },
@@ -162,14 +163,16 @@ export const TradesModule = {
   id: 'trades',
   order: 30.95,
 
-  init(state) {
-    state.oil ??= { price: 1, phase: 'normal' };
+  init(state, engineRng) {
+    state.oil ??= { price: 1, phase: 'normal', seed: ((engineRng?.seed ?? 1) ^ 0x011) >>> 0 };
   },
 
   onAgeUp(ctx) {
     const { state, rng } = ctx;
     const prev = state.oil.phase;
-    const phase = oilTick(state, rng);
+    // The world oil market runs on its own random stream, so it doesn't reshuffle every other roll in the life.
+    state.oil.seed = ((state.oil.seed ?? 1) * 1664525 + 1013904223) >>> 0;
+    const phase = oilTick(state, new Random(state.oil.seed));
     if (phase !== prev && phase !== 'normal') ctx.log(phase === 'boom' ? `📰 Oil prices spiked (index ${state.oil.price}). Drilling rigs are hiring everyone they can find.` : `📰 Oil prices crashed (index ${state.oil.price}). Rigs are stacking up idle across the oil patch.`, '🛢️');
 
     const job = state.career.job;
@@ -203,11 +206,12 @@ export const TradesModule = {
     }
     // Fishing shares: the season decides your pay.
     if (profession.shares) {
-      const season = rng.pick([['a record season', 1.6], ['a good season', 1.2], ['an average season', 1], ['a poor season', 0.6], ['a bust — the fish never showed', 0.3]]);
-      const delta = Math.round(job.salary * (season[1] - 1) / 100) * 100;
-      if (delta > 0) ctx.earn(delta, 'Crew share — strong season', { wage: true });
-      else if (delta < 0) ctx.spend(-delta, 'Short crew share — poor season', { allowDebt: true });
-      ctx.log(`Fishing: ${season[0]}.`, '🎣', season[1] >= 1 ? 'good' : 'warn');
+      // Base pay is the guaranteed day rate; the crew share on top swings with the season.
+      const season = rng.pick([['a record season', 1.0], ['a good season', 0.5], ['an average season', 0.25], ['a poor season', 0.05], ['a bust — the fish never showed', 0]]);
+      const share = Math.round(job.salary * season[1] / 100) * 100;
+      if (share) ctx.earn(share, 'Crew share of the catch', { wage: true });
+      if (!season[1]) ctx.stat('happiness', -4);
+      ctx.log(`Fishing: ${season[0]}${share ? ` — a $${share.toLocaleString()} crew share` : ''}.`, '🎣', season[1] >= 0.25 ? 'good' : 'warn');
     }
   },
 };

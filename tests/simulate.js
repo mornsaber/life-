@@ -199,6 +199,7 @@ function checkInvariants(state) {
     if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
     if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
   }
+  if (state.farm?.acres) assert.ok(state.farm.valuePerAcre > 0 && (!state.farm.loan || state.farm.loan.balance >= 0), 'farm');
   const civ = state.civic;
   assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');
   if (civ.activism) assert.ok(civ.activism.influence >= 0 && civ.activism.influence <= 100 && (!civ.activism.cause || CAUSES[civ.activism.cause]), 'activism');
@@ -293,6 +294,8 @@ function randomActions(state) {
   if (state.career.job?.professionId === 'education' && player.chance(0.2)) tries.push(() => act('teaching.summer', player.pick(['rest', 'summerSchool', 'camp', 'tutoring', 'seasonal', 'curriculum'])));
   if (age >= 16 && player.chance(0.05)) tries.push(() => act('transit.setMode', player.pick(['auto', 'drive', 'transit', 'bike', 'walk', 'rideshare'])));
   if (age >= 25 && player.chance(0.02)) tries.push(() => act('civic.transitBoard'), () => act('politics.applyAppointed', 'cityManager'));
+  if (age >= 18 && player.chance(0.02)) tries.push(() => act('farm.buy', `${player.pick([80, 160, 320])}:${player.pick(['loan', 'cash'])}`));
+  if (state.farm?.acres && player.chance(0.2)) tries.push(() => act('farm.setCrop', player.pick(['corn', 'soybeans', 'wheat', 'hay', 'cattle'])), () => act('farm.insurance', player.pick(['0', '0.7', '0.85'])), () => act('farm.setMode', player.pick(['operate', 'rent'])), () => act('farm.sell'));
   const cv = state.civic;
   if (age >= 14 && player.chance(0.04)) tries.push(() => act('civic.joinCause', player.pick(Object.keys(CAUSES))));
   if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));

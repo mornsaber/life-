@@ -45,7 +45,7 @@ import { transferEligibility } from '../src/modules/military/Separation.js';
 import { charge } from '../src/modules/legal/JusticeSystem.js';
 import { deathRowTick, paroleEligibility } from '../src/modules/legal/Prison.js';
 import { sealStatus } from '../src/modules/legal/Clemency.js';
-import { hasFelony } from '../src/core/State.js';
+import { hasFelony, netWorth } from '../src/core/State.js';
 import { separationPay } from '../src/modules/military/Separation.js';
 import { startEligibility, yearFinancials, exitProceeds, fundingCheck } from '../src/modules/business/Business.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
@@ -2449,6 +2449,34 @@ const tests = {
     pd.state.career.job.paidThisYear = true;
     science.onAgeUp(pd.engine.context());
     assert.equal(pd.state.career.job, null, 'aged out');
+  },
+  'trades and farming: oil busts lay off junior roughnecks, fishing pays in shares, farms ride weather with crop insurance and subsidies'() {
+    const o = setup(211, 25);
+    giveJob(o.engine, 'oilGas', 'floorhand');
+    const trades = MODULES.find((m) => m.id === 'trades');
+    o.state.oil = { price: 0.4, phase: 'bust' };
+    o.state.career.job.paidThisYear = true;
+    o.engine.rng.chance = (p) => p === 0.35 || p === 0.08 ? true : false;
+    o.engine.rng.pick = (xs) => xs[0];
+    o.engine.rng.float = () => -0.25;
+    trades.onAgeUp(o.engine.context());
+    assert.equal(o.state.career.job, null, 'laid off in the bust');
+    // Farming: a drought with 85% revenue protection pays an indemnity; low prices trigger program payments.
+    const f = setup(212, 40);
+    f.state.character.regionId = 'smalltown';
+    f.state.finances.cash = 3000000;
+    f.engine.dispatch('farm.buy', '160:cash');
+    assert.equal(f.state.farm.acres, 160);
+    f.engine.dispatch('farm.insurance', '0.85');
+    f.state.farm.prices.corn = 0.8;
+    const farm = MODULES.find((m) => m.id === 'farm');
+    f.engine.rng.float = (a, b) => (b === 100 ? 74 : a);
+    f.engine.rng.chance = () => false;
+    farm.onAgeUp(f.engine.context());
+    const ly = f.state.farm.lastYear;
+    assert.ok(ly.indemnity > 0, `indemnity ${JSON.stringify(ly)}`);
+    assert.ok(ly.programs > 0, 'price-loss payments');
+    assert.ok(netWorth(f.state) > 2500000, 'land counts toward net worth');
   },
 };
 
