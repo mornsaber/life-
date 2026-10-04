@@ -159,6 +159,23 @@ const AIRFORCE = {
   ],
 };
 
+/** Space Force: small, technical and selective (Guardians). */
+const SPACEFORCE = {
+  enlisted: [
+    M('5S0', 'Space Systems Operations', 'intel', { exposure: 0.15, minSmarts: 55, clearance: 'topSecret', desc: 'Satellite command and control, missile warning, space domain awareness.' }),
+    M('5C0', 'Cyberspace Operations', 'cyber', { exposure: 0.15, grants: ['securityPlus'], skill: { credentials: ['cissp'], grade: 3 }, civilian: 'tech' }),
+    M('5I0', 'Intelligence', 'intel', { exposure: 0.15 }),
+    M('5S0-EW', 'Electromagnetic Warfare Operator', 'cyber', { exposure: 0.3, minSmarts: 60, desc: 'Jamming and counter-jamming satellite links.' }),
+  ],
+  officer: [
+    M('13S', 'Space Operations Officer', 'intel', { exposure: 0.15, minSmarts: 55, desc: 'Crew commander for satellites, launch ranges and missile warning.' }),
+    M('17S', 'Cyberspace Effects Officer', 'cyber', { exposure: 0.15, civilian: 'tech' }),
+    M('14N', 'Intelligence Officer', 'intel', { exposure: 0.15 }),
+    M('62E', 'Developmental Engineer', 'engineer', { exposure: 0.05, minSmarts: 60, majors: ['engineering', 'computerScience', 'mathematics'], civilian: 'engineering', desc: 'Design and test the next generation of satellites.' }),
+    M('63A', 'Acquisition Manager', 'logistics', { exposure: 0.05, civilian: 'corporate' }),
+  ],
+};
+
 const COASTGUARD = {
   enlisted: [
     M('BM', 'Boatswain\'s Mate', 'infantry', { exposure: 0.8, grants: ['boatCrew', 'coxswain'], civilian: 'merchantMarine' }),
@@ -208,7 +225,7 @@ const NOAA = {
   ],
 };
 
-const RAW = { army: ARMY, guard: ARMY, marines: MARINES, navy: NAVY, airforce: AIRFORCE, coastguard: COASTGUARD, usphs: USPHS, noaa: NOAA };
+const RAW = { army: ARMY, guard: ARMY, marines: MARINES, navy: NAVY, airforce: AIRFORCE, spaceforce: SPACEFORCE, coastguard: COASTGUARD, usphs: USPHS, noaa: NOAA };
 
 /** Flat lookup: 'army.68W' → MOS entry (with id, branch, track). */
 export const MOS = {};

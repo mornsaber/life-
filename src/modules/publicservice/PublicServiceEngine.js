@@ -136,9 +136,9 @@ export const PublicServiceEngine = {
     });
     engine.bus.on('military:discharged', ({ ctx, type }) => {
       const c = ctx.state.publicService.clearance;
-      if (!c || !['oth', 'dishonorable'].includes(type)) return;
+      if (!c || !['oth', 'bcd', 'dishonorable'].includes(type)) return;
       ctx.state.publicService.clearance = null;
-      ctx.log(`Your ${CLEARANCES[c.level].name} clearance was revoked with your ${type === 'oth' ? 'Other Than Honorable' : 'Dishonorable'} discharge.`, '🚫', 'bad');
+      ctx.log(`Your ${CLEARANCES[c.level].name} clearance was revoked with your ${{ oth: 'Other Than Honorable', bcd: 'Bad-Conduct' }[type] ?? 'Dishonorable'} discharge.`, '🚫', 'bad');
     });
     engine.bus.on('legal:convicted', ({ ctx, severity, offenseId, name }) => {
       const c = ctx.state.publicService.clearance;

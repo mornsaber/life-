@@ -17,6 +17,8 @@ import { reserveTick } from './Reserves.js';
 import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
+import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
+import { UcmjResolvers, imposeNjp } from './UCMJ.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -81,14 +83,13 @@ export const MilitaryModule = {
         ctx.log('Without a clearance, you were pulled from your specialty and reclassified into Logistics.', '🚫', 'bad');
       }
     });
-    engine.bus.on('legal:convicted', ({ ctx, severity, name }) => {
+    engine.bus.on('legal:convicted', ({ ctx, severity, name, courtMartial }) => {
       const svc = ctx.state.military.service;
-      if (!svc) return;
+      if (!svc || courtMartial) return;
       if (severity === 'felony') discharge(ctx, 'oth', `Separated after a civilian ${name} conviction.`);
       else if (severity === 'misdemeanor') {
-        svc.disciplinary += 1;
-        svc.eval = Math.max(0, svc.eval - 10);
-        ctx.log(`Your command learned of your ${name} conviction. Non-judicial punishment followed.`, '⚖️', 'bad');
+        ctx.log(`Your command learned of your ${name} conviction.`, '⚖️', 'bad');
+        imposeNjp(ctx, /dui/i.test(name) ? 'dui' : 'disobey');
       }
     });
     // Governors activate their National Guard for in-state disasters.
@@ -116,6 +117,7 @@ export const MilitaryModule = {
   init(state) {
     state.military ??= { service: null, history: [] };
     state.military.deserter ??= null;
+    state.military.selection ??= null;
   },
 
   onAgeUp(ctx) {
@@ -129,6 +131,7 @@ export const MilitaryModule = {
 
   actions: {
     ...LeadershipActions,
+    ...SpecialOpsActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -227,6 +230,8 @@ export const MilitaryModule = {
 
   resolvers: {
     ...LeadershipResolvers,
+    ...SpecialOpsResolvers,
+    ...UcmjResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {

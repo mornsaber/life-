@@ -39,6 +39,7 @@ export const BASES = {
   marines: [['miami', 'MCAS Beaufort detachment'], ['sf', 'Camp Pendleton'], ['dc', 'Marine Barracks Washington']],
   navy: [['miami', 'NAS Jacksonville'], ['seattle', 'Naval Base Kitsap'], ['sf', 'Naval Base San Diego'], ['dc', 'Naval Support Activity Washington']],
   airforce: [['rural', 'Malmstrom AFB'], ['denver', 'Buckley SFB'], ['sunbelt', 'JBSA-Lackland'], ['dc', 'Joint Base Andrews']],
+  spaceforce: [['denver', 'Peterson Space Force Base'], ['denver', 'Schriever Space Force Base'], ['sf', 'Vandenberg Space Force Base'], ['miami', 'Patrick Space Force Base'], ['dc', 'the Pentagon (Space Staff)']],
   coastguard: [['miami', 'Sector Miami'], ['seattle', 'Sector Puget Sound'], ['nyc', 'Sector New York'], ['sf', 'Sector San Francisco']],
   guard: [],
   usphs: [['dc', 'HHS headquarters, Rockville'], ['rural', 'Indian Health Service, Billings Area'], ['denver', 'Indian Health Service, Navajo Area'], ['seattle', 'FDA Pacific Region'], ['sunbelt', 'Federal Medical Center, Fort Worth']],

@@ -41,6 +41,7 @@ export const FACILITY_EFFECTS = {
   jail: { stress: 4, note: 'County jails are built for short stays: no programs, no yard most days.' },
   state: { stress: 0 },
   federal: { stress: -2, happiness: 2, note: 'Federal prison: cleaner, calmer, real education programs.' },
+  brig: { stress: -1, note: 'Military confinement: a strict routine, work details and rehabilitation programs.' },
   private: { stress: 3, health: -3, note: 'The private prison ran short-staffed again; lockdowns and fights were routine.' },
 };
 

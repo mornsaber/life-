@@ -12,6 +12,7 @@
  * }
  */
 import { releaseUnit } from '../org/MilitaryUnits.js';
+import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
@@ -53,6 +54,13 @@ export const BRANCHES = {
     basic: 'Basic Combat Training at Fort Jackson', officerSchool: 'State Officer Candidate School',
     enlisted: ['Private (PV1)', 'Private (PV2)', 'Private First Class', 'Specialist', 'Sergeant', 'Staff Sergeant', 'Sergeant First Class', 'Master Sergeant', 'Sergeant Major'],
     officer: ARMY_OFFICERS,
+  },
+  spaceforce: {
+    id: 'spaceforce', name: 'U.S. Space Force', icon: '🛰️', motto: 'Semper Supra', theater: 'air', activeOnly: true,
+    basic: 'Basic Military Training at JBSA-Lackland', officerSchool: 'Officer Training School at Maxwell AFB',
+    enlisted: ['Specialist 1', 'Specialist 2', 'Specialist 3', 'Specialist 4', 'Sergeant', 'Technical Sergeant', 'Master Sergeant', 'Senior Master Sergeant', 'Chief Master Sergeant'],
+    officer: ARMY_OFFICERS,
+    desc: 'Guardians: satellite operations, missile warning, space domain awareness, orbital warfare and cyber. Few deployments; high entry standards.',
   },
   coastguard: {
     id: 'coastguard', name: 'U.S. Coast Guard', icon: '🛟', motto: 'Semper Paratus', theater: 'maritime',
@@ -139,7 +147,7 @@ export function specialtyName(svc) {
 
 /** Combat exposure: the job's own, else its broad specialty's. */
 export function exposureOf(svc) {
-  return mosOf(svc)?.exposure ?? SPECIALTIES[svc.specialty].exposure;
+  return svc.sof?.exposure ?? mosOf(svc)?.exposure ?? SPECIALTIES[svc.specialty].exposure;
 }
 
 /** Flight hours logged per year (pilots and aircrew only; old saves: any aviation). */
@@ -169,6 +177,7 @@ export function completeTraining(ctx, svc) {
       if (!m) return;
     } else {
       ctx.log(`You survived selection and earned your place as ${m.title}. Fewer than half make it.`, '🗡️', 'milestone');
+      if (MOS_PIPELINE[m.id] && !svc.sof) svc.sof = sofRecord(MOS_PIPELINE[m.id], ctx.state.character.age);
       ctx.stat('happiness', 8);
       svc.eval = Math.min(100, svc.eval + 10);
     }
@@ -190,7 +199,8 @@ export function monthlyBasePay(svc) {
 }
 
 export function annualActivePay(svc) {
-  return monthlyBasePay(svc) * 12;
+  // Special operators draw special-duty, jump/dive and assignment pay on top.
+  return monthlyBasePay(svc) * 12 + (svc.sof?.specialPay ?? 0) * (svc.component === 'active' ? 1 : 0.2);
 }
 
 export function timeInGradeRequired(svc) {
@@ -211,7 +221,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
   if (state.military.service) return { ok: false, reason: 'Already serving' };
-  if (state.military.history.some((h) => h.discharge === 'dishonorable' || h.discharge === 'oth')) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
+  if (state.military.history.some((h) => ['dishonorable', 'bcd', 'oth'].includes(h.discharge))) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (track === 'officer') {
@@ -362,6 +372,9 @@ export function tryPromotion(ctx, svc) {
   let chance = 0.55 + (svc.eval - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
   // Boards promote people who have commanded (or served as first sergeant) at their grade.
   if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
+  // An officer's reprimand (or any Article 15 for a senior NCO) sits in the file the board reads.
+  if (svc.reprimand) chance -= 0.35;
+  if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
   if (flagBoard) chance = 0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200;
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.6;
@@ -402,12 +415,14 @@ export const DISCHARGE_LABEL = {
   medical: 'Medical',
   retired: 'Retired',
   oth: 'Other Than Honorable',
+  bcd: 'Bad-Conduct',
   dishonorable: 'Dishonorable',
   kia: 'Killed in Action',
 };
 
 export function discharge(ctx, type, reason) {
   if (ctx.state.military.service?.unit?.orgId) releaseUnit(ctx.state, ctx.state.military.service.unit.orgId);
+  ctx.state.military.selection = null;
   const { state } = ctx;
   const svc = state.military.service;
   if (!svc) return;
@@ -421,6 +436,7 @@ export function discharge(ctx, type, reason) {
     component: svc.component,
     specialty: svc.specialty,
     mos: svc.mos ?? null,
+    sof: svc.sof?.pipeline ?? svc.sofFormer ?? null,
     rankCode: rank.code,
     rankTitle: rank.title,
     yearsOfService: svc.yearsOfService,

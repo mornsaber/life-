@@ -4,6 +4,10 @@
  * mobilized reservist deploys exactly like an active-duty member).
  */
 import { unitTick } from '../org/MilitaryUnits.js';
+import { sofTick } from './SpecialOps.js';
+import { reportMisconduct } from './UCMJ.js';
+import { hasCondition } from '../health/Conditions.js';
+import { PIPELINES } from './SpecialOpsCatalog.js';
 import { warFactor, combatFactor } from '../world/War.js';
 import { upOrOut } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
@@ -240,7 +244,7 @@ export const DUTY_EVENTS = [
     id: 'drunk', title: 'Formation Problem',
     text: 'Your battle buddy shows up to 0600 formation still drunk.',
     options: [
-      { id: 'cover', label: '🤫 Cover for them', effects: { eval: -2 }, risky: { chance: 0.35, text: 'You both got caught. Article 15 for you.', eval: -12, disciplinary: 1 }, text: 'Nobody noticed. Your buddy owes you.' },
+      { id: 'cover', label: '🤫 Cover for them', effects: { eval: -2 }, risky: { chance: 0.35, text: 'You both got caught.', eval: -4, ucmj: 'dereliction' }, text: 'Nobody noticed. Your buddy owes you.' },
       { id: 'report', label: '📋 Report it to your NCO', effects: { eval: 6, stats: { happiness: -3 } }, text: 'You did the right thing. The platoon is colder toward you for a while.' },
       { id: 'handle', label: '💬 Get them to sick call quietly', effects: { eval: 3 }, text: 'You handled it with discretion. Your squad leader noticed.' },
     ],
@@ -275,7 +279,7 @@ export const DUTY_EVENTS = [
     options: [
       { id: 'allnighter', label: '📂 Fix it all yourself overnight', effects: { eval: 7, stats: { stress: 8 } }, text: 'Zero findings. The commander shook your hand.' },
       { id: 'delegate', label: '🗂️ Delegate and supervise', check: { stat: 'smarts', min: 55 }, effects: { eval: 8 }, failEffects: { eval: -4 }, text: 'Your team crushed it.', failText: 'Things fell through the cracks. Two findings with your name on them.' },
-      { id: 'fudge', label: '🙈 Backdate the records', effects: {}, risky: { chance: 0.4, text: 'The IG caught the falsified records. You received non-judicial punishment.', eval: -15, disciplinary: 2 }, text: 'It held up. This time.' },
+      { id: 'fudge', label: '🙈 Backdate the records', effects: {}, risky: { chance: 0.4, text: 'The IG caught the falsified records.', eval: -5, ucmj: 'falseStatement' }, text: 'It held up. This time.' },
     ],
   },
 
@@ -292,7 +296,7 @@ export const DUTY_EVENTS = [
     text: 'Senior soldiers are "initiating" a new private — making him low-crawl through mud at 2 a.m.',
     options: [
       { id: 'stop', label: '✋ Step in and stop it', effects: { eval: 4, stats: { happiness: 2 } }, text: 'It stopped. The private never forgot it.' },
-      { id: 'join', label: '😏 Join in — it happened to you', effects: {}, risky: { chance: 0.3, text: 'The private filed an EO complaint. You were named.', eval: -10, disciplinary: 1 }, text: 'Nobody complained. This time.' },
+      { id: 'join', label: '😏 Join in — it happened to you', effects: {}, risky: { chance: 0.3, text: 'The private filed an EO complaint. You were named.', eval: -4, ucmj: 'maltreatment' }, text: 'Nobody complained. This time.' },
       { id: 'ignore', label: '🙈 Walk away', effects: { stats: { happiness: -2 } }, text: 'You told yourself it wasn\'t your business.' },
     ],
   },
@@ -309,7 +313,7 @@ export const DUTY_EVENTS = [
     text: 'There is a party in the barracks with alcohol, and the duty NCO is your friend.',
     options: [
       { id: 'shut', label: '📋 Shut it down by the book', effects: { eval: 4, stats: { happiness: -3 } }, text: 'Unpopular, but nobody got hurt.' },
-      { id: 'join', label: '🍻 Join the party', effects: { stats: { happiness: 5 } }, risky: { chance: 0.25, text: 'Someone got hurt and the investigation found you there.', eval: -8, disciplinary: 1 }, text: 'Great night. Nobody found out.' },
+      { id: 'join', label: '🍻 Join the party', effects: { stats: { happiness: 5 } }, risky: { chance: 0.25, text: 'Someone got hurt and the investigation found you there.', eval: -3, ucmj: 'disobey' }, text: 'Great night. Nobody found out.' },
     ],
   },
   {
@@ -319,6 +323,38 @@ export const DUTY_EVENTS = [
       { id: 'help', label: '🫂 Walk them to behavioral health yourself', effects: { eval: 6, stats: { happiness: 4 } }, text: 'They got help. A year later they reenlisted.' },
       { id: 'pt', label: '🏃 Run extra PT with them', effects: { eval: 3, stats: { fitness: 2 } }, text: 'Their scores improved. You hope the rest did too.' },
       { id: 'report', label: '📋 Report it up the chain and move on', effects: { eval: 1 }, text: 'Your NCO took it from there.' },
+    ],
+  },
+  {
+    id: 'nightOut', title: 'Night Out',
+    text: 'Payday weekend. You\'ve had five beers at a bar outside the gate, and the barracks are a ten-minute drive.',
+    options: [
+      { id: 'cab', label: '🚕 Pay for a ride back', effects: { stats: { happiness: 2 } }, text: 'Twenty-dollar ride. Your first sergeant\'s safety briefing worked.' },
+      { id: 'drive', label: '🚗 Drive yourself', effects: { stats: { happiness: 3 } }, risky: { chance: 0.3, text: 'The gate guards smelled it on you. Blood alcohol 0.11.', eval: -5, ucmj: 'dui' }, text: 'You made it back. Nobody knows how close it was.' },
+    ],
+  },
+  {
+    id: 'surplus', title: 'Turn-In Day',
+    text: 'Your section is turning in old equipment. Nobody has counted the night-vision batteries and spare optics, and they sell well online.',
+    options: [
+      { id: 'turnIn', label: '📦 Turn it all in', effects: { eval: 2 }, text: 'Property book balanced to the last item.' },
+      { id: 'pocket', label: '🤑 Pocket a few and sell them', effects: { cash: 1500 }, risky: { chance: 0.35, text: 'CID traced the online listings back to you.', eval: -10, ucmj: 'larceny' }, text: 'An easy $1,500. The inventory never caught it.' },
+    ],
+  },
+  {
+    id: 'romance', title: 'Off-Limits',
+    text: 'Someone in your chain of command, two grades apart from you, keeps finding reasons to talk after duty hours.',
+    options: [
+      { id: 'distance', label: '🚫 Keep it professional', effects: {}, text: 'Awkward for a while, then it passed.' },
+      { id: 'date', label: '💑 See where it goes', effects: { stats: { happiness: 6 } }, risky: { chance: 0.35, text: 'Someone saw you together off post and reported it.', eval: -4, ucmj: 'fraternization' }, text: 'You kept it quiet. For now.' },
+    ],
+  },
+  {
+    id: 'homeEmergency', title: 'No Leave Approved',
+    text: 'Your partner back home is in crisis. Your leave request was denied for an upcoming inspection.',
+    options: [
+      { id: 'chaplain', label: '✝️ Go to the chaplain and the Red Cross', effects: { eval: 1, stats: { stress: -2 } }, text: 'An emergency leave came through in two days.' },
+      { id: 'go', label: '🚪 Just go', effects: { stats: { happiness: 4 } }, risky: { chance: 0.85, text: 'You were reported absent at morning formation.', eval: -6, ucmj: 'awol' }, text: 'You were back before anyone noticed.' },
     ],
   },
   {
@@ -361,7 +397,7 @@ function combatPrompt(ctx, svc, theaterName) {
 export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   const { rng } = ctx;
   const branch = BRANCHES[svc.branch];
-  const theaterName = rng.pick(THEATERS[branch.theater]);
+  const theaterName = rng.pick(svc.sof ? PIPELINES[svc.sof.pipeline]?.deployments ?? THEATERS[branch.theater] : THEATERS[branch.theater]);
   const months = mobilized ? rng.int(9, 12) : rng.int(6, 9);
   svc.deployedThisYear = true;
   svc.deploymentRequested = false;
@@ -446,6 +482,7 @@ function dutyEventPrompt(ctx) {
 }
 
 function applyDutyEffects(ctx, svc, effects = {}) {
+  if (effects.cash) ctx.earn(effects.cash, 'Side money');
   if (effects.eval) svc.eval = Math.round(clamp(svc.eval + effects.eval, 0, 100));
   if (effects.disciplinary) svc.disciplinary += effects.disciplinary;
   for (const [key, delta] of Object.entries(effects.stats ?? {})) ctx.stat(key, delta);
@@ -461,7 +498,8 @@ function resolveDutyEvent(ctx, data, optionId) {
   if (option.risky && rng.chance(option.risky.chance)) {
     applyDutyEffects(ctx, svc, { eval: option.risky.eval, disciplinary: option.risky.disciplinary });
     ctx.log(option.risky.text, '⚖️', 'bad');
-    if (svc.disciplinary >= 4) discharge(ctx, 'dishonorable', 'Repeated misconduct ended your career.');
+    if (option.risky.ucmj) return void reportMisconduct(ctx, option.risky.ucmj);
+    if (svc.disciplinary >= 4) discharge(ctx, 'oth', 'An administrative separation board separated you for a pattern of misconduct.');
     return;
   }
   if (option.check && state.stats[option.check.stat] < option.check.min + rng.int(-10, 10)) {
@@ -579,6 +617,13 @@ export function activeDutyTick(ctx, svc) {
   updateEvaluation(ctx, svc);
   // Your unit: the people you lead, your chain of command, and command boards.
   svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
+  sofTick(ctx, svc);
+  // Random urinalysis: addiction shows up in the cup.
+  if ((hasCondition(ctx.state, 'opioids') && rng.chance(0.35)) || (hasCondition(ctx.state, 'alcohol') && rng.chance(0.08))) {
+    if (!ctx.state.military.service) return;
+    ctx.log(hasCondition(ctx.state, 'opioids') ? 'You popped positive on a random urinalysis.' : 'You showed up to duty still drunk.', '🧪', 'bad');
+    reportMisconduct(ctx, hasCondition(ctx.state, 'opioids') ? 'drugs' : 'drunkOnDuty');
+  }
 
   const exposure = exposureOf(svc);
   const deployChance = 0.22 * exposure * warFactor(ctx.state) + (svc.deploymentRequested ? 0.5 : 0);

@@ -74,7 +74,7 @@ export const MEDALS = {
 
 export function medalName(medalId, branch) {
   const name = MEDALS[medalId].name;
-  return typeof name === 'string' ? name : name[branch] ?? Object.values(name)[0];
+  return typeof name === 'string' ? name : name[branch] ?? (branch === 'spaceforce' ? name.airforce : null) ?? Object.values(name)[0];
 }
 
 export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false, posthumous = false } = {}) {

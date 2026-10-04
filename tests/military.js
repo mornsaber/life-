@@ -11,7 +11,9 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { unitView, unitTick, billetFor, syncUnit, PLAYER } from '../src/modules/org/MilitaryUnits.js';
-import { ranksOf } from '../src/modules/military/MilitaryEngine.js';
+import { ranksOf, annualActivePay, exposureOf } from '../src/modules/military/MilitaryEngine.js';
+import { PIPELINES, selectionEligibility, courseOdds } from '../src/modules/military/SpecialOps.js';
+import { reportMisconduct, preferCharges } from '../src/modules/military/UCMJ.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 22) {
@@ -116,6 +118,116 @@ const tests = {
     for (let i = 0; i < 4 && state.military.service; i++) year(engine);
     if (!state.military.service) return;
     assert.notEqual(state.military.service.unit.orgId, first, 'a new unit after PCS');
+  },
+
+  'special operations: eligibility, phase-by-phase selection, washouts, and life on a team'() {
+    const { engine, state } = setup(5);
+    const svc = enlist(engine);
+    assert.equal(selectionEligibility(state, 'ranger').ok, false, 'not during initial training');
+    svc.isNew = false;
+    assert.equal(selectionEligibility(state, 'seal').ok, false, 'SEALs are Navy');
+    assert.ok(selectionEligibility(state, 'ranger').ok, selectionEligibility(state, 'ranger').reason);
+    // Many candidates: most wash out, some graduate.
+    let grads = 0;
+    let quits = 0;
+    const N = 60;
+    for (let i = 0; i < N; i++) {
+      const t = setup(100 + i);
+      const s = enlist(t.engine);
+      s.isNew = false;
+      t.engine.dispatch('military.volunteerSelection', 'ranger');
+      for (let k = 0; k < 6; k++) {
+        const p = t.state.prompts.find((x) => x.type === 'military.selectionPhase');
+        if (!p) break;
+        t.engine.resolvePrompt(p.id, i % 10 === 0 ? 'quit' : 'all');
+      }
+      assert.equal(t.state.military.selection, null, 'the course ends');
+      if (s.sof) grads += 1;
+      if (i % 10 === 0) { quits += 1; assert.ok(!s.sof, 'quitters wash out'); }
+    }
+    assert.ok(grads > N * 0.1 && grads < N * 0.8, `some graduate, most don't: ${grads}/${N}`);
+    // A graduate: own unit, special pay, more exposure, team missions.
+    const t = setup(7);
+    const s = enlist(t.engine);
+    s.isNew = false;
+    const pay = annualActivePay(s);
+    for (let tries = 0; tries < 30 && !s.sof; tries++) {
+      t.state.yearly = {};
+      s.selectionAttempts = {};
+      t.engine.dispatch('military.volunteerSelection', 'ranger');
+      for (let k = 0; k < 6; k++) { const p = t.state.prompts.find((x) => x.type === 'military.selectionPhase'); if (!p) break; t.engine.resolvePrompt(p.id, 'all'); }
+      t.state.prompts = [];
+    }
+    assert.ok(s.sof, 'eventually someone makes it');
+    assert.equal(s.sof.unitName, PIPELINES.ranger.unitName);
+    assert.ok(annualActivePay(s) > pay, 'special pay');
+    assert.ok(exposureOf(s) >= 1.9);
+    Object.assign(t.state.stats, { fitness: 85, health: 95 });
+    year(t.engine);
+    if (t.state.military.service) assert.equal(unitView(t.state, s).org.name, PIPELINES.ranger.unitName, 'serves in the Ranger Regiment');
+    // Two tries per course.
+    const u = setup(8);
+    const s2 = enlist(u.engine);
+    s2.isNew = false;
+    s2.selectionAttempts = { ranger: 2 };
+    assert.equal(selectionEligibility(u.state, 'ranger').ok, false);
+  },
+
+  'Space Force: a branch with its own ranks and a mind-first assessment'() {
+    const { engine, state } = setup(9);
+    Object.assign(state.stats, { smarts: 90, fitness: 50 });
+    const svc = enlist(engine, 'spaceforce:enlisted:active');
+    assert.equal(svc.branch, 'spaceforce');
+    svc.isNew = false;
+    svc.grade = 3;
+    state.clearances = state.clearances ?? {};
+    const odds = courseOdds(state, 'orbitalWarfare');
+    Object.assign(state.stats, { smarts: 40 });
+    assert.ok(courseOdds(state, 'orbitalWarfare') < odds, 'smarts matter more than fitness');
+    year(engine);
+    assert.ok(state.military.service, 'serves');
+  },
+
+  'UCMJ: Article 15s reduce rank; refusing one means a court-martial; convictions go on the record and can mean the brig'() {
+    const { engine, state, ctx } = setup(11);
+    const svc = enlist(engine);
+    svc.isNew = false;
+    svc.grade = 3;
+    svc.eval = 50;
+    reportMisconduct(ctx, 'disobey');
+    let p = state.prompts.find((x) => x.type === 'military.njpOffer');
+    assert.ok(p, 'NJP offered');
+    engine.resolvePrompt(p.id, 'accept');
+    assert.equal(svc.disciplinary, 1);
+    assert.equal(svc.njp.length, 1);
+    assert.equal(state.legal.record.length, 0, 'an Article 15 is not a conviction');
+    // Refuse the next one: special court-martial.
+    reportMisconduct(ctx, 'dui');
+    p = state.prompts.find((x) => x.type === 'military.njpOffer');
+    engine.resolvePrompt(p.id, 'refuse');
+    p = state.prompts.find((x) => x.type === 'military.courtMartial');
+    assert.ok(p, 'court-martial');
+    assert.equal(p.data.court, 'special');
+    engine.resolvePrompt(p.id, 'plead');
+    assert.ok(state.legal.record.some((r) => r.court === 'court-martial' && r.offenseId === 'ucmjDui'), 'federal record');
+    // General court-martial for a serious offense: often a dishonorable discharge and the brig.
+    let dd = 0;
+    let brig = 0;
+    for (let i = 0; i < 20; i++) {
+      const t = setup(200 + i);
+      const s = enlist(t.engine);
+      s.isNew = false;
+      s.grade = 4;
+      preferCharges(t.ctx, 'assault');
+      const q = t.state.prompts.find((x) => x.type === 'military.courtMartial');
+      t.engine.resolvePrompt(q.id, 'tds');
+      const h = t.state.military.history.at(-1);
+      if (h?.discharge === 'dishonorable') dd += 1;
+      if (t.state.legal.incarceration?.kind === 'brig') brig += 1;
+      if (h) assert.ok(!t.state.military.service, 'separated');
+    }
+    assert.ok(dd >= 5, `dishonorable discharges: ${dd}`);
+    assert.ok(brig >= 3, `confined: ${brig}`);
   },
 };
 

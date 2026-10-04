@@ -5,6 +5,7 @@
  *
  *   node tests/content.js
  */
+import { UCMJ_OFFENSES } from '../src/modules/military/UCMJ.js';
 import assert from 'node:assert/strict';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
 import { WORKPLACE_EVENTS } from '../src/modules/career/WorkplaceEvents.js';
@@ -34,6 +35,7 @@ function checkPool(name, pool, { idOf = (e) => e.id, needsFreeOption = false } =
     if (needsFreeOption && !e.options.some((o) => !o.cert)) problems.push(`${name}/${idOf(e)}: every option needs a certification`);
     for (const o of e.options) {
       for (const off of [o.offense, o.risky?.offense].filter(Boolean)) if (!OFFENSES[off]) problems.push(`${name}/${idOf(e)}/${o.id}: unknown offense ${off}`);
+      if (o.risky?.ucmj && !UCMJ_OFFENSES[o.risky.ucmj]) problems.push(`${name}/${idOf(e)}/${o.id}: unknown UCMJ offense ${o.risky.ucmj}`);
       if (o.cert && !CREDENTIALS[o.cert]) problems.push(`${name}/${idOf(e)}/${o.id}: unknown credential ${o.cert}`);
     }
   }

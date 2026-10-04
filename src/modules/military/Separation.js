@@ -103,6 +103,7 @@ export function transferBranch(ctx, branchId) {
   const reduced = svc.track === 'enlisted' && svc.grade >= 3;
   svc.mos = equivalentMos(svc, branchId)?.id ?? null;
   svc.branch = branchId;
+  if (svc.sof) { svc.sofFormer = svc.sof.pipeline; svc.sof = null; }
   if (reduced) svc.grade -= 1;
   svc.yearsInGrade = 0;
   svc.passovers = 0;

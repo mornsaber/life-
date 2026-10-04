@@ -2,6 +2,7 @@
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
 import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
+import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
@@ -76,7 +77,7 @@ export function militaryView(state) {
           ['Contract', svc.contractYearsLeft > 0 ? `${svc.contractYearsLeft} yrs left` : 'Up for renewal'],
           ['Deployments', `${svc.deployments} (${svc.combatTours} combat)`],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
-          svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}</span>`] : null,
+          svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} Article 15${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
           ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}max ${serviceLimit(svc)} yrs at this grade${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
         ])}
       </div>
@@ -94,7 +95,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -169,3 +170,29 @@ function unitCard(state, svc) {
     ${v.team.length ? `<h4 class="sub">${iLead ? 'Your soldiers' : 'Your team'}</h4><ul class="history">${team}</ul>` : ''}
     <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts (company command, first sergeant, battalion command, command sergeant major) are filled by selection boards; commanding well is what gets you promoted.</p>`, { icon: '🪖' });
 }
+
+/** Special operations: your team if you're in one, else the selection courses open to you. */
+function specialOpsCard(state, svc) {
+  if (svc.sof) {
+    const p = PIPELINES[svc.sof.pipeline];
+    return card(p.name, `<p>${chip(`${p.icon} ${esc(p.badge)}`, 'honor')} ${chip(esc(svc.sof.unitName))}</p>
+      ${kv([['Since age', svc.sof.since], ['Special pay', `${money(svc.sof.specialPay)}/yr`], ['Team missions', svc.sof.missions]])}
+      <p class="fine">${esc(p.desc)} Operators deploy more often, to places conventional units don't go. Bodies wear out: low fitness or health (or age 45) rotates you back to a conventional unit.</p>
+      <div class="action-grid">${button('🔁 Leave the teams', 'military.leaveSof', { variant: 'small', hint: 'Return to a conventional unit' })}</div>`, { icon: p.icon, accent: 'yellow' });
+  }
+  const ids = pipelinesFor(svc);
+  if (!ids.length) return '';
+  const rows = ids.map((id) => {
+    const p = PIPELINES[id];
+    const check = selectionEligibility(state, id);
+    const tries = svc.selectionAttempts?.[id] ?? 0;
+    return `<li class="job-row ${check.ok ? '' : 'locked'}">
+      <span class="job-icon" aria-hidden="true">${p.icon}</span>
+      <div class="job-info"><b>${esc(p.name)}</b><small>${esc(p.desc)}<br>${p.phases.map((ph) => esc(ph.name)).join(' → ')} · ${p.minFitness}+ fitness${p.minSmarts ? `, ${p.minSmarts}+ smarts` : ''} · age ≤ ${p.maxAge} · +${money(p.specialPay)}/yr${tries ? ` · attempt ${tries}/${MAX_ATTEMPTS} used` : ''}</small></div>
+      ${button('Volunteer', 'military.volunteerSelection', { arg: id, disabled: !check.ok, variant: 'small' })}
+      <span class="${check.ok ? 'fine' : 'why'}">${check.ok ? `~${Math.round(courseOdds(state, id) * 100)}% finish` : esc(check.reason)}</span>
+    </li>`;
+  }).join('');
+  return card('Special Operations', `<p class="muted">Selection courses wash out most volunteers. ${p0(ids)} Graduates join a special operations unit with special-duty pay, more deployments and their own missions. You get ${MAX_ATTEMPTS} tries per course.</p><ul class="job-board">${rows}</ul>`, { icon: '🗡️' });
+}
+const p0 = (ids) => (ids.some((id) => PIPELINES[id].mental) ? 'Some test the mind more than the body.' : 'Phases test body and mind; quitting is always an option.');

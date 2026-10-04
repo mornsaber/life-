@@ -83,11 +83,12 @@ function soldier(rng, org, { grade, track = 'enlisted', billet, company = null, 
 export function ensureUnit(state, svc, ranks) {
   initOrgs(state);
   const family = familyOf(svc);
-  const key = `unit:${svc.branch}:${svc.station ?? 'initial'}`;
+  // Special operators serve in their own command (the Ranger Regiment, a SEAL Team…), wherever they're based.
+  const key = svc.sof ? `unit:${svc.branch}:sof:${svc.sof.pipeline}` : `unit:${svc.branch}:${svc.station ?? 'initial'}`;
   let org = state.orgs.byId[key];
   const rng = sideRng(state);
   if (!org) {
-    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, name: UNIT_NAMES[family](rng), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
+    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, name: svc.sof?.unitName ?? UNIT_NAMES[family](rng), sof: Boolean(svc.sof), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
     org.head = soldier(rng, org, { grade: 4, track: 'officer', billet: 'battalionCommander', ranks }).id;
     org.csm = soldier(rng, org, { grade: 8, billet: 'csm', ranks }).id;
     for (const name of COMPANIES[family]) {
