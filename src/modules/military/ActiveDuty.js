@@ -3,6 +3,7 @@
  * combat / duty scenarios. Deployments are shared with the Reserves (a
  * mobilized reservist deploys exactly like an active-duty member).
  */
+import { warFactor, combatFactor } from '../world/War.js';
 import { upOrOut } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
@@ -370,7 +371,7 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   ctx.earn(225 * months + 2400, 'Hostile fire & family separation pay');
 
   const exposure = exposureOf(svc);
-  const sawCombat = rng.chance(clamp(0.5 * exposure, 0.15, 0.92));
+  const sawCombat = rng.chance(clamp(0.5 * exposure * combatFactor(ctx.state), 0.15, 0.95));
   if (sawCombat) {
     svc.combatTours += 1;
     combatPrompt(ctx, svc, theaterName);
@@ -482,7 +483,7 @@ export function openContractReview(ctx, svc) {
     ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
     : [
         { id: 'reenlist', label: `✍️ ${svc.track === 'officer' ? 'Continue service' : 'Re-enlist'} (${svc.component === 'active' ? 4 : 6} yrs)`, hint: svc.track === 'enlisted' && svc.eval >= 60 ? 'Bonus eligible' : undefined },
-        BRANCHES[svc.branch].reserveOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
+        BRANCHES[svc.branch].reserveOnly || BRANCHES[svc.branch].activeOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
         svc.yearsOfService >= RETIREMENT_YEARS
           ? { id: 'retire', label: `🎖️ Retire (${svc.yearsOfService} yrs)` }
           : { id: 'separate', label: '🎗️ Separate from service' },
@@ -494,6 +495,47 @@ export function openContractReview(ctx, svc) {
     text: `${rankOf(svc).title} · ${specialtyName(svc)} · ${svc.yearsOfService} years of service.\n${mandatory ? 'You have reached the service limit.' : 'What\'s next?'}`,
     options,
   });
+}
+
+/* ------------------------------------------------------------------ */
+/* USPHS & NOAA: emergency deployments and missions instead of combat  */
+/* ------------------------------------------------------------------ */
+
+const MISSIONS = {
+  usphs: [
+    { text: 'You deployed with a Rapid Deployment Force team to run a federal medical station after a hurricane.', deploy: true, stress: 8, eval: 6 },
+    { text: 'You were detailed to the CDC to help contain an outbreak, tracing contacts for six weeks.', deploy: true, stress: 6, eval: 5 },
+    { text: 'You staffed an Indian Health Service clinic two hours from the nearest hospital.', stress: 3, eval: 3 },
+    { text: 'Your FDA team cleared a backlog of drug-safety reviews.', stress: 2, eval: 2 },
+    { text: 'You deployed to the southern border to provide medical screening at a migrant processing center.', deploy: true, stress: 7, eval: 4 },
+    { text: 'You were sent abroad to support an Ebola response.', deploy: true, stress: 10, eval: 8, risk: 0.04 },
+  ],
+  noaa: [
+    { text: 'Four months at sea aboard a NOAA fisheries survey ship off Alaska.', deploy: true, stress: 5, eval: 4, away: true },
+    { text: 'You flew hurricane-hunter missions through the eyewall of a Category 4 storm.', deploy: true, stress: 8, eval: 7, risk: 0.02, pilot: true },
+    { text: 'Your survey launch mapped a shipping channel the charts had wrong for 60 years.', stress: 3, eval: 4 },
+    { text: 'You led a dive team surveying coral bleaching in the Florida Keys.', stress: 3, eval: 3 },
+    { text: 'A research cruise to the Arctic ice edge: twelve weeks of 24-hour daylight.', deploy: true, stress: 6, eval: 5, away: true },
+  ],
+};
+
+function missionTick(ctx, svc) {
+  const { rng } = ctx;
+  const pool = MISSIONS[svc.branch] ?? [];
+  if (!pool.length) return;
+  const m = rng.pick(pool.filter((x) => !x.pilot || flightHoursOf(svc)).length ? pool.filter((x) => !x.pilot || flightHoursOf(svc)) : pool);
+  ctx.log(m.text, BRANCHES[svc.branch].icon, 'military');
+  ctx.stat('stress', m.stress);
+  svc.eval = Math.round(clamp(svc.eval + m.eval, 0, 100));
+  if (m.deploy) {
+    svc.deployments += 1;
+    svc.deployedThisYear = true;
+    if (svc.deployments % 3 === 0) awardMedal(ctx, 'humanitarian', { branch: svc.branch, citation: m.text });
+  }
+  if (m.risk && rng.chance(m.risk)) {
+    ctx.stat('health', -rng.int(10, 25));
+    ctx.log('You came home sick and spent weeks recovering.', '🤒', 'bad');
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -535,8 +577,9 @@ export function activeDutyTick(ctx, svc) {
   updateEvaluation(ctx, svc);
 
   const exposure = exposureOf(svc);
-  const deployChance = 0.22 * exposure + (svc.deploymentRequested ? 0.5 : 0);
-  if (rng.chance(clamp(deployChance, 0, 0.95))) runDeployment(ctx, svc);
+  const deployChance = 0.22 * exposure * warFactor(ctx.state) + (svc.deploymentRequested ? 0.5 : 0);
+  if (branch.nonCombat) missionTick(ctx, svc);
+  else if (rng.chance(clamp(deployChance, 0, 0.95))) runDeployment(ctx, svc);
   else if (rng.chance(0.45)) dutyEventPrompt(ctx);
   else ctx.log(`Another year in garrison with your ${specialtyName(svc)} unit. Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
 

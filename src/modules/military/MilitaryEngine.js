@@ -61,6 +61,25 @@ export const BRANCHES = {
   },
 };
 
+/**
+ * The two non-military uniformed services: officer-only commissioned corps,
+ * paid on the military scale with military-style retirement, but they
+ * deploy to public-health emergencies and research missions rather than war.
+ */
+BRANCHES.usphs = {
+  id: 'usphs', name: 'U.S. Public Health Service Commissioned Corps', icon: '⚕️', motto: 'In Officio Salutis', theater: 'publicHealth',
+  officerOnly: true, activeOnly: true, nonCombat: true, maxAge: 44,
+  basic: 'Officer Basic Course', officerSchool: 'the USPHS Officer Basic Course in Rockville',
+  enlisted: [], officer: ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral (Surgeon General)', 'Admiral (Assistant Secretary for Health)'],
+};
+BRANCHES.noaa = {
+  id: 'noaa', name: 'NOAA Commissioned Officer Corps', icon: '🌊', motto: 'Science, Service, Stewardship', theater: 'science',
+  officerOnly: true, activeOnly: true, nonCombat: true, maxAge: 42,
+  basic: 'Basic Officer Training Class', officerSchool: 'Basic Officer Training Class at the Coast Guard Academy',
+  enlisted: [], officer: NAVAL_OFFICERS.slice(0, 9).map((t, i) => (i === 8 ? 'Vice Admiral (NOAA Corps Director)' : t)),
+};
+export const isNonCombat = (branchId) => Boolean(BRANCHES[branchId]?.nonCombat);
+
 export const SPECIALTIES = {
   infantry: { name: 'Combat Arms', icon: '🎯', exposure: 1.6, clearance: 'secret', names: { navy: 'Special Warfare', airforce: 'Security Forces', coastguard: 'Maritime Enforcement' }, desc: 'Highest combat exposure and valor opportunities.' },
   medic: { name: 'Combat Medic', icon: '⛑️', exposure: 1.2, names: { navy: 'Hospital Corpsman', marines: 'Hospital Corpsman (FMF)', coastguard: 'Health Services Technician' }, desc: 'Unlocks life-saving combat choices.' },
@@ -72,6 +91,8 @@ export const SPECIALTIES = {
   legal: { name: 'Legal', icon: '⚖️', exposure: 0.3, names: {}, desc: 'Courts-martial, legal assistance, operational law.' },
   medical: { name: 'Medical Corps', icon: '🩺', exposure: 0.6, names: {}, desc: 'Physicians, nurses and pharmacists in uniform.' },
   chaplain: { name: 'Chaplain Corps', icon: '✝️', exposure: 0.5, names: {}, desc: 'Noncombatant ministry to the troops.' },
+  publicHealth: { name: 'Public Health', icon: '🧪', exposure: 0, names: {}, desc: 'Disease control, environmental health and regulatory science.' },
+  science: { name: 'Ocean & Atmospheric Science', icon: '🌊', exposure: 0, names: {}, desc: 'Ships, survey launches and hurricane-hunter aircraft.' },
 };
 
 /** Approximate monthly base pay at <2 years of service. */
@@ -180,7 +201,11 @@ export function timeInGradeRequired(svc) {
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
-  if (BRANCHES[branchId].reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
+  const b = BRANCHES[branchId];
+  if (b.reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
+  if (b.officerOnly && track !== 'officer') return { ok: false, reason: 'Commissioned officers only' };
+  if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
+  if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
   if (state.military.service) return { ok: false, reason: 'Already serving' };
   if (state.military.history.some((h) => h.discharge === 'dishonorable' || h.discharge === 'oth')) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
@@ -200,6 +225,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
 /** Clearance a service member needs: their specialty's, and at least Secret for any officer. */
 export function requiredClearance(svc) {
   const m = svc.mos ? MOS[svc.mos] : null;
+  if (isNonCombat(svc.branch ?? m?.branch)) return m?.clearance ?? null;
   const s = m?.clearance ?? SPECIALTIES[svc.specialty]?.clearance ?? null;
   if (svc.track !== 'officer') return s;
   return s && CLEARANCES[s].rank > CLEARANCES.secret.rank ? s : 'secret';

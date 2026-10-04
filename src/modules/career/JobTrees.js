@@ -418,7 +418,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
     employerName: (city, _rng, _state) => `Diocese of ${city}`,
     eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? clergyEligibility(state) : { ok: false, reason: 'Belong to the Catholic Church' }),
     prepare: (state, job) => {
-      job.tradition = state.community.faith.traditionId;
+      job.tradition = state.community?.faith?.traditionId ?? 'catholic';
       if (job.employer.size === 'enterprise') job.employer.name = job.employer.name.replace('Diocese', 'Archdiocese');
     },
     levels: [

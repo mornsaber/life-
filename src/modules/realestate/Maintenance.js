@@ -4,6 +4,7 @@
  * repair emergencies and renovations. People in the trades (electricians,
  * plumbers, engineers) do their own work at a steep discount.
  */
+import { localTaxMult } from '../civic/Local.js';
 import { clamp } from '../../core/Random.js';
 import { STATES } from '../life/States.js';
 import { REGIONS } from '../life/Regions.js';
@@ -36,19 +37,20 @@ export function insurancePremium(property) {
   return Math.round(property.value * 0.0035 * (1 + risk * 8));
 }
 
-export function carryingCosts(property) {
+export function carryingCosts(property, state = null) {
   const st = STATES[REGIONS[property.regionId].state];
   return {
-    tax: Math.round(property.value * st.propertyTax),
+    // Voter-approved local measures raise or cap the rate (civic/Local.js).
+    tax: Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)),
     insurance: property.insured ? insurancePremium(property) : 0,
-    hoa: PROPERTY_TYPES[property.type].hoa,
+    hoa: property.hoaDues ?? PROPERTY_TYPES[property.type].hoa,
     upkeep: Math.round(property.value * (property.condition < 50 ? 0.015 : 0.01)),
   };
 }
 
 export function maintenanceTick(ctx, property) {
   const { rng } = ctx;
-  const c = carryingCosts(property);
+  const c = carryingCosts(property, ctx.state);
   ctx.spend(c.tax + c.insurance + c.hoa + c.upkeep, `Property costs — ${property.typeName}`, { allowDebt: true });
   property.lastCosts = c;
   if (property.use === 'primary') (ctx.state.finances.ledger.itemize ??= []).push({ kind: 'propertyTax', amount: c.tax });

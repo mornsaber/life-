@@ -9,6 +9,7 @@
  *   pension    retirement plan service credit accrues to
  */
 export const OFFICES = {
+  schoolBoard: { name: 'School Board Member', icon: '🏫', level: 1, term: 4, termLimit: 0, salary: 6000, fullTime: false, minAge: 18, residency: 1, cost: 8000, pension: 'electedOfficials' },
   cityCouncil: { name: 'City Council Member', icon: '🏙️', level: 1, term: 4, termLimit: 3, salary: 35000, fullTime: false, minAge: 18, residency: 1, cost: 25000, pension: 'electedOfficials' },
   mayor: { name: 'Mayor', icon: '🏛️', level: 2, term: 4, termLimit: 2, salary: 140000, fullTime: true, minAge: 21, residency: 2, cost: 250000, pension: 'electedOfficials' },
   stateRep: { name: 'State Representative', icon: '📜', level: 2, term: 2, termLimit: 4, salary: 65000, fullTime: false, minAge: 21, residency: 1, cost: 120000, pension: 'electedOfficials' },
@@ -19,7 +20,7 @@ export const OFFICES = {
   usSenator: { name: 'U.S. Senator', icon: '🦅', level: 5, term: 6, termLimit: 0, salary: 174000, fullTime: true, minAge: 30, residency: 3, cost: 18000000, pension: 'fers', statewide: true },
 };
 
-export const OFFICE_ORDER = ['cityCouncil', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
+export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
 
 export const ENDORSEMENTS = {
   labor: { name: 'Labor unions', icon: '✊' },
@@ -28,4 +29,6 @@ export const ENDORSEMENTS = {
   party: { name: 'Party establishment', icon: '🐘' },
   editorial: { name: 'Newspaper editorial boards', icon: '📰' },
   bar: { name: 'State Bar Association', icon: '⚖️' },
+  parents: { name: 'PTA parents & teachers', icon: '🍎' },
+  activists: { name: 'Grassroots activists', icon: '📣' },
 };

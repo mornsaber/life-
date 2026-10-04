@@ -6,6 +6,7 @@
  *
  *   node tests/simulate.js [lives=300] [seed=1]
  */
+import { CAUSES, TACTICS } from '../src/modules/civic/Activism.js';
 import { FRANCHISE_BRANDS } from '../src/modules/business/Franchising.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
@@ -198,6 +199,12 @@ function checkInvariants(state) {
     if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
     if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
   }
+  const civ = state.civic;
+  assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');
+  if (civ.activism) assert.ok(civ.activism.influence >= 0 && civ.activism.influence <= 100 && (!civ.activism.cause || CAUSES[civ.activism.cause]), 'activism');
+  if (civ.hoa) assert.ok(civ.hoa.fines >= 0 && civ.hoa.name, 'hoa');
+  for (const l of Object.values(civ.local)) assert.ok(l.taxMult >= 0.7 && l.taxMult <= 1.6 && l.levy >= 0 && l.services >= 0 && l.services <= 100, 'local policy');
+  if (state.world.war) assert.ok(state.world.war.intensity >= 1 && state.world.war.intensity <= 3 && state.world.war.yearsLeft > 0, 'war');
   const cm = state.community;
   assert.ok(cm && Array.isArray(cm.volunteering) && cm.volunteering.length <= 2 && cm.volunteering.every((v) => VOLUNTEER_ORGS[v]), 'volunteering');
   assert.ok(!cm.faith || (TRADITIONS[cm.faith.traditionId] && ATTENDANCE[cm.faith.attendance] && cm.faith.congregation), 'faith membership');
@@ -283,6 +290,12 @@ function randomActions(state) {
   // Business
   const biz = state.business.current;
   if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
+  const cv = state.civic;
+  if (age >= 14 && player.chance(0.04)) tries.push(() => act('civic.joinCause', player.pick(Object.keys(CAUSES))));
+  if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));
+  if (cv.hoa && player.chance(0.15)) tries.push(() => act('civic.hoaRun'), () => act('civic.hoaFight', player.pick(['pay', 'sue', 'recall'])));
+  if (player.chance(0.05)) tries.push(() => act('civic.ptaJoin'), () => act('civic.ptaRun'), () => act('civic.watchJoin'));
+  if (cv.neighbors.length && player.chance(0.1)) tries.push(() => act('civic.visitNeighbor', player.pick(cv.neighbors).id));
   if (!biz && age >= 21 && player.chance(0.03)) tries.push(() => act('business.franchise', `${player.pick(Object.keys(FRANCHISE_BRANDS))}:${player.pick(['cash', 'sba'])}:llc`));
   if (biz && player.chance(0.05)) tries.push(() => act('business.franchiseOut'));
   if (!biz && state.business.listings.length && player.chance(0.05)) tries.push(() => act('business.buy', `${player.pick(state.business.listings).id}:${player.pick(['cash', 'sba'])}`));

@@ -90,6 +90,7 @@ function sellProperty(ctx, property, { forced = false } = {}) {
   state.finances.cash += proceeds - taxable;
   if (taxable > 0) ctx.earn(taxable, 'Capital gains (real estate)', { ltcg: heldYears >= 1 });
   state.housing.properties = state.housing.properties.filter((p) => p !== property);
+  ctx.emit('housing:sold', { property });
   ctx.log(`You sold your ${property.typeName} for $${gross.toLocaleString()} (${costs ? `$${costs.toLocaleString()} in commissions/closing, ` : ''}${owed ? `$${owed.toLocaleString()} to the bank, ` : ''}net $${proceeds.toLocaleString()}).${gain > 0 ? ` Profit: $${gain.toLocaleString()}${excluded && gain <= excluded ? ' (tax-free home sale)' : ''}.` : ''}`, '🪧', proceeds >= 0 ? 'good' : 'warn');
   return true;
 }

@@ -7,6 +7,7 @@
 import { clamp } from '../../core/Random.js';
 import { BRANCHES, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
+import { warFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
 import { upOrOut } from './Separation.js';
 
@@ -37,7 +38,7 @@ export function reserveTick(ctx, svc) {
   updateEvaluation(ctx, svc);
 
   const exposure = exposureOf(svc);
-  const mobilizeChance = 0.08 * exposure + (svc.deploymentRequested ? 0.6 : 0);
+  const mobilizeChance = 0.08 * exposure * warFactor(ctx.state) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
     ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
     runDeployment(ctx, svc, { mobilized: true });

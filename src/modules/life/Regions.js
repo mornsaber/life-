@@ -38,6 +38,8 @@ export const BASES = {
   airforce: [['rural', 'Malmstrom AFB'], ['denver', 'Buckley SFB'], ['sunbelt', 'JBSA-Lackland'], ['dc', 'Joint Base Andrews']],
   coastguard: [['miami', 'Sector Miami'], ['seattle', 'Sector Puget Sound'], ['nyc', 'Sector New York'], ['sf', 'Sector San Francisco']],
   guard: [],
+  usphs: [['dc', 'HHS headquarters, Rockville'], ['rural', 'Indian Health Service, Billings Area'], ['denver', 'Indian Health Service, Navajo Area'], ['seattle', 'FDA Pacific Region'], ['sunbelt', 'Federal Medical Center, Fort Worth']],
+  noaa: [['seattle', 'Marine Operations Center–Pacific'], ['miami', 'Aircraft Operations Center, Lakeland'], ['dc', 'NOAA headquarters, Silver Spring'], ['sf', 'NOAA Ship Reuben Lasker, San Diego']],
 };
 
 export const MOVE_COST = 3500;

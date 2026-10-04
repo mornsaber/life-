@@ -53,6 +53,7 @@ function switchComponent(ctx, svc) {
   const to = svc.component === 'active' ? 'reserve' : 'active';
   if (to === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school before going active.', 'warn');
   if (to === 'active' && BRANCHES[svc.branch].reserveOnly) return ctx.toast('The Guard has no active component — transfer to the Army first.', 'warn');
+  if (BRANCHES[svc.branch].activeOnly) return ctx.toast(`The ${BRANCHES[svc.branch].name} has no reserve component.`, 'warn');
   svc.component = to;
   svc.contractYearsLeft = ENLIST_CONTRACT[to];
   svc.deploymentRequested = false;

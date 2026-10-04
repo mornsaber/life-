@@ -128,7 +128,7 @@ export function awardForAction(ctx, svc, { valor, wounded, success, title, kille
 export function annualReview(ctx, svc) {
   const { rng, state } = ctx;
   const branch = svc.branch;
-  if (svc.yearsOfService === 1 && !hasMedal(state, 'ndsm')) {
+  if (svc.yearsOfService === 1 && !hasMedal(state, 'ndsm') && !['usphs', 'noaa'].includes(branch)) {
     awardMedal(ctx, 'ndsm', { branch, citation: 'For honorable active service during a period of national emergency.' });
   }
   if (svc.track === 'enlisted' && svc.yearsOfService % 3 === 0 && svc.disciplinary === 0) {

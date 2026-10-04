@@ -15,6 +15,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
+import { voteShare } from '../src/modules/politics/Campaigns.js';
 import { bestEntryLevel } from '../src/modules/career/CareerEngine.js';
 import { hasHousingBenefit } from '../src/modules/life/Finances.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
@@ -31,7 +32,8 @@ import { PeopleEngine } from '../src/modules/people/index.js';
 const PeopleEngineOnAgeUp = (ctx) => PeopleEngine.onAgeUp(ctx);
 import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
-import { discharge } from '../src/modules/military/MilitaryEngine.js';
+import { discharge, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
+import { transferEligibility } from '../src/modules/military/Separation.js';
 import { charge } from '../src/modules/legal/JusticeSystem.js';
 import { deathRowTick, paroleEligibility } from '../src/modules/legal/Prison.js';
 import { sealStatus } from '../src/modules/legal/Clemency.js';
@@ -2166,7 +2168,84 @@ const tests = {
     f.state.prompts = [];
     assert.ok(own.franchisor.units > 0 && own.lastYear.franchiseFees > 0, `units ${own.franchisor.units}`);
   },
+  'civic life: ballot measures change local taxes, HOA fines become liens, PTA and activism feed local politics, wars and the draft'() {
+    const t = setup(121, 35);
+    const civic = MODULES.find((m) => m.id === 'civic');
+    // Ballot: a passed school bond raises the local property-tax rate.
+    t.state.prompts = [];
+    t.engine.context().prompt({ type: 'civic.ballot', icon: '🏫', title: 'x', text: 'x', options: [{ id: 'campaignYes', label: 'y' }], data: { measureId: 'schoolBond' } });
+    t.state.civic.activism = { cause: 'housing', influence: 100, protests: 0, arrests: 0, years: 0 };
+    t.engine.rng.float = () => 0.08;
+    resolve(t.engine, 'civic.ballot', 'campaignYes');
+    const local = t.state.civic.local[t.state.character.regionId];
+    assert.ok(local.taxMult > 1 && local.passed.includes('schoolBond'), JSON.stringify(local));
+    // HOA: ignored violations accrue fines and end in a judgment.
+    const h = setup(122, 40);
+    h.state.housing.properties.push({ id: 'home1', type: 'condo', typeName: 'Condo', use: 'primary', regionId: h.state.character.regionId, value: 300000, purchasePrice: 300000, purchaseAge: 38, condition: 80 });
+    h.state.prompts = [];
+    civic.onAgeUp(h.engine.context());
+    assert.ok(h.state.civic.hoa, 'condo comes with an HOA');
+    h.state.civic.hoa.open = 'lawn';
+    for (let y = 0; y < 6 && !h.state.civic.hoa.lawsuit; y++) { h.state.prompts = []; civic.onAgeUp(h.engine.context()); }
+    assert.ok(h.state.civic.hoa.lawsuit, 'HOA sued over unpaid fines');
+    // PTA officers earn the parents' endorsement; activists add votes.
+    const p = setup(123, 38);
+    p.state.civic.pta = { years: 3, role: 'officer' };
+    p.state.civic.activism = { cause: 'labor', influence: 60, protests: 4, arrests: 0, years: 3 };
+    assert.ok(voteShareFor(p.state, 'schoolBoard') > voteShareFor(setup(124, 38).state, 'schoolBoard'), 'activism helps');
+    // Civil disobedience gets you arrested.
+    const a = setup(125, 25);
+    a.engine.dispatch('civic.joinCause', 'climate');
+    a.engine.rng.chance = () => true;
+    a.engine.dispatch('civic.protest', 'sitIn');
+    assert.equal(a.state.civic.activism.arrests, 1);
+    // War: deployments rise; a great-power war can bring the draft.
+    const w = setup(126, 19);
+    w.state.character.gender = 'male';
+    w.state.world.war = { id: 'major', name: 'x', operation: 'Operation Test', intensity: 3, startAge: 18, yearsLeft: 4, draft: true };
+    const world = MODULES.find((m) => m.id === 'world');
+    w.engine.rng.chance = () => true;
+    w.state.prompts = [];
+    world.onAgeUp(w.engine.context());
+    resolve(w.engine, 'world.draft', 'report');
+    assert.equal(w.state.military.service?.branch, 'army');
+    assert.ok(w.state.military.service.drafted);
+  },
+  'USPHS and NOAA Corps: officer-only uniformed services, health-professional and STEM entry, missions instead of combat'() {
+    // A 43-year-old pharmacist: too old for the armed forces, welcome in the USPHS at O-3 with experience.
+    const ph = setup(131, 43);
+    ph.state.education.degrees.push({ type: 'professional', programId: 'pharmd', major: null, year: 30 });
+    grantCredential(ph.ctx, 'pharmacistLicense', { silent: true });
+    ph.state.career.history.push({ professionId: 'pharmacy', startAge: 30, endAge: 42, peakGrade: 6 });
+    assert.equal(enlistmentEligibility(ph.state, 'usphs', 'enlisted', 'active').ok, false, 'no enlisted corps');
+    assert.equal(enlistmentEligibility(ph.state, 'usphs', 'officer', 'reserve').ok, false, 'no reserve');
+    ph.engine.dispatch('military.enlist', 'usphs:officer:active');
+    resolve(ph.engine, 'military.chooseSpecialty', 'usphs.PHARM');
+    const svc = ph.state.military.service;
+    assert.equal(svc.branch, 'usphs');
+    assert.equal(svc.grade, 2);
+    assert.equal(svc.clearance, null, 'no security clearance needed');
+    // A year of service: missions, never combat.
+    for (let y = 0; y < 4; y++) { ph.state.prompts = []; ph.engine.ageUp(); }
+    assert.ok(!ph.state.prompts.some((p) => p.type === 'military.combat'));
+    assert.equal(ph.state.military.service?.combatTours ?? 0, 0);
+    // NOAA: STEM degree required; aviators fly hurricane hunters.
+    const n = setup(132, 24);
+    n.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    n.engine.dispatch('military.enlist', 'noaa:officer:active');
+    assert.ok(n.state.prompts.find((p) => p.type === 'military.chooseSpecialty').options.find((o) => o.id === 'noaa.SHIP').disabled, 'business majors need not apply');
+    const m = setup(133, 24);
+    m.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'environmentalScience', year: 22 });
+    m.engine.dispatch('military.enlist', 'noaa:officer:active');
+    resolve(m.engine, 'military.chooseSpecialty', 'noaa.SHIP');
+    assert.equal(m.state.military.service.branch, 'noaa');
+    assert.equal(transferEligibility(m.state, 'navy').ok, false);
+  },
 };
+
+function voteShareFor(state, officeId) {
+  return voteShare(state, officeId, { funds: 0, endorsements: [] });
+}
 
 function TransportModuleTick(t) {
   const mod = MODULES.find((m) => m.id === 'transport');

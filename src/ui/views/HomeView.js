@@ -56,7 +56,7 @@ function listings(state) {
 function propertyCard(state, p) {
   const t = PROPERTY_TYPES[p.type];
   const m = p.mortgage;
-  const costs = carryingCosts(p);
+  const costs = carryingCosts(p, state);
   const equity = p.value - (m?.balance ?? 0) - (p.heloc?.balance ?? 0);
   const units = rentableUnits(p);
   const reno = Object.entries(RENOVATIONS).map(([id, r]) => button(`${r.icon} ${r.name}`, 'housing.renovate', { arg: `${p.id}:${id}`, variant: 'tiny', hint: `${money(Math.round(p.value * r.costPct * diyFactor(state)))} → +${Math.round(r.valuePct * 100)}%` })).join('');

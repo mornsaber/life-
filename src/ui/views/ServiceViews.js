@@ -18,19 +18,20 @@ import { hasCredential, pursueEligibility, findSponsor } from '../../modules/cre
 
 function recruitingOffice(state) {
   const rows = Object.values(BRANCHES).map((b) => {
-    const enlisted = enlistmentEligibility(state, b.id, 'enlisted');
-    const officer = enlistmentEligibility(state, b.id, 'officer', 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? 42 : 39 });
+    const enlisted = enlistmentEligibility(state, b.id, 'enlisted', b.activeOnly ? 'active' : 'reserve');
+    const officer = enlistmentEligibility(state, b.id, 'officer', b.activeOnly ? 'active' : 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? 42 : 39 });
     const btn = (track, component, base, label) => {
-      const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : base;
+      const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : b.activeOnly && component !== 'active' ? { ok: false, reason: 'Active duty only' } : base;
       return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
     };
     return `<li class="branch-row">
       <div class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${esc(b.motto)}</small></div></div>
       <div class="branch-btns">
-        ${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}
-        ${btn('officer', 'active', officer, 'Officer · Active')}${btn('officer', 'reserve', officer, 'Officer · Reserve')}
+        ${b.officerOnly ? '' : `${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}`}
+        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}
       </div>
-      <small class="why">${[!enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
+      ${b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
+      <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
     </li>`;
   }).join('');
   return card('Recruiting Office', `<p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });

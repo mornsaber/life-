@@ -14,6 +14,7 @@ import { residencyYears, stateOf } from '../life/Regions.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { yearsInProfession } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
+import { influenceVoteBonus } from '../civic/Activism.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
@@ -66,6 +67,8 @@ export function voteShare(state, officeId, campaign, { incumbent = false } = {})
   if (campaign?.vsIncumbent) share -= 0.06;
   if (incumbent) share += 0.04 + (p.office.approval - 50) / 250;
   share -= scandalPenalty(state);
+  // A movement behind you turns out voters; local offices reward the PTA and HOA crowd most.
+  share += influenceVoteBonus(state) * (office.level <= 2 ? 1 : 0.5);
   return clamp(share, 0.05, 0.85);
 }
 
@@ -79,6 +82,8 @@ function endorsementEligible(state, id) {
     case 'party': return state.politics.recognition >= 25;
     case 'editorial': return state.stats.smarts >= 60;
     case 'bar': return hasCredential(state, 'barLicense');
+    case 'parents': return ['officer', 'president'].includes(state.civic?.pta?.role) || state.politics.history.some((h) => h.officeId === 'schoolBoard') || state.politics.office?.id === 'schoolBoard';
+    case 'activists': return (state.civic?.activism?.influence ?? 0) >= 30;
     default: return false;
   }
 }

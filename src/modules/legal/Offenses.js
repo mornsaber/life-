@@ -27,6 +27,8 @@ export const OFFENSES = {
   escape: { name: 'Escape from Custody', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 5], probation: 1 },
   desertion: { name: 'Desertion (UCMJ Art. 85)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 3], probation: 1, federal: true },
   trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
+  disorderly: { name: 'Disorderly Conduct / Failure to Disperse', icon: '📢', severity: 'misdemeanor', fine: [200, 1000], probation: 1 },
+  draftEvasion: { name: 'Draft Evasion (Military Selective Service Act)', icon: '🏃', severity: 'felony', fine: [5000, 10000], prison: [1, 3], probation: 2, federal: true },
   underageDrinking: { name: 'Minor in Possession of Alcohol', icon: '🍻', severity: 'infraction', fine: [200, 600] },
   speeding: { name: 'Speeding', icon: '🚨', severity: 'infraction', fine: [150, 450] },
   reckless: { name: 'Reckless Driving', icon: '🚗', severity: 'misdemeanor', fine: [500, 2000], probation: 1 },

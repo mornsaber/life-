@@ -182,7 +182,33 @@ const COASTGUARD = {
   ],
 };
 
-const RAW = { army: ARMY, guard: ARMY, marines: MARINES, navy: NAVY, airforce: AIRFORCE, coastguard: COASTGUARD };
+/** USPHS categories: every officer is a health professional with constructive credit for experience. */
+const USPHS = {
+  enlisted: [],
+  officer: [
+    M('MO', 'Medical Officer', 'medical', { direct: 'medical', exposure: 0, civilian: 'medical', desc: 'Physicians at the Indian Health Service, CDC, FDA, NIH and federal prisons.' }),
+    M('NO', 'Nurse Officer', 'medical', { direct: 'nurse', exposure: 0, civilian: 'nursing' }),
+    M('PHARM', 'Pharmacist Officer', 'medical', { direct: 'pharmacy', exposure: 0, civilian: 'pharmacy' }),
+    M('ENG', 'Engineer Officer', 'publicHealth', { direct: 'engineer', civilian: 'engineering', desc: 'Water systems and sanitation on tribal lands; medical-device review at FDA.' }),
+    M('EHO', 'Environmental Health Officer', 'publicHealth', { direct: 'environmental', civilian: 'environmental', desc: 'Outbreak investigations, food safety, toxic exposures.' }),
+    M('SCI', 'Scientist Officer (Epidemic Intelligence Service)', 'publicHealth', { direct: 'scientist', desc: 'CDC disease detectives.' }),
+    M('HSO', 'Health Services Officer (Behavioral Health)', 'publicHealth', { direct: 'behavioral', civilian: 'socialWork' }),
+  ],
+};
+
+const STEM = ['engineering', 'computerScience', 'biology', 'environmentalScience', 'nursing', 'marineTransportation', 'aviation'];
+/** NOAA Corps: STEM graduates who run the nation's research ships and hurricane-hunter aircraft. */
+const NOAA = {
+  enlisted: [],
+  officer: [
+    M('SHIP', 'Shipboard Officer (Deck Watch)', 'science', { majors: STEM, grants: ['mmc'], civilian: 'merchantMarine', desc: 'Fisheries surveys and ocean exploration at sea.' }),
+    M('HYDRO', 'Hydrographic Survey Officer', 'science', { majors: STEM, desc: 'Map the seafloor for the nation\'s nautical charts.' }),
+    M('AVI', 'NOAA Aviator (Hurricane Hunter)', 'aviation', { majors: STEM, exposure: 0.2, pilot: true, minSmarts: 55, grants: ['commercialPilot', 'instrumentRating'], civilian: 'aviation', desc: 'Fly into hurricanes for the forecasters.' }),
+    M('DIVE', 'Diving Officer', 'science', { majors: STEM, minFitness: 55, desc: 'Coral reef and shipwreck research dives.' }),
+  ],
+};
+
+const RAW = { army: ARMY, guard: ARMY, marines: MARINES, navy: NAVY, airforce: AIRFORCE, coastguard: COASTGUARD, usphs: USPHS, noaa: NOAA };
 
 /** Flat lookup: 'army.68W' → MOS entry (with id, branch, track). */
 export const MOS = {};
@@ -258,6 +284,39 @@ export const DIRECT_COMMISSIONS = {
       return yrs >= 8 ? 2 : 1;
     },
   },
+  engineer: {
+    name: 'USPHS Engineer Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    needs: 'An engineering degree and an FE or PE license',
+    grade(state) {
+      if (!hasCredential(state, 'fe') && !hasCredential(state, 'pe')) return null;
+      const yrs = yearsInProfession(state, ['engineering', 'publicWorks', 'dot']);
+      return hasCredential(state, 'pe') ? (yrs >= 8 ? 3 : 2) : yrs >= 3 ? 1 : 0;
+    },
+  },
+  environmental: {
+    name: 'USPHS Environmental Health Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    needs: 'A bachelor\'s in environmental science, biology or engineering',
+    grade(state) {
+      if (!meetsEducation(state, { level: 'bachelor', majors: ['environmentalScience', 'biology', 'engineering'] })) return null;
+      return meetsEducation(state, { level: 'master' }) ? 1 : 0;
+    },
+  },
+  scientist: {
+    name: 'USPHS Scientist Category', school: 'the USPHS Officer Basic Course and the EIS summer course', maxAge: 44,
+    needs: 'A Ph.D.',
+    grade(state) {
+      if (!state.education.degrees.some((d) => d.type === 'doctorate')) return null;
+      return yearsInProfession(state, ['university', 'environmental', 'regulatory']) >= 5 ? 3 : 2;
+    },
+  },
+  behavioral: {
+    name: 'USPHS Health Services Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    needs: 'An LCSW license',
+    grade(state) {
+      if (!hasCredential(state, 'lcsw')) return null;
+      return yearsInProfession(state, ['socialWork', 'cps']) >= 5 ? 2 : 1;
+    },
+  },
   cyber: {
     name: 'Cyber Direct Commission', school: 'the Direct Commission Course and Cyber School', maxAge: 39,
     needs: 'Four years in tech and a security certification (Security+, CISSP or cloud)',
@@ -289,12 +348,15 @@ export function mosEligibility(state, mos, { smartsFloor = 0 } = {}) {
   const smarts = Math.max(mos.minSmarts ?? 0, smartsFloor);
   if (smarts && state.stats.smarts < smarts) return { ok: false, reason: `Needs ${smarts}+ smarts` };
   if (mos.minFitness && state.stats.fitness < mos.minFitness) return { ok: false, reason: `Needs ${mos.minFitness}+ fitness` };
+  if (mos.majors && !meetsEducation(state, { level: 'bachelor', majors: mos.majors })) return { ok: false, reason: 'Needs a STEM bachelor\'s (science, engineering, math or computing)' };
+  const branchMax = { usphs: 44, noaa: 42 }[mos.branch];
   if (mos.direct) {
     const dc = DIRECT_COMMISSIONS[mos.direct];
-    if (state.character.age > dc.maxAge) return { ok: false, reason: `Direct commissions: age ${dc.maxAge} or under` };
+    const maxAge = Math.max(dc.maxAge, branchMax ?? 0);
+    if (state.character.age > maxAge) return { ok: false, reason: `Direct commissions: age ${maxAge} or under` };
     if (directGrade(state, mos) == null) return { ok: false, reason: dc.needs };
-  } else if (mos.track === 'officer' && state.character.age > 39) {
-    return { ok: false, reason: 'Officers: age 19–39' };
+  } else if (mos.track === 'officer' && state.character.age > (branchMax ?? 39)) {
+    return { ok: false, reason: `Officers: age 19–${branchMax ?? 39}` };
   }
   return { ok: true };
 }

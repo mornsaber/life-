@@ -16,6 +16,8 @@ import { Finances } from './life/Finances.js';
 import { Taxes } from './life/Taxes.js';
 import { Judiciary } from './legal/Judiciary.js';
 import { CivilCourts } from './legal/CivilCourts.js';
+import { CivicModule } from './civic/index.js';
+import { WarModule } from './world/War.js';
 import { MentalHealth } from './health/MentalHealth.js';
 import { SSDI } from './health/SSDI.js';
 import { CreditCards } from './life/CreditCards.js';
@@ -47,7 +49,7 @@ import { EstatePlanning } from './people/EstatePlanning.js';
 import { Community } from './community/Community.js';
 
 export const MODULES = [
-  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, MilitaryModule,
-  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts,
+  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
+  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, CareerModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
   EmergencyModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

@@ -70,6 +70,7 @@ export function transferEligibility(state, branchId) {
   if (!svc || !target) return { ok: false, reason: 'Not serving' };
   if (branchId === svc.branch) return { ok: false, reason: 'Your branch' };
   if (target.reserveOnly && svc.component === 'active') return { ok: false, reason: 'The Guard only takes reservists' };
+  if (target.nonCombat || BRANCHES[svc.branch].nonCombat) return { ok: false, reason: 'USPHS and NOAA officers resign and apply anew' };
   if (svc.yearsOfService < 2) return { ok: false, reason: 'Serve 2 years first' };
   if (svc.deployedThisYear) return { ok: false, reason: 'Not while deployed' };
   if (svc.disciplinary) return { ok: false, reason: 'Disciplinary record' };
