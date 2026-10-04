@@ -6,7 +6,8 @@ import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
-import { STATE_DEFENSE_FORCES, SDF_RANKS, sdfEligibility } from '../../modules/service/StateForces.js';
+import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRank } from '../../modules/service/StateForces.js';
+import { PME, QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool } from '../../modules/military/Schools.js';
 import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
 import { POSTS, POST_RANKS, postEligibility, postLeader } from '../../modules/service/VeteranPosts.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
@@ -106,7 +107,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -201,7 +202,12 @@ function serviceCards(state) {
   // State Defense Force
   const sdfName = STATE_DEFENSE_FORCES[stateIdOf(state)];
   if (s.sdf) {
-    out.push(card(s.sdf.name, `<p>${chip(`🛡️ ${SDF_RANKS[s.sdf.rankIndex]}`, 'green')}</p>${kv([['Years', s.sdf.years], ['State activations', s.sdf.activations]])}<p class="fine">A volunteer state force: monthly drills, called up by the governor for emergencies. It can never be federalized or sent overseas.</p><div class="action-grid">${button('🚪 Resign', 'service.leaveSdf', { variant: 'danger' })}</div>`, { icon: '🛡️' }));
+    const nr = sdfNextRank(state);
+    const sdfSchools = Object.entries(SDF_SCHOOLS).map(([id, sc]) => `<li class="cert ${s.sdf.schools?.[id] ? 'done' : ''}">${esc(sc.name)} <small class="muted">(for ${SDF_RANKS[sc.forRank]})</small> ${s.sdf.schools?.[id] ? '✓' : button('Enroll', 'service.sdfSchool', { arg: id, variant: 'tiny', disabled: sc.forRank > s.sdf.rankIndex + 1 || Boolean(state.yearly['service.sdfSchool']) })}</li>`).join('');
+    out.push(card(s.sdf.name, `<p>${chip(`🛡️ ${SDF_RANKS[s.sdf.rankIndex]}`, 'green')}</p>${kv([['Years', s.sdf.years], ['Time in rank', `${s.sdf.yearsInRank ?? 0} yrs`], ['State activations', s.sdf.activations]])}
+      <p class="promo ${nr?.next && !nr.missing.length ? 'ready' : ''}">${nr?.next ? (nr.missing.length ? `🪜 ${esc(nr.next)}: needs ${esc(nr.missing.join(' · '))}` : `🌟 Ready for ${esc(nr.next)}`) : '⭐ Top rank'}</p>
+      <h4 class="sub">State Guard schools</h4><ul class="certs">${sdfSchools}</ul>
+      <p class="fine">A volunteer state force: monthly drills, called up by the governor for emergencies, never federalized or sent overseas. No promotion boards and no up-or-out: you move up when you've done your time in rank, finished the school, and a slot opens above you.</p><div class="action-grid">${button('🚪 Resign', 'service.leaveSdf', { variant: 'danger' })}</div>`, { icon: '🛡️' }));
   } else if (sdfName) {
     const check = sdfEligibility(state);
     out.push(card(sdfName, `<p class="muted">Your state's volunteer defense force: shelters, communications and search and rescue when the governor calls. Unpaid except on state active duty; prior service keeps its rank.</p><div class="action-grid">${button('🛡️ Join', 'service.joinSdf', { disabled: !check.ok, hint: check.reason ?? 'Ages 18–65' })}</div>`, { icon: '🛡️' }));
@@ -273,3 +279,17 @@ function specialOpsCard(state, svc) {
   return card('Special Operations', `<p class="muted">Selection courses wash out most volunteers. ${p0(ids)} Graduates join a special operations unit with special-duty pay, more deployments and their own missions. You get ${MAX_ATTEMPTS} tries per course.</p><ul class="job-board">${rows}</ul>`, { icon: '🗡️' });
 }
 const p0 = (ids) => (ids.some((id) => PIPELINES[id].mental) ? 'Some test the mind more than the body.' : 'Phases test body and mind; quitting is always an option.');
+
+/** Professional military education (required for promotion) and skill qualifications (board points, special pay). */
+function schoolsCard(state, svc) {
+  const need = requiredPme(svc);
+  const row = (id, label, extra = '') => {
+    if (hasSchool(svc, id)) return `<li class="cert done">${label} ✓</li>`;
+    const check = schoolEligibility(state, id);
+    return `<li class="cert">${label}${extra} ${button('Attend', 'military.attendSchool', { arg: id, variant: 'tiny', disabled: !check.ok, title: check.reason ?? '' })} <span class="${check.ok ? 'fine' : 'why'}">${check.ok ? `${Math.round(passOdds(state, id) * 100)}% to pass` : esc(check.reason)}</span></li>`;
+  };
+  const pme = (PME[svc.track] ?? []).map((p) => row(p.id, `${need?.id === p.id ? '⚠️ ' : ''}${esc(schoolName(svc, p.id))} <small class="muted">(for ${esc(svc.track === 'officer' ? BRANCHES[svc.branch].officer[p.forGrade] : BRANCHES[svc.branch].enlisted[p.forGrade])})</small>`)).join('');
+  const quals = Object.entries(QUALS).filter(([, q]) => q.branches.includes(svc.branch)).map(([id, q]) => row(id, `${q.icon} ${esc(q.name)}`, ` <small class="muted">${esc(q.badge)}${q.pay ? ` · +${money(q.pay)}/yr` : ''}</small>`)).join('');
+  if (!pme && !quals) return '';
+  return card('Schools & Qualifications', `${pme ? `<h4 class="sub">Professional military education</h4><ul class="certs">${pme}</ul><p class="fine">You can't pin on the next grade without its course. Your command offers seats when you're due.</p>` : ''}${quals ? `<h4 class="sub">Skill qualifications</h4><ul class="certs">${quals}</ul><p class="fine">Badges and tabs strengthen your file at promotion boards; some carry incentive pay. One school a year.</p>` : ''}`, { icon: '🎓' });
+}

@@ -14,6 +14,7 @@
 import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { belowZone, boardScore } from './MilitaryLife.js';
+import { pmeBlock, schoolName, qualBoardBonus, qualPay, PME } from './Schools.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
@@ -122,6 +123,19 @@ const BOARD_THRESHOLD = {
 };
 
 export const ENLIST_CONTRACT = { active: 4, reserve: 6 };
+
+/** Years served in one stint, without the prior service it was credited with. */
+export const ownServiceYears = (h) => (h?.yearsOfService ?? 0) - (h?.priorYears ?? 0);
+
+/**
+ * Prior service that counts toward retirement (and pay) when you come back:
+ * earlier honorable stints plus years at a service academy. Retired stints
+ * already earned their pension.
+ */
+export function priorServiceCredit(state) {
+  const years = state.military.history.filter((h) => ['honorable', 'general', 'medical'].includes(h.discharge)).reduce((s, h) => s + ownServiceYears(h), 0);
+  return years + (state.military.academyCredit ?? 0);
+}
 export const RETIREMENT_YEARS = 20;
 
 export const branchOf = (svc) => BRANCHES[svc.branch];
@@ -199,9 +213,12 @@ export function monthlyBasePay(svc) {
   return Math.round(PAY[svc.track][svc.grade] * longevity);
 }
 
+/** Base pay alone: what retired pay and separation pay are computed from. */
+export const annualBasePay = (svc) => monthlyBasePay(svc) * 12;
+
 export function annualActivePay(svc) {
-  // Special operators draw special-duty, jump/dive and assignment pay on top.
-  return monthlyBasePay(svc) * 12 + (svc.sof?.specialPay ?? 0) * (svc.component === 'active' ? 1 : 0.2);
+  // Special operators draw special-duty pay; jumpers, divers, drill sergeants and linguists draw incentive pay.
+  return monthlyBasePay(svc) * 12 + ((svc.sof?.specialPay ?? 0) + qualPay(svc)) * (svc.component === 'active' ? 1 : 0.2);
 }
 
 export function timeInGradeRequired(svc) {
@@ -286,7 +303,11 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   if (!specialty) return false;
   if (job && specialty !== job.specialty) job = defaultMos(branch, track, specialty);
   const direct = track === 'officer' ? directGrade(state, job) : null;
-  const startGrade = track === 'enlisted' ? enlistedStartGrade(state, branch, job) : direct ?? 0;
+  let startGrade = track === 'enlisted' ? enlistedStartGrade(state, branch, job) : direct ?? 0;
+  // Coming back: prior service counts toward retirement, and you return near your old grade.
+  const prior = priorServiceCredit(state);
+  const last = [...state.military.history].reverse().find((h) => ['honorable', 'general', 'medical'].includes(h.discharge));
+  if (last && last.track === track) startGrade = Math.min(BRANCHES[branch][track].length - 1, Math.max(startGrade, Number(last.rankCode.slice(2)) - 1 - (track === 'enlisted' ? 1 : 0)));
   const svc = {
     branch,
     track,
@@ -295,7 +316,8 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
     mos: job?.id ?? null,
     grade: startGrade,
     yearsInGrade: 0,
-    yearsOfService: 0,
+    yearsOfService: prior,
+    priorYears: prior,
     contractYearsLeft: track === 'officer' ? ENLIST_CONTRACT[component] + (component === 'active' ? 0 : 2) : ENLIST_CONTRACT[component],
     eval: 60,
     deployments: 0,
@@ -309,7 +331,12 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   };
   const level = requiredClearance(svc);
   svc.clearance = level && hasClearance(state, level) ? level : null;
+  // Schools and qualifications from earlier service carry over; PME up to your entry grade is credited.
+  svc.schools = Object.assign({}, ...state.military.history.map((h) => h.schools ?? {}));
+  for (const p of PME[track] ?? []) if (p.forGrade <= startGrade) svc.schools[p.id] ??= state.character.age;
   state.military.service = svc;
+  state.military.academyCredit = 0;
+  if (prior) ctx.log(`${prior} year${prior > 1 ? 's' : ''} of prior service (earlier enlistments and academy years) count toward your retirement.`, '📜', 'good');
 
   if (component === 'active') {
     if (state.career.job) ctx.emit('career:militaryLeave', { reason: `active duty with the ${b.name}` });
@@ -346,6 +373,8 @@ export function promotionOutlook(svc) {
   if (svc.grade >= max) return { eligible: false, reason: 'Highest grade' };
   const tig = timeInGradeRequired(svc);
   if (svc.yearsInGrade < tig) return { eligible: false, reason: `${tig - svc.yearsInGrade} yr time-in-grade` };
+  const school = pmeBlock(svc);
+  if (school) return { eligible: false, school: true, reason: `Needs ${schoolName(svc, school.id)}` };
   const threshold = BOARD_THRESHOLD[svc.track][svc.grade];
   if (svc.eval < threshold) return { eligible: false, reason: `Eval ${svc.eval}/${threshold}` };
   return { eligible: true };
@@ -363,7 +392,7 @@ function notSelected(ctx, svc) {
 
 export function tryPromotion(ctx, svc) {
   // Top performers can be picked up a year early.
-  if (svc.track && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
+  if (svc.track && !pmeBlock(svc) && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
     svc.grade += 1;
     svc.yearsInGrade = 0;
     svc.passovers = 0;
@@ -386,6 +415,7 @@ export function tryPromotion(ctx, svc) {
   if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
   // An officer's reprimand (or any Article 15 for a senior NCO) sits in the file the board reads.
   if (svc.reprimand) chance -= 0.35;
+  chance += qualBoardBonus(svc);
   if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
   if (flagBoard) chance = 0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200;
@@ -449,6 +479,8 @@ export function discharge(ctx, type, reason) {
     specialty: svc.specialty,
     mos: svc.mos ?? null,
     sof: svc.sof?.pipeline ?? svc.sofFormer ?? null,
+    schools: svc.schools ?? {},
+    priorYears: svc.priorYears ?? 0,
     rankCode: rank.code,
     rankTitle: rank.title,
     yearsOfService: svc.yearsOfService,
@@ -464,7 +496,7 @@ export function discharge(ctx, type, reason) {
   if (type === 'kia') return;
 
   const multiplier = pensionMultiplier(state);
-  const basePay = annualActivePay(svc);
+  const basePay = annualBasePay(svc);
   if (type === 'retired') {
     const reserve = svc.component === 'reserve';
     const annual = Math.round(basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);

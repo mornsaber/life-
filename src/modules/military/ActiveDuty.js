@@ -6,6 +6,7 @@
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
 import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
+import { schoolTick } from './Schools.js';
 import { reportMisconduct } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
@@ -611,6 +612,7 @@ export function activeDutyTick(ctx, svc) {
   svc.eval = Math.round(clamp(svc.eval + unitTick(ctx, svc, ranksOf(svc)), 0, 100));
   sofTick(ctx, svc);
   serviceLifeTick(ctx, svc);
+  schoolTick(ctx, svc);
   // Random urinalysis: addiction shows up in the cup.
   if ((hasCondition(ctx.state, 'opioids') && rng.chance(0.35)) || (hasCondition(ctx.state, 'alcohol') && rng.chance(0.08))) {
     if (!ctx.state.military.service) return;

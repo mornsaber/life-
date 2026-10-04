@@ -13,7 +13,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { SERVICES, nextRankStatus } from '../src/modules/emergency/EmergencyEngine.js';
 import { ensureVolunteerOrg, resolveElection, leadsOrg, PLAYER } from '../src/modules/org/VolunteerOrgs.js';
 import { serviceHiringBonus } from '../src/modules/service/NationalService.js';
-import { stateEmergency } from '../src/modules/service/StateForces.js';
+import { stateEmergency, ensureSdfOrg, sdfNextRank, SDF_SLOTS } from '../src/modules/service/StateForces.js';
 import { deploymentRequest } from '../src/modules/service/DisasterTeams.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { enlistedStartGrade, MOS } from '../src/modules/military/MOS.js';
@@ -180,6 +180,33 @@ const tests = {
     state.military.history.push({ branch: 'army', track: 'enlisted', component: 'active', specialty: 'infantry', rankCode: 'E-6', rankTitle: 'Staff Sergeant', yearsOfService: 6, deployments: 2, combatTours: 1, startAge: 18, endAge: 24, discharge: 'honorable' });
     assert.equal(gate(state).ok, true);
     assert.ok(getProfession('privateMilitary').levels.length >= 6);
+  },
+
+  'State Guard: no boards, no up-or-out; promotion when the school is done and a slot opens'() {
+    const { engine, state } = setup(9, 30);
+    state.character.regionId = 'sunbelt';
+    engine.dispatch('service.joinSdf');
+    const sdf = state.service.sdf;
+    assert.ok(sdf, 'joined the Texas State Guard');
+    const org = ensureSdfOrg(state, sdf.stateId);
+    assert.match(sdfNextRank(state).missing.join(), /Basic Orientation/);
+    engine.dispatch('service.sdfSchool', 'bot');
+    sdf.yearsInRank = 1;
+    assert.equal(sdfNextRank(state).missing.length, sdf.schools.bot ? 0 : 1);
+    // Sergeant: needs MEMS and a vacancy.
+    Object.assign(sdf, { rankIndex: 1, yearsInRank: 5, schools: { bot: 30, mems: 31 } });
+    for (const p of Object.values(org.people)) if (p.rankIndex === 2) delete org.people[p.id];
+    for (let i = 0; i < SDF_SLOTS[2]; i++) org.people[`x${i}`] = { id: `x${i}`, name: 'X', rankIndex: 2, years: 1, age: 30, rel: 50, performance: 50 };
+    assert.match(sdfNextRank(state).missing.join(), /open Sergeant slot/);
+    delete org.people.x0;
+    assert.equal(sdfNextRank(state).missing.length, 0, 'a slot opened');
+    // Years of not being promoted never separate you.
+    Object.assign(sdf, { rankIndex: 1, schools: { bot: 30 } });
+    for (let y = 0; y < 8 && state.character.alive; y++) {
+      engine.ageUp();
+      for (let i = 0; i < 12 && state.prompts.length; i++) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options.find((o) => o.id !== 'go' && !o.disabled)?.id ?? state.prompts[0].options[0].id);
+    }
+    if (state.character.alive && state.character.regionId === 'sunbelt') assert.ok(state.service.sdf, 'still serving');
   },
 };
 

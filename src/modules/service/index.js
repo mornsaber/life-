@@ -4,7 +4,7 @@
  * teams (FEMA reservists, DMATs) and veterans' posts (VFW, American Legion).
  */
 import { programTick, joinProgram, completeTerm, ProgramResolvers } from './NationalService.js';
-import { stateForcesTick, stateEmergency, joinSdf, leaveSdf, StateForceResolvers } from './StateForces.js';
+import { stateForcesTick, stateEmergency, joinSdf, leaveSdf, sdfSchool, StateForceResolvers } from './StateForces.js';
 import { teamsTick, joinTeam, leaveTeam, localDisaster, TeamResolvers, TEAMS } from './DisasterTeams.js';
 import { postsTick, PostActions, PostResolvers, POSTS } from './VeteranPosts.js';
 
@@ -50,6 +50,7 @@ export const ServiceModule = {
       if (ctx.state.service.program) completeTerm(ctx, false);
     },
     joinSdf,
+    sdfSchool,
     leaveSdf: (ctx) => leaveSdf(ctx, 'Resigned'),
     joinTeam,
     leaveTeam: (ctx, id) => leaveTeam(ctx, id, 'Resigned'),

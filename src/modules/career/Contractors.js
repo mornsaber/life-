@@ -22,8 +22,8 @@ const COMBAT = ['infantry', 'medic', 'engineer'];
 export function contractorBackground(state) {
   const honorable = state.military.history.filter((h) => !['dishonorable', 'bcd', 'oth'].includes(h.discharge));
   const sof = honorable.some((h) => h.sof);
-  const combatYears = honorable.filter((h) => COMBAT.includes(h.specialty)).reduce((s, h) => s + h.yearsOfService, 0);
-  const anyYears = honorable.reduce((s, h) => s + h.yearsOfService, 0);
+  const combatYears = honorable.filter((h) => COMBAT.includes(h.specialty)).reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
+  const anyYears = honorable.reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
   const lawYears = yearsInProfession(state, ['police', 'sheriff', 'statePolice', 'fbi', 'usms', 'usss', 'dea', 'atf', 'borderPatrol']);
   return { sof, combatYears, anyYears, lawYears };
 }

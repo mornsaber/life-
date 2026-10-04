@@ -74,6 +74,8 @@ export function leavePipeline(ctx, reason) {
     state.finances.loans += owed;
     ctx.log(`The government recouped $${owed.toLocaleString()} in education costs (added to your loans).`, '🧾', 'bad');
   }
+  // Years as a cadet count as active service if you serve later.
+  if (c.academy) state.military.academyCredit = (state.military.academyCredit ?? 0) + (c.academyYears ?? 0);
   c.rotc = null;
   c.academy = null;
   c.academyYears = 0;
@@ -142,6 +144,9 @@ export function commissionPrompt(ctx) {
 export function resolveCommission(ctx, data, optionId) {
   const { state } = ctx;
   const c = state.campus;
+  // Academy years count as active service (toward retirement and pay).
+  if (c.academy && optionId !== 'decline') state.military.academyCredit = (state.military.academyCredit ?? 0) + (c.academyYears ?? 0);
+  c.academyYears = 0;
   c.rotc = null;
   c.academy = null;
   c.scholarships = c.scholarships.filter((x) => x.id !== 'rotc' && x.id !== 'academy');

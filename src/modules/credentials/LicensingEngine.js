@@ -65,7 +65,7 @@ export function transferStatus(state, id) {
 
 export function totalWorkYears(state) {
   const civ = state.career.history.reduce((sum, h) => sum + (h.endAge - h.startAge), 0) + (state.career.job?.yearsAtEmployer ?? 0);
-  const mil = state.military.history.reduce((sum, h) => sum + h.yearsOfService, 0) + (state.military.service?.yearsOfService ?? 0);
+  const mil = state.military.history.reduce((sum, h) => sum + h.yearsOfService - (h.priorYears ?? 0), 0) + (state.military.service ? state.military.service.yearsOfService - (state.military.service.priorYears ?? 0) : 0);
   return civ + mil;
 }
 

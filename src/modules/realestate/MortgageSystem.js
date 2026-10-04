@@ -85,7 +85,7 @@ function scoreSpread(score) {
 }
 
 export function vaEligible(state) {
-  const years = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)).reduce((s, h) => s + h.yearsOfService, 0) + (state.military.service?.yearsOfService ?? 0);
+  const years = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)).reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0) + (state.military.service ? state.military.service.yearsOfService - (state.military.service.priorYears ?? 0) : 0);
   return years >= 2;
 }
 

@@ -17,6 +17,8 @@ import { reportMisconduct, preferCharges } from '../src/modules/military/UCMJ.js
 import { pcsOrders, serviceLifeTick, belowZone, giBillTransferEligibility } from '../src/modules/military/MilitaryLife.js';
 import { tryPromotion, discharge } from '../src/modules/military/MilitaryEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
+import { promotionOutlook } from '../src/modules/military/MilitaryEngine.js';
+import { qualBoardBonus } from '../src/modules/military/Schools.js';
 import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -272,6 +274,7 @@ const tests = {
     svc.yearsInGrade = 1; // E-4 needs 2 years: in the BTZ window
     svc.eval = 95;
     svc.reports = [{ age: 20, score: 95, block: 'Most Qualified' }, { age: 21, score: 96, block: 'Most Qualified' }];
+    svc.schools.pme1 = 21;
     assert.ok(belowZone(svc, 2, 60), 'eligible below the zone');
     let early = false;
     for (let i = 0; i < 30 && !early; i++) { svc.grade = 3; svc.yearsInGrade = 1; early = tryPromotion(ctx, svc); }
@@ -297,6 +300,46 @@ const tests = {
     state.character.age += 1;
     const heir = buildHeirState(engine.rng, state, 'kid1');
     assert.ok(heir && giBillEligible(heir), 'your child can use it');
+  },
+
+  'schools: PME gates promotion; qualifications add board points and pay'() {
+    const { engine, state } = setup(13);
+    const svc = enlist(engine);
+    svc.isNew = false;
+    Object.assign(svc, { grade: 3, yearsInGrade: 3, eval: 90 });
+    assert.match(promotionOutlook(svc).reason, /Basic Leader Course/, 'sergeant needs BLC');
+    let passed = false;
+    for (let i = 0; i < 10 && !passed; i++) { state.yearly = {}; engine.dispatch('military.attendSchool', 'pme1'); passed = Boolean(svc.schools.pme1); }
+    assert.ok(passed);
+    assert.equal(promotionOutlook(svc).eligible, true);
+    const pay = annualActivePay(svc);
+    for (let i = 0; i < 20 && !svc.schools.airborne; i++) { state.yearly = {}; engine.dispatch('military.attendSchool', 'airborne'); }
+    assert.ok(svc.schools.airborne, 'jump wings');
+    assert.ok(annualActivePay(svc) > pay, 'jump pay');
+    assert.ok(qualBoardBonus(svc) > 0);
+    state.yearly = {};
+    engine.dispatch('military.attendSchool', 'freefall');
+    assert.ok(!svc.schools.freefall, 'freefall is for special operators');
+  },
+
+  'prior service and academy years count toward retirement'() {
+    const { engine, state, ctx } = setup(14, 30);
+    let svc = enlist(engine);
+    svc.isNew = false;
+    Object.assign(svc, { yearsOfService: 8, grade: 4 });
+    discharge(ctx, 'honorable', 'test');
+    svc = enlist(engine);
+    assert.equal(svc.yearsOfService, 8, 'eight prior years');
+    assert.ok(svc.grade >= 3, 'back near the old grade');
+    Object.assign(svc, { yearsOfService: 20, isNew: false });
+    discharge(ctx, 'retired', 'test');
+    assert.ok(state.retirement.pensions.some((p) => p.id === 'military'), 'retired with prior service');
+    // An academy graduate starts with four years.
+    const t = setup(15, 22);
+    t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    t.state.military.academyCredit = 4;
+    const o = enlist(t.engine, 'army:officer:active');
+    assert.equal(o.yearsOfService, 4);
   },
 };
 

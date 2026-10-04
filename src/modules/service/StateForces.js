@@ -12,7 +12,8 @@
  * state.service.sdf = { stateId, name, rankIndex, years, activations, joinedAge }
  */
 import { clamp } from '../../core/Random.js';
-import { hasFelony, isOnActiveDuty } from '../../core/State.js';
+import { hasFelony, isOnActiveDuty, yearlyCount, bumpYearly, randomName } from '../../core/State.js';
+import { sideRng, initOrgs } from '../org/Organizations.js';
 import { stateIdOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { monthlyBasePay } from '../military/MilitaryEngine.js';
@@ -46,12 +47,76 @@ export function sdfEligibility(state) {
   return { ok: true };
 }
 
-/** Prior service carries rank into a State Defense Force. */
+/**
+ * Promotion in a State Defense Force is far easier than in the federal
+ * military: no promotion boards and no up-or-out. You move up when you've
+ * done your time in rank (a year as junior enlisted, two above that), have
+ * the school for the next rank, and a slot opens above you in the unit.
+ * Nobody is ever separated for not being promoted.
+ */
+export const SDF_SLOTS = [Infinity, Infinity, 10, 6, 4, 2, 4, 3, 2, 1];
+export const SDF_SCHOOLS = {
+  bot: { name: 'Basic Orientation Training', forRank: 1, stat: 'fitness', base: 0.95 },
+  mems: { name: 'Military Emergency Management Specialist (MEMS) Basic Badge', forRank: 2, stat: 'smarts', base: 0.85 },
+  nco: { name: 'State Guard NCO Academy', forRank: 3, stat: 'smarts', base: 0.85 },
+  woc: { name: 'Warrant Officer Candidate Course', forRank: 5, stat: 'smarts', base: 0.8 },
+  ocs: { name: 'State Guard Officer Candidate School', forRank: 6, stat: 'smarts', base: 0.8 },
+  memsSenior: { name: 'MEMS Senior Badge', forRank: 7, stat: 'smarts', base: 0.8 },
+  staff: { name: 'State Guard Command and Staff Course', forRank: 8, stat: 'smarts', base: 0.75 },
+};
+export const sdfSchoolFor = (rank) => Object.entries(SDF_SCHOOLS).find(([, s]) => s.forRank === rank)?.[0] ?? null;
+export const timeInRank = (rank) => (rank <= 1 ? 1 : 2);
+
+/** Prior service carries rank (and its schooling) into a State Defense Force. */
 function startingRank(state) {
-  const last = state.military.history.at(-1);
-  if (!last || ['dishonorable', 'bcd', 'oth'].includes(last.discharge)) return 0;
+  const last = [...state.military.history].reverse().find((h) => !['dishonorable', 'bcd', 'oth'].includes(h.discharge));
+  if (!last) return 0;
   const n = Number(last.rankCode.slice(2));
   return last.track === 'officer' ? Math.min(9, 5 + n) : Math.min(5, Math.max(1, n - 2));
+}
+
+function guardsman(rng, org, rankIndex) {
+  const gender = rng.pick(['male', 'female', 'male']);
+  const n = randomName(rng, gender);
+  const p = { id: rng.id('sg_'), name: `${n.firstName} ${n.lastName}`, gender, age: rng.int(20, 66), rankIndex, title: SDF_RANKS[rankIndex], years: rng.int(0, 15), rel: rng.int(40, 70), performance: rng.int(40, 80) };
+  org.people[p.id] = p;
+  return p;
+}
+
+/** The State Guard as an organization: a roster with a fixed number of slots per rank. */
+export function ensureSdfOrg(state, stateId) {
+  initOrgs(state);
+  const key = `sdf:${stateId}`;
+  let org = state.orgs.byId[key];
+  if (!org) {
+    const rng = sideRng(state);
+    org = { id: key, typeId: 'sdf', sdf: true, name: STATE_DEFENSE_FORCES[stateId], regionId: state.character.regionId, people: {}, departments: {}, head: null };
+    for (let r = 0; r < SDF_RANKS.length; r++) {
+      const n = Number.isFinite(SDF_SLOTS[r]) ? SDF_SLOTS[r] - (rng.chance(0.5) ? 1 : 0) : rng.int(12, 25);
+      for (let i = 0; i < n; i++) guardsman(rng, org, r);
+    }
+    state.orgs.byId[key] = org;
+  }
+  return org;
+}
+
+export const holdersAt = (org, rank) => Object.values(org.people).filter((p) => p.rankIndex === rank).length;
+export const slotOpen = (org, rank, sdf) => holdersAt(org, rank) + (sdf?.rankIndex === rank ? 1 : 0) < SDF_SLOTS[rank];
+
+/** What's between you and the next rank (empty list = ready). */
+export function sdfNextRank(state) {
+  const sdf = state.service.sdf;
+  if (!sdf) return null;
+  const next = sdf.rankIndex + 1;
+  if (next >= SDF_RANKS.length) return { next: null, missing: ['Top rank'] };
+  const missing = [];
+  const need = timeInRank(sdf.rankIndex) - (sdf.yearsInRank ?? 0);
+  if (need > 0) missing.push(`${need} yr in rank`);
+  const school = sdfSchoolFor(next);
+  if (school && !sdf.schools?.[school]) missing.push(SDF_SCHOOLS[school].name);
+  const org = state.orgs?.byId?.[`sdf:${sdf.stateId}`];
+  if (org && !slotOpen(org, next, null)) missing.push(`an open ${SDF_RANKS[next]} slot`);
+  return { next: SDF_RANKS[next], missing };
 }
 
 export function joinSdf(ctx) {
@@ -59,11 +124,32 @@ export function joinSdf(ctx) {
   const check = sdfEligibility(state);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const stateId = stateIdOf(state);
-  state.service.sdf = { stateId, name: STATE_DEFENSE_FORCES[stateId], rankIndex: startingRank(state), years: 0, activations: 0, joinedAge: state.character.age };
-  ctx.log(`You joined the ${STATE_DEFENSE_FORCES[stateId]} as a ${SDF_RANKS[state.service.sdf.rankIndex]}. Monthly drills, unpaid, called up only by the governor.`, '🛡️', 'milestone');
+  const rankIndex = startingRank(state);
+  const schools = {};
+  for (const [id, s] of Object.entries(SDF_SCHOOLS)) if (s.forRank <= rankIndex) schools[id] = state.character.age;
+  state.service.sdf = { stateId, name: STATE_DEFENSE_FORCES[stateId], rankIndex, yearsInRank: 0, schools, years: 0, activations: 0, joinedAge: state.character.age };
+  const org = ensureSdfOrg(state, stateId);
+  // Prior-service officers and NCOs come in at their rank; someone at that rank retires to make room.
+  while (Number.isFinite(SDF_SLOTS[rankIndex]) && holdersAt(org, rankIndex) + 1 > SDF_SLOTS[rankIndex]) {
+    delete org.people[Object.values(org.people).find((p) => p.rankIndex === rankIndex).id];
+  }
+  ctx.log(`You joined the ${STATE_DEFENSE_FORCES[stateId]} as a ${SDF_RANKS[rankIndex]}. Monthly drills, unpaid, called up only by the governor.`, '🛡️', 'milestone');
   ctx.toast('Joined the State Defense Force', 'good');
 }
 
+export function sdfSchool(ctx, id) {
+  const { state, rng } = ctx;
+  const sdf = state.service.sdf;
+  const s = SDF_SCHOOLS[id];
+  if (!sdf || !s) return;
+  if (sdf.schools?.[id]) return ctx.toast('Already completed', 'warn');
+  if (s.forRank > sdf.rankIndex + 1) return ctx.toast(`Open to ${SDF_RANKS[s.forRank - 1]}s and above`, 'warn');
+  if (yearlyCount(state, 'service.sdfSchool')) return ctx.toast('One course a year', 'warn');
+  bumpYearly(state, 'service.sdfSchool');
+  if (!rng.chance(clamp(s.base + (state.stats[s.stat] - 55) / 200, 0.4, 0.98))) return ctx.log(`You didn't pass ${s.name} this time. Try again next year.`, '📚', 'warn');
+  sdf.schools = { ...sdf.schools, [id]: state.character.age };
+  ctx.log(`You completed ${s.name}.`, '🎓', 'good');
+}
 export function leaveSdf(ctx, reason) {
   const sdf = ctx.state.service.sdf;
   if (!sdf) return;
@@ -79,11 +165,37 @@ function sdfTick(ctx) {
   if (stateIdOf(state) !== sdf.stateId) return leaveSdf(ctx, 'Moved out of state');
   if (isOnActiveDuty(state)) return;
   sdf.years += 1;
+  sdf.yearsInRank = (sdf.yearsInRank ?? sdf.years) + 1;
+  sdf.schools ??= {};
   ctx.log(rng.pick(['State Guard drill weekend: shelter operations and emergency communications.', 'State Guard drill: search-and-rescue training with the county.', 'Annual training: running a mock point of distribution for food and water.']), '🛡️', 'muted');
-  if (sdf.rankIndex < SDF_RANKS.length - 1 && sdf.years >= (sdf.rankIndex + 1) * 2 && rng.chance(0.4)) {
-    sdf.rankIndex += 1;
-    ctx.log(`State Guard: promoted to ${SDF_RANKS[sdf.rankIndex]}.`, '⬆️', 'good');
+  const org = ensureSdfOrg(state, sdf.stateId);
+  // Members retire and move away; slots open.
+  for (const p of Object.values(org.people)) {
+    p.years += 1;
+    if (rng.chance(p.age > 62 ? 0.25 : 0.12)) delete org.people[p.id];
+    else p.age += 1;
   }
+  // You get the first shot at an opening you qualify for.
+  const nr = sdfNextRank(state);
+  if (nr?.next && !nr.missing.length && rng.chance(0.85)) {
+    sdf.rankIndex += 1;
+    sdf.yearsInRank = 0;
+    ctx.log(`State Guard: promoted to ${SDF_RANKS[sdf.rankIndex]}.`, '⬆️', 'good');
+    ctx.stat('happiness', 3);
+  } else if (nr?.next && nr.missing.length === 1 && sdfSchoolFor(sdf.rankIndex + 1) && !sdf.schools[sdfSchoolFor(sdf.rankIndex + 1)] && !state.prompts.some((p) => p.type === 'service.sdfSchoolSeat')) {
+    const id = sdfSchoolFor(sdf.rankIndex + 1);
+    ctx.prompt({ type: 'service.sdfSchoolSeat', icon: '📚', title: `State Guard: ${SDF_SCHOOLS[id].name}`, text: `A slot for ${SDF_RANKS[sdf.rankIndex + 1]} is open, and you're qualified except for ${SDF_SCHOOLS[id].name}. There's a class next month.`, options: [{ id: 'go', label: '🎓 Enroll' }, { id: 'skip', label: '⏳ Not this year' }], data: { id } });
+  }
+  // Remaining vacancies go to members below.
+  for (let r = SDF_RANKS.length - 1; r >= 1; r--) {
+    while (slotOpen(org, r, sdf) && Number.isFinite(SDF_SLOTS[r]) && rng.chance(0.6)) {
+      const pick = Object.values(org.people).filter((p) => p.rankIndex === r - 1).sort((a, b) => b.years - a.years)[0];
+      if (!pick) break;
+      pick.rankIndex = r;
+      pick.title = SDF_RANKS[r];
+    }
+  }
+  while (holdersAt(org, 0) + holdersAt(org, 1) < 15) guardsman(rng, org, 0);
 }
 
 /* ------------------------------------------------------------------ */
@@ -154,6 +266,9 @@ const MISSION_OPTIONS = {
 };
 
 export const StateForceResolvers = {
+  sdfSchoolSeat(ctx, data, optionId) {
+    if (optionId === 'go') sdfSchool(ctx, data.id);
+  },
   governorActivation(ctx, data, optionId) {
     const { state } = ctx;
     const o = state.politics.office;

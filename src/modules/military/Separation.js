@@ -17,7 +17,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, discharge } from './MilitaryEngine.js';
+import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge } from './MilitaryEngine.js';
 import { equivalentMos } from './MOS.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
@@ -33,7 +33,7 @@ export const serviceLimit = (svc) => (svc.track === 'officer' ? OFFICER_MAX_SERV
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
 export function separationPay(svc) {
   if (svc.yearsOfService < 6 || svc.yearsOfService >= RETIREMENT_YEARS) return 0;
-  return Math.round(0.1 * svc.yearsOfService * annualActivePay(svc) * (svc.component === 'reserve' ? 0.5 : 1));
+  return Math.round(0.1 * svc.yearsOfService * annualBasePay(svc) * (svc.component === 'reserve' ? 0.5 : 1));
 }
 
 /** Apply up-or-out and high-year tenure. Returns true if you were separated. */
