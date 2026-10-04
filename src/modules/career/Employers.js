@@ -10,6 +10,7 @@
 import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
+import { attachOrg } from '../org/Organizations.js';
 
 const MUNICIPAL_SIZE_BY_REGION = { rural: 'small', smalltown: 'small', midcity: 'medium', sunbelt: 'large', chicago: 'enterprise', dc: 'large', nyc: 'enterprise', sf: 'enterprise', miami: 'large', seattle: 'large', denver: 'large', gunnison: 'small' };
 
@@ -86,7 +87,7 @@ export function createEmployer(rng, state, profession, regionId) {
   else name = rng.pick(profession.employers);
   const benefits = defaultBenefits(rng, profession, size, union);
   const annual = Math.round(EMPLOYER_SIZES[size].budget * (profession.sector === 'private' ? 1 : 1.3) * publicBudgetFactor(state, profession.sector));
-  return {
+  const employer = {
     id: rng.id('emp_'),
     name,
     cityName: profession.sector === 'municipal' ? cityName(regionId) : null,
@@ -98,6 +99,8 @@ export function createEmployer(rng, state, profession, regionId) {
     budget: { annual, left: annual },
     remote: Boolean(profession.remote),
   };
+  // Every employer is a department of a persistent organization.
+  return attachOrg(state, employer, profession, regionId);
 }
 
 export function resetBudget(state, employer, sector) {

@@ -15,6 +15,7 @@ import { applicationEligibility, promotionStatus, levelCheck } from '../../modul
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
+import { chainOfCommand } from '../../modules/org/Organizations.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
 import { APPLICATIONS_PER_YEAR } from '../../modules/career/InterviewSystem.js';
 import { DUTIES, canDelegate } from '../../modules/career/ManagementEngine.js';
@@ -186,6 +187,26 @@ function currentJob(state) {
     <p class="fine">Applications this year: ${state.yearly['career.apply'] ?? 0}/${APPLICATIONS_PER_YEAR}</p>`, { icon: profession.icon, accent: 'cyan' });
 }
 
+const SELECTION_LABEL = { appointed: 'appointed', elected: 'elected', board: 'hired by the board', internal: 'promoted from within', hired: 'external hire' };
+
+/** Who you work for and with: organization, department, chain of command, coworkers and reports. */
+function organizationCard(state, job) {
+  const c = chainOfCommand(state, job, { generate: false });
+  if (!c) return '';
+  const who = (p, extra = '') => (p ? `<b>${esc(p.name)}</b> <small class="muted">${esc(p.title)}${p.body ? '' : `${p.selection && p.selection !== 'internal' ? ` · ${SELECTION_LABEL[p.selection] ?? p.selection}` : ''}`}${extra}</small>` : '—');
+  const people = (list) => list.map((p) => `<li>${esc(p.name)} <small class="muted">${esc(p.title)} · ${p.years} yr</small></li>`).join('');
+  return card('🏢 Organization', `${kv([
+    ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}`],
+    ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff</small>`],
+    ['Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
+    c.manager ? ['Manager', who(c.manager)] : null,
+    c.deptHead ? ['Department head', who(c.deptHead)] : null,
+    c.orgHead ? ['Leadership', who(c.orgHead)] : null,
+  ])}
+  ${c.coworkers.length ? `<p class="fine">👥 Coworkers at your level</p><ul class="mini-list">${people(c.coworkers)}</ul>` : ''}
+  ${c.reports.length ? `<p class="fine">🧑‍💼 Your direct reports${job.department ? ` (${job.department.headcount} staff in all)` : ''}</p><ul class="mini-list">${people(c.reports)}</ul>` : ''}`, { icon: '🏢' });
+}
+
 function jobRow(state, p) {
   const check = applicationEligibility(state, p.id);
   const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
@@ -223,10 +244,10 @@ function militaryLeaveCard(state) {
 export function careerView(state, ui = {}) {
   const job = state.career.job;
   const current = job
-    ? currentJob(state) + managementConsole(job)
+    ? currentJob(state) + organizationCard(state, job) + managementConsole(job)
     : card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   const history = state.career.history.length
-    ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
+    ? `<ul class="history">${[...state.career.history].reverse().map((h) => `<li><b>${esc(h.title)}</b> · ${esc(h.employerName)}${h.orgName && h.orgName !== h.employerName ? ` <small class="muted">(${esc(h.orgName)})</small>` : ''}${h.standing ? ` ${chip(h.standing === 'good' ? '✅ Eligible for rehire' : h.standing === 'ineligible' ? '⛔ Not eligible for rehire' : '➖ Neutral reference', h.standing === 'good' ? 'green' : h.standing === 'ineligible' ? 'bad' : '')}` : ''} <small>(G${h.peakGrade} peak, age ${h.startAge}–${h.endAge}) — ${esc(h.reason)}</small></li>`).join('')}</ul>`
     : empty('No previous jobs.');
   return `${current}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }

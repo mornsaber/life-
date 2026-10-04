@@ -23,6 +23,7 @@ import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publ
 import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
+import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 
 /* ------------------------------------------------------------------ */
@@ -182,6 +183,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   recalcSalary(state, job);
   ensureDepartment(job, level);
   state.career.job = job;
+  chainOfCommand(state, job);
   const program = traineeProgram(job);
   // Trainees start probation when they graduate.
   job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
@@ -286,6 +288,7 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
     endAge: state.character.age,
     reason,
     fired,
+    ...historyOrgFields(job, fired),
   });
   state.career.job = null;
   if (fired) {
@@ -356,6 +359,7 @@ export function promote(ctx, levelId) {
   job.performance = Math.round(clamp(job.performance - 15, 40, 100));
   job.lastRaiseAge = state.character.age;
   ensureDepartment(job, level);
+  chainOfCommand(state, job);
   ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
   ctx.toast(`Promoted: ${job.title}`, 'good');
   ctx.stat('happiness', 10);
@@ -374,6 +378,7 @@ export function demote(ctx, reason) {
   job.warnings = 0;
   job.lowYears = 0;
   ensureDepartment(job, prev);
+  chainOfCommand(state, job);
   ctx.log(`You were demoted to ${job.title} [G${prev.grade}] (${reason}). Salary: $${job.salary.toLocaleString()}.`, '⬇️', 'bad');
   ctx.toast(`Demoted: ${job.title}`, 'bad');
   ctx.stat('happiness', -10);
@@ -486,6 +491,7 @@ export function careerOnAgeUp(ctx) {
   }
   if (!job) return;
   const profession = getProfession(job.professionId);
+  chainOfCommand(state, job);
   job.paidThisYear = false;
   resetBudget(state, job.employer, job.sector);
   if (job.professionId === 'foreignService') job.postingYears += 1;
