@@ -18,6 +18,8 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { levelById } from '../src/modules/career/Ladder.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { appointmentsInReach } from '../src/modules/org/Government.js';
+import { licensesFor } from '../src/modules/business/BusinessLicenses.js';
+import { businessAdvice } from '../src/modules/business/Advisor.js';
 
 const LIVES = Number(process.argv[2] ?? 40);
 const SEED = Number(process.argv[3] ?? 1);
@@ -101,6 +103,8 @@ function check(state, where) {
   if (state.business.current && state.business.holdings?.includes(state.business.current)) flag('business both current and held', where);
   if (state.business.holdings?.length) seenPaths.add('holdings');
   if (state.business.current?.investors?.length) seenPaths.add('stake sold / merger');
+  if (Object.values(state.business.current?.licenses ?? {}).some((l) => l.status === 'pending')) seenPaths.add('license pending');
+  if (Object.values(state.business.current?.licenses ?? {}).some((l) => l.status === 'suspended' || l.status === 'lapsed')) seenPaths.add('license suspended/lapsed');
   if (state.career.job && state.orgs.byId[state.career.job.employer.orgId]?.business) seenPaths.add('employed at an NPC business');
   if (state.career.history.some((h) => /went out of business/.test(h.reason))) seenPaths.add('laid off when employer closed');
 }
@@ -113,7 +117,7 @@ const ACTIONS = [
   ['business.appointCeo'], ['business.makePassive'], ['business.takeBack', 'holding'], ['business.sellHolding', 'holding', 0.1],
   ['business.setRole', 'role'], ['business.setPrice', 'price'], ['business.setPay', 'pay'], ['business.setSupplier', 'supplier'], ['business.invest', 'invest'], ['business.payDown'],
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
-  ['orgs.appoint', 'appoint', 0.5], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
+  ['orgs.appoint', 'appoint', 0.5], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
 ];
 
 function argFor(kind, state, rng) {
@@ -137,6 +141,7 @@ function argFor(kind, state, rng) {
     case 'rival': return rng.pick(Object.values(state.orgs.byId).filter((o) => o.business && o.owner?.kind === 'npc' && !o.closed).map((o) => o.id).concat(['none']));
     case 'stake': return rng.pick(['0.25', '0.49']);
     case 'appoint': { const a = rng.pick(appointmentsInReach(state, { ensure: false }).concat([null])); return a ? `${a.org.id}|${a.deptId ?? '-'}|${rng.pick(['professional', 'loyalist', 'reformer'])}` : 'none'; }
+    case 'license': return biz ? rng.pick(licensesFor(biz.typeId)) : 'none';
     case 'n': return '3';
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;
@@ -164,7 +169,10 @@ function life(seed) {
       for (let i = 0; i < 6; i++) {
         const [action, kind, p = 0.6] = rng.pick(ACTIONS);
         if (!rng.chance(p)) continue;
-        tryDo(() => { engine.dispatch(action, argFor(kind, state, rng)); solve(); }, action);
+        if (action === 'business.advice') {
+          // Follow the advisor's top suggestion.
+          tryDo(() => { const biz = state.business.current; const tip = biz && businessAdvice(state, biz).find((t) => t.action); if (tip) { engine.dispatch(tip.action, tip.arg ?? undefined); solve(); } }, 'advice');
+        } else tryDo(() => { engine.dispatch(action, argFor(kind, state, rng)); solve(); }, action);
         check(state, `${action} @${state.character.age} seed ${seed}`);
       }
     }

@@ -7,7 +7,7 @@
  *
  *  - Rare posts (≤ 3 seats) are held by named people who age, retire,
  *    resign, get promoted away or fired. When one leaves, the post opens.
- *  - Common posts open by ordinary turnover (more seats, more openings).
+ *  - Common posts (more than NAMED_SEATS) always have an opening somewhere.
  *  - An opening is contested: coworkers at your level apply, and senior or
  *    executive posts draw outside candidates too. Whoever doesn't get it,
  *    someone does — the winner fills the seat (and may become your boss).
@@ -28,8 +28,6 @@ import { rememberDeparture, churnTick } from './Churn.js';
 const POOL = { small: 30, medium: 220, large: 2000, enterprise: 12000 };
 /** Seats at or below which named people hold the post. */
 export const NAMED_SEATS = 3;
-/** Annual turnover in a seat (retirement, resignation, moves). */
-const TURNOVER = 0.12;
 
 export function seatsAt(org, deptId, profession, level, size) {
   const t = orgType(org.typeId);
@@ -151,7 +149,6 @@ export function computeOpenings(state, job) {
   const org = orgOf(state, job.employer);
   const dept = org?.departments[job.employer.deptId];
   if (!dept) return;
-  const rng = sideRng(state);
   const profession = getProfession(job.professionId);
   const size = job.employer.size;
   job.openings = {};
@@ -159,7 +156,8 @@ export function computeOpenings(state, job) {
     const seats = seatsAt(org, dept.id, profession, level, size);
     if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
     else if (seats <= NAMED_SEATS) job.openings[level.id] = seatHolders(state, org, dept.id, job.professionId, level.id, seats)[0]?.name ?? 'open';
-    else job.openings[level.id] = rng.chance(1 - (1 - TURNOVER) ** seats) ? 'open' : 'filled';
+    // Posts with many seats turn over every year: there's always somewhere to move up to.
+    else job.openings[level.id] = 'open';
   }
 }
 

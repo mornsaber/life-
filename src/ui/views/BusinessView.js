@@ -7,7 +7,9 @@ import { esc, money, button, card, chip, kv, meter, select, empty } from '../Com
 import { BUSINESS_TYPES, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked } from '../../modules/business/BusinessEngine.js';
-import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice } from '../../modules/business/OwnerActions.js';
+import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
+import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
+import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY } from '../../modules/business/Business.js';
@@ -43,7 +45,8 @@ function startCard(state) {
     const sizes = sizesFor(t);
     const costs = sizes.map((z) => money(startupCostFor(t, z))).join(' – ');
     const blocked = !cash.ok && !sba.ok;
-    const needs = t.credentials.length ? `Needs ${t.credentials.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No license needed';
+    const lic = requiredLicenses(id).filter((l) => l !== 'businessLicense').map((l) => BUSINESS_LICENSES[l].name);
+    const needs = `${t.credentials.length ? `You need ${t.credentials.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal license needed'}${lic.length ? ` · the business needs a ${lic.join(' + ')}` : ''} · ${money(openingLicenseFees(id))} in license fees`;
     const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established`;
     return `<li class="program ${blocked ? 'locked' : ''}" data-collect-root>
       <div><b>${t.icon} ${esc(t.name)}</b> ${fromCareer.has(id) ? chip('From your career', 'cyan') : ''}<small>${costs} to start · ${esc(needs)} · ${esc(est)}</small>
@@ -178,10 +181,45 @@ function policyCard(state, biz) {
     <h4 class="sub">Prices</h4><div class="toggle-row chips-row">${Object.entries(PRICE_LEVELS).map(([id, l]) => button(l.label, 'business.setPrice', { arg: id, variant: (biz.priceLevel ?? 'standard') === id ? 'tiny on' : 'tiny', hint: id === 'premium' ? 'Pays when quality is high' : id === 'budget' ? 'Wins volume' : '' })).join('')}</div>
     <h4 class="sub">Wages</h4><div class="toggle-row chips-row">${Object.entries(PAY_LEVELS).map(([id, l]) => button(l.label, 'business.setPay', { arg: id, variant: (biz.payLevel ?? 'market') === id ? 'tiny on' : 'tiny', hint: `${l.payroll > 1 ? '+' : ''}${Math.round((l.payroll - 1) * 100)}% payroll · morale ${l.morale >= 0 ? '+' : ''}${l.morale}` })).join('')}</div>
     <h4 class="sub">Suppliers</h4><div class="toggle-row chips-row">${Object.entries(SUPPLIERS).map(([id, l]) => button(l.label, 'business.setSupplier', { arg: id, variant: (biz.supplier ?? 'standard') === id ? 'tiny on' : 'tiny' })).join('')}</div>
-    <div class="action-grid">${button('🛠️ Buy equipment', 'business.invest', { arg: 'equipment', hint: `${money(type.cost * 0.15 * Math.max(1, biz.scale))} · +quality` })}${button('🖥️ Invest in technology', 'business.invest', { arg: 'technology', hint: `${money(type.cost * 0.08 * Math.max(1, biz.scale))} · +quality` })}${button('🏦 Pay down debt', 'business.payDown', { disabled: !biz.debts.sba })}</div>
+    <div class="action-grid">${!type.startup ? button('🚚 Move to a better location', 'business.relocate', { hint: `${money(relocationCost(biz))} · location luck ${Math.round((biz.fit ?? 1) * 100)}%` }) : ''}${button('🛠️ Buy equipment', 'business.invest', { arg: 'equipment', hint: `${money(type.cost * 0.15 * Math.max(1, biz.scale))} · +quality` })}${button('🖥️ Invest in technology', 'business.invest', { arg: 'technology', hint: `${money(type.cost * 0.08 * Math.max(1, biz.scale))} · +quality` })}${button('🏦 Pay down debt', 'business.payDown', { disabled: !biz.debts.sba })}</div>
     ${!type.startup ? `<h4 class="sub">Locations</h4>
       <ul class="history"><li>📍 Main location${org ? ` · ${esc((REGIONS[org.regionId] ?? REGIONS.midcity).name.split(',')[0])}` : ''}</li>${(org?.branches ?? []).map((b) => `<li>📍 ${esc(org.departments[b.deptId]?.name ?? b.city)} ${button('Close', 'business.closeLocation', { arg: b.deptId, variant: 'tiny danger' })}</li>`).join('')}</ul>
       <p class="fine">Next location opens in: ${regions.map((r) => button(r.name.split(',')[0], 'business.expandTo', { arg: r.id, variant: (biz.expandTo ?? state.character.regionId) === r.id ? 'tiny on' : 'tiny' })).join(' ')}</p>` : ''}`, { icon: '🧭' });
+}
+
+/** Next year's forecast, what would raise profit, and whether your manager handles routine calls. */
+function advisorCard(state, biz) {
+  const f = forecast(state, biz);
+  const advice = businessAdvice(state, biz);
+  const rows = advice.map((a) => `<li class="report-row"><div>${a.icon} ${esc(a.text)}</div>${a.action ? `<div class="toggle-row">${button(esc(a.label), a.action, { arg: a.arg ?? undefined, variant: 'tiny' })}</div>` : ''}</li>`).join('');
+  return card('Advisor', `
+    ${kv([
+      ['Forecast revenue', money(f.revenue)],
+      ['Forecast profit', `<b class="${f.netIncome < 0 ? 'neg' : 'pos'}">${money(f.netIncome)}</b>`],
+      ['Cash after a year', `<span class="${f.cashAfter < 0 ? 'neg' : ''}">${money(f.cashAfter)}</span>`],
+    ])}
+    ${rows ? `<h4 class="sub">What would help</h4><ul class="history">${rows}</ul>` : '<p class="muted">Nothing obvious to change — the business is running about as well as it can right now.</p>'}
+    <div class="toggle-row chips-row">${button(biz.autopilot ? '🤖 Autopilot: your manager handles routine decisions' : '🧑‍💼 Hands-on: every decision comes to you', 'business.toggleAutopilot', { variant: biz.autopilot ? 'tiny on' : 'tiny', hint: 'Big decisions (offers, cash crunches, unions) always come to you' })}</div>
+    <p class="fine">Forecasts assume an average year at today's quality and prices.</p>`, { icon: '🧭', accent: 'cyan' });
+}
+
+/** Licenses the business holds or could get. */
+function licensesCard(state, biz) {
+  const ids = licensesFor(biz.typeId);
+  const rows = ids.map((id) => {
+    const l = BUSINESS_LICENSES[id];
+    const rec = biz.licenses?.[id];
+    const status = !rec ? (l.required ? '<span class="neg">Missing</span>' : 'Not held')
+      : rec.status === 'active' ? `✅ Active · renews at age ${rec.renewAge} (${money(l.renewal.fee)})`
+        : rec.status === 'pending' ? `⏳ In review · decision at age ${rec.readyAge}`
+          : rec.status === 'suspended' ? `<span class="neg">⛔ Suspended until age ${rec.until}</span>`
+            : '<span class="neg">Lapsed — renew to keep operating</span>';
+    const elig = licenseEligibility(state, id, biz.typeId, biz);
+    const canApply = !rec || rec.status === 'lapsed';
+    return `<li class="report-row"><div>${l.icon} <b>${esc(l.name)}</b> ${l.required ? chip('Required', 'warn') : chip('Optional')} <small class="muted">${esc(l.desc)}</small><br><small>${status}</small>${canApply && !elig.ok ? ` <small class="why">${esc(elig.reason)}</small>` : ''}</div>
+      ${canApply ? `<div class="toggle-row">${button(rec?.status === 'lapsed' ? `Renew (${money(l.renewal.fee * 2)})` : `Apply (${money(l.fee)})`, 'business.getLicense', { arg: id, variant: 'tiny', disabled: !elig.ok })}</div>` : ''}</li>`;
+  }).join('');
+  return card('Licenses & Permits', `<p class="muted">What the business itself needs to operate (your own professional licenses are separate). Renewals come out of the business account automatically.</p><ul class="history">${rows}</ul>`, { icon: '📃' });
 }
 
 /** Businesses you own but don't run. */
@@ -257,7 +295,7 @@ function ownedView(state, biz) {
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  return `${overview}${advisorCard(state, biz)}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {

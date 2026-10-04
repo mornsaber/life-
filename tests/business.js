@@ -13,6 +13,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
+import { openingLicenseFees } from '../src/modules/business/BusinessLicenses.js';
 
 const memory = () => {
   const m = new Map();
@@ -31,7 +32,8 @@ function owner(seed, typeId, cash) {
   s.finances.cash = cash;
   s.housing.credit.score = 700;
   for (const c of t.credentials) s.credentials.held[c] = { earnedAge: 25, renewedAge: 30, status: 'active' };
-  if (t.minExperience) s.career.history.push({ professionId: t.professions[0], title: 'Cook', levelId: 'line', employerName: 'Diner', sector: 'private', peakGrade: 3, startAge: 25, endAge: 31, reason: 'Left' });
+  // Owners come from the industry (company licenses want a qualifying individual with experience).
+  if (!t.startup) s.career.history.push({ professionId: t.professions[0], title: 'Experienced hand', levelId: 'x', employerName: 'Prior employer', sector: 'private', peakGrade: 3, startAge: 25, endAge: 31, reason: 'Left' });
   engine.dispatch('business.start', `${typeId}:cash:${t.startup ? 'ccorp' : 'llc'}`);
   return { engine, s, t };
 }
@@ -69,7 +71,7 @@ let smallN = 0;
 for (const typeId of Object.keys(BUSINESS_TYPES).filter((id) => !BUSINESS_TYPES[id].startup)) {
   let alive = 0;
   for (let i = 0; i < PER_TYPE; i++) {
-    const { engine, s, t } = owner(1000 + i, typeId, BUSINESS_TYPES[typeId].cost + 40000);
+    const { engine, s, t } = owner(1000 + i, typeId, BUSINESS_TYPES[typeId].cost + openingLicenseFees(typeId) + 40000);
     if (runYears(engine, s, t, 5, { injectCap: t.cost * 0.5 })) alive += 1;
   }
   rows[typeId] = (alive / PER_TYPE).toFixed(2);

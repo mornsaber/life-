@@ -48,6 +48,7 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
                      Government (elected/appointed heads, a player-official's appointments) · Churn (hiring, attrition, boomerangs)
                      Businesses (player and NPC businesses as orgs: owner seat, growth layers, branches, rivals, exits)
     business/        BusinessTypes (career → business config, sizes) · OwnershipRules (who may own/run what)
+                     BusinessLicenses (operating licenses & permits) · Advisor (forecast, profit suggestions)
                      Business (P&L, valuation) · BusinessEngine · OwnerActions (people, policy, deals) · Franchising
     politics/        Offices · Campaigns · PoliticsEngine (elections, terms, appointments, scandals)
     realestate/      HousingEngine · PropertyMarket · MortgageSystem · Maintenance · Landlording
@@ -59,6 +60,7 @@ You need Node 18+ for the dev server and the tests. The browser won't load ES mo
 tests/         scenarios · simulate (randomized lives + render every tab) · saves (+ fixtures/ from past versions)
                content (pool lint) · balance (persona lives vs. real-world bands) · business (business outcomes)
                careers (career ↔ credential audit) · orgs (organizations) · businessorgs (businesses as organizations)
+               orgfuzz (random lives checking organization invariants)
 ```
 
 Modules mutate only their own slice; cross-domain effects travel over the bus

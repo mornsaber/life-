@@ -229,6 +229,24 @@ export const OwnerActions = {
   },
 
   /* -------- Locations -------- */
+  /** Move the main location: a bad spot is the most common reason small businesses fail. */
+  relocate(ctx) {
+    const { state, rng } = ctx;
+    const biz = withBiz(ctx);
+    if (!biz || typeOf(biz).startup) return;
+    if (yearlyCount(state, 'business.relocate')) return ctx.toast('One move a year.', 'warn');
+    const cost = relocationCost(biz);
+    if (biz.cash < cost) return ctx.toast(`Moving costs ${money(cost)} from the business account.`, 'warn');
+    bumpYearly(state, 'business.relocate');
+    biz.cash -= cost;
+    biz.assets += Math.round(cost * 0.4);
+    const before = biz.fit ?? 1;
+    // You know your customers now, so the new spot is usually better.
+    biz.fit = Math.round(Math.max(before, rng.float(0.85, 1.15)) * 100) / 100;
+    biz.quality = Math.max(0, biz.quality - 4);
+    biz.reputation = Math.max(0, biz.reputation - 3);
+    ctx.log(`${biz.name} moved to a new location (${money(cost)}). ${biz.fit > before + 0.05 ? 'Foot traffic is noticeably better.' : 'It\'s about the same as before.'}`, '🚚', 'milestone');
+  },
   /** arg: branch deptId */
   closeLocation(ctx, deptId) {
     const { state } = ctx;
@@ -301,6 +319,8 @@ export const OwnerActions = {
     ctx.log(`You sold ${Math.round(pct * 100)}% of ${biz.name} to an investor for ${money(price)}. You keep ${Math.round(biz.ownerPct * 100)}%.`, '💼', 'finance');
   },
 };
+
+export const relocationCost = (biz) => Math.round(BUSINESS_TYPES[biz.typeId].cost * 0.3 * Math.max(1, biz.scale ** 0.5));
 
 export function acquisitionPrice(biz, target) {
   const type = BUSINESS_TYPES[biz.typeId];

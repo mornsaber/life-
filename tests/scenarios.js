@@ -6,6 +6,7 @@
  *   node tests/scenarios.js
  */
 import assert from 'node:assert/strict';
+import { openingLicenseFees } from '../src/modules/business/BusinessLicenses.js';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
@@ -1310,11 +1311,15 @@ const tests = {
     assert.ok(retailLoan.ok || /cash flow/.test(retailLoan.reason), `experience clears the first hurdle: ${retailLoan.reason}`);
     assert.match(fundingCheck(state, 150000, 'sba', BUSINESS_TYPES.retail, { cashFlow: 20000 }).reason, /cash flow/, 'lenders check debt-service coverage');
     state.credentials.held.masterElectrician = { earnedAge: 30, renewedAge: 34, status: 'active' };
+    assert.match(startEligibility(state, 'electrical', 'sba').reason, /Contractor's License/, 'the company needs a contractor license (4 yrs in the trade)');
+    state.career.history.push({ professionId: 'trades', title: 'Journeyman Electrician', levelId: 'journeyman', employerName: 'Sparks', sector: 'private', peakGrade: 4, startAge: 26, endAge: 31, reason: 'Left' });
     assert.ok(startEligibility(state, 'electrical', 'sba').ok, '10% down with an SBA loan');
     engine.dispatch('business.start', 'electrical:sba:llc');
     const biz = state.business.current;
-    assert.ok(biz && biz.debts.sba.balance === 54000 && biz.debts.sba.guaranteed);
-    assert.equal(state.finances.cash, 14000);
+    const allIn = 60000 + openingLicenseFees('electrical');
+    assert.ok(biz && biz.debts.sba.balance === allIn - Math.round(allIn * 0.1) && biz.debts.sba.guaranteed);
+    assert.equal(state.finances.cash, 20000 - Math.round(allIn * 0.1));
+    assert.equal(biz.licenses.contractorLicense.status, 'active', 'licenses granted at opening');
     assert.ok(startEligibility(state, 'cpaFirm').reason.includes('already own'));
   },
 

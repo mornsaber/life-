@@ -23,6 +23,9 @@ import {
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import {
+  grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
+} from './BusinessLicenses.js';
+import {
   currentBusiness, typeOf, holdsLicense, startEligibility, fundingCheck, ownerSkill, debtBalance, guaranteedDebt,
   yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND,
 } from './Business.js';
@@ -129,9 +132,12 @@ function inspectionTick(ctx, biz, type) {
       return;
     }
     ctx.log(`${biz.name} failed a health inspection (${biz.violations.length}/3 in five years): ${money(fine)} fine and a bad grade in the window.`, '🧪', 'bad');
+    if (biz.violations.length >= 2) suspendLicense(ctx, biz, 'foodPermit', 1, 'repeat health violations');
   } else if (type.inspection === 'board' && rng.chance(0.04) && biz.quality < 45 && rng.chance(0.5)) {
     const held = type.credentials.filter((c) => state.credentials.held[c]?.status === 'active');
     ctx.emit('credential:suspend', { ids: held, years: 1, reason: `licensing-board complaint against ${biz.name}` });
+    const industry = requiredLicenses(biz.typeId).find((id) => id !== 'businessLicense');
+    if (industry) suspendLicense(ctx, biz, industry, 1, 'board complaint');
     biz.reputation = Math.max(0, biz.reputation - 10);
   }
 }
@@ -149,6 +155,13 @@ function businessTick(ctx, biz) {
     return;
   }
   ensureBusinessOrg(state, biz);
+  grandfatherLicenses(state, biz);
+  const lic = licensesTick(ctx, biz);
+  if (lic.shutDown) {
+    ctx.log(`${lic.shutDown}.`, '🚫', 'bad');
+    closeBusiness(ctx, 'Shut down for operating unlicensed', { liquidation: 0.4 });
+    return;
+  }
 
   // You need the license to run it. Law firms, practices and CPA firms must be owned by a licensee.
   if (!holdsLicense(state, type) && !biz.franchise?.waiveLicense) {
@@ -240,6 +253,9 @@ export const BUSINESS_EVENTS = [
   ] },
 ];
 
+/** What a sensible manager does with each routine event. */
+export const AUTOPILOT_CHOICE = { bigClient: 'decline', poached: 'match', lawsuit: 'settle', competitor: 'price', supplier: 'raise', hiring: 'promising', underperformer: 'fire' };
+
 function eventPrompt(ctx, biz) {
   const { rng } = ctx;
   const type = typeOf(biz);
@@ -247,6 +263,13 @@ function eventPrompt(ctx, biz) {
   const pool = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup) && !(e.duty && delegated.includes(e.duty)));
   const event = rng.pick(pool);
   if (!event) return;
+  // On autopilot, your manager handles routine calls the sensible way and tells you what they did.
+  if (biz.autopilot && AUTOPILOT_CHOICE[event.id]) {
+    const option = event.options.find((o) => o.id === AUTOPILOT_CHOICE[event.id]);
+    const line = option.apply(ctx, biz);
+    ctx.log(`${biz.name} — ${event.title}: your manager handled it. ${line}`, type.icon);
+    return;
+  }
   ctx.prompt({ type: 'business.event', icon: type.icon, title: `${biz.name}: ${event.title}`, text: event.text, options: event.options.map(({ id, label }) => ({ id, label })), data: { eventId: event.id } });
 }
 
@@ -407,11 +430,14 @@ function startBusiness(ctx, typeId, funding, entity, size = 'standard', name = '
   const check = startEligibility(state, typeId, funding, size);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const type = BUSINESS_TYPES[typeId];
+  const fees = openingLicenseFees(typeId);
   const cost = startupCostFor(type, size);
-  const { sbaLoan, basis } = fund(ctx, cost, check);
+  const { sbaLoan, basis } = fund(ctx, cost + fees, check);
   const clean = String(name ?? '').replace(/[<>]/g, '').trim().slice(0, 40);
   const biz = newBusiness(rng, state, typeId, { name: clean || undefined, scale: SIZE_OPTIONS[size].scale, entity: ENTITIES[entity] ? entity : 'llc', cash: Math.round(cost * 0.4), assets: Math.round(cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
   state.business.current = biz;
+  biz.autopilot = true;
+  grantOpeningLicenses(state, biz);
   ensureBusinessOrg(state, biz);
   seedCompetitors(state, biz);
   ctx.log(`You founded ${biz.name} (${ENTITIES[biz.entity].name})${sbaLoan ? ` with a ${money(sbaLoan)} SBA loan you personally guaranteed` : ''}.`, type.icon, 'milestone');
@@ -439,6 +465,8 @@ function buyFranchise(ctx, brandId, funding, entity) {
   });
   biz.franchise = { brandId, name: brand.name, royalty: brand.royalty, adFund: brand.adFund, lift: brand.lift, term: brand.term, signedYears: 0, waiveLicense: Boolean(brand.waiveLicense) };
   state.business.current = biz;
+  biz.autopilot = true;
+  grandfatherLicenses(state, biz);
   ensureBusinessOrg(state, biz);
   seedCompetitors(state, biz);
   ctx.log(`You signed a ${brand.term}-year franchise agreement and opened ${biz.name} (${money(brand.fee)} franchise fee, ${money(price)} all-in${sbaLoan ? `, ${money(sbaLoan)} SBA loan` : ''}). Royalties: ${Math.round((brand.royalty + brand.adFund) * 1000) / 10}% of revenue.`, brand.icon, 'milestone');
@@ -480,6 +508,8 @@ function buyBusiness(ctx, listingId, funding) {
   const biz = newBusiness(rng, state, listing.typeId, { name: listing.name, years: listing.years, scale: listing.scale, quality: listing.quality, reputation: listing.reputation, fit: listing.fit, cash: Math.round(listing.price * 0.1), assets: Math.round(listing.price * 0.4), sbaLoan, basis });
   state.business.current = biz;
   biz.ownedFromAge = state.character.age;
+  biz.autopilot = true;
+  grandfatherLicenses(state, biz);
   ensureBusinessOrg(state, biz);
   seedCompetitors(state, biz);
   state.business.listings = state.business.listings.filter((l) => l !== listing);
@@ -505,6 +535,14 @@ function holdingTick(ctx, biz) {
   }
   if (conflict && biz.divestBy == null) biz.divestBy = state.character.age + 1;
   if (!conflict) biz.divestBy = null;
+  const lic = licensesTick(ctx, biz);
+  if (lic.shutDown) {
+    ctx.log(`${lic.shutDown}.`, '🚫', 'bad');
+    releaseBusinessOrg(state, biz, { closed: true });
+    state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome: 'Shut down (unlicensed)', proceeds: 0, orgId: biz.orgId, role: 'absentee' });
+    state.business.holdings = state.business.holdings.filter((h) => h !== biz);
+    return;
+  }
   biz.years += 1;
   biz.role = 'absentee';
   ensureBusinessOrg(state, biz);
@@ -569,6 +607,8 @@ export const BusinessEngine = {
     for (const h of state.business.holdings) if (!h.orgId && state.character) ensureBusinessOrg(state, h);
     // Saves from before businesses were organizations.
     if (state.business.current && !state.business.current.orgId && state.character) ensureBusinessOrg(state, state.business.current);
+    // Saves from before business licenses: existing businesses hold what they need.
+    for (const b of [state.business.current, ...state.business.holdings].filter(Boolean)) if (!b.licenses && state.character) grandfatherLicenses(state, b);
   },
 
   setup(engine) {
@@ -778,6 +818,22 @@ export const BusinessEngine = {
       p.job = `${biz.name} (family business)`;
       p.relationship = Math.min(100, p.relationship + 8);
       ctx.log(`${p.firstName} came to work at ${biz.name}.`, '👨‍👩‍👧', 'good');
+    },
+    /** arg: license id — apply for an optional license, or renew a lapsed one. */
+    getLicense(ctx, id) {
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      const r = applyForLicense(ctx, biz, id);
+      if (!r.ok) return ctx.toast(r.reason, 'warn');
+      const l = BUSINESS_LICENSES[id];
+      ctx.log(`${biz.name} ${r.pending ? 'applied for' : 'obtained'} a ${l.name} (${money(r.fee)}).${r.pending ? ' A decision comes next year.' : ''}`, l.icon, 'milestone');
+    },
+    /** Let your manager handle routine decisions (on by default). */
+    toggleAutopilot(ctx) {
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      biz.autopilot = !biz.autopilot;
+      ctx.toast(biz.autopilot ? 'Your manager handles routine decisions' : 'Every decision comes to you', 'info');
     },
     /** Step back to a passive owner: your hired chief executive runs it, and you're free to start or buy another. */
     makePassive(ctx) {

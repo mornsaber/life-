@@ -20,6 +20,8 @@ import { orgType, chainOfCommand } from '../src/modules/org/Organizations.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { workforceGap, ownerEntryLevel } from '../src/modules/org/Reentry.js';
+import { BUSINESS_LICENSES, requiredLicenses, licensesTick, licenseEffects } from '../src/modules/business/BusinessLicenses.js';
+import { businessAdvice, forecast } from '../src/modules/business/Advisor.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed, age = 35) {
@@ -74,6 +76,8 @@ const tests = {
     const { state } = setup(2);
     assert.match(startEligibility(state, 'plumbing', 'cash').reason, /Master Plumber/);
     plumber(state, 2);
+    assert.match(startEligibility(state, 'plumbing', 'cash', 'solo').reason, /Contractor's License/, 'the company license wants 4 yrs');
+    state.career.history.at(-1).startAge -= 2;
     assert.ok(startEligibility(state, 'plumbing', 'cash', 'solo').ok);
     assert.match(startEligibility(state, 'plumbing', 'cash', 'large').reason, /experience/);
     assert.match(startEligibility(state, 'privateSchool', 'cash', 'solo').reason, /Teaching|experience|open/);
@@ -260,6 +264,82 @@ const tests = {
     assert.ok(closed, 'the rival failed');
     assert.equal(state.career.job, null, 'laid off');
     assert.match(state.career.history.at(-1).reason, /went out of business/);
+  },
+
+  'business licenses: required to open, granted with fees, optional ones raise revenue'() {
+    for (const [id, l] of Object.entries(BUSINESS_LICENSES)) for (const t of l.types === '*' ? [] : l.types) assert.ok(BUSINESS_TYPES[t], `${id}: unknown business type ${t}`);
+    for (const id of Object.keys(BUSINESS_TYPES)) assert.ok(requiredLicenses(id).includes('businessLicense'), `${id} needs a business license`);
+    const { engine, state } = setup(20);
+    state.credentials.held.servSafe = { earnedAge: 30, renewedAge: 34, status: 'active' };
+    state.career.history.push({ professionId: 'culinary', title: 'Sous Chef', levelId: 'sous', employerName: 'Bistro', sector: 'private', peakGrade: 5, startAge: 26, endAge: 34, reason: 'Left' });
+    const cash = state.finances.cash;
+    engine.dispatch('business.start', 'restaurant:cash:llc');
+    const biz = state.business.current;
+    assert.ok(biz.licenses.foodPermit.status === 'active' && biz.licenses.businessLicense.status === 'active');
+    assert.equal(cash - state.finances.cash, BUSINESS_TYPES.restaurant.cost + BUSINESS_LICENSES.foodPermit.fee + BUSINESS_LICENSES.businessLicense.fee);
+    // Liquor license: pending a year, then (probably) approved; it adds revenue.
+    const before = forecast(state, biz).revenue;
+    biz.cash = 100000;
+    engine.dispatch('business.getLicense', 'liquorLicense');
+    assert.equal(biz.licenses.liquorLicense.status, 'pending');
+    biz.licenses.liquorLicense.status = 'active';
+    assert.ok(forecast(state, biz).revenue > before * 1.08, 'liquor raises revenue');
+    assert.ok(licenseEffects(biz).revenue > 1);
+  },
+
+  'a lapsed license brings a fine, then a shutdown; violations suspend permits'() {
+    const { engine, state, ctx } = setup(21);
+    plumber(state);
+    engine.dispatch('business.start', 'plumbing:cash:llc');
+    const biz = state.business.current;
+    assert.equal(biz.licenses.contractorLicense.status, 'active');
+    biz.licenses.contractorLicense.status = 'lapsed';
+    const cash = biz.cash;
+    assert.equal(licensesTick(ctx, biz).shutDown, null, 'first year: a fine');
+    assert.ok(biz.cash < cash);
+    assert.match(licensesTick(ctx, biz).shutDown, /without a State Contractor's License/);
+    // Renewing fixes it.
+    biz.cash = 50000;
+    biz.unlicensedYears = 0;
+    engine.dispatch('business.getLicense', 'contractorLicense');
+    assert.equal(biz.licenses.contractorLicense.status, 'active');
+    // No contractor experience, no contractor company.
+    const t = setup(22);
+    t.state.credentials.held.masterPlumber = { earnedAge: 28, renewedAge: 34, status: 'active' };
+    assert.match(startEligibility(t.state, 'plumbing', 'cash').reason, /Contractor's License/);
+  },
+
+  'the advisor forecasts next year and suggests changes with real actions; autopilot handles routine calls'() {
+    const { engine, state } = setup(23);
+    plumber(state);
+    engine.dispatch('business.start', 'plumbing:cash:llc');
+    const biz = state.business.current;
+    Object.assign(biz, { quality: 80, reputation: 70, years: 3, fit: 0.7 });
+    const f = forecast(state, biz);
+    assert.ok(Number.isFinite(f.netIncome) && Number.isFinite(f.cashAfter));
+    const advice = businessAdvice(state, biz);
+    assert.ok(advice.length, 'some advice');
+    const actions = Object.keys(MODULES.find((m) => m.id === 'business').actions);
+    for (const a of advice) if (a.action) assert.ok(actions.includes(a.action.split('.')[1]), `${a.action} is a real action`);
+    assert.ok(advice.some((a) => a.action === 'business.setPrice' && a.arg === 'premium'), 'high quality → premium prices');
+    assert.ok(advice.some((a) => a.action === 'business.relocate'), 'bad location → move');
+    // Following advice raises the forecast.
+    const pick = advice.find((a) => a.action === 'business.setPrice');
+    engine.dispatch(pick.action, pick.arg);
+    assert.ok(forecast(state, biz).netIncome > f.netIncome);
+    // Moving fixes a bad spot.
+    biz.cash = 1000000;
+    engine.dispatch('business.relocate');
+    assert.ok(biz.fit >= 0.85);
+    // Autopilot: no routine event prompts.
+    assert.equal(biz.autopilot, true);
+    let routine = 0;
+    for (let y = 0; y < 15 && state.business.current; y++) {
+      state.prompts = [];
+      engine.ageUp();
+      routine += state.prompts.filter((p) => p.type === 'business.event').length;
+    }
+    assert.equal(routine, 0, 'manager handled routine decisions');
   },
 
   'old saves: an existing business gets an organization on load'() {
