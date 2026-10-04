@@ -15,6 +15,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { MOS, mosFor } from '../src/modules/military/MOS.js';
+import { resolvedMode } from '../src/modules/transit/Transit.js';
 import { voteShare, runEligibility } from '../src/modules/politics/Campaigns.js';
 import { assignFacility } from '../src/modules/legal/JusticeSystem.js';
 import { bestEntryLevel, levelCheck } from '../src/modules/career/CareerEngine.js';
@@ -2349,6 +2350,34 @@ const tests = {
     t.engine.dispatch('teaching.summer', 'summerSchool');
     t.engine.ageUp();
     assert.ok(t.state.finances.ledger.income.some((i) => /Summer/.test(i.source)) || t.state.finances.lastYear, 'summer pay');
+  },
+  'transit: commute by region, pass costs and benefits, stranded without a car, bus and rail careers with CDL endorsements'() {
+    const ny = setup(181, 30);
+    ny.state.character.regionId = 'nyc';
+    giveJob(ny.engine, 'corporate', 'analyst');
+    assert.equal(resolvedMode(ny.state), 'transit');
+    const transit = MODULES.find((m) => m.id === 'transit');
+    transit.onAgeUp(ny.engine.context());
+    assert.equal(ny.state.transit.last.mode, 'transit');
+    assert.equal(ny.state.transit.last.cost, 132 * 12);
+    const mt = setup(182, 30);
+    mt.state.character.regionId = 'rural';
+    giveJob(mt.engine, 'retail', 'associate');
+    const perf = mt.state.career.job.performance;
+    transit.onAgeUp(mt.engine.context());
+    assert.equal(mt.state.transit.last.mode, 'stranded');
+    assert.ok(mt.state.career.job.performance < perf);
+    const bus = setup(183, 25);
+    grantCredential(bus.ctx, 'learnerPermit', { silent: true });
+    grantCredential(bus.ctx, 'driverLicense', { silent: true });
+    bus.state.finances.cash = 20000;
+    giveJob(bus.engine, 'transit', 'trainee');
+    for (let y = 0; y < 3 && bus.state.career.job?.levelId === 'trainee'; y++) { bus.state.prompts = []; bus.engine.ageUp(); }
+    assert.ok(hasCredential(bus.state, 'cdlB') && hasCredential(bus.state, 'passengerEndorsement'), 'CDL-B + P');
+    assert.equal(bus.state.career.job?.levelId, 'operator');
+    const ta = setup(184, 30);
+    grantCredential(ta.ctx, 'cdlA', { silent: true });
+    assert.ok(hasCredential(ta.state, 'cdlB'), 'Class A covers Class B');
   },
 };
 

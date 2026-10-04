@@ -7,6 +7,9 @@
  *   market:   private/municipal pay multiplier
  *   locality: federal locality-pay percentage (GS-style) added to base pay
  *   state:    parent state (see States.js)
+ *   transit:  public-transit coverage 0–100 (bus/rail frequency and reach)
+ *   fare:     monthly transit pass
+ *   walkable: dense enough to live without any vehicle
  *
  * Every relocation — a voluntary move, a PCS, a duty-station assignment, a
  * corporate transfer — goes through changeRegion(), which emits
@@ -16,18 +19,18 @@ import { canAfford } from '../../core/State.js';
 import { STATES } from './States.js';
 
 export const REGIONS = {
-  rural: { id: 'rural', name: 'Glacier Valley, MT', icon: '🏔️', type: 'Rural', state: 'MT', col: 0.72, market: 0.86, locality: 0.17 },
-  smalltown: { id: 'smalltown', name: 'Cedar Falls, IA', icon: '🌽', type: 'Small town', state: 'IA', col: 0.82, market: 0.9, locality: 0.17 },
-  midcity: { id: 'midcity', name: 'Columbus, OH', icon: '🏙️', type: 'Mid-size city', state: 'OH', col: 0.95, market: 0.98, locality: 0.22 },
-  sunbelt: { id: 'sunbelt', name: 'Austin, TX', icon: '🌵', type: 'Sun Belt metro', state: 'TX', col: 1.05, market: 1.05, locality: 0.21 },
-  chicago: { id: 'chicago', name: 'Chicago, IL', icon: '🌬️', type: 'Major metro', state: 'IL', col: 1.15, market: 1.12, locality: 0.31 },
-  dc: { id: 'dc', name: 'Washington, D.C.', icon: '🏛️', type: 'Capital region', state: 'DC', col: 1.3, market: 1.18, locality: 0.33 },
-  nyc: { id: 'nyc', name: 'New York City', icon: '🗽', type: 'High-cost metro', state: 'NY', col: 1.55, market: 1.3, locality: 0.37 },
-  sf: { id: 'sf', name: 'San Francisco Bay Area', icon: '🌉', type: 'High-cost metro', state: 'CA', col: 1.65, market: 1.4, locality: 0.46 },
-  miami: { id: 'miami', name: 'Miami, FL', icon: '🌴', type: 'Coastal metro', state: 'FL', col: 1.2, market: 1.06, locality: 0.24 },
-  seattle: { id: 'seattle', name: 'Seattle, WA', icon: '🌲', type: 'High-cost metro', state: 'WA', col: 1.4, market: 1.3, locality: 0.3 },
-  denver: { id: 'denver', name: 'Denver, CO', icon: '⛰️', type: 'Mountain metro', state: 'CO', col: 1.15, market: 1.12, locality: 0.3 },
-  gunnison: { id: 'gunnison', name: 'Gunnison, CO', icon: '🦌', type: 'Rural', state: 'CO', col: 0.85, market: 0.88, locality: 0.17 },
+  rural: { id: 'rural', name: 'Glacier Valley, MT', icon: '🏔️', type: 'Rural', state: 'MT', col: 0.72, market: 0.86, locality: 0.17, transit: 3, fare: 0, walkable: false },
+  smalltown: { id: 'smalltown', name: 'Cedar Falls, IA', icon: '🌽', type: 'Small town', state: 'IA', col: 0.82, market: 0.9, locality: 0.17, transit: 10, fare: 30, walkable: false },
+  midcity: { id: 'midcity', name: 'Columbus, OH', icon: '🏙️', type: 'Mid-size city', state: 'OH', col: 0.95, market: 0.98, locality: 0.22, transit: 30, fare: 62, walkable: false },
+  sunbelt: { id: 'sunbelt', name: 'Austin, TX', icon: '🌵', type: 'Sun Belt metro', state: 'TX', col: 1.05, market: 1.05, locality: 0.21, transit: 25, fare: 41, walkable: false },
+  chicago: { id: 'chicago', name: 'Chicago, IL', icon: '🌬️', type: 'Major metro', state: 'IL', col: 1.15, market: 1.12, locality: 0.31, transit: 75, fare: 75, walkable: true },
+  dc: { id: 'dc', name: 'Washington, D.C.', icon: '🏛️', type: 'Capital region', state: 'DC', col: 1.3, market: 1.18, locality: 0.33, transit: 80, fare: 108, walkable: true },
+  nyc: { id: 'nyc', name: 'New York City', icon: '🗽', type: 'High-cost metro', state: 'NY', col: 1.55, market: 1.3, locality: 0.37, transit: 95, fare: 132, walkable: true },
+  sf: { id: 'sf', name: 'San Francisco Bay Area', icon: '🌉', type: 'High-cost metro', state: 'CA', col: 1.65, market: 1.4, locality: 0.46, transit: 70, fare: 98, walkable: true },
+  miami: { id: 'miami', name: 'Miami, FL', icon: '🌴', type: 'Coastal metro', state: 'FL', col: 1.2, market: 1.06, locality: 0.24, transit: 40, fare: 112, walkable: false },
+  seattle: { id: 'seattle', name: 'Seattle, WA', icon: '🌲', type: 'High-cost metro', state: 'WA', col: 1.4, market: 1.3, locality: 0.3, transit: 60, fare: 99, walkable: true },
+  denver: { id: 'denver', name: 'Denver, CO', icon: '⛰️', type: 'Mountain metro', state: 'CO', col: 1.15, market: 1.12, locality: 0.3, transit: 45, fare: 88, walkable: false },
+  gunnison: { id: 'gunnison', name: 'Gunnison, CO', icon: '🦌', type: 'Rural', state: 'CO', col: 0.85, market: 0.88, locality: 0.17, transit: 8, fare: 0, walkable: false },
 };
 
 /** Military installations by branch, for PCS moves. */

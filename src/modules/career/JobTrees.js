@@ -24,6 +24,7 @@ import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
 import { TRANSPORT_PROFESSIONS } from './TransportProfessions.js';
 import { JUSTICE_PROFESSIONS } from './JusticeCareers.js';
 import { MORE_PROFESSIONS } from './MoreProfessions.js';
+import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -455,7 +456,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -464,7 +465,8 @@ export const PROFESSION_LIST = Object.values(PROFESSIONS);
 export const JOB_FIELDS = {
   service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise'] },
   trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'automotive', 'lineworker', 'trucking', 'publicWorks', 'forester'] },
-  travel: { label: 'Air & Sea', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine'] },
+  travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
+  transit: { label: 'Public Transit', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus'] },
   business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory'] },
   tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'engineering', 'dot', 'planning', 'environmental'] },
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'socialWork', 'cps'] },

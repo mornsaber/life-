@@ -44,13 +44,58 @@ function credentialRow(state, cred) {
   </li>`;
 }
 
-export function licensesView(state) {
+const VIEWS_LABEL = { mine: '🪪 Mine', available: '✅ Can pursue now', browse: '🗂️ Browse by category' };
+
+function logbook(state) {
+  return `<p class="fine">Logbook: <b>${state.credentials.logbook.flightHours} flight hours</b>. Aviation jobs and military aviators log hours automatically.</p>${button(`🛩️ Rent aircraft (${FLIGHT_BLOCK.hours} hrs)`, 'credentials.fly', { variant: 'small', hint: money(FLIGHT_BLOCK.cost) })}`;
+}
+
+/** Rows grouped under small category headings. */
+function groupedList(state, creds) {
   const byCat = {};
-  for (const c of CREDENTIAL_LIST) (byCat[c.category] ??= []).push(c);
+  for (const c of creds) (byCat[c.category] ??= []).push(c);
+  return Object.entries(CATEGORIES).filter(([id]) => byCat[id]).map(([id, cat]) => `<h4 class="sub">${cat.icon} ${esc(cat.name)}</h4><ul class="certs">${byCat[id].map((c) => credentialRow(state, c)).join('')}</ul>`).join('');
+}
+
+/**
+ * Three views instead of one endless page: what you hold (and are training
+ * for), what you could start right now, and the full registry one category
+ * at a time.
+ */
+export function licensesView(state, ui = {}) {
+  const isMine = (c) => Boolean(state.credentials.held[c.id]) || hasCredential(state, c.id) || state.credentials.training.some((t) => t.id === c.id);
+  const mine = CREDENTIAL_LIST.filter(isMine);
+  const available = CREDENTIAL_LIST.filter((c) => !isMine(c) && pursueEligibility(state, c.id).ok);
+  const view = VIEWS_LABEL[ui.licView] ? ui.licView : mine.length ? 'mine' : 'available';
   const held = Object.values(state.credentials.held).filter((h) => h.status === 'active').length;
-  const cards = Object.entries(CATEGORIES).map(([id, cat]) => {
-    const extra = id === 'aviation' ? `<p class="fine">Logbook: <b>${state.credentials.logbook.flightHours} flight hours</b>. Aviation jobs and military aviators log hours automatically.</p>${button(`🛩️ Rent aircraft (${FLIGHT_BLOCK.hours} hrs)`, 'credentials.fly', { variant: 'small', hint: money(FLIGHT_BLOCK.cost) })}` : '';
-    return card(cat.name, `${extra}<ul class="certs">${byCat[id].map((c) => credentialRow(state, c)).join('')}</ul>`, { icon: cat.icon });
-  });
-  return `${card('Credentials', `<p class="muted">One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their annual training budgets; police, fire, EMS, federal and airline employers run funded academies for their own hires. Convictions can suspend or revoke credentials.</p><p><b>${held}</b> active · ${state.credentials.training.length} in training · ${Math.max(0, ATTEMPTS_PER_YEAR - (state.yearly['cred.attempts'] ?? 0))} of ${ATTEMPTS_PER_YEAR} new credentials left this year</p><p class="fine">Exams can be failed — odds depend on your smarts (or fitness and health for physical tests). A prep course helps; failing a training program's final lets you retest without retraining for ${2} years. Agency courses (fire officer, field training, K9…) are open only to members, and pilots, truckers and academy recruits must pass a medical.</p>`, { icon: '🪪', accent: 'cyan' })}<div class="grid-2">${cards.join('')}</div>`;
+  const left = Math.max(0, ATTEMPTS_PER_YEAR - (state.yearly['cred.attempts'] ?? 0));
+
+  const counts = { mine: mine.length, available: available.length };
+  const tabs = Object.entries(VIEWS_LABEL).map(([id, label]) => button(`${label}${counts[id] != null ? ` (${counts[id]})` : ''}`, 'ui.set', { arg: `licView=${id}`, variant: view === id ? 'tiny on' : 'tiny' })).join('');
+
+  let body;
+  if (view === 'browse') {
+    const cat = CATEGORIES[ui.licCat] ? ui.licCat : Object.keys(CATEGORIES)[0];
+    const catChips = Object.entries(CATEGORIES).map(([id, c]) => {
+      const all = CREDENTIAL_LIST.filter((x) => x.category === id);
+      const have = all.filter(isMine).length;
+      return button(`${c.icon} ${c.name} ${have}/${all.length}`, 'ui.set', { arg: `licCat=${id}`, variant: id === cat ? 'tiny on' : 'tiny' });
+    }).join('');
+    const list = CREDENTIAL_LIST.filter((c) => c.category === cat);
+    body = `<div class="toggle-row chips-row">${catChips}</div>${cat === 'aviation' ? logbook(state) : ''}<ul class="certs">${list.map((c) => credentialRow(state, c)).join('')}</ul>`;
+  } else {
+    const list = view === 'mine' ? mine : available;
+    const emptyText = view === 'mine' ? 'You don\'t hold any credentials yet. Check "Can pursue now".' : 'Nothing you can start right now — browse by category to see what each one needs.';
+    const showLog = view === 'mine' && (state.credentials.logbook.flightHours > 0 || list.some((c) => c.category === 'aviation'));
+    body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list) : `<p class="muted">${emptyText}</p>`}`;
+  }
+
+  return `${card('Licenses & Certifications', `
+    <p><b>${held}</b> active · ${state.credentials.training.length} in training · ${left} of ${ATTEMPTS_PER_YEAR} new credentials left this year</p>
+    <details class="fine"><summary>How credentials work</summary>
+      <p>One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their training budgets; police, fire, EMS, federal, airline and transit employers run funded academies for their own hires. Convictions can suspend or revoke credentials.</p>
+      <p>Exams can be failed — odds depend on your smarts (or fitness and health for physical tests). A prep course helps; failing a training program's final lets you retest without retraining for 2 years. Agency courses are open only to members, and pilots, drivers and academy recruits must pass a medical. State-issued licenses may need a transfer exam when you move.</p>
+    </details>
+    <div class="toggle-row chips-row">${tabs}</div>
+    ${body}`, { icon: '🪪', accent: 'cyan' })}`;
 }

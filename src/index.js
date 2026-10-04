@@ -108,6 +108,12 @@ function handleAction(el) {
     case 'ui.closePanel':
       renderer.panel = null;
       return renderer.render(engine.state);
+    case 'ui.set': {
+      // Generic view filter: arg 'key=value' stored on the renderer's UI state.
+      const [key, value] = String(arg).split('=');
+      renderer.ui[key] = value;
+      return renderer.render(engine.state);
+    }
     case 'ui.jobField':
       renderer.ui.jobField = arg;
       return renderer.render(engine.state);

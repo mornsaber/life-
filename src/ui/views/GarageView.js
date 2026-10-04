@@ -2,6 +2,8 @@
  * Garage tab: what you drive, sail and fly — loans, leases, insurance on
  * your driving record — and the showroom.
  */
+import { MODES, transitQuality, modeAvailable, resolvedMode, passCost, rideshareCost, commutes } from '../../modules/transit/Transit.js';
+import { regionOf } from '../../modules/life/Regions.js';
 import { esc, money, button, card, kv, chip } from '../Components.js';
 import { VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment } from '../../modules/vehicles/Vehicles.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
@@ -48,5 +50,29 @@ function showroom(state) {
 
 export function garageView(state) {
   if (!state.vehicles) return '';
-  return `${ownedCard(state)}${state.character.age >= 16 ? showroom(state) : ''}`;
+  return `${commuteCard(state)}${ownedCard(state)}${state.character.age >= 16 ? showroom(state) : ''}`;
+}
+
+/** How you get to work or school, and what it costs. */
+function commuteCard(state) {
+  if (!state.transit || state.character.age < 14) return '';
+  const q = transitQuality(state);
+  const region = regionOf(state);
+  const mode = state.transit.mode ?? 'auto';
+  const resolved = resolvedMode(state);
+  const last = state.transit.last;
+  const buttons = [['auto', '🔄 Automatic', 'Car if you have one, then transit, then walking']].concat(Object.entries(MODES).map(([id, m]) => {
+    const check = modeAvailable(state, id);
+    const cost = id === 'transit' ? `${money(passCost(state))}/yr pass` : id === 'rideshare' ? `≈${money(rideshareCost(state))}/yr` : id === 'drive' ? 'Your car costs' : 'Free';
+    return [id, `${m.icon} ${m.label}`, check.ok ? cost : check.reason, !check.ok];
+  })).map(([id, label, hint, disabled]) => button(label, 'transit.setMode', { arg: id, variant: mode === id ? 'tiny on' : 'tiny', hint, disabled })).join('');
+  const quality = q >= 70 ? 'Excellent — frequent rail and buses' : q >= 40 ? 'Decent — buses and some rail' : q >= 15 ? 'Limited — infrequent buses' : 'None to speak of';
+  return card('Commute', `${kv([
+    ['Transit here', `${quality} (${q}/100)`],
+    ['Monthly pass', region.fare ? money(region.fare) : '—'],
+    ['Getting around', !commutes(state) ? 'Not commuting this year' : resolved === 'stranded' ? '<span class="neg">No way to get to work — buy a car or move somewhere with transit</span>' : `${MODES[resolved].icon} ${MODES[resolved].label}`],
+    last?.cost ? ['Last year', money(last.cost)] : null,
+  ])}
+    <div class="toggle-row chips-row">${buttons}</div>
+    <p class="fine">Reliable transit lets you read on the way; unreliable transit makes you late. Large employers offer pre-tax commuter benefits; seniors and students ride half fare.</p>`, { icon: '🚇' });
 }
