@@ -7,7 +7,9 @@
  * repaying the scholarship.
  */
 import { nominationBonus } from '../education/K12.js';
-import { BRANCHES, SPECIALTIES, enlist, specialtyName } from '../military/MilitaryEngine.js';
+import { BRANCHES, enlist } from '../military/MilitaryEngine.js';
+import { mosOptions } from '../military/index.js';
+import { MOS, defaultMos } from '../military/MOS.js';
 import { hasFelony, yearlyCount, bumpYearly, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { onCampus } from './Network.js';
@@ -130,7 +132,7 @@ export function commissionPrompt(ctx) {
     title: 'Commissioning Day',
     text: `You pin on gold bars as a ${BRANCHES[branch].name} officer. ${obligated ? `You owe ${OBLIGATION[pipeline]} years of active duty.` : 'Your ROTC contract is optional — you can walk away.'}\nChoose your branch specialty:`,
     options: [
-      ...Object.entries(SPECIALTIES).map(([id, s]) => ({ id, label: `${s.icon} ${specialtyName({ branch, specialty: id })}`, hint: s.desc, disabled: Boolean(s.minSmarts && state.stats.smarts < s.minSmarts) })),
+      ...mosOptions(state, branch, 'officer', { allowDirect: false }).map((o) => (o.disabled && o.hint.startsWith('Officers: age') ? { ...o, disabled: false } : o)),
       ...(obligated ? [] : [{ id: 'decline', label: '🙅 Decline the commission' }]),
     ],
     data: { branch, pipeline },
@@ -146,7 +148,8 @@ export function resolveCommission(ctx, data, optionId) {
   if (optionId === 'decline') return ctx.log('You turned down your commission.', '🙅');
   if (state.military.service) return;
   if (state.career.job) ctx.emit('career:militaryLeave', { reason: `commissioned in the ${BRANCHES[data.branch].name}` });
-  if (!enlist(ctx, { branch: data.branch, track: 'officer', component: 'active', specialty: optionId })) return;
+  const job = MOS[optionId] ?? defaultMos(data.branch, 'officer', optionId);
+  if (!enlist(ctx, { branch: data.branch, track: 'officer', component: 'active', specialty: job?.specialty ?? optionId, mos: job?.id ?? null })) return;
   state.military.service.contractYearsLeft = OBLIGATION[data.pipeline];
   state.military.service.source = data.pipeline === 'academy' ? 'academy' : 'rotc';
   c.commissionedVia = state.military.service.source;

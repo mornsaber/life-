@@ -15,6 +15,8 @@ import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js
 import { clamp } from '../../core/Random.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
 import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
+import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
+import { grantCredential } from '../credentials/LicensingEngine.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -67,6 +69,9 @@ export const SPECIALTIES = {
   intel: { name: 'Intelligence', icon: '🛰️', exposure: 0.6, minSmarts: 55, clearance: 'topSecret', names: {}, desc: 'Low exposure, strong evaluations. Needs 55+ smarts and a TS/SCI clearance.' },
   cyber: { name: 'Cyber Operations', icon: '💻', exposure: 0.4, minSmarts: 60, clearance: 'topSecret', names: { army: 'Cyber Operations Specialist', navy: 'Cryptologic Technician (Networks)', airforce: 'Cyber Warfare Operations', marines: 'Cyber Network Operator', coastguard: 'Cyber Mission Specialist' }, desc: 'Offensive and defensive network operations. Needs 60+ smarts and TS/SCI; the clearance is gold in civilian life.' },
   logistics: { name: 'Logistics', icon: '📦', exposure: 0.5, names: { navy: 'Logistics Specialist' }, desc: 'Keeps the force supplied. Lowest exposure.' },
+  legal: { name: 'Legal', icon: '⚖️', exposure: 0.3, names: {}, desc: 'Courts-martial, legal assistance, operational law.' },
+  medical: { name: 'Medical Corps', icon: '🩺', exposure: 0.6, names: {}, desc: 'Physicians, nurses and pharmacists in uniform.' },
+  chaplain: { name: 'Chaplain Corps', icon: '✝️', exposure: 0.5, names: {}, desc: 'Noncombatant ministry to the troops.' },
 };
 
 /** Approximate monthly base pay at <2 years of service. */
@@ -101,8 +106,57 @@ export function rankOf(svc) {
 }
 
 export function specialtyName(svc) {
+  const m = mosOf(svc);
+  if (m) return `${m.code} ${m.title}`;
   const s = SPECIALTIES[svc.specialty];
   return s.names[svc.branch] ?? s.name;
+}
+
+/** Combat exposure: the job's own, else its broad specialty's. */
+export function exposureOf(svc) {
+  return mosOf(svc)?.exposure ?? SPECIALTIES[svc.specialty].exposure;
+}
+
+/** Flight hours logged per year (pilots and aircrew only; old saves: any aviation). */
+export function flightHoursOf(svc) {
+  const m = mosOf(svc);
+  const flies = m ? m.pilot : svc.specialty === 'aviation';
+  if (!flies) return 0;
+  return svc.component === 'active' ? 250 : 60;
+}
+
+/** Medics and the Medical Corps can take the life-saving combat choices. */
+export const isMedical = (svc) => svc.specialty === 'medic' || svc.specialty === 'medical';
+
+/** Finished initial training: civilian credentials the job carries. */
+export function completeTraining(ctx, svc) {
+  let m = mosOf(svc);
+  if (!m) return;
+  // Assessment pipelines (Special Forces, SEALs, PJs) wash out most candidates.
+  if (m.selection) {
+    const odds = Math.max(0.05, Math.min(0.85, m.selection + (ctx.state.stats.fitness - 65) / 150 + (ctx.state.stats.smarts - 50) / 400));
+    if (!ctx.rng.chance(odds)) {
+      const fallback = defaultMos(svc.branch, svc.track, svc.specialty);
+      svc.mos = fallback?.id ?? null;
+      ctx.log(`You washed out of ${m.title} selection and were reassigned as ${specialtyName(svc)}.`, '🥾', 'warn');
+      ctx.stat('happiness', -6);
+      m = fallback;
+      if (!m) return;
+    } else {
+      ctx.log(`You survived selection and earned your place as ${m.title}. Fewer than half make it.`, '🗡️', 'milestone');
+      ctx.stat('happiness', 8);
+      svc.eval = Math.min(100, svc.eval + 10);
+    }
+  }
+  if (!m.grants && !m.pilot) return;
+  const earned = [];
+  for (const id of m.grants ?? []) {
+    if (ctx.state.credentials.held[id]?.status === 'active') continue;
+    grantCredential(ctx, id, { sponsor: 'military', silent: true });
+    earned.push(id);
+  }
+  if (m.pilot && svc.track === 'officer') ctx.emit('logbook:add', { hours: 200 });
+  if (earned.length) ctx.log(`Your ${m.title} training carried over to civilian life: ${earned.length} credential${earned.length > 1 ? 's' : ''} earned.`, '📜', 'good');
 }
 
 export function monthlyBasePay(svc) {
@@ -123,7 +177,7 @@ export function timeInGradeRequired(svc) {
 /* Enlistment                                                          */
 /* ------------------------------------------------------------------ */
 
-export function enlistmentEligibility(state, branchId, track, component = 'reserve') {
+export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
   if (BRANCHES[branchId].reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
@@ -132,7 +186,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (track === 'officer') {
-    if (age < 19 || age > 39) return { ok: false, reason: 'Officers: age 19–39' };
+    if (age < 19 || age > maxOfficerAge) return { ok: false, reason: `Officers: age 19–${maxOfficerAge}` };
     if (!meetsEducation(state, { level: 'bachelor' })) return { ok: false, reason: "Officers need a bachelor's" };
   } else {
     if (age < 17 || age > 39) return { ok: false, reason: 'Enlistment: age 17–39' };
@@ -145,7 +199,8 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
 
 /** Clearance a service member needs: their specialty's, and at least Secret for any officer. */
 export function requiredClearance(svc) {
-  const s = SPECIALTIES[svc.specialty]?.clearance ?? null;
+  const m = svc.mos ? MOS[svc.mos] : null;
+  const s = m?.clearance ?? SPECIALTIES[svc.specialty]?.clearance ?? null;
   if (svc.track !== 'officer') return s;
   return s && CLEARANCES[s].rank > CLEARANCES.secret.rank ? s : 'secret';
 }
@@ -155,9 +210,9 @@ export function requiredClearance(svc) {
  * investigated; `cleared` means the SF-86 prompt already ran. Returns the
  * specialty to serve in, or null if the commission is withdrawn.
  */
-function entryClearance(ctx, { track, specialty, cleared }) {
+function entryClearance(ctx, { track, specialty, mos, cleared }) {
   const { state, rng } = ctx;
-  const level = requiredClearance({ track, specialty });
+  const level = requiredClearance({ track, specialty, mos });
   if (!level || hasClearance(state, level) || cleared) return specialty;
   const r = adjudicate(state, level, true, rng);
   if (r.granted) {
@@ -176,18 +231,27 @@ export function clearanceDenied(ctx, track, level) {
   return 'logistics';
 }
 
-export function enlist(ctx, { branch, track, component, specialty: wanted, cleared = false }) {
+/**
+ * Join up. `mos` picks the job (its broad specialty follows); a bare
+ * `specialty` picks that specialty's first job. Direct-commission jobs start
+ * at the grade the candidate's civilian experience earns; enlisted recruits
+ * with a degree or a matching civilian credential start a few grades up.
+ */
+export function enlist(ctx, { branch, track, component, specialty: wanted, mos: wantedMos = null, cleared = false }) {
   const { state } = ctx;
   const b = BRANCHES[branch];
-  const specialty = entryClearance(ctx, { track, specialty: wanted, cleared });
+  let job = wantedMos ? MOS[wantedMos] : defaultMos(branch, track, wanted);
+  const specialty = entryClearance(ctx, { track, specialty: job?.specialty ?? wanted, mos: job?.id, cleared });
   if (!specialty) return false;
-  // College grads who enlist start a few grades up.
-  const startGrade = track === 'enlisted' && meetsEducation(state, { level: 'bachelor' }) ? (branch === 'army' ? 3 : 2) : 0;
+  if (job && specialty !== job.specialty) job = defaultMos(branch, track, specialty);
+  const direct = track === 'officer' ? directGrade(state, job) : null;
+  const startGrade = track === 'enlisted' ? enlistedStartGrade(state, branch, job) : direct ?? 0;
   const svc = {
     branch,
     track,
     component,
     specialty,
+    mos: job?.id ?? null,
     grade: startGrade,
     yearsInGrade: 0,
     yearsOfService: 0,
@@ -209,7 +273,12 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, clear
   if (component === 'active') {
     if (state.career.job) ctx.emit('career:militaryLeave', { reason: `active duty with the ${b.name}` });
   }
-  const verb = track === 'officer' ? 'accepted a commission' : 'enlisted';
+  if (direct != null) {
+    const dc = DIRECT_COMMISSIONS[job.direct];
+    svc.direct = job.direct;
+    if (dc.bonus) ctx.earn(dc.bonus, `${dc.name} accession bonus`);
+  }
+  const verb = direct != null ? `received a direct commission into the ${DIRECT_COMMISSIONS[job.direct].name}` : track === 'officer' ? 'accepted a commission' : 'enlisted';
   const comp = component === 'active' ? 'active duty' : 'the Reserve';
   ctx.log(`You ${verb} in the ${b.name} (${comp}) as a ${rankOf(svc).title}, ${specialtyName(svc)}. ${b.motto}!`, b.icon, 'milestone');
   ctx.toast(`Joined the ${b.name}`, 'good');
@@ -282,6 +351,7 @@ export function tryPromotion(ctx, svc) {
 }
 
 export function commission(ctx, svc) {
+  svc.mos = equivalentMos(svc, svc.branch, 'officer')?.id ?? null;
   svc.track = 'officer';
   svc.grade = 0;
   svc.yearsInGrade = 0;
@@ -317,6 +387,7 @@ export function discharge(ctx, type, reason) {
     track: svc.track,
     component: svc.component,
     specialty: svc.specialty,
+    mos: svc.mos ?? null,
     rankCode: rank.code,
     rankTitle: rank.title,
     yearsOfService: svc.yearsOfService,
@@ -351,3 +422,9 @@ export function discharge(ctx, type, reason) {
 }
 
 export const isVeteran = (state) => state.military.history.some((h) => h.discharge !== 'dishonorable');
+
+/** Name of the school a new member just finished. */
+export function entrySchool(svc) {
+  if (svc.direct) return DIRECT_COMMISSIONS[svc.direct].school;
+  return svc.track === 'officer' ? branchOf(svc).officerSchool : branchOf(svc).basic;
+}

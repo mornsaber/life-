@@ -5,7 +5,7 @@
  * active-duty members and their civilian job is protected under USERRA.
  */
 import { clamp } from '../../core/Random.js';
-import { BRANCHES, SPECIALTIES, rankOf, specialtyName, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
+import { BRANCHES, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
 import { upOrOut } from './Separation.js';
@@ -26,8 +26,8 @@ export function reserveTick(ctx, svc) {
 
   if (svc.isNew) {
     svc.isNew = false;
-    const school = svc.track === 'officer' ? branch.officerSchool : branch.basic;
-    ctx.log(`You completed ${school} and ${specialtyName(svc)} school, then reported to your reserve unit.`, '🎖️', 'military');
+    ctx.log(`You completed ${entrySchool(svc)} and ${specialtyName(svc)} school, then reported to your reserve unit.`, '🎖️', 'military');
+    completeTraining(ctx, svc);
     ctx.stat('fitness', rng.int(5, 10));
   }
 
@@ -36,14 +36,14 @@ export function reserveTick(ctx, svc) {
   svc.contractYearsLeft -= 1;
   updateEvaluation(ctx, svc);
 
-  const exposure = SPECIALTIES[svc.specialty].exposure;
+  const exposure = exposureOf(svc);
   const mobilizeChance = 0.08 * exposure + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
     ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
     runDeployment(ctx, svc, { mobilized: true });
   } else {
     ctx.earn(monthlyBasePay(svc) * DRILL_PAY_MONTHS, `Reserve drill pay — ${rankOf(svc).code}`, { wage: true });
-    if (svc.specialty === 'aviation') ctx.emit('logbook:add', { hours: 60 });
+    if (flightHoursOf(svc)) ctx.emit('logbook:add', { hours: flightHoursOf(svc) });
     ctx.log(`${rng.pick(DRILL_FLAVOR)} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
     ctx.stat('fitness', 1);
   }

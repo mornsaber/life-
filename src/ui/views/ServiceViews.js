@@ -1,6 +1,7 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
+import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
@@ -18,7 +19,7 @@ import { hasCredential, pursueEligibility, findSponsor } from '../../modules/cre
 function recruitingOffice(state) {
   const rows = Object.values(BRANCHES).map((b) => {
     const enlisted = enlistmentEligibility(state, b.id, 'enlisted');
-    const officer = enlistmentEligibility(state, b.id, 'officer');
+    const officer = enlistmentEligibility(state, b.id, 'officer', 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? 42 : 39 });
     const btn = (track, component, base, label) => {
       const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : base;
       return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
@@ -32,7 +33,7 @@ function recruitingOffice(state) {
       <small class="why">${[!enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
     </li>`;
   }).join('');
-  return card('Recruiting Office', `<p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
+  return card('Recruiting Office', `<p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
 }
 
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */
@@ -49,7 +50,7 @@ function transferForm(state) {
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
-    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${BRANCHES[h.branch].icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${BRANCHES[h.branch].name} ${h.component === 'reserve' ? 'Reserve' : ''} <small>age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
+    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${BRANCHES[h.branch].icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${BRANCHES[h.branch].name} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
@@ -65,7 +66,7 @@ export function militaryView(state) {
     <div class="job-head">
       ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon })}
       <div class="job-meta">
-        <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip(svc.track === 'officer' ? 'Officer' : 'Enlisted')} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
+        <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip(svc.track === 'officer' ? 'Officer' : 'Enlisted')} ${svc.direct ? chip(`🎓 Direct commission · ${esc(DIRECT_COMMISSIONS[svc.direct].name)}`, 'green') : ''} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
         ${kv([
           ['Base pay', `${money(annualActivePay(svc))}/yr${svc.component === 'reserve' ? ' (active rate)' : ''}`],
           ['Service', `${svc.yearsOfService} yrs`],
@@ -145,7 +146,7 @@ export function emergencyView(state) {
   }).join('');
   const join = open ? card('Join a Service', `<p class="muted">Volunteer and reserve services run alongside your job, school or military reserve duty. Certifications you earn here count toward paid careers — and units often hire their own volunteers for paid gigs and jobs.</p><ul class="job-board">${open}</ul>`, { icon: '🚨' }) : '';
   const history = state.emergency.history.length
-    ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
+    ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
   return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${history}`;
 }

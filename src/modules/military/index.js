@@ -14,7 +14,33 @@ import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEn
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
+import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
+
+const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
+
+/** Prompt options for every job in a branch, with entry standards and starting rank. */
+export function mosOptions(state, branch, track, { allowDirect = true } = {}) {
+  return mosFor(branch, track).filter((m) => allowDirect || !m.direct).map((m) => {
+    const s = SPECIALTIES[m.specialty];
+    const fit = mosEligibility(state, m, { smartsFloor: s.minSmarts ?? 0 });
+    const level = requiredClearance({ track, specialty: m.specialty, mos: m.id });
+    const notes = [m.desc ?? s.desc];
+    if (m.direct && fit.ok) {
+      const g = directGrade(state, m);
+      notes.unshift(`Direct commission as O-${g + 1} ${BRANCHES[branch].officer[g]}`);
+    } else if (m.direct) notes.unshift(DIRECT_COMMISSIONS[m.direct].needs);
+    if (track === 'enlisted') {
+      const g = enlistedStartGrade(state, branch, m);
+      if (g > 0) notes.unshift(`Starts as ${ENLISTED_CODE(g)} ${BRANCHES[branch].enlisted[g]}`);
+    }
+    if (m.selection) notes.push('Selection required');
+    if (m.grants?.length) notes.push('Earns civilian credentials');
+    if (level) notes.push(`${CLEARANCES[level].name} clearance`);
+    if (!fit.ok) notes.unshift(fit.reason);
+    return { id: m.id, label: `${s.icon} ${m.code} ${m.title}`, hint: notes.join(' · '), disabled: !fit.ok };
+  });
+}
 
 function withService(ctx) {
   const svc = ctx.state.military.service;
@@ -100,28 +126,25 @@ export const MilitaryModule = {
   },
 
   actions: {
-    /** arg: 'branch:track:component' — opens the specialty selection. */
+    /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
+      const { state } = ctx;
       const [branch, track, component] = String(arg).split(':');
-      const check = enlistmentEligibility(ctx.state, branch, track, component);
+      const direct = track === 'officer' && hasDirectPath(state, branch);
+      const check = enlistmentEligibility(state, branch, track, component, { maxOfficerAge: direct ? 42 : 39 });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
-      if (component === 'active' && ctx.state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
+      if (component === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
       const b = BRANCHES[branch];
-      const svcPreview = { branch };
       ctx.prompt({
         type: 'military.chooseSpecialty',
         icon: b.icon,
-        title: `${b.name} — Choose Your ${track === 'officer' ? 'Branch Specialty' : 'Job (MOS/Rating)'}`,
+        title: `${b.name} — Choose Your ${track === 'officer' ? 'Officer Specialty' : 'Job (MOS/Rating)'}`,
         text: `${component === 'active' ? 'Active duty' : 'Reserve'} ${track} contract.` +
-          (component === 'active' && ctx.state.career.job ? `\nYou'll resign as ${ctx.state.career.job.title}.` : '') +
-          '\nHigher combat exposure means more deployments, more danger, and more chances for valor.',
+          (component === 'active' && state.career.job ? `\nYou'll resign as ${state.career.job.title}.` : '') +
+          '\nHigher combat exposure means more deployments, more danger, and more chances for valor.' +
+          (track === 'officer' ? '\nLawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a direct commission at a rank that reflects their experience.' : ''),
         options: [
-          ...Object.entries(SPECIALTIES).map(([id, s]) => ({
-            id,
-            label: `${s.icon} ${specialtyName({ ...svcPreview, specialty: id })}`,
-            hint: `${s.desc}${requiredClearance({ track, specialty: id }) ? ` · ${CLEARANCES[requiredClearance({ track, specialty: id })].name} clearance` : ''}`,
-            disabled: Boolean(s.minSmarts && ctx.state.stats.smarts < s.minSmarts),
-          })),
+          ...mosOptions(state, branch, track),
           { id: 'cancel', label: '↩️ Walk out of the recruiter\'s office' },
         ],
         data: { branch, track, component },
@@ -204,10 +227,16 @@ export const MilitaryModule = {
 
     chooseSpecialty(ctx, data, optionId) {
       if (optionId === 'cancel') return;
-      const check = enlistmentEligibility(ctx.state, data.branch, data.track);
+      // A broad specialty id (older callers) picks that specialty's first job.
+      const job = MOS[optionId] ?? defaultMos(data.branch, data.track, optionId);
+      if (!job) return ctx.toast('That job isn\'t open in this branch.', 'warn');
+      const check = enlistmentEligibility(ctx.state, data.branch, data.track, data.component, { maxOfficerAge: job.direct ? DIRECT_COMMISSIONS[job.direct].maxAge : 39 });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
+      const fit = mosEligibility(ctx.state, job, { smartsFloor: SPECIALTIES[job.specialty].minSmarts ?? 0 });
+      if (!fit.ok) return ctx.toast(fit.reason, 'warn');
+      const specialtyId = job.specialty;
       // Cleared specialties (and all officers) go through an SF-86. With anything in your background, honesty is a choice.
-      const level = requiredClearance({ track: data.track, specialty: optionId });
+      const level = requiredClearance({ track: data.track, specialty: specialtyId, mos: job.id });
       const issues = backgroundIssues(ctx.state).filter((i) => !i.hidden);
       if (level && !hasClearance(ctx.state, level) && issues.length) {
         ctx.prompt({
@@ -218,11 +247,11 @@ export const MilitaryModule = {
             { id: 'disclose', label: '📝 Disclose everything truthfully', hint: 'Candor mitigates issues' },
             { id: 'omit', label: '🙈 Leave the problems off the form', hint: 'Lying on an SF-86 is a federal crime', tone: 'danger' },
           ],
-          data: { ...data, specialty: optionId, level },
+          data: { ...data, specialty: specialtyId, mos: job.id, level },
         });
         return;
       }
-      enlist(ctx, { ...data, specialty: optionId });
+      enlist(ctx, { ...data, specialty: specialtyId, mos: job.id });
     },
 
     clearance(ctx, data, optionId) {
@@ -238,7 +267,7 @@ export const MilitaryModule = {
         return enlist(ctx, { ...data, cleared: true });
       }
       const specialty = clearanceDenied(ctx, data.track, data.level);
-      if (specialty) enlist(ctx, { ...data, specialty, cleared: true });
+      if (specialty) enlist(ctx, { ...data, specialty, mos: null, cleared: true });
     },
 
     ...ActiveDutyResolvers,

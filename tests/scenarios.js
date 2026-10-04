@@ -13,7 +13,8 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, promotionStatus, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
-import { hasCredential, findSponsor } from '../src/modules/credentials/LicensingEngine.js';
+import { hasCredential, findSponsor, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
+import { MOS, mosFor } from '../src/modules/military/MOS.js';
 import { getCredential } from '../src/modules/credentials/CredentialRegistry.js';
 import { traineeProgram } from '../src/modules/career/Tenure.js';
 import { passChance, pursueEligibility, ATTEMPTS_PER_YEAR, retakeCost } from '../src/modules/credentials/LicensingEngine.js';
@@ -308,7 +309,7 @@ const tests = {
   'active duty gets PCS orders and base housing'() {
     const { engine, state, ctx } = setup(8, 22);
     engine.dispatch('military.enlist', 'army:enlisted:active');
-    resolve(engine, 'military.chooseSpecialty', 'logistics');
+    resolve(engine, 'military.chooseSpecialty', 'army.92Y');
     const before = state.character.regionId;
     state.prompts = [];
     engine.ageUp();
@@ -321,7 +322,7 @@ const tests = {
   'the governor activates the National Guard for disasters'() {
     const { engine, state, ctx } = setup(9, 25);
     engine.dispatch('military.enlist', 'guard:enlisted:reserve');
-    resolve(engine, 'military.chooseSpecialty', 'engineer');
+    resolve(engine, 'military.chooseSpecialty', 'guard.12B');
     const cash = state.finances.cash;
     ctx.emit('disaster:struck', { disaster: { type: 'flood', severity: 2, stateId: 'OH', regionId: 'midcity', name: 'The Great Flood' } });
     assert.ok(state.finances.cash > cash, 'state active duty pay');
@@ -452,7 +453,7 @@ const tests = {
   'combat trauma leads to service-connected PTSD and a VA rating at separation'() {
     const { engine, state } = setup(33, 20);
     engine.dispatch('military.enlist', 'army:enlisted:active');
-    resolve(engine, 'military.chooseSpecialty', 'logistics');
+    resolve(engine, 'military.chooseSpecialty', 'army.92Y');
     state.prompts = [];
     assert.ok(state.military.service, 'enlisted');
     const ctx = engine.context();
@@ -576,7 +577,7 @@ const tests = {
     state.education.enrolled.yearsAttended = 3;
     state.prompts = [];
     engine.ageUp();
-    resolve(engine, 'campus.commission', 'logistics');
+    resolve(engine, 'campus.commission', 'navy.3100');
     assert.equal(state.military.service?.track, 'officer');
     assert.equal(state.military.service.contractYearsLeft, 5);
     assert.equal(state.finances.loans, 0, 'tuition-free');
@@ -1036,7 +1037,7 @@ const tests = {
       t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22, gpa: 3.2 });
       t.engine.dispatch('military.enlist', arg);
       const p = t.state.prompts.find((x) => x.type === 'military.chooseSpecialty');
-      t.engine.resolvePrompt(p.id, 'logistics');
+      t.engine.resolvePrompt(p.id, arg.includes('officer') ? 'army.90A' : 'army.92Y');
       return t;
     };
     const o = join(61, 'army:officer:active');
@@ -1068,7 +1069,7 @@ const tests = {
     const t = setup(63, 26);
     t.engine.dispatch('military.enlist', 'army:enlisted:active');
     const p = t.state.prompts.find((x) => x.type === 'military.chooseSpecialty');
-    t.engine.resolvePrompt(p.id, 'logistics');
+    t.engine.resolvePrompt(p.id, 'army.92Y');
     const svc = t.state.military.service;
     Object.assign(svc, { grade: 4, yearsOfService: 3, eval: 80, isNew: false });
     t.engine.rng.chance = () => true;
@@ -1912,7 +1913,7 @@ const tests = {
     engine.dispatch('military.enlist', 'army:enlisted:active');
     const chance = engine.rng.chance.bind(engine.rng);
     engine.rng.chance = (p) => (p === 0.97 ? true : chance(p));
-    resolve(engine, 'military.chooseSpecialty', 'intel');
+    resolve(engine, 'military.chooseSpecialty', 'army.35F');
     engine.rng.chance = chance;
     const svc = state.military.service;
     assert.equal(svc.clearance, 'topSecret');
@@ -1927,7 +1928,7 @@ const tests = {
     t.state.stats.smarts = 80;
     t.state.legal.flags.drugUseAge = 20;
     t.engine.dispatch('military.enlist', 'navy:enlisted:active');
-    resolve(t.engine, 'military.chooseSpecialty', 'cyber');
+    resolve(t.engine, 'military.chooseSpecialty', 'navy.CTN');
     const sf86 = t.state.prompts.find((p) => p.type === 'military.clearance');
     assert.ok(sf86, 'SF-86 prompt');
     t.engine.rng.chance = () => true;
@@ -1939,7 +1940,7 @@ const tests = {
     u.state.stats.smarts = 80;
     u.engine.dispatch('military.enlist', 'airforce:enlisted:active');
     u.engine.rng.chance = (p) => (p === 0.97 ? true : chance(p));
-    resolve(u.engine, 'military.chooseSpecialty', 'cyber');
+    resolve(u.engine, 'military.chooseSpecialty', 'airforce.1B4');
     discharge(u.ctx, 'honorable', 'Contract complete');
     assert.equal(u.state.publicService.clearance.level, 'topSecret');
     u.state.prompts = [];
@@ -1993,6 +1994,71 @@ const tests = {
     ctx.prompt({ type: 'emergency.jobOffer', title: 'x', text: '', options: [{ id: 'accept', label: 'a' }, { id: 'decline', label: 'b' }], data: { professionId: 'fire', levelId: 'recruit', employer: createEmployer(engine.rng, state, getProfession('fire'), state.character.regionId), serviceId: 'fire' } });
     resolve(engine, 'emergency.jobOffer', 'accept');
     assert.equal(state.career.job?.professionId, 'fire', `hired without the civil-service exam: ${JSON.stringify(applicationEligibility(state, 'fire'))}`);
+  },
+  'military jobs: MOS catalog per branch, direct commissions by experience, advanced enlisted rank, selection and civilian credentials'() {
+    // Every branch has enlisted and officer jobs, and every job maps to a real specialty.
+    for (const branch of ['army', 'guard', 'marines', 'navy', 'airforce', 'coastguard']) {
+      assert.ok(mosFor(branch, 'enlisted').length >= 6 && mosFor(branch, 'officer').length >= 5, branch);
+    }
+    // A 34-year-old lawyer with 6 years of practice: JAG at O-3 Captain.
+    const law = setup(91, 34);
+    law.state.education.degrees.push({ type: 'professional', programId: 'jd', major: null, year: 27 });
+    grantCredential(law.ctx, 'barLicense', { silent: true });
+    law.state.career.history.push({ professionId: 'law', startAge: 27, endAge: 33, peakGrade: 6 });
+    law.engine.dispatch('military.enlist', 'army:officer:reserve');
+    const jag = law.state.prompts.find((p) => p.type === 'military.chooseSpecialty').options.find((o) => o.id === 'army.27A');
+    assert.ok(!jag.disabled && /O-3 Captain/.test(jag.hint), jag.hint);
+    law.engine.rng.chance = () => true;
+    resolve(law.engine, 'military.chooseSpecialty', 'army.27A');
+    const jsvc = law.state.military.service;
+    assert.equal(jsvc.grade, 2);
+    assert.equal(jsvc.specialty, 'legal');
+    assert.equal(jsvc.direct, 'jag');
+    // A 41-year-old board-certified surgeon: too old for OCS, but the Medical Corps takes them at O-5.
+    const doc = setup(92, 41);
+    doc.state.education.degrees.push({ type: 'professional', programId: 'md', major: null, year: 30 });
+    for (const id of ['medicalLicense', 'boardCertified']) grantCredential(doc.ctx, id, { silent: true });
+    doc.state.career.history.push({ professionId: 'medical', startAge: 29, endAge: 40, peakGrade: 8 });
+    doc.engine.dispatch('military.enlist', 'navy:officer:reserve');
+    const opts = doc.state.prompts.find((p) => p.type === 'military.chooseSpecialty').options;
+    assert.ok(opts.find((o) => o.id === 'navy.1310').disabled, 'aviator closed past 39');
+    doc.engine.rng.chance = () => true;
+    const cash = doc.state.finances.cash;
+    resolve(doc.engine, 'military.chooseSpecialty', 'navy.2100');
+    assert.equal(doc.state.military.service.grade, 4, 'O-5 Commander');
+    assert.ok(doc.state.finances.cash > cash, 'accession bonus');
+    // Without the license, no direct commission.
+    const nope = setup(93, 30);
+    nope.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    nope.engine.dispatch('military.enlist', 'army:officer:active');
+    assert.ok(nope.state.prompts.find((p) => p.type === 'military.chooseSpecialty').options.find((o) => o.id === 'army.62B').disabled);
+    // A paramedic who enlists as a 68W starts as an E-4 Specialist.
+    const medic = setup(94, 24);
+    grantCredential(medic.ctx, 'paramedic', { silent: true });
+    medic.engine.dispatch('military.enlist', 'army:enlisted:active');
+    resolve(medic.engine, 'military.chooseSpecialty', 'army.68W');
+    assert.equal(medic.state.military.service.grade, 3);
+    assert.equal(medic.state.military.service.mos, 'army.68W');
+    // Selection: wash out and become a rifleman; pass and stay.
+    const sf = setup(95, 20);
+    sf.engine.dispatch('military.enlist', 'army:enlisted:active');
+    sf.engine.rng.chance = (p) => (p === 0.97 ? true : false);
+    resolve(sf.engine, 'military.chooseSpecialty', 'army.18X');
+    sf.state.prompts = [];
+    sf.engine.ageUp();
+    assert.equal(sf.state.military.service.mos, 'army.11B', 'washed out to infantry');
+    // Military pilots leave flight school with commercial and instrument ratings, and log hours.
+    const pilot = setup(96, 23);
+    pilot.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    pilot.engine.dispatch('military.enlist', 'airforce:officer:active');
+    pilot.engine.rng.chance = (p) => (p === 0.97 ? true : false);
+    resolve(pilot.engine, 'military.chooseSpecialty', 'airforce.11M');
+    pilot.state.prompts = [];
+    pilot.engine.ageUp();
+    assert.ok(hasCredential(pilot.state, 'commercialPilot') && hasCredential(pilot.state, 'instrumentRating'));
+    assert.ok(pilot.state.credentials.logbook.flightHours >= 450, `hours ${pilot.state.credentials.logbook.flightHours}`);
+    // Transfers keep the same corps where the new branch has it.
+    assert.equal(MOS['navy.2500'].direct, 'jag');
   },
 };
 

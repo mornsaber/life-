@@ -7,7 +7,7 @@ import { upOrOut } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
 } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 import { BASES } from '../life/Regions.js';
@@ -338,7 +338,7 @@ function combatPrompt(ctx, svc, theaterName) {
   const branch = BRANCHES[svc.branch];
   const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, COMBAT_SCENARIOS[branch.theater]);
   const options = scenario.options
-    .filter((o) => !o.medicOnly || svc.specialty === 'medic')
+    .filter((o) => !o.medicOnly || isMedical(svc))
     .map((o) => ({
       id: o.id,
       label: o.label,
@@ -369,7 +369,7 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   ctx.stat('happiness', -5);
   ctx.earn(225 * months + 2400, 'Hostile fire & family separation pay');
 
-  const exposure = SPECIALTIES[svc.specialty].exposure;
+  const exposure = exposureOf(svc);
   const sawCombat = rng.chance(clamp(0.5 * exposure, 0.15, 0.92));
   if (sawCombat) {
     svc.combatTours += 1;
@@ -515,8 +515,8 @@ export function activeDutyTick(ctx, svc) {
 
   if (svc.isNew) {
     svc.isNew = false;
-    const school = svc.track === 'officer' ? branch.officerSchool : branch.basic;
-    ctx.log(`You survived ${school}, then finished ${specialtyName(svc)} training.`, '🎖️', 'military');
+    ctx.log(`You survived ${entrySchool(svc)}, then finished ${specialtyName(svc)} training.`, '🎖️', 'military');
+    completeTraining(ctx, svc);
     ctx.stat('fitness', rng.int(6, 12));
     ctx.stat('stress', 8);
   }
@@ -531,10 +531,10 @@ export function activeDutyTick(ctx, svc) {
 
   const rank = rankOf(svc);
   ctx.earn(annualActivePay(svc), `Military pay — ${rank.code} ${rank.title}`, { wage: true });
-  if (svc.specialty === 'aviation') ctx.emit('logbook:add', { hours: 250 });
+  if (flightHoursOf(svc)) ctx.emit('logbook:add', { hours: flightHoursOf(svc) });
   updateEvaluation(ctx, svc);
 
-  const exposure = SPECIALTIES[svc.specialty].exposure;
+  const exposure = exposureOf(svc);
   const deployChance = 0.22 * exposure + (svc.deploymentRequested ? 0.5 : 0);
   if (rng.chance(clamp(deployChance, 0, 0.95))) runDeployment(ctx, svc);
   else if (rng.chance(0.45)) dutyEventPrompt(ctx);

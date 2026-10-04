@@ -18,6 +18,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, discharge } from './MilitaryEngine.js';
+import { equivalentMos } from './MOS.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
 export const ENLISTED_HYT = [6, 6, 8, 10, 14, 20, 26, 29, 32];
@@ -99,6 +100,7 @@ export function transferBranch(ctx, branchId) {
     return ctx.toast('Transfer denied', 'bad');
   }
   const reduced = svc.track === 'enlisted' && svc.grade >= 3;
+  svc.mos = equivalentMos(svc, branchId)?.id ?? null;
   svc.branch = branchId;
   if (reduced) svc.grade -= 1;
   svc.yearsInGrade = 0;
