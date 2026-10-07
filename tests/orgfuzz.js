@@ -73,6 +73,7 @@ function check(state, where) {
     if (n && org.veteranPost && org.seats[4].includes('PLAYER')) seenPaths.add('post commander');
   }
   if (state.military.service?.track === 'warrant') seenPaths.add('warrant officer');
+  if (state.career.job?.cleared) seenPaths.add('cleared program role');
   if (state.military.service?.lastRetrain) seenPaths.add('retrained');
   if (state.military.service?.branchDetail) seenPaths.add('branch detail');
   if (state.service?.program) seenPaths.add(`national service ${state.service.program.id}`);
@@ -192,7 +193,7 @@ const ACTIONS = [
   ['business.expand', 'expand'], ['business.closeLocation', 'branch'], ['business.acquire', 'rival'], ['business.merge', 'rival'], ['business.sellStake', 'stake'], ['business.hire', 'n'], ['business.layoff', null, 0.1],
   ['orgs.appoint', 'appoint', 0.5], ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier'], ['military.volunteerSelection', 'pipeline'], ['military.transferGiBill', null, 0.2], ['military.leaveSof', null, 0.05], ['orgs.officeAppoint', 'deputyKind'], ['orgs.officeCommend', 'officeStaff'], ['orgs.officeDiscipline', 'officeStaff'], ['orgs.officePromote', 'officeStaff'], ['orgs.officeFire', 'officeStaff'], ['orgs.applyExec', 'exec'], ['business.getLicense', 'license'], ['business.toggleAutopilot', null, 0.2], ['business.relocate', null, 0.3], ['business.advice', 'advice'], ['business.sell', null, 0.05], ['business.close', null, 0.02], ['business.giveToFamily', 'family', 0.02],
   ['emergency.join', 'volService', 0.3], ['emergency.fundraise', 'volService'], ['emergency.recruit', 'volService'], ['emergency.grant', 'volService'], ['emergency.disciplineMember', 'volMember'], ['emergency.appointMember', 'volMember'], ['emergency.commendMember', 'volMember'], ['emergency.resign', 'volService', 0.03],
-  ['service.joinProgram', 'program', 0.1], ['service.quitProgram', null, 0.05], ['service.joinSdf', null, 0.1], ['service.sdfSchool', 'sdfSchool'], ['military.attendSchool', 'milSchool'], ['military.retrain', 'retrainMos'], ['military.applyWarrant', 'warrantMos'], ['service.joinTeam', 'team', 0.2], ['service.joinPost', 'post', 0.3], ['service.postActivity', 'postAct'],
+  ['service.joinProgram', 'program', 0.1], ['service.quitProgram', null, 0.05], ['service.joinSdf', null, 0.1], ['service.sdfSchool', 'sdfSchool'], ['military.attendSchool', 'milSchool'], ['military.retrain', 'retrainMos'], ['cleared.requestSponsorship', null, 0.3], ['military.applyWarrant', 'warrantMos'], ['service.joinTeam', 'team', 0.2], ['service.joinPost', 'post', 0.3], ['service.postActivity', 'postAct'],
 ];
 
 function argFor(kind, state, rng) {

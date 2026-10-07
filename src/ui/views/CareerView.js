@@ -3,6 +3,7 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
 import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
@@ -156,7 +157,7 @@ function currentJob(state) {
     <div class="job-head">
       ${rankBadge(`G${job.grade} · S${job.step}`, job.title, (job.grade - 1) / 9, { icon: profession.icon })}
       <div class="job-meta">
-        <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(SECTOR_LABEL[job.sector])} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
+        <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(SECTOR_LABEL[job.sector])} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
           ['Salary', `<b>${money(job.salary)}</b>/yr`],
           ['Rating', ratingLabel(job.performance)],

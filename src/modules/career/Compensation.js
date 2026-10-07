@@ -6,6 +6,7 @@
 import { getProfession } from './JobTrees.js';
 import { salaryBreakdown } from './PayGrades.js';
 import { stateOf } from '../life/Regions.js';
+import { clearedPremium } from './ClearedWork.js';
 
 export function recalcSalary(state, job) {
   const profession = getProfession(job.professionId);
@@ -14,7 +15,8 @@ export function recalcSalary(state, job) {
     step: job.step,
     merit: job.merit,
     // Job-specific adjustments (a physician's specialty) ride on top of the profession's market premium.
-    payMultiplier: profession.payMultiplier * (job.payAdjust ?? 1),
+    // Cleared roles on classified programs pay a premium.
+    payMultiplier: profession.payMultiplier * (job.payAdjust ?? 1) * (1 + clearedPremium(job)),
     sector: job.sector,
     size: job.employer.size,
     regionId: state.character.regionId,

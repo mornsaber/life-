@@ -372,6 +372,19 @@ export const ORG_TYPES = {
       { id: 'tech', name: 'Logistics Technology', occupations: ['tech', 'dataScience', 'cybersecurity'], head: { title: 'Chief Technology Officer', selection: 'board' } },
     ],
   },
+  defenseContractor: {
+    name: (c) => c.rng.pick(['Northgate Defense Systems', 'Aegis Mission Solutions', 'Sentinel Federal Technologies', 'Orion Space & Intelligence', 'Ironbridge Analytics', 'Keystone National Security']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
+    departments: [
+      { id: 'engineering', name: 'Systems Engineering', occupations: ['engineering', 'research', 'aviation'], head: { title: 'VP of Engineering', selection: 'internal' } },
+      { id: 'software', name: 'Mission Software', occupations: ['tech'], head: { title: 'Chief Technology Officer', selection: 'board' } },
+      { id: 'cyber', name: 'Cyber Operations', occupations: ['cybersecurity'], head: { title: 'VP of Cyber', selection: 'internal' } },
+      { id: 'analytics', name: 'Intelligence Analytics', occupations: ['dataScience'], head: { title: 'Director of Analytics', selection: 'internal' } },
+      { id: 'programs', name: 'Program Management', occupations: ['corporate', 'finance', 'accounting'], head: { title: 'VP of Programs', selection: 'internal' } },
+      { id: 'production', name: 'Production & Logistics', occupations: ['manufacturing', 'logistics'], head: { title: 'VP of Operations', selection: 'internal' } },
+      { id: 'security', name: 'Industrial Security', occupations: ['privateSecurity', 'privateMilitary'], head: { title: 'Facility Security Officer', selection: 'internal' } },
+    ],
+  },
   militaryContractor: {
     name: (c) => c.rng.pick(['Triton Global Security', 'Blackridge Defense Services', 'Sentinel Protective Group', 'Aegis Training Solutions']), scope: 'market', sector: 'private',
     head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },

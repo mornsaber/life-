@@ -6,6 +6,7 @@
 import { clamp } from '../../core/Random.js';
 import { careerOnAgeUp, leaveJob, recalcSalary, promote, hire, startMilitaryLeave, endMilitaryLeave, returnFromLeave, offerReturn } from './CareerEngine.js';
 import { getProfession } from './JobTrees.js';
+import { levelById } from './Ladder.js';
 import { ladderFor } from './Ladder.js';
 import { createEmployer, cityName, stateNameOf } from './Employers.js';
 import { REGIONS } from '../life/Regions.js';
@@ -72,7 +73,9 @@ export const CareerModule = {
       if (sponsor.type === 'employer' && !sponsor.academy && !sponsor.required && job) job.employer.budget.left = Math.max(0, job.employer.budget.left - amount);
     });
     bus.on('career:clearanceRevoked', ({ ctx }) => {
-      if (ctx.state.career.job?.clearance) leaveJob(ctx, 'Your security clearance was revoked', { fired: true });
+      const job = ctx.state.career.job;
+      // Cleared program roles in the private sector are handled by ClearedModule (you lose the premium, not the job).
+      if (job?.clearance && !(job.cleared && !levelById(getProfession(job.professionId), job.levelId)?.req?.clearance)) leaveJob(ctx, 'Your security clearance was revoked', { fired: true });
     });
     bus.on('legal:convicted', ({ ctx, severity, jobRelated, name }) => {
       const job = ctx.state.career.job;
