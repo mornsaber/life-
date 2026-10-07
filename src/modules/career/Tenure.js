@@ -35,6 +35,8 @@ export const isTenured = (job) => job.abilities.includes('tenure') || Boolean(jo
  * enrolls you in the required courses at no cost.
  */
 export const TRAINEE_LEVELS = {
+  'caseOfficer.trainee': { next: 'officer', grace: 0, label: 'the Farm' },
+  'sigint.intern': { next: 'analyst', grace: 0, label: 'the SIGINT development program' },
   'police.recruit': { next: 'officer', grace: 1, academy: true, label: 'the police academy' },
   'fire.recruit': { next: 'firefighter', grace: 1, academy: true, label: 'the fire academy' },
   'statePolice.cadet': { next: 'trooper', grace: 1, academy: true, label: 'the trooper academy' },

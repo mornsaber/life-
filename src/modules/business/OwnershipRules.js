@@ -41,6 +41,8 @@ export const PROFESSION_RULES = {
   revenue: { restricted: ['cpaFirm', 'consulting'], note: 'Tax agents can\'t prepare returns on the side.' },
   oig: { restricted: ['piAgency', 'consulting'] },
   intelligence: { restricted: ['consulting', 'softwareShop', 'piAgency'], note: 'Cleared employees need agency approval for outside business — conflicts are refused.' },
+  caseOfficer: { canOwn: false, note: 'Clandestine officers can\'t run outside businesses; it would complicate cover.' },
+  sigint: { restricted: ['consulting', 'softwareShop', 'piAgency'], note: 'Cleared employees need agency approval for outside business — conflicts are refused.' },
   foreignService: { canOwn: true, restricted: ['consulting'], note: 'Diplomats may not do business in their host country.' },
   catholicClergy: { canOwn: false, note: 'Your diocese expects you to serve, not run a business.' },
   benefitsClaims: { restricted: ['consulting'] },

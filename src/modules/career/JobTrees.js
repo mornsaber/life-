@@ -31,6 +31,7 @@ import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
 import { TRADE_PROFESSIONS } from './TradeCareers.js';
 import { WORKFORCE_PROFESSIONS } from './WorkforceCareers.js';
 import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
+import { INTEL_PROFESSIONS } from './IntelCareers.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -465,7 +466,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -497,7 +498,8 @@ export const JOB_FIELDS = {
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
   education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'library', 'journalism', 'clergy', 'catholicClergy'] },
-  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService', 'intelligence'] },
+  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
+  intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };
 

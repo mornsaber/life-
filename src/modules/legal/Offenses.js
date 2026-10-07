@@ -60,6 +60,7 @@ export const OFFENSES = {
   prescriptionFraud: { name: 'Prescription Fraud', icon: '💊', severity: 'felony', fine: [20000, 80000], prison: [2, 6], probation: 3, jobRelated: true, federal: true },
   excessiveForce: { name: 'Deprivation of Rights Under Color of Law', icon: '🚔', severity: 'felony', fine: [5000, 20000], prison: [1, 4], probation: 2, jobRelated: true, federal: true, violent: true },
   falseStatement: { name: 'False Statements to Federal Investigators', icon: '🕵️', severity: 'felony', fine: [5000, 25000], prison: [0, 2], probation: 2, federal: true },
+  espionage: { name: 'Espionage (18 U.S.C. § 794)', icon: '🕵️', severity: 'felony', fine: [0, 0], prison: [15, 40], probation: 0, jobRelated: true, federal: true, noSeal: true },
   leak: { name: 'Unauthorized Disclosure of Classified Information', icon: '📰', severity: 'felony', fine: [10000, 50000], prison: [3, 10], probation: 3, jobRelated: true, federal: true },
   visaFraud: { name: 'Visa Fraud Conspiracy', icon: '🛂', severity: 'felony', fine: [20000, 80000], prison: [3, 8], probation: 3, jobRelated: true, federal: true },
   smuggling: { name: 'Smuggling via Diplomatic Pouch', icon: '🎒', severity: 'felony', fine: [10000, 50000], prison: [2, 6], probation: 2, jobRelated: true, federal: true },

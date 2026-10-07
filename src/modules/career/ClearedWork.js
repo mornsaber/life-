@@ -24,6 +24,8 @@ import { MOS } from '../military/MOS.js';
 
 /** Private-sector fields with classified work (defense, intelligence and space contractors). */
 export const CLEARED_FIELDS = ['tech', 'cybersecurity', 'dataScience', 'engineering', 'research', 'corporate', 'logistics', 'privateMilitary', 'privateSecurity', 'accounting', 'finance', 'aviation', 'manufacturing'];
+/** Former IC officers are prime contractor recruits. */
+const FROM_IC = { caseOfficer: 'corporate', sigint: 'cybersecurity', intelligence: 'dataScience' };
 export const CLEARANCE_PREMIUM = { publicTrust: 0.03, secret: 0.1, topSecret: 0.22 };
 export const POLY_PREMIUM = 0.06;
 const SPONSOR_GAP = 3;
@@ -54,8 +56,8 @@ export function clearanceHiringBonus(state, profession) {
 function recruitField(state) {
   const job = state.career.job;
   if (job) return CLEARED_FIELDS.includes(job.professionId) && job.sector === 'private' ? job.professionId : null;
-  const past = [...state.career.history].reverse().find((h) => CLEARED_FIELDS.includes(h.professionId));
-  if (past) return past.professionId;
+  const past = [...state.career.history].reverse().find((h) => CLEARED_FIELDS.includes(h.professionId) || FROM_IC[h.professionId]);
+  if (past) return FROM_IC[past.professionId] ?? past.professionId;
   const mil = [...state.military.history].reverse()[0];
   const m = mil?.mos && MOS[mil.mos];
   const bySpecialty = { cyber: 'cybersecurity', intel: 'dataScience', logistics: 'logistics', infantry: 'privateSecurity', engineer: 'engineering', aviation: 'aviation' };
@@ -141,7 +143,7 @@ export function requestSponsorship(ctx) {
 export function makeCleared(ctx, job, level) {
   job.cleared = level;
   job.clearance = job.clearance && CLEARANCES[job.clearance].rank >= CLEARANCES[level].rank ? job.clearance : level;
-  if (level === 'topSecret' && ctx.rng.chance(0.4)) job.poly = true;
+  if (level === 'topSecret' && (ctx.state.publicService.clearance?.poly || ctx.rng.chance(0.4))) job.poly = true;
   ctx.log(`You moved onto a classified program as a cleared ${job.title}${job.poly ? ' (with a full-scope polygraph)' : ''}.`, CLEARANCES[level].icon, 'good');
 }
 

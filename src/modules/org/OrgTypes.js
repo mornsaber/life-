@@ -145,6 +145,19 @@ export const ORG_TYPES = {
     departments: [{ id: 'fs', name: 'Foreign Service', occupations: ['foreignService'], head: { title: 'Director General of the Foreign Service', selection: 'appointed', appointedBy: 'the President' } }] },
   intelCommunity: { name: () => 'U.S. Intelligence Community', scope: 'nation', sector: 'federal', head: { title: 'Director of National Intelligence', selection: 'appointed', appointedBy: 'the President' },
     departments: [{ id: 'intel', name: 'Intelligence Directorate', occupations: ['intelligence'], head: { title: 'Deputy Director for Operations', selection: 'internal' } }] },
+  cia: { name: () => 'Central Intelligence Agency', scope: 'nation', sector: 'federal', head: { title: 'Director of the CIA', selection: 'appointed', appointedBy: 'the President' },
+    departments: [
+      { id: 'operations', name: 'Directorate of Operations', occupations: ['caseOfficer'], head: { title: 'Deputy Director for Operations', selection: 'internal' } },
+      { id: 'analysis', name: 'Directorate of Analysis', occupations: ['intelligence'], head: { title: 'Deputy Director for Analysis', selection: 'internal' } },
+      { id: 'scitech', name: 'Directorate of Science & Technology', occupations: ['tech', 'engineering', 'dataScience'], head: { title: 'Deputy Director for Science & Technology', selection: 'internal' } },
+      { id: 'digital', name: 'Directorate of Digital Innovation', occupations: ['cybersecurity'], head: { title: 'Deputy Director for Digital Innovation', selection: 'internal' } },
+    ] },
+  nsa: { name: () => 'National Security Agency', scope: 'nation', sector: 'federal', head: { title: 'Director of the NSA', selection: 'appointed', appointedBy: 'the President' },
+    departments: [
+      { id: 'sid', name: 'Signals Intelligence Directorate', occupations: ['sigint'], head: { title: 'Director of Signals Intelligence', selection: 'internal' } },
+      { id: 'cyber', name: 'Cybersecurity Directorate', occupations: ['cybersecurity', 'tech'], head: { title: 'Director of Cybersecurity', selection: 'internal' } },
+      { id: 'research', name: 'Research Directorate', occupations: ['dataScience', 'research'], head: { title: 'Director of Research', selection: 'internal' } },
+    ] },
   benefitsAgencies: {
     name: () => 'Social Security Administration & Department of Veterans Affairs', scope: 'nation', sector: 'federal',
     head: { title: 'Commissioner of Social Security', selection: 'appointed', appointedBy: 'the President' },

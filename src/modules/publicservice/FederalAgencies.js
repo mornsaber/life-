@@ -88,8 +88,8 @@ export const FEDERAL_PROFESSIONS = {
     ],
   },
   intelligence: {
-    ...FED, id: 'intelligence', name: 'Civil Intelligence Agency', icon: '🛰️', sector: 'federal', payMultiplier: 1.05, minAge: 21, background: 'strict', exam: 'federal',
-    employers: ['Office of the Director of National Intelligence', 'Bureau of Intelligence and Research', 'National Counterterrorism Center'],
+    ...FED, id: 'intelligence', name: 'Intelligence Analysis (CIA · DIA · NGA)', icon: '🛰️', sector: 'federal', payMultiplier: 1.05, minAge: 21, background: 'strict', exam: 'federal',
+    employers: ['Central Intelligence Agency — Directorate of Analysis', 'Defense Intelligence Agency', 'National Geospatial-Intelligence Agency', 'National Counterterrorism Center'],
     entry: { education: { level: 'bachelor' }, smarts: 55 },
     valued: ['languageProficiency', 'cissp', 'awsCert'],
     levels: [
@@ -213,6 +213,14 @@ export const AGENCY_EVENTS = {
     { id: 'dissent', title: 'Analytic Dissent', text: 'Senior leadership wants your assessment rewritten to support a policy they\'ve already announced.', options: [
       { id: 'stand', label: '📑 Stand by your analysis', perf: 2, boss: -10, award: 'superiorHonor', stability: 2 },
       { id: 'rewrite', label: '✏️ Soften the conclusions', perf: 0, boss: 8, stability: -4 },
+    ] },
+    { id: 'pdb', title: 'The President\'s Daily Brief', text: 'Your piece made the PDB, and the briefer wants you there to answer questions.', options: [
+      { id: 'brief', label: '🎙️ Brief it yourself', check: 'smarts', perf: 9, award: 'superiorHonor' },
+      { id: 'notes', label: '📝 Send detailed notes with the briefer', perf: 4 },
+    ] },
+    { id: 'warning', title: 'Warning Failure?', text: 'An attack happened that your team had flagged as "unlikely" six months ago.', options: [
+      { id: 'own', label: '🧭 Own it in the post-mortem', perf: 2, boss: 2 },
+      { id: 'deflect', label: '🙈 Point to collection gaps', perf: 0, boss: -2 },
     ] },
     { id: 'source', title: 'Source in Danger', text: 'Your best source thinks she has been discovered and wants out tonight.', options: [
       { id: 'exfil', label: '🚨 Push for an emergency exfiltration', perf: 8, stress: 10, award: 'distinguished' },
