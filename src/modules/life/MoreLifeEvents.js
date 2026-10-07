@@ -19,6 +19,8 @@ const married = (s) => free(s) && Boolean(spouseOf(s));
 const livingParent = (s) => parentsOf(s).find((p) => p.alive);
 const sibling = (s) => people(s).find((p) => p.relation === 'sibling' && p.alive);
 const owner = (s) => free(s) && Boolean(primaryHome(s));
+/** Discretionary splurges only happen with a comfortable cushion of savings. */
+const splurge = (ctx, amount, label) => ctx.state.finances.cash >= amount * 3 && ctx.spend(amount, label, { credit: true });
 const bump = (p, d) => { if (p) p.relationship = clampRel(p.relationship + d); };
 
 /** Schedule a follow-up event `years` from now. */
@@ -39,7 +41,7 @@ export const MORE_LIFE_EVENTS = [
     { id: 'skip', label: '🎮 Skip it', resolve: () => 'You stayed home. Your mom was more upset than you were.' },
   ] },
   { id: 'gapYear', minAge: 18, maxAge: 19, when: (s) => free(s) && !s.education.enrolled, title: 'Gap Year?', text: 'A friend is backpacking through Southeast Asia for six months and wants company.', options: [
-    { id: 'go', label: '🎒 Go ($3,000)', resolve: (ctx) => { if (!ctx.spend(3000, 'Backpacking trip', { credit: true })) return 'You couldn\'t afford it.'; stats(ctx, { happiness: 10, smarts: 2, stress: -8 }); return 'You came back with stories and a better sense of who you are.'; } },
+    { id: 'go', label: '🎒 Go ($3,000)', resolve: (ctx) => { if (!splurge(ctx, 3000, 'Backpacking trip')) return 'You couldn\'t afford it, so you stayed and worked.'; stats(ctx, { happiness: 10, smarts: 2, stress: -8 }); return 'You came back with stories and a better sense of who you are.'; } },
     { id: 'stay', label: '🏠 Stay and save money', resolve: (ctx) => { ctx.earn(4000, 'Extra shifts', { wage: true }); return 'You banked $4,000.'; } },
   ] },
   { id: 'firstApartment', minAge: 19, maxAge: 28, when: free, title: 'First Apartment', text: 'Your new apartment has no furniture, a weird smell and a neighbor who plays drums.', options: [
@@ -62,16 +64,16 @@ export const MORE_LIFE_EVENTS = [
   /* ---------------- Family ---------------- */
   { id: 'inLaws', minAge: 22, when: married, title: 'The In-Laws', text: 'Your in-laws want to stay with you for a month. Your spouse is already looking at you.', options: [
     { id: 'host', label: '🏠 Host them graciously', resolve: (ctx) => { stats(ctx, { stress: 8 }); bump(spouseOf(ctx.state), 6); return 'A long month. Your spouse noticed the effort.'; } },
-    { id: 'hotel', label: '🏨 Offer to pay for a nearby rental ($2,500)', resolve: (ctx) => { ctx.spend(2500, 'In-laws\' rental', { allowDebt: true }); bump(spouseOf(ctx.state), 2); return 'Everyone kept their sanity.'; } },
+    { id: 'hotel', label: '🏨 Offer to pay for a nearby rental ($2,500)', resolve: (ctx) => { if (!splurge(ctx, 2500, 'In-laws\' rental')) return 'You couldn\'t afford it, so they stayed with you.'; bump(spouseOf(ctx.state), 2); return 'Everyone kept their sanity.'; } },
     { id: 'no', label: '🙅 Put your foot down', resolve: (ctx) => { bump(spouseOf(ctx.state), -8); return 'Thanksgiving was frosty.'; } },
   ] },
   { id: 'anniversary', minAge: 22, when: married, title: 'Anniversary', text: 'Your anniversary is next week, and you forgot to plan anything.', options: [
-    { id: 'trip', label: '✈️ Book a surprise weekend away ($1,200)', resolve: (ctx) => { if (!ctx.spend(1200, 'Anniversary trip', { credit: true })) return 'Card declined. You cooked dinner instead.'; bump(spouseOf(ctx.state), 10); stats(ctx, { happiness: 6 }); return 'It felt like the early days.'; } },
+    { id: 'trip', label: '✈️ Book a surprise weekend away ($1,200)', resolve: (ctx) => { if (!splurge(ctx, 1200, 'Anniversary trip')) { bump(spouseOf(ctx.state), 5); return 'Money was tight, so you cooked dinner instead. It was lovely.'; } bump(spouseOf(ctx.state), 10); stats(ctx, { happiness: 6 }); return 'It felt like the early days.'; } },
     { id: 'dinner', label: '🍝 Cook their favorite dinner', resolve: (ctx) => { bump(spouseOf(ctx.state), 5); return 'Simple and sweet.'; } },
     { id: 'forget', label: '😬 Hope they forgot too', resolve: (ctx) => { bump(spouseOf(ctx.state), -10); return 'They did not forget.'; } },
   ] },
   { id: 'kidSports', minAge: 25, when: (s) => hasMinor(s) && minorChildren(s).some((c) => ageOf(s, c) >= 6 && ageOf(s, c) <= 16), title: 'Travel Team', text: 'Your kid made the travel soccer team: $4,000 a year and every weekend in a different town.', options: [
-    { id: 'yes', label: '⚽ Sign them up', resolve: (ctx) => { ctx.spend(4000, 'Travel sports', { allowDebt: true }); stats(ctx, { stress: 4, happiness: 4 }); minorChildren(ctx.state).forEach((c) => bump(c, 6)); return 'You learned to love folding chairs and gas station coffee.'; } },
+    { id: 'yes', label: '⚽ Sign them up', resolve: (ctx) => { if (!splurge(ctx, 4000, 'Travel sports')) return 'It wasn\'t in the budget. Rec league it is.'; stats(ctx, { stress: 4, happiness: 4 }); minorChildren(ctx.state).forEach((c) => bump(c, 6)); return 'You learned to love folding chairs and gas station coffee.'; } },
     { id: 'rec', label: '🥅 Stick with the rec league', resolve: (ctx) => { minorChildren(ctx.state).forEach((c) => bump(c, -2)); return 'They were disappointed for a week.'; } },
   ] },
   { id: 'teenTrouble', minAge: 32, when: (s) => hasMinor(s) && minorChildren(s).some((c) => ageOf(s, c) >= 14), title: 'Call from the School', text: 'Your teenager was caught skipping class, and their grades are slipping.', options: [
@@ -79,8 +81,8 @@ export const MORE_LIFE_EVENTS = [
     { id: 'ground', label: '📵 Ground them and take the phone', resolve: (ctx) => { minorChildren(ctx.state).forEach((c) => bump(c, -6)); return 'Their grades came up. The silence at dinner lasted a month.'; } },
   ] },
   { id: 'kidAskForMoney', minAge: 45, when: (s) => free(s) && livingChildren(s).some((c) => ageOf(s, c) >= 22), title: 'Adult Child Needs Help', text: 'Your grown child needs $10,000 for a down payment on their first home.', options: [
-    { id: 'give', label: '🏡 Give it to them', resolve: (ctx) => { if (!ctx.spend(10000, 'Help with a down payment', { credit: true })) return 'You couldn\'t spare it.'; livingChildren(ctx.state).forEach((c) => bump(c, 8)); stats(ctx, { happiness: 5 }); return 'They sent a photo of the keys.'; } },
-    { id: 'loan', label: '📝 Lend it with a written plan', resolve: (ctx) => { if (!ctx.spend(10000, 'Loan to your child', { credit: true })) return 'You couldn\'t spare it.'; plant(ctx, 'kidRepays', 4); return 'They signed it, a little embarrassed.'; } },
+    { id: 'give', label: '🏡 Give it to them', resolve: (ctx) => { if (!splurge(ctx, 10000, 'Help with a down payment')) return 'You couldn\'t spare it right now.'; livingChildren(ctx.state).forEach((c) => bump(c, 8)); stats(ctx, { happiness: 5 }); return 'They sent a photo of the keys.'; } },
+    { id: 'loan', label: '📝 Lend it with a written plan', resolve: (ctx) => { if (!splurge(ctx, 10000, 'Loan to your child')) return 'You couldn\'t spare it right now.'; plant(ctx, 'kidRepays', 4); return 'They signed it, a little embarrassed.'; } },
     { id: 'no', label: '🙅 They need to do it themselves', resolve: (ctx) => { livingChildren(ctx.state).forEach((c) => bump(c, -4)); return 'They managed, eventually.'; } },
   ] },
   { id: 'kidRepays', followUp: true, title: 'The Loan, Repaid', text: '', run: (ctx) => (ctx.rng.chance(0.75) ? (ctx.state.finances.cash += 10000, ['🏡', 'Your kid paid back the $10,000, every dollar, plus a thank-you card.', 'good']) : ['🏡', 'Your kid quietly stopped paying on the loan. Neither of you brings it up.', 'warn']) },
@@ -91,7 +93,7 @@ export const MORE_LIFE_EVENTS = [
   ] },
   { id: 'siblingFeud', minAge: 25, when: (s) => free(s) && Boolean(sibling(s)), title: 'Sibling Feud', text: 'Your sibling said something cruel at a family dinner, and everyone is waiting to see what you do.', options: [
     { id: 'clear', label: '🫂 Talk it out one-on-one', resolve: (ctx) => { bump(sibling(ctx.state), 8); return 'It turned out they were going through a divorce. You hugged it out.'; } },
-    { id: 'clap', label: '🔥 Say what you\'ve wanted to say for years', resolve: (ctx) => { bump(sibling(ctx.state), -15); stats(ctx, { happiness: 2 }); return 'It felt great for an hour. Holidays have been awkward since.'; } },
+    { id: 'clap', label: '🔥 Say what you\'ve wanted to say for years', tone: 'danger', resolve: (ctx) => { bump(sibling(ctx.state), -15); stats(ctx, { happiness: 2 }); return 'It felt great for an hour. Holidays have been awkward since.'; } },
   ] },
   { id: 'familyReunion', minAge: 20, when: free, title: 'Family Reunion', text: 'Your cousin is organizing the first family reunion in fifteen years.', options: [
     { id: 'go', label: '🧺 Go', resolve: (ctx) => { stats(ctx, { happiness: 6 }); parentsOf(ctx.state).filter((p) => p.alive).forEach((p) => bump(p, 4)); return 'Your great-uncle told stories nobody had heard before.'; } },
@@ -122,18 +124,22 @@ export const MORE_LIFE_EVENTS = [
   ] },
 
   /* ---------------- Money ---------------- */
+  { id: 'savingsMatch', minAge: 22, maxAge: 40, when: working, title: 'Savings Challenge', text: 'Your credit union is running a savings challenge with a matching bonus.', options: [
+    { id: 'join', label: '🐷 Join and automate deposits', resolve: (ctx) => { ctx.earn(1500, 'Credit union savings bonus'); stats(ctx, { stress: -2 }); return 'You saved all year and they added a $1,500 bonus.'; } },
+    { id: 'skip', label: '🙅 Not this year', resolve: () => 'Maybe next year.' },
+  ] },
   { id: 'cryptoTip', minAge: 18, maxAge: 70, when: free, title: 'Hot Tip', text: 'A coworker swears a new coin is going to 100x and is putting in his savings.', options: [
-    { id: 'buy', label: '🚀 Put in $3,000', resolve: (ctx) => { if (!ctx.spend(3000, 'Crypto speculation', { credit: true })) return 'You didn\'t have it.'; const r = ctx.rng.next(); if (r < 0.08) { ctx.earn(30000, 'Crypto gains'); return 'It mooned. You sold at $30,000 and never touched crypto again.'; } if (r < 0.3) { ctx.earn(4500, 'Crypto gains'); return 'Up 50%. You took the win.'; } return 'It went to zero in four months. Your coworker stopped talking about it.'; } },
+    { id: 'buy', label: '🚀 Put in $3,000', tone: 'danger', resolve: (ctx) => { if (!splurge(ctx, 3000, 'Crypto speculation')) return 'You didn\'t have money to gamble with.'; const r = ctx.rng.next(); if (r < 0.08) { ctx.earn(30000, 'Crypto gains'); return 'It mooned. You sold at $30,000 and never touched crypto again.'; } if (r < 0.3) { ctx.earn(4500, 'Crypto gains'); return 'Up 50%. You took the win.'; } return 'It went to zero in four months. Your coworker stopped talking about it.'; } },
     { id: 'pass', label: '🙄 Pass', resolve: () => 'You\'ll never know. That\'s fine.' },
   ] },
   { id: 'taxRefund', minAge: 20, when: working, title: 'Surprise Refund', text: '', run: (ctx) => { const n = ctx.rng.int(400, 2500); ctx.state.finances.cash += n; return ['🧾', `An amended return found a deduction you missed: a $${n.toLocaleString()} refund.`, 'good']; } },
   { id: 'phishing', minAge: 18, when: free, title: 'Suspicious Email', text: 'An email "from your bank" says your account is locked and to log in through the link.', options: [
     { id: 'ignore', label: '🛡️ Delete it and call the bank', resolve: () => 'The bank said it was a scam. Good catch.' },
-    { id: 'click', label: '🔗 Click and log in', resolve: (ctx) => { const n = ctx.rng.int(800, 5000); ctx.spend(n, 'Phishing theft', { allowDebt: true }); ctx.emit('credit:event', { type: 'late' }); stats(ctx, { stress: 8 }); return `They drained $${n.toLocaleString()} before the bank froze the account.`; } },
+    { id: 'click', label: '🔗 Click and log in', tone: 'danger', resolve: (ctx) => { const n = ctx.rng.int(800, 3000); ctx.spend(n, 'Phishing theft', { allowDebt: true }); stats(ctx, { stress: 8 }); return `They drained $${n.toLocaleString()} before the bank froze the account.`; } },
   ] },
   { id: 'carDeal', minAge: 18, when: free, title: 'The Dealership', text: 'The salesman says this financing deal is only good today.', options: [
     { id: 'walk', label: '🚶 Walk out and sleep on it', resolve: () => 'He called twice the next day with a better deal.' },
-    { id: 'sign', label: '✍️ Sign today', resolve: (ctx) => { ctx.spend(1500, 'Dealer add-ons you didn\'t need', { allowDebt: true }); return 'You found $1,500 of "protection packages" in the paperwork later.'; } },
+    { id: 'sign', label: '✍️ Sign today', tone: 'danger', resolve: (ctx) => { ctx.spend(1500, 'Dealer add-ons you didn\'t need', { allowDebt: true }); return 'You found $1,500 of "protection packages" in the paperwork later.'; } },
   ] },
   { id: 'unclaimed', minAge: 25, title: 'Unclaimed Property', text: '', run: (ctx) => { const n = ctx.rng.int(60, 1800); ctx.state.finances.cash += n; return ['🔎', `You searched the state unclaimed-property site on a whim and found $${n.toLocaleString()} from an old deposit.`, 'good']; } },
 
@@ -154,7 +160,7 @@ export const MORE_LIFE_EVENTS = [
 
   /* ---------------- Midlife ---------------- */
   { id: 'midlife', minAge: 42, maxAge: 55, when: free, title: 'Midlife Moment', text: 'You saw a convertible at a red light and felt something.', options: [
-    { id: 'car', label: '🏎️ Buy a used sports car ($18,000)', resolve: (ctx) => { if (!ctx.spend(18000, 'Midlife sports car', { credit: true })) return 'Financing fell through. Probably for the best.'; stats(ctx, { happiness: 8 }); bump(spouseOf(ctx.state), -3); return 'Top down, wind in what\'s left of your hair.'; } },
+    { id: 'car', label: '🏎️ Buy a used sports car ($18,000)', resolve: (ctx) => { if (!splurge(ctx, 18000, 'Midlife sports car')) return 'You couldn\'t justify it. Probably for the best.'; stats(ctx, { happiness: 8 }); bump(spouseOf(ctx.state), -3); return 'Top down, wind in what\'s left of your hair.'; } },
     { id: 'hobby', label: '🎸 Take up guitar lessons', resolve: (ctx) => { ctx.spend(600, 'Guitar lessons', { allowDebt: true }); stats(ctx, { happiness: 5, smarts: 1 }); return 'You can play three songs. Badly. Happily.'; } },
     { id: 'therapy', label: '🛋️ Talk to a therapist about it', resolve: (ctx) => { ctx.emit('health:trauma', { amount: -10, source: 'therapy' }); stats(ctx, { happiness: 4 }); return 'It wasn\'t about the car.'; } },
   ] },
@@ -191,10 +197,26 @@ export const MORE_LIFE_EVENTS = [
   ] },
   { id: 'volunteerRetired', minAge: 62, when: (s) => free(s) && !s.career.job, title: 'What Now?', text: 'Retirement is quieter than you expected.', options: [
     { id: 'volunteer', label: '🤝 Volunteer at the food bank', resolve: (ctx) => { stats(ctx, { happiness: 7 }); return 'Tuesdays and Thursdays. You know everyone\'s name.'; } },
-    { id: 'travel', label: '🧳 Plan a big trip ($6,000)', resolve: (ctx) => { if (!ctx.spend(6000, 'Retirement trip', { credit: true })) return 'Maybe next year.'; stats(ctx, { happiness: 10 }); return `Three weeks in ${ctx.rng.pick(['Italy', 'Japan', 'New Zealand', 'Ireland', 'Peru'])}.`; } },
+    { id: 'travel', label: '🧳 Plan a big trip ($6,000)', resolve: (ctx) => { if (!splurge(ctx, 6000, 'Retirement trip')) return 'Maybe next year.'; stats(ctx, { happiness: 10 }); return `Three weeks in ${ctx.rng.pick(['Italy', 'Japan', 'New Zealand', 'Ireland', 'Peru'])}.`; } },
     { id: 'garden', label: '🌱 Start a serious garden', resolve: (ctx) => { stats(ctx, { happiness: 5, fitness: 2 }); return 'Your tomatoes won a ribbon at the county fair.'; } },
   ] },
 ];
 
 /** Follow-up events by id. */
 export const FOLLOW_UPS = Object.fromEntries(MORE_LIFE_EVENTS.filter((e) => e.followUp).map((e) => [e.id, e]));
+
+/**
+ * State housing agencies' first-time homebuyer programs: working renters
+ * 25–40 have a steady chance each year of qualifying for down-payment help
+ * (once in a life).
+ */
+export function downPaymentAssistance(ctx) {
+  const s = ctx.state;
+  const age = s.character.age;
+  if (s.flags?.dpa || age < 25 || age > 40 || !working(s) || s.housing.properties.length || !ctx.rng.chance(0.12)) return false;
+  s.flags = { ...s.flags, dpa: true };
+  const n = ctx.rng.int(8, 15) * 1000;
+  s.finances.cash += n;
+  ctx.log(`You qualified for your state housing agency's first-time homebuyer program: $${n.toLocaleString()} in down-payment assistance toward a home.`, '🏡', 'good');
+  return true;
+}

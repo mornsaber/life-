@@ -184,12 +184,12 @@ export const TransitionResolvers = {
   },
   readjust(ctx, _data, optionId) {
     if (optionId === 'vetCenter') {
-      ctx.emit('health:trauma', { amount: -25, source: 'therapy' });
+      ctx.emit('health:trauma', { amount: -10, source: 'therapy' });
       ctx.stat('happiness', 4);
       ctx.log('A counselor at the Vet Center had served too. It helped more than you expected.', '🫂', 'good');
     } else if (optionId === 'peers') {
       ctx.stat('happiness', 6);
-      ctx.emit('health:trauma', { amount: -12, source: 'support' });
+      ctx.emit('health:trauma', { amount: -5, source: 'support' });
       ctx.log('You found your people again: other veterans who get it.', '🍻', 'good');
     } else {
       ctx.stat('stress', 5);

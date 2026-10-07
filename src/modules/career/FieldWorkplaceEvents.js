@@ -10,6 +10,14 @@ const inField = (...fields) => (s) => fields.includes(FIELD_OF[s.career.job?.pro
 const is = (...ids) => (s) => ids.includes(s.career.job?.professionId);
 
 export const FIELD_WORKPLACE_EVENTS = [
+  /* ---------------- Any field: good news ---------------- */
+  { id: 'any.spotBonus', title: 'Spot Bonus', text: 'Your manager put you in for a spot bonus after a great quarter.', when: (s) => s.career.job?.sector === 'private', options: [
+    { id: 'thanks', label: '🙏 Say thanks and keep going', money: 2500, boss: 3, stats: { happiness: 4 } },
+    { id: 'team', label: '🫶 Ask that the team share it', money: 1000, coworkers: 8, stats: { happiness: 4 } },
+  ] },
+  { id: 'any.referral', title: 'Referral Bonus', text: 'A friend you referred just got hired. HR owes you a referral bonus.', when: (s) => s.career.job?.sector === 'private', options: [
+    { id: 'collect', label: '💵 Collect it', money: 3000, coworkers: 2 },
+  ] },
   /* ---------------- Health & social care ---------------- */
   { id: 'hc.shortStaffed', title: 'Short-Staffed Shift', text: 'Two people called out. You have twice the patients you can safely handle.', when: inField('health'), options: [
     { id: 'push', label: '🏃 Run the whole shift and cover everyone', perf: 5, coworkers: 6, stats: { stress: 10, health: -2 } },

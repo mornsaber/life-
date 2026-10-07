@@ -9,7 +9,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { isIncarcerated } from '../../core/State.js';
-import { MORE_LIFE_EVENTS, FOLLOW_UPS } from './MoreLifeEvents.js';
+import { MORE_LIFE_EVENTS, FOLLOW_UPS, downPaymentAssistance } from './MoreLifeEvents.js';
 
 const onCampus = (s) => Boolean(s.education.enrolled && s.campus && ['state', 'private', 'elite', 'academy'].includes(s.education.enrolled.schoolId));
 const free = (s) => !isIncarcerated(s);
@@ -149,6 +149,7 @@ export const LifeEvents = {
 
   onAgeUp(ctx) {
     const { state, rng } = ctx;
+    downPaymentAssistance(ctx);
     // A choice from years ago comes back.
     const due = (state.eventSeeds ?? []).find((s) => s.dueAge <= state.character.age);
     let event = null;
@@ -171,7 +172,7 @@ export const LifeEvents = {
       icon: '🎲',
       title: event.title,
       text: event.text,
-      options: event.options.map((o) => ({ id: o.id, label: o.label })),
+      options: event.options.map((o) => ({ id: o.id, label: o.label, tone: o.tone })),
       data: { eventId: event.id },
     });
   },

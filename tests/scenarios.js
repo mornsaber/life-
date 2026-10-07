@@ -176,21 +176,27 @@ const tests = {
   },
 
   'sustained low performance demotes before it fires'() {
-    const { engine, state } = setup();
-    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
-    const job = giveJob(engine, 'corporate', 'srAnalyst');
-    job.yearsInLevel = 5;
-    job.lowYears = 1;
-    job.warnings = 0;
-    job.performance = 5;
-    state.stats.smarts = 1;
-    state.stats.stress = 100;
-    job.boss = 0;
-    engine.rng = new Random(3);
-    engine.ageUp();
-    while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options[0].id);
-    assert.ok(state.career.job, 'still employed');
-    assert.equal(state.career.job.levelId, 'analyst', 'demoted one level');
+    // Unrelated random layoffs can end the job too; look at seeds where none happened.
+    for (let seed = 3; seed < 20; seed++) {
+      const { engine, state } = setup();
+      state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+      const job = giveJob(engine, 'corporate', 'srAnalyst');
+      job.yearsInLevel = 5;
+      job.lowYears = 1;
+      job.warnings = 0;
+      job.performance = 5;
+      state.stats.smarts = 1;
+      state.stats.stress = 100;
+      job.boss = 0;
+      engine.rng = new Random(seed);
+      engine.ageUp();
+      while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options[0].id);
+      if (/Laid off/.test(state.career.history.at(-1)?.reason ?? '')) continue;
+      assert.ok(state.career.job, 'still employed');
+      assert.equal(state.career.job.levelId, 'analyst', 'demoted one level');
+      return;
+    }
+    assert.fail('every seed hit a layoff');
   },
 
   'vested public pensions become deferred annuities'() {
