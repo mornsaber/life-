@@ -9,6 +9,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { isIncarcerated } from '../../core/State.js';
+import { MORE_LIFE_EVENTS, FOLLOW_UPS } from './MoreLifeEvents.js';
 
 const onCampus = (s) => Boolean(s.education.enrolled && s.campus && ['state', 'private', 'elite', 'academy'].includes(s.education.enrolled.schoolId));
 const free = (s) => !isIncarcerated(s);
@@ -18,7 +19,7 @@ const gift = (ctx, amount, text, icon = '💵') => {
   ctx.log(text, icon, 'good');
 };
 
-export const LIFE_EVENTS = [
+const BASE_EVENTS = [
   /* ---------------- Childhood ---------------- */
   { id: 'bully', minAge: 7, maxAge: 15, title: 'The Bully', text: 'An older kid has been taking your lunch money all week.', options: [
     { id: 'tell', label: '🧑‍🏫 Tell a teacher', resolve: (ctx) => { stats(ctx, { happiness: 2 }); return 'The teacher handled it. The bully found someone else.'; } },
@@ -135,6 +136,10 @@ export const LIFE_EVENTS = [
   ] },
 ];
 
+/** Every event that can come up at random (follow-ups only come when planted). */
+export const LIFE_EVENTS = [...BASE_EVENTS, ...MORE_LIFE_EVENTS.filter((e) => !e.followUp)];
+const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? FOLLOW_UPS[id];
+
 /** How often something happens: kids and young adults have eventful years. */
 const yearlyChance = (age) => (age < 6 ? 0 : age < 18 ? 0.35 : age < 30 ? 0.4 : age < 65 ? 0.3 : 0.25);
 
@@ -144,8 +149,17 @@ export const LifeEvents = {
 
   onAgeUp(ctx) {
     const { state, rng } = ctx;
-    if (!rng.chance(yearlyChance(state.character.age))) return;
-    const event = pickFresh(rng, state, 'life', eligible(LIFE_EVENTS, state));
+    // A choice from years ago comes back.
+    const due = (state.eventSeeds ?? []).find((s) => s.dueAge <= state.character.age);
+    let event = null;
+    if (due) {
+      state.eventSeeds = state.eventSeeds.filter((s) => s !== due);
+      event = FOLLOW_UPS[due.id] ?? null;
+    }
+    if (!event) {
+      if (!rng.chance(yearlyChance(state.character.age))) return;
+      event = pickFresh(rng, state, 'life', eligible(LIFE_EVENTS, state));
+    }
     if (!event) return;
     if (event.run) {
       const [icon, text, kind] = event.run(ctx);
@@ -164,7 +178,7 @@ export const LifeEvents = {
 
   resolvers: {
     event(ctx, data, optionId) {
-      const event = LIFE_EVENTS.find((e) => e.id === data.eventId);
+      const event = byId(data.eventId);
       const option = event?.options.find((o) => o.id === optionId);
       if (!option) return;
       const text = option.resolve(ctx);

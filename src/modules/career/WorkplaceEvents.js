@@ -9,8 +9,9 @@
  *   minGrade / remote / sector / mgmt  restrict when an event can appear
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
+import { FIELD_WORKPLACE_EVENTS } from './FieldWorkplaceEvents.js';
 
-export const WORKPLACE_EVENTS = [
+const EVERYDAY_EVENTS = [
   { id: 'credit', title: 'Stolen Credit', text: 'Your manager presented your project to leadership as their own idea.', options: [
     { id: 'confront', label: '🗣️ Raise it privately with your manager', check: 'smarts', perf: 2, boss: -4 },
     { id: 'skip', label: '⬆️ Email leadership the timeline', perf: 5, boss: -12, risky: { chance: 0.2, text: 'Leadership sided with your manager. You were labeled "not a team player."', perf: -6 } },
@@ -90,6 +91,9 @@ export const WORKPLACE_EVENTS = [
     { id: 'skip', label: '🏠 Skip it', coworkers: -2 },
   ] },
 ];
+
+/** Everyday events plus the ones specific to your field. */
+export const WORKPLACE_EVENTS = [...EVERYDAY_EVENTS, ...FIELD_WORKPLACE_EVENTS];
 
 const sectorWeight = { private: 0.24, federal: 0.12, state: 0.12, municipal: 0.12 };
 

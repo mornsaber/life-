@@ -5,6 +5,7 @@
  *
  *   node tests/content.js
  */
+import { FOLLOW_UPS } from '../src/modules/life/MoreLifeEvents.js';
 import { UCMJ_OFFENSES } from '../src/modules/military/UCMJ.js';
 import assert from 'node:assert/strict';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
@@ -42,6 +43,7 @@ function checkPool(name, pool, { idOf = (e) => e.id, needsFreeOption = false } =
 }
 
 checkPool('life events', LIFE_EVENTS);
+checkPool('life follow-ups', Object.values(FOLLOW_UPS));
 checkPool('workplace', WORKPLACE_EVENTS);
 for (const [t, pool] of Object.entries(COMBAT_SCENARIOS)) checkPool(`combat.${t}`, pool);
 checkPool('military duty', DUTY_EVENTS);
