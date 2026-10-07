@@ -19,6 +19,7 @@ export const NON_EXPANSION = new Set(['TX', 'FL']);
 export const PLANS = {
   prison: { name: 'Prison health services', icon: '⛓️', premium: 0, deductible: 0, coinsurance: 0, oopMax: 0 },
   tricare: { name: 'TRICARE Prime', icon: '🎖️', premium: 0, deductible: 0, coinsurance: 0, oopMax: 0 },
+  va: { name: 'VA health care', icon: '🇺🇸', premium: 0, deductible: 0, coinsurance: 0, oopMax: 0 },
   tricareRetiree: { name: 'TRICARE (retiree)', icon: '🎖️', premium: 650, deductible: 150, coinsurance: 0.2, oopMax: 3500 },
   employer: { name: 'Employer health plan', icon: '🏢', premium: 1900, deductible: 1600, coinsurance: 0.2, oopMax: 5000 },
   parents: { name: "Parent's plan (under 26)", icon: '👪', premium: 0, deductible: 2000, coinsurance: 0.2, oopMax: 6000 },
@@ -42,6 +43,8 @@ export function coverageId(state, earned = income(state)) {
   if (state.career.job?.employer.benefits.health) return 'employer';
   if (age >= 65 || (isDisabled(state) && (state.health.disability.ssdiYears ?? 0) >= 2)) return 'medicare';
   if (state.retirement.pensions.some((p) => p.id === 'military')) return 'tricareRetiree';
+  // Veterans rated 50%+ get full VA health care (priority group 1).
+  if ((state.health?.va?.rating ?? 0) >= 50) return 'va';
   if (age < 26) return 'parents';
   if (earned < MEDICAID_INCOME && (!NON_EXPANSION.has(stateIdOf(state)) || isDisabled(state))) return 'medicaid';
   if (state.health?.marketplace !== false) return 'marketplace';

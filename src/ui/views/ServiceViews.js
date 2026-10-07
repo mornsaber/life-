@@ -4,6 +4,8 @@
 import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
+import { TRACKS, skillBridgeEligibility, civilianField, FAIR_YEARS } from '../../modules/military/Transition.js';
+import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
 import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool } from '../../modules/military/Schools.js';
@@ -62,7 +64,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${recruitingOffice(state)}${history}`;
+  if (!svc) return `${deserter}${veteranCard(state)}${recruitingOffice(state)}${history}`;
 
   const branch = BRANCHES[svc.branch];
   const rank = rankOf(svc);
@@ -103,7 +105,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${unitCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -253,4 +255,39 @@ function careerFieldCard(state, svc) {
       : `<p class="fine">🔁 Retraining: ${esc(blocked)}.</p>`) : ''}
     ${warrant.length ? disclosure('military.warrant', 'Become a warrant officer', `<ul class="job-board">${[...okWarrant, ...warrant.filter((x) => !x.check.ok)].map((x) => row(x.m, x.check, x.check.ok ? warrantOdds(state, x.m.id) : 0, 'military.applyWarrant')).join('')}</ul><p class="fine">Warrant officers are the technical experts of their field: NCOs (E-5+, 5 years) from that field, or anyone young enough for Army flight school.</p>`, { count: `${okWarrant.length} open` }) : ''}`;
   return card('Career Field', `<p class="muted">Current job: <b>${esc(specialtyName(svc))}</b></p>${body}`, { icon: '🔁' });
+}
+
+/** Your last year in uniform: TAP and SkillBridge. */
+function transitionCard(state, svc) {
+  const near = svc.component === 'active' && (svc.contractYearsLeft <= 1 || svc.yearsOfService >= 19);
+  if (!near) return '';
+  const track = state.military.transition?.track;
+  const field = civilianField(state);
+  let bridge;
+  if (svc.skillBridge) bridge = `<div class="next-step">🤝 SkillBridge: interning with <b>${esc(svc.skillBridge.employerName)}</b> (${esc(getProfession(svc.skillBridge.professionId).name)}). Expect a job offer when you separate.</div>`;
+  else {
+    const options = PROFESSION_LIST.filter((p) => skillBridgeEligibility(state, p.id).ok).sort((a, b) => (b.id === field) - (a.id === field) || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: `${p.icon} ${p.name}${p.id === field ? ' (matches your job)' : ''}` }));
+    bridge = options.length
+      ? `<h4 class="sub">SkillBridge internship</h4><p class="fine">Spend your last months with a civilian employer; they usually hire you when you separate.</p><div class="enroll-form" data-collect-root>${select('profession', options)}${button('🤝 Apply', 'military.skillBridge', { variant: 'small', collect: true, disabled: Boolean(state.yearly['military.skillBridge']) })}</div>`
+      : `<p class="fine">🤝 SkillBridge: ${esc(skillBridgeEligibility(state, field ?? 'retail').reason ?? 'no internships you qualify for')}.</p>`;
+  }
+  return card('Transition', `<p class="muted">Your separation is coming up.</p>
+    ${track ? `<p>${chip(`${TRACKS[track].icon} TAP: ${TRACKS[track].name}`, 'green')}</p><p class="fine">${esc(TRACKS[track].desc)}</p>` : '<p class="fine">🧭 The Transition Assistance Program will ask you to pick a track.</p>'}
+    ${bridge}`, { icon: '🧭', accent: 'green' });
+}
+
+/** After service: what the transition still gives you. */
+function veteranCard(state) {
+  const t = state.military.transition;
+  if (!t || t.separatedAge == null) return '';
+  const since = state.character.age - t.separatedAge;
+  if (since > FAIR_YEARS) return '';
+  const field = civilianField(state);
+  const items = [
+    t.track ? `${TRACKS[t.track].icon} TAP track: <b>${TRACKS[t.track].name}</b> — ${esc(TRACKS[t.track].desc)}` : null,
+    field ? `🇺🇸 Veteran hiring fairs offer jobs in <b>${esc(getProfession(field).name)}</b> while you're unemployed (through age ${t.separatedAge + FAIR_YEARS}).` : null,
+    (state.health?.va?.rating ?? 0) >= 50 ? '🏥 Your VA rating qualifies you for full VA health care.' : (state.health?.va?.rating ?? 0) > 0 ? '🏥 The VA covers care for your service-connected conditions.' : null,
+    '🏠 VA home loans: no down payment, no PMI.',
+  ].filter(Boolean);
+  return card('Veteran Transition', `<ul class="history">${items.map((i) => `<li>${i}</li>`).join('')}</ul>`, { icon: '🧭', accent: 'green' });
 }

@@ -18,6 +18,8 @@ import { pcsOrders, serviceLifeTick, belowZone, giBillTransferEligibility } from
 import { tryPromotion, discharge } from '../src/modules/military/MilitaryEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { promotionOutlook } from '../src/modules/military/MilitaryEngine.js';
+import { transitionTick, veteranTick, transitionHiringBonus, UCX } from '../src/modules/military/Transition.js';
+import { coverageId } from '../src/modules/health/Insurance.js';
 import { qualBoardBonus } from '../src/modules/military/Schools.js';
 import { retrainEligibility, warrantEligibility } from '../src/modules/military/CareerFields.js';
 import { rankOf } from '../src/modules/military/MilitaryEngine.js';
@@ -385,6 +387,39 @@ const tests = {
     svc.yearsOfService = 2;
     serviceLifeTick(ctx, svc);
     assert.equal(svc.mos, 'army.35D', 'back to Military Intelligence');
+  },
+
+  'transition: TAP track, SkillBridge job offer, UCX, hiring fairs and VA care'() {
+    const { engine, state, ctx } = setup(19, 24);
+    const svc = enlist(engine, 'army:enlisted:active');
+    Object.assign(svc, { isNew: false, yearsOfService: 4, contractYearsLeft: 1, eval: 90 });
+    state.prompts = [];
+    transitionTick(ctx, svc);
+    const tap = state.prompts.find((p) => p.type === 'military.tap');
+    assert.ok(tap, 'TAP in the last year');
+    engine.resolvePrompt(tap.id, 'employment');
+    assert.ok(svc.tapDone);
+    for (let i = 0; i < 10 && !svc.skillBridge; i++) { state.yearly = {}; engine.dispatch('military.skillBridge', 'logistics'); }
+    assert.ok(svc.skillBridge, 'SkillBridge approved');
+    state.prompts = [];
+    discharge(ctx, 'honorable', 'test');
+    const offer = state.prompts.find((p) => p.type === 'military.skillBridgeOffer');
+    assert.ok(offer, 'SkillBridge employer offers a job');
+    engine.resolvePrompt(offer.id, 'accept');
+    assert.equal(state.career.job?.professionId, 'logistics');
+    assert.ok(transitionHiringBonus(state) > 0, 'employment-track hiring edge');
+    // Unemployed veterans: UCX and hiring fairs.
+    const t = setup(20, 24);
+    const s2 = enlist(t.engine, 'army:enlisted:active');
+    Object.assign(s2, { isNew: false, yearsOfService: 4 });
+    discharge(t.ctx, 'honorable', 'test');
+    const cash = t.state.finances.cash;
+    t.state.prompts = [];
+    veteranTick(t.ctx);
+    assert.ok(t.state.finances.cash >= cash + UCX, 'UCX paid');
+    // VA health care for rated veterans.
+    t.state.health.va.rating = 70;
+    assert.equal(coverageId(t.state), 'va');
   },
 };
 

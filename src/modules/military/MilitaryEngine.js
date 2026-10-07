@@ -532,7 +532,7 @@ export function discharge(ctx, type, reason) {
   ctx.log(`You were discharged from the ${BRANCHES[svc.branch].name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');
   ctx.toast(`Discharged: ${DISCHARGE_LABEL[type]}`, type === 'dishonorable' ? 'bad' : 'info');
   // The VA rates service-connected conditions (health module).
-  ctx.emit('military:discharged', { type, wounds: svc.wounds });
+  ctx.emit('military:discharged', { type, wounds: svc.wounds, svc });
 }
 
 export const isVeteran = (state) => state.military.history.some((h) => h.discharge !== 'dishonorable');

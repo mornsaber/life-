@@ -9,6 +9,7 @@
  *   giBillYearsUsed,
  * }
  */
+import { yellowRibbon } from '../military/Transition.js';
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js';
@@ -165,7 +166,7 @@ function fundTuition(ctx, e) {
     notes.push(`$${covered.toLocaleString()} ${s.name}`);
   }
   if (giBillEligible(state)) {
-    const covered = Math.min(due, GI_BILL.annualCap);
+    const covered = Math.min(due, GI_BILL.annualCap + yellowRibbon(state));
     due -= covered;
     state.education.giBillYearsUsed = (state.education.giBillYearsUsed ?? 0) + 1;
     e.giBillThisYear = true;

@@ -439,7 +439,7 @@ export const HealthEngine = {
     });
     bus.on('health:trauma', ({ ctx, amount, source }) => {
       const h = ctx.state.health;
-      h.trauma = Math.round(h.trauma + amount);
+      h.trauma = Math.max(0, Math.round(h.trauma + amount));
       if (source === 'combat' || ctx.state.military.service) h.serviceTrauma = Math.round(h.serviceTrauma + amount);
     });
     bus.on('health:injury', ({ ctx, conditionId, severity, serviceConnected }) => addCondition(ctx, conditionId, { severity, serviceConnected }));

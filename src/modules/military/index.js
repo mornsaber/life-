@@ -22,6 +22,7 @@ import { UcmjResolvers, imposeNjp } from './UCMJ.js';
 import { MilitaryLifeActions, MilitaryLifeResolvers, militaryLifeTick } from './MilitaryLife.js';
 import { SchoolActions, SchoolResolvers } from './Schools.js';
 import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
+import { TransitionActions, TransitionResolvers, transitionTick, veteranTick, onSeparation, onBusinessStarted } from './Transition.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -95,6 +96,8 @@ export const MilitaryModule = {
         imposeNjp(ctx, /dui/i.test(name) ? 'dui' : 'disobey');
       }
     });
+    engine.bus.on('military:discharged', ({ ctx, type, svc }) => onSeparation(ctx, svc, type));
+    engine.bus.on('business:started', ({ ctx }) => onBusinessStarted(ctx));
     // Governors activate the Guard for disasters, unrest and border missions (service/StateForces.js).
     // Caught deserters: the court-martial upgrades the discharge to dishonorable.
     engine.bus.on('legal:convicted', ({ ctx, offenseId }) => {
@@ -118,11 +121,13 @@ export const MilitaryModule = {
   onAgeUp(ctx) {
     const { state } = ctx;
     militaryLifeTick(ctx);
+    veteranTick(ctx);
     const svc = state.military.service;
     if (!svc) return;
     svc.deployedThisYear = false;
     if (svc.component === 'active') activeDutyTick(ctx, svc);
     else reserveTick(ctx, svc);
+    if (state.military.service === svc && state.character.alive) transitionTick(ctx, svc);
   },
 
   actions: {
@@ -131,6 +136,7 @@ export const MilitaryModule = {
     ...MilitaryLifeActions,
     ...SchoolActions,
     ...CareerFieldActions,
+    ...TransitionActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -234,6 +240,7 @@ export const MilitaryModule = {
     ...MilitaryLifeResolvers,
     ...SchoolResolvers,
     ...CareerFieldResolvers,
+    ...TransitionResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {

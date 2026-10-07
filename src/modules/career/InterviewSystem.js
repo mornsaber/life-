@@ -7,6 +7,7 @@
  */
 import { serviceHiringBonus } from '../service/NationalService.js';
 import { clearanceHiringBonus } from './ClearedWork.js';
+import { transitionHiringBonus } from '../military/Transition.js';
 import { reentryPenalty, rehireStanding, ownerEntryLevel, ownerExperienceBonus } from '../org/Reentry.js';
 import { valuedCredentials } from '../credentials/CredentialRegistry.js';
 import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
@@ -192,6 +193,7 @@ export function candidateBonus(state, profession) {
   if (veteran) bonus += profession.sector === 'private' ? 0.04 : 0.08;
   bonus += serviceHiringBonus(state, profession);
   bonus += clearanceHiringBonus(state, profession);
+  bonus += transitionHiringBonus(state);
   if (profession.id === 'fire' && state.emergency.fire) bonus += 0.1;
   if (profession.id === 'police' && state.emergency.police) bonus += 0.1;
   if ((profession.id === 'parkService' || profession.id === 'ems') && state.emergency.sar) bonus += 0.06;
