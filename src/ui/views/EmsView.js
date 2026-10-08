@@ -1,0 +1,48 @@
+/** Life on the ambulance on the Career tab: agency, shift, assignments, calls. */
+import { esc, button, card, chip, kv, meter } from '../Components.js';
+import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, agencyEligibility, emsPayAdjust, shiftAllowed } from '../../modules/ems/EmsLife.js';
+import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
+
+export function emsCard(state) {
+  const job = state.career.job;
+  const e = state.ems;
+  if (job?.professionId !== 'ems' || !e) return '';
+  const a = AGENCIES[e.agency];
+  const sh = SHIFTS[e.shift] ?? SHIFTS['24-48'];
+  const moved = Boolean(state.yearly['ems.agency']);
+  const bid = Boolean(state.yearly['ems.shift']);
+  const medic = hasCredential(state, 'paramedic');
+  const agencies = Object.entries(AGENCIES).map(([id, x]) => {
+    const c = agencyEligibility(state, id);
+    return button(`${x.icon} ${x.name}`, 'emsLife.agency', { arg: id, variant: e.agency === id ? 'small on' : 'small', disabled: e.agency === id || moved || !c.ok, hint: c.ok ? `Pay ×${x.pay} · ${x.desc}` : c.reason });
+  }).join('');
+  const shifts = Object.entries(SHIFTS).map(([id, x]) => button(`${x.icon} ${x.name}`, 'emsLife.shift', { arg: id, variant: e.shift === id ? 'small on' : 'small', disabled: e.shift === id || bid || !shiftAllowed(state, id), hint: shiftAllowed(state, id) ? `Pay ×${x.pay} · ${x.desc}` : 'Not offered by your agency' })).join('');
+  const assignments = Object.entries(ASSIGNMENTS).map(([id, x]) => {
+    const on = Boolean(e.assignments?.[id]);
+    const blocked = !on && ((x.cred && !hasCredential(state, x.cred)) || (!medic && id !== 'peer'));
+    const why = x.cred && !hasCredential(state, x.cred) ? 'Needs the certification (Licenses tab)' : !medic && id !== 'peer' ? 'Paramedics only' : x.desc;
+    return button(`${x.icon} ${on ? '✓ ' : ''}${x.name}`, 'emsLife.assignment', { arg: id, variant: on ? 'small on' : 'small', disabled: blocked, hint: blocked ? why : `${x.pay ? `+$${x.pay.toLocaleString()}/yr · ` : ''}${x.desc}` });
+  }).join('');
+  const burn = e.burnout ?? 0;
+  const tally = [
+    ['🚑', 'runs', e.calls], ['💓', 'saves', e.saves], ['👶', 'babies delivered', e.babies], ['💉', 'Narcan given', e.narcan], ['🚌', 'MCIs', e.mci], ['🕯️', 'critical incidents', e.incidents],
+  ].filter(([, , n]) => n).map(([i, l, n]) => chip(`${i} ${Number(n).toLocaleString()} ${l}`)).join(' ');
+  return card('On the Ambulance', `${kv([
+    ['Agency', a ? `${a.icon} ${esc(a.name)}` : 'Choosing…'],
+    ['Shift', `${sh.icon} ${esc(sh.name)}`],
+    ['Pay vs. base', `×${emsPayAdjust(state).toFixed(2)}`],
+    ['Recertification', `${Math.min(e.ce ?? 0, CE_HOURS)}/${CE_HOURS} CE hours${e.ceDueAge ? ` · due at ${e.ceDueAge}` : ''}`],
+  ])}
+    ${meter(burn, { max: 100, label: 'Burnout', suffix: '/100', tone: burn >= 70 ? 'bad' : burn >= 45 ? 'mid' : 'good' })}
+    ${meter(Math.min(e.ce ?? 0, CE_HOURS), { max: CE_HOURS, label: 'Continuing education', suffix: ` / ${CE_HOURS} h`, tone: (e.ce ?? 0) >= CE_HOURS ? 'good' : 'mid' })}
+    ${tally ? `<div class="chip-row">${tally}</div>` : ''}
+    <div class="action-grid">
+      ${button('⏰ Pick up overtime', 'emsLife.overtime', { variant: 'small', disabled: (state.yearly['ems.overtime'] ?? 0) >= 2, hint: 'Time-and-a-half; more burnout' })}
+      ${button('📚 Continuing education', 'emsLife.ce', { variant: 'small', disabled: Boolean(state.yearly['ems.ce']), hint: `+36 hours toward ${CE_HOURS}` })}
+      ${button('🫂 Stress debriefing', 'emsLife.cism', { variant: 'small', disabled: Boolean(state.yearly['ems.cism']), hint: 'Less trauma and burnout' })}
+    </div>
+    <h4 class="sub">Agency${moved ? ' (moved this year)' : ''}</h4><div class="toggle-row">${agencies}</div>
+    <h4 class="sub">Shift bid${bid ? ' (bid this year)' : ''}</h4><div class="toggle-row">${shifts}</div>
+    <h4 class="sub">Special assignments (up to two)</h4><div class="toggle-row">${assignments}</div>
+    <p class="fine">EMT → AEMT → Paramedic → Critical Care → Flight. Recertify every two years. Years on the ambulance count toward PA school, and paramedics get a year off nursing school.</p>`, { icon: '🚑', accent: 'red' });
+}

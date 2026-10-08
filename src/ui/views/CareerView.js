@@ -35,6 +35,7 @@ import { BASES } from '../../modules/career/WorkplaceClaims.js';
 import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS, EMERITUS_BY_PROFESSION } from '../../modules/career/Emeritus.js';
 import { researchCard } from './AcademiaView.js';
 import { medPracticeCard } from './MedicalView.js';
+import { emsCard } from './EmsView.js';
 import { publishingCard, adjunctCard } from './HigherEdView.js';
 import { labCard } from './LabView.js';
 
@@ -363,7 +364,7 @@ export function careerView(state, ui = {}) {
     : empty('No previous jobs.');
   // No job: the job board comes first, before everything else on this screen.
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰' });
-  return `${current}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${emsCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */
