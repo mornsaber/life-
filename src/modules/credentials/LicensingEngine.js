@@ -150,6 +150,7 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   if (held?.status === 'suspended') return { ok: false, reason: `Suspended until ${held.until}` };
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
   if (hasCredential(state, id)) return { ok: false, reason: 'Covered by a higher credential' };
+  if (cred.grantedBy) return { ok: false, reason: cred.grantedBy };
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };

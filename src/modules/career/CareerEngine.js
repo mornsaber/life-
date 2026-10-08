@@ -344,7 +344,7 @@ export function promotionStatus(state) {
     const left = Math.max(0, level.years - job.yearsInLevel);
     return { eligible: false, reason: left ? `Tenure review in ${left} yr${left > 1 ? 's' : ''}` : 'Your tenure case is under review', options: [], all, tenureTrack: true };
   }
-  if (!all.length) return { eligible: false, reason: 'The next post is a gubernatorial appointment', options: [], all, appointable: next };
+  if (!all.length) return { eligible: false, reason: `The next post is appointed by ${next[0].appointedBy ?? 'the governor'}`, options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
   if (job.yearsInLevel < levelYears(job, level)) {
     const left = level.years - job.yearsInLevel;

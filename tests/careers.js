@@ -63,6 +63,7 @@ function obtainable(credId, professionId, seen = new Set()) {
   seen.add(credId);
   const c = CREDENTIALS[credId];
   if (!c) return `${credId} doesn't exist`;
+  if (c.grantedBy) return null; // earned through a selection process elsewhere in the game
   const sponsors = c.sponsors?.professions ?? [];
   const services = c.sponsors?.services ?? [];
   const fundedByLadder = professionId && REQUIRED_BY[credId]?.has(professionId);
@@ -169,7 +170,7 @@ for (const [pid, p] of Object.entries(PROFESSIONS)) {
     for (const c of credentialPlan(state, l.req?.credentials ?? [])) {
       state.yearly = {};
       const e = pursueEligibility(state, c);
-      if (!e.ok && !/Held|Covered|In training/.test(e.reason)) flag(`${pid}.${l.id}`, `can't earn ${c} on the job: ${e.reason}`);
+      if (!e.ok && !CREDENTIALS[c]?.grantedBy && !/Held|Covered|In training/.test(e.reason)) flag(`${pid}.${l.id}`, `can't earn ${c} on the job: ${e.reason}`);
       grantCredential(ctx, c, { silent: true });
     }
   }
