@@ -70,6 +70,16 @@ export const ORG_TYPES = {
     ],
   },
 
+  airportAuthority: {
+    name: (c) => `${city(c)} International Airport Authority`, scope: 'region', sector: 'municipal',
+    head: { title: 'Airport Director', selection: 'board', appointedBy: 'the airport commission' },
+    departments: [
+      { id: 'police', name: 'Airport Police', occupations: ['airportPolice'], head: { title: 'Chief of Airport Police', selection: 'appointed', appointedBy: 'the airport director', occupation: 'airportPolice', levelId: 'chief' } },
+      { id: 'arff', name: 'Aircraft Rescue & Firefighting', occupations: ['airportFire'], head: { title: 'Airport Fire Chief', selection: 'appointed', appointedBy: 'the airport director', occupation: 'airportFire', levelId: 'chief' } },
+      { id: 'admin', name: 'Airport Administration', occupations: ['municipalAdmin'], head: { title: 'Deputy Airport Director', selection: 'internal' } },
+    ],
+  },
+
   /* ---------------- State government ---------------- */
   statePublicSafety: {
     name: (c) => `${c.state} Department of Public Safety`, scope: 'state', sector: 'state',

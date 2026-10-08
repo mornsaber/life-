@@ -1,6 +1,7 @@
 /**
  * Police work beyond the ladder (city police, sheriff's deputies, state
- * troopers, transit police).
+ * troopers, transit police, airport police, and campus / hospital /
+ * railroad special police).
  *
  *   Where & when   A precinct or patrol area (downtown, suburbs, the
  *                  busiest district, rural county) and a shift (days,
@@ -32,15 +33,20 @@ import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 
-export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice'];
+export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice'];
 export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
 
+const CITY = ['police', 'sheriff', 'transitPolice'];
+
 export const AREAS = {
-  downtown: { name: 'Downtown precinct', icon: '🏙️', calls: 1.1, risk: 1.0, stress: 4, desc: 'Bars, protests, tourists and the homeless shelter.' },
-  suburban: { name: 'Residential district', icon: '🏡', calls: 0.75, risk: 0.6, stress: 2, desc: 'Burglaries, fender-benders and noise complaints. Quieter.' },
-  district: { name: 'The busiest district', icon: '🚨', calls: 1.4, risk: 1.6, stress: 6, commend: 1.5, complaints: 1.4, desc: 'Most of the city\'s shootings. Busy every shift — commendations and complaints both.' },
-  rural: { name: 'Rural patrol area', icon: '🌾', calls: 0.5, risk: 0.9, stress: 3, desc: 'Huge territory, backup twenty minutes away.' },
+  downtown: { name: 'Downtown precinct', icon: '🏙️', calls: 1.1, risk: 1.0, stress: 4, only: CITY, desc: 'Bars, protests, tourists and the homeless shelter.' },
+  suburban: { name: 'Residential district', icon: '🏡', calls: 0.75, risk: 0.6, stress: 2, only: CITY, desc: 'Burglaries, fender-benders and noise complaints. Quieter.' },
+  district: { name: 'The busiest district', icon: '🚨', calls: 1.4, risk: 1.6, stress: 6, commend: 1.5, complaints: 1.4, only: CITY, desc: 'Most of the city\'s shootings. Busy every shift — commendations and complaints both.' },
+  rural: { name: 'Rural patrol area', icon: '🌾', calls: 0.5, risk: 0.9, stress: 3, only: ['sheriff', 'statePolice'], desc: 'Huge territory, backup twenty minutes away.' },
   highway: { name: 'Highway patrol', icon: '🛣️', calls: 0.8, risk: 0.9, stress: 3, only: ['statePolice'], desc: 'Crashes, DUIs and interdiction stops on the interstate.' },
+  terminal: { name: 'Terminals & curbside', icon: '🛄', calls: 0.9, risk: 0.5, stress: 3, only: ['airportPolice'], desc: 'Unruly passengers, unattended bags, lost children and curbside chaos.' },
+  airfield: { name: 'Airfield & cargo', icon: '🛫', calls: 0.5, risk: 0.6, stress: 2, only: ['airportPolice'], desc: 'Perimeter fence, cargo theft and runway incursions.' },
+  campus: { name: 'Campus / hospital patrol', icon: '🏫', calls: 0.6, risk: 0.5, stress: 2, only: ['privatePolice'], desc: 'Dorms, emergency rooms and parking structures — or the rail yards.' },
 };
 
 export const SHIFTS = {
@@ -226,7 +232,7 @@ export const PoliceLifeModule = {
       const p = pd(ctx.state);
       p.unit = null;
       p.bureau = null;
-      if (!p.area || (AREAS[p.area].only && !AREAS[p.area].only.includes(job.professionId))) p.area = job.professionId === 'statePolice' ? 'highway' : job.professionId === 'sheriff' ? 'rural' : 'downtown';
+      if (!p.area || (AREAS[p.area].only && !AREAS[p.area].only.includes(job.professionId))) p.area = { statePolice: 'highway', sheriff: 'rural', airportPolice: 'terminal', privatePolice: 'campus' }[job.professionId] ?? 'downtown';
       applyPay(ctx.state, job);
     });
   },

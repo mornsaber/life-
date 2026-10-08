@@ -72,8 +72,8 @@ export const CREDENTIALS = {
   boardCertified: { name: 'Board Certification', icon: '🏅', category: 'health', kind: 'certification', requires: { credentials: ['medicalLicense'], experience: { professions: ['medical'], years: 3 } }, cost: 2500, exam: D('smarts', 0.15), renewYears: 10, renewCost: 1500, sponsors: { professions: ['medical'] }, revokeOn: ['felony', 'prescriptionFraud'] },
 
   /* ---------------- Fire & law enforcement ---------------- */
-  ff1: { name: 'Firefighter I', icon: '🧑‍🚒', category: 'publicSafety', kind: 'certification', requires: { fitness: 45, age: 16 }, cost: 2500, exam: D('fitness', 0.15), academy: ['fire'], sponsors: { professions: ['fire'], services: ['fire'] } },
-  ff2: { name: 'Firefighter II', icon: '🔥', category: 'publicSafety', kind: 'certification', requires: { credentials: ['ff1'] }, cost: 2000, exam: D('fitness', 0.2), implies: ['ff1'], academy: ['fire'], sponsors: { professions: ['fire'], services: ['fire'] } },
+  ff1: { name: 'Firefighter I', icon: '🧑‍🚒', category: 'publicSafety', kind: 'certification', requires: { fitness: 45, age: 16 }, cost: 2500, exam: D('fitness', 0.15), academy: ['fire', 'airportFire'], sponsors: { professions: ['fire', 'airportFire'], services: ['fire'] } },
+  ff2: { name: 'Firefighter II', icon: '🔥', category: 'publicSafety', kind: 'certification', requires: { credentials: ['ff1'] }, cost: 2000, exam: D('fitness', 0.2), implies: ['ff1'], academy: ['fire', 'airportFire'], sponsors: { professions: ['fire', 'airportFire'], services: ['fire'] } },
   hazmatOps: { name: 'HazMat Operations', icon: '☣️', category: 'publicSafety', kind: 'certification', requires: { age: 18 }, cost: 900, exam: D('smarts', 0.15), sponsors: { professions: ['fire', 'ems', 'privateEms', 'police', 'publicWorks'], services: ['fire', 'ambulance', 'cert', 'mrc'] } },
   driverOperator: { name: 'Driver/Operator (Pumper)', icon: '🚒', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['fire'], credentials: ['ff2', 'driverLicense'] }, cost: 1500, exam: D('smarts', 0.2), sponsors: { professions: ['fire'], services: ['fire'] }, suspendOn: { dui: 1 } },
   fireOfficer1: { name: 'Fire Officer I', icon: '🎖️', category: 'publicSafety', kind: 'certification', requires: { affiliation: ['fire'], credentials: ['driverOperator'] }, cost: 2200, exam: D('smarts', 0.25), sponsors: { professions: ['fire'], services: ['fire'] } },
@@ -127,6 +127,7 @@ export const CREDENTIALS = {
   nrcpn: { name: 'Neonatal/Pediatric Specialist (RRT-NPS)', icon: '👶', category: 'health', kind: 'certification', requires: { credentials: ['rrt'], experience: { professions: ['respiratoryTherapy'], years: 1 } }, cost: 300, exam: D('smarts', 0.3), renewYears: 5, renewCost: 100, sponsors: { professions: ['respiratoryTherapy'] }, valuedBy: ['respiratoryTherapy'] },
   caqPa: { name: 'PA Certificate of Added Qualifications (CAQ)', icon: '🩻', category: 'health', kind: 'certification', requires: { credentials: ['paLicense'], experience: { professions: ['physicianAssistant'], years: 2 } }, cost: 650, exam: D('smarts', 0.33), renewYears: 10, renewCost: 350, sponsors: { professions: ['physicianAssistant'] }, valuedBy: ['physicianAssistant'] },
   sesCert: { name: 'Senior Executive Service Certification (OPM QRB)', icon: '🏛️', category: 'government', kind: 'internal', requires: { age: 30 }, cost: 0, exam: D('smarts', 0.3), grantedBy: 'Earned through the Senior Executive Service process on the Career tab (Candidate Development Program or ECQ application)' },
+  arff: { name: 'Aircraft Rescue & Firefighting (ARFF, FAA Part 139)', icon: '✈️', category: 'publicSafety', kind: 'certification', requires: { credentials: ['ff1'] }, cost: 1800, exam: D('smarts', 0.2), renewYears: 1, renewCost: 300, academy: ['airportFire'], sponsors: { professions: ['airportFire', 'fire'] }, valuedBy: ['airportFire', 'fire'] },
   hamTech: { name: 'Amateur Radio License (Technician)', icon: '📻', category: 'rescue', kind: 'license', requires: { age: 10 }, cost: 35, exam: D('smarts', 0.15), renewYears: 10, renewCost: 0 },
   rehs: { name: 'Registered Environmental Health Specialist (REHS)', icon: '🧫', category: 'government', kind: 'license', requires: { education: { level: 'bachelor' }, experience: { professions: ['publicHealth'], years: 1 } }, cost: 400, exam: D('smarts', 0.3), renewYears: 2, renewCost: 100, sponsors: { professions: ['publicHealth'] } },
   cph: { name: 'Certified in Public Health (CPH)', icon: '🧫', category: 'government', kind: 'certification', requires: { education: { program: 'mph' } }, cost: 400, exam: D('smarts', 0.3), renewYears: 2, renewCost: 100, sponsors: { professions: ['publicHealth'] }, valuedBy: ['publicHealth', 'regulatory'] },
@@ -304,10 +305,10 @@ export const REQUIRED_BY = {};
  * course as a city police sergeant.
  */
 export const AGENCY_FAMILIES = {
-  sworn: ['police', 'sheriff', 'statePolice', 'privatePolice', 'transitPolice', 'gameWarden', 'parkService', 'oig', 'fbi', 'dea', 'atf', 'usms', 'usss'],
+  sworn: ['police', 'sheriff', 'statePolice', 'privatePolice', 'transitPolice', 'airportPolice', 'gameWarden', 'parkService', 'oig', 'fbi', 'dea', 'atf', 'usms', 'usss'],
   custody: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'sheriff', 'probation'],
-  crisis: ['ems', 'privateEms', 'fire', 'dispatch', 'socialWork', 'cps', 'nursing', 'publicHealth'],
-  patrol: ['police', 'sheriff', 'statePolice', 'transitPolice', 'privatePolice'],
+  crisis: ['ems', 'privateEms', 'fire', 'airportFire', 'dispatch', 'socialWork', 'cps', 'nursing', 'publicHealth'],
+  patrol: ['police', 'sheriff', 'statePolice', 'transitPolice', 'privatePolice', 'airportPolice'],
 };
 const COURSE_FAMILIES = {
   fto: ['sworn', 'custody'],

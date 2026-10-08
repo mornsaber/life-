@@ -27,6 +27,7 @@ import { JUSTICE_PROFESSIONS } from './JusticeCareers.js';
 import { MORE_PROFESSIONS } from './MoreProfessions.js';
 import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
+import { AIRPORT_PROFESSIONS } from './AirportCareers.js';
 import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
 import { TRADE_PROFESSIONS } from './TradeCareers.js';
 import { WORKFORCE_PROFESSIONS } from './WorkforceCareers.js';
@@ -468,7 +469,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -497,7 +498,7 @@ export const JOB_FIELDS = {
   tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'research', 'nationalLab', 'engineering', 'architecture', 'dot', 'planning', 'environmental', 'meteorology', 'surveying', 'gameDevelopment'] },
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'privateEms', 'publicHealth', 'socialWork', 'cps', 'caregiving', 'childcare'] },
   therapy: { label: 'Therapy, Mental & Allied Health', icon: '🧠', ids: ['counseling', 'psychology', 'dietitian', 'imaging', 'respiratoryTherapy', 'dentalHygiene', 'occupationalTherapy', 'speechPathology', 'optometry', 'chiropractic'] },
-  safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'fire', 'dispatch', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
+  safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'airportPolice', 'fire', 'airportFire', 'dispatch', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
   education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'interpreter'] },

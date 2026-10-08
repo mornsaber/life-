@@ -26,7 +26,9 @@ import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 
-export const isFirefighter = (job) => job?.professionId === 'fire';
+export const FIRE_PROFESSIONS = ['fire', 'airportFire'];
+export const isFirefighter = (job) => FIRE_PROFESSIONS.includes(job?.professionId);
+const ARFF_STATIONS = ['airport'];
 
 export const STATIONS = {
   engine: { name: 'Downtown engine company', icon: '🚒', runs: 1.3, fires: 1.4, risk: 1.1, desc: 'The busiest house in the city: medical calls all day, working fires every week.' },
@@ -59,8 +61,10 @@ const fl = (state) => state.fireLife;
 
 export function stationEligibility(state, id) {
   const st = STATIONS[id];
-  if (!st || !isFirefighter(state.career.job)) return { ok: false, reason: 'Firefighters only' };
-  if (st.years && yearsInProfession(state, ['fire']) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
+  const job = state.career.job;
+  if (!st || !isFirefighter(job)) return { ok: false, reason: 'Firefighters only' };
+  if (job.professionId === 'airportFire' && !ARFF_STATIONS.includes(id)) return { ok: false, reason: 'Airport firefighters work the airport' };
+  if (st.years && job.professionId !== 'airportFire' && yearsInProfession(state, FIRE_PROFESSIONS) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
   if (st.cred && !hasCredential(state, st.cred)) return { ok: false, reason: 'Needs HazMat Operations' };
   return { ok: true };
 }
@@ -68,8 +72,9 @@ export function stationEligibility(state, id) {
 export function teamEligibility(state, id) {
   const t = TEAMS[id];
   if (!t || !isFirefighter(state.career.job)) return { ok: false, reason: 'Firefighters only' };
+  if (state.career.job.professionId === 'airportFire' && ['strike', 'dive'].includes(id)) return { ok: false, reason: 'Not an airport fire department team' };
   if (t.cred && !hasCredential(state, t.cred)) return { ok: false, reason: { paramedic: 'Needs a paramedic certification', hazmatOps: 'Needs HazMat Operations', fireOfficer1: 'Needs Fire Officer I' }[t.cred] };
-  if (t.years && yearsInProfession(state, ['fire']) < t.years) return { ok: false, reason: `${t.years} years on the job first` };
+  if (t.years && yearsInProfession(state, FIRE_PROFESSIONS) < t.years) return { ok: false, reason: `${t.years} years on the job first` };
   if (t.fitness && state.stats.fitness < t.fitness) return { ok: false, reason: `Needs ${t.fitness}+ fitness` };
   if (!fl(state).teams[id] && Object.keys(fl(state).teams).length >= MAX_TEAMS) return { ok: false, reason: `${MAX_TEAMS} teams at most` };
   return { ok: true };
@@ -106,17 +111,36 @@ const CALLS = [
   ] },
 ];
 
+const ARFF_CALLS = [
+  { id: 'alert2', icon: '🛬', title: 'Alert 2: Landing Gear', text: 'A regional jet with 70 aboard reports a landing-gear indication. You stage your crash trucks along the runway.', options: [
+    { id: 'stage', label: '🚒 Stage at the predicted stopping point', check: 45, text: 'The gear held. The jet rolled past your trucks and the passengers applauded you through the windows.', perf: 5, fail: { text: 'The nose gear collapsed. You foamed the sparks before anything caught; everyone walked off.', perf: 8, save: 1 } },
+  ] },
+  { id: 'crash', icon: '🔥', title: 'Alert 3: Aircraft Down', text: 'A cargo plane overran the runway and is burning in the grass. Two crew are in the cockpit.', options: [
+    { id: 'foam', label: '💦 Foam a path and pull the crew', check: 55, text: 'Your crash truck laid foam on the move; your crew cut the crew out. Both lived.', perf: 15, save: 2, valor: true, trauma: 12, exposure: 2, fail: { text: 'The fuel fire beat you to the cockpit.', trauma: 22, exposure: 2 } },
+  ] },
+  { id: 'fuel', icon: '⛽', title: 'Fuel Spill at the Gate', text: 'A fueling truck dumped 300 gallons of jet fuel under a loaded plane at the gate.', options: [
+    { id: 'blanket', label: '🧯 Blanket it with foam and deplane', text: 'No ignition. The flight left two hours late.', perf: 5 },
+  ] },
+  { id: 'terminal', icon: '❤️', title: 'Cardiac Arrest in the Terminal', text: 'A traveler collapses at Gate B14. ARFF crews are the airport\'s first responders.', options: [
+    { id: 'cpr', label: '❤️ CPR and the AED', check: 40, text: 'A pulse before the ambulance arrived. He made his next flight — in a month.', perf: 4, save: 1, fail: { text: 'You worked him the whole way to the ambulance.', trauma: 2 } },
+  ] },
+];
+
 function callPrompt(ctx) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'fireLife.call')) return;
   const st = fl(state).station;
+  if (st === 'airport' && rng.chance(0.75)) {
+    const a = rng.pick(ARFF_CALLS.filter((c) => c.id !== 'crash' || rng.chance(0.25)));
+    return ctx.prompt({ type: 'fireLife.call', icon: a.icon, title: a.title, text: a.text, options: a.options.map(({ id, label }) => ({ id, label })), data: { callId: a.id } });
+  }
   const pool = CALLS.filter((c) => (c.id !== 'brush' || st === 'wildland' || rng.chance(0.3)) && (c.id !== 'hazmat' || st === 'hazmat' || rng.chance(0.4)) && (c.id !== 'mayday' || rng.chance(0.4)));
   const c = rng.pick(pool);
   ctx.prompt({ type: 'fireLife.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label }) => ({ id, label })), data: { callId: c.id } });
 }
 
 export function fireSkill(state, { fitness = false } = {}) {
-  const years = yearsInProfession(state, ['fire']);
+  const years = yearsInProfession(state, FIRE_PROFESSIONS);
   const certs = ['ff2', 'emt', 'paramedic', 'hazmatOps', 'driverOperator'].filter((c) => hasCredential(state, c)).length;
   return state.stats.smarts * 0.3 + Math.min(25, years * 2.5) + certs * 3 + (fitness ? (state.stats.fitness - 50) * 0.5 : (state.stats.fitness - 50) * 0.15);
 }
@@ -155,7 +179,7 @@ export const FireLifeModule = {
       if (!isFirefighter(job)) return;
       const f = fl(ctx.state);
       f.teams = {};
-      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = 'engine';
+      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = job.professionId === 'airportFire' ? 'airport' : 'engine';
     });
   },
   onAgeUp(ctx) {
@@ -271,7 +295,7 @@ export const FireLifeModule = {
   resolvers: {
     call(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const c = CALLS.find((x) => x.id === data.callId);
+      const c = [...CALLS, ...ARFF_CALLS].find((x) => x.id === data.callId);
       const o = c?.options.find((x) => x.id === optionId);
       if (!o) return;
       const fx = o.check != null && fireSkill(state, { fitness: o.fitness }) + rng.int(-20, 20) < o.check ? o.fail : o;
