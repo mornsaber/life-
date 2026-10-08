@@ -69,7 +69,12 @@ export function nextLevels(profession, size, levelId) {
     return ['ic', 'mgmt'].map((t) => after.find((l) => l.track === t)).filter(Boolean);
   }
   const next = after.find((l) => l.track === current.track);
-  return next ? [next] : [];
+  if (next) return [next];
+  // The end of a specialist (or management) track: senior people compete for
+  // the next rung on the other track rather than staying stuck forever.
+  const other = ladder.filter((l) => (l.track === 'ic' || l.track === 'mgmt') && l.track !== current.track && l.grade > current.grade && !l.appointed);
+  const cross = other.sort((a, b) => a.grade - b.grade)[0];
+  return cross ? [cross] : [];
 }
 
 /** One step down for demotions: previous level on the same track, else the last shared level. */

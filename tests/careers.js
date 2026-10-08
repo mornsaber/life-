@@ -25,6 +25,7 @@ import { hire } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { pursueEligibility, grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { credentialPlan } from '../src/modules/career/Tenure.js';
+import { ladderFor, nextLevels } from '../src/modules/career/Ladder.js';
 
 const problems = [];
 const flag = (where, msg) => problems.push(`${where}: ${msg}`);
@@ -203,6 +204,17 @@ for (const [key, prog] of Object.entries(TRAINEE_LEVELS)) {
   if (!PROFESSIONS[pid] || pid === 'medical' || pid === 'catholicClergy') continue; // the Match and ordination have their own tests
   const results = [0, 1, 2].map((i) => runTrainee(key, prog, 5000 + Object.keys(TRAINEE_LEVELS).indexOf(key) * 7 + i));
   if (results.every(Boolean)) flag(`trainee ${key}`, results[0]);
+}
+
+// No dead ends: every level below the top of a ladder leads somewhere (the end
+// of a specialist track crosses over into management, and vice versa).
+for (const p of Object.values(PROFESSIONS)) {
+  for (const size of ['small', 'medium', 'large', 'enterprise']) {
+    const ladder = ladderFor(p, size);
+    if (!ladder.length) continue;
+    const top = Math.max(...ladder.map((l) => l.grade));
+    for (const l of ladder) if (!l.appointed && !l.abilities?.includes('exec') && l.grade <= Math.min(5, top - 2) && !nextLevels(p, size, l.id).length) flag(`dead-end level ${p.id}.${l.id}`, `${size} ladder tops out at G${top}`);
+  }
 }
 
 if (problems.length) {
