@@ -70,6 +70,7 @@ tests/         scenarios · simulate (randomized lives + render every tab) · sa
                orgfuzz (random lives checking organization invariants) · executives (head posts & executive search)
                military (units, special ops, UCMJ, tours, boards) · service (volunteer orgs, national & state service)
                clearances (cleared pay, recruiters, sponsorship, lapse) · intel (polygraph, cover, stations, ops)
+               newcareers (program → credential → job for newer careers)
 ```
 
 Modules mutate only their own slice; cross-domain effects travel over the bus
