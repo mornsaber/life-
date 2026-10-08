@@ -12,7 +12,7 @@ import { reportMisconduct, UCMJ_OFFENSES } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
 import { warFactor, combatFactor } from '../world/War.js';
-import { upOrOut, noTenureLimit, mustRetire } from './Separation.js';
+import { upOrOut, mustRetire } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {

@@ -13,7 +13,7 @@ import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, co
 import { annualReview } from './MedalEngine.js';
 import { warFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
-import { upOrOut, noTenureLimit, mustRetire } from './Separation.js';
+import { upOrOut, mustRetire } from './Separation.js';
 
 /** 48 drill periods (each a day's pay) + 15 days annual training ≈ 2.1 months of base pay. */
 export const DRILL_PAY_MONTHS = 2.1;
