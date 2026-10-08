@@ -26,9 +26,13 @@ import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 
-export const FIRE_PROFESSIONS = ['fire', 'airportFire'];
+export const FIRE_PROFESSIONS = ['fire', 'airportFire', 'stateFire'];
 export const isFirefighter = (job) => FIRE_PROFESSIONS.includes(job?.professionId);
-const ARFF_STATIONS = ['airport'];
+/** Departments that only run certain stations; everyone else runs the city ones. */
+const STATION_SETS = { airportFire: ['airport'], stateFire: ['forest', 'helitack', 'camp', 'airattack'] };
+const STATE_ONLY = STATION_SETS.stateFire;
+export const stationsFor = (professionId) => STATION_SETS[professionId] ?? Object.keys(STATIONS).filter((id) => !STATE_ONLY.includes(id));
+const DEFAULT_STATION = { airportFire: 'airport', stateFire: 'forest' };
 
 export const STATIONS = {
   engine: { name: 'Downtown engine company', icon: '🚒', runs: 1.3, fires: 1.4, risk: 1.1, desc: 'The busiest house in the city: medical calls all day, working fires every week.' },
@@ -38,12 +42,18 @@ export const STATIONS = {
   airport: { name: 'Airport crash-fire-rescue', icon: '✈️', runs: 0.3, fires: 0.2, risk: 0.6, years: 2, desc: 'Foam trucks at the runway: quiet for years, then everything at once.' },
   hazmat: { name: 'Hazmat company', icon: '☣️', runs: 0.7, fires: 0.6, risk: 1.0, cred: 'hazmatOps', desc: 'Chemical leaks, tanker rollovers and suspicious powders.' },
   wildland: { name: 'Wildland-urban interface station', icon: '🌲', runs: 0.7, fires: 0.9, risk: 1.0, desc: 'Brush trucks and a fire season that gets longer every year.' },
+  // State fire agency (CAL FIRE-style): wildland protection of state responsibility lands.
+  forest: { name: 'Forest fire station (engine crew)', icon: '🚒', runs: 0.35, fires: 1.6, risk: 1.1, desc: 'A Type 3 engine in the hills: initial attack all summer, medical aids and wrecks in winter.' },
+  helitack: { name: 'Helitack base', icon: '🚁', runs: 0.2, fires: 1.8, risk: 1.4, years: 2, cred: 'wildlandFF1', desc: 'Fly to new starts and cut line before they grow — rappel in where trucks can\'t go.' },
+  camp: { name: 'Conservation camp (hand crews)', icon: '🪓', runs: 0.15, fires: 1.5, risk: 1.2, years: 3, desc: 'Lead hand crews cutting line on the big fires; fuels projects the rest of the year.' },
+  airattack: { name: 'Air attack base', icon: '✈️', runs: 0.1, fires: 1.2, risk: 0.8, years: 8, cred: 'ics300', desc: 'Circle the fire in the air-attack plane and direct tankers and helicopters.' },
 };
 
 export const SHIFTS = {
   '24-48': { name: '24 on / 48 off', icon: '🔁', desc: 'Ten shifts a month.' },
   '48-96': { name: '48 on / 96 off', icon: '🔂', desc: 'Two days on, four off — fewer commutes, longer tours.' },
   kelly: { name: 'Kelly schedule', icon: '📅', desc: '24/48 with an extra day off every few weeks.' },
+  season: { name: 'Fire season: 72 on / 24 off', icon: '🔥', desc: 'Wildland crews live at the station all summer, then get the winter off.' },
 };
 
 export const TEAMS = {
@@ -63,9 +73,9 @@ export function stationEligibility(state, id) {
   const st = STATIONS[id];
   const job = state.career.job;
   if (!st || !isFirefighter(job)) return { ok: false, reason: 'Firefighters only' };
-  if (job.professionId === 'airportFire' && !ARFF_STATIONS.includes(id)) return { ok: false, reason: 'Airport firefighters work the airport' };
+  if (!stationsFor(job.professionId).includes(id)) return { ok: false, reason: job.professionId === 'airportFire' ? 'Airport firefighters work the airport' : 'Not one of your department\'s stations' };
   if (st.years && job.professionId !== 'airportFire' && yearsInProfession(state, FIRE_PROFESSIONS) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
-  if (st.cred && !hasCredential(state, st.cred)) return { ok: false, reason: 'Needs HazMat Operations' };
+  if (st.cred && !hasCredential(state, st.cred)) return { ok: false, reason: { hazmatOps: 'Needs HazMat Operations', wildlandFF1: 'Needs Wildland Squad Boss (FFT1)', ics300: 'Needs ICS-300' }[st.cred] };
   return { ok: true };
 }
 
@@ -73,6 +83,7 @@ export function teamEligibility(state, id) {
   const t = TEAMS[id];
   if (!t || !isFirefighter(state.career.job)) return { ok: false, reason: 'Firefighters only' };
   if (state.career.job.professionId === 'airportFire' && ['strike', 'dive'].includes(id)) return { ok: false, reason: 'Not an airport fire department team' };
+  if (state.career.job.professionId === 'stateFire' && ['dive', 'hazmat'].includes(id)) return { ok: false, reason: 'Not a state fire agency team' };
   if (t.cred && !hasCredential(state, t.cred)) return { ok: false, reason: { paramedic: 'Needs a paramedic certification', hazmatOps: 'Needs HazMat Operations', fireOfficer1: 'Needs Fire Officer I' }[t.cred] };
   if (t.years && yearsInProfession(state, FIRE_PROFESSIONS) < t.years) return { ok: false, reason: `${t.years} years on the job first` };
   if (t.fitness && state.stats.fitness < t.fitness) return { ok: false, reason: `Needs ${t.fitness}+ fitness` };
@@ -126,10 +137,36 @@ const ARFF_CALLS = [
   ] },
 ];
 
+const WILDLAND_CALLS = [
+  { id: 'initialAttack', icon: '🔥', title: 'Initial Attack', text: 'A new start on a grassy slope, three acres and running uphill toward a ridge of houses. You\'re the first engine in.', options: [
+    { id: 'anchor', label: '🧑‍🚒 Anchor and flank it with hose lays', check: 45, text: 'You held it at eleven acres. Nobody outside the county will ever hear about it — that\'s the point.', perf: 8, exposure: 1, fail: { text: 'The wind came up and it crowned out of reach. It became a named fire.', perf: -2, exposure: 2 } },
+    { id: 'structure', label: '🏠 Go straight to the houses', text: 'Every house saved; the fire grew to 400 acres behind you.', perf: 4, exposure: 1 },
+  ] },
+  { id: 'burnover', icon: '🌪️', title: 'Burnover', text: 'The wind shifted and the fire is coming up the drainage at your crew. The safety zone is a quarter mile back.', options: [
+    { id: 'run', label: '🏃 Get everyone to the safety zone', check: 50, fitness: true, text: 'Everyone made it with a minute to spare. You counted heads twice.', perf: 10, save: 3, valor: true, trauma: 14, exposure: 2, fail: { text: 'You deployed fire shelters in the black. Everyone lived; two firefighters were burned.', trauma: 22, injury: 0.6, exposure: 3 } },
+    { id: 'shelter', label: '⛺ Deploy shelters where you are', check: 60, text: 'The front passed over you in ninety roaring seconds. Everyone came out of the shelters alive.', perf: 4, trauma: 20, exposure: 3, fail: { text: 'Not everyone came out. The investigation will take a year.', trauma: 30, injury: 1, exposure: 3 } },
+  ] },
+  { id: 'spot', icon: '💥', title: 'Spot Fire Across the Line', text: 'Embers landed across your dozer line. A spot fire is growing in unburned fuel.', options: [
+    { id: 'hit', label: '🪓 Pull the crew over and catch it', check: 45, fitness: true, text: 'Caught at half an acre. The line held.', perf: 7, exposure: 1, fail: { text: 'It got away and took two more days of line.', perf: -2, exposure: 2 } },
+    { id: 'air', label: '🚁 Call for a bucket drop', text: 'A helicopter knocked it down in two drops while your crew lined it.', perf: 5 },
+  ] },
+  { id: 'evac', icon: '🚗', title: 'Evacuation Gridlock', text: 'The only road out of a canyon is jammed and the fire is a mile away.', options: [
+    { id: 'shelterInPlace', label: '🏫 Shelter people at the school and defend it', check: 50, text: 'Three hundred people rode it out in the gym while you held the fire at the parking lot.', perf: 12, save: 5, valor: true, trauma: 10, exposure: 2, fail: { text: 'You held the school, but cars on the road burned. Most got out on foot.', trauma: 18, exposure: 2 } },
+    { id: 'escort', label: '🚒 Escort the line of cars out', text: 'Bumper to bumper through smoke, but everyone got out.', perf: 6, save: 2, exposure: 1 },
+  ] },
+  { id: 'medical', icon: '❤️', title: 'Medical Aid on the Fire Line', text: 'A hand-crew member collapsed with heat stroke on a steep slope.', options: [
+    { id: 'cool', label: '🧊 Cool him and call for a hoist', check: 40, text: 'A helicopter short-hauled him out. Full recovery.', perf: 4, save: 1, fail: { text: 'He went into kidney failure but survived after a week in the ICU.', trauma: 4 } },
+  ] },
+];
+
 function callPrompt(ctx) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'fireLife.call')) return;
   const st = fl(state).station;
+  if (state.career.job.professionId === 'stateFire' && rng.chance(0.8)) {
+    const w = rng.pick(WILDLAND_CALLS.filter((c) => c.id !== 'burnover' || rng.chance(0.4)));
+    return ctx.prompt({ type: 'fireLife.call', icon: w.icon, title: w.title, text: w.text, options: w.options.map(({ id, label }) => ({ id, label })), data: { callId: w.id } });
+  }
   if (st === 'airport' && rng.chance(0.75)) {
     const a = rng.pick(ARFF_CALLS.filter((c) => c.id !== 'crash' || rng.chance(0.25)));
     return ctx.prompt({ type: 'fireLife.call', icon: a.icon, title: a.title, text: a.text, options: a.options.map(({ id, label }) => ({ id, label })), data: { callId: a.id } });
@@ -141,7 +178,7 @@ function callPrompt(ctx) {
 
 export function fireSkill(state, { fitness = false } = {}) {
   const years = yearsInProfession(state, FIRE_PROFESSIONS);
-  const certs = ['ff2', 'emt', 'paramedic', 'hazmatOps', 'driverOperator'].filter((c) => hasCredential(state, c)).length;
+  const certs = ['ff2', 'emt', 'paramedic', 'hazmatOps', 'driverOperator', 'wildlandFF2', 'wildlandFF1'].filter((c) => hasCredential(state, c)).length;
   return state.stats.smarts * 0.3 + Math.min(25, years * 2.5) + certs * 3 + (fitness ? (state.stats.fitness - 50) * 0.5 : (state.stats.fitness - 50) * 0.15);
 }
 
@@ -179,7 +216,8 @@ export const FireLifeModule = {
       if (!isFirefighter(job)) return;
       const f = fl(ctx.state);
       f.teams = {};
-      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = job.professionId === 'airportFire' ? 'airport' : 'engine';
+      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = DEFAULT_STATION[job.professionId] ?? 'engine';
+      if (job.professionId === 'stateFire') f.shift = 'season';
     });
   },
   onAgeUp(ctx) {
@@ -193,14 +231,14 @@ export const FireLifeModule = {
       f.exposure = Math.round(f.exposure / 2);
     }
     if (!isFirefighter(job) || !job.paidThisYear || state.legal.incarceration) return;
-    const st = STATIONS[f.station] ?? STATIONS.engine;
+    const st = STATIONS[f.station] ?? STATIONS[DEFAULT_STATION[job.professionId] ?? 'engine'];
     const chiefRank = job.track === 'mgmt' && job.grade >= 7;
     const runs = chiefRank ? rng.int(150, 400) : Math.round(rng.int(1100, 2400) * st.runs);
     const fires = Math.round(rng.int(10, 45) * st.fires * (chiefRank ? 0.8 : 1));
     f.runs += runs;
     f.fires += fires;
     f.exposure += Math.round(fires / 15) + (f.decon ? 0 : 1);
-    ctx.log(`${runs.toLocaleString()} runs this year — about 70% medical — and ${fires} working fires.`, st.icon);
+    ctx.log(job.professionId === 'stateFire' ? `Fire season: ${fires} fires, from one-acre starts to a ${rng.int(20, 400)}-thousand-acre complex — and ${runs.toLocaleString()} medical aids and wrecks the rest of the year.` : `${runs.toLocaleString()} runs this year — about 70% medical — and ${fires} working fires.`, st.icon);
     ctx.emit('health:trauma', { amount: Math.round(st.risk * 2), source: 'firefighting' });
     ctx.stat('stress', 2 + Math.round(st.risk * 2));
     // Teams: stipends, deployments, risk.
@@ -295,7 +333,7 @@ export const FireLifeModule = {
   resolvers: {
     call(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const c = [...CALLS, ...ARFF_CALLS].find((x) => x.id === data.callId);
+      const c = [...CALLS, ...ARFF_CALLS, ...WILDLAND_CALLS].find((x) => x.id === data.callId);
       const o = c?.options.find((x) => x.id === optionId);
       if (!o) return;
       const fx = o.check != null && fireSkill(state, { fitness: o.fitness }) + rng.int(-20, 20) < o.check ? o.fail : o;

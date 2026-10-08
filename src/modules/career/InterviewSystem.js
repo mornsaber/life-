@@ -198,7 +198,7 @@ export function candidateBonus(state, profession) {
   if (profession.id === 'police' && state.emergency.police) bonus += 0.1;
   if ((['parkService', 'ems', 'privateEms'].includes(profession.id)) && state.emergency.sar) bonus += 0.06;
   if (['ems', 'privateEms', 'nursing', 'fire'].includes(profession.id) && state.emergency.ambulance) bonus += 0.08;
-  if (['fire', 'forester', 'parkService'].includes(profession.id) && state.emergency.wildland) bonus += 0.08;
+  if (['fire', 'stateFire', 'forester', 'parkService'].includes(profession.id) && state.emergency.wildland) bonus += 0.08;
   if (['parkService', 'gameWarden'].includes(profession.id) && state.emergency.auxiliary) bonus += 0.04;
   if (educationFields(state).has(profession.id)) bonus += 0.08;
   bonus += schoolPrestige(state) * 0.03;

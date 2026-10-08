@@ -21,6 +21,7 @@ export const EXAM_RANKS = {
   universityPolice: ['sergeant', 'lieutenant'],
   airportFire: ['lieutenant', 'captain', 'battalion'],
   fire: ['lieutenant', 'captain', 'battalion'],
+  stateFire: ['captain', 'battalion'],
 };
 export const LIST_YEARS = 3;
 /** Rank on the list you need to reach before you're promoted. */

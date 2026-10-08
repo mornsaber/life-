@@ -115,6 +115,7 @@ export const ORG_TYPES = {
     departments: [
       { id: 'wildlife', name: 'Fish & Wildlife Division', occupations: ['gameWarden'], head: { title: 'Chief Game Warden', selection: 'internal' } },
       { id: 'forestry', name: 'State Forestry', occupations: ['forester'], head: { title: 'State Forester', selection: 'internal' } },
+      { id: 'fireProtection', name: 'Forestry & Fire Protection', occupations: ['stateFire'], head: { title: 'Director & State Fire Chief', selection: 'appointed', appointedBy: 'the governor', occupation: 'stateFire', levelId: 'director' } },
       { id: 'environment', name: 'Environmental Protection Division', occupations: ['environmental'], head: { title: 'Director of Environmental Protection', selection: 'appointed', appointedBy: 'the governor' } },
     ],
   },

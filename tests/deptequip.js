@@ -1,7 +1,8 @@
 /**
- * Department equipment: fleets and facilities, the capital budget, buying,
- * leasing, refurbishing, retiring, bonds, readiness — and the new airport
- * police and fire departments.
+ * Equipment & facilities for every kind of owner: departments (capital
+ * budget, buying, leasing, refurbishing, retiring, bonds), businesses,
+ * volunteer companies and military units — plus the airport, university
+ * and state fire agencies.
  *
  *   node tests/deptequip.js
  */
@@ -13,7 +14,8 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
-import { DeptEquipmentModule, deptOf, readiness, canManage } from '../src/modules/publicsafety/DeptEquipment.js';
+import { EquipmentModule, GROUPS, contextOf, recordOf, readiness as readinessOf } from '../src/modules/equipment/Equipment.js';
+import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
 import { PoliceLifeModule } from '../src/modules/publicsafety/PoliceLife.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -34,29 +36,33 @@ function worker(seed, professionId, levelId, creds = []) {
   state.prompts = [];
   return { engine, state, ctx, job };
 }
-const tick = (ctx, state) => { state.career.job.paidThisYear = true; state.character.age += 1; state.yearly = {}; DeptEquipmentModule.onAgeUp(ctx); };
+const tick = (ctx, state) => { if (state.career.job) state.career.job.paidThisYear = true; state.character.age += 1; state.yearly = {}; EquipmentModule.onAgeUp(ctx); };
+const deptOf = (state, ref = 'job') => recordOf(state, contextOf(state, ref));
+const readiness = (state, ref = 'job') => readinessOf(state, contextOf(state, ref));
+const BUSINESS_GROUPS_OF = (c) => GROUPS[c.group].categories;
+const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
 
 const tests = {
   'a police captain manages the fleet: buy, lease, retire, bank'() {
     const { engine, state, ctx } = worker(1, 'police', 'captain', ['post', 'driverLicense', 'fto', 'supervisorCourse']);
-    assert.ok(canManage(state.career.job));
+    assert.ok(contextOf(state, 'job').manager);
     const d = deptOf(state);
     assert.ok(d.budget > 0, 'a capital budget');
     const before = d.units.patrol.length;
-    engine.dispatch('deptEquip.buy', 'patrol:hybrid');
-    engine.dispatch('deptEquip.buy', 'patrol:suv:lease');
+    engine.dispatch('deptEquip.buy', 'job|patrol:hybrid');
+    engine.dispatch('deptEquip.buy', 'job|patrol:suv:lease');
     assert.equal(d.units.patrol.length, before + 2);
-    engine.dispatch('deptEquip.retire', 'patrol');
+    engine.dispatch('deptEquip.retire', 'job|patrol');
     assert.equal(d.units.patrol.length, before + 1);
-    engine.dispatch('deptEquip.buy', 'stations:storefront');
-    engine.dispatch('deptEquip.bank');
+    engine.dispatch('deptEquip.buy', 'job|stations:storefront');
+    engine.dispatch('deptEquip.bank', 'job|');
     assert.ok(d.reserve > 0, 'banked for a big purchase');
     const r0 = readiness(state);
     for (let i = 0; i < 3; i++) tick(ctx, state);
     assert.ok(typeof readiness(state) === 'number' && r0 >= 0);
     const html = VIEWS.career(state, {});
     assert.match(html, /Department Fleet &amp; Facilities|Department Fleet & Facilities/);
-    assert.ok(!/NaN|undefined/.test(html));
+    clean(html);
   },
 
   'a fire chief refurbishes an engine and asks for a station bond'() {
@@ -64,10 +70,10 @@ const tests = {
     const d = deptOf(state);
     d.budget = 5_000_000;
     const oldest = Math.max(...d.units.engine.map((u) => u.age));
-    engine.dispatch('deptEquip.refurb', 'engine');
+    engine.dispatch('deptEquip.refurb', 'job|engine');
     assert.ok(Math.max(...d.units.engine.map((u) => u.age)) <= oldest, 'refurbished');
     let approved = false;
-    for (let i = 0; i < 15 && !approved; i++) { state.yearly = {}; engine.dispatch('deptEquip.build', 'stations:own'); approved = Boolean(d.bond); }
+    for (let i = 0; i < 15 && !approved; i++) { state.yearly = {}; engine.dispatch('deptEquip.build', 'job|stations:own'); approved = Boolean(d.bond); }
     assert.ok(approved, 'bond approved');
     const n = d.units.stations.length;
     tick(ctx, state);
@@ -79,7 +85,7 @@ const tests = {
     const { engine, state, ctx } = worker(3, 'ems', 'paramedic', ['emt', 'paramedic', 'driverLicense']);
     const d = deptOf(state);
     const n = d.units.ambulance.length;
-    engine.dispatch('deptEquip.buy', 'ambulance:box');
+    engine.dispatch('deptEquip.buy', 'job|ambulance:box');
     assert.equal(d.units.ambulance.length, n, 'no purchase');
     const r = readiness(state);
     for (let i = 0; i < 8; i++) tick(ctx, state);
@@ -103,7 +109,7 @@ const tests = {
       if (p) engine.resolvePrompt(p.id, p.options[0].id);
     }
     assert.ok(campus, 'campus calls');
-    assert.ok(!/NaN|undefined/.test(VIEWS.career(state, {})));
+    clean(VIEWS.career(state, {}));
   },
 
   'airport police and ARFF exist, train and fight aircraft fires'() {
@@ -124,7 +130,155 @@ const tests = {
     }
     assert.ok(arff, 'aircraft emergencies');
     const html = VIEWS.career(fire.state, {});
-    assert.ok(!/NaN|undefined/.test(html));
+    clean(html);
+  },
+  'a state fire agency: wildland stations, fire-season calls, dozers and helicopters'() {
+    const { state, ctx, engine } = worker(7, 'stateFire', 'firefighter', ['ff1', 'wildlandFF2', 'driverLicense']);
+    assert.equal(getProfession('stateFire').sector, 'state');
+    assert.equal(state.fireLife.station, 'forest');
+    engine.dispatch('fireLife.station', 'engine');
+    assert.equal(state.fireLife.station, 'forest', 'no city engine companies');
+    const d = deptOf(state);
+    assert.ok(d.units.engine.length > 0 && d.units.dozer, 'Type 3 engines and dozers');
+    let wild = false;
+    for (let i = 0; i < 12 && !wild; i++) {
+      state.prompts = [];
+      tick(ctx, state);
+      FireLifeModule.onAgeUp(ctx);
+      const p = state.prompts.find((x) => x.type === 'fireLife.call');
+      wild = Boolean(p && ['initialAttack', 'burnover', 'spot', 'evac', 'medical'].includes(p.data.callId));
+      if (p) engine.resolvePrompt(p.id, p.options[0].id);
+    }
+    assert.ok(wild, 'wildland calls');
+    clean(VIEWS.career(state, {}));
+    // A battalion chief runs the budget and can contract a helicopter for the season.
+    const chief = worker(8, 'stateFire', 'battalion', ['ff1', 'ff2', 'wildlandFF2', 'wildlandFF1', 'driverLicense', 'driverOperator', 'fireOfficer1', 'ics300']);
+    const cd = deptOf(chief.state);
+    cd.budget = 10_000_000;
+    const n = cd.units.helicopter?.length ?? 0;
+    chief.engine.dispatch('deptEquip.buy', 'job|helicopter:contract');
+    assert.equal(cd.units.helicopter.length, n + 1, 'an exclusive-use helicopter contract');
+    assert.match(VIEWS.career(chief.state, {}), /Department Apparatus, Aircraft &amp; Stations|Department Apparatus, Aircraft & Stations/);
+  },
+
+  'equipment reaches other careers: a trucking terminal manager runs the fleet'() {
+    const { state, engine } = worker(9, 'trucking', getProfession('trucking').levels.find((l) => l.abilities?.includes('budget')).id, ['driverLicense', 'cdlA', 'cdlB']);
+    const c = contextOf(state, 'job');
+    assert.equal(c.group, 'truckFleet');
+    const d = deptOf(state);
+    d.budget = 2_000_000;
+    const n = d.units.tractors.length;
+    engine.dispatch('deptEquip.buy', 'job|tractors:sleeper:lease');
+    engine.dispatch('deptEquip.buy', 'job|tractors:daycab:used');
+    assert.equal(d.units.tractors.length, n + 2);
+    clean(VIEWS.career(state, {}));
+  },
+
+  'a business owner buys equipment from business cash; condition feeds quality'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(11), modules: MODULES });
+    const state = engine.newLife({});
+    state.character.age = 35;
+    state.finances.cash = 2_000_000;
+    state.housing.credit.score = 720;
+    const t = BUSINESS_TYPES.restaurant;
+    for (const c of t.credentials) state.credentials.held[c] = { earnedAge: 25, renewedAge: 30, status: 'active' };
+    state.career.history.push({ professionId: t.professions[0], title: 'Cook', levelId: 'x', employerName: 'Diner', sector: 'private', peakGrade: 3, startAge: 22, endAge: 34, reason: 'Left' });
+    engine.dispatch('business.start', 'restaurant:cash:llc');
+    const c = contextOf(state, 'business');
+    assert.ok(c, 'a business context');
+    assert.equal(c.group, 'kitchen');
+    const d = recordOf(state, c);
+    c.biz.cash = 500_000;
+    const cat = Object.keys(d.units)[0];
+    const [mid] = Object.entries(BUSINESS_GROUPS_OF(c)[cat].models).find(([, m]) => !m.build && !m.rent);
+    const cash = c.biz.cash;
+    engine.dispatch('deptEquip.buy', `business|${cat}:${mid}`);
+    assert.ok(c.biz.cash < cash, 'paid from business cash');
+    assert.equal(d.units[cat].length, (BUSINESS_GROUPS_OF(c)[cat].need[c.size]) + 1);
+    // Let it all wear out: quality suffers.
+    for (const units of Object.values(d.units)) for (const u of units) u.age = 40;
+    const q = c.biz.quality;
+    state.prompts = [];
+    EquipmentModule.onAgeUp(engine.context());
+    assert.ok(c.biz.quality < q, `worn-out equipment hurts quality (${q} → ${c.biz.quality})`);
+    clean(VIEWS.business(state, {}));
+    assert.match(VIEWS.business(state, {}), /Business Equipment &amp; Premises|Business Equipment & Premises/);
+  },
+
+  'a volunteer fire chief: fund drives, used engines and federal grants'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(12), modules: MODULES });
+    const state = engine.newLife({});
+    state.character.age = 40;
+    Object.assign(state.stats, { smarts: 90, fitness: 80, health: 90 });
+    engine.dispatch('emergency.join', 'fire');
+    const m = state.emergency.fire;
+    assert.ok(m, 'joined');
+    const ctx = engine.context();
+    const member = contextOf(state, 'vol.fire');
+    assert.ok(member && !member.manager, 'a rookie sees the apparatus but can\'t buy');
+    engine.dispatch('deptEquip.fundraise', 'vol.fire|');
+    const d = recordOf(state, member);
+    const before = d.budget;
+    assert.ok(before > 0, 'raised money');
+    m.rankIndex = 6;
+    const chief = contextOf(state, 'vol.fire');
+    assert.ok(chief.manager, 'the chief decides');
+    d.budget = 400_000;
+    const n = d.units.engine.length;
+    engine.dispatch('deptEquip.buy', 'vol.fire|engine:pumper:used');
+    assert.equal(d.units.engine.length, n + 1, 'a used pumper from a career department');
+    let granted = false;
+    for (let i = 0; i < 25 && !granted; i++) {
+      state.yearly = {};
+      d.budget = 100_000;
+      const k = d.units.scba.length;
+      engine.dispatch('deptEquip.grant', 'vol.fire|scba:scba');
+      granted = d.units.scba.length > k;
+    }
+    assert.ok(granted, 'an AFG grant came through');
+    tick(ctx, state);
+    const html = VIEWS.emergency(state, {});
+    clean(html);
+    assert.match(html, /Company Apparatus &amp; Firehouse|Company Apparatus & Firehouse/);
+  },
+
+  'a company commander overhauls vehicles and requests new ones through fielding'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(13), modules: MODULES });
+    const state = engine.newLife({ firstName: 'Cpt', lastName: 'Gear' });
+    state.character.age = 22;
+    Object.assign(state.stats, { smarts: 85, fitness: 85, health: 95 });
+    state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 }, { type: 'bachelor', programId: 'bachelor', major: 'history', schoolId: 'state', gpa: 3.5, year: 22 });
+    engine.dispatch('military.enlist', 'army:officer:active');
+    const sp = state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+    engine.resolvePrompt(sp.id, sp.options.find((o) => !o.disabled).id);
+    state.prompts = [];
+    engine.ageUp();
+    state.prompts = [];
+    const svc = state.military.service;
+    assert.ok(svc.unit?.orgId, 'assigned to a unit');
+    const lt = contextOf(state, 'military');
+    assert.ok(lt && lt.requester && !lt.manager, 'a lieutenant can only push requests up');
+    Object.assign(svc, { grade: 2 });
+    svc.unit.billet = 'companyCommander';
+    svc.unit.commandUntil = state.character.age + 2;
+    const c = contextOf(state, 'military');
+    assert.ok(c.manager, 'the commander');
+    const d = recordOf(state, c);
+    engine.dispatch('deptEquip.buy', 'military|tactical:jltv');
+    assert.ok(!d.pending.length && d.units.tactical.every((u) => u.model === 'hmmwv'), 'commanders can\'t buy');
+    d.budget = 5_000_000;
+    const oldest = Math.max(...d.units.tactical.map((u) => u.age));
+    engine.dispatch('deptEquip.refurb', 'military|tactical');
+    assert.ok(Math.max(...d.units.tactical.map((u) => u.age)) <= oldest, 'depot overhaul');
+    let fielded = false;
+    for (let i = 0; i < 20 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.requisition', 'military|tactical:jltv'); fielded = d.pending.length > 0; }
+    assert.ok(fielded, 'fielding approved');
+    const ctx = engine.context();
+    tick(ctx, state);
+    assert.ok(d.units.tactical.some((u) => u.model === 'jltv'), 'new JLTVs arrived');
+    const html = VIEWS.military(state, {});
+    clean(html);
+    assert.match(html, /Unit Equipment Readiness/);
   },
 };
 
@@ -132,5 +286,5 @@ let failed = 0;
 for (const [name, fn] of Object.entries(tests)) {
   try { fn(); console.log(`  ✔ ${name}`); } catch (e) { failed += 1; console.log(`  ✘ ${name}\n    ${e.stack.split('\n').slice(0, 6).join('\n    ')}`); }
 }
-if (failed) { console.log(`\n${failed} department-equipment test(s) failed`); process.exit(1); }
-console.log(`\n✔ All ${Object.keys(tests).length} department-equipment tests passed`);
+if (failed) { console.log(`\n${failed} equipment test(s) failed`); process.exit(1); }
+console.log(`\n✔ All ${Object.keys(tests).length} equipment tests passed`);

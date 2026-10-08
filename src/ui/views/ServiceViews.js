@@ -23,6 +23,7 @@ import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalE
 import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
 import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember } from '../../modules/emergency/EmergencyEngine.js';
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
+import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 
 function recruitingOffice(state) {
@@ -123,7 +124,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${assignmentsCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -176,11 +177,12 @@ export function emergencyView(state) {
         ${button('🚪 Resign', 'emergency.resign', { arg: svc.id, variant: 'danger' })}
       </div>`, { icon: svc.icon, accent: { fire: 'red', police: 'blue', ambulance: 'cyan', wildland: 'green', auxiliary: 'blue' }[svc.id] ?? 'orange' });
   }).join('');
+  const gear = SERVICE_LIST.filter((svc) => state.emergency[svc.id]).map((svc) => equipmentCard(state, `vol.${svc.id}`)).join('');
   const join = open ? card('Join a Service', `<p class="muted">Volunteer and reserve services run alongside your job, school or military reserve duty. Certifications you earn here count toward paid careers — and units often hire their own volunteers for paid gigs and jobs.</p>${cards ? disclosure('emergency.join', 'Join another service', `<ul class="job-board">${open}</ul>`) : `<ul class="job-board">${open}</ul>`}`, { icon: '🚨' }) : '';
   const history = state.emergency.history.length
     ? card('Past Service', `<ul class="history">${[...state.emergency.history].reverse().map((h) => `<li><b>${SERVICES[h.serviceId].icon} ${esc(h.rankTitle)}</b> · ${esc(h.unit)} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.calls} calls, ${h.saves} saves — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
-  return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${join}${history}<p class="fine">National service, the State Guard, disaster teams and veterans posts are on the 🤝 Civic Service tab.</p>`;
+  return `${cards ? `<div class="grid-2">${cards}</div>` : ''}${gear}${join}${history}<p class="fine">National service, the State Guard, disaster teams and veterans posts are on the 🤝 Civic Service tab.</p>`;
 }
 
 /** Your unit: billet, chain of command, the people you lead, readiness, command tours. */

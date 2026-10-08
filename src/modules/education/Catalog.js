@@ -37,7 +37,7 @@ export const MAJORS = {
   publicAdministration: { name: 'Public Administration', icon: '🏛️', fields: ['municipalAdmin', 'publicWorks', 'planning', 'regulatory', 'fire', 'police'], levels: ['bachelor'] },
   environmentalScience: { name: 'Environmental Science', icon: '🌲', fields: ['parkService', 'planning', 'regulatory', 'environmental', 'forester', 'gameWarden', 'waterUtility'], levels: ['bachelor', 'master'], science: true },
   urbanStudies: { name: 'Urban Studies & Planning', icon: '🗺️', fields: ['planning', 'municipalAdmin', 'realestate'], levels: ['bachelor', 'master'] },
-  fireScience: { name: 'Fire Science / EMS', icon: '🚒', fields: ['fire', 'ems'], levels: ['associate', 'bachelor'] },
+  fireScience: { name: 'Fire Science / EMS', icon: '🚒', fields: ['fire', 'ems', 'stateFire', 'airportFire'], levels: ['associate', 'bachelor'] },
   aviation: { name: 'Aviation / Aeronautics', icon: '✈️', fields: ['aviation', 'charterAviation', 'flightAttendant'], levels: ['associate', 'bachelor'] },
   marineTransportation: { name: 'Marine Transportation & Engineering', icon: '⚓', fields: ['merchantMarine', 'cruise'], levels: ['bachelor'] },
   communications: { name: 'Communications & Journalism', icon: '📣', fields: ['journalism', 'corporate', 'retail', 'foreignService', 'municipalAdmin', 'legislativeStaff', 'marketing', 'nonprofit'], levels: ['bachelor'] },

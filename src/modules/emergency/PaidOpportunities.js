@@ -16,11 +16,11 @@ import { levelById } from '../career/Ladder.js';
  * jobs:  careers this service feeds into
  */
 export const PATHWAYS = {
-  fire: { gig: { label: 'Paid-on-call firefighter stipends', pay: [4000, 9000] }, jobs: ['fire'] },
+  fire: { gig: { label: 'Paid-on-call firefighter stipends', pay: [4000, 9000] }, jobs: ['fire', 'stateFire'] },
   police: { gig: { label: 'Paid special-event security details', pay: [5000, 12000] }, jobs: ['police'] },
   ambulance: { gig: { label: 'Per-diem EMT shifts', pay: [6000, 15000], needs: 'emt' }, jobs: ['ems', 'privateEms'] },
   sar: { gig: { label: 'Wilderness-medicine instructor', pay: [3000, 7000], needs: 'wfr' }, jobs: ['parkService'] },
-  wildland: { gig: { label: 'Seasonal federal fire crew (summer)', pay: [12000, 20000], needs: 'wildlandFF2' }, jobs: ['forester', 'parkService'] },
+  wildland: { gig: { label: 'Seasonal federal fire crew (summer)', pay: [12000, 20000], needs: 'wildlandFF2' }, jobs: ['stateFire', 'forester', 'parkService'] },
   auxiliary: { gig: { label: 'Licensed captain for a marine towing company', pay: [5000, 10000], needs: 'coxswain' }, jobs: ['merchantMarine'] },
   cap: { gig: { label: 'Contract flying: banner tows and aerial photos', pay: [6000, 15000], needs: 'privatePilot' }, jobs: ['charterAviation'] },
   cert: { gig: { label: 'Emergency-preparedness trainer for employers', pay: [3000, 6000] }, jobs: ['municipalAdmin'] },

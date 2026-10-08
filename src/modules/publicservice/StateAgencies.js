@@ -132,6 +132,26 @@ export const STATE_PROFESSIONS = {
       L('state', 'State Forester', 8, { track: 'mgmt', appointed: true, abilities: ['supervise', 'budget', 'delegate', 'exec', 'policy'], reports: 300 }),
     ],
   },
+  stateFire: {
+    ...AGENCY, id: 'stateFire', name: 'State Fire Agency (Forestry & Fire Protection)', icon: '🔥', payMultiplier: 0.98, minAge: 18, exam: 'publicSafety', dutyStation: 'stateRural',
+    union: { chance: 0.8, name: 'State Firefighters Local', strike: false },
+    benefits: { pension: 'publicSafety', ssCovered: false },
+    employerName: agency('Department of Forestry & Fire Protection'),
+    entry: { education: { level: 'highschool' }, credentials: ['driverLicense'], fitness: 55 },
+    valued: ['wildlandFF2', 'emt', 'ff1', 'cdlA'],
+    levels: [
+      L('seasonal', 'Seasonal Firefighter', 2, { years: 1 }),
+      L('firefighter', 'Firefighter II (permanent)', 3, { entry: true, req: { credentials: ['ff1', 'wildlandFF2'] } }),
+      L('engineer', 'Fire Apparatus Engineer', 4, { req: { credentials: ['driverOperator'] } }),
+      L('heo', 'Heavy Fire Equipment Operator (dozer)', 4, { track: 'ic', req: { credentials: ['cdlA'] } }),
+      L('helitack', 'Helitack Captain', 5, { track: 'ic', req: { credentials: ['wildlandFF1', 'ics300'] }, abilities: ['command'] }),
+      L('captain', 'Fire Captain', 5, { track: 'mgmt', req: { credentials: ['wildlandFF1', 'fireOfficer1'] }, abilities: ['supervise', 'command'], reports: 6 }),
+      L('battalion', 'Battalion Chief', 6, { track: 'mgmt', req: { credentials: ['ics300'] }, abilities: ['supervise', 'budget', 'command'], reports: 40 }),
+      L('division', 'Division Chief', 7, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'command'], reports: 160 }),
+      L('unitChief', 'Unit Chief', 8, { track: 'mgmt', req: { credentials: ['fireOfficer2'] }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec', 'command'], reports: 700 }),
+      L('director', 'Director & State Fire Chief', 9, { track: 'mgmt', appointed: true, abilities: ['supervise', 'budget', 'delegate', 'exec', 'policy', 'command'], reports: 9000 }),
+    ],
+  },
   dot: {
     ...AGENCY, id: 'dot', name: 'Department of Transportation', icon: '🛣️', payMultiplier: 0.98, minAge: 18, background: 'standard',
     union: { chance: 0.5, name: 'AFSCME Highway Workers', strike: false },
@@ -272,6 +292,10 @@ export const EVENTS = {
     { id: 'enforce', label: '⚖️ Issue the violation and fines', perf: 6, boss: -4 },
     { id: 'warn', label: '📄 Issue a warning letter', perf: -3, boss: 4 },
   ] },
+  stateFire: { title: 'Red Flag Warning', text: 'A red-flag day is forecast and the budget office wants your seasonal crews off the clock to save overtime.', options: [
+    { id: 'staff', label: '🚒 Staff up anyway', perf: 6, boss: -3 },
+    { id: 'comply', label: '💲 Hold the line on overtime', perf: -2, boss: 3, risk: 0.15 },
+  ] },
   forester: { title: 'Prescribed Burn', text: 'Conditions for your planned burn are marginal. Waiting means another fuel-heavy summer.', options: [
     { id: 'burn', label: '🔥 Light it', perf: 6, risk: 0.15 },
     { id: 'wait', label: '🌬️ Postpone', perf: 0 },
@@ -350,6 +374,16 @@ const MORE_EVENTS = {
     { id: 'spill', title: 'Chemical Spill', text: 'A plant upstream "accidentally" released solvent into the river. Fish are dying for three miles.', options: [
       { id: 'maxfine', label: '⚖️ Push for the maximum penalty', perf: 6, boss: -3 },
       { id: 'consent', label: '🤝 Negotiate a cleanup consent order', perf: 4, check: 'smarts' },
+    ] },
+  ],
+  stateFire: [
+    { id: 'lightning', title: 'Lightning Siege', text: 'A dry thunderstorm started forty fires overnight. You have engines for twelve.', options: [
+      { id: 'triage', label: '🗺️ Triage: hit the ones threatening towns', perf: 6, check: 'smarts', stress: 5 },
+      { id: 'mutual', label: '📞 Order mutual aid and wait', perf: 2, stress: 3 },
+    ] },
+    { id: 'campCrew', title: 'Conservation Camp Crew', text: 'Your hand crew is incarcerated volunteers. One of them asks you to write a letter supporting his firefighter certification after release.', options: [
+      { id: 'write', label: '✍️ Write it', perf: 3 },
+      { id: 'decline', label: '🙅 Stay out of it', perf: 0 },
     ] },
   ],
   forester: [

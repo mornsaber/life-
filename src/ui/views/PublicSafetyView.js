@@ -1,7 +1,7 @@
 /** Police and fire on the Career tab. */
 import { esc, button, card, chip, kv, disclosure } from '../Components.js';
 import { AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility } from '../../modules/publicsafety/PoliceLife.js';
-import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, isFirefighter, stationEligibility, teamEligibility } from '../../modules/publicsafety/FireLife.js';
+import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
 import { nextExam, REACHABLE } from '../../modules/publicsafety/CivilService.js';
 
 const n = (x) => Number(x ?? 0).toLocaleString();
@@ -53,13 +53,13 @@ export function fireCard(state) {
   const job = state.career.job;
   const f = state.fireLife;
   if (!isFirefighter(job) || !f) return '';
-  const st = STATIONS[f.station] ?? STATIONS.engine;
-  const stations = Object.entries(STATIONS).map(([id, s]) => {
+  const st = STATIONS[f.station] ?? STATIONS[stationsFor(job.professionId)[0]];
+  const stations = Object.entries(STATIONS).filter(([id]) => stationsFor(job.professionId).includes(id)).map(([id, s]) => {
     const ok = stationEligibility(state, id);
     return button(`${s.icon} ${s.name}`, 'fireLife.station', { arg: id, variant: f.station === id ? 'small on' : 'small', disabled: f.station === id || !ok.ok || Boolean(state.yearly['fire.station']), hint: ok.ok ? s.desc : ok.reason });
   }).join('');
   const shifts = Object.entries(FSHIFTS).map(([id, s]) => button(`${s.icon} ${s.name}`, 'fireLife.shift', { arg: id, variant: f.shift === id ? 'small on' : 'small', disabled: f.shift === id || Boolean(state.yearly['fire.shift']), hint: s.desc })).join('');
-  const teams = Object.entries(TEAMS).map(([id, t]) => {
+  const teams = Object.entries(TEAMS).filter(([id]) => !/Not an? .* team/.test(teamEligibility(state, id).reason ?? '')).map(([id, t]) => {
     const on = Boolean(f.teams[id]);
     const ok = teamEligibility(state, id);
     return button(`${t.icon} ${on ? '✓ ' : ''}${t.name}`, 'fireLife.team', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && !ok.ok, hint: on ? 'Leave the team' : ok.ok ? `${t.pay ? `+$${n(t.pay)}/yr · ` : ''}${t.desc}` : ok.reason });
