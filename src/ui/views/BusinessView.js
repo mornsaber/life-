@@ -7,7 +7,8 @@ import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } 
 import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN } from '../../modules/business/Operations.js';
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
-import { ventureBacked } from '../../modules/business/BusinessEngine.js';
+import { ventureBacked, maxScale, expansionCost } from '../../modules/business/BusinessEngine.js';
+import { STRATEGIES, canDelegate } from '../../modules/business/GrowthPlan.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
@@ -217,6 +218,30 @@ function advisorCard(state, biz) {
     <p class="fine">Forecasts assume an average year at today's quality and prices.</p>`, { icon: '🧭', accent: 'cyan' });
 }
 
+/** Delegate and automate: a growth strategy management carries out, and a one-click hand-off. */
+function managementCard(state, biz) {
+  const type = typeOf(biz);
+  const plan = biz.plan?.strategy ?? 'off';
+  const ok = canDelegate(biz);
+  const delegated = biz.staff.headcount >= 8 ? Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]).length : 0;
+  const strategies = Object.entries(STRATEGIES).map(([id, st]) => button(`${st.icon} ${st.name}`, 'business.setPlan', { arg: id, variant: plan === id ? 'tiny on' : 'tiny', disabled: !ok && id !== 'off', hint: st.desc })).join('');
+  const handedOff = biz.role !== 'operator' && biz.autopilot && plan !== 'off';
+  const report = biz.plan?.lastReport;
+  return card('Management & Growth', `
+    ${kv([
+      ['Who runs it', biz.role === 'operator' ? 'You, day to day' : 'Your management team'],
+      ['Routine decisions', biz.autopilot ? '🤖 Handled by your managers' : '🧑‍💼 Brought to you'],
+      ['Delegated duties', biz.staff.headcount >= 8 ? `${delegated} of ${Object.keys(DUTIES).length}` : 'Needs 8+ staff'],
+      ['Locations', `${biz.scale} of ${type.startup ? '—' : maxScale(state, biz)}${!type.startup ? ` · next ${money(expansionCost(biz))}` : ''}`],
+    ])}
+    ${ok ? '' : '<p class="why">Delegation needs managers: 8+ staff or a second location.</p>'}
+    <h4 class="sub">Growth strategy</h4><div class="toggle-row chips-row">${strategies}</div>
+    ${report ? `<p class="fine">📋 Last year: ${report.length ? esc(report.join('; ')) : 'nothing needed doing'}.</p>` : ''}
+    <div class="action-grid">${button(handedOff ? '✅ Management runs it' : '🗂️ Hand it to management', 'business.handOff', { variant: 'small', disabled: !ok || handedOff, hint: 'Managers run it day to day, handle routine calls and every delegable duty, on a steady growth plan — you get one report a year' })}
+      ${biz.role !== 'operator' ? button('🧑‍💼 Take back day-to-day control', 'business.setRole', { arg: 'operator', variant: 'small', disabled: Boolean(state.career.job), hint: state.career.job ? 'Quit your job first' : 'Run it yourself again' }) : ''}</div>
+    <p class="fine">A plan expands from profits, staffs each location, sets marketing and grows the fleet on its own. Owner-run businesses top out at five locations; with a CEO and 40+ staff they can grow to twelve.</p>`, { icon: '🗂️', accent: 'green' });
+}
+
 /** Licenses the business holds or could get. */
 function licensesCard(state, biz) {
   const ids = licensesFor(biz.typeId);
@@ -244,6 +269,7 @@ function holdingsCard(state) {
     const org = businessOrg(state, h);
     const ceo = org?.people?.[org.ceo];
     return `<li class="report-row"><div><b>${BUSINESS_TYPES[h.typeId]?.icon ?? '🏪'} ${esc(h.name)}</b> <small class="muted">${Math.round(h.ownerPct * 100)}% · valued ${money(h.valuation)} · ${h.staff.headcount} staff${ceo ? ` · run by ${esc(ceo.name)}` : ''}${h.lastYear ? ` · last year ${money(h.lastYear.netIncome)}` : ''}</small></div>
+      <div class="toggle-row chips-row">${Object.entries(STRATEGIES).map(([id, st]) => button(`${st.icon} ${st.name}`, 'business.setHoldingPlan', { arg: `${h.id}:${id}`, variant: (h.plan?.strategy ?? 'off') === id ? 'tiny on' : 'tiny', hint: st.desc })).join('')}</div>${h.plan?.lastReport?.length ? `<small class="fine">📋 ${esc(h.plan.lastReport.join('; '))}</small>` : ''}
       <div class="toggle-row">${button('🧑‍💼 Take it back', 'business.takeBack', { arg: h.id, variant: 'tiny', disabled: Boolean(currentBusiness(state)) })}${button('🪧 Sell', 'business.sellHolding', { arg: h.id, variant: 'tiny' })}</div></li>`;
   }).join('')}</ul>`, { icon: '🗂️' });
 }
@@ -345,14 +371,14 @@ function ownedView(state, biz) {
     <div class="action-grid">
       ${type.startup ? `${button('🤝 Hire 5', 'business.hire', { arg: '5' })}${button('✂️ Lay off 30%', 'business.layoff', { variant: 'danger', disabled: !s.headcount })}` : ''}
       ${!type.startup && !opsOf(biz) ? `${button('🤝 Hire an employee', 'business.hire', { arg: '1', hint: `Staffing ${Math.round(staffFactor(biz) * 100)}% of normal output` })}${button('✂️ Let one go', 'business.letGo', { disabled: !s.headcount })}` : ''}
-      ${type.startup ? '' : button('🏗️ Open another location', 'business.expand', { arg: 'cash', hint: `${money(type.cost * 0.8)} from the business`, disabled: biz.scale >= 5 || biz.years < 2 })}
+      ${type.startup ? '' : button('🏗️ Open another location', 'business.expand', { arg: 'cash', hint: `${money(type.cost * 0.8)} from the business`, disabled: biz.scale >= maxScale(state, biz) || biz.years < 2 })}
     </div>
     ${relatives.length ? `<h4 class="sub">Family business</h4><div class="toggle-row chips-row">${relatives.map((p) => button(`👪 Hire ${esc(p.firstName)}`, 'business.hireRelative', { arg: p.id, variant: 'tiny' })).join('')}</div>` : ''}`, { icon: '⚙️' });
 
   const funding = card('Funding & Structure', `
     <div class="action-grid">
       ${type.startup ? button(nextRound ? `💸 Raise a ${nextRound.name}` : '💸 No more rounds', 'business.raise', { disabled: !nextRound || biz.entity !== 'ccorp', hint: biz.entity !== 'ccorp' ? 'Convert to a C-corp first' : nextRound ? `${money(nextRound.minArr)}+ ARR, ${Math.round(nextRound.minGrowth * 100)}%+ growth` : 'IPO or acquisition next' }) : button('🏦 SBA working-capital loan', 'business.loan', { hint: '25% of revenue · personal guarantee', disabled: biz.years < 2 })}
-      ${!type.startup && biz.scale < 5 ? button('🏗️ Expand with an SBA loan', 'business.expand', { arg: 'sba', disabled: biz.years < 2 }) : ''}
+      ${!type.startup && biz.scale < maxScale(state, biz) ? button('🏗️ Expand with an SBA loan', 'business.expand', { arg: 'sba', disabled: biz.years < 2 }) : ''}
     </div>
     <h4 class="sub">Legal structure</h4><div class="toggle-row chips-row">${Object.entries(ENTITIES).map(([id, e]) => button(`${e.icon} ${e.name}`, 'business.convert', { arg: id, variant: biz.entity === id ? 'tiny on' : 'tiny', disabled: biz.entity === id || (ventureBacked(biz) && id !== 'ccorp'), hint: biz.entity === id ? '' : '$1,500 to convert' })).join('')}</div>
     ${biz.investors.length ? `<h4 class="sub">Investors</h4><ul class="history">${biz.investors.map((i) => `<li>💼 ${esc(i.round)} · ${money(i.invested)} for ${Math.round(i.pct * 100)}%</li>`).join('')}</ul>` : ''}`, { icon: '🏦' });
@@ -360,7 +386,7 @@ function ownedView(state, biz) {
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${advisorCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  return `${overview}${managementCard(state, biz)}${advisorCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {

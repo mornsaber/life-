@@ -22,6 +22,7 @@ import {
   ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf,
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
+import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
 import { FleetActions, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
 import {
@@ -205,15 +206,68 @@ function businessTick(ctx, biz) {
   businessStaffTick(ctx, biz);
   marketTick(ctx, biz);
   syncBusinessOrg(state, biz);
+  // A growth plan: management carries out your strategy and reports once.
+  if (biz.plan) {
+    runPlan(ctx, biz, PLAN_DEPS);
+    syncBusinessOrg(state, biz);
+  }
+  const handsOff = biz.autopilot && biz.role !== 'operator';
   if (biz.franchise) {
     const notice = franchiseeTick(ctx, biz);
     if (notice) ctx.prompt(notice);
   }
-  if (biz.staff.unionRisk >= 100 && !biz.staff.unionized) unionDrive(ctx, biz);
-  else if (rng.chance(0.35)) eventPrompt(ctx, biz);
-  if (rng.chance(0.08)) temptationPrompt(ctx, biz);
+  if (biz.staff.unionRisk >= 100 && !biz.staff.unionized) {
+    // Hands off: management runs a lawful campaign rather than asking you.
+    if (handsOff) BusinessEngine.resolvers.union(ctx, null, 'campaign');
+    else unionDrive(ctx, biz);
+  } else if (rng.chance(0.35)) eventPrompt(ctx, biz);
+  // Cheating is the owner's own choice — hired managers don't bring it to you.
+  if (!handsOff && rng.chance(0.08)) temptationPrompt(ctx, biz);
   offerTick(ctx, biz);
   if (biz.cash < 0) cashCrunch(ctx, biz);
+}
+
+/** How many locations a business can run: five as an owner-run small business, more once a CEO and executive team run it. */
+export function maxScale(state, biz) {
+  return biz.role !== 'operator' && biz.staff.headcount >= 40 ? 12 : 5;
+}
+
+/** What opening another location costs. */
+export const expansionCost = (biz) => Math.round(typeOf(biz).cost * 0.8);
+
+/** Open another location, paid from the business account or with an SBA loan. Returns { ok, reason }. */
+const PLAN_DEPS = { expandBusiness: (...a) => expandBusiness(...a), maxScale: (...a) => maxScale(...a), expansionCost: (...a) => expansionCost(...a) };
+
+export function expandBusiness(ctx, biz, funding = 'cash') {
+  const { state } = ctx;
+  const type = typeOf(biz);
+  if (type.startup) return { ok: false, reason: 'Startups grow by hiring and raising money.' };
+  if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= 12 ? 'That\'s as many locations as you can run.' : 'Five locations is as big as an owner-run business gets — hand it to a management team (40+ staff) to keep growing.' };
+  if (biz.years < 2) return { ok: false, reason: 'Get through two years first.' };
+  const cost = expansionCost(biz);
+  if (funding === 'sba') {
+    if (state.housing.credit.score < SBA.minScore) return { ok: false, reason: `SBA lenders want a ${SBA.minScore}+ credit score.` };
+    if (biz.cash < cost * SBA.downPayment) return { ok: false, reason: `The business needs ${money(cost * SBA.downPayment)} for the down payment.` };
+    biz.cash -= Math.round(cost * SBA.downPayment);
+    const loan = Math.round(cost * (1 - SBA.downPayment)) + (biz.debts.sba?.balance ?? 0);
+    biz.debts.sba = { balance: loan, rate: SBA.rate, annual: annualPayment(loan, SBA.rate, SBA.years), guaranteed: true };
+  } else {
+    if (biz.cash < cost) return { ok: false, reason: `Opening another location costs ${money(cost)} from the business account.` };
+    biz.cash -= cost;
+  }
+  biz.scale += 1;
+  biz.assets += Math.round(cost * 0.6);
+  biz.staff.headcount = Math.min(MAX_HEADCOUNT, Math.max(biz.staff.headcount, Math.round(type.staff * biz.scale) + biz.family.length));
+  if (ensureOps(ctx.rng, biz)) {
+    const o = OPERATIONS[biz.typeId];
+    if (o.unit) for (let i = 0; i < o.start; i++) biz.ops.units.push({ id: ctx.rng.id('u_'), age: 0, used: Boolean(type.startUsed) });
+    biz.staff.headcount = Math.min(MAX_HEADCOUNT, Math.max(biz.staff.headcount, (o.unit ? biz.ops.units.length : 0) * o.crew));
+  }
+  bump(biz, 'quality', -5);
+  const branch = openBranch(state, biz, biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : state.character.regionId);
+  biz.expandTo = null;
+  ctx.log(`${biz.name} opened location #${biz.scale}: the ${branch.name}, run by a branch manager.`, type.icon, 'milestone');
+  return { ok: true, cost };
 }
 
 /* ------------------------------------------------------------------ */
@@ -569,6 +623,7 @@ function holdingTick(ctx, biz) {
   biz.lastYear = ly;
   biz.valuation = valuation(biz, ly);
   businessStaffTick(ctx, biz);
+  if (biz.plan) runPlan(ctx, biz, PLAN_DEPS);
   syncBusinessOrg(state, biz);
   ctx.log(`${biz.name} (held): ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; ${money(ly.ownerPay)} to you` : ''}.`, typeOf(biz).icon, 'finance');
   // Hired management can run it into the ground: a deep hole closes it.
@@ -741,38 +796,12 @@ export const BusinessEngine = {
       ctx.log(`${biz.name} laid off ${cut} people.`, '✂️', 'warn');
     },
     expand(ctx, funding = 'cash') {
-      const { state } = ctx;
       const biz = withBiz(ctx);
       if (!biz) return;
-      const type = typeOf(biz);
-      if (type.startup) return ctx.toast('Startups grow by hiring and raising money.', 'warn');
-      if (biz.scale >= 5) return ctx.toast('You\'re as big as a small business gets.', 'warn');
-      if (biz.years < 2) return ctx.toast('Get through two years first.', 'warn');
-      if (yearlyCount(state, 'business.expand')) return ctx.toast('One expansion a year.', 'warn');
-      const cost = Math.round(type.cost * 0.8);
-      if (funding === 'sba') {
-        if (state.housing.credit.score < SBA.minScore) return ctx.toast(`SBA lenders want a ${SBA.minScore}+ credit score.`, 'warn');
-        if (biz.cash < cost * SBA.downPayment) return ctx.toast(`The business needs ${money(cost * SBA.downPayment)} for the down payment.`, 'warn');
-        biz.cash -= Math.round(cost * SBA.downPayment);
-        const loan = Math.round(cost * (1 - SBA.downPayment)) + (biz.debts.sba?.balance ?? 0);
-        biz.debts.sba = { balance: loan, rate: SBA.rate, annual: annualPayment(loan, SBA.rate, SBA.years), guaranteed: true };
-      } else {
-        if (biz.cash < cost) return ctx.toast(`Opening another location costs ${money(cost)} from the business account.`, 'warn');
-        biz.cash -= cost;
-      }
-      bumpYearly(state, 'business.expand');
-      biz.scale += 1;
-      biz.assets += Math.round(cost * 0.6);
-      biz.staff.headcount = Math.round(type.staff * biz.scale) + biz.family.length;
-      if (ensureOps(ctx.rng, biz)) {
-        const o = OPERATIONS[biz.typeId];
-        if (o.unit) for (let i = 0; i < o.start; i++) biz.ops.units.push({ id: ctx.rng.id('u_'), age: 0, used: Boolean(type.startUsed) });
-        biz.staff.headcount = Math.max(biz.staff.headcount, (o.unit ? biz.ops.units.length : 0) * o.crew);
-      }
-      bump(biz, 'quality', -5);
-      const branch = openBranch(state, biz, biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : state.character.regionId);
-      biz.expandTo = null;
-      ctx.log(`${biz.name} opened location #${biz.scale}: the ${branch.name}, run by a branch manager.`, type.icon, 'milestone');
+      if (yearlyCount(ctx.state, 'business.expand')) return ctx.toast('One expansion a year.', 'warn');
+      const r = expandBusiness(ctx, biz, funding);
+      if (!r.ok) return ctx.toast(r.reason, 'warn');
+      bumpYearly(ctx.state, 'business.expand');
     },
     /** SBA working-capital loan for an established, profitable business. */
     loan(ctx) {
@@ -852,6 +881,35 @@ export const BusinessEngine = {
       if (!r.ok) return ctx.toast(r.reason, 'warn');
       const l = BUSINESS_LICENSES[id];
       ctx.log(`${biz.name} ${r.pending ? 'applied for' : 'obtained'} a ${l.name} (${money(r.fee)}).${r.pending ? ' A decision comes next year.' : ''}`, l.icon, 'milestone');
+    },
+    /** arg: 'off' | 'steady' | 'aggressive' | 'harvest' — the strategy management carries out each year. */
+    setPlan(ctx, strategy) {
+      const biz = withBiz(ctx);
+      if (!biz || !STRATEGIES[strategy]) return;
+      if (strategy !== 'off' && !canDelegate(biz)) return ctx.toast('You need managers to delegate to: 8+ staff or a second location.', 'warn');
+      biz.plan = { ...(biz.plan ?? {}), strategy, sinceAge: ctx.state.character.age };
+      ctx.log(strategy === 'off' ? `You took growth decisions at ${biz.name} back into your own hands.` : `${biz.name} is on a ${STRATEGIES[strategy].name.toLowerCase()} plan. ${STRATEGIES[strategy].desc}`, STRATEGIES[strategy].icon);
+    },
+    /** arg: 'holdingId:strategy' — the plan for a business you hold passively. */
+    setHoldingPlan(ctx, arg) {
+      const [id, strategy] = String(arg).split(':');
+      const h = (ctx.state.business.holdings ?? []).find((x) => x.id === id);
+      if (!h || !STRATEGIES[strategy]) return;
+      h.plan = { ...(h.plan ?? {}), strategy, sinceAge: ctx.state.character.age };
+      ctx.log(`${h.name}'s management is now on a ${STRATEGIES[strategy].name.toLowerCase()} plan.`, STRATEGIES[strategy].icon);
+    },
+    /** One click: managers run it day to day, handle routine calls and every delegable duty, on a steady growth plan. */
+    handOff(ctx) {
+      const biz = withBiz(ctx);
+      if (!biz) return;
+      if (!canDelegate(biz)) return ctx.toast('You need managers to delegate to: 8+ staff or a second location.', 'warn');
+      biz.role = 'absentee';
+      biz.autopilot = true;
+      if (biz.staff.headcount >= 8) for (const d of Object.keys(DUTIES)) biz.staff.delegation[d] = true;
+      biz.plan = { ...(biz.plan ?? {}), strategy: biz.plan?.strategy && biz.plan.strategy !== 'off' ? biz.plan.strategy : 'steady', sinceAge: ctx.state.character.age };
+      ensureBusinessOrg(ctx.state, biz);
+      syncBusinessOrg(ctx.state, biz);
+      ctx.log(`You handed ${biz.name} to its management team: they run it day to day on a ${STRATEGIES[biz.plan.strategy].name.toLowerCase()} plan and send you a yearly report.`, '🗂️', 'milestone');
     },
     /** Let your manager handle routine decisions (on by default). */
     toggleAutopilot(ctx) {
