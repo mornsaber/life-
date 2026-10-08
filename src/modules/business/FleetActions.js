@@ -6,7 +6,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { currentBusiness, annualPayment } from './Business.js';
-import { OPERATIONS, opsOf, newOps, capacity, contracted, makeOffers, offerEligibility, resaleValue, EQUIPMENT_LOAN } from './Operations.js';
+import { OPERATIONS, opsOf, newOps, capacity, contracted, makeOffers, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier, ACCOUNT_TIERS } from './Operations.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const MAX_HEADCOUNT = 400;
@@ -68,7 +68,11 @@ export function opsTick(ctx, biz, ly) {
   const renewals = [];
   for (const c of ops.contracts) c.yearsLeft -= 1;
   for (const c of ops.contracts.filter((x) => x.yearsLeft <= 0)) {
-    if (biz.reputation >= 50 && rng.chance(0.6)) renewals.push({ ...c, id: rng.id('k_'), years: rng.int(2, 4), rate: Math.round(c.rate * 1.03 * 100) / 100, renewal: true });
+    if (biz.reputation >= 50 && rng.chance(0.6)) {
+      // A client whose contractor has outgrown the old deal gives it more of the work.
+      const upsize = growthTier(biz) > (c.tier ?? 0);
+      renewals.push({ ...c, id: rng.id('k_'), years: rng.int(2, 4), rate: Math.round(c.rate * 1.03 * 100) / 100, renewal: true, units: upsize ? Math.round(c.units * 1.5) + 1 : c.units, tier: upsize ? (c.tier ?? 0) + 1 : c.tier ?? 0, client: upsize ? `${c.client.replace(/ — .* account$/, '')} — ${ACCOUNT_TIERS[(c.tier ?? 0) + 1].label} account` : c.client });
+    }
     ctx.log(`${biz.name}'s contract with ${c.client} ended.${renewals.at(-1)?.client === c.client ? ' They want to renew.' : ''}`, '📄');
   }
   ops.contracts = ops.contracts.filter((c) => c.yearsLeft > 0);
@@ -82,7 +86,7 @@ export function opsTick(ctx, biz, ly) {
 }
 
 function accept(biz, k) {
-  biz.ops.contracts.push({ id: k.id, client: k.client, units: k.units, rate: k.rate, years: k.years, yearsLeft: k.years });
+  biz.ops.contracts.push({ id: k.id, client: k.client, units: k.units, rate: k.rate, years: k.years, yearsLeft: k.years, tier: k.tier ?? 0 });
   biz.ops.offers = biz.ops.offers.filter((x) => x.id !== k.id);
 }
 

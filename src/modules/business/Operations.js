@@ -171,22 +171,50 @@ export function offerEligibility(state, biz, offer) {
   return { ok: true };
 }
 
-/** A year's contract offers. */
-export function makeOffers(rng, biz, n = rng.int(2, 3)) {
+/**
+ * Clients scale their asks to the operation they're dealing with. An outfit
+ * several times its opening size gets regional accounts; a big one gets
+ * multi-state and national work: more units, longer terms, a volume
+ * discount, and they want a fleet (and reputation) that can carry it.
+ */
+export const ACCOUNT_TIERS = [
+  { label: null, mult: 1, years: [1, 4], rate: 1, minRep: 0 },
+  { label: 'regional', mult: 2, years: [2, 4], rate: 1, minRep: 45 },
+  { label: 'multi-state', mult: 4, years: [3, 5], rate: 0.97, minRep: 55 },
+  { label: 'national', mult: 8, years: [3, 6], rate: 0.94, minRep: 65 },
+];
+
+/** 0–3: how big this operation is next to the one it opened with. */
+export function growthTier(biz) {
   const o = opsOf(biz);
-  return rng.shuffle ? rng.shuffle([...o.clients]).slice(0, n).map((c) => offerFrom(rng, c))
-    : Array.from({ length: n }, () => offerFrom(rng, rng.pick(o.clients)));
+  if (!o) return 0;
+  const cap = capacity(biz);
+  const size = Math.max(cap.units, cap.crews) / Math.max(1, o.start);
+  return size >= 8 ? 3 : size >= 4 ? 2 : size >= 2 ? 1 : 0;
 }
 
-function offerFrom(rng, [client, units, rate, opts = {}]) {
+/** A year's contract offers: more of them, and bigger ones, as the business grows. */
+export function makeOffers(rng, biz, n = null) {
+  const o = opsOf(biz);
+  const tier = growthTier(biz);
+  const count = n ?? rng.int(2, 3) + tier;
+  const picks = rng.shuffle ? [...rng.shuffle([...o.clients]), ...rng.shuffle([...o.clients])].slice(0, count) : Array.from({ length: count }, () => rng.pick(o.clients));
+  // Bigger operations still see some small jobs, but most asks match their size.
+  return picks.map((c) => offerFrom(rng, c, rng.chance(0.25) ? rng.int(0, tier) : tier));
+}
+
+function offerFrom(rng, [client, units, rate, opts = {}], tier = 0) {
+  const t = ACCOUNT_TIERS[tier];
+  const size = Math.max(1, Math.round((units + rng.int(-1, 1)) * t.mult * (tier ? rng.float(0.8, 1.25) : 1)));
   return {
     id: uid(rng, 'k_'),
-    client,
-    units: Math.max(1, units + rng.int(-1, 1)),
-    rate: Math.round(rate * rng.float(0.95, 1.05) * 100) / 100,
-    years: rng.int(1, 4),
-    minUnits: opts.minUnits ?? 0,
-    minRep: opts.minRep ?? 0,
+    client: t.label ? `${client} — ${t.label} account` : client,
+    units: size,
+    rate: Math.round(rate * t.rate * rng.float(0.95, 1.05) * 100) / 100,
+    years: rng.int(...t.years),
+    minUnits: Math.max(opts.minUnits ?? 0, tier >= 2 ? Math.round(size * 0.6) : 0),
+    minRep: Math.max(opts.minRep ?? 0, t.minRep),
     needs: opts.needs ?? null,
+    tier,
   };
 }

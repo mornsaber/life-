@@ -4,7 +4,7 @@
  * and exits.
  */
 import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } from '../Components.js';
-import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN } from '../../modules/business/Operations.js';
+import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier } from '../../modules/business/Operations.js';
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked, maxScale, expansionCost } from '../../modules/business/BusinessEngine.js';
@@ -318,6 +318,7 @@ function fleetCard(state, biz) {
     ${kv([
       fleet ? ['Fleet', fleet] : null,
       ['Staff', `${biz.staff.headcount}${biz.role === 'operator' ? ' + you' : ''} · ${o.crew > 1 ? `crews of ${o.crew}` : `one ${o.crewName} per ${o.unit?.name ?? 'post'}`}`],
+      ['Accounts you can win', ((t) => `${['Local', 'Regional', 'Multi-state', 'National'][t]}${t < 3 ? ` · grow to ${[2, 4, 8][t] * o.start}+ ${o.unit ? o.unit.plural : `${o.crewName} crews`} for ${['regional', 'multi-state', 'national'][t]} work` : ''}`)(growthTier(biz))],
       ['Capacity', `${c.capacity} ${unitWord} working${o.unit && c.crews < c.units ? ` · <span class="neg">${c.units - c.crews} idle for lack of ${o.crewName}s</span>` : ''}${o.unit && c.units < c.crews ? ` · ${c.crews - c.units} spare crew${c.crews - c.units > 1 ? 's' : ''}` : ''}`],
       ['Under contract', `${booked} of ${c.capacity}${short > 0 ? ` · <span class="neg">${short} short — penalties at year's end</span>` : ''}`],
       ops.lastUtil != null ? ['Last year', `${Math.min(100, Math.round(ops.lastUtil * 100))}% busy`] : null,

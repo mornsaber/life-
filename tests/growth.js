@@ -12,6 +12,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { currentBusiness } from '../src/modules/business/Business.js';
 import { maxScale } from '../src/modules/business/BusinessEngine.js';
+import { makeOffers, growthTier, OPERATIONS } from '../src/modules/business/Operations.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -134,6 +135,34 @@ const tests = {
     years(engine, 4);
     assert.ok((biz.ops?.units?.length ?? 0) >= units, 'fleet kept up');
     assert.ok(biz.plan.lastReport, 'reported');
+  },
+  'contracts get bigger as the operation grows'() {
+    const { biz, engine } = owner(8, 'trucking');
+    const small = makeOffers(engine.rng, biz, 12);
+    assert.ok(small.every((k) => !k.tier), 'a new outfit gets local work');
+    const o = OPERATIONS.trucking;
+    while (biz.ops.units.length < o.start * 8) biz.ops.units.push({ id: `u${biz.ops.units.length}`, age: 1, used: false });
+    biz.staff.headcount = biz.ops.units.length * o.crew;
+    biz.reputation = 80;
+    assert.equal(growthTier(biz), 3);
+    const big = makeOffers(engine.rng, biz);
+    assert.ok(big.length >= 5, 'more offers');
+    const national = big.filter((k) => k.tier === 3);
+    assert.ok(national.length, 'national accounts');
+    const avg = (xs) => xs.reduce((s, k) => s + k.units, 0) / xs.length;
+    assert.ok(avg(national) > avg(small) * 4, `bigger contracts (${avg(small)} → ${avg(national)})`);
+    assert.ok(national.every((k) => k.years >= 3 && k.minUnits > 0 && k.minRep >= 65), 'longer, and they want proof you can carry it');
+    // Renewals upsize when you've outgrown the old deal.
+    biz.ops.contracts = [{ id: 'c1', client: 'Lakeside Steel', units: 2, rate: 1, years: 1, yearsLeft: 1, tier: 0 }];
+    let renewed = null;
+    for (let i = 0; i < 20 && !renewed; i++) {
+      biz.ops.contracts = [{ id: `c${i}`, client: 'Lakeside Steel', units: 2, rate: 1, years: 1, yearsLeft: 1, tier: 0 }];
+      engine.state.prompts = [];
+      engine.ageUp();
+      renewed = (biz.ops.offers ?? []).find((k) => k.renewal && k.client.startsWith('Lakeside Steel'));
+    }
+    if (renewed) assert.ok(renewed.units > 2 && /regional account/.test(renewed.client), JSON.stringify(renewed));
+    assert.ok(!/NaN|undefined/.test(VIEWS.business(engine.state, {})));
   },
 };
 
