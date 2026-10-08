@@ -461,6 +461,15 @@ export const ORG_TYPES = {
     head: { title: 'Agency Owner', selection: 'board', appointedBy: 'the owners' },
     departments: [{ id: 'care', name: 'Client Care', occupations: ['caregiving', 'nursing'], head: { title: 'Agency Director', selection: 'internal', occupation: 'caregiving', levelId: 'director' } }],
   },
+  ambulanceCompany: {
+    name: (c) => c.rng.pick(['MedRide Ambulance', 'Lifeline Medical Transport', 'Apex Ambulance Service', 'Guardian EMS', 'TriCounty Ambulance Co.']), scope: 'market', sector: 'private',
+    head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the private-equity owners' },
+    departments: [
+      { id: 'operations', name: 'Field Operations', occupations: ['privateEms'], head: { title: 'Chief Operating Officer', selection: 'internal', occupation: 'privateEms', levelId: 'director' } },
+      { id: 'dispatch', name: 'Communications Center', occupations: ['dispatch'], head: { title: 'Communications Manager', selection: 'internal' } },
+      { id: 'billing', name: 'Billing & Revenue Cycle', occupations: ['accounting'], head: { title: 'Revenue Cycle Director', selection: 'internal' } },
+    ],
+  },
   charity: {
     name: (c) => c.rng.pick(['Hope Community Foundation', 'Greater Good Alliance', `${city(c)} Food Bank`, 'United Way of the Region']), scope: 'market', sector: 'private',
     head: { title: 'President & CEO', selection: 'board', appointedBy: 'the board of trustees', occupation: 'nonprofit', levelId: 'ceo' },

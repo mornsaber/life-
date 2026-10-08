@@ -1,18 +1,19 @@
 /** Life on the ambulance on the Career tab: agency, shift, assignments, calls. */
 import { esc, button, card, chip, kv, meter, disclosure } from '../Components.js';
-import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, agencyEligibility, emsPayAdjust, shiftAllowed } from '../../modules/ems/EmsLife.js';
+import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, EMS_PROFESSIONS, agencyEligibility, emsPayAdjust, shiftAllowed, emsSector } from '../../modules/ems/EmsLife.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
 
 export function emsCard(state) {
   const job = state.career.job;
   const e = state.ems;
-  if (job?.professionId !== 'ems' || !e) return '';
+  if (!EMS_PROFESSIONS.includes(job?.professionId) || !e) return '';
+  const sector = emsSector(job);
   const a = AGENCIES[e.agency];
   const sh = SHIFTS[e.shift] ?? SHIFTS['24-48'];
   const moved = Boolean(state.yearly['ems.agency']);
   const bid = Boolean(state.yearly['ems.shift']);
   const medic = hasCredential(state, 'paramedic');
-  const agencies = Object.entries(AGENCIES).map(([id, x]) => {
+  const agencies = Object.entries(AGENCIES).filter(([, x]) => x.sector === sector).map(([id, x]) => {
     const c = agencyEligibility(state, id);
     return button(`${x.icon} ${x.name}`, 'emsLife.agency', { arg: id, variant: e.agency === id ? 'small on' : 'small', disabled: e.agency === id || moved || !c.ok, hint: c.ok ? `Pay ×${x.pay} · ${x.desc}` : c.reason });
   }).join('');
@@ -28,6 +29,7 @@ export function emsCard(state) {
     ['🚑', 'runs', e.calls], ['💓', 'saves', e.saves], ['👶', e.babies === 1 ? 'baby delivered' : 'babies delivered', e.babies], ['💉', 'Narcan given', e.narcan], ['🚌', 'MCIs', e.mci], ['🕯️', 'critical incidents', e.incidents],
   ].filter(([, , n]) => n).map(([i, l, n]) => chip(`${i} ${Number(n).toLocaleString()} ${l}`)).join(' ');
   return card('On the Ambulance', `${kv([
+    ['Sector', sector === 'public' ? '🏛️ Public — civil service, union, pension' : '🏢 Private — more overtime, 401(k), no pension'],
     ['Agency', a ? `${a.icon} ${esc(a.name)}` : 'Choosing…'],
     ['Shift', `${sh.icon} ${esc(sh.name)}`],
     ['Pay vs. base', `×${emsPayAdjust(state).toFixed(2)}`],
@@ -37,7 +39,7 @@ export function emsCard(state) {
     ${meter(Math.min(e.ce ?? 0, CE_HOURS), { max: CE_HOURS, label: 'Continuing education', suffix: ` / ${CE_HOURS} h`, tone: (e.ce ?? 0) >= CE_HOURS ? 'good' : 'mid' })}
     ${tally ? `<div class="chip-row">${tally}</div>` : ''}
     <div class="action-grid">
-      ${button('⏰ Pick up overtime', 'emsLife.overtime', { variant: 'small', disabled: (state.yearly['ems.overtime'] ?? 0) >= 2, hint: 'Time-and-a-half; more burnout' })}
+      ${button('⏰ Pick up overtime', 'emsLife.overtime', { variant: 'small', disabled: (state.yearly['ems.overtime'] ?? 0) >= (sector === 'private' ? 3 : 2), hint: 'Time-and-a-half; more burnout' })}
       ${button('📚 Continuing education', 'emsLife.ce', { variant: 'small', disabled: Boolean(state.yearly['ems.ce']), hint: `+36 hours toward ${CE_HOURS}` })}
       ${button('🫂 Stress debriefing', 'emsLife.cism', { variant: 'small', disabled: Boolean(state.yearly['ems.cism']), hint: 'Less trauma and burnout' })}
     </div>

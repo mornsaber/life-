@@ -34,11 +34,15 @@ import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
 
 export const AGENCIES = {
-  thirdService: { name: 'City EMS (third service)', icon: '🚑', pay: 1.0, volume: 1.0, burnout: 5, desc: 'The city\'s own ambulance service: busy, unionized, a pension.' },
-  fireBased: { name: 'Fire-based EMS', icon: '🚒', pay: 1.22, volume: 0.8, burnout: 4, needs: 'fire', shifts: ['24-48', '48-96'], desc: 'Cross-trained firefighter-paramedics: better pay, 24-hour shifts, a fire pension.' },
-  private: { name: 'Private ambulance company', icon: '🏥', pay: 0.85, volume: 1.15, burnout: 6, desc: 'Interfacility transfers and 911 contracts. Lower pay, plenty of hours.' },
-  hospital: { name: 'Hospital-based transport', icon: '🏨', pay: 1.06, volume: 0.6, burnout: 3, desc: 'Critical-care transports between hospitals; good benefits, sicker patients.' },
-  flight: { name: 'Air-medical program', icon: '🚁', pay: 1.15, volume: 0.35, burnout: 4, needs: 'flight', shifts: ['24-48', 'days', 'nights'], desc: 'Helicopter and fixed-wing transports. Few calls; every one is serious.' },
+  // Public: civil service, a pension, the union.
+  thirdService: { sector: 'public', name: 'City EMS (third service)', icon: '🚑', pay: 1.0, volume: 1.0, burnout: 5, desc: 'The city\'s own ambulance service: busy, unionized, a pension.' },
+  county: { sector: 'public', name: 'County EMS authority', icon: '🗺️', pay: 0.97, volume: 0.8, burnout: 4, desc: 'Suburbs and farm country: long transports, fewer calls, a county pension.' },
+  fireBased: { sector: 'public', name: 'Fire-based EMS', icon: '🚒', pay: 1.22, volume: 0.8, burnout: 4, needs: 'fire', shifts: ['24-48', '48-96'], desc: 'Cross-trained firefighter-paramedics: better pay, 24-hour shifts, a fire pension.' },
+  // Private: companies, hospitals and flight programs. More hours, no pension.
+  private: { sector: 'private', name: '911 contract crew', icon: '🚐', pay: 0.9, volume: 1.15, burnout: 6, desc: 'Your company runs the county\'s 911 contract: busy, response-time penalties, plenty of overtime.' },
+  ift: { sector: 'private', name: 'Interfacility transfers', icon: '🏥', pay: 0.82, volume: 0.9, burnout: 3, transfers: true, desc: 'Dialysis runs, nursing-home discharges and hospital-to-hospital transfers. Steady, rarely exciting.' },
+  hospital: { sector: 'private', name: 'Hospital-based critical-care transport', icon: '🏨', pay: 1.06, volume: 0.6, burnout: 3, desc: 'ICU patients on drips and vents between hospitals; good benefits.' },
+  flight: { sector: 'private', name: 'Air-medical program', icon: '🚁', pay: 1.15, volume: 0.35, burnout: 4, needs: 'flight', shifts: ['24-48', 'days', 'nights'], desc: 'Helicopter and fixed-wing transports. Few calls; every one is serious.' },
 };
 
 export const SHIFTS = {
@@ -63,7 +67,11 @@ export const RECERT_YEARS = 2;
 export const IN_HOUSE_CE = 12;
 
 const ems = (state) => state.ems;
-const isEms = (job) => job?.professionId === 'ems';
+export const EMS_PROFESSIONS = ['ems', 'privateEms'];
+const isEms = (job) => EMS_PROFESSIONS.includes(job?.professionId);
+/** Public (city/county/fire) or private (companies, hospitals, flight). */
+export const emsSector = (job) => (job?.professionId === 'privateEms' ? 'private' : 'public');
+const SUPERVISORS = ['supervisor', 'captain', 'deputy', 'chief', 'manager', 'director'];
 const isMedic = (state) => hasCredential(state, 'paramedic');
 
 /** Pay multiplier from agency and shift (plus a night differential). */
@@ -81,6 +89,8 @@ function applyPay(state, job) {
 export function agencyEligibility(state, id) {
   const a = AGENCIES[id];
   if (!a) return { ok: false, reason: 'Unknown agency' };
+  const job = state.career.job;
+  if (isEms(job) && a.sector !== emsSector(job)) return { ok: false, reason: a.sector === 'public' ? 'A public agency: apply for Public EMS on the job board' : 'A private employer: apply for Private Ambulance Service on the job board' };
   if (a.needs === 'fire' && !hasCredential(state, 'ff1') && !state.career.history.some((h) => h.professionId === 'fire')) return { ok: false, reason: 'Needs firefighter certification (Firefighter I)' };
   if (a.needs === 'flight' && !hasCredential(state, 'flightParamedic')) return { ok: false, reason: 'Needs the FP-C flight certification' };
   return { ok: true };
@@ -113,7 +123,8 @@ const CALLS = [
 function callPrompt(ctx) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'emsLife.call')) return;
-  const pool = CALLS.filter((c) => isMedic(state) || !['pedi', 'violent'].includes(c.id));
+  const transfers = AGENCIES[ems(state)?.agency]?.transfers;
+  const pool = CALLS.filter((c) => (isMedic(state) || !['pedi', 'violent'].includes(c.id)) && (!transfers || ['arrest', 'violent', 'refusal', 'frequent'].includes(c.id)));
   const c = rng.pick(pool);
   ctx.prompt({ type: 'emsLife.call', icon: c.icon, title: c.title, text: c.text, options: c.options, data: { callId: c.id } });
 }
@@ -142,13 +153,15 @@ function setupPrompt(ctx) {
   ctx.prompt({
     type: 'emsLife.setup', icon: '🚑', title: 'Your Service',
     text: 'Which kind of EMS agency hired you? (You can change agencies later.)',
-    options: Object.entries(AGENCIES).map(([id, a]) => { const c = agencyEligibility(state, id); return { id, label: `${a.icon} ${a.name}`, hint: c.ok ? a.desc : c.reason, disabled: !c.ok }; }),
+    options: Object.entries(AGENCIES).filter(([, a]) => a.sector === emsSector(state.career.job)).map(([id, a]) => { const c = agencyEligibility(state, id); return { id, label: `${a.icon} ${a.name}`, hint: c.ok ? a.desc : c.reason, disabled: !c.ok }; }),
   });
 }
 
 function emsTick(ctx, job) {
   const { state, rng } = ctx;
   const e = ems(state);
+  // Older saves (or a move across sectors) can leave an agency of the wrong kind.
+  if (e.agency && AGENCIES[e.agency]?.sector !== emsSector(job)) e.agency = null;
   if (!e.agency) {
     setupPrompt(ctx);
     return;
@@ -156,7 +169,7 @@ function emsTick(ctx, job) {
   const a = AGENCIES[e.agency];
   const sh = SHIFTS[e.shift] ?? SHIFTS['24-48'];
   // The run volume.
-  const calls = Math.round(rng.int(1400, 2800) * a.volume * (e.shift === 'perDiem' ? 0.4 : 1) * (job.levelId === 'flight' ? 0.3 : 1) * (['supervisor', 'captain', 'deputy', 'chief'].includes(job.levelId) ? 0.25 : 1));
+  const calls = Math.round(rng.int(1400, 2800) * a.volume * (e.shift === 'perDiem' ? 0.4 : 1) * (job.levelId === 'flight' ? 0.3 : 1) * (SUPERVISORS.includes(job.levelId) ? 0.25 : 1));
   e.calls = (e.calls ?? 0) + calls;
   const arrests = Math.round(calls * 0.012);
   const rosc = rng.int(0, Math.max(0, Math.round(arrests * clamp(0.12 + callSkill(state) / 400, 0.08, 0.35))));
@@ -196,7 +209,7 @@ function emsTick(ctx, job) {
     }
   }
   // A call to remember, and the rest of the job.
-  if (rng.chance(0.75)) callPrompt(ctx);
+  if (rng.chance(a.transfers ? 0.4 : 0.75)) callPrompt(ctx);
   if (rng.chance(0.3)) jobEvent(ctx, job);
   // Recognition.
   if (rosc && rng.chance(0.25)) {
@@ -219,13 +232,17 @@ const JOB_EVENTS = [
   { id: 'crash', icon: '💥', title: 'Ambulance Crash', text: 'A driver ran a red light into your ambulance running hot.', options: [{ id: 'ok', label: '🩹 Check your crew and patient' }] },
   { id: 'needle', icon: '🩸', title: 'Needlestick', text: 'A dirty needle went through your glove during a struggle.', options: [{ id: 'report', label: '📋 Report it and start post-exposure prophylaxis' }, { id: 'ignore', label: '🤐 Don\'t report it', tone: 'danger' }] },
   { id: 'wall', icon: '⏳', title: 'Hospital Wall Times', text: 'Four ambulances, including yours, are stuck in the ER hallway with patients on stretchers.', options: [{ id: 'escalate', label: '📞 Escalate to the charge nurse and your supervisor' }, { id: 'wait', label: '⏳ Wait it out' }] },
+  { id: 'contract', sector: 'private', icon: '📉', title: 'Contract Lost', text: 'Your company lost the county\'s 911 contract to a rival. 911 crews are being reassigned to transfers — or let go.', options: [{ id: 'ift', label: '🏥 Move to the transfer side' }, { id: 'rival', label: '🤝 Apply to the company that won', hint: 'They need crews on day one' }] },
+  { id: 'billing', sector: 'private', icon: '🧾', title: 'Surprise Bill', text: 'A patient you transported got a $2,800 out-of-network ambulance bill and blames you.', options: [{ id: 'advocate', label: '📞 Push billing to reduce it' }, { id: 'shrug', label: '🤷 Not your department' }] },
+  { id: 'brownout', sector: 'public', icon: '🔻', title: 'Budget Brownouts', text: 'The city council cut the EMS budget. Two ambulances will be "browned out" each shift.', options: [{ id: 'testify', label: '🎤 Testify at the council meeting' }, { id: 'quiet', label: '🤐 Keep your head down' }] },
+  { id: 'exam', sector: 'public', icon: '📝', title: 'Civil-Service Promotion Exam', text: 'The lieutenant\'s list exam is next month. Your rank on the list is everything.', options: [{ id: 'study', label: '📚 Study every night', hint: 'Smarts check' }, { id: 'wing', label: '🎲 Wing it' }] },
   { id: 'qa', icon: '🔍', title: 'QA Review', text: 'The medical director flagged one of your charts for review.', options: [{ id: 'own', label: '🙋 Own the gap and take the remediation' }, { id: 'defend', label: '🛡️ Defend your judgment', hint: 'Smarts check' }] },
 ];
 
 function jobEvent(ctx) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'emsLife.event')) return;
-  const ev = rng.pick(JOB_EVENTS);
+  const ev = rng.pick(JOB_EVENTS.filter((x) => !x.sector || x.sector === emsSector(state.career.job)));
   ctx.prompt({ type: 'emsLife.event', icon: ev.icon, title: ev.title, text: ev.text, options: ev.options, data: { eventId: ev.id } });
 }
 
@@ -239,7 +256,7 @@ YEAR_HOOKS.push((state, programId, major) => (hasCredential(state, 'paramedic') 
 ADMISSION_HOOKS.push({
   boost(state, programId) {
     if (programId !== 'paMaster' && programId !== 'md') return 0;
-    const years = state.career.history.filter((h) => h.professionId === 'ems').reduce((s, h) => s + (h.endAge - h.startAge), 0) + (isEms(state.career.job) ? state.career.job.yearsAtEmployer : 0);
+    const years = state.career.history.filter((h) => EMS_PROFESSIONS.includes(h.professionId)).reduce((s, h) => s + (h.endAge - h.startAge), 0) + (isEms(state.career.job) ? state.career.job.yearsAtEmployer : 0);
     return Math.min(programId === 'paMaster' ? 0.15 : 0.06, years * 0.03);
   },
 });
@@ -258,7 +275,7 @@ export const EmsLifeModule = {
     engine.bus.on('career:hired', ({ ctx, job }) => {
       if (!isEms(job)) return;
       const e = ems(ctx.state);
-      if (e.agency && agencyEligibility(ctx.state, e.agency).ok) applyPay(ctx.state, job);
+      if (e.agency && AGENCIES[e.agency] && agencyEligibility(ctx.state, e.agency).ok) applyPay(ctx.state, job);
       else {
         e.agency = null;
         setupPrompt(ctx);
@@ -305,7 +322,8 @@ export const EmsLifeModule = {
       const { state, rng } = ctx;
       const job = state.career.job;
       if (!isEms(job)) return;
-      if (yearlyCount(state, 'ems.overtime') >= 2) return ctx.toast('Twice a year at most', 'warn');
+      const otCap = emsSector(job) === 'private' ? 3 : 2;
+      if (yearlyCount(state, 'ems.overtime') >= otCap) return ctx.toast(`${otCap === 3 ? 'Three' : 'Two'} overtime blocks a year at most`, 'warn');
       bumpYearly(state, 'ems.overtime');
       const pay = Math.round(job.salary * rng.float(0.08, 0.14));
       ctx.earn(pay, 'EMS overtime', { wage: true });
@@ -354,7 +372,7 @@ export const EmsLifeModule = {
     setup(ctx, _data, optionId) {
       const { state } = ctx;
       const job = state.career.job;
-      if (!isEms(job) || !AGENCIES[optionId]) return;
+      if (!isEms(job) || !AGENCIES[optionId] || !agencyEligibility(state, optionId).ok) return;
       ems(state).agency = optionId;
       if (!shiftAllowed(state, ems(state).shift)) ems(state).shift = AGENCIES[optionId].shifts[0];
       applyPay(state, job);
@@ -405,6 +423,13 @@ export const EmsLifeModule = {
         case 'wall.wait': e.burnout = clamp(e.burnout + 2, 0, 100); ctx.log('Three hours in a hallway while calls stacked up across the city.', '⏳'); break;
         case 'qa.own': e.ce = (e.ce ?? 0) + 8; ctx.log('You took the remediation — and learned something.', '🙋'); break;
         case 'qa.defend': if (state.stats.smarts + rng.int(-15, 15) > 65) ctx.log('The medical director agreed with your reasoning and updated the protocol.', '🛡️', 'good'); else { if (job) job.performance = Math.max(0, job.performance - 5); ctx.log('The medical director was not persuaded.', '🔍', 'warn'); } break;
+        case 'contract.ift': e.agency = 'ift'; if (job) applyPay(state, job); ctx.log('You moved to the transfer side: dialysis runs and discharges. Less pay, less chaos.', '🏥', 'warn'); break;
+        case 'contract.rival': if (job) { job.performance = Math.max(40, job.performance - 5); applyPay(state, job); } ctx.log('The new contractor hired you on the spot — same rigs, new patches, a reset seniority date.', '🤝'); break;
+        case 'billing.advocate': ctx.stat('happiness', 2); ctx.log('Billing knocked it down to the in-network rate after you documented it was a 911 call.', '📞', 'good'); break;
+        case 'brownout.testify': if (job) { job.performance = Math.min(100, job.performance + 3); job.boss = Math.max(0, (job.boss ?? 50) - 5); } ctx.log('Your testimony made the local news. The council restored one of the two units.', '🎤', 'good'); break;
+        case 'brownout.quiet': e.burnout = clamp(e.burnout + 3, 0, 100); ctx.log('Response times climbed. You felt it on every call.', '🔻'); break;
+        case 'exam.study': if (state.stats.smarts + rng.int(-15, 15) > 60) { if (job) job.performance = Math.min(100, job.performance + 8); ctx.log('You placed near the top of the promotion list.', '📝', 'good'); } else ctx.log('Middle of the list. Maybe next time.', '📝'); break;
+        case 'exam.wing': ctx.log('You placed low on the list.', '🎲'); break;
         default: ctx.log('Back in service.', '🚑');
       }
     },

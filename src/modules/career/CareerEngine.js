@@ -511,7 +511,7 @@ export function openPromotionReview(ctx, initiatedByPlayer = false) {
 /* Annual evaluation                                                   */
 /* ------------------------------------------------------------------ */
 
-const PHYSICAL_FIELDS = ['police', 'fire', 'ems', 'trades', 'trucking', 'parkService', 'culinary', 'publicWorks'];
+const PHYSICAL_FIELDS = ['police', 'fire', 'ems', 'privateEms', 'trades', 'trucking', 'parkService', 'culinary', 'publicWorks'];
 
 export function performanceTarget(state, rng, departmentEffect = 0) {
   const job = state.career.job;

@@ -29,10 +29,10 @@ function setup(seed = 3, creds = ['emt', 'paramedic']) {
   for (const c of creds) grantCredential(ctx, c, { silent: true });
   return { engine, state, ctx };
 }
-function medic(ctx, state, levelId = 'paramedic', keep = false) {
-  const p = getProfession('ems');
+function medic(ctx, state, levelId = 'paramedic', keep = false, professionId = 'ems') {
+  const p = getProfession(professionId);
   const employer = createEmployer(ctx.rng, state, p, state.character.regionId);
-  const job = hire(ctx, { professionId: 'ems', levelId, employer });
+  const job = hire(ctx, { professionId, levelId, employer });
   if (!keep) state.prompts = [];
   return job;
 }
@@ -40,6 +40,29 @@ const tick = (ctx, state) => { if (state.career.job) state.career.job.paidThisYe
 const pick = (engine, state, type, opt) => { const p = state.prompts.find((x) => x.type === type); if (p) engine.resolvePrompt(p.id, opt ?? p.options.find((o) => !o.disabled).id); return p; };
 
 const tests = {
+  'private EMS: its own career, private agencies, more overtime, sector events'() {
+    const { engine, state, ctx } = setup(9);
+    const job = medic(ctx, state, 'paramedic', true, 'privateEms');
+    assert.equal(getProfession('privateEms').sector, 'private');
+    assert.ok(!getProfession('privateEms').benefits?.pension, 'no pension');
+    const p = state.prompts.find((x) => x.type === 'emsLife.setup');
+    assert.deepEqual(p.options.map((o) => o.id).sort(), ['flight', 'hospital', 'ift', 'private']);
+    engine.resolvePrompt(p.id, 'private');
+    for (let i = 0; i < 3; i++) engine.dispatch('emsLife.overtime');
+    assert.equal(state.yearly['ems.overtime'], 3, 'three overtime blocks for private crews');
+    let saw = new Set();
+    for (let i = 0; i < 40; i++) {
+      state.prompts = [];
+      state.yearly = {};
+      tick(ctx, state);
+      const ev = state.prompts.find((x) => x.type === 'emsLife.event');
+      if (ev) { saw.add(ev.data.eventId); engine.resolvePrompt(ev.id, ev.options[0].id); }
+      state.ems.ce = 99;
+    }
+    assert.ok(!saw.has('brownout') && !saw.has('exam'), `no public events: ${[...saw]}`);
+    assert.ok(job && /Private/.test(VIEWS.career(state, {})));
+  },
+
   'choosing an agency sets pay; fire-based and flight need certifications'() {
     const { engine, state, ctx } = setup(1);
     const job = medic(ctx, state, 'paramedic', true);
@@ -48,11 +71,12 @@ const tests = {
     assert.ok(p, 'asked which agency');
     assert.equal(scopeOfType('emsLife.setup'), 'job');
     assert.ok(p.options.find((o) => o.id === 'fireBased').disabled, 'fire-based needs FF1');
-    assert.ok(p.options.find((o) => o.id === 'flight').disabled, 'flight needs FP-C');
+    assert.ok(!p.options.some((o) => o.id === 'private' || o.id === 'flight'), 'public jobs only list public agencies');
     const base = state.career.job.salary;
-    engine.resolvePrompt(p.id, 'private');
-    assert.equal(state.ems.agency, 'private');
-    assert.ok((state.career.job.salary) < base, 'private pays less');
+    engine.resolvePrompt(p.id, 'county');
+    assert.equal(state.ems.agency, 'county');
+    assert.ok(state.career.job.salary < base, 'county pays a bit less');
+    assert.equal(agencyEligibility(state, 'private').ok, false);
     grantCredential(ctx, 'ff1', { silent: true });
     assert.ok(agencyEligibility(state, 'fireBased').ok);
     engine.dispatch('emsLife.agency', 'fireBased');
@@ -91,7 +115,7 @@ const tests = {
 
   'assignments need certifications; burnout can end the career'() {
     const { engine, state, ctx } = setup(4);
-    medic(ctx, state);
+    medic(ctx, state, 'paramedic', false, 'privateEms');
     state.ems.agency = 'private';
     engine.dispatch('emsLife.assignment', 'tactical');
     assert.ok(!state.ems.assignments.tactical, 'needs the TEMS card');
@@ -107,9 +131,9 @@ const tests = {
 
   'EMT-basics see no pediatric codes and can do the peer team only'() {
     const { engine, state, ctx } = setup(5, ['emt']);
-    const job = medic(ctx, state, 'emt');
+    const job = medic(ctx, state, 'emt', false, 'privateEms');
     assert.ok(job, 'hired as an EMT');
-    state.ems.agency = 'private';
+    state.ems.agency = 'ift';
     engine.dispatch('emsLife.assignment', 'community');
     assert.ok(!state.ems.assignments.community);
     assert.ok(emsPayAdjust(state) < 1);

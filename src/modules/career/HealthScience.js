@@ -35,6 +35,24 @@ export const HEALTH_SCIENCE_PROFESSIONS = {
       L('director', 'Director of Clinical Operations', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 400 }),
     ],
   },
+  privateEms: {
+    id: 'privateEms', name: 'Private Ambulance Service', icon: '🚐', sector: 'private', payMultiplier: 0.86, minAge: 18, sizes: { small: 2, medium: 3, large: 2, enterprise: 1 }, background: 'standard',
+    union: { chance: 0.2, name: 'Teamsters EMS Local 1199', strike: true },
+    employers: ['MedRide Ambulance', 'Lifeline Medical Transport', 'Apex Ambulance Service', 'Guardian EMS', 'Keystone Critical Care Transport', 'TriCounty Ambulance Co.'],
+    entry: { credentials: ['driverLicense'] },
+    valued: ['paramedic', 'evoc', 'acls', 'pals', 'phtls', 'ccp'],
+    levels: [
+      L('emt', 'EMT', 2, { entry: true, req: { credentials: ['emt'] } }),
+      L('aemt', 'Advanced EMT', 3, { req: { credentials: ['aemt'] } }),
+      L('paramedic', 'Paramedic', 4, { entry: true, req: { credentials: ['paramedic'] }, abilities: ['prescribe'] }),
+      L('cct', 'Critical Care Transport Paramedic', 5, { track: 'ic', req: { credentials: ['ccp'] }, abilities: ['prescribe'] }),
+      L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', req: { credentials: ['flightParamedic'] }, abilities: ['prescribe'], airMedical: true }),
+      L('fto', 'Field Training Officer', 4, { track: 'mgmt', abilities: ['supervise'], reports: 4 }),
+      L('supervisor', 'Operations Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 25 }),
+      L('manager', 'Operations Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 80 }),
+      L('director', 'Regional Director of Operations', 8, { track: 'mgmt', minSize: 'large', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 400 }),
+    ],
+  },
   publicHealth: {
     id: 'publicHealth', name: 'County Public Health', icon: '🧫', sector: 'municipal', exam: 'municipal', background: 'standard', payMultiplier: 0.95, minAge: 21,
     union: { chance: 0.5, name: 'AFSCME Public Health Local', strike: false },
@@ -87,6 +105,16 @@ export const HEALTH_EVENTS = {
       { id: 'rural', label: '🌾 The rural hospital', perf: 3 },
       { id: 'trauma', label: '🚑 The trauma center', perf: 5, stress: 4 },
       { id: 'strike', label: '💰 The strike contract', perf: 4, boss: 5, stress: 3 },
+    ] },
+  ],
+  privateEms: [
+    { title: 'Contract Bid', text: 'The county\'s 911 contract is up for bid, and your company wants crews to cut response-time corners on the paperwork.', options: [
+      { id: 'honest', label: '📋 Chart the real response times', perf: 2, boss: -4 },
+      { id: 'fudge', label: '⏱️ "Round" the times like everyone else', perf: 4, boss: 4 },
+    ] },
+    { title: 'Medical Necessity', text: 'Billing wants you to write that a patient who walked to the stretcher was "bed-confined" so Medicare will pay for the transfer.', options: [
+      { id: 'refuse', label: '🙅 Chart what you saw', perf: -2, boss: -5 },
+      { id: 'write', label: '✍️ Write it their way', perf: 3, boss: 5, offense: 'healthcareFraud' },
     ] },
   ],
   research: [

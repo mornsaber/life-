@@ -56,7 +56,7 @@ export const MUNICIPAL_PROFESSIONS = {
     ],
   },
   ems: {
-    id: 'ems', name: 'Emergency Medical Services', icon: '🚑', sector: 'municipal', payMultiplier: 0.95, minAge: 18, background: 'strict', exam: 'publicSafety',
+    id: 'ems', name: 'Public EMS (City / County)', icon: '🚑', sector: 'municipal', payMultiplier: 0.95, minAge: 18, background: 'strict', exam: 'publicSafety',
     union: { chance: 0.5, name: 'AFSCME EMS Local 2507', strike: false },
     benefits: { pension: 'municipal' },
     employerName: (city) => `${city} EMS`,
