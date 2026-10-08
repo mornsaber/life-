@@ -28,6 +28,8 @@ import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFact
 import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
 import { serviceLimit } from '../src/modules/military/Separation.js';
 import { DIRECT_MAX_AGE } from '../src/modules/military/MOS.js';
+import { upOrOut } from '../src/modules/military/Separation.js';
+import { commission, commissionedYears } from '../src/modules/military/MilitaryEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 22) {
@@ -509,6 +511,19 @@ const tests = {
     assert.ok(DIRECT_MAX_AGE >= 60, 'direct commissions with an age waiver');
   },
 
+  'mustangs: enlisted time does not count against officer tenure limits'() {
+    const { engine, state, ctx } = setup(37, 30);
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'engineering', year: 26, gpa: 3.3 });
+    const svc = enlist(engine);
+    Object.assign(svc, { isNew: false, yearsOfService: 12, grade: 5, eval: 80 });
+    commission(ctx, svc);
+    assert.equal(svc.track, 'officer');
+    assert.equal(commissionedYears(svc), 0);
+    assert.equal(upOrOut(ctx, svc), false, 'a new O-1 with 12 years enlisted is not over the O-1 limit');
+    svc.yearsOfService += 3;
+    assert.equal(commissionedYears(svc), 3);
+    assert.ok(state.military.service, 'still serving');
+  },
 };
 
 let failed = 0;

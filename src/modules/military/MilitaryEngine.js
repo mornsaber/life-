@@ -144,6 +144,27 @@ export const ENLIST_CONTRACT = { active: 4, reserve: 6 };
 export const ownServiceYears = (h) => (h?.yearsOfService ?? 0) - (h?.priorYears ?? 0);
 
 /**
+ * Years that count against officer and warrant officer tenure limits:
+ * commissioned (or appointed) service only. A former E-7 commissioned at 12
+ * years starts the O-1 clock at zero; enlisted time still counts toward
+ * retirement. Old saves without the field estimate it from rank.
+ */
+export function commissionedYears(svc) {
+  if (svc.track === 'enlisted') return svc.yearsOfService;
+  let start = svc.commissionedYos;
+  if (start == null) {
+    const expected = (TIME_IN_GRADE[svc.track] ?? []).slice(0, svc.grade).reduce((a, b) => a + b, 0) + (svc.yearsInGrade ?? 0);
+    start = Math.max(0, svc.yearsOfService - expected);
+  }
+  return Math.max(0, svc.yearsOfService - start);
+}
+
+/** Commissioned years you already served in earlier stints on this track. */
+function priorCommissioned(state, track) {
+  return state.military.history.filter((h) => h.track === track).reduce((sum, h) => sum + (h.commissionedYears ?? ownServiceYears(h)), 0);
+}
+
+/**
  * Prior service that counts toward retirement (and pay) when you come back:
  * earlier honorable stints plus years at a service academy. Retired stints
  * already earned their pension.
@@ -342,6 +363,9 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
     yearsInGrade: 0,
     yearsOfService: prior,
     priorYears: prior,
+    // Officer/warrant tenure counts commissioned service, including earlier commissioned stints.
+    commissionedYos: track === 'enlisted' ? null : Math.max(0, prior - priorCommissioned(state, track)),
+    priorCommissioned: track === 'enlisted' ? 0 : Math.min(prior, priorCommissioned(state, track)),
     contractYearsLeft: track === 'warrant' ? 6 : track === 'officer' ? ENLIST_CONTRACT[component] + (component === 'active' ? 0 : 2) : ENLIST_CONTRACT[component],
     eval: 60,
     deployments: 0,
@@ -473,6 +497,7 @@ export function tryPromotion(ctx, svc) {
 export function commission(ctx, svc) {
   svc.mos = equivalentMos(svc, svc.branch, 'officer')?.id ?? null;
   svc.track = 'officer';
+  svc.commissionedYos = svc.yearsOfService;
   svc.grade = 0;
   svc.yearsInGrade = 0;
   svc.contractYearsLeft = Math.max(svc.contractYearsLeft, svc.component === 'active' ? 4 : 6);
@@ -514,6 +539,7 @@ export function discharge(ctx, type, reason) {
     sof: svc.sof?.pipeline ?? svc.sofFormer ?? null,
     schools: svc.schools ?? {},
     priorYears: svc.priorYears ?? 0,
+    commissionedYears: svc.track === 'enlisted' ? 0 : Math.max(0, commissionedYears(svc) - (svc.priorCommissioned ?? 0)),
     rankCode: rank.code,
     rankTitle: rank.title,
     yearsOfService: svc.yearsOfService,

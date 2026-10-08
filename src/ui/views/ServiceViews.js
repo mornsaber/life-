@@ -17,7 +17,7 @@ import { getProfession } from '../../modules/career/JobTrees.js';
 import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select, disclosure, optionRow } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
 import {
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, annualActivePay, DISCHARGE_LABEL, RETIREMENT_YEARS,
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS,
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
 import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
@@ -88,7 +88,7 @@ export function militaryView(state) {
           ['Retirement', svc.retirementPlan === 'brs' ? 'Blended (2%/yr + matched TSP)' : svc.retirementPlan === 'legacy' ? 'Legacy (2.5%/yr at 20)' : 'Legacy until year 2'],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
           svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} Article 15${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
-          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
+          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs${svc.track === 'enlisted' ? '' : ` commissioned service (${commissionedYears(svc)} so far)`} at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
         ])}
       </div>
     </div>

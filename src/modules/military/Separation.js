@@ -17,7 +17,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge } from './MilitaryEngine.js';
+import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge, commissionedYears } from './MilitaryEngine.js';
 import { equivalentMos } from './MOS.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
@@ -45,7 +45,7 @@ export function separationPay(svc) {
 export function upOrOut(ctx, svc) {
   const rank = rankOf(svc);
   const passedOver = svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) && (svc.passovers ?? 0) >= PASSOVER_LIMIT;
-  const overLimit = svc.yearsOfService >= serviceLimit(svc);
+  const overLimit = commissionedYears(svc) >= serviceLimit(svc);
   if (!passedOver && !overLimit) return false;
   if (svc.yearsOfService >= RETIREMENT_YEARS) {
     discharge(ctx, 'retired', overLimit ? `Reached the high-year tenure limit for ${rank.title}.` : `Retired after twice being passed over for ${rankOf({ ...svc, grade: svc.grade + 1 }).title}.`);

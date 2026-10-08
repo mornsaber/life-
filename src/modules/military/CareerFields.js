@@ -138,6 +138,7 @@ export function applyWarrant(ctx, mosId) {
     return false;
   }
   svc.track = 'warrant';
+  svc.commissionedYos = svc.yearsOfService;
   svc.grade = 0;
   svc.yearsInGrade = 0;
   svc.passovers = 0;
