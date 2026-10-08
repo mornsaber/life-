@@ -16,6 +16,7 @@ import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
+import { veteranLevel } from './VeteranPlacement.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation } from './Employers.js';
@@ -89,7 +90,17 @@ export function backgroundCheck(state, profession) {
 /** Highest entry level the candidate qualifies for at an employer of this size (ignoring clearance). */
 export function bestEntryLevel(state, profession, size) {
   const candidates = entryLevels(profession, size).filter((l) => levelCheck(state, l).ok);
-  return candidates.sort((a, b) => b.grade - a.grade)[0] ?? null;
+  const base = candidates.sort((a, b) => b.grade - a.grade)[0] ?? null;
+  // Related military service (or senior leadership) can start you higher.
+  const vet = base && veteranLevel(state, profession, size, base, (l) => levelCheck(state, l).ok);
+  return vet && vet.level.grade >= base.grade ? vet.level : base;
+}
+
+/** Why you'd start above the normal entry level, if you would. */
+export function veteranPlacementNote(state, profession, size) {
+  const base = entryLevels(profession, size).filter((l) => levelCheck(state, l).ok).sort((a, b) => b.grade - a.grade)[0];
+  const vet = base && veteranLevel(state, profession, size, base, (l) => levelCheck(state, l).ok);
+  return vet ? `${vet.reason}: start as ${vet.level.title} instead of ${base.title}` : null;
 }
 
 export function applicationEligibility(state, professionId) {

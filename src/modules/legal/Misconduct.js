@@ -7,12 +7,14 @@
  * an investigation that may surface years later.
  *
  * Risky behavior: personal choices anyone can make (drunk driving,
- * shoplifting, bar fights, drugs, tax cheating, speeding).
+ * shoplifting, bar fights, drugs, tax cheating, speeding) — plus the
+ * street and organized crimes in StreetCrime.js.
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { commitOffense } from './JusticeSystem.js';
 import { stateOf } from '../life/Regions.js';
+import { crimeForMoney, CRIMES } from './StreetCrime.js';
 
 /**
  * when(job): does this temptation apply?
@@ -156,20 +158,21 @@ export function resolveTemptation(ctx, data, optionId) {
 /* ------------------------------------------------------------------ */
 
 export const RISKY_ACTIONS = [
-  { id: 'speed', label: 'Floor It on the Highway', icon: '🏎️', minAge: 16, desc: 'Thrills, maybe a ticket' },
-  { id: 'driveDrunk', label: 'Drive Home After Drinks', icon: '🍺', minAge: 18, desc: 'DUI risk, crash risk' },
-  { id: 'shoplift', label: 'Shoplift', icon: '🛒', minAge: 10, desc: 'Free stuff, arrest risk' },
-  { id: 'barFight', label: 'Start a Bar Fight', icon: '👊', minAge: 18, desc: 'Assault charge risk' },
-  { id: 'drugs', label: 'Try Recreational Drugs', icon: '💊', minAge: 16, desc: 'Ruins clearances for 7 yrs' },
-  { id: 'taxCheat', label: 'Fudge Your Taxes', icon: '🧾', minAge: 18, desc: 'Save now, audit later' },
-  { id: 'vandalism', label: 'Vandalize Property', icon: '🎨', minAge: 10, desc: 'Cheap thrill, misdemeanor' },
-  { id: 'affair', label: 'Cheat on Your Partner', icon: '💋', minAge: 18, desc: 'Not a crime — but it can end a marriage', needsPartner: true },
-  { id: 'scam', label: 'Run an Online Scam', icon: '📧', minAge: 16, desc: 'Prey on strangers; federal wire fraud' },
-  { id: 'insuranceFraud', label: 'Fake an Insurance Claim', icon: '🩼', minAge: 18, desc: 'Easy payout, felony fraud' },
-  { id: 'burglary', label: 'Burglarize a House', icon: '🏚️', minAge: 14, desc: 'Felony; prison likely if caught' },
-  { id: 'carTheft', label: 'Steal a Car', icon: '🚙', minAge: 14, desc: 'Felony auto theft' },
-  { id: 'dealDrugs', label: 'Sell Drugs', icon: '💰', minAge: 15, desc: 'Big money, long sentences' },
-  { id: 'armedRobbery', label: 'Rob a Store at Gunpoint', icon: '🔫', minAge: 16, desc: 'Violent felony — if someone dies, it\'s murder' },
+  { id: 'speed', group: 'personal', label: 'Floor It on the Highway', icon: '🏎️', minAge: 16, desc: 'Thrills, maybe a ticket' },
+  { id: 'driveDrunk', group: 'personal', label: 'Drive Home After Drinks', icon: '🍺', minAge: 18, desc: 'DUI risk, crash risk' },
+  { id: 'shoplift', group: 'petty', label: 'Shoplift', icon: '🛒', minAge: 10, desc: 'Free stuff, arrest risk' },
+  { id: 'barFight', group: 'personal', label: 'Start a Bar Fight', icon: '👊', minAge: 18, desc: 'Assault charge risk' },
+  { id: 'drugs', group: 'personal', label: 'Try Recreational Drugs', icon: '💊', minAge: 16, desc: 'Ruins clearances for 7 yrs' },
+  { id: 'taxCheat', group: 'fraud', label: 'Fudge Your Taxes', icon: '🧾', minAge: 18, desc: 'Save now, audit later' },
+  { id: 'vandalism', group: 'petty', label: 'Vandalize Property', icon: '🎨', minAge: 10, desc: 'Cheap thrill, misdemeanor' },
+  { id: 'affair', group: 'personal', label: 'Cheat on Your Partner', icon: '💋', minAge: 18, desc: 'Not a crime — but it can end a marriage', needsPartner: true },
+  { id: 'scam', group: 'fraud', label: 'Run an Online Scam', icon: '📧', minAge: 16, desc: 'Prey on strangers; federal wire fraud' },
+  { id: 'insuranceFraud', group: 'fraud', label: 'Fake an Insurance Claim', icon: '🩼', minAge: 18, desc: 'Easy payout, felony fraud' },
+  { id: 'burglary', group: 'property', label: 'Burglarize a House', icon: '🏚️', minAge: 14, desc: 'Felony; prison likely if caught' },
+  { id: 'carTheft', group: 'property', label: 'Steal a Car', icon: '🚙', minAge: 14, desc: 'Felony auto theft' },
+  { id: 'dealDrugs', group: 'organized', label: 'Sell Drugs', icon: '💰', minAge: 15, desc: 'Big money, long sentences' },
+  { id: 'armedRobbery', group: 'violent', label: 'Rob a Store at Gunpoint', icon: '🔫', minAge: 16, desc: 'Violent felony — if someone dies, it\'s murder' },
+  ...CRIMES,
 ];
 
 function once(ctx, id) {
@@ -179,16 +182,6 @@ function once(ctx, id) {
   }
   bumpYearly(ctx.state, `risky.${id}`);
   return true;
-}
-
-/** Commit a crime for money: caught on the spot, or it may surface later. */
-function crimeForMoney(ctx, { offenseId, money, caughtNow, discovery, evidence, context, text, icon }) {
-  const { rng } = ctx;
-  if (rng.chance(caughtNow)) return commitOffense(ctx, { offenseId, caught: true, context, evidence });
-  ctx.earn(rng.int(...money), 'Undisclosed income');
-  ctx.log(text, icon, 'warn');
-  if (discovery) commitOffense(ctx, { offenseId, context, discovery, evidence });
-  return undefined;
 }
 
 export const RiskyActions = {
@@ -260,25 +253,25 @@ export const RiskyActions = {
   },
   scam(ctx) {
     if (!once(ctx, 'scam')) return;
-    crimeForMoney(ctx, { offenseId: 'wireFraud', money: [3000, 25000], caughtNow: 0.05, discovery: 0.25, evidence: 0.85, context: 'online romance scam', text: 'You scammed lonely strangers out of their savings.', icon: '📧' });
+    crimeForMoney(ctx, { id: 'scam', group: 'fraud', offenseId: 'wireFraud', money: [3000, 25000], caughtNow: 0.05, discovery: 0.25, evidence: 0.85, context: 'online romance scam', text: 'You scammed lonely strangers out of their savings.', icon: '📧' });
   },
   insuranceFraud(ctx) {
     if (!once(ctx, 'insuranceFraud')) return;
-    crimeForMoney(ctx, { offenseId: 'insuranceFraud', money: [5000, 30000], caughtNow: 0.1, discovery: 0.2, evidence: 0.8, context: 'staged injury claim', text: 'You faked a slip-and-fall and the insurer paid.', icon: '🩼' });
+    crimeForMoney(ctx, { id: 'insuranceFraud', group: 'fraud', offenseId: 'insuranceFraud', money: [5000, 30000], caughtNow: 0.1, discovery: 0.2, evidence: 0.8, context: 'staged injury claim', text: 'You faked a slip-and-fall and the insurer paid.', icon: '🩼' });
   },
   burglary(ctx) {
     if (!once(ctx, 'burglary')) return;
     ctx.stat('stress', 4);
-    crimeForMoney(ctx, { offenseId: 'burglary', money: [500, 8000], caughtNow: 0.25, discovery: 0.12, evidence: 0.75, context: 'neighborhood break-in', text: 'You broke into a house and fenced what you took.', icon: '🏚️' });
+    crimeForMoney(ctx, { id: 'burglary', group: 'property', offenseId: 'burglary', money: [500, 8000], caughtNow: 0.25, discovery: 0.12, evidence: 0.75, context: 'neighborhood break-in', text: 'You broke into a house and fenced what you took.', icon: '🏚️' });
   },
   carTheft(ctx) {
     if (!once(ctx, 'carTheft')) return;
-    crimeForMoney(ctx, { offenseId: 'autoTheft', money: [1000, 6000], caughtNow: 0.3, discovery: 0.1, evidence: 0.8, context: 'stolen car', text: 'You stole a car and sold it to a chop shop.', icon: '🚙' });
+    crimeForMoney(ctx, { id: 'carTheft', group: 'property', offenseId: 'autoTheft', money: [1000, 6000], caughtNow: 0.3, discovery: 0.1, evidence: 0.8, context: 'stolen car', text: 'You stole a car and sold it to a chop shop.', icon: '🚙' });
   },
   dealDrugs(ctx) {
     if (!once(ctx, 'dealDrugs')) return;
     ctx.stat('stress', 6);
-    crimeForMoney(ctx, { offenseId: 'drugDistribution', money: [5000, 40000], caughtNow: 0.2, discovery: 0.2, evidence: 0.8, context: 'undercover buy', text: 'You moved product all year. The money was good.', icon: '💰' });
+    crimeForMoney(ctx, { id: 'dealDrugs', group: 'organized', offenseId: 'drugDistribution', money: [5000, 40000], caughtNow: 0.2, discovery: 0.2, evidence: 0.8, context: 'undercover buy', text: 'You moved product all year. The money was good.', icon: '💰' });
   },
   armedRobbery(ctx) {
     const { rng } = ctx;
@@ -289,7 +282,7 @@ export const RiskyActions = {
       ctx.log('The clerk reached under the counter. In the chaos, someone was killed.', '⚰️', 'death');
       return commitOffense(ctx, { offenseId: 'felonyMurder', caught: rng.chance(0.8), context: 'a robbery that turned deadly', discovery: 0.5, evidence: 0.9, yearsLeft: 99 });
     }
-    crimeForMoney(ctx, { offenseId: 'armedRobbery', money: [300, 5000], caughtNow: 0.45, discovery: 0.3, evidence: 0.85, context: 'convenience store robbery', text: 'You robbed a convenience store at gunpoint and got away.', icon: '🔫' });
+    crimeForMoney(ctx, { id: 'armedRobbery', group: 'violent', offenseId: 'armedRobbery', money: [300, 5000], caughtNow: 0.45, discovery: 0.3, evidence: 0.85, context: 'convenience store robbery', text: 'You robbed a convenience store at gunpoint and got away.', icon: '🔫' });
   },
   taxCheat(ctx) {
     const { state } = ctx;

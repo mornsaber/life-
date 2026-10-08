@@ -12,7 +12,7 @@ import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employ
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
 import { hasCredential as holds } from '../../modules/credentials/LicensingEngine.js';
 import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS } from '../../modules/career/JobTrees.js';
-import { applicationEligibility, promotionStatus, levelCheck } from '../../modules/career/CareerEngine.js';
+import { applicationEligibility, promotionStatus, levelCheck, veteranPlacementNote } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
@@ -296,7 +296,7 @@ function jobRow(state, p, extra = false) {
   return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
       <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
-        ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]</small>` : ''}</div>
+        ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;

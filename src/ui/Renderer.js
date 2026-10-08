@@ -6,7 +6,7 @@
 import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
-  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
+  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
 } from './Components.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession } from '../modules/career/JobTrees.js';
@@ -16,7 +16,7 @@ import { SERVICE_LIST, rankOfMember } from '../modules/emergency/EmergencyEngine
 import { PROGRAMS } from '../modules/education/Catalog.js';
 import { ACTIVITIES, activityCost } from '../modules/life/Activities.js';
 import { regionOf } from '../modules/life/Regions.js';
-import { RISKY_ACTIONS } from '../modules/legal/index.js';
+import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT } from '../modules/legal/index.js';
 import { careerView } from './views/CareerView.js';
 import { govView } from './views/GovView.js';
 import { licensesView } from './views/LicensesView.js';
@@ -95,9 +95,23 @@ export const VIEWS = {
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
     const partnered = (state.people?.list ?? []).some((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
-    const risky = RISKY_ACTIONS.map((r) => button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: state.character.age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered), hint: r.desc })).join('');
+    const crimeButton = (r) => {
+      const why = r.needs?.(state);
+      return button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: state.character.age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered) || Boolean(why), hint: why ?? (state.character.age < r.minAge ? `Age ${r.minAge}+` : r.desc) });
+    };
+    const groups = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
+      const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid);
+      if (!list.length) return '';
+      const body = `<div class="action-grid">${list.map(crimeButton).join('')}</div>`;
+      return gid === 'personal' ? `<h4 class="sub">${g.icon} ${g.label}</h4>${body}` : disclosure(`crime.${gid}`, `${g.icon} ${g.label}`, body, { count: list.length });
+    }).join('');
+    const crime = state.legal.crime;
+    const heat = crime?.heat ?? 0;
+    const heatPanel = crime ? `${meter(heat, { max: 100, label: '🚨 Heat', suffix: '/100', tone: heat >= TASK_FORCE_HEAT ? 'bad' : heat >= 35 ? 'mid' : 'good' })}
+      <p class="fine">Heat makes arrests likelier and old cases resurface; above ${TASK_FORCE_HEAT} a task force builds cases against you. It fades each year — faster if you lay low.${crime.earned ? ` Criminal earnings: $${Math.round(crime.earned).toLocaleString()}.` : ''}</p>
+      <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: crime.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}</div>` : '';
     return `${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
-      ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances.</p><div class="action-grid">${risky}</div>`, { icon: '😈', accent: 'red' })}`;
+      ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}`;
   },
   honors(state) {
     const mil = militaryHonors(state);
