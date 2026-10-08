@@ -136,6 +136,9 @@ const BASE_EVENTS = [
   ] },
 ];
 
+/** An event's icon: its own, or the emoji its first choice starts with. */
+const iconOf = (e) => e.icon ?? e.options?.[0]?.label.match(/^\p{Extended_Pictographic}\uFE0F?/u)?.[0] ?? '🎲';
+
 /** Every event that can come up at random (follow-ups only come when planted). */
 export const LIFE_EVENTS = [...BASE_EVENTS, ...MORE_LIFE_EVENTS.filter((e) => !e.followUp)];
 const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? FOLLOW_UPS[id];
@@ -169,7 +172,7 @@ export const LifeEvents = {
     }
     ctx.prompt({
       type: 'lifeEvents.event',
-      icon: '🎲',
+      icon: iconOf(event),
       title: event.title,
       text: event.text,
       options: event.options.map((o) => ({ id: o.id, label: o.label, tone: o.tone })),
@@ -183,7 +186,7 @@ export const LifeEvents = {
       const option = event?.options.find((o) => o.id === optionId);
       if (!option) return;
       const text = option.resolve(ctx);
-      if (text) ctx.log(`${event.title}: ${text}`, '🎲');
+      if (text) ctx.log(`${event.title}: ${text}`, iconOf(event));
     },
   },
 };

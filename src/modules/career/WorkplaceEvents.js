@@ -134,7 +134,7 @@ export function resolveWorkEvent(ctx, data, optionId) {
     money += r.money ?? 0;
     if (r.injury) ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 50) });
     if (r.offense) ctx.emit('legal:offense', { offenseId: r.offense, context: event.title.toLowerCase(), caught: true });
-  } else ctx.log(`${event.title}: ${o.label.replace(/^\S+\s/, '')}.`, '🏢');
+  } else ctx.log(`${event.title}: ${o.text ?? `${o.label.replace(/^\S+\s/, '')}.`}`, '🏢');
   if (money > 0) ctx.earn(money, `${event.title} (${state.career.job?.employer.name ?? 'work'})`);
   else if (money < 0) ctx.spend(-money, event.title, { allowDebt: true });
   if (state.career.job) ctx.emit('career:adjust', { performance: perf, boss, coworkers });

@@ -75,7 +75,10 @@ function fillWithRival(state, org, deptId, profession, level, rival, size = org.
   // A named post never holds more people than it has seats.
   const seats = seatsAt(org, deptId, profession, level, size);
   const holders = (org.departments[deptId]?.seats[profession.id]?.[level.id] ?? []).filter((id) => org.people[id]);
-  if (seats <= NAMED_SEATS && holders.length >= seats && !holders.includes(rival?.person?.id)) {
+  // You hold one of the seats yourself if you're in this post.
+  const job = state.career.job;
+  const mine = job?.employer?.orgId === org.id && job.employer.deptId === deptId && job.professionId === profession.id && job.levelId === level.id && !job.headOf ? 1 : 0;
+  if (seats <= NAMED_SEATS && holders.length + mine >= seats && !holders.includes(rival?.person?.id)) {
     org.departments[deptId].vacancies = (org.departments[deptId].vacancies ?? []).filter((v) => !(v.professionId === profession.id && v.levelId === level.id));
     return org.people[holders[0]];
   }
@@ -184,7 +187,7 @@ export function vacancyTick(ctx, job) {
     const rivals = level.grade > job.grade ? rivalsFor(state, job, level) : [];
     const best = rivals.length ? rivals.reduce((a, b) => (b.score > a.score ? b : a)) : null;
     const person = fillWithRival(state, org, dept.id, profession, level, best, size);
-    if (nextLevels(profession, size, job.levelId).some((l) => l.id === level.id)) ctx.log(`${person.name} ${best && !best.external ? 'was promoted' : 'was hired'} as ${level.title} at ${job.employer.name}.`, '🪑');
+    if (person && nextLevels(profession, size, job.levelId).some((l) => l.id === level.id)) ctx.log(`${person.name} ${best && !best.external ? 'was promoted' : 'was hired'} as ${level.title} at ${job.employer.name}.`, '🪑');
   }
   dept.vacancies = dept.vacancies.filter((x) => x.since >= state.character.age || x.professionId !== job.professionId);
 
