@@ -22,6 +22,7 @@
  */
 import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford } from './State.js';
 import { Random } from './Random.js';
+import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
 
 export class EventBus {
   constructor() {
@@ -181,6 +182,7 @@ export class Engine {
       m.onYearEnd?.(ctx);
     }
 
+    pruneStalePrompts(state);
     this.autoResolve();
     if (currentYearEntries(state).length === 0) addLog(state, 'A quiet year passed.', '🍃', 'muted');
     compactLog(state);
@@ -210,6 +212,7 @@ export class Engine {
       }
     }
     fn(this.context(), arg);
+    pruneStalePrompts(state);
     this.commit();
     return true;
   }
@@ -225,7 +228,15 @@ export class Engine {
     if (!resolver) throw new Error(`No resolver for prompt type ${prompt.type}`);
 
     state.prompts.splice(index, 1);
+    // The job, service or office this was about is gone: the decision no longer applies.
+    if (isStale(state, prompt)) {
+      this.toast('That decision no longer applies.', 'info');
+      pruneStalePrompts(state);
+      this.commit();
+      return false;
+    }
     resolver(this.context(), prompt.data ?? {}, optionId, prompt);
+    pruneStalePrompts(state);
     this.commit();
     return true;
   }
@@ -235,6 +246,7 @@ export class Engine {
     if (!this.autoResolver) return;
     const state = this.state;
     for (let guard = 0; guard < 20 && state.prompts.length && state.character.alive; guard++) {
+      pruneStalePrompts(state);
       const prompt = state.prompts.find((p) => this.autoResolver(p));
       if (!prompt) return;
       const optionId = this.autoResolver(prompt);
@@ -274,6 +286,7 @@ export class Engine {
           options: spec.options.map((o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))),
         };
         if (!prompt.options.some((o) => !o.disabled)) throw new Error(`Prompt ${spec.type} has no selectable option`);
+        stampPrompt(state, prompt);
         state.prompts.push(prompt);
         return prompt;
       },
