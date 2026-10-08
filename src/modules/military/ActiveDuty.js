@@ -7,7 +7,7 @@ import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
 import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
 import { schoolTick } from './Schools.js';
-import { reportMisconduct } from './UCMJ.js';
+import { reportMisconduct, UCMJ_OFFENSES } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
 import { warFactor, combatFactor } from '../world/War.js';
@@ -477,7 +477,11 @@ function dutyEventPrompt(ctx) {
     icon: '📯',
     title: event.title,
     text: event.text,
-    options: event.options.map((o) => ({ id: o.id, label: o.label })),
+    // Options that can end in UCMJ charges say so.
+    options: event.options.map((o) => {
+      const charge = o.risky?.ucmj && UCMJ_OFFENSES[o.risky.ucmj];
+      return { id: o.id, label: o.label, ...(charge ? { hint: `Risk: Art. ${charge.article}, ${charge.name.toLowerCase()}`, tone: 'danger' } : {}) };
+    }),
     data: { eventId: event.id },
   });
 }

@@ -352,13 +352,29 @@ function fitnessForDuty(ctx) {
   const def = CONDITIONS[c.id];
   const military = Boolean(state.military.service);
   const where = military ? 'your command' : state.career.job.employer.name;
+  const addiction = def.kind === 'addiction';
+  // In uniform, an addiction is a command referral to the substance abuse program, not a medical board.
+  if (military && addiction) {
+    ctx.prompt({
+      type: 'health.duty',
+      icon: '🩺',
+      title: 'Substance Abuse Program Referral',
+      text: `Your command referred you to the substance abuse program for your ${def.name.toLowerCase()}. Complete treatment and you keep your career; fail it and you face administrative separation.`,
+      options: [
+        { id: 'treat', label: '🏥 Complete the program', hint: 'Keep your career if treatment works' },
+        { id: 'hide', label: '🤐 Downplay it to the counselor', hint: 'If they find out, you are separated', tone: 'danger' },
+      ],
+      data: { conditionId: c.id },
+    });
+    return;
+  }
   ctx.prompt({
     type: 'health.duty',
     icon: '🩺',
     title: military ? 'Medical Evaluation Board' : 'Fitness-for-Duty Evaluation',
     text: `${where} ordered a fitness-for-duty evaluation. Your ${def.name.toLowerCase()} doesn't meet the medical standard.`,
     options: [
-      { id: 'treat', label: def.kind === 'addiction' ? '🏥 Go to rehab on medical leave' : '🩺 Take medical leave for treatment', hint: 'Keep the job if treatment works' },
+      { id: 'treat', label: addiction ? '🏥 Go to rehab on medical leave' : '🩺 Take medical leave for treatment', hint: 'Keep the job if treatment works' },
       { id: 'hide', label: '🤐 Downplay it to the doctor', hint: 'If they find out, you are fired', tone: 'danger' },
       { id: 'retire', label: military ? '🎗️ Accept medical separation' : '♿ Take a medical retirement', hint: 'Disability benefits and VA/pension where eligible' },
     ],
@@ -585,14 +601,15 @@ export const HealthEngine = {
       const c = getCondition(state, data.conditionId);
       if (!c) return;
       const def = CONDITIONS[c.id];
-      if (optionId === 'retire') {
+      if (optionId === 'retire' && !(state.military.service && def.kind === 'addiction')) {
         goOnDisability(ctx, def.name.toLowerCase());
         return;
       }
       if (optionId === 'hide') {
         if (rng.chance(0.35)) {
           ctx.log(`The department's doctor saw through it. Your ${def.name.toLowerCase()} came out.`, '🩺', 'bad');
-          if (state.military.service) discharge(ctx, 'medical', `Unfit for duty (${def.name.toLowerCase()}).`);
+          if (state.military.service && def.kind === 'addiction') discharge(ctx, 'general', `Separated for failing the substance abuse program (${def.name.toLowerCase()}).`);
+          else if (state.military.service) discharge(ctx, 'medical', `Unfit for duty (${def.name.toLowerCase()}).`);
           else ctx.emit('career:resign', { reason: 'Failed fitness-for-duty evaluation', fired: true });
         } else ctx.log('You passed the evaluation. For now.', '🤐', 'warn');
         return;
