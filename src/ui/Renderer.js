@@ -6,7 +6,7 @@
 import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
-  esc, money, compactMoney, button, card, chip, meter, statPanel, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
+  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone,
 } from './Components.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession } from '../modules/career/JobTrees.js';
@@ -159,6 +159,7 @@ export class Renderer {
     for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
     this.applyLogFilter();
+    this.applyJobFilter();
   }
 
   html(state) {
@@ -225,6 +226,30 @@ export class Renderer {
     else if (state && key.includes('engine.resolve')) this.root.querySelector('#tabpanel')?.focus({ preventScroll: true });
   }
 
+  /** Job board search: show matching jobs (opening their field groups), hide the rest. */
+  applyJobFilter() {
+    const box = this.root.querySelector('#job-search');
+    if (!box) return;
+    const q = (this.ui.jobQuery ?? '').trim().toLowerCase();
+    if (box.value !== (this.ui.jobQuery ?? '')) box.value = this.ui.jobQuery ?? '';
+    const panel = box.closest('.card-body') ?? this.root;
+    let shown = 0;
+    for (const li of panel.querySelectorAll('li.job-row')) {
+      const match = !q || li.textContent.toLowerCase().includes(q);
+      li.hidden = q ? !match : li.hasAttribute('data-extra');
+      if (match && !li.hidden) shown += 1;
+    }
+    for (const group of panel.querySelectorAll('.job-groups details')) {
+      const any = [...group.querySelectorAll('li.job-row')].some((li) => !li.hidden);
+      group.hidden = Boolean(q) && !any;
+      if (q && any) group.open = true;
+    }
+    const more = panel.querySelector('#job-more');
+    if (more) more.hidden = Boolean(q);
+    const count = panel.querySelector('#job-count');
+    if (count) count.textContent = q ? `${shown} job${shown === 1 ? '' : 's'} match "${q}"` : '';
+  }
+
   /** Hide log entries that don't match the search box / kind filter. */
   applyLogFilter() {
     const log = this.root.querySelector('#life-log');
@@ -269,6 +294,7 @@ export class Renderer {
         ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo</button>` : ''}
         <button class="btn ghost small" data-action="ui.panel" data-arg="menu" aria-haspopup="dialog"><span aria-hidden="true">☰</span> Menu</button>
       </nav>
+      ${state.character?.alive === false ? '' : statStrip(state.stats)}
     </header>`;
   }
 

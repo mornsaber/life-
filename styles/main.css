@@ -810,3 +810,37 @@ select:focus { border-color: var(--cyan); }
 .chip-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0; }
 .next-step { padding: 8px 10px; border: 1px dashed var(--line); border-radius: 8px; margin: 6px 0; font-size: 13px; }
 .chip-row .chip { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* ---------- Stat strip: every stat, always visible in the top bar ---------- */
+.topbar { flex-wrap: wrap; row-gap: 6px; }
+.stat-strip { flex-basis: 100%; display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.stat-strip::-webkit-scrollbar { display: none; }
+.mini-stat { flex: 1 0 auto; min-width: 64px; display: grid; grid-template-columns: auto auto; grid-template-rows: auto 4px; column-gap: 4px; align-items: center; padding: 3px 8px; border: 1px solid var(--line); border-radius: 8px; font-size: 13px; background: var(--card, transparent); }
+.mini-stat b { font-variant-numeric: tabular-nums; text-align: right; }
+.mini-track { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.mini-track > span { display: block; height: 100%; background: var(--green, #3fb950); }
+.mini-stat.mid .mini-track > span { background: var(--yellow, #d29922); }
+.mini-stat.bad .mini-track > span { background: var(--red, #f85149); }
+.mini-stat.bad b { color: var(--red, #f85149); }
+@media (max-width: 560px) { .mini-stat { min-width: 52px; padding: 2px 6px; font-size: 12px; } }
+.sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
+
+/* ---------- Job board tools ---------- */
+.job-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin: 4px 0 8px; }
+.job-tools input[type="search"] { flex: 1 1 200px; min-width: 0; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; background: transparent; color: inherit; font: inherit; }
+.job-group > summary { cursor: pointer; font-weight: 700; padding: 6px 0; }
+.job-group .job-board { margin-top: 4px; }
+.job-tools .toggle-row { display: flex; flex-wrap: nowrap; gap: 6px; }
+.job-tools .toggle-row .btn { width: auto; flex: 0 0 auto; }
+@media (max-width: 560px) { .job-tools .toggle-row { width: 100%; } .job-tools .toggle-row .btn { flex: 1 1 0; padding-left: 4px; padding-right: 4px; } }
+/* Compact job rows on phones: smaller icon and type, tighter spacing. */
+@media (max-width: 560px) {
+  .job-board .job-row { grid-template-columns: 28px minmax(0, 1fr) auto; gap: 2px 8px; padding: 8px 0; }
+  .job-board .job-icon { font-size: 18px; }
+  .job-board .job-info b { font-size: 15px; }
+  .job-board .job-info small { font-size: 11px; line-height: 1.3; }
+  .job-board .job-row .why { font-size: 12px; }
+  .job-board .job-row .btn.small { padding: 6px 10px; min-height: 0; }
+}
+.job-title { display: block; }
+.job-title small { white-space: nowrap; }

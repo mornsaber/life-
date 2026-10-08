@@ -69,6 +69,17 @@ export function statBar(key, value) {
   </div>`;
 }
 
+/** A compact one-line strip of every stat, always visible under the top bar. */
+export function statStrip(stats) {
+  return `<div class="stat-strip" role="group" aria-label="Your stats">${STAT_KEYS.map((k) => {
+    const meta = STAT_META[k];
+    const v = Math.round(stats[k] ?? 0);
+    const effective = meta.inverse ? 100 - v : v;
+    const tone = effective >= 70 ? 'good' : effective >= 40 ? 'mid' : 'bad';
+    return `<span class="mini-stat ${tone}" title="${meta.label} ${v}/100"><span aria-hidden="true">${meta.icon}</span><b>${v}</b><span class="mini-track" aria-hidden="true"><span style="width:${v}%"></span></span><span class="sr-only">${meta.label}</span></span>`;
+  }).join('')}</div>`;
+}
+
 export function statPanel(stats) {
   return STAT_KEYS.map((k) => statBar(k, stats[k])).join('');
 }

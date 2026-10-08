@@ -116,6 +116,7 @@ function handleAction(el) {
     }
     case 'ui.jobField':
       renderer.ui.jobField = arg;
+      renderer.ui.jobLimit = undefined;
       return renderer.render(engine.state);
     case 'ui.logMore':
       renderer.ui.logLimit += 40;
@@ -197,6 +198,11 @@ document.addEventListener('change', (event) => {
   return undefined;
 });
 document.addEventListener('input', (event) => {
+  if (event.target.id === 'job-search') {
+    renderer.ui.jobQuery = event.target.value;
+    renderer.applyJobFilter();
+    return;
+  }
   if (event.target.id !== 'log-search') return;
   renderer.ui.logFilter.query = event.target.value;
   renderer.applyLogFilter();

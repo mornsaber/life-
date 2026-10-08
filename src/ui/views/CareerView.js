@@ -6,7 +6,7 @@
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
-import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder } from '../Components.js';
+import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder, disclosure } from '../Components.js';
 import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } from '../../modules/career/Transport.js';
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
@@ -284,28 +284,57 @@ function formerEmployersCard(state) {
   return card('Former Employers', `${gap > 1 ? `<p class="fine">⏳ ${gap} years out of the workforce — employers will ask about the gap.</p>` : ''}<ul class="job-board">${rows}</ul>`, { icon: '🔁' });
 }
 
-function jobRow(state, p) {
+function jobRow(state, p, extra = false) {
   const check = applicationEligibility(state, p.id);
   const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
-  return `<li class="job-row ${check.ok ? '' : 'locked'}">
+  return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
-      <div class="job-info"><b>${esc(p.name)}</b> <small class="muted">${SECTOR_LABEL[p.sector]}</small><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
+      <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
         ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
 }
 
-/** Field filter chips; "Open to me" (default) lists only jobs you can apply for right now. */
+/** Pay ceiling of a career: its top grade. */
+const topGrade = (p) => p.levels.reduce((a, l) => Math.max(a, l.grade), 0);
+const SORTS = { pay: ['💰 Top pay', (a, b) => topGrade(b) - topGrade(a)], entry: ['🚪 Entry level', (a, b) => a.levels[0].grade - b.levels[0].grade], name: ['🔤 A–Z', (a, b) => a.name.localeCompare(b.name)] };
+const PAGE = 12;
+
+/**
+ * The job board: search as you type, sort, field filter chips, and — for
+ * "Open to me" — collapsible groups by field so the list never runs on forever.
+ */
 function jobBoard(state, ui = {}) {
   const field = ui.jobField ?? 'open';
+  const sort = SORTS[ui.jobSort] ? ui.jobSort : 'pay';
+  const limit = Number(ui.jobLimit) || PAGE;
   const open = PROFESSION_LIST.filter((p) => applicationEligibility(state, p.id).ok);
-  const chips = [['open', `✅ Open to me (${open.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label}`])]
+  const chips = [['open', `✅ Open to me (${open.length})`], ['all', `📋 All (${PROFESSION_LIST.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label} (${f.ids.length})`])]
     .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('');
-  const list = field === 'open' ? open : JOB_FIELDS[field].ids.map(getProfession);
-  const rows = list.map((p) => jobRow(state, p)).join('');
-  return `<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>
-    <ul class="job-board">${rows || '<li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li>'}</ul>`;
+  const sorts = Object.entries(SORTS).map(([id, [label]]) => button(label, 'ui.set', { arg: `jobSort=${id}`, variant: id === sort ? 'tiny on' : 'tiny' })).join('');
+  const tools = `<div class="job-tools"><input type="search" id="job-search" placeholder="Search jobs…" aria-label="Search jobs" autocomplete="off"><div class="toggle-row" role="group" aria-label="Sort jobs">${sorts}</div></div>`;
+  const header = `<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
+  const sorted = (list) => [...list].sort(SORTS[sort][1]);
+  if (field === 'open') {
+    if (!open.length) return `${header}<ul class="job-board"><li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li></ul>`;
+    // Group open jobs by field; the first group starts expanded.
+    const seen = new Set();
+    const groups = Object.entries(JOB_FIELDS).map(([id, f]) => {
+      const jobs = sorted(open.filter((p) => f.ids.includes(p.id) && !seen.has(p.id)));
+      jobs.forEach((p) => seen.add(p.id));
+      return { id, f, jobs };
+    }).filter((g) => g.jobs.length);
+    const rest = sorted(open.filter((p) => !seen.has(p.id)));
+    if (rest.length) groups.push({ id: 'other', f: { icon: '🧩', label: 'Other' }, jobs: rest });
+    const html = groups.map((g, i) => disclosure(`jobs.${g.id}`, `${g.f.icon} ${esc(g.f.label)}`, `<ul class="job-board">${g.jobs.map((p) => jobRow(state, p)).join('')}</ul>`, { count: g.jobs.length, open: i === 0 })).join('');
+    return `${header}<div class="job-groups">${html}</div><p class="fine" id="job-count"></p>`;
+  }
+  const list = sorted(field === 'all' ? PROFESSION_LIST : JOB_FIELDS[field].ids.map(getProfession));
+  // Every row is in the page (so search finds them all); rows past the limit start hidden.
+  const rows = list.map((p, i) => jobRow(state, p, i >= limit)).join('');
+  const more = list.length > limit ? `<div class="row-end" id="job-more">${button(`Show ${Math.min(PAGE, list.length - limit)} more (${list.length - limit} left)`, 'ui.set', { arg: `jobLimit=${limit + PAGE}`, variant: 'small ghost' })}</div>` : '';
+  return `${header}<ul class="job-board">${rows}</ul>${more}<p class="fine" id="job-count"></p>`;
 }
 
 /** A civilian job held for you while on active duty (USERRA). */
@@ -332,7 +361,9 @@ export function careerView(state, ui = {}) {
   const history = stints.length
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  // No job: the job board comes first, before everything else on this screen.
+  const board = card('Job Board', jobBoard(state, ui), { icon: '📰' });
+  return `${current}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */
