@@ -136,15 +136,21 @@ function critical(ctx, amount = 6) {
 /* The year                                                            */
 /* ------------------------------------------------------------------ */
 
+function setupPrompt(ctx) {
+  const { state } = ctx;
+  if (state.prompts.some((p) => p.type === 'emsLife.setup')) return;
+  ctx.prompt({
+    type: 'emsLife.setup', icon: '🚑', title: 'Your Service',
+    text: 'Which kind of EMS agency hired you? (You can change agencies later.)',
+    options: Object.entries(AGENCIES).map(([id, a]) => { const c = agencyEligibility(state, id); return { id, label: `${a.icon} ${a.name}`, hint: c.ok ? a.desc : c.reason, disabled: !c.ok }; }),
+  });
+}
+
 function emsTick(ctx, job) {
   const { state, rng } = ctx;
   const e = ems(state);
   if (!e.agency) {
-    if (!state.prompts.some((p) => p.type === 'emsLife.setup')) ctx.prompt({
-      type: 'emsLife.setup', icon: '🚑', title: 'Your Service',
-      text: 'Which kind of EMS agency hired you? (You can change agencies later.)',
-      options: Object.entries(AGENCIES).map(([id, a]) => { const c = agencyEligibility(state, id); return { id, label: `${a.icon} ${a.name}`, hint: c.ok ? a.desc : c.reason, disabled: !c.ok }; }),
-    });
+    setupPrompt(ctx);
     return;
   }
   const a = AGENCIES[e.agency];
@@ -253,7 +259,10 @@ export const EmsLifeModule = {
       if (!isEms(job)) return;
       const e = ems(ctx.state);
       if (e.agency && agencyEligibility(ctx.state, e.agency).ok) applyPay(ctx.state, job);
-      else e.agency = null;
+      else {
+        e.agency = null;
+        setupPrompt(ctx);
+      }
     });
   },
   onAgeUp(ctx) {

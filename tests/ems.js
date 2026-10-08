@@ -29,10 +29,12 @@ function setup(seed = 3, creds = ['emt', 'paramedic']) {
   for (const c of creds) grantCredential(ctx, c, { silent: true });
   return { engine, state, ctx };
 }
-function medic(ctx, state, levelId = 'paramedic') {
+function medic(ctx, state, levelId = 'paramedic', keep = false) {
   const p = getProfession('ems');
   const employer = createEmployer(ctx.rng, state, p, state.character.regionId);
-  return hire(ctx, { professionId: 'ems', levelId, employer });
+  const job = hire(ctx, { professionId: 'ems', levelId, employer });
+  if (!keep) state.prompts = [];
+  return job;
 }
 const tick = (ctx, state) => { if (state.career.job) state.career.job.paidThisYear = true; state.character.age += 1; state.yearly = {}; EmsLifeModule.onAgeUp(ctx); };
 const pick = (engine, state, type, opt) => { const p = state.prompts.find((x) => x.type === type); if (p) engine.resolvePrompt(p.id, opt ?? p.options.find((o) => !o.disabled).id); return p; };
@@ -40,10 +42,8 @@ const pick = (engine, state, type, opt) => { const p = state.prompts.find((x) =>
 const tests = {
   'choosing an agency sets pay; fire-based and flight need certifications'() {
     const { engine, state, ctx } = setup(1);
-    const job = medic(ctx, state);
+    const job = medic(ctx, state, 'paramedic', true);
     assert.ok(job);
-    state.prompts = [];
-    tick(ctx, state);
     const p = state.prompts.find((x) => x.type === 'emsLife.setup');
     assert.ok(p, 'asked which agency');
     assert.equal(scopeOfType('emsLife.setup'), 'job');

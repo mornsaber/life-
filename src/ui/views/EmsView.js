@@ -1,5 +1,5 @@
 /** Life on the ambulance on the Career tab: agency, shift, assignments, calls. */
-import { esc, button, card, chip, kv, meter } from '../Components.js';
+import { esc, button, card, chip, kv, meter, disclosure } from '../Components.js';
 import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, agencyEligibility, emsPayAdjust, shiftAllowed } from '../../modules/ems/EmsLife.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
 
@@ -25,7 +25,7 @@ export function emsCard(state) {
   }).join('');
   const burn = e.burnout ?? 0;
   const tally = [
-    ['🚑', 'runs', e.calls], ['💓', 'saves', e.saves], ['👶', 'babies delivered', e.babies], ['💉', 'Narcan given', e.narcan], ['🚌', 'MCIs', e.mci], ['🕯️', 'critical incidents', e.incidents],
+    ['🚑', 'runs', e.calls], ['💓', 'saves', e.saves], ['👶', e.babies === 1 ? 'baby delivered' : 'babies delivered', e.babies], ['💉', 'Narcan given', e.narcan], ['🚌', 'MCIs', e.mci], ['🕯️', 'critical incidents', e.incidents],
   ].filter(([, , n]) => n).map(([i, l, n]) => chip(`${i} ${Number(n).toLocaleString()} ${l}`)).join(' ');
   return card('On the Ambulance', `${kv([
     ['Agency', a ? `${a.icon} ${esc(a.name)}` : 'Choosing…'],
@@ -41,8 +41,8 @@ export function emsCard(state) {
       ${button('📚 Continuing education', 'emsLife.ce', { variant: 'small', disabled: Boolean(state.yearly['ems.ce']), hint: `+36 hours toward ${CE_HOURS}` })}
       ${button('🫂 Stress debriefing', 'emsLife.cism', { variant: 'small', disabled: Boolean(state.yearly['ems.cism']), hint: 'Less trauma and burnout' })}
     </div>
-    <h4 class="sub">Agency${moved ? ' (moved this year)' : ''}</h4><div class="toggle-row">${agencies}</div>
-    <h4 class="sub">Shift bid${bid ? ' (bid this year)' : ''}</h4><div class="toggle-row">${shifts}</div>
-    <h4 class="sub">Special assignments (up to two)</h4><div class="toggle-row">${assignments}</div>
+    ${disclosure('ems.agency', `Agency${moved ? ' (moved this year)' : ''}`, `<div class="toggle-row">${agencies}</div>`, { count: a ? a.name : 'choose' })}
+    ${disclosure('ems.shift', `Shift bid${bid ? ' (bid this year)' : ''}`, `<div class="toggle-row">${shifts}</div>`, { count: sh.name })}
+    ${disclosure('ems.assign', 'Special assignments (up to two)', `<div class="toggle-row">${assignments}</div>`, { count: `${Object.keys(e.assignments ?? {}).length} of 2` })}
     <p class="fine">EMT → AEMT → Paramedic → Critical Care → Flight. Recertify every two years. Years on the ambulance count toward PA school, and paramedics get a year off nursing school.</p>`, { icon: '🚑', accent: 'red' });
 }

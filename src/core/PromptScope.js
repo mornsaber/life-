@@ -17,6 +17,7 @@ const JOB_TYPES = new Set([
   'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier', 'publishing.review', 'publishing.editor', 'lab.recruit', 'lab.event',
   'medicine.claim', 'medicine.fellowship', 'medLife.residencyEvent', 'medLife.practice', 'medLife.partner', 'medLife.buyout', 'medLife.burnout', 'medLife.moc', 'medLife.pillMill', 'medLife.patientEvent',
   'emsLife.setup', 'emsLife.call', 'emsLife.event', 'emsLife.burnout',
+  'clinical.setup', 'clinical.event', 'clinical.burnout',
 ]);
 const SERVICE_TYPES = new Set([
   'military.branchDetail', 'military.brs', 'military.combat', 'military.commandOffer', 'military.contractEnd', 'military.courtMartial', 'military.dutyEvent', 'military.dutySelection',

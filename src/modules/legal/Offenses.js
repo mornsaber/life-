@@ -57,6 +57,7 @@ export const OFFENSES = {
   falsifiedInspection: { name: 'Falsifying Inspection Records', icon: '🏚️', severity: 'felony', fine: [5000, 25000], prison: [1, 3], probation: 2, jobRelated: true },
   securitiesFraud: { name: 'Securities Fraud', icon: '🪙', severity: 'felony', fine: [25000, 150000], prison: [1, 4], probation: 3, federal: true },
   insiderTrading: { name: 'Insider Trading', icon: '📈', severity: 'felony', fine: [50000, 250000], prison: [1, 5], probation: 2, jobRelated: true, federal: true },
+  healthcareFraud: { name: 'Health Care Fraud (False Claims)', icon: '🧾', severity: 'felony', fine: [20000, 120000], prison: [0, 3], probation: 3, jobRelated: true, federal: true },
   prescriptionFraud: { name: 'Prescription Fraud', icon: '💊', severity: 'felony', fine: [20000, 80000], prison: [2, 6], probation: 3, jobRelated: true, federal: true },
   excessiveForce: { name: 'Deprivation of Rights Under Color of Law', icon: '🚔', severity: 'felony', fine: [5000, 20000], prison: [1, 4], probation: 2, jobRelated: true, federal: true, violent: true },
   falseStatement: { name: 'False Statements to Federal Investigators', icon: '🕵️', severity: 'felony', fine: [5000, 25000], prison: [0, 2], probation: 2, federal: true },
