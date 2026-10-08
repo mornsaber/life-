@@ -109,10 +109,10 @@ const tests = {
     assert.ok(partner, 'partnership offered after three years');
     engine.resolvePrompt(partner.id, 'buy');
     assert.ok(state.medicine.partner);
-    assert.equal(practiceMultiplier(state), 1.35);
+    assert.equal(practiceMultiplier(state), 1.2);
     state.prompts = [];
     engine.dispatch('medLife.partTime');
-    assert.ok(Math.abs(practiceMultiplier(state) - 1.35 * 0.7) < 1e-9, 'part-time');
+    assert.ok(Math.abs(practiceMultiplier(state) - 1.2 * 0.7) < 1e-9, 'part-time');
     // Burnout comes due.
     state.medicine.burnout = 95;
     for (let i = 0; i < 10 && !state.prompts.some((x) => x.type === 'medLife.burnout'); i++) { state.prompts = []; job.paidThisYear = true; MedLifeModule.onAgeUp(ctx); }

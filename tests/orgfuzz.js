@@ -197,6 +197,7 @@ const ACTIONS = [
   ['emergency.join', 'volService', 0.3], ['emergency.fundraise', 'volService'], ['emergency.recruit', 'volService'], ['emergency.grant', 'volService'], ['emergency.disciplineMember', 'volMember'], ['emergency.appointMember', 'volMember'], ['emergency.commendMember', 'volMember'], ['emergency.resign', 'volService', 0.03],
   ['service.joinProgram', 'program', 0.1], ['service.quitProgram', null, 0.05], ['service.joinSdf', null, 0.1], ['service.sdfSchool', 'sdfSchool'], ['military.attendSchool', 'milSchool'], ['military.retrain', 'retrainMos'], ['cleared.requestSponsorship', null, 0.3], ['military.applyWarrant', 'warrantMos'], ['service.joinTeam', 'team', 0.2], ['service.joinPost', 'post', 0.3], ['service.postActivity', 'postAct'],
   ['academia.goOnMarket', null, 0.3], ['academia.sabbatical', null, 0.3],
+  ['publishing.submit', 'venue', 0.4], ['higherEd.adjunct', 'n', 0.2], ['medLife.partTime', null, 0.1], ['medLife.moonlight', null, 0.3],
 ];
 
 function argFor(kind, state, rng) {
@@ -237,6 +238,7 @@ function argFor(kind, state, rng) {
     case 'post': return rng.pick(['vfw', 'legion']);
     case 'postAct': return `${rng.pick(['vfw', 'legion'])}:${rng.pick(['volunteer', 'honorGuard', 'mentor', 'fundraise', 'scholarship', 'advocate'])}`;
     case 'n': return '3';
+    case 'venue': return rng.pick(['top', 'field', 'conference', 'book', 'preprint', 'predatory']);
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;
   }

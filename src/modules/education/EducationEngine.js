@@ -74,8 +74,12 @@ export function programYears(state, programId, major) {
     if (state.education.degrees.some((d) => d.type === 'bachelor')) years = 2; // second bachelor's
     else if (state.education.degrees.some((d) => d.type === 'associate')) years = 2; // transfer credit
   }
-  return Math.max(Math.min(1, years), years - transferCredit(state, programId).years);
+  const extra = YEAR_HOOKS.reduce((sum, h) => sum + (h(state, programId, major) ?? 0), 0);
+  return Math.max(Math.min(1, years), years - transferCredit(state, programId).years - extra);
 }
+
+/** Other modules can shorten programs (AP credit, master's credit…): (state, programId, major) → years off. */
+export const YEAR_HOOKS = [];
 
 /** Leaving a program early banks the credit you earned (half if your GPA was below 2.0). */
 function bankCredit(state, e) {
@@ -158,6 +162,8 @@ function fundTuition(ctx, e) {
   const notes = [];
   e.giBillThisYear = false;
   if (!due) return notes;
+  // Graduate assistantships waive tuition.
+  if (e.tuitionWaiver) return ['tuition waived (graduate assistantship)'];
 
   if (SCHOOLS[e.schoolId].needBasedAid && netWorth(state) < 150000) {
     const aid = Math.round(due * 0.6);
@@ -274,6 +280,8 @@ export const EducationEngine = {
       if (e.gpa >= 2.0) {
         const honors = e.gpa >= 3.9 ? 'summa cum laude' : e.gpa >= 3.7 ? 'magna cum laude' : e.gpa >= 3.5 ? 'cum laude' : null;
         const degree = { type: program.type, programId: e.programId, major: e.major, schoolId: e.schoolId, gpa: e.gpa, year: state.character.age, honors };
+        // Combined programs (4+1, MD/MPH) confer more than one degree; see academia/HigherEd.js.
+        if (e.extraGrants?.length) degree.extraGrants = [...e.extraGrants];
         state.education.degrees.push(degree);
         ctx.log(`You graduated from ${SCHOOLS[e.schoolId].name}: ${label} (GPA ${e.gpa.toFixed(2)}${honors ? `, ${honors}` : ''})! 🎓`, '🎓', 'milestone');
         ctx.toast(`Graduated: ${label}`, 'good');

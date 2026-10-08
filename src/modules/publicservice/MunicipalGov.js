@@ -344,8 +344,9 @@ export const MunicipalGov = {
   resolvers: {
     budget(ctx, _data, optionId) {
       const choice = BUDGET_CHOICES.find((c) => c.id === optionId);
-      adjustCity(ctx.state, choice);
       const city = ctx.state.publicService.city;
+      if (!choice || !city) return;
+      adjustCity(ctx.state, choice);
       ctx.log(`Budget adopted: ${choice.label.slice(2).trim()}. Fiscal health ${city.fiscalHealth}, approval ${city.approval}.`, '🏛️');
       ctx.emit('career:adjust', { performance: choice.perf + Math.round((city.approval - 50) / 10), boss: 0 });
     },

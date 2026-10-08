@@ -29,7 +29,8 @@
 import { clamp } from '../../core/Random.js';
 import { randomName, addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { getProfession } from '../career/JobTrees.js';
-import { hire, promote, leaveJob, bestEntryLevel, levelCheck } from '../career/CareerEngine.js';
+import { hire, promote, leaveJob, bestEntryLevel, levelCheck, stepForAtLeast } from '../career/CareerEngine.js';
+import { recalcSalary } from '../career/Compensation.js';
 import { createEmployer } from '../career/Employers.js';
 import { levelById, ladderFor } from '../career/Ladder.js';
 import { SCHOOLS, MAJORS } from '../education/Catalog.js';
@@ -66,6 +67,12 @@ function startPhd(ctx, e) {
   state.academia.phd = { field: e.major, schoolId: e.schoolId, advisor: null, funding: 'ta', grfp: 0, qualsTries: 0, quals: false, candidacy: false, papers: 0, firstAuthor: 0, conference: 0, internship: false, defended: false, advisorChanged: false };
   // Open-ended: the defense, not the calendar, ends a doctorate.
   e.totalYears = 99;
+  // A master's in the field counts for the first year of coursework.
+  if (state.education.degrees.some((d) => d.type === 'master' && d.major === e.major)) {
+    e.progress = 1;
+    state.academia.phd.mastersCredit = true;
+    ctx.log('Your master\'s degree counted for the first year of Ph.D. coursework.', '🎯', 'good');
+  }
   const candidates = Object.entries(ADVISOR_STYLES).map(([style, a]) => {
     const g = rng.pick(['male', 'female']);
     const n = randomName(rng, g);
@@ -225,7 +232,7 @@ function tenureTick(ctx, job) {
   if (job.yearsInLevel === TENURE_CLOCK - 1 && !job.tenureClock.focus) {
     phdPrompt(ctx, 'academia.dossier', { icon: '📁', title: 'Tenure Dossier', text: `Your tenure case goes up next year. ${tenureSummary(state, job)}`, options: [{ id: 'research', label: '🔬 Push out one more paper', hint: 'Stressful' }, { id: 'teaching', label: '🧑‍🏫 Polish your teaching portfolio' }, { id: 'service', label: '🤝 Take on committee service' }] });
   }
-  if (job.yearsInLevel < TENURE_CLOCK) return;
+  if (job.yearsInLevel < TENURE_CLOCK && !job.tenureClock.early) return;
   const p = tenureOdds(state, job);
   if (rng.chance(p)) {
     promote(ctx, 'associate');
@@ -255,7 +262,9 @@ export function tenureSummary(state, job) {
 
 export function tenureOdds(state, job) {
   const c = job.tenureClock ?? { papers: 0, grants: 0, focus: null };
-  const bar = tenureBar(job);
+  const bar = { ...tenureBar(job) };
+  // Going up early: the committee expects a case strong enough for year six, now.
+  if (c.early) bar.papers = Math.ceil(bar.papers * 1.25);
   const papers = sci(state).papers - c.papers;
   const grants = (sci(state).grantsWon ?? 0) - c.grants;
   let p = 0.55 + clamp((papers - bar.papers) / bar.papers, -1, 1) * 0.3 + ((job.teaching ?? 60) - 60) / 200 * bar.teachingWeight + (job.performance - 60) / 250;
@@ -263,6 +272,7 @@ export function tenureOdds(state, job) {
   if (c.focus === 'teaching') p += 0.04 * bar.teachingWeight;
   if (c.focus === 'service') p += 0.03;
   if (state.academia.fabricated) p -= 0.1;
+  p -= 0.05 * (sci(state).predatory ?? 0);
   return clamp(p, 0.05, 0.95);
 }
 
@@ -341,7 +351,9 @@ export function competitiveness(state) {
   const field = fieldOf(state);
   const postdocYears = state.career.history.filter((h) => h.levelId === 'postdoc').reduce((sum, h) => sum + (h.endAge - h.startAge), 0) + (state.career.job?.levelId === 'postdoc' ? state.career.job.yearsInLevel : 0);
   return (s.firstAuthor ?? 0) * 4 + (s.hIndex ?? 0) * 2 + (rec.advisorFame ?? 40) / 8 + (SCHOOLS[rec.schoolId]?.prestige ?? 1) * 3 + Math.min(3, postdocYears) * 3 + (rec.conference ?? 0) * 2
-    + (HOT_FIELDS.includes(field) ? 6 : HUMANITIES.includes(field) ? -8 : 0) + (state.stats.smarts - 70) / 4;
+    + (HOT_FIELDS.includes(field) ? 6 : HUMANITIES.includes(field) ? -8 : 0) + (state.stats.smarts - 70) / 4
+    + Math.min(4, state.higherEd?.adjunctYears ?? 0) + (s.topPapers ?? 0) * 4 + (s.books ?? 0) * (HUMANITIES.includes(field) ? 6 : 2) - (s.predatory ?? 0) * 3
+    + Object.keys(state.higherEd?.fellowships ?? {}).length * 3;
 }
 
 export const MARKET_TIERS = {
@@ -389,9 +401,27 @@ export function goOnMarket(ctx) {
     icon: '📬',
     title: 'Academic Job Offers',
     text: `After ${rng.int(40, 120)} applications, ${offers.length === 1 ? 'one offer came through' : `${offers.length} offers came through`}.${state.career.job ? `\nAccepting means leaving your job as ${state.career.job.title}.` : ''}`,
-    options: [...offers.map((id) => ({ id, label: `${MARKET_TIERS[id].icon} ${MARKET_TIERS[id].label}` })), { id: 'none', label: '🙅 Turn them all down' }],
+    options: [
+      ...offers.map((id) => ({ id, label: `${MARKET_TIERS[id].icon} ${MARKET_TIERS[id].label}` })),
+      ...(state.career.job && TENURE_TRACK.includes(state.career.job.professionId) && !state.career.job.terminal ? [{ id: 'leverage', label: '💼 Take it to your dean for a retention offer', hint: 'A raise if they want to keep you' }] : []),
+      { id: 'none', label: '🙅 Turn them all down' },
+    ],
     data: { offers },
   });
+}
+
+/** An outside offer in hand: the dean may counter to keep you. */
+function retentionOffer(ctx, offerCount) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  if (!job) return;
+  const valued = clamp(0.45 + (job.performance - 60) / 100 + (sci(state).hIndex ?? 0) / 100 + (offerCount - 1) * 0.1, 0.1, 0.9);
+  if (!rng.chance(valued)) return ctx.log('Your dean congratulated you on the offer and wished you well. No counteroffer. You stayed, slightly embarrassed.', '💼', 'warn');
+  const raise = rng.int(8, 18) / 100;
+  stepForAtLeast(state, job, Math.round(job.salary * (1 + raise)));
+  recalcSalary(state, job);
+  if (job.tenureClock && job.levelId === 'assistant') job.tenureClock.papers -= 1; // a lighter teaching load
+  ctx.log(`Your dean countered: a ${Math.round(raise * 100)}% raise, a research budget and a lighter teaching load to keep you.`, '💼', 'good');
 }
 
 function acceptOffer(ctx, tierId) {
@@ -571,6 +601,7 @@ export const AcademiaModule = {
       }
     },
     offers(ctx, data, optionId) {
+      if (optionId === 'leverage') return retentionOffer(ctx, data.offers.length);
       if (optionId === 'none' || !data.offers.includes(optionId)) return ctx.log('You turned down every offer.', '🙅');
       acceptOffer(ctx, optionId);
     },

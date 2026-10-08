@@ -318,6 +318,9 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
 /* Promotion & demotion                                                */
 /* ------------------------------------------------------------------ */
 
+/** Extra years at the top of one track before competing for the other. */
+export const CROSS_TRACK_YEARS = 4;
+
 export function promotionStatus(state) {
   const job = state.career.job;
   if (!job) return { eligible: false, reason: 'Unemployed', options: [], all: [] };
@@ -346,6 +349,12 @@ export function promotionStatus(state) {
   if (job.yearsInLevel < levelYears(job, level)) {
     const left = level.years - job.yearsInLevel;
     return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
+  }
+  // Crossing from the end of a specialist track into management (or back) takes extra seniority and a strong record.
+  const crossing = all.filter((l) => level.track !== 'shared' && l.track !== level.track);
+  if (crossing.length && crossing.length === all.length && (job.yearsInLevel < levelYears(job, level) + CROSS_TRACK_YEARS || job.performance < 70)) {
+    const left = Math.max(0, levelYears(job, level) + CROSS_TRACK_YEARS - job.yearsInLevel);
+    return { eligible: false, reason: left ? `Top of your track — ${left} more year${left > 1 ? 's' : ''} before you can compete for ${crossing[0].title}` : `Top of your track — a strong record (70+) to compete for ${crossing[0].title}`, options: [], all };
   }
   const qualified = all.filter((l) => levelCheck(state, l).ok);
   if (!qualified.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options: qualified, all };

@@ -12,9 +12,9 @@
 const JOB_TYPES = new Set([
   'career.cbaVote', 'career.chooseTrack', 'career.laborDispute', 'career.mgmtHiring', 'career.mgmtLeave', 'career.mgmtReview', 'career.mgmtScheduling',
   'career.organizingDrive', 'career.outsidePromotion', 'career.promotionReview', 'career.relocationOffer', 'career.strike', 'career.vendor', 'career.wildcat', 'career.workEvent',
-  'federal.event', 'federal.posting', 'federal.policy', 'stateAgencies.event', 'municipal.event', 'justiceJobs.event', 'transport.event', 'transport.recall',
+  'federal.event', 'federal.posting', 'federal.policy', 'municipal.budget', 'stateAgencies.event', 'municipal.event', 'justiceJobs.event', 'transport.event', 'transport.recall',
   'intel.cover', 'intel.event', 'intel.station', 'contractors.event', 'healthScience.grant', 'healthScience.scooped', 'jobMarket.rto', 'claims.incident',
-  'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier',
+  'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier', 'publishing.review', 'publishing.editor',
   'medicine.claim', 'medicine.fellowship', 'medLife.residencyEvent', 'medLife.practice', 'medLife.partner', 'medLife.buyout', 'medLife.burnout', 'medLife.moc', 'medLife.pillMill', 'medLife.patientEvent',
 ]);
 const SERVICE_TYPES = new Set([
@@ -22,7 +22,7 @@ const SERVICE_TYPES = new Set([
   'military.leaveService', 'military.njpOffer', 'military.overseasOrders', 'military.schoolSeat', 'military.selectionPhase', 'military.sofMission', 'military.topPost', 'military.tap',
   'service.guardMission', 'service.governorActivation',
 ]);
-const OFFICE_TYPES = new Set(['politics.decision', 'politics.bribe', 'politics.reelection', 'politics.appoint', 'politics.donorFavor', 'politics.disaster', 'municipal.budget']);
+const OFFICE_TYPES = new Set(['politics.decision', 'politics.bribe', 'politics.reelection', 'politics.appoint', 'politics.donorFavor', 'politics.disaster']);
 
 /** Which position each kind of prompt belongs to, and how to identify it. */
 const SCOPES = {

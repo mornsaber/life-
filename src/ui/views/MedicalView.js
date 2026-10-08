@@ -11,12 +11,13 @@ export function medTrainingCard(state) {
   const m = state.medicine;
   if (!m) return '';
   const e = state.education.enrolled;
-  if (e?.programId === 'md' && m.school) {
+  if (['md', 'mdphd'].includes(e?.programId) && m.school) {
     const s = m.school;
     const year = Math.floor(e.progress) + 1;
     const steps = [
       ['M1–M2 classroom', year > 2 || s.step1 === 'pass'],
       [`Step 1 ${s.step1 === 'pass' ? '✓' : s.step1 === 'fail' ? '(retake)' : ''}`, s.step1 === 'pass'],
+      ...(e.programId === 'mdphd' ? [[`Ph.D. research ${s.phdYears ?? 0}/4`, (s.phdYears ?? 0) >= 4]] : []),
       [`Clerkships ${s.rotations}/${ROTATIONS}`, s.rotations >= ROTATIONS],
       [`Step 2 CK ${s.step2 ?? ''}`, s.step2 != null],
       ['Match', false],

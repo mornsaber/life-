@@ -38,7 +38,9 @@ export const BUY_IN = 120000;
 export const PREMED_CAP = { clinical: 4, research: 3, shadow: 2 };
 
 const med = (state) => state.medicine;
-const isMd = (e) => e?.programId === 'md';
+const isMd = (e) => e?.programId === 'md' || e?.programId === 'mdphd';
+/** MD/PhD students do their Ph.D. research between the preclinical and clinical years. */
+export const MSTP_RESEARCH_YEARS = [3, 6];
 const science = (state) => state.education.degrees.some((d) => ['biology', 'chemistry', 'physics', 'nursing', 'kinesiology', 'nutrition', 'psychology'].includes(d.major));
 const inCollege = (state) => state.education.degrees.some((d) => ['bachelor', 'master', 'doctorate'].includes(d.type)) || ['bachelor', 'premedPostbacc'].includes(state.education.enrolled?.programId);
 
@@ -98,14 +100,17 @@ export function premed(ctx, kind) {
 /** Admissions: the MCAT is required; scores and experiences move the odds. */
 ADMISSION_HOOKS.push({
   eligibility(state, programId) {
-    if (programId !== 'md') return null;
+    if (programId !== 'md' && programId !== 'mdphd') return null;
     const m = med(state);
+    if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return null; // BS/MD: admission guaranteed
     if (!m?.mcat) return 'Take the MCAT first';
+    if (programId === 'mdphd' && !(m.premed?.research >= 1) && !(state.higherEd?.ugResearch >= 1)) return 'MD/PhD programs want research experience';
     if (state.character.age - (m.mcatAge ?? 0) > MCAT.validYears) return 'Your MCAT score expired (3 years)';
     return null;
   },
   boost(state, programId) {
-    if (programId !== 'md') return 0;
+    if (programId !== 'md' && programId !== 'mdphd') return 0;
+    if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return 1;
     const m = med(state);
     const p = m.premed ?? { clinical: 0, research: 0, shadow: 0 };
     const exp = Math.min(0.12, p.clinical * 0.03 + p.research * 0.025 + p.shadow * 0.02);
@@ -163,6 +168,8 @@ function schoolTick(ctx) {
     if (year === 2) return;
   }
   if (s.step1 !== 'pass') return;
+  // MD/PhD: four years in the lab before the wards.
+  if (e.programId === 'mdphd' && year <= MSTP_RESEARCH_YEARS[1] + (s.step1Tries > 1 ? 1 : 0)) return mstpResearch(ctx, s, year);
   if (s.rotations < ROTATIONS) {
     // M3: clerkships, each graded honors / high pass / pass.
     const done = Math.min(ROTATIONS - s.rotations, ROTATIONS);
@@ -188,6 +195,18 @@ function schoolTick(ctx) {
     if (score < STEP2_PASS) return dismiss(ctx, `You failed Step 2 CK again (${score}).`);
     ctx.log(`You passed Step 2 CK on your retake (${score}).`, '📝', 'good');
   }
+}
+
+function mstpResearch(ctx, s, year) {
+  const { state, rng } = ctx;
+  s.phdYears = (s.phdYears ?? 0) + 1;
+  const n = rng.chance(clamp(0.45 + (state.stats.smarts - 80) / 100, 0.2, 0.85)) ? rng.int(1, 2) : 0;
+  s.pubs += n;
+  state.science.papers += n;
+  state.science.firstAuthor = (state.science.firstAuthor ?? 0) + (n ? 1 : 0);
+  if (s.phdYears === 1) return ctx.log('You left the wards behind for the lab: the Ph.D. years of your MD/PhD.', '🔬', 'milestone');
+  if (s.phdYears >= 4) return ctx.log(`You defended your dissertation${n ? ' with a fresh paper in hand' : ''}. Back to the hospital for clinical rotations.`, '🎓', 'milestone');
+  ctx.log(n ? `Ph.D. year ${s.phdYears}: ${n} paper${n > 1 ? 's' : ''} out of the lab.` : `Ph.D. year ${s.phdYears}: experiments that didn't work, and some that did.`, '🔬');
 }
 
 function step2Score(state, rng, s, hard) {
@@ -308,17 +327,17 @@ export const MedSchoolModule = {
   init,
   setup(engine) {
     engine.bus.on('education:enrolled', ({ ctx, programId }) => {
-      if (programId === 'md') med(ctx.state).school = { step1: null, step1Tries: 0, honors: 0, rotations: 0, step2: null, step2Tries: 0, interest: null, pubs: 0, aways: 0 };
+      if (programId === 'md' || programId === 'mdphd') med(ctx.state).school = { step1: null, step1Tries: 0, honors: 0, rotations: 0, step2: null, step2Tries: 0, interest: null, pubs: 0, aways: 0 };
     });
     engine.bus.on('education:graduated', ({ ctx, degree }) => {
       const m = med(ctx.state);
-      if (degree.programId !== 'md' || !m.school) return;
+      if ((degree.programId !== 'md' && degree.programId !== 'mdphd') || !m.school) return;
       m.schoolRecord = { ...m.school };
       m.school = null;
       ctx.log(`You are Dr. ${ctx.state.character.lastName}, M.D. Step 2 CK ${m.schoolRecord.step2 ?? '—'}, honors in ${m.schoolRecord.honors} of ${ROTATIONS} clerkships. Next: the Match.`, '🩺', 'milestone');
     });
     engine.bus.on('education:left', ({ ctx, enrollment }) => {
-      if (enrollment?.programId === 'md') med(ctx.state).school = null;
+      if (isMd(enrollment)) med(ctx.state).school = null;
     });
   },
   onAgeUp(ctx) {

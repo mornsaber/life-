@@ -84,9 +84,9 @@ export function matchOdds(state, specialtyId) {
 /** Where an attending practices: pay multiplier, burnout per year, and what it means. */
 export const PRACTICES = {
   employed: { name: 'Hospital-employed', icon: '🏥', pay: 1.0, burnout: 4, desc: 'A salary, a schedule and an EHR inbox that never empties.' },
-  private: { name: 'Private practice', icon: '🩺', pay: 0.9, partnerPay: 1.35, burnout: 5, desc: 'Lower pay as an associate; a partnership buy-in after three years, then a share of the profits.' },
+  private: { name: 'Private practice', icon: '🩺', pay: 0.9, partnerPay: 1.2, burnout: 5, desc: 'Lower pay as an associate; a partnership buy-in after three years, then a share of the profits.' },
   academic: { name: 'Academic medicine', icon: '🎓', pay: 0.82, burnout: 3, desc: 'Less money; teaching residents, research and a faculty title.' },
-  locums: { name: 'Locum tenens', icon: '🧳', pay: 1.25, burnout: 2, desc: 'Fill-in contracts around the country: high pay, no benefits, a lot of hotels.' },
+  locums: { name: 'Locum tenens', icon: '🧳', pay: 1.15, burnout: 2, desc: 'Fill-in contracts around the country: high pay, no benefits, a lot of hotels.' },
 };
 export const PART_TIME_PAY = 0.7;
 
