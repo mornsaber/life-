@@ -274,7 +274,7 @@ export const EducationEngine = {
         ctx.emit('education:left', { reason: 'failed', enrollment: e });
       }
     } else {
-      ctx.log(`${label}: finished a ${e.pace === 'part' ? 'part-time ' : ''}year (${e.progress}/${e.totalYears}) with a ${yearGpa.toFixed(2)} GPA. Tuition: ${notes.join(', ') || 'none'}.`, '📘');
+      ctx.log(`${label}: finished a ${e.pace === 'part' ? 'part-time ' : ''}year (${e.totalYears >= 99 ? `year ${e.progress}` : `${e.progress}/${e.totalYears}`}) with a ${yearGpa.toFixed(2)} GPA. Tuition: ${notes.join(', ') || 'none'}.`, '📘');
     }
   },
 

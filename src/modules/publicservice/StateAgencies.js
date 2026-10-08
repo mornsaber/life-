@@ -211,7 +211,7 @@ export const STATE_PROFESSIONS = {
     entry: { education: { level: 'master' } },
     levels: [
       L('adjunct', 'Adjunct Instructor', 3),
-      L('assistant', 'Assistant Professor', 5, { entry: true, req: { education: { program: 'phd' } }, years: 6 }),
+      L('assistant', 'Assistant Professor', 5, { entry: true, req: { education: { program: 'phd' } }, years: 6, tenureReview: true }),
       L('associate', 'Associate Professor', 6, { abilities: ['tenure'] }),
       L('professor', 'Professor', 7, { track: 'ic', abilities: ['tenure'] }),
       L('distinguished', 'Distinguished Professor', 8, { track: 'ic', abilities: ['tenure'] }),

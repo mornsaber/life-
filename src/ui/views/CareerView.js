@@ -32,7 +32,8 @@ import { REGIONS } from '../../modules/life/Regions.js';
 import { WORK_MODES, workModeOf, NONCOMPETE_BANS } from '../../modules/career/JobMarket.js';
 import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
 import { BASES } from '../../modules/career/WorkplaceClaims.js';
-import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS } from '../../modules/career/Emeritus.js';
+import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS, EMERITUS_BY_PROFESSION } from '../../modules/career/Emeritus.js';
+import { researchCard } from './AcademiaView.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -50,9 +51,9 @@ function emeritusCard(state) {
     </div>`, { icon: '🎓', accent: 'yellow' });
   }
   const job = state.career.job;
-  if (job?.professionId !== 'university') return '';
+  if (!EMERITUS_BY_PROFESSION[job?.professionId]) return '';
   const check = emeritusEligibility(state);
-  return `<p class="fine">🎓 ${check.ok ? `Retire from here and you'll be named <b>${esc(check.title)}</b>.` : `Emeritus status on retirement needs: ${esc(check.reason)}.`} (${MIN_YEARS}+ years, Associate Professor or higher.)</p>`;
+  return `<p class="fine">🎓 ${check.ok ? `Retire from here and you'll be named <b>${esc(check.title)}</b>.` : `Emeritus status on retirement needs: ${esc(check.reason)}.`} (${MIN_YEARS}+ years at a senior rank.)</p>`;
 }
 
 /** Shop your skills, set where you work, and see non-competes and open claims. */
@@ -328,7 +329,7 @@ export function careerView(state, ui = {}) {
   const history = stints.length
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${researchCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

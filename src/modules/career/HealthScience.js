@@ -69,7 +69,7 @@ export const POSTDOC_LIMIT = 5;
 export const GRANT_ODDS = 0.2;
 const AGENCIES = ['NIH R01', 'NSF', 'DOE Office of Science', 'a private foundation', 'DARPA', 'NIH K99/R00'];
 /** Levels that live on grants. */
-const GRANT_LEVELS = { research: ['pi', 'director', 'senior', 'fellow'], university: ['assistant', 'associate', 'professor', 'distinguished'] };
+const GRANT_LEVELS = { research: ['pi', 'director', 'senior', 'fellow'], university: ['assistant', 'associate', 'professor', 'distinguished'], college: ['assistant', 'associate', 'professor', 'endowed', 'university'], nationalLab: ['group', 'division', 'senior', 'distinguished'] };
 
 export const HEALTH_EVENTS = {
   publicHealth: [
@@ -190,7 +190,7 @@ export const HealthScienceModule = {
     const level = currentLevel(job);
     if (level?.airMedical) airMedicalTick(ctx, job);
     if (!ctx.state.character.alive) return;
-    if (job.professionId === 'research' || (job.professionId === 'university' && job.levelId !== 'adjunct')) researchTick(ctx, job);
+    if (['research', 'nationalLab'].includes(job.professionId) || (['university', 'college'].includes(job.professionId) && !['adjunct', 'lecturer'].includes(job.levelId))) researchTick(ctx, job);
   },
 
   resolvers: {

@@ -8,6 +8,7 @@ import { SCHOOLS, MAJORS, PROGRAMS, PROGRAM_GROUPS, majorsFor, degreeLabel } fro
 import { campusView } from './CampusView.js';
 import { k12View, academyCard } from './K12View.js';
 import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa, transferCredit } from '../../modules/education/EducationEngine.js';
+import { phdCard } from './AcademiaView.js';
 
 function programRow(state, id) {
   const p = PROGRAMS[id];
@@ -38,7 +39,7 @@ export function schoolView(state) {
     const p = PROGRAMS[e.programId];
     current = card(degreeLabel({ programId: e.programId, major: e.major, type: p.type }), `
       <p class="muted">${SCHOOLS[e.schoolId].icon} ${esc(SCHOOLS[e.schoolId].name)} · ${e.pace === 'part' ? 'Part-time' : 'Full-time'}</p>
-      ${meter(e.progress, { max: e.totalYears, label: 'Progress', suffix: ` / ${e.totalYears} yrs`, tone: 'good' })}
+      ${e.totalYears >= 99 ? '' : meter(e.progress, { max: e.totalYears, label: 'Progress', suffix: ` / ${e.totalYears} yrs`, tone: 'good' })}
       ${kv([['GPA', e.yearsAttended ? e.gpa.toFixed(2) : '—'], ['Tuition', `${money(annualTuition(e.programId, e.schoolId))}/yr`], ['Funding', [giBillEligible(state) && 'GI Bill', state.career.job?.employer.benefits.tuition && 'Employer tuition assistance', SCHOOLS[e.schoolId].needBasedAid && 'Need-based aid'].filter(Boolean).join(', ') || 'Student loans']])}
       <div class="action-grid">${button('📖 Study Hard', 'education.study', { hint: '+GPA, +Stress' })}${button(e.pace === 'part' ? '⏩ Go full-time' : '⏸️ Go part-time', 'education.switchPace')}${button('🚪 Drop Out', 'education.dropOut', { variant: 'danger' })}</div>`, { icon: '🏛️', accent: 'yellow' });
   }
@@ -49,7 +50,7 @@ export function schoolView(state) {
   const credits = state.education.credits ?? [];
   const banked = credits.length ? `<h4 class="sub">Transfer credit</h4><ul class="history">${credits.map((c) => `<li>📑 ${c.years} yr toward ${esc(PROGRAMS[c.programId].name)} <small>from age ${c.age}${state.character.age - c.age > 10 ? ' · older than 10 yrs, counts half' : ''}</small></li>`).join('')}</ul>` : '';
   const kid = state.character.age < 17 && !state.education.degrees.length;
-  return `${k12View(state)}${current}${academyCard(state)}${campusView(state)}
+  return `${k12View(state)}${current}${phdCard(state)}${academyCard(state)}${campusView(state)}
     ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
     ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
 }

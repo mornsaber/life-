@@ -321,6 +321,24 @@ export const ORG_TYPES = {
     head: { title: 'Bishop', selection: 'appointed', appointedBy: 'the Pope', occupation: 'catholicClergy', levelId: 'bishop' },
     departments: [{ id: 'parishes', name: 'Parishes', occupations: ['catholicClergy'], head: { title: 'Vicar General', selection: 'internal' } }],
   },
+  privateUniversity: {
+    name: (c) => c.rng.pick(['Whitmore College', 'Ashford University', 'St. Anselm College', 'Carrow Institute of Technology', 'Bellmont University', 'Hollis College']), scope: 'market', sector: 'private',
+    head: { title: 'President', selection: 'board', appointedBy: 'the board of trustees' },
+    departments: [
+      { id: 'faculty', name: 'Faculty of Arts & Sciences', occupations: ['college'], head: { title: 'Provost', selection: 'internal', occupation: 'college', levelId: 'provost' } },
+      { id: 'labs', name: 'Research Centers', occupations: ['research'], head: { title: 'Vice President for Research', selection: 'internal' } },
+    ],
+  },
+  communityCollegeDistrict: {
+    name: (c) => `${city(c)} Community College`, scope: 'city', sector: 'municipal',
+    head: { title: 'College President', selection: 'board', appointedBy: 'the board of trustees', occupation: 'communityCollege', levelId: 'president' },
+    departments: [{ id: 'instruction', name: 'Instruction', occupations: ['communityCollege'], head: { title: 'Dean of Instruction', selection: 'internal', occupation: 'communityCollege', levelId: 'dean' } }],
+  },
+  nationalLaboratory: {
+    name: (c) => c.rng.pick(['Argonne National Laboratory', 'Oak Ridge National Laboratory', 'Brookhaven National Laboratory', 'Lawrence Berkeley National Laboratory', 'Pacific Northwest National Laboratory']), scope: 'nation', sector: 'federal',
+    head: { title: 'Laboratory Director', selection: 'board', appointedBy: 'the Department of Energy and the lab\'s operating contractor' },
+    departments: [{ id: 'science', name: 'Science Directorates', occupations: ['nationalLab'], head: { title: 'Deputy Director for Science', selection: 'internal' } }],
+  },
   researchInstitute: {
     name: (c) => c.rng.pick(['Brightwater Research Institute', 'Helix Biosciences', 'National Laboratory for Applied Physics']), scope: 'market', sector: 'private',
     head: { title: 'Institute Director', selection: 'board', appointedBy: 'the board of trustees', occupation: 'research', levelId: 'director' },

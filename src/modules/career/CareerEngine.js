@@ -336,6 +336,11 @@ export function promotionStatus(state) {
     const left = Math.max(0, level.years - job.yearsInLevel);
     return { eligible: false, reason: `Finish ${program.label} — ${left ? `${left} yr to go, then ` : ''}automatic promotion to ${target?.title ?? 'the next level'}`, options: [], all, trainee: program };
   }
+  // Tenure-track faculty move up only through the tenure review (academia module).
+  if (level.tenureReview) {
+    const left = Math.max(0, level.years - job.yearsInLevel);
+    return { eligible: false, reason: left ? `Tenure review in ${left} yr${left > 1 ? 's' : ''}` : 'Your tenure case is under review', options: [], all, tenureTrack: true };
+  }
   if (!all.length) return { eligible: false, reason: 'The next post is a gubernatorial appointment', options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
   if (job.yearsInLevel < levelYears(job, level)) {
