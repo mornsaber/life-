@@ -48,7 +48,7 @@ export function writingCapacity(state) {
   if (!ACADEMIC_JOBS.includes(job.professionId)) return 0;
   if (job.professionId === 'communityCollege') return 1;
   if (job.professionId === 'college' && job.employer.size === 'small') return 1;
-  return job.levelId === 'adjunct' || job.levelId === 'lecturer' ? 1 : 3;
+  return (job.levelId === 'adjunct' || job.levelId === 'lecturer' ? 1 : 3) + (state.lab?.buyout ? 1 : 0);
 }
 
 /** Papers your job expects over three years (0 = no expectation). */

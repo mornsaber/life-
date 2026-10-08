@@ -14,7 +14,7 @@ const JOB_TYPES = new Set([
   'career.organizingDrive', 'career.outsidePromotion', 'career.promotionReview', 'career.relocationOffer', 'career.strike', 'career.vendor', 'career.wildcat', 'career.workEvent',
   'federal.event', 'federal.posting', 'federal.policy', 'municipal.budget', 'stateAgencies.event', 'municipal.event', 'justiceJobs.event', 'transport.event', 'transport.recall',
   'intel.cover', 'intel.event', 'intel.station', 'contractors.event', 'healthScience.grant', 'healthScience.scooped', 'jobMarket.rto', 'claims.incident',
-  'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier', 'publishing.review', 'publishing.editor',
+  'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier', 'publishing.review', 'publishing.editor', 'lab.recruit', 'lab.event',
   'medicine.claim', 'medicine.fellowship', 'medLife.residencyEvent', 'medLife.practice', 'medLife.partner', 'medLife.buyout', 'medLife.burnout', 'medLife.moc', 'medLife.pillMill', 'medLife.patientEvent',
 ]);
 const SERVICE_TYPES = new Set([

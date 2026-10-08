@@ -204,6 +204,7 @@ function citationsTick(ctx) {
 /** Ph.D. students you advise finish now and then. */
 function studentsTick(ctx, job) {
   const { state, rng } = ctx;
+  if (state.lab?.active) return; // a real lab trains its own students (academia/Lab.js)
   if (!['associate', 'professor', 'endowed', 'university', 'distinguished', 'chair', 'assistant', 'pi', 'senior', 'fellow', 'group'].includes(job.levelId) || job.professionId === 'communityCollege') return;
   if (!rng.chance(job.levelId === 'assistant' ? 0.12 : 0.28)) return;
   const s = sci(state);

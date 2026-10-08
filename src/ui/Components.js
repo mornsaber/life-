@@ -113,7 +113,9 @@ export function ladder(steps, current, { compact = false } = {}) {
 /* Medals                                                              */
 /* ------------------------------------------------------------------ */
 
-export function ribbon(stripes, { device = null, count = 1, title = '' } = {}) {
+export function ribbon(raw, { device = null, count = 1, title = '' } = {}) {
+  // Stripes are [color, width] pairs; plain colors count as equal widths; no ribbon gets a neutral one.
+  const stripes = Array.isArray(raw) && raw.length ? raw.map((x) => (Array.isArray(x) ? x : [x, 1])) : [['#5b6577', 1], ['#c9b26b', 1], ['#5b6577', 1]];
   const total = stripes.reduce((s, [, w]) => s + w, 0);
   let at = 0;
   const stops = stripes

@@ -76,6 +76,9 @@ function check(state, where) {
   if (state.career.job?.cleared) seenPaths.add('cleared program role');
   if (state.career.job?.tenureClock) seenPaths.add('tenure track');
   if (state.academia?.phd) seenPaths.add('Ph.D. student');
+  if (state.lab?.active) seenPaths.add(`lab (${state.lab.tier})`);
+  if (state.lab?.members?.some((m) => !m.name || !Number.isFinite(m.skill))) flag('broken lab member', where);
+  if (state.lab && state.lab.funds < 0) flag('negative lab funds', where);
   if (state.military.service?.lastRetrain) seenPaths.add('retrained');
   if (state.military.service?.branchDetail) seenPaths.add('branch detail');
   if (state.service?.program) seenPaths.add(`national service ${state.service.program.id}`);
@@ -198,6 +201,7 @@ const ACTIONS = [
   ['service.joinProgram', 'program', 0.1], ['service.quitProgram', null, 0.05], ['service.joinSdf', null, 0.1], ['service.sdfSchool', 'sdfSchool'], ['military.attendSchool', 'milSchool'], ['military.retrain', 'retrainMos'], ['cleared.requestSponsorship', null, 0.3], ['military.applyWarrant', 'warrantMos'], ['service.joinTeam', 'team', 0.2], ['service.joinPost', 'post', 0.3], ['service.postActivity', 'postAct'],
   ['academia.goOnMarket', null, 0.3], ['academia.sabbatical', null, 0.3],
   ['publishing.submit', 'venue', 0.4], ['higherEd.adjunct', 'n', 0.2], ['medLife.partTime', null, 0.1], ['medLife.moonlight', null, 0.3],
+  ['lab.hire', 'labRole', 0.5], ['lab.mentor', 'labMember', 0.3], ['lab.letGo', 'labMember', 0.05], ['lab.culture', 'labCulture', 0.1], ['lab.buyout', null, 0.2],
 ];
 
 function argFor(kind, state, rng) {
@@ -238,6 +242,9 @@ function argFor(kind, state, rng) {
     case 'post': return rng.pick(['vfw', 'legion']);
     case 'postAct': return `${rng.pick(['vfw', 'legion'])}:${rng.pick(['volunteer', 'honorGuard', 'mentor', 'fundraise', 'scholarship', 'advocate'])}`;
     case 'n': return '3';
+    case 'labRole': return rng.pick(['phd', 'postdoc', 'masters', 'tech', 'staff', 'undergrad']);
+    case 'labMember': return rng.pick((state.lab?.members ?? []).map((m) => m.id).concat(['none']));
+    case 'labCulture': return rng.pick(['supportive', 'demanding', 'handsOff']);
     case 'venue': return rng.pick(['top', 'field', 'conference', 'book', 'preprint', 'predatory']);
     case 'family': return rng.pick((state.people?.list ?? []).map((p) => p.id).concat(['none']));
     default: return undefined;
