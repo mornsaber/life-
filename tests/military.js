@@ -28,7 +28,7 @@ import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFact
 import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
 import { serviceLimit } from '../src/modules/military/Separation.js';
 import { DIRECT_MAX_AGE } from '../src/modules/military/MOS.js';
-import { upOrOut } from '../src/modules/military/Separation.js';
+import { upOrOut, mustRetire, maxServiceYears } from '../src/modules/military/Separation.js';
 import { commission, commissionedYears } from '../src/modules/military/MilitaryEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -57,6 +57,33 @@ const year = (engine) => {
 };
 
 const tests = {
+  'generals serve past 30 years and keep getting promoted'() {
+    const { engine, state, ctx } = setup(41, 22);
+    Object.assign(state.stats, { smarts: 90, fitness: 85 });
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'history', schoolId: 'state', gpa: 3.6, year: 22 });
+    engine.dispatch('military.enlist', 'army:officer:active');
+    engine.resolvePrompt(state.prompts.find((x) => x.type === 'military.chooseSpecialty').id, state.prompts.find((x) => x.type === 'military.chooseSpecialty').options.find((o) => !o.disabled).id);
+    const svc = state.military.service;
+    Object.assign(svc, { grade: 5, yearsOfService: 30 });
+    state.character.age = 52;
+    assert.ok(mustRetire(state, svc), 'colonels retire at 30 years');
+    svc.grade = 6;
+    assert.equal(maxServiceYears(svc), 35);
+    assert.ok(!mustRetire(state, svc), 'a brigadier general keeps serving');
+    svc.grade = 8;
+    assert.equal(maxServiceYears(svc), 38, 'three stars: 38 years');
+    state.character.age = 63;
+    assert.ok(!mustRetire(state, svc), 'generals can serve to 64');
+    // A strong, joint-qualified one-star makes two stars within a few boards.
+    let made = 0;
+    for (let trial = 0; trial < 40; trial++) {
+      Object.assign(svc, { grade: 6, yearsInGrade: 3, eval: 92, joint: true, flagPassovers: 0, reprimand: false });
+      for (let look = 0; look < 5 && svc.grade === 6; look++) { tryPromotion(ctx, svc); svc.yearsInGrade = 3; }
+      if (svc.grade === 7) made += 1;
+    }
+    assert.ok(made >= 15, `two stars in ${made}/40`);
+  },
+
   'a new soldier joins a unit with a named chain of command'() {
     const { engine, state } = setup(1);
     const svc = enlist(engine);

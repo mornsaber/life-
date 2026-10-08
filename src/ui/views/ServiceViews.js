@@ -17,7 +17,7 @@ import { getProfession } from '../../modules/career/JobTrees.js';
 import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select, disclosure, optionRow } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
 import {
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS,
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, FLAG_LOOKS, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS,
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
 import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
@@ -57,6 +57,13 @@ function transferForm(state) {
     <div class="enroll-form" data-collect-root>${select('branch', options)}${button('🔀 Request transfer', 'military.transferBranch', { variant: 'small', collect: true, disabled: Boolean(state.yearly['military.transferBranch']) })}</div>`;
 }
 
+/** General/flag boards: looks left, and whether you're joint-qualified. */
+function flagNote(svc) {
+  if (svc.track !== 'officer' || svc.grade < 5 || svc.grade >= 9) return '';
+  const left = Math.max(0, FLAG_LOOKS - (svc.flagPassovers ?? 0));
+  return ` · ${left ? `${left} general-officer board look${left === 1 ? '' : 's'} left` : 'no longer considered for promotion'}${svc.joint ? '' : ' · not joint-qualified (halves your odds)'}`;
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -93,7 +100,7 @@ export function militaryView(state) {
       </div>
     </div>
     ${meter(svc.eval, { label: '📋 Evaluation' })}
-    <p class="promo ${outlook.eligible ? 'ready' : ''}">${outlook.eligible ? `🌟 Board-eligible for ${esc(titles[svc.grade + 1])}` : `🪜 Next grade: ${esc(outlook.reason)}`}</p>
+    <p class="promo ${outlook.eligible ? 'ready' : ''}">${outlook.eligible ? `🌟 Board-eligible for ${esc(titles[svc.grade + 1])}` : `🪜 Next grade: ${esc(outlook.reason)}`}${flagNote(svc)}</p>
     ${ladder(titles.map((t, i) => ({ title: t, sub: `${svc.track === 'officer' ? 'O' : 'E'}-${i + 1}` })), svc.grade, { compact: true })}
     <div class="action-grid">
       ${button('🏃 Extra PT', 'military.pt', { hint: '+Fitness, +Eval' })}

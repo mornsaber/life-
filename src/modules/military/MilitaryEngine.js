@@ -127,14 +127,14 @@ const TIME_IN_GRADE = {
   // Typical pin-on: E-5 ≈ 5 yrs, E-6 ≈ 9, E-7 ≈ 14, E-8 ≈ 18, E-9 ≈ 22.
   enlisted: [1, 1, 1, 2, 4, 5, 4, 4, 0],
   // O-3 ≈ 4 yrs, O-4 ≈ 10, O-5 ≈ 16, O-6 ≈ 22.
-  officer: [2, 2, 6, 6, 6, 4, 3, 3, 3, 0],
+  officer: [2, 2, 6, 6, 6, 3, 3, 3, 3, 0],
   // W-2 ≈ 2 yrs, W-3 ≈ 8, W-4 ≈ 14, W-5 ≈ 20.
   warrant: [2, 6, 6, 6, 0],
 };
 /** Minimum evaluation score to be competitive for the next grade. */
 const BOARD_THRESHOLD = {
   enlisted: [35, 40, 45, 60, 66, 72, 78, 85, 0],
-  officer: [40, 45, 65, 70, 76, 82, 88, 90, 94, 0],
+  officer: [40, 45, 65, 70, 76, 82, 85, 86, 88, 0],
   warrant: [45, 60, 70, 80, 0],
 };
 
@@ -471,7 +471,8 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
   // A strong, joint-qualified colonel has a real shot at a star; each higher star is harder.
-  if (flagBoard) chance = (0.12 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 80 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0)) * jointFactor(svc) * [1, 0.7, 0.5, 0.4][svc.grade - 5];
+  // Roughly: a strong colonel ~15–30% a look for a star; about half of one-stars make two; a third of two-stars make three; few make four.
+  if (flagBoard) chance = (0.2 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 60 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0)) * jointFactor(svc) * [0.75, 1, 0.75, 0.45][svc.grade - 5];
   // Senior boards select a fraction of those eligible: about 45% for O-6, 40% for E-8, 20% for E-9.
   if (svc.track === 'officer' && svc.grade === 4) chance *= 0.65;
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;

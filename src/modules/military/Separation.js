@@ -35,6 +35,15 @@ export const RESERVE_HYT = [10, 10, 10, 10, 20, 24, 28, 30, 33];
 export const noTenureLimit = (svc) => svc.branch === 'guard';
 export const serviceLimit = (svc) => (noTenureLimit(svc) ? Infinity : null) ?? ({ officer: OFFICER_MAX_SERVICE, warrant: WARRANT_MAX_SERVICE }[svc.track] ?? (svc.component === 'reserve' ? RESERVE_HYT : ENLISTED_HYT))[svc.grade] ?? 30;
 
+/**
+ * When service must end: 30 years for most, longer for general/flag
+ * officers (35 for one and two stars, 38 for three, 40 for four), and by
+ * age 62 — 64 for generals and admirals.
+ */
+export const maxServiceYears = (svc) => (noTenureLimit(svc) ? Infinity : Math.max(30, serviceLimit(svc)));
+export const mandatoryRetirementAge = (svc) => (svc.track === 'officer' && svc.grade >= 6 ? 64 : 62);
+export const mustRetire = (state, svc) => svc.yearsOfService >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
+
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
 export function separationPay(svc) {
   if (svc.yearsOfService < 6 || svc.yearsOfService >= RETIREMENT_YEARS) return 0;
