@@ -43,6 +43,22 @@ export const SELECTION = {
   CO: { trial: 'merit', appellate: 'merit' },
   IA: { trial: 'merit', appellate: 'merit' },
   DC: { trial: 'appointed', appellate: 'appointed' },
+  GA: { trial: 'elected', appellate: 'elected' },
+  NC: { trial: 'elected', appellate: 'elected' },
+  PA: { trial: 'elected', appellate: 'elected' },
+  MI: { trial: 'elected', appellate: 'elected' },
+  MN: { trial: 'elected', appellate: 'elected' },
+  LA: { trial: 'elected', appellate: 'elected' },
+  NV: { trial: 'elected', appellate: 'elected' },
+  OR: { trial: 'elected', appellate: 'elected' },
+  WV: { trial: 'elected', appellate: 'elected' },
+  TN: { trial: 'elected', appellate: 'merit' },
+  AZ: { trial: 'merit', appellate: 'merit' },
+  UT: { trial: 'merit', appellate: 'merit' },
+  AK: { trial: 'merit', appellate: 'merit' },
+  VA: { trial: 'appointed', appellate: 'appointed' },
+  MA: { trial: 'appointed', appellate: 'appointed' },
+  HI: { trial: 'appointed', appellate: 'appointed' },
 };
 export const MANDATORY_RETIREMENT = 75;
 

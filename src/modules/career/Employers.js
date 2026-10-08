@@ -29,7 +29,7 @@ export function resolveDutyStation(rng, profession, regionId) {
 
 function pickSize(rng, profession, regionId) {
   if (profession.stateAgency) return STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].population;
-  if (profession.sector === 'municipal') return MUNICIPAL_SIZE_BY_REGION[regionId] ?? 'medium';
+  if (profession.sector === 'municipal') return MUNICIPAL_SIZE_BY_REGION[regionId] ?? REGIONS[regionId]?.size ?? 'medium';
   if (profession.sector === 'federal') return rng.pick(['large', 'enterprise']);
   const entries = Object.entries(profession.sizes ?? { medium: 1 });
   return rng.weighted(entries, ([, w]) => w)[0];

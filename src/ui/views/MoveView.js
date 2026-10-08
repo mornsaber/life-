@@ -3,7 +3,7 @@
  * pay, state income tax, laws, disaster risk, which of your licenses would
  * need transferring, and what happens to your job and pension.
  */
-import { esc, money, button, card, chip } from '../Components.js';
+import { esc, money, button, card, chip, disclosure } from '../Components.js';
 import { REGIONS, MOVE_COST, regionOf, residencyYears } from '../../modules/life/Regions.js';
 import { STATES, topStateRate, DISASTER_LABEL, stateIncomeTax } from '../../modules/life/States.js';
 import { CREDENTIALS, RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
@@ -27,7 +27,7 @@ export function moveView(state) {
   const job = state.career.job;
   const income = state.finances.lastYear?.gross ?? job?.salary ?? 0;
   const pensionPlan = job?.employer.benefits.pension;
-  const rows = Object.values(REGIONS).map((r) => {
+  const row = (r) => {
     const st = STATES[r.state];
     const isHere = r.id === here.id;
     const crossState = r.state !== here.state;
@@ -51,6 +51,12 @@ export function moveView(state) {
       ${licenses.length ? `<small class="why">🪪 Licenses to transfer: ${licenses.map(esc).join(' · ')}</small>` : ''}
       ${impacts.length ? `<small class="fine">${impacts.map(esc).join(' · ')}</small>` : ''}
     </li>`;
+  };
+  // Your state first, then the rest by name; each state folds open.
+  const states = [...new Set(Object.values(REGIONS).map((r) => r.state))].sort((a, b) => (a === here.state ? -1 : b === here.state ? 1 : STATES[a].name.localeCompare(STATES[b].name)));
+  const rows = states.map((sid) => {
+    const list = Object.values(REGIONS).filter((r) => r.state === sid);
+    return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between states changes your taxes, which licenses you can use, your tuition and your union protections.</p><ul class="move-list">${rows}</ul>`, { icon: '🗺️', accent: 'cyan' });
+  return card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between states changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' });
 }

@@ -30,7 +30,7 @@ const FIRST_NAMES = {
   female: ['Ava', 'Maya', 'Sofia', 'Zoe', 'Priya', 'Harper', 'Elena', 'Nia', 'Chloe', 'Grace', 'Aaliyah', 'Mei', 'Riley', 'Camila'],
 };
 const LAST_NAMES = ['Carter', 'Nguyen', 'Okafor', 'Ramirez', 'Kowalski', 'Bennett', 'Hayes', 'Patel', 'Morales', 'Sullivan', 'Kim', 'Reyes', 'Brooks', 'Lindqvist', 'Washington', 'Adeyemi'];
-const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami'];
+const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami', 'atlanta', 'philadelphia', 'phoenix', 'detroit', 'nashville', 'charlotte', 'pittsburgh', 'amarillo'];
 
 export function randomName(rng, gender) {
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };

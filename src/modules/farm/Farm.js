@@ -27,7 +27,7 @@ export const CROPS = {
   cattle: { name: 'Cow-calf cattle', icon: '🐄', revenue: 230, cost: 165 },
 };
 /** Land price per acre where farming makes sense. */
-export const LAND_PRICE = { smalltown: 11000, rural: 1200, gunnison: 2500, sunbelt: 3500, midcity: 8500, denver: 3000 };
+export const LAND_PRICE = { smalltown: 11000, rural: 1200, gunnison: 2500, sunbelt: 3500, midcity: 8500, denver: 3000, amarillo: 2200, appalachia: 3500, elko: 900, fairbanks: 1800, bend: 6000, asheville: 9000, minneapolis: 7500, raleigh: 6500, nashville: 7000 };
 export const PLOTS = [80, 160, 320, 640, 1280];
 export const DOWN = 0.2;
 export const LOAN_RATE = 0.07;
@@ -147,7 +147,7 @@ export const FarmModule = {
       if (!f.acres) {
         f.valuePerAcre = LAND_PRICE[state.character.regionId];
         f.regionId = state.character.regionId;
-        f.crop = state.character.regionId === 'rural' || state.character.regionId === 'gunnison' ? 'cattle' : 'corn';
+        f.crop = LAND_PRICE[state.character.regionId] < 3000 ? 'cattle' : 'corn';
         for (const id of Object.keys(CROPS)) f.prices[id] = 1;
       }
       f.acres += acres;

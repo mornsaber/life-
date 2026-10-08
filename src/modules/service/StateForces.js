@@ -22,8 +22,9 @@ import { awardMedal } from '../military/MedalEngine.js';
 /** States with a State Defense Force. */
 export const STATE_DEFENSE_FORCES = {
   TX: 'Texas State Guard', NY: 'New York Guard', CA: 'California State Guard', FL: 'Florida State Guard', OH: 'Ohio Military Reserve', WA: 'Washington State Guard',
+  GA: 'Georgia State Defense Force', VA: 'Virginia Defense Force', MA: 'Massachusetts State Defense Force', MI: 'Michigan Volunteer Defense Force', TN: 'Tennessee State Guard', LA: 'Louisiana State Guard', AK: 'Alaska State Defense Force', OR: 'Oregon Civil Defense Force',
 };
-export const BORDER_STATES = ['TX', 'CA'];
+export const BORDER_STATES = ['TX', 'CA', 'AZ'];
 export const SDF_RANKS = ['Private', 'Specialist', 'Sergeant', 'Staff Sergeant', 'Sergeant First Class', 'Warrant Officer', 'Second Lieutenant', 'Captain', 'Major', 'Colonel'];
 
 export const MISSIONS = {

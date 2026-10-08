@@ -10,6 +10,7 @@
  *   transit:  public-transit coverage 0–100 (bus/rail frequency and reach)
  *   fare:     monthly transit pass
  *   walkable: dense enough to live without any vehicle
+ *   size:     how big local government is (city departments, county offices)
  *
  * Every relocation — a voluntary move, a PCS, a duty-station assignment, a
  * corporate transfer — goes through changeRegion(), which emits
@@ -31,16 +32,39 @@ export const REGIONS = {
   seattle: { id: 'seattle', name: 'Seattle, WA', icon: '🌲', type: 'High-cost metro', state: 'WA', col: 1.4, market: 1.3, locality: 0.3, transit: 60, fare: 99, walkable: true },
   denver: { id: 'denver', name: 'Denver, CO', icon: '⛰️', type: 'Mountain metro', state: 'CO', col: 1.15, market: 1.12, locality: 0.3, transit: 45, fare: 88, walkable: false },
   gunnison: { id: 'gunnison', name: 'Gunnison, CO', icon: '🦌', type: 'Rural', state: 'CO', col: 0.85, market: 0.88, locality: 0.17, transit: 8, fare: 0, walkable: false },
+  atlanta: { id: 'atlanta', name: 'Atlanta, GA', icon: '🍑', type: 'Major metro', state: 'GA', col: 1.08, market: 1.06, locality: 0.25, transit: 35, fare: 95, walkable: false, size: 'enterprise' },
+  charlotte: { id: 'charlotte', name: 'Charlotte, NC', icon: '🏦', type: 'Sun Belt metro', state: 'NC', col: 1.0, market: 1.03, locality: 0.2, transit: 20, fare: 88, walkable: false, size: 'large' },
+  raleigh: { id: 'raleigh', name: 'Raleigh–Fayetteville, NC', icon: '🌳', type: 'Mid-size city', state: 'NC', col: 1.0, market: 1.03, locality: 0.21, transit: 15, fare: 0, walkable: false, size: 'large' },
+  asheville: { id: 'asheville', name: 'Asheville, NC', icon: '🏞️', type: 'Small town', state: 'NC', col: 0.95, market: 0.9, locality: 0.17, transit: 10, fare: 0, walkable: false, size: 'small' },
+  norfolk: { id: 'norfolk', name: 'Norfolk–Virginia Beach, VA', icon: '⚓', type: 'Coastal metro', state: 'VA', col: 1.0, market: 0.99, locality: 0.2, transit: 20, fare: 50, walkable: false, size: 'large' },
+  philadelphia: { id: 'philadelphia', name: 'Philadelphia, PA', icon: '🔔', type: 'Major metro', state: 'PA', col: 1.12, market: 1.09, locality: 0.29, transit: 70, fare: 99, walkable: true, size: 'enterprise' },
+  pittsburgh: { id: 'pittsburgh', name: 'Pittsburgh, PA', icon: '🌉', type: 'Mid-size city', state: 'PA', col: 0.92, market: 0.97, locality: 0.23, transit: 45, fare: 99, walkable: false, size: 'large' },
+  boston: { id: 'boston', name: 'Boston, MA', icon: '🦞', type: 'High-cost metro', state: 'MA', col: 1.5, market: 1.3, locality: 0.34, transit: 75, fare: 90, walkable: true, size: 'enterprise' },
+  detroit: { id: 'detroit', name: 'Detroit, MI', icon: '🚗', type: 'Major metro', state: 'MI', col: 0.9, market: 0.98, locality: 0.3, transit: 20, fare: 70, walkable: false, size: 'enterprise' },
+  minneapolis: { id: 'minneapolis', name: 'Minneapolis–St. Paul, MN', icon: '❄️', type: 'Major metro', state: 'MN', col: 1.05, market: 1.07, locality: 0.27, transit: 45, fare: 76, walkable: false, size: 'large' },
+  nashville: { id: 'nashville', name: 'Nashville, TN', icon: '🎸', type: 'Sun Belt metro', state: 'TN', col: 1.05, market: 1.03, locality: 0.19, transit: 15, fare: 0, walkable: false, size: 'large' },
+  neworleans: { id: 'neworleans', name: 'New Orleans, LA', icon: '🎺', type: 'Coastal metro', state: 'LA', col: 0.98, market: 0.95, locality: 0.19, transit: 35, fare: 55, walkable: true, size: 'large' },
+  phoenix: { id: 'phoenix', name: 'Phoenix, AZ', icon: '☀️', type: 'Sun Belt metro', state: 'AZ', col: 1.03, market: 1.02, locality: 0.22, transit: 20, fare: 64, walkable: false, size: 'enterprise' },
+  lasvegas: { id: 'lasvegas', name: 'Las Vegas, NV', icon: '🎰', type: 'Sun Belt metro', state: 'NV', col: 1.0, market: 0.98, locality: 0.19, transit: 25, fare: 65, walkable: false, size: 'large' },
+  elko: { id: 'elko', name: 'Elko, NV', icon: '⛏️', type: 'Rural', state: 'NV', col: 0.85, market: 0.95, locality: 0.17, transit: 2, fare: 0, walkable: false, size: 'small' },
+  saltlake: { id: 'saltlake', name: 'Salt Lake City, UT', icon: '🏔️', type: 'Mountain metro', state: 'UT', col: 1.05, market: 1.04, locality: 0.21, transit: 35, fare: 90, walkable: false, size: 'large' },
+  portland: { id: 'portland', name: 'Portland, OR', icon: '🌧️', type: 'High-cost metro', state: 'OR', col: 1.2, market: 1.12, locality: 0.26, transit: 50, fare: 100, walkable: true, size: 'large' },
+  bend: { id: 'bend', name: 'Bend, OR', icon: '🌲', type: 'Small town', state: 'OR', col: 1.1, market: 0.95, locality: 0.17, transit: 8, fare: 0, walkable: false, size: 'small' },
+  anchorage: { id: 'anchorage', name: 'Anchorage, AK', icon: '🐻', type: 'Mid-size city', state: 'AK', col: 1.2, market: 1.15, locality: 0.3, transit: 10, fare: 60, walkable: false, size: 'medium' },
+  fairbanks: { id: 'fairbanks', name: 'Fairbanks, AK', icon: '🌌', type: 'Rural', state: 'AK', col: 1.15, market: 1.1, locality: 0.29, transit: 3, fare: 0, walkable: false, size: 'small' },
+  honolulu: { id: 'honolulu', name: 'Honolulu, HI', icon: '🌺', type: 'High-cost metro', state: 'HI', col: 1.7, market: 1.12, locality: 0.21, transit: 45, fare: 80, walkable: false, size: 'large' },
+  appalachia: { id: 'appalachia', name: 'Beckley, WV', icon: '⛰️', type: 'Rural', state: 'WV', col: 0.7, market: 0.82, locality: 0.17, transit: 3, fare: 0, walkable: false, size: 'small' },
+  amarillo: { id: 'amarillo', name: 'Amarillo, TX', icon: '🐂', type: 'Small town', state: 'TX', col: 0.82, market: 0.9, locality: 0.17, transit: 8, fare: 0, walkable: false, size: 'medium' },
 };
 
 /** Military installations by branch, for PCS moves. */
 export const BASES = {
-  army: [['sunbelt', 'Fort Cavazos'], ['denver', 'Fort Carson'], ['seattle', 'Joint Base Lewis-McChord'], ['dc', 'Fort Myer']],
-  marines: [['miami', 'MCAS Beaufort detachment'], ['sf', 'Camp Pendleton'], ['dc', 'Marine Barracks Washington']],
-  navy: [['miami', 'NAS Jacksonville'], ['seattle', 'Naval Base Kitsap'], ['sf', 'Naval Base San Diego'], ['dc', 'Naval Support Activity Washington']],
-  airforce: [['rural', 'Malmstrom AFB'], ['denver', 'Buckley SFB'], ['sunbelt', 'JBSA-Lackland'], ['dc', 'Joint Base Andrews']],
+  army: [['sunbelt', 'Fort Cavazos'], ['denver', 'Fort Carson'], ['seattle', 'Joint Base Lewis-McChord'], ['dc', 'Fort Myer'], ['raleigh', 'Fort Bragg'], ['honolulu', 'Schofield Barracks'], ['fairbanks', 'Fort Wainwright'], ['atlanta', 'Fort Moore']],
+  marines: [['miami', 'MCAS Beaufort detachment'], ['sf', 'Camp Pendleton'], ['dc', 'Marine Barracks Washington'], ['raleigh', 'Camp Lejeune'], ['honolulu', 'MCB Hawaii'], ['phoenix', 'MCAS Yuma']],
+  navy: [['miami', 'NAS Jacksonville'], ['seattle', 'Naval Base Kitsap'], ['sf', 'Naval Base San Diego'], ['dc', 'Naval Support Activity Washington'], ['norfolk', 'Naval Station Norfolk'], ['honolulu', 'Joint Base Pearl Harbor-Hickam']],
+  airforce: [['rural', 'Malmstrom AFB'], ['denver', 'Buckley SFB'], ['sunbelt', 'JBSA-Lackland'], ['dc', 'Joint Base Andrews'], ['lasvegas', 'Nellis AFB'], ['phoenix', 'Luke AFB'], ['saltlake', 'Hill AFB'], ['anchorage', 'JB Elmendorf-Richardson'], ['norfolk', 'JB Langley-Eustis']],
   spaceforce: [['denver', 'Peterson Space Force Base'], ['denver', 'Schriever Space Force Base'], ['sf', 'Vandenberg Space Force Base'], ['miami', 'Patrick Space Force Base'], ['dc', 'the Pentagon (Space Staff)']],
-  coastguard: [['miami', 'Sector Miami'], ['seattle', 'Sector Puget Sound'], ['nyc', 'Sector New York'], ['sf', 'Sector San Francisco']],
+  coastguard: [['miami', 'Sector Miami'], ['seattle', 'Sector Puget Sound'], ['nyc', 'Sector New York'], ['sf', 'Sector San Francisco'], ['norfolk', 'Sector Virginia'], ['neworleans', 'Sector New Orleans'], ['boston', 'Sector Boston'], ['anchorage', 'Sector Anchorage'], ['honolulu', 'Sector Honolulu']],
   guard: [],
   usphs: [['dc', 'HHS headquarters, Rockville'], ['rural', 'Indian Health Service, Billings Area'], ['denver', 'Indian Health Service, Navajo Area'], ['seattle', 'FDA Pacific Region'], ['sunbelt', 'Federal Medical Center, Fort Worth']],
   noaa: [['seattle', 'Marine Operations Center–Pacific'], ['miami', 'Aircraft Operations Center, Lakeland'], ['dc', 'NOAA headquarters, Silver Spring'], ['sf', 'NOAA Ship Reuben Lasker, San Diego']],

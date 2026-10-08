@@ -38,6 +38,10 @@ export const STATE_ESTATE_TAX = {
   IL: { exemption: 4000000, rate: 0.12, name: 'Illinois' },
   WA: { exemption: 3000000, rate: 0.15, name: 'Washington' },
   DC: { exemption: 4870000, rate: 0.12, name: 'D.C.' },
+  MA: { exemption: 2000000, rate: 0.12, name: 'Massachusetts' },
+  MN: { exemption: 3000000, rate: 0.13, name: 'Minnesota' },
+  OR: { exemption: 1000000, rate: 0.12, name: 'Oregon' },
+  HI: { exemption: 5490000, rate: 0.15, name: 'Hawaii' },
 };
 
 export const WILL_PLANS = {

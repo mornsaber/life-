@@ -5,7 +5,7 @@
  */
 import { esc, money, button, card, chip, statusPill } from '../Components.js';
 import { CREDENTIAL_LIST, CATEGORIES, FLIGHT_BLOCK } from '../../modules/credentials/CredentialRegistry.js';
-import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere, passChance, prepCost, ATTEMPTS_PER_YEAR } from '../../modules/credentials/LicensingEngine.js';
+import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere, passChance, prepCost, ATTEMPTS_PER_YEAR, reinstatementStatus } from '../../modules/credentials/LicensingEngine.js';
 import { RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
 
 function payerHint(state, cred) {
@@ -25,6 +25,11 @@ function credentialRow(state, cred) {
   if (transfer?.needed) action = `${button(transfer.exam ? 'Take transfer exam' : 'Apply by motion', 'credentials.transfer', { arg: cred.id, variant: 'tiny', hint: money(transfer.cost) })}<span class="why">${esc(RECIPROCITY_LABEL[transfer.method])}</span>`;
   else if (training) action = chip(`📚 ${training.yearsLeft} yr training left`, 'cyan');
   else if (held?.status === 'expired') action = button('Reinstate', 'credentials.renew', { arg: cred.id, variant: 'tiny', hint: money(cred.renewCost * 2) });
+  else if (held?.status === 'revoked') {
+    const r = reinstatementStatus(state, cred.id);
+    action = r.permanent ? `<span class="why">${esc(r.reason)}</span>`
+      : `${button(r.exam ? 'Re-sit the exam' : '⚖️ Petition for reinstatement', 'credentials.reinstate', { arg: cred.id, variant: 'tiny', disabled: !r.ok || Boolean(state.yearly[`cred.reinstate.${cred.id}`]), hint: r.ok ? money(r.cost) : '' })}<span class="${r.ok ? 'fine' : 'why'}">${esc(r.ok ? (r.exam ? `Board approved · ${Math.round(r.odds * 100)}% pass odds` : `${money(r.cost)} with a lawyer · ~${Math.round(r.odds * 100)}% odds${held.denials ? ` · denied ${held.denials}×` : ''}`) : r.reason)}</span>`;
+  }
   else if (!held && !implied) {
     const elig = pursueEligibility(state, cred.id);
     const prepped = Boolean(state.credentials.prep?.[cred.id]);
@@ -35,7 +40,7 @@ function credentialRow(state, cred) {
     const prepBtn = elig.ok && !prepped ? button('📚 Prep', 'credentials.prep', { arg: cred.id, variant: 'tiny ghost', hint: `${money(prepCost(cred))} · +12% odds` }) : '';
     action = `${button(label, 'credentials.pursue', { arg: cred.id, variant: 'tiny', disabled: !elig.ok, title: elig.reason ?? '' })}${prepBtn}<span class="${elig.ok ? 'fine' : 'why'}">${esc(elig.ok ? payer : elig.reason)}${elig.ok ? ` · ${odds}% pass odds${prepped ? ' (prepped)' : ''}` : ''}${fails ? ` · failed ${fails}×` : ''}</span>`;
   }
-  const status = held ? statusPill(held.status === 'suspended' ? `suspended → ${held.until}` : held.status) : implied ? chip('covered', 'good') : '';
+  const status = held ? statusPill(held.status === 'suspended' ? `suspended → ${held.until}` : held.status === 'revoked' && held.permanent ? 'revoked for good' : held.status === 'active' && held.probationUntil >= state.character.age ? `probation → ${held.probationUntil}` : held.status) : implied ? chip('covered', 'good') : '';
   return `<li class="cert ${held?.status === 'active' || implied ? 'done' : ''}" title="${esc(cred.kind)}">
     <span>${cred.icon} ${esc(cred.name)}</span> ${status}
     ${cred.renewYears && held?.status === 'active' ? `<small class="fine">renews every ${cred.renewYears} yr</small>` : ''}

@@ -5,7 +5,8 @@
  * here.
  *
  * state.credentials = {
- *   held:     { [id]: { earnedAge, status: 'active'|'suspended'|'expired'|'revoked', until?, renewedAge, sponsor } },
+ *   held:     { [id]: { earnedAge, status: 'active'|'suspended'|'expired'|'revoked', until?, renewedAge, sponsor,
+ *               revokedAge?, revokedFor?, permanent?, denials?, nextPetition?, approved?, probationUntil? } },
  *   training: [{ id, name, yearsLeft, sponsor }],
  *   logbook:  { flightHours },
  *   prep:     { [id]: true }        exam-prep course taken (used up by the next exam)
@@ -17,7 +18,8 @@
  * unit). This module never mutates them directly — it reads the remaining
  * budget and emits `budget:charge`, which the owning module applies.
  */
-import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
+import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
+import { OFFENSES } from '../legal/Offenses.js';
 import { clamp } from '../../core/Random.js';
 import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK, REQUIRED_BY } from './CredentialRegistry.js';
 import { stateIdOf } from '../life/Regions.js';
@@ -146,7 +148,7 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   const cred = getCredential(id);
   const held = state.credentials.held[id];
   if (held?.status === 'active') return { ok: false, reason: validHere(state, id) ? 'Held' : `Held in ${held.states.join('/')} — transfer it` };
-  if (held?.status === 'revoked') return { ok: false, reason: 'Revoked' };
+  if (held?.status === 'revoked') return { ok: false, reason: held.permanent ? 'Permanently revoked' : 'Revoked — petition the board for reinstatement' };
   if (held?.status === 'suspended') return { ok: false, reason: `Suspended until ${held.until}` };
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
   if (hasCredential(state, id)) return { ok: false, reason: 'Covered by a higher credential' };
@@ -255,13 +257,122 @@ export function pursueCredential(ctx, id, { academy = false, quiet = false } = {
   return true;
 }
 
-function revoke(ctx, id, status, years, reason) {
-  const held = ctx.state.credentials.held[id];
+function revoke(ctx, id, status, years, reason, { offenseId = null, permanent = false } = {}) {
+  const { state } = ctx;
+  const held = state.credentials.held[id];
   if (!held || held.status === 'revoked') return;
+  // Breaking the terms of a reinstatement ends it for good.
+  const onProbation = held.probationUntil != null && state.character.age <= held.probationUntil;
   held.status = status;
-  if (status === 'suspended') held.until = ctx.state.character.age + years;
+  if (status === 'suspended') held.until = state.character.age + years;
+  if (status === 'revoked') {
+    Object.assign(held, { revokedAge: state.character.age, revokedFor: offenseId, approved: false, nextPetition: null });
+    if (permanent || onProbation || PERMANENT_ON[offenseId]?.includes(id)) held.permanent = true;
+  }
   const cred = getCredential(id);
-  ctx.log(`Your ${cred.name} was ${status === 'revoked' ? 'revoked' : `suspended for ${years} yr`} (${reason}).`, '🚫', 'bad');
+  ctx.log(`Your ${cred.name} was ${status === 'revoked' ? `${held.permanent ? 'permanently ' : ''}revoked` : `suspended for ${years} yr`} (${reason})${onProbation && status === 'revoked' ? ' — you were still on probation from your reinstatement' : ''}.`, '🚫', 'bad');
+}
+
+/* ------------------------------------------------------------------ */
+/* Reinstatement after revocation                                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Getting a revoked license back is possible but hard. You wait years
+ * (longer for licenses than certifications, longer for fraud), keep a clean
+ * record and finish any sentence, then petition the board with a lawyer.
+ * Most petitions are denied; three denials end it. An approval means
+ * retaking the exam and years of probation — any new conviction during that
+ * time revokes it permanently. Internal agency credentials, and officers
+ * decertified for excessive force, can never be reinstated.
+ */
+export const REINSTATE_WAIT = { license: 5, certification: 3, endorsement: 3 };
+export const MAX_DENIALS = 3;
+export const REINSTATE_PROBATION = 3;
+const FRAUD = ['prescriptionFraud', 'securitiesFraud', 'insiderTrading', 'taxEvasion', 'falsifiedInspection', 'prosecutorialMisconduct'];
+/** Offenses after which a particular credential is gone for good. */
+const PERMANENT_ON = { excessiveForce: ['post', 'postReserve'] };
+
+const waitYears = (cred, held) => (REINSTATE_WAIT[cred.kind] ?? 4) + (FRAUD.includes(held.revokedFor) ? 2 : 0);
+/** The conviction behind the revocation, if it's still on your visible record. */
+function causeOnRecord(state, held) {
+  return visibleRecord(state).find((r) => r.age === held.revokedAge && (!held.revokedFor || r.offenseId === held.revokedFor) && r.severity !== 'infraction') ?? null;
+}
+export const petitionCost = (cred) => Math.max(1500, Math.round(cred.cost * 0.5)) + 5000;
+
+/** Can you petition (or, once approved, re-sit the exam) to get a revoked credential back? */
+export function reinstatementStatus(state, id) {
+  const held = state.credentials.held[id];
+  const cred = getCredential(id);
+  if (held?.status !== 'revoked') return { ok: false, reason: 'Not revoked' };
+  if (held.permanent || cred.kind === 'internal') return { ok: false, permanent: true, reason: cred.kind === 'internal' ? 'Agency credentials are never reissued' : 'Permanently revoked' };
+  const age = state.character.age;
+  if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
+  if (state.legal.probationYears > 0) return { ok: false, reason: 'Finish probation or parole first' };
+  if (held.approved) return { ok: true, exam: true, cost: retakeCost(cred), odds: passChance(state, cred) };
+  const ready = (held.revokedAge ?? age) + waitYears(cred, held);
+  if (age < ready) return { ok: false, reason: `The board won't hear a petition until age ${ready}` };
+  if (held.nextPetition && age < held.nextPetition) return { ok: false, reason: `Denied — you can petition again at age ${held.nextPetition}` };
+  const since = visibleRecord(state).some((r) => r.age > (held.revokedAge ?? 0) && r.severity !== 'infraction' && r.severity !== 'civil');
+  if (since) return { ok: false, reason: 'New convictions since the revocation' };
+  const cost = petitionCost(cred);
+  if (!canAfford(state, cost)) return { ok: false, reason: `A petition and lawyer cost $${cost.toLocaleString()}` };
+  return { ok: true, cost, odds: petitionOdds(state, id) };
+}
+
+/** The board's odds: time, a cleared record and a clean history help; violence and fraud hurt. */
+export function petitionOdds(state, id) {
+  const held = state.credentials.held[id];
+  const cred = getCredential(id);
+  const extra = state.character.age - (held.revokedAge ?? state.character.age) - waitYears(cred, held);
+  const cause = causeOnRecord(state, held);
+  const violent = held.revokedFor && OFFENSES[held.revokedFor]?.violent;
+  return clamp(
+    0.18
+    + Math.min(0.15, Math.max(0, extra) * 0.03)
+    + (cause ? 0 : 0.2) // sealed or pardoned
+    + (state.stats.smarts - 60) / 500
+    - (violent ? 0.12 : 0)
+    - (FRAUD.includes(held.revokedFor) ? 0.06 : 0)
+    - (held.denials ?? 0) * 0.04
+    - Math.min(0.1, visibleRecord(state).filter((r) => r.severity === 'felony').length * 0.03),
+    0.03, 0.6,
+  );
+}
+
+export function petitionReinstatement(ctx, id) {
+  const { state, rng } = ctx;
+  const st = reinstatementStatus(state, id);
+  if (!st.ok) return ctx.toast(st.reason, 'warn');
+  if (yearlyCount(state, `cred.reinstate.${id}`)) return ctx.toast('One try a year', 'warn');
+  bumpYearly(state, `cred.reinstate.${id}`);
+  const cred = getCredential(id);
+  const held = state.credentials.held[id];
+  const age = state.character.age;
+  if (st.exam) {
+    // Approved by the board: pass the exam again and you're licensed, on probation.
+    ctx.spend(st.cost, `${cred.name} re-examination`, { credit: true });
+    if (!takeExam(ctx, cred)) return ctx.log(`You failed the ${cred.name} exam the board required for reinstatement. You can retest next year.`, '📝', 'bad');
+    Object.assign(held, { status: 'active', renewedAge: age, approved: false, probationUntil: age + REINSTATE_PROBATION, reinstated: (held.reinstated ?? 0) + 1 });
+    held.states = [stateIdOf(state)];
+    ctx.stat('happiness', 8);
+    ctx.log(`Your ${cred.name} is reinstated — on probation for ${REINSTATE_PROBATION} years. Any new conviction before age ${held.probationUntil} ends it for good.`, cred.icon, 'milestone');
+    return ctx.toast(`Reinstated: ${cred.name}`, 'good');
+  }
+  ctx.spend(st.cost, `${cred.name} reinstatement petition and attorney`, { credit: true });
+  ctx.stat('stress', 6);
+  if (rng.chance(st.odds)) {
+    held.approved = true;
+    ctx.log(`After a hearing, the board granted your petition to reinstate your ${cred.name} — if you pass the exam again.`, '⚖️', 'good');
+    return;
+  }
+  held.denials = (held.denials ?? 0) + 1;
+  if (held.denials >= MAX_DENIALS) {
+    held.permanent = true;
+    return ctx.log(`The board denied your ${cred.name} petition for the ${MAX_DENIALS}rd time and barred further petitions.`, '⚖️', 'bad');
+  }
+  held.nextPetition = age + 2;
+  ctx.log(`The board denied your petition to reinstate your ${cred.name}: ${rng.pick(['not enough evidence of rehabilitation', 'the seriousness of the original misconduct', 'concerns about public protection', 'an incomplete accounting of what happened'])}. You can petition again in two years.`, '⚖️', 'bad');
 }
 
 /* ------------------------------------------------------------------ */
@@ -319,7 +430,8 @@ export const LicensingEngine = {
       for (const [id, held] of Object.entries(ctx.state.credentials.held)) {
         if (held.status === 'revoked') continue;
         const cred = CREDENTIALS[id];
-        if (cred.revokeOn?.includes(severity) || cred.revokeOn?.includes(offenseId)) revoke(ctx, id, 'revoked', 0, name);
+        if (cred.revokeOn?.includes(severity) || cred.revokeOn?.includes(offenseId)) revoke(ctx, id, 'revoked', 0, name, { offenseId });
+        else if (held.probationUntil != null && ctx.state.character.age <= held.probationUntil && ['felony', 'misdemeanor'].includes(severity)) revoke(ctx, id, 'revoked', 0, `${name} while on reinstatement probation`, { offenseId, permanent: true });
         else if (cred.suspendOn?.[offenseId]) {
           // State law sets DUI suspension length; repeat offenders lose it longer.
           const years = offenseId === 'dui' ? Math.max(cred.suspendOn.dui, STATES[stateIdOf(ctx.state)].dui.suspendYears + ctx.state.legal.record.filter((r) => r.offenseId === 'dui').length - 1) : cred.suspendOn[offenseId];
@@ -392,6 +504,11 @@ export const LicensingEngine = {
       state.credentials.prep[id] = true;
       ctx.stat('stress', 2);
       ctx.log(`You took a prep course for the ${cred.name} exam.`, '📚');
+    },
+
+    /** Petition to get a revoked credential back (or re-sit the exam once the board approves). */
+    reinstate(ctx, id) {
+      petitionReinstatement(ctx, id);
     },
 
     /** Reinstate an expired credential by paying renewal + continuing education. */

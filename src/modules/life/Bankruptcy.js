@@ -24,10 +24,10 @@ export const CH13_WAIT = 2;
 /** Federal wildcard exemption for cash and investments (simplified). */
 export const WILDCARD_EXEMPTION = 15000;
 /** Homestead exemption by state (equity in your home you keep). Infinity = unlimited. */
-export const HOMESTEAD = { TX: Infinity, FL: Infinity, IA: Infinity, DC: Infinity, CA: 600000, MA: 500000, MT: 350000, CO: 250000, NY: 170000, OH: 160000, WA: 125000, IL: 15000 };
+export const HOMESTEAD = { TX: Infinity, FL: Infinity, IA: Infinity, DC: Infinity, CA: 600000, MA: 500000, MT: 350000, CO: 250000, NY: 170000, OH: 160000, WA: 125000, IL: 15000, GA: 21500, NC: 35000, VA: 25000, PA: 27900, MI: 40475, MN: 480000, TN: 35000, LA: 35000, AZ: 400000, NV: 605000, UT: 42700, OR: 40000, AK: 72900, HI: 30000, WV: 35000 };
 const DEFAULT_HOMESTEAD = 50000;
 /** Median income for a one-person household (means test); larger households scale up. */
-export const MEDIAN_INCOME = { CA: 77000, TX: 62000, FL: 60000, NY: 70000, IL: 68000, OH: 60000, IA: 62000, MT: 60000, CO: 75000, WA: 80000, DC: 90000, MA: 85000 };
+export const MEDIAN_INCOME = { CA: 77000, TX: 62000, FL: 60000, NY: 70000, IL: 68000, OH: 60000, IA: 62000, MT: 60000, CO: 75000, WA: 80000, DC: 90000, MA: 85000, GA: 60000, NC: 58000, VA: 72000, PA: 64000, MI: 61000, MN: 72000, TN: 58000, LA: 52000, AZ: 64000, NV: 62000, UT: 70000, OR: 68000, AK: 75000, HI: 74000, WV: 50000 };
 
 export const homesteadExemption = (state) => HOMESTEAD[stateIdOf(state)] ?? DEFAULT_HOMESTEAD;
 

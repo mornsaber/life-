@@ -164,7 +164,7 @@ function completePurchase(ctx, listing, loanType, q) {
 /* Disasters                                                           */
 /* ------------------------------------------------------------------ */
 
-const COVERAGE = { hurricane: 0.75, wildfire: 0.9, blizzard: 0.9, flood: 0, earthquake: 0 };
+const COVERAGE = { hurricane: 0.75, wildfire: 0.9, blizzard: 0.9, tornado: 0.9, flood: 0, earthquake: 0 };
 
 function disasterDamage(ctx, { type, severity, stateId, name }) {
   const { state, rng } = ctx;

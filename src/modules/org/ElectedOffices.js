@@ -67,7 +67,7 @@ export function syncOfficeSeat(ctx) {
   const { state } = ctx;
   const officeId = state.politics?.office?.id;
   const def = officeId && OFFICE_SEATS[officeId];
-  if (def) ensureOrgOfType(state, def.typeId, state.character.regionId, { size: OFFICE_SIZE[state.character.regionId] ?? 'large' });
+  if (def) ensureOrgOfType(state, def.typeId, state.character.regionId, { size: OFFICE_SIZE[state.character.regionId] ?? (['small', 'medium'].includes(REGIONS[state.character.regionId]?.size) ? REGIONS[state.character.regionId].size : 'large') });
   const current = officeSeat(state);
   // Seats you no longer hold go back to NPCs.
   for (const org of Object.values(state.orgs?.byId ?? {})) {

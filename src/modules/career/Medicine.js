@@ -63,7 +63,7 @@ export const FELLOW_PAY = 0.45;
 export const CLAIM_MEMORY = 10;
 export const BOARD_REVIEW_AT = 3;
 /** Malpractice climate by state (tort reform caps vs. high-verdict venues). */
-const STATE_PREMIUM = { NY: 1.6, IL: 1.5, FL: 1.5, DC: 1.3, CA: 0.9, TX: 0.8, CO: 0.8, MT: 0.7, IA: 0.7, OH: 0.9, WA: 0.9 };
+const STATE_PREMIUM = { NY: 1.6, IL: 1.5, FL: 1.5, DC: 1.3, CA: 0.9, TX: 0.8, CO: 0.8, MT: 0.7, IA: 0.7, OH: 0.9, WA: 0.9, PA: 1.4, MA: 1.1, MI: 1.2, MN: 0.7, GA: 1.0, NC: 0.9, VA: 0.9, TN: 0.9, LA: 1.0, AZ: 0.9, NV: 1.1, UT: 0.8, OR: 0.9, AK: 1.0, HI: 1.0, WV: 1.1 };
 
 export const TRAINING_LEVELS = ['resident', 'chiefResident'];
 export const isDoctor = (job) => job?.professionId === 'medical';

@@ -4,7 +4,7 @@
  * where you live (cost of living, locality, relocation).
  */
 import { bankruptcyOptions } from '../../modules/life/Bankruptcy.js';
-import { esc, money, button, card, chip, kv, empty } from '../Components.js';
+import { esc, money, button, card, chip, kv, empty, disclosure } from '../Components.js';
 import { netWorth, investmentsValue, creditLimit, availableCredit } from '../../core/State.js';
 import { investView } from './InvestView.js';
 import { planStatus, socialSecurityEstimate, primaryInsuranceAmount, SS_FULL_AGE, earlyRetirementEligible } from '../../modules/retirement/RetirementEngine.js';
@@ -140,7 +140,7 @@ export function moneyView(state) {
   const home = card('Where You Live', `
     <p>${here.icon} <b>${esc(here.name)}</b> ${hasHousingBenefit(state) ? chip('🏡 Housing provided by employer', 'good') : ''} ${healthPremium(state, ly?.gross ?? 0) ? chip('🩺 Buying marketplace insurance', 'warn') : ''}</p>
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
-    <ul class="history">${rows}</ul>`, { icon: '🗺️' });
+    ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: Object.keys(REGIONS).length })}`, { icon: '🗺️' });
 
   return `${finances}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }

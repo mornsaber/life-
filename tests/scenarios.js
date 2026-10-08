@@ -1612,6 +1612,7 @@ const tests = {
   },
   'taxes: itemizing beats the standard deduction; unpaid tax becomes IRS debt; liens and levies follow'() {
     const { engine, state } = setup(66, 40);
+    state.character.regionId = 'chicago'; // a state income tax big enough to push the debt past the lien threshold
     // Itemized deductions: SALT capped at $40k (phasing down over $500k), mortgage interest, charity.
     state.finances.ledger.itemize = [{ kind: 'mortgageInterest', amount: 18000 }, { kind: 'propertyTax', amount: 9000 }];
     state.community.givenThisYear = 6000;
@@ -1903,8 +1904,8 @@ const tests = {
     // The hearing a year later goes your way: benefits plus back pay, minus the capped fee.
     state.character.age += 1;
     state.prompts = [];
-    const odds = approvalOdds(state, 'hearing', true);
-    engine.rng.chance = (p) => (p === odds ? true : chance(p));
+    // Odds are computed during the year (conditions can change first), so match them live.
+    engine.rng.chance = (p) => (state.health.disability.ssdiClaim?.stage === 'hearing' && p === approvalOdds(state, 'hearing', true) ? true : chance(p));
     engine.ageUp();
     assert.ok(state.character.alive);
     assert.ok(state.health.disability.benefits.some((b) => b.source === 'ssdi'), 'approved');
@@ -2306,12 +2307,18 @@ const tests = {
   'more careers: FAA hires controllers under 31, lineworkers top out after the apprenticeship, dentists need dental school'() {
     const old = setup(151, 31);
     assert.equal(applicationEligibility(old.state, 'airTrafficControl').ok, false);
-    const lw = setup(152, 22);
-    grantCredential(lw.ctx, 'driverLicense', { silent: true });
-    grantCredential(lw.ctx, 'cdlA', { silent: true });
-    giveJob(lw.engine, 'lineworker', 'apprentice');
-    for (let y = 0; y < 5 && lw.state.career.job?.levelId === 'apprentice'; y++) { lw.state.prompts = []; lw.engine.ageUp(); }
-    assert.equal(lw.state.career.job?.levelId, 'journeyman', JSON.stringify(lw.state.career.job?.levelId));
+    // The journeyman card is a real exam: most apprentices top out, and those who fail it are let go.
+    let journeymen = 0;
+    for (let seed = 152; seed < 158; seed++) {
+      const lw = setup(seed, 22);
+      grantCredential(lw.ctx, 'driverLicense', { silent: true });
+      grantCredential(lw.ctx, 'cdlA', { silent: true });
+      giveJob(lw.engine, 'lineworker', 'apprentice');
+      for (let y = 0; y < 5 && lw.state.career.job?.levelId === 'apprentice'; y++) { lw.state.prompts = []; lw.engine.ageUp(); }
+      if (lw.state.career.job?.levelId === 'journeyman') journeymen += 1;
+      else if (!lw.state.career.job) assert.match(lw.state.career.history.at(-1).reason, /apprenticeship|laid off|quit|fired|strike/i, lw.state.career.history.at(-1).reason);
+    }
+    assert.ok(journeymen >= 3, `${journeymen}/6 topped out as journeymen`);
     const dds = setup(153, 26);
     dds.state.finances.cash = 10000;
     assert.equal(pursueEligibility(dds.state, 'dentalLicense').ok, false);
