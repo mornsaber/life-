@@ -1,7 +1,6 @@
 /** Life on the ambulance on the Career tab: agency, shift, assignments, calls. */
 import { esc, button, card, chip, kv, meter, disclosure } from '../Components.js';
-import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, EMS_PROFESSIONS, agencyEligibility, emsPayAdjust, shiftAllowed, emsSector } from '../../modules/ems/EmsLife.js';
-import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
+import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, EMS_PROFESSIONS, agencyEligibility, assignmentEligibility, emsPayAdjust, shiftAllowed, emsSector } from '../../modules/ems/EmsLife.js';
 
 export function emsCard(state) {
   const job = state.career.job;
@@ -12,7 +11,6 @@ export function emsCard(state) {
   const sh = SHIFTS[e.shift] ?? SHIFTS['24-48'];
   const moved = Boolean(state.yearly['ems.agency']);
   const bid = Boolean(state.yearly['ems.shift']);
-  const medic = hasCredential(state, 'paramedic');
   const agencies = Object.entries(AGENCIES).filter(([, x]) => x.sector === sector).map(([id, x]) => {
     const c = agencyEligibility(state, id);
     return button(`${x.icon} ${x.name}`, 'emsLife.agency', { arg: id, variant: e.agency === id ? 'small on' : 'small', disabled: e.agency === id || moved || !c.ok, hint: c.ok ? `Pay ×${x.pay} · ${x.desc}` : c.reason });
@@ -20,8 +18,9 @@ export function emsCard(state) {
   const shifts = Object.entries(SHIFTS).map(([id, x]) => button(`${x.icon} ${x.name}`, 'emsLife.shift', { arg: id, variant: e.shift === id ? 'small on' : 'small', disabled: e.shift === id || bid || !shiftAllowed(state, id), hint: shiftAllowed(state, id) ? `Pay ×${x.pay} · ${x.desc}` : 'Not offered by your agency' })).join('');
   const assignments = Object.entries(ASSIGNMENTS).map(([id, x]) => {
     const on = Boolean(e.assignments?.[id]);
-    const blocked = !on && ((x.cred && !hasCredential(state, x.cred)) || (!medic && id !== 'peer'));
-    const why = x.cred && !hasCredential(state, x.cred) ? 'Needs the certification (Licenses tab)' : !medic && id !== 'peer' ? 'Paramedics only' : x.desc;
+    const ok = assignmentEligibility(state, id);
+    const blocked = !on && !ok.ok;
+    const why = ok.ok ? x.desc : ok.reason;
     return button(`${x.icon} ${on ? '✓ ' : ''}${x.name}`, 'emsLife.assignment', { arg: id, variant: on ? 'small on' : 'small', disabled: blocked, hint: blocked ? why : `${x.pay ? `+$${x.pay.toLocaleString()}/yr · ` : ''}${x.desc}` });
   }).join('');
   const burn = e.burnout ?? 0;
@@ -46,5 +45,5 @@ export function emsCard(state) {
     ${disclosure('ems.agency', `Agency${moved ? ' (moved this year)' : ''}`, `<div class="toggle-row">${agencies}</div>`, { count: a ? a.name : 'choose' })}
     ${disclosure('ems.shift', `Shift bid${bid ? ' (bid this year)' : ''}`, `<div class="toggle-row">${shifts}</div>`, { count: sh.name })}
     ${disclosure('ems.assign', 'Special assignments (up to two)', `<div class="toggle-row">${assignments}</div>`, { count: `${Object.keys(e.assignments ?? {}).length} of 2` })}
-    <p class="fine">EMT → AEMT → Paramedic → Critical Care → Flight. Recertify every two years. Years on the ambulance count toward PA school, and paramedics get a year off nursing school.</p>`, { icon: '🚑', accent: 'red' });
+    <p class="fine">EMT → Paramedic → Critical Care → Flight. Recertify every two years. Years on the ambulance count toward PA school, and paramedics get a year off nursing school.</p>`, { icon: '🚑', accent: 'red' });
 }

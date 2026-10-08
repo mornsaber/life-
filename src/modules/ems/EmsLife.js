@@ -1,6 +1,7 @@
 /**
- * Life on the ambulance, beyond the ladder (EMT → AEMT → Paramedic →
- * Critical Care / Flight; FTO → Supervisor → Captain → Deputy Chief → Chief).
+ * Life on the ambulance, beyond the ladder (EMT → Paramedic → Critical
+ * Care → Flight, four certifications; FTO → Supervisor → Captain →
+ * Deputy Chief → Chief).
  *
  *   Agencies     Who you work for changes everything: a third-service city
  *                EMS, a fire department (cross-trained firefighter-medics,
@@ -27,7 +28,7 @@
  * state.ems = { agency, shift, calls, saves, babies, narcan, mci, incidents, commendations, ce, ceDueAge, assignments, burnout }
  */
 import { clamp } from '../../core/Random.js';
-import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
+import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { ADMISSION_HOOKS, YEAR_HOOKS } from '../education/EducationEngine.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
@@ -54,12 +55,26 @@ export const SHIFTS = {
 };
 
 export const ASSIGNMENTS = {
-  community: { name: 'Community paramedicine', icon: '🏘️', cred: 'communityParamedic', pay: 4000, burnout: -3, desc: 'Home visits for frequent callers and discharged patients — fewer 911 calls for everyone.' },
-  tactical: { name: 'SWAT tactical medic', icon: '🛡️', cred: 'tacticalMedic', pay: 6000, burnout: 3, risk: 0.01, desc: 'Embedded with the SWAT team on warrants and standoffs.' },
+  community: { name: 'Community paramedicine', icon: '🏘️', years: 2, pay: 4000, burnout: -3, desc: 'Home visits for frequent callers and discharged patients — fewer 911 calls for everyone.' },
+  tactical: { name: 'SWAT tactical medic', icon: '🛡️', years: 3, fitness: 60, pay: 6000, burnout: 3, risk: 0.01, desc: 'Embedded with the SWAT team on warrants and standoffs.' },
   hazmat: { name: 'Hazmat team', icon: '☣️', cred: 'hazmatOps', pay: 3000, burnout: 1, desc: 'Decontamination and medical monitoring at chemical incidents.' },
   peer: { name: 'Peer support team', icon: '🫂', pay: 0, burnout: -2, desc: 'You check on coworkers after the bad calls — and they check on you.' },
-  instructor: { name: 'EMT instructor', icon: '🧑‍🏫', cred: 'emsInstructor', pay: 7000, burnout: 1, desc: 'Teaching evening EMT classes at the community college.' },
+  instructor: { name: 'EMT instructor', icon: '🧑‍🏫', years: 4, pay: 7000, burnout: 1, desc: 'Teaching evening EMT classes at the community college.' },
 };
+
+/** Special assignments go to experienced paramedics (peer support is open to anyone). */
+export function assignmentEligibility(state, id) {
+  const as = ASSIGNMENTS[id];
+  if (!as) return { ok: false, reason: 'Unknown assignment' };
+  if (as.cred && !hasCredential(state, as.cred)) return { ok: false, reason: 'Needs the HazMat Operations certification (Licenses tab)' };
+  if (id === 'peer') return { ok: true };
+  if (!isMedic(state)) return { ok: false, reason: 'Paramedics only' };
+  if (as.years && yearsInProfession(state, EMS_PROFESSIONS) < as.years) return { ok: false, reason: `${as.years} years on the ambulance first` };
+  if (as.fitness && state.stats.fitness < as.fitness) return { ok: false, reason: `Needs ${as.fitness}+ fitness` };
+  return { ok: true };
+}
+
+const RETIRED_CERTS = ['aemt', 'communityParamedic', 'tacticalMedic', 'pals', 'phtls', 'emsInstructor'];
 
 export const CE_HOURS = 60;
 export const RECERT_YEARS = 2;
@@ -133,7 +148,7 @@ function callPrompt(ctx) {
 export function callSkill(state) {
   const job = state.career.job;
   const e = ems(state);
-  const certs = ['acls', 'pals', 'phtls', 'ccp'].filter((c) => hasCredential(state, c)).length;
+  const certs = ['acls', 'ccp', 'flightParamedic'].filter((c) => hasCredential(state, c)).length;
   return state.stats.smarts * 0.4 + Math.min(25, (job?.yearsAtEmployer ?? 0) * 2.5) + certs * 4 + (isMedic(state) ? 10 : 0) - Math.max(0, (e?.burnout ?? 0) - 60) / 3;
 }
 
@@ -269,6 +284,15 @@ export const EmsLifeModule = {
   id: 'emsLife',
   order: 30.85,
   init(state) {
+    // Older saves: certifications that were folded away, and the retired Advanced EMT rung.
+    const cr = state.credentials;
+    if (cr) {
+      for (const id of RETIRED_CERTS) { delete cr.held?.[id]; delete cr.prep?.[id]; delete cr.retake?.[id]; }
+      if (cr.training) cr.training = cr.training.filter((t) => !RETIRED_CERTS.includes(t.id));
+    }
+    const job = state.career?.job;
+    if (isEms(job) && job.levelId === 'aemt') Object.assign(job, { levelId: 'emt', title: 'EMT' });
+    for (const h of state.career?.history ?? []) if (EMS_PROFESSIONS.includes(h.professionId) && h.levelId === 'aemt') h.levelId = 'emt';
     state.ems ??= { agency: null, shift: '24-48', calls: 0, saves: 0, babies: 0, narcan: 0, mci: 0, incidents: 0, commendations: 0, ce: 0, ceDueAge: null, assignments: {}, burnout: 0 };
   },
   setup(engine) {
@@ -361,8 +385,8 @@ export const EmsLifeModule = {
         delete e.assignments[id];
         return ctx.log(`You stepped off the ${as.name.toLowerCase()} assignment.`, as.icon);
       }
-      if (as.cred && !hasCredential(state, as.cred)) return ctx.toast('Needs the certification first', 'warn');
-      if (!isMedic(state) && id !== 'peer') return ctx.toast('Paramedics only', 'warn');
+      const ok = assignmentEligibility(state, id);
+      if (!ok.ok) return ctx.toast(ok.reason, 'warn');
       if (Object.keys(e.assignments).length >= 2) return ctx.toast('Two assignments at most', 'warn');
       e.assignments[id] = state.character.age;
       ctx.log(`You joined the ${as.name.toLowerCase()} assignment. ${as.desc}`, as.icon, 'good');

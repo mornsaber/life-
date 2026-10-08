@@ -40,10 +40,9 @@ export const HEALTH_SCIENCE_PROFESSIONS = {
     union: { chance: 0.2, name: 'Teamsters EMS Local 1199', strike: true },
     employers: ['MedRide Ambulance', 'Lifeline Medical Transport', 'Apex Ambulance Service', 'Guardian EMS', 'Keystone Critical Care Transport', 'TriCounty Ambulance Co.'],
     entry: { credentials: ['driverLicense'] },
-    valued: ['paramedic', 'evoc', 'acls', 'pals', 'phtls', 'ccp'],
+    valued: ['paramedic', 'evoc', 'acls', 'ccp'],
     levels: [
       L('emt', 'EMT', 2, { entry: true, req: { credentials: ['emt'] } }),
-      L('aemt', 'Advanced EMT', 3, { req: { credentials: ['aemt'] } }),
       L('paramedic', 'Paramedic', 4, { entry: true, req: { credentials: ['paramedic'] }, abilities: ['prescribe'] }),
       L('cct', 'Critical Care Transport Paramedic', 5, { track: 'ic', req: { credentials: ['ccp'] }, abilities: ['prescribe'] }),
       L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', req: { credentials: ['flightParamedic'] }, abilities: ['prescribe'], airMedical: true }),

@@ -61,10 +61,9 @@ export const MUNICIPAL_PROFESSIONS = {
     benefits: { pension: 'municipal' },
     employerName: (city) => `${city} EMS`,
     entry: { credentials: ['driverLicense'] },
-    valued: ['paramedic', 'hazmatOps', 'cit', 'acls', 'pals', 'phtls'],
+    valued: ['paramedic', 'hazmatOps', 'cit', 'acls', 'ccp'],
     levels: [
       L('emt', 'EMT', 2, { req: { credentials: ['emt'] } }),
-      L('aemt', 'Advanced EMT', 3, { req: { credentials: ['aemt'] } }),
       L('paramedic', 'Paramedic', 4, { entry: true, req: { credentials: ['paramedic'] }, abilities: ['prescribe'] }),
       L('criticalCare', 'Critical Care Paramedic', 5, { track: 'ic', req: { credentials: ['ccp'] }, abilities: ['prescribe'] }),
       L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', req: { credentials: ['flightParamedic'] }, abilities: ['prescribe'], airMedical: true }),
