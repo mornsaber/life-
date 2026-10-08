@@ -295,7 +295,7 @@ export function defaultMos(branch, track, specialty) {
 /** grade(state) returns a 0-based officer grade (O-1 = 0) or null if not qualified. */
 export const DIRECT_COMMISSIONS = {
   jag: {
-    name: 'Judge Advocate General\'s Corps', school: 'the Direct Commission Course and JAG School', maxAge: 42,
+    name: 'Judge Advocate General\'s Corps', school: 'the Direct Commission Course and JAG School', maxAge: 50,
     needs: 'A law degree and an active bar license',
     grade(state) {
       if (!hasCredential(state, 'barLicense')) return null;
@@ -304,7 +304,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   medical: {
-    name: 'Medical Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 42,
+    name: 'Medical Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 60,
     needs: 'An MD and a state medical license',
     grade(state) {
       if (!hasCredential(state, 'medicalLicense')) return null;
@@ -314,7 +314,7 @@ export const DIRECT_COMMISSIONS = {
     bonus: 120000,
   },
   nurse: {
-    name: 'Nurse Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 42,
+    name: 'Nurse Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 55,
     needs: 'A BSN and an RN license',
     grade(state) {
       if (!hasCredential(state, 'rn') || !meetsEducation(state, { level: 'bachelor' })) return null;
@@ -324,7 +324,7 @@ export const DIRECT_COMMISSIONS = {
     bonus: 30000,
   },
   pharmacy: {
-    name: 'Medical Service Corps (Pharmacy)', school: 'the Direct Commission Course', maxAge: 42,
+    name: 'Medical Service Corps (Pharmacy)', school: 'the Direct Commission Course', maxAge: 55,
     needs: 'A Pharm.D. and a pharmacist license',
     grade(state) {
       if (!hasCredential(state, 'pharmacistLicense')) return null;
@@ -332,7 +332,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   chaplain: {
-    name: 'Chaplain Corps', school: 'the Chaplain Basic Officer Leader Course', maxAge: 42,
+    name: 'Chaplain Corps', school: 'the Chaplain Basic Officer Leader Course', maxAge: 55,
     needs: 'A Master of Divinity and two years of ordained ministry',
     grade(state) {
       if (!state.education.degrees.some((d) => d.programId === 'seminary')) return null;
@@ -342,7 +342,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   engineer: {
-    name: 'USPHS Engineer Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    name: 'USPHS Engineer Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'An engineering degree and an FE or PE license',
     grade(state) {
       if (!hasCredential(state, 'fe') && !hasCredential(state, 'pe')) return null;
@@ -351,7 +351,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   environmental: {
-    name: 'USPHS Environmental Health Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    name: 'USPHS Environmental Health Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'A bachelor\'s in environmental science, biology or engineering',
     grade(state) {
       if (!meetsEducation(state, { level: 'bachelor', majors: ['environmentalScience', 'biology', 'engineering'] })) return null;
@@ -359,7 +359,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   scientist: {
-    name: 'USPHS Scientist Category', school: 'the USPHS Officer Basic Course and the EIS summer course', maxAge: 44,
+    name: 'USPHS Scientist Category', school: 'the USPHS Officer Basic Course and the EIS summer course', maxAge: 55,
     needs: 'A Ph.D.',
     grade(state) {
       if (!state.education.degrees.some((d) => d.type === 'doctorate')) return null;
@@ -367,7 +367,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   behavioral: {
-    name: 'USPHS Health Services Category', school: 'the USPHS Officer Basic Course', maxAge: 44,
+    name: 'USPHS Health Services Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'An LCSW license',
     grade(state) {
       if (!hasCredential(state, 'lcsw')) return null;
@@ -375,7 +375,7 @@ export const DIRECT_COMMISSIONS = {
     },
   },
   cyber: {
-    name: 'Cyber Direct Commission', school: 'the Direct Commission Course and Cyber School', maxAge: 39,
+    name: 'Cyber Direct Commission', school: 'the Direct Commission Course and Cyber School', maxAge: 50,
     needs: 'Four years in tech and a security certification (Security+, CISSP or cloud)',
     grade(state) {
       const yrs = yearsInProfession(state, ['tech']);
@@ -422,6 +422,9 @@ export function mosEligibility(state, mos, { smartsFloor = 0 } = {}) {
   }
   return { ok: true };
 }
+
+/** The oldest anyone can take a direct commission (with an age waiver). */
+export const DIRECT_MAX_AGE = Math.max(...Object.values(DIRECT_COMMISSIONS).map((d) => d.maxAge));
 
 /** Is anyone over 39 eligible for some direct commission in this branch? */
 export function hasDirectPath(state, branch) {

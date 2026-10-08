@@ -31,7 +31,9 @@ export const SANCTUARY_YEARS = 18;
 export const WARRANT_MAX_SERVICE = [12, 20, 24, 30, 30];
 /** Guard and Reserve retention control points: part-timers can serve far longer at a grade. */
 export const RESERVE_HYT = [10, 10, 10, 10, 20, 24, 28, 30, 33];
-export const serviceLimit = (svc) => ({ officer: OFFICER_MAX_SERVICE, warrant: WARRANT_MAX_SERVICE }[svc.track] ?? (svc.component === 'reserve' ? RESERVE_HYT : ENLISTED_HYT))[svc.grade] ?? 30;
+/** The National Guard has no tenure limits: members serve until mandatory retirement age. */
+export const noTenureLimit = (svc) => svc.branch === 'guard';
+export const serviceLimit = (svc) => (noTenureLimit(svc) ? Infinity : null) ?? ({ officer: OFFICER_MAX_SERVICE, warrant: WARRANT_MAX_SERVICE }[svc.track] ?? (svc.component === 'reserve' ? RESERVE_HYT : ENLISTED_HYT))[svc.grade] ?? 30;
 
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
 export function separationPay(svc) {

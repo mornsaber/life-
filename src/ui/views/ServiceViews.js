@@ -9,7 +9,7 @@ import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
 import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool } from '../../modules/military/Schools.js';
-import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
+import { MOS, DIRECT_COMMISSIONS, DIRECT_MAX_AGE, hasDirectPath } from '../../modules/military/MOS.js';
 import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, COMMISSIONING } from '../../modules/military/Assignments.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
@@ -28,7 +28,7 @@ import { hasCredential, pursueEligibility, findSponsor } from '../../modules/cre
 function recruitingOffice(state) {
   const rows = Object.values(BRANCHES).map((b) => {
     const enlisted = enlistmentEligibility(state, b.id, 'enlisted', b.activeOnly ? 'active' : 'reserve');
-    const officer = enlistmentEligibility(state, b.id, 'officer', b.activeOnly ? 'active' : 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? 42 : 39 });
+    const officer = enlistmentEligibility(state, b.id, 'officer', b.activeOnly ? 'active' : 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 });
     const btn = (track, component, base, label) => {
       const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : b.activeOnly && component !== 'active' ? { ok: false, reason: 'Active duty only' } : base;
       return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
@@ -88,7 +88,7 @@ export function militaryView(state) {
           ['Retirement', svc.retirementPlan === 'brs' ? 'Blended (2%/yr + matched TSP)' : svc.retirementPlan === 'legacy' ? 'Legacy (2.5%/yr at 20)' : 'Legacy until year 2'],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
           svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} Article 15${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
-          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}max ${serviceLimit(svc)} yrs at this grade${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
+          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
         ])}
       </div>
     </div>

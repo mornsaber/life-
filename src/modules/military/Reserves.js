@@ -13,7 +13,7 @@ import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, co
 import { annualReview } from './MedalEngine.js';
 import { warFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
-import { upOrOut } from './Separation.js';
+import { upOrOut, noTenureLimit } from './Separation.js';
 
 /** 48 drill periods (each a day's pay) + 15 days annual training ≈ 2.1 months of base pay. */
 export const DRILL_PAY_MONTHS = 2.1;
@@ -60,5 +60,5 @@ export function reserveTick(ctx, svc) {
   annualReview(ctx, svc);
   tryPromotion(ctx, svc);
   if (upOrOut(ctx, svc)) return;
-  if (svc.contractYearsLeft <= 0 || svc.yearsOfService >= 30 || ctx.state.character.age >= 62) openContractReview(ctx, svc);
+  if (svc.contractYearsLeft <= 0 || (svc.yearsOfService >= 30 && !noTenureLimit(svc)) || ctx.state.character.age >= 62) openContractReview(ctx, svc);
 }

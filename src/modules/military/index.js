@@ -14,7 +14,7 @@ import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEn
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
-import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS } from './MOS.js';
+import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS, DIRECT_MAX_AGE } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
 import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
@@ -146,7 +146,7 @@ export const MilitaryModule = {
       const { state } = ctx;
       const [branch, track, component] = String(arg).split(':');
       const direct = track === 'officer' && hasDirectPath(state, branch);
-      const check = enlistmentEligibility(state, branch, track, component, { maxOfficerAge: direct ? 42 : 39 });
+      const check = enlistmentEligibility(state, branch, track, component, { maxOfficerAge: direct ? DIRECT_MAX_AGE : 39 });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (component === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
       const b = BRANCHES[branch];

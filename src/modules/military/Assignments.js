@@ -173,7 +173,7 @@ export function assignmentBoardBonus(svc) {
 }
 
 /** Flag boards want joint officers. */
-export const jointFactor = (svc) => (svc.joint ? 1 : 0.3);
+export const jointFactor = (svc) => (svc.joint ? 1 : 0.5);
 
 /** True when the year should skip deployments (on a stateside tour, in college, or at the top). */
 export const keepsHome = (svc) => Boolean((svc.assignment && svc.assignment.id !== 'msg') || svc.commissioning || svc.topPost);

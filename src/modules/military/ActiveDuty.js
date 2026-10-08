@@ -12,7 +12,7 @@ import { reportMisconduct, UCMJ_OFFENSES } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
 import { warFactor, combatFactor } from '../world/War.js';
-import { upOrOut } from './Separation.js';
+import { upOrOut, noTenureLimit } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
@@ -548,7 +548,7 @@ function resolveDutyEvent(ctx, data, optionId) {
 
 export function openContractReview(ctx, svc) {
   const otherComponent = svc.component === 'active' ? 'reserve' : 'active';
-  const mandatory = svc.yearsOfService >= 30 || ctx.state.character.age >= 62;
+  const mandatory = (svc.yearsOfService >= 30 && !noTenureLimit(svc)) || ctx.state.character.age >= 62;
   const options = mandatory
     ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
     : [

@@ -405,6 +405,9 @@ export function promotionOutlook(svc) {
   return { eligible: true };
 }
 
+/** General/flag officer boards: looks before you're no longer considered for the next star. */
+export const FLAG_LOOKS = 5;
+
 /** Officer grades where two non-selections end a career (O-2→O-3, O-3→O-4, O-4→O-5). */
 const UP_OR_OUT = [1, 2, 3];
 
@@ -434,7 +437,7 @@ export function tryPromotion(ctx, svc) {
     return false;
   }
   const flagBoard = svc.track === 'officer' && svc.grade >= 5;
-  if (flagBoard && (svc.flagPassovers ?? 0) >= 3) return false;
+  if (flagBoard && (svc.flagPassovers ?? 0) >= FLAG_LOOKS) return false;
   let chance = 0.55 + (boardScore(svc) - BOARD_THRESHOLD[svc.track][svc.grade]) / 50;
   // Boards promote people who have commanded (or served as first sergeant) at their grade.
   if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
@@ -443,7 +446,8 @@ export function tryPromotion(ctx, svc) {
   chance += qualBoardBonus(svc) + assignmentBoardBonus(svc);
   if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
-  if (flagBoard) chance = (0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200) * jointFactor(svc);
+  // A strong, joint-qualified colonel has a real shot at a star; each higher star is harder.
+  if (flagBoard) chance = (0.12 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 80 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0)) * jointFactor(svc) * [1, 0.7, 0.5, 0.4][svc.grade - 5];
   // Senior boards select a fraction of those eligible: about 45% for O-6, 40% for E-8, 20% for E-9.
   if (svc.track === 'officer' && svc.grade === 4) chance *= 0.65;
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;
@@ -452,7 +456,7 @@ export function tryPromotion(ctx, svc) {
   if (!ctx.rng.chance(clamp(chance, 0.02, 0.95))) {
     if (flagBoard) svc.flagPassovers = (svc.flagPassovers ?? 0) + 1;
     notSelected(ctx, svc);
-    ctx.log(`The promotion board passed you over for ${rankTitles(svc)[svc.grade + 1]}.${flagBoard && svc.flagPassovers >= 3 ? ' You will not be considered again.' : ''}`, '📋', 'warn');
+    ctx.log(`The promotion board passed you over for ${rankTitles(svc)[svc.grade + 1]}.${flagBoard && svc.flagPassovers >= FLAG_LOOKS ? ' You will not be considered again.' : ''}`, '📋', 'warn');
     return false;
   }
   svc.grade += 1;

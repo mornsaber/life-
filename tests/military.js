@@ -27,6 +27,7 @@ import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFactor, keepsHome, commissioningEligibility, applyCommissioning, AssignmentResolvers } from '../src/modules/military/Assignments.js';
 import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
 import { serviceLimit } from '../src/modules/military/Separation.js';
+import { DIRECT_MAX_AGE } from '../src/modules/military/MOS.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 22) {
@@ -449,7 +450,7 @@ const tests = {
     state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'engineering', year: 22, gpa: 3.4 });
     const svc = enlist(engine, 'army:officer:active');
     Object.assign(svc, { isNew: false, yearsOfService: 10, grade: 3, eval: 85 });
-    assert.equal(jointFactor(svc), 0.3, 'not joint yet');
+    assert.equal(jointFactor(svc), 0.5, 'not joint yet');
     startAssignment(ctx, svc, 'joint');
     for (let i = 0; i < 3 && state.military.service?.assignment; i++) year(engine);
     if (!state.military.service) return;
@@ -503,6 +504,9 @@ const tests = {
     assert.equal(state.finances.ledger.income.find((i) => /^Military pay/.test(i.source)).taxFree, 40000);
     assert.equal(serviceLimit({ track: 'enlisted', component: 'active', grade: 4 }), 14);
     assert.equal(serviceLimit({ track: 'enlisted', component: 'reserve', grade: 4 }), 20);
+    assert.equal(serviceLimit({ branch: 'guard', track: 'enlisted', component: 'reserve', grade: 4 }), Infinity, 'no Guard tenure limit');
+    assert.equal(serviceLimit({ branch: 'guard', track: 'officer', component: 'reserve', grade: 2 }), Infinity);
+    assert.ok(DIRECT_MAX_AGE >= 60, 'direct commissions with an age waiver');
   },
 
 };
