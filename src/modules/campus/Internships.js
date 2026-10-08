@@ -137,7 +137,7 @@ export function resolveReturnOffer(ctx, _data, optionId) {
   // Some careers have their own gate (clergy need a faith; judges a bench).
   const gate = profession.eligible?.(state);
   if (gate && !gate.ok) return ctx.log(`${offer.employer.name} withdrew its offer: ${gate.reason.toLowerCase()}.`, '📭', 'warn');
-  hire(ctx, { professionId: offer.professionId, levelId: level.id, employer: offer.employer, step: 2 });
+  if (!hire(ctx, { professionId: offer.professionId, levelId: level.id, employer: offer.employer, step: 2 })) return;
   state.campus.returnHire = { professionId: offer.professionId, levelId: level.id, age: state.character.age };
   ctx.log(`You accepted the return offer from ${offer.employer.name} as ${levelById(profession, level.id).title}.`, '🤝', 'milestone');
 }

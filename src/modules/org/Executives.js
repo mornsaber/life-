@@ -353,8 +353,7 @@ export function executiveResolvers({ hire, recalcSalary, employerAt, ensureDepar
       const employer = employerAt(ctx, org.id, profession);
       employer.size = 'large';
       if (l.deptId) Object.assign(employer, { deptId: l.deptId, deptName: org.departments[l.deptId]?.name ?? l.deptName });
-      hire(ctx, { professionId: profession.id, levelId: l.levelId, employer });
-      const job = state.career.job;
+      const job = hire(ctx, { professionId: profession.id, levelId: l.levelId, employer });
       if (!job) return;
       job.probationLeft = 0;
       if (!job.headOf) takePost(ctx, job, org, l.deptId, { how: 'external' });

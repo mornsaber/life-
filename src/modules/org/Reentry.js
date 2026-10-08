@@ -187,8 +187,7 @@ export const ReentryActions = {
     const level = bestEntryLevel(state, p, employer.size) ?? move.check.level;
     const seniority = job.yearsAtEmployer;
     const from = job.title;
-    hire(ctx, { professionId: p.id, levelId: level.id, employer });
-    const now = state.career.job;
+    const now = hire(ctx, { professionId: p.id, levelId: level.id, employer });
     if (now) {
       now.yearsAtEmployer = seniority;
       // Same employer: no new probation (training programs still run their course).
@@ -202,8 +201,7 @@ export const ReentryActions = {
 export const ReentryResolvers = {
   rehireOffer(ctx, data, optionId) {
     if (optionId !== 'accept') return ctx.log('You decided not to go back.', '🚪');
-    hire(ctx, { professionId: data.professionId, levelId: data.levelId, employer: data.employer });
-    const job = ctx.state.career.job;
+    const job = hire(ctx, { professionId: data.professionId, levelId: data.levelId, employer: data.employer });
     if (!job) return undefined;
     job.rehired = true;
     if (data.bridged) {

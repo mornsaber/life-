@@ -261,8 +261,7 @@ export const WorkplaceActions = {
       if (!level || !levelCheck(state, level).ok) return;
       const old = job.salary;
       const employer = createEmployer(rng, state, profession, state.character.regionId);
-      hire(ctx, { professionId: profession.id, levelId: level.id, employer });
-      const now = state.career.job;
+      const now = hire(ctx, { professionId: profession.id, levelId: level.id, employer });
       if (now) {
         stepForAtLeast(state, now, Math.round(old * 1.06));
         recalcSalary(state, now);

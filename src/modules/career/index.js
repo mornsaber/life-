@@ -36,7 +36,7 @@ export const CareerModule = {
       if (old.company) employer.name = old.company;
       const ladder = ladderFor(profession, employer.size);
       const level = ladder[Math.min(old.tier ?? 0, ladder.length - 1)];
-      hire(ctx, { professionId: profession.id, levelId: level.id, employer });
+      if (!hire(ctx, { professionId: profession.id, levelId: level.id, employer })) return;
       Object.assign(state.career.job, { startAge: old.startAge ?? state.character.age, yearsAtEmployer: old.yearsAtCompany ?? 0, performance: old.performance ?? 60, boss: old.boss ?? 60 });
       state.prompts = state.prompts.filter((p) => p.type !== 'career.chooseTrack');
     });

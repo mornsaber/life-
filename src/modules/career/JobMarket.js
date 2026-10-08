@@ -55,8 +55,8 @@ export const offerSummary = (o) => `${o.employer.name} (${o.employer.size}) · $
 export function acceptOffer(ctx, offer) {
   const { state } = ctx;
   if (state.legal.incarceration) return ctx.log(`${offer.employer.name} withdrew its offer.`, '📭', 'bad');
-  hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
-  const job = state.career.job;
+  const job = hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
+  if (!job) return undefined;
   stepForAtLeast(state, job, offer.salary);
   recalcSalary(state, job);
   job.workMode = offer.workMode;

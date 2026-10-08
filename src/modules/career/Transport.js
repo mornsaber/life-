@@ -300,8 +300,8 @@ export const TransportModule = {
       state.transport.recall = null;
       if (optionId !== 'return') return ctx.log(`You declined the recall to ${r.employer.name}.`, '🙅');
       if (state.legal.incarceration) return;
-      hire(ctx, { professionId: r.professionId, levelId: r.levelId, employer: r.employer, step: r.step });
-      const job = state.career.job;
+      const job = hire(ctx, { professionId: r.professionId, levelId: r.levelId, employer: r.employer, step: r.step });
+      if (!job) return;
       job.yearsAtEmployer = r.seniority;
       job.probationLeft = 0;
       recalcSalary(state, job);

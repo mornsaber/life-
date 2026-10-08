@@ -151,6 +151,11 @@ function applyLevel(job, level) {
 
 export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0 }) {
   const { state } = ctx;
+  // Full-time active duty is your job: offers that arrive while you're in uniform lapse.
+  if (state.military.service?.component === 'active') {
+    ctx.toast('You are on active duty and can\'t take a civilian job.', 'warn');
+    return null;
+  }
   if (state.career.job) leaveJob(ctx, 'Resigned for a new opportunity');
   if (state.career.leave) endMilitaryLeave(ctx, 'Took a new job instead of returning from military leave');
   const profession = getProfession(professionId);
@@ -204,6 +209,7 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
       runAcademy(ctx, next);
     }
   }
+  return state.career.job;
 }
 
 /* ------------------------------------------------------------------ */

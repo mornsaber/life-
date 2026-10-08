@@ -48,8 +48,7 @@ export const ClearedModule = {
       const employer = employerAt(ctx, org.id, profession);
       employer.size = 'enterprise';
       employer.name = org.name;
-      hire(ctx, { professionId: profession.id, levelId: level.id, employer, step: 2 });
-      const job = state.career.job;
+      const job = hire(ctx, { professionId: profession.id, levelId: level.id, employer, step: 2 });
       if (!job) return;
       makeCleared(ctx, job, clearanceLevel(state));
       recalcSalary(state, job);
