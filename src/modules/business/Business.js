@@ -29,6 +29,7 @@ import { ownershipRules } from './OwnershipRules.js';
 import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './BusinessLicenses.js';
 import { competitionFactor } from '../org/Businesses.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
+import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
 
 export const SS_WAGE_CAP = 176100;
 /** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
@@ -101,6 +102,17 @@ export function fundingCheck(state, price, funding, type = null, { cashFlow = nu
   return { ok: true, down: price, loan: 0 };
 }
 
+/**
+ * Short-staffed shops turn customers away; extra hands help a little, with
+ * diminishing returns. 1.0 at the type's normal staffing for its size.
+ */
+export function staffFactor(biz) {
+  const type = BUSINESS_TYPES[biz.typeId];
+  if (!type?.staff || type.startup) return 1;
+  const ratio = biz.staff.headcount / Math.max(1, type.staff * biz.scale);
+  return clamp(ratio, 0.3, 1.25) ** (ratio < 1 ? 0.7 : 0.35);
+}
+
 /** Your skill as an operator: relevant experience and smarts. */
 export function ownerSkill(state, type) {
   // Past businesses and management experience help a little on top of industry years.
@@ -110,12 +122,12 @@ export function ownerSkill(state, type) {
 }
 
 export function debtBalance(biz) {
-  return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0) + (biz.debts.payables ?? 0);
+  return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0) + (biz.debts.payables ?? 0) + (biz.ops?.loan?.balance ?? 0);
 }
 
 /** Debts you signed for personally (SBA loans and credit lines always carry a personal guarantee). */
 export function guaranteedDebt(biz) {
-  return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0);
+  return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0) + (biz.ops?.loan?.balance ?? 0);
 }
 
 /**
@@ -137,11 +149,17 @@ export function yearFinancials(state, biz, rng) {
   const staffing = biz.years <= 1 ? 0.85 : biz.years === 2 ? 0.95 : 1;
   // Owner policies: price point, supplier quality, pay level (OwnerActions).
   const price = priceFactor(biz.priceLevel ?? 'standard', biz.quality);
-  const revenue = Math.round(type.startup ? biz.arr : type.revenue * biz.scale ** 0.95 * demand * price * ramp * rng.float(0.88, 1.12) * Math.sqrt(col));
-  const cogs = Math.round(revenue * type.cogs * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1));
+  // Fleet and crew businesses earn what their booked capacity earns: contracts first, spot work for the rest (Operations).
+  const ops = opsOf(biz) ? opsRevenue(biz, demand, rng) : null;
+  const revenue = Math.round(type.startup ? biz.arr
+    : ops ? (ops.contractRevenue + ops.spotRevenue) * price * ramp * Math.sqrt(col)
+      : type.revenue * biz.scale ** 0.95 * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * Math.sqrt(col));
+  // Fleet upkeep is booked separately, so it comes out of the cost-of-goods share.
+  const cogsRate = ops ? Math.max(0.05, type.cogs - OPERATIONS[biz.typeId].upkeep / OPERATIONS[biz.typeId].perUnit) : type.cogs;
+  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1));
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
-  const busy = type.startup ? 1 : clamp(revenue / Math.max(1, type.revenue * biz.scale ** 0.95 * Math.sqrt(col)), 0.5, 1.6);
+  const busy = type.startup || ops ? 1 : clamp(revenue / Math.max(1, type.revenue * biz.scale ** 0.95 * Math.sqrt(col)), 0.5, 1.6);
   const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy) * (type.startup ? 1 : staffing * Math.min(1, lic.revenue + 0.3)) * (PAY_POLICY[biz.payLevel ?? 'market'] ?? 1));
   const delegated = Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]);
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
@@ -152,11 +170,14 @@ export function yearFinancials(state, biz, rng) {
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
   const admin = ENTITIES[biz.entity].admin;
   const sba = biz.debts.sba;
-  const interest = Math.round((sba?.balance ?? 0) * (sba?.rate ?? 0) + (biz.debts.loc ?? 0) * 0.12);
+  const interest = Math.round((sba?.balance ?? 0) * (sba?.rate ?? 0) + (biz.debts.loc ?? 0) * 0.12 + (biz.ops?.loan?.balance ?? 0) * (biz.ops?.loan?.rate ?? 0));
+  // Equipment upkeep, and penalties for contracted work you couldn't cover.
+  const fleet = ops ? Math.round(fleetUpkeep(biz) * Math.sqrt(col)) : 0;
+  const penalties = ops ? Math.round(ops.shortfall * OPERATIONS[biz.typeId].perUnit * 0.25) : 0;
   // Franchisees pay royalties and the ad fund off the top; franchisors collect fees and royalties and pay for support.
   const royalties = royaltiesOn(biz, revenue);
   const { franchiseFees, royaltyIncome, franchiseSupport } = franchisorFinancials(biz, type);
-  const operatingIncome = revenue - cogs - payroll - overhead - management - rent - insurance - marketing - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport;
+  const operatingIncome = revenue - cogs - payroll - overhead - management - rent - insurance - marketing - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport - fleet - penalties;
   // S- and C-corp owners who work in the business take a W-2 salary (employer payroll tax applies).
   const entity = ENTITIES[biz.entity];
   // Funded startup founders pay themselves a modest salary out of the raise.
@@ -167,7 +188,7 @@ export function yearFinancials(state, biz, rng) {
   const pretax = operatingIncome - interest - ownerSalary - payrollTax;
   const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, pretax) * CORPORATE_TAX);
   const netIncome = pretax - corporateTax;
-  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome };
+  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, fleet, penalties, ops };
 }
 
 /**
@@ -241,7 +262,9 @@ export function newBusiness(rng, state, typeId, { name, entity = 'llc', scale = 
     valuation: 0,
     franchise: null,
     franchisor: null,
+    ops: newOps(rng, typeId, scale, years),
   };
+  if (biz.ops && type.startUsed) for (const u of biz.ops.units) u.used = true;
   biz.valuation = Math.max(0, Math.round(cash + assets - sbaLoan));
   return biz;
 }

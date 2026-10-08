@@ -3,8 +3,9 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
-import { esc, money, button, card, chip, kv, meter, select, empty } from '../Components.js';
-import { BUSINESS_TYPES, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
+import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } from '../Components.js';
+import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN } from '../../modules/business/Operations.js';
+import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked } from '../../modules/business/BusinessEngine.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
@@ -12,7 +13,7 @@ import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
 import { REGIONS } from '../../modules/life/Regions.js';
-import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY } from '../../modules/business/Business.js';
+import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY, staffFactor } from '../../modules/business/Business.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { DUTIES } from '../../modules/career/ManagementEngine.js';
 import { credentialName } from '../../modules/credentials/CredentialRegistry.js';
@@ -38,8 +39,8 @@ function startCard(state) {
   const mine = yourCareers(state);
   const fromCareer = new Set([...mine].flatMap((p) => businessesFor(p)));
   const rules = ownershipRules(state);
-  const order = Object.entries(BUSINESS_TYPES).sort(([a], [b]) => (fromCareer.has(b) ? 1 : 0) - (fromCareer.has(a) ? 1 : 0));
-  const rows = order.map(([id, t]) => {
+  const row = (id) => {
+    const t = BUSINESS_TYPES[id];
     const cash = startEligibility(state, id, 'cash');
     const sba = startEligibility(state, id, 'sba');
     const sizes = sizesFor(t);
@@ -47,7 +48,8 @@ function startCard(state) {
     const blocked = !cash.ok && !sba.ok;
     const lic = requiredLicenses(id).filter((l) => l !== 'businessLicense').map((l) => BUSINESS_LICENSES[l].name);
     const needs = `${t.credentials.length ? `You need ${t.credentials.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal license needed'}${lic.length ? ` · the business needs a ${lic.join(' + ')}` : ''} · ${money(openingLicenseFees(id))} in license fees`;
-    const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established`;
+    const o = OPERATIONS[id];
+    const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established${o?.unit ? ` · starts with ${o.start} ${o.start === 1 ? o.unit.name : o.unit.plural}${t.startUsed ? ' (used)' : ''}; buy more and sign contracts` : o ? ' · sign contracts and hire to grow' : ''}`;
     return `<li class="program ${blocked ? 'locked' : ''}" data-collect-root>
       <div><b>${t.icon} ${esc(t.name)}</b> ${fromCareer.has(id) ? chip('From your career', 'cyan') : ''}<small>${costs} to start · ${esc(needs)} · ${esc(est)}</small>
         ${blocked ? `<small class="why">${esc(cash.reason)}</small>` : ''}</div>
@@ -63,9 +65,18 @@ function startCard(state) {
         ${button('Start', 'business.start', { variant: 'small primary', collect: true, disabled: blocked })}
       </div>
     </li>`;
+  };
+  // Your careers' businesses first (open), then every category behind a click.
+  const mineIds = Object.keys(BUSINESS_TYPES).filter((id) => fromCareer.has(id));
+  const groups = Object.entries(BUSINESS_GROUPS).map(([gid, g]) => {
+    const ids = g.ids.filter((id) => !fromCareer.has(id));
+    if (!ids.length) return '';
+    const open = ids.filter((id) => startEligibility(state, id, 'cash').ok || startEligibility(state, id, 'sba').ok).length;
+    return disclosure(`biz.group.${gid}`, `${g.icon} ${g.label}`, `<ul class="programs">${ids.map(row).join('')}</ul>`, { count: `${open} of ${ids.length} open to you` });
   }).join('');
+  const rows = `${mineIds.length ? `<h4 class="sub">From your career</h4><ul class="programs">${mineIds.map(row).join('')}</ul>` : ''}${groups}`;
   return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
-    <ul class="programs">${rows}</ul>
+    ${rows}
     <h4 class="sub">Legal structures</h4><ul class="history">${Object.values(ENTITIES).map((e) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
 }
 
@@ -246,6 +257,55 @@ function pnl(ly) {
     <p class="fine">You took home ${money(ly.ownerPay ?? 0)}${ly.seTax ? ` and paid ${money(ly.seTax)} self-employment tax` : ''}.</p>`;
 }
 
+/** Fleet, crews and the contract book (Operations). */
+function fleetCard(state, biz) {
+  const o = opsOf(biz);
+  if (!o) return '';
+  const ops = biz.ops;
+  const c = capacity(biz);
+  const booked = contracted(biz);
+  const short = booked - c.capacity;
+  const unitWord = o.unit ? o.unit.plural : `${o.crewName} posts`;
+  const fleet = o.unit ? (() => {
+    const ages = ops.units.map((u) => u.age);
+    const avg = ages.length ? Math.round(ages.reduce((a, b) => a + b, 0) / ages.length) : 0;
+    const worn = ops.units.filter((u) => u.age >= o.unit.life).length;
+    return `${ops.units.length} ${ops.units.length === 1 ? o.unit.name : o.unit.plural} · average age ${avg} yr${worn ? ` · <span class="neg">${worn} past ${o.unit.life} yr</span>` : ''}`;
+  })() : null;
+  const loanDown = (price) => money(price * EQUIPMENT_LOAN.down);
+  const buy = o.unit ? `
+    ${button(`${o.unit.icon} Buy new · ${money(o.unit.newCost)}`, 'business.buyUnit', { arg: 'new', variant: 'small', disabled: biz.cash < o.unit.newCost, hint: 'From the business account; low upkeep, rarely breaks' })}
+    ${button(`🏦 Finance new · ${loanDown(o.unit.newCost)} down`, 'business.buyUnit', { arg: 'new:loan', variant: 'small', disabled: biz.cash < o.unit.newCost * EQUIPMENT_LOAN.down, hint: `${Math.round(EQUIPMENT_LOAN.rate * 1000) / 10}% over ${EQUIPMENT_LOAN.years} years, personally guaranteed` })}
+    ${button(`♻️ Buy used · ${money(o.unit.usedCost)}`, 'business.buyUnit', { arg: 'used', variant: 'small', disabled: biz.cash < o.unit.usedCost, hint: 'Cheaper; older, breaks down more' })}
+    ${button(`🏦 Finance used · ${loanDown(o.unit.usedCost)} down`, 'business.buyUnit', { arg: 'used:loan', variant: 'small', disabled: biz.cash < o.unit.usedCost * EQUIPMENT_LOAN.down })}
+    ${button(`💲 Sell the oldest`, 'business.sellUnit', { variant: 'small', disabled: ops.units.length <= 1, hint: ops.units.length > 1 ? `≈${money(resaleValue(o, [...ops.units].sort((a, b) => b.age - a.age)[0]))}` : 'You need at least one' })}` : '';
+  const contracts = ops.contracts.map((k) => `<li>📄 <b>${esc(k.client)}</b> <small>${k.units} ${k.units === 1 ? (o.unit?.name ?? `${o.crewName} post`) : unitWord} · ≈${money(k.units * o.perUnit * k.rate)}/yr · ${k.yearsLeft} of ${k.years} yr left</small> ${button('Walk away', 'business.dropContract', { arg: k.id, variant: 'tiny', hint: `Fee ≈${money(k.units * o.perUnit * k.rate * 0.15)}; reputation hit` })}</li>`).join('');
+  const offers = (ops.offers ?? []).map((k) => {
+    const ok = offerEligibility(state, biz, k);
+    const fits = booked + k.units <= c.capacity;
+    return `<li class="${ok.ok ? '' : 'locked'}">${k.renewal ? '🔁' : '📨'} <b>${esc(k.client)}</b> <small>${k.units} ${k.units === 1 ? (o.unit?.name ?? `${o.crewName} post`) : unitWord} · ${k.years} yr · ${Math.round(k.rate * 100)}% of the going rate · ≈${money(k.units * o.perUnit * k.rate)}/yr${ok.ok && !fits ? ' · <span class="neg">more than your free capacity</span>' : ''}${ok.ok ? '' : ` · ${esc(ok.reason)}`}</small> ${button('Sign', 'business.acceptContract', { arg: k.id, variant: 'tiny', disabled: !ok.ok })}</li>`;
+  }).join('');
+  return card(o.unit ? 'Fleet & Contracts' : 'Crews & Contracts', `
+    ${kv([
+      fleet ? ['Fleet', fleet] : null,
+      ['Staff', `${biz.staff.headcount}${biz.role === 'operator' ? ' + you' : ''} · ${o.crew > 1 ? `crews of ${o.crew}` : `one ${o.crewName} per ${o.unit?.name ?? 'post'}`}`],
+      ['Capacity', `${c.capacity} ${unitWord} working${o.unit && c.crews < c.units ? ` · <span class="neg">${c.units - c.crews} idle for lack of ${o.crewName}s</span>` : ''}${o.unit && c.units < c.crews ? ` · ${c.crews - c.units} spare crew${c.crews - c.units > 1 ? 's' : ''}` : ''}`],
+      ['Under contract', `${booked} of ${c.capacity}${short > 0 ? ` · <span class="neg">${short} short — penalties at year's end</span>` : ''}`],
+      ops.lastUtil != null ? ['Last year', `${Math.min(100, Math.round(ops.lastUtil * 100))}% busy`] : null,
+      ops.loan ? ['Equipment loan', `<span class="neg">${money(ops.loan.balance)}</span> · ${money(ops.loan.annual)}/yr`] : null,
+      ['Each unit earns', `about ${money(o.perUnit)}/yr fully booked`],
+    ])}
+    <div class="action-grid">
+      ${buy}
+      ${button(`🤝 Hire ${o.crew > 1 ? `a crew of ${o.crew}` : `a ${o.crewName}`}`, 'business.hireCrew', { variant: 'small' })}
+      ${button(`✂️ Let ${o.crew > 1 ? 'a crew' : `a ${o.crewName}`} go`, 'business.cutCrew', { variant: 'small', disabled: biz.staff.headcount < o.crew })}
+      ${button('📨 Bid for more work', 'business.bid', { variant: 'small', disabled: Boolean(state.yearly['business.bid']), hint: 'Two more offers this year' })}
+    </div>
+    <h4 class="sub">Contracts</h4>${contracts ? `<ul class="history">${contracts}</ul>` : '<p class="muted">No contracts — all your work is one-off spot jobs, which swing with the economy.</p>'}
+    <h4 class="sub">Offers this year</h4>${offers ? `<ul class="history">${offers}</ul>` : '<p class="muted">No offers right now. Bid for work, or wait for next year.</p>'}
+    <p class="fine">Capacity is whichever runs out first, ${o.unit ? `${o.unit.plural} or ${o.crewName}s` : `${o.crewName}s`}. Contracts pay a set rate whatever the economy does; spare capacity chases spot work. Promise more than you can cover and you pay penalties and lose clients.${biz.role !== 'operator' ? ' Your manager signs offers that fit.' : ''}</p>`, { icon: o.unit?.icon ?? '🤝', accent: 'cyan' });
+}
+
 function ownedView(state, biz) {
   const type = typeOf(biz);
   const entity = ENTITIES[biz.entity];
@@ -280,7 +340,9 @@ function ownedView(state, biz) {
     <h4 class="sub">Benefits you offer</h4><div class="toggle-row chips-row">${button('🩺 Health plan', 'business.toggleHealth', { variant: biz.benefits.health ? 'tiny on' : 'tiny', hint: '+12% payroll · morale' })}${[0, 0.03, 0.05].map((m) => button(m ? `401(k) ${m * 100}% match` : 'No 401(k)', 'business.setMatch', { arg: String(m), variant: biz.benefits.match === m ? 'tiny on' : 'tiny' })).join('')}</div>
     <h4 class="sub">Delegate to managers</h4><div class="toggle-row chips-row">${Object.entries(DUTIES).map(([id, d]) => button(`${d.icon} ${d.label}`, 'business.toggleDelegation', { arg: id, variant: s.delegation[id] ? 'tiny on' : 'tiny', disabled: s.headcount < 8, hint: s.headcount < 8 ? '8+ staff' : `${Math.round(d.overhead * 100)}% of payroll` })).join('')}</div>` : ''}
     <div class="action-grid">
-      ${type.startup ? `${button('🤝 Hire 5', 'business.hire', { arg: '5' })}${button('✂️ Lay off 30%', 'business.layoff', { variant: 'danger', disabled: !s.headcount })}` : button('🏗️ Open another location', 'business.expand', { arg: 'cash', hint: `${money(type.cost * 0.8)} from the business`, disabled: biz.scale >= 5 || biz.years < 2 })}
+      ${type.startup ? `${button('🤝 Hire 5', 'business.hire', { arg: '5' })}${button('✂️ Lay off 30%', 'business.layoff', { variant: 'danger', disabled: !s.headcount })}` : ''}
+      ${!type.startup && !opsOf(biz) ? `${button('🤝 Hire an employee', 'business.hire', { arg: '1', hint: `Staffing ${Math.round(staffFactor(biz) * 100)}% of normal output` })}${button('✂️ Let one go', 'business.letGo', { disabled: !s.headcount })}` : ''}
+      ${type.startup ? '' : button('🏗️ Open another location', 'business.expand', { arg: 'cash', hint: `${money(type.cost * 0.8)} from the business`, disabled: biz.scale >= 5 || biz.years < 2 })}
     </div>
     ${relatives.length ? `<h4 class="sub">Family business</h4><div class="toggle-row chips-row">${relatives.map((p) => button(`👪 Hire ${esc(p.firstName)}`, 'business.hireRelative', { arg: p.id, variant: 'tiny' })).join('')}</div>` : ''}`, { icon: '⚙️' });
 
@@ -295,7 +357,7 @@ function ownedView(state, biz) {
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${advisorCard(state, biz)}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  return `${overview}${advisorCard(state, biz)}${fleetCard(state, biz)}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {

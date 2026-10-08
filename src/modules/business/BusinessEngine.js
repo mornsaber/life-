@@ -22,6 +22,8 @@ import {
   ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf,
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
+import { FleetActions, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
+import { makeOffers, OPERATIONS } from './Operations.js';
 import {
   grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
 } from './BusinessLicenses.js';
@@ -185,13 +187,16 @@ function businessTick(ctx, biz) {
   if (type.startup) startupGrowth(ctx, biz);
   if (biz.franchisor) franchisorTick(ctx, biz, PHASE_DEMAND[state.economy.phase] ?? 1);
 
+  ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
   biz.cash += ly.netIncome;
   payDebts(biz);
+  payEquipmentLoan(biz);
   biz.assets = Math.round(biz.assets * 0.9);
   ly.ownerPay = payOwner(ctx, biz, ly);
   biz.lastYear = ly;
   biz.valuation = valuation(biz, ly);
+  opsTick(ctx, biz, ly);
   ctx.log(`${biz.name}: ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; you took ${money(ly.ownerPay)}` : ''}. Valued at ${money(biz.valuation)}.`, type.icon, ly.netIncome >= 0 ? 'finance' : 'warn');
 
   inspectionTick(ctx, biz, type);
@@ -436,6 +441,7 @@ function startBusiness(ctx, typeId, funding, entity, size = 'standard', name = '
   const clean = String(name ?? '').replace(/[<>]/g, '').trim().slice(0, 40);
   const biz = newBusiness(rng, state, typeId, { name: clean || undefined, scale: SIZE_OPTIONS[size].scale, entity: ENTITIES[entity] ? entity : 'llc', cash: Math.round(cost * 0.4), assets: Math.round(cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
   state.business.current = biz;
+  if (OPERATIONS[biz.typeId] && biz.ops) biz.ops.offers = makeOffers(ctx.rng, biz);
   biz.autopilot = true;
   grantOpeningLicenses(state, biz);
   ensureBusinessOrg(state, biz);
@@ -465,6 +471,7 @@ function buyFranchise(ctx, brandId, funding, entity) {
   });
   biz.franchise = { brandId, name: brand.name, royalty: brand.royalty, adFund: brand.adFund, lift: brand.lift, term: brand.term, signedYears: 0, waiveLicense: Boolean(brand.waiveLicense) };
   state.business.current = biz;
+  if (OPERATIONS[biz.typeId] && biz.ops) biz.ops.offers = makeOffers(ctx.rng, biz);
   biz.autopilot = true;
   grandfatherLicenses(state, biz);
   ensureBusinessOrg(state, biz);
@@ -507,6 +514,7 @@ function buyBusiness(ctx, listingId, funding) {
   const { sbaLoan, basis } = fund(ctx, listing.price, check);
   const biz = newBusiness(rng, state, listing.typeId, { name: listing.name, years: listing.years, scale: listing.scale, quality: listing.quality, reputation: listing.reputation, fit: listing.fit, cash: Math.round(listing.price * 0.1), assets: Math.round(listing.price * 0.4), sbaLoan, basis });
   state.business.current = biz;
+  if (OPERATIONS[biz.typeId] && biz.ops) biz.ops.offers = makeOffers(ctx.rng, biz);
   biz.ownedFromAge = state.character.age;
   biz.autopilot = true;
   grandfatherLicenses(state, biz);
@@ -550,9 +558,12 @@ function holdingTick(ctx, biz) {
   biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
   biz.reputation = Math.round(clamp(biz.reputation + (biz.quality - biz.reputation) * 0.25 + rng.int(-3, 3), 0, 100));
   if (typeOf(biz).startup) startupGrowth(ctx, biz);
+  ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
   biz.cash += ly.netIncome;
   payDebts(biz);
+  payEquipmentLoan(biz);
+  opsTick(ctx, biz, ly);
   biz.assets = Math.round(biz.assets * 0.9);
   ly.ownerPay = payOwner(ctx, biz, ly);
   biz.lastYear = ly;
@@ -634,6 +645,7 @@ export const BusinessEngine = {
 
   actions: {
     ...OwnerActions,
+    ...FleetActions,
     /** arg: 'typeId:cash|sba:entity[:size[:name]]' */
     start(ctx, arg) {
       const [typeId, funding = 'cash', entity = 'llc', size = 'standard', ...name] = String(arg).split(':');
@@ -711,6 +723,14 @@ export const BusinessEngine = {
       biz.staff.headcount = Math.min(MAX_HEADCOUNT, biz.staff.headcount + add);
       ctx.log(`${biz.name} hired ${add} more ${add === 1 ? 'person' : 'people'} (${biz.staff.headcount} on staff).`, '🤝');
     },
+    /** Let one person go (morale dips a little). */
+    letGo(ctx) {
+      const biz = withBiz(ctx);
+      if (!biz || !biz.staff.headcount) return;
+      biz.staff.headcount -= 1;
+      bump(biz.staff, 'morale', -3);
+      ctx.log(`${biz.name} let one employee go (${biz.staff.headcount} on staff).`, '✂️', 'warn');
+    },
     layoff(ctx) {
       const biz = withBiz(ctx);
       if (!biz || !biz.staff.headcount) return;
@@ -744,6 +764,11 @@ export const BusinessEngine = {
       biz.scale += 1;
       biz.assets += Math.round(cost * 0.6);
       biz.staff.headcount = Math.round(type.staff * biz.scale) + biz.family.length;
+      if (ensureOps(ctx.rng, biz)) {
+        const o = OPERATIONS[biz.typeId];
+        if (o.unit) for (let i = 0; i < o.start; i++) biz.ops.units.push({ id: ctx.rng.id('u_'), age: 0, used: Boolean(type.startUsed) });
+        biz.staff.headcount = Math.max(biz.staff.headcount, (o.unit ? biz.ops.units.length : 0) * o.crew);
+      }
       bump(biz, 'quality', -5);
       const branch = openBranch(state, biz, biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : state.character.regionId);
       biz.expandTo = null;
