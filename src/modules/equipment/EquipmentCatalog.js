@@ -319,6 +319,62 @@ export const GROUPS = {
     aircraft: { name: 'Aircraft', icon: '🚁', need: need(0, 1, 4, 12), weight: 1, models: { helo: M('Medium helicopter', 12000000, 25, 1000000, { usedCost: 4000000, lease: true }) } },
   } },
 
+  /* ---------------- Offices & everything else ---------------- */
+  corpOffice: { name: 'Offices & Technology', categories: {
+    computers: COMPUTERS(need(10, 40, 200, 1000)),
+    servers: { name: 'Servers, network & security', icon: '🗄️', need: need(1, 2, 6, 20), weight: 1.5, models: { rack: M('Server & network rack', 40000, 5, 3000, { lease: true }), cloud: M('Cloud & SaaS contract', 0, 99, 0, { rent: 60000 }) } },
+    phones: { name: 'Phones & conferencing', icon: '📞', need: need(10, 40, 200, 1000), weight: 0.5, models: { kit: M('Laptop dock, headset & phone', 600, 4, 60, { lease: true }) } },
+    offices: { name: 'Office space', icon: '🏢', need: need(1, 1, 3, 10), weight: 1, facility: true, models: { lease: M('Leased office floor', 0, 99, 0, { rent: 300000 }), own: M('Headquarters building (build)', 40000000, 50, 800000, { build: true }) } },
+  } },
+  designOffice: { name: 'Studio & Technology', categories: {
+    workstations: { name: 'CAD workstations & licenses', icon: '🖥️', need: need(5, 20, 80, 300), weight: 2, models: { cad: M('CAD/BIM workstation & license', 9000, 4, 2500, { lease: true }) } },
+    plotters: { name: 'Plotters & 3D printers', icon: '🖨️', need: need(1, 2, 6, 15), weight: 1, models: { plotter: M('Large-format plotter / 3D printer', 15000, 7, 1500) } },
+    survey: { name: 'Site & test equipment', icon: '📏', need: need(1, 2, 6, 15), weight: 1, models: { kit: M('Scanner & test instruments', 40000, 8, 2000, { lease: true }) } },
+  } },
+  agencyOffice: { name: 'Offices, Systems & Fleet', categories: {
+    computers: COMPUTERS(need(15, 60, 250, 1000)),
+    systems: { name: 'Case-management systems', icon: '🗄️', need: need(1, 1, 2, 4), weight: 2, models: { modern: M('Case-management system modernization', 2000000, 12, 200000, { refurb: true }) } },
+    cars: { name: 'Motor pool', icon: '🚗', need: need(2, 6, 25, 80), weight: 1, models: { sedan: M('Government sedan', 30000, 8, 3000, { usedCost: 11000, lease: true }) } },
+    offices: { name: 'Field offices', icon: '🏛️', need: need(1, 2, 6, 20), weight: 1, facility: true, models: { lease: M('Leased field office', 0, 99, 0, { rent: 180000 }), own: M('Government office building (bond)', 25000000, 50, 500000, { build: true }) } },
+  } },
+  courthouse: { name: 'Courtrooms & Systems', categories: {
+    courtrooms: { name: 'Courtroom technology', icon: '⚖️', need: need(2, 6, 20, 60), weight: 2, models: { av: M('Evidence display, recording & video arraignment', 60000, 8, 3000) } },
+    efiling: { name: 'E-filing & case system', icon: '🗄️', need: need(1, 1, 1, 2), weight: 2, models: { cms: M('Court case-management system', 3000000, 12, 300000, { refurb: true }) } },
+    security: { name: 'Screening & security', icon: '🛂', need: need(1, 2, 4, 10), weight: 1.5, models: { mag: M('Magnetometer & X-ray station', 50000, 10, 3000) } },
+    building: { name: 'Courthouse', icon: '🏛️', need: need(1, 1, 2, 4), weight: 1, facility: true, models: { own: M('New courthouse (bond)', 60000000, 60, 1200000, { build: true }) } },
+  } },
+  intel: { name: 'Facilities & Systems', categories: {
+    scif: { name: 'SCIFs', icon: '🔒', need: need(1, 2, 6, 20), weight: 2, facility: true, models: { own: M('Accredited SCIF build-out', 3000000, 30, 100000, { build: true }) } },
+    systems: { name: 'Classified networks & analytic tools', icon: '🛰️', need: need(10, 40, 200, 800), weight: 2, models: { ts: M('TS/SCI workstation & tools', 15000, 4, 3000) } },
+    collection: { name: 'Collection equipment', icon: '📡', need: need(1, 2, 6, 20), weight: 1.5, models: { kit: M('Collection system (sustainment)', 5000000, 10, 400000, { refurb: true }) } },
+  } },
+  newsroom: { name: 'Newsroom Gear', categories: {
+    cameras: { name: 'Cameras & audio kits', icon: '🎥', need: need(2, 6, 20, 60), weight: 2, models: { kit: M('Camera & audio kit', 15000, 5, 800, { usedCost: 5000 }) } },
+    vans: { name: 'Live trucks', icon: '🚐', need: need(0, 1, 3, 8), weight: 1.5, models: { van: M('Live/satellite truck', 400000, 12, 20000, { usedCost: 100000 }), bonded: M('Bonded cellular backpack', 25000, 4, 6000, { lease: true }) } },
+    cms: { name: 'Publishing & editing systems', icon: '🖥️', need: need(4, 15, 60, 200), weight: 1.5, models: { suite: M('Editing workstation & CMS seat', 6000, 4, 1500, { lease: true }) } },
+  } },
+  church: { name: 'Buildings & Equipment', categories: {
+    sanctuary: { name: 'Sanctuary & roof', icon: '⛪', need: need(1, 1, 2, 4), weight: 3, models: { renovation: M('Roof, HVAC & sanctuary repairs', 60000, 20, 4000, { refurb: true }) } },
+    av: { name: 'Sound, video & livestream', icon: '🎙️', need: need(1, 1, 2, 4), weight: 1, models: { av: M('Sound & livestream system', 40000, 8, 1500) } },
+    vans: { name: 'Church vans & buses', icon: '🚐', need: need(1, 1, 2, 4), weight: 1, models: { van: M('15-passenger van', 50000, 10, 3500, { usedCost: 18000 }) } },
+    hall: { name: 'Fellowship hall & school', icon: '🏫', need: need(0, 1, 2, 4), weight: 1, facility: true, models: { own: M('Fellowship hall (capital campaign)', 3000000, 50, 60000, { build: true }) } },
+  } },
+  therapyOffice: { name: 'Practice Equipment', categories: {
+    rooms: { name: 'Therapy & testing rooms', icon: '🛋️', need: need(2, 6, 20, 60), weight: 2, models: { room: M('Therapy room outfit', 6000, 10, 200) } },
+    tests: { name: 'Assessments & clinical tools', icon: '🧩', need: need(1, 3, 10, 30), weight: 1.5, models: { kit: M('Standardized test kits / therapy materials', 4000, 6, 300) } },
+    telehealth: { name: 'Telehealth & EHR', icon: '💻', need: need(2, 6, 20, 60), weight: 1.5, models: { seat: M('Telehealth workstation & EHR seat', 3000, 4, 900, { lease: true }) } },
+  } },
+  athletics: { name: 'Facilities & Equipment', categories: {
+    training: { name: 'Training & medical equipment', icon: '🏋️', need: need(10, 30, 80, 200), weight: 2, models: { rig: M('Training rig / recovery equipment', 15000, 8, 600) } },
+    analytics: { name: 'Performance tracking', icon: '📊', need: need(1, 2, 4, 8), weight: 1, models: { gps: M('GPS vest & video analytics package', 120000, 4, 20000, { lease: true }) } },
+    venue: { name: 'Training facility & stadium', icon: '🏟️', need: need(1, 1, 2, 3), weight: 2, facility: true, models: { own: M('Training facility (build)', 80000000, 40, 2000000, { build: true }), lease: M('Leased practice facility', 0, 99, 0, { rent: 1500000 }) } },
+  } },
+  homeCare: { name: 'Vehicles & Equipment', categories: {
+    vans: { name: 'Accessible vans', icon: '🚐', need: need(1, 3, 10, 30), weight: 2, models: { van: M('Wheelchair-accessible van', 60000, 8, 4000, { usedCost: 22000 }) } },
+    lifts: { name: 'Patient lifts & aids', icon: '🦽', need: need(4, 12, 40, 120), weight: 2, models: { lift: M('Patient lift & transfer aids', 4000, 8, 200) } },
+    evv: { name: 'Visit-verification tablets', icon: '📱', need: need(10, 30, 100, 300), weight: 1, models: { tab: M('EVV tablet & plan', 500, 3, 240, { lease: true }) } },
+  } },
+
   /* ---------------- Volunteer emergency services ---------------- */
   volFire: { name: 'Apparatus & Firehouse', categories: {
     engine: { name: 'Engines', icon: '🚒', need: need(1, 2, 3, 4), weight: 3, models: { pumper: M('Pumper engine', 850000, 20, 18000, { usedCost: 180000, refurb: true }) } },

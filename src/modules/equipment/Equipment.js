@@ -59,6 +59,16 @@ const JOB_GROUP = {
   college: 'campus', communityCollege: 'campus', university: 'campus', publicHealth: 'publicHealth', probation: 'probation',
   surveying: 'fieldScience', environmental: 'fieldScience', renewableEnergy: 'renewables', privateMilitary: 'pmc', dentalHygiene: 'dental',
   music: 'studio', acting: 'studio', contentCreator: 'studio', education: 'campus', pharmacy: 'retail',
+  // Desk jobs run on computers, systems and office space; managers keep them up like any other fleet.
+  tech: 'corpOffice', corporate: 'corpOffice', finance: 'corpOffice', accounting: 'corpOffice', law: 'corpOffice', legalSupport: 'corpOffice',
+  realestate: 'corpOffice', insurance: 'corpOffice', propertyManagement: 'corpOffice', actuary: 'corpOffice', marketing: 'corpOffice', sales: 'corpOffice',
+  humanResources: 'corpOffice', design: 'corpOffice', cybersecurity: 'corpOffice', dataScience: 'corpOffice', gameDevelopment: 'corpOffice',
+  interpreter: 'corpOffice', nonprofit: 'corpOffice', privateInvestigator: 'corpOffice', bailBonds: 'corpOffice',
+  engineering: 'designOffice', architecture: 'designOffice', journalism: 'newsroom', clergy: 'church', catholicClergy: 'church',
+  flightAttendant: 'airline', physicianAssistant: 'clinic', counseling: 'therapyOffice', psychology: 'therapyOffice', dietitian: 'therapyOffice', speechPathology: 'therapyOffice',
+  socialWork: 'agencyOffice', cps: 'agencyOffice', benefitsClaims: 'agencyOffice', revenue: 'agencyOffice', regulatory: 'agencyOffice', municipalAdmin: 'agencyOffice',
+  planning: 'agencyOffice', oig: 'agencyOffice', legislativeStaff: 'agencyOffice', foreignService: 'agencyOffice', prosecution: 'agencyOffice', publicDefender: 'agencyOffice',
+  courts: 'courthouse', caseOfficer: 'intel', sigint: 'intel', intelligence: 'intel', athletics: 'athletics', caregiving: 'homeCare',
 };
 const BUSINESS_GROUP = {
   restaurant: 'kitchen', catering: 'kitchen', foodTruck: 'kitchen', salon: 'salon', autoShop: 'autoShop',
@@ -155,7 +165,7 @@ export function recordOf(state, c, { peek = false } = {}) {
       const n = Math.round(needOf(cat, c) * (c.kind === 'business' ? 1 : r.float(0.75, 1)));
       d.units[cid] = Array.from({ length: n }, () => ({ model: mid, age: c.kind === 'business' ? 0 : r.int(0, Math.round(model.life * 1.3)), used: false, leased: false }));
     }
-    d.budget = c.money === 'cash' ? 0 : Math.max(0, annualMoney(state, c) - fixedCosts(d));
+    d.budget = c.money === 'cash' ? 0 : Math.max(0, annualMoney(state, c) - extraCosts(c, d));
     d.budgetAge = state.character.age;
     if (peek) return d;
     state.deptEquip ??= {};
@@ -197,6 +207,15 @@ export function annualMoney(state, c) {
   return Math.round((schedule(c) * fiscal) / 1000) * 1000;
 }
 
+/** Premises the organization already rents when you arrive are in its operating budget, not your equipment budget. */
+function baseRent(c) {
+  return Object.values(cats(c)).reduce((sum, cat) => {
+    const first = Object.values(cat.models)[0];
+    return sum + (first.rent ? first.rent * needOf(cat, c) : 0);
+  }, 0);
+}
+const extraCosts = (c, d) => Math.max(0, fixedCosts(d) - (c.money === 'cash' ? 0 : baseRent(c)));
+
 function fixedCosts(d) {
   let rent = 0;
   for (const [cid, units] of Object.entries(d.units)) {
@@ -233,7 +252,8 @@ export const refurbCost = (c, m) => Math.round(m.cost * refurbShare(c, m));
 
 /** Fill shortfalls, then replace the most overdue, up to `share` of the money left. */
 function autoReplace(c, d, share) {
-  let money = Math.round(available(c, d) * share);
+  // The reserve exists for big items, so staff may draw all of it.
+  let money = c.money === 'cash' ? Math.round(available(c, d) * share) : Math.round(d.budget * share + d.reserve);
   let spent = 0;
   const all = cats(c);
   for (const [cid, cat] of Object.entries(all)) {
@@ -249,15 +269,24 @@ function autoReplace(c, d, share) {
     .filter((x) => x.over >= 1).sort((a, b) => b.over - a.over);
   for (const { cid, u } of overdue) {
     const m = all[cid].models[u.model];
-    const price = isIssued(c) ? refurbCost(c, m) : m.cost;
+    // Replace if affordable; otherwise refurbish what can be refurbished.
+    const refurb = isIssued(c) || (m.cost > money && m.refurb);
+    const price = refurb ? refurbCost(c, m) : m.cost;
     if (price > money) continue;
-    u.age = isIssued(c) ? Math.max(0, u.age - Math.round(m.life / 3)) : 0;
+    u.age = refurb ? Math.max(0, u.age - (isIssued(c) ? Math.round(m.life / 3) : 6)) : 0;
     u.used = false;
     money -= price;
     spent += price;
   }
   pay(c, d, spent);
   return spent;
+}
+
+function bigOverdue(c, d, annual) {
+  return Object.entries(d.units).some(([cid, units]) => units.some((u) => {
+    const m = cats(c)[cid]?.models[u.model];
+    return m && !u.leased && u.age > m.life && m.cost > annual;
+  }));
 }
 
 /* ------------------------------------------------------------------ */
@@ -305,9 +334,11 @@ function yearFor(ctx, c) {
   }
   // Money: what's left is spent by staff (all of it when you don't decide), then the new year's arrives.
   if (c.money !== 'cash' && d.budgetAge != null && d.budget > 0) autoReplace(c, d, c.manager ? 0.5 : 1);
+  // Staff carry part of what's left into the reserve when something big is overdue.
+  if (c.money === 'budget' && d.budget > 0 && bigOverdue(c, d, annualMoney(state, c))) d.reserve += Math.min(d.budget / 2, Math.max(0, annualMoney(state, c) * 2 - d.reserve));
   if (c.money === 'cash' && c.biz.role !== 'operator') autoReplace(c, d, 0.05);
   if (c.money === 'funds') d.budget += annualMoney(state, c);
-  else if (c.money !== 'cash') d.budget = Math.max(0, annualMoney(state, c) - fixedCosts(d));
+  else if (c.money !== 'cash') d.budget = Math.max(0, annualMoney(state, c) - extraCosts(c, d));
   else c.biz.cash -= fixedCosts(d);
   d.budgetAge = state.character.age;
   // Readiness and what it does.
@@ -319,7 +350,8 @@ function yearFor(ctx, c) {
     ctx.stat('stress', 2);
     if (c.money === 'cash') c.biz.cash -= Math.round(schedule(c) * 0.08);
   }
-  const shift = clamp((r - 60) / 8, -4, 4);
+  // Neutral at the readiness staff keep on their own; better management shows up in your evaluation.
+  const shift = clamp((r - 75) / 6, -4, 4);
   if (c.kind === 'job' && c.manager) state.career.job.performance = Math.round(clamp(state.career.job.performance + shift, 0, 100));
   if (c.kind === 'business') c.biz.quality = Math.round(clamp(c.biz.quality + shift / 1.5, 0, 100));
   if (c.kind === 'military' && c.manager) state.military.service.eval = Math.round(clamp(state.military.service.eval + shift, 0, 100));

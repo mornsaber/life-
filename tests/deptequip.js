@@ -13,7 +13,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
-import { getProfession } from '../src/modules/career/JobTrees.js';
+import { getProfession, PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf } from '../src/modules/equipment/Equipment.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
@@ -81,14 +81,15 @@ const tests = {
     assert.equal(d.units.stations.length, n + 1, 'the station opened');
   },
 
-  'rank and file can\'t buy; neglect hurts readiness'() {
+  'rank and file can\'t buy; a budget freeze hurts readiness'() {
     const { engine, state, ctx } = worker(3, 'ems', 'paramedic', ['emt', 'paramedic', 'driverLicense']);
     const d = deptOf(state);
     const n = d.units.ambulance.length;
     engine.dispatch('deptEquip.buy', 'job|ambulance:box');
     assert.equal(d.units.ambulance.length, n, 'no purchase');
     const r = readiness(state);
-    for (let i = 0; i < 8; i++) tick(ctx, state);
+    // A capital freeze: nothing gets replaced for eight years.
+    for (let i = 0; i < 8; i++) { d.budget = 0; d.reserve = 0; d.budgetAge = null; tick(ctx, state); }
     assert.ok(readiness(state) < r, `fleets age without investment (${r} → ${readiness(state)})`);
   },
 
@@ -342,6 +343,26 @@ const tests = {
     const html = VIEWS.civic(state, {});
     clean(html);
     assert.match(html, /Team Team Equipment|Team Deployment Kit/);
+  },
+  'every career has equipment, and every manager can render and spend it'() {
+    for (const p of Object.values(PROFESSIONS)) {
+      const level = p.levels.find((l) => l.abilities?.includes('budget')) ?? p.levels.at(-1);
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(30), modules: MODULES });
+      const state = engine.newLife({});
+      state.character.age = 50;
+      const ctx = engine.context();
+      if (!hire(ctx, { professionId: p.id, levelId: level.id, employer: createEmployer(ctx.rng, state, p, state.character.regionId) })) continue;
+      const c = contextOf(state, 'job');
+      assert.ok(c && GROUPS[c.group], `${p.id} has equipment`);
+      state.prompts = [];
+      if (c.manager) {
+        clean(VIEWS.career(state, {}));
+        state.career.job.paidThisYear = true;
+        state.yearly = {};
+        EquipmentModule.onAgeUp(ctx);
+        assert.ok(Number.isFinite(recordOf(state, c).budget), `${p.id} budget`);
+      }
+    }
   },
 };
 
