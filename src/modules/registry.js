@@ -4,7 +4,7 @@
  *
  *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 · estate 16 ·
  *   military 20 · federal 24 · publicservice 25 · municipal 26 · orgs 29.5 · career 30 · emsLife 30.85 · clinical 30.86 · ses 30.87 · gear 30.9 · business 31 · emeritus 31.5 · jobMarket 32 · gig 32.5 · claims 33.5 ·
- *   politics 33 · judiciary 34 · legal 35 · civil 36 · emergency 40 · health 42 · mental 43 · ssdi 43.5 · housing 45 · vehicles 46 · retirement 85 · taxes 88 · cards 89 · investing 86 · finances 90
+ *   politics 33 · judiciary 34 · legal 35 · civil 36 · emergency 40 · service 41 · volunteering 41.5 · health 42 · mental 43 · ssdi 43.5 · housing 45 · vehicles 46 · retirement 85 · taxes 88 · cards 89 · investing 86 · finances 90
  */
 import { Lifecycle } from './life/Lifecycle.js';
 import { EconomyEngine } from './economy/EconomyEngine.js';
@@ -53,6 +53,7 @@ import { EmsLifeModule } from './ems/EmsLife.js';
 import { ClinicalModule } from './clinical/ClinicalLife.js';
 import { SeniorExecutiveModule } from './publicservice/SeniorExecutive.js';
 import { WorkGearModule } from './career/WorkGear.js';
+import { VolunteerModule } from './service/Volunteering.js';
 import { TransportModule } from './career/Transport.js';
 import { JusticeJobs } from './career/JusticeCareers.js';
 import { MedicineModule } from './career/Medicine.js';
@@ -72,5 +73,5 @@ import { IntelCommunityModule } from './career/IntelCommunity.js';
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
-  EmergencyModule, ServiceModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
+  EmergencyModule, ServiceModule, VolunteerModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];

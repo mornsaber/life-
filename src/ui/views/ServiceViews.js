@@ -64,6 +64,16 @@ function flagNote(svc) {
   return ` · ${left ? `${left} general-officer board look${left === 1 ? '' : 's'} left` : 'no longer considered for promotion'}${svc.joint ? '' : ' · not joint-qualified (halves your odds)'}`;
 }
 
+/** Selective Service: men 18–25 must register. */
+function selectiveServiceCard(state) {
+  const sss = state.military.sss;
+  if (!sss || state.character.gender !== 'male' || state.character.age < 17) return '';
+  if (sss.registered && state.character.age >= 26) return '';
+  if (sss.registered) return card('Selective Service', '<p class="muted">✅ You\'re registered. Men stay registered until 26; there has been no draft since 1973.</p>', { icon: '📋' });
+  if (sss.missed) return card('Selective Service', `<p class="${sss.waived ? 'muted' : 'neg'}">${sss.waived ? '✅ OPM ruled your failure to register wasn\'t knowing and willful — federal jobs are open to you.' : 'You never registered before turning 26. You\'re barred from federal jobs unless OPM rules it wasn\'t knowing and willful.'}</p>${sss.waived ? '' : `<div class="action-grid">${button('📄 Request a status information letter', 'volunteering.sssLetter', { variant: 'small', hint: 'Explain why you didn\'t register' })}</div>`}`, { icon: '📋', accent: sss.waived ? '' : 'red' });
+  return card('Selective Service', `<p class="muted">Men must register between 18 and 26 (most are registered automatically with a driver's license). Never registering bars you from federal jobs.</p><div class="action-grid">${button('📋 Register', 'volunteering.sssRegister', { variant: 'small', disabled: state.character.age < 18, hint: state.character.age < 18 ? 'At 18' : 'Takes two minutes online' })}</div>`, { icon: '📋' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -72,7 +82,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${veteranCard(state)}${recruitingOffice(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${history}`;
 
   const branch = BRANCHES[svc.branch];
   const rank = rankOf(svc);

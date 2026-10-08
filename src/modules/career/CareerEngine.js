@@ -12,6 +12,7 @@
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
 import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
+import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
@@ -99,6 +100,7 @@ export function applicationEligibility(state, professionId) {
   if (state.politics.office?.fullTime) return { ok: false, reason: 'You hold full-time elected office' };
   if (state.judiciary?.seat) return { ok: false, reason: 'Judges can\'t hold another job' };
   if (profession.sector === 'federal' && state.politics.campaign) return { ok: false, reason: 'Hatch Act: you\'re running for office' };
+  if (profession.sector === 'federal' && sssBarred(state)) return { ok: false, reason: 'Never registered with the Selective Service (request a status letter on the Military tab)' };
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
   const entry = checkRequirements(state, profession.entry);
   if (!entry.ok) return { ok: false, reason: `Needs ${entry.missing.join(', ')}` };

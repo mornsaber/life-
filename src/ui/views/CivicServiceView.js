@@ -3,6 +3,7 @@
  * state's State Defense Force, federal disaster teams and veterans' posts.
  */
 import { esc, money, button, card, chip, kv, disclosure, optionRow } from '../Components.js';
+import { ROLES, MAX_ROLES, roleEligibility, activeRoles } from '../../modules/service/Volunteering.js';
 import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
 import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRank } from '../../modules/service/StateForces.js';
 import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
@@ -64,9 +65,9 @@ function disasterTeams(state) {
     const m = state.service.teams[id];
     if (m) return optionRow({ icon: t.icon, title: esc(t.name), sub: `${esc(t.ranks[m.rankIndex])} · ${m.years} yrs · ${m.deployments} deployments`, meta: m.declined ? `${m.declined}/3 declines` : 'On the roster', tone: m.declined ? 'warn' : 'good', action: button('Resign', 'service.leaveTeam', { arg: id, variant: 'small danger' }) });
     const check = teamEligibility(state, id);
-    return optionRow({ icon: t.icon, title: esc(t.name), sub: esc(t.desc), meta: check.ok ? `≈${money(t.dailyPay)}/day deployed` : esc(check.reason), tone: check.ok ? '' : 'warn', locked: !check.ok, action: button('Join', 'service.joinTeam', { arg: id, disabled: !check.ok, variant: 'small' }) });
+    return optionRow({ icon: t.icon, title: esc(t.name), sub: esc(t.desc), meta: check.ok ? (t.dailyPay ? `≈${money(t.dailyPay)}/day deployed` : 'Volunteer — expenses covered') : esc(check.reason), tone: check.ok ? '' : 'warn', locked: !check.ok, action: button('Join', 'service.joinTeam', { arg: id, disabled: !check.ok, variant: 'small' }) });
   }).join('');
-  return card('Federal Disaster Teams', `<p class="muted">Keep your job and deploy for weeks when disasters strike anywhere in the country.</p><ul class="job-board">${rows}</ul>`, { icon: '🏕️' });
+  return card('Disaster Response Teams', `<p class="muted">Keep your job and deploy when disasters strike: paid federal teams (FEMA, DMAT, Urban Search &amp; Rescue) and volunteer ones (Team Rubicon, ARES ham radio).</p><ul class="job-board">${rows}</ul>`, { icon: '🏕️' });
 }
 
 function veteranPosts(state) {
@@ -91,10 +92,23 @@ function veteranPosts(state) {
   return card('Veterans Posts', `<p class="muted">Fish fries, honor guards and helping younger veterans. Members elect officers every year; a post commander is a voice in local politics.</p><ul class="job-board">${rows}</ul>${member ? `<p class="fine">${left > 0 ? `${left} post activit${left === 1 ? 'y' : 'ies'} left this year.` : 'No post activities left this year.'}</p>` : ''}`, { icon: '🎖️' });
 }
 
+function volunteerRoles(state) {
+  const mine = activeRoles(state);
+  const rows = Object.entries(ROLES).map(([id, r]) => {
+    const m = state.service.roles[id];
+    if (m) return optionRow({ icon: r.icon, title: esc(r.name), sub: `${state.character.age - m.since} yrs · ${m.hours.toLocaleString()} hours${id === 'blood' && m.cases ? ` · ${m.cases} pints` : ''}${id === 'casa' && m.cases ? ` · ${m.cases} children` : ''}`, meta: r.paid ? `$${r.paid} per election` : 'Active', tone: 'good', action: button('Step down', 'volunteering.leave', { arg: id, variant: 'small' }) });
+    const ok = roleEligibility(state, id);
+    return optionRow({ icon: r.icon, title: esc(r.name), sub: `${esc(r.desc)} · ~${r.hours} hrs/yr`, meta: ok.ok ? (r.training ? esc(r.training) : '') : esc(ok.reason), tone: ok.ok ? '' : 'warn', locked: !ok.ok, action: button('Sign up', 'volunteering.join', { arg: id, variant: 'small', disabled: !ok.ok }) });
+  }).join('');
+  const total = state.service.volunteerHours ?? 0;
+  return card('Volunteer Roles', `<p class="muted">Up to ${MAX_ROLES} commitments at once (${mine.length} now). Hours count toward the President's Volunteer Service Award (100 / 250 / 500 hours in a year) and the Lifetime Achievement Award at 4,000. Roles near your career make you better at it.</p>
+    <p class="fine">Lifetime volunteer hours: <b>${total.toLocaleString()}</b></p><ul class="job-board">${rows}</ul>`, { icon: '🤲', accent: 'green' });
+}
+
 export function civicServiceView(state) {
   if (!state.service) return '';
   const history = state.service.history.length
     ? card('Past Service', `<ul class="history">${[...state.service.history].reverse().map((h) => `<li><b>${esc(h.name)}</b> · ${esc(h.title)} <small>${h.years} yrs, ended at ${h.endAge} — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
-  return `<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}${veteranPosts(state)}${history}`;
+  return `${volunteerRoles(state)}<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}${veteranPosts(state)}${history}`;
 }
