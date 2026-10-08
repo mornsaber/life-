@@ -71,9 +71,31 @@ export const isDoctor = (job) => job?.professionId === 'medical';
 export function matchOdds(state, specialtyId) {
   const s = SPECIALTIES[specialtyId];
   const md = state.education.degrees.find((d) => d.programId === 'md');
-  const prestige = SCHOOLS[md?.schoolId]?.prestige ?? 50;
-  const score = (state.stats.smarts - 70) / 60 + (prestige - 50) / 200 + (state.medicine?.research ? 0.1 : 0);
+  const prestige = SCHOOLS[md?.schoolId]?.prestige ?? 1;
+  const r = state.medicine?.schoolRecord;
+  // Program directors read Step 2 scores, clerkship honors, research and letters from away rotations in the specialty.
+  const application = r?.step2
+    ? (r.step2 - 245) / 45 + r.honors * 0.025 + Math.min(0.1, (r.pubs ?? 0) * 0.02) + (r.interest === specialtyId ? 0.03 + (r.aways ?? 0) * 0.04 : 0)
+    : (state.stats.smarts - 70) / 60;
+  const score = application + (prestige - 1) * 0.04 + (state.medicine?.research ? 0.1 : 0);
   return clamp(0.95 - s.comp * 0.85 + score, 0.05, 0.97);
+}
+
+/** Where an attending practices: pay multiplier, burnout per year, and what it means. */
+export const PRACTICES = {
+  employed: { name: 'Hospital-employed', icon: '🏥', pay: 1.0, burnout: 4, desc: 'A salary, a schedule and an EHR inbox that never empties.' },
+  private: { name: 'Private practice', icon: '🩺', pay: 0.9, partnerPay: 1.35, burnout: 5, desc: 'Lower pay as an associate; a partnership buy-in after three years, then a share of the profits.' },
+  academic: { name: 'Academic medicine', icon: '🎓', pay: 0.82, burnout: 3, desc: 'Less money; teaching residents, research and a faculty title.' },
+  locums: { name: 'Locum tenens', icon: '🧳', pay: 1.25, burnout: 2, desc: 'Fill-in contracts around the country: high pay, no benefits, a lot of hotels.' },
+};
+export const PART_TIME_PAY = 0.7;
+
+/** Pay multiplier from practice setting, partnership and part-time hours. */
+export function practiceMultiplier(state) {
+  const m = state.medicine;
+  const p = PRACTICES[m?.practice];
+  if (!p) return 1;
+  return (m.partner && p.partnerPay ? p.partnerPay : p.pay) * (m.partTime ? PART_TIME_PAY : 1);
 }
 
 export function fellowshipOdds(state, id) {
@@ -106,8 +128,8 @@ export function physicianPayAdjust(state, job) {
   const m = state.medicine;
   if (!m?.specialty || TRAINING_LEVELS.includes(job.levelId)) return 1;
   if (m.fellowshipYearsLeft > 0) return FELLOW_PAY;
-  if (m.fellowship) return FELLOWSHIPS[m.fellowship].pay;
-  return SPECIALTIES[m.specialty].pay;
+  if (m.fellowship) return FELLOWSHIPS[m.fellowship].pay * practiceMultiplier(state);
+  return SPECIALTIES[m.specialty].pay * practiceMultiplier(state);
 }
 
 export function applyPhysicianPay(state, job) {
@@ -140,7 +162,8 @@ function startFellowshipPrompt(ctx) {
 function claimTick(ctx, job) {
   const { state, rng } = ctx;
   const { claims } = riskOf(state);
-  if (!rng.chance(claims * (job.performance < 40 ? 1.5 : 1)) || state.prompts.some((p) => p.type === 'medicine.claim')) return;
+  const burnout = (state.medicine.burnout ?? 0) >= 70 ? 1.3 : 1;
+  if (!rng.chance(claims * (job.performance < 40 ? 1.5 : 1) * burnout * (state.medicine.partTime ? 0.7 : 1)) || state.prompts.some((p) => p.type === 'medicine.claim')) return;
   const what = rng.pick(['a missed diagnosis', 'a surgical complication', 'a delayed diagnosis of cancer', 'a medication error', 'a birth injury', 'a wrong-site procedure']);
   ctx.prompt({
     type: 'medicine.claim', icon: '⚖️', title: 'Malpractice Claim',

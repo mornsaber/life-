@@ -25,6 +25,8 @@ export const EMERITUS_BY_PROFESSION = {
   college: { ...EMERITUS_RANKS, endowed: { title: 'Professor', prestige: 7 }, university: { title: 'University Professor', prestige: 9 } },
   communityCollege: { professor: { title: 'Professor', prestige: 3 }, chair: { title: 'Professor', prestige: 3 }, dean: { title: 'Dean', prestige: 4 }, president: { title: 'President', prestige: 6 } },
   research: { senior: { title: 'Senior Scientist', prestige: 3 }, fellow: { title: 'Distinguished Fellow', prestige: 6 }, pi: { title: 'Principal Investigator', prestige: 4 }, director: { title: 'Institute Director', prestige: 6 } },
+  // Physicians in academic medicine only (see emeritusEligibility).
+  medical: { senior: { title: 'Professor of Medicine', prestige: 5 }, renowned: { title: 'Professor of Medicine', prestige: 7 }, head: { title: 'Professor of Medicine', prestige: 6 }, chief: { title: 'Chief of Medicine', prestige: 8 } },
   nationalLab: { senior: { title: 'Senior Scientist', prestige: 3 }, distinguished: { title: 'Distinguished Fellow', prestige: 7 }, group: { title: 'Senior Scientist', prestige: 4 }, division: { title: 'Division Director', prestige: 6 } },
 };
 export const MIN_YEARS = 10;
@@ -36,6 +38,7 @@ const suffix = (state) => (state.character.gender === 'female' ? 'Emerita' : 'Em
 export function emeritusEligibility(state, job = state.career.job) {
   const ranks = job && EMERITUS_BY_PROFESSION[job.professionId];
   if (!ranks) return { ok: false, reason: 'University faculty and senior scientists only' };
+  if (job.professionId === 'medical' && state.medicine?.practice !== 'academic') return { ok: false, reason: 'Physicians in academic medicine only' };
   if (!ranks[job.levelId]) return { ok: false, reason: job.professionId === 'research' || job.professionId === 'nationalLab' ? 'Senior Scientist or higher' : 'Associate Professor or higher' };
   if (job.yearsAtEmployer < MIN_YEARS) return { ok: false, reason: `${MIN_YEARS} years at ${job.employer.name} (${job.yearsAtEmployer} so far)` };
   return { ok: true, title: `${ranks[job.levelId].title} ${suffix(state)}` };

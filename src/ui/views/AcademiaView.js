@@ -54,7 +54,7 @@ export function researchCard(state) {
   if (job?.tenureClock && job.levelId === 'assistant') {
     tenure = job.terminal
       ? '<div class="next-step">📁 Tenure denied: this is your terminal year. Go on the market.</div>'
-      : `${meter(Math.min(job.yearsInLevel, TENURE_CLOCK), { max: TENURE_CLOCK, label: 'Tenure clock', suffix: ` / ${TENURE_CLOCK} yrs`, tone: 'warn' })}<p class="fine">${esc(tenureSummary(state, job))} Odds today: about ${Math.round(tenureOdds(state, job) * 100)}%.</p>`;
+      : `${meter(Math.min(job.yearsInLevel, TENURE_CLOCK), { max: TENURE_CLOCK, label: 'Tenure clock', suffix: ` / ${TENURE_CLOCK} yrs`, tone: 'mid' })}<p class="fine">${esc(tenureSummary(state, job))} Odds today: about ${Math.round(tenureOdds(state, job) * 100)}%.</p>`;
   } else if (job?.tenured || job?.abilities?.includes('tenure')) tenure = `<p class="fine">${chip('🔒 Tenured', 'good')}</p>`;
   const sab = job ? sabbaticalAvailable(state, job) : { ok: false };
   const buttons = `<div class="action-grid">

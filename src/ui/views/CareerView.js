@@ -34,6 +34,7 @@ import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
 import { BASES } from '../../modules/career/WorkplaceClaims.js';
 import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS, EMERITUS_BY_PROFESSION } from '../../modules/career/Emeritus.js';
 import { researchCard } from './AcademiaView.js';
+import { medPracticeCard } from './MedicalView.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -329,7 +330,7 @@ export function careerView(state, ui = {}) {
   const history = stints.length
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
-  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${researchCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${researchCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${card('Job Board', jobBoard(state, ui), { icon: '📰' })}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

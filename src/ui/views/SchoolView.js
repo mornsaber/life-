@@ -9,6 +9,7 @@ import { campusView } from './CampusView.js';
 import { k12View, academyCard } from './K12View.js';
 import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa, transferCredit } from '../../modules/education/EducationEngine.js';
 import { phdCard } from './AcademiaView.js';
+import { medTrainingCard } from './MedicalView.js';
 
 function programRow(state, id) {
   const p = PROGRAMS[id];
@@ -50,7 +51,7 @@ export function schoolView(state) {
   const credits = state.education.credits ?? [];
   const banked = credits.length ? `<h4 class="sub">Transfer credit</h4><ul class="history">${credits.map((c) => `<li>📑 ${c.years} yr toward ${esc(PROGRAMS[c.programId].name)} <small>from age ${c.age}${state.character.age - c.age > 10 ? ' · older than 10 yrs, counts half' : ''}</small></li>`).join('')}</ul>` : '';
   const kid = state.character.age < 17 && !state.education.degrees.length;
-  return `${k12View(state)}${current}${phdCard(state)}${academyCard(state)}${campusView(state)}
+  return `${k12View(state)}${current}${phdCard(state)}${medTrainingCard(state)}${academyCard(state)}${campusView(state)}
     ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
     ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
 }

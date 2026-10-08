@@ -221,6 +221,7 @@ export async function playLives({ from, to, seed }) {
       }
       if (plan && age >= 18 && !s.education.enrolled && eduIdx < persona.edu.length && !s.military.service) {
         const [p, sc, m] = persona.edu[eduIdx];
+        if (p === 'md' && !s.medicine?.mcat) engine.dispatch('medLife.takeMcat', 'prep');
         engine.dispatch('education.enroll', `${p}:${sc}:${m}:full`);
         // Rejected? Many people apply to a less selective school instead.
         if (!s.education.enrolled && p === 'bachelor') engine.dispatch('education.enroll', `${p}:online:${m}:full`);

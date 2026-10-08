@@ -90,6 +90,12 @@ function bankCredit(state, e) {
   credits.push({ programId: e.programId, type: program.type, years, gpa: e.gpa, schoolId: e.schoolId, age: state.character.age });
 }
 
+/**
+ * Admissions add-ons from other modules (the MCAT for medical school, …):
+ * { eligibility(state, programId) → reason | null, boost(state, programId, schoolId) → Δ odds }.
+ */
+export const ADMISSION_HOOKS = [];
+
 export function enrollmentEligibility(state, programId, schoolId, major) {
   const p = PROGRAMS[programId];
   const school = SCHOOLS[schoolId];
@@ -108,6 +114,10 @@ export function enrollmentEligibility(state, programId, schoolId, major) {
     if (state.stats.fitness < 55 || state.stats.health < 50) return { ok: false, reason: 'Fails the candidate fitness assessment' };
     if (!state.campus?.nomination) return { ok: false, reason: 'Needs a congressional nomination' };
   }
+  for (const h of ADMISSION_HOOKS) {
+    const reason = h.eligibility?.(state, programId, schoolId);
+    if (reason) return { ok: false, reason };
+  }
   if (yearlyCount(state, 'education.apply') >= APPLICATIONS_PER_YEAR) return { ok: false, reason: 'Application limit this year' };
   return { ok: true };
 }
@@ -120,7 +130,8 @@ export function admissionChance(state, programId, schoolId) {
   const score = state.stats.smarts + (lastGpa(state) - 3) * 12;
   const expelled = state.campus?.expelledAge != null ? 0.25 : 0;
   const prep = state.education.degrees.some((d) => ['bachelor', 'associate', 'master'].includes(d.type)) ? 0 : prepBonus(state);
-  return clamp(0.5 + (score - bar) / 25 - expelled + prep, school.admission === 0 ? 1 : 0.03, 0.98);
+  const extra = ADMISSION_HOOKS.reduce((sum, h) => sum + (h.boost?.(state, programId, schoolId) ?? 0), 0);
+  return clamp(0.5 + (score - bar) / 25 - expelled + prep + extra, school.admission === 0 ? 1 : 0.03, 0.98);
 }
 
 export const OUT_OF_STATE_MULTIPLIER = 2.5;

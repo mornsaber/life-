@@ -15,7 +15,7 @@ const JOB_TYPES = new Set([
   'federal.event', 'federal.posting', 'federal.policy', 'stateAgencies.event', 'municipal.event', 'justiceJobs.event', 'transport.event', 'transport.recall',
   'intel.cover', 'intel.event', 'intel.station', 'contractors.event', 'healthScience.grant', 'healthScience.scooped', 'jobMarket.rto', 'claims.incident',
   'publicservice.oralAssessment', 'orgs.postOffer', 'health.duty', 'health.disabling', 'academia.dossier',
-  'medicine.claim', 'medicine.fellowship', 'medicine.case', 'medicine.event', 'medicine.boards', 'medicine.privileges', 'medicine.partnership', 'medicine.chiefResident',
+  'medicine.claim', 'medicine.fellowship', 'medLife.residencyEvent', 'medLife.practice', 'medLife.partner', 'medLife.buyout', 'medLife.burnout', 'medLife.moc', 'medLife.pillMill', 'medLife.patientEvent',
 ]);
 const SERVICE_TYPES = new Set([
   'military.branchDetail', 'military.brs', 'military.combat', 'military.commandOffer', 'military.contractEnd', 'military.courtMartial', 'military.dutyEvent', 'military.dutySelection',
