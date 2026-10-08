@@ -241,7 +241,7 @@ export function annualActivePay(svc) {
 
 export function timeInGradeRequired(svc) {
   const years = TIME_IN_GRADE[svc.track][svc.grade];
-  return svc.component === 'reserve' ? Math.ceil(years * 1.5) : years;
+  return svc.component === 'reserve' ? Math.ceil(years * 1.25) : years;
 }
 
 /* ------------------------------------------------------------------ */
