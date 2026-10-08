@@ -60,7 +60,9 @@ export const Finances = {
     const age = state.character.age;
     const gross = f.ledger.income.reduce((sum, i) => sum + i.amount, 0);
     const ltcg = f.ledger.income.reduce((sum, i) => sum + (i.ltcg ? i.amount : 0), 0);
-    const ordinary = gross - ltcg;
+    // Combat zone pay is excluded from income tax.
+    const taxFree = f.ledger.income.reduce((sum, i) => sum + (i.taxFree ?? 0), 0);
+    const ordinary = gross - ltcg - taxFree;
     // Pass-through business profit left in the business is taxed but never reaches your wallet.
     const retained = f.ledger.income.reduce((sum, i) => sum + (i.retained ? i.amount : 0), 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);

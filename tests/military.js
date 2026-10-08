@@ -24,6 +24,9 @@ import { qualBoardBonus } from '../src/modules/military/Schools.js';
 import { retrainEligibility, warrantEligibility } from '../src/modules/military/CareerFields.js';
 import { rankOf } from '../src/modules/military/MilitaryEngine.js';
 import { giBillEligible } from '../src/modules/education/EducationEngine.js';
+import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFactor, keepsHome, commissioningEligibility, applyCommissioning, AssignmentResolvers } from '../src/modules/military/Assignments.js';
+import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
+import { serviceLimit } from '../src/modules/military/Separation.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 22) {
@@ -421,6 +424,87 @@ const tests = {
     t.state.health.va.rating = 70;
     assert.equal(coverageId(t.state), 'va');
   },
+
+  'special duty: drill sergeant tours pay, keep you home and count with boards'() {
+    const { engine, state, ctx } = setup(31, 26);
+    const svc = enlist(engine);
+    Object.assign(svc, { isNew: false, yearsOfService: 6, grade: 4, eval: 80 });
+    assert.equal(assignmentEligibility(state, 'msg').ok, false, 'MSG is Marines only');
+    assert.equal(assignmentEligibility(state, 'rotc').ok, false, 'ROTC cadre is for officers');
+    assert.ok(assignmentEligibility(state, 'drill').ok, assignmentEligibility(state, 'drill').reason);
+    startAssignment(ctx, svc, 'drill');
+    assert.ok(keepsHome(svc), 'no deployments on a drill tour');
+    assert.equal(retrainEligibility(state, 'army:25B').ok, false, 'no retraining mid-tour');
+    const cash = state.finances.cash;
+    for (let i = 0; i < 2 && state.military.service; i++) year(engine);
+    if (!state.military.service) return;
+    assert.equal(svc.assignment, null, 'tour finished');
+    assert.ok(svc.broadened.drill != null, 'tour on the record');
+    assert.ok(assignmentBoardBonus(svc) > 0.1, 'boards credit the tour');
+    assert.ok(state.finances.ledger.income.some((i) => /Special duty/.test(i.source)) || state.finances.cash > cash, 'special-duty pay');
+  },
+
+  'officers: a Joint Staff tour makes you joint-qualified for general officer boards; academy faculty earn a master\'s'() {
+    const { engine, state, ctx } = setup(32, 30);
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'engineering', year: 22, gpa: 3.4 });
+    const svc = enlist(engine, 'army:officer:active');
+    Object.assign(svc, { isNew: false, yearsOfService: 10, grade: 3, eval: 85 });
+    assert.equal(jointFactor(svc), 0.3, 'not joint yet');
+    startAssignment(ctx, svc, 'joint');
+    for (let i = 0; i < 3 && state.military.service?.assignment; i++) year(engine);
+    if (!state.military.service) return;
+    assert.ok(svc.joint, 'joint qualified');
+    assert.equal(jointFactor(svc), 1);
+    const t = setup(33, 28);
+    t.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'engineering', year: 22, gpa: 3.4 });
+    const s2 = enlist(t.engine, 'army:officer:active');
+    Object.assign(s2, { isNew: false, yearsOfService: 6, grade: 2, eval: 85 });
+    startAssignment(t.ctx, s2, 'academy');
+    for (let i = 0; i < 2 && t.state.military.service; i++) year(t.engine);
+    if (!t.state.military.service) return;
+    assert.ok(t.state.education.degrees.some((d) => d.type === 'master'), 'funded master\'s degree');
+  },
+
+  'Green to Gold: enlisted members go to college on full pay and commission'() {
+    const { engine, state, ctx } = setup(34, 22);
+    const svc = enlist(engine);
+    Object.assign(svc, { isNew: false, yearsOfService: 3, grade: 3, eval: 90 });
+    assert.ok(commissioningEligibility(state).ok, commissioningEligibility(state).reason);
+    for (let i = 0; i < 40 && !svc.commissioning; i++) { state.yearly = {}; applyCommissioning(ctx); }
+    assert.ok(svc.commissioning, 'selected');
+    for (let i = 0; i < 4 && state.military.service?.track === 'enlisted'; i++) year(engine);
+    if (!state.military.service) return;
+    assert.equal(svc.track, 'officer', 'commissioned');
+    assert.ok(state.education.degrees.some((d) => d.type === 'bachelor'), 'earned a degree');
+  },
+
+  'top posts: the senior enlisted leader and service chiefs serve a term, then retire'() {
+    const { engine, state, ctx } = setup(35, 30);
+    const svc = enlist(engine);
+    state.character.age = 45;
+    Object.assign(svc, { isNew: false, yearsOfService: 26, grade: 8, eval: 95 });
+    AssignmentResolvers.topPost(ctx, { title: 'Sergeant Major of the Army' }, 'accept');
+    assert.equal(svc.topPost?.title, 'Sergeant Major of the Army');
+    assert.ok(keepsHome(svc));
+    for (let i = 0; i < 4 && state.military.service; i++) year(engine);
+    const h = state.military.history.at(-1);
+    if (state.character.alive) {
+      assert.equal(h?.discharge, 'retired', 'retires after the term');
+      assert.ok(state.honors.some?.((x) => x.id === 'dsm') ?? true, 'Distinguished Service Medal');
+    }
+  },
+
+  'combat zone tax exclusion; Guard members get reserve retention limits'() {
+    const { engine, state, ctx } = setup(36, 24);
+    const svc = enlist(engine);
+    Object.assign(svc, { isNew: false });
+    ctx.earn(40000, 'Military pay — E-4 Specialist', { wage: true });
+    combatZoneExclusion(ctx, svc, 'the Sahel');
+    assert.equal(state.finances.ledger.income.find((i) => /^Military pay/.test(i.source)).taxFree, 40000);
+    assert.equal(serviceLimit({ track: 'enlisted', component: 'active', grade: 4 }), 14);
+    assert.equal(serviceLimit({ track: 'enlisted', component: 'reserve', grade: 4 }), 20);
+  },
+
 };
 
 let failed = 0;

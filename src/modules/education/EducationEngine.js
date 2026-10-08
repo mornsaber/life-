@@ -29,6 +29,9 @@ export function lastGpa(state) {
   return graded.length ? graded[graded.length - 1].gpa : 3.0;
 }
 
+/** Military Tuition Assistance cap per year. */
+export const MILITARY_TA = 4500;
+
 export function giBillEligible(state) {
   const honorable = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge));
   const years = honorable.reduce((sum, h) => sum + h.yearsOfService - (h.priorYears ?? 0), 0);
@@ -178,6 +181,14 @@ function fundTuition(ctx, e) {
     due -= covered;
     state.education.segalAward -= covered;
     notes.push(`$${covered.toLocaleString()} Segal Education Award`);
+  }
+  // Military Tuition Assistance: up to $4,500 a year while you serve (part-time study).
+  const svc = state.military.service;
+  if (due > 0 && svc && !svc.isNew) {
+    const covered = Math.min(due, MILITARY_TA);
+    due -= covered;
+    state.military.taUsed = (state.military.taUsed ?? 0) + covered;
+    notes.push(`$${covered.toLocaleString()} military Tuition Assistance`);
   }
   const job = state.career.job;
   const benefit = job?.employer.benefits.tuition ?? 0;

@@ -15,6 +15,7 @@ import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { belowZone, boardScore } from './MilitaryLife.js';
 import { pmeBlock, schoolName, qualBoardBonus, qualPay, PME } from './Schools.js';
+import { assignmentBoardBonus, jointFactor } from './Assignments.js';
 import { offerBranchDetail } from './CareerFields.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -439,10 +440,10 @@ export function tryPromotion(ctx, svc) {
   if (Object.keys(svc.unit?.commanded ?? {}).length || svc.unit?.commandUntil) chance += 0.12;
   // An officer's reprimand (or any Article 15 for a senior NCO) sits in the file the board reads.
   if (svc.reprimand) chance -= 0.35;
-  chance += qualBoardBonus(svc);
+  chance += qualBoardBonus(svc) + assignmentBoardBonus(svc);
   if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
-  if (flagBoard) chance = 0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200;
+  if (flagBoard) chance = (0.03 + Math.min(0.05, prestige(ctx.state) / 4000) + Math.max(0, svc.eval - 90) / 200) * jointFactor(svc);
   // Senior boards select a fraction of those eligible: about 45% for O-6, 40% for E-8, 20% for E-9.
   if (svc.track === 'officer' && svc.grade === 4) chance *= 0.65;
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;

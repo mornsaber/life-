@@ -42,6 +42,7 @@ export function selectionEligibility(state, pipelineId) {
   if (!p.branches.includes(svc.branch) || !p.tracks.includes(svc.track)) return { ok: false, reason: 'Not open to your branch or track' };
   if (svc.sof) return { ok: false, reason: `Already serving with the ${svc.sof.unitName}` };
   if (svc.isNew) return { ok: false, reason: 'Finish initial training first' };
+  if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (svc.component !== 'active' && !p.allowReserve) return { ok: false, reason: 'Active duty only' };
   if (state.military.selection) return { ok: false, reason: 'Already in a selection course' };
   if ((svc.selectionAttempts?.[pipelineId] ?? 0) >= MAX_ATTEMPTS) return { ok: false, reason: `Two attempts used` };

@@ -19,6 +19,11 @@ export const MEDALS = {
     icon: '✠', tier: 'valor', precedence: 2, prestige: 60, pension: 0.12,
     ribbon: [['#c8102e', 1], ['#fff', 1], ['#002868', 6], ['#fff', 1], ['#c8102e', 1]],
   },
+  dsm: {
+    name: { army: 'Distinguished Service Medal', navy: 'Navy Distinguished Service Medal', marines: 'Navy Distinguished Service Medal', airforce: 'Air Force Distinguished Service Medal', coastguard: 'Coast Guard Distinguished Service Medal', spaceforce: 'Space Force Distinguished Service Medal' },
+    icon: '🏅', tier: 'merit', precedence: 2.5, prestige: 50, pension: 0.05,
+    ribbon: [['#fff', 1], ['#ffd100', 1], ['#002868', 3], ['#ffd100', 4], ['#002868', 3], ['#ffd100', 1], ['#fff', 1]],
+  },
   silverStar: {
     name: 'Silver Star', icon: '⭐', tier: 'valor', precedence: 3, prestige: 40, pension: 0.08,
     ribbon: [['#002868', 2], ['#fff', 1], ['#002868', 1], ['#fff', 1], ['#c8102e', 2], ['#fff', 1], ['#002868', 1], ['#fff', 1], ['#002868', 2]],

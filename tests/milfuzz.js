@@ -30,6 +30,7 @@ const ACTIONS = [
   ['military.counsel', 'soldier'], ['military.award', 'soldier'], ['military.njp', 'soldier', 0.2],
   ['military.volunteerSelection', 'pipeline', 0.2], ['military.leaveSof', null, 0.03], ['military.transferGiBill', null, 0.1],
   ['military.attendSchool', 'school'], ['military.retrain', 'retrain', 0.1], ['military.applyWarrant', 'warrant', 0.1], ['military.skillBridge', 'civilian', 0.3],
+  ['military.applyAssignment', 'assignment', 0.4], ['military.applyCommissioning', null, 0.3],
 ];
 
 function argFor(kind, state, rng) {
@@ -41,6 +42,7 @@ function argFor(kind, state, rng) {
     case 'school': return rng.pick(['pme1', 'pme2', 'pme3', 'opme1', 'opme2', 'opme3', 'wpme1', 'wpme2', 'airborne', 'airAssault', 'rangerSchool', 'jumpmaster', 'pathfinder', 'freefall', 'combatDiver', 'sniper', 'expertBadge', 'sere', 'instructor', 'dli']);
     case 'retrain': return s ? rng.pick(Object.values(MOS).filter((m) => m.branch === s.branch && m.track === s.track).map((m) => m.id).concat(['none'])) : 'none';
     case 'warrant': return s ? rng.pick(Object.values(MOS).filter((m) => m.branch === s.branch && m.track === 'warrant').map((m) => m.id).concat(['none'])) : 'none';
+    case 'assignment': return rng.pick(['drill', 'recruiter', 'msg', 'honorGuard', 'rotc', 'academy', 'aide', 'joint', 'fellow']);
     case 'civilian': return rng.pick(['logistics', 'cybersecurity', 'police', 'ems', 'trades', 'tech']);
     default: return undefined;
   }
@@ -81,6 +83,12 @@ function check(state, where, seen) {
   if (s.sof) paths.add('special operations');
   if (s.overseas) paths.add('overseas');
   if (s.branchDetail) paths.add('branch detail');
+  if (s.assignment) paths.add(`assignment ${s.assignment.id}`);
+  if (s.commissioning) paths.add('commissioning program');
+  if (s.topPost) paths.add('top post');
+  if (s.joint) paths.add('joint qualified');
+  if ((s.assignment || s.commissioning) && s.sof) flag('special assignment while in special operations', where);
+  if (s.assignment && s.assignment.yearsLeft < 0) flag('assignment past its end', where);
   if (s.lastRetrain) paths.add('retrained');
   if (s.track === 'officer') paths.add('officer');
   if (s.grade >= 6 && s.track === 'enlisted') paths.add('senior NCO');

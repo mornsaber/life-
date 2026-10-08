@@ -23,6 +23,7 @@ import { MilitaryLifeActions, MilitaryLifeResolvers, militaryLifeTick } from './
 import { SchoolActions, SchoolResolvers } from './Schools.js';
 import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
 import { TransitionActions, TransitionResolvers, transitionTick, veteranTick, onSeparation, onBusinessStarted } from './Transition.js';
+import { AssignmentActions, AssignmentResolvers } from './Assignments.js';
 
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
@@ -56,6 +57,8 @@ function withService(ctx) {
 }
 
 function switchComponent(ctx, svc) {
+  svc.assignment = null;
+  svc.commissioning = null;
   const { state } = ctx;
   const to = svc.component === 'active' ? 'reserve' : 'active';
   if (to === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school before going active.', 'warn');
@@ -137,6 +140,7 @@ export const MilitaryModule = {
     ...SchoolActions,
     ...CareerFieldActions,
     ...TransitionActions,
+    ...AssignmentActions,
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
@@ -197,6 +201,7 @@ export const MilitaryModule = {
       const svc = withService(ctx);
       if (!svc) return;
       if (svc.track === 'officer') return ctx.toast('Already an officer.', 'warn');
+      if (svc.assignment || svc.commissioning || svc.topPost) return ctx.toast('Not during a special assignment.', 'warn');
       if (!state.education.degrees.some((d) => ['bachelor', 'mba', 'jd', 'md'].includes(d.type))) return ctx.toast("OCS requires a bachelor's degree.", 'warn');
       if (yearlyCount(state, 'military.ocs')) return ctx.toast('You already applied this year.', 'warn');
       bumpYearly(state, 'military.ocs');
@@ -212,6 +217,7 @@ export const MilitaryModule = {
       const svc = withService(ctx);
       if (!svc) return;
       if (svc.yearsOfService < 2) return ctx.toast('Finish your initial 2-year obligation first.', 'warn');
+      if (svc.assignment || svc.commissioning || svc.topPost) return ctx.toast('Not during a special assignment.', 'warn');
       switchComponent(ctx, svc);
     },
 
@@ -241,6 +247,7 @@ export const MilitaryModule = {
     ...SchoolResolvers,
     ...CareerFieldResolvers,
     ...TransitionResolvers,
+    ...AssignmentResolvers,
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {

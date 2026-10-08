@@ -10,6 +10,7 @@ import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warran
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool } from '../../modules/military/Schools.js';
 import { MOS, DIRECT_COMMISSIONS, hasDirectPath } from '../../modules/military/MOS.js';
+import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, COMMISSIONING } from '../../modules/military/Assignments.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
@@ -105,7 +106,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${assignmentsCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {
@@ -237,6 +238,31 @@ function schoolsCard(state, svc) {
     ${open.length ? disclosure('military.quals', 'Courses you can take', `<ul class="job-board">${open.map(qRow).join('')}</ul>`, { count: open.length }) : ''}
     ${locked.length ? disclosure('military.qualsLocked', 'Not yet open to you', `<ul class="job-board">${locked.map(qRow).join('')}</ul>`, { count: locked.length }) : ''}
     <p class="fine">Leadership courses gate each promotion. Badges and tabs help at promotion boards, and some pay extra. One school a year.</p>`, { icon: '🎓' });
+}
+
+/** Special duty and broadening tours, enlisted commissioning programs and top posts. */
+function assignmentsCard(state, svc) {
+  if (svc.component !== 'active') return '';
+  if (svc.topPost) return card('Senior Leadership', `<div class="next-step">⭐ You serve as <b>${esc(svc.topPost.title)}</b>: ${svc.topPost.yearsLeft} year${svc.topPost.yearsLeft === 1 ? '' : 's'} left in your term. You retire when it ends.</div>`, { icon: '⭐', accent: 'yellow' });
+  if (svc.commissioning) return card('Commissioning Program', `<div class="next-step">🎓 <b>${esc(svc.commissioning.program)}</b>: college full-time on full pay. ${svc.commissioning.yearsLeft} year${svc.commissioning.yearsLeft === 1 ? '' : 's'} to graduation and your commission.</div>`, { icon: '🎓' });
+  const current = svc.assignment ? `<div class="next-step">${ASSIGNMENTS[svc.assignment.id].icon} On assignment as <b>${esc(svc.assignment.name)}</b>${svc.assignment.schoolLeft ? ' (graduate school first)' : ''}: ${svc.assignment.yearsLeft} year${svc.assignment.yearsLeft === 1 ? '' : 's'} left. No deployments until it ends.</div>` : '';
+  const done = Object.keys(svc.broadened ?? {}).map((id) => chip(`${ASSIGNMENTS[id].icon} ${esc(assignmentName(svc, id))}`, 'honor')).join(' ') + (svc.joint ? ` ${chip('🏢 Joint qualified', 'honor')}` : '');
+  const offered = Object.entries(ASSIGNMENTS).filter(([id, a]) => a.track === svc.track && a.names[svc.branch] && svc.broadened?.[id] == null);
+  const rows = offered.map(([id, a]) => {
+    const check = assignmentEligibility(state, id);
+    const perks = [`${a.years}${a.degree ? ' + 2 school' : ''} yrs`, a.pay ? `+${money(a.pay)}/yr` : null, a.joint ? 'joint credit' : null].filter(Boolean).join(' · ');
+    return { ok: check.ok, html: optionRow({ icon: a.icon, title: esc(assignmentName(svc, id)), sub: `${esc(a.desc)} ${perks}`, meta: check.ok ? `About ${Math.round(Math.min(0.9, Math.max(0.1, 0.35 + (svc.eval - 60) / 60)) * 100)}% to be selected` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyAssignment', { arg: id, variant: 'small', disabled: !check.ok }) }) };
+  });
+  const open = rows.filter((r) => r.ok);
+  const commish = svc.track === 'enlisted' && COMMISSIONING[svc.branch] ? (() => {
+    const check = commissioningEligibility(state);
+    return `<ul class="job-board">${optionRow({ icon: '🎓', title: esc(COMMISSIONING[svc.branch]), sub: 'Go to college full-time on full pay and commission as an officer at graduation.', meta: check.ok ? 'Board selection' : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyCommissioning', { variant: 'small', disabled: !check.ok }) })}</ul>`;
+  })() : '';
+  if (!current && !done && !rows.length && !commish) return '';
+  return card('Assignments', `${current}${done ? `<div class="chip-row">${done}</div>` : ''}
+    ${rows.length ? disclosure('military.assignments', 'Special duty & broadening tours', `<ul class="job-board">${[...open, ...rows.filter((r) => !r.ok)].map((r) => r.html).join('')}</ul>`, { count: `${open.length} open` }) : ''}
+    ${commish}
+    <p class="fine">Tours away from your field count with promotion boards${svc.track === 'officer' ? ', and general officer boards look for a joint tour' : ''}. You stay home from deployments while on one.</p>`, { icon: '🧭' });
 }
 
 /** Change your career field: retrain, apply for warrant officer, and any branch detail. */

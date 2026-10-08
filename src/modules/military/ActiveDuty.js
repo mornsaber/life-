@@ -7,6 +7,7 @@ import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
 import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
 import { schoolTick } from './Schools.js';
+import { assignmentsTick, keepsHome } from './Assignments.js';
 import { reportMisconduct, UCMJ_OFFENSES } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES } from './SpecialOpsCatalog.js';
@@ -395,6 +396,29 @@ function combatPrompt(ctx, svc, theaterName) {
   });
 }
 
+/** Officers can exclude only up to the top enlisted pay rate. */
+export const CZTE_OFFICER_CAP = 110000;
+const MILITARY_PAY = /^(Military pay|Mobilized pay|Hostile fire)/;
+
+/**
+ * Combat zone tax exclusion: military pay for a year with a combat
+ * deployment is free of federal and state income tax (Social Security
+ * and Medicare still apply).
+ */
+export function combatZoneExclusion(ctx, svc, theaterName) {
+  const income = ctx.state.finances.ledger.income.filter((i) => MILITARY_PAY.test(i.source) && !i.taxFree);
+  let room = svc.track === 'enlisted' ? Infinity : CZTE_OFFICER_CAP;
+  let total = 0;
+  for (const i of income) {
+    const x = Math.min(i.amount, room);
+    if (x <= 0) break;
+    i.taxFree = x;
+    room -= x;
+    total += x;
+  }
+  if (total) ctx.log(`Combat zone tax exclusion: $${total.toLocaleString()} of this year's pay is free of income tax for your time in ${theaterName}.`, '🧾', 'finance');
+}
+
 export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   const { rng } = ctx;
   const branch = BRANCHES[svc.branch];
@@ -408,6 +432,7 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   ctx.stat('stress', 10);
   ctx.stat('happiness', -5);
   ctx.earn(225 * months + 2400, 'Hostile fire & family separation pay');
+  combatZoneExclusion(ctx, svc, theaterName);
 
   const exposure = exposureOf(svc);
   const sawCombat = rng.chance(clamp(0.5 * exposure * combatFactor(ctx.state), 0.15, 0.95));
@@ -617,6 +642,8 @@ export function activeDutyTick(ctx, svc) {
   sofTick(ctx, svc);
   serviceLifeTick(ctx, svc);
   schoolTick(ctx, svc);
+  assignmentsTick(ctx, svc);
+  if (ctx.state.military.service !== svc) return;
   // Random urinalysis: addiction shows up in the cup.
   if ((hasCondition(ctx.state, 'opioids') && rng.chance(0.35)) || (hasCondition(ctx.state, 'alcohol') && rng.chance(0.08))) {
     if (!ctx.state.military.service) return;
@@ -627,6 +654,7 @@ export function activeDutyTick(ctx, svc) {
   const exposure = exposureOf(svc);
   const deployChance = 0.22 * exposure * warFactor(ctx.state) + (svc.deploymentRequested ? 0.5 : 0);
   if (branch.nonCombat) missionTick(ctx, svc);
+  else if (keepsHome(svc)) { /* On a stateside tour, in college or in a top post: no deployments. */ }
   else if (rng.chance(clamp(deployChance, 0, 0.95))) runDeployment(ctx, svc);
   else if (rng.chance(0.45)) dutyEventPrompt(ctx);
   else ctx.log(`Another year in garrison with your ${specialtyName(svc)} unit. Evaluation: ${svc.eval}/100.`, branch.icon, 'military');

@@ -32,6 +32,7 @@ export function retrainEligibility(state, mosId) {
   const m = MOS[mosId];
   if (!svc || !m) return { ok: false, reason: 'Unknown job' };
   if (svc.isNew) return { ok: false, reason: 'Finish initial training first' };
+  if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (m.branch !== svc.branch || m.track !== svc.track) return { ok: false, reason: 'Another branch or track' };
   if (svc.mos === mosId) return { ok: false, reason: 'Your current job' };
   if (m.selection || m.sofOnly) return { ok: false, reason: 'Through a selection pipeline only' };
@@ -108,6 +109,7 @@ export function warrantEligibility(state, mosId) {
   if (!svc || !m || m.track !== 'warrant' || m.branch !== svc.branch) return { ok: false, reason: 'Unknown job' };
   if (svc.track !== 'enlisted') return { ok: false, reason: 'Enlisted members only' };
   if (svc.isNew) return { ok: false, reason: 'Finish initial training first' };
+  if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (yearlyCount(state, 'military.warrant')) return { ok: false, reason: 'One packet a year' };
   if (m.sofOnly && svc.sof?.pipeline !== m.sofOnly) return { ok: false, reason: 'From a special operations unit only' };
   if (m.flight) {
