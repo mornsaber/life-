@@ -255,6 +255,70 @@ export const GROUPS = {
     cameras: { name: 'Cameras & access control', icon: '📹', need: need(30, 100, 300, 900), weight: 1.5, models: { cam: M('Camera / card reader', 1500, 7, 100) } },
   } },
 
+  /* ---------------- More employers ---------------- */
+  vessel: { name: 'Fleet & Ship Systems', categories: {
+    ships: { name: 'Ships', icon: '🚢', need: need(1, 3, 10, 30), weight: 3, models: { cargo: M('Container / cargo ship', 60000000, 30, 3000000, { usedCost: 20000000, lease: true, refurb: true }), cruise: M('Cruise ship', 900000000, 35, 40000000, { lease: true, refurb: true }) } },
+    tugs: { name: 'Tugs & tenders', icon: '⛴️', need: need(0, 1, 3, 8), weight: 1, models: { tug: M('Harbor tug / tender', 9000000, 30, 400000, { usedCost: 3000000, refurb: true }) } },
+    safety: { name: 'Lifeboats & safety gear', icon: '🛟', need: need(4, 12, 40, 120), weight: 1.5, models: { lifeboat: M('Enclosed lifeboat & davit', 250000, 20, 8000) } },
+    nav: { name: 'Navigation & engine controls', icon: '🧭', need: need(1, 3, 10, 30), weight: 1, models: { bridge: M('Integrated bridge system', 1500000, 12, 60000, { refurb: true }) } },
+  } },
+  rig: { name: 'Rigs & Field Equipment', categories: {
+    rigs: { name: 'Drilling rigs', icon: '🛢️', need: need(1, 3, 12, 40), weight: 3, models: { land: M('Land drilling rig', 20000000, 25, 800000, { usedCost: 6000000, refurb: true }), contract: M('Contracted rig (day rate, per year)', 0, 99, 0, { rent: 7000000 }) } },
+    workover: { name: 'Workover & frac equipment', icon: '⚙️', need: need(1, 2, 8, 25), weight: 1.5, models: { spread: M('Workover unit / frac spread share', 3000000, 15, 150000, { usedCost: 900000, lease: true }) } },
+    trucks: { name: 'Field trucks', icon: '🛻', need: need(4, 12, 40, 120), weight: 1, models: { pickup: M('Heavy-duty field pickup', 65000, 6, 5000, { usedCost: 25000, lease: true }) } },
+    safety: { name: 'Gas monitors & safety gear', icon: '☢️', need: need(10, 30, 100, 300), weight: 1, models: { kit: M('H2S monitor & fall-protection kit', 2500, 4, 200) } },
+  } },
+  atc: { name: 'Systems & Facilities', categories: {
+    radar: { name: 'Radar', icon: '📡', need: need(1, 1, 2, 4), weight: 3, models: { asr: M('Terminal surveillance radar', 15000000, 25, 500000, { refurb: true }) } },
+    scopes: { name: 'Controller positions', icon: '🖥️', need: need(4, 10, 30, 80), weight: 2, models: { stars: M('STARS display position', 250000, 12, 15000, { refurb: true }) } },
+    radios: { name: 'Radios & backups', icon: '📻', need: need(4, 10, 30, 80), weight: 1.5, models: { radio: M('VHF/UHF radio set', 40000, 15, 2000) } },
+    tower: { name: 'Towers & TRACONs', icon: '🗼', need: need(1, 1, 2, 3), weight: 1, facility: true, models: { own: M('Control tower (federal construction)', 30000000, 50, 500000, { build: true }) } },
+  } },
+  weather: { name: 'Observing Systems', categories: {
+    radar: { name: 'Doppler radar', icon: '🌀', need: need(1, 1, 2, 4), weight: 3, models: { nexrad: M('Doppler weather radar (service life extension)', 8000000, 25, 300000, { refurb: true }) } },
+    stations: { name: 'Surface stations', icon: '🌡️', need: need(6, 15, 40, 100), weight: 1.5, models: { asos: M('Automated surface station', 120000, 15, 6000) } },
+    balloons: { name: 'Upper-air sounding systems', icon: '🎈', need: need(1, 1, 2, 4), weight: 1, models: { ua: M('Radiosonde ground system', 300000, 15, 60000) } },
+    computing: COMPUTERS(need(6, 15, 40, 100)),
+  } },
+  crimeLab: { name: 'Instruments & Lab', categories: {
+    dna: { name: 'DNA instruments', icon: '🧬', need: need(1, 2, 6, 15), weight: 3, models: { seq: M('DNA analyzer / rapid DNA', 150000, 8, 12000, { lease: true }) } },
+    chem: { name: 'Drug chemistry (GC-MS)', icon: '⚗️', need: need(1, 2, 5, 12), weight: 2, models: { gcms: M('GC-MS', 120000, 10, 9000, { lease: true, refurb: true }) } },
+    vans: { name: 'Crime scene vans', icon: '🚐', need: need(1, 2, 5, 12), weight: 1, models: { van: M('Crime scene unit', 140000, 10, 6000, { usedCost: 45000 }) } },
+    evidence: { name: 'Evidence storage', icon: '🗄️', need: need(1, 1, 2, 4), weight: 1, facility: true, models: { own: M('Evidence & lab building (bond)', 20000000, 40, 300000, { build: true }) } },
+  } },
+  campus: { name: 'Classrooms, Labs & Buildings', categories: {
+    classrooms: { name: 'Classroom technology', icon: '📽️', need: need(20, 60, 200, 500), weight: 2, models: { room: M('Smart classroom refresh', 25000, 8, 1000) } },
+    labs: { name: 'Teaching labs', icon: '🧪', need: need(4, 12, 40, 100), weight: 2, models: { lab: M('Teaching lab outfit', 300000, 15, 15000, { refurb: true }) } },
+    computing: COMPUTERS(need(80, 300, 1200, 4000)),
+    buildings: { name: 'Academic buildings', icon: '🏛️', need: need(2, 6, 20, 60), weight: 1.5, facility: true, models: { own: M('Academic building (bond)', 45000000, 50, 900000, { build: true }), leased: M('Leased classroom space', 0, 99, 0, { rent: 400000 }) } },
+  } },
+  publicHealth: { name: 'Clinics & Labs', categories: {
+    clinics: { name: 'Clinic rooms', icon: '🩺', need: need(3, 8, 25, 60), weight: 2, models: { room: M('Exam room build-out', 12000, 12, 300) } },
+    lab: { name: 'Public health lab instruments', icon: '🧫', need: need(1, 3, 10, 25), weight: 2, models: { pcr: M('PCR / sequencing instrument', 250000, 8, 20000, { lease: true }) } },
+    mobile: { name: 'Mobile clinics', icon: '🚐', need: need(0, 1, 3, 8), weight: 1, models: { van: M('Mobile clinic / vaccination van', 300000, 12, 15000, { usedCost: 90000 }) } },
+    cold: { name: 'Vaccine cold storage', icon: '❄️', need: need(2, 5, 15, 40), weight: 1.5, models: { fridge: M('Medical-grade freezer', 15000, 10, 600) } },
+  } },
+  probation: { name: 'Vehicles & Monitoring', categories: {
+    cars: { name: 'Field cars', icon: '🚗', need: need(3, 10, 30, 80), weight: 2, models: { sedan: M('Unmarked sedan', 34000, 7, 3500, { usedCost: 13000, lease: true }) } },
+    monitors: { name: 'GPS ankle monitors', icon: '📍', need: need(30, 100, 300, 900), weight: 2, models: { gps: M('GPS monitor (leased per unit)', 1200, 3, 900, { lease: true }) } },
+    testing: { name: 'Drug-testing equipment', icon: '🧪', need: need(1, 2, 6, 15), weight: 1, models: { kit: M('Instant-test analyzer', 9000, 6, 2000) } },
+  } },
+  fieldScience: { name: 'Field Equipment', categories: {
+    trucks: { name: 'Field trucks', icon: '🛻', need: need(2, 6, 20, 60), weight: 2, models: { truck: M('4x4 field truck', 55000, 8, 4000, { usedCost: 20000, lease: true }) } },
+    instruments: { name: 'GPS, total stations & samplers', icon: '📐', need: need(2, 6, 20, 60), weight: 2, models: { gnss: M('Survey-grade GNSS / total station', 45000, 7, 2500, { lease: true }), sampler: M('Air & water sampling kit', 30000, 8, 2000) } },
+    drones: { name: 'Mapping drones', icon: '🛸', need: need(1, 2, 6, 15), weight: 1, models: { lidar: M('LiDAR mapping drone', 60000, 4, 4000) } },
+  } },
+  renewables: { name: 'Crews & Equipment', categories: {
+    trucks: { name: 'Crew trucks & trailers', icon: '🛻', need: need(2, 6, 20, 60), weight: 2, models: { truck: M('Crew truck with ladder rack', 60000, 7, 4500, { usedCost: 22000, lease: true }) } },
+    lifts: { name: 'Lifts & cranes', icon: '🏗️', need: need(1, 2, 6, 20), weight: 2, models: { boom: M('Boom lift', 120000, 10, 6000, { usedCost: 45000, lease: true }), crane: M('Rented crane for turbine work (per year)', 0, 99, 0, { rent: 250000 }) } },
+    tools: { name: 'Climbing & electrical gear', icon: '🧗', need: need(6, 20, 60, 200), weight: 1, models: { kit: M('Fall-arrest & arc-flash kit', 3000, 5, 200) } },
+  } },
+  pmc: { name: 'Vehicles & Kit', categories: {
+    armored: { name: 'Armored SUVs', icon: '🚙', need: need(2, 8, 30, 100), weight: 3, models: { b6: M('B6 armored SUV', 250000, 7, 15000, { usedCost: 90000, lease: true }) } },
+    kit: { name: 'Body armor & comms', icon: '🦺', need: need(10, 40, 150, 500), weight: 2, models: { kit: M('Plate carrier, radio & night vision', 15000, 6, 800) } },
+    aircraft: { name: 'Aircraft', icon: '🚁', need: need(0, 1, 4, 12), weight: 1, models: { helo: M('Medium helicopter', 12000000, 25, 1000000, { usedCost: 4000000, lease: true }) } },
+  } },
+
   /* ---------------- Volunteer emergency services ---------------- */
   volFire: { name: 'Apparatus & Firehouse', categories: {
     engine: { name: 'Engines', icon: '🚒', need: need(1, 2, 3, 4), weight: 3, models: { pumper: M('Pumper engine', 850000, 20, 18000, { usedCost: 180000, refurb: true }) } },
@@ -303,6 +367,40 @@ export const GROUPS = {
     kits: { name: 'Vaccination & first-aid kits', icon: '💉', need: need(4, 8, 12, 20), weight: 1, models: { kit: M('Clinic kit', 2000, 5, 100) } },
   } },
 
+  volPolice: { name: 'Vehicles & Kit', categories: {
+    cars: { name: 'Reserve patrol cars', icon: '🚓', need: need(1, 2, 4, 6), weight: 3, models: { cruiser: M('Patrol car (retired from the regular fleet)', 55000, 5, 6000, { usedCost: 12000 }) } },
+    radios: { name: 'Radios & body armor', icon: '📻', need: need(8, 15, 25, 40), weight: 2, models: { kit: M('Radio + vest', 5000, 6, 200) } },
+  } },
+  fema: { name: 'Deployment Kit', categories: {
+    kits: { name: 'Laptops, phones & go-kits', icon: '💼', need: need(10, 20, 40, 80), weight: 2, models: { kit: M('Deployment laptop & go-kit', 3500, 4, 300) } },
+    vehicles: { name: 'Mobile units', icon: '🚐', need: need(1, 2, 4, 8), weight: 1.5, models: { mdrc: M('Mobile disaster recovery center', 400000, 15, 15000) } },
+  } },
+  dmat: { name: 'Field Hospital Cache', categories: {
+    tents: { name: 'Shelters & power', icon: '⛺', need: need(4, 8, 12, 20), weight: 2, models: { shelter: M('Field hospital shelter with generator', 120000, 12, 5000) } },
+    medical: { name: 'Medical cache', icon: '🩺', need: need(1, 2, 3, 4), weight: 3, models: { cache: M('35-person team medical cache', 600000, 8, 30000, { refurb: true }) } },
+    trucks: { name: 'Cache trucks', icon: '🚚', need: need(1, 2, 3, 4), weight: 1, models: { truck: M('Box truck', 90000, 12, 5000, { usedCost: 30000 }) } },
+  } },
+  usar: { name: 'Task Force Cache', categories: {
+    cache: { name: 'Rescue equipment cache', icon: '🧱', need: need(1, 1, 2, 3), weight: 3, models: { cache: M('USAR equipment cache (search cameras, shoring, breaching)', 2500000, 10, 100000, { refurb: true }) } },
+    trucks: { name: 'Tractor-trailers', icon: '🚛', need: need(1, 2, 3, 4), weight: 1.5, models: { rig: M('Tractor-trailer', 220000, 12, 12000, { usedCost: 70000 }) } },
+    k9: { name: 'Search dogs', icon: '🐕', need: need(2, 4, 6, 8), weight: 1, models: { dog: M('Certified search dog (training)', 30000, 8, 4000) } },
+  } },
+  teamRubicon: { name: 'Team Equipment', categories: {
+    saws: { name: 'Chainsaws & muck-out kits', icon: '🪚', need: need(6, 10, 20, 30), weight: 2, models: { saw: M('Chainsaw & PPE kit', 2000, 4, 200) } },
+    trailers: { name: 'Equipment trailers', icon: '🚛', need: need(1, 2, 3, 4), weight: 2, models: { trailer: M('Enclosed equipment trailer', 30000, 15, 1000, { usedCost: 10000 }) } },
+    heavy: { name: 'Heavy equipment', icon: '🚜', need: need(0, 1, 2, 3), weight: 1, models: { skid: M('Skid steer', 70000, 10, 4000, { usedCost: 25000 }) } },
+  } },
+  ares: { name: 'Radio Equipment', categories: {
+    radios: { name: 'Go-kits', icon: '📻', need: need(4, 8, 15, 25), weight: 2, models: { kit: M('HF/VHF go-kit with battery', 2500, 8, 100) } },
+    comms: { name: 'Communications trailer', icon: '📡', need: need(1, 1, 1, 2), weight: 2, models: { trailer: M('Emergency comms trailer with mast', 80000, 15, 2000, { usedCost: 25000 }) } },
+    repeaters: { name: 'Repeaters', icon: '🗼', need: need(1, 2, 3, 5), weight: 1, models: { repeater: M('Repeater with backup power', 8000, 12, 300) } },
+  } },
+  sdf: { name: 'Equipment', categories: {
+    vehicles: { name: 'Vehicles', icon: '🚙', need: need(2, 4, 8, 12), weight: 2, models: { suv: M('Surplus SUV / van', 40000, 8, 3000, { usedCost: 12000 }) } },
+    comms: { name: 'Radios & comms', icon: '📻', need: need(10, 20, 40, 60), weight: 2, models: { radio: M('Interoperable radio', 3000, 8, 100) } },
+    shelter: { name: 'Shelter & POD kits', icon: '⛺', need: need(1, 2, 4, 6), weight: 1, models: { pod: M('Point-of-distribution kit', 20000, 10, 500) } },
+  } },
+
   /* ---------------- Military ---------------- */
   milGround: { name: 'Equipment Readiness', categories: {
     tactical: { name: 'Tactical vehicles', icon: '🚙', need: need(10, 30, 120, 400), weight: 3, models: { hmmwv: M('HMMWV', 220000, 20, 15000, { refurb: true }), jltv: M('JLTV', 450000, 25, 12000, { refurb: true }) } },
@@ -319,6 +417,27 @@ export const GROUPS = {
     aircraft: { name: 'Aircraft', icon: '✈️', need: need(6, 18, 54, 100), weight: 3, models: { f16: M('F-16', 63000000, 40, 3000000, { refurb: true }), c130: M('C-130J', 75000000, 40, 3500000, { refurb: true }), f35: M('F-35A', 82000000, 40, 4000000, { refurb: true }) } },
     age: { name: 'Aerospace ground equipment', icon: '🔧', need: need(10, 30, 90, 200), weight: 1.5, models: { cart: M('Ground power & air cart', 80000, 15, 4000, { refurb: true }) } },
     vehicles: { name: 'Flightline vehicles', icon: '🚚', need: need(6, 18, 50, 120), weight: 1, models: { truck: M('Flightline truck', 60000, 12, 3000) } },
+  } },
+  milMarine: { name: 'Equipment Readiness', categories: {
+    tactical: { name: 'Tactical vehicles', icon: '🚙', need: need(10, 30, 100, 300), weight: 3, models: { hmmwv: M('HMMWV', 220000, 20, 15000, { refurb: true }), jltv: M('JLTV', 450000, 25, 12000, { refurb: true }) } },
+    amphib: { name: 'Amphibious & light armored vehicles', icon: '🐊', need: need(2, 12, 40, 120), weight: 3, models: { aav: M('AAV-7 amphibious assault vehicle', 3000000, 30, 120000, { refurb: true }), acv: M('Amphibious Combat Vehicle', 7000000, 30, 150000, { refurb: true }), lav: M('LAV-25', 3000000, 30, 100000, { refurb: true }) } },
+    aircraft: { name: 'Aircraft', icon: '🚁', need: need(0, 2, 12, 40), weight: 1.5, models: { mv22: M('MV-22 Osprey', 90000000, 30, 5000000, { refurb: true }), f35b: M('F-35B', 110000000, 40, 6000000, { refurb: true }) } },
+    comms: { name: 'Radios & mission command', icon: '📡', need: need(20, 60, 200, 600), weight: 1.5, models: { radio: M('Tactical radio set', 40000, 12, 1500) } },
+  } },
+  milSpace: { name: 'Space Systems Readiness', categories: {
+    ground: { name: 'Satellite ground stations & antennas', icon: '📡', need: need(2, 4, 10, 25), weight: 3, models: { afscn: M('Satellite control antenna', 40000000, 30, 1500000, { refurb: true }) } },
+    radar: { name: 'Missile-warning & space-tracking radars', icon: '🛰️', need: need(0, 1, 3, 6), weight: 2, models: { upgrade: M('Phased-array radar (sustainment)', 300000000, 40, 10000000, { refurb: true }) } },
+    ops: { name: 'Operations floor consoles', icon: '🖥️', need: need(10, 30, 90, 200), weight: 1.5, models: { console: M('Ops console & cyber suite', 150000, 7, 12000) } },
+  } },
+  milUsphs: { name: 'Clinical Readiness', categories: {
+    clinics: { name: 'Clinic & hospital equipment', icon: '🏥', need: need(4, 12, 40, 100), weight: 3, models: { suite: M('Exam / procedure suite', 250000, 12, 15000, { refurb: true }) } },
+    deploy: { name: 'Deployable medical caches', icon: '🎒', need: need(1, 2, 6, 15), weight: 2, models: { cache: M('Rapid Deployment Force medical cache', 900000, 10, 40000, { refurb: true }) } },
+    vehicles: { name: 'Service vehicles', icon: '🚐', need: need(2, 6, 20, 60), weight: 1, models: { van: M('Government van', 45000, 8, 3500) } },
+  } },
+  milNoaa: { name: 'Ship & Aircraft Readiness', categories: {
+    ships: { name: 'Research & survey ships', icon: '🚢', need: need(1, 2, 4, 8), weight: 3, models: { survey: M('Hydrographic survey ship', 150000000, 35, 8000000, { refurb: true }) } },
+    launches: { name: 'Survey launches', icon: '🚤', need: need(2, 4, 8, 16), weight: 1.5, models: { launch: M('Survey launch', 2000000, 20, 80000, { refurb: true }) } },
+    aircraft: { name: 'Hurricane-hunter aircraft', icon: '✈️', need: need(0, 1, 2, 4), weight: 2, models: { p3: M('WP-3D Orion', 120000000, 50, 6000000, { refurb: true }), g4: M('Gulfstream IV-SP', 60000000, 40, 3000000, { refurb: true }) } },
   } },
   milCoastGuard: { name: 'Cutters & Boats', categories: {
     cutters: { name: 'Cutters', icon: '🚢', need: need(1, 2, 4, 10), weight: 3, models: { frc: M('Fast Response Cutter', 65000000, 30, 2000000, { refurb: true }) } },

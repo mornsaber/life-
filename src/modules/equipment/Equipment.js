@@ -31,6 +31,8 @@ import { GROUPS, SIZES } from './EquipmentCatalog.js';
 import { currentBusiness } from '../business/Business.js';
 import { SERVICES } from '../emergency/EmergencyEngine.js';
 import { billetFor } from '../org/MilitaryUnits.js';
+import { TEAMS } from '../service/DisasterTeams.js';
+import { SDF_RANKS } from '../service/StateForces.js';
 
 export { GROUPS };
 
@@ -53,6 +55,10 @@ const JOB_GROUP = {
   research: 'lab', nationalLab: 'lab', culinary: 'kitchen', hospitality: 'kitchen', cosmetology: 'salon', automotive: 'autoShop',
   dentistry: 'dental', physicalTherapy: 'clinic', chiropractic: 'clinic', optometry: 'clinic', veterinary: 'clinic', occupationalTherapy: 'clinic',
   fitness: 'gym', retail: 'retail', childcare: 'care', funeral: 'funeral',
+  merchantMarine: 'vessel', cruise: 'vessel', oilGas: 'rig', airTrafficControl: 'atc', meteorology: 'weather', forensics: 'crimeLab',
+  college: 'campus', communityCollege: 'campus', university: 'campus', publicHealth: 'publicHealth', probation: 'probation',
+  surveying: 'fieldScience', environmental: 'fieldScience', renewableEnergy: 'renewables', privateMilitary: 'pmc', dentalHygiene: 'dental',
+  music: 'studio', acting: 'studio', contentCreator: 'studio', education: 'campus', pharmacy: 'retail',
 };
 const BUSINESS_GROUP = {
   restaurant: 'kitchen', catering: 'kitchen', foodTruck: 'kitchen', salon: 'salon', autoShop: 'autoShop',
@@ -64,13 +70,18 @@ const BUSINESS_GROUP = {
   architecturePractice: 'office', insuranceAgency: 'office', brokerage: 'office', propertyMgmt: 'office', staffingAgency: 'office', translationAgency: 'office',
   itSecurityFirm: 'office', medicalBilling: 'office', answeringService: 'office', piAgency: 'office', bailBondsAgency: 'office', homeInspection: 'office',
   counselingPractice: 'office', nutritionPractice: 'office', tutoring: 'office', testPrep: 'office', privateTutoring: 'office', surveyFirm: 'office',
-  homeHealth: 'office', homeCareAgency: 'office', indieGameStudio: 'office', techStartup: 'office',
+  homeHealth: 'office', homeCareAgency: 'office', indieGameStudio: 'office', techStartup: 'office', solarInstaller: 'renewables',
 };
-const VOLUNTEER_GROUP = { fire: 'volFire', ambulance: 'volEms', sar: 'sar', auxiliary: 'auxiliary', cap: 'cap', cert: 'cert', redcross: 'redcross', skiPatrol: 'skiPatrol', wildland: 'wildlandVol', mrc: 'mrc' };
-const MILITARY_GROUP = { army: 'milGround', guard: 'milGround', marines: 'milGround', navy: 'milNaval', airforce: 'milAir', spaceforce: 'milAir', coastguard: 'milCoastGuard' };
+const VOLUNTEER_GROUP = { police: 'volPolice', fire: 'volFire', ambulance: 'volEms', sar: 'sar', auxiliary: 'auxiliary', cap: 'cap', cert: 'cert', redcross: 'redcross', skiPatrol: 'skiPatrol', wildland: 'wildlandVol', mrc: 'mrc' };
+const MILITARY_GROUP = { army: 'milGround', guard: 'milGround', marines: 'milMarine', navy: 'milNaval', airforce: 'milAir', spaceforce: 'milSpace', coastguard: 'milCoastGuard', usphs: 'milUsphs', noaa: 'milNoaa' };
+/** Disaster teams (Civic Service tab). Federal teams draw from a government cache; nonprofits buy their own. */
+const TEAM_GROUP = { fema: 'fema', dmat: 'dmat', usar: 'usar', teamRubicon: 'teamRubicon', ares: 'ares' };
+const ISSUED = ['fema', 'dmat', 'usar', 'sdf'];
 const COMMANDERS = ['companyCommander', 'battalionCommander'];
 const MIL_REQUESTERS = ['firstSergeant', 'csm', 'platoonSergeant', 'platoonLeader', 'xo'];
 
+/** Equipment a government issues: units overhaul and requisition rather than buy. */
+export const isIssued = (c) => c.kind === 'military' || Boolean(c.issued);
 const bizSize = (scale) => (scale < 1 ? 'small' : scale < 2 ? 'medium' : scale < 4 ? 'large' : 'enterprise');
 
 /** Every equipment owner the player belongs to right now. */
@@ -87,8 +98,20 @@ export function contexts(state) {
     const m = state.emergency?.[sid];
     if (!m || m.onLeave) continue;
     const ranks = SERVICES[sid]?.ranks ?? [];
-    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key: `vol:${sid}:${m.unit}`, group: gid, size: 'small', label: m.unit, serviceId: sid,
+    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key: `vol:${sid}:${m.unit}`, group: gid, size: 'small', label: m.unit, serviceId: sid, member: m,
       manager: m.rankIndex >= ranks.length - 2, requester: m.rankIndex >= ranks.length - 3, money: 'funds' });
+  }
+  for (const [tid, gid] of Object.entries(TEAM_GROUP)) {
+    const m = state.service?.teams?.[tid];
+    if (!m) continue;
+    const n = TEAMS[tid].ranks.length;
+    out.push({ kind: 'volunteer', ref: `team.${tid}`, key: `team:${tid}`, group: gid, size: 'medium', label: TEAMS[tid].name, serviceId: tid, member: m, issued: ISSUED.includes(tid),
+      manager: m.rankIndex >= n - 2, requester: m.rankIndex >= n - 3, money: ISSUED.includes(tid) ? 'om' : 'funds' });
+  }
+  const sdf = state.service?.sdf;
+  if (sdf) {
+    out.push({ kind: 'volunteer', ref: 'team.sdf', key: `sdf:${sdf.stateId}`, group: 'sdf', size: 'medium', label: sdf.name, serviceId: 'sdf', member: sdf, issued: true,
+      manager: sdf.rankIndex >= SDF_RANKS.length - 3, requester: sdf.rankIndex >= 4, money: 'om' });
   }
   const svc = state.military?.service;
   if (svc?.unit?.orgId && MILITARY_GROUP[svc.branch]) {
@@ -99,7 +122,7 @@ export function contexts(state) {
   }
   return out;
 }
-/** One owner by ref: 'job', 'business', 'military' or 'vol.<serviceId>'. */
+/** One owner by ref: 'job', 'business', 'military', 'vol.<serviceId>' or 'team.<teamId|sdf>'. */
 export const contextOf = (state, ref) => contexts(state).find((c) => c.ref === ref) ?? null;
 
 /* ------------------------------------------------------------------ */
@@ -202,9 +225,10 @@ function pay(c, d, amount) {
 /** What each kind of owner can do. */
 export function powers(c) {
   const mil = c.kind === 'military';
-  return { buy: !mil, used: !mil, lease: c.kind === 'job' || c.kind === 'business', retire: true, refurb: true, build: !mil, bank: c.money === 'budget', requisition: mil, fundraise: c.kind === 'volunteer' };
+  const issued = mil || c.issued;
+  return { buy: !issued, used: !issued, lease: c.kind === 'job' || c.kind === 'business', retire: true, refurb: true, build: !issued, bank: c.money === 'budget', requisition: issued, fundraise: c.kind === 'volunteer' && !issued };
 }
-const refurbShare = (c, m) => (c.kind === 'military' ? 0.06 : m.remount ? 0.6 : 0.35);
+const refurbShare = (c, m) => (isIssued(c) ? 0.06 : m.remount ? 0.6 : 0.35);
 export const refurbCost = (c, m) => Math.round(m.cost * refurbShare(c, m));
 
 /** Fill shortfalls, then replace the most overdue, up to `share` of the money left. */
@@ -213,7 +237,7 @@ function autoReplace(c, d, share) {
   let spent = 0;
   const all = cats(c);
   for (const [cid, cat] of Object.entries(all)) {
-    if (cat.facility || c.kind === 'military') continue;
+    if (cat.facility || isIssued(c)) continue;
     const [mid, m] = Object.entries(cat.models)[0];
     while ((d.units[cid]?.length ?? 0) < needOf(cat, c) && m.cost <= money) {
       (d.units[cid] ??= []).push({ model: mid, age: 0, used: false, leased: false });
@@ -225,9 +249,9 @@ function autoReplace(c, d, share) {
     .filter((x) => x.over >= 1).sort((a, b) => b.over - a.over);
   for (const { cid, u } of overdue) {
     const m = all[cid].models[u.model];
-    const price = c.kind === 'military' ? refurbCost(c, m) : m.cost;
+    const price = isIssued(c) ? refurbCost(c, m) : m.cost;
     if (price > money) continue;
-    u.age = c.kind === 'military' ? Math.max(0, u.age - Math.round(m.life / 3)) : 0;
+    u.age = isIssued(c) ? Math.max(0, u.age - Math.round(m.life / 3)) : 0;
     u.used = false;
     money -= price;
     spent += price;
@@ -299,7 +323,7 @@ function yearFor(ctx, c) {
   if (c.kind === 'job' && c.manager) state.career.job.performance = Math.round(clamp(state.career.job.performance + shift, 0, 100));
   if (c.kind === 'business') c.biz.quality = Math.round(clamp(c.biz.quality + shift / 1.5, 0, 100));
   if (c.kind === 'military' && c.manager) state.military.service.eval = Math.round(clamp(state.military.service.eval + shift, 0, 100));
-  if (c.kind === 'volunteer' && c.manager) state.emergency[c.serviceId].xp = Math.max(0, (state.emergency[c.serviceId].xp ?? 0) + Math.round(shift * 3));
+  if (c.kind === 'volunteer' && c.manager && typeof c.member?.xp === 'number') c.member.xp = Math.max(0, c.member.xp + Math.round(shift * 3));
   if (c.manager && prev != null && r > prev + 5) ctx.log(`${c.label}: readiness rose to ${r}%.`, '📈', 'good');
 }
 
@@ -314,6 +338,7 @@ function resolve(ctx, arg) {
   if (!c) { ctx.toast('Not available', 'warn'); return {}; }
   return { c, d: recordOf(ctx.state, c), parts: rest.split(':') };
 }
+const GRANT_NAME = { volFire: 'The federal Assistance to Firefighters grant', volEms: 'The state EMS equipment grant', volPolice: 'The Justice Assistance Grant', wildlandVol: 'The Volunteer Fire Assistance grant', sar: 'The state SAR equipment grant', cert: 'The Citizen Corps grant', mrc: 'The ASPR preparedness grant' };
 const nice = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
 
 export const EquipmentModule = {
@@ -335,7 +360,7 @@ export const EquipmentModule = {
       const { c, d, parts } = resolve(ctx, arg);
       if (!c) return;
       if (!c.manager) return ctx.toast('Only whoever holds the budget can buy', 'warn');
-      if (!powers(c).buy) return ctx.toast('Military units request equipment through fielding', 'warn');
+      if (!powers(c).buy) return ctx.toast(c.kind === 'military' ? 'Military units request equipment through fielding' : 'Equipment is issued — request it from the program', 'warn');
       const [cid, mid, how] = parts;
       const cat = cats(c)[cid];
       const m = cat?.models[mid];
@@ -353,14 +378,14 @@ export const EquipmentModule = {
       const { c, d, parts } = resolve(ctx, arg);
       if (!c?.manager) return;
       const cat = cats(c)[parts[0]];
-      const u = (d.units[parts[0]] ?? []).filter((x) => !x.leased && (c.kind === 'military' || cat.models[x.model]?.refurb || cat.models[x.model]?.remount)).sort((a, b) => b.age - a.age)[0];
+      const u = (d.units[parts[0]] ?? []).filter((x) => !x.leased && (isIssued(c) || cat.models[x.model]?.refurb || cat.models[x.model]?.remount)).sort((a, b) => b.age - a.age)[0];
       if (!u) return ctx.toast('Nothing to refurbish', 'warn');
       const m = cat.models[u.model];
       const price = refurbCost(c, m);
       if (price > available(c, d)) return ctx.toast(`$${price.toLocaleString()} — over budget`, 'warn');
       pay(c, d, price);
-      u.age = m.remount ? 0 : Math.max(0, u.age - (c.kind === 'military' ? Math.round(m.life / 3) : 6));
-      ctx.log(c.kind === 'military' ? `You put a ${m.name} through depot overhaul ($${price.toLocaleString()} of O&M funds).` : m.remount ? `You remounted a ${nice(m.name)} box onto a new chassis for $${price.toLocaleString()}.` : `You refurbished a ${nice(m.name)} ($${price.toLocaleString()}): years more service.`, cat.icon, 'good');
+      u.age = m.remount ? 0 : Math.max(0, u.age - (isIssued(c) ? Math.round(m.life / 3) : 6));
+      ctx.log(isIssued(c) ? `You put a ${m.name} through depot overhaul ($${price.toLocaleString()} of ${c.kind === 'military' ? 'O&M' : 'program'} funds).` : m.remount ? `You remounted a ${nice(m.name)} box onto a new chassis for $${price.toLocaleString()}.` : `You refurbished a ${nice(m.name)} ($${price.toLocaleString()}): years more service.`, cat.icon, 'good');
     },
     /** 'kind|catId' — retire the oldest (auction; or turn in, for the military). */
     retire(ctx, arg) {
@@ -372,11 +397,11 @@ export const EquipmentModule = {
       const u = units.filter((x) => !x.leased).sort((a, b) => b.age - a.age)[0];
       if (!u) return;
       const m = cat.models[u.model];
-      const value = m.rent || c.kind === 'military' ? 0 : Math.round((m.cost * 0.6 ** ((u.age / Math.max(1, m.life)) * 3)) / 100) * 100;
+      const value = m.rent || isIssued(c) ? 0 : Math.round((m.cost * 0.6 ** ((u.age / Math.max(1, m.life)) * 3)) / 100) * 100;
       d.units[cid] = units.filter((x) => x !== u);
       if (c.money === 'cash') c.biz.cash += value;
       else d.reserve += value;
-      ctx.log(m.rent ? `You ended the lease on ${nice(m.name)}.` : c.kind === 'military' ? `You turned in a worn-out ${m.name}.` : `You retired a ${u.age}-year-old ${nice(m.name)} and sold it for $${value.toLocaleString()}.`, cat.icon);
+      ctx.log(m.rent ? `You ended the lease on ${nice(m.name)}.` : isIssued(c) ? `You turned in a worn-out ${m.name}.` : `You retired a ${u.age}-year-old ${nice(m.name)} and sold it for $${value.toLocaleString()}.`, cat.icon);
     },
     bank(ctx, arg) {
       const { c, d } = resolve(ctx, arg);
@@ -426,9 +451,9 @@ export const EquipmentModule = {
     requisition(ctx, arg) {
       const { state, rng } = ctx;
       const { c, d, parts } = resolve(ctx, arg);
-      if (!c?.manager || c.kind !== 'military') return;
-      if (yearlyCount(state, 'equip.requisition')) return ctx.toast('One fielding request a year', 'warn');
-      bumpYearly(state, 'equip.requisition');
+      if (!c?.manager || !isIssued(c)) return;
+      if (yearlyCount(state, `equip.requisition.${c.ref}`)) return ctx.toast('One fielding request a year', 'warn');
+      bumpYearly(state, `equip.requisition.${c.ref}`);
       const [cid, mid] = parts;
       const cat = cats(c)[cid];
       if (!cat?.models[mid]) return;
@@ -441,9 +466,9 @@ export const EquipmentModule = {
     fundraise(ctx, arg) {
       const { state, rng } = ctx;
       const { c, d } = resolve(ctx, arg);
-      if (!c || c.kind !== 'volunteer') return;
-      if (yearlyCount(state, `equip.fund.${c.serviceId}`)) return ctx.toast('One fund drive a year', 'warn');
-      bumpYearly(state, `equip.fund.${c.serviceId}`);
+      if (!c || !powers(c).fundraise) return;
+      if (yearlyCount(state, `equip.fund.${c.ref}`)) return ctx.toast('One fund drive a year', 'warn');
+      bumpYearly(state, `equip.fund.${c.ref}`);
       const raised = rng.int(4000, 22000) + (c.manager ? rng.int(0, 10000) : 0);
       d.budget += raised;
       ctx.stat('happiness', 2);
@@ -452,9 +477,9 @@ export const EquipmentModule = {
     grant(ctx, arg) {
       const { state, rng } = ctx;
       const { c, d, parts } = resolve(ctx, arg);
-      if (!c?.manager || c.kind !== 'volunteer') return;
-      if (yearlyCount(state, `equip.grant.${c.serviceId}`)) return ctx.toast('One grant application a year', 'warn');
-      bumpYearly(state, `equip.grant.${c.serviceId}`);
+      if (!c?.manager || !powers(c).fundraise) return;
+      if (yearlyCount(state, `equip.grant.${c.ref}`)) return ctx.toast('One grant application a year', 'warn');
+      bumpYearly(state, `equip.grant.${c.ref}`);
       const [cid, mid] = parts;
       const m = cats(c)[cid]?.models[mid];
       if (!m || m.build || m.rent) return;
@@ -464,7 +489,7 @@ export const EquipmentModule = {
       if (rng.chance(0.3 + state.stats.smarts / 400)) {
         d.budget -= match;
         (d.units[cid] ??= []).push({ model: mid, age: 0, used: false, leased: false });
-        ctx.log(`The federal Assistance to Firefighters / state EMS grant came through: a new ${nice(m.name)} for a $${match.toLocaleString()} local match.`, cats(c)[cid].icon, 'milestone');
+        ctx.log(`${GRANT_NAME[c.group] ?? 'The grant'} came through: a new ${nice(m.name)} for a $${match.toLocaleString()} local match.`, cats(c)[cid].icon, 'milestone');
       } else ctx.log('The grant panel turned you down this round. Most first applications fail.', '📄', 'warn');
     },
   },

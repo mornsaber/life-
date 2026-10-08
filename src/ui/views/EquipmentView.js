@@ -1,19 +1,24 @@
 /**
  * Equipment & facilities, wherever you have a say in them: your department
- * (Career tab), your business, your volunteer company and your military unit.
+ * (Career tab), your business, your volunteer company or disaster team, and
+ * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
-import { GROUPS, contextOf, recordOf, readiness, annualMoney, available, powers, refurbCost } from '../../modules/equipment/Equipment.js';
+import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
 
 const CREW_SEES = ['police', 'campusPolice', 'airportPolice', 'federalLE', 'borderPatrol', 'fire', 'stateFire', 'arff', 'ems', 'corrections', 'volFire', 'volEms'];
 const TITLE = { job: 'Department', business: 'Business', volunteer: 'Company', military: 'Unit' };
-const MONEY_LABEL = { budget: 'capital budget left this year', funds: 'in the equipment fund', om: 'O&M funds left this year', cash: 'business cash' };
+const title = (c) => (c.ref.startsWith('team.') ? 'Team' : TITLE[c.kind]);
+const MONEY_LABEL = { budget: 'capital budget left this year', funds: 'in the equipment fund', om: 'maintenance funds left this year', cash: 'business cash' };
 
 function footer(state, c) {
   if (c.kind === 'business') return 'Paid from business cash. Worn-out equipment drags down quality and breaks down at the worst time; premises leases come out of cash every year.';
+  if (c.kind === 'volunteer' && c.issued) return c.manager
+    ? `Equipment is issued by the program, not bought. You get about ${money(annualMoney(state, c))} a year to overhaul what you have and can request new equipment once a year.`
+    : c.requester ? 'Team leaders can request replacements; the program decides.' : 'The program issues your equipment. Leaders request replacements.';
   if (c.kind === 'volunteer') return c.manager
     ? `You run the equipment fund (a district levy of about ${money(annualMoney(state, c))} a year, plus whatever you raise). Used apparatus from career departments stretches it; federal grants need a 10% match.`
     : 'The chief and officers decide what gets bought. Anyone can help with the fund drive.';
@@ -25,7 +30,7 @@ function footer(state, c) {
     : c.requester ? 'Supervisors can request replacements; whoever holds the budget decides.' : 'Your chiefs and managers decide what gets bought. Old equipment breaks down on the job.';
 }
 
-/** The equipment card for one owner ('job' | 'business' | 'military' | 'vol.<serviceId>'), or '' when it doesn't apply. */
+/** The equipment card for one owner ('job' | 'business' | 'military' | 'vol.<serviceId>' | 'team.<id|sdf>'), or '' when it doesn't apply. */
 export function equipmentCard(state, ref) {
   const c = contextOf(state, ref);
   if (!c) return '';
@@ -49,7 +54,7 @@ export function equipmentCard(state, ref) {
     let buttons = '';
     if (c.manager) {
       buttons = Object.entries(cat.models).map(([mid, m]) => {
-        if (can.requisition) return m.build || m.rent ? '' : button(`📨 Request fielding: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y['equip.requisition']), hint: 'One request a year · arrives next year if approved' });
+        if (can.requisition) return m.build || m.rent ? '' : button(`📨 Request fielding: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.requisition.${ref}`]), hint: 'One request a year · arrives next year if approved' });
         if (m.build) {
           if (!can.build) return '';
           const how = c.kind === 'business' ? 'Loan' : c.kind === 'volunteer' ? 'Fund drive' : 'Bond';
@@ -61,17 +66,17 @@ export function equipmentCard(state, ref) {
           button(`🆕 ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: `${m.life}-year service life · ${money(m.upkeep)}/yr upkeep` }),
           m.usedCost && can.used ? button(`♻️ Used ${money(m.usedCost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:used`), variant: 'tiny', disabled: m.usedCost > pool, hint: 'Already partway through its life' }) : '',
           m.lease && can.lease ? button(`📝 Lease ${money(leaseCost)}/yr`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:lease`), variant: 'tiny', disabled: leaseCost > pool, hint: 'Paid every year; returned at end of life' }) : '',
-          c.kind === 'volunteer' && !m.usedCost ? button('📄 Apply for a grant', 'deptEquip.grant', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.grant.${c.serviceId}`]) || d.budget < m.cost * 0.1, hint: `10% match: ${money(m.cost * 0.1)}` }) : '',
+          can.fundraise && !m.usedCost ? button('📄 Apply for a grant', 'deptEquip.grant', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.grant.${ref}`]) || d.budget < m.cost * 0.1, hint: `10% match: ${money(m.cost * 0.1)}` }) : '',
         ].join('');
       }).join('');
-      const fixable = units.filter((u) => !u.leased && (c.kind === 'military' || cat.models[u.model]?.refurb || cat.models[u.model]?.remount));
+      const fixable = units.filter((u) => !u.leased && (isIssued(c) || cat.models[u.model]?.refurb || cat.models[u.model]?.remount));
       if (fixable.length) {
         const oldest = fixable.sort((p, q) => q.age - p.age)[0];
         const m = cat.models[oldest.model];
-        const label = c.kind === 'military' ? '🔧 Depot overhaul the oldest' : m.remount ? '🔧 Remount the oldest' : '🔧 Refurbish the oldest';
+        const label = isIssued(c) ? '🔧 Depot overhaul the oldest' : m.remount ? '🔧 Remount the oldest' : '🔧 Refurbish the oldest';
         buttons += button(`${label} (${money(refurbCost(c, m))})`, 'deptEquip.refurb', { arg: a(cid), variant: 'tiny', disabled: refurbCost(c, m) > pool });
       }
-      if (units.some((u) => !u.leased)) buttons += button(cat.facility ? '🚪 Close / end a lease' : c.kind === 'military' ? '📦 Turn in the oldest' : '🏷️ Retire & sell the oldest', 'deptEquip.retire', { arg: a(cid), variant: 'tiny' });
+      if (units.some((u) => !u.leased)) buttons += button(cat.facility ? '🚪 Close / end a lease' : isIssued(c) ? '📦 Turn in the oldest' : '🏷️ Retire & sell the oldest', 'deptEquip.retire', { arg: a(cid), variant: 'tiny' });
     } else if (c.requester && !can.requisition) {
       buttons = button('📋 Request a replacement', 'deptEquip.request', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.request.${ref}`]) });
     }
@@ -83,9 +88,9 @@ export function equipmentCard(state, ref) {
     : '';
   const actions = [
     c.manager && can.bank ? button('🏦 Bank unspent money for a big purchase', 'deptEquip.bank', { arg: a(''), variant: 'small', disabled: !d.budget || Boolean(y[`equip.bank.${ref}`]), hint: 'Otherwise it goes back at year-end' }) : '',
-    can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${c.serviceId}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
+    can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${ref}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
   ].join('');
-  return card(`${TITLE[c.kind]} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}
+  return card(`${title(c)} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}
     ${chips}${actions ? `<div class="action-grid">${actions}</div>` : ''}
     ${rows}
     <p class="fine">${footer(state, c)}</p>`, { icon: '🛠️' });

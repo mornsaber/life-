@@ -14,7 +14,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
-import { EquipmentModule, GROUPS, contextOf, recordOf, readiness as readinessOf } from '../src/modules/equipment/Equipment.js';
+import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf } from '../src/modules/equipment/Equipment.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
 import { PoliceLifeModule } from '../src/modules/publicsafety/PoliceLife.js';
@@ -279,6 +279,69 @@ const tests = {
     const html = VIEWS.military(state, {});
     clean(html);
     assert.match(html, /Unit Equipment Readiness/);
+  },
+  'equipment covers the careers where it matters'() {
+    for (const id of ['merchantMarine', 'cruise', 'oilGas', 'airTrafficControl', 'meteorology', 'forensics', 'college', 'communityCollege', 'university', 'publicHealth', 'probation', 'surveying', 'environmental', 'renewableEnergy', 'privateMilitary', 'dentalHygiene', 'music', 'acting', 'contentCreator']) {
+      const p = getProfession(id);
+      const level = p.levels.find((l) => l.abilities?.includes('budget')) ?? p.levels.at(-1);
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(20), modules: MODULES });
+      const state = engine.newLife({});
+      state.character.age = 45;
+      const ctx = engine.context();
+      hire(ctx, { professionId: id, levelId: level.id, employer: createEmployer(ctx.rng, state, p, state.character.regionId) });
+      const c = contextOf(state, 'job');
+      assert.ok(c && GROUPS[c.group], `${id} has equipment`);
+      if (c.manager) clean(VIEWS.career(state, {}));
+    }
+    const solar = new Engine({ store: new Store(memory()), rng: new Random(21), modules: MODULES });
+    const s = solar.newLife({});
+    s.character.age = 35;
+    s.finances.cash = 2_000_000;
+    s.housing.credit.score = 720;
+    const t = BUSINESS_TYPES.solarInstaller;
+    for (const cr of t.credentials) s.credentials.held[cr] = { earnedAge: 25, renewedAge: 30, status: 'active' };
+    s.career.history.push({ professionId: t.professions[0], title: 'Installer', levelId: 'x', employerName: 'X', sector: 'private', peakGrade: 3, startAge: 22, endAge: 34, reason: 'Left' });
+    solar.dispatch('business.start', 'solarInstaller:cash:llc');
+    assert.equal(contextOf(s, 'business')?.group, 'renewables', 'solar installers buy crew trucks and lifts');
+  },
+
+  'every branch has its own equipment, and disaster teams and the State Guard have theirs'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(22), modules: MODULES });
+    const state = engine.newLife({});
+    state.character.age = 35;
+    Object.assign(state.stats, { smarts: 85, fitness: 80, health: 95 });
+    state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 });
+    for (const [branch, group] of [['marines', 'milMarine'], ['spaceforce', 'milSpace'], ['usphs', 'milUsphs'], ['noaa', 'milNoaa']]) {
+      state.military.service = { branch, unit: { orgId: `test:${branch}`, company: 'Alpha', billet: 'companyCommander', commandUntil: 40 }, track: 'officer', grade: 2, eval: 70 };
+      const c = contextOf(state, 'military');
+      assert.equal(c.group, group, branch);
+      assert.ok(c.manager && powers(c).requisition && !powers(c).buy);
+    }
+    state.military.service = null;
+    // Disaster teams: the nonprofit buys its own; the federal team is issued gear.
+    state.service.teams.teamRubicon = { rankIndex: 3, years: 5, deployments: 10, declined: 0, joinedAge: 30 };
+    state.service.teams.fema = { rankIndex: 4, years: 8, deployments: 12, declined: 0, joinedAge: 27 };
+    const tr = contextOf(state, 'team.teamRubicon');
+    assert.ok(tr.manager && powers(tr).fundraise && powers(tr).buy, 'Team Rubicon raises money and buys');
+    const fema = contextOf(state, 'team.fema');
+    assert.ok(fema.manager && powers(fema).requisition && !powers(fema).buy, 'FEMA is issued gear');
+    state.prompts = [];
+    engine.dispatch('deptEquip.fundraise', 'team.teamRubicon|');
+    assert.ok(recordOf(state, tr).budget > 0, 'raised money');
+    const kits = recordOf(state, fema).units.kits.length;
+    engine.dispatch('deptEquip.buy', 'team.fema|kits:kit');
+    assert.equal(recordOf(state, fema).units.kits.length, kits, 'federal teams can\'t buy their own');
+    let fielded = false;
+    for (let i = 0; i < 20 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.requisition', 'team.fema|vehicles:mdrc'); fielded = recordOf(state, fema).pending.length > 0; }
+    assert.ok(fielded, 'a mobile recovery center is on the way');
+    state.service.sdf = { stateId: 'TX', name: 'Texas State Guard', rankIndex: 8, yearsInRank: 2, schools: {}, years: 12, activations: 3, joinedAge: 23 };
+    assert.equal(contextOf(state, 'team.sdf')?.group, 'sdf');
+    // Volunteer police reserves.
+    engine.dispatch('emergency.join', 'police');
+    if (state.emergency.police) assert.equal(contextOf(state, 'vol.police')?.group, 'volPolice');
+    const html = VIEWS.civic(state, {});
+    clean(html);
+    assert.match(html, /Team Team Equipment|Team Deployment Kit/);
   },
 };
 

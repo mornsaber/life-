@@ -5,6 +5,7 @@
 import { esc, money, button, card, chip, kv, disclosure, optionRow } from '../Components.js';
 import { ROLES, MAX_ROLES, roleEligibility, activeRoles } from '../../modules/service/Volunteering.js';
 import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
+import { equipmentCard } from './EquipmentView.js';
 import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRank } from '../../modules/service/StateForces.js';
 import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
 import { POSTS, POST_RANKS, postEligibility, postLeader } from '../../modules/service/VeteranPosts.js';
@@ -110,5 +111,6 @@ export function civicServiceView(state) {
   const history = state.service.history.length
     ? card('Past Service', `<ul class="history">${[...state.service.history].reverse().map((h) => `<li><b>${esc(h.name)}</b> · ${esc(h.title)} <small>${h.years} yrs, ended at ${h.endAge} — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
-  return `${volunteerRoles(state)}<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}${veteranPosts(state)}${history}`;
+  const gear = ['team.sdf', ...Object.keys(TEAMS).map((id) => `team.${id}`)].map((ref) => equipmentCard(state, ref)).join('');
+  return `${volunteerRoles(state)}<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}${gear}${veteranPosts(state)}${history}`;
 }
