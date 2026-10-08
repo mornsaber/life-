@@ -18,6 +18,7 @@ export const EXAM_RANKS = {
   statePolice: ['sergeant', 'lieutenant', 'captain'],
   transitPolice: ['sergeant', 'lieutenant'],
   airportPolice: ['sergeant', 'lieutenant', 'captain'],
+  universityPolice: ['sergeant', 'lieutenant'],
   airportFire: ['lieutenant', 'captain', 'battalion'],
   fire: ['lieutenant', 'captain', 'battalion'],
 };

@@ -60,6 +60,16 @@ export const GROUPS = {
       stations: { name: 'Police posts in the terminals', icon: '🛂', need: need(1, 2, 3, 5), weight: 1, facility: true, models: { post: M('Leased terminal police post', 0, 99, 0, { rent: 45000 }) } },
     },
   },
+  campusPolice: {
+    name: 'Fleet & Facilities', categories: {
+      patrol: { name: 'Patrol cars', icon: '🚓', need: need(3, 6, 12, 25), weight: 3, models: { suv: M('Police Interceptor SUV', 55000, 5, 7000, { lease: true }), hybrid: M('Hybrid Interceptor', 58000, 5, 4000, { lease: true }) } },
+      bikes: { name: 'Bicycles & carts', icon: '🚲', need: need(4, 8, 16, 30), weight: 0.5, models: { bike: M('Police mountain bike', 2500, 5, 200), cart: M('Electric patrol cart', 14000, 6, 800) } },
+      phones: { name: 'Blue-light emergency phones', icon: '🔵', need: need(20, 50, 120, 250), weight: 1, models: { pole: M('Blue-light emergency call box', 8000, 15, 300) } },
+      radios: { name: 'Radios & body cameras', icon: '📻', need: need(6, 15, 35, 70), weight: 1.5, models: { p25: M('P25 radio + body camera kit', 9000, 6, 600) } },
+      cameras: { name: 'Campus security cameras', icon: '📹', need: need(60, 150, 400, 900), weight: 1, models: { cam: M('IP security camera', 2500, 7, 150) } },
+      stations: { name: 'Police station & substations', icon: '🏢', need: need(1, 1, 2, 3), weight: 1, facility: true, models: { own: M('Campus police station (build with a bond)', 4000000, 40, 80000, { build: true }), dorm: M('Leased residence-hall substation', 0, 99, 0, { rent: 24000 }) } },
+    },
+  },
   fire: {
     name: 'Apparatus & Stations', categories: {
       engine: { name: 'Engines', icon: '🚒', need: need(1, 3, 8, 20), weight: 3, models: {
@@ -118,7 +128,7 @@ export const GROUPS = {
 };
 
 const PROFESSION_GROUP = {
-  police: 'police', sheriff: 'police', statePolice: 'police', transitPolice: 'police', privatePolice: 'police', airportPolice: 'airportPolice',
+  police: 'police', sheriff: 'police', statePolice: 'police', transitPolice: 'police', privatePolice: 'police', airportPolice: 'airportPolice', universityPolice: 'campusPolice',
   fire: 'fire', airportFire: 'arff', ems: 'ems', privateEms: 'ems', transit: 'transit', schoolBus: 'transit', paratransit: 'transit', publicWorks: 'publicWorks',
 };
 
@@ -227,6 +237,7 @@ function autoReplace(d, job, share) {
 /* ------------------------------------------------------------------ */
 
 const BAD = {
+  campusPolice: ['Three blue-light phones on the north quad have been dead for a month; a student reported it after a scary night.', 'The camera system\'s server failed during a burglary investigation.'],
   police: ['A patrol car\'s transmission died in the middle of a pursuit.', 'Radios dropped out during a shooting call — the system is past its life.', 'Officers doubled up two to a car because a third of the fleet is in the shop.'],
   airportPolice: ['A patrol truck broke down on the airfield perimeter road.', 'The K-9 vehicle\'s climate system failed in August; the dog was pulled from duty.'],
   fire: ['An engine broke down on the way to a house fire; the second-due engine arrived four minutes later.', 'The ladder truck failed its annual aerial test and sat out for a month.', 'An SCBA failed a firefighter mid-fire. He made it out.'],

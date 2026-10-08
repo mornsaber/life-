@@ -33,7 +33,7 @@ import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 
-export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice'];
+export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice', 'universityPolice'];
 export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
 
 const CITY = ['police', 'sheriff', 'transitPolice'];
@@ -46,7 +46,8 @@ export const AREAS = {
   highway: { name: 'Highway patrol', icon: '🛣️', calls: 0.8, risk: 0.9, stress: 3, only: ['statePolice'], desc: 'Crashes, DUIs and interdiction stops on the interstate.' },
   terminal: { name: 'Terminals & curbside', icon: '🛄', calls: 0.9, risk: 0.5, stress: 3, only: ['airportPolice'], desc: 'Unruly passengers, unattended bags, lost children and curbside chaos.' },
   airfield: { name: 'Airfield & cargo', icon: '🛫', calls: 0.5, risk: 0.6, stress: 2, only: ['airportPolice'], desc: 'Perimeter fence, cargo theft and runway incursions.' },
-  campus: { name: 'Campus / hospital patrol', icon: '🏫', calls: 0.6, risk: 0.5, stress: 2, only: ['privatePolice'], desc: 'Dorms, emergency rooms and parking structures — or the rail yards.' },
+  campus: { name: 'Campus / hospital patrol', icon: '🏫', calls: 0.6, risk: 0.5, stress: 2, only: ['privatePolice', 'universityPolice'], desc: 'Dorms, labs, parking structures and the hospital ER — or, for railroad police, the rail yards.' },
+  gameday: { name: 'Athletics & events', icon: '🏟️', calls: 0.7, risk: 0.5, stress: 3, only: ['universityPolice'], desc: 'Football Saturdays, concerts and commencement: 90,000 people and a lot of beer.' },
 };
 
 export const SHIFTS = {
@@ -141,6 +142,33 @@ const CALLS = [
   ] },
 ];
 
+/** Campus policing: Clery Act warnings, Title IX, parties, protests, threat assessment. */
+const CAMPUS_CALLS = [
+  { id: 'clery', icon: '📣', title: 'Timely Warning', text: 'Two armed robberies near campus in one night. The Clery Act requires a "timely warning" to students — the administration worries about headlines during admissions season.', options: [
+    { id: 'warn', label: '📱 Send the alert to every phone now', text: 'Students walked in groups that night. The suspect was caught on the third day.', perf: 5 },
+    { id: 'delay', label: '⏳ Wait until there\'s more information', text: 'You waited.', risk: { chance: 0.4, perf: -12, text: 'A third robbery happened before the alert. The Department of Education opened a Clery investigation.' } },
+  ] },
+  { id: 'titleix', icon: '🫂', title: 'A Sexual Assault Report', text: 'A student reports she was assaulted at a fraternity party. She\'s not sure she wants a criminal case.', options: [
+    { id: 'trauma', label: '🫂 Trauma-informed interview; explain both the criminal and Title IX paths', check: 50, text: 'She chose to go forward. The case was the first one in years the DA charged.', perf: 6, commend: 0.3, fail: { text: 'She stopped answering your calls. You still connected her with the advocate.', perf: 1 } },
+    { id: 'hand', label: '📋 Hand it off to the Title IX office', text: 'The Title IX office took it from there.', perf: -1 },
+  ] },
+  { id: 'party', icon: '🍺', title: 'The Party', text: 'An off-campus party with three hundred students. A girl is unconscious on the lawn.', options: [
+    { id: 'medical', label: '🚑 Call medics; amnesty for whoever called 911', text: 'Alcohol poisoning — she lived because her friend called. The amnesty policy did its job.', perf: 5, lifesave: true },
+    { id: 'citations', label: '📝 Shut it down and write citations', text: 'You wrote forty tickets. Nobody will call 911 next time.', perf: 1, complaint: 0.3 },
+  ] },
+  { id: 'protest', icon: '🪧', title: 'Encampment on the Quad', text: 'Students have pitched tents on the quad. The president wants it cleared tonight.', options: [
+    { id: 'talk', label: '🗣️ Negotiate a timeline with student leaders', check: 50, text: 'They took the tents down on their own on Friday. No arrests, no headlines.', perf: 6, fail: { text: 'Talks broke down; the state police cleared it and the video went national.', complaint: 0.5 } },
+    { id: 'clear', label: '🚓 Clear it with mutual aid', text: 'Eighty arrests. The faculty senate voted no confidence in the president — and you.', uof: 1, complaint: 0.8, perf: -2 },
+  ] },
+  { id: 'threat', icon: '⚠️', title: 'Threat Assessment', text: 'A student\'s posts have turned dark: a list of names and a photo of a rifle.', options: [
+    { id: 'bitTeam', label: '🧩 Convene the threat-assessment team and do a welfare check', check: 45, text: 'He was in crisis, not planning. He took a medical leave and got help.', perf: 8, commend: 0.4, fail: { text: 'He was planning. You found the rifle in his car, and stopped it.', perf: 12, valor: false, arrest: 1 } },
+  ] },
+  { id: 'gameday', icon: '🏟️', title: 'Game Day', text: 'Ninety thousand fans, a rival team, and a fight spilling out of the student section.', options: [
+    { id: 'wade', label: '🚓 Wade in and separate them', text: 'Two arrests, one black eye — yours.', arrest: 2, injury: 0.2, perf: 3 },
+    { id: 'cameras', label: '🎥 Watch the cameras and grab them at the exits', text: 'Clean arrests at Gate 4. The crowd never noticed.', arrest: 2, perf: 4 },
+  ] },
+];
+
 const UNIT_EVENTS = {
   narcotics: { id: 'cash', icon: '💵', title: 'The Duffel Bag', text: 'A raid turned up $240,000 in a duffel bag. Nobody has counted it yet but you.', options: [
     { id: 'log', label: '📋 Count it on camera and log it', text: 'Every dollar went into evidence.', perf: 3 },
@@ -159,7 +187,10 @@ function callPrompt(ctx, job) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'police.call')) return;
   const u = pd(state).unit;
-  const pool = UNIT_EVENTS[u] && rng.chance(0.4) ? [UNIT_EVENTS[u]] : CALLS.filter((c) => c.id !== 'shooter' || rng.chance(0.15));
+  const campus = ['campus', 'gameday'].includes(pd(state).area) && job.professionId === 'universityPolice';
+  const pool = UNIT_EVENTS[u] && rng.chance(0.4) ? [UNIT_EVENTS[u]]
+    : campus && rng.chance(0.6) ? CAMPUS_CALLS
+      : CALLS.filter((c) => (c.id !== 'shooter' || rng.chance(0.15)) && (!campus || c.id !== 'stop'));
   const c = rng.pick(pool);
   ctx.prompt({ type: 'police.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label, tone }) => ({ id, label, tone })), data: { callId: c.id } });
 }
@@ -232,7 +263,7 @@ export const PoliceLifeModule = {
       const p = pd(ctx.state);
       p.unit = null;
       p.bureau = null;
-      if (!p.area || (AREAS[p.area].only && !AREAS[p.area].only.includes(job.professionId))) p.area = { statePolice: 'highway', sheriff: 'rural', airportPolice: 'terminal', privatePolice: 'campus' }[job.professionId] ?? 'downtown';
+      if (!p.area || (AREAS[p.area].only && !AREAS[p.area].only.includes(job.professionId))) p.area = { statePolice: 'highway', sheriff: 'rural', airportPolice: 'terminal', privatePolice: 'campus', universityPolice: 'campus' }[job.professionId] ?? 'downtown';
       applyPay(ctx.state, job);
     });
   },
@@ -351,7 +382,7 @@ export const PoliceLifeModule = {
   resolvers: {
     call(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const c = [...CALLS, ...Object.values(UNIT_EVENTS)].find((x) => x.id === data.callId);
+      const c = [...CALLS, ...CAMPUS_CALLS, ...Object.values(UNIT_EVENTS)].find((x) => x.id === data.callId);
       const o = c?.options.find((x) => x.id === optionId);
       if (!o) return;
       let fx = o;

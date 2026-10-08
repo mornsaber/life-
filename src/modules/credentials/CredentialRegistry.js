@@ -305,10 +305,10 @@ export const REQUIRED_BY = {};
  * course as a city police sergeant.
  */
 export const AGENCY_FAMILIES = {
-  sworn: ['police', 'sheriff', 'statePolice', 'privatePolice', 'transitPolice', 'airportPolice', 'gameWarden', 'parkService', 'oig', 'fbi', 'dea', 'atf', 'usms', 'usss'],
+  sworn: ['police', 'sheriff', 'statePolice', 'privatePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'gameWarden', 'parkService', 'oig', 'fbi', 'dea', 'atf', 'usms', 'usss'],
   custody: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'sheriff', 'probation'],
   crisis: ['ems', 'privateEms', 'fire', 'airportFire', 'dispatch', 'socialWork', 'cps', 'nursing', 'publicHealth'],
-  patrol: ['police', 'sheriff', 'statePolice', 'transitPolice', 'privatePolice', 'airportPolice'],
+  patrol: ['police', 'sheriff', 'statePolice', 'transitPolice', 'privatePolice', 'airportPolice', 'universityPolice'],
 };
 const COURSE_FAMILIES = {
   fto: ['sworn', 'custody'],

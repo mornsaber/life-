@@ -15,6 +15,7 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { DeptEquipmentModule, deptOf, readiness, canManage } from '../src/modules/publicsafety/DeptEquipment.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
+import { PoliceLifeModule } from '../src/modules/publicsafety/PoliceLife.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -83,6 +84,26 @@ const tests = {
     const r = readiness(state);
     for (let i = 0; i < 8; i++) tick(ctx, state);
     assert.ok(readiness(state) < r, `fleets age without investment (${r} → ${readiness(state)})`);
+  },
+
+  'university police: a state agency on campus, with campus calls and blue-light phones'() {
+    const { state, ctx, engine } = worker(6, 'universityPolice', 'officer', ['post', 'driverLicense']);
+    assert.equal(getProfession('universityPolice').sector, 'state');
+    assert.equal(state.police.area, 'campus');
+    assert.ok(deptOf(state).units.phones.length > 10, 'blue-light phones');
+    let campus = false;
+    for (let i = 0; i < 15 && !campus; i++) {
+      state.prompts = [];
+      state.career.job.paidThisYear = true;
+      state.character.age += 1;
+      state.yearly = {};
+      PoliceLifeModule.onAgeUp(ctx);
+      const p = state.prompts.find((x) => x.type === 'police.call');
+      campus = Boolean(p && ['clery', 'titleix', 'party', 'protest', 'threat', 'gameday'].includes(p.data.callId));
+      if (p) engine.resolvePrompt(p.id, p.options[0].id);
+    }
+    assert.ok(campus, 'campus calls');
+    assert.ok(!/NaN|undefined/.test(VIEWS.career(state, {})));
   },
 
   'airport police and ARFF exist, train and fight aircraft fires'() {

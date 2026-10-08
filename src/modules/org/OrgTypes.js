@@ -123,7 +123,10 @@ export const ORG_TYPES = {
   stateLegislature: { name: (c) => `${c.state} Legislature`, scope: 'state', sector: 'state', head: { title: 'Speaker of the House', selection: 'elected', office: 'stateRep' },
     departments: [{ id: 'staff', name: 'Legislative Staff', occupations: ['legislativeStaff'], head: { title: 'Chief Clerk', selection: 'internal' } }] },
   stateUniversity: { name: (c) => `${c.state} State University`, scope: 'state', sector: 'state', head: { title: 'University President', selection: 'board', appointedBy: 'the board of regents', occupation: 'university', levelId: 'president' },
-    departments: [{ id: 'academic', name: 'Academic Affairs', occupations: ['university'], head: { title: 'Provost', selection: 'internal', occupation: 'university', levelId: 'provost' } }] },
+    departments: [
+      { id: 'academic', name: 'Academic Affairs', occupations: ['university'], head: { title: 'Provost', selection: 'internal', occupation: 'university', levelId: 'provost' } },
+      { id: 'police', name: 'University Police', occupations: ['universityPolice'], head: { title: 'Chief of University Police', selection: 'appointed', appointedBy: 'the university president', occupation: 'universityPolice', levelId: 'chief' } },
+    ] },
 
   /* ---------------- Federal government ---------------- */
   doj: {
