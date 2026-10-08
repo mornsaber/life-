@@ -323,6 +323,9 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
 /** Extra years at the top of one track before competing for the other. */
 export const CROSS_TRACK_YEARS = 6;
 
+/** (state, job, level) → reason a rung is held back, or null. */
+export const PROMO_GATES = [];
+
 export function promotionStatus(state) {
   const job = state.career.job;
   if (!job) return { eligible: false, reason: 'Unemployed', options: [], all: [] };
@@ -358,8 +361,12 @@ export function promotionStatus(state) {
     const left = Math.max(0, levelYears(job, level) + CROSS_TRACK_YEARS - job.yearsInLevel);
     return { eligible: false, reason: left ? `Top of your track — ${left} more year${left > 1 ? 's' : ''} before you can compete for ${crossing[0].title}` : `Top of your track — a strong record (75+) to compete for ${crossing[0].title}`, options: [], all };
   }
-  const qualified = all.filter((l) => levelCheck(state, l).ok);
-  if (!qualified.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options: qualified, all };
+  const checked = all.filter((l) => levelCheck(state, l).ok);
+  if (!checked.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options: checked, all };
+  // Other modules can hold a rung back (civil-service promotional lists, …).
+  const gated = checked.map((l) => ({ l, why: PROMO_GATES.map((g) => g(state, job, l)).find(Boolean) }));
+  const qualified = gated.filter((x) => !x.why).map((x) => x.l);
+  if (!qualified.length) return { eligible: false, reason: gated[0].why, options: qualified, all, gated: true };
   // Promotions need an open seat.
   const options = qualified.filter((l) => hasOpening(job, l));
   if (!options.length) return { eligible: false, reason: openingReason(job, qualified[0]), options, all, noOpening: true };

@@ -18,7 +18,7 @@ const JOB_TYPES = new Set([
   'medicine.claim', 'medicine.fellowship', 'medLife.residencyEvent', 'medLife.practice', 'medLife.partner', 'medLife.buyout', 'medLife.burnout', 'medLife.moc', 'medLife.pillMill', 'medLife.patientEvent',
   'emsLife.setup', 'emsLife.call', 'emsLife.event', 'emsLife.burnout',
   'clinical.setup', 'clinical.event', 'clinical.burnout',
-  'volunteering.moment',
+  'police.call', 'fireLife.call',
   'ses.detail', 'ses.offer', 'ses.reassign', 'ses.transition', 'ses.nomination',
 ]);
 const SERVICE_TYPES = new Set([
