@@ -27,6 +27,7 @@ import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { orgType, sideRng, newPerson, seatHolders, supervises, personOf, initOrgs } from './Organizations.js';
+import { randomName } from '../../core/State.js';
 import { departure, seat } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
 
@@ -113,12 +114,22 @@ export function syncBusinessOrg(state, biz) {
   for (const d of t.departments) if (!org.departments[d.id] && (!d.minStaff || n >= d.minStaff)) org.departments[d.id] = { id: d.id, name: d.name, head: null, headcount: 0, seats: {} };
   const depts = Object.values(org.departments).filter((d) => !d.branch);
   const branchStaff = org.branches.length ? Math.round(n * (org.branches.length / (org.branches.length + 1))) : 0;
-  const main = n - branchStaff;
+  // People you hired into a specific department stay counted there.
+  const extra = biz.staff.extra ?? {};
+  for (const id of Object.keys(extra)) if (!org.departments[id] || extra[id] <= 0) delete extra[id];
+  let extraTotal = Object.values(extra).reduce((a, b) => a + b, 0);
+  if (extraTotal > n - branchStaff) {
+    const f = (n - branchStaff) / extraTotal;
+    for (const id of Object.keys(extra)) extra[id] = Math.floor(extra[id] * f);
+    extraTotal = Object.values(extra).reduce((a, b) => a + b, 0);
+  }
+  const main = n - branchStaff - extraTotal;
   const primary = depts[0];
   const others = depts.slice(1);
   const otherShare = others.length ? Math.min(0.35, 0.1 * others.length) : 0;
   primary.headcount = Math.max(0, Math.round(main * (1 - otherShare)));
   for (const d of others) d.headcount = Math.round((main * otherShare) / others.length);
+  for (const d of depts) d.headcount += extra[d.id] ?? 0;
   for (const b of org.branches) org.departments[b.deptId].headcount = Math.round(branchStaff / org.branches.length);
 
   // Layers: department heads once there's someone to lead; executives at scale.
@@ -143,16 +154,19 @@ export function syncBusinessOrg(state, biz) {
     const profession = occ && getProfession(occ);
     if (!profession) continue;
     const { entry, skilled, lead } = staffLevels(profession, org.size);
-    const named = Math.min(6, d.headcount);
+    const picks = Object.values(org.people).filter((p) => p.handPicked && p.deptId === d.id).length;
+    const named = Math.min(6 + picks, d.headcount);
     const leads = lead && d.headcount >= TIERS.manager ? Math.min(3, Math.ceil(d.headcount / 12)) : 0;
     const plan = [[skilled, Math.ceil(named * 0.6)], [entry, Math.floor(named * 0.4)], ...(lead ? [[lead, leads]] : [])];
     for (const [level, count] of plan) {
       if (!level) continue;
-      const have = (d.seats[occ]?.[level.id] ?? []).filter((id) => org.people[id]);
+      // People you picked yourself are the last to go.
+      const have = (d.seats[occ]?.[level.id] ?? []).filter((id) => org.people[id]).sort((a, b) => (org.people[b].handPicked ? 1 : 0) - (org.people[a].handPicked ? 1 : 0));
       if (have.length > count) {
         const leaders = new Set([org.ceo, ...Object.values(org.departments).map((x) => x.head)]);
-        for (const id of have.slice(count)) if (!leaders.has(id)) delete org.people[id];
-        d.seats[occ][level.id] = have.slice(0, count);
+        const keep = have.filter((id, i) => i < count || leaders.has(id) || org.people[id].handPicked);
+        for (const id of have) if (!keep.includes(id)) delete org.people[id];
+        d.seats[occ][level.id] = keep;
       } else if (count) {
         for (const p of seatHolders(state, org, d.id, occ, level.id, count)) if (p.selection === 'internal' && p.years > 0 && !p.hiredBy) { p.selection = 'hired'; p.hiredBy = 'founder'; }
       }
@@ -167,6 +181,50 @@ export function syncBusinessOrg(state, biz) {
     org.ceo = newPerson(rng, org, { title: n >= TIERS.executives ? 'Chief Executive Officer' : 'General Manager', selection: 'hired', age: rng.int(38, 60), years: 0, performance: rng.int(50, 80) }).id;
   } else personOf(org, org.ceo).title = n >= TIERS.executives ? 'Chief Executive Officer' : 'General Manager';
   return org;
+}
+
+/**
+ * Three people applying for a job in a department: a green, cheap hire; a
+ * solid one at the going rate; and a star who wants top dollar.
+ */
+export function recruitCandidates(state, biz, deptId) {
+  const org = businessOrg(state, biz);
+  const d = org?.departments[deptId];
+  if (!d) return [];
+  const t = orgType(org.typeId);
+  const primary = Object.values(org.departments).find((x) => !x.branch);
+  const occ = d.branch ? occupationOf(t, primary?.id) : occupationOf(t, deptId);
+  const profession = occ && getProfession(occ);
+  if (!profession) return [];
+  const { entry, skilled } = staffLevels(profession, org.size);
+  const rng = sideRng(state);
+  const make = (level, perf, years, wage, pitch) => {
+    const gender = rng.pick(['male', 'female']);
+    const n = randomName(rng, gender);
+    return { name: `${n.firstName} ${n.lastName}`, gender, age: Math.min(62, 21 + years + rng.int(0, 8)), years, performance: perf, professionId: occ, levelId: level.id, title: level.title, wage, pitch };
+  };
+  return [
+    make(entry, rng.int(42, 62), rng.int(0, 1), 0.85, 'Just finished training: cheap and eager, still learning'),
+    make(skilled, rng.int(58, 74), rng.int(3, 8), 1, 'Solid and experienced; asks the going rate'),
+    make(skilled, rng.int(74, 92), rng.int(8, 20), 1.3, 'A star from a competitor — wants top dollar'),
+  ];
+}
+
+/** Hire a candidate into a department: one more on staff, and a named person on the roster. */
+export function hireCandidate(state, biz, deptId, c) {
+  const org = businessOrg(state, biz);
+  const d = org?.departments[deptId];
+  if (!d || !c) return null;
+  const p = newPerson(sideRng(state), org, { name: c.name, gender: c.gender, age: c.age, years: 0, performance: c.performance, professionId: c.professionId, levelId: c.levelId, title: c.title, deptId, selection: 'hired', hiredBy: 'owner', handPicked: true, rel: 62 });
+  ((d.seats[c.professionId] ??= {})[c.levelId] ??= []).unshift(p.id);
+  const s = biz.staff;
+  s.headcount += 1;
+  s.extra = { ...(s.extra ?? {}), [deptId]: (s.extra?.[deptId] ?? 0) + 1 };
+  // Pay and skill average into the team's.
+  s.costPremium = Math.round(((s.costPremium ?? 0) + (c.wage - 1) / s.headcount) * 10000) / 10000;
+  s.productivity = Math.round(clamp((s.productivity ?? 55) + (c.performance - (s.productivity ?? 55)) / s.headcount, 0, 100));
+  syncBusinessOrg(state, biz);
+  return p;
 }
 
 /** Everyone named in the business, grouped for display: [{ dept, head, people[] }]. */

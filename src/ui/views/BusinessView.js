@@ -159,7 +159,8 @@ function orgCard(state, biz) {
     ].map(([i, l, a]) => button(`${i} ${l}`, a, { arg: p.id, variant: 'tiny', disabled: left <= 0 })).join('')}
     ${otherDepts.length > 1 ? `<span data-collect-root><input type="hidden" data-part="p" value="${p.id}">${select('dept', otherDepts.filter((d) => d.id !== p.deptId).map((d) => ({ value: d.id, label: d.name })))}${button('🔀 Move', 'business.staffTransfer', { variant: 'tiny', collect: true, disabled: left <= 0 })}</span>` : ''}
     ${button('🚪 Fire', 'business.staffFire', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`;
-  const sections = depts.map(({ dept, head, people }) => `<h4 class="sub">${esc(dept.name)} <small class="muted">~${dept.headcount} staff</small></h4>
+  const searches = 6 - (state.yearly['business.recruit'] ?? 0);
+  const sections = depts.map(({ dept, head, people }) => `<h4 class="sub">${esc(dept.name)} <small class="muted">~${dept.headcount} staff</small> ${button('👋 Hire', 'business.recruit', { arg: dept.id, variant: 'tiny', disabled: searches <= 0, hint: searches > 0 ? 'Interview three applicants' : 'No more searches this year' })}</h4>
     ${head ? `<p class="fine">👤 ${esc(head.name)}, ${esc(head.title)}</p>` : `<p class="fine">Reports directly to you.</p>`}
     ${people.length ? `<ul class="history">${people.map(personRow).join('')}</ul>` : ''}`).join('');
   const ceo = pos.ceo;
@@ -168,6 +169,7 @@ function orgCard(state, biz) {
     ${ceo ? `<p>👔 <b>${esc(ceo.name)}</b> runs it day to day as ${esc(ceo.title)} (performance ${ceo.performance}).</p>` : '<p class="muted">You run it day to day.</p>'}
     <p class="fine">The structure grows with you: a manager layer at ${TIERS.manager}+ staff, executives and finance/HR departments at ${TIERS.executives}+. ${left > 0 ? `${left} people decision${left > 1 ? 's' : ''} left this year.` : 'No more people decisions this year.'}</p>
     <div class="action-grid">${button(ceo ? '👔 Replace the chief executive' : '👔 Hire someone to run it', 'business.appointCeo', { hint: 'You stay the owner' })}${ceo ? button('🗂️ Step back to a passive owner', 'business.makePassive', { hint: 'Frees you to start or buy another business' }) : ''}</div>
+    <p class="fine">👋 Hire into any department below: you pick from three applicants, from a cheap beginner to an expensive star (${Math.max(0, searches)} search${searches === 1 ? '' : 'es'} left this year). Firing someone leaves the seat empty.</p>
     ${sections}`, { icon: '🏢' });
 }
 

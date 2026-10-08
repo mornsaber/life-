@@ -14,7 +14,7 @@ import { ladderFor } from '../career/Ladder.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { currentBusiness, typeOf, valuation, exitProceeds, debtBalance } from './Business.js';
 import {
-  businessOrg, syncBusinessOrg, competitorsOf, closeBranch, openBranch, sizeForHeadcount, ownerPosition, dissolve,
+  businessOrg, syncBusinessOrg, competitorsOf, closeBranch, openBranch, sizeForHeadcount, ownerPosition, dissolve, recruitCandidates, hireCandidate,
 } from '../org/Businesses.js';
 import { personOf, sideRng, newPerson } from '../org/Organizations.js';
 import { seat } from '../org/Vacancies.js';
@@ -141,6 +141,9 @@ export const OwnerActions = {
     for (const byLevel of Object.values(dept?.seats ?? {})) for (const k of Object.keys(byLevel)) byLevel[k] = byLevel[k].filter((id) => id !== p.id);
     rememberDeparture(state, org, p, 'was fired');
     delete org.people[p.id];
+    // The seat stays empty until you hire someone.
+    biz.staff.headcount = Math.max(0, biz.staff.headcount - 1);
+    if (p.handPicked && biz.staff.extra?.[p.deptId]) biz.staff.extra[p.deptId] -= 1;
     biz.staff.morale = Math.round(clamp(biz.staff.morale + (justified ? -1 : -6), 0, 100));
     if (!justified && rng.chance(0.15)) {
       const cost = rng.int(15000, 60000);
@@ -148,6 +151,30 @@ export const OwnerActions = {
       ctx.log(`You fired ${p.name}, who sued for wrongful termination. The settlement cost ${money(cost)}.`, '⚖️', 'bad');
     } else ctx.log(`You fired ${p.name}${justified ? '' : '. The team didn\'t see it coming'}.`, '🚪', justified ? 'info' : 'warn');
     syncBusinessOrg(state, biz);
+  },
+  /** Advertise a job in a department: three applicants to choose from. */
+  recruit(ctx, deptId) {
+    const { state } = ctx;
+    const biz = withBiz(ctx);
+    if (!biz) return;
+    const org = businessOrg(state, biz);
+    const d = org?.departments[deptId];
+    if (!d) return ctx.toast('No such department.', 'warn');
+    if ((state.yearly['business.recruit'] ?? 0) >= 6) return ctx.toast('You\'ve run six searches this year — hire a recruiter (delegate hiring) or wait.', 'warn');
+    if (state.prompts.some((x) => x.type === 'business.recruit')) return;
+    bumpYearly(state, 'business.recruit');
+    const candidates = recruitCandidates(state, biz, deptId);
+    if (!candidates.length) return ctx.toast('Nobody applied.', 'warn');
+    const salary = (c) => money(typeOf(biz).wage * c.wage);
+    ctx.prompt({
+      type: 'business.recruit', icon: '👋', title: `Hiring: ${d.name}`,
+      text: `${candidates.length} people applied for a ${candidates[1].title.toLowerCase()} opening at ${biz.name}.`,
+      options: [
+        ...candidates.map((c, i) => ({ id: String(i), label: `${['🌱', '👍', '⭐'][i]} ${c.name}, ${c.title} · ${c.years} yr experience · ~${salary(c)}/yr`, hint: `${c.pitch} · interview score ${c.performance}` })),
+        { id: 'none', label: '🙅 Keep looking' },
+      ],
+      data: { deptId, candidates },
+    });
   },
   /** arg: 'personId:deptId' — move someone to another department or branch. */
   staffTransfer(ctx, arg) {
@@ -349,6 +376,14 @@ function absorb(state, biz, target, how) {
 }
 
 export const OwnerResolvers = {
+  recruit(ctx, data, optionId) {
+    const { state } = ctx;
+    const biz = currentBusiness(state);
+    const c = data?.candidates?.[Number(optionId)];
+    if (!biz || !c) return;
+    const p = hireCandidate(state, biz, data.deptId, c);
+    if (p) ctx.log(`You hired ${p.name} as ${/^[aeiou]/i.test(p.title) ? 'an' : 'a'} ${p.title} (${biz.staff.headcount} on staff).`, '👋', 'good');
+  },
   appointCeo(ctx, _data, optionId) {
     const { state } = ctx;
     const biz = currentBusiness(state);

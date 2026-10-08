@@ -14,6 +14,7 @@ import { startEligibility, yearFinancials, newBusiness } from '../src/modules/bu
 import { OPERATIONS, capacity, contracted } from '../src/modules/business/Operations.js';
 import { opsTick } from '../src/modules/business/FleetActions.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { businessRoster, syncBusinessOrg } from '../src/modules/org/Businesses.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed, { profession = 'trucking', creds = ['cdlA', 'driverLicense'] } = {}) {
@@ -130,6 +131,31 @@ const tests = {
     delete biz.ops;
     year(engine);
     assert.ok(state.business.current.ops?.units.length >= 1);
+  },
+
+  'recruiting: pick an applicant for a department; they stay on the roster; firing empties the seat'() {
+    const { engine, state } = setup(8, { profession: 'retail', creds: [] });
+    engine.dispatch('business.start', 'retail:cash:llc:standard:');
+    const biz = state.business.current;
+    const dept = businessRoster(state, biz)[0].dept;
+    const before = biz.staff.headcount;
+    state.prompts = [];
+    engine.dispatch('business.recruit', dept.id);
+    const p = state.prompts.find((x) => x.type === 'business.recruit');
+    assert.ok(p, 'applicants');
+    assert.equal(p.options.length, 4);
+    const star = p.data.candidates[2];
+    engine.resolvePrompt(p.id, '2');
+    assert.equal(biz.staff.headcount, before + 1, 'one more on staff');
+    const named = () => businessRoster(state, biz).flatMap((r) => r.people).find((x) => x.name === star.name);
+    assert.ok(named(), 'the star is on the roster');
+    for (let i = 0; i < 3; i++) syncBusinessOrg(state, biz);
+    assert.ok(named(), 'and stays there after the org re-syncs');
+    assert.ok(biz.staff.costPremium > 0, 'stars cost more');
+    const n = biz.staff.headcount;
+    engine.dispatch('business.staffFire', named().id);
+    assert.equal(biz.staff.headcount, n - 1, 'firing leaves the seat empty');
+    assert.match(VIEWS.business(state, {}), /business\.recruit/);
   },
 
   'ordinary businesses: staffing changes output'() {
