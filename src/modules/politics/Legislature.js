@@ -116,6 +116,44 @@ function pickLeaders(body, rng) {
   }
 }
 
+/* ------------------------------------------------------------------ */
+/* Member profiles                                                     */
+/* ------------------------------------------------------------------ */
+
+export const BACKGROUNDS = ['Attorney', 'Small-business owner', 'Public-school teacher', 'Union electrician', 'Registered nurse', 'Farmer', 'Retired police officer', 'Army veteran', 'Physician', 'Real estate developer', 'Nonprofit director', 'Accountant', 'Firefighter', 'Pastor', 'Tech executive', 'Community organizer', 'Former city council aide', 'Restaurant owner', 'Professor', 'Banker'];
+/** How firmly a member holds the caucus line: moderates cross over; hardliners never do. */
+export const leanLabel = (m) => (Math.abs(m.lean) >= 75 ? 'Hardliner' : Math.abs(m.lean) >= 40 ? 'Firm' : 'Moderate');
+const PROFILE_LAWS = Object.keys(LAWS);
+
+/** Fill in a member's profile (new members, and older saves). Never leaves undefined fields. */
+function fillProfile(m, rng, body) {
+  m.id ??= rng.id('leg_');
+  m.age ??= rng.int(32, 74);
+  m.background ??= rng.pick(BACKGROUNDS);
+  if (m.lean == null) m.lean = (m.caucus === 'labor' ? -1 : 1) * rng.int(15, 100);
+  m.focus ??= rng.pick(PROFILE_LAWS.filter((id) => LAWS[id].levels.includes(body.level)));
+  m.committee ??= rng.pick(Object.keys(COMMITTEES));
+  m.rel ??= 50;
+  m.votes ??= [];
+  m.sponsored ??= [];
+  return m;
+}
+
+/** A district label that fits the body. */
+export const districtLabel = (body, m) => (body.kind === 'council' ? `Ward ${m.district}` : body.kind === 'usSenate' || body.kind === 'senate' ? `${body.kind === 'usSenate' ? 'Seat' : 'District'} ${m.district}` : `District ${m.district}`);
+
+/** How a named member votes on a bill: the caucus line, except moderates sometimes cross over (or follow their pet issue). */
+function memberVote(m, bill, rng) {
+  if (m.you) return null;
+  const labor = favorsLabor(bill.lawId, bill.direction);
+  const withCaucus = (m.caucus === 'labor') === labor;
+  const firmness = Math.abs(m.lean) / 100;
+  let p = withCaucus ? 0.75 + 0.24 * firmness : 0.3 - 0.29 * firmness;
+  if (m.focus === bill.lawId) p = withCaucus ? 0.99 : p * 0.5;
+  if (bill.sponsor === 'you') p = clamp(p + (m.rel - 50) / 250 + (bill.pledges?.includes(m.id) ? 0.4 : 0), 0.01, 0.99);
+  return rng.chance(p);
+}
+
 /** Members you can name: everyone on a council, the senior members of a bigger chamber. */
 export const ROSTER_SIZE = (body) => Math.min(body.seats, 15);
 function syncMembers(body, rng) {
@@ -139,7 +177,7 @@ function syncMembers(body, rng) {
     body.members.push({ name: personName(rng), caucus, district: 0, terms: rng.int(1, 6) });
     if (caucus === 'labor') labor += 1; else biz += 1;
   }
-  body.members.forEach((m, i) => { m.district = m.district || i + 1; });
+  body.members.forEach((m, i) => { m.district = m.district || i + 1; fillProfile(m, rng, body); });
 }
 
 function newBody(state, kind, where, rng) {
@@ -166,7 +204,9 @@ export function ensureBodies(state) {
       const id = bodyId(kind, where);
       if (!state.legislature.bodies[id]) state.legislature.bodies[id] = newBody(state, kind, where, legRng(state));
       // Older saves: name the members and committee chairs.
-      if (!state.legislature.bodies[id].members) pickLeaders(state.legislature.bodies[id], legRng(state));
+      const b = state.legislature.bodies[id];
+      if (!b.members) pickLeaders(b, legRng(state));
+      else if (b.members.some((m) => !m.id)) { const r = legRng(state); for (const m of b.members) fillProfile(m, r, b); }
       out.push(state.legislature.bodies[id]);
     }
   }
@@ -262,6 +302,13 @@ function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
     }
     bill.yes = v.yes;
     bill.floorIn = body.id;
+    // The named members' votes go on their records.
+    for (const m of body.members ?? []) {
+      const vote = memberVote(m, bill, rng);
+      if (vote === null) continue;
+      m.votes = [...(m.votes ?? []).slice(-7), { age: state.character.age, lawId: bill.lawId, title: billTitle(bill), vote: vote ? 'yes' : 'no' }];
+      if (bill.sponsor === 'you') m.rel = Math.round(clamp((m.rel ?? 50) + (vote ? 2 : -1), 0, 100));
+    }
     bill.no = v.no;
     if (v.yes * 2 <= body.seats) return finish(ctx, bill, 'dead', `failed in the ${body.name} ${v.yes}–${v.no}`);
     myVote = null;
@@ -337,8 +384,14 @@ function npcBills(state, body, rng) {
     const lawId = rng.pick(laws);
     const wantLabor = rng.chance(0.75) ? laborMajority : !laborMajority;
     const direction = (LAWS[lawId].lean === 'labor') === wantLabor ? 'up' : 'down';
-    const b = newBill(state, rng, body.level, body.where, lawId, direction, personName(rng));
-    if (b && !out.some((x) => x.lawId === lawId)) out.push(b);
+    // A member of the majority (or whoever champions the issue) carries it.
+    const champions = (body.members ?? []).filter((m) => !m.you && (m.focus === lawId || m.caucus === (wantLabor ? 'labor' : 'business')));
+    const sponsor = champions.find((m) => m.focus === lawId) ?? (champions.length ? rng.pick(champions) : null);
+    const b = newBill(state, rng, body.level, body.where, lawId, direction, sponsor?.name ?? personName(rng));
+    if (b && !out.some((x) => x.lawId === lawId)) {
+      out.push(b);
+      if (sponsor) sponsor.sponsored = [...(sponsor.sponsored ?? []).slice(-5), { age: state.character.age, title: billTitle(b) }];
+    }
   }
   return out;
 }
@@ -394,7 +447,7 @@ function syncSeat(ctx) {
   const body = state.legislature.bodies[id];
   if (body?.members) {
     body.members = body.members.filter((m) => !m.you);
-    body.members.unshift({ name: `${state.character.firstName} ${state.character.lastName}`, caucus, district: 1, terms: 1, you: true });
+    body.members.unshift(fillProfile({ name: `${state.character.firstName} ${state.character.lastName}`, caucus, district: 1, terms: 1, you: true, age: state.character.age, background: 'You', lean: caucus === 'labor' ? -50 : 50 }, legRng(state), body));
   }
   return state.legislature.seat;
 }
@@ -483,6 +536,48 @@ export const Legislature = {
       seat.record = [...seat.record.slice(-19), { age: state.character.age, text: `Introduced: ${billTitle(bill)}` }];
       if (favorsLabor(lawId, direction)) state.politics.laborVotes = (state.politics.laborVotes ?? 0) + 1;
       ctx.log(`You introduced a bill: ${billTitle(bill)}. It comes to the floor this session.`, LAWS[lawId].icon, 'good');
+      return undefined;
+    },
+    /** Get to know a colleague (coffee, a fundraiser, a district visit). arg: member id */
+    meet(ctx, memberId) {
+      const { state } = ctx;
+      const body = myBody(state);
+      const m = body?.members?.find((x) => x.id === memberId && !x.you);
+      if (!m) return ctx.toast('Only fellow members of your chamber.', 'warn');
+      if (yearlyCount(state, 'legislature.meet') >= 3) return ctx.toast('Three one-on-ones a year — your calendar is full.', 'warn');
+      if (yearlyCount(state, `legislature.meet.${m.id}`)) return ctx.toast(`You already met ${m.name} this year.`, 'warn');
+      bumpYearly(state, 'legislature.meet');
+      bumpYearly(state, `legislature.meet.${m.id}`);
+      const rng = legRng(state);
+      const sameSide = m.caucus === mySeat(state).caucus;
+      const gain = Math.round(rng.int(4, 12) + (state.stats.looks - 50) / 10 + (sameSide ? 4 : 0) - (Math.abs(m.lean) >= 75 && !sameSide ? 6 : 0));
+      m.rel = Math.round(clamp(m.rel + gain, 0, 100));
+      ctx.log(`You had ${rng.pick(['coffee', 'dinner', 'a long walk', 'a drink after session'])} with ${m.name} (${m.background.toLowerCase()}, ${CAUCUSES[m.caucus].name}). Relationship ${m.rel}/100.`, '☕', gain > 0 ? 'good' : undefined);
+      return undefined;
+    },
+    /** Ask a colleague to back your bill this session. arg: member id */
+    askSupport(ctx, memberId) {
+      const { state } = ctx;
+      const body = myBody(state);
+      const m = body?.members?.find((x) => x.id === memberId && !x.you);
+      if (!m) return;
+      const origin = state.legislature.bodies[bodyId(CHAMBERS[body.level][0], body.where)];
+      const bill = origin.bills.find((b) => b.sponsor === 'you' && b.stage === 'introduced' && !(b.pledges ?? []).includes(m.id));
+      if (!bill) return ctx.toast('Introduce a bill first (or they already pledged).', 'warn');
+      if (yearlyCount(state, `legislature.ask.${m.id}`)) return ctx.toast(`You already asked ${m.name} this year.`, 'warn');
+      bumpYearly(state, `legislature.ask.${m.id}`);
+      const rng = legRng(state);
+      const aligned = (m.caucus === 'labor') === favorsLabor(bill.lawId, bill.direction);
+      const odds = clamp((aligned ? 0.55 : 0.1) + (m.rel - 50) / 120 - (aligned ? 0 : Math.abs(m.lean) / 250) + (m.focus === bill.lawId ? (aligned ? 0.3 : -0.3) : 0), 0.02, 0.97);
+      if (rng.chance(odds)) {
+        bill.pledges = [...(bill.pledges ?? []), m.id];
+        bill.push = (bill.push ?? 0) + 1 / body.seats + (body.seats > 15 ? 0.01 : 0);
+        m.rel = Math.min(100, m.rel + 2);
+        ctx.log(`${m.name} agreed to co-sponsor ${billTitle(bill)}${aligned ? '' : ' — crossing the aisle'}.`, '🤝', 'good');
+      } else {
+        m.rel = Math.max(0, m.rel - 2);
+        ctx.log(`${m.name} won't back ${billTitle(bill)}.`, '🙅', 'warn');
+      }
       return undefined;
     },
     /** Whip votes for a bill already in the hopper (leaders and chairs). */

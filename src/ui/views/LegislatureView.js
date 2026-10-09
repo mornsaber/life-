@@ -4,7 +4,7 @@
  * committee, staff) and lobbying.
  */
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
-import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, COMMITTEES, CAUCUSES, POSTS, STAFF_ROLES, legActionsPerYear } from '../../modules/politics/Legislature.js';
+import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, COMMITTEES, CAUCUSES, POSTS, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel } from '../../modules/politics/Legislature.js';
 import { LAWS, levelValue, lawValue, describeValue, proposedValue } from '../../modules/politics/Laws.js';
 import { isOfficer, myUnion } from '../../modules/career/LaborUnions.js';
 import { REGIONS } from '../../modules/life/Regions.js';
@@ -30,7 +30,7 @@ function bodyBlock(state, body) {
       body.executive ? [d.executive, `${esc(body.executive.name)} ${CAUCUSES[body.executive.caucus].icon}`] : null,
     ].filter(Boolean))}
     ${body.chairs ? `<p class="fine">🗂️ Chairs: ${Object.entries(body.chairs).filter(([id]) => COMMITTEES[id]).map(([id, c]) => `${esc(COMMITTEES[id].name)} — ${esc(c.name)}${c.you ? ' (you)' : ''}`).join(' · ')}</p>` : ''}
-    ${body.members?.length ? disclosure(`members-${body.id}`, body.members.length < body.seats ? `Senior members (${body.members.length} of ${body.seats})` : `Members (${body.members.length})`, `<ul class="history">${body.members.slice().sort((a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.terms - a.terms).map((m) => `<li>${CAUCUSES[m.caucus].icon} <b>${esc(m.name)}</b>${m.you ? ' (you)' : ''} <small class="muted">District ${m.district} · ${m.terms} term${m.terms === 1 ? '' : 's'}</small></li>`).join('')}</ul>`) : ''}
+    ${membersBlock(state, body)}
     ${bills ? disclosure(`bills-${body.id}`, 'This session', `<ul class="history">${bills}</ul>`) : ''}
     ${body.history.length ? disclosure(`hist-${body.id}`, 'Recent history', `<ul class="history">${body.history.slice().reverse().map((h) => `<li><small>age ${h.age}</small> ${esc(h.text)}</li>`).join('')}</ul>`) : ''}`;
 }
@@ -102,4 +102,36 @@ export function legislatureCards(state) {
     return bs.length ? disclosure(`leg-${level}`, `${LEVEL_LABEL[level]} legislature`, bs.map((b) => bodyBlock(state, b)).join('')) : '';
   }).join('');
   return `${seatCard(state)}${card('Legislatures', `<p class="fine">Bills pass a floor vote in each chamber, then need the executive's signature (a veto takes two-thirds to override). Unions' clout and business lobbying move votes; elections every two years shift the blocs.</p>${groups}`, { icon: '🏛️' })}${lawsCard(state)}${lobbyCard(state)}`;
+}
+
+/** The roster: each member opens into a profile. */
+function membersBlock(state, body) {
+  if (!body.members?.length) return '';
+  const seat = mySeat(state);
+  const mine = seat?.bodyId === body.id;
+  const myPending = mine && Object.values(state.legislature.bodies).some((b) => (b.bills ?? []).some((x) => x.sponsor === 'you' && x.stage === 'introduced'));
+  const chairOf = (m) => Object.entries(body.chairs ?? {}).filter(([, c]) => c?.name === m.name).map(([id]) => COMMITTEES[id]?.name).filter(Boolean);
+  const leaderOf = (m) => Object.entries(body.leaders ?? {}).filter(([, l]) => l?.name === m.name).map(([k]) => ({ presiding: BODY_DEFS[body.kind].presiding, majority: 'Majority Leader', minority: 'Minority Leader' }[k]));
+  const rows = body.members.slice().sort((a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.terms - a.terms).map((m) => {
+    const titles = [...leaderOf(m), ...chairOf(m).map((c) => `Chair, ${c}`)];
+    const summary = `${CAUCUSES[m.caucus].icon} ${esc(m.name)}${m.you ? ' (you)' : ''} · ${esc(districtLabel(body, m))}${titles.length ? ` · ${esc(titles[0])}` : ''}`;
+    if (m.you) return `<li>${summary}</li>`;
+    const votes = (m.votes ?? []).slice().reverse().map((v) => `<li><small>age ${v.age}</small> ${v.vote === 'yes' ? '✅' : '❌'} ${esc(v.title)}</li>`).join('');
+    const bills = (m.sponsored ?? []).slice().reverse().map((b) => `<li><small>age ${b.age}</small> 📜 ${esc(b.title)}</li>`).join('');
+    const profile = `${kv([
+      ['Caucus', `${CAUCUSES[m.caucus].icon} ${esc(CAUCUSES[m.caucus].name)} · ${esc(leanLabel(m))}`],
+      ['Age', String(m.age)],
+      ['Before office', esc(m.background)],
+      ['Serving', `${m.terms} term${m.terms === 1 ? '' : 's'} · ${esc(districtLabel(body, m))}`],
+      ['Committee', esc(COMMITTEES[m.committee]?.name ?? '—')],
+      ['Signature issue', `${LAWS[m.focus]?.icon ?? ''} ${esc(LAWS[m.focus]?.name ?? '—')}`],
+      titles.length ? ['Leadership', esc(titles.join(', '))] : null,
+    ].filter(Boolean))}
+      ${mine ? meter(m.rel, { label: '🤝 Relationship with you', tone: m.rel >= 65 ? 'good' : m.rel >= 40 ? 'mid' : 'bad' }) : ''}
+      ${votes ? `<h4 class="sub">Recent votes</h4><ul class="history">${votes}</ul>` : '<p class="fine">No recorded votes yet.</p>'}
+      ${bills ? `<h4 class="sub">Bills sponsored</h4><ul class="history">${bills}</ul>` : ''}
+      ${mine ? `<div class="toggle-row">${button('☕ Meet one-on-one', 'legislature.meet', { arg: m.id, variant: 'tiny', disabled: Boolean(state.yearly[`legislature.meet.${m.id}`]) || (state.yearly['legislature.meet'] ?? 0) >= 3, hint: '3 a year · builds the relationship' })}${button('🤝 Ask to back your bill', 'legislature.askSupport', { arg: m.id, variant: 'tiny', disabled: !myPending || Boolean(state.yearly[`legislature.ask.${m.id}`]), hint: myPending ? 'Co-sponsors bring votes' : 'Introduce a bill first' })}</div>` : ''}`;
+    return `<li>${disclosure(`member-${m.id}`, summary, profile)}</li>`;
+  }).join('');
+  return disclosure(`members-${body.id}`, body.members.length < body.seats ? `Senior members (${body.members.length} of ${body.seats})` : `Members (${body.members.length})`, `<ul class="history">${rows}</ul>`);
 }

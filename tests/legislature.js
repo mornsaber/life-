@@ -155,6 +155,33 @@ const tests = {
     assert.ok(VIEWS.politics(state).includes('Chairs:'));
   },
 
+  'every named legislator has a profile, a voting record, and can be worked'() {
+    const { engine, state } = life(8);
+    ensureBodies(state);
+    for (const b of bodiesHere(state)) for (const m of b.members) {
+      assert.ok(m.id && m.age && m.background && m.focus && m.committee && Number.isFinite(m.lean) && Number.isFinite(m.rel), `${m.name} profile`);
+    }
+    seat(engine, 'stateRep', 2);
+    for (let i = 0; i < 3; i++) { state.prompts = []; engine.ageUp(); }
+    const body = myBody(state);
+    assert.ok(body.members.some((m) => m.votes.length), 'members have voting records');
+    assert.ok(body.members.some((m) => m.sponsored.length), 'members sponsor bills');
+    const other = body.members.find((m) => !m.you);
+    const rel = other.rel;
+    state.yearly = {};
+    state.prompts = [];
+    engine.dispatch('legislature.meet', other.id);
+    assert.notEqual(other.rel, rel, 'a meeting moves the relationship');
+    engine.dispatch('legislature.sponsor', 'minWage|up');
+    let pledged = false;
+    for (const m of body.members.filter((x) => !x.you)) { engine.dispatch('legislature.askSupport', m.id); }
+    pledged = Object.values(state.legislature.bodies).some((b) => b.bills.some((x) => x.sponsor === 'you' && (x.pledges ?? []).length));
+    assert.ok(pledged, 'some colleagues co-sponsor');
+    const html = VIEWS.politics(state);
+    clean(html);
+    assert.ok(html.includes('Signature issue') && html.includes('Recent votes'));
+  },
+
   'the new laws change the game: taxes, cannabis, non-competes, public unions'() {
     const { state } = life(7);
     ensureBodies(state);
