@@ -409,6 +409,15 @@ export function marketTick(ctx, biz) {
     rivalProfile(rng, o);
     ctx.log(`A new competitor opened: ${o.name} (${o.business.strategy === 'discounter' ? 'a discounter' : o.business.strategy === 'premium' ? 'going upscale' : 'hungry for customers'}).`, '🏁');
   }
+  // Nobody left to compete with? Fat margins draw newcomers fast.
+  const left = competitorsOf(state, biz).length;
+  if (left < 2 && rng.chance(left === 0 ? 0.6 : 0.3)) {
+    const o = npcBusiness(state, biz.typeId, regionId, { reputation: rng.int(40, 65) });
+    o.business.tickedAge = state.character.age;
+    rivalProfile(rng, o);
+    if (rng.chance(0.3)) Object.assign(o.business, { strategy: 'discounter', price: 'budget' });
+    ctx.log(left === 0 ? `With the market to yourself, your margins drew a newcomer: ${o.name} opened to take a piece of it.` : `Seeing little competition, ${o.name} opened to take on ${biz.name}.`, '🏁', 'warn');
+  }
   // Rivals act: price wars, expansions, poaching, ad blitzes, buyouts.
   rivalsTick(ctx, biz, competitorsOf(state, biz), { rng, npc: () => npcBusiness(state, biz.typeId, regionId) });
 }

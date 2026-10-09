@@ -19,6 +19,7 @@ import { typeOf, staffFactor, annualPayment } from './Business.js';
 import { OPERATIONS, capacity, contracted, EQUIPMENT_LOAN } from './Operations.js';
 import { SBA, MARKETING } from './BusinessTypes.js';
 import { forecast } from './Advisor.js';
+import { INITIATIVES, initiativeCost, accountEligibility, signAccount } from './Initiatives.js';
 
 export const STRATEGIES = {
   off: { name: 'You decide', icon: '🧑‍💼', desc: 'Nothing happens unless you do it.' },
@@ -102,6 +103,7 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
       }
     }
   }
+  if (!type.startup) leversPlan(ctx, biz, profit, plan.strategy, did);
   // Keep a cash cushion: draw on the credit line rather than bounce payroll.
   if (biz.cash < 0 && state.housing.credit.score >= 600 && !type.startup && (biz.debts.loc ?? 0) < Math.max(50000, (ly.revenue ?? 0) * 0.4)) {
     const need = -biz.cash + 10000;
@@ -148,5 +150,35 @@ function fleetPlan(ctx, biz, aggressive, did) {
   if (add) {
     biz.staff.headcount += add;
     did.push(`hired ${add} ${o.crewName ?? 'crew'}${add > 1 ? 's' : ''}`);
+  }
+}
+
+/** Initiatives that pay back within two years go on, ones that cost money come off; key accounts get signed. */
+function leversPlan(ctx, biz, profit, strategy, did) {
+  const age = ctx.state.character.age;
+  const base = profit({});
+  const cushion = Math.max(25000, (biz.lastYear?.revenue ?? 0) * 0.1);
+  biz.initiatives ??= {};
+  for (const id of Object.keys(INITIATIVES)) {
+    const on = biz.initiatives[id] != null;
+    const toggled = { ...biz.initiatives };
+    if (on) delete toggled[id];
+    else toggled[id] = age;
+    const gain = profit({ biz: { initiatives: toggled } }) - base;
+    const cost = initiativeCost(biz, id);
+    if (!on && gain > 0 && cost <= gain * (strategy === 'harvest' ? 1 : 2) && biz.cash >= cost + cushion) {
+      biz.cash -= cost;
+      biz.initiatives[id] = age;
+      did.push(`launched a ${INITIATIVES[id].name.toLowerCase()}`);
+    } else if (on && gain > 2000) {
+      delete biz.initiatives[id];
+      did.push(`ended the ${INITIATIVES[id].name.toLowerCase()}`);
+    }
+  }
+  for (const offer of [...(biz.accountOffers ?? [])]) {
+    if (accountEligibility(biz, offer).ok) {
+      signAccount(biz, offer);
+      did.push(`signed ${offer.client.toLowerCase()} as a key account`);
+    }
   }
 }

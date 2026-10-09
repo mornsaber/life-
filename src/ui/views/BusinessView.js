@@ -13,6 +13,7 @@ import { STRATEGIES, canDelegate } from '../../modules/business/GrowthPlan.js';
 import { conglomerateOf, subsidiaries, formEligibility, holdingsCap, acquisitionTargets, appraise, synergyRate, hqCost, FORM_COST, CONGLOMERATE_HOLDINGS } from '../../modules/business/Conglomerate.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
+import { INITIATIVES, PROMOTIONS, usesAccounts, initiativeCost, accountEligibility } from '../../modules/business/Initiatives.js';
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
 import { RIVAL_STRATEGIES, marketShare, underPriceWar } from '../../modules/business/Rivals.js';
@@ -253,6 +254,44 @@ function managementCard(state, biz) {
     <p class="fine">A plan expands from profits, staffs each location, sets marketing and grows the fleet on its own. Owner-run businesses top out at five locations; with a CEO and 40+ staff they can grow to twelve.</p>`, { icon: '🗂️', accent: 'green' });
 }
 
+/** Profit levers: initiatives (with what each is worth), promotions and key accounts. */
+function leversCard(state, biz) {
+  const type = typeOf(biz);
+  if (type.startup) return '';
+  const age = state.character.age;
+  const base = forecast(state, biz).netIncome;
+  const on = biz.initiatives ?? {};
+  const rows = Object.entries(INITIATIVES).map(([id, i]) => {
+    const active = on[id] != null;
+    const toggled = { ...on };
+    if (active) delete toggled[id];
+    else toggled[id] = age;
+    const gain = forecast(state, biz, { biz: { initiatives: toggled } }).netIncome - base;
+    const worth = active ? -gain : gain;
+    const cost = initiativeCost(biz, id);
+    return `<li class="report-row"><div>${i.icon} <b>${esc(i.name)}</b> ${active ? chip('On', 'good') : ''} <small class="muted">${esc(i.desc)} · <span class="${worth >= 0 ? 'pos' : 'neg'}">≈${worth >= 0 ? '+' : '−'}${money(Math.abs(worth))}/yr profit</span>${!active && cost ? ` · ${money(cost)} to set up` : ''}</small></div>
+      ${button(active ? 'Stop' : 'Start', 'business.toggleInitiative', { arg: id, variant: active ? 'tiny' : 'tiny on', disabled: !active && biz.cash < cost })}</li>`;
+  }).join('');
+  const promo = biz.promo?.age === age;
+  const promos = Object.entries(PROMOTIONS).map(([id, p]) => button(`${p.icon} ${p.name}`, 'business.promote', { arg: id, variant: promo && biz.promo.id === id ? 'tiny on' : 'tiny', disabled: promo, hint: `${p.desc}${p.cost ? ` · ${money(p.cost * biz.scale)}` : ''}` })).join('');
+  let accounts = '';
+  if (usesAccounts(biz)) {
+    const mine = (biz.accounts ?? []).map((a) => `<li>🤝 <b>${esc(a.client)}</b> <small>${money(a.value)}/yr · ${a.yearsLeft} of ${a.years} yr left</small> ${button('Walk away', 'business.dropAccount', { arg: a.id, variant: 'tiny', hint: 'Reputation hit' })}</li>`).join('');
+    const offers = (biz.accountOffers ?? []).map((k) => {
+      const ok = accountEligibility(biz, k);
+      return `<li class="${ok.ok ? '' : 'locked'}">${k.renewal ? '🔁' : '📨'} <b>${esc(k.client)}</b> <small>${money(k.value)}/yr · ${k.years} yr${ok.ok ? '' : ` · ${esc(ok.reason)}`}</small> ${button('Sign', 'business.signAccount', { arg: k.id, variant: 'tiny', disabled: !ok.ok })}</li>`;
+    }).join('');
+    accounts = `<h4 class="sub">Key accounts</h4><p class="fine">Recurring clients add steady revenue on top of walk-in customers. They renew if quality stays 55+, and leave if it drops below 45.</p>
+      ${mine ? `<ul class="history">${mine}</ul>` : '<p class="muted">No key accounts yet.</p>'}
+      ${offers ? `<ul class="history">${offers}</ul>` : '<p class="fine">New account offers arrive each year.</p>'}`;
+  }
+  return card('Profit Levers', `
+    <ul class="history">${rows}</ul>
+    <h4 class="sub">This year's promotion</h4><div class="toggle-row chips-row">${promos}</div>
+    ${accounts}
+    <p class="fine">Estimates are next year's profit with and without each change. A growth plan (Management & Growth) switches these on and off and signs accounts for you.</p>`, { icon: '🎛️', accent: 'cyan' });
+}
+
 /** The holding company: subsidiaries, treasury, payout and acquisitions. */
 function conglomerateCard(state) {
   const c = conglomerateOf(state);
@@ -323,7 +362,7 @@ function pnl(ly) {
   if (!ly) return '<p class="muted">First results come at the end of the year.</p>';
   const rows = [
     ['Revenue', ly.revenue], ['Cost of goods', -ly.cogs], ['Payroll & benefits', -ly.payroll], ['HR / delegation overhead', -ly.overhead], ['Managers', -ly.management],
-    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Interest', -ly.interest],
+    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Initiatives', -(ly.initiatives ?? 0)], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Interest', -ly.interest],
     ['Your salary', -ly.ownerSalary], ['Payroll tax on your salary', -ly.payrollTax], ['Corporate tax', -ly.corporateTax],
   ].filter(([, v]) => v);
   return `<table class="pnl">${rows.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'neg' : ''}">${money(v)}</td></tr>`).join('')}
@@ -432,7 +471,7 @@ function ownedView(state, biz) {
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${managementCard(state, biz)}${advisorCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  return `${overview}${managementCard(state, biz)}${advisorCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {

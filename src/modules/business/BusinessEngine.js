@@ -23,6 +23,7 @@ import {
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
+import { InitiativeActions, initiativesTick } from './Initiatives.js';
 import { conglomerateTick, conglomerateOf, formEligibility, holdingsCap, acquireCompany, FORM_COST } from './Conglomerate.js';
 import { FleetActions, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
@@ -203,6 +204,7 @@ function businessTick(ctx, biz) {
 
   inspectionTick(ctx, biz, type);
   if (state.business.current !== biz) return;
+  initiativesTick(ctx, biz);
   // The organization: staff come and go, rivals rise and fall, the structure follows the headcount.
   businessStaffTick(ctx, biz);
   marketTick(ctx, biz);
@@ -624,6 +626,7 @@ function holdingTick(ctx, biz) {
   biz.lastYear = ly;
   biz.valuation = valuation(biz, ly);
   businessStaffTick(ctx, biz);
+  initiativesTick(ctx, biz);
   if (biz.plan) runPlan(ctx, biz, PLAN_DEPS);
   syncBusinessOrg(state, biz);
   ctx.log(`${biz.name} (held): ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; ${money(ly.ownerPay)} to you` : ''}.`, typeOf(biz).icon, 'finance');
@@ -703,6 +706,7 @@ export const BusinessEngine = {
   actions: {
     ...OwnerActions,
     ...FleetActions,
+    ...InitiativeActions,
     /** arg: 'typeId:cash|sba:entity[:size[:name]]' */
     start(ctx, arg) {
       const [typeId, funding = 'cash', entity = 'llc', size = 'standard', ...name] = String(arg).split(':');
