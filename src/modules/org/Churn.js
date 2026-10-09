@@ -10,6 +10,7 @@
  * dept.lastYear = { hired, left }
  */
 import { clamp } from '../../core/Random.js';
+import { staffingFor } from './Staffing.js';
 import { orgOf, sideRng } from './Organizations.js';
 import { seat, seatsAt, NAMED_SEATS } from './Vacancies.js';
 import { getProfession } from '../career/JobTrees.js';
@@ -39,6 +40,9 @@ export function churnTick(ctx, job) {
   const left = Math.round(dept.headcount * attrition);
   const hired = Math.max(0, Math.round(dept.headcount * (attrition + growth + rng.float(-0.02, 0.02))));
   dept.headcount = Math.max(5, dept.headcount - left + hired);
+  // Government departments stay sized to the population they serve (budget cuts aside).
+  const target = staffingFor(org, dept.id);
+  if (target) dept.headcount = Math.max(3, Math.round(dept.headcount + (target * (dept.budgetCut ? 1 - dept.budgetCut : 1) - dept.headcount) * 0.5));
   dept.lastYear = { hired, left };
 
   // Boomerangs: someone who resigned or transferred comes back to their old post.

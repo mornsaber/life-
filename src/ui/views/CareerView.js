@@ -47,6 +47,7 @@ import { labCard } from './LabView.js';
 import { POSTS } from '../../modules/business/OwnerJob.js';
 import { unionPanel, unionCards } from './UnionView.js';
 import { jobLicensesCard } from './JobLicensesView.js';
+import { servedPopulation } from '../../modules/org/Staffing.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -207,7 +208,7 @@ function organizationCard(state, job) {
   const lead = c.leads === 'org' ? `<p>${chip(`👑 You run ${esc(c.org.name)}`, 'honor')} ${job.headOf.appointedBy ? chip(`Serves at the pleasure of ${esc(job.headOf.appointedBy)}`, job.headOf.selection === 'appointed' ? 'warn' : '') : ''}</p>`
     : c.leads === 'dept' ? `<p>${chip(`🏢 You head ${esc(c.dept.name)}`, 'honor')} ${job.headOf.selection === 'appointed' && job.headOf.appointedBy ? chip(`Appointed by ${esc(job.headOf.appointedBy)}`, 'warn') : ''}</p>` : '';
   return card('🏢 Organization', `${lead}${kv([
-    ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}`],
+    ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}${servedPopulation(c.org) ? ` <small class="muted">· serves ${servedPopulation(c.org).toLocaleString()} residents</small>` : ''}`],
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
     [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
     c.manager ? ['Manager', who(c.manager)] : null,

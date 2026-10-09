@@ -17,6 +17,7 @@ import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
+import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation } from './Employers.js';
@@ -465,8 +466,7 @@ const LAYOFF_RATE = { expansion: 0.01, peak: 0.015, recession: 0.09, recovery: 0
 export function layoffRisk(state, job) {
   let risk = 0;
   if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? getProfession(job.professionId).cyclical ?? 1 : 1);
-  else if (job.sector === 'municipal' && (state.publicService.city?.fiscalHealth ?? 50) < 25) risk = 0.05;
-  else if (job.sector === 'state' && state.economy.phase === 'recession') risk = 0.02;
+  // Government jobs are cut through a formal reduction in force instead (PublicRif).
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;
   if (job.probationLeft > 0) risk *= 1.5; // last in, first out
@@ -578,7 +578,11 @@ export function careerOnAgeUp(ctx) {
   if (leave && state.character.age - leave.startAge > USERRA_YEARS && state.military.service?.component === 'active') {
     endMilitaryLeave(ctx, `Your USERRA reemployment rights ran out after ${USERRA_YEARS} years of service`);
   }
-  if (!job) return;
+  // Laid off in a RIF: the agency may call you back.
+  if (!job) {
+    recallTick(ctx, RIF_DEPS);
+    return;
+  }
   const profession = getProfession(job.professionId);
   chainOfCommand(state, job);
   job.paidThisYear = false;
@@ -632,6 +636,7 @@ export function careerOnAgeUp(ctx) {
   recalcSalary(state, job);
 
   if (layoffCheck(ctx, job)) return;
+  if (job.sector !== 'private') publicRifTick(ctx, job, RIF_DEPS);
 
   // Probation: any poor review ends the job; finishing it brings civil-service protection (and tenure for teachers).
   // (Not in the year you graduated from a training program: probation starts then.)
@@ -683,3 +688,13 @@ export function careerOnAgeUp(ctx) {
 }
 
 export { ladderFor, levelById, hasFelony, recalcSalary };
+
+/** What the public RIF rules need from the career engine. */
+export const RIF_DEPS = {
+  previousLevel: (job) => previousLevel(getProfession(job.professionId), job.employer.size, job.levelId),
+  demote: (ctx, reason) => demote(ctx, reason),
+  leaveJob: (ctx, reason) => leaveJob(ctx, reason),
+  hire: (ctx, opts) => hire(ctx, opts),
+  recalcSalary: (state, job) => recalcSalary(state, job),
+};
+export const RIF_RESOLVERS = rifResolvers(RIF_DEPS);

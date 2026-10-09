@@ -4,7 +4,7 @@
  * `career.` namespace, and listens for cross-domain events.
  */
 import { clamp } from '../../core/Random.js';
-import { careerOnAgeUp, leaveJob, recalcSalary, promote, hire, startMilitaryLeave, endMilitaryLeave, returnFromLeave, offerReturn } from './CareerEngine.js';
+import { RIF_RESOLVERS, careerOnAgeUp, leaveJob, recalcSalary, promote, hire, startMilitaryLeave, endMilitaryLeave, returnFromLeave, offerReturn } from './CareerEngine.js';
 import { getProfession } from './JobTrees.js';
 import { levelById } from './Ladder.js';
 import { ladderFor } from './Ladder.js';
@@ -154,5 +154,6 @@ export const CareerModule = {
     ...ContractingResolvers,
     ...UnionResolvers,
     workEvent: resolveWorkEvent,
+    ...RIF_RESOLVERS,
   },
 };

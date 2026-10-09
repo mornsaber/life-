@@ -27,6 +27,7 @@
  *            rel (how they get along with the player), selection ('appointed'|'elected'|'board'|'internal'|'hired') }
  */
 import { Random } from '../../core/Random.js';
+import { applyStaffing, STAFFING_VERSION } from './Staffing.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
@@ -172,6 +173,8 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     dept.head = dh.id;
     org.departments[d.id] = dept;
   }
+  // Government bodies are staffed for the population they serve (Staffing).
+  applyStaffing(org);
   state.orgs.byId[org.id] = org;
   return org;
 }
@@ -179,6 +182,7 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
 /** Organizations from older saves gain departments their type has added since. */
 export function addMissingDepartments(state, org) {
   if (!org || org.business || org.closed) return org;
+  if (org.staffing !== STAFFING_VERSION) applyStaffing(org);
   const t = orgType(org.typeId);
   let added = false;
   for (const d of t?.departments ?? []) {
