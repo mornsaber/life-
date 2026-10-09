@@ -114,7 +114,7 @@ function gigCard(state) {
       ly ? ['Last year', `${money(ly.gross)} gross − ${money(ly.expenses)} costs = ${money(ly.net)} (before self-employment tax)`] : null,
     ])}<div class="toggle-row">${button('Log off for good', 'gig.stop', { variant: 'small ghost' })}</div>` : ''}
     <ul class="history">${rows}</ul>
-    <p class="fine">Gig pay is 1099 income: you owe 15.3% self-employment tax, there's no employer health plan or 401(k) match, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱' });
+    <p class="fine">Gig pay is 1099 income: you owe 15.3% self-employment tax, there's no employer health plan or 401(k) match, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
 }
 
 function payBreakdown(job) {
@@ -169,7 +169,7 @@ function currentJob(state) {
           ['In level', `${job.yearsInLevel} yr`],
           ['Seniority', `${job.yearsAtEmployer} yr`],
           trainee ? ['Training', `<span class="warn-text">${esc(trainee.label)}</span>`] : job.probationLeft > 0 ? ['Status', `<span class="warn-text">Probation · ${job.probationLeft} yr left</span>`] : isTenured(job) ? ['Status', '🎓 Tenured'] : null,
-          ['Warnings', job.warnings ? `<span class="neg">${job.warnings}</span>` : '0'],
+          job.warnings ? ['Warnings', `<span class="neg">${job.warnings}</span>`] : null,
           job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>`] : null,
           ...transportRows(state, job, profession),
           ...medicineRows(state, job),
@@ -178,20 +178,22 @@ function currentJob(state) {
         ])}
       </div>
     </div>
-    ${payBreakdown(job)}
-    ${meter(job.performance, { label: '📈 Performance' })}
-    ${meter(job.boss, { label: '🤝 Boss relationship' })}
-    ${meter(job.coworkers, { label: '👥 Coworker relationships' })}
+    <div class="meters-3">
+      ${meter(job.performance, { label: '📈 Performance' })}
+      ${meter(job.boss, { label: '🤝 Boss' })}
+      ${meter(job.coworkers, { label: '👥 Coworkers' })}
+    </div>
     <p class="promo ${status.eligible ? 'ready' : ''}">${nextHint}</p>
     ${needs?.length ? `<p class="fine">🔐 Promotion to ${esc(needs[0].l.title)} triggers a ${esc(needs[0].c.clearanceNeeded)} clearance investigation.</p>` : ''}
-    ${progression(state, job, profession, size)}
-    ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}
-    <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
-    ${unionPanel(state, job)}
-    ${summerPanel(state, job)}
     <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' && job.sector !== 'private' ? 'Quality Step Increase' : a.desc })).join('')}
-      ${button(`🔀 ${lateral ? `Move to ${esc(lateral.title)}` : 'Switch track'}`, 'career.switchTrack', { hint: lateral ? `${TRACK_LABEL[lateral.track]} track` : 'Available after the fork', disabled: !lateral })}
+      ${lateral ? button(`🔀 Move to ${esc(lateral.title)}`, 'career.switchTrack', { hint: `${TRACK_LABEL[lateral.track]} track` }) : ''}
     </div>
+    ${summerPanel(state, job)}
+    ${disclosure('job.ladder', '🪜 Career ladder', progression(state, job, profession, size))}
+    ${disclosure('job.pay', '💵 Pay, benefits & powers', `${payBreakdown(job)}
+      <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
+      ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}`)}
+    ${unionFold(state, job)}
     <div class="row-end">
       ${relocatable && !profession.dutyStation ? `<span class="transfer" data-collect-root>${Object.values(REGIONS).filter((r) => r.id !== state.character.regionId).length ? `<select data-part="region">${Object.values(REGIONS).filter((r) => r.id !== state.character.regionId).map((r) => `<option value="${r.id}">${r.icon} ${esc(r.name)}</option>`).join('')}</select>` : ''}${button('📍 Request transfer', 'career.transfer', { variant: 'small', collect: true })}</span>` : ''}
       ${button('🚪 Quit', 'career.quit', { variant: 'danger small' })}
@@ -209,7 +211,7 @@ function organizationCard(state, job) {
   const people = (list) => list.map((p) => `<li>${esc(p.name)} <small class="muted">${esc(p.title)} · ${p.years} yr</small></li>`).join('');
   const lead = c.leads === 'org' ? `<p>${chip(`👑 You run ${esc(c.org.name)}`, 'honor')} ${job.headOf.appointedBy ? chip(`Serves at the pleasure of ${esc(job.headOf.appointedBy)}`, job.headOf.selection === 'appointed' ? 'warn' : '') : ''}</p>`
     : c.leads === 'dept' ? `<p>${chip(`🏢 You head ${esc(c.dept.name)}`, 'honor')} ${job.headOf.selection === 'appointed' && job.headOf.appointedBy ? chip(`Appointed by ${esc(job.headOf.appointedBy)}`, 'warn') : ''}</p>` : '';
-  return card('🏢 Organization', `${lead}${kv([
+  return card('Organization', `${lead}${kv([
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}${servedPopulation(c.org) ? ` <small class="muted">· serves ${servedPopulation(c.org).toLocaleString()} residents</small>` : ''}`],
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
     ['Ranks here', `${chip(EMPLOYER_SIZES[job.employer.size]?.label ?? job.employer.size)} <small class="muted">${ladderFor(getProfession(job.professionId), job.employer.size).map((l) => (l.id === job.levelId ? `<b>${esc(l.title)}</b>` : esc(l.title))).join(' › ')}</small>`],
@@ -218,7 +220,7 @@ function organizationCard(state, job) {
     c.deptHead ? ['Department head', who(c.deptHead)] : null,
     c.orgHead ? ['Leadership', who(c.orgHead)] : null,
   ])}
-  ${c.coworkers.length ? `<p class="fine">👥 Coworkers at your level</p><ul class="mini-list">${people(c.coworkers)}</ul>` : ''}
+  ${c.coworkers.length ? disclosure('org.coworkers', '👥 Coworkers at your level', `<ul class="mini-list">${people(c.coworkers)}</ul>`, { count: c.coworkers.length }) : ''}
   ${c.reports.length ? reportsPanel(state, job, c.reports) : ''}
   ${openingsLine(job)}
   ${internalMovesRow(state)}`, { icon: '🏢' });
@@ -371,7 +373,7 @@ export function careerView(state, ui = {}) {
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');
   // No job: the job board comes first, before everything else on this screen.
-  const board = card('Job Board', jobBoard(state, ui), { icon: '📰' });
+  const board = card('Job Board', jobBoard(state, ui), { icon: '📰', open: !job });
   return `${current}${unionCards(state)}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
@@ -491,4 +493,12 @@ function seniorMoveButtons(state, job) {
     out.push(button('🎩 Call executive recruiters', 'career.execRecruiter', { variant: 'small', disabled: !e.ok || Boolean(state.yearly['career.execRecruiter']), hint: e.ok ? 'VP and C-suite roles at other companies' : e.reason }));
   }
   return out.join('');
+}
+
+/** The union box: folded, with who represents you in the summary. */
+function unionFold(state, job) {
+  const panel = unionPanel(state, job);
+  if (!panel) return '';
+  const label = job.employer.union ? `✊ ${esc(job.employer.union.name)}${job.unionMember ? ' · member' : ''}` : '✊ No union here';
+  return disclosure('job.union', label, panel);
 }

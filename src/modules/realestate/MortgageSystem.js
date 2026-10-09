@@ -165,6 +165,7 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   // Commercial lenders size the loan to the building's income (1.25× debt coverage); your own income can make up a shortfall.
   const dscr = t.commercial && payment > 0 ? noi / payment : 0;
   if (t.commercial && dscr < 1.24 && dti > t.maxDti) return { ok: false, reason: `Rents cover the payment only ${dscr.toFixed(2)}× even at ${Math.round(pct * 100)}% down (lenders want 1.25×)`, dtiFail: true, ...base, dscr };
+  if (!t.commercial && !Number.isFinite(dti)) return { ok: false, reason: 'No income a lender can verify (a job, a business or a pension)', dtiFail: true, ...base };
   if (!t.commercial && dti > t.maxDti) return { ok: false, reason: `Debt-to-income ${Math.round(dti * 100)}% (max ${Math.round(t.maxDti * 100)}%)`, dtiFail: true, ...base };
   return { ok: true, ...base };
 }

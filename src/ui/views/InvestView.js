@@ -2,7 +2,7 @@
  * Invest panel (Money tab): brokerage holdings, buy/sell, risk profile,
  * auto-invest, IRAs and the 401(k)/TSP fund lineup.
  */
-import { esc, money, button, card, chip, kv, empty, select } from '../Components.js';
+import { esc, money, button, card, chip, kv, empty, select, disclosure } from '../Components.js';
 import { ASSETS, PROFILES, DC_FUNDS, IRA_LIMIT, portfolioValue } from '../../modules/investing/index.js';
 import { yearlyCount } from '../../core/State.js';
 import { DC_RATES, DEFAULT_DC_RATE } from '../../modules/retirement/RetirementEngine.js';
@@ -42,6 +42,7 @@ export function investView(state) {
     <h4 class="sub">Holdings</h4>${rows ? `<ul class="history">${rows}</ul>` : empty('No investments yet.')}
     ${spec ? `<h4 class="sub">Speculative bets</h4><ul class="history">${spec}</ul>` : ''}
     ${buyForm}
+    ${disclosure('invest.settings', '⚙️ Risk profile, auto-invest, IRAs & 401(k)', `
     <h4 class="sub">Risk profile</h4><div class="toggle-row">${profiles}
       ${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}
       ${button('⚖️ Rebalance', 'investing.rebalance', { variant: 'small', disabled: !rows, hint: 'Sells everything (taxable) and rebuys the mix' })}</div>
@@ -52,5 +53,6 @@ export function investView(state) {
     <h4 class="sub">401(k)/TSP contribution</h4><div class="toggle-row">${DC_RATES.map((r) => button(`${Math.round(r * 100)}%`, 'retirement.setDcRate', { arg: String(r), variant: (state.retirement.dcRate ?? DEFAULT_DC_RATE) === r ? 'tiny on' : 'tiny' })).join('')}</div>
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">401(k)/TSP fund</h4><div class="toggle-row">${funds}</div>
+    `)}
     <p class="fine">Dividends and gains on holdings kept 1+ year are taxed at long-term capital gains rates (0/15/20%); short-term gains and Treasury interest as ordinary income. Up to $3,000/yr of losses offset income.</p>`, { icon: '📈', accent: 'cyan' });
 }

@@ -96,7 +96,7 @@ function startCard(state) {
     const open = ids.filter((id) => startEligibility(state, id, 'cash').ok || startEligibility(state, id, 'sba').ok).length;
     return disclosure(`biz.group.${gid}`, `${g.icon} ${g.label}`, `<ul class="programs">${ids.map(row).join('')}</ul>`, { count: `${open} of ${ids.length} open to you` });
   }).join('');
-  const rows = `${mineIds.length ? `<h4 class="sub">From your career</h4><ul class="programs">${mineIds.map(row).join('')}</ul>` : ''}${groups}`;
+  const rows = `${mineIds.length ? disclosure('biz.group.mine', '⭐ From your career', `<ul class="programs">${mineIds.map(row).join('')}</ul>`, { open: mineIds.length <= 2, count: mineIds.length }) : ''}${groups}`;
   return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
     ${rows}
     <h4 class="sub">Legal structures</h4><ul class="history">${Object.values(ENTITIES).map((e) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });

@@ -3,7 +3,7 @@
  * none of them touch the DOM or mutate state. Interactive elements carry
  * `data-action` / `data-arg` attributes that index.js routes to the engine.
  */
-import { STAT_META, STAT_KEYS } from '../core/State.js';
+import { STAT_META, STAT_KEYS, tidyText } from '../core/State.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -37,11 +37,29 @@ export function button(label, action, { arg, variant = '', disabled = false, hin
   </button>`;
 }
 
-export function card(title, body, { icon = '', accent = '', extra = '', className = '' } = {}) {
-  return `<section class="card ${accent ? `accent-${accent}` : ''} ${className}">
-    ${title ? `<header class="card-head"><h3>${icon ? `<span class="card-icon" aria-hidden="true">${icon}</span>` : ''}${title}</h3>${extra}</header>` : ''}
+/** A stable key for a card's fold state, from its title. */
+const foldKey = (title) => `card.${String(title).replace(/<[^>]+>/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40)}`;
+
+/**
+ * A titled panel. Every titled card folds: tap the header to collapse it, and the choice is
+ * remembered. `open: false` starts it collapsed (catalogs and secondary panels); `summary` is a
+ * short line shown in the header, useful when it's folded.
+ */
+/** Catalogs and secondary panels start folded (one tap to open; the game remembers). */
+const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses for Sale', 'Disaster Response Teams', 'Executive Search', 'Businesses in Your Field', 'Risky Business', 'Volunteering & Mentoring', 'Licenses for Your Job', 'Convert', 'Find a Congregation', 'Career History', 'Political History', 'Laws in Force', 'Legislatures', 'Veterans Posts', 'Selective Service', 'Government Climate', 'Department Fleet & Facilities', 'Labor in Texas', 'Diplomas']);
+
+export function card(title, body, { icon = '', accent = '', extra = '', className = '', open = !FOLDED_BY_DEFAULT.has(String(title).replace(/^Labor in .+/, 'Labor in Texas')), summary = '', fold = true } = {}) {
+  const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${icon}</span>` : ''}${title}</h3>${summary ? `<span class="card-sum">${summary}</span>` : ''}${extra}`;
+  if (!title || !fold) {
+    return `<section class="card ${accent ? `accent-${accent}` : ''} ${className}">
+    ${title ? `<header class="card-head">${heading}</header>` : ''}
     <div class="card-body">${body}</div>
   </section>`;
+  }
+  return `<section class="card fold ${accent ? `accent-${accent}` : ''} ${className}"><details class="card-fold" data-key="${foldKey(title)}"${open ? ' open' : ''}>
+    <summary class="card-head">${heading}</summary>
+    <div class="card-body">${body}</div>
+  </details></section>`;
 }
 
 export function chip(text, tone = '') {
@@ -188,15 +206,25 @@ export const LOG_FILTERS = {
   warn: 'Warnings',
 };
 
-export function logView(log, { limit = Infinity } = {}) {
+/** Years shown in full at the top of the story; older years fold to a one-line headline. */
+export const LOG_OPEN_YEARS = 3;
+const HEADLINE_KINDS = ['death', 'milestone', 'honor', 'bad', 'good'];
+
+function logEntries(y) {
+  return `<ul>${y.entries.map((e) => `<li class="log-${e.kind ?? 'info'}" data-kind="${e.kind ?? 'info'}"><span class="log-icon" aria-hidden="true">${e.icon ?? '•'}</span><span class="log-text">${esc(tidyText(e.text, e.icon))}</span></li>`).join('')}</ul>`;
+}
+
+export function logView(log, { limit = Infinity, openYears = LOG_OPEN_YEARS } = {}) {
   const years = [...log].reverse().slice(0, limit);
   return `<div class="log">${years
-    .map(
-      (y, i) => `<article class="log-year ${i === 0 ? 'latest' : ''}" aria-label="Age ${y.age}, ${y.year}">
-        <header><span class="log-age">Age ${y.age}</span><span class="log-yr">${y.year}</span>${y.compacted ? '<span class="log-compact" title="Older years keep only their headline moments">highlights</span>' : ''}</header>
-        <ul>${y.entries.map((e) => `<li class="log-${e.kind ?? 'info'}" data-kind="${e.kind ?? 'info'}"><span class="log-icon" aria-hidden="true">${e.icon ?? '•'}</span><span class="log-text">${esc(e.text)}</span></li>`).join('')}</ul>
-      </article>`,
-    )
+    .map((y, i) => {
+      const head = `<span class="log-age">Age ${y.age}</span><span class="log-yr">${y.year}</span>${y.compacted ? '<span class="log-compact" title="Older years keep only their headline moments">highlights</span>' : ''}`;
+      if (i < openYears) {
+        return `<article class="log-year ${i === 0 ? 'latest' : ''}" aria-label="Age ${y.age}, ${y.year}"><header>${head}</header>${logEntries(y)}</article>`;
+      }
+      const lead = HEADLINE_KINDS.map((k) => y.entries.find((e) => e.kind === k)).find(Boolean) ?? y.entries[0];
+      return `<details class="log-year folded" data-key="log.${y.age}" aria-label="Age ${y.age}, ${y.year}"><summary><header>${head}<span class="log-n">${y.entries.length} event${y.entries.length === 1 ? '' : 's'}</span></header>${lead ? `<span class="log-lead">${lead.icon ?? ''} ${esc(tidyText(lead.text, lead.icon))}</span>` : ''}</summary>${logEntries(y)}</details>`;
+    })
     .join('')}</div>`;
 }
 

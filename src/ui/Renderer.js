@@ -3,7 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
-import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony } from '../core/State.js';
+import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
   esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
@@ -53,6 +53,22 @@ export const TABS = SECTIONS.flatMap((s) => s.tabs.map((t) => ({ ...t, section: 
 export const sectionOf = (tabId) => SECTIONS.find((s) => s.tabs.some((t) => t.id === tabId)) ?? SECTIONS[0];
 
 const TAB_KEY = 'lifesim.ui.tab';
+const FOLD_KEY = 'lifesim.ui.folds';
+
+function loadFolds() {
+  try {
+    return JSON.parse(localStorage.getItem(FOLD_KEY) ?? '{}') ?? {};
+  } catch {
+    return {};
+  }
+}
+function saveFolds(folds) {
+  try {
+    localStorage.setItem(FOLD_KEY, JSON.stringify(folds));
+  } catch {
+    /* storage unavailable */
+  }
+}
 
 function readTab() {
   try {
@@ -65,7 +81,7 @@ function readTab() {
 
 export const VIEWS = {
   life: (state, ui = {}) => {
-    const limit = ui.logLimit ?? 40;
+    const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
     return card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' });
   },
@@ -128,7 +144,7 @@ export class Renderer {
     this.nameRng = new Random();
     /** Transient UI state: open panel, log paging and filter, settings. */
     this.panel = null;
-    this.ui = { logLimit: 40, logFilter: { query: '', kind: 'all' } };
+    this.ui = { logLimit: 30, logFilter: { query: '', kind: 'all' } };
     this.settings = {};
   }
 
@@ -152,7 +168,7 @@ export class Renderer {
   toast(text, kind = 'info') {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
-    el.textContent = text;
+    el.textContent = tidyText(text);
     this.toastRoot.prepend(el);
     while (this.toastRoot.children.length > 5) this.toastRoot.lastChild.remove();
     setTimeout(() => el.remove(), 3200);
@@ -166,14 +182,28 @@ export class Renderer {
   render(state) {
     if (!this.root) return;
     const focusKey = focusKeyOf(document.activeElement);
-    // Collapsible sections remember whether you opened or closed them.
-    this.disclosures ??= {};
+    // Collapsible sections remember whether you opened or closed them (across reloads, too).
+    this.disclosures ??= loadFolds();
     for (const d of this.root.querySelectorAll('details[data-key]')) this.disclosures[d.dataset.key] = d.open;
-    this.root.innerHTML = this.html(state);
+    this.watchFolds();
+    this.root.innerHTML = fixMoneySigns(this.html(state));
     for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
     this.applyLogFilter();
     this.applyJobFilter();
+  }
+
+  /** Remember a fold the moment it's toggled (toggle events don't bubble, so listen in the capture phase). */
+  watchFolds() {
+    if (this.foldsWatched || !this.root?.addEventListener) return;
+    this.foldsWatched = true;
+    this.root.addEventListener('toggle', (e) => {
+      const key = e.target?.dataset?.key;
+      if (!key) return;
+      this.disclosures ??= loadFolds();
+      this.disclosures[key] = e.target.open;
+      saveFolds(this.disclosures);
+    }, true);
   }
 
   html(state) {
@@ -282,6 +312,8 @@ export class Renderer {
         }
       }
       year.hidden = !any;
+      // A search reaches into folded years.
+      if ((q || kind !== 'all') && any && year.tagName === 'DETAILS') year.open = true;
     }
     const count = this.root.querySelector('#log-count');
     if (count) count.textContent = q || kind !== 'all' ? `${shown} match${shown === 1 ? '' : 'es'}` : '';
@@ -346,7 +378,7 @@ export class Renderer {
           <div><h2>${esc(fullName(state))}</h2><p class="age">Age <b>${c.age}</b></p></div>
         </div>
         <ul class="status-line">${this.statusLine(state)}</ul>`, { className: 'profile-card' })}
-      ${card('Stats', statPanel(state.stats), { icon: '📊' })}
+      ${card('Stats', statPanel(state.stats), { icon: '📊', className: 'stats-card' })}
       ${card('Money', kv([
         ['Cash', `<b class="${f.cash < 0 ? 'neg' : 'pos'}">${money(f.cash)}</b>`],
         ['Retirement', money(state.retirement.dc)],

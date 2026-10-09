@@ -34,17 +34,19 @@ function recruitingOffice(state) {
       const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : b.activeOnly && component !== 'active' ? { ok: false, reason: 'Active duty only' } : base;
       return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
     };
-    return `<li class="branch-row">
-      <div class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${esc(b.motto)}</small></div></div>
+    const open = [!b.officerOnly && enlisted.ok && 'enlisted', officer.ok && 'officer'].filter(Boolean);
+    return `<li class="branch-row"><details class="branch-fold" data-key="recruit.${b.id}">
+      <summary class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${open.length ? `Open to you: ${open.join(' and ')}` : 'Not open to you now'}</small></div></summary>
+      <small class="fine">${esc(b.motto)}</small>
       <div class="branch-btns">
         ${b.officerOnly ? '' : `${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}`}
         ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}${b.id === 'army' ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
       </div>
       ${b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
       <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
-    </li>`;
+    </details></li>`;
   }).join('');
-  return card('Recruiting Office', `<p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
+  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p></details><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
 }
 
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */

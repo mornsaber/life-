@@ -3,7 +3,7 @@
  * category, with status, requirements, who pays (employer / unit budget /
  * academy / you), training in progress and the pilot logbook.
  */
-import { esc, money, button, card, chip, statusPill } from '../Components.js';
+import { esc, money, button, card, chip, statusPill, disclosure } from '../Components.js';
 import { CREDENTIAL_LIST, CATEGORIES, FLIGHT_BLOCK } from '../../modules/credentials/CredentialRegistry.js';
 import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere, passChance, prepCost, ATTEMPTS_PER_YEAR, reinstatementStatus } from '../../modules/credentials/LicensingEngine.js';
 import { RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
@@ -56,10 +56,13 @@ function logbook(state) {
 }
 
 /** Rows grouped under small category headings. */
-function groupedList(state, creds) {
+function groupedList(state, creds, { folded = false } = {}) {
   const byCat = {};
   for (const c of creds) (byCat[c.category] ??= []).push(c);
-  return Object.entries(CATEGORIES).filter(([id]) => byCat[id]).map(([id, cat]) => `<h4 class="sub">${cat.icon} ${esc(cat.name)}</h4><ul class="certs">${byCat[id].map((c) => credentialRow(state, c)).join('')}</ul>`).join('');
+  const rows = (id) => `<ul class="certs">${byCat[id].map((c) => credentialRow(state, c)).join('')}</ul>`;
+  return Object.entries(CATEGORIES).filter(([id]) => byCat[id]).map(([id, cat]) => (folded
+    ? disclosure(`lic.${id}`, `${cat.icon} ${esc(cat.name)}`, rows(id), { count: byCat[id].length })
+    : `<h4 class="sub">${cat.icon} ${esc(cat.name)}</h4>${rows(id)}`)).join('');
 }
 
 /**
@@ -92,7 +95,7 @@ export function licensesView(state, ui = {}) {
     const list = view === 'mine' ? mine : available;
     const emptyText = view === 'mine' ? 'You don\'t hold any credentials yet. Check "Can pursue now".' : 'Nothing you can start right now — browse by category to see what each one needs.';
     const showLog = view === 'mine' && (state.credentials.logbook.flightHours > 0 || list.some((c) => c.category === 'aviation'));
-    body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list) : `<p class="muted">${emptyText}</p>`}`;
+    body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list, { folded: view === 'available' && list.length > 8 }) : `<p class="muted">${emptyText}</p>`}`;
   }
 
   return `${card('Licenses & Certifications', `

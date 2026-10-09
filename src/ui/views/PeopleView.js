@@ -2,7 +2,7 @@
  * People tab: family, partner, children, friends and exes, dating, and the
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
-import { esc, money, button, card, meter, kv, empty } from '../Components.js';
+import { esc, money, button, card, meter, kv, empty, disclosure } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
@@ -155,7 +155,7 @@ function group(title, icon, list, state, note = '') {
 function friendsCard(state, friends) {
   const groups = Object.entries(CIRCLES).map(([id, c]) => {
     const list = friends.filter((f) => (f.circle ?? 'neighborhood') === id);
-    return list.length ? `<h4 class="sub">${c.icon} ${esc(c.label)}</h4><ul class="people">${list.map((p) => personRow(state, p)).join('')}</ul>` : '';
+    return list.length ? disclosure(`friends.${id}`, `${c.icon} ${esc(c.label)}`, `<ul class="people">${list.map((p) => personRow(state, p)).join('')}</ul>`, { count: list.length, open: list.length <= 2 }) : '';
   }).join('');
   const close = friends.filter((f) => f.relationship >= 50).length;
   const note = state.character.age >= 25 && !close ? '<p class="why">No close friends — loneliness takes a toll on happiness and health.</p>' : '';
@@ -238,13 +238,13 @@ function legacyCard(state) {
       p.arrears ? ['Child-support arrears', `<span class="neg">${money(p.arrears)}</span>${p.arrears >= ARREARS_HOLD ? ' · licenses suspended' : ''}`] : null,
       p.alimony ? ['Alimony', `${money(p.alimony.annual)}/yr ${p.alimony.pay ? 'paid' : 'received'} until ${p.alimony.untilAge}`] : null,
     ])}
-    <h4 class="sub">Will</h4><div class="toggle-row">${Object.entries(WILL_PLANS).map(([id, w]) => button(`${w.icon} ${w.label}`, 'people.writeWill', { arg: id, variant: p.will?.plan === id ? 'small on' : 'small', hint: p.will ? '$300 to update' : '$1,500 attorney' })).join('')}</div>
+    ${disclosure('legacy.tools', '🧰 Will, life insurance & estate plan', `<h4 class="sub">Will</h4><div class="toggle-row">${Object.entries(WILL_PLANS).map(([id, w]) => button(`${w.icon} ${w.label}`, 'people.writeWill', { arg: id, variant: p.will?.plan === id ? 'small on' : 'small', hint: p.will ? '$300 to update' : '$1,500 attorney' })).join('')}</div>
     <h4 class="sub">Term life insurance</h4><div class="toggle-row">
       ${amounts.map((a) => button(`🛡️ ${money(a)} on you`, 'people.lifeInsurance', { arg: `self:${a}`, variant: li.self?.benefit === a ? 'small on' : 'small' })).join('')}
       ${spouse ? amounts.slice(0, 2).map((a) => button(`🛡️ ${money(a)} on ${esc(spouse.firstName)}`, 'people.lifeInsurance', { arg: `spouse:${a}`, variant: li.spouse?.benefit === a ? 'small on' : 'small' })).join('') : ''}
       ${li.self ? button('Cancel your policy', 'people.lifeInsurance', { arg: 'self:0', variant: 'small ghost' }) : ''}
     </div>
-    ${planSection(state)}
+    ${planSection(state)}`)}
     ${fundRows ? `<h4 class="sub">College savings</h4><ul class="history">${fundRows}</ul>` : ''}
     ${p.arrears ? `<div class="toggle-row">${button('⚖️ Pay support arrears', 'people.payArrears', { variant: 'small', disabled: state.finances.cash <= 0 })}</div>` : ''}
     <p class="fine">Estates pay the funeral, then debts, then probate, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });

@@ -131,7 +131,7 @@ export async function playLives({ from, to, seed }) {
         const options = p.options.filter((o) => !o.disabled);
         let id = routineChoice(p);
         if (p.type === 'career.interview') {
-          const q = QUESTIONS.find((x) => x.id === p.data.questions[p.data.step]);
+          const q = QUESTIONS.find((x) => x.id === p.data.questions[p.data.q ?? 0]);
           id = [...q.options].sort((a, b) => b.score - a.score)[0].id;
         } else if (p.type === 'career.negotiate') id = (options.find((o) => o.id === 'step' || o.id === 'modest') ?? options[0]).id;
         else if (p.type === 'housing.financing') id = (options.find((o) => !['cash', 'cancel', 'fraud'].includes(o.id)) ?? options.find((o) => o.id === 'cash') ?? options.find((o) => o.id === 'cancel') ?? options[0]).id;

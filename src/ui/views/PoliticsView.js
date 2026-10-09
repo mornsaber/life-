@@ -2,7 +2,7 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
-import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
@@ -37,10 +37,12 @@ export function politicsView(state) {
         </div>
         <p class="fine">The election is held when you next age up. Scandal drag: −${Math.round(scandalPenalty(state) * 100)} pts.</p>`, { icon: '🗳️', accent: 'green' })
     : '';
-  const ladder = OFFICE_ORDER.map((id) => {
+  const openIds = new Set();
+  const rowsFor = (id) => {
     const of = OFFICES[id];
     const appointed = Boolean(of.appointedBy);
     const check = appointed ? appointmentEligibility(state, id) : runEligibility(state, id);
+    if (check.ok) openIds.add(id);
     const est = check.ok && !appointed ? Math.round(voteShare(state, id, { funds: of.cost * 0.4, endorsements: [] }) * 100) : null;
     return `<li class="job-row ${check.ok ? '' : 'locked'}">
       <span class="job-icon">${of.icon}</span>
@@ -49,7 +51,11 @@ export function politicsView(state) {
       ${appointed ? button(check.ok ? 'Apply' : '🔒', 'politics.applyAppointed', { arg: id, variant: 'small', disabled: !check.ok, title: check.reason ?? '' }) : button(check.ok ? 'Run' : '🔒', 'politics.run', { arg: id, variant: 'small', disabled: !check.ok || Boolean(c), title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
-  }).join('');
+  };
+  const allRows = OFFICE_ORDER.map((id) => [id, rowsFor(id)]);
+  const openRows = allRows.filter(([id]) => openIds.has(id)).map(([, r]) => r).join('');
+  const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
+  const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: OFFICE_ORDER.length - openIds.size })}</li>` : ''}`;
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}

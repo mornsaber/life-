@@ -38,7 +38,7 @@ function walletSection(state) {
       ${button('🐌 Minimum payments', 'cards.strategy', { arg: 'minimum', variant: c.strategy === 'minimum' ? 'small on' : 'small', hint: trap ? `${trap.years >= 60 ? 'Never' : `${trap.years} yr`} to clear · ${money(trap.interest)} interest` : 'More to spend now, much more interest' })}
       ${hasPromoCard && !c.transfer && debt >= 500 ? button('🔁 Transfer balance to 0%', 'cards.transfer', { variant: 'small', hint: `4% fee (${money(debt * 0.04)}) · 2 years interest-free` }) : ''}
     </div>
-    <h4 class="sub">Apply for a card</h4><div class="toggle-row">${offers}</div>`;
+    ${disclosure('credit.apply', '💳 Apply for a card', `<div class="toggle-row">${offers}</div>`)}`;
 }
 
 /** Last return, deductions, IRS debt and audits. */

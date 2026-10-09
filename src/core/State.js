@@ -296,9 +296,19 @@ export function currentYearBlock(state) {
   return state.log[state.log.length - 1];
 }
 
+/** Money written as `$${n}` with a negative n reads "$-5"; show it as "-$5". */
+export const fixMoneySigns = (s) => String(s).replace(/\$-(?=\d)/g, '-$');
+
+/** Player-facing text clean-up: money signs, doubled spaces, and an icon repeated at the start of the text. */
+export function tidyText(text, icon = '') {
+  let t = fixMoneySigns(text).replace(/ {2,}/g, ' ').trim();
+  if (icon && icon !== '•' && t.startsWith(icon)) t = t.slice(icon.length).trimStart();
+  return t;
+}
+
 export function addLog(state, text, icon = '•', kind = 'info') {
   const entries = currentYearBlock(state).entries;
-  if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text, icon, kind });
+  if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text: tidyText(text, icon), icon, kind });
 }
 
 /** Log growth caps: full detail for recent years; older years keep only their headline moments. */
