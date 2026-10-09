@@ -20,7 +20,8 @@ import { chainOfCommand } from '../../modules/org/Organizations.js';
 import { BUSINESS_TYPES, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
-import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS } from '../../modules/org/Executives.js';
+import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS, postDef, promotable } from '../../modules/org/Executives.js';
+import { orgOf, orgType } from '../../modules/org/Organizations.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
@@ -182,7 +183,7 @@ function currentJob(state) {
     ${meter(job.coworkers, { label: '👥 Coworker relationships' })}
     <p class="promo ${status.eligible ? 'ready' : ''}">${nextHint}</p>
     ${needs?.length ? `<p class="fine">🔐 Promotion to ${esc(needs[0].l.title)} triggers a ${esc(needs[0].c.clearanceNeeded)} clearance investigation.</p>` : ''}
-    ${trackLadder(profession.levels, job.levelId, (l) => ladderFor(profession, size).includes(l))}
+    ${progression(state, job, profession, size)}
     ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}
     <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
     ${unionPanel(state, job)}
@@ -440,4 +441,35 @@ function fieldBusinessesCard(state) {
   }).join(' ');
   const rule = ownershipRules(state);
   return card('Businesses in Your Field', `<p>${items}</p><p class="fine">Start one from the Business tab. ${rule.canOperate ? '' : esc(rule.notes.at(-1) ?? '')}</p>`, { icon: '🏪' });
+}
+
+/**
+ * The progression: the ranks that exist at this employer, then the leadership posts above the
+ * ladder (department head, head of the organization) — appointed, chosen by a board, or elected.
+ */
+function progression(state, job, profession, size) {
+  const here = ladderFor(profession, size);
+  const currentId = job.headOf && !job.headOf.mapped ? null : job.levelId;
+  let html = trackLadder(here, currentId ?? '__post__');
+  // What bigger (or smaller) agencies have that this one doesn't.
+  const elsewhere = profession.levels.filter((l) => !here.includes(l));
+  if (elsewhere.length) html += `<p class="fine">Not at this ${size === 'micro' ? 'small agency' : 'employer'}: ${elsewhere.map((l) => esc(l.title)).join(', ')}.</p>`;
+  const org = orgOf(state, job.employer);
+  if (!org || org.business) return html;
+  const t = orgType(org.typeId);
+  const deptDef = job.employer.deptId ? postDef(org, job.employer.deptId) : null;
+  const orgDef = postDef(org, null);
+  const onLadder = (def) => def && ((def.occupation === job.professionId && def.levelId && here.some((l) => l.id === def.levelId)) || here.some((l) => l.title.toLowerCase() === String(def.title).toLowerCase()));
+  const posts = [];
+  if (deptDef && !onLadder(deptDef)) posts.push({ def: deptDef, scope: t.departments.find((d) => d.id === job.employer.deptId)?.name ?? 'Department', mine: Boolean(job.headOf?.deptId) });
+  if (orgDef && !onLadder(orgDef)) posts.push({ def: orgDef, scope: org.name, mine: Boolean(job.headOf) && !job.headOf.deptId });
+  if (!posts.length) return html;
+  const how = (def) => (def.selection === 'elected' || def.office ? '🗳️ elected' : def.appointedBy ? `appointed by ${def.appointedBy}` : def.selection === 'board' ? 'chosen by the board' : 'promoted from within');
+  const heldDept = Boolean(job.headOf?.deptId);
+  const items = posts.map((p, i) => {
+    const cls = p.mine ? 'now' : (i === 0 && heldDept && posts.length > 1 && !p.mine) ? 'done' : promotable(p.def) ? 'todo' : 'na';
+    return `<li class="${cls}" title="${esc(p.def.title)} — ${esc(how(p.def))}"><span class="ladder-dot">★</span><span class="ladder-title">${esc(p.def.title)}</span></li>`;
+  }).join('');
+  return `${html}<div class="tracks"><div class="track-row"><span class="track-label">🏛️ Leadership</span><ol class="ladder compact">${items}</ol></div></div>
+    <p class="fine">${posts.map((p) => `${esc(p.def.title)} (${esc(p.scope)}): ${esc(how(p.def))}`).join(' · ')}. Reach the top of the ladder and you're in line when the post opens.</p>`;
 }

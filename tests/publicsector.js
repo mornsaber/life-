@@ -18,6 +18,7 @@ import { budgetPressure, retentionRisk, publicRifTick } from '../src/modules/car
 import { RIF_DEPS } from '../src/modules/career/CareerEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { ladderFor } from '../src/modules/career/Ladder.js';
+import { recalcSalary } from '../src/modules/career/Compensation.js';
 import { contextOf, annualMoney } from '../src/modules/equipment/Equipment.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -184,6 +185,25 @@ const tests = {
     const t = worker(7, 'education', 'detroit');
     t.job.tenured = true;
     assert.equal(retentionRisk(t.state, t.job), 0);
+  },
+  'every rank pays more than the one below it, at every agency size'() {
+    for (const [id, region] of [['police', 'nyc'], ['fire', 'nyc'], ['fbi', 'nyc'], ['police', 'rural'], ['education', 'nyc']]) {
+      const w = worker(7, id, region);
+      const ladder = ladderFor(PROFESSIONS[id], w.job.employer.size).filter((l) => l.track !== 'ic');
+      let prev = 0;
+      for (const l of ladder) {
+        w.job.levelId = l.id; w.job.grade = l.grade; w.job.step = 1; w.job.merit = 0;
+        recalcSalary(w.state, w.job);
+        assert.ok(w.job.salary >= prev, `${id}@${w.job.employer.size}: ${l.title} $${w.job.salary} < $${prev}`);
+        prev = w.job.salary;
+      }
+    }
+  },
+  'head posts above the ladder show in the progression'() {
+    const w = worker(3, 'police', 'nyc');
+    const html = VIEWS.career(w.state);
+    clean(html);
+    assert.ok(/Leadership/.test(html), 'leadership row missing');
   },
 };
 

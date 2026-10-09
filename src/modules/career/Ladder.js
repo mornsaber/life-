@@ -87,6 +87,16 @@ export function addGovernmentTiers(profession) {
   if (profession.tiered || !GOV_SECTORS.includes(profession.sector) || TIER_EXEMPT.includes(profession.id)) return;
   profession.tiered = true;
   const levels = profession.levels;
+  // Supervisory differential: a supervisor out-earns the people at the same grade they supervise,
+  // and each supervisory rank sharing a grade with the one below pays a little more.
+  let prevSup = null;
+  for (const l of levels) {
+    const sup = l.abilities.includes('supervise') || l.track === 'mgmt';
+    if (!sup) continue;
+    if (levels.some((x) => x !== l && x.grade === l.grade && !(x.abilities.includes('supervise') || x.track === 'mgmt'))) l.rankPay ??= 1.08;
+    if (prevSup && prevSup.grade === l.grade) l.rankPay = Math.round(((prevSup.rankPay ?? 1) + 0.06) * 100) / 100;
+    prevSup = l;
+  }
   if (levels.length < 4) return;
   const base = levels.filter((l) => !l.minSize);
   const top = [...levels].sort((a, b) => b.grade - a.grade || levels.indexOf(b) - levels.indexOf(a))[0];
@@ -109,8 +119,12 @@ export function addGovernmentTiers(profession) {
     id: `${top.id}_cmd${i + 1}`, title, grade: Math.min(top.grade, below.grade + 1 + Math.floor(i / 2)), track: 'mgmt', years: 3,
     abilities: [...new Set([...below.abilities, 'supervise', 'budget'])], minSize: 'mega', reports: (below.reports ?? 6) + 4 * (i + 1),
     ...(below.req ? { req: below.req } : {}), command: true,
+    // Ranks that share a grade still pay more the higher they sit.
+    rankPay: Math.round((1 + 0.04 * (i + 1)) * 100) / 100,
   }));
   levels.splice(at, 0, ...added);
+  // At a major agency the head out-earns every command rank under it.
+  if (added.length) top.megaHeadPay = Math.round((1 + 0.04 * (added.length + 1)) * 100) / 100;
 }
 
 export function levelById(profession, levelId) {
