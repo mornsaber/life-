@@ -29,6 +29,7 @@ import { ownershipRules } from './OwnershipRules.js';
 import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './BusinessLicenses.js';
 import { competitionFactor, effectiveLocations } from '../org/Businesses.js';
 import { initiativeEffects } from './Initiatives.js';
+export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
 
@@ -176,7 +177,7 @@ export function yearFinancials(state, biz, rng) {
   const management = (biz.role === 'absentee' ? Math.round(clamp(revenue * 0.05, 40000, 90000) + Math.max(0, (biz.scale ?? 1) - 1) * 12000) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
   const rent = Math.round(type.rent * biz.scale * col * (ini?.rent ?? 1));
   const initiatives = ini ? Math.round(revenue * ini.share + ini.fixed * Math.sqrt(col)) : 0;
-  const insurance = Math.round(type.insurance * biz.scale);
+  const insurance = Math.round(type.insurance * biz.scale * (ini?.insurance ?? 1));
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
   const admin = ENTITIES[biz.entity].admin;
   const sba = biz.debts.sba;
@@ -196,9 +197,12 @@ export function yearFinancials(state, biz, rng) {
       : Math.round(clamp(operatingIncome * 0.4, 0, 150000));
   const payrollTax = Math.round(ownerSalary * 0.0765);
   const pretax = operatingIncome - interest - ownerSalary - payrollTax;
-  const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, pretax) * CORPORATE_TAX);
+  // Off-book expenses and capital purchases since the last books (see charge()) are deducted for tax, not again from cash.
+  const writeOffs = (biz.taxBook?.expense ?? 0) + (biz.taxBook?.capex ?? 0);
+  const taxableProfit = pretax - writeOffs;
+  const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, taxableProfit) * CORPORATE_TAX);
   const netIncome = pretax - corporateTax;
-  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, fleet, penalties, ops };
+  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, writeOffs, taxableProfit, fleet, penalties, ops };
 }
 
 /**

@@ -236,7 +236,7 @@ export function available(c, d) {
   return c.money === 'cash' ? Math.max(0, Math.round(c.biz.cash)) : d.budget + d.reserve;
 }
 function pay(c, d, amount) {
-  if (c.money === 'cash') { c.biz.cash -= amount; return; }
+  if (c.money === 'cash') { c.biz.cash -= amount; (c.biz.taxBook ??= { expense: 0, capex: 0 }).capex += Math.round(amount); return; }
   const fromBudget = Math.min(d.budget, amount);
   d.budget -= fromBudget;
   d.reserve -= amount - fromBudget;
@@ -340,7 +340,10 @@ function yearFor(ctx, c) {
   if (c.money === 'cash' && c.biz.role !== 'operator') autoReplace(c, d, 0.05);
   if (c.money === 'funds') d.budget += annualMoney(state, c);
   else if (c.money !== 'cash') d.budget = Math.max(0, annualMoney(state, c) - extraCosts(c, d));
-  else c.biz.cash -= fixedCosts(d);
+  else {
+    c.biz.cash -= fixedCosts(d);
+    (c.biz.taxBook ??= { expense: 0, capex: 0 }).expense += Math.round(fixedCosts(d));
+  }
   d.budgetAge = state.character.age;
   // Readiness and what it does.
   const r = readiness(state, c);

@@ -66,6 +66,8 @@ export const Finances = {
     // Pass-through business profit left in the business is taxed but never reaches your wallet.
     const retained = f.ledger.income.reduce((sum, i) => sum + (i.retained ? i.amount : 0), 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
+    // Money that actually left your paycheck (401(k), IRA, commuter benefit) — not depreciation or business losses.
+    const cashDeductions = f.ledger.deductions.reduce((sum, d) => sum + (d.nonCash ? 0 : d.amount), 0);
     const agi = Math.max(0, ordinary - deductions);
     // Married filing jointly: brackets and the standard deduction double (≈ splitting income in half).
     const married = isMarried(state);
@@ -107,7 +109,7 @@ export const Finances = {
         // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
         const spendable = ordinary - retained;
         const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
-        const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - deductions - obligations;
+        const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - cashDeductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
         const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;
         // A second adult adds about half again to household needs (OECD equivalence scale).
@@ -157,7 +159,7 @@ export const Finances = {
 
     if (gross > 0 || living > 0) {
       ctx.log(
-        `Year-end finances: earned $${gross.toLocaleString()}${deductions ? ` ($${deductions.toLocaleString()} pre-tax to retirement)` : ''}, paid $${federalTax.toLocaleString()} federal${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
+        `Year-end finances: earned $${gross.toLocaleString()}${cashDeductions ? ` ($${cashDeductions.toLocaleString()} pre-tax to retirement)` : ''}${deductions > cashDeductions ? ` ($${(deductions - cashDeductions).toLocaleString()} in depreciation and losses written off)` : ''}, paid $${federalTax.toLocaleString()} federal${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
           (insurance ? `, $${insurance.toLocaleString()} health insurance` : '') +
           (loanPayment ? `, $${loanPayment.toLocaleString()} toward loans` : '') +
           (interest ? `, $${interest.toLocaleString()} card interest` : '') +

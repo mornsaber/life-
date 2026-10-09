@@ -21,7 +21,8 @@ import { acceptOffer } from './FleetActions.js';
 import { SBA, MARKETING } from './BusinessTypes.js';
 import { forecast } from './Advisor.js';
 import { nextMarket } from '../org/Businesses.js';
-import { INITIATIVES, initiativeCost, accountEligibility, signAccount } from './Initiatives.js';
+import { INITIATIVES, initiativesFor, initiativeCost, accountEligibility, signAccount } from './Initiatives.js';
+import { charge } from './TaxBook.js';
 
 export const STRATEGIES = {
   off: { name: 'You decide', icon: '🧑‍💼', desc: 'Nothing happens unless you do it.' },
@@ -142,13 +143,13 @@ function fleetPlan(ctx, biz, aggressive, did) {
     for (let i = 0; i < short && biz.ops.units.length < 400; i++) {
       const price = o.unit.usedCost ?? o.unit.newCost;
       if (biz.cash >= price * 1.5) {
-        biz.cash -= price;
+        charge(biz, price, 'capex');
         biz.ops.units.push({ id: ctx.rng.id('u_'), age: ctx.rng.int(4, Math.max(5, Math.floor(o.unit.life * 0.6))), used: true });
         biz.assets += Math.round(price * 0.8);
         bought += 1;
       } else if ((aggressive || biz.cash >= o.unit.newCost) && biz.cash >= o.unit.newCost * EQUIPMENT_LOAN.down && ctx.state.housing.credit.score >= 600) {
         const down = Math.round(o.unit.newCost * EQUIPMENT_LOAN.down);
-        biz.cash -= down;
+        charge(biz, down, 'capex', o.unit.newCost - down);
         const balance = (biz.ops.loan?.balance ?? 0) + o.unit.newCost - down;
         biz.ops.loan = { balance, rate: EQUIPMENT_LOAN.rate, annual: annualPayment(balance, EQUIPMENT_LOAN.rate, EQUIPMENT_LOAN.years) };
         biz.ops.units.push({ id: ctx.rng.id('u_'), age: 0, used: false });
@@ -178,7 +179,7 @@ function leversPlan(ctx, biz, profit, strategy, did) {
   const base = profit({});
   const cushion = Math.max(25000, (biz.lastYear?.revenue ?? 0) * 0.1);
   biz.initiatives ??= {};
-  for (const id of Object.keys(INITIATIVES)) {
+  for (const id of Object.keys(initiativesFor(biz))) {
     const on = biz.initiatives[id] != null;
     const toggled = { ...biz.initiatives };
     if (on) delete toggled[id];
@@ -186,7 +187,7 @@ function leversPlan(ctx, biz, profit, strategy, did) {
     const gain = profit({ biz: { initiatives: toggled } }) - base;
     const cost = initiativeCost(biz, id);
     if (!on && gain > 0 && cost <= gain * (strategy === 'harvest' ? 1 : 2) && biz.cash >= cost + cushion) {
-      biz.cash -= cost;
+      charge(biz, cost);
       biz.initiatives[id] = age;
       did.push(`launched a ${INITIATIVES[id].name.toLowerCase()}`);
     } else if (on && gain > 2000) {

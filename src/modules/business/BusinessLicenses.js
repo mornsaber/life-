@@ -27,6 +27,7 @@ import { hasFelony } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { credentialName } from '../credentials/CredentialRegistry.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
+import { charge } from './TaxBook.js';
 
 export const BUSINESS_LICENSES = {
   businessLicense: { name: 'General Business License', icon: '📃', types: '*', required: true, fee: 150, renewal: { years: 1, fee: 100 }, desc: 'City/county license every business needs, plus a sales-tax permit where it applies.' },
@@ -196,7 +197,7 @@ export function licensesTick(ctx, biz) {
       ctx.log(`${biz.name}: your ${l.name} was reinstated.`, l.icon, 'good');
     } else if (rec.status === 'active' && age >= rec.renewAge) {
       if (biz.cash >= l.renewal.fee || biz.autopilot !== false) {
-        biz.cash -= l.renewal.fee;
+        charge(biz, l.renewal.fee);
         rec.renewAge = age + l.renewal.years;
       } else {
         rec.status = 'lapsed';
@@ -239,7 +240,7 @@ export function applyForLicense(ctx, biz, id) {
   if (!e.ok) return e;
   const fee = rec?.status === 'lapsed' ? l.renewal.fee * 2 : l.fee;
   if (biz.cash < fee) return { ok: false, reason: `Needs $${fee.toLocaleString()} in the business account` };
-  biz.cash -= fee;
+  charge(biz, fee);
   biz.licenses ??= {};
   const age = state.character.age;
   biz.licenses[id] = (l.processing || l.chance) && rec?.status !== 'lapsed'

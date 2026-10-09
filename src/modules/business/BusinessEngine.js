@@ -25,8 +25,11 @@ import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
 import { InitiativeActions, initiativesTick } from './Initiatives.js';
 import { conglomerateTick, conglomerateOf, formEligibility, holdingsCap, acquireCompany, FORM_COST } from './Conglomerate.js';
+import { hireExec, fireExec, resolveExecHire, setOffice, mergeSubsidiaries } from './HoldingCo.js';
+import { businessById, inject, withdraw, withdrawable, moveTreasury, buyBack, openingsPerYear } from './Capital.js';
 import { FleetActions, FleetResolvers, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
+import { charge } from './TaxBook.js';
 import {
   grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
 } from './BusinessLicenses.js';
@@ -96,7 +99,22 @@ function payDebts(biz) {
   }
 }
 
-/** Salaries, draws, dividends and pass-through taxes. Returns what reached you. */
+/** Pass-through losses offset other income up to the excess-business-loss limit. */
+export const EXCESS_LOSS_LIMIT = 313000;
+/** Rough top-bracket rate a tax distribution covers on profit left in the business. */
+const TAX_DISTRIBUTION_RATE = 0.4;
+
+/**
+ * Salaries, draws, dividends and pass-through taxes. Returns what reached you.
+ *
+ * Pass-through (LLC, S-corp, sole prop): your share of the year's *taxable*
+ * profit (book profit less write-offs: off-book expenses and bonus
+ * depreciation) is taxed to you whether or not you take it out. Cash you
+ * take beyond that is a tax-free return of profit already taxed. A loss
+ * offsets your other income. When management reinvests the profit, the
+ * business still pays you a tax distribution so the bill isn't on your card.
+ * C-corp: the company paid its own tax; what it pays you is a dividend.
+ */
 function payOwner(ctx, biz, ly) {
   const entity = ENTITIES[biz.entity];
   let ownerPay = 0;
@@ -105,15 +123,34 @@ function payOwner(ctx, biz, ly) {
     ctx.spend(ly.payrollTax, 'Payroll tax (FICA)', { allowDebt: true });
     ownerPay += ly.ownerSalary;
   }
-  const dist = Math.round(Math.max(0, Math.min(ly.netIncome, biz.cash)) * biz.drawPct);
+  const taxable = Math.round((ly.taxableProfit ?? ly.netIncome) * biz.ownerPct);
+  let dist = Math.round(Math.max(0, Math.min(ly.netIncome, biz.cash)) * biz.drawPct);
+  if (entity.passThrough && taxable > 0) {
+    // Tax distribution on profit left in the business.
+    const owed = Math.round(Math.max(0, taxable - dist * biz.ownerPct) * TAX_DISTRIBUTION_RATE / biz.ownerPct);
+    const room = Math.max(0, biz.cash - dist);
+    const extra = Math.min(owed, room);
+    if (extra > 0) {
+      dist += extra;
+      ly.taxDistribution = extra;
+    }
+  }
   biz.cash -= dist;
   const mine = Math.round(dist * biz.ownerPct);
   if (entity.passThrough) {
-    if (mine) ctx.earn(mine, `Owner draw — ${biz.name}`, { wage: !entity.payroll });
-    const retained = Math.round(Math.max(0, ly.netIncome - dist) * biz.ownerPct);
-    if (retained) ctx.earn(retained, `Retained profit — ${biz.name}`, { retained: true, wage: !entity.payroll });
-    if (!entity.payroll && ly.netIncome > 0) {
-      ly.seTax = Math.round(Math.min(ly.netIncome * biz.ownerPct * 0.9235, SS_WAGE_CAP) * 0.153);
+    const wage = !entity.payroll;
+    const taxedNow = Math.min(mine, Math.max(0, taxable));
+    if (taxedNow) ctx.earn(taxedNow, `Owner draw — ${biz.name}`, { wage });
+    // Beyond this year's taxable profit: earnings already taxed (or sheltered by depreciation).
+    if (mine > taxedNow) ctx.state.finances.cash += mine - taxedNow;
+    const retained = Math.max(0, taxable - taxedNow);
+    if (retained) ctx.earn(retained, `Retained profit — ${biz.name}`, { retained: true, wage });
+    if (taxable < 0) {
+      ly.lossDeducted = Math.min(-taxable, EXCESS_LOSS_LIMIT);
+      ctx.deduct(ly.lossDeducted, `Business loss — ${biz.name}`, { nonCash: true });
+    }
+    if (wage && taxable > 0) {
+      ly.seTax = Math.round(Math.min(taxable * 0.9235, SS_WAGE_CAP) * 0.153);
       ctx.spend(ly.seTax, 'Self-employment tax', { allowDebt: true });
     }
   } else if (mine) ctx.earn(mine, `Dividends — ${biz.name}`, { ltcg: true });
@@ -192,6 +229,7 @@ function businessTick(ctx, biz) {
 
   ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
+  biz.taxBook = { expense: 0, capex: 0 };
   biz.cash += ly.netIncome;
   payDebts(biz);
   payEquipmentLoan(biz);
@@ -252,12 +290,12 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
   if (funding === 'sba') {
     if (state.housing.credit.score < SBA.minScore) return { ok: false, reason: `SBA lenders want a ${SBA.minScore}+ credit score.` };
     if (biz.cash < cost * SBA.downPayment) return { ok: false, reason: `The business needs ${money(cost * SBA.downPayment)} for the down payment.` };
-    biz.cash -= Math.round(cost * SBA.downPayment);
+    charge(biz, cost * SBA.downPayment, 'capex', cost * (1 - SBA.downPayment));
     const loan = Math.round(cost * (1 - SBA.downPayment)) + (biz.debts.sba?.balance ?? 0);
     biz.debts.sba = { balance: loan, rate: SBA.rate, annual: annualPayment(loan, SBA.rate, SBA.years), guaranteed: true };
   } else {
     if (biz.cash < cost) return { ok: false, reason: `Opening another location costs ${money(cost)} from the business account.` };
-    biz.cash -= cost;
+    charge(biz, cost, 'capex');
   }
   biz.scale += 1;
   biz.assets += Math.round(cost * 0.6);
@@ -292,16 +330,16 @@ export const BUSINESS_EVENTS = [
     { id: 'let', label: '👋 Let them go', apply: (ctx, b) => { bump(b.staff, 'productivity', -8); bump(b, 'quality', -4); return 'They left — and took a couple of clients.'; } },
   ] },
   { id: 'lawsuit', title: 'Served With a Lawsuit', text: 'A customer is suing over an injury on your premises.', options: [
-    { id: 'settle', label: '🤝 Settle', apply: (ctx, b) => { const c = ctx.rng.int(15000, 60000); b.cash -= c; return `You settled for ${money(c)}.`; } },
-    { id: 'fight', label: '⚖️ Fight it in court', apply: (ctx, b) => { if (ctx.rng.chance(0.6)) { b.cash -= 20000; return 'You won, after $20,000 in legal fees.'; } const c = ctx.rng.int(60000, 200000); b.cash -= c; bump(b, 'reputation', -6); return `You lost: a ${money(c)} judgment, and it made the local news.`; } },
+    { id: 'settle', label: '🤝 Settle', apply: (ctx, b) => { const c = ctx.rng.int(15000, 60000); charge(b, c); return `You settled for ${money(c)}.`; } },
+    { id: 'fight', label: '⚖️ Fight it in court', apply: (ctx, b) => { if (ctx.rng.chance(0.6)) { charge(b, 20000); return 'You won, after $20,000 in legal fees.'; } const c = ctx.rng.int(60000, 200000); charge(b, c); bump(b, 'reputation', -6); return `You lost: a ${money(c)} judgment, and it made the local news.`; } },
   ] },
   { id: 'competitor', title: 'New Competition', text: 'A well-funded competitor opened nearby.', options: [
-    { id: 'price', label: '🏷️ Cut prices', apply: (ctx, b) => { b.cash -= Math.round((b.lastYear?.revenue ?? 50000) * 0.05); bump(b, 'reputation', 3); return 'You cut prices and kept your customers — at a cost.'; } },
+    { id: 'price', label: '🏷️ Cut prices', apply: (ctx, b) => { charge(b, (b.lastYear?.revenue ?? 50000) * 0.05); bump(b, 'reputation', 3); return 'You cut prices and kept your customers — at a cost.'; } },
     { id: 'quality', label: '✨ Out-serve them', apply: (ctx, b) => { if (ctx.state.stats.smarts + ctx.rng.int(-20, 20) > 60) { bump(b, 'quality', 6); return 'You doubled down on quality and customers noticed.'; } bump(b, 'reputation', -4); return 'You tried to out-serve them. They outspent you.'; } },
     { id: 'ignore', label: '🙈 Ignore them', apply: (ctx, b) => { bump(b, 'reputation', -6); return 'You ignored them. Some regulars drifted away.'; } },
   ] },
   { id: 'supplier', title: 'Supplier Price Hike', text: 'Your main supplier raised prices 15%.', notStartup: true, options: [
-    { id: 'absorb', label: '🧾 Absorb it', apply: (ctx, b) => { b.cash -= Math.round((b.lastYear?.cogs ?? 20000) * 0.15); return 'You absorbed the increase.'; } },
+    { id: 'absorb', label: '🧾 Absorb it', apply: (ctx, b) => { charge(b, (b.lastYear?.cogs ?? 20000) * 0.15); return 'You absorbed the increase.'; } },
     { id: 'switch', label: '🔄 Find a cheaper supplier', apply: (ctx, b) => { bump(b, 'quality', -5); return 'The new supplier is cheaper — and worse.'; } },
     { id: 'raise', label: '📈 Raise your prices', apply: (ctx, b) => { bump(b, 'reputation', -3); return 'You passed it on to customers. Some grumbled.'; } },
   ] },
@@ -618,6 +656,7 @@ function holdingTick(ctx, biz) {
   if (typeOf(biz).startup) startupGrowth(ctx, biz);
   ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
+  biz.taxBook = { expense: 0, capex: 0 };
   biz.cash += ly.netIncome;
   payDebts(biz);
   payEquipmentLoan(biz);
@@ -726,7 +765,7 @@ export const BusinessEngine = {
       const check = franchisorEligibility(state, biz);
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       const fromBiz = Math.min(Math.max(0, biz.cash), FDD_COST);
-      biz.cash -= fromBiz;
+      charge(biz, fromBiz);
       state.finances.cash -= FDD_COST - fromBiz;
       biz.franchisor = { units: 0, opened: 0, failed: 0, fee: Math.round((25000 + typeOf(biz).cost * 0.08) / 500) * 500, royalty: 0.05, startYears: biz.years, newUnits: 0 };
       ctx.log(`You filed a Franchise Disclosure Document and registered ${biz.name} to sell franchises: ${money(biz.franchisor.fee)} per unit plus 5% royalties.`, '🗺️', 'milestone');
@@ -805,13 +844,64 @@ export const BusinessEngine = {
       ctx.log(`${biz.name} laid off ${cut} people.`, '✂️', 'warn');
       syncBusinessOrg(ctx.state, biz);
     },
-    expand(ctx, funding = 'cash') {
+    /** arg: 'cash' | 'sba', optionally ':count' — open one or several locations this year. */
+    expand(ctx, arg = 'cash') {
       const biz = withBiz(ctx);
       if (!biz) return;
-      if (yearlyCount(ctx.state, 'business.expand')) return ctx.toast('One expansion a year.', 'warn');
-      const r = expandBusiness(ctx, biz, funding);
-      if (!r.ok) return ctx.toast(r.reason, 'warn');
-      bumpYearly(ctx.state, 'business.expand');
+      const [funding, raw] = String(arg).split(':');
+      const limit = openingsPerYear(biz);
+      const done = yearlyCount(ctx.state, 'business.expand');
+      const want = Math.max(1, Math.min(Number(raw) || 1, limit - done));
+      if (done >= limit) return ctx.toast(`${biz.role === 'operator' ? 'Two openings a year is all you can manage yourself' : `Your team can open ${limit} locations a year at this size`}.`, 'warn');
+      let opened = 0;
+      for (let i = 0; i < want; i++) {
+        const r = expandBusiness(ctx, biz, funding === 'sba' ? 'sba' : 'cash');
+        if (!r.ok) {
+          if (!opened) return ctx.toast(r.reason, 'warn');
+          ctx.toast(`Opened ${opened}: ${r.reason}`, 'info');
+          break;
+        }
+        opened += 1;
+        bumpYearly(ctx.state, 'business.expand');
+      }
+    },
+    /** arg: 'bizId:amount' — put your own money into a business. */
+    capitalIn(ctx, arg) {
+      const [id, amount] = String(arg).split(':');
+      const biz = businessById(ctx.state, id);
+      if (biz) inject(ctx, biz, Number(amount));
+    },
+    /** arg: 'bizId:amount' (amount 'max' for everything spare) — take money out of a business. */
+    capitalOut(ctx, arg) {
+      const [id, amount] = String(arg).split(':');
+      const biz = businessById(ctx.state, id);
+      if (biz) withdraw(ctx, biz, amount === 'max' ? withdrawable(biz) : Number(amount));
+    },
+    /** arg: signed amount — into (+) or out of (−) the holding company's treasury. */
+    treasury(ctx, amount) {
+      moveTreasury(ctx, Number(amount));
+    },
+    /** arg: 'bizId:pct:you|company' — buy back equity you sold or investors hold (pct 'all' for everything). */
+    buyBack(ctx, arg) {
+      const [id, pct, source = 'you'] = String(arg).split(':');
+      const biz = businessById(ctx.state, id);
+      if (!biz) return;
+      buyBack(ctx, biz, pct === 'all' ? 1 : Number(pct), source);
+    },
+    /** arg: role — run an executive search for the holding company. */
+    hireExec(ctx, role) {
+      hireExec(ctx, role);
+    },
+    fireExec(ctx, role) {
+      fireExec(ctx, role);
+    },
+    /** arg: office tier, or 'own:propertyId'. */
+    hqOffice(ctx, arg) {
+      setOffice(ctx, arg);
+    },
+    /** arg: 'survivorId:otherId' — merge two subsidiaries in the same line of business. */
+    mergeSubsidiaries(ctx, arg) {
+      mergeSubsidiaries(ctx, arg, { maxScale });
     },
     /** SBA working-capital loan for an established, profitable business. */
     loan(ctx) {
@@ -1022,13 +1112,14 @@ export const BusinessEngine = {
   },
 
   resolvers: {
+    execHire: resolveExecHire,
     ...OwnerResolvers,
     ...FleetResolvers,
     franchiseDefault(ctx, data, optionId) {
       const biz = currentBusiness(ctx.state);
       if (!biz?.franchise) return;
       if (optionId === 'cure') {
-        biz.cash -= data.cure;
+        charge(biz, data.cure, 'capex');
         bump(biz, 'quality', 15);
         biz.staff.productivity = Math.min(100, biz.staff.productivity + 5);
         return ctx.log(`You remodeled and retrained. ${biz.franchise.name} withdrew the default notice.`, '🧹', 'good');
@@ -1040,7 +1131,7 @@ export const BusinessEngine = {
       const biz = currentBusiness(ctx.state);
       if (!biz?.franchise) return;
       if (optionId === 'renew') {
-        biz.cash -= data.cost;
+        charge(biz, data.cost);
         biz.franchise.signedYears = 0;
         bump(biz, 'quality', 6);
         return ctx.log(`You renewed with ${biz.franchise.name} for another ${biz.franchise.term} years and refreshed the store.`, '✍️', 'good');
@@ -1071,7 +1162,7 @@ export const BusinessEngine = {
         bump(s, 'morale', -18);
         if (rng.chance(0.5)) {
           const fine = rng.int(10000, 60000);
-          biz.cash -= fine;
+          charge(biz, fine); // back pay is wages
           s.unionized = true;
           state.legal.record.push({ offenseId: 'unfairLaborPractice', name: 'Unfair Labor Practice (NLRB)', severity: 'civil', age: state.character.age, sentence: `$${fine.toLocaleString()} back pay; union recognized` });
           ctx.log(`The NLRB ruled you fired the organizers illegally: ${money(fine)} in back pay, reinstatement, and a union anyway.`, '⚖️', 'bad');

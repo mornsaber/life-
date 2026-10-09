@@ -180,7 +180,7 @@ function charterYear(ctx, v, t) {
   const costs = Math.round(gross * 0.3 + t.insurance * 0.5);
   ctx.earn(gross, `Charter bookings — ${t.name}`);
   ctx.spend(costs, `Charter operator & commercial insurance — ${t.name}`, { allowDebt: true });
-  ctx.deduct(Math.min(gross - costs, Math.round(t.price / 7)), 'Charter depreciation');
+  ctx.deduct(Math.min(gross - costs, Math.round(t.price / 7)), 'Charter depreciation', { nonCash: true });
   v.value = Math.round(v.value * 0.97);
   v.lastCharter = gross - costs;
 }

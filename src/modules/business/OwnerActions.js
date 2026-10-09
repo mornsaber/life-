@@ -20,6 +20,7 @@ import {
 import { personOf, sideRng, newPerson } from '../org/Organizations.js';
 import { seat } from '../org/Vacancies.js';
 import { rememberDeparture } from '../org/Churn.js';
+import { charge } from './TaxBook.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -148,7 +149,7 @@ export const OwnerActions = {
     biz.staff.morale = Math.round(clamp(biz.staff.morale + (justified ? -1 : -6), 0, 100));
     if (!justified && rng.chance(0.15)) {
       const cost = rng.int(15000, 60000);
-      biz.cash -= cost;
+      charge(biz, cost);
       ctx.log(`You fired ${p.name}, who sued for wrongful termination. The settlement cost ${money(cost)}.`, '⚖️', 'bad');
     } else ctx.log(`You fired ${p.name}${justified ? '' : '. The team didn\'t see it coming'}.`, '🚪', justified ? 'info' : 'warn');
     syncBusinessOrg(state, biz);
@@ -238,7 +239,7 @@ export const OwnerActions = {
     const cost = Math.round(typeOf(biz).cost * (kind === 'equipment' ? 0.15 : 0.08) * Math.max(1, biz.scale));
     if (biz.cash < cost) return ctx.toast(`Needs ${money(cost)} in the business account.`, 'warn');
     bumpYearly(state, `business.invest.${kind}`);
-    biz.cash -= cost;
+    charge(biz, cost, 'capex');
     biz.assets += Math.round(cost * 0.7);
     biz.quality = Math.min(100, biz.quality + (kind === 'equipment' ? 5 : 4));
     ctx.log(`${biz.name} invested ${money(cost)} in new ${kind}.`, kind === 'equipment' ? '🛠️' : '🖥️', 'good');
@@ -266,7 +267,7 @@ export const OwnerActions = {
     const cost = relocationCost(biz);
     if (biz.cash < cost) return ctx.toast(`Moving costs ${money(cost)} from the business account.`, 'warn');
     bumpYearly(state, 'business.relocate');
-    biz.cash -= cost;
+    charge(biz, cost);
     biz.assets += Math.round(cost * 0.4);
     const before = biz.fit ?? 1;
     // You know your customers now, so the new spot is usually better.

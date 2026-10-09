@@ -22,6 +22,7 @@ import { netWorth } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { credentialName } from '../credentials/CredentialRegistry.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
+import { charge } from './TaxBook.js';
 
 /**
  * typeId     the business type the unit operates as
@@ -118,7 +119,7 @@ export function franchisorTick(ctx, biz, phase) {
   // Unhappy franchisees sue: misrepresentation in the FDD, encroachment, the ad fund.
   if (fr.units && rng.chance(Math.min(0.25, fr.units / 120))) {
     const cost = rng.int(40000, 250000);
-    biz.cash -= cost;
+    charge(biz, cost);
     biz.reputation = Math.max(0, biz.reputation - 4);
     ctx.log(`A group of franchisees sued over ${rng.pick(['encroachment from a new unit next door', 'how the ad fund was spent', 'earnings claims in your disclosure document'])}. Settling cost $${cost.toLocaleString()}.`, '⚖️', 'bad');
   }

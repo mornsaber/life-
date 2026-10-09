@@ -88,7 +88,7 @@ export function landlordTick(ctx, property) {
   if (managed && collected) ctx.spend(Math.round(collected * MANAGER_FEE), 'Property manager fee', { allowDebt: true });
   if (collected) ctx.earn(collected, `Rental income — ${property.typeName}`);
   const share = units / PROPERTY_TYPES[property.type].units;
-  ctx.deduct(Math.round(((property.purchasePrice * 0.8) / 27.5) * share), 'Rental depreciation');
+  ctx.deduct(Math.round(((property.purchasePrice * 0.8) / 27.5) * share), 'Rental depreciation', { nonCash: true });
   property.lastRent = collected;
 }
 
@@ -136,7 +136,7 @@ function commercialTick(ctx, property, units) {
   const nnn = Math.round((c.tax + c.insurance) * (property.tenants.length / units));
   if (state.housing.manager && collected) ctx.spend(Math.round(collected * 0.05), 'Commercial property management', { allowDebt: true });
   if (collected + nnn) ctx.earn(collected + nnn, `Lease income — ${property.typeName}`);
-  ctx.deduct(Math.round((property.purchasePrice * 0.75) / 39), 'Commercial depreciation');
+  ctx.deduct(Math.round((property.purchasePrice * 0.75) / 39), 'Commercial depreciation', { nonCash: true });
   property.lastRent = collected + nnn;
 }
 
@@ -149,7 +149,7 @@ function shortTermTick(ctx, property) {
   const fees = Math.round(gross * (state.housing.manager ? 0.3 : 0.18));
   ctx.spend(fees, `Cleaning & booking fees — ${property.typeName}`, { allowDebt: true });
   ctx.earn(gross, `Short-term rentals — ${property.typeName}`);
-  ctx.deduct(Math.round((property.purchasePrice * 0.8) / 27.5), 'Rental depreciation');
+  ctx.deduct(Math.round((property.purchasePrice * 0.8) / 27.5), 'Rental depreciation', { nonCash: true });
   property.condition = Math.max(0, property.condition - rng.int(1, 3));
   property.lastRent = gross;
   property.tenants = [];

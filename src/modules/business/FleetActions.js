@@ -9,6 +9,7 @@ import { REGIONS } from '../life/Regions.js';
 import { currentBusiness, annualPayment } from './Business.js';
 import { syncBusinessOrg } from '../org/Businesses.js';
 import { OPERATIONS, opsOf, newOps, capacity, contracted, makeOffers, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier, ACCOUNT_TIERS } from './Operations.js';
+import { charge } from './TaxBook.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const MAX_HEADCOUNT = 6000;
@@ -135,7 +136,7 @@ export const FleetResolvers = {
     const biz = currentBusiness(state);
     const level = BID_LEVELS[optionId];
     if (!biz || !level) return;
-    biz.cash -= AIRPORT_BID_COST;
+    charge(biz, AIRPORT_BID_COST);
     if (!rng.chance(winOdds(biz, optionId))) return ctx.log(`${data.airport} awarded its ARFF contract to a rival. Your ${level.label.toLowerCase()} lost.`, '✈️', 'warn');
     biz.ops.contracts.push({ id: rng.id('k_'), client: `${data.airport} — ARFF station contract`, units: data.units, rate: level.rate, years: data.years, yearsLeft: data.years, tier: Math.min(3, data.units - 1), airport: true });
     biz.reputation = Math.min(100, biz.reputation + 4);
@@ -174,12 +175,12 @@ export const FleetActions = {
       if (ctx.state.housing.credit.score < 600) return ctx.toast('Equipment lenders want a 600+ credit score.', 'warn');
       const down = Math.round(price * EQUIPMENT_LOAN.down);
       if (biz.cash < down) return ctx.toast(`Needs ${money(down)} down from the business account.`, 'warn');
-      biz.cash -= down;
+      charge(biz, down, 'capex', price - down);
       const balance = (biz.ops.loan?.balance ?? 0) + price - down;
       biz.ops.loan = { balance, rate: EQUIPMENT_LOAN.rate, annual: annualPayment(balance, EQUIPMENT_LOAN.rate, EQUIPMENT_LOAN.years) };
     } else {
       if (biz.cash < price) return ctx.toast(`Costs ${money(price)} from the business account (or finance it).`, 'warn');
-      biz.cash -= price;
+      charge(biz, price, 'capex');
     }
     biz.ops.units.push({ id: ctx.rng.id('u_'), age: used ? ctx.rng.int(4, Math.max(5, Math.floor(o.unit.life * 0.6))) : 0, used });
     biz.assets += Math.round(price * 0.8);
@@ -233,7 +234,7 @@ export const FleetActions = {
     const c = biz.ops.contracts.find((x) => x.id === id);
     if (!c) return;
     const fee = Math.round(c.units * o.perUnit * c.rate * 0.15);
-    biz.cash -= fee;
+    charge(biz, fee);
     biz.reputation = Math.max(0, biz.reputation - 4);
     biz.ops.contracts = biz.ops.contracts.filter((x) => x !== c);
     ctx.log(`${biz.name} walked away from its contract with ${c.client}: a ${money(fee)} early-termination fee.`, '📉', 'warn');
@@ -246,7 +247,7 @@ export const FleetActions = {
     const cost = 5000 + Math.round(capacity(biz).units * 500);
     if (biz.cash < cost) return ctx.toast(`Bidding costs ${money(cost)} from the business account.`, 'warn');
     bumpYearly(ctx.state, 'business.bid');
-    biz.cash -= cost;
+    charge(biz, cost);
     biz.ops.offers.push(...makeOffers(ctx.rng, biz, 2));
     ctx.log(`${biz.name} put out proposals (${money(cost)}). Two more clients want quotes.`, '📨');
   },

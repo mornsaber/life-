@@ -14,14 +14,15 @@
  *   - buys businesses of any kind in your market straight into the group
  *
  * state.business.conglomerate = { name, foundedAge, treasury, payout,
- *   acquisitions, lastReport: [lines] }
+ *   acquisitions, lastReport: [lines], office, executives }  (see HoldingCo.js)
  */
 import { clamp } from '../../core/Random.js';
-import { BUSINESS_TYPES } from './BusinessTypes.js';
+import { BUSINESS_TYPES, ENTITIES } from './BusinessTypes.js';
 import { newBusiness, yearFinancials, valuation, LICENSEE_ONLY, holdsLicense } from './Business.js';
 import { grandfatherLicenses } from './BusinessLicenses.js';
 import { syncBusinessOrg, sizeForHeadcount } from '../org/Businesses.js';
 import { canAfford } from '../../core/State.js';
+import { execPayroll, officeCost, counselSaving, dealDiscount, execTick } from './HoldingCo.js';
 
 export const FORM_COST = 25000;
 export const CONGLOMERATE_HOLDINGS = 15;
@@ -66,7 +67,7 @@ export function conglomerateTick(ctx, deps) {
   }
   const revenue = subs.reduce((s, b) => s + (b.lastYear?.revenue ?? 0), 0);
   // Shared services.
-  const rate = synergyRate(subs.length);
+  const rate = synergyRate(subs.length) + (c.executives?.cfo ? c.executives.cfo.skill / 10000 : 0);
   let saved = 0;
   for (const b of subs) {
     const gain = Math.round((b.lastYear?.revenue ?? 0) * rate);
@@ -74,7 +75,10 @@ export function conglomerateTick(ctx, deps) {
     saved += gain;
   }
   if (saved) lines.push(`shared services saved the group ${money(saved)}`);
+  lines.push(...execTick(ctx, c, subs));
   // Sweep cash above each subsidiary's cushion (your share of it — co-owners keep theirs).
+  // The holding company is a pass-through: LLC and S-corp profit was already taxed to you, but cash
+  // upstreamed from a C-corp subsidiary is a dividend (taxed to you, though the cash stays in the treasury).
   let swept = 0;
   for (const b of subs) {
     const cushion = Math.max(25000, (b.lastYear?.revenue ?? 0) * 0.15);
@@ -82,11 +86,14 @@ export function conglomerateTick(ctx, deps) {
     const take = Math.round(excess * 0.7 * b.ownerPct);
     b.cash -= take;
     swept += take;
+    if (take && !ENTITIES[b.entity]?.passThrough) ctx.earn(take, `Dividends — ${b.name} (to ${c.name})`, { ltcg: true, retained: true });
   }
   c.treasury += swept;
   if (swept) lines.push(`swept ${money(swept)} of spare cash to the treasury`);
-  const hq = hqCost(revenue);
+  const hq = Math.round(hqCost(revenue) * (1 - counselSaving(c))) + execPayroll(c) + officeCost(c, state);
   c.treasury -= hq;
+  // Headquarters costs are deductible against the group's income flowing through to you.
+  ctx.deduct(hq, `${c.name} headquarters expenses`, { nonCash: true });
   // Rescue anyone short of cash before they bounce payroll.
   for (const b of subs.filter((x) => x.cash < 0)) {
     const need = Math.min(-b.cash + 10000, Math.max(0, c.treasury));
@@ -111,7 +118,7 @@ export function conglomerateTick(ctx, deps) {
   if (dividend > 0) {
     c.treasury -= dividend;
     state.finances.cash += dividend;
-    lines.push(`paid you a ${money(dividend)} dividend`);
+    lines.push(`paid you a ${money(dividend)} distribution (already taxed — no tax due)`);
   }
   // An overdrawn treasury borrows from you rather than going negative.
   if (c.treasury < 0) {
@@ -152,7 +159,7 @@ export function acquireCompany(ctx, orgId) {
   if ((state.business.holdings ?? []).length >= holdingsCap(state)) return ctx.toast(`${c.name} can hold ${holdingsCap(state)} companies.`, 'warn');
   const o = acquisitionTargets(state).find((x) => x.id === orgId);
   if (!o) return;
-  const { price } = appraise(state, o);
+  const price = Math.round(appraise(state, o).price * (1 - dealDiscount(c)));
   const fromTreasury = Math.min(c.treasury, price);
   const rest = price - fromTreasury;
   if (rest > 0 && !canAfford(state, rest)) return ctx.toast(`${money(price)} — the treasury has ${money(c.treasury)}.`, 'warn');

@@ -51,7 +51,7 @@ export function sell(ctx, asset, fraction = 1) {
     ctx.earn(gain, `${longTerm ? 'Long' : 'Short'}-term capital gain — ${ASSETS[asset].name}`, { ltcg: longTerm });
   } else {
     state.finances.cash += value;
-    if (gain < 0) ctx.deduct(Math.min(3000, -gain), 'Capital loss');
+    if (gain < 0) ctx.deduct(Math.min(3000, -gain), 'Capital loss', { nonCash: true });
   }
   return value;
 }
@@ -161,7 +161,7 @@ export const BrokerageEngine = {
         ctx.earn(gain, `Short-term gain — ${p.name}`);
       } else {
         state.finances.cash += p.value;
-        ctx.deduct(Math.min(3000, -gain), 'Capital loss');
+        ctx.deduct(Math.min(3000, -gain), 'Capital loss', { nonCash: true });
       }
     }
     inv.speculative = [];

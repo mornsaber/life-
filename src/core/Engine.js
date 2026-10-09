@@ -314,8 +314,9 @@ export class Engine {
         return value;
       },
       /** Pre-tax deduction (retirement contributions) reducing taxable income. */
-      deduct(amount, reason) {
-        state.finances.ledger.deductions.push({ reason, amount: Math.round(amount) });
+      deduct(amount, reason, { nonCash = false } = {}) {
+        // nonCash: depreciation, carried losses — lowers taxable income without money leaving your pocket.
+        state.finances.ledger.deductions.push({ reason, amount: Math.round(amount), ...(nonCash ? { nonCash: true } : {}) });
       },
       /**
        * Deduct cash. Returns false (and spends nothing) when unaffordable:

@@ -14,7 +14,9 @@ import { airportBidEligibility, airportTender, AIRPORT_BID_COST } from '../../mo
 import { conglomerateOf, subsidiaries, formEligibility, holdingsCap, acquisitionTargets, appraise, synergyRate, hqCost, FORM_COST, CONGLOMERATE_HOLDINGS } from '../../modules/business/Conglomerate.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
-import { INITIATIVES, PROMOTIONS, usesAccounts, initiativeCost, accountEligibility } from '../../modules/business/Initiatives.js';
+import { EXEC_ROLES, OFFICES, officeOf, officeCost, execPayroll, hqHeadcount, ownOffices, mergeCandidates, MERGE_COST, dealDiscount } from '../../modules/business/HoldingCo.js';
+import { withdrawable, buyBackQuote, openingsPerYear } from '../../modules/business/Capital.js';
+import { INITIATIVES, PROMOTIONS, initiativesFor, promotionsFor, leverFamily, usesAccounts, initiativeCost, accountEligibility } from '../../modules/business/Initiatives.js';
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
 import { RIVAL_STRATEGIES, marketShare, underPriceWar } from '../../modules/business/Rivals.js';
@@ -264,7 +266,8 @@ function leversCard(state, biz) {
   const age = state.character.age;
   const base = forecast(state, biz).netIncome;
   const on = biz.initiatives ?? {};
-  const rows = Object.entries(INITIATIVES).map(([id, i]) => {
+  const family = leverFamily(biz.typeId);
+  const rows = Object.entries({ ...initiativesFor(biz), ...Object.fromEntries(Object.keys(on).filter((id) => INITIATIVES[id]).map((id) => [id, INITIATIVES[id]])) }).map(([id, i]) => {
     const active = on[id] != null;
     const toggled = { ...on };
     if (active) delete toggled[id];
@@ -276,7 +279,7 @@ function leversCard(state, biz) {
       ${button(active ? 'Stop' : 'Start', 'business.toggleInitiative', { arg: id, variant: active ? 'tiny' : 'tiny on', disabled: !active && biz.cash < cost })}</li>`;
   }).join('');
   const promo = biz.promo?.age === age;
-  const promos = Object.entries(PROMOTIONS).map(([id, p]) => button(`${p.icon} ${p.name}`, 'business.promote', { arg: id, variant: promo && biz.promo.id === id ? 'tiny on' : 'tiny', disabled: promo, hint: `${p.desc}${p.cost ? ` · ${money(p.cost * biz.scale)}` : ''}` })).join('');
+  const promos = Object.entries(promotionsFor(biz)).map(([id, p]) => button(`${p.icon} ${p.name}`, 'business.promote', { arg: id, variant: promo && biz.promo.id === id ? 'tiny on' : 'tiny', disabled: promo, hint: `${p.desc}${p.cost ? ` · ${money(p.cost * biz.scale)}` : ''}` })).join('');
   let accounts = '';
   if (usesAccounts(biz)) {
     const mine = (biz.accounts ?? []).map((a) => `<li>🤝 <b>${esc(a.client)}</b> <small>${money(a.value)}/yr · ${a.yearsLeft} of ${a.years} yr left</small> ${button('Walk away', 'business.dropAccount', { arg: a.id, variant: 'tiny', hint: 'Reputation hit' })}</li>`).join('');
@@ -284,11 +287,11 @@ function leversCard(state, biz) {
       const ok = accountEligibility(biz, k);
       return `<li class="${ok.ok ? '' : 'locked'}">${k.renewal ? '🔁' : '📨'} <b>${esc(k.client)}</b> <small>${money(k.value)}/yr · ${k.years} yr${ok.ok ? '' : ` · ${esc(ok.reason)}`}</small> ${button('Sign', 'business.signAccount', { arg: k.id, variant: 'tiny', disabled: !ok.ok })}</li>`;
     }).join('');
-    accounts = `<h4 class="sub">Key accounts</h4><p class="fine">Recurring clients add steady revenue on top of walk-in customers. They renew if quality stays 55+, and leave if it drops below 45.</p>
+    accounts = `<h4 class="sub">${family === 'consumer' ? 'Key accounts' : 'Anchor clients'}</h4><p class="fine">Recurring clients add steady revenue on top of walk-in customers. They renew if quality stays 55+, and leave if it drops below 45.</p>
       ${mine ? `<ul class="history">${mine}</ul>` : '<p class="muted">No key accounts yet.</p>'}
       ${offers ? `<ul class="history">${offers}</ul>` : '<p class="fine">New account offers arrive each year.</p>'}`;
   }
-  return card('Profit Levers', `
+  return card('Profit Levers', `<p class="fine">${{ consumer: 'Levers for a business that serves customers who walk in or book online.', b2b: 'Levers for a firm that sells to other businesses: winning and keeping clients, pricing and utilization.', field: 'Levers for crews, fleets and job sites: bidding, safety, routing and maintenance.' }[family]}</p>
     <ul class="history">${rows}</ul>
     <h4 class="sub">This year's promotion</h4><div class="toggle-row chips-row">${promos}</div>
     ${accounts}
@@ -320,13 +323,46 @@ function conglomerateCard(state) {
       ['Group profit', `<span class="${profit < 0 ? 'neg' : 'pos'}">${money(profit)}</span>`],
       ['Treasury', money(c.treasury)],
       ['Your stake, all in', money(value)],
-      ['Shared-services savings', `${(synergyRate(subs.length) * 100).toFixed(1)}% of revenue · HQ costs ${money(hqCost(revenue))}/yr`],
+      ['Shared-services savings', `${(synergyRate(subs.length) * 100).toFixed(1)}% of revenue · HQ overhead ${money(hqCost(revenue))}/yr`],
+      ['Headquarters', `${officeOf(c).icon} ${esc(officeOf(c).name)} · ${hqHeadcount(c)} people · executives ${money(execPayroll(c))}/yr · office ${money(officeCost(c, state))}/yr`],
     ])}
     ${c.lastReport?.length ? `<p class="fine">📋 Last year: ${esc(c.lastReport.join('; '))}.</p>` : ''}
+    ${hqSection(state, c)}
+    <h4 class="sub">Treasury</h4><div class="toggle-row chips-row">${[100000, 1000000].map((a) => button(`💵 Put in ${money(a)}`, 'business.treasury', { arg: String(a), variant: 'tiny', disabled: !canAfford(state, a) })).join('')}${button(`💸 Take out ${money(Math.max(0, c.treasury - 50000))}`, 'business.treasury', { arg: String(-Math.max(0, c.treasury - 50000)), variant: 'tiny', disabled: c.treasury <= 50000, hint: 'Already taxed — no tax due' })}</div>
+    ${mergeSection(state)}
     <h4 class="sub">Dividend to you</h4><div class="toggle-row chips-row">${[0, 0.25, 0.5, 1].map((p) => button(p === 0 ? 'Reinvest all' : `${p * 100}% of spare cash`, 'business.setPayout', { arg: String(p), variant: c.payout === p ? 'tiny on' : 'tiny' })).join('')}</div>
     <ul class="history">${rows}</ul>
     ${disclosure('cong.buy', '🛒 Buy a company into the group', buys ? `<ul class="history">${buys}</ul>` : '<p class="muted">No independent businesses for sale in your market right now.</p>', { count: targets.length })}
     <p class="fine">Each year headquarters sweeps spare cash from subsidiaries (keeping a cushion), covers any that run short, funds the best grower's next location and pays you a dividend. Savings grow with the number of companies; with only two, headquarters may cost more than it saves.</p>`, { icon: '🏛️', accent: 'yellow' });
+}
+
+/** Headquarters: the office and the executive team. */
+function hqSection(state, c) {
+  const office = officeOf(c);
+  const execs = c.executives ?? {};
+  const full = Object.keys(execs).length >= office.execs;
+  const team = Object.entries(EXEC_ROLES).map(([role, r]) => {
+    const e = execs[role];
+    return `<li class="report-row"><div>${r.icon} <b>${esc(r.title)}</b> <small class="muted">${e ? `${esc(e.name)} · skill ${e.skill} · ${money(e.salary)}/yr` : esc(r.desc)}</small></div>
+      ${e ? button('Let go', 'business.fireExec', { arg: role, variant: 'tiny ghost', hint: `${money(e.salary * 0.75)} severance` }) : button('Hire', 'business.hireExec', { arg: role, variant: 'tiny', disabled: full, hint: full ? `Your ${office.name.toLowerCase()} is full` : 'An executive search: three finalists' })}</li>`;
+  }).join('');
+  const own = ownOffices(state);
+  const offices = Object.entries(OFFICES).filter(([id]) => id !== 'own').map(([id, o]) => button(`${o.icon} ${o.name}`, 'business.hqOffice', { arg: id, variant: (c.office ?? 'virtual') === id ? 'tiny on' : 'tiny', hint: `${o.rent ? `${money(o.rent)}/yr` : 'Free'} · up to ${o.execs} executives · ${o.desc}` }))
+    .concat(own.map((p) => button(`🏢 Move into your ${esc(p.typeName.split(' (')[0])}`, 'business.hqOffice', { arg: `own:${p.id}`, variant: c.officePropertyId === p.id ? 'tiny on' : 'tiny', hint: OFFICES.own.desc }))).join('');
+  return `<h4 class="sub">Headquarters</h4><div class="toggle-row chips-row">${offices}</div>
+    <h4 class="sub">Executive team</h4><ul class="history">${team}</ul>${dealDiscount(c) ? `<p class="fine">Your deal team takes ${Math.round(dealDiscount(c) * 100)}% off acquisitions.</p>` : ''}`;
+}
+
+/** Subsidiaries in the same line of business can merge into one. */
+function mergeSection(state) {
+  const groups = mergeCandidates(state);
+  if (!groups.length) return '';
+  const rows = groups.map((list) => {
+    const [a, ...rest] = [...list].sort((x, y) => (y === state.business.current) - (x === state.business.current) || y.scale - x.scale);
+    return rest.map((b) => `<li class="report-row"><div>🔗 <b>${esc(b.name)}</b> → <b>${esc(a.name)}</b> <small class="muted">${a.scale + b.scale} locations, ${a.staff.headcount + b.staff.headcount} staff combined</small></div>
+      ${button('Merge', 'business.mergeSubsidiaries', { arg: `${a.id}:${b.id}`, variant: 'tiny', hint: `≈${money(MERGE_COST + (a.scale + b.scale) * 5000)} legal & integration` })}</li>`).join('');
+  }).join('');
+  return `<h4 class="sub">Merge companies</h4><ul class="history">${rows}</ul><p class="fine">One management team and one back office instead of two; locations, fleets, contracts, cash and debt combine.</p>`;
 }
 
 /** Licenses the business holds or could get. */
@@ -349,6 +385,24 @@ function licensesCard(state, biz) {
 }
 
 /** Businesses you own but don't run. */
+/** Put money in, take it out, buy back equity. */
+function capitalControls(state, biz) {
+  const unit = Math.max(25000, Math.round((biz.lastYear?.revenue ?? 100000) * 0.1 / 25000) * 25000);
+  const spare = withdrawable(biz);
+  const out = [
+    ...[unit, unit * 4].map((a) => button(`💵 Put in ${money(a)}`, 'business.capitalIn', { arg: `${biz.id}:${a}`, variant: 'tiny', disabled: !canAfford(state, a), hint: 'Your money becomes business cash' })),
+    button(`💸 Take out ${money(spare)}`, 'business.capitalOut', { arg: `${biz.id}:max`, variant: 'tiny', disabled: spare <= 0, hint: biz.ownerPct < 1 ? `You get ${Math.round(biz.ownerPct * 100)}%; partners get the rest` : 'Spare cash above a working cushion' }),
+  ];
+  if (biz.ownerPct < 1) {
+    const ten = buyBackQuote(biz, 0.1);
+    const all = buyBackQuote(biz, 1);
+    out.push(button(`🔁 Buy back ${Math.round(ten.pct * 100)}%`, 'business.buyBack', { arg: `${biz.id}:0.1:you`, variant: 'tiny', disabled: !canAfford(state, ten.price) || ten.price <= 0, hint: `${money(ten.price)} of your money` }));
+    out.push(button(`🔁 Buy out everyone (${Math.round(all.pct * 1000) / 10}%)`, 'business.buyBack', { arg: `${biz.id}:all:you`, variant: 'tiny', disabled: !canAfford(state, all.price) || all.price <= 0, hint: `${money(all.price)} of your money` }));
+    out.push(button('🏦 Company redeems 10%', 'business.buyBack', { arg: `${biz.id}:0.1:company`, variant: 'tiny', disabled: spare < ten.price || ten.price <= 0, hint: `${money(ten.price)} from business cash` }));
+  }
+  return `<div class="toggle-row chips-row">${out.join('')}</div>`;
+}
+
 function holdingsCard(state) {
   const hs = state.business.holdings ?? [];
   if (!hs.length) return '';
@@ -357,7 +411,7 @@ function holdingsCard(state) {
     const ceo = org?.people?.[org.ceo];
     return `<li class="report-row"><div><b>${BUSINESS_TYPES[h.typeId]?.icon ?? '🏪'} ${esc(h.name)}</b> <small class="muted">${Math.round(h.ownerPct * 100)}% · valued ${money(h.valuation)} · ${h.staff.headcount} staff${ceo ? ` · run by ${esc(ceo.name)}` : ''}${h.lastYear ? ` · last year ${money(h.lastYear.netIncome)}` : ''}</small></div>
       <div class="toggle-row chips-row">${Object.entries(STRATEGIES).map(([id, st]) => button(`${st.icon} ${st.name}`, 'business.setHoldingPlan', { arg: `${h.id}:${id}`, variant: (h.plan?.strategy ?? 'off') === id ? 'tiny on' : 'tiny', hint: st.desc })).join('')}</div>${h.plan?.lastReport?.length ? `<small class="fine">📋 ${esc(h.plan.lastReport.join('; '))}</small>` : ''}
-      <div class="toggle-row">${button('🧑‍💼 Take it back', 'business.takeBack', { arg: h.id, variant: 'tiny', disabled: Boolean(currentBusiness(state)) })}${button('🪧 Sell', 'business.sellHolding', { arg: h.id, variant: 'tiny' })}</div></li>`;
+      <div class="toggle-row">${button('🧑‍💼 Take it back', 'business.takeBack', { arg: h.id, variant: 'tiny', disabled: Boolean(currentBusiness(state)) })}${button('🪧 Sell', 'business.sellHolding', { arg: h.id, variant: 'tiny' })}</div>${capitalControls(state, h)}</li>`;
   }).join('')}</ul>`, { icon: '🗂️' });
 }
 
@@ -369,8 +423,21 @@ function pnl(ly) {
     ['Your salary', -ly.ownerSalary], ['Payroll tax on your salary', -ly.payrollTax], ['Corporate tax', -ly.corporateTax],
   ].filter(([, v]) => v);
   return `<table class="pnl">${rows.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'neg' : ''}">${money(v)}</td></tr>`).join('')}
-    <tr class="total"><td>Net income</td><td class="${ly.netIncome < 0 ? 'neg' : 'pos'}">${money(ly.netIncome)}</td></tr></table>
-    <p class="fine">You took home ${money(ly.ownerPay ?? 0)}${ly.seTax ? ` and paid ${money(ly.seTax)} self-employment tax` : ''}.</p>`;
+    <tr class="total"><td>Net income</td><td class="${ly.netIncome < 0 ? 'neg' : 'pos'}">${money(ly.netIncome)}</td></tr>
+    ${ly.writeOffs ? `<tr><td>Write-offs (off-book expenses, bonus depreciation)</td><td class="neg">${money(-ly.writeOffs)}</td></tr><tr><td>Taxable profit</td><td>${money(ly.taxableProfit)}</td></tr>` : ''}</table>
+    <p class="fine">You took home ${money(ly.ownerPay ?? 0)}${ly.taxDistribution ? ` (including a ${money(ly.taxDistribution)} tax distribution)` : ''}${ly.seTax ? ` and paid ${money(ly.seTax)} self-employment tax` : ''}${ly.lossDeducted ? `; ${money(ly.lossDeducted)} of losses offset your other income` : ''}.</p>`;
+}
+
+/** Open one or several locations this year. */
+function expandButtons(state, biz) {
+  const limit = openingsPerYear(biz);
+  const done = state.yearly['business.expand'] ?? 0;
+  const left = Math.max(0, Math.min(limit - done, maxScale(state, biz) - biz.scale));
+  const cost = expansionCost(biz);
+  const disabled = biz.years < 2 || left <= 0;
+  const hint = `${money(cost)} each from the business · ${done}/${limit} opened this year`;
+  const many = Math.min(left, Math.floor(Math.max(0, biz.cash) / cost));
+  return `${button('🏗️ Open a location', 'business.expand', { arg: 'cash:1', hint, disabled: disabled || biz.cash < cost })}${many > 1 ? button(`🏗️ Open ${many} locations`, 'business.expand', { arg: `cash:${many}`, hint, disabled }) : ''}`;
 }
 
 /** Fleet, crews and the contract book (Operations). */
@@ -460,15 +527,16 @@ function ownedView(state, biz) {
     <div class="action-grid">
       ${type.startup ? `${button('🤝 Hire 5', 'business.hire', { arg: '5' })}${button('✂️ Lay off 30%', 'business.layoff', { variant: 'danger', disabled: !s.headcount })}` : ''}
       ${!type.startup && !opsOf(biz) ? `${button('🤝 Hire an employee', 'business.hire', { arg: '1', hint: `Staffing ${Math.round(staffFactor(biz) * 100)}% of normal output` })}${button('✂️ Let one go', 'business.letGo', { disabled: !s.headcount })}` : ''}
-      ${type.startup ? '' : button('🏗️ Open another location', 'business.expand', { arg: 'cash', hint: `${money(type.cost * 0.8)} from the business`, disabled: biz.scale >= maxScale(state, biz) || biz.years < 2 })}
+      ${type.startup ? '' : expandButtons(state, biz)}
     </div>
     ${relatives.length ? `<h4 class="sub">Family business</h4><div class="toggle-row chips-row">${relatives.map((p) => button(`👪 Hire ${esc(p.firstName)}`, 'business.hireRelative', { arg: p.id, variant: 'tiny' })).join('')}</div>` : ''}`, { icon: '⚙️' });
 
   const funding = card('Funding & Structure', `
     <div class="action-grid">
       ${type.startup ? button(nextRound ? `💸 Raise a ${nextRound.name}` : '💸 No more rounds', 'business.raise', { disabled: !nextRound || biz.entity !== 'ccorp', hint: biz.entity !== 'ccorp' ? 'Convert to a C-corp first' : nextRound ? `${money(nextRound.minArr)}+ ARR, ${Math.round(nextRound.minGrowth * 100)}%+ growth` : 'IPO or acquisition next' }) : button('🏦 SBA working-capital loan', 'business.loan', { hint: '25% of revenue · personal guarantee', disabled: biz.years < 2 })}
-      ${!type.startup && biz.scale < maxScale(state, biz) ? button('🏗️ Expand with an SBA loan', 'business.expand', { arg: 'sba', disabled: biz.years < 2 }) : ''}
+      ${!type.startup && biz.scale < maxScale(state, biz) ? button('🏗️ Expand with an SBA loan', 'business.expand', { arg: 'sba', disabled: biz.years < 2 || (state.yearly['business.expand'] ?? 0) >= openingsPerYear(biz) }) : ''}
     </div>
+    <h4 class="sub">Owner's capital</h4>${capitalControls(state, biz)}
     <h4 class="sub">Legal structure</h4><div class="toggle-row chips-row">${Object.entries(ENTITIES).map(([id, e]) => button(`${e.icon} ${e.name}`, 'business.convert', { arg: id, variant: biz.entity === id ? 'tiny on' : 'tiny', disabled: biz.entity === id || (ventureBacked(biz) && id !== 'ccorp'), hint: biz.entity === id ? '' : '$1,500 to convert' })).join('')}</div>
     ${biz.investors.length ? `<h4 class="sub">Investors</h4><ul class="history">${biz.investors.map((i) => `<li>💼 ${esc(i.round)} · ${money(i.invested)} for ${Math.round(i.pct * 100)}%</li>`).join('')}</ul>` : ''}`, { icon: '🏦' });
 
