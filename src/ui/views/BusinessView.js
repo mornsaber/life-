@@ -18,6 +18,7 @@ import { INITIATIVES, PROMOTIONS, usesAccounts, initiativeCost, accountEligibili
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
 import { RIVAL_STRATEGIES, marketShare, underPriceWar } from '../../modules/business/Rivals.js';
+import { locationsByRegion, marketRoom } from '../../modules/org/Businesses.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY, staffFactor } from '../../modules/business/Business.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
@@ -246,13 +247,14 @@ function managementCard(state, biz) {
       ['Routine decisions', biz.autopilot ? '🤖 Handled by your managers' : '🧑‍💼 Brought to you'],
       ['Delegated duties', biz.staff.headcount >= 8 ? `${delegated} of ${Object.keys(DUTIES).length}` : 'Needs 8+ staff'],
       ['Locations', `${biz.scale} of ${type.startup ? '—' : maxScale(state, biz)}${!type.startup ? ` · next ${money(expansionCost(biz))}` : ''}`],
+      !type.startup && biz.scale > 1 ? ['By city', Object.entries(locationsByRegion(state, biz)).map(([r, n]) => `${esc((REGIONS[r]?.name ?? r).split(',')[0])} ${n}/${marketRoom(r)}`).join(' · ')] : null,
     ])}
     ${ok ? '' : '<p class="why">Delegation needs managers: 8+ staff or a second location.</p>'}
     <h4 class="sub">Growth strategy</h4><div class="toggle-row chips-row">${strategies}</div>
     ${report ? `<p class="fine">📋 Last year: ${report.length ? esc(report.join('; ')) : 'nothing needed doing'}.</p>` : ''}
-    <div class="action-grid">${button(handedOff ? '✅ Management runs it' : '🗂️ Hand it to management', 'business.handOff', { variant: 'small', disabled: !ok || handedOff, hint: 'Managers run it day to day, handle routine calls and every delegable duty, on a steady growth plan — you get one report a year' })}
+    <div class="action-grid">${button(handedOff ? '✅ Management runs it' : '🗂️ Hand it to management', 'business.handOff', { variant: 'small', disabled: handedOff, hint: 'A general manager (from $40,000 a year) and managers run it day to day, handle routine calls and every delegable duty, on a steady growth plan — you get one report a year' })}
       ${biz.role !== 'operator' ? button('🧑‍💼 Take back day-to-day control', 'business.setRole', { arg: 'operator', variant: 'small', disabled: Boolean(state.career.job), hint: state.career.job ? 'Quit your job first' : 'Run it yourself again' }) : ''}</div>
-    <p class="fine">A plan expands from profits, staffs each location, sets marketing and grows the fleet on its own. Owner-run businesses top out at five locations; with a CEO and 40+ staff they can grow to twelve.</p>`, { icon: '🗂️', accent: 'green' });
+    <p class="fine">A plan expands from profits, staffs each location, sets marketing and grows the fleet on its own. You can run up to five locations yourself; a management team can grow a chain to sixty across many cities (and fleets to 400 units). Each city only supports so many locations — past that they steal each other's customers, so growth plans open in new cities. Bigger chains get buying power, brand recognition and better-run operations.</p>`, { icon: '🗂️', accent: 'green' });
 }
 
 /** Profit levers: initiatives (with what each is worth), promotions and key accounts. */

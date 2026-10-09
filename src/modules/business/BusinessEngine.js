@@ -43,7 +43,7 @@ const money = (x) => `$${Math.round(x).toLocaleString()}`;
 export const ventureBacked = (biz) => biz.investors.some((i) => ROUNDS.some((r) => r.id === i.round));
 const PHASE_STARTUP = { expansion: 0.1, peak: 0.15, recession: -0.25, recovery: 0 };
 const FAMILY_RELATIONS = ['spouse', 'partner', 'fiance', 'child', 'sibling', 'mother', 'father'];
-const MAX_HEADCOUNT = 400;
+const MAX_HEADCOUNT = 6000;
 
 /* ------------------------------------------------------------------ */
 /* Yearly operations                                                   */
@@ -230,9 +230,10 @@ function businessTick(ctx, biz) {
   if (biz.cash < 0) cashCrunch(ctx, biz);
 }
 
-/** How many locations a business can run: five while you run it yourself, twelve once a management team does. */
+/** How many locations a business can run: five while you run it yourself; a professionally managed chain can grow to sixty across many cities. */
+export const MANAGED_MAX_SCALE = 60;
 export function maxScale(state, biz) {
-  return biz.role !== 'operator' ? 12 : 5;
+  return biz.role !== 'operator' ? MANAGED_MAX_SCALE : 5;
 }
 
 /** What opening another location costs. */
@@ -245,7 +246,7 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
   const { state } = ctx;
   const type = typeOf(biz);
   if (type.startup) return { ok: false, reason: 'Startups grow by hiring and raising money.' };
-  if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= 12 ? 'That\'s as many locations as you can run.' : 'Five locations is as many as you can run yourself — hand it to a management team to keep growing.' };
+  if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= MANAGED_MAX_SCALE ? 'That\'s as many locations as you can run.' : 'Five locations is as many as you can run yourself — hand it to a management team to keep growing.' };
   if (biz.years < 2) return { ok: false, reason: 'Get through two years first.' };
   const cost = expansionCost(biz);
   if (funding === 'sba') {
@@ -931,7 +932,8 @@ export const BusinessEngine = {
     handOff(ctx) {
       const biz = withBiz(ctx);
       if (!biz) return;
-      if (!canDelegate(biz)) return ctx.toast('You need managers to delegate to: 8+ staff or a second location.', 'warn');
+      if (ctx.state.legal.incarceration) return;
+      // Handing off means hiring a general manager, at any size (they cost at least $40,000 a year).
       biz.role = 'absentee';
       biz.autopilot = true;
       if (biz.staff.headcount >= 8) for (const d of Object.keys(DUTIES)) biz.staff.delegation[d] = true;

@@ -11,7 +11,9 @@ import { syncBusinessOrg } from '../org/Businesses.js';
 import { OPERATIONS, opsOf, newOps, capacity, contracted, makeOffers, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier, ACCOUNT_TIERS } from './Operations.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
-const MAX_HEADCOUNT = 400;
+const MAX_HEADCOUNT = 6000;
+/** Fleet size: a small operator tops out around 60 units; a managed carrier keeps growing. */
+export const maxUnits = (biz) => (biz.role !== 'operator' ? 400 : 60);
 const plural = (o, n) => (n === 1 ? o.unit.name : o.unit.plural);
 
 /** Older saves: fleet businesses opened before operations existed get a fleet sized to their scale. */
@@ -82,12 +84,12 @@ export function opsTick(ctx, biz, ly) {
   // A manager running the place takes work that fits.
   if (biz.autopilot || biz.role !== 'operator') {
     for (const k of [...ops.offers]) {
-      if (contracted(biz) + k.units <= cap && offerEligibility(ctx.state, biz, k).ok) accept(biz, k);
+      if (contracted(biz) + k.units <= cap && offerEligibility(ctx.state, biz, k).ok) acceptOffer(biz, k);
     }
   }
 }
 
-function accept(biz, k) {
+export function acceptOffer(biz, k) {
   biz.ops.contracts.push({ id: k.id, client: k.client, units: k.units, rate: k.rate, years: k.years, yearsLeft: k.years, tier: k.tier ?? 0 });
   biz.ops.offers = biz.ops.offers.filter((x) => x.id !== k.id);
 }
@@ -167,7 +169,7 @@ export const FleetActions = {
     const [kind, how] = String(arg).split(':');
     const used = kind === 'used';
     const price = used ? o.unit.usedCost : o.unit.newCost;
-    if (biz.ops.units.length >= 60) return ctx.toast('That\'s as big a fleet as a small business can run.', 'warn');
+    if (biz.ops.units.length >= maxUnits(biz)) return ctx.toast(biz.role === 'operator' ? 'That\'s as big a fleet as you can run yourself — hand it to a management team to keep growing.' : 'That\'s as big a fleet as the company can run.', 'warn');
     if (how === 'loan') {
       if (ctx.state.housing.credit.score < 600) return ctx.toast('Equipment lenders want a 600+ credit score.', 'warn');
       const down = Math.round(price * EQUIPMENT_LOAN.down);
@@ -221,7 +223,7 @@ export const FleetActions = {
     if (!k) return ctx.toast('That offer is gone.', 'warn');
     const ok = offerEligibility(ctx.state, biz, k);
     if (!ok.ok) return ctx.toast(ok.reason, 'warn');
-    accept(biz, k);
+    acceptOffer(biz, k);
     const short = contracted(biz) - capacity(biz).capacity;
     ctx.log(`${biz.name} signed a ${k.years}-year contract with ${k.client}.${short > 0 ? ` You're ${short} short of covering everything you've committed to — add equipment or crews before year's end.` : ''}`, '✍️', short > 0 ? 'warn' : 'good');
   },

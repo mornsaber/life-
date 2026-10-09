@@ -16,9 +16,11 @@
 import { clamp } from '../../core/Random.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { typeOf, staffFactor, annualPayment } from './Business.js';
-import { OPERATIONS, capacity, contracted, EQUIPMENT_LOAN } from './Operations.js';
+import { OPERATIONS, capacity, contracted, EQUIPMENT_LOAN, offerEligibility } from './Operations.js';
+import { acceptOffer } from './FleetActions.js';
 import { SBA, MARKETING } from './BusinessTypes.js';
 import { forecast } from './Advisor.js';
+import { nextMarket } from '../org/Businesses.js';
 import { INITIATIVES, initiativeCost, accountEligibility, signAccount } from './Initiatives.js';
 
 export const STRATEGIES = {
@@ -54,7 +56,9 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
     biz.drawPct = 1;
     did.push('kept marketing lean and paid out the profits');
   } else {
-    biz.drawPct = aggressive ? 0 : Math.min(biz.drawPct, 0.5);
+    // Keep what growth needs; pay out the rest (a steady plan doesn't hoard cash).
+    const reserve = Math.max(100000, (ly.revenue ?? 0) * 0.25, expansionCost(biz) * 3);
+    biz.drawPct = aggressive ? (biz.cash > reserve * 2 ? 0.5 : 0) : biz.cash > reserve ? 1 : Math.min(biz.drawPct, 0.5);
     // Marketing: the most profitable level (aggressive plans buy reach if it costs little).
     const levels = Object.keys(MARKETING).map(Number).map((m) => ({ m, p: profit({ biz: { marketing: m } }) }));
     const best = levels.reduce((a, b) => (b.p > a.p ? b : a));
@@ -68,7 +72,7 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
       const runway = biz.cash / Math.max(1, (ly.payroll ?? 0) * 0.5);
       if ((biz.growth ?? 0) > (aggressive ? 0.1 : 0.25) && runway > (aggressive ? 0.5 : 1)) {
         const add = Math.max(1, Math.round(biz.staff.headcount * (aggressive ? 0.3 : 0.15)));
-        biz.staff.headcount = Math.min(400, biz.staff.headcount + add);
+        biz.staff.headcount = Math.min(6000, biz.staff.headcount + add);
         did.push(`hired ${add}`);
       } else if ((biz.growth ?? 0) < -0.1 && biz.staff.headcount > 5) {
         const cut = Math.max(1, Math.round(biz.staff.headcount * 0.15));
@@ -84,7 +88,7 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
         const normal = Math.round(type.staff * biz.scale) + biz.family.length;
         const lo = Math.max(1, Math.round(normal * 0.85));
         const hi = Math.round(normal * 1.15);
-        const options = [...new Set([h, Math.round(h * 0.95), Math.round(h * 1.05), normal].map((n) => clamp(n, lo, hi)).filter((n) => n >= 1 && n <= 400))];
+        const options = [...new Set([h, Math.round(h * 0.95), Math.round(h * 1.05), normal].map((n) => clamp(n, lo, hi)).filter((n) => n >= 1 && n <= 6000))];
         const best = options.map((n) => ({ n, p: profit({ staff: { headcount: n } }) })).reduce((a, b) => (b.p > a.p ? b : a));
         if (best.n !== h && best.p - profit({}) > 5000) {
           biz.staff.headcount = best.n;
@@ -94,11 +98,14 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
       }
       fleetPlan(ctx, biz, aggressive, did);
       // Expansion: profitable, well run, and the money's there (or borrowable, if aggressive).
-      const healthy = (ly.netIncome ?? 0) > 0 && biz.quality >= (aggressive ? 50 : 58) && biz.years >= 2 && biz.scale < maxScale(state, biz);
+      // A growing chain opens where there's room: home first, then the biggest markets.
+      if (!biz.expandTo) biz.expandTo = nextMarket(state, biz);
+      const healthy = (ly.netIncome ?? 0) > 0 && biz.quality >= (aggressive ? 48 : 54) && biz.years >= 2 && biz.scale < maxScale(state, biz);
       const cost = expansionCost(biz);
-      // Another location has to pay for itself: within 6 years (10 on an aggressive plan).
+      // Another location has to pay for itself: within 7 years (12 on an aggressive plan, 10 when cash is just sitting there).
       const gain = healthy ? profit({ biz: { scale: biz.scale + 1 }, staff: { headcount: Math.round(biz.staff.headcount * (biz.scale + 1) / biz.scale) } }) - profit({}) : 0;
-      if (healthy && gain > 0 && cost / gain <= (aggressive ? 10 : 6)) {
+      const payback = aggressive ? 12 : biz.cash > cost * 5 ? 10 : 7;
+      if (healthy && gain > 0 && cost / gain <= payback) {
         const cushion = Math.max(25000, (ly.revenue ?? 0) * 0.1);
         let r = null;
         if (biz.cash >= cost + cushion) r = expandBusiness(ctx, biz, 'cash');
@@ -124,20 +131,22 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
 function fleetPlan(ctx, biz, aggressive, did) {
   const o = OPERATIONS[biz.typeId];
   if (!o || !biz.ops) return;
-  const cap = capacity(biz);
+  // Grow toward the best work on offer: the contracts you qualify for, biggest first.
   const busy = contracted(biz);
-  const offered = (biz.ops.offers ?? []).reduce((s, k) => s + k.units, 0);
+  const eligible = (biz.ops.offers ?? []).filter((k) => offerEligibility(ctx.state, biz, k).ok)
+    .sort((a, b) => b.units * b.rate - a.units * a.rate).slice(0, aggressive ? 3 : 2);
+  const target = busy + eligible.reduce((sum, k) => sum + k.units, 0);
   if (o.unit) {
-    const short = Math.min(aggressive ? 4 : 2, Math.max(0, busy + Math.round(offered / 2) - cap.units));
+    const short = Math.min(aggressive ? 12 : 6, Math.max(0, target - biz.ops.units.length));
     let bought = 0;
-    for (let i = 0; i < short && biz.ops.units.length < 60; i++) {
+    for (let i = 0; i < short && biz.ops.units.length < 400; i++) {
       const price = o.unit.usedCost ?? o.unit.newCost;
       if (biz.cash >= price * 1.5) {
         biz.cash -= price;
         biz.ops.units.push({ id: ctx.rng.id('u_'), age: ctx.rng.int(4, Math.max(5, Math.floor(o.unit.life * 0.6))), used: true });
         biz.assets += Math.round(price * 0.8);
         bought += 1;
-      } else if (aggressive && biz.cash >= o.unit.newCost * EQUIPMENT_LOAN.down && ctx.state.housing.credit.score >= 600) {
+      } else if ((aggressive || biz.cash >= o.unit.newCost) && biz.cash >= o.unit.newCost * EQUIPMENT_LOAN.down && ctx.state.housing.credit.score >= 600) {
         const down = Math.round(o.unit.newCost * EQUIPMENT_LOAN.down);
         biz.cash -= down;
         const balance = (biz.ops.loan?.balance ?? 0) + o.unit.newCost - down;
@@ -148,12 +157,18 @@ function fleetPlan(ctx, biz, aggressive, did) {
     }
     if (bought) did.push(`added ${bought} ${o.unit.name}${bought > 1 ? 's' : ''} to the fleet`);
   }
-  // Crews follow the work: a driver for every truck, or a crew for every signed post.
-  const needPeople = o.unit ? biz.ops.units.length * o.crew : Math.ceil(Math.max(busy, 1) * o.crew);
-  const add = clamp(needPeople - biz.staff.headcount, 0, aggressive ? 20 : 8);
+  // Crews: a crew for every unit, or for every post you hold or are about to sign.
+  const posts = o.unit ? biz.ops.units.length : Math.max(busy, Math.min(target, busy + (aggressive ? 12 : 6)), 1);
+  const add = clamp(posts * o.crew - biz.staff.headcount, 0, aggressive ? 40 : 20);
   if (add) {
-    biz.staff.headcount += add;
+    biz.staff.headcount = Math.min(6000, biz.staff.headcount + add);
     did.push(`hired ${add} ${o.crewName ?? 'crew'}${add > 1 ? 's' : ''}`);
+  }
+  // Sign what now fits.
+  for (const k of eligible) {
+    if (contracted(biz) + k.units > capacity(biz).capacity) continue;
+    acceptOffer(biz, k);
+    did.push(`signed ${k.client}`);
   }
 }
 

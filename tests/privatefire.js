@@ -113,7 +113,7 @@ const tests = {
     assert.ok(staffFactor(biz) >= 0.84, `no endless trimming (${biz.staff.headcount} staff, ${staffFactor(biz).toFixed(2)})`);
     const c = owner(5, 'consulting');
     c.biz.role = 'absentee';
-    assert.equal(maxScale(c.state, c.biz), 12, 'a small-staff firm can grow past five under management');
+    assert.equal(maxScale(c.state, c.biz), 60, 'a small-staff firm can grow past five under management');
     c.biz.role = 'operator';
     assert.equal(maxScale(c.state, c.biz), 5);
   },

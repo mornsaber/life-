@@ -27,7 +27,7 @@ import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, MARKETING, SBA, SIZE_OPTIONS, sizesFor, startupCostFor } from './BusinessTypes.js';
 import { ownershipRules } from './OwnershipRules.js';
 import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './BusinessLicenses.js';
-import { competitionFactor } from '../org/Businesses.js';
+import { competitionFactor, effectiveLocations } from '../org/Businesses.js';
 import { initiativeEffects } from './Initiatives.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
@@ -152,22 +152,28 @@ export function yearFinancials(state, biz, rng) {
   const price = priceFactor(biz.priceLevel ?? 'standard', biz.quality);
   // Fleet and crew businesses earn what their booked capacity earns: contracts first, spot work for the rest (Operations).
   const ops = opsOf(biz) ? opsRevenue(biz, demand, rng) : null;
+  // Chains: a brand people recognize, and locations that don't crowd each other out.
+  const locations = type.startup ? 1 : effectiveLocations(state, biz);
+  const brand = 1 + Math.min(0.12, 0.012 * ((biz.scale ?? 1) - 1));
   // Initiatives, promotions and key accounts (Initiatives.js).
   const ini = type.startup ? null : initiativeEffects(biz, state.character.age);
   const revenue = Math.round(type.startup ? biz.arr
     : ops ? (ops.contractRevenue + ops.spotRevenue) * price * ramp * Math.sqrt(col) * ini.revenue
-      : (type.revenue * biz.scale ** 0.95 * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * ini.revenue + ini.accounts * ramp) * Math.sqrt(col));
+      : (type.revenue * locations * brand * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * ini.revenue + ini.accounts * ramp) * Math.sqrt(col));
   // Fleet upkeep is booked separately, so it comes out of the cost-of-goods share.
   const cogsRate = ops ? Math.max(0.05, type.cogs - OPERATIONS[biz.typeId].upkeep / OPERATIONS[biz.typeId].perUnit) : type.cogs;
-  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1));
+  // Buying power: bigger chains pay suppliers less.
+  const buyingPower = 1 - Math.min(0.12, 0.015 * ((biz.scale ?? 1) - 1));
+  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower);
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
-  const busy = type.startup || ops ? 1 : clamp(revenue / Math.max(1, type.revenue * biz.scale ** 0.95 * Math.sqrt(col)), 0.5, 1.6);
+  const busy = type.startup || ops ? 1 : clamp(revenue / Math.max(1, type.revenue * locations * brand * Math.sqrt(col)), 0.5, 1.6);
   const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy) * (type.startup ? 1 : staffing * Math.min(1, lic.revenue + 0.3)) * (PAY_POLICY[biz.payLevel ?? 'market'] ?? 1) * (ini?.payroll ?? 1));
   const delegated = Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]);
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
   // A manager's pay scales with the operation: a food truck's lead isn't paid like a restaurant group's GM.
-  const management = (biz.role === 'absentee' ? Math.round(clamp(revenue * 0.08, 40000, 120000)) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
+  // A general manager, then district managers as the chain grows (cheaper per location than an owner at every site).
+  const management = (biz.role === 'absentee' ? Math.round(clamp(revenue * 0.05, 40000, 90000) + Math.max(0, (biz.scale ?? 1) - 1) * 12000) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
   const rent = Math.round(type.rent * biz.scale * col * (ini?.rent ?? 1));
   const initiatives = ini ? Math.round(revenue * ini.share + ini.fixed * Math.sqrt(col)) : 0;
   const insurance = Math.round(type.insurance * biz.scale);

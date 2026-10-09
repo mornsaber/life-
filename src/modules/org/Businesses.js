@@ -242,9 +242,59 @@ export function businessRoster(state, biz) {
 }
 
 /** A hired chief executive's skill stands in for the owner's when they don't run it. */
+/**
+ * How well hired management runs the place: the CEO or general manager's
+ * ability, plus the systems a bigger company can afford (training, process,
+ * district managers). A good team at a sizable chain runs it about as well
+ * as a seasoned owner-operator.
+ */
 export function managerSkill(state, biz) {
   const ceo = personOf(businessOrg(state, biz), businessOrg(state, biz)?.ceo);
-  return ceo ? clamp(10 + (ceo.performance - 62) / 4, 4, 18) : 10;
+  const ability = ceo ? clamp(32 + (ceo.performance - 62) / 3, 18, 44) : 28;
+  const systems = Math.min(15, 3 * ((biz.scale ?? 1) - 1));
+  return ability + systems;
+}
+
+/** How many locations one market can support before they eat each other's customers. */
+export const MARKET_ROOM = { Rural: 2, 'Small town': 3, 'Mid-size city': 6, 'Sun Belt metro': 8, 'Coastal metro': 8, 'Mountain metro': 8, 'Capital region': 10, 'Major metro': 12, 'High-cost metro': 14 };
+export const marketRoom = (regionId) => MARKET_ROOM[REGIONS[regionId]?.type] ?? 6;
+
+/** Your locations by city: the main location plus each branch. */
+export function locationsByRegion(state, biz) {
+  const org = businessOrg(state, biz);
+  const home = org?.regionId ?? state.character.regionId;
+  const out = { [home]: 1 };
+  for (const b of org?.branches ?? []) {
+    const r = org.departments[b.deptId]?.regionId ?? b.regionId ?? home;
+    out[r] = (out[r] ?? 0) + 1;
+  }
+  const counted = Object.values(out).reduce((a, n) => a + n, 0);
+  // Locations not opened yet (a forecast of the next one) go where you plan to open.
+  const next = biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : home;
+  if (counted < (biz.scale ?? 1)) out[next] = (out[next] ?? 0) + (biz.scale ?? 1) - counted;
+  return out;
+}
+
+/** Locations that pull their full weight: ones past a market's room cannibalize each other. */
+export function effectiveLocations(state, biz) {
+  if (!biz.orgId || !state.orgs?.byId?.[biz.orgId]) return biz.scale ?? 1;
+  let e = 0;
+  for (const [r, n] of Object.entries(locationsByRegion(state, biz))) {
+    const cap = marketRoom(r);
+    e += n <= cap ? n : cap + (n - cap) * 0.35;
+  }
+  return e;
+}
+
+/** The city a growing chain should open in next: home first, then the biggest markets with room. */
+export function nextMarket(state, biz) {
+  const have = locationsByRegion(state, biz);
+  const home = businessOrg(state, biz)?.regionId ?? state.character.regionId;
+  if ((have[home] ?? 0) < marketRoom(home)) return home;
+  const homeState = REGIONS[home]?.state;
+  const open = Object.values(REGIONS).filter((r) => (have[r.id] ?? 0) < marketRoom(r.id))
+    .sort((a, b) => (b.state === homeState) - (a.state === homeState) || marketRoom(b.id) - marketRoom(a.id));
+  return open[0]?.id ?? home;
 }
 
 /* ------------------------------------------------------------------ */
