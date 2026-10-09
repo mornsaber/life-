@@ -54,6 +54,14 @@ export const CareerModule = {
     bus.on('career:appoint', ({ ctx, levelId }) => {
       if (ctx.state.career.job && promote(ctx, levelId)) ctx.log('The governor appointed you. The press release went out that afternoon.', '⭐', 'milestone');
     });
+    // A union contract you bargained (LaborUnions).
+    bus.on('career:raise', ({ ctx, pct }) => {
+      const job = ctx.state.career.job;
+      if (!job) return;
+      job.merit = Math.round((job.merit + pct / 100) * 1000) / 1000;
+      recalcSalary(ctx.state, job);
+    });
+    bus.on('career:joinUnion', ({ ctx }) => UnionActions.joinUnion(ctx));
     bus.on('career:adjust', ({ ctx, performance = 0, boss = 0, coworkers = 0 }) => {
       const job = ctx.state.career.job;
       if (!job) return;

@@ -434,7 +434,8 @@ const MORE_EVENTS = {
   ],
 };
 
-export const eventPool = (professionId) => [{ id: 'main', ...EVENTS[professionId] }, ...(MORE_EVENTS[professionId] ?? [])];
+// Some agencies (campus police) only have the follow-up pool; skip a missing main event.
+export const eventPool = (professionId) => [...(EVENTS[professionId] ? [{ id: 'main', ...EVENTS[professionId] }] : []), ...(MORE_EVENTS[professionId] ?? [])];
 const findEvent = (professionId, eventId = 'main') => eventPool(professionId).find((e) => e.id === eventId) ?? eventPool(professionId)[0];
 
 export const StateAgencies = {
@@ -446,6 +447,7 @@ export const StateAgencies = {
     if (!job || !STATE_PROFESSIONS[job.professionId] || !ctx.rng.chance(0.35)) return;
     if (job.professionId === 'cps') ctx.stat('stress', 6);
     const e = pickFresh(ctx.rng, ctx.state, `agency.${job.professionId}`, eventPool(job.professionId));
+    if (!e?.options) return;
     ctx.prompt({
       type: 'stateAgencies.event',
       icon: STATE_PROFESSIONS[job.professionId].icon,

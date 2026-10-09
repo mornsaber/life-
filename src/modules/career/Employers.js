@@ -11,6 +11,7 @@ import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
 import { attachOrg } from '../org/Organizations.js';
+import { rightToWork } from './LaborUnions.js';
 
 const MUNICIPAL_SIZE_BY_REGION = { rural: 'small', smalltown: 'small', midcity: 'medium', sunbelt: 'large', chicago: 'enterprise', dc: 'large', nyc: 'enterprise', sf: 'enterprise', miami: 'large', seattle: 'large', denver: 'large', gunnison: 'small' };
 
@@ -78,7 +79,7 @@ export function createEmployer(rng, state, profession, regionId) {
   const size = pickSize(rng, profession, regionId);
   const unionDef = profession.union;
   // Right-to-work states have roughly half the union density.
-  const rtw = STATES[REGIONS[regionId]?.state]?.rightToWork;
+  const rtw = rightToWork(state, REGIONS[regionId]?.state ?? 'IL');
   const union = unionDef && rng.chance(unionDef.chance * (rtw ? 0.5 : 1))
     ? { name: unionDef.name, strike: unionDef.strike, duesRate: 0.013, agencyFee: !rtw, contractYearsLeft: rng.int(1, 3) }
     : null;

@@ -40,15 +40,15 @@ import { leaveJob } from '../career/CareerEngine.js';
 
 // shifts: 'hospital' (round the clock) or 'days'. cert: the board that pays a premium here.
 const NURSING_UNITS = {
-  medSurg: { name: 'Medical-surgical floor', icon: '🛏️', pay: 1.0, burnout: 5, cert: 'cmsrn', shifts: 'hospital', desc: 'Five or six patients a shift, every kind of illness. Where most nurses start.' },
-  stepdown: { name: 'Progressive care (step-down)', icon: '📈', pay: 1.02, burnout: 4, cert: 'pccn', shifts: 'hospital', minYears: 1, desc: 'Telemetry and drips: sicker than the floor, not quite the ICU.' },
+  medSurg: { name: 'Medical-surgical floor', icon: '🛏️', pay: 1.0, burnout: 5, cert: 'rnSpecialty', shifts: 'hospital', desc: 'Five or six patients a shift, every kind of illness. Where most nurses start.' },
+  stepdown: { name: 'Progressive care (step-down)', icon: '📈', pay: 1.02, burnout: 4, cert: 'rnSpecialty', shifts: 'hospital', minYears: 1, desc: 'Telemetry and drips: sicker than the floor, not quite the ICU.' },
   icu: { name: 'Intensive care unit', icon: '🫀', pay: 1.06, burnout: 5, cert: 'ccrn', shifts: 'hospital', minYears: 1, codes: true, desc: 'Two patients, both critically ill. Vents, pressors and codes.' },
-  ed: { name: 'Emergency department', icon: '🚨', pay: 1.05, burnout: 6, cert: 'cen', shifts: 'hospital', minYears: 1, codes: true, violence: 0.06, desc: 'Anything through the door, any hour. Fast, loud, sometimes violent.' },
-  or: { name: 'Operating room', icon: '🔪', pay: 1.06, burnout: 3, cert: 'cnor', shifts: 'days', oncall: true, desc: 'Circulate and scrub. Days with call, no floor nights.' },
-  ld: { name: 'Labor & delivery', icon: '🤰', pay: 1.04, burnout: 4, cert: 'rncOb', shifts: 'hospital', minYears: 1, desc: 'Mostly joy; when it goes wrong, it goes wrong fast.' },
-  peds: { name: 'Pediatrics', icon: '🧸', pay: 1.0, burnout: 4, cert: 'cpn', shifts: 'hospital', desc: 'Small patients, worried parents.' },
-  oncology: { name: 'Oncology', icon: '🎗️', pay: 1.0, burnout: 5, cert: 'ocn', shifts: 'hospital', desc: 'Chemo, long relationships, and a lot of goodbyes.' },
-  psych: { name: 'Inpatient psychiatry', icon: '🧠', pay: 1.0, burnout: 5, cert: 'pmhn', shifts: 'hospital', violence: 0.08, desc: 'De-escalation is the main skill. Assaults are not rare.' },
+  ed: { name: 'Emergency department', icon: '🚨', pay: 1.05, burnout: 6, cert: 'rnSpecialty', shifts: 'hospital', minYears: 1, codes: true, violence: 0.06, desc: 'Anything through the door, any hour. Fast, loud, sometimes violent.' },
+  or: { name: 'Operating room', icon: '🔪', pay: 1.06, burnout: 3, cert: 'rnSpecialty', shifts: 'days', oncall: true, desc: 'Circulate and scrub. Days with call, no floor nights.' },
+  ld: { name: 'Labor & delivery', icon: '🤰', pay: 1.04, burnout: 4, cert: 'rnSpecialty', shifts: 'hospital', minYears: 1, desc: 'Mostly joy; when it goes wrong, it goes wrong fast.' },
+  peds: { name: 'Pediatrics', icon: '🧸', pay: 1.0, burnout: 4, cert: 'rnSpecialty', shifts: 'hospital', desc: 'Small patients, worried parents.' },
+  oncology: { name: 'Oncology', icon: '🎗️', pay: 1.0, burnout: 5, cert: 'rnSpecialty', shifts: 'hospital', desc: 'Chemo, long relationships, and a lot of goodbyes.' },
+  psych: { name: 'Inpatient psychiatry', icon: '🧠', pay: 1.0, burnout: 5, cert: 'rnSpecialty', shifts: 'hospital', violence: 0.08, desc: 'De-escalation is the main skill. Assaults are not rare.' },
   ltc: { name: 'Nursing home', icon: '🏚️', pay: 0.94, burnout: 6, shifts: 'hospital', desc: 'Thirty residents and two aides. Chronic understaffing.' },
   homeHealth: { name: 'Home health', icon: '🏠', pay: 0.96, burnout: 2, shifts: 'days', desc: 'Visits in patients\' homes: independence, mileage, and charting at night.' },
   clinic: { name: 'Outpatient clinic', icon: '🏥', pay: 0.9, burnout: 1, shifts: 'days', desc: 'Weekdays, no nights, no holidays. Less pay.' },

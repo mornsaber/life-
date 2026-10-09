@@ -15,6 +15,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { stateOf, regionOf } from '../life/Regions.js';
 import { promotionStatus } from '../career/CareerEngine.js';
 import { OFFICES } from './Offices.js';
+import { SEAT_OFFICES } from './Legislature.js';
 import { voteShare, CampaignActions, CampaignResolvers, appointmentEligibility } from './Campaigns.js';
 
 function takeOffice(ctx, officeId, { appointed = false } = {}) {
@@ -226,7 +227,8 @@ export const PoliticsEngine = {
       o.approval = Math.round(clamp(o.approval + (55 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
       ctx.stat('stress', office.fullTime ? 6 : 3);
       o.termYearsLeft -= 1;
-      if (rng.chance(0.6)) officeDecision(ctx);
+      // Legislators cast real votes on real bills (Legislature); other offices face a decision.
+      if (rng.chance(0.6)) { if (!SEAT_OFFICES[o.id]) officeDecision(ctx); }
       else if (rng.chance(0.25)) bribeOffer(ctx);
       if (office.executive && rng.chance(0.5)) {
         ctx.prompt({

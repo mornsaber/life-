@@ -648,7 +648,7 @@ export function careerOnAgeUp(ctx) {
   }
 
   const status = promotionStatus(state);
-  const grievanceLimit = job.unionMember ? 3 : 2;
+  const grievanceLimit = job.unionMember ? 3 + (['steward', 'officer', 'president'].includes(state.unions?.mine?.role) ? 1 : 0) : 2;
   // Ready to move up with nowhere to go: after a couple of years, another employer offers the promotion.
   job.stuckYears = job.performance >= 75 && status.noOpening ? (job.stuckYears ?? 0) + 1 : 0;
   if (job.stuckYears >= 2 && rng.chance(0.4)) outsidePromotionOffer(ctx, job, profession);

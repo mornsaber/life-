@@ -7,6 +7,7 @@ import { getProfession } from './JobTrees.js';
 import { salaryBreakdown } from './PayGrades.js';
 import { stateOf } from '../life/Regions.js';
 import { clearedPremium } from './ClearedWork.js';
+import { lawValue } from '../politics/Laws.js';
 
 export function recalcSalary(state, job) {
   const profession = getProfession(job.professionId);
@@ -24,7 +25,10 @@ export function recalcSalary(state, job) {
     exec: job.abilities.includes('exec'),
   });
   // State minimum wage floors full-time pay (2,080 hours).
-  const floor = Math.round(stateOf(state).minWage * 2080);
-  job.salary = Math.max(job.pay.total, job.sector === 'federal' ? 0 : floor);
+  const floor = Math.round((lawValue(state, 'minWage') ?? stateOf(state).minWage) * 2080);
+  // Legislated pay adjustments for government employees at that level.
+  const adj = lawValue(state, 'publicPay');
+  const publicAdj = job.sector === 'federal' ? adj?.federal : job.sector === 'state' ? adj?.state : job.sector === 'municipal' ? adj?.city : 0;
+  job.salary = Math.max(publicAdj ? Math.round(job.pay.total * (1 + publicAdj)) : job.pay.total, job.sector === 'federal' ? 0 : floor);
   return job.salary;
 }

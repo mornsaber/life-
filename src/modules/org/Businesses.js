@@ -378,7 +378,7 @@ export function competitorsOf(state, biz) {
   return Object.values(state.orgs?.byId ?? {}).filter((o) => o.typeId === `biz:${biz.typeId}` && cities.has(o.regionId) && o.id !== org?.id && o.owner?.kind !== 'player' && !o.closed);
 }
 
-function npcBusiness(state, typeId, regionId, { name, founder = null, reputation } = {}) {
+export function npcBusiness(state, typeId, regionId, { name, founder = null, reputation } = {}) {
   initOrgs(state);
   const rng = sideRng(state);
   const type = BUSINESS_TYPES[typeId];

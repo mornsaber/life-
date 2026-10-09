@@ -388,6 +388,13 @@ export const LicensingEngine = {
     state.credentials.prep ??= {};
     state.credentials.retake ??= {};
     state.credentials.failures ??= {};
+    // Retired credentials (folded into another) carry over to their replacement.
+    for (const [id, h] of Object.entries(state.credentials.held ?? {})) {
+      const to = CREDENTIALS[id]?.retired;
+      if (!to) continue;
+      state.credentials.held[to] ??= { ...h };
+      delete state.credentials.held[id];
+    }
   },
 
   setup(engine) {

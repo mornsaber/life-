@@ -9,6 +9,7 @@ import { stateOf } from '../../modules/life/Regions.js';
 import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Government.js';
 import { officeRoster, DEPUTY_KINDS, OFFICE_ACTIONS } from '../../modules/org/ElectedOffices.js';
 import { ratingLabel } from '../../modules/career/PayGrades.js';
+import { legislatureCards } from './LegislatureView.js';
 
 export function politicsView(state) {
   const p = state.politics;
@@ -52,6 +53,7 @@ export function politicsView(state) {
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
+    ${legislatureCards(state)}
     ${card('Political History', history, { icon: '🗂️' })}`;
 }
 

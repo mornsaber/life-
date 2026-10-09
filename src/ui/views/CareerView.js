@@ -44,6 +44,7 @@ import { equipmentCard } from './EquipmentView.js';
 import { publishingCard, adjunctCard } from './HigherEdView.js';
 import { labCard } from './LabView.js';
 import { POSTS } from '../../modules/business/OwnerJob.js';
+import { unionPanel, unionCards } from './UnionView.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -118,18 +119,6 @@ function payBreakdown(job) {
   return `<p class="fine">G${job.grade} base ${money(p.base)} × market ${pct(p.payMultiplier)} × employer ${pct(p.sizeMult)} × step ${job.step} ${pct(p.steps)} × ${job.sector === 'federal' ? 'locality' : 'region'} ${pct(p.locality)}${p.merit ? ` × merit +${Math.round(p.merit * 100)}%` : ''}</p>`;
 }
 
-function unionPanel(job) {
-  const u = job.employer.union;
-  if (!u) return '';
-  const supervisor = job.abilities.includes('supervise');
-  return `<div class="union">
-    <b>✊ ${esc(u.name)}</b> ${chip(u.strike ? 'Strikes allowed' : 'No-strike clause → arbitration', u.strike ? 'warn' : '')} ${chip(`Contract: ${u.contractYearsLeft} yr left`)}
-    ${supervisor ? '<p class="fine">Supervisors are excluded from the bargaining unit.</p>' : job.unionMember
-      ? `<p class="fine">Member · dues ${(u.duesRate * 100).toFixed(1)}% · grievance protection (3 warnings before termination) · contract votes.</p>${button('Leave union', 'career.leaveUnion', { variant: 'ghost small' })}`
-      : `<p class="fine">You're covered by the contract but not a member.</p>${button('✊ Join the union', 'career.joinUnion', { variant: 'small' })}`}
-  </div>`;
-}
-
 function managementConsole(job) {
   const d = job.department;
   if (!d) return '';
@@ -193,7 +182,7 @@ function currentJob(state) {
     ${trackLadder(profession.levels, job.levelId, (l) => ladderFor(profession, size).includes(l))}
     ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}
     <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
-    ${unionPanel(job)}
+    ${unionPanel(state, job)}
     ${summerPanel(state, job)}
     <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' && job.sector !== 'private' ? 'Quality Step Increase' : a.desc })).join('')}
       ${button(`🔀 ${lateral ? `Move to ${esc(lateral.title)}` : 'Switch track'}`, 'career.switchTrack', { hint: lateral ? `${TRACK_LABEL[lateral.track]} track` : 'Available after the fork', disabled: !lateral })}
@@ -377,7 +366,7 @@ export function careerView(state, ui = {}) {
     : empty('No previous jobs.');
   // No job: the job board comes first, before everything else on this screen.
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰' });
-  return `${current}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${unionCards(state)}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

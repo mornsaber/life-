@@ -199,7 +199,15 @@ function checkInvariants(state) {
     assert.ok(!(b.franchise && b.franchisor), 'franchisee and franchisor at once');
     if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
     if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
+    assert.ok(Number.isInteger(b.scale) && b.scale >= 1, `business scale ${b.scale}`);
+    assert.ok(Number.isFinite(b.staff.costPremium) && b.staff.costPremium > -0.5 && b.staff.costPremium < 3, `labor cost premium ${b.staff.costPremium}`);
+    if (b.union) assert.ok(b.staff.unionized && state.unions.byId[b.union.unionId], 'business union local');
   }
+  for (const h of state.business.holdings ?? []) assert.ok(Number.isFinite(h.cash) && Number.isFinite(h.valuation) && h.ownerPct > 0 && h.ownerPct <= 1 && h.scale >= 1, `holding ${h.name}`);
+  for (const u of Object.values(state.unions?.byId ?? {})) assert.ok(u.members > 0 && u.treasury >= 0 && u.strikeFund >= 0 && u.density > 0 && u.density <= 1 && Number.isFinite(u.militancy), `union ${u.name}`);
+  if (state.unions?.mine) assert.ok(state.career.job?.unionMember && state.unions.byId[state.unions.mine.unionId], 'union membership follows the job');
+  for (const body of Object.values(state.legislature?.bodies ?? {})) assert.ok(body.labor >= 0 && body.labor <= body.seats && body.leaders?.presiding?.name, `legislature ${body.name}`);
+  if (state.legislature?.seat) assert.ok(state.politics.office && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
   if (state.farm?.acres) assert.ok(state.farm.valuePerAcre > 0 && (!state.farm.loan || state.farm.loan.balance >= 0), 'farm');
   const civ = state.civic;
   assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');
@@ -292,6 +300,11 @@ function randomActions(state) {
   // Business
   const biz = state.business.current;
   if (!biz && age >= 18 && player.chance(0.05)) tries.push(() => act('business.start', `${player.pick(Object.keys(BUSINESS_TYPES))}:${player.pick(['cash', 'sba'])}:${player.pick(Object.keys(ENTITIES))}`));
+  // Unions and legislatures
+  if (state.career.job?.employer?.union && player.chance(0.2)) tries.push(() => act(player.pick(['career.joinUnion', 'career.leaveUnion'])));
+  if (state.unions?.mine && player.chance(0.3)) tries.push(() => act('unions.run', player.pick(['steward', 'officer', 'president'])), () => act(player.pick(['unions.organize', 'unions.mobilize', 'unions.strikeFund', 'unions.endorse', 'unions.stepDown'])), () => act('unions.dues', player.pick(['low', 'standard', 'high'])));
+  if (state.legislature?.seat && player.chance(0.4)) tries.push(() => act('legislature.sponsor', `${player.pick(['minWage', 'rightToWork', 'cardCheck', 'paidLeave', 'businessTax', 'corporateRate', 'smallBizCredit', 'licensing', 'antitrust', 'rentControl', 'infrastructure', 'publicPay'])}|${player.pick(['up', 'down'])}`), () => act('legislature.runPost', player.pick(['chair', 'whip', 'majority', 'presiding'])), () => act('legislature.hireStaff', player.pick(['chiefOfStaff', 'legislativeDirector', 'communications', 'caseworker'])), () => act('legislature.committee', player.pick(['labor', 'commerce', 'appropriations'])));
+  if (age >= 25 && !state.politics.office && !state.politics.campaign && player.chance(0.02)) tries.push(() => act('politics.run', player.pick(['cityCouncil', 'stateRep', 'stateSenator', 'usRep'])));
   if (state.career.job?.professionId === 'education' && player.chance(0.2)) tries.push(() => act('teaching.summer', player.pick(['rest', 'summerSchool', 'camp', 'tutoring', 'seasonal', 'curriculum'])));
   if (age >= 16 && player.chance(0.05)) tries.push(() => act('transit.setMode', player.pick(['auto', 'drive', 'transit', 'bike', 'walk', 'rideshare'])));
   if (age >= 25 && player.chance(0.02)) tries.push(() => act('civic.transitBoard'), () => act('politics.applyAppointed', 'cityManager'));
@@ -325,6 +338,9 @@ function randomActions(state) {
     if (player.chance(0.15)) tries.push(() => act('business.capitalIn', `${biz.id}:${player.pick([25000, 100000])}`), () => act('business.capitalOut', `${biz.id}:max`), () => act('business.buyBack', `${biz.id}:0.1:${player.pick(['you', 'company'])}`));
     if (player.chance(0.1)) tries.push(() => act('business.toggleInitiative', player.pick(['loyalty', 'salesTeam', 'telematics', 'training', 'energy'])), () => act('business.promote', player.pick(['sale', 'sponsor', 'tradeShow', 'webinar', 'rfpBlitz'])));
     if (player.chance(0.08)) tries.push(() => act('business.formConglomerate'));
+    if (player.chance(0.15)) tries.push(() => act('business.setDesign', player.pick(['functional', 'regional', 'lean'])), () => act('business.toggleDivision', player.pick(['bizdev', 'rnd', 'compliance', 'people', 'procurement'])), () => act('business.spinOff', player.pick(['denver', 'chicago', 'miami', 'atlanta', 'phoenix'])));
+    if (player.chance(0.1)) tries.push(() => act(player.pick(['business.goPublic', 'business.sellShares', 'business.buyback', 'business.takePrivate'])));
+    if (player.chance(0.05)) tries.push(() => act('legislature.lobby', `${player.pick(['minWage', 'rightToWork', 'smallBizCredit', 'antitrust', 'businessTax', 'paidLeave'])}|${player.pick(['up', 'down'])}|${player.pick(['city', 'state', 'federal'])}`));
   }
   const groupsNow = state.business.rivalGroups ?? [];
   if (state.business.conglomerate && groupsNow.length && player.chance(0.03)) tries.push(() => act('business.bidForGroup', player.pick(groupsNow).name));

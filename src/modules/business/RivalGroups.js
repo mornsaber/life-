@@ -19,6 +19,7 @@ import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { GROUPS } from './Rivals.js';
 import { appraise, setContestingGroup, addToGroup, conglomerateOf, holdingsCap } from './Conglomerate.js';
 import { canAfford } from '../../core/State.js';
+import { mergerReview } from './Regulation.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 export const GROUP_STYLES = {
@@ -159,7 +160,8 @@ export function bidForGroup(ctx, name) {
   let soldBack = 0;
   for (const o of ranked) {
     const value = appraise(state, o).price;
-    if (kept < room) {
+    // Regulators make you sell on any company that would give you too much of a market.
+    if (kept < room && mergerReview(state, o).divest === 0 && mergerReview(state, o).ok) {
       addToGroup(ctx, o, value);
       kept += 1;
     } else {

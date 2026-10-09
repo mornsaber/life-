@@ -22,6 +22,7 @@ import { newBusiness, yearFinancials, valuation, LICENSEE_ONLY, holdsLicense } f
 import { grandfatherLicenses } from './BusinessLicenses.js';
 import { syncBusinessOrg, sizeForHeadcount } from '../org/Businesses.js';
 import { canAfford } from '../../core/State.js';
+import { mergerReview } from './Regulation.js';
 import { execPayroll, officeCost, counselSaving, dealDiscount, execTick } from './HoldingCo.js';
 
 export const FORM_COST = 25000;
@@ -159,6 +160,9 @@ export function acquireCompany(ctx, orgId) {
   if ((state.business.holdings ?? []).length >= holdingsCap(state)) return ctx.toast(`${c.name} can hold ${holdingsCap(state)} companies.`, 'warn');
   const o = acquisitionTargets(state).find((x) => x.id === orgId);
   if (!o) return;
+  // Antitrust review: too much of one market is blocked, or approved only if you sell locations.
+  const review = mergerReview(state, o);
+  if (!review.ok) return ctx.toast(review.reason, 'warn');
   let price = Math.round(appraise(state, o).price * (1 - dealDiscount(c)));
   // A rival group may bid against you.
   const bidder = contestingGroup(state, rng);
@@ -173,6 +177,11 @@ export function acquireCompany(ctx, orgId) {
   if (rest > 0) ctx.spend(rest, `Acquisition of ${o.name}`, { credit: true });
   addToGroup(ctx, o, price);
   c.acquisitions = (c.acquisitions ?? 0) + 1;
+  if (review.divest) {
+    state.business.regulation ??= { cases: {}, actions: [] };
+    state.business.regulation.pending = [...(state.business.regulation.pending ?? []), { typeId: o.business.typeId, regionId: o.regionId, count: review.divest }];
+    ctx.log(`Regulators approved the deal on condition: ${review.reason.replace(/^Approved on condition /, '')}`, '⚖️', 'warn');
+  }
   ctx.log(`${c.name} acquired ${o.name} (${BUSINESS_TYPES[o.business.typeId].name.toLowerCase()}) for ${money(price)}. Its management stays on, on a steady growth plan.`, '🏛️', 'milestone');
 }
 

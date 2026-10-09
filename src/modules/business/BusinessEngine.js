@@ -12,6 +12,9 @@
  * before Finances settles taxes.
  */
 import { clamp } from '../../core/Random.js';
+import { businessUnionYear } from '../career/LaborUnions.js';
+import { regulationYear, antitrustResolver } from './Regulation.js';
+import { StructureActions, PublicActions, structureYear } from './Structure.js';
 import { REGIONS } from '../life/Regions.js';
 import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
@@ -249,6 +252,7 @@ function businessTick(ctx, biz) {
 
   ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
+  delete biz.strike;
   biz.taxBook = { expense: 0, capex: 0 };
   biz.cash += ly.netIncome;
   payDebts(biz);
@@ -261,6 +265,8 @@ function businessTick(ctx, biz) {
   governanceYear(ctx, biz);
   ensureCerts(biz, (id) => hasCredential(state, id));
   certsYear(ctx, biz);
+  businessUnionYear(ctx, biz, { decide: state.business.current === biz && ['operator', 'executive'].includes(biz.role) && !biz.autopilot });
+  structureYear(state, biz);
   opsTick(ctx, biz, ly);
   ctx.log(`${biz.name}: ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; you took ${money(ly.ownerPay)}` : ''}. Valued at ${money(biz.valuation)}.`, type.icon, ly.netIncome >= 0 ? 'finance' : 'warn');
 
@@ -732,6 +738,7 @@ function holdingTick(ctx, biz) {
   if (typeOf(biz).startup) startupGrowth(ctx, biz);
   ensureOps(rng, biz);
   const ly = yearFinancials(state, biz, rng);
+  delete biz.strike;
   biz.taxBook = { expense: 0, capex: 0 };
   biz.cash += ly.netIncome;
   payDebts(biz);
@@ -745,6 +752,8 @@ function holdingTick(ctx, biz) {
   governanceYear(ctx, biz);
   ensureCerts(biz, (id) => hasCredential(state, id));
   certsYear(ctx, biz);
+  businessUnionYear(ctx, biz);
+  structureYear(state, biz);
   businessStaffTick(ctx, biz);
   initiativesTick(ctx, biz);
   managedYear(ctx, biz);
@@ -809,6 +818,7 @@ function sellHoldingAt(ctx, h, price, outcome) {
   state.business.holdings = state.business.holdings.filter((x) => x !== h);
   return e;
 }
+const REG_DEPS = { sellHolding: (ctx, h, price, outcome) => sellHoldingAt(ctx, h, price, outcome) };
 
 /* ------------------------------------------------------------------ */
 /* Module                                                              */
@@ -860,11 +870,15 @@ export const BusinessEngine = {
     conglomerateTick(ctx, PLAN_DEPS);
     // Rival conglomerates move once you're in business.
     if (ctx.state.business.current || ctx.state.business.holdings?.length || ctx.state.business.rivalGroups) rivalGroupsTick({ ...ctx, rng: sideRng(ctx.state) });
+    // Regulators: antitrust, compliance (Regulation).
+    if (ctx.state.business.current || ctx.state.business.holdings?.length) regulationYear(ctx, REG_DEPS);
   },
 
   actions: {
     ...OwnerActions,
     ...FleetActions,
+    ...StructureActions,
+    ...PublicActions,
     ...InitiativeActions,
     /** arg: 'typeId:cash|sba:entity[:size[:name]]' */
     start(ctx, arg) {
@@ -1410,6 +1424,7 @@ export const BusinessEngine = {
       if (!biz || !option) return;
       ctx.log(option.apply(ctx, biz), typeOf(biz).icon);
     },
+    antitrust: (ctx, data, optionId) => antitrustResolver(REG_DEPS)(ctx, data, optionId),
     union(ctx, _data, optionId) {
       const { state, rng } = ctx;
       const biz = currentBusiness(state);

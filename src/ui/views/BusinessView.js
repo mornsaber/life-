@@ -3,6 +3,9 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
+import { DESIGNS, DIVISIONS, structureOf, canRestructure, ipoEligibility, ipoPrice, IPO_MIN_REVENUE } from '../../modules/business/Structure.js';
+import { marketPosition, exposure, enforcement } from '../../modules/business/Regulation.js';
+import { businessUnionPanel } from './UnionView.js';
 import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } from '../Components.js';
 import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier } from '../../modules/business/Operations.js';
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
@@ -523,7 +526,7 @@ function pnl(ly) {
   if (!ly) return '<p class="muted">First results come at the end of the year.</p>';
   const rows = [
     ['Revenue', ly.revenue], ['Cost of goods', -ly.cogs], ['Payroll & benefits', -ly.payroll], ['HR / delegation overhead', -ly.overhead], ['Managers', -ly.management],
-    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Initiatives', -(ly.initiatives ?? 0)], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Interest', -ly.interest],
+    ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Initiatives', -(ly.initiatives ?? 0)], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Corporate divisions', -(ly.structure ?? 0)], ['Interest', -ly.interest],
     ['Your salary', -ly.ownerSalary], ['Payroll tax on your salary', -ly.payrollTax], ['Corporate tax', -ly.corporateTax],
   ].filter(([, v]) => v);
   return `<table class="pnl">${rows.map(([k, v]) => `<tr><td>${k}</td><td class="${v < 0 ? 'neg' : ''}">${money(v)}</td></tr>`).join('')}
@@ -627,7 +630,7 @@ function ownedView(state, biz) {
 
   const ops = card('Operations', `
     ${s.headcount ? `${kv([['Staff', `${s.headcount}${biz.family.length ? ` (${biz.family.length} family)` : ''}`], ['Union risk', s.unionized ? 'Unionized' : `${s.unionRisk}%`]])}
-      ${meter(s.morale, { label: '😊 Morale' })}${meter(s.productivity, { label: '⚙️ Productivity' })}` : '<p class="muted">No employees yet — just you.</p>'}
+      ${meter(s.morale, { label: '😊 Morale' })}${meter(s.productivity, { label: '⚙️ Productivity' })}${businessUnionPanel(state, biz)}` : '<p class="muted">No employees yet — just you.</p>'}
     <h4 class="sub">Who runs it</h4><div class="toggle-row chips-row">${button('🧑‍💼 Run it yourself', 'business.setRole', { arg: 'operator', variant: biz.role === 'operator' ? 'tiny on' : 'tiny', disabled: Boolean(state.career.job), hint: state.career.job ? 'Quit your job first' : 'Your skill shows; full-time work' })}${button('🧑‍💼 Hire a general manager', 'business.setRole', { arg: 'absentee', variant: biz.role === 'absentee' ? 'tiny on' : 'tiny', hint: 'Salary cost; quality drifts' })}</div>
     <h4 class="sub">Marketing</h4><div class="toggle-row chips-row">${MARKETING.map((m, i) => button(m.label, 'business.setMarketing', { arg: String(i), variant: biz.marketing === i ? 'tiny on' : 'tiny', hint: m.share ? `${Math.round(m.share * 100)}% of revenue` : '' })).join('')}</div>
     <h4 class="sub">Profit you take out</h4><div class="toggle-row chips-row">${[0, 0.5, 1].map((p) => button(p === 0 ? 'Reinvest all' : p === 0.5 ? 'Half' : 'All of it', 'business.setDraw', { arg: String(p), variant: biz.drawPct === p ? 'tiny on' : 'tiny' })).join('')}</div>
@@ -649,14 +652,14 @@ function ownedView(state, biz) {
     <h4 class="sub">Owner's capital</h4>${capitalControls(state, biz)}
     ${type.startup || !type.rent ? '' : `<h4 class="sub">Premises</h4><p class="fine">You own ${biz.premises?.owned ?? 0} of ${biz.scale} location buildings${biz.premises?.value ? ` (worth ${money(biz.premises.value)})` : ''}. Owning swaps rent for property tax and upkeep (${Math.round(PREMISES_CARRY * 100)}% of value a year).</p>
     <div class="toggle-row chips-row">${button(`🏢 Buy a building · ${money(premisesPrice(state, biz))}`, 'business.buyPremises', { arg: 'cash', variant: 'tiny', disabled: (biz.premises?.owned ?? 0) >= biz.scale || biz.cash < premisesPrice(state, biz) })}${button('🏦 Buy with an SBA 504 loan', 'business.buyPremises', { arg: 'loan', variant: 'tiny', disabled: (biz.premises?.owned ?? 0) >= biz.scale, hint: `${money(premisesPrice(state, biz) * 0.15)} down` })}${biz.premises?.owned ? button('🔁 Sale-leaseback', 'business.saleLeaseback', { variant: 'tiny', hint: 'Sell one building, rent it back' }) : ''}</div>`}
-    ${biz.public ? `<p>${chip('🔔 Public company')} Listed at age ${biz.public.since} at a ${money(biz.public.ipoPrice)} valuation.</p>` : ''}
+    ${publicControls(state, biz)}
     <h4 class="sub">Legal structure</h4><div class="toggle-row chips-row">${Object.entries(ENTITIES).map(([id, e]) => button(`${e.icon} ${e.name}`, 'business.convert', { arg: id, variant: biz.entity === id ? 'tiny on' : 'tiny', disabled: biz.entity === id || (ventureBacked(biz) && id !== 'ccorp'), hint: biz.entity === id ? '' : '$1,500 to convert' })).join('')}</div>
     ${biz.investors.length ? `<h4 class="sub">Investors</h4><ul class="history">${biz.investors.map((i) => `<li>💼 ${esc(i.round)} · ${money(i.invested)} for ${Math.round(i.pct * 100)}%</li>`).join('')}</ul>` : ''}`, { icon: '🏦' });
 
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${postCard(state, biz)}${managementCard(state, biz)}${boardCard(state, biz)}${advisorCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${marketCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  return `${overview}${postCard(state, biz)}${managementCard(state, biz)}${boardCard(state, biz)}${advisorCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${structureCard(state, biz)}${marketCard(state, biz)}${regulatorsCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
 }
 
 export function businessView(state) {
@@ -665,4 +668,49 @@ export function businessView(state) {
   if (biz) return `${conglomerateCard(state)}${ownedView(state, biz)}${holdingsCard(state)}${rivalGroupsCard(state)}${historyCard(state)}`;
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
   return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
+}
+
+/** Regulators: your share of each market, antitrust exposure, open cases and recent findings. */
+function regulatorsCard(state, biz) {
+  const pos = marketPosition(state, biz.typeId);
+  const reg = state.business.regulation;
+  const kase = reg?.cases?.[biz.typeId];
+  const t = enforcement(state);
+  const exp = exposure(state, pos);
+  if (!pos.locations || (exp < 20 && !kase && !(reg?.actions ?? []).length && (biz.lastYear?.revenue ?? 0) < 10_000_000)) return '';
+  const cities = pos.cities.slice(0, 6).map((c) => `<li>${esc(REGIONS[c.regionId]?.name.split(',')[0] ?? c.regionId)} <small class="muted">${c.mine} of ${c.mine + c.rivals} locations</small> ${chip(`${Math.round(c.share * 100)}%`, c.share >= t.share ? 'bad' : c.share >= t.share * 0.8 ? 'warn' : '')}</li>`).join('');
+  return card('Regulators', `
+    ${meter(exp, { label: '⚖️ Antitrust exposure', tone: exp >= 80 ? 'bad' : exp >= 50 ? 'mid' : 'good' })}
+    <p class="fine">Enforcement is ${esc(t.label.toLowerCase())}: regulators look at companies with ${Math.round(t.share * 100)}%+ of their markets and ${money(t.revenue)}+ in revenue. Your ${pos.companies > 1 ? `${pos.companies} companies of this kind together hold` : 'company holds'} ${Math.round(pos.share * 100)}% on average.</p>
+    ${kase ? `<p class="warn-text">${kase.stage === 'trial' ? '⚔️ In court: the ruling comes at year-end.' : '🔎 Under investigation.'}</p>` : ''}
+    ${cities ? `<ul class="history">${cities}</ul>` : ''}
+    ${(reg?.actions ?? []).length ? disclosure('reg-actions', 'Regulatory history', `<ul class="history">${reg.actions.slice().reverse().map((a) => `<li><small>age ${a.age}</small> ${esc(a.text)}</li>`).join('')}</ul>`) : ''}`, { icon: '⚖️' });
+}
+
+/** The company's organization: design, corporate divisions, spin-offs (for the chief executive). */
+function structureCard(state, biz) {
+  if (typeOf(biz).startup || biz.staff.headcount < 15) return '';
+  const st = structureOf(biz);
+  const can = canRestructure(biz);
+  const used = state.yearly[`business.restructure.${biz.id}`] ?? 0;
+  const off = !can.ok || used >= 2;
+  const org = businessOrg(state, biz);
+  const cities = Object.entries(locationsByRegion(state, biz)).filter(([r]) => r !== org?.regionId);
+  return card('Company Structure', `
+    <p class="fine">${can.ok ? `${2 - used} reorganization${2 - used === 1 ? '' : 's'} left this year.` : esc(can.reason)}</p>
+    <h4 class="sub">Design</h4><div class="toggle-row chips-row">${Object.entries(DESIGNS).map(([id, d]) => button(`${d.icon} ${d.label}`, 'business.setDesign', { arg: id, variant: st.design === id ? 'tiny on' : 'tiny', disabled: off || st.design === id, hint: d.desc })).join('')}</div>
+    <h4 class="sub">Corporate divisions</h4><div class="toggle-row chips-row">${Object.entries(DIVISIONS).map(([id, d]) => button(`${d.icon} ${d.name}`, 'business.toggleDivision', { arg: id, variant: st.divisions.includes(id) ? 'tiny on' : 'tiny', disabled: off || (!st.divisions.includes(id) && biz.staff.headcount < d.minStaff), hint: biz.staff.headcount < d.minStaff ? `${d.minStaff}+ staff` : d.desc })).join('')}</div>
+    ${cities.length ? `<h4 class="sub">Spin off a market</h4><div class="toggle-row chips-row">${cities.map(([r, n]) => button(`🧬 ${esc((REGIONS[r]?.name ?? r).split(',')[0])} (${n})`, 'business.spinOff', { arg: r, variant: 'tiny', disabled: off, hint: 'A separate company you keep' })).join('')}</div>` : ''}`, { icon: '🏗️' });
+}
+
+/** Listing, trading and delisting. */
+function publicControls(state, biz) {
+  if (typeOf(biz).startup) return '';
+  if (biz.public) {
+    return `<h4 class="sub">🔔 Public company</h4><p class="fine">Listed at age ${biz.public.since} at ${money(biz.public.ipoPrice)}; market value now ${money(biz.valuation)}. You own ${Math.round(biz.ownerPct * 100)}%.</p>
+    <div class="toggle-row chips-row">${button('📉 Sell 5% of the company', 'business.sellShares', { variant: 'tiny', disabled: biz.ownerPct <= 0.1, hint: `≈${money(biz.valuation * 0.05)}` })}${button('🔁 Buy back 5%', 'business.buyback', { variant: 'tiny', hint: `${money(biz.valuation * 0.05 * 1.05)} of company cash` })}${button('🔒 Take it private', 'business.takePrivate', { variant: 'tiny', hint: `${money(biz.valuation * (1 - biz.ownerPct) * 1.3)} (30% premium)` })}</div>`;
+  }
+  const check = ipoEligibility(state, biz);
+  return `<h4 class="sub">Go public</h4><p class="fine">A C-corporation with ${money(IPO_MIN_REVENUE)}+ revenue, a profitable year and three years of books can list. ${check.ok ? `Bankers would price it near ${money(ipoPrice(state, biz))}.` : ''}</p>
+    <div class="toggle-row chips-row">${button('🔔 File for an IPO', 'business.goPublic', { variant: 'tiny', disabled: !check.ok, hint: check.ok ? 'Underwriting fees ~1.2%' : check.reason })}</div>`;
 }

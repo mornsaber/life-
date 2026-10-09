@@ -30,6 +30,8 @@ import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './Busin
 import { competitionFactor, effectiveLocations } from '../org/Businesses.js';
 import { initiativeEffects } from './Initiatives.js';
 import { focusEffects } from './OwnerJob.js';
+import { businessLawEffects } from '../politics/Laws.js';
+import { structureEffects } from './Structure.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
@@ -41,6 +43,8 @@ export const priceFactor = (level, quality) => (level === 'premium' ? 0.94 + (qu
 const SUPPLIER_COGS = { cheap: 0.95, standard: 1, premium: 1.05 };
 const PAY_POLICY = { below: 0.92, market: 1, above: 1.08 };
 export const CORPORATE_TAX = 0.21;
+/** Building trades: public works budgets move their demand. */
+export const CONSTRUCTION_TYPES = ['electrical', 'plumbing', 'hvacContractor', 'constructionCo', 'demolitionCo', 'homeBuilder', 'engineeringFirm', 'solarInstaller', 'excavation', 'craneRental', 'roofing', 'landscaping', 'surveyFirm'];
 export const PHASE_DEMAND = { expansion: 1.05, peak: 1.08, recession: 0.8, recovery: 0.95 };
 export const LICENSED_MANAGER = 95000;
 /** Types that must be owned by a licensee (no lay owners of law firms or medical practices). */
@@ -146,7 +150,13 @@ export function yearFinancials(state, biz, rng) {
   const competition = biz.orgId ? competitionFactor(state, biz) : 1;
   // Licenses: optional ones add customers or bigger tickets; a required one still pending means you're barely open.
   const lic = licenseEffects(biz);
-  const demand = (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
+  // Laws where it operates: wage floors, paid leave, public works, taxes (politics/Laws).
+  const law = businessLawEffects(state, state.character.regionId, { wage: type.wage, revenue: biz.lastYear?.revenue ?? 0, construction: CONSTRUCTION_TYPES.includes(biz.typeId) });
+  // A strike or lockout shuts the doors for weeks (LaborUnions).
+  const stoppage = biz.strike ? clamp(biz.strike.weeks / 52, 0, 0.5) : 0;
+  // How you've organized the company (Structure): divisions, lean or regional design.
+  const sfx = structureEffects(state, biz);
+  const demand = law.demand * (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
   const ramp = (biz.years <= 1 ? 0.7 : biz.years === 2 ? 0.9 : 1) * lic.revenue;
   // New businesses hire as customers arrive rather than staffing up on day one.
   const staffing = biz.years <= 1 ? 0.85 : biz.years === 2 ? 0.95 : 1;
@@ -166,18 +176,18 @@ export function yearFinancials(state, biz, rng) {
     ini.cogs *= fx.cogs;
     ini.payroll *= fx.payroll;
   }
-  const revenue = Math.round(type.startup ? biz.arr
+  const revenue = Math.round(sfx.revenue * (1 - stoppage * 0.85) * (type.startup ? biz.arr
     : ops ? (ops.contractRevenue + ops.spotRevenue) * price * ramp * Math.sqrt(col) * ini.revenue
-      : (type.revenue * locations * brand * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * ini.revenue + ini.accounts * ramp) * Math.sqrt(col));
+      : (type.revenue * locations * brand * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * ini.revenue + ini.accounts * ramp) * Math.sqrt(col)));
   // Fleet upkeep is booked separately, so it comes out of the cost-of-goods share.
   const cogsRate = ops ? Math.max(0.05, type.cogs - OPERATIONS[biz.typeId].upkeep / OPERATIONS[biz.typeId].perUnit) : type.cogs;
   // Buying power: bigger chains pay suppliers less.
   const buyingPower = 1 - Math.min(0.12, 0.015 * ((biz.scale ?? 1) - 1));
-  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower);
+  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower * sfx.cogs);
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
   const busy = type.startup || ops ? 1 : clamp(revenue / Math.max(1, type.revenue * locations * brand * Math.sqrt(col)), 0.5, 1.6);
-  const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy) * (type.startup ? 1 : staffing * Math.min(1, lic.revenue + 0.3)) * (PAY_POLICY[biz.payLevel ?? 'market'] ?? 1) * (ini?.payroll ?? 1));
+  const payroll = Math.round(biz.staff.headcount * type.wage * Math.sqrt(col) * mode.costMult * (1 + biz.staff.costPremium) * benefitsLoad * (0.55 + 0.45 * busy) * (type.startup ? 1 : staffing * Math.min(1, lic.revenue + 0.3)) * (PAY_POLICY[biz.payLevel ?? 'market'] ?? 1) * (ini?.payroll ?? 1) * law.payroll * sfx.payroll * (1 + sfx.payrollShare) * (1 - stoppage * 0.7));
   const delegated = Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]);
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
   // A manager's pay scales with the operation: a food truck's lead isn't paid like a restaurant group's GM.
@@ -186,7 +196,7 @@ export function yearFinancials(state, biz, rng) {
   const hiredChief = biz.role === 'absentee' || (biz.role === 'executive' && biz.ownerPost?.post === 'chair');
   // Without the license yourself you need a licensed qualifier. When a hired manager already runs it,
   // hiring a licensed one only costs a premium; otherwise it's a whole extra salary.
-  const qualifier = !biz.licensedManager ? 0 : hiredChief || biz.role === 'executive' ? Math.round(clamp(revenue * 0.012, 8000, 30000)) : Math.round(clamp(revenue * 0.06, 40000, LICENSED_MANAGER));
+  const qualifier = !biz.licensedManager ? 0 : hiredChief || biz.role === 'executive' ? Math.round(clamp(revenue * 0.012, 8000, 30000)) : Math.round(clamp(revenue * 0.06, 40000, LICENSED_MANAGER) * law.licensing);
   const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + (biz.role !== 'operator' ? Math.max(0, (biz.scale ?? 1) - 1) * 12000 : 0) + qualifier;
   // Locations whose building you own pay property tax and upkeep instead of rent (see Premises).
   const owned = Math.min(biz.scale, biz.premises?.owned ?? 0);
@@ -203,7 +213,8 @@ export function yearFinancials(state, biz, rng) {
   // Franchisees pay royalties and the ad fund off the top; franchisors collect fees and royalties and pay for support.
   const royalties = royaltiesOn(biz, revenue);
   const { franchiseFees, royaltyIncome, franchiseSupport } = franchisorFinancials(biz, type);
-  const operatingIncome = revenue - cogs - payroll - overhead - management - rent - insurance - marketing - initiatives - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport - fleet - penalties;
+  const structure = Math.round(revenue * sfx.costShare + sfx.cost);
+  const operatingIncome = -structure + revenue - cogs - payroll - overhead - management - rent - insurance - marketing - initiatives - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport - fleet - penalties;
   // S- and C-corp owners who work in the business take a W-2 salary (employer payroll tax applies).
   const entity = ENTITIES[biz.entity];
   // Funded startup founders pay themselves a modest salary out of the raise.
@@ -217,9 +228,9 @@ export function yearFinancials(state, biz, rng) {
   // Off-book expenses and capital purchases since the last books (see charge()) are deducted for tax, not again from cash.
   const writeOffs = (biz.taxBook?.expense ?? 0) + (biz.taxBook?.capex ?? 0);
   const taxableProfit = pretax - writeOffs;
-  const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, taxableProfit) * CORPORATE_TAX);
+  const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, taxableProfit) * law.corporateRate * (1 - law.taxCredit));
   const netIncome = pretax - corporateTax;
-  return { revenue, cogs, payroll, overhead, management, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, writeOffs, taxableProfit, fleet, penalties, ops };
+  return { strikeWeeks: biz.strike?.weeks ?? 0, structure, revenue, cogs, payroll, overhead, management, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, writeOffs, taxableProfit, fleet, penalties, ops };
 }
 
 /**

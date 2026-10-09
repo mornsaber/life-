@@ -16,6 +16,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { recalcSalary } from './Compensation.js';
+import { unionFor, contractOffer, bargainingPrompt, isOfficer, strikeWinChance, syncMembership, unionPower } from './LaborUnions.js';
 
 const isSupervisor = (job) => job.abilities.includes('supervise');
 
@@ -32,6 +33,9 @@ export function unionEmployeeTick(ctx, job) {
   const { rng } = ctx;
   const union = job.employer.union;
   if (!union) return;
+  // The local behind this bargaining unit (LaborUnions): its power sets what contracts and strikes win.
+  const org = unionFor(ctx.state, union);
+  union.duesRate = org.duesRate;
   if (job.unionMember) {
     const dues = Math.round(job.salary * union.duesRate);
     ctx.spend(dues, `${union.name} dues`, { allowDebt: true });
@@ -44,13 +48,14 @@ export function unionEmployeeTick(ctx, job) {
   if (union.contractYearsLeft <= 0) {
     union.contractYearsLeft = 3;
     // Contracts chase inflation plus a real raise.
-    const offer = Math.max(1, Math.round(ctx.state.economy.inflation * 100)) + rng.int(0, 3);
-    if (job.unionMember && !isSupervisor(job)) {
+    const offer = contractOffer(ctx.state, org, rng);
+    if (job.unionMember && !isSupervisor(job) && isOfficer(ctx.state)) bargainingPrompt(ctx, job, org, offer);
+    else if (job.unionMember && !isSupervisor(job)) {
       ctx.prompt({
         type: 'career.cbaVote',
         icon: '🗳️',
         title: `${union.name}: Contract Vote`,
-        text: `The bargaining committee reached a tentative agreement with ${job.employer.name}: a ${offer}% raise over three years.\n${union.strike ? 'Rejecting it authorizes a strike.' : 'Rejecting it sends the contract to binding arbitration (strikes are illegal for your job).'}`,
+        text: `The bargaining committee reached a tentative agreement with ${job.employer.name}: a ${offer}% raise over three years (union power ${unionPower(org)}/100).\n${union.strike ? 'Rejecting it authorizes a strike.' : 'Rejecting it sends the contract to binding arbitration (strikes are illegal for your job).'}`,
         options: [
           { id: 'ratify', label: `✅ Ratify the ${offer}% deal` },
           { id: 'reject', label: union.strike ? '✊ Reject — authorize a strike' : '⚖️ Reject — go to arbitration' },
@@ -59,7 +64,7 @@ export function unionEmployeeTick(ctx, job) {
       });
     } else {
       // Non-members and supervisors are covered by whatever the membership decides.
-      const struck = union.strike && rng.chance(0.2);
+      const struck = union.strike && rng.chance(0.1 + org.militancy / 500);
       if (struck) strikePrompt(ctx, job, offer);
       else {
         applyRaise(ctx, job, offer);
@@ -119,13 +124,22 @@ export const UnionResolvers = {
     const { rng } = ctx;
     const job = ctx.state.career.job;
     if (!job) return;
-    const weeks = rng.int(2, 10);
-    const won = rng.chance(0.55);
+    const org = job.employer.union ? unionFor(ctx.state, job.employer.union) : null;
+    // A deep strike fund shortens strikes; a powerful union wins them.
+    const weeks = Math.max(1, rng.int(2, 10) - (org && org.strikeFund > org.members * 1500 ? 2 : 0));
+    const won = rng.chance(org ? strikeWinChance(org) : 0.55);
+    const strikePay = org && org.strikeFund > org.members * 200 ? 500 : 200;
+    if (org) {
+      org.strikeFund = Math.max(0, org.strikeFund - Math.round(org.members * 0.3 * weeks * strikePay));
+      org.militancy = Math.min(100, org.militancy + (won ? 6 : -4));
+    }
+    const mine = ctx.state.unions?.mine;
     const raise = won ? data.offer + rng.int(2, 4) : Math.max(1, data.offer - 2);
     if (optionId === 'picket') {
       const lost = Math.round((job.salary * weeks) / 52);
       ctx.spend(lost, 'Lost wages (strike)', { allowDebt: true });
-      if (job.unionMember) ctx.earn(500 * weeks, 'Union strike fund');
+      if (job.unionMember) ctx.earn(strikePay * weeks, 'Union strike fund');
+      if (mine) mine.standing = Math.min(100, mine.standing + (mine.role === 'member' ? 4 : 8));
       job.coworkers = Math.round(clamp(job.coworkers + 15, 0, 100));
       job.boss = Math.round(clamp(job.boss - 5, 0, 100));
       ctx.stat('stress', 8);
@@ -137,6 +151,7 @@ export const UnionResolvers = {
       if (job.unionMember) {
         job.unionMember = false;
         ctx.log('The union expelled you for crossing the picket line.', '🚫', 'bad');
+        syncMembership(ctx);
       }
       ctx.log(`You crossed the picket line for ${weeks} weeks. "Scab" was spray-painted on your car.`, '🚶', 'warn');
     }
@@ -272,6 +287,7 @@ export const UnionActions = {
     job.unionMember = true;
     job.coworkers = Math.round(clamp(job.coworkers + 5, 0, 100));
     ctx.log(`You joined ${job.employer.union.name}.`, '✊', 'good');
+    syncMembership(ctx);
   },
   leaveUnion(ctx) {
     const job = ctx.state.career.job;
@@ -279,5 +295,6 @@ export const UnionActions = {
     job.unionMember = false;
     job.coworkers = Math.round(clamp(job.coworkers - 5, 0, 100));
     ctx.log(`You dropped your ${job.employer.union.name} membership.`, '🚪');
+    syncMembership(ctx);
   },
 };
