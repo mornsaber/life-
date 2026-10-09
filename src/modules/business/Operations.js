@@ -76,6 +76,8 @@ export const OPERATIONS = {
     clients: [['Corporate relocations for a tech company', 2, 1.12, { minRep: 55 }], ['Military household moves', 2, 1.0], ['An office-furniture installer', 1, 0.98]] },
   landscaping: { unit: U('crew truck and mowers', 'crew trucks and mowers', '🌿', 60000, 25000, 8), crew: 3, crewName: 'landscaper', perUnit: 190000, upkeep: 7000, start: 2,
     clients: [['An HOA\'s common grounds', 1, 1.0], ['A corporate campus', 2, 1.08], ['The city parks department', 2, 1.05, { minRep: 55 }], ['Snow removal for a shopping center', 1, 1.1]] },
+  demolitionCo: { unit: U('excavator with demolition shears', 'demolition excavators', '🧨', 420000, 160000, 12), crew: 3, crewName: 'demolition laborer', perUnit: 560000, upkeep: 40000, start: 2,
+    clients: [['Teardowns for a home builder', 2, 1.0], ['An abandoned mall', 2, 1.12, { minRep: 55 }], ['The city\'s blighted-property program', 1, 1.05], ['A hospital wing interior demolition', 3, 1.18, { minUnits: 3, minRep: 60 }]] },
   excavation: { unit: U('excavator and dump truck', 'excavators and dump trucks', '🚜', 350000, 140000, 12), crew: 2, crewName: 'equipment operator', perUnit: 450000, upkeep: 35000, start: 2,
     clients: [['Site work for a new subdivision', 2, 1.0], ['The water utility\'s pipe replacement', 1, 1.1, { minRep: 55 }], ['Highway widening subcontract', 3, 1.15, { minUnits: 3, minRep: 60 }]] },
   craneRental: { unit: U('crane', 'cranes', '🏗️', 900000, 350000, 20), crew: 2, crewName: 'crane operator', perUnit: 700000, upkeep: 60000, start: 1,

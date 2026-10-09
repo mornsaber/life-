@@ -39,6 +39,8 @@ export function insurancePremium(property) {
 
 export function carryingCosts(property, state = null) {
   const st = STATES[REGIONS[property.regionId].state];
+  // Bare land: property tax only.
+  if (PROPERTY_TYPES[property.type]?.kind === 'land') return { tax: Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)), insurance: 0, hoa: 0, upkeep: 0 };
   return {
     // Voter-approved local measures raise or cap the rate (civic/Local.js).
     tax: Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)),
@@ -54,7 +56,10 @@ export function maintenanceTick(ctx, property) {
   ctx.spend(c.tax + c.insurance + c.hoa + c.upkeep, `Property costs — ${property.typeName}`, { allowDebt: true });
   property.lastCosts = c;
   if (property.use === 'primary') (ctx.state.finances.ledger.itemize ??= []).push({ kind: 'propertyTax', amount: c.tax });
+  if (PROPERTY_TYPES[property.type]?.kind === 'land' || property.project) return;
   property.condition = Math.round(clamp(property.condition - rng.int(2, 5), 0, 100));
+  // Your own getaway.
+  if (property.use === 'vacation') ctx.stat('happiness', 3);
 
   if (rng.chance(0.18)) {
     const r = rng.pick(REPAIRS);

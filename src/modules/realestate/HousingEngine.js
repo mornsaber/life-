@@ -18,10 +18,11 @@ import { isOnActiveDuty, yearlyCount, bumpYearly, canAfford } from '../../core/S
 import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
-import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick } from './PropertyMarket.js';
-import { LOAN_TYPES, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan } from './MortgageSystem.js';
+import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick, isResidential, isLand } from './PropertyMarket.js';
+import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan } from './MortgageSystem.js';
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
+import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -77,7 +78,7 @@ function sellProperty(ctx, property, { forced = false } = {}) {
   const { state } = ctx;
   const gross = property.value;
   const costs = Math.round(gross * sellingCostRate(state));
-  const owed = (property.mortgage?.balance ?? 0) + (property.heloc?.balance ?? 0);
+  const owed = (property.mortgage?.balance ?? 0) + (property.heloc?.balance ?? 0) + (property.project?.loan?.balance ?? 0);
   const proceeds = gross - costs - owed;
   if (proceeds < 0 && !forced && state.finances.cash < -proceeds) {
     ctx.toast(`You're underwater — closing needs $${(-proceeds).toLocaleString()} you don't have.`, 'warn');
@@ -97,7 +98,8 @@ function sellProperty(ctx, property, { forced = false } = {}) {
 
 function financingPrompt(ctx, listing) {
   const { state } = ctx;
-  const quotes = Object.keys(LOAN_TYPES).map((id) => [id, quote(state, listing.price, id)]);
+  const noi = expectedNoi(state, listing.type, listing.regionId, listing.price);
+  const quotes = loansFor(listing.type).map((id) => [id, quote(state, listing.price, id, { noi })]);
   const options = quotes.map(([id, q]) => ({
     id,
     label: `🏦 ${LOAN_TYPES[id].name} @ ${(q.rate * 100).toFixed(2)}%`,
@@ -106,7 +108,7 @@ function financingPrompt(ctx, listing) {
   }));
   const cashNeeded = Math.round(listing.price * 1.03);
   options.push({ id: 'cash', label: `💵 Pay cash ($${cashNeeded.toLocaleString()})`, disabled: state.finances.cash < cashNeeded, hint: state.finances.cash < cashNeeded ? 'Not enough cash' : 'No mortgage' });
-  const dtiOnly = quotes.find(([, q]) => q.dtiFail && state.housing.credit.score >= LOAN_TYPES.conv30.minScore);
+  const dtiOnly = isResidential(listing.type) && quotes.find(([, q]) => q.dtiFail && state.housing.credit.score >= LOAN_TYPES.conv30.minScore);
   if (dtiOnly && !options.some((o) => !o.disabled)) {
     const fq = quote(state, listing.price, 'conv30', { inflateIncome: true });
     if (fq.ok) options.push({ id: 'fraud', label: '📝 "Adjust" the income on your application', hint: 'Mortgage fraud is a federal felony', tone: 'danger' });
@@ -125,7 +127,7 @@ function financingPrompt(ctx, listing) {
 function completePurchase(ctx, listing, loanType, q) {
   const { state } = ctx;
   const def = PROPERTY_TYPES[listing.type];
-  const canLiveHere = !primaryHome(state) && !isOnActiveDuty(state) && !hasHousingBenefit(state);
+  const canLiveHere = isResidential(listing.type) && !primaryHome(state) && !isOnActiveDuty(state) && !hasHousingBenefit(state);
   const property = {
     id: ctx.rng.id('prop_'),
     type: listing.type,
@@ -136,7 +138,7 @@ function completePurchase(ctx, listing, loanType, q) {
     purchasePrice: listing.price,
     purchaseAge: state.character.age,
     condition: listing.condition,
-    use: canLiveHere ? 'primary' : 'rental',
+    use: canLiveHere ? 'primary' : isLand(listing.type) ? 'vacant' : 'rental',
     mortgage: null,
     heloc: null,
     tenants: [],
@@ -155,7 +157,7 @@ function completePurchase(ctx, listing, loanType, q) {
   }
   const first = isFirstHome(state);
   state.housing.everOwned = true;
-  ctx.log(`${first ? 'You bought your first home! ' : 'You bought '}${first ? '' : 'a '}${def.name} in ${REGIONS[listing.regionId].name} for $${listing.price.toLocaleString()}${q ? ` with a ${LOAN_TYPES[loanType].name} at ${(q.rate * 100).toFixed(2)}%` : ' in cash'}. ${property.use === 'primary' ? 'You moved in.' : 'It\'ll be a rental.'}`, def.icon, 'milestone');
+  ctx.log(`${first ? 'You bought your first property! ' : 'You bought '}${first ? '' : 'a '}${def.name} in ${REGIONS[listing.regionId].name} for $${listing.price.toLocaleString()}${q ? ` with a ${LOAN_TYPES[loanType].name} at ${(q.rate * 100).toFixed(2)}%` : ' in cash'}. ${property.use === 'primary' ? 'You moved in.' : isLand(listing.type) ? 'It\'s ready to build on.' : def.kind === 'commercial' ? 'Time to find tenants.' : 'It\'ll be a rental.'}`, def.icon, 'milestone');
   ctx.toast(`🏡 Bought: ${def.name}`, 'good');
   ctx.stat('happiness', first ? 12 : 5);
 }
@@ -303,6 +305,7 @@ export const HousingEngine = {
     // Owned properties
     for (const p of [...h.properties]) {
       if (!serviceDebt(ctx, p)) continue;
+      if (p.project && constructionTick(ctx, p) === 'foreclosed') continue;
       maintenanceTick(ctx, p);
       landlordTick(ctx, p);
     }
@@ -371,7 +374,12 @@ export const HousingEngine = {
       const { state } = ctx;
       const [id, use] = String(arg).split(':');
       const p = state.housing.properties.find((x) => x.id === id);
-      if (!p || !['primary', 'rental', 'vacant'].includes(use)) return;
+      if (!p || !['primary', 'rental', 'vacant', 'vacation'].includes(use)) return;
+      if (p.project) return ctx.toast('It\'s a construction site right now.', 'warn');
+      if (isLand(p.type) && use !== 'vacant') return ctx.toast('Build something on it first.', 'warn');
+      if (use === 'primary' && !isResidential(p.type)) return ctx.toast('You can\'t live there.', 'warn');
+      if (use === 'vacation' && !PROPERTY_TYPES[p.type].vacation) return ctx.toast('Only vacation homes.', 'warn');
+      if (use !== 'rental') for (const t of (p.tenants ?? []).filter((x) => x.personId)) ctx.log(`${t.name} had to find another place to live.`, '📦', 'warn');
       if (use === 'primary') {
         if (p.regionId !== state.character.regionId) return ctx.toast('You can only live in a home in your region.', 'warn');
         const current = primaryHome(state);
@@ -380,7 +388,8 @@ export const HousingEngine = {
         p.tenants = [];
       }
       p.use = use;
-      ctx.log(`Your ${p.typeName} is now ${use === 'primary' ? 'your home' : use === 'rental' ? 'a rental' : 'vacant'}.`, '🏡');
+      if (use !== 'rental') p.tenants = [];
+      ctx.log(`Your ${p.typeName} is now ${use === 'primary' ? 'your home' : use === 'rental' ? 'a rental' : use === 'vacation' ? 'your getaway' : 'vacant'}.`, '🏡');
     },
     refinance(ctx, propertyId) {
       const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
@@ -399,9 +408,28 @@ export const HousingEngine = {
       const [id, kind] = String(arg).split(':');
       const p = ctx.state.housing.properties.find((x) => x.id === id);
       if (!p) return;
+      if (isLand(p.type) || p.project) return ctx.toast('Nothing to renovate yet.', 'warn');
       if (yearlyCount(ctx.state, `housing.reno.${id}`)) return ctx.toast('One project per property per year.', 'warn');
       bumpYearly(ctx.state, `housing.reno.${id}`);
       renovate(ctx, p, kind);
+    },
+    /** arg 'propertyId:target:gc|own|diy:cash|loan' */
+    build(ctx, arg) {
+      const [id, target, contractor = 'gc', finance = 'cash'] = String(arg).split(':');
+      const p = ctx.state.housing.properties.find((x) => x.id === id);
+      if (p) startBuild(ctx, p, target, contractor, finance);
+    },
+    demolish(ctx, propertyId) {
+      const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
+      if (p) demolish(ctx, p);
+    },
+    subdivide(ctx, propertyId) {
+      const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
+      if (p) subdivide(ctx, p);
+    },
+    rezone(ctx, propertyId) {
+      const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
+      if (p) rezone(ctx, p);
     },
     floodInsurance(ctx, propertyId) {
       const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
@@ -419,7 +447,7 @@ export const HousingEngine = {
       const p = state.housing.properties.find((x) => x.id === propertyId);
       if (!p) return;
       const payout = p.insured ? Math.round(p.value * 0.85) : 0;
-      const owed = (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0);
+      const owed = (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0) + (p.project?.loan?.balance ?? 0);
       state.housing.properties = state.housing.properties.filter((x) => x !== p);
       state.finances.cash += payout - owed;
       ctx.log(`Your ${p.typeName} "accidentally" burned down. Insurance paid $${payout.toLocaleString()}.`, '🔥', 'warn');
@@ -453,7 +481,8 @@ export const HousingEngine = {
         ctx.emit('legal:offense', { offenseId: 'mortgageFraud', context: 'inflated income on a mortgage application', discovery: 0.08, evidence: 0.8 });
         return;
       }
-      const q = quote(state, listing.price, optionId);
+      if (!loansFor(listing.type).includes(optionId)) return;
+      const q = quote(state, listing.price, optionId, { noi: expectedNoi(state, listing.type, listing.regionId, listing.price) });
       if (!q.ok) return ctx.toast(q.reason, 'warn');
       completePurchase(ctx, listing, optionId, q);
     },

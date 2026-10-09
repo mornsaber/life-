@@ -5,7 +5,7 @@
 import { MODES, transitQuality, modeAvailable, resolvedMode, passCost, rideshareCost, commutes } from '../../modules/transit/Transit.js';
 import { regionOf } from '../../modules/life/Regions.js';
 import { esc, money, button, card, kv, chip } from '../Components.js';
-import { VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment } from '../../modules/vehicles/Vehicles.js';
+import { VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment, canCharter } from '../../modules/vehicles/Vehicles.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
 
 function ownedCard(state) {
@@ -16,6 +16,7 @@ function ownedCard(state) {
     const terms = v.loan ? `loan ${money(v.loan.balance)} left · ${money(v.loan.payment)}/yr · ${v.loan.yearsLeft} yr` : v.lease ? `lease ${money(v.lease.payment)}/yr · ${v.lease.yearsLeft} yr left` : 'owned outright';
     const underwater = v.loan && v.loan.balance > v.value ? ` ${chip('underwater', 'bad')}` : '';
     return `<li class="fund-row"><span>${t.icon} <b>${esc(t.name)}</b> <small>${v.lease ? 'leased' : `worth ${money(v.value)}`} · ${terms} · ${v.insured ? `insured ${money(premiumFor(state, v))}/yr` : '<span class="neg">uninsured</span>'} · upkeep ${money(t.upkeep)}/yr</small>${underwater}</span>
+      ${canCharter(v) ? button(v.charter ? '⚓ Chartered out' : '⚓ Charter it out', 'vehicles.charter', { arg: v.id, variant: v.charter ? 'tiny on' : 'tiny', hint: v.charter ? (v.lastCharter != null ? `${money(v.lastCharter)} net last year` : 'Earning from bookings') : `≈${money(v.value * t.charter * 0.7)}/yr net` }) : ''}
       ${v.loan ? button('Pay off', 'vehicles.payoff', { arg: v.id, variant: 'tiny', hint: money(v.loan.balance) }) : ''}
       ${button(v.insured ? 'Drop insurance' : 'Insure', 'vehicles.toggleInsurance', { arg: v.id, variant: 'tiny ghost' })}
       ${button(v.lease ? 'End lease' : 'Sell', 'vehicles.sell', { arg: v.id, variant: 'tiny danger' })}</li>`;
@@ -39,8 +40,9 @@ function showroom(state) {
     const cash = how('cash');
     const loan = how('loan');
     const lease = t.lease ? how('lease') : null;
-    const needs = t.license && !hasCredential(state, t.license) ? ` ${chip(`needs ${t.license === 'privatePilot' ? 'pilot license' : t.license === 'motorcycle' ? 'motorcycle endorsement' : "driver's license"}`, 'warn')}` : '';
-    return `<li class="fund-row"><span>${t.icon} <b>${esc(t.name)}</b> <small>${money(t.price)} · ins. ≈${money(t.insurance)}/yr · upkeep ${money(t.upkeep)}/yr${t.fun ? ' · fun' : ''}</small>${needs}</span>
+    const LICENSE = { privatePilot: 'pilot license', instrumentRating: 'instrument rating', motorcycle: 'motorcycle endorsement', driverLicense: "driver's license" };
+    const needs = t.license && !hasCredential(state, t.license) ? ` ${chip(`needs ${LICENSE[t.license] ?? t.license}`, 'warn')}` : '';
+    return `<li class="fund-row"><span>${t.icon} <b>${esc(t.name)}</b> <small>${money(t.price)} · ins. ≈${money(t.insurance)}/yr · upkeep ${money(t.upkeep)}/yr${t.crew ? ' incl. crew' : ''}${t.fun ? ' · fun' : ''}${t.charter ? ' · can charter' : ''}${t.appreciates ? ' · gains value' : ''}</small>${needs}</span>
       ${button('Cash', 'vehicles.buy', { arg: `${id}:cash`, variant: 'tiny', disabled: !cash.ok, title: cash.reason ?? '' })}
       ${button('Finance', 'vehicles.buy', { arg: `${id}:loan`, variant: 'tiny', disabled: !loan.ok, title: loan.reason ?? '', hint: loan.ok ? `${money(loanPayment(t.price * 0.9, autoRate(state, t.used), 5))}/yr` : '' })}
       ${lease ? button('Lease', 'vehicles.buy', { arg: `${id}:lease`, variant: 'tiny', disabled: !lease.ok, title: lease.reason ?? '', hint: lease.ok ? `${money(leasePayment(state, t).payment)}/yr` : '' }) : ''}</li>`;

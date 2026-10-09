@@ -24,6 +24,9 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
  * lease       can be leased (cars and bikes)
  * fun         yearly happiness
  * risk        accident odds multiplier
+ * charter     yearly charter income as a share of value when chartered out
+ * crew        needs a paid captain or pilot (counted in upkeep)
+ * appreciates classics gain value instead of losing it
  */
 export const VEHICLE_TYPES = {
   beater: { name: 'Used Beater', icon: '🚗', category: 'car', price: 5000, depreciation: 0.12, insurance: 900, upkeep: 2600, license: 'driverLicense', used: true, risk: 1.1 },
@@ -35,19 +38,33 @@ export const VEHICLE_TYPES = {
   luxury: { name: 'Luxury Sedan', icon: '🚘', category: 'car', price: 90000, depreciation: 0.2, insurance: 3600, upkeep: 3500, license: 'driverLicense', lease: true, fun: 2 },
   sports: { name: 'Sports Car', icon: '🏎️', category: 'car', price: 130000, depreciation: 0.15, insurance: 5500, upkeep: 4500, license: 'driverLicense', lease: true, fun: 4, risk: 2 },
   motorcycle: { name: 'Motorcycle', icon: '🏍️', category: 'bike', price: 14000, depreciation: 0.12, insurance: 800, upkeep: 900, license: 'motorcycle', fun: 3, risk: 1.8, deadly: 0.01 },
+  minivan: { name: 'Minivan', icon: '🚐', category: 'car', price: 42000, depreciation: 0.14, insurance: 1700, upkeep: 2800, license: 'driverLicense', lease: true },
+  classic: { name: 'Classic Car', icon: '🚗', category: 'car', price: 85000, depreciation: -0.03, insurance: 1200, upkeep: 3000, license: 'driverLicense', used: true, fun: 4, appreciates: true },
+  supercar: { name: 'Supercar', icon: '🏎️', category: 'car', price: 450000, depreciation: 0.1, insurance: 14000, upkeep: 12000, license: 'driverLicense', fun: 6, risk: 2.4 },
   rv: { name: 'RV', icon: '🚐', category: 'fun', price: 140000, depreciation: 0.12, insurance: 2000, upkeep: 6000, license: 'driverLicense', fun: 3, risk: 0.5 },
   jetSki: { name: 'Jet Ski', icon: '🌊', category: 'boat', price: 15000, depreciation: 0.12, insurance: 400, upkeep: 1200, fun: 3, risk: 0.6 },
-  boat: { name: 'Cabin Cruiser', icon: '🚤', category: 'boat', price: 90000, depreciation: 0.09, insurance: 1800, upkeep: 9000, fun: 4, risk: 0.3 },
-  yacht: { name: 'Yacht', icon: '🛥️', category: 'boat', price: 1500000, depreciation: 0.08, insurance: 25000, upkeep: 150000, fun: 7, risk: 0.2 },
-  plane: { name: 'Single-Engine Plane', icon: '🛩️', category: 'air', price: 280000, depreciation: 0.04, insurance: 4000, upkeep: 25000, license: 'privatePilot', fun: 5, risk: 0.3, deadly: 0.15 },
-  jet: { name: 'Private Jet', icon: '🛫', category: 'air', price: 9000000, depreciation: 0.07, insurance: 60000, upkeep: 900000, fun: 9, risk: 0.1, deadly: 0.1, crew: true },
+  pontoon: { name: 'Pontoon Boat', icon: '🚤', category: 'boat', price: 45000, depreciation: 0.1, insurance: 700, upkeep: 3000, fun: 3, risk: 0.3, charter: 0.12 },
+  fishingBoat: { name: 'Center-Console Fishing Boat', icon: '🎣', category: 'boat', price: 120000, depreciation: 0.08, insurance: 2200, upkeep: 9000, fun: 4, risk: 0.4, charter: 0.16 },
+  sailboat: { name: 'Sailboat (38 ft)', icon: '⛵', category: 'boat', price: 240000, depreciation: 0.06, insurance: 3000, upkeep: 14000, fun: 5, risk: 0.3, charter: 0.14 },
+  boat: { name: 'Cabin Cruiser', icon: '🚤', category: 'boat', price: 90000, depreciation: 0.09, insurance: 1800, upkeep: 9000, fun: 4, risk: 0.3, charter: 0.12 },
+  sportfisher: { name: 'Sportfishing Yacht', icon: '🛥️', category: 'boat', price: 1200000, depreciation: 0.08, insurance: 18000, upkeep: 110000, fun: 6, risk: 0.2, charter: 0.14, crew: true },
+  yacht: { name: 'Yacht', icon: '🛥️', category: 'boat', price: 1500000, depreciation: 0.08, insurance: 25000, upkeep: 150000, fun: 7, risk: 0.2, charter: 0.13, crew: true },
+  superyacht: { name: 'Superyacht', icon: '🛳️', category: 'boat', price: 28000000, depreciation: 0.06, insurance: 450000, upkeep: 2600000, fun: 10, risk: 0.1, charter: 0.12, crew: true },
+  lightSport: { name: 'Light-Sport Aircraft', icon: '🛩️', category: 'air', price: 160000, depreciation: 0.05, insurance: 2500, upkeep: 14000, license: 'privatePilot', fun: 5, risk: 0.35, deadly: 0.15 },
+  plane: { name: 'Single-Engine Plane', icon: '🛩️', category: 'air', price: 280000, depreciation: 0.04, insurance: 4000, upkeep: 25000, license: 'privatePilot', fun: 5, risk: 0.3, deadly: 0.15, charter: 0.08 },
+  seaplane: { name: 'Seaplane', icon: '🛩️', category: 'air', price: 450000, depreciation: 0.04, insurance: 9000, upkeep: 35000, license: 'privatePilot', fun: 7, risk: 0.4, deadly: 0.15, charter: 0.12 },
+  twin: { name: 'Twin-Engine Plane', icon: '✈️', category: 'air', price: 850000, depreciation: 0.05, insurance: 14000, upkeep: 70000, license: 'instrumentRating', fun: 5, risk: 0.25, deadly: 0.12, charter: 0.11 },
+  helicopter: { name: 'Helicopter', icon: '🚁', category: 'air', price: 1400000, depreciation: 0.06, insurance: 45000, upkeep: 160000, license: 'privatePilot', fun: 7, risk: 0.45, deadly: 0.2, charter: 0.14 },
+  turboprop: { name: 'Turboprop (King Air)', icon: '✈️', category: 'air', price: 3800000, depreciation: 0.05, insurance: 35000, upkeep: 380000, fun: 7, risk: 0.15, deadly: 0.1, crew: true, charter: 0.13 },
+  jet: { name: 'Light Jet', icon: '🛫', category: 'air', price: 9000000, depreciation: 0.07, insurance: 60000, upkeep: 900000, fun: 9, risk: 0.1, deadly: 0.1, crew: true, charter: 0.12 },
+  heavyJet: { name: 'Long-Range Jet', icon: '🛫', category: 'air', price: 65000000, depreciation: 0.06, insurance: 300000, upkeep: 4200000, fun: 10, risk: 0.05, deadly: 0.1, crew: true, charter: 0.1 },
 };
 
 export const CATEGORIES = { car: 'Cars & Trucks', bike: 'Motorcycles', fun: 'RVs', boat: 'Boats', air: 'Aircraft' };
 
 const LOAN_YEARS = 5;
 const LEASE_YEARS = 3;
-const MAX_VEHICLES = 6;
+const MAX_VEHICLES = 10;
 const DEDUCTIBLE = 1000;
 
 export const vehiclesOf = (state) => state.vehicles?.owned ?? [];
@@ -120,7 +137,8 @@ function payTick(ctx) {
     v.age += 1;
     ctx.spend(t.upkeep, `Vehicle upkeep — ${t.name}`, { allowDebt: true });
     if (v.insured) ctx.spend(premiumFor(state, v), `Vehicle insurance — ${t.name}`, { allowDebt: true });
-    if (t.fun) ctx.stat('happiness', t.fun / (1 + vehiclesOf(state).filter((x) => typeOf(x).fun).length * 0.5));
+    if (t.fun) ctx.stat('happiness', t.fun / (1 + vehiclesOf(state).filter((x) => typeOf(x).fun).length * 0.5) * (v.charter ? 0.5 : 1));
+    if (v.charter) charterYear(ctx, v, t);
     if (v.loan) {
       ctx.spend(v.loan.payment, `Vehicle loan — ${t.name}`, { allowDebt: true });
       const interest = Math.round(v.loan.balance * v.loan.rate);
@@ -144,6 +162,27 @@ function payTick(ctx) {
       }
     }
   }
+}
+
+/**
+ * Chartered out through a charter company: income on bookings (busier in a
+ * good economy), less the operator's cut, commercial insurance and extra wear.
+ */
+export const canCharter = (v) => Boolean(typeOf(v).charter) && !v.lease;
+function charterYear(ctx, v, t) {
+  const { state, rng } = ctx;
+  if (!v.insured) {
+    v.charter = false;
+    return ctx.log(`The charter company dropped your ${t.name}: it needs commercial insurance.`, '⚓', 'warn');
+  }
+  const demand = { expansion: 1, peak: 1.15, recession: 0.6, recovery: 0.85 }[state.economy?.phase] ?? 1;
+  const gross = Math.round(v.value * t.charter * demand * rng.float(0.7, 1.2));
+  const costs = Math.round(gross * 0.3 + t.insurance * 0.5);
+  ctx.earn(gross, `Charter bookings — ${t.name}`);
+  ctx.spend(costs, `Charter operator & commercial insurance — ${t.name}`, { allowDebt: true });
+  ctx.deduct(Math.min(gross - costs, Math.round(t.price / 7)), 'Charter depreciation');
+  v.value = Math.round(v.value * 0.97);
+  v.lastCharter = gross - costs;
 }
 
 /** Behind on everything: lenders repossess financed vehicles. */
@@ -313,6 +352,14 @@ export const Vehicles = {
       if (!ctx.spend(v.loan.balance, `Loan payoff — ${typeOf(v).name}`, { credit: true })) return ctx.toast(`You need ${money(v.loan.balance)}.`, 'warn');
       delete v.loan;
       ctx.log(`You paid off your ${typeOf(v).name} loan early.`, '💵', 'good');
+    },
+    /** Charter a boat or aircraft out (or take it back). */
+    charter(ctx, id) {
+      const v = vehiclesOf(ctx.state).find((x) => x.id === id);
+      if (!v || !canCharter(v)) return ctx.toast('Only owned boats and aircraft can be chartered.', 'warn');
+      if (!v.insured && !v.charter) return ctx.toast('Insure it first.', 'warn');
+      v.charter = !v.charter;
+      ctx.log(v.charter ? `You listed your ${typeOf(v).name} with a charter company. It earns when you're not using it.` : `You took your ${typeOf(v).name} off the charter market.`, typeOf(v).icon);
     },
     /** Defensive driving course: −2 points, once a year. */
     trafficSchool(ctx) {

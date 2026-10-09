@@ -6,6 +6,7 @@
  *
  *   node tests/simulate.js [lives=300] [seed=1]
  */
+import { PROPERTY_TYPES } from '../src/modules/realestate/PropertyMarket.js';
 import { CAUSES, TACTICS } from '../src/modules/civic/Activism.js';
 import { FRANCHISE_BRANDS } from '../src/modules/business/Franchising.js';
 import assert from 'node:assert/strict';
@@ -389,10 +390,16 @@ function randomActions(state) {
     if (player.chance(0.2)) tries.push(() => act('housing.rent', player.pick(Object.keys(RENT_TIERS))));
     if (h.listings.length && player.chance(0.2)) tries.push(() => act('housing.buy', player.pick(h.listings).id));
     if (player.chance(0.02)) tries.push(() => act('housing.moveInWithParents'));
+    const folks = state.people?.list.filter((x) => x.alive && x.life) ?? [];
+    if (folks.length && player.chance(0.05)) tries.push(() => act(player.pick(['npcLives.helpBuy', 'npcLives.payTuition']), player.pick(folks).id));
+    if (folks.length && h.properties.length && player.chance(0.05)) tries.push(() => act('npcLives.offerHome', `${player.pick(folks).id}:${player.pick(h.properties).id}`));
+    for (const v of state.vehicles?.owned ?? []) if (player.chance(0.05)) tries.push(() => act('vehicles.charter', v.id));
     for (const p of h.properties) {
       if (player.chance(0.15)) tries.push(() => act(player.pick(['housing.refinance', 'housing.heloc', 'housing.repayHeloc', 'housing.floodInsurance']), p.id));
       if (player.chance(0.1)) tries.push(() => act('housing.renovate', `${p.id}:${player.pick(Object.keys(RENOVATIONS))}`));
-      if (player.chance(0.06)) tries.push(() => act('housing.setUse', `${p.id}:${player.pick(['primary', 'rental', 'vacant'])}`));
+      if (player.chance(0.06)) tries.push(() => act('housing.setUse', `${p.id}:${player.pick(['primary', 'rental', 'vacant', 'vacation'])}`));
+      if (player.chance(0.15)) tries.push(() => act('housing.build', `${p.id}:${player.pick(Object.keys(PROPERTY_TYPES))}:${player.pick(['gc', 'own', 'diy'])}:${player.pick(['cash', 'loan'])}`));
+      if (player.chance(0.03)) tries.push(() => act(player.pick(['housing.demolish', 'housing.subdivide', 'housing.rezone']), p.id));
       if (player.chance(0.04)) tries.push(() => act('housing.sell', p.id));
       if (player.chance(0.005)) tries.push(() => act('housing.arson', p.id));
     }

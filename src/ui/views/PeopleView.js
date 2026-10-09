@@ -7,6 +7,7 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
 import {
@@ -62,6 +63,7 @@ function personRow(state, p) {
     p.relation === 'child' && successorOf(state)?.id === p.id ? '📋 your successor' : null,
   ].filter(Boolean).join(' · ');
   const traits = p.alive && p.relation === 'child' && p.traits ? childTraits(state, p) : '';
+  const life = p.alive && p.life && age >= 5 ? lifeLine(p, age) : '';
   const actions = !p.alive ? '' : [
     button('🫶 Time', 'people.spendTime', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.time.${p.id}`]) }),
     button('🎁 Gift', 'people.gift', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.gift.${p.id}`]) }),
@@ -69,14 +71,34 @@ function personRow(state, p) {
     p.relation === 'partner' ? button('💍 Propose', 'people.propose', { arg: p.id, variant: 'tiny' }) : '',
     ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'tiny danger' }) : '',
     p.relation === 'child' ? nurtureButtons(state, p, age) : '',
+    helpButtons(state, p, age),
     button('😤 Argue', 'people.argue', { arg: p.id, variant: 'tiny ghost' }),
   ].join('');
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
     <span class="person-icon" aria-hidden="true">${p.alive ? ICON[p.relation] ?? '🙂' : '🕯️'}</span>
-    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${traits}</div>
+    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${life}${traits}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
     <div class="person-actions">${actions}</div>
   </li>`;
+}
+
+/** School, work, home and money for someone in your life. */
+function lifeLine(p, age) {
+  const l = p.life;
+  const school = l.studying ? `studying for a ${EDU_LABEL[l.studying.degree].toLowerCase()} (done at ${l.studying.until})` : age < 18 ? (age < 14 ? 'in school' : 'in high school') : EDU_LABEL[l.edu];
+  const work = p.job ? `${l.employer ? `at ${l.employer}` : ''}${p.income ? ` · ${money(p.income)}/yr` : ''}` : age >= 18 && !l.studying && !p.retired && age < 65 ? 'looking for work' : p.retired ? 'retired' : '';
+  const bits = [`🎓 ${school}`, work ? `💼 ${work.replace(/^ · /, '')}` : null, homeLabel(p) ? `🏠 ${homeLabel(p)}` : null, age >= 22 && l.netWorth ? `💰 ${money(l.netWorth)}` : null, l.car && age >= 17 ? `🚗 ${l.car}` : null].filter(Boolean);
+  return `<small class="traits">${esc(bits.join(' · '))}</small>`;
+}
+
+/** Ways to help: a place to live, a down payment, tuition. */
+function helpButtons(state, p, age) {
+  if (!p.alive || !p.life || p.relation === 'ex') return '';
+  const out = [];
+  if (canHouse(state, p)) for (const prop of vacancies(state).slice(0, 2)) out.push(button(`🔑 Offer your ${esc(prop.typeName.split(' (')[0].toLowerCase())}`, 'npcLives.offerHome', { arg: `${p.id}:${prop.id}`, variant: 'tiny', hint: 'Family rate: 80% of market rent' }));
+  if (['rent', 'parents', 'yourRental'].includes(p.life.home?.kind) && age >= 21 && ['child', 'sibling', 'mother', 'father', 'friend'].includes(p.relation)) out.push(button('🏡 Help with a down payment', 'npcLives.helpBuy', { arg: p.id, variant: 'tiny', hint: '≈10% of a home' }));
+  if (p.life.studying) out.push(button('🎓 Pay tuition', 'npcLives.payTuition', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`npc.tuition.${p.id}`]) }));
+  return out.join('');
 }
 
 /** A child's smarts, athletics and (with a family business) how ready they are to take it over. */

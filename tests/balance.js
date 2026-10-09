@@ -8,6 +8,7 @@
  * Exit code is non-zero when a metric lands outside its band, so the pass
  * can be re-run after any tuning change.
  */
+import { isResidential } from '../src/modules/realestate/PropertyMarket.js';
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
@@ -259,8 +260,8 @@ export async function playLives({ from, to, seed }) {
         solve();
       }
       if (persona.owner && age >= 23 && age <= 55 && (s.career.job || runsBusiness) && !s.housing.properties.some((p) => p.use === 'primary') && s.housing.listings.length && choose.chance(0.5)) {
-        const listing = [...s.housing.listings].sort((a, b) => a.price - b.price)[0];
-        engine.dispatch('housing.buy', listing.id);
+        const listing = [...s.housing.listings].filter((l) => isResidential(l.type)).sort((a, b) => a.price - b.price)[0];
+        if (listing) engine.dispatch('housing.buy', listing.id);
         solve();
       }
       // Entrepreneurs open a business in their field (or a startup / retail store).

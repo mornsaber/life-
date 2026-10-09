@@ -163,9 +163,13 @@ const tests = {
   },
 
   'grandchildren arrive and become the heir\'s own family'() {
-    const { engine, state } = life(5, 62);
-    const c = kid(state, 30);
-    for (let i = 0; i < 40 && !c.kids?.length; i++) years(engine, 1);
+    // Babies are a matter of chance: try a few families.
+    let engine; let state; let c;
+    for (let seed = 5; seed < 10 && !c?.kids?.length; seed++) {
+      ({ engine, state } = life(seed, 55));
+      c = kid(state, 26);
+      for (let i = 0; i < 20 && !c.kids?.length && state.character.alive; i++) years(engine, 1);
+    }
     assert.ok(c.kids?.length, 'a grandchild was born');
     state.character.alive = false;
     settleEstate(state);

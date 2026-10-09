@@ -348,7 +348,7 @@ export const currentYear = (state) => state.character.birthYear + state.characte
 
 /** Market value minus mortgage and HELOC balances across all properties. */
 export function homeEquity(state) {
-  return state.housing.properties.reduce((sum, p) => sum + p.value - (p.mortgage?.balance ?? 0) - (p.heloc?.balance ?? 0), 0);
+  return state.housing.properties.reduce((sum, p) => sum + p.value - (p.mortgage?.balance ?? 0) - (p.heloc?.balance ?? 0) - (p.project?.loan?.balance ?? 0), 0);
 }
 
 export function netWorth(state) {

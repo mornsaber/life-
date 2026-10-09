@@ -12,6 +12,7 @@
  */
 import { spouseIncome } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
+import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
 
 export const LOAN_TYPES = {
   conv30: { name: '30-yr Fixed', years: 30, rateAdj: 0, minDown: 0.05, minScore: 620, maxDti: 0.43 },
@@ -19,7 +20,24 @@ export const LOAN_TYPES = {
   arm: { name: '5/1 ARM', years: 30, rateAdj: -0.0075, minDown: 0.05, minScore: 640, maxDti: 0.43, arm: true },
   fha: { name: 'FHA 30-yr', years: 30, rateAdj: -0.002, minDown: 0.035, minScore: 580, maxDti: 0.5, mip: 0.0055 },
   va: { name: 'VA 30-yr', years: 30, rateAdj: -0.0035, minDown: 0, minScore: 580, maxDti: 0.5, fundingFee: 0.0215, va: true },
+  // Apartment buildings (5+ units) and commercial property: underwritten on the building's income.
+  commercial: { name: 'Commercial 25-yr', years: 25, rateAdj: 0.0125, minDown: 0.25, minScore: 660, maxDti: 0.5, commercial: true },
+  land: { name: 'Land Loan 10-yr', years: 10, rateAdj: 0.02, minDown: 0.35, minScore: 680, maxDti: 0.43, land: true },
 };
+
+/** Which loans fit a property type: home mortgages for 1–4 units, commercial loans for bigger or business property, land loans for lots. */
+export function loansFor(type) {
+  if (isLand(type)) return ['land'];
+  if (isResidential(type)) return ['conv30', 'conv15', 'arm', 'fha', 'va'];
+  return ['commercial'];
+}
+
+/** A building's expected net operating income: rents at 92% occupancy less tax, insurance and upkeep. */
+export function expectedNoi(state, type, regionId, price) {
+  const def = PROPERTY_TYPES[type];
+  if (!def?.units) return 0;
+  return Math.round(def.units * marketRent(state, type, regionId) * 12 * 0.92 - price * 0.025);
+}
 
 const EVENT_IMPACT = {
   late: { points: 35, years: 3 },
@@ -119,16 +137,21 @@ export function existingDebtService(state) {
  * Quote a loan. `inflateIncome` models a fraudulent application.
  * Returns { ok, reason, rate, down, principal, payment, mip, fee, dti }.
  */
-export function quote(state, price, typeId, { downPct = null, inflateIncome = false } = {}) {
+export function quote(state, price, typeId, { downPct = null, inflateIncome = false, noi = 0 } = {}) {
   const t = LOAN_TYPES[typeId];
   const score = state.housing.credit.score;
   const rate = Math.round((state.housing.rates.base + t.rateAdj + scoreSpread(score)) * 10000) / 10000;
-  const pct = Math.max(t.minDown, downPct ?? t.minDown);
+  let pct = Math.max(t.minDown, downPct ?? t.minDown);
+  // Commercial lenders size the loan so rents cover the payment 1.25× — thin rents mean a bigger down payment (up to 60%).
+  if (t.commercial && noi > 0) {
+    const perDollar = annualPayment(1000000, rate, t.years) / 1000000;
+    pct = Math.max(pct, Math.min(0.6, 1 - noi / 1.25 / perDollar / price));
+  }
   const down = Math.round(price * pct);
   const fee = t.fundingFee ? Math.round((price - down) * t.fundingFee) : 0;
   const principal = price - down + fee;
   const payment = annualPayment(principal, rate, t.years);
-  const mip = t.mip ? Math.round(principal * t.mip) : pct < 0.2 && !t.va ? Math.round(principal * 0.005) : 0;
+  const mip = t.mip ? Math.round(principal * t.mip) : pct < 0.2 && !t.va && !t.commercial && !t.land ? Math.round(principal * 0.005) : 0;
   const income = qualifyingIncome(state) * (inflateIncome ? 1.6 : 1);
   const housingCost = payment + mip + price * 0.012;
   const dti = income > 0 ? (housingCost + existingDebtService(state)) / income : Infinity;
@@ -139,7 +162,10 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   if (t.va && !vaEligible(state)) return { ok: false, reason: 'VA loans need 2+ years of honorable service', ...base };
   if (score < t.minScore) return { ok: false, reason: `Needs a ${t.minScore}+ credit score`, ...base };
   if (state.finances.cash < down + closing + reserves) return { ok: false, reason: `Needs $${(down + closing + reserves).toLocaleString()} cash (down payment, closing, reserves)`, ...base };
-  if (dti > t.maxDti) return { ok: false, reason: `Debt-to-income ${Math.round(dti * 100)}% (max ${Math.round(t.maxDti * 100)}%)`, dtiFail: true, ...base };
+  // Commercial lenders size the loan to the building's income (1.25× debt coverage); your own income can make up a shortfall.
+  const dscr = t.commercial && payment > 0 ? noi / payment : 0;
+  if (t.commercial && dscr < 1.24 && dti > t.maxDti) return { ok: false, reason: `Rents cover the payment only ${dscr.toFixed(2)}× even at ${Math.round(pct * 100)}% down (lenders want 1.25×)`, dtiFail: true, ...base, dscr };
+  if (!t.commercial && dti > t.maxDti) return { ok: false, reason: `Debt-to-income ${Math.round(dti * 100)}% (max ${Math.round(t.maxDti * 100)}%)`, dtiFail: true, ...base };
   return { ok: true, ...base };
 }
 
@@ -255,14 +281,16 @@ export function refinance(ctx, property) {
   if (newRate > m.rate - 0.005) return ctx.toast(`Today's rate (${(newRate * 100).toFixed(2)}%) isn't low enough to beat ${(m.rate * 100).toFixed(2)}%.`, 'warn');
   if (state.housing.credit.score < 620) return ctx.toast('Needs a 620+ credit score.', 'warn');
   const closing = Math.round(m.balance * 0.02);
+  const keep = LOAN_TYPES[m.type]?.commercial || LOAN_TYPES[m.type]?.land ? m.type : 'conv30';
+  const years = LOAN_TYPES[keep].years;
   m.balance += closing;
-  m.rate = newRate;
-  m.yearsLeft = 30;
-  m.termYears = 30;
-  m.type = 'conv30';
+  m.rate = Math.round((newRate + (LOAN_TYPES[keep].rateAdj > 0 ? LOAN_TYPES[keep].rateAdj : 0)) * 10000) / 10000;
+  m.yearsLeft = years;
+  m.termYears = years;
+  m.type = keep;
   m.armResetIn = null;
-  m.payment = annualPayment(m.balance, m.rate, 30);
-  ctx.log(`You refinanced into a 30-year fixed at ${(newRate * 100).toFixed(2)}% (closing costs $${closing.toLocaleString()} rolled in). New payment: $${Math.round(m.payment / 12).toLocaleString()}/mo.`, '🏦', 'good');
+  m.payment = annualPayment(m.balance, m.rate, years);
+  ctx.log(`You refinanced into a ${LOAN_TYPES[keep].name} at ${(m.rate * 100).toFixed(2)}% (closing costs $${closing.toLocaleString()} rolled in). New payment: $${Math.round(m.payment / 12).toLocaleString()}/mo.`, '🏦', 'good');
 }
 
 export function helocLimit(property) {
