@@ -104,6 +104,37 @@ const tests = {
     assert.ok(annualMoney({ publicService: { city: { fiscalHealth: 60 } } }, chief) > annualMoney({ publicService: { city: { fiscalHealth: 60 } } }, lower) * 2, 'the chief has the bigger budget');
   },
 
+  'command ranks run real units: battalions, stations, squads, precincts, schools'() {
+    const at = (seed, professionId, regionId, title) => {
+      const p = PROFESSIONS[professionId];
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+      const state = engine.newLife({});
+      state.character.age = 45;
+      state.character.regionId = regionId;
+      const emp = createEmployer(new Random(seed), state, p, regionId);
+      const level = ladderFor(p, emp.size).find((l) => l.title === title);
+      assert.ok(level, `${title} exists at ${emp.size}`);
+      hire(engine.context(), { professionId, levelId: level.id, employer: emp });
+      return { state, job: state.career.job };
+    };
+    const bc = at(30, 'fire', 'chicago', 'Battalion Chief');
+    assert.equal(bc.job.department.unit.kind, 'battalion');
+    assert.match(bc.job.department.unit.name, /^Battalion \d+$/);
+    assert.ok(bc.job.department.headcount >= 90 && bc.job.department.headcount <= 220, `${bc.job.department.headcount}`);
+    const capt = at(31, 'fire', 'chicago', 'Fire Captain');
+    assert.equal(capt.job.department.unit.kind, 'station');
+    assert.ok(capt.job.department.headcount < bc.job.department.headcount, 'a station is smaller than a battalion');
+    const sgt = at(32, 'police', 'chicago', 'Sergeant');
+    assert.equal(sgt.job.department.unit.kind, 'squad');
+    const pc = at(33, 'police', 'chicago', 'Captain');
+    assert.match(pc.job.department.unit.name, /Precinct/);
+    const principal = at(34, 'education', 'chicago', 'Principal');
+    assert.equal(principal.job.department.unit.kind, 'school');
+    const html = VIEWS.career(bc.state);
+    clean(html);
+    assert.ok(html.includes('You Command: Battalion'), 'the department card names the unit');
+  },
+
   'a budget crisis brings a RIF; retention rules decide who goes'() {
     const { engine, state, ctx, job } = worker(5, 'police', 'detroit', 1);
     state.publicService.city = { name: 'Detroit', approval: 40, fiscalHealth: 5 };

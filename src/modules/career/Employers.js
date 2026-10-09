@@ -122,7 +122,10 @@ export function createEmployer(rng, state, profession, regionId) {
   attachOrg(state, employer, profession, regionId);
   // Government agencies: their size — and so their rank structure — follows the department's real headcount.
   const tier = governmentTier(state, employer, profession);
-  if (tier) employer.size = tier;
+  if (tier) {
+    employer.size = tier;
+    employer.agencyStaff = orgOf(state, employer)?.departments?.[employer.deptId]?.headcount ?? null;
+  }
   return employer;
 }
 

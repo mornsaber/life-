@@ -129,7 +129,7 @@ function managementConsole(job) {
   const r = d.lastResult;
   const mode = WORKFORCE_MODES[d.workforce];
   const canRestructure = job.abilities.includes('hire') || job.abilities.includes('delegate');
-  return card(`Your Department · ${d.headcount} staff`, `
+  return card(d.unit ? `You Command: ${esc(d.unit.name)} · ${d.headcount.toLocaleString()} staff` : `Your Department · ${d.headcount} staff`, `
     ${meter(d.productivity, { label: '⚙️ Productivity' })}
     ${mode.fixedQuality === null ? meter(d.morale, { label: '🙂 Team morale' }) : '<p class="fine">Contractor quality is fixed by the vendor — no morale to manage.</p>'}
     ${meter(d.unionRisk, { label: d.unionized ? '✊ Union pressure' : '✊ Unionization risk', tone: d.unionRisk > 70 ? 'bad' : d.unionRisk > 40 ? 'mid' : 'good' })}

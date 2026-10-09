@@ -14,6 +14,8 @@
  * The department's results feed your own annual performance rating.
  */
 import { clamp } from '../../core/Random.js';
+import { unitFor } from './Units.js';
+import { getProfession } from './JobTrees.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { WORKFORCE_MODES, vendorTick } from './ContractingSystem.js';
 import { unionManagerTick } from './UnionsAndLabor.js';
@@ -36,10 +38,14 @@ export function ensureDepartment(job, level) {
     job.department = null;
     return;
   }
+  // In an agency, the rank commands a real unit (a squad, a station, a battalion, a precinct...) and that unit is your department.
+  const unit = level.title ? unitFor(job, level, getProfession(job.professionId)) : null;
   // Expansions you've won (Equipment: expand) grow the department beyond its usual size.
-  const headcount = Math.max(2, Math.round((level.reports ?? 4) * EMPLOYER_SIZES[job.employer.size].reportScale * (job.department?.growth ?? 1)));
+  const headcount = unit ? Math.round(unit.staff * (job.department?.growth ?? 1)) : Math.max(2, Math.round((level.reports ?? 4) * (EMPLOYER_SIZES[job.employer.size] ?? EMPLOYER_SIZES.medium).reportScale * (job.department?.growth ?? 1)));
   if (job.department) {
     job.department.headcount = headcount;
+    if (unit) job.department.unit = unit;
+    else delete job.department.unit;
     return;
   }
   job.department = {
@@ -55,6 +61,7 @@ export function ensureDepartment(job, level) {
     unionized: Boolean(job.employer.union),
     unionRisk: 20,
     lastResult: null,
+    ...(unit ? { unit } : {}),
   };
 }
 

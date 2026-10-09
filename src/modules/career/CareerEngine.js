@@ -18,6 +18,7 @@ import { getProfession } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
+import { unitFor } from './Units.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation } from './Employers.js';
@@ -584,6 +585,12 @@ export function careerOnAgeUp(ctx) {
     return;
   }
   const profession = getProfession(job.professionId);
+  // Older saves: give a command rank its unit, once.
+  if (job.department && !job.department.unitChecked) {
+    job.department.unitChecked = true;
+    const lvl = levelById(profession, job.levelId);
+    if (lvl && unitFor(job, lvl, profession)) ensureDepartment(job, lvl);
+  }
   chainOfCommand(state, job);
   job.paidThisYear = false;
   resetBudget(state, job.employer, job.sector);

@@ -62,9 +62,10 @@ export const GOV_SECTORS = ['municipal', 'state', 'federal', 'public'];
 /** Careers whose ladders aren't agency rank structures (universities, labs, courts' judges). */
 const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts'];
 
-const POLICE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'jail', 'corrections', 'privatePolice', 'gameWarden', 'borderPatrol', 'federalPrisons', 'probation', 'animalControl'];
-const FEDERAL_LE = ['fbi', 'dea', 'atf', 'usms', 'usss', 'oig', 'cbp', 'hsi', 'tsa'];
-const FIRE = ['fire', 'airportFire', 'stateFire', 'ems', 'dispatch'];
+const POLICE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice'];
+const CORRECTIONS = ['jail', 'corrections', 'federalPrisons'];
+const FEDERAL_LE = ['fbi', 'dea', 'atf', 'usms', 'usss', 'oig', 'cbp', 'hsi', 'tsa', 'borderPatrol'];
+const FIRE = ['fire', 'airportFire', 'stateFire', 'ems'];
 const SCHOOLS = ['education', 'schoolBus'];
 /** Extra command ranks big agencies have, inserted below the head (by kind of agency). */
 export function megaRanks(profession) {
@@ -72,6 +73,7 @@ export function megaRanks(profession) {
   if (FEDERAL_LE.includes(id)) return ['Section Chief', 'Deputy Assistant Director', 'Assistant Director'];
   if (POLICE.includes(id)) return ['Deputy Inspector', 'Inspector', 'Assistant Chief', 'Chief of Department'];
   if (FIRE.includes(id)) return ['Deputy Assistant Chief', 'Assistant Chief', 'Chief of Department'];
+  if (CORRECTIONS.includes(id)) return ['Complex Warden', 'Regional Deputy Director', 'Deputy Commissioner of Corrections'];
   if (SCHOOLS.includes(id)) return ['Network Superintendent', 'Chief Academic Officer'];
   if (profession.sector === 'federal') return ['Division Director', 'Deputy Associate Administrator', 'Associate Administrator'];
   return ['Division Director', 'Assistant Commissioner', 'Deputy Commissioner'];
