@@ -466,6 +466,7 @@ export const LaborUnions = {
       syncMembership(ctx);
     });
     engine.bus.on('career:separated', ({ ctx }) => syncMembership(ctx));
+    engine.bus.on('unions:sync', ({ ctx }) => syncMembership(ctx));
   },
 
   onAgeUp(ctx) {
@@ -673,5 +674,14 @@ export const LaborUnions = {
       biz.reputation = Math.max(0, biz.reputation - 4);
       return undefined;
     },
+  },
+};
+
+/** Year-end reconcile: whatever changed your job this year (leave, transfers, promotions), membership follows. */
+export const UnionSync = {
+  id: 'unionSync',
+  order: 99,
+  onAgeUp(ctx) {
+    if (ctx.state.unions) syncMembership(ctx);
   },
 };

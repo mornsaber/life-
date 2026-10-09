@@ -236,6 +236,7 @@ export function startMilitaryLeave(ctx, reason) {
   if (!job) return;
   state.career.leave = { job, startAge: state.character.age, regionId: state.character.regionId, reason };
   state.career.job = null;
+  ctx.emit('unions:sync', {});
   ctx.log(`${job.employer.name} placed you on military leave (${reason}). USERRA protects your job for up to ${USERRA_YEARS} years of service.`, '🛡️', 'milestone');
 }
 
@@ -249,6 +250,7 @@ export function endMilitaryLeave(ctx, reason) {
   state.career.job = leave.job;
   leaveJob(ctx, reason);
   state.career.job = current;
+  ctx.emit('unions:sync', {});
 }
 
 /** Return from service: the "escalator" — seniority, steps and pension credit as if you never left. */
