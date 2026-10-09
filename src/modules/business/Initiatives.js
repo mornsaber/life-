@@ -107,9 +107,15 @@ export function initiativeEffects(biz, age) {
   return out;
 }
 
+/** "a" or "an" for a name. */
+export const article = (name) => (/^[aeiou]/i.test(name) ? 'an' : 'a');
+
 function accountOffer(rng, biz, type) {
   const value = Math.round(type.revenue * (biz.scale ?? 1) * rng.float(0.04, 0.12) / 1000) * 1000;
-  return { id: rng.id('ka_'), client: rng.pick(ACCOUNT_CLIENTS), value, years: rng.int(1, 3), minQuality: rng.pick([0, 50, 60]) };
+  // A client you already serve (or already have an offer from) doesn't come twice.
+  const taken = new Set([...(biz.accounts ?? []), ...(biz.accountOffers ?? [])].map((a) => a.client));
+  const fresh = ACCOUNT_CLIENTS.filter((c) => !taken.has(c));
+  return { id: rng.id('ka_'), client: rng.pick(fresh.length ? fresh : ACCOUNT_CLIENTS), value, years: rng.int(1, 3), minQuality: rng.pick([0, 50, 60]) };
 }
 
 /** The year: drifts from initiatives, key accounts renew or walk, new offers arrive. */
@@ -174,7 +180,7 @@ export const InitiativeActions = {
     if (biz.cash < cost) return ctx.toast(`Setup costs ${`$${cost.toLocaleString()}`} from the business account.`, 'warn');
     charge(biz, cost);
     biz.initiatives[id] = ctx.state.character.age;
-    ctx.log(`${biz.name} launched a ${i.name.toLowerCase()}${cost ? ` ($${cost.toLocaleString()} to set up)` : ''}.`, i.icon, 'good');
+    ctx.log(`${biz.name} launched ${article(i.name)} ${i.name.toLowerCase()}${cost ? ` ($${cost.toLocaleString()} to set up)` : ''}.`, i.icon, 'good');
   },
   /** arg: promotion id — once a year. */
   promote(ctx, id) {

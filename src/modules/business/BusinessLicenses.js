@@ -215,8 +215,8 @@ export function licensesTick(ctx, biz) {
   const fine = rng.int(2000, 15000);
   biz.cash -= fine;
   const names = missing.map((id) => BUSINESS_LICENSES[id].name).join(', ');
-  if (biz.unlicensedYears >= 2) return { shutDown: `Regulators shut ${biz.name} down for operating without a ${names}` };
-  ctx.log(`${biz.name} was fined $${fine.toLocaleString()} for operating without a ${names}. Get it renewed or it will be shut down.`, '🚫', 'bad');
+  if (biz.unlicensedYears >= 2) return { shutDown: `Regulators shut ${biz.name} down for operating without ${/^[aeiou]/i.test(names) ? 'an' : 'a'} ${names}` };
+  ctx.log(`${biz.name} was fined $${fine.toLocaleString()} for operating without ${/^[aeiou]/i.test(names) ? 'an' : 'a'} ${names}. Get it renewed or it will be shut down.`, '🚫', 'bad');
   return { shutDown: null };
 }
 

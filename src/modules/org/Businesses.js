@@ -358,7 +358,9 @@ export function businessStaffTick(ctx, biz) {
   }
   if (promoted.length) ctx.log(`${biz.name} promoted from within: ${promoted.slice(0, 3).join('; ')}${promoted.length > 3 ? `, and ${promoted.length - 3} more` : ''}.`, '⬆️', 'good');
   if (left.length) {
-    biz.staff.morale = Math.round(clamp(biz.staff.morale - left.length, 0, 100));
+    // Turnover hurts in proportion: losing 3 of 10 people stings; 15 of 300 is normal churn.
+    const rate = left.length / Math.max(1, Object.keys(org.people).length + left.length);
+    biz.staff.morale = Math.round(clamp(biz.staff.morale - Math.min(8, Math.max(1, Math.round(rate * 30))), 0, 100));
     const named = left.slice(0, 3).map((p) => `${p.name} (${p.title}) ${p.why}`).join('; ');
     ctx.log(`${biz.name} staff changes: ${named}${left.length > 3 ? `, and ${left.length - 3} more` : ''}.${biz.staff.delegation?.hiring || biz.role !== 'operator' ? ' Replacements were hired.' : ' You hired replacements.'}`, '🪑');
   }

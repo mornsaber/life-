@@ -20,7 +20,7 @@ import { Random, clamp } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
 import { lawValue } from '../politics/Laws.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
-import { locationsByRegion, businessOrg, closeBranch, syncBusinessOrg, npcBusiness } from '../org/Businesses.js';
+import { locationsByRegion, businessOrg, closeBranch, syncBusinessOrg, npcBusiness, marketRoom } from '../org/Businesses.js';
 import { charge } from './TaxBook.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -35,9 +35,13 @@ export const enforcement = (state) => ANTITRUST[lawValue(state, 'antitrust') ?? 
 const owned = (state, typeId) => [state.business?.current, ...(state.business?.holdings ?? [])].filter((b) => b && b.typeId === typeId);
 export const ownedTypes = (state) => [...new Set([state.business?.current, ...(state.business?.holdings ?? [])].filter(Boolean).map((b) => b.typeId))];
 
-/** Rival locations of a kind in a city (NPC and rival-group companies). */
+/**
+ * Rival locations of a kind in a city: the named competitors (NPC and rival-group companies)
+ * plus the many small independents every market has that aren't tracked one by one.
+ */
+export const fringe = (regionId) => marketRoom(regionId) * 3;
 function rivalLocations(state, typeId, regionId, mineOrgIds) {
-  return Object.values(state.orgs?.byId ?? {}).filter((o) => o.typeId === `biz:${typeId}` && o.regionId === regionId && !o.closed && o.owner?.kind !== 'player' && !mineOrgIds.has(o.id)).reduce((n, o) => n + (o.business?.scale ?? 1), 0);
+  return fringe(regionId) + Object.values(state.orgs?.byId ?? {}).filter((o) => o.typeId === `biz:${typeId}` && o.regionId === regionId && !o.closed && o.owner?.kind !== 'player' && !mineOrgIds.has(o.id)).reduce((n, o) => n + (o.business?.scale ?? 1), 0);
 }
 
 /**

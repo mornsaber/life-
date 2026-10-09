@@ -1205,7 +1205,7 @@ export const BusinessEngine = {
       const r = applyForLicense(ctx, biz, id);
       if (!r.ok) return ctx.toast(r.reason, 'warn');
       const l = BUSINESS_LICENSES[id];
-      ctx.log(`${biz.name} ${r.pending ? 'applied for' : 'obtained'} a ${l.name} (${money(r.fee)}).${r.pending ? ' A decision comes next year.' : ''}`, l.icon, 'milestone');
+      ctx.log(`${biz.name} ${r.pending ? 'applied for' : 'obtained'} ${/^[aeiou]/i.test(l.name) ? 'an' : 'a'} ${l.name} (${money(r.fee)}).${r.pending ? ' A decision comes next year.' : ''}`, l.icon, 'milestone');
     },
     /** arg: 'off' | 'steady' | 'aggressive' | 'harvest' — the strategy management carries out each year. */
     setPlan(ctx, strategy) {

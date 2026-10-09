@@ -21,7 +21,7 @@ import { acceptOffer } from './FleetActions.js';
 import { SBA, MARKETING } from './BusinessTypes.js';
 import { forecast } from './Advisor.js';
 import { nextMarket } from '../org/Businesses.js';
-import { INITIATIVES, initiativesFor, initiativeCost, accountEligibility, signAccount } from './Initiatives.js';
+import { INITIATIVES, initiativesFor, initiativeCost, accountEligibility, signAccount, article } from './Initiatives.js';
 import { charge } from './TaxBook.js';
 
 export const STRATEGIES = {
@@ -102,7 +102,8 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
         const hi = Math.round(normal * 1.15);
         const options = [...new Set([h, Math.round(h * 0.95), Math.round(h * 1.05), normal].map((n) => clamp(n, lo, hi)).filter((n) => n >= 1 && n <= 6000))];
         const best = options.map((n) => ({ n, p: profit({ staff: { headcount: n } }) })).reduce((a, b) => (b.p > a.p ? b : a));
-        if (best.n !== h && best.p - profit({}) > 5000) {
+        // Only worth churning people for a real gain (bigger companies need a bigger one).
+        if (best.n !== h && best.p - profit({}) > Math.max(5000, (ly.revenue ?? 0) * 0.004)) {
           biz.staff.headcount = best.n;
           if (best.n < h) biz.staff.morale = Math.max(0, biz.staff.morale - 3);
           did.push(best.n > h ? `hired ${best.n - h}` : `cut ${h - best.n} position${h - best.n > 1 ? 's' : ''}`);
@@ -234,7 +235,7 @@ function leversPlan(ctx, biz, profit, strategy, did) {
     if (!on && gain > 0 && cost <= gain * (strategy === 'harvest' ? 1 : 2) && biz.cash >= cost + cushion) {
       charge(biz, cost);
       biz.initiatives[id] = age;
-      did.push(`launched a ${INITIATIVES[id].name.toLowerCase()}`);
+      did.push(`launched ${article(INITIATIVES[id].name)} ${INITIATIVES[id].name.toLowerCase()}`);
     } else if (on && gain > 2000) {
       delete biz.initiatives[id];
       did.push(`ended the ${INITIATIVES[id].name.toLowerCase()}`);

@@ -13,6 +13,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.js';
 import { acquisitionTargets } from '../src/modules/business/Conglomerate.js';
+import { openBranch, businessOrg } from '../src/modules/org/Businesses.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -36,6 +37,8 @@ function check(state, where) {
     if (b.public) assert.ok(b.entity === 'ccorp' || BUSINESS_TYPES[b.typeId].startup, `${tag}: public but ${b.entity}`);
   }
   assert.ok(Number.isFinite(state.finances.cash), `${where}: cash ${state.finances.cash}`);
+  // Nothing broken in the year's log lines.
+  for (const l of (state.log.at(-1)?.entries ?? [])) assert.ok(!/NaN|undefined|\[object|Infinity|\$-/.test(l.text ?? ''), `${where}: log "${l.text}"`);
   for (const id of ['business', 'career', 'politics', 'money']) {
     const html = VIEWS[id]?.(state) ?? '';
     const hit = bad(html);
@@ -60,6 +63,16 @@ for (let i = 0; i < LIVES; i++) {
   state.prompts = [];
   engine.dispatch('business.start', `${typeId}:${r.pick(['cash', 'sba'])}:${t.startup ? 'ccorp' : r.pick(Object.keys(ENTITIES))}`);
   stats.lives += 1;
+  // A third start as big companies: many locations across cities, so listings, antitrust and restructuring get exercised.
+  const start = state.business.current;
+  if (start && i % 3 === 0 && !t.startup) {
+    const home = businessOrg(state, start)?.regionId;
+    const n = r.int(8, 30);
+    for (let k = 1; k < n; k++) openBranch(state, start, r.chance(0.6) ? home : r.pick(['denver', 'chicago', 'miami', 'atlanta']));
+    Object.assign(start, { scale: n, years: 6, cash: 3_000_000, entity: r.chance(0.7) ? 'ccorp' : start.entity });
+    start.staff.headcount = Math.min(6000, n * Math.max(4, t.staff));
+    state.finances.cash += 30_000_000;
+  }
   const act = (id, arg) => {
     if (state.prompts.length) return;
     stats.actions += 1;
