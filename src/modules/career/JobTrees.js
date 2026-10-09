@@ -16,7 +16,7 @@
  *   flightHoursPerYear logs pilot time while employed
  *   levels            the ladder (see Ladder.js)
  */
-import { L } from './Ladder.js';
+import { L, addGovernmentTiers } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
@@ -473,6 +473,8 @@ Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, J
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
+// Government careers get tiny-agency and major-agency rank structures (Ladder).
+for (const p of PROFESSION_LIST) addGovernmentTiers(p);
 
 // Index which careers require which credentials (employers fund what their own ladders demand).
 for (const p of PROFESSION_LIST) {

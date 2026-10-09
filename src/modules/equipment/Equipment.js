@@ -26,6 +26,8 @@
  *   budget, budgetAge, reserve, readiness, bond, pending: [{ catId, model, age }] }
  */
 import { clamp } from '../../core/Random.js';
+import { getProfession } from '../career/JobTrees.js';
+import { ladderFor } from '../career/Ladder.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { GROUPS, SIZES } from './EquipmentCatalog.js';
 import { currentBusiness } from '../business/Business.js';
@@ -100,8 +102,8 @@ export function contexts(state) {
   const out = [];
   const job = state.career?.job;
   if (job && JOB_GROUP[job.professionId]) {
-    out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : 'medium', label: job.employer.name,
-      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector });
+    out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.name,
+      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span: job.abilities.includes('budget') ? commandSpan(job) : 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector });
   }
   const biz = currentBusiness(state);
   if (biz && BUSINESS_GROUP[biz.typeId]) out.push({ kind: 'business', ref: 'business', key: `biz:${biz.id}`, group: BUSINESS_GROUP[biz.typeId], size: bizSize(biz.scale ?? 1), label: biz.name, manager: true, requester: false, money: 'cash', biz });
@@ -143,8 +145,28 @@ export const contextOf = (state, ref) => contexts(state).find((c) => c.ref === r
 /** What a category's standard calls for: the organization's size, grown by any expansions a manager won. */
 export const needOf = (cat, c) => {
   const base = cat.need[c.size] ?? 0;
-  return base ? Math.max(base, Math.round(base * (c.growth ?? 1))) : 0;
+  if (!base) return 0;
+  const grown = Math.max(base, Math.round(base * (c.growth ?? 1)));
+  // You manage your piece of the agency: a battalion, a precinct, a station — not the whole fleet.
+  return Math.max(1, Math.round(grown * (c.span ?? 1)));
 };
+
+/**
+ * How much of the agency's equipment a manager controls, by rank: the head runs all of it;
+ * each management rung below runs a smaller slice (a deputy chief a large share, a battalion
+ * chief a battalion, a captain a station or company).
+ */
+export const SPAN_BY_RANK = [1, 0.45, 0.2, 0.08, 0.04];
+export function commandSpan(job) {
+  if (job.headOf) return 1;
+  const profession = getProfession(job.professionId);
+  if (!profession) return 1;
+  const ladder = ladderFor(profession, job.employer.size);
+  const rungs = ladder.filter((l) => l.abilities?.includes('supervise') || l.track === 'mgmt').sort((a, b) => b.grade - a.grade || ladder.indexOf(b) - ladder.indexOf(a));
+  const i = rungs.findIndex((l) => l.id === job.levelId);
+  if (i < 0) return SPAN_BY_RANK.at(-1);
+  return SPAN_BY_RANK[Math.min(i, SPAN_BY_RANK.length - 1)];
+}
 
 /* ------------------------------------------------------------------ */
 /* Growing a department                                                */
@@ -224,7 +246,32 @@ export function recordOf(state, c, { peek = false } = {}) {
     state.deptEquip[c.key] = d;
   }
   d.pending ??= [];
+  if (!peek) fitSpan(c, d);
   return d;
+}
+
+/**
+ * A promotion widens your command: the units already in service in your new area of
+ * responsibility come with it (a demotion hands some back).
+ */
+function fitSpan(c, d) {
+  const span = c.span ?? 1;
+  if (d.span === span) return;
+  const grew = d.span != null && span > d.span;
+  const shrank = d.span != null && span < d.span;
+  d.span = span;
+  if (!grew && !shrank) return;
+  const r = seeded(`${c.key}:${c.group}:${span}`);
+  for (const [cid, cat] of Object.entries(cats(c))) {
+    const units = (d.units[cid] ??= []);
+    const need = needOf(cat, c);
+    const [mid, model] = Object.entries(cat.models)[0];
+    if (grew) while (units.length < need) units.push({ model: mid, age: r.int(0, Math.round(model.life * 1.2)), used: false, leased: false });
+    if (shrank && units.length > need) {
+      units.sort((a, b) => a.age - b.age);
+      units.length = need;
+    }
+  }
 }
 
 /** 0–100: how much of what's needed is in service and within its service life. */
@@ -363,6 +410,7 @@ const breakdown = (c) => BAD[c.group] ?? ['Equipment broke down at the worst mom
 function yearFor(ctx, c) {
   const { state, rng } = ctx;
   const d = recordOf(state, c);
+  fitSpan(c, d);
   // Everything ages; leases end; deliveries arrive; a building opens.
   for (const [cid, units] of Object.entries(d.units)) {
     const cat = cats(c)[cid];

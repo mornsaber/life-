@@ -90,7 +90,7 @@ export function equipmentCard(state, ref) {
     return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${units.length}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
   }).join('');
   const chips = c.manager || c.kind === 'volunteer'
-    ? `<p>${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} reserve`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
+    ? `<p>${c.kind === 'job' && (c.span ?? 1) < 1 ? chip(`🧭 Your command: ~${Math.round((c.span ?? 1) * 100)}% of the department's fleet`) : ''} ${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} reserve`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
     : '';
   const actions = [
     c.manager && can.buy ? button(d.auto ? '🤖 Staff manage equipment: ON' : '🤖 Let staff manage equipment', 'deptEquip.autoManage', { arg: a(''), variant: d.auto ? 'small on' : 'small', hint: 'Each year they replace what\'s worn and fill shortfalls within the money available' }) : '',

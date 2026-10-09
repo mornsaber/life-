@@ -10,11 +10,12 @@
 import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
-import { attachOrg } from '../org/Organizations.js';
+import { attachOrg, orgOf } from '../org/Organizations.js';
+import { cityPopulation } from '../org/Staffing.js';
+import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
 
-const MUNICIPAL_SIZE_BY_REGION = { rural: 'small', smalltown: 'small', midcity: 'medium', sunbelt: 'large', chicago: 'enterprise', dc: 'large', nyc: 'enterprise', sf: 'enterprise', miami: 'large', seattle: 'large', denver: 'large', gunnison: 'small' };
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
 
@@ -29,9 +30,23 @@ export function resolveDutyStation(rng, profession, regionId) {
   return profession.dutyStation ?? null;
 }
 
+/** Local government size from the city's population (not a hand-picked label). */
+export function citySize(regionId) {
+  const pop = cityPopulation(regionId);
+  return pop < 60000 ? 'small' : pop < 400000 ? 'medium' : pop < 1500000 ? 'large' : 'enterprise';
+}
+
+/** A government department's size bucket from how many people it actually employs. */
+export function governmentTier(state, employer, profession) {
+  if (!GOV_SECTORS.includes(profession.sector) || ['college', 'university', 'nationalLab', 'research', 'courts'].includes(profession.id)) return null;
+  const n = orgOf(state, employer)?.departments?.[employer.deptId]?.headcount;
+  if (!n) return null;
+  return n < 40 ? 'micro' : n < 300 ? 'small' : n < 2500 ? 'medium' : n < 8000 ? 'large' : n < 15000 ? 'enterprise' : 'mega';
+}
+
 function pickSize(rng, profession, regionId) {
   if (profession.stateAgency) return STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].population;
-  if (profession.sector === 'municipal') return MUNICIPAL_SIZE_BY_REGION[regionId] ?? REGIONS[regionId]?.size ?? 'medium';
+  if (profession.sector === 'municipal') return citySize(regionId);
   if (profession.sector === 'federal') return rng.pick(['large', 'enterprise']);
   const entries = Object.entries(profession.sizes ?? { medium: 1 });
   return rng.weighted(entries, ([, w]) => w)[0];
@@ -104,7 +119,11 @@ export function createEmployer(rng, state, profession, regionId) {
     remote: Boolean(profession.remote),
   };
   // Every employer is a department of a persistent organization.
-  return attachOrg(state, employer, profession, regionId);
+  attachOrg(state, employer, profession, regionId);
+  // Government agencies: their size — and so their rank structure — follows the department's real headcount.
+  const tier = governmentTier(state, employer, profession);
+  if (tier) employer.size = tier;
+  return employer;
 }
 
 export function resetBudget(state, employer, sector) {

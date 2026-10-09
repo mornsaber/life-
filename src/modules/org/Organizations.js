@@ -36,8 +36,8 @@ import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
-const HEADCOUNT = { small: [12, 45], medium: [50, 400], large: [400, 4000], enterprise: [4000, 40000] };
-const SIZE_RANK = { small: 0, medium: 1, large: 2, enterprise: 3 };
+const HEADCOUNT = { micro: [3, 30], small: [12, 45], medium: [50, 400], large: [400, 4000], enterprise: [4000, 40000], mega: [15000, 60000] };
+const SIZE_RANK = { micro: -1, small: 0, medium: 1, large: 2, enterprise: 3, mega: 4 };
 
 /** The organizations side stream (an LCG seed kept in the save). */
 export function sideRng(state) {

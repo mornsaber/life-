@@ -17,10 +17,12 @@ export const MAX_STEP = 10;
 export const STEP_RATE = 0.025;
 
 export const EMPLOYER_SIZES = {
+  micro: { label: 'Tiny agency', pay: 0.86, exec: 0.7, staff: '< 40 staff', reportScale: 0.35, budget: 800 },
   small: { label: 'Small', pay: 0.9, exec: 0.8, staff: '< 50 staff', reportScale: 0.5, budget: 1200 },
   medium: { label: 'Mid-size', pay: 1, exec: 1.2, staff: '50–500 staff', reportScale: 1, budget: 2000 },
   large: { label: 'Large', pay: 1.08, exec: 2, staff: '500–10k staff', reportScale: 2, budget: 3000 },
   enterprise: { label: 'Enterprise', pay: 1.15, exec: 3.5, staff: '10k+ staff', reportScale: 4, budget: 4500 },
+  mega: { label: 'Major agency', pay: 1.18, exec: 4.5, staff: '15k+ staff', reportScale: 6, budget: 6000 },
 };
 
 export const gradeLabel = (grade) => `G${grade}`;

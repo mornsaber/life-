@@ -12,8 +12,13 @@
  * management tools, misconduct temptations, policy decisions and so on.
  */
 
-export const SIZE_ORDER = ['small', 'medium', 'large', 'enterprise'];
-const sizeRank = (size) => SIZE_ORDER.indexOf(size ?? 'small');
+/**
+ * Employer sizes, smallest first. 'micro' and 'mega' only apply to government
+ * agencies, sized from the population they serve: a three-officer town police
+ * department, or the NYPD, a statewide system or a national agency.
+ */
+export const SIZE_ORDER = ['micro', 'small', 'medium', 'large', 'enterprise', 'mega'];
+const sizeRank = (size) => Math.max(0, SIZE_ORDER.indexOf(size ?? 'micro'));
 
 export const ABILITIES = {
   supervise: { label: 'Supervises staff', icon: '👥' },
@@ -44,7 +49,66 @@ export function L(id, title, grade, opts = {}) {
 }
 
 export function ladderFor(profession, size) {
+  // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
+  if (size === 'micro') return profession.levels.filter((l) => !l.minSize && !l.microDrop);
   return profession.levels.filter((l) => sizeRank(size) >= sizeRank(l.minSize));
+}
+
+/* ------------------------------------------------------------------ */
+/* Government tiers: tiny agencies and major-city / national ones      */
+/* ------------------------------------------------------------------ */
+
+export const GOV_SECTORS = ['municipal', 'state', 'federal', 'public'];
+/** Careers whose ladders aren't agency rank structures (universities, labs, courts' judges). */
+const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts'];
+
+const POLICE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'jail', 'corrections', 'privatePolice', 'gameWarden', 'borderPatrol', 'federalPrisons', 'probation', 'animalControl'];
+const FEDERAL_LE = ['fbi', 'dea', 'atf', 'usms', 'usss', 'oig', 'cbp', 'hsi', 'tsa'];
+const FIRE = ['fire', 'airportFire', 'stateFire', 'ems', 'dispatch'];
+const SCHOOLS = ['education', 'schoolBus'];
+/** Extra command ranks big agencies have, inserted below the head (by kind of agency). */
+export function megaRanks(profession) {
+  const id = profession.id;
+  if (FEDERAL_LE.includes(id)) return ['Section Chief', 'Deputy Assistant Director', 'Assistant Director'];
+  if (POLICE.includes(id)) return ['Deputy Inspector', 'Inspector', 'Assistant Chief', 'Chief of Department'];
+  if (FIRE.includes(id)) return ['Deputy Assistant Chief', 'Assistant Chief', 'Chief of Department'];
+  if (SCHOOLS.includes(id)) return ['Network Superintendent', 'Chief Academic Officer'];
+  if (profession.sector === 'federal') return ['Division Director', 'Deputy Associate Administrator', 'Associate Administrator'];
+  return ['Division Director', 'Assistant Commissioner', 'Deputy Commissioner'];
+}
+
+/**
+ * Give every government career its tiers, once: mark the middle ranks a tiny
+ * agency doesn't have, and insert the extra command ranks of a major agency.
+ */
+export function addGovernmentTiers(profession) {
+  if (profession.tiered || !GOV_SECTORS.includes(profession.sector) || TIER_EXEMPT.includes(profession.id)) return;
+  profession.tiered = true;
+  const levels = profession.levels;
+  if (levels.length < 4) return;
+  const base = levels.filter((l) => !l.minSize);
+  const top = [...levels].sort((a, b) => b.grade - a.grade || levels.indexOf(b) - levels.indexOf(a))[0];
+  const firstSup = base.find((l) => l.abilities.includes('supervise') || l.track === 'mgmt');
+  // Tiny agencies: entry and journey jobs, the first supervisor, and the head (the highest rank any agency has).
+  const topBase = [...base].sort((a, b) => b.grade - a.grade || base.indexOf(b) - base.indexOf(a))[0];
+  if (firstSup && topBase && firstSup !== topBase) {
+    for (const l of base) {
+      const core = l.track === 'shared' && l.grade <= firstSup.grade;
+      if (!core && l !== firstSup && l !== topBase && !l.entry) l.microDrop = true;
+    }
+  }
+  // Major agencies: command ranks between the second-highest management level and the head.
+  const mgmt = levels.filter((l) => l.track === 'mgmt' && l !== top && !l.appointed);
+  const below = mgmt.sort((a, b) => b.grade - a.grade)[0];
+  if (!below || !top) return;
+  const titles = megaRanks(profession).filter((t) => !levels.some((l) => l.title === t));
+  const at = levels.indexOf(top);
+  const added = titles.map((title, i) => ({
+    id: `${top.id}_cmd${i + 1}`, title, grade: Math.min(top.grade, below.grade + 1 + Math.floor(i / 2)), track: 'mgmt', years: 3,
+    abilities: [...new Set([...below.abilities, 'supervise', 'budget'])], minSize: 'mega', reports: (below.reports ?? 6) + 4 * (i + 1),
+    ...(below.req ? { req: below.req } : {}), command: true,
+  }));
+  levels.splice(at, 0, ...added);
 }
 
 export function levelById(profession, levelId) {

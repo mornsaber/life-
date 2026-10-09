@@ -210,7 +210,8 @@ function organizationCard(state, job) {
   return card('🏢 Organization', `${lead}${kv([
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}${servedPopulation(c.org) ? ` <small class="muted">· serves ${servedPopulation(c.org).toLocaleString()} residents</small>` : ''}`],
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
-    [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
+    ['Ranks here', `${chip(EMPLOYER_SIZES[job.employer.size]?.label ?? job.employer.size)} <small class="muted">${ladderFor(getProfession(job.professionId), job.employer.size).map((l) => (l.id === job.levelId ? `<b>${esc(l.title)}</b>` : esc(l.title))).join(' › ')}</small>`],
+        [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],
     c.manager ? ['Manager', who(c.manager)] : null,
     c.deptHead ? ['Department head', who(c.deptHead)] : null,
     c.orgHead ? ['Leadership', who(c.orgHead)] : null,

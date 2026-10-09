@@ -17,6 +17,8 @@ import { cityPopulation } from '../src/modules/org/Staffing.js';
 import { budgetPressure, retentionRisk, publicRifTick } from '../src/modules/career/PublicRif.js';
 import { RIF_DEPS } from '../src/modules/career/CareerEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { ladderFor } from '../src/modules/career/Ladder.js';
+import { contextOf, annualMoney } from '../src/modules/equipment/Equipment.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{0,80}(NaN|undefined|\[object).{0,80}/)?.[0]);
@@ -60,6 +62,46 @@ const tests = {
     for (let i = 0; i < 8; i++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); if (!state.career.job) break; }
     const now = deptOf(state, state.career.job ?? job)?.headcount ?? start;
     assert.ok(now > start * 0.75 && now < start * 1.25, `${start} → ${now}`);
+  },
+
+  'agency size sets the rank structure for every government career'() {
+    const tiny = worker(10, 'police', 'rural');
+    const huge = worker(11, 'police', 'nyc');
+    assert.equal(tiny.job.employer.size, 'micro', 'a tiny town department');
+    assert.equal(huge.job.employer.size, 'mega', 'NYPD-scale');
+    const titles = (job) => ladderFor(PROFESSIONS[job.professionId], job.employer.size).map((l) => l.title);
+    assert.ok(!titles(tiny.job).includes('Lieutenant') && !titles(tiny.job).includes('Captain'), titles(tiny.job).join(' > '));
+    assert.ok(titles(huge.job).includes('Inspector') && titles(huge.job).includes('Chief of Department'), titles(huge.job).join(' > '));
+    // Not just police: every government career has tiers.
+    let checked = 0;
+    for (const p of Object.values(PROFESSIONS).filter((x) => ['municipal', 'state', 'federal'].includes(x.sector) && x.tiered && x.levels.length >= 4)) {
+      const micro = ladderFor(p, 'micro').length;
+      const mega = ladderFor(p, 'mega').length;
+      assert.ok(micro >= 2 && micro < mega, `${p.id}: micro ${micro} vs mega ${mega}`);
+      checked += 1;
+    }
+    assert.ok(checked > 30, `${checked} government careers tiered`);
+    clean(VIEWS.career(huge.state));
+    clean(VIEWS.career(tiny.state));
+  },
+
+  'a manager controls equipment and budget in proportion to rank'() {
+    const fire = (seed, levelId) => {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+      const state = engine.newLife({});
+      state.character.age = 45;
+      state.character.regionId = 'chicago';
+      const p = PROFESSIONS.fire;
+      const emp = createEmployer(new Random(seed), state, p, 'chicago');
+      hire(engine.context(), { professionId: 'fire', levelId, employer: emp });
+      state.career.job.abilities = [...new Set([...state.career.job.abilities, 'budget'])];
+      return contextOf(state, 'job');
+    };
+    const levels = ladderFor(PROFESSIONS.fire, 'enterprise').filter((l) => l.track === 'mgmt').sort((a, b) => b.grade - a.grade);
+    const chief = fire(20, levels[0].id);
+    const lower = fire(20, levels[2].id);
+    assert.ok(chief.span > lower.span, `${levels[0].title} ${chief.span} vs ${levels[2].title} ${lower.span}`);
+    assert.ok(annualMoney({ publicService: { city: { fiscalHealth: 60 } } }, chief) > annualMoney({ publicService: { city: { fiscalHealth: 60 } } }, lower) * 2, 'the chief has the bigger budget');
   },
 
   'a budget crisis brings a RIF; retention rules decide who goes'() {
