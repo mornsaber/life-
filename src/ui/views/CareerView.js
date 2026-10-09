@@ -31,6 +31,7 @@ import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { WORK_MODES, workModeOf } from '../../modules/career/JobMarket.js';
+import { chiefSearchEligibility, execRecruiterEligibility, federalTransfers, RANK_SECTORS, CHIEF_GRADE } from '../../modules/career/SeniorMoves.js';
 import { lawValue } from '../../modules/politics/Laws.js';
 import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
 import { BASES } from '../../modules/career/WorkplaceClaims.js';
@@ -89,7 +90,7 @@ function jobMarketCard(state) {
       c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
       claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
     ])}
-    ${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: 'Same career, different company: up to 3 offers' })}</div>
+    ${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
     <h4 class="sub">Work arrangement</h4><div class="toggle-row">${modes}</div>` : ''}
     <p class="fine">Strong performers get calls from recruiters. A competing offer can win you a raise where you are — but your boss will remember. Remote work means no commute, but you're out of sight when promotions come up.</p>`, { icon: '📨' });
 }
@@ -472,4 +473,22 @@ function progression(state, job, profession, size) {
   }).join('');
   return `${html}<div class="tracks"><div class="track-row"><span class="track-label">🏛️ Leadership</span><ol class="ladder compact">${items}</ol></div></div>
     <p class="fine">${posts.map((p) => `${esc(p.def.title)} (${esc(p.scope)}): ${esc(how(p.def))}`).join(' · ')}. Reach the top of the ladder and you're in line when the post opens.</p>`;
+}
+
+/** Senior routes to a new employer: outside chief searches, federal transfers, executive recruiters. */
+function seniorMoveButtons(state, job) {
+  const out = [];
+  if (RANK_SECTORS.includes(job.sector) && job.abilities.includes('supervise')) {
+    const c = chiefSearchEligibility(state);
+    out.push(button('🏛️ Apply for chief jobs elsewhere', 'career.chiefSearch', { variant: 'small', disabled: !c.ok || Boolean(state.yearly['career.chiefSearch']), hint: c.ok ? `Top jobs at other agencies: G${CHIEF_GRADE.micro}+ for a small department, G${CHIEF_GRADE.large}+ for a large one` : c.reason }));
+  }
+  if (job.sector === 'federal') {
+    const n = federalTransfers(state).length;
+    out.push(button('🦅 Transfer to another agency', 'career.fedTransfer', { variant: 'small', disabled: !n || job.probationLeft > 0 || Boolean(state.yearly['career.fedTransfer']), hint: n ? `${n} agenc${n === 1 ? 'y has' : 'ies have'} jobs at or near your grade; you keep your step` : 'No other agency has a job you qualify for at your grade' }));
+  }
+  if (job.sector === 'private' && job.track === 'mgmt') {
+    const e = execRecruiterEligibility(state);
+    out.push(button('🎩 Call executive recruiters', 'career.execRecruiter', { variant: 'small', disabled: !e.ok || Boolean(state.yearly['career.execRecruiter']), hint: e.ok ? 'VP and C-suite roles at other companies' : e.reason }));
+  }
+  return out.join('');
 }

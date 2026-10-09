@@ -21,6 +21,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { educationFields, schoolPrestige } from '../education/Catalog.js';
 import { networkBonus } from '../campus/Network.js';
+import { lateralStep } from './SeniorMoves.js';
 
 export const APPLICATIONS_PER_YEAR = 3;
 
@@ -175,12 +176,12 @@ function pickQuestions(rng, professionId) {
 
 function questionPrompt(ctx, data) {
   const level = levelById(getProfession(data.professionId), data.levelId);
-  const question = QUESTIONS.find((q) => q.id === data.questions[data.step]);
+  const question = QUESTIONS.find((q) => q.id === data.questions[data.q ?? 0]);
   ctx.prompt({
     type: 'career.interview',
     icon: '🤝',
     title: `Interview — ${level.title} [G${level.grade}]`,
-    text: `${data.employer.name} · Question ${data.step + 1}/${data.questions.length}\n${question.text}`,
+    text: `${data.employer.name} · Question ${(data.q ?? 0) + 1}/${data.questions.length}\n${question.text}`,
     options: ctx.rng.shuffle(question.options).map((o) => ({ id: o.id, label: o.label })),
     data,
   });
@@ -300,15 +301,17 @@ export const InterviewSystem = {
         return ctx.toast('Not eligible for rehire there', 'bad');
       }
       const priorYears = state.career.history.filter((h) => h.professionId === professionId).reduce((s, h) => s + h.endAge - h.startAge, 0);
+      // Ranked public jobs credit a lateral's experience in pay steps.
+      const lateral = lateralStep(state, profession);
 
       questionPrompt(ctx, {
         professionId,
         levelId: level.id,
         employer,
-        step: 1 + Math.min(4, Math.floor(priorYears / 2)),
+        step: lateral ?? 1 + Math.min(4, Math.floor(priorYears / 2)),
         merit: 0,
         questions: pickQuestions(rng, professionId),
-        step: 0,
+        q: 0,
         score: 0,
       });
     },
@@ -317,12 +320,12 @@ export const InterviewSystem = {
   resolvers: {
     interview(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const question = QUESTIONS.find((q) => q.id === data.questions[data.step]);
+      const question = QUESTIONS.find((q) => q.id === data.questions[data.q ?? 0]);
       const option = question.options.find((o) => o.id === optionId);
       let score = option.score;
       if (option.stat && state.stats[option.stat] >= 60) score += 1;
-      const next = { ...data, step: data.step + 1, score: data.score + Math.min(3, score) };
-      if (next.step < next.questions.length) return questionPrompt(ctx, next);
+      const next = { ...data, q: (data.q ?? 0) + 1, score: data.score + Math.min(3, score) };
+      if (next.q < next.questions.length) return questionPrompt(ctx, next);
 
       const profession = getProfession(data.professionId);
       const level = levelById(profession, data.levelId);

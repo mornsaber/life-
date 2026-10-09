@@ -361,6 +361,7 @@ function randomActions(state) {
   if (state.judiciary.seat && player.chance(0.02)) tries.push(() => act('judiciary.resign'));
   // Job market, gig work
   if (state.career.job && player.chance(0.15)) tries.push(() => act('jobMarket.search'));
+  if (state.career.job && player.chance(0.1)) tries.push(() => act(player.pick(['career.chiefSearch', 'career.fedTransfer', 'career.execRecruiter'])));
   if (state.career.job && player.chance(0.05)) tries.push(() => act('jobMarket.workMode', player.pick(Object.keys(WORK_MODES))));
   if (age >= 16 && player.chance(0.06)) tries.push(() => act('gig.start', `${player.pick(Object.keys(GIGS))}:${player.pick(['side', 'full'])}`));
   if (state.gig.active && player.chance(0.05)) tries.push(() => act(player.chance(0.5) ? 'gig.stop' : 'gig.hours', player.pick(['side', 'full'])));

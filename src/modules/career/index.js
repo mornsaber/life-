@@ -11,6 +11,7 @@ import { ladderFor } from './Ladder.js';
 import { createEmployer, cityName, stateNameOf } from './Employers.js';
 import { REGIONS } from '../life/Regions.js';
 import { InterviewSystem } from './InterviewSystem.js';
+import { SeniorMoveActions, SeniorMoveResolvers } from './SeniorMoves.js';
 import { WorkplaceActions } from './WorkplaceActions.js';
 import { ManagementActions, ManagementResolvers } from './ManagementEngine.js';
 import { ContractingResolvers, setWorkforce } from './ContractingSystem.js';
@@ -133,6 +134,7 @@ export const CareerModule = {
       endMilitaryLeave(ctx, 'Resigned while on military leave');
     },
     ...InterviewSystem.actions,
+    ...SeniorMoveActions,
     ...WorkplaceActions.actions,
     ...ManagementActions,
     ...UnionActions,
@@ -149,6 +151,7 @@ export const CareerModule = {
       else endMilitaryLeave(ctx, 'Chose not to return after military service');
     },
     ...InterviewSystem.resolvers,
+    ...SeniorMoveResolvers,
     ...WorkplaceActions.resolvers,
     ...ManagementResolvers,
     ...ContractingResolvers,

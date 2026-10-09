@@ -17,6 +17,7 @@ import { createEmployer } from './Employers.js';
 import { hire, stepForAtLeast, levelCheck } from './CareerEngine.js';
 import { recalcSalary } from './Compensation.js';
 import { candidateScore } from '../org/Vacancies.js';
+import { RANK_SECTORS, lateralEntryLevel, lateralStep, previewPay, execRecruiterTick } from './SeniorMoves.js';
 
 export const WORK_MODES = {
   onsite: { label: 'On-site', icon: '🏢', desc: 'Full commute; best visibility for promotions.' },
@@ -37,6 +38,13 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false } = {}
   const job = state.career.job;
   const profession = getProfession(job.professionId);
   const employer = createEmployer(rng, state, profession, state.character.regionId);
+  // Police, fire and other ranked public jobs: a lateral comes in at the working rank with pay steps for experience.
+  if (RANK_SECTORS.includes(profession.sector)) {
+    const level = lateralEntryLevel(state, profession, employer.size) ?? levelById(profession, job.levelId);
+    const step = lateralStep(state, profession) ?? 1;
+    const salary = previewPay(state, { professionId: profession.id, levelId: level.id, employer, step });
+    return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode: 'onsite', nonCompete: 0, signing: 0, step, lateral: level.id !== job.levelId };
+  }
   // Sometimes the new title is a step up.
   const up = nextLevels(profession, employer.size, job.levelId).filter((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);
   // Outside hiring for a step up weighs your record: performance, references, tenure, credentials.
@@ -50,7 +58,7 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false } = {}
   return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode, nonCompete, signing };
 }
 
-export const offerSummary = (o) => `${o.employer.name} (${o.employer.size}) · ${o.title} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`;
+export const offerSummary = (o) => `${o.employer.name} (${o.employer.size}) · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`;
 
 /** Take an offer: a new employer in the same field (resigning the old job). */
 export function acceptOffer(ctx, offer) {
@@ -58,7 +66,8 @@ export function acceptOffer(ctx, offer) {
   if (state.legal.incarceration) return ctx.log(`${offer.employer.name} withdrew its offer.`, '📭', 'bad');
   const job = hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
   if (!job) return undefined;
-  stepForAtLeast(state, job, offer.salary);
+  if (offer.step) job.step = offer.step;
+  else stepForAtLeast(state, job, offer.salary);
   recalcSalary(state, job);
   job.workMode = offer.workMode;
   job.remote = offer.workMode === 'remote';
@@ -154,6 +163,7 @@ export const JobMarket = {
     const { state } = ctx;
     if (state.career.nonCompete && state.character.age >= state.career.nonCompete.untilAge) state.career.nonCompete = null;
     headhunterTick(ctx);
+    execRecruiterTick(ctx);
     workModeTick(ctx);
   },
 
