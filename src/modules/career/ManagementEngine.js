@@ -36,7 +36,8 @@ export function ensureDepartment(job, level) {
     job.department = null;
     return;
   }
-  const headcount = Math.max(2, Math.round((level.reports ?? 4) * EMPLOYER_SIZES[job.employer.size].reportScale));
+  // Expansions you've won (Equipment: expand) grow the department beyond its usual size.
+  const headcount = Math.max(2, Math.round((level.reports ?? 4) * EMPLOYER_SIZES[job.employer.size].reportScale * (job.department?.growth ?? 1)));
   if (job.department) {
     job.department.headcount = headcount;
     return;

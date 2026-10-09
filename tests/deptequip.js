@@ -14,7 +14,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession, PROFESSIONS } from '../src/modules/career/JobTrees.js';
-import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf } from '../src/modules/equipment/Equipment.js';
+import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf, needOf, expansionCase } from '../src/modules/equipment/Equipment.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
 import { PoliceLifeModule } from '../src/modules/publicsafety/PoliceLife.js';
@@ -63,6 +63,39 @@ const tests = {
     const html = VIEWS.career(state, {});
     assert.match(html, /Department Fleet &amp; Facilities|Department Fleet & Facilities/);
     clean(html);
+  },
+
+  'an effective manager grows the department: a bigger standard, budget and staff'() {
+    const { engine, state, ctx, job } = worker(11, 'police', 'captain', ['post', 'driverLicense', 'fto', 'supervisorCourse']);
+    const c0 = contextOf(state, 'job');
+    const patrol = GROUPS[c0.group].categories.patrol;
+    const need0 = needOf(patrol, c0);
+    const staff0 = job.department?.headcount ?? 0;
+    // A weak record can't make the case.
+    job.performance = 40;
+    assert.equal(expansionCase(state, c0).ok, false);
+    // A well-run fleet and a strong record can.
+    job.performance = 90;
+    const d = deptOf(state);
+    d.budget = 50_000_000;
+    engine.dispatch('deptEquip.replaceAll', 'job|');
+    assert.ok(readiness(state) >= 80, `readiness ${readiness(state)}`);
+    let grown = false;
+    for (let i = 0; i < 12 && !grown; i++) {
+      state.yearly = {};
+      state.prompts = [];
+      job.performance = 90;
+      engine.dispatch('deptEquip.expand', 'job|');
+      grown = (d.growth ?? 1) > 1;
+    }
+    assert.ok(grown, 'leadership approved an expansion');
+    const c1 = contextOf(state, 'job');
+    assert.ok(needOf(patrol, c1) > need0, `standard ${need0} → ${needOf(patrol, c1)}`);
+    if (job.department) assert.ok(job.department.headcount > staff0, 'more staff');
+    assert.ok(d.reserve > 0, 'money to equip it');
+    tick(ctx, state);
+    clean(VIEWS.career(state, {}));
+    assert.ok(VIEWS.career(state, {}).includes('Propose expanding'));
   },
 
   'a fire chief refurbishes an engine and asks for a station bond'() {

@@ -4,7 +4,7 @@
  * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
-import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost } from '../../modules/equipment/Equipment.js';
+import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
@@ -45,7 +45,7 @@ export function equipmentCard(state, ref) {
   const a = (rest) => `${ref}|${rest}`;
   const rows = Object.entries(g.categories).map(([cid, cat]) => {
     const units = d.units[cid] ?? [];
-    const needed = cat.need[c.size] ?? 0;
+    const needed = needOf(cat, c);
     if (!needed && !units.length) return '';
     const worn = units.filter((u) => u.age > (cat.models[u.model]?.life ?? 10)).length;
     const avg = units.length ? Math.round(units.reduce((s, u) => s + u.age, 0) / units.length) : 0;
@@ -96,6 +96,7 @@ export function equipmentCard(state, ref) {
     c.manager && can.buy ? button(d.auto ? '🤖 Staff manage equipment: ON' : '🤖 Let staff manage equipment', 'deptEquip.autoManage', { arg: a(''), variant: d.auto ? 'small on' : 'small', hint: 'Each year they replace what\'s worn and fill shortfalls within the money available' }) : '',
     c.manager && can.buy ? button('🔁 Replace everything worn', 'deptEquip.replaceAll', { arg: a(''), variant: 'small', hint: 'Every category at once, as far as the money goes' }) : '',
     c.manager && can.bank ? button('🏦 Bank unspent money for a big purchase', 'deptEquip.bank', { arg: a(''), variant: 'small', disabled: !d.budget || Boolean(y[`equip.bank.${ref}`]), hint: 'Otherwise it goes back at year-end' }) : '',
+    c.kind === 'job' && c.manager ? (() => { const e = expansionCase(state, c); return button(`📈 Propose expanding the department${(c.growth ?? 1) > 1 ? ` (now ${Math.round((c.growth ?? 1) * 100)}% of standard size)` : ''}`, 'deptEquip.expand', { arg: a(''), variant: 'small', disabled: !e.ok, hint: e.ok ? `≈${Math.round(e.odds * 100)}% leadership says yes · bigger fleet, budget and staff` : e.reason }); })() : '',
     can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${ref}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
   ].join('');
   return card(`${title(c)} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}

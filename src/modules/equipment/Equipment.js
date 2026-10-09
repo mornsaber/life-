@@ -101,7 +101,7 @@ export function contexts(state) {
   const job = state.career?.job;
   if (job && JOB_GROUP[job.professionId]) {
     out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : 'medium', label: job.employer.name,
-      manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector });
+      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector });
   }
   const biz = currentBusiness(state);
   if (biz && BUSINESS_GROUP[biz.typeId]) out.push({ kind: 'business', ref: 'business', key: `biz:${biz.id}`, group: BUSINESS_GROUP[biz.typeId], size: bizSize(biz.scale ?? 1), label: biz.name, manager: true, requester: false, money: 'cash', biz });
@@ -140,7 +140,58 @@ export const contextOf = (state, ref) => contexts(state).find((c) => c.ref === r
 /* The record                                                          */
 /* ------------------------------------------------------------------ */
 
-const needOf = (cat, c) => cat.need[c.size] ?? 0;
+/** What a category's standard calls for: the organization's size, grown by any expansions a manager won. */
+export const needOf = (cat, c) => {
+  const base = cat.need[c.size] ?? 0;
+  return base ? Math.max(base, Math.round(base * (c.growth ?? 1))) : 0;
+};
+
+/* ------------------------------------------------------------------ */
+/* Growing a department                                                */
+/* ------------------------------------------------------------------ */
+
+export const MAX_GROWTH = 3;
+export const GROWTH_STEP = 0.2;
+/** Can you make the case for a bigger department? Needs a well-run fleet and a strong record. */
+export function expansionCase(state, c) {
+  if (c?.kind !== 'job' || !c.manager) return { ok: false, reason: 'Only the manager with the budget can propose it' };
+  const job = state.career.job;
+  const d = state.deptEquip?.[c.key];
+  const r = readiness(state, c);
+  if ((c.growth ?? 1) >= MAX_GROWTH) return { ok: false, reason: 'The department is as big as it gets here' };
+  if (yearlyCount(state, `equip.expand.${c.ref}`)) return { ok: false, reason: 'One proposal a year' };
+  if (r < 80) return { ok: false, reason: `Get readiness to 80%+ first (now ${r}%)` };
+  if ((job?.performance ?? 0) < 65) return { ok: false, reason: 'Your rating needs to be strong (65+)' };
+  const fiscal = c.sector === 'private' ? 60 : (state.publicService?.city?.fiscalHealth ?? 60);
+  const odds = clamp(0.2 + (job.performance - 65) / 60 + (r - 80) / 80 + (fiscal - 55) / 150 + (d?.expansions ?? 0) * -0.05, 0.08, 0.9);
+  return { ok: true, odds };
+}
+
+/** An approved expansion: a bigger standard, the money to fund it, and more people. */
+function grow(ctx, c, d, why) {
+  const { state } = ctx;
+  const before = c.growth ?? 1;
+  const after = Math.min(MAX_GROWTH, Math.round((before + GROWTH_STEP) * 100) / 100);
+  d.growth = after;
+  d.expansions = (d.expansions ?? 0) + 1;
+  const grown = { ...c, growth: after };
+  // Start-up money for the new units: most of what they cost.
+  let cost = 0;
+  for (const cat of Object.values(cats(c))) {
+    const add = needOf(cat, grown) - needOf(cat, c);
+    if (add > 0 && !cat.facility) cost += add * (Object.values(cat.models)[0].cost ?? 0);
+  }
+  d.reserve += Math.round(cost * 0.85);
+  const job = state.career.job;
+  const dept = job?.department;
+  if (dept) {
+    const added = Math.max(1, Math.round(dept.headcount * GROWTH_STEP / before));
+    dept.headcount += added;
+    dept.growth = after;
+  }
+  if (job) job.performance = Math.min(100, job.performance + 3);
+  ctx.log(`${why} ${c.label} approved an expansion of your department: a bigger standard fleet${cost ? `, $${Math.round(cost * 0.85).toLocaleString()} to equip it` : ''}${dept ? ' and more staff' : ''}.`, '📈', 'milestone');
+}
 const cats = (c) => GROUPS[c.group].categories;
 
 /** A small RNG seeded by the owner's key, so the inherited fleet is the same whether it's first seen or first used. */
@@ -364,6 +415,8 @@ function yearFor(ctx, c) {
   if (c.kind === 'military' && c.manager) state.military.service.eval = Math.round(clamp(state.military.service.eval + shift, 0, 100));
   if (c.kind === 'volunteer' && c.manager && typeof c.member?.xp === 'number') c.member.xp = Math.max(0, c.member.xp + Math.round(shift * 3));
   if (c.manager && prev != null && r > prev + 5) ctx.log(`${c.label}: readiness rose to ${r}%.`, '📈', 'good');
+  // A department that runs well under you gets more to run.
+  if (c.kind === 'job' && c.manager && r >= 90 && state.career.job.performance >= 80 && (c.growth ?? 1) < MAX_GROWTH && rng.chance(0.12)) grow(ctx, c, d, 'Impressed by your results,');
 }
 
 /* ------------------------------------------------------------------ */
@@ -451,6 +504,18 @@ export const EquipmentModule = {
       if (!c?.manager || !powers(c).buy) return;
       const spent = autoReplace(c, d, 1);
       ctx.log(spent ? `Staff replaced worn-out equipment and filled shortfalls: $${spent.toLocaleString()}.` : 'Nothing affordable needed replacing.', '🛠️', spent ? 'good' : undefined);
+    },
+    /** 'job|' — make the case to leadership for a bigger department. */
+    expand(ctx, arg) {
+      const { state, rng } = ctx;
+      const { c, d } = resolve(ctx, arg);
+      if (!c) return;
+      const check = expansionCase(state, c);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      bumpYearly(state, `equip.expand.${c.ref}`);
+      if (rng.chance(check.odds)) return grow(ctx, c, d, 'You made the case, and');
+      ctx.log(`Leadership turned down your proposal to expand the department this year. Keep the numbers strong and ask again.`, '📉', 'warn');
+      return undefined;
     },
     /** 'kind|' — hand day-to-day equipment decisions to your staff (or take them back). */
     autoManage(ctx, arg) {
