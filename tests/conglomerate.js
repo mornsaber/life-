@@ -40,6 +40,7 @@ const year = (engine) => {
 };
 const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
 
+const awaitedBoard = await import('../src/modules/business/GroupBoard.js');
 const tests = {
   'rivals have strategies and make moves; size and price wars cost you customers'() {
     const { engine, state, biz } = owner(1, 'restaurant');
@@ -99,6 +100,45 @@ const tests = {
     const html = VIEWS.business(state, {});
     clean(html);
     assert.match(html, /Apex Group/);
+  },
+
+  'the holding company has a board: you chair it, appoint experts, and it reviews the group'() {
+    const { engine, state, biz } = owner(5);
+    biz.staff.headcount = 10;
+    biz.years = 4;
+    engine.dispatch('business.handOff');
+    engine.dispatch('business.makePassive');
+    engine.dispatch('business.start', 'consulting:cash:llc');
+    engine.dispatch('business.formConglomerate', 'Board Group');
+    const c = conglomerateOf(state);
+    assert.ok(c.board, 'a board from day one');
+    assert.equal(c.board.seats[0].kind, 'owner', 'you chair it');
+    engine.dispatch('business.appointGroupDirector', 'finance');
+    engine.dispatch('business.appointGroupDirector', 'operator');
+    const indep = c.board.seats.filter((s) => s.kind === 'independent');
+    assert.equal(indep.length, 2);
+    assert.ok(indep.every((s) => s.fee > 0 && s.skill > 0));
+    // Seats are limited by the group's size.
+    for (let i = 0; i < 10; i++) engine.dispatch('business.appointGroupDirector', 'people');
+    assert.ok(c.board.seats.length <= 9);
+    c.treasury = 5_000_000;
+    c.executives = { president: { name: 'Pat Doe', skill: 60, salary: 400000, since: 40 } };
+    for (let y = 0; y < 3; y++) year(engine);
+    assert.ok(c.board.meetings.length >= 1, 'the board met');
+    assert.ok(['strong', 'steady', 'concerned', 'crisis'].includes(c.board.meetings.at(-1).verdict));
+    // A run of bad years costs the hired Group President the job.
+    c.executives = { president: { name: 'Pat Doe', skill: 60, salary: 400000, since: 40 } };
+    c.board.history = [{ revenue: 10_000_000, profit: 2_000_000 }, { revenue: 10_000_000, profit: 2_000_000 }];
+    for (const b of [state.business.current, ...state.business.holdings]) b.lastYear = { ...b.lastYear, revenue: 1_000_000, netIncome: -900_000 };
+    const { groupBoardYear } = awaitedBoard;
+    groupBoardYear(engine.context());
+    assert.ok(!c.executives.president, 'the board replaced the president');
+    // Remove a director.
+    engine.dispatch('business.removeGroupDirector', indep[0].id);
+    assert.ok(!c.board.seats.includes(indep[0]));
+    const html = VIEWS.business(state, {});
+    clean(html);
+    assert.match(html, /Board of directors/);
   },
 
   'without enough to hold, you can\'t form one'() {

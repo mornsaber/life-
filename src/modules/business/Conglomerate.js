@@ -24,6 +24,7 @@ import { syncBusinessOrg, sizeForHeadcount } from '../org/Businesses.js';
 import { canAfford } from '../../core/State.js';
 import { mergerReview } from './Regulation.js';
 import { execPayroll, officeCost, counselSaving, dealDiscount, execTick } from './HoldingCo.js';
+import { ensureGroupBoard, groupBoardYear } from './GroupBoard.js';
 
 export const FORM_COST = 25000;
 export const CONGLOMERATE_HOLDINGS = 15;
@@ -113,6 +114,9 @@ export function conglomerateTick(ctx, deps) {
     c.treasury -= amount;
     lines.push(`gave ${pick.name} ${money(amount)} to open another location`);
   }
+  // The group's board: directors' expertise, the annual review, your chairman's bonus.
+  ensureGroupBoard(state);
+  lines.push(...groupBoardYear(ctx));
   // Dividend to you; the rest stays as a reserve.
   const reserve = Math.max(100000, hq);
   const dividend = Math.round(Math.max(0, c.treasury - reserve) * c.payout);

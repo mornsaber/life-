@@ -15,6 +15,7 @@ import { clamp } from '../../core/Random.js';
 import { businessUnionYear } from '../career/LaborUnions.js';
 import { regulationYear, antitrustResolver } from './Regulation.js';
 import { StructureActions, PublicActions, structureYear } from './Structure.js';
+import { ensureGroupBoard, appointGroupDirector, removeGroupDirector } from './GroupBoard.js';
 import { REGIONS } from '../life/Regions.js';
 import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
@@ -1223,7 +1224,15 @@ export const BusinessEngine = {
       ctx.spend(FORM_COST, 'Holding company formation', { credit: true });
       const clean = String(name ?? '').trim().slice(0, 40);
       state.business.conglomerate = { name: clean || `${state.character.lastName} Holdings`, foundedAge: state.character.age, treasury: 0, payout: 0.5, acquisitions: 0, lastReport: [] };
+      ensureGroupBoard(state);
       ctx.log(`You incorporated ${state.business.conglomerate.name}, a holding company over your businesses. Shared services, a central treasury and room for up to ${holdingsCap(state)} companies.`, '🏛️', 'milestone');
+    },
+    /** The holding company's board: arg is an expertise (appoint) or a seat id (remove). */
+    appointGroupDirector(ctx, expertise) {
+      appointGroupDirector(ctx, expertise);
+    },
+    removeGroupDirector(ctx, seatId) {
+      removeGroupDirector(ctx, seatId);
     },
     /** arg: '0' | '0.25' | '0.5' | '1' — share of the treasury above its reserve paid to you each year. */
     setPayout(ctx, pct) {

@@ -3,6 +3,8 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
+import { groupBoardSize, groupDirectorFee } from '../../modules/business/GroupBoard.js';
+import { EXPERTISE as BOARD_EXPERTISE, VERDICTS as BOARD_VERDICTS } from '../../modules/business/Board.js';
 import { DESIGNS, DIVISIONS, structureOf, canRestructure, ipoEligibility, ipoPrice, IPO_MIN_REVENUE } from '../../modules/business/Structure.js';
 import { marketPosition, exposure, enforcement } from '../../modules/business/Regulation.js';
 import { businessUnionPanel } from './UnionView.js';
@@ -338,6 +340,7 @@ function conglomerateCard(state) {
     ])}
     ${c.lastReport?.length ? `<p class="fine">📋 Last year: ${esc(c.lastReport.join('; '))}.</p>` : ''}
     ${hqSection(state, c)}
+    ${groupBoardSection(state, c)}
     <h4 class="sub">Treasury</h4><div class="toggle-row chips-row">${[100000, 1000000].map((a) => button(`💵 Put in ${money(a)}`, 'business.treasury', { arg: String(a), variant: 'tiny', disabled: !canAfford(state, a) })).join('')}${button(`💸 Take out ${money(Math.max(0, c.treasury - 50000))}`, 'business.treasury', { arg: String(-Math.max(0, c.treasury - 50000)), variant: 'tiny', disabled: c.treasury <= 50000, hint: 'Already taxed — no tax due' })}</div>
     ${mergeSection(state)}
     <h4 class="sub">Dividend to you</h4><div class="toggle-row chips-row">${[0, 0.25, 0.5, 1].map((p) => button(p === 0 ? 'Reinvest all' : `${p * 100}% of spare cash`, 'business.setPayout', { arg: String(p), variant: c.payout === p ? 'tiny on' : 'tiny' })).join('')}</div>
@@ -713,4 +716,20 @@ function publicControls(state, biz) {
   const check = ipoEligibility(state, biz);
   return `<h4 class="sub">Go public</h4><p class="fine">A C-corporation with ${money(IPO_MIN_REVENUE)}+ revenue, a profitable year and three years of books can list. ${check.ok ? `Bankers would price it near ${money(ipoPrice(state, biz))}.` : ''}</p>
     <div class="toggle-row chips-row">${button('🔔 File for an IPO', 'business.goPublic', { variant: 'tiny', disabled: !check.ok, hint: check.ok ? 'Underwriting fees ~1.2%' : check.reason })}</div>`;
+}
+
+/** The holding company's board: you chair it; appoint experts; the annual review. */
+function groupBoardSection(state, c) {
+  const b = c.board ?? { seats: [], meetings: [] };
+  const size = groupBoardSize(state);
+  const filled = b.seats.length || 1;
+  const open = Math.max(0, size - filled);
+  const seats = b.seats.map((s) => s.kind === 'owner'
+    ? `<li>👑 <b>${esc(s.name)}</b> <small class="muted">Chair (you)</small></li>`
+    : `<li class="report-row"><div>${BOARD_EXPERTISE[s.expertise]?.icon ?? '🪑'} <b>${esc(s.name)}</b> <small class="muted">${esc(BOARD_EXPERTISE[s.expertise]?.label ?? 'Director')} · skill ${s.skill} · ${money(s.fee)}/yr · since age ${s.since}</small></div>${button('Remove', 'business.removeGroupDirector', { arg: s.id, variant: 'tiny ghost' })}</li>`).join('');
+  const last = b.meetings?.at(-1);
+  return `<h4 class="sub">Board of directors <small class="muted">${filled} of ${size} seats</small></h4>
+    ${last ? `<p class="fine">Last meeting (age ${last.age}): ${BOARD_VERDICTS[last.verdict].icon} ${esc(BOARD_VERDICTS[last.verdict].label)} · score ${last.score}${last.notes.length ? ` — ${esc(last.notes.join(' '))}` : ''}</p>` : '<p class="fine">The board meets at year-end: a strong year earns you a chairman\'s bonus; repeated bad years cost the Group President their job.</p>'}
+    ${seats ? `<ul class="history">${seats}</ul>` : ''}
+    ${open ? `<div class="toggle-row chips-row">${Object.entries(BOARD_EXPERTISE).map(([id, e]) => button(`${e.icon} Appoint a ${e.label.toLowerCase()}`, 'business.appointGroupDirector', { arg: id, variant: 'tiny', hint: `${money(groupDirectorFee(state))}/yr · ${e.desc.replace('every year', 'every year, across the group')}` })).join('')}</div>` : ''}`;
 }
