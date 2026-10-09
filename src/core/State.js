@@ -367,10 +367,11 @@ export function vehicleEquity(state) {
   return (state.vehicles?.owned ?? []).reduce((s, v) => s + (v.lease ? 0 : v.value - (v.loan?.balance ?? 0)), 0);
 }
 
-/** Your share of your business's equity value (valuation is already net of business debt). */
+/** Your share of every business you own (valuation is already net of business debt), plus a holding company's treasury. */
 export function businessEquity(state) {
-  const b = state.business?.current;
-  return b ? Math.max(0, Math.round(b.valuation * b.ownerPct)) : 0;
+  const bs = [state.business?.current, ...(state.business?.holdings ?? [])].filter(Boolean);
+  const stakes = bs.reduce((s, b) => s + Math.max(0, (b.valuation ?? 0) * b.ownerPct), 0);
+  return Math.round(stakes + Math.max(0, state.business?.conglomerate?.treasury ?? 0));
 }
 
 /** Brokerage holdings, speculative positions and IRAs. */

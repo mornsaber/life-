@@ -12,6 +12,10 @@
  * Without a will, intestacy applies: spouse and children share, then
  * parents and siblings, then the state.
  *
+ * A succession plan (Dynasty.js) passes the family businesses to the named
+ * child by agreement: outside probate, at a discounted value for estate tax,
+ * as an in-kind bequest ahead of the will's shares.
+ *
  * Estate planning (state.people.plan, see EstatePlanning.js):
  *   trust        revocable living trust — skips probate (≈3% of probate assets)
  *   ilit         irrevocable life-insurance trust — policy proceeds leave the taxable estate
@@ -24,6 +28,8 @@
 import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
+import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
+import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -141,12 +147,19 @@ export function designatedPayees(state) {
   return [{ to: person.id, label: fullName(person), amount: acct.k401 + acct.traditional + acct.roth, pretax: acct.k401 + acct.traditional }];
 }
 
-/** Assets that would go through probate (everything not in a trust or passing by designation). */
+/** The family businesses passing under a succession plan: { successor, equity } or null. */
+export function plannedSuccession(state) {
+  const equity = businessEquity(state);
+  const successor = equity > 0 ? successorOf(state) : null;
+  return successor ? { successor, equity } : null;
+}
+
+/** Assets that would go through probate (everything not in a trust, passing by designation or under a succession plan). */
 export function probateAssets(state) {
   const { assets } = estateBalance(state);
   const designated = designatedPayees(state).reduce((s, p) => s + p.amount, 0);
   if (state.people?.plan?.trust) return 0;
-  return Math.max(0, assets - designated);
+  return Math.max(0, assets - designated - (plannedSuccession(state)?.equity ?? 0));
 }
 
 /** Settle the estate at death. Stores the result on state.legacy and returns it. */
@@ -160,7 +173,10 @@ export function settleEstate(state) {
   const insurance = lifeInsurancePayouts(state);
   // Policies you own count toward estate tax (not probate) unless an ILIT owns them.
   const insured = plan.ilit ? 0 : insurance.reduce((s, x) => s + x.amount, 0);
-  const tax = Math.min(taxable, Math.max(0, estateTax(state, taxable + insured).total - estateTax(state, insured).total));
+  // A business passing under a succession plan is valued at a discount (lack of marketability and control).
+  const succession = plannedSuccession(state);
+  const discount = succession ? Math.round(succession.equity * SUCCESSION_DISCOUNT) : 0;
+  const tax = Math.min(taxable, Math.max(0, estateTax(state, Math.max(0, taxable - discount) + insured).total - estateTax(state, insured).total));
   const net = taxable - tax;
   // Retirement accounts go to their named beneficiaries first; the will divides the rest.
   const acct = retirementAccounts(state);
@@ -173,6 +189,12 @@ export function settleEstate(state) {
     left -= amount;
     bequests.push({ to: d.to, label: d.label, amount, heirTax: Math.round(Math.min(amount, d.pretax) * HEIR_TAX.named), designated: true });
   }
+  // The family businesses go to the successor in kind, ahead of the will's shares.
+  if (succession) {
+    const amount = Math.floor(Math.min(left, succession.equity));
+    left -= amount;
+    bequests.push({ to: succession.successor.id, label: `${fullName(succession.successor)} (the family business)`, amount, heirTax: 0, inKind: true });
+  }
   // Pre-tax money left in the estate is withdrawn faster (5 years) and taxed harder.
   const designatedPretax = designated.reduce((s, d) => s + d.pretax, 0);
   const estatePretaxShare = left > 0 ? Math.min(1, Math.max(0, pretaxTotal - designatedPretax) / left) : 0;
@@ -182,7 +204,10 @@ export function settleEstate(state) {
   if (residual.length) residual[0].amount += rounding;
   for (const r of residual) r.heirTax = ['charity', 'state'].includes(r.to) ? 0 : Math.round(r.amount * estatePretaxShare * HEIR_TAX.estate);
   bequests.push(...residual);
-  const legacy = { assets, debts, funeral, debtsPaid, probate, unpaidDebts: debts - debtsPaid, tax, net, bequests, insurance, will: Boolean(state.people?.will), trust: Boolean(plan.trust), settledYear: currentYear(state) };
+  const legacy = {
+    assets, debts, funeral, debtsPaid, probate, unpaidDebts: debts - debtsPaid, tax, net, bequests, insurance, will: Boolean(state.people?.will), trust: Boolean(plan.trust), settledYear: currentYear(state),
+    succession: succession ? { to: succession.successor.id, name: succession.successor.firstName, equity: succession.equity, discount } : null,
+  };
   state.legacy = legacy;
   return legacy;
 }
@@ -273,15 +298,9 @@ export function buildHeirState(rng, old, childId) {
     lifeInsurance: {},
     generated: true,
   };
-  // The family business passes to the heir in kind: it counts against their share of the estate.
-  const biz = old.business?.current;
-  if (biz) {
-    const equity = businessEquity(old);
-    s.finances.cash = Math.max(0, s.finances.cash - equity);
-    const ids = new Set(list.map((p) => p.id));
-    s.business = { current: { ...structuredClone(biz), role: 'absentee', family: biz.family.filter((id) => ids.has(id) && id !== child.id) }, history: [], listings: [] };
-    addLog(s, `You inherited the family business, ${biz.name}${equity ? ` (worth about $${equity.toLocaleString()} to you)` : ''}. A manager runs it for now.`, '🏪', 'milestone');
-  }
+  for (const p of heirFamily(rng, child, old)) list.push(p);
+  heirStats(s, child);
+  passBusinesses(old, s, child, childAge, legacy, new Set(list.map((p) => p.id)));
 
   // Children are raised in the family's faith.
   const faith = old.community?.faith;
@@ -295,11 +314,88 @@ export function buildHeirState(rng, old, childId) {
     ancestors: [...(old.lineage?.ancestors ?? []), {
       name: `${old.character.firstName} ${old.character.lastName}`, born: old.character.birthYear, died: year, age: old.character.age,
       cause: old.character.causeOfDeath, netWorth: legacy.assets - legacy.debts, generation: old.lineage?.generation ?? 1,
+      businesses: allBusinesses(old).map((b) => b.name),
     }],
   };
   addLog(s, `You are ${child.firstName} ${child.lastName}, ${childAge} years old. Your ${old.character.gender === 'female' ? 'mother' : 'father'}, ${old.character.firstName}, has died.`, '🕯️', 'milestone');
   if (inheritance) addLog(s, `You inherited $${inheritance.toLocaleString()}${legacy.insurance.some((x) => x.to === child.id) ? ' (including life insurance)' : ''}${payouts.length ? ` — $${now.toLocaleString()} now, the rest ${payouts.map((p) => `$${p.amount.toLocaleString()} at ${p.age}`).join(', ')}` : ''}.`, '📜', 'good');
   if (gifted) addLog(s, `Over the years your ${old.character.gender === 'female' ? 'mother' : 'father'} gave you $${gifted.toLocaleString()}.`, '🎁', 'good');
   if (fund529) addLog(s, `Your 529 college fund holds $${fund529.toLocaleString()}.`, '🎓', 'good');
+  const kids = s.people.list.filter((p) => p.relation === 'child');
+  if (kids.length) addLog(s, `You have ${kids.length === 1 ? 'a child' : `${kids.length} children`} of your own: ${kids.map((k) => k.firstName).join(', ')}.`, '👨‍👩‍👧', 'good');
   return s;
 }
+
+/**
+ * The family businesses pass to the heir: every company, the holding company
+ * and its treasury. Under a succession plan they go to the named child (who
+ * may not be the one you continue as); otherwise to the heir, counted against
+ * their share. A business handed over during your life is theirs already.
+ */
+function passBusinesses(old, s, child, childAge, legacy, ids) {
+  const owned = allBusinesses(old);
+  const successorId = legacy.succession?.to ?? null;
+  const parent = old.character.gender === 'female' ? 'mother' : 'father';
+  const ready = readiness(child) >= READY && childAge >= 21;
+  const generation = (b) => (b.heritage?.generation ?? 1) + 1;
+  const pass = (b, gift = false) => {
+    const nb = structuredClone(b);
+    if (gift) {
+      Object.assign(nb, { role: 'absentee', autopilot: true, family: [], foundedAge: childAge - (b.years ?? 0) });
+      return nb;
+    }
+    nb.role = 'absentee';
+    nb.autopilot = true;
+    if (!nb.plan || nb.plan.strategy === 'off') nb.plan = { strategy: 'steady', sinceAge: childAge };
+    nb.family = (b.family ?? []).filter((id) => ids.has(id) && id !== child.id);
+    // Inherited property takes a stepped-up basis: its value at death.
+    nb.basis = Math.round(Math.max(0, b.valuation ?? 0) * b.ownerPct);
+    nb.foundedAge = childAge - (b.years ?? 0);
+    nb.ownedFromAge = childAge;
+    nb.heritage = { since: b.heritage?.since ?? (old.character.birthYear ?? START_YEAR) + (b.foundedAge ?? 0), founder: b.heritage?.founder ?? `${old.character.firstName} ${old.character.lastName}`, generation: generation(b) };
+    // Staff and customers take a planned, trained successor in stride; an unprepared one rattles them.
+    const smooth = ready || successorId === child.id;
+    nb.staff.morale = Math.round(Math.max(0, Math.min(100, nb.staff.morale + (smooth ? 3 : -6))));
+    nb.reputation = Math.round(Math.max(0, Math.min(100, nb.reputation + (smooth ? 2 : -3))));
+    if (childAge < 18) nb.heldInTrustUntil = 18;
+    return nb;
+  };
+  const gifted = child.business ? [child.business] : [];
+  const inherits = owned.length && (!successorId || successorId === child.id);
+  if (!inherits && !gifted.length) {
+    if (owned.length && successorId) {
+      const sib = old.people.list.find((p) => p.id === successorId);
+      addLog(s, `Under your ${parent}'s succession plan, ${sib?.firstName ?? 'a sibling'} took over the family business${owned.length > 1 ? 'es' : ''}.`, '📋');
+    }
+    return;
+  }
+  const passed = [...(inherits ? owned.map(pass) : []), ...gifted.map((b) => pass(b, true))];
+  s.business = {
+    current: passed[0],
+    holdings: passed.slice(1),
+    conglomerate: inherits && old.business.conglomerate ? { ...structuredClone(old.business.conglomerate), foundedAge: childAge } : null,
+    history: [],
+    listings: [],
+  };
+  if (inherits) {
+    // In kind: under a succession plan it was this child's bequest; otherwise it counts against their share.
+    const inKind = legacy.bequests.filter((b) => b.to === child.id && b.inKind).reduce((t, b) => t + b.amount, 0);
+    const equity = businessEquity(old);
+    s.finances.cash = Math.max(0, s.finances.cash - (successorId ? inKind : equity));
+    const names = owned.map((b) => b.name);
+    const gen = generation(owned[0]);
+    addLog(s, `You inherited the family business${names.length > 1 ? `es — ${names.join(', ')}` : `, ${names[0]}`}${old.business.conglomerate ? `, held by ${old.business.conglomerate.name}` : ''}${equity ? ` (worth about $${equity.toLocaleString()} to you)` : ''}. ${gen >= 3 ? `The ${ordinalWord(gen)} generation of your family to run it. ` : ''}${childAge < 18 ? 'It\'s held in trust and run by management until you\'re 18.' : 'Management runs it on a steady growth plan for now.'}`, '🏪', 'milestone');
+    if (successorId === child.id) addLog(s, `Your ${parent}'s succession plan passed it to you outside probate${legacy.succession.discount ? `, valued $${legacy.succession.discount.toLocaleString()} lower for estate tax` : ''}.`, '📋', 'good');
+  }
+  if (gifted.length) addLog(s, `You still own ${gifted.map((b) => b.name).join(', ')}, which your ${parent} handed to you years ago.`, '🏪', 'good');
+  // A child who grew up in the business starts with real experience in it.
+  const main = passed[0];
+  const type = BUSINESS_TYPES[main.typeId];
+  const years = child.familyBizYears ?? 0;
+  if (ready && type?.professions?.[0]) {
+    s.career.history.push({ professionId: type.professions[0], title: 'Family business', levelId: 'family', employerName: main.name, sector: 'private', peakGrade: 3, startAge: Math.max(16, childAge - Math.max(1, years)), endAge: childAge, reason: 'Took over the family business' });
+    addLog(s, `${years ? `${years} years working in the business` : 'Growing up in the business'} prepared you: the staff trust you to lead it.`, '🧭', 'good');
+  } else if (!ready && childAge >= 18) addLog(s, 'You never learned the business. The staff are uneasy — a manager will keep it running while you find your feet.', '😬', 'warn');
+}
+
+const ordinalWord = (n) => ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'][n] ?? `${n}th`;

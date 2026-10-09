@@ -13,7 +13,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
-import { yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
+import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor } from './BusinessTypes.js';
@@ -993,6 +993,12 @@ export const BusinessEngine = {
       p.job = `Owner, ${biz.name}`;
       p.relationship = Math.min(100, p.relationship + 10);
       ctx.log(`You handed ${biz.name} to ${p.firstName}. It stays in the family.`, '👨‍👩‍👧', 'milestone');
+      // A child keeps it: continue as them and it's still theirs. The gift uses up lifetime exemption above the annual exclusion.
+      if (p.relation === 'child') {
+        p.business = { ...structuredClone(biz), heritage: { since: biz.heritage?.since ?? currentYear(state) - biz.years, founder: biz.heritage?.founder ?? `${state.character.firstName} ${state.character.lastName}`, generation: (biz.heritage?.generation ?? 1) + 1 } };
+        const plan = state.people.plan;
+        if (plan) plan.exemptionUsed += Math.max(0, Math.round(biz.valuation * biz.ownerPct) - 19000);
+      }
       retire(state, biz, `Passed to ${p.firstName}`, 0, { buyer: `${p.firstName} ${p.lastName ?? state.character.lastName}` });
     },
     sell(ctx) {

@@ -434,7 +434,7 @@ function ownedView(state, biz) {
   const overview = card(`${type.icon} ${esc(biz.name)}`, `
     <p>${chip(type.name)} ${chip(`${entity.icon} ${entity.name}`)} ${chip(biz.role === 'operator' ? '🧑‍💼 You run it' : '🧑‍💼 Manager runs it', biz.role === 'operator' ? 'cyan' : '')} ${biz.licensedManager ? chip('🪪 Licensed manager', 'warn') : ''} ${s.unionized ? chip('✊ Unionized') : ''}</p>
     ${kv([
-      ['Founded', `age ${biz.foundedAge} (${biz.years} yr)`],
+      biz.heritage ? ['Founded', `${biz.heritage.since} by ${esc(biz.heritage.founder)} · ${biz.heritage.generation}${['th', 'st', 'nd', 'rd'][biz.heritage.generation] ?? 'th'}-generation family business`] : ['Founded', `age ${biz.foundedAge} (${biz.years} yr)`],
       ['Locations', biz.scale],
       ['Business cash', `<b class="${biz.cash < 0 ? 'neg' : 'pos'}">${money(biz.cash)}</b>`],
       ['Debt', debt ? `<span class="neg">${money(debt)}</span>${guaranteedDebt(biz) ? ' (personally guaranteed)' : ''}` : '$0'],

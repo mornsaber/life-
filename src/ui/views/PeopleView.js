@@ -8,7 +8,10 @@ import {
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
-import { probateAssets, designatedPayees, PROBATE_RATE } from '../../modules/people/Legacy.js';
+import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
+import {
+  NURTURE, readiness, readinessLabel, successorOf, ownsBusiness, allBusinesses, ordinal, READY, SUCCESSION_COST, SUCCESSION_CHANGE_COST, SUCCESSION_DISCOUNT,
+} from '../../modules/people/Dynasty.js';
 
 /** Trusts, beneficiaries and lifetime gifts. */
 function planSection(state) {
@@ -55,21 +58,70 @@ function personRow(state, p) {
     p.owes ? `owes you ${money(p.owes.amount)}` : null,
     p.relation === 'child' && age < 18 && p.custody ? CUSTODY[p.custody] : null,
     p.relation === 'child' && p.degree ? `college grad` : null,
+    p.relation === 'child' && p.kids?.length ? `${p.kids.length} grandchild${p.kids.length > 1 ? 'ren' : ''}` : null,
+    p.relation === 'child' && successorOf(state)?.id === p.id ? '📋 your successor' : null,
   ].filter(Boolean).join(' · ');
+  const traits = p.alive && p.relation === 'child' && p.traits ? childTraits(state, p) : '';
   const actions = !p.alive ? '' : [
     button('🫶 Time', 'people.spendTime', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.time.${p.id}`]) }),
     button('🎁 Gift', 'people.gift', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.gift.${p.id}`]) }),
     ['mother', 'father'].includes(p.relation) && state.character.age >= 16 ? button('💵 Ask for help', 'people.askForMoney', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly['people.ask']) }) : '',
     p.relation === 'partner' ? button('💍 Propose', 'people.propose', { arg: p.id, variant: 'tiny' }) : '',
     ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'tiny danger' }) : '',
+    p.relation === 'child' ? nurtureButtons(state, p, age) : '',
     button('😤 Argue', 'people.argue', { arg: p.id, variant: 'tiny ghost' }),
   ].join('');
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
     <span class="person-icon" aria-hidden="true">${p.alive ? ICON[p.relation] ?? '🙂' : '🕯️'}</span>
-    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small></div>
+    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${traits}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
     <div class="person-actions">${actions}</div>
   </li>`;
+}
+
+/** A child's smarts, athletics and (with a family business) how ready they are to take it over. */
+function childTraits(state, p) {
+  const t = p.traits;
+  const r = readiness(p);
+  const biz = ownsBusiness(state) && ageOf(state, p) >= 10 ? ` · 🏪 ${readinessLabel(r)} (${r})` : '';
+  return `<small class="traits">🧠 ${t.smarts} · ⚽ ${t.athletics} · 💼 ${t.business}${biz}</small>`;
+}
+
+function nurtureButtons(state, p, age) {
+  const done = Boolean(state.yearly[`dynasty.nurture.${p.id}`]);
+  return Object.entries(NURTURE)
+    .filter(([, n]) => age >= n.ages[0] && age <= n.ages[1] && (!n.needsBusiness || ownsBusiness(state)))
+    .map(([id, n]) => button(`${n.icon} ${n.label}`, 'dynasty.nurture', { arg: `${p.id}:${id}`, variant: 'tiny', disabled: done, hint: `${n.cost ? money(n.cost) : 'Free'} · ${n.desc}` })).join('');
+}
+
+/** The family line, the family businesses and who carries them on. */
+function dynastyCard(state) {
+  if (state.character.age < 18) return '';
+  const kids = livingChildren(state);
+  const bizzes = allBusinesses(state);
+  const gen = state.lineage?.generation ?? 1;
+  if (!kids.length && !bizzes.length && gen === 1) return '';
+  const successor = successorOf(state);
+  const planned = plannedSuccession(state);
+  const plan = state.people.plan;
+  const grandkids = kids.reduce((n, c) => n + (c.kids?.length ?? 0), 0);
+  const heritage = bizzes.filter((b) => b.heritage).map((b) => `${esc(b.name)}: ${ordinal(b.heritage.generation)}-generation family business, since ${b.heritage.since}`);
+  const rows = kv([
+    ['Generation', `${ordinal(gen)} of the ${esc(state.character.lastName)} family${state.lineage?.founderYear ? ` (since ${state.lineage.founderYear})` : ''}`],
+    ['Children', kids.length ? `${kids.length}${grandkids ? ` · ${grandkids} grandchild${grandkids > 1 ? 'ren' : ''}` : ''}` : '<span class="neg">None — when you die, your story ends</span>'],
+    heritage.length ? ['Heritage', heritage.join('<br>')] : null,
+    bizzes.length ? ['Successor', successor ? `${esc(fullName(successor))} · ${readinessLabel(readiness(successor))}` : '<span class="neg">None named — the business goes through probate to whichever heir you continue as</span>'] : null,
+    planned ? ['Under the plan', `${money(planned.equity)} passes outside probate, taxed as ${money(planned.equity * (1 - SUCCESSION_DISCOUNT))}`] : null,
+  ]);
+  const choose = bizzes.length && kids.length ? `<h4 class="sub">Succession plan</h4>
+    <div class="toggle-row chips-row">${kids.map((k) => button(`📋 ${esc(k.firstName)} (${ageOf(state, k)}) · ${readiness(k)}`, 'dynasty.succession', { arg: k.id, variant: successor?.id === k.id ? 'tiny on' : 'tiny', hint: plan?.successionDrafted ? money(SUCCESSION_CHANGE_COST) : money(SUCCESSION_COST) })).join('')}
+    ${successor ? button('Set the plan aside', 'dynasty.succession', { arg: 'none', variant: 'tiny ghost' }) : ''}</div>` : '';
+  const tips = [
+    bizzes.length && !kids.length ? 'With no children, there is no one to hand the business to — it is sold off in your estate.' : null,
+    bizzes.length && kids.length && !kids.some((k) => readiness(k) >= READY) ? 'Hire grown children into the business (Business tab) or bring younger ones along each year: an heir who knows the business takes over smoothly and starts with experience.' : null,
+    'Children close to you lift your happiness each year, look after you in old age, and give you grandchildren — who become your heir\'s own family when you pass the story on.',
+  ].filter(Boolean).map((t) => `<p class="fine">${t}</p>`).join('');
+  return card('Dynasty', `${rows}${choose}${tips}`, { icon: '🏰', accent: 'yellow' });
 }
 
 function group(title, icon, list, state, note = '') {
@@ -179,7 +231,7 @@ function legacyCard(state) {
 function lineage(state) {
   const l = state.lineage;
   if (!l?.ancestors?.length) return '';
-  return card(`Family Line · Generation ${l.generation}`, `<ul class="history">${l.ancestors.map((a) => `<li>🕯️ <b>${esc(a.name)}</b> <small>${a.born}–${a.died} · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}</small></li>`).join('')}</ul>`, { icon: '🌳' });
+  return card(`Family Line · Generation ${l.generation}`, `<ul class="history">${l.ancestors.map((a) => `<li>🕯️ <b>${esc(a.name)}</b> <small>${a.born}–${a.died} · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}${a.businesses?.length ? ` · 🏪 ${esc(a.businesses.join(', '))}` : ''}</small></li>`).join('')}</ul>`, { icon: '🌳' });
 }
 
 export function peopleView(state) {
@@ -195,6 +247,7 @@ export function peopleView(state) {
     ${elderCareCard(state)}
     ${friendsCard(state, by('friend').filter((p) => p.alive))}
     ${group('Exes', '💔', by('ex'), state)}
+    ${dynastyCard(state)}
     ${legacyCard(state)}
     ${lineage(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
@@ -205,9 +258,13 @@ export function heirChoices(state) {
   const kids = livingChildren(state);
   if (!kids.length) return '';
   const legacy = state.legacy;
-  const amountFor = (id) => (legacy ? legacy.bequests.filter((b) => b.to === id).reduce((s, b) => s + b.amount, 0) + legacy.insurance.filter((b) => b.to === id).reduce((s, b) => s + b.amount, 0) : 0);
+  const amountFor = (id) => (legacy ? legacy.bequests.filter((b) => b.to === id && !b.inKind).reduce((s, b) => s + b.amount, 0) + legacy.insurance.filter((b) => b.to === id).reduce((s, b) => s + b.amount, 0) : 0);
+  const bizzes = allBusinesses(state);
+  const successorId = legacy?.succession?.to ?? null;
+  const takesOver = (k) => bizzes.length && (!successorId || successorId === k.id) ? ` · 🏪 takes over ${bizzes.length > 1 ? `${bizzes.length} businesses` : esc(bizzes[0].name)}${readiness(k) >= READY ? ' (trained)' : ''}` : k.business ? ` · 🏪 owns ${esc(k.business.name)}` : '';
+  const extras = (k) => [k.traits ? `🧠 ${k.traits.smarts}` : null, k.kids?.length ? `${k.kids.length} kid${k.kids.length > 1 ? 's' : ''} of their own` : null].filter(Boolean).join(' · ');
   return `<div class="heirs"><h3>Continue the family story</h3>
-    ${kids.map((k) => button(`▶ Play as ${esc(k.firstName)} (age ${ageOf(state, k)})`, 'engine.continueAs', { arg: k.id, variant: 'primary', hint: `Inherits ${money(amountFor(k.id))}${state.people.fund529[k.id] ? ` + ${money(state.people.fund529[k.id])} 529` : ''}` })).join('')}
+    ${kids.map((k) => button(`▶ Play as ${esc(k.firstName)} (age ${ageOf(state, k)})`, 'engine.continueAs', { arg: k.id, variant: 'primary', hint: `Inherits ${money(amountFor(k.id))}${state.people.fund529[k.id] ? ` + ${money(state.people.fund529[k.id])} 529` : ''}${takesOver(k)}${extras(k) ? ` · ${extras(k)}` : ''}` })).join('')}
   </div>`;
 }
 

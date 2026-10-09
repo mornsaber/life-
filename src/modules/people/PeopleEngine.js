@@ -233,7 +233,7 @@ function childrenTick(ctx) {
   let childcare = 0;
   for (const child of livingChildren(state)) {
     const age = ageOf(state, child);
-    if (age === 22 && !child.degree && rng.chance(child.giBill ? 0.75 : 0.42)) child.degree = rng.pick(MAJORS);
+    if (age === 22 && !child.degree && rng.chance(child.giBill ? 0.75 : 0.2 + (child.traits?.smarts ?? 55) / 250)) child.degree = rng.pick(MAJORS);
     if (age < 18 && child.custody !== 'ex') {
       const share = child.custody === 'joint' ? 0.5 : 1;
       costs += 7000 * share;
@@ -307,7 +307,7 @@ function births(ctx) {
   for (let i = 0; i < 6 && taken.has(name.firstName); i++) name = randomName(rng, gender);
   const adopted = Boolean(p.expecting.adopted);
   const age = adopted ? rng.int(0, 6) : 0;
-  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: partner?.id ?? null, custody: 'you' };
+  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: partner?.id ?? null, custody: 'you', ...(adopted ? { adopted: true } : {}) };
   p.list.push(child);
   p.expecting = null;
   ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');

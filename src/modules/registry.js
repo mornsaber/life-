@@ -2,7 +2,7 @@
  * Every domain module the engine runs, in one place. Tick order is set by
  * each module's `order` field, not by its position here:
  *
- *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 · estate 16 ·
+ *   economy 1 · life 0 · region 4 · activities 5 · lifeEvents 7 · people 8 · k12 9 · education 10 · campus 11 · credentials 12 · friends 13 · community 14 · elderCare 15 · estate 16 · dynasty 17 ·
  *   military 20 · federal 24 · publicservice 25 · municipal 26 · orgs 29.5 · career 30 · emsLife 30.85 · clinical 30.86 · ses 30.87 · police 30.88 · fireLife 30.89 · gear 30.9 · deptEquip 30.95 · business 31 · emeritus 31.5 · jobMarket 32 · gig 32.5 · claims 33.5 ·
  *   politics 33 · judiciary 34 · legal 35 · civil 36 · emergency 40 · service 41 · volunteering 41.5 · health 42 · mental 43 · ssdi 43.5 · housing 45 · vehicles 46 · retirement 85 · taxes 88 · cards 89 · investing 86 · finances 90
  */
@@ -67,6 +67,7 @@ import { Vehicles } from './vehicles/Vehicles.js';
 import { Friends } from './people/Friends.js';
 import { ElderCare } from './people/ElderCare.js';
 import { EstatePlanning } from './people/EstatePlanning.js';
+import { Dynasty } from './people/Dynasty.js';
 import { Community } from './community/Community.js';
 import { ServiceModule } from './service/index.js';
 import { ContractorModule } from './career/Contractors.js';
@@ -74,7 +75,7 @@ import { ClearedModule } from './career/ClearedModule.js';
 import { IntelCommunityModule } from './career/IntelCommunity.js';
 
 export const MODULES = [
-  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
+  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, Dynasty, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Judiciary, LegalModule, CivilCourts, CivicModule,
   EmergencyModule, ServiceModule, VolunteerModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances,
 ];
