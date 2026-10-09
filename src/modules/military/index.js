@@ -14,7 +14,7 @@ import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEn
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
-import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS, DIRECT_MAX_AGE } from './MOS.js';
+import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, directCredit, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS, DIRECT_MAX_AGE } from './MOS.js';
 import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
 import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
@@ -28,15 +28,16 @@ import { AssignmentActions, AssignmentResolvers } from './Assignments.js';
 const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
 
 /** Prompt options for every job in a branch, with entry standards and starting rank. */
-export function mosOptions(state, branch, track, { allowDirect = true } = {}) {
+export function mosOptions(state, branch, track, { allowDirect = true, component = 'reserve' } = {}) {
   return mosFor(branch, track).filter((m) => allowDirect || !m.direct).map((m) => {
     const s = SPECIALTIES[m.specialty];
     const fit = mosEligibility(state, m, { smartsFloor: s.minSmarts ?? 0 });
     const level = requiredClearance({ track, specialty: m.specialty, mos: m.id });
     const notes = [m.desc ?? s.desc];
     if (m.direct && fit.ok) {
-      const g = directGrade(state, m);
-      notes.unshift(`Direct commission as O-${g + 1} ${BRANCHES[branch].officer[g]}`);
+      const c = directCredit(state, m, component);
+      const ranks = BRANCHES[branch].officer;
+      notes.unshift(`Direct commission as O-${c.grade + 1} ${ranks[c.grade]} (${c.years} yrs constructive credit${c.capped ? `; ${component === 'active' ? 'active duty' : 'the Reserve'} tops out at O-${c.cap + 1} for this corps` : ''})`);
     } else if (m.direct) notes.unshift(DIRECT_COMMISSIONS[m.direct].needs);
     if (track === 'enlisted') {
       const g = enlistedStartGrade(state, branch, m);
@@ -159,7 +160,7 @@ export const MilitaryModule = {
           '\nHigher combat exposure means more deployments, more danger, and more chances for valor.' +
           (track === 'officer' ? '\nLawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a direct commission at a rank that reflects their experience.' : ''),
         options: [
-          ...mosOptions(state, branch, track).filter((o) => track !== 'warrant' || MOS[o.id]?.flight),
+          ...mosOptions(state, branch, track, { component }).filter((o) => track !== 'warrant' || MOS[o.id]?.flight),
           { id: 'cancel', label: '↩️ Walk out of the recruiter\'s office' },
         ],
         data: { branch, track, component },

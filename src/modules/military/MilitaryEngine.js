@@ -347,7 +347,7 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   const specialty = entryClearance(ctx, { track, specialty: job?.specialty ?? wanted, mos: job?.id, cleared });
   if (!specialty) return false;
   if (job && specialty !== job.specialty) job = defaultMos(branch, track, specialty);
-  const direct = track === 'officer' ? directGrade(state, job) : null;
+  const direct = track === 'officer' ? directGrade(state, job, component) : null;
   let startGrade = track === 'enlisted' ? enlistedStartGrade(state, branch, job) : direct ?? 0;
   // Coming back: prior service counts toward retirement, and you return near your old grade.
   const prior = priorServiceCredit(state);

@@ -27,7 +27,8 @@ import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFactor, keepsHome, commissioningEligibility, applyCommissioning, AssignmentResolvers } from '../src/modules/military/Assignments.js';
 import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
 import { serviceLimit } from '../src/modules/military/Separation.js';
-import { DIRECT_MAX_AGE } from '../src/modules/military/MOS.js';
+import { DIRECT_MAX_AGE, directGrade, directCredit, MOS } from '../src/modules/military/MOS.js';
+import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 import { upOrOut, mustRetire, maxServiceYears } from '../src/modules/military/Separation.js';
 import { commission, commissionedYears } from '../src/modules/military/MilitaryEngine.js';
 
@@ -536,6 +537,37 @@ const tests = {
     assert.equal(serviceLimit({ branch: 'guard', track: 'enlisted', component: 'reserve', grade: 4 }), Infinity, 'no Guard tenure limit');
     assert.equal(serviceLimit({ branch: 'guard', track: 'officer', component: 'reserve', grade: 2 }), Infinity);
     assert.ok(DIRECT_MAX_AGE >= 60, 'direct commissions with an age waiver');
+  },
+
+  'direct commissions: constructive credit sets the rank, corps and component cap it'() {
+    const pro = (age, degrees, creds, history) => {
+      const t = setup(61, age);
+      t.state.education.degrees.push(...degrees);
+      for (const c of creds) grantCredential(t.ctx, c, { silent: true });
+      t.state.career.history.push(...history);
+      return t.state;
+    };
+    const bsn = { type: 'bachelor', programId: 'bachelor', major: 'nursing', year: 22 };
+    // A new-grad nurse starts at O-1; ten years on the floor earns O-4 in the Reserve, O-4 on active duty is the cap.
+    assert.equal(directGrade(pro(23, [bsn], ['rn'], []), MOS['army.66H'], 'active'), 0);
+    const rn = pro(33, [bsn], ['rn'], [{ professionId: 'nursing', startAge: 22, endAge: 32 }]);
+    assert.equal(directGrade(rn, MOS['army.66H'], 'reserve'), 3);
+    assert.equal(directGrade(rn, MOS['army.66H'], 'active'), 3);
+    // A fresh law grad is a first lieutenant; a 20-year litigator caps at O-4 active, O-5 Reserve.
+    const jd = { type: 'professional', programId: 'jd', major: null, year: 25 };
+    assert.equal(directGrade(pro(26, [jd], ['barLicense'], []), MOS['army.27A'], 'active'), 1);
+    const lit = pro(46, [jd], ['barLicense'], [{ professionId: 'law', startAge: 25, endAge: 45 }]);
+    assert.equal(directGrade(lit, MOS['army.27A'], 'active'), 3);
+    assert.equal(directGrade(lit, MOS['army.27A'], 'reserve'), 4);
+    assert.ok(directCredit(lit, MOS['army.27A'], 'active').capped);
+    // A senior board-certified surgeon can enter as a colonel.
+    const md = { type: 'professional', programId: 'md', major: null, year: 28 };
+    const surgeon = pro(52, [md], ['medicalLicense', 'boardCertified'], [{ professionId: 'medical', startAge: 28, endAge: 51 }]);
+    assert.equal(directGrade(surgeon, MOS['army.62B'], 'reserve'), 5, 'O-6 Colonel');
+    // A tech executive: lieutenant colonel in the Reserve, but a captain at most on active duty.
+    const exec = pro(48, [], ['cissp'], [{ professionId: 'tech', startAge: 22, endAge: 47 }]);
+    assert.equal(directGrade(exec, MOS['army.17D'], 'reserve'), 4, 'O-5');
+    assert.equal(directGrade(exec, MOS['army.17D'], 'active'), 2, 'O-3');
   },
 
   'mustangs: enlisted time does not count against officer tenure limits'() {

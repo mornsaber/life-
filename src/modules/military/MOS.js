@@ -292,102 +292,144 @@ export function defaultMos(branch, track, specialty) {
 /* their civilian experience (constructive service credit).            */
 /* ------------------------------------------------------------------ */
 
-/** grade(state) returns a 0-based officer grade (O-1 = 0) or null if not qualified. */
+/*
+ * Constructive service credit (DoDI 1312.03): professional school and
+ * qualifying civilian experience count as years of commissioned service,
+ * and the credit sets the entry grade the way time in service sets
+ * promotion: O-2 at 2 years, O-3 at 4, O-4 at 10, O-5 at 16, O-6 at 22.
+ * Each corps caps the result, and active duty caps lower than the
+ * Reserve for most corps (the Army brought tech executives into the
+ * Reserve as lieutenant colonels; senior surgeons can enter at O-6).
+ *
+ * credit(state) returns years of credit, or null if not qualified.
+ * cap: { active, reserve } as 0-based grades (O-1 = 0).
+ */
+export const CREDIT_FOR_GRADE = [0, 2, 4, 10, 16, 22];
+export const gradeForCredit = (years) => CREDIT_FOR_GRADE.reduce((g, need, i) => (years >= need ? i : g), 0);
+const hasDegree = (state, programIds) => state.education.degrees.some((d) => programIds.includes(d.programId));
+
 export const DIRECT_COMMISSIONS = {
   jag: {
     name: 'Judge Advocate General\'s Corps', school: 'the Direct Commission Course and JAG School', maxAge: 50,
     needs: 'A law degree and an active bar license',
-    grade(state) {
+    cap: { active: 3, reserve: 4 },
+    credit(state) {
       if (!hasCredential(state, 'barLicense')) return null;
-      const yrs = yearsInProfession(state, ['law']);
-      return yrs >= 4 ? 2 : 1;
+      return 3 + yearsInProfession(state, ['law', 'prosecution', 'publicDefender']);
     },
   },
   medical: {
     name: 'Medical Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 60,
     needs: 'An MD and a state medical license',
-    grade(state) {
+    cap: { active: 5, reserve: 5 },
+    credit(state) {
       if (!hasCredential(state, 'medicalLicense')) return null;
-      if (!hasCredential(state, 'boardCertified')) return 2;
-      return yearsInProfession(state, ['medical']) >= 10 ? 4 : 3;
+      return 4 + yearsInProfession(state, ['medical']) + (hasCredential(state, 'boardCertified') ? 1 : 0);
     },
     bonus: 120000,
   },
   nurse: {
     name: 'Nurse Corps', school: 'the Direct Commission Course and Officer Basic', maxAge: 55,
     needs: 'A BSN and an RN license',
-    grade(state) {
+    cap: { active: 3, reserve: 4 },
+    credit(state) {
       if (!hasCredential(state, 'rn') || !meetsEducation(state, { level: 'bachelor' })) return null;
-      if (hasCredential(state, 'np')) return 2;
-      return yearsInProfession(state, ['nursing']) >= 3 ? 1 : 0;
+      const advanced = hasCredential(state, 'crnaLicense') ? 3 : hasCredential(state, 'np') ? 1 : 0;
+      return advanced + yearsInProfession(state, ['nursing', 'travelNursing']);
     },
     bonus: 30000,
   },
   pharmacy: {
     name: 'Medical Service Corps (Pharmacy)', school: 'the Direct Commission Course', maxAge: 55,
     needs: 'A Pharm.D. and a pharmacist license',
-    grade(state) {
+    cap: { active: 3, reserve: 4 },
+    credit(state) {
       if (!hasCredential(state, 'pharmacistLicense')) return null;
-      return yearsInProfession(state, ['pharmacy']) >= 5 ? 2 : 1;
+      return 2 + yearsInProfession(state, ['pharmacy']);
     },
   },
   chaplain: {
     name: 'Chaplain Corps', school: 'the Chaplain Basic Officer Leader Course', maxAge: 55,
     needs: 'A Master of Divinity and two years of ordained ministry',
-    grade(state) {
-      if (!state.education.degrees.some((d) => d.programId === 'seminary')) return null;
+    cap: { active: 2, reserve: 3 },
+    credit(state) {
+      if (!hasDegree(state, ['seminary'])) return null;
       const yrs = yearsInProfession(state, ['clergy', 'catholicClergy']);
       if (yrs < 2) return null;
-      return yrs >= 8 ? 2 : 1;
+      return 2 + Math.floor(yrs / 2);
     },
   },
   engineer: {
     name: 'USPHS Engineer Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'An engineering degree and an FE or PE license',
-    grade(state) {
+    cap: { active: 4, reserve: 4 },
+    credit(state) {
       if (!hasCredential(state, 'fe') && !hasCredential(state, 'pe')) return null;
-      const yrs = yearsInProfession(state, ['engineering', 'publicWorks', 'dot']);
-      return hasCredential(state, 'pe') ? (yrs >= 8 ? 3 : 2) : yrs >= 3 ? 1 : 0;
+      return (meetsEducation(state, { level: 'master' }) ? 1 : 0) + (hasCredential(state, 'pe') ? 1 : 0) + yearsInProfession(state, ['engineering', 'publicWorks', 'dot']);
     },
   },
   environmental: {
     name: 'USPHS Environmental Health Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'A bachelor\'s in environmental science, biology or engineering',
-    grade(state) {
+    cap: { active: 3, reserve: 3 },
+    credit(state) {
       if (!meetsEducation(state, { level: 'bachelor', majors: ['environmentalScience', 'biology', 'engineering'] })) return null;
-      return meetsEducation(state, { level: 'master' }) ? 1 : 0;
+      const edu = state.education.degrees.some((d) => d.type === 'doctorate') ? 3 : meetsEducation(state, { level: 'master' }) ? 1 : 0;
+      return edu + yearsInProfession(state, ['environmental', 'publicHealth']);
     },
   },
   scientist: {
     name: 'USPHS Scientist Category', school: 'the USPHS Officer Basic Course and the EIS summer course', maxAge: 55,
     needs: 'A Ph.D.',
-    grade(state) {
+    cap: { active: 4, reserve: 4 },
+    credit(state) {
       if (!state.education.degrees.some((d) => d.type === 'doctorate')) return null;
-      return yearsInProfession(state, ['university', 'environmental', 'regulatory']) >= 5 ? 3 : 2;
+      return 3 + yearsInProfession(state, ['university', 'research', 'nationalLab', 'environmental', 'regulatory', 'publicHealth']);
     },
   },
   behavioral: {
     name: 'USPHS Health Services Category', school: 'the USPHS Officer Basic Course', maxAge: 55,
     needs: 'An LCSW license',
-    grade(state) {
+    cap: { active: 4, reserve: 4 },
+    credit(state) {
       if (!hasCredential(state, 'lcsw')) return null;
-      return yearsInProfession(state, ['socialWork', 'cps']) >= 5 ? 2 : 1;
+      return 2 + yearsInProfession(state, ['socialWork', 'cps']);
     },
   },
   cyber: {
     name: 'Cyber Direct Commission', school: 'the Direct Commission Course and Cyber School', maxAge: 50,
     needs: 'Four years in tech and a security certification (Security+, CISSP or cloud)',
-    grade(state) {
-      const yrs = yearsInProfession(state, ['tech']);
+    cap: { active: 2, reserve: 4 },
+    credit(state) {
+      const yrs = yearsInProfession(state, ['tech', 'cybersecurity', 'dataScience']);
       const cert = ['cissp', 'securityPlus', 'awsCert'].some((c) => hasCredential(state, c));
       if (yrs < 4 || !cert) return null;
-      return yrs >= 10 && hasCredential(state, 'cissp') ? 3 : yrs >= 7 ? 2 : 1;
+      // Civilian tech experience counts at a discount; a graduate degree and the CISSP add a year each.
+      return Math.floor(yrs * 0.6) + (meetsEducation(state, { level: 'master' }) ? 1 : 0) + (hasCredential(state, 'cissp') ? 1 : 0);
     },
   },
 };
+for (const dc of Object.values(DIRECT_COMMISSIONS)) {
+  dc.grade = (state, component = 'reserve') => {
+    const years = dc.credit(state);
+    if (years == null) return null;
+    return Math.min(gradeForCredit(years), dc.cap[component] ?? dc.cap.reserve);
+  };
+}
 
-export function directGrade(state, mos) {
-  return mos?.direct ? DIRECT_COMMISSIONS[mos.direct].grade(state) : null;
+/** Entry grade (0-based) for a direct-commission job, or null if not qualified. */
+export function directGrade(state, mos, component = 'reserve') {
+  return mos?.direct ? DIRECT_COMMISSIONS[mos.direct].grade(state, component) : null;
+}
+
+/** Years of constructive credit and whether the corps' cap held the rank down. */
+export function directCredit(state, mos, component = 'reserve') {
+  if (!mos?.direct) return null;
+  const dc = DIRECT_COMMISSIONS[mos.direct];
+  const years = dc.credit(state);
+  if (years == null) return null;
+  const cap = dc.cap[component] ?? dc.cap.reserve;
+  return { years, grade: Math.min(gradeForCredit(years), cap), capped: gradeForCredit(years) > cap, cap };
 }
 
 /** Starting enlisted grade from education and civilian credentials (0-based; E-1 = 0). */

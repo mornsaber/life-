@@ -2251,7 +2251,7 @@ const tests = {
     resolve(ph.engine, 'military.chooseSpecialty', 'usphs.PHARM');
     const svc = ph.state.military.service;
     assert.equal(svc.branch, 'usphs');
-    assert.equal(svc.grade, 2);
+    assert.equal(svc.grade, 3, "12 years of pharmacy practice: O-4 Lieutenant Commander");
     assert.equal(svc.clearance, null, 'no security clearance needed');
     // A year of service: missions, never combat.
     for (let y = 0; y < 4; y++) { ph.state.prompts = []; ph.engine.ageUp(); }
