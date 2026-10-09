@@ -27,7 +27,7 @@ function check(state, where) {
     for (const k of ['cash', 'valuation', 'assets', 'quality', 'reputation', 'basis']) assert.ok(Number.isFinite(b[k] ?? 0), `${tag}: ${k}=${b[k]}`);
     assert.ok(b.valuation >= 0, `${tag}: valuation ${b.valuation}`);
     assert.ok(b.ownerPct > 0 && b.ownerPct <= 1, `${tag}: stake ${b.ownerPct}`);
-    assert.ok(Number.isInteger(b.scale) && b.scale >= 1, `${tag}: scale ${b.scale}`);
+    assert.ok(b.scale > 0 && (Number.isInteger(b.scale) || b.franchise), `${tag}: scale ${b.scale}`);
     assert.ok(Number.isInteger(b.staff.headcount) && b.staff.headcount >= 0, `${tag}: headcount ${b.staff.headcount}`);
     assert.ok(b.staff.morale >= 0 && b.staff.morale <= 100, `${tag}: morale`);
     assert.ok(Number.isFinite(b.staff.costPremium) && b.staff.costPremium < 3, `${tag}: cost premium ${b.staff.costPremium}`);

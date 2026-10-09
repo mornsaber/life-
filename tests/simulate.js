@@ -199,11 +199,12 @@ function checkInvariants(state) {
     assert.ok(!(b.franchise && b.franchisor), 'franchisee and franchisor at once');
     if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
     if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
-    assert.ok(Number.isInteger(b.scale) && b.scale >= 1, `business scale ${b.scale}`);
+    // Franchise units can be a smaller format (a 0.6-size pizza unit), so scale isn't always whole.
+    assert.ok(b.scale > 0 && (Number.isInteger(b.scale) || b.franchise), `business scale ${b.scale}`);
     assert.ok(Number.isFinite(b.staff.costPremium) && b.staff.costPremium > -0.5 && b.staff.costPremium < 3, `labor cost premium ${b.staff.costPremium}`);
     if (b.union) assert.ok(b.staff.unionized && state.unions.byId[b.union.unionId], 'business union local');
   }
-  for (const h of state.business.holdings ?? []) assert.ok(Number.isFinite(h.cash) && Number.isFinite(h.valuation) && h.ownerPct > 0 && h.ownerPct <= 1 && h.scale >= 1, `holding ${h.name}`);
+  for (const h of state.business.holdings ?? []) assert.ok(Number.isFinite(h.cash) && Number.isFinite(h.valuation) && h.ownerPct > 0 && h.ownerPct <= 1 && h.scale > 0, `holding ${h.name}`);
   for (const u of Object.values(state.unions?.byId ?? {})) assert.ok(u.members > 0 && u.treasury >= 0 && u.strikeFund >= 0 && u.density > 0 && u.density <= 1 && Number.isFinite(u.militancy), `union ${u.name}`);
   if (state.unions?.mine) assert.ok(state.career.job?.unionMember && state.unions.byId[state.unions.mine.unionId], 'union membership follows the job');
   for (const body of Object.values(state.legislature?.bodies ?? {})) assert.ok(body.labor >= 0 && body.labor <= body.seats && body.leaders?.presiding?.name, `legislature ${body.name}`);
