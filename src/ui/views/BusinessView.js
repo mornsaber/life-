@@ -8,11 +8,14 @@ import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue,
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked, maxScale, expansionCost } from '../../modules/business/BusinessEngine.js';
+import { canAfford } from '../../core/State.js';
 import { STRATEGIES, canDelegate } from '../../modules/business/GrowthPlan.js';
+import { conglomerateOf, subsidiaries, formEligibility, holdingsCap, acquisitionTargets, appraise, synergyRate, hqCost, FORM_COST, CONGLOMERATE_HOLDINGS } from '../../modules/business/Conglomerate.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
 import { PRICE_LEVELS, PAY_LEVELS, SUPPLIERS, OWNER_DECISIONS, acquisitionPrice, relocationCost } from '../../modules/business/OwnerActions.js';
 import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from '../../modules/org/Businesses.js';
+import { RIVAL_STRATEGIES, marketShare, underPriceWar } from '../../modules/business/Rivals.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY, staffFactor } from '../../modules/business/Business.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
@@ -179,12 +182,20 @@ function orgCard(state, biz) {
 function marketCard(state, biz) {
   const rivals = competitorsOf(state, biz);
   if (!rivals.length) return '';
+  const age = state.character.age;
+  const share = marketShare(state, biz, rivals);
+  const war = underPriceWar(state, biz, rivals);
   const rows = rivals.map((o) => {
+    const b = o.business;
+    const st = RIVAL_STRATEGIES[b.strategy];
     const price = acquisitionPrice(biz, o);
-    return `<li class="report-row"><div><b>${esc(o.name)}</b> <small class="muted">owner ${esc(o.owner.name)} · ~${o.business.staff} staff · reputation ${o.business.reputation} · ${o.business.years ?? 0} yrs${o.business.founderId ? ' · founded by a former employee' : ''}</small></div>
+    return `<li class="report-row"><div><b>${esc(o.name)}</b> ${st ? chip(`${st.icon} ${st.label}`) : ''} ${(b.scale ?? 1) > 1 ? chip(`📍 ${b.scale} locations`) : ''} ${b.priceWarUntil >= age ? chip('🏷️ Price war', 'warn') : b.price === 'premium' ? chip('💎 Premium prices') : ''}
+      <small class="muted">${b.parent ? `owned by ${esc(b.parent)}` : `owner ${esc(o.owner.name)}`} · ~${b.staff} staff · reputation ${b.reputation} · ${b.years ?? 0} yrs${b.founderId ? ' · founded by a former employee' : ''}${b.lastMove ? ` · last move: ${esc(b.lastMove)}` : ''}</small></div>
       <div class="toggle-row">${button(`🤝 Acquire · ${money(price)}`, 'business.acquire', { arg: o.id, variant: 'tiny', disabled: biz.cash < price, hint: 'From the business account' })}${button('🔗 Merge (stock)', 'business.merge', { arg: o.id, variant: 'tiny' })}</div></li>`;
   }).join('');
-  return card('Your Market', `<p class="muted">Competitors take a share of customers; your reputation against theirs decides who wins. They grow, fail and open around you.</p><ul class="history">${rows}</ul>`, { icon: '🏁' });
+  return card('Your Market', `${meter(Math.round(share * 100), { max: 100, label: '📊 Your market share', suffix: '%', tone: share >= 0.35 ? 'good' : share >= 0.15 ? 'mid' : 'bad' })}
+    ${war ? '<p class="why">🏷️ A rival is running a price war. Match on price (Strategy & Policy) or out-serve them to hold your customers.</p>' : ''}
+    <p class="muted">Rivals act every year — price wars, expansions, raiding your staff, ad blitzes, underbidding your contracts — and outside groups buy them up. Reputation, size and price decide who wins customers.</p><ul class="history">${rows}</ul>`, { icon: '🏁' });
 }
 
 /** Prices, pay, suppliers, investment, debt and locations. */
@@ -240,6 +251,40 @@ function managementCard(state, biz) {
     <div class="action-grid">${button(handedOff ? '✅ Management runs it' : '🗂️ Hand it to management', 'business.handOff', { variant: 'small', disabled: !ok || handedOff, hint: 'Managers run it day to day, handle routine calls and every delegable duty, on a steady growth plan — you get one report a year' })}
       ${biz.role !== 'operator' ? button('🧑‍💼 Take back day-to-day control', 'business.setRole', { arg: 'operator', variant: 'small', disabled: Boolean(state.career.job), hint: state.career.job ? 'Quit your job first' : 'Run it yourself again' }) : ''}</div>
     <p class="fine">A plan expands from profits, staffs each location, sets marketing and grows the fleet on its own. Owner-run businesses top out at five locations; with a CEO and 40+ staff they can grow to twelve.</p>`, { icon: '🗂️', accent: 'green' });
+}
+
+/** The holding company: subsidiaries, treasury, payout and acquisitions. */
+function conglomerateCard(state) {
+  const c = conglomerateOf(state);
+  const subs = subsidiaries(state);
+  if (!c) {
+    if (!subs.length) return '';
+    const ok = formEligibility(state);
+    return card('Holding Company', `<p class="muted">Incorporate a parent company over your businesses: shared services cut every subsidiary's costs, a central treasury moves cash where it's needed and pays you dividends, and you can own up to ${CONGLOMERATE_HOLDINGS} companies — buying businesses of any kind into the group.</p>
+      <div class="action-grid">${button('🏛️ Form a holding company', 'business.formConglomerate', { variant: 'small', disabled: !ok.ok, hint: ok.ok ? `${money(FORM_COST)} in legal fees` : ok.reason })}</div>`, { icon: '🏛️' });
+  }
+  const revenue = subs.reduce((s, b) => s + (b.lastYear?.revenue ?? 0), 0);
+  const profit = subs.reduce((s, b) => s + (b.lastYear?.netIncome ?? 0), 0);
+  const value = subs.reduce((s, b) => s + (b.valuation ?? 0) * b.ownerPct, 0) + c.treasury;
+  const rows = subs.map((b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${esc(b.name)}</b> <small class="muted">${esc(BUSINESS_TYPES[b.typeId]?.name ?? '')} · ${b.scale} location${b.scale > 1 ? 's' : ''} · ${money(b.lastYear?.revenue ?? 0)} revenue · <span class="${(b.lastYear?.netIncome ?? 0) < 0 ? 'neg' : 'pos'}">${money(b.lastYear?.netIncome ?? 0)}</span> profit · ${b === state.business.current ? 'you run it' : `${STRATEGIES[b.plan?.strategy ?? 'off'].name.toLowerCase()} plan`}</small></li>`).join('');
+  const targets = acquisitionTargets(state).map((o) => ({ o, a: appraise(state, o) })).sort((x, y) => y.a.profit - x.a.profit).slice(0, 8);
+  const full = (state.business.holdings ?? []).length >= holdingsCap(state);
+  const buys = targets.map(({ o, a }) => `<li class="report-row"><div><b>${BUSINESS_TYPES[o.business.typeId].icon} ${esc(o.name)}</b> <small class="muted">${esc(BUSINESS_TYPES[o.business.typeId].name)} · ~${o.business.staff} staff · reputation ${o.business.reputation} · est. ${money(a.revenue)} revenue, ${money(a.profit)} profit</small></div>
+    ${button(`🏛️ Acquire · ${money(a.price)}`, 'business.acquireCompany', { arg: o.id, variant: 'tiny', disabled: full || !canAfford(state, Math.max(0, a.price - c.treasury)), hint: 'Treasury first, then your own money' })}</li>`).join('');
+  return card(c.name, `
+    ${kv([
+      ['Companies', `${subs.length} of ${CONGLOMERATE_HOLDINGS + 1}`],
+      ['Group revenue', money(revenue)],
+      ['Group profit', `<span class="${profit < 0 ? 'neg' : 'pos'}">${money(profit)}</span>`],
+      ['Treasury', money(c.treasury)],
+      ['Your stake, all in', money(value)],
+      ['Shared-services savings', `${(synergyRate(subs.length) * 100).toFixed(1)}% of revenue · HQ costs ${money(hqCost(revenue))}/yr`],
+    ])}
+    ${c.lastReport?.length ? `<p class="fine">📋 Last year: ${esc(c.lastReport.join('; '))}.</p>` : ''}
+    <h4 class="sub">Dividend to you</h4><div class="toggle-row chips-row">${[0, 0.25, 0.5, 1].map((p) => button(p === 0 ? 'Reinvest all' : `${p * 100}% of spare cash`, 'business.setPayout', { arg: String(p), variant: c.payout === p ? 'tiny on' : 'tiny' })).join('')}</div>
+    <ul class="history">${rows}</ul>
+    ${disclosure('cong.buy', '🛒 Buy a company into the group', buys ? `<ul class="history">${buys}</ul>` : '<p class="muted">No independent businesses for sale in your market right now.</p>', { count: targets.length })}
+    <p class="fine">Each year headquarters sweeps spare cash from subsidiaries (keeping a cushion), covers any that run short, funds the best grower's next location and pays you a dividend. Savings grow with the number of companies; with only two, headquarters may cost more than it saves.</p>`, { icon: '🏛️', accent: 'yellow' });
 }
 
 /** Licenses the business holds or could get. */
@@ -393,7 +438,7 @@ function ownedView(state, biz) {
 export function businessView(state) {
   if (!state.business) return '';
   const biz = currentBusiness(state);
-  if (biz) return `${ownedView(state, biz)}${holdingsCard(state)}${historyCard(state)}`;
+  if (biz) return `${conglomerateCard(state)}${ownedView(state, biz)}${holdingsCard(state)}${historyCard(state)}`;
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
-  return `${holdingsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
+  return `${conglomerateCard(state)}${holdingsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
 }

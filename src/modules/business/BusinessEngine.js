@@ -23,6 +23,7 @@ import {
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
+import { conglomerateTick, conglomerateOf, formEligibility, holdingsCap, acquireCompany, FORM_COST } from './Conglomerate.js';
 import { FleetActions, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
 import {
@@ -696,6 +697,7 @@ export const BusinessEngine = {
     const biz = currentBusiness(ctx.state);
     if (biz) businessTick(ctx, biz);
     for (const h of [...(ctx.state.business.holdings ?? [])]) holdingTick(ctx, h);
+    conglomerateTick(ctx, PLAN_DEPS);
   },
 
   actions: {
@@ -890,6 +892,26 @@ export const BusinessEngine = {
       biz.plan = { ...(biz.plan ?? {}), strategy, sinceAge: ctx.state.character.age };
       ctx.log(strategy === 'off' ? `You took growth decisions at ${biz.name} back into your own hands.` : `${biz.name} is on a ${STRATEGIES[strategy].name.toLowerCase()} plan. ${STRATEGIES[strategy].desc}`, STRATEGIES[strategy].icon);
     },
+    /** Incorporate a holding company over everything you own. arg: optional name. */
+    formConglomerate(ctx, name) {
+      const { state } = ctx;
+      const ok = formEligibility(state);
+      if (!ok.ok) return ctx.toast(ok.reason, 'warn');
+      ctx.spend(FORM_COST, 'Holding company formation', { credit: true });
+      const clean = String(name ?? '').trim().slice(0, 40);
+      state.business.conglomerate = { name: clean || `${state.character.lastName} Holdings`, foundedAge: state.character.age, treasury: 0, payout: 0.5, acquisitions: 0, lastReport: [] };
+      ctx.log(`You incorporated ${state.business.conglomerate.name}, a holding company over your businesses. Shared services, a central treasury and room for up to ${holdingsCap(state)} companies.`, '🏛️', 'milestone');
+    },
+    /** arg: '0' | '0.25' | '0.5' | '1' — share of the treasury above its reserve paid to you each year. */
+    setPayout(ctx, pct) {
+      const c = conglomerateOf(ctx.state);
+      const n = Number(pct);
+      if (c && [0, 0.25, 0.5, 1].includes(n)) c.payout = n;
+    },
+    /** arg: orgId — buy a business in your market into the group. */
+    acquireCompany(ctx, orgId) {
+      acquireCompany(ctx, orgId);
+    },
     /** arg: 'holdingId:strategy' — the plan for a business you hold passively. */
     setHoldingPlan(ctx, arg) {
       const [id, strategy] = String(arg).split(':');
@@ -925,7 +947,7 @@ export const BusinessEngine = {
       if (!biz) return;
       const org = ensureBusinessOrg(state, biz);
       if (!org.ceo) return ctx.toast('Hire someone to run it first.', 'warn');
-      if ((state.business.holdings ?? []).length >= 4) return ctx.toast('That\'s as many businesses as you can keep an eye on.', 'warn');
+      if ((state.business.holdings ?? []).length >= holdingsCap(state)) return ctx.toast(conglomerateOf(state) ? `${conglomerateOf(state).name} is holding all it can.` : 'That\'s as many businesses as you can keep an eye on — form a holding company to own more.', 'warn');
       biz.role = 'absentee';
       state.business.holdings.push(biz);
       state.business.current = null;

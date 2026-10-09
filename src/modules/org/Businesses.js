@@ -28,6 +28,7 @@ import { getProfession } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { orgType, sideRng, newPerson, seatHolders, supervises, personOf, initOrgs } from './Organizations.js';
 import { randomName } from '../../core/State.js';
+import { rivalsTick, effectiveReputation, underPriceWar, rivalProfile } from '../business/Rivals.js';
 import { departure, seat } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
 
@@ -354,8 +355,12 @@ function foundRival(ctx, biz, person) {
 export function competitionFactor(state, biz) {
   const rivals = competitorsOf(state, biz);
   if (!rivals.length) return 1.05;
-  const avg = rivals.reduce((s, o) => s + (o.business.reputation ?? 50), 0) / rivals.length;
-  return clamp(1 + ((biz.reputation ?? 50) - avg) / 250 - (rivals.length - 3) * 0.02, 0.85, 1.12);
+  const age = state.character.age;
+  // Rivals pull customers by reputation, size and price; your own prices and locations count elsewhere.
+  const avg = rivals.reduce((s, o) => s + effectiveReputation(o.business, age), 0) / rivals.length;
+  const locations = rivals.reduce((s, o) => s + (o.business.scale ?? 1), 0);
+  const priceWar = underPriceWar(state, biz, rivals) ? 0.04 : 0;
+  return clamp(1 + ((biz.reputation ?? 50) - avg) / 250 - (locations - 3) * 0.02 - priceWar, 0.8, 1.12);
 }
 
 /**
@@ -377,6 +382,9 @@ export function npcBusinessesTick(ctx) {
     b.years = (b.years ?? 0) + 1;
     b.reputation = Math.round(clamp((b.reputation ?? 50) + rng.int(-5, 5), 10, 95));
     b.staff = Math.max(1, Math.round((b.staff ?? 3) * (1 + (b.reputation - 50) / 300 + rng.float(-0.08, 0.1))));
+    // Struggling chains close locations; price wars end.
+    if ((b.scale ?? 1) > 1 && b.reputation < 40 && rng.chance(0.25)) b.scale -= 1;
+    if (b.priceWarUntil != null && b.priceWarUntil < age && b.strategy !== 'discounter') b.price = 'standard';
     o.size = sizeForHeadcount(b.staff);
     const fail = failBase * (b.years <= 3 ? 2 : 1) * (b.reputation < 35 ? 2 : 1);
     if (!rng.chance(fail)) continue;
@@ -394,11 +402,15 @@ export function marketTick(ctx, biz) {
   const { state } = ctx;
   npcBusinessesTick(ctx);
   const rng = sideRng(state);
+  const regionId = businessOrg(state, biz)?.regionId ?? state.character.regionId;
   if (rng.chance(state.economy?.phase === 'recession' ? 0.04 : 0.1)) {
-    const o = npcBusiness(state, biz.typeId, businessOrg(state, biz)?.regionId ?? state.character.regionId);
+    const o = npcBusiness(state, biz.typeId, regionId);
     o.business.tickedAge = state.character.age;
-    ctx.log(`A new competitor opened: ${o.name}.`, '🏁');
+    rivalProfile(rng, o);
+    ctx.log(`A new competitor opened: ${o.name} (${o.business.strategy === 'discounter' ? 'a discounter' : o.business.strategy === 'premium' ? 'going upscale' : 'hungry for customers'}).`, '🏁');
   }
+  // Rivals act: price wars, expansions, poaching, ad blitzes, buyouts.
+  rivalsTick(ctx, biz, competitorsOf(state, biz), { rng, npc: () => npcBusiness(state, biz.typeId, regionId) });
 }
 
 /* ------------------------------------------------------------------ */
