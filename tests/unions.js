@@ -49,6 +49,7 @@ const year = (engine, choose = ['decline', 'wait', 'none', 'settle', 'ratify', '
   }
 };
 
+const syncMembershipFor = (engine) => engine.context().emit('unions:sync', {});
 const tests = {
   'every union in the state is a visible organization'() {
     const { engine, state } = teacher();
@@ -146,6 +147,64 @@ const tests = {
     assert.equal(struck.strikeWeeks, 10);
     delete biz.strike;
     clean(VIEWS.business(state));
+  },
+
+  'an employee can organize a non-union workplace and win'() {
+    const { engine, state } = teacher(6);
+    const job = state.career.job;
+    job.employer.union = null;
+    job.unionMember = false;
+    job.yearsAtEmployer = 3;
+    job.coworkers = 80;
+    syncMembershipFor(engine);
+    const html = VIEWS.career(state);
+    clean(html);
+    assert.ok(html.includes('Start organizing your workplace'));
+    engine.dispatch('unions.startDrive');
+    const d = state.unions.drive;
+    assert.ok(d && d.support > 0, 'a drive');
+    for (let i = 0; i < 6 && d.support < 60; i++) { state.yearly = {}; engine.dispatch('unions.signCards'); engine.dispatch('unions.signCards'); }
+    assert.ok(d.support >= 30, `support ${d.support}`);
+    clean(VIEWS.career(state));
+    engine.dispatch('unions.fileElection');
+    assert.ok(d.filed);
+    // Run elections until the union is in (a lost vote allows another try later).
+    for (let i = 0; i < 12 && !state.career.job?.employer.union; i++) {
+      if (!state.unions.drive && state.career.job) {
+        state.unions.driveCooldownUntil = 0;
+        state.yearly = {};
+        engine.dispatch('unions.startDrive');
+        for (let k = 0; k < 4; k++) { state.yearly = {}; engine.dispatch('unions.signCards'); }
+        engine.dispatch('unions.fileElection');
+      }
+      year(engine, ['charge', 'settle', 'ratify', 'picket', 'decline', 'wait', 'none']);
+      if (!state.career.job) break;
+    }
+    assert.ok(state.career.job?.employer.union, 'the workplace has a union');
+    assert.ok(state.career.job.unionMember);
+    assert.equal(state.unions.mine.role, 'steward', 'a founding steward');
+    assert.ok(state.unions.mine.founder);
+  },
+
+  'the job tab lists the licenses that matter for the job'() {
+    const { state } = teacher(8);
+    const html = VIEWS.career(state);
+    clean(html);
+    assert.ok(html.includes('Licenses for Your Job'), 'a job licenses card');
+    assert.ok(/credentials\.pursue|cert done/.test(html), 'with status or a way to pursue each');
+  },
+
+  'card check recognizes a signed majority without an election'() {
+    const { engine, state } = teacher(7);
+    enact(state, { level: 'state', where: 'IL', lawId: 'cardCheck', value: true, age: 30 });
+    const job = state.career.job;
+    job.employer.union = null;
+    job.unionMember = false;
+    job.yearsAtEmployer = 3;
+    job.coworkers = 90;
+    engine.dispatch('unions.startDrive');
+    for (let i = 0; i < 10 && !job.employer.union; i++) { state.yearly = {}; engine.dispatch('unions.signCards'); }
+    assert.ok(job.employer.union, 'recognized by card check');
   },
 
   'laws shape pay and unions'() {

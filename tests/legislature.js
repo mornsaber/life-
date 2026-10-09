@@ -11,7 +11,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { bodiesHere, mySeat, myBody, ensureBodies } from '../src/modules/politics/Legislature.js';
-import { lawValue, levelValue, LAWS } from '../src/modules/politics/Laws.js';
+import { lawValue, levelValue, LAWS, enact } from '../src/modules/politics/Laws.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -130,6 +130,44 @@ const tests = {
     }
     assert.ok(signed, 'a bill reached the governor');
     assert.ok(g.state.laws.enacted.some((e) => e.sponsor !== 'you' && e.level === 'state'), 'the signed bill is law');
+  },
+
+  'chambers have named members and committee chairs; members vote on the record'() {
+    const { engine, state } = life(6);
+    ensureBodies(state);
+    for (const b of bodiesHere(state)) {
+      assert.ok(b.members.length === Math.min(b.seats, 15), `${b.name}: ${b.members.length} named`);
+      assert.ok(Object.keys(b.chairs).length >= 4, 'committee chairs');
+    }
+    seat(engine, 'cityCouncil', 1);
+    const body = myBody(state);
+    assert.ok(body.members.some((m) => m.you), 'you are on the roster');
+    let recorded = false;
+    for (let i = 0; i < 6 && !recorded; i++) {
+      state.prompts = [];
+      engine.ageUp();
+      const p = state.prompts.find((x) => x.type === 'legislature.recordVote' || x.type === 'legislature.vote');
+      if (p) { engine.resolvePrompt(p.id, 'no'); recorded = true; }
+    }
+    assert.ok(recorded, 'a vote on the record');
+    assert.ok(mySeat(state).record.length > 0);
+    clean(VIEWS.politics(state));
+    assert.ok(VIEWS.politics(state).includes('Chairs:'));
+  },
+
+  'the new laws change the game: taxes, cannabis, non-competes, public unions'() {
+    const { state } = life(7);
+    ensureBodies(state);
+    enact(state, { level: 'state', where: 'IL', lawId: 'nonCompeteBan', value: true, age: 35 });
+    assert.equal(lawValue(state, 'nonCompeteBan', 'IL'), true);
+    enact(state, { level: 'state', where: 'IL', lawId: 'cannabis', value: false, age: 35 });
+    assert.equal(lawValue(state, 'cannabis'), false);
+    enact(state, { level: 'state', where: 'IL', lawId: 'stateIncomeTax', value: 'hike', age: 35 });
+    assert.equal(lawValue(state, 'stateIncomeTax'), 'hike');
+    enact(state, { level: 'city', where: 'chicago', lawId: 'zoning', value: 'upzoned', age: 35 });
+    assert.equal(lawValue(state, 'zoning'), 'upzoned');
+    assert.ok(Object.keys(LAWS).length >= 19);
+    clean(VIEWS.politics(state));
   },
 
   'business owners and union officers can lobby'() {

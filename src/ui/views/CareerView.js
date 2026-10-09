@@ -29,7 +29,8 @@ import { DUTIES, canDelegate } from '../../modules/career/ManagementEngine.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { REGIONS } from '../../modules/life/Regions.js';
-import { WORK_MODES, workModeOf, NONCOMPETE_BANS } from '../../modules/career/JobMarket.js';
+import { WORK_MODES, workModeOf } from '../../modules/career/JobMarket.js';
+import { lawValue } from '../../modules/politics/Laws.js';
 import { GIGS, HOURS, gigEligibility } from '../../modules/career/GigWork.js';
 import { BASES } from '../../modules/career/WorkplaceClaims.js';
 import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS, EMERITUS_BY_PROFESSION } from '../../modules/career/Emeritus.js';
@@ -45,6 +46,7 @@ import { publishingCard, adjunctCard } from './HigherEdView.js';
 import { labCard } from './LabView.js';
 import { POSTS } from '../../modules/business/OwnerJob.js';
 import { unionPanel, unionCards } from './UnionView.js';
+import { jobLicensesCard } from './JobLicensesView.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -80,7 +82,7 @@ function jobMarketCard(state) {
   return card('Job Market', `
     ${kv([
       job ? ['Where you work', `${WORK_MODES[mode].icon} ${WORK_MODES[mode].label}`] : null,
-      job?.nonCompete ? ['Your contract', `${job.nonCompete.years}-year non-compete if you leave${NONCOMPETE_BANS.includes(job.employer.stateId) ? ' (unenforceable in this state)' : ''}`] : null,
+      job?.nonCompete ? ['Your contract', `${job.nonCompete.years}-year non-compete if you leave${lawValue(state, 'nonCompeteBan', job.employer.stateId) ? ' (unenforceable in this state)' : ''}`] : null,
       nc ? ['Non-compete', `Bars you from ${esc(getProfession(nc.professionId).name)} until age ${nc.untilAge} (${esc(nc.employer)})`] : null,
       c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
       claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
@@ -353,7 +355,7 @@ export function careerView(state, ui = {}) {
   }).join('');
   const ownJob = posts.length ? card('Your Job: Your Own Company', `${postLines}<p class="fine">Set your focus and make the year's big moves from the Business tab.</p>`, { icon: '👔', accent: 'cyan' }) : '';
   const current = job
-    ? currentJob(state) + organizationCard(state, job) + managementConsole(job) + ownJob
+    ? currentJob(state) + jobLicensesCard(state) + organizationCard(state, job) + managementConsole(job) + ownJob
     : ownJob || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   // Jobs and businesses you ran, one timeline.
   const stints = [

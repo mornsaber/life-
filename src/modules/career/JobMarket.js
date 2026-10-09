@@ -9,6 +9,7 @@
  * state.career.nonCompete: { professionId, untilAge, employer, stateId } — binding you after you leave
  */
 import { clamp } from '../../core/Random.js';
+import { lawValue } from '../politics/Laws.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, nextLevels } from './Ladder.js';
@@ -72,7 +73,7 @@ function nonCompeteCheck(ctx) {
   const nc = state.career.nonCompete;
   const job = state.career.job;
   if (!nc || !job || nc.professionId !== job.professionId || state.character.age >= nc.untilAge) return;
-  if (NONCOMPETE_BANS.includes(nc.stateId) || NONCOMPETE_BANS.includes(job.employer.stateId)) {
+  if (lawValue(state, 'nonCompeteBan', nc.stateId) || lawValue(state, 'nonCompeteBan', job.employer.stateId)) {
     ctx.log(`${nc.employer} grumbled about your non-compete, but courts here won't enforce it.`, '📜');
     state.career.nonCompete = null;
     return;

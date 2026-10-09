@@ -8,6 +8,7 @@ import { calculateIncomeTax } from '../career/CareerEngine.js';
 import { isOnActiveDuty } from '../../core/State.js';
 import { regionOf, stateIdOf } from './Regions.js';
 import { stateIncomeTax, STATES } from './States.js';
+import { lawValue } from '../politics/Laws.js';
 import { ltcgTax } from '../investing/Assets.js';
 import { coverage } from '../health/Insurance.js';
 import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
@@ -73,7 +74,9 @@ export const Finances = {
     const married = isMarried(state);
     const joint = (fn, amount) => (married ? 2 * fn(amount / 2) : fn(amount));
     // States tax capital gains as ordinary income.
-    let stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, agi + ltcg - (married ? 10000 : 5000)));
+    // The legislature can cut or raise the state's rates (politics/Laws).
+    const stateRate = { cut: 0.8, standard: 1, hike: 1.2 }[lawValue(state, 'stateIncomeTax')] ?? 1;
+    let stateTax = (stateRate === 1 ? (x) => x : (x) => Math.round(x * stateRate))(joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, agi + ltcg - (married ? 10000 : 5000))));
     // Itemize when mortgage interest, state and local taxes, charity and big medical bills beat the standard deduction.
     const itemized = itemizedDeductions(state, { stateTax, agi: agi + ltcg });
     const itemizing = itemized.total > standardDeduction(married);

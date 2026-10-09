@@ -11,6 +11,7 @@
  * street and organized crimes in StreetCrime.js.
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { lawValue } from '../politics/Laws.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { commitOffense } from './JusticeSystem.js';
 import { stateOf } from '../life/Regions.js';
@@ -223,7 +224,7 @@ export const RiskyActions = {
     state.legal.flags.drugUseAge = state.character.age;
     ctx.stat('happiness', 5);
     ctx.stat('health', -3);
-    if (stateOf(state).cannabis && rng.chance(0.7)) {
+    if ((lawValue(state, 'cannabis') ?? stateOf(state).cannabis) && rng.chance(0.7)) {
       ctx.log(`You bought legal cannabis at a ${stateOf(state).name} dispensary. (Still illegal federally — clearance investigators will ask.)`, '🌿', 'warn');
       return;
     }

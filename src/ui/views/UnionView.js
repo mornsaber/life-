@@ -5,6 +5,7 @@
 import { esc, money, button, card, chip, meter, kv, disclosure } from '../Components.js';
 import { unionFor, unionById, unionsInState, unionPower, myUnion, myRole, runEligibility, electionOdds, UNION_ROLES, UNION_ACTIONS, DUES_LEVELS, presidentPay, officerPay, STEWARD_STIPEND, rightToWork } from '../../modules/career/LaborUnions.js';
 import { lawValue } from '../../modules/politics/Laws.js';
+import { organizeEligibility, driveUnion, electionWinChance, DRIVE_SIGNUPS } from '../../modules/career/LaborUnions.js';
 import { stateOf } from '../../modules/life/Regions.js';
 
 const pct = (x) => `${Math.round(x * 100)}%`;
@@ -33,7 +34,7 @@ function stats(u) {
 /** The union panel inside your job card. */
 export function unionPanel(state, job) {
   const eu = job.employer.union;
-  if (!eu) return '';
+  if (!eu) return organizePanel(state, job);
   const u = recordFor(state, eu);
   const supervisor = job.abilities.includes('supervise');
   const head = `<b>✊ ${esc(eu.name)}</b> ${chip(eu.strike ? 'Strikes allowed' : 'No-strike clause → arbitration', eu.strike ? 'warn' : '')} ${chip(`Contract: ${eu.contractYearsLeft} yr left`)} ${u ? chip(`Power ${unionPower(u)}/100`, tone(unionPower(u)) === 'good' ? 'green' : '') : ''}`;
@@ -105,3 +106,25 @@ export function businessUnionPanel(state, biz) {
 }
 
 export { unionFor };
+
+/** No union yet: organize one from the inside. */
+function organizePanel(state, job) {
+  const d = state.unions?.drive;
+  if (d && d.employerId === job.employer.id) {
+    const left = DRIVE_SIGNUPS - (state.yearly['unions.cards'] ?? 0);
+    const cardCheck = lawValue(state, 'cardCheck');
+    return `<div class="union">
+      <b>✊ Organizing ${esc(job.employer.name)}</b> ${chip(esc(d.union.name))} ${d.filed ? chip('🗳️ Election filed', 'warn') : ''}
+      ${meter(d.support, { label: '📝 Coworkers who signed cards', tone: d.support > 50 ? 'good' : d.support >= 30 ? 'mid' : 'bad' })}
+      <p class="fine">${d.filed ? `The vote is at year-end: ≈${Math.round(electionWinChance(state, d) * 100)}% to win. Keep signing people up — the company will campaign against it.` : cardCheck ? 'Card check is the law here: sign up a majority and the union is recognized without an election.' : 'File for an election once enough coworkers have signed — a majority gives you a real shot.'} Firing an organizer is illegal, but it happens.</p>
+      <div class="toggle-row">
+        ${button('📝 Sign up coworkers', 'unions.signCards', { variant: 'small', disabled: left <= 0, hint: left > 0 ? `${left} left this year` : 'Next year' })}
+        ${d.filed ? '' : button('🗳️ File for an election', 'unions.fileElection', { variant: 'small', disabled: d.support < 30, hint: d.support < 30 ? 'Needs 30% signed' : `≈${Math.round(electionWinChance(state, d) * 100)}% to win as it stands` })}
+        ${button('Drop the drive', 'unions.dropDrive', { variant: 'ghost small' })}
+      </div></div>`;
+  }
+  const check = organizeEligibility(state);
+  const u = driveUnion(job);
+  return `<div class="union"><b>✊ No union here</b> <small class="muted">${esc(u.name)} represents workers like you.</small>
+    <div class="toggle-row">${button('✊ Start organizing your workplace', 'unions.startDrive', { variant: 'small', disabled: !check.ok, hint: check.ok ? 'Talk to coworkers, sign cards, win a vote' : check.reason })}</div></div>`;
+}

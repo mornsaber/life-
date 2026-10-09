@@ -29,6 +29,8 @@ function bodyBlock(state, body) {
       ['Minority leader', `${esc(L.minority.name)} ${CAUCUSES[L.minority.caucus].icon}`],
       body.executive ? [d.executive, `${esc(body.executive.name)} ${CAUCUSES[body.executive.caucus].icon}`] : null,
     ].filter(Boolean))}
+    ${body.chairs ? `<p class="fine">🗂️ Chairs: ${Object.entries(body.chairs).filter(([id]) => COMMITTEES[id]).map(([id, c]) => `${esc(COMMITTEES[id].name)} — ${esc(c.name)}${c.you ? ' (you)' : ''}`).join(' · ')}</p>` : ''}
+    ${body.members?.length ? disclosure(`members-${body.id}`, body.members.length < body.seats ? `Senior members (${body.members.length} of ${body.seats})` : `Members (${body.members.length})`, `<ul class="history">${body.members.slice().sort((a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.terms - a.terms).map((m) => `<li>${CAUCUSES[m.caucus].icon} <b>${esc(m.name)}</b>${m.you ? ' (you)' : ''} <small class="muted">District ${m.district} · ${m.terms} term${m.terms === 1 ? '' : 's'}</small></li>`).join('')}</ul>`) : ''}
     ${bills ? disclosure(`bills-${body.id}`, 'This session', `<ul class="history">${bills}</ul>`) : ''}
     ${body.history.length ? disclosure(`hist-${body.id}`, 'Recent history', `<ul class="history">${body.history.slice().reverse().map((h) => `<li><small>age ${h.age}</small> ${esc(h.text)}</li>`).join('')}</ul>`) : ''}`;
 }

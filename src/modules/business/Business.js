@@ -43,6 +43,8 @@ export const priceFactor = (level, quality) => (level === 'premium' ? 0.94 + (qu
 const SUPPLIER_COGS = { cheap: 0.95, standard: 1, premium: 1.05 };
 const PAY_POLICY = { below: 0.92, market: 1, above: 1.08 };
 export const CORPORATE_TAX = 0.21;
+/** Industries environmental rules reach. */
+export const HEAVY_TYPES = ['constructionCo', 'demolitionCo', 'excavation', 'trucking', 'wasteHauling', 'machineShop', 'fishingBoat', 'movingCompany', 'homeBuilder', 'roofing'];
 /** Building trades: public works budgets move their demand. */
 export const CONSTRUCTION_TYPES = ['electrical', 'plumbing', 'hvacContractor', 'constructionCo', 'demolitionCo', 'homeBuilder', 'engineeringFirm', 'solarInstaller', 'excavation', 'craneRental', 'roofing', 'landscaping', 'surveyFirm'];
 export const PHASE_DEMAND = { expansion: 1.05, peak: 1.08, recession: 0.8, recovery: 0.95 };
@@ -151,7 +153,7 @@ export function yearFinancials(state, biz, rng) {
   // Licenses: optional ones add customers or bigger tickets; a required one still pending means you're barely open.
   const lic = licenseEffects(biz);
   // Laws where it operates: wage floors, paid leave, public works, taxes (politics/Laws).
-  const law = businessLawEffects(state, state.character.regionId, { wage: type.wage, revenue: biz.lastYear?.revenue ?? 0, construction: CONSTRUCTION_TYPES.includes(biz.typeId) });
+  const law = businessLawEffects(state, state.character.regionId, { wage: type.wage, revenue: biz.lastYear?.revenue ?? 0, construction: CONSTRUCTION_TYPES.includes(biz.typeId), heavy: HEAVY_TYPES.includes(biz.typeId) });
   // A strike or lockout shuts the doors for weeks (LaborUnions).
   const stoppage = biz.strike ? clamp(biz.strike.weeks / 52, 0, 0.5) : 0;
   // How you've organized the company (Structure): divisions, lean or regional design.
@@ -183,7 +185,7 @@ export function yearFinancials(state, biz, rng) {
   const cogsRate = ops ? Math.max(0.05, type.cogs - OPERATIONS[biz.typeId].upkeep / OPERATIONS[biz.typeId].perUnit) : type.cogs;
   // Buying power: bigger chains pay suppliers less.
   const buyingPower = 1 - Math.min(0.12, 0.015 * ((biz.scale ?? 1) - 1));
-  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower * sfx.cogs);
+  const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower * sfx.cogs * law.cogs);
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
   const busy = type.startup || ops ? 1 : clamp(revenue / Math.max(1, type.revenue * locations * brand * Math.sqrt(col)), 0.5, 1.6);
@@ -202,7 +204,7 @@ export function yearFinancials(state, biz, rng) {
   const owned = Math.min(biz.scale, biz.premises?.owned ?? 0);
   const rent = Math.round(type.rent * (biz.scale - owned) * col * (ini?.rent ?? 1) + (biz.premises?.value ?? 0) * PREMISES_CARRY);
   const initiatives = ini ? Math.round(revenue * ini.share + ini.fixed * Math.sqrt(col)) : 0;
-  const insurance = Math.round(type.insurance * biz.scale * (ini?.insurance ?? 1));
+  const insurance = Math.round(type.insurance * biz.scale * (ini?.insurance ?? 1) * law.insurance);
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
   const admin = ENTITIES[biz.entity].admin;
   const sba = biz.debts.sba;

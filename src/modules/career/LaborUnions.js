@@ -24,7 +24,7 @@
  */
 import { Random, clamp } from '../../core/Random.js';
 import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
-import { PROFESSION_LIST } from './JobTrees.js';
+import { PROFESSION_LIST, getProfession } from './JobTrees.js';
 import { STATES } from '../life/States.js';
 import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
@@ -446,6 +446,185 @@ function bizById(state, id) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Organizing your own workplace                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * A non-union workplace can be organized from the inside: sign coworkers up,
+ * file for an election once a majority has signed (or win recognition at once
+ * where card check is the law), survive the employer's campaign, and win the vote.
+ *
+ * state.unions.drive = { employerId, union, strike, support, filed, startAge, warned }
+ */
+export const DRIVE_SIGNUPS = 2;
+const GENERIC_UNION = { name: 'Workers United (SEIU)', strike: true };
+
+/** The union that would represent you: the one your career's workplaces usually have, or a general workers' union. */
+export function driveUnion(job) {
+  const def = getProfession(job.professionId)?.union;
+  return def ? { name: def.name, strike: def.strike } : GENERIC_UNION;
+}
+
+export function organizeEligibility(state) {
+  const job = state.career.job;
+  if (!job) return { ok: false, reason: 'You need a job' };
+  if (job.employer.union) return { ok: false, reason: 'Your workplace already has a union' };
+  if (job.abilities.includes('supervise')) return { ok: false, reason: 'Supervisors can\'t organize the bargaining unit' };
+  if (job.sector !== 'private' && job.sector !== 'federal' && lawValue(state, 'publicBargaining') === false) return { ok: false, reason: 'State law bars public employees from bargaining' };
+  if ((job.yearsAtEmployer ?? 0) < 1) return { ok: false, reason: 'Work there a year first' };
+  if ((state.unions?.driveCooldownUntil ?? 0) > state.character.age) return { ok: false, reason: `The last drive failed — try again at ${state.unions.driveCooldownUntil}` };
+  return { ok: true };
+}
+
+/** Odds of winning the election from here. */
+export const electionWinChance = (state, d) => clamp(0.15 + (d.support - 50) / 40 + (lawValue(state, 'cardCheck') ? 0.15 : 0) - (rightToWork(state) ? 0.08 : 0), 0.05, 0.92);
+
+function retaliation(ctx, d) {
+  const { state } = ctx;
+  const job = state.career.job;
+  ctx.prompt({
+    type: 'unions.fired', icon: '🚪', title: 'Fired for Organizing',
+    text: `${job.employer.name} fired you, citing "performance." Everyone knows it's about the union. Firing an organizer is illegal under the National Labor Relations Act.`,
+    options: [
+      { id: 'charge', label: '⚖️ File an unfair-labor-practice charge', hint: 'Reinstatement and back pay if you win' },
+      { id: 'leave', label: '🚶 Move on' },
+    ],
+    data: { employer: job.employer.name },
+  });
+}
+
+/** The year for a drive: the employer's campaign, then the vote once filed. */
+function driveYear(ctx) {
+  const { state } = ctx;
+  const d = state.unions?.drive;
+  if (!d) return;
+  const job = state.career.job;
+  if (!job || job.employer.id !== d.employerId) {
+    state.unions.drive = null;
+    return;
+  }
+  const rng = unionRng(state);
+  // The employer finds out sooner or later and fights it.
+  if (d.support >= 25 || d.filed) {
+    const hardball = job.sector === 'private' ? 0.12 : 0.03;
+    if (!d.retaliated && rng.chance(hardball + (d.filed ? 0.06 : 0))) {
+      d.retaliated = true;
+      retaliation(ctx, d);
+      return;
+    }
+    const lost = rng.int(2, 9);
+    d.support = Math.max(0, d.support - lost);
+    ctx.log(`${job.employer.name} held mandatory meetings about "the union's empty promises." Support slipped to ${d.support}%.`, '📽️', 'warn');
+  }
+  if (!d.filed) return;
+  const won = rng.chance(electionWinChance(state, d));
+  if (won) recognize(ctx, d, 'won the union election');
+  else {
+    state.unions.drive = null;
+    state.unions.driveCooldownUntil = state.character.age + 2;
+    job.coworkers = Math.max(0, job.coworkers - 5);
+    ctx.log(`The union lost the election at ${job.employer.name} (${d.support}% had signed cards). You can try again in two years.`, '📉', 'bad');
+  }
+}
+
+/** The union is in: a real bargaining unit, with you as a founding organizer. */
+function recognize(ctx, d, how) {
+  const { state } = ctx;
+  const job = state.career.job;
+  const stateId = homeState(state);
+  job.employer.union = { name: d.union.name, strike: d.union.strike, duesRate: 0.013, agencyFee: !rightToWork(state), contractYearsLeft: 1, stateId };
+  const u = unionFor(state, job.employer.union);
+  u.members += Math.max(5, Math.round(EMPLOYER_HEADCOUNT[job.employer.size] ?? 40));
+  u.shops += 1;
+  remember(u, state.character.age, '✊', `Workers at ${job.employer.name} organized, led by ${state.character.firstName} ${state.character.lastName}.`);
+  job.unionMember = true;
+  syncMembership(ctx);
+  const mine = state.unions.mine;
+  if (mine) {
+    mine.role = 'steward';
+    mine.standing = Math.max(mine.standing, 75);
+    mine.founder = true;
+  }
+  job.coworkers = Math.min(100, job.coworkers + 15);
+  job.boss = Math.max(0, job.boss - 8);
+  state.unions.drive = null;
+  ctx.log(`You ${how}: ${job.employer.name} now has a union, ${u.name}. You're its first shop steward, and contract talks start next year.`, '✊', 'milestone');
+  ctx.stat('happiness', 8);
+}
+
+const EMPLOYER_HEADCOUNT = { small: 15, medium: 60, large: 250, enterprise: 900 };
+
+export const DriveActions = {
+  /** Start talking to coworkers and a union. */
+  startDrive(ctx) {
+    const { state } = ctx;
+    const check = organizeEligibility(state);
+    if (!check.ok) return ctx.toast(check.reason, 'warn');
+    if (state.unions?.drive) return;
+    const job = state.career.job;
+    const union = driveUnion(job);
+    // Unhappy workplaces organize: how coworkers feel about you and about the job.
+    const start = Math.round(clamp(10 + (job.coworkers - 50) / 4 + (60 - (job.department?.morale ?? job.boss ?? 60)) / 5, 5, 35));
+    state.unions.drive = { employerId: job.employer.id, union, support: start, filed: false, startAge: state.character.age };
+    ctx.log(`You quietly called ${union.name} about organizing ${job.employer.name}. ${start}% of your coworkers are already on board.`, '✊', 'good');
+    return undefined;
+  },
+  /** Talk to coworkers, sign cards (twice a year). */
+  signCards(ctx) {
+    const { state } = ctx;
+    const d = state.unions?.drive;
+    const job = state.career.job;
+    if (!d || !job) return;
+    if (d.filed) return ctx.toast('The election is filed — now hold your majority.', 'info');
+    if (yearlyCount(state, 'unions.cards') >= DRIVE_SIGNUPS) return ctx.toast('You\'ve talked to everyone you can this year.', 'warn');
+    bumpYearly(state, 'unions.cards');
+    const rng = unionRng(state);
+    const gain = Math.round(clamp(rng.int(5, 12) + (job.coworkers - 50) / 10 + (state.stats.looks - 50) / 25 + (state.stats.smarts - 50) / 30, 2, 20));
+    d.support = Math.min(95, d.support + gain);
+    job.coworkers = Math.min(100, job.coworkers + 2);
+    ctx.stat('stress', 2);
+    ctx.log(`You spent evenings in break rooms and parking lots. ${d.support}% of your coworkers have signed union cards.`, '📝');
+    // Card check: a signed majority is recognized without an election.
+    if (d.support > 50 && lawValue(state, 'cardCheck')) return recognize(ctx, d, 'won recognition by card check');
+    return undefined;
+  },
+  /** File for an election (a majority of cards makes it a real shot). */
+  fileElection(ctx) {
+    const { state } = ctx;
+    const d = state.unions?.drive;
+    if (!d || d.filed) return;
+    if (d.support < 30) return ctx.toast('The labor board wants at least 30% of workers to have signed cards.', 'warn');
+    d.filed = true;
+    ctx.log(`You filed for a union election at ${state.career.job.employer.name} (${d.support}% signed). The vote is at year-end — expect the company to push back.`, '🗳️', 'milestone');
+  },
+  dropDrive(ctx) {
+    if (!ctx.state.unions?.drive) return;
+    ctx.state.unions.drive = null;
+    ctx.log('You let the organizing drive go quiet.', '🤐');
+  },
+};
+
+export const DriveResolvers = {
+  fired(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const job = state.career.job;
+    const d = state.unions?.drive;
+    if (!job) return;
+    if (optionId === 'charge' && rng.chance(0.6)) {
+      // The NLRB orders you reinstated with back pay; coworkers see the company can be beaten.
+      ctx.earn(Math.round(job.salary * 0.25), `Back pay — ${job.employer.name} (NLRB settlement)`, { wage: true });
+      if (d) d.support = Math.min(95, d.support + 12);
+      job.boss = Math.max(0, job.boss - 15);
+      ctx.log(`The labor board ruled the firing illegal: you were reinstated with back pay, and support for the union jumped.`, '⚖️', 'good');
+      return;
+    }
+    if (d) state.unions.drive = null;
+    ctx.emit('career:resign', { reason: optionId === 'charge' ? 'Fired for union organizing (charge dismissed)' : 'Fired for union organizing', fired: true });
+    ctx.log(optionId === 'charge' ? 'The labor board dismissed your charge. The drive collapsed without you.' : 'You moved on. The drive collapsed without you.', '🚪', 'bad');
+  },
+};
+
+/* ------------------------------------------------------------------ */
 /* Module                                                              */
 /* ------------------------------------------------------------------ */
 
@@ -477,10 +656,12 @@ export const LaborUnions = {
     const rng = unionRng(state);
     const home = homeState(state);
     for (const u of Object.values(state.unions.byId)) if (u.stateId === home || u.id === state.unions.mine?.unionId) npcYear(ctx, u, rng);
+    driveYear(ctx);
     myYear(ctx);
   },
 
   actions: {
+    ...DriveActions,
     join(ctx) {
       ctx.emit('career:joinUnion', {});
     },
@@ -606,6 +787,7 @@ export const LaborUnions = {
   },
 
   resolvers: {
+    ...DriveResolvers,
     /** Your committee's move at the table. */
     bargain(ctx, data, optionId) {
       const { state, rng } = ctx;

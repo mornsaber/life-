@@ -80,6 +80,45 @@ export const LAWS = {
     base: { federal: 'normal', state: () => 'normal', city: () => 'normal' },
     effect: 'A building program lifts construction and trade businesses; austerity cuts public contracts.',
   },
+  stateIncomeTax: {
+    name: 'State income tax', icon: '🧾', kind: 'choice', levels: ['state'], choices: ['cut', 'standard', 'hike'], lean: 'labor', combine: 'state',
+    labels: { cut: 'Cut 20%', standard: 'Current rates', hike: 'Raised 20%' },
+    base: { state: () => 'standard' },
+    effect: 'Scales the state income tax everyone in the state pays.',
+  },
+  cannabis: {
+    name: 'Recreational cannabis', icon: '🌿', kind: 'flag', levels: ['state'], lean: 'labor', combine: 'state',
+    base: { state: (st) => Boolean(STATES[st]?.cannabis) },
+    effect: 'Legal to buy at a dispensary under state law (still federally illegal).',
+  },
+  nonCompeteBan: {
+    name: 'Non-compete ban', icon: '📜', kind: 'flag', levels: ['state', 'federal'], lean: 'labor', combine: 'any',
+    base: { federal: false, state: (st) => ['CA', 'MN', 'ND', 'OK'].includes(st) },
+    effect: 'Courts won\'t enforce non-compete agreements: switch employers freely.',
+  },
+  publicBargaining: {
+    name: 'Public-employee bargaining', icon: '🏛️', kind: 'flag', levels: ['state'], lean: 'labor', combine: 'state',
+    base: { state: (st) => !['NC', 'TX', 'GA'].includes(st) },
+    effect: 'Government workers can unionize and bargain contracts. Without it, few public workplaces have unions.',
+  },
+  workplaceSafety: {
+    name: 'Workplace safety rules', icon: '🦺', kind: 'choice', levels: ['state', 'federal'], choices: ['lax', 'standard', 'strict'], lean: 'labor', combine: 'state',
+    labels: { lax: 'Lax', standard: 'Standard (OSHA)', strict: 'Strict' },
+    base: { federal: null, state: () => 'standard' },
+    effect: 'Stricter rules raise businesses\' insurance and compliance costs; lax rules lower them.',
+  },
+  environmental: {
+    name: 'Environmental regulation', icon: '🌳', kind: 'choice', levels: ['state', 'federal'], choices: ['lax', 'standard', 'strict'], lean: 'labor', combine: 'state',
+    labels: { lax: 'Lax', standard: 'Standard', strict: 'Strict' },
+    base: { federal: null, state: () => 'standard' },
+    effect: 'Raises (or lowers) operating costs for construction, trucking, waste, manufacturing and fishing.',
+  },
+  zoning: {
+    name: 'Zoning', icon: '🏙️', kind: 'choice', levels: ['city'], choices: ['restrictive', 'standard', 'upzoned'], lean: 'business', combine: 'city',
+    labels: { restrictive: 'Restrictive', standard: 'Standard', upzoned: 'Upzoned (build more)' },
+    base: { city: () => 'standard' },
+    effect: 'Upzoning means more building work for builders and trades; restrictive zoning means less.',
+  },
   publicPay: {
     name: 'Public-employee pay', icon: '🏛️', kind: 'number', levels: ['city', 'state', 'federal'], step: 0.02, min: -0.04, max: 0.12, lean: 'labor', combine: 'level',
     unit: (v) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}% pay adjustment`,
@@ -133,6 +172,7 @@ export function lawValue(state, lawId, stateId = null, regionId = null) {
       return vals.sort((a, b) => rank[b] - rank[a])[0] ?? 'normal';
     }
     case 'level': return { city, state: stv, federal: fed };
+    case 'city': return city;
     default: return fed !== null && fed !== undefined ? fed : stv;
   }
 }
@@ -191,15 +231,20 @@ export function wageFloorFactor(state, regionId, typeWage) {
 }
 
 /** Payroll and tax effects of the laws for a business in `regionId`. */
-export function businessLawEffects(state, regionId, { wage = 40000, revenue = 0, construction = false } = {}) {
+export function businessLawEffects(state, regionId, { wage = 40000, revenue = 0, construction = false, heavy = false } = {}) {
   const st = stateOfRegion(regionId);
   const leave = lawValue(state, 'paidLeave', st, regionId) ? 1.015 : 1;
   const infra = lawValue(state, 'infrastructure', st, regionId);
+  const safety = { lax: 0.92, standard: 1, strict: 1.08 }[lawValue(state, 'workplaceSafety', st)] ?? 1;
+  const green = heavy ? ({ lax: 0.97, standard: 1, strict: 1.04 }[lawValue(state, 'environmental', st)] ?? 1) : 1;
+  const zoning = construction ? ({ restrictive: 0.93, standard: 1, upzoned: 1.08 }[lawValue(state, 'zoning', st, regionId)] ?? 1) : 1;
   return {
+    insurance: safety,
+    cogs: green,
     payroll: wageFloorFactor(state, regionId, wage) * leave,
     corporateRate: (lawValue(state, 'corporateRate', st) ?? 0.21) + (lawValue(state, 'businessTax', st) ?? 0),
     taxCredit: revenue < 5_000_000 && lawValue(state, 'smallBizCredit', st) ? 0.1 : 0,
-    demand: construction ? ({ austerity: 0.92, normal: 1, boom: 1.1 }[infra] ?? 1) : 1,
+    demand: (construction ? ({ austerity: 0.92, normal: 1, boom: 1.1 }[infra] ?? 1) : 1) * zoning,
     licensing: { strict: 1.25, standard: 1, reformed: 0.7 }[lawValue(state, 'licensing', st)] ?? 1,
   };
 }

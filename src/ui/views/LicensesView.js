@@ -16,7 +16,7 @@ function payerHint(state, cred) {
   return cred.cost ? `💳 You pay ${money(cred.cost)}` : 'Free';
 }
 
-function credentialRow(state, cred) {
+export function credentialRow(state, cred) {
   const held = state.credentials.held[cred.id];
   const training = state.credentials.training.find((t) => t.id === cred.id);
   const implied = !held && hasCredential(state, cred.id);
