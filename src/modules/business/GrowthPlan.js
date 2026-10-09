@@ -80,7 +80,11 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
       // Staffing: the headcount the forecast says earns the most.
       if (!OPERATIONS[biz.typeId] && type.staff) {
         const h = biz.staff.headcount;
-        const options = [...new Set([h, Math.round(h * 0.9), Math.round(h * 1.1), Math.round(type.staff * biz.scale) + biz.family.length].filter((n) => n >= 1 && n <= 400))];
+        // Within 85–115% of a normal crew: lean, not skeleton.
+        const normal = Math.round(type.staff * biz.scale) + biz.family.length;
+        const lo = Math.max(1, Math.round(normal * 0.85));
+        const hi = Math.round(normal * 1.15);
+        const options = [...new Set([h, Math.round(h * 0.95), Math.round(h * 1.05), normal].map((n) => clamp(n, lo, hi)).filter((n) => n >= 1 && n <= 400))];
         const best = options.map((n) => ({ n, p: profit({ staff: { headcount: n } }) })).reduce((a, b) => (b.p > a.p ? b : a));
         if (best.n !== h && best.p - profit({}) > 5000) {
           biz.staff.headcount = best.n;
@@ -144,8 +148,8 @@ function fleetPlan(ctx, biz, aggressive, did) {
     }
     if (bought) did.push(`added ${bought} ${o.unit.name}${bought > 1 ? 's' : ''} to the fleet`);
   }
-  // Crews follow the work.
-  const needPeople = Math.max(o.unit ? biz.ops.units.length * o.crew : 0, Math.ceil((busy + offered / 2) * o.crew));
+  // Crews follow the work: a driver for every truck, or a crew for every signed post.
+  const needPeople = o.unit ? biz.ops.units.length * o.crew : Math.ceil(Math.max(busy, 1) * o.crew);
   const add = clamp(needPeople - biz.staff.headcount, 0, aggressive ? 20 : 8);
   if (add) {
     biz.staff.headcount += add;

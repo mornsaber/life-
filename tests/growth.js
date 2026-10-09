@@ -42,7 +42,7 @@ function years(engine, n) {
     for (let j = 0; j < 8 && engine.state.prompts.length; j++) {
       const p = engine.state.prompts[0];
       if (p.type.startsWith('business.')) prompts += 1;
-      engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
+      engine.resolvePrompt(p.id, (p.options.find((o) => ['decline', 'wait'].includes(o.id)) ?? p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id); // never sell the business under test
     }
   }
   return prompts;

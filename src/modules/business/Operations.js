@@ -61,6 +61,9 @@ export const OPERATIONS = {
   securityCompany: { unit: null, crew: 1, crewName: 'guard', perUnit: 64000, upkeep: 1500, start: 14,
     clients: [['An office tower\'s lobby posts', 4, 1.0], ['A hospital\'s security contract', 6, 1.1, { minRep: 60 }], ['Construction-site night watch', 2, 0.95], ['Concert and stadium events', 5, 1.15, { minRep: 55 }]] },
   // Businesses grown out of driving, EMS, trades, aviation and marine careers.
+  // Contract fire & rescue: each unit is an apparatus with a crew of four across shifts.
+  privateFireService: { unit: U('fire apparatus', 'fire apparatus', '🚒', 900000, 320000, 15), crew: 4, crewName: 'firefighter', perUnit: 520000, upkeep: 35000, start: 2,
+    clients: [['A refinery\'s industrial fire brigade', 1, 1.15, { minRep: 50 }], ['Film-set and event fire watch', 1, 0.85], ['A state agency\'s fire-season engine contract', 2, 1.05, { needs: 'wildlandFF2' }], ['A military base\'s fire services (federal contract)', 2, 1.0, { minRep: 60, minUnits: 3 }], ['A hospital campus fire watch', 1, 0.9], ['A private airfield\'s crash-rescue standby', 1, 1.1, { minRep: 45 }]] },
   ambulanceService: { unit: U('ambulance', 'ambulances', '🚑', 240000, 95000, 8), crew: 2, crewName: 'EMT or paramedic', perUnit: 300000, upkeep: 30000, start: 3,
     clients: [['A hospital system\'s transfer contract', 2, 1.05], ['Nursing-home network discharges', 1, 0.95], ['The county\'s 911 contract', 6, 1.2, { minUnits: 6, minRep: 60, needs: 'paramedic' }], ['Stadium and event standby', 1, 1.1]] },
   nemt: { unit: U('wheelchair van', 'wheelchair vans', '♿', 70000, 30000, 7), crew: 1, crewName: 'driver', perUnit: 95000, upkeep: 6000, start: 5,

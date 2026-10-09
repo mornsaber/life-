@@ -26,13 +26,13 @@ import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 
-export const FIRE_PROFESSIONS = ['fire', 'airportFire', 'stateFire'];
+export const FIRE_PROFESSIONS = ['fire', 'airportFire', 'stateFire', 'privateFire'];
 export const isFirefighter = (job) => FIRE_PROFESSIONS.includes(job?.professionId);
 /** Departments that only run certain stations; everyone else runs the city ones. */
-const STATION_SETS = { airportFire: ['airport'], stateFire: ['forest', 'helitack', 'camp', 'airattack'] };
-const STATE_ONLY = STATION_SETS.stateFire;
+const STATION_SETS = { airportFire: ['airport'], stateFire: ['forest', 'helitack', 'camp', 'airattack'], privateFire: ['airport', 'industrial', 'contractWildland'] };
+const STATE_ONLY = [...STATION_SETS.stateFire, 'industrial', 'contractWildland'];
 export const stationsFor = (professionId) => STATION_SETS[professionId] ?? Object.keys(STATIONS).filter((id) => !STATE_ONLY.includes(id));
-const DEFAULT_STATION = { airportFire: 'airport', stateFire: 'forest' };
+const DEFAULT_STATION = { airportFire: 'airport', stateFire: 'forest', privateFire: 'industrial' };
 
 export const STATIONS = {
   engine: { name: 'Downtown engine company', icon: '🚒', runs: 1.3, fires: 1.4, risk: 1.1, desc: 'The busiest house in the city: medical calls all day, working fires every week.' },
@@ -46,6 +46,9 @@ export const STATIONS = {
   forest: { name: 'Forest fire station (engine crew)', icon: '🚒', runs: 0.35, fires: 1.6, risk: 1.1, desc: 'A Type 3 engine in the hills: initial attack all summer, medical aids and wrecks in winter.' },
   helitack: { name: 'Helitack base', icon: '🚁', runs: 0.2, fires: 1.8, risk: 1.4, years: 2, cred: 'wildlandFF1', desc: 'Fly to new starts and cut line before they grow — rappel in where trucks can\'t go.' },
   camp: { name: 'Conservation camp (hand crews)', icon: '🪓', runs: 0.15, fires: 1.5, risk: 1.2, years: 3, desc: 'Lead hand crews cutting line on the big fires; fuels projects the rest of the year.' },
+  // Private fire contractors: plant brigades and fire-season crews (airports above).
+  industrial: { name: 'Industrial fire brigade (refinery/plant)', icon: '🏭', runs: 0.25, fires: 0.6, risk: 1.0, cred: 'hazmatOps', desc: 'Tank fires, process upsets and confined-space rescues at a refinery or chemical plant.' },
+  contractWildland: { name: 'Contract wildland crew', icon: '🔥', runs: 0.15, fires: 1.4, risk: 1.2, desc: 'Private engines and crews hired by the agencies for fire season — paid by the day.' },
   airattack: { name: 'Air attack base', icon: '✈️', runs: 0.1, fires: 1.2, risk: 0.8, years: 8, cred: 'ics300', desc: 'Circle the fire in the air-attack plane and direct tankers and helicopters.' },
 };
 
@@ -74,7 +77,7 @@ export function stationEligibility(state, id) {
   const job = state.career.job;
   if (!st || !isFirefighter(job)) return { ok: false, reason: 'Firefighters only' };
   if (!stationsFor(job.professionId).includes(id)) return { ok: false, reason: job.professionId === 'airportFire' ? 'Airport firefighters work the airport' : 'Not one of your department\'s stations' };
-  if (st.years && job.professionId !== 'airportFire' && yearsInProfession(state, FIRE_PROFESSIONS) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
+  if (st.years && !['airportFire', 'privateFire'].includes(job.professionId) && yearsInProfession(state, FIRE_PROFESSIONS) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
   if (st.cred && !hasCredential(state, st.cred)) return { ok: false, reason: { hazmatOps: 'Needs HazMat Operations', wildlandFF1: 'Needs Wildland Squad Boss (FFT1)', ics300: 'Needs ICS-300' }[st.cred] };
   return { ok: true };
 }
@@ -84,6 +87,7 @@ export function teamEligibility(state, id) {
   if (!t || !isFirefighter(state.career.job)) return { ok: false, reason: 'Firefighters only' };
   if (state.career.job.professionId === 'airportFire' && ['strike', 'dive'].includes(id)) return { ok: false, reason: 'Not an airport fire department team' };
   if (state.career.job.professionId === 'stateFire' && ['dive', 'hazmat'].includes(id)) return { ok: false, reason: 'Not a state fire agency team' };
+  if (state.career.job.professionId === 'privateFire' && ['dive', 'union', 'training'].includes(id)) return { ok: false, reason: 'Not a team at a fire contractor' };
   if (t.cred && !hasCredential(state, t.cred)) return { ok: false, reason: { paramedic: 'Needs a paramedic certification', hazmatOps: 'Needs HazMat Operations', fireOfficer1: 'Needs Fire Officer I' }[t.cred] };
   if (t.years && yearsInProfession(state, FIRE_PROFESSIONS) < t.years) return { ok: false, reason: `${t.years} years on the job first` };
   if (t.fitness && state.stats.fitness < t.fitness) return { ok: false, reason: `Needs ${t.fitness}+ fitness` };
@@ -163,7 +167,7 @@ function callPrompt(ctx) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'fireLife.call')) return;
   const st = fl(state).station;
-  if (state.career.job.professionId === 'stateFire' && rng.chance(0.8)) {
+  if ((state.career.job.professionId === 'stateFire' || st === 'contractWildland') && rng.chance(0.8)) {
     const w = rng.pick(WILDLAND_CALLS.filter((c) => c.id !== 'burnover' || rng.chance(0.4)));
     return ctx.prompt({ type: 'fireLife.call', icon: w.icon, title: w.title, text: w.text, options: w.options.map(({ id, label }) => ({ id, label })), data: { callId: w.id } });
   }
@@ -171,7 +175,7 @@ function callPrompt(ctx) {
     const a = rng.pick(ARFF_CALLS.filter((c) => c.id !== 'crash' || rng.chance(0.25)));
     return ctx.prompt({ type: 'fireLife.call', icon: a.icon, title: a.title, text: a.text, options: a.options.map(({ id, label }) => ({ id, label })), data: { callId: a.id } });
   }
-  const pool = CALLS.filter((c) => (c.id !== 'brush' || st === 'wildland' || rng.chance(0.3)) && (c.id !== 'hazmat' || st === 'hazmat' || rng.chance(0.4)) && (c.id !== 'mayday' || rng.chance(0.4)));
+  const pool = CALLS.filter((c) => (c.id !== 'brush' || st === 'wildland' || rng.chance(0.3)) && (c.id !== 'hazmat' || ['hazmat', 'industrial'].includes(st) || rng.chance(0.4)) && (c.id !== 'mayday' || rng.chance(0.4)));
   const c = rng.pick(pool);
   ctx.prompt({ type: 'fireLife.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label }) => ({ id, label })), data: { callId: c.id } });
 }
@@ -216,7 +220,7 @@ export const FireLifeModule = {
       if (!isFirefighter(job)) return;
       const f = fl(ctx.state);
       f.teams = {};
-      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = DEFAULT_STATION[job.professionId] ?? 'engine';
+      if (!f.station || !stationEligibility(ctx.state, f.station).ok) f.station = stationsFor(job.professionId).find((id) => stationEligibility(ctx.state, id).ok) ?? DEFAULT_STATION[job.professionId] ?? 'engine';
       if (job.professionId === 'stateFire') f.shift = 'season';
     });
   },

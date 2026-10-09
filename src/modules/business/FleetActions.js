@@ -5,7 +5,9 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { REGIONS } from '../life/Regions.js';
 import { currentBusiness, annualPayment } from './Business.js';
+import { syncBusinessOrg } from '../org/Businesses.js';
 import { OPERATIONS, opsOf, newOps, capacity, contracted, makeOffers, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier, ACCOUNT_TIERS } from './Operations.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -98,7 +100,66 @@ const withOps = (ctx) => {
   return { biz, o };
 };
 
+/**
+ * Airport crash-fire-rescue tenders (private fire contractors). Airports put
+ * their ARFF station out to bid: you price it, and the authority weighs
+ * your price against your reputation and size.
+ */
+export const BID_LEVELS = {
+  low: { label: 'Low bid', rate: 0.95, odds: 0.65, hint: 'Likely to win, thin margins' },
+  market: { label: 'Market price', rate: 1.1, odds: 0.45, hint: 'A fair price' },
+  premium: { label: 'Premium bid', rate: 1.25, odds: 0.25, hint: 'Win only on reputation' },
+};
+export const AIRPORT_BID_COST = 15000;
+const AIRPORT_UNITS = { small: 1, medium: 2, large: 3, enterprise: 4 };
+export function airportTender(state, biz) {
+  const region = REGIONS[state.orgs?.byId?.[biz.orgId]?.regionId ?? state.character.regionId] ?? REGIONS.midcity;
+  const units = AIRPORT_UNITS[region.size ?? 'medium'] ?? 2;
+  return { airport: `${region.name.split(',')[0]} Airport`, units, years: 5 };
+}
+export function airportBidEligibility(state, biz) {
+  if (biz.typeId !== 'privateFireService') return { ok: false, reason: 'Fire & rescue contractors only' };
+  if (yearlyCount(state, 'business.airportBid')) return { ok: false, reason: 'One airport tender a year' };
+  if ((biz.ops?.contracts ?? []).some((c) => c.airport)) return { ok: false, reason: 'You already run the airport\'s station' };
+  if (biz.reputation < 45) return { ok: false, reason: 'Airports want a reputation of 45+' };
+  if (biz.cash < AIRPORT_BID_COST) return { ok: false, reason: `A proposal costs $${AIRPORT_BID_COST.toLocaleString()}` };
+  return { ok: true };
+}
+export const winOdds = (biz, level) => clamp(BID_LEVELS[level].odds + (biz.reputation - 55) / 200 + growthTier(biz) * 0.05, 0.05, 0.9);
+
+export const FleetResolvers = {
+  airportBid(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const biz = currentBusiness(state);
+    const level = BID_LEVELS[optionId];
+    if (!biz || !level) return;
+    biz.cash -= AIRPORT_BID_COST;
+    if (!rng.chance(winOdds(biz, optionId))) return ctx.log(`${data.airport} awarded its ARFF contract to a rival. Your ${level.label.toLowerCase()} lost.`, '✈️', 'warn');
+    biz.ops.contracts.push({ id: rng.id('k_'), client: `${data.airport} — ARFF station contract`, units: data.units, rate: level.rate, years: data.years, yearsLeft: data.years, tier: Math.min(3, data.units - 1), airport: true });
+    biz.reputation = Math.min(100, biz.reputation + 4);
+    const cap = capacity(biz);
+    ctx.log(`${biz.name} won the ${data.airport} ARFF contract: ${data.units} crash-rescue station${data.units > 1 ? 's' : ''} for ${data.years} years.${cap.capacity < contracted(biz) ? ' You need more apparatus and crews to cover it — shortfalls draw penalties.' : ''}`, '✈️', 'milestone');
+  },
+};
+
 export const FleetActions = {
+  /** Bid on the local airport's crash-fire-rescue station (fire contractors). */
+  airportBid(ctx) {
+    const { state } = ctx;
+    const biz = currentBusiness(state);
+    if (!biz) return;
+    const ok = airportBidEligibility(state, biz);
+    if (!ok.ok) return ctx.toast(ok.reason, 'warn');
+    bumpYearly(state, 'business.airportBid');
+    const t = airportTender(state, biz);
+    const value = Math.round(t.units * OPERATIONS.privateFireService.perUnit);
+    ctx.prompt({
+      type: 'business.airportBid', icon: '✈️', title: `${t.airport}: ARFF Tender`,
+      text: `${t.airport} is contracting out its aircraft rescue & firefighting: ${t.units} station${t.units > 1 ? 's' : ''} with crash trucks staffed around the clock, for ${t.years} years (about $${value.toLocaleString()} a year at market rates). Your crews need ARFF certification. How do you price it?`,
+      options: Object.entries(BID_LEVELS).map(([id, l]) => ({ id, label: `${l.label} · ${Math.round(l.rate * 100)}% of market`, hint: `${Math.round(winOdds(biz, id) * 100)}% odds · ${l.hint}` })),
+      data: t,
+    });
+  },
   /** arg: 'new' | 'used', optionally ':loan' — buy a unit from the business account or with equipment financing. */
   buyUnit(ctx, arg = 'new') {
     const { biz, o } = withOps(ctx);
@@ -143,6 +204,7 @@ export const FleetActions = {
     const add = o.crew * Math.max(1, Number(n) || 1);
     biz.staff.headcount = Math.min(MAX_HEADCOUNT, biz.staff.headcount + add);
     ctx.log(`${biz.name} hired ${add === 1 ? `a ${o.crewName}` : `${add} ${o.crewName}s`} (${biz.staff.headcount} on staff).`, '🤝');
+    syncBusinessOrg(ctx.state, biz);
   },
   cutCrew(ctx) {
     const { biz, o } = withOps(ctx);
@@ -150,6 +212,7 @@ export const FleetActions = {
     biz.staff.headcount -= o.crew;
     biz.staff.morale = Math.max(0, biz.staff.morale - 5);
     ctx.log(`${biz.name} let ${o.crew === 1 ? `a ${o.crewName}` : `a crew of ${o.crew}`} go.`, '✂️', 'warn');
+    syncBusinessOrg(ctx.state, biz);
   },
   acceptContract(ctx, id) {
     const { biz } = withOps(ctx);

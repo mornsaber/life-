@@ -10,6 +10,7 @@ import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked, maxScale, expansionCost } from '../../modules/business/BusinessEngine.js';
 import { canAfford } from '../../core/State.js';
 import { STRATEGIES, canDelegate } from '../../modules/business/GrowthPlan.js';
+import { airportBidEligibility, airportTender, AIRPORT_BID_COST } from '../../modules/business/FleetActions.js';
 import { conglomerateOf, subsidiaries, formEligibility, holdingsCap, acquisitionTargets, appraise, synergyRate, hqCost, FORM_COST, CONGLOMERATE_HOLDINGS } from '../../modules/business/Conglomerate.js';
 import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, licenseEligibility } from '../../modules/business/BusinessLicenses.js';
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
@@ -414,6 +415,7 @@ function fleetCard(state, biz) {
       ${button(`🤝 Hire ${o.crew > 1 ? `a crew of ${o.crew}` : `a ${o.crewName}`}`, 'business.hireCrew', { variant: 'small' })}
       ${button(`✂️ Let ${o.crew > 1 ? 'a crew' : `a ${o.crewName}`} go`, 'business.cutCrew', { variant: 'small', disabled: biz.staff.headcount < o.crew })}
       ${button('📨 Bid for more work', 'business.bid', { variant: 'small', disabled: Boolean(state.yearly['business.bid']), hint: 'Two more offers this year' })}
+      ${biz.typeId === 'privateFireService' ? ((ok, t) => button(`✈️ Bid on the ${t.airport} ARFF contract`, 'business.airportBid', { variant: 'small', disabled: !ok.ok, hint: ok.ok ? `${t.units} station${t.units > 1 ? 's' : ''}, ${t.years} years · $${AIRPORT_BID_COST.toLocaleString()} proposal` : ok.reason }))(airportBidEligibility(state, biz), airportTender(state, biz)) : ''}
     </div>
     <h4 class="sub">Contracts</h4>${contracts ? `<ul class="history">${contracts}</ul>` : '<p class="muted">No contracts — all your work is one-off spot jobs, which swing with the economy.</p>'}
     <h4 class="sub">Offers this year</h4>${offers ? `<ul class="history">${offers}</ul>` : '<p class="muted">No offers right now. Bid for work, or wait for next year.</p>'}

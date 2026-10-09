@@ -25,7 +25,7 @@ import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
 import { InitiativeActions, initiativesTick } from './Initiatives.js';
 import { conglomerateTick, conglomerateOf, formEligibility, holdingsCap, acquireCompany, FORM_COST } from './Conglomerate.js';
-import { FleetActions, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
+import { FleetActions, FleetResolvers, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
 import {
   grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
@@ -230,9 +230,9 @@ function businessTick(ctx, biz) {
   if (biz.cash < 0) cashCrunch(ctx, biz);
 }
 
-/** How many locations a business can run: five as an owner-run small business, more once a CEO and executive team run it. */
+/** How many locations a business can run: five while you run it yourself, twelve once a management team does. */
 export function maxScale(state, biz) {
-  return biz.role !== 'operator' && biz.staff.headcount >= 40 ? 12 : 5;
+  return biz.role !== 'operator' ? 12 : 5;
 }
 
 /** What opening another location costs. */
@@ -245,7 +245,7 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
   const { state } = ctx;
   const type = typeOf(biz);
   if (type.startup) return { ok: false, reason: 'Startups grow by hiring and raising money.' };
-  if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= 12 ? 'That\'s as many locations as you can run.' : 'Five locations is as big as an owner-run business gets — hand it to a management team (40+ staff) to keep growing.' };
+  if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= 12 ? 'That\'s as many locations as you can run.' : 'Five locations is as many as you can run yourself — hand it to a management team to keep growing.' };
   if (biz.years < 2) return { ok: false, reason: 'Get through two years first.' };
   const cost = expansionCost(biz);
   if (funding === 'sba') {
@@ -783,6 +783,7 @@ export const BusinessEngine = {
       const add = Math.max(1, Number(n) || 1);
       biz.staff.headcount = Math.min(MAX_HEADCOUNT, biz.staff.headcount + add);
       ctx.log(`${biz.name} hired ${add} more ${add === 1 ? 'person' : 'people'} (${biz.staff.headcount} on staff).`, '🤝');
+      syncBusinessOrg(ctx.state, biz);
     },
     /** Let one person go (morale dips a little). */
     letGo(ctx) {
@@ -791,6 +792,7 @@ export const BusinessEngine = {
       biz.staff.headcount -= 1;
       bump(biz.staff, 'morale', -3);
       ctx.log(`${biz.name} let one employee go (${biz.staff.headcount} on staff).`, '✂️', 'warn');
+      syncBusinessOrg(ctx.state, biz);
     },
     layoff(ctx) {
       const biz = withBiz(ctx);
@@ -800,6 +802,7 @@ export const BusinessEngine = {
       bump(biz.staff, 'morale', -15);
       biz.staff.unionRisk = Math.min(100, biz.staff.unionRisk + 10);
       ctx.log(`${biz.name} laid off ${cut} people.`, '✂️', 'warn');
+      syncBusinessOrg(ctx.state, biz);
     },
     expand(ctx, funding = 'cash') {
       const biz = withBiz(ctx);
@@ -1012,6 +1015,7 @@ export const BusinessEngine = {
 
   resolvers: {
     ...OwnerResolvers,
+    ...FleetResolvers,
     franchiseDefault(ctx, data, optionId) {
       const biz = currentBusiness(ctx.state);
       if (!biz?.franchise) return;

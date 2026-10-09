@@ -35,7 +35,7 @@ const year = (engine) => {
   engine.ageUp();
   for (let j = 0; j < 8 && engine.state.prompts.length; j++) {
     const p = engine.state.prompts[0];
-    engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
+    engine.resolvePrompt(p.id, (p.options.find((o) => ['decline', 'wait'].includes(o.id)) ?? p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id); // never sell the business under test
   }
 };
 const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);

@@ -47,4 +47,22 @@ export const AIRPORT_PROFESSIONS = {
       L('chief', 'Airport Fire Chief', 8, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec', 'policy', 'command'], reports: 120 }),
     ],
   },
+  privateFire: {
+    id: 'privateFire', name: 'Private Fire & Rescue', icon: '🧯', sector: 'private', payMultiplier: 0.92, minAge: 18, background: 'strict',
+    union: { chance: 0.25, name: 'Contract Firefighters Union', strike: true },
+    benefits: { pension: null },
+    employers: ['Sentinel Fire & Rescue Services', 'AeroGuard ARFF Contractors', 'Gulf Coast Industrial Fire Brigade', 'Redline Fire Services', 'Ironclad Emergency Services'],
+    entry: { education: { level: 'highschool' }, credentials: ['driverLicense'], fitness: 50 },
+    valued: ['ff2', 'arff', 'emt', 'hazmatOps', 'wildlandFF2'],
+    levels: [
+      L('fireWatch', 'Fire Watch Technician', 2, { entry: true }),
+      L('firefighter', 'Contract Firefighter', 3, { entry: true, req: { credentials: ['ff1'] } }),
+      L('arff', 'Contract ARFF Firefighter', 4, { req: { credentials: ['ff2', 'arff'] } }),
+      L('driver', 'Apparatus Operator', 4, { track: 'ic', req: { credentials: ['driverOperator'] } }),
+      L('captain', 'Station Captain', 5, { track: 'mgmt', req: { credentials: ['fireOfficer1'] }, abilities: ['supervise', 'command'], reports: 12 }),
+      L('siteChief', 'Site Fire Chief', 6, { track: 'mgmt', req: { credentials: ['fireOfficer2'] }, abilities: ['supervise', 'hire', 'budget', 'command'], reports: 30 }),
+      L('director', 'Director of Fire Operations', 7, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'command'], reports: 120 }),
+      L('vp', 'VP, Emergency Services', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec', 'policy'], reports: 400 }),
+    ],
+  },
 };

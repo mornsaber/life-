@@ -41,6 +41,7 @@ export { GROUPS };
 /* ------------------------------------------------------------------ */
 
 const JOB_GROUP = {
+  privateFire: 'arff',
   police: 'police', sheriff: 'police', statePolice: 'police', transitPolice: 'police', privatePolice: 'police', universityPolice: 'campusPolice', airportPolice: 'airportPolice',
   fbi: 'federalLE', dea: 'federalLE', atf: 'federalLE', usms: 'federalLE', usss: 'federalLE', borderPatrol: 'borderPatrol',
   fire: 'fire', stateFire: 'stateFire', forester: 'stateFire', airportFire: 'arff', ems: 'ems', privateEms: 'ems',

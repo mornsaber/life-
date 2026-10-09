@@ -104,12 +104,14 @@ export function rivalsTick(ctx, biz, rivals, { rng, npc }) {
         break;
       case 'poacher':
         if (biz.staff.headcount >= 3 && biz.staff.morale < 70) {
-          biz.staff.headcount -= 1;
+          // You hire a replacement, but it costs a recruiting fee and the new person needs time to get up to speed.
+          const fee = Math.round(type.wage * 0.25);
+          biz.cash -= fee;
           biz.staff.productivity = Math.max(0, biz.staff.productivity - 3);
           biz.staff.morale = Math.max(0, biz.staff.morale - 2);
           b.staff = (b.staff ?? 1) + 1;
           b.lastMove = 'hired away one of your people';
-          say(`${o.name} hired away one of your best people with a raise. (Higher pay and morale make your staff harder to poach.)`, '🧲', 'warn');
+          say(`${o.name} hired away one of your best people with a raise. Replacing them cost ${'$'}${fee.toLocaleString()} and some momentum. (Higher pay and morale make your staff harder to poach.)`, '🧲', 'warn');
         }
         break;
       case 'marketer':

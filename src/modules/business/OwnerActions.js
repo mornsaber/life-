@@ -7,6 +7,7 @@
  * Money moves through the business's books (biz.cash / debts); the yearly
  * P&L in Business.yearFinancials reads the policies set here.
  */
+import { maxScale } from './BusinessEngine.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { getProfession } from '../career/JobTrees.js';
@@ -281,8 +282,9 @@ export const OwnerActions = {
     if (!biz || biz.scale <= 1) return;
     if (!closeBranch(state, biz, deptId)) return;
     const type = typeOf(biz);
+    // That location's people go with it; hires elsewhere stay.
+    biz.staff.headcount = Math.max(biz.family.length + 1, Math.round(biz.staff.headcount * (biz.scale - 1) / biz.scale));
     biz.scale -= 1;
-    biz.staff.headcount = Math.round(type.staff * biz.scale) + biz.family.length;
     biz.assets = Math.round(biz.assets * 0.8);
     biz.staff.morale = Math.max(0, biz.staff.morale - 6);
     syncBusinessOrg(state, biz);
@@ -301,7 +303,9 @@ export const OwnerActions = {
     const biz = withBiz(ctx);
     if (!biz) return;
     const target = competitorsOf(state, biz).find((o) => o.id === orgId);
-    if (!target || !decide(ctx)) return;
+    if (!target) return;
+    if (biz.scale >= maxScale(state, biz)) return ctx.toast('No room for another location — hand the business to management, or close one first.', 'warn');
+    if (!decide(ctx)) return;
     const price = acquisitionPrice(biz, target);
     if (biz.cash < price) return ctx.toast(`${target.name} wants ${money(price)}; the business has ${money(biz.cash)}.`, 'warn');
     biz.cash -= price;
@@ -316,6 +320,7 @@ export const OwnerActions = {
     if (!biz) return;
     const target = competitorsOf(state, biz).find((o) => o.id === orgId);
     if (!target || !decide(ctx)) return;
+    if (biz.scale >= maxScale(state, biz)) return ctx.toast('No room for another location — hand the business to management, or close one first.', 'warn');
     const theirs = acquisitionPrice(biz, target);
     const mine = Math.max(1, biz.valuation);
     const share = Math.round((theirs / (mine + theirs)) * 100) / 100;

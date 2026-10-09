@@ -128,8 +128,10 @@ export function syncBusinessOrg(state, biz) {
   const primary = depts[0];
   const others = depts.slice(1);
   const otherShare = others.length ? Math.min(0.35, 0.1 * others.length) : 0;
-  primary.headcount = Math.max(0, Math.round(main * (1 - otherShare)));
-  for (const d of others) d.headcount = Math.round((main * otherShare) / others.length);
+  // Every support department has at least one person once there are enough staff to go around.
+  const each = Math.round((main * otherShare) / Math.max(1, others.length));
+  for (const d of others) d.headcount = main >= depts.length * 2 ? Math.max(1, each) : each;
+  primary.headcount = Math.max(0, main - others.reduce((sum, d) => sum + d.headcount, 0));
   for (const d of depts) d.headcount += extra[d.id] ?? 0;
   for (const b of org.branches) org.departments[b.deptId].headcount = Math.round(branchStaff / org.branches.length);
 
@@ -156,7 +158,8 @@ export function syncBusinessOrg(state, biz) {
     if (!profession) continue;
     const { entry, skilled, lead } = staffLevels(profession, org.size);
     const picks = Object.values(org.people).filter((p) => p.handPicked && p.deptId === d.id).length;
-    const named = Math.min(6 + picks, d.headcount);
+    // The head is one of the department's people, not an extra.
+    const named = Math.max(0, Math.min(6 + picks, d.headcount - (personOf(org, d.head) ? 1 : 0)));
     const leads = lead && d.headcount >= TIERS.manager ? Math.min(3, Math.ceil(d.headcount / 12)) : 0;
     const plan = [[skilled, Math.ceil(named * 0.6)], [entry, Math.floor(named * 0.4)], ...(lead ? [[lead, leads]] : [])];
     for (const [level, count] of plan) {
