@@ -306,13 +306,30 @@ function randomActions(state) {
   if (!biz && age >= 21 && player.chance(0.03)) tries.push(() => act('business.franchise', `${player.pick(Object.keys(FRANCHISE_BRANDS))}:${player.pick(['cash', 'sba'])}:llc`));
   if (biz && player.chance(0.05)) tries.push(() => act('business.franchiseOut'));
   if (!biz && state.business.listings.length && player.chance(0.05)) tries.push(() => act('business.buy', `${player.pick(state.business.listings).id}:${player.pick(['cash', 'sba'])}`));
+  // Start a business you can afford (and are qualified for) — so business paths get exercised.
+  if (!biz && age >= 22 && age <= 60 && player.chance(0.06)) {
+    const affordable = Object.entries(BUSINESS_TYPES).filter(([, t]) => !t.startup && t.cost <= Math.max(0, state.finances.cash) * 0.8);
+    if (affordable.length) tries.push(() => act('business.start', `${player.pick(affordable)[0]}:${player.pick(['cash', 'sba'])}:${player.pick(['llc', 'scorp', 'ccorp'])}`));
+  }
   if (biz) {
     if (player.chance(0.3)) tries.push(() => act(`business.${player.pick(['setRole', 'setMarketing', 'setDraw', 'setWorkforce', 'toggleDelegation', 'toggleHealth', 'setMatch'])}`, player.pick(['operator', 'absentee', '0', '1', '2', '3', '0.5', 'direct', 'mixed', 'contracted', 'hiring', 'reviews', '0.03', '0.05'])));
     if (player.chance(0.3)) tries.push(() => act(`business.${player.pick(['raise', 'hire', 'layoff', 'expand', 'loan'])}`, player.pick(['5', 'cash', 'sba'])));
     if (player.chance(0.05)) tries.push(() => act('business.convert', player.pick(Object.keys(ENTITIES))));
     if (player.chance(0.1)) tries.push(() => act('business.hireRelative', player.pick(state.people.list)?.id));
     if (player.chance(0.03)) tries.push(() => act(`business.${player.pick(['sell', 'close', 'bankrupt'])}`));
+    // Growth, governance and capital.
+    if (player.chance(0.25)) tries.push(() => act(player.pick(['business.handOff', 'business.makePassive', 'business.leavePost', 'business.saleLeaseback'])));
+    if (player.chance(0.25)) tries.push(() => act('business.setPlan', player.pick(['steady', 'aggressive', 'harvest', 'off'])), () => act('business.expand', `${player.pick(['cash', 'sba'])}:${player.int(1, 3)}`));
+    if (player.chance(0.2)) tries.push(() => act('business.takePost', player.pick(['ceo', 'president', 'chair'])), () => act('business.setFocus', player.pick(['growth', 'efficiency', 'quality', 'people', 'brand'])), () => act('business.execMove', player.pick(['townHall', 'bigClient', 'restructure', 'innovation', 'investorDay'])), () => act('business.setPay', player.pick(['modest', 'market', 'top'])));
+    if (player.chance(0.15)) tries.push(() => act('business.appointDirector', player.pick(['operator', 'finance', 'marketing', 'people', 'governance'])), () => act('business.buyPremises', player.pick(['cash', 'loan'])));
+    if (player.chance(0.15)) tries.push(() => act('business.capitalIn', `${biz.id}:${player.pick([25000, 100000])}`), () => act('business.capitalOut', `${biz.id}:max`), () => act('business.buyBack', `${biz.id}:0.1:${player.pick(['you', 'company'])}`));
+    if (player.chance(0.1)) tries.push(() => act('business.toggleInitiative', player.pick(['loyalty', 'salesTeam', 'telematics', 'training', 'energy'])), () => act('business.promote', player.pick(['sale', 'sponsor', 'tradeShow', 'webinar', 'rfpBlitz'])));
+    if (player.chance(0.08)) tries.push(() => act('business.formConglomerate'));
   }
+  const groupsNow = state.business.rivalGroups ?? [];
+  if (state.business.conglomerate && groupsNow.length && player.chance(0.03)) tries.push(() => act('business.bidForGroup', player.pick(groupsNow).name));
+  if (state.business.conglomerate && player.chance(0.1)) tries.push(() => act('business.hireExec', player.pick(['president', 'cfo', 'coo', 'cmo'])), () => act('business.hqOffice', player.pick(['virtual', 'suite', 'floor'])));
+  for (const h of state.business.holdings ?? []) if (player.chance(0.05)) tries.push(() => act('business.focus', h.id));
   // Mental health & SSDI
   const mental = state.health.conditions.filter((c) => ['depression', 'anxiety', 'ptsd'].includes(c.id) && !c.remission && c.diagnosed);
   if (mental.length && player.chance(0.3)) {

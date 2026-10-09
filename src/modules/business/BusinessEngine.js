@@ -19,23 +19,27 @@ import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor } from './BusinessTypes.js';
 import { ownershipRules } from './OwnershipRules.js';
 import {
-  ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf,
+  ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf, nextMarket, locationsByRegion, marketRoom,
 } from '../org/Businesses.js';
 import { OwnerActions, OwnerResolvers } from './OwnerActions.js';
 import { runPlan, STRATEGIES, canDelegate } from './GrowthPlan.js';
 import { InitiativeActions, initiativesTick } from './Initiatives.js';
 import { conglomerateTick, conglomerateOf, formEligibility, holdingsCap, acquireCompany, FORM_COST } from './Conglomerate.js';
 import { hireExec, fireExec, resolveExecHire, setOffice, mergeSubsidiaries } from './HoldingCo.js';
-import { businessById, inject, withdraw, withdrawable, moveTreasury, buyBack, openingsPerYear } from './Capital.js';
+import { POSTS, takePost, leavePost, setFocus, setPay, execMove, postYear, executiveSkill, boardHooks } from './OwnerJob.js';
+import { syncBoard, boardMeeting, appointDirector, removeDirector } from './Board.js';
+import { rivalGroupsTick, bidForGroup } from './RivalGroups.js';
+import { businessById, inject, withdraw, withdrawable, moveTreasury, buyBack, openingsPerYear, buyPremises, saleLeaseback } from './Capital.js';
 import { FleetActions, FleetResolvers, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
 import { charge } from './TaxBook.js';
+import { sideRng } from '../org/Organizations.js';
 import {
   grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
 } from './BusinessLicenses.js';
 import {
   currentBusiness, typeOf, holdsLicense, startEligibility, fundingCheck, ownerSkill, debtBalance, guaranteedDebt,
-  yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND,
+  yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND, premisesPrice,
 } from './Business.js';
 import {
   FRANCHISE_BRANDS, FDD_COST, TRANSFER_FEE, startupCost, franchiseEligibility, franchisorEligibility, franchisorTick, franchiseeTick, deBrand,
@@ -63,7 +67,7 @@ function staffTick(ctx, biz) {
     s.morale = Math.round(clamp(s.morale + (target - s.morale) * 0.25 + delegated.length + rng.int(-6, 6), 0, 100));
   }
   const quality = mode.fixedQuality ?? 38 + s.morale * 0.35;
-  s.productivity = Math.round(clamp(quality + state.stats.smarts * 0.08 + (biz.role === 'operator' ? 3 : 0) + rng.int(-8, 8), 0, 100));
+  s.productivity = Math.round(clamp(quality + state.stats.smarts * 0.08 + (['operator', 'executive'].includes(biz.role) ? 3 : 0) + rng.int(-8, 8), 0, 100));
   if (mode.strikes && !s.unionized && s.headcount >= 5) s.unionRisk = Math.round(clamp(s.unionRisk + (s.morale < 45 ? (45 - s.morale) / 2 : -4), 0, 100));
   if (biz.role === 'operator') ctx.stat('stress', 2 + (s.headcount >= 8 ? 3 - delegated.length : 1));
 }
@@ -170,7 +174,8 @@ function inspectionTick(ctx, biz, type) {
     biz.reputation = Math.max(0, biz.reputation - 8);
     if (biz.violations.length >= 3) {
       ctx.log(`The health department revoked ${biz.name}'s permit after a third failed inspection.`, '🚫', 'bad');
-      closeBusiness(ctx, 'Shut down by the health department', { liquidation: 0.4 });
+      if (state.business.current === biz) closeBusiness(ctx, 'Shut down by the health department', { liquidation: 0.4 });
+      else closeHolding(ctx, biz, 'Shut down by the health department');
       return;
     }
     ctx.log(`${biz.name} failed a health inspection (${biz.violations.length}/3 in five years): ${money(fine)} fine and a bad grade in the window.`, '🧪', 'bad');
@@ -189,6 +194,7 @@ function businessTick(ctx, biz) {
   const type = typeOf(biz);
   biz.years += 1;
   if (biz.role === 'operator' && (state.legal.incarceration || state.career.job || !ownershipRules(state).canOperate)) biz.role = 'absentee';
+  if (biz.role === 'executive' && (state.legal.incarceration || (POSTS[biz.ownerPost?.post]?.fullTime && state.career.job))) leavePost(ctx, biz, state.legal.incarceration ? 'Incarcerated' : 'Took another job');
   // A conflict of interest from a new job: divest within a year.
   if (biz.divestBy != null && ownershipRules(state, biz.typeId).ok) biz.divestBy = null;
   if (biz.divestBy != null && state.character.age >= biz.divestBy) {
@@ -218,7 +224,7 @@ function businessTick(ctx, biz) {
 
   staffTick(ctx, biz);
   // Absentee owners rely on the general manager or CEO they hired.
-  const skill = biz.role === 'operator' ? ownerSkill(state, type) : managerSkill(state, biz);
+  const skill = biz.role === 'operator' ? ownerSkill(state, type) : biz.role === 'executive' ? executiveSkill(state, biz, ownerSkill(state, type), managerSkill(state, biz)) : managerSkill(state, biz);
   // A franchisor's operations manual and field consultants stand in for experience.
   const target = biz.staff.productivity * 0.55 + Math.max(skill, biz.franchise ? 22 : 0) * 0.6 + 12 + (biz.licensedManager ? -5 : 0) + ({ cheap: -3, premium: 3 }[biz.supplier] ?? 0);
   biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
@@ -237,6 +243,8 @@ function businessTick(ctx, biz) {
   ly.ownerPay = payOwner(ctx, biz, ly);
   biz.lastYear = ly;
   biz.valuation = valuation(biz, ly);
+  recordBooks(state, biz, ly);
+  governanceYear(ctx, biz);
   opsTick(ctx, biz, ly);
   ctx.log(`${biz.name}: ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; you took ${money(ly.ownerPay)}` : ''}. Valued at ${money(biz.valuation)}.`, type.icon, ly.netIncome >= 0 ? 'finance' : 'warn');
 
@@ -265,6 +273,7 @@ function businessTick(ctx, biz) {
   // Cheating is the owner's own choice — hired managers don't bring it to you.
   if (!handsOff && rng.chance(0.08)) temptationPrompt(ctx, biz);
   offerTick(ctx, biz);
+  capitalOffers(ctx, biz);
   if (biz.cash < 0) cashCrunch(ctx, biz);
 }
 
@@ -274,8 +283,11 @@ export function maxScale(state, biz) {
   return biz.role !== 'operator' ? MANAGED_MAX_SCALE : 5;
 }
 
-/** What opening another location costs. */
-export const expansionCost = (biz) => Math.round(typeOf(biz).cost * 0.8);
+/** What opening another location costs: build-out and equipment, priced like the city it opens in. */
+export const expansionCost = (biz, regionId = biz.expandTo) => Math.round(typeOf(biz).cost * 0.8 * (REGIONS[regionId]?.col ?? 1));
+/** Where the next location goes: the city you picked, or the best market with room. */
+export const expansionTarget = (state, biz) => (biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : nextMarket(state, biz));
+export const nextExpansionCost = (state, biz) => expansionCost(biz, expansionTarget(state, biz));
 
 /** Open another location, paid from the business account or with an SBA loan. Returns { ok, reason }. */
 const PLAN_DEPS = { expandBusiness: (...a) => expandBusiness(...a), maxScale: (...a) => maxScale(...a), expansionCost: (...a) => expansionCost(...a) };
@@ -286,7 +298,8 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
   if (type.startup) return { ok: false, reason: 'Startups grow by hiring and raising money.' };
   if (biz.scale >= maxScale(state, biz)) return { ok: false, reason: biz.scale >= MANAGED_MAX_SCALE ? 'That\'s as many locations as you can run.' : 'Five locations is as many as you can run yourself — hand it to a management team to keep growing.' };
   if (biz.years < 2) return { ok: false, reason: 'Get through two years first.' };
-  const cost = expansionCost(biz);
+  const target = expansionTarget(state, biz);
+  const cost = expansionCost(biz, target);
   if (funding === 'sba') {
     if (state.housing.credit.score < SBA.minScore) return { ok: false, reason: `SBA lenders want a ${SBA.minScore}+ credit score.` };
     if (biz.cash < cost * SBA.downPayment) return { ok: false, reason: `The business needs ${money(cost * SBA.downPayment)} for the down payment.` };
@@ -306,8 +319,9 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
     biz.staff.headcount = Math.min(MAX_HEADCOUNT, Math.max(biz.staff.headcount, (o.unit ? biz.ops.units.length : 0) * o.crew));
   }
   bump(biz, 'quality', -5);
-  const branch = openBranch(state, biz, biz.expandTo && REGIONS[biz.expandTo] ? biz.expandTo : state.character.regionId);
-  biz.expandTo = null;
+  const branch = openBranch(state, biz, target);
+  // Keep opening in the chosen city until it's full, then move on to the next market.
+  if (biz.expandTo && (locationsByRegion(state, biz)[biz.expandTo] ?? 0) >= marketRoom(biz.expandTo)) biz.expandTo = null;
   ctx.log(`${biz.name} opened location #${biz.scale}: the ${branch.name}, run by a branch manager.`, type.icon, 'milestone');
   return { ok: true, cost };
 }
@@ -411,6 +425,52 @@ function temptationPrompt(ctx, biz) {
     ],
     data: { id },
   });
+}
+
+/** The executive post and the board's annual review. */
+function governanceYear(ctx, biz) {
+  const { state } = ctx;
+  // Its own random stream: governance never reshuffles the rest of the year.
+  const rng = sideRng(state);
+  ctx = { ...ctx, rng };
+  postYear(ctx, biz);
+  const org = ensureBusinessOrg(state, biz);
+  const ceo = org?.ceo ? org.people[org.ceo] : null;
+  const board = syncBoard(state, rng, biz, { ceoName: ceo?.name ?? null });
+  if (!board) return;
+  boardMeeting(ctx, biz, boardHooks(ctx, biz, () => {
+    const gone = org.people[org.ceo]?.name;
+    delete org.people[org.ceo];
+    org.ceo = null;
+    syncBusinessOrg(state, biz);
+    return `The board replaced ${gone ?? 'the chief executive'} with ${org.people[org.ceo]?.name ?? 'a new hire'}.`;
+  }));
+}
+
+/** Ten years of results, for the history table. */
+function recordBooks(state, biz, ly) {
+  biz.books = [...(biz.books ?? []).slice(-9), { age: state.character.age, revenue: ly.revenue, netIncome: ly.netIncome, scale: biz.scale, staff: biz.staff.headcount, valuation: biz.valuation, ownerPay: ly.ownerPay ?? 0 }];
+}
+
+/**
+ * Capital for established companies: growth-equity investors once revenue
+ * passes $10M, and an IPO (staying public, with you as the largest
+ * shareholder) once a corporation passes $75M.
+ */
+function capitalOffers(ctx, biz) {
+  const { state } = ctx;
+  const rng = sideRng(state);
+  const type = typeOf(biz);
+  const revenue = biz.lastYear?.revenue ?? 0;
+  if (type.startup || biz.public || state.prompts.some((p) => ['business.growthEquity', 'business.publicOffering'].includes(p.type))) return;
+  const good = ['expansion', 'peak'].includes(state.economy.phase) && (biz.lastYear?.netIncome ?? 0) > 0;
+  if (good && biz.entity === 'ccorp' && revenue >= 75_000_000 && rng.chance(0.25)) {
+    const price = Math.round(biz.valuation * rng.float(1.1, 1.4));
+    ctx.prompt({ type: 'business.publicOffering', icon: '🔔', title: `${biz.name}: Go Public?`, text: `Investment banks want to take ${biz.name} public at about ${money(price)}. The company would sell 20% in new shares (cash for growth) and you'd sell 10% of yours. You'd stay the largest shareholder — with a public board and quarterly scrutiny.`, options: [{ id: 'ipo', label: '🔔 Take it public' }, { id: 'wait', label: '⏳ Stay private' }], data: { price, id: biz.id } });
+  } else if (good && revenue >= 10_000_000 && biz.ownerPct > 0.6 && rng.chance(0.12)) {
+    const amount = Math.round(biz.valuation / 3);
+    ctx.prompt({ type: 'business.growthEquity', icon: '💼', title: `${biz.name}: Growth Investors`, text: `A growth-equity fund offers ${money(amount)} of new money for a quarter of ${biz.name}, plus a board seat.`, options: [{ id: 'accept', label: '🤝 Take the money' }, { id: 'decline', label: '🙅 Stay independent' }], data: { amount, id: biz.id } });
+  }
 }
 
 /** Buyers come calling: acquisition offers and (rarely) an IPO. */
@@ -648,7 +708,7 @@ function holdingTick(ctx, biz) {
     return;
   }
   biz.years += 1;
-  biz.role = 'absentee';
+  if (biz.role !== 'executive') biz.role = 'absentee';
   ensureBusinessOrg(state, biz);
   const target = biz.staff.productivity * 0.55 + managerSkill(state, biz) * 0.6 + 12;
   biz.quality = Math.round(clamp(biz.quality + (target - biz.quality) * 0.35 + rng.int(-4, 4), 0, 100));
@@ -665,8 +725,12 @@ function holdingTick(ctx, biz) {
   ly.ownerPay = payOwner(ctx, biz, ly);
   biz.lastYear = ly;
   biz.valuation = valuation(biz, ly);
+  recordBooks(state, biz, ly);
+  governanceYear(ctx, biz);
   businessStaffTick(ctx, biz);
   initiativesTick(ctx, biz);
+  managedYear(ctx, biz);
+  if (!state.business.holdings.includes(biz)) return;
   if (biz.plan) runPlan(ctx, biz, PLAN_DEPS);
   syncBusinessOrg(state, biz);
   ctx.log(`${biz.name} (held): ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; ${money(ly.ownerPay)} to you` : ''}.`, typeOf(biz).icon, 'finance');
@@ -679,6 +743,40 @@ function holdingTick(ctx, biz) {
     releaseBusinessOrg(state, biz, { closed: true });
     state.business.history.push({ name: biz.name, typeId: biz.typeId, startAge: biz.foundedAge, endAge: state.character.age, years: biz.years, outcome: 'Failed (held passively)', proceeds: 0, orgId: biz.orgId, role: 'absentee' });
     state.business.holdings = state.business.holdings.filter((h) => h !== biz);
+  }
+}
+
+/** A held business shuts its doors. */
+function closeHolding(ctx, h, outcome) {
+  const { state } = ctx;
+  releaseBusinessOrg(state, h, { closed: true });
+  state.business.history.push({ name: h.name, typeId: h.typeId, startAge: h.foundedAge, endAge: state.character.age, years: h.years, outcome, proceeds: 0, orgId: h.orgId, role: 'absentee' });
+  state.business.holdings = state.business.holdings.filter((x) => x !== h);
+}
+
+/**
+ * Management handles a held business's year the way you'd handle yours:
+ * competitors, inspections, the odd crisis, a union drive — and tells you.
+ */
+function managedYear(ctx, biz) {
+  const { state } = ctx;
+  const rng = sideRng(state);
+  ctx = { ...ctx, rng };
+  const type = typeOf(biz);
+  marketTick(ctx, biz);
+  inspectionTick(ctx, biz, type);
+  if (!state.business.holdings.includes(biz)) return;
+  if (biz.staff.unionRisk >= 100 && !biz.staff.unionized) {
+    biz.staff.unionized = rng.chance(0.5);
+    biz.staff.unionRisk = biz.staff.unionized ? 0 : 60;
+    ctx.log(`${biz.name}'s staff ${biz.staff.unionized ? 'voted to unionize' : 'voted down a union'} — management ran a lawful campaign.`, '✊', biz.staff.unionized ? 'warn' : undefined);
+  } else if (rng.chance(0.3)) {
+    const pool = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup));
+    const event = rng.pick(pool);
+    if (event) {
+      const option = event.options.find((o) => o.id === AUTOPILOT_CHOICE[event.id]) ?? event.options[0];
+      ctx.log(`${biz.name} — ${event.title}: management handled it. ${option.apply(ctx, biz)}`, type.icon);
+    }
   }
 }
 
@@ -732,6 +830,7 @@ export const BusinessEngine = {
         biz.role = 'absentee';
         ctx.log(`You took a job, so a general manager now runs ${biz.name} day to day.`, '🏪');
       }
+      for (const b of [ctx.state.business.current, ...(ctx.state.business.holdings ?? [])]) if (b?.role === 'executive' && POSTS[b.ownerPost?.post]?.fullTime) leavePost(ctx, b, 'Took another job');
     });
   },
 
@@ -741,6 +840,8 @@ export const BusinessEngine = {
     if (biz) businessTick(ctx, biz);
     for (const h of [...(ctx.state.business.holdings ?? [])]) holdingTick(ctx, h);
     conglomerateTick(ctx, PLAN_DEPS);
+    // Rival conglomerates move once you're in business.
+    if (ctx.state.business.current || ctx.state.business.holdings?.length || ctx.state.business.rivalGroups) rivalGroupsTick({ ...ctx, rng: sideRng(ctx.state) });
   },
 
   actions: {
@@ -779,6 +880,7 @@ export const BusinessEngine = {
     setRole(ctx, role) {
       const biz = withBiz(ctx);
       if (!biz || !['operator', 'absentee'].includes(role)) return;
+      if (biz.role === 'executive') leavePost(ctx, biz, 'Stepped down');
       if (role === 'operator' && ctx.state.career.job) return ctx.toast('Quit your job to run the business full-time.', 'warn');
       if (role === 'operator' && ctx.state.legal.incarceration) return;
       if (role === 'operator' && !ownershipRules(ctx.state).canOperate) return ctx.toast(ownershipRules(ctx.state).notes.at(-1) ?? 'You can\'t run it yourself right now.', 'warn');
@@ -887,6 +989,64 @@ export const BusinessEngine = {
       const biz = businessById(ctx.state, id);
       if (!biz) return;
       buyBack(ctx, biz, pct === 'all' ? 1 : Number(pct), source);
+    },
+    /** arg: group name — buy a whole rival conglomerate. */
+    bidForGroup(ctx, name) {
+      bidForGroup(ctx, name);
+    },
+    /** arg: 'ceo' | 'president' | 'chair' — work in your own company. */
+    takePost(ctx, post) {
+      const biz = withBiz(ctx);
+      if (biz) takePost(ctx, biz, post);
+    },
+    leavePost(ctx) {
+      const biz = withBiz(ctx);
+      if (biz) leavePost(ctx, biz);
+    },
+    /** arg: focus id. */
+    setFocus(ctx, focus) {
+      const biz = withBiz(ctx);
+      if (biz) setFocus(ctx, biz, focus);
+    },
+    /** arg: 'modest' | 'market' | 'top'. */
+    setPay(ctx, level) {
+      const biz = withBiz(ctx);
+      if (biz) setPay(ctx, biz, level);
+    },
+    /** arg: move id — one of the year's executive moves. */
+    execMove(ctx, move) {
+      const { state } = ctx;
+      const biz = withBiz(ctx);
+      if (biz) execMove(ctx, biz, move, executiveSkill(state, biz, ownerSkill(state, typeOf(biz)), managerSkill(state, biz)));
+    },
+    /** arg: expertise — appoint an independent director (or start an advisory board). */
+    appointDirector(ctx, expertise) {
+      const biz = withBiz(ctx);
+      if (biz) appointDirector(ctx, biz, expertise);
+    },
+    removeDirector(ctx, seatId) {
+      const biz = withBiz(ctx);
+      if (biz) removeDirector(ctx, biz, seatId);
+    },
+    /** arg: 'cash' | 'loan' — buy the building one location rents. */
+    buyPremises(ctx, how) {
+      const biz = withBiz(ctx);
+      if (biz) buyPremises(ctx, biz, how === 'loan' ? 'loan' : 'cash', { premisesPrice, sba: SBA });
+    },
+    saleLeaseback(ctx) {
+      const biz = withBiz(ctx);
+      if (biz) saleLeaseback(ctx, biz);
+    },
+    /** arg: holding id — switch which of your businesses you're looking after (management keeps running both). */
+    focus(ctx, id) {
+      const { state } = ctx;
+      const h = (state.business.holdings ?? []).find((x) => x.id === id);
+      if (!h) return;
+      const cur = state.business.current;
+      if (cur && ['operator', 'executive'].includes(cur.role)) return ctx.toast(`You work at ${cur.name} yourself — hand it to management before focusing on another company.`, 'warn');
+      state.business.holdings = [...state.business.holdings.filter((x) => x !== h), ...(cur ? [cur] : [])];
+      state.business.current = h;
+      ctx.toast(`Now overseeing ${h.name}`, 'info');
     },
     /** arg: role — run an executive search for the holding company. */
     hireExec(ctx, role) {
@@ -1113,6 +1273,56 @@ export const BusinessEngine = {
 
   resolvers: {
     execHire: resolveExecHire,
+    groupOffer(ctx, data, optionId) {
+      const { state } = ctx;
+      const b = businessById(state, data.bizId);
+      if (!b || optionId !== 'accept') return;
+      if (state.business.current === b) exitBusiness(ctx, data.price, `Sold to ${data.group}`, { buyer: data.group });
+      else sellHoldingAt(ctx, b, data.price, `Sold to ${data.group}`);
+      ctx.log(`You sold ${b.name} to ${data.group} for ${money(data.price)} (your share ${money(data.price * b.ownerPct)}).`, '🤝', 'milestone');
+    },
+    hostileBid(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const b = businessById(state, data.bizId);
+      if (!b) return;
+      if (optionId === 'fight') {
+        charge(b, b.valuation * 0.02);
+        if (rng.chance(0.6)) return ctx.log(`${b.name} fought off ${data.group}'s hostile bid — shareholders stayed with you.`, '🛡️', 'good');
+        ctx.log(`Shareholders tendered to ${data.group}. ${b.name} was taken over.`, '⚔️', 'bad');
+      } else ctx.log(`You took ${data.group}'s premium for ${b.name}.`, '🤝', 'milestone');
+      if (state.business.current === b) exitBusiness(ctx, data.price, `Taken over by ${data.group}`, { buyer: data.group });
+      else sellHoldingAt(ctx, b, data.price, `Taken over by ${data.group}`);
+    },
+    growthEquity(ctx, data, optionId) {
+      const biz = businessById(ctx.state, data.id);
+      if (!biz || optionId !== 'accept') return;
+      const pct = Math.round(biz.ownerPct * 0.25 * 10000) / 10000;
+      biz.cash += data.amount;
+      biz.ownerPct = Math.round((biz.ownerPct - pct) * 10000) / 10000;
+      biz.investors.push({ round: 'growth equity', pct, invested: data.amount, partner: 'Growth fund' });
+      ctx.log(`${biz.name} took ${money(data.amount)} from a growth-equity fund for 25% of the company. You own ${Math.round(biz.ownerPct * 100)}% now; the fund has a board seat.`, '💼', 'milestone');
+    },
+    publicOffering(ctx, data, optionId) {
+      const { state } = ctx;
+      const biz = businessById(state, data.id);
+      if (!biz || optionId !== 'ipo') return;
+      // New shares: 20% of the company, cash into the business.
+      const raised = Math.round(data.price * 0.2);
+      biz.cash += raised;
+      const afterNew = biz.ownerPct * 0.8;
+      // Your secondary sale: 10% of your shares.
+      const sold = Math.round(data.price * afterNew * 0.1);
+      const portion = { ...biz, ownerPct: afterNew * 0.1, basis: Math.round(biz.basis * 0.1) };
+      const e = exitProceeds(portion, data.price);
+      state.finances.cash += e.basisBack + e.qsbs;
+      if (e.taxable) ctx.earn(e.taxable, `IPO share sale — ${biz.name}`, { ltcg: true });
+      biz.basis -= portion.basis;
+      biz.ownerPct = Math.round(afterNew * 0.9 * 10000) / 10000;
+      biz.investors.push({ round: 'public', pct: Math.round((1 - biz.ownerPct - biz.investors.reduce((s, i) => s + i.pct, 0)) * 10000) / 10000, invested: raised });
+      biz.public = { since: state.character.age, ipoPrice: data.price };
+      ctx.log(`${biz.name} went public at a ${money(data.price)} valuation! The company raised ${money(raised)}; you sold ${money(sold)} of stock and still own ${Math.round(biz.ownerPct * 100)}%.`, '🔔', 'milestone');
+      ctx.stat('happiness', 15);
+    },
     ...OwnerResolvers,
     ...FleetResolvers,
     franchiseDefault(ctx, data, optionId) {

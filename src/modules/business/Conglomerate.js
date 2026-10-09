@@ -159,12 +159,32 @@ export function acquireCompany(ctx, orgId) {
   if ((state.business.holdings ?? []).length >= holdingsCap(state)) return ctx.toast(`${c.name} can hold ${holdingsCap(state)} companies.`, 'warn');
   const o = acquisitionTargets(state).find((x) => x.id === orgId);
   if (!o) return;
-  const price = Math.round(appraise(state, o).price * (1 - dealDiscount(c)));
+  let price = Math.round(appraise(state, o).price * (1 - dealDiscount(c)));
+  // A rival group may bid against you.
+  const bidder = contestingGroup(state, rng);
+  if (bidder) {
+    price = Math.round(price * 1.15);
+    ctx.log(`${bidder} bid for ${o.name} too — the price went up 15%.`, '⚔️', 'warn');
+  }
   const fromTreasury = Math.min(c.treasury, price);
   const rest = price - fromTreasury;
   if (rest > 0 && !canAfford(state, rest)) return ctx.toast(`${money(price)} — the treasury has ${money(c.treasury)}.`, 'warn');
   c.treasury -= fromTreasury;
   if (rest > 0) ctx.spend(rest, `Acquisition of ${o.name}`, { credit: true });
+  addToGroup(ctx, o, price);
+  c.acquisitions = (c.acquisitions ?? 0) + 1;
+  ctx.log(`${c.name} acquired ${o.name} (${BUSINESS_TYPES[o.business.typeId].name.toLowerCase()}) for ${money(price)}. Its management stays on, on a steady growth plan.`, '🏛️', 'milestone');
+}
+
+let contestingGroup = () => null;
+/** Rival groups (RivalGroups.js) register how often they bid against you. */
+export function setContestingGroup(fn) {
+  contestingGroup = fn;
+}
+
+/** An NPC business becomes one of your holdings, run by its management. */
+export function addToGroup(ctx, o, price) {
+  const { state, rng } = ctx;
   const typeId = o.business.typeId;
   const rep = o.business.reputation ?? 50;
   const biz = newBusiness(rng, state, typeId, { name: o.name, years: o.business.years ?? 5, scale: Math.max(1, o.business.scale ?? 1), quality: clamp(rep, 30, 85), reputation: rep, cash: Math.round(price * 0.08), assets: Math.round(price * 0.4), basis: price });
@@ -181,6 +201,5 @@ export function acquireCompany(ctx, orgId) {
   grandfatherLicenses(state, biz);
   syncBusinessOrg(state, biz);
   state.business.holdings.push(biz);
-  c.acquisitions = (c.acquisitions ?? 0) + 1;
-  ctx.log(`${c.name} acquired ${o.name} (${BUSINESS_TYPES[typeId].name.toLowerCase()}) for ${money(price)}. Its management stays on, on a steady growth plan.`, '🏛️', 'milestone');
+  return biz;
 }

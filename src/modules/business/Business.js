@@ -29,6 +29,7 @@ import { ownershipRules } from './OwnershipRules.js';
 import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './BusinessLicenses.js';
 import { competitionFactor, effectiveLocations } from '../org/Businesses.js';
 import { initiativeEffects } from './Initiatives.js';
+import { focusEffects } from './OwnerJob.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
@@ -158,6 +159,13 @@ export function yearFinancials(state, biz, rng) {
   const brand = 1 + Math.min(0.12, 0.012 * ((biz.scale ?? 1) - 1));
   // Initiatives, promotions and key accounts (Initiatives.js).
   const ini = type.startup ? null : initiativeEffects(biz, state.character.age);
+  // Your strategic focus as an executive (OwnerJob).
+  const fx = focusEffects(biz);
+  if (ini) {
+    ini.revenue *= fx.revenue;
+    ini.cogs *= fx.cogs;
+    ini.payroll *= fx.payroll;
+  }
   const revenue = Math.round(type.startup ? biz.arr
     : ops ? (ops.contractRevenue + ops.spotRevenue) * price * ramp * Math.sqrt(col) * ini.revenue
       : (type.revenue * locations * brand * demand * price * ramp * staffFactor(biz) * rng.float(0.88, 1.12) * ini.revenue + ini.accounts * ramp) * Math.sqrt(col));
@@ -174,8 +182,12 @@ export function yearFinancials(state, biz, rng) {
   const overhead = Math.round(payroll * (mode.adminOverhead + delegated.reduce((s, d) => s + DUTIES[d].overhead, 0)));
   // A manager's pay scales with the operation: a food truck's lead isn't paid like a restaurant group's GM.
   // A general manager, then district managers as the chain grows (cheaper per location than an owner at every site).
-  const management = (biz.role === 'absentee' ? Math.round(clamp(revenue * 0.05, 40000, 90000) + Math.max(0, (biz.scale ?? 1) - 1) * 12000) : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
-  const rent = Math.round(type.rent * biz.scale * col * (ini?.rent ?? 1));
+  // As chief executive yourself, you replace the hired general manager (district managers still cost).
+  const hiredChief = biz.role === 'absentee' || (biz.role === 'executive' && biz.ownerPost?.post === 'chair');
+  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + (biz.role !== 'operator' ? Math.max(0, (biz.scale ?? 1) - 1) * 12000 : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
+  // Locations whose building you own pay property tax and upkeep instead of rent (see Premises).
+  const owned = Math.min(biz.scale, biz.premises?.owned ?? 0);
+  const rent = Math.round(type.rent * (biz.scale - owned) * col * (ini?.rent ?? 1) + (biz.premises?.value ?? 0) * PREMISES_CARRY);
   const initiatives = ini ? Math.round(revenue * ini.share + ini.fixed * Math.sqrt(col)) : 0;
   const insurance = Math.round(type.insurance * biz.scale * (ini?.insurance ?? 1));
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
@@ -192,7 +204,9 @@ export function yearFinancials(state, biz, rng) {
   // S- and C-corp owners who work in the business take a W-2 salary (employer payroll tax applies).
   const entity = ENTITIES[biz.entity];
   // Funded startup founders pay themselves a modest salary out of the raise.
-  const ownerSalary = biz.role !== 'operator' || !entity.payroll ? 0
+  // An executive post pays its salary as a wage whatever the entity.
+  const ownerSalary = biz.role === 'executive' ? (biz.ownerPost?.salary ?? 0)
+    : biz.role !== 'operator' || !entity.payroll ? 0
     : type.startup ? (biz.cash > 300000 ? 80000 : 0)
       : Math.round(clamp(operatingIncome * 0.4, 0, 150000));
   const payrollTax = Math.round(ownerSalary * 0.0765);
@@ -219,11 +233,19 @@ export function valuation(biz, ly = biz.lastYear) {
     return Math.max(0, Math.round(ev + Math.max(0, biz.cash) - debt));
   }
   const sde = (ly?.netIncome ?? 0) + (ly?.ownerSalary ?? 0) + (ly?.corporateTax ?? 0);
-  // Proven brands sell for more; a franchise system's royalty stream is worth more still.
-  const multiple = 2.5 * (0.7 + biz.reputation / 170) * (biz.franchise ? 1.15 : 1) * (biz.franchisor?.units ? 1.3 : 1);
+  // Bigger companies sell for higher multiples: a corner shop goes for ~2.5× earnings, a
+  // $1M-profit company ~4×, a $10M one ~7×, the largest ~9×. Proven brands and franchise
+  // systems sell for more; a public company's shares trade at a premium.
+  const sizeMultiple = clamp(2.5 + 2.3 * Math.log10(Math.max(1, sde / 250000)), 2.5, 9);
+  const multiple = sizeMultiple * (0.7 + biz.reputation / 170) * (biz.franchise ? 1.15 : 1) * (biz.franchisor?.units ? 1.3 : 1) * (biz.public ? 1.25 : 1);
   const ev = Math.max(0, sde) * multiple + biz.assets;
   return Math.max(0, Math.round(ev + Math.max(0, biz.cash) - debt));
 }
+
+/** Owning your premises: priced at ~14× a year's rent (a 7% cap rate); tax and upkeep ~2% of value a year. */
+export const PREMISES_CAP_RATE = 0.07;
+export const PREMISES_CARRY = 0.02;
+export const premisesPrice = (state, biz) => Math.round(BUSINESS_TYPES[biz.typeId].rent * regionOf(state).col / PREMISES_CAP_RATE);
 
 export function annualPayment(principal, rate, years) {
   if (principal <= 0) return 0;

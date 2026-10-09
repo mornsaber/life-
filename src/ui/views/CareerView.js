@@ -43,6 +43,7 @@ import { policeCard, fireCard } from './PublicSafetyView.js';
 import { equipmentCard } from './EquipmentView.js';
 import { publishingCard, adjunctCard } from './HigherEdView.js';
 import { labCard } from './LabView.js';
+import { POSTS } from '../../modules/business/OwnerJob.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -355,15 +356,22 @@ function militaryLeaveCard(state) {
 
 export function careerView(state, ui = {}) {
   const job = state.career.job;
+  const posts = [state.business?.current, ...(state.business?.holdings ?? [])].filter((b) => b?.role === 'executive' && b.ownerPost);
+  const postLines = posts.map((b) => {
+    const P = POSTS[b.ownerPost.post];
+    const last = b.board?.meetings?.at(-1);
+    return `<p>${P.icon} <b>${esc(P.title)}</b> at <b>${esc(b.name)}</b> — ${money(b.ownerPost.salary)}/yr · ${b.ownerPost.years} yr in the post${last ? ` · board: ${esc(last.verdict)}` : ''}</p>`;
+  }).join('');
+  const ownJob = posts.length ? card('Your Job: Your Own Company', `${postLines}<p class="fine">Set your focus and make the year's big moves from the Business tab.</p>`, { icon: '👔', accent: 'cyan' }) : '';
   const current = job
-    ? currentJob(state) + organizationCard(state, job) + managementConsole(job)
-    : card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
+    ? currentJob(state) + organizationCard(state, job) + managementConsole(job) + ownJob
+    : ownJob || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   // Jobs and businesses you ran, one timeline.
   const stints = [
     ...state.career.history.map((h) => ({ kind: 'job', h, end: h.endAge })),
     ...(state.business?.history ?? []).map((b) => ({ kind: 'biz', b, end: b.endAge })),
   ].sort((a, b) => b.end - a.end);
-  const bizLine = (b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${b.role === 'operator' ? 'Owner-operator' : 'Owner'}</b> · ${esc(b.name)} <small>(age ${b.ownedFromAge ?? b.startAge}–${b.endAge}) — ${esc(b.outcome)}</small></li>`;
+  const bizLine = (b) => `<li>${BUSINESS_TYPES[b.typeId]?.icon ?? '🏪'} <b>${b.role === 'operator' ? 'Owner-operator' : b.role === 'executive' ? 'Owner-executive' : 'Owner'}</b> · ${esc(b.name)} <small>(age ${b.ownedFromAge ?? b.startAge}–${b.endAge}) — ${esc(b.outcome)}</small></li>`;
   const history = stints.length
     ? `<ul class="history">${stints.map((x) => (x.kind === 'biz' ? bizLine(x.b) : jobLine(x.h))).join('')}</ul>`
     : empty('No previous jobs.');

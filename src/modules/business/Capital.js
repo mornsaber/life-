@@ -125,3 +125,37 @@ export function buyBack(ctx, biz, pct, source = 'you') {
   biz.investors = (biz.investors ?? []).filter((i) => i.pct > 0.0001);
   ctx.log(`${source === 'company' ? `${biz.name} redeemed` : 'You bought back'} ${Math.round(q.pct * 1000) / 10}% of ${biz.name} for ${money(q.price)}. You own ${Math.round(biz.ownerPct * 1000) / 10}% now.`, '🔁', 'milestone');
 }
+
+/* ------------------------------------------------------------------ */
+/* Premises: owning the buildings your locations operate from          */
+/* ------------------------------------------------------------------ */
+
+/** Buy the building one of your locations rents. how: cash | loan (an SBA 504 loan: 15% down). */
+export function buyPremises(ctx, biz, how, { premisesPrice, sba }) {
+  const owned = biz.premises?.owned ?? 0;
+  if (owned >= biz.scale) return ctx.toast('You already own every location\'s building.', 'warn');
+  const price = premisesPrice(ctx.state, biz);
+  if (price <= 0) return ctx.toast('This business works from home or on the road — there\'s no building to buy.', 'warn');
+  const down = how === 'loan' ? Math.round(price * 0.15) : price;
+  if (biz.cash < down) return ctx.toast(`The business needs ${money(down)}${how === 'loan' ? ' for the down payment' : ''}.`, 'warn');
+  if (how === 'loan' && ctx.state.housing.credit.score < sba.minScore) return ctx.toast(`SBA lenders want a ${sba.minScore}+ credit score.`, 'warn');
+  biz.cash -= down;
+  if (how === 'loan') {
+    const balance = (biz.debts.sba?.balance ?? 0) + price - down;
+    biz.debts.sba = { balance, rate: sba.rate, annual: Math.round((biz.debts.sba?.annual ?? 0) + (price - down) * (sba.rate / (1 - (1 + sba.rate) ** -25))), guaranteed: true };
+  }
+  biz.premises = { owned: owned + 1, value: (biz.premises?.value ?? 0) + price };
+  biz.assets += price;
+  ctx.log(`${biz.name} bought the building for one of its locations (${money(price)}${how === 'loan' ? `, ${money(down)} down with an SBA 504 loan` : ''}). No more rent there — just property tax and upkeep, and the building is yours.`, '🏢', 'milestone');
+}
+
+/** Sell one building and lease it back: cash now, rent from now on. */
+export function saleLeaseback(ctx, biz) {
+  const owned = biz.premises?.owned ?? 0;
+  if (!owned) return;
+  const each = Math.round(biz.premises.value / owned);
+  biz.premises = { owned: owned - 1, value: biz.premises.value - each };
+  biz.assets = Math.max(0, biz.assets - each);
+  biz.cash += each;
+  ctx.log(`${biz.name} sold one of its buildings to an investor and leased it back: ${money(each)} in cash, rent from here on.`, '🏢', 'finance');
+}

@@ -74,6 +74,8 @@ function moveRung(org, p, dir) {
   const next = ladder[idx + dir];
   if (!next || next.abilities.includes('exec')) return null;
   seat(org, p.deptId, p.professionId, next.id, p, next.title);
+  // Someone you moved keeps their new seat: yearly staffing never trims them.
+  p.placed = true;
   return next;
 }
 
@@ -198,8 +200,12 @@ export const OwnerActions = {
       return ctx.toast(`${to.name} already has a manager.`, 'warn');
     } else {
       const level = p.levelId;
+      // Out of the old department's seat, into the new one (and they stay put there).
+      const from = org.departments[p.deptId]?.seats?.[p.professionId];
+      if (from?.[level]) from[level] = from[level].filter((id) => id !== p.id);
       p.levelId = null;
       seat(org, deptId, p.professionId, level, p, p.title);
+      p.placed = true;
       ctx.log(`You moved ${p.name} to ${to.name}.`, '🔀');
     }
     p.rel = Math.round(clamp(p.rel + 2, 0, 100));

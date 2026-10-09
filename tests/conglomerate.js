@@ -53,7 +53,8 @@ const tests = {
     assert.ok(rivals.length, 'a market');
     assert.ok(rivals.every((o) => RIVAL_STRATEGIES[o.business.strategy]), 'every rival has a strategy');
     assert.ok(moves > 0, 'rivals moved');
-    // A price war and a big rival both cut into you.
+    // A price war and a big rival both cut into you (measured from a market of single shops, off the floor).
+    for (const o of rivals) Object.assign(o.business, { scale: 1, priceWarUntil: -1 });
     const base = competitionFactor(state, biz);
     const r = rivals[0];
     r.business.priceWarUntil = state.character.age + 2;

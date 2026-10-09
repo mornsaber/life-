@@ -177,7 +177,7 @@ function relationshipTick(ctx) {
       const away = state.career.job ? PROFESSIONS[state.career.job.professionId]?.rotation?.away ?? 0 : 0;
       if (away) delta -= Math.round(away * 6);
       if (state.health?.conditions.some((c) => !c.remission && ['alcohol', 'opioids', 'gambling'].includes(c.id))) delta -= 8;
-      if (!state.career.job && !state.retirement.retired && state.character.age < 60) delta -= 2;
+      if (!state.career.job && !state.retirement.retired && state.character.age < 60 && !['operator', 'executive'].includes(state.business?.current?.role)) delta -= 2;
     }
     person.relationship = clampRel(person.relationship + delta);
   }

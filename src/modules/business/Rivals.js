@@ -27,7 +27,7 @@ export const RIVAL_STRATEGIES = {
   poacher: { label: 'Talent raider', icon: '🧲' },
   marketer: { label: 'Big advertiser', icon: '📣' },
 };
-const GROUPS = ['Summit Capital Partners', 'Northstar Holdings', 'Keystone Brands', 'Meridian Group', 'Ironwood Equity', 'Atlas Consolidated'];
+export const GROUPS = ['Summit Capital Partners', 'Northstar Holdings', 'Keystone Brands', 'Meridian Group', 'Ironwood Equity', 'Atlas Consolidated'];
 
 /** Fill in strategy and scale for rivals created before they had them. */
 export function rivalProfile(rng, o) {

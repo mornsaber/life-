@@ -51,9 +51,10 @@ export function ownerPosition(state, biz) {
   const org = businessOrg(state, biz);
   const ceo = personOf(org, org?.ceo);
   const big = (biz.staff?.headcount ?? 0) >= TIERS.executives;
-  const title = biz.role === 'operator' ? (big ? 'Owner & CEO' : 'Owner') : ceo ? 'Owner & Chairman' : 'Owner (absentee)';
+  const post = biz.role === 'executive' ? { ceo: 'Owner & Chief Executive Officer', president: 'Owner, President & COO', chair: 'Owner & Executive Chair' }[biz.ownerPost?.post] : null;
+  const title = post ?? (biz.role === 'operator' ? (big ? 'Owner & CEO' : 'Owner') : ceo ? 'Owner & Chairman' : 'Owner (absentee)');
   const stake = biz.ownerPct < 1 ? `${Math.round(biz.ownerPct * 100)}% owner` : 'sole owner';
-  return { title, stake, runsIt: biz.role === 'operator', ceo };
+  return { title, stake, runsIt: biz.role === 'operator' || (biz.role === 'executive' && biz.ownerPost?.post !== 'chair'), ceo };
 }
 
 /** Create (or find) the organization for a business the player owns. */
@@ -158,17 +159,21 @@ export function syncBusinessOrg(state, biz) {
     if (!profession) continue;
     const { entry, skilled, lead } = staffLevels(profession, org.size);
     const picks = Object.values(org.people).filter((p) => p.handPicked && p.deptId === d.id).length;
+    // People you promoted or demoted onto rungs the plan doesn't staff still count toward the department.
+    const planned = new Set([entry?.id, skilled?.id, lead?.id].filter(Boolean));
+    const offPlan = Object.entries(d.seats[occ] ?? {}).filter(([lvl]) => !planned.has(lvl)).reduce((n, [, ids]) => n + ids.filter((id) => org.people[id]).length, 0);
     // The head is one of the department's people, not an extra.
-    const named = Math.max(0, Math.min(6 + picks, d.headcount - (personOf(org, d.head) ? 1 : 0)));
+    const named = Math.max(0, Math.min(6 + picks, d.headcount - (personOf(org, d.head) ? 1 : 0) - offPlan));
     const leads = lead && d.headcount >= TIERS.manager ? Math.min(3, Math.ceil(d.headcount / 12)) : 0;
     const plan = [[skilled, Math.ceil(named * 0.6)], [entry, Math.floor(named * 0.4)], ...(lead ? [[lead, leads]] : [])];
     for (const [level, count] of plan) {
       if (!level) continue;
       // People you picked yourself are the last to go.
-      const have = (d.seats[occ]?.[level.id] ?? []).filter((id) => org.people[id]).sort((a, b) => (org.people[b].handPicked ? 1 : 0) - (org.people[a].handPicked ? 1 : 0));
+      const kept = (p) => (p.handPicked || p.placed ? 1 : 0);
+      const have = (d.seats[occ]?.[level.id] ?? []).filter((id) => org.people[id]).sort((a, b) => kept(org.people[b]) - kept(org.people[a]));
       if (have.length > count) {
         const leaders = new Set([org.ceo, ...Object.values(org.departments).map((x) => x.head)]);
-        const keep = have.filter((id, i) => i < count || leaders.has(id) || org.people[id].handPicked);
+        const keep = have.filter((id, i) => i < count || leaders.has(id) || org.people[id].handPicked || org.people[id].placed);
         for (const id of have) if (!keep.includes(id)) delete org.people[id];
         d.seats[occ][level.id] = keep;
       } else if (count) {
@@ -178,7 +183,8 @@ export function syncBusinessOrg(state, biz) {
   }
 
   // Who runs it day to day.
-  if (biz.role === 'operator') {
+  // You at the top (running it yourself, or as CEO/President of your own company): no hired chief executive.
+  if (biz.role === 'operator' || (biz.role === 'executive' && biz.ownerPost?.post !== 'chair')) {
     if (org.ceo) delete org.people[org.ceo];
     org.ceo = null;
   } else if (!personOf(org, org.ceo)) {
@@ -347,10 +353,12 @@ export function businessStaffTick(ctx, biz) {
 /* ------------------------------------------------------------------ */
 
 /** NPC businesses of the same type in the same region. */
+/** Rivals in every city where you have a location. */
 export function competitorsOf(state, biz) {
   const org = businessOrg(state, biz);
-  const regionId = org?.regionId ?? state.character.regionId;
-  return Object.values(state.orgs?.byId ?? {}).filter((o) => o.typeId === `biz:${biz.typeId}` && o.regionId === regionId && o.id !== org?.id && o.owner?.kind !== 'player' && !o.closed);
+  const home = org?.regionId ?? state.character.regionId;
+  const cities = new Set([home, ...(org?.branches ?? []).map((b) => b.regionId).filter(Boolean)]);
+  return Object.values(state.orgs?.byId ?? {}).filter((o) => o.typeId === `biz:${biz.typeId}` && cities.has(o.regionId) && o.id !== org?.id && o.owner?.kind !== 'player' && !o.closed);
 }
 
 function npcBusiness(state, typeId, regionId, { name, founder = null, reputation } = {}) {
@@ -411,7 +419,10 @@ export function competitionFactor(state, biz) {
   const age = state.character.age;
   // Rivals pull customers by reputation, size and price; your own prices and locations count elsewhere.
   const avg = rivals.reduce((s, o) => s + effectiveReputation(o.business, age), 0) / rivals.length;
-  const locations = rivals.reduce((s, o) => s + (o.business.scale ?? 1), 0);
+  // Crowding is per market: rival locations per city you're in.
+  const org = businessOrg(state, biz);
+  const cities = new Set([org?.regionId ?? state.character.regionId, ...(org?.branches ?? []).map((b) => b.regionId).filter(Boolean)]).size;
+  const locations = rivals.reduce((s, o) => s + (o.business.scale ?? 1), 0) / cities;
   const priceWar = underPriceWar(state, biz, rivals) ? 0.04 : 0;
   return clamp(1 + ((biz.reputation ?? 50) - avg) / 250 - (locations - 3) * 0.02 - priceWar, 0.8, 1.12);
 }
@@ -470,6 +481,16 @@ export function marketTick(ctx, biz) {
     rivalProfile(rng, o);
     if (rng.chance(0.3)) Object.assign(o.business, { strategy: 'discounter', price: 'budget' });
     ctx.log(left === 0 ? `With the market to yourself, your margins drew a newcomer: ${o.name} opened to take a piece of it.` : `Seeing little competition, ${o.name} opened to take on ${biz.name}.`, '🏁', 'warn');
+  }
+  // Every city you've moved into has local businesses of its own.
+  const org = businessOrg(state, biz);
+  for (const city of new Set((org?.branches ?? []).map((b) => b.regionId).filter((r) => r && r !== regionId))) {
+    const local = Object.values(state.orgs.byId).filter((o) => o.typeId === `biz:${biz.typeId}` && o.regionId === city && o.owner?.kind !== 'player' && !o.closed).length;
+    if (local < 2 && rng.chance(local === 0 ? 0.7 : 0.25)) {
+      const o = npcBusiness(state, biz.typeId, city, { reputation: rng.int(40, 70) });
+      o.business.tickedAge = state.character.age;
+      rivalProfile(rng, o);
+    }
   }
   // Rivals act: price wars, expansions, poaching, ad blitzes, buyouts.
   rivalsTick(ctx, biz, competitorsOf(state, biz), { rng, npc: () => npcBusiness(state, biz.typeId, regionId) });
