@@ -20,7 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
-import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford } from './State.js';
+import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, setNameCountry } from './State.js';
 import { Random } from './Random.js';
 import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
 
@@ -85,6 +85,7 @@ export class Engine {
   /** Bring a loaded (possibly migrated) state up to date with every module. */
   hydrate(state, migratedFrom = null) {
     this.undoStack = [];
+    setNameCountry(state.character.countryId);
     this.modules.forEach((m) => m.init?.(state, this.rng));
     // Decisions whose type no longer exists can't be answered — drop them.
     state.prompts = state.prompts.filter((p) => this.resolvers.has(p.type) && p.options?.some((o) => !o.disabled));
@@ -138,6 +139,7 @@ export class Engine {
     if (!snapshot) return false;
     const state = JSON.parse(snapshot);
     this.store.state = state;
+    setNameCountry(state.character.countryId);
     this.modules.forEach((m) => m.init?.(state, this.rng));
     this.commit();
     return true;

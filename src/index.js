@@ -46,6 +46,7 @@ function startNewLife(form) {
     firstName: data.get('firstName'),
     lastName: data.get('lastName'),
     gender: gender === 'random' ? undefined : gender,
+    countryId: data.get('countryId') || 'US',
   });
 }
 

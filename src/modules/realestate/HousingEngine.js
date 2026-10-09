@@ -23,6 +23,7 @@ import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, compu
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
+import { regionsInState } from '../life/Regions.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -170,7 +171,7 @@ const COVERAGE = { hurricane: 0.75, wildfire: 0.9, blizzard: 0.9, tornado: 0.9, 
 
 function disasterDamage(ctx, { type, severity, stateId, name }) {
   const { state, rng } = ctx;
-  for (const regionId of Object.keys(REGIONS).filter((r) => REGIONS[r].state === stateId)) {
+  for (const regionId of regionsInState(stateId).map((r) => r.id)) {
     state.housing.market[regionId] = Math.round((state.housing.market[regionId] ?? 1) * (1 - severity * 0.03) * 1000) / 1000;
   }
   for (const p of state.housing.properties) {

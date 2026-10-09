@@ -5,7 +5,7 @@
  * every view that fails to render, and every bit of player-facing text
  * that leaks "undefined", "NaN", "[object Object]" or "Infinity" is a bug.
  *
- *   node tests/clicker.js [lives=40] [seed=1] [clicksPerYear=6]
+ *   node tests/clicker.js [lives=40] [seed=1] [clicksPerYear=6] [country=US]
  */
 import { Engine } from '../src/core/Engine.js';
 import { Store, fixMoneySigns } from '../src/core/State.js';
@@ -17,6 +17,7 @@ import { promptModal } from '../src/ui/Components.js';
 const LIVES = Number(process.argv[2] ?? 40);
 const SEED = Number(process.argv[3] ?? 1);
 const CLICKS = Number(process.argv[4] ?? 6);
+const COUNTRY = process.argv[5] ?? 'US';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const engine = new Engine({ store: new Store(memory()), rng: new Random(SEED), modules: MODULES });
@@ -116,7 +117,7 @@ function answerPrompts(state) {
 let years = 0;
 let clicks = 0;
 for (let life = 0; life < LIVES; life++) {
-  let state = engine.newLife({});
+  let state = engine.newLife({ countryId: COUNTRY });
   let seen = 0;
   while (state.character.alive && state.character.age < 105) {
     const views = renderAll(state);

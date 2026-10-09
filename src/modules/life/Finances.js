@@ -15,6 +15,7 @@ import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.
 import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
 import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.js';
 import { cardObligation, settleCards } from './CreditCards.js';
+import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
@@ -77,13 +78,31 @@ export const Finances = {
     // The legislature can cut or raise the state's rates (politics/Laws).
     const stateRate = { cut: 0.8, standard: 1, hike: 1.2 }[lawValue(state, 'stateIncomeTax')] ?? 1;
     let stateTax = (stateRate === 1 ? (x) => x : (x) => Math.round(x * stateRate))(joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, agi + ltcg - (married ? 10000 : 5000))));
+    // Abroad: national income tax, payroll social contributions and child benefit replace the US federal rules.
+    const country = countryOf(state);
+    const abroad = country.id !== 'US';
     // Itemize when mortgage interest, state and local taxes, charity and big medical bills beat the standard deduction.
-    const itemized = itemizedDeductions(state, { stateTax, agi: agi + ltcg });
-    const itemizing = itemized.total > standardDeduction(married);
+    const itemized = abroad ? { total: 0 } : itemizedDeductions(state, { stateTax, agi: agi + ltcg });
+    const itemizing = !abroad && itemized.total > standardDeduction(married);
     const taxable = Math.max(0, agi - (itemizing ? itemized.total - standardDeduction(married) : 0));
     const capitalGainsTax = ltcgTax(taxable, ltcg);
-    const kidsCredit = minorChildren(state).filter((c) => ageOf(state, c) < 17 && c.custody !== 'ex').length * CHILD_TAX_CREDIT;
-    let federalTax = Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
+    const kids = minorChildren(state).filter((c) => c.custody !== 'ex');
+    const kidsCredit = abroad ? 0 : kids.filter((c) => ageOf(state, c) < 17).length * CHILD_TAX_CREDIT;
+    const contributions = abroad ? socialContributions(country, Math.max(0, ordinary)) : 0;
+    // Where contributions are deductible (Germany, Japan, part of Canada's), they come off taxable income.
+    const deductible = abroad ? Math.round(contributions * (country.tax.contribDeductible ?? 0)) + (country.tax.workAllowance ?? 0) : 0;
+    if (abroad) {
+      const province = STATES[stateIdOf(state)];
+      const provincialBase = Math.max(0, agi + ltcg - deductible - (country.tax.provincialAllowance ?? (married ? 10000 : 5000)));
+      stateTax = (stateRate === 1 ? (x) => x : (x) => Math.round(x * stateRate))(joint((x) => stateIncomeTax(stateIdOf(state), x), provincialBase));
+      if (province?.ownIncomeTax) stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, taxable - deductible));
+    }
+    let federalTax = abroad
+      ? joint((x) => nationalIncomeTax(country, x, STATES[stateIdOf(state)]), Math.max(0, taxable - deductible)) + capitalGainsTax + contributions
+      : Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
+    // Child benefit (CCB, Child Benefit, Kindergeld, the child allowance) is paid in cash.
+    const benefit = abroad ? childBenefit(country, kids.length, gross) : 0;
+    if (benefit) f.cash += benefit;
     if (state.legal.flags.taxCheatAge === age) {
       federalTax = Math.round(federalTax * 0.7);
       stateTax = Math.round(stateTax * 0.7);
@@ -162,17 +181,18 @@ export const Finances = {
 
     if (gross > 0 || living > 0) {
       ctx.log(
-        `Year-end finances: earned $${gross.toLocaleString()}${cashDeductions ? ` ($${cashDeductions.toLocaleString()} pre-tax to retirement)` : ''}${deductions > cashDeductions ? ` ($${(deductions - cashDeductions).toLocaleString()} in depreciation and losses written off)` : ''}, paid $${federalTax.toLocaleString()} federal${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${stateIdOf(state)}` : ''} tax and $${living.toLocaleString()} living costs` +
+        `Year-end finances: earned $${gross.toLocaleString()}${cashDeductions ? ` ($${cashDeductions.toLocaleString()} pre-tax to retirement)` : ''}${deductions > cashDeductions ? ` ($${(deductions - cashDeductions).toLocaleString()} in depreciation and losses written off)` : ''}, paid $${federalTax.toLocaleString()} ${abroad ? 'income tax' : 'federal'}${contributions ? ` (incl. $${contributions.toLocaleString()} ${country.tax.contributions[0].name}${country.tax.contributions.length > 1 ? ' and other contributions' : ''})` : ''}${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${abroad ? `${STATES[stateIdOf(state)].name} ` : stateIdOf(state)}${abroad ? 'tax' : ''}` : ''}${abroad ? '' : ' tax'} and $${living.toLocaleString()} living costs` +
           (insurance ? `, $${insurance.toLocaleString()} health insurance` : '') +
           (loanPayment ? `, $${loanPayment.toLocaleString()} toward loans` : '') +
           (interest ? `, $${interest.toLocaleString()} card interest` : '') +
+          (benefit ? `. ${country.childBenefit.name}: +$${benefit.toLocaleString()}` : '') +
           '.',
         '🧾',
         'finance',
       );
     }
 
-    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
+    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
     f.ledger = { income: [], expenses: [], deductions: [], itemize: [] };
   },
 

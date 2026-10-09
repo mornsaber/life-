@@ -15,6 +15,7 @@ import { cityPopulation } from '../org/Staffing.js';
 import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
+import { regionsInState } from '../life/Regions.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -24,7 +25,7 @@ export const stateNameOf = (regionId) => STATES[(REGIONS[regionId] ?? REGIONS.mi
 /** Where a job with a duty station puts you (null = where you already live). */
 export function resolveDutyStation(rng, profession, regionId) {
   const stateId = (REGIONS[regionId] ?? REGIONS.midcity).state;
-  const inState = Object.values(REGIONS).filter((r) => r.state === stateId);
+  const inState = regionsInState(stateId);
   if (profession.dutyStation === 'statewide') return rng.pick(inState).id;
   if (profession.dutyStation === 'stateRural') return (inState.find((r) => r.type === 'Rural') ?? rng.pick(inState)).id;
   return profession.dutyStation ?? null;

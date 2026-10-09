@@ -11,6 +11,7 @@ import { clamp } from '../../core/Random.js';
 import { hasFelony, isOnActiveDuty } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { addHonor } from '../../core/State.js';
+import { isAbroad, US_ONLY } from '../world/Countries.js';
 
 const MEDICAL = ['emt', 'paramedic', 'rn', 'np', 'medicalLicense', 'pharmacistLicense'];
 
@@ -54,6 +55,7 @@ const NATIONAL = ['Hurricane Ida in Louisiana', 'wildfires in California', 'floo
 export function teamEligibility(state, id) {
   const t = TEAMS[id];
   if (!t) return { ok: false, reason: 'Unknown team' };
+  if (isAbroad(state)) return { ok: false, reason: US_ONLY.service };
   if (state.service.teams[id]) return { ok: false, reason: 'Already a member' };
   if (state.character.age < t.minAge) return { ok: false, reason: `Must be ${t.minAge}+` };
   if (hasFelony(state)) return { ok: false, reason: 'Fails the federal background check' };

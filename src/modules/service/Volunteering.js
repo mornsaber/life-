@@ -20,6 +20,7 @@
  */
 import { addHonor, hasFelony, currentYear } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
+import { isAbroad } from '../world/Countries.js';
 
 export const MAX_ROLES = 3;
 
@@ -215,6 +216,7 @@ export const VolunteerModule = {
 function selectiveServiceTick(ctx) {
   const { state } = ctx;
   const sss = state.military.sss;
+  if (isAbroad(state)) return;
   if (state.character.gender !== 'male' || sss.registered || sss.missed) return;
   const age = state.character.age;
   if (age < 18) return;

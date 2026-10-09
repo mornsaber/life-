@@ -9,6 +9,8 @@ import { STATES, topStateRate, DISASTER_LABEL, stateIncomeTax } from '../../modu
 import { CREDENTIALS, RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { tierRent } from '../../modules/realestate/index.js';
+import { regionsHere } from '../../modules/life/Regions.js';
+import { isAbroad } from '../../modules/world/Countries.js';
 
 function licenseImpact(state, toState) {
   const out = [];
@@ -53,10 +55,11 @@ export function moveView(state) {
     </li>`;
   };
   // Your state first, then the rest by name; each state folds open.
-  const states = [...new Set(Object.values(REGIONS).map((r) => r.state))].sort((a, b) => (a === here.state ? -1 : b === here.state ? 1 : STATES[a].name.localeCompare(STATES[b].name)));
+  const places = regionsHere(state);
+  const states = [...new Set(places.map((r) => r.state))].sort((a, b) => (a === here.state ? -1 : b === here.state ? 1 : STATES[a].name.localeCompare(STATES[b].name)));
   const rows = states.map((sid) => {
-    const list = Object.values(REGIONS).filter((r) => r.state === sid);
+    const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between states changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' });
+  return card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' });
 }

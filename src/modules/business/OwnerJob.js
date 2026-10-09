@@ -135,7 +135,8 @@ export function execMove(ctx, biz, move, skill) {
       break;
     }
     case 'restructure': {
-      const cut = Math.max(1, Math.round(biz.staff.headcount * 0.05));
+      if (!biz.staff.headcount) return ctx.toast('There is no staff to restructure.', 'warn');
+      const cut = Math.min(biz.staff.headcount, Math.max(1, Math.round(biz.staff.headcount * 0.05)));
       biz.staff.headcount -= cut;
       biz.staff.morale = Math.max(0, biz.staff.morale - 10);
       charge(biz, cut * 15000);

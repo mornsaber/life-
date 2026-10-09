@@ -12,6 +12,7 @@
  * Organizations of other kinds (companies) keep their size buckets.
  */
 import { REGIONS } from '../life/Regions.js';
+import { PROVINCE_POPULATION } from '../world/Countries.js';
 
 /** City-proper and county populations for each region. */
 export const POPULATION = {
@@ -27,9 +28,9 @@ export const STATE_POPULATION = {
   MT: 1.13e6, IA: 3.2e6, OH: 11.8e6, TX: 30.5e6, IL: 12.5e6, DC: 0.68e6, NY: 19.6e6, CA: 39.0e6, FL: 22.6e6, WA: 7.8e6, CO: 5.9e6, GA: 11.0e6, NC: 10.8e6, VA: 8.7e6,
   PA: 13.0e6, MA: 7.0e6, MI: 10.0e6, MN: 5.7e6, TN: 7.1e6, LA: 4.6e6, AZ: 7.4e6, NV: 3.2e6, UT: 3.4e6, OR: 4.2e6, AK: 0.73e6, HI: 1.44e6, WV: 1.77e6,
 };
-export const cityPopulation = (regionId) => POPULATION[regionId]?.[0] ?? 250000;
-export const countyPopulation = (regionId) => POPULATION[regionId]?.[1] ?? 400000;
-export const statePopulation = (stateId) => STATE_POPULATION[stateId] ?? 5e6;
+export const cityPopulation = (regionId) => POPULATION[regionId]?.[0] ?? REGIONS[regionId]?.population?.[0] ?? 250000;
+export const countyPopulation = (regionId) => POPULATION[regionId]?.[1] ?? REGIONS[regionId]?.population?.[1] ?? 400000;
+export const statePopulation = (stateId) => STATE_POPULATION[stateId] ?? PROVINCE_POPULATION[stateId] ?? 5e6;
 
 /**
  * Staff per 1,000 residents, by organization type and department. `base` picks the population:

@@ -40,6 +40,7 @@ import { DUTIES } from '../../modules/career/ManagementEngine.js';
 import { credentialName } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { FRANCHISE_BRANDS, FDD_COST, startupCost, franchiseEligibility, franchisorEligibility } from '../../modules/business/Franchising.js';
+import { regionsHere } from '../../modules/life/Regions.js';
 
 const MEAN_RNG = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), chance: () => false, pick: (xs) => xs[0], id: () => 'probe' };
 const entityOptions = (value = 'llc') => Object.entries(ENTITIES).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
@@ -219,7 +220,7 @@ function marketCard(state, biz) {
 function policyCard(state, biz) {
   const org = businessOrg(state, biz);
   const type = typeOf(biz);
-  const regions = Object.values(REGIONS);
+  const regions = regionsHere(state);
   return card('Strategy & Policy', `
     <h4 class="sub">Prices</h4><div class="toggle-row chips-row">${Object.entries(PRICE_LEVELS).map(([id, l]) => button(l.label, 'business.setPrice', { arg: id, variant: (biz.priceLevel ?? 'standard') === id ? 'tiny on' : 'tiny', hint: id === 'premium' ? 'Pays when quality is high' : id === 'budget' ? 'Wins volume' : '' })).join('')}</div>
     <h4 class="sub">Wages</h4><div class="toggle-row chips-row">${Object.entries(PAY_LEVELS).map(([id, l]) => button(l.label, 'business.setPay', { arg: id, variant: (biz.payLevel ?? 'market') === id ? 'tiny on' : 'tiny', hint: `${l.payroll > 1 ? '+' : ''}${Math.round((l.payroll - 1) * 100)}% payroll · morale ${l.morale >= 0 ? '+' : ''}${l.morale}` })).join('')}</div>

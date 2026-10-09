@@ -245,7 +245,7 @@ export function buildHeirState(rng, old, childId) {
   const legacy = old.legacy ?? settleEstate(old);
   const childAge = ageOf(old, child);
   const year = currentYear(old);
-  const s = createInitialState(rng, { firstName: child.firstName, lastName: child.lastName, gender: child.gender });
+  const s = createInitialState(rng, { firstName: child.firstName, lastName: child.lastName, gender: child.gender, countryId: old.character.countryId });
   s.character.age = childAge;
   s.character.birthYear = year - childAge;
   s.character.regionId = old.character.regionId;

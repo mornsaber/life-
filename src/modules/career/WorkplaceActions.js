@@ -13,6 +13,7 @@ import { getProfession } from './JobTrees.js';
 import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
 import { MAX_STEP } from './PayGrades.js';
 import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast } from './CareerEngine.js';
+import { regionsHere } from '../life/Regions.js';
 
 const DIMINISH = [1, 0.6, 0.3, 0];
 /** Promotion odds multiplier by the grade being competed for. */
@@ -293,7 +294,7 @@ export const WorkplaceActions = {
       if (rng.chance(clamp(chance, 0.05, 0.95))) {
         // Big employers often attach a relocation to senior promotions.
         if (job.sector === 'private' && !job.remote && ['large', 'enterprise'].includes(job.employer.size) && nextGrade >= 6 && rng.chance(0.35)) {
-          const regionId = rng.pick(Object.keys(REGIONS).filter((r) => r !== state.character.regionId));
+          const regionId = rng.pick(regionsHere(state).map((r) => r.id).filter((r) => r !== state.character.regionId));
           ctx.prompt({
             type: 'career.relocationOffer',
             icon: '📦',

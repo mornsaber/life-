@@ -15,11 +15,13 @@ import { hasCredential, checkRequirements } from '../credentials/LicensingEngine
 import { yearsInProfession } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
 import { influenceVoteBonus } from '../civic/Activism.js';
+import { isAbroad, US_ONLY, LOCAL_OFFICES } from '../world/Countries.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
   const p = state.politics;
   if (!office) return { ok: false, reason: 'Unknown office' };
+  if (isAbroad(state) && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
   if (p.campaign) return { ok: false, reason: 'Already campaigning' };
   if (p.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (office.appointedBy) return { ok: false, reason: `Hired by ${office.appointedBy}, not elected` };
@@ -97,6 +99,7 @@ function endorsementEligible(state, id) {
 export function appointmentEligibility(state, officeId) {
   const office = OFFICES[officeId];
   if (!office?.appointedBy) return { ok: false, reason: 'Not an appointed office' };
+  if (isAbroad(state) && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
   if (state.politics.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };

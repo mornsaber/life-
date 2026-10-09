@@ -31,6 +31,7 @@ import { randomName } from '../../core/State.js';
 import { rivalsTick, effectiveReputation, underPriceWar, rivalProfile } from '../business/Rivals.js';
 import { departure, seat } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
+import { regionsIn } from '../life/Regions.js';
 
 const SURNAMES = ['Kowalski', 'Nguyen', 'Romero', 'Okafor', 'Lindqvist', 'Haddad', 'Brennan', 'Castillo', 'Murphy', 'Takahashi', 'Patel', 'Reyes'];
 
@@ -298,7 +299,7 @@ export function nextMarket(state, biz) {
   const home = businessOrg(state, biz)?.regionId ?? state.character.regionId;
   if ((have[home] ?? 0) < marketRoom(home)) return home;
   const homeState = REGIONS[home]?.state;
-  const open = Object.values(REGIONS).filter((r) => (have[r.id] ?? 0) < marketRoom(r.id))
+  const open = regionsIn(REGIONS[home]?.country ?? 'US').filter((r) => (have[r.id] ?? 0) < marketRoom(r.id))
     .sort((a, b) => (b.state === homeState) - (a.state === homeState) || marketRoom(b.id) - marketRoom(a.id));
   return open[0]?.id ?? home;
 }

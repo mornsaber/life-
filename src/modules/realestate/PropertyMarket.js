@@ -11,6 +11,8 @@ import { REGIONS } from '../life/Regions.js';
 import { clamp, Random } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { PHASES } from '../economy/EconomyEngine.js';
+import { isAbroad } from '../world/Countries.js';
+import { regionsHere } from '../life/Regions.js';
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -122,7 +124,8 @@ export function marketTick(ctx) {
   // Prices are in today's dollars (like wages): booms and busts around a
   // flat real trend, with overheated markets drifting back to fundamentals.
   const drift = { expansion: 0.02, peak: 0.04, recession: -0.06, recovery: 0.01 }[e.phase];
-  for (const regionId of Object.keys(REGIONS)) {
+  // Abroad, your own country's cities keep a market too (after the US ones, so US results are unchanged).
+  for (const regionId of [...Object.keys(REGIONS), ...(isAbroad(state) ? regionsHere(state).map((r) => r.id) : [])]) {
     const idx = marketIndex(state, regionId);
     const pull = (1 - idx) * 0.1;
     h.market[regionId] = Math.round(clamp(idx * (1 + drift + pull + rng.float(-0.03, 0.03)), 0.4, 4) * 1000) / 1000;

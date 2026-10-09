@@ -50,6 +50,7 @@ import { POSTS } from '../../modules/business/OwnerJob.js';
 import { unionPanel, unionCards } from './UnionView.js';
 import { jobLicensesCard } from './JobLicensesView.js';
 import { servedPopulation } from '../../modules/org/Staffing.js';
+import { regionsHere } from '../../modules/life/Regions.js';
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -195,7 +196,7 @@ function currentJob(state) {
       ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}`)}
     ${unionFold(state, job)}
     <div class="row-end">
-      ${relocatable && !profession.dutyStation ? `<span class="transfer" data-collect-root>${Object.values(REGIONS).filter((r) => r.id !== state.character.regionId).length ? `<select data-part="region">${Object.values(REGIONS).filter((r) => r.id !== state.character.regionId).map((r) => `<option value="${r.id}">${r.icon} ${esc(r.name)}</option>`).join('')}</select>` : ''}${button('📍 Request transfer', 'career.transfer', { variant: 'small', collect: true })}</span>` : ''}
+      ${relocatable && !profession.dutyStation ? `<span class="transfer" data-collect-root>${regionsHere(state).filter((r) => r.id !== state.character.regionId).length ? `<select data-part="region">${regionsHere(state).filter((r) => r.id !== state.character.regionId).map((r) => `<option value="${r.id}">${r.icon} ${esc(r.name)}</option>`).join('')}</select>` : ''}${button('📍 Request transfer', 'career.transfer', { variant: 'small', collect: true })}</span>` : ''}
       ${button('🚪 Quit', 'career.quit', { variant: 'danger small' })}
     </div>
     <p class="fine">Applications this year: ${state.yearly['career.apply'] ?? 0}/${APPLICATIONS_PER_YEAR}</p>`, { icon: profession.icon, accent: 'cyan' });

@@ -37,6 +37,7 @@ import { farmView } from './views/FarmView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
+import { countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -168,7 +169,8 @@ export class Renderer {
   toast(text, kind = 'info') {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
-    el.textContent = tidyText(text);
+    const country = this.engine?.state ? countryOf(this.engine.state) : null;
+    el.textContent = country ? localizeTerms(localizeMoney(tidyText(text), country), country) : tidyText(text);
     this.toastRoot.prepend(el);
     while (this.toastRoot.children.length > 5) this.toastRoot.lastChild.remove();
     setTimeout(() => el.remove(), 3200);
@@ -186,7 +188,7 @@ export class Renderer {
     this.disclosures ??= loadFolds();
     for (const d of this.root.querySelectorAll('details[data-key]')) this.disclosures[d.dataset.key] = d.open;
     this.watchFolds();
-    this.root.innerHTML = fixMoneySigns(this.html(state));
+    this.root.innerHTML = localizeHtml(fixMoneySigns(this.html(state)), state ? countryOf(state) : null);
     for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
     this.applyLogFilter();

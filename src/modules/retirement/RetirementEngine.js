@@ -16,6 +16,7 @@ import { clamp } from '../../core/Random.js';
 import { PENSION_PLANS, annuityFor } from './PensionPlans.js';
 import { OFFICES } from '../politics/Offices.js';
 import { DC_FUNDS, profileReturn, realReturn } from '../investing/Assets.js';
+import { isAbroad, countryOf, nationalPension } from '../world/Countries.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
@@ -43,8 +44,22 @@ export function claimFactor(age) {
 }
 
 export function socialSecurityEstimate(state, age = state.character.age) {
+  if (isAbroad(state)) {
+    // The national pension (CPP/OAS, State Pension, Gesetzliche Rente, national + employees' pension):
+    // reduced about 6% a year before the standard age, raised about 7% a year for waiting.
+    const c = countryOf(state);
+    const base = nationalPension(c, state.retirement.ssEarnings);
+    const [, latest] = c.pension.ages;
+    const factor = age < c.retirementAge ? 1 - (c.retirementAge - age) * 0.06 : 1 + (Math.min(age, latest) - c.retirementAge) * 0.07;
+    return Math.round(base * Math.max(0.4, factor));
+  }
   return Math.round(primaryInsuranceAmount(state.retirement.ssEarnings) * 12 * claimFactor(age));
 }
+
+/** The earliest age the public pension can be claimed. */
+export const pensionEarliestAge = (state) => (isAbroad(state) ? countryOf(state).pension.ages[0] : 62);
+/** What the public pension is called where you live. */
+export const pensionName = (state) => (isAbroad(state) ? countryOf(state).pension.name : 'Social Security');
 
 /* ------------------------------------------------------------------ */
 /* Pensions                                                            */
@@ -180,7 +195,7 @@ export const RetirementEngine = {
     }
     if (r.socialSecurity) {
       if (age > r.socialSecurity.claimAge) r.socialSecurity.colaFactor = Math.round((r.socialSecurity.colaFactor ?? 1) * (1 + inflation) * 10000) / 10000;
-      ctx.earn(Math.round(r.socialSecurity.annual * (r.socialSecurity.colaFactor ?? 1)), 'Social Security');
+      ctx.earn(Math.round(r.socialSecurity.annual * (r.socialSecurity.colaFactor ?? 1)), pensionName(state));
     }
 
     // Deferred annuities start automatically at the plan's normal age.
@@ -193,7 +208,7 @@ export const RetirementEngine = {
 
     if (!r.socialSecurity && age >= 70 && r.ssEarnings.length) {
       r.socialSecurity = { annual: socialSecurityEstimate(state, 70), claimAge: 70 };
-      ctx.log(`Social Security kicked in automatically at 70: $${r.socialSecurity.annual.toLocaleString()}/yr.`, '🇺🇸', 'finance');
+      ctx.log(`${pensionName(state)} kicked in automatically at 70: $${r.socialSecurity.annual.toLocaleString()}/yr.`, isAbroad(state) ? countryOf(state).flag : '🇺🇸', 'finance');
     }
     if (r.retired && age >= 60 && r.dc > 0) {
       const withdrawal = Math.round(r.dc * 0.04);
@@ -271,13 +286,13 @@ export const RetirementEngine = {
       const { state } = ctx;
       const r = state.retirement;
       if (r.socialSecurity) return;
-      if (state.character.age < 62) return ctx.toast('Social Security starts at 62.', 'warn');
+      if (state.character.age < pensionEarliestAge(state)) return ctx.toast(`${pensionName(state)} starts at ${pensionEarliestAge(state)}.`, 'warn');
       if (!r.ssEarnings.length && !spousalBenefit(state) && !r.survivorBenefit) return ctx.toast('No covered earnings on record.', 'warn');
       // Your own benefit, or a spousal / survivor benefit if that's larger.
       const own = socialSecurityEstimate(state);
       const family = Math.max(spousalBenefit(state), r.survivorBenefit ?? 0);
       r.socialSecurity = { annual: Math.max(own, family), claimAge: state.character.age, basis: family > own ? (r.survivorBenefit ? 'survivor' : 'spousal') : 'own' };
-      ctx.log(`You claimed Social Security at ${state.character.age}: $${r.socialSecurity.annual.toLocaleString()}/yr.`, '🇺🇸', 'milestone');
+      ctx.log(`You claimed ${pensionName(state)} at ${state.character.age}: $${r.socialSecurity.annual.toLocaleString()}/yr.`, isAbroad(state) ? countryOf(state).flag : '🇺🇸', 'milestone');
     },
 
     /** Early access to the 401(k): 10% penalty before 60. */

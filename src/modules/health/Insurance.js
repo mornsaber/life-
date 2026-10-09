@@ -12,6 +12,8 @@
 import { yearlyCount } from '../../core/State.js';
 import { stateIdOf } from '../life/Regions.js';
 
+import { isAbroad, countryOf } from '../world/Countries.js';
+
 export const MEDICAID_INCOME = 21000;
 /** States that did not expand Medicaid: only disabled adults qualify. */
 export const NON_EXPANSION = new Set(['TX', 'FL']);
@@ -27,6 +29,8 @@ export const PLANS = {
   medicaid: { name: 'Medicaid', icon: '🏥', premium: 0, deductible: 0, coinsurance: 0.02, oopMax: 600 },
   marketplace: { name: 'Marketplace (ACA) plan', icon: '🛒', premium: 6500, deductible: 4500, coinsurance: 0.3, oopMax: 9200 },
   none: { name: 'Uninsured', icon: '⚠️', premium: 0, deductible: Infinity, coinsurance: 1, oopMax: Infinity },
+  // Universal coverage abroad: paid through taxes and payroll contributions, so no premium (see Countries.js).
+  national: { name: 'National health insurance', icon: '🏥', premium: 0, deductible: 0, coinsurance: 0.05, oopMax: 900 },
 };
 
 const income = (state) => (state.finances.lastYear?.gross ?? 0) - (state.finances.lastYear?.ltcg ?? 0);
@@ -40,6 +44,7 @@ export function coverageId(state, earned = income(state)) {
   const age = state.character.age;
   if (state.legal.incarceration) return 'prison';
   if (state.military.service?.component === 'active') return 'tricare';
+  if (isAbroad(state)) return 'national';
   if (state.career.job?.employer.benefits.health) return 'employer';
   if (age >= 65 || (isDisabled(state) && (state.health.disability.ssdiYears ?? 0) >= 2)) return 'medicare';
   if (state.retirement.pensions.some((p) => p.id === 'military')) return 'tricareRetiree';
@@ -54,6 +59,10 @@ export function coverageId(state, earned = income(state)) {
 export function coverage(state, earned) {
   const id = coverageId(state, earned);
   const plan = { id, ...PLANS[id] };
+  if (id === 'national') {
+    const h = countryOf(state).health;
+    Object.assign(plan, { name: h.name, deductible: h.deductible, coinsurance: h.coinsurance, oopMax: h.oopMax });
+  }
   // Marketplace premiums are subsidized at lower incomes.
   if (id === 'marketplace') plan.premium = (earned ?? income(state)) < 40000 ? 1500 : 6500;
   return plan;

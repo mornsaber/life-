@@ -23,6 +23,7 @@ import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION 
 import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
+import { isAbroad, US_ONLY } from '../world/Countries.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -273,6 +274,7 @@ export function timeInGradeRequired(svc) {
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
+  if (isAbroad(state)) return { ok: false, reason: US_ONLY.military };
   const b = BRANCHES[branchId];
   if (b.reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
   if (b.officerOnly && track !== 'officer') return { ok: false, reason: 'Commissioned officers only' };

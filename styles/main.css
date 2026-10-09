@@ -879,3 +879,5 @@ select:focus { border-color: var(--cyan); }
 
 /* Phones: the stat strip at the top already shows your stats. */
 @media (max-width: 960px) { .stats-card { display: none; } }
+.country-pick { display: flex; flex-direction: column; gap: 4px; margin: 10px 0 14px; font-weight: 600; }
+.country-pick select { font-size: 15px; padding: 6px 8px; }

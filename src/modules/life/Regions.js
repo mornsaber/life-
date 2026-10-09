@@ -18,6 +18,7 @@
  */
 import { canAfford } from '../../core/State.js';
 import { STATES } from './States.js';
+import { FOREIGN_CITIES } from '../world/Countries.js';
 
 export const REGIONS = {
   rural: { id: 'rural', name: 'Glacier Valley, MT', icon: '🏔️', type: 'Rural', state: 'MT', col: 0.72, market: 0.86, locality: 0.17, transit: 3, fare: 0, walkable: false },
@@ -72,10 +73,20 @@ export const BASES = {
 
 export const MOVE_COST = 3500;
 
+// Foreign cities resolve by id but stay out of US iteration (seeds, lists and picks are unchanged).
+for (const [id, r] of Object.entries(FOREIGN_CITIES)) Object.defineProperty(REGIONS, id, { value: r, enumerable: false });
+
+/** The cities of a country, in order (the US list is exactly Object.values(REGIONS)). */
+export const regionsIn = (countryId = 'US') => (countryId === 'US' ? Object.values(REGIONS) : Object.values(FOREIGN_CITIES).filter((r) => r.country === countryId));
+/** The country of the place you live. */
+export const countryIdOf = (state) => state?.character?.countryId ?? 'US';
+/** Cities in your country. */
+export const regionsHere = (state) => regionsIn(countryIdOf(state));
+
 export const regionOf = (state) => REGIONS[state.character.regionId] ?? REGIONS.midcity;
 export const stateIdOf = (state) => regionOf(state).state;
 export const stateOf = (state) => STATES[stateIdOf(state)];
-export const regionsInState = (stateId) => Object.values(REGIONS).filter((r) => r.state === stateId);
+export const regionsInState = (stateId) => regionsIn(STATES[stateId]?.country ?? 'US').filter((r) => r.state === stateId);
 
 /** Years you've been a resident of your current state (in-state tuition, candidacy). */
 export const residencyYears = (state) => state.character.age - (state.character.residencySince ?? 0);
@@ -85,6 +96,8 @@ export function changeRegion(ctx, regionId, reason, { voluntary = false } = {}) 
   const { state } = ctx;
   const from = state.character.regionId;
   if (!REGIONS[regionId] || from === regionId) return false;
+  // Moving between countries (visas, residency, credential recognition) isn't modeled yet.
+  if ((REGIONS[regionId].country ?? 'US') !== countryIdOf(state)) return false;
   const fromState = REGIONS[from]?.state;
   state.character.regionId = regionId;
   if (REGIONS[regionId].state !== fromState) state.character.residencySince = state.character.age;
@@ -96,6 +109,7 @@ export function changeRegion(ctx, regionId, reason, { voluntary = false } = {}) 
 function completeMove(ctx, regionId) {
   const { state } = ctx;
   const region = REGIONS[regionId];
+  if (!region || (region.country ?? 'US') !== countryIdOf(state)) return ctx.toast('Moving to another country isn\'t possible yet.', 'warn');
   if (!ctx.spend(MOVE_COST, 'Moving costs', { credit: true })) {
     ctx.toast(`Moving costs $${MOVE_COST.toLocaleString()} — more than your cash and credit.`, 'warn');
     return false;

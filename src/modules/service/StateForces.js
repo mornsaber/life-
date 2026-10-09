@@ -18,6 +18,7 @@ import { stateIdOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { monthlyBasePay } from '../military/MilitaryEngine.js';
 import { awardMedal } from '../military/MedalEngine.js';
+import { isAbroad, US_ONLY } from '../world/Countries.js';
 
 /** States with a State Defense Force. */
 export const STATE_DEFENSE_FORCES = {
@@ -37,6 +38,7 @@ const inGuard = (state) => state.military.service?.branch === 'guard';
 const governorIsYou = (state) => state.politics?.office?.id === 'governor';
 
 export function sdfEligibility(state) {
+  if (isAbroad(state)) return { ok: false, reason: US_ONLY.service };
   const id = stateIdOf(state);
   if (!STATE_DEFENSE_FORCES[id]) return { ok: false, reason: `${STATES[id].name} has no State Defense Force` };
   if (state.service.sdf) return { ok: false, reason: 'Already a member' };

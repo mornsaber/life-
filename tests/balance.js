@@ -48,8 +48,12 @@ export const TARGETS = {
   repeatRate: { band: [0, 0.2], ref: 'design target: under 20% repeated story events', fmt: pct },
 };
 
-/** Approximate U.S. median pay around age 40 for each persona career (BLS OES/CPS, 2023–24). */
-export const PAY_AT_40 = { tech: 120000, accounting: 85000, nursing: 90000, education: 66000, corporate: 85000, engineering: 105000, police: 75000, fire: 68000, trades: 66000, plumbing: 64000, trucking: 58000, retail: 38000, hospitality: 42000, culinary: 38000, medical: 230000, law: 150000 };
+/**
+ * Approximate U.S. median pay around age 40 for each persona career (BLS OES/CPS, 2023–24).
+ * Physicians: BLS top-codes physician wages at $239,200, so use survey pay instead
+ * (Medscape 2024: $363k average, about $300k for a mid-career median across specialties).
+ */
+export const PAY_AT_40 = { tech: 120000, accounting: 85000, nursing: 90000, education: 66000, corporate: 85000, engineering: 105000, police: 75000, fire: 68000, trades: 66000, plumbing: 64000, trucking: 58000, retail: 38000, hospitality: 42000, culinary: 38000, medical: 300000, law: 150000 };
 
 function money(x) {
   return `$${Math.round(x).toLocaleString()}`;

@@ -13,6 +13,7 @@
 import { clamp } from '../../core/Random.js';
 import { hasFelony, meetsEducation } from '../../core/State.js';
 import { grantCredential, hasCredential } from '../credentials/LicensingEngine.js';
+import { isAbroad, US_ONLY } from '../world/Countries.js';
 
 export const PROGRAMS = {
   americorps: {
@@ -40,6 +41,7 @@ export function programEligibility(state, id, trackId) {
   const p = PROGRAMS[id];
   const t = p?.tracks[trackId];
   if (!p || !t) return { ok: false, reason: 'Unknown program' };
+  if (isAbroad(state)) return { ok: false, reason: US_ONLY.service };
   const age = state.character.age;
   if (state.service.program) return { ok: false, reason: 'Already serving' };
   if (age < (t.minAge ?? p.minAge) || age > (t.maxAge ?? p.maxAge)) return { ok: false, reason: `Ages ${t.minAge ?? p.minAge}${(t.maxAge ?? p.maxAge) < 99 ? `–${t.maxAge ?? p.maxAge}` : '+'}` };

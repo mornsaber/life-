@@ -24,6 +24,7 @@ import { hire, levelCheck, backgroundCheck } from './CareerEngine.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from './Compensation.js';
 import { candidateScore } from '../org/Vacancies.js';
+import { regionsHere } from '../life/Regions.js';
 
 /** Government careers whose ranks are earned inside the department (not federal: GS grades transfer). */
 export const RANK_SECTORS = ['municipal', 'state', 'public'];
@@ -99,7 +100,7 @@ export function chiefOdds(state, job, opening) {
 /** Openings for the top job at agencies elsewhere that would consider you. */
 export function chiefOpenings(ctx, profession, job) {
   const { state, rng } = ctx;
-  const regions = rng.shuffle(Object.keys(REGIONS).filter((r) => r !== state.character.regionId));
+  const regions = rng.shuffle(regionsHere(state).map((r) => r.id).filter((r) => r !== state.character.regionId));
   const openings = [];
   for (const regionId of regions) {
     if (openings.length >= 3) break;

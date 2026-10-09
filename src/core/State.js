@@ -9,6 +9,7 @@
  */
 import { migrate } from './Migrations.js';
 import { clamp, Random } from './Random.js';
+import { COUNTRIES } from '../modules/world/Countries.js';
 
 export const STATE_VERSION = 4;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -32,11 +33,20 @@ const FIRST_NAMES = {
 const LAST_NAMES = ['Carter', 'Nguyen', 'Okafor', 'Ramirez', 'Kowalski', 'Bennett', 'Hayes', 'Patel', 'Morales', 'Sullivan', 'Kim', 'Reyes', 'Brooks', 'Lindqvist', 'Washington', 'Adeyemi'];
 const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miami', 'atlanta', 'philadelphia', 'phoenix', 'detroit', 'nashville', 'charlotte', 'pittsburgh', 'amarillo'];
 
+/** Whose names people have: set when a life starts or loads (one life plays at a time). */
+let namePool = null;
+export function setNameCountry(countryId = 'US') {
+  namePool = countryId !== 'US' ? COUNTRIES[countryId]?.names ?? null : null;
+}
+
 export function randomName(rng, gender) {
+  if (namePool) return { firstName: rng.pick(namePool[gender] ?? namePool.male), lastName: rng.pick(namePool.last) };
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
 }
 
 export function createInitialState(rng, options = {}) {
+  const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
+  setNameCountry(country?.id ?? 'US');
   const gender = options.gender === 'female' || options.gender === 'male' ? options.gender : rng.pick(['male', 'female']);
   const generated = randomName(rng, gender);
   const firstName = (options.firstName || '').trim() || generated.firstName;
@@ -53,8 +63,9 @@ export function createInitialState(rng, options = {}) {
       birthYear: START_YEAR,
       alive: true,
       causeOfDeath: null,
-      regionId: rng.pick(HOMETOWNS),
+      regionId: rng.pick(country?.hometowns ?? HOMETOWNS),
       residencySince: 0,
+      ...(country ? { countryId: country.id } : {}),
     },
     stats: {
       health: rng.int(75, 100),

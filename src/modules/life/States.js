@@ -12,6 +12,8 @@
  *   population    sizes state agencies (employer size)
  *   disasters     annual probabilities by hazard
  */
+import { FOREIGN_PROVINCES } from '../world/Countries.js';
+
 export const STATES = {
   MT: { name: 'Montana', deathPenalty: 'rare', incomeTax: [[20500, 0.047], [Infinity, 0.059]], propertyTax: 0.0074, salesTax: 0, rightToWork: false, cannabis: true, dui: { fineMult: 1, suspendYears: 1 }, minWage: 10.55, nlc: true, population: 'small', disasters: { wildfire: 0.08, blizzard: 0.06 } },
   IA: { name: 'Iowa', incomeTax: [[Infinity, 0.038]], propertyTax: 0.0152, salesTax: 0.069, rightToWork: true, cannabis: false, dui: { fineMult: 1, suspendYears: 1 }, minWage: 7.25, nlc: true, population: 'medium', disasters: { flood: 0.05, blizzard: 0.06 } },
@@ -41,6 +43,12 @@ export const STATES = {
   HI: { name: 'Hawaii', incomeTax: [[9600, 0.014], [14400, 0.032], [19200, 0.055], [24000, 0.064], [36000, 0.068], [48000, 0.072], [125000, 0.076], [175000, 0.079], [225000, 0.0825], [275000, 0.09], [325000, 0.1], [Infinity, 0.11]], propertyTax: 0.0027, salesTax: 0.045, rightToWork: false, cannabis: false, dui: { fineMult: 1.1, suspendYears: 1 }, minWage: 14, nlc: false, population: 'small', disasters: { hurricane: 0.03, wildfire: 0.03, flood: 0.03 } },
   WV: { name: 'West Virginia', incomeTax: [[10000, 0.0236], [25000, 0.0315], [40000, 0.0354], [60000, 0.0472], [Infinity, 0.0512]], propertyTax: 0.0057, salesTax: 0.065, rightToWork: true, cannabis: false, dui: { fineMult: 1, suspendYears: 1 }, minWage: 8.75, nlc: true, population: 'small', disasters: { flood: 0.07 } },
 };
+
+// Foreign provinces resolve by id but stay out of US iteration (seeds, lists and picks are unchanged).
+for (const [id, p] of Object.entries(FOREIGN_PROVINCES)) Object.defineProperty(STATES, id, { value: p, enumerable: false });
+
+/** The provinces/states of a country, in order. */
+export const statesIn = (countryId = 'US') => (countryId === 'US' ? Object.keys(STATES) : Object.keys(FOREIGN_PROVINCES).filter((id) => FOREIGN_PROVINCES[id].country === countryId));
 
 export function stateIncomeTax(stateId, taxable) {
   const brackets = STATES[stateId]?.incomeTax ?? [];

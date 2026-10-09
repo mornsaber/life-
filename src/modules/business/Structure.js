@@ -119,7 +119,7 @@ export const StructureActions = {
     charge(biz, cost);
     biz.staff.morale = Math.max(0, biz.staff.morale - (design === 'lean' ? 10 : 4));
     if (design === 'lean') {
-      const cut = Math.max(1, Math.round(biz.staff.headcount * 0.04));
+      const cut = Math.min(biz.staff.headcount, Math.max(1, Math.round(biz.staff.headcount * 0.04)));
       biz.staff.headcount -= cut;
     }
     s.design = design;

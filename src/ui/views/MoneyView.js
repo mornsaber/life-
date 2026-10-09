@@ -13,6 +13,7 @@ import { REGIONS, MOVE_COST, regionOf } from '../../modules/life/Regions.js';
 import { hasHousingBenefit, healthPremium } from '../../modules/life/Finances.js';
 import { CARD_TYPES, cardApr, applyCheck, minimumPayoff } from '../../modules/life/CreditCards.js';
 import { standardDeduction, auditOdds, PASSPORT_THRESHOLD } from '../../modules/life/Taxes.js';
+import { regionsHere } from '../../modules/life/Regions.js';
 
 /** Your wallet: cards, rewards, payoff strategy and balance transfers. */
 function walletSection(state) {
@@ -132,7 +133,7 @@ export function moneyView(state) {
     <p class="fine">Plans: ${Object.values(PENSION_PLANS).map((p) => p.short).join(' · ')}. Medals raise military retired pay.</p>`, { icon: '🏦', accent: 'yellow' });
 
   const here = regionOf(state);
-  const rows = Object.values(REGIONS).map((rg) => `<li class="region-row ${rg.id === here.id ? 'here' : ''}">
+  const rows = regionsHere(state).map((rg) => `<li class="region-row ${rg.id === here.id ? 'here' : ''}">
     <span>${rg.icon} <b>${esc(rg.name)}</b> <small>${rg.type}</small></span>
     <small>Cost of living ×${rg.col.toFixed(2)} · private pay ×${rg.market.toFixed(2)} · federal locality +${Math.round(rg.locality * 100)}%</small>
     ${rg.id === here.id ? chip('You live here', 'good') : button('Move', 'region.move', { arg: rg.id, variant: 'tiny', disabled: age < 18, title: state.career.job && !state.career.job.remote ? 'You will have to leave your job' : '' })}
@@ -140,7 +141,7 @@ export function moneyView(state) {
   const home = card('Where You Live', `
     <p>${here.icon} <b>${esc(here.name)}</b> ${hasHousingBenefit(state) ? chip('🏡 Housing provided by employer', 'good') : ''} ${healthPremium(state, ly?.gross ?? 0) ? chip('🩺 Buying marketplace insurance', 'warn') : ''}</p>
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
-    ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: Object.keys(REGIONS).length })}`, { icon: '🗺️' });
+    ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: regionsHere(state).length })}`, { icon: '🗺️' });
 
   return `${finances}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }

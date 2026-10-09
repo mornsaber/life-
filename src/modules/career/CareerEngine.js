@@ -31,6 +31,7 @@ import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
+import { isAbroad, US_ONLY } from '../world/Countries.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -109,6 +110,7 @@ export function applicationEligibility(state, professionId) {
   const profession = getProfession(professionId);
   if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
+  if (profession.sector === 'federal' && isAbroad(state)) return { ok: false, reason: US_ONLY.federalJobs };
   if (state.military.service?.component === 'active') return { ok: false, reason: 'On active duty' };
   if (state.politics.office?.fullTime) return { ok: false, reason: 'You hold full-time elected office' };
   if (state.judiciary?.seat) return { ok: false, reason: 'Judges can\'t hold another job' };

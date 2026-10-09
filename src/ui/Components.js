@@ -4,6 +4,7 @@
  * `data-action` / `data-arg` attributes that index.js routes to the engine.
  */
 import { STAT_META, STAT_KEYS, tidyText } from '../core/State.js';
+import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -276,6 +277,7 @@ export function newLifeForm(rngName) {
           <label><input type="radio" name="gender" value="female"> 👩 Female</label>
           <label><input type="radio" name="gender" value="male"> 👨 Male</label>
         </fieldset>
+        <label class="country-pick">Born in<select name="countryId">${Object.values(COUNTRIES).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)} (coming later)</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>
       <p class="fine">Your progress saves automatically in this browser.</p>
