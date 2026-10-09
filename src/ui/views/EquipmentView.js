@@ -76,6 +76,12 @@ export function equipmentCard(state, ref) {
         const label = isIssued(c) ? '🔧 Depot overhaul the oldest' : m.remount ? '🔧 Remount the oldest' : '🔧 Refurbish the oldest';
         buttons += button(`${label} (${money(refurbCost(c, m))})`, 'deptEquip.refurb', { arg: a(cid), variant: 'tiny', disabled: refurbCost(c, m) > pool });
       }
+      // Bulk: the whole category in one click.
+      const [bulkId, bulkM] = Object.entries(cat.models).find(([, m]) => !m.build && !m.rent) ?? [];
+      if (bulkM && can.buy) {
+        if (worn > 1) buttons += button(`🔁 Replace all ${worn} worn`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:worn`), variant: 'tiny', hint: `${money(worn * bulkM.cost)} for new ${short(bulkM.name)}s (as many as you can afford)` });
+        if (needed - units.length > 1) buttons += button(`➕ Add ${needed - units.length} to standard`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:short`), variant: 'tiny', hint: money((needed - units.length) * bulkM.cost) });
+      }
       if (units.some((u) => !u.leased)) buttons += button(cat.facility ? '🚪 Close / end a lease' : isIssued(c) ? '📦 Turn in the oldest' : '🏷️ Retire & sell the oldest', 'deptEquip.retire', { arg: a(cid), variant: 'tiny' });
     } else if (c.requester && !can.requisition) {
       buttons = button('📋 Request a replacement', 'deptEquip.request', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.request.${ref}`]) });
@@ -87,6 +93,8 @@ export function equipmentCard(state, ref) {
     ? `<p>${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} reserve`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
     : '';
   const actions = [
+    c.manager && can.buy ? button(d.auto ? '🤖 Staff manage equipment: ON' : '🤖 Let staff manage equipment', 'deptEquip.autoManage', { arg: a(''), variant: d.auto ? 'small on' : 'small', hint: 'Each year they replace what\'s worn and fill shortfalls within the money available' }) : '',
+    c.manager && can.buy ? button('🔁 Replace everything worn', 'deptEquip.replaceAll', { arg: a(''), variant: 'small', hint: 'Every category at once, as far as the money goes' }) : '',
     c.manager && can.bank ? button('🏦 Bank unspent money for a big purchase', 'deptEquip.bank', { arg: a(''), variant: 'small', disabled: !d.budget || Boolean(y[`equip.bank.${ref}`]), hint: 'Otherwise it goes back at year-end' }) : '',
     can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${ref}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
   ].join('');

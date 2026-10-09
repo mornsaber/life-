@@ -346,6 +346,9 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
     }
     nb.role = 'absentee';
     nb.autopilot = true;
+    nb.inherited = true;
+    nb.licenseGraceUntil = null;
+    nb.licensedManager = false;
     if (!nb.plan || nb.plan.strategy === 'off') nb.plan = { strategy: 'steady', sinceAge: childAge };
     nb.family = (b.family ?? []).filter((id) => ids.has(id) && id !== child.id);
     // Inherited property takes a stepped-up basis: its value at death.
@@ -376,7 +379,19 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
     conglomerate: inherits && old.business.conglomerate ? { ...structuredClone(old.business.conglomerate), foundedAge: childAge } : null,
     history: [],
     listings: [],
+    rivalGroups: structuredClone(old.business.rivalGroups ?? null) ?? undefined,
   };
+  // The same world: the economy's cycle and local property markets continue.
+  if (old.economy) s.economy = structuredClone(old.economy);
+  if (old.housing?.market) s.housing.market = structuredClone(old.housing.market);
+  if (old.housing?.rates) s.housing.rates = structuredClone(old.housing.rates);
+  // The same town, the same market: the businesses' organizations, their rivals and the
+  // local economy carry over (owned under the heir's name now).
+  if (old.orgs && old.character.regionId === s.character.regionId) {
+    s.orgs = structuredClone(old.orgs);
+    const heirName = `${child.firstName} ${child.lastName}`;
+    for (const o of Object.values(s.orgs.byId ?? {})) if (o.owner?.kind === 'player') o.owner = { ...o.owner, name: heirName };
+  }
   if (inherits) {
     // In kind: under a succession plan it was this child's bequest; otherwise it counts against their share.
     const inKind = legacy.bequests.filter((b) => b.to === child.id && b.inKind).reduce((t, b) => t + b.amount, 0);
@@ -393,6 +408,12 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
   const type = BUSINESS_TYPES[main.typeId];
   const years = child.familyBizYears ?? 0;
   if (ready && type?.professions?.[0]) {
+    // Years in the trade earned them its licenses, and they can run it themselves (cheaper than a hired manager).
+    for (const c of type.credentials ?? []) if (!['barLicense', 'medicalLicense', 'dentalLicense', 'cpa'].includes(c)) s.credentials.held[c] = { earnedAge: Math.max(18, childAge - Math.max(1, years)), renewedAge: childAge, status: 'active' };
+    if (childAge >= 21 && main.scale <= 5) {
+      main.role = 'operator';
+      main.autopilot = false;
+    }
     s.career.history.push({ professionId: type.professions[0], title: 'Family business', levelId: 'family', employerName: main.name, sector: 'private', peakGrade: 3, startAge: Math.max(16, childAge - Math.max(1, years)), endAge: childAge, reason: 'Took over the family business' });
     addLog(s, `${years ? `${years} years working in the business` : 'Growing up in the business'} prepared you: the staff trust you to lead it.`, '🧭', 'good');
   } else if (!ready && childAge >= 18) addLog(s, 'You never learned the business. The staff are uneasy — a manager will keep it running while you find your feet.', '😬', 'warn');

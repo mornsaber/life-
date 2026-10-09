@@ -91,7 +91,7 @@ export function opsTick(ctx, biz, ly) {
 }
 
 export function acceptOffer(biz, k) {
-  biz.ops.contracts.push({ id: k.id, client: k.client, units: k.units, rate: k.rate, years: k.years, yearsLeft: k.years, tier: k.tier ?? 0 });
+  biz.ops.contracts.push({ id: k.id, client: k.client, units: k.units, rate: k.rate, years: k.years, yearsLeft: k.years, tier: k.tier ?? 0, ...(k.needs ? { needs: k.needs } : {}) });
   biz.ops.offers = biz.ops.offers.filter((x) => x.id !== k.id);
 }
 

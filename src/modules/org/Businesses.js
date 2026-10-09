@@ -340,6 +340,23 @@ export function businessStaffTick(ctx, biz) {
     if (why === 'left to start a competing business') founders.push(p);
   }
   for (const p of founders) foundRival(ctx, biz, p);
+  // Promote from within: the best performer one rung down steps into a senior seat that opened.
+  const promoted = [];
+  for (const gone of left) {
+    const dept = org.departments[gone.deptId];
+    const profession = gone.professionId && getProfession(gone.professionId);
+    if (!dept || !profession || !gone.levelId) continue;
+    const ladder = ladderFor(profession, org.size);
+    const idx = ladder.findIndex((l) => l.id === gone.levelId);
+    const below = ladder[idx - 1];
+    if (idx <= 0 || !below) continue;
+    const pick = (dept.seats[gone.professionId]?.[below.id] ?? []).map((id) => org.people[id]).filter((p) => p && p.years >= 2).sort((a, b) => b.performance - a.performance)[0];
+    if (!pick || pick.performance < 60) continue;
+    seat(org, dept.id, gone.professionId, gone.levelId, pick, ladder[idx].title);
+    pick.rel = Math.min(100, (pick.rel ?? 50) + 8);
+    promoted.push(`${pick.name} to ${ladder[idx].title}`);
+  }
+  if (promoted.length) ctx.log(`${biz.name} promoted from within: ${promoted.slice(0, 3).join('; ')}${promoted.length > 3 ? `, and ${promoted.length - 3} more` : ''}.`, '⬆️', 'good');
   if (left.length) {
     biz.staff.morale = Math.round(clamp(biz.staff.morale - left.length, 0, 100));
     const named = left.slice(0, 3).map((p) => `${p.name} (${p.title}) ${p.why}`).join('; ');

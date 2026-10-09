@@ -172,7 +172,12 @@ export function offerEligibility(state, biz, offer) {
   if (!o) return { ok: false, reason: 'No operations' };
   if (offer.minUnits && capacity(biz).units < offer.minUnits) return { ok: false, reason: `Needs a fleet of ${offer.minUnits}+ ${o.unit?.plural ?? `${o.crewName}s`}` };
   if (offer.minRep && biz.reputation < offer.minRep) return { ok: false, reason: `Wants a reputation of ${offer.minRep}+` };
-  if (offer.needs && !hasCredential(state, offer.needs)) return { ok: false, reason: `Needs ${credentialName(offer.needs)}` };
+  // Certified employees staff it (see StaffCerts); an owner who holds it covers a small job.
+  if (offer.needs) {
+    const holders = biz.certs ? biz.certs[offer.needs] ?? 0 : capacity(biz).units * o.crew;
+    const enough = holders >= Math.max(1, offer.units * o.crew) || (hasCredential(state, offer.needs) && offer.units <= 1);
+    if (!enough) return { ok: false, reason: `Needs ${offer.units * o.crew} crew certified for ${credentialName(offer.needs)} (you have ${holders})` };
+  }
   return { ok: true };
 }
 

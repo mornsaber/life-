@@ -16,7 +16,7 @@
 import { clamp } from '../../core/Random.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { typeOf, staffFactor, annualPayment } from './Business.js';
-import { OPERATIONS, capacity, contracted, EQUIPMENT_LOAN, offerEligibility } from './Operations.js';
+import { OPERATIONS, capacity, contracted, EQUIPMENT_LOAN, offerEligibility, resaleValue } from './Operations.js';
 import { acceptOffer } from './FleetActions.js';
 import { SBA, MARKETING } from './BusinessTypes.js';
 import { forecast } from './Advisor.js';
@@ -52,9 +52,20 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
   // Every change is checked against next year's forecast: management only does what pays.
   const profit = (changes) => forecast(state, biz, changes).netIncome;
 
+  // Expensive credit-line debt gets paid down first, out of cash above a working cushion.
+  if ((biz.debts.loc ?? 0) > 0) {
+    const spare = Math.max(0, biz.cash - Math.max(25000, (ly.revenue ?? 0) * 0.08));
+    const pay = Math.min(biz.debts.loc, spare);
+    if (pay > 0) {
+      biz.debts.loc -= pay;
+      biz.cash -= pay;
+      did.push(`paid down $${Math.round(pay).toLocaleString()} of the credit line`);
+    }
+  }
   if (plan.strategy === 'harvest') {
     biz.marketing = Math.min(biz.marketing, 1);
     biz.drawPct = 1;
+    fleetRenewal(ctx, biz, did);
     did.push('kept marketing lean and paid out the profits');
   } else {
     // Keep what growth needs; pay out the rest (a steady plan doesn't hoard cash).
@@ -97,6 +108,7 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
           did.push(best.n > h ? `hired ${best.n - h}` : `cut ${h - best.n} position${h - best.n > 1 ? 's' : ''}`);
         }
       }
+      fleetRenewal(ctx, biz, did);
       fleetPlan(ctx, biz, aggressive, did);
       // Expansion: profitable, well run, and the money's there (or borrowable, if aggressive).
       // A growing chain opens where there's room: home first, then the biggest markets.
@@ -129,6 +141,39 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
 }
 
 /** Fleets and crews: buy (or finance) equipment when contracts fill the capacity; sell what's idle in a harvest. */
+/**
+ * Worn-out equipment: past its service life a unit's upkeep climbs every year. Management trades
+ * the oldest in (resale value) for a good used one — or a new one on an equipment loan — a few a
+ * year, whatever the plan.
+ */
+export function fleetRenewal(ctx, biz, did) {
+  const o = OPERATIONS[biz.typeId];
+  if (!o?.unit || !biz.ops?.units?.length) return;
+  const worn = biz.ops.units.filter((u) => u.age > o.unit.life).sort((a, b) => b.age - a.age);
+  const limit = Math.max(1, Math.ceil(biz.ops.units.length / 3));
+  let replaced = 0;
+  for (const u of worn.slice(0, limit)) {
+    const trade = resaleValue(o, u);
+    const used = o.unit.usedCost ?? o.unit.newCost;
+    if (biz.cash + trade >= used * 1.2) {
+      biz.cash += trade;
+      charge(biz, used, 'capex');
+      Object.assign(u, { age: ctx.rng.int(2, Math.max(3, Math.floor(o.unit.life * 0.4))), used: true });
+    } else if (biz.cash + trade >= o.unit.newCost * 0.1 && ctx.state.housing.credit.score >= 580) {
+      // The trade-in goes toward the down payment (dealers take 10% down against a trade).
+      const down = Math.max(trade, Math.round(o.unit.newCost * 0.1));
+      biz.cash -= Math.max(0, down - trade);
+      biz.taxBook ??= { expense: 0, capex: 0 };
+      biz.taxBook.capex += o.unit.newCost;
+      const balance = (biz.ops.loan?.balance ?? 0) + o.unit.newCost - down;
+      biz.ops.loan = { balance, rate: EQUIPMENT_LOAN.rate, annual: annualPayment(balance, EQUIPMENT_LOAN.rate, EQUIPMENT_LOAN.years) };
+      Object.assign(u, { age: 0, used: false });
+    } else break;
+    replaced += 1;
+  }
+  if (replaced) did.push(`replaced ${replaced} worn-out ${o.unit.name}${replaced > 1 ? 's' : ''}`);
+}
+
 function fleetPlan(ctx, biz, aggressive, did) {
   const o = OPERATIONS[biz.typeId];
   if (!o || !biz.ops) return;

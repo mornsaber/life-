@@ -184,7 +184,10 @@ export function yearFinancials(state, biz, rng) {
   // A general manager, then district managers as the chain grows (cheaper per location than an owner at every site).
   // As chief executive yourself, you replace the hired general manager (district managers still cost).
   const hiredChief = biz.role === 'absentee' || (biz.role === 'executive' && biz.ownerPost?.post === 'chair');
-  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + (biz.role !== 'operator' ? Math.max(0, (biz.scale ?? 1) - 1) * 12000 : 0) + (biz.licensedManager ? LICENSED_MANAGER : 0);
+  // Without the license yourself you need a licensed qualifier. When a hired manager already runs it,
+  // hiring a licensed one only costs a premium; otherwise it's a whole extra salary.
+  const qualifier = !biz.licensedManager ? 0 : hiredChief || biz.role === 'executive' ? Math.round(clamp(revenue * 0.012, 8000, 30000)) : Math.round(clamp(revenue * 0.06, 40000, LICENSED_MANAGER));
+  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + (biz.role !== 'operator' ? Math.max(0, (biz.scale ?? 1) - 1) * 12000 : 0) + qualifier;
   // Locations whose building you own pay property tax and upkeep instead of rent (see Premises).
   const owned = Math.min(biz.scale, biz.premises?.owned ?? 0);
   const rent = Math.round(type.rent * (biz.scale - owned) * col * (ini?.rent ?? 1) + (biz.premises?.value ?? 0) * PREMISES_CARRY);

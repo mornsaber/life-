@@ -337,7 +337,10 @@ function yearFor(ctx, c) {
   if (c.money !== 'cash' && d.budgetAge != null && d.budget > 0) autoReplace(c, d, c.manager ? 0.5 : 1);
   // Staff carry part of what's left into the reserve when something big is overdue.
   if (c.money === 'budget' && d.budget > 0 && bigOverdue(c, d, annualMoney(state, c))) d.reserve += Math.min(d.budget / 2, Math.max(0, annualMoney(state, c) * 2 - d.reserve));
-  if (c.money === 'cash' && c.biz.role !== 'operator') autoReplace(c, d, 0.05);
+  if (c.money === 'cash' && c.biz.equipAuto) d.auto = true;
+  if (c.money === 'cash' && c.biz.role !== 'operator') autoReplace(c, d, d.auto ? 0.5 : 0.05);
+  // You handed equipment to your staff: they keep it at standard within what you can afford.
+  else if (d.auto && c.manager && c.money !== 'cash' && powers(c).buy) autoReplace(c, d, 1);
   if (c.money === 'funds') d.budget += annualMoney(state, c);
   else if (c.money !== 'cash') d.budget = Math.max(0, annualMoney(state, c) - extraCosts(c, d));
   else {
@@ -408,6 +411,53 @@ export const EquipmentModule = {
       (d.units[cid] ??= []).push({ model: mid, age: how === 'used' ? Math.round(m.life * 0.6) : 0, used: how === 'used', leased: how === 'lease' });
       if (c.kind === 'business') c.biz.assets += Math.round(price * 0.7);
       ctx.log(m.rent ? `You leased ${nice(m.name)} for $${m.rent.toLocaleString()} a year.` : `You ${how === 'lease' ? 'leased' : 'bought'} ${how === 'used' ? 'a used' : 'a new'} ${nice(m.name)} for $${price.toLocaleString()}${how === 'lease' ? ' a year' : ''}.`, cat.icon, 'good');
+    },
+    /**
+     * 'kind|catId:modelId:worn|short' — in one go: replace every worn-out unit in a category, or
+     * bring the category up to standard. Buys as many as the money covers.
+     */
+    bulk(ctx, arg) {
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c?.manager || !powers(c).buy) return;
+      const [cid, mid, mode] = parts;
+      const cat = cats(c)[cid];
+      const m = cat?.models[mid];
+      if (!m || m.build || m.rent) return;
+      const units = (d.units[cid] ??= []);
+      let money = available(c, d);
+      let n = 0;
+      if (mode === 'worn') {
+        for (const u of units.filter((x) => !x.leased && x.age > (cat.models[x.model]?.life ?? 10)).sort((a, b) => b.age - a.age)) {
+          if (m.cost > money) break;
+          Object.assign(u, { model: mid, age: 0, used: false });
+          money -= m.cost;
+          n += 1;
+        }
+      } else {
+        while (units.length < needOf(cat, c) && m.cost <= money) {
+          units.push({ model: mid, age: 0, used: false, leased: false });
+          money -= m.cost;
+          n += 1;
+        }
+      }
+      if (!n) return ctx.toast(`Each ${nice(m.name)} costs $${m.cost.toLocaleString()} — not enough money.`, 'warn');
+      pay(c, d, n * m.cost);
+      if (c.kind === 'business') c.biz.assets += Math.round(n * m.cost * 0.7);
+      ctx.log(`${mode === 'worn' ? 'Replaced' : 'Added'} ${n} ${nice(m.name)}${n > 1 ? 's' : ''} for $${(n * m.cost).toLocaleString()}.`, cat.icon, 'good');
+    },
+    /** 'kind|' — replace everything past its service life and fill every shortfall, as far as the money goes. */
+    replaceAll(ctx, arg) {
+      const { c, d } = resolve(ctx, arg);
+      if (!c?.manager || !powers(c).buy) return;
+      const spent = autoReplace(c, d, 1);
+      ctx.log(spent ? `Staff replaced worn-out equipment and filled shortfalls: $${spent.toLocaleString()}.` : 'Nothing affordable needed replacing.', '🛠️', spent ? 'good' : undefined);
+    },
+    /** 'kind|' — hand day-to-day equipment decisions to your staff (or take them back). */
+    autoManage(ctx, arg) {
+      const { c, d } = resolve(ctx, arg);
+      if (!c?.manager) return;
+      d.auto = !d.auto;
+      ctx.toast(d.auto ? 'Staff now keep equipment at standard each year' : 'You decide equipment purchases again', 'info');
     },
     /** 'kind|catId' — refurbish / overhaul / remount the oldest unit. */
     refurb(ctx, arg) {

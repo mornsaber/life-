@@ -16,6 +16,9 @@ import { BUSINESS_LICENSES, licensesFor, requiredLicenses, openingLicenseFees, l
 import { forecast, businessAdvice } from '../../modules/business/Advisor.js';
 import { EXEC_ROLES, OFFICES, officeOf, officeCost, execPayroll, hqHeadcount, ownOffices, mergeCandidates, MERGE_COST, dealDiscount } from '../../modules/business/HoldingCo.js';
 import { withdrawable, buyBackQuote, openingsPerYear } from '../../modules/business/Capital.js';
+import { personCreds, endorsementsFor, certCost, crewSize } from '../../modules/business/StaffCerts.js';
+import { getProfession } from '../../modules/career/JobTrees.js';
+import { levelById } from '../../modules/career/Ladder.js';
 import { POSTS, FOCUS, EXEC_MOVES, EXEC_MOVES_PER_YEAR, PAY_LEVELS as POST_PAY, postEligible, postSalary } from '../../modules/business/OwnerJob.js';
 import { EXPERTISE, VERDICTS, boardRequired, boardSize, vacantSeats, youChair, directorFee } from '../../modules/business/Board.js';
 import { rivalGroups, portfolio, takeoverPrice, GROUP_STYLES } from '../../modules/business/RivalGroups.js';
@@ -174,9 +177,8 @@ function orgCard(state, biz) {
     ${otherDepts.length > 1 ? `<span data-collect-root><input type="hidden" data-part="p" value="${p.id}">${select('dept', otherDepts.filter((d) => d.id !== p.deptId).map((d) => ({ value: d.id, label: d.name })))}${button('🔀 Move', 'business.staffTransfer', { variant: 'tiny', collect: true, disabled: left <= 0 })}</span>` : ''}
     ${button('🚪 Fire', 'business.staffFire', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`;
   const searches = 6 - (state.yearly['business.recruit'] ?? 0);
-  const sections = depts.map(({ dept, head, people }) => `<h4 class="sub">${esc(dept.name)} <small class="muted">~${dept.headcount} staff</small> ${button('👋 Hire', 'business.recruit', { arg: dept.id, variant: 'tiny', disabled: searches <= 0, hint: searches > 0 ? 'Interview three applicants' : 'No more searches this year' })}</h4>
-    ${head ? `<p class="fine">👤 ${esc(head.name)}, ${esc(head.title)}</p>` : `<p class="fine">Reports directly to you.</p>`}
-    ${people.length ? `<ul class="history">${people.map(personRow).join('')}</ul>` : ''}`).join('');
+  const sections = depts.map(({ dept, head, people }) => disclosure(`biz.dept.${biz.id}.${dept.id}`, `${esc(dept.name)}`, `<p class="fine">${head ? `👤 ${esc(head.name)}, ${esc(head.title)}` : 'Reports directly to you.'} ${button('👋 Hire', 'business.recruit', { arg: dept.id, variant: 'tiny', disabled: searches <= 0, hint: searches > 0 ? 'Interview three applicants' : 'No more searches this year' })}</p>
+    ${people.length ? `<ul class="history">${people.map(personRow).join('')}</ul>` : ''}`, { count: `~${dept.headcount} staff` })).join('');
   const ceo = pos.ceo;
   return card('Organization', `
     <p>${chip(`👑 ${pos.title}`, 'honor')} ${chip(pos.stake)} ${chip(`${biz.staff.headcount} staff`)}${org.branches.length ? ` ${chip(`${org.branches.length + 1} locations`)}` : ''}</p>
@@ -432,7 +434,8 @@ function positionsSection(state, biz, org) {
         const people = ids.map((id) => org.people[id]).filter(Boolean);
         if (!people.length) continue;
         named += people.length;
-        rows.push(`<tr><td>${esc(people[0].title)} (${people.length})</td><td>${people.map((x) => esc(x.name)).join(', ')}</td></tr>`);
+        const creds = personCreds(people[0], getProfession, levelById);
+        rows.push(`<tr><td>${esc(people[0].title)} (${people.length})${creds.length ? `<br><small class="muted">🪪 ${esc(creds.join(', '))}</small>` : ''}</td><td>${people.map((x) => `${esc(x.name)} <small class="muted">${x.age}</small>`).join(', ')}</td></tr>`);
       }
     }
     const rest = Math.max(0, d.headcount - named - (head ? 1 : 0));
@@ -506,7 +509,8 @@ function capitalControls(state, biz) {
 function holdingsCard(state) {
   const hs = state.business.holdings ?? [];
   if (!hs.length) return '';
-  return card('Your Holdings', `<p class="muted">Businesses you own while their management runs them. Profits come to you as distributions.</p><ul class="history">${hs.map((h) => {
+  return card('Your Holdings', `<p class="muted">Businesses you own while their management runs them. Profits come to you as distributions.</p>
+    <div class="toggle-row chips-row">${Object.entries(STRATEGIES).filter(([id]) => id !== 'off').map(([id, st]) => button(`${st.icon} All on ${st.name}`, 'business.planAll', { arg: id, variant: 'tiny', hint: 'Every company you own (except one you run yourself)' })).join('')}</div><ul class="history">${hs.map((h) => {
     const org = businessOrg(state, h);
     const ceo = org?.people?.[org.ceo];
     return `<li class="report-row"><div><b>${BUSINESS_TYPES[h.typeId]?.icon ?? '🏪'} ${esc(h.name)}</b> <small class="muted">${Math.round(h.ownerPct * 100)}% · valued ${money(h.valuation)} · ${h.staff.headcount} staff${ceo ? ` · run by ${esc(ceo.name)}` : ''}${h.lastYear ? ` · last year ${money(h.lastYear.netIncome)}` : ''}</small></div>
@@ -568,7 +572,13 @@ function fleetCard(state, biz) {
     const fits = booked + k.units <= c.capacity;
     return `<li class="${ok.ok ? '' : 'locked'}">${k.renewal ? '🔁' : '📨'} <b>${esc(k.client)}</b> <small>${k.units} ${k.units === 1 ? (o.unit?.name ?? `${o.crewName} post`) : unitWord} · ${k.years} yr · ${Math.round(k.rate * 100)}% of the going rate · ≈${money(k.units * o.perUnit * k.rate)}/yr${ok.ok && !fits ? ' · <span class="neg">more than your free capacity</span>' : ''}${ok.ok ? '' : ` · ${esc(ok.reason)}`}</small> ${button('Sign', 'business.acceptContract', { arg: k.id, variant: 'tiny', disabled: !ok.ok })}</li>`;
   }).join('');
-  return card(o.unit ? 'Fleet & Contracts' : 'Crews & Contracts', `
+  const endorse = endorsementsFor(biz.typeId);
+  const crew = crewSize(biz);
+  const certRows = endorse.map((id) => {
+    const holders = biz.certs ? biz.certs[id] ?? 0 : crew;
+    return `<li>🪪 <b>${esc(credentialName(id))}</b> <small class="muted">${holders} of ${crew} crew certified</small> ${holders < crew ? button(`Certify ${crew - holders}`, 'business.certifyCrew', { arg: id, variant: 'tiny', disabled: biz.cash < (crew - holders) * certCost(id), hint: `${money((crew - holders) * certCost(id))} · contracts that need it are staffed by certified people` }) : ''}</li>`;
+  }).join('');
+  return card(o.unit ? 'Fleet & Contracts' : 'Crews & Contracts', `${certRows ? `<h4 class="sub">Crew certifications</h4><ul class="history">${certRows}</ul>` : ''}
     ${kv([
       fleet ? ['Fleet', fleet] : null,
       ['Staff', `${biz.staff.headcount}${biz.role === 'operator' ? ' + you' : ''} · ${o.crew > 1 ? `crews of ${o.crew}` : `one ${o.crewName} per ${o.unit?.name ?? 'post'}`}`],

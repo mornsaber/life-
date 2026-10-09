@@ -29,6 +29,8 @@ import { hireExec, fireExec, resolveExecHire, setOffice, mergeSubsidiaries } fro
 import { POSTS, takePost, leavePost, setFocus, setPay, execMove, postYear, executiveSkill, boardHooks } from './OwnerJob.js';
 import { syncBoard, boardMeeting, appointDirector, removeDirector } from './Board.js';
 import { rivalGroupsTick, bidForGroup } from './RivalGroups.js';
+import { ensureCerts, certsYear, certifyCrew } from './StaffCerts.js';
+import { hasCredential } from '../credentials/LicensingEngine.js';
 import { businessById, inject, withdraw, withdrawable, moveTreasury, buyBack, openingsPerYear, buyPremises, saleLeaseback } from './Capital.js';
 import { FleetActions, FleetResolvers, opsTick, payEquipmentLoan, ensureOps } from './FleetActions.js';
 import { makeOffers, OPERATIONS } from './Operations.js';
@@ -213,10 +215,22 @@ function businessTick(ctx, biz) {
 
   // You need the license to run it. Law firms, practices and CPA firms must be owned by a licensee.
   if (!holdsLicense(state, type) && !biz.franchise?.waiveLicense) {
-    if (LICENSEE_ONLY.includes(biz.typeId)) {
-      ctx.log(`Without your ${type.name.toLowerCase()} license you can't own ${biz.name}. You had to sell it fast.`, '🪪', 'bad');
-      exitBusiness(ctx, Math.round(biz.valuation * 0.7), 'Forced sale (license lost)');
-      return;
+    if (LICENSEE_ONLY.includes(biz.typeId) && !biz.mso) {
+      // An inherited practice gets two years to find a licensed buyer or partner; losing your own license forces a quick sale.
+      if (biz.inherited) {
+        biz.licenseGraceUntil ??= state.character.age + 2;
+        if (state.character.age < biz.licenseGraceUntil) {
+          ctx.log(`Only a licensed ${type.name.toLowerCase().replace(/ (firm|practice)$/, '')} can own ${biz.name}. You have until age ${biz.licenseGraceUntil} to sell it or restructure with a licensed partner (a management-services company).`, '🪪', 'warn');
+        } else {
+          ctx.log(`The grace period ran out: ${biz.name} was sold to a licensed buyer.`, '🪪', 'warn');
+          exitBusiness(ctx, Math.round(biz.valuation * 0.92), 'Sold by the estate (licensed buyer)');
+          return;
+        }
+      } else {
+        ctx.log(`Without your ${type.name.toLowerCase()} license you can't own ${biz.name}. You had to sell it fast.`, '🪪', 'bad');
+        exitBusiness(ctx, Math.round(biz.valuation * 0.7), 'Forced sale (license lost)');
+        return;
+      }
     }
     if (!biz.licensedManager) ctx.log(`You hired a licensed manager to keep ${biz.name} legal.`, '🪪', 'warn');
     biz.licensedManager = true;
@@ -245,6 +259,8 @@ function businessTick(ctx, biz) {
   biz.valuation = valuation(biz, ly);
   recordBooks(state, biz, ly);
   governanceYear(ctx, biz);
+  ensureCerts(biz, (id) => hasCredential(state, id));
+  certsYear(ctx, biz);
   opsTick(ctx, biz, ly);
   ctx.log(`${biz.name}: ${money(ly.revenue)} revenue, ${ly.netIncome >= 0 ? `${money(ly.netIncome)} profit` : `${money(-ly.netIncome)} loss`}${ly.ownerPay ? `; you took ${money(ly.ownerPay)}` : ''}. Valued at ${money(biz.valuation)}.`, type.icon, ly.netIncome >= 0 ? 'finance' : 'warn');
 
@@ -727,6 +743,8 @@ function holdingTick(ctx, biz) {
   biz.valuation = valuation(biz, ly);
   recordBooks(state, biz, ly);
   governanceYear(ctx, biz);
+  ensureCerts(biz, (id) => hasCredential(state, id));
+  certsYear(ctx, biz);
   businessStaffTick(ctx, biz);
   initiativesTick(ctx, biz);
   managedYear(ctx, biz);
@@ -990,6 +1008,11 @@ export const BusinessEngine = {
       if (!biz) return;
       buyBack(ctx, biz, pct === 'all' ? 1 : Number(pct), source);
     },
+    /** arg: credential id — certify the whole crew (hazmat, school bus, paramedic…). */
+    certifyCrew(ctx, id) {
+      const biz = withBiz(ctx);
+      if (biz) certifyCrew(ctx, biz, id);
+    },
     /** arg: group name — buy a whole rival conglomerate. */
     bidForGroup(ctx, name) {
       bidForGroup(ctx, name);
@@ -1028,6 +1051,21 @@ export const BusinessEngine = {
       const biz = withBiz(ctx);
       if (biz) removeDirector(ctx, biz, seatId);
     },
+    /**
+     * Keep a licensed-professional practice you can't own outright: a licensed partner owns the
+     * practice; your management-services company owns everything else and takes most of the profit.
+     */
+    formMso(ctx) {
+      const biz = withBiz(ctx);
+      if (!biz || !LICENSEE_ONLY.includes(biz.typeId) || biz.mso) return;
+      charge(biz, 35000);
+      biz.mso = true;
+      biz.licensedManager = true;
+      biz.ownerPct = Math.round(Math.min(biz.ownerPct, 0.85) * 10000) / 10000;
+      biz.investors.push({ round: 'licensed partner', pct: Math.round((1 - biz.ownerPct) * 10000) / 10000, invested: 0, partner: 'Licensed professional partner' });
+      biz.licenseGraceUntil = null;
+      ctx.log(`${biz.name} restructured: a licensed partner owns the practice, and your management-services company runs everything else for about ${Math.round(biz.ownerPct * 100)}% of the profit.`, '🪪', 'milestone');
+    },
     /** arg: 'cash' | 'loan' — buy the building one location rents. */
     buyPremises(ctx, how) {
       const biz = withBiz(ctx);
@@ -1047,6 +1085,19 @@ export const BusinessEngine = {
       state.business.holdings = [...state.business.holdings.filter((x) => x !== h), ...(cur ? [cur] : [])];
       state.business.current = h;
       ctx.toast(`Now overseeing ${h.name}`, 'info');
+    },
+    /** arg: strategy — the same growth plan for every company you own (one click for a big group). */
+    planAll(ctx, strategy) {
+      const { state } = ctx;
+      if (!STRATEGIES[strategy]) return;
+      let n = 0;
+      for (const b of [state.business.current, ...(state.business.holdings ?? [])].filter(Boolean)) {
+        if (b.role === 'operator' || typeOf(b).startup) continue;
+        b.plan = { ...(b.plan ?? {}), strategy, sinceAge: state.character.age };
+        b.autopilot = true;
+        n += 1;
+      }
+      ctx.log(`All ${n} managed companies are now on a ${STRATEGIES[strategy].name.toLowerCase()} plan.`, STRATEGIES[strategy].icon);
     },
     /** arg: role — run an executive search for the holding company. */
     hireExec(ctx, role) {
@@ -1190,6 +1241,10 @@ export const BusinessEngine = {
       biz.plan = { ...(biz.plan ?? {}), strategy: biz.plan?.strategy && biz.plan.strategy !== 'off' ? biz.plan.strategy : 'steady', sinceAge: ctx.state.character.age };
       ensureBusinessOrg(ctx.state, biz);
       syncBusinessOrg(ctx.state, biz);
+      // Equipment too: staff keep it at standard.
+      const equip = ctx.state.deptEquip?.[`biz:${biz.id}`];
+      if (equip) equip.auto = true;
+      biz.equipAuto = true;
       ctx.log(`You handed ${biz.name} to its management team: they run it day to day on a ${STRATEGIES[biz.plan.strategy].name.toLowerCase()} plan and send you a yearly report.`, '🗂️', 'milestone');
     },
     /** Let your manager handle routine decisions (on by default). */
