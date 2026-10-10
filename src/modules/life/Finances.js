@@ -52,6 +52,13 @@ function steadyIncome(state) {
   return (state.career.job?.salary ?? 0) + pensions + (state.retirement.socialSecurity?.annual ?? 0) + spouseIncome(state) + ownerPay + gig;
 }
 
+/** This year's student-loan payment: income-contingent in the UK (9% over the threshold), else at least 12% of the balance. */
+function loanDue(state, balance, gross, { exact = false } = {}) {
+  const e = countryOf(state).education;
+  if (e?.loans === 'icr') return Math.min(balance, Math.max(0, Math.round(0.09 * (gross - e.loanThreshold))));
+  return exact ? Math.min(balance, Math.max(3000, balance * 0.12)) : Math.min(balance, Math.max(3000, Math.round(balance * 0.12)));
+}
+
 export const Finances = {
   id: 'finances',
   order: 90,
@@ -129,7 +136,7 @@ export const Finances = {
         const housing = f.ledger.expenses.filter((x) => HOUSING_EXPENSE.test(x.reason) || FAMILY_EXPENSE.test(x.reason)).reduce((s, x) => s + x.amount, 0);
         // Card debt: interest plus a real effort to pay it down — or just the minimum (see CreditCards).
         const cardDebt = Math.max(0, -f.cash);
-        const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardObligation(state, cardDebt);
+        const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? loanDue(state, f.loans, gross, { exact: true }) : 0) + cardObligation(state, cardDebt);
         // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
         const spendable = ordinary + informalPay - retained;
         const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
@@ -153,9 +160,14 @@ export const Finances = {
     let loanPayment = 0;
     // National service (AmeriCorps, Peace Corps) puts federal student loans in forbearance.
     if (f.loans > 0 && !state.service?.program) {
-      f.loans = Math.round(f.loans * (1 + LOAN_RATE));
-      if (!state.education.enrolled && f.cash > 0) {
-        loanPayment = Math.min(f.loans, Math.max(3000, Math.round(f.loans * 0.12)), f.cash);
+      const icr = countryOf(state).education?.loans === 'icr';
+      f.loans = Math.round(f.loans * (1 + (icr ? 0.03 : LOAN_RATE)));
+      // UK student loans are written off after 40 years (around 61), whatever is left.
+      if (icr && age >= 61) {
+        ctx.log(`Your remaining student loan ($${f.loans.toLocaleString()}) was written off.`, '🎓', 'good');
+        f.loans = 0;
+      } else if (!state.education.enrolled && f.cash > 0) {
+        loanPayment = Math.min(f.loans, loanDue(state, f.loans, gross), f.cash);
         f.loans -= loanPayment;
         f.cash -= loanPayment;
       }

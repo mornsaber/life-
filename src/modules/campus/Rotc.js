@@ -14,6 +14,8 @@ import { hasFelony, yearlyCount, bumpYearly, visibleRecord } from '../../core/St
 import { clamp } from '../../core/Random.js';
 import { onCampus } from './Network.js';
 import { moveIntoDorm } from './HousingDorms.js';
+import { isAbroad, countryOf } from '../world/Countries.js';
+import { nationalBranch } from '../world/NationalForces.js';
 
 export const ROTC_BRANCHES = ['army', 'navy', 'airforce'];
 export const ACADEMIES = {
@@ -27,6 +29,7 @@ export const OBLIGATION = { rotcScholarship: 4, rotc: 3, academy: 5 };
 export function rotcEligibility(state, branch) {
   const e = state.education.enrolled;
   if (!ROTC_BRANCHES.includes(branch)) return { ok: false, reason: 'Unknown branch' };
+  if (isAbroad(state) && !nationalBranch(countryOf(state).id, branch)) return { ok: false, reason: 'Your country has no such branch' };
   if (!e || e.programId !== 'bachelor' || !onCampus(state)) return { ok: false, reason: "Full-time bachelor's students on campus" };
   if (state.campus.academy) return { ok: false, reason: 'Academy cadets are already in uniform' };
   if (state.campus.rotc) return { ok: false, reason: 'Already in ROTC' };
@@ -107,7 +110,10 @@ export function academyPrompt(ctx) {
     icon: '⚓',
     title: 'Appointment Offered',
     text: 'You received an appointment. Which academy will you attend?',
-    options: Object.entries(ACADEMIES).map(([id, a]) => ({ id, label: `${a.icon} ${a.name}` })),
+    // Abroad: your country's academy, for the branches it has.
+    options: Object.entries(ACADEMIES)
+      .filter(([id]) => !isAbroad(ctx.state) || nationalBranch(countryOf(ctx.state).id, id))
+      .map(([id, a]) => ({ id, label: isAbroad(ctx.state) ? `${a.icon} ${countryOf(ctx.state).education?.schools?.academy ?? a.name} (${nationalBranch(countryOf(ctx.state).id, id).name})` : `${a.icon} ${a.name}` })),
   });
 }
 

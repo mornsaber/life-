@@ -18,6 +18,8 @@ import { REGIONS, regionsIn, changeRegion } from '../src/modules/life/Regions.js
 import { STATES } from '../src/modules/life/States.js';
 import { COUNTRIES, countryOf, nationalIncomeTax, socialContributions, nationalPension, localizeHtml } from '../src/modules/world/Countries.js';
 import { coverage } from '../src/modules/health/Insurance.js';
+import { annualTuition } from '../src/modules/education/EducationEngine.js';
+import { localizeTerms } from '../src/modules/world/Countries.js';
 import { enlistmentEligibility, rankOf, branchOf } from '../src/modules/military/MilitaryEngine.js';
 import { nationalBases } from '../src/modules/world/NationalForces.js';
 import { runEligibility } from '../src/modules/politics/Campaigns.js';
@@ -228,6 +230,32 @@ const tests = {
     assert.equal(OFFICES.mx_presidente.termLimit, 1);
     // The US ladder and OFFICES iteration are untouched.
     assert.ok(!Object.keys(OFFICES).some((id) => OFFICES[id].country));
+  },
+  'schools and licenses: local fees, names and qualifications'() {
+    const uk = born('GB', 2, 18);
+    uk.state.character.regionId = 'manchester';
+    assert.equal(annualTuition('bachelor', 'state', uk.state), Math.round(14000 * 1), 'English fees');
+    uk.state.character.regionId = 'edinburgh';
+    assert.equal(annualTuition('bachelor', 'state', uk.state), 0, 'free for Scottish students');
+    assert.ok(annualTuition('bachelor', 'state', born('DE').state) < 1000, 'German semester fees only');
+    assert.ok(annualTuition('bachelor', 'state', born('US').state) > 9000, 'US unchanged');
+    const gb = countryOf(uk.state);
+    assert.equal(localizeTerms('State Bar License', gb), 'Solicitor qualification (SQE)');
+    assert.equal(localizeTerms('a high-school diploma or a GED', gb), 'a A-levels or a Access to HE Diploma');
+    assert.equal(localizeTerms('Ivy Crest University', gb), 'Oxbridge');
+    assert.equal(localizeTerms("Driver's License (Class D)", countryOf(born('DE').state)), 'Führerschein Klasse B');
+  },
+  'UK student loans: 9% of income over the threshold, written off at 61'() {
+    const t = employed('GB');
+    t.state.finances.loans = 40000;
+    t.state.finances.cash = 50000;
+    year(t);
+    const paid = t.state.finances.lastYear.loanPayment;
+    const expected = Math.round(0.09 * (t.state.finances.lastYear.gross - 36760));
+    assert.ok(Math.abs(paid - Math.max(0, expected)) <= 1, `paid ${paid}, expected ${expected}`);
+    t.state.character.age = 61;
+    year(t);
+    assert.equal(t.state.finances.loans, 0);
   },
   'moves stay inside the country'() {
     const t = born('CA');

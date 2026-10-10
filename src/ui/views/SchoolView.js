@@ -27,7 +27,7 @@ function programRow(state, id) {
       ${blocking ? `<small class="why">${esc(check.reason)}</small>` : ''}</div>
     <div class="enroll-form">
       <input type="hidden" data-part="program" value="${id}">
-      ${select('school', p.schools.map((s) => ({ value: s, label: `${SCHOOLS[s].icon} ${SCHOOLS[s].name} — ${money(annualTuition(id, s))}/yr · ${Math.round(admissionChance(state, id, s) * 100)}% admit` })))}
+      ${select('school', p.schools.map((s) => ({ value: s, label: `${SCHOOLS[s].icon} ${SCHOOLS[s].name} — ${money(annualTuition(id, s, state))}/yr · ${Math.round(admissionChance(state, id, s) * 100)}% admit` })))}
       ${majors[0] !== null ? select('major', majors.map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }))) : '<input type="hidden" data-part="major" value="">'}
       ${select('pace', [{ value: 'full', label: 'Full-time' }, { value: 'part', label: 'Part-time (½ speed)' }])}
       ${button('Apply', 'education.enroll', { variant: 'small primary', collect: true, disabled: blocking })}
@@ -43,7 +43,7 @@ export function schoolView(state) {
     current = card(degreeLabel({ programId: e.programId, major: e.major, type: p.type }), `
       <p class="muted">${SCHOOLS[e.schoolId].icon} ${esc(SCHOOLS[e.schoolId].name)} · ${e.pace === 'part' ? 'Part-time' : 'Full-time'}</p>
       ${e.totalYears >= 99 ? '' : meter(e.progress, { max: e.totalYears, label: 'Progress', suffix: ` / ${e.totalYears} yrs`, tone: 'good' })}
-      ${kv([['GPA', e.yearsAttended ? e.gpa.toFixed(2) : '—'], ['Tuition', `${money(annualTuition(e.programId, e.schoolId))}/yr`], ['Funding', [giBillEligible(state) && 'GI Bill', state.career.job?.employer.benefits.tuition && 'Employer tuition assistance', SCHOOLS[e.schoolId].needBasedAid && 'Need-based aid'].filter(Boolean).join(', ') || 'Student loans']])}
+      ${kv([['GPA', e.yearsAttended ? e.gpa.toFixed(2) : '—'], ['Tuition', `${money(annualTuition(e.programId, e.schoolId, state))}/yr`], ['Funding', [giBillEligible(state) && 'GI Bill', state.career.job?.employer.benefits.tuition && 'Employer tuition assistance', SCHOOLS[e.schoolId].needBasedAid && 'Need-based aid'].filter(Boolean).join(', ') || 'Student loans']])}
       <div class="action-grid">${button('📖 Study Hard', 'education.study', { hint: '+GPA, +Stress' })}${button(e.pace === 'part' ? '⏩ Go full-time' : '⏸️ Go part-time', 'education.switchPace')}${button('🚪 Drop Out', 'education.dropOut', { variant: 'danger' })}</div>`, { icon: '🏛️', accent: 'yellow' });
   }
   const catalog = PROGRAM_GROUPS.map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');

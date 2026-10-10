@@ -23,6 +23,7 @@
  */
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
+import { EDUCATION, educationTerms } from './Education.js';
 
 const ppp = (local, perUsd) => Math.round(local / perUsd);
 
@@ -298,6 +299,12 @@ export const US = {
 
 /** Playable countries, in picker order. */
 export const COUNTRIES = { US, CA, GB, DE, JP, KR, IT, MX, PH, IN };
+// Schools, school stages and license names join each country's display swaps.
+for (const c of Object.values(COUNTRIES)) {
+  if (c.id === 'US') continue;
+  c.terms = { ...educationTerms(c.id), ...(c.terms ?? {}) };
+  c.education = EDUCATION[c.id];
+}
 
 /** Countries already in the story (postings, embassies, spouses' homelands) that aren't playable yet. */
 /** Countries in the story that aren't playable yet (none left: kept for the picker). */
@@ -363,13 +370,15 @@ export function localizeMoney(text, country) {
 }
 
 /** Wording every country outside the US shares (parties pick candidates; laws are regional or national). */
-const ABROAD_TERMS = { 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
+const ABROAD_TERMS = { 'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
 
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {
   if (!country?.terms) return text;
   let out = text;
-  for (const [us, local] of Object.entries({ ...ABROAD_TERMS, ...country.terms })) out = out.split(us).join(local);
+  // Longest phrases first, so "high-school diploma" wins over "high school".
+  const pairs = country.sortedTerms ??= Object.entries({ ...ABROAD_TERMS, ...country.terms }).sort((a, b) => b[0].length - a[0].length);
+  for (const [us, local] of pairs) if (out.includes(us)) out = out.split(us).join(local);
   return out;
 }
 
