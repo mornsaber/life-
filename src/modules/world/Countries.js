@@ -22,6 +22,8 @@
  *   closed     what non-citizens of the US can't do here (US federal jobs, US forces, US offices)
  */
 
+import { KR, IT, MX, PH, IN } from './CountriesMore.js';
+
 const ppp = (local, perUsd) => Math.round(local / perUsd);
 
 /* ------------------------------------------------------------------ */
@@ -295,16 +297,11 @@ export const US = {
 };
 
 /** Playable countries, in picker order. */
-export const COUNTRIES = { US, CA, GB, DE, JP };
+export const COUNTRIES = { US, CA, GB, DE, JP, KR, IT, MX, PH, IN };
 
 /** Countries already in the story (postings, embassies, spouses' homelands) that aren't playable yet. */
-export const PLANNED = {
-  KR: { name: 'South Korea', flag: '🇰🇷', phase: 2, why: 'conscription' },
-  IT: { name: 'Italy', flag: '🇮🇹', phase: 2 },
-  MX: { name: 'Mexico', flag: '🇲🇽', phase: 3, why: 'informal economy' },
-  PH: { name: 'Philippines', flag: '🇵🇭', phase: 3 },
-  IN: { name: 'India', flag: '🇮🇳', phase: 3 },
-};
+/** Countries in the story that aren't playable yet (none left: kept for the picker). */
+export const PLANNED = {};
 
 /** Why a US-only path is closed to a life abroad. */
 export const US_ONLY = {
@@ -325,6 +322,7 @@ export const PROVINCE_POPULATION = {
   'GB-ENG': 57e6, 'GB-SCT': 5.5e6, 'GB-WLS': 3.1e6, 'GB-NIR': 1.9e6,
   'DE-BE': 3.9e6, 'DE-BY': 13.4e6, 'DE-HE': 6.4e6, 'DE-HH': 1.9e6, 'DE-NW': 18.1e6, 'DE-RP': 4.2e6, 'DE-BW': 11.3e6, 'DE-SN': 4.1e6,
   'JP-13': 14.2e6, 'JP-14': 9.2e6, 'JP-27': 8.8e6, 'JP-40': 5.1e6, 'JP-01': 5.1e6, 'JP-47': 1.47e6,
+  ...KR.population, ...IT.population, ...MX.population, ...PH.population, ...IN.population,
 };
 
 /** Every foreign province and city, keyed by id, tagged with its country. */
@@ -401,8 +399,15 @@ export function nationalIncomeTax(country, taxable, province = null) {
   if (province?.ownIncomeTax) return 0;
   // The UK withdraws the personal allowance £1 for every £2 over £100,000.
   const allowance = t.taperFrom ? Math.max(0, (t.allowance ?? 0) - Math.max(0, taxable - t.taperFrom) / 2) : t.allowance ?? 0;
-  return bracketTax(t.brackets, Math.max(0, taxable - allowance));
+  const base = Math.max(0, taxable - allowance);
+  // India's section 87A rebate: no tax at all up to the threshold.
+  if (t.rebateUpTo && base <= t.rebateUpTo) return 0;
+  // Korea's local income tax is a 10% surtax on the national tax.
+  return Math.round(bracketTax(t.brackets, base) * (1 + (t.surtax ?? 0)));
 }
+
+/** Share of private jobs that are informal (cash, no contract, no contributions or pension credit). */
+export const informality = (country) => country?.informality ?? 0;
 
 /** Payroll social contributions on wages (CPP/EI, National Insurance, Sozialversicherung, shakai hoken). */
 export function socialContributions(country, wages) {
@@ -438,6 +443,38 @@ export function nationalPension(country, earnings) {
   if (p.kind === 'points') {
     const points = years.reduce((s, e) => s + Math.min(e, p.cap) / p.average, 0);
     return Math.round(points * p.pointValue);
+  }
+  if (p.kind === 'avgReplace') {
+    // Korea's NPS: a share of career-average earnings for a full career, pro rata for fewer years.
+    if (years.length < p.minYears) return 0;
+    const capped = years.map((e) => Math.min(e, p.cap));
+    const avg = capped.reduce((s, e) => s + e, 0) / capped.length;
+    return Math.round(avg * p.replace * Math.min(1, capped.length / p.years));
+  }
+  if (p.kind === 'notional') {
+    // Italy's contribution-based pension: 33% of every year's pay into a notional account, converted at retirement.
+    if (years.length < p.minYears) return 0;
+    const account = years.reduce((s, e) => s + Math.min(e, p.cap) * p.rate, 0);
+    return Math.round(account * p.coefficient);
+  }
+  if (p.kind === 'account') {
+    // Mexico's AFORE: contributions grow in an individual account, annuitized; plus the universal flat pension.
+    let account = 0;
+    for (const e of years) account = account * (1 + p.growth) + Math.min(e, p.cap) * p.rate;
+    return Math.round(account / p.annuity + p.flat);
+  }
+  if (p.kind === 'sss') {
+    // Philippine SSS: ₱300 + 20% of the average monthly salary credit + 2% a year past 10, or 40% if higher.
+    if (years.length < p.minYears) return 0;
+    const avg = years.map((e) => Math.min(e, p.cap)).reduce((s, e) => s + e, 0) / years.length;
+    return Math.round(Math.max(p.base + avg * (0.2 + 0.02 * Math.max(0, years.length - 10)), avg * 0.4));
+  }
+  if (p.kind === 'eps') {
+    // India's EPS: pensionable salary (capped) × years ÷ 70.
+    if (years.length < p.minYears) return 0;
+    const capped = years.map((e) => Math.min(e, p.cap));
+    const avg = capped.reduce((s, e) => s + e, 0) / capped.length;
+    return Math.round((avg * capped.length) / p.divisor);
   }
   if (p.kind === 'tiered') {
     const basic = p.basic * Math.min(1, years.length / p.years);

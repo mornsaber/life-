@@ -31,7 +31,7 @@ import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
-import { isAbroad, US_ONLY } from '../world/Countries.js';
+import { isAbroad, US_ONLY, informality, countryOf } from '../world/Countries.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -203,6 +203,15 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
     paidThisYear: false,
   };
   profession.prepare?.(state, job);
+  // Abroad, many private jobs are informal: cash pay, no contract, no benefits (Mexico, the Philippines, India).
+  const informalShare = informality(countryOf(state));
+  if (informalShare && profession.sector === 'private' && !profession.dutyStation) {
+    const bySize = { micro: 1.5, small: 1.4, medium: 0.9, large: 0.4, enterprise: 0.15, mega: 0.1 }[employer.size] ?? 1;
+    if (ctx.rng.chance(Math.min(0.95, informalShare * bySize))) {
+      job.informal = true;
+      job.employer = { ...employer, benefits: { ...employer.benefits, health: false, pension: null, match: 0, dcPlan: null, tuition: 0 } };
+    }
+  }
   applyLevel(job, level);
   recalcSalary(state, job);
   ensureDepartment(job, level);
@@ -473,6 +482,7 @@ export function layoffRisk(state, job) {
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;
   if (job.probationLeft > 0) risk *= 1.5; // last in, first out
+  if (job.informal) risk *= 1.6; // no contract, no notice
   if (job.unionMember && job.yearsAtEmployer >= 5) risk *= 0.3; // seniority
   if (job.performance >= 80) risk *= 0.5;
   if (job.performance < 40) risk *= 1.5;
@@ -615,7 +625,7 @@ export function careerOnAgeUp(ctx) {
   // Pay (commission jobs swing with the market)
   recalcSalary(state, job);
   const gross = profession.commission ? Math.round(job.salary * rng.float(0.5, 1.6)) : job.salary;
-  ctx.earn(gross, `${profession.commission ? 'Commissions' : 'Salary'} — ${job.title}`, { wage: true, ssCovered: job.employer.benefits.ssCovered });
+  ctx.earn(gross, `${profession.commission ? 'Commissions' : 'Salary'} — ${job.title}`, { wage: true, ssCovered: job.employer.benefits.ssCovered, ...(job.informal ? { informal: true } : {}) });
   job.paidThisYear = true;
   if (profession.flightHoursPerYear) ctx.emit('logbook:add', { hours: profession.flightHoursPerYear });
 

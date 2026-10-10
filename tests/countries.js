@@ -24,7 +24,7 @@ import { socialSecurityEstimate } from '../src/modules/retirement/RetirementEngi
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const FOREIGN = ['CA', 'GB', 'DE', 'JP'];
+const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN'];
 
 function born(countryId, seed = 3, age = 35) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
@@ -77,13 +77,34 @@ const tests = {
       const t = employed(id);
       year(t);
       const ly = t.state.finances.lastYear;
+      if (t.state.career.job?.informal) continue;
       assert.ok(ly.contributions > 0, `${id} contributions`);
-      assert.ok(ly.federalTax > ly.contributions, `${id} income tax on top of contributions`);
+      assert.ok(ly.federalTax >= ly.contributions, `${id} income tax on top of contributions`);
       assert.equal(ly.kidsCredit, 0);
       assert.equal(ly.itemized, null);
       const rate = ly.tax / ly.gross;
-      assert.ok(rate > 0.12 && rate < 0.45, `${id} effective rate ${(rate * 100).toFixed(1)}%`);
+      if (!t.state.career.job?.informal) assert.ok(rate > 0.03 && rate < 0.45, `${id} effective rate ${(rate * 100).toFixed(1)}%`);
     }
+  },
+  'informal jobs: cash pay, untaxed, no contributions or pension credit'() {
+    let informal = 0;
+    for (let seed = 1; seed <= 30 && !informal; seed++) {
+      const t = born('IN', seed);
+      hire(t.ctx, { professionId: 'retail', levelId: PROFESSIONS.retail.levels[0].id, employer: createEmployer(new Random(seed), t.state, PROFESSIONS.retail, t.state.character.regionId) });
+      t.state.prompts = [];
+      if (!t.state.career.job?.informal) continue;
+      informal += 1;
+      const before = t.state.retirement.ssEarnings.length;
+      year(t);
+      const ly = t.state.finances.lastYear;
+      assert.ok(ly.gross > 0);
+      assert.equal(ly.contributions, 0, 'no contributions');
+      assert.equal(t.state.retirement.ssEarnings.length, before, 'no pension credit');
+    }
+    assert.ok(informal, 'most retail jobs in India are informal');
+    // The US never rolls for informality.
+    const us = employed('US');
+    assert.ok(!us.state.career.job.informal);
   },
   'universal health coverage: no premiums'() {
     for (const id of FOREIGN) {
@@ -91,7 +112,7 @@ const tests = {
       const plan = coverage(t.state);
       assert.equal(plan.id, 'national');
       assert.equal(plan.premium, 0);
-      assert.ok(Number.isFinite(plan.oopMax) && plan.oopMax < 5000);
+      assert.ok(Number.isFinite(plan.oopMax) && plan.oopMax <= 6000);
     }
   },
   'the national pension replaces Social Security'() {
@@ -143,7 +164,7 @@ const tests = {
       const html = localizeHtml(VIEWS.money(t.state) + VIEWS.career(t.state) + VIEWS.life(t.state), c);
       const text = html.replace(/<[^>]+>/g, ' ');
       assert.ok(text.includes(c.currency.symbol), `${id} shows ${c.currency.symbol}`);
-      assert.ok(!/\$\d/.test(text.replace(/C\$\d/g, '')), `${id}: no US-dollar amounts left: ${text.match(/.{20}\$\d.{20}/)?.[0]}`);
+      assert.ok(!/\$\d/.test(text.replace(/[A-Z]{1,2}\$\d/g, '')), `${id}: no US-dollar amounts left: ${text.match(/.{20}\$\d.{20}/)?.[0]}`);
       assert.ok(!/undefined|NaN|\[object/.test(text));
     }
   },

@@ -64,7 +64,9 @@ export const Finances = {
     const ltcg = f.ledger.income.reduce((sum, i) => sum + (i.ltcg ? i.amount : 0), 0);
     // Combat zone pay is excluded from income tax.
     const taxFree = f.ledger.income.reduce((sum, i) => sum + (i.taxFree ?? 0), 0);
-    const ordinary = gross - ltcg - taxFree;
+    // Informal cash pay is off the books: never reported, so never taxed (and it builds no pension).
+    const informalPay = f.ledger.income.reduce((sum, i) => sum + (i.informal ? i.amount : 0), 0);
+    const ordinary = gross - ltcg - taxFree - informalPay;
     // Pass-through business profit left in the business is taxed but never reaches your wallet.
     const retained = f.ledger.income.reduce((sum, i) => sum + (i.retained ? i.amount : 0), 0);
     const deductions = f.ledger.deductions.reduce((sum, d) => sum + d.amount, 0);
@@ -129,9 +131,9 @@ export const Finances = {
         const cardDebt = Math.max(0, -f.cash);
         const obligations = healthPremium(state, ordinary) + (f.loans > 0 ? Math.min(f.loans, Math.max(3000, f.loans * 0.12)) : 0) + cardObligation(state, cardDebt);
         // Lifestyle follows steady income; windfalls (severance, settlements, prizes) mostly get saved.
-        const spendable = ordinary - retained;
+        const spendable = ordinary + informalPay - retained;
         const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
-        const discretionary = base - tax * (base / Math.max(1, ordinary)) - housing - cashDeductions - obligations;
+        const discretionary = base - tax * (base / Math.max(1, ordinary + informalPay)) - housing - cashDeductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
         const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;
         // A second adult adds about half again to household needs (OECD equivalence scale).

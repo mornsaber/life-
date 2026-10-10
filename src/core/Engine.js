@@ -303,7 +303,7 @@ export class Engine {
        * Income for the year. `retained`: taxable to you but kept in your
        * business (pass-through profit left in an LLC or S-corp) — no cash.
        */
-      earn(amount, source, { wage = false, ssCovered = true, ltcg = false, retained = false } = {}) {
+      earn(amount, source, { wage = false, ssCovered = true, ltcg = false, retained = false, informal = false } = {}) {
         const value = Math.round(amount);
         if (value <= 0) return 0;
         if (!retained) {
@@ -312,6 +312,8 @@ export class Engine {
         }
         const entry = ltcg ? { source, amount: value, wage: false, ssCovered, ltcg: true } : { source, amount: value, wage, ssCovered };
         if (retained) entry.retained = true;
+        // Informal (cash, off-the-books) pay: no tax withheld, no contributions, no pension credit.
+        if (informal) Object.assign(entry, { informal: true, ssCovered: false });
         state.finances.ledger.income.push(entry);
         return value;
       },
