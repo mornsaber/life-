@@ -62,7 +62,7 @@ const CA = {
   health: { name: 'Provincial health insurance', short: 'Medicare (provincial)', deductible: 0, coinsurance: 0.05, oopMax: 900 },
   // Canada Child Benefit 2025: up to $7,787 under 6 / $6,570 6–17, reduced above about $37,000 family income.
   childBenefit: { amount: ppp(6000, CAD), phaseOutFrom: ppp(80000, CAD), name: 'Canada Child Benefit' },
-  terms: { 'State income tax': 'Provincial income tax', 'Social Security': 'CPP/OAS', '401(k)': 'RRSP', 'IRS': 'CRA', 'Medicaid': 'provincial health care', 'Medicare': 'provincial health care', 'GI Bill': 'veterans education benefit' },
+  terms: { 'State government': 'Provincial government', 'State income tax': 'Provincial income tax', 'Social Security': 'CPP/OAS', '401(k)': 'RRSP', 'IRS': 'CRA', 'Medicaid': 'provincial health care', 'Medicare': 'provincial health care', 'GI Bill': 'veterans education benefit' },
   names: {
     male: ['Liam', 'Noah', 'William', 'Lucas', 'Benjamin', 'Ethan', 'Jacob', 'Logan', 'Félix', 'Mathis', 'Arjun', 'Owen', 'Nathan', 'Samuel', 'Wei', 'Thomas'],
     female: ['Olivia', 'Emma', 'Charlotte', 'Amelia', 'Chloé', 'Léa', 'Sophia', 'Ava', 'Maya', 'Florence', 'Harper', 'Priya', 'Zoé', 'Isla', 'Mei', 'Abigail'],
@@ -122,7 +122,7 @@ const GB = {
   health: { name: 'NHS', short: 'NHS', deductible: 0, coinsurance: 0.02, oopMax: 300 },
   // Child Benefit 2025/26: £26.05/week eldest, £17.25 others; clawed back from £60,000 income.
   childBenefit: { amount: ppp(1100, GBP), phaseOutFrom: ppp(60000, GBP), name: 'Child Benefit' },
-  terms: { 'Federal income tax': 'Income tax', 'State income tax': 'Scottish income tax', 'Social Security': 'State Pension', '401(k)': 'workplace pension', 'IRA': 'ISA', 'IRS': 'HMRC', 'Medicaid': 'the NHS', 'Medicare': 'the NHS', 'GI Bill': 'Forces education support', 'high school': 'secondary school' },
+  terms: { 'Federal government': 'National government', 'Federal income tax': 'Income tax', 'State income tax': 'Scottish income tax', 'Social Security': 'State Pension', '401(k)': 'workplace pension', 'IRA': 'ISA', 'IRS': 'HMRC', 'Medicaid': 'the NHS', 'Medicare': 'the NHS', 'GI Bill': 'Forces education support', 'high school': 'secondary school' },
   names: {
     male: ['Oliver', 'George', 'Harry', 'Jack', 'Noah', 'Muhammad', 'Leo', 'Arthur', 'Oscar', 'Charlie', 'Freddie', 'Alfie', 'Callum', 'Rhys', 'Finn', 'Kwame'],
     female: ['Olivia', 'Amelia', 'Isla', 'Ava', 'Lily', 'Freya', 'Grace', 'Sophie', 'Poppy', 'Ella', 'Aisha', 'Mia', 'Evie', 'Niamh', 'Eilidh', 'Ffion'],
@@ -187,7 +187,7 @@ const DE = {
   health: { name: 'Gesetzliche Krankenversicherung', short: 'GKV', deductible: 0, coinsurance: 0.02, oopMax: 600 },
   // Kindergeld 2025: €255 a month per child, not income-tested.
   childBenefit: { amount: ppp(3060, EUR), phaseOutFrom: Infinity, name: 'Kindergeld' },
-  terms: { 'Federal income tax': 'Income tax', 'Social Security': 'Gesetzliche Rente', '401(k)': 'Betriebsrente', 'IRA': 'Riester plan', 'IRS': 'Finanzamt', 'Medicaid': 'statutory health insurance', 'Medicare': 'statutory health insurance', 'GI Bill': 'Bundeswehr education support' },
+  terms: { 'State government': 'Land government', 'Federal income tax': 'Income tax', 'Social Security': 'Gesetzliche Rente', '401(k)': 'Betriebsrente', 'IRA': 'Riester plan', 'IRS': 'Finanzamt', 'Medicaid': 'statutory health insurance', 'Medicare': 'statutory health insurance', 'GI Bill': 'Bundeswehr education support' },
   names: {
     male: ['Lukas', 'Leon', 'Finn', 'Jonas', 'Paul', 'Felix', 'Maximilian', 'Elias', 'Ben', 'Noah', 'Emil', 'Mehmet', 'Tobias', 'Moritz', 'Niklas', 'Jan'],
     female: ['Emma', 'Mia', 'Hannah', 'Sophia', 'Lena', 'Lea', 'Marie', 'Emilia', 'Clara', 'Anna', 'Lina', 'Elif', 'Johanna', 'Laura', 'Katharina', 'Greta'],
@@ -255,7 +255,7 @@ const JP = {
   health: { name: 'National Health Insurance', short: 'NHI', deductible: 0, coinsurance: 0.3, oopMax: 4000 },
   // Child allowance (jidō teate) from 2024: ¥10,000–15,000 a month, no income cap.
   childBenefit: { amount: ppp(144000, JPY), phaseOutFrom: Infinity, name: 'Child allowance' },
-  terms: { 'Federal income tax': 'National income tax', 'State income tax': 'Resident tax', 'Social Security': 'national pension', '401(k)': 'iDeCo', 'IRA': 'NISA', 'IRS': 'National Tax Agency', 'Medicaid': 'national health insurance', 'Medicare': 'national health insurance', 'GI Bill': 'SDF education support' },
+  terms: { 'Federal government': 'National government', 'State government': 'Prefectural government', 'Federal income tax': 'National income tax', 'State income tax': 'Resident tax', 'Social Security': 'national pension', '401(k)': 'iDeCo', 'IRA': 'NISA', 'IRS': 'National Tax Agency', 'Medicaid': 'national health insurance', 'Medicare': 'national health insurance', 'GI Bill': 'SDF education support' },
   names: {
     male: ['Haruto', 'Sota', 'Yuto', 'Riku', 'Ren', 'Hinata', 'Minato', 'Sora', 'Kaito', 'Takumi', 'Daiki', 'Kenji', 'Hiroshi', 'Yuki', 'Shota', 'Ryota'],
     female: ['Yui', 'Himari', 'Mei', 'Aoi', 'Sakura', 'Rin', 'Hina', 'Yuna', 'Mio', 'Akari', 'Emi', 'Haruka', 'Nanami', 'Miyu', 'Kaede', 'Saki'],

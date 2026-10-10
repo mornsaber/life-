@@ -17,7 +17,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, yearsInProfession, prestige } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
-import { getProfession, PROFESSIONS } from './JobTrees.js';
+import { getProfession, PROFESSIONS, NATIONAL_PROFESSIONS } from './JobTrees.js';
 import { ladderFor, levelById, entryLevels, SIZE_ORDER } from './Ladder.js';
 import { createEmployer } from './Employers.js';
 import { hire, levelCheck, backgroundCheck } from './CareerEngine.js';
@@ -143,7 +143,8 @@ export function federalTransfers(state) {
   if (!job || job.sector !== 'federal') return [];
   const mine = levelById(getProfession(job.professionId), job.levelId);
   const out = [];
-  for (const profession of Object.values(PROFESSIONS)) {
+  const pool = (state.character.countryId ?? 'US') === 'US' ? Object.values(PROFESSIONS) : Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === state.character.countryId);
+  for (const profession of pool) {
     if (profession.sector !== 'federal' || profession.id === job.professionId) continue;
     if (!transferEligibility(state, profession, getProfession(job.professionId)).ok) continue;
     const ladder = ladderFor(profession, 'large');

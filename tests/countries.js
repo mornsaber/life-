@@ -11,7 +11,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
+import { PROFESSIONS, professionsFor, PROFESSION_LIST } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { REGIONS, regionsIn, changeRegion } from '../src/modules/life/Regions.js';
@@ -193,6 +193,21 @@ const tests = {
     assert.ok(smn, 'SMN at 18');
     m.engine.resolvePrompt(smn.id, 'register');
     assert.ok(m.state.military.cartilla);
+  },
+  'national government careers: each country\'s own agencies, for its own citizens'() {
+    for (const [id, agency, name] of [['GB', 'gb_fbi', 'National Crime Agency'], ['CA', 'ca_fbi', 'Royal Canadian Mounted Police'], ['IN', 'in_fbi', 'Central Bureau of Investigation'], ['DE', 'de_fbi', 'Bundeskriminalamt (BKA)']]) {
+      const t = born(id, 4, 30);
+      t.state.career.history.push({ professionId: 'retail', startAge: 22, endAge: 29, peakGrade: 3 });
+      const board = professionsFor(t.state);
+      assert.ok(board.some((p) => p.id === agency), `${id} lists ${agency}`);
+      assert.ok(!board.some((p) => p.id === 'fbi'), 'no FBI abroad');
+      assert.equal(PROFESSIONS[agency].name, name);
+      assert.doesNotMatch(applicationEligibility(t.state, agency).reason ?? '', /citizens|another country/);
+    }
+    // Another country's agency is closed; the US board is exactly as before.
+    assert.match(applicationEligibility(born('CA').state, 'gb_fbi').reason, /another country/);
+    assert.equal(professionsFor(born('US').state), PROFESSION_LIST);
+    assert.equal(PROFESSIONS.ca_fbi.levels.find((l) => l.id === 'agent').title, 'Constable');
   },
   'moves stay inside the country'() {
     const t = born('CA');

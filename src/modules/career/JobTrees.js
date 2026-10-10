@@ -35,6 +35,7 @@ import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
 import { INTEL_PROFESSIONS } from './IntelCareers.js';
 import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
 import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
+import { AGENCIES, nationalProfessionId } from '../world/NationalAgencies.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -508,6 +509,57 @@ export const JOB_FIELDS = {
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };
+
+/* ------------------------------------------------------------------ */
+/* National government careers abroad                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Each country's counterparts of the US federal careers (world/NationalAgencies.js), built from
+ * the US ladder they mirror. They resolve by id (getProfession) but stay out of PROFESSION_LIST,
+ * so US job boards, picks and seeds are unchanged.
+ */
+export const NATIONAL_PROFESSIONS = {};
+for (const [cc, agencies] of Object.entries(AGENCIES)) {
+  for (const [templateId, a] of Object.entries(agencies)) {
+    const t = PROFESSIONS[templateId];
+    if (!t) continue;
+    const id = nationalProfessionId(cc, templateId);
+    const p = {
+      ...t,
+      id,
+      name: a.name,
+      country: cc,
+      template: templateId,
+      employers: a.employers,
+      employerName: undefined,
+      // National pensions cover these jobs; US exams, unions and federal age caps don't apply.
+      exam: templateId === 'foreignService' ? t.exam : null,
+      union: t.union ? { ...t.union, name: `${a.name} staff association` } : null,
+      benefits: { ...(t.benefits ?? {}), pension: null },
+      eligible: undefined,
+      levels: t.levels.map((l) => (a.titles?.[l.id] ? { ...l, title: a.titles[l.id] } : l)),
+    };
+    NATIONAL_PROFESSIONS[id] = p;
+    Object.defineProperty(PROFESSIONS, id, { value: p, enumerable: false });
+    for (const l of p.levels) for (const c of l.req?.credentials ?? []) openTo(CREDENTIALS[c]?.requires, id);
+  }
+}
+
+/** Careers on the job board where you live: everything except US federal jobs abroad, plus your country's own. */
+export function professionsFor(state) {
+  const cc = state?.character?.countryId ?? 'US';
+  if (cc === 'US') return PROFESSION_LIST;
+  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal'), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
+}
+
+/** A job-board field's careers where you live (US federal ids swap for national counterparts abroad). */
+export function fieldIdsFor(state, fieldId) {
+  const cc = state?.character?.countryId ?? 'US';
+  const ids = JOB_FIELDS[fieldId]?.ids ?? [];
+  if (cc === 'US') return ids;
+  return ids.map((id) => (PROFESSIONS[id]?.sector === 'federal' ? (NATIONAL_PROFESSIONS[nationalProfessionId(cc, id)] ? nationalProfessionId(cc, id) : null) : id)).filter(Boolean);
+}
 
 export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };
 

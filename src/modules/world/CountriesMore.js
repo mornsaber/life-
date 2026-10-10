@@ -44,7 +44,7 @@ export const KR = {
   health: { name: 'National Health Insurance Service', short: 'NHIS', deductible: 0, coinsurance: 0.25, oopMax: 3500 },
   // Child allowance: ₩100,000 a month under 8 (counted here across childhood).
   childBenefit: { amount: ppp(600000, KRW), phaseOutFrom: Infinity, name: 'Child allowance' },
-  terms: { 'Federal income tax': 'National income tax', 'Social Security': 'National Pension', '401(k)': 'retirement pension (IRP)', 'IRS': 'National Tax Service', 'Medicaid': 'NHIS', 'Medicare': 'NHIS', 'GI Bill': 'veterans education support' },
+  terms: { 'Federal government': 'National government', 'State government': 'Provincial government', 'Federal income tax': 'National income tax', 'Social Security': 'National Pension', '401(k)': 'retirement pension (IRP)', 'IRS': 'National Tax Service', 'Medicaid': 'NHIS', 'Medicare': 'NHIS', 'GI Bill': 'veterans education support' },
   names: {
     male: ['Min-jun', 'Seo-jun', 'Do-yun', 'Ha-jun', 'Ji-ho', 'Joon-ho', 'Hyun-woo', 'Ji-hoon', 'Sung-min', 'Tae-yang', 'Woo-jin', 'Jae-won', 'Dong-hyun', 'Sang-woo', 'Eun-ho', 'Yoon-seok'],
     female: ['Seo-yeon', 'Ji-woo', 'Ha-eun', 'Seo-ah', 'Min-seo', 'Ji-yoo', 'Su-ah', 'Yu-na', 'Ji-min', 'Hye-jin', 'Eun-ji', 'Soo-jin', 'Na-yeon', 'Da-eun', 'Ye-jin', 'Bo-ra'],
@@ -101,7 +101,7 @@ export const IT = {
   health: { name: 'Servizio Sanitario Nazionale', short: 'SSN', deductible: 0, coinsurance: 0.05, oopMax: 800 },
   // Assegno unico: €57–€201 a month per child by household means (ISEE).
   childBenefit: { amount: ppp(1800, EUR_IT), phaseOutFrom: ppp(45000, EUR_IT), name: 'Assegno unico' },
-  terms: { 'Federal income tax': 'IRPEF', 'State income tax': 'Regional and municipal surcharge', 'Social Security': 'INPS pension', '401(k)': 'fondo pensione', 'IRS': 'Agenzia delle Entrate', 'Medicaid': 'the SSN', 'Medicare': 'the SSN', 'GI Bill': 'Forze Armate education support' },
+  terms: { 'Federal government': 'National government', 'State government': 'Regional government', 'Federal income tax': 'IRPEF', 'State income tax': 'Regional and municipal surcharge', 'Social Security': 'INPS pension', '401(k)': 'fondo pensione', 'IRS': 'Agenzia delle Entrate', 'Medicaid': 'the SSN', 'Medicare': 'the SSN', 'GI Bill': 'Forze Armate education support' },
   names: {
     male: ['Leonardo', 'Francesco', 'Alessandro', 'Lorenzo', 'Mattia', 'Andrea', 'Gabriele', 'Riccardo', 'Tommaso', 'Edoardo', 'Marco', 'Giuseppe', 'Antonio', 'Luca', 'Matteo', 'Davide'],
     female: ['Sofia', 'Giulia', 'Aurora', 'Alice', 'Ginevra', 'Emma', 'Giorgia', 'Greta', 'Beatrice', 'Anna', 'Chiara', 'Martina', 'Francesca', 'Sara', 'Elena', 'Valentina'],
@@ -217,7 +217,7 @@ export const PH = {
   pension: { kind: 'sss', name: 'SSS pension', base: ppp(3600, PHP), cap: ppp(420000, PHP), minYears: 10, ages: [60, 65] },
   health: { name: 'PhilHealth', short: 'PhilHealth', deductible: 0, coinsurance: 0.35, oopMax: 3500 },
   childBenefit: { amount: ppp(6000, PHP), phaseOutFrom: ppp(150000, PHP), name: '4Ps cash grant' },
-  terms: { 'Federal income tax': 'Income tax', 'Social Security': 'SSS pension', '401(k)': 'PERA', 'IRS': 'BIR', 'Medicaid': 'PhilHealth', 'Medicare': 'PhilHealth', 'GI Bill': 'AFP education support' },
+  terms: { 'Federal government': 'National government', 'State government': 'Regional government', 'Federal income tax': 'Income tax', 'Social Security': 'SSS pension', '401(k)': 'PERA', 'IRS': 'BIR', 'Medicaid': 'PhilHealth', 'Medicare': 'PhilHealth', 'GI Bill': 'AFP education support' },
   names: {
     male: ['Jose', 'John Paul', 'Mark', 'Christian', 'Juan', 'Angelo', 'Jericho', 'Miguel', 'Carlo', 'Rafael', 'Joshua', 'Paolo', 'Ramon', 'Gabriel', 'Nathaniel', 'Emmanuel'],
     female: ['Maria', 'Angel', 'Princess', 'Mary Grace', 'Kristine', 'Andrea', 'Bea', 'Camille', 'Isabel', 'Joy', 'Patricia', 'Rose', 'Jasmine', 'Nicole', 'Althea', 'Luz'],
@@ -269,7 +269,7 @@ export const IN = {
   pension: { kind: 'eps', name: 'EPS pension', cap: ppp(180000, INR), divisor: 70, minYears: 10, ages: [58, 60] },
   health: { name: 'Ayushman Bharat / public hospitals', short: 'PM-JAY', deductible: 0, coinsurance: 0.45, oopMax: 6000 },
   childBenefit: null,
-  terms: { 'Federal income tax': 'Income tax', 'Social Security': 'EPS pension', '401(k)': 'EPF', 'IRA': 'PPF', 'IRS': 'Income Tax Department', 'Medicaid': 'Ayushman Bharat', 'Medicare': 'Ayushman Bharat', 'GI Bill': 'ex-servicemen education support' },
+  terms: { 'Federal government': 'Central government', 'Federal income tax': 'Income tax', 'Social Security': 'EPS pension', '401(k)': 'EPF', 'IRA': 'PPF', 'IRS': 'Income Tax Department', 'Medicaid': 'Ayushman Bharat', 'Medicare': 'Ayushman Bharat', 'GI Bill': 'ex-servicemen education support' },
   names: {
     male: ['Aarav', 'Vihaan', 'Arjun', 'Rohan', 'Aditya', 'Rahul', 'Amit', 'Vikram', 'Sai', 'Karthik', 'Rajesh', 'Suresh', 'Ishaan', 'Kabir', 'Mohammed', 'Harpreet'],
     female: ['Aadhya', 'Ananya', 'Diya', 'Priya', 'Saanvi', 'Pooja', 'Neha', 'Kavya', 'Lakshmi', 'Meera', 'Riya', 'Sunita', 'Fatima', 'Ishita', 'Anjali', 'Divya'],

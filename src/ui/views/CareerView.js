@@ -11,7 +11,7 @@ import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } fr
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
 import { hasCredential as holds } from '../../modules/credentials/LicensingEngine.js';
-import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS } from '../../modules/career/JobTrees.js';
+import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS, professionsFor, fieldIdsFor } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck, veteranPlacementNote } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
@@ -314,8 +314,9 @@ function jobBoard(state, ui = {}) {
   const field = ui.jobField ?? 'open';
   const sort = SORTS[ui.jobSort] ? ui.jobSort : 'pay';
   const limit = Number(ui.jobLimit) || PAGE;
-  const open = PROFESSION_LIST.filter((p) => applicationEligibility(state, p.id).ok);
-  const chips = [['open', `✅ Open to me (${open.length})`], ['all', `📋 All (${PROFESSION_LIST.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label} (${f.ids.length})`])]
+  const local = professionsFor(state);
+  const open = local.filter((p) => applicationEligibility(state, p.id).ok);
+  const chips = [['open', `✅ Open to me (${open.length})`], ['all', `📋 All (${local.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label} (${fieldIdsFor(state, id).length})`]).filter(([id]) => fieldIdsFor(state, id).length)]
     .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('');
   const sorts = Object.entries(SORTS).map(([id, [label]]) => button(label, 'ui.set', { arg: `jobSort=${id}`, variant: id === sort ? 'tiny on' : 'tiny' })).join('');
   const tools = `<div class="job-tools"><input type="search" id="job-search" placeholder="Search jobs…" aria-label="Search jobs" autocomplete="off"><div class="toggle-row" role="group" aria-label="Sort jobs">${sorts}</div></div>`;
@@ -335,7 +336,7 @@ function jobBoard(state, ui = {}) {
     const html = groups.map((g, i) => disclosure(`jobs.${g.id}`, `${g.f.icon} ${esc(g.f.label)}`, `<ul class="job-board">${g.jobs.map((p) => jobRow(state, p)).join('')}</ul>`, { count: g.jobs.length, open: i === 0 })).join('');
     return `${header}<div class="job-groups">${html}</div><p class="fine" id="job-count"></p>`;
   }
-  const list = sorted(field === 'all' ? PROFESSION_LIST : JOB_FIELDS[field].ids.map(getProfession));
+  const list = sorted(field === 'all' ? local : fieldIdsFor(state, field).map(getProfession));
   // Every row is in the page (so search finds them all); rows past the limit start hidden.
   const rows = list.map((p, i) => jobRow(state, p, i >= limit)).join('');
   const more = list.length > limit ? `<div class="row-end" id="job-more">${button(`Show ${Math.min(PAGE, list.length - limit)} more (${list.length - limit} left)`, 'ui.set', { arg: `jobLimit=${limit + PAGE}`, variant: 'small ghost' })}</div>` : '';
