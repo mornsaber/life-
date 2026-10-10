@@ -21,6 +21,8 @@ import { coverage } from '../src/modules/health/Insurance.js';
 import { enlistmentEligibility, rankOf, branchOf } from '../src/modules/military/MilitaryEngine.js';
 import { nationalBases } from '../src/modules/world/NationalForces.js';
 import { runEligibility } from '../src/modules/politics/Campaigns.js';
+import { officeOrderFor } from '../src/modules/politics/NationalOffices.js';
+import { OFFICES } from '../src/modules/politics/Offices.js';
 import { socialSecurityEstimate } from '../src/modules/retirement/RetirementEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
@@ -144,8 +146,8 @@ const tests = {
       assert.match(applicationEligibility(state, 'fbi').reason ?? '', /U\.S\. citizenship/);
       assert.doesNotMatch(applicationEligibility(state, 'police').reason ?? '', /citizenship/);
       assert.ok(!enlistmentEligibility(state, 'coastguard', 'enlisted', 'active').ok, 'no US Coast Guard abroad');
-      assert.match(runEligibility(state, 'governor').reason, /local office/);
-      assert.doesNotMatch(runEligibility(state, 'cityCouncil').reason ?? '', /local office/);
+      assert.match(runEligibility(state, 'governor').reason, /U\.S\. office/);
+      assert.doesNotMatch(runEligibility(state, 'cityCouncil').reason ?? '', /U\.S\. office/);
       assert.ok(!state.military.sss?.registered || state.character.age < 18, 'no Selective Service');
     }
   },
@@ -208,6 +210,24 @@ const tests = {
     assert.match(applicationEligibility(born('CA').state, 'gb_fbi').reason, /another country/);
     assert.equal(professionsFor(born('US').state), PROFESSION_LIST);
     assert.equal(PROFESSIONS.ca_fbi.levels.find((l) => l.id === 'agent').title, 'Constable');
+  },
+  'parliamentary politics: provincial and national seats, then party leadership'() {
+    const t = born('GB', 2, 35);
+    t.state.character.regionId = 'edinburgh';
+    const ladder = officeOrderFor('GB', 'GB-SCT', []);
+    assert.ok(ladder.includes('gb_msp') && ladder.includes('gb_mp') && ladder.includes('gb_pm') && !ladder.includes('gb_ms'));
+    assert.ok(runEligibility(t.state, 'gb_mp').ok, runEligibility(t.state, 'gb_mp').reason);
+    assert.ok(runEligibility(t.state, 'gb_msp').ok, 'Scots can stand for Holyrood');
+    assert.match(runEligibility(t.state, 'gb_pm').reason, /hold Member of Parliament/);
+    t.state.politics.office = { id: 'gb_mp', termYearsLeft: 5, terms: 1, approval: 60, startAge: 35, fullTime: true };
+    assert.ok(runEligibility(t.state, 'gb_pm').ok, 'an MP can stand for party leader');
+    assert.match(runEligibility(t.state, 'usSenator').reason, /U\.S\. office/);
+    // Directly elected presidents elsewhere, with their age floors.
+    const k = born('KR', 2, 39);
+    assert.match(runEligibility(k.state, 'kr_president').reason, /40/);
+    assert.equal(OFFICES.mx_presidente.termLimit, 1);
+    // The US ladder and OFFICES iteration are untouched.
+    assert.ok(!Object.keys(OFFICES).some((id) => OFFICES[id].country));
   },
   'moves stay inside the country'() {
     const t = born('CA');

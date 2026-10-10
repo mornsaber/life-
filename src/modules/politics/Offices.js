@@ -13,6 +13,8 @@
  *              of each contract it renews you if your approval holds up
  *   kind       decision style in office (legislative, executive, judicial, prosecutor, sheriff)
  */
+import { NATIONAL_OFFICES } from './NationalOffices.js';
+
 export const OFFICES = {
   schoolBoard: { name: 'School Board Member', icon: '🏫', level: 1, term: 4, termLimit: 0, salary: 6000, fullTime: false, minAge: 18, residency: 1, cost: 8000, pension: 'electedOfficials' },
   cityCouncil: { name: 'City Council Member', icon: '🏙️', level: 1, term: 4, termLimit: 3, salary: 35000, fullTime: false, minAge: 18, residency: 1, cost: 25000, pension: 'electedOfficials' },
@@ -31,6 +33,9 @@ export const OFFICES = {
   governor: { name: 'Governor', icon: '⭐', level: 5, term: 4, termLimit: 2, salary: 190000, fullTime: true, minAge: 30, residency: 5, cost: 9000000, pension: 'electedOfficials', executive: true, statewide: true },
   usSenator: { name: 'U.S. Senator', icon: '🦅', level: 5, term: 6, termLimit: 0, salary: 174000, fullTime: true, minAge: 30, residency: 3, cost: 18000000, pension: 'fers', statewide: true },
 };
+
+// Offices abroad resolve by id but stay out of US iteration (Object.keys/values of OFFICES are unchanged).
+for (const [id, o] of Object.entries(NATIONAL_OFFICES)) Object.defineProperty(OFFICES, id, { value: o, enumerable: false });
 
 export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'countyCommissioner', 'cityManager', 'sheriff', 'districtAttorney', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
 

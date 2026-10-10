@@ -307,7 +307,7 @@ export const PLANNED = {};
 export const US_ONLY = {
   federalJobs: 'U.S. federal jobs require U.S. citizenship',
   military: 'The U.S. armed forces enlist U.S. citizens and green-card holders',
-  office: 'Abroad, only local office (council, mayor, school board) is open for now',
+  office: 'A U.S. office',
   service: 'A U.S. program, for U.S. residents',
 };
 /** Offices a life abroad can hold (local government works much the same everywhere). */
@@ -362,11 +362,14 @@ export function localizeMoney(text, country) {
   });
 }
 
+/** Wording every country outside the US shares (parties pick candidates; laws are regional or national). */
+const ABROAD_TERMS = { 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
+
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {
   if (!country?.terms) return text;
   let out = text;
-  for (const [us, local] of Object.entries(country.terms)) out = out.split(us).join(local);
+  for (const [us, local] of Object.entries({ ...ABROAD_TERMS, ...country.terms })) out = out.split(us).join(local);
   return out;
 }
 

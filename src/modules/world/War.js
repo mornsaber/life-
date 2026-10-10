@@ -9,6 +9,7 @@
  *                 history: [{ name, operation, startAge, endAge, outcome }] }
  */
 import { enlistmentEligibility, enlist } from '../military/MilitaryEngine.js';
+import { isAbroad } from './Countries.js';
 
 export const CONFLICTS = [
   { id: 'airCampaign', name: 'an air campaign against a rogue state\'s weapons program', intensity: 1, years: [1, 2], weight: 35 },
@@ -86,6 +87,8 @@ export const WarModule = {
 
   onAgeUp(ctx) {
     const { state, rng } = ctx;
+    // America's wars; lives abroad serve in their own country's forces.
+    if (isAbroad(state)) return;
     const w = state.world;
     if (!w.war) {
       if (state.character.age >= 5 && rng.chance(WAR_START_CHANCE)) startWar(ctx);

@@ -10,6 +10,8 @@ import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Governme
 import { officeRoster, DEPUTY_KINDS, OFFICE_ACTIONS } from '../../modules/org/ElectedOffices.js';
 import { ratingLabel } from '../../modules/career/PayGrades.js';
 import { legislatureCards } from './LegislatureView.js';
+import { officeOrderFor } from '../../modules/politics/NationalOffices.js';
+import { stateIdOf } from '../../modules/life/Regions.js';
 
 export function politicsView(state) {
   const p = state.politics;
@@ -52,10 +54,11 @@ export function politicsView(state) {
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
   };
-  const allRows = OFFICE_ORDER.map((id) => [id, rowsFor(id)]);
+  const order = officeOrderFor(state.character.countryId ?? 'US', stateIdOf(state), OFFICE_ORDER);
+  const allRows = order.map((id) => [id, rowsFor(id)]);
   const openRows = allRows.filter(([id]) => openIds.has(id)).map(([, r]) => r).join('');
   const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
-  const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: OFFICE_ORDER.length - openIds.size })}</li>` : ''}`;
+  const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}

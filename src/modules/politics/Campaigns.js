@@ -15,13 +15,19 @@ import { hasCredential, checkRequirements } from '../credentials/LicensingEngine
 import { yearsInProfession } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
 import { influenceVoteBonus } from '../civic/Activism.js';
-import { isAbroad, US_ONLY, LOCAL_OFFICES } from '../world/Countries.js';
+import { isAbroad, US_ONLY, LOCAL_OFFICES, isCitizen } from '../world/Countries.js';
+import { stateIdOf } from '../life/Regions.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
   const p = state.politics;
   if (!office) return { ok: false, reason: 'Unknown office' };
-  if (isAbroad(state) && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
+  const here = state.character.countryId ?? 'US';
+  if (office.country ? office.country !== here : here !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: office.country ? 'An office in another country' : US_ONLY.office };
+  if (office.country && !isCitizen(state, office.country)) return { ok: false, reason: 'Citizens only' };
+  if (!office.country && !LOCAL_OFFICES.includes(officeId) && !isCitizen(state, 'US')) return { ok: false, reason: 'U.S. citizens only' };
+  if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
+  if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };
   if (p.campaign) return { ok: false, reason: 'Already campaigning' };
   if (p.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (office.appointedBy) return { ok: false, reason: `Hired by ${office.appointedBy}, not elected` };
@@ -99,7 +105,7 @@ function endorsementEligible(state, id) {
 export function appointmentEligibility(state, officeId) {
   const office = OFFICES[officeId];
   if (!office?.appointedBy) return { ok: false, reason: 'Not an appointed office' };
-  if (isAbroad(state) && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
+  if ((state.character.countryId ?? 'US') !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
   if (state.politics.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
