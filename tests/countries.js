@@ -18,7 +18,8 @@ import { REGIONS, regionsIn, changeRegion } from '../src/modules/life/Regions.js
 import { STATES } from '../src/modules/life/States.js';
 import { COUNTRIES, countryOf, nationalIncomeTax, socialContributions, nationalPension, localizeHtml } from '../src/modules/world/Countries.js';
 import { coverage } from '../src/modules/health/Insurance.js';
-import { enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
+import { enlistmentEligibility, rankOf, branchOf } from '../src/modules/military/MilitaryEngine.js';
+import { nationalBases } from '../src/modules/world/NationalForces.js';
 import { runEligibility } from '../src/modules/politics/Campaigns.js';
 import { socialSecurityEstimate } from '../src/modules/retirement/RetirementEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -142,11 +143,56 @@ const tests = {
       const { state } = born(id, 9, 24);
       assert.match(applicationEligibility(state, 'fbi').reason ?? '', /U\.S\. citizenship/);
       assert.doesNotMatch(applicationEligibility(state, 'police').reason ?? '', /citizenship/);
-      assert.match(enlistmentEligibility(state, 'army', 'enlisted', 'active').reason, /U\.S\./);
+      assert.ok(!enlistmentEligibility(state, 'coastguard', 'enlisted', 'active').ok, 'no US Coast Guard abroad');
       assert.match(runEligibility(state, 'governor').reason, /local office/);
       assert.doesNotMatch(runEligibility(state, 'cityCouncil').reason ?? '', /local office/);
       assert.ok(!state.military.sss?.registered || state.character.age < 18, 'no Selective Service');
     }
+  },
+  'national armed forces: enlist in your own country\'s branches, with its ranks and bases'() {
+    for (const [id, title] of [['CA', 'Canadian Army'], ['GB', 'British Army'], ['DE', 'Heer'], ['JP', 'Ground Self-Defense'], ['IN', 'Indian Army']]) {
+      const t = born(id, 5, 20);
+      Object.assign(t.state.stats, { health: 90, fitness: 80, smarts: 70 });
+      assert.ok(enlistmentEligibility(t.state, 'army', 'enlisted', 'active').ok, enlistmentEligibility(t.state, 'army', 'enlisted', 'active').reason);
+      t.engine.dispatch('military.enlist', 'army:enlisted:active');
+      const p = t.state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+      assert.ok(p, `${id} specialty prompt`);
+      assert.ok(p.title.includes(title.split(' ')[0]), p.title);
+      t.engine.rng.chance = () => true;
+      t.engine.resolvePrompt(p.id, p.options.find((o) => !o.disabled).id);
+      const svc = t.state.military.service;
+      assert.equal(svc.nation, id);
+      assert.ok(branchOf(svc).name.includes(title), branchOf(svc).name);
+      assert.ok(nationalBases(id, 'army').length, 'bases at home');
+      assert.ok(rankOf(svc).title, 'a national rank');
+    }
+    // No national force has a US-only branch.
+    assert.ok(!enlistmentEligibility(born('DE', 5, 20).state, 'coastguard', 'enlisted', 'active').ok);
+  },
+  'South Korea: every man serves; Mexico: the SMN lottery and the cartilla'() {
+    const t = born('KR', 8, 18);
+    t.state.character.gender = 'male';
+    Object.assign(t.state.stats, { health: 95, fitness: 80 });
+    let served = false;
+    for (let i = 0; i < 6 && !served; i++) {
+      t.state.prompts = [];
+      t.engine.ageUp();
+      const notice = t.state.prompts.find((p) => p.type === 'conscription.korea');
+      t.state.prompts = t.state.prompts.filter((p) => p === notice);
+      if (notice) t.engine.resolvePrompt(notice.id, notice.options.some((o) => o.id === 'army') ? 'army' : notice.options[0].id);
+      served = t.state.military.conscription?.status === 'served';
+    }
+    assert.ok(served, `status ${t.state.military.conscription?.status}`);
+    const h = t.state.military.history.at(-1);
+    if (h) assert.equal(h.nation, 'KR');
+    const m = born('MX', 3, 17);
+    m.state.character.gender = 'male';
+    m.state.prompts = [];
+    m.engine.ageUp();
+    const smn = m.state.prompts.find((p) => p.type === 'conscription.mexico');
+    assert.ok(smn, 'SMN at 18');
+    m.engine.resolvePrompt(smn.id, 'register');
+    assert.ok(m.state.military.cartilla);
   },
   'moves stay inside the country'() {
     const t = born('CA');

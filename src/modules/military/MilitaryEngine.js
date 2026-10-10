@@ -23,7 +23,8 @@ import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION 
 import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
-import { isAbroad, US_ONLY } from '../world/Countries.js';
+import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
+import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -176,10 +177,13 @@ export function priorServiceCredit(state) {
 }
 export const RETIREMENT_YEARS = 20;
 
-export const branchOf = (svc) => BRANCHES[svc.branch];
+/** A service member's branch: the US template, or the national force laid over it. */
+export const branchOf = (svc) => (svc?.nation ? { ...BRANCHES[svc.branch], ...nationalBranch(svc.nation, svc.branch) } : BRANCHES[svc.branch]);
+/** The branch a recruit would join where they live. */
+export const branchFor = (state, branchId) => (isAbroad(state) ? (nationalBranch(countryOf(state).id, branchId) ? { ...BRANCHES[branchId], ...nationalBranch(countryOf(state).id, branchId), id: branchId } : null) : BRANCHES[branchId]);
 
 /** Rank tables for a service member's branch (both tracks). */
-export const ranksOf = (svc) => ({ enlisted: BRANCHES[svc.branch].enlisted, officer: BRANCHES[svc.branch].officer, warrant: BRANCHES[svc.branch].warrant ?? [] });
+export const ranksOf = (svc) => ({ enlisted: branchOf(svc).enlisted, officer: branchOf(svc).officer, warrant: branchOf(svc).warrant ?? [] });
 
 /** Officers and warrant officers (as opposed to enlisted). */
 export const commissioned = (svc) => svc.track !== 'enlisted';
@@ -203,7 +207,7 @@ export function specialtyName(svc) {
 
 /** Combat exposure: the job's own, else its broad specialty's. */
 export function exposureOf(svc) {
-  return svc.sof?.exposure ?? mosOf(svc)?.exposure ?? SPECIALTIES[svc.specialty].exposure;
+  return (svc.sof?.exposure ?? mosOf(svc)?.exposure ?? SPECIALTIES[svc.specialty].exposure) * (svc.nation ? nationalExposure(svc.nation) : 1);
 }
 
 /** Flight hours logged per year (pilots and aircrew only; old saves: any aviation). */
@@ -249,9 +253,13 @@ export function completeTraining(ctx, svc) {
   if (earned.length) ctx.log(`Your ${m.title} training carried over to civilian life: ${earned.length} credential${earned.length > 1 ? 's' : ''} earned.`, '📜', 'good');
 }
 
+/** Conscript pay by country (monthly, PPP dollars): Korea 2025 ≈ ₩750,000–₩2,050,000 by rank. */
+const CONSCRIPT_PAY = { KR: [900, 1150, 1450, 2450], DE: [3600, 3600, 3600, 3600] };
+
 export function monthlyBasePay(svc) {
+  if (svc.conscript && CONSCRIPT_PAY[svc.nation]) return CONSCRIPT_PAY[svc.nation][Math.min(svc.grade, 3)];
   const longevity = 1 + Math.min(svc.yearsOfService, 26) * 0.025;
-  return Math.round(PAY[svc.track][svc.grade] * longevity);
+  return Math.round(PAY[svc.track][svc.grade] * longevity * (svc.nation ? nationalPay(svc.nation) : 1));
 }
 
 /** Base pay alone: what retired pay and separation pay are computed from. */
@@ -274,9 +282,13 @@ export function timeInGradeRequired(svc) {
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
-  if (isAbroad(state)) return { ok: false, reason: US_ONLY.military };
-  const b = BRANCHES[branchId];
-  if (b.reserveOnly && component === 'active') return { ok: false, reason: 'The Guard is a part-time state force' };
+  // Abroad you join your own country's forces; every force recruits its own citizens.
+  const b = branchFor(state, branchId);
+  if (!b) return { ok: false, reason: isAbroad(state) ? `${countryOf(state).name} has no such branch` : 'Unknown branch' };
+  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !(state.character.residency?.status === 'permanent' && !isAbroad(state))) {
+    return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
+  }
+  if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
   if (b.officerOnly && track !== 'officer') return { ok: false, reason: 'Commissioned officers only' };
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
@@ -342,9 +354,12 @@ export function clearanceDenied(ctx, track, level) {
  * at the grade the candidate's civilian experience earns; enlisted recruits
  * with a degree or a matching civilian credential start a few grades up.
  */
-export function enlist(ctx, { branch, track, component, specialty: wanted, mos: wantedMos = null, cleared = false }) {
+export function enlist(ctx, { branch, track, component, specialty: wanted, mos: wantedMos = null, cleared = false, conscript = false }) {
   const { state } = ctx;
-  const b = BRANCHES[branch];
+  const b = branchFor(state, branch) ?? BRANCHES[branch];
+  const nation = isAbroad(state) ? countryOf(state).id : null;
+  // National vetting stands in for a US security clearance.
+  if (nation) cleared = true;
   let job = wantedMos ? MOS[wantedMos] : defaultMos(branch, track, wanted);
   const specialty = entryClearance(ctx, { track, specialty: job?.specialty ?? wanted, mos: job?.id, cleared });
   if (!specialty) return false;
@@ -357,6 +372,8 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   if (last && last.track === track) startGrade = Math.min(BRANCHES[branch][track].length - 1, Math.max(startGrade, Number(last.rankCode.slice(2)) - 1 - (track === 'enlisted' ? 1 : 0)));
   const svc = {
     branch,
+    ...(nation ? { nation } : {}),
+    ...(conscript ? { conscript: true } : {}),
     track,
     component,
     specialty,
@@ -445,6 +462,15 @@ function notSelected(ctx, svc) {
 }
 
 export function tryPromotion(ctx, svc) {
+  // Conscripts climb the four conscript ranks on a fixed schedule and go home.
+  if (svc.conscript) {
+    if (svc.grade < 3) {
+      svc.grade = Math.min(3, svc.grade + 2);
+      svc.yearsInGrade = 0;
+      ctx.log(`Promoted to ${rankOf(svc).title}.`, '⬆️', 'military');
+    }
+    return;
+  }
   // Top performers can be picked up a year early.
   if (svc.track && !pmeBlock(svc) && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
     svc.grade += 1;
@@ -535,6 +561,8 @@ export function discharge(ctx, type, reason) {
 
   state.military.history.push({
     branch: svc.branch,
+    ...(svc.nation ? { nation: svc.nation } : {}),
+    ...(svc.conscript ? { conscript: true } : {}),
     track: svc.track,
     component: svc.component,
     specialty: svc.specialty,
@@ -563,14 +591,14 @@ export function discharge(ctx, type, reason) {
     const reserve = svc.component === 'reserve';
     const annual = Math.round(basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
     const startAge = reserve ? Math.max(60, state.character.age) : state.character.age;
-    ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${BRANCHES[svc.branch].name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
+    ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${branchOf(svc).name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
   }
   if (militaryHonors(state).some((h) => h.id === 'moh') && !state.retirement.pensions.some((p) => p.id === 'moh')) {
     ctx.emit('retirement:addPension', { pension: { id: 'moh', label: 'Medal of Honor special pension', annual: MOH_ANNUAL_PENSION, startAge: state.character.age, source: 'military', cola: 0.025 } });
   }
 
-  ctx.log(`You were discharged from the ${BRANCHES[svc.branch].name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');
+  ctx.log(`You were discharged from the ${branchOf(svc).name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');
   ctx.toast(`Discharged: ${DISCHARGE_LABEL[type]}`, type === 'dishonorable' ? 'bad' : 'info');
   // The VA rates service-connected conditions (health module).
   ctx.emit('military:discharged', { type, wounds: svc.wounds, svc });

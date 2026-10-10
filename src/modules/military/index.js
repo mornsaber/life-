@@ -7,8 +7,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS,
-  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName,
-} from './MilitaryEngine.js';
+  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
@@ -63,14 +62,14 @@ function switchComponent(ctx, svc) {
   const { state } = ctx;
   const to = svc.component === 'active' ? 'reserve' : 'active';
   if (to === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school before going active.', 'warn');
-  if (to === 'active' && BRANCHES[svc.branch].reserveOnly) return ctx.toast('The Guard has no active component — transfer to the Army first.', 'warn');
-  if (BRANCHES[svc.branch].activeOnly) return ctx.toast(`The ${BRANCHES[svc.branch].name} has no reserve component.`, 'warn');
+  if (to === 'active' && branchOf(svc).reserveOnly) return ctx.toast('The Guard has no active component — transfer to the Army first.', 'warn');
+  if (branchOf(svc).activeOnly) return ctx.toast(`The ${branchOf(svc).name} has no reserve component.`, 'warn');
   svc.component = to;
   svc.contractYearsLeft = ENLIST_CONTRACT[to];
   svc.deploymentRequested = false;
   if (to === 'active' && state.career.job) ctx.emit('career:militaryLeave', { reason: 'transferred to active duty' });
   if (to === 'reserve') ctx.emit('military:releasedFromActive', {});
-  ctx.log(to === 'active' ? 'You transferred to full-time active duty.' : 'You transferred to the Reserve. Weekend drills from here on.', BRANCHES[svc.branch].icon, 'milestone');
+  ctx.log(to === 'active' ? 'You transferred to full-time active duty.' : 'You transferred to the Reserve. Weekend drills from here on.', branchOf(svc).icon, 'milestone');
   ctx.toast(to === 'active' ? 'Now on active duty' : 'Now in the Reserves', 'good');
 }
 
@@ -79,6 +78,12 @@ export const MilitaryModule = {
   order: 20,
 
   setup(engine) {
+    // Conscripts and national-service volunteers (Conscription.js) report for duty.
+    engine.bus.on('conscription:enlist', ({ ctx, branch, months }) => {
+      enlist(ctx, { branch, track: 'enlisted', component: 'active', conscript: true, specialty: ctx.rng.chance(0.7) ? 'infantry' : ctx.rng.pick(['logistics', 'medic', 'engineer']) });
+      const svc = ctx.state.military.service;
+      if (svc) svc.contractYearsLeft = Math.max(1, Math.round(months / 12));
+    });
     // Losing your clearance: enlisted members are reclassified; officers are separated.
     engine.bus.on('career:clearanceRevoked', ({ ctx }) => {
       const svc = ctx.state.military.service;
@@ -150,7 +155,7 @@ export const MilitaryModule = {
       const check = enlistmentEligibility(state, branch, track, component, { maxOfficerAge: direct ? DIRECT_MAX_AGE : 39 });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (component === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
-      const b = BRANCHES[branch];
+      const b = branchFor(state, branch) ?? BRANCHES[branch];
       ctx.prompt({
         type: 'military.chooseSpecialty',
         icon: b.icon,

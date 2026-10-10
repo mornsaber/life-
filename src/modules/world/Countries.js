@@ -314,6 +314,10 @@ export const US_ONLY = {
 export const LOCAL_OFFICES = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];
 
 export const countryOf = (state) => COUNTRIES[state?.character?.countryId ?? 'US'] ?? US;
+/** Countries whose passport you hold (born-in country unless you've naturalized or been born to citizens). */
+export const citizenshipsOf = (state) => state?.character?.citizenships ?? [state?.character?.countryId ?? 'US'];
+export const isCitizen = (state, countryId) => citizenshipsOf(state).includes(countryId);
+
 export const isAbroad = (state) => (state?.character?.countryId ?? 'US') !== 'US';
 
 /** Province populations (2023–24 estimates), for sizing provincial agencies. */

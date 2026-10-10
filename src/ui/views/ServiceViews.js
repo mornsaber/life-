@@ -25,9 +25,14 @@ import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember }
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
+import { branchOf, branchFor } from '../../modules/military/MilitaryEngine.js';
+import { nationalBranchIds } from '../../modules/world/NationalForces.js';
+import { isAbroad, countryOf } from '../../modules/world/Countries.js';
 
 function recruitingOffice(state) {
-  const rows = Object.values(BRANCHES).map((b) => {
+  const abroad = isAbroad(state);
+  const branches = abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES);
+  const rows = branches.map((b) => {
     const enlisted = enlistmentEligibility(state, b.id, 'enlisted', b.activeOnly ? 'active' : 'reserve');
     const officer = enlistmentEligibility(state, b.id, 'officer', b.activeOnly ? 'active' : 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 });
     const btn = (track, component, base, label) => {
@@ -40,13 +45,13 @@ function recruitingOffice(state) {
       <small class="fine">${esc(b.motto)}</small>
       <div class="branch-btns">
         ${b.officerOnly ? '' : `${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}`}
-        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}${b.id === 'army' ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
+        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}${b.id === 'army' && !abroad ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
       </div>
       ${b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
       <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
     </details></li>`;
   }).join('');
-  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p></details><ul class="branch-list">${rows}</ul>`, { icon: '🇺🇸', accent: 'green' });
+  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? countryOf(state).flag : '🇺🇸', accent: 'green' });
 }
 
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */
@@ -68,7 +73,19 @@ function flagNote(svc) {
 }
 
 /** Selective Service: men 18–25 must register. */
+const CONSCRIPTION_LABEL = { pending: 'Not yet called up', deferred: 'Deferred while studying', serving: 'Serving now', served: 'Service completed', social: 'Serving as a social service agent', alternative: 'In alternative service', exempt: 'Exempt', evaded: 'Did not serve' };
+
+/** National service status abroad (Korea's conscription, Mexico's SMN, Germany's questionnaire). */
+function conscriptionCard(state) {
+  const c = state.military.conscription;
+  const country = countryOf(state);
+  if (!c && !state.military.cartilla) return '';
+  const lines = [c ? ['Status', CONSCRIPTION_LABEL[c.status] ?? c.status] : null, c?.grade ? ['Physical grade', String(c.grade)] : null, country.id === 'MX' ? ['Cartilla', state.military.cartilla ? '✅ Released' : '❌ None'] : null].filter(Boolean);
+  return card('National Service', `<ul class="history">${lines.map(([k, v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>`, { icon: country.flag });
+}
+
 function selectiveServiceCard(state) {
+  if (isAbroad(state)) return conscriptionCard(state);
   const sss = state.military.sss;
   if (!sss || state.character.gender !== 'male' || state.character.age < 17) return '';
   if (sss.registered && state.character.age >= 26) return '';
@@ -80,14 +97,14 @@ function selectiveServiceCard(state) {
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
-    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${BRANCHES[h.branch].icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${BRANCHES[h.branch].name} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
+    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
   if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${history}`;
 
-  const branch = BRANCHES[svc.branch];
+  const branch = branchOf(svc);
   const rank = rankOf(svc);
   const outlook = promotionOutlook(svc);
   const titles = branch[svc.track];
@@ -242,7 +259,7 @@ function specialOpsCard(state, svc) {
 /** Professional military education (required for promotion) and skill qualifications (board points, special pay). */
 function schoolsCard(state, svc) {
   const need = requiredPme(svc);
-  const titleOf = (p) => BRANCHES[svc.branch][svc.track]?.[p.forGrade] ?? '';
+  const titleOf = (p) => branchOf(svc)[svc.track]?.[p.forGrade] ?? '';
   const schoolRow = (id, title, sub) => {
     const check = schoolEligibility(state, id);
     return optionRow({ icon: QUALS[id]?.icon ?? '🎓', title, sub, meta: check.ok ? `${Math.round(passOdds(state, id) * 100)}% to pass` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Attend', 'military.attendSchool', { arg: id, variant: 'small', disabled: !check.ok }) });

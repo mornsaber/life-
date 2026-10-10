@@ -38,6 +38,7 @@ import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 import { countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
+import { branchOf } from '../modules/military/MilitaryEngine.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -355,7 +356,7 @@ export class Renderer {
     const biz = state.business?.current;
     if (biz) parts.push(`🏪 ${biz.role === 'operator' ? 'Running' : 'Owner of'} ${biz.name}`);
     const svc = state.military.service;
-    if (svc) parts.push(`${BRANCHES[svc.branch].icon} ${rankOf(svc).code} ${rankOf(svc).title}${svc.component === 'reserve' ? ' (Res.)' : ''}`);
+    if (svc) parts.push(`${branchOf(svc).icon} ${rankOf(svc).code} ${rankOf(svc).title}${svc.component === 'reserve' ? ' (Res.)' : ''}`);
     for (const s of SERVICE_LIST) {
       const m = state.emergency[s.id];
       if (m) parts.push(`${s.icon} ${rankOfMember(s.id, m).title}`);

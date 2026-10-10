@@ -17,8 +17,9 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge, commissionedYears } from './MilitaryEngine.js';
+import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge, commissionedYears, branchOf } from './MilitaryEngine.js';
 import { equivalentMos } from './MOS.js';
+import { nationalBranch } from '../world/NationalForces.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
 export const ENLISTED_HYT = [6, 6, 8, 10, 14, 20, 26, 29, 32];
@@ -80,12 +81,12 @@ export function upOrOut(ctx, svc) {
 
 export function transferEligibility(state, branchId) {
   const svc = state.military.service;
-  const target = BRANCHES[branchId];
-  if (!svc || !target) return { ok: false, reason: 'Not serving' };
+  const target = svc?.nation ? (nationalBranch(svc.nation, branchId) ? BRANCHES[branchId] : null) : BRANCHES[branchId];
+  if (!svc || !target) return { ok: false, reason: svc ? 'Not a branch of your country\'s forces' : 'Not serving' };
   if (branchId === svc.branch) return { ok: false, reason: 'Your branch' };
   if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (target.reserveOnly && svc.component === 'active') return { ok: false, reason: 'The Guard only takes reservists' };
-  if (target.nonCombat || BRANCHES[svc.branch].nonCombat) return { ok: false, reason: 'USPHS and NOAA officers resign and apply anew' };
+  if (target.nonCombat || branchOf(svc).nonCombat) return { ok: false, reason: 'USPHS and NOAA officers resign and apply anew' };
   if (svc.yearsOfService < 2) return { ok: false, reason: 'Serve 2 years first' };
   if (svc.deployedThisYear) return { ok: false, reason: 'Not while deployed' };
   if (svc.disciplinary) return { ok: false, reason: 'Disciplinary record' };
@@ -108,7 +109,7 @@ export function transferBranch(ctx, branchId) {
   const check = transferEligibility(state, branchId);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   bumpYearly(state, 'military.transferBranch');
-  const from = BRANCHES[svc.branch];
+  const from = branchOf(svc);
   const to = BRANCHES[branchId];
   if (!rng.chance(transferChance(state, branchId))) {
     ctx.log(`The ${from.name} denied your conditional release to join the ${to.name}.`, '📭', 'warn');
@@ -179,7 +180,7 @@ export function resolveLeaveService(ctx, _data, optionId) {
     return;
   }
   // Desertion.
-  const branch = BRANCHES[svc.branch].name;
+  const branch = branchOf(svc).name;
   const deployed = svc.deployedThisYear;
   discharge(ctx, 'oth', 'Dropped from the rolls as a deserter.');
   state.military.deserter = { age: state.character.age, branch: svc.branch };

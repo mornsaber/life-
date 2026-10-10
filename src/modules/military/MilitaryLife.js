@@ -13,8 +13,13 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { BASES } from '../life/Regions.js';
 import { spouseOf, partnerOf, minorChildren, livingChildren, ageOf, clampRel } from '../people/People.js';
 import { warFactor, atWar } from '../world/War.js';
-import { BRANCHES, monthlyBasePay, annualActivePay } from './MilitaryEngine.js';
+import { BRANCHES, monthlyBasePay, annualActivePay, branchOf } from './MilitaryEngine.js';
 import { branchDetailTick } from './CareerFields.js';
+import { nationalBases, nationalOverseas } from '../world/NationalForces.js';
+
+/** Bases and overseas postings: your own country's when you serve in a national force. */
+const basesFor = (svc) => (svc.nation ? nationalBases(svc.nation, svc.branch) : BASES[svc.branch] ?? []);
+const overseasFor = (svc) => (svc.nation ? nationalOverseas(svc.nation, svc.branch) : OVERSEAS[svc.branch] ?? []);
 
 /** Overseas duty stations: [country, base, tour years, accompanied tour possible]. */
 export const OVERSEAS = {
@@ -71,7 +76,7 @@ export function spouseMove(ctx, why) {
 export function pcsOrders(ctx, svc) {
   const { state, rng } = ctx;
   if (svc.overseas) return returnStateside(ctx, svc);
-  const abroad = OVERSEAS[svc.branch] ?? [];
+  const abroad = overseasFor(svc);
   if (abroad.length && rng.chance(OVERSEAS_SHARE)) {
     const [country, base, years, accompaniable] = rng.pick(abroad);
     if (accompaniable && hasFamily(state)) {
@@ -91,7 +96,7 @@ export function pcsOrders(ctx, svc) {
     }
     return startTour(ctx, svc, { country, base, years: hasFamily(state) && !accompaniable ? 1 : years, accompanied: false });
   }
-  const options = (BASES[svc.branch] ?? []).filter(([regionId]) => regionId !== state.character.regionId);
+  const options = basesFor(svc).filter(([regionId]) => regionId !== state.character.regionId);
   if (!options.length) return;
   const [regionId, base] = rng.pick(options);
   svc.stationYears = 0;
@@ -116,7 +121,7 @@ function returnStateside(ctx, svc) {
   const o = svc.overseas;
   svc.overseas = null;
   ctx.log(`Your tour in ${o.country} ended.${o.accompanied ? ' The kids came home with a passport full of stamps.' : ''}`, '🛬', 'military');
-  const options = BASES[svc.branch] ?? [];
+  const options = basesFor(svc);
   // A remote tour earns an assignment of choice.
   const pick = options.find(([r]) => r === state.character.regionId) ?? rng.pick(options);
   if (!pick) return;
@@ -233,7 +238,7 @@ function recallTick(ctx) {
   if (state.career.job) ctx.emit('career:militaryLeave', { reason: 'retiree recall to active duty' });
   ctx.earn(pay, `Retiree recall — ${last.rankTitle}`, { wage: true });
   ctx.stat('stress', 8);
-  ctx.log(`With the war widening, the ${BRANCHES[last.branch].name} recalled you from retirement for a year: ${rng.pick(['training replacements', 'a staff job at a joint headquarters', 'running a mobilization center', 'backfilling a deployed unit stateside'])}.`, BRANCHES[last.branch].icon, 'military');
+  ctx.log(`With the war widening, the ${branchOf(last).name} recalled you from retirement for a year: ${rng.pick(['training replacements', 'a staff job at a joint headquarters', 'running a mobilization center', 'backfilling a deployed unit stateside'])}.`, branchOf(last).icon, 'military');
   ctx.emit('military:releasedFromActive', {});
 }
 

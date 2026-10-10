@@ -17,8 +17,7 @@ import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
   ranksOf,
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS,
-} from './MilitaryEngine.js';
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, branchOf } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 
 const THEATERS = {
@@ -376,7 +375,7 @@ export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55
 /* ------------------------------------------------------------------ */
 
 function combatPrompt(ctx, svc, theaterName) {
-  const branch = BRANCHES[svc.branch];
+  const branch = branchOf(svc);
   const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, COMBAT_SCENARIOS[branch.theater]);
   const options = scenario.options
     .filter((o) => !o.medicOnly || isMedical(svc))
@@ -421,7 +420,7 @@ export function combatZoneExclusion(ctx, svc, theaterName) {
 
 export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   const { rng } = ctx;
-  const branch = BRANCHES[svc.branch];
+  const branch = branchOf(svc);
   const theaterName = rng.pick(svc.sof ? PIPELINES[svc.sof.pipeline]?.deployments ?? THEATERS[branch.theater] : THEATERS[branch.theater]);
   const months = mobilized ? rng.int(9, 12) : rng.int(6, 9);
   svc.deployedThisYear = true;
@@ -553,7 +552,7 @@ export function openContractReview(ctx, svc) {
     ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
     : [
         { id: 'reenlist', label: `✍️ ${svc.track === 'officer' ? 'Continue service' : 'Re-enlist'} (${svc.component === 'active' ? 4 : 6} yrs)`, hint: svc.track === 'enlisted' && svc.eval >= 60 ? 'Bonus eligible' : undefined },
-        BRANCHES[svc.branch].reserveOnly || BRANCHES[svc.branch].activeOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
+        branchOf(svc).reserveOnly || branchOf(svc).activeOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
         svc.yearsOfService >= RETIREMENT_YEARS
           ? { id: 'retire', label: `🎖️ Retire (${svc.yearsOfService} yrs)` }
           : { id: 'separate', label: '🎗️ Separate from service' },
@@ -594,7 +593,7 @@ function missionTick(ctx, svc) {
   const pool = MISSIONS[svc.branch] ?? [];
   if (!pool.length) return;
   const m = rng.pick(pool.filter((x) => !x.pilot || flightHoursOf(svc)).length ? pool.filter((x) => !x.pilot || flightHoursOf(svc)) : pool);
-  ctx.log(m.text, BRANCHES[svc.branch].icon, 'military');
+  ctx.log(m.text, branchOf(svc).icon, 'military');
   ctx.stat('stress', m.stress);
   svc.eval = Math.round(clamp(svc.eval + m.eval, 0, 100));
   if (m.deploy) {
@@ -615,7 +614,7 @@ function missionTick(ctx, svc) {
 
 export function activeDutyTick(ctx, svc) {
   const { rng } = ctx;
-  const branch = BRANCHES[svc.branch];
+  const branch = branchOf(svc);
 
   if (svc.isNew) {
     svc.isNew = false;
@@ -662,6 +661,11 @@ export function activeDutyTick(ctx, svc) {
   annualReview(ctx, svc);
   tryPromotion(ctx, svc);
   if (upOrOut(ctx, svc)) return;
+  if (svc.conscript && svc.contractYearsLeft <= 0) {
+    if (ctx.state.military.conscription) ctx.state.military.conscription.status = 'served';
+    discharge(ctx, 'honorable', 'Completed national service');
+    return;
+  }
   if (svc.contractYearsLeft <= 0 || mustRetire(ctx.state, svc)) openContractReview(ctx, svc);
 }
 

@@ -59,6 +59,7 @@ import { PoliceLifeModule } from './publicsafety/PoliceLife.js';
 import { FireLifeModule } from './publicsafety/FireLife.js';
 import { EquipmentModule } from './equipment/Equipment.js';
 import { VolunteerModule } from './service/Volunteering.js';
+import { ConscriptionModule } from './world/Conscription.js';
 import { TransportModule } from './career/Transport.js';
 import { JusticeJobs } from './career/JusticeCareers.js';
 import { MedicineModule } from './career/Medicine.js';
@@ -80,5 +81,5 @@ import { IntelCommunityModule } from './career/IntelCommunity.js';
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, Friends, Community, ElderCare, EstatePlanning, Dynasty, NpcLives, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, LaborUnions, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, Legislature, Judiciary, LegalModule, CivilCourts, CivicModule,
-  EmergencyModule, ServiceModule, VolunteerModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync,
+  EmergencyModule, ServiceModule, VolunteerModule, ConscriptionModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync,
 ];
