@@ -221,14 +221,14 @@ export function heirFamily(rng, child, old) {
   const spouse = {
     id: rng.id('per_'), firstName: name.firstName, lastName: child.lastName, gender, relation: 'spouse', ageOffset: rng.int(-3, 3),
     relationship: 70, alive: true, income: heirAge < 65 ? rng.int(40000, 85000) : 0, careerIncome: rng.int(40000, 85000), job: heirAge < 65 ? 'Works locally' : null,
-    sector: 'private', nationality: 'US', compatibility: rng.int(55, 85), since: Math.max(18, heirAge - 6),
+    sector: 'private', nationality: old.character.countryId ?? 'US', compatibility: rng.int(55, 85), since: Math.max(18, heirAge - 6),
   };
   out.push(spouse);
   for (const k of child.kids) {
     const kidAge = old.character.age - k.bornAge;
     out.push({
       id: rng.id('per_'), firstName: k.firstName, lastName: child.lastName, gender: k.gender, relation: 'child', ageOffset: kidAge - heirAge,
-      relationship: 80, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: spouse.id, custody: 'you',
+      relationship: 80, alive: true, income: 0, careerIncome: 0, nationality: old.character.countryId ?? 'US', otherParentId: spouse.id, custody: 'you',
       traits: { smarts: traitFrom(rng, child.traits?.smarts ?? 55, 55), athletics: traitFrom(rng, child.traits?.athletics ?? 55, 55), business: rng.int(5, 20) }, familyBizYears: 0,
     });
   }

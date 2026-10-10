@@ -92,12 +92,12 @@ export const regionsInState = (stateId) => regionsIn(STATES[stateId]?.country ??
 export const residencyYears = (state) => state.character.age - (state.character.residencySince ?? 0);
 
 /** The one place a relocation happens. */
-export function changeRegion(ctx, regionId, reason, { voluntary = false } = {}) {
+export function changeRegion(ctx, regionId, reason, { voluntary = false, crossBorder = false } = {}) {
   const { state } = ctx;
   const from = state.character.regionId;
   if (!REGIONS[regionId] || from === regionId) return false;
-  // Moving between countries (visas, residency, credential recognition) isn't modeled yet.
-  if ((REGIONS[regionId].country ?? 'US') !== countryIdOf(state)) return false;
+  // Moving between countries goes through the Migration module (visas, residency), which sets the country first.
+  if (!crossBorder && (REGIONS[regionId].country ?? 'US') !== countryIdOf(state)) return false;
   const fromState = REGIONS[from]?.state;
   state.character.regionId = regionId;
   if (REGIONS[regionId].state !== fromState) state.character.residencySince = state.character.age;
@@ -109,7 +109,7 @@ export function changeRegion(ctx, regionId, reason, { voluntary = false } = {}) 
 function completeMove(ctx, regionId) {
   const { state } = ctx;
   const region = REGIONS[regionId];
-  if (!region || (region.country ?? 'US') !== countryIdOf(state)) return ctx.toast('Moving to another country isn\'t possible yet.', 'warn');
+  if (!region || (region.country ?? 'US') !== countryIdOf(state)) return ctx.toast('Moving abroad needs a visa: see Move abroad.', 'warn');
   if (!ctx.spend(MOVE_COST, 'Moving costs', { credit: true })) {
     ctx.toast(`Moving costs $${MOVE_COST.toLocaleString()} — more than your cash and credit.`, 'warn');
     return false;

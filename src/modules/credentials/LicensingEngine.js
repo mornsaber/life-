@@ -22,7 +22,9 @@ import { meetsEducation, hasFelony, yearsInProfession, yearlyCount, bumpYearly, 
 import { OFFENSES } from '../legal/Offenses.js';
 import { clamp } from '../../core/Random.js';
 import { CREDENTIALS, getCredential, credentialName, FLIGHT_BLOCK, REQUIRED_BY } from './CredentialRegistry.js';
-import { stateIdOf } from '../life/Regions.js';
+import { stateIdOf, countryIdOf } from '../life/Regions.js';
+import { recognitionRoute, speaksLocal, localLanguage } from '../world/Immigration.js';
+import { COUNTRIES } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
@@ -39,8 +41,13 @@ export const retakeCost = (cred) => Math.max(50, Math.round(cred.cost * 0.15));
 /* ------------------------------------------------------------------ */
 
 /** Is a held credential usable in the state you live in now? */
+/** Countries a held credential is recognized in (the countries of the places it's valid). */
+export const heldCountries = (held) => [...new Set((held.states ?? []).map((s) => STATES[s]?.country ?? 'US'))];
+
 export function validHere(state, id, held = state.credentials.held[id]) {
   const cred = CREDENTIALS[id];
+  // Earned in another country: it needs recognizing here first.
+  if (held?.states?.length && !heldCountries(held).includes(countryIdOf(state))) return false;
   if (!held || cred.jurisdiction !== 'state' || !held.states) return true;
   const here = stateIdOf(state);
   if (held.states?.includes(here)) return true;
@@ -59,6 +66,13 @@ export function transferStatus(state, id) {
   const cred = getCredential(id);
   const held = state.credentials.held[id];
   if (!held || held.status !== 'active' || validHere(state, id)) return { needed: false };
+  const here = countryIdOf(state);
+  if (!heldCountries(held).includes(here)) {
+    // Foreign credentials: exchange, EU mutual recognition, or an assessment and exam.
+    const route = recognitionRoute(id, heldCountries(held), here);
+    const blocked = route.language && !speaksLocal(state, here) ? `Needs fluent ${localLanguage(here)}` : null;
+    return { needed: true, foreign: true, method: route.method, cost: Math.max(150, Math.round((cred.cost || 400) * route.costMult)), exam: route.exam, difficulty: route.difficulty ?? 0, blocked };
+  }
   const method = cred.reciprocity;
   if (method === 'motion' && yearsInProfession(state, ['law', 'prosecution', 'publicDefender']) >= 5) return { needed: true, method, cost: 1200, exam: false };
   if (method === 'motion' || method === 'restart') return { needed: true, method, cost: cred.cost, exam: true, difficulty: cred.exam.difficulty };
@@ -423,6 +437,11 @@ export const LicensingEngine = {
       if (toState === fromState) return;
       const { state } = ctx;
       const needs = [];
+      if ((STATES[fromState]?.country ?? 'US') !== (STATES[toState]?.country ?? 'US')) {
+        const foreign = Object.entries(state.credentials.held).filter(([cid, h]) => h.status === 'active' && !validHere(state, cid)).map(([cid]) => CREDENTIALS[cid].name);
+        if (foreign.length) ctx.log(`Your licenses don't cross borders on their own: ${foreign.join(', ')} must be recognized in ${COUNTRIES[STATES[toState]?.country ?? 'US'].name} before you can use them (see Licenses).`, '🪪', 'warn');
+        return;
+      }
       for (const [id, held] of Object.entries(state.credentials.held)) {
         const cred = CREDENTIALS[id];
         if (held.status !== 'active' || cred.jurisdiction !== 'state' || validHere(state, id)) continue;
@@ -535,6 +554,7 @@ export const LicensingEngine = {
       const { state } = ctx;
       const t = transferStatus(state, id);
       if (!t.needed) return;
+      if (t.blocked) return ctx.toast(t.blocked, 'warn');
       if (yearlyCount(state, `cred.transfer.${id}`)) return ctx.toast('One transfer attempt per year.', 'warn');
       bumpYearly(state, `cred.transfer.${id}`);
       const cred = getCredential(id);
@@ -542,11 +562,11 @@ export const LicensingEngine = {
       const here = stateIdOf(state);
       const stat = state.stats[cred.exam.stat] ?? 50;
       if (t.exam && !ctx.rng.chance(clamp(0.92 - t.difficulty + (stat - 50) / 120, 0.1, 0.97))) {
-        ctx.log(`You failed the ${STATES[here].name} ${t.method === 'transferExam' ? 'reciprocity exam' : 'licensing exam'} for your ${cred.name}.`, '📝', 'bad');
+        ctx.log(`You failed the ${t.foreign ? COUNTRIES[countryIdOf(state)].name : STATES[here].name} ${t.foreign ? 'recognition exam' : t.method === 'transferExam' ? 'reciprocity exam' : 'licensing exam'} for your ${cred.name}.`, '📝', 'bad');
         return ctx.toast('Transfer exam failed', 'bad');
       }
       state.credentials.held[id].states.push(here);
-      ctx.log(`Your ${cred.name} is now valid in ${STATES[here].name}${t.method === 'motion' && !t.exam ? ' (admitted by motion)' : ''}.`, cred.icon, 'good');
+      ctx.log(t.foreign ? `Your ${cred.name} is now recognized in ${COUNTRIES[countryIdOf(state)].name}.` : `Your ${cred.name} is now valid in ${STATES[here].name}${t.method === 'motion' && !t.exam ? ' (admitted by motion)' : ''}.`, cred.icon, 'good');
       ctx.toast(`Transferred: ${cred.name}`, 'good');
     },
 

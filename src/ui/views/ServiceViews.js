@@ -309,7 +309,7 @@ function careerFieldCard(state, svc) {
   const retrain = retrainTargets(svc).map((m) => ({ m, check: retrainEligibility(state, m.id) }));
   const okRetrain = retrain.filter((x) => x.check.ok);
   const blocked = retrain.length && !okRetrain.length ? retrain[0].check.reason : null;
-  const warrant = svc.track === 'enlisted' ? warrantTargets(svc).map((m) => ({ m, check: warrantEligibility(state, m.id) })) : [];
+  const warrant = svc.track === 'enlisted' && branchOf(svc).warrant?.length ? warrantTargets(svc).map((m) => ({ m, check: warrantEligibility(state, m.id) })) : [];
   const okWarrant = warrant.filter((x) => x.check.ok);
   const detail = svc.branchDetail ? `<div class="next-step">🔀 Branch detail: at ${svc.branchDetail.untilYos} years of service you move to <b>${esc(MOS[svc.branchDetail.home]?.title ?? '')}</b>.</div>` : '';
   if (!retrain.length && !warrant.length && !detail) return '';

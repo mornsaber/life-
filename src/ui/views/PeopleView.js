@@ -7,6 +7,7 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
@@ -54,7 +55,7 @@ function personRow(state, p) {
     p.alive ? `age ${age}` : `died at ${p.diedAge}`,
     p.alive && p.job ? p.job : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
-    p.nationality && p.nationality !== 'US' ? `from ${p.nationality}` : null,
+    p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') ? `from ${nationalityName(p)}` : null,
     p.alive && p.away ? 'moved away' : null,
     p.owes ? `owes you ${money(p.owes.amount)}` : null,
     p.relation === 'child' && age < 18 && p.custody ? CUSTODY[p.custody] : null,

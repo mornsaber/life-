@@ -291,6 +291,10 @@ export const RECIPROCITY_LABEL = {
   motion: 'Admission by motion (5 yrs practice)',
   transferExam: 'Reciprocity exam',
   restart: 'Must re-qualify',
+  exchange: 'Licence exchange (no test)',
+  mutual: 'EU mutual recognition',
+  foreignExam: 'Foreign credential assessment + exam',
+  requalify: 'Requalify locally (different legal system)',
 };
 
 /**

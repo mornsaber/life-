@@ -1,6 +1,6 @@
 /**
- * Lives born outside the United States: Canada, the United Kingdom, Germany
- * and Japan. Each country's tax, contributions, health coverage and public
+ * Lives outside the United States, in all nine other countries, and moves
+ * between them. Each country's tax, contributions, health coverage and public
  * pension follow its own rules; US-only paths are closed; money shows in the
  * local currency; and US lives are exactly as before.
  *
@@ -27,6 +27,11 @@ import { officeOrderFor } from '../src/modules/politics/NationalOffices.js';
 import { OFFICES } from '../src/modules/politics/Offices.js';
 import { socialSecurityEstimate } from '../src/modules/retirement/RetirementEngine.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { residencyOf, visaEligibility, prYearsLeft, naturalizationYearsLeft, speaks, recognitionRoute, heirCitizenships } from '../src/modules/world/Immigration.js';
+import { arrive, routesTo } from '../src/modules/world/Migration.js';
+import { citizenshipsOf, isCitizen } from '../src/modules/world/Countries.js';
+import { hasCredential, transferStatus } from '../src/modules/credentials/LicensingEngine.js';
+import { buildHeirState } from '../src/modules/people/Legacy.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN'];
@@ -297,6 +302,152 @@ const tests = {
       const restored = new Store(engine.store.storage).load();
       assert.deepEqual(restored, state);
     }
+  },
+  'moving abroad: visa routes, the move itself, and what stays behind'() {
+    const t = employed('US', 21);
+    const { state, engine } = t;
+    state.finances.cash = 60000;
+    state.character.age = 30;
+    // Routes: no spouse visa without a spouse; the H-1B-style lottery odds are low; degree needed for skilled work.
+    const ca = routesTo(state, 'CA');
+    assert.ok(ca.find((r) => r.kind === 'work').ok);
+    assert.equal(ca.find((r) => r.kind === 'family').ok, false);
+    assert.ok(!routesTo(state, 'US').length, 'no routes to where you live');
+    // Force approval and move.
+    state.stats.smarts = 90;
+    let moved = false;
+    for (let i = 0; i < 8 && !moved; i++) {
+      engine.dispatch('migration.emigrate', 'CA:work');
+      moved = state.character.countryId === 'CA';
+      if (!moved) state.yearly = {};
+    }
+    assert.ok(moved, 'a 70% visa comes through within a few tries');
+    assert.equal(REGIONS[state.character.regionId].country, 'CA');
+    assert.deepEqual(citizenshipsOf(state), ['US'], 'still only American');
+    const res = residencyOf(state);
+    assert.equal(res.status, 'visa');
+    assert.equal(res.visa, 'work');
+    assert.equal(state.career.job, null, 'left the job behind');
+    assert.ok(state.migration.history.length === 1);
+    // Can't hold Canadian public jobs or national office, can run for nothing local as a non-citizen.
+    assert.equal(runEligibility(state, 'ca_mp').ok, false);
+    assert.equal(runEligibility(state, 'mayor').ok, false);
+    for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'visa conditions: a work visa without a job lapses and you are sent home'() {
+    const t = born('US', 22, 30);
+    const { state, ctx, engine } = t;
+    arrive(ctx, 'GB', { visa: 'work' });
+    assert.equal(state.character.countryId, 'GB');
+    assert.ok(residencyOf(state));
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(residencyOf(state)?.grace != null || state.career.job, 'a year to find work');
+    if (!state.career.job) {
+      state.prompts = [];
+      engine.ageUp();
+      assert.equal(state.character.countryId, undefined, 'removed to the US');
+      assert.equal(REGIONS[state.character.regionId].country ?? 'US', 'US');
+    }
+  },
+  'permanent residence, then citizenship (with language and dual-nationality rules)'() {
+    const t = employed('US', 23);
+    const { state, ctx, engine } = t;
+    const job = state.career.job;
+    arrive(ctx, 'DE', { visa: 'work' });
+    // Hire locally so the visa holds.
+    hire(ctx, { professionId: 'corporate', levelId: 'srAnalyst', employer: createEmployer(new Random(2), state, PROFESSIONS.corporate, state.character.regionId) });
+    assert.ok(job);
+    state.character.age += 4;
+    assert.equal(prYearsLeft(state), 0);
+    state.finances.cash = 50000;
+    for (let i = 0; i < 6 && residencyOf(state).status !== 'permanent'; i++) { state.yearly = {}; engine.dispatch('migration.applyPR'); }
+    assert.equal(residencyOf(state).status, 'permanent');
+    state.character.age += 1;
+    assert.equal(naturalizationYearsLeft(state), 0);
+    state.migration.languages.German = 0;
+    assert.equal(speaks(state, 'German'), false);
+    engine.dispatch('migration.naturalize');
+    assert.ok(!isCitizen(state, 'DE'), 'German needed for the test');
+    state.migration.languages.German = 100;
+    state.stats.smarts = 100;
+    for (let i = 0; i < 6 && !isCitizen(state, 'DE'); i++) { state.yearly = {}; engine.dispatch('migration.naturalize'); }
+    assert.deepEqual(citizenshipsOf(state).sort(), ['DE', 'US'], 'Germany allows dual citizenship since 2024');
+    assert.equal(residencyOf(state), null);
+    // Japan: naturalizing means giving up the others.
+    const j = born('US', 24, 30);
+    arrive(j.ctx, 'JP', { visa: 'work' });
+    j.state.character.age += 5;
+    j.state.migration.languages.Japanese = 100;
+    j.state.stats.smarts = 100;
+    j.state.finances.cash = 10000;
+    for (let i = 0; i < 6 && !isCitizen(j.state, 'JP'); i++) { j.state.yearly = {}; j.engine.dispatch('migration.naturalize'); }
+    assert.deepEqual(citizenshipsOf(j.state), ['JP']);
+  },
+  'licenses must be recognized across borders'() {
+    const t = born('US', 25, 30);
+    const { state, ctx, engine } = t;
+    engine.dispatch; // eslint quiet
+    const home = REGIONS[state.character.regionId].state;
+    state.credentials.held.driverLicense = { earnedAge: 16, renewedAge: 16, status: 'active', states: [home] };
+    state.credentials.held.rn = { earnedAge: 24, renewedAge: 24, status: 'active', states: [home] };
+    assert.ok(hasCredential(state, 'driverLicense'));
+    arrive(ctx, 'DE', { visa: 'work' });
+    assert.equal(hasCredential(state, 'driverLicense'), false, 'a US licence isn\'t valid once you live in Germany');
+    assert.equal(transferStatus(state, 'driverLicense').method, 'exchange');
+    const rn = transferStatus(state, 'rn');
+    assert.equal(rn.method, 'foreignExam');
+    assert.ok(rn.blocked, 'nursing needs German');
+    assert.equal(recognitionRoute('barLicense', ['US'], 'JP').method, 'requalify');
+    assert.equal(recognitionRoute('medicalLicense', ['IT'], 'DE').method, 'mutual');
+    state.finances.cash = 5000;
+    engine.dispatch('credentials.transfer', 'driverLicense');
+    assert.ok(hasCredential(state, 'driverLicense'), 'swapped without a test');
+    // Home again: the original still works.
+    arrive(ctx, 'US', {});
+    assert.ok(hasCredential(state, 'rn'), 'valid again at home');
+  },
+  'pensions from every country you worked in'() {
+    const t = born('US', 26, 30);
+    const { state, ctx } = t;
+    state.retirement.ssEarnings = Array(12).fill(60000);
+    arrive(ctx, 'CA', { visa: 'work' });
+    assert.deepEqual(state.retirement.ssEarnings, []);
+    assert.equal(state.retirement.records.US.length, 12);
+    state.retirement.ssEarnings = Array(20).fill(60000);
+    state.character.age = 67;
+    const total = socialSecurityEstimate(state, 67);
+    const caOnly = (() => { const r = state.retirement.records; state.retirement.records = {}; const v = socialSecurityEstimate(state, 67); state.retirement.records = r; return v; })();
+    assert.ok(total > caOnly + 5000, `US years still pay (${total} vs ${caOnly})`);
+    // Short record + a totalization agreement: pro-rata; no agreement: nothing.
+    state.retirement.records = { US: Array(4).fill(60000) };
+    const withAgreement = socialSecurityEstimate(state, 67) - caOnly;
+    assert.ok(withAgreement > 0 && withAgreement < 10000, `US–Canada agreement pays a share (${withAgreement})`);
+    // Mexico: the US–Mexico agreement isn't in force, so four US years there earn nothing.
+    const mx = born('US', 30, 30);
+    mx.state.retirement.ssEarnings = Array(4).fill(60000);
+    arrive(mx.ctx, 'MX', { visa: 'work' });
+    mx.state.retirement.ssEarnings = Array(20).fill(20000);
+    const mxOnly = (() => { const r = mx.state.retirement.records; mx.state.retirement.records = {}; const v = socialSecurityEstimate(mx.state, 67); mx.state.retirement.records = r; return v; })();
+    assert.equal(socialSecurityEstimate(mx.state, 67), mxOnly);
+  },
+  'felony conviction ends a visa; heirs inherit passports'() {
+    const t = born('US', 27, 30);
+    const { state, ctx, engine } = t;
+    arrive(ctx, 'GB', { visa: 'work' });
+    hire(ctx, { professionId: 'corporate', levelId: 'srAnalyst', employer: createEmployer(new Random(2), state, PROFESSIONS.corporate, state.character.regionId) });
+    ctx.emit('legal:convicted', { ctx, offenseId: 'fraud', severity: 'felony', name: 'Fraud' });
+    assert.ok(residencyOf(state).removal);
+    engine.ageUp();
+    assert.equal(state.character.countryId, undefined, 'removed after the conviction');
+    // A child born in Canada to an American: both passports (birthright); born in Japan: only American.
+    const parent = born('US', 28, 40);
+    arrive(parent.ctx, 'CA', { visa: 'work' });
+    const kid = { id: 'k', nationality: 'CA', otherParentId: null };
+    assert.deepEqual(heirCitizenships(parent.state, kid).citizenships.sort(), ['CA', 'US']);
+    const jp = born('US', 29, 40);
+    arrive(jp.ctx, 'JP', { visa: 'work' });
+    assert.deepEqual(heirCitizenships(jp.state, { id: 'k', nationality: 'JP' }).citizenships, ['US']);
   },
 };
 

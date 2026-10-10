@@ -30,6 +30,8 @@ import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } f
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
+import { heirCitizenships } from '../world/Immigration.js';
+import { COUNTRIES } from '../world/Countries.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -250,6 +252,17 @@ export function buildHeirState(rng, old, childId) {
   s.character.birthYear = year - childAge;
   s.character.regionId = old.character.regionId;
   s.character.residencySince = 0;
+  // Passports by descent and by birth; a child who isn't a citizen where the family lives holds residence as a dependent.
+  const { citizenships, born } = heirCitizenships(old, child);
+  const here = old.character.countryId ?? 'US';
+  if (old.migration || citizenships.length > 1 || !citizenships.includes(here)) {
+    s.character.citizenships = citizenships;
+    s.migration = { birthCountry: born, residences: {}, languages: {}, history: [] };
+    if (!citizenships.includes(here)) s.migration.residences[here] = { status: 'permanent', visa: 'family', arrived: 0, permanentSince: 0 };
+    // Raised here, you speak the language.
+    const lang = COUNTRIES[here]?.languages?.[0];
+    if (lang) s.migration.languages[lang] = 100;
+  }
   s.log = [{ age: childAge, year, entries: [] }];
   const inheritance = inheritanceFor(legacy, child.id);
   const fund529 = Math.round(old.people.fund529?.[child.id] ?? 0);
@@ -281,7 +294,7 @@ export function buildHeirState(rng, old, childId) {
   const deceasedParent = {
     id: rng.id('per_'), firstName: old.character.firstName, lastName: old.character.lastName, gender: old.character.gender,
     relation: old.character.gender === 'female' ? 'mother' : 'father', ageOffset: old.character.age - childAge,
-    relationship: child.relationship, alive: false, diedAge: old.character.age, income: 0, nationality: 'US',
+    relationship: child.relationship, alive: false, diedAge: old.character.age, income: 0, nationality: (old.character.citizenships ?? [old.migration?.birthCountry ?? old.character.countryId ?? 'US'])[0],
   };
   const list = [deceasedParent];
   const spouse = spouseOf(old);

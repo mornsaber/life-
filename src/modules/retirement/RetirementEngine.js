@@ -16,7 +16,8 @@ import { clamp } from '../../core/Random.js';
 import { PENSION_PLANS, annuityFor } from './PensionPlans.js';
 import { OFFICES } from '../politics/Offices.js';
 import { DC_FUNDS, profileReturn, realReturn } from '../investing/Assets.js';
-import { isAbroad, countryOf, nationalPension } from '../world/Countries.js';
+import { isAbroad, countryOf, nationalPension, COUNTRIES } from '../world/Countries.js';
+import { totalizes } from '../world/Immigration.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
@@ -43,7 +44,49 @@ export function claimFactor(age) {
   return 1 + Math.min(age, 70) * 0.08 - SS_FULL_AGE * 0.08;
 }
 
+/** Minimum years of contributions for a pension from each country (US: 40 credits). */
+const minYearsOf = (cc) => (cc === 'US' ? 10 : COUNTRIES[cc]?.pension?.minYears ?? 0);
+
+/** One country's pension from its own record, claimed at `age`. */
+function pensionFrom(cc, earnings, age) {
+  if (cc === 'US') return Math.round(primaryInsuranceAmount(earnings) * 12 * claimFactor(age));
+  const c = COUNTRIES[cc];
+  const base = nationalPension(c, earnings);
+  const [, latest] = c.pension.ages;
+  const factor = age < c.retirementAge ? 1 - (c.retirementAge - age) * 0.06 : 1 + (Math.min(age, latest) - c.retirementAge) * 0.07;
+  return Math.round(base * Math.max(0.4, factor));
+}
+
+/**
+ * Pensions from countries you used to work in. Each pays its own share; where two countries
+ * have a social-security agreement, years in both count toward each one's minimum and the
+ * benefit is pro rata (a padded record, scaled by the years actually worked there).
+ */
+export function foreignPensions(state, age = state.character.age) {
+  const r = state.retirement;
+  const here = state.character.countryId ?? 'US';
+  const records = { ...(r.records ?? {}), [here]: r.ssEarnings };
+  let total = 0;
+  for (const [cc, earnings] of Object.entries(r.records ?? {})) {
+    const years = earnings.filter((e) => e > 0);
+    if (!years.length || !COUNTRIES[cc]) continue;
+    const min = minYearsOf(cc);
+    if (years.length >= min) { total += pensionFrom(cc, years, age); continue; }
+    const credited = Object.entries(records).filter(([other]) => other !== cc && totalizes(cc, other)).reduce((s, [, e]) => s + e.filter((x) => x > 0).length, 0);
+    if (years.length + credited < min) continue;
+    const avg = years.reduce((s, e) => s + e, 0) / years.length;
+    const padded = [...years, ...Array(min - years.length).fill(avg)];
+    total += Math.round(pensionFrom(cc, padded, age) * (years.length / min));
+  }
+  return total;
+}
+const hasRecords = (r) => r.ssEarnings.length > 0 || Object.values(r.records ?? {}).some((e) => e.length);
+
 export function socialSecurityEstimate(state, age = state.character.age) {
+  return homePension(state, age) + foreignPensions(state, age);
+}
+
+function homePension(state, age) {
   if (isAbroad(state)) {
     // The national pension (CPP/OAS, State Pension, Gesetzliche Rente, national + employees' pension):
     // reduced about 6% a year before the standard age, raised about 7% a year for waiting.
@@ -206,7 +249,7 @@ export const RetirementEngine = {
       if (!plan.started && !activeInPlan && plan.years >= def.vest && age >= def.normalAge) startPlanAnnuity(ctx, planId, 'You reached the plan\'s normal retirement age.');
     }
 
-    if (!r.socialSecurity && age >= 70 && r.ssEarnings.length) {
+    if (!r.socialSecurity && age >= 70 && hasRecords(r)) {
       r.socialSecurity = { annual: socialSecurityEstimate(state, 70), claimAge: 70 };
       ctx.log(`${pensionName(state)} kicked in automatically at 70: $${r.socialSecurity.annual.toLocaleString()}/yr.`, isAbroad(state) ? countryOf(state).flag : '🇺🇸', 'finance');
     }
@@ -287,7 +330,7 @@ export const RetirementEngine = {
       const r = state.retirement;
       if (r.socialSecurity) return;
       if (state.character.age < pensionEarliestAge(state)) return ctx.toast(`${pensionName(state)} starts at ${pensionEarliestAge(state)}.`, 'warn');
-      if (!r.ssEarnings.length && !spousalBenefit(state) && !r.survivorBenefit) return ctx.toast('No covered earnings on record.', 'warn');
+      if (!hasRecords(r) && !spousalBenefit(state) && !r.survivorBenefit) return ctx.toast('No covered earnings on record.', 'warn');
       // Your own benefit, or a spousal / survivor benefit if that's larger.
       const own = socialSecurityEstimate(state);
       const family = Math.max(spousalBenefit(state), r.survivorBenefit ?? 0);

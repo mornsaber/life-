@@ -16,7 +16,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { MOS, mosFor, mosOf, mosEligibility, directGrade } from './MOS.js';
-import { requiredClearance, completeTraining, specialtyName, rankOf } from './MilitaryEngine.js';
+import { requiredClearance, completeTraining, specialtyName, rankOf, branchOf } from './MilitaryEngine.js';
 import { hasClearance, adjudicate } from '../publicservice/PublicServiceEngine.js';
 
 export const RETRAIN_GRADES = { enlisted: 5, officer: 2 };
@@ -108,6 +108,7 @@ export function warrantEligibility(state, mosId) {
   const m = MOS[mosId];
   if (!svc || !m || m.track !== 'warrant' || m.branch !== svc.branch) return { ok: false, reason: 'Unknown job' };
   if (svc.track !== 'enlisted') return { ok: false, reason: 'Enlisted members only' };
+  if (!branchOf(svc).warrant?.length) return { ok: false, reason: 'This service has no warrant officer ranks' };
   if (svc.isNew) return { ok: false, reason: 'Finish initial training first' };
   if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (yearlyCount(state, 'military.warrant')) return { ok: false, reason: 'One packet a year' };

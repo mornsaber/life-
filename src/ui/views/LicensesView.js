@@ -22,7 +22,7 @@ export function credentialRow(state, cred) {
   const implied = !held && hasCredential(state, cred.id);
   let action = '';
   const transfer = held?.status === 'active' && !validHere(state, cred.id) ? transferStatus(state, cred.id) : null;
-  if (transfer?.needed) action = `${button(transfer.exam ? 'Take transfer exam' : 'Apply by motion', 'credentials.transfer', { arg: cred.id, variant: 'tiny', hint: money(transfer.cost) })}<span class="why">${esc(RECIPROCITY_LABEL[transfer.method])}</span>`;
+  if (transfer?.needed) action = `${button(transfer.exam ? (transfer.foreign ? 'Take recognition exam' : 'Take transfer exam') : transfer.foreign ? 'Apply for recognition' : 'Apply by motion', 'credentials.transfer', { arg: cred.id, variant: 'tiny', hint: money(transfer.cost), disabled: Boolean(transfer.blocked) })}<span class="why">${esc(transfer.blocked ?? RECIPROCITY_LABEL[transfer.method])}</span>`;
   else if (training) action = chip(`📚 ${training.yearsLeft} yr training left`, 'cyan');
   else if (held?.status === 'expired') action = button('Reinstate', 'credentials.renew', { arg: cred.id, variant: 'tiny', hint: money(cred.renewCost * 2) });
   else if (held?.status === 'revoked') {

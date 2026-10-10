@@ -22,7 +22,8 @@ import { PROFESSIONS } from '../career/JobTrees.js';
 import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
-import { regionOf, stateIdOf } from '../life/Regions.js';
+import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
+import { nationalityCode, nationalityName } from '../world/Immigration.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
@@ -54,7 +55,7 @@ export function makePerson(ctx, { relation, gender, age, lastName, relationship 
     id: rng.id('per_'), firstName: name.firstName, lastName: lastName ?? name.lastName, gender: g, relation,
     ageOffset: age - state.character.age, relationship: clampRel(relationship), alive: true,
     income: age >= 22 && age < 65 ? Math.round(pay * rng.float(0.75, 1.3)) : 0, careerIncome: Math.round(pay * rng.float(0.75, 1.3)),
-    job: age >= 22 && age < 65 ? title : null, sector, nationality: 'US', ...extra,
+    job: age >= 22 && age < 65 ? title : null, sector, nationality: countryIdOf(state), ...extra,
   };
 }
 
@@ -307,7 +308,7 @@ function births(ctx) {
   for (let i = 0; i < 6 && taken.has(name.firstName); i++) name = randomName(rng, gender);
   const adopted = Boolean(p.expecting.adopted);
   const age = adopted ? rng.int(0, 6) : 0;
-  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: 'US', otherParentId: partner?.id ?? null, custody: 'you', ...(adopted ? { adopted: true } : {}) };
+  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: partner?.id ?? null, custody: 'you', ...(adopted ? { adopted: true } : {}) };
   p.list.push(child);
   p.expecting = null;
   ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');
@@ -340,7 +341,7 @@ function meetCute(ctx) {
     type: 'people.meetCute',
     icon: '💘',
     title: 'Someone Caught Your Eye',
-    text: `You hit it off with ${candidate.firstName}, ${ageOf(state, candidate)}, a ${candidate.job?.toLowerCase() ?? 'student'}${candidate.nationality !== 'US' ? ` from ${candidate.nationality}` : ''}.`,
+    text: `You hit it off with ${candidate.firstName}, ${ageOf(state, candidate)}, a ${candidate.job?.toLowerCase() ?? 'student'}${nationalityCode(candidate) !== countryIdOf(state) ? ` from ${nationalityName(candidate)}` : ''}.`,
     options: [
       { id: 'ask', label: '💬 Ask them out' },
       { id: 'pass', label: '🙂 Let it go' },
@@ -353,7 +354,7 @@ function candidates(ctx, n) {
   const age = state.character.age;
   return Array.from({ length: n }, () => makePerson(ctx, {
     relation: 'candidate', gender: preferredGender(state) ?? rng.pick(['male', 'female']), age: Math.max(age < 18 ? 16 : 18, age + rng.int(-5, 5)),
-    relationship: rng.int(35, 60), nationality: rng.chance(0.1) ? rng.pick(NATIONALITIES) : 'US', compatibility: rng.int(30, 95),
+    relationship: rng.int(35, 60), nationality: rng.chance(0.1) ? rng.pick(NATIONALITIES) : countryIdOf(state), compatibility: rng.int(30, 95),
   }));
 }
 
@@ -579,7 +580,7 @@ export const PeopleEngine = {
         title: 'First Dates',
         text: 'You went on a few first dates. Anyone worth a second?',
         options: [
-          ...list.map((c, i) => ({ id: String(i), label: `${c.gender === 'female' ? '👩' : '👨'} ${c.firstName}, ${ageOf(state, c)} — ${c.job ?? 'student'}`, hint: `Chemistry ${c.compatibility}%${c.nationality !== 'US' ? ` · from ${c.nationality}` : ''}` })),
+          ...list.map((c, i) => ({ id: String(i), label: `${c.gender === 'female' ? '👩' : '👨'} ${c.firstName}, ${ageOf(state, c)} — ${c.job ?? 'student'}`, hint: `Chemistry ${c.compatibility}%${nationalityCode(c) !== countryIdOf(state) ? ` · from ${nationalityName(c)}` : ''}` })),
           { id: 'none', label: '🙅 Nobody clicked' },
         ],
       });
@@ -607,7 +608,7 @@ export const PeopleEngine = {
         person.relation = 'fiance';
         ctx.stat('happiness', 12);
         ctx.log(`${person.firstName} said yes! 💍`, '💍', 'milestone');
-        if (person.nationality !== 'US') foreignContactPrompt(ctx, person);
+        if (nationalityCode(person) !== 'US') foreignContactPrompt(ctx, person);
       } else {
         person.relationship = clampRel(person.relationship - 15);
         ctx.stat('happiness', -10);
@@ -796,7 +797,7 @@ function foreignContactPrompt(ctx, person) {
     type: 'people.foreignContact',
     icon: '🔐',
     title: 'Reporting Requirement',
-    text: `Clearance holders must report close and continuing contact with foreign nationals. ${person.firstName} is a citizen of ${person.nationality}.`,
+    text: `Clearance holders must report close and continuing contact with foreign nationals. ${person.firstName} is a citizen of ${nationalityName(person)}.`,
     options: [
       { id: 'report', label: '🔐 Report it to your security officer' },
       { id: 'hide', label: '🤐 Keep it off the paperwork', tone: 'danger', hint: 'Lying on an SF-86 is a federal crime' },

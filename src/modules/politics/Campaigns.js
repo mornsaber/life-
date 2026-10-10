@@ -25,7 +25,9 @@ export function runEligibility(state, officeId) {
   const here = state.character.countryId ?? 'US';
   if (office.country ? office.country !== here : here !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: office.country ? 'An office in another country' : US_ONLY.office };
   if (office.country && !isCitizen(state, office.country)) return { ok: false, reason: 'Citizens only' };
-  if (!office.country && !LOCAL_OFFICES.includes(officeId) && !isCitizen(state, 'US')) return { ok: false, reason: 'U.S. citizens only' };
+  // Elections are for citizens (EU citizens may stand in local elections anywhere in the EU).
+  const euLocal = LOCAL_OFFICES.includes(officeId) && ['DE', 'IT'].includes(here) && ['DE', 'IT'].some((c) => isCitizen(state, c));
+  if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
   if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };
   if (p.campaign) return { ok: false, reason: 'Already campaigning' };

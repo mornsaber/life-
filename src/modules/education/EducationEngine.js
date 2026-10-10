@@ -18,6 +18,7 @@ import { campusGpaAdjustment } from '../campus/Network.js';
 import { prepBonus } from './K12.js';
 import { localTuition } from '../world/Education.js';
 import { stateIdOf } from '../life/Regions.js';
+import { internationalTuition, onTemporaryVisa } from '../world/Immigration.js';
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -151,8 +152,9 @@ export function annualTuition(programId, schoolId, state = null) {
   const school = SCHOOLS[schoolId];
   // Abroad: the country's own fees (free in Germany, Scotland and Philippine state universities).
   const local = state?.character?.countryId ? localTuition(state.character.countryId, stateIdOf(state), schoolId) : null;
-  if (local != null) return Math.round(local * PROGRAMS[programId].costFactor);
-  const outOfState = state && school.public && !isInState(state);
+  // International students on a visa pay more (or the out-of-state rate in the US).
+  if (local != null) return internationalTuition(state, Math.round(local * PROGRAMS[programId].costFactor), PROGRAMS[programId].costFactor);
+  const outOfState = state && school.public && (!isInState(state) || onTemporaryVisa(state));
   return Math.round(school.tuition * PROGRAMS[programId].costFactor * (outOfState ? OUT_OF_STATE_MULTIPLIER : 1));
 }
 

@@ -32,6 +32,7 @@ import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 import { isAbroad, US_ONLY, informality, countryOf, isCitizen } from '../world/Countries.js';
+import { residencyOf } from '../world/Immigration.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -110,6 +111,7 @@ export function applicationEligibility(state, professionId) {
   const profession = getProfession(professionId);
   if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
+  if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
   if (profession.country) {
     // A national government job: your country of residence, and its citizens only.
     if ((state.character.countryId ?? 'US') !== profession.country) return { ok: false, reason: 'A job in another country' };

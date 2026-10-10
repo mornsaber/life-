@@ -24,6 +24,7 @@ import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicSer
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
+import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
@@ -285,7 +286,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   // Abroad you join your own country's forces; every force recruits its own citizens.
   const b = branchFor(state, branchId);
   if (!b) return { ok: false, reason: isAbroad(state) ? `${countryOf(state).name} has no such branch` : 'Unknown branch' };
-  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !(state.character.residency?.status === 'permanent' && !isAbroad(state))) {
+  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !(residencyOf(state)?.status === 'permanent' && !isAbroad(state))) {
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
