@@ -28,7 +28,9 @@ export const TARGETS = {
   foreclosed: { band: [0.01, 0.1], ref: 'a few percent of owners ever foreclose', fmt: pct },
   homelessEver: { band: [0.01, 0.08], ref: '≈4–6% of adults experience homelessness', fmt: pct },
   felony: { band: [0.03, 0.12], ref: '≈8% of adults have a felony conviction', fmt: pct },
-  prison: { band: [0.01, 0.06], ref: '≈3% of adults ever imprisoned', fmt: pct },
+  // Measured over whole lives, so compare with lifetime likelihood, not living-adult prevalence (≈3%):
+  // BJS (Bonczar 2003) put it at 6.6% for people born in 2001, somewhat lower since imprisonment fell after 2008.
+  prison: { band: [0.02, 0.08], ref: '≈5–6.6% lifetime chance of prison (BJS)', fmt: pct },
   bankruptcy: { band: [0.05, 0.18], ref: '≈10–15% of adults ever file', fmt: pct },
   recessionEvery: { band: [8, 12], ref: 'design target 8–12 yrs (US postwar ≈6–10)', fmt: (x) => `${x.toFixed(1)} yrs` },
   unemployment: { band: [0.035, 0.07], ref: '≈4–6% long-run average', fmt: pct },
