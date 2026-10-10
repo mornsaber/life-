@@ -30,7 +30,7 @@ const LIVING_MINIMUM = 6000;
 const LIVING_AT_HOME = 2000;
 const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
 /** Kids, support, premiums — and money you pour into your own business — come off the top before lifestyle spending. */
-const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Payroll tax \(FICA\)|Elder care|Vehicle|IRS)|personal spending$/;
+const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Self-employed contributions|Payroll tax \(FICA\)|Elder care|Vehicle|IRS)|personal spending$/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
 export function healthPremium(state, income) {
@@ -97,7 +97,9 @@ export const Finances = {
     const capitalGainsTax = ltcgTax(taxable, ltcg);
     const kids = minorChildren(state).filter((c) => c.custody !== 'ex');
     const kidsCredit = abroad ? 0 : kids.filter((c) => ageOf(state, c) < 17).length * CHILD_TAX_CREDIT;
-    const contributions = abroad ? socialContributions(country, Math.max(0, ordinary)) : 0;
+    // Payroll contributions fall on employment pay (the self-employed pay their own rate as they earn).
+    const payroll = f.ledger.income.reduce((sum, i) => sum + (i.wage && !i.selfEmployed && !i.informal ? i.amount : 0), 0);
+    const contributions = abroad ? socialContributions(country, Math.max(0, payroll)) : 0;
     // Where contributions are deductible (Germany, Japan, part of Canada's), they come off taxable income.
     const deductible = abroad ? Math.round(contributions * (country.tax.contribDeductible ?? 0)) + (country.tax.workAllowance ?? 0) : 0;
     if (abroad) {

@@ -3,7 +3,8 @@
  * vesting status, 401(k)/TSP, Social Security estimate, military/VA), and
  * where you live (cost of living, locality, relocation).
  */
-import { bankruptcyOptions } from '../../modules/life/Bankruptcy.js';
+import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
+import { CREDIT } from '../../modules/world/CountryLaw.js';
 import { esc, money, button, card, chip, kv, empty, disclosure } from '../Components.js';
 import { netWorth, investmentsValue, creditLimit, availableCredit } from '../../core/State.js';
 import { investView } from './InvestView.js';
@@ -72,21 +73,34 @@ function debtCard(state) {
   const medical = state.health?.medicalDebt ?? 0;
   const opts = bankruptcyOptions(state);
   const filing = opts.debt >= 5000 || f.ch13;
+  const abroad = Boolean(state.character.countryId);
   const option = (o, chapter, label, hint) => button(label, 'finances.fileBankruptcy', { arg: String(chapter), variant: 'small danger', disabled: !o.ok, hint: o.ok ? hint : o.reason });
   return card('Credit & Debt', `${kv([
-    ['Credit limit', `${money(limit)} <small>(score ${state.housing.credit.score})</small>`],
+    ['Credit limit', `${money(limit)} <small>(${esc(creditLabel(state))})</small>`],
     ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at ${(cardApr(state) * 100).toFixed(1)}% APR` : '$0'],
     ['Available credit', money(availableCredit(state))],
     medical ? ['Medical debt', `<span class="neg">${money(medical)}</span>`] : null,
     f.loans ? ['Student loans', `${money(f.loans)} <small>(not dischargeable)</small>`] : null,
-    f.ch13 ? ['Chapter 13 plan', `${money(f.ch13.annual)}/yr · ${f.ch13.yearsLeft} yr left`] : null,
-    f.lastBankruptcy ? ['Last bankruptcy', `Chapter ${f.lastBankruptcy.chapter} at age ${f.lastBankruptcy.age}`] : null,
+    f.ch13 ? [f.ch13.conduct ? 'Insolvency payments' : abroad ? 'Repayment plan' : 'Chapter 13 plan', `${money(f.ch13.annual)}/yr · ${f.ch13.yearsLeft} yr left`] : null,
+    f.lastBankruptcy ? ['Last bankruptcy', `${abroad ? routeName(state, f.lastBankruptcy.chapter) : `Chapter ${f.lastBankruptcy.chapter}`} at age ${f.lastBankruptcy.age}`] : null,
   ])}
   <p class="fine">Purchases you choose go on cash, then cards up to your limit — past it, they're declined. Bills and fines still pile up.</p>
   ${walletSection(state)}
-  ${filing ? `<h4 class="sub">Bankruptcy</h4>
+  ${filing && abroad ? `<h4 class="sub">Insolvency</h4>
+    ${opts.none ? `<p class="fine">${esc(opts.none)}</p>` : `<p class="fine">Exempt home equity: ${money(opts.preview.exemption)}${opts.preview.homeLost ? ` — ${esc(routeName(state, 7))} would sell your home` : ''}. Student loans and child support survive. It stays on your credit record for ${insolvencyHere(state).creditYears} years.</p>
+    <div class="toggle-row">${option(opts.ch7, 7, `⚖️ ${routeName(state, 7)}`, `Wipes card & medical debt; non-exempt assets sold${opts.ch7.conduct ? `; ${opts.ch7.conduct} yrs of payments first` : ''}`)}${option(opts.ch13, 13, `📆 ${routeName(state, 13)}`, opts.ch13.ok ? `${opts.ch13.years} yrs × ${money(opts.ch13.annual)}; keep your property` : '')}</div>`}` : ''}
+  ${filing && !abroad ? `<h4 class="sub">Bankruptcy</h4>
     <p class="fine">Means test: income ${money(opts.income)} vs. your state median ${money(opts.median)}. Homestead exemption: ${Number.isFinite(opts.preview.exemption) ? money(opts.preview.exemption) : 'unlimited'}${opts.preview.homeLost ? ' — Chapter 7 would sell your home' : ''}. Student loans and child support survive either chapter.</p>
     <div class="toggle-row">${option(opts.ch7, 7, '⚖️ File Chapter 7', 'Wipes card & medical debt; non-exempt assets sold; 10 yrs on credit')}${option(opts.ch13, 13, '📆 File Chapter 13', opts.ch13.ok ? `${opts.ch13.years} yrs × ${money(opts.ch13.annual)}; keep your property` : '')}</div>` : ''}`, { icon: '💳', accent: cardDebt > limit ? 'red' : '' });
+}
+
+/** The credit score as lenders here describe it. */
+function creditLabel(state) {
+  const c = CREDIT[state.character.countryId];
+  const score = state.housing.credit.score;
+  if (!c) return `score ${score}`;
+  if (c.registry) return `${c.name}: ${score >= 580 ? 'clean' : 'listed'}`;
+  return `${c.name} ${score}`;
 }
 
 export function moneyView(state) {

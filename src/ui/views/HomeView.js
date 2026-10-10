@@ -44,7 +44,7 @@ function listings(state) {
   const rows = state.housing.listings.map((l) => {
     const t = PROPERTY_TYPES[l.type];
     const noi = expectedNoi(state, l.type, l.regionId, l.price);
-    const quotes = loansFor(l.type).map((id) => [id, quote(state, l.price, id, { noi })]);
+    const quotes = loansFor(l.type, state).map((id) => [id, quote(state, l.price, id, { noi })]);
     const best = quotes.find(([, q]) => q.ok);
     return `<li class="listing">
       <span class="listing-icon">${t.icon}</span>

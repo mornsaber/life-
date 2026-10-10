@@ -7,6 +7,7 @@
  * state.gig = { active: { gigId, hours: 'side'|'full', rating, since } | null, lastYear: { gross, expenses, net } | null, history: [] }
  */
 import { clamp } from '../../core/Random.js';
+import { selfEmploymentTax } from '../world/CountryLaw.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { meetsEducation } from '../../core/State.js';
 
@@ -91,8 +92,10 @@ export const GigWork = {
     const year = gigYear(state, a, rng);
     gig.lastYear = year;
     // 1099 income: you pay both halves of Social Security and Medicare.
-    ctx.earn(year.net, `${g.name} (1099)`, { wage: true });
-    ctx.spend(Math.round(year.net * 0.9235 * SE_TAX), 'Self-employment tax', { allowDebt: true });
+    const cc = ctx.state.character.countryId;
+    ctx.earn(year.net, cc ? `${g.name} (self-employed)` : `${g.name} (1099)`, { wage: true, selfEmployed: true });
+    const se = cc ? selfEmploymentTax(cc, year.net) : Math.round(year.net * 0.9235 * SE_TAX);
+    if (se) ctx.spend(se, cc ? 'Self-employed contributions' : 'Self-employment tax', { allowDebt: true });
     if (g.driving && a.hours === 'full') ctx.stat('health', -1);
     // Ratings drift; a bad stretch can get you deactivated.
     a.rating = Math.round(clamp(a.rating + rng.float(-0.15, 0.12) + (state.stats.looks - 50) / 2000 + (state.stats.stress >= 75 ? -0.08 : 0), 4.2, 5) * 100) / 100;

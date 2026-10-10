@@ -10,7 +10,7 @@ import { marketPosition, exposure, enforcement } from '../../modules/business/Re
 import { businessUnionPanel } from './UnionView.js';
 import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } from '../Components.js';
 import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier } from '../../modules/business/Operations.js';
-import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
+import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, entitiesFor, entityName, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ventureBacked, maxScale, expansionCost, nextExpansionCost } from '../../modules/business/BusinessEngine.js';
 import { canAfford } from '../../core/State.js';
@@ -43,7 +43,7 @@ import { FRANCHISE_BRANDS, FDD_COST, startupCost, franchiseEligibility, franchis
 import { regionsHere } from '../../modules/life/Regions.js';
 
 const MEAN_RNG = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), chance: () => false, pick: (xs) => xs[0], id: () => 'probe' };
-const entityOptions = (value = 'llc') => Object.entries(ENTITIES).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
+const entityOptions = (state, value = 'llc') => entitiesFor(state).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
 
 /** Typical profit at full ramp for a new owner-operator (deterministic estimate). */
 function estimate(state, typeId) {
@@ -82,7 +82,7 @@ function startCard(state) {
           ...(cash.ok || t.startup ? [{ value: 'cash', label: '💵 Pay cash' }] : []),
           ...(!t.startup ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
         ])}
-        ${select('entity', entityOptions(t.startup ? 'ccorp' : 'llc'))}
+        ${select('entity', entityOptions(state, t.startup ? 'ccorp' : 'llc'))}
         ${select('size', sizes.map((z) => ({ value: z, label: `${SIZE_OPTIONS[z].label} · ${money(startupCostFor(t, z))}` })), { value: 'standard' })}
         <input type="text" data-part="name" maxlength="40" placeholder="Business name (optional)" aria-label="Business name">
         ${button('Start', 'business.start', { variant: 'small primary', collect: true, disabled: blocked })}
@@ -100,7 +100,7 @@ function startCard(state) {
   const rows = `${mineIds.length ? disclosure('biz.group.mine', '⭐ From your career', `<ul class="programs">${mineIds.map(row).join('')}</ul>`, { open: mineIds.length <= 2, count: mineIds.length }) : ''}${groups}`;
   return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
     ${rows}
-    <h4 class="sub">Legal structures</h4><ul class="history">${Object.values(ENTITIES).map((e) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
+    <h4 class="sub">Legal structures</h4><ul class="history">${entitiesFor(state).map(([, e]) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
 }
 
 function franchiseCard(state) {
@@ -616,7 +616,7 @@ function ownedView(state, biz) {
   const nextRound = ROUNDS[biz.roundsRaised ?? 0];
   const relatives = (state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'fiance', 'child', 'sibling', 'mother', 'father'].includes(p.relation) && state.character.age + p.ageOffset >= 16 && !biz.family.includes(p.id));
   const overview = card(`${type.icon} ${esc(biz.name)}`, `
-    <p>${chip(type.name)} ${chip(`${entity.icon} ${entity.name}`)} ${chip(biz.role === 'operator' ? '🧑‍💼 You run it' : '🧑‍💼 Manager runs it', biz.role === 'operator' ? 'cyan' : '')} ${biz.licensedManager ? chip('🪪 Licensed manager', 'warn') : ''} ${s.unionized ? chip('✊ Unionized') : ''}</p>
+    <p>${chip(type.name)} ${chip(`${entity.icon} ${entityName(state, biz.entity)}`)} ${chip(biz.role === 'operator' ? '🧑‍💼 You run it' : '🧑‍💼 Manager runs it', biz.role === 'operator' ? 'cyan' : '')} ${biz.licensedManager ? chip('🪪 Licensed manager', 'warn') : ''} ${s.unionized ? chip('✊ Unionized') : ''}</p>
     ${kv([
       biz.heritage ? ['Founded', `${biz.heritage.since} by ${esc(biz.heritage.founder)} · ${biz.heritage.generation}${['th', 'st', 'nd', 'rd'][biz.heritage.generation] ?? 'th'}-generation family business`] : ['Founded', `age ${biz.foundedAge} (${biz.years} yr)`],
       ['Locations', biz.scale],
@@ -657,7 +657,7 @@ function ownedView(state, biz) {
     ${type.startup || !type.rent ? '' : `<h4 class="sub">Premises</h4><p class="fine">You own ${biz.premises?.owned ?? 0} of ${biz.scale} location buildings${biz.premises?.value ? ` (worth ${money(biz.premises.value)})` : ''}. Owning swaps rent for property tax and upkeep (${Math.round(PREMISES_CARRY * 100)}% of value a year).</p>
     <div class="toggle-row chips-row">${button(`🏢 Buy a building · ${money(premisesPrice(state, biz))}`, 'business.buyPremises', { arg: 'cash', variant: 'tiny', disabled: (biz.premises?.owned ?? 0) >= biz.scale || biz.cash < premisesPrice(state, biz) })}${button('🏦 Buy with an SBA 504 loan', 'business.buyPremises', { arg: 'loan', variant: 'tiny', disabled: (biz.premises?.owned ?? 0) >= biz.scale, hint: `${money(premisesPrice(state, biz) * 0.15)} down` })}${biz.premises?.owned ? button('🔁 Sale-leaseback', 'business.saleLeaseback', { variant: 'tiny', hint: 'Sell one building, rent it back' }) : ''}</div>`}
     ${publicControls(state, biz)}
-    <h4 class="sub">Legal structure</h4><div class="toggle-row chips-row">${Object.entries(ENTITIES).map(([id, e]) => button(`${e.icon} ${e.name}`, 'business.convert', { arg: id, variant: biz.entity === id ? 'tiny on' : 'tiny', disabled: biz.entity === id || (ventureBacked(biz) && id !== 'ccorp'), hint: biz.entity === id ? '' : '$1,500 to convert' })).join('')}</div>
+    <h4 class="sub">Legal structure</h4><div class="toggle-row chips-row">${entitiesFor(state).map(([id, e]) => button(`${e.icon} ${e.name}`, 'business.convert', { arg: id, variant: biz.entity === id ? 'tiny on' : 'tiny', disabled: biz.entity === id || (ventureBacked(biz) && id !== 'ccorp'), hint: biz.entity === id ? '' : '$1,500 to convert' })).join('')}</div>
     ${biz.investors.length ? `<h4 class="sub">Investors</h4><ul class="history">${biz.investors.map((i) => `<li>💼 ${esc(i.round)} · ${money(i.invested)} for ${Math.round(i.pct * 100)}%</li>`).join('')}</ul>` : ''}`, { icon: '🏦' });
 
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>

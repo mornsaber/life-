@@ -24,6 +24,19 @@
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { EDUCATION, educationTerms } from './Education.js';
+import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX } from './CountryLaw.js';
+
+/** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
+function lawTerms(cc) {
+  const v = VETERANS[cc];
+  const loan = SMALL_BIZ_LOAN[cc];
+  return {
+    ...(CREDIT[cc] ? { 'credit score': CREDIT[cc].name } : {}),
+    ...(loan ? { 'SBA 7(a) loan': loan, 'SBA 504 loan': loan, 'SBA lenders': `${loan} lenders`, 'an SBA loan': `a ${loan}`, 'SBA loan': loan, '🏦 SBA': `🏦 ${loan}`, SBA: loan } : {}),
+    ...(STOCK_INDEX[cc] ? { 'S&P 500': STOCK_INDEX[cc], 'S&P': STOCK_INDEX[cc] } : {}),
+    ...(v ? { '🇺🇸 American Legion': `🎖️ ${v.orgs[0]}`, 'American Legion': v.orgs[0], 'Veterans of Foreign Wars': v.orgs[1], VFW: v.orgs[1], 'VA care': `care from ${v.care}`, 'VA claim': 'veterans\' claim' } : {}),
+  };
+}
 
 const ppp = (local, perUsd) => Math.round(local / perUsd);
 
@@ -302,7 +315,7 @@ export const COUNTRIES = { US, CA, GB, DE, JP, KR, IT, MX, PH, IN };
 // Schools, school stages and license names join each country's display swaps.
 for (const c of Object.values(COUNTRIES)) {
   if (c.id === 'US') continue;
-  c.terms = { ...educationTerms(c.id), ...(c.terms ?? {}) };
+  c.terms = { ...educationTerms(c.id), ...lawTerms(c.id), ...(c.terms ?? {}) };
   c.education = EDUCATION[c.id];
 }
 
@@ -358,7 +371,7 @@ function formatLocal(usd, currency) {
 export function localizeMoney(text, country) {
   if (!country || country.id === 'US') return text;
   const cur = country.currency;
-  return text.replace(/(-?)\$(\d[\d,]*(?:\.\d+)?)([KMB])?\b/g, (m, sign, num, suffix) => {
+  return text.replace(/(-?)\$(\d[\d,]*(?:\.\d+)?)([KMBkmb])?(?![A-Za-z0-9])/g, (m, sign, num, suffix) => {
     const n = Number(num.replace(/,/g, ''));
     if (!Number.isFinite(n)) return m;
     if (suffix) {

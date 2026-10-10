@@ -231,7 +231,7 @@ function legacyCard(state) {
   return card('Legacy', `
     ${kv([
       ['Estate today', `${money(net)} net (${money(assets)} assets, ${money(debts)} debts)`],
-      ['Estate tax if you died today', tax.total ? money(tax.total) : 'None (under the exemption)'],
+      [`${state.character.countryId ? 'Inheritance tax' : 'Estate tax'} if you died today`, tax.total ? `${money(tax.total)}${tax.name ? ` (${esc(tax.name)})` : ''}` : state.character.countryId && !tax.name ? 'None (no inheritance tax here)' : 'None (under the exemption)'],
       ['Will', p.will ? WILL_PLANS[p.will.plan].label : '<span class="neg">None — state intestacy law decides</span>'],
       ['Would go to', shares.map((s) => `${esc(s.label)} ${Math.round(s.share * 100)}%`).join(', ')],
       ['Life insurance on you', policy('self', li.self)],

@@ -18,6 +18,7 @@
  * state.transport = { recall: { professionId, levelId, employer, seniority, step, untilAge } | null }
  */
 import { getProfession } from './JobTrees.js';
+import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { levelById, ladderFor } from './Ladder.js';
 import { hire, leaveJob, promote, levelCheck } from './CareerEngine.js';
 import { recalcSalary } from './Compensation.js';
@@ -141,9 +142,9 @@ function furlough(ctx, job) {
     professionId: job.professionId, levelId: job.levelId, employer: job.employer,
     seniority: job.yearsAtEmployer, step: job.step, untilAge: state.character.age + RECALL_YEARS,
   };
-  const ui = Math.round(Math.min(job.salary * 0.45, 30000) * 0.5);
+  const ui = unemploymentBenefit(ctx.state.character.countryId, job.salary);
   leaveJob(ctx, `Furloughed by ${job.employer.name} in the downturn (recall rights for ${RECALL_YEARS} years)`);
-  ctx.earn(ui, 'Unemployment insurance');
+  ctx.earn(ui.amount, ui.name);
   ctx.stat('happiness', -8);
   ctx.stat('stress', 8);
   ctx.toast('Furloughed', 'bad');

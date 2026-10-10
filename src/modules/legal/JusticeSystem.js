@@ -22,6 +22,26 @@ import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
 import { stateOf, stateIdOf, regionOf } from '../life/Regions.js';
 import { PRIVATE_PRISON_SHARE } from '../career/JusticeCareers.js';
 import { deathRowTick } from './Prison.js';
+import { JUSTICE } from '../world/CountryLaw.js';
+import { COUNTRIES } from '../world/Countries.js';
+import { STATES } from '../life/States.js';
+
+/** The courts where you live: null in the US (state and federal rules below). */
+export const justiceHere = (state) => JUSTICE[state.character.countryId] ?? null;
+/** Capital punishment where you live: { status, method, where } or null. */
+export function deathPenaltyHere(state) {
+  const j = justiceHere(state);
+  if (j) return j.death ? { ...j.death, where: COUNTRIES[state.character.countryId].name } : null;
+  const st = stateOf(state);
+  return st.deathPenalty ? { status: st.deathPenalty, method: 'lethal injection', where: st.name } : null;
+}
+/** Capital punishment for a death-row prisoner sentenced in `provinceId`. */
+export function deathPenaltyIn(provinceId) {
+  const cc = STATES[provinceId]?.country;
+  if (cc && cc !== 'US') return JUSTICE[cc]?.death ? { ...JUSTICE[cc].death, where: COUNTRIES[cc].name, country: true } : null;
+  const st = STATES[provinceId];
+  return st?.deathPenalty ? { status: st.deathPenalty, method: 'lethal injection', where: st.name } : null;
+}
 
 const STATUTE_OF_LIMITATIONS = 7;
 
@@ -30,6 +50,13 @@ const PRIVATE_FACILITY = ['Crossroads Correctional Center', 'Prairie Correctiona
 
 /** Where you serve: county jail for short terms, a state or federal prison — or a privately run one under contract. */
 export function assignFacility(state, rng, offense, years) {
+  const j = justiceHere(state);
+  if (j) {
+    const city = regionOf(state).name.split(',')[0];
+    if (years <= 1 || offense.severity === 'misdemeanor') return { facility: j.jail(city), kind: 'jail' };
+    if (j.privatePrisons && rng.chance(j.privatePrisons)) return { facility: `${rng.pick(PRIVATE_FACILITY)} (privately operated)`, kind: 'private' };
+    return { facility: j.prison, kind: 'state' };
+  }
   if (offense.federal) return { facility: FACILITIES.federal, kind: 'federal' };
   if (years <= 1 || offense.severity === 'misdemeanor') return { facility: `${regionOf(state).name.split(',')[0]} County Jail`, kind: 'jail' };
   if (rng.chance(PRIVATE_PRISON_SHARE[stateIdOf(state)] ?? 0)) return { facility: `${rng.pick(PRIVATE_FACILITY)} (privately operated)`, kind: 'private' };
@@ -110,9 +137,10 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
 function courtPrompt(ctx, offenseId, context, evidence, abroad) {
   const { state } = ctx;
   const offense = OFFENSES[offenseId];
+  const aid = justiceHere(state)?.legalAid;
   const options = ['plead', 'publicDefender', 'privateAttorney', 'topFirm'].map((id) => ({
     id,
-    label: DEFENSE[id].label,
+    label: id === 'publicDefender' && aid ? `🧑‍⚖️ Go to trial with a ${aid}` : DEFENSE[id].label,
     hint: DEFENSE[id].cost ? `$${DEFENSE[id].cost.toLocaleString()} retainer` : id === 'plead' ? 'Certain conviction, lighter sentence' : 'Free',
   }));
   if (hasCredential(state, 'barLicense')) options.push({ id: 'self', label: DEFENSE.self.label, hint: 'Free · risky' });
@@ -146,6 +174,9 @@ function sentence(ctx, offenseId, { plea, abroad }) {
   const lowHalf = (range) => (plea ? rng.int(range[0], Math.round((range[0] + range[1]) / 2)) : rng.int(...range));
   const fine = Math.round(lowHalf(offense.fine) * (offenseId.toLowerCase().includes('dui') ? stateOf(state).dui.fineMult : 1));
   let prison = offense.prison ? lowHalf(offense.prison) : 0;
+  // Other countries jail fewer people for less time (life terms stay life).
+  const j = justiceHere(state);
+  if (j && prison > 0 && prison < 25) prison = Math.max(offense.severity === 'felony' ? 1 : 0, Math.round(prison * j.sentence));
   const probation = offense.probation ?? 0;
   // Repeat misdemeanors and probation violations land you in jail.
   if (offense.severity === 'misdemeanor' && (state.legal.probationYears > 0 || state.legal.record.filter((r) => r.severity !== 'infraction').length >= 2)) prison = Math.max(prison, 1);
@@ -178,14 +209,15 @@ function sentence(ctx, offenseId, { plea, abroad }) {
     const inc = { yearsLeft: prison, total: prison, facility, kind: placed.kind, served: 0 };
     state.legal.incarceration = inc;
     // Capital punishment: only for capital crimes, only after a trial, only in states that have it — and rarely even then.
-    const death = stateOf(state).deathPenalty;
+    const dp = deathPenaltyHere(state);
+    const death = dp?.status;
     const odds = { active: 0.03, moratorium: 0.02, rare: 0.01 }[death] ?? 0;
     if (!abroad && ((offense.capital && !plea && odds > 0 && rng.chance(odds)) || fugitive?.deathRow)) {
       inc.deathRow = { state: stateIdOf(state), sentencedAge: state.character.age };
       inc.yearsLeft = inc.total = 99;
-      inc.facility = `death row in ${stateOf(state).name}`;
+      inc.facility = `death row in ${dp.where}`;
       state.legal.record[state.legal.record.length - 1].sentence = 'death sentence';
-      ctx.log(`The jury sentenced you to death. You were transferred to ${inc.facility}.`, '⛓️', 'death');
+      ctx.log(`${justiceHere(state) ? 'The court' : 'The jury'} sentenced you to death. You were transferred to ${inc.facility}.`, '⛓️', 'death');
     } else ctx.log(`You were taken into custody at ${facility}.`, '🔒', 'death');
     ctx.emit('legal:incarcerated', { years: prison });
   }
@@ -205,7 +237,8 @@ export const JusticeResolvers = {
     const smartsEdge = optionId === 'self' ? (ctx.state.stats.smarts - 60) / 200 : 0;
     const convict = rng.chance(clamp(data.evidence * defense.factor - smartsEdge, 0.05, 0.95));
     if (convict) {
-      ctx.log('The jury returned a guilty verdict.', '🧑‍⚖️', 'bad');
+      const trial = justiceHere(ctx.state)?.trial ?? 'jury';
+      ctx.log(trial === 'jury' ? 'The jury returned a guilty verdict.' : trial === 'lay' ? 'The panel of judges and lay judges found you guilty.' : 'The judge found you guilty.', '🧑‍⚖️', 'bad');
       sentence(ctx, data.offenseId, { plea: false, abroad: data.abroad });
     } else {
       ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');

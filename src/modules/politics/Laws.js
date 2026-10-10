@@ -129,6 +129,19 @@ export const LAWS = {
 
 const LEVEL_ORDER = ['city', 'state', 'federal'];
 
+/**
+ * Corporate income tax on a small private company, national plus typical local (2025):
+ * Canada's small-business rate, the UK's small-profits band with marginal relief,
+ * Australia's base-rate entities, France's reduced rate, the Philippines' CREATE rate.
+ */
+const CORPORATE_RATE = { CA: 0.122, GB: 0.22, DE: 0.3, JP: 0.25, KR: 0.2, IT: 0.28, MX: 0.3, PH: 0.2, IN: 0.25, AU: 0.25, FR: 0.22 };
+/**
+ * National law outside the US: provinces already carry the national minimum wage, every
+ * other country has statutory paid leave, and corporate tax is the country's own.
+ */
+const NATIONAL_BASE = { minWage: () => null, paidLeave: () => true, corporateRate: (cc) => CORPORATE_RATE[cc] ?? 0.25 };
+const countryOfProvince = (st) => STATES[st]?.country ?? 'US';
+
 export function ensureLaws(state) {
   state.laws ??= { federal: {}, states: {}, cities: {}, enacted: [] };
   state.laws.federal ??= {};
@@ -144,8 +157,11 @@ const stateOfRegion = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).state
 export function levelValue(state, lawId, level, where) {
   const law = LAWS[lawId];
   if (!law?.levels.includes(level)) return null;
-  const book = level === 'federal' ? state.laws?.federal : level === 'state' ? state.laws?.states?.[where] : state.laws?.cities?.[where];
+  // National law: where is the country (absent: the US).
+  const abroad = level === 'federal' && where && where !== 'US';
+  const book = level === 'federal' ? (abroad ? state.laws?.nations?.[where] : state.laws?.federal) : level === 'state' ? state.laws?.states?.[where] : state.laws?.cities?.[where];
   if (book && lawId in book) return book[lawId];
+  if (abroad && NATIONAL_BASE[lawId]) return NATIONAL_BASE[lawId](where);
   const base = law.base?.[level];
   return typeof base === 'function' ? base(where) : base ?? null;
 }
@@ -159,7 +175,7 @@ export function lawValue(state, lawId, stateId = null, regionId = null) {
   if (!law) return null;
   const region = regionId ?? (stateId ? null : state.character?.regionId);
   const st = stateId ?? stateOfRegion(region);
-  const fed = levelValue(state, lawId, 'federal');
+  const fed = levelValue(state, lawId, 'federal', countryOfProvince(st));
   const stv = levelValue(state, lawId, 'state', st);
   const city = region && stateOfRegion(region) === st ? levelValue(state, lawId, 'city', region) : null;
   const vals = [city, stv, fed].filter((v) => v !== null && v !== undefined);
@@ -180,7 +196,7 @@ export function lawValue(state, lawId, stateId = null, regionId = null) {
 /** Change a law. Returns the record. */
 export function enact(state, { level, where = null, lawId, value, sponsor = null, age }) {
   const laws = ensureLaws(state);
-  const book = level === 'federal' ? laws.federal : level === 'state' ? (laws.states[where] ??= {}) : (laws.cities[where] ??= {});
+  const book = level === 'federal' ? (where && where !== 'US' ? ((laws.nations ??= {})[where] ??= {}) : laws.federal) : level === 'state' ? (laws.states[where] ??= {}) : (laws.cities[where] ??= {});
   book[lawId] = value;
   const rec = { age, level, where, lawId, value, sponsor };
   laws.enacted = [...laws.enacted.slice(-39), rec];

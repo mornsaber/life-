@@ -4,12 +4,14 @@
  * committee, staff) and lobbying.
  */
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
-import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, COMMITTEES, CAUCUSES, POSTS, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel } from '../../modules/politics/Legislature.js';
+import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel } from '../../modules/politics/Legislature.js';
 import { LAWS, levelValue, lawValue, describeValue, proposedValue } from '../../modules/politics/Laws.js';
 import { isOfficer, myUnion } from '../../modules/career/LaborUnions.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 
-const LEVEL_LABEL = { city: 'City', state: 'State', federal: 'Federal' };
+const US_LEVELS = { city: 'City', state: 'State', federal: 'Federal' };
+const ABROAD_LEVELS = { city: 'City', state: 'Regional', federal: 'National' };
+let LEVEL_LABEL = US_LEVELS;
 const STAGE = { law: ['✅ Law', 'green'], dead: ['✖ Dead', 'bad'], introduced: ['📥 In the hopper', ''], floor: ['🗳️ On the floor', 'warn'], desk: ['✍️ On the desk', 'warn'] };
 
 function makeup(body) {
@@ -39,14 +41,16 @@ function bodyBlock(state, body) {
 function lawsCard(state) {
   const region = state.character.regionId;
   const st = (REGIONS[region] ?? REGIONS.midcity).state;
-  const rows = Object.entries(LAWS).map(([id, law]) => {
-    const cell = (level) => (law.levels.includes(level) ? esc(describeValue(id, levelValue(state, id, level, level === 'city' ? region : level === 'state' ? st : null))) : '<span class="muted">—</span>');
+  const cc = state.character.countryId ?? 'US';
+  const where = (level) => (level === 'city' ? region : level === 'state' ? st : cc);
+  const rows = Object.entries(LAWS).filter(([id, law]) => law.levels.some((l) => lawHere(id, l, where(l)))).map(([id, law]) => {
+    const cell = (level) => (law.levels.includes(level) && lawHere(id, level, where(level)) ? esc(describeValue(id, levelValue(state, id, level, where(level)))) : '<span class="muted">—</span>');
     return `<tr><td>${law.icon} ${esc(law.name)}<br><small class="muted">${esc(law.effect)}</small></td><td>${cell('city')}</td><td>${cell('state')}</td><td>${cell('federal')}</td></tr>`;
   }).join('');
   const recent = (state.laws?.enacted ?? []).slice(-6).reverse().map((e) => `<li><small>age ${e.age}</small> ${LAWS[e.lawId].icon} ${LEVEL_LABEL[e.level]}: ${esc(LAWS[e.lawId].name)} → ${esc(describeValue(e.lawId, e.value))}${e.sponsor === 'you' ? ' (your bill)' : ''}</li>`).join('');
   return card('Laws in Force', `
-    <p class="fine">Where levels overlap, the highest minimum wage applies; a state's labor laws apply unless federal law sets one. Effective minimum wage here: ${esc(describeValue('minWage', lawValue(state, 'minWage') ?? 7.25))}.</p>
-    ${disclosure('laws-table', 'City · State · Federal', `<table class="table"><thead><tr><th>Law</th><th>City</th><th>State</th><th>Federal</th></tr></thead><tbody>${rows}</tbody></table>`)}
+    <p class="fine">${cc === 'US' ? 'Where levels overlap, the highest minimum wage applies; a state\'s labor laws apply unless federal law sets one.' : 'Regions set the minimum wage; national law sets corporate tax, paid leave and the rest.'} Effective minimum wage here: ${esc(describeValue('minWage', lawValue(state, 'minWage') ?? 7.25))}.</p>
+    ${disclosure('laws-table', `City · ${LEVEL_LABEL.state} · ${LEVEL_LABEL.federal}`, `<table class="table"><thead><tr><th>Law</th><th>City</th><th>${LEVEL_LABEL.state}</th><th>${LEVEL_LABEL.federal}</th></tr></thead><tbody>${rows}</tbody></table>`)}
     ${recent ? `<h4 class="sub">Recently enacted</h4><ul class="history">${recent}</ul>` : ''}`, { icon: '📚' });
 }
 
@@ -58,8 +62,8 @@ function seatCard(state) {
   const used = state.yearly['legislature.act'] ?? 0;
   const left = legActionsPerYear(seat) - used;
   const terms = state.politics.office?.terms ?? 1;
-  const sponsorRows = Object.entries(LAWS).filter(([, l]) => l.levels.includes(body.level)).map(([id, law]) => {
-    const cur = levelValue(state, id, body.level, body.level === 'federal' ? null : body.where);
+  const sponsorRows = Object.entries(LAWS).filter(([id, l]) => l.levels.includes(body.level) && lawHere(id, body.level, body.where)).map(([id, law]) => {
+    const cur = levelValue(state, id, body.level, body.where);
     const up = proposedValue(id, cur ?? (law.kind === 'number' ? law.min : cur), 'up');
     const down = proposedValue(id, cur ?? (law.kind === 'number' ? law.min : cur), 'down');
     return `<li class="report-row"><div>${law.icon} <b>${esc(law.name)}</b> <small class="muted">now ${esc(describeValue(id, cur))}</small></div><div class="toggle-row">${up !== null ? button(`⬆️ ${esc(describeValue(id, up))}`, 'legislature.sponsor', { arg: `${id}|up`, variant: 'tiny', disabled: left <= 0 }) : ''}${down !== null ? button(`⬇️ ${esc(describeValue(id, down))}`, 'legislature.sponsor', { arg: `${id}|down`, variant: 'tiny', disabled: left <= 0 }) : ''}</div></li>`;
@@ -89,12 +93,15 @@ function lobbyCard(state) {
   const union = isOfficer(state) && myUnion(state);
   if (!owner && !union) return '';
   const left = 2 - (state.yearly['legislature.lobby'] ?? 0);
-  const rows = ['city', 'state', 'federal'].flatMap((level) => Object.entries(LAWS).filter(([, l]) => l.levels.includes(level)).map(([id, law]) => [level, id, law]));
+  const cc = state.character.countryId ?? 'US';
+  const where = (level) => (level === 'city' ? state.character.regionId : level === 'state' ? (REGIONS[state.character.regionId] ?? REGIONS.midcity).state : cc);
+  const rows = ['city', 'state', 'federal'].filter((level) => chambersFor(level, where(level)).length).flatMap((level) => Object.entries(LAWS).filter(([id, l]) => l.levels.includes(level) && lawHere(id, level, where(level))).map(([id, law]) => [level, id, law]));
   const list = rows.map(([level, id, law]) => `<li class="report-row"><div>${law.icon} ${esc(law.name)} <small class="muted">${LEVEL_LABEL[level]}</small></div><div class="toggle-row">${button('⬆️ For', 'legislature.lobby', { arg: `${id}|up|${level}`, variant: 'tiny', disabled: left <= 0 })}${button('⬇️ Against', 'legislature.lobby', { arg: `${id}|down|${level}`, variant: 'tiny', disabled: left <= 0 })}</div></li>`).join('');
-  return card('Lobbying', `<p class="fine">${union ? 'As a union officer you can put the union\'s clout behind pro-labor bills.' : ''} ${owner ? 'Your companies can fund a lobbying campaign: $25k for the city, $150k for the state, $1M in Washington.' : ''} ${left} campaign${left === 1 ? '' : 's'} left this year.</p>${disclosure('lobby-list', 'Laws you can push', `<ul class="history">${list}</ul>`)}`, { icon: '💼' });
+  return card('Lobbying', `<p class="fine">${union ? 'As a union officer you can put the union\'s clout behind pro-labor bills.' : ''} ${owner ? `Your companies can fund a lobbying campaign: $25k for the city, $150k for the ${cc === 'US' ? 'state' : 'region'}, $1M ${cc === 'US' ? 'in Washington' : 'nationally'}.` : ''} ${left} campaign${left === 1 ? '' : 's'} left this year.</p>${disclosure('lobby-list', 'Laws you can push', `<ul class="history">${list}</ul>`)}`, { icon: '💼' });
 }
 
 export function legislatureCards(state) {
+  LEVEL_LABEL = state.character.countryId ? ABROAD_LEVELS : US_LEVELS;
   const bodies = bodiesHere(state);
   if (!bodies.length) return '';
   const groups = ['city', 'state', 'federal'].map((level) => {

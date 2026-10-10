@@ -9,7 +9,9 @@ import {
 } from '../../modules/health/index.js';
 
 import { THERAPIES, MEDS, therapyCost, isMental } from '../../modules/health/MentalHealth.js';
-import { STAGES, ssdiEligibility, ssdiAmount, approvalOdds, ATTORNEY_CAP } from '../../modules/health/SSDI.js';
+import { ssdiEligibility, ssdiAmount, approvalOdds, ATTORNEY_CAP, disabilityHere, disabilityName, stageLabel } from '../../modules/health/SSDI.js';
+import { countryOf } from '../../modules/world/Countries.js';
+import { VETERANS } from '../../modules/world/CountryLaw.js';
 
 /** Therapy and medication choices for depression, anxiety and PTSD. */
 function carePlan(state, c) {
@@ -31,6 +33,7 @@ const fmtMoney = (x) => (x === Infinity ? 'none' : money(x));
 
 function coverageCard(state) {
   const plan = coverage(state);
+  const abroad = Boolean(state.character.countryId);
   const h = state.health;
   return card('Coverage', `
     <p class="big-status">${plan.icon} <b>${esc(plan.name)}</b> ${plan.id === 'none' ? chip('Uninsured', 'bad') : ''}</p>
@@ -44,9 +47,9 @@ function coverageCard(state) {
     ])}
     <div class="toggle-row">
       ${button('🩺 Annual checkup', 'health.checkup', { variant: 'small', disabled: Boolean(state.yearly['health.checkup']), hint: 'Free preventive care; catches silent conditions early' })}
-      ${button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
+      ${abroad ? '' : button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
     </div>
-    <p class="fine">Plans by circumstance: employer, TRICARE, a parent's plan to 26, Medicare at 65 (or after 2 yrs of SSDI), Medicaid on low income (not in TX/FL unless disabled), marketplace, or nothing.</p>`, { icon: '🏥', accent: plan.id === 'none' ? 'red' : 'green' });
+    <p class="fine">${abroad ? `Everyone who lives here is covered by ${esc(countryOf(state).health.name)}, paid for through taxes and contributions: small co-payments, capped each year, and no medical debt spiral.` : 'Plans by circumstance: employer, TRICARE, a parent\'s plan to 26, Medicare at 65 (or after 2 yrs of SSDI), Medicaid on low income (not in TX/FL unless disabled), marketplace, or nothing.'}</p>`, { icon: '🏥', accent: plan.id === 'none' ? 'red' : 'green' });
 }
 
 function conditionRow(state, c) {
@@ -88,23 +91,26 @@ export function healthView(state) {
     <p class="fine">Therapy works slowly and lasts; medication works faster with side effects; together they work best. In a crisis, call or text <b>988</b> (Suicide &amp; Crisis Lifeline) any time.</p>`, { icon: '🧠' });
 
   const benefits = d.benefits.map((b) => `<li><b>${esc(b.label)}</b> — ${money(b.annual)}/yr until ${b.endAge}</li>`).join('');
-  const disability = card('Disability & VA', `
+  // Veterans of other countries' forces claim through their own veterans' agency.
+  const lastNation = state.military.history.at(-1)?.nation;
+  const vetCare = lastNation ? VETERANS[lastNation]?.care ?? null : null;
+  const disability = card(vetCare || state.character.countryId ? 'Disability & Veterans' : 'Disability & VA', `
     ${kv([
       ['Long-term disability policy', d.policy ? 'Yes (1.5% of salary)' : 'No'],
-      ['VA rating', h.va.rating ? `${h.va.rating}% · ${money(VA_COMPENSATION[h.va.rating])}/yr` : 'None'],
-      h.disability.ssdiYears ? ['Years on SSDI', h.disability.ssdiYears] : null,
-      d.ssdiClaim ? ['SSDI claim', `${STAGES[d.ssdiClaim.stage].label} · filed at ${d.ssdiClaim.filedAge}${d.ssdiClaim.denials ? ` · denied ${d.ssdiClaim.denials}×` : ''}${d.ssdiClaim.lawyer ? ' · attorney' : ''} · ≈${Math.round(approvalOdds(state, d.ssdiClaim.stage, d.ssdiClaim.lawyer) * 100)}% odds`] : null,
-      state.retirement.ssEarnings?.length >= 5 ? ['SSDI if approved', `${money(ssdiAmount(state))}/yr`] : null,
+      [vetCare ? 'Service disability rating' : 'VA rating', h.va.rating ? `${h.va.rating}% · ${money(VA_COMPENSATION[h.va.rating])}/yr` : 'None'],
+      h.disability.ssdiYears ? [`Years on ${disabilityName(state)}`, h.disability.ssdiYears] : null,
+      d.ssdiClaim ? [`${disabilityName(state)} claim`, `${stageLabel(state, d.ssdiClaim.stage)} · filed at ${d.ssdiClaim.filedAge}${d.ssdiClaim.denials ? ` · denied ${d.ssdiClaim.denials}×` : ''}${d.ssdiClaim.lawyer ? ' · attorney' : ''} · ≈${Math.round(approvalOdds(state, d.ssdiClaim.stage, d.ssdiClaim.lawyer) * 100)}% odds`] : null,
+      state.retirement.ssEarnings?.length >= (disabilityHere(state)?.minYears ?? 5) ? [`${disabilityName(state)} if approved`, `${money(ssdiAmount(state))}/yr`] : null,
     ])}
     ${benefits ? `<ul class="history">${benefits}</ul>` : ''}
     ${disabling.length ? `<p class="why">Disabling: ${disabling.map((c) => esc(CONDITIONS[c.id].name)).join(', ')}</p>` : ''}
     <div class="toggle-row">
       ${button(d.policy ? '🛡️ Cancel disability policy' : '🛡️ Buy disability insurance', 'health.toggleDisabilityPolicy', { variant: d.policy ? 'small on' : 'small', hint: 'Pays 60% of salary if you can\'t work' })}
-      ${button('♿ Claim disability', 'health.claimDisability', { variant: 'small', disabled: !disabling.length || d.benefits.length > 0, hint: 'LTD, an SSDI application and disability retirement' })}
-      ${(() => { const e = ssdiEligibility(state); return button('📨 Apply for SSDI', 'ssdi.apply', { variant: 'small', disabled: !e.ok, hint: e.ok ? 'Most first applications are denied; appeals often win' : e.reason }); })()}
-      ${state.military.history.length ? button('🇺🇸 File VA claim', 'health.vaClaim', { variant: 'small', hint: 'Re-rate service-connected conditions' }) : ''}
+      ${button('♿ Claim disability', 'health.claimDisability', { variant: 'small', disabled: !disabling.length || d.benefits.length > 0, hint: `LTD, a ${disabilityName(state)} application and disability retirement` })}
+      ${(() => { const e = ssdiEligibility(state); return button(`📨 Apply for ${disabilityName(state)}`, 'ssdi.apply', { variant: 'small', disabled: !e.ok, hint: e.ok ? (disabilityHere(state) ? 'A medical assessment decides it' : 'Most first applications are denied; appeals often win') : e.reason }); })()}
+      ${state.military.history.length ? button(vetCare ? `🎖️ Claim through ${vetCare}` : '🇺🇸 File VA claim', 'health.vaClaim', { variant: 'small', hint: 'Re-rate service-connected conditions' }) : ''}
     </div>
-    <p class="fine">SSDI: 5-month waiting period; initial decisions approve about 1 in 3; a hearing before a judge comes a year or more later. Disability attorneys take 25% of back pay (max ${money(ATTORNEY_CAP)}). Medicare after 24 months of benefits.</p>`, { icon: '♿' });
+    <p class="fine">${disabilityHere(state) ? `${esc(disabilityName(state))}: a medical assessment of your capacity to work; refusals can be reviewed and appealed to a tribunal.` : `SSDI: 5-month waiting period; initial decisions approve about 1 in 3; a hearing before a judge comes a year or more later. Disability attorneys take 25% of back pay (max ${money(ATTORNEY_CAP)}). Medicare after 24 months of benefits.`}</p>`, { icon: '♿' });
 
   const debt = h.medicalDebt ? card('Medical Debt', `
     <p><b class="neg">${money(h.medicalDebt)}</b> ${h.collections ? chip('In collections', 'bad') : ''}</p>

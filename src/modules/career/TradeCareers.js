@@ -14,6 +14,7 @@
  * state.oil = { price (index, 1 = normal), phase: 'boom'|'normal'|'bust' }
  */
 import { L } from './Ladder.js';
+import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { Random } from '../../core/Random.js';
 import { leaveJob } from './CareerEngine.js';
 import { JUSTICE_EVENTS, INCIDENT_ICONS } from './JusticeCareers.js';
@@ -199,7 +200,7 @@ export const TradesModule = {
         ctx.earn(bonus, 'Oilfield overtime & boom bonuses', { wage: true });
       } else if (state.oil.phase === 'bust' && rng.chance(job.yearsAtEmployer < 5 ? 0.35 : 0.12)) {
         leaveJob(ctx, 'Laid off in the oil bust when the rig was stacked');
-        ctx.earn(Math.round(Math.min(job.salary * 0.45, 30000) * 0.5), 'Unemployment insurance');
+        { const ui = unemploymentBenefit(ctx.state.character.countryId, job.salary); ctx.earn(ui.amount, ui.name); }
         ctx.stat('happiness', -8);
         return;
       }

@@ -31,6 +31,7 @@ import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './P
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { heirCitizenships } from '../world/Immigration.js';
+import { inheritanceTax, INHERITANCE } from '../world/CountryLaw.js';
 import { COUNTRIES } from '../world/Countries.js';
 
 export const FUNERAL_COST = 9000;
@@ -77,6 +78,15 @@ export function estateBalance(state) {
 }
 
 export function estateTax(state, taxable) {
+  // Outside the US: the country's inheritance tax on what passes to anyone but a spouse.
+  const cc = state.character.countryId;
+  if (cc) {
+    const shares = heirShares(state);
+    const nonSpouse = shares.filter((x) => x.to !== spouseOf(state)?.id).reduce((s, x) => s + x.share, 0);
+    const heirs = Math.max(1, shares.filter((x) => x.to !== spouseOf(state)?.id && x.to !== 'charity').length);
+    const t = inheritanceTax(cc, Math.max(0, taxable) * nonSpouse, heirs);
+    return { federal: t, state: 0, total: t, name: INHERITANCE[cc]?.name ?? null };
+  }
   // Gifts above the annual exclusion use up part of the lifetime exemption.
   const exemption = Math.max(0, FEDERAL_ESTATE_EXEMPTION - (state.people?.plan?.exemptionUsed ?? 0));
   const federal = Math.max(0, taxable - exemption) * FEDERAL_ESTATE_RATE;

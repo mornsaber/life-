@@ -13,6 +13,7 @@
 import { clamp } from '../../core/Random.js';
 import { hasFelony, isIncarcerated } from '../../core/State.js';
 import { currentCourt } from './Judiciary.js';
+import { JUSTICE } from '../world/CountryLaw.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -60,10 +61,13 @@ const TRIALS = [
 function juryTick(ctx) {
   const { state, rng } = ctx;
   if (state.character.age < 18 || isIncarcerated(state) || hasFelony(state) || currentCourt(state) || state.prompts.some((p) => p.type === 'civil.jury')) return;
-  if (!rng.chance(0.06)) return;
+  // Countries without juries (Mexico, the Philippines, India) never summon you; lay-judge systems pick fewer people.
+  const j = JUSTICE[state.character.countryId];
+  if (j && j.trial === 'bench') return;
+  if (!rng.chance(j?.trial === 'lay' ? 0.02 : 0.06)) return;
   ctx.prompt({
-    type: 'civil.jury', icon: '📨', title: 'Jury Summons',
-    text: 'You\'ve been summoned for jury duty at the county courthouse. Pay is $40 a day.',
+    type: 'civil.jury', icon: '📨', title: j?.trial === 'lay' ? 'Selected as a Lay Judge' : 'Jury Summons',
+    text: j ? `You've been selected for ${j.juror}. Pay is $${j.jurorPay} a day.` : 'You\'ve been summoned for jury duty at the county courthouse. Pay is $40 a day.',
     options: [
       { id: 'serve', label: '🧑‍⚖️ Show up' },
       { id: 'postpone', label: '📅 Request a postponement' },

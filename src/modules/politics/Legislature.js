@@ -26,6 +26,7 @@ import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { OFFICES } from './Offices.js';
+import { LEGISLATURES } from './NationalOffices.js';
 import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describeValue, ensureLaws } from './Laws.js';
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
 
@@ -41,7 +42,37 @@ export const BODY_DEFS = {
 };
 /** Bicameral legislatures: a bill passes one chamber, then the other. */
 const CHAMBERS = { city: ['council'], state: ['house', 'senate'], federal: ['usHouse', 'usSenate'] };
-export const SEAT_OFFICES = Object.fromEntries(Object.entries(BODY_DEFS).map(([k, d]) => [d.office, k]));
+const LEVELS = ['city', 'state', 'federal'];
+
+// Other countries' assemblies and parliaments, from NationalOffices.LEGISLATURES.
+const extraOffices = [];
+for (const [cc, L] of Object.entries(LEGISLATURES)) {
+  if (L.prov) {
+    BODY_DEFS[`prov_${cc}`] = { level: 'state', country: cc, name: (w) => L.prov.name(STATES[w]?.name ?? w), seats: () => L.prov.seats, presiding: L.prov.presiding, office: typeof L.prov.office === 'string' ? L.prov.office : null, executive: L.prov.exec, execOffice: L.prov.execOffice, veto: L.prov.veto, staffCount: 150, allowance: 3 };
+    if (typeof L.prov.office === 'function') for (const st of Object.keys(STATES).concat(Object.getOwnPropertyNames(STATES))) { const o = L.prov.office(st); if (o) extraOffices.push([o, `prov_${cc}`]); }
+  }
+  BODY_DEFS[`lower_${cc}`] = { level: 'federal', country: cc, name: () => L.lower.name, seats: () => L.lower.seats, presiding: L.lower.presiding, office: L.lower.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 3000, allowance: 10 };
+  if (L.upper) BODY_DEFS[`upper_${cc}`] = { level: 'federal', country: cc, name: () => L.upper.name, seats: () => L.upper.seats, presiding: L.upper.presiding, office: L.upper.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 1500, allowance: 10 };
+}
+export const SEAT_OFFICES = Object.fromEntries([...Object.entries(BODY_DEFS).filter(([, d]) => d.office).map(([k, d]) => [d.office, k]), ...extraOffices]);
+
+/** The chambers a bill passes at a level, in a place (a city, a state or province, or a country). */
+export function chambersFor(level, where) {
+  if (level === 'city') return CHAMBERS.city;
+  const cc = level === 'state' ? STATES[where]?.country ?? 'US' : where ?? 'US';
+  if (cc === 'US') return CHAMBERS[level];
+  const L = LEGISLATURES[cc];
+  if (!L) return [];
+  if (level === 'state') return L.prov && !L.prov.none?.includes(where) ? [`prov_${cc}`] : [];
+  return [`lower_${cc}`, ...(L.upper ? [`upper_${cc}`] : [])];
+}
+/** Laws that only exist in US law (union-security and card-check rules), and the national minimum wage abroad (set by province). */
+export const lawHere = (lawId, level, where) => {
+  const cc = level === 'state' ? STATES[where]?.country ?? 'US' : level === 'federal' ? where ?? 'US' : REGIONS[where]?.country ?? 'US';
+  if (cc === 'US') return true;
+  if (['rightToWork', 'cardCheck'].includes(lawId)) return false;
+  return !(level === 'federal' && lawId === 'minWage');
+};
 
 export const COMMITTEES = {
   labor: { name: 'Labor & Workforce', laws: ['minWage', 'rightToWork', 'cardCheck', 'paidLeave', 'publicBargaining', 'workplaceSafety', 'nonCompeteBan'] },
@@ -85,7 +116,7 @@ const personName = (rng) => {
   return `${n.firstName} ${n.lastName}`;
 };
 const homeState = (state) => (REGIONS[state.character.regionId] ?? REGIONS.midcity).state;
-const whereFor = (state, level) => (level === 'city' ? state.character.regionId : level === 'state' ? homeState(state) : 'US');
+const whereFor = (state, level) => (level === 'city' ? state.character.regionId : level === 'state' ? homeState(state) : state.character.countryId ?? 'US');
 export const bodyId = (kind, where) => `${kind}:${where}`;
 
 function laborShareFor(state, kind, where) {
@@ -198,9 +229,9 @@ export function ensureBodies(state) {
   state.legislature ??= { seed: 11, bodies: {}, seat: null };
   ensureLaws(state);
   const out = [];
-  for (const [level, kinds] of Object.entries(CHAMBERS)) {
+  for (const level of LEVELS) {
     const where = whereFor(state, level);
-    for (const kind of kinds) {
+    for (const kind of chambersFor(level, where)) {
       const id = bodyId(kind, where);
       if (!state.legislature.bodies[id]) state.legislature.bodies[id] = newBody(state, kind, where, legRng(state));
       // Older saves: name the members and committee chairs.
@@ -211,8 +242,8 @@ export function ensureBodies(state) {
     }
   }
   // The executive is shared by the chambers of one legislature.
-  for (const kinds of Object.values(CHAMBERS)) {
-    const [a, b] = kinds.map((k) => state.legislature.bodies[bodyId(k, whereFor(state, BODY_DEFS[k].level))]);
+  for (const level of LEVELS) {
+    const [a, b] = chambersFor(level, whereFor(state, level)).map((k) => state.legislature.bodies[bodyId(k, whereFor(state, level))]);
     if (a && b) b.executive = a.executive;
   }
   return out;
@@ -220,7 +251,7 @@ export function ensureBodies(state) {
 
 /** Read-only for views. */
 export function bodiesHere(state) {
-  return Object.entries(CHAMBERS).flatMap(([level, kinds]) => kinds.map((k) => state.legislature?.bodies?.[bodyId(k, whereFor(state, level))]).filter(Boolean));
+  return LEVELS.flatMap((level) => chambersFor(level, whereFor(state, level)).map((k) => state.legislature?.bodies?.[bodyId(k, whereFor(state, level))]).filter(Boolean));
 }
 export const mySeat = (state) => state.legislature?.seat ?? null;
 export const myBody = (state) => (mySeat(state) ? state.legislature.bodies[state.legislature.seat.bodyId] ?? null : null);
@@ -231,8 +262,10 @@ export const inMajority = (state) => {
 };
 
 /** What the executive above a body is: you (as mayor or governor), or an NPC. */
-function executiveIsYou(state, level) {
+function executiveIsYou(state, level, where) {
   const o = state.politics?.office?.id;
+  const def = BODY_DEFS[chambersFor(level, where)[0]];
+  if (def?.country) return Boolean(o && o === def.execOffice);
   return (level === 'city' && o === 'mayor') || (level === 'state' && o === 'governor');
 }
 
@@ -264,7 +297,7 @@ function floorVote(body, bill, push, rng) {
 /** Each chamber in turn, then the executive. Returns the outcome text; enacts on success. */
 function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
   const { state } = ctx;
-  const kinds = CHAMBERS[bill.level];
+  const kinds = chambersFor(bill.level, bill.where);
   const bodies = kinds.map((k) => state.legislature.bodies[bodyId(k, bill.where)]);
   const seat = mySeat(state);
   for (let i = from; i < bodies.length; i++) {
@@ -313,8 +346,10 @@ function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
     if (v.yes * 2 <= body.seats) return finish(ctx, bill, 'dead', `failed in the ${body.name} ${v.yes}–${v.no}`);
     myVote = null;
   }
+  // Parliamentary governments come from the majority: what passes is law.
+  if (BODY_DEFS[kinds[0]].veto === false) return finish(ctx, bill, 'law', 'passed into law');
   // The executive signs or vetoes.
-  if (executiveIsYou(state, bill.level)) {
+  if (executiveIsYou(state, bill.level, bill.where)) {
     bill.stage = 'desk';
     ctx.prompt({
       type: 'legislature.sign', icon: '✍️', title: 'On Your Desk',
@@ -343,7 +378,7 @@ function finish(ctx, bill, stage, outcome) {
   const { state } = ctx;
   bill.stage = stage;
   bill.outcome = outcome;
-  const body = state.legislature.bodies[bodyId(CHAMBERS[bill.level][0], bill.where)];
+  const body = state.legislature.bodies[bodyId(chambersFor(bill.level, bill.where)[0], bill.where)];
   const age = state.character.age;
   if (stage === 'law') {
     enact(state, { level: bill.level, where: bill.where === 'US' ? null : bill.where, lawId: bill.lawId, value: bill.value, sponsor: bill.sponsor, age });
@@ -377,7 +412,7 @@ function newBill(state, rng, level, where, lawId, direction, sponsor, push = 0) 
 
 /** Bills the majority brings up on its own. */
 function npcBills(state, body, rng) {
-  const laws = Object.keys(LAWS).filter((id) => LAWS[id].levels.includes(body.level));
+  const laws = Object.keys(LAWS).filter((id) => LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where));
   const laborMajority = body.labor * 2 > body.seats;
   const out = [];
   for (let i = rng.int(1, 3); i > 0; i--) {
@@ -495,9 +530,11 @@ export const Legislature = {
       if (seat.post) ctx.earn(Math.round(OFFICES[o.id].salary * POSTS[seat.post].pay), `${POSTS[seat.post].title} stipend`, { wage: true });
     }
     // The session: the year's bills (yours, lobbied ones, the majority's) go to the floor.
-    for (const [level, kinds] of Object.entries(CHAMBERS)) {
+    for (const level of LEVELS) {
       const where = whereFor(state, level);
-      const origin = state.legislature.bodies[bodyId(kinds[0], where)];
+      const kinds = chambersFor(level, where);
+      const origin = kinds.length ? state.legislature.bodies[bodyId(kinds[0], where)] : null;
+      if (!origin) continue;
       const pending = (origin.bills ?? []).filter((b) => b.stage === 'introduced');
       const bills = [...pending, ...npcBills(state, origin, rng)];
       for (const b of bills) runBill(ctx, b, rng);
@@ -525,9 +562,9 @@ export const Legislature = {
       const body = myBody(state);
       if (!seat || !body) return ctx.toast('Only members can introduce bills.', 'warn');
       const [lawId, direction] = String(arg).split('|');
-      if (!LAWS[lawId]?.levels.includes(body.level)) return ctx.toast('Not something this body can pass.', 'warn');
+      if (!LAWS[lawId]?.levels.includes(body.level) || !lawHere(lawId, body.level, body.where)) return ctx.toast('Not something this body can pass.', 'warn');
       if (yearlyCount(state, 'legislature.act') >= legActionsPerYear(seat)) return ctx.toast(`${legActionsPerYear(seat)} legislative actions a year.`, 'warn');
-      const origin = state.legislature.bodies[bodyId(CHAMBERS[body.level][0], body.where)];
+      const origin = state.legislature.bodies[bodyId(chambersFor(body.level, body.where)[0], body.where)];
       if (origin.bills.some((b) => b.lawId === lawId && b.stage === 'introduced')) return ctx.toast('A bill on that is already in the hopper.', 'warn');
       const bill = newBill(state, legRng(state), body.level, body.where, lawId, direction, 'you', sponsorPush(state, seat));
       if (!bill) return ctx.toast('The law is already as far as it goes.', 'warn');
@@ -561,7 +598,7 @@ export const Legislature = {
       const body = myBody(state);
       const m = body?.members?.find((x) => x.id === memberId && !x.you);
       if (!m) return;
-      const origin = state.legislature.bodies[bodyId(CHAMBERS[body.level][0], body.where)];
+      const origin = state.legislature.bodies[bodyId(chambersFor(body.level, body.where)[0], body.where)];
       const bill = origin.bills.find((b) => b.sponsor === 'you' && b.stage === 'introduced' && !(b.pledges ?? []).includes(m.id));
       if (!bill) return ctx.toast('Introduce a bill first (or they already pledged).', 'warn');
       if (yearlyCount(state, `legislature.ask.${m.id}`)) return ctx.toast(`You already asked ${m.name} this year.`, 'warn');
@@ -660,11 +697,13 @@ export const Legislature = {
     lobby(ctx, arg) {
       const { state } = ctx;
       const [lawId, direction, level] = String(arg).split('|');
-      if (!LAWS[lawId]?.levels.includes(level)) return;
+      if (!LAWS[lawId]?.levels.includes(level) || !lawHere(lawId, level, whereFor(state, level))) return;
       if (yearlyCount(state, 'legislature.lobby') >= 2) return ctx.toast('Two lobbying campaigns a year.', 'warn');
       ensureBodies(state);
       const where = whereFor(state, level);
-      const origin = state.legislature.bodies[bodyId(CHAMBERS[level][0], where)];
+      const kinds = chambersFor(level, where);
+      if (!kinds.length) return ctx.toast('No legislature at that level here.', 'warn');
+      const origin = state.legislature.bodies[bodyId(kinds[0], where)];
       const unionLeader = isOfficer(state) && myUnion(state);
       const owner = state.business?.current || state.business?.holdings?.length;
       if (!unionLeader && !owner) return ctx.toast('Lobbying takes a business or a union behind you.', 'warn');
@@ -735,7 +774,7 @@ export const Legislature = {
         if (state.politics.office) state.politics.office.approval = Math.min(100, state.politics.office.approval + 1);
       } else {
         // A veto can be overridden by two-thirds.
-        const bodies = CHAMBERS[bill.level].map((k) => state.legislature.bodies[bodyId(k, bill.where)]);
+        const bodies = chambersFor(bill.level, bill.where).map((k) => state.legislature.bodies[bodyId(k, bill.where)]);
         const rng = legRng(state);
         const override = bodies.every((b) => floorVote(b, bill, pressure(state, bill, bill.level, bill.where), rng).yes * 3 >= b.seats * 2);
         if (override) finish(ctx, bill, 'law', 'became law over your veto');

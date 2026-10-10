@@ -8,7 +8,9 @@ import { SEVERITY_LABEL } from '../../modules/legal/index.js';
 import { paroleEligibility, APPEAL_COST } from '../../modules/legal/Prison.js';
 import { sealStatus, pardonStatus, SEAL_COST } from '../../modules/legal/Clemency.js';
 import { stateOf } from '../../modules/life/Regions.js';
+import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
 import { STATES } from '../../modules/life/States.js';
+import { COUNTRIES } from '../../modules/world/Countries.js';
 import { COURTS, currentCourt, benchEligibility, benchYears, selectionFor, MANDATORY_RETIREMENT } from '../../modules/legal/Judiciary.js';
 import { CLAIMS, claimEligibility } from '../../modules/legal/CivilCourts.js';
 
@@ -59,6 +61,7 @@ function civilCard(state) {
     <p class="fine">Ignore a lawsuit and the court enters a default judgment; unpaid judgments are garnished from your wages. Homeowner's and malpractice insurance defend covered claims.</p>`, { icon: '🏛️' });
 }
 
+const COUNTRY_NAME = (state) => COUNTRIES[state.character.countryId]?.name ?? 'The country';
 const DEATH_PENALTY_LABEL = { active: 'carries out executions', moratorium: 'has the death penalty but a moratorium on executions', rare: 'has the death penalty but almost never uses it' };
 
 function prisonCard(state) {
@@ -118,12 +121,13 @@ export function legalView(state) {
   const record = l.record.length
     ? `<ul class="history">${[...l.record].reverse().map((r) => `<li>${chip(SEVERITY_LABEL[r.severity] ?? r.severity, r.severity === 'felony' ? 'bad' : r.severity === 'misdemeanor' ? 'warn' : '')} <b>${esc(r.name)}</b>${r.abroad ? ' (abroad)' : ''}${r.sealed ? ` ${chip(r.vacated ? 'Vacated' : 'Sealed', 'good')}` : ''}${r.pardoned ? ` ${chip('Pardoned', 'good')}` : ''} <small>age ${r.age} — ${esc(r.sentence || 'no sentence')}</small></li>`).join('')}</ul>`
     : empty('Clean record.');
-  const death = stateOf(state).deathPenalty;
+  const dp = deathPenaltyHere(state);
+  const death = dp?.status;
   return `${card('Legal Status', `${status}${kv([
     ['Felonies', l.record.filter((r) => r.severity === 'felony' && !r.sealed && !r.pardoned).length],
     ['Misdemeanors', l.record.filter((r) => r.severity === 'misdemeanor' && !r.sealed).length],
     ['Things that could still catch up with you', l.investigations.length ? `<span class="neg">${l.investigations.length}</span>` : '0'],
-  ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(stateOf(state).name)} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}
+  ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(dp?.where ?? (state.character.countryId ? COUNTRY_NAME(state) : stateOf(state).name))} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}
   ${prisonCard(state)}
   ${civilCard(state)}
   ${benchCard(state)}

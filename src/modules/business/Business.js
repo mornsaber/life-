@@ -225,7 +225,8 @@ export function yearFinancials(state, biz, rng) {
     : biz.role !== 'operator' || !entity.payroll ? 0
     : type.startup ? (biz.cash > 300000 ? 80000 : 0)
       : Math.round(clamp(operatingIncome * 0.4, 0, 150000));
-  const payrollTax = Math.round(ownerSalary * 0.0765);
+  // US employer payroll tax; elsewhere the country's contributions are taken from the salary at year end.
+  const payrollTax = state.character.countryId ? 0 : Math.round(ownerSalary * 0.0765);
   const pretax = operatingIncome - interest - ownerSalary - payrollTax;
   // Off-book expenses and capital purchases since the last books (see charge()) are deducted for tax, not again from cash.
   const writeOffs = (biz.taxBook?.expense ?? 0) + (biz.taxBook?.capex ?? 0);

@@ -79,3 +79,80 @@ export function officeOrderFor(countryId, provinceId, usOrder) {
     .map(([id]) => id);
   return [...LOCAL_OFFICE_IDS, ...national];
 }
+
+/**
+ * Each country's legislatures, for Legislature.js. Provincial assemblies are unicameral
+ * (and England has none); the national parliament has one or two chambers.
+ *   office   the elected office that sits in the chamber (null: appointed or indirect)
+ *   exec     who heads the government above it
+ *   veto     whether that executive can veto bills (presidents and some governors);
+ *            parliamentary governments come from the majority and don't
+ *   execOffice the office whose holder is that executive
+ */
+export const LEGISLATURES = {
+  CA: {
+    prov: { name: (p) => `Legislative Assembly of ${p}`, seats: 90, presiding: 'Speaker', office: 'ca_mpp', exec: 'Premier', execOffice: 'ca_premier', veto: false },
+    lower: { name: 'House of Commons', seats: 343, presiding: 'Speaker of the House of Commons', office: 'ca_mp' },
+    upper: { name: 'Senate of Canada', seats: 105, presiding: 'Speaker of the Senate', office: null },
+    exec: 'Prime Minister', execOffice: 'ca_pm', veto: false,
+  },
+  GB: {
+    prov: { name: (p) => ({ Scotland: 'Scottish Parliament', Wales: 'Senedd Cymru', 'Northern Ireland': 'Northern Ireland Assembly' }[p] ?? `${p} Assembly`), seats: 90, presiding: 'Presiding Officer', office: (prov) => ({ 'GB-SCT': 'gb_msp', 'GB-WLS': 'gb_ms', 'GB-NIR': 'gb_mla' }[prov]), exec: 'First Minister', execOffice: 'gb_firstMinister', veto: false, none: ['GB-ENG'] },
+    lower: { name: 'House of Commons', seats: 650, presiding: 'Speaker of the House of Commons', office: 'gb_mp' },
+    upper: { name: 'House of Lords', seats: 800, presiding: 'Lord Speaker', office: null },
+    exec: 'Prime Minister', execOffice: 'gb_pm', veto: false,
+  },
+  DE: {
+    prov: { name: (p) => `Landtag of ${p}`, seats: 130, presiding: 'Landtag President', office: 'de_mdl', exec: 'Ministerpräsident', execOffice: 'de_ministerpraesident', veto: false },
+    lower: { name: 'Bundestag', seats: 630, presiding: 'President of the Bundestag', office: 'de_mdb' },
+    upper: { name: 'Bundesrat', seats: 69, presiding: 'President of the Bundesrat', office: null },
+    exec: 'Chancellor', execOffice: 'de_kanzler', veto: false,
+  },
+  JP: {
+    prov: { name: (p) => `${p} Prefectural Assembly`, seats: 80, presiding: 'Assembly Chair', office: 'jp_prefAssembly', exec: 'Governor', execOffice: 'jp_governor', veto: true },
+    lower: { name: 'House of Representatives', seats: 465, presiding: 'Speaker of the House', office: 'jp_hor' },
+    upper: { name: 'House of Councillors', seats: 248, presiding: 'President of the House of Councillors', office: 'jp_hoc' },
+    exec: 'Prime Minister', execOffice: 'jp_pm', veto: false,
+  },
+  KR: {
+    prov: { name: (p) => `${p} Council`, seats: 60, presiding: 'Council Chair', office: 'kr_provCouncil', exec: 'Governor', execOffice: 'kr_governor', veto: true },
+    lower: { name: 'National Assembly', seats: 300, presiding: 'Speaker of the National Assembly', office: 'kr_assembly' },
+    exec: 'President', execOffice: 'kr_president', veto: true,
+  },
+  IT: {
+    prov: { name: (p) => `Regional Council of ${p}`, seats: 50, presiding: 'Council President', office: 'it_regional', exec: 'President of the Region', execOffice: 'it_regionPresident', veto: false },
+    lower: { name: 'Chamber of Deputies', seats: 400, presiding: 'President of the Chamber', office: 'it_deputato' },
+    upper: { name: 'Senate of the Republic', seats: 205, presiding: 'President of the Senate', office: 'it_senatore' },
+    exec: 'Prime Minister', execOffice: 'it_pm', veto: false,
+  },
+  MX: {
+    prov: { name: (p) => `Congress of ${p}`, seats: 40, presiding: 'President of the Congress', office: 'mx_dipLocal', exec: 'Governor', execOffice: 'mx_gobernador', veto: true },
+    lower: { name: 'Chamber of Deputies', seats: 500, presiding: 'President of the Chamber', office: 'mx_dipFederal' },
+    upper: { name: 'Senate of the Republic', seats: 128, presiding: 'President of the Senate', office: 'mx_senador' },
+    exec: 'President', execOffice: 'mx_presidente', veto: true,
+  },
+  PH: {
+    prov: { name: (p) => `Sangguniang Panlalawigan of ${p}`, seats: 14, presiding: 'Vice Governor', office: 'ph_boardMember', exec: 'Governor', execOffice: 'ph_governor', veto: true },
+    lower: { name: 'House of Representatives', seats: 316, presiding: 'Speaker of the House', office: 'ph_representative' },
+    upper: { name: 'Senate of the Philippines', seats: 24, presiding: 'Senate President', office: 'ph_senator' },
+    exec: 'President', execOffice: 'ph_president', veto: true,
+  },
+  IN: {
+    prov: { name: (p) => `${p} Legislative Assembly`, seats: 200, presiding: 'Speaker', office: 'in_mla', exec: 'Chief Minister', execOffice: 'in_cm', veto: false },
+    lower: { name: 'Lok Sabha', seats: 543, presiding: 'Speaker of the Lok Sabha', office: 'in_mp' },
+    upper: { name: 'Rajya Sabha', seats: 245, presiding: 'Chairman of the Rajya Sabha', office: null },
+    exec: 'Prime Minister', execOffice: 'in_pm', veto: false,
+  },
+  AU: {
+    prov: { name: (p) => `Parliament of ${p}`, seats: 90, presiding: 'Speaker', office: 'au_mlaState', exec: 'Premier', execOffice: 'au_premier', veto: false },
+    lower: { name: 'House of Representatives', seats: 150, presiding: 'Speaker of the House', office: 'au_mp' },
+    upper: { name: 'Senate', seats: 76, presiding: 'President of the Senate', office: 'au_senator' },
+    exec: 'Prime Minister', execOffice: 'au_pm', veto: false,
+  },
+  FR: {
+    prov: { name: (p) => `Regional Council of ${p}`, seats: 150, presiding: 'President of the Regional Council', office: 'fr_regional', exec: 'President of the Region', execOffice: 'fr_regionPresident', veto: false },
+    lower: { name: 'National Assembly', seats: 577, presiding: 'President of the National Assembly', office: 'fr_depute' },
+    upper: { name: 'Senate', seats: 348, presiding: 'President of the Senate', office: 'fr_senateur' },
+    exec: 'President of the Republic', execOffice: 'fr_president', veto: false,
+  },
+};

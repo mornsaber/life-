@@ -12,6 +12,7 @@
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
 import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
+import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
@@ -498,11 +499,11 @@ export function layoffRisk(state, job) {
 
 function layoffCheck(ctx, job) {
   if (!ctx.rng.chance(layoffRisk(ctx.state, job))) return false;
-  const severance = Math.round((job.salary / 26) * Math.min(job.yearsAtEmployer, 26));
-  const ui = Math.round(Math.min(job.salary * 0.45, 30000) * 0.5);
+  const severance = severancePay(ctx.state.character.countryId, job.salary, job.yearsAtEmployer);
+  const ui = unemploymentBenefit(ctx.state.character.countryId, job.salary);
   leaveJob(ctx, 'Laid off in a reduction in force');
   if (severance) ctx.earn(severance, 'Severance pay', { wage: true });
-  ctx.earn(ui, 'Unemployment insurance');
+  ctx.earn(ui.amount, ui.name);
   ctx.toast('Laid off', 'bad');
   ctx.stat('happiness', -10);
   ctx.stat('stress', 10);

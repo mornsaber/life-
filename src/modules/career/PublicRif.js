@@ -22,6 +22,7 @@
  * state.career.recall = { employer, professionId, levelId, title, untilAge } | null
  */
 import { clamp } from '../../core/Random.js';
+import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { lawValue } from '../politics/Laws.js';
 import { orgOf } from '../org/Organizations.js';
 
@@ -144,7 +145,7 @@ export function rifResolvers(deps) {
       const recall = { employer: job.employer, professionId: job.professionId, levelId: job.levelId, title: job.title, untilAge: state.character.age + 3 };
       deps.leaveJob(ctx, 'Separated in a reduction in force');
       ctx.earn(severance, 'Severance pay', { wage: true });
-      ctx.earn(Math.round(Math.min(job.salary * 0.45, 30000) * 0.5), 'Unemployment insurance');
+      { const ui = unemploymentBenefit(ctx.state.character.countryId, job.salary); ctx.earn(ui.amount, ui.name); }
       state.career.recall = recall;
       ctx.log(`You were separated in the RIF with ${money(severance)} in severance. You're on the recall list for three years.`, '📦', 'bad');
       ctx.stat('stress', 8);

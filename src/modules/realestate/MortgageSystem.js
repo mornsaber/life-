@@ -13,6 +13,7 @@
 import { spouseIncome } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
 import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
+import { MORTGAGES } from '../world/CountryLaw.js';
 
 export const LOAN_TYPES = {
   conv30: { name: '30-yr Fixed', years: 30, rateAdj: 0, minDown: 0.05, minScore: 620, maxDti: 0.43 },
@@ -25,9 +26,18 @@ export const LOAN_TYPES = {
   land: { name: 'Land Loan 10-yr', years: 10, rateAdj: 0.02, minDown: 0.35, minScore: 680, maxDti: 0.43, land: true },
 };
 
+// Each country's home loans, registered out of sight of US iteration.
+for (const [cc, m] of Object.entries(MORTGAGES)) {
+  for (const [id, t] of Object.entries(m.products)) Object.defineProperty(LOAN_TYPES, `${cc}_${id}`, { value: { stress: m.stress ?? 0, ...t, country: cc }, enumerable: false });
+}
+/** Buying costs (transfer tax, notary, fees) as a share of the price where you live. */
+export const closingRate = (state) => MORTGAGES[state?.character?.countryId]?.closing ?? 0.03;
+
 /** Which loans fit a property type: home mortgages for 1–4 units, commercial loans for bigger or business property, land loans for lots. */
-export function loansFor(type) {
+export function loansFor(type, state = null) {
   if (isLand(type)) return ['land'];
+  const cc = state?.character?.countryId;
+  if (isResidential(type) && MORTGAGES[cc]) return Object.keys(MORTGAGES[cc].products).map((id) => `${cc}_${id}`);
   if (isResidential(type)) return ['conv30', 'conv15', 'arm', 'fha', 'va'];
   return ['commercial'];
 }
@@ -153,14 +163,17 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   const payment = annualPayment(principal, rate, t.years);
   const mip = t.mip ? Math.round(principal * t.mip) : pct < 0.2 && !t.va && !t.commercial && !t.land ? Math.round(principal * 0.005) : 0;
   const income = qualifyingIncome(state) * (inflateIncome ? 1.6 : 1);
-  const housingCost = payment + mip + price * 0.012;
+  // Stress tests (Canada, the UK, Korea, Australia): you must afford the payment at a higher rate.
+  const tested = t.stress ? annualPayment(principal, rate + t.stress, t.years) : payment;
+  const housingCost = tested + mip + price * 0.012;
   const dti = income > 0 ? (housingCost + existingDebtService(state)) / income : Infinity;
-  const closing = Math.round(price * 0.03);
+  const closing = Math.round(price * closingRate(state));
   // Lenders want three months of payments in reserve after closing.
   const reserves = Math.round((payment + mip) / 4);
   const base = { rate, down, principal, payment, mip, fee, dti, closing, reserves, cashNeeded: down + closing };
   if (t.va && !vaEligible(state)) return { ok: false, reason: 'VA loans need 2+ years of honorable service', ...base };
   if (score < t.minScore) return { ok: false, reason: `Needs a ${t.minScore}+ credit score`, ...base };
+  if (t.formalJob && (!state.career.job || state.career.job.informal)) return { ok: false, reason: 'Needs a formal job paying into the housing fund', ...base };
   if (state.finances.cash < down + closing + reserves) return { ok: false, reason: `Needs $${(down + closing + reserves).toLocaleString()} cash (down payment, closing, reserves)`, ...base };
   // Commercial lenders size the loan to the building's income (1.25× debt coverage); your own income can make up a shortfall.
   const dscr = t.commercial && payment > 0 ? noi / payment : 0;
@@ -181,7 +194,7 @@ export function originate(property, typeId, q) {
     payment: q.payment,
     mip: q.mip,
     delinquent: 0,
-    armResetIn: LOAN_TYPES[typeId].arm ? 5 : null,
+    armResetIn: LOAN_TYPES[typeId].arm ? LOAN_TYPES[typeId].reset ?? 5 : null,
   };
 }
 

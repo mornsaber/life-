@@ -115,7 +115,7 @@ function gigCard(state) {
       ly ? ['Last year', `${money(ly.gross)} gross − ${money(ly.expenses)} costs = ${money(ly.net)} (before self-employment tax)`] : null,
     ])}<div class="toggle-row">${button('Log off for good', 'gig.stop', { variant: 'small ghost' })}</div>` : ''}
     <ul class="history">${rows}</ul>
-    <p class="fine">Gig pay is 1099 income: you owe 15.3% self-employment tax, there's no employer health plan or 401(k) match, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
+    <p class="fine">${state.character.countryId ? 'Gig pay is self-employed income: you pay your own social contributions, there\'s no employer pension or sick pay' : 'Gig pay is 1099 income: you owe 15.3% self-employment tax, there\'s no employer health plan or 401(k) match'}, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
 }
 
 function payBreakdown(job) {

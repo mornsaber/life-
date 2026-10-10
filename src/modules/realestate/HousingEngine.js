@@ -19,7 +19,7 @@ import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
 import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick, isResidential, isLand } from './PropertyMarket.js';
-import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan } from './MortgageSystem.js';
+import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan, closingRate } from './MortgageSystem.js';
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
@@ -100,19 +100,19 @@ function sellProperty(ctx, property, { forced = false } = {}) {
 function financingPrompt(ctx, listing) {
   const { state } = ctx;
   const noi = expectedNoi(state, listing.type, listing.regionId, listing.price);
-  const quotes = loansFor(listing.type).map((id) => [id, quote(state, listing.price, id, { noi })]);
+  const quotes = loansFor(listing.type, state).map((id) => [id, quote(state, listing.price, id, { noi })]);
   const options = quotes.map(([id, q]) => ({
     id,
     label: `🏦 ${LOAN_TYPES[id].name} @ ${(q.rate * 100).toFixed(2)}%`,
     hint: q.ok ? `$${q.cashNeeded.toLocaleString()} down+closing · $${Math.round((q.payment + q.mip) / 12).toLocaleString()}/mo` : q.reason,
     disabled: !q.ok,
   }));
-  const cashNeeded = Math.round(listing.price * 1.03);
+  const cashNeeded = Math.round(listing.price * (1 + closingRate(state)));
   options.push({ id: 'cash', label: `💵 Pay cash ($${cashNeeded.toLocaleString()})`, disabled: state.finances.cash < cashNeeded, hint: state.finances.cash < cashNeeded ? 'Not enough cash' : 'No mortgage' });
   const dtiOnly = isResidential(listing.type) && quotes.find(([, q]) => q.dtiFail && state.housing.credit.score >= LOAN_TYPES.conv30.minScore);
   if (dtiOnly && !options.some((o) => !o.disabled)) {
-    const fq = quote(state, listing.price, 'conv30', { inflateIncome: true });
-    if (fq.ok) options.push({ id: 'fraud', label: '📝 "Adjust" the income on your application', hint: 'Mortgage fraud is a federal felony', tone: 'danger' });
+    const fq = quote(state, listing.price, loansFor(listing.type, state)[0], { inflateIncome: true });
+    if (fq.ok) options.push({ id: 'fraud', label: '📝 "Adjust" the income on your application', hint: state.character.countryId ? 'Mortgage fraud is a crime' : 'Mortgage fraud is a federal felony', tone: 'danger' });
   }
   options.push({ id: 'cancel', label: '↩️ Walk away' });
   ctx.prompt({
@@ -149,7 +149,7 @@ function completePurchase(ctx, listing, loanType, q) {
   if (q) {
     ctx.spend(q.cashNeeded, 'Down payment + closing costs');
     originate(property, loanType, q);
-  } else ctx.spend(Math.round(listing.price * 1.03), 'Cash home purchase');
+  } else ctx.spend(Math.round(listing.price * (1 + closingRate(state))), 'Cash home purchase');
   state.housing.properties.push(property);
   state.housing.listings = state.housing.listings.filter((l) => l.id !== listing.id);
   if (property.use === 'primary') {
@@ -472,17 +472,18 @@ export const HousingEngine = {
       if (optionId === 'cancel') return;
       bumpYearly(state, 'housing.buy');
       if (optionId === 'cash') {
-        if (state.finances.cash < listing.price * 1.03) return;
+        if (state.finances.cash < listing.price * (1 + closingRate(state))) return;
         return completePurchase(ctx, listing, null, null);
       }
       if (optionId === 'fraud') {
-        const q = quote(state, listing.price, 'conv30', { inflateIncome: true });
+        const loan = loansFor(listing.type, state)[0];
+        const q = quote(state, listing.price, loan, { inflateIncome: true });
         if (!q.ok) return;
-        completePurchase(ctx, listing, 'conv30', q);
+        completePurchase(ctx, listing, loan, q);
         ctx.emit('legal:offense', { offenseId: 'mortgageFraud', context: 'inflated income on a mortgage application', discovery: 0.08, evidence: 0.8 });
         return;
       }
-      if (!loansFor(listing.type).includes(optionId)) return;
+      if (!loansFor(listing.type, state).includes(optionId)) return;
       const q = quote(state, listing.price, optionId, { noi: expectedNoi(state, listing.type, listing.regionId, listing.price) });
       if (!q.ok) return ctx.toast(q.reason, 'warn');
       completePurchase(ctx, listing, optionId, q);

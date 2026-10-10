@@ -19,6 +19,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { STATES } from '../life/States.js';
+import { deathPenaltyIn } from './JusticeSystem.js';
 
 export const APPEAL_COST = 10000;
 export const DEATH_ROW_YEARS_BEFORE_EXECUTION = 10;
@@ -191,11 +192,12 @@ export function deathRowTick(ctx) {
     ctx.log('A court found errors at your trial. Your death sentence was commuted to life.', '⚖️', 'good');
     return;
   }
-  const status = STATES[row.state]?.deathPenalty;
+  const dp = deathPenaltyIn(row.state);
+  const status = dp?.status;
   if (status === 'active' && years >= DEATH_ROW_YEARS_BEFORE_EXECUTION && rng.chance(0.08)) {
-    ctx.die(`Executed by the State of ${STATES[row.state].name}`);
+    ctx.die(dp.country ? `Executed by ${dp.method} in ${dp.where}` : `Executed by the State of ${STATES[row.state].name}`);
     return;
   }
-  ctx.log(`Year ${years} on death row${status === 'active' ? '' : ` (${STATES[row.state]?.name ?? 'the state'} has not carried out an execution in years)`}.`, '⛓️', 'bad');
+  ctx.log(`Year ${years} on death row${status === 'active' ? '' : ` (${dp?.where ?? 'the state'} has not carried out an execution in years)`}.`, '⛓️', 'bad');
 }
 

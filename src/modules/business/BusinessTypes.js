@@ -157,6 +157,34 @@ export const ENTITIES = {
   ccorp: { name: 'C Corporation', icon: '🏛️', liability: true, admin: 4000, passThrough: false, payroll: true, desc: '21% corporate tax, then dividends are taxed again. Required for venture capital and an IPO. Stock held 5+ years may sell tax-free (QSBS).' },
 };
 
+/** Each country's business forms (null: no such form there; the US S-corp exists only in the US). */
+const LOCAL_ENTITIES = {
+  CA: { sole: 'Sole proprietorship', llc: null, ccorp: 'Corporation (Inc., a CCPC)' },
+  GB: { sole: 'Sole trader', llc: 'Limited liability partnership (LLP)', ccorp: 'Private limited company (Ltd)' },
+  DE: { sole: 'Einzelunternehmen', llc: 'GmbH & Co. KG', ccorp: 'GmbH' },
+  JP: { sole: 'Kojin jigyō (sole proprietor)', llc: null, ccorp: 'Kabushiki kaisha (KK)' },
+  KR: { sole: 'Gaein saeopja (sole proprietor)', llc: null, ccorp: 'Jusik hoesa (corporation)' },
+  IT: { sole: 'Ditta individuale', llc: 'Società in accomandita semplice (sas)', ccorp: 'S.r.l.' },
+  MX: { sole: 'Persona física con actividad empresarial', llc: null, ccorp: 'S.A. de C.V.' },
+  PH: { sole: 'Sole proprietorship (DTI-registered)', llc: null, ccorp: 'Corporation (SEC-registered)' },
+  IN: { sole: 'Sole proprietorship', llc: null, ccorp: 'Private limited company (Pvt Ltd)' },
+  AU: { sole: 'Sole trader', llc: null, ccorp: 'Proprietary limited company (Pty Ltd)' },
+  FR: { sole: 'Micro-entreprise', llc: 'EURL (taxed as income)', ccorp: 'SAS' },
+};
+const LOCAL_DESC = {
+  sole: 'No company to file. Profit is taxed as your income, plus self-employed social contributions. You are personally liable for every debt.',
+  llc: 'Taxed like a sole trader, but your personal assets are shielded from business debts (except ones you personally guarantee).',
+  ccorp: 'A company: it pays corporation tax on its profit, then pays you a salary or dividends. Outside investors and a stock-market listing need one.',
+};
+/** The business forms you can use where you live, with their local names. */
+export function entitiesFor(state) {
+  const local = LOCAL_ENTITIES[state?.character?.countryId];
+  if (!local) return Object.entries(ENTITIES);
+  return Object.entries(ENTITIES).filter(([id]) => local[id]).map(([id, e]) => [id, { ...e, name: local[id], desc: LOCAL_DESC[id] }]);
+}
+export const entityAllowed = (state, id) => entitiesFor(state).some(([eid]) => eid === id);
+export const entityName = (state, id) => entitiesFor(state).find(([eid]) => eid === id)?.[1].name ?? ENTITIES[id]?.name ?? id;
+
 /** Startup funding rounds: what traction investors want, how much they put in, and what they take. */
 export const ROUNDS = [
   { id: 'seed', name: 'Seed round', minArr: 0, minGrowth: 0, raise: [500000, 2000000], dilution: [0.15, 0.25] },

@@ -12,6 +12,7 @@
  * before Finances settles taxes.
  */
 import { clamp } from '../../core/Random.js';
+import { selfEmploymentTax } from '../world/CountryLaw.js';
 import { businessUnionYear } from '../career/LaborUnions.js';
 import { regulationYear, antitrustResolver } from './Regulation.js';
 import { StructureActions, PublicActions, structureYear } from './Structure.js';
@@ -20,7 +21,10 @@ import { REGIONS } from '../life/Regions.js';
 import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
-import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor } from './BusinessTypes.js';
+import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor, entityAllowed, entityName } from './BusinessTypes.js';
+
+/** The form a new business takes: the one asked for, or the nearest one that exists here. */
+const localEntity = (state, entity) => (ENTITIES[entity] && entityAllowed(state, entity) ? entity : entityAllowed(state, 'llc') ? 'llc' : entity === 'sole' ? 'sole' : 'ccorp');
 import { ownershipRules } from './OwnershipRules.js';
 import {
   ensureBusinessOrg, syncBusinessOrg, seedCompetitors, businessStaffTick, marketTick, managerSkill, openBranch, releaseBusinessOrg, competitorsOf, nextMarket, locationsByRegion, marketRoom,
@@ -150,18 +154,18 @@ function payOwner(ctx, biz, ly) {
   if (entity.passThrough) {
     const wage = !entity.payroll;
     const taxedNow = Math.min(mine, Math.max(0, taxable));
-    if (taxedNow) ctx.earn(taxedNow, `Owner draw — ${biz.name}`, { wage });
+    if (taxedNow) ctx.earn(taxedNow, `Owner draw — ${biz.name}`, { wage, selfEmployed: wage });
     // Beyond this year's taxable profit: earnings already taxed (or sheltered by depreciation).
     if (mine > taxedNow) ctx.state.finances.cash += mine - taxedNow;
     const retained = Math.max(0, taxable - taxedNow);
-    if (retained) ctx.earn(retained, `Retained profit — ${biz.name}`, { retained: true, wage });
+    if (retained) ctx.earn(retained, `Retained profit — ${biz.name}`, { retained: true, wage, selfEmployed: wage });
     if (taxable < 0) {
       ly.lossDeducted = Math.min(-taxable, EXCESS_LOSS_LIMIT);
       ctx.deduct(ly.lossDeducted, `Business loss — ${biz.name}`, { nonCash: true });
     }
     if (wage && taxable > 0) {
-      ly.seTax = Math.round(Math.min(taxable * 0.9235, SS_WAGE_CAP) * 0.153);
-      ctx.spend(ly.seTax, 'Self-employment tax', { allowDebt: true });
+      ly.seTax = selfEmploymentTax(ctx.state.character.countryId, taxable, SS_WAGE_CAP);
+      if (ly.seTax) ctx.spend(ly.seTax, ctx.state.character.countryId ? 'Self-employed contributions' : 'Self-employment tax', { allowDebt: true });
     }
   } else if (mine) ctx.earn(mine, `Dividends — ${biz.name}`, { ltcg: true });
   ly.distributions = dist;
@@ -618,14 +622,14 @@ function startBusiness(ctx, typeId, funding, entity, size = 'standard', name = '
   const cost = startupCostFor(type, size);
   const { sbaLoan, basis } = fund(ctx, cost + fees, check);
   const clean = String(name ?? '').replace(/[<>]/g, '').trim().slice(0, 40);
-  const biz = newBusiness(rng, state, typeId, { name: clean || undefined, scale: SIZE_OPTIONS[size].scale, entity: ENTITIES[entity] ? entity : 'llc', cash: Math.round(cost * 0.4), assets: Math.round(cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
+  const biz = newBusiness(rng, state, typeId, { name: clean || undefined, scale: SIZE_OPTIONS[size].scale, entity: localEntity(state, entity), cash: Math.round(cost * 0.4), assets: Math.round(cost * 0.6), sbaLoan, basis, quality: Math.round(clamp(35 + ownerSkill(state, type) * 0.6, 20, 75)) });
   state.business.current = biz;
   if (OPERATIONS[biz.typeId] && biz.ops) biz.ops.offers = makeOffers(ctx.rng, biz);
   biz.autopilot = true;
   grantOpeningLicenses(state, biz);
   ensureBusinessOrg(state, biz);
   seedCompetitors(state, biz);
-  ctx.log(`You founded ${biz.name} (${ENTITIES[biz.entity].name})${sbaLoan ? ` with a ${money(sbaLoan)} SBA loan you personally guaranteed` : ''}.`, type.icon, 'milestone');
+  ctx.log(`You founded ${biz.name} (${entityName(state, biz.entity)})${sbaLoan ? ` with a ${money(sbaLoan)} SBA loan you personally guaranteed` : ''}.`, type.icon, 'milestone');
   ctx.toast(`Founded ${biz.name}`, 'good');
   ctx.stat('stress', 6);
   ctx.emit('business:started', { biz });
@@ -644,7 +648,7 @@ function buyFranchise(ctx, brandId, funding, entity) {
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const { sbaLoan, basis } = fund(ctx, price, check);
   const biz = newBusiness(rng, state, brand.typeId, {
-    name: `${brand.name} — ${state.character.lastName} Unit`, entity: ENTITIES[entity] ? entity : 'llc', scale: brand.scale,
+    name: `${brand.name} — ${state.character.lastName} Unit`, entity: localEntity(state, entity), scale: brand.scale,
     cash: Math.round(price * 0.3), assets: Math.round((price - brand.fee) * 0.6), sbaLoan, basis,
     quality: 55, reputation: 50, fit: Math.round(rng.float(0.92, 1.12) * 100) / 100,
   });
@@ -1179,10 +1183,11 @@ export const BusinessEngine = {
     convert(ctx, entity) {
       const biz = withBiz(ctx);
       if (!biz || !ENTITIES[entity] || biz.entity === entity) return;
+      if (!entityAllowed(ctx.state, entity)) return ctx.toast('That business form doesn\'t exist here.', 'warn');
       if (ventureBacked(biz) && entity !== 'ccorp') return ctx.toast('Your investors hold C-corp stock — you can\'t convert away.', 'warn');
       if (!ctx.spend(1500, 'Business conversion legal fees', { credit: true })) return ctx.toast('The attorney wants $1,500.', 'warn');
       biz.entity = entity;
-      ctx.log(`${biz.name} is now a${entity === 'llc' ? 'n' : ''} ${ENTITIES[entity].name}.`, ENTITIES[entity].icon);
+      ctx.log(`${biz.name} is now: ${entityName(ctx.state, entity)}.`, ENTITIES[entity].icon);
     },
     hireRelative(ctx, personId) {
       const { state } = ctx;
