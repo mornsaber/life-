@@ -4,7 +4,8 @@
  * where you live (cost of living, locality, relocation).
  */
 import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
-import { CREDIT } from '../../modules/world/CountryLaw.js';
+import { CREDIT, ACCOUNTS } from '../../modules/world/CountryLaw.js';
+import { countryOf } from '../../modules/world/Countries.js';
 import { esc, money, button, card, chip, kv, empty, disclosure } from '../Components.js';
 import { netWorth, investmentsValue, creditLimit, availableCredit } from '../../core/State.js';
 import { investView } from './InvestView.js';
@@ -43,6 +44,22 @@ function walletSection(state) {
     ${disclosure('credit.apply', '💳 Apply for a card', `<div class="toggle-row">${offers}</div>`)}`;
 }
 
+/** Abroad: the national and regional tax bill, contributions and any tax debt. */
+function foreignTaxCard(state) {
+  const f = state.finances;
+  const t = f.tax;
+  const ly = f.lastYear;
+  const c = countryOf(state);
+  return card('Taxes', `${kv([
+    ly ? ['Last year', `${money(ly.federalTax ?? 0)} income tax and contributions + ${money(ly.stateTax ?? 0)} regional/local`] : null,
+    ['Audit risk this year', `${(auditOdds(state) * 100).toFixed(1)}%`],
+    t.debt ? ['Owed to the tax office', `<span class="neg">${money(t.debt)}</span>${t.plan ? ` · plan ${money(t.plan.annual)}/yr` : ' · no payment plan'}`] : null,
+    t.audits.length ? ['Audits', t.audits.map((a) => `${a.age}: ${a.result}${a.owed ? ` (${money(a.owed)})` : ''}`).join(' · ')] : null,
+  ])}
+  ${t.debt ? `<div class="toggle-row">${button('💵 Pay the tax office', 'taxes.payDebt', { variant: 'small', disabled: f.cash <= 0 })}${t.plan ? '' : button('📅 Request a payment plan', 'taxes.requestPlan', { variant: 'small' })}</div>` : ''}
+  <p class="fine">${esc(c.name)}: income tax is withheld from pay, with social contributions on wages. No itemizing: allowances and the country's own deductions apply automatically.</p>`, { icon: '🧾' });
+}
+
 /** Last return, deductions, IRS debt and audits. */
 function taxCard(state) {
   const f = state.finances;
@@ -51,6 +68,7 @@ function taxCard(state) {
   if (state.character.age < 18 || !t) return '';
   const it = ly?.itemized;
   const married = Boolean(ly?.married);
+  if (state.character.countryId) return foreignTaxCard(state);
   return card('Taxes', `${kv([
     ly ? ['Last return', `${money(ly.federalTax ?? 0)} federal + ${money(ly.stateTax ?? 0)} state · ${it ? 'itemized' : 'standard deduction'}`] : null,
     it ? ['Itemized', `${money(it.total)} (mortgage interest ${money(it.mortgageInterest)}, SALT ${money(it.salt)}, charity ${money(it.charity)}${it.medical ? `, medical ${money(it.medical)}` : ''}) vs. standard ${money(standardDeduction(married))}`] : ['Standard deduction', money(standardDeduction(married))],
@@ -117,7 +135,7 @@ export function moneyView(state) {
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
     ['Lifetime earnings', money(f.lifetimeEarnings)],
     ['Lifetime taxes', money(f.taxesPaid)],
-    ['Credit score', state.housing.credit.score],
+    ['Credit score', esc(creditLabel(state))],
     f.bankruptcies ? ['Bankruptcies', `<span class="neg">${f.bankruptcies}</span>`] : null,
   ])}
   ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ['State income tax', money(ly.stateTax ?? 0)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
@@ -132,7 +150,7 @@ export function moneyView(state) {
   const retirement = card('Retirement', `
     ${kv([
       ['Status', r.retired ? '🏖️ Retired' : 'Working age'],
-      ['401(k)/403(b)/457/TSP', money(r.dc)],
+      [ACCOUNTS[state.character.countryId]?.dc ?? '401(k)/403(b)/457/TSP', money(r.dc)],
       ['Covered earning years', `${r.ssEarnings.length} of 35`],
       ['Social Security', r.socialSecurity ? `${money(r.socialSecurity.annual)}/yr (claimed at ${r.socialSecurity.claimAge})` : `≈${money(pia * 12)}/yr at ${SS_FULL_AGE}${age >= 62 ? ` · ${money(socialSecurityEstimate(state))} if claimed now` : ''}`],
     ])}

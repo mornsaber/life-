@@ -29,6 +29,7 @@ import { STATES } from '../life/States.js';
 import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { lawValue } from '../politics/Laws.js';
+import { localUnionName } from '../world/CountryLaw.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const POP = { small: 0.35, medium: 0.6, large: 1, enterprise: 1.7 };
@@ -65,6 +66,23 @@ export function unionCatalog() {
     c.chance = Math.max(c.chance, u.chance);
   }
   CATALOG = by;
+  return by;
+}
+
+const LOCAL_CATALOGS = {};
+/** The unions of a country: the US catalog under local names, merged where one union covers several trades. */
+export function catalogFor(countryId) {
+  if (!countryId || countryId === 'US') return unionCatalog();
+  if (LOCAL_CATALOGS[countryId]) return LOCAL_CATALOGS[countryId];
+  const by = {};
+  for (const def of Object.values(unionCatalog())) {
+    const name = localUnionName(countryId, def.name);
+    if (!name) continue;
+    const c = (by[name] ??= { name, strike: def.strike, professions: [], chance: 0 });
+    c.professions.push(...def.professions);
+    c.chance = Math.max(c.chance, def.chance);
+  }
+  LOCAL_CATALOGS[countryId] = by;
   return by;
 }
 
@@ -120,7 +138,7 @@ export function seedUnions(state, stateId = homeState(state)) {
   u.seeded ??= {};
   if (u.seeded[stateId]) return;
   const rng = unionRng(state);
-  for (const def of Object.values(unionCatalog())) {
+  for (const def of Object.values(catalogFor(STATES[stateId]?.country))) {
     const id = unionId(def.name, stateId);
     if (!u.byId[id]) u.byId[id] = newUnion(state, rng, def, stateId);
   }
@@ -134,7 +152,7 @@ export function unionFor(state, employerUnion, stateId = homeState(state)) {
   const id = employerUnion.unionId ?? unionId(employerUnion.name, employerUnion.stateId ?? stateId);
   let rec = state.unions.byId[id];
   if (!rec) {
-    const def = unionCatalog()[employerUnion.name] ?? { name: employerUnion.name, strike: employerUnion.strike, professions: [], chance: 0.4 };
+    const def = catalogFor(STATES[employerUnion.stateId ?? stateId]?.country)[employerUnion.name] ?? unionCatalog()[employerUnion.name] ?? { name: employerUnion.name, strike: employerUnion.strike, professions: [], chance: 0.4 };
     rec = state.unions.byId[id] = newUnion(state, unionRng(state), def, employerUnion.stateId ?? stateId);
   }
   employerUnion.unionId = id;
@@ -373,7 +391,9 @@ export function businessUnion(state, biz) {
   const stateId = (REGIONS[biz.regionId ?? state.character.regionId] ?? REGIONS.midcity).state;
   if (biz.union?.unionId && state.unions?.byId?.[biz.union.unionId]) return state.unions.byId[biz.union.unionId];
   const profs = BUSINESS_TYPES[biz.typeId]?.professions ?? [];
-  const def = Object.values(unionCatalog()).find((c) => c.professions.some((p) => profs.includes(p))) ?? { name: 'Workers United (SEIU)', strike: true, professions: [], chance: 0.3 };
+  const cc = STATES[stateId]?.country;
+  const general = localUnionName(cc, 'Workers United (SEIU)') ?? 'Workers United (SEIU)';
+  const def = Object.values(catalogFor(cc)).find((c) => c.professions.some((p) => profs.includes(p))) ?? { name: general, strike: true, professions: [], chance: 0.3 };
   const u = unionFor(state, { name: def.name, strike: def.strike, stateId }, stateId);
   biz.union = { unionId: u.id, contractYearsLeft: biz.union?.contractYearsLeft ?? 3, lastRaise: biz.union?.lastRaise ?? null, grievances: 0 };
   return u;

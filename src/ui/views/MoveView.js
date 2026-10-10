@@ -41,7 +41,7 @@ export function moveView(state) {
     const impacts = [];
     if (!isHere && job) impacts.push(job.remote ? `🌐 Remote job stays (pay ×${(r.market / here.market).toFixed(2)})` : job.sector === 'federal' || ['large', 'enterprise'].includes(job.employer.size) ? '📍 Ask for a transfer instead (Career tab)' : '🚪 You\'d leave your job');
     if (!isHere && pensionPlan && !job?.remote) impacts.push(`🏦 ${PENSION_PLANS[pensionPlan].short} pension frozen (deferred)`);
-    if (!isHere && crossState) impacts.push('🎓 Out-of-state tuition for 1 yr');
+    if (!isHere && crossState && !isAbroad(state)) impacts.push('🎓 Out-of-state tuition for 1 yr');
     if (!isHere && state.housing.properties.some((p) => p.use === 'primary')) impacts.push('🏡 Sell or rent out your home');
     return `<li class="move-row ${isHere ? 'here' : ''}">
       <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}</small></span>

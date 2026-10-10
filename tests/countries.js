@@ -32,6 +32,8 @@ import { arrive, routesTo } from '../src/modules/world/Migration.js';
 import { citizenshipsOf, isCitizen } from '../src/modules/world/Countries.js';
 import { hasCredential, transferStatus } from '../src/modules/credentials/LicensingEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
+import { DIASPORA, COMMUNITY_NAMES } from '../src/modules/world/Diaspora.js';
+import { randomName, setNameCountry } from '../src/core/State.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN'];
@@ -59,10 +61,18 @@ const tests = {
       assert.equal(state.character.countryId, id);
       assert.equal(REGIONS[state.character.regionId].country, id, 'a city in the country');
       assert.equal(STATES[REGIONS[state.character.regionId].state].country, id, 'and its province');
-      assert.ok(c.names.last.includes(state.character.lastName), `${id} surname ${state.character.lastName}`);
+      // Local names, or the names of the country's immigrant communities.
+      const local = new Set([...c.names.last, ...DIASPORA[id].from.flatMap(([src]) => (COMMUNITY_NAMES[src] ?? COUNTRIES[src]?.names ?? { last: [] }).last)]);
+      assert.ok(local.has(state.character.lastName), `${id} surname ${state.character.lastName}`);
       const parent = state.people.list.find((p) => p.relation === 'parent');
-      if (parent) assert.ok(c.names.last.includes(parent.lastName));
+      if (parent) assert.ok(local.has(parent.lastName));
     }
+    // Over many people, most names are local and some come from immigrant communities.
+    setNameCountry('DE');
+    const rng = new Random(4);
+    let foreign = 0;
+    for (let i = 0; i < 400; i++) if (!COUNTRIES.DE.names.last.includes(randomName(rng, 'male').lastName)) foreign += 1;
+    assert.ok(foreign > 40 && foreign < 160, `about a quarter of names in Germany have immigrant roots (${foreign}/400)`);
   },
   'US lives are unchanged: no country field, US cities only in every list'() {
     const { state } = born('US');

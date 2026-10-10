@@ -8,13 +8,17 @@ import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgr
 import { MUNICIPAL_PROFESSIONS } from '../../modules/publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../../modules/publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../../modules/publicservice/StateAgencies.js';
+import { professionsFor } from '../../modules/career/JobTrees.js';
 
 export function govView(state) {
   const ps = state.publicService;
   const vet = veteranPreference(state);
-  const exams = Object.entries(EXAMS).map(([id, exam]) => {
+  const abroad = Boolean(state.character.countryId);
+  // Abroad: only the exams for public jobs that exist here (no US federal assessments).
+  const pool = abroad ? professionsFor(state) : [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(STATE_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)];
+  const exams = Object.entries(EXAMS).filter(([id]) => !abroad || pool.some((p) => p.exam === id)).map(([id, exam]) => {
     const st = examStatus(state, id);
-    const usedBy = [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(STATE_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)].filter((p) => p.exam === id).map((p) => p.name);
+    const usedBy = [...new Set(pool.filter((p) => p.exam === id).map((p) => p.name))];
     return `<li class="exam-row">
       <div><b>${exam.icon} ${exam.name}</b><small>${esc(exam.desc)} Used by: ${esc(usedBy.join(', '))}.</small>
         ${st.taken ? `<small>Score <b class="${st.passed ? 'pos' : 'neg'}">${st.score}</b>${vet ? ` (+${vet} veterans' preference = ${st.rankedScore})` : ''} · ${st.valid ? `valid until age ${st.expiresAge}` : 'expired'}</small>` : ''}</div>
@@ -40,13 +44,15 @@ export function govView(state) {
     <h4 class="sub">What an investigator would find</h4>
     ${issues.length ? `<ul class="history">${issues.map((i) => `<li>⚠️ ${esc(i.label)}</li>`).join('')}</ul>` : '<p class="pos">A clean background.</p>'}
     <p class="fine">Disclosing problems mitigates them. Concealing them is a federal crime (18 U.S.C. § 1001) if discovered.</p>`, { icon: '🔐' });
+  // A US clearance means nothing to a life abroad unless you already hold one.
+  const showClearance = !abroad || Boolean(c);
 
   const fed = ps.federal;
   const gov = card('Government Climate', `
-    ${meter(fed.stability, { label: '🏛️ Federal political stability' })}
+    ${meter(fed.stability, { label: abroad ? '🏛️ National political stability' : '🏛️ Federal political stability' })}
     ${fed.shutdown ? '<p class="why">🏚️ The federal government is shut down. Federal workers are furloughed.</p>' : ''}
     ${ps.city ? `<h4 class="sub">${esc(ps.city.name)}</h4>${meter(ps.city.approval, { label: '🗳️ Community approval' })}${meter(ps.city.fiscalHealth, { label: '💰 City fiscal health' })}` : '<p class="fine">Work for a city to track its budget and approval rating.</p>'}
     <p class="fine">Public employers' training budgets rise and fall with these numbers.</p>`, { icon: '🦅', accent: 'blue' });
 
-  return `${card('Civil Service Exams', `<p class="muted">Public jobs hire from ranked eligibility lists. ${PASSING_SCORE}+ passes; higher scores rank higher. Scores last 4 years.</p><ul class="history">${exams}</ul>`, { icon: '📝', accent: 'cyan' })}${clearance}${gov}`;
+  return `${card('Civil Service Exams', `<p class="muted">Public jobs hire from ranked eligibility lists. ${PASSING_SCORE}+ passes; higher scores rank higher. Scores last 4 years.</p><ul class="history">${exams}</ul>`, { icon: '📝', accent: 'cyan' })}${showClearance ? clearance : ''}${gov}`;
 }

@@ -9,6 +9,7 @@
  */
 import { migrate } from './Migrations.js';
 import { clamp, Random } from './Random.js';
+import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES } from '../modules/world/Countries.js';
 
 export const STATE_VERSION = 4;
@@ -35,12 +36,19 @@ const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miam
 
 /** Whose names people have: set when a life starts or loads (one life plays at a time). */
 let namePool = null;
+let mix = null;
 export function setNameCountry(countryId = 'US') {
   namePool = countryId !== 'US' ? COUNTRIES[countryId]?.names ?? null : null;
+  // Immigrant-background names, as common as they are in the country.
+  const d = namePool ? DIASPORA[countryId] : null;
+  mix = d?.share ? { share: d.share, pools: d.from.flatMap(([src, w]) => Array(w).fill(COMMUNITY_NAMES[src] ?? (src === 'US' ? { male: FIRST_NAMES.male, female: FIRST_NAMES.female, last: LAST_NAMES } : COUNTRIES[src]?.names)).filter(Boolean)) } : null;
 }
 
 export function randomName(rng, gender) {
-  if (namePool) return { firstName: rng.pick(namePool[gender] ?? namePool.male), lastName: rng.pick(namePool.last) };
+  if (namePool) {
+    const pool = mix?.pools.length && rng.chance(mix.share) ? rng.pick(mix.pools) : namePool;
+    return { firstName: rng.pick(pool[gender] ?? pool.male), lastName: rng.pick(pool.last) };
+  }
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
 }
 

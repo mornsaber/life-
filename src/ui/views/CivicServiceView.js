@@ -112,5 +112,11 @@ export function civicServiceView(state) {
     ? card('Past Service', `<ul class="history">${[...state.service.history].reverse().map((h) => `<li><b>${esc(h.name)}</b> · ${esc(h.title)} <small>${h.years} yrs, ended at ${h.endAge} — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
   const gear = ['team.sdf', ...Object.keys(TEAMS).map((id) => `team.${id}`)].map((ref) => equipmentCard(state, ref)).join('');
-  return `${volunteerRoles(state)}<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}${gear}${veteranPosts(state)}${history}`;
+  // AmeriCorps, the Peace Corps, State Defense Forces and FEMA teams are US programs: abroad, show only what you're already in.
+  const abroad = Boolean(state.character.countryId);
+  const s2 = state.service;
+  const us = abroad
+    ? `${s2.program ? `<div class="grid-2">${nationalService(state)}</div>` : ''}${s2.sdf ? stateGuard(state) : ''}${Object.values(s2.teams ?? {}).some(Boolean) ? disasterTeams(state) : ''}`
+    : `<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}`;
+  return `${volunteerRoles(state)}${us}${gear}${veteranPosts(state)}${history}`;
 }

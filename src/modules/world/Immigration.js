@@ -291,7 +291,7 @@ export function visaEligibility(state, to, kind) {
     if (!state.education.degrees.some((d) => d.type === 'highschool')) return { ok: false, reason: 'Finish high school first' };
     if (liquid(state) < 20000) return { ok: false, reason: `Show ${'$'}20,000 for a year's fees and living costs` };
   }
-  if (kind === 'family' && nationalityCode(spouse) !== to) return { ok: false, reason: `Needs a ${COUNTRIES[to].demonym} spouse` };
+  if (kind === 'family' && nationalityCode(spouse) !== to) return { ok: false, reason: `Needs ${/^[AEIOU]/.test(COUNTRIES[to].demonym) ? 'an' : 'a'} ${COUNTRIES[to].demonym} spouse` };
   if (rule.minAge && age < rule.minAge) return { ok: false, reason: `Age ${rule.minAge}+` };
   if (rule.amount && liquid(state) < rule.amount) return { ok: false, reason: `Needs ${'$'}${rule.amount.toLocaleString()} to invest or show` };
   let odds = rule.odds;

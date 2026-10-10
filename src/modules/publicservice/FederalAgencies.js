@@ -285,7 +285,8 @@ export const FederalAgencies = {
     const election = year % 4 === 0;
     const downturn = state.economy.phase === 'recession' ? -6 : 0;
     fed.stability = Math.round(clamp(fed.stability + (55 - fed.stability) * 0.1 + downturn + rng.int(election ? -15 : -6, election ? 10 : 6), 0, 100));
-    fed.shutdown = fed.stability < 35 && rng.chance(0.55);
+    // Shutdowns are a US budget phenomenon; other governments keep running on a provisional budget.
+    fed.shutdown = !state.character.countryId && fed.stability < 35 && rng.chance(0.55);
 
     const job = state.career.job;
     if (!job || job.sector !== 'federal') return;

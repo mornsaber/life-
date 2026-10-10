@@ -16,6 +16,23 @@
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ASSETS, PROFILES, profileReturn, realReturn, IRA_LIMIT, ROTH_INCOME_LIMIT } from './Assets.js';
+import { ACCOUNTS } from '../world/CountryLaw.js';
+
+/** The tax-advantaged accounts where you live: names and yearly limits (the US IRAs share one limit). */
+export function accountsHere(state) {
+  const a = ACCOUNTS[state.character.countryId];
+  if (!a) return { dc: '401(k)/TSP', roth: { name: 'Roth IRA', short: 'Roth' }, traditional: { name: 'Traditional IRA', short: 'Traditional' }, shared: true };
+  return { dc: a.dc, roth: a.roth && { ...a.roth, short: a.roth.name }, traditional: a.traditional && { ...a.traditional, short: a.traditional.name }, shared: false };
+}
+/** Room left this year in an account. */
+export function accountRoom(state, kind, earned = state.career.job?.salary ?? 0) {
+  const acc = accountsHere(state);
+  if (acc.shared) return IRA_LIMIT(state.character.age) - yearlyCount(state, 'ira.contributed');
+  const rule = acc[kind];
+  if (!rule) return 0;
+  const cap = rule.share ? Math.min(rule.limit, Math.round(earned * rule.share)) : rule.limit;
+  return cap - yearlyCount(state, `ira.${kind}`);
+}
 
 const MEME_TICKERS = ['$GLOW', '$MOON', '$BRRR', '$APE', '$ZOOM', '$YOLO'];
 
@@ -236,21 +253,24 @@ export const BrokerageEngine = {
       const { state } = ctx;
       if (!['roth', 'traditional'].includes(kind)) return;
       const earned = state.finances.ledger.income.filter((i) => i.wage).reduce((s, i) => s + i.amount, 0) || (state.career.job?.salary ?? 0);
-      if (!earned) return ctx.toast('IRA contributions need earned income.', 'warn');
-      if (kind === 'roth' && (state.finances.lastYear?.gross ?? 0) > ROTH_INCOME_LIMIT) return ctx.toast('Your income is over the Roth limit.', 'warn');
-      const room = IRA_LIMIT(state.character.age) - yearlyCount(state, 'ira.contributed');
+      const acc = accountsHere(state);
+      if (!acc[kind]) return ctx.toast('There\'s no such account here.', 'warn');
+      if (!earned) return ctx.toast('Contributions need earned income.', 'warn');
+      if (acc.shared && kind === 'roth' && (state.finances.lastYear?.gross ?? 0) > ROTH_INCOME_LIMIT) return ctx.toast('Your income is over the Roth limit.', 'warn');
+      const room = accountRoom(state, kind, earned);
       const amount = Math.min(room, Math.floor(state.finances.cash));
-      if (amount <= 0) return ctx.toast(room <= 0 ? 'You\'ve maxed your IRA this year.' : 'No cash to contribute.', 'warn');
-      state.yearly['ira.contributed'] = yearlyCount(state, 'ira.contributed') + amount;
+      if (amount <= 0) return ctx.toast(room <= 0 ? `You've maxed your ${acc[kind].name} this year.` : 'No cash to contribute.', 'warn');
+      if (acc.shared) state.yearly['ira.contributed'] = yearlyCount(state, 'ira.contributed') + amount;
+      else state.yearly[`ira.${kind}`] = yearlyCount(state, `ira.${kind}`) + amount;
       state.finances.cash -= amount;
       if (kind === 'roth') {
         state.investing.ira.roth.value += amount;
         state.investing.ira.roth.basis += amount;
       } else {
         state.investing.ira.traditional.value += amount;
-        ctx.deduct(amount, 'Traditional IRA contribution');
+        ctx.deduct(amount, `${acc.traditional.name} contribution`);
       }
-      ctx.log(`You contributed $${amount.toLocaleString()} to your ${kind === 'roth' ? 'Roth' : 'Traditional'} IRA.`, '🏦');
+      ctx.log(`You contributed $${amount.toLocaleString()} to your ${acc[kind].name}.`, '🏦');
     },
     iraWithdraw(ctx) {
       const { state } = ctx;

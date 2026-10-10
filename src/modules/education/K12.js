@@ -13,6 +13,7 @@
  * }
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { CADETS } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
 
 export const SCHOOL_TYPES = {
@@ -43,6 +44,8 @@ export const ACTIVITIES = {
   volunteer: { name: 'Community service', icon: '🤝', minAge: 12, stats: { happiness: 2 }, resume: 1 },
 };
 export const MAX_ACTIVITIES = 3;
+/** Cadet programs exist only where schools run them (JROTC in the US; the Combined Cadet Force, NCC… elsewhere). */
+export const activityHere = (state, id) => !(id in (CADETS[state.character.countryId] ?? {})) || Boolean(CADETS[state.character.countryId][id]);
 
 /** Teen part-time jobs: hourly wage, hours per week during the school year. */
 export const TEEN_JOBS = {
@@ -323,6 +326,7 @@ export const K12Engine = {
       const k = state.k12;
       const a = ACTIVITIES[id];
       if (!a || !inK12(state)) return;
+      if (!activityHere(state, id) && !k.activities.includes(id)) return;
       if (k.activities.includes(id)) {
         k.activities = k.activities.filter((x) => x !== id);
         return ctx.log(`You quit ${a.name.toLowerCase()}.`, a.icon);

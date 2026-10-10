@@ -16,6 +16,7 @@ import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
 import { regionsInState } from '../life/Regions.js';
+import { localUnionName } from '../world/CountryLaw.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -94,7 +95,10 @@ export function publicBudgetFactor(state, sector) {
 
 export function createEmployer(rng, state, profession, regionId) {
   const size = pickSize(rng, profession, regionId);
-  const unionDef = profession.union;
+  // Abroad, the country's own union for that kind of work (or none where it's barred).
+  const cc = REGIONS[regionId]?.country;
+  const localName = profession.union ? localUnionName(cc, profession.union.name) : null;
+  const unionDef = localName ? { ...profession.union, name: localName } : null;
   // Right-to-work states have roughly half the union density.
   const rtw = rightToWork(state, REGIONS[regionId]?.state ?? 'IL');
   // Government workplaces unionize only where the state lets public employees bargain.

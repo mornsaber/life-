@@ -212,11 +212,13 @@ function localTick(ctx) {
   if (state.character.age < 18 || state.legal.incarceration || !rng.chance(0.6) || state.prompts.some((p) => p.type === 'civic.ballot')) return;
   const ids = eligibleMeasures(state);
   if (!ids.length) return;
+  // Referendums abroad come up far less often than US ballot measures.
+  if (state.character.countryId && !rng.chance(0.3)) return;
   const id = rng.pick(ids);
   const m = MEASURES[id];
   const organizer = (state.civic.activism?.influence ?? 0) >= 15 || Boolean(state.politics.office);
   ctx.prompt({
-    type: 'civic.ballot', icon: m.icon, title: `On the Ballot: ${m.name}`,
+    type: 'civic.ballot', icon: m.icon, title: m.referendum ? m.name : `On the Ballot: ${m.name}`,
     text: `${m.pitch}${m.effects.taxMult ? `\nProperty taxes ${m.effects.taxMult > 0 ? '+' : ''}${Math.round(m.effects.taxMult * 100)}%.` : ''}${m.effects.levy ? `\nAbout ${m.effects.levy > 0 ? '+' : '−'}$${Math.abs(m.effects.levy)}/yr per household.` : ''}`,
     options: [
       { id: 'yes', label: '✅ Vote yes' },
@@ -438,8 +440,14 @@ export const CivicModule = {
         if (state.civic.activism) state.civic.activism.influence = Math.min(100, state.civic.activism.influence + 3);
         recognize(state, 2);
       }
-      const yes = clamp(m.support + rng.float(-0.08, 0.08) + playerPush(state, optionId), 0.2, 0.8);
-      const passed = yes > 0.5;
+      const yes = clamp(m.support + rng.float(-0.08, 0.08) + playerPush(state, optionId), 0.2, 0.95);
+      // Turnout quorum: void unless half the electorate votes.
+      const turnout = m.quorum ? rng.float(0.25, 0.6) : 1;
+      const passed = yes > 0.5 && turnout >= 0.5;
+      if (m.quorum && turnout < 0.5) {
+        local.history.push({ id: data.measureId, age: state.character.age, passed: false, yes: Math.round(yes * 1000) / 10, voted: optionId });
+        return ctx.log(`${m.name}: only ${Math.round(turnout * 100)}% turned out, short of the 50% quorum — the result doesn't count.`, m.icon, 'info');
+      }
       local.history.push({ id: data.measureId, age: state.character.age, passed, yes: Math.round(yes * 1000) / 10, voted: optionId });
       if (passed) enact(state, data.measureId);
       const mine = optionId === 'yes' || optionId === 'campaignYes' ? passed : optionId === 'no' || optionId === 'campaignNo' ? !passed : null;

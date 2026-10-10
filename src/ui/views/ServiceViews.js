@@ -21,6 +21,7 @@ import {
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
 import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
+import { volunteerServiceHere } from '../../modules/world/CountryLaw.js';
 import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember } from '../../modules/emergency/EmergencyEngine.js';
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
@@ -160,7 +161,7 @@ function certList(state, serviceId) {
 }
 
 export function emergencyView(state) {
-  const open = SERVICE_LIST.filter((svc) => !state.emergency[svc.id]).map((svc) => {
+  const open = SERVICE_LIST.filter((svc) => !state.emergency[svc.id] && volunteerServiceHere(state.character.countryId, svc.id)).map((svc) => {
     const check = joinEligibility(state, svc.id);
     const top = svc.ranks[svc.ranks.length - 1].title;
     return `<li class="job-row ${check.ok ? '' : 'locked'}">

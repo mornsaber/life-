@@ -546,11 +546,14 @@ for (const [cc, agencies] of Object.entries(AGENCIES)) {
   }
 }
 
+/** County offices with no counterpart abroad (sheriffs). */
+const US_ONLY_PROFESSIONS = ['sheriff'];
+
 /** Careers on the job board where you live: everything except US federal jobs abroad, plus your country's own. */
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
   if (cc === 'US') return PROFESSION_LIST;
-  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal'), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
+  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id)), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
 }
 
 /** A job-board field's careers where you live (US federal ids swap for national counterparts abroad). */
@@ -558,7 +561,7 @@ export function fieldIdsFor(state, fieldId) {
   const cc = state?.character?.countryId ?? 'US';
   const ids = JOB_FIELDS[fieldId]?.ids ?? [];
   if (cc === 'US') return ids;
-  return ids.map((id) => (PROFESSIONS[id]?.sector === 'federal' ? (NATIONAL_PROFESSIONS[nationalProfessionId(cc, id)] ? nationalProfessionId(cc, id) : null) : id)).filter(Boolean);
+  return ids.filter((id) => !US_ONLY_PROFESSIONS.includes(id)).map((id) => (PROFESSIONS[id]?.sector === 'federal' ? (NATIONAL_PROFESSIONS[nationalProfessionId(cc, id)] ? nationalProfessionId(cc, id) : null) : id)).filter(Boolean);
 }
 
 export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };

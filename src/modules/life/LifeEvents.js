@@ -8,6 +8,7 @@
  * Events are picked with pickFresh, so a long life rarely sees repeats.
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
+import { JUSTICE } from '../world/CountryLaw.js';
 import { isIncarcerated } from '../../core/State.js';
 import { MORE_LIFE_EVENTS, FOLLOW_UPS, downPaymentAssistance } from './MoreLifeEvents.js';
 
@@ -111,7 +112,7 @@ const BASE_EVENTS = [
   { id: 'burglary', minAge: 20, when: free, title: 'Break-In', text: '', run: (ctx) => { const lost = ctx.rng.int(800, 6000); ctx.spend(lost, 'Burglary losses', { allowDebt: true }); stats(ctx, { stress: 6, happiness: -4 }); return ['🚪', `Someone broke in while you were at work and took $${lost.toLocaleString()} worth of electronics.`, 'bad']; } },
   { id: 'lightning', minAge: 10, when: free, title: 'Struck by Lightning', text: '', run: (ctx) => { ctx.stat('health', -ctx.rng.int(15, 35)); if (ctx.rng.chance(0.3)) ctx.emit('health:injury', { conditionId: 'tbi', severity: ctx.rng.int(20, 45) }); return ['⚡', 'You were struck by lightning on a golf course. You survived, with a story nobody believes.', 'bad']; } },
   { id: 'foodPoisoning', minAge: 5, title: 'Bad Sushi', text: '', run: (ctx) => { ctx.stat('health', -6); return ['🍣', 'Gas-station sushi. You lost three days and five pounds.', 'warn']; } },
-  { id: 'jury', minAge: 18, when: free, title: 'Jury Duty', text: 'You were summoned for jury duty on a two-week trial.', options: [
+  { id: 'jury', minAge: 18, when: (s) => free(s) && ['jury', undefined].includes(JUSTICE[s.character.countryId]?.trial), title: 'Jury Duty', text: 'You were summoned for jury duty on a two-week trial.', options: [
     { id: 'serve', label: '⚖️ Serve', resolve: (ctx) => { stats(ctx, { smarts: 1, stress: 3 }); if (ctx.state.career.job) ctx.emit('career:adjust', { performance: -2 }); return 'You served as foreperson. The verdict took two days.'; } },
     { id: 'excuse', label: '📝 Ask to be excused', resolve: (ctx) => (ctx.rng.chance(0.5) ? 'The judge excused you.' : (stats(ctx, { stress: 4 }), 'Denied. You served anyway.')) },
   ] },

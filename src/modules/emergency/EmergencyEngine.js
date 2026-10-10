@@ -20,6 +20,7 @@
  * }
  */
 import { pickFresh } from '../../core/Pools.js';
+import { volunteerServiceHere } from '../world/CountryLaw.js';
 import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -63,6 +64,7 @@ export function joinEligibility(state, serviceId) {
   const svc = SERVICES[serviceId];
   if (!svc) return { ok: false, reason: 'Unknown service' };
   if (state.emergency[serviceId]) return { ok: false, reason: 'Already a member' };
+  if (!volunteerServiceHere(state.character.countryId, serviceId)) return { ok: false, reason: 'No such service here' };
   if (state.character.age < svc.minAge) return { ok: false, reason: `Must be ${svc.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (isOnActiveDuty(state)) return { ok: false, reason: 'On active duty' };

@@ -12,6 +12,7 @@
  *   safety    0–100: police, fire and EMS staffing (50 = typical)
  */
 import { clamp } from '../../core/Random.js';
+import { REFERENDUMS } from '../world/CountryLaw.js';
 
 export const MEASURES = {
   schoolBond: { name: 'School construction bond', icon: '🏫', support: 0.56, effects: { taxMult: 0.06, services: 7 }, pitch: 'Rebuild aging schools; paid for with a property-tax increase.' },
@@ -23,6 +24,15 @@ export const MEASURES = {
   repealTransit: { name: 'Repeal the transit tax', icon: '🛑', support: 0.45, effects: { levy: -260, services: -5 }, pitch: 'Scrap the half-cent transit tax.', requires: 'transitTax' },
   fireMerger: { name: 'Fire district consolidation', icon: '🚒', support: 0.48, effects: { levy: -80, safety: 2 }, pitch: 'Merge three small fire districts to save money.' },
   libraryLevy: { name: 'Library operating levy', icon: '📚', support: 0.58, effects: { levy: 60, services: 2 }, pitch: 'Keep branch libraries open on weekends.' },
+};
+
+// Each country's referendums, out of sight of the US list.
+for (const [cc, list] of Object.entries(REFERENDUMS)) for (const [id, m] of Object.entries(list)) Object.defineProperty(MEASURES, `${cc}_${id}`, { value: { ...m, referendum: true }, enumerable: false });
+/** The votes that can come up where you live. */
+const measurePool = (state) => {
+  const cc = state.character.countryId;
+  if (!cc) return Object.entries(MEASURES);
+  return Object.keys(REFERENDUMS[cc] ?? {}).map((id) => [`${cc}_${id}`, MEASURES[`${cc}_${id}`]]);
 };
 
 export function localPolicy(state, regionId = state.character.regionId) {
@@ -38,7 +48,7 @@ export function localTaxMult(state, regionId) {
 /** Measures that could qualify for the ballot here this year. */
 export function eligibleMeasures(state) {
   const local = localPolicy(state);
-  return Object.entries(MEASURES).filter(([id, m]) => {
+  return measurePool(state).filter(([id, m]) => {
     if (m.requires && !local.passed.includes(m.requires)) return false;
     if (m.unless && local.passed.includes(m.unless)) return false;
     // The same measure doesn't come back within 4 years of the last vote.

@@ -112,6 +112,7 @@ export function applicationEligibility(state, professionId) {
   const profession = getProfession(professionId);
   if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
+  if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
   if (profession.country) {
     // A national government job: your country of residence, and its citizens only.

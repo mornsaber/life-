@@ -268,7 +268,9 @@ export function refreshExecutiveSearch(state) {
   if (search?.age === state.character.age) return;
   const rng = sideRng(state);
   const region = state.character.regionId;
-  const types = Object.entries(ORG_TYPES).filter(([, t]) => t.scope !== 'nation' || rng.chance(0.3));
+  // Abroad: no US federal agencies.
+  const abroad = Boolean(state.character.countryId);
+  const types = Object.entries(ORG_TYPES).filter(([, t]) => !(abroad && t.sector === 'federal') && (t.scope !== 'nation' || rng.chance(0.3)));
   const listings = [];
   for (let i = 0; i < 12 && listings.length < 5; i++) {
     const [typeId, t] = rng.pick(types);

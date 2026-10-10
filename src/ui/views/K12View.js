@@ -10,6 +10,8 @@ import {
 import { MAJORS, majorsFor } from '../../modules/education/Catalog.js';
 import { admissionChance, enrollmentEligibility } from '../../modules/education/EducationEngine.js';
 import { hasFelony } from '../../core/State.js';
+import { activityHere } from '../../modules/education/K12.js';
+import { EDUCATION } from '../../modules/world/Education.js';
 
 const PAYER = { free: 'Free', parents: 'Your parents pay', aid: 'Need-based scholarship', self: 'You pay' };
 
@@ -54,7 +56,7 @@ function transferCard(state) {
 function activitiesCard(state) {
   const k = state.k12;
   const age = state.character.age;
-  const chips = Object.entries(ACTIVITIES).map(([id, a]) => button(`${a.icon} ${a.name}`, 'k12.toggleActivity', {
+  const chips = Object.entries(ACTIVITIES).filter(([id]) => activityHere(state, id)).map(([id, a]) => button(`${a.icon} ${a.name}`, 'k12.toggleActivity', {
     arg: id, variant: k.activities.includes(id) ? 'tiny on' : 'tiny', disabled: age < a.minAge || (!k.activities.includes(id) && k.activities.length >= MAX_ACTIVITIES), hint: age < a.minAge ? `Ages ${a.minAge}+` : '',
   })).join('');
   const cadet = cadetRank(state);
@@ -86,19 +88,21 @@ export function academyCard(state) {
   if (state.education.degrees.some((d) => d.type === 'bachelor')) return '';
   const check = (ok, text) => `<li>${ok ? '✅' : '⬜'} ${text}</li>`;
   const nominated = state.campus.nomination;
+  const abroad = Boolean(state.character.countryId);
   const steps = [
     check(age >= 17, 'Age 17–23 (apply senior year or later)'),
     check(hasDiploma(state), 'High-school diploma or GED'),
-    check(nominated, `Congressional nomination ${nominated ? '' : '(apply from 16; JROTC, activities, GPA and military prep schools help)'}`),
+    check(nominated, abroad ? `Entrance selection: written exam and interview ${nominated ? '' : '(from 16; grades, activities and fitness help)'}` : `Congressional nomination ${nominated ? '' : '(apply from 16; JROTC, activities, GPA and military prep schools help)'}`),
     check(state.stats.fitness >= 55 && state.stats.health >= 50, `Candidate fitness assessment (fitness 55+, health 50+ — you: ${state.stats.fitness}/${state.stats.health})`),
     check(!hasFelony(state), 'Clean record'),
   ].join('');
   const eligible = enrollmentEligibility(state, 'bachelor', 'academy', majorsFor('bachelor')[0]);
   const odds = Math.round(admissionChance(state, 'bachelor', 'academy') * 100);
   const majors = majorsFor('bachelor').map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }));
-  return card('Service Academies', `<p class="muted">West Point, Annapolis, the Air Force and Coast Guard academies: free tuition, a commission at graduation, then a 5-year service obligation.</p>
+  const academyName = EDUCATION[state.character.countryId]?.schools?.academy;
+  return card(abroad ? 'Military Academy' : 'Service Academies', `<p class="muted">${abroad ? `${esc(academyName ?? 'The national military academy')}: free tuition and pay, a commission at graduation, then years of service.` : 'West Point, Annapolis, the Air Force and Coast Guard academies: free tuition, a commission at graduation, then a 5-year service obligation.'}</p>
     <ul class="history checklist">${steps}</ul>
-    <div class="toggle-row">${button(nominated ? '🏛️ Nominated' : '🏛️ Seek a nomination', 'campus.seekNomination', { variant: nominated ? 'small on' : 'small', disabled: nominated || age < 16 || Boolean(state.yearly['campus.nomination']), hint: age < 16 ? 'From age 16' : 'One try a year' })}</div>
+    <div class="toggle-row">${button(nominated ? (abroad ? '🏛️ Selected' : '🏛️ Nominated') : abroad ? '🏛️ Sit the entrance selection' : '🏛️ Seek a nomination', 'campus.seekNomination', { variant: nominated ? 'small on' : 'small', disabled: nominated || age < 16 || Boolean(state.yearly['campus.nomination']), hint: age < 16 ? 'From age 16' : 'One try a year' })}</div>
     <div class="enroll-form" data-collect-root>
       <input type="hidden" data-part="program" value="bachelor"><input type="hidden" data-part="school" value="academy">
       ${select('major', majors)}<input type="hidden" data-part="pace" value="full">

@@ -24,16 +24,22 @@
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { EDUCATION, educationTerms } from './Education.js';
-import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX } from './CountryLaw.js';
+import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, ENTRANCE_EXAMS } from './CountryLaw.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
   const v = VETERANS[cc];
   const loan = SMALL_BIZ_LOAN[cc];
   return {
+    ...volunteerTerms(cc),
+    ...(ENTRANCE_EXAMS[cc] ? { 'the SAT': `the ${ENTRANCE_EXAMS[cc].name}`, 'SAT prep': `${ENTRANCE_EXAMS[cc].name} prep` } : {}),
     ...(CREDIT[cc] ? { 'credit score': CREDIT[cc].name } : {}),
     ...(loan ? { 'SBA 7(a) loan': loan, 'SBA 504 loan': loan, 'SBA lenders': `${loan} lenders`, 'an SBA loan': `a ${loan}`, 'SBA loan': loan, '🏦 SBA': `🏦 ${loan}`, SBA: loan } : {}),
     ...(STOCK_INDEX[cc] ? { 'S&P 500': STOCK_INDEX[cc], 'S&P': STOCK_INDEX[cc] } : {}),
+    ...(CADETS[cc]?.jrotc ? { JROTC: CADETS[cc].jrotc } : {}),
+    ...(CADETS[cc]?.seaCadets ? { 'Sea Cadets': CADETS[cc].seaCadets } : {}),
+    ...(FOREIGN_SERVICE_EXAM[cc] ? { 'Foreign Service Officer Test (FSOT)': FOREIGN_SERVICE_EXAM[cc], FSOT: FOREIGN_SERVICE_EXAM[cc] } : {}),
+    ...(PROSECUTORS[cc] ? { "District Attorney's Office": PROSECUTORS[cc][0], "Public Defender's Office": PROSECUTORS[cc][1], 'Probation & Parole': PROSECUTORS[cc][2], 'public defender': JUSTICE[cc]?.legalAid ?? 'legal aid lawyer' } : {}),
     ...(v ? { '🇺🇸 American Legion': `🎖️ ${v.orgs[0]}`, 'American Legion': v.orgs[0], 'Veterans of Foreign Wars': v.orgs[1], VFW: v.orgs[1], 'VA care': `care from ${v.care}`, 'VA claim': 'veterans\' claim' } : {}),
   };
 }
@@ -383,7 +389,21 @@ export function localizeMoney(text, country) {
 }
 
 /** Wording every country outside the US shares (parties pick candidates; laws are regional or national). */
-const ABROAD_TERMS = { 'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
+const ABROAD_TERMS = {
+  // Offences: most countries don't split crimes into felonies and misdemeanors.
+  Felonies: 'Serious offences', felonies: 'serious offences', Felony: 'Serious offence', felony: 'serious offence',
+  Misdemeanors: 'Minor offences', misdemeanors: 'minor offences', Misdemeanor: 'Minor offence', misdemeanor: 'minor offence',
+  'federal felony': 'serious offence', 'Violent federal serious offence': 'Violent serious offence', 'federal wire fraud': 'wire fraud', 'a federal crime': 'a crime', 'The FBI solves most of these': 'The police solve most of these',
+  'county courthouse': 'courthouse', 'at the county': 'at the local council', 'County Jail': 'Remand Prison', 'County Public Health': 'Local Public Health', 'Public EMS (City / County)': 'Public Ambulance Service',
+  'Federal Law Enforcement': 'National Law Enforcement', 'Intelligence Community': 'Intelligence Services', 'Federal corporate tax rate': 'Corporate tax rate', 'State corporate tax surcharge': 'Regional business tax surcharge', 'of the state rate': 'of the regional rate',
+  'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
+  'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
+  HOA: 'owners\' association fees',
+  'laid off from the county': 'laid off from the council', 'Scales the state income tax everyone in the state pays.': 'Scales the regional income tax everyone in the region pays.',
+  'Appointed by the governor': 'Appointed by the regional government', 'appointed by the governor': 'appointed by the regional government', 'Governors appoint judges and agency heads.': 'Regional and national governments appoint agency heads; judges are career appointments.',
+  'Signals Intelligence (NSA)': 'signals intelligence', 'Clandestine Service (CIA Operations)': 'the clandestine service', 'Intelligence Analysis (CIA · DIA · NGA)': 'intelligence analysis',
+  'FAA Part 135 Air Carrier Certificate': 'Air Operator Certificate (AOC)', 'DEA Registration': 'controlled-drugs licence', 'Payroll tax (FICA)': 'Employer contributions',
+  'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
 
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {

@@ -303,3 +303,204 @@ export const MORTGAGES = {
     fixe20: { name: 'Prêt immobilier à taux fixe (20-yr)', years: 20, rateAdj: -0.035, minDown: 0.1, minScore: 600, maxDti: 0.35 },
   } },
 };
+
+/* ------------------------------------------------------------------ */
+/* Trade unions                                                        */
+/* ------------------------------------------------------------------ */
+
+/** The kind of union each US union in the game is, so each country can name its own. */
+const UNION_KIND = {
+  'Fraternal Order of Police Lodge 7': 'police', 'Airport Police Officers Association': 'police', 'Transit Police Benevolent Association': 'police', 'State Troopers Association': 'police', 'University Police Officers Association': 'police', 'Fraternal Order of Police — Special Police Lodge': 'police',
+  'IAFF Local 22': 'fire', 'IAFF Airport Firefighters Local': 'fire', 'Contract Firefighters Union': 'fire', 'State Firefighters Local': 'fire',
+  'Teamsters EMS Local 1199': 'ems', 'AFSCME EMS Local 2507': 'ems',
+  'National Nurses United': 'health', 'SEIU Healthcare': 'health', 'AFSCME Public Health Local': 'health',
+  'State Education Association': 'education', 'Faculty Federation': 'education', 'Faculty Association': 'education',
+  AFSCME: 'public', 'AFSCME Council 31': 'public', 'AFSCME Local 1001': 'public', 'AFSCME Highway Workers': 'public', 'SEIU State Workers': 'public', 'Public Defenders Union': 'public', 'National Treasury Employees Union': 'public', 'Probation & Parole Officers Association': 'public', 'Communications Workers Local': 'public',
+  'Correctional Peace Officers Association': 'prisons', 'AFSCME Detention Officers Local': 'prisons', 'Correctional Workers United': 'prisons',
+  'Teamsters Local 710': 'transport', Teamsters: 'transport', 'Amalgamated Transit Union Local 241': 'transport', 'Amalgamated Transit Union Local 1181': 'transport', 'Transport Workers Union Local 100': 'transport', 'SMART Transportation Division': 'rail', 'Seafarers International Union': 'transport', 'School Bus Drivers Local': 'transport', 'Teamsters Airline Division': 'aviation',
+  'Air Line Pilots Association': 'pilots', 'Association of Flight Attendants–CWA': 'aviation', 'National Air Traffic Controllers Association': 'aviation',
+  'IBEW Local 98': 'trades', 'IBEW Outside Local 1245': 'trades', 'UA Plumbers & Pipefitters Local 130': 'trades', 'United Association (UA) Local 597': 'trades', 'International Brotherhood of Boilermakers': 'trades', 'United Brotherhood of Carpenters Local 1': 'trades', 'Iron Workers Local 40': 'trades', 'Operating Engineers Local 150': 'trades',
+  'United Auto Workers (UAW)': 'industry', 'UFCW Local 400': 'retail', 'UNITE HERE Local 1': 'hospitality', 'UNITE HERE Local 11': 'hospitality', 'SEIU Security Officers United': 'services', 'Workers United (SEIU)': 'services',
+  NewsGuild: 'media', 'Tech Workers Union': 'tech', 'SAG-AFTRA': 'arts', 'American Federation of Musicians': 'arts', 'Players Association': 'arts', 'National Association of Letter Carriers': 'postal',
+  // US federal and county bodies: no counterpart abroad.
+  'AFGE TSA Council 100': null, 'Deputy Sheriffs\' Association': null, 'AFGE Council of Prison Locals': null, 'Federal Law Enforcement Officers Association': null, 'AFGE National Council of SSA Field Operations Locals': null, 'National Border Patrol Council': null,
+};
+/**
+ * Each country's unions by kind. null: workers in that service may not unionize
+ * (police in Japan, Korea, Mexico, the Philippines and India; firefighters in Japan).
+ */
+export const UNIONS = {
+  CA: { police: 'Police Association', fire: 'IAFF Canada Local', ems: 'CUPE Paramedics Local', health: 'Nurses\' Union', education: 'Teachers\' Federation', public: 'CUPE', prisons: 'Union of Canadian Correctional Officers', transport: 'Unifor (transportation)', rail: 'Teamsters Canada Rail Conference', aviation: 'CUPE Airline Division', pilots: 'Air Canada Pilots Association', trades: 'Building Trades Council', industry: 'Unifor', retail: 'UFCW Canada', hospitality: 'UNITE HERE Canada', services: 'SEIU Canada', media: 'Unifor Media', tech: 'Unifor (tech)', arts: 'ACTRA', postal: 'Canadian Union of Postal Workers' },
+  GB: { police: 'Police Federation', fire: 'Fire Brigades Union', ems: 'Unison (ambulance)', health: 'Royal College of Nursing', education: 'National Education Union', public: 'Unison', prisons: 'Prison Officers\' Association', transport: 'Unite (transport)', rail: 'RMT', aviation: 'Unite (aviation)', pilots: 'BALPA', trades: 'Unite (construction)', industry: 'Unite', retail: 'Usdaw', hospitality: 'GMB (hospitality)', services: 'GMB', media: 'National Union of Journalists', tech: 'Prospect', arts: 'Equity', postal: 'Communication Workers Union' },
+  DE: { police: 'Gewerkschaft der Polizei (GdP)', fire: 'komba Feuerwehr', ems: 'ver.di Rettungsdienst', health: 'ver.di Gesundheit', education: 'GEW', public: 'ver.di', prisons: 'BSBD', transport: 'ver.di Verkehr', rail: 'EVG', aviation: 'UFO', pilots: 'Vereinigung Cockpit', trades: 'IG BAU', industry: 'IG Metall', retail: 'ver.di Handel', hospitality: 'NGG', services: 'ver.di', media: 'DJV', tech: 'IG Metall (IT)', arts: 'GDBA', postal: 'ver.di Post' },
+  JP: { police: null, fire: null, ems: null, health: 'Japan Federation of Medical Workers\' Unions', education: 'Japan Teachers\' Union (Nikkyōso)', public: 'Jichirō', prisons: null, transport: 'Kōtsū Rōren', rail: 'JR Rengō', aviation: 'Kōkū Rengō', pilots: 'ALPA Japan', trades: 'Zenkensōren', industry: 'JAM', retail: 'UA Zensen', hospitality: 'UA Zensen', services: 'UA Zensen', media: 'Shimbun Rōren', tech: 'Denki Rengō', arts: 'Japan Actors Union', postal: 'JP Union' },
+  KR: { police: null, fire: 'Korean Government Employees\' Union (fire)', ems: 'Korean Government Employees\' Union (fire)', health: 'Korean Health and Medical Workers\' Union', education: 'Korean Teachers and Education Workers\' Union', public: 'Korean Government Employees\' Union', prisons: null, transport: 'Korean Public Service and Transport Workers\' Union', rail: 'Korean Railway Workers\' Union', aviation: 'Korean Air Cabin Crew Union', pilots: 'Korean Air Pilots Union', trades: 'Korean Construction Workers\' Union', industry: 'Korean Metal Workers\' Union', retail: 'Korean Service Workers\' Union', hospitality: 'Korean Service Workers\' Union', services: 'Korean Service Workers\' Union', media: 'National Union of Media Workers', tech: 'Korean Financial and IT Workers\' Union', arts: 'Korean Broadcasting Actors\' Union', postal: 'Korea Postal Workers\' Union' },
+  IT: { police: 'SIULP', fire: 'FP CGIL Vigili del Fuoco', ems: 'FP CGIL Sanità', health: 'Nursind', education: 'FLC CGIL', public: 'FP CGIL', prisons: 'SAPPE', transport: 'FILT CGIL', rail: 'FILT CGIL Ferrovieri', aviation: 'ANPAC', pilots: 'ANPAC', trades: 'FILLEA CGIL', industry: 'FIOM CGIL', retail: 'FILCAMS CGIL', hospitality: 'FILCAMS CGIL', services: 'FILCAMS CGIL', media: 'FNSI', tech: 'FIOM CGIL (ICT)', arts: 'SLC CGIL', postal: 'SLP CISL' },
+  MX: { police: null, fire: 'Sindicato de Bomberos', ems: 'SNTSA', health: 'SNTSA', education: 'SNTE', public: 'FSTSE', prisons: null, transport: 'CTM Transporte', rail: 'Sindicato de Trabajadores Ferrocarrileros', aviation: 'ASSA de México', pilots: 'ASPA', trades: 'CTM Construcción', industry: 'CTM', retail: 'CROC', hospitality: 'CROC', services: 'CROC', media: 'SITATYR', tech: 'Sindicato de Telefonistas', arts: 'ANDA', postal: 'Sindicato de Correos de México' },
+  PH: { police: null, fire: null, ems: 'PSLINK', health: 'Alliance of Health Workers', education: 'Alliance of Concerned Teachers', public: 'PSLINK', prisons: null, transport: 'PISTON', rail: 'PNR Workers Union', aviation: 'Flight Attendants and Stewards Association of the Philippines', pilots: 'Airline Pilots Association of the Philippines', trades: 'Associated Labor Unions (construction)', industry: 'Kilusang Mayo Uno', retail: 'ALU-TUCP', hospitality: 'NUWHRAIN', services: 'ALU-TUCP', media: 'NUJP', tech: 'BIEN', arts: null, postal: 'PhilPost Employees Union' },
+  IN: { police: null, fire: null, ems: 'EMRI Workers\' Union', health: 'All India Nurses\' Federation', education: 'All India Federation of Teachers\' Organisations', public: 'Confederation of Central Government Employees', prisons: null, transport: 'All India Road Transport Workers\' Federation', rail: 'All India Railwaymen\'s Federation', aviation: 'Air India Employees Union', pilots: 'Indian Commercial Pilots\' Association', trades: 'Construction Workers Federation of India', industry: 'CITU', retail: 'INTUC', hospitality: 'INTUC', services: 'INTUC', media: 'Indian Journalists Union', tech: 'NITES', arts: 'FWICE', postal: 'National Federation of Postal Employees' },
+  AU: { police: 'Police Association', fire: 'United Firefighters Union', ems: 'Ambulance Employees Association', health: 'Australian Nursing and Midwifery Federation', education: 'Australian Education Union', public: 'Community and Public Sector Union', prisons: 'CPSU (corrections)', transport: 'Transport Workers\' Union', rail: 'Rail, Tram and Bus Union', aviation: 'Flight Attendants\' Association of Australia', pilots: 'Australian Federation of Air Pilots', trades: 'CFMEU', industry: 'AMWU', retail: 'SDA', hospitality: 'United Workers Union', services: 'United Workers Union', media: 'MEAA', tech: 'Professionals Australia', arts: 'MEAA Equity', postal: 'CEPU' },
+  FR: { police: 'Alliance Police nationale', fire: 'SNSPP-PATS', ems: 'SUD Santé', health: 'CGT Santé', education: 'SNES-FSU', public: 'CGT Fonction publique', prisons: 'FO Pénitentiaire', transport: 'CGT Transports', rail: 'SUD-Rail', aviation: 'SNPNC', pilots: 'SNPL', trades: 'CGT Construction', industry: 'CGT Métallurgie', retail: 'CFDT Services', hospitality: 'CFDT Services', services: 'CFDT Services', media: 'SNJ', tech: 'CGT Informatique', arts: 'SFA-CGT', postal: 'SUD PTT' },
+};
+/** A US union's counterpart where you live: a name, null (none here), or the US name in the US. */
+export function localUnionName(countryId, usName) {
+  if (!countryId || countryId === 'US' || !UNIONS[countryId]) return usName;
+  if (!(usName in UNION_KIND)) return Object.values(UNIONS[countryId]).includes(usName) ? usName : UNIONS[countryId].services ?? null;
+  const kind = UNION_KIND[usName];
+  return kind ? UNIONS[countryId][kind] ?? null : null;
+}
+
+/* ------------------------------------------------------------------ */
+/* Cadets, foreign-service exams, prosecutors                          */
+/* ------------------------------------------------------------------ */
+
+/** School cadet programs in place of JROTC and the US Sea Cadets (null: none in schools there). */
+export const CADETS = {
+  CA: { jrotc: 'Royal Canadian Army Cadets', seaCadets: 'Royal Canadian Sea Cadets' },
+  GB: { jrotc: 'Combined Cadet Force', seaCadets: 'Sea Cadets' },
+  DE: { jrotc: null, seaCadets: null },
+  JP: { jrotc: null, seaCadets: null },
+  KR: { jrotc: null, seaCadets: null },
+  IT: { jrotc: null, seaCadets: null },
+  MX: { jrotc: null, seaCadets: null },
+  PH: { jrotc: 'Citizenship Advancement Training (CAT)', seaCadets: null },
+  IN: { jrotc: 'National Cadet Corps (NCC)', seaCadets: 'NCC Naval Wing' },
+  AU: { jrotc: 'Australian Army Cadets', seaCadets: 'Australian Navy Cadets' },
+  FR: { jrotc: 'Cadets de la Défense', seaCadets: null },
+};
+/** The diplomatic-service entrance exam. */
+export const FOREIGN_SERVICE_EXAM = {
+  CA: 'Foreign Service Exam (FSE)', GB: 'FCDO Fast Stream assessment', DE: 'Auswahlverfahren für den höheren Auswärtigen Dienst', JP: 'National Public Service Exam (Comprehensive)',
+  KR: 'Diplomatic Candidate Selection Exam', IT: 'Concorso diplomatico', MX: 'Servicio Exterior Mexicano entrance exam', PH: 'Foreign Service Officer Examination (FSOE)',
+  IN: 'UPSC Civil Services Examination (IFS)', AU: 'DFAT Graduate Program assessment', FR: 'Concours d\'Orient / INSP',
+};
+/** Public prosecution services, legal aid offices and probation services. */
+export const PROSECUTORS = {
+  CA: ['Crown Prosecutor\'s Office', 'Legal Aid Office', 'Probation Services'],
+  GB: ['Crown Prosecution Service', 'Public Defender Service', 'Probation Service'],
+  DE: ['Staatsanwaltschaft', 'Pflichtverteidiger chambers', 'Bewährungshilfe'],
+  JP: ['Public Prosecutors Office', 'Japan Legal Support Center (Hōterasu)', 'Probation Office'],
+  KR: ['Prosecutors\' Office', 'Public Defender\'s Office (Gukseon)', 'Probation Office'],
+  IT: ['Procura della Repubblica', 'Difensori d\'ufficio', 'UEPE (probation service)'],
+  MX: ['Fiscalía General', 'Defensoría Pública', 'Supervision of Precautionary Measures'],
+  PH: ['Office of the City Prosecutor (DOJ)', 'Public Attorney\'s Office', 'Parole and Probation Administration'],
+  IN: ['Directorate of Prosecution', 'Legal Services Authority', 'Probation Office'],
+  AU: ['Office of the Director of Public Prosecutions', 'Legal Aid Commission', 'Community Corrections'],
+  FR: ['Parquet (ministère public)', 'Bureau d\'aide juridictionnelle', 'SPIP (probation)'],
+};
+
+/** Volunteer emergency services by their local names (null: no such service there). */
+export const VOLUNTEER_SERVICES = {
+  CA: { fire: 'Volunteer Fire Department', police: 'Auxiliary Police', sar: 'Ground Search and Rescue', ambulance: 'St. John Ambulance', wildland: 'Forest Fire Crew', auxiliary: 'Canadian Coast Guard Auxiliary', cap: 'Civil Air Search and Rescue Association (CASARA)', cert: 'Community Emergency Response Team', redcross: 'Canadian Red Cross Disaster Team', skiPatrol: 'Canadian Ski Patrol', mrc: null },
+  GB: { fire: 'On-Call (Retained) Fire Service', police: 'Special Constabulary', sar: 'Mountain Rescue Team', ambulance: 'St John Ambulance', wildland: null, auxiliary: 'RNLI Lifeboat Crew', cap: null, cert: 'Community Resilience Team', redcross: 'British Red Cross Emergency Response', skiPatrol: null, mrc: null },
+  DE: { fire: 'Freiwillige Feuerwehr', police: 'Sicherheitswacht', sar: 'Bergwacht', ambulance: 'ASB Volunteer Ambulance', wildland: null, auxiliary: 'DGzRS Sea Rescue', cap: null, cert: 'Technisches Hilfswerk (THW)', redcross: 'Deutsches Rotes Kreuz Bereitschaft', skiPatrol: 'Bergwacht Ski Patrol', mrc: null },
+  JP: { fire: 'Shōbōdan (Volunteer Fire Corps)', police: null, sar: 'Mountain Rescue Team', ambulance: null, wildland: null, auxiliary: null, cap: null, cert: 'Jishu Bōsai Soshiki (Neighborhood Disaster Group)', redcross: 'Japanese Red Cross Volunteers', skiPatrol: 'Ski Patrol', mrc: null },
+  KR: { fire: 'Volunteer Fire Brigade (Uiyong Sobangdae)', police: 'Citizen Patrol (Jayul Bangbeomdae)', sar: 'Mountain Rescue Team', ambulance: null, wildland: null, auxiliary: 'Coast Guard Auxiliary', cap: null, cert: 'Civil Defense Corps (Minbangwidae)', redcross: 'Korean Red Cross Volunteers', skiPatrol: 'Ski Patrol', mrc: null },
+  IT: { fire: 'Vigili del Fuoco Volontari', police: null, sar: 'Soccorso Alpino (CNSAS)', ambulance: 'Misericordia Volunteer Ambulance', wildland: 'Antincendio Boschivo Volunteers', auxiliary: null, cap: null, cert: 'Protezione Civile Volunteers', redcross: 'Croce Rossa Italiana', skiPatrol: 'Soccorso Piste', mrc: null },
+  MX: { fire: 'Bomberos Voluntarios', police: null, sar: 'Brigada de Rescate Topos', ambulance: 'Cruz Roja Volunteer Paramedics', wildland: 'CONAFOR Volunteer Brigade', auxiliary: null, cap: null, cert: 'Brigada de Protección Civil', redcross: 'Cruz Roja Mexicana', skiPatrol: null, mrc: null },
+  PH: { fire: 'Fire Volunteer Brigade', police: 'Barangay Tanod', sar: 'Rescue Volunteers', ambulance: null, wildland: null, auxiliary: 'Philippine Coast Guard Auxiliary', cap: null, cert: 'Barangay Disaster Response Team', redcross: 'Philippine Red Cross', skiPatrol: null, mrc: null },
+  IN: { fire: null, police: 'Home Guards', sar: 'NDRF Volunteer Rescuers', ambulance: 'St John Ambulance India', wildland: null, auxiliary: null, cap: null, cert: 'Civil Defence Volunteers', redcross: 'Indian Red Cross Society', skiPatrol: null, mrc: null },
+  AU: { fire: 'Rural Fire Service', police: null, sar: 'SES Search and Rescue', ambulance: 'St John Ambulance Australia', wildland: 'RFS Bushfire Crew', auxiliary: 'Marine Rescue', cap: null, cert: 'State Emergency Service (SES)', redcross: 'Australian Red Cross', skiPatrol: 'Ski Patrol', mrc: null },
+  FR: { fire: 'Sapeurs-Pompiers Volontaires', police: 'Réserve opérationnelle de la Gendarmerie', sar: 'Secours en Montagne', ambulance: 'Protection Civile', wildland: 'Comités Communaux Feux de Forêts', auxiliary: 'SNSM Sea Rescue', cap: null, cert: 'Réserve Communale de Sécurité Civile', redcross: 'Croix-Rouge française', skiPatrol: 'Pisteurs-Secouristes', mrc: null },
+};
+const US_SERVICE_NAMES = { fire: 'Volunteer Fire Department', police: 'Police Reserve Unit', sar: 'Search & Rescue Team', ambulance: 'Volunteer Ambulance Corps', wildland: 'Wildland Fire Crew', auxiliary: 'Coast Guard Auxiliary', cap: 'Civil Air Patrol', cert: 'Community Emergency Response Team', redcross: 'Red Cross Disaster Action Team', skiPatrol: 'National Ski Patrol', mrc: 'Medical Reserve Corps' };
+/** Whether a volunteer service exists where you live. */
+export const volunteerServiceHere = (countryId, serviceId) => !VOLUNTEER_SERVICES[countryId] || Boolean(VOLUNTEER_SERVICES[countryId][serviceId]);
+/** Display swaps for the volunteer services' names. */
+export function volunteerTerms(countryId) {
+  const v = VOLUNTEER_SERVICES[countryId];
+  if (!v) return {};
+  return Object.fromEntries(Object.entries(US_SERVICE_NAMES).filter(([id]) => v[id]).map(([id, n]) => [n, v[id]]));
+}
+
+/* ------------------------------------------------------------------ */
+/* Retirement and savings accounts                                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Each country's tax-advantaged accounts in place of the 401(k) and IRAs (2025 limits, PPP).
+ *   dc           the workplace plan
+ *   roth         taxed going in, tax-free coming out (TFSA, ISA, NISA…); null: none
+ *   traditional  deductible now, taxed later (RRSP, SIPP, iDeCo…); share caps it at a share of earned income
+ */
+export const ACCOUNTS = {
+  CA: { dc: 'Group RRSP / pension plan', roth: { name: 'TFSA', limit: ppp(7000, CAD) }, traditional: { name: 'RRSP', limit: ppp(32490, CAD), share: 0.18 } },
+  GB: { dc: 'Workplace pension', roth: { name: 'Stocks & Shares ISA', limit: ppp(20000, GBP) }, traditional: { name: 'SIPP', limit: ppp(60000, GBP), share: 1 } },
+  DE: { dc: 'Betriebsrente (bAV)', roth: null, traditional: { name: 'Riester-Rente', limit: ppp(2100, EUR) } },
+  JP: { dc: 'Corporate DC plan', roth: { name: 'NISA', limit: ppp(3600000, JPY) }, traditional: { name: 'iDeCo', limit: ppp(276000, JPY) } },
+  KR: { dc: 'Retirement pension (DC type)', roth: { name: 'ISA', limit: ppp(20000000, KRW) }, traditional: { name: 'IRP / pension savings', limit: ppp(18000000, KRW) } },
+  IT: { dc: 'Fondo pensione negoziale', roth: { name: 'PIR', limit: ppp(40000, EUR_IT) }, traditional: { name: 'Fondo pensione aperto', limit: ppp(5164, EUR_IT) } },
+  MX: { dc: 'AFORE', roth: { name: 'AFORE voluntary savings', limit: ppp(100000, MXN) }, traditional: { name: 'Plan Personal de Retiro (PPR)', limit: ppp(198000, MXN), share: 0.1 } },
+  PH: { dc: 'SSS WISP', roth: { name: 'Pag-IBIG MP2', limit: ppp(200000, PHP) }, traditional: { name: 'PERA', limit: ppp(200000, PHP) } },
+  IN: { dc: 'EPF', roth: { name: 'PPF', limit: ppp(150000, INR) }, traditional: { name: 'NPS Tier I', limit: ppp(200000, INR) } },
+  AU: { dc: 'Superannuation', roth: { name: 'Non-concessional super', limit: ppp(120000, AUD) }, traditional: { name: 'Concessional super', limit: ppp(30000, AUD) } },
+  FR: { dc: 'PER collectif / épargne salariale', roth: { name: 'PEA', limit: ppp(30000, EUR_FR) }, traditional: { name: 'PER individuel', limit: ppp(35194, EUR_FR), share: 0.1 } },
+};
+
+/* ------------------------------------------------------------------ */
+/* Referendums                                                         */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Votes put to the people in place of US local ballot measures (effects as in civic/Local
+ * MEASURES: services, safety, a yearly levy or a property-tax multiplier). quorum: void
+ * unless half the electorate turns out (Italy's abrogative referendums usually fall short).
+ * Japan has never held a national referendum and India has none.
+ */
+export const REFERENDUMS = {
+  CA: {
+    electoralReform: { name: 'Provincial referendum on proportional representation', icon: '🗳️', support: 0.42, effects: { services: 1 }, pitch: 'Replace first-past-the-post with a proportional system.' },
+    transitLevy: { name: 'Municipal transit levy plebiscite', icon: '🚇', support: 0.5, effects: { levy: 200, services: 5 }, pitch: 'A dedicated levy for buses and light rail.' },
+  },
+  GB: {
+    localMayor: { name: 'Referendum on a directly elected mayor', icon: '🏛️', support: 0.45, effects: { services: 2 }, pitch: 'Replace the council leader with a mayor elected by everyone.' },
+    councilTax: { name: 'Council tax referendum (above-cap rise)', icon: '🧾', support: 0.4, effects: { levy: 150, services: 6 }, pitch: 'Raise council tax beyond the cap to protect local services.' },
+  },
+  DE: {
+    buergerentscheid: { name: 'Bürgerentscheid on a new tram line', icon: '🚋', support: 0.52, effects: { levy: 120, services: 5 }, pitch: 'Build the long-planned tram extension.' },
+    housingVolksentscheid: { name: 'Volksentscheid on expropriating large landlords', icon: '🏘️', support: 0.48, effects: { services: 3, taxMult: 0.02 }, pitch: 'Buy out landlords owning 3,000+ flats to cap rents.' },
+  },
+  KR: {
+    constitution: { name: 'Constitutional referendum (presidential term)', icon: '📜', support: 0.5, effects: { services: 1 }, pitch: 'Two four-year presidential terms instead of one five-year term.' },
+  },
+  IT: {
+    abrogativeLabour: { name: 'Abrogative referendum on labour law', icon: '✊', support: 0.6, quorum: true, effects: { services: 2 }, pitch: 'Repeal limits on reinstatement after unfair dismissal.' },
+    abrogativeCitizenship: { name: 'Abrogative referendum on citizenship residency', icon: '🛂', support: 0.55, quorum: true, effects: { services: 1 }, pitch: 'Cut the residence needed to naturalize from 10 years to 5.' },
+  },
+  MX: {
+    consulta: { name: 'Consulta popular on prosecuting former presidents', icon: '⚖️', support: 0.9, quorum: true, effects: { safety: 1 }, pitch: 'Should the authorities investigate past administrations?' },
+  },
+  PH: {
+    plebiscite: { name: 'Plebiscite on dividing the province', icon: '🗺️', support: 0.5, effects: { services: 3, levy: 40 }, pitch: 'Split the province in two, with new capitals and offices.' },
+  },
+  AU: {
+    constitution: { name: 'Constitutional referendum', icon: '📜', support: 0.42, effects: { services: 1 }, pitch: 'Amend the constitution (needs a national majority and a majority of states).' },
+    councilAmalgamation: { name: 'Council amalgamation poll', icon: '🏛️', support: 0.45, effects: { levy: -60, services: -1 }, pitch: 'Merge neighbouring councils to cut costs.' },
+  },
+  FR: {
+    referendumLocal: { name: 'Référendum local on a new tram line', icon: '🚋', support: 0.53, effects: { levy: 110, services: 5 }, pitch: 'Build the tram extension the region proposes.' },
+  },
+};
+
+/* ------------------------------------------------------------------ */
+/* University entrance exams (used by SchoolPaths)                     */
+/* ------------------------------------------------------------------ */
+
+/**
+ *   name    the exam; prep the cram school and its yearly cost (PPP)
+ *   weight  how much the score decides admission (0–1)
+ *   resit   whether people commonly re-sit a year later
+ */
+export const ENTRANCE_EXAMS = {
+  CA: { name: 'provincial diploma exams', prep: { name: 'tutoring', cost: ppp(3000, 1.2) }, weight: 0.3 },
+  GB: { name: 'A-levels', prep: { name: 'private tutoring', cost: ppp(3000, 0.68) }, weight: 0.7 },
+  DE: { name: 'Abitur', prep: { name: 'Nachhilfe tutoring', cost: ppp(1800, 0.72) }, weight: 0.6 },
+  JP: { name: 'Common Test for University Admissions', prep: { name: 'juku (cram school)', cost: ppp(600000, 96) }, weight: 0.9, resit: 'rōnin' },
+  KR: { name: 'suneung (CSAT)', prep: { name: 'hagwon (cram school)', cost: ppp(8000000, 830) }, weight: 1, resit: 'jaesu' },
+  IT: { name: 'maturità', prep: { name: 'ripetizioni (tutoring)', cost: ppp(1500, 0.64) }, weight: 0.3 },
+  MX: { name: 'EXANI-II / UNAM entrance exam', prep: { name: 'prep course', cost: ppp(12000, 10.5) }, weight: 0.6, resit: 'retry' },
+  PH: { name: 'UPCAT and college entrance tests', prep: { name: 'review center', cost: ppp(15000, 19.5) }, weight: 0.6 },
+  IN: { name: 'JEE / NEET / CUET', prep: { name: 'coaching centre (Kota)', cost: ppp(150000, 22) }, weight: 1, resit: 'drop year' },
+  AU: { name: 'ATAR (Year 12 exams)', prep: { name: 'private tutoring', cost: ppp(3000, 1.45) }, weight: 0.7 },
+  FR: { name: 'baccalauréat', prep: { name: 'cours particuliers', cost: ppp(1500, 0.71) }, weight: 0.4 },
+};
