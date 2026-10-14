@@ -15,6 +15,7 @@ import { cityPopulation } from '../org/Staffing.js';
 import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
+import { unionLaw } from './BargainingUnits.js';
 import { regionsInState } from '../life/Regions.js';
 import { localUnionName } from '../world/CountryLaw.js';
 
@@ -103,8 +104,10 @@ export function createEmployer(rng, state, profession, regionId) {
   const rtw = rightToWork(state, REGIONS[regionId]?.state ?? 'IL');
   // Government workplaces unionize only where the state lets public employees bargain.
   const publicOk = profession.sector === 'private' || profession.sector === 'federal' || lawValue(state, 'publicBargaining', REGIONS[regionId]?.state ?? 'IL') !== false;
-  const union = unionDef && rng.chance(unionDef.chance * (rtw ? 0.5 : 1) * (publicOk ? 1 : 0.25))
-    ? { name: unionDef.name, strike: unionDef.strike, duesRate: 0.013, agencyFee: !rtw, contractYearsLeft: rng.int(1, 3) }
+  // Country (and state) labour law: barred, a staff association, or a union that may or may not strike.
+  const law = unionDef ? unionLaw(cc, profession, { publicBargaining: publicOk }) : null;
+  const union = unionDef && !law.banned && rng.chance(unionDef.chance * (rtw ? 0.5 : 1) * (law.association ? 1.2 : 1))
+    ? { name: law.name ?? unionDef.name, strike: law.strike, ...(law.association ? { association: true } : {}), duesRate: law.association ? 0.008 : 0.013, agencyFee: !rtw && !law.association, contractYearsLeft: rng.int(1, 3) }
     : null;
   let name;
   if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state);

@@ -12,7 +12,8 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
-import { hire } from '../src/modules/career/CareerEngine.js';
+import { hire, promote } from '../src/modules/career/CareerEngine.js';
+import { unionLaw, memberUnion } from '../src/modules/career/BargainingUnits.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { currentBusiness, yearFinancials } from '../src/modules/business/Business.js';
 import { unionsInState, myUnion, unionPower, contractOffer, businessUnionYear, unionFor } from '../src/modules/career/LaborUnions.js';
@@ -224,6 +225,40 @@ const tests = {
     year(engine);
     assert.ok(state.career.job, 'still employed');
     assert.ok(state.career.job.salary >= pay * 1.05, `public pay raise: ${pay} → ${state.career.job.salary}`);
+  },
+  'labour law: bans, staff associations, supervisory units, and leaving on promotion'() {
+    // Japan: police may not unionize; civil servants have associations that can't bargain.
+    assert.ok(unionLaw('JP', PROFESSIONS.statePolice).banned);
+    assert.equal(unionLaw('GB', PROFESSIONS.police).association, true, 'the Police Federation is a staff association');
+    assert.equal(unionLaw('DE', PROFESSIONS.education).strike, false, 'Beamte may not strike');
+    assert.equal(unionLaw('US', PROFESSIONS.municipalAdmin, { publicBargaining: false }).banned != null, true);
+    assert.equal(unionLaw('US', PROFESSIONS.police, { publicBargaining: false }).association, true, 'meet-and-confer');
+    // A US police officer joins the FOP; promotion to lieutenant moves them to the supervisors' association.
+    const { engine, state } = life(4);
+    const prof = PROFESSIONS.police;
+    const employer = createEmployer(new Random(4), state, prof, state.character.regionId);
+    employer.union ??= { name: prof.union.name, strike: false, duesRate: 0.013, agencyFee: true, contractYearsLeft: 3 };
+    hire(engine.context(), { professionId: 'police', levelId: 'officer', employer });
+    engine.dispatch('career.joinUnion');
+    const job = state.career.job;
+    assert.ok(job.unionMember);
+    promote(engine.context(), 'sergeant');
+    assert.ok(job.unionMember, 'still represented');
+    assert.equal(job.unionUnit, 'supervisory');
+    assert.match(memberUnion(job).name, /Supervisors/);
+    // A private-sector supervisor in the US is excluded altogether.
+    const p = life(5);
+    const retail = Object.values(PROFESSIONS).find((x) => x.sector === 'private' && x.union && x.levels.some((l) => l.abilities.includes('supervise') && !l.abilities.includes('exec')));
+    const emp = createEmployer(new Random(5), p.state, retail, p.state.character.regionId);
+    emp.union ??= { name: retail.union.name, strike: true, duesRate: 0.013, agencyFee: true, contractYearsLeft: 3 };
+    const entry = retail.levels.find((l) => !l.abilities.includes('supervise'));
+    hire(p.engine.context(), { professionId: retail.id, levelId: entry.id, employer: emp });
+    p.engine.dispatch('career.joinUnion');
+    assert.ok(p.state.career.job.unionMember, retail.id);
+    const sup = retail.levels.find((l) => l.abilities.includes('supervise') && !l.abilities.includes('exec'));
+    promote(p.engine.context(), sup.id);
+    assert.equal(p.state.career.job.unionMember, false, 'promoted out of the bargaining unit');
+    assert.ok(p.state.log.flatMap((y) => y.entries).some((l) => /membership ended/.test(l.text)));
   },
 };
 

@@ -3,6 +3,7 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
@@ -501,6 +502,6 @@ function seniorMoveButtons(state, job) {
 function unionFold(state, job) {
   const panel = unionPanel(state, job);
   if (!panel) return '';
-  const label = job.employer.union ? `✊ ${esc(job.employer.union.name)}${job.unionMember ? ' · member' : ''}` : '✊ No union here';
+  const label = job.employer.union ? `✊ ${esc((memberUnion(job) ?? job.employer.union).name)}${job.unionMember ? ' · member' : ''}` : '✊ No union here';
   return disclosure('job.union', label, panel);
 }

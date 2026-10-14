@@ -30,6 +30,7 @@ import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { lawValue } from '../politics/Laws.js';
 import { localUnionName } from '../world/CountryLaw.js';
+import { memberUnion } from './BargainingUnits.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const POP = { small: 0.35, medium: 0.6, large: 1, enterprise: 1.7 };
@@ -197,7 +198,7 @@ export function syncMembership(ctx) {
   const { state } = ctx;
   state.unions ??= { seed: 7, byId: {}, seeded: {}, mine: null };
   const job = state.career.job;
-  const eu = job?.employer?.union;
+  const eu = memberUnion(job);
   const mine = state.unions.mine;
   if (job?.unionMember && eu) {
     const u = unionFor(state, eu);
@@ -662,6 +663,8 @@ export const LaborUnions = {
       if (ctx.state.character.age >= 16) seedUnions(ctx.state);
       const eu = ctx.state.career.job?.employer?.union;
       if (eu) unionFor(ctx.state, eu);
+      const mu = memberUnion(ctx.state.career.job);
+      if (mu && mu !== eu) unionFor(ctx.state, mu);
       syncMembership(ctx);
     });
     engine.bus.on('career:separated', ({ ctx }) => syncMembership(ctx));
@@ -767,7 +770,7 @@ export const LaborUnions = {
       u.duesRate = DUES_LEVELS[level].rate;
       if (u.duesRate > before) bumpStanding(state.unions.mine, -4);
       if (u.duesRate < before) bumpStanding(state.unions.mine, 3);
-      const eu = state.career.job?.employer?.union;
+      const eu = memberUnion(state.career.job);
       if (eu) eu.duesRate = u.duesRate;
       ctx.log(`${u.name} set dues at ${(u.duesRate * 100).toFixed(1)}% of pay.`, '💵');
     },

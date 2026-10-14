@@ -17,6 +17,7 @@
 import { clamp } from '../../core/Random.js';
 import { recalcSalary } from './Compensation.js';
 import { unionFor, contractOffer, bargainingPrompt, isOfficer, strikeWinChance, syncMembership, unionPower } from './LaborUnions.js';
+import { bargainingUnit, memberUnion, reconcileMembership } from './BargainingUnits.js';
 
 const isSupervisor = (job) => job.abilities.includes('supervise');
 
@@ -31,7 +32,14 @@ function applyRaise(ctx, job, pct) {
 
 export function unionEmployeeTick(ctx, job) {
   const { rng } = ctx;
-  const union = job.employer.union;
+  // A promotion (or a head post) can take you out of the bargaining unit, or into the supervisors' one.
+  const moved = reconcileMembership(ctx.state, job);
+  if (moved) {
+    ctx.log(moved, '✊');
+    syncMembership(ctx);
+  }
+  const unit = bargainingUnit(ctx.state, job);
+  const union = memberUnion(job) ?? (unit?.union && !unit.excluded ? unit.union : job.employer.union);
   if (!union) return;
   // The local behind this bargaining unit (LaborUnions): its power sets what contracts and strikes win.
   const org = unionFor(ctx.state, union);
@@ -49,8 +57,14 @@ export function unionEmployeeTick(ctx, job) {
     union.contractYearsLeft = 3;
     // Contracts chase inflation plus a real raise.
     const offer = contractOffer(ctx.state, org, rng);
-    if (job.unionMember && !isSupervisor(job) && isOfficer(ctx.state)) bargainingPrompt(ctx, job, org, offer);
-    else if (job.unionMember && !isSupervisor(job)) {
+    // A staff association can't bargain: an independent pay review body recommends the rise.
+    if (union.association) {
+      const award = Math.max(1, offer - 1);
+      if (!unit?.excluded) applyRaise(ctx, job, award);
+      return ctx.log(`The pay review body recommended +${award}%${union.supervisory ? '' : ` after evidence from the ${union.name}`}. Your ${union.supervisory ? 'association' : 'staff association'} can consult and lobby, but not bargain or strike.`, '📜');
+    }
+    if (job.unionMember && isOfficer(ctx.state)) bargainingPrompt(ctx, job, org, offer);
+    else if (job.unionMember) {
       ctx.prompt({
         type: 'career.cbaVote',
         icon: '🗳️',
@@ -62,8 +76,11 @@ export function unionEmployeeTick(ctx, job) {
         ],
         data: { offer },
       });
+    } else if (unit?.excluded) {
+      // Excluded managers' pay is set by the employer, usually tracking the contract below them.
+      applyRaise(ctx, job, Math.max(1, offer - 1));
     } else {
-      // Non-members and supervisors are covered by whatever the membership decides.
+      // Non-members are covered by whatever the membership decides.
       const struck = union.strike && rng.chance(0.1 + org.militancy / 500);
       if (struck) strikePrompt(ctx, job, offer);
       else {
@@ -71,7 +88,7 @@ export function unionEmployeeTick(ctx, job) {
         ctx.log(`${union.name} ratified a new contract: +${offer}% for the bargaining unit.`, '📜');
       }
     }
-  } else if (!union.strike && job.unionMember && rng.chance(0.03)) {
+  } else if (!union.strike && !union.association && !union.supervisory && job.unionMember && rng.chance(0.03)) {
     ctx.prompt({
       type: 'career.wildcat',
       icon: '🤒',
@@ -90,7 +107,7 @@ function strikePrompt(ctx, job, offer) {
     type: 'career.strike',
     icon: '✊',
     title: 'On Strike!',
-    text: `${job.employer.union.name} walked out at ${job.employer.name}. Picket lines are up outside.`,
+    text: `${(memberUnion(job) ?? job.employer.union).name} walked out at ${job.employer.name}. Picket lines are up outside.`,
     options: [
       { id: 'picket', label: '✊ Walk the picket line', hint: 'Lost wages, strike fund, solidarity' },
       { id: 'cross', label: '🚶 Cross the picket line', hint: 'Keep pay — coworkers won\'t forget' },
@@ -104,7 +121,7 @@ export const UnionResolvers = {
     const { rng } = ctx;
     const job = ctx.state.career.job;
     if (!job?.employer.union) return;
-    const union = job.employer.union;
+    const union = memberUnion(job) ?? job.employer.union;
     // Your vote is one of many — the membership decides.
     const rejected = rng.chance(optionId === 'reject' ? 0.6 : 0.2);
     if (!rejected) {
@@ -124,7 +141,7 @@ export const UnionResolvers = {
     const { rng } = ctx;
     const job = ctx.state.career.job;
     if (!job) return;
-    const org = job.employer.union ? unionFor(ctx.state, job.employer.union) : null;
+    const org = job.employer.union ? unionFor(ctx.state, memberUnion(job) ?? job.employer.union) : null;
     // A deep strike fund shortens strikes; a powerful union wins them.
     const weeks = Math.max(1, rng.int(2, 10) - (org && org.strikeFund > org.members * 1500 ? 2 : 0));
     const won = rng.chance(org ? strikeWinChance(org) : 0.55);
@@ -282,19 +299,23 @@ export const UnionActions = {
   joinUnion(ctx) {
     const job = ctx.state.career.job;
     if (!job?.employer.union) return ctx.toast('Your workplace isn\'t unionized.', 'warn');
-    if (isSupervisor(job)) return ctx.toast('Supervisors are excluded from the bargaining unit.', 'warn');
+    const unit = bargainingUnit(ctx.state, job);
+    if (unit?.excluded) return ctx.toast(`${unit.excluded}.`, 'warn');
     if (job.unionMember) return;
     job.unionMember = true;
+    job.unionUnit = unit.unit;
     job.coworkers = Math.round(clamp(job.coworkers + 5, 0, 100));
-    ctx.log(`You joined ${job.employer.union.name}.`, '✊', 'good');
+    ctx.log(`You joined ${unit.union.name}.`, '✊', 'good');
     syncMembership(ctx);
   },
   leaveUnion(ctx) {
     const job = ctx.state.career.job;
     if (!job?.unionMember) return;
+    const was = memberUnion(job) ?? job.employer.union;
     job.unionMember = false;
+    job.unionUnit = null;
     job.coworkers = Math.round(clamp(job.coworkers - 5, 0, 100));
-    ctx.log(`You dropped your ${job.employer.union.name} membership.`, '🚪');
+    ctx.log(`You dropped your ${was.name} membership.`, '🚪');
     syncMembership(ctx);
   },
 };

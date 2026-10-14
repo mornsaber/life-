@@ -343,6 +343,9 @@ export const UNIONS = {
   FR: { police: 'Alliance Police nationale', fire: 'SNSPP-PATS', ems: 'SUD Santé', health: 'CGT Santé', education: 'SNES-FSU', public: 'CGT Fonction publique', prisons: 'FO Pénitentiaire', transport: 'CGT Transports', rail: 'SUD-Rail', aviation: 'SNPNC', pilots: 'SNPL', trades: 'CGT Construction', industry: 'CGT Métallurgie', retail: 'CFDT Services', hospitality: 'CFDT Services', services: 'CFDT Services', media: 'SNJ', tech: 'CGT Informatique', arts: 'SFA-CGT', postal: 'SUD PTT' },
 };
 /** A US union's counterpart where you live: a name, null (none here), or the US name in the US. */
+/** The kind of union (police, fire, public, ...) a US union name in the game is. */
+export const unionKind = (usName) => (usName ? UNION_KIND[usName] ?? null : null);
+
 export function localUnionName(countryId, usName) {
   if (!countryId || countryId === 'US' || !UNIONS[countryId]) return usName;
   if (!(usName in UNION_KIND)) return Object.values(UNIONS[countryId]).includes(usName) ? usName : UNIONS[countryId].services ?? null;

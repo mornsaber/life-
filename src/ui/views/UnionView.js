@@ -7,6 +7,7 @@ import { unionFor, unionById, unionsInState, unionPower, myUnion, myRole, runEli
 import { lawValue } from '../../modules/politics/Laws.js';
 import { organizeEligibility, driveUnion, electionWinChance, DRIVE_SIGNUPS } from '../../modules/career/LaborUnions.js';
 import { stateOf } from '../../modules/life/Regions.js';
+import { bargainingUnit, memberUnion } from '../../modules/career/BargainingUnits.js';
 
 const pct = (x) => `${Math.round(x * 100)}%`;
 const tone = (p) => (p >= 60 ? 'good' : p >= 35 ? 'mid' : 'bad');
@@ -33,12 +34,13 @@ function stats(u) {
 
 /** The union panel inside your job card. */
 export function unionPanel(state, job) {
-  const eu = job.employer.union;
-  if (!eu) return organizePanel(state, job);
+  if (!job.employer.union) return organizePanel(state, job);
+  const unit = bargainingUnit(state, job);
+  const eu = memberUnion(job) ?? unit?.union ?? job.employer.union;
   const u = recordFor(state, eu);
-  const supervisor = job.abilities.includes('supervise');
-  const head = `<b>✊ ${esc(eu.name)}</b> ${chip(eu.strike ? 'Strikes allowed' : 'No-strike clause → arbitration', eu.strike ? 'warn' : '')} ${chip(`Contract: ${eu.contractYearsLeft} yr left`)} ${u ? chip(`Power ${unionPower(u)}/100`, tone(unionPower(u)) === 'good' ? 'green' : '') : ''}`;
-  if (supervisor) return `<div class="union">${head}<p class="fine">Supervisors are excluded from the bargaining unit.</p></div>`;
+  const terms = eu.association ? chip('Staff association: pay review body, no bargaining or strikes') : chip(eu.strike ? 'Strikes allowed' : 'No-strike clause → arbitration', eu.strike ? 'warn' : '');
+  const head = `<b>✊ ${esc(eu.name)}</b> ${terms} ${eu.association ? '' : chip(`Contract: ${eu.contractYearsLeft} yr left`)} ${u ? chip(`Power ${unionPower(u)}/100`, tone(unionPower(u)) === 'good' ? 'green' : '') : ''}`;
+  if (unit?.excluded) return `<div class="union">${head}<p class="fine">${esc(unit.excluded)}.</p></div>`;
   if (!job.unionMember) return `<div class="union">${head}<p class="fine">You're covered by the contract but not a member.</p>${button('✊ Join the union', 'career.joinUnion', { variant: 'small' })}</div>`;
   const role = myRole(state) ?? 'member';
   return `<div class="union">${head}<p class="fine">${UNION_ROLES[role].title} · dues ${((u?.duesRate ?? eu.duesRate) * 100).toFixed(1)}% · grievance protection · contract votes. See "Your Union" below.</p>${button('Leave union', 'career.leaveUnion', { variant: 'ghost small' })}</div>`;

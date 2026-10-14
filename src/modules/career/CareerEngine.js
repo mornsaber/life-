@@ -28,6 +28,15 @@ import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publ
 import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
 import { unionEmployeeTick } from './UnionsAndLabor.js';
+import { reconcileMembership } from './BargainingUnits.js';
+
+/** A new rank can take you out of the bargaining unit, or into the supervisors' one. */
+function unionAfterMove(ctx, job) {
+  const moved = reconcileMembership(ctx.state, job);
+  if (!moved) return;
+  ctx.log(moved, '✊');
+  ctx.emit('unions:sync', {});
+}
 import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
@@ -439,6 +448,7 @@ export function promote(ctx, levelId) {
   }
   const oldSalary = job.salary;
   applyLevel(job, level);
+  unionAfterMove(ctx, job);
   stepForAtLeast(state, job, Math.round(oldSalary * 1.06));
   job.warnings = 0;
   job.lowYears = 0;
@@ -474,6 +484,7 @@ export function demote(ctx, reason) {
   const prev = previousLevel(profession, job.employer.size, job.levelId);
   if (!prev) return false;
   applyLevel(job, prev);
+  unionAfterMove(ctx, job);
   job.step = Math.max(1, job.step - 2);
   recalcSalary(state, job);
   job.warnings = 0;
