@@ -18,6 +18,7 @@
  * state.service.roles = { [id]: { since, hours, cases } }, state.service.volunteerHours (lifetime)
  * state.military.sss = { registered, missed, waived }
  */
+import { COUNTRIES } from '../world/Countries.js';
 import { addHonor, hasFelony, currentYear } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad } from '../world/Countries.js';
@@ -75,6 +76,8 @@ export function roleEligibility(state, id) {
 }
 
 /** President's Volunteer Service Award: yearly tiers for adults, plus a lifetime award at 4,000 hours. */
+/** Each country's national award for long volunteer service. */
+const VOLUNTEER_MEDAL = { GB: 'Points of Light award', CA: 'Sovereign\'s Medal for Volunteers', AU: 'Australian Volunteer of the Year (state)', DE: 'Verdienstmedaille für Ehrenamt', FR: 'Médaille de la jeunesse, des sports et de l\'engagement associatif', IT: 'Attestato d\'onore per il volontariato', JP: 'Medal with Green Ribbon', KR: 'Presidential Volunteer Award', IN: 'National Volunteer Award', PH: 'Bayani Ka! award', MX: 'Premio Nacional de Acción Voluntaria y Solidaria' };
 const PVSA = [
   { min: 500, id: 'pvsa.gold', name: 'President\'s Volunteer Service Award — Gold', prestige: 6, ribbon: [['#c9a227', 3]] },
   { min: 250, id: 'pvsa.silver', name: 'President\'s Volunteer Service Award — Silver', prestige: 4, ribbon: [['#9ea7ad', 3]] },
@@ -153,14 +156,17 @@ export const VolunteerModule = {
     }
     if (!hours) return;
     s(state).volunteerHours += hours;
-    const tier = PVSA.find((t) => hours >= t.min);
+    // The President's Volunteer Service Award is American; elsewhere a lifetime national award only.
+    const abroad = (state.character.countryId ?? 'US') !== 'US';
+    const tier = abroad ? null : PVSA.find((t) => hours >= t.min);
     if (tier && !state.honors.some((x) => x.id === tier.id) && state.character.age >= 26) {
       addHonor(state, { id: tier.id, source: 'civil', name: tier.name, icon: '🇺🇸', prestige: tier.prestige, precedence: 60, citation: `${hours} hours of volunteer service in a year.`, ribbon: tier.ribbon });
       ctx.log(`${hours} volunteer hours this year earned you the ${tier.name}.`, '🇺🇸', 'honor');
     }
     if (s(state).volunteerHours >= 4000 && !state.honors.some((x) => x.id === 'pvsa.lifetime')) {
-      addHonor(state, { id: 'pvsa.lifetime', source: 'civil', name: 'President\'s Lifetime Achievement Award', icon: '🇺🇸', prestige: 10, precedence: 40, citation: '4,000+ hours of volunteer service over a lifetime.', ribbon: [['#002868', 1], ['#c9a227', 2], ['#002868', 1]] });
-      ctx.log('Over 4,000 hours of service in your life: the President\'s Lifetime Achievement Award.', '🇺🇸', 'honor');
+      const local = abroad ? VOLUNTEER_MEDAL[state.character.countryId] ?? 'National volunteer service award' : null;
+      addHonor(state, { id: 'pvsa.lifetime', source: 'civil', name: local ?? 'President\'s Lifetime Achievement Award', icon: abroad ? COUNTRIES[state.character.countryId]?.flag ?? '🏅' : '🇺🇸', prestige: 10, precedence: 40, citation: '4,000+ hours of volunteer service over a lifetime.', ribbon: [['#002868', 1], ['#c9a227', 2], ['#002868', 1]] });
+      ctx.log(`Over 4,000 hours of service in your life: the ${local ?? 'President\'s Lifetime Achievement Award'}.`, abroad ? '🏅' : '🇺🇸', 'honor');
     }
   },
   actions: {

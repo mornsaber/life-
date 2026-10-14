@@ -423,6 +423,8 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
+  'Police Purple Heart': 'Injured on Duty award', 'Police Medal of Valor': 'Police Medal for Gallantry', 'Fire Department Medal of Valor': 'Fire Service Gallantry Award', 'Medal of Valor': 'Medal for Gallantry',
+  'NSF Graduate Research Fellowship': 'national doctoral research fellowship', 'NSF Graduate Research Fellow': 'National doctoral research fellow', 'NSF GRFP': 'doctoral fellowship', 'Presidential Rank Award': 'Senior civil service award',
   'revenue, CPS, natural resources, DOT, courts': 'revenue, child protection, environment, transport, courts',
   'laid off from the county': 'laid off from the council',
   // Professional exams by function rather than by US brand.

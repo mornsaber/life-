@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { styledName } from '../modules/world/Honours.js';
 import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
@@ -378,7 +379,7 @@ export class Renderer {
     return `
       ${card('', `<div class="profile">
           <div class="avatar">${avatar}</div>
-          <div><h2>${esc(fullName(state))}</h2><p class="age">Age <b>${c.age}</b></p></div>
+          <div><h2>${esc(styledName(state))}</h2><p class="age">Age <b>${c.age}</b></p></div>
         </div>
         <ul class="status-line">${this.statusLine(state)}</ul>`, { className: 'profile-card' })}
       ${card('Stats', statPanel(state.stats), { icon: '📊', className: 'stats-card' })}

@@ -46,6 +46,7 @@ import { billetTitle } from '../src/modules/org/MilitaryUnits.js';
 import { summaryPunishment } from '../src/modules/world/MilitaryLocal.js';
 import { upOrOut, mandatoryRetirementAge } from '../src/modules/military/Separation.js';
 import { serviceWar, serviceWarFactor } from '../src/modules/world/War.js';
+import { honoursList, eminence, styledName, localMedal } from '../src/modules/world/Honours.js';
 import { examStatus } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
@@ -630,6 +631,29 @@ const tests = {
     declareWar(t.ctx, 'GB');
     assert.ok(serviceWar(t.state, svc));
     assert.ok(serviceWarFactor(t.state, svc) > 1);
+  },
+  'honours: national orders, knighthoods and peerages; national military decorations'() {
+    // A British cabinet minister and former chief executive, honoured over the years.
+    const t = born('GB', 12, 55);
+    t.state.character.gender = 'male';
+    t.state.politics.history.push({ officeId: 'gb_mp', startAge: 40, endAge: 50, terms: 2 }, { officeId: 'gb_pm', startAge: 50, endAge: 54, terms: 1 });
+    const seen = new Set();
+    const chance = t.engine.rng.chance;
+    t.engine.rng.chance = () => true;
+    for (let i = 0; i < 6; i++) { const got = honoursList(t.engine.context()); if (got) seen.add(got.id); }
+    t.engine.rng.chance = chance;
+    assert.ok(eminence(t.state) >= 240, `eminence ${eminence(t.state)}`);
+    assert.ok(seen.has('knight') && seen.has('peer'), [...seen].join(','));
+    assert.equal(styledName(t.state), `Lord ${t.state.character.lastName}`);
+    assert.match(t.state.character.style.peerage, /^Baron /);
+    // Ordinary lives aren't on the list.
+    const o = born('GB', 13, 50);
+    assert.equal(honoursList(o.engine.context()), null);
+    // Military decorations under national names; no Purple Heart in Britain.
+    assert.equal(localMedal('GB', 'moh', 'army').name, 'Victoria Cross');
+    assert.equal(localMedal('GB', 'purpleHeart', 'army'), null);
+    assert.equal(localMedal('IN', 'moh', 'army').name, 'Param Vir Chakra');
+    assert.equal(localMedal('GB', 'silverStar', 'airforce').name, 'Distinguished Flying Cross');
   },
   'each country has only the agencies it really runs, with local ranks'() {
     const has = (cc, id) => professionsFor(born(cc).state).some((p) => p.id === id);

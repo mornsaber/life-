@@ -537,7 +537,7 @@ function clinicalTick(ctx, job) {
   }
   const years = yearsInProfession(state, [job.professionId]);
   if (!admin && years >= 8 && job.performance >= 85 && (c.catches ?? 0) >= 4 && !state.honors.some((h) => h.id === 'clinical.year') && rng.chance(0.08)) {
-    addHonor(state, { id: 'clinical.year', source: 'civil', name: `State ${prof.title} of the Year`, icon: '⭐', prestige: 8, precedence: 50, citation: `Named ${prof.title} of the Year by the state professional association.`, ribbon: [['#1a4fa0', 1], ['#f9a825', 2], ['#1a4fa0', 1]] });
+    addHonor(state, { id: 'clinical.year', source: 'civil', name: `${(state.character.countryId ?? 'US') === 'US' ? 'State' : 'Regional'} ${prof.title} of the Year`, icon: '⭐', prestige: 8, precedence: 50, citation: `Named ${prof.title} of the Year by the state professional association.`, ribbon: [['#1a4fa0', 1], ['#f9a825', 2], ['#1a4fa0', 1]] });
     ctx.log(`The state professional association named you ${prof.title} of the Year.`, '⭐', 'honor');
   }
   // Burnout catches up.

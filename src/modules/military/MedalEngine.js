@@ -7,6 +7,7 @@
  * 'military') so they outlive the service record and appear on the tombstone.
  */
 import { addHonor } from '../../core/State.js';
+import { localMedal } from '../world/Honours.js';
 
 /** Ribbon stripes are [color, relative width] from left to right. */
 export const MEDALS = {
@@ -85,13 +86,18 @@ export function medalName(medalId, branch) {
 export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false, posthumous = false } = {}) {
   const medal = MEDALS[medalId];
   if (!medal) throw new Error(`Unknown medal ${medalId}`);
-  const name = medalName(medalId, branch);
+  // Other forces award their own decorations (and some have no equivalent: no Purple Heart in Britain).
+  const nation = ctx.state.military.service?.nation ?? (ctx.state.military.service ? null : ctx.state.military.history?.at(-1)?.nation) ?? null;
+  const local = localMedal(nation, medalId, branch);
+  if (local === null) return null;
+  const name = local?.name ?? medalName(medalId, branch);
+  valorDevice = valorDevice && !nation;
   addHonor(ctx.state, {
     id: medalId,
     source: 'military',
     name,
     icon: medal.icon,
-    ribbon: medal.ribbon,
+    ribbon: local?.ribbon ?? medal.ribbon,
     precedence: medal.precedence,
     prestige: medal.prestige + (valorDevice ? 5 : 0),
     pension: medal.pension,
