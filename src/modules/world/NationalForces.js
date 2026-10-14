@@ -241,6 +241,64 @@ export const FORCES = {
       navy: [['Gulf of Aden', 'anti-piracy patrol', 1, false]],
     },
   },
+  AU: {
+    pay: 0.95, exposure: 0.5,
+    branches: {
+      army: { name: 'Australian Army', icon: '🦘', motto: 'Serving Australia', basic: 'the Army Recruit Training Centre, Kapooka', officerSchool: 'the Royal Military College, Duntroon',
+        enlisted: ['Private', 'Lance Corporal', 'Corporal', 'Sergeant', 'Staff Sergeant', 'Warrant Officer Class 2', 'Warrant Officer Class 1', 'Warrant Officer Class 1 (RSM)', 'Regimental Sergeant Major of the Army'], officer: ARMY_OFFICERS_EN },
+      navy: { name: 'Royal Australian Navy', icon: '⚓', motto: 'Serving Australia with Pride', basic: 'HMAS Cerberus (Recruit School)', officerSchool: 'HMAS Creswell',
+        enlisted: ['Seaman', 'Able Seaman', 'Leading Seaman', 'Petty Officer', 'Chief Petty Officer', 'Warrant Officer', 'Warrant Officer (Command)', 'Warrant Officer (Fleet)', 'Warrant Officer of the Navy'],
+        officer: ['Midshipman', 'Sub-Lieutenant', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Commodore', 'Rear Admiral', 'Vice Admiral', 'Admiral'] },
+      airforce: { name: 'Royal Australian Air Force', icon: '✈️', motto: 'Per ardua ad astra', basic: 'Recruit training at RAAF Base Wagga', officerSchool: 'Officers\' Training School, RAAF Base East Sale',
+        enlisted: ['Aircraftman', 'Leading Aircraftman', 'Corporal', 'Sergeant', 'Flight Sergeant', 'Warrant Officer', 'Warrant Officer (Wing)', 'Warrant Officer (Command)', 'Warrant Officer of the Air Force'],
+        officer: ['Pilot Officer', 'Flying Officer', 'Flight Lieutenant', 'Squadron Leader', 'Wing Commander', 'Group Captain', 'Air Commodore', 'Air Vice-Marshal', 'Air Marshal', 'Air Chief Marshal'] },
+      guard: { name: 'Army Reserve', icon: '🛡️', motto: 'Serving Australia', basic: 'Reserve recruit training at Kapooka', officerSchool: 'the Royal Military College (Reserve)',
+        enlisted: ['Private', 'Lance Corporal', 'Corporal', 'Sergeant', 'Staff Sergeant', 'Warrant Officer Class 2', 'Warrant Officer Class 1', 'Warrant Officer Class 1 (RSM)', 'Regimental Sergeant Major of the Army'], officer: ARMY_OFFICERS_EN },
+    },
+    bases: {
+      army: [['townsville', 'Lavarack Barracks'], ['darwin', 'Robertson Barracks'], ['brisbane', 'Gallipoli Barracks, Enoggera'], ['sydney', 'Holsworthy Barracks'], ['adelaide', 'RAAF Base Edinburgh (7 RAR)'], ['canberra', 'Royal Military College, Duntroon']],
+      navy: [['sydney', 'Fleet Base East (HMAS Kuttabul)'], ['perth', 'Fleet Base West (HMAS Stirling)'], ['darwin', 'HMAS Coonawarra']],
+      airforce: [['sydney', 'RAAF Base Richmond'], ['brisbane', 'RAAF Base Amberley'], ['darwin', 'RAAF Base Darwin'], ['townsville', 'RAAF Base Townsville']],
+    },
+    overseas: {
+      army: [['Malaysia', 'Rifle Company Butterworth', 1, false], ['Middle East', 'Operation Okra', 1, false], ['Solomon Islands', 'regional assistance mission', 1, false]],
+      navy: [['Bahrain', 'Combined Maritime Forces', 1, false], ['South China Sea', 'Indo-Pacific Endeavour', 1, false]],
+      airforce: [['United Arab Emirates', 'Al Minhad Air Base', 1, false]],
+    },
+  },
+  FR: {
+    pay: 0.7, exposure: 0.9,
+    branches: {
+      army: { name: 'Armée de Terre', icon: '🇫🇷', motto: 'Honneur et Patrie', basic: 'formation générale initiale at a regiment', officerSchool: 'the École spéciale militaire de Saint-Cyr',
+        enlisted: ['Soldat de 2e classe', 'Soldat de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Sergent-chef', 'Adjudant', 'Adjudant-chef', 'Major'],
+        officer: ['Sous-lieutenant', 'Lieutenant', 'Capitaine', 'Commandant', 'Lieutenant-colonel', 'Colonel', 'Général de brigade', 'Général de division', 'Général de corps d\'armée', 'Général d\'armée'] },
+      navy: { name: 'Marine nationale', icon: '⚓', motto: 'Honneur, Patrie, Valeur, Discipline', basic: 'the Centre de formation maritime, Hourtin', officerSchool: 'the École navale, Brest',
+        enlisted: ['Matelot', 'Matelot breveté', 'Quartier-maître de 2e classe', 'Quartier-maître de 1re classe', 'Second-maître', 'Maître', 'Premier maître', 'Maître principal', 'Major'],
+        officer: ['Aspirant', 'Enseigne de vaisseau de 2e classe', 'Enseigne de vaisseau de 1re classe', 'Lieutenant de vaisseau', 'Capitaine de corvette', 'Capitaine de frégate', 'Capitaine de vaisseau', 'Contre-amiral', 'Vice-amiral', 'Amiral'] },
+      airforce: { name: 'Armée de l\'Air et de l\'Espace', icon: '✈️', motto: 'Faire face', basic: 'BA 721 Rochefort', officerSchool: 'the École de l\'air et de l\'espace, Salon-de-Provence',
+        enlisted: ['Aviateur de 2e classe', 'Aviateur de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Sergent-chef', 'Adjudant', 'Adjudant-chef', 'Major'],
+        officer: ['Sous-lieutenant', 'Lieutenant', 'Capitaine', 'Commandant', 'Lieutenant-colonel', 'Colonel', 'Général de brigade aérienne', 'Général de division aérienne', 'Général de corps aérien', 'Général d\'armée aérienne'] },
+      // The Foreign Legion takes volunteers of any nationality; after three years they may apply to become French.
+      marines: { name: 'Légion étrangère', icon: '🎖️', motto: 'Legio Patria Nostra', basic: 'the 4e régiment étranger, Castelnaudary', officerSchool: 'Saint-Cyr (Legion officers come from the army)', openToForeigners: true,
+        enlisted: ['Légionnaire de 2e classe', 'Légionnaire de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Sergent-chef', 'Adjudant', 'Adjudant-chef', 'Major'],
+        officer: ['Sous-lieutenant', 'Lieutenant', 'Capitaine', 'Commandant', 'Lieutenant-colonel', 'Colonel', 'Général de brigade', 'Général de division', 'Général de corps d\'armée', 'Général d\'armée'] },
+      guard: { name: 'Réserve opérationnelle', icon: '🛡️', motto: 'Honneur et Patrie', basic: 'formation militaire initiale du réserviste', officerSchool: 'the reserve officer course at Saint-Cyr',
+        enlisted: ['Soldat de 2e classe', 'Soldat de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Sergent-chef', 'Adjudant', 'Adjudant-chef', 'Major'],
+        officer: ['Sous-lieutenant', 'Lieutenant', 'Capitaine', 'Commandant', 'Lieutenant-colonel', 'Colonel', 'Général de brigade', 'Général de division', 'Général de corps d\'armée', 'Général d\'armée'] },
+    },
+    bases: {
+      army: [['paris', 'Fort de Vincennes'], ['strasbourg', 'Quartier Lizé (2e division blindée)'], ['lyon', 'Quartier Général-Frère'], ['bordeaux', 'Camp de Souge'], ['toulouse', '11e brigade parachutiste'], ['marseille', 'Camp de Carpiagne']],
+      navy: [['toulon', 'Base navale de Toulon'], ['brest', 'Base navale de Brest']],
+      airforce: [['bordeaux', 'BA 106 Bordeaux-Mérignac'], ['marseille', 'BA 701 Salon-de-Provence'], ['strasbourg', 'BA 133 Nancy-Ochey']],
+      marines: [['marseille', '1er régiment étranger, Aubagne'], ['toulouse', '4e régiment étranger, Castelnaudary'], ['toulon', '1er régiment étranger de cavalerie, Carpiagne']],
+    },
+    overseas: {
+      army: [['Djibouti', 'Forces françaises stationnées à Djibouti', 2, true], ['Côte d\'Ivoire', 'Forces françaises en Côte d\'Ivoire', 2, true], ['Estonia', 'Mission Lynx', 1, false], ['Lebanon', 'UNIFIL', 1, false]],
+      navy: [['Djibouti', 'Base navale de Djibouti', 2, true], ['New Caledonia', 'Forces armées en Nouvelle-Calédonie', 2, true]],
+      airforce: [['United Arab Emirates', 'Base aérienne 104 Al Dhafra', 2, true], ['Jordan', 'Opération Chammal', 1, false]],
+      marines: [['French Guiana', '3e régiment étranger d\'infanterie', 2, true], ['Mayotte', 'Détachement de Légion étrangère de Mayotte', 2, true]],
+    },
+  },
 };
 
 /** The national branch laid over a template, or null. */

@@ -151,6 +151,32 @@ export const IMMIGRATION = {
     dualIn: false, dualOut: true, birthright: false, prLapse: 1,
     intlTuition: { mult: 1.5 },
   },
+  AU: {
+    visas: {
+      work: { name: 'Skills in Demand visa (subclass 482)', odds: 0.7, years: 4, degree: true, fee: 2200 },
+      transfer: { name: 'Skills in Demand visa (intra-company)', odds: 0.9, years: 4, fee: 2200 },
+      student: { name: 'Student visa (subclass 500)', odds: 0.75, years: 4, postStudy: 2, fee: 1380 },
+      family: { name: 'Partner visa (subclass 820/801)', odds: 0.85, years: 2, fee: 6200 },
+    },
+    pr: { name: 'Permanent residency (subclass 186/189)', years: 3, fee: 3290 },
+    nat: { years: 4, needsPR: true, fee: 390 },
+    dualIn: true, dualOut: true, birthright: { parentPR: true }, prLapse: 5,
+    intlTuition: { mult: 3.5 },
+  },
+  FR: {
+    visas: {
+      work: { name: 'Passeport talent / titre de séjour salarié', odds: 0.7, years: 4, degree: true, fee: 320 },
+      transfer: { name: 'Passeport talent (salarié en mission)', odds: 0.9, years: 3, fee: 320 },
+      student: { name: 'VLS-TS étudiant', odds: 0.8, years: 4, postStudy: 1, fee: 140 },
+      family: { name: 'Carte vie privée et familiale (spouse)', odds: 0.85, years: 1, fee: 320 },
+      investor: { name: 'Passeport talent — investisseur', odds: 0.8, amount: 422000, years: 4, fee: 320 },
+      retiree: { name: 'Visa long séjour visiteur', odds: 0.8, amount: 42000, minAge: 50, years: 1, fee: 140 },
+    },
+    pr: { name: 'Carte de résident (10 years)', years: 5, fee: 320 },
+    nat: { years: 5, married: 4, needsPR: false, fee: 80 },
+    dualIn: true, dualOut: true, birthright: false, prLapse: 3,
+    intlTuition: { mult: 1, floor: 3900 },
+  },
   IN: {
     visas: {
       work: { name: 'Employment visa', odds: 0.75, years: 2, degree: true, fee: 450 },
@@ -171,6 +197,8 @@ const AGREEMENTS = [
   ['CA', 'GB'], ['CA', 'DE'], ['CA', 'JP'], ['CA', 'KR'], ['CA', 'IT'], ['CA', 'MX'], ['CA', 'PH'], ['CA', 'IN'],
   ['DE', 'IT'], ['DE', 'JP'], ['DE', 'KR'], ['DE', 'IN'], ['GB', 'DE'], ['GB', 'IT'], ['GB', 'JP'], ['GB', 'KR'], ['GB', 'PH'],
   ['JP', 'KR'], ['JP', 'IT'], ['JP', 'IN'], ['JP', 'PH'], ['KR', 'IT'], ['KR', 'IN'], ['IT', 'PH'], ['MX', 'DE'], ['MX', 'IT'],
+  ['US', 'AU'], ['US', 'FR'], ['CA', 'AU'], ['CA', 'FR'], ['DE', 'AU'], ['DE', 'FR'], ['JP', 'AU'], ['JP', 'FR'], ['KR', 'AU'], ['KR', 'FR'],
+  ['IT', 'AU'], ['IT', 'FR'], ['IN', 'AU'], ['IN', 'FR'], ['GB', 'FR'], ['MX', 'FR'], ['PH', 'FR'],
 ];
 export const totalizes = (a, b) => AGREEMENTS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 
@@ -239,14 +267,15 @@ export const localLanguage = (countryId) => COUNTRIES[countryId]?.languages?.[0]
 /* ------------------------------------------------------------------ */
 
 /** The EU recognizes regulated professions across member states (Directive 2005/36/EC). */
-const EU = ['DE', 'IT'];
+const EU = ['DE', 'IT', 'FR'];
 /** Common-law countries, where a lawyer can requalify by exam; civil-law countries want a local law degree. */
-const COMMON_LAW = ['US', 'CA', 'GB', 'IN', 'PH'];
+const COMMON_LAW = ['US', 'CA', 'GB', 'IN', 'PH', 'AU'];
 /** Driving licences each country swaps without a test (designated-country lists, 2025). */
 const LICENCE_EXCHANGE = {
-  US: ['CA', 'DE', 'KR', 'JP'], CA: ['US', 'GB', 'DE', 'JP', 'KR'], GB: ['CA', 'DE', 'IT', 'JP', 'KR'],
-  DE: ['CA', 'GB', 'IT', 'JP', 'KR', 'US'], JP: ['CA', 'DE', 'GB', 'IT', 'KR'], KR: ['CA', 'DE', 'GB', 'IT', 'JP', 'US'],
-  IT: ['DE', 'GB', 'JP', 'KR'], MX: [], PH: [], IN: [],
+  US: ['CA', 'DE', 'KR', 'JP', 'FR'], CA: ['US', 'GB', 'DE', 'JP', 'KR', 'AU', 'FR'], GB: ['CA', 'DE', 'IT', 'JP', 'KR', 'AU', 'FR'],
+  DE: ['CA', 'GB', 'IT', 'JP', 'KR', 'US', 'AU', 'FR'], JP: ['CA', 'DE', 'GB', 'IT', 'KR', 'AU', 'FR'], KR: ['CA', 'DE', 'GB', 'IT', 'JP', 'US', 'AU', 'FR'],
+  IT: ['DE', 'GB', 'JP', 'KR', 'FR'], MX: [], PH: [], IN: [],
+  AU: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'JP', 'KR'], FR: ['DE', 'IT', 'GB', 'CA', 'AU', 'JP', 'KR', 'US'],
 };
 const DRIVING = ['learnerPermit', 'driverLicense', 'motorcycle', 'cdlA', 'cdlB', 'passengerEndorsement', 'schoolBusEndorsement', 'hazmatEndorsement'];
 /** Regulated professions that need the local language and a full exam. */

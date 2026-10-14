@@ -52,7 +52,7 @@ export function investView(state) {
     <h4 class="sub">${acc.shared ? `IRAs (${money(Math.max(0, iraRoom))} room left this year)` : 'Tax-advantaged accounts'}</h4><div class="toggle-row">
       ${acc.roth ? button(`🌱 ${acc.roth.name}`, 'investing.iraContribute', { arg: 'roth', variant: 'small', disabled: age < 18 || accountRoom(state, 'roth') <= 0, hint: acc.shared ? 'After-tax, tax-free later' : `Tax-free growth · ${money(Math.max(0, accountRoom(state, 'roth')))} room` }) : ''}
       ${acc.traditional ? button(`🏦 ${acc.traditional.name}`, 'investing.iraContribute', { arg: 'traditional', variant: 'small', disabled: age < 18 || accountRoom(state, 'traditional') <= 0, hint: acc.shared ? 'Tax deduction now' : `Tax relief now · ${money(Math.max(0, accountRoom(state, 'traditional')))} room` }) : ''}
-      ${button('🏧 Withdraw $10K', 'investing.iraWithdraw', { variant: 'small', disabled: pv.ira <= 0, hint: age < 60 ? 'Roth contributions first; 10% penalty on Traditional' : 'Penalty-free' })}</div>
+      ${button('🏧 Withdraw $10K', 'investing.iraWithdraw', { variant: 'small', disabled: pv.ira <= 0, hint: !acc.shared ? 'Tax-free savings first' : age < 60 ? 'Roth contributions first; 10% penalty on Traditional' : 'Penalty-free' })}</div>
     <h4 class="sub">${esc(acc.dc)} contribution</h4><div class="toggle-row">${DC_RATES.map((r) => button(`${Math.round(r * 100)}%`, 'retirement.setDcRate', { arg: String(r), variant: (state.retirement.dcRate ?? DEFAULT_DC_RATE) === r ? 'tiny on' : 'tiny' })).join('')}</div>
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">${esc(acc.dc)} fund</h4><div class="toggle-row">${funds}</div>

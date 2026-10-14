@@ -286,7 +286,9 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   // Abroad you join your own country's forces; every force recruits its own citizens.
   const b = branchFor(state, branchId);
   if (!b) return { ok: false, reason: isAbroad(state) ? `${countryOf(state).name} has no such branch` : 'Unknown branch' };
-  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !(residencyOf(state)?.status === 'permanent' && !isAbroad(state))) {
+  // Permanent residents may enlist in the US, Canada and Australia; the French Foreign Legion takes anyone.
+  const prOk = residencyOf(state)?.status === 'permanent' && ['US', 'CA', 'AU'].includes(countryOf(state).id);
+  if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !prOk && !b.openToForeigners) {
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };

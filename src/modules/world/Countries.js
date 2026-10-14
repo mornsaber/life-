@@ -23,15 +23,20 @@
  */
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
+import { AU, FR } from './CountriesAUFR.js';
 import { EDUCATION, educationTerms } from './Education.js';
-import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, ENTRANCE_EXAMS } from './CountryLaw.js';
+import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
   const v = VETERANS[cc];
   const loan = SMALL_BIZ_LOAN[cc];
+  const acc = ACCOUNTS[cc];
   return {
     ...volunteerTerms(cc),
+    ...(acc ? { 'Roth IRA': acc.roth?.name ?? 'tax-free savings', 'Traditional IRA': acc.traditional?.name ?? 'pension savings', IRA: acc.traditional?.name ?? 'pension savings', '401(k)': acc.dc } : {}),
+    ...(AVIATION_AUTHORITY[cc] ? { FAA: AVIATION_AUTHORITY[cc] } : {}),
+    ...(COUNTY[cc] && COUNTY[cc] !== 'County' ? { 'appointed by the county commission': 'appointed by the local council', 'Appointed by the county commission': 'Appointed by the local council', County: COUNTY[cc], county: COUNTY[cc].toLowerCase() } : {}),
     ...(ENTRANCE_EXAMS[cc] ? { 'the SAT': `the ${ENTRANCE_EXAMS[cc].name}`, 'SAT prep': `${ENTRANCE_EXAMS[cc].name} prep` } : {}),
     ...(CREDIT[cc] ? { 'credit score': CREDIT[cc].name } : {}),
     ...(loan ? { 'SBA 7(a) loan': loan, 'SBA 504 loan': loan, 'SBA lenders': `${loan} lenders`, 'an SBA loan': `a ${loan}`, 'SBA loan': loan, '🏦 SBA': `🏦 ${loan}`, SBA: loan } : {}),
@@ -317,7 +322,7 @@ export const US = {
 };
 
 /** Playable countries, in picker order. */
-export const COUNTRIES = { US, CA, GB, DE, JP, KR, IT, MX, PH, IN };
+export const COUNTRIES = { US, CA, GB, AU, DE, FR, IT, JP, KR, MX, PH, IN };
 // Schools, school stages and license names join each country's display swaps.
 for (const c of Object.values(COUNTRIES)) {
   if (c.id === 'US') continue;
@@ -352,7 +357,7 @@ export const PROVINCE_POPULATION = {
   'GB-ENG': 57e6, 'GB-SCT': 5.5e6, 'GB-WLS': 3.1e6, 'GB-NIR': 1.9e6,
   'DE-BE': 3.9e6, 'DE-BY': 13.4e6, 'DE-HE': 6.4e6, 'DE-HH': 1.9e6, 'DE-NW': 18.1e6, 'DE-RP': 4.2e6, 'DE-BW': 11.3e6, 'DE-SN': 4.1e6,
   'JP-13': 14.2e6, 'JP-14': 9.2e6, 'JP-27': 8.8e6, 'JP-40': 5.1e6, 'JP-01': 5.1e6, 'JP-47': 1.47e6,
-  ...KR.population, ...IT.population, ...MX.population, ...PH.population, ...IN.population,
+  ...KR.population, ...IT.population, ...MX.population, ...PH.population, ...IN.population, ...AU.population, ...FR.population,
 };
 
 /** Every foreign province and city, keyed by id, tagged with its country. */
@@ -399,7 +404,7 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
-  'laid off from the county': 'laid off from the council', 'Scales the state income tax everyone in the state pays.': 'Scales the regional income tax everyone in the region pays.',
+  'laid off from the county': 'laid off from the council', 'state intestacy law decides': 'the law of succession decides', 'Federal and foreign convictions can only be pardoned': 'Convictions abroad can only be pardoned', 'Scales the state income tax everyone in the state pays.': 'Scales the regional income tax everyone in the region pays.',
   'Appointed by the governor': 'Appointed by the regional government', 'appointed by the governor': 'appointed by the regional government', 'Governors appoint judges and agency heads.': 'Regional and national governments appoint agency heads; judges are career appointments.',
   'Signals Intelligence (NSA)': 'signals intelligence', 'Clandestine Service (CIA Operations)': 'the clandestine service', 'Intelligence Analysis (CIA · DIA · NGA)': 'intelligence analysis',
   'FAA Part 135 Air Carrier Certificate': 'Air Operator Certificate (AOC)', 'DEA Registration': 'controlled-drugs licence', 'Payroll tax (FICA)': 'Employer contributions',

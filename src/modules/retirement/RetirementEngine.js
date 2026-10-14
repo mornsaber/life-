@@ -285,6 +285,9 @@ export const RetirementEngine = {
         ctx.deduct(employee, `${benefits.dcPlan ?? '401(k)'} pre-tax contribution`);
         r.dc += employee + match;
       }
+      // Australia's Superannuation Guarantee: the employer pays 12% of wages into super, on top of pay.
+      const sg = countryOf(state).employerSuper;
+      if (sg && !job.informal) r.dc += Math.round(job.salary * sg);
     }
   },
 

@@ -23,6 +23,7 @@ export const EDUCATION = {
     loans: 'icr',
     // Plan 5 (2023+): 9% of income above £25,000, written off after 40 years.
     loanThreshold: 36760,
+    writeOffAge: 61,
     schools: { community: 'City College (Further Education)', technical: 'Technical College', online: 'The Open University', state: 'Redbrick University', private: 'University of Buckingham', elite: 'Oxbridge', academy: 'Royal Military Academy Sandhurst' },
     words: { 'High School': 'Secondary School', 'high-school diploma': 'A-levels', 'high school': 'secondary school', GED: 'Access to HE Diploma' },
     licenses: { 'State Bar License': 'Solicitor qualification (SQE)', 'Medical License (MD)': 'GMC registration (MBBS)', 'Board Certification': 'Specialist registration (CCT)', 'Certified Public Accountant (CPA)': 'Chartered Accountant (ACA)', 'Peace Officer (POST Basic Academy)': 'Police Constable Degree Apprenticeship', 'Registered Nurse (RN)': 'NMC registered nurse', 'Commercial Driver License (Class A)': 'HGV Class 1 (C+E) licence', 'Commercial Driver License (Class B)': 'HGV Class 2 (C) licence', "Driver's License (Class D)": 'Full UK driving licence', "Learner's Permit": 'Provisional driving licence', 'Professional Engineer (PE)': 'Chartered Engineer (CEng)', 'Engineer in Training (FE exam)': 'Incorporated Engineer (IEng)', 'EMT (NREMT)': 'Emergency Care Assistant', 'Paramedic (NRP)': 'HCPC registered paramedic', 'Pharmacist License (NAPLEX + MPJE)': 'GPhC registered pharmacist', 'Licensed Clinical Social Worker (LCSW)': 'Social Work England registration' },
@@ -64,6 +65,23 @@ export const EDUCATION = {
     schools: { community: 'TESDA training center', technical: 'Polytechnic college', online: 'UP Open University', state: 'State university (SUC)', private: 'Private university', elite: 'University of the Philippines Diliman', academy: 'Philippine Military Academy' },
     words: { 'High School': 'Senior High School', GED: 'ALS Accreditation & Equivalency exam' },
     licenses: { 'State Bar License': 'Philippine Bar Examination', 'Medical License (MD)': 'PRC Physician Licensure Exam', 'Certified Public Accountant (CPA)': 'CPA (PRC Board of Accountancy)', 'Peace Officer (POST Basic Academy)': 'PNP Academy', 'Registered Nurse (RN)': 'PRC Nurse Licensure Exam', 'Commercial Driver License (Class A)': 'LTO professional license', "Driver's License (Class D)": 'LTO non-professional license', 'Professional Engineer (PE)': 'PRC Engineer Licensure' },
+  },
+  AU: {
+    // Commonwealth-supported places (≈A$9,000 a year) paid through HECS-HELP: repaid from income over A$67,000.
+    tuition: { community: 1400, technical: 1400, online: 6200, state: 6200, private: 27600, elite: 6200 },
+    loans: 'icr',
+    loanThreshold: 46200,
+    loanRate: 0.15,
+    schools: { community: 'TAFE NSW', technical: 'TAFE Queensland', online: 'Open Universities Australia', state: 'State university', private: 'Bond University', elite: 'University of Melbourne (Group of Eight)', academy: 'Australian Defence Force Academy (ADFA)' },
+    words: { 'high-school diploma': 'Higher School Certificate (HSC)', GED: 'Certificate IV in Tertiary Preparation' },
+    licenses: { 'State Bar License': 'Admission as a lawyer (Supreme Court)', 'Medical License (MD)': 'AHPRA medical registration', 'Board Certification': 'Specialist fellowship (FRACP/FRACS)', 'Certified Public Accountant (CPA)': 'Chartered Accountant (CA ANZ)', 'Peace Officer (POST Basic Academy)': 'Police Academy recruit training', 'Registered Nurse (RN)': 'AHPRA registered nurse', 'Commercial Driver License (Class A)': 'Heavy combination (HC) licence', 'Commercial Driver License (Class B)': 'Heavy rigid (HR) licence', "Driver's License (Class D)": 'Driver licence (Class C)', "Learner's Permit": 'Learner licence (L plates)', 'Professional Engineer (PE)': 'Chartered Professional Engineer (CPEng)', 'EMT (NREMT)': 'Ambulance first responder', 'Paramedic (NRP)': 'AHPRA registered paramedic', 'Pharmacist License (NAPLEX + MPJE)': 'AHPRA registered pharmacist' },
+  },
+  FR: {
+    // Public universities: €175 a year; business schools charge far more; grandes écoles select by concours.
+    tuition: { community: 250, technical: 0, online: 1000, state: 250, private: 19700, elite: 3000 },
+    schools: { community: 'IUT (BUT)', technical: 'Lycée professionnel / CFA', online: 'CNED', state: 'Université publique', private: 'École de commerce', elite: 'Grande école (Polytechnique, ENS)', academy: 'École spéciale militaire de Saint-Cyr' },
+    words: { 'High School': 'Lycée', 'high-school diploma': 'baccalauréat', 'high school': 'lycée', GED: 'DAEU' },
+    licenses: { 'State Bar License': 'CAPA (avocat)', 'Medical License (MD)': 'Diplôme d\'État de docteur en médecine', 'Board Certification': 'DES (spécialité)', 'Certified Public Accountant (CPA)': 'Expert-comptable (DEC)', 'Peace Officer (POST Basic Academy)': 'École nationale de police', 'Registered Nurse (RN)': 'Diplôme d\'État infirmier', 'Commercial Driver License (Class A)': 'Permis C+E', 'Commercial Driver License (Class B)': 'Permis C', "Driver's License (Class D)": 'Permis B', "Learner's Permit": 'Conduite accompagnée (AAC)', 'Professional Engineer (PE)': 'Diplôme d\'ingénieur (CTI)', 'EMT (NREMT)': 'Diplôme d\'État d\'ambulancier', 'Pharmacist License (NAPLEX + MPJE)': 'Diplôme d\'État de docteur en pharmacie' },
   },
   IN: {
     tuition: { community: 900, technical: 300, online: 600, state: 900, private: 11000, elite: 9100 },

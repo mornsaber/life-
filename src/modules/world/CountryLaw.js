@@ -504,3 +504,8 @@ export const ENTRANCE_EXAMS = {
   AU: { name: 'ATAR (Year 12 exams)', prep: { name: 'private tutoring', cost: ppp(3000, 1.45) }, weight: 0.7 },
   FR: { name: 'baccalauréat', prep: { name: 'cours particuliers', cost: ppp(1500, 0.71) }, weight: 0.4 },
 };
+
+/** Civil aviation authorities, in place of the FAA. */
+export const AVIATION_AUTHORITY = { CA: 'Transport Canada', GB: 'CAA', DE: 'LBA', JP: 'JCAB', KR: 'MOLIT', IT: 'ENAC', MX: 'AFAC', PH: 'CAAP', IN: 'DGCA', AU: 'CASA', FR: 'DGAC' };
+/** The local-government unit below the province, in place of the US county. */
+export const COUNTY = { CA: 'Regional Municipality', GB: 'County', DE: 'Landkreis', JP: 'District', KR: 'County', IT: 'Provincia', MX: 'Municipio', PH: 'Province', IN: 'District', AU: 'Shire', FR: 'Département' };

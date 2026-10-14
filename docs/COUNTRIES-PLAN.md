@@ -16,6 +16,7 @@ This turns Part B of `ROADMAP-countries-and-difficulty.md` into a file-by-file p
 | Italy | Navy and Army postings (Naples, Vicenza, Aviano) | **Phase 2, playable** |
 | Mexico | FSO post, spouse nationality | **Phase 3, playable** (informal economy, SMN) |
 | Philippines, India | Special-operations deployments, spouse nationality | **Phase 3, playable** |
+| Australia, France | Spouse nationality, allied postings | **Phase 5, playable** (super, the Foreign Legion) |
 | Bahrain, Qatar, Djibouti, Guam | Postings only | Not planned as playable |
 
 Phase 1 is the four rich, English-playable systems. Each one exercises a different variant of every system:
@@ -54,7 +55,7 @@ Status: ✅ built · 🔜 next · ⏳ later.
 - ✅ The new-life screen gets a country picker, and `engine.newLife({ countryId })` places the character in one of that country's cities.
 - ✅ Name pools per country, for the character, family and NPCs.
 - ✅ Nationality on NPCs: people you meet are from the country you live in (one in ten from abroad); children take the country they're born in.
-- 🔜 Ethnic and immigrant mix per country.
+- ✅ Immigrant-background names in each country's mix (Turkish-German, Maghrebi-French, South Asian-British…), as common as national statistics say (`world/Diaspora.js`).
 
 ### Places
 - ✅ Provinces, nations, Länder and prefectures in `STATES`, each with `country`, income-tax brackets, property and sales/VAT rates, minimum wage, cannabis law, DUI rules and disasters.
@@ -82,14 +83,17 @@ Status: ✅ built · 🔜 next · ⏳ later.
   - Germany: pension, health, unemployment and care insurance, employee share.
   - Japan: pension, health and employment insurance.
 - ✅ No US child tax credit or SALT itemising abroad. Child benefit is paid as cash instead (Canada CCB, UK Child Benefit, German Kindergeld, Japan child allowance).
-- 🔜 VAT/GST in living costs, council tax, capital-gains rules per country, corporate and entity types (Ltd, GmbH, KK), inheritance tax per country.
+- ✅ VAT/GST in living costs (each province's rate); local business forms (Ltd, GmbH, KK, SAS…) and small-company corporate tax; self-employed contributions per country; inheritance tax per country.
+- ✅ National law books: abroad, national laws (corporate tax, paid leave) are the country's own, and the regions set the minimum wage.
+- 🔜 Capital-gains rules per country.
 
 ### Health
 - ✅ A `national` coverage plan for every Phase 1 country:
   - No premiums (contributions are in payroll), a small or no deductible, and a low out-of-pocket cap.
   - Japan: 30% co-pay with a monthly cap.
   - No medical debt spiral.
-- 🔜 Waiting lists in single-payer systems, private top-up insurance, and national disability benefits in place of SSDI.
+- ✅ National disability benefits in place of SSDI (CPP-D, PIP/UC, Erwerbsminderungsrente, DSP…), with a medical assessment and tribunal appeals.
+- 🔜 Waiting lists in single-payer systems and private top-up insurance.
 
 ### Retirement
 - ✅ The national pension replaces Social Security, by formula:
@@ -99,7 +103,7 @@ Status: ✅ built · 🔜 next · ⏳ later.
   - Japan: the basic pension plus the earnings-related employees' pension.
 - ✅ Claiming ages per country.
 - ✅ Pensions across borders: each country keeps its own contribution record and pays its share when you claim. Social-security (totalization) agreements let short records count toward the minimum, pro rata.
-- 🔜 Tax-advantaged accounts renamed and capped per country: RRSP/TFSA, ISA/workplace pension, Riester, iDeCo/NISA. Phase 1 only relabels the 401(k) and IRA screens.
+- ✅ Tax-advantaged accounts per country (TFSA/RRSP, ISA/SIPP, NISA/iDeCo, super, PEA/PER…) with their own limits; Australia's 12% employer super.
 
 ### Work
 - ✅ Private, municipal and provincial/state careers carry over.
@@ -107,7 +111,8 @@ Status: ✅ built · 🔜 next · ⏳ later.
 - ✅ National equivalents as data on the existing job trees (RCMP, Bundespolizei, National Police Agency, HMRC and the rest), for each country's own citizens.
 - ✅ Local license names per country. Credentials earned in one country must be recognized in another: driving-licence exchange lists, EU mutual recognition, assessment and exam for regulated professions (in the local language), and requalification for lawyers moving between common- and civil-law systems.
 - ✅ Work authorization: retiree visas don't allow work.
-- 🔜 Apprenticeship tracks (Germany).
+- ✅ Apprenticeships: Germany's dual system, the UK, Canada's Red Seal, Australia, France, Italy and India.
+- ✅ Unemployment benefits and statutory severance per country; local trade unions (none where workers may not organize).
 
 ### Military and service
 - ✅ The US armed forces, Selective Service, US volunteer national service (AmeriCorps, Peace Corps) and US federal disaster teams are closed to non-citizens, with a reason shown.
@@ -118,18 +123,21 @@ Status: ✅ built · 🔜 next · ⏳ later.
 - ✅ Local office (council, mayor) stays open. US state and federal offices are closed abroad.
 - ✅ Parliamentary offices per country (provincial and national seats, then party leadership).
 - ✅ Elections are for citizens of the country you live in (EU citizens may stand locally in any EU country).
-- 🔜 Referendums in place of ballot measures.
+- ✅ Referendums in place of US ballot measures (Italy's 50% quorum; none in Japan or India).
+- ✅ Legislatures per country: each country's chambers, no veto in parliamentary systems, no assembly for England.
 - ✅ No death penalty in any Phase 1 country. Cannabis and DUI rules come from the province.
-- 🔜 Offense lists and sentencing per country, jury vs. bench trials, divorce and inheritance law (forced heirship ⏳).
+- ✅ Courts per country: jury, lay-judge or bench trials, shorter sentences, local prisons, legal aid; the death penalty where it exists (Japan, India; Korea's moratorium).
+- ✅ Personal insolvency per country (IVA, consumer proposal, Privatinsolvenz…; none in Mexico or India).
+- 🔜 Offence lists per country, divorce law and forced heirship.
 
 ### Education
 - ✅ The existing programs carry over (degree names are similar enough to play).
 - ✅ School stages, school names and university fees per country (UK fees and income-contingent loans, German no-fee public universities, free Scottish tuition for residents), and national military academies.
-- 🔜 Entrance exams (suneung, Japanese centre test, JEE).
+- ✅ University entrance exams (suneung, the Common Test, JEE, A-levels, Abitur, the bac, ATAR) with cram schools and re-sits.
 
 ### Housing and credit
 - ✅ The existing mortgage engine runs, priced in PPP dollars.
-- 🔜 Variable/short-fixed mortgages and stress tests, stamp duty and land transfer tax, and credit registries in place of FICO.
+- ✅ Each country's mortgage products (5-yr fixed, 2-yr fix + SVR, Zinsbindung, Flat 35, INFONAVIT…), stress tests, buying costs (stamp duty, notary, transfer tax), and credit-file names; no FHA or VA loans abroad.
 
 ## Phase 1 acceptance
 

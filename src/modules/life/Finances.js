@@ -55,7 +55,7 @@ function steadyIncome(state) {
 /** This year's student-loan payment: income-contingent in the UK (9% over the threshold), else at least 12% of the balance. */
 function loanDue(state, balance, gross, { exact = false } = {}) {
   const e = countryOf(state).education;
-  if (e?.loans === 'icr') return Math.min(balance, Math.max(0, Math.round(0.09 * (gross - e.loanThreshold))));
+  if (e?.loans === 'icr') return Math.min(balance, Math.max(0, Math.round((e.loanRate ?? 0.09) * (gross - e.loanThreshold))));
   return exact ? Math.min(balance, Math.max(3000, balance * 0.12)) : Math.min(balance, Math.max(3000, Math.round(balance * 0.12)));
 }
 
@@ -164,8 +164,9 @@ export const Finances = {
     if (f.loans > 0 && !state.service?.program) {
       const icr = countryOf(state).education?.loans === 'icr';
       f.loans = Math.round(f.loans * (1 + (icr ? 0.03 : LOAN_RATE)));
-      // UK student loans are written off after 40 years (around 61), whatever is left.
-      if (icr && age >= 61) {
+      // UK student loans are written off after 40 years (around 61), whatever is left; Australia's HECS never is.
+      const writeOff = countryOf(state).education?.writeOffAge;
+      if (icr && writeOff && age >= writeOff) {
         ctx.log(`Your remaining student loan ($${f.loans.toLocaleString()}) was written off.`, '🎓', 'good');
         f.loans = 0;
       } else if (!state.education.enrolled && f.cash > 0) {

@@ -60,6 +60,19 @@ export const NATIONAL_OFFICES = {
   ph_representative: { country: 'PH', name: 'District Representative (House)', icon: '🏛️', level: 4, term: 3, termLimit: 3, salary: 164000, minAge: 25, residency: 1, cost: 500000, ...legislative },
   ph_senator: { country: 'PH', name: 'Senator of the Philippines', icon: '🏛️', level: 4, term: 6, termLimit: 2, salary: 164000, minAge: 35, residency: 2, cost: 8000000, statewide: true, ...legislative },
   ph_president: { country: 'PH', name: 'President of the Philippines', icon: '🇵🇭', level: 5, term: 6, termLimit: 1, salary: 236000, minAge: 40, residency: 10, cost: 30000000, statewide: true, ...executive },
+  // Australia
+  au_mlaState: { country: 'AU', name: 'Member of the State Parliament (MLA/MP)', icon: '🦘', level: 3, term: 4, termLimit: 0, salary: 131000, minAge: 18, residency: 0, cost: 100000, ...legislative },
+  au_premier: { country: 'AU', name: 'Premier', icon: '⭐', level: 4, term: 4, termLimit: 0, salary: 310000, minAge: 18, residency: 0, cost: 300000, requires: ['au_mlaState'], leader: true, ...executive },
+  au_mp: { country: 'AU', name: 'Member of the House of Representatives', icon: '🏛️', level: 4, term: 3, termLimit: 0, salary: 160000, minAge: 18, residency: 0, cost: 170000, ...legislative },
+  au_senator: { country: 'AU', name: 'Senator for your state', icon: '🏛️', level: 4, term: 6, termLimit: 0, salary: 160000, minAge: 18, residency: 0, cost: 400000, statewide: true, ...legislative },
+  au_pm: { country: 'AU', name: 'Prime Minister of Australia', icon: '🇦🇺', level: 5, term: 3, termLimit: 0, salary: 418000, minAge: 18, residency: 0, cost: 2000000, requires: ['au_mp'], leader: true, statewide: true, ...executive },
+  // France
+  fr_regional: { country: 'FR', name: 'Conseiller régional', icon: '🇫🇷', level: 3, term: 6, termLimit: 0, salary: 42000, minAge: 18, residency: 0, cost: 40000, ...legislative },
+  fr_regionPresident: { country: 'FR', name: 'Président du conseil régional', icon: '⭐', level: 4, term: 6, termLimit: 0, salary: 140000, minAge: 18, residency: 0, cost: 150000, requires: ['fr_regional'], leader: true, ...executive },
+  fr_depute: { country: 'FR', name: 'Député (Assemblée nationale)', icon: '🏛️', level: 4, term: 5, termLimit: 0, salary: 128000, minAge: 18, residency: 0, cost: 80000, ...legislative },
+  // Senators are chosen by local elected officials (grands électeurs): hold a local or regional seat first.
+  fr_senateur: { country: 'FR', name: 'Sénateur', icon: '🏛️', level: 4, term: 6, termLimit: 0, salary: 128000, minAge: 24, residency: 0, cost: 50000, requires: ['cityCouncil', 'mayor', 'fr_regional', 'fr_depute'], ...legislative },
+  fr_president: { country: 'FR', name: 'Président de la République', icon: '🇫🇷', level: 5, term: 5, termLimit: 2, salary: 256000, minAge: 18, residency: 0, cost: 21000000, statewide: true, ...executive },
   // India
   in_mla: { country: 'IN', name: 'Member of the Legislative Assembly (MLA)', icon: '🇮🇳', level: 3, term: 5, termLimit: 0, salary: 109000, minAge: 25, residency: 0, cost: 300000, ...legislative },
   in_cm: { country: 'IN', name: 'Chief Minister', icon: '⭐', level: 4, term: 5, termLimit: 0, salary: 164000, minAge: 25, residency: 0, cost: 2000000, requires: ['in_mla'], leader: true, ...executive },

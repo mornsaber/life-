@@ -32,11 +32,12 @@ import { arrive, routesTo } from '../src/modules/world/Migration.js';
 import { citizenshipsOf, isCitizen } from '../src/modules/world/Countries.js';
 import { hasCredential, transferStatus } from '../src/modules/credentials/LicensingEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
+import { inheritanceTax } from '../src/modules/world/CountryLaw.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../src/modules/world/Diaspora.js';
 import { randomName, setNameCountry } from '../src/core/State.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN'];
+const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
 
 function born(countryId, seed = 3, age = 35) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
@@ -458,6 +459,34 @@ const tests = {
     const jp = born('US', 29, 40);
     arrive(jp.ctx, 'JP', { visa: 'work' });
     assert.deepEqual(heirCitizenships(jp.state, { id: 'k', nationality: 'JP' }).citizenships, ['US']);
+  },
+  'Australia and France: tax, super, the Legion, senators, inheritance'() {
+    // Australia: A$100,000 → A$20,788 income tax (2025–26) plus the 2% Medicare levy.
+    const au = COUNTRIES.AU;
+    const auTax = nationalIncomeTax(au, Math.round(100000 / 1.45));
+    assert.ok(Math.abs(auTax - Math.round(20788 / 1.45)) < 150, `AU tax ${auTax}`);
+    assert.ok(Math.abs(socialContributions(au, Math.round(100000 / 1.45)) - Math.round(2000 / 1.45)) < 30, 'Medicare levy');
+    // France: €50,000 single → about €7,000 income tax (one part, before the 10% expense allowance).
+    const frTax = nationalIncomeTax(COUNTRIES.FR, Math.round(50000 / 0.71));
+    assert.ok(frTax > Math.round(6500 / 0.71) && frTax < Math.round(8500 / 0.71), `FR tax ${frTax}`);
+    // Super: the employer adds 12% of wages.
+    const t = employed('AU', 31);
+    const before = t.state.retirement.dc;
+    t.engine.ageUp();
+    assert.ok(t.state.retirement.dc - before >= Math.round(t.state.career.job.salary * 0.12) - 1, 'super guarantee paid');
+    // The Foreign Legion takes a non-French resident; the army doesn't.
+    const f = born('US', 32, 24);
+    arrive(f.ctx, 'FR', { visa: 'work' });
+    f.state.stats.fitness = 80;
+    f.state.stats.health = 90;
+    assert.equal(enlistmentEligibility(f.state, 'army', 'enlisted', 'active').ok, false);
+    assert.ok(enlistmentEligibility(f.state, 'marines', 'enlisted', 'active').ok, 'Légion étrangère');
+    // French senators are chosen by local officials.
+    const s2 = born('FR', 33, 40);
+    assert.match(runEligibility(s2.state, 'fr_senateur').reason, /local officials/);
+    // French inheritance tax per child above €100,000; Australia has none.
+    assert.ok(inheritanceTax('FR', 1000000, 2) > 0);
+    assert.equal(inheritanceTax('AU', 5000000, 2), 0);
   },
 };
 
