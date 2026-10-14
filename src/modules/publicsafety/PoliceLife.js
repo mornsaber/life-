@@ -26,6 +26,7 @@
  *
  * state.police = { area, shift, unit, bureau, calls, arrests, uof, complaints, commendations, ois, injuries, brady, details }
  */
+import { gearSafety } from '../equipment/Equipment.js';
 import { clamp } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -243,7 +244,7 @@ function apply(ctx, fx) {
   if (fx.trauma) ctx.emit('health:trauma', { amount: fx.trauma, source: 'police work' });
   if (fx.complaint && rng.chance(fx.complaint)) { p.complaints += 1; ctx.log('A citizen complaint was filed against you.', '📄', 'warn'); }
   if (fx.commend && rng.chance(fx.commend)) { p.commendations += 1; ctx.log('You received a departmental commendation.', '📜', 'good'); }
-  if (fx.injury && rng.chance(fx.injury)) {
+  if (fx.injury && rng.chance(fx.injury * gearSafety(state))) {
     p.injuries += 1;
     ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 50) });
     if (!state.honors.some((h) => h.id === 'police.purpleHeart')) addHonor(state, { id: 'police.purpleHeart', source: 'civil', name: 'Police Purple Heart', icon: '💜', prestige: 6, precedence: 30, citation: 'Injured in the line of duty.', ribbon: [['#5b2a86', 3], ['#ffffff', 1], ['#5b2a86', 3]] });
@@ -329,7 +330,7 @@ export const PoliceLifeModule = {
     ctx.emit('health:trauma', { amount: Math.round(area.risk * 2), source: 'police work' });
     if (calls) ctx.log(`${calls.toLocaleString()} calls, ${arrests} arrests${court ? `, $${court.toLocaleString()} in court overtime` : ''}.`, area.icon);
     // Line-of-duty injury.
-    if (!desk && rng.chance(0.03 * area.risk * (unit?.risk ?? 1))) apply(ctx, { injury: 1, trauma: 6 });
+    if (!desk && rng.chance(0.03 * area.risk * (unit?.risk ?? 1) * gearSafety(state))) apply(ctx, { injury: 1, trauma: 6 });
     // Complaints pile up; enough and you're moved off the street.
     if (p.complaints >= 6 && rng.chance(0.3)) {
       job.performance = Math.max(0, job.performance - 15);

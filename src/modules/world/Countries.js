@@ -25,7 +25,7 @@
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
 import { EDUCATION, educationTerms } from './Education.js';
-import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
+import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
@@ -37,6 +37,7 @@ function lawTerms(cc) {
     ...volunteerTerms(cc),
     ...nationalServiceTerms(cc),
     ...workplaceTerms(cc),
+    ...equipmentTerms(cc),
     MCAT: mcat,
     ...(acc ? { 'Roth IRA': acc.roth?.name ?? 'tax-free savings', 'Traditional IRA': acc.traditional?.name ?? 'pension savings', IRA: acc.traditional?.name ?? 'pension savings', '401(k)': acc.dc } : {}),
     ...(AVIATION_AUTHORITY[cc] ? { FAA: AVIATION_AUTHORITY[cc] } : {}),

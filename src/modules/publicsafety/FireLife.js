@@ -21,6 +21,7 @@
  *
  * state.fireLife = { station, shift, teams: {}, runs, fires, saves, injuries, exposure, decon, screening, sideJob, strikeTeams }
  */
+import { gearSafety } from '../equipment/Equipment.js';
 import { clamp } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -194,7 +195,8 @@ function apply(ctx, fx) {
   if (fx.save) f.saves += fx.save;
   if (fx.exposure) f.exposure += fx.exposure;
   if (fx.trauma) ctx.emit('health:trauma', { amount: fx.trauma, source: 'firefighting' });
-  if (fx.injury && rng.chance(fx.injury)) {
+  // Worn-out apparatus and SCBA hurt firefighters; good gear protects them.
+  if (fx.injury && rng.chance(fx.injury * gearSafety(state))) {
     f.injuries += 1;
     ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 50) });
     ctx.stat('health', -rng.int(4, 12));
@@ -251,7 +253,7 @@ export const FireLifeModule = {
       if (t.cred && !hasCredential(state, t.cred)) { delete f.teams[id]; continue; }
       if (t.pay) ctx.earn(t.pay, `${t.name} stipend`, { wage: true });
       if (t.exposure) f.exposure += t.exposure;
-      if (t.risk && rng.chance(0.03)) apply(ctx, { injury: 1, trauma: 6 });
+      if (t.risk && rng.chance(0.03 * gearSafety(state))) apply(ctx, { injury: 1, trauma: 6 });
       if (id === 'strike' && rng.chance(0.7)) {
         const weeks = rng.int(2, 6);
         const ot = Math.round(job.salary / 52 * weeks * rng.float(1.6, 2.2));

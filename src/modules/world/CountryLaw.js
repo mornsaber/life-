@@ -589,3 +589,30 @@ export function workplaceTerms(cc) {
     '⚠️ No Social Security': '⚠️ No state pension contributions',
   };
 }
+
+/* ------------------------------------------------------------------ */
+/* Equipment                                                           */
+/* ------------------------------------------------------------------ */
+
+/** Emergency-service and military equipment as each country actually fields it. */
+const EQUIPMENT = {
+  '*': { 'P25 radio + body camera kit': 'Digital radio + body camera kit', 'Police Interceptor SUV': 'Police SUV', 'Hybrid Interceptor': 'Hybrid patrol car', 'GSA-leased office space': 'Government-leased office space', 'Government vehicles (Bucars)': 'Unmarked vehicles' },
+  GB: { 'Digital radio + body camera kit': 'Airwave radio + body-worn video', 'Patrol sedan': 'Response car (Vauxhall Astra)', 'Police SUV': 'Armed response vehicle (BMW X5)', 'Pumper engine': 'Water tender ladder (Scania)', '100-ft aerial ladder truck': 'Aerial ladder platform', 'HMMWV': 'Foxhound', 'JLTV': 'Jackal', 'M2 Bradley': 'Warrior', 'Stryker': 'Boxer', 'M1A2 Abrams': 'Challenger 3', 'F-16': 'Typhoon FGR4', 'F-35A': 'F-35B Lightning', 'C-130J': 'A400M Atlas', 'MH-60R Seahawk': 'Wildcat HMA2', 'F/A-18E/F Super Hornet': 'Merlin HM2', 'AAV-7 amphibious assault vehicle': 'Viking BvS10', 'MV-22 Osprey': 'Chinook HC6' },
+  DE: { 'Digital radio + body camera kit': 'BOS-Digitalfunk + Bodycam', 'Patrol sedan': 'Funkstreifenwagen (VW Passat)', 'Police SUV': 'Funkstreifenwagen (BMW X3)', 'Pumper engine': 'Löschgruppenfahrzeug (HLF 20)', '100-ft aerial ladder truck': 'Drehleiter (DLK 23-12)', 'HMMWV': 'Dingo 2', 'JLTV': 'Eagle V', 'M2 Bradley': 'Marder', 'Stryker': 'Boxer', 'M1A2 Abrams': 'Leopard 2A7', 'F-16': 'Eurofighter Typhoon', 'F-35A': 'F-35A', 'C-130J': 'A400M', 'MH-60R Seahawk': 'Sea Lynx', 'F/A-18E/F Super Hornet': 'NH90 Sea Lion' },
+  FR: { 'Digital radio + body camera kit': 'Radio RRF + caméra-piéton', 'Patrol sedan': 'Peugeot 308 de police', 'Police SUV': 'Peugeot 5008 de police', 'Pumper engine': 'Fourgon pompe-tonne (FPT)', '100-ft aerial ladder truck': 'Échelle pivotante automatique (EPA)', 'HMMWV': 'VBL', 'JLTV': 'Serval', 'M2 Bradley': 'VBCI', 'Stryker': 'Griffon', 'M1A2 Abrams': 'Leclerc', 'F-16': 'Rafale', 'F-35A': 'Rafale F4', 'C-130J': 'A400M', 'MH-60R Seahawk': 'NH90 Caïman', 'F/A-18E/F Super Hornet': 'Rafale M' },
+  IT: { 'Patrol sedan': 'Alfa Romeo Giulia (pattuglia)', 'HMMWV': 'Lince', 'M2 Bradley': 'Dardo', 'Stryker': 'Freccia', 'M1A2 Abrams': 'Ariete', 'F-16': 'Eurofighter Typhoon', 'C-130J': 'C-130J', 'MH-60R Seahawk': 'NH90' },
+  JP: { 'Patrol sedan': 'Toyota Crown patrol car', 'Police SUV': 'Patrol car (Toyota)', 'Pumper engine': 'Pumper (Morita)', 'HMMWV': 'Light Armored Vehicle (Komatsu)', 'M2 Bradley': 'Type 89 IFV', 'Stryker': 'Type 16 MCV', 'M1A2 Abrams': 'Type 10 tank', 'F-16': 'F-15J', 'C-130J': 'Kawasaki C-2', 'MH-60R Seahawk': 'SH-60K' },
+  KR: { 'HMMWV': 'K151', 'M2 Bradley': 'K21', 'Stryker': 'K806', 'M1A2 Abrams': 'K2 Black Panther', 'F-16': 'KF-16', 'F-35A': 'KF-21 Boramae', 'MH-60R Seahawk': 'AW159 Wildcat' },
+  IN: { 'Patrol sedan': 'Police Gypsy / Bolero', 'HMMWV': 'Tata LSV', 'M2 Bradley': 'BMP-2', 'Stryker': 'WhAP', 'M1A2 Abrams': 'T-90 Bhishma', 'F-16': 'Su-30MKI', 'F-35A': 'Rafale', 'C-130J': 'C-17 Globemaster', 'MH-60R Seahawk': 'MH-60R Seahawk' },
+  AU: { 'HMMWV': 'Hawkei', 'JLTV': 'Bushmaster', 'M2 Bradley': 'Redback', 'Stryker': 'Boxer CRV', 'F-16': 'F/A-18F Super Hornet', 'C-130J': 'C-17A Globemaster' },
+  CA: { 'HMMWV': 'G-Wagon', 'JLTV': 'TAPV', 'M2 Bradley': 'LAV 6.0', 'Stryker': 'LAV 6.0', 'M1A2 Abrams': 'Leopard 2A6M', 'F-16': 'CF-18 Hornet', 'C-130J': 'CC-130J Hercules', 'MH-60R Seahawk': 'CH-148 Cyclone' },
+  PH: { 'HMMWV': 'KM-450 truck', 'M2 Bradley': 'M113', 'F-16': 'FA-50PH', 'C-130J': 'C-130H' },
+  MX: { 'HMMWV': 'SandCat', 'M2 Bradley': 'DN-XI', 'F-16': 'T-6C Texan II', 'C-130J': 'C-130K' },
+};
+export function equipmentTerms(cc) {
+  if (!cc || cc === 'US') return {};
+  const local = EQUIPMENT[cc] ?? {};
+  // Neutral first, then the country's own: a US brand never shows abroad.
+  const neutral = Object.fromEntries(Object.entries(EQUIPMENT['*']).map(([us, n]) => [us, local[n] ?? n]));
+  return { ...neutral, ...local };
+}

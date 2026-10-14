@@ -4,7 +4,7 @@
  * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
-import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase } from '../../modules/equipment/Equipment.js';
+import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
@@ -31,6 +31,8 @@ function footer(state, c) {
 }
 
 /** The equipment card for one owner ('job' | 'business' | 'military' | 'vol.<serviceId>' | 'team.<id|sdf>'), or '' when it doesn't apply. */
+const qualityLabel = (q) => (q >= 1.08 ? 'premium' : q >= 1.02 ? 'above standard' : q >= 0.97 ? 'standard' : q >= 0.92 ? 'budget' : 'poor');
+
 export function equipmentCard(state, ref) {
   const c = contextOf(state, ref);
   if (!c) return '';
@@ -63,7 +65,7 @@ export function equipmentCard(state, ref) {
         if (m.rent) return button(`📝 Lease ${short(m.name)} (${money(m.rent)}/yr)`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.rent > pool });
         const leaseCost = Math.round((m.cost / m.life) * 1.3);
         return [
-          button(`🆕 ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: `${m.life}-year service life · ${money(m.upkeep)}/yr upkeep` }),
+          button(`🆕 ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: `${qualityLabel(modelQuality(cat, mid))} · ${m.life}-year service life · ${money(m.upkeep)}/yr upkeep` }),
           m.usedCost && can.used ? button(`♻️ Used ${money(m.usedCost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:used`), variant: 'tiny', disabled: m.usedCost > pool, hint: 'Already partway through its life' }) : '',
           m.lease && can.lease ? button(`📝 Lease ${money(leaseCost)}/yr`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:lease`), variant: 'tiny', disabled: leaseCost > pool, hint: 'Paid every year; returned at end of life' }) : '',
           can.fundraise && !m.usedCost ? button('📄 Apply for a grant', 'deptEquip.grant', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.grant.${ref}`]) || d.budget < m.cost * 0.1, hint: `10% match: ${money(m.cost * 0.1)}` }) : '',
@@ -89,6 +91,8 @@ export function equipmentCard(state, ref) {
     const tone = units.length < needed || worn > needed / 3 ? 'warn' : 'good';
     return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${units.length}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
   }).join('');
+  const q = fleetQuality(state, c);
+  const staff = c.staff ? `<p class="fine">👥 ${c.staff.total.toLocaleString()} staff${c.staff.label ? `: ${c.staff.operational.toLocaleString()} ${esc(c.staff.label.toLowerCase())} · ${c.staff.civilian.toLocaleString()} ${esc(c.staff.other.split(' (')[0].toLowerCase())}` : ''}. The standard fleet follows headcount.</p>` : '';
   const chips = c.manager || c.kind === 'volunteer'
     ? `<p>${c.kind === 'job' && (c.span ?? 1) < 1 ? chip(`🧭 Your command: ~${Math.round((c.span ?? 1) * 100)}% of the department's fleet`) : ''} ${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} reserve`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
     : '';
@@ -100,6 +104,7 @@ export function equipmentCard(state, ref) {
     can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${ref}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
   ].join('');
   return card(`${title(c)} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}
+    ${staff}<p>${chip(`⭐ Fleet quality: ${qualityLabel(q)}`, q >= 1.04 ? 'good' : q < 0.95 ? 'warn' : '')} ${c.kind === 'job' ? chip(`🦺 Injury risk ×${gearSafety(state).toFixed(2)}`, gearSafety(state) > 1.05 ? 'warn' : 'good') : ''}</p>
     ${chips}${actions ? `<div class="action-grid">${actions}</div>` : ''}
     ${rows}
     <p class="fine">${footer(state, c)}</p>`, { icon: '🛠️' });

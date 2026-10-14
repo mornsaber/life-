@@ -35,6 +35,64 @@ import { SERVICES } from '../emergency/EmergencyEngine.js';
 import { billetFor } from '../org/MilitaryUnits.js';
 import { TEAMS } from '../service/DisasterTeams.js';
 import { SDF_RANKS } from '../service/StateForces.js';
+import { deptOf } from '../org/Organizations.js';
+
+/* ------------------------------------------------------------------ */
+/* Staff: sworn and civilian, and the equipment they need             */
+/* ------------------------------------------------------------------ */
+
+/** A city's Department of Public Safety holds several services: each one's share of the headcount. */
+const DIVISION_SHARE = { publicSafety: { police: 0.54, fire: 0.33, ems: 0.1, dispatch: 0.03 } };
+/**
+ * The operational share of each service — sworn officers, uniformed firefighters,
+ * field crews, custody officers — and what the rest are called.
+ */
+export const OPERATIONAL = {
+  police: { share: 0.76, label: 'Sworn officers', other: 'Civilian staff (dispatch, records, analysts, PCSOs)' },
+  sheriff: { share: 0.7, label: 'Sworn deputies', other: 'Civilian staff' }, statePolice: { share: 0.72, label: 'Sworn officers', other: 'Civilian staff' },
+  transitPolice: { share: 0.8, label: 'Sworn officers', other: 'Civilian staff' }, universityPolice: { share: 0.65, label: 'Sworn officers', other: 'Security & civilian staff' },
+  airportPolice: { share: 0.75, label: 'Sworn officers', other: 'Civilian staff' }, privatePolice: { share: 0.7, label: 'Commissioned officers', other: 'Security & civilian staff' },
+  fire: { share: 0.9, label: 'Uniformed firefighters', other: 'Civilian staff (prevention, admin, mechanics)' }, airportFire: { share: 0.92, label: 'Uniformed firefighters', other: 'Civilian staff' },
+  stateFire: { share: 0.85, label: 'Firefighters', other: 'Support staff' }, ems: { share: 0.85, label: 'Field crews', other: 'Support staff' },
+  corrections: { share: 0.7, label: 'Custody officers', other: 'Programs, health & support staff' }, jail: { share: 0.72, label: 'Detention officers', other: 'Support staff' },
+  federalPrisons: { share: 0.68, label: 'Correctional officers', other: 'Support staff' }, borderPatrol: { share: 0.85, label: 'Agents', other: 'Mission support staff' },
+  fbi: { share: 0.37, label: 'Special agents', other: 'Professional staff (analysts, scientists, IT)' }, dea: { share: 0.45, label: 'Special agents', other: 'Professional staff' },
+  atf: { share: 0.48, label: 'Special agents', other: 'Professional staff' }, usms: { share: 0.7, label: 'Deputy marshals', other: 'Professional staff' }, usss: { share: 0.45, label: 'Special agents & officers', other: 'Professional staff' },
+};
+/** Without a staffing model, a headcount from the employer's size. */
+const SIZE_STAFF = { micro: 8, small: 30, medium: 120, large: 500, enterprise: 2500, mega: 12000 };
+
+/** The people in your service: total, operational (sworn / uniformed) and civilian. */
+export function agencyStaff(state, job) {
+  if (!job) return null;
+  const dept = deptOf(state, job);
+  const share = DIVISION_SHARE[dept?.id]?.[job.professionId] ?? 1;
+    // An expansion you won adds people on top of what the population calls for.
+  const total = Math.max(3, Math.round((dept?.headcount ?? SIZE_STAFF[job.employer.size] ?? 120) * share * (state.deptEquip?.[job.employer.id]?.growth ?? 1)));
+  const op = OPERATIONAL[job.professionId];
+  if (!op) return { total, operational: total, civilian: 0, growth: state.deptEquip?.[job.employer.id]?.growth ?? 1 };
+  const operational = Math.round(total * op.share);
+  return { total, operational, civilian: total - operational, label: op.label, other: op.other, growth: state.deptEquip?.[job.employer.id]?.growth ?? 1 };
+}
+
+/**
+ * Equipment that scales with people: units per operational staff member (patrol cars run
+ * three shifts, an engine company is ~16 firefighters across its shifts, every officer
+ * carries a radio). Categories not listed keep the size standard.
+ */
+const PER_STAFF = {
+  police: { patrol: 0.3, unmarked: 0.06, k9: 0.008, motors: 0.015, armored: 0.003, radios: 1, stations: 1 / 120 },
+  campusPolice: { patrol: 0.25, radios: 1 },
+  airportPolice: { patrol: 0.3, k9: 0.03, radios: 1 },
+  federalLE: { cars: 0.8, radios: 1, armored: 0.003 },
+  borderPatrol: { trucks: 0.4, atvs: 0.08 },
+  fire: { engine: 1 / 16, ladder: 1 / 40, rescue: 1 / 140, brush: 1 / 60, scba: 1.1, stations: 1 / 22 },
+  arff: { crash: 1 / 12, scba: 1.1 },
+  stateFire: { engine: 1 / 12, tender: 1 / 40, dozer: 1 / 60, stations: 1 / 30 },
+  ems: { ambulance: 1 / 9, monitors: 1 / 9, stretchers: 1 / 9, stations: 1 / 40 },
+  corrections: { vans: 1 / 40, radios: 1, units: 1 / 150 },
+};
+
 
 export { GROUPS };
 
@@ -103,7 +161,8 @@ export function contexts(state) {
   const job = state.career?.job;
   if (job && JOB_GROUP[job.professionId]) {
     out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.name,
-      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span: job.abilities.includes('budget') ? commandSpan(job) : 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector });
+      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span: job.abilities.includes('budget') ? commandSpan(job) : 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector,
+      staff: PER_STAFF[JOB_GROUP[job.professionId]] ? agencyStaff(state, job) : null });
   }
   const biz = currentBusiness(state);
   if (biz && BUSINESS_GROUP[biz.typeId]) out.push({ kind: 'business', ref: 'business', key: `biz:${biz.id}`, group: BUSINESS_GROUP[biz.typeId], size: bizSize(biz.scale ?? 1), label: biz.name, manager: true, requester: false, money: 'cash', biz });
@@ -144,6 +203,9 @@ export const contextOf = (state, ref) => contexts(state).find((c) => c.ref === r
 
 /** What a category's standard calls for: the organization's size, grown by any expansions a manager won. */
 export const needOf = (cat, c) => {
+  // Departments with a staffing model need equipment for the people they actually have.
+  const per = c.staff && cat.id ? PER_STAFF[c.group]?.[cat.id] : null;
+  if (per) return Math.max(cat.facility || per >= 1 ? 1 : 0, Math.round(c.staff.operational * per * ((c.growth ?? 1) / (c.staff.growth ?? c.growth ?? 1)) * (c.span ?? 1)));
   const base = cat.need[c.size] ?? 0;
   if (!base) return 0;
   const grown = Math.max(base, Math.round(base * (c.growth ?? 1)));
@@ -215,6 +277,8 @@ function grow(ctx, c, d, why) {
   ctx.log(`${why} ${c.label} approved an expansion of your department: a bigger standard fleet${cost ? `, $${Math.round(cost * 0.85).toLocaleString()} to equip it` : ''}${dept ? ' and more staff' : ''}.`, '📈', 'milestone');
 }
 const cats = (c) => GROUPS[c.group].categories;
+// Categories know their own id (needOf looks up per-staff ratios by it).
+for (const g of Object.values(GROUPS)) for (const [id, cat] of Object.entries(g.categories)) cat.id ??= id;
 
 /** A small RNG seeded by the owner's key, so the inherited fleet is the same whether it's first seen or first used. */
 function seeded(key) {
@@ -274,7 +338,41 @@ function fitSpan(c, d) {
   }
 }
 
-/** 0–100: how much of what's needed is in service and within its service life. */
+/**
+ * How good a model is within its category, 0.85–1.15: the premium option is
+ * more capable and more reliable than the budget one (a quint over a pumper, a
+ * JLTV over a Humvee). A model can say so outright with `quality`.
+ */
+export function modelQuality(cat, mid) {
+  const m = cat.models[mid];
+  if (!m) return 1;
+  if (m.quality) return m.quality;
+  const priced = Object.values(cat.models).filter((x) => x.cost > 0 && !x.build && !x.rent);
+  if (priced.length < 2 || !m.cost) return 1;
+  const lo = Math.min(...priced.map((x) => x.cost));
+  const hi = Math.max(...priced.map((x) => x.cost));
+  return Math.round((0.88 + 0.24 * ((m.cost - lo) / (hi - lo || 1))) * 100) / 100;
+}
+/** What one unit contributes: its model's quality, less for second-hand, much less past its service life. */
+const unitValue = (cat, u) => (u.age <= (cat.models[u.model]?.life ?? 10) ? modelQuality(cat, u.model) * (u.used ? 0.9 : 1) : 0.45);
+
+/** Average quality of what's in service (1 = standard issue). */
+export function fleetQuality(state, c) {
+  const d = recordOf(state, c, { peek: true });
+  let sum = 0;
+  let n = 0;
+  for (const [cid, cat] of Object.entries(cats(c))) {
+    if (cat.facility) continue;
+    for (const u of d.units[cid] ?? []) {
+      if (u.age > (cat.models[u.model]?.life ?? 10)) continue;
+      sum += modelQuality(cat, u.model) * (u.used ? 0.9 : 1);
+      n += 1;
+    }
+  }
+  return n ? Math.round((sum / n) * 100) / 100 : 1;
+}
+
+/** 0–100: how much of what's needed is in service and within its service life — and how good it is. */
 export function readiness(state, c) {
   const d = recordOf(state, c, { peek: true });
   let total = 0;
@@ -282,11 +380,22 @@ export function readiness(state, c) {
   for (const [cid, cat] of Object.entries(cats(c))) {
     const n = needOf(cat, c);
     if (!n) continue;
-    const good = (d.units[cid] ?? []).reduce((s, u) => s + (u.age <= (cat.models[u.model]?.life ?? 10) ? 1 : 0.45), 0);
+    const good = (d.units[cid] ?? []).reduce((s, u) => s + unitValue(cat, u), 0);
     total += Math.min(1, good / n) * cat.weight;
     weight += cat.weight;
   }
   return weight ? Math.round((total / weight) * 100) : 100;
+}
+
+/**
+ * Safety on the job from the gear you work with: a multiplier on line-of-duty
+ * injuries (≈1.25 with a worn-out budget fleet, ≈0.8 with a new premium one).
+ */
+export function gearSafety(state) {
+  const c = contexts(state).find((x) => x.kind === 'job');
+  if (!c) return 1;
+  const r = readiness(state, c);
+  return Math.round(clamp(1.25 - (r - 50) / 200 - (fleetQuality(state, c) - 1) * 0.8, 0.75, 1.35) * 100) / 100;
 }
 
 /** What it costs to replace everything on schedule, per year. */

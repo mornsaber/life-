@@ -14,7 +14,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, applicationEligibility } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession, PROFESSIONS } from '../src/modules/career/JobTrees.js';
-import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf, needOf, expansionCase } from '../src/modules/equipment/Equipment.js';
+import { EquipmentModule, GROUPS, powers, contextOf, recordOf, readiness as readinessOf, needOf, expansionCase, modelQuality, gearSafety } from '../src/modules/equipment/Equipment.js';
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { FireLifeModule } from '../src/modules/publicsafety/FireLife.js';
 import { PoliceLifeModule } from '../src/modules/publicsafety/PoliceLife.js';
@@ -396,6 +396,23 @@ const tests = {
         assert.ok(Number.isFinite(recordOf(state, c).budget), `${p.id} budget`);
       }
     }
+  },
+  'equipment follows staff: sworn vs civilian, and better models make a better fleet'() {
+    const { state } = worker(41, 'police', 'chief');
+    const c = contextOf(state, 'job');
+    assert.ok(c.staff && c.staff.operational > 0 && c.staff.civilian > 0, 'sworn and civilian staff');
+    assert.equal(c.staff.operational + c.staff.civilian, c.staff.total);
+    const cat = GROUPS.police.categories.patrol;
+    assert.equal(needOf(cat, c), Math.round(c.staff.operational * 0.3), 'patrol cars follow sworn headcount');
+    assert.equal(needOf(GROUPS.police.categories.radios, c), c.staff.operational, 'a radio per officer');
+    assert.ok(modelQuality(cat, 'hybrid') > modelQuality(cat, 'sedan'));
+    // A fleet of premium cars is readier than the same number of budget ones.
+    const d = recordOf(state, c);
+    d.units.patrol = Array.from({ length: needOf(cat, c) }, () => ({ model: 'sedan', age: 0, used: true, leased: false }));
+    const low = readinessOf(state, c);
+    d.units.patrol = Array.from({ length: needOf(cat, c) }, () => ({ model: 'hybrid', age: 0, used: false, leased: false }));
+    assert.ok(readinessOf(state, c) > low, `${readinessOf(state, c)} > ${low}`);
+    assert.ok(gearSafety(state) < 1.3);
   },
 };
 
