@@ -70,6 +70,14 @@ export function scandalPenalty(state) {
 export function voteShare(state, officeId, campaign, { incumbent = false } = {}) {
   const office = OFFICES[officeId];
   const p = state.politics;
+  // Prime ministers, premiers and first ministers: a party leadership contest among colleagues,
+  // won on seniority, standing in the house and popularity, not on money.
+  if (office.leader && !incumbent) {
+    const post = { majority: 0.08, presiding: 0.05, whip: 0.04, chair: 0.03 }[state.legislature?.seat?.post] ?? 0;
+    const lead = 0.4 + Math.min(0.12, p.recognition * 0.0015) + Math.min(0.12, ((p.office?.terms ?? 1) - 1) * 0.04) + ((p.office?.approval ?? 50) - 50) / 250
+      + post + (campaign?.endorsements.length ?? 0) * 0.015 + Math.min(0.04, prestige(state) / 2000) - scandalPenalty(state);
+    return clamp(lead, 0.05, 0.8);
+  }
   let share = 0.38;
   share += Math.min(0.12, p.recognition * 0.0015);
   share += 0.08 * Math.min(1, (campaign?.funds ?? 0) / office.cost);

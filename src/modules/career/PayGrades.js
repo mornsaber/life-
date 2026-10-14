@@ -31,8 +31,20 @@ export function stepMultiplier(step) {
   return 1 + (Math.min(step, MAX_STEP) - 1) * STEP_RATE;
 }
 
+const WAGE_LEVELS = {};
+/** A country's average wage level (its cities' market factors). */
+export function nationalWageLevel(countryId) {
+  if (WAGE_LEVELS[countryId] == null) {
+    const cities = Object.getOwnPropertyNames(REGIONS).map((id) => REGIONS[id]).filter((r) => r.country === countryId);
+    WAGE_LEVELS[countryId] = cities.length ? cities.reduce((s, r) => s + r.market, 0) / cities.length : 1;
+  }
+  return WAGE_LEVELS[countryId];
+}
+
 export function localityMultiplier(sector, regionId, posting = null) {
   const region = REGIONS[regionId] ?? REGIONS.midcity;
+  // Abroad, national pay scales follow the country's wage level (set nationally, not by city).
+  if (sector === 'federal' && region.country) return nationalWageLevel(region.country) * (posting ? 1.17 : 1.05);
   if (sector === 'federal') return 1 + (posting ? 0.17 : region.locality);
   return region.market;
 }

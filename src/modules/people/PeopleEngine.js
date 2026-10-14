@@ -24,6 +24,7 @@ import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
+import { priceLevel } from '../world/Countries.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
@@ -130,7 +131,8 @@ function widowed(ctx, spouse) {
 /** When your last parent dies, siblings split what they left. */
 function lastParentDied(ctx) {
   const { state, rng } = ctx;
-  const [lo, hi] = INHERITANCE[state.people.wealth] ?? INHERITANCE.low;
+  // Parents' estates in local money.
+  const [lo, hi] = (INHERITANCE[state.people.wealth] ?? INHERITANCE.low).map((x) => Math.round(x * priceLevel(state)));
   // Long-term care spends down what parents would have left (see ElderCare).
   const estate = state.people.parentAssets != null ? Math.max(0, Math.min(rng.int(lo, hi), state.people.parentAssets)) : rng.int(lo, hi);
   const heirs = 1 + living(state).filter((x) => x.relation === 'sibling').length;

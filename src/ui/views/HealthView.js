@@ -97,7 +97,7 @@ export function healthView(state) {
   const disability = card(vetCare || state.character.countryId ? 'Disability & Veterans' : 'Disability & VA', `
     ${kv([
       ['Long-term disability policy', d.policy ? 'Yes (1.5% of salary)' : 'No'],
-      [vetCare ? 'Service disability rating' : 'VA rating', h.va.rating ? `${h.va.rating}% · ${money(VA_COMPENSATION[h.va.rating])}/yr` : 'None'],
+      !vetCare && !h.va.rating && (state.character.countryId ?? 'US') !== 'US' ? null : [vetCare ? 'Service disability rating' : 'VA rating', h.va.rating ? `${h.va.rating}% · ${money(VA_COMPENSATION[h.va.rating])}/yr` : 'None'],
       h.disability.ssdiYears ? [`Years on ${disabilityName(state)}`, h.disability.ssdiYears] : null,
       d.ssdiClaim ? [`${disabilityName(state)} claim`, `${stageLabel(state, d.ssdiClaim.stage)} · filed at ${d.ssdiClaim.filedAge}${d.ssdiClaim.denials ? ` · denied ${d.ssdiClaim.denials}×` : ''}${d.ssdiClaim.lawyer ? ' · attorney' : ''} · ≈${Math.round(approvalOdds(state, d.ssdiClaim.stage, d.ssdiClaim.lawyer) * 100)}% odds`] : null,
       state.retirement.ssEarnings?.length >= (disabilityHere(state)?.minYears ?? 5) ? [`${disabilityName(state)} if approved`, `${money(ssdiAmount(state))}/yr`] : null,

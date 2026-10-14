@@ -99,7 +99,9 @@ export function educationTerms(countryId) {
   const e = EDUCATION[countryId];
   if (!e) return {};
   const schools = Object.fromEntries(Object.entries(e.schools).map(([k, v]) => [US_SCHOOL_NAMES[k], v]).filter(([k]) => k));
-  return { ...schools, ...(e.words ?? {}), ...(e.licenses ?? {}) };
+  const pro = PROFESSIONAL_DEGREES[countryId];
+  const degrees = pro ? { 'Juris Doctor (Law School)': pro.jd, 'Doctor of Medicine (Medical School)': pro.md } : {};
+  return { ...schools, ...degrees, ...(e.words ?? {}), ...(e.licenses ?? {}) };
 }
 
 /** Tuition at a school type where you live, or null to use the US price. */
@@ -109,3 +111,28 @@ export function localTuition(countryId, provinceId, schoolId) {
   if (e.freeIn?.includes(provinceId) && ['state', 'elite', 'community', 'technical'].includes(schoolId)) return 0;
   return e.tuition[schoolId] ?? null;
 }
+
+/**
+ * Where law and medicine are first degrees, entered straight from school (the LLB, the MBBS,
+ * the Staatsexamen), with their length; elsewhere (the US, Canada, Korea's law schools, the
+ * Philippines) they follow a bachelor's.
+ */
+export const UNDERGRAD_ENTRY = {
+  jd: { GB: 3, IN: 5, AU: 4, DE: 5, FR: 5, IT: 5, JP: 4, MX: 5 },
+  md: { GB: 5, IN: 5, AU: 6, DE: 6, FR: 6, IT: 6, JP: 6, KR: 6, MX: 6 },
+};
+export const undergradEntryYears = (countryId, programId) => UNDERGRAD_ENTRY[programId]?.[countryId] ?? null;
+/** The local names of the law and medical degrees. */
+export const PROFESSIONAL_DEGREES = {
+  GB: { jd: 'LLB (Bachelor of Laws)', md: 'MBBS (Bachelor of Medicine)' },
+  IN: { jd: 'LLB (5-year integrated)', md: 'MBBS' },
+  AU: { jd: 'LLB (Bachelor of Laws)', md: 'MBBS / MD' },
+  DE: { jd: 'Rechtswissenschaft (Erstes Staatsexamen)', md: 'Medizin (Staatsexamen)' },
+  FR: { jd: 'Master en droit', md: 'Diplôme d\'État de docteur en médecine' },
+  IT: { jd: 'Laurea magistrale in Giurisprudenza', md: 'Laurea in Medicina e Chirurgia' },
+  JP: { jd: 'Faculty of Law (hōgakubu) and the bar exam', md: 'Faculty of Medicine (6-year)' },
+  KR: { jd: 'Law School (JD)', md: 'College of Medicine (6-year)' },
+  MX: { jd: 'Licenciatura en Derecho', md: 'Médico Cirujano' },
+  PH: { jd: 'Juris Doctor (Law School)', md: 'Doctor of Medicine' },
+  CA: { jd: 'Juris Doctor (Law School)', md: 'Doctor of Medicine' },
+};

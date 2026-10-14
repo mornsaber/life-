@@ -20,6 +20,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
 import { inK12, hasDiploma } from '../education/K12.js';
 import { ENTRANCE_EXAMS } from './CountryLaw.js';
+import { undergradEntryYears } from './Education.js';
 
 const ppp = (local, rate) => Math.round(local / rate);
 
@@ -81,7 +82,8 @@ ADMISSION_HOOKS.push({
   boost(state, programId, schoolId) {
     const e = examHere(state);
     const ent = state.education.entrance;
-    if (!e || !['bachelor'].includes(programId) || !['state', 'private', 'elite'].includes(schoolId)) return 0;
+    const firstDegree = programId === 'bachelor' || Boolean(undergradEntryYears(state.character.countryId, programId));
+    if (!e || !firstDegree || !['state', 'private', 'elite'].includes(schoolId)) return 0;
     if (!ent) return -0.25 * e.weight;
     const scale = schoolId === 'elite' ? 1.4 : 1;
     return ((ent.score - 60) / 100) * e.weight * scale;

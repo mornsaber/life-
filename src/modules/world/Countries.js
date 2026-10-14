@@ -32,13 +32,15 @@ function lawTerms(cc) {
   const v = VETERANS[cc];
   const loan = SMALL_BIZ_LOAN[cc];
   const acc = ACCOUNTS[cc];
+  const mcat = { GB: 'UCAT', AU: 'UCAT ANZ', IN: 'NEET', PH: 'NMAT', CA: 'MCAT' }[cc] ?? 'medical entrance exam';
   return {
     ...volunteerTerms(cc),
+    MCAT: mcat,
     ...(acc ? { 'Roth IRA': acc.roth?.name ?? 'tax-free savings', 'Traditional IRA': acc.traditional?.name ?? 'pension savings', IRA: acc.traditional?.name ?? 'pension savings', '401(k)': acc.dc } : {}),
     ...(AVIATION_AUTHORITY[cc] ? { FAA: AVIATION_AUTHORITY[cc] } : {}),
     ...(COUNTY[cc] && COUNTY[cc] !== 'County' ? { 'appointed by the county commission': 'appointed by the local council', 'Appointed by the county commission': 'Appointed by the local council', County: COUNTY[cc], county: COUNTY[cc].toLowerCase() } : {}),
     ...(ENTRANCE_EXAMS[cc] ? { 'the SAT': `the ${ENTRANCE_EXAMS[cc].name}`, 'SAT prep': `${ENTRANCE_EXAMS[cc].name} prep` } : {}),
-    ...(CREDIT[cc] ? { 'credit score': CREDIT[cc].name } : {}),
+    ...(CREDIT[cc] && !CREDIT[cc].name.includes('credit score') ? { 'credit score': CREDIT[cc].name } : {}),
     ...(loan ? { 'SBA 7(a) loan': loan, 'SBA 504 loan': loan, 'SBA lenders': `${loan} lenders`, 'an SBA loan': `a ${loan}`, 'SBA loan': loan, '🏦 SBA': `🏦 ${loan}`, SBA: loan } : {}),
     ...(STOCK_INDEX[cc] ? { 'S&P 500': STOCK_INDEX[cc], 'S&P': STOCK_INDEX[cc] } : {}),
     ...(CADETS[cc]?.jrotc ? { JROTC: CADETS[cc].jrotc } : {}),
@@ -147,7 +149,7 @@ const GB = {
   health: { name: 'NHS', short: 'NHS', deductible: 0, coinsurance: 0.02, oopMax: 300 },
   // Child Benefit 2025/26: £26.05/week eldest, £17.25 others; clawed back from £60,000 income.
   childBenefit: { amount: ppp(1100, GBP), phaseOutFrom: ppp(60000, GBP), name: 'Child Benefit' },
-  terms: { 'Federal government': 'National government', 'Federal income tax': 'Income tax', 'State income tax': 'Scottish income tax', 'Social Security': 'State Pension', '401(k)': 'workplace pension', 'IRA': 'ISA', 'IRS': 'HMRC', 'Medicaid': 'the NHS', 'Medicare': 'the NHS', 'GI Bill': 'Forces education support', 'high school': 'secondary school' },
+  terms: { 'Federal government': 'National government', 'Federal income tax': 'Income tax', 'State income tax': 'Scottish income tax', 'Social Security': 'State Pension', '401(k)': 'workplace pension', 'IRA': 'ISA', 'IRS': 'HMRC', 'Medicaid': 'the NHS', 'Medicare': 'the NHS', 'GI Bill': 'Forces education support', 'high school': 'secondary school', deductible: 'excess', Deductible: 'Excess' },
   names: {
     male: ['Oliver', 'George', 'Harry', 'Jack', 'Noah', 'Muhammad', 'Leo', 'Arthur', 'Oscar', 'Charlie', 'Freddie', 'Alfie', 'Callum', 'Rhys', 'Finn', 'Kwame'],
     female: ['Olivia', 'Amelia', 'Isla', 'Ava', 'Lily', 'Freya', 'Grace', 'Sophie', 'Poppy', 'Ella', 'Aisha', 'Mia', 'Evie', 'Niamh', 'Eilidh', 'Ffion'],
@@ -364,6 +366,21 @@ export const PROVINCE_POPULATION = {
 export const FOREIGN_PROVINCES = Object.fromEntries(Object.values(COUNTRIES).flatMap((c) => Object.entries(c.provinces ?? {}).map(([id, p]) => [id, { ...p, country: c.id }])));
 export const FOREIGN_CITIES = Object.fromEntries(Object.values(COUNTRIES).flatMap((c) => Object.entries(c.cities ?? {}).map(([id, r]) => [id, { id, ...r, country: c.id }])));
 
+const PRICE_LEVELS = {};
+/**
+ * What local services (lawyers, fines, court awards) cost relative to the US: the country's
+ * average wage level. Goods and homes are priced through each city already.
+ */
+export function priceLevel(state) {
+  const cc = state?.character?.countryId;
+  if (!cc) return 1;
+  if (PRICE_LEVELS[cc] == null) {
+    const cities = Object.values(FOREIGN_CITIES).filter((r) => r.country === cc);
+    PRICE_LEVELS[cc] = cities.length ? cities.reduce((s, r) => s + r.market, 0) / cities.length : 1;
+  }
+  return PRICE_LEVELS[cc];
+}
+
 /** The country a region or province belongs to. */
 export const countryOfRegion = (regionId) => FOREIGN_CITIES[regionId]?.country ?? 'US';
 
@@ -404,11 +421,16 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
-  'laid off from the county': 'laid off from the council', 'state intestacy law decides': 'the law of succession decides', 'Federal and foreign convictions can only be pardoned': 'Convictions abroad can only be pardoned', 'Scales the state income tax everyone in the state pays.': 'Scales the regional income tax everyone in the region pays.',
+  'laid off from the county': 'laid off from the council',
+  // Professional exams by function rather than by US brand.
+  'USMLE Step 1': 'the first medical licensing exam', 'USMLE Step 2 CK': 'the final medical licensing exam', 'USMLE Step 3': 'the last licensing exam', 'Match Day': 'Training-post allocation day', 'the Match': 'the specialty-training allocation',
+  NCLEX: 'the nursing licensure exam', NAPLEX: 'the pharmacy licensing exam', 'Series 7': 'the securities licence exam', FINRA: 'the financial regulator', NREMT: 'the paramedic registration exam',
+  'the Fed is raising rates': 'the central bank is raising rates', 'the Fed': 'the central bank', 'The Fed': 'The central bank', 'Highway patrol': 'Traffic police', 'your state housing agency\'s first-time homebuyer program': 'a first-home buyer scheme', 'state intestacy law decides': 'the law of succession decides', 'Federal and foreign convictions can only be pardoned': 'Convictions abroad can only be pardoned', 'Scales the state income tax everyone in the state pays.': 'Scales the regional income tax everyone in the region pays.',
   'Appointed by the governor': 'Appointed by the regional government', 'appointed by the governor': 'appointed by the regional government', 'Governors appoint judges and agency heads.': 'Regional and national governments appoint agency heads; judges are career appointments.',
   'Signals Intelligence (NSA)': 'signals intelligence', 'Clandestine Service (CIA Operations)': 'the clandestine service', 'Intelligence Analysis (CIA · DIA · NGA)': 'intelligence analysis',
   'FAA Part 135 Air Carrier Certificate': 'Air Operator Certificate (AOC)', 'DEA Registration': 'controlled-drugs licence', 'Payroll tax (FICA)': 'Employer contributions',
-  'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for' };
+  'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for',
+  'An extra state tax on corporate profits.': 'An extra regional tax on corporate profits.', '2 points per dollar': '2 points per unit of currency spent', 'State income tax': 'Regional income tax', 'Legal to buy at a dispensary under state law (still federally illegal).': 'Legal to buy at licensed shops.' };
 
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {

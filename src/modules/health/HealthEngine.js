@@ -16,7 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
-import { fileBankruptcy } from '../life/Bankruptcy.js';
+import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
@@ -215,9 +215,11 @@ function medicalDebtTick(ctx) {
       title: 'Buried in Medical Bills',
       text: `You owe $${h.medicalDebt.toLocaleString()} in medical debt — more than you can ever pay on your income.`,
       options: [
-        { id: 'file', label: '⚖️ File for bankruptcy', hint: 'Chapter 7 wipes medical and card debt (non-exempt assets are sold); above the median income it becomes a Chapter 13 plan. Retirement accounts are protected.', tone: 'danger' },
+        insolvencyHere(state)?.none ? null : { id: 'file', label: '⚖️ File for bankruptcy', hint: insolvencyHere(state)
+          ? `${routeName(state, 7)} wipes medical and card debt (non-exempt assets are sold); higher earners go into a ${routeName(state, 13)} instead. Retirement savings are protected.`
+          : 'Chapter 7 wipes medical and card debt (non-exempt assets are sold); above the median income it becomes a Chapter 13 plan. Retirement accounts are protected.', tone: 'danger' },
         { id: 'plan', label: '🤝 Negotiate a payment plan', hint: 'Hospitals often settle for less' },
-      ],
+      ].filter(Boolean),
     });
   }
   if (h.medicalDebt <= 0) {

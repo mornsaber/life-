@@ -179,7 +179,7 @@ function elderCareCard(state) {
     const bill = c.arrangement ? careBill(state, c) : null;
     const opts = arrangementOptions(state, c.level).map((id) => button(`${ARRANGEMENTS[id].icon} ${ARRANGEMENTS[id].label}`, 'elderCare.arrange', { arg: `${p.id}:${id}`, variant: c.arrangement === id ? 'tiny on' : 'tiny', disabled: Boolean(state.yearly[`elderCare.arrange.${p.id}`]) })).join('');
     return `<li><b>${esc(p.firstName)}</b> (${ageOf(state, p)}) — ${c.level === 'full' ? (c.dementia ? 'dementia, full-time care' : 'full-time care') : 'needs help with daily life'}
-      ${bill ? `<small>· ${money(bill.total)}/yr: they pay ${money(bill.parentPays)}${bill.medicaid ? `, Medicaid ${money(bill.medicaid)}` : ''}, you pay ${money(bill.you)}</small>` : ''} ${authority}
+      ${bill ? `<small>· ${money(bill.total + (bill.publicShare ?? 0))}/yr${bill.publicShare ? ` (public care pays ${money(bill.publicShare)})` : ''}: they pay ${money(bill.parentPays)}${bill.medicaid ? `, ${state.character.countryId ? 'social assistance' : 'Medicaid'} ${money(bill.medicaid)}` : ''}, you pay ${money(bill.you)}</small>` : ''} ${authority}
       <div class="toggle-row">${opts}${legal}</div></li>`;
   }).join('');
   const hands = cases.some((c) => ['self', 'moveIn'].includes(c.arrangement));

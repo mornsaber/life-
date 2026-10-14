@@ -17,6 +17,8 @@
  * state.people.parentAssets    parents' savings (set when care first starts)
  */
 import { bumpYearly, yearlyCount } from '../../core/State.js';
+import { LONG_TERM_CARE } from '../world/CountryLaw.js';
+import { priceLevel } from '../world/Countries.js';
 import { living, ageOf, byId, clampRel } from './People.js';
 import { personDies } from './PeopleEngine.js';
 
@@ -51,20 +53,25 @@ export const hasAuthority = (state, id) => state.elderCare.poa.includes(id) || s
 /** What this year of care costs you after their income and savings. */
 export function careBill(state, c) {
   const a = ARRANGEMENTS[c.arrangement];
-  const total = a.cost[c.level];
-  if (c.arrangement === 'sibling') return { total, parentPays: 0, medicaid: 0, you: total };
+  // Care is priced in local wages; abroad, public long-term-care insurance pays part of paid care.
+  const ltc = LONG_TERM_CARE[state.character.countryId];
+  const paid = ['aide', 'assisted', 'nursing'].includes(c.arrangement);
+  const gross = Math.round(a.cost[c.level] * priceLevel(state));
+  const publicShare = ltc && paid ? Math.round(gross * ltc.covers) : 0;
+  const total = gross - publicShare;
+  if (c.arrangement === 'sibling') return { total, parentPays: 0, medicaid: 0, you: total, publicShare };
   const assets = state.people.parentAssets ?? 0;
-  const income = Math.min(total, PARENT_INCOME);
+  const income = Math.min(total, Math.round(PARENT_INCOME * priceLevel(state)));
   // Nursing homes bill the resident, not the family: their income and savings, then Medicaid.
   if (a.medicaid) {
     const fromSavings = Math.min(assets, total - income);
     const medicaid = total - income - fromSavings;
-    return { total, parentPays: income + fromSavings, fromSavings, medicaid, you: 0 };
+    return { total, parentPays: income + fromSavings, fromSavings, medicaid, you: 0, publicShare };
   }
   // A competent parent pays their own way; an incapacitated one only through a POA or guardian.
   const canDraw = c.level === 'help' && !c.dementia ? true : hasAuthority(state, c.personId);
   const fromSavings = canDraw ? Math.min(assets, total - income) : 0;
-  return { total, parentPays: income + fromSavings, fromSavings, medicaid: 0, you: Math.max(0, total - income - fromSavings) };
+  return { total, parentPays: income + fromSavings, fromSavings, medicaid: 0, you: Math.max(0, total - income - fromSavings), publicShare };
 }
 
 /* ------------------------------------------------------------------ */
@@ -80,7 +87,7 @@ function needsTick(ctx) {
     const c = ec.cases[parent.id];
     const onset = age < 75 ? 0.03 : age < 85 ? 0.08 : 0.16;
     if (!c && rng.chance(onset)) {
-      state.people.parentAssets ??= rng.int(...(PARENT_ASSETS[state.people.wealth] ?? PARENT_ASSETS.low));
+      state.people.parentAssets ??= Math.round(rng.int(...(PARENT_ASSETS[state.people.wealth] ?? PARENT_ASSETS.low)) * priceLevel(state));
       ec.cases[parent.id] = { personId: parent.id, level: 'help', dementia: false, arrangement: null, since: state.character.age };
       raise(ctx, parent, 'help', `${parent.firstName} (${age}) can't keep up anymore — missed bills, a fender-bender, an empty fridge. They need help.`);
     } else if (c?.level === 'help' && rng.chance(age < 85 ? 0.12 : 0.2)) {
@@ -127,7 +134,7 @@ function careTick(ctx) {
     if (bill.you) ctx.spend(bill.you, `Elder care — ${parent.firstName}`, { allowDebt: true });
     if (bill.medicaid > 0 && !c.onMedicaid) {
       c.onMedicaid = true;
-      ctx.log(`${parent.firstName}'s savings ran out; Medicaid now pays for the nursing home.`, '🏥');
+      ctx.log(`${parent.firstName}'s savings ran out; ${LONG_TERM_CARE[state.character.countryId]?.safetyNet ?? 'Medicaid'} now pays for the nursing home.`, '🏥');
     }
     // Hands-on caregiving: closer bond, real strain.
     if (a.stress[c.level]) ctx.stat('stress', a.stress[c.level]);

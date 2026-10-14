@@ -16,7 +16,10 @@ import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js'
 import { residencyYears } from '../life/Regions.js';
 import { campusGpaAdjustment } from '../campus/Network.js';
 import { prepBonus } from './K12.js';
-import { localTuition } from '../world/Education.js';
+import { localTuition, undergradEntryYears } from '../world/Education.js';
+
+/** A program's entry requirement where you live (law and medicine are first degrees in most countries). */
+export const requiresFor = (state, programId) => (undergradEntryYears(state?.character?.countryId, programId) ? { level: 'highschool' } : PROGRAMS[programId].requires);
 import { stateIdOf } from '../life/Regions.js';
 import { internationalTuition, onTemporaryVisa } from '../world/Immigration.js';
 
@@ -72,7 +75,7 @@ export function transferCredit(state, programId) {
 /** Years a program will take for this student (transfer credit, second degrees). */
 export function programYears(state, programId, major) {
   const p = PROGRAMS[programId];
-  let years = p.years;
+  let years = undergradEntryYears(state.character.countryId, programId) ?? p.years;
   if (programId === 'bachelor') {
     if (state.education.degrees.some((d) => d.type === 'bachelor')) years = 2; // second bachelor's
     else if (state.education.degrees.some((d) => d.type === 'associate')) years = 2; // transfer credit
@@ -110,7 +113,7 @@ export function enrollmentEligibility(state, programId, schoolId, major) {
   if (state.character.age < 17) return { ok: false, reason: 'Too young' };
   if (state.education.enrolled) return { ok: false, reason: 'Already enrolled' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
-  if (!meetsEducation(state, p.requires)) return { ok: false, reason: programId === 'md' ? 'Needs science major or pre-med post-bacc' : `Needs ${p.requires.level === 'bachelor' ? "a bachelor's" : 'a diploma'}` };
+  if (!meetsEducation(state, requiresFor(state, programId))) return { ok: false, reason: programId === 'md' ? 'Needs science major or pre-med post-bacc' : `Needs ${p.requires.level === 'bachelor' ? "a bachelor's" : 'a diploma'}` };
   if (!majorsFor(programId).includes(major ?? null)) return { ok: false, reason: 'Pick a major' };
   if (state.education.degrees.some((d) => d.programId === programId && (d.major ?? null) === (major ?? null))) return { ok: false, reason: 'Already earned' };
   if (p.minSmarts && state.stats.smarts < p.minSmarts) return { ok: false, reason: `Needs ${p.minSmarts}+ smarts` };

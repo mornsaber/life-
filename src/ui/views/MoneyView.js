@@ -94,7 +94,7 @@ function debtCard(state) {
   const abroad = Boolean(state.character.countryId);
   const option = (o, chapter, label, hint) => button(label, 'finances.fileBankruptcy', { arg: String(chapter), variant: 'small danger', disabled: !o.ok, hint: o.ok ? hint : o.reason });
   return card('Credit & Debt', `${kv([
-    ['Credit limit', `${money(limit)} <small>(${esc(creditLabel(state))})</small>`],
+    ['Credit limit', `${money(limit)} <small>(${esc(CREDIT[state.character.countryId] ? `${CREDIT[state.character.countryId].name}: ${creditLabel(state)}` : creditLabel(state))})</small>`],
     ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at ${(cardApr(state) * 100).toFixed(1)}% APR` : '$0'],
     ['Available credit', money(availableCredit(state))],
     medical ? ['Medical debt', `<span class="neg">${money(medical)}</span>`] : null,
@@ -117,9 +117,14 @@ function creditLabel(state) {
   const c = CREDIT[state.character.countryId];
   const score = state.housing.credit.score;
   if (!c) return `score ${score}`;
-  if (c.registry) return `${c.name}: ${score >= 580 ? 'clean' : 'listed'}`;
-  return `${c.name} ${score}`;
+  if (c.registry) return score >= 580 ? 'clean' : 'listed';
+  return String(score);
 }
+
+const creditTitle = (state) => {
+  const name = CREDIT[state.character.countryId]?.name;
+  return name ? name[0].toUpperCase() + name.slice(1) : 'Credit score';
+};
 
 export function moneyView(state) {
   const f = state.finances;
@@ -135,10 +140,10 @@ export function moneyView(state) {
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
     ['Lifetime earnings', money(f.lifetimeEarnings)],
     ['Lifetime taxes', money(f.taxesPaid)],
-    ['Credit score', esc(creditLabel(state))],
+    [esc(creditTitle(state)), esc(creditLabel(state))],
     f.bankruptcies ? ['Bankruptcies', `<span class="neg">${f.bankruptcies}</span>`] : null,
   ])}
-  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ['State income tax', money(ly.stateTax ?? 0)], ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
+  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ly.stateTax || (state.character.countryId ?? 'US') === 'US' || countryOf(state).terms?.['State income tax'] ? ['State income tax', money(ly.stateTax ?? 0)] : null, ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
 
   const plans = Object.keys(r.plans).map((id) => {
     const s = planStatus(state, id);

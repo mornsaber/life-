@@ -23,7 +23,7 @@ import { stateOf, stateIdOf, regionOf } from '../life/Regions.js';
 import { PRIVATE_PRISON_SHARE } from '../career/JusticeCareers.js';
 import { deathRowTick } from './Prison.js';
 import { JUSTICE } from '../world/CountryLaw.js';
-import { COUNTRIES } from '../world/Countries.js';
+import { COUNTRIES, priceLevel } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 
 /** The courts where you live: null in the US (state and federal rules below). */
@@ -110,7 +110,7 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
 
   if (offense.severity === 'civil') return civilPenalty(ctx, id, context);
   if (offense.severity === 'infraction') {
-    const fine = rng.int(...offense.fine);
+    const fine = Math.round(rng.int(...offense.fine) * priceLevel(state));
     ctx.spend(fine, offense.name, { allowDebt: true });
     state.legal.record.push({ offenseId: id, name: offense.name, severity: offense.severity, age: state.character.age, sentence: `$${fine} fine` });
     ctx.log(`You got a ticket for ${offense.name.toLowerCase()}: $${fine}.`, offense.icon, 'warn');
@@ -141,7 +141,7 @@ function courtPrompt(ctx, offenseId, context, evidence, abroad) {
   const options = ['plead', 'publicDefender', 'privateAttorney', 'topFirm'].map((id) => ({
     id,
     label: id === 'publicDefender' && aid ? `🧑‍⚖️ Go to trial with a ${aid}` : DEFENSE[id].label,
-    hint: DEFENSE[id].cost ? `$${DEFENSE[id].cost.toLocaleString()} retainer` : id === 'plead' ? 'Certain conviction, lighter sentence' : 'Free',
+    hint: DEFENSE[id].cost ? `$${Math.round(DEFENSE[id].cost * priceLevel(state)).toLocaleString()} retainer` : id === 'plead' ? 'Certain conviction, lighter sentence' : 'Free',
   }));
   if (hasCredential(state, 'barLicense')) options.push({ id: 'self', label: DEFENSE.self.label, hint: 'Free · risky' });
   ctx.prompt({
@@ -172,7 +172,8 @@ function sentence(ctx, offenseId, { plea, abroad }) {
   const { state, rng } = ctx;
   const offense = OFFENSES[offenseId];
   const lowHalf = (range) => (plea ? rng.int(range[0], Math.round((range[0] + range[1]) / 2)) : rng.int(...range));
-  const fine = Math.round(lowHalf(offense.fine) * (offenseId.toLowerCase().includes('dui') ? stateOf(state).dui.fineMult : 1));
+  // Fines and fees are set in local money: scaled to the country's wage level.
+  const fine = Math.round(lowHalf(offense.fine) * (offenseId.toLowerCase().includes('dui') ? stateOf(state).dui.fineMult : 1) * priceLevel(state));
   let prison = offense.prison ? lowHalf(offense.prison) : 0;
   // Other countries jail fewer people for less time (life terms stay life).
   const j = justiceHere(state);
@@ -232,7 +233,7 @@ export const JusticeResolvers = {
   court(ctx, data, optionId) {
     const { rng } = ctx;
     const defense = DEFENSE[optionId];
-    if (defense.cost) ctx.spend(defense.cost, `Legal fees (${defense.label.slice(2).trim()})`, { allowDebt: true });
+    if (defense.cost) ctx.spend(Math.round(defense.cost * priceLevel(ctx.state)), `Legal fees (${defense.label.slice(2).trim()})`, { allowDebt: true });
     if (optionId === 'plead') return sentence(ctx, data.offenseId, { plea: true, abroad: data.abroad });
     const smartsEdge = optionId === 'self' ? (ctx.state.stats.smarts - 60) / 200 : 0;
     const convict = rng.chance(clamp(data.evidence * defense.factor - smartsEdge, 0.05, 0.95));

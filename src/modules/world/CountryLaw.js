@@ -509,3 +509,21 @@ export const ENTRANCE_EXAMS = {
 export const AVIATION_AUTHORITY = { CA: 'Transport Canada', GB: 'CAA', DE: 'LBA', JP: 'JCAB', KR: 'MOLIT', IT: 'ENAC', MX: 'AFAC', PH: 'CAAP', IN: 'DGCA', AU: 'CASA', FR: 'DGAC' };
 /** The local-government unit below the province, in place of the US county. */
 export const COUNTY = { CA: 'Regional Municipality', GB: 'County', DE: 'Landkreis', JP: 'District', KR: 'County', IT: 'Provincia', MX: 'Municipio', PH: 'Province', IN: 'District', AU: 'Shire', FR: 'Département' };
+
+/**
+ * Public long-term care: the share of paid care (aides, assisted living, nursing homes) the
+ * state pays, and the safety net once savings run out (Medicaid's role in the US).
+ */
+export const LONG_TERM_CARE = {
+  CA: { name: 'provincial long-term care', covers: 0.6, safetyNet: 'the province' },
+  GB: { name: 'council-funded social care (means-tested)', covers: 0.2, safetyNet: 'the local council' },
+  DE: { name: 'Pflegeversicherung', covers: 0.5, safetyNet: 'Hilfe zur Pflege (social assistance)' },
+  JP: { name: 'Kaigo hoken (long-term care insurance)', covers: 0.9, safetyNet: 'public assistance' },
+  KR: { name: 'Long-term care insurance', covers: 0.85, safetyNet: 'the National Basic Livelihood Security system' },
+  IT: { name: 'indennità di accompagnamento', covers: 0.3, safetyNet: 'the municipality' },
+  MX: { name: 'no public long-term care', covers: 0, safetyNet: 'DIF social assistance' },
+  PH: { name: 'no public long-term care', covers: 0, safetyNet: 'DSWD social assistance' },
+  IN: { name: 'no public long-term care', covers: 0, safetyNet: 'state social assistance' },
+  AU: { name: 'government-subsidised aged care', covers: 0.7, safetyNet: 'the Commonwealth' },
+  FR: { name: 'APA (allocation personnalisée d\'autonomie)', covers: 0.5, safetyNet: 'aide sociale à l\'hébergement' },
+};

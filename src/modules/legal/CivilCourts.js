@@ -14,6 +14,7 @@ import { clamp } from '../../core/Random.js';
 import { hasFelony, isIncarcerated } from '../../core/State.js';
 import { currentCourt } from './Judiciary.js';
 import { JUSTICE } from '../world/CountryLaw.js';
+import { priceLevel } from '../world/Countries.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -94,10 +95,12 @@ function suedTick(ctx) {
     { kind: 'car', w: (state.vehicles?.record.accidents ?? []).includes(state.character.age) ? 0.25 : 0 },
     { kind: 'defamation', w: 0.002 },
   ].filter((x) => x.w > 0);
-  const total = weights.reduce((s, x) => s + x.w, 0);
+  // Outside the US people sue far less, and courts award far less (no punitive damages; the loser pays costs).
+  const abroad = Boolean(state.character.countryId);
+  const total = weights.reduce((s, x) => s + (abroad && x.kind !== 'debt' ? x.w * 0.4 : x.w), 0);
   if (!total || !rng.chance(total)) return;
   const kind = rng.weighted(weights, (x) => x.w).kind;
-  const amount = kind === 'debt' ? Math.round(Math.min(debt, rng.int(3000, 25000)) * 1.25) : Math.round(rng.int(...{ slipFall: [20000, 150000], dogBite: [10000, 80000], contract: [15000, 120000], malpractice: [200000, 1500000], car: [40000, 250000], defamation: [25000, 200000] }[kind]) / 1000) * 1000;
+  const amount = kind === 'debt' ? Math.round(Math.min(debt, rng.int(3000, 25000)) * 1.25) : Math.round(rng.int(...{ slipFall: [20000, 150000], dogBite: [10000, 80000], contract: [15000, 120000], malpractice: [200000, 1500000], car: [40000, 250000], defamation: [25000, 200000] }[kind]) * (abroad ? priceLevel(state) * 0.5 : 1) / 1000) * 1000;
   const d = DEFENSE[kind];
   const covered = d.insurable === 'home' ? Boolean(state.housing.properties.some((p) => p.insured)) : d.insurable === 'professional' ? true : false;
   const suit = { id: rng.id('suit_'), role: 'defendant', kind, amount, stage: 'filed', years: 0, covered };
@@ -198,8 +201,10 @@ export const CivilCourts = {
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       const c = CLAIMS[kind];
       const injury = (state.vehicles?.injuries ?? []).filter((i) => state.character.age - i.age <= 2).at(-1);
-      const amount = kind === 'injury' ? Math.round(rng.int(c.min, injury?.severe ? c.max : c.max / 4) / 1000) * 1000 : Math.round(rng.int(c.min ?? 1000, c.max) / 100) * 100;
-      const upfront = c.fee + (c.lawyer ? Math.round(amount * c.lawyer) : 0);
+      // Claims and fees in local money (and smaller injury awards outside the US).
+      const lvl = priceLevel(state) * (state.character.countryId && kind === 'injury' ? 0.5 : 1);
+      const amount = kind === 'injury' ? Math.round(rng.int(c.min, injury?.severe ? c.max : c.max / 4) * lvl / 1000) * 1000 : Math.round(rng.int(c.min ?? 1000, c.max) * lvl / 100) * 100;
+      const upfront = Math.round(c.fee * priceLevel(state)) + (c.lawyer ? Math.round(amount * c.lawyer) : 0);
       if (upfront && !ctx.spend(upfront, `Lawsuit costs — ${c.label.split(' (')[0]}`, { credit: true })) return ctx.toast(`You need $${upfront.toLocaleString()} up front.`, 'warn');
       if (kind === 'injury' && injury) state.vehicles.injuries = state.vehicles.injuries.filter((i) => i !== injury);
       state.civil.suits.push({ id: rng.id('suit_'), role: 'plaintiff', kind, amount, stage: 'filed', years: 0, lawyer: Boolean(c.lawyer || c.contingency) });
@@ -212,8 +217,9 @@ export const CivilCourts = {
       const { state, rng } = ctx;
       if (optionId === 'ignore') {
         if (rng.chance(0.15)) {
-          ctx.spend(500, 'Contempt of court fine', { allowDebt: true });
-          return ctx.log('The judge held you in contempt for ignoring a jury summons: a $500 fine.', '⚖️', 'bad');
+          const contempt = Math.round(500 * priceLevel(state));
+          ctx.spend(contempt, 'Contempt of court fine', { allowDebt: true });
+          return ctx.log(`The judge held you in contempt for ignoring a jury summons: a $${contempt} fine.`, '⚖️', 'bad');
         }
         return ctx.log('You tossed the summons. Nothing happened — this time.', '🗑️', 'warn');
       }

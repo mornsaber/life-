@@ -277,7 +277,9 @@ export const RetirementEngine = {
         plan.salaries.push(job.salary);
         if (!plan.employers.includes(job.employer.name)) plan.employers.push(job.employer.name);
       }
-      if (benefits.match > 0 || benefits.dcPlan) {
+      // Where the law makes employers pay into super (Australia), that replaces a 401(k)-style match.
+      const sgOnly = Boolean(countryOf(state).employerSuper);
+      if (!sgOnly && (benefits.match > 0 || benefits.dcPlan)) {
         // Employers match what you put in, up to their match rate.
         const employee = Math.round(job.salary * dcRate(state));
         const match = Math.round(job.salary * Math.min(dcRate(state), benefits.match));

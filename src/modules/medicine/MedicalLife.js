@@ -27,6 +27,7 @@
 import { clamp } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
+import { undergradEntryYears } from '../world/Education.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { SPECIALTIES, PRACTICES, TRAINING_LEVELS, applyPhysicianPay, isDoctor } from '../career/Medicine.js';
 
@@ -101,6 +102,8 @@ export function premed(ctx, kind) {
 ADMISSION_HOOKS.push({
   eligibility(state, programId) {
     if (programId !== 'md' && programId !== 'mdphd') return null;
+    // Where medicine is a first degree, school-leavers get in on their entrance-exam score instead.
+    if (programId === 'md' && undergradEntryYears(state.character.countryId, 'md')) return null;
     const m = med(state);
     if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return null; // BS/MD: admission guaranteed
     if (!m?.mcat) return 'Take the MCAT first';
@@ -110,6 +113,7 @@ ADMISSION_HOOKS.push({
   },
   boost(state, programId) {
     if (programId !== 'md' && programId !== 'mdphd') return 0;
+    if (programId === 'md' && undergradEntryYears(state.character.countryId, 'md')) return -0.15; // highly selective everywhere
     if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return 1;
     const m = med(state);
     const p = m.premed ?? { clinical: 0, research: 0, shadow: 0 };

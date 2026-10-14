@@ -37,7 +37,7 @@ export const AU = {
   health: { name: 'Medicare', short: 'Medicare', deductible: 0, coinsurance: 0.1, oopMax: 1500 },
   // Family Tax Benefit Part A: up to about A$6,800 a child a year, tapered from about A$65,000 family income.
   childBenefit: { amount: ppp(6000, AUD), phaseOutFrom: ppp(80000, AUD), name: 'Family Tax Benefit' },
-  terms: { 'Federal government': 'Commonwealth government', 'Federal income tax': 'Income tax', 'State income tax': 'State tax', 'Social Security': 'Age Pension', '401(k)': 'super', IRA: 'super', IRS: 'ATO', Medicaid: 'Medicare', 'GI Bill': 'DVA education support' },
+  terms: { 'Federal government': 'Commonwealth government', 'Federal income tax': 'Income tax', 'State income tax': 'State tax', 'Social Security': 'Age Pension', '401(k)': 'super', IRA: 'super', IRS: 'ATO', Medicaid: 'Medicare', 'GI Bill': 'DVA education support', deductible: 'excess', Deductible: 'Excess' },
   names: {
     male: ['Oliver', 'Noah', 'Jack', 'William', 'Leo', 'Henry', 'Lucas', 'Thomas', 'Charlie', 'James', 'Liam', 'Ethan', 'Mason', 'Hudson', 'Lachlan', 'Cooper'],
     female: ['Charlotte', 'Olivia', 'Amelia', 'Isla', 'Mia', 'Ava', 'Grace', 'Willow', 'Harper', 'Chloe', 'Matilda', 'Ruby', 'Sienna', 'Zoe', 'Ella', 'Sophie'],
