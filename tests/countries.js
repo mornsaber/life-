@@ -37,7 +37,8 @@ import { DIASPORA, COMMUNITY_NAMES } from '../src/modules/world/Diaspora.js';
 import { randomName, setNameCountry } from '../src/core/State.js';
 import { programEligibility } from '../src/modules/service/NationalService.js';
 import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
-import { departureBlock } from '../src/modules/world/Migration.js';
+import { departureBlock, bannedFrom } from '../src/modules/world/Migration.js';
+import { examStatus } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
 import { partyName, ballotSwing } from '../src/modules/politics/Parties.js';
@@ -508,7 +509,12 @@ const tests = {
     assert.equal(y.state.character.countryId, 'AU');
     assert.equal(routesTo(born('US', 13, 31).state, 'AU').find((r) => r.kind === 'workingHoliday').ok, false, 'too old');
     // After two years the visa runs out: switch or leave.
-    for (let i = 0; i < 4 && y.state.character.countryId === 'AU'; i++) { y.state.prompts = []; y.engine.ageUp(); }
+    for (let i = 0; i < 4 && y.state.character.countryId === 'AU'; i++) {
+      y.state.prompts = [];
+      y.engine.ageUp();
+      const lapse = y.state.prompts.find((p) => p.type === 'migration.lapsed');
+      if (lapse) y.engine.resolvePrompt(lapse.id, 'leave');
+    }
     assert.equal(y.state.character.countryId, undefined, 'went home when the working holiday ended');
     // Gap years are for young people between things.
     const g = born('GB', 14, 18);
@@ -636,6 +642,9 @@ const tests = {
       assert.equal(state.character.countryId, 'GB', 'still within the newcomer grace period');
       state.prompts = [];
       engine.ageUp();
+      const lapse = state.prompts.find((p) => p.type === 'migration.lapsed');
+      assert.ok(lapse, 'told the visa has lapsed');
+      engine.resolvePrompt(lapse.id, 'leave');
       assert.equal(state.character.countryId, undefined, 'removed to the US');
       assert.equal(REGIONS[state.character.regionId].country ?? 'US', 'US');
     }
@@ -696,6 +705,53 @@ const tests = {
     // Home again: the original still works.
     arrive(ctx, 'US', {});
     assert.ok(hasCredential(state, 'rn'), 'valid again at home');
+  },
+  'immigration: settled status first, country-bound exams, overstays and bans, degrees keep their origin, harder recognition'() {
+    // Korea: five years' residence AND permanent residence; a student's years don't count.
+    const k = born('US', 20, 30);
+    arrive(k.ctx, 'KR', { visa: 'student' });
+    const kres = residencyOf(k.state);
+    assert.equal(kres.qualifyingSince ?? null, null, 'study years are not qualifying residence');
+    k.state.character.age += 6;
+    assert.equal(naturalizationYearsLeft(k.state), null, 'no citizenship without permanent residence');
+    // Civil-service exams belong to the country that set them.
+    const e = born('US', 22, 30);
+    e.state.publicService.exams.general = { age: e.state.character.age, score: 95, country: 'US' };
+    assert.ok(examStatus(e.state, 'general').passed);
+    arrive(e.ctx, 'GB', { visa: 'work' });
+    assert.equal(examStatus(e.state, 'general').taken, false, 'a US exam means nothing in Whitehall');
+    // A lapsed visa: stay on without status, get caught, get banned.
+    const o = born('US', 25, 30);
+    arrive(o.ctx, 'GB', { visa: 'work' });
+    o.state.prompts = [];
+    for (let i = 0; i < 3 && !o.state.prompts.some((p) => p.type === 'migration.lapsed'); i++) { o.state.prompts = []; o.engine.ageUp(); }
+    const lapse = o.state.prompts.find((p) => p.type === 'migration.lapsed');
+    assert.ok(lapse, 'the visa ran out without a job');
+    assert.ok(lapse.options.find((x) => x.id === 'overstay').illegal, 'overstaying is flagged');
+    o.engine.resolvePrompt(lapse.id, 'overstay');
+    assert.equal(residencyOf(o.state).status, 'undocumented');
+    const chance = o.engine.rng.chance;
+    o.engine.rng.chance = () => true;
+    for (let i = 0; i < 3 && o.state.character.countryId === 'GB'; i++) { o.state.prompts = []; o.engine.ageUp(); }
+    o.engine.rng.chance = chance;
+    assert.equal(o.state.character.countryId, undefined, 'deported');
+    assert.ok(bannedFrom(o.state, 'GB'), 'barred from returning');
+    assert.equal(routesTo(o.state, 'GB').some((r) => r.ok), false, 'no visa while banned');
+    // Degrees keep the country and university they came from.
+    const d = born('GB', 22, 24);
+    d.state.education.degrees.push({ type: 'bachelor', major: 'history', age: 21 });
+    d.state.prompts = [];
+    d.engine.ageUp();
+    assert.equal(d.state.education.degrees.at(-1).country, 'GB');
+    arrive(d.ctx, 'US', {});
+    assert.equal(d.state.education.degrees.at(-1).country, 'GB', 'still a British degree');
+    // Recognition: police training never transfers; doctors from outside a peer system retrain in two stages.
+    assert.equal(recognitionRoute('post', ['US'], 'GB').method, 'notRecognized');
+    const md = recognitionRoute('medicalLicense', ['IN'], 'US');
+    assert.equal(md.method, 'retrain');
+    assert.equal(md.stages, 2);
+    assert.equal(recognitionRoute('medicalLicense', ['GB'], 'AU').method, 'peerAssessment');
+    assert.ok(recognitionRoute('rn', ['PH'], 'GB').difficulty > recognitionRoute('rn', ['JP'], 'GB').difficulty, 'unfamiliar systems face harder assessment');
   },
   'pensions from every country you worked in'() {
     const t = born('US', 26, 30);

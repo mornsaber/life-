@@ -17,13 +17,14 @@
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
   IMMIGRATION, VISA_KINDS, EMIGRATION_COST, visaEligibility, residencyOf, residencesOf, birthCountryOf, prYearsLeft, naturalizationYearsLeft,
-  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST,
+  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST, NON_QUALIFYING_VISAS,
 } from './Immigration.js';
 import { homeDanger, underMobilization, warIn } from './War.js';
 import { REGIONS, regionsIn, changeRegion, countryIdOf } from '../life/Regions.js';
 import { NATIONAL_PROFESSIONS } from '../career/JobTrees.js';
 import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
+import { stampDegrees } from '../education/EducationEngine.js';
 
 export const LANGUAGE_CLASS_COST = 1200;
 const EU = ['DE', 'IT'];
@@ -53,7 +54,10 @@ export function routesTo(state, to) {
   if (isCitizen(state, to)) return [{ kind: 'citizen', ok: true, odds: 1, fee: 0, label: `${COUNTRIES[to].flag} Move home (citizen)` }];
   const res = residencesOf(state)[to];
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
-  const visas = Object.keys(IMMIGRATION[to].visas).map((kind) => ({ kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
+  const banned = bannedFrom(state, to);
+  const visas = Object.keys(IMMIGRATION[to].visas).map((kind) => (banned
+    ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
+    : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
   const asylum = asylumRoute(state, to);
   return asylum ? [asylum, ...visas] : visas;
 }
@@ -78,6 +82,8 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   const { state } = ctx;
   const m = ensureMigration(state);
   const from = countryIdOf(state);
+  // Qualifications keep the country that granted them.
+  stampDegrees(state);
   const age = state.character.age;
   // Public-pension records stay with the country that kept them.
   const r = state.retirement;
@@ -100,16 +106,20 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
 
   if (!isCitizen(state, to)) {
     const old = m.residences[to];
-    if (old?.status === 'permanent' && old.leftAt != null && age - old.leftAt <= IMMIGRATION[to].prLapse) delete old.leftAt;
+    if (old?.status === 'permanent' && old.leftAt != null && age - old.leftAt <= IMMIGRATION[to].prLapse) {
+      // Coming back: the years away don't count toward citizenship.
+      old.qualifyingSince = (old.qualifyingSince ?? old.arrived) + (age - old.leftAt);
+      delete old.leftAt;
+    }
     else if (visa === 'asylum' || visa === 'temporary') {
       const law = ASYLUM[to];
       m.residences[to] = visa === 'temporary'
         ? { status: 'refugee', visa, arrived: age, grantedAt: age, from, temporary: true }
-        : { status: 'asylum', visa, arrived: age, from, decisionAt: age + law.decision, workFrom: age + law.workAfter, odds: asylumRoute(state, to)?.odds ?? law.odds };
+        : { status: 'asylum', visa, arrived: age, qualifyingSince: null, from, decisionAt: age + law.decision, workFrom: age + law.workAfter, odds: asylumRoute(state, to)?.odds ?? law.odds };
     } else {
       const rule = IMMIGRATION[to].visas[visa] ?? {};
       if (visa === 'workingHoliday') m.whvUsed = [...(m.whvUsed ?? []), to];
-      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, arrived: age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
+      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, arrived: age, qualifyingSince: NON_QUALIFYING_VISAS.includes(visa) ? null : age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
     }
   }
   m.history.push({ age, from, to, visa });
@@ -127,13 +137,51 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   ctx.stat('stress', 8);
 }
 
+/** Re-entry bans after an overstay ends in removal (years). */
+const OVERSTAY_BAN = { US: 10, GB: 10, AU: 3, CA: 1, JP: 5, KR: 5, DE: 5, FR: 5, IT: 5, MX: 1, PH: 5, IN: 5 };
+export const bannedFrom = (state, cc) => (state.migration?.bans?.[cc] ?? 0) > state.character.age;
+
+/** A visa ran out: leave, or stay on without status. */
+function lapsed(ctx, res, why) {
+  const { state } = ctx;
+  if (state.prompts.some((p) => p.type === 'migration.lapsed')) return;
+  ctx.prompt({
+    type: 'migration.lapsed', icon: '🛂', title: 'Your Visa Has Run Out',
+    text: `${why} You have to leave ${COUNTRIES[countryIdOf(state)].name} — or stay without papers.`,
+    options: [
+      { id: 'leave', label: '✈️ Leave on time', hint: 'Your record stays clean for future visas' },
+      { id: 'overstay', label: '🤫 Stay on without status', hint: 'No legal work, no benefits, deportation and a re-entry ban if caught', illegal: 'overstaying a visa' },
+    ],
+    data: {},
+  });
+}
+
+/** A year living without status: formal employers check papers; immigration may catch up with you. */
+function undocumentedYear(ctx, res) {
+  const { state, rng } = ctx;
+  const here = countryIdOf(state);
+  const job = state.career.job;
+  // Formal employers run right-to-work checks; cash-in-hand work doesn't ask.
+  if (job && !job.informal && rng.chance(0.5)) {
+    ctx.emit('career:resign', { reason: 'Failed a right-to-work check', fired: true });
+    ctx.log('Your employer ran a right-to-work check and let you go.', '🛂', 'bad');
+  }
+  ctx.stat('stress', 6);
+  const caught = rng.chance(0.08 + (state.legal.record.some((r) => r.age === state.character.age) ? 0.6 : 0));
+  if (!caught) return;
+  const years = state.character.age - (res.overstaySince ?? state.character.age);
+  const ban = years >= 1 ? OVERSTAY_BAN[here] ?? 5 : Math.ceil((OVERSTAY_BAN[here] ?? 5) / 3);
+  ensureMigration(state).bans = { ...(state.migration.bans ?? {}), [here]: state.character.age + ban };
+  removal(ctx, `Immigration enforcement caught up with you after ${years || 'less than a'} year${years === 1 ? '' : 's'} without status. You're barred from returning for ${ban} years.`);
+}
+
 /** Sent back to a country whose passport you hold. */
 function removal(ctx, why) {
   const { state } = ctx;
   const here = countryIdOf(state);
   const home = citizenshipsOf(state).includes(birthCountryOf(state)) ? birthCountryOf(state) : citizenshipsOf(state)[0];
   delete state.migration.residences[here];
-  ctx.log(`${why} You were removed from ${COUNTRIES[here].name} and sent back to ${COUNTRIES[home].name}.`, '🛂', 'bad');
+  ctx.log(`${why} ${why.startsWith('You left') ? `You went back to ${COUNTRIES[home].name}.` : `You were removed from ${COUNTRIES[here].name} and sent back to ${COUNTRIES[home].name}.`}`, '🛂', why.startsWith('You left') ? 'info' : 'bad');
   ctx.stat('happiness', -15);
   ctx.stat('stress', 12);
   arrive(ctx, home, { reason: 'Removed by immigration authorities.' });
@@ -205,7 +253,7 @@ function grantProtection(ctx, res, law) {
   const { state } = ctx;
   const age = state.character.age;
   const humanitarian = law.humanitarian && law.humanitarian > law.odds;
-  Object.assign(res, { status: law.prYears === 0 ? 'permanent' : 'refugee', grantedAt: age, ...(law.prYears === 0 ? { permanentSince: age } : {}) });
+  Object.assign(res, { status: law.prYears === 0 ? 'permanent' : 'refugee', grantedAt: age, qualifyingSince: res.qualifyingSince ?? age, ...(law.prYears === 0 ? { permanentSince: age } : {}) });
   delete res.decisionAt;
   delete res.tolerated;
   ctx.stat('happiness', 15);
@@ -280,6 +328,7 @@ export const MigrationModule = {
     if (!res) return;
     if (res.removal && !state.legal.incarceration) return removal(ctx, 'After your conviction, a judge ordered your removal.');
     if (res.status === 'asylum') return asylumYear(ctx, res);
+    if (res.status === 'undocumented') return undocumentedYear(ctx, res);
     if (res.temporary && !warIn(state, res.from) && !res.endNotified) {
       res.endNotified = true;
       ctx.log(`The war in ${COUNTRIES[res.from].name} is over. Your temporary protection continues for now; you can go home or apply to stay.`, '🕊️', 'info');
@@ -291,7 +340,7 @@ export const MigrationModule = {
       let ok = stillQualifies(state, res);
       // Graduates get a few years of work rights to find a job.
       if (!ok && res.visa === 'student' && res.studied && law.visas.student.postStudy) {
-        Object.assign(res, { visa: 'work', expires: age + law.visas.student.postStudy, postStudy: true });
+        Object.assign(res, { visa: 'work', expires: age + law.visas.student.postStudy, postStudy: true, qualifyingSince: res.qualifyingSince ?? age });
         delete res.grace;
         ctx.log(`Your student visa became a ${law.visas.student.postStudy}-year post-study work permit.`, '🎓', 'good');
         ok = true;
@@ -302,13 +351,13 @@ export const MigrationModule = {
         res.grace = age + (age - res.arrived <= 1 ? 2 : 1);
         const need = { work: 'a job', transfer: 'a job', student: 'a school enrollment', family: 'your marriage to a citizen' }[res.visa] ?? 'its conditions';
         ctx.log(`Your ${law.visas[res.visa]?.name ?? 'visa'} depends on ${need}. Sort it out within a year or you'll have to leave.`, '🛂', 'warn');
-      } else if (!ok && age >= res.grace) return removal(ctx, 'Your visa lapsed.');
+      } else if (!ok && age >= res.grace) return lapsed(ctx, res, 'Your visa lapsed.');
       if (ok && expiredOnce) {
         // Working holidays (and Japan's nomad visa) aren't renewed: switch to another visa or go.
         if (res.grace == null) {
           res.grace = age + 1;
           ctx.log(`Your ${law.visas[res.visa].name} has run out. Switch to another visa within a year or you'll have to leave.`, '🎒', 'warn');
-        } else if (age >= res.grace) return removal(ctx, 'Your visa ran out.');
+        } else if (age >= res.grace) return lapsed(ctx, res, 'Your visa ran out.');
       } else if (ok && res.expires != null && age >= res.expires) {
         const rule = law.visas[res.visa];
         res.expires = age + (rule?.years ?? 2);
@@ -385,6 +434,7 @@ export const MigrationModule = {
       ctx.spend(elig.fee, `${elig.rule.name} application`, { credit: true });
       if (!rng.chance(elig.odds)) return ctx.log(`Your application to switch to a ${elig.rule.name} was refused.`, '🛂', 'bad');
       Object.assign(res, { visa: kind, ...(elig.rule.years ? { expires: state.character.age + elig.rule.years } : {}) });
+      if (res.qualifyingSince == null && !NON_QUALIFYING_VISAS.includes(kind)) res.qualifyingSince = state.character.age;
       delete res.grace;
       if (elig.rule.permanent) Object.assign(res, { status: 'permanent', permanentSince: state.character.age });
       ctx.log(`Approved: you're now here on a ${elig.rule.name}${elig.rule.permanent ? ' — as a permanent resident' : ''}.`, '🛂', 'good');
@@ -457,6 +507,18 @@ export const MigrationModule = {
     home(ctx, data, optionId) {
       ctx.emit('housing:leavingPrimary', { decision: optionId });
       finishEmigration(ctx, data.to, data.kind);
+    },
+    lapsed(ctx, _data, optionId) {
+      const { state } = ctx;
+      const res = residencyOf(state);
+      if (!res) return;
+      if (optionId === 'overstay') {
+        Object.assign(res, { status: 'undocumented', overstaySince: state.character.age });
+        delete res.grace;
+        delete res.expires;
+        return ctx.log('You stayed on after your visa ran out. Officially, you are no longer here.', '🤫', 'warn');
+      }
+      removal(ctx, 'You left before your visa ran out.');
     },
     asylumRefused(ctx, _data, optionId) {
       const { state } = ctx;

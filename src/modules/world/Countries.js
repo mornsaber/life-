@@ -446,7 +446,10 @@ export function localizeTerms(text, country) {
 /** Localize the text between tags of an HTML string (never attributes or button arguments). */
 export function localizeHtml(html, country) {
   if (!country || country.id === 'US') return html;
-  return html.replace(/>([^<]+)</g, (m, text) => `>${localizeTerms(localizeMoney(text, country), country)}<`);
+  // <span data-raw>…</span> is shown as written (a foreign degree keeps its school's own name).
+  const raw = [];
+  const kept = html.replace(/<span data-raw>([^<]*)<\/span>/g, (m) => `\u0000${raw.push(m) - 1}\u0000`);
+  return kept.replace(/>([^<]+)</g, (m, text) => `>${localizeTerms(localizeMoney(text, country), country)}<`).replace(/\u0000(\d+)\u0000/g, (m, i) => raw[Number(i)]);
 }
 
 /* ------------------------------------------------------------------ */

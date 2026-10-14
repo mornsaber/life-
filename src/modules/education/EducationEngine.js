@@ -22,6 +22,7 @@ import { localTuition, undergradEntryYears } from '../world/Education.js';
 export const requiresFor = (state, programId) => (undergradEntryYears(state?.character?.countryId, programId) ? { level: 'highschool' } : PROGRAMS[programId].requires);
 import { stateIdOf } from '../life/Regions.js';
 import { internationalTuition, onTemporaryVisa } from '../world/Immigration.js';
+import { COUNTRIES, localizeTerms } from '../world/Countries.js';
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -236,6 +237,16 @@ function fundTuition(ctx, e) {
   return notes;
 }
 
+/** Degrees keep the school and country that granted them (a US degree stays a US degree abroad). */
+export function stampDegrees(state) {
+  const cc = state.character.countryId ?? 'US';
+  for (const d of state.education.degrees) {
+    if (d.country) continue;
+    d.country = cc;
+    if (d.schoolId && SCHOOLS[d.schoolId]) d.schoolName = localizeTerms(SCHOOLS[d.schoolId].name, COUNTRIES[cc]);
+  }
+}
+
 export const EducationEngine = {
   id: 'education',
   order: 10,
@@ -264,6 +275,7 @@ export const EducationEngine = {
   },
 
   onAgeUp(ctx) {
+    stampDegrees(ctx.state);
     const { state, rng } = ctx;
     const e = state.education.enrolled;
     if (!e) return;

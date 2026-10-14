@@ -117,6 +117,8 @@ export function applicationEligibility(state, professionId) {
   if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
   if (residencyOf(state)?.status === 'asylum' && state.character.age < residencyOf(state).workFrom) return { ok: false, reason: 'Asylum seekers can\'t work yet' };
+  // Without papers only small private employers (often off the books) will take you on.
+  if (residencyOf(state)?.status === 'undocumented' && (profession.sector !== 'private' || profession.country || ['tech', 'finance', 'law', 'medical', 'nursing', 'engineering', 'accounting', 'corporate'].includes(professionId))) return { ok: false, reason: 'Needs the right to work' };
   // Some countries' police and fire services are national forces that hire citizens only.
   if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
   if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };
@@ -220,9 +222,10 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   profession.prepare?.(state, job);
   // Abroad, many private jobs are informal: cash pay, no contract, no benefits (Mexico, the Philippines, India).
   const informalShare = informality(countryOf(state));
-  if (informalShare && profession.sector === 'private' && !profession.dutyStation) {
+  const undocumented = residencyOf(state)?.status === 'undocumented';
+  if ((informalShare || undocumented) && profession.sector === 'private' && !profession.dutyStation) {
     const bySize = { micro: 1.5, small: 1.4, medium: 0.9, large: 0.4, enterprise: 0.15, mega: 0.1 }[employer.size] ?? 1;
-    if (ctx.rng.chance(Math.min(0.95, informalShare * bySize))) {
+    if (undocumented || ctx.rng.chance(Math.min(0.95, informalShare * bySize))) {
       job.informal = true;
       job.employer = { ...employer, benefits: { ...employer.benefits, health: false, pension: null, match: 0, dcPlan: null, tuition: 0 } };
     }

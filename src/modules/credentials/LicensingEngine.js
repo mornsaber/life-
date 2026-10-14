@@ -71,8 +71,9 @@ export function transferStatus(state, id) {
   if (!heldCountries(held).includes(here)) {
     // Foreign credentials: exchange, EU mutual recognition, or an assessment and exam.
     const route = recognitionRoute(id, heldCountries(held), here);
-    const blocked = route.language && !speaksLocal(state, here) ? `Needs fluent ${localLanguage(here)}` : null;
-    return { needed: true, foreign: true, method: route.method, cost: Math.max(150, Math.round((cred.cost || 400) * route.costMult)), exam: route.exam, difficulty: route.difficulty ?? 0, blocked };
+    const blocked = route.blocked ?? (route.language && !speaksLocal(state, here) ? `Needs fluent ${localLanguage(here)}` : null);
+    const stage = held.recognition?.[here] ?? 0;
+    return { needed: true, foreign: true, method: route.method, cost: Math.max(150, Math.round((cred.cost || 400) * route.costMult)), exam: route.exam, difficulty: route.difficulty ?? 0, blocked, stages: route.stages ?? 1, stage };
   }
   const method = cred.reciprocity;
   if (method === 'motion' && yearsInProfession(state, ['law', 'prosecution', 'publicDefender']) >= 5) return { needed: true, method, cost: 1200, exam: false };
@@ -568,6 +569,12 @@ export const LicensingEngine = {
       if (t.exam && !ctx.rng.chance(clamp(0.92 - t.difficulty + (stat - 50) / 120, 0.1, 0.97))) {
         ctx.log(`You failed the ${t.foreign ? COUNTRIES[countryIdOf(state)].name : STATES[here].name} ${t.foreign ? 'recognition exam' : t.method === 'transferExam' ? 'reciprocity exam' : 'licensing exam'} for your ${cred.name}.`, '📝', 'bad');
         return ctx.toast('Transfer exam failed', 'bad');
+      }
+      if (t.foreign && t.stage + 1 < t.stages) {
+        const h = state.credentials.held[id];
+        h.recognition = { ...(h.recognition ?? {}), [countryIdOf(state)]: t.stage + 1 };
+        ctx.log(`You passed stage ${t.stage + 1} of ${t.stages} toward recognition of your ${cred.name} in ${COUNTRIES[countryIdOf(state)].name}.`, '📝', 'good');
+        return ctx.toast('Stage passed: one more to go', 'good');
       }
       state.credentials.held[id].states.push(here);
       ctx.log(t.foreign ? `Your ${cred.name} is now recognized in ${COUNTRIES[countryIdOf(state)].name}.` : `Your ${cred.name} is now valid in ${STATES[here].name}${t.method === 'motion' && !t.exam ? ' (admitted by motion)' : ''}.`, cred.icon, 'good');

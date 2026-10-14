@@ -108,7 +108,7 @@ export const IMMIGRATION = {
       family: { name: 'Family reunification visa', odds: 0.85, years: 3, fee: 110 },
     },
     pr: { name: 'Niederlassungserlaubnis (settlement permit)', years: 4, fee: 155 },
-    nat: { years: 5, married: 3, needsPR: false, fee: 350 },
+    nat: { years: 5, married: 3, needsPR: true, fromArrival: true, prMin: 0, fee: 350 },
     dualIn: true, dualOut: true, birthright: { parentPR: true }, prLapse: 1,
     intlTuition: { mult: 1 },
   },
@@ -134,7 +134,7 @@ export const IMMIGRATION = {
       investor: { name: 'D-8 corporate investor visa', odds: 0.7, amount: 115000, years: 3, fee: 90 },
     },
     pr: { name: 'F-5 permanent residence', years: 5, fee: 230 },
-    nat: { years: 5, married: 2, needsPR: false, fee: 345 },
+    nat: { years: 5, married: 2, needsPR: true, fromArrival: true, prMin: 0, fee: 345 },
     dualIn: false, dualOut: false, birthright: false, prLapse: 2,
     intlTuition: { mult: 1 },
   },
@@ -161,7 +161,7 @@ export const IMMIGRATION = {
       retiree: { name: 'Residence by economic solvency', odds: 0.85, amount: 120000, permanent: true, minAge: 50, fee: 900 },
     },
     pr: { name: 'Permanent resident card', years: 4, fee: 900 },
-    nat: { years: 5, married: 2, needsPR: false, fee: 750 },
+    nat: { years: 5, married: 2, needsPR: true, fromArrival: true, prMin: 0, fee: 750 },
     dualIn: true, dualOut: true, birthright: true, prLapse: 2,
     intlTuition: { mult: 1 },
   },
@@ -291,6 +291,8 @@ export function residencyOf(state) {
 }
 /** On a temporary visa where you live (pays international tuition, can't vote, must keep its conditions). */
 export const onTemporaryVisa = (state) => residencyOf(state)?.status === 'visa';
+/** Visas whose years don't count toward settling or naturalizing. */
+export const NON_QUALIFYING_VISAS = ['student', 'workingHoliday', 'nomad', 'asylum'];
 
 /** What international students pay at a school here, given the citizen's price. */
 export function internationalTuition(state, price, costFactor = 1) {
@@ -338,14 +340,34 @@ const DRIVING = ['learnerPermit', 'driverLicense', 'motorcycle', 'cdlA', 'cdlB',
 /** Regulated professions that need the local language and a full exam. */
 const REGULATED = ['medicalLicense', 'barLicense', 'rn', 'np', 'pharmacistLicense', 'dentalLicense', 'teachingCert', 'psychLicense', 'lcsw', 'lpc', 'paLicense', 'ptLicense', 'otLicense', 'crnaLicense', 'vetLicense', 'architectLicense', 'pe', 'cpa', 'post', 'correctionsAcademy'];
 
+/** Credentials that never transfer between countries. */
+const NOT_PORTABLE = ['post', 'correctionsAcademy'];
+/** Clinical licences that strict regulators make you largely redo (USMLE + residency, Japan/Korea's national exams in Japanese/Korean). */
+const CLINICAL = ['medicalLicense', 'dentalLicense'];
+const STRICT_CLINICAL = ['US', 'JP', 'KR', 'CA', 'FR', 'DE'];
+/** Systems that recognize each other's training with only an assessment (GMC/AHPRA/MCC competent authorities, etc.). */
+const PEERS = {
+  GB: ['AU', 'CA', 'US'], AU: ['GB', 'CA', 'US'], CA: ['GB', 'AU', 'US'], US: ['CA'],
+};
+/** High-income regulators that scrutinize qualifications from elsewhere. */
+const RICH_SYSTEMS = ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'JP', 'KR'];
+
 /** How a credential earned in `fromCountries` is recognized in `to`. */
 export function recognitionRoute(credId, fromCountries, to) {
   if (DRIVING.includes(credId)) {
     return fromCountries.some((c) => LICENCE_EXCHANGE[to]?.includes(c) || (EU.includes(c) && EU.includes(to))) ? { method: 'exchange', exam: false, costMult: 0.3 } : { method: 'foreignExam', exam: true, difficulty: 0.25, costMult: 0.5 };
   }
+  // Police and prison-officer training is national: you join the local academy.
+  if (NOT_PORTABLE.includes(credId)) return { method: 'notRecognized', exam: false, costMult: 0, blocked: 'Not recognized abroad: train locally' };
   if (fromCountries.some((c) => EU.includes(c)) && EU.includes(to)) return { method: 'mutual', exam: false, costMult: 0.4, language: REGULATED.includes(credId) };
-  if (credId === 'barLicense' && (!COMMON_LAW.includes(to) || !fromCountries.some((c) => COMMON_LAW.includes(c)))) return { method: 'requalify', exam: true, difficulty: 0.55, costMult: 4, language: true };
-  if (REGULATED.includes(credId)) return { method: 'foreignExam', exam: true, difficulty: 0.4, costMult: 1.5, language: true };
+  if (credId === 'barLicense' && (!COMMON_LAW.includes(to) || !fromCountries.some((c) => COMMON_LAW.includes(c)))) return { method: 'requalify', exam: true, difficulty: 0.55, costMult: 4, language: true, stages: 2 };
+  const peer = fromCountries.some((c) => PEERS[to]?.includes(c));
+  // Doctors and dentists from outside a peer system re-sit the licensing exams and redo supervised training.
+  if (CLINICAL.includes(credId) && STRICT_CLINICAL.includes(to) && !peer) return { method: 'retrain', exam: true, difficulty: 0.6, costMult: 5, language: true, stages: 2 };
+  if (REGULATED.includes(credId)) {
+    const unfamiliar = !peer && fromCountries.every((c) => !RICH_SYSTEMS.includes(c)) && RICH_SYSTEMS.includes(to);
+    return { method: peer ? 'peerAssessment' : 'foreignExam', exam: true, difficulty: peer ? 0.25 : unfamiliar ? 0.5 : 0.4, costMult: peer ? 0.8 : unfamiliar ? 2.2 : 1.5, language: true };
+  }
   return { method: 'foreignExam', exam: true, difficulty: 0.25, costMult: 0.6 };
 }
 
@@ -423,8 +445,12 @@ export function naturalizationYearsLeft(state) {
   const years = spouse && law.married && nationalityCode(spouse) === here ? law.married : law.years;
   if (law.needsPR && res.permanentSince == null) return null;
   const age = state.character.age;
-  if (law.fromArrival) return Math.max(0, years - (age - res.arrived), (law.prMin ?? 0) - (age - res.permanentSince));
-  const since = law.needsPR ? res.permanentSince : res.arrived;
+  // Only lawful, settled-track residence counts: not years as a student, on a working holiday,
+  // as a digital nomad or waiting on an asylum claim; time spent abroad pushes the date back.
+  const qualifying = res.qualifyingSince ?? res.arrived;
+  if (qualifying == null) return null;
+  if (law.fromArrival) return Math.max(0, years - (age - qualifying), (law.prMin ?? 0) - (age - res.permanentSince));
+  const since = law.needsPR ? Math.max(res.permanentSince, qualifying) : qualifying;
   return Math.max(0, years - (age - since));
 }
 

@@ -89,7 +89,7 @@ function gapYearCard(state) {
   return card('Gap Year', `<p class="muted">A year off: travel, volunteer abroad or work and save. Working-holiday visas (Move Abroad below) let young people work their way around partner countries.</p>${check.ok ? '' : `<p class="why">${esc(check.reason)}</p>`}<div class="action-grid">${rows}</div>`, { icon: '🎒' });
 }
 
-const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident', asylum: 'Asylum seeker', refugee: 'Refugee' };
+const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident', asylum: 'Asylum seeker', refugee: 'Refugee', undocumented: 'No legal status' };
 
 /** Passports, your status where you live, and the road to staying for good. */
 function passportCard(state) {
@@ -100,7 +100,8 @@ function passportCard(state) {
   const lines = [];
   if (res) {
     const asylumLaw = ASYLUM[here];
-    const visa = res.status === 'asylum' ? `${asylumLaw.name}${res.tolerated ? ' (refused — tolerated stay)' : res.appealed ? ' (on appeal)' : ''}`
+    const visa = res.status === 'undocumented' ? `Overstayed since age ${res.overstaySince}: cash work only, and removal with a re-entry ban if caught`
+      : res.status === 'asylum' ? `${asylumLaw.name}${res.tolerated ? ' (refused — tolerated stay)' : res.appealed ? ' (on appeal)' : ''}`
       : res.temporary ? asylumLaw.temporary
         : res.status === 'refugee' ? 'Refugee status'
           : res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');

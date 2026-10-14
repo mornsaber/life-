@@ -294,7 +294,10 @@ export const RECIPROCITY_LABEL = {
   exchange: 'Licence exchange (no test)',
   mutual: 'EU mutual recognition',
   foreignExam: 'Foreign credential assessment + exam',
-  requalify: 'Requalify locally (different legal system)',
+  requalify: 'Requalify locally (different legal system): two exams',
+  retrain: 'Re-sit licensing exams + supervised training: two stages',
+  peerAssessment: 'Competent-authority assessment',
+  notRecognized: 'Not recognized abroad',
 };
 
 /**

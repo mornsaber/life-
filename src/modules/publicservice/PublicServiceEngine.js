@@ -62,7 +62,8 @@ export function rawExamScore(state, examId, rng) {
 
 export function examStatus(state, examId) {
   const e = state.publicService.exams[examId];
-  if (!e) return { taken: false, valid: false, passed: false, score: null };
+  // A civil-service exam qualifies you only for that country's service.
+  if (!e || (e.country ?? 'US') !== (state.character.countryId ?? 'US')) return { taken: false, valid: false, passed: false, score: null };
   const valid = state.character.age - e.age < EXAM_VALID_YEARS;
   return { taken: true, valid, passed: valid && e.score >= PASSING_SCORE, score: e.score, rankedScore: e.score + veteranPreference(state), expiresAge: e.age + EXAM_VALID_YEARS };
 }
@@ -210,7 +211,7 @@ export const PublicServiceEngine = {
         });
         return;
       }
-      state.publicService.exams[examId] = { score, age: state.character.age };
+      state.publicService.exams[examId] = { score, age: state.character.age, country: state.character.countryId ?? 'US' };
       const pass = score >= PASSING_SCORE;
       ctx.log(`You scored ${score} on the ${exam.name}${pass ? ' — you made the eligibility list.' : '. Not a passing score.'}`, exam.icon, pass ? 'good' : 'bad');
       ctx.toast(`${exam.name}: ${score}`, pass ? 'good' : 'bad');
@@ -222,7 +223,7 @@ export const PublicServiceEngine = {
       const { state, rng } = ctx;
       const bonus = { facilitate: 12, argue: -4, defer: -12 }[optionId];
       const final = Math.round(clamp(data.score + bonus + rng.int(-5, 5), 0, 100));
-      state.publicService.exams.foreignService = { score: final, age: state.character.age };
+      state.publicService.exams.foreignService = { score: final, age: state.character.age, country: state.character.countryId ?? 'US' };
       const pass = final >= PASSING_SCORE;
       ctx.log(`Foreign Service oral assessment: ${final}. ${pass ? 'You are on the register for appointment!' : 'The panel did not recommend you.'}`, '🌐', pass ? 'good' : 'bad');
       ctx.toast(pass ? 'Passed the FSOA!' : 'Did not pass the FSOA', pass ? 'good' : 'bad');
