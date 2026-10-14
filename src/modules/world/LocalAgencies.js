@@ -29,6 +29,7 @@ const CA_PROVINCIAL_POLICE = { 'CA-ON': 'Ontario Provincial Police', 'CA-QC': 'S
 
 export const LOCAL_AGENCIES = {
   CA: {
+    education: { name: 'School Board', employer: (city) => `${city} District School Board`, titles: { sub: 'Occasional Teacher', teacher: 'Teacher', senior: 'Senior Teacher', coach: 'Instructional Coach', specialist: 'Program Consultant', chair: 'Department Head', ap: 'Vice-Principal', principal: 'Principal', director: 'Superintendent of Education', assistantSuper: 'Associate Director', ...cmd('superintendent', ['Executive Superintendent', 'Deputy Director'], 'Director of Education') } },
     ems: { name: 'Paramedic Services', employer: (city) => `${city} Paramedic Services`, titles: { emt: 'Primary Care Paramedic', paramedic: 'Advanced Care Paramedic', criticalCare: 'Critical Care Paramedic', flight: 'Flight Paramedic', fto: 'Paramedic Educator', supervisor: 'Paramedic Superintendent', captain: 'District Commander', deputy: 'Deputy Chief', chief: 'Chief of Paramedic Services' } },
     prosecution: { name: 'Crown Prosecution Service', employer: (city, s, sn) => (s === 'CA-ON' ? `Crown Attorney's Office — ${city}` : s === 'CA-QC' ? `DPCP — ${city}` : `${sn} Crown Prosecution Service — ${city}`), titles: { clerk: 'Articling Student', ada: 'Assistant Crown Attorney', senior: 'Senior Crown Counsel', trial: 'Crown Counsel (Major Crimes)', chiefDeputy: 'Deputy Crown Attorney', first: 'Crown Attorney' } },
     revenue: { name: 'Provincial Ministry of Finance', employer: (city, s, sn) => (s === 'CA-QC' ? 'Revenu Québec' : `${sn} Ministry of Finance — Tax Division`) },
@@ -45,6 +46,8 @@ export const LOCAL_AGENCIES = {
   },
 
   GB: {
+    education: { name: 'State Schools', employer: (city) => `${city} Council — Schools`, titles: { sub: 'Supply Teacher', teacher: 'Teacher', senior: 'Lead Practitioner', coach: 'Specialist Leader of Education', specialist: 'Subject Lead', chair: 'Head of Department', ap: 'Deputy Head Teacher', principal: 'Head Teacher', director: 'Executive Head Teacher', assistantSuper: 'Trust Director of Education', ...cmd('superintendent', ['Deputy Chief Executive (Academy Trust)', 'Director of Children\'s Services'], 'Academy Trust Chief Executive') } },
+    municipalAdmin: { name: 'Local Council', employer: (city) => `${city} City Council`, titles: { clerk: 'Administrative Officer', deputyClerk: 'Democratic Services Officer', cityClerk: 'Head of Democratic Services', analyst: 'Finance Officer', seniorAnalyst: 'Senior Accountant', financeDirector: 'Section 151 Officer (Director of Finance)', manager: 'Head of Service', acm: 'Strategic Director', ...cmd('cityManager', ['Corporate Director', 'Deputy Chief Executive', 'Executive Director'], 'Chief Executive') } },
     probation: { name: 'The Probation Service', employer: (city, s) => (s === 'GB-SCT' ? `${city} Criminal Justice Social Work` : `Probation Service — ${city}`), titles: { trainee: 'Trainee Probation Officer (PQiP)', officer: 'Probation Officer', senior: 'Senior Probation Officer', specialized: 'Probation Officer (MAPPA)', supervisor: 'Head of Probation Delivery Unit', chief: 'Regional Probation Director' } },
     ...GONE, statePolice: null, corrections: null, revenue: null,
     police: {
@@ -70,6 +73,8 @@ export const LOCAL_AGENCIES = {
   },
 
   DE: {
+    education: { name: 'Öffentliche Schulen', employer: (city) => `Staatliches Schulamt ${city}`, titles: { sub: 'Vertretungslehrkraft', teacher: 'Studienrat', senior: 'Oberstudienrat', coach: 'Fachberater', specialist: 'Fachbereichsleiter', chair: 'Studiendirektor', ap: 'Stellvertretender Schulleiter', principal: 'Oberstudiendirektor (Schulleiter)', director: 'Schulrat', assistantSuper: 'Leitender Schulamtsdirektor', ...cmd('superintendent', ['Ministerialrat', 'Ministerialdirigent'], 'Ministerialdirektor (Schulabteilung)') } },
+    municipalAdmin: { name: 'Stadtverwaltung', employer: (city) => `Stadtverwaltung ${city}`, titles: { clerk: 'Verwaltungsfachangestellter', deputyClerk: 'Sachbearbeiter', cityClerk: 'Sachgebietsleiter', analyst: 'Haushaltssachbearbeiter', seniorAnalyst: 'Kämmereiamtsrat', financeDirector: 'Kämmerer', manager: 'Amtsleiter', acm: 'Fachbereichsleiter', ...cmd('cityManager', ['Beigeordneter', 'Erster Beigeordneter', 'Stadtdirektor'], 'Oberbürgermeister-Stellvertreter (Verwaltungschef)') } },
     prosecution: { name: 'Staatsanwaltschaft', employer: (city) => `Staatsanwaltschaft ${city}`, titles: { clerk: 'Rechtsreferendar', ada: 'Staatsanwalt', senior: 'Staatsanwalt (Gruppenleiter)', trial: 'Oberstaatsanwalt', chiefDeputy: 'Leitender Oberstaatsanwalt', first: 'Generalstaatsanwalt' } },
     revenue: { name: 'Finanzverwaltung', employer: (city) => `Finanzamt ${city}`, titles: { agent: 'Finanzanwärter', auditor: 'Betriebsprüfer', senior: 'Steueramtmann', fraud: 'Steuerfahnder', supervisor: 'Sachgebietsleiter', commissioner: 'Vorsteher des Finanzamts' } },
     probation: { name: 'Bewährungshilfe', employer: (city) => `Bewährungshilfe am Landgericht ${city}`, titles: { trainee: 'Bewährungshelfer (Einarbeitung)', officer: 'Bewährungshelfer', senior: 'Erfahrener Bewährungshelfer', supervisor: 'Fachbereichsleiter', chief: 'Leiter der Bewährungshilfe' } },
@@ -94,6 +99,8 @@ export const LOCAL_AGENCIES = {
   },
 
   FR: {
+    education: { name: 'Éducation nationale', citizensOnly: true, employer: (city) => `Académie — établissements de ${city}`, titles: { sub: 'Professeur contractuel', teacher: 'Professeur certifié', senior: 'Professeur agrégé', coach: 'Professeur formateur', specialist: 'Conseiller pédagogique', chair: 'Coordonnateur de discipline', ap: 'Proviseur adjoint', principal: 'Proviseur', director: 'Inspecteur pédagogique régional', assistantSuper: 'Directeur académique adjoint', ...cmd('superintendent', ['Directeur académique (DASEN)', 'Secrétaire général d\'académie'], 'Recteur d\'académie') } },
+    municipalAdmin: { name: 'Mairie', employer: (city) => `Mairie de ${city}`, titles: { clerk: 'Adjoint administratif', deputyClerk: 'Rédacteur', cityClerk: 'Chef de service état civil', analyst: 'Attaché (finances)', seniorAnalyst: 'Attaché principal', financeDirector: 'Directeur des finances', manager: 'Directeur de service', acm: 'Directeur général adjoint des services', ...cmd('cityManager', ['DGA', 'DGA délégué', 'Directeur de cabinet'], 'Directeur général des services') } },
     ...GONE, transitPolice: null, corrections: null, revenue: null,
     police: {
       name: 'Police municipale', employer: (city) => `Police municipale de ${city}`,
@@ -139,6 +146,8 @@ export const LOCAL_AGENCIES = {
   },
 
   JP: {
+    education: { name: 'Public Schools', employer: (c, s, sn) => `${sn} Board of Education`, titles: { sub: 'Temporary Teacher (Kōshi)', teacher: 'Teacher (Kyōyu)', senior: 'Senior Teacher (Shidō Kyōyu)', coach: 'Lead Teacher', specialist: 'Teaching Supervisor (Shidō Shuji)', chair: 'Head Teacher (Shunin)', ap: 'Vice-Principal (Kyōtō)', principal: 'Principal (Kōchō)', director: 'Board of Education Section Chief', assistantSuper: 'Deputy Superintendent', ...cmd('superintendent', ['Director-General of Education', 'Deputy Superintendent of Education'], 'Superintendent of Education (Kyōikuchō)') } },
+    municipalAdmin: { name: 'City Hall', employer: (city) => `${city} City Hall`, titles: { clerk: 'Clerk (Shuji)', deputyClerk: 'Senior Clerk', cityClerk: 'Section Chief (Kakarichō)', analyst: 'Budget Officer', seniorAnalyst: 'Assistant Section Manager', financeDirector: 'Director of Finance', manager: 'Section Manager (Kachō)', acm: 'Department Director (Buchō)', ...cmd('cityManager', ['Bureau Director', 'Chief Administrative Officer', 'Deputy Mayor (Fuku-shichō)'], 'Deputy Mayor (Senior)') } },
     revenue: { name: 'Prefectural Tax Office', employer: (c, s, sn) => `${sn} Prefectural Tax Office` },
     prosecution: { name: 'Public Prosecutors Office', employer: (city) => `${city} District Public Prosecutors Office`, titles: { clerk: 'Public Prosecutor\'s Assistant Officer', ada: 'Prosecutor (Kenji)', senior: 'Senior Prosecutor', trial: 'Special Investigation Department Prosecutor', chiefDeputy: 'Deputy Chief Prosecutor', first: 'Chief Prosecutor (Kenjisei)' } },
     probation: { name: 'Probation Office', employer: (city) => `${city} Probation Office`, titles: { trainee: 'Probation Officer Trainee', officer: 'Probation Officer (Hogo Kansatsukan)', senior: 'Senior Probation Officer', supervisor: 'Section Chief', chief: 'Director of the Probation Office' } },
@@ -214,6 +223,7 @@ export const LOCAL_AGENCIES = {
   },
 
   IN: {
+    education: { name: 'Government Schools', employer: (c, s, sn) => `${sn} Department of School Education`, titles: { sub: 'Guest Teacher', teacher: 'Trained Graduate Teacher', senior: 'Post Graduate Teacher', coach: 'Block Resource Person', specialist: 'Subject Expert (SCERT)', chair: 'Senior Lecturer', ap: 'Vice Principal', principal: 'Principal', director: 'District Education Officer', assistantSuper: 'Joint Director of Education', ...cmd('superintendent', ['Additional Director', 'Director of School Education'], 'Commissioner of School Education') } },
     prosecution: { name: 'Directorate of Prosecution', employer: (c, s, sn) => `${sn} Directorate of Prosecution — ${c}`, titles: { clerk: 'Legal Assistant', ada: 'Assistant Public Prosecutor', senior: 'Additional Public Prosecutor', trial: 'Public Prosecutor', chiefDeputy: 'Deputy Director of Prosecution', first: 'Director of Prosecution' } },
     revenue: { name: 'Commercial Taxes Department', employer: (c, s, sn) => `${sn} Commercial Taxes Department` },
     ...GONE, police: null, transitPolice: null,
@@ -228,6 +238,8 @@ export const LOCAL_AGENCIES = {
   },
 
   AU: {
+    education: { name: 'State Schools', employer: (c, s, sn) => `${sn} Department of Education`, titles: { sub: 'Casual Relief Teacher', teacher: 'Teacher', senior: 'Highly Accomplished Teacher', coach: 'Instructional Leader', specialist: 'Curriculum Leader', chair: 'Head of Department', ap: 'Deputy Principal', principal: 'Principal', director: 'Director, School Performance', assistantSuper: 'Executive Director, Schools', ...cmd('superintendent', ['Deputy Secretary, Schools', 'Deputy Director-General'], 'Director-General of Education') } },
+    municipalAdmin: { name: 'Local Council', employer: (city) => `City of ${city}`, titles: { clerk: 'Customer Service Officer', deputyClerk: 'Governance Officer', cityClerk: 'Governance Manager', analyst: 'Finance Officer', seniorAnalyst: 'Senior Financial Analyst', financeDirector: 'Chief Financial Officer', manager: 'Manager', acm: 'Director', ...cmd('cityManager', ['General Manager, Corporate Services', 'Deputy CEO', 'Executive Director'], 'Chief Executive Officer') } },
     revenue: { name: 'State Revenue Office', employer: (c, s, sn) => ({ 'AU-NSW': 'Revenue NSW', 'AU-VIC': 'State Revenue Office Victoria', 'AU-QLD': 'Queensland Revenue Office' }[s] ?? `${sn} Revenue Office`) },
     ...GONE, police: null, transitPolice: null,
     gameWarden: { name: 'Fisheries & Wildlife Officers', employer: (c, s, sn) => `${sn} Fisheries & Wildlife Compliance`, titles: { cadet: 'Trainee Fisheries Officer', warden: 'Fisheries Officer', investigator: 'Wildlife Crime Investigator', chief: 'Director of Compliance' } },
