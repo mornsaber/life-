@@ -272,7 +272,7 @@ export const MigrationModule = {
       }
     }
 
-    if (age === 22) dualChoice(ctx);
+    if (age >= 22 && !state.prompts.some((p) => p.type === 'migration.dual')) dualChoice(ctx);
 
     const res = residencyOf(state);
     if (!res) return;
@@ -421,6 +421,7 @@ export const MigrationModule = {
       // Some countries make you give up your old passport; some take theirs back when you take another.
       const lost = law.dualIn === false ? before : before.filter((c) => !IMMIGRATION[c].dualOut);
       state.character.citizenships = [...before.filter((c) => !lost.includes(c)), here];
+      state.migration.naturalized = [...(state.migration.naturalized ?? []), here];
       delete state.migration.residences[here];
       ctx.stat('happiness', 12);
       ctx.log(`You took the oath and became a ${COUNTRIES[here].demonym} citizen. ${COUNTRIES[here].flag}${lost.length ? ` You gave up your ${lost.map((c) => COUNTRIES[c].demonym).join(' and ')} citizenship.` : ''}`, '🛂', 'milestone');

@@ -39,6 +39,7 @@ import { programEligibility } from '../src/modules/service/NationalService.js';
 import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
 import { departureBlock } from '../src/modules/world/Migration.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
+import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -348,6 +349,32 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'children born abroad: registration deadlines, one generation by descent, choosing at 22'() {
+    // A Japanese mother in the US: the baby is American by birth, Japanese only if registered in time.
+    const t = born('JP', 17, 30);
+    arrive(t.ctx, 'US', { visa: 'work' });
+    t.state.people.expecting = { due: true };
+    const baby = { id: 'kid1', firstName: 'Ken', relation: 'child', nationality: 'US', ageOffset: -30, alive: true };
+    let r = newbornCitizenships(t.state, baby);
+    assert.deepEqual(r.citizenships, ['US']);
+    assert.deepEqual(r.register, ['JP'], 'Japan needs the birth registered');
+    // A Canadian by descent (born in the US to a Canadian parent) can't pass it on to a child born abroad.
+    const c = born('US', 18, 30);
+    c.state.character.citizenships = ['US', 'CA'];
+    c.state.migration = { birthCountry: 'US', residences: {}, languages: {}, history: [] };
+    r = newbornCitizenships(c.state, { ...baby, nationality: 'US' });
+    assert.ok(r.lost.includes('CA'), 'first-generation limit');
+    // An American abroad passes it on automatically.
+    const a = born('US', 19, 30);
+    arrive(a.ctx, 'DE', { visa: 'work' });
+    r = newbornCitizenships(a.state, { ...baby, nationality: 'DE' });
+    assert.ok(r.citizenships.includes('US') && !r.citizenships.includes('DE'), 'no German birthright without a settled parent');
+    // A Korean-American child living in the US chooses at 22 and keeps the US passport.
+    const k = born('US', 20, 50);
+    k.state.people.list.push({ id: 'kid2', firstName: 'Min', relation: 'child', ageOffset: -28, alive: true, citizenships: ['US', 'KR'] });
+    childDualChoices(k.ctx);
+    assert.deepEqual(k.state.people.list.find((p) => p.id === 'kid2').citizenships, ['US']);
   },
   'working holidays, nomad visas, overseas assignments, gap years, US tax abroad'() {
     // A 24-year-old American can work a year in Australia, but not past 30 and only once.

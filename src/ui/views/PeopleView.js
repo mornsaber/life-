@@ -8,6 +8,7 @@ import {
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
+import { COUNTRIES } from '../../modules/world/Countries.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
@@ -55,7 +56,8 @@ function personRow(state, p) {
     p.alive ? `age ${age}` : `died at ${p.diedAge}`,
     p.alive && p.job ? p.job : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
-    p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') ? `from ${nationalityName(p)}` : null,
+    p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') && p.relation !== 'child' ? `from ${nationalityName(p)}` : null,
+    p.relation === 'child' && p.citizenships && (p.citizenships.length > 1 || p.citizenships[0] !== (state.character.countryId ?? 'US')) ? `🛂 ${p.citizenships.map((c) => COUNTRIES[c]?.flag ?? c).join('')}${p.oci ? ' + OCI' : ''}` : null,
     p.alive && p.away ? 'moved away' : null,
     p.owes ? `owes you ${money(p.owes.amount)}` : null,
     p.relation === 'child' && age < 18 && p.custody ? CUSTODY[p.custody] : null,

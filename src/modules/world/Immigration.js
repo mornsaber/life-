@@ -433,8 +433,10 @@ export function naturalizationYearsLeft(state) {
  * country of birth where birth there is enough (the Americas; Germany when a parent is settled).
  */
 export function heirCitizenships(parentState, child) {
-  const out = new Set(parentState.character.citizenships ?? [birthCountryOf(parentState)]);
   const born = nationalityCode(child) ?? parentState.character.countryId ?? 'US';
+  // Children born since births were tracked carry their own passports (registered or not).
+  if (child.citizenships?.length) return { citizenships: [...child.citizenships], born };
+  const out = new Set(parentState.character.citizenships ?? [birthCountryOf(parentState)]);
   const rule = IMMIGRATION[born]?.birthright;
   if (rule === true || (rule?.parentPR && residencesOf(parentState)[born]?.status === 'permanent')) out.add(born);
   const other = parentState.people?.list?.find((p) => p.id === child.otherParentId);

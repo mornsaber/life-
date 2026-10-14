@@ -24,6 +24,7 @@ import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
+import { settleNewborn } from '../world/Nationality.js';
 import { priceLevel, citizenshipsOf } from '../world/Countries.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
@@ -313,6 +314,7 @@ function births(ctx) {
   const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: partner?.id ?? null, custody: 'you', ...(adopted ? { adopted: true } : {}) };
   p.list.push(child);
   p.expecting = null;
+  settleNewborn(ctx, child);
   ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');
   ctx.stat('happiness', 15);
   ctx.stat('stress', 8);
