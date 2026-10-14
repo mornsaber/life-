@@ -9,6 +9,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { JUSTICE } from '../world/CountryLaw.js';
+import { priceLevel } from '../world/Countries.js';
 import { isIncarcerated } from '../../core/State.js';
 import { MORE_LIFE_EVENTS, FOLLOW_UPS, downPaymentAssistance } from './MoreLifeEvents.js';
 
@@ -93,7 +94,7 @@ const BASE_EVENTS = [
   ] },
   { id: 'fenderBender', minAge: 17, when: free, title: 'Sued After a Fender Bender', text: 'The other driver from a minor parking-lot accident is suing you for "chronic neck pain."', options: [
     { id: 'settle', label: '🤝 Let your insurer settle', resolve: (ctx) => { ctx.spend(1000, 'Insurance deductible', { allowDebt: true }); return 'Your insurer settled. You paid the $1,000 deductible and your premiums went up.'; } },
-    { id: 'fight', label: '⚖️ Fight it in court ($4,000 legal fees)', resolve: (ctx) => { ctx.spend(4000, 'Legal fees', { allowDebt: true }); return ctx.rng.chance(0.65) ? (stats(ctx, { happiness: 4 }), 'Surveillance showed him moving furniture. Case dismissed.') : (ctx.spend(15000, 'Civil judgment', { allowDebt: true }), stats(ctx, { happiness: -6 }), 'The jury sided with him. $15,000 judgment.'); } },
+    { id: 'fight', label: '⚖️ Fight it in court ($4,000 legal fees)', resolve: (ctx) => { ctx.spend(4000, 'Legal fees', { allowDebt: true }); return ctx.rng.chance(0.65) ? (stats(ctx, { happiness: 4 }), 'Surveillance showed him moving furniture. Case dismissed.') : (ctx.spend(15000, 'Civil judgment', { allowDebt: true }), stats(ctx, { happiness: -6 }), `The ${JUSTICE[ctx.state.character.countryId]?.trial === 'jury' || !ctx.state.character.countryId ? 'jury' : 'court'} sided with him. $15,000 judgment.`); } },
   ] },
   { id: 'slipFall', minAge: 18, when: free, title: 'Wet Floor', text: 'You slipped on an unmarked wet floor at a big-box store and hurt your wrist.', options: [
     { id: 'sue', label: '⚖️ Hire a lawyer', resolve: (ctx) => (ctx.rng.chance(0.55) ? (ctx.earn(18000, 'Personal-injury settlement'), 'The store settled for $18,000 (after your lawyer\'s third).') : (stats(ctx, { stress: 6 }), 'Their cameras showed a sign. You got nothing.')) },
@@ -147,6 +148,23 @@ const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? FOLLOW_UPS[id];
 /** How often something happens: kids and young adults have eventful years. */
 const yearlyChance = (age) => (age < 6 ? 0 : age < 18 ? 0.35 : age < 30 ? 0.4 : age < 65 ? 0.3 : 0.25);
 
+/**
+ * Life events are written in US prices. Abroad, scale what they cost and pay (and the
+ * dollar figures in their text) to local price levels.
+ */
+function local(ctx) {
+  const k = priceLevel(ctx.state);
+  if (k === 1) return { c: ctx, text: (t) => t };
+  const c = Object.create(ctx);
+  c.spend = (amount, ...rest) => ctx.spend(Math.round(amount * k), ...rest);
+  c.earn = (amount, ...rest) => ctx.earn(Math.round(amount * k), ...rest);
+  // Other modules price their own consequences.
+  c.emit = (event, payload) => ctx.emit(event, payload);
+  const round = (n) => (n < 1000 ? Math.round(n / 10) * 10 : n < 10000 ? Math.round(n / 100) * 100 : Math.round(n / 1000) * 1000);
+  const text = (t) => (typeof t === 'string' ? t.replace(/\$([\d,]+)/g, (m, d) => `$${round(Number(d.replace(/,/g, '')) * k).toLocaleString('en-US')}`) : t);
+  return { c, text };
+}
+
 export const LifeEvents = {
   id: 'lifeEvents',
   order: 7,
@@ -167,7 +185,9 @@ export const LifeEvents = {
     }
     if (!event) return;
     if (event.run) {
-      const [icon, text, kind] = event.run(ctx);
+      const { c, text: localText } = local(ctx);
+      const [icon, rawText, kind] = event.run(c);
+      const text = localText(rawText);
       if (text) ctx.log(text, icon, kind);
       return;
     }
@@ -175,8 +195,8 @@ export const LifeEvents = {
       type: 'lifeEvents.event',
       icon: iconOf(event),
       title: event.title,
-      text: event.text,
-      options: event.options.map((o) => ({ id: o.id, label: o.label, tone: o.tone })),
+      text: local(ctx).text(event.text),
+      options: event.options.map((o) => ({ id: o.id, label: local(ctx).text(o.label), tone: o.tone })),
       data: { eventId: event.id },
     });
   },
@@ -186,7 +206,8 @@ export const LifeEvents = {
       const event = byId(data.eventId);
       const option = event?.options.find((o) => o.id === optionId);
       if (!option) return;
-      const text = option.resolve(ctx);
+      const { c, text: localText } = local(ctx);
+      const text = localText(option.resolve(c));
       if (text) ctx.log(`${event.title}: ${text}`, iconOf(event));
     },
   },
