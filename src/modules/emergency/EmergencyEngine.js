@@ -20,7 +20,8 @@
  * }
  */
 import { pickFresh } from '../../core/Pools.js';
-import { volunteerServiceHere } from '../world/CountryLaw.js';
+import { volunteerServiceHere, volunteerRanks } from '../world/CountryLaw.js';
+import { currentCountry } from '../../core/Locale.js';
 import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -52,6 +53,20 @@ export const SERVICES = {
   skiPatrol: SkiPatrol,
   mrc: MedicalReserveCorps,
 };
+// Ranks follow the country you live in (a retained firefighter, a special constable…):
+// same steps and requirements, the local titles.
+for (const svc of Object.values(SERVICES)) {
+  const base = svc.ranks;
+  const local = {};
+  Object.defineProperty(svc, 'ranks', {
+    get() {
+      const titles = volunteerRanks(currentCountry(), svc.id);
+      if (!titles) return base;
+      return (local[currentCountry()] ??= base.map((r, i) => (titles[i] ? { ...r, title: titles[i] } : r)));
+    },
+    enumerable: true,
+  });
+}
 export const SERVICE_LIST = Object.values(SERVICES);
 
 export const rankOfMember = (serviceId, member) => SERVICES[serviceId].ranks[member.rankIndex];

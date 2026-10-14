@@ -116,6 +116,7 @@ export const NZ = {
     CADETS: { jrotc: 'New Zealand Cadet Corps', seaCadets: 'Sea Cadet Corps' },
     FOREIGN_SERVICE_EXAM: 'MFAT Graduate Policy Programme assessment',
     PROSECUTORS: ['Crown Solicitor\'s Office', 'Public Defence Service', 'Community Probation'],
+    VOLUNTEER_RANKS: { fire: ['Recruit Firefighter (Volunteer)', 'Firefighter', 'Qualified Firefighter', 'Senior Firefighter', 'Station Officer', 'Deputy Chief Fire Officer', 'Chief Fire Officer'], sar: ['Trainee', 'Field Team Member', 'Senior Field Member', 'Team Leader', 'Deputy Group Leader', 'Group Leader', 'Regional Coordinator'], auxiliary: ['Trainee Crew', 'Crew Member', 'Skipper', 'Unit President', 'Regional Operations Manager'] },
     VOLUNTEER_SERVICES: { fire: 'Volunteer Fire Brigade (FENZ)', police: null, sar: 'LandSAR', ambulance: 'Hato Hone St John volunteer crew', wildland: 'FENZ rural fire crew', auxiliary: 'Coastguard New Zealand', cap: null, cert: 'Civil Defence Emergency Management', redcross: 'New Zealand Red Cross', skiPatrol: 'Ski Patrol', mrc: null },
     NATIONAL_SERVICE: { overseas: 'Volunteer Service Abroad (VSA)', domestic: null },
     ACCOUNTS: { dc: 'KiwiSaver', roth: { name: 'Managed fund (PIE)', limit: ppp(60000) }, traditional: { name: 'KiwiSaver (voluntary contributions)', limit: ppp(20000) } },

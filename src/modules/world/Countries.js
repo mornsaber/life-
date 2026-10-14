@@ -428,6 +428,7 @@ const ABROAD_TERMS = {
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
   // State-police events: national and state forces abroad don't call their officers troopers.
+  'Paid Fire Chief': 'Full-time Chief Fire Officer', 'Paid Chief of Operations': 'Full-time Head of Operations',
   'A Fellow Trooper': 'A Fellow Officer', 'off-duty trooper': 'off-duty officer', 'Call a trooper': 'Call for backup',
   'Police Purple Heart': 'Injured on Duty award', 'Police Medal of Valor': 'Police Medal for Gallantry', 'Fire Department Medal of Valor': 'Fire Service Gallantry Award', 'Medal of Valor': 'Medal for Gallantry',
   'NSF Graduate Research Fellowship': 'national doctoral research fellowship', 'NSF Graduate Research Fellow': 'National doctoral research fellow', 'NSF GRFP': 'doctoral fellowship', 'Presidential Rank Award': 'Senior civil service award',

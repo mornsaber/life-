@@ -24,6 +24,8 @@ import { LEGISLATURES, NATIONAL_OFFICES } from '../src/modules/politics/National
 import { IMMIGRATION, WORKING_HOLIDAY, recognitionRoute, totalizes } from '../src/modules/world/Immigration.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { localMedal } from '../src/modules/world/Honours.js';
+import { SERVICES } from '../src/modules/emergency/EmergencyEngine.js';
+import { setCurrentCountry } from '../src/core/Locale.js';
 
 const PER = Number(process.argv[2] ?? 6);
 const SEED = Number(process.argv[3] ?? 1);
@@ -72,6 +74,13 @@ assert.equal(recognitionRoute('driverLicense', ['AU'], 'NZ').method, 'exchange')
 assert.equal(recognitionRoute('driverLicense', ['NZ'], 'AU').method, 'exchange');
 assert.equal(recognitionRoute('rn', ['DE'], 'IE').method, 'mutual', 'Ireland is in the EU');
 assert.equal(localMedal('IE', 'purpleHeart'), null);
+// Volunteer services rank the local way abroad.
+setCurrentCountry('IE');
+assert.equal(SERVICES.fire.ranks[1].title, 'Retained Firefighter');
+setCurrentCountry('GB');
+assert.equal(SERVICES.police.ranks[1].title, 'Special Constable');
+setCurrentCountry('US');
+assert.equal(SERVICES.fire.ranks[6].title, 'Volunteer Fire Chief');
 
 /* Lives. */
 let careers = 0;

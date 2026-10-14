@@ -116,6 +116,7 @@ export const ES = {
     CADETS: { jrotc: null, seaCadets: null },
     FOREIGN_SERVICE_EXAM: 'Oposición a la Carrera Diplomática',
     PROSECUTORS: ['Ministerio Fiscal', 'Turno de oficio', 'Servicio de Gestión de Penas y Medidas Alternativas'],
+    VOLUNTEER_RANKS: { fire: ['Bombero voluntario en prácticas', 'Bombero voluntario', 'Bombero voluntario veterano', 'Conductor', 'Cabo', 'Sargento', 'Jefe de agrupación'], ambulance: ['Voluntario en formación', 'Voluntario de Protección Civil', 'Técnico en Emergencias Sanitarias', 'Jefe de equipo', 'Jefe de sección', 'Jefe de unidad', 'Jefe de agrupación'], cert: ['Voluntario', 'Jefe de equipo', 'Jefe de sección', 'Coordinador de la agrupación'] },
     VOLUNTEER_SERVICES: { fire: 'Bomberos voluntarios', police: null, sar: 'Grupo de Rescate de Montaña', ambulance: 'Protección Civil (voluntarios)', wildland: 'Agrupación de Defensa Forestal', auxiliary: 'Salvamento Marítimo (voluntarios)', cap: null, cert: 'Protección Civil municipal', redcross: 'Cruz Roja Española', skiPatrol: 'Socorristas de pista', mrc: null },
     NATIONAL_SERVICE: { overseas: 'Cuerpo Europeo de Solidaridad', domestic: null },
     ACCOUNTS: { dc: 'Plan de pensiones de empleo', roth: { name: 'Fondo de inversión (traspasable)', limit: ppp(60000) }, traditional: { name: 'Plan de pensiones individual', limit: ppp(1500), share: 1 } },

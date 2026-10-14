@@ -454,6 +454,63 @@ export function nationalServiceTerms(countryId) {
 const US_SERVICE_NAMES = { fire: 'Volunteer Fire Department', police: 'Police Reserve Unit', sar: 'Search & Rescue Team', ambulance: 'Volunteer Ambulance Corps', wildland: 'Wildland Fire Crew', auxiliary: 'Coast Guard Auxiliary', cap: 'Civil Air Patrol', cert: 'Community Emergency Response Team', redcross: 'Red Cross Disaster Action Team', skiPatrol: 'National Ski Patrol', mrc: 'Medical Reserve Corps' };
 /** Whether a volunteer service exists where you live. */
 export const volunteerServiceHere = (countryId, serviceId) => !VOLUNTEER_SERVICES[countryId] || Boolean(VOLUNTEER_SERVICES[countryId][serviceId]);
+/**
+ * Volunteer services' rank ladders abroad, lowest first (same length as the US ladder in
+ * emergency/*.js). '*' is the plain international ladder for a country with no entry;
+ * the US and Canada keep the US ranks.
+ */
+export const VOLUNTEER_RANKS = {
+  '*': {
+    fire: ['Trainee Firefighter', 'Firefighter', 'Senior Firefighter', 'Driver', 'Crew Commander', 'Station Officer', 'Chief Officer'],
+    police: ['Trainee Volunteer Officer', 'Volunteer Officer', 'Senior Volunteer Officer', 'Section Officer', 'Volunteer Sergeant', 'Volunteer Inspector', 'Volunteer Chief Officer'],
+    sar: ['Trainee', 'Team Member', 'Senior Team Member', 'Team Leader', 'Deputy Operations Leader', 'Operations Leader', 'Team Commander'],
+    ambulance: ['Trainee Member', 'First Responder', 'Emergency Medical Technician', 'Crew Leader', 'Section Leader', 'Unit Officer', 'Unit Commander'],
+    wildland: ['Crew Member', 'Firefighter', 'Senior Firefighter', 'Squad Leader', 'Crew Leader', 'Sector Leader', 'Division Commander'],
+    auxiliary: ['Volunteer', 'Boat Crew Member', 'Helm', 'Station Officer', 'Area Commander'],
+    cap: ['Cadet', 'Senior Cadet', 'Air Observer', 'Senior Observer', 'Volunteer Pilot', 'Search Coordinator'],
+    cert: ['Volunteer', 'Team Leader', 'Section Leader', 'Volunteer Coordinator'],
+    redcross: ['Emergency Response Volunteer', 'Team Leader', 'Shelter Manager', 'Emergency Response Manager'],
+    skiPatrol: ['Trainee Patroller', 'Patroller', 'Senior Patroller', 'Patrol Leader', 'Head of Patrol'],
+    mrc: ['Volunteer', 'Clinic Lead', 'Medical Lead', 'Unit Coordinator'],
+  },
+  GB: {
+    fire: ['Trainee Firefighter (On-Call)', 'Firefighter (On-Call)', 'Competent Firefighter', 'Firefighter (Driver)', 'Crew Manager', 'Watch Manager', 'Station Manager'],
+    police: ['Trainee Special Constable', 'Special Constable', 'Special Constable (Independent Patrol)', 'Special Sergeant', 'Special Inspector', 'Special Chief Inspector', 'Special Chief Officer'],
+    sar: ['Trainee', 'Team Member', 'Senior Team Member', 'Party Leader', 'Deputy Team Leader', 'Team Leader', 'Regional Chair'],
+    ambulance: ['Probationer', 'First Aider', 'Emergency Transport Attendant', 'Ambulance Crew Lead', 'Unit Lead', 'District Lead', 'County Commander'],
+    auxiliary: ['Trainee Crew', 'Crew Member', 'Helm', 'Coxswain', 'Lifeboat Operations Manager'],
+  },
+  AU: {
+    fire: ['Probationary Firefighter', 'Village Firefighter', 'Bush Firefighter', 'Advanced Firefighter', 'Deputy Captain', 'Captain', 'Group Captain'],
+    sar: ['Probationary Member', 'Member', 'Senior Member', 'Team Leader', 'Deputy Unit Commander', 'Unit Commander', 'Region Controller'],
+    wildland: ['Probationary Firefighter', 'Bush Firefighter', 'Advanced Firefighter', 'Crew Leader', 'Deputy Captain', 'Strike Team Leader', 'Group Officer'],
+    auxiliary: ['Trainee Crew', 'Crew Member', 'Skipper', 'Unit Commander', 'Regional Controller'],
+  },
+  DE: {
+    fire: ['Feuerwehrmann-Anwärter', 'Feuerwehrmann', 'Oberfeuerwehrmann', 'Maschinist', 'Löschmeister', 'Brandmeister', 'Wehrführer'],
+    sar: ['Helferanwärter', 'Helfer', 'Truppführer', 'Gruppenführer', 'Zugführer', 'Ortsbeauftragter', 'Landesbeauftragter'],
+  },
+  FR: {
+    fire: ['Sapeur de 2e classe (volontaire)', 'Sapeur de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Adjudant', 'Chef de centre'],
+    police: ['Réserviste', 'Gendarme de réserve', 'Brigadier de réserve', 'Maréchal des logis de réserve', 'Adjudant de réserve', 'Lieutenant de réserve', 'Capitaine de réserve'],
+  },
+  IT: {
+    fire: ['Vigile volontario in prova', 'Vigile del fuoco volontario', 'Vigile esperto', 'Autista', 'Caposquadra', 'Capo distaccamento', 'Comandante volontario'],
+    sar: ['Allievo', 'Tecnico di soccorso', 'Tecnico esperto', 'Capo squadra', 'Vice capo stazione', 'Capo stazione', 'Delegato di zona'],
+  },
+  JP: {
+    fire: ['Probationary Member (Danin)', 'Member (Danin)', 'Senior Member (Hanchō)', 'Squad Leader (Buchō)', 'Deputy Division Chief', 'Division Chief (Bundanchō)', 'Corps Chief (Danchō)'],
+  },
+  KR: {
+    fire: ['Probationary Volunteer', 'Volunteer Firefighter', 'Senior Volunteer', 'Team Leader', 'Deputy Captain', 'Captain (Daejang)', 'Volunteer Corps Chief'],
+  },
+};
+fromPacks(VOLUNTEER_RANKS, 'VOLUNTEER_RANKS');
+/** The local rank titles for a volunteer service (null: keep the US ladder). */
+export function volunteerRanks(countryId, serviceId) {
+  if (!countryId || countryId === 'US' || countryId === 'CA') return null;
+  return VOLUNTEER_RANKS[countryId]?.[serviceId] ?? VOLUNTEER_RANKS['*'][serviceId] ?? null;
+}
 /** Display swaps for the volunteer services' names. */
 export function volunteerTerms(countryId) {
   const v = VOLUNTEER_SERVICES[countryId];

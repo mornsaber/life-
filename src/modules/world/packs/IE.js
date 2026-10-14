@@ -121,6 +121,7 @@ export const IE = {
     CADETS: { jrotc: 'Army Reserve cadet programme', seaCadets: 'Irish Sea Cadets' },
     FOREIGN_SERVICE_EXAM: 'Third Secretary competition (publicjobs.ie)',
     PROSECUTORS: ['Office of the Director of Public Prosecutions', 'Criminal Legal Aid', 'Probation Service'],
+    VOLUNTEER_RANKS: { fire: ['Recruit Retained Firefighter', 'Retained Firefighter', 'Senior Retained Firefighter', 'Firefighter (Driver/Mechanic)', 'Sub-Station Officer', 'Station Officer', 'Assistant Chief Fire Officer'], police: ['Trainee Reserve Garda', 'Reserve Garda', 'Reserve Garda (experienced)', 'Reserve Garda (mentor)', 'Reserve Coordinator', 'Reserve Liaison Sergeant', 'Reserve Liaison Inspector'], ambulance: ['Cadet', 'Occupational First Aider', 'Emergency First Responder', 'Ambulance Crew Lead', 'Unit Officer', 'Unit Commander', 'Regional Commander'] },
     VOLUNTEER_SERVICES: { fire: 'Retained Firefighter', police: 'Garda Reserve', sar: 'Mountain Rescue Ireland', ambulance: 'Order of Malta Ambulance Corps', wildland: null, auxiliary: 'RNLI Lifeboat Crew', cap: null, cert: 'Civil Defence', redcross: 'Irish Red Cross', skiPatrol: null, mrc: null },
     NATIONAL_SERVICE: { overseas: 'Irish Aid volunteering (Comhlámh)', domestic: null },
     ACCOUNTS: { dc: 'Occupational pension', roth: { name: 'Exchange-traded fund (exit tax)', limit: ppp(50000) }, traditional: { name: 'PRSA', limit: ppp(30000), share: 1 } },
