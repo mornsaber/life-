@@ -11,7 +11,8 @@
  *                  permanent the visa is (or leads straight to) permanent residence
  *                  postStudy years of work rights after you graduate (student)
  *   pr           permanent residence: { name, years } (null: no general route in)
- *   nat          naturalization: { years, married, needsPR, fee }
+ *   nat          naturalization: { years, married, needsPR, fee, fromArrival, prMin }
+ *                  fromArrival  years count from arrival, with prMin years held as a permanent resident
  *   dualIn       may keep your old passport when you naturalize here
  *   dualOut      citizens keep this passport when they naturalize elsewhere
  *   birthright   born here = citizen (true), or { parentPR: true } (Germany: a parent with settled status)
@@ -67,7 +68,7 @@ export const IMMIGRATION = {
       family: { name: 'Family visa (spouse)', odds: 0.85, years: 3, fee: 2900 },
     },
     pr: { name: 'Indefinite Leave to Remain', years: 5, fee: 4500 },
-    nat: { years: 6, married: 3, needsPR: true, fee: 2400 },
+    nat: { years: 6, married: 3, needsPR: true, fromArrival: true, prMin: 1, fee: 2400 },
     dualIn: true, dualOut: true, birthright: false, prLapse: 2,
     surcharge: 1550,
     intlTuition: { mult: 1, floor: 33000 },
@@ -159,7 +160,7 @@ export const IMMIGRATION = {
       family: { name: 'Partner visa (subclass 820/801)', odds: 0.85, years: 2, fee: 6200 },
     },
     pr: { name: 'Permanent residency (subclass 186/189)', years: 3, fee: 3290 },
-    nat: { years: 4, needsPR: true, fee: 390 },
+    nat: { years: 4, needsPR: true, fromArrival: true, prMin: 1, fee: 390 },
     dualIn: true, dualOut: true, birthright: { parentPR: true }, prLapse: 5,
     intlTuition: { mult: 3.5 },
   },
@@ -348,9 +349,11 @@ export function naturalizationYearsLeft(state) {
   const law = IMMIGRATION[here].nat;
   const spouse = state.people?.list?.find((p) => p.alive && p.relation === 'spouse');
   const years = spouse && law.married && nationalityCode(spouse) === here ? law.married : law.years;
-  const since = law.needsPR ? res.permanentSince ?? null : res.arrived;
-  if (since == null) return null;
-  return Math.max(0, years - (state.character.age - since));
+  if (law.needsPR && res.permanentSince == null) return null;
+  const age = state.character.age;
+  if (law.fromArrival) return Math.max(0, years - (age - res.arrived), (law.prMin ?? 0) - (age - res.permanentSince));
+  const since = law.needsPR ? res.permanentSince : res.arrived;
+  return Math.max(0, years - (age - since));
 }
 
 /**

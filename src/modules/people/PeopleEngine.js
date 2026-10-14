@@ -24,7 +24,7 @@ import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
-import { priceLevel } from '../world/Countries.js';
+import { priceLevel, citizenshipsOf } from '../world/Countries.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
@@ -610,7 +610,7 @@ export const PeopleEngine = {
         person.relation = 'fiance';
         ctx.stat('happiness', 12);
         ctx.log(`${person.firstName} said yes! 💍`, '💍', 'milestone');
-        if (nationalityCode(person) !== 'US') foreignContactPrompt(ctx, person);
+        if (!citizenshipsOf(state).includes(nationalityCode(person))) foreignContactPrompt(ctx, person);
       } else {
         person.relationship = clampRel(person.relationship - 15);
         ctx.stat('happiness', -10);

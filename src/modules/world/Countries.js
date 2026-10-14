@@ -25,7 +25,7 @@
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
 import { EDUCATION, educationTerms } from './Education.js';
-import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
+import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
@@ -35,6 +35,7 @@ function lawTerms(cc) {
   const mcat = { GB: 'UCAT', AU: 'UCAT ANZ', IN: 'NEET', PH: 'NMAT', CA: 'MCAT' }[cc] ?? 'medical entrance exam';
   return {
     ...volunteerTerms(cc),
+    ...nationalServiceTerms(cc),
     MCAT: mcat,
     ...(acc ? { 'Roth IRA': acc.roth?.name ?? 'tax-free savings', 'Traditional IRA': acc.traditional?.name ?? 'pension savings', IRA: acc.traditional?.name ?? 'pension savings', '401(k)': acc.dc } : {}),
     ...(AVIATION_AUTHORITY[cc] ? { FAA: AVIATION_AUTHORITY[cc] } : {}),
@@ -430,7 +431,7 @@ const ABROAD_TERMS = {
   'Signals Intelligence (NSA)': 'signals intelligence', 'Clandestine Service (CIA Operations)': 'the clandestine service', 'Intelligence Analysis (CIA · DIA · NGA)': 'intelligence analysis',
   'FAA Part 135 Air Carrier Certificate': 'Air Operator Certificate (AOC)', 'DEA Registration': 'controlled-drugs licence', 'Payroll tax (FICA)': 'Employer contributions',
   'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for',
-  'An extra state tax on corporate profits.': 'An extra regional tax on corporate profits.', '2 points per dollar': '2 points per unit of currency spent', 'State income tax': 'Regional income tax', 'Legal to buy at a dispensary under state law (still federally illegal).': 'Legal to buy at licensed shops.' };
+  'An extra state tax on corporate profits.': 'An extra regional tax on corporate profits.', '2 points per dollar': '2 points per unit of currency spent', 'Federal student loans are paused while you serve.': 'Student loans are paused while you serve.', 'plus an edge in federal hiring': 'plus an edge in public-sector hiring', 'State income tax': 'Regional income tax', 'Legal to buy at a dispensary under state law (still federally illegal).': 'Legal to buy at licensed shops.' };
 
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {

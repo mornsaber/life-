@@ -90,6 +90,9 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   // Back to where you lived before, or the country's biggest city.
   const city = REGIONS[m.lastRegion?.[to]] ?? regionsIn(to)[0];
   changeRegion(ctx, city.id, reason || `You landed in ${COUNTRIES[to].name} ${COUNTRIES[to].flag}.`, { voluntary: true, crossBorder: true });
+  const res = m.residences[to];
+  if (res?.status === 'visa' && res.visa === 'student') ctx.log(`Your ${IMMIGRATION[to].visas.student.name} depends on studying here: enroll at a school this year (School tab).`, '🎓', 'warn');
+  else if (res?.status === 'visa' && res.visa === 'work' && !stays) ctx.log(`Your ${IMMIGRATION[to].visas.work.name} needs a sponsoring employer: find a job here within the year (Jobs tab).`, '💼', 'warn');
   if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
   if (!speaksLocal(state, to)) ctx.log(`You don't speak ${localLanguage(to)} yet. Living here, you'll pick it up — classes speed it up.`, '🗣️', 'info');
   ctx.stat('stress', 8);
@@ -199,7 +202,7 @@ export const MigrationModule = {
       }
       if (ok) delete res.grace;
       else if (res.grace == null) {
-        res.grace = age + 1;
+        res.grace = age + (age - res.arrived <= 1 ? 2 : 1);
         const need = { work: 'a job', transfer: 'a job', student: 'a school enrollment', family: 'your marriage to a citizen' }[res.visa] ?? 'its conditions';
         ctx.log(`Your ${law.visas[res.visa]?.name ?? 'visa'} depends on ${need}. Sort it out within a year or you'll have to leave.`, '🛂', 'warn');
       } else if (age >= res.grace) return removal(ctx, 'Your visa lapsed.');

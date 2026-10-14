@@ -6,6 +6,7 @@
  *
  * state.civic = { local, hoa, pta, activism, watch, neighbors, neighborsAt }
  */
+import { isCitizen } from '../world/Countries.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { housingStatus, primaryHome } from '../realestate/HousingEngine.js';
@@ -209,7 +210,7 @@ function localTick(ctx) {
   if (['owner', 'renting'].includes(status) && local.levy > 0) ctx.spend(local.levy, 'Local levies (voter-approved)', { allowDebt: true });
   if (state.character.age >= 18 && local.services !== 50) ctx.stat('happiness', Math.round((local.services - 50) / 15));
   // A ballot most years.
-  if (state.character.age < 18 || state.legal.incarceration || !rng.chance(0.6) || state.prompts.some((p) => p.type === 'civic.ballot')) return;
+  if (state.character.age < 18 || state.legal.incarceration || !isCitizen(state, state.character.countryId ?? 'US') || !rng.chance(0.6) || state.prompts.some((p) => p.type === 'civic.ballot')) return;
   const ids = eligibleMeasures(state);
   if (!ids.length) return;
   // Referendums abroad come up far less often than US ballot measures.

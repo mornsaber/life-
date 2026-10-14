@@ -40,7 +40,7 @@ export function healthPremium(state, income) {
 
 export function hasHousingBenefit(state) {
   const job = state.career.job;
-  return Boolean(job?.employer.benefits.housing || job?.posting?.housing);
+  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps');
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */
@@ -127,6 +127,8 @@ export const Finances = {
     if (age >= 18 && !state.legal.incarceration) {
       const region = regionOf(state);
       if (isOnActiveDuty(state)) living = 3000 + Math.round(gross * 0.1);
+      // Overseas volunteers live with a host family on an in-country allowance, with medical care provided.
+      else if (state.service?.program?.id === 'peaceCorps') living = 0;
       else if (state.education.enrolled?.pace === 'full' && !state.career.job) {
         // Full-time students borrow for living costs — unless the GI Bill housing allowance covers them.
         if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += 8000;
@@ -151,7 +153,7 @@ export const Finances = {
         // Spending flexes down when money is tight, but never below the bare minimum.
         living = Math.round(Math.max(minimum, Math.min(lifestyle, discretionary * 0.92)));
       }
-      insurance = healthPremium(state, ordinary);
+      insurance = state.service?.program?.id === 'peaceCorps' ? 0 : healthPremium(state, ordinary);
     }
 
     f.cash -= tax + living + insurance;

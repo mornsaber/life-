@@ -403,6 +403,32 @@ export const VOLUNTEER_SERVICES = {
   AU: { fire: 'Rural Fire Service', police: null, sar: 'SES Search and Rescue', ambulance: 'St John Ambulance Australia', wildland: 'RFS Bushfire Crew', auxiliary: 'Marine Rescue', cap: null, cert: 'State Emergency Service (SES)', redcross: 'Australian Red Cross', skiPatrol: 'Ski Patrol', mrc: null },
   FR: { fire: 'Sapeurs-Pompiers Volontaires', police: 'Réserve opérationnelle de la Gendarmerie', sar: 'Secours en Montagne', ambulance: 'Protection Civile', wildland: 'Comités Communaux Feux de Forêts', auxiliary: 'SNSM Sea Rescue', cap: null, cert: 'Réserve Communale de Sécurité Civile', redcross: 'Croix-Rouge française', skiPatrol: 'Pisteurs-Secouristes', mrc: null },
 };
+/**
+ * National service schemes standing in for the Peace Corps (overseas volunteering)
+ * and AmeriCorps (a year of community service at home). null: none.
+ */
+export const NATIONAL_SERVICE = {
+  CA: { overseas: 'Cuso International', domestic: 'Canada Service Corps' },
+  GB: { overseas: 'VSO', domestic: null },
+  DE: { overseas: 'weltwärts', domestic: 'Bundesfreiwilligendienst' },
+  JP: { overseas: 'JICA Overseas Cooperation Volunteers', domestic: null },
+  KR: { overseas: 'KOICA World Friends Korea', domestic: null },
+  IT: { overseas: 'Corpi Civili di Pace', domestic: 'Servizio Civile Universale' },
+  MX: { overseas: null, domestic: null },
+  PH: { overseas: null, domestic: null },
+  IN: { overseas: null, domestic: null },
+  AU: { overseas: 'Australian Volunteers Program', domestic: null },
+  FR: { overseas: 'France Volontaires', domestic: 'Service Civique' },
+};
+/** Display swaps for the national service programs' names. */
+export function nationalServiceTerms(countryId) {
+  const n = NATIONAL_SERVICE[countryId];
+  if (!n) return {};
+  return {
+    ...(n.overseas ? { 'Returned Peace Corps Volunteer': `returned ${n.overseas} volunteer`, 'Peace Corps': n.overseas } : {}),
+    ...(n.domestic ? { 'AmeriCorps State & National': n.domestic, 'AmeriCorps State &amp; National': n.domestic, 'AmeriCorps alum': `${n.domestic} alum`, AmeriCorps: n.domestic } : {}),
+  };
+}
 const US_SERVICE_NAMES = { fire: 'Volunteer Fire Department', police: 'Police Reserve Unit', sar: 'Search & Rescue Team', ambulance: 'Volunteer Ambulance Corps', wildland: 'Wildland Fire Crew', auxiliary: 'Coast Guard Auxiliary', cap: 'Civil Air Patrol', cert: 'Community Emergency Response Team', redcross: 'Red Cross Disaster Action Team', skiPatrol: 'National Ski Patrol', mrc: 'Medical Reserve Corps' };
 /** Whether a volunteer service exists where you live. */
 export const volunteerServiceHere = (countryId, serviceId) => !VOLUNTEER_SERVICES[countryId] || Boolean(VOLUNTEER_SERVICES[countryId][serviceId]);

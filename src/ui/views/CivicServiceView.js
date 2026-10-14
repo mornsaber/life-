@@ -5,6 +5,8 @@
 import { esc, money, button, card, chip, kv, disclosure, optionRow } from '../Components.js';
 import { ROLES, MAX_ROLES, roleEligibility, activeRoles } from '../../modules/service/Volunteering.js';
 import { PROGRAMS, programEligibility } from '../../modules/service/NationalService.js';
+import { NATIONAL_SERVICE } from '../../modules/world/CountryLaw.js';
+import { LANGUAGE_FLUENT } from '../../modules/world/Immigration.js';
 import { equipmentCard } from './EquipmentView.js';
 import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRank } from '../../modules/service/StateForces.js';
 import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
@@ -16,12 +18,19 @@ function nationalService(state) {
   const s = state.service;
   if (s.program) {
     const p = PROGRAMS[s.program.id];
-    return card(p.name, `<p>${chip(`${p.icon} ${esc(p.tracks[s.program.track].name)}`, 'green')} ${chip(`📍 ${esc(s.program.site)}`)}</p>
-      ${kv([['Year', `${s.program.years + 1} of ${s.program.term}`], ['Living allowance', `${money(p.stipend)}/yr`], ['When you finish', p.award ? `${money(p.award)}/yr education award` : `${money(p.readjustment)} readjustment allowance`]])}
+    const lang = s.program.language;
+    const progress = lang ? state.migration?.languages?.[lang] ?? 0 : null;
+    return card(p.name, `<p>${chip(`${p.icon} ${esc(p.tracks[s.program.track].name)}`, 'green')} ${chip(`📍 ${esc(s.program.site)}`)}${lang ? ` ${chip(`🗣️ ${esc(lang)}${progress >= LANGUAGE_FLUENT ? '' : ` ${progress}%`}`, progress >= LANGUAGE_FLUENT ? 'good' : '')}` : ''}</p>
+      ${kv([['Year', `${s.program.years + 1} of ${s.program.term}`], ['Living allowance', `${money(p.stipend)}/yr`], ['When you finish', p.award ? (state.character.countryId ? 'A certificate of service' : `${money(p.award)}/yr education award`) : `${money(p.readjustment)} readjustment allowance`]])}
+      ${s.program.id === 'peaceCorps' ? '<p class="fine">Your host community houses you and the program covers your medical care.</p>' : ''}
       <p class="fine">Federal student loans are paused while you serve.</p>
       <div class="action-grid">${button('🚪 Leave early', 'service.quitProgram', { variant: 'danger', hint: 'No award' })}</div>`, { icon: p.icon, accent: 'green' });
   }
-  const rows = Object.entries(PROGRAMS).flatMap(([id, p]) => Object.entries(p.tracks).map(([tid, t]) => {
+  // Abroad, only the schemes the country actually runs.
+  const local = NATIONAL_SERVICE[state.character.countryId];
+  const offered = Object.keys(PROGRAMS).filter((id) => !local || local[id === 'peaceCorps' ? 'overseas' : 'domestic']);
+  if (!offered.length) return '';
+  const rows = offered.map((id) => [id, PROGRAMS[id]]).flatMap(([id, p]) => Object.entries(p.tracks).filter(([tid]) => !local || id !== 'americorps' || tid === 'state').map(([tid, t]) => {
     const check = programEligibility(state, id, tid);
     return { ok: check.ok, html: optionRow({ icon: p.icon, title: esc(t.name), sub: `${esc(t.desc)}`, meta: check.ok ? `${p.termYears === 1 ? '1-year term' : '27 months abroad'} · ${money(p.stipend)}/yr stipend` : esc(check.reason), tone: check.ok ? '' : 'warn', locked: !check.ok, action: button('Serve', 'service.joinProgram', { arg: `${id}:${tid}`, disabled: !check.ok, variant: 'small' }) }) };
   }));
@@ -30,9 +39,12 @@ function nationalService(state) {
   if ((s.nceUntil ?? 0) >= state.character.age) perks.push(chip(`🏛️ Federal hiring eligibility through age ${s.nceUntil}`, 'green'));
   if (state.education.segalAward) perks.push(chip(`🎓 ${money(state.education.segalAward)} education award saved`, 'green'));
   for (const a of s.alumni.filter((x) => x.completed)) perks.push(chip(`${PROGRAMS[a.id].icon} ${a.id === 'peaceCorps' ? 'Returned Peace Corps Volunteer' : 'AmeriCorps alum'}`));
-  return card('National Service', `<p class="muted">A year or two of full-time service for a living stipend. Finishing earns an education award (AmeriCorps) or a readjustment allowance (Peace Corps), plus an edge in federal hiring.</p>
+  const intro = local
+    ? `A year or two of full-time service for a living stipend${offered.includes('peaceCorps') ? ' — overseas volunteering pays a resettlement allowance when you come home' : ''}, plus an edge in public-sector hiring.`
+    : 'A year or two of full-time service for a living stipend. Finishing earns an education award (AmeriCorps) or a readjustment allowance (Peace Corps), plus an edge in federal hiring.';
+  return card('National Service', `<p class="muted">${intro}</p>
     ${perks.length ? `<div class="chip-row">${perks.join('')}</div>` : ''}
-    ${disclosure('civic.programs', 'AmeriCorps & Peace Corps programs', `<ul class="job-board">${rows.map((r) => r.html).join('')}</ul>`, { count: `${open} open` })}`, { icon: '🤝' });
+    ${disclosure('civic.programs', `${offered.map((id) => PROGRAMS[id].name).join(' & ')} programs`, `<ul class="job-board">${rows.map((r) => r.html).join('')}</ul>`, { count: `${open} open` })}`, { icon: '🤝' });
 }
 
 function stateGuard(state) {
@@ -112,11 +124,11 @@ export function civicServiceView(state) {
     ? card('Past Service', `<ul class="history">${[...state.service.history].reverse().map((h) => `<li><b>${esc(h.name)}</b> · ${esc(h.title)} <small>${h.years} yrs, ended at ${h.endAge} — ${esc(h.reason)}</small></li>`).join('')}</ul>`, { icon: '🗂️' })
     : '';
   const gear = ['team.sdf', ...Object.keys(TEAMS).map((id) => `team.${id}`)].map((ref) => equipmentCard(state, ref)).join('');
-  // AmeriCorps, the Peace Corps, State Defense Forces and FEMA teams are US programs: abroad, show only what you're already in.
+  // State Defense Forces and FEMA teams are US programs: abroad, show only what you're already in. National service shows the country's own schemes.
   const abroad = Boolean(state.character.countryId);
   const s2 = state.service;
   const us = abroad
-    ? `${s2.program ? `<div class="grid-2">${nationalService(state)}</div>` : ''}${s2.sdf ? stateGuard(state) : ''}${Object.values(s2.teams ?? {}).some(Boolean) ? disasterTeams(state) : ''}`
+    ? `${nationalService(state) ? `<div class="grid-2">${nationalService(state)}</div>` : ''}${s2.sdf ? stateGuard(state) : ''}${Object.values(s2.teams ?? {}).some(Boolean) ? disasterTeams(state) : ''}`
     : `<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}`;
   return `${volunteerRoles(state)}${us}${gear}${veteranPosts(state)}${history}`;
 }

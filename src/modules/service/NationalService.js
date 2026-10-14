@@ -13,7 +13,10 @@
 import { clamp } from '../../core/Random.js';
 import { hasFelony, meetsEducation } from '../../core/State.js';
 import { grantCredential, hasCredential } from '../credentials/LicensingEngine.js';
-import { isAbroad, US_ONLY } from '../world/Countries.js';
+import { isCitizen } from '../world/Countries.js';
+import { NATIONAL_SERVICE } from '../world/CountryLaw.js';
+import { residencyOf, LANGUAGE_FLUENT, speaks } from '../world/Immigration.js';
+import { ensureMigration } from '../world/Migration.js';
 
 export const PROGRAMS = {
   americorps: {
@@ -33,7 +36,20 @@ export const PROGRAMS = {
       agriculture: { name: 'Agriculture Volunteer', desc: 'Work with farmers on crops, soil and small livestock.' },
       community: { name: 'Community Economic Development', desc: 'Help cooperatives, small businesses and local governments.' },
     },
-    sites: ['a village in Senegal', 'a mountain town in Peru', 'a rural district in Cambodia', 'a farming town in Malawi', 'a fishing village in the Philippines', 'a small town in Georgia (the country)', 'a village in Ghana', 'a highland town in Guatemala'],
+    // Countries that host volunteers (2025), with the language you'd work in.
+    sites: [
+      { place: 'a village in Senegal', country: 'Senegal', language: 'French' },
+      { place: 'a mountain town in Peru', country: 'Peru', language: 'Spanish' },
+      { place: 'a rural district in Cambodia', country: 'Cambodia', language: 'Khmer' },
+      { place: 'a farming town in Malawi', country: 'Malawi', language: 'Chichewa' },
+      { place: 'a fishing village in the Philippines', country: 'PH', language: 'Filipino' },
+      { place: 'a small town in Georgia (the country)', country: 'Georgia', language: 'Georgian' },
+      { place: 'a village in Ghana', country: 'Ghana', language: 'Twi' },
+      { place: 'a highland town in Guatemala', country: 'Guatemala', language: 'Spanish' },
+      { place: 'a town in rural Mexico', country: 'MX', language: 'Spanish' },
+      { place: 'a market town in Morocco', country: 'Morocco', language: 'Arabic' },
+      { place: 'a coastal village in Indonesia', country: 'Indonesia', language: 'Indonesian' },
+    ],
   },
 };
 
@@ -41,7 +57,14 @@ export function programEligibility(state, id, trackId) {
   const p = PROGRAMS[id];
   const t = p?.tracks[trackId];
   if (!p || !t) return { ok: false, reason: 'Unknown program' };
-  if (isAbroad(state)) return { ok: false, reason: US_ONLY.service };
+  const here = state.character.countryId ?? 'US';
+  // Abroad, the country's own scheme stands in (only the general community-service track).
+  if (here !== 'US') {
+    const local = NATIONAL_SERVICE[here]?.[id === 'peaceCorps' ? 'overseas' : 'domestic'];
+    if (!local || (id === 'americorps' && trackId !== 'state')) return { ok: false, reason: `No such program in ${here === 'GB' ? 'the UK' : 'this country'}` };
+  }
+  // Overseas volunteering is for citizens; community service also takes permanent residents.
+  if (!isCitizen(state, here) && (id === 'peaceCorps' || residencyOf(state)?.status !== 'permanent')) return { ok: false, reason: id === 'peaceCorps' ? 'Citizens only' : 'Citizens and permanent residents only' };
   const age = state.character.age;
   if (state.service.program) return { ok: false, reason: 'Already serving' };
   if (age < (t.minAge ?? p.minAge) || age > (t.maxAge ?? p.maxAge)) return { ok: false, reason: `Ages ${t.minAge ?? p.minAge}${(t.maxAge ?? p.maxAge) < 99 ? `–${t.maxAge ?? p.maxAge}` : '+'}` };
@@ -66,7 +89,10 @@ export function joinProgram(ctx, arg) {
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   const p = PROGRAMS[id];
   if (state.career.job) ctx.emit('career:resign', { reason: `Left to serve with ${p.name}` });
-  state.service.program = { id, track: trackId, site: rng.pick(p.sites), years: 0, term: p.termYears, joinedAge: state.character.age };
+  // Never posted to a country whose passport you hold.
+  const sites = p.sites.filter((x) => typeof x === 'string' || !isCitizen(state, x.country));
+  const site = rng.pick(sites);
+  state.service.program = { id, track: trackId, site: site.place ?? site, ...(site.language ? { country: site.country, language: site.language } : {}), years: 0, term: p.termYears, joinedAge: state.character.age };
   const t = p.tracks[trackId];
   ctx.log(id === 'peaceCorps'
     ? `You swore in as a Peace Corps ${t.name} after ten weeks of language and culture training, posted to ${state.service.program.site}.`
@@ -98,7 +124,7 @@ const EVENTS = {
       { id: 'yield', label: '🤝 Follow her lead', effects: { happiness: 4 }, impact: 2, text: 'It\'s still running after you leave. That\'s the point.' },
       { id: 'push', label: '📐 Insist on the plan', effects: { stress: 4 }, impact: 0, text: 'The project worked while you were there.' },
     ] },
-    { title: 'Isolation', text: 'Month 14. Nobody speaks English for a hundred miles, and the homesickness is crushing.', options: [
+    { title: 'Isolation', text: 'Month 14. Nobody speaks your language for a hundred miles, and the homesickness is crushing.', options: [
       { id: 'language', label: '🗣️ Throw yourself into the language', effects: { happiness: 3, smarts: 2 }, impact: 1, fluency: true, text: 'You dream in the language now. The village adopted you.' },
       { id: 'home', label: '✈️ Early termination: go home', effects: { happiness: 2 }, impact: 0, et: true, text: 'You went home early. Nearly one in ten volunteers do.' },
     ] },
@@ -113,6 +139,12 @@ export function programTick(ctx) {
   const p = PROGRAMS[pr.id];
   pr.years += 1;
   ctx.earn(p.stipend, `${p.name} living allowance`, { wage: true });
+  // Living in the community: you pick up the language whether you mean to or not.
+  if (pr.language && !speaks(state, pr.language)) {
+    const m = ensureMigration(state);
+    m.languages[pr.language] = Math.min(LANGUAGE_FLUENT, (m.languages[pr.language] ?? 0) + Math.round(30 + state.stats.smarts / 5));
+    if (m.languages[pr.language] >= LANGUAGE_FLUENT) pr.fluent = true;
+  }
   ctx.stat('happiness', 2);
   const e = rng.pick(EVENTS[pr.id]);
   ctx.prompt({
@@ -130,18 +162,25 @@ export function completeTerm(ctx, completed) {
   const p = PROGRAMS[pr.id];
   state.service.program = null;
   state.service.alumni.push({ id: pr.id, track: pr.track, years: pr.years, completed, endAge: state.character.age, impact: pr.impact ?? 0 });
+  // Home from overseas with no place of your own: family puts you up while you resettle.
+  const h = state.housing;
+  if (pr.id === 'peaceCorps' && !h.rental && !h.properties.some((x) => x.use === 'primary') && !h.withParents) {
+    h.withParents = true;
+    ctx.log('Back home, you moved in with family while you got resettled.', '🛋️');
+  }
   if (!completed) return ctx.log(`You left ${p.name} early. No education award.`, p.icon, 'warn');
-  if (p.award) {
+  // The education award is AmeriCorps' own; other countries' schemes pay only the stipend.
+  if (p.award && !state.character.countryId) {
     const award = Math.round(p.award * pr.years);
     const toLoans = Math.min(award, state.finances.loans ?? 0);
     if (toLoans) state.finances.loans -= toLoans;
     state.education.segalAward = (state.education.segalAward ?? 0) + award - toLoans;
     ctx.log(`You finished your ${p.tracks[pr.track].name} term. Your $${award.toLocaleString()} Segal Education Award ${toLoans ? `paid off $${toLoans.toLocaleString()} of student loans${award > toLoans ? ' and the rest is saved for tuition' : ''}` : 'is saved for future tuition'}.`, p.icon, 'milestone');
-  } else {
+  } else if (pr.id === 'peaceCorps') {
     ctx.earn(p.readjustment, 'Peace Corps readjustment allowance');
     ctx.log(`You completed your Peace Corps service in ${pr.site} and came home a Returned Peace Corps Volunteer.`, p.icon, 'milestone');
     if (!hasCredential(state, 'languageProficiency') && pr.fluent) grantCredential(ctx, 'languageProficiency', { silent: true });
-  }
+  } else ctx.log(`You finished your year with ${p.tracks[pr.track].name}.`, p.icon, 'milestone');
   if (p.nceYears && (pr.id === 'peaceCorps' || p.tracks[pr.track].nce || pr.years >= 1)) state.service.nceUntil = Math.max(state.service.nceUntil ?? 0, state.character.age + p.nceYears);
   ctx.toast(`${p.name}: service complete`, 'good');
 }
@@ -158,7 +197,10 @@ export const ProgramResolvers = {
     ctx.log(o.text, PROGRAMS[data.id].icon, o.et ? 'warn' : 'good');
     if (pr) {
       pr.impact = (pr.impact ?? 0) + o.impact;
-      if (o.fluency) pr.fluent = true;
+      if (o.fluency) {
+        pr.fluent = true;
+        if (pr.language) ensureMigration(state).languages[pr.language] = LANGUAGE_FLUENT;
+      }
       if (o.et) completeTerm(ctx, false);
     }
   },

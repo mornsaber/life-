@@ -35,6 +35,7 @@ import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { inheritanceTax } from '../src/modules/world/CountryLaw.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../src/modules/world/Diaspora.js';
 import { randomName, setNameCountry } from '../src/core/State.js';
+import { programEligibility } from '../src/modules/service/NationalService.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -345,6 +346,28 @@ const tests = {
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
   },
+  'citizenship gates on national service; UK citizenship six years after arrival'() {
+    const t = born('US', 22, 30);
+    const { state, ctx } = t;
+    state.stats.health = 90;
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    assert.ok(programEligibility(state, 'peaceCorps', 'education').ok, 'citizens can volunteer overseas');
+    arrive(ctx, 'GB', { visa: 'work' });
+    assert.equal(programEligibility(state, 'americorps', 'state').ok, false, 'no AmeriCorps in the UK');
+    assert.equal(programEligibility(state, 'peaceCorps', 'education').ok, false, 'VSO is for British citizens');
+    const res = residencyOf(state);
+    Object.assign(res, { status: 'permanent', permanentSince: 35, arrived: 30 });
+    state.character.age = 35;
+    assert.equal(naturalizationYearsLeft(state), 1, 'five years to settlement, then one more');
+    state.character.age = 36;
+    assert.equal(naturalizationYearsLeft(state), 0);
+    const fr = born('FR', 23, 30);
+    fr.state.stats.health = 90;
+    fr.state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 });
+    assert.ok(programEligibility(fr.state, 'americorps', 'state').ok, 'Service Civique');
+    assert.equal(programEligibility(fr.state, 'americorps', 'vista').ok, false);
+    assert.ok(localizeHtml('<p>Peace Corps</p>', COUNTRIES.FR).includes('France Volontaires'));
+  },
   'visa conditions: a work visa without a job lapses and you are sent home'() {
     const t = born('US', 22, 30);
     const { state, ctx, engine } = t;
@@ -355,6 +378,10 @@ const tests = {
     engine.ageUp();
     assert.ok(residencyOf(state)?.grace != null || state.career.job, 'a year to find work');
     if (!state.career.job) {
+      // Newcomers get until the end of their second year.
+      state.prompts = [];
+      engine.ageUp();
+      assert.equal(state.character.countryId, 'GB', 'still within the newcomer grace period');
       state.prompts = [];
       engine.ageUp();
       assert.equal(state.character.countryId, undefined, 'removed to the US');

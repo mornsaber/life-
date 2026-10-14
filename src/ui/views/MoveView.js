@@ -77,10 +77,10 @@ function passportCard(state) {
   const law = IMMIGRATION[here];
   const lines = [];
   if (res) {
-    const visa = law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
+    const visa = res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
     lines.push(`<p>${chip(STATUS_LABEL[res.status] ?? res.status, res.status === 'permanent' ? 'good' : 'warn')} ${esc(visa)}${res.expires != null ? ` · renews at ${res.expires}` : ''}${res.grace != null ? ` · ${chip(`⚠️ Conditions not met: leave by ${res.grace}`, 'bad')}` : ''}${res.removal ? ` ${chip('Removal ordered', 'bad')}` : ''}</p>`);
     if (law.surcharge && res.status === 'visa') lines.push(`<small class="fine">Immigration Health Surcharge ${money(law.surcharge)}/yr while on a visa.</small>`);
-    if (onTemporaryVisa(state)) lines.push('<small class="fine">🎓 International-student tuition applies while you\'re on a visa.</small>');
+    if (onTemporaryVisa(state) && (res.visa === 'student' || state.education.enrolled)) lines.push('<small class="fine">🎓 International-student tuition applies while you\'re on a visa.</small>');
     const pr = prYearsLeft(state);
     if (res.status === 'visa') {
       lines.push(pr == null ? `<small class="why">No route to permanent residence on this visa.</small>`
@@ -92,7 +92,7 @@ function passportCard(state) {
     }
     const nat = naturalizationYearsLeft(state);
     const dualNote = law.dualIn ? '' : ' · you must give up your other passports';
-    lines.push(nat == null ? `<small class="fine">🛂 Citizenship: ${law.nat.needsPR ? 'permanent residence first, then ' : ''}${law.nat.years} yr${law.nat.married ? ` (${law.nat.married} if married to a citizen)` : ''}</small>`
+    lines.push(nat == null ? `<small class="fine">🛂 Citizenship: ${law.nat.fromArrival ? `${law.nat.years} yr here, the last ${law.nat.prMin} as a permanent resident` : `${law.nat.needsPR ? 'permanent residence first, then ' : ''}${law.nat.years} yr`}${law.nat.married ? ` (${law.nat.married} if married to a citizen)` : ''}</small>`
       : nat > 0 ? `<small class="fine">🛂 Citizenship in ${nat} yr${esc(dualNote)}</small>`
         : `${button(`🛂 Apply for ${COUNTRIES[here].demonym} citizenship`, 'migration.naturalize', { variant: 'small', hint: money(law.nat.fee), disabled: !speaksLocal(state, here) || Boolean(state.yearly['migration.nat']) })}<span class="${speaksLocal(state, here) ? 'fine' : 'why'}">${speaksLocal(state, here) ? `Citizenship test${esc(dualNote)}` : `Needs working ${esc(localLanguage(here))}`}</span>`);
   }

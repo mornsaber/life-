@@ -14,7 +14,7 @@ import { clamp } from '../../core/Random.js';
 import { hasFelony, isIncarcerated } from '../../core/State.js';
 import { currentCourt } from './Judiciary.js';
 import { JUSTICE } from '../world/CountryLaw.js';
-import { priceLevel } from '../world/Countries.js';
+import { priceLevel, isCitizen } from '../world/Countries.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -61,7 +61,7 @@ const TRIALS = [
 
 function juryTick(ctx) {
   const { state, rng } = ctx;
-  if (state.character.age < 18 || isIncarcerated(state) || hasFelony(state) || currentCourt(state) || state.prompts.some((p) => p.type === 'civil.jury')) return;
+  if (state.character.age < 18 || !isCitizen(state, state.character.countryId ?? 'US') || isIncarcerated(state) || hasFelony(state) || currentCourt(state) || state.prompts.some((p) => p.type === 'civil.jury')) return;
   // Countries without juries (Mexico, the Philippines, India) never summon you; lay-judge systems pick fewer people.
   const j = JUSTICE[state.character.countryId];
   if (j && j.trial === 'bench') return;
