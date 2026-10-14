@@ -589,9 +589,12 @@ const US_ONLY_PROFESSIONS = ['sheriff'];
 /** Careers on the job board where you live: everything except US federal jobs abroad, plus your country's own. */
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
-  if (cc === 'US') return PROFESSION_LIST;
+  // A town that contracts its policing (or fire service) out has no city department to join.
+  const contracted = state?.world?.municipal?.[state.character?.regionId] ?? {};
+  const local = (p) => !(p.id === 'police' && contracted.police === 'contracted');
+  if (cc === 'US') return Object.keys(contracted).length ? PROFESSION_LIST.filter(local) : PROFESSION_LIST;
   const province = state.character.regionId ? stateIdOf(state) : null;
-  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
+  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province) && local(p)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
 }
 
 /** A job-board field's careers where you live (US federal ids swap for national counterparts abroad). */

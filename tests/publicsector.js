@@ -4,12 +4,13 @@
  *
  *   node tests/publicsector.js
  */
+import { changeService, mayorChoice, canChoose } from '../src/modules/politics/PublicServices.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
+import { PROFESSIONS, professionsFor } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { orgOf } from '../src/modules/org/Organizations.js';
@@ -204,6 +205,48 @@ const tests = {
     const html = VIEWS.career(w.state);
     clean(html);
     assert.ok(/Leadership/.test(html), 'leadership row missing');
+  },
+  'city services: contract policing out (transfer or severance), or found a department'() {
+    const mk = (seed) => {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+      const state = engine.newLife({});
+      state.character.age = 35;
+      state.character.regionId = 'smalltown';
+      state.education.degrees.push({ type: 'highschool', year: 18 }, { type: 'bachelor', major: 'criminalJustice', year: 22 });
+      state.credentials.held.post = { status: 'active', earnedAge: 22, renewedAge: 34 };
+      state.credentials.held.driverLicense = { status: 'active', earnedAge: 16, renewedAge: 34 };
+      const ctx = engine.context();
+      hire(ctx, { professionId: 'police', levelId: 'officer', employer: createEmployer(new Random(2), state, PROFESSIONS.police, 'smalltown') });
+      state.prompts = [];
+      return { engine, state, ctx };
+    };
+    // Disbanded: transfer to the sheriff.
+    const a = mk(5);
+    changeService(a.ctx, 'police', 'contracted');
+    const p = a.state.prompts.find((x) => x.type === 'cityServices.transfer');
+    assert.ok(p, 'offered a transfer');
+    a.engine.resolvePrompt(p.id, 'transfer');
+    assert.equal(a.state.career.job?.professionId, 'sheriff');
+    assert.ok(!professionsFor(a.state).some((x) => x.id === 'police'), 'no city police jobs once contracted');
+    // Or severance.
+    const b = mk(6);
+    changeService(b.ctx, 'police', 'contracted');
+    b.engine.resolvePrompt(b.state.prompts.find((x) => x.type === 'cityServices.transfer').id, 'rif');
+    assert.equal(b.state.career.job, null);
+    // The deputy who covered the town joins the new city department a rank up.
+    const before = a.state.career.job.grade;
+    changeService(a.ctx, 'police', 'own');
+    const n = a.state.prompts.find((x) => x.type === 'cityServices.newDepartment');
+    assert.ok(n);
+    a.engine.resolvePrompt(n.id, 'join');
+    assert.equal(a.state.career.job.professionId, 'police');
+    assert.ok(a.state.career.job.grade >= before);
+    // Mayors decide; Britain has no city police to found.
+    const g = mk(7);
+    g.state.politics.office = { id: 'mayor', approval: 55, terms: 1, termYearsLeft: 3, startAge: 34 };
+    assert.ok(mayorChoice(g.state, 'police').ok);
+    g.state.character.countryId = 'GB';
+    assert.equal(canChoose(g.state, 'police'), false);
   },
 };
 

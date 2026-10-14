@@ -2,6 +2,7 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
+import { SERVICES, canChoose, mayorChoice, arrangementOf, providerOf } from '../../modules/politics/PublicServices.js';
 import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
@@ -12,6 +13,18 @@ import { ratingLabel } from '../../modules/career/PayGrades.js';
 import { legislatureCards } from './LegislatureView.js';
 import { officeOrderFor } from '../../modules/politics/NationalOffices.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
+
+/** As mayor: who polices and protects the city — your own departments or a contract. */
+function cityServicesCard(state) {
+  if (!/mayor/i.test(state.politics.office?.id ?? '')) return '';
+  const rows = SERVICES.filter((s) => canChoose(state, s)).map((s) => {
+    const c = mayorChoice(state, s);
+    const own = arrangementOf(state, s) === 'own';
+    return `<li class="report-row"><div><b>${s === 'police' ? '🚓 Policing' : '🚒 Fire protection'}</b> <small class="muted">${own ? 'City department' : `Contracted to ${esc(providerOf(state, s).name)}`}</small></div>
+      ${c.label ? button(c.label, 'cityServices.decide', { arg: s, variant: 'tiny', disabled: !c.ok, hint: c.ok ? c.effect : c.reason }) : `<small class="why">${esc(c.reason)}</small>`}</li>`;
+  }).join('');
+  return rows ? card('City Services', `<ul class="history">${rows}</ul><p class="fine">Contracting out saves money and costs approval; founding a department is popular and expensive. The people who work there are transferred or laid off.</p>`, { icon: '🏙️' }) : '';
+}
 
 export function politicsView(state) {
   const p = state.politics;
@@ -60,7 +73,7 @@ export function politicsView(state) {
   const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
     ${legislatureCards(state)}
     ${card('Political History', history, { icon: '🗂️' })}`;
