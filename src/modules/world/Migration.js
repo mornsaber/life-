@@ -17,8 +17,9 @@
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
   IMMIGRATION, VISA_KINDS, EMIGRATION_COST, visaEligibility, residencyOf, residencesOf, birthCountryOf, prYearsLeft, naturalizationYearsLeft,
-  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode,
+  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST,
 } from './Immigration.js';
+import { homeDanger, underMobilization, warIn } from './War.js';
 import { REGIONS, regionsIn, changeRegion, countryIdOf } from '../life/Regions.js';
 import { NATIONAL_PROFESSIONS } from '../career/JobTrees.js';
 import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
@@ -39,6 +40,7 @@ export function departureBlock(state) {
   if (state.legal.incarceration) return 'Incarcerated';
   if (state.legal.probationYears > 0) return 'On probation: the court holds your passport';
   if (state.military.service) return 'Finish your military service first';
+  if (underMobilization(state)) return 'General mobilization: men 18–60 can\'t leave the country';
   if (state.education.enrolled) return 'Finish or withdraw from school first';
   if (state.judiciary?.seat) return 'Resign from the bench first';
   return null;
@@ -51,7 +53,24 @@ export function routesTo(state, to) {
   if (isCitizen(state, to)) return [{ kind: 'citizen', ok: true, odds: 1, fee: 0, label: `${COUNTRIES[to].flag} Move home (citizen)` }];
   const res = residencesOf(state)[to];
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
-  return Object.keys(IMMIGRATION[to].visas).map((kind) => ({ kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
+  const visas = Object.keys(IMMIGRATION[to].visas).map((kind) => ({ kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
+  const asylum = asylumRoute(state, to);
+  return asylum ? [asylum, ...visas] : visas;
+}
+
+/** Fleeing a war: claim asylum on arrival (only while the danger at home is real). */
+export function asylumRoute(state, to) {
+  const danger = homeDanger(state);
+  if (danger < 0.15) return null;
+  const law = ASYLUM[to];
+  if (!law) return null;
+  const war = warIn(state, countryIdOf(state));
+  const eu = ['DE', 'FR', 'IT'].includes(to);
+  const temporary = Boolean(law.temporary && eu && war.intensity >= 3 && war.homeFront >= 0.4);
+  const odds = temporary ? 1 : Math.min(0.95, Math.max(law.odds, law.humanitarian ?? 0) + danger * 0.5);
+  const label = temporary ? `🆘 ${law.temporary}` : `🆘 ${law.name}`;
+  if (state.character.age < 16) return { kind: 'asylum', ok: false, reason: 'Minors flee with their families', label, odds, fee: 0 };
+  return { kind: 'asylum', ok: true, odds, fee: 0, temporary, label, rule: { name: temporary ? law.temporary : law.name } };
 }
 
 /** Move your life to another country. */
@@ -81,7 +100,12 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   if (!isCitizen(state, to)) {
     const old = m.residences[to];
     if (old?.status === 'permanent' && old.leftAt != null && age - old.leftAt <= IMMIGRATION[to].prLapse) delete old.leftAt;
-    else {
+    else if (visa === 'asylum' || visa === 'temporary') {
+      const law = ASYLUM[to];
+      m.residences[to] = visa === 'temporary'
+        ? { status: 'refugee', visa, arrived: age, grantedAt: age, from, temporary: true }
+        : { status: 'asylum', visa, arrived: age, from, decisionAt: age + law.decision, workFrom: age + law.workAfter, odds: asylumRoute(state, to)?.odds ?? law.odds };
+    } else {
       const rule = IMMIGRATION[to].visas[visa] ?? {};
       m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, arrived: age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
     }
@@ -91,7 +115,9 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   const city = REGIONS[m.lastRegion?.[to]] ?? regionsIn(to)[0];
   changeRegion(ctx, city.id, reason || `You landed in ${COUNTRIES[to].name} ${COUNTRIES[to].flag}.`, { voluntary: true, crossBorder: true });
   const res = m.residences[to];
-  if (res?.status === 'visa' && res.visa === 'student') ctx.log(`Your ${IMMIGRATION[to].visas.student.name} depends on studying here: enroll at a school this year (School tab).`, '🎓', 'warn');
+  if (res?.status === 'asylum') ctx.log(`You claimed asylum at the border: ${ASYLUM[to].name}. You'll live in reception housing until a decision${ASYLUM[to].workAfter ? `, and can't work for the first ${ASYLUM[to].workAfter === 1 ? 'year' : `${ASYLUM[to].workAfter} years`}` : ''}.`, '🆘', 'warn');
+  else if (res?.temporary) ctx.log(`You were granted ${ASYLUM[to].temporary} at the border: the right to live, work and study here while the war lasts.`, '🆘', 'good');
+  else if (res?.status === 'visa' && res.visa === 'student') ctx.log(`Your ${IMMIGRATION[to].visas.student.name} depends on studying here: enroll at a school this year (School tab).`, '🎓', 'warn');
   else if (res?.status === 'visa' && res.visa === 'work' && !stays) ctx.log(`Your ${IMMIGRATION[to].visas.work.name} needs a sponsoring employer: find a job here within the year (Jobs tab).`, '💼', 'warn');
   if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
   if (!speaksLocal(state, to)) ctx.log(`You don't speak ${localLanguage(to)} yet. Living here, you'll pick it up — classes speed it up.`, '🗣️', 'info');
@@ -111,6 +137,15 @@ function removal(ctx, why) {
 }
 
 function finishEmigration(ctx, to, kind) {
+  if (kind === 'asylum') {
+    // You flee with what you can carry.
+    ctx.spend(ASYLUM_COST, `Escape to ${COUNTRIES[to].name}`, { allowDebt: true });
+    ctx.stat('happiness', -10);
+    ctx.stat('stress', 10);
+    const route = asylumRoute(ctx.state, to);
+    arrive(ctx, to, { visa: route?.temporary ? 'temporary' : 'asylum' });
+    return ctx.toast(`Fled to ${COUNTRIES[to].name}`, 'warn');
+  }
   if (!ctx.spend(EMIGRATION_COST, `Move to ${COUNTRIES[to].name}`, { credit: true })) return ctx.toast(`An international move costs $${EMIGRATION_COST.toLocaleString()}.`, 'warn');
   arrive(ctx, to, { visa: ['citizen', 'resident'].includes(kind) ? null : kind, keepJob: kind === 'transfer' });
   ctx.toast(`Moved to ${COUNTRIES[to].name}`, 'good');
@@ -122,6 +157,57 @@ function stillQualifies(state, res) {
   if (res.visa === 'student') return Boolean(state.education.enrolled);
   if (res.visa === 'family') return nationalityCode(state.people.list.find((p) => p.alive && p.relation === 'spouse')) === here;
   return true;
+}
+
+/** A year waiting on an asylum claim: support, then a decision, an appeal, or toleration. */
+function asylumYear(ctx, res) {
+  const { state, rng } = ctx;
+  const here = countryIdOf(state);
+  const law = ASYLUM[here];
+  const age = state.character.age;
+  if (law.support && !state.career.job) ctx.earn(law.support, 'Asylum support allowance');
+  ctx.stat('stress', 3);
+  if (age < res.decisionAt || state.prompts.some((p) => p.type === 'migration.asylumRefused')) return;
+  const stillDangerous = (warIn(state, res.from)?.homeFront ?? 0) >= 0.3 && warIn(state, res.from)?.phase !== 'ceasefire';
+  const odds = res.appealed ? res.odds * 0.5 : stillDangerous ? res.odds : res.odds * 0.4;
+  if (rng.chance(odds)) return grantProtection(ctx, res, law);
+  if (!res.appealed) {
+    ctx.prompt({
+      type: 'migration.asylumRefused', icon: '📭', title: 'Asylum Claim Refused',
+      text: `The ${law.name} was refused. You have the right to appeal.`,
+      options: [
+        { id: 'appeal', label: '⚖️ Appeal with a legal aid lawyer', hint: 'Another year or two of waiting' },
+        { id: 'leave', label: `✈️ Go back to ${COUNTRIES[res.from]?.name ?? 'your country'}`, hint: stillDangerous ? 'The war is still on' : 'The fighting has stopped' },
+      ],
+      data: {},
+    });
+    return;
+  }
+  if (stillDangerous) {
+    // Nobody is sent back into a war (non-refoulement): you stay, tolerated, and may work.
+    if (!res.tolerated) ctx.log('Your appeal failed, but no one can be sent back into a war zone. You were given a tolerated stay and permission to work.', '⏳', 'warn');
+    res.tolerated = true;
+    res.workFrom = Math.min(res.workFrom, age);
+    res.decisionAt = age + 2;
+    res.appealed = false;
+    res.odds = Math.max(res.odds, law.humanitarian ?? 0.3);
+    return;
+  }
+  removal(ctx, 'Your asylum appeal failed.');
+}
+
+function grantProtection(ctx, res, law) {
+  const { state } = ctx;
+  const age = state.character.age;
+  const humanitarian = law.humanitarian && law.humanitarian > law.odds;
+  Object.assign(res, { status: law.prYears === 0 ? 'permanent' : 'refugee', grantedAt: age, ...(law.prYears === 0 ? { permanentSince: age } : {}) });
+  delete res.decisionAt;
+  delete res.tolerated;
+  ctx.stat('happiness', 15);
+  ctx.stat('stress', -8);
+  ctx.log(humanitarian
+    ? `You were allowed to stay on humanitarian grounds. ${law.prYears ? `Permanent residence in ${law.prYears} years.` : ''}`
+    : `You were recognized as a refugee.${law.prYears === 0 ? ' Permanent residence came with it.' : law.prYears ? ` Permanent residence in ${law.prYears} year${law.prYears === 1 ? '' : 's'}.` : ''}`, '🛡️', 'milestone');
 }
 
 /** Dual nationality: Japan, Korea and India make dual nationals pick one by 22. */
@@ -188,6 +274,11 @@ export const MigrationModule = {
     const res = residencyOf(state);
     if (!res) return;
     if (res.removal && !state.legal.incarceration) return removal(ctx, 'After your conviction, a judge ordered your removal.');
+    if (res.status === 'asylum') return asylumYear(ctx, res);
+    if (res.temporary && !warIn(state, res.from) && !res.endNotified) {
+      res.endNotified = true;
+      ctx.log(`The war in ${COUNTRIES[res.from].name} is over. Your temporary protection continues for now; you can go home or apply to stay.`, '🕊️', 'info');
+    }
     const law = IMMIGRATION[here];
     if (res.status === 'visa') {
       if (law.surcharge) ctx.spend(law.surcharge, 'Immigration Health Surcharge', { allowDebt: true });
@@ -233,9 +324,9 @@ export const MigrationModule = {
       if (block) return ctx.toast(block, 'warn');
       const route = routesTo(state, to).find((r) => r.kind === kind);
       if (!route?.ok) return ctx.toast(route?.reason ?? 'Not eligible', 'warn');
-      if (!canAfford(state, EMIGRATION_COST + route.fee)) return ctx.toast(`You need $${(EMIGRATION_COST + route.fee).toLocaleString()} for the move and the application.`, 'warn');
+      if (kind !== 'asylum' && !canAfford(state, EMIGRATION_COST + route.fee)) return ctx.toast(`You need $${(EMIGRATION_COST + route.fee).toLocaleString()} for the move and the application.`, 'warn');
       ensureMigration(state);
-      if (!['citizen', 'resident'].includes(kind)) {
+      if (!['citizen', 'resident', 'asylum'].includes(kind)) {
         if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast(`One application to ${COUNTRIES[to].name} a year.`, 'warn');
         bumpYearly(state, `migration.apply.${to}`);
         ctx.spend(route.fee, `${route.rule.name} application`, { credit: true });
@@ -247,7 +338,10 @@ export const MigrationModule = {
         ctx.log(`Approved: ${route.rule.name}.`, '🛂', 'good');
       }
       const home = state.housing.properties.find((p) => p.use === 'primary');
-      if (home) {
+      if (home && kind === 'asylum') {
+        ctx.emit('housing:leavingPrimary', { decision: 'vacant' });
+        ctx.log(`You left your home in ${REGIONS[home.regionId]?.name ?? 'town'} behind, locked up and empty.`, '🏚️', 'bad');
+      } else if (home) {
         ctx.prompt({
           type: 'migration.home',
           icon: '🏡',
@@ -288,7 +382,7 @@ export const MigrationModule = {
       const { state, rng } = ctx;
       const here = countryIdOf(state);
       const res = residencyOf(state);
-      const law = IMMIGRATION[here];
+      const law = { ...IMMIGRATION[here], pr: IMMIGRATION[here].pr ?? { name: 'permanent residence', fee: 0 } };
       if (prYearsLeft(state) !== 0) return ctx.toast('Not eligible yet.', 'warn');
       if (yearlyCount(state, 'migration.pr')) return ctx.toast('One application a year.', 'warn');
       bumpYearly(state, 'migration.pr');
@@ -350,6 +444,18 @@ export const MigrationModule = {
     home(ctx, data, optionId) {
       ctx.emit('housing:leavingPrimary', { decision: optionId });
       finishEmigration(ctx, data.to, data.kind);
+    },
+    asylumRefused(ctx, _data, optionId) {
+      const { state } = ctx;
+      const res = residencyOf(state);
+      if (!res) return;
+      if (optionId === 'appeal') {
+        res.appealed = true;
+        res.decisionAt = state.character.age + 1;
+        return ctx.log('You appealed. Legal aid took the case.', '⚖️');
+      }
+      ctx.log('You decided to go home.', '✈️');
+      arrive(ctx, res.from, { reason: 'You went home after your asylum claim was refused.' });
     },
     dual(ctx, data, keep) {
       const { state } = ctx;

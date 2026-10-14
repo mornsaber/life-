@@ -116,6 +116,7 @@ export function applicationEligibility(state, professionId) {
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
+  if (residencyOf(state)?.status === 'asylum' && state.character.age < residencyOf(state).workFrom) return { ok: false, reason: 'Asylum seekers can\'t work yet' };
   // Some countries' police and fire services are national forces that hire citizens only.
   if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
   if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };

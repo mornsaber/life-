@@ -40,7 +40,9 @@ export function healthPremium(state, income) {
 
 export function hasHousingBenefit(state) {
   const job = state.career.job;
-  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps');
+  // Asylum seekers live in reception housing while their claim is pending.
+  const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
+  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */

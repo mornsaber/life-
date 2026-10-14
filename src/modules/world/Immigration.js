@@ -192,6 +192,32 @@ export const IMMIGRATION = {
   },
 };
 
+/**
+ * Asylum (2025 rules, simplified). You claim on arrival; a decision follows.
+ *   odds          share of claims granted in ordinary times (rises sharply for people fleeing a war)
+ *   humanitarian  a lesser stay-on-humanitarian-grounds status where refugee status is rarely granted
+ *   decision      years to a first decision     workAfter  years before asylum seekers may work
+ *   prYears       years from a grant to permanent residence (0: it comes with the grant; null: none)
+ *   support       yearly cash support while the claim is pending (PPP)
+ *   temporary     EU temporary protection for people fleeing a full-scale war: granted at once
+ */
+export const ASYLUM = {
+  US: { name: 'Asylum application', odds: 0.45, decision: 2, workAfter: 1, prYears: 1, support: 0 },
+  CA: { name: 'Refugee claim (IRB)', odds: 0.65, decision: 2, workAfter: 0, prYears: 0, support: 9000 },
+  GB: { name: 'Asylum claim', odds: 0.6, decision: 1, workAfter: 1, prYears: 5, support: 3300 },
+  DE: { name: 'Asylantrag (BAMF)', odds: 0.55, decision: 1, workAfter: 1, prYears: 3, support: 7000, temporary: 'Temporary protection (§24 AufenthG)' },
+  FR: { name: 'Demande d\'asile (OFPRA)', odds: 0.4, decision: 1, workAfter: 1, prYears: 0, support: 5500, temporary: 'Protection temporaire' },
+  IT: { name: 'Protezione internazionale', odds: 0.45, decision: 2, workAfter: 1, prYears: 5, support: 3000, temporary: 'Protezione temporanea' },
+  JP: { name: 'Refugee status application', odds: 0.03, humanitarian: 0.35, decision: 3, workAfter: 1, prYears: 5, support: 2000 },
+  KR: { name: 'Refugee status application', odds: 0.03, humanitarian: 0.3, decision: 2, workAfter: 1, prYears: 5, support: 1500 },
+  MX: { name: 'Solicitud de refugio (COMAR)', odds: 0.6, decision: 1, workAfter: 0, prYears: 0, support: 0 },
+  PH: { name: 'Refugee status determination', odds: 0.5, decision: 2, workAfter: 1, prYears: 1, support: 0 },
+  IN: { name: 'UNHCR refugee registration', odds: 0.3, decision: 2, workAfter: 1, prYears: null, support: 0 },
+  AU: { name: 'Protection visa (subclass 866)', odds: 0.4, decision: 2, workAfter: 0, prYears: 0, support: 0 },
+};
+/** What a claim costs to make (travel, smugglers, papers), PPP. */
+export const ASYLUM_COST = 2500;
+
 /** Social-security agreements (totalization) in force, 2025. */
 const AGREEMENTS = [
   ['US', 'CA'], ['US', 'GB'], ['US', 'DE'], ['US', 'JP'], ['US', 'KR'], ['US', 'IT'],
@@ -335,6 +361,10 @@ export function prYearsLeft(state) {
   const here = state.character.countryId ?? 'US';
   const res = residencyOf(state);
   const law = IMMIGRATION[here];
+  if (res?.status === 'refugee') {
+    const years = ASYLUM[here]?.prYears;
+    return years == null ? null : Math.max(0, years - (state.character.age - (res.grantedAt ?? res.arrived)));
+  }
   if (!res || res.status !== 'visa' || !law.pr) return null;
   if (['student', 'retiree'].includes(res.visa)) return null;
   const backlog = here === 'US' && res.visa !== 'family' ? law.backlog?.[birthCountryOf(state)] ?? 0 : 0;

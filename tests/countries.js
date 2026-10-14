@@ -36,6 +36,8 @@ import { inheritanceTax } from '../src/modules/world/CountryLaw.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../src/modules/world/Diaspora.js';
 import { randomName, setNameCountry } from '../src/core/State.js';
 import { programEligibility } from '../src/modules/service/NationalService.js';
+import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
+import { departureBlock } from '../src/modules/world/Migration.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -345,6 +347,38 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'war at home: mobilization, asylum abroad, refugee status'() {
+    // A second Korean War: the front reaches the cities.
+    const t = born('KR', 7, 30);
+    const { state, ctx, engine } = t;
+    state.character.gender = 'female';
+    const war = declareWar(ctx, 'KR', 'koreanWar');
+    assert.equal(warHere(state), war);
+    assert.ok(homeDanger(state) >= 0.3, 'civilians in danger');
+    // Germany grants temporary protection at the border; the UK runs an ordinary claim.
+    const de = routesTo(state, 'DE').find((r) => r.kind === 'asylum');
+    assert.ok(de?.ok && de.temporary, 'EU temporary protection');
+    const gb = routesTo(state, 'GB').find((r) => r.kind === 'asylum');
+    assert.ok(gb?.ok && !gb.temporary && gb.odds > 0.6, 'a strong claim for someone fleeing a war');
+    // Men of military age can't leave once mobilization is declared.
+    war.mobilized = true;
+    const man = born('KR', 8, 30);
+    man.state.character.gender = 'male';
+    man.state.world.wars.KR = war;
+    assert.ok(underMobilization(man.state));
+    assert.ok(/mobilization/.test(departureBlock(man.state)));
+    // Flee to the UK: reception housing, no work at first, then a decision.
+    state.prompts = [];
+    engine.dispatch('migration.emigrate', 'GB:asylum');
+    assert.equal(state.character.countryId, 'GB');
+    const res = residencyOf(state);
+    assert.equal(res.status, 'asylum');
+    assert.equal(applicationEligibility(state, 'retail').ok, false, 'no work while the claim is new');
+    engine.rng.chance = () => true;
+    for (let y = 0; y < 2 && residencyOf(state)?.status === 'asylum'; y++) { state.prompts = []; engine.ageUp(); }
+    assert.equal(residencyOf(state)?.status, 'refugee', 'recognized as a refugee');
+    assert.ok(prYearsLeft(state) > 0, 'settlement after five years');
   },
   'each country has only the agencies it really runs, with local ranks'() {
     const has = (cc, id) => professionsFor(born(cc).state).some((p) => p.id === id);

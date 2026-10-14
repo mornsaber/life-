@@ -11,7 +11,7 @@ import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { tierRent } from '../../modules/realestate/index.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
-import { IMMIGRATION, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa } from '../../modules/world/Immigration.js';
+import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST } from '../../modules/world/Migration.js';
 import { optionRow } from '../Components.js';
 
@@ -67,7 +67,7 @@ export function moveView(state) {
   return passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
 }
 
-const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident' };
+const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident', asylum: 'Asylum seeker', refugee: 'Refugee' };
 
 /** Passports, your status where you live, and the road to staying for good. */
 function passportCard(state) {
@@ -77,8 +77,21 @@ function passportCard(state) {
   const law = IMMIGRATION[here];
   const lines = [];
   if (res) {
-    const visa = res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
+    const asylumLaw = ASYLUM[here];
+    const visa = res.status === 'asylum' ? `${asylumLaw.name}${res.tolerated ? ' (refused — tolerated stay)' : res.appealed ? ' (on appeal)' : ''}`
+      : res.temporary ? asylumLaw.temporary
+        : res.status === 'refugee' ? 'Refugee status'
+          : res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
     lines.push(`<p>${chip(STATUS_LABEL[res.status] ?? res.status, res.status === 'permanent' ? 'good' : 'warn')} ${esc(visa)}${res.expires != null ? ` · renews at ${res.expires}` : ''}${res.grace != null ? ` · ${chip(`⚠️ Conditions not met: leave by ${res.grace}`, 'bad')}` : ''}${res.removal ? ` ${chip('Removal ordered', 'bad')}` : ''}</p>`);
+    if (res.status === 'asylum') {
+      lines.push(`<small class="fine">⏳ Decision ${res.decisionAt > state.character.age ? `in ${res.decisionAt - state.character.age} yr` : 'due this year'} · ${state.character.age < res.workFrom ? 'no permission to work yet' : 'may work'} · reception housing${asylumLaw.support ? ` · ${money(asylumLaw.support)}/yr support` : ''}</small>`);
+    }
+    if (res.status === 'refugee') {
+      const pr = prYearsLeft(state);
+      lines.push(pr == null ? '<small class="fine">🛡️ Protected as a refugee. No route to permanent residence here.</small>'
+        : pr > 0 ? `<small class="fine">🛡️ Protected as a refugee · permanent residence in ${pr} yr</small>`
+          : button('🪪 Apply for permanent residence', 'migration.applyPR', { variant: 'small', hint: money(law.pr?.fee ?? 0), disabled: Boolean(state.yearly['migration.pr']) }));
+    }
     if (law.surcharge && res.status === 'visa') lines.push(`<small class="fine">Immigration Health Surcharge ${money(law.surcharge)}/yr while on a visa.</small>`);
     if (onTemporaryVisa(state) && (res.visa === 'student' || state.education.enrolled)) lines.push('<small class="fine">🎓 International-student tuition applies while you\'re on a visa.</small>');
     const pr = prYearsLeft(state);
@@ -117,7 +130,7 @@ function abroadCard(state) {
     const list = routes.map((r) => optionRow({
       icon: '',
       title: esc(r.label),
-      meta: r.ok ? `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move` : esc(r.reason),
+      meta: r.ok ? (r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
       tone: r.ok ? '' : 'why',
       locked: !r.ok,
       action: button('Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),

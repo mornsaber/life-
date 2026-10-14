@@ -215,7 +215,7 @@ function checkInvariants(state) {
   if (civ.activism) assert.ok(civ.activism.influence >= 0 && civ.activism.influence <= 100 && (!civ.activism.cause || CAUSES[civ.activism.cause]), 'activism');
   if (civ.hoa) assert.ok(civ.hoa.fines >= 0 && civ.hoa.name, 'hoa');
   for (const l of Object.values(civ.local)) assert.ok(l.taxMult >= 0.7 && l.taxMult <= 1.6 && l.levy >= 0 && l.services >= 0 && l.services <= 100, 'local policy');
-  if (state.world.war) assert.ok(state.world.war.intensity >= 1 && state.world.war.intensity <= 3 && state.world.war.yearsLeft > 0, 'war');
+  for (const war of Object.values(state.world.wars ?? {})) assert.ok(war.intensity >= 1 && war.intensity <= 4 && war.front >= -100 && war.front <= 100 && war.support >= 0 && war.support <= 100, 'war');
   const cm = state.community;
   assert.ok(cm && Array.isArray(cm.volunteering) && cm.volunteering.length <= 2 && cm.volunteering.every((v) => VOLUNTEER_ORGS[v]), 'volunteering');
   assert.ok(!cm.faith || (TRADITIONS[cm.faith.traditionId] && ATTENDANCE[cm.faith.attendance] && cm.faith.congregation), 'faith membership');

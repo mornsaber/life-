@@ -2,7 +2,7 @@
  * Community tab: your faith and congregation, giving, ministry, volunteering
  * and mentoring.
  */
-import { esc, money, button, card, kv, chip } from '../Components.js';
+import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
 import { clergyEligibility } from '../../modules/community/Religions.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
@@ -10,7 +10,8 @@ import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
 import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
-import { atWar } from '../../modules/world/War.js';
+import { atWar, warHere, PHASE_LABEL, INTENSITY_LABEL, frontLabel, homeDanger } from '../../modules/world/War.js';
+import { COUNTRIES } from '../../modules/world/Countries.js';
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 
 function faithCard(state) {
@@ -73,7 +74,23 @@ function serviceCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${faithCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${faithCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+}
+
+/** The war your country is fighting, and conflicts elsewhere. */
+function warCard(state) {
+  const w = state.world;
+  if (!w?.wars) return '';
+  const war = warHere(state);
+  const here = state.character.countryId ?? 'US';
+  const elsewhere = Object.values(w.wars).filter((x) => x.country !== here);
+  if (!war && !elsewhere.length && !w.global?.length) return '';
+  const main = war ? `<p><b>${esc(war.operation)}</b> — ${esc(war.name)} against ${esc(war.adversary)}</p>
+    <p>${chip(PHASE_LABEL[war.phase], war.phase === 'active' ? 'bad' : war.phase === 'talks' ? 'warn' : 'good')} ${chip(INTENSITY_LABEL[war.intensity])} ${war.draft ? chip(here === 'US' ? '📨 Draft in force' : '📨 Call-ups', 'warn') : ''} ${war.mobilized ? chip('🚫 General mobilization', 'bad') : ''}</p>
+    ${kv([['Front', frontLabel(war.front)], ['Year', String(war.years + 1)], ['Military dead', war.casualties.toLocaleString()], ['Danger at home', homeDanger(state) >= 0.3 ? '<span class="neg">High</span>' : homeDanger(state) > 0 ? 'Some' : 'None']])}
+    <h4 class="sub">Public support</h4>${meter(war.support, { label: 'Back the war' })}` : '<p class="muted">Your country is at peace.</p>';
+  const others = [...elsewhere.map((x) => `${COUNTRIES[x.country]?.flag ?? ''} ${esc(x.name)} (${esc(PHASE_LABEL[x.phase].toLowerCase())})`), ...(w.global ?? []).map((g) => `🌍 ${esc(g.name)}`)];
+  return card('War & World', `${main}${others.length ? `<h4 class="sub">Elsewhere</h4><ul class="history">${others.map((o) => `<li>${o}</li>`).join('')}</ul>` : ''}`, { icon: war ? '⚔️' : '🌍', accent: war ? 'red' : undefined, summary: war ? `${PHASE_LABEL[war.phase]} · ${frontLabel(war.front)}` : 'At peace' });
 }
 
 /* ------------------------------------------------------------------ */

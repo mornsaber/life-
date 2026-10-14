@@ -564,7 +564,10 @@ const tests = {
   'a strong internship yields a return offer that starts above normal entry'() {
     const { engine, state } = setup(43, 20);
     state.stats.smarts = 95;
-    engine.dispatch('education.enroll', 'bachelor:state:computerScience:full');
+    for (let i = 0; i < 5 && !state.education.enrolled; i++) {
+      state.yearly = {};
+      engine.dispatch('education.enroll', 'bachelor:state:computerScience:full');
+    }
     state.education.enrolled.yearsAttended = 2;
     state.education.enrolled.gpa = 3.9;
     let offered = false;
@@ -1471,7 +1474,7 @@ const tests = {
     assert.ok(applicationEligibility(state, 'catholicClergy').ok);
     const priest = giveJob(engine, 'catholicClergy', 'vicar');
     assert.equal(priest.title, 'Parochial Vicar');
-    assert.match(priest.employer.name, /Diocese of/);
+    assert.match(priest.employer.name, /[Dd]iocese of/);
     assert.equal(traineeProgram({ professionId: 'catholicClergy', levelId: 'seminarian' }).next, 'deacon');
     state.people.list.push({ id: 'per_sp', firstName: 'Ann', lastName: 'X', gender: 'female', relation: 'spouse', ageOffset: 0, relationship: 80, alive: true, income: 0 });
     state.prompts = [];
