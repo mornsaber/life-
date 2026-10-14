@@ -5,6 +5,7 @@
  *
  *   node tests/service.js
  */
+import { districtOf, growthTick } from '../src/modules/org/VolunteerGrowth.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
@@ -73,6 +74,58 @@ const tests = {
     assert.ok(!org.seats[6].includes(PLAYER));
   },
 
+  'volunteer agencies grow: substations, mergers, county contracts, paid staff and a paid chief'() {
+    const { engine, state, ctx } = setup(3, 40);
+    engine.dispatch('emergency.join', 'fire');
+    const member = state.emergency.fire;
+    const org = state.orgs.byId[member.orgId];
+    member.rankIndex = 5;
+    member.years = 15;
+    let won = false;
+    for (let i = 0; i < 30 && !won; i++) won = resolveElection(ctx, SERVICES.fire, member, 6, true);
+    assert.ok(won);
+    const d = districtOf(org, engine.rng);
+    assert.ok(d.neighbors.length >= 2, 'neighbouring agencies');
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => true;
+    // A substation: needs members, readiness and money.
+    org.readiness = 80;
+    org.funds = 2000000;
+    for (let i = 0; i < 20; i++) org.people[`r${i}`] = { id: `r${i}`, name: `R ${i}`, rankIndex: 0, years: 2, rel: 60, performance: 70, discipline: 0, age: 30 };
+    state.yearly = {};
+    engine.dispatch('emergency.openStation', 'fire:');
+    assert.equal(d.stations, 2);
+    // A struggling neighbour merges in.
+    const n = d.neighbors[0];
+    Object.assign(n, { members: 5, readiness: 20, funds: 30000 });
+    state.yearly = {};
+    engine.dispatch('emergency.mergeAgency', `fire:${n.id}`);
+    assert.ok(!d.neighbors.includes(n), 'merged');
+    assert.equal(d.stations, 3);
+    // A county contract, paid staff, then the chief's post becomes paid.
+    state.yearly = {};
+    engine.dispatch('emergency.bidContract', 'fire:countyFire');
+    assert.equal(d.contracts.length, 1);
+    state.yearly = {};
+    engine.dispatch('emergency.hireStaff', 'fire:ff');
+    engine.dispatch('emergency.hireStaff', 'fire:ff');
+    state.yearly = {};
+    engine.dispatch('emergency.hireStaff', 'fire:admin');
+    assert.equal(d.paid.length, 3);
+    state.yearly = {};
+    engine.dispatch('emergency.paidChief', 'fire:');
+    assert.ok(d.paidChief);
+    engine.rng.chance = chance;
+    // The year: the contract pays, payroll is met, and you're paid.
+    const before = state.finances.ledger.income.length;
+    growthTick(ctx, org, SERVICES.fire, member, true);
+    assert.ok(state.finances.ledger.income.slice(before).some((i) => /Paid Fire Chief/.test(i.source)), 'paid as chief');
+    // No money: layoffs.
+    org.funds = -500000;
+    d.contracts = [];
+    growthTick(ctx, org, SERVICES.fire, member, true);
+    assert.ok(d.paid.length < 3, 'layoffs when payroll can\'t be met');
+  },
   'AmeriCorps: a stipend, loans in forbearance, an education award and a hiring edge'() {
     const { engine, state } = setup(2, 22);
     state.finances.loans = 20000;

@@ -18,6 +18,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { sideRng, initOrgs } from './Organizations.js';
+import { districtOf, growthTick, growthAction, districtScale } from './VolunteerGrowth.js';
 
 export const PLAYER = 'PLAYER';
 export const CHIEF_ACTIONS = 3;
@@ -128,7 +129,8 @@ export function volunteerOrgTick(ctx, service, member) {
     for (const seats of Object.values(org.seats)) { const i = seats.indexOf(p.id); if (i >= 0) seats[i] = null; }
   }
   const size = Object.keys(org.people).length;
-  for (let i = size; i < 10 + (org.recruited ?? 0); i++) npc(rng, org, 0, service.ranks);
+  // More stations need (and draw) more members.
+  for (let i = size; i < Math.round((10 + (org.recruited ?? 0)) * districtScale(org)); i++) npc(rng, org, 0, service.ranks);
   org.recruited = Math.max(0, (org.recruited ?? 0) - 2);
   // Empty non-elected seats go to the most senior member below (if you're not ready for it).
   for (const [idx, seats] of Object.entries(org.seats)) {
@@ -146,6 +148,8 @@ export function volunteerOrgTick(ctx, service, member) {
     member.xp += 10;
     if (org.readiness < 35 && rng.chance(0.3)) ctx.log(`${org.name} is struggling: too few members show up for calls. The membership is grumbling about leadership.`, service.icon, 'warn');
   }
+  districtOf(org, rng);
+  growthTick(ctx, org, service, member, leadsOrg(org, service.id));
   // Elections.
   const elected = leadershipOf(service.id).elected;
   if (elected.length && state.character.age >= org.nextElection) {
@@ -233,6 +237,10 @@ export function leaderAction(ctx, services, kind, arg) {
   const org = ensureVolunteerOrg(state, service, member);
   if (!leadsOrg(org, serviceId)) return ctx.toast(`Only the ${service.ranks[topRank(serviceId)].title} can do that.`, 'warn');
   if (!useAction(ctx)) return;
+  if (['expand', 'merge', 'contract', 'hire', 'paidChief'].includes(kind)) {
+    districtOf(org, rng);
+    return growthAction(ctx, org, service, member, kind, targetId);
+  }
   if (kind === 'recruit') {
     org.recruited = (org.recruited ?? 0) + rng.int(2, 5);
     for (let i = 0; i < rng.int(2, 4); i++) npc(rng, org, 0, service.ranks);

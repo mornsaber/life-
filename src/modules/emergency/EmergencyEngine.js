@@ -415,6 +415,11 @@ export const EmergencyEngine = {
     commendMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'commend', arg),
     disciplineMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'discipline', arg),
     appointMember: (ctx, arg) => leaderAction(ctx, SERVICES, 'appoint', arg),
+    openStation: (ctx, arg) => leaderAction(ctx, SERVICES, 'expand', arg),
+    mergeAgency: (ctx, arg) => leaderAction(ctx, SERVICES, 'merge', arg),
+    bidContract: (ctx, arg) => leaderAction(ctx, SERVICES, 'contract', arg),
+    hireStaff: (ctx, arg) => leaderAction(ctx, SERVICES, 'hire', arg),
+    paidChief: (ctx, arg) => leaderAction(ctx, SERVICES, 'paidChief', arg),
 
     resign(ctx, serviceId) {
       if (!ctx.state.emergency[serviceId]) return;
@@ -424,6 +429,9 @@ export const EmergencyEngine = {
 
   resolvers: {
     dispatch: resolveDispatch,
+    mergeOffer(ctx, data, optionId) {
+      if (optionId === 'yes') leaderAction(ctx, SERVICES, 'merge', `${data.serviceId}:${data.neighbor}`);
+    },
     election(ctx, data, optionId) {
       const member = ctx.state.emergency[data.serviceId];
       if (!member) return;
