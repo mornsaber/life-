@@ -423,6 +423,7 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
+  'revenue, CPS, natural resources, DOT, courts': 'revenue, child protection, environment, transport, courts',
   'laid off from the county': 'laid off from the council',
   // Professional exams by function rather than by US brand.
   'USMLE Step 1': 'the first medical licensing exam', 'USMLE Step 2 CK': 'the final medical licensing exam', 'USMLE Step 3': 'the last licensing exam', 'Match Day': 'Training-post allocation day', 'the Match': 'the specialty-training allocation',
