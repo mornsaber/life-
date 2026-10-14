@@ -10,8 +10,9 @@ import { schoolTick } from './Schools.js';
 import { assignmentsTick, keepsHome } from './Assignments.js';
 import { reportMisconduct, UCMJ_OFFENSES } from './UCMJ.js';
 import { hasCondition } from '../health/Conditions.js';
-import { PIPELINES } from './SpecialOpsCatalog.js';
-import { warFactor, combatFactor } from '../world/War.js';
+import { PIPELINES, pipelineFor } from './SpecialOpsCatalog.js';
+import { serviceWar, serviceWarFactor, serviceCombatFactor, warContribution } from '../world/War.js';
+import { nationalOverseas } from '../world/NationalForces.js';
 import { upOrOut, mustRetire } from './Separation.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
@@ -20,6 +21,11 @@ import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, branchOf } from './MilitaryEngine.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 
+/** Peacetime deployments of other countries' forces: their standing missions abroad. */
+const NATIONAL_THEATERS = (svc) => {
+  const list = nationalOverseas(svc.nation, svc.branch).map(([country, posting]) => `${posting}, ${country}`);
+  return list.length ? list : ['a UN peacekeeping mission', 'a multinational exercise abroad', 'a disaster-relief deployment'];
+};
 const THEATERS = {
   ground: ['eastern Syria', 'the Sahel', 'northern Iraq', 'the Horn of Africa', 'the Baltic frontier'],
   naval: ['the Red Sea', 'the Strait of Hormuz', 'the South China Sea', 'the Eastern Mediterranean'],
@@ -421,20 +427,24 @@ export function combatZoneExclusion(ctx, svc, theaterName) {
 export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   const { rng } = ctx;
   const branch = branchOf(svc);
-  const theaterName = rng.pick(svc.sof ? PIPELINES[svc.sof.pipeline]?.deployments ?? THEATERS[branch.theater] : THEATERS[branch.theater]);
+  // At war, your forces go to the war; otherwise to your country's standing missions abroad.
+  const war = serviceWar(ctx.state, svc);
+  const peacetime = svc.nation ? NATIONAL_THEATERS(svc) : THEATERS[branch.theater];
+  const theaterName = war && rng.chance(0.85) ? `${war.operation} — ${war.name}` : rng.pick(svc.sof ? pipelineFor(svc, svc.sof.pipeline)?.deployments ?? peacetime : peacetime);
   const months = mobilized ? rng.int(9, 12) : rng.int(6, 9);
   svc.deployedThisYear = true;
   svc.deploymentRequested = false;
   svc.deployments += 1;
 
   ctx.log(`${mobilized ? 'Your reserve unit was mobilized. ' : ''}You deployed to ${theaterName} for ${months} months.`, branch.icon, 'military');
+  svc.warTours = (svc.warTours ?? 0) + (war && theaterName.startsWith(war.operation) ? 1 : 0);
   ctx.stat('stress', 10);
   ctx.stat('happiness', -5);
   ctx.earn(225 * months + 2400, 'Hostile fire & family separation pay');
-  combatZoneExclusion(ctx, svc, theaterName);
+  if (!svc.nation) combatZoneExclusion(ctx, svc, theaterName);
 
   const exposure = exposureOf(svc);
-  const sawCombat = rng.chance(clamp(0.5 * exposure * combatFactor(ctx.state), 0.15, 0.95));
+  const sawCombat = rng.chance(clamp(0.5 * exposure * serviceCombatFactor(ctx.state, svc) * (war && theaterName.startsWith(war.operation) ? 1.4 : 1), 0.15, 0.95));
   if (sawCombat) {
     svc.combatTours += 1;
     combatPrompt(ctx, svc, theaterName);
@@ -469,6 +479,9 @@ function resolveCombat(ctx, data, optionId) {
   }
 
   svc.eval = Math.round(clamp(svc.eval + (success ? 6 : -3), 0, 100));
+  // In a war, every fight moves the front a little.
+  const war = data.theaterName?.startsWith('Operation') ? warContribution(state, svc, success) : null;
+  if (war && success) ctx.log(`Your unit's success pushed the front forward. ${war.operation}: ${war.front > 0 ? 'gaining ground' : 'still holding'}.`, '🗺️', 'military');
   if (success) {
     ctx.log(`${scenario.title}: your actions turned the fight. Everyone in your section made it out.`, '🎯', 'good');
     ctx.stat('happiness', 4);
@@ -485,7 +498,7 @@ function resolveCombat(ctx, data, optionId) {
     const dmg = rng.int(12, 30);
     ctx.stat('health', -dmg);
     ctx.stat('fitness', -rng.int(3, 10));
-    ctx.log(`You were wounded in action (−${dmg} health) and medevaced to Landstuhl.`, '🩸', 'bad');
+    ctx.log(`You were wounded in action (−${dmg} health) and medevaced to ${svc.nation ? 'a military hospital at home' : 'Landstuhl'}.`, '🩸', 'bad');
   }
   awardForAction(ctx, svc, { valor, wounded, success, title });
 
@@ -651,7 +664,7 @@ export function activeDutyTick(ctx, svc) {
   }
 
   const exposure = exposureOf(svc);
-  const deployChance = 0.22 * exposure * warFactor(ctx.state) + (svc.deploymentRequested ? 0.5 : 0);
+  const deployChance = 0.22 * exposure * serviceWarFactor(ctx.state, svc) + (svc.deploymentRequested ? 0.5 : 0);
   if (branch.nonCombat) missionTick(ctx, svc);
   else if (keepsHome(svc)) { /* On a stateside tour, in college or in a top post: no deployments. */ }
   else if (rng.chance(clamp(deployChance, 0, 0.95))) runDeployment(ctx, svc);

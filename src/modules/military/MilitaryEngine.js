@@ -195,7 +195,8 @@ export function rankTitles(svc) {
 
 export function rankOf(svc) {
   const titles = rankTitles(svc);
-  const prefix = svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E';
+  // NATO rank codes (OR-/OF-) for other forces; US pay grades at home.
+  const prefix = svc.nation ? (svc.track === 'enlisted' ? 'OR' : 'OF') : svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E';
   return { code: `${prefix}-${svc.grade + 1}`, title: titles[svc.grade], grade: svc.grade, max: titles.length - 1 };
 }
 
@@ -305,13 +306,16 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     if (age < 18 || age > 32) return { ok: false, reason: 'Flight school: age 18–32' };
     if (!meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   } else if (track === 'officer') {
-    if (age < 19 || age > maxOfficerAge) return { ok: false, reason: `Officers: age 19–${maxOfficerAge}` };
-    if (!meetsEducation(state, { level: 'bachelor' })) return { ok: false, reason: "Officers need a bachelor's" };
+    // Most other forces take officer cadets straight from school (Sandhurst, Duntroon, the NDA); the US wants a degree.
+    const abroad = isAbroad(state);
+    if (age < (abroad ? 18 : 19) || age > maxOfficerAge) return { ok: false, reason: `Officers: age ${abroad ? 18 : 19}–${maxOfficerAge}` };
+    if (!meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
   } else {
     if (age < 17 || age > 39) return { ok: false, reason: 'Enlistment: age 17–39' };
-    if (age >= 18 && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
+    // Only the US requires a high-school diploma to enlist; elsewhere aptitude tests decide.
+    if (age >= 18 && !isAbroad(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   }
-  if (state.stats.health < 40) return { ok: false, reason: 'Fails MEPS medical (health)' };
+  if (state.stats.health < 40) return { ok: false, reason: isAbroad(state) ? 'Fails the medical' : 'Fails MEPS medical (health)' };
   if (state.stats.fitness < 30) return { ok: false, reason: 'Fails fitness test' };
   return { ok: true };
 }

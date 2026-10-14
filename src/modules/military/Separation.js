@@ -20,6 +20,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge, commissionedYears, branchOf } from './MilitaryEngine.js';
 import { equivalentMos } from './MOS.js';
 import { nationalBranch } from '../world/NationalForces.js';
+import { SERVICE_TERMS, upOrOutApplies } from '../world/MilitaryLocal.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
 export const ENLISTED_HYT = [6, 6, 8, 10, 14, 20, 26, 29, 32];
@@ -41,8 +42,13 @@ export const serviceLimit = (svc) => (noTenureLimit(svc) ? Infinity : null) ?? (
  * officers (35 for one and two stars, 38 for three, 40 for four), and by
  * age 62 — 64 for generals and admirals.
  */
-export const maxServiceYears = (svc) => (noTenureLimit(svc) ? Infinity : Math.max(30, serviceLimit(svc)));
-export const mandatoryRetirementAge = (svc) => (svc.track === 'officer' && svc.grade >= 6 ? 64 : 62);
+const terms = (svc) => (svc?.nation ? SERVICE_TERMS[svc.nation] ?? null : null);
+export const maxServiceYears = (svc) => (terms(svc) ? terms(svc).maxYears[svc.track === 'enlisted' ? 'enlisted' : 'officer'] : noTenureLimit(svc) ? Infinity : Math.max(30, serviceLimit(svc)));
+export const mandatoryRetirementAge = (svc) => {
+  const t = terms(svc);
+  if (t) return svc.track === 'officer' && svc.grade >= 6 ? t.ages.flag : t.ages[svc.track === 'enlisted' ? 'enlisted' : 'officer'];
+  return svc.track === 'officer' && svc.grade >= 6 ? 64 : 62;
+};
 export const mustRetire = (state, svc) => svc.yearsOfService >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
 
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
@@ -53,6 +59,8 @@ export function separationPay(svc) {
 
 /** Apply up-or-out and high-year tenure. Returns true if you were separated. */
 export function upOrOut(ctx, svc) {
+  // Other forces don't separate people for being passed over: they serve to the end of their engagement.
+  if (!upOrOutApplies(svc.nation)) return false;
   const rank = rankOf(svc);
   const passedOver = svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) && (svc.passovers ?? 0) >= PASSOVER_LIMIT;
   const overLimit = commissionedYears(svc) >= serviceLimit(svc);
@@ -85,13 +93,13 @@ export function transferEligibility(state, branchId) {
   if (!svc || !target) return { ok: false, reason: svc ? 'Not a branch of your country\'s forces' : 'Not serving' };
   if (branchId === svc.branch) return { ok: false, reason: 'Your branch' };
   if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
-  if (target.reserveOnly && svc.component === 'active') return { ok: false, reason: 'The Guard only takes reservists' };
+  if (target.reserveOnly && svc.component === 'active') return { ok: false, reason: `The ${branchOf({ ...svc, branch: branchId }).name} only takes reservists` };
   if (target.nonCombat || branchOf(svc).nonCombat) return { ok: false, reason: 'USPHS and NOAA officers resign and apply anew' };
   if (svc.yearsOfService < 2) return { ok: false, reason: 'Serve 2 years first' };
   if (svc.deployedThisYear) return { ok: false, reason: 'Not while deployed' };
   if (svc.disciplinary) return { ok: false, reason: 'Disciplinary record' };
-  if (branchId === 'marines' && state.stats.fitness < 65) return { ok: false, reason: 'Marine standards: fitness 65+' };
-  if (branchId === 'airforce' && state.stats.smarts < 60) return { ok: false, reason: 'Air Force ASVAB line scores: smarts 60+' };
+  if (branchId === 'marines' && state.stats.fitness < 65) return { ok: false, reason: `${branchOf({ ...svc, branch: branchId }).name} standards: fitness 65+` };
+  if (branchId === 'airforce' && state.stats.smarts < 60) return { ok: false, reason: svc.nation ? 'Aptitude tests: smarts 60+' : 'Air Force ASVAB line scores: smarts 60+' };
   if (yearlyCount(state, 'military.transferBranch')) return { ok: false, reason: 'One request a year' };
   return { ok: true };
 }
@@ -110,7 +118,7 @@ export function transferBranch(ctx, branchId) {
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   bumpYearly(state, 'military.transferBranch');
   const from = branchOf(svc);
-  const to = BRANCHES[branchId];
+  const to = branchOf({ ...svc, branch: branchId });
   if (!rng.chance(transferChance(state, branchId))) {
     ctx.log(`The ${from.name} denied your conditional release to join the ${to.name}.`, '📭', 'warn');
     ctx.stat('stress', 3);

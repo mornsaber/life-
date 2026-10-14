@@ -1,16 +1,16 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
-import { unitView, billetTitle, leads, canImposeNjp, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
-import { PIPELINES, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
+import { unitView, billetTitle, leads, canImposeNjp, isNcoLeader, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
+import { PIPELINES, pipelineFor, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
 import { TRACKS, skillBridgeEligibility, civilianField, FAIR_YEARS } from '../../modules/military/Transition.js';
 import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
 import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
-import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool } from '../../modules/military/Schools.js';
+import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool, qualBadge, allSchoolsFor } from '../../modules/military/Schools.js';
 import { MOS, DIRECT_COMMISSIONS, DIRECT_MAX_AGE, hasDirectPath } from '../../modules/military/MOS.js';
-import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, COMMISSIONING } from '../../modules/military/Assignments.js';
+import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, commissioningProgram, dutyFor } from '../../modules/military/Assignments.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
@@ -125,7 +125,7 @@ export function militaryView(state) {
           svc.reports?.length ? [`Last ${reportName(svc)}s`, svc.reports.slice(-3).map((r) => `<span class="${r.block === 'Most Qualified' ? 'pos' : r.block === 'Not Qualified' ? 'neg' : ''}">${esc(r.block)}</span>`).join(' · ')] : null,
           ['Retirement', svc.retirementPlan === 'brs' ? 'Blended (2%/yr + matched TSP)' : svc.retirementPlan === 'legacy' ? 'Legacy (2.5%/yr at 20)' : 'Legacy until year 2'],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
-          svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} Article 15${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
+          svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} ${svc.nation ? 'summary punishment' : 'Article 15'}${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
           ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs${svc.track === 'enlisted' ? '' : ` commissioned service (${commissionedYears(svc)} so far)`} at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
         ])}
       </div>
@@ -211,15 +211,16 @@ function unitCard(state, svc) {
   if (!v) return '';
   const left = LEADER_ACTIONS - (state.yearly['military.lead'] ?? 0);
   const iLead = leads(v.billet);
+  const njpWord = svc.nation ? 'Discipline' : 'Article 15';
   const chain = v.chain.map((c) => `<li><small class="muted">${esc(c.label)}</small> <b>${esc(c.person.rank)} ${esc(c.person.name)}</b></li>`).join('');
-  const team = v.team.map((p) => `<li class="report-row"><div><b>${esc(p.rank)} ${esc(p.name)}</b> <small class="muted">${esc(p.title.split(' — ')[1] ?? '')} · performance ${p.performance} · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} Article 15${p.discipline > 1 ? 's' : ''}` : ''}${p.awards ? ` · ${p.awards} award${p.awards > 1 ? 's' : ''}` : ''}</small></div>
-    ${iLead ? `<div class="toggle-row">${button('🗣️ Counsel', 'military.counsel', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${button('🎖️ Award', 'military.award', { arg: p.id, variant: 'tiny', disabled: left <= 0, hint: canImposeNjp(v.billet) ? 'You approve it' : 'Recommend to your commander' })}${button(canImposeNjp(v.billet) ? '⚖️ Article 15' : '⚖️ Recommend Article 15', 'military.njp', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div>` : ''}</li>`).join('');
+  const team = v.team.map((p) => `<li class="report-row"><div><b>${esc(p.rank)} ${esc(p.name)}</b> <small class="muted">${esc(p.title.split(' — ')[1] ?? '')} · performance ${p.performance} · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} disciplinary` : ''}${p.awards ? ` · ${p.awards} award${p.awards > 1 ? 's' : ''}` : ''}</small></div>
+    ${iLead ? `<div class="toggle-row">${button('🗣️ Counsel', 'military.counsel', { arg: p.id, variant: 'tiny', disabled: left <= 0 })}${button('🎖️ Award', 'military.award', { arg: p.id, variant: 'tiny', disabled: left <= 0, hint: canImposeNjp(v.billet) ? 'You approve it' : 'Recommend to your commander' })}${isNcoLeader(v.billet) ? button('🏋️ Corrective training', 'military.correct', { arg: p.id, variant: 'tiny', disabled: left <= 0 }) : ''}${p.track === 'enlisted' && p.grade < 3 ? button('⬆️ Promote', 'military.promote', { arg: p.id, variant: 'tiny', disabled: left <= 0, hint: canImposeNjp(v.billet) || ['firstSergeant', 'csm'].includes(v.billet) ? 'Your call' : 'Recommend it' }) : ''}${button(canImposeNjp(v.billet) ? `⚖️ ${njpWord}` : `⚖️ Recommend ${njpWord}`, 'military.njp', { arg: p.id, variant: 'tiny danger', disabled: left <= 0 })}</div>` : ''}</li>`).join('');
   return card(esc(v.org.name), `
     <p>${chip(`🎖️ ${esc(billetTitle(svc, v.billet))}`, v.command ? 'honor' : '')} ${chip(esc(v.dept.name))}${v.command ? ` ${chip(`Command tour ends at age ${v.command.until}`, 'warn')}` : ''}</p>
     ${meter(v.readiness, { label: '🛡️ Unit readiness' })}
     <h4 class="sub">Chain of command</h4><ul class="history">${chain || '<li class="muted">You answer to higher headquarters.</li>'}</ul>
     ${v.team.length ? `<h4 class="sub">${iLead ? 'Your soldiers' : 'Your team'}</h4><ul class="history">${team}</ul>` : ''}
-    <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts (company command, first sergeant, battalion command, command sergeant major) are filled by selection boards; commanding well is what gets you promoted.</p>`, { icon: '🪖' });
+    <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts are filled by selection boards, one at a time; commanding well is what gets you promoted. NCOs run training, discipline and junior promotions.</p>`, { icon: '🪖' });
 }
 
 /** Your volunteer organization: officers (elected or appointed), members, and your powers if you lead it. */
@@ -240,7 +241,7 @@ function volunteerOrgSection(state, svc, member) {
 /** Special operations: your team if you're in one, else the selection courses open to you. */
 function specialOpsCard(state, svc) {
   if (svc.sof) {
-    const p = PIPELINES[svc.sof.pipeline];
+    const p = pipelineFor(svc, svc.sof.pipeline) ?? PIPELINES[svc.sof.pipeline];
     return card(p.name, `<p>${chip(`${p.icon} ${esc(p.badge)}`, 'honor')} ${chip(esc(svc.sof.unitName))}</p>
       ${kv([['Since age', svc.sof.since], ['Special pay', `${money(svc.sof.specialPay)}/yr`], ['Team missions', svc.sof.missions]])}
       <p class="fine">${esc(p.desc)} Low fitness or health (or age 45) rotates you back to a conventional unit.</p>
@@ -249,7 +250,7 @@ function specialOpsCard(state, svc) {
   const ids = pipelinesFor(svc);
   if (!ids.length) return '';
   const rows = ids.map((id) => {
-    const p = PIPELINES[id];
+    const p = pipelineFor(svc, id);
     const check = selectionEligibility(state, id);
     const tries = svc.selectionAttempts?.[id] ?? 0;
     return optionRow({ icon: p.icon, title: esc(p.name), sub: `${p.phases.map((ph) => esc(ph.name)).join(' → ')} · +${money(p.specialPay)}/yr`, meta: check.ok ? `About ${Math.round(courseOdds(state, id) * 100)}% finish${tries ? ` · attempt ${tries + 1} of ${MAX_ATTEMPTS}` : ''}` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Volunteer', 'military.volunteerSelection', { arg: id, disabled: !check.ok, variant: 'small' }) });
@@ -265,12 +266,12 @@ function schoolsCard(state, svc) {
     const check = schoolEligibility(state, id);
     return optionRow({ icon: QUALS[id]?.icon ?? '🎓', title, sub, meta: check.ok ? `${Math.round(passOdds(state, id) * 100)}% to pass` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Attend', 'military.attendSchool', { arg: id, variant: 'small', disabled: !check.ok }) });
   };
-  const done = Object.keys(svc.schools ?? {}).map((id) => chip(`${QUALS[id]?.icon ?? '🎓'} ${esc(QUALS[id]?.badge ?? schoolName(svc, id))}`, QUALS[id] ? 'honor' : '')).join(' ');
+  const done = Object.keys(svc.schools ?? {}).map((id) => chip(`${QUALS[id]?.icon ?? '🎓'} ${esc(QUALS[id] ? qualBadge(svc, id) : schoolName(svc, id))}`, QUALS[id] ? 'honor' : '')).join(' ');
   const pmeNext = need && !hasSchool(svc, need.id) ? `<ul class="job-board">${schoolRow(need.id, `⚠️ ${esc(schoolName(svc, need.id))}`, `Required before ${esc(titleOf(need))}. Your command offers seats when you're due.`)}</ul>` : '';
-  const quals = Object.entries(QUALS).filter(([id, q]) => q.branches.includes(svc.branch) && !hasSchool(svc, id));
+  const quals = Object.entries(QUALS).filter(([id]) => allSchoolsFor(svc).includes(id) && !hasSchool(svc, id));
   const open = quals.filter(([id]) => schoolEligibility(state, id).ok);
   const locked = quals.filter(([id]) => !schoolEligibility(state, id).ok);
-  const qRow = ([id, q]) => schoolRow(id, esc(q.name), `${esc(q.badge)}${q.pay ? ` · +${money(q.pay)}/yr` : ''}`);
+  const qRow = ([id, q]) => schoolRow(id, esc(schoolName(svc, id)), `${esc(qualBadge(svc, id))}${q.pay ? ` · +${money(q.pay)}/yr` : ''}`);
   if (!done && !pmeNext && !quals.length) return '';
   return card('Schools & Qualifications', `${done ? `<div class="chip-row">${done}</div>` : '<p class="muted">No schools yet.</p>'}
     ${pmeNext}
@@ -286,16 +287,16 @@ function assignmentsCard(state, svc) {
   if (svc.commissioning) return card('Commissioning Program', `<div class="next-step">🎓 <b>${esc(svc.commissioning.program)}</b>: college full-time on full pay. ${svc.commissioning.yearsLeft} year${svc.commissioning.yearsLeft === 1 ? '' : 's'} to graduation and your commission.</div>`, { icon: '🎓' });
   const current = svc.assignment ? `<div class="next-step">${ASSIGNMENTS[svc.assignment.id].icon} On assignment as <b>${esc(svc.assignment.name)}</b>${svc.assignment.schoolLeft ? ' (graduate school first)' : ''}: ${svc.assignment.yearsLeft} year${svc.assignment.yearsLeft === 1 ? '' : 's'} left. No deployments until it ends.</div>` : '';
   const done = Object.keys(svc.broadened ?? {}).map((id) => chip(`${ASSIGNMENTS[id].icon} ${esc(assignmentName(svc, id))}`, 'honor')).join(' ') + (svc.joint ? ` ${chip('🏢 Joint qualified', 'honor')}` : '');
-  const offered = Object.entries(ASSIGNMENTS).filter(([id, a]) => a.track === svc.track && a.names[svc.branch] && svc.broadened?.[id] == null);
+  const offered = Object.entries(ASSIGNMENTS).filter(([id, a]) => a.track === svc.track && dutyFor(svc, id) && svc.broadened?.[id] == null);
   const rows = offered.map(([id, a]) => {
     const check = assignmentEligibility(state, id);
     const perks = [`${a.years}${a.degree ? ' + 2 school' : ''} yrs`, a.pay ? `+${money(a.pay)}/yr` : null, a.joint ? 'joint credit' : null].filter(Boolean).join(' · ');
-    return { ok: check.ok, html: optionRow({ icon: a.icon, title: esc(assignmentName(svc, id)), sub: `${esc(a.desc)} ${perks}`, meta: check.ok ? `About ${Math.round(Math.min(0.9, Math.max(0.1, 0.35 + (svc.eval - 60) / 60)) * 100)}% to be selected` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyAssignment', { arg: id, variant: 'small', disabled: !check.ok }) }) };
+    return { ok: check.ok, html: optionRow({ icon: a.icon, title: esc(assignmentName(svc, id)), sub: `${esc(dutyFor(svc, id)?.desc ?? a.desc)} ${perks}`, meta: check.ok ? `About ${Math.round(Math.min(0.9, Math.max(0.1, 0.35 + (svc.eval - 60) / 60)) * 100)}% to be selected` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyAssignment', { arg: id, variant: 'small', disabled: !check.ok }) }) };
   });
   const open = rows.filter((r) => r.ok);
-  const commish = svc.track === 'enlisted' && COMMISSIONING[svc.branch] ? (() => {
+  const commish = svc.track === 'enlisted' && commissioningProgram(svc) ? (() => {
     const check = commissioningEligibility(state);
-    return `<ul class="job-board">${optionRow({ icon: '🎓', title: esc(COMMISSIONING[svc.branch]), sub: 'Go to college full-time on full pay and commission as an officer at graduation.', meta: check.ok ? 'Board selection' : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyCommissioning', { variant: 'small', disabled: !check.ok }) })}</ul>`;
+    return `<ul class="job-board">${optionRow({ icon: '🎓', title: esc(commissioningProgram(svc)), sub: 'Go to college full-time on full pay and commission as an officer at graduation.', meta: check.ok ? 'Board selection' : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'military.applyCommissioning', { variant: 'small', disabled: !check.ok }) })}</ul>`;
   })() : '';
   if (!current && !done && !rows.length && !commish) return '';
   return card('Assignments', `${current}${done ? `<div class="chip-row">${done}</div>` : ''}

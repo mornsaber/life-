@@ -28,6 +28,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { isMarried } from '../people/People.js';
 import { awardMedal } from './MedalEngine.js';
 import { rankOf, commission, discharge } from './MilitaryEngine.js';
+import { localDuty, localCommissioning, localServiceChief, localChairman, localTopEnlisted, appointingAuthority } from '../world/MilitaryLocal.js';
 
 const BY_BRANCH = (army, navy, airforce, marines, coastguard, extra = {}) => ({ army, guard: army, navy, airforce, spaceforce: airforce, marines, coastguard, ...extra });
 
@@ -99,8 +100,21 @@ export const CHAIRMAN = 'Chairman of the Joint Chiefs of Staff';
 const TOP_TERM = 4;
 const TOP_PAY = { enlisted: 30000, officer: 40000 };
 
-const pickName = (a, svc) => a.names[svc.branch] ?? Object.values(a.names)[0];
+/** The tour as your country's forces run it: { name, place, desc, flavor } or null where it doesn't exist. */
+export function dutyFor(svc, id) {
+  const a = ASSIGNMENTS[id];
+  if (!a) return null;
+  if (svc?.nation) return localDuty(svc.nation, svc.branch, id, a);
+  const name = a.names[svc.branch];
+  return name ? { name, place: a.places?.[svc.branch] ?? null, desc: a.desc, flavor: a.flavor } : null;
+}
+const pickName = (a, svc) => dutyFor(svc, Object.keys(ASSIGNMENTS).find((k) => ASSIGNMENTS[k] === a))?.name ?? a.names[svc.branch] ?? Object.values(a.names)[0];
 export const assignmentName = (svc, id) => pickName(ASSIGNMENTS[id], svc);
+/** Senior posts and programmes, by country. */
+export const commissioningProgram = (svc) => (svc.nation ? localCommissioning(svc.nation) : COMMISSIONING[svc.branch]);
+const topEnlistedTitle = (svc) => (svc.nation ? localTopEnlisted(svc.nation, svc.branch) : TOP_ENLISTED[svc.branch]);
+const serviceChiefTitle = (svc) => (svc.nation ? localServiceChief(svc.nation, svc.branch) : SERVICE_CHIEF[svc.branch]);
+const chairmanTitle = (svc) => (svc.nation ? localChairman(svc.nation) : CHAIRMAN);
 const FIELDS = { infantry: 'politicalScience', engineer: 'engineering', intel: 'internationalRelations', cyber: 'computerScience', medic: 'nursing', logistics: 'business', aviation: 'aviation', legal: 'criminalJustice' };
 
 export function assignmentEligibility(state, id) {
@@ -110,11 +124,12 @@ export function assignmentEligibility(state, id) {
   if (!svc) return { ok: false, reason: 'Not serving' };
   if (svc.component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (a.branches && !a.branches.includes(svc.branch)) return { ok: false, reason: 'Not in your branch' };
-  if (!a.names[svc.branch]) return { ok: false, reason: 'Not in your branch' };
+  if (!dutyFor(svc, id)) return { ok: false, reason: svc.nation ? 'Your forces have no such post' : 'Not in your branch' };
   if (svc.track !== a.track) return { ok: false, reason: a.track === 'officer' ? 'Officers only' : 'Enlisted only' };
   if (svc.grade < a.grades[0] || svc.grade > a.grades[1]) return { ok: false, reason: `${rankOf({ ...svc, grade: a.grades[0] }).title} to ${rankOf({ ...svc, grade: a.grades[1] }).title}` };
   if (svc.assignment) return { ok: false, reason: `Already on a ${svc.assignment.name} tour` };
   if (svc.commissioning || svc.topPost) return { ok: false, reason: 'Not available right now' };
+  if (svc.unit?.commandUntil != null) return { ok: false, reason: 'Finish your command tour first' };
   if (svc.sof) return { ok: false, reason: 'Leave special operations first' };
   if (svc.isNew || svc.yearsOfService < 3) return { ok: false, reason: 'Needs 3 years of service' };
   if (svc.broadened?.[id] != null) return { ok: false, reason: 'Already served this tour' };
@@ -149,7 +164,7 @@ export function startAssignment(ctx, svc, id) {
   svc.contractYearsLeft = Math.max(svc.contractYearsLeft, svc.assignment.yearsLeft + 1);
   svc.stationYears = 0;
   svc.tourLength = svc.assignment.yearsLeft;
-  const where = a.places?.[svc.branch];
+  const where = dutyFor(svc, id)?.place;
   ctx.log(a.degree
     ? `You were selected to teach at a service academy. First, two years of fully funded graduate school.`
     : `You reported for duty as a ${name}${where ? ` at ${where}` : ''}. A ${a.years}-year tour.`, a.icon, 'milestone');
@@ -187,7 +202,7 @@ export function commissioningEligibility(state) {
   if (!svc) return { ok: false, reason: 'Not serving' };
   if (svc.track !== 'enlisted') return { ok: false, reason: 'Enlisted only' };
   if (svc.component !== 'active') return { ok: false, reason: 'Active duty only' };
-  if (!COMMISSIONING[svc.branch]) return { ok: false, reason: 'Not in your branch' };
+  if (!commissioningProgram(svc)) return { ok: false, reason: 'Not in your branch' };
   if (svc.commissioning) return { ok: false, reason: 'Already in the program' };
   if (svc.assignment || svc.sof) return { ok: false, reason: 'Finish your current assignment first' };
   if (state.education.degrees.some((d) => ['bachelor', 'master', 'mba', 'jd', 'md', 'phd'].includes(d.type))) return { ok: false, reason: 'You have a degree: apply to OCS' };
@@ -205,7 +220,7 @@ export function applyCommissioning(ctx) {
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   bumpYearly(state, 'military.commissioning');
   const svc = state.military.service;
-  const program = COMMISSIONING[svc.branch];
+  const program = commissioningProgram(svc);
   if (!rng.chance(clamp(0.3 + (svc.eval - 65) / 60 + (state.stats.smarts - 55) / 150, 0.1, 0.8))) {
     ctx.log(`The ${program} board didn't select your packet this year.`, '🎓', 'warn');
     return ctx.toast('Not selected', 'warn');
@@ -262,14 +277,15 @@ function assignmentTick(ctx, svc) {
     const made = rng.chance(clamp(0.45 + (ctx.state.stats.smarts - 50) / 150 + ((ctx.state.stats.looks ?? 50) - 50) / 200, 0.2, 0.85));
     svc.eval = Math.round(clamp(svc.eval + (made ? 6 : -5), 0, 100));
     ctx.log(made ? 'You made mission every month this year. Your station commander noticed.' : 'You missed mission three months running. The phone calls from battalion were not friendly.', '📋', made ? 'good' : 'warn');
-  } else ctx.log(rng.pick(a.flavor), a.icon);
+  } else ctx.log(rng.pick(dutyFor(svc, t.id)?.flavor ?? a.flavor), a.icon);
   if (t.yearsLeft <= 0) finishAssignment(ctx, svc);
 }
 
 /** The Army picks NCOs for drill sergeant and recruiting duty whether they volunteer or not. */
 function involuntarySelection(ctx, svc) {
   const { state, rng } = ctx;
-  if (!['army', 'marines'].includes(svc.branch) || svc.track !== 'enlisted' || svc.grade < 4 || svc.grade > 6) return;
+  // Selection for drill and recruiting duty is a US Army / Marine Corps practice.
+  if (svc.nation || !['army', 'marines'].includes(svc.branch) || svc.track !== 'enlisted' || svc.grade < 4 || svc.grade > 6) return;
   if (svc.assignment || svc.sof || svc.commissioning || svc.broadened?.drill != null || svc.broadened?.recruiter != null || svc.yearsOfService < 4) return;
   if (state.prompts.some((p) => p.type === 'military.dutySelection') || !rng.chance(0.06)) return;
   ctx.prompt({
@@ -291,7 +307,7 @@ function topPostTick(ctx, svc) {
     svc.topPost.yearsLeft -= 1;
     ctx.earn(TOP_PAY[svc.track] ?? 0, `Senior leader personal money and special pay (${svc.topPost.title})`, { wage: true });
     ctx.stat('stress', 6);
-    ctx.log(rng.pick([`As ${svc.topPost.title} you testified before Congress on the state of the force.`, `You visited troops on four continents this year as ${svc.topPost.title}.`, `As ${svc.topPost.title} you sat across from the Secretary of Defense every week.`]), '⭐');
+    ctx.log(rng.pick(svc.nation ? [`As ${svc.topPost.title} you gave evidence to parliament's defence committee.`, `You visited your forces at home and abroad this year as ${svc.topPost.title}.`, `As ${svc.topPost.title} you sat across from the defence minister every week.`] : [`As ${svc.topPost.title} you testified before Congress on the state of the force.`, `You visited troops on four continents this year as ${svc.topPost.title}.`, `As ${svc.topPost.title} you sat across from the Secretary of Defense every week.`]), '⭐');
     if (svc.topPost.yearsLeft <= 0) {
       const title = svc.topPost.title;
       awardMedal(ctx, 'dsm', { branch: svc.branch, citation: title });
@@ -303,10 +319,10 @@ function topPostTick(ctx, svc) {
   if (state.prompts.some((p) => p.type === 'military.topPost')) return;
   const max = rankOf(svc).max;
   let title = null;
-  if (svc.track === 'enlisted' && svc.grade === max && svc.eval >= 88 && svc.yearsOfService >= 22 && TOP_ENLISTED[svc.branch] && rng.chance(0.04)) title = TOP_ENLISTED[svc.branch];
-  else if (svc.track === 'officer' && svc.grade >= max - 1 && svc.eval >= 85 && SERVICE_CHIEF[svc.branch]) {
-    if (svc.joint && svc.branch !== 'coastguard' && rng.chance(0.05)) title = CHAIRMAN;
-    else if (rng.chance(0.15)) title = SERVICE_CHIEF[svc.branch];
+  if (svc.track === 'enlisted' && svc.grade === max && svc.eval >= 88 && svc.yearsOfService >= 22 && topEnlistedTitle(svc) && rng.chance(0.04)) title = topEnlistedTitle(svc);
+  else if (svc.track === 'officer' && svc.grade >= max - 1 && svc.eval >= 85 && serviceChiefTitle(svc)) {
+    if (svc.joint && svc.branch !== 'coastguard' && chairmanTitle(svc) && rng.chance(0.05)) title = chairmanTitle(svc);
+    else if (rng.chance(0.15)) title = serviceChiefTitle(svc);
   }
   if (!title) return;
   ctx.prompt({
@@ -314,7 +330,7 @@ function topPostTick(ctx, svc) {
     icon: '⭐',
     title: 'Nominated',
     text: svc.track === 'officer'
-      ? `The President nominated you to be ${title}. The Senate Armed Services Committee will hold a confirmation hearing.`
+      ? (svc.nation ? `${appointingAuthority(svc.nation)} appointed you ${title}.` : `The President nominated you to be ${title}. The Senate Armed Services Committee will hold a confirmation hearing.`)
       : `You were selected as ${title}, the senior enlisted leader of the whole service. It is a four-year post, and the last of your career.`,
     options: [
       { id: 'accept', label: '⭐ Accept' },

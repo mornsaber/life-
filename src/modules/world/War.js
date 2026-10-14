@@ -84,6 +84,21 @@ export const atWar = (state) => Boolean(warHere(state) && warHere(state).phase !
 export const warFactor = (state) => (atWar(state) ? 1 + 0.5 * Math.min(3, warHere(state).intensity) : 1);
 /** Extra odds of seeing combat on a deployment. */
 export const combatFactor = (state) => (atWar(state) ? 1 + 0.15 * Math.min(3, warHere(state).intensity) : 1);
+/** The war your own armed forces are fighting (by the nation you serve, wherever you live). */
+export const serviceWar = (state, svc) => {
+  const w = warIn(state, svc?.nation ?? 'US');
+  return w && w.phase !== 'ceasefire' ? w : null;
+};
+export const serviceWarFactor = (state, svc) => (serviceWar(state, svc) ? 1 + 0.5 * Math.min(3, serviceWar(state, svc).intensity) : 1);
+export const serviceCombatFactor = (state, svc) => (serviceWar(state, svc) ? 1 + 0.15 * Math.min(3, serviceWar(state, svc).intensity) : 1);
+/** What one fight you were in did to the front: small, but it adds up across a unit's war. */
+export function warContribution(state, svc, success) {
+  const w = serviceWar(state, svc);
+  if (!w) return null;
+  w.front = Math.max(-100, Math.min(100, w.front + (success ? 1.5 : -1)));
+  w.playerFights = (w.playerFights ?? 0) + 1;
+  return w;
+}
 /** Danger to civilians where you live (0 at peace). */
 export const homeDanger = (state) => (atWar(state) ? warHere(state).homeFront * (0.5 + warHere(state).intensity / 8) : 0);
 /** General mobilization: men 18–60 are called up and can't leave. */

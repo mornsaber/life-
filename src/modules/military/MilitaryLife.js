@@ -84,7 +84,7 @@ export function pcsOrders(ctx, svc) {
         type: 'military.overseasOrders',
         icon: '🌍',
         title: `Orders: ${base}, ${country}`,
-        text: `You've been assigned to ${base} for ${years} years.\nYour family can come with you (command-sponsored, with housing, schools and a cost-of-living allowance), or you can serve the tour unaccompanied.${spouseOf(state)?.job ? `\n${spouseOf(state).firstName} would probably have to leave their job.` : ''}`,
+        text: `You've been assigned to ${base} for ${years} years.\nYour family can come with you (${svc.nation ? 'an accompanied posting' : 'command-sponsored'}, with housing, schools and a cost-of-living allowance), or you can serve the tour unaccompanied.${spouseOf(state)?.job ? `\n${spouseOf(state).firstName} would probably have to leave their job.` : ''}`,
         options: [
           { id: 'family', label: '👨‍👩‍👧 Bring the family', hint: 'An adventure together; a spouse\'s career pauses' },
           { id: 'alone', label: '🧳 Go unaccompanied', hint: 'Shorter tour, hard on a marriage' },
@@ -102,7 +102,7 @@ export function pcsOrders(ctx, svc) {
   svc.stationYears = 0;
   svc.tourLength = 3;
   svc.station = base;
-  ctx.emit('region:relocate', { regionId, reason: `PCS orders: report to ${base}.` });
+  ctx.emit('region:relocate', { regionId, reason: `${svc.nation ? 'Posting order' : 'PCS orders'}: report to ${base}.` });
   if (hasFamily(state)) spouseMove(ctx, `the move to ${base}`);
 }
 
@@ -112,7 +112,7 @@ function startTour(ctx, svc, { country, base, years, accompanied }) {
   svc.station = base;
   svc.stationYears = 0;
   svc.tourLength = years;
-  ctx.log(`You reported to ${base}, ${country}${accompanied ? ' with your family' : hasFamily(state) ? ', leaving your family stateside' : ''}. ${years > 1 ? `A ${years}-year tour.` : 'A one-year remote tour.'}`, '🌍', 'milestone');
+  ctx.log(`You reported to ${base}, ${country}${accompanied ? ' with your family' : hasFamily(state) ? `, leaving your family ${svc.nation ? 'at home' : 'stateside'}` : ''}. ${years > 1 ? `A ${years}-year tour.` : 'A one-year remote tour.'}`, '🌍', 'milestone');
   if (accompanied) spouseMove(ctx, `the move to ${country}`);
 }
 
@@ -128,7 +128,7 @@ function returnStateside(ctx, svc) {
   svc.station = pick[1];
   svc.stationYears = 0;
   svc.tourLength = 3;
-  if (pick[0] !== state.character.regionId) ctx.emit('region:relocate', { regionId: pick[0], reason: `PCS orders: report to ${pick[1]}.` });
+  if (pick[0] !== state.character.regionId) ctx.emit('region:relocate', { regionId: pick[0], reason: `${svc.nation ? 'Posting order' : 'PCS orders'}: report to ${pick[1]}.` });
   else ctx.log(`${o.accompanied ? '' : 'After a remote tour you got your assignment of choice: '}${pick[1]}, close to home.`, '🏠', 'good');
 }
 

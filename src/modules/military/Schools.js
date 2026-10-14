@@ -17,6 +17,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { grantCredential, hasCredential } from '../credentials/LicensingEngine.js';
+import { localPme, localQual } from '../world/MilitaryLocal.js';
 
 const family = (branch) => (branch === 'marines' ? 'marines' : ['navy', 'coastguard'].includes(branch) ? 'naval' : ['airforce', 'spaceforce'].includes(branch) ? 'air' : 'ground');
 const NON_COMBAT = ['usphs', 'noaa'];
@@ -64,8 +65,16 @@ export const QUALS = {
 
 export const schoolName = (svc, id) => {
   const pme = PME_LIST.find((p) => p.id === id);
+  if (svc?.nation) {
+    const local = pme ? localPme(svc.nation, svc.branch, id) : localQual(svc.nation, id);
+    if (local) return local;
+  }
   return pme ? pme.names[family(svc.branch)] : QUALS[id]?.name ?? id;
 };
+/** The badge or qualification a course gives (abroad: the course itself). */
+export const qualBadge = (svc, id) => (svc?.nation ? `${schoolName(svc, id)} qualification` : QUALS[id]?.badge ?? schoolName(svc, id));
+/** Is this skill course run by your country's forces? */
+const offeredHere = (svc, id) => !svc?.nation || localQual(svc.nation, id) !== null;
 
 /** The PME you need before your next grade, if any. */
 export function requiredPme(svc) {
@@ -108,11 +117,11 @@ export function schoolEligibility(state, id) {
   }
   const q = QUALS[id];
   if (!q) return { ok: false, reason: 'Unknown school' };
-  if (!q.branches.includes(svc.branch)) return { ok: false, reason: 'Not offered to your service' };
+  if (!q.branches.includes(svc.branch) || !offeredHere(svc, id)) return { ok: false, reason: 'Not offered to your service' };
   if (q.track && q.track !== svc.track) return { ok: false, reason: q.track === 'enlisted' ? 'NCOs only' : 'Officers only' };
   if (q.sofOnly && !svc.sof) return { ok: false, reason: 'Special operations units only' };
   if (q.specialty && !q.specialty.includes(svc.specialty)) return { ok: false, reason: 'Combat arms only' };
-  for (const r of q.requires ?? []) if (!hasSchool(svc, r)) return { ok: false, reason: `Needs ${QUALS[r].name}` };
+  for (const r of q.requires ?? []) if (!hasSchool(svc, r)) return { ok: false, reason: `Needs ${schoolName(svc, r)}` };
   const min = q.minGrade?.[svc.track];
   if (min != null && svc.grade < min) return { ok: false, reason: `Rank ${{ officer: 'O', warrant: 'W' }[svc.track] ?? 'E'}-${min + 1}+` };
   const max = q.maxGrade?.[svc.track];
@@ -151,7 +160,7 @@ export function attendSchool(ctx, id) {
   const q = QUALS[id];
   for (const c of q?.grants ?? []) if (!hasCredential(state, c)) grantCredential(ctx, c, { sponsor: 'military', silent: true });
   if (q?.stat === 'fitness') ctx.stat('fitness', 2);
-  ctx.log(q ? `You graduated from ${name} and earned the ${q.badge}.` : `You graduated from ${name}.`, q?.icon ?? '🎓', 'good');
+  ctx.log(q ? `You graduated from ${name}${svc.nation ? '' : ` and earned the ${q.badge}`}.` : `You graduated from ${name}.`, q?.icon ?? '🎓', 'good');
   ctx.toast(`Graduated: ${name}`, 'good');
   return true;
 }
@@ -184,4 +193,4 @@ export const SchoolResolvers = {
   },
 };
 
-export const allSchoolsFor = (svc) => [...(PME[svc.track] ?? []).map((p) => p.id), ...Object.keys(QUALS).filter((id) => QUALS[id].branches.includes(svc.branch))];
+export const allSchoolsFor = (svc) => [...(PME[svc.track] ?? []).map((p) => p.id), ...Object.keys(QUALS).filter((id) => QUALS[id].branches.includes(svc.branch) && offeredHere(svc, id))];

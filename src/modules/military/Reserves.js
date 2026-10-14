@@ -11,7 +11,7 @@ import { schoolTick } from './Schools.js';
 import { clamp } from '../../core/Random.js';
 import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion, branchOf } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
-import { warFactor } from '../world/War.js';
+import { serviceWar, serviceWarFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
 import { upOrOut, mustRetire } from './Separation.js';
 
@@ -46,7 +46,8 @@ export function reserveTick(ctx, svc) {
   schoolTick(ctx, svc);
 
   const exposure = exposureOf(svc);
-  const mobilizeChance = 0.08 * exposure * warFactor(ctx.state) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
+  // General mobilization calls up nearly every reservist.
+  const mobilizeChance = (serviceWar(ctx.state, svc)?.mobilized ? 0.7 : 0) + 0.08 * exposure * serviceWarFactor(ctx.state, svc) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
     ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
     runDeployment(ctx, svc, { mobilized: true });

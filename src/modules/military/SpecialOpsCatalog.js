@@ -11,6 +11,7 @@
  *
  * Mission options: { id, label, success, risk, valor, eval }.
  */
+import { localSof, NEUTRAL_PHASES } from '../world/MilitaryLocal.js';
 export const PIPELINES = {
   ranger: {
     name: 'Army Ranger', icon: '🗡️', branches: ['army'], tracks: ['enlisted', 'officer'],
@@ -168,8 +169,25 @@ export const MOS_PIPELINE = {
   'marines.0372': 'raider',
 };
 
-/** The record a graduate carries on svc.sof. */
-export function sofRecord(pipelineId, age) {
+const NEUTRAL_TEXT = [
+  'Days of hill marches with a heavy pack against the clock. The staff want you to quit.',
+  'Long navigation marches alone, ending with the longest of them all.',
+  'Weeks of patrolling and tactics in jungle or forest, exhausted and hungry.',
+  'Evade a hunter force, then hours of resistance-to-interrogation training.',
+  'Months learning the unit\'s skills before you are badged.',
+];
+/** A pipeline as `svc`'s country runs it: its own unit and course (null where it has none). */
+export function pipelineFor(svc, pipelineId) {
   const p = PIPELINES[pipelineId];
+  if (!p) return null;
+  const local = localSof(svc?.nation, pipelineId);
+  if (local === undefined) return p;
+  if (!local) return null;
+  return { ...p, ...local, phases: p.phases.map((ph, i) => ({ ...ph, name: NEUTRAL_PHASES[i] ?? ph.name, text: NEUTRAL_TEXT[i] ?? ph.text })) };
+}
+
+/** The record a graduate carries on svc.sof. */
+export function sofRecord(pipelineId, age, svc = null) {
+  const p = pipelineFor(svc, pipelineId) ?? PIPELINES[pipelineId];
   return { pipeline: pipelineId, since: age, unitName: p.unitName, badge: p.badge, exposure: p.exposure, specialPay: p.specialPay, missions: 0 };
 }

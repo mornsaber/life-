@@ -9,13 +9,13 @@
  */
 import { clamp } from '../../core/Random.js';
 import { bumpYearly, yearlyCount } from '../../core/State.js';
-import { PIPELINES, MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
+import { PIPELINES, MOS_PIPELINE, sofRecord, pipelineFor } from './SpecialOpsCatalog.js';
 import { MOS } from './MOS.js';
 import { awardForAction, awardMedal } from './MedalEngine.js';
 import { grantCredential, hasCredential } from '../credentials/LicensingEngine.js';
 import { hasClearance, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 
-export { PIPELINES };
+export { PIPELINES, pipelineFor };
 export const MAX_ATTEMPTS = 2;
 
 /** Grit: the mental side of selection. */
@@ -28,17 +28,17 @@ export function phaseOdds(state, phase) {
 
 /** Overall odds of finishing the course (shown to the player). */
 export function courseOdds(state, pipelineId) {
-  return PIPELINES[pipelineId].phases.reduce((p, ph) => p * phaseOdds(state, ph), 1);
+  return (pipelineFor(state.military.service, pipelineId) ?? PIPELINES[pipelineId]).phases.reduce((p, ph) => p * phaseOdds(state, ph), 1);
 }
 
 export function pipelinesFor(svc) {
-  return Object.entries(PIPELINES).filter(([, p]) => p.branches.includes(svc.branch) && p.tracks.includes(svc.track)).map(([id]) => id);
+  return Object.entries(PIPELINES).filter(([id, p]) => p.branches.includes(svc.branch) && p.tracks.includes(svc.track) && pipelineFor(svc, id)).map(([id]) => id);
 }
 
 export function selectionEligibility(state, pipelineId) {
   const svc = state.military.service;
-  const p = PIPELINES[pipelineId];
-  if (!svc || !p) return { ok: false, reason: 'Not serving' };
+  const p = pipelineFor(svc, pipelineId);
+  if (!svc || !p) return { ok: false, reason: svc ? 'Your forces have no such unit' : 'Not serving' };
   if (!p.branches.includes(svc.branch) || !p.tracks.includes(svc.track)) return { ok: false, reason: 'Not open to your branch or track' };
   if (svc.sof) return { ok: false, reason: `Already serving with the ${svc.sof.unitName}` };
   if (svc.isNew) return { ok: false, reason: 'Finish initial training first' };
@@ -60,7 +60,7 @@ export function selectionEligibility(state, pipelineId) {
 }
 
 function phasePrompt(ctx, sel) {
-  const p = PIPELINES[sel.pipeline];
+  const p = pipelineFor(ctx.state.military.service, sel.pipeline);
   const phase = p.phases[sel.phase];
   const odds = phaseOdds(ctx.state, phase);
   ctx.prompt({
@@ -87,7 +87,7 @@ export function volunteer(ctx, pipelineId) {
   svc.selectionAttempts = { ...svc.selectionAttempts, [pipelineId]: (svc.selectionAttempts?.[pipelineId] ?? 0) + 1 };
   const sel = { pipeline: pipelineId, phase: 0 };
   state.military.selection = sel;
-  ctx.log(`You volunteered for ${PIPELINES[pipelineId].course}.`, PIPELINES[pipelineId].icon, 'military');
+  ctx.log(`You volunteered for ${pipelineFor(svc, pipelineId).course}.`, PIPELINES[pipelineId].icon, 'military');
   phasePrompt(ctx, sel);
 }
 
@@ -105,9 +105,9 @@ function washOut(ctx, pipelineId, phaseName, why) {
 /** You made it: new unit, new job, special pay. */
 export function graduate(ctx, svc, pipelineId) {
   const { state } = ctx;
-  const p = PIPELINES[pipelineId];
+  const p = pipelineFor(svc, pipelineId);
   state.military.selection = null;
-  svc.sof = sofRecord(pipelineId, state.character.age);
+  svc.sof = sofRecord(pipelineId, state.character.age, svc);
   const mos = p.mos?.[svc.track];
   if (mos && MOS[mos]) svc.mos = mos;
   else if (MOS[mos?.replace('army.', 'guard.')]) svc.mos = mos.replace('army.', 'guard.');
@@ -129,7 +129,7 @@ export function tagInitialPipeline(ctx, svc) {
 export function sofTick(ctx, svc) {
   const { state, rng } = ctx;
   if (!svc.sof) return;
-  const p = PIPELINES[svc.sof.pipeline];
+  const p = pipelineFor(svc, svc.sof.pipeline);
   if (!p) { svc.sof = null; return; }
   // Bodies wear out: operators rotate to conventional or instructor billets.
   if (state.stats.fitness < 40 || state.stats.health < 40 || (state.character.age >= 45 && !p.mental)) {
@@ -172,7 +172,7 @@ export const SpecialOpsResolvers = {
     const svc = state.military.service;
     const sel = state.military.selection;
     if (!svc || !sel || sel.pipeline !== data.pipeline || sel.phase !== data.phase) { state.military.selection = null; return; }
-    const p = PIPELINES[sel.pipeline];
+    const p = pipelineFor(svc, sel.pipeline);
     const phase = p.phases[sel.phase];
     if (optionId === 'quit') return washOut(ctx, sel.pipeline, phase.name, `You rang the bell during ${phase.name}.`);
     let odds = phaseOdds(state, phase) + (optionId === 'all' ? 0.08 : -0.04);
@@ -195,7 +195,7 @@ export const SpecialOpsResolvers = {
     const { state, rng } = ctx;
     const svc = state.military.service;
     if (!svc?.sof || svc.sof.pipeline !== data.pipeline) return;
-    const p = PIPELINES[data.pipeline];
+    const p = pipelineFor(svc, data.pipeline);
     const m = p.missions.find((x) => x.title === data.title);
     const o = m?.options.find((x) => x.id === optionId);
     if (!o) return;

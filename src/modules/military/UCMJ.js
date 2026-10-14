@@ -13,6 +13,7 @@
  * svc.njp = [{ age, offense, punishment }], svc.reprimand (officers: a career
  * killer at boards), svc.courtsMartial.
  */
+import { militaryJustice, summaryPunishment } from '../world/MilitaryLocal.js';
 import { clamp } from '../../core/Random.js';
 import { OFFENSES } from '../legal/Offenses.js';
 import { rankOf, rankTitles, discharge, monthlyBasePay, BRANCHES } from './MilitaryEngine.js';
@@ -36,6 +37,13 @@ export const UCMJ_OFFENSES = {
   fraternization: { article: 134, name: 'Fraternization', record: 'ucmjFraternization', njp: true, court: 'special', evidence: 0.65, officerOnly: false },
 };
 
+/** A court's name abroad: the country's military court, or the civilian criminal court. */
+const courtName = (nation, court) => {
+  const j = militaryJustice(nation);
+  if (!j) return COURTS[court].name;
+  return j.court ?? 'Criminal court';
+};
+
 export const COURTS = {
   summary: { name: 'Summary Court-Martial', maxBrigMonths: 1, discharge: null, record: false, enlistedOnly: true },
   special: { name: 'Special Court-Martial', maxBrigMonths: 12, discharge: 'bcd', record: true },
@@ -43,9 +51,9 @@ export const COURTS = {
 };
 
 const BRIG = { navy: 'Naval Consolidated Brig Miramar', marines: 'Naval Consolidated Brig Miramar', coastguard: 'Naval Consolidated Brig Miramar' };
-const brigFor = (branch, months) => (months >= 60 ? 'the U.S. Disciplinary Barracks, Fort Leavenworth' : BRIG[branch] ?? 'the Joint Regional Correctional Facility, Fort Leavenworth');
+const brigFor = (branch, months, nation) => (nation ? militaryJustice(nation).prison : null) ?? (months >= 60 ? 'the U.S. Disciplinary Barracks, Fort Leavenworth' : BRIG[branch] ?? 'the Joint Regional Correctional Facility, Fort Leavenworth');
 const MAST = { navy: "captain's mast", coastguard: "captain's mast", marines: 'office hours' };
-export const njpName = (branch) => MAST[branch] ?? 'an Article 15';
+export const njpName = (branch, nation = null) => (nation ? summaryPunishment(nation) : MAST[branch] ?? 'an Article 15');
 
 /** Your commander learns of misconduct. Returns true if something follows. */
 export function reportMisconduct(ctx, offenseId, context = '') {
@@ -63,11 +71,13 @@ export function reportMisconduct(ctx, offenseId, context = '') {
   ctx.prompt({
     type: 'military.njpOffer',
     icon: '⚖️',
-    title: `${njpName(svc.branch)[0].toUpperCase()}${njpName(svc.branch).slice(1)}: ${o.name}`,
-    text: `${context ? `${context}\n` : ''}Your commander intends to impose non-judicial punishment under Article 15 for ${o.name.toLowerCase()} (Art. ${o.article}).\n${svc.track !== 'enlisted' ? 'For an officer, even an Article 15 usually ends any chance of promotion.' : 'Likely punishment: reduction in rank, forfeiture of pay and extra duty.'} You may refuse and demand trial by court-martial.`,
+    title: `${njpName(svc.branch, svc.nation)[0].toUpperCase()}${njpName(svc.branch, svc.nation).slice(1)}: ${o.name}`,
+    text: svc.nation
+      ? `${context ? `${context}\n` : ''}Your commanding officer will deal with ${o.name.toLowerCase()} summarily under ${militaryJustice(svc.nation).code}.\n${svc.track !== 'enlisted' ? 'For an officer, any summary punishment usually ends promotion prospects.' : 'Likely punishment: a fine, loss of seniority or rank, and extra duties.'} You may elect trial instead.`
+      : `${context ? `${context}\n` : ''}Your commander intends to impose non-judicial punishment under Article 15 for ${o.name.toLowerCase()} (Art. ${o.article}).\n${svc.track !== 'enlisted' ? 'For an officer, even an Article 15 usually ends any chance of promotion.' : 'Likely punishment: reduction in rank, forfeiture of pay and extra duty.'} You may refuse and demand trial by court-martial.`,
     options: [
-      { id: 'accept', label: '🫡 Accept the Article 15', hint: 'Not a criminal conviction' },
-      { id: 'refuse', label: '🧑‍⚖️ Refuse and demand a court-martial', hint: `${COURTS[o.court === 'summary' ? 'summary' : 'special'].name}: a conviction is a federal record`, tone: 'danger' },
+      { id: 'accept', label: svc.nation ? '🫡 Accept summary punishment' : '🫡 Accept the Article 15', hint: 'Not a criminal conviction' },
+      { id: 'refuse', label: svc.nation ? `🧑‍⚖️ Elect trial (${courtName(svc.nation, 'special')})` : '🧑‍⚖️ Refuse and demand a court-martial', hint: svc.nation ? 'A conviction is a criminal record' : `${COURTS[o.court === 'summary' ? 'summary' : 'special'].name}: a conviction is a federal record`, tone: 'danger' },
     ],
     data: { offenseId, context },
   });
@@ -83,7 +93,7 @@ export function imposeNjp(ctx, offenseId) {
   svc.disciplinary += 1;
   svc.eval = Math.max(0, svc.eval - 12);
   const forfeit = Math.round(monthlyBasePay(svc) * 0.5 * rng.int(1, 2));
-  ctx.spend(forfeit, 'Forfeiture of pay (Article 15)', { allowDebt: true });
+  ctx.spend(forfeit, svc.nation ? 'Disciplinary fine' : 'Forfeiture of pay (Article 15)', { allowDebt: true });
   parts.push(`forfeiture of $${forfeit.toLocaleString()}`);
   if (svc.track !== 'enlisted') {
     svc.reprimand = true;
@@ -95,8 +105,8 @@ export function imposeNjp(ctx, offenseId) {
   parts.push(`${rng.pick([14, 30, 45])} days of extra duty and restriction`);
   (svc.njp ??= []).push({ age: state.character.age, offense: o.name, punishment: parts.join(', ') });
   ctx.stat('happiness', -6);
-  ctx.log(`Non-judicial punishment for ${o.name.toLowerCase()}: ${parts.join(', ')}.`, '⚖️', 'bad');
-  ctx.toast('Article 15 imposed', 'bad');
+  ctx.log(`${svc.nation ? 'Summary punishment' : 'Non-judicial punishment'} for ${o.name.toLowerCase()}: ${parts.join(', ')}.`, '⚖️', 'bad');
+  ctx.toast(svc.nation ? 'Summary punishment' : 'Article 15 imposed', 'bad');
   // A positive drug test (or a pattern of misconduct) also starts an administrative separation.
   if (o.separate || svc.disciplinary >= 4) adminSeparation(ctx, svc, o.separate ? 'a positive urinalysis' : 'a pattern of misconduct');
 }
@@ -119,14 +129,15 @@ export function preferCharges(ctx, offenseId, context = '', courtId = null) {
   let court = courtId ?? o.court;
   if (court === 'summary' && svc.track !== 'enlisted') court = 'special';
   const c = COURTS[court];
+  const j = militaryJustice(svc.nation);
   ctx.prompt({
     type: 'military.courtMartial',
     icon: '🧑‍⚖️',
-    title: `${c.name}: ${o.name}`,
-    text: `${context ? `${context}\n` : ''}You're charged under Article ${o.article}. ${court === 'summary' ? 'A single officer hears the case; the most it can give is 30 days\' confinement and a reduction.' : `A panel of officers${svc.track === 'enlisted' ? ' (one-third enlisted, if you ask)' : ''} will hear it. A conviction is a federal conviction${c.discharge ? ` and can carry a ${c.discharge === 'dd' ? 'dishonorable' : 'bad-conduct'} discharge` : ''}.`}`,
+    title: `${j ? courtName(svc.nation, court) : c.name}: ${o.name}`,
+    text: j ? `${context ? `${context}\n` : ''}You're charged under ${j.code}. ${j.court ? `The case goes to the ${j.court}.` : 'Service members here are tried in the ordinary criminal courts.'} A conviction is a criminal record and can end your service.` : `${context ? `${context}\n` : ''}You're charged under Article ${o.article}. ${court === 'summary' ? 'A single officer hears the case; the most it can give is 30 days\' confinement and a reduction.' : `A panel of officers${svc.track === 'enlisted' ? ' (one-third enlisted, if you ask)' : ''} will hear it. A conviction is a federal conviction${c.discharge ? ` and can carry a ${c.discharge === 'dd' ? 'dishonorable' : 'bad-conduct'} discharge` : ''}.`}`,
     options: [
-      { id: 'tds', label: '🪖 Free military defense counsel', hint: 'An experienced JAG defense attorney' },
-      { id: 'civilian', label: '💼 Hire a civilian military-law attorney', hint: '$25,000, better odds' },
+      { id: 'tds', label: j ? `🪖 ${j.counsel}` : '🪖 Free military defense counsel', hint: j ? 'Provided free' : 'An experienced JAG defense attorney' },
+      { id: 'civilian', label: j ? '💼 Hire a private defence lawyer' : '💼 Hire a civilian military-law attorney', hint: '$25,000, better odds' },
       { id: 'plead', label: '🤝 Take a plea deal', hint: 'Certain conviction, lighter sentence' },
     ],
     data: { offenseId, court },
@@ -139,13 +150,13 @@ function courtMartialVerdict(ctx, data, optionId) {
   const svc = state.military.service;
   if (!svc) return;
   const o = UCMJ_OFFENSES[data.offenseId];
-  const c = COURTS[data.court];
+  const c = { ...COURTS[data.court], name: svc.nation ? courtName(svc.nation, data.court) : COURTS[data.court].name };
   svc.courtsMartial = (svc.courtsMartial ?? 0) + 1;
-  if (optionId === 'civilian') ctx.spend(25000, 'Civilian defense counsel', { allowDebt: true });
+  if (optionId === 'civilian') ctx.spend(25000, svc.nation ? 'Defence lawyer' : 'Civilian defense counsel', { allowDebt: true });
   const factor = optionId === 'civilian' ? 0.75 : 0.88;
   const convicted = optionId === 'plead' || rng.chance(clamp(o.evidence * factor - (state.stats.smarts - 60) / 400, 0.05, 0.95));
   if (!convicted) {
-    ctx.log(`The ${c.name.toLowerCase()} found you not guilty of ${o.name.toLowerCase()}.`, '🧑‍⚖️', 'good');
+    ctx.log(`The ${c.name} found you not guilty of ${o.name.toLowerCase()}.`, '🧑‍⚖️', 'good');
     ctx.toast('Acquitted', 'good');
     svc.eval = Math.max(0, svc.eval - 5);
     ctx.stat('happiness', 6);
@@ -164,8 +175,8 @@ function courtMartialVerdict(ctx, data, optionId) {
   if (months) parts.push(`${months} month${months > 1 ? 's' : ''} of confinement`);
   if (punitive) parts.push(c.discharge === 'dd' ? (svc.track !== 'enlisted' ? 'dismissal from the service' : 'a dishonorable discharge') : 'a bad-conduct discharge');
   const sentenceText = parts.join(', ') || 'a reprimand';
-  ctx.log(`Convicted at a ${c.name.toLowerCase()} of ${o.name.toLowerCase()} (Art. ${o.article}). Sentence: ${sentenceText}.`, '⚖️', 'bad');
-  ctx.toast(`Court-martial: convicted`, 'bad');
+  ctx.log(`Convicted by the ${c.name} of ${o.name.toLowerCase()}${svc.nation ? '' : ` (Art. ${o.article})`}. Sentence: ${sentenceText}.`, '⚖️', 'bad');
+  ctx.toast(svc.nation ? 'Convicted' : 'Court-martial: convicted', 'bad');
   ctx.stat('happiness', -15);
   ctx.stat('stress', 10);
   if (c.record) {
@@ -180,8 +191,8 @@ function courtMartialVerdict(ctx, data, optionId) {
   if (months >= 12) {
     if (state.military.service) discharge(ctx, 'oth', 'Separated while confined.');
     const years = Math.round(months / 12);
-    state.legal.incarceration = { yearsLeft: years, total: years, facility: brigFor(branch, months), kind: 'brig', served: 0 };
-    ctx.log(`You were taken to ${brigFor(branch, months)}.`, '🔒', 'death');
+    state.legal.incarceration = { yearsLeft: years, total: years, facility: brigFor(branch, months, svc.nation), kind: 'brig', served: 0 };
+    ctx.log(`You were taken to ${brigFor(branch, months, svc.nation)}.`, '🔒', 'death');
     ctx.emit('legal:incarcerated', { years });
   } else if (months) {
     ctx.stat('happiness', -8);

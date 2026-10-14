@@ -24,6 +24,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { sideRng, initOrgs } from './Organizations.js';
+import { localBillet, localUnitName, localUnitWord, summaryPunishment } from '../world/MilitaryLocal.js';
 
 export const PLAYER = 'PLAYER';
 /** Leadership actions per year. */
@@ -48,9 +49,13 @@ export const COMMAND_POSTS = {
 };
 const LEADS = new Set(['teamLeader', 'squadLeader', 'platoonSergeant', 'platoonLeader', 'xo', 'firstSergeant', 'companyCommander', 'csm', 'battalionCommander']);
 const COMMANDERS = new Set(['companyCommander', 'battalionCommander']);
+/** Senior NCOs run the enlisted force: their word on discipline and promotions carries with the commander. */
+const SENIOR_NCOS = new Set(['firstSergeant', 'csm']);
+const NCO_LEADERS = new Set(['teamLeader', 'squadLeader', 'platoonSergeant', 'firstSergeant', 'csm']);
+export const isNcoLeader = (billet) => NCO_LEADERS.has(billet);
 
 export const familyOf = (svc) => FAMILY[svc?.branch] ?? 'ground';
-export const billetTitle = (svc, billet) => BILLETS[familyOf(svc)][billet] ?? billet;
+export const billetTitle = (svc, billet) => localBillet(svc?.nation, svc?.branch, billet) ?? BILLETS[familyOf(svc)][billet] ?? billet;
 export const canImposeNjp = (billet) => COMMANDERS.has(billet);
 export const leads = (billet) => LEADS.has(billet);
 
@@ -75,7 +80,7 @@ function soldier(rng, org, { grade, track = 'enlisted', billet, company = null, 
   const gender = rng.pick(['male', 'female', 'male']);
   const n = randomName(rng, gender);
   const p = { id: rng.id('sm_'), name: `${n.firstName} ${n.lastName}`, gender, age: track === 'officer' ? 22 + grade * 3 + rng.int(0, 3) : 18 + grade * 2 + rng.int(0, 4), grade, track, billet, rank: ranks?.[track]?.[grade] ?? '', deptId: company, years: rng.int(0, 3), performance: rng.int(45, 85), rel: rng.int(40, 65), discipline: 0, professionId: null, levelId: billet, title: '' };
-  p.title = `${p.rank} — ${BILLETS[org.family][billet] ?? billet}`;
+  p.title = `${p.rank} — ${localBillet(org.nation, org.branch, billet) ?? BILLETS[org.family][billet] ?? billet}`;
   org.people[p.id] = p;
   return p;
 }
@@ -85,16 +90,17 @@ export function ensureUnit(state, svc, ranks) {
   initOrgs(state);
   const family = familyOf(svc);
   // Special operators serve in their own command (the Ranger Regiment, a SEAL Team…), wherever they're based.
-  const key = svc.sof ? `unit:${svc.branch}:sof:${svc.sof.pipeline}` : `unit:${svc.branch}:${svc.station ?? 'initial'}`;
+  const pre = svc.nation ? `${svc.nation}:` : '';
+  const key = svc.sof ? `unit:${pre}${svc.branch}:sof:${svc.sof.pipeline}` : `unit:${pre}${svc.branch}:${svc.station ?? 'initial'}`;
   let org = state.orgs.byId[key];
   const rng = sideRng(state);
   if (!org) {
-    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, name: svc.sof?.unitName ?? UNIT_NAMES[family](rng), sof: Boolean(svc.sof), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
+    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, nation: svc.nation ?? null, name: svc.sof?.unitName ?? localUnitName(svc.nation, svc.branch, rng) ?? UNIT_NAMES[family](rng), sof: Boolean(svc.sof), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
     org.head = soldier(rng, org, { grade: 4, track: 'officer', billet: 'battalionCommander', ranks }).id;
     org.csm = soldier(rng, org, { grade: 8, billet: 'csm', ranks }).id;
     for (const name of COMPANIES[family]) {
       const id = name.toLowerCase().replace(/\s+/g, '');
-      const dept = { id, name: `${name} ${BILLETS[family].units.company}`, head: null, firstSergeant: null, headcount: rng.int(90, 160), seats: {}, readiness: rng.int(50, 70) };
+      const dept = { id, name: `${name} ${localUnitWord(svc.nation, svc.branch, 'company') ?? BILLETS[family].units.company}`, head: null, firstSergeant: null, headcount: rng.int(90, 160), seats: {}, readiness: rng.int(50, 70) };
       org.departments[id] = dept;
       dept.head = soldier(rng, org, { grade: 2, track: 'officer', billet: 'companyCommander', company: id, ranks }).id;
       dept.firstSergeant = soldier(rng, org, { grade: 7, billet: 'firstSergeant', company: id, ranks }).id;
@@ -133,6 +139,7 @@ export function releaseUnit(state, orgId) {
 /** Make the structure around you match your billet: your platoon, your squad, who leads you. */
 export function syncUnit(state, svc, ranks) {
   const org = ensureUnit(state, svc, ranks);
+  if (ranks) org.ranks = ranks;
   const rng = sideRng(state);
   const u = svc.unit;
   u.billet = billetFor(svc);
@@ -255,7 +262,8 @@ export function unitTick(ctx, svc, ranks) {
   const avg = people.length ? people.reduce((s, p) => s + p.performance - p.discipline * 4, 0) / people.length : 60;
   dept.readiness = Math.round(clamp(dept.readiness + (avg - dept.readiness) * 0.4 + rng.int(-4, 4), 0, 100));
   // Selection boards for command.
-  if (!svc.unit.commandUntil && !state.prompts.some((p) => p.type === 'military.commandOffer')) {
+  // One command at a time, and not while away on a special-duty tour, in college or in a top post.
+  if (!svc.unit.commandUntil && !svc.assignment && !svc.commissioning && !svc.topPost && !state.prompts.some((p) => p.type === 'military.commandOffer')) {
     const post = Object.entries(COMMAND_POSTS).find(([id, c]) => c.track === svc.track && c.grade === svc.grade && !svc.unit.commanded[id]);
     if (post && svc.yearsInGrade >= 1) {
       const [id, c] = post;
@@ -324,9 +332,11 @@ export const LeadershipActions = {
     const justified = f.p.performance < 45 || f.p.discipline >= 1;
     if (!canImposeNjp(f.v.billet)) {
       const cmdr = person(f.v.org, f.v.dept.head);
-      if (!rng.chance(justified ? 0.75 : 0.2)) {
+      // A first sergeant's or sergeant major's recommendation is rarely turned down.
+      const weight = SENIOR_NCOS.has(f.v.billet) ? 0.15 : 0;
+      if (!rng.chance((justified ? 0.75 : 0.2) + weight)) {
         f.p.rel = Math.max(0, f.p.rel - 10);
-        return ctx.log(`${cmdr ? `${cmdr.rank} ${cmdr.name}` : 'Your commander'} declined to give ${f.p.name} an Article 15${justified ? '' : ' — "that\'s a counseling, not an Article 15"'}.`, '⚖️', 'military');
+        return ctx.log(`${cmdr ? `${cmdr.rank} ${cmdr.name}` : 'Your commander'} declined to give ${f.p.name} ${summaryPunishment(svc.nation)}${justified ? '' : ' — "that\'s a counseling, not a charge"'}.`, '⚖️', 'military');
       }
     }
     f.p.discipline += 1;
@@ -337,9 +347,41 @@ export const LeadershipActions = {
     }
     f.p.performance = Math.min(98, f.p.performance + (justified ? 8 : 0));
     f.v.dept.readiness = Math.max(0, f.v.dept.readiness + (justified ? 1 : -4));
-    ctx.log(`${f.p.name} received non-judicial punishment (Article 15): extra duty${f.p.grade >= 0 ? ' and loss of rank' : ''}. ${justified ? 'The unit saw it was fair.' : 'The unit thinks it was heavy-handed.'}`, '⚖️', justified ? 'military' : 'warn');
+    ctx.log(`${f.p.name} received ${svc.nation ? summaryPunishment(svc.nation).replace(/^an? /, '') : 'non-judicial punishment (Article 15)'}: extra duty${f.p.grade >= 0 ? ' and loss of rank' : ''}. ${justified ? 'The unit saw it was fair.' : 'The unit thinks it was heavy-handed.'}`, '⚖️', justified ? 'military' : 'warn');
   },
 };
+
+Object.assign(LeadershipActions, {
+  /** Corrective training: an NCO's own tool — extra drill on the thing that went wrong, no paperwork. */
+  correct(ctx, id) {
+    const { state, rng } = ctx;
+    const svc = state.military.service;
+    const f = svc && subordinate(state, svc, id);
+    if (!f || !useAction(ctx)) return;
+    const needed = f.p.performance < 60 || f.p.discipline >= 1;
+    f.p.performance = Math.min(98, f.p.performance + (needed ? rng.int(4, 8) : 1));
+    f.p.rel = Math.max(0, f.p.rel - (needed ? 3 : 8));
+    ctx.log(`You gave ${f.p.rank} ${f.p.name} corrective training. ${needed ? 'It stuck.' : 'They thought it was petty.'}`, '🏋️', 'military');
+  },
+  /** Promote junior enlisted: NCOs recommend, senior NCOs and commanders decide. */
+  promote(ctx, id) {
+    const { state, rng } = ctx;
+    const svc = state.military.service;
+    const f = svc && subordinate(state, svc, id);
+    if (!f) return;
+    if (f.p.track !== 'enlisted' || f.p.grade >= 3) return ctx.toast('Promotion to sergeant goes to a board.', 'warn');
+    if (!useAction(ctx)) return;
+    const decides = canImposeNjp(f.v.billet) || SENIOR_NCOS.has(f.v.billet);
+    const deserving = f.p.performance >= 65 && f.p.discipline === 0;
+    if (!decides && !rng.chance(deserving ? 0.8 : 0.25)) return ctx.log(`Your recommendation to promote ${f.p.name} was held: "${deserving ? 'next cycle' : 'not ready'}."`, '📋', 'military');
+    f.p.grade += 1;
+    f.p.rank = f.v.org.ranks?.enlisted?.[f.p.grade] ?? f.p.rank;
+    f.p.title = `${f.p.rank} — ${f.p.title.split(' — ')[1] ?? ''}`;
+    f.p.rel = Math.min(100, f.p.rel + 10);
+    f.v.dept.readiness = Math.min(100, f.v.dept.readiness + (deserving ? 2 : -2));
+    ctx.log(`${f.p.name} was promoted to ${f.p.rank}${decides ? '' : ' on your recommendation'}.${deserving ? '' : ' Some in the unit thought it was early.'}`, '⬆️', deserving ? 'good' : 'military');
+  },
+});
 
 export const LeadershipResolvers = {
   commandOffer(ctx, data, optionId) {

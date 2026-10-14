@@ -39,6 +39,13 @@ import { programEligibility } from '../src/modules/service/NationalService.js';
 import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
 import { departureBlock, bannedFrom } from '../src/modules/world/Migration.js';
 import { unitName } from '../src/modules/publicsafety/PoliceLife.js';
+import { assignmentName, dutyFor } from '../src/modules/military/Assignments.js';
+import { schoolName } from '../src/modules/military/Schools.js';
+import { pipelineFor } from '../src/modules/military/SpecialOpsCatalog.js';
+import { billetTitle } from '../src/modules/org/MilitaryUnits.js';
+import { summaryPunishment } from '../src/modules/world/MilitaryLocal.js';
+import { upOrOut, mandatoryRetirementAge } from '../src/modules/military/Separation.js';
+import { serviceWar, serviceWarFactor } from '../src/modules/world/War.js';
 import { examStatus } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
@@ -595,6 +602,34 @@ const tests = {
     assert.equal(unitName(t.state, 'swat'), 'Armed Response (firearms officer)');
     t.state.career.job.employer = { name: 'Devon and Cornwall Police', size: 'large' };
     assert.equal(unitName(t.state, 'protection'), 'Protection Team');
+  },
+  'foreign forces: their own special duty, courses, special forces, units, discipline, careers and wars'() {
+    const t = born('GB', 9, 20);
+    t.state.stats.fitness = 85;
+    t.state.stats.health = 90;
+    t.engine.dispatch('military.enlist', 'army:enlisted:active');
+    const pick = t.state.prompts.find((p) => p.type === 'military.chooseSpecialty');
+    if (pick) t.engine.resolvePrompt(pick.id, pick.options[0].id);
+    t.state.prompts = [];
+    const svc = t.state.military.service;
+    assert.equal(svc.nation, 'GB');
+    assert.equal(assignmentName(svc, 'drill'), 'Section Commander, Army Training Centre');
+    assert.equal(dutyFor(svc, 'msg'), null, 'no Marine Security Guards');
+    assert.equal(schoolName(svc, 'pme2'), 'Section Commanders\' Battle Course');
+    assert.equal(schoolName(svc, 'opme2'), 'Advanced Command and Staff Course (Shrivenham)');
+    assert.equal(pipelineFor(svc, 'ranger').unitName, '22 Special Air Service Regiment');
+    assert.equal(pipelineFor(svc, 'greenBeret'), null);
+    assert.match(rankOf(svc).code, /^OR-/);
+    assert.equal(billetTitle(svc, 'firstSergeant'), 'Company Sergeant Major');
+    assert.match(summaryPunishment('GB'), /summary hearing/);
+    // No up-or-out: passed over twice, a British captain stays.
+    Object.assign(svc, { track: 'officer', grade: 2, passovers: 3, yearsOfService: 8 });
+    assert.equal(upOrOut(t.ctx, svc), false);
+    assert.equal(mandatoryRetirementAge({ ...svc, grade: 3 }), 55);
+    // A war at home sends the British Army to it.
+    declareWar(t.ctx, 'GB');
+    assert.ok(serviceWar(t.state, svc));
+    assert.ok(serviceWarFactor(t.state, svc) > 1);
   },
   'each country has only the agencies it really runs, with local ranks'() {
     const has = (cc, id) => professionsFor(born(cc).state).some((p) => p.id === id);
