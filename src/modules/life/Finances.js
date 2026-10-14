@@ -33,6 +33,9 @@ const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
 const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Self-employed contributions|Payroll tax \(FICA\)|Elder care|Vehicle|IRS)|personal spending$/;
 
 /** Your share of health-insurance premiums for whichever plan covers you this year (see health/Insurance). */
+/** The US foreign earned income exclusion (2025). */
+export const FEIE = 130000;
+
 export function healthPremium(state, income) {
   if (state.character.age < 18) return 0;
   return coverage(state, income).premium;
@@ -42,7 +45,7 @@ export function hasHousingBenefit(state) {
   const job = state.career.job;
   // Asylum seekers live in reception housing while their claim is pending.
   const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
-  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum);
+  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */
@@ -113,6 +116,16 @@ export const Finances = {
     let federalTax = abroad
       ? joint((x) => nationalIncomeTax(country, x, STATES[stateIdOf(state)]), Math.max(0, taxable - deductible)) + capitalGainsTax + contributions
       : Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
+    // US citizens owe US tax wherever they live. The foreign earned income exclusion and credits
+    // for tax paid abroad mean most owe nothing; high earners in low-tax countries pay the difference.
+    let usAbroadTax = 0;
+    if (abroad && (state.character.citizenships ?? []).includes('US')) {
+      const foreignIncomeTax = Math.max(0, federalTax - contributions - capitalGainsTax);
+      // The stacking rule: excluded income still pushes the rest into higher brackets.
+      const usTax = joint((x) => Math.max(0, calculateIncomeTax(x) - calculateIncomeTax(Math.min(x, FEIE))), taxable);
+      usAbroadTax = Math.max(0, usTax - foreignIncomeTax);
+      federalTax += usAbroadTax;
+    }
     // Child benefit (CCB, Child Benefit, Kindergeld, the child allowance) is paid in cash.
     const benefit = abroad ? childBenefit(country, kids.length, gross) : 0;
     if (benefit) f.cash += benefit;
@@ -213,7 +226,7 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
+    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), ...(usAbroadTax ? { usAbroadTax } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
     f.ledger = { income: [], expenses: [], deductions: [], itemize: [] };
   },
 

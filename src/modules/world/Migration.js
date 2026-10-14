@@ -107,6 +107,7 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
         : { status: 'asylum', visa, arrived: age, from, decisionAt: age + law.decision, workFrom: age + law.workAfter, odds: asylumRoute(state, to)?.odds ?? law.odds };
     } else {
       const rule = IMMIGRATION[to].visas[visa] ?? {};
+      if (visa === 'workingHoliday') m.whvUsed = [...(m.whvUsed ?? []), to];
       m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, arrived: age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
     }
   }
@@ -155,6 +156,8 @@ function stillQualifies(state, res) {
   const here = countryIdOf(state);
   if (['work', 'transfer'].includes(res.visa)) return Boolean(state.career.job);
   if (res.visa === 'student') return Boolean(state.education.enrolled);
+  if (res.visa === 'nomad') return Boolean(state.career.job?.remote) || Boolean(state.business?.current);
+  if (res.visa === 'workingHoliday') return true;
   if (res.visa === 'family') return nationalityCode(state.people.list.find((p) => p.alive && p.relation === 'spouse')) === here;
   return true;
 }
@@ -291,13 +294,20 @@ export const MigrationModule = {
         ctx.log(`Your student visa became a ${law.visas.student.postStudy}-year post-study work permit.`, '🎓', 'good');
         ok = true;
       }
-      if (ok) delete res.grace;
-      else if (res.grace == null) {
+      const expiredOnce = res.expires != null && age >= res.expires && law.visas[res.visa]?.once;
+      if (ok && !expiredOnce) delete res.grace;
+      else if (!ok && res.grace == null) {
         res.grace = age + (age - res.arrived <= 1 ? 2 : 1);
         const need = { work: 'a job', transfer: 'a job', student: 'a school enrollment', family: 'your marriage to a citizen' }[res.visa] ?? 'its conditions';
         ctx.log(`Your ${law.visas[res.visa]?.name ?? 'visa'} depends on ${need}. Sort it out within a year or you'll have to leave.`, '🛂', 'warn');
-      } else if (age >= res.grace) return removal(ctx, 'Your visa lapsed.');
-      if (ok && res.expires != null && age >= res.expires) {
+      } else if (!ok && age >= res.grace) return removal(ctx, 'Your visa lapsed.');
+      if (ok && expiredOnce) {
+        // Working holidays (and Japan's nomad visa) aren't renewed: switch to another visa or go.
+        if (res.grace == null) {
+          res.grace = age + 1;
+          ctx.log(`Your ${law.visas[res.visa].name} has run out. Switch to another visa within a year or you'll have to leave.`, '🎒', 'warn');
+        } else if (age >= res.grace) return removal(ctx, 'Your visa ran out.');
+      } else if (ok && res.expires != null && age >= res.expires) {
         const rule = law.visas[res.visa];
         res.expires = age + (rule?.years ?? 2);
         ctx.spend(rule?.fee ?? 0, 'Visa renewal', { allowDebt: true });

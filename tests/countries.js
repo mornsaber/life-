@@ -38,6 +38,7 @@ import { randomName, setNameCountry } from '../src/core/State.js';
 import { programEligibility } from '../src/modules/service/NationalService.js';
 import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
 import { departureBlock } from '../src/modules/world/Migration.js';
+import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -347,6 +348,54 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'working holidays, nomad visas, overseas assignments, gap years, US tax abroad'() {
+    // A 24-year-old American can work a year in Australia, but not past 30 and only once.
+    const y = born('US', 12, 24);
+    y.state.finances.cash = 10000;
+    const whv = routesTo(y.state, 'AU').find((r) => r.kind === 'workingHoliday');
+    assert.ok(whv?.ok, whv?.reason);
+    assert.equal(routesTo(y.state, 'GB').find((r) => r.kind === 'workingHoliday')?.ok ?? false, false, 'no UK youth mobility for Americans');
+    y.state.prompts = [];
+    const chance = y.engine.rng.chance;
+    y.engine.rng.chance = () => true;
+    y.engine.dispatch('migration.emigrate', 'AU:workingHoliday');
+    y.engine.rng.chance = chance;
+    assert.equal(y.state.character.countryId, 'AU');
+    assert.equal(routesTo(born('US', 13, 31).state, 'AU').find((r) => r.kind === 'workingHoliday').ok, false, 'too old');
+    // After two years the visa runs out: switch or leave.
+    for (let i = 0; i < 4 && y.state.character.countryId === 'AU'; i++) { y.state.prompts = []; y.engine.ageUp(); }
+    assert.equal(y.state.character.countryId, undefined, 'went home when the working holiday ended');
+    // Gap years are for young people between things.
+    const g = born('GB', 14, 18);
+    g.state.finances.cash = 10000;
+    assert.ok(gapYearCheck(g.state).ok);
+    g.engine.dispatch('expat.gapYear', 'travel');
+    assert.equal(gapYearCheck(g.state).ok, false, 'once');
+    // An overseas assignment keeps the job, pays an allowance and houses you.
+    const e = employed('US', 15);
+    Object.assign(e.state.career.job, { yearsAtEmployer: 3, grade: 5 });
+    e.state.career.job.employer.size = 'enterprise';
+    e.state.career.job.remote = false;
+    e.state.character.age = 35;
+    const chance2 = e.engine.rng.chance;
+    e.engine.rng.chance = () => true;
+    e.state.prompts = [];
+    ExpatModule.onAgeUp(e.engine.context());
+    e.engine.rng.chance = chance2;
+    const offer = e.state.prompts.find((p) => p.type === 'expat.offer');
+    assert.ok(offer, 'offered an assignment');
+    e.engine.resolvePrompt(offer.id, 'accept');
+    assert.equal(e.state.character.countryId, offer.data.to);
+    assert.ok(e.state.career.job, 'kept the job');
+    assert.ok(e.state.migration.assignment);
+    // US citizens abroad file US returns; the exclusion and foreign tax credits cover them where tax is as high as at home.
+    const rich = born('US', 16, 45);
+    arrive(rich.ctx, 'PH', { visa: 'retiree' });
+    rich.state.finances.ledger.income.push({ amount: 600000, reason: 'Salary', wage: true });
+    rich.state.prompts = [];
+    rich.engine.ageUp();
+    assert.ok(!rich.state.finances.lastYear.usAbroadTax, 'Philippine tax credits cover the US bill');
   },
   'war at home: mobilization, asylum abroad, refugee status'() {
     // A second Korean War: the front reaches the cities.

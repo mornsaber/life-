@@ -143,7 +143,7 @@ export function moneyView(state) {
     [esc(creditTitle(state)), esc(creditLabel(state))],
     f.bankruptcies ? ['Bankruptcies', `<span class="neg">${f.bankruptcies}</span>`] : null,
   ])}
-  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ly.stateTax || (state.character.countryId ?? 'US') === 'US' || countryOf(state).terms?.['State income tax'] ? ['State income tax', money(ly.stateTax ?? 0)] : null, ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
+  ${ly ? `<h4 class="sub">Last year</h4>${kv([['Gross income', money(ly.gross)], ly.ltcg ? ['…of which LTCG/dividends', money(ly.ltcg)] : null, ['Pre-tax retirement', money(ly.deductions ?? 0)], ['Federal income tax', money(ly.federalTax ?? ly.tax)], ly.stateTax || (state.character.countryId ?? 'US') === 'US' || countryOf(state).terms?.['State income tax'] ? ['State income tax', money(ly.stateTax ?? 0)] : null, ly.usAbroadTax ? ['US tax (citizen abroad)', money(ly.usAbroadTax)] : null, ['Living costs', money(ly.living)], ['Health insurance', money(ly.insurance ?? 0)], ['Loan payments', money(ly.loanPayment)]])}` : ''}`, { icon: '💰', accent: 'green' });
 
   const plans = Object.keys(r.plans).map((id) => {
     const s = planStatus(state, id);

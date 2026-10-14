@@ -31,6 +31,33 @@ export const VISA_KINDS = {
   family: { icon: '💍', label: 'Spouse / family visa' },
   investor: { icon: '💰', label: 'Investor visa' },
   retiree: { icon: '🌴', label: 'Retiree visa' },
+  nomad: { icon: '💻', label: 'Digital nomad visa' },
+  workingHoliday: { icon: '🎒', label: 'Working holiday visa' },
+};
+
+/**
+ * Working holidays (2025): a year or two of any work for young citizens of partner countries.
+ *   partners  { [nationality]: max age }    years  length    once: never renewed
+ */
+const WHV = (name, years, partners) => ({ name, odds: 0.92, years, fee: 300, once: true, partners });
+export const WORKING_HOLIDAY = {
+  AU: WHV('Working Holiday visa (subclass 417/462)', 2, { GB: 35, CA: 35, FR: 35, IT: 35, DE: 30, JP: 30, KR: 30, US: 30, IN: 30 }),
+  CA: WHV('International Experience Canada (Working Holiday)', 2, { AU: 35, GB: 35, FR: 35, IT: 35, DE: 35, JP: 30, KR: 30, MX: 29 }),
+  GB: WHV('Youth Mobility Scheme visa', 2, { AU: 35, CA: 35, JP: 30, KR: 30, IN: 30 }),
+  JP: WHV('Working Holiday visa', 1, { AU: 30, CA: 30, GB: 30, DE: 30, FR: 30, IT: 30, KR: 30, MX: 29 }),
+  KR: WHV('Working Holiday visa (H-1)', 1, { AU: 30, CA: 30, GB: 30, DE: 30, FR: 30, IT: 30, JP: 30, MX: 30 }),
+  DE: WHV('Working Holiday visa', 1, { AU: 30, CA: 35, JP: 30, KR: 30 }),
+  FR: WHV('Visa vacances-travail', 1, { AU: 35, CA: 35, JP: 30, KR: 30, MX: 30 }),
+  IT: WHV('Working holiday visa', 1, { AU: 30, CA: 35, JP: 30, KR: 30 }),
+};
+/** Digital nomad visas (2025): remote workers earning from abroad. income: yearly minimum (PPP). */
+const NOMAD = {
+  IT: { name: 'Digital nomad visa', odds: 0.8, years: 1, income: 38000, fee: 120, nomad: true },
+  KR: { name: 'Workation visa (F-1-D)', odds: 0.8, years: 1, income: 90000, fee: 90, nomad: true },
+  JP: { name: 'Digital nomad visa (Designated Activities)', odds: 0.8, years: 1, income: 80000, fee: 60, nomad: true, once: true },
+  MX: { name: 'Temporary resident visa (remote work)', odds: 0.85, years: 1, income: 50000, fee: 450, nomad: true },
+  PH: { name: 'Digital nomad visa', odds: 0.85, years: 1, income: 24000, fee: 300, nomad: true },
+  DE: { name: 'Freelance residence permit (Freiberufler)', odds: 0.6, years: 2, income: 40000, fee: 140, nomad: true },
 };
 
 export const IMMIGRATION = {
@@ -218,6 +245,9 @@ export const ASYLUM = {
 /** What a claim costs to make (travel, smugglers, papers), PPP. */
 export const ASYLUM_COST = 2500;
 
+for (const [cc, rule] of Object.entries(WORKING_HOLIDAY)) IMMIGRATION[cc].visas.workingHoliday = rule;
+for (const [cc, rule] of Object.entries(NOMAD)) IMMIGRATION[cc].visas.nomad = rule;
+
 /** Social-security agreements (totalization) in force, 2025. */
 const AGREEMENTS = [
   ['US', 'CA'], ['US', 'GB'], ['US', 'DE'], ['US', 'JP'], ['US', 'KR'], ['US', 'IT'],
@@ -347,6 +377,18 @@ export function visaEligibility(state, to, kind) {
     if (!state.education.degrees.some((d) => d.type === 'highschool')) return { ok: false, reason: 'Finish high school first' };
     if (liquid(state) < 20000) return { ok: false, reason: `Show ${'$'}20,000 for a year's fees and living costs` };
   }
+  if (kind === 'workingHoliday') {
+    const maxAge = Object.entries(rule.partners).filter(([c]) => (state.character.citizenships ?? [birthCountryOf(state)]).includes(c)).reduce((m, [, a]) => Math.max(m, a), 0);
+    if (!maxAge) return { ok: false, reason: 'No working-holiday deal with your country' };
+    if (age > maxAge) return { ok: false, reason: `Ages 18–${maxAge}` };
+    if (state.migration?.whvUsed?.includes(to)) return { ok: false, reason: 'Once in a lifetime' };
+    if (liquid(state) < 4000) return { ok: false, reason: `Show ${'$'}4,000 in savings` };
+  }
+  if (kind === 'nomad') {
+    const remote = Boolean(job?.remote) || Boolean(state.business?.current);
+    if (!remote) return { ok: false, reason: 'Needs a remote job or your own business' };
+    if ((state.finances.lastYear?.gross ?? 0) < rule.income) return { ok: false, reason: `Needs ${'$'}${rule.income.toLocaleString()}/yr income` };
+  }
   if (kind === 'family' && nationalityCode(spouse) !== to) return { ok: false, reason: `Needs ${/^[AEIOU]/.test(COUNTRIES[to].demonym) ? 'an' : 'a'} ${COUNTRIES[to].demonym} spouse` };
   if (rule.minAge && age < rule.minAge) return { ok: false, reason: `Age ${rule.minAge}+` };
   if (rule.amount && liquid(state) < rule.amount) return { ok: false, reason: `Needs ${'$'}${rule.amount.toLocaleString()} to invest or show` };
@@ -366,7 +408,7 @@ export function prYearsLeft(state) {
     return years == null ? null : Math.max(0, years - (state.character.age - (res.grantedAt ?? res.arrived)));
   }
   if (!res || res.status !== 'visa' || !law.pr) return null;
-  if (['student', 'retiree'].includes(res.visa)) return null;
+  if (['student', 'retiree', 'workingHoliday', 'nomad'].includes(res.visa)) return null;
   const backlog = here === 'US' && res.visa !== 'family' ? law.backlog?.[birthCountryOf(state)] ?? 0 : 0;
   return Math.max(0, law.pr.years + backlog - (state.character.age - res.arrived));
 }

@@ -11,6 +11,7 @@ import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { tierRent } from '../../modules/realestate/index.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
+import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST } from '../../modules/world/Migration.js';
 import { optionRow } from '../Components.js';
@@ -64,7 +65,15 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+  return passportCard(state) + gapYearCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+}
+
+/** A year out between school and what comes next. */
+function gapYearCard(state) {
+  const check = gapYearCheck(state);
+  if (state.character.age < 17 || state.character.age > 26 || state.migration?.gapYear) return '';
+  const rows = Object.entries(GAP_YEAR).map(([id, g]) => button(g.label, 'expat.gapYear', { arg: id, variant: 'small', hint: g.cost ? money(g.cost) : 'Earn instead', disabled: !check.ok })).join('');
+  return card('Gap Year', `<p class="muted">A year off: travel, volunteer abroad or work and save. Working-holiday visas (Move Abroad below) let young people work their way around partner countries.</p>${check.ok ? '' : `<p class="why">${esc(check.reason)}</p>`}<div class="action-grid">${rows}</div>`, { icon: '🎒' });
 }
 
 const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident', asylum: 'Asylum seeker', refugee: 'Refugee' };
@@ -101,7 +110,7 @@ function passportCard(state) {
           : button(`🪪 Apply for ${law.pr.name}`, 'migration.applyPR', { variant: 'small', hint: money(law.pr.fee), disabled: Boolean(state.yearly['migration.pr']) }));
       const spouseHere = state.people.list.find((p) => p.alive && p.relation === 'spouse' && nationalityCode(p) === here);
       if (spouseHere && res.visa !== 'family' && law.visas.family) lines.push(button(`💍 Switch to a ${law.visas.family.name}`, 'migration.adjust', { arg: 'family', variant: 'small', hint: money(law.visas.family.fee) }));
-      if (res.visa === 'student' && state.career.job && law.visas.work) lines.push(button(`💼 Switch to a ${law.visas.work.name}`, 'migration.adjust', { arg: 'work', variant: 'small', hint: money(law.visas.work.fee) }));
+      if (['student', 'workingHoliday', 'nomad'].includes(res.visa) && state.career.job && law.visas.work) lines.push(button(`💼 Switch to a ${law.visas.work.name}`, 'migration.adjust', { arg: 'work', variant: 'small', hint: money(law.visas.work.fee) }));
     }
     const nat = naturalizationYearsLeft(state);
     const dualNote = law.dualIn ? '' : ' · you must give up your other passports';
@@ -109,6 +118,8 @@ function passportCard(state) {
       : nat > 0 ? `<small class="fine">🛂 Citizenship in ${nat} yr${esc(dualNote)}</small>`
         : `${button(`🛂 Apply for ${COUNTRIES[here].demonym} citizenship`, 'migration.naturalize', { variant: 'small', hint: money(law.nat.fee), disabled: !speaksLocal(state, here) || Boolean(state.yearly['migration.nat']) })}<span class="${speaksLocal(state, here) ? 'fine' : 'why'}">${speaksLocal(state, here) ? `Citizenship test${esc(dualNote)}` : `Needs working ${esc(localLanguage(here))}`}</span>`);
   }
+  const a = state.migration?.assignment;
+  if (a) lines.push(`<p>${chip('🌐 Overseas assignment', 'good')} <small class="fine">From ${esc(COUNTRIES[a.home].name)} · ends at ${a.endsAt} · housing paid · ${Math.round(a.uplift * 100)}% allowance</small></p>`);
   // Languages: what you speak and what you're learning.
   const native = nativeLanguages(birthCountryOf(state));
   const studied = Object.entries(state.migration?.languages ?? {}).filter(([l]) => !native.includes(l));
