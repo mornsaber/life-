@@ -14,7 +14,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { getProfession } from '../career/JobTrees.js';
+import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { levelById, previousLevel, ladderFor } from '../career/Ladder.js';
 import { createEmployer } from '../career/Employers.js';
 import { applicationEligibility, bestEntryLevel, levelCheck, hire } from '../career/CareerEngine.js';
@@ -125,7 +125,9 @@ export function internalMoves(state) {
   const org = orgOf(state, job?.employer);
   if (!org) return [];
   const t = orgType(org.typeId);
-  const ids = [...new Set(t?.departments.flatMap((d) => d.occupations) ?? [])].filter((id) => id !== job.professionId && getProfession(id));
+  // Only occupations that exist where you live (no sheriff's office abroad).
+  const here = new Set(professionsFor(state).map((p) => p.id));
+  const ids = [...new Set(t?.departments.flatMap((d) => d.occupations) ?? [])].filter((id) => id !== job.professionId && getProfession(id) && here.has(id));
   return ids.map((id) => {
     const p = getProfession(id);
     const check = applicationEligibility({ ...state, career: { ...state.career, job: null } }, id);

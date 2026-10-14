@@ -1,3 +1,4 @@
+import { fromPacks, fromPacksNested } from './packs/index.js';
 /**
  * Schools, fees and licenses abroad.
  *
@@ -90,6 +91,7 @@ export const EDUCATION = {
     licenses: { 'State Bar License': 'Bar Council enrolment (AIBE)', 'Medical License (MD)': 'MBBS + State Medical Council registration', 'Board Certification': 'MD/MS specialization (NEET-PG)', 'Certified Public Accountant (CPA)': 'Chartered Accountant (ICAI)', 'Peace Officer (POST Basic Academy)': 'Police Training Academy', 'Registered Nurse (RN)': 'B.Sc. Nursing + Nursing Council registration', 'Commercial Driver License (Class A)': 'Transport vehicle licence (HMV)', "Driver's License (Class D)": 'Driving licence (LMV)', 'Professional Engineer (PE)': 'Chartered Engineer (IEI)' },
   },
 };
+fromPacks(EDUCATION, 'EDUCATION');
 
 /** The US catalog's school names (education/Catalog.js), swapped for local ones on screen. */
 export const US_SCHOOL_NAMES = { community: 'Riverside Community College', technical: 'Metro Technical Institute', online: 'Summit Online University', state: 'State University', private: 'Whitmore College', academy: 'U.S. Service Academy', elite: 'Ivy Crest University' };
@@ -103,6 +105,7 @@ export const SHORT_CYCLE = {
   CA: 'College Diploma', GB: 'Foundation Degree / HND', DE: null, JP: 'Junior College Diploma (Tanki Daigaku)', KR: 'Junior College Diploma',
   IT: 'ITS Academy Diploma', MX: 'Técnico Superior Universitario (TSU)', PH: 'Associate\'s Degree', IN: 'Polytechnic Diploma', AU: 'Advanced Diploma (TAFE)', FR: 'BTS / BUT',
 };
+fromPacks(SHORT_CYCLE, 'SHORT_CYCLE');
 /** Is a US-style two-year degree offered here? */
 export const shortCycleOffered = (countryId) => !countryId || countryId === 'US' || SHORT_CYCLE[countryId] !== null;
 
@@ -134,6 +137,7 @@ const CREDENTIAL_LOCAL = {
   CA: { 'Driving licence (car)': 'Driver\'s licence (Class G/5)', 'Heavy goods vehicle licence (articulated)': 'Commercial licence (Class A/1)', 'Heavy goods vehicle licence (rigid)': 'Commercial licence (Class D/3)' },
   FR: { 'Driving licence (car)': 'Permis B', 'Heavy goods vehicle licence (articulated)': 'Permis CE', 'Heavy goods vehicle licence (rigid)': 'Permis C', 'Bus & coach licence': 'Permis D' },
 };
+fromPacks(CREDENTIAL_LOCAL, 'CREDENTIAL_LOCAL');
 
 export function educationTerms(countryId) {
   const e = EDUCATION[countryId];
@@ -165,6 +169,7 @@ export const UNDERGRAD_ENTRY = {
   jd: { GB: 3, IN: 5, AU: 4, DE: 5, FR: 5, IT: 5, JP: 4, MX: 5 },
   md: { GB: 5, IN: 5, AU: 6, DE: 6, FR: 6, IT: 6, JP: 6, KR: 6, MX: 6 },
 };
+fromPacksNested(UNDERGRAD_ENTRY, 'UNDERGRAD_ENTRY');
 export const undergradEntryYears = (countryId, programId) => UNDERGRAD_ENTRY[programId]?.[countryId] ?? null;
 /** The local names of the law and medical degrees. */
 export const PROFESSIONAL_DEGREES = {
@@ -180,3 +185,4 @@ export const PROFESSIONAL_DEGREES = {
   PH: { jd: 'Juris Doctor (Law School)', md: 'Doctor of Medicine' },
   CA: { jd: 'Juris Doctor (Law School)', md: 'Doctor of Medicine' },
 };
+fromPacks(PROFESSIONAL_DEGREES, 'PROFESSIONAL_DEGREES');

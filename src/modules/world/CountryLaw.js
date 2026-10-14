@@ -1,3 +1,4 @@
+import { fromPacks } from './packs/index.js';
 /**
  * The rest of each country's rulebook: courts and prisons, personal
  * insolvency, inheritance tax, unemployment and disability benefits,
@@ -45,6 +46,7 @@ export const JUSTICE = {
   AU: { trial: 'jury', juror: 'jury service', jurorPay: ppp(110, AUD), sentence: 0.5, jail: (city) => `the ${city} remand centre`, prison: 'a state correctional centre', legalAid: 'Legal Aid lawyer', privatePrisons: 0.18 },
   FR: { trial: 'lay', juror: 'service as a juré (cour d\'assises)', jurorPay: ppp(90, EUR_FR), sentence: 0.4, jail: (city) => `the ${city} maison d'arrêt`, prison: 'a centre de détention', legalAid: 'avocat commis d\'office (aide juridictionnelle)' },
 };
+fromPacks(JUSTICE, 'JUSTICE');
 
 /* ------------------------------------------------------------------ */
 /* Personal insolvency                                                 */
@@ -70,6 +72,7 @@ export const INSOLVENCY = {
   AU: { liquidation: { name: 'Bankruptcy (AFSA)', wait: 8, plan: 3 }, plan: { name: 'Debt agreement (Part IX)', years: 5, wait: 2 }, homestead: 0, wildcard: ppp(5000, AUD), creditYears: 5 },
   FR: { liquidation: { name: 'Rétablissement personnel (with liquidation)', wait: 8 }, plan: { name: 'Plan de surendettement (Banque de France)', years: 7, wait: 2 }, homestead: 0, wildcard: ppp(2000, EUR_FR), creditYears: 5 },
 };
+fromPacks(INSOLVENCY, 'INSOLVENCY');
 
 /* ------------------------------------------------------------------ */
 /* Inheritance tax                                                     */
@@ -93,6 +96,7 @@ export const INHERITANCE = {
   AU: { none: 'Australia has no inheritance tax (capital gains carry over to heirs).' },
   FR: { name: 'Droits de succession', perHeir: true, exemption: ppp(100000, EUR_FR), brackets: [[ppp(8072, EUR_FR), 0.05], [ppp(12109, EUR_FR), 0.1], [ppp(15932, EUR_FR), 0.15], [ppp(552324, EUR_FR), 0.2], [ppp(902838, EUR_FR), 0.3], [ppp(1805677, EUR_FR), 0.4], [Infinity, 0.45]] },
 };
+fromPacks(INHERITANCE, 'INHERITANCE');
 
 function bracketTax(brackets, amount) {
   let tax = 0;
@@ -137,10 +141,12 @@ export const UNEMPLOYMENT = {
   AU: { name: 'JobSeeker Payment', flat: ppp(20000, AUD), years: 0.75 },
   FR: { name: 'Allocation d\'aide au retour à l\'emploi (ARE)', rate: 0.57, cap: ppp(60000, EUR_FR), years: 1.5 },
 };
+fromPacks(UNEMPLOYMENT, 'UNEMPLOYMENT');
 export const SEVERANCE = {
   CA: { perYear: 0.25 }, GB: { perYear: 0.25 }, DE: { perYear: 0.5 }, JP: { perYear: 1 }, KR: { perYear: 1 }, IT: { perYear: 0.9 },
   MX: { perYear: 0.67, base: 3 }, PH: { perYear: 1 }, IN: { perYear: 0.5, minYears: 5 }, AU: { perYear: 0.4 }, FR: { perYear: 0.25 },
 };
+fromPacks(SEVERANCE, 'SEVERANCE');
 
 /** Unemployment benefit after losing a job paying `salary`, where you live. */
 export function unemploymentBenefit(countryId, salary) {
@@ -180,6 +186,7 @@ export const DISABILITY = {
   AU: { name: 'Disability Support Pension', rate: 0, floor: ppp(29000, AUD), cap: ppp(29000, AUD), minYears: 0, odds: 1 },
   FR: { name: 'Pension d\'invalidité', rate: 0.5, floor: ppp(4000, EUR_FR), cap: ppp(23500, EUR_FR), minYears: 1, odds: 1.4 },
 };
+fromPacks(DISABILITY, 'DISABILITY');
 
 /* ------------------------------------------------------------------ */
 /* Self-employment, credit, small-business loans, veterans, markets    */
@@ -200,6 +207,7 @@ export const SELF_EMPLOYED = {
   AU: { name: 'no mandatory contributions (super is optional)', rate: 0 },
   FR: { name: 'cotisations sociales (URSSAF)', rate: 0.35, cap: ppp(188000, EUR_FR) },
 };
+fromPacks(SELF_EMPLOYED, 'SELF_EMPLOYED');
 export function selfEmploymentTax(countryId, profit, usCap) {
   const r = SELF_EMPLOYED[countryId ?? 'US'] ?? SELF_EMPLOYED.US;
   if (!r.rate || profit <= 0) return 0;
@@ -224,11 +232,13 @@ export const CREDIT = {
   AU: { name: 'credit score (Equifax)' },
   FR: { name: 'Banque de France file (FICP)', registry: true },
 };
+fromPacks(CREDIT, 'CREDIT');
 /** Government-backed small-business lending, in place of the SBA. */
 export const SMALL_BIZ_LOAN = {
   CA: 'Canada Small Business Financing Program', GB: 'British Business Bank Start Up Loans', DE: 'KfW start-up loan', JP: 'Japan Finance Corporation loan',
   KR: 'KODIT-guaranteed loan', IT: 'Fondo di Garanzia PMI loan', MX: 'Nafin-backed loan', PH: 'SB Corp loan', IN: 'Mudra loan', AU: 'SME Guarantee Scheme loan', FR: 'Bpifrance-guaranteed loan',
 };
+fromPacks(SMALL_BIZ_LOAN, 'SMALL_BIZ_LOAN');
 /** Veterans' associations and care. */
 export const VETERANS = {
   CA: { orgs: ['Royal Canadian Legion', 'Army, Navy & Air Force Veterans in Canada'], care: 'Veterans Affairs Canada' },
@@ -243,8 +253,10 @@ export const VETERANS = {
   AU: { orgs: ['Returned & Services League (RSL)', 'Legacy Australia'], care: 'the Department of Veterans\' Affairs (DVA)' },
   FR: { orgs: ['Union nationale des combattants', 'Le Souvenir Français'], care: 'the Office national des combattants (ONaCVG)' },
 };
+fromPacks(VETERANS, 'VETERANS');
 /** The stock index the market report follows. */
 export const STOCK_INDEX = { US: 'S&P', CA: 'TSX', GB: 'FTSE 100', DE: 'DAX', JP: 'Nikkei 225', KR: 'KOSPI', IT: 'FTSE MIB', MX: 'IPC', PH: 'PSEi', IN: 'Nifty 50', AU: 'ASX 200', FR: 'CAC 40' };
+fromPacks(STOCK_INDEX, 'STOCK_INDEX');
 
 /* ------------------------------------------------------------------ */
 /* Mortgages and buying costs                                          */
@@ -303,6 +315,7 @@ export const MORTGAGES = {
     fixe20: { name: 'Prêt immobilier à taux fixe (20-yr)', years: 20, rateAdj: -0.035, minDown: 0.1, minScore: 600, maxDti: 0.35 },
   } },
 };
+fromPacks(MORTGAGES, 'MORTGAGES');
 
 /* ------------------------------------------------------------------ */
 /* Trade unions                                                        */
@@ -342,6 +355,7 @@ export const UNIONS = {
   AU: { police: 'Police Association', fire: 'United Firefighters Union', ems: 'Ambulance Employees Association', health: 'Australian Nursing and Midwifery Federation', education: 'Australian Education Union', public: 'Community and Public Sector Union', prisons: 'CPSU (corrections)', transport: 'Transport Workers\' Union', rail: 'Rail, Tram and Bus Union', aviation: 'Flight Attendants\' Association of Australia', pilots: 'Australian Federation of Air Pilots', trades: 'CFMEU', industry: 'AMWU', retail: 'SDA', hospitality: 'United Workers Union', services: 'United Workers Union', media: 'MEAA', tech: 'Professionals Australia', arts: 'MEAA Equity', postal: 'CEPU' },
   FR: { police: 'Alliance Police nationale', fire: 'SNSPP-PATS', ems: 'SUD Santé', health: 'CGT Santé', education: 'SNES-FSU', public: 'CGT Fonction publique', prisons: 'FO Pénitentiaire', transport: 'CGT Transports', rail: 'SUD-Rail', aviation: 'SNPNC', pilots: 'SNPL', trades: 'CGT Construction', industry: 'CGT Métallurgie', retail: 'CFDT Services', hospitality: 'CFDT Services', services: 'CFDT Services', media: 'SNJ', tech: 'CGT Informatique', arts: 'SFA-CGT', postal: 'SUD PTT' },
 };
+fromPacks(UNIONS, 'UNIONS');
 /** A US union's counterpart where you live: a name, null (none here), or the US name in the US. */
 /** The kind of union (police, fire, public, ...) a US union name in the game is. */
 export const unionKind = (usName) => (usName ? UNION_KIND[usName] ?? null : null);
@@ -371,12 +385,14 @@ export const CADETS = {
   AU: { jrotc: 'Australian Army Cadets', seaCadets: 'Australian Navy Cadets' },
   FR: { jrotc: 'Cadets de la Défense', seaCadets: null },
 };
+fromPacks(CADETS, 'CADETS');
 /** The diplomatic-service entrance exam. */
 export const FOREIGN_SERVICE_EXAM = {
   CA: 'Foreign Service Exam (FSE)', GB: 'FCDO Fast Stream assessment', DE: 'Auswahlverfahren für den höheren Auswärtigen Dienst', JP: 'National Public Service Exam (Comprehensive)',
   KR: 'Diplomatic Candidate Selection Exam', IT: 'Concorso diplomatico', MX: 'Servicio Exterior Mexicano entrance exam', PH: 'Foreign Service Officer Examination (FSOE)',
   IN: 'UPSC Civil Services Examination (IFS)', AU: 'DFAT Graduate Program assessment', FR: 'Concours d\'Orient / INSP',
 };
+fromPacks(FOREIGN_SERVICE_EXAM, 'FOREIGN_SERVICE_EXAM');
 /** Public prosecution services, legal aid offices and probation services. */
 export const PROSECUTORS = {
   CA: ['Crown Prosecutor\'s Office', 'Legal Aid Office', 'Probation Services'],
@@ -391,6 +407,7 @@ export const PROSECUTORS = {
   AU: ['Office of the Director of Public Prosecutions', 'Legal Aid Commission', 'Community Corrections'],
   FR: ['Parquet (ministère public)', 'Bureau d\'aide juridictionnelle', 'SPIP (probation)'],
 };
+fromPacks(PROSECUTORS, 'PROSECUTORS');
 
 /** Volunteer emergency services by their local names (null: no such service there). */
 export const VOLUNTEER_SERVICES = {
@@ -406,6 +423,7 @@ export const VOLUNTEER_SERVICES = {
   AU: { fire: 'Rural Fire Service', police: null, sar: 'SES Search and Rescue', ambulance: 'St John Ambulance Australia', wildland: 'RFS Bushfire Crew', auxiliary: 'Marine Rescue', cap: null, cert: 'State Emergency Service (SES)', redcross: 'Australian Red Cross', skiPatrol: 'Ski Patrol', mrc: null },
   FR: { fire: 'Sapeurs-Pompiers Volontaires', police: 'Réserve opérationnelle de la Gendarmerie', sar: 'Secours en Montagne', ambulance: 'Protection Civile', wildland: 'Comités Communaux Feux de Forêts', auxiliary: 'SNSM Sea Rescue', cap: null, cert: 'Réserve Communale de Sécurité Civile', redcross: 'Croix-Rouge française', skiPatrol: 'Pisteurs-Secouristes', mrc: null },
 };
+fromPacks(VOLUNTEER_SERVICES, 'VOLUNTEER_SERVICES');
 /**
  * National service schemes standing in for the Peace Corps (overseas volunteering)
  * and AmeriCorps (a year of community service at home). null: none.
@@ -423,6 +441,7 @@ export const NATIONAL_SERVICE = {
   AU: { overseas: 'Australian Volunteers Program', domestic: null },
   FR: { overseas: 'France Volontaires', domestic: 'Service Civique' },
 };
+fromPacks(NATIONAL_SERVICE, 'NATIONAL_SERVICE');
 /** Display swaps for the national service programs' names. */
 export function nationalServiceTerms(countryId) {
   const n = NATIONAL_SERVICE[countryId];
@@ -465,6 +484,7 @@ export const ACCOUNTS = {
   AU: { dc: 'Superannuation', roth: { name: 'Non-concessional super', limit: ppp(120000, AUD) }, traditional: { name: 'Concessional super', limit: ppp(30000, AUD) } },
   FR: { dc: 'PER collectif / épargne salariale', roth: { name: 'PEA', limit: ppp(30000, EUR_FR) }, traditional: { name: 'PER individuel', limit: ppp(35194, EUR_FR), share: 0.1 } },
 };
+fromPacks(ACCOUNTS, 'ACCOUNTS');
 
 /* ------------------------------------------------------------------ */
 /* Referendums                                                         */
@@ -510,6 +530,7 @@ export const REFERENDUMS = {
     referendumLocal: { name: 'Référendum local on a new tram line', icon: '🚋', support: 0.53, effects: { levy: 110, services: 5 }, pitch: 'Build the tram extension the region proposes.' },
   },
 };
+fromPacks(REFERENDUMS, 'REFERENDUMS');
 
 /* ------------------------------------------------------------------ */
 /* University entrance exams (used by SchoolPaths)                     */
@@ -533,11 +554,14 @@ export const ENTRANCE_EXAMS = {
   AU: { name: 'ATAR (Year 12 exams)', prep: { name: 'private tutoring', cost: ppp(3000, 1.45) }, weight: 0.7 },
   FR: { name: 'baccalauréat', prep: { name: 'cours particuliers', cost: ppp(1500, 0.71) }, weight: 0.4 },
 };
+fromPacks(ENTRANCE_EXAMS, 'ENTRANCE_EXAMS');
 
 /** Civil aviation authorities, in place of the FAA. */
 export const AVIATION_AUTHORITY = { CA: 'Transport Canada', GB: 'CAA', DE: 'LBA', JP: 'JCAB', KR: 'MOLIT', IT: 'ENAC', MX: 'AFAC', PH: 'CAAP', IN: 'DGCA', AU: 'CASA', FR: 'DGAC' };
+fromPacks(AVIATION_AUTHORITY, 'AVIATION_AUTHORITY');
 /** The local-government unit below the province, in place of the US county. */
 export const COUNTY = { CA: 'Regional Municipality', GB: 'County', DE: 'Landkreis', JP: 'District', KR: 'County', IT: 'Provincia', MX: 'Municipio', PH: 'Province', IN: 'District', AU: 'Shire', FR: 'Département' };
+fromPacks(COUNTY, 'COUNTY');
 
 /**
  * Public long-term care: the share of paid care (aides, assisted living, nursing homes) the
@@ -556,6 +580,7 @@ export const LONG_TERM_CARE = {
   AU: { name: 'government-subsidised aged care', covers: 0.7, safetyNet: 'the Commonwealth' },
   FR: { name: 'APA (allocation personnalisée d\'autonomie)', covers: 0.5, safetyNet: 'aide sociale à l\'hébergement' },
 };
+fromPacks(LONG_TERM_CARE, 'LONG_TERM_CARE');
 
 /* ------------------------------------------------------------------ */
 /* Workplace law                                                       */
@@ -578,6 +603,7 @@ const WORKPLACE = {
   IN: { equality: 'Labour Commissioner', reservist: 'Territorial Army job protection', labourBoard: 'the Industrial Tribunal' },
   AU: { equality: 'Fair Work Commission', reservist: 'the Defence Reserve Service (Protection) Act', labourBoard: 'the Fair Work Commission' },
 };
+fromPacks(WORKPLACE, 'WORKPLACE');
 export function workplaceTerms(cc) {
   const w = WORKPLACE[cc];
   if (!w) return {};
@@ -609,6 +635,7 @@ const EQUIPMENT = {
   PH: { 'HMMWV': 'KM-450 truck', 'M2 Bradley': 'M113', 'F-16': 'FA-50PH', 'C-130J': 'C-130H' },
   MX: { 'HMMWV': 'SandCat', 'M2 Bradley': 'DN-XI', 'F-16': 'T-6C Texan II', 'C-130J': 'C-130K' },
 };
+fromPacks(EQUIPMENT, 'EQUIPMENT');
 export function equipmentTerms(cc) {
   if (!cc || cc === 'US') return {};
   const local = EQUIPMENT[cc] ?? {};

@@ -25,6 +25,7 @@ import { NATIONAL_PROFESSIONS } from '../career/JobTrees.js';
 import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { stampDegrees } from '../education/EducationEngine.js';
+import { fromPacks } from './packs/index.js';
 
 export const LANGUAGE_CLASS_COST = 1200;
 const EU = ['DE', 'IT'];
@@ -139,6 +140,7 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
 
 /** Re-entry bans after an overstay ends in removal (years). */
 const OVERSTAY_BAN = { US: 10, GB: 10, AU: 3, CA: 1, JP: 5, KR: 5, DE: 5, FR: 5, IT: 5, MX: 1, PH: 5, IN: 5 };
+fromPacks(OVERSTAY_BAN, 'OVERSTAY_BAN');
 export const bannedFrom = (state, cc) => (state.migration?.bans?.[cc] ?? 0) > state.character.age;
 
 /** A visa ran out: leave, or stay on without status. */

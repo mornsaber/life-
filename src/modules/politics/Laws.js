@@ -17,6 +17,7 @@
  */
 import { STATES } from '../life/States.js';
 import { REGIONS } from '../life/Regions.js';
+import { fromPacks } from '../world/packs/index.js';
 
 export const LAWS = {
   minWage: {
@@ -135,6 +136,7 @@ const LEVEL_ORDER = ['city', 'state', 'federal'];
  * Australia's base-rate entities, France's reduced rate, the Philippines' CREATE rate.
  */
 const CORPORATE_RATE = { CA: 0.122, GB: 0.22, DE: 0.3, JP: 0.25, KR: 0.2, IT: 0.28, MX: 0.3, PH: 0.2, IN: 0.25, AU: 0.25, FR: 0.22 };
+fromPacks(CORPORATE_RATE, 'CORPORATE_RATE');
 /**
  * National law outside the US: provinces already carry the national minimum wage, every
  * other country has statutory paid leave, and corporate tax is the country's own.

@@ -24,6 +24,7 @@
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
+import { packCountries } from './packs/index.js';
 import { EDUCATION, educationTerms } from './Education.js';
 import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 
@@ -327,7 +328,8 @@ export const US = {
 };
 
 /** Playable countries, in picker order. */
-export const COUNTRIES = { US, CA, GB, AU, DE, FR, IT, JP, KR, MX, PH, IN };
+// Countries from packs (world/packs/) join after the built-in ones.
+export const COUNTRIES = { US, CA, GB, AU, DE, FR, IT, JP, KR, MX, PH, IN, ...packCountries() };
 // Schools, school stages and license names join each country's display swaps.
 for (const c of Object.values(COUNTRIES)) {
   if (c.id === 'US') continue;
@@ -363,6 +365,7 @@ export const PROVINCE_POPULATION = {
   'DE-BE': 3.9e6, 'DE-BY': 13.4e6, 'DE-HE': 6.4e6, 'DE-HH': 1.9e6, 'DE-NW': 18.1e6, 'DE-RP': 4.2e6, 'DE-BW': 11.3e6, 'DE-SN': 4.1e6,
   'JP-13': 14.2e6, 'JP-14': 9.2e6, 'JP-27': 8.8e6, 'JP-40': 5.1e6, 'JP-01': 5.1e6, 'JP-47': 1.47e6,
   ...KR.population, ...IT.population, ...MX.population, ...PH.population, ...IN.population, ...AU.population, ...FR.population,
+  ...Object.assign({}, ...Object.values(packCountries()).map((c) => c.population ?? {})),
 };
 
 /** Every foreign province and city, keyed by id, tagged with its country. */
@@ -424,6 +427,8 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
+  // State-police events: national and state forces abroad don't call their officers troopers.
+  'A Fellow Trooper': 'A Fellow Officer', 'off-duty trooper': 'off-duty officer', 'Call a trooper': 'Call for backup',
   'Police Purple Heart': 'Injured on Duty award', 'Police Medal of Valor': 'Police Medal for Gallantry', 'Fire Department Medal of Valor': 'Fire Service Gallantry Award', 'Medal of Valor': 'Medal for Gallantry',
   'NSF Graduate Research Fellowship': 'national doctoral research fellowship', 'NSF Graduate Research Fellow': 'National doctoral research fellow', 'NSF GRFP': 'doctoral fellowship', 'Presidential Rank Award': 'Senior civil service award',
   'revenue, CPS, natural resources, DOT, courts': 'revenue, child protection, environment, transport, courts',

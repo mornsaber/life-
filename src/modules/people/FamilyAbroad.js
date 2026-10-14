@@ -12,6 +12,7 @@ import { COUNTRIES, isCitizen, priceLevel } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { clampRel } from './People.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { fromPacks } from '../world/packs/index.js';
 
 /** Fees on sending money abroad (World Bank average ≈ 6%). */
 export const REMITTANCE_FEE = 0.06;
@@ -35,6 +36,7 @@ export const PARENT_VISAS = {
   PH: { name: 'Temporary visitor visa extension (parents)', needs: 'resident', odds: 0.5, wait: 0, fee: 300 },
   IN: { name: 'Entry (X) visa for a parent', needs: 'resident', odds: 0.6, wait: 0, fee: 150 },
 };
+fromPacks(PARENT_VISAS, 'PARENT_VISAS');
 
 const here = (state) => state.character.countryId ?? 'US';
 const STAYS = ['mother', 'father', 'sibling'];

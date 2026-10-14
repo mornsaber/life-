@@ -1,3 +1,4 @@
+import { fromPacks } from './packs/index.js';
 /**
  * Which US state and local agencies each country actually has, and what they are
  * called there. The careers keep their US ids (so their events, academies and
@@ -272,6 +273,7 @@ export const LOCAL_AGENCIES = {
     prosecution: { name: 'Office of the Director of Public Prosecutions', employer: (c, s, sn) => `${sn} ODPP`, titles: { clerk: 'Legal Clerk', ada: 'Solicitor Advocate', senior: 'Senior Crown Prosecutor', trial: 'Crown Prosecutor', chiefDeputy: 'Deputy Director', first: 'Director of Public Prosecutions' } },
   },
 };
+fromPacks(LOCAL_AGENCIES, 'LOCAL_AGENCIES');
 
 /** The local version of a career where you live: null when the agency doesn't exist there. */
 export function localAgency(countryId, professionId) {

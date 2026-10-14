@@ -20,6 +20,7 @@ import { addHonor, netWorth, hasFelony } from '../../core/State.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
 import { REGIONS } from '../life/Regions.js';
+import { fromPacks } from './packs/index.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -96,6 +97,7 @@ const MEDALS = {
     combatAction: { name: 'Operation Parakram Medal' }, goodConduct: { name: 'Long Service and Good Conduct Medal' }, humanitarian: { name: 'Videsh Seva Medal' }, expeditionary: { name: 'Samanya Seva Medal' }, ndsm: { name: 'Sainya Seva Medal' },
   },
 };
+fromPacks(MEDALS, 'MEDALS');
 /** A US medal as `nation` awards it: { name, ribbon? }, null (no equivalent), or undefined (US). */
 export function localMedal(nation, medalId, branch) {
   if (!nation || nation === 'US') return undefined;
@@ -189,6 +191,7 @@ export const ORDERS = {
     { id: 'belisario', name: 'Medalla Belisario Domínguez', min: 260, ribbon: R('#1f6f43', '#fff', '#c8102e') },
   ] },
 };
+fromPacks(ORDERS, 'ORDERS');
 
 const tierName = (t, gender) => (typeof t.name === 'string' ? t.name : t.name[gender === 'female' ? 'female' : 'male']);
 const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefix[gender === 'female' ? 'female' : 'male'] : t.prefix ?? null);

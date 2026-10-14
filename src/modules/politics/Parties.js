@@ -10,6 +10,7 @@
  * state.civic.votes   = [{ age, body, choice, winner }]
  */
 import { isCitizen } from '../world/Countries.js';
+import { fromPacks } from '../world/packs/index.js';
 
 /** Each country's main center-left (labor bloc) and center-right (business bloc) parties. */
 export const PARTY_NAMES = {
@@ -26,6 +27,7 @@ export const PARTY_NAMES = {
   IN: { labor: 'Indian National Congress', business: 'Bharatiya Janata Party' },
   AU: { labor: 'Australian Labor Party', business: 'Liberal–National Coalition' },
 };
+fromPacks(PARTY_NAMES, 'PARTY_NAMES');
 export const PARTY_ICON = { labor: '🌹', business: '🦅' };
 
 /** Party roles: how much your canvassing moves an election, and how much the party backs you as a candidate. */

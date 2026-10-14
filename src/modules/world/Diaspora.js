@@ -1,3 +1,4 @@
+import { fromPacks, packRows } from './packs/index.js';
 /**
  * Who lives in each country: the share of people with immigrant-background
  * names, and where those names come from (other countries' pools, plus a
@@ -32,3 +33,5 @@ export const DIASPORA = {
   AU: { share: 0.28, from: [['GB', 3], ['IN', 2], ['chinese', 3], ['vietnamese', 1], ['IT', 1], ['PH', 1]] },
   FR: { share: 0.2, from: [['maghreb', 5], ['westAfrican', 3], ['turkish', 1], ['vietnamese', 1], ['IT', 1]] },
 };
+fromPacks(DIASPORA, 'DIASPORA');
+Object.assign(COMMUNITY_NAMES, packRows('communities'));

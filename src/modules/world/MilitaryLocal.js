@@ -10,6 +10,7 @@
  * generic, country-neutral version (never the US one).
  */
 import { FORCES } from './NationalForces.js';
+import { fromPacks, fromPacksNested } from './packs/index.js';
 
 const strip = (s) => (s ?? '').replace(/^the /, '');
 const familyOf = (branch) => (branch === 'marines' ? 'marines' : branch === 'navy' ? 'naval' : branch === 'airforce' ? 'air' : 'ground');
@@ -128,6 +129,7 @@ const SPECIAL = {
     chairman: 'Chief of Defence Staff',
   },
 };
+fromPacks(SPECIAL, 'MIL_SPECIAL');
 
 /** Assignments only the US has. */
 const US_ONLY_DUTY = ['msg'];
@@ -210,6 +212,7 @@ const PME = {
   PH: { enlisted: ['Basic NCO Course', 'Advanced NCO Course', 'Senior NCO Course', 'First Sergeant Course', 'Command Sergeant Major Course'], officer: ['Officer Advance Course', 'AFP Command and General Staff College', 'National Defense College of the Philippines'] },
   IN: { enlisted: ['Junior Leaders\' Course', 'Senior NCO Course', 'Junior Commissioned Officers\' Course', 'Subedar Major Course', 'Senior JCO Course'], officer: ['Junior Command Course', 'Defence Services Staff College (Wellington)', 'National Defence College'] },
 };
+fromPacks(PME, 'PME');
 const GENERIC_PME = { enlisted: ['Junior NCO course', 'Senior NCO course', 'Warrant officer course', 'Senior warrant officer course', 'Command senior NCO course'], officer: ['Captains\' career course', 'Command and staff college', 'National defence college'] };
 const ENLISTED_IDX = { pme1: 0, pme2: 1, pme3: 2, pme4: 3, pme5: 4 };
 const OFFICER_IDX = { opme1: 0, opme2: 1, opme3: 2 };
@@ -240,6 +243,7 @@ const QUALS = {
   instructor: { GB: 'Instructor course (Army School of Instruction)', DE: 'Ausbilderlehrgang', '*': 'Recruit instructor course' },
   dli: { GB: 'Defence Centre for Languages and Culture', CA: 'Canadian Forces language school', AU: 'ADF School of Languages', DE: 'Bundessprachenamt', FR: 'École interarmées du renseignement et des études linguistiques', JP: 'Defense language course (Kodaira)', '*': 'Military language school' },
 };
+fromPacksNested(QUALS, 'QUALS');
 /** A skill course's local name: a string, null (not offered), or undefined (US: use the engine's). */
 export function localQual(nation, id) {
   if (!nation || nation === 'US') return undefined;
@@ -308,6 +312,7 @@ const SOF = {
     pararescue: sf('Garud Commando Force', 'Garud probation', 'Garud Commando Force', 'Garud badge', 'Air force special forces.', ['an airbase defence tour in Kashmir']),
   },
 };
+fromPacks(SOF, 'SOF');
 /** A national special forces unit replacing a US pipeline (null: none in that country). */
 export function localSof(nation, pipelineId) {
   if (!nation || nation === 'US') return undefined;
@@ -335,6 +340,7 @@ const BILLETS = {
   DE: { ground: DE_GROUND },
   FR: { ground: FR_GROUND, marines: FR_GROUND },
 };
+fromPacks(BILLETS, 'BILLETS');
 /** A billet's local title (undefined: the engine's). */
 export function localBillet(nation, branchId, billet) {
   if (!nation || nation === 'US') return undefined;
@@ -361,6 +367,7 @@ const UNITS = {
   PH: { ground: ['1st Infantry Division', '7th Infantry Division', 'Light Reaction Regiment'], naval: ['BRP Jose Rizal', 'BRP Antonio Luna', 'BRP Tarlac'], air: ['5th Fighter Wing', '220th Airlift Wing', '15th Strike Wing'], marines: ['Marine Battalion Landing Team 1', 'Marine Battalion Landing Team 7', '3rd Marine Brigade'] },
   IN: { ground: ['2nd Battalion, The Rajputana Rifles', '4th Battalion, The Sikh Regiment', '1st Battalion, 1st Gorkha Rifles', '61st Cavalry'], naval: ['INS Vikrant', 'INS Kolkata', 'INS Shivalik'], air: ['No. 17 Squadron "Golden Arrows"', 'No. 1 Squadron "Tigers"', 'No. 77 Squadron'] },
 };
+fromPacks(UNITS, 'MIL_UNITS');
 /** A unit name for `nation`'s service family (undefined: the engine's US names). */
 export function localUnitName(nation, branchId, rng) {
   if (!nation || nation === 'US') return undefined;
@@ -377,6 +384,7 @@ export function localUnitName(nation, branchId, rng) {
 
 /** What commanders' summary punishment is called. */
 const SUMMARY = { GB: 'a summary hearing', CA: 'a summary hearing', AU: 'a summary authority hearing', DE: 'eine einfache Disziplinarmaßnahme', FR: 'une sanction disciplinaire (jours d\'arrêts)', IT: 'una sanzione disciplinare di corpo', IN: 'summary punishment under the Army Act' };
+fromPacks(SUMMARY, 'MIL_SUMMARY');
 export const summaryPunishment = (nation) => (!nation || nation === 'US' ? 'an Article 15' : SUMMARY[nation] ?? 'summary disciplinary punishment');
 
 /**
@@ -399,6 +407,7 @@ export const SERVICE_TERMS = {
   PH: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 57, officer: 57, flag: 57 }, name: 'term' },
   IN: { maxYears: { enlisted: 20, officer: 35 }, ages: { enlisted: 52, officer: 58, flag: 60 }, name: 'term of engagement' },
 };
+fromPacks(SERVICE_TERMS, 'SERVICE_TERMS');
 export const upOrOutApplies = (nation) => !nation || nation === 'US';
 
 /** Where the government sends you, for the confirmation line ("The government appointed you…"). */
@@ -423,6 +432,7 @@ const JUSTICE = {
   PH: { code: 'the Articles of War', court: 'General Court-Martial', prison: 'the AFP Detention Center, Camp Aguinaldo', counsel: 'JAGO defence counsel' },
   IN: { code: 'the Army Act, 1950', court: 'General Court Martial', prison: 'a military detention barracks', counsel: 'Defending officer' },
 };
+fromPacks(JUSTICE, 'MILITARY_JUSTICE');
 /** { code, court (null: civilian courts), prison, counsel } for a nation (undefined: US). */
 export const militaryJustice = (nation) => (!nation || nation === 'US' ? undefined : JUSTICE[nation] ?? { code: 'military law', court: 'Court Martial', prison: 'a military prison', counsel: 'Military defence counsel' });
 
@@ -442,6 +452,7 @@ const VETTING = {
   KR: { form: 'security clearance questionnaire', publicTrust: 'Security screening', secret: 'Secret (II-grade) clearance', topSecret: 'Top Secret (I-grade) clearance' },
   IN: { form: 'Intelligence Bureau verification form', publicTrust: 'Police verification', secret: 'Secret clearance', topSecret: 'Top Secret clearance' },
 };
+fromPacks(VETTING, 'VETTING');
 /** The security vetting form (the SF-86 in the US). */
 export const vettingForm = (cc) => (!cc || cc === 'US' ? 'SF-86' : VETTING[cc]?.form ?? 'security vetting form');
 /** A clearance level's local name (undefined: the US one). */
@@ -482,6 +493,7 @@ const CAMPUS = {
   PH: { army: 'Advance ROTC (Philippine Army)', navy: 'Naval ROTC', airforce: 'Air Force ROTC', obligation: true },
   IN: { army: 'NCC Army Wing (C certificate entry)', navy: 'NCC Naval Wing', airforce: 'NCC Air Wing', obligation: false },
 };
+fromPacks(CAMPUS, 'CAMPUS');
 /** The university officer programme for a branch (undefined: US ROTC; null: none in that country). */
 export function campusCadets(cc, branch) {
   if (!cc || cc === 'US') return undefined;
@@ -502,6 +514,7 @@ const ACADEMY_NAMES = {
   PH: { army: 'Philippine Military Academy', navy: 'Philippine Military Academy', airforce: 'Philippine Military Academy' },
   IN: { army: 'National Defence Academy, Khadakwasla', navy: 'Indian Naval Academy, Ezhimala', airforce: 'National Defence Academy, Khadakwasla' },
 };
+fromPacks(ACADEMY_NAMES, 'ACADEMY_NAMES');
 export const academyName = (cc, branch) => (!cc || cc === 'US' ? undefined : ACADEMY_NAMES[cc]?.[branch] ?? 'the national military academy');
 
 /* ------------------------------------------------------------------ */

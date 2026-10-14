@@ -1,3 +1,4 @@
+import { fromPacks } from './packs/index.js';
 /**
  * National government careers abroad. Each entry maps a US federal career
  * (the template whose ladder, pay grades and events it reuses) to the
@@ -197,5 +198,28 @@ export const AGENCIES = {
     nationalLab: { name: 'ISRO & DRDO', employers: ['ISRO — Bengaluru', 'DRDO — New Delhi'] },
   },
 };
+fromPacks(AGENCIES, 'AGENCIES');
 
+/**
+ * Plain titles for the US ladder levels a country leaves unnamed, so a foreign
+ * agency never shows a US-only post (a Behavioral Analysis Unit Agent, an FS-4,
+ * a Federal Air Marshal). A country's own `titles` win over these.
+ */
+export const NEUTRAL_TITLES = {
+  fbi: { trainee: 'Trainee Investigator', agent: 'Investigator', senior: 'Senior Investigator', bau: 'Behavioural Analyst', ssa: 'Team Leader', asac: 'Deputy Head of Investigations', sac_cmd1: 'Head of Unit', sac_cmd2: 'Deputy Director', sac_cmd3: 'Director of Operations', sac: 'Director' },
+  usss: { trainee: 'Trainee Protection Officer', agent: 'Protection Officer', senior: 'Senior Protection Officer', protective: 'Close Protection Officer (head of government)', ssa: 'Protection Team Leader', asac: 'Deputy Head of Protection', sac_cmd1: 'Head of Unit', sac_cmd2: 'Deputy Director', sac_cmd3: 'Director of Operations', sac: 'Head of Protection' },
+  borderPatrol: { trainee: 'Trainee Border Officer', agent: 'Border Officer', senior: 'Senior Border Officer', bortac: 'Border Tactical Team Officer', supervisory: 'Border Supervisor', watch: 'Duty Manager', pail: 'Port Director', chiefPatrol_cmd1: 'Head of Unit', chiefPatrol_cmd2: 'Deputy Director', chiefPatrol_cmd3: 'Director of Operations', chiefPatrol: 'Director General' },
+  tsa: { trainee: 'Trainee Screening Officer', officer: 'Screening Officer', lead: 'Lead Screening Officer', bdo: 'Behaviour Detection Officer', inspector: 'Aviation Security Inspector', airMarshal: 'Air Marshal', supervisor: 'Screening Supervisor', manager: 'Security Manager', fsd_cmd1: 'Head of Unit', fsd_cmd2: 'Deputy Director', fsd_cmd3: 'Director of Operations', fsd: 'Head of Aviation Security' },
+  postal: { cca: 'Casual Postie', carrier: 'Postie', bid: 'Senior Postie (own round)', clerk: 'Counter Clerk', supervisor: 'Delivery Supervisor', postmaster: 'Delivery Office Manager', plantManager: 'Mail Centre Manager', district_cmd1: 'Head of Unit', district_cmd2: 'Deputy Director', district_cmd3: 'Director of Operations', district: 'Regional Manager' },
+  benefitsClaims: { trainee: 'Trainee Case Officer', specialist: 'Case Officer', senior: 'Senior Case Officer', rater: 'Medical Assessor', alj: 'Appeals Officer', supervisor: 'Team Leader', manager: 'Office Manager', regional_cmd1: 'Head of Unit', regional_cmd2: 'Deputy Director', regional_cmd3: 'Director of Operations', regional: 'Regional Director' },
+  sigint: { intern: 'Graduate Analyst', analyst: 'Signals Analyst', senior: 'Senior Signals Analyst', technicalDirector: 'Technical Director', branchChief: 'Branch Head', deputyChief: 'Deputy Head of Operations', director_cmd1: 'Head of Unit', director_cmd2: 'Deputy Director', director_cmd3: 'Director of Operations', director: 'Director-General' },
+  intelligence: { analyst: 'Intelligence Analyst', senior: 'Senior Analyst', sio: 'Senior Intelligence Officer', nio: 'Head of Assessments', branchChief: 'Branch Head', divisionChief: 'Division Head', deputyDirector_cmd1: 'Head of Unit', deputyDirector_cmd2: 'Deputy Director', deputyDirector_cmd3: 'Director of Operations', deputyDirector: 'Deputy Director-General' },
+  meteorology: { intern: 'Graduate Meteorologist', forecaster: 'Forecaster', senior: 'Senior Forecaster', soo: 'Science Lead', mic: 'Chief Forecaster', regional_cmd1: 'Head of Unit', regional_cmd2: 'Deputy Director', regional_cmd3: 'Director of Operations', regional: 'Director' },
+  regulatory: { administrator_cmd1: 'Head of Unit', administrator_cmd2: 'Deputy Director', administrator_cmd3: 'Director of Supervision', administrator: 'Chief Executive' },
+  foreignService: { fs6: 'Third Secretary', fs4: 'Second Secretary', fs3: 'First Secretary', fs2: 'Counsellor', fs1: 'Minister-Counsellor', consul: 'Consul-General', dcm: 'Deputy Head of Mission', ambassador_cmd1: 'Director', ambassador_cmd2: 'Deputy Secretary', ambassador_cmd3: 'Secretary-General', ambassador: 'Ambassador' },
+  parkService: { seasonal: 'Seasonal Ranger', ranger: 'Ranger', interp: 'Senior Ranger (visitor programmes)', leRanger: 'Compliance Ranger', isb: 'Wildlife Crime Investigator', district: 'District Ranger', chief: 'Chief Ranger', superintendent_cmd1: 'Head of Unit', superintendent_cmd2: 'Deputy Director', superintendent_cmd3: 'Director of Operations', superintendent: 'Director-General' },
+  airTrafficControl: { trainee: 'Trainee Air Traffic Controller', cpc: 'Air Traffic Controller', center: 'Area Controller', supervisor: 'Watch Supervisor', manager_cmd1: 'Head of Unit', manager_cmd2: 'Deputy Director', manager_cmd3: 'Director of Operations', manager: 'Chief Executive' },
+  oig: { investigator: 'Fraud Investigator', specialAgent: 'Senior Fraud Investigator', aig: 'Assistant Auditor-General', ig_cmd1: 'Head of Unit', ig_cmd2: 'Deputy Director', ig_cmd3: 'Deputy Auditor-General', ig: 'Auditor-General' },
+  federalPrisons: { trainee: 'Trainee Prison Officer', officer: 'Prison Officer', senior: 'Senior Prison Officer', caseManager: 'Sentence Manager', sis: 'Security Intelligence Officer', lieutenant: 'Assistant Chief Officer', captain: 'Chief Officer', associateWarden: 'Deputy Governor', warden: 'Governor', regional_cmd1: 'Area Manager', regional_cmd2: 'Deputy Director', regional_cmd3: 'Director of Operations', regional: 'Director-General' },
+};
 export const nationalProfessionId = (countryId, templateId) => `${countryId.toLowerCase()}_${templateId}`;

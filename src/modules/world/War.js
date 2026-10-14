@@ -20,6 +20,7 @@ import { Random, clamp } from '../../core/Random.js';
 import { enlistmentEligibility, enlist } from '../military/MilitaryEngine.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { regionsIn, changeRegion, stateIdOf } from '../life/Regions.js';
+import { fromPacks } from './packs/index.js';
 
 /* ------------------------------------------------------------------ */
 /* Theaters: the wars each country could plausibly fight              */
@@ -52,9 +53,11 @@ export const THEATERS = {
   MX: [{ id: 'cartelWar', name: 'a war against the cartels', adversary: 'cartels', intensity: 1, home: 0.35, weight: 40, internal: true }],
   AU: [COALITION_AIR, { id: 'pacific', name: 'a Pacific coalition deployment', adversary: 'a hostile navy', intensity: 1, home: 0, weight: 20 }, { ...TAIWAN, home: 0.05 }],
 };
+fromPacks(THEATERS, 'THEATERS');
 
 /** How often each country goes to war (per year). */
 const START_CHANCE = { US: 0.03, KR: 0.012, IN: 0.02, PH: 0.018, MX: 0.012, JP: 0.008, GB: 0.015, FR: 0.016, AU: 0.01, CA: 0.008, DE: 0.007, IT: 0.008 };
+fromPacks(START_CHANCE, 'WAR_START_CHANCE');
 /** Conflicts elsewhere in the world: news, oil prices, refugees, and sometimes your country joins in. */
 const GLOBAL_CONFLICTS = [
   { id: 'sudan', name: 'the civil war in Sudan', where: 'Sudan' },

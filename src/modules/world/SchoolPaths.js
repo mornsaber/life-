@@ -21,6 +21,7 @@ import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
 import { inK12, hasDiploma } from '../education/K12.js';
 import { ENTRANCE_EXAMS } from './CountryLaw.js';
 import { undergradEntryYears } from './Education.js';
+import { fromPacks } from './packs/index.js';
 
 const ppp = (local, rate) => Math.round(local / rate);
 
@@ -36,6 +37,7 @@ export const APPRENTICESHIP_SYSTEMS = {
   IT: { name: 'Apprendistato', years: 3, pay: ppp(16000, 0.64), exam: 'qualifica professionale' },
   IN: { name: 'National Apprenticeship (NAPS)', years: 2, pay: ppp(108000, 22), exam: 'All India Trade Test' },
 };
+fromPacks(APPRENTICESHIP_SYSTEMS, 'APPRENTICESHIP_SYSTEMS');
 
 /** The trades you can learn: the diploma it counts as, and the license it earns where one applies. */
 export const TRADES = {

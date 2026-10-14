@@ -35,6 +35,7 @@ import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 import { offenseName } from '../legal/Offenses.js';
 import { SIZE_ORDER } from '../career/Ladder.js';
+import { fromPacks } from '../world/packs/index.js';
 
 export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice', 'universityPolice'];
 export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
@@ -86,6 +87,7 @@ const UNIT_NAMES = {
   PH: { swat: 'SWAT / Special Action Force', traffic: 'Highway Patrol Group', narcotics: 'Drug Enforcement Unit', ia: 'Internal Affairs Service', protection: 'Police Security and Protection Group' },
   IN: { swat: 'Quick Reaction Team', traffic: 'Traffic Police', narcotics: 'Anti-Narcotics Cell', gang: 'Special Task Force', protection: 'Security Wing (VIP protection)' },
 };
+fromPacks(UNIT_NAMES, 'POLICE_UNITS');
 const BUREAU_NAMES = {
   GB: { homicide: 'Major Investigation Team (homicide)', svu: 'Public Protection (sexual offences)', property: 'Burglary & Acquisitive Crime', robbery: 'Robbery Squad', cyber: 'Cyber Crime Unit' },
   AU: { homicide: 'Homicide Squad', svu: 'Sex Crimes Squad', property: 'Property Crime Squad', robbery: 'Armed Robbery Squad', cyber: 'Cybercrime Squad' },
@@ -93,6 +95,7 @@ const BUREAU_NAMES = {
   FR: { homicide: 'Brigade criminelle', svu: 'Brigade de protection des mineurs', property: 'Brigade de répression du banditisme', robbery: 'BRB (vols à main armée)', cyber: 'Brigade de lutte contre la cybercriminalité' },
   IT: { homicide: 'Squadra Mobile (omicidi)', svu: 'Sezione reati sessuali', property: 'Sezione reati contro il patrimonio', robbery: 'Sezione rapine', cyber: 'Polizia Postale' },
 };
+fromPacks(BUREAU_NAMES, 'POLICE_BUREAUS');
 /** A specialty as this force calls it: RaSP is a Met command, not an agency of its own. */
 export function unitName(state, id) {
   const cc = state.character.countryId ?? 'US';

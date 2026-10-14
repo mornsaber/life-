@@ -17,6 +17,7 @@
  */
 import { getProfession } from './JobTrees.js';
 import { unionKind, localUnionName } from '../world/CountryLaw.js';
+import { fromPacks } from '../world/packs/index.js';
 
 /**
  *   noStrike     kinds of work where strikes are unlawful
@@ -36,6 +37,7 @@ export const PUBLIC_LABOUR = {
   IN: { noStrike: ['public'], association: [] },
   AU: { noStrike: ['police'], association: [] },
 };
+fromPacks(PUBLIC_LABOUR, 'PUBLIC_LABOUR');
 /** What a staff association is called where it isn't a union (null: the union's own name). */
 const ASSOCIATION_NAME = { JP: { public: 'Civil Servants\' Association (Shokuin Dantai)', education: 'Teachers\' Association (Shokuin Dantai)' } };
 

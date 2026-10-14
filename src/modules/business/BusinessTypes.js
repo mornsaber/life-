@@ -1,3 +1,4 @@
+import { fromPacks } from '../world/packs/index.js';
 /**
  * Business types. Licensed trades and professions are gated through the
  * credential registry; everything is in today's dollars at "scale 1"
@@ -171,6 +172,7 @@ const LOCAL_ENTITIES = {
   AU: { sole: 'Sole trader', llc: null, ccorp: 'Proprietary limited company (Pty Ltd)' },
   FR: { sole: 'Micro-entreprise', llc: 'EURL (taxed as income)', ccorp: 'SAS' },
 };
+fromPacks(LOCAL_ENTITIES, 'LOCAL_ENTITIES');
 const LOCAL_DESC = {
   sole: 'No company to file. Profit is taxed as your income, plus self-employed social contributions. You are personally liable for every debt.',
   llc: 'Taxed like a sole trader, but your personal assets are shielded from business debts (except ones you personally guarantee).',

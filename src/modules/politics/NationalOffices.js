@@ -1,3 +1,4 @@
+import { fromPacks, packRows } from '../world/packs/index.js';
 /**
  * Elected offices abroad, on the same shape as Offices.js (salaries and
  * campaign costs in PPP dollars, 2025 pay scales). Local office (council,
@@ -79,6 +80,8 @@ export const NATIONAL_OFFICES = {
   in_mp: { country: 'IN', name: 'Member of Parliament (Lok Sabha)', icon: '🏛️', level: 4, term: 5, termLimit: 0, salary: 136000, minAge: 25, residency: 0, cost: 800000, ...legislative },
   in_pm: { country: 'IN', name: 'Prime Minister of India', icon: '🇮🇳', level: 5, term: 5, termLimit: 0, salary: 150000, minAge: 25, residency: 0, cost: 20000000, requires: ['in_mp'], leader: true, statewide: true, ...executive },
 };
+// Countries from packs bring their own offices.
+Object.assign(NATIONAL_OFFICES, packRows('offices'));
 
 /** Local office (shared with the US list) that every country has. */
 export const LOCAL_OFFICE_IDS = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];
@@ -169,3 +172,4 @@ export const LEGISLATURES = {
     exec: 'President of the Republic', execOffice: 'fr_president', veto: false,
   },
 };
+fromPacks(LEGISLATURES, 'LEGISLATURES');

@@ -36,7 +36,7 @@ import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
 import { INTEL_PROFESSIONS } from './IntelCareers.js';
 import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
 import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
-import { AGENCIES, nationalProfessionId } from '../world/NationalAgencies.js';
+import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
 import { stateIdOf } from '../life/Regions.js';
@@ -527,7 +527,7 @@ export const NATIONAL_PROFESSIONS = {};
 for (const [cc, agencies] of Object.entries(AGENCIES)) {
   for (const [templateId, a] of Object.entries(agencies)) {
     const t = PROFESSIONS[templateId];
-    if (!t) continue;
+    if (!t || !a) continue;
     const id = nationalProfessionId(cc, templateId);
     const p = {
       ...t,
@@ -542,7 +542,7 @@ for (const [cc, agencies] of Object.entries(AGENCIES)) {
       union: t.union ? { ...t.union, name: `${a.name} staff association` } : null,
       benefits: { ...(t.benefits ?? {}), pension: null },
       eligible: undefined,
-      levels: t.levels.map((l) => (a.titles?.[l.id] ? { ...l, title: a.titles[l.id] } : l)),
+      levels: t.levels.map((l) => { const title = a.titles?.[l.id] ?? NEUTRAL_TITLES[templateId]?.[l.id]; return title ? { ...l, title } : l; }),
     };
     NATIONAL_PROFESSIONS[id] = p;
     Object.defineProperty(PROFESSIONS, id, { value: p, enumerable: false });

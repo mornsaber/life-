@@ -1,3 +1,4 @@
+import { fromPacks } from './packs/index.js';
 /**
  * Private-sector job titles by country. Companies in Japan and Korea run on
  * seniority ranks (kachō, buchō; gwajang, bujang), German firms on
@@ -37,3 +38,4 @@ export const PRIVATE_TITLES = {
   IN: { 'Vice President': 'Vice President', 'Senior Director': 'General Manager', 'Chief Executive Officer': 'Managing Director & CEO' },
   PH: { 'Senior Director': 'Assistant Vice President', 'Chief Executive Officer': 'President & CEO' },
 };
+fromPacks(PRIVATE_TITLES, 'PRIVATE_TITLES');

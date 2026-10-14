@@ -19,6 +19,7 @@
  */
 import { COUNTRIES } from './Countries.js';
 import { IMMIGRATION, birthCountryOf, residencesOf, nationalityCode } from './Immigration.js';
+import { fromPacks } from './packs/index.js';
 
 /** Registering a birth abroad. deadline: the citizenship is lost if you don't (null: it's automatic). */
 export const BIRTH_REGISTRATION = {
@@ -35,6 +36,7 @@ export const BIRTH_REGISTRATION = {
   IN: { name: 'registration of birth at the Indian mission', fee: 30, deadline: true, soleNationality: true },
   AU: { name: 'citizenship by descent', fee: 300, deadline: false },
 };
+fromPacks(BIRTH_REGISTRATION, 'BIRTH_REGISTRATION');
 
 /** Whether you hold a citizenship only by descent (born abroad, never naturalized there). */
 export const byDescent = (state, cc) => birthCountryOf(state) !== cc && !(state.migration?.naturalized ?? []).includes(cc);

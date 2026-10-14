@@ -23,6 +23,7 @@
  */
 import { COUNTRIES } from './Countries.js';
 import { investmentsValue } from '../../core/State.js';
+import { fromPacks, joinGroup, mutual, joinPairs, PACKS } from './packs/index.js';
 
 export const VISA_KINDS = {
   work: { icon: '💼', label: 'Work visa' },
@@ -50,6 +51,14 @@ export const WORKING_HOLIDAY = {
   FR: WHV('Visa vacances-travail', 1, { AU: 35, CA: 35, JP: 30, KR: 30, MX: 30 }),
   IT: WHV('Working holiday visa', 1, { AU: 30, CA: 35, JP: 30, KR: 30 }),
 };
+fromPacks(WORKING_HOLIDAY, 'WORKING_HOLIDAY');
+// Working-holiday schemes are reciprocal: a pack's partners take its young people too.
+for (const p of PACKS) {
+  for (const [other, age] of Object.entries(WORKING_HOLIDAY[p.id]?.partners ?? {})) {
+    const scheme = WORKING_HOLIDAY[other];
+    if (scheme?.partners && scheme.partners[p.id] === undefined) scheme.partners[p.id] = age;
+  }
+}
 /** Digital nomad visas (2025): remote workers earning from abroad. income: yearly minimum (PPP). */
 const NOMAD = {
   IT: { name: 'Digital nomad visa', odds: 0.8, years: 1, income: 38000, fee: 120, nomad: true },
@@ -218,6 +227,7 @@ export const IMMIGRATION = {
     intlTuition: { mult: 4 },
   },
 };
+fromPacks(IMMIGRATION, 'IMMIGRATION');
 
 /**
  * Asylum (2025 rules, simplified). You claim on arrival; a decision follows.
@@ -242,10 +252,12 @@ export const ASYLUM = {
   IN: { name: 'UNHCR refugee registration', odds: 0.3, decision: 2, workAfter: 1, prYears: null, support: 0 },
   AU: { name: 'Protection visa (subclass 866)', odds: 0.4, decision: 2, workAfter: 0, prYears: 0, support: 0 },
 };
+fromPacks(ASYLUM, 'ASYLUM');
 /** What a claim costs to make (travel, smugglers, papers), PPP. */
 export const ASYLUM_COST = 2500;
 
-for (const [cc, rule] of Object.entries(WORKING_HOLIDAY)) IMMIGRATION[cc].visas.workingHoliday = rule;
+// (Copied, so a pack that inherits its base's rules doesn't overwrite the base's scheme.)
+for (const [cc, rule] of Object.entries(WORKING_HOLIDAY)) if (IMMIGRATION[cc]) IMMIGRATION[cc] = { ...IMMIGRATION[cc], visas: { ...IMMIGRATION[cc].visas, workingHoliday: rule } };
 for (const [cc, rule] of Object.entries(NOMAD)) IMMIGRATION[cc].visas.nomad = rule;
 
 /** Social-security agreements (totalization) in force, 2025. */
@@ -257,6 +269,7 @@ const AGREEMENTS = [
   ['US', 'AU'], ['US', 'FR'], ['CA', 'AU'], ['CA', 'FR'], ['DE', 'AU'], ['DE', 'FR'], ['JP', 'AU'], ['JP', 'FR'], ['KR', 'AU'], ['KR', 'FR'],
   ['IT', 'AU'], ['IT', 'FR'], ['IN', 'AU'], ['IN', 'FR'], ['GB', 'FR'], ['MX', 'FR'], ['PH', 'FR'],
 ];
+joinPairs(AGREEMENTS, 'agreements');
 export const totalizes = (a, b) => AGREEMENTS.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
 
 /** The cost of an international move (flights, shipping, deposits, paperwork), PPP. */
@@ -326,9 +339,9 @@ export const localLanguage = (countryId) => COUNTRIES[countryId]?.languages?.[0]
 /* ------------------------------------------------------------------ */
 
 /** The EU recognizes regulated professions across member states (Directive 2005/36/EC). */
-const EU = ['DE', 'IT', 'FR'];
+const EU = joinGroup(['DE', 'IT', 'FR'], 'EU');
 /** Common-law countries, where a lawyer can requalify by exam; civil-law countries want a local law degree. */
-const COMMON_LAW = ['US', 'CA', 'GB', 'IN', 'PH', 'AU'];
+const COMMON_LAW = joinGroup(['US', 'CA', 'GB', 'IN', 'PH', 'AU'], 'COMMON_LAW');
 /** Driving licences each country swaps without a test (designated-country lists, 2025). */
 const LICENCE_EXCHANGE = {
   US: ['CA', 'DE', 'KR', 'JP', 'FR'], CA: ['US', 'GB', 'DE', 'JP', 'KR', 'AU', 'FR'], GB: ['CA', 'DE', 'IT', 'JP', 'KR', 'AU', 'FR'],
@@ -336,6 +349,8 @@ const LICENCE_EXCHANGE = {
   IT: ['DE', 'GB', 'JP', 'KR', 'FR'], MX: [], PH: [], IN: [],
   AU: ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'JP', 'KR'], FR: ['DE', 'IT', 'GB', 'CA', 'AU', 'JP', 'KR', 'US'],
 };
+fromPacks(LICENCE_EXCHANGE, 'LICENCE_EXCHANGE');
+mutual(LICENCE_EXCHANGE, 'licenceExchange');
 const DRIVING = ['learnerPermit', 'driverLicense', 'motorcycle', 'cdlA', 'cdlB', 'passengerEndorsement', 'schoolBusEndorsement', 'hazmatEndorsement'];
 /** Regulated professions that need the local language and a full exam. */
 const REGULATED = ['medicalLicense', 'barLicense', 'rn', 'np', 'pharmacistLicense', 'dentalLicense', 'teachingCert', 'psychLicense', 'lcsw', 'lpc', 'paLicense', 'ptLicense', 'otLicense', 'crnaLicense', 'vetLicense', 'architectLicense', 'pe', 'cpa', 'post', 'correctionsAcademy'];
@@ -344,13 +359,15 @@ const REGULATED = ['medicalLicense', 'barLicense', 'rn', 'np', 'pharmacistLicens
 const NOT_PORTABLE = ['post', 'correctionsAcademy'];
 /** Clinical licences that strict regulators make you largely redo (USMLE + residency, Japan/Korea's national exams in Japanese/Korean). */
 const CLINICAL = ['medicalLicense', 'dentalLicense'];
-const STRICT_CLINICAL = ['US', 'JP', 'KR', 'CA', 'FR', 'DE'];
+const STRICT_CLINICAL = joinGroup(['US', 'JP', 'KR', 'CA', 'FR', 'DE'], 'STRICT_CLINICAL');
 /** Systems that recognize each other's training with only an assessment (GMC/AHPRA/MCC competent authorities, etc.). */
 const PEERS = {
   GB: ['AU', 'CA', 'US'], AU: ['GB', 'CA', 'US'], CA: ['GB', 'AU', 'US'], US: ['CA'],
 };
+fromPacks(PEERS, 'PEERS');
+mutual(PEERS, 'peers');
 /** High-income regulators that scrutinize qualifications from elsewhere. */
-const RICH_SYSTEMS = ['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'JP', 'KR'];
+const RICH_SYSTEMS = joinGroup(['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'JP', 'KR'], 'RICH_SYSTEMS');
 
 /** How a credential earned in `fromCountries` is recognized in `to`. */
 export function recognitionRoute(credId, fromCountries, to) {

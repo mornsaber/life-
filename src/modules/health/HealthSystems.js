@@ -13,6 +13,7 @@
  * state.health.privateCover = true   c.waitUntil = age   (on a waiting list)
  */
 import { countryOf, isAbroad, priceLevel } from '../world/Countries.js';
+import { fromPacks } from '../world/packs/index.js';
 
 /**
  *   wait        months for non-urgent specialist treatment in the public system
@@ -31,6 +32,7 @@ export const HEALTH_SYSTEMS = {
   PH: { wait: 6, waitName: 'public hospital queue', private: { name: 'HMO plan', premium: 900, skipsWait: true, coinsurance: 0.15 } },
   IN: { wait: 8, waitName: 'government hospital queue', private: { name: 'Mediclaim health insurance', premium: 650, skipsWait: true, coinsurance: 0.1 } },
 };
+fromPacks(HEALTH_SYSTEMS, 'HEALTH_SYSTEMS');
 /** Conditions whose treatment is elective specialist care (cancer and emergencies are fast-tracked). */
 export const WAITLISTED = ['heartDisease', 'backInjury', 'arthritis', 'hearingLoss', 'tbi'];
 /** Australia's Medicare Levy Surcharge tiers (single, 2025–26, PPP). */

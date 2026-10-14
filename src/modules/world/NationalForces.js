@@ -1,3 +1,4 @@
+import { fromPacks } from './packs/index.js';
 /**
  * Every country's armed forces, laid over the military engine's US branch
  * templates (army, navy, airforce, marines, guard). A national branch keeps
@@ -300,6 +301,7 @@ export const FORCES = {
     },
   },
 };
+fromPacks(FORCES, 'FORCES');
 
 /** The national branch laid over a template, or null. */
 export function nationalBranch(countryId, templateId) {

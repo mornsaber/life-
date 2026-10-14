@@ -32,7 +32,7 @@ import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
-import { getProfession } from '../career/JobTrees.js';
+import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
@@ -281,6 +281,13 @@ function overseer(t) {
 }
 
 /** Re-seat NPC heads where nobody (and not the player) holds the post. */
+/** Whether a department's work exists where you live (no sheriff's office or DA abroad). */
+function deptHere(state, d) {
+  if ((state.character?.countryId ?? 'US') === 'US' || !d.occupations?.length) return true;
+  const here = new Set(professionsFor(state).map((p) => p.id));
+  return d.occupations.some((id) => here.has(id));
+}
+
 export function ensureHeads(state, org) {
   if (!org || org.business || org.closed) return;
   const t = orgType(org.typeId);
@@ -289,7 +296,7 @@ export function ensureHeads(state, org) {
   if (!org.head && !org.playerHead && !org.officeHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
   for (const d of t.departments) {
     const dept = org.departments[d.id];
-    if (dept && !dept.head && !dept.playerHead && !dept.officeHead) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
+    if (dept && !dept.head && !dept.playerHead && !dept.officeHead && deptHere(state, d)) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
   }
 }
 
@@ -357,12 +364,12 @@ function headChain(state, org, dept, job, generate) {
   const headOfDept = (id) => personOf(org, org.departments[id]?.head);
   if (!h.deptId) {
     // You run the organization: you answer to the board or whoever appointed you; department heads report to you.
-    const reports = t.departments.map((d) => headOfDept(d.id)).filter(Boolean);
+    const reports = t.departments.filter((d) => deptHere(state, d)).map((d) => headOfDept(d.id)).filter(Boolean);
     return { org, dept, division: null, supervisor: overseer(t), manager: null, deptHead: null, orgHead: null, coworkers: [], reports, leads: 'org' };
   }
   const hdept = org.departments[h.deptId] ?? dept;
   const orgHead = personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org) ?? overseer(t);
-  const coworkers = t.departments.filter((d) => d.id !== h.deptId).map((d) => headOfDept(d.id)).filter(Boolean).slice(0, 4);
+  const coworkers = t.departments.filter((d) => d.id !== h.deptId && deptHere(state, d)).map((d) => headOfDept(d.id)).filter(Boolean).slice(0, 4);
   // Your reports: the senior managers of each career in your department.
   const def = t.departments.find((d) => d.id === h.deptId);
   const reports = (def?.occupations ?? []).flatMap((occ) => {

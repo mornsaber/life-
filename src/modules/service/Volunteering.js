@@ -22,6 +22,7 @@ import { COUNTRIES } from '../world/Countries.js';
 import { addHonor, hasFelony, currentYear } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad } from '../world/Countries.js';
+import { fromPacks } from '../world/packs/index.js';
 
 export const MAX_ROLES = 3;
 
@@ -78,6 +79,7 @@ export function roleEligibility(state, id) {
 /** President's Volunteer Service Award: yearly tiers for adults, plus a lifetime award at 4,000 hours. */
 /** Each country's national award for long volunteer service. */
 const VOLUNTEER_MEDAL = { GB: 'Points of Light award', CA: 'Sovereign\'s Medal for Volunteers', AU: 'Australian Volunteer of the Year (state)', DE: 'Verdienstmedaille für Ehrenamt', FR: 'Médaille de la jeunesse, des sports et de l\'engagement associatif', IT: 'Attestato d\'onore per il volontariato', JP: 'Medal with Green Ribbon', KR: 'Presidential Volunteer Award', IN: 'National Volunteer Award', PH: 'Bayani Ka! award', MX: 'Premio Nacional de Acción Voluntaria y Solidaria' };
+fromPacks(VOLUNTEER_MEDAL, 'VOLUNTEER_MEDAL');
 const PVSA = [
   { min: 500, id: 'pvsa.gold', name: 'President\'s Volunteer Service Award — Gold', prestige: 6, ribbon: [['#c9a227', 3]] },
   { min: 250, id: 'pvsa.silver', name: 'President\'s Volunteer Service Award — Silver', prestige: 4, ribbon: [['#9ea7ad', 3]] },
