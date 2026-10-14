@@ -21,6 +21,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
 import { coverage, outOfPocket } from './Insurance.js';
+import { waitYears, systemHere, goPrivateCost, levySurcharge } from './HealthSystems.js';
 import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
 
@@ -68,7 +69,19 @@ export function addCondition(ctx, id, { severity, serviceConnected = false, diag
     ctx.log(`${def.kind === 'chronic' ? 'You were diagnosed with' : 'You are struggling with'} ${def.name.toLowerCase()}.`, def.icon, 'warn');
     record(state, `Onset: ${def.name}`);
   }
-  return c;
+  const target = existing ?? c;
+  if (target.treated) queueForTreatment(ctx, target, quiet);
+  return target;
+}
+
+/** Public systems with waiting lists: elective specialist care starts when your turn comes. */
+function queueForTreatment(ctx, c, quiet = false) {
+  const { state } = ctx;
+  const wait = waitYears(state, c.id);
+  if (!wait) return;
+  c.treated = false;
+  c.waitUntil = state.character.age + wait;
+  if (!quiet) ctx.log(`You're on the ${systemHere(state).waitName} for ${CONDITIONS[c.id].name.toLowerCase()} treatment: about ${systemHere(state).wait} months. You could pay to go private.`, '⏳', 'warn');
 }
 
 function diagnose(ctx, c, how) {
@@ -77,6 +90,7 @@ function diagnose(ctx, c, how) {
   c.treated = true;
   ctx.log(`${how} ${def.name} — ${c.severity >= 60 ? 'caught late' : 'caught early'}. You started treatment.`, def.icon, c.severity >= 60 ? 'bad' : 'warn');
   record(ctx.state, `Diagnosed: ${def.name}`);
+  queueForTreatment(ctx, c);
 }
 
 /** Yearly onset probability for each condition. */
@@ -123,6 +137,11 @@ function progress(ctx) {
   const { state, rng } = ctx;
   for (const c of activeConditions(state)) {
     const def = CONDITIONS[c.id];
+    if (c.waitUntil != null && state.character.age >= c.waitUntil) {
+      delete c.waitUntil;
+      c.treated = true;
+      ctx.log(`Your turn came: treatment for your ${def.name.toLowerCase()} started.`, def.icon, 'good');
+    }
     // Untreated mental illness waxes and wanes; physical disease and addiction march on.
     const drift = c.treated ? def.progress * rng.float(-1.3, 0.35) : def.kind === 'mental' ? def.progress * rng.float(-0.9, 1.0) : def.progress * rng.float(0.4, 1.4);
     c.severity = Math.round(clamp(c.severity + drift, 0, 100));
@@ -488,6 +507,9 @@ export const HealthEngine = {
     progress(ctx);
     if (!state.character.alive) return;
     treatmentBills(ctx);
+    // Australia: higher earners without private hospital cover pay the Medicare Levy Surcharge.
+    const mls = levySurcharge(ctx.state);
+    if (mls) ctx.spend(mls, 'Medicare Levy Surcharge', { allowDebt: true });
     acuteEvent(ctx);
     fitnessForDuty(ctx);
     disabilityTick(ctx);
@@ -516,7 +538,12 @@ export const HealthEngine = {
       const c = getCondition(ctx.state, id);
       if (!c || c.remission || !c.diagnosed) return;
       if (CONDITIONS[id].kind === 'addiction') return ctx.toast('Addiction treatment means rehab.', 'warn');
+      if (c.waitUntil != null) return ctx.toast(`You're on the waiting list until age ${c.waitUntil} — or go private.`, 'warn');
       c.treated = !c.treated;
+      if (c.treated) {
+        queueForTreatment(ctx, c);
+        if (!c.treated) return;
+      }
       delete c.care; // the generic toggle resets any mental-health plan (MentalHealth assigns a default one)
       ctx.log(c.treated ? `You started ${CONDITIONS[id].kind === 'mental' ? 'therapy and medication' : 'treatment'} for ${CONDITIONS[id].name.toLowerCase()}.` : `You stopped treating your ${CONDITIONS[id].name.toLowerCase()}.`, CONDITIONS[id].icon);
     },
@@ -546,6 +573,24 @@ export const HealthEngine = {
         c.severity = Math.max(20, c.severity - 15);
         ctx.log(`You left rehab early. The cravings came back within weeks.`, '🥀', 'bad');
       }
+    },
+    /** Skip the public waiting list: pay a private clinic. */
+    goPrivate(ctx, id) {
+      const { state } = ctx;
+      const c = getCondition(state, id);
+      if (!c || c.waitUntil == null) return;
+      const cost = goPrivateCost(state, CONDITIONS[id]);
+      if (!ctx.spend(cost, `Private treatment — ${CONDITIONS[id].name}`, { credit: true })) return ctx.toast(`Private treatment costs about $${cost.toLocaleString()}.`, 'warn');
+      delete c.waitUntil;
+      c.treated = true;
+      ctx.log(`You paid to go private and started treatment for your ${CONDITIONS[id].name.toLowerCase()} straight away.`, '🏥', 'good');
+    },
+    togglePrivateCover(ctx) {
+      const h = ctx.state.health;
+      const sys = systemHere(ctx.state);
+      if (!sys?.private) return ctx.toast('No private top-up insurance here.', 'warn');
+      h.privateCover = !h.privateCover;
+      ctx.toast(h.privateCover ? `You bought ${sys.private.name}.` : `You cancelled your ${sys.private.name}.`, h.privateCover ? 'good' : 'info');
     },
     toggleMarketplace(ctx) {
       const h = ctx.state.health;

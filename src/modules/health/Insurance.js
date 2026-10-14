@@ -13,6 +13,7 @@ import { yearlyCount } from '../../core/State.js';
 import { stateIdOf } from '../life/Regions.js';
 
 import { isAbroad, countryOf } from '../world/Countries.js';
+import { hasPrivateCover, systemHere, privatePremium } from './HealthSystems.js';
 
 export const MEDICAID_INCOME = 21000;
 /** States that did not expand Medicaid: only disabled adults qualify. */
@@ -69,6 +70,11 @@ export function coverage(state, earned) {
   if (id === 'national') {
     const h = countryOf(state).health;
     Object.assign(plan, { name: h.name, deductible: h.deductible, coinsurance: h.coinsurance, oopMax: h.oopMax });
+    // Private top-up cover: a premium, and lower co-payments where it covers them.
+    if (hasPrivateCover(state)) {
+      const p = systemHere(state).private;
+      Object.assign(plan, { name: `${h.name} + ${p.name}`, premium: privatePremium(state), coinsurance: Math.min(plan.coinsurance, p.coinsurance ?? plan.coinsurance) });
+    }
   }
   // International cover gets dear with age.
   if (id === 'expat') plan.premium = 2500 + Math.max(0, state.character.age - 45) * 220;

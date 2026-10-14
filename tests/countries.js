@@ -42,7 +42,9 @@ import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
 import { partyName, ballotSwing } from '../src/modules/politics/Parties.js';
 import { familyAbroad, parentVisaCheck } from '../src/modules/people/FamilyAbroad.js';
-import { coverageId } from '../src/modules/health/Insurance.js';
+import { coverageId, coverage as planOf } from '../src/modules/health/Insurance.js';
+import { addCondition } from '../src/modules/health/HealthEngine.js';
+import { levySurcharge } from '../src/modules/health/HealthSystems.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -352,6 +354,32 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'health systems: NHS waiting lists, going private, private cover, the Medicare Levy Surcharge'() {
+    const t = born('GB', 26, 55);
+    const { state, ctx, engine } = t;
+    state.finances.cash = 50000;
+    const c = addCondition(ctx, 'backInjury', { severity: 50 });
+    assert.equal(c.treated, false, 'on the waiting list');
+    assert.ok(c.waitUntil > state.character.age);
+    engine.dispatch('health.goPrivate', 'backInjury');
+    assert.ok(c.treated && c.waitUntil == null, 'paid to go private');
+    // Private medical insurance skips the queue for the next one.
+    engine.dispatch('health.togglePrivateCover');
+    assert.ok(planOf(state).premium > 0, 'pays a premium');
+    const h = addCondition(ctx, 'arthritis', { severity: 40, diagnosed: true });
+    assert.ok(h.treated, 'no wait with private cover');
+    // Korea's silson insurance cuts the 25% co-payment.
+    const k = born('KR', 27, 40);
+    const before = planOf(k.state).coinsurance;
+    k.engine.dispatch('health.togglePrivateCover');
+    assert.ok(planOf(k.state).coinsurance < before);
+    // Australia: a high earner without private hospital cover pays the surcharge.
+    const a = born('AU', 28, 40);
+    a.state.finances.lastYear = { gross: 150000 };
+    assert.ok(levySurcharge(a.state) > 0);
+    a.engine.dispatch('health.togglePrivateCover');
+    assert.equal(levySurcharge(a.state), 0);
   },
   'retiring abroad: private cover on a retiree visa, a frozen UK pension in Canada'() {
     const t = born('GB', 24, 66);

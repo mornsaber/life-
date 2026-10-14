@@ -3,6 +3,7 @@
  * your plan), mental health and trauma, addiction and rehab, medical debt,
  * disability coverage and VA rating.
  */
+import { systemHere, privatePremium, goPrivateCost, levySurcharge } from '../../modules/health/HealthSystems.js';
 import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
 import {
   CONDITIONS, KINDS, REHAB_COST, coverage, estimateOutOfPocket, vaCovers, dutyDisqualifier, disablingConditions, conditionMortality, VA_COMPENSATION, DUTY_STANDARD,
@@ -33,6 +34,7 @@ const fmtMoney = (x) => (x === Infinity ? 'none' : money(x));
 
 function coverageCard(state) {
   const plan = coverage(state);
+  const sys = systemHere(state);
   const abroad = Boolean(state.character.countryId);
   const h = state.health;
   return card('Coverage', `
@@ -48,7 +50,9 @@ function coverageCard(state) {
     <div class="toggle-row">
       ${button('🩺 Annual checkup', 'health.checkup', { variant: 'small', disabled: Boolean(state.yearly['health.checkup']), hint: 'Free preventive care; catches silent conditions early' })}
       ${abroad ? '' : button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
+      ${sys?.private && plan.id === 'national' || h.privateCover ? button(h.privateCover ? `🛡️ ${sys.private.name}: ON` : `🛡️ ${sys.private.name}: OFF`, 'health.togglePrivateCover', { variant: h.privateCover ? 'small on' : 'small', hint: `${money(privatePremium(state))}/yr · ${sys.private.skipsWait ? 'skip waiting lists' : 'covers co-payments'}` }) : ''}
     </div>
+    ${sys ? `<p class="fine">${sys.wait ? `⏳ Non-urgent specialist care waits about ${sys.wait} months on the ${esc(sys.waitName)}.` : 'No waiting lists to speak of.'}${sys.note ? ` ${esc(sys.note)}` : ''}${levySurcharge(state) ? ` You pay a ${money(levySurcharge(state))} Medicare Levy Surcharge without private hospital cover.` : ''}</p>` : ''}
     <p class="fine">${abroad ? `Everyone who lives here is covered by ${esc(countryOf(state).health.name)}, paid for through taxes and contributions: small co-payments, capped each year, and no medical debt spiral.` : 'Plans by circumstance: employer, TRICARE, a parent\'s plan to 26, Medicare at 65 (or after 2 yrs of SSDI), Medicaid on low income (not in TX/FL unless disabled), marketplace, or nothing.'}</p>`, { icon: '🏥', accent: plan.id === 'none' ? 'red' : 'green' });
 }
 
@@ -59,9 +63,10 @@ function conditionRow(state, c) {
   const risk = conditionMortality(c);
   const action = c.remission ? '' : addiction
     ? button('🏥 Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']), hint: `~${money(estimateOutOfPocket(state, REHAB_COST, c))}` })
-    : isMental(c) ? '' : button(c.treated ? 'Stop treatment' : 'Treat', 'health.treat', { arg: c.id, variant: 'tiny' });
+    : c.waitUntil != null ? button('🏥 Go private', 'health.goPrivate', { arg: c.id, variant: 'tiny', hint: money(goPrivateCost(state, def)) })
+      : isMental(c) ? '' : button(c.treated ? 'Stop treatment' : 'Treat', 'health.treat', { arg: c.id, variant: 'tiny' });
   return `<li class="cond-row">
-    <span class="cond-name">${def.icon} <b>${esc(def.name)}</b> ${chip(KINDS[def.kind].name)} ${c.serviceConnected ? chip('Service-connected', 'warn') : ''} ${c.remission ? chip('Remission', 'good') : c.treated ? chip('Treated', 'good') : chip(addiction ? 'Active' : 'Untreated', 'bad')}</span>
+    <span class="cond-name">${def.icon} <b>${esc(def.name)}</b> ${chip(KINDS[def.kind].name)} ${c.serviceConnected ? chip('Service-connected', 'warn') : ''} ${c.remission ? chip('Remission', 'good') : c.waitUntil != null ? chip(`⏳ Waiting list to ${c.waitUntil}`, 'warn') : c.treated ? chip('Treated', 'good') : chip(addiction ? 'Active' : 'Untreated', 'bad')}</span>
     ${c.remission ? '<span></span>' : meter(c.severity, { tone: c.severity >= 70 ? 'bad' : c.severity >= 40 ? 'mid' : 'good', label: 'Severity', suffix: '' })}
     ${action || '<span></span>'}
     <small>since age ${c.onsetAge}${risk >= 0.005 ? ` · ${(risk * 100).toFixed(1)}%/yr mortality` : ''}${def.annualCost && !c.remission && !isMental(c) ? ` · treatment ~${money(cost)}/yr out of pocket${vaCovers(state, c) ? ' (VA)' : ''}` : ''}</small>
