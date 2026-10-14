@@ -76,7 +76,9 @@ export function schoolView(state) {
       ${kv([['GPA', e.yearsAttended ? e.gpa.toFixed(2) : '—'], ['Tuition', `${money(annualTuition(e.programId, e.schoolId, state))}/yr`], ['Funding', [giBillEligible(state) && 'GI Bill', state.career.job?.employer.benefits.tuition && 'Employer tuition assistance', SCHOOLS[e.schoolId].needBasedAid && 'Need-based aid'].filter(Boolean).join(', ') || 'Student loans']])}
       <div class="action-grid">${button('📖 Study Hard', 'education.study', { hint: '+GPA, +Stress' })}${button(e.pace === 'part' ? '⏩ Go full-time' : '⏸️ Go part-time', 'education.switchPace')}${button('🚪 Drop Out', 'education.dropOut', { variant: 'danger' })}</div>`, { icon: '🏛️', accent: 'yellow' });
   }
-  const catalog = PROGRAM_GROUPS.map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');
+  // Abroad, programmes the country doesn't have (a two-year associate's in Germany) aren't listed.
+  const offered = (id) => enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country';
+  const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');
   const degrees = state.education.degrees.length
     ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${COUNTRIES[d.country]?.flag ?? ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');

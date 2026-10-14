@@ -3,6 +3,8 @@
  * reacts to civilian convictions, and exposes service actions. Retired pay
  * and VA benefits are paid by the retirement module.
  */
+import { currentCountry } from '../../core/Locale.js';
+import { vettingForm, localMos } from '../world/MilitaryLocal.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
@@ -24,29 +26,32 @@ import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
 import { TransitionActions, TransitionResolvers, transitionTick, veteranTick, onSeparation, onBusinessStarted } from './Transition.js';
 import { AssignmentActions, AssignmentResolvers } from './Assignments.js';
 
-const ENLISTED_CODE = (grade) => `E-${grade + 1}`;
+const ENLISTED_CODE = (grade, abroad = false) => `${abroad ? 'OR' : 'E'}-${grade + 1}`;
 
 /** Prompt options for every job in a branch, with entry standards and starting rank. */
 export function mosOptions(state, branch, track, { allowDirect = true, component = 'reserve' } = {}) {
-  return mosFor(branch, track).filter((m) => allowDirect || !m.direct).map((m) => {
+  // Abroad: your country's forces, their ranks, and plain job titles (no US codes or US-only pipelines).
+  const nation = (state.character.countryId ?? 'US') !== 'US' ? state.character.countryId : null;
+  const b = branchFor(state, branch) ?? BRANCHES[branch];
+  return mosFor(branch, track).filter((m) => (allowDirect || !m.direct) && localMos(nation, m) !== null).map((m) => {
     const s = SPECIALTIES[m.specialty];
     const fit = mosEligibility(state, m, { smartsFloor: s.minSmarts ?? 0 });
     const level = requiredClearance({ track, specialty: m.specialty, mos: m.id });
     const notes = [m.desc ?? s.desc];
     if (m.direct && fit.ok) {
       const c = directCredit(state, m, component);
-      const ranks = BRANCHES[branch].officer;
-      notes.unshift(`Direct commission as O-${c.grade + 1} ${ranks[c.grade]} (${c.years} yrs constructive credit${c.capped ? `; ${component === 'active' ? 'active duty' : 'the Reserve'} tops out at O-${c.cap + 1} for this corps` : ''})`);
+      const ranks = b.officer;
+      notes.unshift(`Direct commission as ${nation ? 'OF' : 'O'}-${c.grade + 1} ${ranks[c.grade]} (${c.years} yrs constructive credit${c.capped ? `; ${component === 'active' ? 'active duty' : 'the Reserve'} tops out at O-${c.cap + 1} for this corps` : ''})`);
     } else if (m.direct) notes.unshift(DIRECT_COMMISSIONS[m.direct].needs);
     if (track === 'enlisted') {
       const g = enlistedStartGrade(state, branch, m);
-      if (g > 0) notes.unshift(`Starts as ${ENLISTED_CODE(g)} ${BRANCHES[branch].enlisted[g]}`);
+      if (g > 0) notes.unshift(`Starts as ${ENLISTED_CODE(g, Boolean(nation))} ${b.enlisted[g]}`);
     }
     if (m.selection) notes.push('Selection required');
     if (m.grants?.length) notes.push('Earns civilian credentials');
     if (level) notes.push(`${CLEARANCES[level].name} clearance`);
     if (!fit.ok) notes.unshift(fit.reason);
-    return { id: m.id, label: `${s.icon} ${m.code} ${m.title}`, hint: notes.join(' · '), disabled: !fit.ok };
+    return { id: m.id, label: nation ? `${s.icon} ${localMos(nation, m)}` : `${s.icon} ${m.code} ${m.title}`, hint: notes.join(' · '), disabled: !fit.ok };
   });
 }
 
@@ -159,14 +164,14 @@ export const MilitaryModule = {
       ctx.prompt({
         type: 'military.chooseSpecialty',
         icon: b.icon,
-        title: `${b.name} — Choose Your ${track === 'officer' ? 'Officer Specialty' : track === 'warrant' ? 'Warrant Officer Specialty' : 'Job (MOS/Rating)'}`,
+        title: `${b.name} — Choose Your ${track === 'officer' ? 'Officer Specialty' : track === 'warrant' ? 'Warrant Officer Specialty' : currentCountry() === 'US' ? 'Job (MOS/Rating)' : 'Trade'}`,
         text: `${component === 'active' ? 'Active duty' : 'Reserve'} ${track} contract.` +
           (component === 'active' && state.career.job ? `\nYou'll resign as ${state.career.job.title}.` : '') +
           '\nHigher combat exposure means more deployments, more danger, and more chances for valor.' +
           (track === 'officer' ? '\nLawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a direct commission at a rank that reflects their experience.' : ''),
         options: [
           ...mosOptions(state, branch, track, { component }).filter((o) => track !== 'warrant' || MOS[o.id]?.flight),
-          { id: 'cancel', label: '↩️ Walk out of the recruiter\'s office' },
+          { id: 'cancel', label: currentCountry() === 'US' ? '↩️ Walk out of the recruiter\'s office' : '↩️ Walk out of the careers office' },
         ],
         data: { branch, track, component },
       });
@@ -272,11 +277,11 @@ export const MilitaryModule = {
       if (level && !hasClearance(ctx.state, level) && issues.length) {
         ctx.prompt({
           type: 'military.clearance', icon: CLEARANCES[level].icon,
-          title: `SF-86: ${CLEARANCES[level].name} Investigation`,
+          title: `${vettingForm(currentCountry())}: ${CLEARANCES[level].name} Investigation`,
           text: `Your ${data.track === 'officer' ? 'commission' : 'specialty'} requires a ${CLEARANCES[level].name} clearance${CLEARANCES[level].polygraph ? ', including a polygraph' : ''}.\nYour background includes: ${issues.map((i) => i.label).join('; ')}.`,
           options: [
             { id: 'disclose', label: '📝 Disclose everything truthfully', hint: 'Candor mitigates issues' },
-            { id: 'omit', label: '🙈 Leave the problems off the form', hint: 'Lying on an SF-86 is a federal crime', tone: 'danger' },
+            { id: 'omit', label: '🙈 Leave the problems off the form', hint: `Lying on the ${vettingForm(currentCountry())} is ${currentCountry() === 'US' ? 'a federal crime' : 'a crime'}`, tone: 'danger' },
           ],
           data: { ...data, specialty: specialtyId, mos: job.id, level },
         });
@@ -290,7 +295,7 @@ export const MilitaryModule = {
       const r = adjudicate(state, data.level, optionId === 'disclose', rng);
       if (r.caught) {
         ctx.log(`${r.reason}. The recruiter tore up your contract and referred the false statement to federal prosecutors.`, '🕵️', 'bad');
-        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'lying on a military SF-86', caught: true, evidence: 0.85 });
+        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: `lying on a military ${vettingForm(currentCountry())}`, caught: true, evidence: 0.85 });
         return;
       }
       if (r.granted) {

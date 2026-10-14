@@ -26,6 +26,7 @@ import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
+import { localMos } from '../world/MilitaryLocal.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -202,6 +203,7 @@ export function rankOf(svc) {
 
 export function specialtyName(svc) {
   const m = mosOf(svc);
+  if (m && svc.nation) return localMos(svc.nation, m) ?? m.title;
   if (m) return `${m.code} ${m.title}`;
   const s = SPECIALTIES[svc.specialty];
   return s.names[svc.branch] ?? s.name;
@@ -376,7 +378,7 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   // Coming back: prior service counts toward retirement, and you return near your old grade.
   const prior = priorServiceCredit(state);
   const last = [...state.military.history].reverse().find((h) => ['honorable', 'general', 'medical'].includes(h.discharge));
-  if (last && last.track === track) startGrade = Math.min(BRANCHES[branch][track].length - 1, Math.max(startGrade, Number(last.rankCode.slice(2)) - 1 - (track === 'enlisted' ? 1 : 0)));
+  if (last && last.track === track) startGrade = Math.min(BRANCHES[branch][track].length - 1, Math.max(startGrade, Number(last.rankCode.match(/\d+/)?.[0] ?? 1) - 1 - (track === 'enlisted' ? 1 : 0)));
   const svc = {
     branch,
     ...(nation ? { nation } : {}),

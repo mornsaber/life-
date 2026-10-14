@@ -2,6 +2,8 @@
  * Public Service tab: civil-service exams, security clearance, and the
  * state of your city (municipal) or the federal government.
  */
+import { currentCountry } from '../../core/Locale.js';
+import { vettingForm } from '../../modules/world/MilitaryLocal.js';
 import { CLEARANCE_PREMIUM, sponsorEligibility } from '../../modules/career/ClearedWork.js';
 import { esc, button, card, chip, meter, kv, empty } from '../Components.js';
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
@@ -31,7 +33,7 @@ export function govView(state) {
   const clearance = card('Security Clearance', `
     ${c ? `<p>${CLEARANCES[c.level].icon} <b>${CLEARANCES[c.level].name}</b> ${chip(c.status === 'active' ? 'Active' : 'Current (reinstatable)', c.status === 'active' ? 'good' : 'warn')}</p>
       ${kv([['Granted', `age ${c.grantedAge}`], ['Last investigation', `age ${c.lastInvestigationAge}`], ['Reinvestigation', `every ${CLEARANCES[c.level].reinvestYears} yrs`]])}
-      ${c.concealed ? '<p class="why">⚠️ You concealed information on your SF-86. Reinvestigations may uncover it.</p>' : ''}
+      ${c.concealed ? `<p class="why">⚠️ You concealed information on your ${vettingForm(currentCountry())}. Reinvestigations may uncover it.</p>` : ''}
       <h4 class="sub">What it's worth</h4>
       <ul class="history">
         <li>💵 <b>+${Math.round(CLEARANCE_PREMIUM[c.level] * 100)}%</b> pay in a cleared private-sector role${c.level === 'topSecret' ? ' (more with a polygraph)' : ''}${state.career.job?.cleared ? ' <span class="pos">· you\'re in one</span>' : ''}</li>
@@ -43,7 +45,7 @@ export function govView(state) {
     ${((sp) => (state.career.job && (sp.ok || sp.reason !== 'Your field has no classified work') && !state.career.job.cleared ? `<div class="action-grid">${button('🔐 Ask for a classified program', 'cleared.requestSponsorship', { hint: sp.ok ? 'Your employer sponsors the clearance' : sp.reason, disabled: !sp.ok })}</div>` : ''))(sponsorEligibility(state))}
     <h4 class="sub">What an investigator would find</h4>
     ${issues.length ? `<ul class="history">${issues.map((i) => `<li>⚠️ ${esc(i.label)}</li>`).join('')}</ul>` : '<p class="pos">A clean background.</p>'}
-    <p class="fine">Disclosing problems mitigates them. Concealing them is a federal crime (18 U.S.C. § 1001) if discovered.</p>`, { icon: '🔐' });
+    <p class="fine">Disclosing problems mitigates them. Concealing them is ${currentCountry() === 'US' ? 'a federal crime (18 U.S.C. § 1001)' : 'a crime'} if discovered.</p>`, { icon: '🔐' });
   // A US clearance means nothing to a life abroad unless you already hold one.
   const showClearance = !abroad || Boolean(c);
 

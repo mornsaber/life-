@@ -17,6 +17,8 @@
  *   city: { name, approval, fiscalHealth } | null,   // MunicipalGov
  * }
  */
+import { currentCountry } from '../../core/Locale.js';
+import { clearanceName, vettingForm } from '../world/MilitaryLocal.js';
 import { highestDegree, DEGREE_RANK, hasFelony, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 
@@ -31,10 +33,12 @@ export const EXAMS = {
   foreignService: { name: 'Foreign Service Officer Test (FSOT)', icon: '🌐', cost: 0, minAge: 20, desc: 'Followed by an oral assessment. Notoriously hard.' },
 };
 
+/** A clearance named the way the country you live in names it (Developed Vetting, Ü3...). */
+const level = (id, def) => ({ ...def, get name() { return clearanceName(currentCountry(), id) ?? def.usName; } });
 export const CLEARANCES = {
-  publicTrust: { rank: 1, name: 'Public Trust', icon: '🪪', threshold: 40, discovery: 0.2, reinvestYears: 10 },
-  secret: { rank: 2, name: 'Secret', icon: '🔒', threshold: 55, discovery: 0.35, reinvestYears: 10 },
-  topSecret: { rank: 3, name: 'Top Secret / SCI', icon: '🔐', threshold: 65, discovery: 0.6, reinvestYears: 5, polygraph: true },
+  publicTrust: level('publicTrust', { rank: 1, usName: 'Public Trust', icon: '🪪', threshold: 40, discovery: 0.2, reinvestYears: 10 }),
+  secret: level('secret', { rank: 2, usName: 'Secret', icon: '🔒', threshold: 55, discovery: 0.35, reinvestYears: 10 }),
+  topSecret: level('topSecret', { rank: 3, usName: 'Top Secret / SCI', icon: '🔐', threshold: 65, discovery: 0.6, reinvestYears: 5, polygraph: true }),
 };
 
 export const CLEARANCE_GRACE_YEARS = 2;
@@ -168,8 +172,8 @@ export const PublicServiceEngine = {
         c.lastInvestigationAge = age;
         if (c.concealed && rng.chance(0.45)) {
           state.publicService.clearance = null;
-          ctx.log('Your periodic reinvestigation uncovered information you concealed on your SF-86. Your clearance was revoked and the case was referred to prosecutors.', '🕵️', 'bad');
-          ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'SF-86 concealment', caught: true });
+          ctx.log(`Your periodic reinvestigation uncovered information you concealed on your ${vettingForm(currentCountry())}. Your clearance was revoked and the case was referred to prosecutors.`, '🕵️', 'bad');
+          ctx.emit('legal:offense', { offenseId: 'falseStatement', context: `${vettingForm(currentCountry())} concealment`, caught: true });
           ctx.emit('career:clearanceRevoked', {});
         } else {
           ctx.log(`You passed your periodic ${def.name} reinvestigation.`, def.icon);

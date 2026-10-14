@@ -18,6 +18,8 @@
  * bus (credential:suspend/reinstate, career:clearanceRevoked, legal:offense,
  * retirement:addPension, housing:sell).
  */
+import { currentCountry } from '../../core/Locale.js';
+import { vettingForm } from '../world/MilitaryLocal.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -294,7 +296,7 @@ function foreignContactTick(ctx) {
   if (!fc || fc.reported || !state.publicService.clearance || !rng.chance(0.15)) return;
   ctx.log('A periodic reinvestigation found you never reported your foreign-national spouse.', '🔎', 'bad');
   fc.reported = true;
-  ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'unreported foreign contact on your SF-86', caught: true, evidence: 0.8 });
+  ctx.emit('legal:offense', { offenseId: 'falseStatement', context: `unreported foreign contact on your ${vettingForm(currentCountry())}`, caught: true, evidence: 0.8 });
   ctx.emit('career:clearanceRevoked', {});
   state.publicService.clearance = null;
 }
@@ -804,7 +806,7 @@ function foreignContactPrompt(ctx, person) {
     text: `Clearance holders must report close and continuing contact with foreign nationals. ${person.firstName} is a citizen of ${nationalityName(person)}.`,
     options: [
       { id: 'report', label: '🔐 Report it to your security officer' },
-      { id: 'hide', label: '🤐 Keep it off the paperwork', tone: 'danger', hint: 'Lying on an SF-86 is a federal crime' },
+      { id: 'hide', label: '🤐 Keep it off the paperwork', tone: 'danger', hint: `Lying on the ${vettingForm(currentCountry())} is ${currentCountry() === 'US' ? 'a federal crime' : 'a crime'}` },
     ],
     data: { personId: person.id },
   });

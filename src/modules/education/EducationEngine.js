@@ -16,7 +16,7 @@ import { SCHOOLS, MAJORS, PROGRAMS, majorsFor, degreeLabel } from './Catalog.js'
 import { residencyYears } from '../life/Regions.js';
 import { campusGpaAdjustment } from '../campus/Network.js';
 import { prepBonus } from './K12.js';
-import { localTuition, undergradEntryYears } from '../world/Education.js';
+import { localTuition, undergradEntryYears, shortCycleOffered } from '../world/Education.js';
 
 /** A program's entry requirement where you live (law and medicine are first degrees in most countries). */
 export const requiresFor = (state, programId) => (undergradEntryYears(state?.character?.countryId, programId) ? { level: 'highschool' } : PROGRAMS[programId].requires);
@@ -111,6 +111,7 @@ export function enrollmentEligibility(state, programId, schoolId, major) {
   const p = PROGRAMS[programId];
   const school = SCHOOLS[schoolId];
   if (!p || !school || !p.schools.includes(schoolId)) return { ok: false, reason: 'Not offered there' };
+  if (programId === 'associate' && !shortCycleOffered(state.character.countryId)) return { ok: false, reason: 'Not offered in this country' };
   if (state.character.age < 17) return { ok: false, reason: 'Too young' };
   if (state.education.enrolled) return { ok: false, reason: 'Already enrolled' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };

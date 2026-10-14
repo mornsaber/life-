@@ -16,6 +16,7 @@
  *   flightHoursPerYear logs pilot time while employed
  *   levels            the ladder (see Ladder.js)
  */
+import { PRIVATE_TITLES } from '../world/PrivateTitles.js';
 import { L, addGovernmentTiers } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
@@ -567,6 +568,14 @@ for (const [cc, table] of Object.entries(LOCAL_AGENCIES)) {
       ...(a.employer ? { employerName: (city, _rng, stateName, stateId) => a.employer(city, stateId, stateName) } : {}),
       levels: t.levels.map((l) => (a.titles?.[l.id] ? { ...l, title: a.titles[l.id] } : l)),
     };
+  }
+}
+// Private employers abroad use the country's own corporate titles.
+for (const [cc, map] of Object.entries(PRIVATE_TITLES)) {
+  for (const t of PROFESSION_LIST) {
+    if (t.sector !== 'private' || !t.levels.some((l) => map[l.title])) continue;
+    const prior = LOCAL_VARIANTS[t.id]?.[cc] ?? t;
+    (LOCAL_VARIANTS[t.id] ??= {})[cc] = { ...prior, levels: prior.levels.map((l) => (map[l.title] ? { ...l, title: map[l.title] } : l)) };
   }
 }
 for (const [id, byCountry] of Object.entries(LOCAL_VARIANTS)) {

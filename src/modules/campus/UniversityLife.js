@@ -7,6 +7,7 @@
  *
  * state.campus — see emptyCampus() in Network.js.
  */
+import { campusSocieties } from '../world/MilitaryLocal.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { SCHOOLS, PROGRAMS } from '../education/Catalog.js';
@@ -147,14 +148,14 @@ export const UniversityLife = {
     dormTick(ctx);
     rotcTick(ctx);
     if (c.greek) {
-      ctx.spend(GREEK_DUES, `${c.greek.name} dues`, { allowDebt: true });
+      ctx.spend(campusSocieties(state.character.countryId)?.dues ?? GREEK_DUES, `${c.greek.name} dues`, { allowDebt: true });
       c.greek.years += 1;
       c.resume += 1;
       ctx.stat('happiness', 3);
       if (!c.greek.officer && c.greek.years >= 2 && rng.chance(0.25)) {
         c.greek.officer = true;
         c.resume += 2;
-        ctx.log(`Your brothers/sisters elected you chapter president of ${c.greek.name}.`, '🏛️', 'good');
+        ctx.log(`The members elected you ${campusSocieties(state.character.countryId)?.president ?? 'chapter president'} of ${c.greek.name}.`, '🏛️', 'good');
       }
     }
     for (const id of c.clubs) {
@@ -198,18 +199,22 @@ export const UniversityLife = {
       const { state, rng } = ctx;
       const c = state.campus;
       if (!onCampus(state) || c.academy) return ctx.toast('Greek life is for students at a residential campus.', 'warn');
+      const local = campusSocieties(state.character.countryId);
+      if (local === null) return ctx.toast('Universities here have no fraternities or sororities.', 'warn');
       if (c.greek) return ctx.toast('You are already in a chapter.', 'warn');
       if (yearlyCount(state, 'campus.rush')) return ctx.toast('Rush week is over until next year.', 'warn');
       bumpYearly(state, 'campus.rush');
       if (!rng.chance(clamp(0.35 + (state.stats.looks - 50) / 150 + (state.stats.happiness - 50) / 200, 0.1, 0.9))) {
         return ctx.log("You rushed, but didn't get a bid this year.", '📭', 'warn');
       }
-      const name = rng.pick(GREEK);
+      const name = rng.pick(local?.houses ?? GREEK);
       ctx.prompt({
         type: 'campus.hazing',
         icon: '🏛️',
-        title: `${name} Pledge Week`,
-        text: `${name} gave you a bid. On the last night of pledging, the brothers/sisters line the pledges up in the basement with a handle of vodka.`,
+        title: local ? `${name}: ${local.initiation[0].toUpperCase()}${local.initiation.slice(1)}` : `${name} Pledge Week`,
+        text: local
+          ? `${name} offered you a place. On the last night of ${local.initiation}, the members line the newcomers up with a bottle of spirits${local.danger ? ' — and paddles' : ''}.`
+          : `${name} gave you a bid. On the last night of pledging, the brothers/sisters line the pledges up in the basement with a handle of vodka.`,
         options: [
           { id: 'endure', label: '🥃 Go along with it', tone: 'danger' },
           { id: 'refuse', label: '🙅 Refuse and walk out', hint: 'You lose the bid' },
@@ -255,16 +260,18 @@ export const UniversityLife = {
     tryOut(ctx) {
       const { state, rng } = ctx;
       const c = state.campus;
-      if (!onCampus(state)) return ctx.toast('Varsity sports are for full-time students on campus.', 'warn');
+      if (!onCampus(state)) return ctx.toast('University teams are for full-time students on campus.', 'warn');
       if (c.sport) return ctx.toast('You are already on a team.', 'warn');
       if (yearlyCount(state, 'campus.tryout')) return ctx.toast('Tryouts are once a year.', 'warn');
       bumpYearly(state, 'campus.tryout');
       const sport = rng.pick(SPORTS);
       if (state.stats.fitness < 60 || !rng.chance(clamp((state.stats.fitness - 50) / 40, 0.05, 0.9))) return ctx.log(`You got cut from the ${sport} team.`, '🏟️', 'warn');
       c.sport = { name: sport, years: 0, scholarship: false };
-      let text = `You made the varsity ${sport} team!`;
+      const us = (state.character.countryId ?? 'US') === 'US';
+      let text = us ? `You made the varsity ${sport} team!` : `You made the university ${sport} team!`;
       const tuition = annualTuition(enrolled(state).programId, enrolled(state).schoolId, state);
-      if (state.stats.fitness >= 80 && tuition > 0 && rng.chance(0.4)) {
+      // Athletic scholarships are an American (and to a degree Canadian) thing.
+      if (us && state.stats.fitness >= 80 && tuition > 0 && rng.chance(0.4)) {
         c.sport.scholarship = true;
         c.scholarships.push({ id: 'athletic', name: 'Athletic scholarship', annual: Math.round(tuition * 0.6) });
         text += ' The coach found you an athletic scholarship.';
@@ -359,8 +366,9 @@ export const UniversityLife = {
       }
       ctx.stat('health', -rng.int(3, 10));
       c.greek = { name: data.name, years: 0, officer: false };
-      ctx.log(`You survived pledge night and joined ${data.name}.`, '🏛️', 'good');
-      if (rng.chance(0.1)) {
+      const local = campusSocieties(state.character.countryId);
+      ctx.log(`You survived ${local ? local.initiation : 'pledge night'} and joined ${data.name}.`, '🏛️', 'good');
+      if (rng.chance(0.1 * (local?.danger ?? 1))) {
         ctx.log(`A pledge was hospitalized. The university investigated ${data.name}.`, '🚨', 'bad');
         c.greek = null;
         strike(ctx, 'hazing', 'participating in hazing');

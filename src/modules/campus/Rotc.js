@@ -16,6 +16,7 @@ import { onCampus } from './Network.js';
 import { moveIntoDorm } from './HousingDorms.js';
 import { isAbroad, countryOf } from '../world/Countries.js';
 import { nationalBranch } from '../world/NationalForces.js';
+import { campusCadets, campusObligation, academyName } from '../world/MilitaryLocal.js';
 
 export const ROTC_BRANCHES = ['army', 'navy', 'airforce'];
 export const ACADEMIES = {
@@ -25,14 +26,19 @@ export const ACADEMIES = {
   coastguard: { name: 'U.S. Coast Guard Academy', icon: '🛟' },
 };
 export const OBLIGATION = { rotcScholarship: 4, rotc: 3, academy: 5 };
+/** What the university officer programme is called here (ROTC in the US, the UOTC in Britain…). */
+export const rotcName = (state, branch) => campusCadets(state.character.countryId, branch) ?? `${BRANCHES[branch].name} ROTC`;
+/** The academy for a branch, as your country names it. */
+export const academyFor = (state, branch) => academyName(state.character.countryId, branch) ?? ACADEMIES[branch]?.name;
 
 export function rotcEligibility(state, branch) {
   const e = state.education.enrolled;
   if (!ROTC_BRANCHES.includes(branch)) return { ok: false, reason: 'Unknown branch' };
   if (isAbroad(state) && !nationalBranch(countryOf(state).id, branch)) return { ok: false, reason: 'Your country has no such branch' };
+  if (campusCadets(state.character.countryId, branch) === null) return { ok: false, reason: 'No university officer programme here: apply to the military academy' };
   if (!e || e.programId !== 'bachelor' || !onCampus(state)) return { ok: false, reason: "Full-time bachelor's students on campus" };
   if (state.campus.academy) return { ok: false, reason: 'Academy cadets are already in uniform' };
-  if (state.campus.rotc) return { ok: false, reason: 'Already in ROTC' };
+  if (state.campus.rotc) return { ok: false, reason: 'Already in an officer programme' };
   if (state.military.service) return { ok: false, reason: 'Already serving' };
   if (state.character.age > 26) return { ok: false, reason: 'Must commission by 30' };
   if (hasFelony(state)) return { ok: false, reason: 'Felony record' };
@@ -45,7 +51,7 @@ export function joinRotc(ctx, branch) {
   const check = rotcEligibility(state, branch);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   state.campus.rotc = { branch, years: 0, scholarship: false, contracted: false };
-  ctx.log(`You joined ${BRANCHES[branch].name} ROTC. 0600 PT starts tomorrow.`, BRANCHES[branch].icon, 'milestone');
+  ctx.log(`You joined the ${rotcName(state, branch)}. Early-morning PT starts tomorrow.`, BRANCHES[branch].icon, 'milestone');
 }
 
 export function rotcTick(ctx) {
@@ -56,11 +62,13 @@ export function rotcTick(ctx) {
   ctx.stat('fitness', 2);
   ctx.stat('stress', 2);
   // Scholarships are awarded on fitness and grades; accepting one is a service contract.
+  // Britain's UOTC and India's NCC carry no service contract: no scholarship to win.
+  if (!campusObligation(state.character.countryId)) return;
   if (!r.scholarship && r.years <= 2 && state.stats.fitness >= 60 && (state.education.enrolled?.gpa ?? 0) >= 2.8 && rng.chance((state.k12?.jrotcYears ?? 0) >= 3 ? 0.7 : 0.5)) {
     r.scholarship = true;
     r.contracted = true;
-    state.campus.scholarships.push({ id: 'rotc', name: `${BRANCHES[r.branch].name} ROTC scholarship`, full: true, minGpa: 2.5 });
-    ctx.log(`You earned a ${BRANCHES[r.branch].name} ROTC scholarship — full tuition, in exchange for ${OBLIGATION.rotcScholarship} years of active duty.`, '🎖️', 'good');
+    state.campus.scholarships.push({ id: 'rotc', name: `${rotcName(state, r.branch)} scholarship`, full: true, minGpa: 2.5 });
+    ctx.log(`You earned a ${rotcName(state, r.branch)} scholarship — full tuition, in exchange for ${OBLIGATION.rotcScholarship} years of active duty.`, '🎖️', 'good');
   }
   if (r.years >= 3) r.contracted = true;
 }
@@ -71,8 +79,8 @@ export function leavePipeline(ctx, reason) {
   const c = state.campus;
   const s = c.scholarships.find((x) => x.id === 'rotc' || x.id === 'academy');
   const owed = c.rotc?.contracted || c.academy ? Math.round(s?.received ?? 0) + (c.academy && (c.academyYears ?? 0) >= 2 ? 50000 : 0) : 0;
-  if (c.rotc) ctx.log(`You left ROTC${reason ? ` (${reason})` : ''}.`, '🎖️', 'warn');
-  if (c.academy) ctx.log(`You separated from the ${ACADEMIES[c.academy].name}${reason ? ` (${reason})` : ''}.`, '🎖️', 'warn');
+  if (c.rotc) ctx.log(`You left the ${rotcName(state, c.rotc.branch)}${reason ? ` (${reason})` : ''}.`, '🎖️', 'warn');
+  if (c.academy) ctx.log(`You separated from the ${academyFor(state, c.academy)}${reason ? ` (${reason})` : ''}.`, '🎖️', 'warn');
   if (owed > 0) {
     state.finances.loans += owed;
     ctx.log(`The government recouped $${owed.toLocaleString()} in education costs (added to your loans).`, '🧾', 'bad');
@@ -100,8 +108,8 @@ export function seekNomination(ctx) {
   const chance = clamp(0.15 + (state.stats.smarts - 70) / 60 + (state.stats.fitness - 60) / 120 + state.campus.resume * 0.02 + nominationBonus(state) - (visibleRecord(state).length ? 0.3 : 0), 0.02, 0.8);
   if (rng.chance(chance)) {
     state.campus.nomination = true;
-    ctx.log('Your congressional representative nominated you to the service academies!', '🏛️', 'milestone');
-  } else ctx.log('Your congressional nomination interview went nowhere this year.', '🏛️', 'warn');
+    ctx.log(isAbroad(state) ? 'You passed the officer-cadet selection: written exams, fitness tests and a board.' : 'Your congressional representative nominated you to the service academies!', '🏛️', 'milestone');
+  } else ctx.log(isAbroad(state) ? 'You didn\'t make the cut at officer-cadet selection this year.' : 'Your congressional nomination interview went nowhere this year.', '🏛️', 'warn');
 }
 
 export function academyPrompt(ctx) {
@@ -113,7 +121,7 @@ export function academyPrompt(ctx) {
     // Abroad: your country's academy, for the branches it has.
     options: Object.entries(ACADEMIES)
       .filter(([id]) => !isAbroad(ctx.state) || nationalBranch(countryOf(ctx.state).id, id))
-      .map(([id, a]) => ({ id, label: isAbroad(ctx.state) ? `${a.icon} ${countryOf(ctx.state).education?.schools?.academy ?? a.name} (${nationalBranch(countryOf(ctx.state).id, id).name})` : `${a.icon} ${a.name}` })),
+      .map(([id, a]) => ({ id, label: isAbroad(ctx.state) ? `${a.icon} ${academyFor(ctx.state, id)} (${nationalBranch(countryOf(ctx.state).id, id).name})` : `${a.icon} ${a.name}` })),
   });
 }
 
@@ -123,7 +131,7 @@ export function resolveAcademy(ctx, _data, branch) {
   state.campus.academyYears = 0;
   state.campus.scholarships.push({ id: 'academy', name: 'Academy appointment (tuition-free)', full: true });
   moveIntoDorm(ctx, { quiet: true });
-  ctx.log(`Reception Day at the ${ACADEMIES[branch].name}. You took the oath and moved into the barracks.`, ACADEMIES[branch].icon, 'milestone');
+  ctx.log(`${isAbroad(state) ? 'First day' : 'Reception Day'} at the ${academyFor(state, branch)}. You took the oath and moved into the barracks.`, ACADEMIES[branch].icon, 'milestone');
 }
 
 /** At graduation: choose a specialty and commission. */
@@ -138,7 +146,7 @@ export function commissionPrompt(ctx) {
     type: 'campus.commission',
     icon: '🎖️',
     title: 'Commissioning Day',
-    text: `You pin on gold bars as a ${BRANCHES[branch].name} officer. ${obligated ? `You owe ${OBLIGATION[pipeline]} years of active duty.` : 'Your ROTC contract is optional — you can walk away.'}\nChoose your branch specialty:`,
+    text: `${isAbroad(state) ? `You were commissioned into the ${nationalBranch(countryOf(state).id, branch)?.name ?? BRANCHES[branch].name}.` : `You pin on gold bars as a ${BRANCHES[branch].name} officer.`} ${obligated ? `You owe ${OBLIGATION[pipeline]} years of active duty.` : 'You have no service obligation: you can walk away.'}\nChoose your branch specialty:`,
     options: [
       ...mosOptions(state, branch, 'officer', { allowDirect: false }).map((o) => (o.disabled && o.hint.startsWith('Officers: age') ? { ...o, disabled: false } : o)),
       ...(obligated ? [] : [{ id: 'decline', label: '🙅 Decline the commission' }]),

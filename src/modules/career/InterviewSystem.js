@@ -5,6 +5,8 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { currentCountry } from '../../core/Locale.js';
+import { vettingForm } from '../world/MilitaryLocal.js';
 import { serviceHiringBonus } from '../service/NationalService.js';
 import { clearanceHiringBonus } from './ClearedWork.js';
 import { transitionHiringBonus } from '../military/Transition.js';
@@ -270,12 +272,12 @@ function finalizeHire(ctx, data) {
     ctx.prompt({
       type: 'career.clearance',
       icon: CLEARANCES[needed].icon,
-      title: `SF-86: ${CLEARANCES[needed].name} Investigation`,
+      title: `${vettingForm(currentCountry())}: ${CLEARANCES[needed].name} Investigation`,
       text: `Your offer is contingent on a ${CLEARANCES[needed].name} clearance${CLEARANCES[needed].polygraph ? ', including a polygraph' : ''}.\n` +
         (issues.length ? `Your background includes: ${issues.map((i) => i.label).join('; ')}.` : 'Your background is clean.'),
       options: [
         { id: 'disclose', label: '📝 Disclose everything truthfully', hint: issues.length ? 'Candor mitigates issues' : 'Nothing to hide' },
-        { id: 'omit', label: '🙈 Leave the problems off the form', hint: issues.length ? 'Lying on an SF-86 is a federal crime' : 'Nothing to hide', tone: issues.length ? 'danger' : undefined },
+        { id: 'omit', label: '🙈 Leave the problems off the form', hint: issues.length ? `Lying on the ${vettingForm(currentCountry())} is ${currentCountry() === 'US' ? 'a federal crime' : 'a crime'}` : 'Nothing to hide', tone: issues.length ? 'danger' : undefined },
       ],
       data: { ...data, clearance: needed },
     });
@@ -383,8 +385,8 @@ export const InterviewSystem = {
       const name = CLEARANCES[data.clearance].name;
       if (result.caught) {
         ctx.log(`${result.reason}. Your offer was rescinded and the case was referred for prosecution.`, '🕵️', 'bad');
-        ctx.toast('Caught lying on your SF-86', 'bad');
-        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: 'SF-86 omission', caught: true });
+        ctx.toast(`Caught lying on your ${vettingForm(currentCountry())}`, 'bad');
+        ctx.emit('legal:offense', { offenseId: 'falseStatement', context: `${vettingForm(currentCountry())} omission`, caught: true });
         return;
       }
       if (!result.granted) {

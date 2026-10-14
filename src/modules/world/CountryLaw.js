@@ -556,3 +556,36 @@ export const LONG_TERM_CARE = {
   AU: { name: 'government-subsidised aged care', covers: 0.7, safetyNet: 'the Commonwealth' },
   FR: { name: 'APA (allocation personnalisée d\'autonomie)', covers: 0.5, safetyNet: 'aide sociale à l\'hébergement' },
 };
+
+/* ------------------------------------------------------------------ */
+/* Workplace law                                                       */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Where discrimination claims go, what protects reservists' jobs, and who
+ * hears unfair-labour-practice cases, by country.
+ */
+const WORKPLACE = {
+  CA: { equality: 'Human Rights Commission', reservist: 'reservist job-protection law', labourBoard: 'the Labour Relations Board' },
+  GB: { equality: 'Employment Tribunal (after ACAS conciliation)', reservist: 'the Reserve Forces (Safeguard of Employment) Act', labourBoard: 'the Employment Tribunal' },
+  DE: { equality: 'Arbeitsgericht', reservist: 'the Arbeitsplatzschutzgesetz', labourBoard: 'the Arbeitsgericht' },
+  FR: { equality: 'Défenseur des droits / prud\'hommes', reservist: 'reservist job protection (Code de la défense)', labourBoard: 'the Conseil de prud\'hommes' },
+  IT: { equality: 'Tribunale del lavoro', reservist: 'reservist job protection', labourBoard: 'the Tribunale del lavoro' },
+  JP: { equality: 'Prefectural Labour Bureau', reservist: 'reservist job protection', labourBoard: 'the Labour Relations Commission' },
+  KR: { equality: 'National Human Rights Commission', reservist: 'reservist job protection', labourBoard: 'the Labor Relations Commission' },
+  MX: { equality: 'Centro de Conciliación Laboral', reservist: 'reservist job protection', labourBoard: 'the Tribunal Laboral' },
+  PH: { equality: 'National Labor Relations Commission', reservist: 'reservist job protection', labourBoard: 'the NLRC' },
+  IN: { equality: 'Labour Commissioner', reservist: 'Territorial Army job protection', labourBoard: 'the Industrial Tribunal' },
+  AU: { equality: 'Fair Work Commission', reservist: 'the Defence Reserve Service (Protection) Act', labourBoard: 'the Fair Work Commission' },
+};
+export function workplaceTerms(cc) {
+  const w = WORKPLACE[cc];
+  if (!w) return {};
+  return {
+    'File an EEOC charge': `Take a claim to the ${w.equality}`, 'an EEOC charge': `a claim to the ${w.equality}`, 'EEOC charge': `${w.equality} claim`, 'EEOC investigation': `${w.equality} case`, 'EEOC mediation': 'Conciliation', 'The EEOC issued a right-to-sue letter. You have 90 days to file in court.': 'Conciliation failed. The case goes to a hearing.', 'Right-to-sue letter issued': 'Referred to a hearing', 'right-to-sue letter': 'referral to a hearing', EEOC: w.equality,
+    'Military Leave (USERRA)': 'Military Leave', 'Under USERRA,': `Under ${w.reservist},`, 'protected under USERRA': `protected under ${w.reservist}`, 'USERRA protects your job': `${w.reservist} protects your job`, 'USERRA reemployment rights': 'reemployment rights', USERRA: w.reservist,
+    'NLRB settlement': 'tribunal settlement', 'The NLRB': w.labourBoard[0].toUpperCase() + w.labourBoard.slice(1), NLRB: w.labourBoard,
+    '(1099)': '(self-employed)', '1099 income': 'self-employed income',
+    '⚠️ No Social Security': '⚠️ No state pension contributions',
+  };
+}

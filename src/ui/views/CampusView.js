@@ -4,7 +4,8 @@
  * ROTC / academies, scholarships, probation and study abroad.
  */
 import { esc, money, button, card, chip, kv, select } from '../Components.js';
-import { CLUBS, ROOM_AND_BOARD, ROTC_BRANCHES, ACADEMIES, onCampus, internshipEligibility, internshipChance, rotcEligibility } from '../../modules/campus/index.js';
+import { CLUBS, ROOM_AND_BOARD, ROTC_BRANCHES, ACADEMIES, onCampus, internshipEligibility, internshipChance, rotcEligibility, rotcName, academyFor } from '../../modules/campus/index.js';
+import { campusSocieties } from '../../modules/world/MilitaryLocal.js';
 import { BRANCHES } from '../../modules/military/MilitaryEngine.js';
 import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
 import { SCHOOLS } from '../../modules/education/Catalog.js';
@@ -21,26 +22,27 @@ export function campusView(state) {
     return extras ? card('Campus & Network', extras, { icon: '🎒' }) : '';
   }
   const residential = onCampus(state);
-  const academy = c.academy ? ACADEMIES[c.academy] : null;
+  const academy = c.academy ? { ...ACADEMIES[c.academy], name: academyFor(state, c.academy) } : null;
+  const societies = campusSocieties(state.character.countryId);
   const scholarships = c.scholarships.map((s) => `<li>🏅 <b>${esc(s.name)}</b> — ${s.full ? 'full tuition' : `${money(s.annual)}/yr`}${s.minGpa ? ` <small>(keep ${s.minGpa.toFixed(1)} GPA)</small>` : ''}</li>`).join('');
 
   const status = kv([
     ['Housing', c.housing === 'dorm' ? `${academy ? 'Barracks' : 'Dorm'}${ROOM_AND_BOARD[e.schoolId] ? ` · ${money(ROOM_AND_BOARD[e.schoolId])}/yr room & board` : ''}` : 'Off campus'],
     ['Standing', c.probation ? '<span class="neg">Academic probation</span>' : c.conduct ? `<span class="neg">Disciplinary record (${c.conduct})</span>` : 'Good standing'],
     c.honors ? ['Honors College', 'Yes'] : null,
-    c.greek ? ['Greek life', `${esc(c.greek.name)}${c.greek.officer ? ' · chapter president' : ''}`] : null,
+    c.greek ? [societies?.label ?? 'Greek life', `${esc(c.greek.name)}${c.greek.officer ? ` · ${esc(societies?.president ?? 'chapter president')}` : ''}`] : null,
     c.sport ? ['Varsity', `${esc(c.sport.name)}${c.sport.scholarship ? ' (scholarship)' : ''}`] : null,
     c.studentGov ? ['Student government', c.studentGov === 'president' ? 'Student body president' : 'Senator'] : null,
-    c.rotc ? ['ROTC', `${BRANCHES[c.rotc.branch].name} · year ${c.rotc.years}${c.rotc.contracted ? ' · contracted' : ''}`] : null,
+    c.rotc ? ['Officer programme', `${esc(rotcName(state, c.rotc.branch))} · year ${c.rotc.years}${c.rotc.contracted ? ' · contracted' : ''}`] : null,
     academy ? ['Academy', academy.name] : null,
     ['Résumé', `${c.resume} pts`],
   ]);
 
   const life = residential ? `<div class="toggle-row">
       ${c.housing === 'dorm' ? (academy ? '' : button('📦 Move off campus', 'campus.moveOffCampus', { variant: 'small' })) : button('🛏️ Move into the dorms', 'campus.moveIntoDorm', { variant: 'small' })}
-      ${academy ? '' : c.greek ? button('🏛️ Deactivate', 'campus.leaveGreek', { variant: 'small' }) : button('🏛️ Rush Greek life', 'campus.rush', { variant: 'small', disabled: Boolean(state.yearly['campus.rush']), hint: `$1,500/yr dues · network · −GPA` })}
-      ${c.sport ? button('🏟️ Quit the team', 'campus.quitTeam', { variant: 'small' }) : button('🏟️ Try out for varsity', 'campus.tryOut', { variant: 'small', disabled: Boolean(state.yearly['campus.tryout']), hint: 'Fitness 60+; 80+ for scholarships' })}
-    </div>` : '<p class="fine">Commuter / online students skip dorms, Greek life and varsity sports.</p>';
+      ${academy || societies === null ? '' : c.greek ? button('🏛️ Deactivate', 'campus.leaveGreek', { variant: 'small' }) : button(`🏛️ ${esc(societies?.join ?? 'Rush Greek life')}`, 'campus.rush', { variant: 'small', disabled: Boolean(state.yearly['campus.rush']), hint: `${money(societies?.dues ?? 1500)}/yr dues · network · −GPA` })}
+      ${c.sport ? button('🏟️ Quit the team', 'campus.quitTeam', { variant: 'small' }) : button(state.character.countryId && state.character.countryId !== 'US' ? '🏟️ Try out for the university team' : '🏟️ Try out for varsity', 'campus.tryOut', { variant: 'small', disabled: Boolean(state.yearly['campus.tryout']), hint: state.character.countryId && state.character.countryId !== 'US' ? 'Fitness 60+' : 'Fitness 60+; 80+ for scholarships' })}
+    </div>` : '<p class="fine">Commuter / online students skip halls of residence, societies and university sport.</p>';
 
   const clubs = Object.entries(CLUBS).map(([id, cl]) => button(`${cl.icon} ${cl.name}`, 'campus.club', { arg: id, variant: c.clubs.includes(id) ? 'tiny on' : 'tiny' })).join('');
 
@@ -53,10 +55,11 @@ export function campusView(state) {
   const offers = c.offers.map((o) => `<li>📨 <b>${esc(o.employer.name)}</b> — return offer, honored at graduation</li>`).join('');
   const mentors = c.mentors.map((m) => `<li>🧑‍🏫 <b>${esc(m.name)}</b> · ${esc(m.employerName)}</li>`).join('');
 
-  const rotc = !c.rotc && !academy && e.programId === 'bachelor' ? `<div class="toggle-row">${ROTC_BRANCHES.map((b) => {
+  const rotcBranches = ROTC_BRANCHES.filter((b) => rotcEligibility(state, b).reason !== 'No university officer programme here: apply to the military academy' && rotcEligibility(state, b).reason !== 'Your country has no such branch');
+  const rotc = !c.rotc && !academy && e.programId === 'bachelor' && rotcBranches.length ? `<div class="toggle-row">${rotcBranches.map((b) => {
     const ok = rotcEligibility(state, b);
-    return button(`${BRANCHES[b].icon} ${BRANCHES[b].name} ROTC`, 'campus.joinRotc', { arg: b, variant: 'small', disabled: !ok.ok, hint: ok.ok ? 'Scholarship chance; commission at graduation' : ok.reason });
-  }).join('')}</div>` : c.rotc ? `<div class="toggle-row">${button('🚪 Quit ROTC', 'campus.quitRotc', { variant: 'small danger', hint: c.rotc.contracted ? 'You will repay the scholarship' : 'No obligation yet' })}</div>` : '';
+    return button(`${BRANCHES[b].icon} ${esc(rotcName(state, b))}`, 'campus.joinRotc', { arg: b, variant: 'small', disabled: !ok.ok, hint: ok.ok ? 'Scholarship chance; commission at graduation' : ok.reason });
+  }).join('')}</div>` : c.rotc ? `<div class="toggle-row">${button('🚪 Quit the programme', 'campus.quitRotc', { variant: 'small danger', hint: c.rotc.contracted ? 'You will repay the scholarship' : 'No obligation yet' })}</div>` : '';
 
   return card(`Campus Life${SCHOOLS[e.schoolId] ? ` · ${esc(SCHOOLS[e.schoolId].name)}` : ''}`, `
     ${status}

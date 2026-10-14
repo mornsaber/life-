@@ -19,6 +19,7 @@
  *
  * job.poly, job.cover ('official' | 'noc'), job.assets
  */
+import { currentCountry } from '../../core/Locale.js';
 import { addHonor } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pickFresh } from '../../core/Pools.js';
@@ -71,7 +72,7 @@ function polygraphPrompt(ctx) {
     text: `Counterintelligence and lifestyle questions, four hours in a cold room. ${issues.length ? `Your background includes: ${issues.map((i) => i.label).join('; ')}.` : 'Your background is clean.'}${ctx.state.publicService.clearance?.concealed ? '\nYou left something off your SF-86.' : ''}`,
     options: [
       { id: 'truth', label: '🗣️ Answer everything truthfully', hint: 'Candor is usually survivable' },
-      { id: 'beat', label: '🧊 Try to beat the machine', hint: 'Lying here is a federal crime', tone: 'danger' },
+      { id: 'beat', label: '🧊 Try to beat the machine', hint: `Lying here is ${currentCountry() === 'US' ? 'a federal crime' : 'a crime'}`, tone: 'danger' },
     ],
   });
 }

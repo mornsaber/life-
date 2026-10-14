@@ -234,11 +234,11 @@ function recallTick(ctx) {
   if (!last || last.discharge !== 'retired' || state.military.recalledAt === state.character.age - 1) return;
   if (!rng.chance(0.06 * (warFactor(state) - 0.5))) return;
   state.military.recalledAt = state.character.age;
-  const pay = Math.round(annualActivePay({ track: last.track, grade: Math.max(0, Number(last.rankCode.slice(2)) - 1), yearsOfService: last.yearsOfService, component: 'active' }) * 0.75);
+  const pay = Math.round(annualActivePay({ track: last.track, grade: Math.max(0, Number(last.rankCode.match(/\d+/)?.[0] ?? 1) - 1), yearsOfService: last.yearsOfService, component: 'active' }) * 0.75);
   if (state.career.job) ctx.emit('career:militaryLeave', { reason: 'retiree recall to active duty' });
   ctx.earn(pay, `Retiree recall — ${last.rankTitle}`, { wage: true });
   ctx.stat('stress', 8);
-  ctx.log(`With the war widening, the ${branchOf(last).name} recalled you from retirement for a year: ${rng.pick(['training replacements', 'a staff job at a joint headquarters', 'running a mobilization center', 'backfilling a deployed unit stateside'])}.`, branchOf(last).icon, 'military');
+  ctx.log(`With the war widening, the ${branchOf(last).name} recalled you from retirement for a year: ${rng.pick(['training replacements', 'a staff job at a joint headquarters', 'running a mobilization center', last.nation ? 'backfilling a deployed unit at home' : 'backfilling a deployed unit stateside'])}.`, branchOf(last).icon, 'military');
   ctx.emit('military:releasedFromActive', {});
 }
 

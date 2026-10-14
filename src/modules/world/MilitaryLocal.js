@@ -425,3 +425,102 @@ const JUSTICE = {
 };
 /** { code, court (null: civilian courts), prison, counsel } for a nation (undefined: US). */
 export const militaryJustice = (nation) => (!nation || nation === 'US' ? undefined : JUSTICE[nation] ?? { code: 'military law', court: 'Court Martial', prison: 'a military prison', counsel: 'Military defence counsel' });
+
+/* ------------------------------------------------------------------ */
+/* Security vetting                                                    */
+/* ------------------------------------------------------------------ */
+
+/** Each country's vetting levels (public trust, secret, top secret) and the form you fill in. */
+const VETTING = {
+  GB: { form: 'National Security Vetting questionnaire', publicTrust: 'Counter-Terrorist Check (CTC)', secret: 'Security Check (SC)', topSecret: 'Developed Vetting (DV)' },
+  CA: { form: 'Personnel Screening, Consent and Authorization form', publicTrust: 'Reliability Status', secret: 'Secret clearance', topSecret: 'Top Secret clearance' },
+  AU: { form: 'AGSVA security clearance pack', publicTrust: 'Baseline Vetting', secret: 'Negative Vetting 1 (NV1)', topSecret: 'Positive Vetting (PV)' },
+  DE: { form: 'Sicherheitserklärung', publicTrust: 'Sicherheitsüberprüfung Ü1', secret: 'Sicherheitsüberprüfung Ü2', topSecret: 'Sicherheitsüberprüfung Ü3' },
+  FR: { form: 'notice individuelle d\'habilitation', publicTrust: 'Enquête administrative', secret: 'Habilitation Secret', topSecret: 'Habilitation Très Secret' },
+  IT: { form: 'questionario NOS', publicTrust: 'Nulla osta (riservato)', secret: 'NOS Segreto', topSecret: 'NOS Segretissimo' },
+  JP: { form: 'security clearance questionnaire', publicTrust: 'Suitability assessment', secret: 'Specially Designated Secrets clearance', topSecret: 'Specially Designated Secrets clearance (top)' },
+  KR: { form: 'security clearance questionnaire', publicTrust: 'Security screening', secret: 'Secret (II-grade) clearance', topSecret: 'Top Secret (I-grade) clearance' },
+  IN: { form: 'Intelligence Bureau verification form', publicTrust: 'Police verification', secret: 'Secret clearance', topSecret: 'Top Secret clearance' },
+};
+/** The security vetting form (the SF-86 in the US). */
+export const vettingForm = (cc) => (!cc || cc === 'US' ? 'SF-86' : VETTING[cc]?.form ?? 'security vetting form');
+/** A clearance level's local name (undefined: the US one). */
+export const clearanceName = (cc, level) => (!cc || cc === 'US' ? undefined : VETTING[cc]?.[level]);
+
+/* ------------------------------------------------------------------ */
+/* Military jobs                                                       */
+/* ------------------------------------------------------------------ */
+
+/** Jobs that are pipelines into US units, or US-only missions. */
+const US_ONLY_MOS = /Special Forces|SEAL|MARSOC|Pararescue|Special Warfare|Tactical Air Control|Nuclear and Missile|Coast Guard|CGIS/;
+const MOS_WORDS = [
+  [/UH-60 Helicopter Repairer/, 'Helicopter Technician'], [/ \(Seabee\)/, ''], [/Hospital Corpsman/, 'Medical Assistant'], [/Culinary Specialist/, 'Chef'],
+  [/Legalman/, 'Legal Administrator'], [/Judge Advocate/, 'Legal Officer'], [/Student Naval Aviator \(Marine Pilot\)/, 'Pilot'], [/Security Forces Officer/, 'Force Protection Officer'],
+  [/Security Forces/, 'Force Protection'], [/CID Special Agent/, 'Military Police Investigator'], [/Religious Affairs Specialist/, 'Chaplain\'s Assistant'],
+  [/Mobility Pilot \(Airlift\/Tanker\)/, 'Transport Pilot'], [/ \(CWO\)/, ''], [/Infantryman/, 'Infantry Soldier'],
+];
+/**
+ * A military job as another country's forces have it: a plain title (no US
+ * MOS/AFSC codes or US equipment), or null where it's a US-only pipeline.
+ */
+export function localMos(nation, mos) {
+  if (!nation || nation === 'US') return undefined;
+  if (US_ONLY_MOS.test(mos.title)) return null;
+  return MOS_WORDS.reduce((t, [re, to]) => t.replace(re, to), mos.title);
+}
+
+/* ------------------------------------------------------------------ */
+/* Officer programmes at university, and the academies                 */
+/* ------------------------------------------------------------------ */
+
+/** University officer programmes by branch (null: none; obligation: a service contract follows). */
+const CAMPUS = {
+  GB: { army: 'University Officers\' Training Corps', navy: 'University Royal Naval Unit', airforce: 'University Air Squadron', obligation: false },
+  CA: { army: 'Regular Officer Training Plan (Army)', navy: 'Regular Officer Training Plan (Navy)', airforce: 'Regular Officer Training Plan (Air Force)', obligation: true },
+  AU: { army: 'Defence University Sponsorship (Army)', navy: 'Defence University Sponsorship (Navy)', airforce: 'Defence University Sponsorship (Air Force)', obligation: true },
+  KR: { army: 'ROTC (Hakgundan)', navy: 'Naval ROTC', airforce: 'Air Force ROTC', obligation: true },
+  PH: { army: 'Advance ROTC (Philippine Army)', navy: 'Naval ROTC', airforce: 'Air Force ROTC', obligation: true },
+  IN: { army: 'NCC Army Wing (C certificate entry)', navy: 'NCC Naval Wing', airforce: 'NCC Air Wing', obligation: false },
+};
+/** The university officer programme for a branch (undefined: US ROTC; null: none in that country). */
+export function campusCadets(cc, branch) {
+  if (!cc || cc === 'US') return undefined;
+  return CAMPUS[cc]?.[branch] ?? null;
+}
+export const campusObligation = (cc) => (!cc || cc === 'US' ? true : CAMPUS[cc]?.obligation ?? false);
+
+const ACADEMY_NAMES = {
+  GB: { army: 'Royal Military Academy Sandhurst', navy: 'Britannia Royal Naval College, Dartmouth', airforce: 'RAF College Cranwell' },
+  CA: { army: 'Royal Military College of Canada', navy: 'Royal Military College of Canada', airforce: 'Royal Military College of Canada' },
+  AU: { army: 'Australian Defence Force Academy', navy: 'Australian Defence Force Academy', airforce: 'Australian Defence Force Academy' },
+  DE: { army: 'Universität der Bundeswehr München', navy: 'Universität der Bundeswehr Hamburg', airforce: 'Universität der Bundeswehr München' },
+  FR: { army: 'École spéciale militaire de Saint-Cyr', navy: 'École navale', airforce: 'École de l\'air et de l\'espace' },
+  IT: { army: 'Accademia Militare di Modena', navy: 'Accademia Navale di Livorno', airforce: 'Accademia Aeronautica di Pozzuoli' },
+  JP: { army: 'National Defense Academy of Japan', navy: 'National Defense Academy of Japan', airforce: 'National Defense Academy of Japan' },
+  KR: { army: 'Korea Military Academy', navy: 'Republic of Korea Naval Academy', airforce: 'Korea Air Force Academy' },
+  MX: { army: 'Heroico Colegio Militar', navy: 'Heroica Escuela Naval Militar', airforce: 'Colegio del Aire' },
+  PH: { army: 'Philippine Military Academy', navy: 'Philippine Military Academy', airforce: 'Philippine Military Academy' },
+  IN: { army: 'National Defence Academy, Khadakwasla', navy: 'Indian Naval Academy, Ezhimala', airforce: 'National Defence Academy, Khadakwasla' },
+};
+export const academyName = (cc, branch) => (!cc || cc === 'US' ? undefined : ACADEMY_NAMES[cc]?.[branch] ?? 'the national military academy');
+
+/* ------------------------------------------------------------------ */
+/* Campus societies                                                    */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Fraternity-style student societies by country (null: none). The US and
+ * Canada have Greek letters; Germany its Studentenverbindungen; the
+ * Philippines its (notoriously hazing) fraternities; Britain its dining and
+ * drinking societies.
+ */
+const SOCIETIES = {
+  US: null,
+  CA: { label: 'Greek life', join: 'Rush a fraternity or sorority', initiation: 'pledge week', president: 'chapter president', houses: ['Zeta Psi', 'Alpha Delta Phi', 'Delta Upsilon', 'Kappa Alpha Theta'], dues: 900 },
+  DE: { label: 'Studentenverbindung', join: 'Join a Studentenverbindung', initiation: 'Fuxenzeit', president: 'Senior (Sprecher)', houses: ['Corps Rhenania', 'Burschenschaft Arminia', 'KStV Ripuaria', 'Landsmannschaft Teutonia'], dues: 400 },
+  AT: null,
+  PH: { label: 'Fraternities & sororities', join: 'Join a fraternity or sorority', initiation: 'final rites', president: 'Grand Archon', houses: ['Upsilon Sigma Phi', 'Alpha Phi Beta', 'Sigma Rho', 'Tau Gamma Phi', 'Alpha Phi Omega'], dues: 300, danger: 1.8 },
+  GB: { label: 'Dining & drinking societies', join: 'Try for a college dining society', initiation: 'initiation night', president: 'society president', houses: ['the college dining society', 'the rugby club\'s drinking society', 'the Piers Gaveston Society'], dues: 600 },
+};
+/** Greek life where you study: { label, join, initiation, president, houses, dues, danger } or null where there is none. */
+export const campusSocieties = (cc) => ((cc ?? 'US') === 'US' ? undefined : SOCIETIES[cc] ?? null);

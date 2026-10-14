@@ -95,13 +95,57 @@ export const EDUCATION = {
 export const US_SCHOOL_NAMES = { community: 'Riverside Community College', technical: 'Metro Technical Institute', online: 'Summit Online University', state: 'State University', private: 'Whitmore College', academy: 'U.S. Service Academy', elite: 'Ivy Crest University' };
 
 /** Display swaps for a country: school names, school stages and license names. */
+/**
+ * The two-year post-secondary qualification each country has in place of the
+ * US associate's degree (null: none — Germany trains through apprenticeships).
+ */
+export const SHORT_CYCLE = {
+  CA: 'College Diploma', GB: 'Foundation Degree / HND', DE: null, JP: 'Junior College Diploma (Tanki Daigaku)', KR: 'Junior College Diploma',
+  IT: 'ITS Academy Diploma', MX: 'Técnico Superior Universitario (TSU)', PH: 'Associate\'s Degree', IN: 'Polytechnic Diploma', AU: 'Advanced Diploma (TAFE)', FR: 'BTS / BUT',
+};
+/** Is a US-style two-year degree offered here? */
+export const shortCycleOffered = (countryId) => !countryId || countryId === 'US' || SHORT_CYCLE[countryId] !== null;
+
+/** US-branded certifications under neutral names everywhere else. */
+const CREDENTIAL_TERMS = {
+  'Driver\'s License (Class D)': 'Driving licence (car)', 'Commercial Driver License (Class A)': 'Heavy goods vehicle licence (articulated)', 'Commercial Driver License (Class B)': 'Heavy goods vehicle licence (rigid)',
+  'Passenger Endorsement (P)': 'Bus & coach licence', 'School Bus Endorsement (S)': 'School bus driver certificate', 'HazMat Endorsement (H)': 'Dangerous goods (ADR) certificate', 'Learner\'s Permit': 'Learner licence',
+  'EMT (NREMT)': 'Emergency Medical Technician', 'Paramedic (NRP)': 'Registered Paramedic', 'Reserve Peace Officer (POST Level II)': 'Reserve police training', 'Federal Law Enforcement Training (FLETC)': 'National police academy',
+  'EPA Section 608 Refrigerant Certification': 'F-gas refrigerant certification', 'AWS Certified Welder': 'Certified welder', 'ASE Certified Technician': 'Certified vehicle technician', 'FAA Certified Professional Controller': 'Air traffic controller licence',
+  'Senior Executive Service Certification (OPM QRB)': 'Senior civil service assessment', 'Aircraft Rescue & Firefighting (ARFF, FAA Part 139)': 'Aerodrome rescue & firefighting', 'USCG Master License (Fishing Vessels)': 'Fishing vessel skipper certificate',
+  'FRA Certified Conductor (Part 242)': 'Train conductor certificate', 'FRA Certified Locomotive Engineer (Part 240)': 'Train driver licence', 'Security Guard License (Guard Card)': 'Security licence', 'TSA Screener Certification': 'Aviation security screener certificate',
+  'APCO Public Safety Telecommunicator': 'Emergency call-handler training', 'State Teaching Certificate': 'Teaching qualification', 'Real Estate Salesperson License': 'Estate agent qualification', 'Real Estate Broker License': 'Licensed estate agency principal',
+  'Insurance Producer License': 'Insurance adviser qualification', 'OSHA 30 Construction Safety': 'Construction site safety card', 'FINRA Series 7': 'Securities adviser licence', 'FINRA Series 66': 'Investment adviser licence',
+  'IRS Enrolled Agent (EA)': 'Registered tax adviser', 'ICC Building Inspector': 'Building control surveyor', 'FAA First-Class Medical': 'Class 1 aviation medical', 'TWIC (Transportation Worker ID Card)': 'Port security pass',
+  'Merchant Mariner Credential (MMC)': 'Seafarer\'s discharge book', 'ServSafe Food Protection Manager': 'Food hygiene certificate (supervisor)', 'Responsible Alcohol Server (TIPS)': 'Responsible alcohol service certificate',
+  'SAG-AFTRA Membership': 'Actors\' union membership', 'FAA Remote Pilot (Part 107 Drone)': 'Drone operator certificate', 'Forklift Operator Certification (OSHA)': 'Forklift operator licence', 'HAZWOPER 40-Hour': 'Hazardous waste operations training',
+  'U.S. Border Patrol Academy (Artesia)': 'Border guard training', 'FBI Academy (Quantico)': 'National investigators\' academy', 'DEA Academy (Quantico)': 'Drug enforcement training', 'NCCCO Certified Crane Operator': 'Certified crane operator',
+  'NACA Animal Control Officer Certification': 'Animal welfare officer certificate', 'Foreign Language Proficiency (FSI 3/3)': 'Foreign language proficiency (C1)', 'Child Development Associate (CDA)': 'Early years childcare qualification',
+  'Registered Architect (ARE)': 'Registered architect', 'Licensed Clinical Social Worker (LCSW)': 'Registered social worker', 'Pharmacist License (NAPLEX + MPJE)': 'Registered pharmacist', 'Physician Assistant (PA-C, PANCE)': 'Physician associate',
+  'Veterinary License (NAVLE)': 'Veterinary registration', 'Dental License (DDS/DMD)': 'Dental registration', 'Certified Nursing Assistant (CNA)': 'Healthcare assistant certificate', 'Incident Command (ICS-300)': 'Incident command training',
+  'Wildland Firefighter (FFT2, S-130/S-190)': 'Wildfire firefighter', 'Wildland Squad Boss (FFT1)': 'Wildfire crew leader', 'Journeyman Electrician License': 'Qualified electrician', 'Master Electrician License': 'Master electrician', 'Journeyman Plumber License': 'Qualified plumber', 'Master Plumber License': 'Master plumber',
+  'Journeyman Lineman Card': 'Qualified line worker', 'Journeyman Carpenter Card': 'Qualified carpenter', 'Journeyman Ironworker Card': 'Qualified steel erector', 'Water / Wastewater Operator Certification': 'Water treatment operator certificate',
+};
+/** Where a country's own name is well known. */
+const CREDENTIAL_LOCAL = {
+  GB: { 'Driving licence (car)': 'Full UK driving licence (Category B)', 'Heavy goods vehicle licence (articulated)': 'LGV licence (Category C+E)', 'Heavy goods vehicle licence (rigid)': 'LGV licence (Category C)', 'Bus & coach licence': 'PCV licence (Category D)', 'Security licence': 'SIA licence', 'Construction site safety card': 'CSCS card', 'Learner licence': 'Provisional driving licence', 'Certified vehicle technician': 'IMI accredited technician' },
+  DE: { 'Driving licence (car)': 'Führerschein Klasse B', 'Heavy goods vehicle licence (articulated)': 'Führerschein Klasse CE', 'Heavy goods vehicle licence (rigid)': 'Führerschein Klasse C', 'Bus & coach licence': 'Führerschein Klasse D', 'Qualified electrician': 'Elektroniker (Gesellenbrief)', 'Master electrician': 'Elektrotechnikermeister', 'Qualified plumber': 'Anlagenmechaniker SHK (Gesellenbrief)', 'Master plumber': 'Installateur- und Heizungsbauermeister' },
+  AU: { 'Driving licence (car)': 'Driver licence (C class)', 'Heavy goods vehicle licence (articulated)': 'Heavy combination licence (HC)', 'Heavy goods vehicle licence (rigid)': 'Heavy rigid licence (HR)', 'Construction site safety card': 'White Card', 'Responsible alcohol service certificate': 'RSA certificate', 'Forklift operator licence': 'High risk work licence (forklift)' },
+  CA: { 'Driving licence (car)': 'Driver\'s licence (Class G/5)', 'Heavy goods vehicle licence (articulated)': 'Commercial licence (Class A/1)', 'Heavy goods vehicle licence (rigid)': 'Commercial licence (Class D/3)' },
+  FR: { 'Driving licence (car)': 'Permis B', 'Heavy goods vehicle licence (articulated)': 'Permis CE', 'Heavy goods vehicle licence (rigid)': 'Permis C', 'Bus & coach licence': 'Permis D' },
+};
+
 export function educationTerms(countryId) {
   const e = EDUCATION[countryId];
   if (!e) return {};
   const schools = Object.fromEntries(Object.entries(e.schools).map(([k, v]) => [US_SCHOOL_NAMES[k], v]).filter(([k]) => k));
   const pro = PROFESSIONAL_DEGREES[countryId];
   const degrees = pro ? { 'Juris Doctor (Law School)': pro.jd, 'Doctor of Medicine (Medical School)': pro.md } : {};
-  return { ...schools, ...degrees, ...(e.words ?? {}), ...(e.licenses ?? {}) };
+  const short = SHORT_CYCLE[countryId] ? { 'Associate\'s Degree': SHORT_CYCLE[countryId], 'associate\'s degree': SHORT_CYCLE[countryId], ' (A.A.S.)': '', 'Associate\'s': SHORT_CYCLE[countryId] } : { ' (A.A.S.)': '' };
+  // Neutral names first, then the country's own: chained, so 'CDL Class A' → 'HGV (articulated)' → 'LGV Category C+E'.
+  const local = CREDENTIAL_LOCAL[countryId] ?? {};
+  const creds = Object.fromEntries(Object.entries(CREDENTIAL_TERMS).map(([us, neutral]) => [us, local[neutral] ?? neutral]));
+  return { ...creds, ...schools, ...degrees, ...short, ...(e.words ?? {}), ...(e.licenses ?? {}) };
 }
 
 /** Tuition at a school type where you live, or null to use the US price. */
