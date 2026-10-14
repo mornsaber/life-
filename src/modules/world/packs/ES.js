@@ -34,6 +34,7 @@ export const ES = {
     capital: 'Madrid',
     currency: { code: 'EUR', symbol: '€', perUsd: EUR },
     languages: ['Spanish'],
+    emergency: '112',
     retirementAge: 67,
     tax: {
       // IRPF 2025, state and average regional scale combined: 19% to €12,450; 24% to €20,200; 30% to €35,200;

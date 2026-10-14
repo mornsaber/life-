@@ -33,6 +33,7 @@ import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
+import { localAgency } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
@@ -146,6 +147,37 @@ export function ensureOrgOfType(state, typeId, regionId, { size = 'medium' } = {
   return buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession });
 }
 
+/**
+ * Abroad, a government body takes its local agency's names: a department is the local
+ * service (An Garda Síochána, not "State Police"), headed by that service's own top rank.
+ */
+function localLabels(state, occupations) {
+  const cc = state.character?.countryId ?? 'US';
+  const occ = occupations?.find((id) => localAgency(cc, id));
+  if (cc === 'US' || !occ) return null;
+  const p = getProfession(occ);
+  const top = p?.levels.filter((l) => !l.id.includes('_cmd')).at(-1);
+  return { name: p?.name, head: top?.title, agency: localAgency(cc, occ) };
+}
+
+/**
+ * A post as an organization abroad names it: a department's head takes the local
+ * service's top rank, and an appointment by "the governor" is one by the government.
+ */
+export function localizePost(org, deptId, def) {
+  if (!def) return def;
+  const cc = REGIONS[org?.regionId]?.country ?? (org?.stateId ? STATES[org.stateId]?.country : null) ?? 'US';
+  if (cc === 'US') return def;
+  const t = orgType(org.typeId);
+  const occupations = deptId ? t?.departments.find((d) => d.id === deptId)?.occupations : t?.departments.length === 1 ? t.departments[0].occupations : null;
+  const local = t?.sector !== 'private' ? localLabels({ character: { countryId: cc } }, occupations) : null;
+  const appointedBy = def.appointedBy && /governor|President|Senate/i.test(def.appointedBy) ? 'the government' : def.appointedBy;
+  // US elected posts (sheriff, district attorney) are career appointments abroad; local offices stay elected.
+  const usElected = def.office && !['mayor', 'cityCouncil', 'schoolBoard', 'cityManager'].includes(def.office);
+  if (!local?.head && appointedBy === def.appointedBy && !usElected) return def;
+  return { ...def, title: local?.head ?? def.title, appointedBy: usElected ? 'the government' : appointedBy, ...(usElected ? { selection: 'appointed', office: undefined } : {}) };
+}
+
 function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession }) {
   const t = orgType(typeId);
   const pick = { typeId, key };
@@ -165,12 +197,17 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     people: {},
     founded: state.character?.age ?? 0,
   };
-  const head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
+  // Abroad: a state-level body is named for its first local service (the Hokkaido Prefectural Police).
+  const lead = t.scope !== 'market' && t.sector !== 'private' ? localLabels(state, t.departments[0]?.occupations) : null;
+  if (lead?.agency?.employer && t.scope === 'state') org.name = lead.agency.employer(ctx.city, stateId, ctx.state);
+  const head = newPerson(rng, org, { title: lead && t.departments.length === 1 ? lead.head ?? t.head.title : t.head.title, selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
   org.head = head.id;
   for (const d of t.departments) {
     const range = HEADCOUNT[org.size];
-    const dept = { id: d.id, name: d.name, head: null, headcount: Math.round(rng.int(range[0], range[1]) / Math.max(1, t.departments.length)), seats: {} };
-    const dh = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62) });
+    const local = t.sector !== 'private' ? localLabels(state, d.occupations) : null;
+    const dept = { id: d.id, name: local?.name ?? d.name, head: null, headcount: Math.round(rng.int(range[0], range[1]) / Math.max(1, t.departments.length)), seats: {} };
+    const post = localizePost(org, d.id, d.head);
+    const dh = newPerson(rng, org, { title: post.title, selection: post.selection, deptId: d.id, age: rng.int(40, 62) });
     dept.head = dh.id;
     org.departments[d.id] = dept;
   }
@@ -296,7 +333,8 @@ export function ensureHeads(state, org) {
   if (!org.head && !org.playerHead && !org.officeHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
   for (const d of t.departments) {
     const dept = org.departments[d.id];
-    if (dept && !dept.head && !dept.playerHead && !dept.officeHead && deptHere(state, d)) dept.head = newPerson(rng, org, { title: d.head.title, selection: d.head.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
+    const post = org.business ? d.head : localizePost(org, d.id, d.head);
+    if (dept && !dept.head && !dept.playerHead && !dept.officeHead && deptHere(state, d)) dept.head = newPerson(rng, org, { title: post.title, selection: post.selection, deptId: d.id, age: rng.int(40, 62), years: 0 }).id;
   }
 }
 

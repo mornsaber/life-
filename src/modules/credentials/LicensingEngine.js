@@ -120,6 +120,9 @@ const affiliationLabel = (id) => AFFILIATION_LABEL[id] ?? id;
 /** Agency-internal courses are only open to members: your job's profession or an active volunteer service. */
 export function affiliated(state, ids) {
   if (ids.includes(state.career.job?.professionId)) return true;
+  // A national agency abroad counts as its US counterpart (an AFP agent for an FBI-only course).
+  const template = state.career.job ? PROFESSIONS[state.career.job.professionId]?.template : null;
+  if (template && ids.includes(template)) return true;
   return ids.some((id) => state.emergency[id] && id !== 'history' && !state.emergency[id].onLeave);
 }
 

@@ -15,7 +15,7 @@ import { professionsFor } from '../../modules/career/JobTrees.js';
 export function govView(state) {
   const ps = state.publicService;
   const vet = veteranPreference(state);
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   // Abroad: only the exams for public jobs that exist here (no US federal assessments).
   const pool = abroad ? professionsFor(state) : [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(STATE_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)];
   const exams = Object.entries(EXAMS).filter(([id]) => !abroad || pool.some((p) => p.exam === id)).map(([id, exam]) => {

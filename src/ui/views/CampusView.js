@@ -7,7 +7,7 @@ import { esc, money, button, card, chip, kv, select } from '../Components.js';
 import { CLUBS, ROOM_AND_BOARD, ROTC_BRANCHES, ACADEMIES, onCampus, internshipEligibility, internshipChance, rotcEligibility, rotcName, academyFor } from '../../modules/campus/index.js';
 import { campusSocieties } from '../../modules/world/MilitaryLocal.js';
 import { BRANCHES } from '../../modules/military/MilitaryEngine.js';
-import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
+import { PROFESSION_LIST, PROFESSIONS, professionsFor } from '../../modules/career/JobTrees.js';
 import { SCHOOLS } from '../../modules/education/Catalog.js';
 
 export function campusView(state) {
@@ -46,7 +46,9 @@ export function campusView(state) {
 
   const clubs = Object.entries(CLUBS).map(([id, cl]) => button(`${cl.icon} ${cl.name}`, 'campus.club', { arg: id, variant: c.clubs.includes(id) ? 'tiny on' : 'tiny' })).join('');
 
-  const fields = PROFESSION_LIST.filter((p) => p.minAge <= 21);
+  // Internships in fields that exist where you study (no U.S. Postal Service in Glasgow).
+  const here = new Set(professionsFor(state).map((p) => p.id));
+  const fields = PROFESSION_LIST.filter((p) => p.minAge <= 21 && here.has(p.id)).map((p) => PROFESSIONS[p.id] ?? p);
   const intern = internshipEligibility(state, 'tech');
   const internForm = `<div class="toggle-row" data-collect-root>
       ${select('profession', fields.map((p) => ({ value: p.id, label: `${p.icon} ${p.name} (${Math.round(internshipChance(state, p.id) * 100)}%)` })), { label: 'Field' })}

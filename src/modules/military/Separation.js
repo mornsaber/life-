@@ -191,7 +191,7 @@ export function resolveLeaveService(ctx, _data, optionId) {
   const branch = branchOf(svc).name;
   const deployed = svc.deployedThisYear;
   discharge(ctx, 'oth', 'Dropped from the rolls as a deserter.');
-  state.military.deserter = { age: state.character.age, branch: svc.branch };
+  state.military.deserter = { age: state.character.age, branch: svc.branch, nation: svc.nation ?? null };
   ctx.emit('legal:offense', { offenseId: 'desertion', context: `${branch}${deployed ? ', while deployed' : ''}`, discovery: 0.2, evidence: 0.9, yearsLeft: 99 });
   ctx.log(`You walked away from the ${branch} and didn't come back. A federal desertion warrant now has your name on it.`, '🏃', 'bad');
   ctx.stat('stress', 12);

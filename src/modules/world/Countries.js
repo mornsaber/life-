@@ -428,6 +428,20 @@ const ABROAD_TERMS = {
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
   // State-police events: national and state forces abroad don't call their officers troopers.
+  // Laws, events and offices with US names.
+  'Standard (OSHA)': 'Standard', 'Forklift Operator Certification (OSHA)': 'Forklift operator licence', OSHA: 'the workplace-safety regulator',
+  'Federal employees can\'t run (Hatch Act)': 'Civil servants must resign to stand for office', 'Active duty can\'t run (Hatch Act)': 'Serving forces members can\'t stand for office',
+  'Hatch Act: you\'re running for office': 'Civil servants can\'t campaign for office', 'misled Congress': 'misled Parliament', 'The FBI traced the bitcoin': 'Cybercrime detectives traced the bitcoin', 'Report it to the FBI': 'Report it to the police',
+  'Presidential Early Career Award for Scientists and Engineers': 'National Early-Career Research Award', 'The U.S. government\'s highest honor for early-career researchers.': 'The government\'s highest honour for early-career researchers.',
+  'Presented by the President at the White House.': 'Presented by the head of state.', 'Pulitzer Prize in History': 'National History Book Prize', 'For a distinguished book on American history.': 'For a distinguished book on the nation\'s history.', 'The FBI has your picture.': 'The police have your picture.', 'Twenty-dollar ride.': 'A cheap ride home.',
+  'State Active Duty: ': 'Domestic call-out: ', 'The governor activated your Guard unit for': 'The government called out your reserve unit for', 'The governor activated your unit for the unrest in': 'The government called out your unit for the unrest in',
+  'State active duty pay': 'Call-out pay', 'State active duty —': 'Domestic call-out —', 'Counterfeiting U.S. Currency': 'Counterfeiting banknotes', ' (Military Selective Service Act)': '',
+  'every spare dollar': 'every spare penny', 'every dollar': 'every penny',
+  'the FBI traced the bitcoin': 'cybercrime detectives traced the bitcoin', 'an ATF trace of a crime gun': 'a police trace of a crime gun', 'An ATF trace of a crime gun': 'A police trace of a crime gun',
+  ' (18 U.S.C. § 1708)': '', ' (18 U.S.C. § 794)': '', 'Straw purchases, sold up the I-95 "iron pipeline"': 'Straw purchases, sold on to gangs',
+  'You moved guns bought in loose-law states to buyers up north.': 'You had straw buyers purchase guns and sold them on to gangs.',
+  'packed for the Fourth of July': 'packed for the holiday weekend', 'Thanksgiving was frosty.': 'The holidays were frosty.', 'Thanksgiving waiting': 'the holidays waiting', 'The DEA audited': 'The medicines regulator audited',
+  'one of the governor\'s biggest donors': 'one of the governing party\'s biggest donors', 'at the pleasure of the governor': 'at the pleasure of the minister',
   'Paid Fire Chief': 'Full-time Chief Fire Officer', 'Paid Chief of Operations': 'Full-time Head of Operations',
   'A Fellow Trooper': 'A Fellow Officer', 'off-duty trooper': 'off-duty officer', 'Call a trooper': 'Call for backup',
   'Police Purple Heart': 'Injured on Duty award', 'Police Medal of Valor': 'Police Medal for Gallantry', 'Fire Department Medal of Valor': 'Fire Service Gallantry Award', 'Medal of Valor': 'Medal for Gallantry',
@@ -444,6 +458,9 @@ const ABROAD_TERMS = {
   'Your congressional representative nominated you to the service academies!': 'You passed the military academy\'s entrance selection!', 'U.S. Military Academy (West Point)': 'the national military academy', 'U.S. Naval Academy (Annapolis)': 'the naval academy', 'U.S. Air Force Academy': 'the air force academy', 'New state law': 'New regional law', 'New federal law': 'New national law', 'lost the primary for': 'weren\'t picked as your party\'s candidate for', 'won the primary for': 'were picked as your party\'s candidate for',
   'An extra state tax on corporate profits.': 'An extra regional tax on corporate profits.', '2 points per dollar': '2 points per unit of currency spent', 'Federal student loans are paused while you serve.': 'Student loans are paused while you serve.', 'plus an edge in federal hiring': 'plus an edge in public-sector hiring', 'State income tax': 'Regional income tax', 'Legal to buy at a dispensary under state law (still federally illegal).': 'Legal to buy at licensed shops.' };
 
+/** The emergency number to dial (where it isn't 911). Packs set `country.emergency`. */
+const EMERGENCY_NUMBER = { GB: '999', IE: '112', AU: '000', NZ: '111', DE: '112', FR: '112', IT: '112', ES: '112', JP: '119', KR: '119', IN: '112' };
+
 /** Swap US institution names in display text for the country's own. */
 export function localizeTerms(text, country) {
   if (!country?.terms) return text;
@@ -451,6 +468,9 @@ export function localizeTerms(text, country) {
   // Longest phrases first, so "high-school diploma" wins over "high school".
   const pairs = country.sortedTerms ??= Object.entries({ ...ABROAD_TERMS, ...country.terms }).sort((a, b) => b[0].length - a[0].length);
   for (const [us, local] of pairs) if (out.includes(us)) out = out.split(us).join(local);
+  // 911 as a number on its own (not inside an amount like 1,911).
+  const dial = country.emergency ?? EMERGENCY_NUMBER[country.id];
+  if (dial && out.includes('911')) out = out.replace(/(?<![\d,.$])911(?![\d,])/g, dial);
   return out;
 }
 
@@ -460,7 +480,8 @@ export function localizeHtml(html, country) {
   // <span data-raw>…</span> is shown as written (a foreign degree keeps its school's own name).
   const raw = [];
   const kept = html.replace(/<span data-raw>([^<]*)<\/span>/g, (m) => `\u0000${raw.push(m) - 1}\u0000`);
-  return kept.replace(/>([^<]+)</g, (m, text) => `>${localizeTerms(localizeMoney(text, country), country)}<`).replace(/\u0000(\d+)\u0000/g, (m, i) => raw[Number(i)]);
+  // (Apostrophes arrive escaped; terms are written with plain ones.)
+  return kept.replace(/>([^<]+)</g, (m, text) => `>${localizeTerms(localizeMoney(text.replace(/&#39;/g, '\''), country), country).replace(/'/g, '&#39;')}<`).replace(/\u0000(\d+)\u0000/g, (m, i) => raw[Number(i)]);
 }
 
 /* ------------------------------------------------------------------ */

@@ -467,7 +467,7 @@ function progression(state, job, profession, size) {
   const orgDef = postDef(org, null);
   const onLadder = (def) => def && ((def.occupation === job.professionId && def.levelId && here.some((l) => l.id === def.levelId)) || here.some((l) => l.title.toLowerCase() === String(def.title).toLowerCase()));
   const posts = [];
-  if (deptDef && !onLadder(deptDef)) posts.push({ def: deptDef, scope: t.departments.find((d) => d.id === job.employer.deptId)?.name ?? 'Department', mine: Boolean(job.headOf?.deptId) });
+  if (deptDef && !onLadder(deptDef)) posts.push({ def: deptDef, scope: org.departments[job.employer.deptId]?.name ?? t.departments.find((d) => d.id === job.employer.deptId)?.name ?? 'Department', mine: Boolean(job.headOf?.deptId) });
   if (orgDef && !onLadder(orgDef)) posts.push({ def: orgDef, scope: org.name, mine: Boolean(job.headOf) && !job.headOf.deptId });
   if (!posts.length) return html;
   const how = (def) => (def.selection === 'elected' || def.office ? '🗳️ elected' : def.appointedBy ? `appointed by ${def.appointedBy}` : def.selection === 'board' ? 'chosen by the board' : 'promoted from within');

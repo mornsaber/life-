@@ -511,6 +511,14 @@ export function volunteerRanks(countryId, serviceId) {
   if (!countryId || countryId === 'US' || countryId === 'CA') return null;
   return VOLUNTEER_RANKS[countryId]?.[serviceId] ?? VOLUNTEER_RANKS['*'][serviceId] ?? null;
 }
+/** Who grants a pardon in each country (the US: the President or a governor). */
+export const PARDON = {
+  CA: 'the Parole Board of Canada (record suspension)', GB: 'the King (Royal Prerogative of Mercy)', DE: 'the Federal President', FR: 'the President of the Republic',
+  IT: 'the President of the Republic', JP: 'the Cabinet (individual amnesty)', KR: 'the President', MX: 'the President', PH: 'the President', IN: 'the President',
+  AU: 'the Governor-General', NZ: 'the Governor-General', IE: 'the President of Ireland', ES: 'the King (indulto, on the Government\'s advice)',
+};
+fromPacks(PARDON, 'PARDON');
+
 /** Display swaps for the volunteer services' names. */
 export function volunteerTerms(countryId) {
   const v = VOLUNTEER_SERVICES[countryId];

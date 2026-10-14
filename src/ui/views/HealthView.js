@@ -35,7 +35,7 @@ const fmtMoney = (x) => (x === Infinity ? 'none' : money(x));
 function coverageCard(state) {
   const plan = coverage(state);
   const sys = systemHere(state);
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   const h = state.health;
   return card('Coverage', `
     <p class="big-status">${plan.icon} <b>${esc(plan.name)}</b> ${plan.id === 'none' ? chip('Uninsured', 'bad') : ''}</p>

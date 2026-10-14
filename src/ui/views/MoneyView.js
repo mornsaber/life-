@@ -91,7 +91,7 @@ function debtCard(state) {
   const medical = state.health?.medicalDebt ?? 0;
   const opts = bankruptcyOptions(state);
   const filing = opts.debt >= 5000 || f.ch13;
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   const option = (o, chapter, label, hint) => button(label, 'finances.fileBankruptcy', { arg: String(chapter), variant: 'small danger', disabled: !o.ok, hint: o.ok ? hint : o.reason });
   return card('Credit & Debt', `${kv([
     ['Credit limit', `${money(limit)} <small>(${esc(CREDIT[state.character.countryId] ? `${CREDIT[state.character.countryId].name}: ${creditLabel(state)}` : creditLabel(state))})</small>`],

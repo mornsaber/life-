@@ -36,6 +36,7 @@ export const IE = {
     capital: 'Dublin',
     currency: { code: 'EUR', symbol: '€', perUsd: EUR },
     languages: ['English', 'Irish'],
+    emergency: '112',
     retirementAge: 66,
     tax: {
       // 2025: 20% on the first €44,000, 40% above, less €4,000 of personal and employee tax credits

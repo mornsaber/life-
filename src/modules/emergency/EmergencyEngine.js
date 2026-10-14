@@ -20,7 +20,8 @@
  * }
  */
 import { pickFresh } from '../../core/Pools.js';
-import { volunteerServiceHere, volunteerRanks } from '../world/CountryLaw.js';
+import { volunteerServiceHere, volunteerRanks, VOLUNTEER_SERVICES } from '../world/CountryLaw.js';
+import { REGIONS } from '../life/Regions.js';
 import { currentCountry } from '../../core/Locale.js';
 import { yearlyCount, bumpYearly, addHonor, isOnActiveDuty, isDeployed, hasFelony, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -376,7 +377,11 @@ export const EmergencyEngine = {
       const check = joinEligibility(ctx.state, serviceId);
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       const svc = SERVICES[serviceId];
-      const unit = ctx.rng.pick(svc.units);
+      // Abroad, the unit is the local service in your town (St John Ambulance — Cardiff), not a US one.
+      const cc = ctx.state.character.countryId ?? 'US';
+      const localName = cc !== 'US' ? VOLUNTEER_SERVICES[cc]?.[serviceId] : null;
+      const town = (REGIONS[ctx.state.character.regionId]?.name ?? 'your town').split(',')[0];
+      const unit = localName ? `${localName} — ${town}` : cc !== 'US' ? `${svc.name} — ${town}` : ctx.rng.pick(svc.units);
       ctx.state.emergency[serviceId] = {
         serviceName: svc.name,
         unit,

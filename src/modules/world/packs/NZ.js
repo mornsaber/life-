@@ -34,6 +34,7 @@ export const NZ = {
     capital: 'Wellington',
     currency: { code: 'NZD', symbol: 'NZ$', perUsd: NZD },
     languages: ['English', 'Māori'],
+    emergency: '111',
     retirementAge: 65,
     tax: {
       // 2025–26: 10.5% to NZ$15,600; 17.5% to NZ$53,500; 30% to NZ$78,100; 33% to NZ$180,000; 39% above. No tax-free allowance.

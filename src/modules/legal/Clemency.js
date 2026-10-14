@@ -15,6 +15,7 @@
  *                          counting against you.
  *   Clemency               On death row, the governor can commute to life.
  */
+import { PARDON } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
 import { OFFENSES } from './Offenses.js';
@@ -50,6 +51,8 @@ export function pardonStatus(state, r) {
   const federal = Boolean(OFFENSES[r.offenseId]?.federal);
   const service = Object.entries(state.emergency ?? {}).some(([k, m]) => k !== 'history' && m) || state.military.history.some((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)) || (state.community?.volunteerYears ?? 0) >= 3 || (state.community?.mentorYears ?? 0) >= 3;
   const chance = clamp((federal ? 0.02 : 0.08) + (service ? 0.05 : 0) + Math.min(0.05, prestige(state) / 2000) + Math.min(0.05, (sinceLastConviction(state) - PARDON_WAIT) * 0.005), 0.01, 0.25);
+  const cc = state.character.countryId ?? 'US';
+  if (cc !== 'US') return { ok: true, federal, chance, by: PARDON[cc] ?? 'the head of state' };
   return { ok: true, federal, chance, by: federal ? 'the President' : `the Governor of ${stateOf(state).name}` };
 }
 

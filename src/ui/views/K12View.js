@@ -88,7 +88,7 @@ export function academyCard(state) {
   if (state.education.degrees.some((d) => d.type === 'bachelor')) return '';
   const check = (ok, text) => `<li>${ok ? '✅' : '⬜'} ${text}</li>`;
   const nominated = state.campus.nomination;
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   const steps = [
     check(age >= 17, 'Age 17–23 (apply senior year or later)'),
     check(hasDiploma(state), 'High-school diploma or GED'),

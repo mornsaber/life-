@@ -27,10 +27,10 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
-import { getProfession } from '../career/JobTrees.js';
+import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { ORG_TYPES } from './OrgTypes.js';
-import { orgOf, orgType, sideRng, personOf, supervises, ensureOrgOfType, ensureHeads } from './Organizations.js';
+import { orgOf, orgType, sideRng, personOf, supervises, ensureOrgOfType, ensureHeads, localizePost } from './Organizations.js';
 import { departure } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
 
@@ -42,7 +42,7 @@ export const EXEC_APPLICATIONS = 2;
 export const postDef = (org, deptId) => {
   const t = orgType(org?.typeId);
   if (!t) return null;
-  return deptId ? t.departments.find((d) => d.id === deptId)?.head ?? null : t.head;
+  return localizePost(org, deptId, deptId ? t.departments.find((d) => d.id === deptId)?.head ?? null : t.head);
 };
 
 /** Posts the player can hold: not elected offices and not politics offices (city manager is hired through politics). */
@@ -269,23 +269,26 @@ export function refreshExecutiveSearch(state) {
   const rng = sideRng(state);
   const region = state.character.regionId;
   // Abroad: no US federal agencies.
-  const abroad = Boolean(state.character.countryId);
-  const types = Object.entries(ORG_TYPES).filter(([, t]) => !(abroad && t.sector === 'federal') && (t.scope !== 'nation' || rng.chance(0.3)));
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
+  // Only bodies whose work exists here (no sheriff's office or state police abroad where there are none).
+  const here = new Set(professionsFor(state).map((p) => p.id));
+  const exists = (d) => !abroad || d.occupations.some((id) => here.has(id));
+  const types = Object.entries(ORG_TYPES).filter(([, t]) => !(abroad && t.sector === 'federal') && t.departments.some(exists) && (t.scope !== 'nation' || rng.chance(0.3)));
   const listings = [];
   for (let i = 0; i < 12 && listings.length < 5; i++) {
     const [typeId, t] = rng.pick(types);
-    const deptPick = rng.chance(0.4) ? null : rng.pick(t.departments);
-    const def = deptPick ? deptPick.head : t.head;
-    if (!promotable(def)) continue;
+    const deptPick = rng.chance(0.4) ? null : rng.pick(t.departments.filter(exists));
+    if (!promotable(deptPick ? deptPick.head : t.head)) continue;
     const org = ensureOrgOfType(state, typeId, region, { size: 'large' });
     if (!org || org.playerHead) continue;
+    const def = postDef(org, deptPick?.id ?? null);
     const occupations = deptPick ? deptPick.occupations : [...new Set(t.departments.flatMap((d) => d.occupations))];
     // CEOs of private firms come from the business side unless the head is tied to a field's ladder.
     const professionId = def.occupation ?? (deptPick ? deptPick.occupations[0] : t.sector === 'private' ? 'corporate' : t.departments[0].occupations[0]);
     if (!getProfession(professionId)) continue;
     const id = `${org.id}|${deptPick?.id ?? '-'}`;
     if (listings.some((l) => l.id === id)) continue;
-    listings.push({ id, orgId: org.id, orgName: org.name, deptId: deptPick?.id ?? null, deptName: deptPick?.name ?? null, title: def.title, selection: def.selection, appointedBy: def.appointedBy ?? null, sector: t.sector, occupations, professionId, levelId: levelForPost(def, professionId, 'large') });
+    listings.push({ id, orgId: org.id, orgName: org.name, deptId: deptPick?.id ?? null, deptName: deptPick ? org.departments[deptPick.id]?.name ?? deptPick.name : null, title: def.title, selection: def.selection, appointedBy: def.appointedBy ?? null, sector: t.sector, occupations, professionId, levelId: levelForPost(def, professionId, 'large') });
   }
   state.career.execSearch = { age: state.character.age, listings };
 }

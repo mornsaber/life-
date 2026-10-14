@@ -29,6 +29,8 @@ import { Renderer, VIEWS } from '../src/ui/Renderer.js';
 import { OFFICES } from '../src/modules/politics/index.js';
 import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestate/index.js';
 import { promptModal } from '../src/ui/Components.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
+import { usLeftovers, screenText } from './usTerms.js';
 import { ASSETS, PROFILES, DC_FUNDS } from '../src/modules/investing/index.js';
 import { netWorth } from '../src/core/State.js';
 import { TRADITIONS, VOLUNTEER_ORGS, ATTENDANCE } from '../src/modules/community/Community.js';
@@ -65,19 +67,30 @@ const CRED_IDS = Object.keys(CREDENTIALS);
 const SCHOOLS_FOR = (pid) => PROGRAMS[pid].schools;
 
 const renderer = new Renderer({ root: null, toastRoot: null, engine });
+// COUNTRY=ALL (or a country id) plays lives abroad and scans every screen for US leftovers.
+const COUNTRY = process.env.COUNTRY ?? null;
+const FOREIGN = Object.keys(COUNTRIES).filter((c) => c !== 'US');
+const leftovers = new Map();
 
 /** Every tab must render for every reachable state (views are pure HTML-string functions). */
 function renderAll(state) {
   for (const [tab, view] of Object.entries(VIEWS)) {
     try {
-      assert.equal(typeof view(state), 'string');
+      const html = view(state);
+      assert.equal(typeof html, 'string');
+      const cc = state.character.countryId ?? 'US';
+      if (COUNTRY && cc !== 'US' && tab !== 'move') for (const t of screenText(html, COUNTRIES[cc])) for (const m of usLeftovers(cc, t)) if (!leftovers.has(m)) leftovers.set(m, `${tab} view @${state.character.age}`);
     } catch (e) {
       throw new Error(`render ${tab} at age ${state.character.age}: ${e.stack}`);
     }
   }
   renderer.sidebar(state);
   renderer.topbar(state);
-  for (const p of state.prompts) promptModal(p, 1);
+  for (const p of state.prompts) {
+    const html = promptModal(p, 1);
+    const cc = state.character.countryId ?? 'US';
+    if (COUNTRY && cc !== 'US' && typeof html === 'string') for (const t of screenText(html, COUNTRIES[cc])) for (const m of usLeftovers(cc, t)) if (!leftovers.has(m)) leftovers.set(m, `prompt ${p.type}`);
+  }
 }
 
 const totals = { recessions: 0, econYears: 0, layoffs: 0, homeowners: 0, foreclosures: 0, ranForOffice: 0, governors: 0, officeHolders: 0, homeless: 0, years: 0, deaths: {}, prompts: 0, maxAge: 0, peakGrade: {}, convictions: 0, prison: 0, credentials: 0, degrees: 0, pensions: 0, managers: 0, unions: 0, clearances: 0, fso: 0, immunity: 0, generations: 0, maxGeneration: 1, married: 0, divorced: 0, parents: 0, estates: 0, investors: 0, investorMillionaires: 0, millionaires: 0, speculators: 0, ptsd: { combat: [0, 0], responder: [0, 0], other: [0, 0] }, medicalBankrupt: 0, onDisability: 0, vaRated: 0, rehab: 0, interns: 0, returnHires: 0, mentored: 0, rotcOfficers: 0, academyGrads: 0, expelled: 0, greek: 0, honorsCollege: 0, abroad: 0, owners: 0, bizExits: 0, bizFailures: 0, dropouts: 0, geds: 0, privateSchool: 0, teenWorkers: 0, gpaSum: 0, gpaN: 0 };
@@ -562,7 +575,7 @@ function checkEstate(state) {
 }
 
 for (let life = 0; life < LIVES; life++) {
-  let state = engine.newLife();
+  let state = engine.newLife(COUNTRY ? { countryId: COUNTRY === 'ALL' ? FOREIGN[life % FOREIGN.length] : COUNTRY } : undefined);
   let generation = 1;
   for (;;) {
   let years = 0;
@@ -687,3 +700,8 @@ console.log(`  homeowners ${totals.homeowners}, foreclosures ${totals.foreclosur
 console.log('  peak grade:', totals.peakGrade);
 console.log('  causes of death:', totals.deaths);
 console.log(`  prompt types seen (${promptTypes.size}):`, [...promptTypes].sort().join(', '));
+if (leftovers.size) {
+  for (const [msg, where] of leftovers) console.log(`  ✘ ${msg}\n      ${where}`);
+  console.log(`\n${leftovers.size} US leftover(s) abroad`);
+  process.exit(1);
+}

@@ -3,7 +3,7 @@
  * with a mentor (a lasting hiring edge in that field) and a return offer that
  * starts you one level above a normal new hire, honored at graduation.
  */
-import { getProfession } from '../career/JobTrees.js';
+import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { levelById, nextLevels } from '../career/Ladder.js';
 import { bestEntryLevel, hire, levelCheck } from '../career/CareerEngine.js';
 import { createEmployer } from '../career/Employers.js';
@@ -19,6 +19,7 @@ export function internshipEligibility(state, professionId) {
   const profession = getProfession(professionId);
   if (!profession) return { ok: false, reason: 'Unknown field' };
   if (!e) return { ok: false, reason: 'Internships are for enrolled students' };
+  if (!professionsFor(state).some((p) => p.id === professionId)) return { ok: false, reason: 'No such employers here' };
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18+' };
   if (['certificate', 'vocational'].includes(e.programId) || e.programId === 'highschool') return { ok: false, reason: 'Degree students only' };
   if (e.yearsAttended < 1 && e.programId === 'bachelor') return { ok: false, reason: 'After your first year' };

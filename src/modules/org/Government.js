@@ -22,7 +22,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { OFFICES } from '../politics/Offices.js';
-import { orgOf, orgType, sideRng, newPerson, personOf, initOrgs, ensureOrgOfType } from './Organizations.js';
+import { orgOf, orgType, sideRng, newPerson, personOf, initOrgs, ensureOrgOfType, localizePost } from './Organizations.js';
 import { ORG_TYPES } from './OrgTypes.js';
 import { getProfession } from '../career/JobTrees.js';
 import { levelById } from '../career/Ladder.js';
@@ -69,9 +69,9 @@ export function appointmentsInReach(state, { ensure = true } = {}) {
     if (!inJurisdiction(state, org, officeId)) continue;
     const t = orgType(org.typeId);
     if (!t) continue;
-    if (APPOINTING_OFFICE[t.head.appointedBy] === officeId) out.push({ org, deptId: null, title: t.head.title, holder: personOf(org, org.head) });
+    if (APPOINTING_OFFICE[t.head.appointedBy] === officeId) out.push({ org, deptId: null, title: localizePost(org, null, t.head).title, holder: personOf(org, org.head) });
     for (const d of t.departments) {
-      if (APPOINTING_OFFICE[d.head.appointedBy] === officeId) out.push({ org, deptId: d.id, title: d.head.title, holder: personOf(org, org.departments[d.id]?.head) });
+      if (APPOINTING_OFFICE[d.head.appointedBy] === officeId) out.push({ org, deptId: d.id, title: localizePost(org, d.id, d.head).title, holder: personOf(org, org.departments[d.id]?.head) });
     }
   }
   return out;
@@ -135,8 +135,9 @@ export function politicalTurnover(ctx, job) {
     if (mine) ctx.log(losesElection ? `${old?.name ?? 'The incumbent'} lost the election. ${p.name} is the new ${head.title}.` : `The new administration replaced ${old?.name ?? 'the incumbent'} with ${p.name} as ${head.title}.`, '🏛️');
     return p.id;
   };
-  org.head = replace(org.head, t.head, null);
-  for (const d of t.departments) if (org.departments[d.id]) org.departments[d.id].head = replace(org.departments[d.id].head, d.head, d.id);
+  // Heads as the country names and chooses them (an appointed Director of Public Prosecutions, not an elected DA).
+  org.head = replace(org.head, localizePost(org, null, t.head), null);
+  for (const d of t.departments) if (org.departments[d.id]) org.departments[d.id].head = replace(org.departments[d.id].head, localizePost(org, d.id, d.head), d.id);
 }
 
 /** Your appointees' performance moves your approval each year in office. */

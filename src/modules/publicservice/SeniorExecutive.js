@@ -77,14 +77,16 @@ for (const [pid, levels] of Object.entries(SES_LEVELS)) {
   const p = PROFESSIONS[pid];
   if (!p) continue;
   for (const [lid, kind] of Object.entries(levels)) {
-    const level = p.levels.find((l) => l.id === lid);
-    if (!level) continue;
-    level.ses = kind;
-    level.req = { ...(level.req ?? {}), credentials: [...new Set([...(level.req?.credentials ?? []), 'sesCert'])] };
+    const i = p.levels.findIndex((l) => l.id === lid);
+    if (i < 0) continue;
+    // A new level object: national agencies abroad built from this ladder share the old one,
+    // and the US Senior Executive Service doesn't apply to them.
+    const level = { ...p.levels[i], ses: kind, req: { ...(p.levels[i].req ?? {}), credentials: [...new Set([...(p.levels[i].req?.credentials ?? []), 'sesCert'])] } };
     if (kind === 'pas') {
       level.appointed = true;
       level.appointedBy = 'the President, with Senate confirmation';
     }
+    p.levels[i] = level;
   }
 }
 

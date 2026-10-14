@@ -6,7 +6,7 @@ import { unitView, billetTitle, leads, canImposeNjp, isNcoLeader, LEADER_ACTIONS
 import { PIPELINES, pipelineFor, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
 import { TRACKS, skillBridgeEligibility, civilianField, FAIR_YEARS } from '../../modules/military/Transition.js';
-import { PROFESSION_LIST } from '../../modules/career/JobTrees.js';
+import { PROFESSION_LIST, PROFESSIONS } from '../../modules/career/JobTrees.js';
 import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
 import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
 import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool, qualBadge, allSchoolsFor } from '../../modules/military/Schools.js';
@@ -28,7 +28,7 @@ import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 import { branchOf, branchFor } from '../../modules/military/MilitaryEngine.js';
-import { nationalBranchIds } from '../../modules/world/NationalForces.js';
+import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf } from '../../modules/world/Countries.js';
 
 function recruitingOffice(state) {
@@ -59,9 +59,12 @@ function recruitingOffice(state) {
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */
 function transferForm(state) {
   const svc = state.military.service;
-  const options = Object.values(BRANCHES).filter((b) => b.id !== svc.branch).map((b) => {
+  // A foreign force transfers only between its own branches, under their own names.
+  const national = svc.nation && svc.nation !== 'US' ? FORCES[svc.nation]?.branches : null;
+  const options = Object.values(BRANCHES).filter((b) => b.id !== svc.branch && (!national || national[b.id])).map((b) => {
     const check = transferEligibility(state, b.id);
-    return { value: b.id, label: `${b.icon} ${b.name} — ${check.ok ? `${Math.round(transferChance(state, b.id) * 100)}% odds` : check.reason}` };
+    const named = national?.[b.id] ?? b;
+    return { value: b.id, label: `${named.icon} ${named.name} — ${check.ok ? `${Math.round(transferChance(state, b.id) * 100)}% odds` : check.reason}` };
   });
   return `<h4 class="sub">Inter-service transfer</h4><p class="fine">Needs a conditional release from your current service. Enlisted members usually lose a grade; you start a new obligation.</p>
     <div class="enroll-form" data-collect-root>${select('branch', options)}${button('🔀 Request transfer', 'military.transferBranch', { variant: 'small', collect: true, disabled: Boolean(state.yearly['military.transferBranch']) })}</div>`;
@@ -102,7 +105,7 @@ export function militaryView(state) {
     ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}</small></li>`).join('')}</ul><p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
-    ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(BRANCHES[state.military.deserter.branch].name)} at age ${state.military.deserter.age}. A federal warrant stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
+    ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
   if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${history}`;
 
@@ -354,7 +357,7 @@ function transitionCard(state, svc) {
   let bridge;
   if (svc.skillBridge) bridge = `<div class="next-step">🤝 SkillBridge: interning with <b>${esc(svc.skillBridge.employerName)}</b> (${esc(getProfession(svc.skillBridge.professionId).name)}). Expect a job offer when you separate.</div>`;
   else {
-    const options = PROFESSION_LIST.filter((p) => skillBridgeEligibility(state, p.id).ok).sort((a, b) => (b.id === field) - (a.id === field) || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: `${p.icon} ${p.name}${p.id === field ? ' (matches your job)' : ''}` }));
+    const options = PROFESSION_LIST.filter((p) => skillBridgeEligibility(state, p.id).ok).map((p) => PROFESSIONS[p.id] ?? p).sort((a, b) => (b.id === field) - (a.id === field) || a.name.localeCompare(b.name)).map((p) => ({ value: p.id, label: `${p.icon} ${p.name}${p.id === field ? ' (matches your job)' : ''}` }));
     bridge = options.length
       ? `<h4 class="sub">SkillBridge internship</h4><p class="fine">Spend your last months with a civilian employer; they usually hire you when you separate.</p><div class="enroll-form" data-collect-root>${select('profession', options)}${button('🤝 Apply', 'military.skillBridge', { variant: 'small', collect: true, disabled: Boolean(state.yearly['military.skillBridge']) })}</div>`
       : `<p class="fine">🤝 SkillBridge: ${esc(skillBridgeEligibility(state, field ?? 'retail').reason ?? 'no internships you qualify for')}.</p>`;

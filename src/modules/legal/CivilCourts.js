@@ -96,7 +96,7 @@ function suedTick(ctx) {
     { kind: 'defamation', w: 0.002 },
   ].filter((x) => x.w > 0);
   // Outside the US people sue far less, and courts award far less (no punitive damages; the loser pays costs).
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   const total = weights.reduce((s, x) => s + (abroad && x.kind !== 'debt' ? x.w * 0.4 : x.w), 0);
   if (!total || !rng.chance(total)) return;
   const kind = rng.weighted(weights, (x) => x.w).kind;

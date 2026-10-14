@@ -275,6 +275,35 @@ export const LOCAL_AGENCIES = {
 };
 fromPacks(LOCAL_AGENCIES, 'LOCAL_AGENCIES');
 
+/**
+ * Plain local names for the agencies a country's table leaves out, so none keeps a US
+ * name abroad ("Scotland State Legislature", "Hokkaido Department of Transportation").
+ */
+const town = (city) => city.split(',')[0];
+/** Countries whose provinces or states have their own parliaments. */
+const REGIONAL_PARLIAMENTS = ['CA', 'AU', 'DE', 'IN', 'MX', 'ES', 'IT'];
+const ABROAD_DEFAULTS = {
+  legislativeStaff: { name: 'Parliamentary Staff', employer: (c, s, sn) => (REGIONAL_PARLIAMENTS.includes(s?.split('-')[0]) ? `${sn} legislature — staff office` : 'Parliamentary Service (national parliament)') },
+  courts: { name: 'Courts Service', employer: (city) => `Courts Service — ${town(city)}` },
+  publicDefender: { name: 'Public Defence Service', employer: (city) => `Public Defence Service (legal aid) — ${town(city)}` },
+  cps: { name: 'Children\'s Services', employer: (city) => `${town(city)} children's social services` },
+  environmental: { name: 'Environmental Protection Agency', employer: (c, s, sn) => `Environmental Protection Agency — ${sn} office` },
+  forester: { name: 'Forestry Service', employer: (c, s, sn) => `Forestry Service — ${sn}` },
+  dot: { name: 'Roads Authority', employer: (c, s, sn) => `Roads authority — ${sn}` },
+  forensics: { name: 'Forensic Science Service', employer: (c, s, sn) => `Forensic Science Service — ${sn}` },
+  university: { employer: (city) => `University of ${town(city)}` },
+  communityCollege: { name: 'Further Education College', employer: (city) => `${town(city)} College` },
+  transit: { name: 'Public Transport', employer: (city) => `${town(city)} public transport authority` },
+  transitMaintenance: { employer: (city) => `${town(city)} public transport authority — depots` },
+  schoolBus: { name: 'School Transport', employer: (city) => `${town(city)} school transport service` },
+  publicHealth: { name: 'Public Health Service', employer: (city) => `${town(city)} public health service` },
+  publicWorks: { name: 'Public Works', employer: (city) => `${town(city)} council — roads & public works` },
+};
+for (const [cc, table] of Object.entries(LOCAL_AGENCIES)) {
+  if (cc === 'US') continue;
+  for (const [id, a] of Object.entries(ABROAD_DEFAULTS)) if (table[id] === undefined) table[id] = a;
+}
+
 /** The local version of a career where you live: null when the agency doesn't exist there. */
 export function localAgency(countryId, professionId) {
   const table = LOCAL_AGENCIES[countryId];

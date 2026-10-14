@@ -125,7 +125,7 @@ export function civicServiceView(state) {
     : '';
   const gear = ['team.sdf', ...Object.keys(TEAMS).map((id) => `team.${id}`)].map((ref) => equipmentCard(state, ref)).join('');
   // State Defense Forces and FEMA teams are US programs: abroad, show only what you're already in. National service shows the country's own schemes.
-  const abroad = Boolean(state.character.countryId);
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
   const s2 = state.service;
   const us = abroad
     ? `${nationalService(state) ? `<div class="grid-2">${nationalService(state)}</div>` : ''}${s2.sdf ? stateGuard(state) : ''}${Object.values(s2.teams ?? {}).some(Boolean) ? disasterTeams(state) : ''}`

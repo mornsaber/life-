@@ -319,9 +319,11 @@ function award(ctx, id) {
   const { state } = ctx;
   const a = AWARDS[id];
   if (!a.repeat && state.honors.some((h) => h.id === `research.${id}`)) return;
-  addHonor(state, { id: `research.${id}`, source: 'civil', name: a.name, icon: a.icon, prestige: a.prestige, precedence: 32, citation: a.citation });
+  // Abroad the national honours are the country's own (names swap on screen; the flag can't).
+  const icon = a.icon === '🇺🇸' && (state.character.countryId ?? 'US') !== 'US' ? '🏅' : a.icon;
+  addHonor(state, { id: `research.${id}`, source: 'civil', name: a.name, icon, prestige: a.prestige, precedence: 32, citation: a.citation });
   if (a.cash) ctx.earn(a.cash, a.name);
-  ctx.log(`${a.name}! ${a.citation}`, a.icon, 'honor');
+  ctx.log(`${a.name}! ${a.citation}`, icon, 'honor');
   ctx.stat('happiness', 8);
 }
 
