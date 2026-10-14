@@ -214,17 +214,32 @@ export const needOf = (cat, c) => {
 };
 
 /**
- * How much of the agency's equipment a manager controls, by rank: the head runs all of it;
- * each management rung below runs a smaller slice (a deputy chief a large share, a battalion
- * chief a battalion, a captain a station or company).
+ * How much of the agency's equipment a manager controls, by rank. The head runs all of it, and so
+ * does the executive tier around them — the head's own deputy (a Chief of Department, a
+ * Deputy Commissioner), anyone with executive powers, and a public agency's General Manager or Chief
+ * Executive — since they answer for the whole agency, not one division. Each management rung
+ * below runs a smaller slice (a deputy chief a large share, a battalion chief a battalion, a
+ * captain a station or company).
  */
-export const SPAN_BY_RANK = [1, 0.45, 0.2, 0.08, 0.04];
+export const SPAN_BY_RANK = [0.45, 0.2, 0.1, 0.05, 0.03, 0.02];
+const AGENCY_WIDE = /\bGeneral Manager\b|\bChief Executive\b|\bDeputy CEO\b|\bDirector-General\b|\bSecretary-General\b/;
+export function isAgencyWide(profession, level, sector) {
+  if (!level) return false;
+  const top = profession.levels.filter((l) => !l.id.includes('_cmd')).at(-1);
+  // The head's own deputy (the last command step below them) shares the whole agency too.
+  const deputy = profession.levels.filter((l) => /_cmd\d+$/.test(l.id)).at(-1);
+  if (level.id === top?.id || level.id === deputy?.id || level.abilities?.includes('exec')) return true;
+  return sector !== 'private' && AGENCY_WIDE.test(level.title ?? '');
+}
 export function commandSpan(job) {
   if (job.headOf) return 1;
   const profession = getProfession(job.professionId);
   if (!profession) return 1;
   const ladder = ladderFor(profession, job.employer.size);
-  const rungs = ladder.filter((l) => l.abilities?.includes('supervise') || l.track === 'mgmt').sort((a, b) => b.grade - a.grade || ladder.indexOf(b) - ladder.indexOf(a));
+  const level = ladder.find((l) => l.id === job.levelId) ?? profession.levels.find((l) => l.id === job.levelId);
+  if (isAgencyWide(profession, level, job.sector ?? profession.sector)) return 1;
+  const rungs = ladder.filter((l) => (l.abilities?.includes('supervise') || l.track === 'mgmt') && !isAgencyWide(profession, l, job.sector ?? profession.sector))
+    .sort((a, b) => b.grade - a.grade || ladder.indexOf(b) - ladder.indexOf(a));
   const i = rungs.findIndex((l) => l.id === job.levelId);
   if (i < 0) return SPAN_BY_RANK.at(-1);
   return SPAN_BY_RANK[Math.min(i, SPAN_BY_RANK.length - 1)];
@@ -311,6 +326,12 @@ export function recordOf(state, c, { peek = false } = {}) {
   }
   d.pending ??= [];
   if (!peek) fitSpan(c, d);
+  // A view right after a promotion shows the wider command already (the yearly pass saves it).
+  else if ((c.span ?? 1) !== d.span && d.span != null) {
+    const view = structuredClone(d);
+    fitSpan(c, view);
+    return view;
+  }
   return d;
 }
 

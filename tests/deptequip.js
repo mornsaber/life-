@@ -444,6 +444,22 @@ const tests = {
   },
 };
 
+// Appended: a general manager answers for the whole agency.
+tests['promotion to general manager widens equipment to the whole agency, on screen at once'] = () => {
+  const { state, job } = worker(41, 'transit', 'superintendent');
+  job.employer.size = 'large';
+  const before = contextOf(state, 'job');
+  assert.ok(before.span < 1, `a division superintendent runs a slice (${before.span})`);
+  const small = recordOf(state, before);
+  const count = (d) => Object.values(d.units).reduce((s, u) => s + u.length, 0);
+  const had = count(small);
+  job.levelId = 'gm';
+  const after = contextOf(state, 'job');
+  assert.equal(after.span, 1, 'the general manager runs it all');
+  assert.ok(count(recordOf(state, after, { peek: true })) > had, 'the equipment screen shows the wider fleet right away');
+  assert.ok(count(recordOf(state, after)) > had, 'and it is saved');
+};
+
 let failed = 0;
 for (const [name, fn] of Object.entries(tests)) {
   try { fn(); console.log(`  ✔ ${name}`); } catch (e) { failed += 1; console.log(`  ✘ ${name}\n    ${e.stack.split('\n').slice(0, 6).join('\n    ')}`); }
