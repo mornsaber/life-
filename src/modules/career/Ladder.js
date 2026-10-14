@@ -48,6 +48,18 @@ export function L(id, title, grade, opts = {}) {
   return { id, title, grade, track: opts.track ?? 'shared', years: opts.years ?? DEFAULT_YEARS(grade), abilities: opts.abilities ?? [], ...opts };
 }
 
+/**
+ * The detective (CID) chain of command: detectives answer to detective sergeants,
+ * inspectors and chief inspectors, not to the uniformed ranks. ranks = [[id, title, grade, minSize, reports]].
+ */
+export function detectiveRanks(ranks) {
+  return ranks.map(([id, title, grade, minSize, reports], i) => L(id, title, grade, {
+    track: 'ic', minSize, reports,
+    abilities: ['arrest', 'audit', 'supervise', ...(i ? ['command'] : []), ...(i > 1 ? ['budget'] : [])],
+    ...(i ? { req: { credentials: ['supervisorCourse'] } } : {}),
+  }));
+}
+
 export function ladderFor(profession, size) {
   // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
   if (size === 'micro') return profession.levels.filter((l) => !l.minSize && !l.microDrop);

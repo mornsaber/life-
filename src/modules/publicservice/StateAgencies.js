@@ -9,7 +9,7 @@
  * fired or demoted for performance.
  */
 import { pickFresh } from '../../core/Pools.js';
-import { L } from '../career/Ladder.js';
+import { L, detectiveRanks } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 import { offenseName } from '../legal/Offenses.js';
 
@@ -30,6 +30,7 @@ export const STATE_PROFESSIONS = {
       L('senior', 'Senior Trooper', 5, { abilities: ['arrest'] }),
       L('investigator', 'Criminal Investigator', 6, { track: 'ic', abilities: ['arrest', 'audit'] }),
       L('majorCrimes', 'Major Crimes Investigator', 7, { track: 'ic', abilities: ['arrest', 'audit'] }),
+      ...detectiveRanks([['detSergeant', 'Detective Sergeant', 7, 'medium', 8], ['detLieutenant', 'Detective Lieutenant', 7, 'large', 30], ['detCaptain', 'Detective Captain (Bureau of Investigation)', 8, 'enterprise', 150]]),
       L('sergeant', 'Sergeant', 5, { track: 'mgmt', req: { credentials: ['fto'] }, abilities: ['arrest', 'supervise'], reports: 10 }),
       L('lieutenant', 'Lieutenant', 6, { track: 'mgmt', req: { credentials: ['supervisorCourse'] }, abilities: ['arrest', 'supervise', 'command'], reports: 30 }),
       L('captain', 'Captain', 7, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'command'], reports: 90 }),

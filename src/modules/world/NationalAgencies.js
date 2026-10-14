@@ -32,7 +32,6 @@ export const AGENCIES = {
   },
   GB: {
     fbi: { name: 'National Crime Agency', employers: ['NCA — Investigations', 'NCA — Organised Crime'], titles: { trainee: 'Trainee NCA Officer', agent: 'NCA Officer', senior: 'Senior NCA Officer', ssa: 'Team Leader', asac: 'Branch Commander', sac: 'Director' } },
-    usss: { name: 'Royalty and Specialist Protection', employers: ['Metropolitan Police — Protection Command'], titles: { trainee: 'Probationary Constable', agent: 'Protection Officer', senior: 'Detective Sergeant', ssa: 'Detective Inspector', asac: 'Chief Inspector', sac: 'Commander' } },
     borderPatrol: { name: 'UK Border Force', employers: ['Border Force — Heathrow', 'Border Force — Dover'] },
     federalPrisons: { name: 'HM Prison and Probation Service', employers: ['HMP Wandsworth', 'HMP Manchester'] },
     postal: { name: 'Royal Mail', employers: ['Royal Mail Delivery Office'] },
@@ -163,7 +162,6 @@ export const AGENCIES = {
     fbi: { name: 'Police judiciaire (DNPJ)', employers: ['Office central de lutte contre le crime organisé', 'Brigade criminelle, Paris'], titles: { trainee: 'Élève gardien de la paix', agent: 'Gardien de la paix', senior: 'Brigadier', ssa: 'Lieutenant de police', asac: 'Commandant de police', sac: 'Commissaire divisionnaire' } },
     dea: { name: 'Office anti-stupéfiants (OFAST)', employers: ['OFAST — Nanterre'] },
     usms: { name: 'Gendarmerie nationale', employers: ['Gendarmerie — brigade territoriale', 'GIGN — Satory'], titles: { trainee: 'Élève gendarme', agent: 'Gendarme', senior: 'Maréchal des logis-chef', ssa: 'Adjudant', asac: 'Capitaine', sac: 'Colonel' } },
-    usss: { name: 'Service de la protection (SDLP)', employers: ['SDLP — Paris'] },
     borderPatrol: { name: 'Police aux frontières / Douane', employers: ['PAF — Roissy-Charles-de-Gaulle', 'Douane — Calais'] },
     federalPrisons: { name: 'Administration pénitentiaire', employers: ['Centre pénitentiaire de Fresnes', 'Maison centrale de Clairvaux'] },
     postal: { name: 'La Poste', employers: ['La Poste — plateforme de distribution'] },

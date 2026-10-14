@@ -15,7 +15,7 @@
  *   - Private prisons hold a large share of inmates in Montana, and some in
  *     Texas, Florida, Colorado and Ohio.
  */
-import { L } from './Ladder.js';
+import { L, detectiveRanks } from './Ladder.js';
 import { stateIdOf } from '../life/Regions.js';
 import { offenseName } from '../legal/Offenses.js';
 
@@ -100,6 +100,7 @@ export const JUSTICE_PROFESSIONS = {
       L('deputy', 'Deputy Sheriff', 4, { entry: true, req: { credentials: ['post'] }, abilities: ['arrest', 'custody'], years: 3 }),
       L('court', 'Court Security Deputy', 4, { abilities: ['arrest', 'custody'] }),
       L('investigator', 'Sheriff\'s Investigator', 6, { track: 'ic', abilities: ['arrest', 'audit'] }),
+      ...detectiveRanks([['detSergeant', 'Investigations Sergeant', 6, 'medium', 8], ['detLieutenant', 'Investigations Lieutenant', 7, 'large', 30]]),
       L('sergeant', 'Sheriff\'s Sergeant', 5, { track: 'mgmt', req: { credentials: ['fto'] }, abilities: ['arrest', 'supervise'], reports: 10 }),
       L('lieutenant', 'Sheriff\'s Lieutenant', 6, { track: 'mgmt', req: { credentials: ['supervisorCourse'] }, abilities: ['arrest', 'supervise', 'command'], reports: 30 }),
       L('captain', 'Sheriff\'s Captain', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'command'], reports: 90 }),

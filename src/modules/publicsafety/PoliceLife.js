@@ -33,6 +33,7 @@ import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 import { offenseName } from '../legal/Offenses.js';
+import { SIZE_ORDER } from '../career/Ladder.js';
 
 export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice', 'universityPolice'];
 export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
@@ -68,7 +69,36 @@ export const UNITS = {
   sro: { name: 'School resource officer', icon: '🏫', years: 2, pay: 0, risk: 0.4, stress: -3, desc: 'A school as your beat. Summers on patrol.' },
   instructor: { name: 'Academy instructor', icon: '🎓', years: 5, cred: 'fto', pay: 2000, risk: 0.3, stress: -2, desc: 'Teach recruits defensive tactics, law and report writing.' },
   ia: { name: 'Internal affairs', icon: '🔍', years: 6, minGrade: 5, pay: 2000, risk: 0.2, desc: 'Investigate other officers. Necessary — and lonely.' },
+  protection: { name: 'Dignitary protection', icon: '🕴️', years: 4, fitness: 55, minSize: 'large', pay: 5000, risk: 0.5, stress: 2, selection: true, desc: 'Close protection for officials and visiting dignitaries. Long days, travel, standing very still.' },
 };
+/** What each specialty is called in other countries' forces (missing: the generic name). */
+const UNIT_NAMES = {
+  GB: { k9: 'Dog Section', swat: 'Armed Response (firearms officer)', traffic: 'Roads Policing Unit', narcotics: 'Drugs Squad (undercover)', gang: 'Gangs Task Force', negotiator: 'Hostage & Crisis Negotiator', sro: 'Safer Schools Officer', instructor: 'Police Training School', ia: 'Professional Standards Department', protection: 'Protection Team' },
+  CA: { swat: 'Emergency Task Force', traffic: 'Traffic Services', ia: 'Professional Standards', sro: 'School Liaison Officer' },
+  AU: { swat: 'Tactical Operations Unit', k9: 'Dog Squad', traffic: 'Highway Patrol', ia: 'Professional Standards Command', protection: 'Protection Unit' },
+  DE: { k9: 'Diensthundestaffel', swat: 'SEK (Spezialeinsatzkommando)', traffic: 'Verkehrspolizei', narcotics: 'Rauschgiftdezernat (verdeckt)', gang: 'OK-Dezernat (Organisierte Kriminalität)', negotiator: 'Verhandlungsgruppe', ia: 'Dezernat Interne Ermittlungen', instructor: 'Polizeiakademie (Ausbilder)', protection: 'Personenschutz (LKA)' },
+  FR: { k9: 'Brigade cynophile', swat: 'BRI / RAID', traffic: 'Brigade motocycliste', narcotics: 'Brigade des stupéfiants', gang: 'Brigade anti-criminalité (BAC)', negotiator: 'Négociateur (RAID)', ia: 'IGPN (police des polices)', protection: 'Service de la protection (SDLP)' },
+  IT: { k9: 'Unità cinofila', swat: 'NOCS', traffic: 'Polizia Stradale', narcotics: 'Sezione narcotici', gang: 'Squadra Mobile (criminalità organizzata)', protection: 'Servizio scorte' },
+  JP: { swat: 'SAT (Special Assault Team)', traffic: 'Traffic Division', narcotics: 'Organized Crime Division (drugs)', gang: 'Organized Crime Division (bōryokudan)', protection: 'Security Police (SP)', ia: 'Inspection Division' },
+  KR: { swat: 'Police Special Operations Unit (KNP-868)', traffic: 'Traffic Police', narcotics: 'Drug Crimes Investigation Unit', gang: 'Organized Crime Unit', protection: 'VIP Protection Unit' },
+  MX: { swat: 'Grupo de Operaciones Especiales', traffic: 'Policía Vial', narcotics: 'Unidad contra el narcomenudeo', ia: 'Asuntos Internos', protection: 'Escoltas' },
+  PH: { swat: 'SWAT / Special Action Force', traffic: 'Highway Patrol Group', narcotics: 'Drug Enforcement Unit', ia: 'Internal Affairs Service', protection: 'Police Security and Protection Group' },
+  IN: { swat: 'Quick Reaction Team', traffic: 'Traffic Police', narcotics: 'Anti-Narcotics Cell', gang: 'Special Task Force', protection: 'Security Wing (VIP protection)' },
+};
+const BUREAU_NAMES = {
+  GB: { homicide: 'Major Investigation Team (homicide)', svu: 'Public Protection (sexual offences)', property: 'Burglary & Acquisitive Crime', robbery: 'Robbery Squad', cyber: 'Cyber Crime Unit' },
+  AU: { homicide: 'Homicide Squad', svu: 'Sex Crimes Squad', property: 'Property Crime Squad', robbery: 'Armed Robbery Squad', cyber: 'Cybercrime Squad' },
+  DE: { homicide: 'Mordkommission', svu: 'Sexualdelikte', property: 'Eigentumsdelikte', robbery: 'Raubdezernat', cyber: 'Cybercrime' },
+  FR: { homicide: 'Brigade criminelle', svu: 'Brigade de protection des mineurs', property: 'Brigade de répression du banditisme', robbery: 'BRB (vols à main armée)', cyber: 'Brigade de lutte contre la cybercriminalité' },
+  IT: { homicide: 'Squadra Mobile (omicidi)', svu: 'Sezione reati sessuali', property: 'Sezione reati contro il patrimonio', robbery: 'Sezione rapine', cyber: 'Polizia Postale' },
+};
+/** A specialty as this force calls it: RaSP is a Met command, not an agency of its own. */
+export function unitName(state, id) {
+  const cc = state.character.countryId ?? 'US';
+  if (id === 'protection' && cc === 'GB' && /Metropolitan/.test(state.career.job?.employer?.name ?? '')) return 'Royalty and Specialist Protection (RaSP)';
+  return UNIT_NAMES[cc]?.[id] ?? UNITS[id]?.name;
+}
+export const bureauName = (state, id) => BUREAU_NAMES[state.character.countryId ?? 'US']?.[id] ?? BUREAUS[id]?.name;
 export const BUREAUS = {
   homicide: { name: 'Homicide', icon: '🕯️', stress: 6, desc: 'Every case is someone\'s child. Clearance rates are watched.' },
   svu: { name: 'Special victims', icon: '🧸', stress: 7, desc: 'Sexual assault and child abuse. The hardest cases in the building.' },
@@ -78,7 +108,7 @@ export const BUREAUS = {
 };
 
 const pd = (state) => state.police;
-const isDetective = (job) => /detective|investigator|majorCrimes/i.test(job?.levelId ?? '');
+export const isDetective = (job) => /detective|investigator|majorCrimes|^det[A-Z]/i.test(job?.levelId ?? '');
 
 export function unitEligibility(state, id) {
   const u = UNITS[id];
@@ -89,6 +119,7 @@ export function unitEligibility(state, id) {
   if (u.fitness && state.stats.fitness < u.fitness) return { ok: false, reason: `Needs ${u.fitness}+ fitness` };
   if (u.cred && !hasCredential(state, u.cred)) return { ok: false, reason: u.cred === 'cit' ? 'Needs Crisis Intervention Team training' : 'Needs Field Training Officer certification' };
   if (u.minGrade && job.grade < u.minGrade) return { ok: false, reason: 'Sergeants and above' };
+  if (u.minSize && SIZE_ORDER.indexOf(job.employer?.size) < SIZE_ORDER.indexOf(u.minSize)) return { ok: false, reason: 'Only large forces have this unit' };
   return { ok: true };
 }
 
@@ -257,6 +288,16 @@ export const PoliceLifeModule = {
   order: 30.88,
   init(state) {
     state.police ??= { area: null, shift: 'days', unit: null, bureau: null, calls: 0, arrests: 0, uof: 0, complaints: 0, commendations: 0, ois: 0, injuries: 0, brady: false, details: 0 };
+    // Royalty and Specialist Protection (and France's SDLP) used to be agencies of their own; they're units of the police.
+    const job = state.career?.job;
+    const into = { gb_usss: ['police', 'Metropolitan Police Service'], fr_usss: ['statePolice', 'Commissariat de Paris'] }[job?.professionId];
+    if (into) {
+      const [professionId, name] = into;
+      job.professionId = professionId;
+      job.levelId = { trainee: professionId === 'police' ? 'recruit' : 'cadet', agent: professionId === 'police' ? 'officer' : 'trooper', senior: 'detSergeant', ssa: 'detLieutenant', asac: 'captain', sac: professionId === 'police' ? 'deputyChief' : 'major' }[job.levelId] ?? (professionId === 'police' ? 'officer' : 'trooper');
+      job.employer = { ...job.employer, name, size: 'mega' };
+      state.police.unit = 'protection';
+    }
   },
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx, job }) => {
@@ -283,7 +324,7 @@ export const PoliceLifeModule = {
     p.arrests += arrests;
     const court = Math.round(arrests * rng.int(120, 260));
     if (court) ctx.earn(court, 'Court overtime', { wage: true });
-    if (unit?.pay) ctx.earn(unit.pay, `${unit.name} assignment pay`, { wage: true });
+    if (unit?.pay) ctx.earn(unit.pay, `${unitName(state, p.unit)} assignment pay`, { wage: true });
     ctx.stat('stress', area.stress + (unit?.stress ?? 0) + (SHIFTS[p.shift]?.stress ?? 0) + (p.bureau ? BUREAUS[p.bureau].stress : 0));
     ctx.emit('health:trauma', { amount: Math.round(area.risk * 2), source: 'police work' });
     if (calls) ctx.log(`${calls.toLocaleString()} calls, ${arrests} arrests${court ? `, $${court.toLocaleString()} in court overtime` : ''}.`, area.icon);
@@ -328,16 +369,16 @@ export const PoliceLifeModule = {
     unit(ctx, id) {
       const { state, rng } = ctx;
       const p = pd(state);
-      if (p.unit === id) { p.unit = null; return ctx.log(`You went back to patrol from ${UNITS[id].name.toLowerCase()}.`, '🚓'); }
+      if (p.unit === id) { p.unit = null; return ctx.log(`You went back to patrol from ${unitName(state, id)}.`, '🚓'); }
       const ok = unitEligibility(state, id);
       if (!ok.ok) return ctx.toast(ok.reason, 'warn');
       if (yearlyCount(state, 'police.unit')) return ctx.toast('One application a year', 'warn');
       bumpYearly(state, 'police.unit');
       const u = UNITS[id];
       const odds = clamp(0.35 + (state.career.job.performance - 60) / 100 + (u.selection ? (state.stats.fitness - 70) / 100 : 0) - p.complaints * 0.05, 0.1, 0.9);
-      if (!rng.chance(odds)) return ctx.log(`You applied for ${u.name}. ${u.selection ? 'You washed out of selection.' : 'They picked someone with more seniority.'}`, u.icon, 'warn');
+      if (!rng.chance(odds)) return ctx.log(`You applied for ${unitName(state, id)}. ${u.selection ? 'You washed out of selection.' : 'They picked someone with more seniority.'}`, u.icon, 'warn');
       p.unit = id;
-      ctx.log(`You were selected for ${u.name}. ${u.desc}`, u.icon, 'milestone');
+      ctx.log(`You were selected for ${unitName(state, id)}. ${u.desc}`, u.icon, 'milestone');
     },
     bureau(ctx, id) {
       const { state } = ctx;
@@ -347,7 +388,7 @@ export const PoliceLifeModule = {
       if (yearlyCount(state, 'police.bureau')) return ctx.toast('One move a year', 'warn');
       bumpYearly(state, 'police.bureau');
       pd(state).bureau = id;
-      ctx.log(`You moved to the ${BUREAUS[id].name.toLowerCase()} bureau. ${BUREAUS[id].desc}`, BUREAUS[id].icon);
+      ctx.log(`You moved to ${bureauName(state, id)}. ${BUREAUS[id].desc}`, BUREAUS[id].icon);
     },
     details(ctx) {
       const { state, rng } = ctx;

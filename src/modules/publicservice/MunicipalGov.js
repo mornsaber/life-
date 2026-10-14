@@ -9,7 +9,7 @@
  * staffing and community approval.
  */
 import { pickFresh } from '../../core/Pools.js';
-import { L } from '../career/Ladder.js';
+import { L, detectiveRanks } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 
 const PD = (city) => `${city} Police Department`;
@@ -28,6 +28,7 @@ export const MUNICIPAL_PROFESSIONS = {
       L('senior', 'Senior Patrol Officer', 5, { req: { credentials: ['post'] }, abilities: ['arrest'] }),
       L('detective', 'Detective', 5, { track: 'ic', abilities: ['arrest', 'audit'] }),
       L('seniorDetective', 'Senior Detective', 6, { track: 'ic', minSize: 'medium', abilities: ['arrest', 'audit'] }),
+      ...detectiveRanks([['detSergeant', 'Detective Sergeant', 6, 'medium', 8], ['detLieutenant', 'Detective Lieutenant', 7, 'large', 30], ['detCaptain', 'Detective Captain (Detective Bureau)', 8, 'enterprise', 120]]),
       L('sergeant', 'Sergeant', 5, { track: 'mgmt', req: { credentials: ['fto'] }, abilities: ['arrest', 'supervise'], reports: 8 }),
       L('lieutenant', 'Lieutenant', 6, { track: 'mgmt', req: { credentials: ['supervisorCourse'] }, abilities: ['arrest', 'supervise', 'command'], reports: 25 }),
       L('captain', 'Captain', 7, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'command'], reports: 70 }),

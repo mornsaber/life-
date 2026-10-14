@@ -4,7 +4,7 @@
  * (conductors and locomotive engineers under FRA certification), and school
  * bus drivers.
  */
-import { L } from '../career/Ladder.js';
+import { L, detectiveRanks } from '../career/Ladder.js';
 
 export const TRANSIT_PROFESSIONS = {
   transit: {
@@ -53,6 +53,7 @@ export const TRANSIT_PROFESSIONS = {
       L('officer', 'Transit Police Officer', 4, { req: { credentials: ['post'] }, abilities: ['arrest'] }),
       L('senior', 'Senior Transit Officer', 5, { abilities: ['arrest'] }),
       L('detective', 'Transit Detective', 6, { track: 'ic', abilities: ['arrest', 'audit'] }),
+      ...detectiveRanks([['detSergeant', 'Detective Sergeant', 6, 'medium', 8], ['detLieutenant', 'Detective Lieutenant', 7, 'large', 25]]),
       L('sergeant', 'Transit Police Sergeant', 5, { track: 'mgmt', abilities: ['arrest', 'supervise'], reports: 10 }),
       L('lieutenant', 'Transit Police Lieutenant', 6, { track: 'mgmt', abilities: ['arrest', 'supervise', 'command'], reports: 30 }),
       L('chief', 'Chief of Transit Police', 8, { track: 'mgmt', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'policy'], reports: 600 }),

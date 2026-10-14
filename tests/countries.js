@@ -38,6 +38,7 @@ import { randomName, setNameCountry } from '../src/core/State.js';
 import { programEligibility } from '../src/modules/service/NationalService.js';
 import { declareWar, warHere, homeDanger, underMobilization } from '../src/modules/world/War.js';
 import { departureBlock, bannedFrom } from '../src/modules/world/Migration.js';
+import { unitName } from '../src/modules/publicsafety/PoliceLife.js';
 import { examStatus } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
@@ -578,6 +579,22 @@ const tests = {
     for (let y = 0; y < 2 && residencyOf(state)?.status === 'asylum'; y++) { state.prompts = []; engine.ageUp(); }
     assert.equal(residencyOf(state)?.status, 'refugee', 'recognized as a refugee');
     assert.ok(prYearsLeft(state) > 0, 'settlement after five years');
+  },
+  'police: detective chains of command, forces by area, protection is a unit of the force'() {
+    setNameCountry('GB');
+    const ranks = PROFESSIONS.police.levels.map((l) => l.title);
+    for (const t of ['Detective Constable', 'Detective Sergeant', 'Detective Inspector', 'Detective Chief Inspector']) assert.ok(ranks.includes(t), t);
+    assert.equal(PROFESSIONS.police.employerName('Truro, Cornwall', null, 'England', 'GB-ENG'), 'Devon and Cornwall Police');
+    assert.equal(PROFESSIONS.police.employerName('Glasgow', null, 'Scotland', 'GB-SCT'), 'Police Scotland');
+    assert.equal(PROFESSIONS.gb_usss, undefined, 'RaSP is not an agency');
+    setNameCountry('US');
+    assert.ok(PROFESSIONS.police.levels.some((l) => l.id === 'detSergeant' && l.abilities.includes('supervise')));
+    const t = born('GB', 30, 32);
+    t.state.career.job = { professionId: 'police', levelId: 'officer', grade: 4, employer: { name: 'Metropolitan Police Service', size: 'mega' } };
+    assert.equal(unitName(t.state, 'protection'), 'Royalty and Specialist Protection (RaSP)');
+    assert.equal(unitName(t.state, 'swat'), 'Armed Response (firearms officer)');
+    t.state.career.job.employer = { name: 'Devon and Cornwall Police', size: 'large' };
+    assert.equal(unitName(t.state, 'protection'), 'Protection Team');
   },
   'each country has only the agencies it really runs, with local ranks'() {
     const has = (cc, id) => professionsFor(born(cc).state).some((p) => p.id === id);

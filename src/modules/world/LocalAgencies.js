@@ -20,9 +20,20 @@ const GONE = { airportPolice: null, universityPolice: null, jail: null, stateFir
 
 const CONSTABLE_POLICE = {
   recruit: 'Recruit Constable', officer: 'Constable', senior: 'Senior Constable', detective: 'Detective Constable', seniorDetective: 'Detective Senior Constable',
+  detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Staff Sergeant', detCaptain: 'Detective Inspector',
   sergeant: 'Sergeant', lieutenant: 'Staff Sergeant', captain: 'Inspector', deputyChief: 'Superintendent',
   ...cmd('chief', ['Chief Superintendent', 'Staff Superintendent', 'Deputy Chief', 'Deputy Chief (Operations)'], 'Chief of Police'),
 };
+
+/** England and Wales police, fire and ambulance by area (territorial forces cover counties, not cities). */
+const GB_AREA = {
+  London: { police: 'Metropolitan Police Service', fire: 'London Fire Brigade', ems: 'London Ambulance Service NHS Trust' },
+  Manchester: { police: 'Greater Manchester Police', fire: 'Greater Manchester Fire and Rescue Service', ems: 'North West Ambulance Service NHS Trust' },
+  Birmingham: { police: 'West Midlands Police', fire: 'West Midlands Fire Service', ems: 'West Midlands Ambulance Service NHS Trust' },
+  'Truro, Cornwall': { police: 'Devon and Cornwall Police', fire: 'Cornwall Fire and Rescue Service', ems: 'South Western Ambulance Service NHS Trust' },
+  Cardiff: { police: 'South Wales Police', fire: 'South Wales Fire and Rescue Service' },
+};
+const gbArea = (city, kind) => GB_AREA[city]?.[kind] ?? `${city.split(',')[0]} ${kind === 'police' ? 'Constabulary' : kind === 'fire' ? 'Fire and Rescue Service' : 'Ambulance Service NHS Trust'}`;
 
 const AU_STATE_POLICE = { 'AU-NSW': 'NSW Police Force', 'AU-VIC': 'Victoria Police', 'AU-QLD': 'Queensland Police Service', 'AU-WA': 'Western Australia Police Force', 'AU-SA': 'South Australia Police', 'AU-ACT': 'ACT Policing', 'AU-NT': 'Northern Territory Police', 'AU-TAS': 'Tasmania Police' };
 const CA_PROVINCIAL_POLICE = { 'CA-ON': 'Ontario Provincial Police', 'CA-QC': 'Sûreté du Québec' };
@@ -40,7 +51,7 @@ export const LOCAL_AGENCIES = {
     // Provincial police only in Ontario and Quebec; elsewhere the RCMP polices the province under contract.
     statePolice: {
       name: 'Provincial Police', provinces: Object.keys(CA_PROVINCIAL_POLICE), employer: (c, s) => CA_PROVINCIAL_POLICE[s] ?? 'Provincial Police',
-      titles: { cadet: 'Provincial Constable (recruit)', trooper: 'Provincial Constable', senior: 'Senior Provincial Constable', investigator: 'Detective Constable', majorCrimes: 'Detective Sergeant', sergeant: 'Sergeant', lieutenant: 'Staff Sergeant', captain: 'Inspector', major: 'Superintendent', ...cmd('superintendent', ['Chief Superintendent', 'Deputy Commissioner (Field)', 'Deputy Commissioner', 'Provincial Commander'], 'Commissioner') },
+      titles: { cadet: 'Provincial Constable (recruit)', trooper: 'Provincial Constable', senior: 'Senior Provincial Constable', investigator: 'Detective Constable', majorCrimes: 'Detective Constable (Major Case)', detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Staff Sergeant', detCaptain: 'Detective Inspector (Criminal Investigation Branch)', sergeant: 'Sergeant', lieutenant: 'Staff Sergeant', captain: 'Inspector', major: 'Superintendent', ...cmd('superintendent', ['Chief Superintendent', 'Deputy Commissioner (Field)', 'Deputy Commissioner', 'Provincial Commander'], 'Commissioner') },
     },
     corrections: { name: 'Provincial Correctional Services', employer: (c, s, sn) => `${sn} Correctional Services` },
   },
@@ -52,20 +63,20 @@ export const LOCAL_AGENCIES = {
     ...GONE, statePolice: null, corrections: null, revenue: null,
     police: {
       name: 'Territorial Police Force',
-      employer: (city, s) => (s === 'GB-SCT' ? `Police Scotland — ${city} Division` : s === 'GB-NIR' ? 'Police Service of Northern Ireland' : city === 'London' ? 'Metropolitan Police Service' : `${city} Police`),
+      employer: (city, s) => (s === 'GB-SCT' ? 'Police Scotland' : s === 'GB-NIR' ? 'Police Service of Northern Ireland' : gbArea(city, 'police')),
       titles: {
-        recruit: 'Student Police Constable', officer: 'Police Constable', senior: 'Police Constable (Tutor)', detective: 'Detective Constable', seniorDetective: 'Detective Constable (Major Investigation Team)',
+        recruit: 'Student Police Constable', officer: 'Police Constable', senior: 'Police Constable (Tutor)', detective: 'Detective Constable', seniorDetective: 'Detective Constable (Major Investigation Team)', detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Inspector', detCaptain: 'Detective Chief Inspector',
         sergeant: 'Sergeant', lieutenant: 'Inspector', captain: 'Chief Inspector', deputyChief: 'Superintendent',
         ...cmd('chief', ['Chief Superintendent', 'Commander', 'Assistant Chief Constable', 'Deputy Chief Constable'], 'Chief Constable'),
       },
     },
-    transitPolice: { name: 'British Transport Police', employer: (city) => `British Transport Police — ${city}`, titles: { recruit: 'Student Officer', officer: 'Police Constable', senior: 'Police Constable (Tutor)', detective: 'Detective Constable', sergeant: 'Sergeant', lieutenant: 'Inspector', ...cmd('chief', ['Chief Inspector', 'Superintendent', 'Chief Superintendent', 'Deputy Chief Constable'], 'Chief Constable') } },
+    transitPolice: { name: 'British Transport Police', employer: () => 'British Transport Police', titles: { recruit: 'Student Officer', officer: 'Police Constable', senior: 'Police Constable (Tutor)', detective: 'Detective Constable', detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Inspector', sergeant: 'Sergeant', lieutenant: 'Inspector', ...cmd('chief', ['Chief Inspector', 'Superintendent', 'Chief Superintendent', 'Deputy Chief Constable'], 'Chief Constable') } },
     fire: {
-      name: 'Fire and Rescue Service', employer: (city, s) => (s === 'GB-SCT' ? `Scottish Fire and Rescue Service — ${city}` : city === 'London' ? 'London Fire Brigade' : `${city} Fire and Rescue Service`),
+      name: 'Fire and Rescue Service', employer: (city, s) => (s === 'GB-SCT' ? 'Scottish Fire and Rescue Service' : s === 'GB-NIR' ? 'Northern Ireland Fire & Rescue Service' : gbArea(city, 'fire')),
       titles: { recruit: 'Trainee Firefighter', firefighter: 'Firefighter', engineer: 'Firefighter (Driver)', inspector: 'Fire Safety Inspecting Officer', investigator: 'Fire Investigation Officer', lieutenant: 'Crew Manager', captain: 'Watch Manager', battalion: 'Station Manager', deputyChief: 'Group Manager', ...cmd('chief', ['Area Manager', 'Assistant Chief Fire Officer', 'Deputy Chief Fire Officer'], 'Chief Fire Officer') },
     },
     ems: {
-      name: 'NHS Ambulance Service', employer: (city, s) => (s === 'GB-SCT' ? 'Scottish Ambulance Service' : s === 'GB-WLS' ? 'Welsh Ambulance Service' : city === 'London' ? 'London Ambulance Service NHS Trust' : `${city} Ambulance Service NHS Trust`),
+      name: 'NHS Ambulance Service', employer: (city, s) => (s === 'GB-SCT' ? 'Scottish Ambulance Service' : s === 'GB-WLS' ? 'Welsh Ambulance Service' : s === 'GB-NIR' ? 'Northern Ireland Ambulance Service' : gbArea(city, 'ems')),
       titles: { emt: 'Emergency Care Assistant', paramedic: 'Paramedic', criticalCare: 'Critical Care Paramedic', flight: 'Air Ambulance (HEMS) Paramedic', fto: 'Practice Educator', supervisor: 'Clinical Team Leader', captain: 'Operations Manager', deputy: 'Head of Operations', ...cmd('chief', ['Assistant Director of Operations', 'Director of Operations', 'Deputy Chief Executive'], 'Chief Executive') },
     },
     dispatch: { name: '999 Control Room', employer: (city) => `${city} Joint Control Room`, titles: { trainee: 'Trainee Call Handler', telecommunicator: '999 Call Handler', senior: 'Senior Call Handler', training: 'Control Room Trainer', supervisor: 'Control Room Supervisor', ...cmd('director', ['Control Room Manager', 'Head of Contact Management', 'Assistant Director'], 'Director of Contact Management') } },
@@ -81,7 +92,7 @@ export const LOCAL_AGENCIES = {
     ...GONE, police: null, airportPolice: null, transitPolice: null,
     statePolice: {
       name: 'Landespolizei', employer: (c, s, sn) => ({ 'DE-BY': 'Bayerische Polizei', 'DE-BE': 'Polizei Berlin', 'DE-HH': 'Polizei Hamburg' }[s] ?? `Polizei ${sn}`),
-      titles: { cadet: 'Polizeimeisteranwärter', trooper: 'Polizeimeister', senior: 'Polizeiobermeister', investigator: 'Kriminalkommissar', majorCrimes: 'Kriminalhauptkommissar', sergeant: 'Polizeihauptmeister', lieutenant: 'Polizeikommissar', captain: 'Polizeihauptkommissar', major: 'Polizeirat', ...cmd('superintendent', ['Polizeioberrat', 'Polizeidirektor', 'Leitender Polizeidirektor', 'Polizeivizepräsident'], 'Polizeipräsident') },
+      titles: { cadet: 'Polizeimeisteranwärter', trooper: 'Polizeimeister', senior: 'Polizeiobermeister', investigator: 'Kriminaloberkommissar', majorCrimes: 'Kriminalhauptkommissar', detSergeant: 'Erster Kriminalhauptkommissar (Kommissariatsleiter)', detLieutenant: 'Kriminalrat (Inspektionsleiter)', detCaptain: 'Kriminaldirektor (Leiter der Kriminalpolizei)', sergeant: 'Polizeihauptmeister', lieutenant: 'Polizeikommissar', captain: 'Polizeihauptkommissar', major: 'Polizeirat', ...cmd('superintendent', ['Polizeioberrat', 'Polizeidirektor', 'Leitender Polizeidirektor', 'Polizeivizepräsident'], 'Polizeipräsident') },
     },
     corrections: {
       name: 'Justizvollzug', employer: (c, s, sn) => `JVA ${c} (Justizvollzug ${sn})`,
@@ -104,12 +115,12 @@ export const LOCAL_AGENCIES = {
     ...GONE, transitPolice: null, corrections: null, revenue: null,
     police: {
       name: 'Police municipale', employer: (city) => `Police municipale de ${city}`,
-      titles: { recruit: 'Gardien-brigadier stagiaire', officer: 'Gardien-brigadier', senior: 'Brigadier-chef principal', detective: 'Agent de recherche', seniorDetective: 'Chef de service adjoint', sergeant: 'Chef de service', lieutenant: 'Chef de service principal', captain: 'Directeur de police municipale', deputyChief: 'Directeur principal', ...cmd('chief', ['Directeur adjoint', 'Directeur de la tranquillité publique', 'Directeur général adjoint', 'Directeur de la sécurité'], 'Directeur de la police municipale') },
+      titles: { recruit: 'Gardien-brigadier stagiaire', officer: 'Gardien-brigadier', senior: 'Brigadier-chef principal', detective: 'Agent de recherche', seniorDetective: 'Chef de service adjoint', detSergeant: 'Chef de service (unité de recherche)', detLieutenant: 'Directeur de police municipale (recherche)', detCaptain: 'Directeur principal de police municipale', sergeant: 'Chef de service', lieutenant: 'Chef de service principal', captain: 'Directeur de police municipale', deputyChief: 'Directeur principal', ...cmd('chief', ['Directeur adjoint', 'Directeur de la tranquillité publique', 'Directeur général adjoint', 'Directeur de la sécurité'], 'Directeur de la police municipale') },
     },
     // Patrol policing in cities is the national police's job.
     statePolice: {
       name: 'Police nationale (Sécurité publique)', citizensOnly: true, employer: (city) => `Commissariat de ${city}`,
-      titles: { cadet: 'Élève gardien de la paix', trooper: 'Gardien de la paix', senior: 'Sous-brigadier', investigator: 'Officier de police judiciaire', majorCrimes: 'Enquêteur, brigade criminelle', sergeant: 'Brigadier-chef', lieutenant: 'Lieutenant de police', captain: 'Capitaine de police', major: 'Commandant de police', ...cmd('superintendent', ['Commissaire de police', 'Commissaire divisionnaire', 'Contrôleur général', 'Inspecteur général'], 'Directeur général de la Police nationale') },
+      titles: { cadet: 'Élève gardien de la paix', trooper: 'Gardien de la paix', senior: 'Sous-brigadier', investigator: 'Officier de police judiciaire', majorCrimes: 'Enquêteur, brigade criminelle', detSergeant: 'Capitaine de police (chef de groupe)', detLieutenant: 'Commandant de police (chef de section, PJ)', detCaptain: 'Commissaire (chef de brigade, PJ)', sergeant: 'Brigadier-chef', lieutenant: 'Lieutenant de police', captain: 'Capitaine de police', major: 'Commandant de police', ...cmd('superintendent', ['Commissaire de police', 'Commissaire divisionnaire', 'Contrôleur général', 'Inspecteur général'], 'Directeur général de la Police nationale') },
     },
     fire: {
       name: 'Sapeurs-pompiers professionnels (SDIS)', employer: (city) => `SDIS — centre de secours de ${city}`,
@@ -130,12 +141,12 @@ export const LOCAL_AGENCIES = {
     gameWarden: { name: 'Polizia Provinciale', employer: (city) => `Polizia Provinciale di ${city}`, titles: { cadet: 'Agente in prova', warden: 'Agente di Polizia Provinciale', investigator: 'Ispettore ittico-venatorio', sergeant: 'Ispettore', captain: 'Commissario', chief: 'Comandante della Polizia Provinciale' } },
     police: {
       name: 'Polizia Locale', employer: (city) => `Polizia Locale di ${city}`,
-      titles: { recruit: 'Agente in prova', officer: 'Agente', senior: 'Agente scelto', detective: 'Assistente', seniorDetective: 'Sovrintendente', sergeant: 'Ispettore', lieutenant: 'Commissario', captain: 'Commissario capo', deputyChief: 'Vice comandante', ...cmd('chief', ['Dirigente di settore', 'Dirigente superiore', 'Vice comandante generale', 'Comandante vicario'], 'Comandante della Polizia Locale') },
+      titles: { recruit: 'Agente in prova', officer: 'Agente', senior: 'Agente scelto', detective: 'Assistente', seniorDetective: 'Sovrintendente', detSergeant: 'Ispettore (Nucleo di Polizia Giudiziaria)', detLieutenant: 'Commissario (Polizia Giudiziaria)', detCaptain: 'Commissario capo (Polizia Giudiziaria)', sergeant: 'Ispettore', lieutenant: 'Commissario', captain: 'Commissario capo', deputyChief: 'Vice comandante', ...cmd('chief', ['Dirigente di settore', 'Dirigente superiore', 'Vice comandante generale', 'Comandante vicario'], 'Comandante della Polizia Locale') },
     },
     // Patrol policing beyond the town is the national police's (the Carabinieri serve in the forces).
     statePolice: {
       name: 'Polizia di Stato (Volanti)', citizensOnly: true, employer: (city) => `Questura di ${city}`,
-      titles: { cadet: 'Allievo agente', trooper: 'Agente', senior: 'Agente scelto', investigator: 'Assistente capo', majorCrimes: 'Sovrintendente (Squadra Mobile)', sergeant: 'Ispettore', lieutenant: 'Ispettore superiore', captain: 'Commissario', major: 'Commissario capo', ...cmd('superintendent', ['Vice questore aggiunto', 'Vice questore', 'Primo dirigente', 'Dirigente superiore'], 'Questore') },
+      titles: { cadet: 'Allievo agente', trooper: 'Agente', senior: 'Agente scelto', investigator: 'Assistente capo', majorCrimes: 'Sovrintendente (Squadra Mobile)', detSergeant: 'Ispettore superiore (Squadra Mobile)', detLieutenant: 'Commissario capo (Squadra Mobile)', detCaptain: 'Vice questore (Capo della Squadra Mobile)', sergeant: 'Ispettore', lieutenant: 'Ispettore superiore', captain: 'Commissario', major: 'Commissario capo', ...cmd('superintendent', ['Vice questore aggiunto', 'Vice questore', 'Primo dirigente', 'Dirigente superiore'], 'Questore') },
     },
     fire: {
       name: 'Vigili del Fuoco', citizensOnly: true, employer: (city) => `Comando Provinciale dei Vigili del Fuoco di ${city}`,
@@ -154,7 +165,7 @@ export const LOCAL_AGENCIES = {
     ...GONE, police: null, airportPolice: null, transitPolice: null, corrections: null,
     statePolice: {
       name: 'Prefectural Police', citizensOnly: true, employer: (c, s, sn) => (s === 'JP-13' ? 'Tokyo Metropolitan Police Department' : s === 'JP-01' ? 'Hokkaido Prefectural Police' : `${sn} Prefectural Police`),
-      titles: { cadet: 'Police Academy Trainee', trooper: 'Junsa (Police Officer)', senior: 'Junsa-buchō (Senior Officer)', investigator: 'Detective (Junsa-buchō)', majorCrimes: 'Detective, Investigation Division 1', sergeant: 'Keibuho (Assistant Inspector)', lieutenant: 'Keibu (Inspector)', captain: 'Keishi (Superintendent)', major: 'Keishi (Station Chief)', ...cmd('superintendent', ['Keishisei (Senior Superintendent)', 'Keishichō (Chief Superintendent)', 'Keishikan (Superintendent Supervisor)', 'Deputy Chief of Police'], 'Chief of Prefectural Police') },
+      titles: { cadet: 'Police Academy Trainee', trooper: 'Junsa (Police Officer)', senior: 'Junsa-buchō (Senior Officer)', investigator: 'Detective (Junsa-buchō)', majorCrimes: 'Detective, Investigation Division 1', detSergeant: 'Keibuho (Detective Squad Leader)', detLieutenant: 'Keibu (Detective Inspector)', detCaptain: 'Keishi (Criminal Investigation Division Chief)', sergeant: 'Keibuho (Assistant Inspector)', lieutenant: 'Keibu (Inspector)', captain: 'Keishi (Superintendent)', major: 'Keishi (Station Chief)', ...cmd('superintendent', ['Keishisei (Senior Superintendent)', 'Keishichō (Chief Superintendent)', 'Keishikan (Superintendent Supervisor)', 'Deputy Chief of Police'], 'Chief of Prefectural Police') },
     },
     fire: {
       name: 'Municipal Fire Department', employer: (city, s) => (s === 'JP-13' ? 'Tokyo Fire Department' : `${city} City Fire Bureau`),
@@ -173,7 +184,7 @@ export const LOCAL_AGENCIES = {
     ...GONE, police: null, airportPolice: null, transitPolice: null, corrections: null,
     statePolice: {
       name: 'Korean National Police (Provincial Agency)', citizensOnly: true, employer: (c, s, sn) => (s === 'KR-11' ? 'Seoul Metropolitan Police Agency' : `${sn} Provincial Police Agency`),
-      titles: { cadet: 'Central Police Academy Trainee', trooper: 'Sungyeong (Police Officer)', senior: 'Gyeongjang (Senior Officer)', investigator: 'Gyeongsa (Detective)', majorCrimes: 'Gyeongsa (Violent Crimes Unit)', sergeant: 'Gyeongwi (Assistant Inspector)', lieutenant: 'Gyeonggam (Inspector)', captain: 'Gyeongjeong (Superintendent)', major: 'Chonggyeong (Senior Superintendent)', ...cmd('superintendent', ['Gyeongmugwan (Chief Superintendent)', 'Chianggam (Superintendent General)', 'Chianjeonggam (Deputy Commissioner)', 'Deputy Commissioner General'], 'Commissioner of the Provincial Police Agency') },
+      titles: { cadet: 'Central Police Academy Trainee', trooper: 'Sungyeong (Police Officer)', senior: 'Gyeongjang (Senior Officer)', investigator: 'Gyeongsa (Detective)', majorCrimes: 'Gyeongsa (Violent Crimes Unit)', detSergeant: 'Gyeongwi (Detective Team Leader)', detLieutenant: 'Gyeonggam (Investigation Section Chief)', detCaptain: 'Gyeongjeong (Criminal Investigation Division Chief)', sergeant: 'Gyeongwi (Assistant Inspector)', lieutenant: 'Gyeonggam (Inspector)', captain: 'Gyeongjeong (Superintendent)', major: 'Chonggyeong (Senior Superintendent)', ...cmd('superintendent', ['Gyeongmugwan (Chief Superintendent)', 'Chianggam (Superintendent General)', 'Chianjeonggam (Deputy Commissioner)', 'Deputy Commissioner General'], 'Commissioner of the Provincial Police Agency') },
     },
     fire: {
       name: 'National Fire Agency', citizensOnly: true, employer: (c, s, sn) => (s === 'KR-11' ? 'Seoul Fire & Disaster Headquarters' : `${sn} Fire Headquarters`),
@@ -190,11 +201,11 @@ export const LOCAL_AGENCIES = {
     jail: { name: 'Juzgado Cívico / Separos', employer: (city) => `Centro de Detención Municipal de ${city}`, titles: { trainee: 'Custodio en formación', officer: 'Custodio', senior: 'Custodio primero', sergeant: 'Jefe de turno', lieutenant: 'Subdirector', commander: 'Director del centro', administrator: 'Director de Centros de Detención' } },
     police: {
       name: 'Policía Municipal', employer: (city) => `Policía Municipal de ${city}`,
-      titles: { recruit: 'Cadete', officer: 'Policía', senior: 'Policía Primero', detective: 'Agente de Investigación', seniorDetective: 'Agente de Investigación Primero', sergeant: 'Suboficial', lieutenant: 'Oficial', captain: 'Inspector', deputyChief: 'Inspector Jefe', ...cmd('chief', ['Inspector General', 'Comisario', 'Comisario Jefe', 'Subsecretario de Seguridad'], 'Secretario de Seguridad Pública Municipal') },
+      titles: { recruit: 'Cadete', officer: 'Policía', senior: 'Policía Primero', detective: 'Agente de Investigación', seniorDetective: 'Agente de Investigación Primero', detSergeant: 'Jefe de Grupo (Investigación)', detLieutenant: 'Comandante de Investigación', detCaptain: 'Coordinador de Investigación', sergeant: 'Suboficial', lieutenant: 'Oficial', captain: 'Inspector', deputyChief: 'Inspector Jefe', ...cmd('chief', ['Inspector General', 'Comisario', 'Comisario Jefe', 'Subsecretario de Seguridad'], 'Secretario de Seguridad Pública Municipal') },
     },
     statePolice: {
       name: 'Policía Estatal', employer: (c, s, sn) => (s === 'MX-CMX' ? 'Secretaría de Seguridad Ciudadana (CDMX)' : `Policía Estatal de ${sn}`),
-      titles: { cadet: 'Cadete', trooper: 'Policía', senior: 'Policía Primero', investigator: 'Agente de Investigación', majorCrimes: 'Agente de Investigación (Homicidios)', sergeant: 'Suboficial', lieutenant: 'Oficial', captain: 'Inspector', major: 'Inspector Jefe', ...cmd('superintendent', ['Inspector General', 'Comisario', 'Comisario General', 'Subsecretario'], 'Secretario de Seguridad Pública') },
+      titles: { cadet: 'Cadete', trooper: 'Policía', senior: 'Policía Primero', investigator: 'Agente de Investigación', majorCrimes: 'Agente de Investigación (Homicidios)', detSergeant: 'Jefe de Grupo (Investigación)', detLieutenant: 'Comandante de Investigación', detCaptain: 'Coordinador de Investigación', sergeant: 'Suboficial', lieutenant: 'Oficial', captain: 'Inspector', major: 'Inspector Jefe', ...cmd('superintendent', ['Inspector General', 'Comisario', 'Comisario General', 'Subsecretario'], 'Secretario de Seguridad Pública') },
     },
     corrections: { name: 'Sistema Penitenciario Estatal', employer: (c, s, sn) => `CERESO de ${c} (${sn})`, titles: { officer: 'Custodio penitenciario', senior: 'Custodio primero', sergeant: 'Jefe de seguridad', lieutenant: 'Subdirector de seguridad', captain: 'Director de seguridad', deputyWarden: 'Subdirector del CERESO', warden: 'Director del CERESO', director: 'Comisionado del Sistema Penitenciario' } },
     fire: {
@@ -211,7 +222,7 @@ export const LOCAL_AGENCIES = {
     // One national force does all policing.
     police: {
       name: 'Philippine National Police', citizensOnly: true, employer: (city) => `PNP — ${city} Police Station`,
-      titles: { recruit: 'Police Trainee (Regional Training Center)', officer: 'Patrolman', senior: 'Police Corporal', detective: 'Police Staff Sergeant (Investigator)', seniorDetective: 'Police Master Sergeant (Investigator)', sergeant: 'Police Senior Master Sergeant', lieutenant: 'Police Lieutenant', captain: 'Police Captain', deputyChief: 'Police Major', ...cmd('chief', ['Police Lieutenant Colonel', 'Police Colonel', 'Police Brigadier General', 'Police Major General'], 'Chief PNP (Police General)') },
+      titles: { recruit: 'Police Trainee (Regional Training Center)', officer: 'Patrolman', senior: 'Police Corporal', detective: 'Police Staff Sergeant (Investigator)', seniorDetective: 'Police Master Sergeant (Investigator)', detSergeant: 'Police Lieutenant (Investigation Team Leader)', detLieutenant: 'Police Captain (Chief, Investigation Section)', detCaptain: 'Police Major (Chief, Investigation Division)', sergeant: 'Police Senior Master Sergeant', lieutenant: 'Police Lieutenant', captain: 'Police Captain', deputyChief: 'Police Major', ...cmd('chief', ['Police Lieutenant Colonel', 'Police Colonel', 'Police Brigadier General', 'Police Major General'], 'Chief PNP (Police General)') },
     },
     jail: { name: 'Bureau of Jail Management and Penology', citizensOnly: true, employer: (city) => `BJMP — ${city.replace(/ City$/, '')} City Jail`, titles: { trainee: 'Jail Officer Trainee', officer: 'Jail Officer I', senior: 'Jail Officer III', sergeant: 'Senior Jail Officer', lieutenant: 'Jail Inspector', commander: 'Jail Warden', administrator: 'Chief, BJMP' } },
     fire: {
@@ -229,7 +240,7 @@ export const LOCAL_AGENCIES = {
     ...GONE, police: null, transitPolice: null,
     statePolice: {
       name: 'State Police', citizensOnly: true, employer: (c, s, sn) => ({ 'IN-MH': 'Maharashtra Police', 'IN-DL': 'Delhi Police', 'IN-KA': 'Karnataka State Police', 'IN-TN': 'Tamil Nadu Police', 'IN-WB': 'West Bengal Police', 'IN-UP': 'Uttar Pradesh Police' }[s] ?? `${sn} Police`),
-      titles: { cadet: 'Constable (trainee)', trooper: 'Police Constable', senior: 'Head Constable', investigator: 'Assistant Sub-Inspector', majorCrimes: 'Sub-Inspector (Crime Branch)', sergeant: 'Sub-Inspector', lieutenant: 'Inspector (Station House Officer)', captain: 'Deputy Superintendent of Police', major: 'Superintendent of Police', ...cmd('superintendent', ['Deputy Inspector General', 'Inspector General', 'Additional Director General', 'Special Director General'], 'Director General of Police') },
+      titles: { cadet: 'Constable (trainee)', trooper: 'Police Constable', senior: 'Head Constable', investigator: 'Assistant Sub-Inspector', majorCrimes: 'Sub-Inspector (Crime Branch)', detSergeant: 'Inspector (Crime Branch)', detLieutenant: 'Deputy Superintendent (Crime Branch)', detCaptain: 'Superintendent of Police (CID)', sergeant: 'Sub-Inspector', lieutenant: 'Inspector (Station House Officer)', captain: 'Deputy Superintendent of Police', major: 'Superintendent of Police', ...cmd('superintendent', ['Deputy Inspector General', 'Inspector General', 'Additional Director General', 'Special Director General'], 'Director General of Police') },
     },
     corrections: { name: 'State Prisons Department', employer: (c, s, sn) => `${c} Central Jail (${sn} Prisons)`, titles: { officer: 'Jail Warder', senior: 'Head Warder', investigator: 'Prison Intelligence Officer', sergeant: 'Chief Head Warder', lieutenant: 'Assistant Jailer', captain: 'Deputy Jailer', deputyWarden: 'Jailer', warden: 'Jail Superintendent', director: 'Director General of Prisons' } },
     fire: { name: 'State Fire & Emergency Services', employer: (city) => `${city} Fire Brigade`, titles: { recruit: 'Fireman (trainee)', firefighter: 'Fireman', engineer: 'Fireman Driver', inspector: 'Fire Prevention Officer', lieutenant: 'Leading Fireman', captain: 'Sub-Officer', battalion: 'Station Officer', deputyChief: 'Divisional Fire Officer', ...cmd('chief', ['Deputy Chief Fire Officer', 'Chief Fire Officer', 'Director of Fire Services'], 'Director General, Fire Services') } },
@@ -246,7 +257,7 @@ export const LOCAL_AGENCIES = {
     stateFire: { name: 'Rural Fire Service', employer: (c, s, sn) => ({ 'AU-NSW': 'NSW Rural Fire Service', 'AU-VIC': 'Country Fire Authority', 'AU-SA': 'Country Fire Service' }[s] ?? `${sn} Rural Fire Service`) },
     statePolice: {
       name: 'State Police', employer: (c, s, sn) => AU_STATE_POLICE[s] ?? `${sn} Police`,
-      titles: { cadet: 'Probationary Constable (recruit)', trooper: 'Constable', senior: 'Senior Constable', investigator: 'Detective Senior Constable', majorCrimes: 'Detective Sergeant (Homicide)', sergeant: 'Sergeant', lieutenant: 'Senior Sergeant', captain: 'Inspector', major: 'Superintendent', ...cmd('superintendent', ['Chief Superintendent', 'Assistant Commissioner', 'Deputy Commissioner', 'Deputy Commissioner (Operations)'], 'Commissioner of Police') },
+      titles: { cadet: 'Probationary Constable (recruit)', trooper: 'Constable', senior: 'Senior Constable', investigator: 'Detective Senior Constable', majorCrimes: 'Detective Senior Constable (Homicide)', detSergeant: 'Detective Sergeant', detLieutenant: 'Detective Senior Sergeant', detCaptain: 'Detective Inspector', sergeant: 'Sergeant', lieutenant: 'Senior Sergeant', captain: 'Inspector', major: 'Superintendent', ...cmd('superintendent', ['Chief Superintendent', 'Assistant Commissioner', 'Deputy Commissioner', 'Deputy Commissioner (Operations)'], 'Commissioner of Police') },
     },
     corrections: { name: 'Corrective Services', employer: (c, s, sn) => `${sn} Corrective Services` },
     fire: {

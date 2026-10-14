@@ -1,6 +1,6 @@
 /** Police and fire on the Career tab. */
 import { esc, button, card, chip, kv, disclosure } from '../Components.js';
-import { AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility } from '../../modules/publicsafety/PoliceLife.js';
+import { AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility, unitName, bureauName, isDetective } from '../../modules/publicsafety/PoliceLife.js';
 import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
 import { nextExam, REACHABLE } from '../../modules/publicsafety/CivilService.js';
 
@@ -22,18 +22,18 @@ export function policeCard(state) {
   if (!isCop(job) || !p) return '';
   const area = AREAS[p.area] ?? AREAS.downtown;
   const unit = UNITS[p.unit];
-  const detective = /detective|investigator|majorCrimes/i.test(job.levelId);
+  const detective = isDetective(job);
   const areas = Object.entries(AREAS).filter(([, a]) => !a.only || a.only.includes(job.professionId)).map(([id, a]) => button(`${a.icon} ${a.name}`, 'police.area', { arg: id, variant: p.area === id ? 'small on' : 'small', disabled: p.area === id || Boolean(state.yearly['police.area']), hint: a.desc })).join('');
   const shifts = Object.entries(PSHIFTS).map(([id, s]) => button(`${s.icon} ${s.name}`, 'police.shift', { arg: id, variant: p.shift === id ? 'small on' : 'small', disabled: p.shift === id || Boolean(state.yearly['police.shift']), hint: s.pay > 1 ? `+${Math.round((s.pay - 1) * 100)}% differential` : '' })).join('');
-  const units = Object.entries(UNITS).map(([id, u]) => {
+  const units = Object.entries(UNITS).filter(([id, u]) => !u.minSize || unitEligibility(state, id).reason !== 'Only large forces have this unit').map(([id, u]) => {
     const on = p.unit === id;
     const ok = unitEligibility(state, id);
-    return button(`${u.icon} ${on ? '✓ ' : ''}${u.name}`, 'police.unit', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && (!ok.ok || Boolean(state.yearly['police.unit'])), hint: on ? 'Return to patrol' : ok.ok ? `${u.pay ? `+$${n(u.pay)}/yr · ` : ''}${u.desc}` : ok.reason });
+    return button(`${u.icon} ${on ? '✓ ' : ''}${esc(unitName(state, id))}`, 'police.unit', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && (!ok.ok || Boolean(state.yearly['police.unit'])), hint: on ? 'Return to patrol' : ok.ok ? `${u.pay ? `+$${n(u.pay)}/yr · ` : ''}${u.desc}` : ok.reason });
   }).join('');
-  const bureaus = detective ? Object.entries(BUREAUS).map(([id, b]) => button(`${b.icon} ${b.name}`, 'police.bureau', { arg: id, variant: p.bureau === id ? 'small on' : 'small', disabled: p.bureau === id || p.brady, hint: b.desc })).join('') : '';
+  const bureaus = detective ? Object.entries(BUREAUS).map(([id, b]) => button(`${b.icon} ${esc(bureauName(state, id))}`, 'police.bureau', { arg: id, variant: p.bureau === id ? 'small on' : 'small', disabled: p.bureau === id || p.brady, hint: b.desc })).join('') : '';
   const tally = [['📞', 'calls', p.calls], ['🔗', 'arrests', p.arrests], ['📜', 'commendations', p.commendations], ['📄', 'complaints', p.complaints], ['✋', 'uses of force', p.uof], ['🔫', 'shootings', p.ois], ['🤕', 'injuries', p.injuries]].filter(([, , v]) => v).map(([i, l, v]) => chip(`${i} ${n(v)} ${l}`)).join(' ');
   return card('On the Street', `${kv([
-    ['Assignment', `${area.icon} ${esc(area.name)}${unit ? ` · ${unit.icon} ${esc(unit.name)}` : ''}${p.bureau ? ` · ${BUREAUS[p.bureau].icon} ${esc(BUREAUS[p.bureau].name)}` : ''}`],
+    ['Assignment', `${area.icon} ${esc(area.name)}${unit ? ` · ${unit.icon} ${esc(unitName(state, p.unit))}` : ''}${p.bureau ? ` · ${BUREAUS[p.bureau].icon} ${esc(bureauName(state, p.bureau))}` : ''}`],
     ['Shift', `${PSHIFTS[p.shift]?.icon ?? ''} ${esc(PSHIFTS[p.shift]?.name ?? 'Days')}`],
     p.brady ? ['Brady list', '<span class="neg">Yes — your credibility can be attacked in every case</span>'] : null,
   ])}
@@ -43,8 +43,8 @@ export function policeCard(state) {
       ${button('🫂 Peer support', 'police.peer', { variant: 'small', disabled: Boolean(state.yearly['police.peer']), hint: 'Less trauma and stress' })}
     </div>
     ${examBlock(state, job, 'police.exam')}
-    ${disclosure('police.units', 'Specialty units', `<div class="toggle-row">${units}</div>`, { count: unit ? unit.name : 'Patrol' })}
-    ${bureaus ? disclosure('police.bureaus', 'Detective bureau', `<div class="toggle-row">${bureaus}</div>`, { count: p.bureau ? BUREAUS[p.bureau].name : 'choose' }) : ''}
+    ${disclosure('police.units', 'Specialty units', `<div class="toggle-row">${units}</div>`, { count: unit ? unitName(state, p.unit) : 'Patrol' })}
+    ${bureaus ? disclosure('police.bureaus', 'Detective bureau', `<div class="toggle-row">${bureaus}</div>`, { count: p.bureau ? bureauName(state, p.bureau) : 'choose' }) : ''}
     ${disclosure('police.where', 'Precinct & shift', `<div class="toggle-row">${areas}</div><div class="toggle-row">${shifts}</div>`, { count: area.name })}
     <p class="fine">Calls you'll remember come as decisions. Complaints, uses of force and an honest report all go in your file; lying in one can put you on the prosecutor's Brady list.</p>`, { icon: '🚓', accent: 'blue' });
 }
