@@ -900,6 +900,7 @@ const tests = {
     state.credentials.held.emt = { earnedAge: 25, renewedAge: 29, status: 'active', states: [] };
     state.prompts = [];
     engine.ageUp();
+    state.prompts = [];
     assert.equal(state.credentials.retake.paramedic, state.character.age, 'retake window opens');
     const elig = pursueEligibility(state, 'paramedic');
     assert.ok(elig.ok && elig.retake && elig.cost === retakeCost(getCredential('paramedic')), 'cheap retest');

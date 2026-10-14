@@ -12,6 +12,7 @@ import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
 import { atWar, warHere, PHASE_LABEL, INTENSITY_LABEL, frontLabel, homeDanger } from '../../modules/world/War.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote } from '../../modules/politics/Parties.js';
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 
 function faithCard(state) {
@@ -74,7 +75,22 @@ function serviceCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${faithCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+}
+
+/** Party membership and how you've voted. */
+function partyCard(state) {
+  if (!state.civic || state.character.age < 16) return '';
+  const p = partyOf(state);
+  const votes = (state.civic.votes ?? []).slice(-5).reverse();
+  const join = ['labor', 'business'].map((b) => button(`${PARTY_ICON[b]} ${esc(partyName(state, b))}`, 'party.join', { arg: b, variant: p?.bloc === b ? 'tiny on' : 'tiny', hint: `${money(PARTY_DUES)}/yr` })).join('');
+  const role = p ? PARTY_ROLES[p.role] : null;
+  return card('Party & Elections', `
+    ${p ? `<p>${chip(`${PARTY_ICON[p.bloc]} ${esc(partyName(state, p.bloc))}`, 'good')} ${chip(role.label)} <small class="fine">since age ${p.since}${role.next ? ` · canvass in campaigns to rise to ${PARTY_ROLES[role.next].label.toLowerCase()}` : ''}</small></p>` : '<p class="muted">Join a party to canvass in national elections, rise in the local party and get its backing when you run.</p>'}
+    ${canVote(state) ? '' : '<p class="why">Only citizens 18+ vote in national elections here.</p>'}
+    <div class="toggle-row chips-row">${join}</div>
+    ${p ? button('Leave the party', 'party.leave', { variant: 'small ghost' }) : ''}
+    ${votes.length ? `<h4 class="sub">Your votes</h4><ul class="history">${votes.map((v) => `<li>Age ${v.age} · ${esc(v.body)}: ${v.choice === 'skip' ? 'didn\'t vote' : esc(partyName(state, v.choice))} ${v.choice === v.winner ? '✅' : v.choice === 'skip' ? '' : '❌'}</li>`).join('')}</ul>` : ''}`, { icon: '🗳️', summary: p ? partyName(state, p.bloc) : 'No party' });
 }
 
 /** The war your country is fighting, and conflicts elsewhere. */

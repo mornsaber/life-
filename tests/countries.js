@@ -40,6 +40,7 @@ import { declareWar, warHere, homeDanger, underMobilization } from '../src/modul
 import { departureBlock } from '../src/modules/world/Migration.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
+import { partyName, ballotSwing } from '../src/modules/politics/Parties.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -349,6 +350,30 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'parties and national elections: real party names, ballots, canvassing, compulsory voting'() {
+    const t = born('AU', 21, 30);
+    const { state, engine } = t;
+    assert.equal(partyName(state, 'labor'), 'Australian Labor Party');
+    engine.dispatch('party.join', 'business');
+    assert.equal(state.civic.party.bloc, 'business');
+    // Campaign seasons come every other year; find one.
+    let ballot = null;
+    for (let i = 0; i < 4 && !ballot; i++) { state.prompts = []; engine.ageUp(); ballot = state.prompts.find((p) => p.type === 'party.ballot'); }
+    assert.ok(ballot, 'a national election ballot');
+    const cash = state.finances.cash;
+    engine.resolvePrompt(ballot.id, 'skip');
+    assert.ok(state.finances.cash < cash, 'fined for not voting in Australia');
+    const body = state.legislature.bodies[ballot.data.bodyId];
+    state.civic.ballots[body.id] = { choice: 'business', canvassed: true };
+    assert.ok(ballotSwing(state, body) < 0, 'canvassing for the business bloc');
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.civic.votes?.length, 'the result is recorded');
+    // Non-citizens don't get a ballot.
+    const m = born('GB', 22, 30);
+    arrive(m.ctx, 'DE', { visa: 'work' });
+    for (let i = 0; i < 4; i++) { m.state.prompts = []; m.engine.ageUp(); assert.ok(!m.state.prompts.some((p) => p.type === 'party.ballot')); }
   },
   'children born abroad: registration deadlines, one generation by descent, choosing at 22'() {
     // A Japanese mother in the US: the baby is American by birth, Japanese only if registered in time.

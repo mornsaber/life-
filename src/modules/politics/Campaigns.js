@@ -16,6 +16,7 @@ import { yearsInProfession } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
 import { influenceVoteBonus } from '../civic/Activism.js';
 import { isAbroad, US_ONLY, LOCAL_OFFICES, isCitizen } from '../world/Countries.js';
+import { partyBonus } from './Parties.js';
 import { stateIdOf } from '../life/Regions.js';
 
 export function runEligibility(state, officeId) {
@@ -75,13 +76,14 @@ export function voteShare(state, officeId, campaign, { incumbent = false } = {})
   if (office.leader && !incumbent) {
     const post = { majority: 0.08, presiding: 0.05, whip: 0.04, chair: 0.03 }[state.legislature?.seat?.post] ?? 0;
     const lead = 0.4 + Math.min(0.12, p.recognition * 0.0015) + Math.min(0.12, ((p.office?.terms ?? 1) - 1) * 0.04) + ((p.office?.approval ?? 50) - 50) / 250
-      + post + (campaign?.endorsements.length ?? 0) * 0.015 + Math.min(0.04, prestige(state) / 2000) - scandalPenalty(state);
+      + post + (campaign?.endorsements.length ?? 0) * 0.015 + Math.min(0.04, prestige(state) / 2000) - scandalPenalty(state) + partyBonus(state) * 1.5;
     return clamp(lead, 0.05, 0.8);
   }
   let share = 0.38;
   share += Math.min(0.12, p.recognition * 0.0015);
   share += 0.08 * Math.min(1, (campaign?.funds ?? 0) / office.cost);
   share += (campaign?.endorsements.length ?? 0) * 0.015;
+  share += partyBonus(state);
   share += Math.min(0.04, prestige(state) / 2000);
   const gap = office.level - 1 - experienceLevel(state);
   share += gap <= 0 ? 0.04 : -0.06 * gap;
@@ -102,7 +104,7 @@ function endorsementEligible(state, id) {
     case 'labor': return Boolean(job?.unionMember) || state.politics.laborVotes > 1;
     case 'veterans': return state.military.history.length > 0 || Boolean(state.military.service);
     case 'lawEnforcement': return ['police', 'fire', 'statePolice', 'corrections', 'ems', 'sheriff', 'jail', 'privatePolice', 'federalPrisons', 'probation', 'dispatch'].some((p) => job?.professionId === p || hist.some((h) => h.professionId === p)) || Object.values(state.emergency).some((m) => m && m.serviceName);
-    case 'party': return state.politics.recognition >= 25;
+    case 'party': return state.politics.recognition >= 25 || ['organizer', 'officer'].includes(state.civic?.party?.role);
     case 'editorial': return state.stats.smarts >= 60;
     case 'bar': return hasCredential(state, 'barLicense');
     case 'parents': return ['officer', 'president'].includes(state.civic?.pta?.role) || state.politics.history.some((h) => h.officeId === 'schoolBoard') || state.politics.office?.id === 'schoolBoard';

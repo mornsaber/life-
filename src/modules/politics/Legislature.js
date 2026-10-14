@@ -26,6 +26,7 @@ import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { OFFICES } from './Offices.js';
+import { ballotPrompt, ballotSwing, ballotResult } from './Parties.js';
 import { LEGISLATURES } from './NationalOffices.js';
 import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describeValue, ensureLaws } from './Laws.js';
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
@@ -440,6 +441,8 @@ function electionYear(ctx, body, rng) {
   const st = body.level === 'federal' ? null : body.level === 'state' ? body.where : REGIONS[body.where]?.state;
   const unions = st ? unionsInState(state, st) : [];
   if (unions.length) swing += (unions.reduce((s, u) => s + u.clout, 0) / unions.length - 30) / 800;
+  // Your vote (and your doorknocking) for the national parliament.
+  swing += ballotSwing(state, body);
   const before = body.labor;
   body.labor = Math.round(clamp(body.labor / body.seats + swing, 0.2, 0.8) * body.seats);
   if ((before * 2 > body.seats) !== (body.labor * 2 > body.seats)) {
@@ -456,6 +459,7 @@ function electionYear(ctx, body, rng) {
   }
   if (rng.chance(0.4)) body.executive = { name: personName(rng), caucus: rng.chance(body.labor / body.seats) ? 'labor' : 'business' };
   body.nextElection = 2;
+  ballotResult(ctx, body);
 }
 
 /** Your seat: taken with the office, kept in step with it. */
@@ -518,9 +522,12 @@ export const Legislature = {
     const seat = syncSeat(ctx);
     const rng = legRng(state);
     // Elections and leadership.
+    const national = chambersFor('federal', whereFor(state, 'federal'))[0];
     for (const body of bodiesHere(state)) {
       body.nextElection -= 1;
       if (body.nextElection <= 0) electionYear(ctx, body, rng);
+      // Campaign season for the national election: how will you vote?
+      else if (body.nextElection === 1 && body.id === bodyId(national, whereFor(state, 'federal'))) ballotPrompt(ctx, body);
     }
     // Your office: staff pay off in approval; leadership pays a stipend on top of the salary.
     if (seat) {
