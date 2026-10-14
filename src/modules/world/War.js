@@ -178,7 +178,8 @@ function warYear(ctx, cc, war, rng) {
 
   // The front moves: momentum, morale and luck.
   const swing = 10 + war.intensity * 4;
-  war.front = clamp(Math.round(war.front + rng.int(-swing, swing) + (war.support - 50) / 8), -100, 100);
+  // (`|| 0` turns -0 into 0, so a saved game reloads identically.)
+  war.front = clamp(Math.round(war.front + rng.int(-swing, swing) + (war.support - 50) / 8), -100, 100) || 0;
 
   // Escalation and de-escalation.
   const escalate = 0.1 + (war.front < -30 ? 0.12 : 0) + (war.years === 1 ? 0.05 : 0);

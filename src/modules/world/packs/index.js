@@ -11,8 +11,9 @@
  */
 import { NZ } from './NZ.js';
 import { IE } from './IE.js';
+import { ES } from './ES.js';
 
-export const PACKS = [NZ, IE];
+export const PACKS = [NZ, IE, ES];
 
 const entryFor = (p, table, key) => {
   const own = p.tables?.[key];

@@ -32,6 +32,7 @@ const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */
 const LEAKS = {
   NZ: /Australia(?!n Defence and Strategic)|Centrelink|\bATO\b|Medicare|Commonwealth|Age Pension|State Revenue|\bPremier\b|NSW|Queensland|Sydney|Melbourne|Canberra|Kapooka|Duntroon|\bRAAF\b|\bHMAS\b|Triple Zero|\bA\$/,
+  ES: /\bParis\b|Gendarmerie|Saint-Cyr|Légion|Marine nationale|Armée de|Police nationale|Police municipale|Mairie|SAMU|Sapeurs|Parquet|DGFiP|Assurance Maladie|CNAV|Agirc|URSSAF|baccalauréat|lycée|Lycée|Commissariat|Brigade|Légion d'honneur|\bpréfet/,
   IE: /\bBritish\b|United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|A-levels|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster/,
 };
 

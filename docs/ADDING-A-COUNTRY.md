@@ -1,7 +1,7 @@
 # Adding a country
 
 A new country is one file: a **country pack** in `src/modules/world/packs/`.
-New Zealand (`NZ.js`) and Ireland (`IE.js`) are complete examples.
+New Zealand (`NZ.js`), Ireland (`IE.js`) and Spain (`ES.js`) are complete examples.
 
 ## 1. Pick a base country
 

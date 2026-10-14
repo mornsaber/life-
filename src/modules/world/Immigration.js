@@ -459,7 +459,9 @@ export function naturalizationYearsLeft(state) {
   if (!res) return null;
   const law = IMMIGRATION[here].nat;
   const spouse = state.people?.list?.find((p) => p.alive && p.relation === 'spouse');
-  const years = spouse && law.married && nationalityCode(spouse) === here ? law.married : law.years;
+  // `fast`: shorter waits for some nationalities (Spain: two years for Ibero-Americans and Filipinos).
+  const fast = Math.min(...(state.character.citizenships ?? []).map((c) => law.fast?.[c] ?? Infinity));
+  const years = Math.min(spouse && law.married && nationalityCode(spouse) === here ? law.married : law.years, fast);
   if (law.needsPR && res.permanentSince == null) return null;
   const age = state.character.age;
   // Only lawful, settled-track residence counts: not years as a student, on a working holiday,
