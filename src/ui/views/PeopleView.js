@@ -9,6 +9,7 @@ import {
 import { CIRCLES } from '../../modules/people/Friends.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { livesAbroad, parentVisaCheck, VISIT_COST, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
@@ -59,6 +60,7 @@ function personRow(state, p) {
     p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') && p.relation !== 'child' ? `from ${nationalityName(p)}` : null,
     p.relation === 'child' && p.citizenships && (p.citizenships.length > 1 || p.citizenships[0] !== (state.character.countryId ?? 'US')) ? `🛂 ${p.citizenships.map((c) => COUNTRIES[c]?.flag ?? c).join('')}${p.oci ? ' + OCI' : ''}` : null,
     p.alive && p.away ? 'moved away' : null,
+    p.alive && livesAbroad(state, p) ? `🌍 lives in ${COUNTRIES[p.livesIn]?.name ?? p.livesIn}${state.people.remit?.[p.id] ? ` · you send ${money(state.people.remit[p.id])}/yr` : ''}${p.sponsor ? ` · moving here at your age ${p.sponsor.arrives}` : ''}` : null,
     p.owes ? `owes you ${money(p.owes.amount)}` : null,
     p.relation === 'child' && age < 18 && p.custody ? CUSTODY[p.custody] : null,
     p.relation === 'child' && p.degree ? `college grad` : null,
@@ -75,6 +77,7 @@ function personRow(state, p) {
     ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'tiny danger' }) : '',
     p.relation === 'child' ? nurtureButtons(state, p, age) : '',
     helpButtons(state, p, age),
+    abroadButtons(state, p),
     button('😤 Argue', 'people.argue', { arg: p.id, variant: 'tiny ghost' }),
   ].join('');
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
@@ -92,6 +95,19 @@ function lifeLine(p, age) {
   const work = p.job ? `${l.employer ? `at ${l.employer}` : ''}${p.income ? ` · ${money(p.income)}/yr` : ''}` : age >= 18 && !l.studying && !p.retired && age < 65 ? 'looking for work' : p.retired ? 'retired' : '';
   const bits = [`🎓 ${school}`, work ? `💼 ${work.replace(/^ · /, '')}` : null, homeLabel(p) ? `🏠 ${homeLabel(p)}` : null, age >= 22 && l.netWorth ? `💰 ${money(l.netWorth)}` : null, l.car && age >= 17 ? `🚗 ${l.car}` : null].filter(Boolean);
   return `<small class="traits">${esc(bits.join(' · '))}</small>`;
+}
+
+/** Family in another country: visit, send money, sponsor a parent. */
+function abroadButtons(state, p) {
+  if (!p.alive || !livesAbroad(state, p)) return '';
+  const regular = state.people.remit?.[p.id];
+  const visa = ['mother', 'father'].includes(p.relation) ? parentVisaCheck(state, p) : null;
+  return [
+    button('✈️ Visit', 'familyAbroad.visit', { arg: p.id, variant: 'tiny', hint: money(VISIT_COST), disabled: Boolean(state.yearly[`family.visit.${p.id}`]) }),
+    button('💸 Send $1,000', 'familyAbroad.send', { arg: `${p.id}:1000`, variant: 'tiny', hint: `+${Math.round(REMITTANCE_FEE * 100)}% fees` }),
+    button(regular ? '⏹️ Stop monthly transfer' : '🔁 Send $3,000/yr', 'familyAbroad.regular', { arg: `${p.id}:${regular ? 0 : 3000}`, variant: 'tiny ghost' }),
+    visa ? button('🛂 Sponsor to live here', 'familyAbroad.sponsor', { arg: p.id, variant: 'tiny', hint: visa.ok ? `${Math.round(visa.odds * 100)}% · ${money(visa.fee)}` : visa.reason, disabled: !visa.ok }) : '',
+  ].join('');
 }
 
 /** Ways to help: a place to live, a down payment, tuition. */

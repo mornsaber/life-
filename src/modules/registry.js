@@ -64,6 +64,7 @@ import { MigrationModule } from './world/Migration.js';
 import { ExpatModule } from './world/Expat.js';
 import { NationalityModule } from './world/Nationality.js';
 import { PartyModule } from './politics/Parties.js';
+import { FamilyAbroadModule } from './people/FamilyAbroad.js';
 import { SchoolPathsModule } from './world/SchoolPaths.js';
 import { TransportModule } from './career/Transport.js';
 import { JusticeJobs } from './career/JusticeCareers.js';
@@ -84,7 +85,7 @@ import { ClearedModule } from './career/ClearedModule.js';
 import { IntelCommunityModule } from './career/IntelCommunity.js';
 
 export const MODULES = [
-  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, NationalityModule, Friends, Community, ElderCare, EstatePlanning, Dynasty, NpcLives, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
+  EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, NationalityModule, FamilyAbroadModule, Friends, Community, ElderCare, EstatePlanning, Dynasty, NpcLives, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, LaborUnions, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, WorkplaceClaims, PoliticsEngine, PartyModule, Legislature, Judiciary, LegalModule, CivilCourts, CivicModule,
   EmergencyModule, ServiceModule, VolunteerModule, ConscriptionModule, MigrationModule, ExpatModule, SchoolPathsModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync,
 ];

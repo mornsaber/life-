@@ -41,6 +41,7 @@ import { departureBlock } from '../src/modules/world/Migration.js';
 import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
 import { partyName, ballotSwing } from '../src/modules/politics/Parties.js';
+import { familyAbroad, parentVisaCheck } from '../src/modules/people/FamilyAbroad.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -350,6 +351,28 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'family abroad: they stay behind, you send money and visit, and can sponsor a parent'() {
+    const t = born('IN', 23, 30);
+    const { state, ctx, engine } = t;
+    state.finances.cash = 100000;
+    const mother = state.people.list.find((p) => p.relation === 'mother' && p.alive);
+    assert.ok(mother, 'has a mother');
+    arrive(ctx, 'US', { visa: 'work' });
+    assert.equal(mother.livesIn, 'IN', 'parents stay behind');
+    assert.ok(familyAbroad(state).includes(mother));
+    const rel = mother.relationship;
+    engine.dispatch('familyAbroad.send', `${mother.id}:1000`);
+    assert.ok(mother.relationship > rel, 'money home helps');
+    assert.equal(parentVisaCheck(state, mother).ok, false, 'the US parent visa needs citizenship');
+    state.character.citizenships = ['IN', 'US'];
+    assert.ok(parentVisaCheck(state, mother).ok);
+    engine.rng.chance = () => true;
+    engine.dispatch('familyAbroad.sponsor', mother.id);
+    assert.ok(mother.sponsor, 'approved, arriving later');
+    // Moving home: family are local again.
+    arrive(ctx, 'IN', {});
+    assert.equal(mother.livesIn, undefined);
   },
   'parties and national elections: real party names, ballots, canvassing, compulsory voting'() {
     const t = born('AU', 21, 30);

@@ -96,6 +96,7 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   if (to === 'US') delete state.character.countryId;
   else state.character.countryId = to;
   setNameCountry(to);
+  ctx.emit('migration:moved', { from, to });
 
   if (!isCitizen(state, to)) {
     const old = m.residences[to];
