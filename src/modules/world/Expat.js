@@ -13,6 +13,8 @@
 import { COUNTRIES } from './Countries.js';
 import { IMMIGRATION, localLanguage, speaks, LANGUAGE_FLUENT, nativeLanguages, birthCountryOf } from './Immigration.js';
 import { arrive, departureBlock, ensureMigration } from './Migration.js';
+import { REGIONS, regionsIn } from '../life/Regions.js';
+import { severancePay, unemploymentBenefit } from './CountryLaw.js';
 import { warIn } from './War.js';
 
 export const ASSIGNMENT_YEARS = 3;
@@ -82,6 +84,33 @@ function assignmentYear(ctx) {
   }
 }
 
+/**
+ * Forced relocation: the biggest employers move whole teams — to headquarters, a cheaper city
+ * or another country's office. Go with the job, or take the package.
+ */
+function forcedRelocation(ctx) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  const cc = here(state);
+  if (!job || job.sector !== 'private' || job.remote || !['enterprise', 'mega'].includes(job.employer?.size) || onAssignment(state)) return;
+  if (state.prompts.some((p) => p.type === 'expat.relocation') || !rng.chance(job.employer.size === 'mega' ? 0.05 : 0.03)) return;
+  // A third of the moves cross a border.
+  const abroad = rng.chance(0.33) && !departureBlock(state);
+  const to = abroad ? rng.pick(Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2))) : cc;
+  const city = rng.pick(regionsIn(to).filter((r) => r.id !== state.character.regionId));
+  if (!city) return;
+  const severance = severancePay(state.character.countryId, job.salary, job.yearsAtEmployer ?? 1);
+  ctx.prompt({
+    type: 'expat.relocation', icon: '📦', title: 'Your Job Is Moving',
+    text: `${job.employer.name} is consolidating your team in ${city.name}${to !== cc ? `, ${COUNTRIES[to].name}` : ''}. Everyone on it can move with the job — or leave with a package.`,
+    options: [
+      { id: 'move', label: `📦 Move to ${city.name}`, hint: to !== cc ? 'The company sponsors your visa and pays the move' : 'Relocation paid' },
+      { id: 'leave', label: '🏠 Stay and take the package', hint: severance ? `≈$${severance.toLocaleString()} severance` : 'No severance required here' },
+    ],
+    data: { to, regionId: city.id },
+  });
+}
+
 export const ExpatModule = {
   id: 'expat',
   order: 43,
@@ -91,6 +120,7 @@ export const ExpatModule = {
     if (state.character.age < 18) return;
     if (onAssignment(state)) assignmentYear(ctx);
     else offerAssignment(ctx);
+    forcedRelocation(ctx);
   },
 
   actions: {
@@ -121,6 +151,24 @@ export const ExpatModule = {
   },
 
   resolvers: {
+    relocation(ctx, data, optionId) {
+      const { state } = ctx;
+      const job = state.career.job;
+      if (!job) return;
+      if (optionId === 'leave') {
+        const severance = severancePay(state.character.countryId, job.salary, job.yearsAtEmployer ?? 1);
+        const ui = unemploymentBenefit(state.character.countryId, job.salary);
+        ctx.emit('career:resign', { reason: `Declined to relocate with ${job.employer.name}` });
+        if (severance) ctx.earn(severance, 'Severance pay', { wage: true });
+        ctx.earn(ui.amount, ui.name);
+        return ctx.log(`You stayed behind and took the package from ${job.employer.name}.`, '📦', 'warn');
+      }
+      if (data.to !== here(state)) {
+        arrive(ctx, data.to, { visa: 'transfer', keepJob: true, reason: `${job.employer.name} moved your job to ${COUNTRIES[data.to].name}.` });
+        if (data.regionId !== state.character.regionId) ctx.emit('region:relocate', { regionId: data.regionId, reason: `${job.employer.name} placed you in its ${REGIONS[data.regionId].name} office.` });
+      } else ctx.emit('region:relocate', { regionId: data.regionId, reason: `${job.employer.name} moved your team to ${REGIONS[data.regionId].name}.` });
+      ctx.stat('stress', 6);
+    },
     offer(ctx, data, optionId) {
       const { state } = ctx;
       if (optionId !== 'accept') {

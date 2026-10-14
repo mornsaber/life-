@@ -400,6 +400,27 @@ const tests = {
     for (let i = 0; i < 3; i++) { c.state.prompts = []; c.engine.ageUp(); }
     assert.ok((c.state.retirement.socialSecurity.colaFactor ?? 1) < 1.04, 'the UK part is frozen (full indexing would be about 9%)');
   },
+  'huge employers can force a relocation: move with the job (even abroad) or take the package'() {
+    for (const choice of ['move', 'leave']) {
+      const e = employed('US', choice === 'move' ? 31 : 32);
+      Object.assign(e.state.career.job, { yearsAtEmployer: 6, remote: false });
+      e.state.career.job.employer.size = 'mega';
+      e.state.character.age = 40;
+      const chance = e.engine.rng.chance;
+      e.engine.rng.chance = () => true;
+      e.state.prompts = [];
+      ExpatModule.onAgeUp(e.engine.context());
+      e.engine.rng.chance = chance;
+      const p = e.state.prompts.find((x) => x.type === 'expat.relocation');
+      assert.ok(p, 'a relocation');
+      e.engine.resolvePrompt(p.id, choice);
+      if (choice === 'move') {
+        assert.ok(e.state.career.job, 'kept the job');
+        assert.equal(e.state.character.regionId, p.data.regionId);
+        assert.equal((e.state.character.countryId ?? 'US'), p.data.to);
+      } else assert.equal(e.state.career.job, null, 'left with the package');
+    }
+  },
   'family abroad: they stay behind, you send money and visit, and can sponsor a parent'() {
     const t = born('IN', 23, 30);
     const { state, ctx, engine } = t;

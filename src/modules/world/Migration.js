@@ -121,6 +121,7 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   else if (res?.temporary) ctx.log(`You were granted ${ASYLUM[to].temporary} at the border: the right to live, work and study here while the war lasts.`, '🆘', 'good');
   else if (res?.status === 'visa' && res.visa === 'student') ctx.log(`Your ${IMMIGRATION[to].visas.student.name} depends on studying here: enroll at a school this year (School tab).`, '🎓', 'warn');
   else if (res?.status === 'visa' && res.visa === 'work' && !stays) ctx.log(`Your ${IMMIGRATION[to].visas.work.name} needs a sponsoring employer: find a job here within the year (Jobs tab).`, '💼', 'warn');
+  if (stays && job.employer) job.employer.stateId = REGIONS[state.character.regionId]?.state ?? job.employer.stateId;
   if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
   if (!speaksLocal(state, to)) ctx.log(`You don't speak ${localLanguage(to)} yet. Living here, you'll pick it up — classes speed it up.`, '🗣️', 'info');
   ctx.stat('stress', 8);
