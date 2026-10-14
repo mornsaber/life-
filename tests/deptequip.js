@@ -414,6 +414,34 @@ const tests = {
     assert.ok(readinessOf(state, c) > low, `${readinessOf(state, c)} > ${low}`);
     assert.ok(gearSafety(state) < 1.3);
   },
+  'premises: leases escalate and renew, can be renegotiated or bought out; buildings get renovated'() {
+    const { engine, state, ctx } = worker(43, 'police', 'chief');
+    const c = contextOf(state, 'job');
+    const d = recordOf(state, c);
+    d.units.stations = [{ model: 'storefront', age: 3, used: false, leased: false, rent: 60000, termLeft: 1 }, { model: 'own', age: 45, used: false, leased: false }];
+    d.budget = 50000000;
+    tick(ctx, state);
+    const lease = d.units.stations.find((u) => u.model === 'storefront');
+    assert.equal(lease.termLeft, 5, 'renewed for a new term');
+    assert.ok(lease.rent >= 61800, `rent rose: ${lease.rent}`);
+    const chance = engine.rng.chance;
+    engine.rng.chance = () => true;
+    state.yearly = {};
+    const before = lease.rent;
+    engine.dispatch('deptEquip.renegotiate', 'job|stations');
+    assert.ok(lease.rent < before, 'renegotiated down');
+    state.yearly = {};
+    engine.dispatch('deptEquip.renovate', 'job|stations');
+    const old = d.units.stations.find((u) => u.model === 'own');
+    assert.ok(old.renovating, 'renovation underway');
+    tick(ctx, state);
+    assert.ok(!old.renovating && old.age < 20, `renovated: age ${old.age}`);
+    state.yearly = {};
+    d.budget = 50000000;
+    engine.dispatch('deptEquip.buyout', 'job|stations');
+    engine.rng.chance = chance;
+    assert.ok(!d.units.stations.some((u) => u.model === 'storefront'), 'leased building bought');
+  },
 };
 
 let failed = 0;

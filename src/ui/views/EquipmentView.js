@@ -4,7 +4,7 @@
  * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
-import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety } from '../../modules/equipment/Equipment.js';
+import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
@@ -51,6 +51,8 @@ export function equipmentCard(state, ref) {
     if (!needed && !units.length) return '';
     const worn = units.filter((u) => u.age > (cat.models[u.model]?.life ?? 10)).length;
     const avg = units.length ? Math.round(units.reduce((s, u) => s + u.age, 0) / units.length) : 0;
+    const leases = cat.facility ? units.filter((u) => cat.models[u.model]?.rent && !u.owned).map((u) => `lease ${money(u.rent ?? cat.models[u.model].rent)}/yr, ${u.termLeft ?? '?'} yr left`).join(' · ') : '';
+    const renovating = units.filter((u) => u.renovating).length;
     const mix = Object.entries(units.reduce((acc, u) => ({ ...acc, [u.model]: (acc[u.model] ?? 0) + 1 }), {})).map(([mid, n]) => `${n} × ${esc(cat.models[mid]?.name ?? mid)}${units.some((u) => u.model === mid && u.leased) ? ' (some leased)' : ''}${units.some((u) => u.model === mid && u.used) ? ' (some bought used)' : ''}`).join(' · ');
     const incoming = d.pending.filter((p) => p.catId === cid).length;
     let buttons = '';
@@ -84,12 +86,21 @@ export function equipmentCard(state, ref) {
         if (worn > 1) buttons += button(`🔁 Replace all ${worn} worn`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:worn`), variant: 'tiny', hint: `${money(worn * bulkM.cost)} for new ${short(bulkM.name)}s (as many as you can afford)` });
         if (needed - units.length > 1) buttons += button(`➕ Add ${needed - units.length} to standard`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:short`), variant: 'tiny', hint: money((needed - units.length) * bulkM.cost) });
       }
+      if (cat.facility && can.build) {
+        const owned = units.filter((u) => !cat.models[u.model]?.rent && !u.renovating).sort((p, q) => q.age - p.age)[0];
+        const lease = units.filter((u) => cat.models[u.model]?.rent && !u.owned).sort((p, q) => (q.rent ?? 0) - (p.rent ?? 0))[0];
+        if (owned) buttons += button(`🔨 Renovate the oldest (${money(renovationCost(cat.models[owned.model]))})`, 'deptEquip.renovate', { arg: a(cid), variant: 'tiny', disabled: Boolean(d.bond) || Boolean(y[`equip.bond.${ref}`]), hint: `${owned.age} years old · a year of disruption, decades more life` });
+        if (lease) {
+          buttons += button('🤝 Renegotiate the lease', 'deptEquip.renegotiate', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.renegotiate.${ref}`]), hint: `${money(lease.rent ?? cat.models[lease.model].rent)}/yr · ${lease.termLeft ?? '?'} yr left on the term` });
+          buttons += button(`🏠 Buy the building (${money(buyoutCost(lease, cat.models[lease.model]))})`, 'deptEquip.buyout', { arg: a(cid), variant: 'tiny', disabled: buyoutCost(lease, cat.models[lease.model]) > pool, hint: 'No more rent' });
+        }
+      }
       if (units.some((u) => !u.leased)) buttons += button(cat.facility ? '🚪 Close / end a lease' : isIssued(c) ? '📦 Turn in the oldest' : '🏷️ Retire & sell the oldest', 'deptEquip.retire', { arg: a(cid), variant: 'tiny' });
     } else if (c.requester && !can.requisition) {
       buttons = button('📋 Request a replacement', 'deptEquip.request', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.request.${ref}`]) });
     }
     const tone = units.length < needed || worn > needed / 3 ? 'warn' : 'good';
-    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${units.length}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
+    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}${leases ? ` · ${leases}` : ''}${renovating ? ' · 🔨 under renovation' : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${units.length}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
   }).join('');
   const q = fleetQuality(state, c);
   const staff = c.staff ? `<p class="fine">👥 ${c.staff.total.toLocaleString()} staff${c.staff.label ? `: ${c.staff.operational.toLocaleString()} ${esc(c.staff.label.toLowerCase())} · ${c.staff.civilian.toLocaleString()} ${esc(c.staff.other.split(' (')[0].toLowerCase())}` : ''}. The standard fleet follows headcount.</p>` : '';

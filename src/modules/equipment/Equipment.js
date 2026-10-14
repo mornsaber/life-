@@ -354,7 +354,7 @@ export function modelQuality(cat, mid) {
   return Math.round((0.88 + 0.24 * ((m.cost - lo) / (hi - lo || 1))) * 100) / 100;
 }
 /** What one unit contributes: its model's quality, less for second-hand, much less past its service life. */
-const unitValue = (cat, u) => (u.age <= (cat.models[u.model]?.life ?? 10) ? modelQuality(cat, u.model) * (u.used ? 0.9 : 1) : 0.45);
+const unitValue = (cat, u) => (u.renovating ? 0.5 : u.age <= (cat.models[u.model]?.life ?? 10) ? modelQuality(cat, u.model) * (u.used ? 0.9 : 1) : 0.45);
 
 /** Average quality of what's in service (1 = standard issue). */
 export function fleetQuality(state, c) {
@@ -431,12 +431,44 @@ function fixedCosts(d) {
     for (const u of units) {
       const m = cat?.models[u.model];
       if (!m) continue;
-      if (m.rent) rent += m.rent;
+      if (m.rent) rent += u.rent ?? m.rent;
       if (u.leased) rent += Math.round((m.cost / m.life) * 1.3);
     }
   }
   return rent;
 }
+
+/* ------------------------------------------------------------------ */
+/* Premises: leases and renovations                                    */
+/* ------------------------------------------------------------------ */
+
+/** Commercial leases run five years, with rent rising ~3% a year and reset to market at renewal. */
+export const LEASE_TERM = 5;
+const ESCALATION = 0.03;
+
+/** Leased premises age a year: rent escalates; at the end of the term the lease renews at market. */
+function leaseYear(ctx, c, d) {
+  const { rng } = ctx;
+  for (const [cid, units] of Object.entries(d.units)) {
+    const cat = cats(c)[cid];
+    for (const u of units) {
+      const m = cat?.models[u.model];
+      if (!m?.rent || u.owned) continue;
+      u.rent = Math.round((u.rent ?? m.rent) * (1 + ESCALATION));
+      u.termLeft = (u.termLeft ?? rng.int(1, LEASE_TERM)) - 1;
+      if (u.termLeft > 0) continue;
+      const market = Math.round(m.rent * (1 + rng.float(-0.05, 0.2)) * (1.03 ** (u.age ?? 0)));
+      u.rent = Math.max(u.rent, market);
+      u.termLeft = LEASE_TERM;
+      if (c.manager) ctx.log(`The lease on ${nice(m.name)} came up for renewal: $${u.rent.toLocaleString()} a year for another ${LEASE_TERM} years.`, cat.icon, 'info');
+    }
+  }
+}
+
+/** Renovating an owned building: a third of a new one's cost, a year of disruption, decades more life. */
+export const renovationCost = (m) => Math.round(m.cost * 0.32 / 1000) * 1000;
+/** Buying the building you lease: about 14 years of rent. */
+export const buyoutCost = (u, m) => Math.round(((u.rent ?? m.rent) * 14) / 1000) * 1000;
 
 /** Money available to spend now. */
 export function available(c, d) {
@@ -535,6 +567,14 @@ function yearFor(ctx, c) {
     ctx.log(`A new ${cat.models[p.model].name} was fielded to your ${c.label.toLowerCase()}.`, cat.icon, 'good');
   }
   d.pending = d.pending.filter((x) => state.character.age < x.age);
+  leaseYear(ctx, c, d);
+  if (d.bond?.renovate && state.character.age >= d.bond.readyAge) {
+    const cat = cats(c)[d.bond.catId];
+    const u = (d.units[d.bond.catId] ?? []).find((x) => x.renovating);
+    if (u) { u.renovating = false; u.age = Math.round((cat.models[u.model]?.life ?? 40) * 0.15); u.renovated = (u.renovated ?? 0) + 1; }
+    ctx.log(`The renovation of your ${nice(cat.models[d.bond.model].name)} is finished: new systems, new space, decades more life.`, cat.icon, 'good');
+    d.bond = null;
+  }
   if (d.bond && state.character.age >= d.bond.readyAge) {
     const cat = cats(c)[d.bond.catId];
     (d.units[d.bond.catId] ??= []).push({ model: d.bond.model, age: 0, used: false, leased: false });
@@ -618,8 +658,8 @@ export const EquipmentModule = {
       const price = m.rent ? m.rent : how === 'used' ? m.usedCost : how === 'lease' ? Math.round((m.cost / m.life) * 1.3) : m.cost;
       if (price > available(c, d)) return ctx.toast(`$${price.toLocaleString()} — you have $${available(c, d).toLocaleString()}`, 'warn');
       pay(c, d, price);
-      (d.units[cid] ??= []).push({ model: mid, age: how === 'used' ? Math.round(m.life * 0.6) : 0, used: how === 'used', leased: how === 'lease' });
-      if (c.kind === 'business') c.biz.assets += Math.round(price * 0.7);
+      (d.units[cid] ??= []).push({ model: mid, age: how === 'used' ? Math.round(m.life * 0.6) : 0, used: how === 'used', leased: how === 'lease', ...(m.rent ? { rent: m.rent, termLeft: LEASE_TERM } : {}) });
+      if (c.kind === 'business' && !m.rent) c.biz.assets += Math.round(price * 0.7);
       ctx.log(m.rent ? `You leased ${nice(m.name)} for $${m.rent.toLocaleString()} a year.` : `You ${how === 'lease' ? 'leased' : 'bought'} ${how === 'used' ? 'a used' : 'a new'} ${nice(m.name)} for $${price.toLocaleString()}${how === 'lease' ? ' a year' : ''}.`, cat.icon, 'good');
     },
     /**
@@ -739,6 +779,67 @@ export const EquipmentModule = {
         d.bond = { catId: cid, model: mid, readyAge: state.character.age + 2 };
         ctx.log(`${who} approved $${(m.cost / 1e6).toFixed(1)} million for a new ${nice(m.name)}. It opens in about two years.`, cats(c)[cid].icon, 'milestone');
       } else ctx.log(`${who} voted down your plan for a new ${nice(m.name)}. Try again next year.`, cats(c)[cid].icon, 'warn');
+    },
+    /** 'kind|catId' — renovate the oldest owned building (from the budget if it covers it, otherwise a bond, loan or fund drive). */
+    renovate(ctx, arg) {
+      const { state, rng } = ctx;
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c?.manager || !powers(c).build) return;
+      const cat = cats(c)[parts[0]];
+      const u = (d.units[parts[0]] ?? []).filter((x) => !cat.models[x.model]?.rent && !x.renovating).sort((a, b) => b.age - a.age)[0];
+      if (!u) return ctx.toast('No owned building to renovate', 'warn');
+      if (d.bond) return ctx.toast('A building project is already underway', 'warn');
+      if (yearlyCount(state, `equip.bond.${c.ref}`)) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, `equip.bond.${c.ref}`);
+      const m = cat.models[u.model];
+      const cost = renovationCost(m);
+      if (cost <= available(c, d)) pay(c, d, cost);
+      else {
+        const approval = c.kind === 'volunteer' ? 55 : state.publicService?.city?.approval ?? 55;
+        if (!rng.chance(clamp(0.3 + approval / 150 + (u.age > m.life ? 0.2 : 0), 0.1, 0.9))) return ctx.log(`Funding for renovating the ${nice(m.name)} was turned down this year.`, cat.icon, 'warn');
+        if (c.kind === 'business') c.biz.debt = (c.biz.debt ?? 0) + cost;
+      }
+      u.renovating = true;
+      d.bond = { catId: parts[0], model: u.model, readyAge: state.character.age + 1, renovate: true };
+      ctx.log(`Renovation of the ${u.age}-year-old ${nice(m.name)} began ($${cost.toLocaleString()}). Crews work around a year of disruption.`, cat.icon, 'milestone');
+    },
+    /** 'kind|catId' — try to cut the rent on a lease (the landlord may push back). */
+    renegotiate(ctx, arg) {
+      const { state, rng } = ctx;
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c?.manager) return;
+      const cat = cats(c)[parts[0]];
+      const u = (d.units[parts[0]] ?? []).filter((x) => cat.models[x.model]?.rent).sort((a, b) => (b.rent ?? 0) - (a.rent ?? 0))[0];
+      if (!u) return ctx.toast('No lease to renegotiate', 'warn');
+      if (yearlyCount(state, `equip.renegotiate.${c.ref}`)) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, `equip.renegotiate.${c.ref}`);
+      const m = cat.models[u.model];
+      u.rent ??= m.rent;
+      const odds = clamp(0.35 + (state.stats.smarts - 50) / 150 + (u.termLeft <= 1 ? 0.2 : 0), 0.1, 0.8);
+      if (rng.chance(odds)) {
+        const cut = rng.float(0.05, 0.15);
+        u.rent = Math.round(u.rent * (1 - cut));
+        u.termLeft = LEASE_TERM;
+        return ctx.log(`You renegotiated the lease on ${nice(m.name)}: ${Math.round(cut * 100)}% off, locked in for ${LEASE_TERM} years ($${u.rent.toLocaleString()}/yr).`, cat.icon, 'good');
+      }
+      ctx.log(`The landlord wouldn't budge on ${nice(m.name)}${u.termLeft <= 1 ? ' — and hinted at a bigger increase at renewal' : ''}.`, cat.icon, 'warn');
+    },
+    /** 'kind|catId' — buy the building you lease. */
+    buyout(ctx, arg) {
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c?.manager || !powers(c).build) return;
+      const cat = cats(c)[parts[0]];
+      const u = (d.units[parts[0]] ?? []).filter((x) => cat.models[x.model]?.rent).sort((a, b) => (b.rent ?? 0) - (a.rent ?? 0))[0];
+      if (!u) return;
+      const m = cat.models[u.model];
+      const price = buyoutCost(u, m);
+      if (price > available(c, d)) return ctx.toast(`$${price.toLocaleString()} — you have $${available(c, d).toLocaleString()}`, 'warn');
+      pay(c, d, price);
+      const owned = Object.entries(cat.models).find(([, x]) => x.build) ?? null;
+      if (owned) Object.assign(u, { model: owned[0], age: Math.max(u.age ?? 0, 15), rent: undefined, termLeft: undefined });
+      else Object.assign(u, { rent: 0, termLeft: 99, owned: true });
+      if (c.kind === 'business') c.biz.assets += price;
+      ctx.log(`You bought the building behind ${nice(m.name)} for $${price.toLocaleString()}. No more rent.`, cat.icon, 'milestone');
     },
     /** Supervisors / NCOs: ask for a replacement. */
     request(ctx, arg) {
