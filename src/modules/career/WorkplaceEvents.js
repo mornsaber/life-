@@ -10,6 +10,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { FIELD_WORKPLACE_EVENTS } from './FieldWorkplaceEvents.js';
+import { offenseName } from '../legal/Offenses.js';
 
 const EVERYDAY_EVENTS = [
   { id: 'credit', title: 'Stolen Credit', text: 'Your manager presented your project to leadership as their own idea.', options: [
@@ -109,7 +110,7 @@ export function workplaceEvent(ctx) {
     icon: '🏢',
     title: event.title,
     text: `${job.employer.name}\n${event.text}`,
-    options: event.options.map((o) => ({ id: o.id, label: o.label, tone: o.risky?.offense ? 'danger' : undefined })),
+    options: event.options.map((o) => ({ id: o.id, label: o.label, tone: o.risky?.offense ? 'danger' : undefined, illegal: o.risky?.offense ? offenseName(o.risky.offense) : undefined })),
     data: { eventId: event.id },
   });
 }

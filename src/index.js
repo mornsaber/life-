@@ -135,6 +135,7 @@ function handleAction(el) {
       if (engine.undoYear()) renderer.toast('Rewound one year.', 'info');
       return undefined;
     case 'engine.resolve':
+      if (el.dataset.illegal && !window.confirm('This choice breaks the law. You could be charged, convicted and lose your job or licenses. Go ahead?')) return undefined;
       return engine.resolvePrompt(el.dataset.prompt, el.dataset.option);
     case 'engine.newLife':
       return startNewLife(el.closest('form'));
@@ -265,7 +266,7 @@ document.addEventListener('keydown', (event) => {
   const prompt = state.prompts[0];
   if (prompt && /^[1-9]$/.test(event.key)) {
     const option = prompt.options[Number(event.key) - 1];
-    if (option && !option.disabled) engine.resolvePrompt(prompt.id, option.id);
+    if (option && !option.disabled && (!option.illegal || window.confirm('This choice breaks the law. You could be charged, convicted and lose your job or licenses. Go ahead?'))) engine.resolvePrompt(prompt.id, option.id);
     event.preventDefault();
     return undefined;
   }

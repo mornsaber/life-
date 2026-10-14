@@ -8,6 +8,26 @@ import { PrisonActions } from './Prison.js';
 import { ClemencyActions } from './Clemency.js';
 import { CrimeActions, crimeTick } from './StreetCrime.js';
 
+/** Prompt choices that break the law, by `${promptType}:${optionId}`. */
+const ILLEGAL_CHOICES = {
+  'investing.pump:promote': 'securities fraud',
+  'housing.financing:fraud': 'mortgage fraud',
+  'politics.donorFavor:straw': 'campaign finance fraud',
+  'politics.bribe:take': 'bribery',
+  'politics.appoint:donor': 'selling an appointment',
+  'business.temptation:take': 'a business crime',
+  // '?': only when the choice is flagged as dangerous (leaving a clean history off a form is no crime).
+  'career.clearance:omit': '?lying on a security form',
+  'military.clearance:omit': '?lying on a security form',
+  'people.foreignContact:hide': 'lying on a security form',
+  'intel.polygraph:beat': 'lying to federal investigators',
+  'world.draft:evade': 'draft evasion',
+  'conscription.korea:refuse': 'refusing military service',
+  'career.organizingDrive:fire': 'illegal retaliation against organizers',
+  'medLife.pillMill:accept': 'prescription fraud',
+  'military.leaveService:desert': 'desertion',
+};
+
 const ALLOWED_IN_PRISON = new Set(['retirement.claimSocialSecurity', 'retirement.withdraw', 'legal.seekPardon', ...Object.keys(PrisonActions).map((id) => `legal.${id}`)]);
 
 export const LegalModule = {
@@ -20,6 +40,8 @@ export const LegalModule = {
   },
 
   setup(engine) {
+    // Choices elsewhere in the game that commit a crime: labeled as illegal wherever they appear.
+    Object.assign(engine.illegalChoices, ILLEGAL_CHOICES);
     engine.bus.on('legal:offense', ({ ctx, offenseId, context, caught, discovery, evidence, yearsLeft }) => commitOffense(ctx, { offenseId, context, caught, discovery, evidence, yearsLeft }));
   },
 

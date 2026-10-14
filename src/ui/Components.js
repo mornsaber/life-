@@ -251,7 +251,7 @@ export function promptModal(prompt, queued) {
       <div id="prompt-text">${rest.length ? `<p class="modal-lead">${esc(lead)}</p><p class="modal-text">${esc(rest.join('\n'))}</p>` : `<p class="modal-text">${esc(lead)}</p>`}</div>
       <div class="modal-options">${prompt.options
         .map(
-          (o, i) => `<button class="option ${o.tone ?? ''}" data-action="engine.resolve" data-prompt="${esc(prompt.id)}" data-option="${esc(o.id)}"${o.disabled ? ' disabled' : ''}>
+          (o, i) => `<button class="option ${o.tone ?? ''}${o.illegal ? ' illegal' : ''}" data-action="engine.resolve" data-prompt="${esc(prompt.id)}" data-option="${esc(o.id)}"${o.illegal ? ' data-illegal="1"' : ''}${o.disabled ? ' disabled' : ''}>
             <kbd aria-hidden="true">${i + 1}</kbd><span class="option-label">${a11yLabel(esc(o.label))}</span>${o.hint ? `<span class="option-hint">${esc(o.hint)}</span>` : ''}
           </button>`,
         )

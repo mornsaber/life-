@@ -6,6 +6,7 @@
  */
 export const ROUTINE = {
   'health.acute': 'treat',
+  'health.driveDrunk': 'ride',
   'investing.meme': 'pass',
   'investing.pump': 'pass',
   'legal.temptation': 'decline',

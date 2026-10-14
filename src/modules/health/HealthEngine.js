@@ -167,8 +167,17 @@ function progress(ctx) {
 
 function addictionEffects(ctx, c, def) {
   const { state, rng } = ctx;
-  if (def.dui && state.character.age >= 16 && rng.chance(def.dui * (c.severity / 60))) {
-    ctx.emit('legal:offense', { offenseId: 'dui', context: 'driving after drinking', discovery: 0.6, evidence: 0.8 });
+  if (def.dui && state.character.age >= 16 && !state.prompts.some((p) => p.type === 'health.driveDrunk') && rng.chance(def.dui * (c.severity / 60) * 2)) {
+    ctx.prompt({
+      type: 'health.driveDrunk', icon: '🍺', title: 'Last Call',
+      text: 'You\'ve had far too much to drink, and your car is outside.',
+      options: [
+        { id: 'ride', label: '🚕 Get a ride home', hint: '≈$40' },
+        { id: 'couch', label: '🛋️ Sleep it off on a friend\'s couch' },
+        { id: 'drive', label: '🚗 Drive yourself home', illegal: 'drunk driving' },
+      ],
+      data: {},
+    });
   }
   if (def.losses) {
     const lost = rng.int(...def.losses);
@@ -627,6 +636,19 @@ export const HealthEngine = {
   },
 
   resolvers: {
+    driveDrunk(ctx, _data, optionId) {
+      const { rng } = ctx;
+      if (optionId === 'ride') {
+        ctx.spend(40, 'Taxi home', { allowDebt: true });
+        return ctx.log('You took a taxi home. Your car was still there in the morning.', '🚕');
+      }
+      if (optionId === 'couch') return ctx.log('You slept it off on a friend\'s couch.', '🛋️');
+      if (rng.chance(0.15)) {
+        ctx.stat('health', -12);
+        ctx.log('You drove home drunk and wrapped your car around a pole.', '🚗', 'bad');
+      } else ctx.log('You drove home drunk. You don\'t remember the drive.', '🚗', 'warn');
+      ctx.emit('legal:offense', { offenseId: 'dui', context: 'driving after drinking', discovery: 0.5, evidence: 0.8 });
+    },
     acute(ctx, data, optionId) {
       const { state, rng } = ctx;
       const a = ACUTE[data.id];

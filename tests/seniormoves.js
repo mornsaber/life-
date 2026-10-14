@@ -131,10 +131,11 @@ const tests = {
     t.engine.dispatch('career.execRecruiter');
     const p = prompt(t.state, 'jobMarket.headhunter');
     assert.ok(p, 'recruiter offer');
-    assert.equal(p.data.offer.levelId, 'vp');
+    // The next executive rung at the hiring firm: VP, or CEO of a smaller company.
+    assert.ok(['vp', 'ceo'].includes(p.data.offer.levelId), p.data.offer.levelId);
     const before = job.salary;
     t.engine.resolvePrompt(p.id, 'accept');
-    assert.equal(t.state.career.job.levelId, 'vp');
+    assert.equal(t.state.career.job.levelId, p.data.offer.levelId);
     assert.ok(t.state.career.job.salary > before);
     const u = life(9, 30);
     employ(u, 'corporate', 'teamLead', 5);

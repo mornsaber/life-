@@ -106,3 +106,6 @@ export const DEFENSE = {
   topFirm: { label: '🏛️ Retain a top white-collar defense firm', cost: 75000, factor: 0.45 },
   self: { label: '⚖️ Represent yourself (you\'re a lawyer)', cost: 0, factor: 0.7 },
 };
+
+/** A crime's name for warnings ("securities fraud"). */
+export const offenseName = (id) => (OFFENSES[id]?.name ?? 'a crime').toLowerCase();

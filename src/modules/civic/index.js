@@ -390,6 +390,11 @@ export const CivicModule = {
         a.arrests += 1;
         a.influence = Math.min(100, a.influence + 4);
         ctx.log(`${t.label.replace(/^\S+ /, '')} for ${cause.name.toLowerCase()}: police declared it an unlawful assembly and arrested you.`, '🚔', 'bad');
+        // Most protest arrests end with charges dropped or a desk appearance; some go to court.
+        if (rng.chance(tacticId === 'sitIn' ? 0.5 : 0.75)) {
+          ctx.log('You spent a night in a holding cell. The prosecutor dropped the charges.', '🗝️', 'warn');
+          return undefined;
+        }
         ctx.emit('legal:offense', { offenseId: tacticId === 'sitIn' ? 'trespass' : 'disorderly', context: `a ${cause.name.toLowerCase()} protest`, caught: true, evidence: 0.7 });
         return undefined;
       }
@@ -524,7 +529,7 @@ export const CivicModule = {
         if (rng.chance(0.25)) {
           ctx.stat('health', -rng.int(5, 15));
           ctx.log('It turned into a scuffle. You got hurt — and the police wanted to know who threw the first punch.', '🩹', 'bad');
-          if (rng.chance(0.3)) ctx.emit('legal:offense', { offenseId: 'assault', context: 'a neighborhood-watch confrontation', caught: true, evidence: 0.5 });
+          if (rng.chance(0.12)) ctx.emit('legal:offense', { offenseId: 'assault', context: 'a neighborhood-watch confrontation', caught: true, evidence: 0.45 });
           return;
         }
         ctx.log('They ran off when you called out. Your heart didn\'t slow down for an hour.', '🔦');

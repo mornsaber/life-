@@ -17,6 +17,7 @@
  */
 import { L } from './Ladder.js';
 import { stateIdOf } from '../life/Regions.js';
+import { offenseName } from '../legal/Offenses.js';
 
 /** Private (special) police with full powers beyond the railroads. */
 export const PRIVATE_POLICE_STATES = ['TX', 'IL', 'OH', 'FL', 'NY', 'DC'];
@@ -339,7 +340,7 @@ export const JusticeJobs = {
     const ev = pool[i];
     ctx.prompt({
       type: 'justiceJobs.event', icon: INCIDENT_ICONS[job.professionId] ?? '💼', title: ev.title, text: ev.text,
-      options: ev.options.map((o) => ({ id: o.id, label: o.label, hint: o.risk ? 'Risky' : o.offense ? 'Against the law' : undefined, tone: o.offense ? 'danger' : undefined })),
+      options: ev.options.map((o) => ({ id: o.id, label: o.label, hint: o.risk ? 'Risky' : undefined, tone: o.offense ? 'danger' : undefined, illegal: o.offense ? offenseName(o.offense) : undefined })),
       data: { professionId: job.professionId, index: i },
     });
   },

@@ -16,6 +16,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { commitOffense } from './JusticeSystem.js';
 import { stateOf } from '../life/Regions.js';
 import { crimeForMoney, CRIMES } from './StreetCrime.js';
+import { offenseName } from './Offenses.js';
 
 /**
  * when(job): does this temptation apply?
@@ -122,7 +123,7 @@ export function temptationTick(ctx) {
   const pool = TEMPTATIONS.filter((t) => t.when(job));
   if (!pool.length) return;
   const t = rng.pick(pool);
-  const options = [{ id: 'take', label: t.take.label, tone: 'danger' }];
+  const options = [{ id: 'take', label: t.take.label, tone: 'danger', illegal: offenseName(t.take.offenseId) }];
   if (t.honest) options.push({ id: 'honest', label: t.honest.label });
   options.push({ id: 'decline', label: DECLINE.label });
   ctx.prompt({ type: 'legal.temptation', icon: '😈', title: t.title, text: `${job.employer.name}${job.posting ? ` · ${job.posting.city}` : ''}\n${t.text}`, options, data: { id: t.id } });

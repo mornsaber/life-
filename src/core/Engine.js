@@ -40,6 +40,17 @@ export class EventBus {
   }
 }
 
+/** A registered crime for this option ('?name': only when the option is flagged as dangerous). */
+const registeredCrime = (name, o) => (!name ? undefined : name.startsWith('?') ? (o.tone === 'danger' ? name.slice(1) : undefined) : name);
+
+/** An illegal option (`illegal: true` or the crime's name) is shown as one, unmistakably. */
+function markIllegal(o) {
+  if (!o?.illegal) return o;
+  const what = typeof o.illegal === 'string' ? o.illegal : 'a crime';
+  const hint = o.hint && !/illegal|crime|fraud|felony/i.test(o.hint) ? ` · ${o.hint}` : '';
+  return { ...o, illegal: true, tone: 'danger', hint: `⚖️ Illegal — ${what}${hint}` };
+}
+
 export class Engine {
   constructor({ store, rng = new Random(), modules = [] }) {
     this.store = store;
@@ -53,6 +64,8 @@ export class Engine {
     this.undoDepth = 5;
     /** Optional (prompt) => optionId | null, applied to prompts raised during an age-up. */
     this.autoResolver = null;
+    /** `${promptType}:${optionId}` → the crime that choice commits (modules register them; see legal/index.js). */
+    this.illegalChoices = {};
     modules.forEach((m) => this.register(m));
     this.modules.sort((a, b) => (a.order ?? 50) - (b.order ?? 50));
     this.modules.forEach((m) => m.setup?.(this));
@@ -285,7 +298,8 @@ export class Engine {
           icon: '❓',
           ...spec,
           // Undefined fields don't survive a save, so never store them.
-          options: spec.options.map((o) => Object.fromEntries(Object.entries(o).filter(([, v]) => v !== undefined))),
+          // Choices that break the law say so plainly (and ask for confirmation in the UI).
+          options: spec.options.map((o) => Object.fromEntries(Object.entries(markIllegal(o.illegal ? o : { ...o, illegal: registeredCrime(engine.illegalChoices[`${spec.type}:${o.id}`], o) })).filter(([, v]) => v !== undefined))),
         };
         if (!prompt.options.some((o) => !o.disabled)) throw new Error(`Prompt ${spec.type} has no selectable option`);
         stampPrompt(state, prompt);

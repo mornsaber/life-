@@ -11,6 +11,7 @@
 import { pickFresh } from '../../core/Pools.js';
 import { L } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
+import { offenseName } from '../legal/Offenses.js';
 
 const AGENCY = { sector: 'state', stateAgency: true, exam: 'state', background: 'strict' };
 const agency = (suffix) => (_city, _rng, stateName) => `${stateName} ${suffix}`;
@@ -453,7 +454,7 @@ export const StateAgencies = {
       icon: STATE_PROFESSIONS[job.professionId].icon,
       title: e.title,
       text: `${job.employer.name}\n${e.text}`,
-      options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.risk ? 'danger' : undefined })),
+      options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.risk ? 'danger' : undefined, illegal: o.offense ? offenseName(o.offense) : undefined })),
       data: { professionId: job.professionId, eventId: e.id },
     });
   },

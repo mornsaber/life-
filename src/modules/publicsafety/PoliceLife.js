@@ -32,6 +32,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
+import { offenseName } from '../legal/Offenses.js';
 
 export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice', 'universityPolice'];
 export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
@@ -192,7 +193,7 @@ function callPrompt(ctx, job) {
     : campus && rng.chance(0.6) ? CAMPUS_CALLS
       : CALLS.filter((c) => (c.id !== 'shooter' || rng.chance(0.15)) && (!campus || c.id !== 'stop'));
   const c = rng.pick(pool);
-  ctx.prompt({ type: 'police.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label, tone }) => ({ id, label, tone })), data: { callId: c.id } });
+  ctx.prompt({ type: 'police.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label, tone, offense }) => ({ id, label, tone, illegal: offense ? offenseName(offense) : undefined })), data: { callId: c.id } });
 }
 
 /** Judgment under pressure: smarts, experience, training, fitness, stress. */

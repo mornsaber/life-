@@ -33,6 +33,7 @@ import { ADMISSION_HOOKS, YEAR_HOOKS } from '../education/EducationEngine.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
+import { offenseName } from '../legal/Offenses.js';
 
 /* ------------------------------------------------------------------ */
 /* Settings                                                            */
@@ -420,7 +421,7 @@ function eventPrompt(ctx, job) {
   if (c.group === 'dental' && !s?.quotas) pool = pool.filter((e) => e.id !== 'quota');
   if (!pool.length) return;
   const ev = rng.pick(pool);
-  ctx.prompt({ type: 'clinical.event', icon: ev.icon, title: ev.title, text: ev.text, options: ev.options.map(({ id, label, hint, tone }) => ({ id, label, hint, tone })), data: { group: c.group, eventId: ev.id } });
+  ctx.prompt({ type: 'clinical.event', icon: ev.icon, title: ev.title, text: ev.text, options: ev.options.map(({ id, label, hint, tone, risk }) => ({ id, label, hint, tone, illegal: risk?.offense ? offenseName(risk.offense) : undefined })), data: { group: c.group, eventId: ev.id } });
 }
 
 function applyEffects(ctx, fx, job) {

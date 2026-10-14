@@ -26,11 +26,11 @@ export const CAUSES = {
  * minInfluence: organizing needs a following first.
  */
 export const TACTICS = {
-  march: { label: '🪧 Join a permitted march', arrest: 0.01, influence: 4, stress: 1, desc: 'Safe; adds your voice' },
-  rally: { label: '📣 Speak at a rally', arrest: 0.02, influence: 7, minInfluence: 15, stress: 2, desc: 'Needs a following (15+)' },
+  march: { label: '🪧 Join a permitted march', arrest: 0, influence: 4, stress: 1, desc: 'Safe; adds your voice' },
+  rally: { label: '📣 Speak at a rally', arrest: 0, influence: 7, minInfluence: 15, stress: 2, desc: 'Needs a following (15+)' },
   canvass: { label: '🚪 Door-knock for the cause', arrest: 0, influence: 5, stress: 2, desc: 'Slow, durable influence' },
-  sitIn: { label: '✋ Civil disobedience: sit-in', arrest: 0.55, influence: 12, stress: 6, desc: 'Headlines — and handcuffs' },
-  organize: { label: '🗺️ Organize a city-wide action', arrest: 0.1, influence: 14, minInfluence: 40, cost: 2000, stress: 6, desc: 'Needs a movement (40+)' },
+  sitIn: { label: '✋ Civil disobedience: sit-in', arrest: 0.55, influence: 12, stress: 6, desc: 'Headlines — and likely arrest (trespass)' },
+  organize: { label: '🗺️ Organize a city-wide action', arrest: 0.04, influence: 14, minInfluence: 40, cost: 2000, stress: 6, desc: 'Needs a movement (40+)' },
 };
 
 export const influenceVoteBonus = (state) => Math.min(0.05, (state.civic?.activism?.influence ?? 0) * 0.0006);

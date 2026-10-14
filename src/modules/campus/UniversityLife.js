@@ -282,11 +282,22 @@ export const UniversityLife = {
       const { state, rng } = ctx;
       if (!enrolled(state)) return ctx.toast('Parties need a campus.', 'warn');
       if (yearlyCount(state, 'campus.party')) return ctx.toast('You already went wild this year.', 'warn');
+      if (state.character.age < 21 && (state.campus.citations ?? 0) > 0 && !state.campus.partyWarned) {
+        state.campus.partyWarned = true;
+        return ctx.toast('You already have a drinking citation: another one goes to court. Tap again to go anyway.', 'warn');
+      }
       bumpYearly(state, 'campus.party');
       ctx.stat('happiness', 6);
       ctx.stat('stress', -8);
       ctx.log(rng.pick(['You threw a legendary toga party.', 'You closed down every bar on campus.', 'You made it to every house party this semester.']), '🎉');
       if (state.character.age < 21 && rng.chance(0.15)) {
+        // First-time citations go to diversion: an alcohol class, a fee, and no record.
+        if ((state.campus.citations ?? 0) === 0) {
+          state.campus.citations = 1;
+          ctx.spend(150, 'Alcohol diversion program', { allowDebt: true });
+          ctx.log('Campus police broke up the party and cited you for underage drinking. As a first offense it went to diversion: an alcohol class and a fee, no record. Next time it goes to court.', '🍺', 'warn');
+          return;
+        }
         ctx.emit('legal:offense', { offenseId: 'underageDrinking', context: 'campus police broke up a party', caught: true });
         strike(ctx, 'underage drinking', 'cited for underage drinking');
       } else if (rng.chance(0.05)) {

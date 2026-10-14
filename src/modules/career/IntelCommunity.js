@@ -25,6 +25,7 @@ import { pickFresh } from '../../core/Pools.js';
 import { IC_PROFESSIONS } from './IntelCareers.js';
 import { recalcSalary } from './Compensation.js';
 import { backgroundIssues } from '../publicservice/PublicServiceEngine.js';
+import { offenseName } from '../legal/Offenses.js';
 
 export const NOC_PAY = 1.2;
 
@@ -179,7 +180,7 @@ function eventPrompt(ctx, job, approachOnly = false) {
     icon: job.professionId === 'sigint' ? '📡' : '🕶️',
     title: e.title,
     text: `${job.posting ? `${job.posting.city} station · ` : ''}${e.text}`,
-    options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.offense || o.espionage || o.blown >= 0.2 ? 'danger' : undefined })),
+    options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.offense || o.espionage || o.blown >= 0.2 ? 'danger' : undefined, illegal: o.espionage ? 'espionage' : o.offense ? offenseName(o.offense) : undefined })),
     data: { pool: pool === IC_EVENTS[job.professionId] ? job.professionId : 'approach', id: e.id },
   });
 }
