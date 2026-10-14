@@ -11,6 +11,7 @@ import { migrate } from './Migrations.js';
 import { clamp, Random } from './Random.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES } from '../modules/world/Countries.js';
+import { setCurrentCountry } from './Locale.js';
 
 export const STATE_VERSION = 4;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -38,6 +39,7 @@ const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miam
 let namePool = null;
 let mix = null;
 export function setNameCountry(countryId = 'US') {
+  setCurrentCountry(countryId);
   namePool = countryId !== 'US' ? COUNTRIES[countryId]?.names ?? null : null;
   // Immigrant-background names, as common as they are in the country.
   const d = namePool ? DIASPORA[countryId] : null;

@@ -36,6 +36,9 @@ import { INTEL_PROFESSIONS } from './IntelCareers.js';
 import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
 import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { AGENCIES, nationalProfessionId } from '../world/NationalAgencies.js';
+import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
+import { currentCountry } from '../../core/Locale.js';
+import { stateIdOf } from '../life/Regions.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -546,6 +549,31 @@ for (const [cc, agencies] of Object.entries(AGENCIES)) {
   }
 }
 
+/**
+ * State and local careers as each country runs them (world/LocalAgencies.js): same id,
+ * the local agency's name, employer and ranks. PROFESSIONS[id] resolves to the version
+ * for the country the life is played in.
+ */
+const LOCAL_VARIANTS = {};
+for (const [cc, table] of Object.entries(LOCAL_AGENCIES)) {
+  for (const [id, a] of Object.entries(table)) {
+    const t = PROFESSIONS[id];
+    if (!a || !t) continue;
+    (LOCAL_VARIANTS[id] ??= {})[cc] = {
+      ...t,
+      name: a.name ?? t.name,
+      localCountry: cc,
+      ...(a.citizensOnly ? { citizensOnly: true } : {}),
+      ...(a.employer ? { employerName: (city, _rng, stateName, stateId) => a.employer(city, stateId, stateName) } : {}),
+      levels: t.levels.map((l) => (a.titles?.[l.id] ? { ...l, title: a.titles[l.id] } : l)),
+    };
+  }
+}
+for (const [id, byCountry] of Object.entries(LOCAL_VARIANTS)) {
+  const base = PROFESSIONS[id];
+  Object.defineProperty(PROFESSIONS, id, { get: () => byCountry[currentCountry()] ?? base, enumerable: true, configurable: true });
+}
+
 /** County offices with no counterpart abroad (sheriffs). */
 const US_ONLY_PROFESSIONS = ['sheriff'];
 
@@ -553,7 +581,8 @@ const US_ONLY_PROFESSIONS = ['sheriff'];
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
   if (cc === 'US') return PROFESSION_LIST;
-  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id)), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
+  const province = state.character.regionId ? stateIdOf(state) : null;
+  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
 }
 
 /** A job-board field's careers where you live (US federal ids swap for national counterparts abroad). */
@@ -561,7 +590,8 @@ export function fieldIdsFor(state, fieldId) {
   const cc = state?.character?.countryId ?? 'US';
   const ids = JOB_FIELDS[fieldId]?.ids ?? [];
   if (cc === 'US') return ids;
-  return ids.filter((id) => !US_ONLY_PROFESSIONS.includes(id)).map((id) => (PROFESSIONS[id]?.sector === 'federal' ? (NATIONAL_PROFESSIONS[nationalProfessionId(cc, id)] ? nationalProfessionId(cc, id) : null) : id)).filter(Boolean);
+  const province = state.character?.regionId ? stateIdOf(state) : null;
+  return ids.filter((id) => !US_ONLY_PROFESSIONS.includes(id) && agencyExists(cc, id, province)).map((id) => (PROFESSIONS[id]?.sector === 'federal' ? (NATIONAL_PROFESSIONS[nationalProfessionId(cc, id)] ? nationalProfessionId(cc, id) : null) : id)).filter(Boolean);
 }
 
 export const SECTOR_LABEL = { private: 'Private sector', municipal: 'Local government & schools', state: 'State government', federal: 'Federal government' };

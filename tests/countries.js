@@ -346,6 +346,31 @@ const tests = {
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
   },
+  'each country has only the agencies it really runs, with local ranks'() {
+    const has = (cc, id) => professionsFor(born(cc).state).some((p) => p.id === id);
+    assert.equal(has('JP', 'police'), false, 'no municipal police in Japan');
+    assert.ok(has('JP', 'statePolice'), 'prefectural police');
+    assert.equal(has('GB', 'statePolice'), false, 'no state police in the UK');
+    assert.equal(has('DE', 'police'), false, 'German police are Land police');
+    assert.equal(has('AU', 'police'), false);
+    assert.equal(has('PH', 'statePolice'), false, 'the PNP is the only police');
+    assert.ok(has('FR', 'police') && has('FR', 'statePolice'), 'police municipale and police nationale');
+    assert.equal(has('GB', 'jail'), false, 'no county jails abroad');
+    const jp = born('JP');
+    assert.equal(PROFESSIONS.statePolice.levels.find((l) => l.id === 'trooper').title, 'Junsa (Police Officer)');
+    const emp = createEmployer(new Random(1), jp.state, PROFESSIONS.statePolice, jp.state.character.regionId);
+    assert.ok(/Prefectural Police|Metropolitan Police/.test(emp.name), emp.name);
+    const ph = born('PH');
+    ph.state.character.citizenships = ['US'];
+    assert.equal(applicationEligibility(ph.state, 'police').ok, false, 'the PNP hires citizens');
+    // Provincial police only where a province runs one.
+    const ca = born('CA');
+    const onProvince = (regionId) => { ca.state.character.regionId = regionId; return professionsFor(ca.state).some((p) => p.id === 'statePolice'); };
+    assert.equal(onProvince(regionsIn('CA').find((r) => r.state === 'CA-AB').id), false, 'the RCMP polices Alberta');
+    assert.ok(onProvince(regionsIn('CA').find((r) => r.state === 'CA-ON').id), 'the OPP');
+    born('US');
+    assert.equal(PROFESSIONS.statePolice.levels.find((l) => l.id === 'trooper').title, 'State Trooper', 'US titles back for a US life');
+  },
   'citizenship gates on national service; UK citizenship six years after arrival'() {
     const t = born('US', 22, 30);
     const { state, ctx } = t;

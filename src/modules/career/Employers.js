@@ -107,7 +107,7 @@ export function createEmployer(rng, state, profession, regionId) {
     ? { name: unionDef.name, strike: unionDef.strike, duesRate: 0.013, agencyFee: !rtw, contractYearsLeft: rng.int(1, 3) }
     : null;
   let name;
-  if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId));
+  if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state);
   else name = rng.pick(profession.employers);
   const benefits = defaultBenefits(rng, profession, size, union);
   const annual = Math.round(EMPLOYER_SIZES[size].budget * (profession.sector === 'private' ? 1 : 1.3) * publicBudgetFactor(state, profession.sector));

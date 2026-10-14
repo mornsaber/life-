@@ -34,6 +34,8 @@ import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings }
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
 import { isAbroad, US_ONLY, informality, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
+import { agencyExists } from '../world/LocalAgencies.js';
+import { stateIdOf } from '../life/Regions.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -114,6 +116,9 @@ export function applicationEligibility(state, professionId) {
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
+  // Some countries' police and fire services are national forces that hire citizens only.
+  if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
+  if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };
   if (profession.country) {
     // A national government job: your country of residence, and its citizens only.
     if ((state.character.countryId ?? 'US') !== profession.country) return { ok: false, reason: 'A job in another country' };
