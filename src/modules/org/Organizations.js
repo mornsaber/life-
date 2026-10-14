@@ -158,7 +158,8 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     sector: t.sector,
     regionId: t.scope === 'nation' ? null : regionId,
     stateId: t.scope === 'nation' ? null : stateId,
-    size: size ?? 'medium',
+    // National agencies and state departments are big; local offices default to mid-size.
+    size: size ?? (t.scope === 'nation' || t.sector === 'federal' ? 'mega' : t.scope === 'state' ? 'large' : 'medium'),
     head: null,
     departments: {},
     people: {},

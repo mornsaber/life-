@@ -26,6 +26,7 @@ import { stateIdOf, countryIdOf } from '../life/Regions.js';
 import { recognitionRoute, speaksLocal, localLanguage } from '../world/Immigration.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
+import { PROFESSIONS } from '../career/JobTrees.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -134,16 +135,19 @@ export function describeEducation(req) {
 /** Who will pay for this credential, if anyone? Returns null or { type, label, left, serviceId? }. */
 export function findSponsor(state, credential) {
   const job = state.career.job;
-  if (job && credential.academy?.includes(job.professionId)) return { type: 'employer', label: `${job.employer.name} academy`, left: Infinity, academy: true };
+  // A national agency abroad sponsors what its US counterpart would (ca_fbi trains like the FBI).
+  const template = job ? PROFESSIONS[job.professionId]?.template ?? null : null;
+  const isJob = (list) => Boolean(job && (list?.includes(job.professionId) || (template && list?.includes(template))));
+  if (job && isJob(credential.academy)) return { type: 'employer', label: `${job.employer.name} academy`, left: Infinity, academy: true };
   // Credentials your own career ladder requires: the employer pays from its operating budget, not the training budget.
   const id = credential.id ?? Object.keys(CREDENTIALS).find((k) => CREDENTIALS[k] === credential);
-  if (job && REQUIRED_BY[id]?.has(job.professionId) && (credential.sponsors?.professions?.includes(job.professionId) || credential.sponsoredOnly)) {
+  if (job && (REQUIRED_BY[id]?.has(job.professionId) || (template && REQUIRED_BY[id]?.has(template))) && (isJob(credential.sponsors?.professions) || credential.sponsoredOnly)) {
     return { type: 'employer', label: job.employer.name, left: Infinity, required: true };
   }
   const s = credential.sponsors;
   if (!s) return null;
   if (job) {
-    const relevant = s.professions?.includes(job.professionId) || (s.anyEmployer && job.employer.size !== 'small');
+    const relevant = isJob(s.professions) || (s.anyEmployer && job.employer.size !== 'small');
     if (relevant) return { type: 'employer', label: job.employer.name, left: job.employer.budget.left };
   }
   for (const serviceId of s.services ?? []) {
