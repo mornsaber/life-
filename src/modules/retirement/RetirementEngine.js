@@ -62,23 +62,36 @@ function pensionFrom(cc, earnings, age) {
  * have a social-security agreement, years in both count toward each one's minimum and the
  * benefit is pro rata (a padded record, scaled by the years actually worked there).
  */
-export function foreignPensions(state, age = state.character.age) {
+export function foreignPensionParts(state, age = state.character.age) {
   const r = state.retirement;
   const here = state.character.countryId ?? 'US';
   const records = { ...(r.records ?? {}), [here]: r.ssEarnings };
-  let total = 0;
+  const parts = {};
   for (const [cc, earnings] of Object.entries(r.records ?? {})) {
     const years = earnings.filter((e) => e > 0);
     if (!years.length || !COUNTRIES[cc]) continue;
     const min = minYearsOf(cc);
-    if (years.length >= min) { total += pensionFrom(cc, years, age); continue; }
+    if (years.length >= min) { parts[cc] = pensionFrom(cc, years, age); continue; }
     const credited = Object.entries(records).filter(([other]) => other !== cc && totalizes(cc, other)).reduce((s, [, e]) => s + e.filter((x) => x > 0).length, 0);
     if (years.length + credited < min) continue;
     const avg = years.reduce((s, e) => s + e, 0) / years.length;
     const padded = [...years, ...Array(min - years.length).fill(avg)];
-    total += Math.round(pensionFrom(cc, padded, age) * (years.length / min));
+    parts[cc] = Math.round(pensionFrom(cc, padded, age) * (years.length / min));
   }
-  return total;
+  return parts;
+}
+export const foreignPensions = (state, age = state.character.age) => Object.values(foreignPensionParts(state, age)).reduce((s, x) => s + x, 0);
+
+/**
+ * The UK doesn't raise the State Pension for pensioners living in most countries
+ * without a reciprocal deal: it stays frozen at what it was when they left.
+ */
+export const UK_PENSION_FROZEN_IN = ['CA', 'AU', 'IN', 'JP', 'KR', 'MX'];
+/** The share of a claimed public pension that is the UK State Pension. */
+function ukShare(state, age, annual) {
+  const here = state.character.countryId ?? 'US';
+  const uk = (here === 'GB' ? homePension(state, age) : 0) + (foreignPensionParts(state, age).GB ?? 0);
+  return annual > 0 ? Math.min(1, Math.round((uk / annual) * 1000) / 1000) : 0;
 }
 const hasRecords = (r) => r.ssEarnings.length > 0 || Object.values(r.records ?? {}).some((e) => e.length);
 
@@ -237,7 +250,13 @@ export const RetirementEngine = {
       ctx.earn(Math.round(p.annual * (p.colaFactor ?? 1)), p.label);
     }
     if (r.socialSecurity) {
-      if (age > r.socialSecurity.claimAge) r.socialSecurity.colaFactor = Math.round((r.socialSecurity.colaFactor ?? 1) * (1 + inflation) * 10000) / 10000;
+      // A UK State Pension paid to someone living where it's frozen gets no yearly rise.
+      const frozen = UK_PENSION_FROZEN_IN.includes(state.character.countryId ?? 'US') ? r.socialSecurity.ukShare ?? 0 : 0;
+      if (frozen && !r.socialSecurity.frozenNoted) {
+        r.socialSecurity.frozenNoted = true;
+        ctx.log(`Your UK State Pension is frozen while you live in ${countryOf(state).name}: it won't rise with prices.`, '🧊', 'warn');
+      }
+      if (age > r.socialSecurity.claimAge) r.socialSecurity.colaFactor = Math.round((r.socialSecurity.colaFactor ?? 1) * (1 + inflation * (1 - frozen)) * 10000) / 10000;
       ctx.earn(Math.round(r.socialSecurity.annual * (r.socialSecurity.colaFactor ?? 1)), pensionName(state));
     }
 
@@ -251,6 +270,7 @@ export const RetirementEngine = {
 
     if (!r.socialSecurity && age >= 70 && hasRecords(r)) {
       r.socialSecurity = { annual: socialSecurityEstimate(state, 70), claimAge: 70 };
+      r.socialSecurity.ukShare = ukShare(state, 70, r.socialSecurity.annual);
       ctx.log(`${pensionName(state)} kicked in automatically at 70: $${r.socialSecurity.annual.toLocaleString()}/yr.`, isAbroad(state) ? countryOf(state).flag : '🇺🇸', 'finance');
     }
     if (r.retired && age >= 60 && r.dc > 0) {
@@ -340,6 +360,7 @@ export const RetirementEngine = {
       const own = socialSecurityEstimate(state);
       const family = Math.max(spousalBenefit(state), r.survivorBenefit ?? 0);
       r.socialSecurity = { annual: Math.max(own, family), claimAge: state.character.age, basis: family > own ? (r.survivorBenefit ? 'survivor' : 'spousal') : 'own' };
+      if (family <= own) r.socialSecurity.ukShare = ukShare(state, state.character.age, own);
       ctx.log(`You claimed ${pensionName(state)} at ${state.character.age}: $${r.socialSecurity.annual.toLocaleString()}/yr.`, isAbroad(state) ? countryOf(state).flag : '🇺🇸', 'milestone');
     },
 

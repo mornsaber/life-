@@ -42,6 +42,7 @@ import { ExpatModule, gapYearCheck } from '../src/modules/world/Expat.js';
 import { newbornCitizenships, childDualChoices } from '../src/modules/world/Nationality.js';
 import { partyName, ballotSwing } from '../src/modules/politics/Parties.js';
 import { familyAbroad, parentVisaCheck } from '../src/modules/people/FamilyAbroad.js';
+import { coverageId } from '../src/modules/health/Insurance.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR'];
@@ -351,6 +352,25 @@ const tests = {
     assert.equal(runEligibility(state, 'ca_mp').ok, false);
     assert.equal(runEligibility(state, 'mayor').ok, false);
     for (const view of Object.values(VIEWS)) assert.equal(typeof view(state), 'string');
+  },
+  'retiring abroad: private cover on a retiree visa, a frozen UK pension in Canada'() {
+    const t = born('GB', 24, 66);
+    const { state, ctx, engine } = t;
+    state.retirement.ssEarnings = Array(35).fill(40000);
+    arrive(ctx, 'IT', { visa: 'retiree' });
+    assert.equal(coverageId(state), 'expat', 'Italy\'s elective residence visa needs private insurance');
+    // Retire to Canada instead: the UK State Pension stops rising.
+    const c = born('GB', 25, 66);
+    c.state.retirement.ssEarnings = Array(35).fill(40000);
+    c.state.character.citizenships = ['GB', 'CA'];
+    arrive(c.ctx, 'CA', {});
+    c.state.prompts = [];
+    c.engine.dispatch('retirement.claimSocialSecurity');
+    const ss = c.state.retirement.socialSecurity;
+    assert.ok(ss && ss.ukShare > 0.5, 'most of it is the UK pension (Canada adds its OAS)');
+    c.state.economy.inflation = 0.03;
+    for (let i = 0; i < 3; i++) { c.state.prompts = []; c.engine.ageUp(); }
+    assert.ok((c.state.retirement.socialSecurity.colaFactor ?? 1) < 1.04, 'the UK part is frozen (full indexing would be about 9%)');
   },
   'family abroad: they stay behind, you send money and visit, and can sponsor a parent'() {
     const t = born('IN', 23, 30);

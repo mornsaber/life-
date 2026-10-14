@@ -12,6 +12,7 @@ import { tierRent } from '../../modules/realestate/index.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
+import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST } from '../../modules/world/Migration.js';
 import { optionRow } from '../Components.js';
@@ -65,7 +66,19 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return passportCard(state) + gapYearCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+  return passportCard(state) + gapYearCard(state) + retireAbroadCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+}
+
+/** Where you could retire, and what follows you there. */
+function retireAbroadCard(state) {
+  if (state.character.age < 50) return '';
+  const here = state.character.countryId ?? 'US';
+  const rows = Object.values(COUNTRIES).filter((c) => c.id !== here && IMMIGRATION[c.id].visas.retiree).map((c) => {
+    const v = IMMIGRATION[c.id].visas.retiree;
+    return `<li>${c.flag} <b>${esc(c.name)}</b> — ${esc(v.name)} <small class="fine">age ${v.minAge}+ · show ${money(v.amount)}${v.permanent ? ' · permanent' : ''}</small></li>`;
+  }).join('');
+  const ukFrozen = (state.retirement.records?.GB?.length || here === 'GB') ? `<p class="fine">🧊 A UK State Pension is frozen (never uprated) if you retire to ${UK_PENSION_FROZEN_IN.map((c) => COUNTRIES[c].name).join(', ')}.</p>` : '';
+  return card('Retiring Abroad', `<p class="muted">Public pensions follow you: each country you worked in pays its share wherever you live. Retiree visas need private health insurance — about ${money(2500 + Math.max(0, state.character.age - 45) * 220)} a year at your age.</p><ul class="history">${rows}</ul>${ukFrozen}`, { icon: '🌴' });
 }
 
 /** A year out between school and what comes next. */

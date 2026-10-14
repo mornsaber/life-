@@ -31,7 +31,11 @@ export const PLANS = {
   none: { name: 'Uninsured', icon: '⚠️', premium: 0, deductible: Infinity, coinsurance: 1, oopMax: Infinity },
   // Universal coverage abroad: paid through taxes and payroll contributions, so no premium (see Countries.js).
   national: { name: 'National health insurance', icon: '🏥', premium: 0, deductible: 0, coinsurance: 0.05, oopMax: 900 },
+  // Retiree and digital-nomad visas require private cover: the public system isn't open to you.
+  expat: { name: 'International private health insurance', icon: '🌐', premium: 2500, deductible: 1000, coinsurance: 0.1, oopMax: 5000 },
 };
+/** Visas whose holders must buy private health insurance. */
+const PRIVATE_COVER_VISAS = ['retiree', 'nomad'];
 
 const income = (state) => (state.finances.lastYear?.gross ?? 0) - (state.finances.lastYear?.ltcg ?? 0);
 
@@ -44,7 +48,10 @@ export function coverageId(state, earned = income(state)) {
   const age = state.character.age;
   if (state.legal.incarceration) return 'prison';
   if (state.military.service?.component === 'active') return 'tricare';
-  if (isAbroad(state)) return 'national';
+  if (isAbroad(state)) {
+    const res = state.migration?.residences?.[state.character.countryId];
+    return res?.status === 'visa' && PRIVATE_COVER_VISAS.includes(res.visa) ? 'expat' : 'national';
+  }
   if (state.career.job?.employer.benefits.health) return 'employer';
   if (age >= 65 || (isDisabled(state) && (state.health.disability.ssdiYears ?? 0) >= 2)) return 'medicare';
   if (state.retirement.pensions.some((p) => p.id === 'military')) return 'tricareRetiree';
@@ -63,6 +70,8 @@ export function coverage(state, earned) {
     const h = countryOf(state).health;
     Object.assign(plan, { name: h.name, deductible: h.deductible, coinsurance: h.coinsurance, oopMax: h.oopMax });
   }
+  // International cover gets dear with age.
+  if (id === 'expat') plan.premium = 2500 + Math.max(0, state.character.age - 45) * 220;
   // Marketplace premiums are subsidized at lower incomes.
   if (id === 'marketplace') plan.premium = (earned ?? income(state)) < 40000 ? 1500 : 6500;
   return plan;
