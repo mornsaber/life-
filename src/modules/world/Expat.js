@@ -16,6 +16,7 @@ import { arrive, departureBlock, ensureMigration } from './Migration.js';
 import { REGIONS, regionsIn } from '../life/Regions.js';
 import { severancePay, unemploymentBenefit } from './CountryLaw.js';
 import { warIn } from './War.js';
+import { bodyOfJob } from '../org/Bodies.js';
 
 export const ASSIGNMENT_YEARS = 3;
 export const ASSIGNMENT_UPLIFT = 0.15;
@@ -50,6 +51,22 @@ function offerAssignment(ctx) {
   const options = Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2));
   const to = rng.pick(options);
   if (!to) return;
+  // A priest serves abroad in the diocese there, lent by the home bishop — not in a branch office.
+  const body = bodyOfJob(job);
+  if (body?.overseas) {
+    if (job.headOf) return;
+    const city = regionsIn(to)[0];
+    const unit = body.unitName(to, city?.name ?? COUNTRIES[to].name, 'medium');
+    return ctx.prompt({
+      type: 'expat.offer', icon: '✝️', title: body.overseas.title,
+      text: `${body.overseas.text(job.employer.name, unit, COUNTRIES[to].name)}${speaks(state, localLanguage(to)) ? '' : ` You don't speak ${localLanguage(to)}.`}`,
+      options: [
+        { id: 'accept', label: `${COUNTRIES[to].flag} ${body.overseas.accept}`, hint: `${unit}, ${ASSIGNMENT_YEARS} years` },
+        { id: 'decline', label: '🏠 Stay in your diocese' },
+      ],
+      data: { to, body: body.id },
+    });
+  }
   ctx.prompt({
     type: 'expat.offer', icon: '🌐', title: 'An Overseas Assignment',
     text: `${job.employer.name} wants you to run part of its ${COUNTRIES[to].name} office for ${ASSIGNMENT_YEARS} years: same job, a ${Math.round(ASSIGNMENT_UPLIFT * 100)}% overseas allowance, housing paid, and your return guaranteed.${speaks(state, localLanguage(to)) ? '' : ` You don't speak ${localLanguage(to)}.`}`,
@@ -92,7 +109,7 @@ function forcedRelocation(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const cc = here(state);
-  if (!job || job.sector !== 'private' || job.remote || !['enterprise', 'mega'].includes(job.employer?.size) || onAssignment(state)) return;
+  if (!job || job.sector !== 'private' || job.remote || !['enterprise', 'mega'].includes(job.employer?.size) || onAssignment(state) || bodyOfJob(job)) return;
   if (state.prompts.some((p) => p.type === 'expat.relocation') || !rng.chance(job.employer.size === 'mega' ? 0.05 : 0.03)) return;
   // A third of the moves cross a border.
   const abroad = rng.chance(0.33) && !departureBlock(state);
@@ -178,7 +195,8 @@ export const ExpatModule = {
       const from = here(state);
       arrive(ctx, data.to, { visa: 'transfer', keepJob: true, reason: `${state.career.job?.employer.name ?? 'Your employer'} moved you to ${COUNTRIES[data.to].name} on assignment.` });
       if ((state.character.countryId ?? 'US') !== data.to) return;
-      ensureMigration(state).assignment = { home: from, to: data.to, endsAt: state.character.age + ASSIGNMENT_YEARS, uplift: ASSIGNMENT_UPLIFT };
+      // A priest on loan has no overseas allowance: the diocese there houses and pays them.
+      ensureMigration(state).assignment = { home: from, to: data.to, endsAt: state.character.age + ASSIGNMENT_YEARS, uplift: data.body ? 0 : ASSIGNMENT_UPLIFT };
       ctx.stat('happiness', 4);
     },
     end(ctx, _data, optionId) {

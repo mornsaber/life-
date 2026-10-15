@@ -14,6 +14,7 @@
  * keeps the job; a remote private-sector job stays remote). Public-pension
  * records stay with each country and pay out together when you claim.
  */
+import { bodyOfJob, joinLocalUnit } from '../org/Bodies.js';
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
   IMMIGRATION, VISA_KINDS, EMIGRATION_COST, visaEligibility, residencyOf, residencesOf, birthCountryOf, prYearsLeft, naturalizationYearsLeft,
@@ -137,7 +138,12 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   else if (res?.status === 'visa' && res.visa === 'student') ctx.log(`Your ${IMMIGRATION[to].visas.student.name} depends on studying here: enroll at a school this year (School tab).`, '🎓', 'warn');
   else if (res?.status === 'visa' && res.visa === 'work' && !stays) ctx.log(`Your ${IMMIGRATION[to].visas.work.name} needs a sponsoring employer: find a job here within the year (Jobs tab).`, '💼', 'warn');
   if (stays && job.employer) job.employer.stateId = REGIONS[state.character.regionId]?.state ?? job.employer.stateId;
-  if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
+  // A unit of an international body (a diocese of the Catholic Church): you serve in the local unit here.
+  if (stays && bodyOfJob(job)) joinLocalUnit(ctx);
+  // A multinational's staff work in its office in the country they're in.
+  if (stays && !bodyOfJob(job) && !job.remote) job.employer.division = to === job.employer.homeCountry ? null : `${COUNTRIES[to].name} office`;
+  if (stays && !bodyOfJob(job)) job.employer.homeCountry ??= from;
+  if (stays && bodyOfJob(job)) { /* logged by joinLocalUnit */ } else if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
   if (!speaksLocal(state, to)) ctx.log(`You don't speak ${localLanguage(to)} yet. Living here, you'll pick it up — classes speed it up.`, '🗣️', 'info');
   ctx.stat('stress', 8);
 }

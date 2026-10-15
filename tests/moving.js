@@ -15,6 +15,10 @@ import { arrive, routesTo } from '../src/modules/world/Migration.js';
 import { residencyOf } from '../src/modules/world/Immigration.js';
 import { changeRegion, REGIONS, regionsIn } from '../src/modules/life/Regions.js';
 import { SERVICES } from '../src/modules/emergency/EmergencyEngine.js';
+import { hire } from '../src/modules/career/CareerEngine.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { getProfession } from '../src/modules/career/JobTrees.js';
+import { orgOf, orgType } from '../src/modules/org/Organizations.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function adult(seed = 4, countryId) {
@@ -87,6 +91,23 @@ const tests = {
     assert.equal(state.service.teams.fema, null);
     assert.equal(state.civic.party, null);
     assert.match(logText(state), /party membership/);
+  },
+  'a priest lent abroad serves in the diocese there, within the Catholic Church, and comes home to their own'() {
+    const { engine, state, ctx } = adult(14, 'ES');
+    state.community.faith = { ...(state.community.faith ?? {}), traditionId: 'catholic' };
+    hire(ctx, { professionId: 'catholicClergy', levelId: 'pastor', employer: createEmployer(new Random(1), state, getProfession('catholicClergy'), state.character.regionId) });
+    const home = state.career.job.employer.name;
+    assert.match(home, /^(Arqui|Archi)?[Dd]i[oó]cesis de|Archidiócesis/);
+    assert.equal(orgType(orgOf(state, state.career.job.employer).typeId).body, 'catholic');
+    const expat = MODULES.find((m) => m.resolvers?.offer && m.resolvers?.end);
+    expat.resolvers.offer(engine.context(), { to: 'FR', body: 'catholic' }, 'accept');
+    assert.equal(state.character.countryId, 'FR');
+    assert.match(state.career.job.employer.name, /^(Archi)?[Dd]iocèse de /);
+    assert.equal(orgOf(state, state.career.job.employer).name, state.career.job.employer.name, 'a member of the French diocese, not a branch of the Spanish one');
+    assert.equal(state.migration.assignment.uplift, 0);
+    state.character.age = state.migration.assignment.endsAt;
+    expat.resolvers.end(engine.context(), {}, 'home');
+    assert.equal(state.career.job.employer.name, home);
   },
   'free movement: the UK and Ireland, the EU, Australia and New Zealand'() {
     const gb = adult(10, 'GB');

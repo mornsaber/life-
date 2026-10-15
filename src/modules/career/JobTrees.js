@@ -39,7 +39,8 @@ import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
-import { stateIdOf } from '../life/Regions.js';
+import { stateIdOf, REGIONS } from '../life/Regions.js';
+import { dioceseName } from '../community/Dioceses.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -438,12 +439,13 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
   catholicClergy: {
     id: 'catholicClergy', name: 'Catholic Priesthood', icon: '✝️', sector: 'private', payMultiplier: 0.4, minAge: 18, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.35,
-    // A diocese (archdiocese for the biggest sees) employs and assigns its priests.
-    employerName: (city, _rng, _state) => `Diocese of ${city}`,
+    // A diocese (archdiocese for the biggest sees) is the unit of the Church that ordains and assigns its priests.
+    body: 'catholic',
+    employerName: (city) => dioceseName(currentCountry() ?? 'US', city),
     eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? clergyEligibility(state) : { ok: false, reason: 'Belong to the Catholic Church' }),
     prepare: (state, job) => {
       job.tradition = state.community?.faith?.traditionId ?? 'catholic';
-      if (job.employer.size === 'enterprise') job.employer.name = job.employer.name.replace('Diocese', 'Archdiocese');
+      if (job.employer.size === 'enterprise') job.employer.name = dioceseName(state.character.countryId ?? 'US', REGIONS[state.character.regionId]?.name ?? job.employer.name, true);
     },
     levels: [
       L('seminarian', 'Seminarian', 1, { years: 5 }),

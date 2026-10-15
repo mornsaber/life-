@@ -191,7 +191,7 @@ export function localizePost(org, deptId, def) {
 function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession }) {
   const t = orgType(typeId);
   const pick = { typeId, key };
-  const ctx = { city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng };
+  const ctx = { city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng, name };
   const org = {
     id: pick.key,
     typeId: pick.typeId,

@@ -23,6 +23,7 @@ import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
 import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS, postDef, promotable } from '../../modules/org/Executives.js';
 import { orgOf, orgType } from '../../modules/org/Organizations.js';
+import { BODIES } from '../../modules/org/Bodies.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
@@ -215,6 +216,8 @@ function organizationCard(state, job) {
     : c.leads === 'dept' ? `<p>${chip(`🏢 You head ${esc(c.dept.name)}`, 'honor')} ${job.headOf.selection === 'appointed' && job.headOf.appointedBy ? chip(`Appointed by ${esc(job.headOf.appointedBy)}`, 'warn') : ''}</p>` : '';
   return card('Organization', `${lead}${kv([
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}${servedPopulation(c.org) ? ` <small class="muted">· serves ${servedPopulation(c.org).toLocaleString()} residents</small>` : ''}`],
+    c.org.body || orgType(c.org.typeId)?.body ? ['Part of', `${esc(BODIES[c.org.body ?? orgType(c.org.typeId).body]?.name ?? '')} <small class="muted">· led by ${esc(BODIES[c.org.body ?? orgType(c.org.typeId).body]?.head ?? '')}</small>`] : null,
+    c.org.authority ? ['Governed by', esc(c.org.authority)] : null,
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
     ['Ranks here', `${chip(EMPLOYER_SIZES[job.employer.size]?.label ?? job.employer.size)} <small class="muted">${ladderFor(getProfession(job.professionId), job.employer.size).map((l) => (l.id === job.levelId ? `<b>${esc(l.title)}</b>` : esc(l.title))).join(' › ')}</small>`],
         [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],

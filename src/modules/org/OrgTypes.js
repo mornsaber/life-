@@ -342,8 +342,9 @@ export const ORG_TYPES = {
     head: { title: 'Publisher & CEO', selection: 'board', appointedBy: 'the owners' },
     departments: [{ id: 'newsroom', name: 'Newsroom', occupations: ['journalism'], head: { title: 'Executive Editor', selection: 'internal' } }],
   },
+  /** A unit of the Catholic Church (see Bodies), named the way the employer is. */
   diocese: {
-    name: (c) => `Diocese of ${city(c)}`, scope: 'region', sector: 'private',
+    name: (c) => c.name ?? `Diocese of ${city(c)}`, scope: 'region', sector: 'private', body: 'catholic',
     head: { title: 'Bishop', selection: 'appointed', appointedBy: 'the Pope', occupation: 'catholicClergy', levelId: 'bishop' },
     departments: [{ id: 'parishes', name: 'Parishes', occupations: ['catholicClergy'], head: { title: 'Vicar General', selection: 'internal' } }],
   },
