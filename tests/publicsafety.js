@@ -16,6 +16,10 @@ import { PoliceLifeModule, unitEligibility } from '../src/modules/publicsafety/P
 import { FireLifeModule, teamEligibility } from '../src/modules/publicsafety/FireLife.js';
 import { scopeOfType } from '../src/core/PromptScope.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { EXAM_RANKS, nextExam } from '../src/modules/publicsafety/CivilService.js';
+import { ladderFor, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
+import { setCurrentCountry } from '../src/core/Locale.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function sworn(seed, professionId, levelId, creds, years = 6) {
@@ -125,6 +129,22 @@ const tests = {
       if (state.health.conditions?.some?.((c) => c.id === 'cancer') || Object.keys(state.health.conditions ?? {}).includes('cancer')) cancers += 1;
     }
     assert.ok(cancers >= 1, `some heavily exposed firefighters got cancer (${cancers}/30)`);
+  },
+  'every tested rank you can be promoted into offers its exam — small agencies, specialist tracks, every country'() {
+    const stuck = [];
+    for (const cc of Object.keys(COUNTRIES)) {
+      setCurrentCountry(cc);
+      for (const [pid, ranks] of Object.entries(EXAM_RANKS)) {
+        const p = getProfession(pid);
+        for (const size of SIZE_ORDER) for (const cur of ladderFor(p, size)) {
+          for (const nx of nextLevels(p, size, cur.id)) {
+            if (ranks.includes(nx.id) && nextExam({ professionId: pid, levelId: cur.id, employer: { size } })?.id !== nx.id) stuck.push(`${cc} ${pid}@${size} ${cur.id}→${nx.id}`);
+          }
+        }
+      }
+    }
+    setCurrentCountry('US');
+    assert.deepEqual(stuck.slice(0, 5), []);
   },
 };
 

@@ -10,6 +10,7 @@
 import { clamp } from '../../core/Random.js';
 import { PROMO_GATES, promotionStatus, promote, levelCheck } from '../career/CareerEngine.js';
 import { getProfession } from '../career/JobTrees.js';
+import { ladderFor, nextLevels } from '../career/Ladder.js';
 
 /** Ranks that promote off a civil-service list, by career. */
 export const EXAM_RANKS = {
@@ -37,15 +38,23 @@ PROMO_GATES.push((state, job, level) => {
   return null;
 });
 
-/** The exam you could sit next (the lowest civil-service rank above you). */
+/**
+ * The exam you could sit next: the lowest civil-service rank above you *that this agency has*.
+ * A small department with no lieutenants tests straight for captain.
+ */
 export function nextExam(job) {
   const p = job && getProfession(job.professionId);
   if (!p) return null;
   const ranks = EXAM_RANKS[job.professionId] ?? [];
+  const ladder = ladderFor(p, job.employer?.size);
+  // The rank you'd actually be promoted into next, when it's a tested one (a detective
+  // crossing into management tests for the rank the ladder leads to, not one below it).
+  const direct = nextLevels(p, job.employer?.size, job.levelId).filter((l) => ranks.includes(l.id)).sort((a, b) => a.grade - b.grade)[0];
+  if (direct) return direct;
   const cur = p.levels.find((l) => l.id === job.levelId);
   // A senior officer and a sergeant share a pay grade; moving into supervision still takes the exam.
   const above = (l) => l.grade > (cur?.grade ?? 0) || (l.grade === cur?.grade && cur.track !== 'mgmt' && l.id !== cur.id);
-  return p.levels.filter((l) => ranks.includes(l.id) && above(l)).sort((a, b) => a.grade - b.grade)[0] ?? null;
+  return ladder.filter((l) => ranks.includes(l.id) && above(l)).sort((a, b) => a.grade - b.grade)[0] ?? null;
 }
 
 /** Sit the exam: a written test plus an oral board. Returns the list entry. */
