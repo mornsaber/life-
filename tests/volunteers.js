@@ -23,6 +23,10 @@ import { localizeHtml, COUNTRIES } from '../src/modules/world/Countries.js';
 import { PROFESSION_LIST } from '../src/modules/career/JobTrees.js';
 import { ladderFor } from '../src/modules/career/Ladder.js';
 import { equipmentCard } from '../src/ui/views/EquipmentView.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { orgOf } from '../src/modules/org/Organizations.js';
+import { getProfession, professionsFor } from '../src/modules/career/JobTrees.js';
+import { regionsIn } from '../src/modules/life/Regions.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function chief(countryId = 'US', seed = 3) {
@@ -146,6 +150,33 @@ const tests = {
     for (const p of PROFESSION_LIST.filter((x) => x.sector === 'federal')) {
       for (const size of ['large', 'enterprise']) assert.equal(ladderFor(p, size).length, p.levels.length, `${p.id}@${size}`);
     }
+  },
+  'abroad, police, fire and ambulance services are bodies of their own, not city departments'() {
+    const job = (cc, id, region) => {
+      const { state } = chief(cc, 11);
+      if (region) state.character.regionId = region;
+      const e = createEmployer(new Random(2), state, getProfession(id), state.character.regionId);
+      return { e, org: orgOf(state, e) };
+    };
+    const lfb = job('GB', 'fire', 'london');
+    assert.equal(lfb.org.typeId, 'emergencyService');
+    assert.equal(lfb.org.name, 'London Fire Brigade');
+    assert.equal(lfb.org.posts.org.appointedBy, 'the fire and rescue authority');
+    assert.match(lfb.e.deptName, /Fire/);
+    const pnp = job('PH', 'police');
+    assert.equal(pnp.org.name, 'Philippine National Police', 'a station belongs to the national body');
+    assert.match(pnp.e.division, /Police Station/);
+    const us = job('US', 'fire');
+    assert.equal(us.org.typeId, 'cityGov', 'US cities keep their departments');
+  },
+  'council inspectors exist everywhere, by local names'() {
+    for (const cc of ['US', 'GB', 'AU', 'DE', 'NZ', 'JP']) {
+      const { state } = chief(cc, 12);
+      assert.ok(professionsFor(state).some((p) => p.id === 'councilInspector'), cc);
+    }
+    const { state } = chief('GB', 13);
+    assert.equal(getProfession('councilInspector').levels.find((l) => l.id === 'inspector').title, 'Building Control Surveyor');
+    void state; void regionsIn;
   },
   'dearer equipment earns its price: capacity, running costs, quality'() {
     const { state } = chief();

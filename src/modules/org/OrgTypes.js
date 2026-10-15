@@ -29,14 +29,26 @@ export const ORG_TYPES = {
     name: (c) => `City of ${city(c)}`, scope: 'region', sector: 'municipal',
     head: { title: 'City Manager', selection: 'appointed', appointedBy: 'the city council', office: 'cityManager' },
     departments: [
-      { id: 'publicSafety', name: 'Department of Public Safety', occupations: ['police', 'fire', 'ems', 'dispatch'], head: { title: 'Public Safety Commissioner', selection: 'appointed', appointedBy: 'the mayor' },
+      { id: 'publicSafety', name: 'Department of Public Safety', occupations: ['police', 'fire', 'ems', 'dispatch'], usOnly: true, head: { title: 'Public Safety Commissioner', selection: 'appointed', appointedBy: 'the mayor' },
         divisions: { police: 'Police Division', fire: 'Fire Division', ems: 'Emergency Medical Services', dispatch: 'Emergency Communications' } },
       { id: 'publicWorks', name: 'Department of Public Works', occupations: ['publicWorks'], head: { title: 'Director of Public Works', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'planning', name: 'Department of Planning & Development', occupations: ['planning'], head: { title: 'Planning Director', selection: 'appointed', appointedBy: 'the city manager' } },
+      { id: 'inspections', name: 'Code Enforcement & Inspections', occupations: ['councilInspector'], head: { title: 'Building Official', selection: 'appointed', appointedBy: 'the city manager', occupation: 'councilInspector', levelId: 'buildingOfficial' } },
       { id: 'administration', name: 'City Administration', occupations: ['municipalAdmin'], head: { title: 'Assistant City Manager', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'library', name: 'Public Library System', occupations: ['library'], head: { title: 'Library Director', selection: 'appointed', appointedBy: 'the library board', occupation: 'library', levelId: 'director' } },
       { id: 'utilities', name: 'Water & Sewer Utilities', occupations: ['waterUtility'], head: { title: 'Director of Water Utilities', selection: 'appointed', appointedBy: 'the city manager', occupation: 'waterUtility', levelId: 'director' } },
     ],
+  },
+  /**
+   * Abroad, a police force, fire and rescue service, ambulance service or emergency
+   * control room is a body of its own — a city's, a region's or the nation's — with its
+   * own chief, answering to whoever governs it (a police and crime commissioner, a fire
+   * authority, the ministry). One per name: every town FENZ covers shares one FENZ.
+   */
+  emergencyService: {
+    name: null, solo: true, scope: 'named', sector: 'municipal', abroadOnly: true,
+    head: { title: 'Chief', selection: 'appointed', appointedBy: 'the local authority' },
+    departments: [{ id: 'operations', name: 'Operations', occupations: ['police', 'fire', 'ems', 'dispatch'], head: { title: 'Head of Operations', selection: 'internal' } }],
   },
   countyGov: {
     name: (c) => `${city(c)} County`, scope: 'region', sector: 'municipal',

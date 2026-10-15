@@ -57,7 +57,7 @@ export const CivilAirPatrol = {
       text: 'After a major flood, the state needs aerial photos of damaged levees and roads.',
       options: [
         { id: 'drone', label: 'Fly drone survey grids', cert: 'drone', success: 0.85, risk: 0.05, xp: 20, successText: 'Your imagery showed a levee about to fail. Crews evacuated a town in time.', failText: 'Wind grounded the drones for the day.' },
-        { id: 'sortie', label: 'Fly photo sorties in the aircraft', cert: 'privatePilot', success: 0.8, risk: 0.15, xp: 24, successText: 'Hundreds of geotagged photos reached FEMA by nightfall.', failText: 'Turbulence ruined half the photos.' },
+        { id: 'sortie', label: 'Fly photo sorties in the aircraft', cert: 'privatePilot', success: 0.8, risk: 0.15, xp: 24, successText: 'Hundreds of geotagged photos reached the emergency managers by nightfall.', failText: 'Turbulence ruined half the photos.' },
         { id: 'sort', label: 'Sort and tag photos at the incident base', success: 0.9, risk: 0, xp: 10, successText: 'Your tagging sped up the damage reports.', failText: 'The servers crashed; the work was lost.' },
       ],
     },

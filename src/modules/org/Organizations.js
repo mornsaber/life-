@@ -33,7 +33,7 @@ import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
-import { localAgency } from '../world/LocalAgencies.js';
+import { localAgency, serviceAuthority, serviceBody } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
@@ -69,8 +69,10 @@ const stateOfRegion = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).state
 const cityOf = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
 
 /** Organization types that employ this profession, matching its sector when possible. */
-function candidateTypes(profession) {
-  const all = orgTypesFor(profession.id);
+function candidateTypes(profession, abroad = false) {
+  const all = orgTypesFor(profession.id).filter((id) => abroad || !orgType(id)?.abroadOnly);
+  // Abroad, emergency services are bodies of their own, not city departments.
+  if (abroad && all.includes('emergencyService')) return ['emergencyService'];
   const same = all.filter((id) => orgType(id)?.sector === profession.sector);
   return same.length ? same : all;
 }
@@ -107,9 +109,14 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
       && Object.values(o.departments).some((d) => !d.branch && orgType(o.typeId)?.departments.find((x) => x.id === d.id)?.occupations.includes(profession.id)));
     if (local.length && rng.chance(0.25)) return rng.pick(local);
   }
-  const types = candidateTypes(profession);
+  const types = candidateTypes(profession, (state.character?.countryId ?? 'US') !== 'US');
   // Prefer an organization type that already exists here (one city government, not three).
   const stateId = stateOfRegion(regionId);
+  // A local unit of a national or state service belongs to that service.
+  if (types[0] === 'emergencyService') {
+    const body = serviceBody(state.character?.countryId, profession.id, STATES[stateId]?.name);
+    if (body) { name = body; size = SIZE_RANK[size] > SIZE_RANK.enterprise ? size : 'enterprise'; }
+  }
   const keyFor = (typeId, t) => orgKey(typeId, t, regionId, stateId, name);
   const keys = types.map((typeId) => ({ typeId, t: orgType(typeId), key: keyFor(typeId, orgType(typeId)) }));
   const existing = keys.find((k) => state.orgs.byId[k.key]);
@@ -125,7 +132,7 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
 
 /** The key an organization of this type has in a place. */
 function orgKey(typeId, t, regionId, stateId, name) {
-  return t.scope === 'nation' ? typeId : t.scope === 'state' ? `${typeId}:${stateId}` : t.scope === 'region' ? `${typeId}:${regionId}` : `${typeId}:${regionId}:${name ?? 'firm'}`;
+  return t.scope === 'named' ? `${typeId}:${name ?? 'service'}` : t.scope === 'nation' ? typeId : t.scope === 'state' ? `${typeId}:${stateId}` : t.scope === 'region' ? `${typeId}:${regionId}` : `${typeId}:${regionId}:${name ?? 'firm'}`;
 }
 
 /** Find or create a specific organization type in a place (e.g. every state agency a governor runs). */
@@ -166,6 +173,9 @@ function localLabels(state, occupations) {
  */
 export function localizePost(org, deptId, def) {
   if (!def) return def;
+  // A body with its own posts (an emergency service abroad) names them itself.
+  const own = org?.posts?.[deptId ?? 'org'];
+  if (own) return { ...def, ...own };
   const cc = REGIONS[org?.regionId]?.country ?? (org?.stateId ? STATES[org.stateId]?.country : null) ?? 'US';
   if (cc === 'US') return def;
   const t = orgType(org.typeId);
@@ -200,11 +210,17 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
   // Abroad: a state-level body is named for its first local service (the Hokkaido Prefectural Police).
   const lead = t.scope !== 'market' && t.sector !== 'private' ? localLabels(state, t.departments[0]?.occupations) : null;
   if (lead?.agency?.employer && t.scope === 'state') org.name = lead.agency.employer(ctx.city, stateId, ctx.state);
-  const head = newPerson(rng, org, { title: lead && t.departments.length === 1 ? lead.head ?? t.head.title : t.head.title, selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
+  // Abroad a city government is the local council (Manchester City Council, Gemeinde, Comune).
+  const council = typeId === 'cityGov' && (state.character?.countryId ?? 'US') !== 'US' ? localAgency(state.character.countryId, 'municipalAdmin') : null;
+  if (council?.employer) org.name = council.employer(ctx.city, stateId, ctx.state);
+  const head = newPerson(rng, org, { title: org.posts?.org?.title ?? (lead && t.departments.length === 1 ? lead.head ?? t.head.title : t.head.title), selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
   org.head = head.id;
+  if (typeId === 'emergencyService') serviceOrgPosts(state, org, profession, rng);
   for (const d of t.departments) {
+    if (d.usOnly && (state.character?.countryId ?? 'US') !== 'US') continue;
     const range = HEADCOUNT[org.size];
-    const local = t.sector !== 'private' ? localLabels(state, d.occupations) : null;
+    // A department is named for its own service (an emergency service's operations, for its service).
+    const local = t.sector !== 'private' ? localLabels(state, org.serviceId ? [org.serviceId] : d.occupations) : null;
     const dept = { id: d.id, name: local?.name ?? d.name, head: null, headcount: Math.round(rng.int(range[0], range[1]) / Math.max(1, t.departments.length)), seats: {} };
     const post = localizePost(org, d.id, d.head);
     const dh = newPerson(rng, org, { title: post.title, selection: post.selection, deptId: d.id, age: rng.int(40, 62) });
@@ -215,6 +231,25 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
   applyStaffing(org);
   state.orgs.byId[org.id] = org;
   return org;
+}
+
+/**
+ * An emergency service abroad: its chief is the top of the service's own ladder, appointed by
+ * whoever governs it there; its head of operations is the rank below.
+ */
+function serviceOrgPosts(state, org, profession, rng) {
+  if (!profession) return;
+  const cc = state.character?.countryId ?? 'US';
+  const ladder = profession.levels.filter((l) => !l.id.includes('_cmd'));
+  const top = ladder.at(-1);
+  const deputy = [...ladder].reverse().find((l) => l !== top && (l.track === 'mgmt' || l.abilities?.includes('supervise'))) ?? ladder.at(-2);
+  org.serviceId = profession.id;
+  org.authority = serviceAuthority(cc, profession.id, stateOfRegion(org.regionId));
+  org.posts = {
+    org: { title: top.title, selection: 'appointed', appointedBy: org.authority, occupation: profession.id, levelId: top.id },
+    operations: { title: deputy?.title ?? 'Head of Operations', selection: 'internal', occupation: profession.id, levelId: deputy?.id },
+  };
+  void rng;
 }
 
 /** Organizations from older saves gain departments their type has added since. */
@@ -261,6 +296,8 @@ export function attachOrg(state, employer, profession, regionId) {
   employer.orgName = org.name;
   employer.deptName = dept?.name ?? null;
   employer.division = dept ? divisionName(org, dept.id, profession.id) : null;
+  // A unit of a bigger service: the station or command you work in.
+  if (org.typeId === 'emergencyService' && org.name !== employer.name) employer.division = employer.name;
   return employer;
 }
 
@@ -321,6 +358,7 @@ function overseer(t) {
 /** Whether a department's work exists where you live (no sheriff's office or DA abroad). */
 function deptHere(state, d) {
   if ((state.character?.countryId ?? 'US') === 'US' || !d.occupations?.length) return true;
+  if (d.usOnly) return false;
   const here = new Set(professionsFor(state).map((p) => p.id));
   return d.occupations.some((id) => here.has(id));
 }

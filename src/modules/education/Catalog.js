@@ -34,7 +34,7 @@ export const MAJORS = {
   internationalRelations: { name: 'International Relations', icon: '🌐', fields: ['foreignService', 'intelligence'], levels: ['bachelor', 'master'] },
   criminalJustice: { name: 'Criminal Justice', icon: '🚓', fields: ['police', 'statePolice', 'corrections', 'gameWarden', 'courts', 'oig', 'legalSupport', 'intelligence', 'parkService', 'borderPatrol', 'animalControl'], levels: ['associate', 'bachelor', 'master'] },
   education: { name: 'Education', icon: '🍎', fields: ['education'], levels: ['bachelor', 'master'] },
-  publicAdministration: { name: 'Public Administration', icon: '🏛️', fields: ['municipalAdmin', 'publicWorks', 'planning', 'regulatory', 'fire', 'police'], levels: ['bachelor'] },
+  publicAdministration: { name: 'Public Administration', icon: '🏛️', fields: ['municipalAdmin', 'councilInspector', 'publicWorks', 'planning', 'regulatory', 'fire', 'police'], levels: ['bachelor'] },
   environmentalScience: { name: 'Environmental Science', icon: '🌲', fields: ['parkService', 'planning', 'regulatory', 'environmental', 'forester', 'gameWarden', 'waterUtility'], levels: ['bachelor', 'master'], science: true },
   urbanStudies: { name: 'Urban Studies & Planning', icon: '🗺️', fields: ['planning', 'municipalAdmin', 'realestate'], levels: ['bachelor', 'master'] },
   fireScience: { name: 'Fire Science / EMS', icon: '🚒', fields: ['fire', 'ems', 'stateFire', 'airportFire'], levels: ['associate', 'bachelor'] },

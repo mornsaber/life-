@@ -113,6 +113,28 @@ export const MUNICIPAL_PROFESSIONS = {
       L('director', 'Director of Public Works', 8, { track: 'mgmt', minSize: 'medium', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec', 'policy'], reports: 250 }),
     ],
   },
+  /**
+   * Council inspectors: building inspection, code enforcement and environmental health —
+   * the people who sign off a new house, close a filthy kitchen and chase an illegal
+   * extension. Abroad: building control surveyors, environmental health officers,
+   * the Ordnungsamt, a council's compliance team.
+   */
+  councilInspector: {
+    id: 'councilInspector', name: 'Inspections & Code Enforcement', icon: '📋', sector: 'municipal', payMultiplier: 0.95, minAge: 19, background: 'standard', exam: 'municipal',
+    benefits: { pension: 'municipal' },
+    employerName: (city) => `${city} Department of Code Enforcement & Inspections`,
+    entry: { education: { level: 'highschool' }, credentials: ['driverLicense'] },
+    valued: ['buildingInspector', 'fireInspector', 'oshaSafety'],
+    levels: [
+      L('codeOfficer', 'Code Enforcement Officer', 3, { entry: true, abilities: ['inspect'] }),
+      L('inspector', 'Building Inspector', 4, { entry: true, req: { credentials: ['buildingInspector'] }, abilities: ['inspect'] }),
+      L('senior', 'Senior Inspector', 5, { track: 'ic', abilities: ['inspect', 'sign'] }),
+      L('plansExaminer', 'Plans Examiner', 6, { track: 'ic', minSize: 'medium', abilities: ['inspect', 'sign'] }),
+      L('supervisor', 'Inspections Supervisor', 5, { track: 'mgmt', abilities: ['inspect', 'supervise'], reports: 8 }),
+      L('manager', 'Code Enforcement Manager', 6, { track: 'mgmt', minSize: 'medium', abilities: ['inspect', 'supervise', 'hire', 'budget'], reports: 20 }),
+      L('buildingOfficial', 'Building Official', 7, { track: 'mgmt', req: { credentials: ['buildingInspector'] }, abilities: ['inspect', 'supervise', 'hire', 'budget', 'delegate', 'sign', 'policy'], reports: 45 }),
+    ],
+  },
   planning: {
     id: 'planning', name: 'Urban Planning', icon: '🗺️', sector: 'municipal', payMultiplier: 1.0, minAge: 21, background: 'standard', exam: 'municipal',
     benefits: { pension: 'municipal' },
@@ -179,6 +201,14 @@ export const MUNICIPAL_EVENTS = {
     options: [
       { id: 'lead', label: '🔧 Lead the overnight repair crew yourself', perf: 7, approval: 4, stress: 8 },
       { id: 'morning', label: '🌅 Shut the valves and wait for the morning crew', approval: -5, fiscal: -2 },
+    ],
+  },
+  councilInspector: {
+    title: 'A Friendly Envelope', text: 'A contractor with a half-finished extension and no permit invites you for coffee. There\'s an envelope on the table and the job is "nearly up to code."',
+    options: [
+      { id: 'stop', label: '🛑 Issue a stop-work notice', approval: 3, perf: 5, boss: 2 },
+      { id: 'warn', label: '📋 Give them 30 days to get a permit', approval: 1, perf: 2 },
+      { id: 'look', label: '🙈 Pocket it and sign off', approval: -2, perf: -2, check: 'smarts' },
     ],
   },
   planning: {

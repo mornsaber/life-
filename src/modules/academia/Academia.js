@@ -595,7 +595,7 @@ export const AcademiaModule = {
         case 'imposter.counseling': ctx.stat('stress', -8); ctx.stat('happiness', 4); ctx.log('The counselor said half the students she sees are Ph.D. students. It helped to hear.', '🫂', 'good'); break;
         case 'imposter.push': ctx.stat('stress', 6); ctx.stat('happiness', -4); ctx.log('You kept going. Some days were worse than others.', '🌧️'); break;
         case 'conference.go': phd.conference += 1; ctx.stat('happiness', 4); ctx.log('Your talk went well, and a professor from another school asked for your CV.', '🎤', 'good'); break;
-        case 'data.honest': ctx.log('You reported the null result. Your advisor was disappointed, then helped you find a better question.', '📊'); break;
+        case 'data.honest': ctx.log('You reported the negative result. Your advisor was disappointed, then helped you find a better question.', '📊'); break;
         case 'data.massage': state.academia.fabricated = true; phd.papers += 1; s.papers += 1; phd.firstAuthor += 1; s.firstAuthor += 1; ctx.log('The cleaned-up figure looked great. The paper was accepted.', '✂️', 'warn'); break;
         case 'teaching.take': ctx.earn(4000, 'Extra teaching assistantship'); ctx.stat('stress', 5); ctx.log('Three hundred undergraduates and their email.', '🧑‍🏫'); break;
         default: ctx.log('You moved on.', '🔬');

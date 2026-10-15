@@ -22,7 +22,8 @@ function benchCard(state) {
   const lawyer = state.credentials?.held?.barLicense;
   if (!court && !lawyer && !(state.judiciary?.history.length)) return '';
   const seat = state.judiciary?.seat;
-  const ladder = Object.entries(COURTS).map(([id, c]) => {
+  const abroad = (state.character.countryId ?? 'US') !== 'US';
+  const ladder = Object.entries(COURTS).filter(([id, c]) => !abroad || c.system !== 'federal' || court === id).map(([id, c]) => {
     const e = benchEligibility(state, id);
     return `<li>${c.icon} <b>${esc(c.name)}</b> <small>${money(c.salary)}/yr · ${c.life ? 'life tenure' : `${c.term}-yr term`} · ${SELECTION_LABEL[selectionFor(state, id)]}</small> ${court === id ? chip('your seat', 'good') : e.ok ? chip('eligible', '') : `<span class="why">${esc(e.reason)}</span>`}</li>`;
   }).join('');

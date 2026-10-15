@@ -166,7 +166,7 @@ const QUESTION_FIELD = {
   retail: 'service', culinary: 'service', realestate: 'service', trades: 'trades', trucking: 'trades', aviation: 'trades', engineering: 'trades', publicWorks: 'trades',
   tech: 'tech', intelligence: 'tech', corporate: 'corporate', finance: 'finance', accounting: 'finance', medical: 'medical', nursing: 'medical',
   law: 'law', legalSupport: 'law', education: 'education', police: 'publicSafety', fire: 'publicSafety', ems: 'publicSafety', parkService: 'publicSafety',
-  municipalAdmin: 'government', planning: 'government', regulatory: 'government', oig: 'government', foreignService: 'government',
+  municipalAdmin: 'government', councilInspector: 'government', planning: 'government', regulatory: 'government', oig: 'government', foreignService: 'government',
 };
 
 function pickQuestions(rng, professionId) {

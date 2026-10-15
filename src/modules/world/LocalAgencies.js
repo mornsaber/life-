@@ -276,6 +276,32 @@ export const LOCAL_AGENCIES = {
 fromPacks(LOCAL_AGENCIES, 'LOCAL_AGENCIES');
 
 /**
+ * Council inspectors abroad: building control, environmental health and the local
+ * enforcement office, by their local names. (Every country has some; the titles differ.)
+ */
+const T = (codeOfficer, inspector, senior, plansExaminer, supervisor, manager, buildingOfficial) => ({ codeOfficer, inspector, senior, plansExaminer, supervisor, manager, buildingOfficial });
+const INSPECTORS = {
+  CA: { name: 'Municipal By-law & Building Services', employer: (c) => `${town(c)} By-law Enforcement & Building Services`, titles: T('Municipal Law Enforcement Officer', 'Building Inspector', 'Senior Building Inspector', 'Plans Examiner', 'Supervisor, By-law Enforcement', 'Manager, Building Services', 'Chief Building Official') },
+  GB: { name: 'Council Regulatory Services', employer: (c) => `${town(c)} Council — Building Control & Environmental Health`, titles: T('Enforcement Officer', 'Building Control Surveyor', 'Environmental Health Officer', 'Principal Building Control Surveyor', 'Team Leader, Regulatory Services', 'Head of Building Control', 'Head of Regulatory Services') },
+  IE: { name: 'Building Control & Environmental Health', employer: (c) => `${town(c)} County Council — Building Control`, titles: T('Enforcement Officer', 'Building Control Officer', 'Environmental Health Officer', 'Senior Building Control Officer', 'Senior Staff Officer', 'Senior Executive Officer', 'Chief Fire & Building Control Officer') },
+  AU: { name: 'Council Compliance & Building Services', employer: (c) => `${town(c)} City Council — Compliance & Building`, titles: T('Local Laws Officer (Ranger)', 'Municipal Building Surveyor', 'Environmental Health Officer', 'Principal Building Surveyor', 'Compliance Team Leader', 'Coordinator, Building & Compliance', 'Manager, Regulatory Services') },
+  NZ: { name: 'Council Building Consents & Compliance', employer: (c) => `${town(c)} City Council — Building Consents & Compliance`, titles: T('Compliance Officer', 'Building Consent Officer', 'Environmental Health Officer', 'Principal Building Consent Officer', 'Team Leader, Compliance', 'Building Consents Manager', 'Head of Building Consents') },
+  DE: { name: 'Ordnungsamt & Bauaufsicht', employer: (c) => `Ordnungsamt / Bauaufsichtsamt ${town(c)}`, titles: T('Mitarbeiter im Außendienst (Ordnungsamt)', 'Baukontrolleur', 'Lebensmittelkontrolleur', 'Bauprüfer', 'Sachgebietsleiter', 'Abteilungsleiter Bauaufsicht', 'Amtsleiter Bauaufsicht') },
+  FR: { name: 'Services techniques municipaux', employer: (c) => `Mairie de ${town(c)} — urbanisme et hygiène`, titles: T('Agent de surveillance de la voie publique', 'Contrôleur de travaux', 'Inspecteur de salubrité (SCHS)', 'Instructeur des autorisations d\'urbanisme', 'Responsable d\'équipe', 'Chef du service urbanisme', 'Directeur des services techniques') },
+  IT: { name: 'Ufficio tecnico comunale', employer: (c) => `Comune di ${town(c)} — Ufficio tecnico ed edilizia privata`, titles: T('Agente accertatore', 'Istruttore tecnico (ispettore edilizio)', 'Ispettore igienista (ASL)', 'Istruttore direttivo tecnico', 'Responsabile di procedimento', 'Capo servizio edilizia privata', 'Dirigente dell\'Ufficio tecnico') },
+  ES: { name: 'Inspección municipal', employer: (c) => `Ayuntamiento de ${town(c)} — Disciplina urbanística`, titles: T('Agente de inspección', 'Inspector de obras', 'Inspector de sanidad', 'Técnico de licencias', 'Jefe de negociado', 'Jefe de servicio', 'Director de urbanismo') },
+  NL: { name: 'Toezicht & Handhaving', employer: (c) => `Gemeente ${town(c)} — Toezicht en Handhaving`, titles: T('Handhaver (BOA)', 'Bouwinspecteur', 'Toezichthouder milieu', 'Vergunningverlener bouwen', 'Teamleider handhaving', 'Afdelingshoofd VTH', 'Directeur Vergunningen, Toezicht en Handhaving') },
+  SE: { name: 'Byggnads- och miljöförvaltning', employer: (c) => `${town(c)} kommun — bygg- och miljöförvaltningen`, titles: T('Tillsynshandläggare', 'Byggnadsinspektör', 'Miljö- och hälsoskyddsinspektör', 'Bygglovshandläggare', 'Gruppchef', 'Avdelningschef', 'Förvaltningschef') },
+  JP: { name: 'Building Guidance Division', employer: (c) => `${town(c)} City Hall — Building Guidance Division`, titles: T('Inspection Staff', 'Building Inspector (Kenchiku Shuji)', 'Senior Building Inspector', 'Building Confirmation Examiner', 'Section Chief (Kakarichō)', 'Division Chief (Kachō)', 'Director, Urban Development Bureau') },
+  KR: { name: 'District Office Building Division', employer: (c) => `${town(c)} District Office — Building Division`, titles: T('Enforcement Officer', 'Building Inspector', 'Senior Building Inspector', 'Permit Examiner', 'Team Leader', 'Division Director', 'Director, Urban Construction Bureau') },
+  MX: { name: 'Inspección y Verificación Municipal', employer: (c) => `Municipio de ${town(c)} — Dirección de Inspección y Vigilancia`, titles: T('Inspector de reglamentos', 'Verificador de obra', 'Inspector sanitario', 'Dictaminador de licencias', 'Jefe de departamento', 'Subdirector de inspección', 'Director de Inspección y Vigilancia') },
+  BR: { name: 'Fiscalização municipal', employer: (c) => `Prefeitura de ${town(c)} — Fiscalização de Obras e Posturas`, titles: T('Fiscal de posturas', 'Fiscal de obras', 'Fiscal sanitário (Vigilância Sanitária)', 'Analista de licenciamento', 'Chefe de divisão', 'Gerente de fiscalização', 'Secretário municipal de urbanismo') },
+  PH: { name: 'Office of the Building Official', employer: (c) => `${town(c)} City Hall — Office of the Building Official`, titles: T('Zoning Enforcement Officer', 'Building Inspector', 'Sanitary Inspector', 'Plans Evaluator', 'Chief Inspector', 'Assistant Building Official', 'City Building Official') },
+  IN: { name: 'Municipal Building & Licensing Department', employer: (c) => `${town(c)} Municipal Corporation — Building Proposal Department`, titles: T('Licence Inspector', 'Building Inspector', 'Sanitary Inspector', 'Junior Engineer (Building Proposals)', 'Assistant Engineer', 'Executive Engineer', 'City Engineer') },
+};
+for (const [cc, table] of Object.entries(LOCAL_AGENCIES)) if (cc !== 'US' && table.councilInspector === undefined) table.councilInspector = INSPECTORS[cc] ?? { name: 'Council Inspections', employer: (c) => `${town(c)} council — inspections & enforcement` };
+
+/**
  * Plain local names for the agencies a country's table leaves out, so none keeps a US
  * name abroad ("Scotland State Legislature", "Hokkaido Department of Transportation").
  */
@@ -317,4 +343,55 @@ export function agencyExists(countryId, professionId, provinceId = null) {
   if (a === null) return false;
   if (a?.provinces && provinceId && !a.provinces.includes(provinceId)) return false;
   return true;
+}
+
+/**
+ * Who governs each emergency service abroad: its chief answers to (and is appointed by)
+ * this body. By state or region id where it differs; '*' for the rest of the country.
+ */
+export const SERVICE_AUTHORITY = {
+  '*': { police: 'the police board', fire: 'the council', ems: 'the regional health authority', dispatch: 'the emergency services board' },
+  CA: { police: 'the police services board', fire: 'the city council', ems: 'the city council', dispatch: 'the city council' },
+  GB: {
+    police: { 'GB-SCT': 'the Scottish Police Authority', 'GB-NIR': 'the Northern Ireland Policing Board', '*': 'the Police and Crime Commissioner' },
+    fire: { 'GB-SCT': 'the Scottish Government', 'GB-NIR': 'the Department of Health (NI)', '*': 'the fire and rescue authority' },
+    ems: { 'GB-SCT': 'the Scottish Ambulance Service board', '*': 'the NHS trust board' },
+    dispatch: 'the fire and rescue authority',
+  },
+  IE: { police: 'the Policing Authority', fire: 'the county council', ems: 'the HSE', dispatch: 'the county council' },
+  AU: { police: 'the state government', fire: 'the state government', ems: 'the state government', dispatch: 'the state government' },
+  NZ: { police: 'the Minister of Police', fire: 'the FENZ board', ems: 'the Hato Hone St John board', dispatch: 'the FENZ board' },
+  DE: { police: 'the Land interior ministry', fire: 'the city council (Stadtrat)', ems: 'the district (Landkreis)', dispatch: 'the district (Landkreis)' },
+  FR: { police: 'the mayor', fire: 'the SDIS board (département)', ems: 'the hospital trust (CHU)', dispatch: 'the hospital trust (CHU)' },
+  IT: { police: 'the mayor (sindaco)', fire: 'the Ministry of the Interior', ems: 'the regional health authority', dispatch: 'the region' },
+  ES: { police: 'the mayor (alcalde)', fire: 'the provincial council (diputación)', ems: 'the regional health service', dispatch: 'the regional government' },
+  NL: { police: 'the Minister of Justice and Security', fire: 'the safety region board', ems: 'the safety region board', dispatch: 'the safety region board' },
+  SE: { police: 'the Swedish Police Authority', fire: 'the municipal council', ems: 'the regional council', dispatch: 'SOS Alarm' },
+  JP: { police: 'the prefectural public safety commission', fire: 'the mayor', ems: 'the mayor', dispatch: 'the mayor' },
+  KR: { police: 'the Korean National Police Agency', fire: 'the National Fire Agency', ems: 'the National Fire Agency', dispatch: 'the National Fire Agency' },
+  MX: { police: 'the municipal president', fire: 'the municipal government', ems: 'the state government', dispatch: 'the state government' },
+  BR: { police: 'the state government', fire: 'the state government', ems: 'the municipal health secretariat', dispatch: 'the state government' },
+  PH: { police: 'PNP national headquarters', fire: 'BFP national headquarters', ems: 'the city government', dispatch: 'the city government' },
+  IN: { police: 'the state government', fire: 'the state government', ems: 'the state health department', dispatch: 'the state government' },
+};
+export function serviceAuthority(countryId, serviceId, stateId) {
+  const v = SERVICE_AUTHORITY[countryId]?.[serviceId] ?? SERVICE_AUTHORITY['*'][serviceId] ?? 'the local authority';
+  return typeof v === 'string' ? v : v[stateId] ?? v['*'];
+}
+
+/**
+ * Emergency services that are one national or state body with local units: the job's
+ * employer is the unit (a PNP police station, a provincial fire command), the organization
+ * is the body. '{state}' becomes the state's name.
+ */
+export const SERVICE_BODY = {
+  PH: { police: 'Philippine National Police', fire: 'Bureau of Fire Protection' },
+  IT: { fire: 'Corpo Nazionale dei Vigili del Fuoco' },
+  KR: { fire: 'National Fire Agency' },
+  IN: { fire: '{state} Fire & Emergency Services', ems: '{state} 108 Emergency Ambulance Service' },
+  FR: { fire: 'SDIS (service départemental d\'incendie et de secours)' },
+};
+export function serviceBody(countryId, serviceId, stateName) {
+  const b = SERVICE_BODY[countryId]?.[serviceId];
+  return b ? b.replace('{state}', stateName ?? 'State') : null;
 }

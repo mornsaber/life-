@@ -509,7 +509,7 @@ export const JOB_FIELDS = {
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
   education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'interpreter'] },
-  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
+  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };

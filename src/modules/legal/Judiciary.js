@@ -87,6 +87,8 @@ const lawYears = (state) => yearsInProfession(state, ['law', 'prosecution', 'pub
 /** Can you be considered for a court right now? */
 export function benchEligibility(state, court) {
   const c = COURTS[court];
+  // Abroad the bench is the country's own courts; the US federal judiciary isn't one of them.
+  if (c.system === 'federal' && (state.character.countryId ?? 'US') !== 'US') return { ok: false, reason: 'A US court' };
   if (!hasCredential(state, 'barLicense')) return { ok: false, reason: 'A law license' };
   if (state.legal.incarceration || (state.legal.record ?? []).some((r) => r.severity === 'felony' && !r.pardoned)) return { ok: false, reason: 'A felony record disqualifies you' };
   if (state.character.age >= MANDATORY_RETIREMENT && !c.life) return { ok: false, reason: `Mandatory retirement at ${MANDATORY_RETIREMENT}` };

@@ -37,7 +37,7 @@ function unionAfterMove(ctx, job) {
   ctx.log(moved, '✊');
   ctx.emit('unions:sync', {});
 }
-import { historyOrgFields, chainOfCommand } from '../org/Organizations.js';
+import { historyOrgFields, chainOfCommand, orgOf, attachOrg } from '../org/Organizations.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
@@ -631,6 +631,11 @@ export function careerOnAgeUp(ctx) {
     job.department.unitChecked = true;
     const lvl = levelById(profession, job.levelId);
     if (lvl && unitFor(job, lvl, profession)) ensureDepartment(job, lvl);
+  }
+  // Older saves abroad: an emergency service filed under the city government becomes its own body.
+  if ((state.character.countryId ?? 'US') !== 'US' && !job.headOf && orgOf(state, job.employer)?.typeId === 'cityGov' && ['police', 'fire', 'ems', 'dispatch'].includes(job.professionId)) {
+    attachOrg(state, job.employer, profession, state.character.regionId);
+    job.supervisorId = null;
   }
   chainOfCommand(state, job);
   job.paidThisYear = false;

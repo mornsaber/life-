@@ -37,7 +37,7 @@ export const statePopulation = (stateId) => STATE_POPULATION[stateId] ?? PROVINC
  * 'city', 'county' or 'state'. A number per department, or `fixed` headcounts for nationwide bodies.
  */
 const RATIOS = {
-  cityGov: { base: 'city', publicSafety: 4.6, publicWorks: 1.6, planning: 0.15, administration: 0.8, library: 0.35, utilities: 0.7 },
+  cityGov: { base: 'city', publicSafety: 4.6, publicWorks: 1.6, planning: 0.15, inspections: 0.2, administration: 0.8, library: 0.35, utilities: 0.7 },
   countyGov: { base: 'county', sheriff: 1.1, health: 0.3, da: 0.12, animalServices: 0.05 },
   schoolDistrict: { base: 'city', instruction: 12, transportation: 0.7, health: 0.15, studentServices: 0.6, earlyChildhood: 0.5 },
   transitAuthority: { base: 'county', transit: true, operations: 0.8, maintenance: 0.35, police: 0.05 },
