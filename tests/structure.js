@@ -15,6 +15,11 @@ import { currentBusiness, yearFinancials, valuation } from '../src/modules/busin
 import { ipoEligibility } from '../src/modules/business/Structure.js';
 import { openBranch, businessOrg } from '../src/modules/org/Businesses.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { professionsFor, getProfession } from '../src/modules/career/JobTrees.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { orgOf } from '../src/modules/org/Organizations.js';
+import { postDef } from '../src/modules/org/Executives.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{0,80}(NaN|undefined|\[object).{0,80}/)?.[0]);
@@ -121,6 +126,26 @@ const tests = {
     const llc = company(5, { entity: 'llc' });
     llc.biz.lastYear = { ...llc.biz.lastYear, revenue: 40_000_000, netIncome: 1 };
     assert.equal(ipoEligibility(llc.state, llc.biz).ok, false);
+  },
+  'abroad, public employers are units of real bodies: no US counties, state departments or owner-run agencies'() {
+    const US_SHAPES = ['countyGov', 'schoolDistrict', 'statePublicSafety', 'stateCorrections', 'stateJustice', 'stateRevenue', 'stateSocialServices', 'stateNaturalResources', 'stateTransportation', 'stateLegislature', 'stateUniversity', 'communityCollegeDistrict'];
+    const bad = [];
+    for (const cc of Object.keys(COUNTRIES).filter((c) => c !== 'US')) {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+      const state = engine.newLife({ countryId: cc });
+      for (const p of professionsFor(state).filter((x) => x.sector !== 'private')) {
+        const e = createEmployer(new Random(7), state, p, state.character.regionId);
+        const org = orgOf(state, e);
+        if (US_SHAPES.includes(org?.typeId) || org?.typeId?.startsWith('solo:') || /Owner/.test(postDef(org, null)?.title ?? '')) bad.push(`${cc} ${p.id} → ${org?.name} [${org?.typeId}]`);
+      }
+    }
+    assert.deepEqual(bad.slice(0, 8), []);
+    // A prison officer at HMP Manchester works for HM Prison and Probation Service.
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+    const state = engine.newLife({ countryId: 'GB' });
+    const e = createEmployer(new Random(1), state, getProfession('gb_federalPrisons'), state.character.regionId);
+    assert.equal(orgOf(state, e).name, 'HM Prison and Probation Service');
+    assert.match(e.division, /^HMP /);
   },
 };
 

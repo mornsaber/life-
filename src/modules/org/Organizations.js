@@ -31,7 +31,7 @@ import { applyStaffing, STAFFING_VERSION } from './Staffing.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
-import { ORG_TYPES, orgTypesFor, soloType, businessOrgType } from './OrgTypes.js';
+import { ORG_TYPES, orgTypesFor, soloType, bodyType, businessOrgType } from './OrgTypes.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { localAgency, serviceAuthority, serviceBody } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
@@ -62,6 +62,10 @@ export function orgType(typeId) {
     const p = getProfession(typeId.slice(5));
     return p ? soloType(p) : null;
   }
+  if (typeId?.startsWith('body:')) {
+    const p = getProfession(typeId.slice(5));
+    return p ? bodyType(p) : null;
+  }
   return ORG_TYPES[typeId] ?? null;
 }
 
@@ -70,7 +74,13 @@ const cityOf = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split('
 
 /** Organization types that employ this profession, matching its sector when possible. */
 function candidateTypes(profession, abroad = false) {
-  const all = orgTypesFor(profession.id).filter((id) => abroad || !orgType(id)?.abroadOnly);
+  // A type (or the department that would employ you) that exists only abroad, or only in the US.
+  const fits = (id) => {
+    const t = orgType(id);
+    const d = t?.departments.find((x) => x.occupations.includes(profession.id));
+    return abroad ? !d?.usOnly : !t?.abroadOnly && !d?.abroadOnly;
+  };
+  const all = orgTypesFor(profession.id).filter(fits);
   // Abroad, emergency services are bodies of their own, not city departments.
   if (abroad && all.includes('emergencyService')) return ['emergencyService'];
   const same = all.filter((id) => orgType(id)?.sector === profession.sector);
@@ -117,6 +127,16 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
     const body = serviceBody(state.character?.countryId, profession.id, STATES[stateId]?.name);
     if (body) { name = body; size = SIZE_RANK[size] > SIZE_RANK.enterprise ? size : 'enterprise'; }
   }
+  // Abroad, public services sit where they really do: the council, or a body of their own.
+  const home = abroadHome(state, profession, name, types);
+  if (home?.kind === 'council') return findCouncil(state, regionId, size);
+  if (home?.kind === 'body') {
+    const typeId = `body:${profession.id}`;
+    const key = `${typeId}:${home.name}`;
+    const org = state.orgs.byId[key];
+    if (org) { if (size && SIZE_RANK[size] > SIZE_RANK[org.size]) org.size = size; return org; }
+    return buildOrg(state, rng, typeId, key, regionId, stateId, { size: home.national ? 'mega' : size, name: home.name, profession });
+  }
   const keyFor = (typeId, t) => orgKey(typeId, t, regionId, stateId, name);
   const keys = types.map((typeId) => ({ typeId, t: orgType(typeId), key: keyFor(typeId, orgType(typeId)) }));
   const existing = keys.find((k) => state.orgs.byId[k.key]);
@@ -128,6 +148,58 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
     return org;
   }
   return buildOrg(state, rng, pick.typeId, pick.key, regionId, stateId, { size, name, profession });
+}
+
+/** Careers a local council runs abroad, and those it also runs in particular countries. */
+const COUNCIL_CAREERS = ['municipalAdmin', 'publicWorks', 'councilInspector', 'planning', 'library', 'waterUtility'];
+const COUNCIL_ALSO = {
+  GB: ['education', 'schoolBus', 'cps', 'publicHealth', 'animalControl'], SE: ['education', 'schoolBus', 'cps', 'animalControl'],
+  NL: ['cps', 'schoolBus', 'animalControl'], DE: ['cps', 'publicHealth', 'animalControl'], JP: ['education', 'schoolBus'],
+  CA: ['publicHealth', 'animalControl'], IT: ['schoolBus', 'animalControl'], FR: ['schoolBus', 'animalControl'], '*': ['animalControl'],
+};
+/** An employer name that says it's the council's ("Manchester City Council — Schools", "Gemeente Utrecht"). */
+const COUNCIL_NAME = /\bCouncil\b|\bcouncil\b|Gemeente|kommun\b|Mairie|Comune|Ayuntamiento|Stadtverwaltung|City Hall|Municipio|Prefeitura|Municipal Corporation|District Office/;
+/** Places, so "Roads authority — Scotland" is one body and "NCA — Investigations" a unit of the NCA. */
+let PLACE_NAMES = null;
+const isPlace = (s) => {
+  // (Foreign provinces aren't enumerable on STATES: reach them through the cities.)
+  PLACE_NAMES ??= new Set([
+    ...Object.getOwnPropertyNames(REGIONS).map((id) => REGIONS[id]?.name?.split(',')[0]),
+    ...Object.getOwnPropertyNames(STATES).map((id) => STATES[id]?.name),
+  ].filter(Boolean));
+  return PLACE_NAMES.has(String(s).trim());
+};
+/** A composite agency label rather than an organization's name ("Financial Regulation (FCA · HMRC)"). */
+const LABEL_ONLY = /·|\/|\bRanger\b|\bOfficer\b|\bAnalysis\b|\bTechnical\b|\bInstitutes\b|\bRegulat|\bScreening\b|\bProtective\b/;
+
+/**
+ * Where a public career sits abroad: the council, or a body of its own (a national
+ * agency with the office as your unit, or a regional body). null: as at home.
+ */
+function abroadHome(state, profession, employerName, types) {
+  const cc = state.character?.countryId ?? 'US';
+  if (cc === 'US' || profession.sector === 'private' || !employerName) return null;
+  if (types[0] === 'emergencyService' || types.some((id) => id === 'airportAuthority')) return null;
+  const [before, after] = String(employerName).split(' — ');
+  // National agencies: the agency is the organization; the office is your unit.
+  if (profession.country || profession.sector === 'federal') {
+    const label = profession.name;
+    return { kind: 'body', national: true, name: !LABEL_ONLY.test(label) ? label : after && !isPlace(after) ? before : employerName };
+  }
+  if (COUNCIL_CAREERS.includes(profession.id) || (COUNCIL_ALSO[cc] ?? COUNCIL_ALSO['*']).includes(profession.id) || COUNCIL_NAME.test(employerName)) {
+    const t = orgType('cityGov');
+    if (t.departments.some((d) => d.occupations.includes(profession.id))) return { kind: 'council' };
+  }
+  // A regional body is named for its region; a unit of a body ("— Investigations") belongs to it.
+  return { kind: 'body', name: after && !isPlace(after) ? before : employerName };
+}
+
+/** The local council where you live (one per town). */
+function findCouncil(state, regionId, size) {
+  const key = orgKey('cityGov', ORG_TYPES.cityGov, regionId, stateOfRegion(regionId), null);
+  const org = state.orgs.byId[key];
+  if (org) { addMissingDepartments(state, org); if (size && SIZE_RANK[size] > SIZE_RANK[org.size]) org.size = size; return org; }
+  return buildOrg(state, sideRng(state), 'cityGov', key, regionId, stateOfRegion(regionId), { size, profession: getProfession('municipalAdmin') });
 }
 
 /** The key an organization of this type has in a place. */
@@ -215,9 +287,10 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
   if (council?.employer) org.name = council.employer(ctx.city, stateId, ctx.state);
   const head = newPerson(rng, org, { title: org.posts?.org?.title ?? (lead && t.departments.length === 1 ? lead.head ?? t.head.title : t.head.title), selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
   org.head = head.id;
-  if (typeId === 'emergencyService') serviceOrgPosts(state, org, profession, rng);
+  if (typeId === 'emergencyService' || typeId.startsWith('body:')) serviceOrgPosts(state, org, profession, rng);
   for (const d of t.departments) {
     if (d.usOnly && (state.character?.countryId ?? 'US') !== 'US') continue;
+    if (d.abroadOnly && (state.character?.countryId ?? 'US') === 'US') continue;
     const range = HEADCOUNT[org.size];
     // A department is named for its own service (an emergency service's operations, for its service).
     const local = t.sector !== 'private' ? localLabels(state, org.serviceId ? [org.serviceId] : d.occupations) : null;
@@ -244,7 +317,9 @@ function serviceOrgPosts(state, org, profession, rng) {
   const top = ladder.at(-1);
   const deputy = [...ladder].reverse().find((l) => l !== top && (l.track === 'mgmt' || l.abilities?.includes('supervise'))) ?? ladder.at(-2);
   org.serviceId = profession.id;
-  org.authority = serviceAuthority(cc, profession.id, stateOfRegion(org.regionId));
+  // Emergency services answer to their own authorities; other bodies to the government (or the council).
+  org.authority = ['police', 'fire', 'ems', 'dispatch'].includes(profession.id) ? serviceAuthority(cc, profession.id, stateOfRegion(org.regionId))
+    : profession.country || profession.sector === 'federal' ? 'the government' : profession.sector === 'state' ? (['CA', 'AU', 'DE', 'IN', 'MX', 'ES', 'IT', 'BR'].includes(cc) ? 'the regional government' : 'the government') : 'the local authority';
   org.posts = {
     org: { title: top.title, selection: 'appointed', appointedBy: org.authority, occupation: profession.id, levelId: top.id },
     operations: { title: deputy?.title ?? 'Head of Operations', selection: 'internal', occupation: profession.id, levelId: deputy?.id },
@@ -258,8 +333,9 @@ export function addMissingDepartments(state, org) {
   if (org.staffing !== STAFFING_VERSION) applyStaffing(org);
   const t = orgType(org.typeId);
   let added = false;
+  const abroad = (state.character?.countryId ?? 'US') !== 'US';
   for (const d of t?.departments ?? []) {
-    if (org.departments[d.id]) continue;
+    if (org.departments[d.id] || (d.abroadOnly && !abroad) || (d.usOnly && abroad)) continue;
     org.departments[d.id] = { id: d.id, name: d.name, head: null, headcount: Math.round((HEADCOUNT[org.size ?? 'medium'][0] + HEADCOUNT[org.size ?? 'medium'][1]) / 2 / t.departments.length), seats: {} };
     added = true;
   }
@@ -296,8 +372,8 @@ export function attachOrg(state, employer, profession, regionId) {
   employer.orgName = org.name;
   employer.deptName = dept?.name ?? null;
   employer.division = dept ? divisionName(org, dept.id, profession.id) : null;
-  // A unit of a bigger service: the station or command you work in.
-  if (org.typeId === 'emergencyService' && org.name !== employer.name) employer.division = employer.name;
+  // A unit of a bigger service: the station, office or command you work in.
+  if ((org.typeId === 'emergencyService' || org.typeId?.startsWith('body:') || (org.typeId === 'cityGov' && dept?.id !== 'administration')) && org.name !== employer.name) employer.division = employer.name;
   return employer;
 }
 

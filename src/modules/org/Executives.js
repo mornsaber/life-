@@ -273,7 +273,8 @@ export function refreshExecutiveSearch(state) {
   // Only bodies whose work exists here (no sheriff's office or state police abroad where there are none).
   const here = new Set(professionsFor(state).map((p) => p.id));
   const exists = (d) => !abroad || d.occupations.some((id) => here.has(id));
-  const types = Object.entries(ORG_TYPES).filter(([, t]) => !(abroad && t.sector === 'federal') && t.departments.some(exists) && (t.scope !== 'nation' || rng.chance(0.3)));
+  // Abroad, public bodies aren't US state departments or counties: executive searches are for firms and the council.
+  const types = Object.entries(ORG_TYPES).filter(([id, t]) => (abroad ? (t.sector === 'private' || id === 'cityGov') && !t.abroadOnly : !t.abroadOnly) && t.departments.some(exists) && (t.scope !== 'nation' || rng.chance(0.3)));
   const listings = [];
   for (let i = 0; i < 12 && listings.length < 5; i++) {
     const [typeId, t] = rng.pick(types);

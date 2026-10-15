@@ -35,6 +35,10 @@ export const ORG_TYPES = {
       { id: 'planning', name: 'Department of Planning & Development', occupations: ['planning'], head: { title: 'Planning Director', selection: 'appointed', appointedBy: 'the city manager' } },
       { id: 'inspections', name: 'Code Enforcement & Inspections', occupations: ['councilInspector'], head: { title: 'Building Official', selection: 'appointed', appointedBy: 'the city manager', occupation: 'councilInspector', levelId: 'buildingOfficial' } },
       { id: 'administration', name: 'City Administration', occupations: ['municipalAdmin'], head: { title: 'Assistant City Manager', selection: 'appointed', appointedBy: 'the city manager' } },
+      // Abroad, councils also run what US counties, school districts and states do here (where they do).
+      { id: 'schools', name: 'Education & Schools', occupations: ['education', 'schoolBus'], abroadOnly: true, head: { title: 'Director of Education', selection: 'appointed', appointedBy: 'the council' } },
+      { id: 'socialCare', name: 'Children\'s & Adult Social Care', occupations: ['cps'], abroadOnly: true, head: { title: 'Director of Children\'s Services', selection: 'appointed', appointedBy: 'the council' } },
+      { id: 'health', name: 'Public Health', occupations: ['publicHealth', 'animalControl'], abroadOnly: true, head: { title: 'Director of Public Health', selection: 'appointed', appointedBy: 'the council' } },
       { id: 'library', name: 'Public Library System', occupations: ['library'], head: { title: 'Library Director', selection: 'appointed', appointedBy: 'the library board', occupation: 'library', levelId: 'director' } },
       { id: 'utilities', name: 'Water & Sewer Utilities', occupations: ['waterUtility'], head: { title: 'Director of Water Utilities', selection: 'appointed', appointedBy: 'the city manager', occupation: 'waterUtility', levelId: 'director' } },
     ],
@@ -518,6 +522,19 @@ export function orgTypesFor(professionId) {
  * A generated single-department organization type for occupations that
  * don't belong to a larger employer type (salons, PI agencies, farms…).
  */
+/**
+ * Abroad: a public body of its own — a national agency (HM Prison and Probation Service,
+ * the Bundespolizei), a courts service, a transport authority. Its chief is the top of the
+ * career's ladder; the office you work in is your unit within it.
+ */
+export function bodyType(profession) {
+  return {
+    name: null, solo: true, scope: 'named', sector: profession.sector, abroadOnly: true,
+    head: { title: 'Chief Executive', selection: 'appointed', appointedBy: 'the government' },
+    departments: [{ id: 'operations', name: profession.name, occupations: [profession.id], head: { title: 'Head of Operations', selection: 'internal' } }],
+  };
+}
+
 export function soloType(profession) {
   return {
     name: null, scope: profession.sector === 'private' ? 'market' : profession.sector === 'federal' ? 'nation' : profession.sector === 'state' ? 'state' : 'region',
