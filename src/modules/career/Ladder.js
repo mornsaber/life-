@@ -63,6 +63,9 @@ export function detectiveRanks(ranks) {
 export function ladderFor(profession, size) {
   // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
   if (size === 'micro') return profession.levels.filter((l) => !l.minSize && !l.microDrop);
+  // A national agency is one employer, field office to headquarters: its whole chain of command is
+  // yours to climb, whatever the size of the office you started in.
+  if (profession.sector === 'federal') return profession.levels;
   return profession.levels.filter((l) => sizeRank(size) >= sizeRank(l.minSize));
 }
 

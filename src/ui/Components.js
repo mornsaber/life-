@@ -164,7 +164,7 @@ export function ribbonRack(honors) {
   if (!honors.length) return empty('No decorations yet.');
   const groups = new Map();
   for (const h of honors) {
-    const key = `${h.source}:${h.name}`;
+    const key = `${h.source}:${h.country ?? ''}:${h.name}`;
     const g = groups.get(key) ?? { ...h, count: 0, valor: false };
     g.count += 1;
     g.valor ||= h.device === 'V';
@@ -172,9 +172,12 @@ export function ribbonRack(honors) {
   }
   const sorted = [...groups.values()].sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99));
   return `<div class="rack">${sorted
-    .map((g) => ribbon(g.ribbon, { device: g.valor ? 'V' : null, count: g.count, title: `${g.name}${g.count > 1 ? ` ×${g.count}` : ''}` }))
+    .map((g) => ribbon(g.ribbon, { device: g.valor ? 'V' : null, count: g.count, title: `${g.name}${g.count > 1 ? ` ×${g.count}` : ''}${g.country ? ` (${COUNTRIES[g.country]?.name ?? g.country})` : ''}` }))
     .join('')}</div>`;
 }
+
+/** An honour's name as awarded: one with a country keeps that country's name for it wherever you live now. */
+export const honorName = (h) => (h.country ? `<span data-raw>${esc(h.name)}</span>` : esc(h.name));
 
 export function medalCase(honors) {
   if (!honors.length) return empty('Your medal case is empty. Serve with distinction to fill it.');
@@ -184,9 +187,9 @@ export function medalCase(honors) {
       (h) => `<li class="medal ${h.posthumous ? 'posthumous' : ''}">
         <div class="medal-art">${ribbon(h.ribbon, { device: h.device })}<span class="medal-icon">${h.icon}</span></div>
         <div class="medal-text">
-          <b>${esc(h.name)}${h.device ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
-          <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'} · +${h.prestige} prestige</small>
-          ${h.citation ? `<p>${esc(h.citation)}</p>` : ''}
+          <b>${honorName(h)}${h.device ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
+          <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${COUNTRIES[h.country]?.flag ?? ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
+          ${h.citation ? `<p>${h.country ? `<span data-raw>${esc(h.citation)}</span>` : esc(h.citation)}</p>` : ''}
         </div>
       </li>`,
     )

@@ -10,7 +10,14 @@
  * flotillas and divisions their commanders.
  *
  * As the elected leader you run the organization: recruit, fundraise,
- * apply for federal grants, appoint officers and discipline members.
+ * apply for grants, appoint officers and discipline members.
+ *
+ * The officer corps grows and shrinks with the organization: a dozen
+ * members have a chief and a lieutenant; a big multi-station department has
+ * a captain for every station and a lieutenant for every ten or so members.
+ * Abroad, a unit may belong to a national or state service (org.parent),
+ * which funds it and appoints its officers instead of the membership
+ * electing them.
  *
  * org.seats = { [rankIndex]: [memberId | 'PLAYER' | null] }
  * member.orgId links your membership to its organization.
@@ -19,6 +26,8 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { sideRng, initOrgs } from './Organizations.js';
 import { districtOf, growthTick, growthAction, districtScale } from './VolunteerGrowth.js';
+import { volunteerParent, volunteerGrant } from '../world/CountryLaw.js';
+import { REGIONS, stateIdOf } from '../life/Regions.js';
 
 export const PLAYER = 'PLAYER';
 export const CHIEF_ACTIONS = 3;
@@ -40,7 +49,54 @@ export const LEADERSHIP = {
 
 const leadershipOf = (serviceId) => LEADERSHIP[serviceId] ?? { seats: {}, elected: [] };
 export const isSeatRank = (serviceId, idx) => Boolean(leadershipOf(serviceId).seats[idx]);
-export const isElectedRank = (serviceId, idx) => leadershipOf(serviceId).elected.includes(idx);
+/** Elected by the membership — unless a parent service appoints its unit officers. */
+export const isElectedRank = (serviceId, idx, org) => !org?.parent && leadershipOf(serviceId).elected.includes(idx);
+
+/** The service a unit belongs to where you live (null: an independent agency). */
+export function parentFor(state, serviceId) {
+  const region = REGIONS[state.character.regionId];
+  return volunteerParent(state.character.countryId ?? 'US', serviceId, { stateId: region ? stateIdOf(state) : null, area: (region?.name ?? '').split(',')[0] || null });
+}
+/** The grant scheme this unit applies to (null: none — its parent provides). */
+export const grantFor = (state, org) => volunteerGrant(state.character.countryId ?? 'US', org.serviceId, org.parent);
+
+/**
+ * Officer seats for the organization's size: the configured seats are for a typical company of
+ * about twenty; a dozen members have fewer, a big district more, with a station officer (the
+ * rank below the head) for every station. The head is always one.
+ */
+export function seatTargets(serviceId, org) {
+  const base = leadershipOf(serviceId).seats;
+  const members = Object.keys(org.people ?? {}).length + 1;
+  const stations = org.district?.stations ?? 1;
+  const top = Math.max(...Object.keys(base).map(Number));
+  const out = {};
+  for (const [k, n] of Object.entries(base)) {
+    const idx = Number(k);
+    if (idx === top) { out[idx] = n; continue; }
+    const scaled = Math.max(1, Math.round(n * Math.min(4, members / 22)));
+    // A dozen volunteers have a chief and a lieutenant or two, no captain; each station has its officer.
+    if (idx === top - 1) out[idx] = members < 12 && stations < 2 ? 0 : Math.max(scaled, stations);
+    else out[idx] = scaled;
+  }
+  return out;
+}
+/** Grow or shrink the officer corps to fit: new seats open empty; surplus officers return to the ranks (never you). */
+export function syncSeats(org, service) {
+  const targets = seatTargets(service.id, org);
+  for (const [k, n] of Object.entries(targets)) {
+    const seats = (org.seats[k] ??= []);
+    while (seats.length < n) seats.push(null);
+    while (seats.length > n) {
+      let i = seats.indexOf(null);
+      if (i < 0) i = seats.findLastIndex((id) => id !== PLAYER);
+      if (i < 0) break;
+      const p = org.people[seats[i]];
+      if (p) { p.rankIndex = Math.max(0, Number(k) - 1); p.title = service.ranks[p.rankIndex]?.title ?? p.title; }
+      seats.splice(i, 1);
+    }
+  }
+}
 export const topRank = (serviceId) => Math.max(-1, ...Object.keys(leadershipOf(serviceId).seats).map(Number));
 
 function npc(rng, org, rankIndex, ranks) {
@@ -58,15 +114,17 @@ export function ensureVolunteerOrg(state, service, member) {
   let org = state.orgs.byId[key];
   const rng = sideRng(state);
   if (!org) {
-    org = { id: key, typeId: `volunteer:${service.id}`, volunteer: true, serviceId: service.id, name: member.unit, regionId: state.character.regionId, people: {}, departments: {}, head: null, seats: {}, readiness: rng.int(50, 70), funds: service.trainingBudget * 2, nextElection: state.character.age + rng.int(1, 2) };
+    org = { id: key, typeId: `volunteer:${service.id}`, volunteer: true, serviceId: service.id, name: member.unit, regionId: state.character.regionId, countryId: state.character.countryId ?? 'US', parent: parentFor(state, service.id), people: {}, departments: {}, head: null, seats: {}, readiness: rng.int(50, 70), funds: service.trainingBudget * 2, nextElection: state.character.age + rng.int(1, 2) };
     const roster = rng.int(12, 30);
     for (let i = 0; i < roster; i++) npc(rng, org, rng.weighted([[0, 4], [1, 4], [2, 3], [3, 2]], ([, w]) => w)[0], service.ranks);
-    for (const [idx, n] of Object.entries(leadershipOf(service.id).seats)) org.seats[idx] = Array.from({ length: n }, () => npc(rng, org, Number(idx), service.ranks).id);
+    for (const [idx, n] of Object.entries(seatTargets(service.id, org))) org.seats[idx] = Array.from({ length: n }, () => npc(rng, org, Number(idx), service.ranks).id);
     state.orgs.byId[key] = org;
   }
+  // Old saves: who the unit belongs to.
+  if (org.parent === undefined) org.parent = parentFor(state, service.id);
   member.orgId = key;
   // Old saves: a member already at an officer rank holds a seat.
-  if (isSeatRank(service.id, member.rankIndex) && !org.seats[member.rankIndex].includes(PLAYER)) seatPlayer(org, member.rankIndex);
+  if (isSeatRank(service.id, member.rankIndex) && !(org.seats[member.rankIndex] ??= []).includes(PLAYER)) seatPlayer(org, member.rankIndex);
   return org;
 }
 
@@ -77,6 +135,8 @@ function seatPlayer(org, idx) {
   }
   const seats = org.seats[idx];
   if (!seats) return;
+  // A unit too small for this rank's seat makes one for you.
+  if (!seats.length) seats.push(null);
   let i = seats.indexOf(null);
   if (i < 0) {
     // Displace the least senior holder back to the ranks.
@@ -90,7 +150,7 @@ function seatPlayer(org, idx) {
 /** Is there a seat open for you at this rank (or no seat needed)? */
 export function seatOpen(org, serviceId, idx) {
   if (!isSeatRank(serviceId, idx)) return true;
-  if (isElectedRank(serviceId, idx)) return false;
+  if (isElectedRank(serviceId, idx, org)) return false;
   return (org.seats[idx] ?? []).includes(null);
 }
 
@@ -132,11 +192,12 @@ export function volunteerOrgTick(ctx, service, member) {
   // More stations need (and draw) more members.
   for (let i = size; i < Math.round((10 + (org.recruited ?? 0)) * districtScale(org)); i++) npc(rng, org, 0, service.ranks);
   org.recruited = Math.max(0, (org.recruited ?? 0) - 2);
+  syncSeats(org, service);
   // Empty non-elected seats go to the most senior member below (if you're not ready for it).
   for (const [idx, seats] of Object.entries(org.seats)) {
     for (let i = 0; i < seats.length; i++) {
       if (seats[i] !== null) continue;
-      if (Number(idx) === member.rankIndex + 1 && !isElectedRank(service.id, Number(idx)) && rng.chance(0.6)) continue; // held open for you
+      if (Number(idx) === member.rankIndex + 1 && !isElectedRank(service.id, Number(idx), org) && rng.chance(0.6)) continue; // held open for you
       const pick = roster(org).filter((p) => p.rankIndex >= Number(idx) - 1).sort((a, b) => b.years - a.years)[0];
       if (pick) { pick.rankIndex = Number(idx); pick.title = service.ranks[idx].title; seats[i] = pick.id; }
     }
@@ -150,11 +211,14 @@ export function volunteerOrgTick(ctx, service, member) {
   }
   districtOf(org, rng);
   growthTick(ctx, org, service, member, leadsOrg(org, service.id));
-  // Elections.
-  const elected = leadershipOf(service.id).elected;
+  // On-call (retained) firefighters are paid a retainer and for every call and drill.
+  if (org.parent?.paid === 'oncall') ctx.earn(1500 + member.rankIndex * 400, `On-call retainer — ${org.name}`, { wage: true });
+  // Elections (a parent service appoints instead).
+  const elected = org.parent ? [] : leadershipOf(service.id).elected;
   if (elected.length && state.character.age >= org.nextElection) {
     org.nextElection = state.character.age + 2;
-    const post = [...elected].reverse().find((idx) => member.rankIndex >= idx - 1) ?? null;
+    // You can run from the rank below — or two below, where the unit is too small to have that rank's seat.
+    const post = [...elected].reverse().find((idx) => member.rankIndex >= idx - 1 || (!org.seats[idx - 1]?.length && member.rankIndex >= idx - 2)) ?? null;
     if (post != null && !state.prompts.some((p) => p.type === 'emergency.election')) {
       const incumbentIsYou = (org.seats[post] ?? []).includes(PLAYER);
       ctx.prompt({
@@ -205,7 +269,7 @@ export function resolveElection(ctx, service, member, post, run) {
   const winner = roster(org).sort((a, b) => b.years - a.years)[0] ?? npc(rng, org, post, service.ranks);
   winner.rankIndex = post;
   winner.title = title;
-  const seats = org.seats[post];
+  const seats = (org.seats[post] ??= [null]);
   const free = seats.indexOf(null);
   if (free >= 0) seats[free] = winner.id;
   else if (!seats.includes(PLAYER)) seats[0] = winner.id;
@@ -236,6 +300,7 @@ export function leaderAction(ctx, services, kind, arg) {
   if (!service || !member) return;
   const org = ensureVolunteerOrg(state, service, member);
   if (!leadsOrg(org, serviceId)) return ctx.toast(`Only the ${service.ranks[topRank(serviceId)].title} can do that.`, 'warn');
+  if (kind === 'grant' && yearlyCount(state, `equip.grant.vol.${serviceId}`)) return ctx.toast('One grant application a year', 'warn');
   if (!useAction(ctx)) return;
   if (['expand', 'merge', 'contract', 'hire', 'paidChief'].includes(kind)) {
     districtOf(org, rng);
@@ -251,13 +316,7 @@ export function leaderAction(ctx, services, kind, arg) {
     ctx.stat('stress', 2);
     ctx.log(`${rng.pick(['The pancake breakfast', 'The boot drive', 'The gun raffle', 'The chicken barbecue', 'The holiday tree sale'])} raised $${raised.toLocaleString()} for ${org.name}.`, '🥞', 'good');
   } else if (kind === 'grant') {
-    if (rng.chance(clamp(0.25 + (state.stats.smarts - 50) / 200, 0.1, 0.6))) {
-      const grant = rng.int(40, 300) * 1000;
-      org.funds += grant;
-      org.readiness = Math.min(100, org.readiness + 8);
-      ctx.log(`${org.name} won a $${grant.toLocaleString()} federal ${serviceId === 'fire' ? 'Assistance to Firefighters' : 'preparedness'} grant for new equipment.`, '🏛️', 'good');
-      ctx.toast('Grant awarded', 'good');
-    } else ctx.log('The federal grant application was turned down this cycle.', '🏛️', 'warn');
+    applyForFunding(ctx, org, serviceId);
   } else {
     const p = org.people[targetId];
     if (!p) return ctx.toast('No such member', 'warn');
@@ -276,7 +335,7 @@ export function leaderAction(ctx, services, kind, arg) {
         ctx.log(`The membership voted to expel ${p.name}.`, '🚪', 'warn');
       } else ctx.log(`You suspended ${p.name} from responding for a month.`, '⚖️', 'warn');
     } else if (kind === 'appoint') {
-      const idx = Object.keys(org.seats).map(Number).filter((i) => !isElectedRank(serviceId, i) && i < topRank(serviceId)).find((i) => org.seats[i].includes(null));
+      const idx = Object.keys(org.seats).map(Number).filter((i) => !isElectedRank(serviceId, i, org) && i < topRank(serviceId)).find((i) => org.seats[i].includes(null));
       if (idx == null) return ctx.toast('No open officer seat', 'warn');
       org.seats[idx][org.seats[idx].indexOf(null)] = p.id;
       p.rankIndex = idx;
@@ -285,4 +344,31 @@ export function leaderAction(ctx, services, kind, arg) {
       ctx.log(`You appointed ${p.name} ${p.title}.`, '⭐', 'good');
     }
   }
+}
+
+/**
+ * One grant round a year, shared with the equipment screen's grant for a specific model:
+ * cash for the equipment fund (the unit's funds pay for apparatus too). A unit under a
+ * parent service with no grant scheme asks the parent for a capital allocation instead.
+ */
+export function applyForFunding(ctx, org, serviceId) {
+  const { state, rng } = ctx;
+  const key = `equip.grant.vol.${serviceId}`;
+  if (yearlyCount(state, key)) return ctx.toast('One grant application a year', 'warn');
+  bumpYearly(state, key);
+  const scheme = grantFor(state, org);
+  const parent = org.parent;
+  ctx.stat('stress', 2);
+  const odds = scheme ? clamp(0.25 + (state.stats.smarts - 50) / 200 + (org.readiness - 60) / 300, 0.1, 0.6) : clamp(0.35 + (org.readiness - 55) / 120, 0.15, 0.75);
+  if (!rng.chance(odds)) {
+    return ctx.log(scheme ? `The application for ${scheme} was turned down this round. Most first applications fail.` : `${parent.name} put ${org.name}'s request for new equipment money back a year.`, '🏛️', 'warn');
+  }
+  const stations = org.district?.stations ?? 1;
+  const amount = rng.int(40, 300) * 1000 * Math.min(3, 1 + (stations - 1) * 0.5) * (scheme ? 1 : 0.6);
+  const grant = Math.round(amount / 1000) * 1000;
+  org.funds += grant;
+  org.readiness = Math.min(100, org.readiness + 5);
+  ctx.log(scheme ? `${org.name} won ${scheme}: $${grant.toLocaleString()} for equipment.` : `${parent.name} allocated $${grant.toLocaleString()} to ${org.name} for equipment.`, '🏛️', 'good');
+  ctx.toast('Funding awarded', 'good');
+  return grant;
 }

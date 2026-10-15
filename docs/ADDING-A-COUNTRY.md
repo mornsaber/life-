@@ -85,6 +85,7 @@ These tables almost always need your own entry:
 | `MEDALS`, `ORDERS` | Honours.js | military decorations and the honours list |
 | `MIL_SPECIAL`, `SOF`, `MIL_UNITS`, `ACADEMY_NAMES`, `VETTING`, `MILITARY_JUSTICE` | MilitaryLocal.js | military life in local terms |
 | `UNIONS`, `PARTY_NAMES`, `HEALTH_SYSTEMS`, `DIASPORA`, `THEATERS` | various | unions, parties, waiting lists, immigrant names, wars |
+| `VOLUNTEER_SERVICES`, `VOLUNTEER_RANKS`, `VOLUNTEER_PARENTS` | CountryLaw.js | volunteer emergency services: local names, rank ladders, and the national or state service a unit belongs to (who funds and equips it, its grant scheme, whether members are paid on call) |
 
 For the full list, run
 `grep -rn "fromPacks" src --include=*.js | grep -v packs/`. The key is the

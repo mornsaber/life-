@@ -4,7 +4,7 @@
  * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
-import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost } from '../../modules/equipment/Equipment.js';
+import { GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost, countOf, upkeepDelta, grantSchemeOf } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
@@ -14,14 +14,31 @@ const TITLE = { job: 'Department', business: 'Business', volunteer: 'Company', m
 const title = (c) => (c.ref.startsWith('team.') ? 'Team' : TITLE[c.kind]);
 const MONEY_LABEL = { budget: 'capital budget left this year', funds: 'in the equipment fund', om: 'maintenance funds left this year', cash: 'business cash' };
 
+/** Why this model, in a line: what it's good for and what it costs to keep, against the standard one. */
+function modelHint(cat, mid) {
+  const m = cat.models[mid];
+  const base = Object.values(cat.models)[0];
+  const upkeep = m.upkeep - base.upkeep * (m.capacity ?? 1);
+  const bits = [qualityLabel(modelQuality(cat, mid))];
+  if (m.capacity && m.capacity !== 1) bits.push(m.capacity > 1 ? `counts as ${m.capacity}` : `counts as ${m.capacity} of a standard unit`);
+  bits.push(`${m.life}-year life${m.life > base.life ? ` (+${m.life - base.life})` : ''}`);
+  bits.push(`${money(m.upkeep)}/yr upkeep${m !== base && Math.abs(upkeep) >= 500 ? ` (${upkeep < 0 ? `saves ${money(-upkeep)}` : `+${money(upkeep)}`} a year)` : ''}`);
+  return `${m.why ? `${m.why} · ` : ''}${bits.join(' · ')}`;
+}
+
 function footer(state, c) {
   if (c.kind === 'business') return 'Paid from business cash. Worn-out equipment drags down quality and breaks down at the worst time; premises leases come out of cash every year.';
+  const issuer = c.parent?.name ?? 'the program';
   if (c.kind === 'volunteer' && c.issued) return c.manager
-    ? `Equipment is issued by the program, not bought. You get about ${money(annualMoney(state, c))} a year to overhaul what you have and can request new equipment once a year.`
-    : c.requester ? 'Team leaders can request replacements; the program decides.' : 'The program issues your equipment. Leaders request replacements.';
-  if (c.kind === 'volunteer') return c.manager
-    ? `You run the equipment fund (a district levy of about ${money(annualMoney(state, c))} a year, plus whatever you raise). Used apparatus from career departments stretches it; federal grants need a 10% match.`
-    : 'The chief and officers decide what gets bought. Anyone can help with the fund drive.';
+    ? `Equipment is issued by ${esc(issuer)}, not bought. You get about ${money(annualMoney(state, c))} a year to overhaul what you have and can request new equipment once a year.`
+    : c.requester ? `Officers can request replacements; ${esc(issuer)} decides.` : `${esc(issuer)} issues your equipment. Officers request replacements.`;
+  if (c.kind === 'volunteer') {
+    const scheme = grantSchemeOf(state, c);
+    const levy = c.parent ? `${esc(c.parent.name)} pays about ${money(annualMoney(state, c))} a year toward it` : `a district levy of about ${money(annualMoney(state, c))} a year`;
+    return c.manager
+      ? `The equipment fund is the agency's own funds — the same money that pays for training and any payroll — with ${levy}, plus fund drives, contracts and grants. Next year's payroll and overheads are held back. Used apparatus from career departments stretches it; ${scheme ? `${esc(scheme)} needs a 10% match` : `${esc(c.parent.name)} pays for most new apparatus if you make the case`}. The standard grows with your members and stations.`
+      : 'The chief and officers decide what gets bought. Anyone can help with the fund drive.';
+  }
   if (c.kind === 'military') return c.manager
     ? `Commanders don't buy equipment — you spend about ${money(annualMoney(state, c))} a year of O&M funds on depot overhauls and request newer models through the fielding process. Equipment readiness is on your evaluation.`
     : c.requester ? 'NCOs and staff can push requests up the chain; the commander decides.' : 'Your commander and the maintainers keep it running. Broken equipment shows up at inspections.';
@@ -67,10 +84,10 @@ export function equipmentCard(state, ref) {
         if (m.rent) return button(`📝 Lease ${short(m.name)} (${money(m.rent)}/yr)`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.rent > pool });
         const leaseCost = Math.round((m.cost / m.life) * 1.3);
         return [
-          button(`🆕 ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: `${qualityLabel(modelQuality(cat, mid))} · ${m.life}-year service life · ${money(m.upkeep)}/yr upkeep` }),
+          button(`🆕 ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: modelHint(cat, mid) }),
           m.usedCost && can.used ? button(`♻️ Used ${money(m.usedCost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:used`), variant: 'tiny', disabled: m.usedCost > pool, hint: 'Already partway through its life' }) : '',
           m.lease && can.lease ? button(`📝 Lease ${money(leaseCost)}/yr`, 'deptEquip.buy', { arg: a(`${cid}:${mid}:lease`), variant: 'tiny', disabled: leaseCost > pool, hint: 'Paid every year; returned at end of life' }) : '',
-          can.fundraise && !m.usedCost ? button('📄 Apply for a grant', 'deptEquip.grant', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.grant.${ref}`]) || d.budget < m.cost * 0.1, hint: `10% match: ${money(m.cost * 0.1)}` }) : '',
+          can.fundraise && (!m.usedCost || m.cost >= 100000) ? button(grantSchemeOf(state, c) ? '📄 Apply for a grant' : `📄 Ask ${esc(c.parent?.name ?? 'the parent service')}`, 'deptEquip.grant', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.grant.${ref}`]) || d.budget < m.cost * 0.1, hint: `${esc(grantSchemeOf(state, c) ?? 'Capital request')} · 10% local match: ${money(m.cost * 0.1)} · one round a year` }) : '',
         ].join('');
       }).join('');
       const fixable = units.filter((u) => !u.leased && (isIssued(c) || cat.models[u.model]?.refurb || cat.models[u.model]?.remount));
@@ -84,7 +101,8 @@ export function equipmentCard(state, ref) {
       const [bulkId, bulkM] = Object.entries(cat.models).find(([, m]) => !m.build && !m.rent) ?? [];
       if (bulkM && can.buy) {
         if (worn > 1) buttons += button(`🔁 Replace all ${worn} worn`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:worn`), variant: 'tiny', hint: `${money(worn * bulkM.cost)} for new ${short(bulkM.name)}s (as many as you can afford)` });
-        if (needed - units.length > 1) buttons += button(`➕ Add ${needed - units.length} to standard`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:short`), variant: 'tiny', hint: money((needed - units.length) * bulkM.cost) });
+        const gap = Math.ceil(needed - countOf(cat, units));
+        if (gap > 1) buttons += button(`➕ Add ${gap} to standard`, 'deptEquip.bulk', { arg: a(`${cid}:${bulkId}:short`), variant: 'tiny', hint: money(gap * bulkM.cost) });
       }
       if (cat.facility && can.build) {
         const owned = units.filter((u) => !cat.models[u.model]?.rent && !u.renovating).sort((p, q) => q.age - p.age)[0];
@@ -99,8 +117,9 @@ export function equipmentCard(state, ref) {
     } else if (c.requester && !can.requisition) {
       buttons = button('📋 Request a replacement', 'deptEquip.request', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.request.${ref}`]) });
     }
-    const tone = units.length < needed || worn > needed / 3 ? 'warn' : 'good';
-    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}${leases ? ` · ${leases}` : ''}${renovating ? ' · 🔨 under renovation' : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${units.length}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
+    const have = countOf(cat, units);
+    const tone = have < needed || worn > needed / 3 ? 'warn' : 'good';
+    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}${leases ? ` · ${leases}` : ''}${renovating ? ' · 🔨 under renovation' : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${Math.round(have * 10) / 10}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
   }).join('');
   const q = fleetQuality(state, c);
   const staff = c.staff ? `<p class="fine">👥 ${c.staff.total.toLocaleString()} staff${c.staff.label ? `: ${c.staff.operational.toLocaleString()} ${esc(c.staff.label.toLowerCase())} · ${c.staff.civilian.toLocaleString()} ${esc(c.staff.other.split(' (')[0].toLowerCase())}` : ''}. The standard fleet follows headcount.</p>` : '';
@@ -115,7 +134,7 @@ export function equipmentCard(state, ref) {
     can.fundraise ? button('🥞 Run a fund drive', 'deptEquip.fundraise', { arg: a(''), variant: 'small', disabled: Boolean(y[`equip.fund.${ref}`]), hint: 'Pancake breakfasts, boot drives, raffles' }) : '',
   ].join('');
   return card(`${title(c)} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}
-    ${staff}<p>${chip(`⭐ Fleet quality: ${qualityLabel(q)}`, q >= 1.04 ? 'good' : q < 0.95 ? 'warn' : '')} ${c.kind === 'job' ? chip(`🦺 Injury risk ×${gearSafety(state).toFixed(2)}`, gearSafety(state) > 1.05 ? 'warn' : 'good') : ''}</p>
+    ${staff}${c.kind === 'volunteer' && c.org ? `<p class="fine">${c.parent ? `🏛️ Part of ${esc(c.parent.name)} · ` : ''}Standard for ${Object.keys(c.org.people ?? {}).length + 1} members and ${c.org.district?.stations ?? 1} station${(c.org.district?.stations ?? 1) > 1 ? 's' : ''}.</p>` : ''}<p>${chip(`⭐ Fleet quality: ${qualityLabel(q)}`, q >= 1.04 ? 'good' : q < 0.95 ? 'warn' : '')}${(() => { const u = c.kind === 'military' || isIssued(c) ? 0 : upkeepDelta(c, d); return Math.abs(u) >= 1000 ? ` ${chip(u < 0 ? `⛽ Running costs ${money(-u)}/yr below standard` : `⛽ Running costs ${money(u)}/yr above standard`, u < 0 ? 'good' : 'warn')}` : ''; })()} ${c.kind === 'job' ? chip(`🦺 Injury risk ×${gearSafety(state).toFixed(2)}`, gearSafety(state) > 1.05 ? 'warn' : 'good') : ''}</p>
     ${chips}${actions ? `<div class="action-grid">${actions}</div>` : ''}
     ${rows}
     <p class="fine">${footer(state, c)}</p>`, { icon: '🛠️' });

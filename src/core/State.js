@@ -10,7 +10,7 @@
 import { migrate } from './Migrations.js';
 import { clamp, Random } from './Random.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
-import { COUNTRIES } from '../modules/world/Countries.js';
+import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 
 export const STATE_VERSION = 4;
@@ -355,8 +355,17 @@ export function adjustStat(state, key, delta) {
   return state.stats[key];
 }
 
+/**
+ * An honour belongs to the country that awarded it: it's named in that country's terms when
+ * it's awarded (a British George Medal stays one after you move to Canada) and keeps its flag.
+ * Military honours come from the armed forces you serve in; everything else from where you live.
+ */
 export function addHonor(state, honor) {
-  state.honors.push({ ...honor, age: state.character.age, year: currentYear(state) });
+  const svc = state.military?.service;
+  const country = honor.country ?? (honor.source === 'military' && svc ? svc.nation ?? 'US' : state.character.countryId ?? 'US');
+  const name = country === 'US' ? honor.name : localizeTerms(honor.name, COUNTRIES[country]);
+  const citation = honor.citation && country !== 'US' ? localizeTerms(honor.citation, COUNTRIES[country]) : honor.citation;
+  state.honors.push({ ...honor, name, citation, country, ...(name !== honor.name ? { baseName: honor.name } : {}), age: state.character.age, year: currentYear(state) });
 }
 
 /** Per-year counters (reset every age-up) used for diminishing returns. */

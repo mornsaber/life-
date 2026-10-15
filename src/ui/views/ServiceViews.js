@@ -1,14 +1,14 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
-import { growthOf, growthCheck, struggling } from '../../modules/org/VolunteerGrowth.js';
+import { growthOf, growthCheck, struggling, isCombination, chiefPay, stationShare, fundsFloor } from '../../modules/org/VolunteerGrowth.js';
 import { unitView, billetTitle, leads, canImposeNjp, isNcoLeader, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelineFor, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
 import { reportName, giBillTransferEligibility } from '../../modules/military/MilitaryLife.js';
 import { TRACKS, skillBridgeEligibility, civilianField, FAIR_YEARS } from '../../modules/military/Transition.js';
 import { PROFESSION_LIST, PROFESSIONS } from '../../modules/career/JobTrees.js';
 import { retrainTargets, warrantTargets, retrainEligibility, retrainOdds, warrantEligibility, warrantOdds } from '../../modules/military/CareerFields.js';
-import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP } from '../../modules/org/VolunteerOrgs.js';
+import { officers, roster, leadsOrg, topRank, isElectedRank, CHIEF_ACTIONS, LEADERSHIP, grantFor } from '../../modules/org/VolunteerOrgs.js';
 import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool, qualBadge, allSchoolsFor } from '../../modules/military/Schools.js';
 import { MOS, DIRECT_COMMISSIONS, DIRECT_MAX_AGE, hasDirectPath } from '../../modules/military/MOS.js';
 import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, commissioningProgram, dutyFor } from '../../modules/military/Assignments.js';
@@ -234,17 +234,21 @@ function districtSection(state, svc, org, lead, left) {
   if (!g || !d) return '';
   const act = (label, action, arg, kind, hint) => { const c = growthCheck(state, org, kind, arg); return button(label, action, { arg: `${svc.id}:${arg ?? ''}`, variant: 'tiny', disabled: !lead || left <= 0 || !c.ok, hint: c.ok ? (c.odds ? `≈${Math.round(c.odds * 100)}% · ${hint ?? ''}` : hint ?? '') : c.reason }); };
   const neighbors = d.neighbors.map((n) => `<li class="report-row"><div><b>${esc(n.name)}</b> <small class="muted">${n.members} members · readiness ${n.readiness}% · ${money(n.funds)}${struggling(n) ? ' · <span class="neg">struggling</span>' : ''}</small></div>${lead ? act('🤝 Propose a merger', 'emergency.mergeAgency', n.id, 'merge', 'Their members vote') : ''}</li>`).join('');
+  const parent = org.parent;
   const contracts = d.contracts.map((c) => `<li>📄 ${esc(c.name)} · ${money(c.annual)}/yr until age ${c.until} · needs ${c.minReadiness}% readiness</li>`).join('');
-  const paid = d.paid.map((p) => `<li>💼 ${esc(p.role)} · ${money(p.salary)}/yr</li>`).join('');
-  const bids = lead ? g.contracts.filter((c) => !d.contracts.some((x) => x.id === c.id)).map((c) => act(`📄 Bid: ${c.name}`, 'emergency.bidContract', c.id, 'contract', `${money(c.annual[0])}–${money(c.annual[1])}/yr`)).join('') : '';
-  const hires = lead ? g.roles.map((r) => act(`💼 Hire: ${r.role} (${money(r.salary)})`, 'emergency.hireStaff', r.id, 'hire', 'Paid from funds and contracts')).join('') : '';
-  const growth = lead ? `${g.stationCost ? act(`🏚️ Open a ${g.stationWord} (${money(g.stationCost)})`, 'emergency.openStation', '', 'expand', 'More coverage, more calls, more members') : ''}${g.paidChief && !d.paidChief ? act(`💰 Make your post paid (${g.paidChief.title})`, 'emergency.paidChief', '', 'paidChief', `${money(g.paidChief.salary)}/yr`) : ''}` : '';
-  return disclosure(`emergency.district.${svc.id}`, '🗺️ District, contracts & paid staff', `
-    <p class="fine">${d.stations} station${d.stations > 1 ? 's' : ''}${d.absorbed?.length ? ` · absorbed ${esc(d.absorbed.join(', '))}` : ''}${d.paidChief ? ` · ${esc(g.paidChief.title)} (you)` : ''}</p>
-    ${contracts || paid ? `<ul class="history">${contracts}${paid}</ul>` : '<p class="muted">No contracts or paid staff yet: an all-volunteer agency.</p>'}
+  const paid = d.paid.map((p) => `<li>💼 ${esc(org.people[p.personId]?.name ?? 'Vacant')} — ${esc(p.role)} · ${money(p.salary)}/yr${p.parentPaid ? ` <small class="muted">(paid by ${esc(parent?.name ?? 'the parent service')})</small>` : ''}</li>`).join('');
+  const bids = lead && !parent ? g.contracts.filter((c) => !d.contracts.some((x) => x.id === c.id)).map((c) => act(`📄 Bid: ${c.name}`, 'emergency.bidContract', c.id, 'contract', `${money(c.annual[0])}–${money(c.annual[1])}/yr`)).join('') : '';
+  const hires = lead ? g.roles.map((r) => act(parent ? `💼 Ask for career staff: ${r.role.replace(/^Paid /, '')}` : `💼 Hire: ${r.role} (${money(r.salary)})`, 'emergency.hireStaff', r.id, 'hire', parent ? `${parent.name} pays them` : `Paid from funds and contracts${org.corp ? '' : ' · the agency incorporates'}`)).join('') : '';
+  const growth = lead ? `${g.stationCost ? act(`🏚️ Open a ${g.stationWord} (${money(stationShare(org, g))}${parent ? ' local share' : ''})`, 'emergency.openStation', '', 'expand', 'More coverage, calls and members — and a bigger standard fleet to equip') : ''}${g.paidChief && !d.paidChief && !parent ? act(`💰 Ask the board to make your post paid (${g.paidChief.title})`, 'emergency.paidChief', '', 'paidChief', `${money(chiefPay(state, g))}/yr${state.career?.job ? ' part-time' : ''}`) : ''}` : '';
+  const board = org.corp ? `<p class="fine">🏢 ${esc(org.corp.kind)} since age ${org.corp.since}. Board: ${org.corp.board.map((b) => `${esc(b.name)} (${b.rel}%)`).join(', ')}. Employer on-costs, insurance and the audit come out of funds; ${money(fundsFloor(org))} is held back for next year.</p>` : '';
+  const what = parent ? `A unit of ${esc(parent.name)}` : isCombination(org) ? 'A combination department (paid and volunteer)' : 'An all-volunteer agency';
+  return disclosure(`emergency.district.${svc.id}`, parent ? '🗺️ Stations & staff' : '🗺️ District, contracts & paid staff', `
+    <p class="fine">${what} · ${d.stations} station${d.stations > 1 ? 's' : ''}${d.absorbed?.length ? ` · absorbed ${esc(d.absorbed.join(', '))}` : ''}${d.paidChief ? ` · ${esc(g.paidChief.title)} (you)` : ''}</p>
+    ${board}
+    ${contracts || paid ? `<ul class="history">${contracts}${paid}</ul>` : `<p class="muted">${parent ? 'No career staff posted here: all volunteers.' : 'No contracts or paid staff yet: an all-volunteer agency.'}</p>`}
     ${growth || bids || hires ? `<div class="toggle-row">${growth}${bids}${hires}</div>` : ''}
-    <h4 class="sub">Neighbouring agencies</h4><ul class="history">${neighbors}</ul>
-    <p class="fine">Contracts pay every year while your readiness meets the county's standard. Paid staff raise readiness but payroll comes out of funds; an empty account means layoffs.</p>`, { count: `${d.stations} station${d.stations > 1 ? 's' : ''} · ${d.contracts.length} contract${d.contracts.length === 1 ? '' : 's'} · ${d.paid.length} paid` });
+    <h4 class="sub">Neighbouring ${parent ? 'units' : 'agencies'}</h4><ul class="history">${neighbors}</ul>
+    <p class="fine">${parent ? `${esc(parent.name)} funds the unit and appoints its officers: there are no contracts to bid for, and career staff and new stations are asked for, not bought.` : 'Contracts pay every year while your readiness meets the county\'s standard. Paid staff raise readiness but payroll comes out of funds; an empty account means layoffs. Taking on payroll or a contract incorporates the agency, with a board of directors.'}</p>`, { count: `${d.stations} station${d.stations > 1 ? 's' : ''}${parent ? '' : ` · ${d.contracts.length} contract${d.contracts.length === 1 ? '' : 's'}`} · ${d.paid.length} paid` });
 }
 
 /** Your volunteer organization: officers (elected or appointed), members, and your powers if you lead it. */
@@ -254,13 +258,13 @@ function volunteerOrgSection(state, svc, member) {
   const lead = leadsOrg(org, svc.id);
   const L = LEADERSHIP[svc.id];
   const left = CHIEF_ACTIONS - (state.yearly['emergency.lead'] ?? 0);
-  const offs = officers(org, svc.ranks).map((o) => `<li><small class="muted">${esc(o.title)}${isElectedRank(svc.id, o.idx) ? ' · elected' : ''}</small> <b>${o.person === 'PLAYER' ? 'You' : o.person ? esc(o.person.name) : '<span class="muted">vacant</span>'}</b></li>`).join('');
-  const members = roster(org).sort((a, b) => b.years - a.years).slice(0, 8).map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(svc.ranks[p.rankIndex]?.title ?? '')} · ${p.years} yrs · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} suspension${p.discipline > 1 ? 's' : ''}` : ''}</small></div>
+  const offs = officers(org, svc.ranks).map((o) => `<li><small class="muted">${esc(o.title)}${isElectedRank(svc.id, o.idx, org) ? ' · elected' : ''}</small> <b>${o.person === 'PLAYER' ? 'You' : o.person ? esc(o.person.name) : '<span class="muted">vacant</span>'}</b></li>`).join('');
+  const members = roster(org).sort((a, b) => b.years - a.years).slice(0, 8).map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(svc.ranks[p.rankIndex]?.title ?? '')}${p.paid ? ` · 💼 ${esc(p.paid)}` : ''} · ${p.years} yrs · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} suspension${p.discipline > 1 ? 's' : ''}` : ''}</small></div>
     <div class="toggle-row">${button('🎖️ Recognize', 'emergency.commendMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⭐ Appoint', 'emergency.appointMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⚖️ Discipline', 'emergency.disciplineMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`).join('');
-  const electNote = L?.elected.length ? `The membership elects its ${L.elected.map((i) => svc.ranks[i].title).join(' and ')} every two years (next at age ${org.nextElection}).` : 'Officer seats open when someone steps down.';
-  return `${disclosure(`emergency.org.${svc.id}`, `🏛️ ${esc(org.name)}`, `<ul class="history">${offs}</ul><p class="fine">${electNote} Officer ranks need an open seat as well as experience.</p>${lead ? `<h4 class="sub">Members</h4><ul class="history">${members}</ul>` : ''}`, { count: `${Object.keys(org.people).length + 1} members · readiness ${org.readiness}%` })}
+  const electNote = org.parent ? `${esc(org.parent.name)} appoints the unit's officers as seats open.` : L?.elected.length ? `The membership elects its ${L.elected.map((i) => svc.ranks[i].title).join(' and ')} every two years (next at age ${org.nextElection}).` : 'Officer seats open when someone steps down.';
+  return `${disclosure(`emergency.org.${svc.id}`, `🏛️ ${esc(org.name)}`, `<ul class="history">${offs}</ul><p class="fine">${electNote} Officer ranks need an open seat as well as experience; the number of seats follows the size of the unit (${Object.keys(org.people).length + 1} members, ${org.district?.stations ?? 1} station${(org.district?.stations ?? 1) > 1 ? 's' : ''}).</p>${lead ? `<h4 class="sub">Members</h4><ul class="history">${members}</ul>` : ''}`, { count: `${Object.keys(org.people).length + 1} members · readiness ${org.readiness}%` })}
     ${districtSection(state, svc, org, lead, left)}
-    ${lead ? `<div class="action-grid">${button('📣 Recruit', 'emergency.recruit', { arg: svc.id, disabled: left <= 0 })}${button('🥞 Fundraiser', 'emergency.fundraise', { arg: svc.id, disabled: left <= 0, hint: `Funds ${money(org.funds)}` })}${button('🏛️ Federal grant', 'emergency.grant', { arg: svc.id, disabled: left <= 0 })}</div><p class="fine">You lead ${esc(org.name)}: ${left} leadership action${left === 1 ? '' : 's'} left this year.</p>` : ''}`;
+    ${lead ? `<div class="action-grid">${button('📣 Recruit', 'emergency.recruit', { arg: svc.id, disabled: left <= 0 })}${button('🥞 Fundraiser', 'emergency.fundraise', { arg: svc.id, disabled: left <= 0, hint: `Funds ${money(org.funds)}` })}${(() => { const scheme = grantFor(state, org); return button(scheme ? '🏛️ Apply for a grant' : `🏛️ Ask ${esc(org.parent?.name ?? 'the parent')} for funding`, 'emergency.grant', { arg: svc.id, disabled: left <= 0 || Boolean(state.yearly?.[`equip.grant.vol.${svc.id}`]), hint: `${esc(scheme ?? 'Capital allocation')} · one round a year (shared with the equipment screen)` }); })()}</div><p class="fine">You lead ${esc(org.name)}: ${left} leadership action${left === 1 ? '' : 's'} left this year.</p>` : ''}`;
 }
 
 /** Special operations: your team if you're in one, else the selection courses open to you. */

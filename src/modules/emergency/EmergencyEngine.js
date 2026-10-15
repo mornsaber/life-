@@ -104,9 +104,9 @@ export function nextRankStatus(state, serviceId, member) {
   if (next.minYears && member.years < next.minYears) missing.push(`${next.minYears - member.years} yrs`);
   // Officer ranks are seats: elected by the membership, or open only when someone steps down.
   const idx = member.rankIndex + 1;
-  if (isElectedRank(serviceId, idx)) return { next, ready: false, elected: true, reason: `Elected by the membership${missing.length ? ` · ${missing.join(' · ')}` : ''}` };
   const org = state.orgs?.byId?.[member.orgId];
-  if (org && isSeatRank(serviceId, idx) && !seatOpen(org, serviceId, idx)) missing.push('an open seat');
+  if (isElectedRank(serviceId, idx, org)) return { next, ready: false, elected: true, reason: `Elected by the membership${missing.length ? ` · ${missing.join(' · ')}` : ''}` };
+  if (org && isSeatRank(serviceId, idx) && !seatOpen(org, serviceId, idx)) missing.push(org.seats[idx]?.length === 0 ? 'a bigger unit (no such post in one this size)' : org.parent ? `an open seat (appointed by ${org.parent.name})` : 'an open seat');
   return { next, ready: missing.length === 0, reason: missing.join(' · ') };
 }
 

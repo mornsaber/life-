@@ -8,6 +8,14 @@
  * (can be leased), rent (premises leased by the year), build (built with a
  * bond or loan), refurb (can be refurbished/overhauled), remount (box moves
  * to a new chassis).
+ *
+ * Why pay more (PERKS, below): a dearer model earns its price one of four ways,
+ * and says which in `why`:
+ *   quality    more capable or more reliable: readiness, safety, breakdowns
+ *   capacity   does the work of more than one unit (a bus for four vans)
+ *   upkeep     costs less to run every year (hybrids, electrics, Tier 4)
+ *   life       lasts longer before it needs replacing
+ * A cheaper alternative says what it gives up (capacity below 1).
  */
 const need = (a, b, c, d) => ({ small: a, medium: b, large: c, enterprise: d });
 const M = (name, cost, life, upkeep, extra = {}) => ({ name, cost, life, upkeep, ...extra });
@@ -377,14 +385,14 @@ export const GROUPS = {
 
   /* ---------------- Volunteer emergency services ---------------- */
   volFire: { name: 'Apparatus & Firehouse', categories: {
-    engine: { name: 'Engines', icon: '🚒', need: need(1, 2, 3, 4), weight: 3, models: { pumper: M('Pumper engine', 850000, 20, 18000, { usedCost: 180000, refurb: true }) } },
+    engine: { name: 'Engines', icon: '🚒', need: need(1, 2, 3, 4), weight: 3, models: { pumper: M('Pumper engine', 850000, 20, 18000, { usedCost: 180000, refurb: true }), cafs: M('Custom pumper with foam system', 1050000, 22, 16000, { refurb: true }) } },
     tanker: { name: 'Tankers', icon: '💧', need: need(1, 1, 2, 2), weight: 1.5, models: { tanker: M('Tanker/tender', 400000, 25, 9000, { usedCost: 90000 }) } },
     brush: { name: 'Brush truck', icon: '🌲', need: need(1, 1, 1, 2), weight: 0.5, models: { brush: M('Brush truck', 300000, 15, 6000, { usedCost: 60000 }) } },
     scba: { name: 'SCBA & turnout gear', icon: '🫁', need: need(12, 20, 30, 40), weight: 2, models: { scba: M('SCBA + turnout set', 12000, 10, 400) } },
     house: { name: 'Firehouse', icon: '🏚️', need: need(1, 1, 1, 2), weight: 1, facility: true, models: { own: M('New firehouse (fund drive + loan)', 3500000, 50, 40000, { build: true }) } },
   } },
   volEms: { name: 'Rigs & Building', categories: {
-    ambulance: { name: 'Ambulances', icon: '🚑', need: need(2, 3, 4, 6), weight: 3, models: { box: M('Type III ambulance', 240000, 10, 12000, { usedCost: 60000, remount: true }) } },
+    ambulance: { name: 'Ambulances', icon: '🚑', need: need(2, 3, 4, 6), weight: 3, models: { box: M('Type III ambulance', 240000, 10, 12000, { usedCost: 60000, remount: true }), powered: M('Type I ambulance with powered stretcher', 310000, 12, 11000, { remount: true }) } },
     monitors: { name: 'Cardiac monitors & AEDs', icon: '💓', need: need(2, 3, 4, 6), weight: 1.5, models: { monitor: M('Cardiac monitor', 40000, 8, 1200, { usedCost: 12000 }) } },
     building: { name: 'Squad building', icon: '🏠', need: need(1, 1, 1, 1), weight: 1, facility: true, models: { own: M('New squad building (fund drive + loan)', 1500000, 40, 20000, { build: true }) } },
   } },
@@ -501,5 +509,65 @@ export const GROUPS = {
     helos: { name: 'Helicopters', icon: '🚁', need: need(0, 1, 2, 4), weight: 1.5, models: { jayhawk: M('MH-60T Jayhawk', 40000000, 30, 2500000, { refurb: true }) } },
   } },
 };
+
+/** What the dearer (or cheaper) model buys you: `group.category.model` → { why, quality, capacity }. */
+const PERKS = {
+  'police.patrol.suv': { quality: 1.06, why: 'Room for gear and a prisoner partition; better in snow' },
+  'police.patrol.hybrid': { quality: 1.06, why: 'The SUV, but $3,000 a year less in fuel and upkeep — it pays back its premium' },
+  'campusPolice.patrol.hybrid': { why: '$3,000 a year less in fuel and upkeep than the gas SUV' },
+  'campusPolice.bikes.cart': { capacity: 3, why: 'Carries two officers and an AED: covers the ground of three bike posts' },
+  'airportPolice.patrol.cart': { capacity: 0.5, why: 'Cheap and nimble in the terminal, but no pursuits: half a patrol car' },
+  'federalLE.cars.suv': { quality: 1.06, why: 'Room for tactical and surveillance gear' },
+  'borderPatrol.atvs.horse': { why: 'Quiet, goes where ATVs can\'t and lasts 15 years — but costs more to keep' },
+  'borderPatrol.drones.drone': { capacity: 0.35, why: 'Far cheaper, but watches a fraction of what a fixed tower does' },
+  'fire.engine.quint': { quality: 1.15, why: 'Pump and a 75-ft aerial in one: does more on the fireground and lasts longer' },
+  'fire.ladder.tiller': { quality: 1.1, why: 'Rear-steer: gets a 100-ft aerial down narrow streets' },
+  'arff.crash.compact': { capacity: 0.5, why: 'Half the price, half the firefighting agent' },
+  'ems.ambulance.box': { quality: 1.1, why: 'More room to work a cardiac arrest, and two more years of service' },
+  'corrections.vans.bus': { capacity: 4, why: 'Moves forty prisoners at once: does the work of four vans' },
+  'corrections.cameras.scanner': { quality: 1.15, why: 'Body scanning finds the contraband cameras miss' },
+  'postal.trucks.ngdv': { quality: 1.1, why: 'Air conditioning, airbags and half the upkeep of an LLV' },
+  'water.trucks.vac': { capacity: 3, why: 'Hydro-excavation: digs out a main break in hours, the work of three crews' },
+  'transit.bus.hybrid': { why: '$10,000 a year less in fuel and maintenance' },
+  'transit.bus.electric': { quality: 1.05, why: 'The lowest running cost of all — $22,000 a year less than diesel — and quiet' },
+  'schoolBus.bus.electric': { quality: 1.05, why: 'Half the upkeep, no diesel fumes at the bus stop, and two more years of life' },
+  'hospitalUnit.imaging.mri': { quality: 1.15, why: 'Images soft tissue a CT can\'t — the referrals follow' },
+  'kitchen.line.combi': { capacity: 2, why: 'Steams, roasts and bakes: replaces two ranges on the line' },
+  'autoShop.lifts.alignment': { quality: 1.15, why: 'Alignment work: high-margin jobs a plain lift can\'t do' },
+  'dental.imaging.cbct': { quality: 1.15, why: '3D scans for implants and root canals' },
+  'retail.fixtures.cooler': { quality: 1.1, why: 'Cold drinks and food sell at better margins' },
+  'care.buses.bus': { capacity: 2.5, why: 'Carries what two and a half vans do' },
+  'truckFleet.tractors.sleeper': { quality: 1.06, why: 'Long-haul runs without motel nights' },
+  'truckFleet.trailers.reefer': { quality: 1.12, why: 'Refrigerated freight pays more a mile' },
+  'construction.earth.skid': { capacity: 0.35, why: 'Cheap, but small jobs only' },
+  'railroad.locos.tier4': { quality: 1.05, why: 'Cleaner and $30,000 a year cheaper to run' },
+  'airline.aircraft.regional': { capacity: 0.6, why: 'Fewer seats: about 60% of a narrowbody\'s flying' },
+  'airline.aircraft.turboprop': { capacity: 0.25, why: 'Short hops only: a quarter of a narrowbody\'s flying' },
+  'farm.tractors.utility': { capacity: 0.4, why: 'Chores and small fields, not row crops' },
+  'fishingFleet.vessels.crabber': { quality: 1.1, why: 'Fishes the higher-value crab seasons' },
+  'lab.instruments.cryoem': { quality: 1.15, why: 'Atomic-resolution structures: the papers and grants follow' },
+  'security.vehicles.cart': { capacity: 0.5, why: 'Fine for a campus or mall, but half a patrol vehicle' },
+  'newsroom.vans.bonded': { capacity: 0.5, why: 'Live from anywhere with a backpack kit — but not a full truck' },
+  'skiPatrol.sleds.tobog': { capacity: 0.4, why: 'Cheap, but a patroller has to ski it down' },
+  'volFire.engine.cafs': { quality: 1.12, why: 'Foam knocks fire down faster with less water — vital where there are no hydrants' },
+  'volEms.ambulance.powered': { quality: 1.1, why: 'A powered stretcher saves backs (fewer crew injuries) and lasts longer' },
+  'milGround.tactical.jltv': { quality: 1.12, why: 'Survives blasts a Humvee doesn\'t, and cheaper to keep' },
+  'milGround.combat.stryker': { quality: 1.04, why: 'Faster on roads; carries a full squad' },
+  'milGround.combat.abrams': { quality: 1.15, why: 'A main battle tank: firepower and armour nothing else in the company has' },
+  'milMarine.tactical.jltv': { quality: 1.12, why: 'Survives blasts a Humvee doesn\'t, and cheaper to keep' },
+  'milMarine.amphib.acv': { quality: 1.12, why: 'Faster in the surf and far better protected than the AAV' },
+  'milNaval.aircraft.hornet': { quality: 1.1, why: 'Strike and air defence a helicopter can\'t give' },
+  'milAir.aircraft.f35': { quality: 1.15, why: 'Stealth and sensors: the most capable jet on the ramp' },
+  'milMarine.aircraft.f35b': { quality: 1.1, why: 'A stealth jet that lands vertically on an amphibious ship' },
+};
+for (const [path, perk] of Object.entries(PERKS)) {
+  const [g, c, m] = path.split('.');
+  const model = GROUPS[g]?.categories[c]?.models[m];
+  if (model) Object.assign(model, perk);
+}
+// A category with stated perks is judged by them: the rest of its models are standard (quality 1).
+for (const g of Object.values(GROUPS)) for (const cat of Object.values(g.categories)) {
+  if (Object.values(cat.models).some((m) => m.why)) for (const m of Object.values(cat.models)) m.quality ??= 1;
+}
 
 export const SIZES = ['small', 'medium', 'large', 'enterprise'];

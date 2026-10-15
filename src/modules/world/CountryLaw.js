@@ -425,6 +425,117 @@ export const VOLUNTEER_SERVICES = {
 };
 fromPacks(VOLUNTEER_SERVICES, 'VOLUNTEER_SERVICES');
 /**
+ * Who a volunteer unit belongs to abroad. In the US a volunteer fire company is its own
+ * corporation; in much of the world it's a brigade of a national or state service, or a
+ * unit of the municipality's fire service, and that parent buys the apparatus, sets the
+ * structure and appoints the senior officers.
+ *   name     the parent ('{area}' becomes the region or town; by state id where it differs)
+ *   level    'national' | 'state' | 'municipal'
+ *   funds    share of the equipment the parent pays for (1: all of it, issued like a government cache)
+ *   grant    the scheme a unit applies to for extra kit (null: none, ask the parent instead)
+ *   paid     'oncall' when members are paid per call and per drill (retained firefighters)
+ */
+export const VOLUNTEER_PARENTS = {
+  CA: {},
+  GB: {
+    fire: { name: { 'GB-SCT': 'the Scottish Fire and Rescue Service', 'GB-NIR': 'the Northern Ireland Fire & Rescue Service', 'GB-WLS': 'the {area} fire and rescue service', '*': 'the {area} Fire and Rescue Service' }, level: 'municipal', funds: 1, grant: null, paid: 'oncall' },
+    police: { name: { 'GB-SCT': 'Police Scotland', 'GB-NIR': 'the Police Service of Northern Ireland', '*': 'the {area} police force' }, level: 'municipal', funds: 1, grant: null },
+    sar: { name: 'Mountain Rescue England and Wales', level: 'national', funds: 0.2, grant: 'a Mountain Rescue England and Wales equipment grant' },
+    auxiliary: { name: 'the RNLI', level: 'national', funds: 1, grant: null },
+    cert: { name: 'the local resilience forum', level: 'municipal', funds: 0.5, grant: 'a council community resilience grant' },
+  },
+  IE: {
+    fire: { name: '{area} County Council Fire Service', level: 'municipal', funds: 1, grant: null, paid: 'oncall' },
+    police: { name: 'An Garda Síochána', level: 'national', funds: 1, grant: null },
+    cert: { name: 'Civil Defence (Department of Defence)', level: 'national', funds: 0.8, grant: 'a Civil Defence equipment allocation' },
+    auxiliary: { name: 'the RNLI', level: 'national', funds: 1, grant: null },
+  },
+  NZ: {
+    fire: { name: 'Fire and Emergency New Zealand', level: 'national', funds: 1, grant: null },
+    wildland: { name: 'Fire and Emergency New Zealand', level: 'national', funds: 1, grant: null },
+    sar: { name: 'LandSAR New Zealand', level: 'national', funds: 0.5, grant: 'a LandSAR equipment grant' },
+    auxiliary: { name: 'Coastguard New Zealand', level: 'national', funds: 0.4, grant: 'a Lottery Grants Board grant' },
+  },
+  AU: {
+    fire: { name: { 'AU-NSW': 'NSW Rural Fire Service', 'AU-VIC': 'the Country Fire Authority (CFA)', 'AU-QLD': 'Queensland Rural Fire Service', 'AU-SA': 'the SA Country Fire Service', 'AU-WA': 'DFES (WA)', 'AU-TAS': 'the Tasmania Fire Service', 'AU-NT': 'NT Fire and Rescue Service', '*': 'the state rural fire service' }, level: 'state', funds: 0.9, grant: 'a state fire-service brigade grant' },
+    wildland: { name: { 'AU-NSW': 'NSW Rural Fire Service', 'AU-VIC': 'Forest Fire Management Victoria', '*': 'the state rural fire service' }, level: 'state', funds: 1, grant: null },
+    sar: { name: { 'AU-NSW': 'NSW State Emergency Service', 'AU-VIC': 'VICSES', 'AU-QLD': 'Queensland SES', '*': 'the State Emergency Service' }, level: 'state', funds: 0.9, grant: null },
+    cert: { name: 'the State Emergency Service', level: 'state', funds: 0.9, grant: null },
+    auxiliary: { name: { 'AU-NSW': 'Marine Rescue NSW', '*': 'the state marine rescue service' }, level: 'state', funds: 0.6, grant: 'a state marine rescue grant' },
+  },
+  DE: {
+    fire: { name: 'the {area} municipal fire service (Gemeinde)', level: 'municipal', funds: 0.95, grant: 'a Land fire-protection grant (Feuerschutzsteuer)' },
+    cert: { name: 'the Bundesanstalt THW', level: 'national', funds: 1, grant: null },
+    sar: { name: 'the Bergwacht (DRK)', level: 'national', funds: 0.4, grant: 'a Land rescue-service grant' },
+  },
+  FR: {
+    fire: { name: 'the SDIS (departmental fire and rescue service)', level: 'state', funds: 1, grant: null, paid: 'oncall' },
+    police: { name: 'the Gendarmerie nationale', level: 'national', funds: 1, grant: null },
+    auxiliary: { name: 'the SNSM', level: 'national', funds: 0.5, grant: 'a regional SNSM subsidy' },
+  },
+  IT: {
+    fire: { name: 'the Corpo Nazionale dei Vigili del Fuoco', level: 'national', funds: 1, grant: null, paid: 'oncall' },
+    sar: { name: 'the CNSAS (Club Alpino Italiano)', level: 'national', funds: 0.5, grant: 'a regional civil protection grant' },
+    cert: { name: 'the Dipartimento della Protezione Civile', level: 'national', funds: 0.6, grant: 'a regional civil protection grant' },
+  },
+  ES: {
+    ambulance: { name: 'the municipal Protección Civil', level: 'municipal', funds: 0.8, grant: 'an autonomous-community emergency grant' },
+    cert: { name: 'the municipal Protección Civil', level: 'municipal', funds: 0.8, grant: 'an autonomous-community emergency grant' },
+  },
+  NL: {
+    fire: { name: 'the Veiligheidsregio (regional fire service)', level: 'state', funds: 1, grant: null, paid: 'oncall' },
+    police: { name: 'the Nationale Politie', level: 'national', funds: 1, grant: null },
+    auxiliary: { name: 'the KNRM', level: 'national', funds: 1, grant: null },
+  },
+  SE: {
+    fire: { name: 'the municipal räddningstjänst', level: 'municipal', funds: 1, grant: null, paid: 'oncall' },
+    auxiliary: { name: 'Sjöräddningssällskapet', level: 'national', funds: 0.7, grant: 'a Sjöräddningssällskapet donor grant' },
+  },
+  JP: {
+    fire: { name: 'the {area} municipal fire department', level: 'municipal', funds: 1, grant: null, paid: 'oncall' },
+  },
+  KR: {
+    fire: { name: 'the provincial Fire Headquarters', level: 'state', funds: 0.9, grant: null },
+    police: { name: 'the local police station', level: 'municipal', funds: 0.8, grant: null },
+  },
+  PH: {
+    fire: { name: 'the Bureau of Fire Protection', level: 'national', funds: 0.3, grant: 'a local government (LGU) equipment grant' },
+    police: { name: 'the barangay council', level: 'municipal', funds: 0.6, grant: null },
+  },
+  IN: {
+    police: { name: 'the state Home Guards organisation', level: 'state', funds: 1, grant: null },
+    cert: { name: 'the Directorate of Civil Defence', level: 'state', funds: 1, grant: null },
+  },
+  MX: {
+    ambulance: { name: 'Cruz Roja Mexicana', level: 'national', funds: 0.5, grant: 'a Cruz Roja national appeal allocation' },
+  },
+  BR: {
+    cert: { name: 'the municipal Defesa Civil', level: 'municipal', funds: 0.8, grant: null },
+  },
+};
+fromPacks(VOLUNTEER_PARENTS, 'VOLUNTEER_PARENTS');
+
+/** The national or state organization a volunteer unit sits under (null: it's independent, as in the US). */
+export function volunteerParent(countryId, serviceId, { stateId, area } = {}) {
+  const p = VOLUNTEER_PARENTS[countryId]?.[serviceId];
+  if (!p) return null;
+  const raw = typeof p.name === 'string' ? p.name : p.name[stateId] ?? p.name['*'];
+  return { ...p, name: raw.replace('{area}', area ?? 'local') };
+}
+
+/** US federal and state grant programs a volunteer unit can apply to, by service. */
+export const US_VOLUNTEER_GRANTS = {
+  fire: 'a FEMA Assistance to Firefighters Grant', ambulance: 'a state EMS equipment grant', police: 'a Justice Assistance Grant',
+  wildland: 'a Volunteer Fire Assistance grant', sar: 'a state SAR equipment grant', cert: 'a Citizen Corps grant', mrc: 'an ASPR preparedness grant',
+  auxiliary: 'a Coast Guard Auxiliary district allotment', cap: 'a Civil Air Patrol wing allocation', redcross: 'a Red Cross chapter disaster fund allocation', skiPatrol: 'a resort patrol equipment grant',
+};
+/** The grant program a volunteer unit applies to here (null: none — the parent provides). */
+export function volunteerGrant(countryId, serviceId, parent) {
+  if (parent) return parent.grant;
+  if (!countryId || countryId === 'US') return US_VOLUNTEER_GRANTS[serviceId] ?? 'an equipment grant';
+  return 'a government equipment grant';
+}
+/**
  * National service schemes standing in for the Peace Corps (overseas volunteering)
  * and AmeriCorps (a year of community service at home). null: none.
  */

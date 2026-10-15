@@ -12,8 +12,13 @@
  *              business account. Condition shows up in quality.
  *   volunteer  Your volunteer company or team: engines bought used from
  *              career departments, ambulances, boats, aircraft. Chiefs and
- *              captains decide; money comes from a small district levy,
- *              fundraisers and grants.
+ *              captains decide; the money is the organization's own funds
+ *              (one pot for apparatus, payroll and training), topped up by
+ *              a district levy, fundraisers, contracts and grants. What it
+ *              needs grows with its members and stations; a merger brings
+ *              the other agency's apparatus. A unit under a national or
+ *              state service (FENZ, a county fire and rescue service) is
+ *              equipped by its parent.
  *   military   Your company or battalion: tactical and combat vehicles,
  *              aircraft, ships and boats. Commanders don't buy — they spend
  *              O&M funds on overhauls and request new equipment from the
@@ -36,6 +41,8 @@ import { billetFor } from '../org/MilitaryUnits.js';
 import { TEAMS } from '../service/DisasterTeams.js';
 import { SDF_RANKS } from '../service/StateForces.js';
 import { deptOf } from '../org/Organizations.js';
+import { grantFor } from '../org/VolunteerOrgs.js';
+import { fundsFloor } from '../org/VolunteerGrowth.js';
 
 /* ------------------------------------------------------------------ */
 /* Staff: sworn and civilian, and the equipment they need             */
@@ -170,8 +177,13 @@ export function contexts(state) {
     const m = state.emergency?.[sid];
     if (!m || m.onLeave) continue;
     const ranks = SERVICES[sid]?.ranks ?? [];
-    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key: `vol:${sid}:${m.unit}`, group: gid, size: 'small', label: m.unit, serviceId: sid, member: m,
-      manager: m.rankIndex >= ranks.length - 2, requester: m.rankIndex >= ranks.length - 3, money: 'funds' });
+    const key = `vol:${sid}:${m.unit}`;
+    const org = state.orgs?.byId?.[key] ?? null;
+    const scale = volunteerScale(org);
+    const parent = org?.parent ?? null;
+    const issued = (parent?.funds ?? 0) >= 1;
+    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key, group: gid, size: scale.size, growth: scale.growth, label: m.unit, serviceId: sid, member: m, org, parent, issued,
+      manager: m.rankIndex >= ranks.length - 2, requester: m.rankIndex >= ranks.length - 3, money: issued ? 'om' : 'funds' });
   }
   for (const [tid, gid] of Object.entries(TEAM_GROUP)) {
     const m = state.service?.teams?.[tid];
@@ -194,6 +206,43 @@ export function contexts(state) {
   }
   return out;
 }
+/**
+ * A volunteer organization's size for equipment: its members set the standard (a dozen
+ * volunteers run one engine; ninety run a district), and each station beyond what that
+ * size usually has adds to it.
+ */
+const STATIONS_AT = { small: 1, medium: 2, large: 3, enterprise: 4 };
+export function volunteerScale(org) {
+  if (!org) return { size: 'small', growth: 1 };
+  const people = Object.keys(org.people ?? {}).length + 1;
+  const size = people < 28 ? 'small' : people < 55 ? 'medium' : people < 100 ? 'large' : 'enterprise';
+  const stations = org.district?.stations ?? 1;
+  return { size, growth: Math.round(Math.max(1, stations / STATIONS_AT[size]) * 100) / 100 };
+}
+
+/**
+ * A volunteer organization has one pot of money: the equipment budget *is* its funds, so a
+ * fundraiser, a contract or a grant can buy apparatus, and apparatus competes with payroll.
+ * (Old saves fold any separate equipment budget into the funds once.)
+ */
+function bindFunds(state, c, d, peek) {
+  if (!c.org || c.money !== 'funds') return;
+  const desc = Object.getOwnPropertyDescriptor(d, 'budget');
+  if (desc?.get) return;
+  if (!d.fundsMerged) {
+    if (peek) return;
+    if (typeof d.budget === 'number' && d.budget > 0) c.org.funds += d.budget;
+    d.fundsMerged = true;
+  }
+  const key = c.key;
+  Object.defineProperty(d, 'budget', {
+    get: () => state.orgs?.byId?.[key]?.funds ?? 0,
+    set: (v) => { const o = state.orgs?.byId?.[key]; if (o) o.funds = v; },
+    enumerable: true,
+    configurable: true,
+  });
+}
+
 /** One owner by ref: 'job', 'business', 'military', 'vol.<serviceId>' or 'team.<teamId|sdf>'. */
 export const contextOf = (state, ref) => contexts(state).find((c) => c.ref === ref) ?? null;
 
@@ -318,13 +367,16 @@ export function recordOf(state, c, { peek = false } = {}) {
       const n = Math.round(needOf(cat, c) * (c.kind === 'business' ? 1 : r.float(0.75, 1)));
       d.units[cid] = Array.from({ length: n }, () => ({ model: mid, age: c.kind === 'business' ? 0 : r.int(0, Math.round(model.life * 1.3)), used: false, leased: false }));
     }
-    d.budget = c.money === 'cash' ? 0 : Math.max(0, annualMoney(state, c) - extraCosts(c, d));
+    if (c.org && c.money === 'funds') d.fundsMerged = true;
+    else d.budget = c.money === 'cash' ? 0 : Math.max(0, annualMoney(state, c) - extraCosts(c, d));
     d.budgetAge = state.character.age;
+    bindFunds(state, c, d, peek);
     if (peek) return d;
     state.deptEquip ??= {};
     state.deptEquip[c.key] = d;
   }
   d.pending ??= [];
+  bindFunds(state, c, d, peek);
   if (!peek) fitSpan(c, d);
   // A view right after a promotion shows the wider command already (the yearly pass saves it).
   else if ((c.span ?? 1) !== d.span && d.span != null) {
@@ -351,7 +403,7 @@ function fitSpan(c, d) {
     const units = (d.units[cid] ??= []);
     const need = needOf(cat, c);
     const [mid, model] = Object.entries(cat.models)[0];
-    if (grew) while (units.length < need) units.push({ model: mid, age: r.int(0, Math.round(model.life * 1.2)), used: false, leased: false });
+    if (grew) while (countOf(cat, units) < need) units.push({ model: mid, age: r.int(0, Math.round(model.life * 1.2)), used: false, leased: false });
     if (shrank && units.length > need) {
       units.sort((a, b) => a.age - b.age);
       units.length = need;
@@ -375,7 +427,11 @@ export function modelQuality(cat, mid) {
   return Math.round((0.88 + 0.24 * ((m.cost - lo) / (hi - lo || 1))) * 100) / 100;
 }
 /** What one unit contributes: its model's quality, less for second-hand, much less past its service life. */
-const unitValue = (cat, u) => (u.renovating ? 0.5 : u.age <= (cat.models[u.model]?.life ?? 10) ? modelQuality(cat, u.model) * (u.used ? 0.9 : 1) : 0.45);
+const unitValue = (cat, u) => capacityOf(cat, u) * (u.renovating ? 0.5 : u.age <= (cat.models[u.model]?.life ?? 10) ? modelQuality(cat, u.model) * (u.used ? 0.9 : 1) : 0.45);
+/** How many standard units one unit counts as (a bus for four vans, a cart for half a car). */
+export const capacityOf = (cat, u) => cat.models[u.model]?.capacity ?? 1;
+/** The units in a category, counted in standard units. */
+export const countOf = (cat, units = []) => units.reduce((s, u) => s + capacityOf(cat, u), 0);
 
 /** Average quality of what's in service (1 = standard issue). */
 export function fleetQuality(state, c) {
@@ -386,8 +442,8 @@ export function fleetQuality(state, c) {
     if (cat.facility) continue;
     for (const u of d.units[cid] ?? []) {
       if (u.age > (cat.models[u.model]?.life ?? 10)) continue;
-      sum += modelQuality(cat, u.model) * (u.used ? 0.9 : 1);
-      n += 1;
+      sum += modelQuality(cat, u.model) * (u.used ? 0.9 : 1) * capacityOf(cat, u);
+      n += capacityOf(cat, u);
     }
   }
   return n ? Math.round((sum / n) * 100) / 100 : 1;
@@ -430,7 +486,8 @@ function schedule(c) {
 /** The yearly money: capital budget, district levy, or O&M allocation. */
 export function annualMoney(state, c) {
   if (c.money === 'cash') return 0;
-  if (c.money === 'funds') return Math.round((schedule(c) * 0.4) / 1000) * 1000;
+  // A district levy covers part of the replacement schedule; a parent service pays most of the rest.
+  if (c.money === 'funds') return Math.round((schedule(c) * (0.4 + 0.6 * (c.parent?.funds ?? 0))) / 1000) * 1000;
   if (c.money === 'om') return Math.round((schedule(c) * 0.12) / 1000) * 1000;
   const fiscal = c.sector === 'private' ? 1 : clamp((state.publicService?.city?.fiscalHealth ?? 60) / 65, 0.55, 1.3);
   return Math.round((schedule(c) * fiscal) / 1000) * 1000;
@@ -443,7 +500,27 @@ function baseRent(c) {
     return sum + (first.rent ? first.rent * needOf(cat, c) : 0);
   }, 0);
 }
-const extraCosts = (c, d) => Math.max(0, fixedCosts(d) - (c.money === 'cash' ? 0 : baseRent(c)));
+const extraCosts = (c, d) => Math.max(0, fixedCosts(d) - (c.money === 'cash' ? 0 : baseRent(c))) + upkeepDelta(c, d);
+
+/**
+ * Running costs above (or below) the standard model's: a hybrid's fuel savings come back to
+ * the budget every year, a fleet of premium units costs more to keep. Issued equipment is
+ * kept by the program, not you.
+ */
+export function upkeepDelta(c, d) {
+  if (isIssued(c)) return 0;
+  let delta = 0;
+  for (const [cid, units] of Object.entries(d.units)) {
+    const cat = cats(c)[cid];
+    if (!cat || cat.facility) continue;
+    const base = Object.values(cat.models)[0];
+    for (const u of units) {
+      const m = cat.models[u.model];
+      if (m && !m.rent && !u.renovating) delta += (m.upkeep ?? 0) - (base.upkeep ?? 0) * capacityOf(cat, u);
+    }
+  }
+  return Math.round(delta);
+}
 
 function fixedCosts(d) {
   let rent = 0;
@@ -493,8 +570,10 @@ export const buyoutCost = (u, m) => Math.round(((u.rent ?? m.rent) * 14) / 1000)
 
 /** Money available to spend now. */
 export function available(c, d) {
-  return c.money === 'cash' ? Math.max(0, Math.round(c.biz.cash)) : d.budget + d.reserve;
+  return c.money === 'cash' ? Math.max(0, Math.round(c.biz.cash)) : Math.max(0, d.budget - floorOf(c)) + d.reserve;
 }
+/** What a volunteer organization must keep back from equipment: next year's payroll, training and overheads. */
+const floorOf = (c) => (c.org && c.money === 'funds' ? fundsFloor(c.org, c.serviceId) : 0);
 function pay(c, d, amount) {
   if (c.money === 'cash') { c.biz.cash -= amount; (c.biz.taxBook ??= { expense: 0, capex: 0 }).capex += Math.round(amount); return; }
   const fromBudget = Math.min(d.budget, amount);
@@ -514,13 +593,13 @@ export const refurbCost = (c, m) => Math.round(m.cost * refurbShare(c, m));
 /** Fill shortfalls, then replace the most overdue, up to `share` of the money left. */
 function autoReplace(c, d, share) {
   // The reserve exists for big items, so staff may draw all of it.
-  let money = c.money === 'cash' ? Math.round(available(c, d) * share) : Math.round(d.budget * share + d.reserve);
+  let money = c.money === 'cash' ? Math.round(available(c, d) * share) : Math.round(Math.max(0, d.budget - floorOf(c)) * share + d.reserve);
   let spent = 0;
   const all = cats(c);
   for (const [cid, cat] of Object.entries(all)) {
     if (cat.facility || isIssued(c)) continue;
     const [mid, m] = Object.entries(cat.models)[0];
-    while ((d.units[cid]?.length ?? 0) < needOf(cat, c) && m.cost <= money) {
+    while (countOf(cat, d.units[cid]) < needOf(cat, c) && m.cost <= money) {
       (d.units[cid] ??= []).push({ model: mid, age: 0, used: false, leased: false });
       money -= m.cost;
       spent += m.cost;
@@ -583,7 +662,7 @@ function yearFor(ctx, c) {
     const cat = cats(c)[p.catId];
     const units = (d.units[p.catId] ??= []);
     const oldest = units.sort((a, b) => b.age - a.age)[0];
-    if (oldest && units.length >= needOf(cat, c)) Object.assign(oldest, { model: p.model, age: 0, used: false });
+    if (oldest && countOf(cat, units) >= needOf(cat, c)) Object.assign(oldest, { model: p.model, age: 0, used: false });
     else units.push({ model: p.model, age: 0, used: false, leased: false });
     ctx.log(`A new ${cat.models[p.model].name} was fielded to your ${c.label.toLowerCase()}.`, cat.icon, 'good');
   }
@@ -603,25 +682,26 @@ function yearFor(ctx, c) {
     d.bond = null;
   }
   // Money: what's left is spent by staff (all of it when you don't decide), then the new year's arrives.
-  if (c.money !== 'cash' && d.budgetAge != null && d.budget > 0) autoReplace(c, d, c.manager ? 0.5 : 1);
+  if (c.money !== 'cash' && d.budgetAge != null && d.budget > floorOf(c)) autoReplace(c, d, c.manager ? 0.5 : c.org ? 0.6 : 1);
   // Staff carry part of what's left into the reserve when something big is overdue.
   if (c.money === 'budget' && d.budget > 0 && bigOverdue(c, d, annualMoney(state, c))) d.reserve += Math.min(d.budget / 2, Math.max(0, annualMoney(state, c) * 2 - d.reserve));
   if (c.money === 'cash' && c.biz.equipAuto) d.auto = true;
   if (c.money === 'cash' && c.biz.role !== 'operator') autoReplace(c, d, d.auto ? 0.5 : 0.05);
   // You handed equipment to your staff: they keep it at standard within what you can afford.
   else if (d.auto && c.manager && c.money !== 'cash' && powers(c).buy) autoReplace(c, d, 1);
-  if (c.money === 'funds') d.budget += annualMoney(state, c);
+  if (c.money === 'funds') d.budget = Math.max(0, d.budget + annualMoney(state, c) - upkeepDelta(c, d));
   else if (c.money !== 'cash') d.budget = Math.max(0, annualMoney(state, c) - extraCosts(c, d));
   else {
-    c.biz.cash -= fixedCosts(d);
-    (c.biz.taxBook ??= { expense: 0, capex: 0 }).expense += Math.round(fixedCosts(d));
+    const running = Math.max(0, fixedCosts(d) + upkeepDelta(c, d));
+    c.biz.cash -= running;
+    (c.biz.taxBook ??= { expense: 0, capex: 0 }).expense += Math.round(running);
   }
   d.budgetAge = state.character.age;
   // Readiness and what it does.
   const r = readiness(state, c);
   const prev = d.readiness;
   d.readiness = r;
-  if (r < 55 && rng.chance((60 - r) / 60)) {
+  if (r < 55 && rng.chance(((60 - r) / 60) / fleetQuality(state, c))) {
     ctx.log(`${c.label}: ${rng.pick(breakdown(c))}`, '🔧', 'bad');
     ctx.stat('stress', 2);
     if (c.money === 'cash') c.biz.cash -= Math.round(schedule(c) * 0.08);
@@ -648,7 +728,12 @@ function resolve(ctx, arg) {
   if (!c) { ctx.toast('Not available', 'warn'); return {}; }
   return { c, d: recordOf(ctx.state, c), parts: rest.split(':') };
 }
-const GRANT_NAME = { volFire: 'The federal Assistance to Firefighters grant', volEms: 'The state EMS equipment grant', volPolice: 'The Justice Assistance Grant', wildlandVol: 'The Volunteer Fire Assistance grant', sar: 'The state SAR equipment grant', cert: 'The Citizen Corps grant', mrc: 'The ASPR preparedness grant' };
+/** The grant a volunteer unit applies to for a piece of equipment (null: ask the parent service instead). */
+export function grantSchemeOf(state, c) {
+  if (c.org) return grantFor(state, c.org);
+  return 'an equipment grant';
+}
+const capital = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 const nice = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
 
 export const EquipmentModule = {
@@ -656,6 +741,28 @@ export const EquipmentModule = {
   order: 30.95,
   init(state) {
     state.deptEquip ??= {};
+  },
+  setup(engine) {
+    // A volunteer agency grew: a merged neighbour's apparatus, or a new station's building, joins the fleet.
+    engine.bus.on('volunteer:grew', ({ ctx, orgId, stations = 1, absorbed, worn }) => {
+      const { state } = ctx;
+      const c = contexts(state).find((x) => x.key === orgId);
+      if (!c) return;
+      const d = recordOf(state, c);
+      const r = seeded(`${orgId}:grew:${state.character.age}:${absorbed ?? 'station'}`);
+      let added = 0;
+      for (const [cid, cat] of Object.entries(cats(c))) {
+        // A new station is a building; the rest of its fleet is yours to buy (the standard just rose).
+        if (!absorbed && !cat.facility) continue;
+        const per = cat.need.small ?? 0;
+        if (!per) continue;
+        const [mid, m] = Object.entries(cat.models).find(([, x]) => !x.rent) ?? Object.entries(cat.models)[0];
+        const n = absorbed ? Math.round(per * stations * (worn ? r.float(0.5, 0.9) : r.float(0.8, 1.05))) : Math.max(1, Math.round(stations));
+        for (let i = 0; i < n; i++) (d.units[cid] ??= []).push({ model: mid, age: absorbed ? r.int(worn ? Math.round(m.life * 0.5) : 0, Math.round(m.life * (worn ? 1.4 : 1.1))) : 0, used: false, leased: false });
+        added += n;
+      }
+      if (absorbed && added) ctx.log(`${absorbed}'s apparatus and gear joined ${c.label}'s fleet (${added} items${worn ? ', much of it worn out' : ''}).`, '🚒', 'info');
+    });
   },
   onAgeUp(ctx) {
     const { state } = ctx;
@@ -705,7 +812,7 @@ export const EquipmentModule = {
           n += 1;
         }
       } else {
-        while (units.length < needOf(cat, c) && m.cost <= money) {
+        while (countOf(cat, units) < needOf(cat, c) && m.cost <= money) {
           units.push({ model: mid, age: 0, used: false, leased: false });
           money -= m.cost;
           n += 1;
@@ -904,23 +1011,25 @@ export const EquipmentModule = {
       ctx.stat('happiness', 2);
       ctx.log(`${rng.pick(['The pancake breakfast', 'The boot drive at the intersection', 'The annual fund letter', 'The carnival and raffle'])} raised $${raised.toLocaleString()} for ${c.label}.`, '🥞', 'good');
     },
+    /** 'kind|catId:modelId' — a grant for one item at a 10% local match (the same yearly round as the leader's grant). */
     grant(ctx, arg) {
       const { state, rng } = ctx;
       const { c, d, parts } = resolve(ctx, arg);
       if (!c?.manager || !powers(c).fundraise) return;
       if (yearlyCount(state, `equip.grant.${c.ref}`)) return ctx.toast('One grant application a year', 'warn');
-      bumpYearly(state, `equip.grant.${c.ref}`);
       const [cid, mid] = parts;
       const m = cats(c)[cid]?.models[mid];
       if (!m || m.build || m.rent) return;
       const match = Math.round(m.cost * 0.1);
       if (d.budget < match) return ctx.toast(`You need the 10% match ($${match.toLocaleString()}) in the bank first`, 'warn');
+      bumpYearly(state, `equip.grant.${c.ref}`);
       ctx.stat('stress', 3);
-      if (rng.chance(0.3 + state.stats.smarts / 400)) {
+      const scheme = grantSchemeOf(state, c);
+      if (rng.chance(clamp(0.3 + state.stats.smarts / 400 + (c.org ? (c.org.readiness - 60) / 300 : 0), 0.15, 0.7))) {
         d.budget -= match;
         (d.units[cid] ??= []).push({ model: mid, age: 0, used: false, leased: false });
-        ctx.log(`${GRANT_NAME[c.group] ?? 'The grant'} came through: a new ${nice(m.name)} for a $${match.toLocaleString()} local match.`, cats(c)[cid].icon, 'milestone');
-      } else ctx.log('The grant panel turned you down this round. Most first applications fail.', '📄', 'warn');
+        ctx.log(`${scheme ? `${capital(scheme)} came through` : `${capital(c.parent.name)} approved it`}: a new ${nice(m.name)} for a $${match.toLocaleString()} local match.`, cats(c)[cid].icon, 'milestone');
+      } else ctx.log(scheme ? `The panel for ${scheme} turned you down this round. Most first applications fail.` : `${capital(c.parent.name)} put your request back a year.`, '📄', 'warn');
     },
   },
 };
