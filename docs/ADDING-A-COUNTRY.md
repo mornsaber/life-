@@ -1,7 +1,7 @@
 # Adding a country
 
 A new country is one file: a **country pack** in `src/modules/world/packs/`.
-New Zealand (`NZ.js`), Ireland (`IE.js`) and Spain (`ES.js`) are complete examples.
+New Zealand (`NZ.js`), Ireland (`IE.js`), Spain (`ES.js`), the Netherlands (`NL.js`), Sweden (`SE.js`) and Brazil (`BR.js`) are complete examples.
 
 ## 1. Pick a base country
 
@@ -100,6 +100,7 @@ fields below fill those lists, so you never edit another country's file:
 | `groups` | Adds the country to `EU`, `COMMON_LAW`, `STRICT_CLINICAL` or `RICH_SYSTEMS` in Immigration.js |
 | `licenceExchange`, `peers` | Adds the country to each partner's list, both ways |
 | `agreements` | Adds pension-agreement pairs |
+| `freeMovement` | Countries whose citizens move in without a visa (beyond the EU, which `groups: ['EU']` covers), both ways |
 | `WORKING_HOLIDAY.partners` | The partner countries' schemes accept your young people at the same age limit |
 
 ## 3. Test

@@ -369,6 +369,22 @@ mutual(PEERS, 'peers');
 /** High-income regulators that scrutinize qualifications from elsewhere. */
 const RICH_SYSTEMS = joinGroup(['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'JP', 'KR'], 'RICH_SYSTEMS');
 
+/**
+ * Free movement: citizens of these areas live and work in each other's countries
+ * without a visa (EU free movement, the UK–Ireland Common Travel Area, the
+ * Trans-Tasman Travel Arrangement). Packs add pairs with `freeMovement`.
+ */
+const FREE_PAIRS = [['GB', 'IE', 'Common Travel Area'], ['AU', 'NZ', 'Trans-Tasman Travel Arrangement']];
+for (const p of PACKS) for (const other of p.freeMovement ?? []) if (!(EU.includes(p.id) && EU.includes(other)) && !FREE_PAIRS.some(([a, b]) => (a === p.id && b === other) || (a === other && b === p.id))) FREE_PAIRS.push([p.id, other, 'free-movement agreement']);
+/** EU member states (for the EU-wide rules: free movement, temporary protection). */
+export const isEU = (cc) => EU.includes(cc);
+/** The scheme letting a holder of these passports move to `to` freely (null: none). */
+export function freeMovementTo(citizenships, to) {
+  if (EU.includes(to) && citizenships.some((c) => c !== to && EU.includes(c))) return 'EU free movement';
+  const pair = FREE_PAIRS.find(([a, b]) => (to === a && citizenships.includes(b)) || (to === b && citizenships.includes(a)));
+  return pair?.[2] ?? null;
+}
+
 /** How a credential earned in `fromCountries` is recognized in `to`. */
 export function recognitionRoute(credId, fromCountries, to) {
   if (DRIVING.includes(credId)) {

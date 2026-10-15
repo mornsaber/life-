@@ -281,7 +281,7 @@ fromPacks(LOCAL_AGENCIES, 'LOCAL_AGENCIES');
  */
 const town = (city) => city.split(',')[0];
 /** Countries whose provinces or states have their own parliaments. */
-const REGIONAL_PARLIAMENTS = ['CA', 'AU', 'DE', 'IN', 'MX', 'ES', 'IT'];
+const REGIONAL_PARLIAMENTS = ['CA', 'AU', 'DE', 'IN', 'MX', 'ES', 'IT', 'BR'];
 const ABROAD_DEFAULTS = {
   legislativeStaff: { name: 'Parliamentary Staff', employer: (c, s, sn) => (REGIONAL_PARLIAMENTS.includes(s?.split('-')[0]) ? `${sn} legislature — staff office` : 'Parliamentary Service (national parliament)') },
   courts: { name: 'Courts Service', employer: (city) => `Courts Service — ${town(city)}` },

@@ -17,7 +17,7 @@
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
   IMMIGRATION, VISA_KINDS, EMIGRATION_COST, visaEligibility, residencyOf, residencesOf, birthCountryOf, prYearsLeft, naturalizationYearsLeft,
-  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST, NON_QUALIFYING_VISAS,
+  speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST, NON_QUALIFYING_VISAS, freeMovementTo, isEU,
 } from './Immigration.js';
 import { homeDanger, underMobilization, warIn } from './War.js';
 import { REGIONS, regionsIn, changeRegion, countryIdOf } from '../life/Regions.js';
@@ -55,6 +55,9 @@ export function routesTo(state, to) {
   if (isCitizen(state, to)) return [{ kind: 'citizen', ok: true, odds: 1, fee: 0, label: `${COUNTRIES[to].flag} Move home (citizen)` }];
   const res = residencesOf(state)[to];
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
+  // EU, Common Travel Area and trans-Tasman citizens just move: no visa, the right to live and work.
+  const free = freeMovementTo(citizenshipsOf(state), to);
+  if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
   const banned = bannedFrom(state, to);
   const visas = Object.keys(IMMIGRATION[to].visas).map((kind) => (banned
     ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
@@ -70,7 +73,7 @@ export function asylumRoute(state, to) {
   const law = ASYLUM[to];
   if (!law) return null;
   const war = warIn(state, countryIdOf(state));
-  const eu = ['DE', 'FR', 'IT'].includes(to);
+  const eu = isEU(to);
   const temporary = Boolean(law.temporary && eu && war.intensity >= 3 && war.homeFront >= 0.4);
   const odds = temporary ? 1 : Math.min(0.95, Math.max(law.odds, law.humanitarian ?? 0) + danger * 0.5);
   const label = temporary ? `🆘 ${law.temporary}` : `🆘 ${law.name}`;
@@ -118,9 +121,10 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
         ? { status: 'refugee', visa, arrived: age, grantedAt: age, from, temporary: true }
         : { status: 'asylum', visa, arrived: age, qualifyingSince: null, from, decisionAt: age + law.decision, workFrom: age + law.workAfter, odds: asylumRoute(state, to)?.odds ?? law.odds };
     } else {
-      const rule = IMMIGRATION[to].visas[visa] ?? {};
+      // Free movement: the right to live and work, without a visa to run out.
+      const rule = visa === 'freeMovement' ? { permanent: true } : IMMIGRATION[to].visas[visa] ?? {};
       if (visa === 'workingHoliday') m.whvUsed = [...(m.whvUsed ?? []), to];
-      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, arrived: age, qualifyingSince: NON_QUALIFYING_VISAS.includes(visa) ? null : age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
+      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, ...(visa === 'freeMovement' ? { scheme: freeMovementTo(citizenshipsOf(state), to) } : {}), arrived: age, qualifyingSince: NON_QUALIFYING_VISAS.includes(visa) ? null : age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
     }
   }
   m.history.push({ age, from, to, visa });
@@ -389,7 +393,7 @@ export const MigrationModule = {
       if (!route?.ok) return ctx.toast(route?.reason ?? 'Not eligible', 'warn');
       if (kind !== 'asylum' && !canAfford(state, EMIGRATION_COST + route.fee)) return ctx.toast(`You need $${(EMIGRATION_COST + route.fee).toLocaleString()} for the move and the application.`, 'warn');
       ensureMigration(state);
-      if (!['citizen', 'resident', 'asylum'].includes(kind)) {
+      if (!['citizen', 'resident', 'asylum', 'freeMovement'].includes(kind)) {
         if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast(`One application to ${COUNTRIES[to].name} a year.`, 'warn');
         bumpYearly(state, `migration.apply.${to}`);
         ctx.spend(route.fee, `${route.rule.name} application`, { credit: true });

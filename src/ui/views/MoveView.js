@@ -104,6 +104,7 @@ function passportCard(state) {
       : res.status === 'asylum' ? `${asylumLaw.name}${res.tolerated ? ' (refused — tolerated stay)' : res.appealed ? ' (on appeal)' : ''}`
       : res.temporary ? asylumLaw.temporary
         : res.status === 'refugee' ? 'Refugee status'
+          : res.visa === 'freeMovement' ? `Right to live and work (${res.scheme ?? 'free movement'})`
           : res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
     lines.push(`<p>${chip(STATUS_LABEL[res.status] ?? res.status, res.status === 'permanent' ? 'good' : 'warn')} ${esc(visa)}${res.expires != null ? ` · renews at ${res.expires}` : ''}${res.grace != null ? ` · ${chip(`⚠️ Conditions not met: leave by ${res.grace}`, 'bad')}` : ''}${res.removal ? ` ${chip('Removal ordered', 'bad')}` : ''}</p>`);
     if (res.status === 'asylum') {

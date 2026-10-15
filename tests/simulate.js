@@ -79,7 +79,9 @@ function renderAll(state) {
       const html = view(state);
       assert.equal(typeof html, 'string');
       const cc = state.character.countryId ?? 'US';
-      if (COUNTRY && cc !== 'US' && tab !== 'move') for (const t of screenText(html, COUNTRIES[cc])) for (const m of usLeftovers(cc, t)) if (!leftovers.has(m)) leftovers.set(m, `${tab} view @${state.character.age}`);
+      // (The life story keeps years lived in the US, which may mention US things.)
+      const livedInUS = (state.migration?.history ?? []).some((h) => h.to === 'US' || h.from === 'US');
+      if (COUNTRY && cc !== 'US' && tab !== 'move' && !(tab === 'life' && livedInUS)) for (const t of screenText(html, COUNTRIES[cc])) for (const m of usLeftovers(cc, t)) if (!leftovers.has(m)) leftovers.set(m, `${tab} view @${state.character.age}`);
     } catch (e) {
       throw new Error(`render ${tab} at age ${state.character.age}: ${e.stack}`);
     }
@@ -329,7 +331,7 @@ function randomActions(state) {
   if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));
   if (cv.hoa && player.chance(0.15)) tries.push(() => act('civic.hoaRun'), () => act('civic.hoaFight', player.pick(['pay', 'sue', 'recall'])));
   if (player.chance(0.05)) tries.push(() => act('civic.ptaJoin'), () => act('civic.ptaRun'), () => act('civic.watchJoin'));
-  if (cv.neighbors.length && player.chance(0.1)) tries.push(() => act('civic.visitNeighbor', player.pick(cv.neighbors).id));
+  if (cv.neighbors.length && player.chance(0.1)) tries.push(() => { const n = player.pick(cv.neighbors); if (n) act('civic.visitNeighbor', n.id); });
   if (!biz && age >= 21 && player.chance(0.03)) tries.push(() => act('business.franchise', `${player.pick(Object.keys(FRANCHISE_BRANDS))}:${player.pick(['cash', 'sba'])}:llc`));
   if (biz && player.chance(0.05)) tries.push(() => act('business.franchiseOut'));
   if (!biz && state.business.listings.length && player.chance(0.05)) tries.push(() => act('business.buy', `${player.pick(state.business.listings).id}:${player.pick(['cash', 'sba'])}`));

@@ -39,7 +39,7 @@ import { CommunityResponse } from './CommunityResponse.js';
 import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
 import { MedicalReserveCorps } from './MedicalReserveCorps.js';
-import { ensureVolunteerOrg, volunteerOrgTick, releaseVolunteerOrg, seatOpen, takeSeat, isSeatRank, isElectedRank, resolveElection, leaderAction } from '../org/VolunteerOrgs.js';
+import { ensureVolunteerOrg, volunteerOrgTick, releaseVolunteerOrg, seatOpen, takeSeat, isSeatRank, isElectedRank, resolveElection, leaderAction, LEADERSHIP } from '../org/VolunteerOrgs.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
@@ -245,6 +245,43 @@ function leaveService(ctx, serviceId, reason) {
   ctx.log(`You left the ${SERVICES[serviceId].name}. ${reason}.`, '🚪');
 }
 
+/** The unit you'd join in your town: the local service abroad, a US company at home. */
+function unitFor(ctx, svc) {
+  const cc = ctx.state.character.countryId ?? 'US';
+  const town = (REGIONS[ctx.state.character.regionId]?.name ?? 'your town').split(',')[0];
+  const localName = cc !== 'US' ? VOLUNTEER_SERVICES[cc]?.[svc.id] : null;
+  return localName ? `${localName} — ${town}` : cc !== 'US' ? `${svc.name} — ${town}` : ctx.rng.pick(svc.units);
+}
+
+/**
+ * You moved: volunteer units are local. Where the service exists you transfer to
+ * the unit in your new town, keeping your training and experience but not an
+ * officer's seat (that belongs to the old unit); where it doesn't, you leave.
+ */
+export function relocateVolunteers(ctx) {
+  const { state } = ctx;
+  const cc = state.character.countryId ?? 'US';
+  for (const [serviceId, member] of Object.entries(state.emergency)) {
+    if (serviceId === 'history' || !member || !SERVICES[serviceId]) continue;
+    const svc = SERVICES[serviceId];
+    if (!volunteerServiceHere(cc, serviceId)) {
+      leaveService(ctx, serviceId, 'You moved somewhere without one');
+      continue;
+    }
+    if (member.orgId) releaseVolunteerOrg(state, member.orgId);
+    const firstSeat = Math.min(...Object.keys(LEADERSHIP[serviceId]?.seats ?? {}).map(Number));
+    const was = rankOfMember(serviceId, member).title;
+    if (Number.isFinite(firstSeat) && member.rankIndex >= firstSeat) member.rankIndex = Math.max(0, firstSeat - 1);
+    const from = member.unit;
+    member.unit = unitFor(ctx, svc);
+    member.serviceName = svc.name;
+    member.orgId = null;
+    ensureVolunteerOrg(state, svc, member);
+    const now = rankOfMember(serviceId, member).title;
+    ctx.log(`You transferred from ${from} to ${member.unit}${now !== was ? ` as ${now} (officer posts stay with the old unit)` : ''}.`, svc.icon, 'info');
+  }
+}
+
 function newK9(rng) {
   return { name: rng.pick(K9_NAMES), breed: rng.pick(K9_BREEDS), age: 1 };
 }
@@ -312,6 +349,7 @@ export const EmergencyEngine = {
 
   setup(engine) {
     const bus = engine.bus;
+    bus.on('region:changed', ({ ctx, from, to }) => { if (from !== to) relocateVolunteers(ctx); });
     // Old saves: v1 members had no training budget, and their certifications move to the credentials registry.
     bus.on('save:migrated', ({ ctx }) => {
       const { state } = ctx;
@@ -378,10 +416,7 @@ export const EmergencyEngine = {
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       const svc = SERVICES[serviceId];
       // Abroad, the unit is the local service in your town (St John Ambulance — Cardiff), not a US one.
-      const cc = ctx.state.character.countryId ?? 'US';
-      const localName = cc !== 'US' ? VOLUNTEER_SERVICES[cc]?.[serviceId] : null;
-      const town = (REGIONS[ctx.state.character.regionId]?.name ?? 'your town').split(',')[0];
-      const unit = localName ? `${localName} — ${town}` : cc !== 'US' ? `${svc.name} — ${town}` : ctx.rng.pick(svc.units);
+      const unit = unitFor(ctx, svc);
       ctx.state.emergency[serviceId] = {
         serviceName: svc.name,
         unit,

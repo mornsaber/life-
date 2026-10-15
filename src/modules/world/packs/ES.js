@@ -93,7 +93,7 @@ export const ES = {
   },
   tables: {
     /* Law and money */
-    JUSTICE: { trial: 'judge', juror: 'service on a jurado popular', jurorPay: ppp(67), sentence: 0.45, jail: (c) => `Centro Penitenciario ${city(c)}`, prison: 'a centro penitenciario', legalAid: 'abogado de oficio (justicia gratuita)', privatePrisons: 0 },
+    JUSTICE: { trial: 'jury', juror: 'service on a jurado popular (Tribunal del Jurado)', jurorPay: ppp(67), sentence: 0.45, jail: (c) => `Centro Penitenciario ${city(c)}`, prison: 'a centro penitenciario', legalAid: 'abogado de oficio (justicia gratuita)', privatePrisons: 0 },
     INSOLVENCY: { liquidation: { name: 'Ley de Segunda Oportunidad (exoneración)', wait: 2, plan: 3 }, plan: { name: 'Plan de pagos (segunda oportunidad)', years: 5, wait: 2 }, homestead: 0, wildcard: ppp(3000), creditYears: 6 },
     // Inheritance tax is set by each region; most now nearly exempt children up to about €1 million.
     INHERITANCE: { name: 'Impuesto sobre Sucesiones', perHeir: true, exemption: ppp(1000000), brackets: [[ppp(800000), 0.15], [Infinity, 0.3]] },
