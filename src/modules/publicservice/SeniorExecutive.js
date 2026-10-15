@@ -28,6 +28,12 @@
  *   The very top   Ambassadors, inspectors general and U.S. Marshals are
  *                  nominated by the President and confirmed by the Senate.
  *
+ * Abroad the same mechanics run under each country's own senior civil service (Britain's
+ * Senior Civil Service, Australia's APS SES, France's emplois de direction, the
+ * Philippines' Career Executive Service…): its development programme, its selection
+ * board, its pay band and the grade you fall back to. There are no Presidential Rank
+ * Awards, Senate confirmations or SL/ST posts outside the US.
+ *
  * state.ses = { stage: null|'cdp'|'certified'|'member', cdpYears, cdpDetails[], type: 'career'|'slst',
  *   since, probationUntil, pay, rating, awards, apps, lastTransitionYear }
  */
@@ -50,6 +56,44 @@ const KINDS = {
   pces: { name: 'Postal Career Executive Service', short: 'PCES' },
   pas: { name: 'Presidential appointment (Senate-confirmed)', short: 'PAS' },
 };
+
+/**
+ * Each country's senior civil service: name, short name, development programme, the board that
+ * certifies or selects, the qualities it assesses, the grade you fall back to, and the pay band.
+ */
+const SENIOR_SERVICES = {
+  GB: { name: 'Senior Civil Service', short: 'SCS', programme: 'Future Leaders Scheme', board: 'a Civil Service Commission panel', quals: 'Success Profiles', fallback: 'Grade 6', pay: [95000, 200000] },
+  IE: { name: 'Senior Public Service', short: 'SPS', programme: 'Senior Public Service Leadership Development Programme', board: 'the Top Level Appointments Committee', quals: 'the senior leadership competencies', fallback: 'Principal Officer', pay: [120000, 220000] },
+  AU: { name: 'Senior Executive Service (APS)', short: 'SES', programme: 'SES Band 1 Leadership Program', board: 'an APS Commissioner-endorsed selection panel', quals: 'the SES Leadership Capability Framework', fallback: 'EL2', pay: [200000, 350000] },
+  NZ: { name: 'Public Service senior leadership', short: 'senior leader', programme: 'Leadership Development Centre programme', board: 'the Public Service Commission', quals: 'the Leadership Success Profile', fallback: 'manager grade', pay: [180000, 300000] },
+  CA: { name: 'Executive Group (EX)', short: 'EX', programme: 'Accelerated Executive Development Program', board: 'the Public Service Commission', quals: 'the Key Leadership Competencies', fallback: 'your pre-executive level', pay: [130000, 220000] },
+  DE: { name: 'Höherer Dienst — B-Besoldung', short: 'B', programme: 'Führungskolleg Speyer', board: "the ministry's personnel committee", quals: 'the leadership assessment', fallback: 'A16', pay: [110000, 180000] },
+  FR: { name: 'Haute fonction publique (emplois de direction)', short: 'emploi de direction', programme: 'cycle supérieur de management (INSP)', board: 'the DIESE (délégation interministérielle à l\'encadrement supérieur)', quals: 'the senior management assessment', fallback: 'your corps grade', pay: [100000, 180000] },
+  IT: { name: 'Dirigenza pubblica', short: 'dirigente', programme: 'SNA dirigenti course', board: 'the Dipartimento della Funzione Pubblica', quals: 'the dirigenza competencies', fallback: 'funzionario', pay: [100000, 200000] },
+  ES: { name: 'Alta dirección pública', short: 'subdirector general', programme: 'INAP executive programme', board: 'the ministry', quals: 'the directive competencies', fallback: 'your cuerpo\'s level 30', pay: [80000, 130000] },
+  NL: { name: 'Algemene Bestuursdienst (ABD)', short: 'ABD', programme: 'ABD Kandidatenprogramma', board: 'Bureau ABD', quals: 'the ABD leadership profile', fallback: 'schaal 15', pay: [110000, 200000] },
+  SE: { name: 'Senior civil service (myndighetschefer)', short: 'chef', programme: 'Government Offices leadership programme', board: 'the Government Offices', quals: 'the leadership profile', fallback: 'your previous post', pay: [100000, 180000] },
+  JP: { name: 'Senior officials (shitei-shoku)', short: 'senior official', programme: 'National Personnel Authority executive seminar', board: 'the Cabinet Bureau of Personnel Affairs', quals: 'the senior official criteria', fallback: 'division director (kachō) grade', pay: [130000, 220000] },
+  KR: { name: 'Senior Civil Service (Gowi Gongmuwondan)', short: 'SCS', programme: 'Senior Civil Service candidate course', board: 'the Ministry of Personnel Management', quals: 'the competency assessment', fallback: 'grade 3', pay: [110000, 180000] },
+  IN: { name: 'Senior Administrative Grade (Joint Secretary)', short: 'JS', programme: 'Mid-Career Training Programme (LBSNAA)', board: 'the Appointments Committee of the Cabinet', quals: 'the empanelment review', fallback: 'Director', pay: [60000, 110000] },
+  MX: { name: 'Servicio Profesional de Carrera (dirección general)', short: 'SPC', programme: 'SPC certification', board: 'the Secretaría Anticorrupción y Buen Gobierno', quals: 'the managerial capacities', fallback: 'director de área', pay: [70000, 130000] },
+  BR: { name: 'Cargos de direção (CCE)', short: 'CCE', programme: 'ENAP leadership course', board: 'the ministry', quals: 'the leadership profile', fallback: 'your career grade', pay: [90000, 160000] },
+  PH: { name: 'Career Executive Service (CES)', short: 'CES', programme: 'Career Executive Service Development Program', board: 'the Career Executive Service Board', quals: 'the CES eligibility examination', fallback: 'Division Chief', pay: [60000, 110000] },
+  '*': { name: 'Senior Civil Service', short: 'SCS', programme: 'senior leadership programme', board: 'the civil service commission', quals: 'the senior leadership criteria', fallback: 'your previous grade', pay: [100000, 180000] },
+};
+const abroad = (state) => (state?.character?.countryId ?? 'US') !== 'US';
+/**
+ * The executive corps you'd join: the US SES (or the SFS, SIS, PCES) at home,
+ * the country's senior civil service abroad.
+ */
+export function corpsFor(state, professionId) {
+  if (abroad(state)) {
+    const c = SENIOR_SERVICES[state.character.countryId] ?? SENIOR_SERVICES['*'];
+    return { ...c, us: false, payMin: c.pay[0], payMax: c.pay[1] };
+  }
+  const k = corpsOf(professionId);
+  return { name: k.name, short: k.short, programme: 'SES Candidate Development Program', board: 'OPM\'s Qualifications Review Board', quals: 'Executive Core Qualifications (ECQs)', fallback: 'GS-15', us: true, payMin: SES_PAY.min, payMax: SES_PAY.max };
+}
 
 /** Executive rungs of federal careers, and which executive corps they belong to. */
 export const SES_LEVELS = {
@@ -95,7 +139,9 @@ const corpsOf = (professionId) => {
   const kinds = Object.values(SES_LEVELS[professionId] ?? {}).filter((k) => k !== 'pas');
   return KINDS[kinds[0] ?? 'ses'];
 };
-export const corpsName = (professionId) => corpsOf(professionId).name;
+export const corpsName = (professionId, state) => (state ? corpsFor(state, professionId).name : corpsOf(professionId).name);
+/** A national agency abroad keeps the US career's executive rungs under its own id (gb_fbi → fbi). */
+const sesMap = (professionId) => SES_LEVELS[professionId] ?? SES_LEVELS[String(professionId).split('_').slice(1).join('_')];
 const isFederal = (job) => Boolean(job) && PROFESSIONS[job.professionId]?.sector === 'federal';
 
 /** Years supervising in federal service (current job included). */
@@ -111,9 +157,9 @@ const federalYears = (state) => yearsInProfession(state, Object.keys(PROFESSIONS
 export function sesReadiness(state) {
   const job = state.career.job;
   const checks = [
-    ['A federal job', isFederal(job)],
-    ['GS-14/15 equivalent (G7+)', (job?.grade ?? 0) >= 7],
-    ['6+ years of federal service', federalYears(state) >= 6],
+    [abroad(state) ? 'A national civil-service job' : 'A federal job', isFederal(job)],
+    [abroad(state) ? 'A senior grade (G7+)' : 'GS-14/15 equivalent (G7+)', (job?.grade ?? 0) >= 7],
+    [abroad(state) ? '6+ years in the civil service' : '6+ years of federal service', federalYears(state) >= 6],
     ['2+ years supervising', supervisoryYears(state) >= 2],
     ['A strong record (70+)', (job?.performance ?? 0) >= 70],
   ];
@@ -136,7 +182,7 @@ export function slstReadiness(state) {
 /** The lowest executive rung you could be appointed to in your career (null if none). */
 export function sesLevelFor(job) {
   const p = getProfession(job?.professionId);
-  const map = SES_LEVELS[job?.professionId];
+  const map = sesMap(job?.professionId);
   if (!p || !map) return null;
   return p.levels.filter((l) => map[l.id] && map[l.id] !== 'pas' && l.grade >= job.grade).sort((a, b) => a.grade - b.grade)[0] ?? null;
 }
@@ -161,13 +207,14 @@ function becomeExecutive(ctx, type, how) {
   const level = type === 'career' ? sesLevelFor(job) : null;
   const placed = level && (level.id === job.levelId || promote(ctx, level.id));
   s.prevTitle = placed ? null : job.title;
-  Object.assign(s, { stage: 'member', type, since: state.character.age, probationUntil: state.character.age + 1, pay: clamp(Math.round(Math.max(SES_PAY.min, job.salary * 1.05) / 100) * 100, SES_PAY.min, SES_PAY.max), rating: null });
-  // Agencies without an executive rung in your line still have SES deputy and director posts.
-  if (!placed && type === 'career') job.title = `${job.title} (${corpsOf(job.professionId).short})`;
+  const C = corpsFor(state, job.professionId);
+  Object.assign(s, { stage: 'member', type, since: state.character.age, probationUntil: state.character.age + 1, pay: clamp(Math.round(Math.max(C.payMin, job.salary * 1.05) / 100) * 100, C.payMin, C.payMax), rating: null });
+  // Agencies without an executive rung in your line still have executive deputy and director posts.
+  if (!placed && type === 'career') job.title = `${job.title} (${C.short})`;
   if (type === 'slst') job.title = /PhD|research|scien/i.test(job.title) ? 'Senior Technical Scientist (ST)' : `Senior Level ${job.title} (SL)`;
   applySesPay(state, job);
-  ctx.log(`${how} You are now a member of the ${type === 'slst' ? 'Senior Level / Senior Technical service' : corpsOf(job.professionId).name}: ${job.title}, ${'$'}${job.salary.toLocaleString()} a year. A one-year probationary period starts now.`, '🏛️', 'milestone');
-  ctx.toast(`🏛️ ${type === 'slst' ? 'SL/ST' : corpsOf(job.professionId).short}`, 'good');
+  ctx.log(`${how} You are now a member of the ${type === 'slst' ? 'Senior Level / Senior Technical service' : C.name}: ${job.title}, ${'$'}${job.salary.toLocaleString()} a year. A one-year probationary period starts now.`, '🏛️', 'milestone');
+  ctx.toast(`🏛️ ${type === 'slst' ? 'SL/ST' : C.short}`, 'good');
   ctx.stat('happiness', 10);
 }
 
@@ -187,7 +234,7 @@ function fallBack(ctx, reason) {
     }
     s.prevTitle = null;
   }
-  ctx.log(`You left the executive ranks (${reason}) and returned to a GS-15-level position — your fallback right as a career employee.`, '⬇️', 'warn');
+  ctx.log(`You left the executive ranks (${reason}) and returned to a ${corpsFor(state, job?.professionId).fallback}-level position — your fallback right as a career employee.`, '⬇️', 'warn');
 }
 
 /* ------------------------------------------------------------------ */
@@ -196,7 +243,7 @@ function fallBack(ctx, reason) {
 
 const DETAILS = [
   { id: 'agency', label: '🏢 A detail to another agency', hint: 'Breadth: how other departments work', ecq: 'Building Coalitions' },
-  { id: 'hill', label: '🏛️ A congressional fellowship on the Hill', hint: 'Budget and politics up close', ecq: 'Business Acumen' },
+  { id: 'hill', label: '🏛️ A congressional fellowship on the Hill', abroad: '🏛️ A secondment to a minister\'s private office', hint: 'Budget and politics up close', ecq: 'Business Acumen' },
   { id: 'field', label: '🗺️ Acting director of a field office', hint: 'Leading people, results on the line', ecq: 'Leading People' },
   { id: 'change', label: '🔧 Lead a reorganization task force', hint: 'Leading Change', ecq: 'Leading Change' },
 ];
@@ -206,19 +253,21 @@ function cdpTick(ctx) {
   const s = ses(state);
   s.cdpYears += 1;
   if (s.cdpYears < CDP_YEARS) {
-    ctx.log('Year one of the SES Candidate Development Program: 360-degree feedback, an executive mentor, and two weeks at the Federal Executive Institute.', '🎓');
-    if (!state.prompts.some((p) => p.type === 'ses.detail')) ctx.prompt({ type: 'ses.detail', icon: '🧭', title: 'Developmental Assignment', text: 'Every SES candidate does a four-month developmental assignment outside their usual job. Which one?', options: DETAILS.filter((d) => !s.cdpDetails.includes(d.id)).map(({ id, label, hint }) => ({ id, label, hint })) });
+    const C = corpsFor(state, state.career.job?.professionId);
+    ctx.log(C.us ? 'Year one of the SES Candidate Development Program: 360-degree feedback, an executive mentor, and two weeks at the Federal Executive Institute.' : `Year one of the ${C.programme}: 360-degree feedback, an executive mentor and a residential leadership course.`, '🎓');
+    if (!state.prompts.some((p) => p.type === 'ses.detail')) ctx.prompt({ type: 'ses.detail', icon: '🧭', title: 'Developmental Assignment', text: `Every ${C.short} candidate does a four-month developmental assignment outside their usual job. Which one?`, options: DETAILS.filter((d) => !s.cdpDetails.includes(d.id)).map(({ id, label, abroad: alt, hint }) => ({ id, label: C.us ? label : alt ?? label, hint })) });
     return;
   }
+  const C = corpsFor(state, state.career.job?.professionId);
   // Graduation: the Qualifications Review Board.
   const odds = clamp(0.8 + s.cdpDetails.length * 0.05 + (state.stats.smarts - 60) / 300, 0.6, 0.98);
   if (rng.chance(odds)) {
     s.stage = 'certified';
     grantCredential(ctx, 'sesCert', { silent: true });
-    ctx.log('You graduated from the Candidate Development Program and OPM\'s Qualifications Review Board certified your Executive Core Qualifications. You can now be appointed to the SES without competing again.', '🏛️', 'milestone');
+    ctx.log(C.us ? 'You graduated from the Candidate Development Program and OPM\'s Qualifications Review Board certified your Executive Core Qualifications. You can now be appointed to the SES without competing again.' : `You completed the ${C.programme}, and ${C.board} assessed you against ${C.quals}: you can now be appointed to the ${C.name} without competing again.`, '🏛️', 'milestone');
   } else {
     s.stage = null;
-    ctx.log('The Qualifications Review Board sent your ECQs back. You finished the program, but you are not certified — you can still apply to SES vacancies directly.', '📝', 'warn');
+    ctx.log(C.us ? 'The Qualifications Review Board sent your ECQs back. You finished the program, but you are not certified — you can still apply to SES vacancies directly.' : `${C.board.charAt(0).toUpperCase()}${C.board.slice(1)} didn't sign you off. You finished the programme, but you'll have to compete for ${C.short} posts directly.`, '📝', 'warn');
   }
 }
 
@@ -228,29 +277,32 @@ function memberTick(ctx, job) {
   // Probation: the first year decides whether you stay.
   if (s.probationUntil != null && state.character.age >= s.probationUntil) {
     s.probationUntil = null;
-    if (job.performance < 50) return fallBack(ctx, 'did not complete the SES probationary period');
-    ctx.log('You completed your SES probationary period.', '✅', 'good');
+    const C0 = corpsFor(state, job.professionId);
+    if (job.performance < 50) return fallBack(ctx, `did not complete the ${C0.short} probationary period`);
+    ctx.log(`You completed your ${C0.short} probationary period.`, '✅', 'good');
   }
   // The annual appraisal sets pay; top ratings earn awards.
   const rating = job.performance >= 85 ? 'Outstanding' : job.performance >= 70 ? 'Exceeds Fully Successful' : job.performance >= 50 ? 'Fully Successful' : job.performance >= 30 ? 'Minimally Satisfactory' : 'Unsatisfactory';
   s.rating = rating;
   const raise = { Outstanding: 0.05, 'Exceeds Fully Successful': 0.03, 'Fully Successful': 0.015 }[rating] ?? 0;
-  s.pay = clamp(Math.round((s.pay * (1 + raise)) / 100) * 100, SES_PAY.min, SES_PAY.max);
+  const C = corpsFor(state, job.professionId);
+  s.pay = clamp(Math.round((s.pay * (1 + raise)) / 100) * 100, C.payMin, C.payMax);
   applySesPay(state, job);
   if (rating === 'Outstanding' || (rating === 'Exceeds Fully Successful' && rng.chance(0.5))) {
     const pct = rating === 'Outstanding' ? rng.float(0.1, 0.2) : rng.float(0.05, 0.1);
     const award = Math.round((s.pay * pct) / 100) * 100;
-    ctx.earn(award, 'SES performance award', { wage: true });
+    ctx.earn(award, `${C.short} performance award`, { wage: true });
     s.awards = (s.awards ?? 0) + 1;
     ctx.log(`Your executive appraisal: ${rating}. A ${Math.round(pct * 100)}% performance award ($${award.toLocaleString()}).`, '📈', 'good');
   } else if (rating === 'Unsatisfactory' || rating === 'Minimally Satisfactory') {
-    ctx.log(`Your executive appraisal: ${rating}. Two of those in three years and you're out of the SES.`, '📉', 'bad');
+    ctx.log(`Your executive appraisal: ${rating}. Two of those in three years and you're out of the ${C.short}.`, '📉', 'bad');
     s.lowRatings = (s.lowRatings ?? 0) + 1;
     if (s.lowRatings >= 2) return fallBack(ctx, 'removed for performance');
   }
   // Presidential Rank Awards: nominated by the agency, decided by a citizen panel.
   const years = state.character.age - s.since;
-  if (s.type === 'career' || s.type === 'slst') {
+  // Presidential Rank Awards are American; elsewhere the honours list does that job.
+  if (C.us && (s.type === 'career' || s.type === 'slst')) {
     const has = (id) => state.honors.some((h) => h.id === id);
     if (years >= 3 && job.performance >= 85 && !has('ses.meritorious') && rng.chance(0.12)) {
       const award = Math.round(s.pay * 0.2);
@@ -280,7 +332,7 @@ function memberTick(ctx, job) {
   if (year % 4 === 1 && s.lastTransitionYear !== year) {
     s.lastTransitionYear = year;
     if (rng.chance(0.3) && !state.prompts.some((p) => p.type === 'ses.transition')) {
-      ctx.prompt({ type: 'ses.transition', icon: '🇺🇸', title: 'A New Administration', text: 'The new political leadership arrived with its own priorities. After the 120-day moratorium, your new boss wants "a fresh team" running your organization.', options: [
+      ctx.prompt({ type: 'ses.transition', icon: C.us ? '🇺🇸' : '🏛️', title: C.us ? 'A New Administration' : 'A New Government', text: C.us ? 'The new political leadership arrived with its own priorities. After the 120-day moratorium, your new boss wants "a fresh team" running your organization.' : 'A new government arrived with its own priorities, and your new minister wants "a fresh team" running your organization.', options: [
         { id: 'adapt', label: '🤝 Brief them, earn their trust', hint: 'Smarts check' },
         { id: 'special', label: '📁 Accept a "special assistant" reassignment', hint: 'Same pay, no portfolio' },
         { id: 'retire', label: '🎖️ Retire', hint: 'If you\'re eligible' },
@@ -290,9 +342,9 @@ function memberTick(ctx, job) {
   }
   // Mobility: executives can be reassigned anywhere on short notice.
   if (years >= 2 && rng.chance(0.1) && !state.prompts.some((p) => p.type === 'ses.reassign')) {
-    ctx.prompt({ type: 'ses.reassign', icon: '🧳', title: 'Directed Reassignment', text: `Headquarters is reassigning you to lead an office across the country — 15 days' notice, as the SES rules allow. Decline, and you leave the SES.`, options: [
+    ctx.prompt({ type: 'ses.reassign', icon: '🧳', title: 'Directed Reassignment', text: C.us ? `Headquarters is reassigning you to lead an office across the country — 15 days' notice, as the SES rules allow. Decline, and you leave the SES.` : `Headquarters is moving you to lead another office, as ${C.short} mobility rules allow. Decline, and you leave the ${C.short}.`, options: [
       { id: 'go', label: '🧳 Go', hint: 'Relocation paid; a hard year at home' },
-      { id: 'decline', label: '🙅 Decline', tone: 'danger', hint: 'Back to GS-15 — or retire if eligible' },
+      { id: 'decline', label: '🙅 Decline', tone: 'danger', hint: `Back to ${C.fallback} — or retire if eligible` },
     ] });
   }
 }
@@ -300,6 +352,7 @@ function memberTick(ctx, job) {
 /** Presidential nominations for the very top posts. */
 function nominationTick(ctx, job) {
   const { state, rng } = ctx;
+  if (abroad(state)) return;
   const p = getProfession(job.professionId);
   const idx = p.levels.findIndex((l) => l.id === job.levelId);
   const top = p.levels.find((l, i) => i > idx && l.ses === 'pas');
@@ -359,16 +412,17 @@ export const SeniorExecutiveModule = {
       const r = sesReadiness(state);
       if (!r.ok) return ctx.toast(`Not yet: ${r.checks.find(([, ok]) => !ok)[0]}`, 'warn');
       if (s.stage) return ctx.toast(s.stage === 'cdp' ? 'You\'re in the program' : 'Already certified', 'warn');
-      if (yearlyCount(state, 'ses.apply')) return ctx.toast('One SES application a year', 'warn');
+      if (yearlyCount(state, 'ses.apply')) return ctx.toast('One application a year', 'warn');
       bumpYearly(state, 'ses.apply');
       s.apps += 1;
       const job = state.career.job;
+      const C = corpsFor(state, job.professionId);
       const odds = clamp(0.12 + (job.performance - 70) / 120 + (state.stats.smarts - 60) / 300 + Math.min(0.1, supervisoryYears(state) * 0.015), 0.05, 0.5);
       ctx.stat('stress', 4);
       if (rng.chance(odds)) {
         Object.assign(s, { stage: 'cdp', cdpYears: 0, cdpDetails: [] });
-        ctx.log('You were selected for the SES Candidate Development Program — a two-year path to the Senior Executive Service.', '🎓', 'milestone');
-      } else ctx.log(`The Candidate Development Program took ${rng.int(12, 25)} of several hundred applicants. You weren't one of them this year.`, '📨', 'warn');
+        ctx.log(`You were selected for the ${C.programme} — a two-year path to the ${C.name}.`, '🎓', 'milestone');
+      } else ctx.log(`The ${C.programme} took ${rng.int(12, 25)} of several hundred applicants. You weren't one of them this year.`, '📨', 'warn');
     },
     /** Apply to an SES vacancy with written ECQ narratives. */
     ecq(ctx) {
@@ -378,7 +432,8 @@ export const SeniorExecutiveModule = {
       const r = sesReadiness(state);
       if (!r.ok) return ctx.toast(`Not yet: ${r.checks.find(([, ok]) => !ok)[0]}`, 'warn');
       if (s.stage === 'member' || s.stage === 'cdp') return;
-      if (yearlyCount(state, 'ses.apply')) return ctx.toast('One SES application a year', 'warn');
+      if (yearlyCount(state, 'ses.apply')) return ctx.toast('One application a year', 'warn');
+      const C = corpsFor(state, job.professionId);
       bumpYearly(state, 'ses.apply');
       s.apps += 1;
       ctx.stat('stress', 6);
@@ -386,15 +441,16 @@ export const SeniorExecutiveModule = {
       const certified = hasCredential(state, 'sesCert');
       const narrative = certified ? 1 : clamp((state.stats.smarts + rng.int(-25, 25)) / 100, 0, 1);
       const pick = clamp(0.1 + (job.performance - 70) / 150 + narrative * 0.15 + Math.min(0.08, supervisoryYears(state) * 0.01) + (certified ? 0.1 : 0), 0.04, 0.55);
-      if (!rng.chance(pick)) return ctx.log(`You spent weekends on ten pages of ECQ narratives. The Executive Resources Board picked someone else${narrative < 0.5 ? ' — your narratives read like a job description, not accomplishments' : ''}.`, '📨', 'warn');
-      if (!certified && !rng.chance(clamp(0.55 + narrative * 0.35, 0.5, 0.9))) return ctx.log('The agency selected you — but OPM\'s Qualifications Review Board didn\'t certify your ECQs. The job went to the runner-up.', '📝', 'bad');
-      becomeExecutive(ctx, 'career', 'The Executive Resources Board selected you and the Qualifications Review Board certified your ECQs.');
+      if (!rng.chance(pick)) return ctx.log(C.us ? `You spent weekends on ten pages of ECQ narratives. The Executive Resources Board picked someone else${narrative < 0.5 ? ' — your narratives read like a job description, not accomplishments' : ''}.` : `You wrote your statement against ${C.quals} and sat the assessment centre. The panel picked someone else.`, '📨', 'warn');
+      if (!certified && !rng.chance(clamp(0.55 + narrative * 0.35, 0.5, 0.9))) return ctx.log(C.us ? 'The agency selected you — but OPM\'s Qualifications Review Board didn\'t certify your ECQs. The job went to the runner-up.' : `The department wanted you, but ${C.board} didn't approve the appointment. The job went to the runner-up.`, '📝', 'bad');
+      becomeExecutive(ctx, 'career', C.us ? 'The Executive Resources Board selected you and the Qualifications Review Board certified your ECQs.' : `The selection panel chose you and ${C.board} approved the appointment.`);
     },
     /** Senior Level / Senior Technical: an expert's route. */
     slst(ctx) {
       const { state, rng } = ctx;
       const s = ses(state);
       const r = slstReadiness(state);
+      if (abroad(state)) return ctx.toast('Senior Level / Senior Technical posts are a US federal system', 'warn');
       if (!r.ok) return ctx.toast(`Not yet: ${r.checks.find(([, ok]) => !ok)[0]}`, 'warn');
       if (s.stage === 'member') return;
       if (yearlyCount(state, 'ses.apply')) return ctx.toast('One application a year', 'warn');
@@ -420,7 +476,7 @@ export const SeniorExecutiveModule = {
       ctx.log(`Your developmental assignment: ${d.label.replace(/^\S+ /, '').toLowerCase()}. Good material for your "${d.ecq}" narrative.`, '🧭', 'good');
     },
     offer(ctx, _data, optionId) {
-      if (optionId === 'accept' && ses(ctx.state).stage === 'certified') becomeExecutive(ctx, 'career', 'You accepted a noncompetitive SES appointment.');
+      if (optionId === 'accept' && ses(ctx.state).stage === 'certified') becomeExecutive(ctx, 'career', `You accepted a noncompetitive ${corpsFor(ctx.state, ctx.state.career.job?.professionId).short} appointment.`);
     },
     reassign(ctx, _data, optionId) {
       const { state } = ctx;
@@ -429,7 +485,7 @@ export const SeniorExecutiveModule = {
         ctx.stat('stress', 6);
         if (state.career.job) state.career.job.performance = Math.min(100, state.career.job.performance + 4);
         ctx.log('You took the reassignment and moved across the country. New office, new staff, same pay.', '🧳');
-      } else if (state.character.age >= 55 && federalYears(state) >= 20) leaveJob(ctx, 'Retired (declined SES reassignment)');
+      } else if (state.character.age >= 55 && federalYears(state) >= 20) leaveJob(ctx, 'Retired (declined a directed reassignment)');
       else fallBack(ctx, 'declined a directed reassignment');
     },
     transition(ctx, _data, optionId) {
@@ -443,7 +499,7 @@ export const SeniorExecutiveModule = {
         job.performance = Math.max(0, job.performance - 5);
         ctx.stat('happiness', -8);
         ctx.log('You became a "senior advisor" with no staff and no portfolio. Your pay didn\'t change.', '📁', 'warn');
-      } else if (state.character.age >= 55 && federalYears(state) >= 20) leaveJob(ctx, 'Retired (change of administration)');
+      } else if (state.character.age >= 55 && federalYears(state) >= 20) leaveJob(ctx, abroad(state) ? 'Retired (change of government)' : 'Retired (change of administration)');
       else ctx.log('You aren\'t eligible to retire yet. You stayed.', '🎖️');
     },
     nomination(ctx, data, optionId) {

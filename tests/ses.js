@@ -17,6 +17,9 @@ import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js
 import { SeniorExecutiveModule, sesReadiness, SES_PAY } from '../src/modules/publicservice/SeniorExecutive.js';
 import { scopeOfType } from '../src/core/PromptScope.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { sesCard } from '../src/ui/views/SesView.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
+import { usLeftovers, screenText } from './usTerms.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function fed(seed, professionId = 'regulatory', levelId = 'branchChief', years = 10) {
@@ -133,6 +136,35 @@ const tests = {
       if (n) { engine.resolvePrompt(n.id, 'accept'); confirmed = state.career.job.levelId === 'ambassador'; }
     }
     assert.ok(confirmed, 'nominated and confirmed as ambassador');
+  },
+  'abroad it is the country\'s own senior civil service — no OPM, GS-15, SL/ST or Presidential awards'() {
+    for (const [cc, name] of [['GB', 'Senior Civil Service'], ['AU', 'Senior Executive Service (APS)'], ['FR', 'Haute fonction publique'], ['PH', 'Career Executive Service']]) {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(5), modules: MODULES });
+      const state = engine.newLife({ countryId: cc });
+      state.character.age = 45;
+      Object.assign(state.stats, { smarts: 90, health: 90 });
+      state.legal.record = [];
+      state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'economics', gpa: 3.5, year: 22, country: cc });
+      const ctx = engine.context();
+      const pid = `${cc.toLowerCase()}_regulatory`;
+      const p = getProfession(pid);
+      const job = hire(ctx, { professionId: pid, levelId: 'branchChief', employer: createEmployer(ctx.rng, state, p, state.character.regionId) });
+      assert.ok(job, `${cc} hired`);
+      Object.assign(job, { yearsAtEmployer: 10, yearsInLevel: 4, performance: 88, abilities: [...job.abilities, 'supervise'] });
+      state.career.history.push({ professionId: pid, startAge: 30, endAge: 41, levelId: 'supervisory', title: 'Supervisor', sector: 'federal' });
+      const html = sesCard(state);
+      assert.ok(html.includes(name.split(' (')[0]), `${cc}: ${name}`);
+      const text = screenText(html, COUNTRIES[cc]).join(' ');
+      assert.ok(!/OPM|GS-15|SL\/ST|Presidential|Executive Core Qualifications/.test(text), `${cc}: ${text.slice(0, 300)}`);
+      assert.deepEqual(usLeftovers(cc, text).slice(0, 3), []);
+      // Becoming an executive: the country's own band.
+      let ok = false;
+      for (let t = 0; t < 30 && state.ses.stage !== 'member'; t++) { state.yearly = {}; state.prompts = []; engine.dispatch('ses.ecq'); ok = true; }
+      assert.ok(ok);
+      if (state.ses.stage === 'member') assert.ok(state.ses.pay <= ({ GB: 200000, AU: 350000, FR: 180000, PH: 110000 })[cc], `${cc} pay ${state.ses.pay}`);
+      engine.dispatch('ses.slst');
+      assert.notEqual(state.ses.type, 'slst');
+    }
   },
 };
 
