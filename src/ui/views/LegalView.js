@@ -11,34 +11,51 @@ import { stateOf } from '../../modules/life/Regions.js';
 import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
 import { STATES } from '../../modules/life/States.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
-import { COURTS, currentCourt, benchEligibility, benchYears, selectionFor, MANDATORY_RETIREMENT } from '../../modules/legal/Judiciary.js';
+import { courtDef, courtTitle, courtsHere, benchHere, currentCourt, benchEligibility, benchYears, selectionFor, layEligibility, examEligibility, MANDATORY_RETIREMENT } from '../../modules/legal/Judiciary.js';
 import { CLAIMS, claimEligibility } from '../../modules/legal/CivilCourts.js';
 
-const SELECTION_LABEL = { elected: 'elected', merit: 'merit selection + retention votes', appointed: 'appointed' };
+const SELECTION_LABEL = { elected: 'elected', merit: 'merit selection + retention votes', appointed: 'appointed', career: 'career judiciary: by seniority' };
 
-/** The bench: your seat, record and the ladder above you. */
+/** The bench: your seat, record and the ladder above you — the country's own courts abroad. */
 function benchCard(state) {
   const court = currentCourt(state);
-  const lawyer = state.credentials?.held?.barLicense;
-  if (!court && !lawyer && !(state.judiciary?.history.length)) return '';
-  const seat = state.judiciary?.seat;
-  const abroad = (state.character.countryId ?? 'US') !== 'US';
-  const ladder = Object.entries(COURTS).filter(([id, c]) => !abroad || c.system !== 'federal' || court === id).map(([id, c]) => {
+  const j = state.judiciary;
+  const bench = benchHere(state);
+  const lawyer = state.credentials?.held?.barLicense || (state.education?.degrees ?? []).some((d) => d.programId === 'jd');
+  const layOpen = bench?.lay && state.character.age >= 18;
+  if (!court && !lawyer && !(j?.history.length) && !j?.lay && !j?.school && !layOpen) return '';
+  const seat = j?.seat;
+  const c = court ? courtDef(court) : null;
+  const ladder = courtsHere(state).map((id) => {
+    const d = courtDef(id);
     const e = benchEligibility(state, id);
-    return `<li>${c.icon} <b>${esc(c.name)}</b> <small>${money(c.salary)}/yr · ${c.life ? 'life tenure' : `${c.term}-yr term`} · ${SELECTION_LABEL[selectionFor(state, id)]}</small> ${court === id ? chip('your seat', 'good') : e.ok ? chip('eligible', '') : `<span class="why">${esc(e.reason)}</span>`}</li>`;
+    const how = d.system === 'national' ? (d.pick === 'seniority' ? `by seniority after ${d.after} yr` : d.pick === 'entry' ? 'by exam' : d.pick === 'elected' ? 'elected' : `appointed by ${d.appointedBy}`) : SELECTION_LABEL[selectionFor(state, id)];
+    return `<li>${d.icon} <b>${esc(courtTitle(state, id))}</b> <small>${money(d.salary)}/yr${d.partTime ? ' (part-time)' : ''} · ${d.life ? 'life tenure' : d.term ? `${d.term}-yr term` : `to age ${d.retire ?? MANDATORY_RETIREMENT}`} · ${esc(how)}</small> ${court === id ? chip('your seat', 'good') : e.ok ? chip('eligible', '') : `<span class="why">${esc(e.reason)}</span>`}</li>`;
   }).join('');
+  const intro = !bench
+    ? 'Judges come from the ranks of experienced lawyers. Trial benches are filled by election, merit selection or appointment depending on the state; federal judges are nominated by the President and confirmed by the Senate.'
+    : bench.route === 'career' ? `Judging here is a career of its own: you enter young through the ${esc(bench.school?.exam ?? 'judicial exam')}${bench.school?.years ? ` and ${esc(bench.school.name)}` : ''}, then rise by seniority; ${esc(bench.appointedBy)} fills the top courts.`
+      : bench.route === 'elected' ? 'Judges here stand for election.' : `Judges are appointed from experienced lawyers by ${esc(bench.appointedBy)}. Years of practice open each court.`;
+  const school = j?.school ? `<p>${chip(`🎓 ${esc(j.school.name)} — until age ${j.school.until}`, 'good')}</p>` : '';
+  const exam = bench?.route === 'career' && !seat && !j?.school ? (() => { const e = examEligibility(state); return button(`📝 Sit the ${esc(bench.school.exam)}`, 'judiciary.sitExam', { variant: 'small', disabled: !e.ok, hint: e.ok ? `≈${Math.round(e.odds * 100)}% to place` : e.reason }); })() : '';
+  const lay = bench?.lay ? (j?.lay
+    ? `<p>${chip(`${bench.lay.icon} ${esc(j.lay.name)} since ${j.lay.since} · ${j.lay.sittings} sittings`, 'good')}</p>${button('Stand down', 'judiciary.leaveLay', { variant: 'small' })}`
+    : (() => { const e = layEligibility(state); return `<p class="fine">${esc(bench.lay.desc)}</p>${button(`${bench.lay.icon} Apply to be a ${esc(bench.lay.name)}`, 'judiciary.applyLay', { variant: 'small', disabled: !e.ok, hint: e.ok ? `≈${Math.round(e.odds * 100)}% selected` : e.reason })}`; })()) : '';
   return card('The Bench', `
-    ${court ? kv([
-      ['Seat', `${COURTS[court].icon} ${esc(COURTS[court].name)}`],
+    ${c ? kv([
+      ['Seat', `${c.icon} ${esc(courtTitle(state, court))}`],
       ['Years on the bench', String(benchYears(state))],
       seat ? ['Reputation (bar & bench)', `${seat.reputation}/100`] : null,
       seat ? ['Public approval', `${seat.approval}%`] : null,
       seat ? ['Rulings', `${seat.rulings}${seat.reversals ? ` · ${seat.reversals} reversed on appeal` : ''}`] : null,
-      seat && !COURTS[court].life ? ['Term', `${seat.termLeft} yr left${COURTS[court].system === 'state' ? ` · mandatory retirement at ${MANDATORY_RETIREMENT}` : ''}`] : null,
-    ]) : '<p class="muted">Judges come from the ranks of experienced lawyers. Trial benches are filled by election, merit selection or appointment depending on the state; federal judges are nominated by the President and confirmed by the Senate.</p>'}
-    <ul class="history">${ladder}</ul>
-    ${seat ? `<div class="toggle-row">${button('Resign from the bench', 'judiciary.resign', { variant: 'small danger' })}</div>` : ''}
-    <p class="fine">The elected trial seat is on the Politics tab. Strong reputations draw nominations to higher courts; reversals and unpopular rulings cost you at retention time. Federal judges can take senior status at full pay under the Rule of 80.</p>`, { icon: '⚖️', accent: 'yellow' });
+      seat && !c.life && c.system !== 'national' ? ['Term', `${seat.termLeft} yr left${c.system === 'state' ? ` · mandatory retirement at ${MANDATORY_RETIREMENT}` : ''}`] : null,
+      seat && c.system === 'national' ? ['Term', c.term ? `${seat.termLeft} yr left of a fixed term` : `Until retirement at ${c.retire}`] : null,
+    ]) : `<p class="muted">${intro}</p>`}
+    ${school}
+    ${lawyer || court ? `<ul class="history">${ladder}</ul>` : ''}
+    ${seat || exam ? `<div class="toggle-row">${exam}${seat ? button('Resign from the bench', 'judiciary.resign', { variant: 'small danger' }) : ''}</div>` : ''}
+    ${lay ? `<h4 class="sub">Lay bench</h4>${lay}` : ''}
+    <p class="fine">${bench ? 'Strong reputations draw invitations to higher courts; judges must be citizens, and moving abroad ends a seat.' : 'The elected trial seat is on the Politics tab. Strong reputations draw nominations to higher courts; reversals and unpopular rulings cost you at retention time. Federal judges can take senior status at full pay under the Rule of 80.'}</p>`, { icon: '⚖️', accent: 'yellow' });
 }
 
 /** Lawsuits, judgments and jury service. */

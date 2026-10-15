@@ -38,6 +38,7 @@ function unionAfterMove(ctx, job) {
   ctx.emit('unions:sync', {});
 }
 import { historyOrgFields, chainOfCommand, orgOf, attachOrg } from '../org/Organizations.js';
+import { courtDef } from '../legal/Judiciary.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
@@ -139,7 +140,8 @@ export function applicationEligibility(state, professionId) {
   } else if (profession.sector === 'federal' && (isAbroad(state) || !isCitizen(state, 'US'))) return { ok: false, reason: US_ONLY.federalJobs };
   if (state.military.service?.component === 'active') return { ok: false, reason: 'On active duty' };
   if (state.politics.office?.fullTime) return { ok: false, reason: 'You hold full-time elected office' };
-  if (state.judiciary?.seat) return { ok: false, reason: 'Judges can\'t hold another job' };
+  // A part-time judge (a Recorder) keeps practising; full-time judges can't hold another job.
+  if (state.judiciary?.seat && !courtDef(state.judiciary.seat.court)?.partTime) return { ok: false, reason: 'Judges can\'t hold another job' };
   if (profession.sector === 'federal' && state.politics.campaign) return { ok: false, reason: 'Hatch Act: you\'re running for office' };
   if (profession.sector === 'federal' && sssBarred(state)) return { ok: false, reason: 'Never registered with the Selective Service (request a status letter on the Military tab)' };
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
