@@ -235,6 +235,8 @@ export const BR = {
 
     FORCES: {
       pay: 0.5, exposure: 0.4,
+      // Alistamento militar: every man registers at 18; only about one in twenty is called up (12 months).
+      conscription: { kind: 'lottery', age: 18, months: 12, share: 0.05, branch: 'army', name: 'Alistamento Militar', text: 'Every Brazilian man must register for military service in the year he turns 18. Most are released as "excesso de contingente"; about one in twenty is called up for twelve months.' },
       branches: {
         army: { name: 'Exército Brasileiro', icon: '🇧🇷', motto: 'Braço forte, mão amiga', basic: 'serviço militar inicial at a battalion', officerSchool: 'the Academia Militar das Agulhas Negras (AMAN), Resende', enlisted: ARMY_ENLISTED, officer: ARMY_OFFICERS },
         navy: { name: 'Marinha do Brasil', icon: '⚓', motto: 'Protegendo nossas riquezas, cuidando da nossa gente', basic: 'Escola de Aprendizes-Marinheiros', officerSchool: 'the Escola Naval, Rio de Janeiro',

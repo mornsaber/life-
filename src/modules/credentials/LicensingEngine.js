@@ -27,6 +27,7 @@ import { recognitionRoute, speaksLocal, localLanguage } from '../world/Immigrati
 import { COUNTRIES } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
+import { MAJORS } from '../education/Catalog.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -133,7 +134,7 @@ export function describeEducation(req) {
   if (!req) return '';
   if (req.anyOf) return req.anyOf.map(describeEducation).join(' or ');
   if (req.program) return PROGRAM_LABEL[req.program] ?? req.program;
-  return `${LEVEL_LABEL[req.level] ?? req.level}${req.majors?.length ? ` (${req.majors.join('/')})` : ''}`;
+  return `${LEVEL_LABEL[req.level] ?? req.level}${req.majors?.length ? ` (${req.majors.map((m) => MAJORS[m]?.name ?? m).join('/')})` : ''}`;
 }
 
 /** Who will pay for this credential, if anyone? Returns null or { type, label, left, serviceId? }. */

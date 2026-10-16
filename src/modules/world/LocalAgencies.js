@@ -391,6 +391,18 @@ export const SERVICE_BODY = {
   IN: { fire: '{state} Fire & Emergency Services', ems: '{state} 108 Emergency Ambulance Service' },
   FR: { fire: 'SDIS (service départemental d\'incendie et de secours)' },
 };
+/**
+ * Emergency services run as one national body with stations (or districts) across the
+ * country: FENZ, Hato Hone St John, Ireland's National Ambulance Service, Korea's National
+ * Fire Agency, Italy's Vigili del Fuoco, the PNP and BFP. A job there is with the national
+ * service, posted to your area.
+ */
+export const NATIONAL_SERVICES = {
+  NZ: ['fire', 'ems'], IE: ['ems'], KR: ['fire', 'ems'], IT: ['fire'], PH: ['police', 'fire'],
+};
+fromPacks(NATIONAL_SERVICES, 'NATIONAL_SERVICES');
+export const isNationalService = (countryId, serviceId) => Boolean(NATIONAL_SERVICES[countryId]?.includes(serviceId));
+
 export function serviceBody(countryId, serviceId, stateName) {
   const b = SERVICE_BODY[countryId]?.[serviceId];
   return b ? b.replace('{state}', stateName ?? 'State') : null;

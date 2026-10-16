@@ -146,12 +146,24 @@ const isFederal = (job) => Boolean(job) && PROFESSIONS[job.professionId]?.sector
 
 /** Years supervising in federal service (current job included). */
 function supervisoryYears(state) {
-  const past = state.career.history.filter((h) => PROFESSIONS[h.professionId]?.sector === 'federal' && levelById(PROFESSIONS[h.professionId], h.levelId)?.abilities?.includes('supervise'))
+  const past = state.career.history.filter((h) => civilService(state, h.professionId) && levelById(PROFESSIONS[h.professionId], h.levelId)?.abilities?.includes('supervise'))
     .reduce((s, h) => s + (h.endAge - h.startAge), 0);
   const job = state.career.job;
-  return past + (job && isFederal(job) && job.abilities.includes('supervise') ? job.yearsInLevel ?? 0 : 0);
+  return past + (job && civilService(state, job.professionId) && job.abilities.includes('supervise') ? job.yearsInLevel ?? 0 : 0);
 }
-const federalYears = (state) => yearsInProfession(state, Object.keys(PROFESSIONS).filter((id) => PROFESSIONS[id].sector === 'federal'));
+/**
+ * Years in the civil service. Abroad that's the national careers (non-enumerable ids like gb_fbi,
+ * so they're read through the career history, not a list of professions) and, in unitary states,
+ * the national government's own agencies (probation, prisons, revenue).
+ */
+const civilService = (state, id) => {
+  const p = PROFESSIONS[id];
+  return p?.sector === 'federal' || (abroad(state) && p?.sector === 'state');
+};
+const federalYears = (state) => {
+  const ids = [...new Set([...state.career.history.map((h) => h.professionId), state.career.job?.professionId].filter((id) => id && civilService(state, id)))];
+  return ids.length ? yearsInProfession(state, ids) : 0;
+};
 
 /** Who can try for the SES (and what's missing). */
 export function sesReadiness(state) {

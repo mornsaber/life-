@@ -1,7 +1,7 @@
 /** Police and fire on the Career tab. */
 import { esc, button, card, chip, kv, disclosure } from '../Components.js';
 import { AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility, unitName, bureauName, isDetective } from '../../modules/publicsafety/PoliceLife.js';
-import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
+import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, teamName, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
 import { nextExam, REACHABLE } from '../../modules/publicsafety/CivilService.js';
 
 const n = (x) => Number(x ?? 0).toLocaleString();
@@ -62,13 +62,13 @@ export function fireCard(state) {
   const teams = Object.entries(TEAMS).filter(([id]) => !/Not an? .* team/.test(teamEligibility(state, id).reason ?? '')).map(([id, t]) => {
     const on = Boolean(f.teams[id]);
     const ok = teamEligibility(state, id);
-    return button(`${t.icon} ${on ? '✓ ' : ''}${t.name}`, 'fireLife.team', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && !ok.ok, hint: on ? 'Leave the team' : ok.ok ? `${t.pay ? `+$${n(t.pay)}/yr · ` : ''}${t.desc}` : ok.reason });
+    return button(`${t.icon} ${on ? '✓ ' : ''}${esc(teamName(state, id))}`, 'fireLife.team', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && !ok.ok, hint: on ? 'Leave the team' : ok.ok ? `${t.pay ? `+$${n(t.pay)}/yr · ` : ''}${t.desc}` : ok.reason });
   }).join('');
   const tally = [['🚒', 'runs', f.runs], ['🔥', 'working fires', f.fires], ['🙌', 'saves', f.saves], ['🌲', 'strike-team deployments', f.strikeTeams], ['🤕', 'injuries', f.injuries]].filter(([, , v]) => v).map(([i, l, v]) => chip(`${i} ${n(v)} ${l}`)).join(' ');
   return card('The Firehouse', `${kv([
     ['Station', `${st.icon} ${esc(st.name)}`],
     ['Schedule', `${FSHIFTS[f.shift]?.icon ?? ''} ${esc(FSHIFTS[f.shift]?.name ?? '24/48')}`],
-    ['Teams', Object.keys(f.teams).map((id) => `${TEAMS[id].icon} ${esc(TEAMS[id].name)}`).join(', ') || 'None'],
+    ['Teams', Object.keys(f.teams).map((id) => `${TEAMS[id].icon} ${esc(teamName(state, id))}`).join(', ') || 'None'],
     ['Smoke exposure', `${f.exposure} · ${f.decon ? '🧼 clean-cab practices' : '<span class="neg">no decon</span>'}`],
   ])}
     ${tally ? `<div class="chip-row">${tally}</div>` : ''}

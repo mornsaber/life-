@@ -23,6 +23,7 @@ import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
 import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS, postDef, promotable } from '../../modules/org/Executives.js';
 import { orgOf, orgType } from '../../modules/org/Organizations.js';
+import { DIRECT_ENTRY, directEntryEligibility } from '../../modules/career/DirectEntry.js';
 import { BODIES } from '../../modules/org/Bodies.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
@@ -165,7 +166,7 @@ function currentJob(state) {
     <div class="job-head">
       ${rankBadge(`G${job.grade} · S${job.step}`, job.title, (job.grade - 1) / 9, { icon: profession.icon })}
       <div class="job-meta">
-        <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
+        <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
           ['Salary', `<b>${money(job.salary)}</b>/yr`],
           ['Rating', ratingLabel(job.performance)],
@@ -314,6 +315,20 @@ const PAGE = 12;
  * The job board: search as you type, sort, field filter chips, and — for
  * "Open to me" — collapsible groups by field so the list never runs on forever.
  */
+/** Direct entry: competitive exams that start graduates above the bottom rung (India's IPS, UK Direct Entry Inspector). */
+function directEntryCard(state) {
+  const routes = Object.entries(DIRECT_ENTRY[state.character.countryId ?? 'US'] ?? {}).flatMap(([pid, list]) => list.map((r) => [pid, r]));
+  if (!routes.length) return '';
+  const rows = routes.map(([pid, r]) => {
+    const p = getProfession(pid);
+    const d = directEntryEligibility(state, pid, r.id);
+    const lvl = p?.levels.find((l) => l.id === r.levelId);
+    return `<li class="job-row ${d.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${p?.icon ?? '🚀'}</span><div class="job-info"><b>${esc(r.name)}</b><small>${esc(p?.name ?? pid)} · start as ${esc(lvl?.title ?? r.levelId)} [G${lvl?.grade ?? '?'}]${r.school ? ` · ${esc(r.school)}` : ''}${r.attempts ? ` · ${r.attempts} attempts` : ''}</small></div>
+      ${button(d.ok ? `Sit the exam (≈${Math.round(d.odds * 100)}%)` : '🔒', 'directEntry.apply', { arg: `${pid}|${r.id}`, variant: 'small', disabled: !d.ok, title: d.reason ?? '' })}${d.ok ? '' : `<span class="why">${esc(d.reason)}</span>`}</li>`;
+  }).join('');
+  return card('Direct Entry', `<p class="fine">Competitive exams that start graduates above the bottom rung, on an accelerated promotion track.</p><ul class="job-board">${rows}</ul>`, { icon: '🚀' });
+}
+
 function jobBoard(state, ui = {}) {
   const field = ui.jobField ?? 'open';
   const sort = SORTS[ui.jobSort] ? ui.jobSort : 'pay';
@@ -380,7 +395,8 @@ export function careerView(state, ui = {}) {
     : empty('No previous jobs.');
   // No job: the job board comes first, before everything else on this screen.
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰', open: !job });
-  return `${current}${unionCards(state)}${job ? '' : board}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  const fastPaths = directEntryCard(state);
+  return `${current}${unionCards(state)}${job ? '' : `${board}${fastPaths}`}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${fastPaths}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

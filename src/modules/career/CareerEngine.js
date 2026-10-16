@@ -86,7 +86,11 @@ export function calculateIncomeTax(gross) {
 
 /** Level requirements. A missing clearance is reported separately: it's granted through investigation. */
 /** Years a level takes — residency length depends on the physician's specialty. */
-export const levelYears = (job, level) => (level.id === 'resident' && job.residencyYears ? job.residencyYears : level.years);
+export const levelYears = (job, level) => {
+  const years = level.id === 'resident' && job.residencyYears ? job.residencyYears : level.years;
+  // Direct entrants (India's IPS, the UK's direct-entry inspectors) are on an accelerated track.
+  return job.fastTrack && years ? Math.max(1, Math.ceil(years * 0.6)) : years;
+};
 
 export function levelCheck(state, level) {
   const { clearance, ...rest } = level.req ?? {};
@@ -408,7 +412,7 @@ export function promotionStatus(state) {
   if (!all.length) return { eligible: false, reason: `The next post is appointed by ${next[0].appointedBy ?? 'the governor'}`, options: [], all, appointable: next };
   if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
   if (job.yearsInLevel < levelYears(job, level)) {
-    const left = level.years - job.yearsInLevel;
+    const left = levelYears(job, level) - job.yearsInLevel;
     return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
   }
   // Crossing from the end of a specialist track into management (or back) takes extra seniority and a strong record.

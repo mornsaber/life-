@@ -140,6 +140,13 @@ export function createEmployer(rng, state, profession, regionId) {
   // Every employer is a department of a persistent organization.
   attachOrg(state, employer, profession, regionId);
   if (merged && cc && cc !== 'US') employer.division = `${cityName(regionId)} ${profession.id === 'police' ? 'Division' : 'Area'}`;
+  // A national service (FENZ, the PNP): you work for the nation's body, posted to your area.
+  const body = orgOf(state, employer);
+  if (body?.national) {
+    employer.national = true;
+    // (Where the employer is already the unit — "Busan Fire Headquarters" — that's the division.)
+    if (!employer.division && body.name === employer.name) employer.division = `${cityName(regionId)} ${profession.id === 'police' ? 'District' : profession.id === 'ems' ? 'Ambulance Station' : 'District'}`;
+  }
   // Government agencies: their size — and so their rank structure — follows the department's real headcount.
   const tier = governmentTier(state, employer, profession);
   if (tier) {

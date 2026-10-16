@@ -315,3 +315,16 @@ export const nationalBases = (countryId, templateId) => FORCES[countryId]?.bases
 export const nationalOverseas = (countryId, templateId) => FORCES[countryId]?.overseas?.[templateId] ?? [];
 export const nationalPay = (countryId) => FORCES[countryId]?.pay ?? 1;
 export const nationalExposure = (countryId) => FORCES[countryId]?.exposure ?? 1;
+
+/**
+ * How often a country's forces actually fight outside a war: the chance a peacetime tour
+ * abroad sees combat, relative to the US. Most militaries' deployments are deterrence
+ * (the Baltic), training, peacekeeping or disaster relief — Japan's and Ireland's almost
+ * never see a shot fired; France's Sahel and Indian and Philippine counter-insurgency do.
+ */
+export const COMBAT_TEMPO = {
+  US: 1, GB: 0.35, FR: 0.5, AU: 0.15, CA: 0.1, DE: 0.08, IT: 0.08, JP: 0.01, KR: 0.03,
+  MX: 0.35, PH: 0.5, IN: 0.45, NZ: 0.05, IE: 0.04, NL: 0.08, SE: 0.03, ES: 0.08, BR: 0.12,
+};
+fromPacks(COMBAT_TEMPO, 'COMBAT_TEMPO');
+export const combatTempo = (countryId) => (!countryId || countryId === 'US' ? 1 : COMBAT_TEMPO[countryId] ?? 0.2);

@@ -30,6 +30,7 @@ import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { lawValue } from '../politics/Laws.js';
 import { localUnionName } from '../world/CountryLaw.js';
+import { currentCountry } from '../../core/Locale.js';
 import { memberUnion } from './BargainingUnits.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -481,9 +482,11 @@ export const DRIVE_SIGNUPS = 2;
 const GENERIC_UNION = { name: 'Workers United (SEIU)', strike: true };
 
 /** The union that would represent you: the one your career's workplaces usually have, or a general workers' union. */
-export function driveUnion(job) {
+export function driveUnion(job, countryId = currentCountry()) {
   const def = getProfession(job.professionId)?.union;
-  return def ? { name: def.name, strike: def.strike } : GENERIC_UNION;
+  // Abroad, the country's own union for that work (AFSCME and the IAFF are American).
+  const name = def ? localUnionName(countryId, def.name) : null;
+  return name ? { name, strike: def.strike } : countryId && countryId !== 'US' ? { ...GENERIC_UNION, name: localUnionName(countryId, GENERIC_UNION.name) ?? 'a public-service union' } : def ? { name: def.name, strike: def.strike } : GENERIC_UNION;
 }
 
 export function organizeEligibility(state) {

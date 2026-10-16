@@ -26,7 +26,7 @@ import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
-import { localMos } from '../world/MilitaryLocal.js';
+import { localMos, milPensionPlan } from '../world/MilitaryLocal.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -178,6 +178,12 @@ export function priorServiceCredit(state) {
   return years + (state.military.academyCredit ?? 0);
 }
 export const RETIREMENT_YEARS = 20;
+/** Years of service for a pension paid from the day you leave: 20 in the US; abroad, the country's own rules. */
+export function retirementYearsFor(svc) {
+  const plan = milPensionPlan(svc?.nation);
+  if (!plan) return RETIREMENT_YEARS;
+  return plan.immediate?.[svc.track === 'enlisted' ? 'enlisted' : 'officer'] ?? RETIREMENT_YEARS;
+}
 
 /** A service member's branch: the US template, or the national force laid over it. */
 export const branchOf = (svc) => (svc?.nation ? { ...BRANCHES[svc.branch], ...nationalBranch(svc.nation, svc.branch) } : BRANCHES[svc.branch]);
@@ -596,21 +602,57 @@ export function discharge(ctx, type, reason) {
 
   const multiplier = pensionMultiplier(state);
   const basePay = annualBasePay(svc);
-  if (type === 'retired') {
+  const plan = milPensionPlan(svc.nation);
+  if (plan && ['retired', 'honorable', 'general', 'medical'].includes(type)) {
+    nationalMilitaryPension(ctx, svc, plan, { basePay, multiplier, type });
+  } else if (type === 'retired') {
     const reserve = svc.component === 'reserve';
     const annual = Math.round(basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
     const startAge = reserve ? Math.max(60, state.character.age) : state.character.age;
     ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${branchOf(svc).name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
   }
-  if (militaryHonors(state).some((h) => h.id === 'moh') && !state.retirement.pensions.some((p) => p.id === 'moh')) {
-    ctx.emit('retirement:addPension', { pension: { id: 'moh', label: 'Medal of Honor special pension', annual: MOH_ANNUAL_PENSION, startAge: state.character.age, source: 'military', cola: 0.025 } });
+  const moh = militaryHonors(state).find((h) => h.id === 'moh');
+  if (moh && !state.retirement.pensions.some((p) => p.id === 'moh')) {
+    // Abroad, the highest award for valour carries its own (smaller) annuity: the Victoria Cross's is £10,000.
+    const annual = svc.nation ? Math.round(MOH_ANNUAL_PENSION * 0.6) : MOH_ANNUAL_PENSION;
+    ctx.emit('retirement:addPension', { pension: { id: 'moh', label: svc.nation ? `${moh.name} annuity` : 'Medal of Honor special pension', annual, startAge: state.character.age, source: 'military', cola: 0.025 } });
   }
 
   ctx.log(`You were discharged from the ${branchOf(svc).name} as a ${rank.title} — ${DISCHARGE_LABEL[type]}. ${reason}`, '🎗️', 'milestone');
   ctx.toast(`Discharged: ${DISCHARGE_LABEL[type]}`, type === 'dishonorable' ? 'bad' : 'info');
   // The VA rates service-connected conditions (health module).
   ctx.emit('military:discharged', { type, wounds: svc.wounds, svc });
+}
+
+/**
+ * A pension under the country's own scheme: immediate after its qualifying service (the UK's
+ * Early Departure Payment from 40, reduced), otherwise preserved until pension age; nothing
+ * before the vesting period. Japan adds a lump sum on leaving.
+ */
+function nationalMilitaryPension(ctx, svc, plan, { basePay, multiplier, type }) {
+  const { state } = ctx;
+  const years = svc.yearsOfService;
+  if (years < (plan.vest ?? 2)) {
+    if (type === 'retired' || years >= 2) addLog(state, `${years} years is too short for a ${plan.name} pension.`, '🏦', 'finance');
+    return;
+  }
+  const age = state.character.age;
+  const reserve = svc.component === 'reserve';
+  const need = plan.immediate?.[svc.track === 'enlisted' ? 'enlisted' : 'officer'];
+  const immediate = Boolean(need) && years >= need && age >= (plan.minAge ?? 0) && !reserve;
+  const startAge = immediate ? age : Math.max(age, plan.deferredAge ?? 65);
+  const factor = immediate && plan.early && age < (plan.deferredAge ?? 65) ? plan.early : 1;
+  const annual = Math.round(basePay * Math.min(plan.cap ?? 1, plan.rate * years) * (reserve ? 0.35 : 1) * multiplier * factor);
+  if (annual > 0) {
+    ctx.emit('retirement:addPension', { pension: { id: 'military', label: plan.name, annual, startAge, source: 'military', cola: 0.02 } });
+    addLog(state, `${plan.name}: $${annual.toLocaleString()}/yr ${immediate ? `from now${factor < 1 ? ` (an early-departure rate until ${plan.deferredAge})` : ''}` : `preserved until age ${startAge}`} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
+  }
+  if (plan.lumpSum) {
+    const lump = Math.round(basePay * plan.lumpSum * years);
+    ctx.earn(lump, 'Retirement allowance (lump sum)');
+    addLog(state, `A retirement allowance of $${lump.toLocaleString()} was paid on leaving.`, '💴', 'finance');
+  }
 }
 
 export const isVeteran = (state) => state.military.history.some((h) => h.discharge !== 'dishonorable');

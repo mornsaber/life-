@@ -408,6 +408,38 @@ export const SERVICE_TERMS = {
   IN: { maxYears: { enlisted: 20, officer: 35 }, ages: { enlisted: 52, officer: 58, flag: 60 }, name: 'term of engagement' },
 };
 fromPacks(SERVICE_TERMS, 'SERVICE_TERMS');
+/**
+ * Military pensions by country (the US keeps its 20-year legacy/BRS rules).
+ *   rate        share of final base pay earned per year of service; cap: the most it reaches
+ *   vest        years before any pension is earned (leave sooner: nothing)
+ *   immediate   { enlisted, officer }: years of service for a pension paid from the day you leave
+ *               (minAge: and this age); otherwise a preserved pension starts at deferredAge
+ *   early       a smaller immediate pension before the full one (the UK's Early Departure Payment)
+ *   lumpSum     a one-off payment on leaving, × annual base pay per year served (Japan's taishokukin)
+ */
+export const MIL_PENSIONS = {
+  GB: { name: 'Armed Forces Pension Scheme (AFPS 15)', rate: 1 / 47, cap: 0.75, vest: 2, immediate: { enlisted: 20, officer: 20 }, minAge: 40, early: 0.75, deferredAge: 60 },
+  CA: { name: 'Canadian Forces Superannuation', rate: 0.02, cap: 0.7, vest: 2, immediate: { enlisted: 25, officer: 25 }, deferredAge: 60 },
+  // ADF Super is a defined-contribution fund, preserved until 60 (shown here as the income it buys).
+  AU: { name: 'ADF Super', rate: 0.016, cap: 0.6, vest: 0, immediate: null, deferredAge: 60 },
+  DE: { name: 'Soldatenversorgung (Berufssoldat)', rate: 0.0179375, cap: 0.7175, vest: 5, immediate: { enlisted: 20, officer: 20 }, deferredAge: 67 },
+  FR: { name: 'Pension militaire de retraite', rate: 0.02, cap: 0.75, vest: 2, immediate: { enlisted: 17, officer: 27 }, deferredAge: 64 },
+  IT: { name: 'Pensione militare (INPS)', rate: 0.02, cap: 0.8, vest: 5, immediate: { enlisted: 20, officer: 20 }, deferredAge: 67 },
+  JP: { name: 'SDF retirement (KKR)', rate: 0.008, cap: 0.3, vest: 1, immediate: null, deferredAge: 65, lumpSum: 0.12 },
+  KR: { name: 'Military pension (군인연금)', rate: 0.019, cap: 0.62, vest: 10, immediate: { enlisted: 20, officer: 20 }, deferredAge: 65 },
+  MX: { name: 'Haber de retiro (ISSFAM)', rate: 0.03, cap: 1, vest: 20, immediate: { enlisted: 20, officer: 20 }, deferredAge: 65 },
+  PH: { name: 'AFP retirement pay', rate: 0.025, cap: 0.85, vest: 20, immediate: { enlisted: 20, officer: 20 }, deferredAge: 60 },
+  IN: { name: 'Armed Forces pension', rate: 0.025, cap: 0.5, vest: 15, immediate: { enlisted: 15, officer: 20 }, deferredAge: 60 },
+  NZ: { name: 'KiwiSaver (NZDF)', rate: 0.01, cap: 0.4, vest: 0, immediate: null, deferredAge: 65 },
+  IE: { name: 'Defence Forces pension', rate: 0.025, cap: 0.5, vest: 2, immediate: { enlisted: 21, officer: 21 }, deferredAge: 60 },
+  NL: { name: 'ABP (military: UKW until 67)', rate: 0.0175, cap: 0.7, vest: 1, immediate: { enlisted: 20, officer: 20 }, deferredAge: 67 },
+  SE: { name: 'Statens tjänstepension (PA 16)', rate: 0.01, cap: 0.3, vest: 1, immediate: null, deferredAge: 65 },
+  ES: { name: 'Clases Pasivas (militares)', rate: 0.02, cap: 0.8, vest: 15, immediate: { enlisted: 25, officer: 25 }, deferredAge: 65 },
+  BR: { name: 'Reserva remunerada (militares)', rate: 1 / 35, cap: 1, vest: 30, immediate: { enlisted: 30, officer: 30 }, deferredAge: 65 },
+};
+fromPacks(MIL_PENSIONS, 'MIL_PENSIONS');
+export const milPensionPlan = (nation) => (nation && nation !== 'US' ? MIL_PENSIONS[nation] ?? null : null);
+
 export const upOrOutApplies = (nation) => !nation || nation === 'US';
 
 /** Where the government sends you, for the confirmation line ("The government appointed you…"). */

@@ -8,7 +8,7 @@ import { vettingForm, localMos } from '../world/MilitaryLocal.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
-  BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS,
+  BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
   enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEngine.js';
@@ -245,7 +245,7 @@ export const MilitaryModule = {
     retire(ctx) {
       const svc = withService(ctx);
       if (!svc) return;
-      if (svc.yearsOfService < RETIREMENT_YEARS) return ctx.toast(`Retirement requires ${RETIREMENT_YEARS} years of service.`, 'warn');
+      if (svc.yearsOfService < retirementYearsFor(svc)) return ctx.toast(`A pension from the day you leave needs ${retirementYearsFor(svc)} years of service.`, 'warn');
       discharge(ctx, 'retired', `${svc.yearsOfService} years of faithful service.`);
     },
   },

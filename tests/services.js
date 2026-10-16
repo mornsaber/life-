@@ -19,6 +19,10 @@ import { equipmentCard } from '../src/ui/views/EquipmentView.js';
 import { mergeService, mergedService, MERGERS } from '../src/modules/politics/ServiceMergers.js';
 import { orgOf } from '../src/modules/org/Organizations.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { sesReadiness } from '../src/modules/publicservice/SeniorExecutive.js';
+import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js';
+import { directEntryEligibility } from '../src/modules/career/DirectEntry.js';
+import { discharge, enlist } from '../src/modules/military/MilitaryEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId, regionId, { age = 40, seed = 3, gender } = {}) {
@@ -156,6 +160,76 @@ const tests = {
       assert.equal(org.people[org.head].title, org.posts.org.title, prof);
       assert.ok(!/Constable/.test(org.people[org.head].title), `${prof}: ${org.people[org.head].title}`);
     }
+  },
+  'SES abroad: years in a national agency count as civil service'() {
+    const { state, ctx } = life('GB', 'london', { age: 45 });
+    state.career.history.push({ professionId: 'gb_fbi', levelId: 'ssa', title: 'Detective Inspector', startAge: 30, endAge: 40 });
+    const job = hire(ctx, { professionId: 'gb_fbi', levelId: 'asac', employer: createEmployer(new Random(2), state, getProfession('gb_fbi'), 'london') });
+    job.performance = 85; job.yearsInLevel = 3;
+    const row = sesReadiness(state).checks.find(([label]) => /civil service/.test(label));
+    assert.ok(row[1], 'ten years at the NCA count');
+  },
+  'a random life can be born in any country'() {
+    const seen = new Set();
+    for (let i = 0; i < 40; i++) seen.add(life('random', null, { seed: i }).state.character.countryId ?? 'US');
+    assert.ok(seen.size >= 8, [...seen].join(','));
+  },
+  'national services are national: FENZ is one body, not Christchurch\'s'() {
+    const a = worker('NZ', 'christchurch', 'fire', 'firefighter');
+    const org = orgOf(a.state, a.job.employer);
+    assert.ok(org.national && org.size === 'mega' && org.regionId === null);
+    assert.match(a.job.employer.division, /Christchurch/);
+    assert.match(VIEWS.career(a.state), /National public service/);
+  },
+  'paramedics need a degree in the UK, Australia and New Zealand'() {
+    for (const cc of ['GB', 'AU', 'NZ']) {
+      const { state } = life(cc, null, { age: 22 });
+      state.credentials.held.emt = { earnedAge: 20, status: 'active' };
+      assert.equal(pursueEligibility(state, 'paramedic').ok, false, cc);
+      state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'paramedicine', country: cc, year: 22 });
+      assert.ok(pursueEligibility(state, 'paramedic').ok, cc);
+    }
+    const us = life('US', null, { age: 22 });
+    us.state.credentials.held.emt = { earnedAge: 20, status: 'active' };
+    us.state.finances.cash = 50000;
+    assert.ok(pursueEligibility(us.state, 'paramedic').ok, 'the US keeps the one-year course');
+  },
+  'military pensions follow each country: preserved in Australia, immediate in Canada after 25'() {
+    const run = (cc, years, track = 'enlisted') => {
+      const { state, ctx } = life(cc, null, { age: 20 + years, gender: 'male' });
+      state.character.citizenships = [cc];
+      enlist(ctx, { branch: 'army', track, component: 'active', specialty: 'logistics' });
+      const svc = state.military.service;
+      svc.yearsOfService = years;
+      discharge(ctx, 'retired', 'test');
+      return state.retirement.pensions.find((p) => p.source === 'military');
+    };
+    const au = run('AU', 22);
+    assert.equal(au.startAge, 60, 'ADF Super is preserved to 60');
+    const ca = run('CA', 25);
+    assert.equal(ca.startAge, 45, 'immediate after 25 years');
+    const ca2 = run('CA', 12);
+    assert.equal(ca2.startAge, 60, 'deferred before 25');
+    assert.equal(run('IN', 10), undefined, 'India: nothing before 15 years');
+  },
+  'direct entry: India\'s IPS and Sub-Inspector exams start graduates above constable'() {
+    const { state, engine } = life('IN', null, { age: 23, seed: 9 });
+    state.character.citizenships = ['IN'];
+    state.stats.smarts = 95;
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'economics', gpa: 3.8, year: 22, country: 'IN' });
+    assert.ok(directEntryEligibility(state, 'statePolice', 'ips').ok);
+    for (let i = 0; i < 10 && !state.career.job; i++) { state.yearly = {}; engine.dispatch('directEntry.apply', 'statePolice|si'); }
+    assert.equal(state.career.job?.title, 'Sub-Inspector');
+    assert.ok(state.career.job.fastTrack);
+    assert.equal(directEntryEligibility(state, 'police', 'dei').ok, false, 'no UK routes in India');
+  },
+  'Korea: a career soldier is not conscripted after retiring'() {
+    const { state, ctx } = life('KR', null, { age: 46, gender: 'male' });
+    state.character.citizenships = ['KR'];
+    state.military.history.push({ branch: 'army', nation: 'KR', yearsOfService: 24, discharge: 'retired', startAge: 22, endAge: 46 });
+    state.military.conscription = { status: 'pending' };
+    MODULES.find((x) => x.id === 'conscription').onAgeUp(ctx);
+    assert.equal(state.military.conscription.status, 'served');
   },
   'national service: Korea\'s 119 social service and Germany\'s Feuerwehr commitment count'() {
     const kr = life('KR', null, { age: 20, seed: 7, gender: 'male' });

@@ -18,7 +18,8 @@ import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import {
   ranksOf,
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, branchOf } from './MilitaryEngine.js';
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, retirementYearsFor, branchOf } from './MilitaryEngine.js';
+import { combatTempo } from '../world/NationalForces.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 
 /** Peacetime deployments of other countries' forces: their standing missions abroad. */
@@ -440,17 +441,22 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   svc.warTours = (svc.warTours ?? 0) + (war && theaterName.startsWith(war.operation) ? 1 : 0);
   ctx.stat('stress', 10);
   ctx.stat('happiness', -5);
-  ctx.earn(225 * months + 2400, 'Hostile fire & family separation pay');
+  const atWar = Boolean(war && theaterName.startsWith(war.operation));
+  ctx.earn(225 * months + 2400, svc.nation && !atWar ? 'Overseas deployment allowance' : 'Hostile fire & family separation pay');
   if (!svc.nation) combatZoneExclusion(ctx, svc, theaterName);
 
   const exposure = exposureOf(svc);
-  const sawCombat = rng.chance(clamp(0.5 * exposure * serviceCombatFactor(ctx.state, svc) * (war && theaterName.startsWith(war.operation) ? 1.4 : 1), 0.15, 0.95));
+  // Outside a war, most countries' tours are deterrence, training or peacekeeping: combat is rare.
+  const peacetimeAbroad = svc.nation && !atWar;
+  const sawCombat = rng.chance(peacetimeAbroad
+    ? clamp(0.5 * exposure * combatTempo(svc.nation), 0, 0.6)
+    : clamp(0.5 * exposure * serviceCombatFactor(ctx.state, svc) * (atWar ? 1.4 : 1), 0.15, 0.95));
   if (sawCombat) {
     svc.combatTours += 1;
     combatPrompt(ctx, svc, theaterName);
     if (rng.chance(0.3 * exposure)) combatPrompt(ctx, svc, theaterName);
   } else {
-    ctx.log('The tour was tense but you never came under direct fire.', '🌙');
+    ctx.log(peacetimeAbroad ? rng.pick(['Exercises, patrols and long weeks of routine: nobody fired a shot.', 'The tour was all training with allies and showing the flag.', 'A quiet tour: the work was watching, waiting and keeping the kit running.']) : 'The tour was tense but you never came under direct fire.', '🌙');
   }
   endOfTourAwards(ctx, svc, { sawCombat });
 }
@@ -566,7 +572,7 @@ export function openContractReview(ctx, svc) {
     : [
         { id: 'reenlist', label: `✍️ ${svc.track === 'officer' ? 'Continue service' : 'Re-enlist'} (${svc.component === 'active' ? 4 : 6} yrs)`, hint: svc.track === 'enlisted' && svc.eval >= 60 ? 'Bonus eligible' : undefined },
         branchOf(svc).reserveOnly || branchOf(svc).activeOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },
-        svc.yearsOfService >= RETIREMENT_YEARS
+        svc.yearsOfService >= retirementYearsFor(svc)
           ? { id: 'retire', label: `🎖️ Retire (${svc.yearsOfService} yrs)` }
           : { id: 'separate', label: '🎗️ Separate from service' },
       ].filter(Boolean);

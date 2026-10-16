@@ -33,7 +33,7 @@ import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { ORG_TYPES, orgTypesFor, soloType, bodyType, businessOrgType } from './OrgTypes.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
-import { localAgency, serviceAuthority, serviceBody } from '../world/LocalAgencies.js';
+import { localAgency, serviceAuthority, serviceBody, isNationalService } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
 import { seatsAt, NAMED_SEATS } from './Vacancies.js';
 
@@ -126,6 +126,14 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
   if (types[0] === 'emergencyService') {
     const body = serviceBody(state.character?.countryId, profession.id, STATES[stateId]?.name);
     if (body) { name = body; size = SIZE_RANK[size] > SIZE_RANK.enterprise ? size : 'enterprise'; }
+    // A national service is one body for the whole country, not the town's.
+    if (isNationalService(state.character?.countryId, profession.id)) {
+      size = 'mega';
+      const key = orgKey('emergencyService', ORG_TYPES.emergencyService, regionId, stateId, name);
+      const org = state.orgs.byId[key] ?? buildOrg(state, rng, 'emergencyService', key, regionId, stateId, { size, name, profession });
+      Object.assign(org, { size: 'mega', regionId: null, stateId: null, national: true });
+      return org;
+    }
   }
   // Abroad, public services sit where they really do: the council, or a body of their own.
   const home = abroadHome(state, profession, name, types);
@@ -333,6 +341,8 @@ export function addMissingDepartments(state, org) {
   if (!org || org.business || org.closed) return org;
   // Older saves: a service's chief was titled for the type's first occupation (a fire service's "Chief Constable").
   const chief = org.posts?.org && !org.playerHead ? org.people[org.head] : null;
+  // Older saves: a national service (FENZ) built as one town's.
+  if (org.typeId === 'emergencyService' && !org.national && isNationalService(state.character?.countryId, org.serviceId)) Object.assign(org, { size: 'mega', regionId: null, stateId: null, national: true });
   if (chief && chief.title !== org.posts.org.title) chief.title = org.posts.org.title;
   if (org.staffing !== STAFFING_VERSION) applyStaffing(org);
   const t = orgType(org.typeId);

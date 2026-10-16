@@ -70,6 +70,11 @@ export const TEAMS = {
   union: { name: 'IAFF local officer', icon: '✊', years: 5, desc: 'Contract negotiations, grievances and the fight for staffing.' },
 };
 export const MAX_TEAMS = 2;
+/** A team's name where you serve (abroad the union post isn't the IAFF's). */
+export function teamName(state, id) {
+  if (id !== 'union' || (state.character.countryId ?? 'US') === 'US') return TEAMS[id].name;
+  return `${state.career.job?.employer?.union?.name ?? 'Union'} representative`;
+}
 
 const fl = (state) => state.fireLife;
 

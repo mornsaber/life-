@@ -22,7 +22,11 @@ import { recordNationalService, cityOf } from '../emergency/PaidOpportunities.js
 /** Months of service by branch (Korea, 2025). */
 export const KOREA_MONTHS = { army: 18, marines: 18, navy: 20, airforce: 21 };
 
-const kind = (state) => (isAbroad(state) ? FORCES[countryOf(state).id]?.conscription ?? null : null);
+/** The age after which an unserved obligation lapses (Korea: 37; Mexico registers at 18). */
+const CONSCRIPTION_AGE_LIMIT = { korea: 37, smn: 40, questionnaire: 25, universal: 30, lottery: 30 };
+const conscriptionOf = (state) => (isAbroad(state) ? FORCES[countryOf(state).id]?.conscription ?? null : null);
+/** The kind of national service: 'korea', 'smn', 'questionnaire', or a declared scheme's kind ('universal', 'lottery'). */
+const kind = (state) => { const c = conscriptionOf(state); return typeof c === 'string' ? c : c?.kind ?? null; };
 const record = (state) => (state.military.conscription ??= { status: 'pending' });
 
 /** Physical grade (1–7) from health and fitness: 1–3 active duty, 4 social service, 5–6 exempt in peacetime. */
@@ -74,10 +78,10 @@ function mexicoPrompt(ctx) {
     type: 'conscription.mexico',
     icon: '🇲🇽',
     title: 'Servicio Militar Nacional',
-    text: 'Every Mexican man registers at 18. A lottery decides who trains: a white ball means you\'re on reserve; a black ball means a year of Saturday training. Registering earns your cartilla.',
+    text: 'Every Mexican man must register at 18 — it\'s compulsory under the Ley del Servicio Militar. A lottery decides who trains: a white ball means you\'re on reserve; a black ball means a year of Saturday training. Registering earns your cartilla.',
     options: [
       { id: 'register', label: '📝 Register and draw', hint: 'Half train on Saturdays for a year' },
-      { id: 'skip', label: '🙈 Don\'t register', hint: 'No cartilla: some government jobs ask for it' },
+      { id: 'skip', label: '🙈 Dodge registration', hint: 'Illegal: no cartilla, barred from government jobs and a passport until you regularise', tone: 'danger' },
     ],
     data: {},
   });
@@ -98,6 +102,44 @@ function germanyPrompt(ctx) {
   });
 }
 
+/**
+ * A country's own universal national service (Israel, Singapore, Egypt, Vietnam…): every
+ * citizen of the listed genders serves at 18 for `months` (by gender), with deferment for
+ * study where allowed, alternative civilian service where it exists, and prison for refusal.
+ *   { kind: 'universal', age, months: { male, female }, genders, branches, defer, alternative: { label, months, desc }, name }
+ * A ballot draft (Brazil, Thailand…) calls up only a share of those who register:
+ *   { kind: 'lottery', age, months, share, name }
+ */
+function universalPrompt(ctx, scheme) {
+  const { state } = ctx;
+  const c = record(state);
+  const months = scheme.months?.[state.character.gender] ?? scheme.months?.male ?? 24;
+  const student = scheme.defer && Boolean(state.education.enrolled) && state.character.age < (scheme.deferUntil ?? 25);
+  const forces = FORCES[countryOf(state).id];
+  const branches = (scheme.branches ?? Object.keys(forces?.branches ?? { army: 1 }).filter((b) => b !== 'guard')).filter((b) => forces?.branches?.[b]);
+  ctx.prompt({
+    type: 'conscription.universal', icon: countryOf(state).flag ?? '🪖', title: scheme.name ?? 'National Service',
+    text: `${scheme.text ?? `National service is compulsory: ${Math.round(months / 12 * 10) / 10} years for you, starting now.`}${student ? ' You can defer while you study.' : ''}`,
+    options: [
+      ...branches.map((b) => ({ id: `serve:${b}`, label: `${forces.branches[b].icon ?? '🪖'} Serve in the ${forces.branches[b].name}`, hint: `${months} months` })),
+      ...(student ? [{ id: 'defer', label: '🎓 Defer while you study' }] : []),
+      ...(scheme.alternative ? [{ id: 'alternative', label: `🕊️ ${scheme.alternative.label}`, hint: scheme.alternative.desc ?? `${scheme.alternative.months} months` }] : []),
+      { id: 'refuse', label: '🙅 Refuse to serve', hint: 'A crime: prison', tone: 'danger' },
+    ],
+    data: { months },
+  });
+  c.grade ??= physicalGrade(state);
+}
+
+function lotteryPrompt(ctx, scheme) {
+  ctx.prompt({
+    type: 'conscription.lottery', icon: countryOf(ctx.state).flag ?? '🪖', title: scheme.name ?? 'Military Registration',
+    text: scheme.text ?? `Registering at ${scheme.age ?? 18} is compulsory. Only some of those registered are called up to serve.`,
+    options: [{ id: 'register', label: '📝 Register', hint: `About ${Math.round((scheme.share ?? 0.1) * 100)}% are called up` }, { id: 'skip', label: '🙈 Dodge registration', hint: 'Illegal: barred from public jobs, fines', tone: 'danger' }],
+    data: {},
+  });
+}
+
 export const ConscriptionModule = {
   id: 'conscription',
   order: 41.6,
@@ -105,10 +147,21 @@ export const ConscriptionModule = {
   onAgeUp(ctx) {
     const { state } = ctx;
     const k = kind(state);
-    if (!k || state.character.gender !== 'male' || !isCitizen(state, countryOf(state).id)) return;
+    const scheme = conscriptionOf(state);
+    const genders = scheme && typeof scheme === 'object' ? scheme.genders ?? ['male'] : ['male'];
+    if (!k || !genders.includes(state.character.gender) || !isCitizen(state, countryOf(state).id)) return;
     if (state.legal.incarceration || state.military.service) return;
     const age = state.character.age;
     const c = record(state);
+    // A career in the country's own forces discharges the duty; past the age limit it lapses.
+    if (['pending', 'deferred'].includes(c.status) && state.military.history.some((h) => (h.nation ?? 'US') === countryOf(state).id && (h.yearsOfService ?? 0) >= 1)) {
+      c.status = 'served';
+      return;
+    }
+    if (['pending', 'deferred'].includes(c.status) && age > (CONSCRIPTION_AGE_LIMIT[k] ?? 30)) {
+      c.status = 'exempt';
+      return ctx.log('You aged out of the national service obligation.', '📜', 'info');
+    }
     if (k === 'korea') {
       if (['alternative', 'social'].includes(c.status) && age >= c.until) {
         ctx.log(c.status === 'social' ? 'You finished your social service. Duty done.' : 'You finished 36 months of alternative service. Duty done.', '✅', 'good');
@@ -123,10 +176,59 @@ export const ConscriptionModule = {
       mexicoPrompt(ctx);
     } else if (k === 'questionnaire' && age === 18 && c.status === 'pending') {
       germanyPrompt(ctx);
+    } else if (k === 'universal') {
+      if (['alternative', 'social'].includes(c.status) && age >= c.until) {
+        c.status = 'served';
+        return ctx.log('You finished your alternative national service. Duty done.', '✅', 'good');
+      }
+      if (!['pending', 'deferred'].includes(c.status) || age < (scheme.age ?? 18)) return;
+      if (c.status === 'deferred' && state.education.enrolled && age < (scheme.deferUntil ?? 25)) return;
+      universalPrompt(ctx, scheme);
+    } else if (k === 'lottery' && age === (scheme.age ?? 18) && c.status === 'pending') {
+      lotteryPrompt(ctx, scheme);
     }
   },
 
   resolvers: {
+    universal(ctx, data, optionId) {
+      const { state } = ctx;
+      const c = record(state);
+      const scheme = conscriptionOf(state);
+      if (optionId === 'defer') {
+        c.status = 'deferred';
+        return ctx.log('You deferred your national service while you study.', '🎓');
+      }
+      if (optionId === 'alternative') {
+        Object.assign(c, { status: 'alternative', until: state.character.age + Math.max(1, Math.round((scheme.alternative?.months ?? data.months) / 12)) });
+        return ctx.log(`You began ${scheme.alternative?.label?.toLowerCase() ?? 'alternative service'}.`, '🕊️');
+      }
+      if (optionId === 'refuse') {
+        c.status = 'evaded';
+        ctx.emit('legal:offense', { offenseId: 'serviceRefusal', context: 'refusing national service', caught: true });
+        return undefined;
+      }
+      const branch = String(optionId).split(':')[1] ?? 'army';
+      ctx.emit('conscription:enlist', { branch, months: data.months });
+      c.status = 'serving';
+      return undefined;
+    },
+    lottery(ctx, _data, optionId) {
+      const { state, rng } = ctx;
+      const c = record(state);
+      const scheme = conscriptionOf(state);
+      if (optionId === 'skip') {
+        c.status = 'evaded';
+        return ctx.log('You never registered for military service. Public-sector employers will ask for proof.', '🙈', 'warn');
+      }
+      if (rng.chance(scheme.share ?? 0.1)) {
+        ctx.log(`You were called up: ${scheme.months ?? 12} months of service.`, '📨', 'military');
+        ctx.emit('conscription:enlist', { branch: scheme.branch ?? 'army', months: scheme.months ?? 12 });
+        c.status = 'serving';
+        return undefined;
+      }
+      c.status = 'exempt';
+      return ctx.log('You registered and weren\'t called up: excess contingent, on the reserve list.', '📋', 'good');
+    },
     korea(ctx, _data, optionId) {
       const { state } = ctx;
       const c = record(state);

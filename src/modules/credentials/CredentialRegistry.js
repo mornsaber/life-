@@ -1,3 +1,5 @@
+import { fromPacks } from '../world/packs/index.js';
+import { currentCountry } from '../../core/Locale.js';
 /**
  * The single registry of every license, certification, endorsement and
  * internal (employer) credential in the game. Careers, volunteer services,
@@ -342,10 +344,26 @@ for (const [id, families] of Object.entries(COURSE_FAMILIES)) {
 
 export const CREDENTIAL_LIST = Object.entries(CREDENTIALS).filter(([, c]) => !c.retired).map(([id, c]) => ({ id, ...c }));
 
+/**
+ * Where a country sets its own route to a credential. Paramedics register after a degree in
+ * the UK (HCPC), Australia (AHPRA), New Zealand, Ireland (PHECC) and South Africa (HPCSA):
+ * no one-year course. The UK and Ireland also train paramedics in service through a degree
+ * apprenticeship with the ambulance service.
+ */
+const PARAMEDIC_DEGREE = { level: 'bachelor', majors: ['paramedicine'] };
+export const LOCAL_CREDENTIAL_RULES = {
+  GB: { paramedic: { requires: { anyOf: [{ education: PARAMEDIC_DEGREE }, { credentials: ['emt'], experience: { professions: ['ems'], years: 3 } }] }, trainingYears: 0, cost: 400, degreeRoute: true } },
+  IE: { paramedic: { requires: { anyOf: [{ education: PARAMEDIC_DEGREE }, { credentials: ['emt'], experience: { professions: ['ems'], years: 2 } }] }, trainingYears: 0, cost: 400, degreeRoute: true } },
+  AU: { paramedic: { requires: { education: PARAMEDIC_DEGREE }, trainingYears: 0, cost: 400, degreeRoute: true } },
+  NZ: { paramedic: { requires: { education: PARAMEDIC_DEGREE }, trainingYears: 0, cost: 400, degreeRoute: true } },
+};
+fromPacks(LOCAL_CREDENTIAL_RULES, 'LOCAL_CREDENTIAL_RULES');
+
 export function getCredential(id) {
   const c = CREDENTIALS[id];
   if (!c) throw new Error(`Unknown credential: ${id}`);
-  return { id, ...c };
+  const local = LOCAL_CREDENTIAL_RULES[currentCountry()]?.[id];
+  return local ? { id, ...c, ...local } : { id, ...c };
 }
 
 export const credentialName = (id) => CREDENTIALS[id]?.name ?? id;

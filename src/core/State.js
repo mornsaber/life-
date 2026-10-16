@@ -54,7 +54,14 @@ export function randomName(rng, gender) {
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
 }
 
+/** A random country of birth for a random life (everyone the game models, the US weighted a little higher). */
+export function randomCountryId(rng) {
+  const ids = Object.keys(COUNTRIES);
+  return rng.weighted(ids.map((id) => [id, id === 'US' ? 3 : 1]), ([, w]) => w)[0];
+}
+
 export function createInitialState(rng, options = {}) {
+  if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
   setNameCountry(country?.id ?? 'US');
   const gender = options.gender === 'female' || options.gender === 'male' ? options.gender : rng.pick(['male', 'female']);
