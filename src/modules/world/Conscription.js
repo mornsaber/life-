@@ -17,6 +17,7 @@
  */
 import { isAbroad, countryOf, isCitizen } from './Countries.js';
 import { FORCES } from './NationalForces.js';
+import { recordNationalService, cityOf } from '../emergency/PaidOpportunities.js';
 
 /** Months of service by branch (Korea, 2025). */
 export const KOREA_MONTHS = { army: 18, marines: 18, navy: 20, airforce: 21 };
@@ -54,7 +55,7 @@ function koreaPrompt(ctx) {
       ? `Your physical came back grade 4. You'll serve 21 months as a social service agent (public offices, welfare centers, subway stations) instead of in uniform.`
       : `Physical grade ${grade}. Every able-bodied man serves before he turns 28.${student ? ' As a university student you can put it off.' : age >= 27 ? ' This is your last year to defer.' : ''}`,
     options: grade === 4
-      ? [{ id: 'social', label: '🏢 Report for social service', hint: '21 months, live at home' }, { id: 'refuse', label: '🙅 Refuse to serve', hint: 'A crime: prison', tone: 'danger' }]
+      ? [{ id: 'social', label: '🏢 Report for social service', hint: '21 months, live at home' }, { id: 'social119', label: '🚒 Social service at a 119 safety center', hint: '21 months alongside firefighters: counts if you join the fire service' }, { id: 'refuse', label: '🙅 Refuse to serve', hint: 'A crime: prison', tone: 'danger' }]
       : [
           enlist('army', 'Army'),
           enlist('navy', 'Navy'),
@@ -90,6 +91,7 @@ function germanyPrompt(ctx) {
     text: 'At 18 you get the Bundeswehr\'s questionnaire about serving. Volunteers do at least six months (a year here), paid about €2,600 a month, with the option to stay on.',
     options: [
       { id: 'volunteer', label: '🪖 Volunteer for a year of service', hint: 'Heer, Marine or Luftwaffe' },
+      { id: 'feuerwehr', label: '🚒 Commit to the Freiwillige Feuerwehr instead', hint: 'Civil protection service: counts toward a career with the Berufsfeuerwehr' },
       { id: 'decline', label: '📨 Not interested', hint: 'Answer the form and move on' },
     ],
     data: {},
@@ -110,6 +112,7 @@ export const ConscriptionModule = {
     if (k === 'korea') {
       if (['alternative', 'social'].includes(c.status) && age >= c.until) {
         ctx.log(c.status === 'social' ? 'You finished your social service. Duty done.' : 'You finished 36 months of alternative service. Duty done.', '✅', 'good');
+        if (c.post === 'fire') recordNationalService(state, { serviceId: 'fire', unit: c.unit, rankTitle: 'Social Service Agent (119)', years: 2, startAge: c.startAge ?? age - 2 });
         c.status = 'served';
         return;
       }
@@ -132,8 +135,12 @@ export const ConscriptionModule = {
         c.status = 'deferred';
         return ctx.log('You deferred your military service while you study.', '🎓');
       }
-      if (optionId === 'social') {
-        Object.assign(c, { status: 'social', until: age + 2 });
+      if (optionId === 'social' || optionId === 'social119') {
+        Object.assign(c, { status: 'social', until: age + 2, ...(optionId === 'social119' ? { post: 'fire', unit: `${cityOf(state)} 119 Safety Center`, startAge: age } : {}) });
+        if (optionId === 'social119') {
+          ctx.stat('stress', 3);
+          return ctx.log(`You started 21 months as a social service agent at the ${c.unit}: admin, equipment checks and ride-alongs with the crews.`, '🚒');
+        }
         ctx.stat('stress', 3);
         return ctx.log('You started 21 months as a social service agent at a district office.', '🏢');
       }
@@ -170,6 +177,12 @@ export const ConscriptionModule = {
     },
     germany(ctx, _data, optionId) {
       const c = record(ctx.state);
+      if (optionId === 'feuerwehr') {
+        Object.assign(c, { status: 'served', alternative: 'feuerwehr' });
+        ctx.log('You answered the questionnaire with a commitment to the Freiwillige Feuerwehr: civil protection in place of military service.', '🚒', 'milestone');
+        ctx.emit('emergency:enrol', { serviceId: 'fire' });
+        return undefined;
+      }
       if (optionId === 'decline') {
         c.status = 'exempt';
         return ctx.log('You sent back the Bundeswehr questionnaire: not interested.', '📨');

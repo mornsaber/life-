@@ -101,7 +101,7 @@ function medicalTick(ctx, job, level) {
   if (!problem) {
     job.grounded = false;
     if (!hasCredential(state, 'firstClassMedical')) grantCredential(ctx, 'firstClassMedical', { sponsor: job.employer.name, silent: true });
-    else state.credentials.held.firstClassMedical.renewedAge = state.character.age;
+    else Object.assign(state.credentials.held.firstClassMedical, { renewedAge: state.character.age, status: 'active' });
     return false;
   }
   if (state.credentials.held.firstClassMedical) state.credentials.held.firstClassMedical.status = 'suspended';

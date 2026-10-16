@@ -13,7 +13,7 @@ import { QUALS, schoolName, schoolEligibility, passOdds, requiredPme, hasSchool,
 import { MOS, DIRECT_COMMISSIONS, DIRECT_MAX_AGE, hasDirectPath } from '../../modules/military/MOS.js';
 import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligibility, commissioningProgram, dutyFor } from '../../modules/military/Assignments.js';
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
-import { PATHWAYS } from '../../modules/emergency/PaidOpportunities.js';
+import { PATHWAYS, BRIDGES, volunteerHireCheck } from '../../modules/emergency/PaidOpportunities.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
 import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select, disclosure, optionRow } from '../Components.js';
 import { meetsEducation } from '../../core/State.js';
@@ -198,6 +198,7 @@ export function emergencyView(state) {
       <div class="action-grid">
         ${button('🏋️ Extra Training', 'emergency.train', { arg: svc.id, hint: '+25 XP, once/yr', disabled: member.onLeave })}
         ${button('📟 Pick Up Shifts', 'emergency.shift', { arg: svc.id, hint: 'More calls, +XP', disabled: member.onLeave })}
+        ${BRIDGES[svc.id] && state.career.job?.professionId !== BRIDGES[svc.id] ? button(`💼 Apply for a career post`, 'emergency.applyCareer', { arg: svc.id, hint: `${esc(getProfession(BRIDGES[svc.id]).name)} · your years count`, disabled: member.onLeave || !volunteerHireCheck(state, BRIDGES[svc.id]).ok }) : ''}
         ${button('🚪 Resign', 'emergency.resign', { arg: svc.id, variant: 'danger' })}
       </div>`, { icon: svc.icon, accent: { fire: 'red', police: 'blue', ambulance: 'cyan', wildland: 'green', auxiliary: 'blue' }[svc.id] ?? 'orange' });
   }).join('');

@@ -113,6 +113,9 @@ export function createEmployer(rng, state, profession, regionId) {
   let name;
   if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state);
   else name = rng.pick(profession.employers);
+  // A service the government has merged hires under its new name.
+  const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
+  if (merged) name = merged;
   const benefits = defaultBenefits(rng, profession, size, union);
   // Abroad, public servants join the country's own scheme (or none: a defined-contribution pot).
   if (cc && cc !== 'US' && benefits.pension) {
@@ -136,6 +139,7 @@ export function createEmployer(rng, state, profession, regionId) {
   };
   // Every employer is a department of a persistent organization.
   attachOrg(state, employer, profession, regionId);
+  if (merged && cc && cc !== 'US') employer.division = `${cityName(regionId)} ${profession.id === 'police' ? 'Division' : 'Area'}`;
   // Government agencies: their size — and so their rank structure — follows the department's real headcount.
   const tier = governmentTier(state, employer, profession);
   if (tier) {

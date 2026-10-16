@@ -19,7 +19,8 @@ const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 export function usLeftovers(cc, text) {
   const out = [];
   if (!text) return out;
-  if (BAD_TEXT.test(text)) out.push(`${cc} broken text: "${text.slice(0, 160)}"`);
+  const bad = text.match(BAD_TEXT);
+  if (bad) out.push(`${cc} broken text: "…${text.slice(Math.max(0, bad.index - 100), bad.index + 60)}"`);
   for (const [re, ok] of US_TERMS) {
     if (ok?.includes(cc)) continue;
     const m = text.match(re);

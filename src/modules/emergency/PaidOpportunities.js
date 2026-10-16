@@ -10,6 +10,11 @@ import { applicationEligibility, bestEntryLevel, hire } from '../career/CareerEn
 import { getProfession } from '../career/JobTrees.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { levelById } from '../career/Ladder.js';
+import { MAX_STEP } from '../career/PayGrades.js';
+import { recalcSalary } from '../career/Compensation.js';
+import { releaseVolunteerOrg } from '../org/VolunteerOrgs.js';
+import { REGIONS } from '../life/Regions.js';
+import { bumpYearly, yearlyCount } from '../../core/State.js';
 
 /**
  * gig:   paid side work for a year { label, pay: [min, max], needs?: credential }
@@ -30,6 +35,100 @@ export const PATHWAYS = {
 };
 
 const seasoned = (member) => member.years >= 2 || member.rankIndex >= 1;
+
+/** The career each volunteer service bridges into, for recognised prior service. */
+export const BRIDGES = { fire: 'fire', ambulance: 'ems', police: 'police', wildland: 'stateFire' };
+
+/**
+ * Is the career post in the same service as your volunteer unit? Abroad, on-call and
+ * volunteer crews are often part of the career service (a UK fire and rescue service's
+ * on-call firefighters, FENZ's volunteer brigades, a French SDIS's sapeurs-pompiers
+ * volontaires, a German city's Freiwillige Feuerwehr): moving to a wholetime post is a
+ * transfer within it.
+ */
+export function sameService(state, serviceId, member, professionId) {
+  if (!member || BRIDGES[serviceId] !== professionId) return false;
+  return Boolean(state.orgs?.byId?.[member.orgId]?.parent);
+}
+
+/** Offer a volunteer a career post in the matching service. */
+export function offerJob(ctx, serviceId, member, svc, professionId) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  const profession = getProfession(professionId);
+  const employer = createEmployer(rng, state, profession, state.character.regionId);
+  const check = volunteerHireCheck(state, professionId);
+  const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
+  if (!level) return false;
+  const same = sameService(state, serviceId, member, professionId);
+  const parent = state.orgs?.byId?.[member.orgId]?.parent?.name?.replace(/^the /, '');
+  ctx.prompt({
+    type: 'emergency.jobOffer', icon: profession.icon, title: same ? 'A Wholetime Post' : 'A Job Offer from the Field',
+    text: same
+      ? `${parent ? parent[0].toUpperCase() + parent.slice(1) : employer.name} is recruiting full-time ${level.title.toLowerCase()}s from its own ${svc.short} crews. Your ${member.years} years at ${member.unit} count as service: you'd keep your seniority and skip the open recruitment.${job ? `\nAccepting means resigning as ${job.title}.` : ''}`
+      : `${employer.name} has watched you work as a ${svc.short} volunteer and wants to hire you as ${level.title}.${check.examWaived ? ' They\'ll skip the civil-service waiting list.' : ''} Your volunteer years would count toward your starting pay.${job ? `\nAccepting means resigning as ${job.title}.` : ''}`,
+    options: [{ id: 'accept', label: `✅ ${same ? 'Go full-time' : 'Take the job'} (${level.title})` }, { id: 'decline', label: same ? '🙅 Stay on call' : '🙅 Stay a volunteer' }],
+    data: { professionId, levelId: level.id, employer, serviceId },
+  });
+  return true;
+}
+
+/** Ask the career service for a post (once a year): units back their own. */
+export function applyForCareer(ctx, serviceId, svc) {
+  const { state, rng } = ctx;
+  const member = state.emergency[serviceId];
+  const professionId = BRIDGES[serviceId];
+  if (!member || !professionId) return false;
+  if (yearlyCount(state, `emergency.apply.${serviceId}`)) return ctx.toast('You applied this year already.', 'warn');
+  const check = volunteerHireCheck(state, professionId);
+  if (!check.ok) return ctx.toast(check.reason ?? 'Not eligible', 'warn');
+  if (state.career.job?.professionId === professionId) return ctx.toast('You already work there.', 'warn');
+  bumpYearly(state, `emergency.apply.${serviceId}`);
+  const same = sameService(state, serviceId, member, professionId);
+  const odds = 0.3 + member.rankIndex * 0.06 + Math.min(member.years, 8) * 0.03 + (same ? 0.15 : 0);
+  if (!rng.chance(Math.min(0.9, odds))) return ctx.log(`You applied for a career post with the ${getProfession(professionId).name.toLowerCase()} service. Not this round — they took candidates with more experience.`, '📭', 'warn');
+  return offerJob(ctx, serviceId, member, svc, professionId);
+}
+
+/**
+ * Recognised prior service: on being hired into the matching career, volunteer (and
+ * national-service) years count toward your pay step; in the same service, toward
+ * your seniority too, and your on-call contract ends as you go full-time.
+ */
+export function creditPriorService(ctx, job, services) {
+  const { state } = ctx;
+  if (!job || job.priorService) return;
+  const ids = Object.keys(BRIDGES).filter((id) => BRIDGES[id] === job.professionId);
+  if (!ids.length) return;
+  const active = ids.map((id) => [id, state.emergency?.[id]]).find(([, m]) => m);
+  const past = (state.emergency?.history ?? []).filter((h) => ids.includes(h.serviceId));
+  const years = Math.min(15, (active?.[1]?.years ?? 0) + past.reduce((sum, h) => sum + (h.years ?? 0), 0));
+  if (years < 1) return;
+  const [serviceId, member] = active ?? [];
+  const same = member && sameService(state, serviceId, member, job.professionId);
+  const credit = same ? years : Math.floor(years / 2);
+  if (credit < 1) return;
+  job.step = Math.min(MAX_STEP, Math.max(job.step ?? 1, 1 + Math.floor(credit / 2)));
+  recalcSalary(state, job);
+  job.priorService = { years, credit, unit: member?.unit ?? past.at(-1)?.unit ?? null, same: Boolean(same) };
+  if (same) {
+    job.yearsAtEmployer = Math.max(job.yearsAtEmployer ?? 0, credit);
+    state.emergency.history.push({
+      serviceId, unit: member.unit, rankTitle: services[serviceId].ranks[member.rankIndex].title, years: member.years, calls: member.calls, saves: member.saves,
+      startAge: member.joinedAge, endAge: state.character.age, reason: `Went full-time as ${job.title}`,
+    });
+    state.emergency[serviceId] = null;
+    if (member.orgId) releaseVolunteerOrg(state, member.orgId);
+    return ctx.log(`You went full-time as ${job.title}. Your ${years} years at ${member.unit} count as service: step ${job.step}, seniority from age ${state.character.age - credit}.`, '🔁', 'milestone');
+  }
+  ctx.log(`Your ${years} years of ${past.some((h) => h.nationalService) ? 'national and volunteer ' : 'volunteer '}service were recognised: you start at step ${job.step}.`, '📜', 'good');
+}
+
+/** National service in a fire station counts as service (Korea's 119 posting, Germany's Feuerwehr commitment). */
+export function recordNationalService(state, { serviceId, unit, rankTitle, years, startAge }) {
+  state.emergency.history.push({ serviceId, unit, rankTitle, years, calls: years * 120, saves: 0, startAge, endAge: startAge + years, reason: 'National service completed', nationalService: true });
+}
+export const cityOf = (state) => (REGIONS[state.character.regionId]?.name ?? 'City').split(',')[0];
 
 /** Can a volunteer be hired straight into this career? (The civil-service exam is waived.) */
 export function volunteerHireCheck(state, professionId) {
@@ -53,18 +152,9 @@ export function opportunityTick(ctx, serviceId, member, svc) {
   const job = state.career.job;
   const targets = path.jobs.filter((id) => job?.professionId !== id && volunteerHireCheck(state, id).ok);
   const jobOdds = 0.04 + member.rankIndex * 0.02 + Math.min(0.04, member.saves * 0.004);
-  if (targets.length && rng.chance(jobOdds)) {
-    const professionId = rng.pick(targets);
-    const profession = getProfession(professionId);
-    const employer = createEmployer(rng, state, profession, state.character.regionId);
-    const check = volunteerHireCheck(state, professionId);
-    const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
-    ctx.prompt({
-      type: 'emergency.jobOffer', icon: profession.icon, title: 'A Job Offer from the Field',
-      text: `${employer.name} has watched you work as a ${svc.short} volunteer and wants to hire you as ${level.title}.${check.examWaived ? ' They\'ll skip the civil-service waiting list.' : ''}${job ? `\nAccepting means resigning as ${job.title}.` : ''}`,
-      options: [{ id: 'accept', label: `✅ Take the job (${level.title})` }, { id: 'decline', label: '🙅 Stay a volunteer' }],
-      data: { professionId, levelId: level.id, employer, serviceId },
-    });
+  const same = targets.find((id) => sameService(state, serviceId, member, id));
+  if (targets.length && rng.chance(jobOdds + (same ? 0.06 : 0))) {
+    offerJob(ctx, serviceId, member, svc, same ?? rng.pick(targets));
     return;
   }
   // Paid gigs.

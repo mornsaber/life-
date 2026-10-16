@@ -40,7 +40,7 @@ export function credentialRow(state, cred) {
     const prepBtn = elig.ok && !prepped ? button('📚 Prep', 'credentials.prep', { arg: cred.id, variant: 'tiny ghost', hint: `${money(prepCost(cred))} · +12% odds` }) : '';
     action = `${button(label, 'credentials.pursue', { arg: cred.id, variant: 'tiny', disabled: !elig.ok, title: elig.reason ?? '' })}${prepBtn}<span class="${elig.ok ? 'fine' : 'why'}">${esc(elig.ok ? payer : elig.reason)}${elig.ok ? ` · ${odds}% pass odds${prepped ? ' (prepped)' : ''}` : ''}${fails ? ` · failed ${fails}×` : ''}</span>`;
   }
-  const status = held ? statusPill(held.status === 'suspended' ? `suspended → ${held.until}` : held.status === 'revoked' && held.permanent ? 'revoked for good' : held.status === 'active' && held.probationUntil >= state.character.age ? `probation → ${held.probationUntil}` : held.status) : implied ? chip('covered', 'good') : '';
+  const status = held ? statusPill(held.status === 'suspended' ? (held.until != null ? `suspended → ${held.until}` : 'suspended') : held.status === 'revoked' && held.permanent ? 'revoked for good' : held.status === 'active' && held.probationUntil >= state.character.age ? `probation → ${held.probationUntil}` : held.status) : implied ? chip('covered', 'good') : '';
   return `<li class="cert ${held?.status === 'active' || implied ? 'done' : ''}" title="${esc(cred.kind)}">
     <span>${cred.icon} ${esc(cred.name)}</span> ${status}
     ${cred.renewYears && held?.status === 'active' ? `<small class="fine">renews every ${cred.renewYears} yr</small>` : ''}

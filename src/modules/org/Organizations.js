@@ -285,9 +285,10 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
   // Abroad a city government is the local council (Manchester City Council, Gemeinde, Comune).
   const council = typeId === 'cityGov' && (state.character?.countryId ?? 'US') !== 'US' ? localAgency(state.character.countryId, 'municipalAdmin') : null;
   if (council?.employer) org.name = council.employer(ctx.city, stateId, ctx.state);
+  // A service's own posts first, so its chief is a Chief Fire Officer, not the type's first occupation's head.
+  if (typeId === 'emergencyService' || typeId.startsWith('body:')) serviceOrgPosts(state, org, profession, rng);
   const head = newPerson(rng, org, { title: org.posts?.org?.title ?? (lead && t.departments.length === 1 ? lead.head ?? t.head.title : t.head.title), selection: t.head.selection, age: rng.int(45, 66), professionId: t.head.occupation ?? null, levelId: t.head.levelId ?? null, years: rng.int(1, 8) });
   org.head = head.id;
-  if (typeId === 'emergencyService' || typeId.startsWith('body:')) serviceOrgPosts(state, org, profession, rng);
   for (const d of t.departments) {
     if (d.usOnly && (state.character?.countryId ?? 'US') !== 'US') continue;
     if (d.abroadOnly && (state.character?.countryId ?? 'US') === 'US') continue;
@@ -330,6 +331,9 @@ function serviceOrgPosts(state, org, profession, rng) {
 /** Organizations from older saves gain departments their type has added since. */
 export function addMissingDepartments(state, org) {
   if (!org || org.business || org.closed) return org;
+  // Older saves: a service's chief was titled for the type's first occupation (a fire service's "Chief Constable").
+  const chief = org.posts?.org && !org.playerHead ? org.people[org.head] : null;
+  if (chief && chief.title !== org.posts.org.title) chief.title = org.posts.org.title;
   if (org.staffing !== STAFFING_VERSION) applyStaffing(org);
   const t = orgType(org.typeId);
   let added = false;

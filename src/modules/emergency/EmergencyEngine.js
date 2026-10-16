@@ -34,7 +34,7 @@ import { AmbulanceCorps } from './AmbulanceCorps.js';
 import { WildlandCrew } from './WildlandCrew.js';
 import { CoastGuardAuxiliary } from './CoastGuardAuxiliary.js';
 import { CivilAirPatrol } from './CivilAirPatrol.js';
-import { opportunityTick, OpportunityResolvers } from './PaidOpportunities.js';
+import { opportunityTick, OpportunityResolvers, applyForCareer, creditPriorService } from './PaidOpportunities.js';
 import { CommunityResponse } from './CommunityResponse.js';
 import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
@@ -350,6 +350,10 @@ export const EmergencyEngine = {
   setup(engine) {
     const bus = engine.bus;
     bus.on('region:changed', ({ ctx, from, to }) => { if (from !== to) relocateVolunteers(ctx); });
+    // Recognised prior service when a volunteer is hired into the matching career.
+    bus.on('career:hired', ({ ctx, job, returning }) => { if (!returning) creditPriorService(ctx, job, SERVICES); });
+    // National service done in a volunteer service (Germany's Feuerwehr commitment).
+    bus.on('emergency:enrol', ({ ctx, serviceId }) => { if (joinEligibility(ctx.state, serviceId).ok) EmergencyEngine.actions.join(ctx, serviceId); });
     // Old saves: v1 members had no training budget, and their certifications move to the credentials registry.
     bus.on('save:migrated', ({ ctx }) => {
       const { state } = ctx;
@@ -475,6 +479,11 @@ export const EmergencyEngine = {
     bidContract: (ctx, arg) => leaderAction(ctx, SERVICES, 'contract', arg),
     hireStaff: (ctx, arg) => leaderAction(ctx, SERVICES, 'hire', arg),
     paidChief: (ctx, arg) => leaderAction(ctx, SERVICES, 'paidChief', arg),
+
+    /** Apply for a career post in the matching service (arg: serviceId). */
+    applyCareer(ctx, serviceId) {
+      if (SERVICES[serviceId]) applyForCareer(ctx, serviceId, SERVICES[serviceId]);
+    },
 
     resign(ctx, serviceId) {
       if (!ctx.state.emergency[serviceId]) return;
