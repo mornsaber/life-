@@ -32,13 +32,24 @@ const SEED = Number(process.argv[3] ?? 1);
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */
+const MX_WORDS = /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja|Servicio Militar Nacional|Policía|Bomberos|Secretaría|Licencia/;
+const PH_WORDS = /(?<!from (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|Manila|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
+const GB_WORDS = /\bBritish\b|United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster|Council Tax|\bGP\b|Universal Credit/;
 const LEAKS = {
+  SG: GB_WORDS,
+  IL: GB_WORDS,
+  PS: MX_WORDS,
+  NG: PH_WORDS,
+  KE: PH_WORDS,
+  ID: PH_WORDS,
+  ZA: /Australia(?!n Defence and Strategic)|Centrelink|\bATO\b|Medicare|Commonwealth|Age Pension|State Revenue|NSW|Queensland|Sydney|Melbourne|Canberra|Kapooka|Duntroon|\bRAAF\b|\bHMAS\b|Triple Zero|\bA\$|[Ss]uperannuation/,
+  CN: /Korea|Korean|₩|Seoul|Busan|Gyeong|Sobang|National Assembly|Hangul|\bROK\b|Chuseok|Suneung|Hakwon|hagwon/,
   NZ: /Australia(?!n Defence and Strategic)|Centrelink|\bATO\b|Medicare|Commonwealth|Age Pension|State Revenue|\bPremier\b|NSW|Queensland|Sydney|Melbourne|Canberra|Kapooka|Duntroon|\bRAAF\b|\bHMAS\b|Triple Zero|\bA\$/,
   ES: /\bParis\b|Gendarmerie|Saint-Cyr|Légion|Marine nationale|Armée de|Police nationale|Police municipale|Mairie|SAMU|Sapeurs|Parquet|DGFiP|Assurance Maladie|CNAV|Agirc|URSSAF|baccalauréat|lycée|Lycée|Commissariat|Brigade|Légion d'honneur|\bpréfet/,
   NL: /Bundes(?!liga)|Polizei|Feuerwehr|Finanzamt|Abitur|Staatsanwalt|Landtag|Bundestag|Schöffe|\bJVA\b|Kanzler|Rettungsdienst|Leitstelle|Erbschaftsteuer|SCHUFA|Pflichtverteidiger/,
   SE: /Bundes(?!liga)|Polizei|Feuerwehr|Finanzamt|Abitur|Staatsanwalt|Landtag|Bundestag|Schöffe|\bJVA\b|Kanzler|Rettungsdienst|Leitstelle|Erbschaftsteuer|SCHUFA|Pflichtverteidiger/,
   BR: /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja Mexicana|Servicio Militar Nacional/,
-  IE: /\bBritish\b|United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|A-levels|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster/,
+  IE: /\bBritish\b|(?<!from the )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|A-levels|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster/,
 };
 
 /** US-only posts that no country abroad should show. */
@@ -49,7 +60,8 @@ const flag = (msg, where) => { if (!problems.has(msg)) problems.set(msg, where);
 const scan = (cc, text, where, seen) => {
   if (!text || seen.has(text)) return;
   seen.add(text);
-  if (BAD_TEXT.test(text)) flag(`${cc} broken text: "${text.slice(0, 160)}"`, where);
+  const bad = text.match(BAD_TEXT);
+  if (bad) flag(`${cc} broken text: "…${text.slice(Math.max(0, bad.index - 100), bad.index + 60)}"`, where);
   const us = text.match(US_POSTS);
   if (us) flag(`${cc} US-only post "${us[0]}": "…${text.slice(Math.max(0, us.index - 80), us.index + 60)}"`, where);
   const m = LEAKS[cc] && text.match(LEAKS[cc]);
@@ -69,7 +81,7 @@ for (const p of PACKS) {
   assert.ok(L?.lower && NATIONAL_OFFICES[L.lower.office]?.country === cc, `${cc} parliament`);
   assert.ok(NATIONAL_OFFICES[L.execOffice], `${cc} head of government`);
   assert.ok(IMMIGRATION[cc]?.visas?.work && IMMIGRATION[cc].visas.workingHoliday === WORKING_HOLIDAY[cc], `${cc} visas`);
-  for (const other of Object.keys(WORKING_HOLIDAY[cc].partners)) if (WORKING_HOLIDAY[other]) assert.ok(WORKING_HOLIDAY[other].partners[cc], `${other} takes ${cc} working holidaymakers`);
+  for (const other of Object.keys(WORKING_HOLIDAY[cc]?.partners ?? {})) if (WORKING_HOLIDAY[other]) assert.ok(WORKING_HOLIDAY[other].partners[cc], `${other} takes ${cc} working holidaymakers`);
   for (const other of p.agreements ?? []) assert.ok(totalizes(cc, other), `${cc}–${other} pension agreement`);
 }
 assert.notEqual(IMMIGRATION.GB.visas.workingHoliday, IMMIGRATION.IE.visas.workingHoliday, 'a pack doesn\'t overwrite its base\'s scheme');

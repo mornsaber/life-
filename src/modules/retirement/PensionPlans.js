@@ -118,13 +118,20 @@ const COUNTRY_PLANS = {
   // New public servants here save in defined-contribution super (AU), KiwiSaver (NZ), the NPS (IN),
   // ISSSTE accounts (MX) or the general Social Security scheme (ES).
   AU: { '*': null }, NZ: { '*': null }, IN: { '*': null }, MX: { '*': null }, ES: { '*': null },
+  // Singapore (CPF), Israel (mandatory pension funds), China (basic + occupational annuity accounts),
+  // Nigeria (Contributory Pension Scheme) and Kenya (Public Service Superannuation Scheme) are all defined-contribution.
+  SG: { '*': null }, IL: { '*': null }, CN: { '*': null }, NG: { '*': null }, KE: { '*': null },
+  PS: { '*': PLAN('General Pension Authority', 'GPA', 0.02, { basis: 'best3', cap: 0.7, normalAge: 60, ssCovered: false, eligible: (a, y) => a >= 60 && y >= 15, rule: '60 with 15 years' }) },
+  // The GEPF: years × final salary ÷ 55; early retirement from 55 (reduced) with 10 years.
+  ZA: { '*': PLAN('Government Employees Pension Fund (GEPF)', 'GEPF', 1 / 55, { basis: 'final', cap: 0.75, normalAge: 60, ssCovered: false, eligible: (a, y) => a >= 60 || (a >= 55 && y >= 10), rule: '60; 55 with 10 years (reduced)' }) },
+  // Taspen: 2.5% of final basic pay a year, up to 75%.
+  ID: { '*': PLAN('Taspen civil service pension', 'Taspen', 0.025, { basis: 'final', cap: 0.75, normalAge: 58, eligible: (a, y) => a >= 58 && y >= 10, rule: '58 with 10 years' }) },
 };
 for (const [cc, plans] of Object.entries(COUNTRY_PLANS)) for (const [id, def] of Object.entries(plans)) if (def) PENSION_PLANS[`${cc}:${id}`] = def;
 /** The plan a job abroad gets in place of a US plan id (null: none). */
 export function localPlanId(countryId, planId) {
   if (!planId || !countryId || countryId === 'US') return planId;
-  const plans = COUNTRY_PLANS[countryId];
-  if (!plans) return planId;
+  const plans = COUNTRY_PLANS[countryId] ?? { '*': null };
   const key = planId in plans ? planId : ['fers', 'fersSpecial', 'stateGov'].includes(planId) || plans['*'] !== undefined ? '*' : null;
   if (key == null) return planId;
   return plans[key] ? `${countryId}:${key}` : null;

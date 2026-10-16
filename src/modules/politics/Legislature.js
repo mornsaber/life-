@@ -26,7 +26,7 @@ import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { OFFICES } from './Offices.js';
-import { ballotPrompt, ballotSwing, ballotResult } from './Parties.js';
+import { ballotPrompt, ballotSwing, ballotResult, dominantParty } from './Parties.js';
 import { LEGISLATURES } from './NationalOffices.js';
 import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describeValue, ensureLaws } from './Laws.js';
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
@@ -221,6 +221,7 @@ function newBody(state, kind, where, rng) {
     staffCount: d.staffCount, nextElection: rng.int(1, 2), bills: [], history: [],
     executive: { name: personName(rng), caucus: rng.chance(laborShareFor(state, kind, where)) ? 'labor' : 'business' },
   };
+  holdDominance(state, body, rng);
   pickLeaders(body, rng);
   return body;
 }
@@ -432,6 +433,15 @@ function npcBills(state, body, rng) {
   return out;
 }
 
+/** One-party systems: the national legislature keeps the dominant party's fixed supermajority. */
+function holdDominance(state, body, rng) {
+  const d = body.level === 'federal' ? dominantParty(state) : null;
+  if (!d) return;
+  const share = clamp(d.share + rng.float(-0.01, 0.01), 0.51, 0.99);
+  body.labor = Math.round(body.seats * (d.bloc === 'labor' ? share : 1 - share));
+  body.executive = { ...(body.executive ?? {}), caucus: d.bloc };
+}
+
 function electionYear(ctx, body, rng) {
   const { state } = ctx;
   const majorityLabor = body.labor * 2 > body.seats;
@@ -445,6 +455,7 @@ function electionYear(ctx, body, rng) {
   swing += ballotSwing(state, body);
   const before = body.labor;
   body.labor = Math.round(clamp(body.labor / body.seats + swing, 0.2, 0.8) * body.seats);
+  holdDominance(state, body, rng);
   if ((before * 2 > body.seats) !== (body.labor * 2 > body.seats)) {
     body.history = [...body.history.slice(-9), { age: state.character.age, text: `The ${body.labor * 2 > body.seats ? 'labor' : 'business'} bloc took the majority (${Math.max(body.labor, body.seats - body.labor)}–${Math.min(body.labor, body.seats - body.labor)}).` }];
   }
@@ -457,7 +468,7 @@ function electionYear(ctx, body, rng) {
     ctx.log(`Your caucus lost the majority — you lost your post as ${POSTS[seat.post].title}.`, '🏛️', 'warn');
     seat.post = null;
   }
-  if (rng.chance(0.4)) body.executive = { name: personName(rng), caucus: rng.chance(body.labor / body.seats) ? 'labor' : 'business' };
+  if (rng.chance(0.4)) body.executive = { name: personName(rng), caucus: dominantParty(state)?.bloc && body.level === 'federal' ? dominantParty(state).bloc : rng.chance(body.labor / body.seats) ? 'labor' : 'business' };
   body.nextElection = 2;
   ballotResult(ctx, body);
 }

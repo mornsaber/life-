@@ -60,7 +60,7 @@ export function routesTo(state, to) {
   const free = freeMovementTo(citizenshipsOf(state), to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
   const banned = bannedFrom(state, to);
-  const visas = Object.keys(IMMIGRATION[to].visas).map((kind) => (banned
+  const visas = Object.keys(IMMIGRATION[to].visas).filter((kind) => IMMIGRATION[to].visas[kind]).map((kind) => (banned
     ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
     : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
   const asylum = asylumRoute(state, to);

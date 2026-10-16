@@ -231,6 +231,29 @@ const tests = {
     MODULES.find((x) => x.id === 'conscription').onAgeUp(ctx);
     assert.equal(state.military.conscription.status, 'served');
   },
+  'national service is compulsory: Singapore and Israel call up at 18 (women too in Israel); Nigeria\'s NYSC for graduates'() {
+    const call = (cc, gender, setup) => {
+      const { state, ctx } = life(cc, null, { age: 18, gender });
+      state.character.citizenships = [cc];
+      state.military.conscription = { status: 'pending' };
+      setup?.(state);
+      MODULES.find((x) => x.id === 'conscription').onAgeUp(ctx);
+      return state.prompts.find((p) => p.type.startsWith('conscription.'));
+    };
+    assert.equal(call('SG', 'male')?.type, 'conscription.universal');
+    assert.equal(call('SG', 'female'), undefined, 'Singapore: men only');
+    const il = call('IL', 'female');
+    assert.equal(il?.type, 'conscription.universal');
+    assert.ok(il.options.some((o) => o.id === 'alternative'), 'Sherut Leumi as the alternative');
+    const ng = call('NG', 'female', (st) => { st.character.age = 23; st.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', year: 22 }); });
+    assert.equal(ng?.type, 'conscription.graduate');
+  },
+  'new countries: China\'s NPC keeps a Communist Party supermajority'() {
+    const { state, engine } = life('CN', null, { age: 30 });
+    for (let i = 0; i < 6; i++) { state.prompts = []; engine.ageUp(); }
+    const bodies = Object.values(state.politics?.legislatures ?? state.legislatures ?? {}).filter((b) => b?.level === 'federal');
+    for (const b of bodies) assert.ok(b.labor / b.seats >= 0.65, `${b.name}: ${b.labor}/${b.seats}`);
+  },
   'national service: Korea\'s 119 social service and Germany\'s Feuerwehr commitment count'() {
     const kr = life('KR', null, { age: 20, seed: 7, gender: 'male' });
     kr.state.stats.health = 50;

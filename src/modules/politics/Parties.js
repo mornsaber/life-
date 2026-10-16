@@ -43,6 +43,11 @@ const AU_NOT_VOTING_FINE = 14;
 
 const here = (state) => state.character.countryId ?? 'US';
 export const partyName = (state, bloc) => PARTY_NAMES[here(state)]?.[bloc] ?? (bloc === 'labor' ? 'Labor bloc' : 'Business bloc');
+/**
+ * A one-party-dominant national legislature (China's NPC): the dominant bloc's share of seats
+ * is fixed by the system, not swung by elections. PARTY_NAMES[cc].dominant = { bloc, share }.
+ */
+export const dominantParty = (state) => PARTY_NAMES[here(state)]?.dominant ?? null;
 export const partyOf = (state) => state.civic?.party ?? null;
 export const canVote = (state) => state.character.age >= 18 && isCitizen(state, here(state)) && !state.legal.incarceration;
 

@@ -57,7 +57,7 @@ import { addCondition } from '../src/modules/health/HealthEngine.js';
 import { levySurcharge } from '../src/modules/health/HealthSystems.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR', 'NZ', 'IE', 'ES', 'NL', 'SE', 'BR'];
+const FOREIGN = ['CA', 'GB', 'DE', 'JP', 'KR', 'IT', 'MX', 'PH', 'IN', 'AU', 'FR', 'NZ', 'IE', 'ES', 'NL', 'SE', 'BR', 'SG', 'IL', 'PS', 'CN', 'NG', 'KE', 'ZA', 'ID'];
 
 function born(countryId, seed = 3, age = 35) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
@@ -119,6 +119,8 @@ const tests = {
       year(t);
       const ly = t.state.finances.lastYear;
       if (t.state.career.job?.informal) continue;
+      // (Palestine has no payroll social contributions at all.)
+      if (!COUNTRIES[id].tax.contributions?.length) continue;
       assert.ok(ly.contributions > 0, `${id} contributions`);
       assert.ok(ly.federalTax >= ly.contributions, `${id} income tax on top of contributions`);
       assert.equal(ly.kidsCredit, 0);

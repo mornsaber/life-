@@ -289,7 +289,8 @@ export function nationalityCode(person) {
   return COUNTRIES[n] ? n : NAME_TO_CODE[n] ?? null;
 }
 /** A person's nationality for display. */
-export const nationalityName = (person) => COUNTRIES[person?.nationality]?.name ?? person?.nationality ?? '';
+/** A person's nationality for display ("the Philippines", "the United Kingdom"). */
+export const nationalityName = (person) => { const n = COUNTRIES[person?.nationality]?.name ?? person?.nationality ?? ''; return /^(Philippines|United States|United Kingdom|Netherlands)$/.test(n) ? `the ${n}` : n; };
 
 /** Where you were born (the country you lived in before your first move abroad). */
 export const birthCountryOf = (state) => state.migration?.birthCountry ?? state.character.countryId ?? 'US';

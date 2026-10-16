@@ -27,7 +27,7 @@ import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
 import { settleNewborn } from '../world/Nationality.js';
-import { priceLevel, citizenshipsOf } from '../world/Countries.js';
+import { priceLevel, citizenshipsOf, COUNTRIES } from '../world/Countries.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
@@ -35,7 +35,8 @@ import {
 import { settleEstate, buildHeirState, setStateLookup, WILL_PLANS } from './Legacy.js';
 import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 
-const NATIONALITIES = ['Canada', 'Mexico', 'Germany', 'India', 'the Philippines', 'Brazil', 'South Korea', 'Nigeria', 'Ukraine', 'France'];
+/** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
+const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
 const JOBS = [['Teacher', 62000, 'public'], ['Nurse', 82000, 'private'], ['Accountant', 78000, 'private'], ['Electrician', 64000, 'private'], ['Software developer', 120000, 'private'], ['Police officer', 72000, 'public'], ['Retail manager', 52000, 'private'], ['Paralegal', 55000, 'private'], ['Graphic designer', 58000, 'private'], ['Chef', 46000, 'private'], ['Social worker', 54000, 'public'], ['Engineer', 105000, 'private'], ['Barista', 30000, 'private'], ['Firefighter', 66000, 'public'], ['Dental hygienist', 82000, 'private'], ['Realtor', 60000, 'private']];
 const MAJORS = ['business', 'nursing', 'education', 'computerScience', 'biology', 'economics', 'criminalJustice', 'engineering'];
 // Parents' estates, split among siblings. Most families leave little; the mean U.S. inheritance is ≈$100k and is heavily skewed.
@@ -358,10 +359,17 @@ function meetCute(ctx) {
 function candidates(ctx, n) {
   const { state, rng } = ctx;
   const age = state.character.age;
-  return Array.from({ length: n }, () => makePerson(ctx, {
-    relation: 'candidate', gender: preferredGender(state) ?? rng.pick(['male', 'female']), age: Math.max(age < 18 ? 16 : 18, age + rng.int(-5, 5)),
-    relationship: rng.int(35, 60), nationality: rng.chance(0.1) ? rng.pick(NATIONALITIES) : countryIdOf(state), compatibility: rng.int(30, 95),
-  }));
+  return Array.from({ length: n }, () => {
+    const gender = preferredGender(state) ?? rng.pick(['male', 'female']);
+    const nationality = rng.chance(0.1) ? rng.pick(NATIONALITIES.filter((c) => c !== countryIdOf(state))) : countryIdOf(state);
+    // Someone from abroad has a name from home.
+    const pool = nationality !== countryIdOf(state) ? COUNTRIES[nationality]?.names : null;
+    const named = pool ? { firstName: rng.pick(pool[gender] ?? pool.male), lastName: rng.pick(pool.last) } : {};
+    return makePerson(ctx, {
+      relation: 'candidate', gender, age: Math.max(age < 18 ? 16 : 18, age + rng.int(-5, 5)),
+      relationship: rng.int(35, 60), nationality, compatibility: rng.int(30, 95), ...named,
+    });
+  });
 }
 
 /* ------------------------------------------------------------------ */

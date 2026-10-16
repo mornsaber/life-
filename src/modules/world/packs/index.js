@@ -15,8 +15,16 @@ import { ES } from './ES.js';
 import { NL } from './NL.js';
 import { SE } from './SE.js';
 import { BR } from './BR.js';
+import { SG } from './SG.js';
+import { IL } from './IL.js';
+import { PS } from './PS.js';
+import { CN } from './CN.js';
+import { NG } from './NG.js';
+import { KE } from './KE.js';
+import { ZA } from './ZA.js';
+import { ID } from './ID.js';
 
-export const PACKS = [NZ, IE, ES, NL, SE, BR];
+export const PACKS = [NZ, IE, ES, NL, SE, BR, SG, IL, PS, CN, NG, KE, ZA, ID];
 
 const entryFor = (p, table, key) => {
   const own = p.tables?.[key];

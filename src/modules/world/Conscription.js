@@ -23,7 +23,7 @@ import { recordNationalService, cityOf } from '../emergency/PaidOpportunities.js
 export const KOREA_MONTHS = { army: 18, marines: 18, navy: 20, airforce: 21 };
 
 /** The age after which an unserved obligation lapses (Korea: 37; Mexico registers at 18). */
-const CONSCRIPTION_AGE_LIMIT = { korea: 37, smn: 40, questionnaire: 25, universal: 30, lottery: 30 };
+const CONSCRIPTION_AGE_LIMIT = { korea: 37, smn: 40, questionnaire: 25, universal: 30, lottery: 30, graduate: 30 };
 const conscriptionOf = (state) => (isAbroad(state) ? FORCES[countryOf(state).id]?.conscription ?? null : null);
 /** The kind of national service: 'korea', 'smn', 'questionnaire', or a declared scheme's kind ('universal', 'lottery'). */
 const kind = (state) => { const c = conscriptionOf(state); return typeof c === 'string' ? c : c?.kind ?? null; };
@@ -186,10 +186,36 @@ export const ConscriptionModule = {
       universalPrompt(ctx, scheme);
     } else if (k === 'lottery' && age === (scheme.age ?? 18) && c.status === 'pending') {
       lotteryPrompt(ctx, scheme);
+    } else if (k === 'graduate') {
+      // A year of civilian national service for every graduate (Nigeria's NYSC).
+      if (c.status === 'social' && age >= c.until) {
+        c.status = 'served';
+        return ctx.log(`You completed your ${scheme.name ?? 'national service'} year and collected your discharge certificate.`, '✅', 'good');
+      }
+      const graduated = state.education.degrees.some((d) => ['bachelor', 'master', 'doctorate', 'professional'].includes(d.type));
+      if (c.status !== 'pending' || !graduated || state.education.enrolled) return;
+      ctx.prompt({
+        type: 'conscription.graduate', icon: countryOf(state).flag ?? '🎓', title: scheme.name ?? 'National Youth Service',
+        text: scheme.text ?? 'Every graduate under 30 serves a compulsory year of national service.',
+        options: [{ id: 'serve', label: `🎓 Report for your service year`, hint: `${scheme.months ?? 12} months, a monthly allowance` }, { id: 'skip', label: '🙈 Don\'t report', hint: 'No discharge certificate: barred from public jobs', tone: 'danger' }],
+        data: {},
+      });
     }
   },
 
   resolvers: {
+    graduate(ctx, _data, optionId) {
+      const { state } = ctx;
+      const c = record(state);
+      const scheme = conscriptionOf(state);
+      if (optionId === 'skip') {
+        c.status = 'evaded';
+        return ctx.log(`You didn't report for ${scheme?.name ?? 'national service'}. Without the discharge certificate, government employers won't hire you.`, '🙈', 'warn');
+      }
+      Object.assign(c, { status: 'social', until: state.character.age + Math.max(1, Math.round((scheme?.months ?? 12) / 12)) });
+      if (scheme?.allowance) ctx.earn(scheme.allowance, `${scheme.name} allowance`, { wage: true });
+      return ctx.log(`You began your ${scheme?.name ?? 'national service'} year${scheme?.posting ? `: ${scheme.posting}` : ''}.`, '🎓', 'milestone');
+    },
     universal(ctx, data, optionId) {
       const { state } = ctx;
       const c = record(state);

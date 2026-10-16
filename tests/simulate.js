@@ -214,8 +214,8 @@ function checkInvariants(state) {
     assert.ok(!(b.franchise && b.franchisor), 'franchisee and franchisor at once');
     if (b.franchise) assert.ok(FRANCHISE_BRANDS[b.franchise.brandId] && b.franchise.signedYears >= 0, 'franchise agreement');
     if (b.franchisor) assert.ok(Number.isInteger(b.franchisor.units) && b.franchisor.units >= 0, 'franchise units');
-    // Franchise units can be a smaller format (a 0.6-size pizza unit), so scale isn't always whole.
-    assert.ok(b.scale > 0 && (Number.isInteger(b.scale) || b.franchise), `business scale ${b.scale}`);
+    // Solo (0.35) and franchise-format (0.6) businesses aren't whole sizes, and keep the fraction as they grow or leave a franchise.
+    assert.ok(b.scale > 0 && Number.isFinite(b.scale), `business scale ${b.scale}`);
     assert.ok(Number.isFinite(b.staff.costPremium) && b.staff.costPremium > -0.5 && b.staff.costPremium < 3, `labor cost premium ${b.staff.costPremium}`);
     if (b.union) assert.ok(b.staff.unionized && state.unions.byId[b.union.unionId], 'business union local');
   }

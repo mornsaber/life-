@@ -150,7 +150,7 @@ export function existingDebtService(state) {
 export function quote(state, price, typeId, { downPct = null, inflateIncome = false, noi = 0 } = {}) {
   const t = LOAN_TYPES[typeId];
   const score = state.housing.credit.score;
-  const rate = Math.round((state.housing.rates.base + t.rateAdj + scoreSpread(score)) * 10000) / 10000;
+  const rate = Math.max(0.005, Math.round((state.housing.rates.base + t.rateAdj + scoreSpread(score)) * 10000) / 10000);
   let pct = Math.max(t.minDown, downPct ?? t.minDown);
   // Commercial lenders size the loan so rents cover the payment 1.25× — thin rents mean a bigger down payment (up to 60%).
   if (t.commercial && noi > 0) {
