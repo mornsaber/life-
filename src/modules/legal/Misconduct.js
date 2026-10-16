@@ -159,9 +159,12 @@ export function resolveTemptation(ctx, data, optionId) {
 /* Risky personal behavior                                             */
 /* ------------------------------------------------------------------ */
 
+/** Driving takes a vehicle (and without a licence it's a crime of its own). */
+const hasVehicle = (state) => (state.vehicles?.owned ?? []).length > 0;
+
 export const RISKY_ACTIONS = [
-  { id: 'speed', group: 'personal', label: 'Floor It on the Highway', icon: '🏎️', minAge: 16, desc: 'Thrills, maybe a ticket' },
-  { id: 'driveDrunk', group: 'personal', label: 'Drive Home After Drinks', icon: '🍺', minAge: 18, desc: 'DUI risk, crash risk' },
+  { id: 'speed', group: 'personal', label: 'Floor It on the Highway', icon: '🏎️', minAge: 16, desc: 'Thrills, maybe a ticket', needs: (state) => (hasVehicle(state) ? null : 'You need something to drive') },
+  { id: 'driveDrunk', group: 'personal', label: 'Drive Home After Drinks', icon: '🍺', minAge: 18, desc: 'DUI risk, crash risk', needs: (state) => (hasVehicle(state) ? null : 'You need something to drive') },
   { id: 'shoplift', group: 'petty', label: 'Shoplift', icon: '🛒', minAge: 10, desc: 'Free stuff, arrest risk' },
   { id: 'barFight', group: 'personal', label: 'Start a Bar Fight', icon: '👊', minAge: 18, desc: 'Assault charge risk' },
   { id: 'drugs', group: 'personal', label: 'Try Recreational Drugs', icon: '💊', minAge: 16, desc: 'Ruins clearances for 7 yrs' },
@@ -188,6 +191,7 @@ function once(ctx, id) {
 
 export const RiskyActions = {
   speed(ctx) {
+    if (!hasVehicle(ctx.state)) return ctx.toast('You need something to drive.', 'warn');
     if (!once(ctx, 'speed')) return;
     ctx.stat('happiness', 3);
     if (!hasCredential(ctx.state, 'driverLicense')) return commitOffense(ctx, { offenseId: 'unlicensed', caught: ctx.rng.chance(0.4), discovery: 0, context: 'pulled over without a license' });
@@ -196,7 +200,9 @@ export const RiskyActions = {
   },
   driveDrunk(ctx) {
     const { rng } = ctx;
+    if (!hasVehicle(ctx.state)) return ctx.toast('You need something to drive.', 'warn');
     if (!once(ctx, 'driveDrunk')) return;
+    if (!hasCredential(ctx.state, 'driverLicense') && rng.chance(0.3)) commitOffense(ctx, { offenseId: 'unlicensed', caught: true, discovery: 0, context: 'driving without a licence' });
     if (rng.chance(0.08)) {
       ctx.stat('health', -rng.int(10, 30));
       ctx.log('You crashed into a guardrail.', '💥', 'bad');

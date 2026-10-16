@@ -15,7 +15,7 @@ import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from
 import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
-import { getProfession } from './JobTrees.js';
+import { getProfession, US_ONLY_PROFESSIONS } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
@@ -157,6 +157,7 @@ export function applicationEligibility(state, professionId) {
   if (residencyOf(state)?.status === 'undocumented' && (profession.sector !== 'private' || profession.country || ['tech', 'finance', 'law', 'medical', 'nursing', 'engineering', 'accounting', 'corporate'].includes(professionId))) return { ok: false, reason: 'Needs the right to work' };
   // Some countries' police and fire services are national forces that hire citizens only.
   if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
+  if ((state.character.countryId ?? 'US') !== 'US' && US_ONLY_PROFESSIONS.includes(professionId)) return { ok: false, reason: 'No such agency here' };
   if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };
   if (profession.country) {
     // A national government job: your country of residence, and its citizens only.

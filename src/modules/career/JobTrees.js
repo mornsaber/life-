@@ -586,7 +586,7 @@ for (const [id, byCountry] of Object.entries(LOCAL_VARIANTS)) {
 }
 
 /** County offices with no counterpart abroad (sheriffs). */
-const US_ONLY_PROFESSIONS = ['sheriff'];
+export const US_ONLY_PROFESSIONS = ['sheriff'];
 
 /** Careers on the job board where you live: everything except US federal jobs abroad, plus your country's own. */
 export function professionsFor(state) {

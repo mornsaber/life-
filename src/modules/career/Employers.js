@@ -186,7 +186,8 @@ export function benefitsSummary(benefits) {
   const parts = [];
   parts.push(benefits.health ? '🩺 Health insurance' : '🚫 No health plan');
   if (benefits.pension) parts.push(`🏦 Pension`);
-  if (benefits.match > 0) parts.push(`💼 ${benefits.dcPlan} ${Math.round(benefits.match * 100)}% match`);
+  // (A plan with no name abroad is just the employer's contribution to your retirement pot.)
+  if (benefits.match > 0) parts.push(benefits.dcPlan ? `💼 ${benefits.dcPlan} ${Math.round(benefits.match * 100)}% match` : `💼 ${Math.round(benefits.match * 100)}% retirement contribution`);
   else if (benefits.dcPlan) parts.push(`💼 ${benefits.dcPlan}`);
   if (benefits.tuition) parts.push(`🎓 $${benefits.tuition.toLocaleString()}/yr tuition`);
   if (benefits.housing) parts.push('🏡 Housing provided');
