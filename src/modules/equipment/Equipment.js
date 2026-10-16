@@ -182,7 +182,7 @@ export function contexts(state) {
     const scale = volunteerScale(org);
     const parent = org?.parent ?? null;
     const issued = (parent?.funds ?? 0) >= 1;
-    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key, group: gid, size: scale.size, growth: scale.growth, label: m.unit, serviceId: sid, member: m, org, parent, issued,
+    out.push({ kind: 'volunteer', ref: `vol.${sid}`, key, group: gid, size: scale.size, stations: scale.stations, label: m.unit, serviceId: sid, member: m, org, parent, issued,
       manager: m.rankIndex >= ranks.length - 2, requester: m.rankIndex >= ranks.length - 3, money: issued ? 'om' : 'funds' });
   }
   for (const [tid, gid] of Object.entries(TEAM_GROUP)) {
@@ -207,17 +207,16 @@ export function contexts(state) {
   return out;
 }
 /**
- * A volunteer organization's size for equipment: its members set the standard (a dozen
- * volunteers run one engine; ninety run a district), and each station beyond what that
- * size usually has adds to it.
+ * A volunteer organization's size for equipment: its members set the standard for its main
+ * station (a dozen volunteers run one engine; ninety run several), and every other station
+ * adds a small company's kit (an engine, a tanker, a brush truck, a firehouse) — so a merger
+ * or a new station always raises it.
  */
-const STATIONS_AT = { small: 1, medium: 2, large: 3, enterprise: 4 };
 export function volunteerScale(org) {
-  if (!org) return { size: 'small', growth: 1 };
+  if (!org) return { size: 'small', stations: 1 };
   const people = Object.keys(org.people ?? {}).length + 1;
   const size = people < 28 ? 'small' : people < 55 ? 'medium' : people < 100 ? 'large' : 'enterprise';
-  const stations = org.district?.stations ?? 1;
-  return { size, growth: Math.round(Math.max(1, stations / STATIONS_AT[size]) * 100) / 100 };
+  return { size, stations: org.district?.stations ?? 1 };
 }
 
 /**
@@ -255,7 +254,8 @@ export const needOf = (cat, c) => {
   // Departments with a staffing model need equipment for the people they actually have.
   const per = c.staff && cat.id ? PER_STAFF[c.group]?.[cat.id] : null;
   if (per) return Math.max(cat.facility || per >= 1 ? 1 : 0, Math.round(c.staff.operational * per * ((c.growth ?? 1) / (c.staff.growth ?? c.growth ?? 1)) * (c.span ?? 1)));
-  const base = cat.need[c.size] ?? 0;
+  // A volunteer district: the members' standard covers the first station; every other station adds a small company's kit.
+  const base = (cat.need[c.size] ?? 0) + (c.stations > 1 ? (cat.need.small ?? 0) * (c.stations - 1) : 0);
   if (!base) return 0;
   const grown = Math.max(base, Math.round(base * (c.growth ?? 1)));
   // You manage your piece of the agency: a battalion, a precinct, a station — not the whole fleet.

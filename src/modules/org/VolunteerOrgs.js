@@ -182,6 +182,8 @@ export function volunteerOrgTick(ctx, service, member) {
   const { state, rng } = ctx;
   const org = ensureVolunteerOrg(state, service, member);
   for (const p of Object.values(org.people)) p.years += 1;
+  // The agency's established strength: what it has built up to (mergers, stations and recruiting raise it).
+  org.strength = Math.max(org.strength ?? 0, Object.keys(org.people).length);
   // Members leave (moves, burnout, age).
   for (const p of Object.values(org.people)) {
     if (!rng.chance(p.age > 62 ? 0.25 : 0.1)) continue;
@@ -189,8 +191,10 @@ export function volunteerOrgTick(ctx, service, member) {
     for (const seats of Object.values(org.seats)) { const i = seats.indexOf(p.id); if (i >= 0) seats[i] = null; }
   }
   const size = Object.keys(org.people).length;
-  // More stations need (and draw) more members.
-  for (let i = size; i < Math.round((10 + (org.recruited ?? 0)) * districtScale(org)); i++) npc(rng, org, 0, service.ranks);
+  // An agency recruits back up to its established strength (which mergers and new stations raise);
+  // recruitment drives add to it for a while. More stations draw more members.
+  const target = Math.max(org.strength, Math.round((10 + (org.recruited ?? 0)) * districtScale(org)));
+  for (let i = size; i < target; i++) npc(rng, org, 0, service.ranks);
   org.recruited = Math.max(0, (org.recruited ?? 0) - 2);
   syncSeats(org, service);
   // Empty non-elected seats go to the most senior member below (if you're not ready for it).

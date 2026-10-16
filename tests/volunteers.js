@@ -13,7 +13,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { contextOf, recordOf, needOf, countOf, GROUPS, upkeepDelta, readiness } from '../src/modules/equipment/Equipment.js';
+import { contextOf, recordOf, needOf, countOf, GROUPS, upkeepDelta, readiness, annualMoney } from '../src/modules/equipment/Equipment.js';
 import { growthCheck } from '../src/modules/org/VolunteerGrowth.js';
 import { seatTargets } from '../src/modules/org/VolunteerOrgs.js';
 import { arrive } from '../src/modules/world/Migration.js';
@@ -94,6 +94,24 @@ const tests = {
     assert.ok(after.need > before.need, `standard grew (${before.need} → ${after.need})`);
     assert.ok(after.have > before.have, `their engines came too (${before.have} → ${after.have})`);
     assert.match(logText(state), /apparatus and gear joined/);
+  },
+  'merging a one-station neighbour into a mid-sized agency raises the standard and the levy — and they stay raised'() {
+    const { state, org, engine, fresh, year } = chief('US', 21);
+    year();
+    for (let i = 0; i < 30; i++) org.people[`x${i}`] = { id: `x${i}`, name: 'Member', rankIndex: 0, years: 1, rel: 50, performance: 60, age: 30 };
+    const levy = () => annualMoney(state, contextOf(state, 'vol.fire'));
+    const before = { ...engines(state), levy: levy(), members: Object.keys(org.people).length };
+    const n = org.district.neighbors[0];
+    Object.assign(n, { members: 8, readiness: 20, funds: 9000, stations: 1 });
+    org.readiness = 95;
+    for (let t = 0; t < 10 && org.district.neighbors.includes(n); t++) { fresh(); engine.dispatch('emergency.mergeAgency', `fire:${n.id}`); }
+    assert.ok(!org.district.neighbors.includes(n), 'merged');
+    assert.ok(Object.keys(org.people).length >= before.members + 8, 'their members joined at once');
+    const after = { ...engines(state), levy: levy() };
+    assert.ok(after.need > before.need, `engines needed ${before.need} → ${after.need}`);
+    assert.ok(after.levy > before.levy, `levy ${before.levy} → ${after.levy}`);
+    year();
+    assert.ok(engines(state).need >= after.need && levy() >= after.levy, `still raised a year later: need ${after.need}→${engines(state).need}, levy ${after.levy}→${levy()}, members ${Object.keys(org.people).length}, strength ${org.strength}, size ${contextOf(state, 'vol.fire').size}`);
   },
   'officer seats scale with the organization'() {
     const { org } = chief();

@@ -208,6 +208,7 @@ export function growthAction(ctx, org, service, member, kind, arg) {
     if (check.odds && !rng.chance(check.odds)) return ctx.log(`${parent.name} turned down the case for a new ${g.stationWord} this year.`, '📄', 'warn');
     org.funds -= stationShare(org, g);
     d.stations += 1;
+    org.strength = (org.strength ?? memberCount(org)) + 8;
     ctx.emit('volunteer:grew', { orgId: org.id, serviceId: service.id, stations: 1 });
     org.recruited = (org.recruited ?? 0) + 6;
     org.readiness = Math.max(0, org.readiness - 5);
@@ -222,7 +223,15 @@ export function growthAction(ctx, org, service, member, kind, arg) {
     d.neighbors = d.neighbors.filter((x) => x !== n);
     d.stations += n.stations;
     org.funds += n.funds;
-    org.recruited = (org.recruited ?? 0) + n.members;
+    // Their members join the roster now, keeping their experience, and the agency's strength grows by them.
+    org.strength = (org.strength ?? memberCount(org)) + n.members;
+    for (let i = 0; i < n.members; i++) {
+      const gender = rng.pick(['male', 'female']);
+      const nm = randomName(rng, gender);
+      const rank = rng.weighted([[0, 3], [1, 4], [2, 3], [3, 2]], ([, w]) => w)[0];
+      const p = { id: rng.id('vm_'), name: `${nm.firstName} ${nm.lastName}`, gender, age: rng.int(19, 66), rankIndex: rank, title: service.ranks[rank]?.title ?? '', years: rng.int(1, 20), rel: rng.int(30, 60), performance: rng.int(40, 80), discipline: 0, from: n.name };
+      org.people[p.id] = p;
+    }
     (d.absorbed ??= []).push(n.name);
     member.xp += 15;
     // Their apparatus and gear come too.
