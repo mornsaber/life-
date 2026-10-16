@@ -39,6 +39,7 @@ function unionAfterMove(ctx, job) {
 }
 import { historyOrgFields, chainOfCommand, orgOf, attachOrg } from '../org/Organizations.js';
 import { courtDef } from '../legal/Judiciary.js';
+import { localPlanId } from '../retirement/PensionPlans.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
@@ -638,6 +639,12 @@ export function careerOnAgeUp(ctx) {
   if ((state.character.countryId ?? 'US') !== 'US' && !job.headOf && orgOf(state, job.employer)?.typeId === 'cityGov' && ['police', 'fire', 'ems', 'dispatch'].includes(job.professionId)) {
     attachOrg(state, job.employer, profession, state.character.regionId);
     job.supervisorId = null;
+  }
+  // Older saves abroad: a public job on a US pension plan moves to the country's own scheme (credit so far stays).
+  const cc = state.character.countryId ?? 'US';
+  if (cc !== 'US' && job.employer.benefits?.pension && !job.employer.benefits.pension.includes(':')) {
+    const local = localPlanId(cc, job.employer.benefits.pension);
+    if (local !== job.employer.benefits.pension) job.employer.benefits.pension = local;
   }
   chainOfCommand(state, job);
   job.paidThisYear = false;

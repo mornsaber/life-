@@ -40,7 +40,7 @@ import { SERVICES } from '../emergency/EmergencyEngine.js';
 import { billetFor } from '../org/MilitaryUnits.js';
 import { TEAMS } from '../service/DisasterTeams.js';
 import { SDF_RANKS } from '../service/StateForces.js';
-import { deptOf } from '../org/Organizations.js';
+import { deptOf, orgOf } from '../org/Organizations.js';
 import { grantFor } from '../org/VolunteerOrgs.js';
 import { fundsFloor } from '../org/VolunteerGrowth.js';
 
@@ -167,9 +167,14 @@ export function contexts(state) {
   const out = [];
   const job = state.career?.job;
   if (job && JOB_GROUP[job.professionId]) {
-    out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.name,
-      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span: job.abilities.includes('budget') ? commandSpan(job) : 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: 'budget', sector: job.sector,
-      staff: PER_STAFF[JOB_GROUP[job.professionId]] ? agencyStaff(state, job) : null });
+    const span = job.abilities.includes('budget') ? commandSpan(job) : 1;
+    // In a big national or regional body the fleet is bought centrally: below headquarters you bid for it.
+    const body = orgOf(state, job.employer);
+    const central = isCentralBody(body) && (span < 1 || !job.abilities.includes('budget'));
+    out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.division ?? job.employer.name,
+      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: central ? 'om' : 'budget', sector: job.sector,
+      staff: PER_STAFF[JOB_GROUP[job.professionId]] ? agencyStaff(state, job) : null,
+      ...(central ? { issued: true, hq: body.name, hqOrg: body } : {}), ...(isCentralBody(body) && !central ? { fleetHead: body } : {}) });
   }
   const biz = currentBusiness(state);
   if (biz && BUSINESS_GROUP[biz.typeId]) out.push({ kind: 'business', ref: 'business', key: `biz:${biz.id}`, group: BUSINESS_GROUP[biz.typeId], size: bizSize(biz.scale ?? 1), label: biz.name, manager: true, requester: false, money: 'cash', biz });
@@ -240,6 +245,35 @@ function bindFunds(state, c, d, peek) {
     enumerable: true,
     configurable: true,
   });
+}
+
+/** A body big enough to buy its fleet centrally: a national or regional service, or agency. */
+export const isCentralBody = (org) => Boolean(org) && (org.typeId === 'emergencyService' || org.typeId?.startsWith('body:')) && ['large', 'enterprise', 'mega'].includes(org.size);
+/** How headquarters runs the fleet, set by the agency-wide head. */
+export const FLEET_POLICIES = {
+  schedule: { label: '📅 Replace on schedule', share: 0.5, hint: 'Half of what\'s overdue each year, standard models' },
+  stretch: { label: '🪢 Stretch the fleet', share: 0.2, hint: 'Keep old units running: saves money, readiness suffers' },
+  premium: { label: '⭐ Premium fleet', share: 0.6, premium: true, hint: 'Replace with the best models: costs more, lasts and performs better' },
+};
+/**
+ * Headquarters' fleet programme reaches your station: some overdue units are replaced and some
+ * gaps filled, at the pace the head's policy sets.
+ */
+function hqProgramme(ctx, c, d) {
+  const { rng } = ctx;
+  const policy = FLEET_POLICIES[c.hqOrg?.fleetPolicy ?? 'schedule'];
+  let replaced = 0;
+  let added = 0;
+  for (const [cid, cat] of Object.entries(cats(c))) {
+    if (cat.facility) continue;
+    const models = Object.entries(cat.models).filter(([, m]) => !m.build && !m.rent);
+    if (!models.length) continue;
+    const [mid] = policy.premium ? [...models].sort((a, b) => b[1].cost - a[1].cost)[0] : models[0];
+    const units = (d.units[cid] ??= []);
+    for (const u of units) if (u.age > (cat.models[u.model]?.life ?? 10) && rng.chance(policy.share)) { Object.assign(u, { model: mid, age: 0, used: false }); replaced += 1; }
+    while (countOf(cat, units) < needOf(cat, c) && rng.chance(policy.share)) { units.push({ model: mid, age: 0, used: false, leased: false }); added += 1; }
+  }
+  if ((replaced || added) && (c.manager || c.requester)) ctx.log(`${c.hq}'s fleet programme reached ${c.label}: ${replaced ? `${replaced} worn unit${replaced > 1 ? 's' : ''} replaced` : ''}${replaced && added ? ' and ' : ''}${added ? `${added} added` : ''}.`, '🏢', 'info');
 }
 
 /** One owner by ref: 'job', 'business', 'military', 'vol.<serviceId>' or 'team.<teamId|sdf>'. */
@@ -681,6 +715,7 @@ function yearFor(ctx, c) {
     ctx.log(`The new ${cat.models[d.bond.model].name.replace(/ \(.*\)$/, '').toLowerCase()} opened.`, cat.icon, 'good');
     d.bond = null;
   }
+  if (c.hq) hqProgramme(ctx, c, d);
   // Money: what's left is spent by staff (all of it when you don't decide), then the new year's arrives.
   if (c.money !== 'cash' && d.budgetAge != null && d.budget > floorOf(c)) autoReplace(c, d, c.manager ? 0.5 : c.org ? 0.6 : 1);
   // Staff carry part of what's left into the reserve when something big is overdue.
@@ -988,16 +1023,28 @@ export const EquipmentModule = {
     requisition(ctx, arg) {
       const { state, rng } = ctx;
       const { c, d, parts } = resolve(ctx, arg);
-      if (!c?.manager || !isIssued(c)) return;
-      if (yearlyCount(state, `equip.requisition.${c.ref}`)) return ctx.toast('One fielding request a year', 'warn');
+      // Station officers in a central body bid too; elsewhere it's the commander's call.
+      if (!(c?.manager || (c?.hq && c.requester)) || !isIssued(c)) return;
+      if (yearlyCount(state, `equip.requisition.${c.ref}`)) return ctx.toast('One request a year', 'warn');
       bumpYearly(state, `equip.requisition.${c.ref}`);
       const [cid, mid] = parts;
       const cat = cats(c)[cid];
       if (!cat?.models[mid]) return;
-      const n = rng.chance(0.45) ? Math.max(1, Math.round(needOf(cat, c) * rng.float(0.1, 0.3))) : 0;
-      if (!n) return ctx.log(`Your request for ${cat.models[mid].name}s went up the chain — other units are ahead of you in the fielding schedule.`, cat.icon, 'warn');
+      // Headquarters (or a parent service) weighs your readiness and record against everyone else's bids.
+      const civil = c.kind !== 'military';
+      const odds = civil ? clamp(0.3 + (60 - readiness(state, c)) / 120 + ((state.career.job?.performance ?? 60) - 60) / 200, 0.15, 0.7) : 0.45;
+      const n = rng.chance(odds) ? Math.max(1, Math.round(needOf(cat, c) * rng.float(0.1, 0.3))) : 0;
+      const who = c.hq ?? c.parent?.name ?? null;
+      if (!n) return ctx.log(who ? `${who} put your bid for ${cat.models[mid].name}s in the queue: other stations are ahead of you this year.` : `Your request for ${cat.models[mid].name}s went up the chain — other units are ahead of you in the fielding schedule.`, cat.icon, 'warn');
       for (let i = 0; i < n; i++) d.pending.push({ catId: cid, model: mid, age: state.character.age + 1 });
-      ctx.log(`Approved: ${n} new ${cat.models[mid].name}${n > 1 ? 's' : ''} will be fielded to your unit next year.`, cat.icon, 'good');
+      ctx.log(who ? `${who} approved your bid: ${n} new ${cat.models[mid].name}${n > 1 ? 's' : ''} arrive next year.` : `Approved: ${n} new ${cat.models[mid].name}${n > 1 ? 's' : ''} will be fielded to your unit next year.`, cat.icon, 'good');
+    },
+    /** 'job|policy' — the head of a national or regional body sets how headquarters runs the fleet. */
+    fleetPolicy(ctx, arg) {
+      const { c, parts } = resolve(ctx, arg);
+      if (!c?.fleetHead || !FLEET_POLICIES[parts[0]]) return;
+      c.fleetHead.fleetPolicy = parts[0];
+      ctx.log(`You set ${c.fleetHead.name}'s fleet policy: ${FLEET_POLICIES[parts[0]].label.replace(/^\S+ /, '').toLowerCase()}. Every station feels it.`, '🏢', 'info');
     },
     /** Volunteers: fundraisers and grants. */
     fundraise(ctx, arg) {

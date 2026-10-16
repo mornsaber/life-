@@ -18,6 +18,7 @@ import { lawValue } from '../politics/Laws.js';
 import { unionLaw } from './BargainingUnits.js';
 import { regionsInState } from '../life/Regions.js';
 import { localUnionName } from '../world/CountryLaw.js';
+import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -113,6 +114,13 @@ export function createEmployer(rng, state, profession, regionId) {
   if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state);
   else name = rng.pick(profession.employers);
   const benefits = defaultBenefits(rng, profession, size, union);
+  // Abroad, public servants join the country's own scheme (or none: a defined-contribution pot).
+  if (cc && cc !== 'US' && benefits.pension) {
+    benefits.pension = localPlanId(cc, benefits.pension);
+    if (benefits.pension && PENSION_PLANS[benefits.pension]?.ssCovered === false) benefits.ssCovered = false;
+    // No defined-benefit plan: the employer pays into your pot instead (super, KiwiSaver, the NPS, ISSSTE).
+    if (!benefits.pension) benefits.match = Math.max(benefits.match ?? 0, { AU: 0.154, NZ: 0.03, IN: 0.14, MX: 0.065 }[cc] ?? 0);
+  }
   const annual = Math.round(EMPLOYER_SIZES[size].budget * (profession.sector === 'private' ? 1 : 1.3) * publicBudgetFactor(state, profession.sector));
   const employer = {
     id: rng.id('emp_'),

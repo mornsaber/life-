@@ -69,6 +69,67 @@ export const PENSION_PLANS = {
   },
 };
 
+/**
+ * Public-service pensions abroad, by the US plan a job would have had (police & fire, municipal,
+ * state, federal, teachers…). Most are career-average (CARE): a share of every year's pay, not of
+ * the best three, which is why they pay less than an American "20 and out". `basis`: 'career'
+ * (career average), 'best5', 'final' (last salary) or the US default (best three).
+ * null: no defined-benefit plan for new hires — a defined-contribution pot and the state pension.
+ * '*' covers the plan ids a country doesn't list. Registered as `${country}:${planId}`.
+ */
+const PLAN = (name, short, multiplier, opts) => ({ name, short, vest: 2, cola: 0.015, ssCovered: true, ...opts, multiplier: () => multiplier });
+const COUNTRY_PLANS = {
+  GB: {
+    publicSafety: PLAN('Police / Firefighters\' Pension Scheme (2015)', 'PPS/FPS', 0.0175, { basis: 'career', cap: 0.75, normalAge: 60, eligible: (a, y) => a >= 60 || (a >= 55 && y >= 25), rule: '60 (55 with 25 years, reduced)' }),
+    municipal: PLAN('Local Government Pension Scheme (LGPS)', 'LGPS', 0.0204, { basis: 'career', cap: 0.75, normalAge: 67, eligible: (a, y) => a >= 67 || (a >= 60 && y >= 30), rule: 'State Pension age (67); 60 with 30 years' }),
+    teachers: PLAN('Teachers\' Pension Scheme', 'TPS', 0.0175, { basis: 'career', cap: 0.75, normalAge: 67, eligible: (a, y) => a >= 67 || (a >= 60 && y >= 30), rule: '67; 60 with 30 years' }),
+    '*': PLAN('Civil Service Pension (alpha)', 'alpha', 0.0232, { basis: 'career', cap: 0.75, normalAge: 67, eligible: (a, y) => a >= 67 || (a >= 60 && y >= 30), rule: 'State Pension age (67); 60 with 30 years' }),
+  },
+  IE: {
+    publicSafety: PLAN('Single Public Service Pension Scheme (fast accrual)', 'SPSPS', 0.0125, { basis: 'career', cap: 0.5, normalAge: 60, eligible: (a, y) => a >= 60 || (a >= 55 && y >= 30), rule: '60; 55 with 30 years' }),
+    '*': PLAN('Single Public Service Pension Scheme', 'SPSPS', 0.0115, { basis: 'career', cap: 0.5, normalAge: 66, eligible: (a, y) => a >= 66, rule: '66' }),
+  },
+  DE: {
+    publicSafety: PLAN('Beamtenversorgung (Polizei/Feuerwehr)', 'Beamtenversorgung', 0.0179375, { basis: 'final', cap: 0.7175, normalAge: 62, ssCovered: false, eligible: (a, y) => a >= 62 || (a >= 60 && y >= 40), rule: '62 (special age limit); 71.75% after 40 years' }),
+    municipal: PLAN('Zusatzversorgung (ZVK)', 'ZVK', 0.004, { basis: 'career', cap: 0.2, normalAge: 67, eligible: (a, y) => a >= 67 || (a >= 63 && y >= 35), rule: 'a top-up to the state pension: 67; 63 with 35 years' }),
+    '*': PLAN('Beamtenversorgung', 'Beamtenversorgung', 0.0179375, { basis: 'final', cap: 0.7175, normalAge: 67, ssCovered: false, eligible: (a, y) => a >= 67 || (a >= 63 && y >= 35), rule: '67; 63 with 35 years; 71.75% of final pay after 40 years' }),
+  },
+  FR: {
+    publicSafety: PLAN('Retraite de la fonction publique (catégorie active)', 'SRE/CNRACL', 0.0174, { basis: 'final', cap: 0.75, normalAge: 57, ssCovered: false, eligible: (a, y) => a >= 57 || (a >= 52 && y >= 27), rule: 'active category: 57; 52 with 27 years' }),
+    '*': PLAN('Retraite des fonctionnaires (SRE/CNRACL)', 'SRE/CNRACL', 0.0174, { basis: 'final', cap: 0.75, normalAge: 64, ssCovered: false, eligible: (a, y) => a >= 64 || (a >= 62 && y >= 43), rule: '64; 62 with a full career' }),
+  },
+  CA: {
+    publicSafety: PLAN('OMERS (police & fire)', 'OMERS', 0.02, { basis: 'best5', cap: 0.7, normalAge: 60, eligible: (a, y) => a >= 60 || a + y >= 90, rule: '60, or age + service = 90' }),
+    '*': PLAN('Public Service Pension Plan', 'PSPP', 0.02, { basis: 'best5', cap: 0.7, normalAge: 65, eligible: (a, y) => a >= 65 || (a >= 60 && y >= 30), rule: '65; 60 with 30 years' }),
+  },
+  NL: { '*': PLAN('ABP pension', 'ABP', 0.0175, { basis: 'career', cap: 0.7, normalAge: 67, eligible: (a, y) => a >= 67 || (a >= 64 && y >= 40), rule: '67; earlier for heavy work' }) },
+  SE: { '*': PLAN('Statens tjänstepension (PA 16)', 'PA 16', 0.008, { basis: 'career', cap: 0.3, normalAge: 65, eligible: (a, y) => a >= 65, rule: 'a top-up to the state pension: 65' }) },
+  IT: {
+    publicSafety: PLAN('INPS — Comparto sicurezza e soccorso', 'INPS', 0.0125, { basis: 'career', cap: 0.6, normalAge: 60, eligible: (a, y) => a >= 60 || y >= 41, rule: '60; any age with 41 years' }),
+    '*': PLAN('INPS — Gestione dipendenti pubblici', 'INPS', 0.0125, { basis: 'career', cap: 0.6, normalAge: 67, eligible: (a, y) => a >= 67 || y >= 42, rule: '67; any age with 42 years' }),
+  },
+  KR: { '*': PLAN('Government Employees Pension (GEPS)', 'GEPS', 0.017, { basis: 'career', cap: 0.6, normalAge: 65, eligible: (a, y) => a >= 65 && y >= 10, rule: '65 with 10 years' }) },
+  JP: { '*': PLAN('Kokka Kōmuin Kyōsai (KKR) top-up', 'KKR', 0.0055, { basis: 'career', cap: 0.25, normalAge: 65, eligible: (a, y) => a >= 65, rule: 'a top-up to the Employees\' Pension: 65' }) },
+  BR: {
+    publicSafety: PLAN('Regime Próprio (carreiras policiais)', 'RPPS', 0.02, { basis: 'career', cap: 1, normalAge: 55, eligible: (a, y) => a >= 55 && y >= 25, rule: '55 with 25 years' }),
+    '*': PLAN('Regime Próprio de Previdência Social', 'RPPS', 0.02, { basis: 'career', cap: 1, normalAge: 65, eligible: (a, y) => a >= 65 || (a >= 62 && y >= 25), rule: '65; 62 with 25 years' }),
+  },
+  PH: { '*': PLAN('GSIS retirement', 'GSIS', 0.025, { basis: 'best5', cap: 0.9, normalAge: 60, eligible: (a, y) => a >= 60 && y >= 15, rule: '60 with 15 years' }) },
+  // New public servants here save in defined-contribution super (AU), KiwiSaver (NZ), the NPS (IN),
+  // ISSSTE accounts (MX) or the general Social Security scheme (ES).
+  AU: { '*': null }, NZ: { '*': null }, IN: { '*': null }, MX: { '*': null }, ES: { '*': null },
+};
+for (const [cc, plans] of Object.entries(COUNTRY_PLANS)) for (const [id, def] of Object.entries(plans)) if (def) PENSION_PLANS[`${cc}:${id}`] = def;
+/** The plan a job abroad gets in place of a US plan id (null: none). */
+export function localPlanId(countryId, planId) {
+  if (!planId || !countryId || countryId === 'US') return planId;
+  const plans = COUNTRY_PLANS[countryId];
+  if (!plans) return planId;
+  const key = planId in plans ? planId : ['fers', 'fersSpecial', 'stateGov'].includes(planId) || plans['*'] !== undefined ? '*' : null;
+  if (key == null) return planId;
+  return plans[key] ? `${countryId}:${key}` : null;
+}
+
 export function highAverage(salaries, n = 3) {
   if (!salaries.length) return 0;
   const top = [...salaries].sort((a, b) => b - a).slice(0, n);
@@ -77,6 +138,9 @@ export function highAverage(salaries, n = 3) {
 
 export function annuityFor(planId, plan, age) {
   const def = PENSION_PLANS[planId];
-  const high = highAverage(plan.salaries);
+  const sal = plan.salaries ?? [];
+  // Career average, best five, final salary, or (the US default) the best three.
+  const high = def.basis === 'career' ? (sal.length ? sal.reduce((s, x) => s + x, 0) / sal.length : 0)
+    : def.basis === 'final' ? sal.at(-1) ?? 0 : highAverage(sal, def.basis === 'best5' ? 5 : 3);
   return Math.round(Math.min(def.cap, def.multiplier(age, plan.years) * plan.years) * high);
 }

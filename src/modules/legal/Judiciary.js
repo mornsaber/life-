@@ -362,9 +362,9 @@ export function leaveBench(ctx, reason, { senior = false } = {}) {
   j.history.push({ court: seat.court, startAge: seat.since, endAge: state.character.age, reason });
   j.seat = null;
   // Judicial pensions: federal Article III judges keep full salary (Rule of 80); state judges ≈3%/yr, capped at 75%.
-  // Abroad: about 2.5% of final salary a year, capped at 75%, from 60.
+  // Abroad: about 2.25% of final salary a year (1/43 in England), capped at half pay, from 60.
   let annual = 0;
-  if (c.system === 'national') annual = years >= 5 && !c.partTime ? Math.round(c.salary * Math.min(0.75, years * 0.025)) : 0;
+  if (c.system === 'national') annual = years >= 5 && !c.partTime ? Math.round(c.salary * Math.min(0.5, years * 0.0225)) : 0;
   else if (c.life && state.character.age >= 65 && state.character.age + years >= 80) annual = c.salary;
   else if (c.system === 'state' && years >= 8) annual = Math.round(c.salary * Math.min(0.75, years * 0.03));
   else if (c.system === 'federal' && !c.life && years >= 8) annual = Math.round(c.salary * Math.min(0.6, years * 0.025));

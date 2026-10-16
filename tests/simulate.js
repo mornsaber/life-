@@ -42,7 +42,7 @@ import { GIGS } from '../src/modules/career/GigWork.js';
 import { WORK_MODES } from '../src/modules/career/JobMarket.js';
 import { BASES } from '../src/modules/career/WorkplaceClaims.js';
 import { CLAIMS } from '../src/modules/legal/CivilCourts.js';
-import { COURTS } from '../src/modules/legal/Judiciary.js';
+import { courtDef } from '../src/modules/legal/Judiciary.js';
 import { THERAPIES, MEDS } from '../src/modules/health/MentalHealth.js';
 import { hasFelony as hasFelonyNow } from '../src/core/State.js';
 const BASES_OK = Object.keys(BASES);
@@ -261,7 +261,7 @@ function checkInvariants(state) {
   const em = state.career.emeritus;
   assert.ok(!em || (/Emerit(us|a)$/.test(em.title) && em.publications >= 0 && !hasFelonyNow(state)), 'emeritus');
   const jd = state.judiciary;
-  assert.ok(!jd.seat || (COURTS[jd.seat.court] && jd.seat.reputation >= 0 && jd.seat.reputation <= 100 && !(state.politics.office?.id === 'judge')), 'bench seat');
+  assert.ok(!jd.seat || (courtDef(jd.seat.court) && jd.seat.reputation >= 0 && jd.seat.reputation <= 100 && !(state.politics.office?.id === 'judge')), 'bench seat');
   assert.ok(!(jd.seat && state.career.job), 'judge with a job');
   const cv = state.civil;
   assert.ok(cv.judgments >= 0 && cv.suits.every((s) => s.amount > 0 && ['plaintiff', 'defendant'].includes(s.role)), 'civil suits');
