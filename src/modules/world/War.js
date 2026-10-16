@@ -353,7 +353,8 @@ function refugeeArrivals(ctx, rng) {
     ...Object.values(state.world.wars).filter((x) => x.country !== here(state) && x.homeFront >= 0.3 && x.phase !== 'ceasefire').map((x) => COUNTRIES[x.country]?.name ?? x.country),
   ];
   if (!sources.length || !rng.chance(0.12)) return;
-  const from = rng.pick(sources);
+  const picked = rng.pick(sources);
+  const from = /^(Philippines|United States|United Kingdom|Netherlands)$/.test(picked) ? `the ${picked}` : picked;
   ctx.prompt({
     type: 'world.refugees', icon: '🧳', title: 'Refugees Arrive',
     text: `Families fleeing the war in ${from} are arriving in your city with what they could carry.`,

@@ -33,7 +33,7 @@ const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ??
 const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */
 const MX_WORDS = /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja|Servicio Militar Nacional|Policía|Bomberos|Secretaría|Licencia/;
-const PH_WORDS = /(?<!from (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|Manila|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
+const PH_WORDS = /(?<!(from|war in) (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|Manila|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
 const GB_WORDS = /\bBritish\b|United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster|Council Tax|\bGP\b|Universal Credit/;
 const LEAKS = {
   SG: GB_WORDS,
