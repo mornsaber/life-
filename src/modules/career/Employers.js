@@ -129,6 +129,8 @@ export function createEmployer(rng, state, profession, regionId) {
     id: rng.id('emp_'),
     name,
     cityName: profession.sector === 'municipal' ? cityName(regionId) : null,
+    // Where the job is (units are named after it: the Nashville Field Office, the Leeds Division).
+    city: cityName(regionId),
     stateId: (REGIONS[regionId] ?? REGIONS.midcity).state,
     size,
     sector: profession.sector,

@@ -46,7 +46,7 @@ import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIO
 import { isAbroad, US_ONLY, informality, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { agencyExists } from '../world/LocalAgencies.js';
-import { stateIdOf } from '../life/Regions.js';
+import { stateIdOf, REGIONS } from '../life/Regions.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -654,11 +654,12 @@ export function careerOnAgeUp(ctx) {
     return;
   }
   const profession = getProfession(job.professionId);
-  // Older saves: give a command rank its unit, once.
-  if (job.department && !job.department.unitChecked) {
-    job.department.unitChecked = true;
+  // Older saves: give a command rank its unit (and rename units from before agencies named their own), once.
+  if (job.department && job.department.unitChecked !== 2) {
+    job.department.unitChecked = 2;
+    job.employer.city ??= job.employer.cityName ?? REGIONS[state.character.regionId]?.name.split(',')[0] ?? null;
     const lvl = levelById(profession, job.levelId);
-    if (lvl && unitFor(job, lvl, profession)) ensureDepartment(job, lvl);
+    if (lvl) ensureDepartment(job, lvl);
   }
   // Older saves abroad: an emergency service filed under the city government becomes its own body.
   if ((state.character.countryId ?? 'US') !== 'US' && !job.headOf && orgOf(state, job.employer)?.typeId === 'cityGov' && ['police', 'fire', 'ems', 'dispatch'].includes(job.professionId)) {

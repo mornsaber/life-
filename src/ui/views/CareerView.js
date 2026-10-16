@@ -18,6 +18,7 @@ import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/c
 import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
 import { chainOfCommand } from '../../modules/org/Organizations.js';
+import { assignmentFor } from '../../modules/career/Units.js';
 import { BUSINESS_TYPES, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
@@ -136,6 +137,7 @@ function managementConsole(job) {
   const mode = WORKFORCE_MODES[d.workforce];
   const canRestructure = job.abilities.includes('hire') || job.abilities.includes('delegate');
   return card(d.unit ? `You Command: ${esc(d.unit.name)} · ${d.headcount.toLocaleString()} staff` : `Your Department · ${d.headcount} staff`, `
+    ${d.unit?.within ? `<p class="fine">🧭 Part of ${esc(d.unit.within)}</p>` : ''}
     ${meter(d.productivity, { label: '⚙️ Productivity' })}
     ${mode.fixedQuality === null ? meter(d.morale, { label: '🙂 Team morale' }) : '<p class="fine">Contractor quality is fixed by the vendor — no morale to manage.</p>'}
     ${meter(d.unionRisk, { label: d.unionized ? '✊ Union pressure' : '✊ Unionization risk', tone: d.unionRisk > 70 ? 'bad' : d.unionRisk > 40 ? 'mid' : 'good' })}
@@ -219,6 +221,8 @@ function organizationCard(state, job) {
     ['Employer', `<b>${esc(c.org.name)}</b>${c.org.name !== job.employer.name ? ` <small class="muted">${esc(job.employer.name)}</small>` : ''}${servedPopulation(c.org) ? ` <small class="muted">· serves ${servedPopulation(c.org).toLocaleString()} residents</small>` : ''}`],
     c.org.body || orgType(c.org.typeId)?.body ? ['Part of', `${esc(BODIES[c.org.body ?? orgType(c.org.typeId).body]?.name ?? '')} <small class="muted">· led by ${esc(BODIES[c.org.body ?? orgType(c.org.typeId).body]?.head ?? '')}</small>`] : null,
     c.org.authority ? ['Governed by', esc(c.org.authority)] : null,
+    ((a) => (a ? ['Assigned to', esc(a)] : null))(assignmentFor(job, getProfession(job.professionId))),
+    job.department?.unit ? ['Your command', `${esc(job.department.unit.name)}${job.department.unit.within ? ` <small class="muted">· ${esc(job.department.unit.within)}</small>` : ''}`] : null,
     ['Department', `${esc(c.dept.name)}${c.division ? ` · ${esc(c.division)}` : ''} <small class="muted">~${c.dept.headcount.toLocaleString()} staff${c.dept.lastYear ? ` · last year +${c.dept.lastYear.hired} hired, −${c.dept.lastYear.left} left` : ''}</small>`],
     ['Ranks here', `${chip(EMPLOYER_SIZES[job.employer.size]?.label ?? job.employer.size)} <small class="muted">${ladderFor(getProfession(job.professionId), job.employer.size).map((l) => (l.id === job.levelId ? `<b>${esc(l.title)}</b>` : esc(l.title))).join(' › ')}</small>`],
         [c.leads ? 'You answer to' : 'Supervisor', who(c.supervisor, c.supervisor && !c.supervisor.body ? ` · gets along with you: ${job.boss}%` : '')],

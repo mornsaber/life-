@@ -19,7 +19,7 @@ import { VIEWS } from '../src/ui/Renderer.js';
 import { EXAM_RANKS, nextExam } from '../src/modules/publicsafety/CivilService.js';
 import { ladderFor, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
 import { setCurrentCountry } from '../src/core/Locale.js';
-import { unitFor } from '../src/modules/career/Units.js';
+import { unitFor, assignmentFor } from '../src/modules/career/Units.js';
 import { PROFESSION_LIST, NATIONAL_PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 
@@ -161,6 +161,43 @@ const tests = {
       }
     }
     assert.deepEqual(bad.slice(0, 5), []);
+  },
+  'units are named the way each agency names them, nest, and stay put through promotion'() {
+    const named = (id, levelId, staff = 3000, cc = 'US') => {
+      setCurrentCountry(cc);
+      const p = getProfession(id);
+      const l = p.levels.find((x) => x.id === levelId);
+      const u = unitFor({ employer: { id: 'e1', agencyStaff: staff, city: 'Leeds', stateId: 'TN' } }, l, p);
+      setCurrentCountry('US');
+      return u;
+    };
+    assert.match(named('fbi', 'ssa').name, /Squad|Group|Task Force|Detail/);
+    assert.match(named('fbi', 'sac').name, /Field Office/);
+    assert.match(named('fbi', 'ssa', 3000).within, /Branch/, 'an FBI squad sits within a branch');
+    assert.match(named('tsa', 'supervisor').name, /Checkpoint|Screening|PreCheck/);
+    assert.match(named('airTrafficControl', 'supervisor').name, /^Area [A-F]$/);
+    assert.match(named('postal', 'postmaster').name, /Post Office/);
+    assert.equal(named('municipalAdmin', 'cityManager'), null, 'the city manager runs the whole city, not a section');
+    // Promotion within one employer keeps you in the same precinct.
+    assert.equal(named('police', 'lieutenant').within, named('police', 'captain').name);
+    // Nothing is a bare "Section 12" any more.
+    const generic = [];
+    // (Fire and EMS divisions really are numbered.)
+    for (const p of PROFESSION_LIST.filter((x) => !['fire', 'airportFire', 'stateFire', 'ems'].includes(x.id))) for (const l of p.levels) {
+      const u = unitFor({ employer: { id: 'e2', agencyStaff: 3000, city: 'Leeds' } }, l, p);
+      if (u && /^(Section|Division|Plant) \d+$/.test(u.name)) generic.push(`${p.id} ${l.title}: ${u.name}`);
+    }
+    assert.deepEqual(generic.slice(0, 5), []);
+    // An agency too small for a precinct has none: its captain runs the department.
+    assert.equal(named('airportPolice', 'captain', 43), null);
+    // UK ranks: watch managers run a watch, inspectors a shift, chief inspectors a local policing area.
+    assert.match(named('fire', 'captain', 3000, 'GB').name, /Watch$/);
+    assert.match(named('police', 'captain', 3000, 'GB').name, /Local Policing Area/);
+    // Front-line staff are posted somewhere real.
+    setCurrentCountry('US');
+    const teacher = { title: 'Teacher', employer: { id: 'e3', agencyStaff: 3000, city: 'Leeds' } };
+    assert.match(assignmentFor(teacher, getProfession('education')), /Elementary|Middle School|High School/);
+    assert.match(assignmentFor({ title: 'Detective', employer: teacher.employer }, getProfession('police')), /Squad/);
   },
 };
 
