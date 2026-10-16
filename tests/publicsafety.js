@@ -19,6 +19,8 @@ import { VIEWS } from '../src/ui/Renderer.js';
 import { EXAM_RANKS, nextExam } from '../src/modules/publicsafety/CivilService.js';
 import { ladderFor, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
 import { setCurrentCountry } from '../src/core/Locale.js';
+import { unitFor } from '../src/modules/career/Units.js';
+import { PROFESSION_LIST, NATIONAL_PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -145,6 +147,20 @@ const tests = {
     }
     setCurrentCountry('US');
     assert.deepEqual(stuck.slice(0, 5), []);
+  },
+  'only police forces command squads, precincts, patrols and platoons; fire and EMS have their own units'() {
+    const POLICE = ['police', 'sheriff', 'transitPolice', 'universityPolice', 'airportPolice', 'statePolice', 'privatePolice', 'fbi', 'dea', 'atf', 'usms', 'usss', 'hsi', 'borderPatrol'];
+    const bad = [];
+    for (const p of [...PROFESSION_LIST, ...Object.values(NATIONAL_PROFESSIONS)]) {
+      const base = p.id.replace(/^[a-z]{2}_/, '');
+      if (POLICE.includes(base)) continue;
+      for (const l of p.levels) for (const n of [1, 2, 3, 4]) {
+        const u = unitFor({ employer: { id: `e${n}`, agencyStaff: 3000 } }, l, p);
+        if (u && /Squad|Precinct|Patrol|Platoon|Bureau of Operations/.test(u.name)) bad.push(`${p.id} ${l.title}: ${u.name}`);
+        if (u?.kind === 'company' && /Engine|Ladder/.test(u.name) && !['fire', 'airportFire', 'stateFire'].includes(base)) bad.push(`${p.id} ${l.title}: ${u.name}`);
+      }
+    }
+    assert.deepEqual(bad.slice(0, 5), []);
   },
 };
 

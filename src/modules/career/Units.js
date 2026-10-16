@@ -29,6 +29,8 @@ export const UNIT_KINDS = {
   district: { label: 'District', staff: [30, 200] },
   section: { label: 'Section', staff: [10, 60] },
   branch: { label: 'Branch', staff: [12, 40] },
+  region: { label: 'Region', staff: [300, 3000] },
+  shift: { label: 'Shift', staff: [25, 60] },
 };
 
 const FIRE = ['fire', 'airportFire', 'stateFire'];
@@ -37,10 +39,22 @@ const CORRECTIONS = ['jail', 'corrections', 'federalPrisons', 'privatePrisons'];
 const SCHOOLS = ['education'];
 const FEDERAL_LE = ['fbi', 'dea', 'atf', 'usms', 'usss', 'oig', 'hsi'];
 
+/** A national agency abroad runs on its US template's structure (gb_fbi → fbi). */
+const baseId = (id) => String(id).replace(/^[a-z]{2}_/, '');
+/** The kind of agency, for naming its units. */
+function familyOf(id) {
+  // (Inspectors general are auditors with a law-enforcement arm, not a police force.)
+  if (POLICE.includes(id) || (FEDERAL_LE.includes(id) && id !== 'oig') || id === 'borderPatrol') return 'police';
+  if (FIRE.includes(id)) return 'fire';
+  if (id === 'ems' || id === 'privateEms') return 'ems';
+  if (CORRECTIONS.includes(id)) return 'corrections';
+  return 'agency';
+}
+
 /** What a rank commands, from its title and the kind of agency. */
 export function unitKind(profession, level) {
   const t = level.title.toLowerCase();
-  const id = profession.id;
+  const id = baseId(profession.id);
   if (FIRE.includes(id) || id === 'ems') {
     if (/battalion/.test(t)) return 'battalion';
     if (/deputy|division|district chief|assistant chief/.test(t)) return /assistant chief|chief of department/.test(t) ? 'bureau' : 'division';
@@ -56,7 +70,7 @@ export function unitKind(profession, level) {
   }
   if (CORRECTIONS.includes(id)) {
     if (/sergeant/.test(t)) return 'housingUnit';
-    if (/lieutenant|captain/.test(t)) return 'watch';
+    if (/lieutenant|captain/.test(t)) return 'shift';
     if (/warden|administrator|commander|superintendent/.test(t) && !/regional|director/.test(t)) return 'facility';
   }
   if (SCHOOLS.includes(id)) {
@@ -86,7 +100,8 @@ export function unitKind(profession, level) {
   if (/patrol agent in charge|meteorologist in charge|chief of station/.test(t)) return 'station';
   // Upper management of any agency: divisions, then bureaus.
   if (/division (director|chief|superintendent)|^division|unit chief|program manager|superintendent of|utilities superintendent|public works superintendent/.test(t)) return 'division';
-  if (/assistant commissioner|deputy commissioner|associate administrator|assistant director|regional (deputy )?director|regional commissioner|assistant inspector general/.test(t)) return 'bureau';
+  if (/regional (deputy )?director|regional commissioner|regional manager/.test(t)) return 'region';
+  if (/assistant commissioner|deputy commissioner|associate administrator|assistant director|assistant inspector general/.test(t)) return 'bureau';
   if (/supervisor|sergeant|lead|foreman|manager/.test(t)) return 'section';
   return null;
 }
@@ -98,19 +113,31 @@ function hash(s) {
   return h >>> 0;
 }
 
+/** Bureau (directorate) names, by the kind of agency. */
+const BUREAUS = {
+  police: ['Bureau of Operations', 'Patrol Services Bureau', 'Special Operations Bureau', 'Support Services Bureau'],
+  fire: ['Fire Operations Bureau', 'Fire Prevention Bureau', 'Special Operations Bureau', 'Support Services Bureau'],
+  ems: ['Field Operations Bureau', 'Clinical Services Bureau', 'Communications & Logistics Bureau', 'Support Services Bureau'],
+  corrections: ['Institutions Bureau', 'Community Corrections Bureau', 'Security Operations Bureau', 'Programs & Reentry Bureau'],
+  agency: ['Operations Directorate', 'Programs Directorate', 'Policy & Planning Directorate', 'Corporate Services Directorate'],
+};
+
 function unitName(kind, n, profession, employer) {
+  const family = familyOf(baseId(profession.id));
   switch (kind) {
-    case 'squad': return `Squad ${n}`;
-    case 'company': return `${n % 3 === 0 ? 'Ladder' : 'Engine'} ${n}`;
-    case 'watch': return ['Day Watch', 'Evening Watch', 'Night Watch', 'First Platoon', 'Second Platoon', 'Third Platoon'][n % 6];
+    case 'squad': return family === 'police' ? `Squad ${n}` : `Team ${n}`;
+    case 'company': return family === 'ems' ? `Medic ${n}` : family === 'fire' ? `${n % 3 === 0 ? 'Ladder' : 'Engine'} ${n}` : `Crew ${n}`;
+    case 'watch': return family === 'fire' ? ['A Shift', 'B Shift', 'C Shift', 'Red Watch', 'Blue Watch', 'Green Watch'][n % 6] : ['Day Watch', 'Evening Watch', 'Night Watch', 'First Platoon', 'Second Platoon', 'Third Platoon'][n % 6];
+    case 'shift': return ['Day Shift', 'Evening Shift', 'Night Shift', 'Relief Shift'][n % 4];
+    case 'region': return `${['Northern', 'Southern', 'Eastern', 'Western', 'Central'][n % 5]} Region`;
     case 'station': return `Station ${n}`;
-    case 'precinct': return POLICE.includes(profession.id) && profession.id !== 'sheriff' ? `${ordinal(n)} Precinct` : `${['North', 'South', 'East', 'West', 'Central'][n % 5]} District`;
+    case 'precinct': return POLICE.includes(baseId(profession.id)) && baseId(profession.id) !== 'sheriff' ? `${ordinal(n)} Precinct` : `${['North', 'South', 'East', 'West', 'Central'][n % 5]} District`;
     case 'battalion': return `Battalion ${n}`;
     case 'division': return `Division ${n}`;
-    case 'bureau': return ['Bureau of Operations', 'Patrol Services Bureau', 'Special Operations Bureau', 'Support Services Bureau'][n % 4];
+    case 'bureau': return BUREAUS[family][n % 4];
     case 'school': return `${['Lincoln', 'Washington', 'Roosevelt', 'Jefferson', 'Kennedy', 'Franklin', 'Madison', 'King'][n % 8]} ${['Elementary', 'Middle School', 'High School'][n % 3]}`;
     case 'gradeTeam': return `${['6th', '7th', '8th', '9th', '10th', '11th', '12th'][n % 7]}-grade team`;
-    case 'facility': return `${['North', 'South', 'River', 'Valley', 'Central'][n % 5]} ${CORRECTIONS.includes(profession.id) && profession.id !== 'jail' ? 'Correctional Facility' : 'Detention Center'}`;
+    case 'facility': return `${['North', 'South', 'River', 'Valley', 'Central'][n % 5]} ${CORRECTIONS.includes(baseId(profession.id)) && baseId(profession.id) !== 'jail' ? 'Correctional Facility' : 'Detention Center'}`;
     case 'housingUnit': return `Housing Unit ${String.fromCharCode(65 + (n % 8))}`;
     case 'fieldOffice': return `${employer.cityName ?? 'Regional'} Field Office`;
     case 'postOffice': return `${['Main', 'Downtown', 'Northside', 'Southside', 'Westgate'][n % 5]} Post Office`;
