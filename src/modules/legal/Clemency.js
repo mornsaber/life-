@@ -17,7 +17,7 @@
  */
 import { PARDON } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
+import { yearlyCount, bumpYearly, prestige, SPENT_AFTER } from '../../core/State.js';
 import { OFFENSES } from './Offenses.js';
 import { stateOf } from '../life/Regions.js';
 
@@ -54,6 +54,14 @@ export function pardonStatus(state, r) {
   const cc = state.character.countryId ?? 'US';
   if (cc !== 'US') return { ok: true, federal, chance, by: PARDON[cc] ?? 'the head of state' };
   return { ok: true, federal, chance, by: federal ? 'the President' : `the Governor of ${stateOf(state).name}` };
+}
+
+/** Each year: tickets and civil violations older than SPENT_AFTER years are spent (sealed automatically). */
+export function spendMinorRecords(ctx) {
+  const { state } = ctx;
+  const spent = state.legal.record.filter((r) => !r.sealed && ['infraction', 'civil'].includes(r.severity) && state.character.age - r.age >= SPENT_AFTER);
+  for (const r of spent) { r.sealed = true; r.spent = true; }
+  if (spent.length) ctx.log(`${spent.length === 1 ? `Your old ${spent[0].name ?? 'ticket'} is` : `${spent.length} old tickets are`} now spent and off your record.`, '🧹');
 }
 
 export const ClemencyActions = {

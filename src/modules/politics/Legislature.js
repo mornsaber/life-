@@ -52,10 +52,28 @@ for (const [cc, L] of Object.entries(LEGISLATURES)) {
     BODY_DEFS[`prov_${cc}`] = { level: 'state', country: cc, name: (w) => L.prov.name(STATES[w]?.name ?? w), seats: () => L.prov.seats, presiding: L.prov.presiding, office: typeof L.prov.office === 'string' ? L.prov.office : null, executive: L.prov.exec, execOffice: L.prov.execOffice, veto: L.prov.veto, staffCount: 150, allowance: 3 };
     if (typeof L.prov.office === 'function') for (const st of Object.keys(STATES).concat(Object.getOwnPropertyNames(STATES))) { const o = L.prov.office(st); if (o) extraOffices.push([o, `prov_${cc}`]); }
   }
-  BODY_DEFS[`lower_${cc}`] = { level: 'federal', country: cc, name: () => L.lower.name, seats: () => L.lower.seats, presiding: L.lower.presiding, office: L.lower.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 3000, allowance: 10 };
-  if (L.upper) BODY_DEFS[`upper_${cc}`] = { level: 'federal', country: cc, name: () => L.upper.name, seats: () => L.upper.seats, presiding: L.upper.presiding, office: L.upper.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 1500, allowance: 10 };
+  BODY_DEFS[`lower_${cc}`] = { level: 'federal', country: cc, name: () => L.lower.name, seats: () => L.lower.seats, presiding: L.lower.presiding, office: L.lower.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 3000, allowance: 10, leaders: L.lower.leaders };
+  if (L.upper) BODY_DEFS[`upper_${cc}`] = { level: 'federal', country: cc, name: () => L.upper.name, seats: () => L.upper.seats, presiding: L.upper.presiding, office: L.upper.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 1500, allowance: 10, appointed: !L.upper.office, peers: Boolean(L.upper.peers), revising: L.upper.revising ?? null, leaders: L.upper.leaders };
 }
 export const SEAT_OFFICES = Object.fromEntries([...Object.entries(BODY_DEFS).filter(([, d]) => d.office).map(([k, d]) => [d.office, k]), ...extraOffices]);
+/** The chamber an office sits in. Prime ministers, premiers and first ministers keep the seat they lead from. */
+export function seatKindFor(officeId) {
+  if (!officeId) return null;
+  if (SEAT_OFFICES[officeId]) return SEAT_OFFICES[officeId];
+  const o = OFFICES[officeId];
+  const from = o?.leader && o.requires?.find((r) => SEAT_OFFICES[r]);
+  return from ? SEAT_OFFICES[from] : null;
+}
+/** Years between a chamber's elections: its members' term (two years for US-style bodies without one). */
+const electionCycle = (d) => (d.office && OFFICES[d.office]?.term && d.country ? OFFICES[d.office].term : 2);
+/** Local titles of a chamber's leaders. */
+export const leaderTitle = (kind, which) => BODY_DEFS[kind]?.leaders?.[which] ?? (which === 'majority' ? 'Majority leader' : 'Minority leader');
+/** Life peers sit in their country's upper house. */
+export const peerChamber = (state) => {
+  if (!state.character.style?.peerage) return null;
+  const cc = state.character.countryId ?? 'US';
+  return BODY_DEFS[`upper_${cc}`]?.peers ? `upper_${cc}` : null;
+};
 
 /** The chambers a bill passes at a level, in a place (a city, a state or province, or a country). */
 export function chambersFor(level, where) {
@@ -218,7 +236,7 @@ function newBody(state, kind, where, rng) {
   const body = {
     id: bodyId(kind, where), kind, level: d.level, where, name: d.name(where), seats,
     labor: Math.round(seats * clamp(laborShareFor(state, kind, where) + rng.float(-0.06, 0.06), 0.2, 0.8)),
-    staffCount: d.staffCount, nextElection: rng.int(1, 2), bills: [], history: [],
+    staffCount: d.staffCount, nextElection: d.appointed ? null : rng.int(1, electionCycle(d)), bills: [], history: [],
     executive: { name: personName(rng), caucus: rng.chance(laborShareFor(state, kind, where)) ? 'labor' : 'business' },
   };
   holdDominance(state, body, rng);
@@ -256,6 +274,12 @@ export function bodiesHere(state) {
   return LEVELS.flatMap((level) => chambersFor(level, whereFor(state, level)).map((k) => state.legislature?.bodies?.[bodyId(k, whereFor(state, level))]).filter(Boolean));
 }
 export const mySeat = (state) => state.legislature?.seat ?? null;
+/** Seniority in terms: your office's, or (for a peer, who has no term) four years a term. */
+export const seniority = (state) => {
+  const seat = mySeat(state);
+  if (seat?.peer) return 1 + Math.floor((state.character.age - (seat.since ?? state.character.age)) / 4);
+  return state.politics.office?.terms ?? 1;
+};
 export const myBody = (state) => (mySeat(state) ? state.legislature.bodies[state.legislature.seat.bodyId] ?? null : null);
 export const inMajority = (state) => {
   const s = mySeat(state);
@@ -345,7 +369,18 @@ function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
       if (bill.sponsor === 'you') m.rel = Math.round(clamp((m.rel ?? 50) + (vote ? 2 : -1), 0, 100));
     }
     bill.no = v.no;
-    if (v.yes * 2 <= body.seats) return finish(ctx, bill, 'dead', `failed in the ${body.name} ${v.yes}–${v.no}`);
+    if (v.yes * 2 <= body.seats) {
+      // A revising chamber can only hold a bill up: it becomes law a year later regardless.
+      const revising = i > 0 && BODY_DEFS[body.kind]?.revising;
+      if (revising && LAWS[bill.lawId]) {
+        bill.stage = 'delayed';
+        bill.dueAge = state.character.age + 1;
+        bill.outcome = `rejected by the ${body.name} ${v.yes}–${v.no}; it becomes law next year under ${revising}`;
+        if (bill.sponsor === 'you') ctx.log(`The ${body.name} rejected your bill (${billTitle(bill)}). Under ${revising} it passes next year anyway.`, '⏳', 'warn');
+        return bill.outcome;
+      }
+      return finish(ctx, bill, 'dead', `failed in the ${body.name} ${v.yes}–${v.no}`);
+    }
     myVote = null;
   }
   // Parliamentary governments come from the majority: what passes is law.
@@ -469,15 +504,34 @@ function electionYear(ctx, body, rng) {
     seat.post = null;
   }
   if (rng.chance(0.4)) body.executive = { name: personName(rng), caucus: dominantParty(state)?.bloc && body.level === 'federal' ? dominantParty(state).bloc : rng.chance(body.labor / body.seats) ? 'labor' : 'business' };
-  body.nextElection = 2;
+  body.nextElection = electionCycle(BODY_DEFS[body.kind]);
   ballotResult(ctx, body);
+}
+
+/**
+ * An appointed chamber (the House of Lords, Canada's Senate) has no elections: members
+ * serve on, a few retire or die each year, and the government of the day fills the gaps
+ * with its own people, so the chamber drifts slowly toward whoever has been in power.
+ */
+function appointmentsYear(ctx, body, rng) {
+  const { state } = ctx;
+  const govLabor = body.executive?.caucus === 'labor';
+  const drift = Math.round(body.seats * rng.float(0, 0.012)) * (govLabor ? 1 : -1);
+  body.labor = Math.round(clamp((body.labor + drift) / body.seats, 0.25, 0.75) * body.seats);
+  if (rng.chance(0.2)) {
+    for (const m of body.members ?? []) m.terms += 1;
+    body.members = (body.members ?? []).filter((m) => m.you || !rng.chance(0.06 + Math.max(0, m.age - 80) * 0.03));
+    for (const m of body.members ?? []) m.age = (m.age ?? 60) + 1;
+    pickLeaders(body, rng);
+  }
+  if (Math.abs(drift) >= 4 && rng.chance(0.3)) body.history = [...body.history.slice(-9), { age: state.character.age, text: `New appointments: ${Math.abs(drift)} ${govLabor ? 'labor' : 'business'}-bloc members were created.` }];
 }
 
 /** Your seat: taken with the office, kept in step with it. */
 function syncSeat(ctx) {
   const { state } = ctx;
   const officeId = state.politics?.office?.id;
-  const kind = SEAT_OFFICES[officeId];
+  const kind = seatKindFor(officeId) ?? peerChamber(state);
   const seat = state.legislature.seat;
   if (!kind) {
     if (seat) {
@@ -493,7 +547,7 @@ function syncSeat(ctx) {
   const id = bodyId(kind, whereFor(state, BODY_DEFS[kind].level));
   if (seat?.bodyId === id) return seat;
   const caucus = (state.politics.laborVotes ?? 0) > 1 || state.career.job?.unionMember ? 'labor' : state.business?.current || state.business?.holdings?.length ? 'business' : (state.legislature.bodies[id]?.labor ?? 0) * 2 > (state.legislature.bodies[id]?.seats ?? 1) ? 'labor' : 'business';
-  state.legislature.seat = { bodyId: id, caucus, post: null, committee: null, staff: [], record: [] };
+  state.legislature.seat = { bodyId: id, caucus, post: null, committee: null, staff: [], record: [], since: state.character.age, ...(seatKindFor(officeId) ? {} : { peer: true }) };
   const body = state.legislature.bodies[id];
   if (body?.members) {
     body.members = body.members.filter((m) => !m.you);
@@ -535,7 +589,8 @@ export const Legislature = {
     // Elections and leadership.
     const national = chambersFor('federal', whereFor(state, 'federal'))[0];
     for (const body of bodiesHere(state)) {
-      body.nextElection -= 1;
+      if (BODY_DEFS[body.kind]?.appointed) { body.nextElection = null; appointmentsYear(ctx, body, rng); continue; }
+      body.nextElection = (body.nextElection ?? electionCycle(BODY_DEFS[body.kind])) - 1;
       if (body.nextElection <= 0) electionYear(ctx, body, rng);
       // Campaign season for the national election: how will you vote?
       else if (body.nextElection === 1 && body.id === bodyId(national, whereFor(state, 'federal'))) ballotPrompt(ctx, body);
@@ -545,7 +600,9 @@ export const Legislature = {
       const o = state.politics.office;
       const comms = seat.staff.filter((s) => ['communications', 'caseworker'].includes(s.role)).length;
       if (o && comms) o.approval = Math.min(100, o.approval + comms);
-      if (seat.post) ctx.earn(Math.round(OFFICES[o.id].salary * POSTS[seat.post].pay), `${POSTS[seat.post].title} stipend`, { wage: true });
+      if (seat.post && o) ctx.earn(Math.round(OFFICES[o.id].salary * POSTS[seat.post].pay), `${POSTS[seat.post].title} stipend`, { wage: true });
+      // Peers are unpaid: a daily attendance allowance for the days they sit.
+      if (seat.peer && !state.legal.incarceration && state.character.age < 90) ctx.earn(rng.int(18000, 34000), 'Lords attendance allowance');
     }
     // The session: the year's bills (yours, lobbied ones, the majority's) go to the floor.
     for (const level of LEVELS) {
@@ -554,6 +611,9 @@ export const Legislature = {
       const origin = kinds.length ? state.legislature.bodies[bodyId(kinds[0], where)] : null;
       if (!origin) continue;
       const pending = (origin.bills ?? []).filter((b) => b.stage === 'introduced');
+      // Bills a revising chamber held up for a year pass without it.
+      const due = (origin.bills ?? []).filter((b) => b.stage === 'delayed' && b.dueAge <= state.character.age);
+      for (const b of due) finish(ctx, b, 'law', `passed without the ${state.legislature.bodies[bodyId(kinds.at(-1), where)]?.name ?? 'upper house'}'s consent under ${BODY_DEFS[kinds.at(-1)].revising}`);
       const bills = [...pending, ...npcBills(state, origin, rng)];
       for (const b of bills) runBill(ctx, b, rng);
       // Members go on the record on the session's biggest bill, close or not.
@@ -568,7 +628,7 @@ export const Legislature = {
           });
         }
       }
-      origin.bills = [...(origin.bills ?? []).filter((b) => !bills.includes(b) && ['floor', 'desk'].includes(b.stage)), ...bills].slice(-10);
+      origin.bills = [...(origin.bills ?? []).filter((b) => !bills.includes(b) && (['floor', 'desk', 'delayed'].includes(b.stage) || due.includes(b))), ...bills].slice(-10);
     }
   },
 
@@ -653,7 +713,7 @@ export const Legislature = {
       const seat = mySeat(state);
       const P = POSTS[post];
       if (!seat || !P) return;
-      const o = state.politics.office;
+      const o = { terms: seniority(state), approval: state.politics.office?.approval ?? 55 };
       if (yearlyCount(state, 'legislature.runPost')) return ctx.toast('Leadership races come once a year.', 'warn');
       if (o.terms < P.minTerms) return ctx.toast(`${P.title} takes ${P.minTerms} terms of seniority.`, 'warn');
       if (P.majority && !inMajority(state)) return ctx.toast('Your caucus is in the minority.', 'warn');

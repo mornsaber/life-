@@ -22,9 +22,11 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
   const { state } = ctx;
   const office = OFFICES[officeId];
   const p = state.politics;
-  if (p.office) leaveOffice(ctx, `Sworn in as ${office.name}`);
+  // A prime minister (or premier) leads from their seat in the house and keeps it.
+  const seatOffice = office.leader && office.requires?.includes(p.office?.id) ? p.office.id : null;
+  if (p.office) leaveOffice(ctx, `Sworn in as ${office.name}`, { keepSeat: Boolean(seatOffice) });
   if (office.fullTime && state.career.job) ctx.emit('career:resign', { reason: `Took office as ${office.name}` });
-  p.office = { id: officeId, termYearsLeft: office.term, terms: 1, approval: appointed ? 55 : 60, startAge: state.character.age, fullTime: office.fullTime };
+  p.office = { id: officeId, termYearsLeft: office.term, terms: 1, approval: appointed ? 55 : 60, startAge: state.character.age, fullTime: office.fullTime, ...(seatOffice ? { seatOffice } : {}) };
   p.recognition = Math.min(100, p.recognition + office.level * 6);
   const where = office.level >= 5 || officeId === 'stateRep' || officeId === 'stateSenator' ? stateOf(state).name : regionOf(state).name.split(',')[0];
   ctx.log(`${appointed ? 'Appointed' : 'Sworn in'} as ${office.name} (${where}). ${office.fullTime ? '' : 'It\'s a part-time citizen office — keep your day job.'}`, office.icon, 'milestone');
@@ -33,14 +35,24 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
   ctx.emit('politics:officeChanged', { officeId });
 }
 
-function leaveOffice(ctx, reason) {
+/** Reasons that end a political career outright (a prime minister otherwise falls back to the backbenches). */
+const OUT_OF_POLITICS = /felony|incarcerat|jurisdiction|Retired/i;
+
+function leaveOffice(ctx, reason, { keepSeat = false } = {}) {
   const { state } = ctx;
   const p = state.politics;
   if (!p.office) return;
-  p.history.push({ officeId: p.office.id, startAge: p.office.startAge, endAge: state.character.age, terms: p.office.terms, reason });
-  ctx.log(`You left office as ${OFFICES[p.office.id].name}: ${reason}.`, '🏛️');
+  const was = p.office;
+  p.history.push({ officeId: was.id, startAge: was.startAge, endAge: state.character.age, terms: was.terms, reason });
+  ctx.log(`You left office as ${OFFICES[was.id].name}: ${reason}.`, '🏛️');
   p.office = null;
-  ctx.emit('politics:officeChanged', { officeId: null });
+  // Out of the top job but still a member of the house you led from.
+  if (was.seatOffice && OFFICES[was.seatOffice] && !OUT_OF_POLITICS.test(reason)) {
+    const seat = OFFICES[was.seatOffice];
+    p.office = { id: was.seatOffice, termYearsLeft: Math.max(1, was.termYearsLeft ?? seat.term), terms: 1, approval: Math.max(40, was.approval ?? 50), startAge: state.character.age, fullTime: seat.fullTime };
+    ctx.log(`You return to the backbenches as ${seat.name}.`, '🪑');
+  }
+  if (!keepSeat) ctx.emit('politics:officeChanged', { officeId: p.office?.id ?? null });
 }
 
 function resolveElection(ctx) {
@@ -54,12 +66,12 @@ function resolveElection(ctx) {
     const primary = voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08);
     if (primary <= 0.5) {
       p.recognition = Math.min(100, p.recognition + 3);
-      ctx.log(`🗳️ You lost the primary for ${office.name}.`, '📉', 'bad');
+      ctx.log(state.character.countryId && state.character.countryId !== 'US' ? `🗳️ Your party didn't select you as its candidate for ${office.name}.` : `🗳️ You lost the primary for ${office.name}.`, '📉', 'bad');
       ctx.stat('happiness', -6);
       p.everRan = true;
       return;
     }
-    ctx.log(`🗳️ You won the primary for ${office.name}!`, '🗳️', 'good');
+    ctx.log(state.character.countryId && state.character.countryId !== 'US' ? `🗳️ Your party selected you as its candidate for ${office.name}!` : `🗳️ You won the primary for ${office.name}!`, '🗳️', 'good');
   }
   const share = clamp(voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08), 0.02, 0.9);
   const pct = Math.round(share * 1000) / 10;

@@ -24,6 +24,13 @@ function life(seed = 1) {
   Object.assign(state.stats, { smarts: 80, looks: 70, health: 95 });
   return { engine, state };
 }
+function gbLife(seed) {
+  const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+  const state = engine.newLife({ countryId: 'GB' });
+  state.character.age = 40;
+  Object.assign(state.stats, { smarts: 80, looks: 70, health: 95 });
+  return { engine, state };
+}
 function seat(engine, officeId, terms = 1) {
   const { state } = engine;
   state.politics.office = { id: officeId, termYearsLeft: 30, terms, approval: 60, startAge: 30, fullTime: false };
@@ -215,6 +222,52 @@ const tests = {
     assert.ok(state.legislature.bodies['house:IL'].bills.some((b) => b.sponsor === 'lobby'), 'a lobbied bill');
     assert.ok(before === false);
     assert.ok(LAWS.smallBizCredit);
+  },
+
+  'Westminster: five-year Commons, an appointed Lords that only delays, and peers who sit in it'() {
+    const { engine, state } = gbLife(4);
+    state.character.style = { prefix: 'Lord', peerage: `Baron ${state.character.lastName}, of Leeds` };
+    year(engine);
+    const commons = bodiesHere(state).find((b) => b.kind === 'lower_GB');
+    const lords = bodiesHere(state).find((b) => b.kind === 'upper_GB');
+    assert.ok(commons && lords, 'both houses');
+    assert.equal(lords.nextElection, null, 'the Lords is never elected');
+    assert.ok(commons.nextElection <= 5);
+    assert.equal(mySeat(state)?.bodyId, lords.id, 'a life peer takes a seat in the Lords');
+    assert.ok(mySeat(state).peer);
+    for (let i = 0; i < 12; i++) year(engine);
+    assert.equal(mySeat(state)?.bodyId, lords.id, 'and keeps it for life');
+    assert.ok(state.legislature.bodies[commons.id].history.length + state.laws.enacted.length > 0);
+    // A bill the Lords rejects is only held up for a year.
+    const bill = { id: 'b_test', level: 'federal', where: 'GB', lawId: 'smallBizCredit', direction: 'up', value: true, sponsor: 'Test MP', stage: 'delayed', dueAge: state.character.age, outcome: 'rejected by the House of Lords' };
+    state.legislature.bodies[commons.id].bills.push(bill);
+    year(engine);
+    assert.equal(bill.stage, 'law', 'passed under the Parliament Acts');
+    assert.match(bill.outcome, /Parliament Acts/);
+    const html = VIEWS.politics(state);
+    clean(html);
+    assert.match(html, /Life peer/);
+    assert.match(html, /appointed for life/);
+    assert.match(html, /Leader of the Opposition/);
+    assert.ok(!/election in/.test(html.split('House of Lords').at(-1).slice(0, 200)));
+  },
+
+  'a prime minister leads from the Commons and goes back to the backbenches'() {
+    const { engine, state } = gbLife(6);
+    seat(engine, 'gb_mp', 4);
+    state.politics.recognition = 100;
+    state.politics.office.approval = 90;
+    const commons = myBody(state);
+    assert.equal(commons?.kind, 'lower_GB');
+    for (let i = 0; i < 25 && state.politics.office?.id !== 'gb_pm'; i++) {
+      if (!state.politics.campaign && state.politics.office?.id === 'gb_mp') engine.dispatch('politics.run', 'gb_pm');
+      year(engine, ['decline', 'wait', 'none', 'yes', 'sign', 'run']);
+    }
+    assert.equal(state.politics.office?.id, 'gb_pm', 'won the party leadership');
+    assert.equal(mySeat(state)?.bodyId, commons.id, 'still sits in the Commons as PM');
+    engine.context().emit('politics:leave', { reason: 'Lost the general election' });
+    assert.equal(state.politics.office?.id, 'gb_mp', 'back to being an MP');
+    assert.equal(mySeat(state)?.bodyId, commons.id);
   },
 };
 

@@ -464,6 +464,10 @@ export function highestDegree(state) {
 
 /** Convictions employers, licensing boards and recruiters can see: sealed records are hidden and pardons restore your rights. */
 export const visibleRecord = (state) => state.legal.record.filter((r) => !r.sealed && !r.pardoned);
+/** Convictions that count as a criminal record: tickets (infractions) and civil violations don't. */
+export const criminalRecord = (state) => visibleRecord(state).filter((r) => r.severity === 'misdemeanor' || r.severity === 'felony');
+/** Tickets and civil violations drop off your record on their own after a few years. */
+export const SPENT_AFTER = 3;
 export const hasFelony = (state) => visibleRecord(state).some((r) => r.severity === 'felony');
 export const isIncarcerated = (state) => Boolean(state.legal.incarceration);
 

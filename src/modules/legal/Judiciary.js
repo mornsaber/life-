@@ -15,7 +15,7 @@
  * a judges' school in progress: state.judiciary.school = { until, name }.
  */
 import { clamp } from '../../core/Random.js';
-import { yearsInProfession, addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
+import { yearsInProfession, addHonor, yearlyCount, bumpYearly, criminalRecord } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { isCitizen } from '../world/Countries.js';
@@ -167,7 +167,7 @@ export function layEligibility(state) {
   if (!isCitizen(state, state.character.countryId)) return { ok: false, reason: 'Citizens only' };
   if (state.character.age < lay.minAge || state.character.age > lay.maxAge) return { ok: false, reason: `Ages ${lay.minAge}–${lay.maxAge}` };
   if (!lay.noLaw && !hasLaw(state)) return { ok: false, reason: 'A law degree' };
-  if ((state.legal.record ?? []).some((r) => !r.sealed)) return { ok: false, reason: 'A clean record' };
+  if (criminalRecord(state).length) return { ok: false, reason: 'A clean record' };
   if (yearlyCount(state, 'judiciary.lay')) return { ok: false, reason: 'One application a year' };
   return { ok: true, odds: clamp(0.4 + (state.stats.smarts - 50) / 200 + Math.min(10, state.character.age - 25) * 0.02, 0.2, 0.8) };
 }
@@ -180,7 +180,7 @@ export function examEligibility(state) {
   if (j?.seat || j?.school) return { ok: false, reason: 'Already on the judicial track' };
   if (!isCitizen(state, state.character.countryId)) return { ok: false, reason: 'Judges must be citizens' };
   if (!hasLaw(state)) return { ok: false, reason: 'A law degree' };
-  if (state.legal.record?.length) return { ok: false, reason: 'A clean record' };
+  if (criminalRecord(state).length) return { ok: false, reason: 'A clean record' };
   const practice = lawYears(state);
   if (s.minPractice && practice < s.minPractice) return { ok: false, reason: `${s.minPractice} years of legal practice` };
   if (state.character.age > s.maxAge && !(s.practiceInstead && practice >= s.practiceInstead)) return { ok: false, reason: `Under ${s.maxAge + 1}${s.practiceInstead ? `, or ${s.practiceInstead}+ years of practice (the second concours)` : ''}` };

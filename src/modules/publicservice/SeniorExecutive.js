@@ -38,7 +38,7 @@
  *   since, probationUntil, pay, rating, awards, apps, lastTransitionYear }
  */
 import { clamp } from '../../core/Random.js';
-import { addHonor, yearlyCount, bumpYearly, yearsInProfession, currentYear } from '../../core/State.js';
+import { addHonor, yearlyCount, bumpYearly, yearsInProfession, currentYear, criminalRecord } from '../../core/State.js';
 import { getProfession, PROFESSIONS } from '../career/JobTrees.js';
 import { levelById } from '../career/Ladder.js';
 import { hasCredential, grantCredential } from '../credentials/LicensingEngine.js';
@@ -518,7 +518,7 @@ export const SeniorExecutiveModule = {
       const { state, rng } = ctx;
       if (optionId !== 'accept') return;
       ctx.stat('stress', 10);
-      if (state.legal.record?.length && rng.chance(0.6)) return ctx.log('Vetting turned up old problems. The White House quietly withdrew your nomination.', '📰', 'bad');
+      if (criminalRecord(state).length && rng.chance(0.6)) return ctx.log('Vetting turned up old problems. The White House quietly withdrew your nomination.', '📰', 'bad');
       if (!rng.chance(0.7)) return ctx.log('Your nomination stalled in the Senate and expired at the end of the session.', '⏳', 'warn');
       const job = state.career.job;
       const level = levelById(getProfession(job.professionId), data.levelId);

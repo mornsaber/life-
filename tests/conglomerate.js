@@ -35,7 +35,9 @@ const year = (engine) => {
   engine.ageUp();
   for (let j = 0; j < 8 && engine.state.prompts.length; j++) {
     const p = engine.state.prompts[0];
-    engine.resolvePrompt(p.id, (p.options.find((o) => ['decline', 'wait'].includes(o.id)) ?? p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id); // never sell the business under test
+    // Never sell the business under test (but do get the appendix out).
+    const hold = String(p.type).startsWith('business') && p.options.find((o) => ['decline', 'wait'].includes(o.id));
+    engine.resolvePrompt(p.id, (hold || p.options.find((o) => !o.disabled && o.tone !== 'danger') || p.options[0]).id);
   }
 };
 const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);

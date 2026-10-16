@@ -104,6 +104,10 @@ export function officeOrderFor(countryId, provinceId, usOrder) {
  *   veto     whether that executive can veto bills (presidents and some governors);
  *            parliamentary governments come from the majority and don't
  *   execOffice the office whose holder is that executive
+ *   upper.office null: an appointed or indirectly chosen chamber (no elections of its own)
+ *   upper.peers   life peers (Honours.js) sit in it
+ *   upper.revising it can only delay a bill, not kill it (the UK's Parliament Acts)
+ *   leaders  local titles for the majority and minority leaders
  */
 export const LEGISLATURES = {
   CA: {
@@ -114,8 +118,8 @@ export const LEGISLATURES = {
   },
   GB: {
     prov: { name: (p) => ({ Scotland: 'Scottish Parliament', Wales: 'Senedd Cymru', 'Northern Ireland': 'Northern Ireland Assembly' }[p] ?? `${p} Assembly`), seats: 90, presiding: 'Presiding Officer', office: (prov) => ({ 'GB-SCT': 'gb_msp', 'GB-WLS': 'gb_ms', 'GB-NIR': 'gb_mla' }[prov]), exec: 'First Minister', execOffice: 'gb_firstMinister', veto: false, none: ['GB-ENG'] },
-    lower: { name: 'House of Commons', seats: 650, presiding: 'Speaker of the House of Commons', office: 'gb_mp' },
-    upper: { name: 'House of Lords', seats: 800, presiding: 'Lord Speaker', office: null },
+    lower: { name: 'House of Commons', seats: 650, presiding: 'Speaker of the House of Commons', office: 'gb_mp', leaders: { majority: 'Leader of the House', minority: 'Leader of the Opposition' } },
+    upper: { name: 'House of Lords', seats: 800, presiding: 'Lord Speaker', office: null, peers: true, revising: 'the Parliament Acts', leaders: { majority: 'Leader of the House of Lords', minority: 'Opposition Leader in the Lords' } },
     exec: 'Prime Minister', execOffice: 'gb_pm', veto: false,
   },
   DE: {

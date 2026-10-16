@@ -125,9 +125,30 @@ export function veteranPlacementNote(state, profession, size) {
   return vet ? `${vet.reason}: start as ${vet.level.title} instead of ${base.title}` : null;
 }
 
+/** Does entry need a degree (bachelor's or above, or a named programme)? */
+const degreeGated = (req) => {
+  if (!req) return false;
+  if (req.anyOf) return req.anyOf.every(degreeGated);
+  const ed = req.education;
+  return Boolean(ed && (ed.program || ['bachelor', 'master', 'professional', 'doctorate'].includes(ed.level)));
+};
+
+/**
+ * The age you can be hired at. A career's minAge mostly stands in for the years of study
+ * it takes; once you hold the degree (however early you finished) the legal adult age is
+ * the floor. Abroad the US's 21-year rules (police, transit, investigators) don't apply.
+ */
+export function minimumAge(state, profession) {
+  const min = profession.minAge ?? 18;
+  if (min <= 18) return min;
+  if (degreeGated(profession.entry)) return 18;
+  return (state.character.countryId ?? 'US') === 'US' ? min : 18;
+}
+
 export function applicationEligibility(state, professionId) {
   const profession = getProfession(professionId);
-  if (state.character.age < profession.minAge) return { ok: false, reason: `Must be ${profession.minAge}+` };
+  const minAge = minimumAge(state, profession);
+  if (state.character.age < minAge) return { ok: false, reason: `Must be ${minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };

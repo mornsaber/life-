@@ -28,6 +28,8 @@ function grow(typeId, seed, { years = 30, strategy = 'steady', ownerYears = 0 } 
   engine.dispatch('business.start', `${typeId}:cash:llc`);
   const biz = currentBusiness(state);
   biz.drawPct = 0;
+  // A well-run company starts from a typical site (a bad location is its own problem: the advisor says move).
+  biz.fit = Math.max(biz.fit ?? 1, 1);
   let peak = { scale: 1, units: 0, revenue: 0 };
   for (let y = 1; y <= years; y++) {
     if (y <= ownerYears && y >= 3) { state.yearly = {}; biz.expandTo = nextMarket(state, biz); engine.dispatch('business.expand', 'cash'); }

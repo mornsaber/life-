@@ -5,7 +5,7 @@
 import { commitOffense, justiceTick, JusticeResolvers } from './JusticeSystem.js';
 import { temptationTick, resolveTemptation, RiskyActions, RISKY_ACTIONS } from './Misconduct.js';
 import { PrisonActions } from './Prison.js';
-import { ClemencyActions } from './Clemency.js';
+import { ClemencyActions, spendMinorRecords } from './Clemency.js';
 import { CrimeActions, crimeTick } from './StreetCrime.js';
 
 /** Prompt choices that break the law, by `${promptType}:${optionId}`. */
@@ -57,6 +57,7 @@ export const LegalModule = {
   onAgeUp(ctx) {
     justiceTick(ctx);
     crimeTick(ctx);
+    spendMinorRecords(ctx);
     if (!ctx.state.legal.incarceration) temptationTick(ctx);
   },
 

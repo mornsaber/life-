@@ -23,6 +23,8 @@ import { sesReadiness } from '../src/modules/publicservice/SeniorExecutive.js';
 import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js';
 import { directEntryEligibility } from '../src/modules/career/DirectEntry.js';
 import { discharge, enlist } from '../src/modules/military/MilitaryEngine.js';
+import { applicationEligibility } from '../src/modules/career/CareerEngine.js';
+import { criminalRecord } from '../src/core/State.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId, regionId, { age = 40, seed = 3, gender } = {}) {
@@ -52,6 +54,25 @@ const answer = (engine, state, type, option) => {
 };
 
 const tests = {
+  'a degree, not a birthday, is the gate: early graduates can be hired; abroad the US 21-year rules go'() {
+    const { state } = life('US', null, { age: 20 });
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'accounting', year: 20 });
+    assert.ok(applicationEligibility(state, 'accounting').ok, JSON.stringify(applicationEligibility(state, 'accounting')));
+    assert.equal(applicationEligibility(state, 'police').reason, 'Must be 21+', 'US police still 21');
+    const gb = life('GB', null, { age: 19 }).state;
+    assert.notEqual(applicationEligibility(gb, 'police').reason, 'Must be 21+', 'UK police recruit at 18');
+    assert.equal(applicationEligibility(life('US', null, { age: 17 }).state, 'accounting').reason, 'Must be 18+');
+  },
+
+  'tickets are spent after three years and never count as a criminal record'() {
+    const { engine, state } = life('US', null, { age: 30 });
+    state.legal.record.push({ offenseId: 'speeding', name: 'Speeding', severity: 'infraction', age: 30, sentence: '$300 fine' });
+    assert.equal(criminalRecord(state).length, 0, 'a ticket is not a criminal record');
+    for (let i = 0; i < 3; i++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
+    const ticket = state.legal.record.find((r) => r.offenseId === 'speeding');
+    assert.ok(ticket.sealed && ticket.spent, 'spent after three years');
+  },
+
   'pensions: each country has its own scheme, and a UK firefighter gets far less than a US one'() {
     assert.equal(localPlanId('GB', 'publicSafety'), 'GB:publicSafety');
     assert.equal(localPlanId('AU', 'publicSafety'), null, 'Australia: super, not a defined-benefit plan');
