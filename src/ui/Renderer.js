@@ -32,6 +32,8 @@ import { moveView } from './views/MoveView.js';
 import { politicsView } from './views/PoliticsView.js';
 import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
+import { achievementsView } from './views/AchievementsView.js';
+import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { communityView } from './views/CommunityView.js';
 import { garageView } from './views/GarageView.js';
 import { farmView } from './views/FarmView.js';
@@ -43,7 +45,7 @@ import { branchOf } from '../modules/military/MilitaryEngine.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
-  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }] },
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
@@ -106,6 +108,7 @@ export const VIEWS = {
   home: homeView,
   move: moveView,
   politics: politicsView,
+  achievements: achievementsView,
   activities(state) {
     const items = ACTIVITIES.map((a) => {
       const done = Boolean(state.yearly[`activity.${a.id}`]);
@@ -438,6 +441,9 @@ export class Renderer {
         ['Credentials', Object.values(state.credentials.held).filter((h) => h.status === 'active').length],
         ['Honors', `${state.honors.length} (⭐ ${prestige(state)})`],
         felon ? ['Record', 'Felony conviction'] : null,
+        ['Achievements', `${Object.keys(state.achievements ?? {}).length} of ${Object.keys(ACHIEVEMENTS).length}`],
+        state.challenge && CHALLENGES[state.challenge.id] ? ['Challenge', `${CHALLENGES[state.challenge.id].icon} ${esc(CHALLENGES[state.challenge.id].name)} — ${state.challenge.status === 'won' ? 'won' : 'failed'}`] : null,
+        state.hallOfFame ? ['Hall of Fame', `#${state.hallOfFame.rank} · score ⭐ ${state.hallOfFame.score}`] : null,
       ],
     };
   }

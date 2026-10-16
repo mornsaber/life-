@@ -123,6 +123,9 @@ export function createInitialState(rng, options = {}) {
     },
     politics: { office: null, campaign: null, history: [], recognition: 0 },
     honors: [],
+    // Achievements unlocked this life ({ id: age }) and the challenge chosen at the start (life/Achievements).
+    achievements: {},
+    challenge: options.challenge ? { id: options.challenge, status: 'active' } : null,
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],

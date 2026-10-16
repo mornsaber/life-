@@ -204,13 +204,13 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   medical: {
-    id: 'medical', name: 'Medicine', icon: '⚕️', sector: 'private', payMultiplier: 1.8, minAge: 25, sizes: { medium: 2, large: 3, enterprise: 1 }, background: 'strict',
+    id: 'medical', name: 'Medicine', icon: '⚕️', sector: 'private', payMultiplier: 2.1, minAge: 25, sizes: { medium: 2, large: 3, enterprise: 1 }, background: 'strict',
     employers: ['St. Brigid Medical Center', 'Mercy General', 'Lakeshore University Hospital'],
     valued: ['boardCertified'],
     entry: { education: { program: 'md' } },
     levels: [
-      L('resident', 'Medical Resident', 4, { years: 3, abilities: ['prescribe'] }),
-      L('chiefResident', 'Chief Resident', 5, { req: { credentials: ['medicalLicense'] }, abilities: ['prescribe'] }),
+      L('resident', 'Medical Resident', 4, { years: 3, abilities: ['prescribe'], rankPay: 0.39 }), // a resident's stipend, not a doctor's salary
+      L('chiefResident', 'Chief Resident', 5, { req: { credentials: ['medicalLicense'] }, abilities: ['prescribe'], rankPay: 0.37 }),
       L('attending', 'Attending Physician', 7, { entry: true, req: { credentials: ['boardCertified'] }, abilities: ['prescribe', 'sign'] }),
       L('senior', 'Senior Attending', 8, { track: 'ic', abilities: ['prescribe', 'sign'] }),
       L('renowned', 'Renowned Specialist', 9, { track: 'ic', minSize: 'large', abilities: ['prescribe', 'sign'] }),
@@ -265,7 +265,7 @@ export const PRIVATE_PROFESSIONS = {
     ],
   },
   education: {
-    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'municipal', employerName: (city) => `${city} Public Schools`, payMultiplier: 0.88, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
+    id: 'education', name: 'K-12 Education', icon: '🍎', sector: 'municipal', employerName: (city) => `${city} Public Schools`, payMultiplier: 1.0, minAge: 21, sizes: { small: 2, medium: 3, large: 2 }, background: 'strict',
     union: { chance: 0.7, name: 'State Education Association', strike: true },
     benefits: { pension: 'teachers', dcPlan: '403(b)', match: 0 },
     employers: ['Lincoln Unified School District', 'Riverside School District', 'Westbrook ISD'],
@@ -276,9 +276,9 @@ export const PRIVATE_PROFESSIONS = {
       L('senior', 'Senior Teacher', 4, { req: { credentials: ['teachingCert'] } }),
       L('coach', 'Instructional Coach', 5, { track: 'ic', req: { education: { level: 'master' } } }),
       L('specialist', 'Curriculum Specialist', 6, { track: 'ic', minSize: 'medium', req: { education: { level: 'master' } } }),
-      L('chair', 'Department Chair', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
-      L('ap', 'Assistant Principal', 6, { track: 'mgmt', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'hire'], reports: 30 }),
-      L('principal', 'Principal', 7, { track: 'mgmt', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 70 }),
+      L('chair', 'Department Chair', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8, rankPay: 0.86 }), // a teacher with a stipend
+      L('ap', 'Assistant Principal', 6, { track: 'mgmt', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'hire'], reports: 30, rankPay: 0.88 }),
+      L('principal', 'Principal', 7, { track: 'mgmt', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 70, rankPay: 0.88 }),
       L('director', 'District Director of Curriculum', 8, { track: 'mgmt', minSize: 'medium', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 40 }),
       L('assistantSuper', 'Assistant Superintendent', 8, { track: 'mgmt', minSize: 'large', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'policy'], reports: 300 }),
       L('superintendent', 'Superintendent', 9, { track: 'mgmt', minSize: 'medium', req: { credentials: ['adminCert'] }, abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec', 'policy'], reports: 900 }),
