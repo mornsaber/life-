@@ -71,7 +71,7 @@ export const ACHIEVEMENTS = {
   lifesaver: { name: 'Lifesaver', icon: '🚑', tier: 'silver', desc: 'Make 25 saves as a first responder.', test: (s) => saves(s) >= 25 },
   moh: { name: 'Above and Beyond', icon: '🏅', tier: 'gold', desc: 'Receive your country\'s highest award for valour.', test: (s) => honors(s).some((h) => h.id === 'moh' || h.highest) },
   decorated: { name: 'Decorated', icon: '🎗️', tier: 'silver', desc: 'Receive five honours.', test: (s) => honors(s).length >= 5 },
-  knighted: { name: 'Arise', icon: '⚔️', tier: 'gold', desc: 'Be knighted (Sir or Dame).', test: (s) => ['Sir', 'Dame'].includes(s.character.style?.prefix) || Boolean(s.character.style?.peerage) },
+  knighted: { name: 'Arise', icon: '⚔️', tier: 'gold', desc: 'Be knighted, or receive the like from your own country.', test: (s) => ['Sir', 'Dame'].includes(s.character.style?.prefix) || Boolean(s.character.style?.peerage) },
   peer: { name: 'Ennobled', icon: '👑', tier: 'gold', desc: 'Be made a life peer.', test: (s) => Boolean(s.character.style?.peerage) },
   // Public life
   elected: { name: 'Elected', icon: '🗳️', tier: 'bronze', desc: 'Win an election.', test: (s) => officesHeld(s).length > 0 },

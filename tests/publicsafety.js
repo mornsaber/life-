@@ -20,6 +20,7 @@ import { EXAM_RANKS, nextExam } from '../src/modules/publicsafety/CivilService.j
 import { ladderFor, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
 import { setCurrentCountry } from '../src/core/Locale.js';
 import { unitFor, assignmentFor } from '../src/modules/career/Units.js';
+import { NATIONAL_POLICE } from '../src/modules/career/Employers.js';
 import { PROFESSION_LIST, NATIONAL_PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 
@@ -161,6 +162,22 @@ const tests = {
       }
     }
     assert.deepEqual(bad.slice(0, 5), []);
+  },
+  'a national police force has its whole rank structure, wherever you are posted'() {
+    const missing = [];
+    for (const cc of NATIONAL_POLICE) {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
+      const state = engine.newLife({ countryId: cc });
+      const id = ['KE', 'NG', 'ID', 'PH'].includes(cc) ? 'police' : 'statePolice';
+      const p = getProfession(id);
+      for (const seed of [1, 2, 3]) {
+        const emp = createEmployer(new Random(seed), state, p, state.character.regionId);
+        const absent = p.levels.filter((l) => !ladderFor(p, emp.size).includes(l));
+        if (absent.length) missing.push(`${cc} ${id} @${emp.size}: ${absent.map((l) => l.title).join(', ')}`);
+      }
+    }
+    setCurrentCountry('US');
+    assert.deepEqual(missing.slice(0, 5), []);
   },
   'units are named the way each agency names them, nest, and stay put through promotion'() {
     const named = (id, levelId, staff = 3000, cc = 'US') => {

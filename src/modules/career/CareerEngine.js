@@ -22,7 +22,7 @@ import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { unitFor } from './Units.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
-import { resetBudget, resolveDutyStation } from './Employers.js';
+import { resetBudget, resolveDutyStation, nationalBody } from './Employers.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
 import { educationFields } from '../education/Catalog.js';
@@ -655,6 +655,11 @@ export function careerOnAgeUp(ctx) {
   }
   const profession = getProfession(job.professionId);
   // Older saves: give a command rank its unit (and rename units from before agencies named their own), once.
+  // Older saves: a national force or agency gets its full national rank structure.
+  if (job.employer.size !== 'mega' && nationalBody(state, job.employer, profession)) {
+    job.employer.size = 'mega';
+    recalcSalary(state, job);
+  }
   if (job.department && job.department.unitChecked !== 2) {
     job.department.unitChecked = 2;
     job.employer.city ??= job.employer.cityName ?? REGIONS[state.character.regionId]?.name.split(',')[0] ?? null;

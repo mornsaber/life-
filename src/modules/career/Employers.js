@@ -19,6 +19,7 @@ import { unionLaw } from './BargainingUnits.js';
 import { regionsInState } from '../life/Regions.js';
 import { localUnionName } from '../world/CountryLaw.js';
 import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
+import { isNationalService } from '../world/LocalAgencies.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -46,6 +47,20 @@ export function governmentTier(state, employer, profession) {
   const n = orgOf(state, employer)?.departments?.[employer.deptId]?.headcount;
   if (!n) return null;
   return n < 40 ? 'micro' : n < 300 ? 'small' : n < 2500 ? 'medium' : n < 8000 ? 'large' : n < 15000 ? 'enterprise' : 'mega';
+}
+
+/** Countries whose police (the "statePolice" career) is one national force. */
+export const NATIONAL_POLICE = ['NZ', 'IE', 'SG', 'IL', 'PS', 'FR', 'ES', 'NL', 'SE', 'KR', 'KE', 'NG', 'ID', 'PH'];
+
+/** Is this employer part of a single national body (a national police force or service, a federal or national agency)? */
+export function nationalBody(state, employer, profession) {
+  if (!GOV_SECTORS.includes(profession.sector)) return false;
+  const cc = state.character?.countryId ?? 'US';
+  if (employer.national || orgOf(state, employer)?.national) return true;
+  if (isNationalService(cc, profession.id)) return true;
+  if (profession.id === 'statePolice' && NATIONAL_POLICE.includes(cc)) return true;
+  // National agencies abroad (gb_fbi → the NCA) and US federal agencies.
+  return Boolean(profession.country) || profession.sector === 'federal';
 }
 
 function pickSize(rng, profession, regionId) {
@@ -155,6 +170,9 @@ export function createEmployer(rng, state, profession, regionId) {
     employer.size = tier;
     employer.agencyStaff = orgOf(state, employer)?.departments?.[employer.deptId]?.headcount ?? null;
   }
+  // A national force or agency has the whole national rank structure, wherever you're posted
+  // (your posting's headcount still sizes the unit you command).
+  if (nationalBody(state, employer, profession)) employer.size = 'mega';
   return employer;
 }
 
