@@ -5,6 +5,7 @@
  */
 import { STAT_META, STAT_KEYS, tidyText } from '../core/State.js';
 import { CHALLENGES } from '../modules/life/Achievements.js';
+import { DIFFICULTIES } from '../core/Difficulty.js';
 import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -282,6 +283,10 @@ export function newLifeForm(rngName) {
           <label><input type="radio" name="gender" value="male"> 👨 Male</label>
         </fieldset>
         <label class="country-pick">Born in<select name="countryId"><option value="random">🎲 Random country</option>${Object.values(COUNTRIES).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)} (coming later)</option>`).join('')}</select></label>
+        <fieldset class="gender">
+          <legend>Difficulty</legend>
+          ${Object.entries(DIFFICULTIES).map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
+        </fieldset>
         <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>

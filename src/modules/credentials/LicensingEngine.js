@@ -28,6 +28,7 @@ import { COUNTRIES } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS } from '../education/Catalog.js';
+import { knob } from '../../core/Difficulty.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -236,7 +237,7 @@ export function grantCredential(ctx, id, { sponsor = null, silent = false } = {}
 export function passChance(state, cred, { prepped = Boolean(state.credentials.prep?.[cred.id]) } = {}) {
   const stat = state.stats[cred.exam.stat] ?? 50;
   const center = cred.exam.stat === 'smarts' ? 75 : 60;
-  return clamp(0.97 - cred.exam.difficulty * 1.1 + (stat - center) / 140 + (prepped ? PREP_BONUS : 0), 0.05, 0.97);
+  return clamp(0.97 - cred.exam.difficulty * 1.1 + (stat - center) / 140 + (prepped ? PREP_BONUS : 0) + knob(state, 'exams'), 0.05, 0.97);
 }
 
 function takeExam(ctx, cred) {

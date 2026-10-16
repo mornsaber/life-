@@ -9,6 +9,7 @@ import { salaryBreakdown } from './PayGrades.js';
 import { stateOf } from '../life/Regions.js';
 import { clearedPremium } from './ClearedWork.js';
 import { lawValue } from '../politics/Laws.js';
+import { knob } from '../../core/Difficulty.js';
 
 /**
  * Government command staff (grade 7+) are paid more at bigger agencies (a big-city chief vs a
@@ -42,6 +43,8 @@ export function recalcSalary(state, job) {
   // Legislated pay adjustments for government employees at that level.
   const adj = lawValue(state, 'publicPay');
   const publicAdj = job.sector === 'federal' ? adj?.federal : job.sector === 'state' ? adj?.state : job.sector === 'municipal' ? adj?.city : 0;
-  job.salary = Math.max(publicAdj ? Math.round(job.pay.total * (1 + publicAdj)) : job.pay.total, job.sector === 'federal' ? 0 : floor);
+  // Difficulty: everyone's paid a little more (Story) or less (Hard, Brutal).
+  const total = Math.round(job.pay.total * knob(state, 'income'));
+  job.salary = Math.max(publicAdj ? Math.round(total * (1 + publicAdj)) : total, job.sector === 'federal' ? 0 : floor);
   return job.salary;
 }

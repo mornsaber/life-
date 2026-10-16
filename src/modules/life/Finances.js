@@ -16,6 +16,7 @@ import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
 import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.js';
 import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
+import { knob } from '../../core/Difficulty.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
@@ -166,7 +167,7 @@ export const Finances = {
         const household = married ? 1.5 : 1;
         const lifestyle = (LIVING_FLOOR * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
         // Spending flexes down when money is tight, but never below the bare minimum.
-        living = Math.round(Math.max(minimum, Math.min(lifestyle, discretionary * 0.92)));
+        living = Math.round(Math.max(minimum * knob(state, 'costOfLiving'), Math.min(lifestyle * knob(state, 'costOfLiving'), discretionary * 0.92)));
       }
       insurance = state.service?.program?.id === 'peaceCorps' ? 0 : healthPremium(state, ordinary);
     }

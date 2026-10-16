@@ -12,6 +12,7 @@ import { clamp, Random } from './Random.js';
 import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
+import { DIFFICULTIES } from './Difficulty.js';
 
 export const STATE_VERSION = 4;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -126,6 +127,7 @@ export function createInitialState(rng, options = {}) {
     // Achievements unlocked this life ({ id: age }) and the challenge chosen at the start (life/Achievements).
     achievements: {},
     challenge: options.challenge ? { id: options.challenge, status: 'active' } : null,
+    difficulty: { id: DIFFICULTIES[options.difficulty] ? options.difficulty : 'normal', assisted: false },
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],

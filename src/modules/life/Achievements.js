@@ -15,6 +15,7 @@
 import { netWorth, prestige, criminalRecord, fullName, currentYear } from '../../core/State.js';
 import { OFFICES } from '../politics/Offices.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { scoreMultiplier, difficultyId, easeDifficulty, DIFFICULTIES } from '../../core/Difficulty.js';
 
 const GOV = ['municipal', 'state', 'federal', 'public'];
 const POINTS = { bronze: 10, silver: 25, gold: 50 };
@@ -123,7 +124,8 @@ export const achievementPoints = (s) => Object.keys(s.achievements ?? {}).reduce
 /** A life's score: achievements, fortune (capped) and standing. */
 export function lifeScore(s) {
   const wealth = Math.min(400, Math.max(0, Math.round(netWorth(s) / 25000)));
-  return achievementPoints(s) + wealth + Math.min(300, prestige(s)) + (s.challenge?.status === 'won' ? 100 : 0);
+  // Harder lives count for more; an assisted life never counts above Normal.
+  return Math.round((achievementPoints(s) + wealth + Math.min(300, prestige(s)) + (s.challenge?.status === 'won' ? 100 : 0)) * scoreMultiplier(s));
 }
 
 function enshrine(state) {
@@ -133,6 +135,7 @@ function enshrine(state) {
     name: fullName(state), countryId: c.countryId ?? 'US', born: c.birthYear, died: currentYear(state), age: c.age, cause: c.causeOfDeath ?? '—',
     netWorth: Math.round(netWorth(state)), peak: peak?.title ?? null, achievements: Object.keys(state.achievements ?? {}).length,
     challenge: state.challenge ? { id: state.challenge.id, status: state.challenge.status } : null, score: lifeScore(state),
+    difficulty: difficultyId(state), assisted: Boolean(state.difficulty?.assisted),
   };
   const list = [...hallOfFame(), entry].sort((a, b) => b.score - a.score).slice(0, 100);
   write(HOF_KEY, list);
@@ -188,6 +191,8 @@ export const AchievementsModule = {
 
   init(state) {
     state.achievements ??= {};
+    // Lives from before difficulty levels play on Normal.
+    state.difficulty ??= { id: 'normal', assisted: false };
     state.challenge ??= null;
     if (state.challenge && !CHALLENGES[state.challenge.id]) state.challenge = null;
   },
@@ -204,6 +209,15 @@ export const AchievementsModule = {
 
   onYearEnd(ctx) {
     if (ctx.state.character.alive) check(ctx);
+  },
+
+  actions: {
+    /** Make the rest of this life easier (never harder). Marks the life assisted. arg: difficulty id */
+    ease(ctx, id) {
+      if (!easeDifficulty(ctx.state, id)) return ctx.toast('You can only make a life easier, not harder.', 'warn');
+      ctx.log(`You switched this life to ${DIFFICULTIES[id].icon} ${DIFFICULTIES[id].name}. It now counts as assisted in the Hall of Fame.`, '⚙️');
+      return undefined;
+    },
   },
 };
 

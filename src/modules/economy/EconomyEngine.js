@@ -15,6 +15,7 @@
  * black-swan shocks that cut an expansion short.
  */
 import { clamp } from '../../core/Random.js';
+import { knob } from '../../core/Difficulty.js';
 
 /** Round to `p` and normalize -0 (which doesn't survive JSON). */
 const rnd = (x, p = 1000) => Math.round(x * p) / p + 0;
@@ -60,10 +61,10 @@ export function demandFactor(state) {
   return { expansion: 1.04, peak: 1.07, recession: 0.82, recovery: 0.95 }[state.economy.phase];
 }
 
-function nextPhase(e, rng) {
+function nextPhase(e, rng, state) {
   if (e.phase === 'expansion') {
     if (e.phaseYears >= e.expansionLength) return 'peak';
-    if (rng.chance(0.02)) return 'recession'; // black swan
+    if (rng.chance(0.02 * knob(state, 'recessions'))) return 'recession'; // black swan
     return null;
   }
   if (e.phase === 'peak') return 'recession';
@@ -84,7 +85,7 @@ export const EconomyEngine = {
     const { state, rng } = ctx;
     const e = state.economy;
     e.phaseYears += 1;
-    const next = nextPhase(e, rng);
+    const next = nextPhase(e, rng, state);
     if (next) {
       e.phase = next;
       e.phaseYears = 0;

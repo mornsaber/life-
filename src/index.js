@@ -48,6 +48,7 @@ function startNewLife(form) {
     gender: gender === 'random' ? undefined : gender,
     countryId: data.get('countryId') || 'US',
     challenge: data.get('challenge') || null,
+    difficulty: data.get('difficulty') || 'normal',
   });
 }
 

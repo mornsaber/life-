@@ -34,6 +34,7 @@ import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
+import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
 import { garageView } from './views/GarageView.js';
 import { farmView } from './views/FarmView.js';
@@ -341,7 +342,7 @@ export class Renderer {
     const region = regionOf(state);
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
-      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}</div>
+      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}${difficultyId(state) !== 'normal' ? ` ${chip(`${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`, difficultyId(state) === 'story' ? 'cyan' : 'bad')}` : ''}</div>
       <div class="mobile-status" aria-hidden="true">${esc(state.character.firstName)} · ${state.character.age} · <span class="${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span></div>
       <nav class="topbar-actions" aria-label="Game">
         ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo</button>` : ''}
@@ -441,6 +442,7 @@ export class Renderer {
         ['Credentials', Object.values(state.credentials.held).filter((h) => h.status === 'active').length],
         ['Honors', `${state.honors.length} (⭐ ${prestige(state)})`],
         felon ? ['Record', 'Felony conviction'] : null,
+        ['Difficulty', `${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`],
         ['Achievements', `${Object.keys(state.achievements ?? {}).length} of ${Object.keys(ACHIEVEMENTS).length}`],
         state.challenge && CHALLENGES[state.challenge.id] ? ['Challenge', `${CHALLENGES[state.challenge.id].icon} ${esc(CHALLENGES[state.challenge.id].name)} — ${state.challenge.status === 'won' ? 'won' : 'failed'}`] : null,
         state.hallOfFame ? ['Hall of Fame', `#${state.hallOfFame.rank} · score ⭐ ${state.hallOfFame.score}`] : null,

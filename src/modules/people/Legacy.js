@@ -259,6 +259,8 @@ export function buildHeirState(rng, old, childId) {
   const year = currentYear(old);
   const s = createInitialState(rng, { firstName: child.firstName, lastName: child.lastName, gender: child.gender, countryId: old.character.countryId });
   s.character.age = childAge;
+  // The family plays on at the same difficulty.
+  s.difficulty = old.difficulty ? { ...old.difficulty } : s.difficulty;
   s.character.birthYear = year - childAge;
   s.character.regionId = old.character.regionId;
   s.character.residencySince = 0;

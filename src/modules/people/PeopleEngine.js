@@ -34,6 +34,7 @@ import {
 } from './People.js';
 import { settleEstate, buildHeirState, setStateLookup, WILL_PLANS } from './Legacy.js';
 import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
+import { knob } from '../../core/Difficulty.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -68,7 +69,7 @@ export function makePerson(ctx, { relation, gender, age, lastName, relationship 
 function generateFamily(ctx) {
   const { state, rng } = ctx;
   const age = state.character.age;
-  const p = (state.people = { list: [], wealth: rng.weighted([{ id: 'low', w: 38 }, { id: 'middle', w: 52 }, { id: 'upper', w: 10 }], (x) => x.w).id, orientation: null, expecting: null, fund529: {}, arrears: 0, licenseHold: false, alimony: null, prenup: false, will: null, lifeInsurance: {}, foreignContact: null, generated: true });
+  const p = (state.people = { list: [], wealth: rng.weighted(((w) => (typeof w === 'object' ? [{ id: 'low', w: w.low }, { id: 'middle', w: w.middle }, { id: 'upper', w: w.upper }] : [{ id: 'low', w: 38 }, { id: 'middle', w: 52 }, { id: 'upper', w: 10 }]))(knob(state, 'wealth')).filter((x) => x.w > 0), (x) => x.w).id, orientation: null, expecting: null, fund529: {}, arrears: 0, licenseHold: false, alimony: null, prenup: false, will: null, lifeInsurance: {}, foreignContact: null, generated: true });
   const last = state.character.lastName;
   const mom = makePerson(ctx, { relation: 'mother', gender: 'female', age: age + rng.int(20, 40), lastName: last, relationship: rng.int(65, 95) });
   const dad = makePerson(ctx, { relation: 'father', gender: 'male', age: age + rng.int(21, 43), lastName: last, relationship: rng.int(60, 92) });

@@ -6,6 +6,7 @@ import { commitmentLoad, getCommitments } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { healthMortality, DEATH_CAUSE } from '../health/Conditions.js';
+import { knob } from '../../core/Difficulty.js';
 
 const CHILDHOOD_EVENTS = [
   { minAge: 1, maxAge: 3, text: 'You said your first word. It was "no."', icon: '🗣️', stats: { smarts: 2, happiness: 2 } },
@@ -119,7 +120,7 @@ export const Lifecycle = {
     // Background mortality: a Gompertz curve shaped like U.S. life tables
     // (≈1%/yr at 60, ≈2.5% at 70, ≈6% at 80). Diagnosed conditions add their
     // own named risk on top, so the background carries ~60% of the total.
-    let risk = backgroundMortality(age);
+    let risk = backgroundMortality(age) * knob(state, 'mortality');
     if (health < 25) risk += (25 - health) * 0.008;
     if (age >= 110) risk = 1;
     const conditions = state.health ? healthMortality(state) : { total: 0, parts: [] };

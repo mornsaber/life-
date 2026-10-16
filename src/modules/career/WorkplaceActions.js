@@ -14,6 +14,7 @@ import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
 import { MAX_STEP } from './PayGrades.js';
 import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast } from './CareerEngine.js';
 import { regionsHere } from '../life/Regions.js';
+import { knob } from '../../core/Difficulty.js';
 
 const DIMINISH = [1, 0.6, 0.3, 0];
 /** Promotion odds multiplier by the grade being competed for. */
@@ -288,7 +289,7 @@ export const WorkplaceActions = {
       const contest = promotionContest(state, job, target);
       chance *= contest.factor;
       // Some fields have few management seats per worker (hotels, the trades).
-      chance *= getProfession(job.professionId).promotionOdds ?? 1;
+      chance *= (getProfession(job.professionId).promotionOdds ?? 1) * knob(state, 'promotion');
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
 
       if (rng.chance(clamp(chance, 0.05, 0.95))) {

@@ -2,8 +2,10 @@
  * Achievements tab: this life's unlocks and challenge, the all-time trophy
  * cabinet and the Hall of Fame of past lives.
  */
-import { esc, card, chip, kv, money, disclosure } from '../Components.js';
+import { esc, card, chip, kv, money } from '../Components.js';
 import { ACHIEVEMENTS, CHALLENGES, hallOfFame, trophies, achievementPoints, lifeScore, countryFlag } from '../../modules/life/Achievements.js';
+import { DIFFICULTIES, DIFFICULTY_ORDER, difficultyId, difficultyOf, scoreMultiplier } from '../../core/Difficulty.js';
+import { button } from '../Components.js';
 
 const TIER = { bronze: '🥉', silver: '🥈', gold: '🥇' };
 
@@ -31,10 +33,17 @@ function achievementsCard(state) {
 function hallCard() {
   const list = hallOfFame();
   if (!list.length) return card('Hall of Fame', '<p class="muted">Finished lives are enshrined here, ranked by their score.</p>', { icon: '🏛️' });
-  const rows = list.slice(0, 25).map((e, i) => `<li><b>#${i + 1}</b> ${countryFlag(e.countryId)} <b>${esc(e.name)}</b> <small>(${e.born}–${e.died}, age ${e.age}) · ${e.peak ? `${esc(e.peak)} · ` : ''}${money(e.netWorth)} · ${e.achievements} achievements${e.challenge ? ` · ${CHALLENGES[e.challenge.id]?.icon ?? '🎯'} ${e.challenge.status === 'won' ? 'challenge won' : 'challenge failed'}` : ''}</small> ${chip(`⭐ ${e.score}`)}</li>`).join('');
+  const rows = list.slice(0, 25).map((e, i) => `<li><b>#${i + 1}</b> ${countryFlag(e.countryId)} <b>${esc(e.name)}</b> <small>(${e.born}–${e.died}, age ${e.age}) · ${e.peak ? `${esc(e.peak)} · ` : ''}${money(e.netWorth)} · ${e.achievements} achievements${e.difficulty && e.difficulty !== 'normal' ? ` · ${DIFFICULTIES[e.difficulty]?.icon ?? ''} ${DIFFICULTIES[e.difficulty]?.name ?? ''}${e.assisted ? ' (assisted)' : ''}` : ''}${e.challenge ? ` · ${CHALLENGES[e.challenge.id]?.icon ?? '🎯'} ${e.challenge.status === 'won' ? 'challenge won' : 'challenge failed'}` : ''}</small> ${chip(`⭐ ${e.score}`)}</li>`).join('');
   return card(`Hall of Fame · ${list.length} li${list.length === 1 ? 'fe' : 'ves'}`, `<ol class="history">${rows}</ol>${list.length > 25 ? '<p class="fine">Top 25 shown.</p>' : ''}`, { icon: '🏛️' });
 }
 
+function difficultyCard(state) {
+  const d = difficultyOf(state);
+  const here = DIFFICULTY_ORDER.indexOf(difficultyId(state));
+  const easier = DIFFICULTY_ORDER.slice(0, here).map((id) => button(`${DIFFICULTIES[id].icon} Switch to ${DIFFICULTIES[id].name}`, 'achievements.ease', { arg: id, variant: 'tiny ghost', hint: 'Makes the rest of this life easier; it then counts as assisted' })).join('');
+  return card(`Difficulty: ${esc(d.name)}${state.difficulty?.assisted ? ' (assisted)' : ''}`, `<p>${d.icon} ${esc(d.desc)}</p><p class="fine">Hall of Fame score ×${scoreMultiplier(state)}. You can make a life easier at any time, never harder.</p>${easier ? `<div class="toggle-row">${easier}</div>` : ''}`, { icon: '⚙️' });
+}
+
 export function achievementsView(state) {
-  return `${challengeCard(state)}${achievementsCard(state)}${hallCard()}`;
+  return `${difficultyCard(state)}${challengeCard(state)}${achievementsCard(state)}${hallCard()}`;
 }

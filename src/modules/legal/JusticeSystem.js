@@ -25,6 +25,7 @@ import { deathRowTick } from './Prison.js';
 import { JUSTICE } from '../world/CountryLaw.js';
 import { COUNTRIES, priceLevel } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
+import { knob } from '../../core/Difficulty.js';
 
 /** The courts where you live: null in the US (state and federal rules below). */
 export const justiceHere = (state) => JUSTICE[state.character.countryId] ?? null;
@@ -351,7 +352,7 @@ export function justiceTick(ctx) {
   legal.investigations = [];
   let charged = false;
   for (const inv of open) {
-    let discovery = inv.discovery;
+    let discovery = inv.discovery * knob(state, 'justice');
     // Revenue departments audit their own staff, and income-tax states audit harder.
     if (inv.offenseId === 'taxEvasion') discovery *= (stateOf(state).incomeTax.length ? 1.3 : 1) * (state.career.job?.professionId === 'revenue' ? 3 : 1);
     if (!charged && rng.chance(discovery)) {
