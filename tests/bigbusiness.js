@@ -1,6 +1,8 @@
 /**
- * Big businesses: a well-run company handed to management keeps growing
- * into a large chain or fleet across several cities.
+ * Big businesses: a well-run company handed to management keeps growing —
+ * slowly, as real ones do. Every new site costs a manager and takes two years
+ * to ramp, overhead grows with headcount, skilled crews are hard to hire, and
+ * thin-margin retail grows slowest of all.
  *
  *   node tests/bigbusiness.js
  */
@@ -52,21 +54,22 @@ function grow(typeId, seed, { years = 30, strategy = 'steady', ownerYears = 0 } 
 const tests = {
   'a retail chain spreads across cities under management'() {
     const { state, biz, peak } = grow('retail', 1, { ownerYears: 9 });
-    assert.ok(peak.scale >= 12, `locations: ${peak.scale}`);
-    assert.ok(peak.revenue >= 8_000_000, `revenue ${peak.revenue}`);
-    assert.ok(Object.keys(locationsByRegion(state, biz)).length >= 2, 'more than one city');
+    assert.ok(peak.scale >= 2, `locations: ${peak.scale}`);
+    assert.ok(peak.scale <= 15, `a thin-margin chain shouldn't explode: ${peak.scale}`);
+    assert.ok(peak.revenue >= 1_400_000, `revenue ${peak.revenue}`);
+    assert.ok(Object.keys(locationsByRegion(state, biz)).length >= 1);
     assert.ok(!/NaN|undefined/.test(VIEWS.business(state, {})));
   },
 
   'a trucking company grows into a big fleet'() {
     const { peak } = grow('trucking', 1);
-    assert.ok(peak.units >= 50, `trucks: ${peak.units}`);
-    assert.ok(peak.revenue >= 10_000_000, `revenue ${peak.revenue}`);
+    assert.ok(peak.units >= 15, `trucks: ${peak.units}`);
+    assert.ok(peak.revenue >= 3_000_000, `revenue ${peak.revenue}`);
   },
 
   'a security company grows its guard force'() {
     const { biz } = grow('securityCompany', 1);
-    assert.ok(biz.staff.headcount >= 60, `guards: ${biz.staff.headcount}`);
+    assert.ok(biz.staff.headcount >= 25, `guards: ${biz.staff.headcount}`);
   },
 
   'a crowded market cannibalizes: the twentieth store in one town adds less than one in a new city'() {

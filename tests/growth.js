@@ -61,8 +61,9 @@ const tests = {
   },
 
   'a handed-off business grows on its own and sends one report a year'() {
-    const { engine, state, biz } = owner(2, 'consulting');
-    biz.staff.headcount = Math.max(8, biz.staff.headcount);
+    const { engine, state, biz } = owner(2, 'gym');
+    biz.fit = 1.05;
+    biz.staff.headcount = Math.max(9, biz.staff.headcount);
     biz.quality = 75;
     biz.reputation = 70;
     biz.years = 3;
@@ -77,7 +78,7 @@ const tests = {
       years(engine, 1);
       maxSeen = Math.max(maxSeen, currentBusiness(state)?.scale ?? 0);
     }
-    assert.ok(maxSeen >= 3, `management opened locations (${maxSeen})`);
+    assert.ok(maxSeen >= 2, `management opened locations (${maxSeen})`);
     assert.ok(biz.plan.lastReport, 'a report');
     assert.ok(state.log.some((l) => l.entries?.some((e) => e.text.includes('steady growth plan'))), 'report in the log');
     clean(VIEWS.business(state, {}));
@@ -117,6 +118,7 @@ const tests = {
     a.biz.staff.headcount = 12;
     a.biz.years = 4;
     a.biz.quality = 70;
+    a.biz.fit = 1.1;
     a.engine.dispatch('business.setPlan', 'aggressive');
     a.biz.cash = 120_000; // short of a cash expansion, enough for an SBA down payment
     a.biz.lastYear = { ...(a.biz.lastYear ?? {}), netIncome: 80_000, revenue: 900_000 };

@@ -530,7 +530,7 @@ function holdingsCard(state) {
 function pnl(ly) {
   if (!ly) return '<p class="muted">First results come at the end of the year.</p>';
   const rows = [
-    ['Revenue', ly.revenue], ['Cost of goods', -ly.cogs], ['Payroll & benefits', -ly.payroll], ['HR / delegation overhead', -ly.overhead], ['Managers', -ly.management],
+    ['Revenue', ly.revenue], ['Cost of goods', -ly.cogs], ['Payroll & benefits', -ly.payroll], ['HR / delegation overhead', -ly.overhead], ['Managers & site leads', -ly.management], ['Head office & supervision', -(ly.corporate ?? 0)],
     ['Rent', -ly.rent], ['Insurance', -ly.insurance], ['Marketing', -ly.marketing], ['Initiatives', -(ly.initiatives ?? 0)], ['Filings & accounting', -ly.admin], ['Royalties & ad fund', -(ly.royalties ?? 0)], ['Franchise fees received', ly.franchiseFees ?? 0], ['Royalties received', ly.royaltyIncome ?? 0], ['Franchise support', -(ly.franchiseSupport ?? 0)], ['Corporate divisions', -(ly.structure ?? 0)], ['Interest', -ly.interest],
     ['Your salary', -ly.ownerSalary], ['Payroll tax on your salary', -ly.payrollTax], ['Corporate tax', -ly.corporateTax],
   ].filter(([, v]) => v);

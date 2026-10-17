@@ -134,6 +134,21 @@ export function debtBalance(biz) {
   return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0) + (biz.debts.payables ?? 0) + (biz.ops?.loan?.balance ?? 0);
 }
 
+/**
+ * Demand from quality and reputation. A badly run place loses customers steeply; a great one
+ * wins more, but with diminishing returns — the best office in town doesn't do double the
+ * business of a good one with the same chairs and staff.
+ */
+export const qualityDemand = (q) => (q >= 50 ? 1 + (q - 50) / 200 : 1 - (50 - q) / 110);
+export const reputationDemand = (r) => (r >= 50 ? 1 + (r - 50) / 250 : 1 - (50 - r) / 125);
+
+/** What it costs to put someone in the owner's shoes at one more location. */
+export const siteLeadPay = (type, col = 1, typeId = null) => Math.round((PROFESSIONAL_PRACTICES.includes(typeId) ? clamp(type.revenue * 0.2, 90000, 300000) : clamp(type.revenue * 0.06, 40000, 200000)) * Math.sqrt(col));
+/** Practices and people businesses where another site needs another senior professional (an associate dentist, attorney, vet or principal consultant), not just a manager. */
+export const PROFESSIONAL_PRACTICES = ['lawFirm', 'practice', 'cpaFirm', 'dentalPractice', 'vetClinic', 'ptClinic', 'counselingPractice', 'chiroClinic', 'opticalShop', 'architecturePractice', 'engineeringFirm', 'pharmacyStore', 'consulting', 'softwareShop', 'itSecurityFirm', 'marketingAgency', 'designStudio', 'insuranceAgency', 'brokerage'];
+/** Overhead as a share of revenue once the company outgrows one site's crew. */
+export const corporateOverheadRate = (type, headcount) => clamp(0.02 * Math.log2(Math.max(1, (headcount ?? 0) / (2 * Math.max(4, type.staff || 4)))), 0, 0.08);
+
 /** Debts you signed for personally (SBA loans and credit lines always carry a personal guarantee). */
 export function guaranteedDebt(biz) {
   return (biz.debts.sba?.balance ?? 0) + (biz.debts.loc ?? 0) + (biz.ops?.loan?.balance ?? 0);
@@ -158,7 +173,7 @@ export function yearFinancials(state, biz, rng) {
   const stoppage = biz.strike ? clamp(biz.strike.weeks / 52, 0, 0.5) : 0;
   // How you've organized the company (Structure): divisions, lean or regional design.
   const sfx = structureEffects(state, biz);
-  const demand = law.demand * (1 + (phase - 1) * type.cyclical) * (0.55 + biz.quality / 110) * (0.6 + biz.reputation / 125) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
+  const demand = law.demand * (1 + (phase - 1) * type.cyclical) * qualityDemand(biz.quality) * reputationDemand(biz.reputation) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
   const ramp = (biz.years <= 1 ? 0.7 : biz.years === 2 ? 0.9 : 1) * lic.revenue;
   // New businesses hire as customers arrive rather than staffing up on day one.
   const staffing = biz.years <= 1 ? 0.85 : biz.years === 2 ? 0.95 : 1;
@@ -167,8 +182,11 @@ export function yearFinancials(state, biz, rng) {
   // Fleet and crew businesses earn what their booked capacity earns: contracts first, spot work for the rest (Operations).
   const ops = opsOf(biz) ? opsRevenue(biz, demand, rng) : null;
   // Chains: a brand people recognize, and locations that don't crowd each other out.
-  const locations = type.startup ? 1 : effectiveLocations(state, biz);
-  const brand = 1 + Math.min(0.12, 0.012 * ((biz.scale ?? 1) - 1));
+  // New sites ramp up: about 60% of a mature location's sales in the year it opens, 85% the next.
+  const age = state.character.age;
+  const rampLost = (biz.openings ?? []).reduce((sum, at) => sum + (age - at <= 0 ? 0.4 : age - at === 1 ? 0.15 : 0), 0);
+  const locations = type.startup ? 1 : Math.max(0.6, effectiveLocations(state, biz) - rampLost);
+  const brand = 1 + Math.min(0.06, 0.006 * ((biz.scale ?? 1) - 1));
   // Initiatives, promotions and key accounts (Initiatives.js).
   const ini = type.startup ? null : initiativeEffects(biz, state.character.age);
   // Your strategic focus as an executive (OwnerJob).
@@ -184,7 +202,7 @@ export function yearFinancials(state, biz, rng) {
   // Fleet upkeep is booked separately, so it comes out of the cost-of-goods share.
   const cogsRate = ops ? Math.max(0.05, type.cogs - OPERATIONS[biz.typeId].upkeep / OPERATIONS[biz.typeId].perUnit) : type.cogs;
   // Buying power: bigger chains pay suppliers less.
-  const buyingPower = 1 - Math.min(0.12, 0.015 * ((biz.scale ?? 1) - 1));
+  const buyingPower = 1 - Math.min(0.06, 0.008 * ((biz.scale ?? 1) - 1));
   const cogs = Math.round(revenue * cogsRate * (SUPPLIER_COGS[biz.supplier ?? 'standard'] ?? 1) * (ini?.cogs ?? 1) * buyingPower * sfx.cogs * law.cogs);
   const benefitsLoad = 1.08 + (biz.benefits.health ? 0.12 : 0) + biz.benefits.match;
   // Hours and part-timers flex with demand, so payroll is partly variable (startups pay their whole team).
@@ -199,12 +217,22 @@ export function yearFinancials(state, biz, rng) {
   // Without the license yourself you need a licensed qualifier. When a hired manager already runs it,
   // hiring a licensed one only costs a premium; otherwise it's a whole extra salary.
   const qualifier = !biz.licensedManager ? 0 : hiredChief || biz.role === 'executive' ? Math.round(clamp(revenue * 0.012, 8000, 30000)) : Math.round(clamp(revenue * 0.06, 40000, LICENSED_MANAGER) * law.licensing);
-  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + (biz.role !== 'operator' ? Math.max(0, (biz.scale ?? 1) - 1) * 12000 : 0) + qualifier;
+  // A business's numbers are an owner-operator's: the profit is the owner's own pay. Every location beyond the
+  // first needs someone doing the owner's job there — a general manager, a chef, an associate dentist or attorney.
+  const leads = type.startup ? 0 : Math.max(0, (biz.scale ?? 1) - 1) * siteLeadPay(type, col, biz.typeId);
+  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + leads + qualifier;
+  // Growing pains: past a single site's crew, a company needs supervisors, an office, HR, IT and finance —
+  // overhead that rises with headcount (about 5% of revenue at ten shops' staff, capped at 8%).
+  const corporate = type.startup ? 0 : Math.round(revenue * corporateOverheadRate(type, biz.staff.headcount))
+    // Crew and fleet companies also need foremen, estimators and project managers: one for every six hands past the first crews.
+    + (ops ? Math.round(Math.max(0, biz.staff.headcount - OPERATIONS[biz.typeId].start * OPERATIONS[biz.typeId].crew) / 6 * type.wage * 1.6 * Math.sqrt(col)) : 0);
   // Locations whose building you own pay property tax and upkeep instead of rent (see Premises).
   const owned = Math.min(biz.scale, biz.premises?.owned ?? 0);
-  const rent = Math.round(type.rent * (biz.scale - owned) * col * (ini?.rent ?? 1) + (biz.premises?.value ?? 0) * PREMISES_CARRY);
+  // Crew and fleet businesses grow by adding crews, not storefronts — but they still need more yards, shops and coverage.
+  const sites = Math.max(biz.scale, (biz.staff.headcount ?? 0) / Math.max(1, (type.staff || 4) * 3));
+  const rent = Math.round(type.rent * Math.max(0, sites - owned) * col * (ini?.rent ?? 1) + (biz.premises?.value ?? 0) * PREMISES_CARRY);
   const initiatives = ini ? Math.round(revenue * ini.share + ini.fixed * Math.sqrt(col)) : 0;
-  const insurance = Math.round(type.insurance * biz.scale * (ini?.insurance ?? 1) * law.insurance);
+  const insurance = Math.round(type.insurance * Math.max(biz.scale, (biz.staff.headcount ?? 0) / Math.max(1, type.staff || 4)) * (ini?.insurance ?? 1) * law.insurance);
   const marketing = Math.round(revenue * MARKETING[biz.marketing].share);
   const admin = ENTITIES[biz.entity].admin;
   const sba = biz.debts.sba;
@@ -216,7 +244,7 @@ export function yearFinancials(state, biz, rng) {
   const royalties = royaltiesOn(biz, revenue);
   const { franchiseFees, royaltyIncome, franchiseSupport } = franchisorFinancials(biz, type);
   const structure = Math.round(revenue * sfx.costShare + sfx.cost);
-  const operatingIncome = -structure + revenue - cogs - payroll - overhead - management - rent - insurance - marketing - initiatives - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport - fleet - penalties;
+  const operatingIncome = -structure + revenue - cogs - payroll - overhead - management - corporate - rent - insurance - marketing - initiatives - admin - royalties + franchiseFees + royaltyIncome - franchiseSupport - fleet - penalties;
   // S- and C-corp owners who work in the business take a W-2 salary (employer payroll tax applies).
   const entity = ENTITIES[biz.entity];
   // Funded startup founders pay themselves a modest salary out of the raise.
@@ -233,7 +261,7 @@ export function yearFinancials(state, biz, rng) {
   const taxableProfit = pretax - writeOffs;
   const corporateTax = entity.passThrough ? 0 : Math.round(Math.max(0, taxableProfit) * law.corporateRate * (1 - law.taxCredit));
   const netIncome = pretax - corporateTax;
-  return { strikeWeeks: biz.strike?.weeks ?? 0, structure, revenue, cogs, payroll, overhead, management, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, writeOffs, taxableProfit, fleet, penalties, ops };
+  return { strikeWeeks: biz.strike?.weeks ?? 0, structure, revenue, cogs, payroll, overhead, management, leads, corporate, rent, insurance, marketing, initiatives, admin, royalties, franchiseFees, royaltyIncome, franchiseSupport, interest, operatingIncome, ownerSalary, payrollTax, corporateTax, netIncome, writeOffs, taxableProfit, fleet, penalties, ops };
 }
 
 /**
@@ -251,9 +279,9 @@ export function valuation(biz, ly = biz.lastYear) {
   }
   const sde = (ly?.netIncome ?? 0) + (ly?.ownerSalary ?? 0) + (ly?.corporateTax ?? 0);
   // Bigger companies sell for higher multiples: a corner shop goes for ~2.5× earnings, a
-  // $1M-profit company ~4×, a $10M one ~7×, the largest ~9×. Proven brands and franchise
-  // systems sell for more; a public company's shares trade at a premium.
-  const sizeMultiple = clamp(2.5 + 2.3 * Math.log10(Math.max(1, sde / 250000)), 2.5, 9);
+  // $1M-profit company ~3.5×, a $10M one ~5.5×, the largest ~7× (lower-middle-market deal
+  // multiples). Proven brands and franchise systems sell for more; public shares trade at a premium.
+  const sizeMultiple = clamp(2.5 + 1.5 * Math.log10(Math.max(1, sde / 250000)), 2.5, 7);
   const multiple = sizeMultiple * (0.7 + biz.reputation / 170) * (biz.franchise ? 1.15 : 1) * (biz.franchisor?.units ? 1.3 : 1) * (biz.public ? 1.25 : 1);
   const ev = Math.max(0, sde) * multiple + biz.assets;
   return Math.max(0, Math.round(ev + Math.max(0, biz.cash) - debt));

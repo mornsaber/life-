@@ -117,7 +117,9 @@ export function runPlan(ctx, biz, { expandBusiness, maxScale, expansionCost }) {
       const healthy = (ly.netIncome ?? 0) > 0 && biz.quality >= (aggressive ? 48 : 54) && biz.years >= 2 && biz.scale < maxScale(state, biz);
       const cost = expansionCost(biz);
       // Another location has to pay for itself: within 7 years (12 on an aggressive plan, 10 when cash is just sitting there).
-      const gain = healthy ? profit({ biz: { scale: biz.scale + 1 }, staff: { headcount: Math.round(biz.staff.headcount * (biz.scale + 1) / biz.scale) } }) - profit({}) : 0;
+      // Management plans on an average new site (fit ≈0.9), not on this one's luck.
+      const expectedFit = Math.round((((biz.fit ?? 1) * biz.scale + 0.9) / (biz.scale + 1)) * 100) / 100;
+      const gain = healthy ? profit({ biz: { scale: biz.scale + 1, fit: expectedFit }, staff: { headcount: Math.round(biz.staff.headcount * (biz.scale + 1) / biz.scale) } }) - profit({}) : 0;
       const payback = aggressive ? 12 : biz.cash > cost * 5 ? 10 : 7;
       if (healthy && gain > 0 && cost / gain <= payback) {
         const cushion = Math.max(25000, (ly.revenue ?? 0) * 0.1);
@@ -184,7 +186,9 @@ function fleetPlan(ctx, biz, aggressive, did) {
     .sort((a, b) => b.units * b.rate - a.units * a.rate).slice(0, aggressive ? 3 : 2);
   const target = busy + eligible.reduce((sum, k) => sum + k.units, 0);
   if (o.unit) {
-    const short = Math.min(aggressive ? 12 : 6, Math.max(0, target - biz.ops.units.length));
+    // Skilled hands are scarce: a fleet grows about 12% a year on an aggressive plan, 8% on a steady one.
+    const hiring = Math.max(1, Math.round(biz.ops.units.length * (aggressive ? 0.12 : 0.08)));
+    const short = Math.min(hiring, Math.max(0, target - biz.ops.units.length));
     let bought = 0;
     for (let i = 0; i < short && biz.ops.units.length < 400; i++) {
       const price = o.unit.usedCost ?? o.unit.newCost;
@@ -206,7 +210,7 @@ function fleetPlan(ctx, biz, aggressive, did) {
   }
   // Crews: a crew for every unit, or for every post you hold or are about to sign.
   const posts = o.unit ? biz.ops.units.length : Math.max(busy, Math.min(target, busy + (aggressive ? 12 : 6)), 1);
-  const add = clamp(posts * o.crew - biz.staff.headcount, 0, aggressive ? 40 : 20);
+  const add = clamp(posts * o.crew - biz.staff.headcount, 0, Math.max(o.crew, Math.round(biz.staff.headcount * (aggressive ? 0.12 : 0.08))));
   if (add) {
     biz.staff.headcount = Math.min(6000, biz.staff.headcount + add);
     did.push(`hired ${add} ${o.crewName ?? 'crew'}${add > 1 ? 's' : ''}`);

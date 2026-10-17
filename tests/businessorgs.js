@@ -6,6 +6,7 @@
  *
  *   node tests/businessorgs.js
  */
+import { SECTOR_EVENTS } from '../src/modules/business/BusinessLife.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
@@ -337,7 +338,8 @@ const tests = {
     for (let y = 0; y < 15 && state.business.current; y++) {
       state.prompts = [];
       engine.ageUp();
-      routine += state.prompts.filter((p) => p.type === 'business.event').length;
+      // Big owner moments (a critic, a marquee pitch) still come to an owner who runs the place.
+      routine += state.prompts.filter((p) => p.type === 'business.event' && !SECTOR_EVENTS.find((e) => e.id === p.data.eventId)?.owner).length;
     }
     assert.equal(routine, 0, 'manager handled routine decisions');
   },

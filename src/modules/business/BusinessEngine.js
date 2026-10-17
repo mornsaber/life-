@@ -339,6 +339,14 @@ export function expandBusiness(ctx, biz, funding = 'cash') {
     charge(biz, cost, 'capex');
   }
   biz.scale += 1;
+  // Every site is its own bet: a new location's spot, staff and neighbourhood are luck you only learn by opening.
+  // The chain's overall fit is the average of its sites, so a string of duds drags a good brand down.
+  const siteFit = ctx.rng.float(0.6, 1.2);
+  biz.fit = Math.round((((biz.fit ?? 1) * (biz.scale - 1) + siteFit) / biz.scale) * 100) / 100;
+  if (siteFit < 0.75) ctx.log(`The new ${type.name.toLowerCase()} location is struggling — wrong side of town, or the wrong crowd.`, '📉', 'warn');
+  // A new site takes a couple of years to build its customer base.
+  (biz.openings ??= []).push(state.character.age);
+  biz.openings = biz.openings.filter((x) => state.character.age - x < 2);
   biz.assets += Math.round(cost * 0.6);
   biz.staff.headcount = Math.min(MAX_HEADCOUNT, Math.max(biz.staff.headcount, Math.round(type.staff * biz.scale) + biz.family.length));
   if (ensureOps(ctx.rng, biz)) {
