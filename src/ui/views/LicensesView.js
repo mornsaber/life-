@@ -6,7 +6,8 @@
 import { esc, money, button, card, chip, statusPill, disclosure } from '../Components.js';
 import { CREDENTIAL_LIST, CATEGORIES, FLIGHT_BLOCK } from '../../modules/credentials/CredentialRegistry.js';
 import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere, passChance, prepCost, ATTEMPTS_PER_YEAR, reinstatementStatus } from '../../modules/credentials/LicensingEngine.js';
-import { RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
+import { RECIPROCITY_LABEL, CREDENTIALS } from '../../modules/credentials/CredentialRegistry.js';
+import { promotionCredentials } from '../../modules/career/JobLicensing.js';
 
 function payerHint(state, cred) {
   const sponsor = findSponsor(state, cred);
@@ -98,10 +99,12 @@ export function licensesView(state, ui = {}) {
     body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list, { folded: view === 'available' && list.length > 8 }) : `<p class="muted">${emptyText}</p>`}`;
   }
 
-  return `${card('Licenses & Certifications', `
+  const promo = promotionCredentials(state).map((id) => CREDENTIALS[id]);
+  const promoCard = promo.length ? card('For Your Next Promotion', `<p class="fine">Your employer covers the licences your current job requires. Certifications for the next rank are up to you — some employers still pay from the training budget.</p><ul class="certs">${promo.map((c) => credentialRow(state, c)).join('')}</ul>`, { icon: '📈' }) : '';
+  return `${promoCard}${card('Licenses & Certifications', `
     <p><b>${held}</b> active · ${state.credentials.training.length} in training · ${left} of ${ATTEMPTS_PER_YEAR} new credentials left this year</p>
     <details class="fine"><summary>How credentials work</summary>
-      <p>One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their training budgets; police, fire, EMS, federal, airline and transit employers run funded academies for their own hires. Convictions can suspend or revoke credentials.</p>
+      <p>One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their training budgets; police, fire, EMS, federal, airline and transit employers run funded academies for their own hires and put you through the licences your job requires (failed exams are retaken the next year). Certifications for a promotion are yours to pursue. Convictions can suspend or revoke credentials.</p>
       <p>Exams can be failed — odds depend on your smarts (or fitness and health for physical tests). A prep course helps; failing a training program's final lets you retest without retraining for 2 years. Agency courses are open only to members, and pilots, drivers and academy recruits must pass a medical. State-issued licenses may need a transfer exam when you move.</p>
     </details>
     <div class="toggle-row chips-row">${tabs}</div>

@@ -1,11 +1,13 @@
 /**
  * Licences that come with the job, and learning to drive.
  *
- * Employers put their people through the licences the job (or the next rank)
- * needs and that they sponsor — a transit agency its operators' CDL, a police
- * force its officers' certifications, a hospital its nurses' specialty
- * certificates — at the employer's cost, like an academy (it doesn't use up
- * your own yearly limit). You can still pursue anything else yourself.
+ * Employers put their people through the licences the job itself requires and
+ * that they sponsor — a transit agency its operators' CDL, a police force its
+ * officers' certification — at the employer's cost, like an academy (it doesn't
+ * use up your own yearly limit). The exam can still be failed; the employer
+ * puts you in for the retest the next year. Trainees are also put through
+ * what they need to graduate. Certifications for a promotion (the next rank's
+ * specialty certificates) are yours to pursue from the Licenses tab.
  *
  * At the permit age you're asked if you want to learn to drive; once you hold
  * a learner's permit, whether to take the driving test.
@@ -14,18 +16,29 @@ import { hasCredential, pursueEligibility, pursueCredential } from '../credentia
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, nextLevels } from './Ladder.js';
-import { credentialPlan } from './Tenure.js';
+import { credentialPlan, traineeProgram } from './Tenure.js';
 
 /** Employer-run licensing a year (beyond it, the rest waits for next year). */
 const PER_YEAR = 2;
 
-/** The licences this job and the next rank up need that you don't hold yet, prerequisites first. */
+/** The licences this job requires (and a trainee's graduation needs) that you don't hold yet, prerequisites first. */
 export function jobLicencePlan(state, job) {
   const profession = getProfession(job.professionId);
   const level = levelById(profession, job.levelId);
-  const next = nextLevels(profession, job.employer.size, job.levelId);
-  const needed = [...new Set([...(level?.req?.credentials ?? []), ...next.flatMap((l) => l.req?.credentials ?? [])])];
+  const program = traineeProgram(job);
+  const graduation = program ? levelById(profession, program.next) : null;
+  const needed = [...new Set([...(level?.req?.credentials ?? []), ...(graduation?.req?.credentials ?? [])])];
   return credentialPlan(state, needed).filter((id) => CREDENTIALS[id] && !state.credentials.training.some((t) => t.id === id));
+}
+
+/** Certifications the next rank up needs that you'll have to pursue yourself (the employer won't). */
+export function promotionCredentials(state, job = state.career.job) {
+  if (!job) return [];
+  const profession = getProfession(job.professionId);
+  if (!profession) return [];
+  const required = new Set(jobLicencePlan(state, job));
+  const next = nextLevels(profession, job.employer.size, job.levelId);
+  return credentialPlan(state, [...new Set(next.flatMap((l) => l.req?.credentials ?? []))]).filter((id) => CREDENTIALS[id] && !required.has(id));
 }
 
 /** Put the employee through what the employer pays for. Returns the credentials started. */
