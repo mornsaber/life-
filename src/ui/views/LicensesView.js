@@ -99,7 +99,7 @@ export function licensesView(state, ui = {}) {
     body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list, { folded: view === 'available' && list.length > 8 }) : `<p class="muted">${emptyText}</p>`}`;
   }
 
-  const promo = promotionCredentials(state).map((id) => CREDENTIALS[id]);
+  const promo = promotionCredentials(state).map((id) => ({ id, ...CREDENTIALS[id] }));
   const promoCard = promo.length ? card('For Your Next Promotion', `<p class="fine">Your employer covers the licences your current job requires. Certifications for the next rank are up to you — some employers still pay from the training budget.</p><ul class="certs">${promo.map((c) => credentialRow(state, c)).join('')}</ul>`, { icon: '📈' }) : '';
   return `${promoCard}${card('Licenses & Certifications', `
     <p><b>${held}</b> active · ${state.credentials.training.length} in training · ${left} of ${ATTEMPTS_PER_YEAR} new credentials left this year</p>

@@ -97,14 +97,15 @@ const tests = {
     state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'nursing', year: 22 });
     state.credentials.held.rn = { earnedAge: 22, renewedAge: 22, status: 'active', states: [stateIdOf(state)] };
     const p = getProfession('nursing');
-    assert.ok(hire(engine.context(), { professionId: 'nursing', levelId: 'rn', employer: createEmployer(new Random(2), state, p, state.character.regionId) }));
-    assert.deepEqual(jobLicencePlan(state, state.career.job), [], 'an RN job needs nothing more');
+    assert.ok(hire(engine.context(), { professionId: 'nursing', levelId: 'seniorRn', employer: createEmployer(new Random(2), state, p, state.character.regionId) }));
+    assert.deepEqual(jobLicencePlan(state, state.career.job), [], 'a staff nurse needs nothing more');
+    // What the next rank needs is listed for you to pursue.
+    assert.ok(promotionCredentials(state).includes('ccrn'), `promotion certificates: ${promotionCredentials(state)}`);
+    const html = licensesView(state);
+    assert.match(html, /For Your Next Promotion/);
+    assert.ok(!/undefined|NaN/.test(html));
     for (let i = 0; i < 3; i++) year(engine);
     assert.ok(!hasCredential(state, 'ccrn') && !state.credentials.training.some((t) => t.id === 'ccrn'), 'the ICU certificate is never auto-enrolled');
-    if (state.career.job?.levelId === 'rn' || state.career.job?.levelId === 'seniorRn') {
-      assert.ok(promotionCredentials(state).length > 0 || hasCredential(state, 'ccrn'), 'next-rank certificates are listed for you');
-      assert.match(licensesView(state), /For Your Next Promotion/);
-    }
   },
 
   'a failed required exam is retaken the next year, still at the employer\'s cost'() {
