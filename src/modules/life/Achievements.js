@@ -66,6 +66,8 @@ export const ACHIEVEMENTS = {
   goalGetter: { name: 'Goal Getter', icon: '🎯', tier: 'bronze', desc: 'Hit five yearly business goals.', test: (s) => businesses(s).some((b) => (b.goalsMet ?? 0) >= 5) },
   diagnostician: { name: 'Diagnostician', icon: '🔎', tier: 'silver', desc: 'Call ten diagnoses right.', test: (s) => (s.medicine?.cases?.solved ?? 0) >= 10 },
   lifesaver: { name: 'Lifesaver', icon: '❤️‍🩹', tier: 'gold', desc: 'Save 25 lives as a clinician.', test: (s) => (s.medicine?.cases?.saved ?? 0) >= 25 },
+  verdict: { name: 'The Verdict', icon: '🏆', tier: 'silver', desc: 'Win ten cases or deals as a lawyer.', test: (s) => (s.law?.wins ?? 0) >= 10 },
+  silk: { name: 'Taking Silk', icon: '🎗️', tier: 'gold', desc: 'Be appointed King\'s Counsel or the local equivalent.', test: (s) => Boolean(s.law?.silk) },
   tycoon: { name: 'Tycoon', icon: '🏭', tier: 'gold', desc: 'Own a business worth $50M.', test: (s) => businesses(s).some((b) => (b.valuation ?? 0) >= 5e7) },
   debtFree: { name: 'Debt Free', icon: '🧾', tier: 'bronze', desc: 'Pay off a mortgage.', test: (s) => (s.housing?.properties ?? []).some((p) => p.mortgage && p.mortgage.balance <= 0) || (s.housing?.paidOff ?? 0) > 0 },
   // Service

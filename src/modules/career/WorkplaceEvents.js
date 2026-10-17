@@ -10,6 +10,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { FIELD_WORKPLACE_EVENTS } from './FieldWorkplaceEvents.js';
+import { PROFESSION_MOMENTS } from './ProfessionMoments.js';
 import { offenseName } from '../legal/Offenses.js';
 
 const EVERYDAY_EVENTS = [
@@ -94,7 +95,7 @@ const EVERYDAY_EVENTS = [
 ];
 
 /** Everyday events plus the ones specific to your field. */
-export const WORKPLACE_EVENTS = [...EVERYDAY_EVENTS, ...FIELD_WORKPLACE_EVENTS];
+export const WORKPLACE_EVENTS = [...EVERYDAY_EVENTS, ...FIELD_WORKPLACE_EVENTS, ...PROFESSION_MOMENTS];
 
 const sectorWeight = { private: 0.24, federal: 0.12, state: 0.12, municipal: 0.12 };
 
@@ -102,8 +103,10 @@ const sectorWeight = { private: 0.24, federal: 0.12, state: 0.12, municipal: 0.1
 export function workplaceEvent(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
-  if (!job || state.prompts.some((p) => p.type === 'career.workEvent') || !rng.chance(sectorWeight[job.sector] ?? 0.2)) return;
-  const event = pickFresh(rng, state, 'workplace', eligible(WORKPLACE_EVENTS, state));
+  // Careers with moments of their own (a dentist's terrified patient, a controller's runway incursion) see a few more events.
+  const signature = eligible(PROFESSION_MOMENTS, state);
+  if (!job || state.prompts.some((p) => p.type === 'career.workEvent') || !rng.chance((sectorWeight[job.sector] ?? 0.2) + (signature.length ? 0.12 : 0))) return;
+  const event = (signature.length && rng.chance(0.6) ? pickFresh(rng, state, 'moments', signature) : null) ?? pickFresh(rng, state, 'workplace', eligible(WORKPLACE_EVENTS, state));
   if (!event) return;
   ctx.prompt({
     type: 'career.workEvent',

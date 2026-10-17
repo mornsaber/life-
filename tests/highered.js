@@ -129,6 +129,7 @@ const tests = {
 
   'JD/MBA confers both degrees; an MPH year inside medical school'() {
     const { engine, state } = setup(6, 22, { bachelor: true });
+    engine.dispatch('lawLife.lsat', 'prep');
     const e = enroll(engine, 'jdmba:state::full');
     assert.equal(e.totalYears, 4);
     for (let i = 0; i < 6 && state.education.enrolled; i++) year(engine);
