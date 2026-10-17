@@ -883,3 +883,7 @@ select:focus { border-color: var(--cyan); }
 .country-pick select { font-size: 15px; padding: 6px 8px; }
 .option.illegal { border-style: dashed; border-width: 2px; }
 .option.illegal .option-hint { font-weight: 600; }
+
+/* Business pulse: star ratings */
+.stars { color: #d4a017; letter-spacing: 1px; white-space: nowrap; }
+.biz-tabs { margin-bottom: 8px; }

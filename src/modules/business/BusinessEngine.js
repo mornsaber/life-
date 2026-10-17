@@ -11,6 +11,7 @@
  * Runs after the career module (order 31) so a year's work is in the ledger
  * before Finances settles taxes.
  */
+import { SECTOR_EVENTS, sectorEventsFor } from './BusinessLife.js';
 import { clamp } from '../../core/Random.js';
 import { selfEmploymentTax } from '../world/CountryLaw.js';
 import { businessUnionYear } from '../career/LaborUnions.js';
@@ -402,12 +403,16 @@ function eventPrompt(ctx, biz) {
   const { rng } = ctx;
   const type = typeOf(biz);
   const delegated = biz.staff.headcount >= 8 ? Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]) : [];
-  const pool = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup) && !(e.duty && delegated.includes(e.duty)));
-  const event = rng.pick(pool);
+  const generic = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup) && !(e.duty && delegated.includes(e.duty)));
+  // Two in three events come from your own industry.
+  const industry = sectorEventsFor(biz);
+  const event = industry.length && (rng.chance(0.65) || !generic.length) ? rng.pick(industry) : rng.pick(generic);
   if (!event) return;
   // On autopilot, your manager handles routine calls the sensible way and tells you what they did.
-  if (biz.autopilot && AUTOPILOT_CHOICE[event.id]) {
-    const option = event.options.find((o) => o.id === AUTOPILOT_CHOICE[event.id]);
+  const auto = AUTOPILOT_CHOICE[event.id] ?? event.auto;
+  const yours = event.owner && ['operator', 'executive'].includes(biz.role);
+  if (biz.autopilot && auto && !yours) {
+    const option = event.options.find((o) => o.id === auto);
     const line = option.apply(ctx, biz);
     ctx.log(`${biz.name} — ${event.title}: your manager handled it. ${line}`, type.icon);
     return;
@@ -803,10 +808,10 @@ function managedYear(ctx, biz) {
     biz.staff.unionRisk = biz.staff.unionized ? 0 : 60;
     ctx.log(`${biz.name}'s staff ${biz.staff.unionized ? 'voted to unionize' : 'voted down a union'} — management ran a lawful campaign.`, '✊', biz.staff.unionized ? 'warn' : undefined);
   } else if (rng.chance(0.3)) {
-    const pool = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup));
+    const pool = [...BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup)), ...sectorEventsFor(biz)];
     const event = rng.pick(pool);
     if (event) {
-      const option = event.options.find((o) => o.id === AUTOPILOT_CHOICE[event.id]) ?? event.options[0];
+      const option = event.options.find((o) => o.id === (AUTOPILOT_CHOICE[event.id] ?? event.auto)) ?? event.options[0];
       ctx.log(`${biz.name} — ${event.title}: management handled it. ${option.apply(ctx, biz)}`, type.icon);
     }
   }
@@ -1433,7 +1438,7 @@ export const BusinessEngine = {
     },
     event(ctx, data, optionId) {
       const biz = currentBusiness(ctx.state);
-      const event = BUSINESS_EVENTS.find((e) => e.id === data.eventId);
+      const event = BUSINESS_EVENTS.find((e) => e.id === data.eventId) ?? SECTOR_EVENTS.find((e) => e.id === data.eventId);
       const option = event?.options.find((o) => o.id === optionId);
       if (!biz || !option) return;
       ctx.log(option.apply(ctx, biz), typeOf(biz).icon);

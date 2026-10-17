@@ -151,7 +151,7 @@ export class Renderer {
     this.nameRng = new Random();
     /** Transient UI state: open panel, log paging and filter, settings. */
     this.panel = null;
-    this.ui = { logLimit: 30, logFilter: { query: '', kind: 'all' } };
+    this.ui = { logLimit: 30, logFilter: { query: '', kind: 'all' }, bizTab: 'overview' };
     this.settings = {};
   }
 

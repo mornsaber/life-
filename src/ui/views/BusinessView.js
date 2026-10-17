@@ -41,6 +41,7 @@ import { credentialName } from '../../modules/credentials/CredentialRegistry.js'
 import { equipmentCard } from './EquipmentView.js';
 import { FRANCHISE_BRANDS, FDD_COST, startupCost, franchiseEligibility, franchisorEligibility } from '../../modules/business/Franchising.js';
 import { regionsHere } from '../../modules/life/Regions.js';
+import { GOALS, MILESTONES, SECTORS, sectorOf, starRating, stars, ratingLabel, goalLabel } from '../../modules/business/BusinessLife.js';
 
 const MEAN_RNG = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), chance: () => false, pick: (xs) => xs[0], id: () => 'probe' };
 const entityOptions = (state, value = 'llc') => entitiesFor(state).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
@@ -608,7 +609,30 @@ function fleetCard(state, biz) {
     <p class="fine">Capacity is whichever runs out first, ${o.unit ? `${o.unit.plural} or ${o.crewName}s` : `${o.crewName}s`}. Contracts pay a set rate whatever the economy does; spare capacity chases spot work. Promise more than you can cover and you pay penalties and lose clients.${biz.role !== 'operator' ? ' Your manager signs offers that fit.' : ''}</p>`, { icon: o.unit?.icon ?? '🤝', accent: 'cyan' });
 }
 
-function ownedView(state, biz) {
+/** The pulse of the business: rating and reviews, this year's goal, awards and milestones. */
+function pulseCard(state, biz) {
+  const rating = biz.rating ?? starRating(biz);
+  const sector = SECTORS[sectorOf(biz.typeId)];
+  const reviews = (biz.reviews ?? []).map((r) => `<li><span class="stars">${stars(r.stars)}</span> “${esc(r.text)}” <small class="fine">— ${esc(r.by)}</small></li>`).join('');
+  const choices = (biz.goalChoices ?? []).map((id) => {
+    const preview = biz.goal?.id === id ? biz.goal : { id, target: GOALS[id].target(biz), base: { revenue: biz.lastYear?.revenue ?? 0, netIncome: biz.lastYear?.netIncome ?? 0 } };
+    return button(`${GOALS[id].icon} ${GOALS[id].label(preview)}`, 'businessLife.goal', { arg: id, variant: biz.goal?.id === id ? 'tiny on' : 'tiny' });
+  }).join('');
+  const awards = (biz.awards ?? []).slice(-5).reverse().map((a) => `<li>${a.icon} ${esc(a.title)} <small class="fine">age ${a.age}</small></li>`).join('');
+  const reached = MILESTONES.filter((m) => biz.milestones?.[m.id] != null);
+  return card('Pulse', `
+    <p>${chip(`${sector.icon} ${sector.name}`)} <b class="stars">${stars(rating)}</b> <b>${rating.toFixed(1)}</b> <small class="fine">${esc(ratingLabel(biz))}</small></p>
+    ${reviews ? `<ul class="history">${reviews}</ul>` : '<p class="fine">Reviews come in after your first year.</p>'}
+    <h4 class="sub">🎯 This year's goal</h4>
+    ${biz.goal ? `<p><b>${esc(goalLabel(biz))}</b>${biz.goalStreak ? ` · 🔥 ${biz.goalStreak}-year streak` : ''}${biz.goalsMet ? ` · ${biz.goalsMet} met so far` : ''}</p>` : '<p class="fine">Goals start after your first year.</p>'}
+    ${choices ? `<div class="toggle-row chips-row">${choices}</div><p class="fine">Hit it for a boost to reputation and morale — more for a streak.</p>` : ''}
+    ${awards ? `<h4 class="sub">🏆 Awards</h4><ul class="history">${awards}</ul>` : ''}
+    ${reached.length ? `<h4 class="sub">📌 Milestones</h4><p>${reached.map((m) => chip(`${m.icon} ${m.title}`)).join(' ')}</p>` : ''}`, { icon: '💓', accent: 'cyan' });
+}
+
+export const BIZ_TABS = { overview: '🏪 Overview', operations: '⚙️ Operations', market: '📊 Market & rules', money: '🏦 Money & exit' };
+
+function ownedView(state, biz, ui = {}) {
   const type = typeOf(biz);
   const entity = ENTITIES[biz.entity];
   const s = biz.staff;
@@ -663,13 +687,27 @@ function ownedView(state, biz) {
   const exit = card('Exit', `<p class="muted">Sell to a buyer, wind it down, or file business bankruptcy. ${entity.liability ? 'Your entity shields personal assets — except debts you personally guaranteed.' : 'As a sole proprietor, every business debt is yours.'}</p>
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
-  return `${overview}${postCard(state, biz)}${managementCard(state, biz)}${boardCard(state, biz)}${advisorCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${licensesCard(state, biz)}${orgCard(state, biz)}${structureCard(state, biz)}${marketCard(state, biz)}${regulatorsCard(state, biz)}${ops}${policyCard(state, biz)}${funding}${exit}`;
+  const sections = {
+    overview: () => `${overview}${pulseCard(state, biz)}${postCard(state, biz)}${advisorCard(state, biz)}`,
+    operations: () => `${ops}${managementCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${orgCard(state, biz)}${structureCard(state, biz)}`,
+    market: () => `${marketCard(state, biz)}${policyCard(state, biz)}${licensesCard(state, biz)}${regulatorsCard(state, biz)}`,
+    money: () => `${funding}${boardCard(state, biz)}${exit}`,
+  };
+  // No section chosen (tests, old callers): the whole page.
+  if (!BIZ_TABS[ui.bizTab]) return Object.values(sections).map((f) => f()).join('');
+  const tabs = Object.entries(BIZ_TABS).map(([id, label]) => button(label, 'ui.set', { arg: `bizTab=${id}`, variant: ui.bizTab === id ? 'tiny on' : 'tiny' })).join('');
+  return `<div class="toggle-row chips-row biz-tabs">${tabs}</div>${sections[ui.bizTab]()}`;
 }
 
-export function businessView(state) {
+export function businessView(state, ui = {}) {
   if (!state.business) return '';
   const biz = currentBusiness(state);
-  if (biz) return `${conglomerateCard(state)}${ownedView(state, biz)}${holdingsCard(state)}${rivalGroupsCard(state)}${historyCard(state)}`;
+  if (biz) {
+    const page = ownedView(state, biz, ui);
+    if (!BIZ_TABS[ui.bizTab]) return `${conglomerateCard(state)}${page}${holdingsCard(state)}${rivalGroupsCard(state)}${historyCard(state)}`;
+    // The group-level cards sit with the section they belong to.
+    return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
+  }
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
   return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
 }
