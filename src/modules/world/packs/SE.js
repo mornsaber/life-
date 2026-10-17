@@ -212,6 +212,7 @@ export const SE = {
         name: 'Ambulanssjukvård (region)', employer: (c, s, sn) => `Ambulanssjukvården, Region ${sn.replace(' County', '')}`,
         titles: { emt: 'Ambulanssjukvårdare', paramedic: 'Ambulanssjuksköterska', criticalCare: 'Specialistsjuksköterska (ambulanssjukvård)', flight: 'Ambulanshelikoptersjuksköterska', fto: 'Klinisk handledare', supervisor: 'Stationschef', captain: 'Områdeschef', deputy: 'Verksamhetschef', ...cmd('chief', ['Medicinskt ansvarig läkare', 'Ambulansöverläkare'], 'Prehospital direktör') },
       },
+      forester: { name: 'Skogsstyrelsen', employer: (c, s, sn) => `Skogsstyrelsen — distrikt ${sn.replace(' County', '')}` },
       dispatch: { name: 'SOS Alarm 112', employer: (c) => `SOS Alarm — ${town(c)}`, titles: { trainee: 'SOS-operatör under utbildning', telecommunicator: 'SOS-operatör', senior: 'Senior SOS-operatör', training: 'Utbildare', supervisor: 'Vakthavande', ...cmd('director', ['Centralchef', 'Driftdirektör'], 'Vd, SOS Alarm') } },
     }),
     POLICE_UNITS: { k9: 'Hundenheten', swat: 'Nationella insatsstyrkan (NI)', traffic: 'Trafikpolisen', narcotics: 'Narkotikaenheten', gang: 'Gängenheten', negotiator: 'Förhandlare', ia: 'Särskilda utredningar (SU)', protection: 'Säkerhetspolisen personskydd' },

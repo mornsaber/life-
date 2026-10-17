@@ -221,7 +221,7 @@ export function postTick(ctx, job) {
 
 const GRAD = ['master', 'professional', 'doctorate', 'phd'];
 export const hasMba = (state) => state.education.degrees.some((d) => d.programId === 'mba');
-export const hasGraduateDegree = (state) => state.education.degrees.some((d) => GRAD.includes(d.type) || ['mba', 'jd', 'md', 'mpa', 'phd'].includes(d.programId));
+export const hasGraduateDegree = (state) => state.education.degrees.some((d) => GRAD.includes(d.type) || ['mba', 'jd', 'md', 'do', 'imd', 'mpa', 'phd'].includes(d.programId));
 
 /** Your executive résumé. */
 export function executiveRecord(state) {

@@ -115,7 +115,7 @@ export function fourPlusOneEligibility(state) {
 /** MD/MPH: a public-health year inside medical school. */
 export function mphEligibility(state) {
   const e = enrolled(state);
-  if (e?.programId !== 'md') return { ok: false, reason: 'Medical students' };
+  if (!['md', 'do', 'imd'].includes(e?.programId)) return { ok: false, reason: 'Medical students' };
   if ((e.extraGrants ?? []).includes('mph')) return { ok: false, reason: 'Already added' };
   if (e.progress < 2 || e.progress >= e.totalYears - 1) return { ok: false, reason: 'Between M2 and M4' };
   return { ok: true };

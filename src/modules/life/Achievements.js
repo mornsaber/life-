@@ -62,6 +62,10 @@ export const ACHIEVEMENTS = {
   decamillionaire: { name: 'Eight Figures', icon: '💎', tier: 'gold', desc: 'Reach a $10M net worth.', test: (s) => netWorth(s) >= 1e7 },
   billionaire: { name: 'Billionaire', icon: '🚀', tier: 'gold', desc: 'Reach a $1B net worth.', test: (s) => netWorth(s) >= 1e9 },
   founder: { name: 'Founder', icon: '🏪', tier: 'bronze', desc: 'Start a business.', test: (s) => businesses(s).length > 0 || (s.business?.history ?? []).length > 0 },
+  bestInTown: { name: 'Best in Town', icon: '🏆', tier: 'silver', desc: 'Win an award for your business.', test: (s) => businesses(s).some((b) => (b.awards ?? []).length > 0) },
+  goalGetter: { name: 'Goal Getter', icon: '🎯', tier: 'bronze', desc: 'Hit five yearly business goals.', test: (s) => businesses(s).some((b) => (b.goalsMet ?? 0) >= 5) },
+  diagnostician: { name: 'Diagnostician', icon: '🔎', tier: 'silver', desc: 'Call ten diagnoses right.', test: (s) => (s.medicine?.cases?.solved ?? 0) >= 10 },
+  lifesaver: { name: 'Lifesaver', icon: '❤️‍🩹', tier: 'gold', desc: 'Save 25 lives as a clinician.', test: (s) => (s.medicine?.cases?.saved ?? 0) >= 25 },
   tycoon: { name: 'Tycoon', icon: '🏭', tier: 'gold', desc: 'Own a business worth $50M.', test: (s) => businesses(s).some((b) => (b.valuation ?? 0) >= 5e7) },
   debtFree: { name: 'Debt Free', icon: '🧾', tier: 'bronze', desc: 'Pay off a mortgage.', test: (s) => (s.housing?.properties ?? []).some((p) => p.mortgage && p.mortgage.balance <= 0) || (s.housing?.paidOff ?? 0) > 0 },
   // Service

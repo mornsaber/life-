@@ -270,7 +270,7 @@ YEAR_HOOKS.push((state, programId, major) => (hasCredential(state, 'paramedic') 
 /** PA programs prize patient-care hours: years on the ambulance help. */
 ADMISSION_HOOKS.push({
   boost(state, programId) {
-    if (programId !== 'paMaster' && programId !== 'md') return 0;
+    if (!['paMaster', 'md', 'do'].includes(programId)) return 0;
     const years = state.career.history.filter((h) => EMS_PROFESSIONS.includes(h.professionId)).reduce((s, h) => s + (h.endAge - h.startAge), 0) + (isEms(state.career.job) ? state.career.job.yearsAtEmployer : 0);
     return Math.min(programId === 'paMaster' ? 0.15 : 0.06, years * 0.03);
   },

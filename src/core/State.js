@@ -454,11 +454,15 @@ export const DEGREE_RANK = {
  *   { program: 'jd' }                             — a specific program (jd, md, mba, paralegal...)
  *   { anyOf: [req, req] }                         — any alternative satisfies
  */
+/** Degrees that make you a physician: M.D., D.O. and an international M.D. all meet an M.D. requirement. */
+export const MEDICAL_DEGREES = ['md', 'do', 'imd'];
+export const medicalDegree = (state) => state.education.degrees.find((d) => MEDICAL_DEGREES.includes(d.programId)) ?? null;
+
 export function meetsEducation(state, req) {
   if (!req) return true;
   if (req.anyOf) return req.anyOf.some((r) => meetsEducation(state, r));
   const degrees = state.education.degrees;
-  if (req.program) return degrees.some((d) => d.programId === req.program);
+  if (req.program) return degrees.some((d) => d.programId === req.program || (req.program === 'md' && MEDICAL_DEGREES.includes(d.programId)));
   const rank = DEGREE_RANK[req.level] ?? 0;
   return degrees.some((d) => DEGREE_RANK[d.type] >= rank && (!req.majors?.length || req.majors.includes(d.major)));
 }

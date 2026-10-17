@@ -25,7 +25,7 @@
  *   schoolRecord, practice, practiceAge, partner, partnerOffered, partTime, burnout, mocAge, facultyRank
  */
 import { clamp } from '../../core/Random.js';
-import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
+import { addHonor, yearlyCount, bumpYearly, medicalDegree } from '../../core/State.js';
 import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
 import { undergradEntryYears } from '../world/Education.js';
 import { leaveJob } from '../career/CareerEngine.js';
@@ -39,7 +39,11 @@ export const BUY_IN = 120000;
 export const PREMED_CAP = { clinical: 4, research: 3, shadow: 2 };
 
 const med = (state) => state.medicine;
-const isMd = (e) => e?.programId === 'md' || e?.programId === 'mdphd';
+/** Every road through medical school: M.D., D.O., an offshore M.D., and the MD/PhD. */
+export const MED_SCHOOL_PROGRAMS = ['md', 'do', 'imd', 'mdphd'];
+const isMd = (e) => MED_SCHOOL_PROGRAMS.includes(e?.programId);
+/** The letters after your name. */
+export const doctorLetters = (programId) => (programId === 'do' ? 'D.O.' : 'M.D.');
 /** MD/PhD students do their Ph.D. research between the preclinical and clinical years. */
 export const MSTP_RESEARCH_YEARS = [3, 6];
 const science = (state) => state.education.degrees.some((d) => ['biology', 'chemistry', 'physics', 'nursing', 'kinesiology', 'nutrition', 'psychology'].includes(d.major));
@@ -52,7 +56,7 @@ const inCollege = (state) => state.education.degrees.some((d) => ['bachelor', 'm
 export function mcatEligibility(state) {
   if (state.character.age < 19) return { ok: false, reason: 'Age 19+' };
   if (!inCollege(state)) return { ok: false, reason: 'In or after college' };
-  if (isMd(state.education.enrolled) || state.education.degrees.some((d) => d.programId === 'md')) return { ok: false, reason: 'Already in medicine' };
+  if (isMd(state.education.enrolled) || medicalDegree(state)) return { ok: false, reason: 'Already in medicine' };
   if (yearlyCount(state, 'medLife.mcat')) return { ok: false, reason: 'One sitting a year' };
   if ((med(state).mcatTries ?? 0) >= 7) return { ok: false, reason: 'Lifetime limit of seven attempts' };
   return { ok: true };
@@ -80,7 +84,7 @@ export function takeMcat(ctx, mode = 'prep') {
 export function premed(ctx, kind) {
   const { state, rng } = ctx;
   if (!PREMED_CAP[kind]) return;
-  if (state.character.age < 17 || state.education.degrees.some((d) => d.programId === 'md') || isMd(state.education.enrolled)) return ctx.toast('For pre-meds', 'warn');
+  if (state.character.age < 17 || medicalDegree(state) || isMd(state.education.enrolled)) return ctx.toast('For pre-meds', 'warn');
   if (yearlyCount(state, 'medLife.premed')) return ctx.toast('One pre-med activity a year', 'warn');
   const p = (med(state).premed ??= { clinical: 0, research: 0, shadow: 0 });
   if (p[kind] >= PREMED_CAP[kind]) return ctx.toast('You have plenty of that already', 'info');
@@ -101,23 +105,28 @@ export function premed(ctx, kind) {
 /** Admissions: the MCAT is required; scores and experiences move the odds. */
 ADMISSION_HOOKS.push({
   eligibility(state, programId) {
-    if (programId !== 'md' && programId !== 'mdphd') return null;
+    if (!MED_SCHOOL_PROGRAMS.includes(programId)) return null;
     // Where medicine is a first degree, school-leavers get in on their entrance-exam score instead.
     if (programId === 'md' && undergradEntryYears(state.character.countryId, 'md')) return null;
     const m = med(state);
     if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return null; // BS/MD: admission guaranteed
     if (!m?.mcat) return 'Take the MCAT first';
+    // Offshore schools take any MCAT score, however old.
+    if (programId === 'imd') return null;
     if (programId === 'mdphd' && !(m.premed?.research >= 1) && !(state.higherEd?.ugResearch >= 1)) return 'MD/PhD programs want research experience';
     if (state.character.age - (m.mcatAge ?? 0) > MCAT.validYears) return 'Your MCAT score expired (3 years)';
     return null;
   },
   boost(state, programId) {
-    if (programId !== 'md' && programId !== 'mdphd') return 0;
+    if (!MED_SCHOOL_PROGRAMS.includes(programId)) return 0;
+    if (programId === 'imd') return 0.35;
     if (programId === 'md' && undergradEntryYears(state.character.countryId, 'md')) return -0.15; // highly selective everywhere
     if (state.higherEd?.bsmd?.guaranteed && programId === 'md') return 1;
     const m = med(state);
     const p = m.premed ?? { clinical: 0, research: 0, shadow: 0 };
     const exp = Math.min(0.12, p.clinical * 0.03 + p.research * 0.025 + p.shadow * 0.02);
+    // Osteopathic schools admit at a lower MCAT (about 504 vs 512) and weigh clinical experience more.
+    if (programId === 'do') return ((m.mcat ?? MCAT.mean) - 502) / 25 + exp * 1.5 - (p.clinical ? 0 : 0.08);
     return ((m.mcat ?? MCAT.mean) - 508) / 25 + exp - (p.clinical ? 0 : 0.12);
   },
 });
@@ -130,7 +139,8 @@ const oneAtATime = (ctx, type, spec) => {
   if (!ctx.state.prompts.some((p) => p.type === type)) ctx.prompt({ type, ...spec });
 };
 
-export const step1Odds = (state, dedicated) => clamp(0.88 + (state.stats.smarts - 75) / 120 + (dedicated ? 0.05 : 0) - Math.max(0, state.stats.stress - 75) / 150, 0.5, 0.99);
+/** Offshore schools lose more students to Step 1. */
+export const step1Odds = (state, dedicated) => clamp(0.88 + (state.stats.smarts - 75) / 120 + (dedicated ? 0.05 : 0) - Math.max(0, state.stats.stress - 75) / 150 - (state.education.enrolled?.programId === 'imd' ? 0.1 : 0), 0.45, 0.99);
 export const honorsOdds = (state, effort = 0) => clamp(0.22 + (state.stats.smarts - 75) / 120 + effort - Math.max(0, state.stats.stress - 75) / 200, 0.05, 0.75);
 
 const SCHOOL_EVENTS = [
@@ -331,14 +341,14 @@ export const MedSchoolModule = {
   init,
   setup(engine) {
     engine.bus.on('education:enrolled', ({ ctx, programId }) => {
-      if (programId === 'md' || programId === 'mdphd') med(ctx.state).school = { step1: null, step1Tries: 0, honors: 0, rotations: 0, step2: null, step2Tries: 0, interest: null, pubs: 0, aways: 0 };
+      if (MED_SCHOOL_PROGRAMS.includes(programId)) med(ctx.state).school = { step1: null, step1Tries: 0, honors: 0, rotations: 0, step2: null, step2Tries: 0, interest: null, pubs: 0, aways: 0 };
     });
     engine.bus.on('education:graduated', ({ ctx, degree }) => {
       const m = med(ctx.state);
-      if ((degree.programId !== 'md' && degree.programId !== 'mdphd') || !m.school) return;
+      if (!MED_SCHOOL_PROGRAMS.includes(degree.programId) || !m.school) return;
       m.schoolRecord = { ...m.school };
       m.school = null;
-      ctx.log(`You are Dr. ${ctx.state.character.lastName}, M.D. Step 2 CK ${m.schoolRecord.step2 ?? '—'}, honors in ${m.schoolRecord.honors} of ${ROTATIONS} clerkships. Next: the Match.`, '🩺', 'milestone');
+      ctx.log(`You are Dr. ${ctx.state.character.lastName}, ${doctorLetters(degree.programId)} Step 2 CK ${m.schoolRecord.step2 ?? '—'}, honors in ${m.schoolRecord.honors} of ${ROTATIONS} clerkships. Next: the Match.`, '🩺', 'milestone');
     });
     engine.bus.on('education:left', ({ ctx, enrollment }) => {
       if (isMd(enrollment)) med(ctx.state).school = null;

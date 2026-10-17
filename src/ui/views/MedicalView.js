@@ -4,14 +4,16 @@
  */
 import { esc, button, card, chip, kv, meter } from '../Components.js';
 import { SPECIALTIES, PRACTICES, TRAINING_LEVELS, isDoctor, practiceMultiplier } from '../../modules/career/Medicine.js';
-import { MCAT, ROTATIONS, PREMED_CAP, mcatEligibility, step1Odds } from '../../modules/medicine/MedicalLife.js';
+import { MCAT, ROTATIONS, PREMED_CAP, MED_SCHOOL_PROGRAMS, mcatEligibility, step1Odds } from '../../modules/medicine/MedicalLife.js';
+import { medicalDegree } from '../../core/State.js';
+import { seesPatients, casesOf, sideEligibility, casePool } from '../../modules/medicine/CaseFiles.js';
 
 /** Pre-med checklist, or progress through medical school. */
 export function medTrainingCard(state) {
   const m = state.medicine;
   if (!m) return '';
   const e = state.education.enrolled;
-  if (['md', 'mdphd'].includes(e?.programId) && m.school) {
+  if (MED_SCHOOL_PROGRAMS.includes(e?.programId) && m.school) {
     const s = m.school;
     const year = Math.floor(e.progress) + 1;
     const steps = [
@@ -40,7 +42,7 @@ export function medTrainingCard(state) {
   // Pre-med: college students and graduates thinking about medicine.
   const p = m.premed ?? { clinical: 0, research: 0, shadow: 0 };
   const interested = m.mcat || p.clinical || p.research || p.shadow || state.education.degrees.some((d) => ['biology', 'chemistry', 'nursing', 'kinesiology'].includes(d.major)) || ['biology', 'chemistry'].includes(e?.major);
-  if (!interested || state.education.degrees.some((d) => d.programId === 'md') || state.character.age < 18) return '';
+  if (!interested || medicalDegree(state) || state.character.age < 18) return '';
   const check = mcatEligibility(state);
   const expired = m.mcat && state.character.age - (m.mcatAge ?? 0) > MCAT.validYears;
   return card('Pre-Med', `${kv([
@@ -56,7 +58,31 @@ export function medTrainingCard(state) {
       ${button('🔬 Lab research', 'medLife.premed', { arg: 'research', variant: 'small', disabled: Boolean(state.yearly['medLife.premed']) })}
       ${button('👀 Shadow a doctor', 'medLife.premed', { arg: 'shadow', variant: 'small', disabled: Boolean(state.yearly['medLife.premed']) })}
     </div>
-    <p class="fine">Medical schools require the MCAT (valid three years) and expect clinical experience. About four in ten applicants get in.</p>`, { icon: '🧪' });
+    <p class="fine">Medical schools require the MCAT (valid three years) and expect clinical experience. About four in ten applicants get in. There's more than one way in: osteopathic (D.O.) schools admit at lower scores and weigh clinical hours more; offshore medical schools take almost anyone with a degree, at a high price and with tougher Match odds. A post-bacc year opens medicine to non-science majors.</p>`, { icon: '🧪' });
+}
+
+/** Case files: your diagnostic record, and medicine beyond the day job. */
+export function caseFilesCard(state) {
+  const job = state.career.job;
+  if (!seesPatients(job) || !state.medicine) return '';
+  const c = casesOf(state);
+  const btn = (label, kind, hint) => {
+    const e = sideEligibility(state, kind);
+    return button(label, `caseFiles.${kind}`, { variant: 'small', disabled: !e.ok, hint: e.ok ? hint : e.reason });
+  };
+  return card('Case Files', `${kv([
+    ['Diagnoses called right', `${c.solved}${c.solved + c.missed ? ` of ${c.solved + c.missed} (${Math.round((c.solved / (c.solved + c.missed)) * 100)}%)` : ''}`],
+    ['Lives saved', `❤️‍🩹 ${c.saved}`],
+    ['Worked up with tests', String(c.tested)],
+    ['Streak', `🔥 ${c.streak}${c.best > c.streak ? ` · best ${c.best}` : ''}`],
+    ['Cases you see', `${casePool(state).length} kinds of presentation in your field`],
+  ])}
+    <div class="action-grid">
+      ${btn('🤲 Volunteer at a free clinic', 'freeClinic', 'Less burnout · maybe a case')}
+      ${btn('🌍 Medical mission', 'mission', 'A month unpaid · lives saved')}
+      ${btn('📺 TV doctor & health column', 'media', 'Extra income')}
+    </div>
+    <p class="fine">Most years a patient walks in with a puzzle. Read the clues and make the call — or order more tests to be safe. Getting critical cases right saves lives.</p>`, { icon: '🗂️', accent: 'cyan' });
 }
 
 /** Residency and practice for physicians. */

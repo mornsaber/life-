@@ -115,6 +115,10 @@ export const PROGRAMS = {
   dc: { name: 'Doctor of Chiropractic (D.C.)', type: 'professional', years: 4, requires: { level: 'bachelor' }, major: null, schools: ['private'], costFactor: 1.3, minSmarts: 50, minGpa: 2.8, fields: ['chiropractic'] },
   jd: { name: 'Juris Doctor (Law School)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.5, minSmarts: 60, minGpa: 3.0, fields: ['law'] },
   md: { name: 'Doctor of Medicine (Medical School)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.6, minSmarts: 70, minGpa: 3.3, fields: ['medical'] },
+  // More ways into medicine: osteopathic schools weigh the whole applicant (and teach hands-on manipulative medicine);
+  // offshore schools admit almost anyone with a degree, cost more, lose more students and match less often.
+  do: { name: 'Doctor of Osteopathic Medicine (D.O.)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private'], costFactor: 1.55, minSmarts: 62, minGpa: 3.0, fields: ['medical'], usOnly: true },
+  imd: { name: 'International M.D. (Offshore Medical School)', type: 'professional', years: 4, requires: { level: 'bachelor' }, major: null, schools: ['private'], costFactor: 1.9, minSmarts: 55, minGpa: 2.6, fields: ['medical'] },
   pharmd: { name: 'Doctor of Pharmacy (Pharm.D.)', type: 'professional', years: 4, requires: { anyOf: [{ level: 'bachelor', majors: SCIENCE_MAJORS }, { program: 'premedPostbacc' }] }, major: null, schools: ['state', 'private'], costFactor: 1.4, minSmarts: 62, minGpa: 3.0, fields: ['pharmacy'] },
   dds: { name: 'Doctor of Dental Surgery (Dental School)', type: 'professional', years: 4, requires: { level: 'bachelor', majors: SCIENCE_MAJORS }, major: null, schools: ['state', 'private'], costFactor: 1.6, minSmarts: 65, minGpa: 3.2, fields: ['dentistry'] },
   dpt: { name: 'Doctor of Physical Therapy (DPT)', type: 'professional', years: 3, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private'], costFactor: 1.3, minSmarts: 55, minGpa: 3.0, fields: ['physicalTherapy'] },
@@ -130,7 +134,7 @@ export const PROGRAMS = {
 export const PROGRAM_GROUPS = [
   { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'machinistTech', 'teacherPrep', 'premedPostbacc'] },
   { label: 'Undergraduate Degrees', ids: ['associate', 'bachelor', 'maritimeAcademy', 'mortuaryScience'] },
-  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'mls', 'msAccounting', 'seminary', 'mph', 'paMaster', 'crnaProgram', 'jd', 'md', 'dds', 'dpt', 'dvm', 'pharmd', 'phd', 'mdphd', 'jdmba'] },
+  { label: 'Graduate & Professional School', ids: ['master', 'mba', 'mpa', 'msw', 'mls', 'msAccounting', 'seminary', 'mph', 'paMaster', 'crnaProgram', 'jd', 'md', 'do', 'imd', 'dds', 'dpt', 'dvm', 'pharmd', 'phd', 'mdphd', 'jdmba'] },
 ];
 
 /** Majors offered for a program ('choose' programs list them by level). */

@@ -112,10 +112,11 @@ export function enrollmentEligibility(state, programId, schoolId, major) {
   const school = SCHOOLS[schoolId];
   if (!p || !school || !p.schools.includes(schoolId)) return { ok: false, reason: 'Not offered there' };
   if (programId === 'associate' && !shortCycleOffered(state.character.countryId)) return { ok: false, reason: 'Not offered in this country' };
+  if (p.usOnly && (state.character.countryId ?? 'US') !== 'US') return { ok: false, reason: 'Not offered in this country' };
   if (state.character.age < 17) return { ok: false, reason: 'Too young' };
   if (state.education.enrolled) return { ok: false, reason: 'Already enrolled' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
-  if (!meetsEducation(state, requiresFor(state, programId))) return { ok: false, reason: programId === 'md' ? 'Needs science major or pre-med post-bacc' : `Needs ${p.requires.level === 'bachelor' ? "a bachelor's" : 'a diploma'}` };
+  if (!meetsEducation(state, requiresFor(state, programId))) return { ok: false, reason: ['md', 'do'].includes(programId) ? 'Needs science major or pre-med post-bacc' : `Needs ${p.requires.level === 'bachelor' ? "a bachelor's" : 'a diploma'}` };
   if (!majorsFor(programId).includes(major ?? null)) return { ok: false, reason: 'Pick a major' };
   if (state.education.degrees.some((d) => d.programId === programId && (d.major ?? null) === (major ?? null))) return { ok: false, reason: 'Already earned' };
   if (p.minSmarts && state.stats.smarts < p.minSmarts) return { ok: false, reason: `Needs ${p.minSmarts}+ smarts` };

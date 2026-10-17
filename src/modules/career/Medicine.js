@@ -20,6 +20,7 @@ import { clamp } from '../../core/Random.js';
 import { stateIdOf } from '../life/Regions.js';
 import { SCHOOLS } from '../education/Catalog.js';
 import { recalcSalary } from './Compensation.js';
+import { medicalDegree } from '../../core/State.js';
 
 /** years: residency length · pay: attending multiplier · comp: competitiveness (0–1) · claims: yearly claim odds · premium: base yearly premium */
 export const SPECIALTIES = {
@@ -37,9 +38,15 @@ export const SPECIALTIES = {
   dermatology: { name: 'Dermatology', icon: '🧴', years: 4, pay: 1.7, comp: 0.85, claims: 0.035, premium: 12000 },
   orthopedics: { name: 'Orthopedic Surgery', icon: '🦴', years: 5, pay: 2.0, comp: 0.8, claims: 0.12, premium: 55000 },
   neurosurgery: { name: 'Neurosurgery', icon: '🧠', years: 7, pay: 2.3, comp: 0.9, claims: 0.19, premium: 90000 },
+  pmr: { name: 'Physical Medicine & Rehabilitation', icon: '🦽', years: 4, pay: 1.15, comp: 0.25, claims: 0.03, premium: 10000 },
+  ophthalmology: { name: 'Ophthalmology', icon: '👁️', years: 4, pay: 1.6, comp: 0.7, claims: 0.05, premium: 15000 },
+  ent: { name: 'Otolaryngology (ENT)', icon: '👂', years: 5, pay: 1.65, comp: 0.75, claims: 0.08, premium: 25000 },
+  urology: { name: 'Urology', icon: '💧', years: 5, pay: 1.6, comp: 0.65, claims: 0.07, premium: 22000 },
+  plastics: { name: 'Plastic Surgery', icon: '✨', years: 6, pay: 1.9, comp: 0.85, claims: 0.1, premium: 40000 },
+  radOnc: { name: 'Radiation Oncology', icon: '☢️', years: 5, pay: 1.75, comp: 0.5, claims: 0.04, premium: 15000 },
 };
 /** Open spots in the scramble (SOAP) for the unmatched. */
-const SOAP = ['familyMedicine', 'internalMedicine', 'pediatrics', 'psychiatry'];
+const SOAP = ['familyMedicine', 'internalMedicine', 'pediatrics', 'psychiatry', 'pmr'];
 
 /** from: specialties that feed it · years · pay: replaces the specialty multiplier once complete */
 export const FELLOWSHIPS = {
@@ -47,16 +54,29 @@ export const FELLOWSHIPS = {
   gastroenterology: { name: 'Gastroenterology', from: ['internalMedicine'], years: 3, pay: 1.7, comp: 0.6, claims: 0.07, premium: 22000 },
   hemOnc: { name: 'Hematology–Oncology', from: ['internalMedicine'], years: 3, pay: 1.5, comp: 0.45, claims: 0.05, premium: 18000 },
   pulmCrit: { name: 'Pulmonary & Critical Care', from: ['internalMedicine', 'emergencyMedicine', 'anesthesiology'], years: 3, pay: 1.45, comp: 0.4, claims: 0.07, premium: 20000 },
-  sportsMed: { name: 'Sports Medicine', from: ['familyMedicine', 'orthopedics', 'emergencyMedicine'], years: 1, pay: 1.15, comp: 0.3 },
+  sportsMed: { name: 'Sports Medicine', from: ['familyMedicine', 'orthopedics', 'emergencyMedicine', 'pmr'], years: 1, pay: 1.15, comp: 0.3 },
   geriatrics: { name: 'Geriatrics', from: ['familyMedicine', 'internalMedicine'], years: 1, pay: 1.05, comp: 0.05 },
   childPsych: { name: 'Child & Adolescent Psychiatry', from: ['psychiatry'], years: 2, pay: 1.2, comp: 0.2 },
   picu: { name: 'Pediatric Critical Care', from: ['pediatrics'], years: 3, pay: 1.2, comp: 0.3 },
   surgOnc: { name: 'Surgical Oncology', from: ['generalSurgery'], years: 2, pay: 1.7, comp: 0.5 },
   vascular: { name: 'Vascular Surgery', from: ['generalSurgery'], years: 2, pay: 1.8, comp: 0.5 },
-  pain: { name: 'Pain Medicine', from: ['anesthesiology', 'neurology'], years: 1, pay: 1.8, comp: 0.4 },
+  pain: { name: 'Pain Medicine', from: ['anesthesiology', 'neurology', 'pmr'], years: 1, pay: 1.8, comp: 0.4 },
   interventional: { name: 'Interventional Radiology', from: ['radiology'], years: 1, pay: 1.9, comp: 0.5 },
   mohs: { name: 'Mohs Surgery', from: ['dermatology'], years: 1, pay: 2.0, comp: 0.7 },
   spine: { name: 'Spine Surgery', from: ['orthopedics', 'neurosurgery'], years: 1, pay: 2.3, comp: 0.6 },
+  palliative: { name: 'Hospice & Palliative Medicine', from: ['familyMedicine', 'internalMedicine', 'emergencyMedicine', 'pediatrics', 'psychiatry', 'neurology', 'anesthesiology', 'radOnc'], years: 1, pay: 1.0, comp: 0.1 },
+  addiction: { name: 'Addiction Medicine', from: ['familyMedicine', 'internalMedicine', 'psychiatry', 'emergencyMedicine'], years: 1, pay: 1.1, comp: 0.15 },
+  endocrinology: { name: 'Endocrinology', from: ['internalMedicine'], years: 2, pay: 1.15, comp: 0.3 },
+  nephrology: { name: 'Nephrology', from: ['internalMedicine'], years: 2, pay: 1.3, comp: 0.2 },
+  infectiousDisease: { name: 'Infectious Disease', from: ['internalMedicine', 'pediatrics'], years: 2, pay: 1.1, comp: 0.2 },
+  rheumatology: { name: 'Rheumatology', from: ['internalMedicine'], years: 2, pay: 1.2, comp: 0.35 },
+  neonatology: { name: 'Neonatology', from: ['pediatrics'], years: 3, pay: 1.35, comp: 0.35 },
+  traumaSurgery: { name: 'Trauma & Surgical Critical Care', from: ['generalSurgery'], years: 1, pay: 1.6, comp: 0.35, claims: 0.12, premium: 45000 },
+  mfm: { name: 'Maternal–Fetal Medicine', from: ['obgyn'], years: 3, pay: 1.55, comp: 0.45, claims: 0.12, premium: 55000 },
+  rei: { name: 'Reproductive Endocrinology & Infertility', from: ['obgyn'], years: 3, pay: 1.7, comp: 0.6, claims: 0.05, premium: 20000 },
+  hand: { name: 'Hand Surgery', from: ['orthopedics', 'plastics', 'generalSurgery'], years: 1, pay: 2.0, comp: 0.5 },
+  retina: { name: 'Retina', from: ['ophthalmology'], years: 2, pay: 1.9, comp: 0.6 },
+  pediatricSurgery: { name: 'Pediatric Surgery', from: ['generalSurgery'], years: 2, pay: 1.8, comp: 0.7 },
 };
 
 export const FELLOW_PAY = 0.45;
@@ -70,14 +90,17 @@ export const isDoctor = (job) => job?.professionId === 'medical';
 
 export function matchOdds(state, specialtyId) {
   const s = SPECIALTIES[specialtyId];
-  const md = state.education.degrees.find((d) => d.programId === 'md');
+  const md = medicalDegree(state);
   const prestige = SCHOOLS[md?.schoolId]?.prestige ?? 1;
+  // D.O.s match well into primary care and less often into the most competitive fields; offshore graduates
+  // (international medical graduates) face the steepest odds, most of all in competitive specialties.
+  const route = md?.programId === 'do' ? -0.12 * s.comp : md?.programId === 'imd' ? -0.08 - 0.3 * s.comp : 0;
   const r = state.medicine?.schoolRecord;
   // Program directors read Step 2 scores, clerkship honors, research and letters from away rotations in the specialty.
   const application = r?.step2
     ? (r.step2 - 245) / 45 + r.honors * 0.025 + Math.min(0.1, (r.pubs ?? 0) * 0.02) + (r.interest === specialtyId ? 0.03 + (r.aways ?? 0) * 0.04 : 0)
     : (state.stats.smarts - 70) / 60;
-  const score = application + (prestige - 1) * 0.04 + (state.medicine?.research ? 0.1 : 0);
+  const score = application + (prestige - 1) * 0.04 + (state.medicine?.research ? 0.1 : 0) + route;
   return clamp(0.95 - s.comp * 0.85 + score, 0.05, 0.97);
 }
 
