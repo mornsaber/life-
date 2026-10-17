@@ -22,7 +22,8 @@ import { transitionTick, veteranTick, transitionHiringBonus, UCX } from '../src/
 import { coverageId } from '../src/modules/health/Insurance.js';
 import { qualBoardBonus } from '../src/modules/military/Schools.js';
 import { retrainEligibility, warrantEligibility } from '../src/modules/military/CareerFields.js';
-import { rankOf } from '../src/modules/military/MilitaryEngine.js';
+import { rankOf, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
+import { mandatoryRetirementAge } from '../src/modules/military/Separation.js';
 import { giBillEligible } from '../src/modules/education/EducationEngine.js';
 import { assignmentEligibility, startAssignment, assignmentBoardBonus, jointFactor, keepsHome, commissioningEligibility, applyCommissioning, AssignmentResolvers } from '../src/modules/military/Assignments.js';
 import { combatZoneExclusion } from '../src/modules/military/ActiveDuty.js';
@@ -57,7 +58,49 @@ const year = (engine) => {
   }
 };
 
+const recruit = (countryId, age) => {
+  const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+  const state = engine.newLife({ countryId });
+  state.character.age = age;
+  Object.assign(state.stats, { smarts: 80, fitness: 80, health: 95 });
+  state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 }, { type: 'bachelor', programId: 'bachelor', major: 'history', year: 22 });
+  state.legal.record = [];
+  return { engine, state };
+};
+
 const tests = {
+  'each force recruits within its own ages; veterans can rejoin older'() {
+    assert.ok(enlistmentEligibility(recruit('US', 28).state, 'marines', 'enlisted', 'active').ok);
+    assert.match(enlistmentEligibility(recruit('US', 29).state, 'marines', 'enlisted', 'active').reason, /17–28/);
+    assert.ok(enlistmentEligibility(recruit('US', 40).state, 'airforce', 'enlisted', 'active').ok, 'Air Force to 42');
+    assert.match(enlistmentEligibility(recruit('GB', 37).state, 'army', 'enlisted', 'active').reason, /16–36/);
+    assert.match(enlistmentEligibility(recruit('GB', 30).state, 'army', 'officer', 'active').reason, /18–29/);
+    assert.ok(enlistmentEligibility(recruit('CA', 50).state, 'army', 'enlisted', 'active').ok, 'Canada takes recruits to 57');
+    const vet = recruit('US', 31);
+    vet.state.military.history.push({ branch: 'marines', track: 'enlisted', yearsOfService: 4, discharge: 'honorable', startAge: 18, endAge: 22 });
+    assert.ok(enlistmentEligibility(vet.state, 'marines', 'enlisted', 'active').ok, 'prior service raises the ceiling');
+  },
+
+  'the UK early-departure pension rises to the full rate at 60; reserve enlisted leave at 60'() {
+    const { engine, state } = recruit('GB', 18);
+    engine.dispatch('military.enlist', 'army:enlisted:active');
+    for (const p of [...state.prompts]) engine.resolvePrompt(p.id, p.options.find((o) => !o.disabled)?.id ?? p.options[0].id);
+    const svc = state.military.service;
+    assert.ok(svc, 'serving');
+    state.character.age = 42;
+    svc.yearsOfService = 24;
+    discharge(engine.context(), 'retired', 'test');
+    const pension = state.retirement.pensions.find((p) => p.id === 'military');
+    assert.ok(pension?.stepUp, 'an early-departure pension');
+    assert.equal(pension.stepUp.age, 60);
+    assert.ok(pension.stepUp.annual > pension.annual);
+    state.character.age = 59;
+    for (let i = 0; i < 2; i++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
+    assert.equal(pension.annual, pension.stepUp.annual, 'stepped up at 60');
+    assert.equal(mandatoryRetirementAge({ track: 'enlisted', component: 'reserve', grade: 5 }), 60);
+    assert.equal(mandatoryRetirementAge({ track: 'officer', component: 'reserve', grade: 3 }), 62);
+  },
+
   'generals serve past 30 years and keep getting promoted'() {
     const { engine, state, ctx } = setup(41, 22);
     Object.assign(state.stats, { smarts: 90, fitness: 85 });

@@ -276,7 +276,7 @@ export const NZ = {
     },
     MIL_UNITS: { ground: ['1st Battalion, Royal New Zealand Infantry Regiment', '2nd/1st Battalion, Royal New Zealand Infantry Regiment', 'Queen Alexandra\'s Mounted Rifles', '2nd Combat Engineer Regiment'], naval: ['HMNZS Te Kaha', 'HMNZS Te Mana', 'HMNZS Canterbury', 'HMNZS Aotearoa'], air: ['No. 5 Squadron', 'No. 40 Squadron', 'No. 3 Squadron'] },
     MIL_SUMMARY: 'a summary trial',
-    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 60 }, name: 'period of service' },
+    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 60 }, join: { enlisted: [17, 49], officer: [17, 49] }, name: 'period of service' },
     MILITARY_JUSTICE: { code: 'the Armed Forces Discipline Act 1971', court: 'Court Martial of New Zealand', prison: 'the Services Corrective Establishment, Burnham', counsel: 'Defence legal officer' },
     VETTING: { form: 'NZSIS security vetting questionnaire', publicTrust: 'Confidential clearance', secret: 'Secret clearance', topSecret: 'Top Secret Special clearance' },
     CAMPUS: { army: 'Defence Force Scholarship (Army)', navy: 'Defence Force Scholarship (Navy)', airforce: 'Defence Force Scholarship (Air Force)', obligation: true },

@@ -259,7 +259,7 @@ export const SE = {
     BILLETS: { ground: { member: 'Soldat', teamLeader: 'Stf gruppchef', squadLeader: 'Gruppchef', platoonSergeant: 'Ställföreträdande plutonchef', opsNco: 'Stabsassistent', firstSergeant: 'Kompanikvartermästare', seniorStaffNco: 'Bataljonsförvaltare', csm: 'Regementsförvaltare', platoonLeader: 'Plutonchef', xo: 'Ställföreträdande kompanichef', companyCommander: 'Kompanichef', staff: 'S3', battalionCommander: 'Bataljonschef', higher: 'Brigadstab', units: { squad: 'Grupp', platoon: 'Pluton', company: 'Kompani', battalion: 'Bataljon' } } },
     MIL_UNITS: { ground: ['Livgardet', 'Norrbottens regemente (I 19)', 'Skaraborgs regemente (P 4)', 'Södra skånska regementet (P 7)'], naval: ['HMS Visby', 'HMS Helsingborg', 'HMS Gotland', 'HMS Carlskrona'], air: ['Skaraborgs flygflottilj (F 7)', 'Blekinge flygflottilj (F 17)', 'Norrbottens flygflottilj (F 21)'] },
     MIL_SUMMARY: 'a disciplinary hearing (Försvarsmaktens personalansvarsnämnd)',
-    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 61, officer: 61, flag: 65 }, name: 'anställning' },
+    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 61, officer: 61, flag: 65 }, join: { enlisted: [18, 47], officer: [18, 47] }, name: 'anställning' },
     MILITARY_JUSTICE: { code: 'the Brottsbalken (no military courts in peacetime)', court: null, prison: 'a Kriminalvården anstalt', counsel: 'offentlig försvarare' },
     VETTING: { form: 'säkerhetsprövning (Säpo registerkontroll)', publicTrust: 'Säkerhetsklass 3', secret: 'Säkerhetsklass 2', topSecret: 'Säkerhetsklass 1' },
     CAMPUS: null,

@@ -241,7 +241,7 @@ export const NG = {
     },
     MIL_UNITS: { ground: ['7 Division (Maiduguri)', '1 Division (Kaduna)', '82 Division', 'Guards Brigade'], naval: ['NNS Aradu', 'NNS Unity', 'NNS Centenary'], air: ['Tactical Air Command', 'Mobility Command'] },
     MIL_SUMMARY: 'a summary trial before your commanding officer (Armed Forces Act)',
-    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 56, officer: 60, flag: 60 }, name: 'engagement' },
+    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 56, officer: 60, flag: 60 }, join: { enlisted: [18, 22], officer: [18, 22] }, name: 'engagement' },
     MILITARY_JUSTICE: { code: 'the Armed Forces Act', court: 'a General Court-Martial', prison: 'a military detention centre', counsel: 'Defending officer' },
     VETTING: { form: 'DSS security vetting', publicTrust: 'Restricted', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: null,

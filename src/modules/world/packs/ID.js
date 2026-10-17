@@ -245,7 +245,7 @@ export const ID = {
     },
     MIL_UNITS: { ground: ['Kostrad (Army Strategic Reserve)', 'Kopassus', 'Yonif 330 Raider', 'Kodam Jaya'], naval: ['KRI Raden Eddy Martadinata', 'KRI I Gusti Ngurah Rai', 'KRI Nagapasa (submarine)'], air: ['Skadron Udara 3 (F-16)', 'Skadron Udara 11 (Su-30)', 'Skadron Udara 31 (C-130)'], marines: ['Pasmar 1', 'Pasmar 2', 'Denjaka'] },
     MIL_SUMMARY: 'a disciplinary punishment by your commander (Law on Military Discipline)',
-    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 58, officer: 58, flag: 60 }, name: 'ikatan dinas' },
+    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 58, officer: 58, flag: 60 }, join: { enlisted: [18, 22], officer: [18, 24] }, name: 'ikatan dinas' },
     MILITARY_JUSTICE: { code: 'the Military Criminal Code (KUHPM)', court: 'a military court (Pengadilan Militer)', prison: 'a military prison (Masmil)', counsel: 'Military legal aid (Babinkum)' },
     VETTING: { form: 'security screening (litsus)', publicTrust: 'Terbatas', secret: 'Rahasia', topSecret: 'Sangat Rahasia' },
     CAMPUS: null,

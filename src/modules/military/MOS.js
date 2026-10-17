@@ -23,6 +23,7 @@
  */
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { yearsInProfession, meetsEducation } from '../../core/State.js';
+import { joinAges } from '../world/MilitaryLocal.js';
 
 const M = (code, title, specialty, extra = {}) => ({ code, title, specialty, ...extra });
 
@@ -459,8 +460,10 @@ export function mosEligibility(state, mos, { smartsFloor = 0 } = {}) {
     const maxAge = Math.max(dc.maxAge, branchMax ?? 0);
     if (state.character.age > maxAge) return { ok: false, reason: `Direct commissions: age ${maxAge} or under` };
     if (directGrade(state, mos) == null) return { ok: false, reason: dc.needs };
-  } else if (mos.track === 'officer' && state.character.age > (branchMax ?? 39)) {
-    return { ok: false, reason: `Officers: age 19–${branchMax ?? 39}` };
+  } else if (mos.track === 'officer' && (state.character.countryId ?? 'US') === 'US') {
+    // (Abroad, each force's own officer ages apply at enlistment.)
+    const max = branchMax ?? (joinAges(null, mos.branch, 'officer')?.[1] ?? 39) + state.military.history.reduce((n, h) => n + (h.yearsOfService ?? 0), 0);
+    if (state.character.age > max) return { ok: false, reason: `Officers: age 19–${max}` };
   }
   return { ok: true };
 }

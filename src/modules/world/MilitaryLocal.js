@@ -395,18 +395,32 @@ export const summaryPunishment = (nation) => (!nation || nation === 'US' ? 'an A
  *   ages       { enlisted, officer, flag }: compulsory retirement ages
  */
 export const SERVICE_TERMS = {
-  GB: { maxYears: { enlisted: 24, officer: 34 }, ages: { enlisted: 55, officer: 55, flag: 60 }, name: 'engagement' },
-  CA: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 60, officer: 60, flag: 60 }, name: 'terms of service' },
-  AU: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 60 }, name: 'period of service' },
-  DE: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 55, officer: 62, flag: 65 }, name: 'Dienstzeit' },
-  FR: { maxYears: { enlisted: 30, officer: 40 }, ages: { enlisted: 57, officer: 59, flag: 62 }, name: 'contrat' },
-  IT: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 65 }, name: 'ferma' },
-  JP: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 54, officer: 56, flag: 60 }, name: 'term' },
-  KR: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 55, officer: 56, flag: 61 }, name: 'term' },
-  MX: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 55, officer: 60, flag: 65 }, name: 'term' },
-  PH: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 57, officer: 57, flag: 57 }, name: 'term' },
-  IN: { maxYears: { enlisted: 20, officer: 35 }, ages: { enlisted: 52, officer: 58, flag: 60 }, name: 'term of engagement' },
+  GB: { maxYears: { enlisted: 24, officer: 34 }, ages: { enlisted: 55, officer: 55, flag: 60 }, join: { enlisted: [16, 36], officer: [18, 29] }, name: 'engagement' },
+  CA: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 60, officer: 60, flag: 60 }, join: { enlisted: [17, 57], officer: [17, 57] }, name: 'terms of service' },
+  AU: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 60 }, join: { enlisted: [17, 56], officer: [17, 56] }, name: 'period of service' },
+  DE: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 55, officer: 62, flag: 65 }, join: { enlisted: [17, 40], officer: [17, 30] }, name: 'Dienstzeit' },
+  FR: { maxYears: { enlisted: 30, officer: 40 }, ages: { enlisted: 57, officer: 59, flag: 62 }, join: { enlisted: [17, 32], officer: [18, 30] }, name: 'contrat' },
+  IT: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 65 }, join: { enlisted: [18, 24], officer: [17, 22] }, name: 'ferma' },
+  JP: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 54, officer: 56, flag: 60 }, join: { enlisted: [18, 32], officer: [18, 26] }, name: 'term' },
+  KR: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 55, officer: 56, flag: 61 }, join: { enlisted: [18, 29], officer: [20, 27] }, name: 'term' },
+  MX: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 55, officer: 60, flag: 65 }, join: { enlisted: [18, 30], officer: [18, 25] }, name: 'term' },
+  PH: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 57, officer: 57, flag: 57 }, join: { enlisted: [18, 26], officer: [18, 26] }, name: 'term' },
+  IN: { maxYears: { enlisted: 20, officer: 35 }, ages: { enlisted: 52, officer: 58, flag: 60 }, join: { enlisted: [17, 21], officer: [17, 25] }, name: 'term of engagement' },
 };
+/** US joining ages by branch: [enlisted min, enlisted max, officer max]. */
+export const US_JOIN_AGES = {
+  army: [17, 35, 32], navy: [17, 41, 35], airforce: [17, 42, 39], marines: [17, 28, 28], coastguard: [17, 41, 31], spaceforce: [17, 42, 39], guard: [17, 35, 35],
+};
+/** The ages a force takes new recruits ([min, max]) for a track; null where no limit is set. */
+export function joinAges(nation, branchId, track) {
+  const t = nation ? SERVICE_TERMS[nation]?.join : null;
+  if (t) return t[track === 'enlisted' ? 'enlisted' : 'officer'] ?? null;
+  // Forces without their own table: the broad ranges most armed forces recruit within.
+  if (nation) return track === 'enlisted' ? [17, 39] : [18, 39];
+  const us = US_JOIN_AGES[branchId];
+  if (!us) return null;
+  return track === 'enlisted' ? [us[0], us[1]] : [19, us[2]];
+}
 fromPacks(SERVICE_TERMS, 'SERVICE_TERMS');
 /**
  * Military pensions by country (the US keeps its 20-year legacy/BRS rules).

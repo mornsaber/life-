@@ -224,7 +224,7 @@ export const PS = {
     SOF: {},
     MIL_UNITS: { ground: ['1st Battalion', '2nd Battalion', 'Special Forces battalion'] },
     MIL_SUMMARY: 'a disciplinary hearing before your commander',
-    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 55, officer: 58, flag: 60 }, name: 'term of service' },
+    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 55, officer: 58, flag: 60 }, join: { enlisted: [18, 30], officer: [18, 30] }, name: 'term of service' },
     MILITARY_JUSTICE: { code: 'the Revolutionary Penal Code', court: 'a military court', prison: 'a military detention facility', counsel: 'Military defence lawyer' },
     VETTING: { form: 'security vetting', publicTrust: 'Basic vetting', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: null,

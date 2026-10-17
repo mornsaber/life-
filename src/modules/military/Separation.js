@@ -47,6 +47,8 @@ export const maxServiceYears = (svc) => (terms(svc) ? terms(svc).maxYears[svc.tr
 export const mandatoryRetirementAge = (svc) => {
   const t = terms(svc);
   if (t) return svc.track === 'officer' && svc.grade >= 6 ? t.ages.flag : t.ages[svc.track === 'enlisted' ? 'enlisted' : 'officer'];
+  // Guard and Reserve enlisted members leave at 60; officers at 62 (64 for generals and admirals).
+  if (svc.track === 'enlisted' && svc.component === 'reserve') return 60;
   return svc.track === 'officer' && svc.grade >= 6 ? 64 : 62;
 };
 export const mustRetire = (state, svc) => svc.yearsOfService >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);

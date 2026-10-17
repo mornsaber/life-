@@ -239,7 +239,7 @@ export const KE = {
     },
     MIL_UNITS: { ground: ['1st Kenya Rifles', '7th Kenya Rifles', '20th Parachute Battalion', '78th Tank Battalion'], naval: ['KNS Jasiri', 'KNS Shujaa', 'KNS Umoja'], air: ['Laikipia Air Base squadron', 'Moi Air Base transport squadron'] },
     MIL_SUMMARY: 'a summary trial before your commanding officer (Kenya Defence Forces Act)',
-    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 50, officer: 55, flag: 62 }, name: 'engagement' },
+    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 50, officer: 55, flag: 62 }, join: { enlisted: [18, 26], officer: [21, 26] }, name: 'engagement' },
     MILITARY_JUSTICE: { code: 'the Kenya Defence Forces Act', court: 'a court martial', prison: 'military detention', counsel: 'Defending officer' },
     VETTING: { form: 'NIS security vetting', publicTrust: 'Restricted', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: null,

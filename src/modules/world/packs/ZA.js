@@ -259,7 +259,7 @@ export const ZA = {
     },
     MIL_UNITS: { ground: ['44 Parachute Regiment', '1 SA Infantry Battalion', '1 Special Service Battalion', '121 SA Infantry Battalion'], naval: ['SAS Amatola', 'SAS Isandlwana', 'SAS Manthatisi (submarine)'], air: ['2 Squadron (Gripen)', '28 Squadron (C-130)', '15 Squadron (rescue helicopters)'] },
     MIL_SUMMARY: 'a summary trial (Military Discipline Supplementary Measures Act)',
-    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 65 }, name: 'service contract' },
+    SERVICE_TERMS: { maxYears: { enlisted: 40, officer: 40 }, ages: { enlisted: 60, officer: 60, flag: 65 }, join: { enlisted: [18, 26], officer: [18, 26] }, name: 'service contract' },
     MILITARY_JUSTICE: { code: 'the Military Discipline Code', court: 'a military court (Military Judges)', prison: 'a military detention barracks', counsel: 'Military legal defence counsel' },
     VETTING: { form: 'Defence Intelligence security clearance', publicTrust: 'Confidential', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: { army: 'University Reserve Training Unit', navy: null, airforce: null, obligation: false },

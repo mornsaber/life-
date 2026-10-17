@@ -280,7 +280,7 @@ export const IL = {
     },
     MIL_UNITS: { ground: ['Golani Brigade', 'Givati Brigade', 'Paratroopers Brigade', '7th Armored Brigade', 'Nahal Brigade'], naval: ['INS Magen (Sa\'ar 6)', 'INS Atzmaut (Sa\'ar 5)', 'INS Drakon (submarine)'], air: ['140 Squadron (F-35I)', '69 Squadron (F-15I)', '115 Squadron (Flying Dragons)'] },
     MIL_SUMMARY: 'a disciplinary trial (shipuṭ) before your commanding officer',
-    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 30 }, ages: { enlisted: 50, officer: 48, flag: 55 }, name: 'career service' },
+    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 30 }, ages: { enlisted: 50, officer: 48, flag: 55 }, join: { enlisted: [18, 30], officer: [18, 30] }, name: 'career service' },
     MILITARY_JUSTICE: { code: 'the Military Justice Law', court: 'a military court', prison: 'Military Prison 6 (Atlit)', counsel: 'Military Defender\'s Office' },
     VETTING: { form: 'security clearance (Malmab)', publicTrust: 'Basic clearance', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: { army: 'Atuda (academic reserve)', navy: null, airforce: null, obligation: true },

@@ -274,7 +274,7 @@ export const SG = {
     },
     MIL_UNITS: { ground: ['3rd Division', '1st Commando Battalion', '2nd Singapore Infantry Regiment', '40th Battalion, Singapore Armoured Regiment'], naval: ['RSS Formidable', 'RSS Endurance', 'RSS Invincible (submarine)', 'RSS Independence'], air: ['140 Squadron (F-16)', '149 Squadron (F-15SG)', '121 Squadron', '125 Squadron (helicopters)'] },
     MIL_SUMMARY: 'a summary trial by your commanding officer (SAF Act)',
-    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 55, officer: 50, flag: 55 }, name: 'contract' },
+    SERVICE_TERMS: { maxYears: { enlisted: 35, officer: 35 }, ages: { enlisted: 55, officer: 50, flag: 55 }, join: { enlisted: [18, 35], officer: [18, 30] }, name: 'contract' },
     MILITARY_JUSTICE: { code: 'the Singapore Armed Forces Act', court: 'the Military Court', prison: 'the SAF Detention Barracks', counsel: 'Defending officer' },
     VETTING: { form: 'MINDEF security screening', publicTrust: 'Restricted', secret: 'Secret', topSecret: 'Top Secret' },
     CAMPUS: null,

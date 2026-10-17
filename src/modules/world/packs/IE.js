@@ -292,7 +292,7 @@ export const IE = {
     BILLETS: (b) => ({ ground: { ...b.ground, firstSergeant: 'Company Sergeant', seniorStaffNco: 'Company Quartermaster Sergeant', csm: 'Battalion Sergeant Major', companyCommander: 'Officer Commanding (Commandant)' }, naval: b.naval, air: b.air }),
     MIL_UNITS: { ground: ['1st Infantry Battalion', '3rd Infantry Battalion', '7th Infantry Battalion', '12th Infantry Battalion', '1st Armoured Cavalry Squadron'], naval: ['LÉ William Butler Yeats', 'LÉ George Bernard Shaw', 'LÉ Samuel Beckett', 'LÉ James Joyce'], air: ['No. 3 Operations Wing', 'No. 1 Operations Wing', 'Flying Training School'] },
     MIL_SUMMARY: 'a summary investigation by your commanding officer',
-    SERVICE_TERMS: { maxYears: { enlisted: 21, officer: 40 }, ages: { enlisted: 50, officer: 58, flag: 60 }, name: 'term of service' },
+    SERVICE_TERMS: { maxYears: { enlisted: 21, officer: 40 }, ages: { enlisted: 50, officer: 58, flag: 60 }, join: { enlisted: [18, 29], officer: [18, 25] }, name: 'term of service' },
     MILITARY_JUSTICE: { code: 'the Defence Act 1954', court: 'Court-martial (Defence Forces)', prison: 'the Defence Forces Detention Barracks, Curragh', counsel: 'Defending officer' },
     VETTING: { form: 'Garda vetting and Defence Forces security clearance', publicTrust: 'Garda vetting', secret: 'Defence Forces Secret clearance', topSecret: 'Top Secret clearance' },
     CAMPUS: null,

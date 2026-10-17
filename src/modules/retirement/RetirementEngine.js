@@ -246,6 +246,12 @@ export const RetirementEngine = {
     const inflation = Math.max(0, state.economy.inflation);
     for (const p of r.pensions) {
       if (age < p.startAge) continue;
+      // An early-departure pension rises to the full amount at pension age (the UK's EDP at 60).
+      if (p.stepUp && age >= p.stepUp.age && !p.stepped) {
+        p.annual = p.stepUp.annual;
+        p.stepped = true;
+        ctx.log(`Your ${p.label} rose to the full rate at ${age}: $${p.annual.toLocaleString()}/yr before cost-of-living rises.`, '🏦', 'finance');
+      }
       if (age > p.startAge) p.colaFactor = Math.round((p.colaFactor ?? 1) * (1 + Math.min(inflation, p.cola)) * 10000) / 10000;
       ctx.earn(Math.round(p.annual * (p.colaFactor ?? 1)), p.label);
     }

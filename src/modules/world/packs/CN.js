@@ -254,7 +254,7 @@ export const CN = {
     },
     MIL_UNITS: { ground: ['82nd Group Army', '13th Group Army', '77th Group Army', '15th Airborne Corps'], naval: ['Liaoning (aircraft carrier)', 'Shandong (aircraft carrier)', 'Nanchang (Type 055 destroyer)'], air: ['1st Air Brigade (J-20)', '4th Transport Division (Y-20)', 'August 1st Aerobatics Team'], marines: ['1st Marine Brigade', '2nd Marine Brigade'] },
     MIL_SUMMARY: 'a disciplinary sanction under the PLA Discipline Regulations',
-    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 55, officer: 55, flag: 63 }, name: 'term of service' },
+    SERVICE_TERMS: { maxYears: { enlisted: 30, officer: 35 }, ages: { enlisted: 55, officer: 55, flag: 63 }, join: { enlisted: [17, 22], officer: [17, 24] }, name: 'term of service' },
     MILITARY_JUSTICE: { code: 'the PLA Discipline Regulations and Criminal Law', court: 'a military court', prison: 'a military prison', counsel: 'Military defence counsel' },
     VETTING: { form: 'political review (zhengshen)', publicTrust: 'Political review', secret: 'Secret (jimi)', topSecret: 'Top Secret (juemi)' },
     CAMPUS: { army: 'National defence students programme', navy: null, airforce: null, obligation: true },

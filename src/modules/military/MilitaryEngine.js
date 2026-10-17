@@ -26,7 +26,7 @@ import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
-import { localMos, milPensionPlan } from '../world/MilitaryLocal.js';
+import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -289,6 +289,9 @@ export function timeInGradeRequired(svc) {
 /* Enlistment                                                          */
 /* ------------------------------------------------------------------ */
 
+/** Years already served: veterans can rejoin older than first-time recruits. */
+const priorServiceYears = (state) => state.military.history.reduce((n, h) => n + (h.yearsOfService ?? 0), 0);
+
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
@@ -316,10 +319,16 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   } else if (track === 'officer') {
     // Most other forces take officer cadets straight from school (Sandhurst, Duntroon, the NDA); the US wants a degree.
     const abroad = isAbroad(state);
-    if (age < (abroad ? 18 : 19) || age > maxOfficerAge) return { ok: false, reason: `Officers: age ${abroad ? 18 : 19}–${maxOfficerAge}` };
+    // Each force's officer age limits (USPHS and NOAA keep their own); prior service raises the ceiling.
+    const [lo, hi] = b.maxAge ? [abroad ? 18 : 19, maxOfficerAge] : joinAges(abroad ? countryOf(state).id : null, branchId, 'officer') ?? [abroad ? 18 : 19, maxOfficerAge];
+    // A direct commission (lawyers, doctors, chaplains) has its own, higher ceiling, passed in by the caller.
+    const top = Math.max(hi + priorServiceYears(state), maxOfficerAge > 39 ? maxOfficerAge : 0);
+    if (age < lo || age > top) return { ok: false, reason: `Officers: age ${lo}–${top}` };
     if (!meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
   } else {
-    if (age < 17 || age > 39) return { ok: false, reason: 'Enlistment: age 17–39' };
+    const [lo, hi] = joinAges(isAbroad(state) ? countryOf(state).id : null, branchId, 'enlisted') ?? [17, 39];
+    const top = hi + priorServiceYears(state);
+    if (age < lo || age > top) return { ok: false, reason: `Enlistment: age ${lo}–${top}${priorServiceYears(state) ? ' (prior service counts)' : ''}` };
     // Only the US requires a high-school diploma to enlist; elsewhere aptitude tests decide.
     if (age >= 18 && !isAbroad(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   }
@@ -645,7 +654,8 @@ function nationalMilitaryPension(ctx, svc, plan, { basePay, multiplier, type }) 
   const factor = immediate && plan.early && age < (plan.deferredAge ?? 65) ? plan.early : 1;
   const annual = Math.round(basePay * Math.min(plan.cap ?? 1, plan.rate * years) * (reserve ? 0.35 : 1) * multiplier * factor);
   if (annual > 0) {
-    ctx.emit('retirement:addPension', { pension: { id: 'military', label: plan.name, annual, startAge, source: 'military', cola: 0.02 } });
+    const full = factor < 1 ? Math.round(annual / factor) : null;
+    ctx.emit('retirement:addPension', { pension: { id: 'military', label: plan.name, annual, startAge, source: 'military', cola: 0.02, ...(full ? { stepUp: { age: plan.deferredAge ?? 65, annual: full } } : {}) } });
     addLog(state, `${plan.name}: $${annual.toLocaleString()}/yr ${immediate ? `from now${factor < 1 ? ` (an early-departure rate until ${plan.deferredAge})` : ''}` : `preserved until age ${startAge}`} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');
   }
   if (plan.lumpSum) {
