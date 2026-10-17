@@ -23,6 +23,7 @@
  */
 import { gearSafety } from '../equipment/Equipment.js';
 import { clamp } from '../../core/Random.js';
+import { jobPayCovered } from '../retirement/PensionPlans.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
@@ -256,14 +257,14 @@ export const FireLifeModule = {
     for (const id of Object.keys(f.teams)) {
       const t = TEAMS[id];
       if (t.cred && !hasCredential(state, t.cred)) { delete f.teams[id]; continue; }
-      if (t.pay) ctx.earn(t.pay, `${t.name} stipend`, { wage: true });
+      if (t.pay) ctx.earn(t.pay, `${t.name} stipend`, { wage: true, ssCovered: jobPayCovered(state, job) });
       if (t.exposure) f.exposure += t.exposure;
       if (t.risk && rng.chance(0.03 * gearSafety(state))) apply(ctx, { injury: 1, trauma: 6 });
       if (id === 'strike' && rng.chance(0.7)) {
         const weeks = rng.int(2, 6);
         const ot = Math.round(job.salary / 52 * weeks * rng.float(1.6, 2.2));
         f.strikeTeams += 1;
-        ctx.earn(ot, 'Wildland strike team overtime', { wage: true });
+        ctx.earn(ot, 'Wildland strike team overtime', { wage: true, ssCovered: jobPayCovered(state, job) });
         ctx.stat('fitness', 2);
         ctx.log(`Your strike team deployed ${weeks} weeks to ${rng.pick(['a megafire in California', 'Oregon\'s Cascades', 'a complex fire in Idaho', 'the Colorado foothills', 'a Texas grass fire'])}: $${ot.toLocaleString()} in overtime.`, '🔥', 'good');
       }

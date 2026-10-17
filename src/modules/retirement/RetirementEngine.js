@@ -282,7 +282,7 @@ export const RetirementEngine = {
     if (r.retired && age >= 60 && r.dc > 0) {
       const withdrawal = Math.round(r.dc * 0.04);
       r.dc -= withdrawal;
-      ctx.earn(withdrawal, '401(k)/TSP withdrawal');
+      ctx.earn(withdrawal, isAbroad(state) ? 'Retirement savings drawdown' : '401(k)/TSP withdrawal');
     }
   },
 

@@ -39,7 +39,7 @@ function unionAfterMove(ctx, job) {
 }
 import { historyOrgFields, chainOfCommand, orgOf, attachOrg } from '../org/Organizations.js';
 import { courtDef } from '../legal/Judiciary.js';
-import { localPlanId } from '../retirement/PensionPlans.js';
+import { localPlanId, jobPayCovered } from '../retirement/PensionPlans.js';
 import { syncPostForLevel, leavePost, nextPost } from '../org/Executives.js';
 import { vacancyTick, hasOpening, openingReason, claimOpening, computeOpenings } from '../org/Vacancies.js';
 import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIONS, USERRA_YEARS, PROBATION_BAR } from './Tenure.js';
@@ -700,7 +700,7 @@ export function careerOnAgeUp(ctx) {
   // Pay (commission jobs swing with the market)
   recalcSalary(state, job);
   const gross = profession.commission ? Math.round(job.salary * rng.float(0.5, 1.6)) : job.salary;
-  ctx.earn(gross, `${profession.commission ? 'Commissions' : 'Salary'} — ${job.title}`, { wage: true, ssCovered: job.employer.benefits.ssCovered, ...(job.informal ? { informal: true } : {}) });
+  ctx.earn(gross, `${profession.commission ? 'Commissions' : 'Salary'} — ${job.title}`, { wage: true, ssCovered: jobPayCovered(state, job), ...(job.informal ? { informal: true } : {}) });
   job.paidThisYear = true;
   if (profession.flightHoursPerYear) ctx.emit('logbook:add', { hours: profession.flightHoursPerYear });
 

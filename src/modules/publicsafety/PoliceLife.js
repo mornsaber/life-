@@ -28,6 +28,7 @@
  */
 import { gearSafety } from '../equipment/Equipment.js';
 import { clamp } from '../../core/Random.js';
+import { jobPayCovered } from '../retirement/PensionPlans.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
@@ -327,8 +328,8 @@ export const PoliceLifeModule = {
     p.calls += calls;
     p.arrests += arrests;
     const court = Math.round(arrests * rng.int(120, 260));
-    if (court) ctx.earn(court, 'Court overtime', { wage: true });
-    if (unit?.pay) ctx.earn(unit.pay, `${unitName(state, p.unit)} assignment pay`, { wage: true });
+    if (court) ctx.earn(court, 'Court overtime', { wage: true, ssCovered: jobPayCovered(state, job) });
+    if (unit?.pay) ctx.earn(unit.pay, `${unitName(state, p.unit)} assignment pay`, { wage: true, ssCovered: jobPayCovered(state, job) });
     ctx.stat('stress', area.stress + (unit?.stress ?? 0) + (SHIFTS[p.shift]?.stress ?? 0) + (p.bureau ? BUREAUS[p.bureau].stress : 0));
     ctx.emit('health:trauma', { amount: Math.round(area.risk * 2), source: 'police work' });
     if (calls) ctx.log(`${calls.toLocaleString()} calls, ${arrests} arrests${court ? `, $${court.toLocaleString()} in court overtime` : ''}.`, area.icon);
@@ -402,7 +403,7 @@ export const PoliceLifeModule = {
       bumpYearly(state, 'police.details');
       const pay = rng.int(9000, 26000);
       pd(state).details += 1;
-      ctx.earn(pay, 'Off-duty details', { wage: true });
+      ctx.earn(pay, 'Off-duty details', { wage: true, ssCovered: jobPayCovered(state, job) });
       ctx.stat('stress', 4);
       ctx.log(`You worked off-duty details all year — construction sites, stadium traffic, a bank's lobby: $${pay.toLocaleString()}.`, '🦺', 'good');
     },

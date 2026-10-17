@@ -400,7 +400,7 @@ export function careerView(state, ui = {}) {
   // No job: the job board comes first, before everything else on this screen.
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰', open: !job });
   const fastPaths = directEntryCard(state);
-  return `${current}${unionCards(state)}${job ? '' : `${board}${fastPaths}`}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? board : ''}${fastPaths}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${unionCards(state)}${job ? '' : `${board}${fastPaths}`}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

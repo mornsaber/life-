@@ -151,3 +151,15 @@ export function annuityFor(planId, plan, age) {
     : def.basis === 'final' ? sal.at(-1) ?? 0 : highAverage(sal, def.basis === 'best5' ? 5 : 3);
   return Math.round(Math.min(def.cap, def.multiplier(age, plan.years) * plan.years) * high);
 }
+
+/**
+ * Whether pay from this job counts toward the national pension. At home the employer's flag decides
+ * (some US police and fire departments sit outside Social Security); abroad everyone is covered unless
+ * the local civil-service scheme replaces the national pension (older saves carried the US flag).
+ */
+export function jobPayCovered(state, job) {
+  const benefits = job?.employer?.benefits;
+  if (!benefits) return true;
+  if ((state.character.countryId ?? 'US') === 'US') return benefits.ssCovered !== false;
+  return PENSION_PLANS[benefits.pension]?.ssCovered !== false;
+}

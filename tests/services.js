@@ -292,6 +292,27 @@ const tests = {
     assert.equal(de.state.military.conscription.alternative, 'feuerwehr');
     assert.ok(de.state.emergency.fire, 'joined the Freiwillige Feuerwehr');
   },
+  'foreign public-safety jobs pay into the national pension (only civil-service schemes opt out)'() {
+    for (const [cc, covered] of [['GB', true], ['AU', true], ['CA', true], ['JP', true], ['DE', false]]) {
+      const { state, ctx, engine } = life(cc, null, { age: 25, seed: 4 });
+      state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'criminalJustice', year: 22 });
+      const job = hire(ctx, { professionId: 'police', levelId: getProfession('police').levels[0].id, employer: createEmployer(new Random(5), state, getProfession('police'), state.character.regionId) });
+      assert.ok(job, `${cc}: hired`);
+      const b = job.employer.benefits;
+      assert.equal(b.dcPlan, null, `${cc}: no US plan names abroad`);
+      assert.equal(b.ssCovered, covered, `${cc}: national pension coverage`);
+      state.prompts = []; engine.ageUp();
+      assert.equal(state.retirement.ssEarnings.length > 0, covered, `${cc}: national pension record ${JSON.stringify(state.retirement.ssEarnings)}`);
+    }
+  },
+  'the Direct Entry card shows once, with or without a job'() {
+    const { state, ctx } = life('GB', null, { age: 23, seed: 6 });
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'criminalJustice', year: 22 });
+    const count = () => (VIEWS.career(state).match(/Direct Entry</g) ?? []).length;
+    assert.ok(count() <= 1, 'unemployed');
+    hire(ctx, { professionId: 'retail', levelId: getProfession('retail').levels[0].id, employer: createEmployer(new Random(5), state, getProfession('retail'), state.character.regionId) });
+    assert.ok(count() <= 1, 'employed');
+  },
 };
 
 let failed = 0;

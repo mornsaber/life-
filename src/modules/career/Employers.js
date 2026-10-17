@@ -133,6 +133,12 @@ export function createEmployer(rng, state, profession, regionId) {
   if (merged) name = merged;
   const benefits = defaultBenefits(rng, profession, size, union);
   // Abroad, public servants join the country's own scheme (or none: a defined-contribution pot).
+  if (cc && cc !== 'US') {
+    // Everyone pays into the national pension abroad, unless the country's own civil-service scheme
+    // replaces it (German Beamte, French fonctionnaires). US plan names (457(b), TSP) don't exist there.
+    benefits.dcPlan = null;
+    benefits.ssCovered = true;
+  }
   if (cc && cc !== 'US' && benefits.pension) {
     benefits.pension = localPlanId(cc, benefits.pension);
     if (benefits.pension && PENSION_PLANS[benefits.pension]?.ssCovered === false) benefits.ssCovered = false;
