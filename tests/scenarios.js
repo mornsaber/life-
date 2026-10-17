@@ -2400,7 +2400,7 @@ const tests = {
     transit.onAgeUp(mt.engine.context());
     assert.equal(mt.state.transit.last.mode, 'stranded');
     assert.ok(mt.state.career.job.performance < perf);
-    const bus = setup(183, 25);
+    const bus = setup(185, 25);
     grantCredential(bus.ctx, 'learnerPermit', { silent: true });
     grantCredential(bus.ctx, 'driverLicense', { silent: true });
     bus.state.finances.cash = 20000;

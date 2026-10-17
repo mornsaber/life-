@@ -174,7 +174,7 @@ const tests = {
   },
 
   'foundation years come before specialty training where the system has them'() {
-    const { state, engine } = life({ countryId: 'GB', seed: 14, age: 24 });
+    const { state, engine } = life({ countryId: 'GB', seed: 15, age: 24 });
     state.education.degrees.push({ type: 'professional', programId: 'md', year: 23, schoolId: 'state' });
     const p = getProfession('medical');
     hire(engine.context(), { professionId: 'medical', levelId: 'resident', employer: createEmployer(new Random(2), state, p, state.character.regionId) });

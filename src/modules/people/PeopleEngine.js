@@ -315,7 +315,7 @@ function births(ctx) {
   for (let i = 0; i < 6 && taken.has(name.firstName); i++) name = randomName(rng, gender);
   const adopted = Boolean(p.expecting.adopted);
   const age = adopted ? rng.int(0, 6) : 0;
-  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: partner?.id ?? null, custody: 'you', ...(adopted ? { adopted: true } : {}) };
+  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: p.expecting.otherParentId ?? partner?.id ?? null, custody: p.expecting.apart || (p.expecting.otherParentId && state.character.gender !== 'female') ? 'ex' : 'you', ...(adopted ? { adopted: true } : {}) };
   p.list.push(child);
   p.expecting = null;
   settleNewborn(ctx, child);

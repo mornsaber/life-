@@ -49,6 +49,12 @@ export const activityHere = (state, id) => !(id in (CADETS[state.character.count
 
 /** Teen part-time jobs: hourly wage, hours per week during the school year. */
 export const TEEN_JOBS = {
+  // Little kids: pocket money (a fixed yearly amount, not hourly).
+  chores: { name: 'Chores for an allowance', icon: '🧹', minAge: 6, wage: 0, hours: 3, pay: 520 },
+  lemonade: { name: 'Lemonade stand', icon: '🍋', minAge: 6, wage: 0, hours: 2, pay: 300, hustle: true },
+  crafts: { name: 'Selling crafts and drawings', icon: '🖍️', minAge: 8, wage: 0, hours: 3, pay: 450, hustle: true },
+  petSitter: { name: 'Neighborhood pet sitter', icon: '🐈', minAge: 10, wage: 0, hours: 3, pay: 900 },
+  paperRoute: { name: 'Paper route', icon: '🗞️', minAge: 11, wage: 0, hours: 5, pay: 1500, fitness: 1 },
   babysitter: { name: 'Babysitter', icon: '🍼', minAge: 12, wage: 13, hours: 6 },
   lawnCare: { name: 'Lawn mowing & yard work', icon: '🌱', minAge: 12, wage: 14, hours: 6 },
   dogWalker: { name: 'Dog walker', icon: '🐕', minAge: 12, wage: 12, hours: 5 },
@@ -68,7 +74,7 @@ export const gedFee = (state) => (state.character.age < 21 ? 0 : GED_FEE);
 export const gradeLabel = (age) => (age <= 4 ? 'Preschool' : age === 5 ? 'Kindergarten' : `Grade ${age - 5}`);
 export const inK12 = (state) => Boolean(state.k12) && state.character.age >= 5 && state.character.age < 18 && !state.k12.dropout && !state.legal.incarceration;
 export const hasDiploma = (state) => state.education.degrees.some((d) => d.type === 'highschool' || d.type === 'ged');
-export const teenJobPay = (job) => job.wage * job.hours * WORK_WEEKS;
+export const teenJobPay = (job) => job.pay ?? job.wage * job.hours * WORK_WEEKS;
 
 /** Admission bonus a college sees from where you went to high school (0–0.28). */
 export function prepBonus(state) {
@@ -246,7 +252,10 @@ export const K12Engine = {
     // Part-time work.
     if (k.job) {
       const job = TEEN_JOBS[k.job.id];
-      ctx.earn(teenJobPay(job), job.name, { wage: true });
+      // A kid's hustle has good summers and bad ones.
+      const pay = job.hustle ? Math.round(teenJobPay(job) * ctx.rng.float(0.4, 1.9)) : teenJobPay(job);
+      ctx.earn(pay, job.name, { wage: !job.hustle });
+      if (job.hustle && pay > teenJobPay(job) * 1.4) ctx.log(`Your ${job.name.toLowerCase()} had a great year: $${pay.toLocaleString()}.`, job.icon, 'good');
       k.jobYears += 1;
       if (job.fitness) ctx.stat('fitness', job.fitness);
       if (job.smarts) ctx.stat('smarts', job.smarts);

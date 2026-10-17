@@ -40,6 +40,8 @@ export const NPC_JOBS = [
   ['Lawyer', 145000, 'private', 'professional'], ['Doctor', 240000, 'private', 'professional'], ['Pharmacist', 132000, 'private', 'professional'], ['Dentist', 175000, 'private', 'professional'],
   ['Professor', 95000, 'public', 'doctorate'], ['Research scientist', 110000, 'private', 'doctorate'],
 ];
+/** [title, yearly pay, minimum age] — what teenagers in the family do for money. */
+const TEEN_WORK = [['Babysitter', 1800, 13], ['Lawn mowing', 1500, 13], ['Grocery bagger', 3500, 14], ['Fast-food crew', 5000, 15], ['Lifeguard', 4500, 15], ['Movie theater usher', 3800, 15], ['Retail cashier', 5200, 16], ['Tutor', 3000, 16], ['Summer camp counselor', 2500, 16]];
 const EMPLOYERS = ['the county', 'a regional hospital', 'a local school district', 'a national retailer', 'a tech company', 'a family-owned shop', 'a big logistics firm', 'the state', 'a bank', 'a small firm downtown', 'a startup', 'a construction company'];
 const CARS = ['a used sedan', 'a pickup truck', 'an SUV', 'a minivan', 'an electric car', 'a beat-up hatchback', 'a luxury sedan', 'a motorcycle'];
 const HOME_TYPES = ['condo', 'starter', 'starter', 'family', 'family', 'townhouse'];
@@ -154,6 +156,22 @@ function yearOf(ctx, p) {
     }
   }
 
+  // Teenagers in the family pick up part-time jobs.
+  if (p.relation === 'child' || p.relation === 'sibling') {
+    if (age >= 13 && age < 18 && !p.job && !life.teenJob && rng.chance(0.3)) {
+      const options = TEEN_WORK.filter((t) => age >= t[2]);
+      const [title, pay] = rng.pick(options);
+      p.job = `${title} (part-time)`;
+      life.teenJob = true;
+      p.income = pay;
+      if (p.relation === 'child') say(`${p.firstName} got a part-time job: ${title.toLowerCase()}.`, '🧾', 'good');
+    } else if (life.teenJob && age >= 18) {
+      p.job = null;
+      p.income = 0;
+      life.teenJob = false;
+    }
+    if (life.teenJob) life.netWorth += Math.round((p.income ?? 0) * 0.5);
+  }
   // Work.
   const working = !managedJob(p) && !life.studying && age >= 18 && age < 70;
   if (working && !p.retired) {

@@ -7,6 +7,7 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { TRAITS, traitOf, closeness, interactEligibility, isRomantic } from '../../modules/people/Bonds.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { livesAbroad, parentVisaCheck, VISIT_COST, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
@@ -80,12 +81,28 @@ function personRow(state, p) {
     abroadButtons(state, p),
     button('😤 Argue', 'people.argue', { arg: p.id, variant: 'tiny ghost' }),
   ].join('');
+  const bond = p.alive && age >= 3 ? bondButtons(state, p) : '';
+  const memories = p.alive && p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length }) : '';
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
     <span class="person-icon" aria-hidden="true">${p.alive ? ICON[p.relation] ?? '🙂' : '🕯️'}</span>
-    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${life}${traits}</div>
+    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}${memories}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
-    <div class="person-actions">${actions}</div>
+    <div class="person-actions">${bond}${actions}</div>
   </li>`;
+}
+
+/** Ways to spend time with someone (three a year each). */
+function bondButtons(state, p) {
+  const e = interactEligibility(state, p);
+  const opt = (label, arg, hint = '') => button(label, 'bonds.interact', { arg: `${p.id}:${arg}`, variant: 'tiny', disabled: !e.ok, hint: e.ok ? hint : e.reason });
+  return [
+    button('🎳 Hang out', 'bonds.hangOut', { arg: p.id, variant: 'tiny', disabled: !e.ok, hint: e.ok ? `Pick something they'd love` : e.reason }),
+    opt('💬 Talk', 'talk'),
+    opt('😂 Joke around', 'joke'),
+    opt('🌟 Compliment', 'compliment'),
+    state.character.age >= 10 ? opt('🧭 Ask for advice', 'advice', 'Less stress') : '',
+    p.relationship < 50 ? opt('🙏 Apologize', 'apologize', 'Mend things') : '',
+  ].join('');
 }
 
 /** School, work, home and money for someone in your life. */
@@ -224,11 +241,24 @@ function romance(state) {
   } else if (partner.relation === 'spouse') {
     body = `<p>💑 Married to <b>${esc(partner.firstName)}</b> for ${age - (partner.since ?? age)} years · household income ${money((state.career.job?.salary ?? 0) + spouseIncome(state))}/yr · filing jointly${p.prenup ? ' · prenup' : ''}.</p>
       <div class="toggle-row">${button('💔 File for divorce', 'people.fileForDivorce', { variant: 'small danger', hint: 'Splits marital property; custody and support' })}</div>`;
-  } else body = `<p>💘 Dating <b>${esc(partner.firstName)}</b> since age ${partner.since}.</p>`;
+  } else body = `<p>💘 Dating <b>${esc(partner.firstName)}</b> since age ${partner.since}${partner.livingTogether ? ' · living together' : ''}.</p>`;
+  if (partner && isRomantic(partner)) {
+    const adults = age >= 18 && ageOf(state, partner) >= 18;
+    body += `${meter(partner.spark ?? 70, { label: '✨ Spark', suffix: '', tone: (partner.spark ?? 70) < 30 ? 'bad' : (partner.spark ?? 70) < 55 ? 'mid' : 'good' })}
+      <p class="fine">${TRAITS[traitOf(partner)].icon} ${esc(partner.firstName)} is ${TRAITS[traitOf(partner)].name.toLowerCase()}. Sparks fade every year — more with stress and little kids — unless you look after them.</p>
+      <div class="toggle-row">
+        ${button('💞 Date night', 'bonds.dateNight', { arg: partner.id, variant: 'small', disabled: (state.yearly[`romance.date.${partner.id}`] ?? 0) >= 2 })}
+        ${button('💗 Romantic gesture', 'bonds.gesture', { arg: partner.id, variant: 'small', disabled: Boolean(state.yearly[`romance.gesture.${partner.id}`]) })}
+        ${!partner.saidLove ? button('❤️ Say "I love you"', 'bonds.loveYou', { arg: partner.id, variant: 'small', hint: 'Are they ready?' }) : ''}
+        ${['partner', 'fiance'].includes(partner.relation) && !partner.livingTogether && adults ? button('🗝️ Move in together', 'bonds.moveIn', { arg: partner.id, variant: 'small' }) : ''}
+        ${adults ? button('🌙 Spend the night', 'bonds.intimacy', { arg: partner.id, variant: 'small', disabled: Boolean(state.yearly[`romance.night.${partner.id}`]) }) : ''}
+      </div>`;
+  }
   const family = partner && ['spouse', 'fiance', 'partner'].includes(partner.relation)
     ? `<div class="toggle-row">${button(p.expecting ? '🤰 Baby on the way' : '👶 Try for a baby', 'people.tryForBaby', { variant: 'small', disabled: Boolean(p.expecting) || Boolean(state.yearly['people.baby']) })}</div>` : '';
   return card('Love Life', `${body}${family}
     ${age >= 25 ? `<div class="toggle-row">${button('🏠 Adopt a child', 'people.adopt', { variant: 'small', disabled: Boolean(p.expecting), hint: '$25,000 · 25+' })}</div>` : ''}
+    ${age >= 18 ? `<div class="toggle-row">${button('🌃 Go out on the town', 'bonds.goOut', { variant: 'small', disabled: Boolean(state.yearly['bonds.goOut']), hint: partner ? 'Careful…' : 'Meet someone new' })}</div>` : ''}
     <h4 class="sub">Interested in</h4><div class="toggle-row chips-row">${prefs}</div>`, { icon: '💘', accent: 'pink' });
 }
 

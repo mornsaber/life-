@@ -67,7 +67,7 @@ function activitiesCard(state) {
 export function teenJobsCard(state) {
   const age = state.character.age;
   const k = state.k12;
-  if (!k || age < 12 || age >= 18 || state.legal.incarceration) return '';
+  if (!k || age < 6 || age >= 18 || state.legal.incarceration) return '';
   if (k.job) {
     const j = TEEN_JOBS[k.job.id];
     return card('Part-Time Job', `<p>${j.icon} <b>${esc(j.name)}</b> since age ${k.job.since} · ~${j.hours} hrs/week · ${money(teenJobPay(j))}/yr</p>
@@ -75,10 +75,10 @@ export function teenJobsCard(state) {
   }
   const rows = Object.entries(TEEN_JOBS).map(([id, j]) => {
     const why = age < j.minAge ? `Ages ${j.minAge}+` : j.minFitness && state.stats.fitness < j.minFitness ? `Fitness ${j.minFitness}+` : j.minSmarts && state.stats.smarts < j.minSmarts ? `Smarts ${j.minSmarts}+` : state.career.job ? 'You already have a job' : '';
-    return `<li class="fund-row"><span>${j.icon} <b>${esc(j.name)}</b> · $${j.wage}/hr · ${j.hours} hrs/wk <small class="muted">≈${money(teenJobPay(j))}/yr</small></span>
+    return `<li class="fund-row"><span>${j.icon} <b>${esc(j.name)}</b> · ${j.pay ? `about ${money(j.pay)} a year` : `$${j.wage}/hr · ${j.hours} hrs/wk`} <small class="muted">${j.pay ? `${j.hours} hrs/wk` : `≈${money(teenJobPay(j))}/yr`}</small></span>
       ${button(why || 'Apply', 'k12.takeJob', { arg: id, variant: 'tiny', disabled: Boolean(why) || Boolean(state.yearly['k12.job']) })}</li>`;
   }).join('');
-  return card('Part-Time Jobs', `<p class="muted">Pocket money and work experience employers like. Long hours can drag your grades.</p><ul class="history">${rows}</ul>`, { icon: '🧾' });
+  return card(age < 12 ? 'Pocket Money' : 'Part-Time Jobs', `<p class="muted">${age < 12 ? 'Earn a little of your own: chores, a lemonade stand, the neighbors\' pets.' : 'Pocket money and work experience employers like. Long hours can drag your grades.'}</p><ul class="history">${rows}</ul>`, { icon: '🧾' });
 }
 
 /** Service academies: every requirement in one checklist, with the application. */
