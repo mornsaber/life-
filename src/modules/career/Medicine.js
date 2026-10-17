@@ -21,6 +21,9 @@ import { stateIdOf } from '../life/Regions.js';
 import { SCHOOLS } from '../education/Catalog.js';
 import { recalcSalary } from './Compensation.js';
 import { medicalDegree } from '../../core/State.js';
+import { medicalSystem } from '../world/ProfessionStandards.js';
+import { levelById } from './Ladder.js';
+import { getProfession } from './JobTrees.js';
 
 /** years: residency length · pay: attending multiplier · comp: competitiveness (0–1) · claims: yearly claim odds · premium: base yearly premium */
 export const SPECIALTIES = {
@@ -101,7 +104,8 @@ export function matchOdds(state, specialtyId) {
     ? (r.step2 - 245) / 45 + r.honors * 0.025 + Math.min(0.1, (r.pubs ?? 0) * 0.02) + (r.interest === specialtyId ? 0.03 + (r.aways ?? 0) * 0.04 : 0)
     : (state.stats.smarts - 70) / 60;
   const score = application + (prestige - 1) * 0.04 + (state.medicine?.research ? 0.1 : 0) + route;
-  return clamp(0.95 - s.comp * 0.85 + score, 0.05, 0.97);
+  // How popular specialties are rationed varies: a US match, a French ranking exam, a German hospital that just hires you.
+  return clamp(0.95 - s.comp * 0.85 * medicalSystem(state.character.countryId).allocation.comp + score, 0.05, 0.97);
 }
 
 /** Where an attending practices: pay multiplier, burnout per year, and what it means. */
@@ -155,20 +159,40 @@ export function physicianPayAdjust(state, job) {
   return SPECIALTIES[m.specialty].pay * practiceMultiplier(state);
 }
 
+/** Specialty training length here: British and Australian registrars take years longer than a US residency. */
+export const trainingYears = (state, specialtyId) => Math.round(SPECIALTIES[specialtyId].years * medicalSystem(state.character.countryId).training);
+
 export function applyPhysicianPay(state, job) {
   if (!isDoctor(job)) return;
   job.payAdjust = physicianPayAdjust(state, job);
-  job.residencyYears = state.medicine?.specialty ? Math.max(1, SPECIALTIES[state.medicine.specialty].years - 1) : null;
+  job.residencyYears = state.medicine?.specialty ? Math.max(1, trainingYears(state, state.medicine.specialty) - 1) : null;
   recalcSalary(state, job);
 }
 
 function matchPrompt(ctx, { rematch = false } = {}) {
   const { state } = ctx;
+  const sys = medicalSystem(state.character.countryId);
+  const us = !state.character.countryId || state.character.countryId === 'US';
+  const how = us ? 'You submitted your rank list to the National Resident Matching Program.'
+    : sys.allocation.kind === 'ranking' ? `Specialty posts here are handed out by ${sys.allocation.name}: the better your rank, the more choice you get.`
+      : sys.allocation.kind === 'match' ? `You applied through ${sys.allocation.name}.`
+        : `Specialty training here means ${sys.allocation.name}.`;
   ctx.prompt({
-    type: 'medicine.match', icon: '🩺', title: rematch ? 'The Match, Again' : 'Match Day',
-    text: `${rematch ? 'After your research year, you re-entered the Match.' : 'You submitted your rank list to the National Resident Matching Program.'} Which specialty did you rank first?\nRates reflect your board scores and medical school.`,
-    options: Object.entries(SPECIALTIES).map(([id, s]) => ({ id, label: `${s.icon} ${s.name}`, hint: `${Math.round(matchOdds(state, id) * 100)}% match odds · ${s.years}-yr residency · pay ×${s.pay}` })),
+    type: 'medicine.match', icon: '🩺', title: rematch ? 'Applying Again' : us ? 'Match Day' : 'Choosing Your Specialty',
+    text: `${rematch ? 'After your research year, you applied again.' : how} Which specialty is your first choice?\nOdds reflect your exam scores and medical school.`,
+    options: Object.entries(SPECIALTIES).map(([id, s]) => ({ id, label: `${s.icon} ${s.name}`, hint: `${Math.round(matchOdds(state, id) * 100)}% odds · ${trainingYears(state, id)} yr of training · pay ×${s.pay}` })),
   });
+}
+
+/** Foundation years: general training before anyone picks a specialty (the UK's FY1–FY2, Japan's kenshū). */
+function startFoundation(ctx, job) {
+  const { state } = ctx;
+  const sys = medicalSystem(state.character.countryId);
+  if (!sys.foundation || state.medicine.foundationDone) return false;
+  state.medicine.foundationLeft = sys.foundation;
+  job.title = sys.foundationTitle;
+  ctx.log(`You started as a ${sys.foundationTitle}: ${sys.foundation} year${sys.foundation > 1 ? 's' : ''} rotating through medicine, surgery and the emergency department before specialty training.`, '🩺', 'milestone');
+  return true;
 }
 
 function startFellowshipPrompt(ctx) {
@@ -210,7 +234,9 @@ export const MedicineModule = {
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx, job }) => {
       if (!isDoctor(job)) return;
-      if (!ctx.state.medicine.specialty && job.levelId === 'resident') matchPrompt(ctx);
+      if (!ctx.state.medicine.specialty && job.levelId === 'resident') {
+        if (!startFoundation(ctx, job)) matchPrompt(ctx);
+      }
       else applyPhysicianPay(ctx.state, job);
     });
   },
@@ -220,6 +246,16 @@ export const MedicineModule = {
     const job = state.career.job;
     const m = state.medicine;
     if (!isDoctor(job) || !job.paidThisYear) return;
+    // Foundation years don't count toward specialty training.
+    if (m.foundationLeft > 0) {
+      m.foundationLeft -= 1;
+      job.yearsInLevel = 0;
+      if (m.foundationLeft) return;
+      m.foundationDone = true;
+      job.title = levelById(getProfession('medical'), job.levelId)?.title ?? job.title;
+      ctx.log('You finished your foundation years.', '🎓', 'milestone');
+      return matchPrompt(ctx);
+    }
     if (m.research) {
       m.research = false;
       return matchPrompt(ctx, { rematch: true });
@@ -253,14 +289,14 @@ export const MedicineModule = {
       if (!s || !isDoctor(job)) return;
       if (rng.chance(matchOdds(state, optionId))) {
         state.medicine.specialty = optionId;
-        ctx.log(`Match Day: you matched into ${s.name}! ${s.years} years of residency ahead.`, s.icon, 'milestone');
+        ctx.log(`You got your first choice: ${s.name}! ${trainingYears(state, optionId)} years of specialty training ahead.`, s.icon, 'milestone');
         ctx.stat('happiness', 8);
         applyPhysicianPay(state, job);
         return;
       }
       ctx.prompt({
         type: 'medicine.soap', icon: '📭', title: 'You Didn\'t Match',
-        text: `No ${s.name} program matched you. The scramble (SOAP) has open positions this week — or you can do a year of research and re-apply.`,
+        text: !state.character.countryId || state.character.countryId === 'US' ? `No ${s.name} program matched you. The scramble (SOAP) has open positions this week — or you can do a year of research and re-apply.` : `You didn't get a ${s.name} training post. Less popular specialties still have places in the next round — or you can do a year of research and apply again.`,
         options: [
           ...SOAP.filter((id) => id !== optionId).map((id) => ({ id, label: `${SPECIALTIES[id].icon} Scramble into ${SPECIALTIES[id].name}` })),
           { id: 'research', label: '🔬 Research year, then re-apply', hint: 'Better odds next time; a year lost' },

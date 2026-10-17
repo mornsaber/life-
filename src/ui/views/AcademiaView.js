@@ -4,7 +4,7 @@
  */
 import { esc, button, card, chip, kv, meter } from '../Components.js';
 import { MAJORS } from '../../modules/education/Catalog.js';
-import { ACADEMIC_JOBS, PHD_TIME_LIMIT, TENURE_CLOCK, marketEligibility, competitiveness, sabbaticalAvailable, tenureSummary, tenureOdds } from '../../modules/academia/Academia.js';
+import { ACADEMIC_JOBS, PHD_TIME_LIMIT, tenureClock, marketEligibility, competitiveness, sabbaticalAvailable, tenureSummary, tenureOdds } from '../../modules/academia/Academia.js';
 
 const STAGES = [['coursework', 'Coursework'], ['quals', 'Qualifying exams'], ['candidacy', 'Candidacy (ABD)'], ['research', 'Dissertation research'], ['defense', 'Defense']];
 
@@ -54,7 +54,7 @@ export function researchCard(state) {
   if (job?.tenureClock && job.levelId === 'assistant') {
     tenure = job.terminal
       ? '<div class="next-step">📁 Tenure denied: this is your terminal year. Go on the market.</div>'
-      : `${meter(Math.min(job.yearsInLevel, TENURE_CLOCK), { max: TENURE_CLOCK, label: 'Tenure clock', suffix: ` / ${TENURE_CLOCK} yrs`, tone: 'mid' })}<p class="fine">${esc(tenureSummary(state, job))} Odds today: about ${Math.round(tenureOdds(state, job) * 100)}%.</p>`;
+      : `${meter(Math.min(job.yearsInLevel, tenureClock(state)), { max: tenureClock(state), label: 'Tenure clock', suffix: ` / ${tenureClock(state)} yrs`, tone: 'mid' })}<p class="fine">${esc(tenureSummary(state, job))} Odds today: about ${Math.round(tenureOdds(state, job) * 100)}%.</p>`;
   } else if (job?.tenured || job?.abilities?.includes('tenure')) tenure = `<p class="fine">${chip('🔒 Tenured', 'good')}</p>`;
   const sab = job ? sabbaticalAvailable(state, job) : { ok: false };
   const buttons = `<div class="action-grid">

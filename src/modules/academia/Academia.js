@@ -27,6 +27,7 @@
  * state.science gains citations, hIndex, firstAuthor, students, grantsWon, retractions.
  */
 import { clamp } from '../../core/Random.js';
+import { academicSystem } from '../world/ProfessionStandards.js';
 import { randomName, addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { getProfession } from '../career/JobTrees.js';
 import { hire, promote, leaveJob, bestEntryLevel, levelCheck, stepForAtLeast } from '../career/CareerEngine.js';
@@ -41,6 +42,8 @@ const HUMANITIES = ['history', 'english', 'arts', 'languages', 'religiousStudies
 const HOT_FIELDS = ['computerScience', 'engineering', 'mathematics', 'economics', 'physics', 'dataScience'];
 export const PHD_TIME_LIMIT = 8;
 export const TENURE_CLOCK = 6;
+/** The clock where you work (a British lecturer's probation is three years; French titularisation one). */
+export const tenureClock = (state) => academicSystem(state.character.countryId).clock;
 export const SABBATICAL_EVERY = 7;
 export const GRFP = { odds: 0.16, bonus: 5000, years: 3 };
 
@@ -230,20 +233,22 @@ function tenureTick(ctx, job) {
     leaveJob(ctx, 'Denied tenure (terminal year ended)');
     return;
   }
-  if (job.yearsInLevel === TENURE_CLOCK - 1 && !job.tenureClock.focus) {
-    phdPrompt(ctx, 'academia.dossier', { icon: '📁', title: 'Tenure Dossier', text: `Your tenure case goes up next year. ${tenureSummary(state, job)}`, options: [{ id: 'research', label: '🔬 Push out one more paper', hint: 'Stressful' }, { id: 'teaching', label: '🧑‍🏫 Polish your teaching portfolio' }, { id: 'service', label: '🤝 Take on committee service' }] });
+  const sys = academicSystem(state.character.countryId);
+  const clock = sys.clock;
+  if (job.yearsInLevel === clock - 1 && !job.tenureClock.focus) {
+    phdPrompt(ctx, 'academia.dossier', { icon: '📁', title: sys.review === 'tenure review' ? 'Tenure Dossier' : 'Your Dossier', text: `Your ${sys.review} comes up next year. ${tenureSummary(state, job)}`, options: [{ id: 'research', label: '🔬 Push out one more paper', hint: 'Stressful' }, { id: 'teaching', label: '🧑‍🏫 Polish your teaching portfolio' }, { id: 'service', label: '🤝 Take on committee service' }] });
   }
-  if (job.yearsInLevel < TENURE_CLOCK && !job.tenureClock.early) return;
+  if (job.yearsInLevel < clock && !job.tenureClock.early) return;
   const p = tenureOdds(state, job);
   if (rng.chance(p)) {
     promote(ctx, 'associate');
     if (state.career.job) state.career.job.tenured = true;
-    ctx.log(`Tenure! The board of ${job.employer.name} promoted you to Associate Professor with tenure. A job for life — if you want it.`, '🎉', 'milestone');
+    ctx.log(`You passed your ${sys.review}! ${job.employer.name} made you ${state.career.job?.title ?? 'Associate Professor'} ${sys.permanent}. A job for life — if you want it.`, '🎉', 'milestone');
     ctx.stat('happiness', 15);
     ctx.stat('stress', -15);
   } else {
     job.terminal = true;
-    ctx.log(`${job.employer.name} denied your tenure case. You have one terminal year to find another job.`, '📁', 'bad');
+    ctx.log(`${job.employer.name} turned you down at your ${sys.review}. You have one terminal year to find another job.`, '📁', 'bad');
     ctx.stat('happiness', -20);
   }
 }

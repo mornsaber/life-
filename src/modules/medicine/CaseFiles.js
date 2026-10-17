@@ -203,8 +203,8 @@ export const CaseFilesModule = {
     const job = state.career.job;
     if (!seesPatients(job) || !job.paidThisYear || state.legal.incarceration) return;
     state.medicine ??= { specialty: null, fellowship: null, fellowshipYearsLeft: 0, research: false, claims: [] };
-    // Residents before the Match haven't got a specialty yet: no cases in the first weeks.
-    if (job.professionId === 'medical' && !state.medicine.specialty) return;
+    // Residents before the Match haven't got a specialty yet: no cases in the first weeks (foundation doctors see general cases).
+    if (job.professionId === 'medical' && !state.medicine.specialty && !(state.medicine.foundationLeft > 0)) return;
     if (rng.chance(0.6)) casePrompt(ctx);
   },
 

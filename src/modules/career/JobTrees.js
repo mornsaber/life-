@@ -17,6 +17,7 @@
  *   levels            the ladder (see Ladder.js)
  */
 import { PRIVATE_TITLES } from '../world/PrivateTitles.js';
+import { PROFESSION_TITLES } from '../world/ProfessionStandards.js';
 import { L, addGovernmentTiers } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
@@ -578,6 +579,15 @@ for (const [cc, map] of Object.entries(PRIVATE_TITLES)) {
     if (t.sector !== 'private' || !t.levels.some((l) => map[l.title])) continue;
     const prior = LOCAL_VARIANTS[t.id]?.[cc] ?? t;
     (LOCAL_VARIANTS[t.id] ??= {})[cc] = { ...prior, levels: prior.levels.map((l) => (map[l.title] ? { ...l, title: map[l.title] } : l)) };
+  }
+}
+// Doctors, lawyers and academics carry their country's own ranks (world/ProfessionStandards).
+for (const [cc, byProfession] of Object.entries(PROFESSION_TITLES)) {
+  for (const [id, titles] of Object.entries(byProfession ?? {})) {
+    const t = PROFESSIONS[id];
+    if (!t || !titles) continue;
+    const prior = LOCAL_VARIANTS[id]?.[cc] ?? t;
+    (LOCAL_VARIANTS[id] ??= {})[cc] = { ...prior, levels: prior.levels.map((l) => (titles[l.id] ? { ...l, title: titles[l.id] } : l)) };
   }
 }
 for (const [id, byCountry] of Object.entries(LOCAL_VARIANTS)) {

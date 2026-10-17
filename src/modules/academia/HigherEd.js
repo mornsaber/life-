@@ -28,7 +28,7 @@ import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { PROGRAMS, MAJORS, SCHOOLS } from '../education/Catalog.js';
 import { ADMISSION_HOOKS, YEAR_HOOKS, EducationEngine } from '../education/EducationEngine.js';
 import { ROOM_AND_BOARD } from '../campus/HousingDorms.js';
-import { TENURE_CLOCK } from './Academia.js';
+import { tenureClock } from './Academia.js';
 
 export const AP_CREDIT_PER_YEAR = 0.34;
 export const MAX_AP_CREDIT = 1;
@@ -425,7 +425,7 @@ export const HigherEdModule = {
       const { state } = ctx;
       const job = state.career.job;
       if (!job?.tenureClock || job.levelId !== 'assistant') return ctx.toast('Tenure-track faculty only', 'warn');
-      if (job.yearsInLevel < 3 || job.yearsInLevel >= TENURE_CLOCK - 1) return ctx.toast('Between years 3 and 4 of the clock', 'warn');
+      if (job.yearsInLevel < 3 || job.yearsInLevel >= tenureClock(state) - 1) return ctx.toast('Between years 3 and 4 of the clock', 'warn');
       if (job.tenureClock.early) return ctx.toast('Already going up early', 'warn');
       job.tenureClock.early = true;
       ctx.log('You put your case up for tenure early. The bar is higher — and a denial still counts.', '📁', 'warn');
