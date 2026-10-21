@@ -327,9 +327,12 @@ function romanceYear(ctx) {
   const years = state.character.age - (p.since ?? state.character.age);
   // Sparks fade with time, stress and small children — unless you tend them.
   const kids = living(state).filter((x) => x.relation === 'child' && ageOf(state, x) < 6).length;
-  p.spark = clamp(p.spark - 3 - Math.min(3, years / 6) - kids * 1.5 - (state.stats.stress > 70 ? 3 : 0), 0, 100);
+  p.spark = clamp(p.spark - 1.5 - Math.min(1.5, years / 12) - kids * 0.75 - (state.stats.stress > 70 ? 2 : 0), 0, 100);
+  // Settled couples who still like each other find their way back to each other.
+  if (p.relationship >= 50) p.spark = clamp(p.spark + rng.int(1, 4) + (state.stats.happiness > 60 ? 1 : 0), 0, 100);
   // Spark feeds the relationship; a dead spark wears it down.
-  if (p.spark < 30) p.relationship = clampRel(p.relationship - 3);
+  if (p.spark < 15) p.relationship = clampRel(p.relationship - 2);
+  else if (p.spark < 30 && rng.chance(0.5)) p.relationship = clampRel(p.relationship - 1);
   else if (p.spark > 70) p.relationship = clampRel(p.relationship + 1);
   // Anniversaries.
   if (p.relation === 'spouse' && years >= 1 && p.lastAnniversary !== state.character.age && !state.prompts.some((x) => x.type === 'bonds.anniversary')) {
@@ -349,7 +352,7 @@ function romanceYear(ctx) {
     }
   }
   // Drifting apart.
-  if (p.spark < 25 && !state.prompts.some((x) => x.type === 'bonds.drift') && rng.chance(0.45)) {
+  if (p.spark < 25 && !state.prompts.some((x) => x.type === 'bonds.drift') && rng.chance(0.3)) {
     ctx.prompt({
       type: 'bonds.drift', icon: '🌫️', title: 'Drifting Apart',
       text: `You and ${p.firstName} feel more like roommates than partners lately. Conversations are about logistics. Nobody remembers the last date night.`,
