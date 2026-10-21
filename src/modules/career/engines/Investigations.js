@@ -63,7 +63,7 @@ export const INVESTIGATION_CAREERS = {
     deck: [
       D('seizure', '💵', 'The Duffel Bag', 'A search turns up $400,000 in cash. Nobody has counted it yet.', [
         { id: 'count', label: '🧾 Count it on camera with a witness', text: 'Every dollar logged.', rep: 4 },
-        { id: 'skim', label: '💰 Nobody will miss a stack', tone: 'danger', text: 'Ten thousand dollars in your truck.', money: 10000, moneyLabel: 'Cash', offense: 'embezzlement', offenseContext: 'skimming seized drug money', discovery: 0.4 },
+        { id: 'skim', label: '💰 Nobody will miss a stack', tone: 'danger', text: 'A stack of cash in your truck.', money: 10000, moneyLabel: 'Cash', offense: 'embezzlement', offenseContext: 'skimming seized drug money', discovery: 0.4 },
       ]),
     ],
   },

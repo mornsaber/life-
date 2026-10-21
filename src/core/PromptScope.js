@@ -19,7 +19,7 @@ const JOB_TYPES = new Set([
   'emsLife.setup', 'emsLife.call', 'emsLife.event', 'emsLife.burnout',
   'clinical.setup', 'clinical.event', 'clinical.burnout',
   'police.call', 'fireLife.call',
-  'shiftWork.call', 'caseload.focus', 'caseload.case', 'clientBook.event', 'projectWork.approach', 'projectWork.crisis', 'seasonWork.plan', 'seasonWork.event', 'audience.release', 'audience.event', 'investigations.event', 'routeWork.event', 'diplomacy.cone', 'diplomacy.event', 'diplomacy.nomination', 'classroom.moment', 'office.reorg', 'deals.event',
+  'shiftWork.call', 'caseload.focus', 'caseload.case', 'clientBook.event', 'projectWork.approach', 'projectWork.crisis', 'seasonWork.plan', 'seasonWork.event', 'audience.release', 'audience.event', 'investigations.event', 'routeWork.event', 'diplomacy.cone', 'diplomacy.event', 'diplomacy.nomination', 'classroom.moment', 'office.reorg', 'deals.event', 'tradeWork.event', 'majorIncidents.mutualAid',
   'ses.detail', 'ses.offer', 'ses.reassign', 'ses.transition', 'ses.nomination',
 ]);
 const SERVICE_TYPES = new Set([

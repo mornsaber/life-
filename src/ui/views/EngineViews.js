@@ -15,6 +15,8 @@ import { diplomacyView, CONES } from '../../modules/career/engines/Diplomacy.js'
 import { classroomView, APPROACHES as TEACH, NEEDS } from '../../modules/career/engines/Classroom.js';
 import { officeView, BUCKETS } from '../../modules/career/engines/OfficePolitics.js';
 import { dealsView, STAGES, KINDS } from '../../modules/career/engines/Deals.js';
+import { tradeView, takeEligibility, MAX_JOBS } from '../../modules/career/engines/TradeJobs.js';
+import { ROLES } from '../../modules/career/engines/MajorIncidents.js';
 import { seasonView } from '../../modules/career/engines/Seasons.js';
 import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
@@ -173,8 +175,32 @@ function dealsSection(state) {
   return disclosure('engine.deals', '💼 Your Deals', `${stats}${button('📑 Pitch for a new mandate', 'deals.pitch', { variant: 'small', disabled: Boolean(y['deals.pitch']), hint: 'Three weeks on a pitch book' })}${pipe ? `<h4 class="sub">Pipeline</h4><ul class="history">${pipe}</ul>` : ''}${closed ? `<h4 class="sub">Closed</h4><ul class="history">${closed}</ul>` : ''}<p class="fine">Pitch → Mandate → Diligence → Signing → Closed. Fees fill the bonus pool at year end.</p>`, { count: rec ? `${rec.pipeline.length} live` : null });
 }
 
+function tradeSection(state) {
+  const v = tradeView(state);
+  if (!v) return '';
+  const { cfg, rec, apprentice } = v;
+  const taken = rec?.taken ?? [];
+  const jobs = (rec?.offers ?? []).map((j, i) => {
+    const mine = taken.find((t) => t.idx === i);
+    const book = takeEligibility(state, i, 'book');
+    const cash = takeEligibility(state, i, 'cash');
+    const buttons = mine ? chip(mine.how === 'cash' ? '💵 Side job' : '✅ Taken', 'good') : `${button('✅ Take it', 'tradeWork.take', { arg: `${i}:book`, variant: 'tiny', disabled: !book.ok, hint: book.ok ? `+${Math.round(j.pay * 100)}% of salary if done right` : book.reason })}${j.cash ? button('💵 Cash side job', 'tradeWork.take', { arg: `${i}:cash`, variant: 'tiny danger', disabled: !cash.ok, hint: cash.ok ? `$${j.cash.toLocaleString()} off the books` : cash.reason }) : ''}`;
+    return `<li class="report-row"><div><b>${j.icon} ${esc(j.name)}</b> <small class="muted">${'●'.repeat(Math.max(1, Math.round(j.diff / 20)))} difficulty${j.injury >= 0.05 ? ' · dangerous' : ''}</small></div><div>${buttons}</div></li>`;
+  }).join('');
+  const stats = rec ? `<p>${chip(`✅ ${rec.done} jobs done right`, 'good')} ${rec.callbacks ? chip(`🔁 ${rec.callbacks} warranty calls`, 'warn') : ''} ${rec.sideCash ? chip(`💵 $${rec.sideCash.toLocaleString()} in side jobs`) : ''}</p>${meter(rec.rep, { label: 'Reputation' })}` : '';
+  const hours = apprentice ? meter(Math.min(100, Math.round((rec?.hours ?? 0) / cfg.hours * 100)), { label: `Apprenticeship hours: ${(rec?.hours ?? 0).toLocaleString()} of ${cfg.hours.toLocaleString()}` }) : '';
+  return disclosure('engine.trade', `${cfg.icon} ${esc(cfg.label)}`, `${stats}${hours}${jobs ? `<h4 class="sub">This year's board — take up to ${MAX_JOBS}</h4><ul class="history">${jobs}</ul>` : ''}<p class="fine">Jobs you take pay a bonus when done right and come back as unpaid warranty calls when not. Cash side jobs pay more and aren't on the books. Pick nothing and the shop sends you on its usual work.${apprentice ? ` Your hours count toward the ${esc(cfg.licence)}.` : ' With a master\'s licence, your field\'s businesses (below) let you open your own shop.'}</p>`, { count: `${taken.length}/${MAX_JOBS} taken` });
+}
+
+function incidentsSection(state) {
+  const list = state.majorIncidents ?? [];
+  if (!list.length) return '';
+  const rows = list.slice(0, 8).map((x) => `<li class="report-row"><div><b>${esc(x.name.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase()))}</b> <small class="muted">age ${x.age}${x.mutualAid ? ' · mutual aid' : ''}</small></div><small>${esc(ROLES[x.role]?.label ?? 'Neighbour')} · ${esc(x.outcome)}</small></li>`).join('');
+  return disclosure('engine.incidents', '🚨 Major Incidents You Worked', `<ul class="history">${rows}</ul><p class="fine">Disasters and major incidents pull in every agency — and you, in whatever part your job gives you.</p>`, { count: list.length });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state)].join('');
+  return [diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state), incidentsSection(state)].join('');
 }

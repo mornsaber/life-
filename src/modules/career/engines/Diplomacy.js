@@ -31,7 +31,7 @@ export const CONES = {
       ]),
       D('fraud', '💰', 'A Visa Broker', 'A local fixer offers $20,000 to approve a list of names.', [
         { id: 'report', label: '📝 Report it to embassy security', text: 'They rolled up a fraud ring. Your name went in a commendation.', perf: 6, commend: 0.6 },
-        { id: 'take', label: '💸 Take it', tone: 'danger', text: 'Twenty thousand dollars.', money: 20000, moneyLabel: 'Cash', offense: 'visaFraud', offenseContext: 'selling visas from a consulate', discovery: 0.45 },
+        { id: 'take', label: '💸 Take it', tone: 'danger', text: 'A thick envelope of cash.', money: 20000, moneyLabel: 'Cash', offense: 'visaFraud', offenseContext: 'selling visas from a consulate', discovery: 0.45 },
       ]),
     ],
   },

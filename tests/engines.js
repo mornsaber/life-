@@ -6,6 +6,7 @@
  *   node tests/engines.js
  */
 import assert from 'node:assert/strict';
+import { fileURLToPath } from 'node:url';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
@@ -22,6 +23,7 @@ import { AUDIENCE_CAREERS } from '../src/modules/career/engines/Audience.js';
 import { INVESTIGATION_CAREERS } from '../src/modules/career/engines/Investigations.js';
 import { ROUTE_CAREERS } from '../src/modules/career/engines/Routes.js';
 import { OFFICE_CAREERS } from '../src/modules/career/engines/OfficePolitics.js';
+import { TRADE_CAREERS } from '../src/modules/career/engines/TradeJobs.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -55,9 +57,9 @@ export function year(engine, state, types) {
 const BAD = /\bundefined\b|\bNaN\b|\[object |\bInfinity\b/;
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 /** Enabled engine buttons on the career tab. */
-const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|routeWork|investigations|diplomacy|classroom|office|deals|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
+const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|tradeWork|routeWork|investigations|diplomacy|classroom|office|deals|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
 /** Every career an engine covers. */
-export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys)), 'foreignService', 'education', ...OFFICE_CAREERS];
+export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, TRADE_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys)), 'foreignService', 'education', ...OFFICE_CAREERS];
 const pure = (state, fn) => { const before = JSON.stringify(state); const html = fn(); assert.equal(JSON.stringify(state), before, 'rendering changed state'); return html; };
 
 const tests = {
@@ -272,6 +274,47 @@ const tests = {
     }
     assert.ok(closed > 0, 'some deals close');
   },
+  'trades: a job board, warranty calls, side jobs and apprentice hours'() {
+    for (const id of Object.keys(TRADE_CAREERS)) {
+      const { engine, state } = worker(id, 33);
+      if (!state.career.job) continue;
+      const rec = state.careerLife?.tradeWork;
+      assert.ok(rec?.offers.length, `${id}: a board on day one`);
+      engine.dispatch('tradeWork.take', '0:book');
+      engine.dispatch('tradeWork.take', '1:book');
+      assert.equal(rec.taken.length, 2, `${id}: jobs taken`);
+      year(engine, state, ['tradeWork.']);
+      assert.ok(rec.done + rec.callbacks > 0 || !state.career.job, `${id}: work happened`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), /take up to/);
+    }
+    const { engine, state } = worker('plumbing', 34);
+    Object.assign(state.career.job, { levelId: 'apprentice' });
+    state.prompts = [];
+    const cashIdx = state.careerLife.tradeWork.offers.findIndex((j) => j.cash);
+    engine.dispatch('tradeWork.take', `${cashIdx}:cash`);
+    assert.equal(state.careerLife.tradeWork.taken.length, 0, 'apprentices can\'t take side jobs');
+    for (let y = 0; y < 6 && state.career.job; y++) { state.career.job.levelId = 'apprentice'; year(engine, state, ['tradeWork.']); }
+    assert.ok(state.careerLife.tradeWork.hours >= 8000, 'apprenticeship hours add up');
+  },
+  'major incidents: every agency has a part, civilians too, and mutual aid'() {
+    for (const [id, expect] of [['police', 'front'], ['nursing', 'surge'], ['publicWorks', 'restore'], ['retail', 'volunteer']]) {
+      const { engine, state } = worker(id, 35);
+      state.prompts = [];
+      engine.bus.emit('disaster:struck', { ctx: engine.context(), disaster: { type: 'flood', severity: 2, name: 'the Great Flood', stateId: 'IL', regionId: 'chicago' } });
+      const p = state.prompts.find((x) => x.type === 'majorIncidents.respond');
+      assert.ok(p, `${id}: a part to play`);
+      assert.ok(p.options.some((o) => o.id === expect), `${id}: ${expect}`);
+      engine.resolvePrompt(p.id, expect);
+      assert.equal(state.majorIncidents[0].name, 'the Great Flood');
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), /Major Incidents You Worked/);
+    }
+    let aid = 0;
+    for (let i = 0; i < 30 && !aid; i++) {
+      const { engine, state } = worker('fire', 60 + i);
+      for (let y = 0; y < 3; y++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); if (state.prompts.some((x) => x.type === 'majorIncidents.mutualAid')) aid += 1; }
+    }
+    assert.ok(aid > 0, 'mutual-aid requests happen');
+  },
   'engine cards: random clicks on every engine career never break'() {
     const problems = [];
     for (const [i, id] of ENGINE_CAREERS().entries()) {
@@ -319,9 +362,12 @@ const tests = {
   },
 };
 
-let failed = 0;
-for (const [name, fn] of Object.entries(tests)) {
-  try { fn(); console.log(`  ✔ ${name}`); } catch (e) { failed += 1; console.log(`  ✘ ${name}\n    ${e.stack.split('\n').slice(0, 6).join('\n    ')}`); }
+const runDirectly = process.argv[1] && fileURLToPath(import.meta.url) === process.argv[1];
+if (runDirectly) {
+  let failed = 0;
+  for (const [name, fn] of Object.entries(tests)) {
+    try { fn(); console.log(`  ✔ ${name}`); } catch (e) { failed += 1; console.log(`  ✘ ${name}\n    ${e.stack.split('\n').slice(0, 6).join('\n    ')}`); }
+  }
+  if (failed) { console.log(`\n${failed} engine test(s) failed`); process.exit(1); }
+  console.log(`\n✔ All ${Object.keys(tests).length} career-engine tests passed`);
 }
-if (failed) { console.log(`\n${failed} engine test(s) failed`); process.exit(1); }
-console.log(`\n✔ All ${Object.keys(tests).length} career-engine tests passed`);

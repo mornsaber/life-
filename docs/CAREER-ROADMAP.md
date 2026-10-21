@@ -203,7 +203,7 @@ Effort: **S** = configure an existing engine and add events (about a day); **M**
 
 ## Build order
 
-**Status:** engines 1–5 are built (`src/modules/career/engines/`: ShiftIncident, Caseload, ClientBook, Projects, Seasons, Audience, sharing Kit.js) and tested in `tests/engines.js`. Oil and gas keeps its boom/bust cycle in TradeCareers rather than a season card. Next up: the Route & logbook engine and the career-specific items in step 6.
+**Status:** all engines are built, in `src/modules/career/engines/` with shared pieces in Kit.js, and tested in `tests/engines.js`. They are ShiftIncident, Caseload, ClientBook, Projects, Seasons, Audience, Routes (route & logbook), Investigations (federal cases), Diplomacy (Foreign Service), Classroom (K-12), OfficePolitics, Deals and TradeJobs. MoreCareers.js puts the remaining ladder-only careers and allied health onto these engines, and MajorIncidents.js runs the multi-agency disasters. National agencies abroad use the engine of the US career they mirror. Deep modules still own nursing units (ClinicalLife) and state fire seasons (FireLife).
 
 The ordering below maximises playable careers per unit of work:
 

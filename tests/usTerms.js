@@ -6,7 +6,7 @@ import { COUNTRIES, localizeHtml } from '../src/modules/world/Countries.js';
 
 /** US-only things, and the countries where the same word is genuinely local. */
 export const US_TERMS = [
-  [/\bSocial Security\b/], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
+  [/\bSocial Security\b(?! System)/], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
   [/\bSAT\b/, ['MX', 'JP']], [/\bCongress(ional)?\b/, ['IN', 'MX', 'PH', 'CN', 'NG', 'ZA']], [/\bU\.S\./], [/\b(?<!Part-time )Sheriff(?! Principal| Court)/, ['GB']], [/\bTrooper\b/], [/\bDistrict Attorney\b/], [/Selective Service/], [/Hatch Act/],
   [/Section 8\b/], [/Peace Corps/], [/AmeriCorps/], [/\bFEMA\b/], [/National Guard/], [/GI Bill/], [/\bthe VA\b/], [/(?<![\d,.£€¥$])\b911\b(?![\d,])/, ['CA', 'MX', 'PH']], [/\bNCLEX\b/], [/\bUSMLE\b/],
   [/\bNCAA\b|\bNFL\b|\bNBA\b|\bMLB\b/], [/Thanksgiving|Fourth of July/], [/\b(?:the|a|state|your|our) governor\b(?!-General)|\bgovernor's\b|\bGovernor of\b/i, ['MX', 'PH', 'JP', 'KR', 'IN', 'AU', 'CA', 'IT', 'NG', 'KE', 'ID', 'BR']],

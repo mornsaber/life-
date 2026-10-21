@@ -581,3 +581,54 @@ Object.assign(AUDIENCE_CAREERS, {
     ])],
   }),
 });
+
+/* ------------------------------------------------------------------ */
+/* Allied health                                                       */
+/* ------------------------------------------------------------------ */
+
+Object.assign(CASE_CAREERS, {
+  dietitian: {
+    label: 'Your Patients', icon: '🥗', noun: 'patient', intake: [60, 140], cap: 120, stages: ['Referral', 'Assessment', 'Nutrition plan', 'Follow-up', 'Discharge'],
+    kinds: ['type 2 diabetes', 'kidney disease', 'eating disorder', 'tube feeding in the ICU', 'pediatric failure to thrive', 'heart disease'],
+    good: (c) => `${c.name}'s numbers came down and stayed down.`, bad: (c) => `${c.name} stopped coming and ended up back in hospital.`,
+    deck: [
+      D('fad', '📱', 'The Influencer Diet', 'A patient with kidney disease wants to follow a celebrity\'s high-protein diet.', [
+        { id: 'teach', label: '📊 Walk her through her labs', check: 45, text: 'She understood, and her kidney function held steady.', perf: 4, rep: 4, fail: { text: 'She followed the influencer. Her labs got worse.', perf: -2 } },
+      ]),
+      D('ed', '🫶', 'Recovery', 'A teenager with anorexia is refusing the meal plan, and her parents are frightened.', [
+        { id: 'team', label: '🤝 Bring in the treatment team and the family', text: 'Slow progress, but progress.', perf: 3, rep: 4, stress: 4 },
+      ]),
+    ],
+  },
+});
+Object.assign(BOOK_CAREERS, {
+  // Private practice: a panel of patients who stay — or don't.
+  optometry: {
+    label: 'Your Practice', icon: '👓', noun: 'patient', value: [150, 600], capacity: 2500, sample: 25, weights: { smarts: 2, happiness: 1 },
+    kinds: ['contact-lens wearer', 'glaucoma patient', 'diabetic eye exam', 'child\'s first glasses', 'dry eye', 'macular degeneration'],
+    deck: [
+      D('retina', '👁️', 'Something on the Retina', 'A routine exam shows a suspicious lesion on a young patient\'s retina.', [
+        { id: 'refer', label: '📞 Refer to a retina specialist today', text: 'An early melanoma. Caught in time.', rep: 8, perf: 4 },
+        { id: 'watch', label: '📅 Recheck in six months', text: 'Probably nothing.', risk: { chance: 0.2, text: 'It wasn\'t nothing. A malpractice claim followed.', rep: -12, cost: 10000, costLabel: 'Malpractice deductible' } },
+      ]),
+      D('online', '💻', 'Online Glasses', 'A patient wants their prescription to buy glasses online for a fraction of your price.', [
+        { id: 'give', label: '📄 Hand it over gladly', text: 'They came back for every exam since.', rep: 4 },
+        { id: 'stall', label: '🙄 Make it difficult', text: 'They found another optometrist.', rep: -4 },
+      ]),
+    ],
+  },
+  chiropractic: {
+    label: 'Your Practice', icon: '🦴', noun: 'patient', value: [300, 1800], capacity: 600, sample: 20, weights: { happiness: 2, fitness: 1 },
+    kinds: ['lower back pain', 'whiplash', 'athlete', 'desk worker', 'pregnancy back pain', 'sciatica'],
+    deck: [
+      D('plan', '📅', 'The 36-Visit Plan', 'A consultant says to put every new patient on a prepaid 36-visit plan.', [
+        { id: 'honest', label: '🩺 Treat what each patient needs', text: 'Lower revenue, loyal patients and good reviews.', rep: 6 },
+        { id: 'plan', label: '💰 Sell the plans', text: 'Revenue jumped.', money: 15000, moneyLabel: 'Prepaid plans', risk: { chance: 0.2, text: 'An insurer audit flagged the billing.', cost: 12000, costLabel: 'Insurer repayment', rep: -8 } },
+      ]),
+      D('redflag', '🚩', 'Red Flags', 'A patient\'s back pain comes with weight loss and night sweats.', [
+        { id: 'refer', label: '🏥 Refer to a physician', text: 'It was a cancer, caught early. The patient credits you.', rep: 8 },
+        { id: 'adjust', label: '🦴 Adjust and see', text: 'No improvement.', risk: { chance: 0.4, text: 'The diagnosis came months late. A lawsuit followed.', rep: -12, cost: 15000, costLabel: 'Malpractice deductible' } },
+      ]),
+    ],
+  },
+});
