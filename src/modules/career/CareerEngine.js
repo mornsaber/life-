@@ -22,7 +22,7 @@ import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { unitFor } from './Units.js';
 import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
-import { resetBudget, resolveDutyStation, nationalBody } from './Employers.js';
+import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, nearestCareerRegion, cityName } from './Employers.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
 import { educationFields } from '../education/Catalog.js';
@@ -145,7 +145,7 @@ export function minimumAge(state, profession) {
   return (state.character.countryId ?? 'US') === 'US' ? min : 18;
 }
 
-export function applicationEligibility(state, professionId) {
+export function applicationEligibility(state, professionId, { anywhere = false } = {}) {
   const profession = getProfession(professionId);
   const minAge = minimumAge(state, profession);
   if (state.character.age < minAge) return { ok: false, reason: `Must be ${minAge}+` };
@@ -159,6 +159,11 @@ export function applicationEligibility(state, professionId) {
   if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
   if ((state.character.countryId ?? 'US') !== 'US' && US_ONLY_PROFESSIONS.includes(professionId)) return { ok: false, reason: 'No such agency here' };
   if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };
+  // A small town's fire service is its volunteers; the career posts are in the cities.
+  if (!anywhere && !careerServiceHere(state.character.regionId, professionId)) {
+    const near = nearestCareerRegion(state.character.regionId, professionId);
+    return { ok: false, reason: `No career ${profession.name.toLowerCase()} service here — volunteers cover ${cityName(state.character.regionId)}${near ? ` (nearest career posts: ${cityName(near)})` : ''}` };
+  }
   if (profession.country) {
     // A national government job: your country of residence, and its citizens only.
     if ((state.character.countryId ?? 'US') !== profession.country) return { ok: false, reason: 'A job in another country' };

@@ -35,6 +35,8 @@
  */
 import { clamp } from '../../core/Random.js';
 import { randomName } from '../../core/State.js';
+import { REGIONS } from '../life/Regions.js';
+import { cityPopulation } from './Staffing.js';
 
 /** What each kind of agency can contract for, and the paid roles it can hire. */
 export const GROWTH = {
@@ -81,16 +83,39 @@ const PLACES = ['North', 'South', 'East', 'West', 'Valley', 'Lake', 'Ridge', 'Mi
 export const growthOf = (serviceId) => GROWTH[serviceId] ?? null;
 
 /** The district around your agency (made on first look). */
-export function districtOf(org, rng) {
+/**
+ * How many neighbouring volunteer agencies an area has: the countryside is a patchwork of small
+ * companies; a big city has career departments and one or two volunteer outfits on its fringe.
+ */
+export function neighbourRange(regionId) {
+  const pop = cityPopulation(regionId);
+  const type = REGIONS[regionId]?.type ?? '';
+  if (type === 'Rural' || pop < 30000) return [4, 7];
+  if (type === 'Small town' || pop < 150000) return [3, 5];
+  if (pop < 1000000) return [1, 3];
+  return [0, 1];
+}
+/** Agencies that merged away in a place: they stay gone (keyed by region and service). */
+export const mergedKey = (org) => `${org.regionId}:${org.serviceId}`;
+
+export function districtOf(org, rng, merged = []) {
   if (org.district) return org.district;
-  const n = rng.int(2, 4);
+  const [lo, hi] = neighbourRange(org.regionId);
+  const n = rng.int(lo, hi);
   // Abroad the neighbours are units of the same local service (the part of your unit's name before the town).
   const local = org.countryId && org.countryId !== 'US' && org.name.includes(' — ') ? org.name.split(' — ')[0] : null;
   const word = local ? [local] : NAMES[org.serviceId] ?? ['Volunteers'];
   org.district = {
     stations: 1, contracts: [], paid: [], paidChief: false,
-    neighbors: Array.from({ length: n }, (_, i) => ({ id: `nb${i}`, name: local ? `${local} — ${rng.pick(PLACES)}` : `${rng.pick(PLACES)} ${rng.pick(word)}`, members: rng.int(6, 30), readiness: rng.int(25, 75), funds: rng.int(5, 120) * 1000, stations: 1 })),
+    neighbors: [],
   };
+  // Distinct names, none of them an agency that has already merged away (or yourself).
+  const places = rng.shuffle(PLACES);
+  for (let i = 0; i < places.length && org.district.neighbors.length < n; i++) {
+    const name = local ? `${local} — ${places[i]}` : `${places[i]} ${rng.pick(word)}`;
+    if (merged.includes(name) || name === org.name) continue;
+    org.district.neighbors.push({ id: `nb${org.district.neighbors.length}`, name, members: rng.int(6, 30), readiness: rng.int(25, 75), funds: rng.int(5, 120) * 1000, stations: 1 });
+  }
   return org.district;
 }
 
@@ -221,6 +246,8 @@ export function growthAction(ctx, org, service, member, kind, arg) {
       return ctx.log(`${n.name}'s members voted down the merger. Old loyalties run deep.`, '🗳️', 'warn');
     }
     d.neighbors = d.neighbors.filter((x) => x !== n);
+    // It's gone for good: no new agency springs up in its place.
+    ((ctx.state.orgs.mergedVolunteer ??= {})[mergedKey(org)] ??= []).push(n.name);
     d.stations += n.stations;
     org.funds += n.funds;
     // Their members join the roster now, keeping their experience, and the agency's strength grows by them.
@@ -277,7 +304,7 @@ export function growthTick(ctx, org, service, member, leading) {
   const { state, rng } = ctx;
   const g = growthOf(service.id);
   if (!g) return;
-  const d = districtOf(org, rng);
+  const d = districtOf(org, rng, state.orgs?.mergedVolunteer?.[mergedKey(org)]);
   for (const n of d.neighbors) {
     n.members = Math.max(2, n.members + rng.int(-4, 3));
     n.readiness = Math.round(clamp(n.readiness + rng.int(-8, 6), 5, 95));

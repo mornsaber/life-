@@ -11,12 +11,12 @@ import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
 import { attachOrg, orgOf } from '../org/Organizations.js';
-import { cityPopulation } from '../org/Staffing.js';
+import { cityPopulation, NATIONAL_POLICE } from '../org/Staffing.js';
 import { GOV_SECTORS } from './Ladder.js';
 import { rightToWork } from './LaborUnions.js';
 import { lawValue } from '../politics/Laws.js';
 import { unionLaw } from './BargainingUnits.js';
-import { regionsInState } from '../life/Regions.js';
+import { regionsInState, regionsIn } from '../life/Regions.js';
 import { localUnionName } from '../world/CountryLaw.js';
 import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 import { isNationalService } from '../world/LocalAgencies.js';
@@ -35,6 +35,20 @@ export function resolveDutyStation(rng, profession, regionId) {
   return profession.dutyStation ?? null;
 }
 
+/**
+ * The smallest place with a career (paid) service: below it, the fire service is the volunteer
+ * company and the ambulance a volunteer or county one — there are no career posts to apply for.
+ */
+export const CAREER_SERVICE_MIN = { fire: 15000, ems: 8000 };
+export const careerServiceHere = (regionId, professionId) => !CAREER_SERVICE_MIN[professionId] || cityPopulation(regionId) >= CAREER_SERVICE_MIN[professionId];
+/** The nearest place that has one: in your state or province if possible, the smallest such town. */
+export function nearestCareerRegion(regionId, professionId) {
+  const here = REGIONS[regionId] ?? REGIONS.midcity;
+  const all = regionsIn(here.country ?? 'US').filter((r) => r.id !== regionId && careerServiceHere(r.id, professionId));
+  const same = all.filter((r) => r.state === here.state);
+  return [...(same.length ? same : all)].sort((a, b) => cityPopulation(a.id) - cityPopulation(b.id))[0]?.id ?? null;
+}
+
 /** Local government size from the city's population (not a hand-picked label). */
 export function citySize(regionId) {
   const pop = cityPopulation(regionId);
@@ -49,8 +63,7 @@ export function governmentTier(state, employer, profession) {
   return n < 40 ? 'micro' : n < 300 ? 'small' : n < 2500 ? 'medium' : n < 8000 ? 'large' : n < 15000 ? 'enterprise' : 'mega';
 }
 
-/** Countries whose police (the "statePolice" career) is one national force. */
-export const NATIONAL_POLICE = ['NZ', 'IE', 'SG', 'IL', 'PS', 'FR', 'ES', 'NL', 'SE', 'KR', 'KE', 'NG', 'ID', 'PH'];
+export { NATIONAL_POLICE };
 
 /** Is this employer part of a single national body (a national police force or service, a federal or national agency)? */
 export function nationalBody(state, employer, profession) {

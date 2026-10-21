@@ -5,7 +5,7 @@
  * hiring people they've already seen work. Those offers skip the
  * civil-service waiting list, but every other requirement still applies.
  */
-import { createEmployer } from '../career/Employers.js';
+import { createEmployer, careerServiceHere, nearestCareerRegion, cityName } from '../career/Employers.js';
 import { applicationEligibility, bestEntryLevel, hire } from '../career/CareerEngine.js';
 import { getProfession } from '../career/JobTrees.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -56,7 +56,10 @@ export function offerJob(ctx, serviceId, member, svc, professionId) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const profession = getProfession(professionId);
-  const employer = createEmployer(rng, state, profession, state.character.regionId);
+  // No career service in a small town: the post is in the nearest place that has one.
+  const regionId = careerServiceHere(state.character.regionId, professionId) ? state.character.regionId : nearestCareerRegion(state.character.regionId, professionId);
+  if (!regionId) return false;
+  const employer = createEmployer(rng, state, profession, regionId);
   const check = volunteerHireCheck(state, professionId);
   const level = bestEntryLevel(state, profession, employer.size) ?? check.level;
   if (!level) return false;
@@ -66,9 +69,9 @@ export function offerJob(ctx, serviceId, member, svc, professionId) {
     type: 'emergency.jobOffer', icon: profession.icon, title: same ? 'A Wholetime Post' : 'A Job Offer from the Field',
     text: same
       ? `${parent ? parent[0].toUpperCase() + parent.slice(1) : employer.name} is recruiting full-time ${level.title.toLowerCase()}s from its own ${svc.short} crews. Your ${member.years} years at ${member.unit} count as service: you'd keep your seniority and skip the open recruitment.${job ? `\nAccepting means resigning as ${job.title}.` : ''}`
-      : `${employer.name} has watched you work as a ${svc.short} volunteer and wants to hire you as ${level.title}.${check.examWaived ? ' They\'ll skip the civil-service waiting list.' : ''} Your volunteer years would count toward your starting pay.${job ? `\nAccepting means resigning as ${job.title}.` : ''}`,
+      : `${employer.name} has watched you work as a ${svc.short} volunteer and wants to hire you as ${level.title}${regionId !== state.character.regionId ? ` (you'd move to ${cityName(regionId)})` : ''}.${check.examWaived ? ' They\'ll skip the civil-service waiting list.' : ''} Your volunteer years would count toward your starting pay.${job ? `\nAccepting means resigning as ${job.title}.` : ''}`,
     options: [{ id: 'accept', label: `✅ ${same ? 'Go full-time' : 'Take the job'} (${level.title})` }, { id: 'decline', label: same ? '🙅 Stay on call' : '🙅 Stay a volunteer' }],
-    data: { professionId, levelId: level.id, employer, serviceId },
+    data: { professionId, levelId: level.id, employer, serviceId, ...(regionId !== state.character.regionId ? { regionId } : {}) },
   });
   return true;
 }
@@ -132,7 +135,8 @@ export const cityOf = (state) => (REGIONS[state.character.regionId]?.name ?? 'Ci
 
 /** Can a volunteer be hired straight into this career? (The civil-service exam is waived.) */
 export function volunteerHireCheck(state, professionId) {
-  const check = applicationEligibility(state, professionId);
+  // (A volunteer from a town without a career service is hired into the nearest one.)
+  const check = applicationEligibility(state, professionId, { anywhere: true });
   if (check.ok) return check;
   if (/^Pass the /.test(check.reason ?? '')) {
     const profession = getProfession(professionId);
@@ -182,6 +186,7 @@ export const OpportunityResolvers = {
     if (state.legal.incarceration || !volunteerHireCheck(state, data.professionId).ok) return ctx.log(`${data.employer.name} withdrew the offer.`, '📭', 'warn');
     const level = levelById(getProfession(data.professionId), data.levelId);
     if (!level) return;
+    if (data.regionId && data.regionId !== state.character.regionId) ctx.emit('region:relocate', { regionId: data.regionId, reason: `You moved to ${cityName(data.regionId)} to join ${data.employer.name}.` });
     hire(ctx, { professionId: data.professionId, levelId: data.levelId, employer: data.employer });
   },
 };

@@ -4,6 +4,7 @@
  * your military unit.
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
+import { specialistNote } from '../../modules/equipment/SpecialistCalls.js';
 import { FLEET_POLICIES, GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost, countOf, upkeepDelta, grantSchemeOf } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -68,7 +69,9 @@ export function equipmentCard(state, ref) {
   const rows = Object.entries(g.categories).map(([cid, cat]) => {
     const units = d.units[cid] ?? [];
     const needed = needOf(cat, c);
-    if (!needed && !units.length) return '';
+    const special = specialistNote(state, c, cid);
+    // Specialist kit stays on the list even where the standard doesn't call for it: you may still want one.
+    if (!needed && !units.length && !(special && c.manager)) return '';
     const worn = units.filter((u) => u.age > (cat.models[u.model]?.life ?? 10)).length;
     const avg = units.length ? Math.round(units.reduce((s, u) => s + u.age, 0) / units.length) : 0;
     const leases = cat.facility ? units.filter((u) => cat.models[u.model]?.rent && !u.owned).map((u) => `lease ${money(u.rent ?? cat.models[u.model].rent)}/yr, ${u.termLeft ?? '?'} yr left`).join(' · ') : '';
@@ -125,7 +128,7 @@ export function equipmentCard(state, ref) {
     }
     const have = countOf(cat, units);
     const tone = have < needed || worn > needed / 3 ? 'warn' : 'good';
-    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}${leases ? ` · ${leases}` : ''}${renovating ? ' · 🔨 under renovation' : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${Math.round(have * 10) / 10}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
+    return disclosure(`equip.${ref}.${cid}`, `${cat.icon} ${esc(cat.name)}`, `${special ? `<p class="fine">🎯 Used for: ${esc(special.use)}${special.served || special.missed ? ` · specialist calls: ${special.served} handled${special.missed ? `, <span class="neg">${special.missed} waited on mutual aid</span>` : ''}` : ''}</p>` : ''}<p class="fine">${mix || 'None'}${units.length ? ` · average age ${avg} yr` : ''}${worn ? ` · <span class="neg">${worn} past service life</span>` : ''}${incoming ? ` · ${incoming} being fielded` : ''}${leases ? ` · ${leases}` : ''}${renovating ? ' · 🔨 under renovation' : ''}</p>${buttons ? `<div class="toggle-row">${buttons}</div>` : ''}`, { count: `${Math.round(have * 10) / 10}/${needed}${worn ? ` · ${worn} worn` : ''}`, tone });
   }).join('');
   const q = fleetQuality(state, c);
   const staff = c.staff ? `<p class="fine">👥 ${c.staff.total.toLocaleString()} staff${c.staff.label ? `: ${c.staff.operational.toLocaleString()} ${esc(c.staff.label.toLowerCase())} · ${c.staff.civilian.toLocaleString()} ${esc(c.staff.other.split(' (')[0].toLowerCase())}` : ''}. The standard fleet follows headcount.</p>` : '';

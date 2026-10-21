@@ -15,6 +15,32 @@
 import { L } from './Ladder.js';
 import { JUSTICE_EVENTS, INCIDENT_ICONS } from './JusticeCareers.js';
 
+/**
+ * Emergency management: the paid headquarters behind the volunteer units — a state SES's
+ * headquarters, a national civil-protection agency, a US state office of emergency management.
+ * National agencies have regional offices; in federal countries each state or province has its own.
+ * '{state}' becomes the state's name; an object picks by state id.
+ */
+export const EM_AGENCIES = {
+  AU: { 'AU-NSW': 'NSW State Emergency Service', 'AU-VIC': 'VICSES', 'AU-QLD': 'Queensland SES', 'AU-SA': 'SA State Emergency Service', 'AU-WA': 'DFES (WA)', 'AU-TAS': 'Tasmania SES', 'AU-NT': 'NT Emergency Service', 'AU-ACT': 'ACT State Emergency Service', '*': '{state} State Emergency Service' },
+  CA: { 'CA-ON': 'Emergency Management Ontario', 'CA-QC': 'Sécurité civile Québec', 'CA-BC': 'Emergency Management BC', 'CA-AB': 'Alberta Emergency Management Agency', 'CA-NS': 'Nova Scotia Emergency Management Office', 'CA-SK': 'Saskatchewan Public Safety Agency', '*': '{state} Emergency Management Office' },
+  NZ: 'National Emergency Management Agency (NEMA)', GB: 'Resilience Directorate (Cabinet Office)', IE: 'Office of Emergency Planning',
+  DE: 'Technisches Hilfswerk (THW)', FR: 'Sécurité civile (DGSCGC)', IT: 'Protezione Civile', ES: 'Protección Civil — {state}', NL: 'Nationaal Crisiscentrum',
+  SE: 'MSB (Swedish Civil Contingencies Agency)', JP: 'Fire and Disaster Management Agency (FDMA)', KR: 'Disaster and Safety Management Headquarters', MX: 'Protección Civil — {state}',
+  PH: 'Office of Civil Defense', IN: '{state} State Disaster Management Authority', BR: 'Defesa Civil — {state}', SG: 'Singapore Civil Defence Force — Civil Defence HQ',
+  IL: 'National Emergency Management Authority (NEMA)', ZA: 'National Disaster Management Centre', KE: 'National Disaster Operations Centre', NG: 'National Emergency Management Agency (NEMA)',
+  ID: 'BNPB (National Disaster Management Agency)', CN: 'Ministry of Emergency Management', PS: 'Palestinian Civil Defence',
+};
+function emergencyHq(city, rng, stateName, stateId) {
+  const cc = String(stateId ?? '').includes('-') ? stateId.split('-')[0] : 'US';
+  if (cc === 'US') return rng.chance(0.6) ? `${stateName} Office of Emergency Management` : `${city} Office of Emergency Management`;
+  const a = EM_AGENCIES[cc] ?? 'National disaster management agency';
+  const name = (typeof a === 'string' ? a : a[stateId] ?? a['*']).replace('{state}', stateName ?? 'State');
+  const provincial = typeof a !== 'string' || a.includes('{state}');
+  // (A provincial agency's own headquarters; a national one's office for your region.)
+  return name.includes(' — ') ? name : `${name} — ${provincial ? rng.pick(['state headquarters', 'operations directorate']) : rng.pick(['national headquarters', `${city} region office`])}`;
+}
+
 export const FED_LE_MAX_AGE = 36;
 export const FED_LE_RETIREMENT = 57;
 const FED = { sector: 'federal', sizes: { large: 1, enterprise: 1 }, background: 'strict', exam: 'federal' };
@@ -47,6 +73,24 @@ function agency({ id, name, icon, academy, employers, entry, maxAge = FED_LE_MAX
 }
 
 export const GOV_PROFESSIONS = {
+  emergencyManagement: {
+    sector: 'state', sizes: { medium: 1, large: 1 }, id: 'emergencyManagement', name: 'Emergency Management', icon: '🚨', payMultiplier: 0.95, minAge: 21,
+    union: { chance: 0.4, name: 'Public Service Association', strike: false },
+    employerName: emergencyHq,
+    entry: { education: { level: 'bachelor' } },
+    valued: ['emt', 'ff1', 'fireOfficer1'],
+    levels: [
+      L('trainee', 'Emergency Management Officer (Trainee)', 3, { years: 1 }),
+      L('officer', 'Emergency Management Officer', 4),
+      L('senior', 'Senior Emergency Management Officer', 5),
+      L('planner', 'Hazard Mitigation & Recovery Planner', 6, { track: 'ic' }),
+      L('volunteerServices', 'Volunteer Services Manager', 6, { track: 'ic' }),
+      L('controller', 'Region Controller', 7, { track: 'mgmt', abilities: ['supervise'], reports: 25 }),
+      L('director', 'Director of Operations', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 150 }),
+      L('deputy', 'Deputy Commissioner', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 400 }),
+      L('commissioner', 'Commissioner', 10, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec', 'policy'], reports: 1200 }),
+    ],
+  },
   postal: {
     ...FED, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, id: 'postal', name: 'U.S. Postal Service', icon: '📬', payMultiplier: 0.9, minAge: 18,
     union: { chance: 0.95, name: 'National Association of Letter Carriers', strike: false },

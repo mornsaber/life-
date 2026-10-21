@@ -33,6 +33,9 @@ const GB_AREA = {
   Birmingham: { police: 'West Midlands Police', fire: 'West Midlands Fire Service', ems: 'West Midlands Ambulance Service NHS Trust' },
   'Truro, Cornwall': { police: 'Devon and Cornwall Police', fire: 'Cornwall Fire and Rescue Service', ems: 'South Western Ambulance Service NHS Trust' },
   Cardiff: { police: 'South Wales Police', fire: 'South Wales Fire and Rescue Service' },
+  'Kendal, Cumbria': { police: 'Cumbria Constabulary', fire: 'Cumbria Fire and Rescue Service', ems: 'North West Ambulance Service NHS Trust' },
+  'Lincoln, Lincolnshire': { police: 'Lincolnshire Police', fire: 'Lincolnshire Fire and Rescue', ems: 'East Midlands Ambulance Service NHS Trust' },
+  'Aberystwyth, Ceredigion': { police: 'Dyfed-Powys Police', fire: 'Mid and West Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
 };
 const gbArea = (city, kind) => GB_AREA[city]?.[kind] ?? `${city.split(',')[0]} ${kind === 'police' ? 'Constabulary' : kind === 'fire' ? 'Fire and Rescue Service' : 'Ambulance Service NHS Trust'}`;
 
@@ -312,7 +315,8 @@ const ABROAD_DEFAULTS = {
   legislativeStaff: { name: 'Parliamentary Staff', employer: (c, s, sn) => (REGIONAL_PARLIAMENTS.includes(s?.split('-')[0]) ? `${sn} legislature — staff office` : 'Parliamentary Service (national parliament)') },
   courts: { name: 'Courts Service', employer: (city) => `Courts Service — ${town(city)}` },
   publicDefender: { name: 'Public Defence Service', employer: (city) => `Public Defence Service (legal aid) — ${town(city)}` },
-  cps: { name: 'Children\'s Services', employer: (city) => `${town(city)} children's social services` },
+  cps: { name: 'Children\'s Services', employer: (city) => `Children's services — ${town(city)}` },
+  probation: { name: 'Probation Service', employer: (city) => `Probation Service — ${town(city)}` },
   environmental: { name: 'Environmental Protection Agency', employer: (c, s, sn) => `Environmental Protection Agency — ${sn} office` },
   forester: { name: 'Forestry Service', employer: (c, s, sn) => `Forestry Service — ${sn}` },
   dot: { name: 'Roads Authority', employer: (c, s, sn) => `Roads authority — ${sn}` },

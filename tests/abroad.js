@@ -40,14 +40,16 @@ function life(cc, seed) {
   const state = engine.newLife({ countryId: cc, gender: rng.pick(['male', 'female']) });
   const ctx = engine.context();
   const seen = new Set();
-  const country = COUNTRIES[cc];
+  // Scanned against the country you live in now (a life can emigrate along the way).
+  const here = () => state.character.countryId ?? cc;
+  const countryNow = () => COUNTRIES[here()];
   const tryDo = (fn, where) => { try { fn(); } catch (e) { flag(`threw: ${e.message.split('\n')[0]}`, `${where}\n${e.stack.split('\n').slice(1, 4).join('\n')}`); } };
   const solve = () => { for (let g = 0; g < 15 && state.prompts.length; g++) { const pr = state.prompts[0]; const opts = pr.options.filter((o) => !o.disabled && o.id !== 'cancel'); engine.resolvePrompt(pr.id, rng.pick(opts.length ? opts : pr.options).id); } };
   const render = (where) => tryDo(() => {
     // (The move screen lists every other country, base included.)
     for (const [name, view] of Object.entries(VIEWS).filter(([n]) => n !== 'move')) {
-      const text = strip(localizeHtml(view(state, {}), country));
-      for (const chunk of text.split(/(?<=[.!?])\s|\s{2,}/)) scan(cc, chunk, `${where} ${name} view`, seen);
+      const text = strip(localizeHtml(view(state, {}), countryNow()));
+      for (const chunk of text.split(/(?<=[.!?])\s|\s{2,}/)) scan(here(), chunk, `${where} ${name} view`, seen);
     }
   }, `render ${where}`);
   while (state.character.alive && state.character.age < 70) {
@@ -61,14 +63,14 @@ function life(cc, seed) {
         const level = prof.levels.find((l) => l.entry) ?? prof.levels[0];
         if (hire(ctx, { professionId: prof.id, levelId: level.id, employer })) careers += 1;
         const job = state.career.job;
-        if (job) scan(cc, `${job.title} at ${job.employer.name}`, `${cc} hire ${prof.id}`, seen);
+        if (job) scan(here(), `${job.title} at ${job.employer.name}`, `${cc} hire ${prof.id}`, seen);
       }, `hire ${cc} ${prof.id}`);
     }
     if (age % 7 === 0 && age >= 18) render(`${cc} @${age} seed ${seed}`);
     tryDo(() => { state.prompts = []; engine.ageUp(); }, `ageUp ${cc} @${age} seed ${seed}`);
-    for (const p of state.prompts) scan(cc, shown([p.title, p.text, ...p.options.map((o) => `${o.label} ${o.hint ?? ''}`)].join(' | '), country), `${cc} prompt ${p.type} @${age}`, seen);
+    for (const p of state.prompts) scan(here(), shown([p.title, p.text, ...p.options.map((o) => `${o.label} ${o.hint ?? ''}`)].join(' | '), countryNow()), `${cc} prompt ${p.type} @${age}`, seen);
     tryDo(solve, `solve ${cc} @${age}`);
-    for (const block of state.log.slice(-2)) for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(cc, shown(e.text, country), `${cc} log @${state.character.age} seed ${seed}`, seen);
+    for (const block of state.log.slice(-2)) for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(here(), shown(e.text, countryNow()), `${cc} log @${state.character.age} seed ${seed}`, seen);
   }
   render(`${cc} end seed ${seed}`);
 }

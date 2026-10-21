@@ -173,7 +173,7 @@ export const KE = {
       borderPatrol: { name: 'Department of Immigration Services / Border Police Unit', employers: ['JKIA immigration', 'Namanga border post'] },
       federalPrisons: { name: 'Kenya Prisons Service', employers: ['Kamiti Maximum Security Prison', 'Shimo La Tewa Prison'] },
       postal: { name: 'Posta Kenya', employers: ['Posta Kenya — Nairobi GPO'] },
-      benefitsClaims: { name: 'NSSF', employers: ['NSSF — Social Security House'] },
+      benefitsClaims: { name: 'NSSF', employers: ['NSSF — Bishops Road head office'] },
       caseOfficer: { name: 'National Intelligence Service', employers: ['NIS — Nairobi'] },
       intelligence: { name: 'National Intelligence Service', employers: ['NIS — Nairobi'] },
       meteorology: { name: 'Kenya Meteorological Department', employers: ['KMD — Dagoretti'] },

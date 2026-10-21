@@ -27,7 +27,7 @@ export const CROPS = {
   cattle: { name: 'Cow-calf cattle', icon: '🐄', revenue: 230, cost: 165 },
 };
 /** Land price per acre where farming makes sense. */
-export const LAND_PRICE = { smalltown: 11000, rural: 1200, gunnison: 2500, sunbelt: 3500, midcity: 8500, denver: 3000, amarillo: 2200, appalachia: 3500, elko: 900, fairbanks: 1800, bend: 6000, asheville: 9000, minneapolis: 7500, raleigh: 6500, nashville: 7000 };
+export const LAND_PRICE = { marfa: 600, decorah: 9500, galena: 9000, wellsboro: 5000, natchitoches: 3200, waycross: 3800, burns: 900, moab: 2500, cookeville: 6000, athens: 5500, flagstaff: 3000, smalltown: 11000, rural: 1200, gunnison: 2500, sunbelt: 3500, midcity: 8500, denver: 3000, amarillo: 2200, appalachia: 3500, elko: 900, fairbanks: 1800, bend: 6000, asheville: 9000, minneapolis: 7500, raleigh: 6500, nashville: 7000 };
 export const PLOTS = [80, 160, 320, 640, 1280];
 export const DOWN = 0.2;
 export const LOAN_RATE = 0.07;

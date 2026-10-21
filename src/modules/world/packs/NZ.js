@@ -68,6 +68,10 @@ export const NZ = {
       'NZ-CAN': region('Canterbury', { disasters: { earthquake: 0.05, flood: 0.03, wildfire: 0.02 } }),
       'NZ-WKO': region('Waikato', { disasters: { flood: 0.04, earthquake: 0.02 } }),
       'NZ-OTA': region('Otago', { population: 'small', disasters: { flood: 0.03, blizzard: 0.03, earthquake: 0.02 } }),
+      'NZ-GIS': region('Gisborne', { population: 'small', disasters: { flood: 0.06, earthquake: 0.02 } }),
+      'NZ-WTC': region('West Coast', { population: 'small', disasters: { flood: 0.06, earthquake: 0.03 } }),
+      'NZ-STL': region('Southland', { population: 'small', disasters: { flood: 0.04, blizzard: 0.03 } }),
+      'NZ-MWT': region('Manawatū-Whanganui', { population: 'small', disasters: { flood: 0.05 } }),
       'NZ-BOP': region('Bay of Plenty', { population: 'small', disasters: { flood: 0.04, hurricane: 0.03, earthquake: 0.03 } }),
     },
     cities: {
@@ -78,9 +82,13 @@ export const NZ = {
       tauranga: { name: 'Tauranga', icon: '🥝', type: 'Coastal metro', state: 'NZ-BOP', col: 1.05, market: 0.8, locality: 0.18, transit: 20, fare: ppp(100), walkable: false, size: 'medium', population: [160000, 160000] },
       dunedin: { name: 'Dunedin', icon: '🎓', type: 'Mid-size city', state: 'NZ-OTA', col: 0.92, market: 0.78, locality: 0.17, transit: 25, fare: ppp(90), walkable: true, size: 'medium', population: [135000, 135000] },
       queenstown: { name: 'Queenstown', icon: '⛷️', type: 'Small town', state: 'NZ-OTA', col: 1.25, market: 0.8, locality: 0.18, transit: 15, fare: ppp(80), walkable: true, size: 'small', population: [30000, 30000] },
+      gisborne: { name: 'Gisborne', icon: '🌅', type: 'Rural', state: 'NZ-GIS', col: 0.85, market: 0.78, locality: 0.17, transit: 3, fare: 0, walkable: false, size: 'small', population: [38000, 52000] },
+      westport: { name: 'Westport, West Coast', icon: '⛏️', type: 'Rural', state: 'NZ-WTC', col: 0.8, market: 0.78, locality: 0.17, transit: 0, fare: 0, walkable: true, size: 'small', population: [4700, 32000] },
+      invercargill: { name: 'Invercargill', icon: '🐑', type: 'Small town', state: 'NZ-STL', col: 0.85, market: 0.8, locality: 0.17, transit: 8, fare: ppp(60), walkable: false, size: 'small', population: [57000, 103000] },
+      whanganui: { name: 'Whanganui', icon: '🛶', type: 'Small town', state: 'NZ-MWT', col: 0.82, market: 0.78, locality: 0.17, transit: 8, fare: ppp(60), walkable: false, size: 'small', population: [48000, 48000] },
     },
     hometowns: ['auckland', 'auckland', 'auckland', 'wellington', 'christchurch', 'christchurch', 'hamilton', 'tauranga', 'dunedin', 'queenstown'],
-    population: { 'NZ-AUK': 1.8e6, 'NZ-WGN': 0.55e6, 'NZ-CAN': 0.68e6, 'NZ-WKO': 0.52e6, 'NZ-OTA': 0.25e6, 'NZ-BOP': 0.35e6 },
+    population: { 'NZ-AUK': 1.8e6, 'NZ-WGN': 0.55e6, 'NZ-CAN': 0.68e6, 'NZ-WKO': 0.52e6, 'NZ-OTA': 0.25e6, 'NZ-BOP': 0.35e6, 'NZ-GIS': 0.052e6, 'NZ-WTC': 0.032e6, 'NZ-STL': 0.1e6, 'NZ-MWT': 0.26e6 },
   },
   /** Elected offices (same shape as NationalOffices.js). */
   offices: {

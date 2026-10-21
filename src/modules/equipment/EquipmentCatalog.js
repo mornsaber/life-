@@ -339,6 +339,12 @@ export const GROUPS = {
     plotters: { name: 'Plotters & 3D printers', icon: '🖨️', need: need(1, 2, 6, 15), weight: 1, models: { plotter: M('Large-format plotter / 3D printer', 15000, 7, 1500) } },
     survey: { name: 'Site & test equipment', icon: '📏', need: need(1, 2, 6, 15), weight: 1, models: { kit: M('Scanner & test instruments', 40000, 8, 2000, { lease: true }) } },
   } },
+  emergencyOps: { name: 'Fleet & Facilities', categories: {
+    vehicles: { name: 'Response vehicles', icon: '🚙', need: need(4, 10, 25, 60), weight: 2, models: { ute: M('4x4 response vehicle', 65000, 6, 6000, { lease: true, usedCost: 26000 }) } },
+    boats: { name: 'Flood rescue boats', icon: '🚤', need: need(1, 3, 8, 20), weight: 1, models: { flood: M('Flood rescue boat & trailer', 85000, 12, 3000), jet: M('Jet-drive swift-water boat', 140000, 15, 4500) } },
+    generators: { name: 'Generators & lighting towers', icon: '🔦', need: need(4, 10, 25, 60), weight: 1, models: { gen: M('Trailer generator & lighting tower', 30000, 12, 1200) } },
+    eoc: { name: 'Emergency operations centres', icon: '🏢', need: need(1, 1, 2, 4), weight: 1.5, facility: true, models: { own: M('Emergency operations centre (build with a bond)', 8000000, 40, 150000, { build: true }), leased: M('Leased operations centre', 0, 99, 0, { rent: 120000 }) } },
+  } },
   agencyOffice: { name: 'Offices, Systems & Fleet', categories: {
     computers: COMPUTERS(need(15, 60, 250, 1000)),
     systems: { name: 'Case-management systems', icon: '🗄️', need: need(1, 1, 2, 4), weight: 2, models: { modern: M('Case-management system modernization', 2000000, 12, 200000, { refurb: true }) } },

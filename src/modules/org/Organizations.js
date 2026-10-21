@@ -27,7 +27,7 @@
  *            rel (how they get along with the player), selection ('appointed'|'elected'|'board'|'internal'|'hired') }
  */
 import { Random } from '../../core/Random.js';
-import { applyStaffing, STAFFING_VERSION } from './Staffing.js';
+import { applyStaffing, STAFFING_VERSION, NATIONAL_POLICE } from './Staffing.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
@@ -130,20 +130,21 @@ export function findOrCreateOrg(state, profession, regionId, { size, name } = {}
     if (isNationalService(state.character?.countryId, profession.id)) {
       size = 'mega';
       const key = orgKey('emergencyService', ORG_TYPES.emergencyService, regionId, stateId, name);
-      const org = state.orgs.byId[key] ?? buildOrg(state, rng, 'emergencyService', key, regionId, stateId, { size, name, profession });
-      Object.assign(org, { size: 'mega', regionId: null, stateId: null, national: true });
+      const org = state.orgs.byId[key] ?? buildOrg(state, rng, 'emergencyService', key, regionId, stateId, { size, name, profession, national: true });
+      Object.assign(org, { size: 'mega', regionId: null, stateId: null, national: true, countryId: org.countryId ?? state.character?.countryId });
       return org;
     }
   }
   // Abroad, public services sit where they really do: the council, or a body of their own.
-  const home = abroadHome(state, profession, name, types);
+  const home = abroadHome(state, profession, name, types, regionId);
   if (home?.kind === 'council') return findCouncil(state, regionId, size);
   if (home?.kind === 'body') {
     const typeId = `body:${profession.id}`;
     const key = `${typeId}:${home.name}`;
     const org = state.orgs.byId[key];
     if (org) { if (size && SIZE_RANK[size] > SIZE_RANK[org.size]) org.size = size; return org; }
-    return buildOrg(state, rng, typeId, key, regionId, stateId, { size: home.national ? 'mega' : size, name: home.name, profession });
+    const built = buildOrg(state, rng, typeId, key, regionId, stateId, { size: home.national ? 'mega' : size, name: home.name, profession, national: home.national, servedBy: home.servedBy, primaryPolice: home.primaryPolice });
+    return built;
   }
   const keyFor = (typeId, t) => orgKey(typeId, t, regionId, stateId, name);
   const keys = types.map((typeId) => ({ typeId, t: orgType(typeId), key: keyFor(typeId, orgType(typeId)) }));
@@ -168,38 +169,89 @@ const COUNCIL_ALSO = {
 /** An employer name that says it's the council's ("Manchester City Council — Schools", "Gemeente Utrecht"). */
 const COUNCIL_NAME = /\bCouncil\b|\bcouncil\b|Gemeente|kommun\b|Mairie|Comune|Ayuntamiento|Stadtverwaltung|City Hall|Municipio|Prefeitura|Municipal Corporation|District Office/;
 /** Places, so "Roads authority — Scotland" is one body and "NCA — Investigations" a unit of the NCA. */
-let PLACE_NAMES = null;
-const isPlace = (s) => {
+let CITY_NAMES = null;
+let PROVINCE_NAMES = null;
+const plain = (s) => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+const placeSets = () => {
   // (Foreign provinces aren't enumerable on STATES: reach them through the cities.)
-  PLACE_NAMES ??= new Set([
-    ...Object.getOwnPropertyNames(REGIONS).map((id) => REGIONS[id]?.name?.split(',')[0]),
-    ...Object.getOwnPropertyNames(STATES).map((id) => STATES[id]?.name),
-  ].filter(Boolean));
-  return PLACE_NAMES.has(String(s).trim());
+  CITY_NAMES ??= new Set(Object.getOwnPropertyNames(REGIONS).map((id) => REGIONS[id]?.name?.split(',')[0]).filter(Boolean).map(plain));
+  PROVINCE_NAMES ??= new Set(Object.getOwnPropertyNames(STATES).map((id) => STATES[id]?.name).filter(Boolean).map(plain));
 };
+const isCity = (s) => { placeSets(); return CITY_NAMES.has(plain(s)); };
+const isProvince = (s) => { placeSets(); return PROVINCE_NAMES.has(plain(s)) && !CITY_NAMES.has(plain(s)); };
+const isPlace = (s) => isCity(s) || isProvince(s);
+/** Countries whose provinces or states run their own justice, prisons and social services. */
+const FEDERAL = ['US', 'CA', 'AU', 'DE', 'IN', 'MX', 'ES', 'IT', 'BR', 'NG'];
+/**
+ * State-level services that are one body for the whole country in a unitary state (the Irish
+ * Prison Service, the Courts Service, Oranga Tamariki) and one per province in a federal one.
+ */
+const STATE_SERVICES = ['emergencyManagement', 'corrections', 'probation', 'courts', 'prosecution', 'publicDefender', 'cps', 'forensics', 'forester', 'dot', 'environmental', 'revenue', 'stateFire', 'gameWarden'];
 /** A composite agency label rather than an organization's name ("Financial Regulation (FCA · HMRC)"). */
 const LABEL_ONLY = /·|\/|\bRanger\b|\bOfficer\b|\bAnalysis\b|\bTechnical\b|\bInstitutes\b|\bRegulat|\bScreening\b|\bProtective\b/;
+/** "Department of Conservation Ranger" → the Department of Conservation; null when the label names no agency. */
+function agencyOfLabel(label) {
+  const m = String(label).match(/^(.*?)\s+Ranger(?:\s+\((.+)\))?$/);
+  if (!m) return null;
+  const agency = m[2] ?? m[1];
+  return /^National Park$/.test(agency) || LABEL_ONLY.test(agency) ? null : agency;
+}
 
 /**
  * Where a public career sits abroad: the council, or a body of its own (a national
  * agency with the office as your unit, or a regional body). null: as at home.
+ *
+ * Employer names say which: "Courts Service — Cork" is the Cork office of a national (or,
+ * in a federal country, provincial) body; "Forestry Service — Quebec" is a province's body.
  */
-function abroadHome(state, profession, employerName, types) {
+function abroadHome(state, profession, employerName, types, regionId) {
   const cc = state.character?.countryId ?? 'US';
   if (cc === 'US' || profession.sector === 'private' || !employerName) return null;
   if (types[0] === 'emergencyService' || types.some((id) => id === 'airportAuthority')) return null;
   const [before, after] = String(employerName).split(' — ');
-  // National agencies: the agency is the organization; the office is your unit.
+  const stateId = stateOfRegion(regionId);
+  const province = STATES[stateId]?.name;
+  // National agencies: the agency is the organization; the office (or the park) is your unit.
   if (profession.country || profession.sector === 'federal') {
     const label = profession.name;
+    const parks = agencyOfLabel(label);
+    if (parks) return { kind: 'body', national: true, name: parks };
+    // A national park with its own authority (the Lake District): a small body of its own.
+    if (/Ranger/.test(label) && /National Park/.test(employerName)) return { kind: 'body', name: employerName, servedBy: 'local' };
     return { kind: 'body', national: true, name: !LABEL_ONLY.test(label) ? label : after && !isPlace(after) ? before : employerName };
   }
   if (COUNCIL_CAREERS.includes(profession.id) || (COUNCIL_ALSO[cc] ?? COUNCIL_ALSO['*']).includes(profession.id) || COUNCIL_NAME.test(employerName)) {
     const t = orgType('cityGov');
     if (t.departments.some((d) => d.occupations.includes(profession.id))) return { kind: 'council' };
   }
-  // A regional body is named for its region; a unit of a body ("— Investigations") belongs to it.
-  return { kind: 'body', name: after && !isPlace(after) ? before : employerName };
+  const federal = FEDERAL.includes(cc);
+  const stateLevel = STATE_SERVICES.includes(profession.id) || profession.sector === 'state';
+  // "Courts Service — Cork": the Cork office of the national courts service (or the province's).
+  if (after && isCity(after)) {
+    if (stateLevel && federal && province) return { kind: 'body', name: `${before} — ${province}`, servedBy: 'province' };
+    if (stateLevel) return { kind: 'body', national: true, name: before };
+    return { kind: 'body', name: employerName, servedBy: 'local' };
+  }
+  // "Forestry Service — Canterbury": a province's own body, or (in a unitary state) the nation's regional office.
+  if (after && isProvince(after)) {
+    if (stateLevel && !federal) return { kind: 'body', national: true, name: before };
+    return { kind: 'body', name: employerName, servedBy: 'province' };
+  }
+  const agency = localAgency(cc, profession.id);
+  // A national police force (the Nationale Politie, Polismyndigheten): its regions and stations are units of it.
+  if (profession.id === 'statePolice' && NATIONAL_POLICE.includes(cc) && agency?.name) {
+    return { kind: 'body', national: true, primaryPolice: true, name: agency.name.replace(/\s*\(.*\)$/, '') };
+  }
+  // "Cork Prison", "Canterbury Division of Probation": a unit of the national service in a unitary state.
+  const serviceName = agency?.name ?? (after && !isPlace(after) ? before : null);
+  if (stateLevel && !federal && STATE_SERVICES.includes(profession.id) && serviceName && !/^(Schools?|Children's Services)$/.test(serviceName)) {
+    return { kind: 'body', national: true, name: serviceName };
+  }
+  // A regional body is named for its region (and covers it); a unit of a body ("— Investigations") belongs to it.
+  const regional = (stateLevel && federal) || (province && plain(employerName).includes(plain(province)));
+  // Where there are no local police, the prefecture's or province's police are the police.
+  const primaryPolice = profession.id === 'statePolice' && agency !== undefined && localAgency(cc, 'police') === null;
+  return { kind: 'body', name: after && !isPlace(after) ? before : employerName, servedBy: regional ? 'province' : 'local', ...(primaryPolice ? { primaryPolice } : {}) };
 }
 
 /** The local council where you live (one per town). */
@@ -268,7 +320,7 @@ export function localizePost(org, deptId, def) {
   return { ...def, title: local?.head ?? def.title, appointedBy: usElected ? 'the government' : appointedBy, ...(usElected ? { selection: 'appointed', office: undefined } : {}) };
 }
 
-function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession }) {
+function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession, national = false, servedBy = null, primaryPolice = false }) {
   const t = orgType(typeId);
   const pick = { typeId, key };
   const ctx = { city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng, name };
@@ -286,7 +338,16 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
     departments: {},
     people: {},
     founded: state.character?.age ?? 0,
+    ...(national ? { national: true, countryId: state.character?.countryId ?? 'US' } : {}),
+    ...(servedBy ? { servedBy } : {}),
+    ...(primaryPolice ? { primaryPolice } : {}),
   };
+  // A service named for its state or province (NSW Police Force, Victoria Police) covers all of it.
+  if (typeId === 'emergencyService' && !national && !org.servedBy) {
+    const code = String(stateId ?? '').split('-')[1];
+    const prov = STATES[stateId]?.name;
+    if ((prov && plain(org.name).includes(plain(prov))) || (code && code.length > 1 && new RegExp(`\\b${code}\\b`).test(org.name))) org.servedBy = 'province';
+  }
   // Abroad: a state-level body is named for its first local service (the Hokkaido Prefectural Police).
   const lead = t.scope !== 'market' && t.sector !== 'private' ? localLabels(state, t.departments[0]?.occupations) : null;
   if (lead?.agency?.employer && t.scope === 'state') org.name = lead.agency.employer(ctx.city, stateId, ctx.state);

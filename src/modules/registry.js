@@ -61,6 +61,7 @@ import { WorkGearModule } from './career/WorkGear.js';
 import { PoliceLifeModule } from './publicsafety/PoliceLife.js';
 import { FireLifeModule } from './publicsafety/FireLife.js';
 import { EquipmentModule } from './equipment/Equipment.js';
+import { SpecialistCallsModule } from './equipment/SpecialistCalls.js';
 import { VolunteerModule } from './service/Volunteering.js';
 import { ConscriptionModule } from './world/Conscription.js';
 import { MigrationModule } from './world/Migration.js';
@@ -97,6 +98,6 @@ import { JobLicensingModule } from './career/JobLicensing.js';
 
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, NationalityModule, FamilyAbroadModule, Friends, BondsModule, Community, ElderCare, EstatePlanning, Dynasty, NpcLives, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
-  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, LaborUnions, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, CaseFilesModule, LawSchoolModule, LawLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, BusinessLifeModule, WorkplaceClaims, PoliticsEngine, PartyModule, Legislature, Judiciary, LegalModule, CivilCourts, CivicModule,
+  FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, LaborUnions, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, CaseFilesModule, LawSchoolModule, LawLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, SpecialistCallsModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, BusinessLifeModule, WorkplaceClaims, PoliticsEngine, PartyModule, Legislature, Judiciary, LegalModule, CivilCourts, CivicModule,
   EmergencyModule, ServiceModule, VolunteerModule, ConscriptionModule, MigrationModule, ExpatModule, SchoolPathsModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync, HonoursModule, PublicServicesModule, ServiceMergersModule, DirectEntryModule, MoveAftermathModule, JobLicensingModule, AchievementsModule,
 ];

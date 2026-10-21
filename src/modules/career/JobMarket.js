@@ -13,7 +13,8 @@ import { lawValue } from '../politics/Laws.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, nextLevels } from './Ladder.js';
-import { createEmployer } from './Employers.js';
+import { createEmployer, cityName } from './Employers.js';
+import { regionsHere } from '../life/Regions.js';
 import { hire, stepForAtLeast, levelCheck } from './CareerEngine.js';
 import { recalcSalary } from './Compensation.js';
 import { candidateScore } from '../org/Vacancies.js';
@@ -33,17 +34,17 @@ const canGoHybrid = (profession, employer) => canGoRemote(profession) || (profes
 export const workModeOf = (job) => job?.workMode ?? (job?.remote ? 'remote' : 'onsite');
 
 /** A competing offer in your current field. */
-export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false } = {}) {
+export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false, regionId = null } = {}) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const profession = getProfession(job.professionId);
-  const employer = createEmployer(rng, state, profession, state.character.regionId);
+  const employer = createEmployer(rng, state, profession, regionId ?? state.character.regionId);
   // Police, fire and other ranked public jobs: a lateral comes in at the working rank with pay steps for experience.
   if (RANK_SECTORS.includes(profession.sector)) {
     const level = lateralEntryLevel(state, profession, employer.size) ?? levelById(profession, job.levelId);
     const step = lateralStep(state, profession) ?? 1;
     const salary = previewPay(state, { professionId: profession.id, levelId: level.id, employer, step });
-    return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode: 'onsite', nonCompete: 0, signing: 0, step, lateral: level.id !== job.levelId };
+    return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode: 'onsite', nonCompete: 0, signing: 0, step, lateral: level.id !== job.levelId, ...(regionId ? { regionId } : {}) };
   }
   // Sometimes the new title is a step up.
   const up = nextLevels(profession, employer.size, job.levelId).filter((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);
@@ -55,15 +56,44 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false } = {}
   const salary = Math.round(job.salary * (1 + rng.float(...raise)) * (workMode === 'remote' ? 0.95 : 1));
   const nonCompete = profession.sector === 'private' && rng.chance(['tech', 'finance', 'corporate', 'medical', 'insurance', 'realestate'].includes(profession.id) ? 0.45 : 0.15) ? rng.int(1, 2) : 0;
   const signing = profession.sector === 'private' && rng.chance(headhunter ? 0.6 : 0.3) ? Math.round(salary * rng.float(0.05, 0.15) / 1000) * 1000 : 0;
-  return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode, nonCompete, signing };
+  return { professionId: job.professionId, levelId: level.id, title: level.title, employer, salary, workMode, nonCompete, signing, ...(regionId ? { regionId } : {}) };
 }
 
-export const offerSummary = (o) => `${o.employer.name} (${o.employer.size}) · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`;
+/**
+ * Up to `n` offers from employers other than yours. Where your town has only one employer for
+ * the work (the city's police, the council, a provincial agency), the openings are in other cities.
+ */
+export function searchOffers(ctx, n, odds) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  const here = state.character.regionId;
+  const seen = new Set([job.employer.orgId]);
+  const elsewhere = rng.shuffle(regionsHere(state).filter((r) => r.id !== here)).slice(0, 8).map((r) => r.id);
+  const offers = [];
+  // A town has many firms but one police department: look harder at home in the private sector.
+  const tries = job.sector === 'private' ? [here, here, here] : [here];
+  for (let i = 0; i < n; i++) {
+    if (!rng.chance(odds)) continue;
+    for (const regionId of [...tries, ...elsewhere]) {
+      const offer = makeOffer(ctx, regionId === here ? {} : { regionId });
+      if (seen.has(offer.employer.orgId)) continue;
+      seen.add(offer.employer.orgId);
+      // A remote job elsewhere needs no move.
+      if (offer.workMode === 'remote') delete offer.regionId;
+      offers.push(offer);
+      break;
+    }
+  }
+  return offers;
+}
+
+export const offerSummary = (o) => `${o.employer.name} (${o.employer.size})${o.regionId ? ` in ${cityName(o.regionId)} — you'd move` : ''} · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`;
 
 /** Take an offer: a new employer in the same field (resigning the old job). */
 export function acceptOffer(ctx, offer) {
   const { state } = ctx;
   if (state.legal.incarceration) return ctx.log(`${offer.employer.name} withdrew its offer.`, '📭', 'bad');
+  if (offer.regionId && offer.regionId !== state.character.regionId) ctx.emit('region:relocate', { regionId: offer.regionId, reason: `You moved to ${cityName(offer.regionId)} to join ${offer.employer.name}.` });
   const job = hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
   if (!job) return undefined;
   if (offer.step) job.step = offer.step;
@@ -176,15 +206,15 @@ export const JobMarket = {
       if (yearlyCount(state, 'jobMarket.search')) return ctx.toast('You already shopped around this year.', 'warn');
       bumpYearly(state, 'jobMarket.search');
       const odds = clamp(0.35 + (job.performance - 50) / 150 + (state.stats.smarts - 50) / 300 - (state.economy.unemployment - 0.045) * 4, 0.1, 0.9);
-      const offers = [0, 1, 2].filter(() => rng.chance(odds)).map(() => makeOffer(ctx));
+      const offers = searchOffers(ctx, 3, odds);
       if (!offers.length) {
-        ctx.log('You sent out résumés and took calls. Nothing came of it this year.', '📭', 'warn');
+        ctx.log(job.employer.national ? `${job.employer.orgName ?? job.employer.name} is the only employer for your work in the country — ask for a transfer to another posting instead.` : 'You sent out résumés and took calls. Nothing came of it this year.', '📭', 'warn');
         return;
       }
       ctx.prompt({
         type: 'jobMarket.offers', icon: '📨', title: `${offers.length} Offer${offers.length > 1 ? 's' : ''} on the Table`,
         text: `You're ${job.title} at ${job.employer.name} ($${job.salary.toLocaleString()}/yr, ${WORK_MODES[workModeOf(job)].label.toLowerCase()}).\n${offers.map((o, i) => `${i + 1}. ${offerSummary(o)}`).join('\n')}`,
-        options: [...offers.map((o, i) => ({ id: String(i), label: `${i + 1}. Join ${o.employer.name}`, hint: `$${o.salary.toLocaleString()} · ${WORK_MODES[o.workMode].label}` })), { id: 'counter', label: '🃏 Use the best offer to ask for a raise' }, { id: 'stay', label: '🏠 Stay where you are' }],
+        options: [...offers.map((o, i) => ({ id: String(i), label: `${i + 1}. Join ${o.employer.name}${o.regionId ? ` (${cityName(o.regionId)})` : ''}`, hint: `$${o.salary.toLocaleString()} · ${WORK_MODES[o.workMode].label}${o.regionId ? ' · relocate' : ''}` })), { id: 'counter', label: '🃏 Use the best offer to ask for a raise' }, { id: 'stay', label: '🏠 Stay where you are' }],
         data: { offers },
       });
     },

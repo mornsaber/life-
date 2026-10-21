@@ -84,6 +84,9 @@ const tests = {
     let won = false;
     for (let i = 0; i < 30 && !won; i++) won = resolveElection(ctx, SERVICES.fire, member, 6, true);
     assert.ok(won);
+    // (A small town: plenty of neighbouring volunteer agencies — a big city has few.)
+    delete org.district;
+    org.regionId = 'smalltown';
     const d = districtOf(org, engine.rng);
     assert.ok(d.neighbors.length >= 2, 'neighbouring agencies');
     const chance = engine.rng.chance;

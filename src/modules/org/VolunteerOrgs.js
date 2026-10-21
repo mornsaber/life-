@@ -24,8 +24,9 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
-import { sideRng, initOrgs } from './Organizations.js';
-import { districtOf, growthTick, growthAction, districtScale } from './VolunteerGrowth.js';
+import { sideRng, initOrgs, findOrCreateOrg, seatHolders, personOf } from './Organizations.js';
+import { getProfession } from '../career/JobTrees.js';
+import { districtOf, growthTick, growthAction, districtScale, mergedKey } from './VolunteerGrowth.js';
 import { volunteerParent, volunteerGrant } from '../world/CountryLaw.js';
 import { REGIONS, stateIdOf } from '../life/Regions.js';
 
@@ -107,6 +108,35 @@ function npc(rng, org, rankIndex, ranks) {
   return p;
 }
 
+/**
+ * The headquarters of the service a unit belongs to (a state SES, FENZ, the THW): a real
+ * organization with a commissioner, a deputy, directorates and region controllers, and paid
+ * staff — the emergency-management career. null for independent or council-run units.
+ */
+export function ensureHq(state, org) {
+  const parent = org?.parent;
+  if (!parent || parent.level === 'municipal') return null;
+  const name = parent.name.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase());
+  const hq = findOrCreateOrg(state, getProfession('emergencyManagement'), org.regionId ?? state.character.regionId, { name: `${name} — state headquarters` });
+  if (!hq) return null;
+  org.hqId = hq.id;
+  hq.volunteerHq = true;
+  // Your region's controller and the head of operations are named people.
+  seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1);
+  seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1);
+  return hq;
+}
+/** The headquarters' leadership, for display (no generation). */
+export function hqLeaders(state, org) {
+  const hq = state.orgs?.byId?.[org?.hqId];
+  if (!hq) return null;
+  const head = personOf(hq, hq.head);
+  const ops = personOf(hq, hq.departments?.operations?.head);
+  const [controller] = seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1, false);
+  const [volunteers] = seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1, false);
+  return { hq, head, ops, controller, volunteers, staff: Object.values(hq.departments ?? {}).reduce((n, d) => n + (d.headcount ?? 0), 0) };
+}
+
 /** Find or build the organization behind your membership. */
 export function ensureVolunteerOrg(state, service, member) {
   initOrgs(state);
@@ -122,6 +152,7 @@ export function ensureVolunteerOrg(state, service, member) {
   }
   // Old saves: who the unit belongs to.
   if (org.parent === undefined) org.parent = parentFor(state, service.id);
+  if (org.parent && !org.hqId) ensureHq(state, org);
   member.orgId = key;
   // Old saves: a member already at an officer rank holds a seat.
   if (isSeatRank(service.id, member.rankIndex) && !(org.seats[member.rankIndex] ??= []).includes(PLAYER)) seatPlayer(org, member.rankIndex);
@@ -197,13 +228,32 @@ export function volunteerOrgTick(ctx, service, member) {
   for (let i = size; i < target; i++) npc(rng, org, 0, service.ranks);
   org.recruited = Math.max(0, (org.recruited ?? 0) - 2);
   syncSeats(org, service);
-  // Empty non-elected seats go to the most senior member below (if you're not ready for it).
-  for (const [idx, seats] of Object.entries(org.seats)) {
+  // Members work their way up the ranks below the officer seats with service (probie → firefighter → senior).
+  const firstSeat = Math.min(...Object.keys(org.seats).map(Number), service.ranks.length);
+  for (const p of roster(org)) {
+    if (p.rankIndex < firstSeat - 1 && p.years >= (p.rankIndex + 1) * 2 && rng.chance(0.45)) {
+      p.rankIndex += 1;
+      p.title = service.ranks[p.rankIndex]?.title ?? p.title;
+    }
+  }
+  // Empty seats go to the most senior member below (if you're not ready for it); where nobody holds the
+  // rank just below, the strongest member from further down steps up — the seat isn't left vacant.
+  // (Elected posts that fall vacant between elections are filled by the officers until the vote.)
+  for (const [idx, seats] of Object.entries(org.seats).sort(([a], [b]) => Number(b) - Number(a))) {
     for (let i = 0; i < seats.length; i++) {
       if (seats[i] !== null) continue;
       if (Number(idx) === member.rankIndex + 1 && !isElectedRank(service.id, Number(idx), org) && rng.chance(0.6)) continue; // held open for you
-      const pick = roster(org).filter((p) => p.rankIndex >= Number(idx) - 1).sort((a, b) => b.years - a.years)[0];
-      if (pick) { pick.rankIndex = Number(idx); pick.title = service.ranks[idx].title; seats[i] = pick.id; }
+      // The officers a rank below are first in line (their seats then open in turn), then the ranks.
+      const below = (org.seats[Number(idx) - 1] ?? []).filter((id) => id && id !== PLAYER).map((id) => org.people[id]).filter(Boolean);
+      const pool = [...below, ...roster(org)].sort((a, b) => b.rankIndex - a.rankIndex || b.years - a.years || b.performance - a.performance);
+      const pick = pool.find((p) => p.rankIndex >= Number(idx) - 1) ?? pool.find((p) => p.years >= 3) ?? pool[0];
+      if (!pick) continue;
+      const acting = pick.rankIndex < Number(idx) - 1;
+      if (below.includes(pick)) { const old = org.seats[Number(idx) - 1]; old[old.indexOf(pick.id)] = null; }
+      pick.rankIndex = Number(idx);
+      pick.title = service.ranks[idx].title;
+      seats[i] = pick.id;
+      if (acting && Number(idx) === topRank(service.id)) ctx.log(`${pick.name} stepped up to lead ${org.name} as ${pick.title}.`, service.icon, 'muted');
     }
   }
   const avgPerf = Object.values(org.people).reduce((s, p) => s + p.performance, 0) / Math.max(1, Object.keys(org.people).length);
@@ -213,7 +263,7 @@ export function volunteerOrgTick(ctx, service, member) {
     member.xp += 10;
     if (org.readiness < 35 && rng.chance(0.3)) ctx.log(`${org.name} is struggling: too few members show up for calls. The membership is grumbling about leadership.`, service.icon, 'warn');
   }
-  districtOf(org, rng);
+  districtOf(org, rng, state.orgs?.mergedVolunteer?.[mergedKey(org)]);
   growthTick(ctx, org, service, member, leadsOrg(org, service.id));
   // On-call (retained) firefighters are paid a retainer and for every call and drill.
   if (org.parent?.paid === 'oncall') ctx.earn(1500 + member.rankIndex * 400, `On-call retainer — ${org.name}`, { wage: true });
