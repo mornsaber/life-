@@ -4,6 +4,7 @@
  * workforce model), job board grouped by sector, and history.
  */
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
+import { engineSections } from './EngineViews.js';
 import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
@@ -97,7 +98,7 @@ function jobMarketCard(state) {
       c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
       claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
     ])}
-    ${job ? intlSection(state) : ''}${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
+    ${job ? engineSections(state) : ''}${job ? intlSection(state) : ''}${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
     <h4 class="sub">Work arrangement</h4><div class="toggle-row">${modes}</div>` : ''}
     <p class="fine">Strong performers get calls from recruiters. A competing offer can win you a raise where you are — but your boss will remember. Remote work means no commute, but you're out of sight when promotions come up.</p>`, { icon: '📨' });
 }
