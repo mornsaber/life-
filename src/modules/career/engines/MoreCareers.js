@@ -482,3 +482,102 @@ const CONGREGATION = {
   ],
 };
 Object.assign(AUDIENCE_CAREERS, { clergy: CONGREGATION, catholicClergy: { ...CONGREGATION, label: 'Your Parish', noun: 'parishioners', perFan: 0, payLabel: '', start: 400, ceiling: 12000 } });
+
+/* ------------------------------------------------------------------ */
+/* Second engines: careers with two sides to the work                  */
+/* ------------------------------------------------------------------ */
+
+Object.assign(SEASON_CAREERS, {
+  // Wardens and rangers work calls all year (shift engine) and live by the seasons too.
+  gameWarden: {
+    label: 'The Seasons', icon: '🦌', weights: { fitness: 2, smarts: 1 }, payLabel: 'Seasonal overtime',
+    plans: {
+      hunting: { name: 'Hunting-season patrols', icon: '🦌', desc: 'Opening weekends, spotlighting and tagged deer.', edge: 3, spread: 18, pay: 0.08, injury: 0.03, stress: 4 },
+      water: { name: 'Boating & fishing season', icon: '🚤', desc: 'BUI checks, licences and drownings.', edge: 3, spread: 18, pay: 0.08, injury: 0.02, stress: 3 },
+      sar: { name: 'Search-and-rescue standby', icon: '⛑️', desc: 'Lost hunters and stranded hikers. Long nights, big overtime.', edge: -2, spread: 25, pay: 0.18, injury: 0.05, stress: 6 },
+    },
+    tiers: [[80, 'a season of clean cases and lives saved', 1, 'good'], [55, 'a solid season', 0.6], [35, 'a rough season', 0.3, 'warn'], [-999, 'a season to forget', 0.1, 'warn']],
+    deck: [
+      D('poacher', '🌙', 'Spotlighting', 'A truck is spotlighting deer on a back road at 2 a.m. You\'re alone, an hour from backup.', [
+        { id: 'stop', label: '🚔 Make the stop', check: 50, text: 'Two rifles, a dead buck and three arrests. A clean case.', perf: 6, fail: { text: 'They ran. You got the plate.', perf: 1, stress: 4 } },
+        { id: 'follow', label: '📻 Follow and call for backup', text: 'A deputy met you; the stop was routine.', perf: 3 },
+      ]),
+    ],
+  },
+  parkService: {
+    label: 'The Seasons', icon: '🏞️', weights: { fitness: 2, happiness: 1 }, payLabel: 'Seasonal overtime',
+    plans: {
+      summer: { name: 'Summer visitor surge', icon: '🚗', desc: 'Packed trailheads, full campgrounds, and rescues.', edge: 2, spread: 20, pay: 0.1, injury: 0.03, stress: 5 },
+      fire: { name: 'Wildfire season details', icon: '🔥', desc: 'Weeks on a fire line in another park.', edge: -2, spread: 26, pay: 0.25, injury: 0.06, stress: 6 },
+      winter: { name: 'Winter operations', icon: '❄️', desc: 'Avalanche control, snowmobile patrol, quiet roads.', edge: 4, spread: 18, pay: 0.08, injury: 0.04, stress: 3 },
+    },
+    tiers: [[80, 'a great season in the park', 1, 'good'], [55, 'a busy season', 0.6], [35, 'a hard season', 0.3, 'warn'], [-999, 'a season with a tragedy', 0.1, 'warn']],
+    deck: [
+      D('selfie', '🦬', 'Too Close', 'A tourist is walking up to a bison for a selfie.', [
+        { id: 'warn', label: '📢 Get on the loudspeaker now', check: 35, text: 'He backed off just in time.', perf: 3, fail: { text: 'The bison charged. He lived; you did the first aid.', trauma: 4 } },
+      ]),
+    ],
+  },
+  oilGas: {
+    label: 'Your Hitches', icon: '🛢️', weights: { fitness: 2, smarts: 1 }, payLabel: 'Hitch bonuses',
+    plans: {
+      land: { name: 'Land rig, 14 on / 14 off', icon: '🏜️', desc: 'Basin rigs. Two weeks of twelve-hour tours, two weeks home.', edge: 3, spread: 15, pay: 0.06, injury: 0.04, stress: 4 },
+      offshore: { name: 'Offshore platform, 21 on / 21 off', icon: '🌊', desc: 'Helicopter in, three weeks on the platform. Better pay, harder to leave.', edge: 0, spread: 18, pay: 0.14, injury: 0.05, stress: 5 },
+      frac: { name: 'Frac crew', icon: '💥', desc: 'Pressure pumping on the move. The biggest checks and the longest hours.', edge: -3, spread: 24, pay: 0.2, injury: 0.08, stress: 7 },
+    },
+    tiers: [[80, 'a year without a single incident on your crew', 1, 'good'], [55, 'a steady year of hitches', 0.6], [35, 'a year of breakdowns and downtime', 0.25, 'warn'], [-999, 'a year with a serious incident on the rig', 0, 'warn']],
+    deck: [
+      D('kick', '⚠️', 'A Kick', 'The pit volume is climbing. It could be a kick — or a sensor glitch.', [
+        { id: 'shut', label: '🛑 Shut in the well now', check: 40, text: 'It was a real kick. You may have prevented a blowout.', perf: 8, commend: 0.5, fail: { text: 'A false alarm that cost a day of drilling.', perf: -2 } },
+        { id: 'watch', label: '👀 Watch it another few minutes', text: 'It settled down.', risk: { chance: 0.25, text: 'It wasn\'t a glitch. Gas reached the floor before the BOP closed. Everyone got off the rig.', trauma: 12, perf: -6 } },
+      ]),
+    ],
+  },
+});
+
+const BRAND = (o) => ({ perFan: 0.03, start: 300, ceiling: 1500000, payLabel: 'Sponsorships & client work', ...o });
+Object.assign(AUDIENCE_CAREERS, {
+  // Designers, trainers and game developers have clients and projects — and a following.
+  design: BRAND({
+    label: 'Your Portfolio and Following', icon: '🎨', noun: 'followers', weights: { happiness: 2, looks: 1 }, perFan: 0.04,
+    releases: {
+      case: { name: 'Publish a case study', icon: '📐', desc: 'Show the process behind your best work.', check: 45, boost: 1.25, floor: 800, risk: 0.01 },
+      side: { name: 'Launch a side project', icon: '🧪', desc: 'A typeface, an icon set, a little app.', check: 55, boost: 1.6, floor: 3000, risk: 0.03 },
+      talk: { name: 'Speak at a design conference', icon: '🎤', desc: 'Twenty minutes on stage.', check: 50, boost: 1.3, floor: 1500, risk: 0.02, stress: 4 },
+    },
+    name: (rng) => `"${pick(rng, ['Quiet Interfaces', 'A Typeface for', 'Redesigning the', 'Color in', 'Designing for'])} ${pick(rng, ['Everyone', 'Transit', 'Small Screens', 'Old Things', 'Trust'])}"`,
+    hit: 'went around every design blog',
+    deck: [D('copy', '🖼️', 'They Copied It', 'A big brand\'s new campaign is a near copy of your side project.', [
+      { id: 'post', label: '📣 Post the side-by-side', check: 45, text: 'The internet sided with you. The brand paid a licence fee.', money: 8000, moneyLabel: 'Licence settlement', rep: 6, fail: { text: 'Their lawyers sent you a scary letter.', stress: 6 } },
+      { id: 'let', label: '🤷 Let it go', text: 'It stings.' },
+    ])],
+  }),
+  fitness: BRAND({
+    label: 'Your Fitness Following', icon: '💪', noun: 'followers', weights: { looks: 2, fitness: 1 }, perFan: 0.05,
+    releases: {
+      program: { name: 'Launch a training program', icon: '📲', desc: 'Twelve weeks, an app, before-and-afters.', check: 50, boost: 1.5, floor: 4000, risk: 0.04 },
+      challenge: { name: 'Run a viral challenge', icon: '🔥', desc: 'Thirty days, a hashtag.', check: 45, boost: 1.4, floor: 3000, risk: 0.06 },
+      supplement: { name: 'Push a supplement brand', icon: '💊', desc: 'Easy money. Questionable claims.', check: 40, boost: 1.2, floor: 2000, risk: 0.25 },
+    },
+    name: (rng) => `"${pick(rng, ['Shred', 'Strong', 'Bodyweight', 'Morning', 'Iron'])} ${pick(rng, ['30', 'for Life', 'Foundations', 'Reset', 'Season'])}"`,
+    hit: 'took over everyone\'s feed',
+    deck: [D('injury', '🩼', 'A Follower Got Hurt', 'A follower says your program injured her back and wants you to pay.', [
+      { id: 'care', label: '🤝 Apologise, refund, add a safety note', text: 'She posted that you handled it well.', rep: 4, cost: 200, costLabel: 'Refund' },
+      { id: 'deny', label: '🙅 Deny it publicly', text: 'A pile-on followed.', rep: -8 },
+    ])],
+  }),
+  gameDevelopment: BRAND({
+    label: 'Your Players', icon: '🕹️', noun: 'players', weights: { smarts: 2, happiness: 1 }, perFan: 0.02, start: 1000, ceiling: 5000000, payLabel: 'Royalties & updates',
+    releases: {
+      demo: { name: 'Release a demo', icon: '🧩', desc: 'Get wishlists before launch.', check: 45, boost: 1.4, floor: 5000, risk: 0.02 },
+      launch: { name: 'Launch on a big storefront', icon: '🚀', desc: 'Reviews, streamers and launch-week sales.', check: 60, boost: 2.2, floor: 20000, risk: 0.06, stress: 8 },
+      update: { name: 'Ship a big free update', icon: '🛠️', desc: 'Win back old players.', check: 45, boost: 1.3, floor: 4000, risk: 0.02 },
+    },
+    name: (rng) => `"${pick(rng, ['Ashen', 'Star', 'Hollow', 'Neon', 'Little', 'Last'])} ${pick(rng, ['Crown', 'Drift', 'Keep', 'Garden', 'Protocol', 'Light'])}"`,
+    hit: 'hit the top-sellers list', award: { id: 'games.award', name: 'Game Award Nomination', icon: '🏆' },
+    deck: [D('review', '📝', 'Review Bombing', 'An internet mob is review-bombing your game over an unrelated tweet.', [
+      { id: 'quiet', label: '🤐 Ride it out', text: 'It passed in two weeks.', stress: 4 },
+      { id: 'respond', label: '🗣️ Respond publicly', check: 50, text: 'Your community rallied around you.', rep: 6, fail: { text: 'It got worse.', rep: -6, stress: 6 } },
+    ])],
+  }),
+});
