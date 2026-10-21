@@ -3,6 +3,7 @@
  * book of business, projects, seasons, audience). Read-only: they never
  * create records.
  */
+import '../../modules/career/engines/MoreCareers.js';
 import { esc, button, chip, disclosure, meter } from '../Components.js';
 import { shiftView, postEligibility } from '../../modules/career/engines/ShiftIncident.js';
 import { caseView, FOCUS, scaleOf } from '../../modules/career/engines/Caseload.js';

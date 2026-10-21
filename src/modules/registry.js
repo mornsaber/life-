@@ -75,6 +75,7 @@ import { DiplomacyModule } from './career/engines/Diplomacy.js';
 import { ClassroomModule } from './career/engines/Classroom.js';
 import { OfficePoliticsModule } from './career/engines/OfficePolitics.js';
 import { DealsModule } from './career/engines/Deals.js';
+import './career/engines/MoreCareers.js';
 import { SeasonWorkModule } from './career/engines/Seasons.js';
 import { AudienceModule } from './career/engines/Audience.js';
 import { VolunteerModule } from './service/Volunteering.js';
