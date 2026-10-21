@@ -21,6 +21,7 @@ import { SEASON_CAREERS } from '../src/modules/career/engines/Seasons.js';
 import { AUDIENCE_CAREERS } from '../src/modules/career/engines/Audience.js';
 import { INVESTIGATION_CAREERS } from '../src/modules/career/engines/Investigations.js';
 import { ROUTE_CAREERS } from '../src/modules/career/engines/Routes.js';
+import { OFFICE_CAREERS } from '../src/modules/career/engines/OfficePolitics.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -54,9 +55,9 @@ export function year(engine, state, types) {
 const BAD = /\bundefined\b|\bNaN\b|\[object |\bInfinity\b/;
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 /** Enabled engine buttons on the career tab. */
-const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|routeWork|investigations|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
+const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|routeWork|investigations|diplomacy|classroom|office|deals|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
 /** Every career an engine covers. */
-export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys))];
+export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys)), 'foreignService', 'education', ...OFFICE_CAREERS];
 const pure = (state, fn) => { const before = JSON.stringify(state); const html = fn(); assert.equal(JSON.stringify(state), before, 'rendering changed state'); return html; };
 
 const tests = {
@@ -221,6 +222,55 @@ const tests = {
     assert.ok(state.careerLife.routeWork.quals.hazmat);
     engine.dispatch('routeWork.line', 'tanker');
     assert.equal(state.careerLife.routeWork.line, 'tanker');
+  },
+  'foreign service: a cone, a post you live at, and the work of the cone'() {
+    const { engine, state } = worker('foreignService', 27);
+    assert.ok(state.career.job, 'hired');
+    state.career.job.levelId = 'fs4';
+    state.prompts = [];
+    engine.bus.emit('career:hired', { ctx: engine.context(), job: state.career.job });
+    const bid = state.prompts.find((p) => p.type === 'federal.posting');
+    assert.ok(bid, 'a bid list');
+    const abroad = bid.options.find((o) => o.id !== 'domestic');
+    engine.resolvePrompt(bid.id, abroad.id);
+    assert.ok(state.character.posting?.country, 'you live at post');
+    year(engine, state, ['diplomacy.']);
+    assert.ok(state.careerLife.diplomacy?.cone, 'a cone was chosen');
+    year(engine, state, ['diplomacy.']);
+    assert.match(pure(state, () => VIEWS.career(state, {})), /Your Post/);
+  },
+  'k-12: a named class, a spring test, tutoring'() {
+    const { engine, state } = worker('education', 28);
+    for (let y = 0; y < 3 && state.career.job; y++) year(engine, state, ['classroom.']);
+    const rec = state.careerLife.classroom;
+    assert.equal(rec.klass.students.length, 8);
+    assert.ok(rec.years.length >= 2, 'spring tests');
+    state.prompts = [];
+    const kid = rec.klass.students[1];
+    engine.dispatch('classroom.tutor', kid.id);
+    assert.ok(kid.tutored);
+    assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(kid.name));
+  },
+  'office politics: calibration, mentors, and two bottoms mean you are out'() {
+    const { engine, state } = worker('corporate', 29);
+    state.prompts = [];
+    engine.dispatch('office.network');
+    for (let y = 0; y < 3 && state.career.job; y++) year(engine, state, ['office.']);
+    assert.ok(state.careerLife.office.ratings.length >= 1);
+    const w = worker('corporate', 30);
+    let out = false;
+    for (let y = 0; y < 6 && w.state.career.job; y++) { w.state.career.job.performance = 5; w.state.careerLife ??= {}; year(w.engine, w.state, ['office.']); if (!w.state.career.job) out = true; }
+    assert.ok(out, 'managed out after bottom ratings');
+  },
+  'deals: mandates move through stages, close for fees and pay a bonus'() {
+    let closed = 0;
+    for (let i = 0; i < 4; i++) {
+      const { engine, state } = worker('finance', 31 + i);
+      for (let y = 0; y < 4 && state.career.job; y++) { year(engine, state, ['deals.']); state.prompts = []; engine.dispatch('deals.pitch'); }
+      closed += state.careerLife.deals.closed.length;
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), /Your Deals/);
+    }
+    assert.ok(closed > 0, 'some deals close');
   },
   'engine cards: random clicks on every engine career never break'() {
     const problems = [];

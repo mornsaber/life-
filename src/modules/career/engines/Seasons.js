@@ -10,7 +10,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 const D = (id, icon, title, text, options) => ({ id, icon, title, text, options });
 
@@ -116,7 +116,7 @@ export const SEASON_CAREERS = {
   },
 };
 
-const config = (job) => SEASON_CAREERS[job?.professionId];
+const config = (job) => SEASON_CAREERS[engineKey(job)];
 const fresh = (cfg) => ({ plan: Object.keys(cfg.plans)[0], seasons: [], best: null });
 
 export function seasonView(state) {
@@ -162,7 +162,7 @@ export const SeasonWorkModule = {
     }
     if (cfg.deck?.length && rng.chance(0.6) && !state.prompts.some((x) => x.type === 'seasonWork.event')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'seasonWork.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'seasonWork.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

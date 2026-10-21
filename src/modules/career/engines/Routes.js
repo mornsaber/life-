@@ -13,7 +13,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 /** A bid line: seniority (years) to hold it, pay differential, stress, time away (happiness), crash risk ×, volume ×, needs a qualification. */
 const Ln = (name, icon, desc, o = {}) => ({ name, icon, desc, years: 0, pay: 1, stress: 3, away: 0, risk: 1, rate: 1, ...o });
@@ -213,7 +213,7 @@ export const ROUTE_CAREERS = {
   },
 };
 
-const config = (job) => ROUTE_CAREERS[job?.professionId];
+const config = (job) => ROUTE_CAREERS[engineKey(job)];
 const fresh = (cfg) => ({ line: Object.keys(cfg.lines)[0], logged: 0, quals: {}, safeYears: 0, incidents: 0, checkDue: null, milestones: [] });
 
 export function routeView(state) {
@@ -288,7 +288,7 @@ export const RouteWorkModule = {
     rec.rep = Math.round(clamp(rec.rep + (rec.safeYears >= 3 ? 1 : 0) + (job.performance - 55) / 15, 0, 100));
     if (cfg.deck.length && rng.chance(0.55) && !state.prompts.some((x) => x.type === 'routeWork.event')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'routeWork.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'routeWork.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

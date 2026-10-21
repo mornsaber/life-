@@ -20,6 +20,10 @@
 import { clamp } from '../../../core/Random.js';
 import { addHonor } from '../../../core/State.js';
 import { offenseName } from '../../legal/Offenses.js';
+import { PROFESSIONS } from '../JobTrees.js';
+
+/** The career an engine is configured for: a national agency abroad uses its US template's. */
+export const engineKey = (job) => (job ? PROFESSIONS[job.professionId]?.template ?? job.professionId : null);
 
 export const lifeOf = (state, engineId, professionId, init = {}) => {
   state.careerLife ??= {};

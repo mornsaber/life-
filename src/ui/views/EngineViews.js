@@ -10,6 +10,10 @@ import { bookView } from '../../modules/career/engines/ClientBook.js';
 import { projectView, APPROACH } from '../../modules/career/engines/Projects.js';
 import { investigationView, TECHNIQUES, techniqueEligibility } from '../../modules/career/engines/Investigations.js';
 import { routeView, lineEligibility, qualEligibility } from '../../modules/career/engines/Routes.js';
+import { diplomacyView, CONES } from '../../modules/career/engines/Diplomacy.js';
+import { classroomView, APPROACHES as TEACH, NEEDS } from '../../modules/career/engines/Classroom.js';
+import { officeView, BUCKETS } from '../../modules/career/engines/OfficePolitics.js';
+import { dealsView, STAGES, KINDS } from '../../modules/career/engines/Deals.js';
 import { seasonView } from '../../modules/career/engines/Seasons.js';
 import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
@@ -115,8 +119,61 @@ function routeSection(state) {
   return disclosure('engine.route', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your line (bid by seniority)</h4><div class="toggle-row">${lines}</div><h4 class="sub">Qualifications</h4><div class="toggle-row">${quals}</div><p class="fine">One bid and one course a year. Qualifications open better lines and add pay.</p>`, { count: cfg.lines[lineId]?.name });
 }
 
+const cap = (t) => t.replace(/^./, (c) => c.toUpperCase());
+
+function diplomacySection(state) {
+  const v = diplomacyView(state);
+  if (!v) return '';
+  const { rec, posting } = v;
+  const job = state.career.job;
+  const cones = Object.entries(CONES).map(([id, c]) => button(`${c.icon} ${c.name}`, 'diplomacy.cone', { arg: id, variant: rec?.cone === id ? 'small on' : 'small', disabled: !rec?.cone || rec.cone === id || rec.coneChanged || (job.yearsAtEmployer ?? 0) < 5 || Boolean(state.yearly['diplomacy.cone']), hint: rec?.coneChanged ? 'You\'ve changed cones once' : (job.yearsAtEmployer ?? 0) < 5 ? 'Cone changes after five years' : c.desc })).join('');
+  const work = rec ? (rec.cone === 'consular' ? `${chip(`🛂 ${rec.visas.toLocaleString()} visa interviews`)} ${chip(`🆘 ${rec.citizens} citizens helped`)}` : chip(`📨 ${rec.cables} cables`)) : '';
+  const where = posting ? `<p>${chip(`🌐 ${esc(posting.city)}, ${esc(posting.country)}`)}${posting.hardship ? ` ${chip(`+${Math.round(posting.hardship * 100)}% hardship`, 'warn')}` : ''}${posting.danger ? ` ${chip(`+${Math.round(posting.danger * 100)}% danger`, 'warn')}` : ''}</p>` : '<p class="fine">A tour at headquarters.</p>';
+  return disclosure('engine.diplomacy', '🌐 Your Post', `${where}${rec?.cone ? `<p>${CONES[rec.cone].icon} <b>${esc(CONES[rec.cone].name)} cone</b> ${work}</p>` : '<p class="fine">You choose a cone with your first year at post.</p>'}${rec?.evacuations ? `<p>${chip(`🚁 ${rec.evacuations} evacuation${rec.evacuations === 1 ? '' : 's'}`, 'warn')}</p>` : ''}${rec ? meter(rec.rep, { label: 'Reputation' }) : ''}<h4 class="sub">Cone</h4><div class="toggle-row">${cones}</div><p class="fine">Tours last three years and you live at post. Hardship and danger posts pay more and count at promotion boards; senior officers with a strong record can be nominated ambassador.</p>`, { count: posting?.city ?? 'HQ' });
+}
+
+function classroomSection(state) {
+  const v = classroomView(state);
+  if (!v) return '';
+  const { rec } = v;
+  const y = state.yearly ?? {};
+  const approach = rec?.approach ?? 'engaging';
+  const buttons = Object.entries(TEACH).map(([id, a]) => button(`${a.icon} ${a.name}`, 'classroom.approach', { arg: id, variant: id === approach ? 'small on' : 'small', disabled: id === approach || Boolean(y['classroom.approach']), hint: a.desc })).join('');
+  const kids = (rec?.klass?.students ?? []).map((s) => `<li class="report-row"><div><b>${esc(s.name)}</b> <small class="muted">${NEEDS[s.need].icon} ${esc(NEEDS[s.need].label)}${s.tutored ? ' · tutored' : ''}</small></div><div>${button('✏️ Tutor', 'classroom.tutor', { arg: s.id, variant: 'tiny', disabled: s.tutored || Boolean(y['classroom.tutor']), hint: 'After school, twice a week' })} <small class="${s.score < 60 ? 'neg' : ''}">${s.score}</small></div></li>`).join('');
+  const last = rec?.years?.[0];
+  const stats = last ? `<p>${chip(`📝 Last spring: ${last.pass}% proficient`, last.pass >= 80 ? 'good' : last.pass < 45 ? 'warn' : '')} ${rec.alumni.length ? chip(`💌 ${rec.alumni.length} students who loved your class`) : ''}</p>` : '<p class="fine">Your first class starts in the fall.</p>';
+  return disclosure('engine.classroom', '🍎 Your Class', `${stats}<h4 class="sub">How you teach</h4><div class="toggle-row">${buttons}</div>${kids ? `<h4 class="sub">This year's class (a sample)</h4><ul class="history">${kids}</ul>` : ''}<p class="fine">Proficient means 60 or above on the spring test. Tutor one student a year.</p>`, { count: last ? `${last.pass}% proficient` : null });
+}
+
+function officeSection(state) {
+  const v = officeView(state);
+  if (!v) return '';
+  const { rec } = v;
+  const y = state.yearly ?? {};
+  const actions = [
+    button('🎤 Network & volunteer for visible work', 'office.network', { variant: 'small', disabled: Boolean(y['office.network']), hint: 'Visibility, and maybe a mentor' }),
+    button('☕ Time with your mentor', 'office.mentor', { variant: 'small', disabled: !rec?.mentor || Boolean(y['office.mentor']), hint: rec?.mentor ? 'Strengthen your sponsor' : 'Find a mentor first' }),
+    button('🤝 Make peace with your rival', 'office.rival', { arg: 'ally', variant: 'small', disabled: !rec || Boolean(y['office.rival']), hint: 'Split the credit' }),
+    button('🗡️ Undermine your rival', 'office.rival', { arg: 'undermine', variant: 'small danger', disabled: !rec || Boolean(y['office.rival']), hint: 'Risky' }),
+  ].join('');
+  const ratings = (rec?.ratings ?? []).slice(0, 6).map((r) => chip(`${BUCKETS[r.bucket].icon} ${r.age}`, r.bucket === 'top' ? 'good' : r.bucket === 'bottom' ? 'warn' : '')).join(' ');
+  const people = rec ? `<p>${rec.mentor ? chip(`🧭 Mentor: ${esc(rec.mentor.name)}, ${esc(rec.mentor.title)}`, 'good') : chip('🧭 No mentor yet')} ${chip(`😼 Rival: ${esc(rec.rival.name)}`, rec.rival.threat >= 60 ? 'warn' : '')}</p>${meter(rec.visibility, { label: 'Visibility' })}${rec.mentor ? meter(rec.mentor.bond, { label: 'Sponsorship' }) : ''}${meter(rec.rival.threat, { label: 'Rival threat' })}` : '<p class="fine">Your first calibration is at year end.</p>';
+  return disclosure('engine.office', '🏢 Office Politics', `${people}${ratings ? `<h4 class="sub">Calibration history</h4><p>${ratings}</p>` : ''}<div class="toggle-row">${actions}</div><p class="fine">Year-end ratings come from the work, your sponsor, your visibility — and what your rival says. Two bottom ratings in a row and you're out.</p>`, { count: rec?.ratings?.[0] ? BUCKETS[rec.ratings[0].bucket].label.split(' —')[0] : null });
+}
+
+function dealsSection(state) {
+  const v = dealsView(state);
+  if (!v) return '';
+  const { rec } = v;
+  const y = state.yearly ?? {};
+  const pipe = (rec?.pipeline ?? []).map((d) => `<li class="report-row"><div><b>${esc(cap(d.name))}</b> <small class="muted">${KINDS[d.kind].icon} $${d.size.toLocaleString()}M · ${esc(STAGES[Math.min(d.stage, 4)])}</small></div>${button('🌙 All-nighters', 'deals.push', { arg: d.id, variant: 'tiny', disabled: (y['deals.push'] ?? 0) >= 2 || d.stage >= 4, hint: 'Faster, but your health pays' })}</li>`).join('');
+  const closed = (rec?.closed ?? []).slice(0, 5).map((c) => `<li class="report-row"><div><b>${esc(cap(c.name))}</b> <small class="muted">age ${c.age}</small></div><small>$${(c.fee / 1e6).toFixed(1)}M fees</small></li>`).join('');
+  const stats = rec ? `<p>${chip(`💼 ${rec.closed.length} closed`, 'good')} ${chip(`💀 ${rec.dead} died`)} ${chip(`💰 $${(rec.fees / 1e6).toFixed(1)}M lifetime fees`)}</p>` : '<p class="fine">Your pipeline fills with your first year.</p>';
+  return disclosure('engine.deals', '💼 Your Deals', `${stats}${button('📑 Pitch for a new mandate', 'deals.pitch', { variant: 'small', disabled: Boolean(y['deals.pitch']), hint: 'Three weeks on a pitch book' })}${pipe ? `<h4 class="sub">Pipeline</h4><ul class="history">${pipe}</ul>` : ''}${closed ? `<h4 class="sub">Closed</h4><ul class="history">${closed}</ul>` : ''}<p class="fine">Pitch → Mandate → Diligence → Signing → Closed. Fees fill the bonus pool at year end.</p>`, { count: rec ? `${rec.pipeline.length} live` : null });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state)].join('');
+  return [diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state)].join('');
 }

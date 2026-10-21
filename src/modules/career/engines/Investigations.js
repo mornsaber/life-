@@ -13,7 +13,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 /** evidence per year, heat (exposure) per year, extra danger */
 export const TECHNIQUES = {
@@ -106,7 +106,7 @@ export const INVESTIGATION_CAREERS = {
   },
 };
 
-const config = (job) => INVESTIGATION_CAREERS[job?.professionId];
+const config = (job) => INVESTIGATION_CAREERS[engineKey(job)];
 const fresh = () => ({ technique: 'surveillance', case: null, closed: [], arrests: 0, convictions: 0 });
 /** Trainees are still at the academy or riding along. */
 const working = (job) => job && job.levelId !== 'trainee';
@@ -127,6 +127,9 @@ export function techniqueEligibility(state, id) {
   return { ok: true };
 }
 
+/** Abroad, the national agency's own commendation stands in for the American award. */
+const awardFor = (job, cfg) => (job.professionId === engineKey(job) ? cfg.award : { id: `${job.professionId}.commendation`, name: `${job.employer?.name?.split(' — ')[0] ?? 'Agency'} Commendation`, icon: '🏅' });
+
 function open(rng, cfg, rec) {
   rec.case = { target: cfg.target(rng), kind: rng.pick(cfg.kinds), evidence: 0, years: 0, heat: 0 };
 }
@@ -146,7 +149,7 @@ function takedown(ctx, cfg, rec) {
     applyFx(ctx, rec, { text: `You caught ${c.target}.${convicted ? ' He\'s back in custody for good.' : ' A judge let him out on bond again.'}`, perf: convicted ? 6 : 1, rep: convicted ? 6 : 0 }, cfg.icon);
   } else if (outcome === 'landmark') {
     applyFx(ctx, rec, { text: `The takedown of ${c.target}: ${arrests} arrests, a press conference, and convictions on every count. A landmark ${c.kind} case.`, perf: 10, rep: 12, happiness: 8 }, '🚨');
-    if (rng.chance(0.5)) applyFx(ctx, rec, { honor: cfg.award });
+    if (rng.chance(0.5)) applyFx(ctx, rec, { honor: awardFor(state.career.job, cfg) });
   } else if (convicted) {
     applyFx(ctx, rec, { text: `You took down ${c.target}: ${arrests} arrests and guilty pleas from most of them.`, perf: 6, rep: 6 }, '🚨');
   } else {
@@ -185,7 +188,7 @@ export const InvestigationsModule = {
     else ctx.log(`Your ${c.kind} case on ${c.target}: ${Math.min(99, c.evidence)}% of what a prosecutor needs.`, cfg.icon);
     if (rng.chance(0.6) && !state.prompts.some((x) => x.type === 'investigations.event')) {
       const d = rng.pick([...cfg.deck, ...COMMON]);
-      ctx.prompt({ type: 'investigations.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'investigations.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

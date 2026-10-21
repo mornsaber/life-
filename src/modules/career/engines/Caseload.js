@@ -18,7 +18,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 export const FOCUS = {
   thorough: { name: 'Thorough', icon: '🔬', speed: 0.45, quality: 0.15, stress: 2, desc: 'Fewer cases closed, better outcomes. The backlog grows.' },
@@ -167,7 +167,7 @@ export const CASE_CAREERS = {
 };
 CASE_CAREERS.psychology = { ...CASE_CAREERS.counseling, label: 'Your Patients', noun: 'patient', kinds: ['PTSD', 'OCD', 'neuropsych evaluation', 'custody evaluation', 'bipolar disorder', 'eating disorder'] };
 
-const config = (job) => CASE_CAREERS[job?.professionId];
+const config = (job) => CASE_CAREERS[engineKey(job)];
 export const isCaseCareer = (job) => Boolean(config(job));
 const fresh = () => ({ focus: 'balanced', cases: [], closed: 0, good: 0, bad: 0 });
 
@@ -231,7 +231,7 @@ export const CaseloadModule = {
     if (rec.rep >= 85 && rng.chance(0.15)) applyFx(ctx, rec, { text: 'Your work was recognized with an award from your profession.', perf: 4, honor: { id: `case.${job.professionId}.award`, name: `${cfg.label === 'Your Bench' ? 'Analyst' : 'Practitioner'} of the Year`, icon: '🏆' } }, '🏆');
     if (cfg.deck?.length && rng.chance(0.65) && !state.prompts.some((p) => p.type === 'caseload.case')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'caseload.case', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'caseload.case', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

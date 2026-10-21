@@ -17,7 +17,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, skill, engineKey } from './Kit.js';
 
 const D = (id, icon, title, text, options) => ({ id, icon, title, text, options });
 
@@ -129,7 +129,7 @@ export const BOOK_CAREERS = {
   },
 };
 
-const config = (job) => BOOK_CAREERS[job?.professionId];
+const config = (job) => BOOK_CAREERS[engineKey(job)];
 export const isBookCareer = (job) => Boolean(config(job));
 const fresh = () => ({ clients: [], won: 0, lost: 0, revenue: 0 });
 /** Large books (an agency's policies, a practice's patients) keep a sample: each named client stands for `k` real ones. */
@@ -189,10 +189,10 @@ export const ClientBookModule = {
     if (big && rng.chance(0.25) && !state.prompts.some((p) => p.type === 'clientBook.event')) {
       ctx.prompt({ type: 'clientBook.event', icon: '🦈', title: 'A Rival Circles Your Best Client', text: `A competitor is courting ${big.name} (${big.kind}, $${(big.value * k).toLocaleString()} a year) with a better price.`,
         options: [{ id: 'match', label: '💸 Match the price', hint: 'Keep them, earn less' }, { id: 'relationship', label: '☕ Lean on the relationship', hint: `Loyalty ${big.loyalty}%` }, { id: 'let', label: '👋 Let them go' }],
-        data: { kind: 'poach', clientId: big.id, professionId: job.professionId } });
+        data: { kind: 'poach', clientId: big.id, professionId: engineKey(job) } });
     } else if (cfg.deck?.length && rng.chance(0.5) && !state.prompts.some((p) => p.type === 'clientBook.event')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'clientBook.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'clientBook.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

@@ -688,7 +688,7 @@ export function careerOnAgeUp(ctx) {
   chainOfCommand(state, job);
   job.paidThisYear = false;
   resetBudget(state, job.employer, job.sector);
-  if (job.professionId === 'foreignService') job.postingYears += 1;
+  if (/(^|_)foreignService$/.test(job.professionId)) job.postingYears += 1;
 
   if (isDeployed(state)) {
     ctx.log(`Your position at ${job.employer.name} is protected under USERRA while you're mobilized.`, '🛡️');

@@ -11,7 +11,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 export const PACE = {
   rest: { name: 'Take it easy', icon: '🌿', growth: -0.05, burnout: -25, stress: -3, desc: 'Recharge. The audience drifts a little.' },
@@ -122,7 +122,7 @@ export const AUDIENCE_CAREERS = {
   },
 };
 
-const config = (job) => AUDIENCE_CAREERS[job?.professionId];
+const config = (job) => AUDIENCE_CAREERS[engineKey(job)];
 const fresh = (cfg) => ({ income: 0, fans: cfg.start, pace: 'steady', burnout: 0, releases: [], peak: cfg.start });
 /** 12,345 → "12.3K" */
 export const fansLabel = (n) => n >= 1e6 ? `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(n >= 1e4 ? 0 : 1)}K` : String(n);
@@ -172,7 +172,7 @@ export const AudienceModule = {
     if (rec.income) ctx.earn(income, cfg.payLabel, { wage: true });
     if (cfg.deck?.length && rng.chance(0.55) && !state.prompts.some((x) => x.type === 'audience.event')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'audience.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'audience.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

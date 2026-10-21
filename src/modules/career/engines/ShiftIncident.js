@@ -12,7 +12,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, engineKey } from './Kit.js';
 
 const P = (name, icon, desc, o = {}) => ({ name, icon, desc, stress: 3, pay: 1, rate: 1, years: 0, ...o });
 const C = (id, icon, title, text, options) => ({ id, icon, title, text, options });
@@ -237,7 +237,7 @@ export const SHIFT_CAREERS = {
   },
 };
 
-const config = (job) => SHIFT_CAREERS[job?.professionId];
+const config = (job) => SHIFT_CAREERS[engineKey(job)];
 export const isShiftCareer = (job) => Boolean(config(job));
 /** The decks a call can come from, every shift-and-incident career. */
 const allCalls = () => Object.values(SHIFT_CAREERS).flatMap((c) => c.calls);
@@ -287,7 +287,7 @@ export const ShiftWorkModule = {
     }
     if (rng.chance(0.7 * Math.min(1.3, post.rate)) && !state.prompts.some((p) => p.type === 'shiftWork.call')) {
       const c = rng.pick(cfg.calls);
-      ctx.prompt({ type: 'shiftWork.call', icon: c.icon, title: c.title, text: c.text, options: promptOptions(c.options), data: { callId: c.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'shiftWork.call', icon: c.icon, title: c.title, text: c.text, options: promptOptions(c.options), data: { callId: c.id, professionId: engineKey(job) } });
     }
   },
   actions: {

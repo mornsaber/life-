@@ -10,6 +10,8 @@ import { pickFresh } from '../../core/Pools.js';
 import { L } from '../career/Ladder.js';
 import { addHonor } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
+import { postAbroad, endPosting } from '../world/Posting.js';
+import { COUNTRIES } from '../world/Countries.js';
 
 const FED = { sizes: { large: 1, enterprise: 1 } };
 
@@ -120,8 +122,13 @@ export const POSTS = [
   { city: 'Kyiv', country: 'Ukraine', hardship: 0.3, danger: 0.3, flavor: '🌻' },
 ];
 
+const homeName = (state) => COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'United States';
+const isDiplomat = (job) => /(^|_)foreignService$/.test(job?.professionId ?? '');
+
 function postingPrompt(ctx, reason) {
-  const choices = ctx.rng.shuffle(POSTS).slice(0, 3);
+  const home = homeName(ctx.state);
+  const choices = ctx.rng.shuffle(POSTS.filter((p) => p.country !== home)).slice(0, 3);
+  const us = !ctx.state.character.countryId || ctx.state.character.countryId === 'US';
   ctx.prompt({
     type: 'federal.posting',
     icon: '🌐',
@@ -129,7 +136,7 @@ function postingPrompt(ctx, reason) {
     text: `${reason}\nHardship and danger posts pay differentials and earn promotion credit; embassy housing is provided overseas, and you'll carry diplomatic immunity.`,
     options: [
       ...choices.map((p) => ({ id: p.city, label: `${p.flavor} ${p.city}, ${p.country}`, hint: p.hardship || p.danger ? `+${Math.round(p.hardship * 100)}% hardship${p.danger ? ` · +${Math.round(p.danger * 100)}% danger` : ''}` : 'Comfortable post', tone: p.danger ? 'danger' : undefined })),
-      { id: 'domestic', label: '🏛️ Domestic tour in Washington, D.C.', hint: 'No immunity, no differentials' },
+      { id: 'domestic', label: us ? '🏛️ Domestic tour in Washington, D.C.' : '🏛️ A tour at the ministry at home', hint: 'No immunity, no differentials' },
     ],
   });
 }
@@ -272,7 +279,7 @@ export const FederalAgencies = {
 
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx, job, returning }) => {
-      if (job.professionId === 'foreignService' && !returning) postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
+      if (isDiplomat(job) && !returning) postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
     });
   },
 
@@ -302,7 +309,7 @@ export const FederalAgencies = {
       const allowance = Math.round(job.salary * (job.posting.hardship + job.posting.danger));
       if (allowance) ctx.earn(allowance, `Post differential & danger pay — ${job.posting.city}`, { wage: true });
     }
-    if (job.professionId === 'foreignService' && (job.postingYears ?? 0) >= 3) {
+    if (isDiplomat(job) && (job.postingYears ?? 0) >= 3) {
       postingPrompt(ctx, 'Your tour is ending. Bid on your next assignment.');
       return;
     }
@@ -326,12 +333,17 @@ export const FederalAgencies = {
     posting(ctx, _data, optionId) {
       if (optionId === 'domestic') {
         ctx.emit('career:posting', { posting: null });
-        ctx.emit('region:relocate', { regionId: 'dc', reason: 'You took a domestic tour at Main State.' });
+        endPosting(ctx, 'You came home for a tour at headquarters.');
+        if (!ctx.state.character.countryId || ctx.state.character.countryId === 'US') ctx.emit('region:relocate', { regionId: 'dc', reason: 'You took a domestic tour at Main State.' });
         return;
       }
       const post = POSTS.find((p) => p.city === optionId);
+      if (!post) return;
       ctx.emit('career:posting', { posting: { city: post.city, country: post.country, hardship: post.hardship, danger: post.danger, immunity: true, housing: true } });
-      ctx.log(`You were posted to the U.S. Embassy in ${post.city}, ${post.country}. ${post.flavor}`, '🌐', 'milestone');
+      // You live there for the tour.
+      endPosting(ctx);
+      postAbroad(ctx, { place: post.city, country: post.country, kind: 'tour', years: 3 });
+      ctx.log(`You were posted to your country's embassy in ${post.city}, ${post.country}. ${post.flavor}`, '🌐', 'milestone');
       if (post.hardship >= 0.25) ctx.emit('career:adjust', { performance: 3, boss: 3 });
     },
     event(ctx, data, optionId) {

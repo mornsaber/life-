@@ -14,7 +14,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
-import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill } from './Kit.js';
+import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 export const APPROACH = {
   careful: { name: 'Careful', icon: '📐', speed: 0.8, quality: 7, stress: 2, desc: 'Slower, better work. Reviews love it; schedules don\'t.' },
@@ -176,20 +176,6 @@ export const PROJECT_CAREERS = {
       ]),
     ],
   },
-  finance: {
-    label: 'Your Deals', icon: '💼', weights: { smarts: 3 },
-    name: (rng) => `${pick(rng, ['the IPO of', 'the sale of', 'a bond deal for', 'the merger of', 'a leveraged buyout of'])} ${pick(rng, ['a software firm', 'a hospital group', 'a regional bank', 'a retailer', 'a chemicals company'])}`,
-    acclaim: 'deal of the year honours and a large bonus', failure: { text: 'A deal you rushed fell apart in diligence. The client fired the bank.', perf: -12, rep: -12 },
-    deck: [
-      D('tip', '🤫', 'A Tip You Shouldn\'t Use', 'You know a merger will be announced Monday. Your brother-in-law could buy the target\'s stock.', [
-        { id: 'silent', label: '🤐 Say nothing', text: 'Monday came. Your conscience is clean.', perf: 1 },
-        { id: 'tip', label: '📞 Tip him off', tone: 'danger', text: 'He made a fortune.', offense: 'insiderTrading', offenseContext: 'tipping off a relative before a merger', discovery: 0.35 },
-      ]),
-      D('allnighter', '🌙', 'The Fourth All-Nighter', 'The model is due at 7 a.m. for the third time this week.', [
-        { id: 'grind', label: '☕ Grind it out', text: 'Done. You saw the sunrise from the office again.', perf: 4, stress: 8, health: -3 },
-      ]),
-    ],
-  },
   marketing: {
     label: 'Your Campaigns', icon: '📣', weights: { smarts: 1, looks: 1, happiness: 1 },
     name: (rng) => `the ${pick(rng, ['holiday', 'launch', 'rebrand', 'Super Bowl', 'influencer', 'back-to-school'])} campaign`,
@@ -216,7 +202,7 @@ export const PROJECT_CAREERS = {
 PROJECT_CAREERS.ironworking = { ...PROJECT_CAREERS.carpentry, icon: '🏗️' };
 PROJECT_CAREERS.craneOperator = { ...PROJECT_CAREERS.carpentry, icon: '🏗️', failure: { text: 'A lift you rushed swung into the steel. Nobody died; the investigation was long.', perf: -12, rep: -10, trauma: 6 } };
 
-const config = (job) => PROJECT_CAREERS[job?.professionId];
+const config = (job) => PROJECT_CAREERS[engineKey(job)];
 export const isProjectCareer = (job) => Boolean(config(job));
 const fresh = () => ({ approach: 'careful', project: null, portfolio: [] });
 
@@ -274,7 +260,7 @@ export const ProjectWorkModule = {
     if (p.progress >= 100) finish(ctx, cfg, rec);
     if (cfg.deck?.length && rng.chance(0.55) && !state.prompts.some((x) => x.type === 'projectWork.crisis')) {
       const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'projectWork.crisis', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: job.professionId } });
+      ctx.prompt({ type: 'projectWork.crisis', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {
