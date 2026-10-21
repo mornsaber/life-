@@ -21,6 +21,7 @@ import {
   speaksLocal, localLanguage, nativeLanguages, LANGUAGE_FLUENT, nationalityCode, ASYLUM, ASYLUM_COST, NON_QUALIFYING_VISAS, freeMovementTo, isEU,
 } from './Immigration.js';
 import { homeDanger, underMobilization, warIn } from './War.js';
+import { spouseOf } from '../people/People.js';
 import { REGIONS, regionsIn, changeRegion, countryIdOf } from '../life/Regions.js';
 import { NATIONAL_PROFESSIONS } from '../career/JobTrees.js';
 import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
@@ -64,7 +65,48 @@ export function routesTo(state, to) {
     ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
     : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
   const asylum = asylumRoute(state, to);
-  return asylum ? [asylum, ...visas] : visas;
+  return [...(asylum ? [asylum] : []), ...visas, irregularRoute(state, to)];
+}
+
+/**
+ * Crossing without papers: a smuggler, a night crossing, a boat. It usually works — and then you
+ * live undocumented: cash work only, no benefits, and removal with a re-entry ban if you're caught.
+ */
+export const SMUGGLER_FEE = { US: 9000, GB: 12000, AU: 15000, NZ: 15000, IE: 10000, CA: 9000, '*': 7000 };
+export function irregularRoute(state, to) {
+  const banned = bannedFrom(state, to);
+  const island = ['AU', 'NZ', 'JP', 'GB', 'IE', 'SG'].includes(to);
+  const odds = clamp((island ? 0.45 : 0.7) - (banned ? 0.15 : 0), 0.2, 0.8);
+  return { kind: 'irregular', ok: state.character.age >= 16, reason: 'Too young to make the crossing alone', odds, fee: SMUGGLER_FEE[to] ?? SMUGGLER_FEE['*'], illegal: true,
+    label: `🌙 Cross without papers (about ${Math.round(odds * 100)}% get through)`, rule: { name: 'irregular crossing' } };
+}
+
+/**
+ * Ways out of living undocumented — all of them hard. A country's regularisation for long
+ * residence and work (Spain's arraigo after three years, Italy's and France's after five), a rare
+ * amnesty, or marriage to a citizen (in the US, only after leaving and a waiver of the ten-year bar).
+ */
+export const REGULARIZE = {
+  ES: { years: 3, odds: 0.45, name: 'arraigo social (settled residence)' }, IT: { years: 5, odds: 0.3, name: 'regolarizzazione' }, FR: { years: 5, odds: 0.3, name: 'admission exceptionnelle au séjour' },
+  GB: { years: 20, odds: 0.5, name: 'leave to remain on long residence (20 years)' }, IE: { years: 8, odds: 0.4, name: 'the undocumented regularisation scheme' }, BR: { years: 4, odds: 0.5, name: 'autorização de residência' },
+  MX: { years: 4, odds: 0.45, name: 'regularización migratoria' }, US: { years: 10, odds: 0.12, name: 'cancellation of removal (10 years, exceptional hardship)' },
+  '*': { years: 10, odds: 0.15, name: 'regularisation on humanitarian grounds' },
+};
+export function regularizeOptions(state) {
+  const res = residencyOf(state);
+  if (res?.status !== 'undocumented') return [];
+  const here = countryIdOf(state);
+  const age = state.character.age;
+  const years = age - (res.overstaySince ?? res.arrived ?? age);
+  const rule = REGULARIZE[here] ?? REGULARIZE['*'];
+  const spouse = spouseOf(state);
+  const citizenSpouse = spouse && nationalityCode(spouse) === here;
+  const used = (res.attempts ?? 0) >= 3;
+  return [
+    { id: 'residence', label: `🏠 Apply for ${rule.name}`, ok: years >= rule.years && !used, reason: used ? 'You\'ve used up your chances' : `Needs ${rule.years} years here (you have ${years})`, odds: rule.odds * (state.career.job ? 1.2 : 0.8), fee: 4000 },
+    { id: 'marriage', label: '💍 Apply through your marriage to a citizen', ok: Boolean(citizenSpouse) && !used, reason: citizenSpouse ? 'You\'ve used up your chances' : 'Needs a spouse who is a citizen here', odds: here === 'US' ? 0.25 : 0.55, fee: 6000 },
+    ...(res.amnesty ? [{ id: 'amnesty', label: '📜 Apply under the amnesty', ok: true, odds: 0.75, fee: 1500 }] : []),
+  ];
 }
 
 /** Fleeing a war: claim asylum on arrival (only while the danger at home is real). */
@@ -116,7 +158,9 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
       old.qualifyingSince = (old.qualifyingSince ?? old.arrived) + (age - old.leftAt);
       delete old.leftAt;
     }
-    else if (visa === 'asylum' || visa === 'temporary') {
+    else if (visa === 'irregular') {
+      m.residences[to] = { status: 'undocumented', visa: 'irregular', arrived: age, overstaySince: age, from, irregular: true };
+    } else if (visa === 'asylum' || visa === 'temporary') {
       const law = ASYLUM[to];
       m.residences[to] = visa === 'temporary'
         ? { status: 'refugee', visa, arrived: age, grantedAt: age, from, temporary: true }
@@ -311,7 +355,7 @@ export const MigrationModule = {
   },
 
   onAgeUp(ctx) {
-    const { state } = ctx;
+    const { state, rng } = ctx;
     const m = state.migration;
     if (!m) return;
     const age = state.character.age;
@@ -340,7 +384,14 @@ export const MigrationModule = {
     if (!res) return;
     if (res.removal && !state.legal.incarceration) return removal(ctx, 'After your conviction, a judge ordered your removal.');
     if (res.status === 'asylum') return asylumYear(ctx, res);
-    if (res.status === 'undocumented') return undocumentedYear(ctx, res);
+    if (res.status === 'undocumented') {
+      // Now and then a government declares an amnesty for people already living here.
+      if (!res.amnesty && rng.chance(['ES', 'IT', 'BR', 'MX', 'IE'].includes(here) ? 0.03 : 0.008)) {
+        res.amnesty = true;
+        ctx.log(`${COUNTRIES[here].name} announced a one-time amnesty for undocumented residents. You can apply (Move tab) — if you dare to come forward.`, '📜', 'good');
+      }
+      return undocumentedYear(ctx, res);
+    }
     if (res.temporary && !warIn(state, res.from) && !res.endNotified) {
       res.endNotified = true;
       ctx.log(`The war in ${COUNTRIES[res.from].name} is over. Your temporary protection continues for now; you can go home or apply to stay.`, '🕊️', 'info');
@@ -399,7 +450,21 @@ export const MigrationModule = {
       if (!route?.ok) return ctx.toast(route?.reason ?? 'Not eligible', 'warn');
       if (kind !== 'asylum' && !canAfford(state, EMIGRATION_COST + route.fee)) return ctx.toast(`You need $${(EMIGRATION_COST + route.fee).toLocaleString()} for the move and the application.`, 'warn');
       ensureMigration(state);
-      if (!['citizen', 'resident', 'asylum', 'freeMovement'].includes(kind)) {
+      if (kind === 'irregular') {
+        if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast('One crossing attempt a year.', 'warn');
+        bumpYearly(state, `migration.apply.${to}`);
+        ctx.spend(route.fee, 'Paid a smuggler', { credit: true });
+        if (!rng.chance(route.odds)) {
+          const ban = Math.ceil((OVERSTAY_BAN[to] ?? 5) / 2);
+          state.migration.bans = { ...(state.migration.bans ?? {}), [to]: state.character.age + ban };
+          ctx.stat('health', -rng.int(3, 15));
+          ctx.stat('happiness', -10);
+          ctx.log(`You were caught trying to cross into ${COUNTRIES[to].name} without papers, held for weeks and sent back. You're barred from entering for ${ban} years, and the smuggler kept the money.`, '🚨', 'bad');
+          return ctx.toast('Caught at the border', 'bad');
+        }
+        ctx.log(`After a frightening journey you crossed into ${COUNTRIES[to].name} without papers. Officially, you're not here: cash work, no benefits, and always looking over your shoulder.`, '🌙', 'warn');
+      }
+      if (!['citizen', 'resident', 'asylum', 'freeMovement', 'irregular'].includes(kind)) {
         if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast(`One application to ${COUNTRIES[to].name} a year.`, 'warn');
         bumpYearly(state, `migration.apply.${to}`);
         ctx.spend(route.fee, `${route.rule.name} application`, { credit: true });
@@ -450,6 +515,36 @@ export const MigrationModule = {
       delete res.grace;
       if (elig.rule.permanent) Object.assign(res, { status: 'permanent', permanentSince: state.character.age });
       ctx.log(`Approved: you're now here on a ${elig.rule.name}${elig.rule.permanent ? ' — as a permanent resident' : ''}.`, '🛂', 'good');
+    },
+
+    /** arg: 'residence' | 'marriage' | 'amnesty' — try to get legal status. */
+    regularize(ctx, id) {
+      const { state, rng } = ctx;
+      const res = residencyOf(state);
+      const opt = regularizeOptions(state).find((o) => o.id === id);
+      if (!res || !opt) return;
+      if (!opt.ok) return ctx.toast(opt.reason, 'warn');
+      if (yearlyCount(state, 'migration.regularize')) return ctx.toast('One application a year.', 'warn');
+      bumpYearly(state, 'migration.regularize');
+      ctx.spend(opt.fee, 'Immigration lawyer and application', { credit: true });
+      res.attempts = (res.attempts ?? 0) + 1;
+      if (id === 'amnesty') delete res.amnesty;
+      const here = countryIdOf(state);
+      if (rng.chance(opt.odds)) {
+        Object.assign(res, { status: 'visa', visa: id === 'marriage' ? 'family' : 'work', regularized: true, qualifyingSince: state.character.age, expires: state.character.age + 2 });
+        delete res.overstaySince;
+        ctx.stat('happiness', 15);
+        ctx.stat('stress', -10);
+        return ctx.log(`Approved. After years in the shadows you have legal status in ${COUNTRIES[here].name}: the right to live and work here, renewable, and a road to permanent residence.`, '🪪', 'milestone');
+      }
+      // Coming forward has a price: some refusals end in a removal order.
+      if (rng.chance(0.25)) {
+        const ban = OVERSTAY_BAN[here] ?? 5;
+        state.migration.bans = { ...(state.migration.bans ?? {}), [here]: state.character.age + ban };
+        return removal(ctx, `Your application was refused, and having come forward, you were ordered removed. You're barred from returning for ${ban} years.`);
+      }
+      ctx.stat('happiness', -6);
+      return ctx.log(`Refused. ${res.attempts >= 3 ? 'That was your last real chance.' : 'Your lawyer says you can try again — the odds don\'t get better.'}`, '🛂', 'bad');
     },
 
     applyPR(ctx) {

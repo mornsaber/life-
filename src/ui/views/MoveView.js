@@ -14,7 +14,7 @@ import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countri
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
-import { routesTo, departureBlock, LANGUAGE_CLASS_COST } from '../../modules/world/Migration.js';
+import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions } from '../../modules/world/Migration.js';
 import { optionRow } from '../Components.js';
 
 function licenseImpact(state, toState) {
@@ -107,6 +107,11 @@ function passportCard(state) {
           : res.visa === 'freeMovement' ? `Right to live and work (${res.scheme ?? 'free movement'})`
           : res.status === 'permanent' && !law.visas[res.visa]?.permanent ? law.pr?.name ?? 'Permanent residence' : law.visas[res.visa]?.name ?? (res.visa === 'family' ? 'Dependent residence' : 'Residence');
     lines.push(`<p>${chip(STATUS_LABEL[res.status] ?? res.status, res.status === 'permanent' ? 'good' : 'warn')} ${esc(visa)}${res.expires != null ? ` · renews at ${res.expires}` : ''}${res.grace != null ? ` · ${chip(`⚠️ Conditions not met: leave by ${res.grace}`, 'bad')}` : ''}${res.removal ? ` ${chip('Removal ordered', 'bad')}` : ''}</p>`);
+    if (res.status === 'undocumented') {
+      const opts = regularizeOptions(state);
+      lines.push(`<small class="fine">${res.irregular ? 'You crossed without papers' : 'You overstayed'}. Getting legal status is hard, and applying means coming forward: a refusal can end in removal.</small>`);
+      lines.push(`<div class="toggle-row">${opts.map((o) => button(o.label, 'migration.regularize', { arg: o.id, variant: 'small', disabled: !o.ok || Boolean(state.yearly['migration.regularize']), hint: o.ok ? `≈${Math.round(o.odds * 100)}% · ${money(o.fee)} with a lawyer` : o.reason })).join('')}</div>`);
+    }
     if (res.status === 'asylum') {
       lines.push(`<small class="fine">⏳ Decision ${res.decisionAt > state.character.age ? `in ${res.decisionAt - state.character.age} yr` : 'due this year'} · ${state.character.age < res.workFrom ? 'no permission to work yet' : 'may work'} · reception housing${asylumLaw.support ? ` · ${money(asylumLaw.support)}/yr support` : ''}</small>`);
     }
@@ -156,10 +161,10 @@ function abroadCard(state) {
     const list = routes.map((r) => optionRow({
       icon: '',
       title: esc(r.label),
-      meta: r.ok ? (r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
+      meta: r.ok ? (r.kind === 'irregular' ? `⚠️ Illegal · ${money(r.fee)} to a smuggler · caught: sent back and banned · then life without papers` : r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
       tone: r.ok ? '' : 'why',
       locked: !r.ok,
-      action: button('Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
+      action: button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
     })).join('');
     const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
     return disclosure(`abroad.${c.id}`, `${c.flag} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });

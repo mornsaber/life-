@@ -112,6 +112,28 @@ const tests = {
     assert.ok(!state.career.job?.secondment, 'home after a year');
     assert.ok(state.honors.some((h) => /UN Medal/.test(h.name)), 'the UN Medal');
   },
+
+  'you can cross without papers; getting legal status afterwards is hard'() {
+    let crossed = 0;
+    let caught = 0;
+    let legal = 0;
+    for (let i = 0; i < 30; i++) {
+      const { engine, state } = life('MX', 20 + i, 25);
+      state.finances.cash = 60000;
+      engine.dispatch('migration.emigrate', 'US:irregular');
+      for (let k = 0; k < 3 && state.prompts.length; k++) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options[0].id);
+      if ((state.character.countryId ?? 'US') !== 'US') { caught += 1; assert.ok(state.migration.bans?.US > state.character.age, 'banned after being caught'); continue; }
+      crossed += 1;
+      assert.equal(state.migration.residences.US.status, 'undocumented');
+      assert.match(VIEWS.move(state, {}), /without papers/);
+      // Ten years later, cancellation of removal: long odds.
+      state.migration.residences.US.overstaySince -= 10;
+      engine.dispatch('migration.regularize', 'residence');
+      if (state.migration.residences.US?.status === 'visa') legal += 1;
+    }
+    assert.ok(crossed > caught, `${crossed} crossed, ${caught} caught`);
+    assert.ok(legal < crossed / 2, `${legal} of ${crossed} got status`);
+  },
 };
 
 let failed = 0;
