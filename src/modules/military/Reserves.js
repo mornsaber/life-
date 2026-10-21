@@ -9,7 +9,7 @@ import { sofTick } from './SpecialOps.js';
 import { serviceLifeTick } from './MilitaryLife.js';
 import { schoolTick } from './Schools.js';
 import { clamp } from '../../core/Random.js';
-import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion, branchOf } from './MilitaryEngine.js';
+import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, finishOfficerAcademy, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion, branchOf } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
 import { serviceWar, serviceWarFactor } from '../world/War.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
@@ -32,6 +32,7 @@ export function reserveTick(ctx, svc) {
   if (svc.isNew) {
     svc.isNew = false;
     ctx.log(`You completed ${entrySchool(svc)} and ${specialtyName(svc)} school, then reported to your reserve unit.`, '🎖️', 'military');
+    finishOfficerAcademy(ctx, svc);
     completeTraining(ctx, svc);
     ctx.stat('fitness', rng.int(5, 10));
   }

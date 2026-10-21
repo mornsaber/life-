@@ -325,6 +325,12 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     const top = Math.max(hi + priorServiceYears(state), maxOfficerAge > 39 ? maxOfficerAge : 0);
     if (age < lo || age > top) return { ok: false, reason: `Officers: age ${lo}–${top}` };
     if (!meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
+    // Without a degree, a school-leaver cadet has to get through the officer selection board.
+    if (maxOfficerAge <= 39 && !meetsEducation(state, { level: 'bachelor' })) {
+      if (age > CADET_MAX_AGE) return { ok: false, reason: `School-leaver officer cadets: age ${lo}–${CADET_MAX_AGE} (older candidates need a degree)` };
+      if (state.stats.smarts < 60) return { ok: false, reason: 'The officer selection board needs aptitude (smarts 60+)' };
+      if (state.stats.fitness < 50) return { ok: false, reason: 'The officer selection board needs fitness 50+' };
+    }
   } else {
     const [lo, hi] = joinAges(isAbroad(state) ? countryOf(state).id : null, branchId, 'enlisted') ?? [17, 39];
     const top = hi + priorServiceYears(state);
@@ -335,6 +341,34 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (state.stats.health < 40) return { ok: false, reason: isAbroad(state) ? 'Fails the medical' : 'Fails MEPS medical (health)' };
   if (state.stats.fitness < 30) return { ok: false, reason: 'Fails fitness test' };
   return { ok: true };
+}
+
+/** The oldest school-leaver officer cadet (graduates are taken older). */
+export const CADET_MAX_AGE = 25;
+/** An officer candidate without a degree: selection board, then a year at the academy. */
+export const needsOfficerAcademy = (state, track, direct) => track === 'officer' && direct == null && !meetsEducation(state, { level: 'bachelor' });
+/** Odds of passing the officer selection board (two days of tests, interviews and command tasks). */
+export const officerBoardOdds = (state) => clamp(0.35 + (state.stats.smarts - 60) / 100 + (state.stats.fitness - 50) / 200, 0.15, 0.8);
+
+/**
+ * The cadet year: most pass the commissioning course; those who don't can serve in the ranks.
+ * Called when initial training ends.
+ */
+export function finishOfficerAcademy(ctx, svc) {
+  if (!svc.cadet) return;
+  const { state, rng } = ctx;
+  delete svc.cadet;
+  const odds = clamp(0.8 + (state.stats.smarts - 60) / 200 + (state.stats.fitness - 50) / 200, 0.55, 0.95);
+  const school = branchOf(svc).officerSchool;
+  if (rng.chance(odds)) {
+    ctx.log(`You passed out of ${school} after a year as an officer cadet and were commissioned.`, '🎓', 'milestone');
+    return;
+  }
+  svc.track = 'enlisted';
+  svc.grade = Math.min(2, BRANCHES[svc.branch].enlisted.length - 1);
+  svc.commissionedYos = null;
+  ctx.log(`You failed the commissioning course at ${school}. The ${branchOf(svc).name} offered you a place in the ranks instead, as a ${rankOf(svc).title}.`, '🥾', 'warn');
+  ctx.stat('happiness', -8);
 }
 
 /** Clearance a service member needs: their specialty's, and at least Secret for any officer. */
@@ -425,6 +459,8 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   // Schools and qualifications from earlier service carry over; PME up to your entry grade is credited.
   svc.schools = Object.assign({}, ...state.military.history.map((h) => h.schools ?? {}));
   for (const p of PME[track] ?? []) if (p.forGrade <= startGrade) svc.schools[p.id] ??= state.character.age;
+  // No degree: a year at the academy as an officer cadet before the commission.
+  if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
   state.military.service = svc;
   state.military.academyCredit = 0;
   if (prior) ctx.log(`${prior} year${prior > 1 ? 's' : ''} of prior service (earlier enlistments and academy years) count toward your retirement.`, '📜', 'good');

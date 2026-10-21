@@ -20,7 +20,7 @@ import { clamp } from '../../core/Random.js';
 import { addHonor } from '../../core/State.js';
 import {
   ranksOf,
-  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, retirementYearsFor, branchOf } from './MilitaryEngine.js';
+  BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, finishOfficerAcademy, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, retirementYearsFor, branchOf } from './MilitaryEngine.js';
 import { combatTempo } from '../world/NationalForces.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 
@@ -646,6 +646,7 @@ export function activeDutyTick(ctx, svc) {
   if (svc.isNew) {
     svc.isNew = false;
     ctx.log(`You survived ${entrySchool(svc)}, then finished ${specialtyName(svc)} training.`, '🎖️', 'military');
+    finishOfficerAcademy(ctx, svc);
     completeTraining(ctx, svc);
     ctx.stat('fitness', rng.int(6, 12));
     ctx.stat('stress', 8);

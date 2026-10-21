@@ -11,7 +11,7 @@ import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
   enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
-import { monthlyBasePay, requiredClearance, clearanceDenied } from './MilitaryEngine.js';
+import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
@@ -161,6 +161,16 @@ export const MilitaryModule = {
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (component === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
       const b = branchFor(state, branch) ?? BRANCHES[branch];
+      // No degree: the officer selection board first — aptitude tests, interviews and command tasks.
+      if (track === 'officer' && !direct && needsOfficerAcademy(state, track, null)) {
+        if (yearlyCount(state, 'military.officerBoard')) return ctx.toast('You sat the officer selection board this year.', 'warn');
+        bumpYearly(state, 'military.officerBoard');
+        if (!ctx.rng.chance(officerBoardOdds(state))) {
+          ctx.log(`You sat the ${b.name}'s officer selection board and weren't selected. You can try again next year — or enlist and earn a commission from the ranks.`, '📋', 'warn');
+          return undefined;
+        }
+        ctx.log(`You passed the ${b.name}'s officer selection board. Next: a year at ${b.officerSchool ?? 'the officer academy'} as an officer cadet.`, '📋', 'good');
+      }
       ctx.prompt({
         type: 'military.chooseSpecialty',
         icon: b.icon,
