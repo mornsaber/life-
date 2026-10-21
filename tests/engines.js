@@ -15,6 +15,8 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { SHIFT_CAREERS } from '../src/modules/career/engines/ShiftIncident.js';
 import { CASE_CAREERS } from '../src/modules/career/engines/Caseload.js';
+import { BOOK_CAREERS } from '../src/modules/career/engines/ClientBook.js';
+import { PROJECT_CAREERS } from '../src/modules/career/engines/Projects.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -90,6 +92,42 @@ const tests = {
       assert.ok(state.careerLife?.caseload?.cases, id);
       assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(CASE_CAREERS[id].label), id);
     }
+  },
+  'book of business: clients pay, prospecting grows the book, neglect shrinks it'() {
+    for (const id of Object.keys(BOOK_CAREERS)) {
+      const { engine, state } = worker(id, 11);
+      if (!state.career.job) continue;
+      year(engine, state, ['clientBook.']);
+      const rec = state.careerLife?.clientBook;
+      assert.ok(rec?.clients.length > 0, `${id}: a starting book`);
+      assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(BOOK_CAREERS[id].label), id);
+    }
+    const { engine, state } = worker('realestate', 12);
+    year(engine, state, ['clientBook.']);
+    const before = state.careerLife.clientBook.clients.length;
+    state.stats.looks = 90;
+    engine.dispatch('clientBook.prospect');
+    assert.ok(state.careerLife.clientBook.clients.length >= before, 'prospecting adds clients');
+    const pay = state.finances.ledger.income.filter((i) => /book/i.test(i.source)).reduce((s, i) => s + i.amount, 0);
+    assert.ok(pay >= 0);
+  },
+  'projects: finish into the portfolio; corners come back to bite'() {
+    for (const id of Object.keys(PROJECT_CAREERS)) {
+      const { engine, state } = worker(id, 13);
+      if (!state.career.job) continue;
+      for (let y = 0; y < 4 && state.career.job; y++) year(engine, state, ['projectWork.']);
+      const rec = state.careerLife?.projectWork;
+      assert.ok(rec && (rec.portfolio.length || rec.project), `${id}: project work`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(PROJECT_CAREERS[id].label), id);
+    }
+    let failures = 0;
+    for (let i = 0; i < 12; i++) {
+      const { engine, state } = worker('engineering', 40 + i);
+      engine.dispatch('projectWork.approach', 'corners');
+      for (let y = 0; y < 8 && state.career.job; y++) year(engine, state, ['projectWork.']);
+      if (!state.career.job || state.log.some((b) => b.entries.some((e) => /forensic review/.test(e.text)))) failures += 1;
+    }
+    assert.ok(failures > 0, 'cutting corners eventually fails');
   },
 };
 
