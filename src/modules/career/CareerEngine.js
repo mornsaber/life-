@@ -340,7 +340,9 @@ export function returnFromLeave(ctx) {
   const job = leave.job;
   state.career.leave = null;
   if (leave.regionId && leave.regionId !== state.character.regionId && !job.remote) {
+    ctx.state.career.relocating = true;
     ctx.emit('region:relocate', { regionId: leave.regionId, reason: `You moved back to return to ${job.employer.name}.` });
+    delete ctx.state.career.relocating;
   }
   job.yearsAtEmployer += years;
   job.yearsInLevel += years;

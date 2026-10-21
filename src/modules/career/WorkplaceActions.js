@@ -62,7 +62,9 @@ function lateralTransfer(ctx, job, profession, regionId) {
     return ctx.toast('No lateral opening this year', 'warn');
   }
   const from = job.employer.name;
+  ctx.state.career.relocating = true;
   ctx.emit('region:relocate', { regionId, reason: `You made a lateral move from ${from}.` });
+  delete ctx.state.career.relocating;
   const employer = createEmployer(rng, state, profession, regionId);
   job.employer = employer;
   job.yearsAtEmployer = 0;
@@ -231,7 +233,9 @@ export const WorkplaceActions = {
       if (!(job.remote || job.sector === 'federal' || job.sector === 'state' || ['large', 'enterprise'].includes(job.employer.size))) return ctx.toast(`${job.employer.name} has no office there.`, 'warn');
       if (yearlyCount(state, 'career.transfer')) return ctx.toast('One transfer request per year.', 'warn');
       bumpYearly(state, 'career.transfer');
+      ctx.state.career.relocating = true;
       ctx.emit('region:relocate', { regionId, reason: `${job.employer.name} approved your transfer.` });
+      delete ctx.state.career.relocating;
       recalcSalary(state, job);
       ctx.log(`Your pay was adjusted for the new locality: $${job.salary.toLocaleString()}.`, '📍');
     },
@@ -337,7 +341,9 @@ export const WorkplaceActions = {
         ctx.log('You turned down the promotion to stay where you are.', '🏠');
         return;
       }
+      ctx.state.career.relocating = true;
       ctx.emit('region:relocate', { regionId: data.regionId, reason: `${job.employer.name} relocated you for the promotion.` });
+      delete ctx.state.career.relocating;
       const profession = getProfession(job.professionId);
       const options = data.options.map((id) => levelById(profession, id)).filter(Boolean);
       if (options.length > 1) trackPrompt(ctx, options);

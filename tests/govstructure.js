@@ -20,6 +20,8 @@ import { neighbourRange } from '../src/modules/org/VolunteerGrowth.js';
 import { SERVICES } from '../src/modules/emergency/EmergencyEngine.js';
 import { SpecialistCallsModule } from '../src/modules/equipment/SpecialistCalls.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { areaOk } from '../src/modules/publicsafety/PoliceLife.js';
+import { stationEligibility } from '../src/modules/publicsafety/FireLife.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId = 'US', seed = 5, regionId = null) {
@@ -121,6 +123,20 @@ const tests = {
     }
     assert.ok(served + missed >= 5, 'calls happen');
     assert.ok(served > 0, 'a seeded fleet handles some');
+  },
+
+  'a department offers what its place has, and a city job stays in its city'() {
+    const town = life('US', 11, 'elko');
+    hire(town.ctx, { professionId: 'police', levelId: 'officer', employer: employer(town.state, 'police') });
+    assert.equal(town.state.police.area, 'smalltown');
+    assert.equal(areaOk(town.state, 'district').ok, false, 'no "busiest district" in a town of 20,000');
+    const city = life('US', 12, 'nyc');
+    hire(city.ctx, { professionId: 'fire', levelId: 'firefighter', employer: employer(city.state, 'fire') });
+    assert.equal(stationEligibility(city.state, 'wildland').ok, false, 'no brush trucks in Manhattan');
+    assert.equal(stationEligibility(city.state, 'town').ok, false);
+    // A spouse's posting moves you to Montana: the city fire job doesn't come along.
+    city.ctx.emit('region:relocate', { regionId: 'greatfalls', reason: 'Your spouse was posted to Malmstrom.' });
+    assert.equal(city.state.career.job, null, 'no FDNY job in Great Falls');
   },
 };
 

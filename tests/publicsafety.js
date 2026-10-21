@@ -12,7 +12,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { hire, promotionStatus } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
-import { PoliceLifeModule, unitEligibility } from '../src/modules/publicsafety/PoliceLife.js';
+import { defaultArea, PoliceLifeModule, unitEligibility } from '../src/modules/publicsafety/PoliceLife.js';
 import { FireLifeModule, teamEligibility } from '../src/modules/publicsafety/FireLife.js';
 import { scopeOfType } from '../src/core/PromptScope.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -46,7 +46,8 @@ const resolve = (engine, state, type, pick = 0) => { const p = state.prompts.fin
 const tests = {
   'police: a year on patrol, a unit, details, and the card'() {
     const { engine, state, ctx } = sworn(1, 'police', 'officer', ['post', 'driverLicense']);
-    assert.equal(state.police.area, 'downtown');
+    // A new officer starts on the beat a place this size has.
+    assert.equal(state.police.area, defaultArea(state, state.career.job));
     assert.equal(scopeOfType('police.call'), 'job');
     engine.dispatch('police.shift', 'midnights');
     assert.equal(state.police.shift, 'midnights');

@@ -305,7 +305,9 @@ export const SeniorMoveResolvers = {
       return ctx.stat('happiness', -3);
     }
     const from = `${job.title} at ${job.employer.name}`;
+    ctx.state.career.relocating = true;
     ctx.emit('region:relocate', { regionId: opening.regionId, reason: `You moved to become ${opening.title} of ${opening.employer.name}.` });
+    delete ctx.state.career.relocating;
     const hired = hire(ctx, { professionId: job.professionId, levelId: opening.levelId, employer: opening.employer, step: 1 });
     if (!hired) return;
     hired.probationLeft = 0;

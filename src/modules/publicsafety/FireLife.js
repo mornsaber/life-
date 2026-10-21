@@ -27,6 +27,8 @@ import { jobPayCovered } from '../retirement/PensionPlans.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
+import { cityPopulation } from '../org/Staffing.js';
+import { REGIONS } from '../life/Regions.js';
 
 export const FIRE_PROFESSIONS = ['fire', 'airportFire', 'stateFire', 'privateFire'];
 export const isFirefighter = (job) => FIRE_PROFESSIONS.includes(job?.professionId);
@@ -37,13 +39,14 @@ export const stationsFor = (professionId) => STATION_SETS[professionId] ?? Objec
 const DEFAULT_STATION = { airportFire: 'airport', stateFire: 'forest', privateFire: 'industrial' };
 
 export const STATIONS = {
-  engine: { name: 'Downtown engine company', icon: '🚒', runs: 1.3, fires: 1.4, risk: 1.1, desc: 'The busiest house in the city: medical calls all day, working fires every week.' },
-  truck: { name: 'Truck (ladder) company', icon: '🪜', runs: 1.0, fires: 1.3, risk: 1.3, desc: 'Forcible entry, search, ventilation and the aerial ladder.' },
-  rescue: { name: 'Heavy rescue company', icon: '🧗', runs: 0.8, fires: 1.0, risk: 1.4, years: 4, desc: 'The city\'s best: extrications, collapses, rope and water rescues.' },
-  suburban: { name: 'Suburban station', icon: '🏡', runs: 0.6, fires: 0.5, risk: 0.7, desc: 'Lift assists, alarms and the occasional kitchen fire. Lots of training.' },
-  airport: { name: 'Airport crash-fire-rescue', icon: '✈️', runs: 0.3, fires: 0.2, risk: 0.6, years: 2, desc: 'Foam trucks at the runway: quiet for years, then everything at once.' },
-  hazmat: { name: 'Hazmat company', icon: '☣️', runs: 0.7, fires: 0.6, risk: 1.0, cred: 'hazmatOps', desc: 'Chemical leaks, tanker rollovers and suspicious powders.' },
-  wildland: { name: 'Wildland-urban interface station', icon: '🌲', runs: 0.7, fires: 0.9, risk: 1.0, desc: 'Brush trucks and a fire season that gets longer every year.' },
+  town: { name: 'Town fire station', icon: '🏘️', runs: 0.55, fires: 0.6, risk: 0.8, maxPop: 100000, desc: 'One or two stations for the whole town: an engine, a ladder and a crew that does everything.' },
+  engine: { name: 'Downtown engine company', icon: '🚒', runs: 1.3, fires: 1.4, risk: 1.1, minPop: 100000, desc: 'The busiest house in the city: medical calls all day, working fires every week.' },
+  truck: { name: 'Truck (ladder) company', icon: '🪜', runs: 1.0, fires: 1.3, risk: 1.3, minPop: 50000, desc: 'Forcible entry, search, ventilation and the aerial ladder.' },
+  rescue: { name: 'Heavy rescue company', icon: '🧗', runs: 0.8, fires: 1.0, risk: 1.4, years: 4, minPop: 250000, desc: 'The city\'s best: extrications, collapses, rope and water rescues.' },
+  suburban: { name: 'Suburban station', icon: '🏡', runs: 0.6, fires: 0.5, risk: 0.7, minPop: 100000, desc: 'Lift assists, alarms and the occasional kitchen fire. Lots of training.' },
+  airport: { name: 'Airport crash-fire-rescue', icon: '✈️', runs: 0.3, fires: 0.2, risk: 0.6, years: 2, minPop: 150000, desc: 'Foam trucks at the runway: quiet for years, then everything at once.' },
+  hazmat: { name: 'Hazmat company', icon: '☣️', runs: 0.7, fires: 0.6, risk: 1.0, cred: 'hazmatOps', minPop: 250000, desc: 'Chemical leaks, tanker rollovers and suspicious powders.' },
+  wildland: { name: 'Wildland-urban interface station', icon: '🌲', runs: 0.7, fires: 0.9, risk: 1.0, notDense: true, desc: 'Brush trucks and a fire season that gets longer every year.' },
   // State fire agency (CAL FIRE-style): wildland protection of state responsibility lands.
   forest: { name: 'Forest fire station (engine crew)', icon: '🚒', runs: 0.35, fires: 1.6, risk: 1.1, desc: 'A Type 3 engine in the hills: initial attack all summer, medical aids and wrecks in winter.' },
   helitack: { name: 'Helitack base', icon: '🚁', runs: 0.2, fires: 1.8, risk: 1.4, years: 2, cred: 'wildlandFF1', desc: 'Fly to new starts and cut line before they grow — rappel in where trucks can\'t go.' },
@@ -84,6 +87,13 @@ export function stationEligibility(state, id) {
   const job = state.career.job;
   if (!st || !isFirefighter(job)) return { ok: false, reason: 'Firefighters only' };
   if (!stationsFor(job.professionId).includes(id)) return { ok: false, reason: job.professionId === 'airportFire' ? 'Airport firefighters work the airport' : 'Not one of your department\'s stations' };
+  // A city department's stations follow the city: no heavy rescue in a small town, no brush trucks in Manhattan.
+  if (job.professionId === 'fire') {
+    const pop = cityPopulation(state.character.regionId);
+    if (st.minPop && pop < st.minPop) return { ok: false, reason: 'Your city doesn\'t have one' };
+    if (st.maxPop && pop > st.maxPop) return { ok: false, reason: 'A city this size has more than one kind of station' };
+    if (st.notDense && REGIONS[state.character.regionId]?.walkable) return { ok: false, reason: 'No wildland interface in a dense city' };
+  }
   if (st.years && !['airportFire', 'privateFire'].includes(job.professionId) && yearsInProfession(state, FIRE_PROFESSIONS) < st.years) return { ok: false, reason: `${st.years} years on the job first` };
   if (st.cred && !hasCredential(state, st.cred)) return { ok: false, reason: { hazmatOps: 'Needs HazMat Operations', wildlandFF1: 'Needs Wildland Squad Boss (FFT1)', ics300: 'Needs ICS-300' }[st.cred] };
   return { ok: true };

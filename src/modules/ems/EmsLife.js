@@ -33,16 +33,18 @@ import { ADMISSION_HOOKS, YEAR_HOOKS } from '../education/EducationEngine.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
 import { leaveJob } from '../career/CareerEngine.js';
+import { cityPopulation } from '../org/Staffing.js';
+import { careerServiceHere } from '../career/Employers.js';
 
 export const AGENCIES = {
   // Public: civil service, a pension, the union.
-  thirdService: { sector: 'public', name: 'City EMS (third service)', icon: '🚑', pay: 1.0, volume: 1.0, burnout: 5, desc: 'The city\'s own ambulance service: busy, unionized, a pension.' },
+  thirdService: { sector: 'public', name: 'City EMS (third service)', icon: '🚑', minPop: 250000, pay: 1.0, volume: 1.0, burnout: 5, desc: 'The city\'s own ambulance service: busy, unionized, a pension.' },
   county: { sector: 'public', name: 'County EMS authority', icon: '🗺️', pay: 0.97, volume: 0.8, burnout: 4, desc: 'Suburbs and farm country: long transports, fewer calls, a county pension.' },
   fireBased: { sector: 'public', name: 'Fire-based EMS', icon: '🚒', pay: 1.22, volume: 0.8, burnout: 4, needs: 'fire', shifts: ['24-48', '48-96'], desc: 'Cross-trained firefighter-paramedics: better pay, 24-hour shifts, a fire pension.' },
   // Private: companies, hospitals and flight programs. More hours, no pension.
   private: { sector: 'private', name: '911 contract crew', icon: '🚐', pay: 0.9, volume: 1.15, burnout: 6, desc: 'Your company runs the county\'s 911 contract: busy, response-time penalties, plenty of overtime.' },
-  ift: { sector: 'private', name: 'Interfacility transfers', icon: '🏥', pay: 0.82, volume: 0.9, burnout: 3, transfers: true, desc: 'Dialysis runs, nursing-home discharges and hospital-to-hospital transfers. Steady, rarely exciting.' },
-  hospital: { sector: 'private', name: 'Hospital-based critical-care transport', icon: '🏨', pay: 1.06, volume: 0.6, burnout: 3, desc: 'ICU patients on drips and vents between hospitals; good benefits.' },
+  ift: { sector: 'private', name: 'Interfacility transfers', icon: '🏥', minPop: 30000, pay: 0.82, volume: 0.9, burnout: 3, transfers: true, desc: 'Dialysis runs, nursing-home discharges and hospital-to-hospital transfers. Steady, rarely exciting.' },
+  hospital: { sector: 'private', name: 'Hospital-based critical-care transport', icon: '🏨', minPop: 100000, pay: 1.06, volume: 0.6, burnout: 3, desc: 'ICU patients on drips and vents between hospitals; good benefits.' },
   flight: { sector: 'private', name: 'Air-medical program', icon: '🚁', pay: 1.15, volume: 0.35, burnout: 4, needs: 'flight', shifts: ['24-48', 'days', 'nights'], desc: 'Helicopter and fixed-wing transports. Few calls; every one is serious.' },
 };
 
@@ -107,6 +109,10 @@ export function agencyEligibility(state, id) {
   const job = state.career.job;
   if (isEms(job) && a.sector !== emsSector(job)) return { ok: false, reason: a.sector === 'public' ? 'A public agency: apply for Public EMS on the job board' : 'A private employer: apply for Private Ambulance Service on the job board' };
   if (a.needs === 'fire' && !hasCredential(state, 'ff1') && !state.career.history.some((h) => h.professionId === 'fire')) return { ok: false, reason: 'Needs firefighter certification (Firefighter I)' };
+  // Who runs ambulances here: a big city has its own service; a fire department runs EMS only where there is a career one.
+  const pop = cityPopulation(state.character.regionId);
+  if (a.minPop && pop < a.minPop) return { ok: false, reason: 'No such service in a place this size' };
+  if (a.needs === 'fire' && !careerServiceHere(state.character.regionId, 'fire')) return { ok: false, reason: 'No career fire department here' };
   if (a.needs === 'flight' && !hasCredential(state, 'flightParamedic')) return { ok: false, reason: 'Needs the FP-C flight certification' };
   return { ok: true };
 }

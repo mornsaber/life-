@@ -36,6 +36,7 @@ import { leaveJob } from '../career/CareerEngine.js';
 import { sitExam, listTick, nextExam } from './CivilService.js';
 import { offenseName } from '../legal/Offenses.js';
 import { SIZE_ORDER } from '../career/Ladder.js';
+import { cityPopulation } from '../org/Staffing.js';
 import { fromPacks } from '../world/packs/index.js';
 
 export const POLICE_PROFESSIONS = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'privatePolice', 'universityPolice'];
@@ -44,9 +45,10 @@ export const isCop = (job) => POLICE_PROFESSIONS.includes(job?.professionId);
 const CITY = ['police', 'sheriff', 'transitPolice'];
 
 export const AREAS = {
-  downtown: { name: 'Downtown precinct', icon: '🏙️', calls: 1.1, risk: 1.0, stress: 4, only: CITY, desc: 'Bars, protests, tourists and the homeless shelter.' },
-  suburban: { name: 'Residential district', icon: '🏡', calls: 0.75, risk: 0.6, stress: 2, only: CITY, desc: 'Burglaries, fender-benders and noise complaints. Quieter.' },
-  district: { name: 'The busiest district', icon: '🚨', calls: 1.4, risk: 1.6, stress: 6, commend: 1.5, complaints: 1.4, only: CITY, desc: 'Most of the city\'s shootings. Busy every shift — commendations and complaints both.' },
+  smalltown: { name: 'Town patrol', icon: '🏘️', calls: 0.55, risk: 0.7, stress: 2, only: ['police'], maxPop: 60000, desc: 'The whole town is your beat. You know everyone — and backup is a county deputy twenty minutes away.' },
+  downtown: { name: 'Downtown precinct', icon: '🏙️', calls: 1.1, risk: 1.0, stress: 4, only: CITY, minPop: 60000, desc: 'Bars, protests, tourists and the homeless shelter.' },
+  suburban: { name: 'Residential district', icon: '🏡', calls: 0.75, risk: 0.6, stress: 2, only: CITY, minPop: 30000, desc: 'Burglaries, fender-benders and noise complaints. Quieter.' },
+  district: { name: 'The busiest district', icon: '🚨', calls: 1.4, risk: 1.6, stress: 6, commend: 1.5, complaints: 1.4, only: CITY, minPop: 250000, desc: 'Most of the city\'s shootings. Busy every shift — commendations and complaints both.' },
   rural: { name: 'Rural patrol area', icon: '🌾', calls: 0.5, risk: 0.9, stress: 3, only: ['sheriff', 'statePolice'], desc: 'Huge territory, backup twenty minutes away.' },
   highway: { name: 'Highway patrol', icon: '🛣️', calls: 0.8, risk: 0.9, stress: 3, only: ['statePolice'], desc: 'Crashes, DUIs and interdiction stops on the interstate.' },
   terminal: { name: 'Terminals & curbside', icon: '🛄', calls: 0.9, risk: 0.5, stress: 3, only: ['airportPolice'], desc: 'Unruly passengers, unattended bags, lost children and curbside chaos.' },
@@ -54,6 +56,27 @@ export const AREAS = {
   campus: { name: 'Campus / hospital patrol', icon: '🏫', calls: 0.6, risk: 0.5, stress: 2, only: ['privatePolice', 'universityPolice'], desc: 'Dorms, labs, parking structures and the hospital ER — or, for railroad police, the rail yards.' },
   gameday: { name: 'Athletics & events', icon: '🏟️', calls: 0.7, risk: 0.5, stress: 3, only: ['universityPolice'], desc: 'Football Saturdays, concerts and commencement: 90,000 people and a lot of beer.' },
 };
+
+/** Can you patrol here? Your agency's areas, and only the ones a place this size has. */
+export function areaOk(state, id) {
+  const a = AREAS[id];
+  const job = state.career.job;
+  if (!a || !job) return { ok: false, reason: 'Unknown area' };
+  if (a.only && !a.only.includes(job.professionId)) return { ok: false, reason: 'Not in your agency' };
+  const pop = cityPopulation(state.character.regionId);
+  // A sheriff covers the county: its precincts follow the county's size, not the town's.
+  if (job.professionId === 'sheriff') return { ok: true };
+  if (a.minPop && pop < a.minPop) return { ok: false, reason: 'Your town is too small for one' };
+  if (a.maxPop && pop > a.maxPop) return { ok: false, reason: 'A city this size has precincts, not one town beat' };
+  return { ok: true };
+}
+/** The area a new officer starts in. */
+export function defaultArea(state, job) {
+  const fixed = { statePolice: 'highway', sheriff: 'rural', airportPolice: 'terminal', privatePolice: 'campus', universityPolice: 'campus' }[job.professionId];
+  if (fixed) return fixed;
+  const pop = cityPopulation(state.character.regionId);
+  return pop <= 60000 ? 'smalltown' : pop < 250000 ? 'suburban' : 'downtown';
+}
 
 export const SHIFTS = {
   days: { name: 'Day shift', icon: '☀️', pay: 1.0, stress: 0 },
@@ -180,6 +203,26 @@ const CALLS = [
 ];
 
 /** Campus policing: Clery Act warnings, Title IX, parties, protests, threat assessment. */
+/** Small towns and rural patrols: everyone knows you, and backup is far away. */
+const TOWN_CALLS = [
+  { id: 'livestock', icon: '🐄', title: 'Cattle on the Highway', text: 'Two in the morning: a dozen steers are standing on the state highway in the dark. A truck nearly hit one.', options: [
+    { id: 'herd', label: '🔦 Light them up and herd them back through the fence', check: 40, text: 'Twenty minutes of arm-waving and the fence was fixed with baling wire. The rancher brought you coffee the next week.', perf: 3, fail: { text: 'One bolted into the ditch and a pickup clipped it. Nobody was hurt; the rancher was not pleased.', perf: -1 } },
+    { id: 'rancher', label: '📞 Call the rancher and set flares', text: 'The rancher came out in his pajamas. Flares kept the traffic slow until the herd was in.', perf: 2 },
+  ] },
+  { id: 'farmhouse', icon: '🏚️', title: 'Domestic at a Farmhouse', text: 'A woman called 911 from a farmhouse twenty miles out and hung up. Backup — a county deputy — is thirty minutes behind you.', options: [
+    { id: 'wait', label: '⏳ Stage at the road and wait for backup', text: 'You went in together. He was drunk and gone to bed; she was bruised and ready to leave. You drove her to her sister\'s.', perf: 2, risk: { chance: 0.15, text: 'Those thirty minutes mattered: he\'d hurt her badly before you got there.', trauma: 6, perf: -3 } },
+    { id: 'alone', label: '🚔 Go in alone', check: 55, text: 'You talked him onto the porch and into the cuffs before the deputy arrived.', perf: 6, arrest: 1, commend: 0.3, fail: { text: 'He came at you in the kitchen. You won the fight — barely.', uof: 1, trauma: 6, perf: 1 } },
+  ] },
+  { id: 'coach', icon: '🍺', title: 'A Familiar Face at a DUI Stop', text: 'The car weaving over the center line belongs to your kid\'s football coach. He blows a 0.12 and asks you to "do him a solid".', options: [
+    { id: 'arrest', label: '⚖️ Arrest him like anyone else', text: 'It was all over town by noon. Half of it stopped speaking to you; the other half respected it.', perf: 4, arrest: 1 },
+    { id: 'drive', label: '🚗 Drive him home and forget it', text: 'He was grateful.', perf: -1, offense: 'falseStatement', risk: { chance: 0.2, text: 'A dashcam doesn\'t forget. The chief found out.', perf: -8, complaint: 1 } },
+  ] },
+  { id: 'methlab', icon: '⚗️', title: 'The Smell From the Barn', text: 'A neighbor reports a chemical smell from an old barn at the edge of town. A rusted pickup is parked outside.', options: [
+    { id: 'secure', label: '🧯 Back off, secure the area and call the state drug task force', check: 45, text: 'The task force found a meth lab and two cooks. Your name was in the paper.', perf: 6, arrest: 2, commend: 0.4, fail: { text: 'The cooks slipped out the back before the task force arrived.', perf: 1 } },
+    { id: 'enter', label: '🚪 Go in and have a look', text: 'The fumes knocked you down and the cooks ran. You spent the night in the ER.', perf: -2, trauma: 4 },
+  ] },
+];
+
 const CAMPUS_CALLS = [
   { id: 'clery', icon: '📣', title: 'Timely Warning', text: 'Two armed robberies near campus in one night. The Clery Act requires a "timely warning" to students — the administration worries about headlines during admissions season.', options: [
     { id: 'warn', label: '📱 Send the alert to every phone now', text: 'Students walked in groups that night. The suspect was caught on the third day.', perf: 5 },
@@ -225,8 +268,10 @@ function callPrompt(ctx, job) {
   if (state.prompts.some((p) => p.type === 'police.call')) return;
   const u = pd(state).unit;
   const campus = ['campus', 'gameday'].includes(pd(state).area) && job.professionId === 'universityPolice';
+  const town = ['smalltown', 'rural'].includes(pd(state).area);
   const pool = UNIT_EVENTS[u] && rng.chance(0.4) ? [UNIT_EVENTS[u]]
     : campus && rng.chance(0.6) ? CAMPUS_CALLS
+    : town && rng.chance(0.55) ? TOWN_CALLS
       : CALLS.filter((c) => (c.id !== 'shooter' || rng.chance(0.15)) && (!campus || c.id !== 'stop'));
   const c = rng.pick(pool);
   ctx.prompt({ type: 'police.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label, tone, offense }) => ({ id, label, tone, illegal: offense ? offenseName(offense) : undefined })), data: { callId: c.id } });
@@ -310,7 +355,7 @@ export const PoliceLifeModule = {
       const p = pd(ctx.state);
       p.unit = null;
       p.bureau = null;
-      if (!p.area || (AREAS[p.area].only && !AREAS[p.area].only.includes(job.professionId))) p.area = { statePolice: 'highway', sheriff: 'rural', airportPolice: 'terminal', privatePolice: 'campus', universityPolice: 'campus' }[job.professionId] ?? 'downtown';
+      if (!p.area || !AREAS[p.area] || !areaOk(ctx.state, p.area).ok) p.area = defaultArea(ctx.state, job);
       applyPay(ctx.state, job);
     });
   },
@@ -355,7 +400,8 @@ export const PoliceLifeModule = {
       const job = state.career.job;
       const a = AREAS[id];
       if (!isCop(job) || !a) return;
-      if (a.only && !a.only.includes(job.professionId)) return ctx.toast('Not in your agency', 'warn');
+      const ok = areaOk(state, id);
+      if (!ok.ok) return ctx.toast(ok.reason, 'warn');
       if (yearlyCount(state, 'police.area')) return ctx.toast('One transfer a year', 'warn');
       bumpYearly(state, 'police.area');
       pd(state).area = id;
@@ -429,7 +475,7 @@ export const PoliceLifeModule = {
   resolvers: {
     call(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const c = [...CALLS, ...CAMPUS_CALLS, ...Object.values(UNIT_EVENTS)].find((x) => x.id === data.callId);
+      const c = [...CALLS, ...TOWN_CALLS, ...CAMPUS_CALLS, ...Object.values(UNIT_EVENTS)].find((x) => x.id === data.callId);
       const o = c?.options.find((x) => x.id === optionId);
       if (!o) return;
       let fx = o;

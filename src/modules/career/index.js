@@ -98,9 +98,18 @@ export const CareerModule = {
     });
     bus.on('legal:incarcerated', ({ ctx }) => leaveJob(ctx, 'You were incarcerated', { fired: true }));
     // Remote workers and transferred employees are re-priced for the new region.
-    bus.on('region:changed', ({ ctx }) => {
+    bus.on('region:changed', ({ ctx, to, toState }) => {
       const job = ctx.state.career.job;
       if (!job) return;
+      // A city's police, fire or council job is in that city; a state agency's is in that state.
+      // Moving away (a spouse's posting, a family move) ends it — unless the job came with the move.
+      const e = job.employer ?? {};
+      const leftCity = job.sector === 'municipal' && e.cityName && !e.national && e.cityName !== cityName(to);
+      const leftState = job.sector === 'state' && e.stateId && !e.national && toState && e.stateId !== toState;
+      if (!job.remote && !ctx.state.career.relocating && (leftCity || leftState)) {
+        ctx.emit('career:resign', { reason: `Moved away from ${leftCity ? e.cityName : 'the state'}` });
+        return;
+      }
       const before = job.salary;
       recalcSalary(ctx.state, job);
       if (job.remote && job.salary !== before) ctx.log(`${job.employer.name} geo-adjusted your remote pay: $${before.toLocaleString()} → $${job.salary.toLocaleString()}.`, '🌐', job.salary < before ? 'warn' : 'good');
