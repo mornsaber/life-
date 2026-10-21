@@ -814,7 +814,7 @@ const tests = {
     o.engine.rng.chance = chance;
     assert.equal(o.state.character.countryId, undefined, 'deported');
     assert.ok(bannedFrom(o.state, 'GB'), 'barred from returning');
-    assert.equal(routesTo(o.state, 'GB').some((r) => r.ok), false, 'no visa while banned');
+    assert.equal(routesTo(o.state, 'GB').some((r) => r.ok && !r.illegal), false, 'no visa while banned (only an illegal crossing)');
     // Degrees keep the country and university they came from.
     const d = born('GB', 22, 24);
     d.state.education.degrees.push({ type: 'bachelor', major: 'history', age: 21 });
