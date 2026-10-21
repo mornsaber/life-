@@ -20,6 +20,7 @@ import { PROJECT_CAREERS } from '../src/modules/career/engines/Projects.js';
 import { SEASON_CAREERS } from '../src/modules/career/engines/Seasons.js';
 import { AUDIENCE_CAREERS } from '../src/modules/career/engines/Audience.js';
 import { INVESTIGATION_CAREERS } from '../src/modules/career/engines/Investigations.js';
+import { ROUTE_CAREERS } from '../src/modules/career/engines/Routes.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -53,9 +54,9 @@ export function year(engine, state, types) {
 const BAD = /\bundefined\b|\bNaN\b|\[object |\bInfinity\b/;
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 /** Enabled engine buttons on the career tab. */
-const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|investigations|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
+const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|routeWork|investigations|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
 /** Every career an engine covers. */
-export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys))];
+export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys))];
 const pure = (state, fn) => { const before = JSON.stringify(state); const html = fn(); assert.equal(JSON.stringify(state), before, 'rendering changed state'); return html; };
 
 const tests = {
@@ -201,6 +202,25 @@ const tests = {
     assert.notEqual(state.careerLife.investigations.technique, 'undercover', 'undercover needs two years');
     engine.dispatch('investigations.technique', 'wiretap');
     assert.equal(state.careerLife.investigations.technique, 'wiretap');
+  },
+  'routes: miles get logged, qualifications open lines, seniority holds them'() {
+    for (const id of Object.keys(ROUTE_CAREERS)) {
+      const { engine, state } = worker(id, 25);
+      if (!state.career.job) continue;
+      for (let y = 0; y < 3 && state.career.job; y++) year(engine, state, ['routeWork.']);
+      const rec = state.careerLife?.routeWork;
+      assert.ok(rec?.logged > 0, `${id}: a logbook`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(ROUTE_CAREERS[id].label), id);
+    }
+    const { engine, state } = worker('trucking', 26);
+    state.finances.cash = 10000;
+    engine.dispatch('routeWork.line', 'tanker');
+    assert.notEqual(state.careerLife?.routeWork?.line, 'tanker', 'tanker needs seniority and hazmat');
+    state.career.job.yearsAtEmployer = 3;
+    engine.dispatch('routeWork.qualify', 'hazmat');
+    assert.ok(state.careerLife.routeWork.quals.hazmat);
+    engine.dispatch('routeWork.line', 'tanker');
+    assert.equal(state.careerLife.routeWork.line, 'tanker');
   },
   'engine cards: random clicks on every engine career never break'() {
     const problems = [];

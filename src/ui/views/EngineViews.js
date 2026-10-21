@@ -9,6 +9,7 @@ import { caseView, FOCUS, scaleOf } from '../../modules/career/engines/Caseload.
 import { bookView } from '../../modules/career/engines/ClientBook.js';
 import { projectView, APPROACH } from '../../modules/career/engines/Projects.js';
 import { investigationView, TECHNIQUES, techniqueEligibility } from '../../modules/career/engines/Investigations.js';
+import { routeView, lineEligibility, qualEligibility } from '../../modules/career/engines/Routes.js';
 import { seasonView } from '../../modules/career/engines/Seasons.js';
 import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
@@ -103,8 +104,19 @@ function investigationSection(state) {
   return disclosure('engine.investigations', `${cfg.icon} ${esc(cfg.label)}`, `${stats}${now}<h4 class="sub">Technique</h4><div class="toggle-row">${buttons}</div>${closed ? `<h4 class="sub">Closed cases</h4><ul class="history">${closed}</ul>` : ''}<p class="fine">Evidence builds each year; exposure lets the target find out. Take it down early and juries may acquit.</p>`, { count: c ? `${Math.min(100, c.evidence)}% evidence` : null });
 }
 
+function routeSection(state) {
+  const v = routeView(state);
+  if (!v) return '';
+  const { cfg, rec } = v;
+  const lineId = rec?.line ?? Object.keys(cfg.lines)[0];
+  const lines = Object.entries(cfg.lines).map(([id, l]) => { const ok = lineEligibility(state, id); return button(`${l.icon} ${l.name}`, 'routeWork.line', { arg: id, variant: id === lineId ? 'small on' : 'small', disabled: id === lineId || !ok.ok, hint: ok.ok ? `${l.desc}${l.pay > 1 ? ` · +${Math.round((l.pay - 1) * 100)}% pay` : ''}` : ok.reason }); }).join('');
+  const quals = Object.entries(cfg.quals).map(([id, q]) => { const has = Boolean(rec?.quals?.[id]); const ok = qualEligibility(state, id); return button(`${q.icon} ${has ? '✓ ' : ''}${q.name}`, 'routeWork.qualify', { arg: id, variant: has ? 'small on' : 'small', disabled: has || !ok.ok, hint: has ? 'Qualified' : ok.ok ? `${q.desc}${q.cost ? ` · $${q.cost.toLocaleString()}` : ''}${q.pay ? ` · +${Math.round(q.pay * 100)}% pay` : ''}` : ok.reason }); }).join('');
+  const stats = rec ? `<p>${chip(`${cfg.icon} ${rec.logged.toLocaleString()} ${esc(cfg.unit)} logged`)} ${chip(`🛡️ ${rec.safeYears} safe year${rec.safeYears === 1 ? '' : 's'}`, rec.safeYears >= 3 ? 'good' : '')} ${rec.incidents ? chip(`⚠️ ${rec.incidents} incident${rec.incidents === 1 ? '' : 's'}`, 'warn') : ''}</p>${meter(rec.rep, { label: 'Reputation' })}${rec.checkDue ? `<p class="fine">Next ${esc(cfg.checkName)} at age ${rec.checkDue}.</p>` : ''}` : '<p class="fine">Your logbook opens with your first year.</p>';
+  return disclosure('engine.route', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your line (bid by seniority)</h4><div class="toggle-row">${lines}</div><h4 class="sub">Qualifications</h4><div class="toggle-row">${quals}</div><p class="fine">One bid and one course a year. Qualifications open better lines and add pay.</p>`, { count: cfg.lines[lineId]?.name });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state)].join('');
+  return [shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state)].join('');
 }
