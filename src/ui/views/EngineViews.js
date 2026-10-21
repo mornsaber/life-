@@ -8,6 +8,7 @@ import { shiftView, postEligibility } from '../../modules/career/engines/ShiftIn
 import { caseView, FOCUS, scaleOf } from '../../modules/career/engines/Caseload.js';
 import { bookView } from '../../modules/career/engines/ClientBook.js';
 import { projectView, APPROACH } from '../../modules/career/engines/Projects.js';
+import { investigationView, TECHNIQUES, techniqueEligibility } from '../../modules/career/engines/Investigations.js';
 import { seasonView } from '../../modules/career/engines/Seasons.js';
 import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
@@ -88,8 +89,22 @@ function audienceSection(state) {
   return disclosure('engine.audience', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your pace</h4><div class="toggle-row">${paces}</div><h4 class="sub">This year's big release</h4><div class="toggle-row">${releases}</div>${past ? `<h4 class="sub">Past releases</h4><ul class="history">${past}</ul>` : ''}<p class="fine">${cfg.perFan ? `Sponsors, streams and appearances pay by the size of your following. ` : ''}Burnout past 85 forces a break.</p>`, { count: rec ? `${fansLabel(rec.fans)} ${cfg.noun}` : null });
 }
 
+function investigationSection(state) {
+  const v = investigationView(state);
+  if (!v) return '';
+  const { cfg, rec, working } = v;
+  if (!working) return disclosure('engine.investigations', `${cfg.icon} ${esc(cfg.label)}`, '<p class="fine">Cases come once you finish training.</p>');
+  const tech = rec?.technique ?? 'surveillance';
+  const buttons = Object.entries(TECHNIQUES).map(([id, t]) => { const ok = techniqueEligibility(state, id); return button(`${t.icon} ${t.name}`, 'investigations.technique', { arg: id, variant: id === tech ? 'small on' : id === 'undercover' ? 'small danger' : 'small', disabled: id === tech || !ok.ok, hint: ok.ok ? t.desc : ok.reason }); }).join('');
+  const c = rec?.case;
+  const now = c ? `<p><b>${esc(c.target.replace(/^./, (x) => x.toUpperCase()))}</b> <small class="muted">${esc(c.kind)} · year ${c.years}</small></p>${meter(Math.min(100, c.evidence), { label: 'Evidence' })}${meter(Math.min(100, c.heat * 2), { label: 'Exposure' })}${button('🚨 Take it down now', 'investigations.takedown', { variant: 'small', disabled: c.evidence < 40, hint: c.evidence < 40 ? 'Not enough for a prosecutor yet' : 'Arrest now — weaker evidence, likelier acquittals' })}` : '<p class="fine">A new case opens with the new year.</p>';
+  const closed = (rec?.closed ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>${esc(x.target.replace(/^./, (y) => y.toUpperCase()))}</b> <small class="muted">${esc(x.kind)} · age ${x.age}</small></div><small class="${['acquitted', 'blown'].includes(x.outcome) ? 'neg' : ''}">${{ landmark: '🏆 landmark', convicted: '⚖️ convicted', acquitted: '❌ acquitted', blown: '💨 blown' }[x.outcome]}</small></li>`).join('');
+  const stats = rec ? `<p>${chip(`🚔 ${rec.arrests} arrests`)} ${chip(`⚖️ ${rec.convictions} convicted`, 'good')}</p>` : '';
+  return disclosure('engine.investigations', `${cfg.icon} ${esc(cfg.label)}`, `${stats}${now}<h4 class="sub">Technique</h4><div class="toggle-row">${buttons}</div>${closed ? `<h4 class="sub">Closed cases</h4><ul class="history">${closed}</ul>` : ''}<p class="fine">Evidence builds each year; exposure lets the target find out. Take it down early and juries may acquit.</p>`, { count: c ? `${Math.min(100, c.evidence)}% evidence` : null });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [shiftSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state)].join('');
+  return [shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state)].join('');
 }

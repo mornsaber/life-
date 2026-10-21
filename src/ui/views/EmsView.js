@@ -1,6 +1,6 @@
 /** Life on the ambulance on the Career tab: agency, shift, assignments, calls. */
 import { esc, button, card, chip, kv, meter, disclosure } from '../Components.js';
-import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, EMS_PROFESSIONS, agencyEligibility, assignmentEligibility, emsPayAdjust, shiftAllowed, emsSector } from '../../modules/ems/EmsLife.js';
+import { AGENCIES, SHIFTS, ASSIGNMENTS, CE_HOURS, EMS_PROFESSIONS, agencyEligibility, assignmentEligibility, emsPayAdjust, shiftAllowed, emsSector, CONTRACTS, canBid } from '../../modules/ems/EmsLife.js';
 
 export function emsCard(state) {
   const job = state.career.job;
@@ -45,5 +45,6 @@ export function emsCard(state) {
     ${disclosure('ems.agency', `Agency${moved ? ' (moved this year)' : ''}`, `<div class="toggle-row">${agencies}</div>`, { count: a ? a.name : 'choose' })}
     ${disclosure('ems.shift', `Shift bid${bid ? ' (bid this year)' : ''}`, `<div class="toggle-row">${shifts}</div>`, { count: sh.name })}
     ${disclosure('ems.assign', 'Special assignments (up to two)', `<div class="toggle-row">${assignments}</div>`, { count: `${Object.keys(e.assignments ?? {}).length} of 2` })}
+    ${canBid(state) ? disclosure('ems.contracts', 'Interfacility contracts', `<div class="toggle-row">${Object.entries(CONTRACTS).map(([id, c]) => { const held = e.contracts?.[id]; return button(`${c.icon} ${held ? '✓ ' : ''}${c.name}`, 'emsLife.bid', { arg: id, variant: held ? 'small on' : 'small', disabled: Boolean(held) || Boolean(state.yearly['ems.bid']), hint: held ? `Yours until age ${held}` : `${c.desc} · +${Math.round(c.share * 100)}% of salary a year` }); }).join('')}</div><p class="fine">Bid for one contract a year against rival companies; each runs three years, then goes back out to bid. Miss response times and you pay penalties.</p>`, { count: `${Object.keys(e.contracts ?? {}).length} held` }) : ''}
     <p class="fine">EMT → Paramedic → Critical Care → Flight. Recertify every two years. Years on the ambulance count toward PA school, and paramedics get a year off nursing school.</p>`, { icon: '🚑', accent: 'red' });
 }

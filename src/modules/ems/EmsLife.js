@@ -83,6 +83,18 @@ export const RECERT_YEARS = 2;
 /** Hours of agency in-service training a year. */
 export const IN_HOUSE_CE = 12;
 
+/** Interfacility contracts a private-ambulance supervisor can bid for. */
+export const CONTRACTS = {
+  hospital: { name: 'Hospital-system transfers', icon: '🏥', check: 60, share: 0.12, desc: 'The big prize: every transfer for a health system. Strict response-time penalties.' },
+  dialysis: { name: 'Dialysis & scheduled runs', icon: '🩸', check: 40, share: 0.05, desc: 'Steady, predictable, low margin.' },
+  snf: { name: 'Nursing-home network', icon: '🏚️', check: 45, share: 0.07, desc: 'Discharges and ER runs from a dozen facilities.' },
+  backup: { name: '911 backup for the county', icon: '🚨', check: 55, share: 0.09, desc: 'Cover the county\'s overflow. Prestige and real emergencies.' },
+  events: { name: 'Stadium & event standby', icon: '🏟️', check: 35, share: 0.04, desc: 'Concerts, games and fairs. Easy money, long nights.' },
+};
+const CONTRACT_YEARS = 3;
+/** Can you bid? Private ambulance supervisors and up. */
+export const canBid = (state) => state.career.job?.professionId === 'privateEms' && SUPERVISORS.includes(state.career.job.levelId);
+
 const ems = (state) => state.ems;
 export const EMS_PROFESSIONS = ['ems', 'privateEms'];
 const isEms = (job) => EMS_PROFESSIONS.includes(job?.professionId);
@@ -227,6 +239,19 @@ function emsTick(ctx, job) {
       ctx.emit('credential:suspend', { ids: [isMedic(state) ? 'paramedic' : 'emt'], years: 1, reason: 'Missed recertification (continuing education)' });
       ctx.log(`Your National Registry certification lapsed: only ${e.ce ?? 0} of ${CE_HOURS} continuing-education hours.`, '📜', 'bad');
       job.performance = Math.max(0, job.performance - 10);
+    }
+  }
+  // Contracts you won: service levels, renewals, penalties.
+  for (const [id, until] of Object.entries(e.contracts ?? {})) {
+    const c = CONTRACTS[id];
+    if (!c || !canBid(state)) { delete e.contracts[id]; continue; }
+    if (rng.chance(clamp(0.2 - callSkill(state) / 600, 0.05, 0.2))) {
+      job.performance = Math.max(0, job.performance - 6);
+      ctx.log(`Response times slipped on the ${c.name.toLowerCase()} contract: penalty clauses and an angry client.`, c.icon, 'warn');
+    } else ctx.earn(Math.round(job.salary * c.share / 100) * 100, `${c.name} — contract bonus`, { wage: true });
+    if (state.character.age >= until) {
+      delete e.contracts[id];
+      ctx.log(`The ${c.name.toLowerCase()} contract is up for rebid.`, c.icon);
     }
   }
   // A call to remember, and the rest of the job.
@@ -380,6 +405,28 @@ export const EmsLifeModule = {
       ctx.emit('health:trauma', { amount: -6, source: 'critical incident stress debriefing' });
       ctx.stat('stress', -5);
       ctx.log('You went to a critical-incident stress debriefing after a bad call. It helped to hear your partner say it too.', '🫂', 'good');
+    },
+    /** Private ambulance supervisors bid for one interfacility contract a year. */
+    bid(ctx, id) {
+      const { state, rng } = ctx;
+      const job = state.career.job;
+      const c = CONTRACTS[id];
+      if (!c || !canBid(state)) return ctx.toast('Private ambulance supervisors bid for contracts', 'warn');
+      const e = ems(state);
+      e.contracts ??= {};
+      if (e.contracts[id]) return ctx.toast('You already hold that contract', 'warn');
+      if (yearlyCount(state, 'ems.bid')) return ctx.toast('One bid a year', 'warn');
+      bumpYearly(state, 'ems.bid');
+      const score = callSkill(state) + job.performance / 5 + Object.keys(e.contracts).length * 3 + rng.int(-20, 20);
+      if (score >= c.check) {
+        e.contracts[id] = state.character.age + CONTRACT_YEARS;
+        job.performance = Math.min(100, job.performance + 6);
+        ctx.log(`You won the ${c.name.toLowerCase()} contract for ${CONTRACT_YEARS} years. ${c.desc}`, c.icon, 'good');
+      } else {
+        job.performance = Math.max(0, job.performance - 2);
+        ctx.log(`A rival ambulance company underbid you for the ${c.name.toLowerCase()} contract.`, c.icon, 'warn');
+      }
+      return undefined;
     },
     assignment(ctx, id) {
       const { state } = ctx;

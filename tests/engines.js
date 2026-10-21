@@ -19,6 +19,7 @@ import { BOOK_CAREERS } from '../src/modules/career/engines/ClientBook.js';
 import { PROJECT_CAREERS } from '../src/modules/career/engines/Projects.js';
 import { SEASON_CAREERS } from '../src/modules/career/engines/Seasons.js';
 import { AUDIENCE_CAREERS } from '../src/modules/career/engines/Audience.js';
+import { INVESTIGATION_CAREERS } from '../src/modules/career/engines/Investigations.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -49,6 +50,12 @@ export function year(engine, state, types) {
     engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
   }
 }
+const BAD = /\bundefined\b|\bNaN\b|\[object |\bInfinity\b/;
+const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
+/** Enabled engine buttons on the career tab. */
+const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|investigations|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
+/** Every career an engine covers. */
+export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys))];
 const pure = (state, fn) => { const before = JSON.stringify(state); const html = fn(); assert.equal(JSON.stringify(state), before, 'rendering changed state'); return html; };
 
 const tests = {
@@ -175,6 +182,70 @@ const tests = {
     }
     assert.ok(broke, 'grinding ends in a forced break');
     assert.ok(state.careerLife.audience.peak > AUDIENCE_CAREERS.contentCreator.start, 'the following grew');
+  },
+  'investigations: cases build evidence and end in a takedown or a blown case'() {
+    for (const id of Object.keys(INVESTIGATION_CAREERS)) {
+      const { engine, state } = worker(id, 21);
+      if (!state.career.job) continue;
+      state.career.job.levelId = 'agent';
+      for (let y = 0; y < 6 && state.career.job; y++) year(engine, state, ['investigations.']);
+      const rec = state.careerLife?.investigations;
+      assert.ok(rec && (rec.closed.length || rec.case?.evidence > 0), `${id}: casework`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(INVESTIGATION_CAREERS[id].label), id);
+    }
+    const { engine, state } = worker('fbi', 22);
+    state.career.job.levelId = 'agent';
+    year(engine, state, ['investigations.']);
+    state.prompts = [];
+    engine.dispatch('investigations.technique', 'undercover');
+    assert.notEqual(state.careerLife.investigations.technique, 'undercover', 'undercover needs two years');
+    engine.dispatch('investigations.technique', 'wiretap');
+    assert.equal(state.careerLife.investigations.technique, 'wiretap');
+  },
+  'engine cards: random clicks on every engine career never break'() {
+    const problems = [];
+    for (const [i, id] of ENGINE_CAREERS().entries()) {
+      const { engine, state } = worker(id, 100 + i);
+      if (!state.career.job) continue;
+      if (state.career.job.levelId === 'trainee') state.career.job.levelId = 'agent';
+      const rng = new Random(200 + i);
+      for (let y = 0; y < 4 && state.career.job && state.character.alive; y++) {
+        for (let k = 0; k < 4; k++) {
+          state.prompts = [];
+          const html = VIEWS.career(state, {});
+          if (BAD.test(strip(html))) problems.push(`${id}: ${strip(html).match(new RegExp(`.{0,50}${BAD.source}.{0,50}`))[0]}`);
+          const b = engineButtons(html);
+          if (!b.length) break;
+          const pick = rng.pick(b);
+          try { engine.dispatch(pick.action, pick.arg); } catch (e) { problems.push(`${id} ${pick.action}(${pick.arg}): ${e.message}`); }
+        }
+        state.prompts = [];
+        state.stats.health = 95;
+        engine.ageUp();
+        for (let g = 0; g < 10 && state.prompts.length; g++) {
+          const p = state.prompts[0];
+          const opts = p.options.filter((o) => !o.disabled);
+          if (!opts.length) { state.prompts.shift(); continue; }
+          try { engine.resolvePrompt(p.id, rng.pick(opts).id); } catch (e) { problems.push(`${id} resolve ${p.type}: ${e.message}`); state.prompts.shift(); }
+        }
+      }
+      for (const e of state.log.flatMap((b) => b.entries)) if (BAD.test(e.text)) problems.push(`${id} log: ${e.text.slice(0, 120)}`);
+    }
+    assert.deepEqual([...new Set(problems)].slice(0, 10), []);
+  },
+  'private ambulance supervisors bid for interfacility contracts'() {
+    const { engine, state } = worker('privateEms', 23);
+    Object.assign(state.career.job, { levelId: 'supervisor', performance: 90 });
+    state.ems.agency ??= 'private';
+    let won = 0;
+    for (const id of ['events', 'dialysis', 'snf', 'backup', 'hospital']) {
+      state.yearly = {};
+      state.prompts = [];
+      engine.dispatch('emsLife.bid', id);
+      if (state.ems.contracts?.[id]) won += 1;
+    }
+    assert.ok(won > 0, 'won at least one contract');
+    assert.match(pure(state, () => VIEWS.career(state, {})), /Interfacility contracts/);
   },
 };
 

@@ -6,7 +6,7 @@
  *
  *   911 dispatch · corrections, jails and federal/private prisons · private
  *   security · TSA · animal services · game wardens · park rangers · air
- *   traffic control
+ *   traffic control · Border Patrol
  *
  * state.careerLife.shiftWork = { professionId, post, handled, rep, commendations, complaints, years }
  */
@@ -204,6 +204,34 @@ export const SHIFT_CAREERS = {
       C('fatigue', '😴', 'The Rattler Schedule', 'Your rotation has you on a midnight shift eight hours after a day shift. You\'re exhausted.', [
         { id: 'fatigue', label: '🛌 Call in fatigued', text: 'The program protected you. The shift was short-handed.', perf: -1 },
         { id: 'work', label: '☕ Work it', text: 'Coffee and willpower.', stress: 6, risk: { chance: 0.2, text: 'You nodded off on position for a few seconds. Nobody noticed — this time.', stress: 6 } },
+      ]),
+    ],
+  },
+  borderPatrol: {
+    label: 'On the Line', icon: '🛂', unit: 'apprehensions', volume: [150, 900], weights: { fitness: 2, smarts: 1 },
+    posts: {
+      line: P('Line watch', '🔦', 'Sensors, drag roads and long nights along the border.', { stress: 4 }),
+      checkpoint: P('Highway checkpoint', '🚧', 'Every car, every day: dogs, X-rays and nervous drivers.', { stress: 3, rate: 0.6 }),
+      horse: P('Horse patrol', '🐎', 'Country no truck can reach.', { stress: 3, years: 2, rate: 0.8 }),
+      marine: P('Marine unit', '🚤', 'Rivers, lakes and the coast.', { stress: 4, years: 2, pay: 1.04 }),
+      borstar: P('Search, trauma & rescue (BORSTAR)', '⛑️', 'The agents who go out for the lost and dying.', { stress: 6, pay: 1.06, years: 3, rate: 0.7 }),
+    },
+    calls: [
+      C('desert', '🏜️', 'Lost in the Desert', 'A sensor hit leads you to a group of migrants. One woman is unconscious from the heat; the nearest road is two hours away.', [
+        { id: 'carry', label: '🧍 Carry her out and call a helicopter', check: 45, weights: { fitness: 3 }, text: 'She lived. Her children were waiting at the station.', perf: 5, commend: 0.5, honor: { id: 'bp.lifesave', name: 'Border Patrol Lifesaving Award', icon: '❤️' }, fail: { text: 'The helicopter came too late.', trauma: 10 } },
+        { id: 'process', label: '📋 Call EMS and process the group', text: 'EMS reached her in time, barely.', perf: 2 },
+      ]),
+      C('load', '🚚', 'The Load Car', 'A pickup riding low runs the checkpoint and heads for town at ninety.', [
+        { id: 'pursue', label: '🚓 Pursue', check: 55, text: 'Spike strips ended it. Two hundred pounds of meth.', perf: 6, commend: 0.4, fail: { text: 'It rolled. People hidden in the bed were hurt.', trauma: 10, complaint: 0.4 } },
+        { id: 'call', label: '📻 Call ahead and let it go', text: 'Local deputies stopped it in town.', perf: 2 },
+      ]),
+      C('bribe', '💵', 'The Offer', 'A smuggler you stopped offers $15,000 to look the other way on Thursday night.', [
+        { id: 'report', label: '📝 Report it to internal affairs', text: 'IA set up a sting. The organisation lost a load and a corrupt agent.', perf: 6, commend: 0.5 },
+        { id: 'take', label: '💸 Take it', tone: 'danger', text: 'Easy money.', money: 15000, moneyLabel: 'Cash', offense: 'bribery', offenseContext: 'taking a smuggler\'s bribe', discovery: 0.35 },
+      ]),
+      C('family', '👨‍👩‍👧', 'A Family at the Fence', 'A father and daughter walk up and ask for asylum.', [
+        { id: 'humane', label: '🤝 Process them kindly and get water', text: 'Paperwork, water and a blanket. It was the right thing.', perf: 1, rep: 3 },
+        { id: 'cold', label: '📋 By the book, nothing more', text: 'Processed.', perf: 1 },
       ]),
     ],
   },
