@@ -203,6 +203,8 @@ Effort: **S** = configure an existing engine and add events (about a day); **M**
 
 ## Build order
 
+**Status:** engines 1–5 are built (`src/modules/career/engines/`: ShiftIncident, Caseload, ClientBook, Projects, Seasons, Audience, sharing Kit.js) and tested in `tests/engines.js`. Oil and gas keeps its boom/bust cycle in TradeCareers rather than a season card. Next up: the Route & logbook engine and the career-specific items in step 6.
+
 The ordering below maximises playable careers per unit of work:
 
 1. **Shift & incident engine.** Generalise PoliceLife's call system and apply it to dispatch, corrections, security, TSA, animal services, wardens and rangers, ATC and transit police: about 10 careers.

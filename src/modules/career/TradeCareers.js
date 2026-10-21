@@ -205,14 +205,6 @@ export const TradesModule = {
         return;
       }
     }
-    // Fishing shares: the season decides your pay.
-    if (profession.shares) {
-      // Base pay is the guaranteed day rate; the crew share on top swings with the season.
-      const season = rng.pick([['a record season', 1.0], ['a good season', 0.5], ['an average season', 0.25], ['a poor season', 0.05], ['a bust — the fish never showed', 0]]);
-      const share = Math.round(job.salary * season[1] / 100) * 100;
-      if (share) ctx.earn(share, 'Crew share of the catch', { wage: true });
-      if (!season[1]) ctx.stat('happiness', -4);
-      ctx.log(`Fishing: ${season[0]}${share ? ` — a $${share.toLocaleString()} crew share` : ''}.`, '🎣', season[1] >= 0.25 ? 'good' : 'warn');
-    }
+    // Fishing shares are paid by the season engine (engines/Seasons.js).
   },
 };

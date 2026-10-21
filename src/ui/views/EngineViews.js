@@ -8,6 +8,8 @@ import { shiftView, postEligibility } from '../../modules/career/engines/ShiftIn
 import { caseView, FOCUS, scaleOf } from '../../modules/career/engines/Caseload.js';
 import { bookView } from '../../modules/career/engines/ClientBook.js';
 import { projectView, APPROACH } from '../../modules/career/engines/Projects.js';
+import { seasonView } from '../../modules/career/engines/Seasons.js';
+import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
 function shiftSection(state) {
   const v = shiftView(state);
@@ -62,8 +64,32 @@ function projectSection(state) {
   return disclosure('engine.projects', `${cfg.icon} ${esc(cfg.label)}`, `${now}<h4 class="sub">How you work</h4><div class="toggle-row">${buttons}</div>${port ? `<h4 class="sub">Portfolio</h4><ul class="history">${port}</ul>` : ''}${rec ? meter(rec.rep, { label: 'Reputation' }) : ''}`, { count: p ? `${p.progress}% done` : null });
 }
 
+function seasonSection(state) {
+  const v = seasonView(state);
+  if (!v) return '';
+  const { cfg, rec } = v;
+  const planId = rec?.plan ?? Object.keys(cfg.plans)[0];
+  const buttons = Object.entries(cfg.plans).map(([id, p]) => button(`${p.icon} ${p.name}`, 'seasonWork.plan', { arg: id, variant: id === planId ? 'small on' : 'small', disabled: id === planId || Boolean(state.yearly['seasonWork.plan']), hint: p.desc })).join('');
+  const past = (rec?.seasons ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>Age ${x.age}</b> <small class="muted">${esc(cfg.plans[x.plan]?.name ?? '')}</small></div><small class="${x.tier >= cfg.tiers.length - 2 ? 'neg' : ''}">${esc(x.result)}${x.pay ? ` · $${x.pay.toLocaleString()}` : ''}</small></li>`).join('');
+  const best = rec?.best ? `<p>${chip(`🌟 Best: ${esc(rec.best.result)} (age ${rec.best.age})`, 'good')}</p>` : '<p class="fine">Your first season is still ahead.</p>';
+  return disclosure('engine.season', `${cfg.icon} ${esc(cfg.label)}`, `${best}<h4 class="sub">Next season</h4><div class="toggle-row">${buttons}</div>${past ? `<h4 class="sub">Past seasons</h4><ul class="history">${past}</ul>` : ''}${rec ? meter(rec.rep, { label: 'Reputation' }) : ''}<p class="fine">Plan the season once a year. Skill, weather, markets and luck decide the result, which pays on top of your base.</p>`, { count: cfg.plans[planId]?.name });
+}
+
+function audienceSection(state) {
+  const v = audienceView(state);
+  if (!v) return '';
+  const { cfg, rec } = v;
+  const y = state.yearly ?? {};
+  const pace = rec?.pace ?? 'steady';
+  const paces = Object.entries(PACE).map(([id, p]) => button(`${p.icon} ${p.name}`, 'audience.pace', { arg: id, variant: id === pace ? 'small on' : 'small', disabled: id === pace || Boolean(y['audience.pace']), hint: p.desc })).join('');
+  const releases = Object.entries(cfg.releases).map(([id, r]) => button(`${r.icon} ${r.name}`, 'audience.release', { arg: id, variant: 'small', disabled: Boolean(y['audience.release']), hint: `${r.desc}${r.cost ? ` · $${r.cost.toLocaleString()}` : ''}` })).join('');
+  const past = (rec?.releases ?? []).slice(0, 6).map((x) => `<li class="report-row"><div><b>${esc(x.name.replace(/^./, (c) => c.toUpperCase()))}</b> <small class="muted">age ${x.age}</small></div><small class="${x.reception === 'controversy' || x.reception === 'flop' ? 'neg' : ''}">${{ hit: '🚀 hit', 'well received': '👍 well received', flop: '😶 flop', controversy: '🔥 controversy' }[x.reception]}</small></li>`).join('');
+  const stats = rec ? `<p>${chip(`${cfg.icon} ${fansLabel(rec.fans)} ${esc(cfg.noun)}`, 'good')} ${chip(`📈 peak ${fansLabel(rec.peak)}`)} ${rec.income ? chip(`💵 $${rec.income.toLocaleString()} last year`, 'good') : ''}</p>${meter(rec.rep, { label: 'Reputation' })}${meter(rec.burnout, { label: 'Burnout' })}` : '<p class="fine">Your audience starts with your first year.</p>';
+  return disclosure('engine.audience', `${cfg.icon} ${esc(cfg.label)}`, `${stats}<h4 class="sub">Your pace</h4><div class="toggle-row">${paces}</div><h4 class="sub">This year's big release</h4><div class="toggle-row">${releases}</div>${past ? `<h4 class="sub">Past releases</h4><ul class="history">${past}</ul>` : ''}<p class="fine">${cfg.perFan ? `Sponsors, streams and appearances pay by the size of your following. ` : ''}Burnout past 85 forces a break.</p>`, { count: rec ? `${fansLabel(rec.fans)} ${cfg.noun}` : null });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [shiftSection(state), caseSection(state), bookSection(state), projectSection(state)].join('');
+  return [shiftSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state)].join('');
 }

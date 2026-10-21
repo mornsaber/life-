@@ -17,6 +17,8 @@ import { SHIFT_CAREERS } from '../src/modules/career/engines/ShiftIncident.js';
 import { CASE_CAREERS } from '../src/modules/career/engines/Caseload.js';
 import { BOOK_CAREERS } from '../src/modules/career/engines/ClientBook.js';
 import { PROJECT_CAREERS } from '../src/modules/career/engines/Projects.js';
+import { SEASON_CAREERS } from '../src/modules/career/engines/Seasons.js';
+import { AUDIENCE_CAREERS } from '../src/modules/career/engines/Audience.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { grantCredential } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -128,6 +130,51 @@ const tests = {
       if (!state.career.job || state.log.some((b) => b.entries.some((e) => /forensic review/.test(e.text)))) failures += 1;
     }
     assert.ok(failures > 0, 'cutting corners eventually fails');
+  },
+  'seasons: every configured career plays its seasons and gets paid by the result'() {
+    for (const id of Object.keys(SEASON_CAREERS)) {
+      const { engine, state } = worker(id, 15);
+      if (!state.career.job) continue;
+      for (let y = 0; y < 3 && state.career.job; y++) year(engine, state, ['seasonWork.']);
+      const rec = state.careerLife?.seasonWork;
+      assert.ok(rec?.seasons.length > 0, `${id}: seasons played`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(SEASON_CAREERS[id].label), id);
+    }
+    // Riskier fisheries pay more on average and hurt more people.
+    const run = (plan) => {
+      let pay = 0;
+      for (let i = 0; i < 10; i++) {
+        const { engine, state } = worker('fishing', 60 + i);
+        engine.dispatch('seasonWork.plan', plan);
+        for (let y = 0; y < 3 && state.career.job; y++) year(engine, state, ['seasonWork.']);
+        pay += state.careerLife.seasonWork.seasons.reduce((s, x) => s + x.pay, 0);
+      }
+      return pay;
+    };
+    assert.ok(run('crab') > run('groundfish'), 'crab pays more than groundfish');
+  },
+  'audience: releases move the following; grinding burns you out'() {
+    for (const id of Object.keys(AUDIENCE_CAREERS)) {
+      const { engine, state } = worker(id, 17);
+      if (!state.career.job) continue;
+      year(engine, state, ['audience.']);
+      state.prompts = [];
+      engine.dispatch('audience.release', Object.keys(AUDIENCE_CAREERS[id].releases)[0]);
+      const rec = state.careerLife?.audience;
+      assert.ok(rec?.releases.length === 1, `${id}: a release`);
+      engine.dispatch('audience.release', Object.keys(AUDIENCE_CAREERS[id].releases)[0]);
+      assert.equal(rec.releases.length, 1, `${id}: one release a year`);
+      if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), new RegExp(AUDIENCE_CAREERS[id].label), id);
+    }
+    const { engine, state } = worker('contentCreator', 18);
+    engine.dispatch('audience.pace', 'grind');
+    let broke = false;
+    for (let y = 0; y < 6 && state.career.job; y++) {
+      year(engine, state, ['audience.']);
+      if (state.careerLife.audience.pace === 'rest') { broke = true; break; }
+    }
+    assert.ok(broke, 'grinding ends in a forced break');
+    assert.ok(state.careerLife.audience.peak > AUDIENCE_CAREERS.contentCreator.start, 'the following grew');
   },
 };
 
