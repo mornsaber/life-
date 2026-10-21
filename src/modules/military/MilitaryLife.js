@@ -16,6 +16,7 @@ import { warFactor, atWar } from '../world/War.js';
 import { BRANCHES, monthlyBasePay, annualActivePay, branchOf } from './MilitaryEngine.js';
 import { branchDetailTick } from './CareerFields.js';
 import { nationalBases, nationalOverseas } from '../world/NationalForces.js';
+import { postAbroad, endPosting } from '../world/Posting.js';
 
 /** Bases and overseas postings: your own country's when you serve in a national force. */
 const basesFor = (svc) => (svc.nation ? nationalBases(svc.nation, svc.branch) : BASES[svc.branch] ?? []);
@@ -109,6 +110,8 @@ export function pcsOrders(ctx, svc) {
 function startTour(ctx, svc, { country, base, years, accompanied }) {
   const { state } = ctx;
   svc.overseas = { country, base, accompanied, until: state.character.age + years };
+  // You live there for the tour.
+  postAbroad(ctx, { place: base, country, kind: 'tour', years });
   svc.station = base;
   svc.stationYears = 0;
   svc.tourLength = years;
@@ -120,6 +123,7 @@ function returnStateside(ctx, svc) {
   const { state, rng } = ctx;
   const o = svc.overseas;
   svc.overseas = null;
+  endPosting(ctx);
   ctx.log(`Your tour in ${o.country} ended.${o.accompanied ? ' The kids came home with a passport full of stamps.' : ''}`, '🛬', 'military');
   const options = basesFor(svc);
   // A remote tour earns an assignment of choice.

@@ -8,6 +8,7 @@ import { CREDENTIAL_LIST, CATEGORIES, FLIGHT_BLOCK } from '../../modules/credent
 import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHere, passChance, prepCost, ATTEMPTS_PER_YEAR, reinstatementStatus } from '../../modules/credentials/LicensingEngine.js';
 import { RECIPROCITY_LABEL, CREDENTIALS } from '../../modules/credentials/CredentialRegistry.js';
 import { promotionCredentials } from '../../modules/career/JobLicensing.js';
+import { proficiencyLanguage } from '../../modules/world/Languages.js';
 
 function payerHint(state, cred) {
   const sponsor = findSponsor(state, cred);
@@ -43,7 +44,7 @@ export function credentialRow(state, cred) {
   }
   const status = held ? statusPill(held.status === 'suspended' ? (held.until != null ? `suspended → ${held.until}` : 'suspended') : held.status === 'revoked' && held.permanent ? 'revoked for good' : held.status === 'active' && held.probationUntil >= state.character.age ? `probation → ${held.probationUntil}` : held.status) : implied ? chip('covered', 'good') : '';
   return `<li class="cert ${held?.status === 'active' || implied ? 'done' : ''}" title="${esc(cred.kind)}">
-    <span>${cred.icon} ${esc(cred.name)}</span> ${status}
+    <span>${cred.icon} ${esc(cred.name)}${cred.id === 'languageProficiency' && proficiencyLanguage(state) ? ` — ${esc(proficiencyLanguage(state))}` : ''}</span> ${status}
     ${cred.renewYears && held?.status === 'active' ? `<small class="fine">renews every ${cred.renewYears} yr</small>` : ''}
     ${cred.jurisdiction === 'state' ? `<small class="fine">📍 ${held?.states ? held.states.join(', ') : 'state-issued'}</small>` : ''}
     <span class="cert-action">${action}</span>

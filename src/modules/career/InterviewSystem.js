@@ -192,7 +192,8 @@ function questionPrompt(ctx, data) {
 /** Everything about the candidate beyond the interview answers. */
 export function candidateBonus(state, profession) {
   let bonus = 0;
-  const veteran = state.military.history.length > 0 || state.military.service?.component === 'reserve';
+  // Veterans' preference: for this country's veterans.
+  const veteran = state.military.history.some((h) => (h.nation ?? 'US') === (state.character.countryId ?? 'US')) || (state.military.service?.component === 'reserve' && (state.military.service.nation ?? 'US') === (state.character.countryId ?? 'US'));
   if (veteran) bonus += profession.sector === 'private' ? 0.04 : 0.08;
   bonus += serviceHiringBonus(state, profession);
   bonus += clearanceHiringBonus(state, profession);

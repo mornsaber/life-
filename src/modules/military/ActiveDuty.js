@@ -14,8 +14,10 @@ import { PIPELINES, pipelineFor } from './SpecialOpsCatalog.js';
 import { serviceWar, serviceWarFactor, serviceCombatFactor, warContribution } from '../world/War.js';
 import { nationalOverseas } from '../world/NationalForces.js';
 import { upOrOut, mustRetire } from './Separation.js';
+import { postAbroad } from '../world/Posting.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
+import { addHonor } from '../../core/State.js';
 import {
   ranksOf,
   BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, retirementYearsFor, branchOf } from './MilitaryEngine.js';
@@ -25,7 +27,7 @@ import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './Med
 /** Peacetime deployments of other countries' forces: their standing missions abroad. */
 const NATIONAL_THEATERS = (svc) => {
   const list = nationalOverseas(svc.nation, svc.branch).map(([country, posting]) => `${posting}, ${country}`);
-  return list.length ? list : ['a UN peacekeeping mission', 'a multinational exercise abroad', 'a disaster-relief deployment'];
+  return list.length ? list : ['UNIFIL — UN peacekeeping in Lebanon', 'UNMISS — UN peacekeeping in South Sudan', 'UNDOF — UN observers on the Golan Heights', 'a multinational exercise in Poland', 'a disaster-relief deployment to the Philippines'];
 };
 const THEATERS = {
   ground: ['eastern Syria', 'the Sahel', 'northern Iraq', 'the Horn of Africa', 'the Baltic frontier'],
@@ -437,7 +439,9 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   svc.deploymentRequested = false;
   svc.deployments += 1;
 
-  ctx.log(`${mobilized ? 'Your reserve unit was mobilized. ' : ''}You deployed to ${theaterName} for ${months} months.`, branch.icon, 'military');
+  // You live in the theater for the deployment (aboard ship, at sea).
+  const posted = postAbroad(ctx, { place: theaterName, kind: 'deployment', years: 1 });
+  ctx.log(`${mobilized ? 'Your reserve unit was mobilized. ' : ''}You deployed to ${theaterName} for ${months} months${posted?.country && !theaterName.includes(posted.country) ? ` (${posted.country})` : posted?.atSea ? ', living aboard ship' : ''}.`, branch.icon, 'military');
   svc.warTours = (svc.warTours ?? 0) + (war && theaterName.startsWith(war.operation) ? 1 : 0);
   ctx.stat('stress', 10);
   ctx.stat('happiness', -5);
@@ -459,7 +463,11 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
     ctx.log(peacetimeAbroad ? rng.pick(['Exercises, patrols and long weeks of routine: nobody fired a shot.', 'The tour was all training with allies and showing the flag.', 'A quiet tour: the work was watching, waiting and keeping the kit running.']) : 'The tour was tense but you never came under direct fire.', '🌙');
   }
   endOfTourAwards(ctx, svc, { sawCombat });
+  // A UN operation's medal; NATO's for allied missions on the alliance's frontiers.
+  if (/\bUN\b|UNIFIL|UNMISS|UNDOF|MINUSCA|United Nations/.test(theaterName)) addHonor(ctx.state, { id: `un.${theaterName.split(' ')[0]}`, source: 'international', name: `UN Medal (${theaterName.split(' — ')[0]})`, icon: '🇺🇳', precedence: 7, prestige: 5, citation: `For service with ${theaterName}.` });
+  else if (/Baltic|Kosovo|Poland|Eastern Mediterranean|Estonia|Lithuania/.test(theaterName) && NATO.includes(svc.nation ?? 'US')) addHonor(ctx.state, { id: `nato.${ctx.state.character.age}`, source: 'international', name: 'NATO Medal', icon: '🎗️', precedence: 7, prestige: 5, citation: `For NATO service: ${theaterName}.` });
 }
+const NATO = ['US', 'CA', 'GB', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'TR'];
 
 function resolveCombat(ctx, data, optionId) {
   const { state, rng } = ctx;

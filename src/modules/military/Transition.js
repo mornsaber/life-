@@ -129,6 +129,9 @@ export function veteranTick(ctx) {
   const { state, rng } = ctx;
   const t = state.military.transition;
   if (!t || t.separatedAge == null || state.military.service || state.legal.incarceration) return;
+  // UCX, Vet Centers and veteran hiring fairs are the country you served's — not one you've moved to.
+  const last = state.military.history.at(-1);
+  if (last && (last.nation ?? 'US') !== (state.character.countryId ?? 'US')) return;
   const since = state.character.age - t.separatedAge;
   if (since === 1 && !t.readjusted && !state.prompts.some((p) => p.type === 'military.readjust')) {
     t.readjusted = true;

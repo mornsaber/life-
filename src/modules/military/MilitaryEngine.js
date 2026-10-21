@@ -665,7 +665,13 @@ function nationalMilitaryPension(ctx, svc, plan, { basePay, multiplier, type }) 
   }
 }
 
-export const isVeteran = (state) => state.military.history.some((h) => h.discharge !== 'dishonorable');
+/**
+ * Veterans' benefits are the country's own: the GI Bill, a VA loan, veterans' preference and VA care
+ * come from US service and are claimed in the US; a British veteran's from British service, in Britain.
+ */
+export const servedHere = (state, h) => (h.nation ?? 'US') === (state.character.countryId ?? 'US');
+export const homeService = (state) => state.military.history.filter((h) => servedHere(state, h));
+export const isVeteran = (state) => homeService(state).some((h) => h.discharge !== 'dishonorable');
 
 /** Name of the school a new member just finished. */
 export function entrySchool(svc) {

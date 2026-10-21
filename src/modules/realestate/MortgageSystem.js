@@ -114,7 +114,9 @@ function scoreSpread(score) {
 }
 
 export function vaEligible(state) {
-  const years = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)).reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0) + (state.military.service ? state.military.service.yearsOfService - (state.military.service.priorYears ?? 0) : 0);
+  // A VA loan is a US benefit for US service.
+  if ((state.character.countryId ?? 'US') !== 'US') return false;
+  const years = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge) && (h.nation ?? 'US') === 'US').reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0) + (state.military.service && !state.military.service.nation ? state.military.service.yearsOfService - (state.military.service.priorYears ?? 0) : 0);
   return years >= 2;
 }
 

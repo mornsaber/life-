@@ -3,11 +3,12 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
-import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder, disclosure } from '../Components.js';
+import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder, disclosure, optionRow } from '../Components.js';
 import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } from '../../modules/career/Transport.js';
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
@@ -96,7 +97,7 @@ function jobMarketCard(state) {
       c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
       claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
     ])}
-    ${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
+    ${job ? intlSection(state) : ''}${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
     <h4 class="sub">Work arrangement</h4><div class="toggle-row">${modes}</div>` : ''}
     <p class="fine">Strong performers get calls from recruiters. A competing offer can win you a raise where you are — but your boss will remember. Remote work means no commute, but you're out of sight when promotions come up.</p>`, { icon: '📨' });
 }
@@ -528,4 +529,21 @@ function unionFold(state, job) {
   if (!panel) return '';
   const label = job.employer.union ? `✊ ${esc((memberUnion(job) ?? job.employer.union).name)}${job.unionMember ? ' · member' : ''}` : '✊ No union here';
   return disclosure('job.union', label, panel);
+}
+
+/** International service: UN Police, Interpol, Europol and UN agencies, from the job you hold. */
+function intlSection(state) {
+  const job = state.career.job;
+  if (job.secondment) {
+    const m = MISSIONS[job.secondment.id];
+    return `<p class="fine">🌐 Seconded to ${esc(m.org)} — ${esc(m.name)}, ${esc(m.place)} (${esc(m.country)}) until age ${job.secondment.until}. ${esc(job.employer.name)} holds your job.</p>`;
+  }
+  const ids = openMissions(state);
+  if (!ids.length) return '';
+  const rows = ids.map((id) => {
+    const m = MISSIONS[id];
+    const check = missionEligibility(state, id);
+    return optionRow({ icon: '🌐', title: `${esc(m.org)}: ${esc(m.name)}`, sub: `${esc(m.place)}, ${esc(m.country)} · ${m.years === 1 ? '1 year' : `${m.years} years`} · +${money(m.allowance)}/yr allowance${m.risk ? ' · some danger' : ''}`, meta: check.ok ? `About ${Math.round(check.odds * 100)}% to be selected` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'intl.apply', { arg: id, variant: 'small', disabled: !check.ok }) });
+  }).join('');
+  return disclosure('career.intl', '🌐 International service', `<p class="fine">Secondments abroad from your job: you keep your post and pay, add a mission allowance, and live where you're posted.</p><ul class="job-board">${rows}</ul>`, { count: `${ids.filter((id) => missionEligibility(state, id).ok).length} open` });
 }

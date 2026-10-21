@@ -223,8 +223,16 @@ export function honoursList(ctx) {
   const cc = state.character.countryId ?? 'US';
   const orders = ORDERS[cc];
   if (!orders || state.character.age < orders.minAge || hasFelony(state) || state.legal.incarceration) return null;
-  if (!isCitizen(state, cc)) return null;
   const score = eminence(state);
+  // A foreigner who has made a mark here can be given an honorary award — no title, no prefix, once.
+  if (!isCitizen(state, cc)) {
+    const t = orders.tiers[Math.min(1, orders.tiers.length - 1)];
+    if (heldTiers(state, cc).length || score < t.min + 30 || !rng.chance(0.12)) return null;
+    const name = `${tierName(t, state.character.gender)} (honorary)`;
+    addHonor(state, { id: `order.${cc}.${t.id}.hon`, source: 'order', country: cc, tier: t.id, name, icon: '🎗️', ribbon: t.ribbon, precedence: 6, prestige: t.min / 3, citation: 'An honorary award to a foreign national, for services to the country.' });
+    ctx.log(`You were made an honorary ${name.replace(' (honorary)', '')} — the country's thanks to a foreigner who made a difference here.`, '🎗️', 'honor');
+    return t;
+  }
   const held = heldTiers(state, cc);
   const next = orders.tiers.find((t) => !held.includes(t.id) && score >= t.min);
   if (!next || !rng.chance(0.3)) return null;
