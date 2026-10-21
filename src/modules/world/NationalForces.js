@@ -34,9 +34,9 @@ export const FORCES = {
         officer: ['Second Lieutenant', 'Lieutenant', 'Captain', 'Major', 'Lieutenant-Colonel', 'Colonel', 'Brigadier-General', 'Major-General', 'Lieutenant-General', 'General'] },
     },
     bases: {
-      army: [['calgary', 'CFB Edmonton (3rd Canadian Division)'], ['ottawa', 'Garrison Petawawa'], ['montreal', 'CFB Valcartier'], ['halifax', 'CFB Gagetown']],
+      army: [['calgary', 'CFB Edmonton (3rd Canadian Division)'], ['ottawa', 'Garrison Petawawa'], ['montreal', 'CFB Valcartier'], ['halifax', 'CFB Gagetown'], ['reddeer', 'CFB Wainwright'], ['kamloops', 'CFB Comox detachment']],
       navy: [['halifax', 'CFB Halifax'], ['vancouver', 'CFB Esquimalt']],
-      airforce: [['ottawa', '8 Wing Trenton'], ['moosejaw', '15 Wing Moose Jaw'], ['calgary', '4 Wing Cold Lake'], ['halifax', '14 Wing Greenwood']],
+      airforce: [['ottawa', '8 Wing Trenton'], ['moosejaw', '15 Wing Moose Jaw'], ['reddeer', '4 Wing Cold Lake'], ['halifax', '14 Wing Greenwood'], ['thunderbay', '17 Wing detachment, Thunder Bay'], ['gaspe', '3 Wing Bagotville']],
     },
     overseas: {
       army: [['Latvia', 'NATO Multinational Brigade Latvia, Ādaži', 1, false], ['Germany', 'NATO Geilenkirchen', 3, true]],
@@ -61,9 +61,9 @@ export const FORCES = {
         enlisted: ['Private', 'Lance Corporal', 'Corporal', 'Sergeant', 'Staff Sergeant', 'Warrant Officer Class 2', 'Warrant Officer Class 1', 'Warrant Officer Class 1 (Senior)', 'Army Sergeant Major'], officer: ARMY_OFFICERS_EN },
     },
     bases: {
-      army: [['cornwall', 'Tidworth Garrison'], ['birmingham', 'Catterick Garrison'], ['edinburgh', 'Redford Barracks'], ['cardiff', 'Brecon'], ['london', 'Aldershot Garrison'], ['belfast', 'Thiepval Barracks']],
+      army: [['cornwall', 'Tidworth Garrison'], ['birmingham', 'Catterick Garrison'], ['edinburgh', 'Redford Barracks'], ['cardiff', 'Brecon'], ['london', 'Aldershot Garrison'], ['belfast', 'Thiepval Barracks'], ['inverness', 'Fort George (3 SCOTS)'], ['lincoln', 'Prince William of Gloucester Barracks, Grantham'], ['kendal', 'Warcop Training Area']],
       navy: [['cornwall', 'HMNB Devonport'], ['glasgow', 'HMNB Clyde (Faslane)'], ['london', 'HMNB Portsmouth']],
-      airforce: [['london', 'RAF Brize Norton'], ['edinburgh', 'RAF Lossiemouth'], ['manchester', 'RAF Coningsby']],
+      airforce: [['london', 'RAF Brize Norton'], ['inverness', 'RAF Lossiemouth'], ['lincoln', 'RAF Coningsby'], ['lincoln', 'RAF Waddington'], ['lincoln', 'RAF College Cranwell'], ['aberystwyth', 'RAF Valley (Anglesey)']],
       marines: [['cornwall', '42 Commando, Bickleigh'], ['glasgow', '45 Commando, Arbroath']],
     },
     overseas: {
@@ -257,9 +257,9 @@ export const FORCES = {
         enlisted: ['Private', 'Lance Corporal', 'Corporal', 'Sergeant', 'Staff Sergeant', 'Warrant Officer Class 2', 'Warrant Officer Class 1', 'Warrant Officer Class 1 (RSM)', 'Regimental Sergeant Major of the Army'], officer: ARMY_OFFICERS_EN },
     },
     bases: {
-      army: [['townsville', 'Lavarack Barracks'], ['darwin', 'Robertson Barracks'], ['brisbane', 'Gallipoli Barracks, Enoggera'], ['sydney', 'Holsworthy Barracks'], ['adelaide', 'RAAF Base Edinburgh (7 RAR)'], ['canberra', 'Royal Military College, Duntroon']],
+      army: [['townsville', 'Lavarack Barracks'], ['darwin', 'Robertson Barracks'], ['brisbane', 'Gallipoli Barracks, Enoggera'], ['sydney', 'Holsworthy Barracks'], ['adelaide', 'RAAF Base Edinburgh (7 RAR)'], ['canberra', 'Royal Military College, Duntroon'], ['toowoomba', 'Army Aviation Centre Oakey'], ['launceston', 'Paterson Barracks'], ['alicesprings', 'Joint Defence Facility Pine Gap']],
       navy: [['sydney', 'Fleet Base East (HMAS Kuttabul)'], ['perth', 'Fleet Base West (HMAS Stirling)'], ['darwin', 'HMAS Coonawarra']],
-      airforce: [['sydney', 'RAAF Base Richmond'], ['brisbane', 'RAAF Base Amberley'], ['darwin', 'RAAF Base Darwin'], ['townsville', 'RAAF Base Townsville']],
+      airforce: [['sydney', 'RAAF Base Richmond'], ['brisbane', 'RAAF Base Amberley'], ['darwin', 'RAAF Base Darwin'], ['townsville', 'RAAF Base Townsville'], ['darwin', 'RAAF Base Tindal'], ['mildura', 'RAAF Base East Sale']],
     },
     overseas: {
       army: [['Malaysia', 'Rifle Company Butterworth', 1, false], ['Middle East', 'Operation Okra', 1, false], ['Solomon Islands', 'regional assistance mission', 1, false]],

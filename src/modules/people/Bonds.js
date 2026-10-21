@@ -437,6 +437,7 @@ export const BondsModule = {
       if (!e.ok) return ctx.toast(e.reason, 'warn');
       const options = Object.entries(ACTIVITIES).filter(([, a]) => state.character.age >= a.minAge && ageOf(state, p) >= a.minAge && !(isRomantic(p) === false && a.minAge >= 18 && ageOf(state, p) < 18))
         .map(([aid, a]) => ({ id: aid, label: a.label, hint: a.cost ? `$${a.cost}` : 'Free' }));
+      if (!options.length) return ctx.toast(`Nothing you and ${p.firstName} can do together yet.`, 'warn');
       ctx.prompt({ type: 'bonds.hangOut', icon: '🫶', title: `Time With ${p.firstName}`, text: `What do you want to do with ${p.firstName}? (${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name.toLowerCase()} — what would they love?)`, options, data: { personId: p.id } });
       return undefined;
     },

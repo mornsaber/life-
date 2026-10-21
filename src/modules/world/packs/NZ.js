@@ -254,7 +254,7 @@ export const NZ = {
         guard: { name: 'Army Reserve', icon: '🛡️', motto: 'Ngāti Tūmatauenga', basic: 'Reserve recruit training at Waiouru', officerSchool: 'Officer Cadet School (Reserve)', enlisted: ARMY_ENLISTED, officer: ARMY_OFFICERS },
       },
       bases: {
-        army: [['christchurch', 'Burnham Military Camp'], ['wellington', 'Trentham Military Camp'], ['auckland', 'Papakura Military Camp'], ['hamilton', 'Waiouru Military Camp']],
+        army: [['christchurch', 'Burnham Military Camp'], ['wellington', 'Trentham Military Camp'], ['auckland', 'Papakura Military Camp'], ['hamilton', 'Waiouru Military Camp'], ['whanganui', 'Linton Military Camp'], ['invercargill', 'Tekapo Military Training Area']],
         navy: [['auckland', 'Devonport Naval Base (HMNZS Philomel)']],
         airforce: [['auckland', 'RNZAF Base Auckland (Whenuapai)'], ['wellington', 'RNZAF Base Ohakea']],
       },

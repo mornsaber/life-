@@ -264,7 +264,7 @@ export const IE = {
         guard: { name: 'Army Reserve (Reserve Defence Force)', icon: '🛡️', motto: 'Óglaigh na hÉireann', basic: 'Reserve recruit training', officerSchool: 'the Reserve Potential Officers Course', enlisted: ARMY_ENLISTED, officer: ARMY_OFFICERS },
       },
       bases: {
-        army: [['dublin', 'Cathal Brugha Barracks'], ['dublin', 'McKee Barracks'], ['cork', 'Collins Barracks, Cork'], ['galway', 'Dún Uí Mhaoilíosa (Renmore)'], ['limerick', 'Sarsfield Barracks'], ['letterkenny', 'Finner Camp']],
+        army: [['dublin', 'Cathal Brugha Barracks'], ['dublin', 'McKee Barracks'], ['cork', 'Collins Barracks, Cork'], ['galway', 'Dún Uí Mhaoilíosa (Renmore)'], ['limerick', 'Sarsfield Barracks'], ['letterkenny', 'Finner Camp'], ['athlone', 'Custume Barracks, Athlone'], ['clifden', 'Glen of Imaal (training)']],
         navy: [['cork', 'Naval Base Haulbowline']],
         airforce: [['dublin', 'Casement Aerodrome, Baldonnel']],
       },
