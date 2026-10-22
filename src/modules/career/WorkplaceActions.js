@@ -23,7 +23,7 @@ const DIMINISH = [1, 0.6, 0.3, 0];
  * The air thins near the top. The seat itself is scarce (Vacancies: one chief, a few deputies)
  * and the contest is against named rivals, so this only shades the odds once a seat is open.
  */
-const COMPETITION = { 3: 0.95, 4: 0.9, 5: 0.85, 6: 0.8, 7: 0.72, 8: 0.62, 9: 0.52, 10: 0.45 };
+const COMPETITION = { 3: 0.92, 4: 0.82, 5: 0.7, 6: 0.6, 7: 0.5, 8: 0.4, 9: 0.32, 10: 0.25 };
 
 function withJob(ctx) {
   const job = ctx.state.career.job;
@@ -303,7 +303,7 @@ export const WorkplaceActions = {
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
       // Runner-up last time: a civil-service list ranks you first for the next opening; a company remembers.
       const listed = job.nextInLine?.levelId === target.id && job.performance >= 70;
-      if (listed) chance = job.sector === 'private' ? chance * 1.35 : Math.max(chance, 0.9);
+      if (listed) chance = job.sector === 'private' ? chance * 1.2 : Math.max(chance, 0.85);
 
       if (rng.chance(clamp(chance, 0.05, 0.95))) {
         // Big employers often attach a relocation to senior promotions.

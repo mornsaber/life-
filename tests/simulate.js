@@ -113,7 +113,7 @@ function checkInvariants(state) {
     assert.ok(job.performance >= 0 && job.performance <= 100, 'perf');
     assert.ok(job.employer.budget.left >= 0, 'budget');
     if (job.department) assert.ok(job.department.headcount >= 2, 'headcount');
-    assert.ok(!state.legal.incarceration, 'no job in prison');
+    assert.ok(!state.legal.incarceration, `no job in prison: ${job.title} (${job.professionId}) · ${state.log.slice(-2).flatMap((y) => y.entries.map((e) => e.text)).slice(-10).join(' | ')}`);
   }
   for (const [id, h] of Object.entries(state.credentials.held)) assert.ok(CREDENTIALS[id] && ['active', 'suspended', 'expired', 'revoked'].includes(h.status), `credential ${id}`);
   const svc = state.military.service;

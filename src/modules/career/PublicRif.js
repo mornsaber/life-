@@ -110,7 +110,7 @@ export function recallTick(ctx, deps) {
     return;
   }
   // Only once the budget has recovered.
-  if (state.career.job || budgetPressure(state, { sector: r.employer.sector ?? 'municipal' }) > 0.2 || !rng.chance(0.6)) return;
+  if (state.career.job || state.legal?.incarceration || budgetPressure(state, { sector: r.employer.sector ?? 'municipal' }) > 0.2 || !rng.chance(0.6)) return;
   ctx.prompt({
     type: 'career.rifRecall', icon: '📞', title: 'Recalled',
     text: `${r.employer.name} is restoring positions and offers you your old job back as ${r.title}, with your seniority intact.`,
@@ -159,7 +159,7 @@ export function rifResolvers(deps) {
       const { state } = ctx;
       const r = state.career.recall;
       state.career.recall = null;
-      if (!r || optionId !== 'return' || state.career.job) return;
+      if (!r || optionId !== 'return' || state.career.job || state.legal?.incarceration) return;
       if (deps.hire(ctx, { professionId: r.professionId, levelId: r.levelId, employer: r.employer })) {
         ctx.log(`You're back at ${r.employer.name} as ${r.title}.`, '📞', 'good');
       }

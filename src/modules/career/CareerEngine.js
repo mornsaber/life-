@@ -255,6 +255,11 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
     ctx.toast('You are on active duty and can\'t take a civilian job.', 'warn');
     return null;
   }
+  // An offer that arrives (or is answered) while you're serving a sentence lapses.
+  if (state.legal?.incarceration) {
+    ctx.toast('You can\'t take a job while incarcerated.', 'warn');
+    return null;
+  }
   if (state.career.job) leaveJob(ctx, 'Resigned for a new opportunity');
   if (state.career.leave) endMilitaryLeave(ctx, 'Took a new job instead of returning from military leave');
   const profession = getProfession(professionId);
