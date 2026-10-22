@@ -277,13 +277,15 @@ export const PoliticsEngine = {
       const served = p.history.filter((h) => h.officeId === o.id).reduce((s, h) => s + h.terms, 0) + o.terms;
       const limited = office.termLimit && served >= office.termLimit;
       const onCalendar = !office.appointedBy && !outsideCalendar(state, o.id);
+      // Appointed and indirectly chosen offices have no electorate to poll.
+      const projected = voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true });
       const reelectionPrompt = () => ctx.prompt({
         type: 'politics.reelection',
         icon: '🗳️',
         title: onCalendar ? 'Your Term Ends Next Year' : 'Your Term Is Up',
         text: `Approval ${o.approval}%. ${office.termLimit ? `Term ${served} of ${office.termLimit}.` : ''} Run again?`,
         options: [
-          { id: 'run', label: '🗳️ Run for re-election', hint: `≈${Math.round(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) * 100)}% projected` },
+          { id: 'run', label: '🗳️ Run for re-election', hint: Number.isFinite(projected) ? `≈${Math.round(projected * 100)}% projected` : `${office.chosenBy ? `Up to ${office.chosenBy}` : 'Up to those who chose you'}` },
           { id: 'retire', label: onCalendar ? '👋 Don\'t seek re-election' : '👋 Retire from office' },
         ],
       });

@@ -331,3 +331,23 @@ export const MW = nation({
   religion: { evangelical: 30, catholic: 17, pentecostal: 20, anglican: 2, sunni: 14, none: 17 },
   farm: { price: 2000, unit: 'acre', plots: [1, 2, 5, 10, 25], prod: 0.35, grass: 0.8, drought: 1.5, flood: 1.2, crops: ['corn', 'soybeans', 'vegetables', 'pasture'] },
 });
+
+export const ET = nation({
+  id: 'ET', name: 'Ethiopia', flag: '🇪🇹', demonym: 'Ethiopian', capital: 'Addis Ababa', cur: ['ETB', 'Br'], ppp: 22, languages: ['Amharic', 'Oromo'], emergency: '991 / 939 / 907', retire: 60, informality: 0.85, cityFare: 2,
+  tax: { allowance: 7200, brackets: [[12600, 0.1], [18000, 0.15], [25200, 0.2], [31800, 0.25], [36000, 0.3], [Infinity, 0.35]], contributions: [['Pension contribution', 0.07, null]], label: 'the Ministry of Revenues', vat: 0.15, corporate: 0.3 },
+  pension: { name: 'Private / public servants\' pension', short: 'the POESSA', rate: 0.18 }, health: { name: 'Community-Based Health Insurance', short: 'CBHI', coinsurance: 0.4, oopMax: 30000, wait: 8 },
+  names: { male: ['Abebe', 'Dawit', 'Yonas', 'Tesfaye', 'Bereket', 'Henok', 'Mulugeta', 'Getachew', 'Solomon', 'Tadesse', 'Abdi', 'Kebede'], female: ['Tigist', 'Hiwot', 'Selam', 'Meron', 'Bethlehem', 'Hana', 'Almaz', 'Mekdes', 'Liya', 'Ruth', 'Fatuma', 'Aster'], last: ['Bekele', 'Tadesse', 'Haile', 'Girma', 'Alemu', 'Tesfaye', 'Mekonnen', 'Wolde', 'Getachew', 'Abebe', 'Mohammed', 'Hussein'] },
+  provinceWord: 'Region', provinces: [['ET-AA', 'Addis Ababa', 5.5], ['ET-OR', 'Oromia', 40], ['ET-AM', 'Amhara', 23], ['ET-TI', 'Tigray', 6]],
+  cities: [['addisababa', 'Addis Ababa', '🕊️', 'Capital region', 'ET-AA', 'large', 5500000, 0.45, 0.22], ['adama', 'Adama', '🌾', 'Mid-size city', 'ET-OR', 'medium', 400000, 0.4, 0.18], ['bahirdar', 'Bahir Dar', '🛶', 'Mid-size city', 'ET-AM', 'medium', 350000, 0.4, 0.18], ['mekelle', 'Mekelle', '⛰️', 'Mid-size city', 'ET-TI', 'medium', 330000, 0.38, 0.16]],
+  gov: { system: 'parliamentary', head: 'Prime Minister', lower: ['House of Peoples\' Representatives', 547, 'Member of Parliament'], upper: ['House of Federation', 153, 'Member of the House of Federation', false], term: 5, parties: ['Prosperity Party', 'Opposition coalition'], pardon: 'the President of Ethiopia' },
+  police: { name: 'Ethiopian Federal Police', local: (c) => `${c.split(',')[0]} Police Commission`, academy: 'the Ethiopian Police University', head: 'Commissioner General', ranks: ['Recruit', 'Constable', 'Assistant Sergeant', 'Sergeant', 'Inspector', 'Chief Inspector', 'Superintendent', 'Commander', 'Deputy Commissioner', 'Commissioner'] },
+  fire: 'Addis Ababa Fire and Emergency Prevention', ems: 'Ethiopian Red Cross ambulance service', prosecution: 'Federal Attorney General', prosecutor: 'Attorney General', intel: 'National Intelligence and Security Service (NISS)', foreign: 'Ministry of Foreign Affairs', prisons: 'Federal Prison Commission', border: 'Immigration and Citizenship Service', post: 'Ethiopian Postal Service', pensionAgency: 'the Pension Agency', centralBank: 'National Bank of Ethiopia', audit: 'Office of the Federal Auditor General', nationalFire: true,
+  forces: { army: 'Ethiopian National Defense Force', navy: null, air: 'Ethiopian Air Force', reserve: 'ENDF Reserve', academy: 'the Haile Selassie I Military Academy (Holeta)', head: 'Chief of General Staff', bases: { army: [['addisababa', 'Addis Ababa garrison'], ['bahirdar', 'Bahir Dar command']], airforce: [['adama', 'Bishoftu air base']] }, overseas: [['South Sudan', 'UN mission (UNMISS)'], ['Somalia', 'AU mission (AUSSOM)']] },
+  war: [{ id: 'northern', name: 'a civil war in the north', adversary: 'regional forces', intensity: 3, home: 0.4, weight: 10, internal: true }], warChance: 0.02,
+  orders: [['', 'Order of the Star of Honour'], ['', 'Order of the Star of Honour (Grand Officer)']],
+  courts: { top: 'Federal Supreme Court', high: 'Federal High Court', appeal: 'Federal Supreme Court (cassation)', magistrate: 'Federal First Instance Court judge', appointedBy: 'Parliament, on the Prime Minister\'s nomination' },
+  edu: { exam: 'Ethiopian Secondary School Leaving Certificate Exam', state: 'Addis Ababa University', private: 'Unity University', elite: 'Addis Ababa University', tvet: 'TVET college' },
+  immig: { work: 'Work permit and residence ID', pr: 'Permanent residence', natYears: 4, dual: false }, unions: 'Confederation of Ethiopian Trade Unions', stock: 'Ethiopian Securities Exchange', lender: 'Commercial Bank of Ethiopia', fees: 1000,
+  religion: { orthodoxChristian: 44, sunni: 34, pentecostal: 19, evangelical: 2, catholic: 1 },
+  farm: { price: 15000, unit: 'ha', plots: [3, 5, 12, 25], prod: 0.35, grass: 0.9, drought: 1.5, flood: 1.0, crops: ['corn', 'wheat', 'vegetables', 'pasture'] },
+});

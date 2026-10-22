@@ -137,6 +137,7 @@ const JOB_GROUP = {
   flightAttendant: 'airline', physicianAssistant: 'clinic', counseling: 'therapyOffice', psychology: 'therapyOffice', dietitian: 'therapyOffice', speechPathology: 'therapyOffice',
   socialWork: 'agencyOffice', cps: 'agencyOffice', benefitsClaims: 'agencyOffice', revenue: 'agencyOffice', regulatory: 'agencyOffice', municipalAdmin: 'agencyOffice',
   planning: 'agencyOffice', councilInspector: 'agencyOffice', oig: 'agencyOffice', legislativeStaff: 'agencyOffice', foreignService: 'agencyOffice', prosecution: 'agencyOffice', publicDefender: 'agencyOffice',
+  unSecretariat: 'agencyOffice', unAgencies: 'agencyOffice', euInstitutions: 'agencyOffice', nato: 'agencyOffice', intlFinance: 'corpOffice', intlJustice: 'courthouse', icrc: 'agencyOffice', maltaRelief: 'agencyOffice', maltaDiplomacy: 'agencyOffice',
   courts: 'courthouse', caseOfficer: 'intel', sigint: 'intel', intelligence: 'intel', athletics: 'athletics', caregiving: 'homeCare',
 };
 const BUSINESS_GROUP = {

@@ -113,6 +113,15 @@ Object.assign(NATIONAL_OFFICES, {
   gb_deputyLieutenant: { ...ceremonial, country: 'GB', name: 'Deputy Lieutenant', icon: '🏰', level: 3, term: 10, salary: 0, fullTime: false, minAge: 40, cost: 0, selection: 'appointed', chosenBy: 'the Lord-Lieutenant', stature: 2 },
   nz_gg: { ...ceremonial, country: 'NZ', name: 'Governor-General of New Zealand', icon: '🇳🇿', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
 });
+/**
+ * Members of the European Parliament: elected in each member state on national lists every
+ * five years, all paid the same salary from the EU budget. They sit in Brussels and Strasbourg.
+ */
+const EU_STATES = [...new Set(['DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'IE', ...PACKS.filter((p) => p.groups?.includes('EU')).map((p) => p.id)])];
+for (const cc of EU_STATES) {
+  NATIONAL_OFFICES[`${cc.toLowerCase()}_mep`] = { country: cc, name: 'Member of the European Parliament (MEP)', icon: '🇪🇺', level: 4, term: 5, termLimit: 0, salary: 140000, minAge: 18, residency: 0, cost: 120000, statewide: true, european: true, ...legislative };
+}
+
 /** Countries whose head of state is a monarch (no office to hold; their representatives are above). */
 export const MONARCHIES = ['GB', 'CA', 'AU', 'NZ', 'JP', 'SE', 'NL', 'ES', ...PACKS.filter((p) => p.monarchy).map((p) => p.id)];
 

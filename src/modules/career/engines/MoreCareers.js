@@ -380,7 +380,7 @@ Object.assign(PROJECT_CAREERS, {
   legislativeStaff: {
     label: 'Your Bills', icon: '📜', weights: { smarts: 3 },
     name: (rng) => `the ${pick(rng, ['housing', 'veterans', 'broadband', 'opioid', 'child care', 'tax relief'])} ${pick(rng, ['bill', 'amendment', 'appropriation', 'reform package'])}`,
-    acclaim: 'a signing ceremony and the pen the governor used', failure: { text: 'A bill you rushed had a drafting error that gutted it. It made the papers.', perf: -10, rep: -10 },
+    acclaim: 'a signing ceremony, and a pen from the signing', failure: { text: 'A bill you rushed had a drafting error that gutted it. It made the papers.', perf: -10, rep: -10 },
     deck: [
       D('lobbyist', '🍷', 'Dinner With a Lobbyist', 'A lobbyist offers you dinner, a concert, and a few lines of bill language he\'s already written.', [
         { id: 'meet', label: '☕ Take the meeting, not the gifts', text: 'You used half his ideas and none of his tickets.', perf: 3, rep: 2 },
