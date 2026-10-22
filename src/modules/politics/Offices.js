@@ -32,12 +32,18 @@ export const OFFICES = {
   usRep: { name: 'U.S. Representative', icon: '🇺🇸', level: 4, term: 2, termLimit: 0, salary: 174000, fullTime: true, minAge: 25, residency: 1, cost: 2000000, pension: 'fers' },
   governor: { name: 'Governor', icon: '⭐', level: 5, term: 4, termLimit: 2, salary: 190000, fullTime: true, minAge: 30, residency: 5, cost: 9000000, pension: 'electedOfficials', executive: true, statewide: true },
   usSenator: { name: 'U.S. Senator', icon: '🦅', level: 5, term: 6, termLimit: 0, salary: 174000, fullTime: true, minAge: 30, residency: 3, cost: 18000000, pension: 'fers', statewide: true },
+  // The national ticket: a natural-born citizen, 35+, fourteen years a resident; two terms (22nd Amendment).
+  president: { name: 'President of the United States', icon: '🇺🇸', level: 6, term: 4, termLimit: 2, salary: 400000, fullTime: true, minAge: 35, residency: 0, cost: 1200000000, pension: 'fers', kind: 'executive', executive: true, statewide: true, national: true, naturalBorn: true, headOfState: true },
+  // Chosen, not run for: the nominee picks a running mate (see Presidency).
+  vicePresident: { name: 'Vice President of the United States', icon: '🦅', level: 6, term: 4, termLimit: 0, salary: 235100, fullTime: true, minAge: 35, residency: 0, cost: 0, pension: 'fers', national: true, naturalBorn: true, runningMate: true },
+  // Appointed by the President and confirmed by the Senate.
+  cabinetSecretary: { name: 'Cabinet Secretary', icon: '💼', level: 5, term: 4, termLimit: 0, salary: 250600, fullTime: true, minAge: 25, residency: 0, cost: 0, pension: 'fers', kind: 'executive', appointedBy: 'the President', cabinet: true },
 };
 
 // Offices abroad resolve by id but stay out of US iteration (Object.keys/values of OFFICES are unchanged).
 for (const [id, o] of Object.entries(NATIONAL_OFFICES)) Object.defineProperty(OFFICES, id, { value: o, enumerable: false });
 
-export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'countyCommissioner', 'cityManager', 'sheriff', 'districtAttorney', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator'];
+export const OFFICE_ORDER = ['schoolBoard', 'cityCouncil', 'countyCommissioner', 'cityManager', 'sheriff', 'districtAttorney', 'mayor', 'stateRep', 'stateSenator', 'judge', 'usRep', 'governor', 'usSenator', 'cabinetSecretary', 'vicePresident', 'president'];
 
 export const ENDORSEMENTS = {
   labor: { name: 'Labor unions', icon: '✊' },

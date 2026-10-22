@@ -442,7 +442,7 @@ function randomActions(state) {
     if (player.chance(0.02)) tries.push(() => act('housing.moveInWithParents'));
     const folks = state.people?.list.filter((x) => x.alive && x.life) ?? [];
     if (folks.length && player.chance(0.05)) tries.push(() => act(player.pick(['npcLives.helpBuy', 'npcLives.payTuition']), player.pick(folks).id));
-    if (folks.length && h.properties.length && player.chance(0.05)) tries.push(() => act('npcLives.offerHome', `${player.pick(folks).id}:${player.pick(h.properties).id}`));
+    if (folks.length && h.properties.length && player.chance(0.05)) { const arg = `${player.pick(folks).id}:${player.pick(h.properties).id}`; tries.push(() => act('npcLives.offerHome', arg)); }
     for (const v of state.vehicles?.owned ?? []) if (player.chance(0.05)) tries.push(() => act('vehicles.charter', v.id));
     for (const p of h.properties) {
       if (player.chance(0.15)) tries.push(() => act(player.pick(['housing.refinance', 'housing.heloc', 'housing.repayHeloc', 'housing.floodInsurance']), p.id));

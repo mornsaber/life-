@@ -211,7 +211,21 @@ export function emergencyView(state) {
 }
 
 /** Your unit: billet, chain of command, the people you lead, readiness, command tours. */
+/** Colonels, generals and admirals: the command or staff post, its readiness, the record. */
+function seniorCard(state, svc) {
+  const p = svc.post;
+  const rec = svc.flagRecord;
+  if (!p && !rec) return '';
+  const history = rec?.commands?.length ? `<ul class="history">${rec.commands.map((c) => `<li>🎖️ ${esc(c.title)} <small class="${c.result === 'poor' ? 'neg' : 'pos'}">${c.result}</small></li>`).join('')}</ul>` : '';
+  return card(p ? esc(`${p.title}${p.unit ? `, ${p.unit}` : ''}`) : 'Senior Command', `
+    ${p ? `<p>${chip(p.kind === 'command' ? '🎖️ Command' : '🗂️ Staff', p.kind === 'command' ? 'honor' : '')} ${chip(`Tour ends at age ${p.untilAge}`)}</p>` : ''}
+    ${p?.kind === 'command' ? meter(p.readiness, { label: '🛡️ Command readiness' }) : ''}
+    ${history}
+    <p class="fine">From colonel up, a career is a run of two- and three-year posts: command if a board picks you, staff if not. Each year in command brings a decision. Readiness follows your choices and the defense budget; an excellent command earns the next star, a failed one gets you relieved.${rec?.relieved ? ' <span class="neg">You have been relieved of command once.</span>' : ''}</p>`, { icon: '⭐', accent: 'yellow' });
+}
+
 function unitCard(state, svc) {
+  if (svc.track === 'officer' && svc.grade >= 5 && (svc.post || svc.flagRecord)) return seniorCard(state, svc);
   const v = unitView(state, svc);
   if (!v) return '';
   const left = LEADER_ACTIONS - (state.yearly['military.lead'] ?? 0);
@@ -263,7 +277,7 @@ function volunteerOrgSection(state, svc, member) {
   const members = roster(org).sort((a, b) => b.years - a.years).slice(0, 8).map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(svc.ranks[p.rankIndex]?.title ?? '')}${p.paid ? ` · 💼 ${esc(p.paid)}` : ''} · ${p.years} yrs · trusts you ${p.rel}%${p.discipline ? ` · ${p.discipline} suspension${p.discipline > 1 ? 's' : ''}` : ''}</small></div>
     <div class="toggle-row">${button('🎖️ Recognize', 'emergency.commendMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⭐ Appoint', 'emergency.appointMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny', disabled: left <= 0 })}${button('⚖️ Discipline', 'emergency.disciplineMember', { arg: `${svc.id}:${p.id}`, variant: 'tiny danger', disabled: left <= 0 })}</div></li>`).join('');
   const H = hqLeaders(state, org);
-  const hqNote = H ? `<h4 class="sub">🏛️ ${esc(H.hq.name)} headquarters</h4><ul class="history">${[[H.hq.posts?.org?.title ?? 'Commissioner', H.head], [H.hq.posts?.operations?.title ?? 'Head of Operations', H.ops], ['Region Controller (your region)', H.controller], ['Volunteer Services Manager', H.volunteers]].filter(([, p]) => p).map(([t, p]) => `<li><small class="muted">${esc(t)}</small> <b>${esc(p.name)}</b></li>`).join('')}</ul><p class="fine">About ${H.staff.toLocaleString()} paid staff run the service's headquarters and regions: operations, training, logistics and volunteer support. Paid posts there are the Emergency Management career.</p><div class="toggle-row">${button('💼 Apply for a paid post at headquarters', 'career.apply', { arg: 'emergencyManagement', variant: 'small' })}</div>` : '';
+  const hqNote = H ? `<h4 class="sub">🏛️ ${esc(H.hq.name)} headquarters</h4><ul class="history">${[[H.hq.posts?.org?.title ?? 'Commissioner', H.head], [H.hq.posts?.operations?.title ?? 'Head of Operations', H.ops], ['Region Controller (your region)', H.controller], ['Volunteer Services Manager', H.volunteers]].filter(([, p]) => p).map(([t, p]) => `<li><small class="muted">${esc(t)}</small> <b>${esc(p.name)}</b></li>`).join('')}</ul><p class="fine">About ${H.staff.toLocaleString()} paid staff run the service's headquarters and regions: operations, training, logistics and volunteer support. Paid posts there are ${H.career === 'emergencyManagement' ? 'the Emergency Management career' : 'jobs in that career'}.</p><div class="toggle-row">${button('💼 Apply for a paid post at headquarters', 'career.apply', { arg: H.career, variant: 'small' })}</div>` : '';
   const electNote = org.parent ? `${esc(org.parent.name)} appoints the unit's officers as seats open.` : L?.elected.length ? `The membership elects its ${L.elected.map((i) => svc.ranks[i].title).join(' and ')} every two years (next at age ${org.nextElection}).` : 'Officer seats open when someone steps down.';
   return `${disclosure(`emergency.org.${svc.id}`, `🏛️ ${esc(org.name)}`, `<ul class="history">${offs}</ul><p class="fine">${electNote} Officer ranks need an open seat as well as experience; the number of seats follows the size of the unit (${Object.keys(org.people).length + 1} members, ${org.district?.stations ?? 1} station${(org.district?.stations ?? 1) > 1 ? 's' : ''}).</p>${hqNote}${lead ? `<h4 class="sub">Members</h4><ul class="history">${members}</ul>` : ''}`, { count: `${Object.keys(org.people).length + 1} members · readiness ${org.readiness}%` })}
     ${districtSection(state, svc, org, lead, left)}

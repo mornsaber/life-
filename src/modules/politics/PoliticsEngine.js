@@ -17,6 +17,8 @@ import { promotionStatus } from '../career/CareerEngine.js';
 import { OFFICES } from './Offices.js';
 import { SEAT_OFFICES } from './Legislature.js';
 import { voteShare, CampaignActions, CampaignResolvers, appointmentEligibility } from './Campaigns.js';
+import { runsGovernment, executiveYear, headYear, offersYear, ticketYear, CABINET } from './Executive.js';
+import { COUNTRIES } from '../world/Countries.js';
 
 function takeOffice(ctx, officeId, { appointed = false } = {}) {
   const { state } = ctx;
@@ -28,7 +30,8 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
   if (office.fullTime && state.career.job) ctx.emit('career:resign', { reason: `Took office as ${office.name}` });
   p.office = { id: officeId, termYearsLeft: office.term, terms: 1, approval: appointed ? 55 : 60, startAge: state.character.age, fullTime: office.fullTime, ...(seatOffice ? { seatOffice } : {}) };
   p.recognition = Math.min(100, p.recognition + office.level * 6);
-  const where = office.level >= 5 || officeId === 'stateRep' || officeId === 'stateSenator' ? stateOf(state).name : regionOf(state).name.split(',')[0];
+  const country = COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the United States';
+  const where = office.national || office.headOfState || office.cabinet ? country : office.level >= 5 || officeId === 'stateRep' || officeId === 'stateSenator' ? stateOf(state).name : regionOf(state).name.split(',')[0];
   ctx.log(`${appointed ? 'Appointed' : 'Sworn in'} as ${office.name} (${where}). ${office.fullTime ? '' : 'It\'s a part-time citizen office — keep your day job.'}`, office.icon, 'milestone');
   ctx.toast(`${office.icon} ${office.name}`, 'honor');
   ctx.stat('happiness', 10);
@@ -184,6 +187,12 @@ export const PoliticsEngine = {
     const bus = engine.bus;
     // Other modules can end a term (e.g. a trial judge elevated to a higher court).
     bus.on('politics:leave', ({ ctx, reason }) => leaveOffice(ctx, reason));
+    // Offices that come by offer: a cabinet post, the vice presidency, succession, a Governor-General.
+    bus.on('politics:take', ({ ctx, officeId, appointed, dept }) => {
+      takeOffice(ctx, officeId, { appointed });
+      const o = ctx.state.politics.office;
+      if (o && dept && CABINET[dept]) { o.dept = dept; o.title = CABINET[dept].title; }
+    });
     bus.on('legal:convicted', ({ ctx, severity, name }) => {
       const p = ctx.state.politics;
       p.scandals += severity === 'felony' ? 3 : severity === 'misdemeanor' ? 1 : 0;
@@ -236,13 +245,19 @@ export const PoliticsEngine = {
       ctx.earn(office.salary, `${office.name} salary`, { wage: true });
       ctx.emit('retirement:accrue', { planId: office.pension, salary: office.salary, employer: office.name });
       p.recognition = Math.min(100, p.recognition + 3);
-      o.approval = Math.round(clamp(o.approval + (55 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
       ctx.stat('stress', office.fullTime ? 6 : 3);
       o.termYearsLeft -= 1;
-      // Legislators cast real votes on real bills (Legislature); other offices face a decision.
-      if (rng.chance(0.6)) { if (!SEAT_OFFICES[o.id]) officeDecision(ctx); }
-      else if (rng.chance(0.25)) bribeOffer(ctx);
-      if (office.executive && rng.chance(0.5)) {
+      // Executives govern (approval from the economy, the budget and their choices; a real crisis);
+      // ceremonial heads of state have their duties; legislators vote on real bills (Legislature);
+      // everyone else faces a decision of their office.
+      if (runsGovernment(o.id)) executiveYear(ctx);
+      else if (office.kind === 'head') headYear(ctx);
+      else {
+        o.approval = Math.round(clamp(o.approval + (55 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
+        if (rng.chance(0.6)) { if (!SEAT_OFFICES[o.id] && office.kind !== 'head') officeDecision(ctx); }
+      }
+      if (rng.chance(0.15)) bribeOffer(ctx);
+      if (office.executive && office.kind !== 'executive' && rng.chance(0.5)) {
         ctx.prompt({
           type: 'politics.appoint',
           icon: '⭐',
@@ -279,6 +294,10 @@ export const PoliticsEngine = {
         }
       }
     }
+
+    // The national ticket, cabinet calls, succession and vice-regal appointments.
+    ticketYear(ctx);
+    offersYear(ctx);
 
     // Being appointed: judgeships for seasoned lawyers, agency heads for top performers.
     if (!o && !p.campaign) {

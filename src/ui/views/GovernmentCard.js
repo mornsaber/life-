@@ -7,12 +7,14 @@ import { esc, money, button, card, meter, kv, disclosure } from '../Components.j
 import { LEVELS, AREAS, budgetAt, annualDollars, fundingLabel, pct, myBudget, BUDGET_MOVES, passShare } from '../../modules/politics/Budgets.js';
 import { executiveOf } from '../../modules/politics/Legislature.js';
 import { partyName, PARTY_ICON } from '../../modules/politics/Parties.js';
+import { CPC_RANKS, joinBlock, promotionOdds } from '../../modules/politics/CommunistParty.js';
 
 const LEVEL_LABEL = { city: '🏙️ City', state: '🗺️ State', national: '🏛️ National' };
 const big = (x) => (x >= 1e12 ? `$${(x / 1e12).toFixed(1)} trillion` : x >= 1e9 ? `$${(x / 1e9).toFixed(1)} billion` : `$${Math.round(x / 1e6)} million`);
 
 function budgetBlock(state, level, mine) {
-  const b = budgetAt(state, level);
+  const b = budgetAt(state, level, { create: false });
+  if (!b) return '<p class="fine">Its budget appears after your next birthday.</p>';
   const exec = executiveOf(state, level);
   const dollars = annualDollars(level, b.where);
   const rows = Object.entries(AREAS[level]).map(([id, a]) => {
@@ -34,7 +36,32 @@ function budgetBlock(state, level, mine) {
 }
 
 export function governmentCard(state) {
-  const mine = myBudget(state);
-  const body = LEVELS.map((level) => `<h4 class="sub">${LEVEL_LABEL[level]}: ${esc(budgetAt(state, level).name)}</h4>${budgetBlock(state, level, mine?.level === level)}`).join('');
+  if (!state.gov?.budgets || !Object.keys(state.gov.budgets).length) return '';
+  const mine = myBudget(state, { create: false });
+  const body = LEVELS.map((level) => `<h4 class="sub">${LEVEL_LABEL[level]}: ${esc(budgetAt(state, level, { create: false })?.name ?? '')}</h4>${budgetBlock(state, level, mine?.level === level)}`).join('');
   return card('Your Government', `${body}<p class="fine">Taxes the legislatures set fund these budgets; recessions shrink them. Public employees feel their area's funding (equipment, hiring, layoffs, frozen step increases); residents feel taxes and services.</p>`, { icon: '🏛️', accent: mine ? 'yellow' : undefined });
+}
+
+/** China: your place in the Communist Party. */
+export function partyCard(state) {
+  if ((state.character.countryId ?? 'US') !== 'CN' || state.character.age < 14) return '';
+  const c = state.cpc;
+  const why = joinBlock(state);
+  const status = { youthLeague: 'Communist Youth League member', applicant: 'Applicant (under review)', probationary: 'Probationary member', member: 'Party member', expelled: 'Expelled' }[c?.status] ?? 'Not a member';
+  const next = c?.status === 'member' && !c.retiredFrom ? CPC_RANKS[c.rank + 1] : null;
+  return card('Communist Party of China', `
+    ${kv([
+      ['Status', esc(status)],
+      c?.status === 'member' ? ['Post', c.retiredFrom ? `Retired ${esc(c.retiredFrom)}` : esc(CPC_RANKS[c.rank].title)] : null,
+      c?.status === 'member' && next ? ['Next', `${esc(next.title)} · ≈${Math.round(promotionOdds(state) * 100)}% at the next evaluation`] : null,
+      c?.patron ? ['Patron', `${esc(c.patron.name)} (${esc(CPC_RANKS[c.patron.rank].title)})${c.patron.fallen ? ' <span class="neg">— under investigation</span>' : ''}`] : null,
+    ].filter(Boolean))}
+    ${c?.status === 'member' ? `${meter(c.record, { label: '📈 Record (growth, stability, campaigns)' })}${meter(c.network, { label: '🤝 Network (guanxi)' })}` : ''}
+    <div class="action-grid">
+      ${!c?.status && state.character.age <= 28 ? button('🔴 Join the Communist Youth League', 'cpc.joinLeague') : ''}
+      ${!['applicant', 'probationary', 'member', 'expelled'].includes(c?.status) ? button('☭ Apply to join the Party', 'cpc.apply', { disabled: Boolean(why), hint: why ?? 'A political review, then a probationary year' }) : ''}
+      ${['member', 'probationary'].includes(c?.status) ? button('📕 Lead political study', 'cpc.study', { hint: 'Once a year: +record' }) : ''}
+      ${c?.status === 'member' ? button('🍶 Cultivate a patron', 'cpc.network', { hint: 'Banquets and favors: +network' }) : ''}
+    </div>
+    <p class="fine">In China, power runs through the Party: posts from branch secretary to General Secretary are appointed by the Organization Department on your record, your patron and your age (county posts under 55, provincial under 63; "seven up, eight down" at the top). A city or provincial Party Secretary writes that budget; the General Secretary becomes President. The discipline inspectors are always watching.</p>`, { icon: '☭', accent: 'red' });
 }

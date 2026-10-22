@@ -111,8 +111,13 @@ function serviceStaffing(org) {
   const per = org.serviceId === 'statePolice' && org.primaryPolice ? SERVICE_RATIOS.police * 0.8 : SERVICE_RATIOS[org.serviceId];
   if (per == null) return null;
   const transit = org.serviceId === 'transit' || org.serviceId === 'transitMaintenance' ? Math.max(0.1, (REGIONS[org.regionId]?.transit ?? 30) / 50) : 1;
-  return Math.max(12, Math.round((servicePopulation(org) / 1000) * per * transit));
+  return Math.max(12, Math.round((servicePopulation(org) / 1000) * per * transit * scaleOf(org, null)));
 }
+/**
+ * How much bigger (or smaller) than its base an organization is now: the population it serves
+ * has grown or shrunk (Population), and its government funds the department more or less (Budgets).
+ */
+const scaleOf = (org, deptId) => (org.popFactor ?? 1) * ((deptId ? org.departments?.[deptId]?.fundingFactor : org.fundingFactor) ?? 1);
 
 export const STAFFING_VERSION = 2;
 
@@ -126,7 +131,7 @@ export function staffingFor(org, deptId) {
   const pop = r.base === 'state' ? statePopulation(org.stateId) : r.base === 'county' ? countyPopulation(org.regionId) : cityPopulation(org.regionId);
   // Transit scales with how much transit the city actually runs.
   const transit = r.transit ? Math.max(0.1, (REGIONS[org.regionId]?.transit ?? 30) / 50) : 1;
-  return Math.max(3, Math.round((pop / 1000) * per * transit));
+  return Math.max(3, Math.round((pop / 1000) * per * transit * scaleOf(org, deptId)));
 }
 
 /** Set every department to the staffing its population calls for (new orgs, and older saves once). */
@@ -144,7 +149,7 @@ export function applyStaffing(org) {
 /** The population an organization serves, for display. */
 export function servedPopulation(org) {
   const r = RATIOS[org?.typeId];
-  if (!r && SERVICE_RATIOS[org?.serviceId]) return servicePopulation(org);
+  if (!r && SERVICE_RATIOS[org?.serviceId]) return Math.round(servicePopulation(org) * (org.popFactor ?? 1));
   if (!r || r.fixed) return null;
-  return r.base === 'state' ? statePopulation(org.stateId) : r.base === 'county' ? countyPopulation(org.regionId) : cityPopulation(org.regionId);
+  return Math.round((r.base === 'state' ? statePopulation(org.stateId) : r.base === 'county' ? countyPopulation(org.regionId) : cityPopulation(org.regionId)) * (org.popFactor ?? 1));
 }

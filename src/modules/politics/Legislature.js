@@ -311,6 +311,19 @@ export const inMajority = (state) => {
 };
 
 /** What the executive above a body is: you (as mayor or governor), or an NPC. */
+/** The level an executive office governs, in the legislature's terms ('city', 'state', 'federal'). */
+function execLevel(officeId) {
+  if (!officeId) return null;
+  if (officeId === 'mayor') return 'city';
+  if (officeId === 'governor') return 'state';
+  if (officeId === 'president') return 'federal';
+  for (const L of Object.values(LEGISLATURES)) {
+    if (L.execOffice === officeId) return 'federal';
+    if (L.prov?.execOffice === officeId) return 'state';
+  }
+  return null;
+}
+
 export function executiveIsYou(state, level, where = whereFor(state, level)) {
   const o = state.politics?.office?.id;
   const def = BODY_DEFS[chambersFor(level, where)[0]];
@@ -526,9 +539,57 @@ function electionYear(ctx, body, rng) {
     ctx.log(`Your caucus lost the majority — you lost your post as ${POSTS[seat.post].title}.`, '🏛️', 'warn');
     seat.post = null;
   }
-  if (rng.chance(0.4)) body.executive = { name: personName(rng), caucus: dominantParty(state)?.bloc && body.level === 'federal' ? dominantParty(state).bloc : rng.chance(body.labor / body.seats) ? 'labor' : 'business' };
   body.nextElection = electionCycle(BODY_DEFS[body.kind]);
   ballotResult(ctx, body);
+}
+
+/** The office whose holder is a body's executive (mayor, governor, president, premier, prime minister…). */
+const execOfficeOf = (body) => BODY_DEFS[body.kind]?.execOffice ?? (body.level === 'city' ? 'mayor' : body.level === 'state' ? 'governor' : 'president');
+
+/**
+ * The executive over a legislature, every year. Where the executive is elected on its own
+ * (presidents, governors, mayors) it faces the voters on its own cycle, judged on its approval —
+ * the economy and the budget — and term limits; in a parliamentary system it is the majority's
+ * leader, so it changes when the majority does (or when the party replaces its leader).
+ * `executive.since` marks a new administration (appointees change; Government.politicalTurnover).
+ */
+function executiveYear(ctx, body, rng) {
+  const { state } = ctx;
+  const age = state.character.age;
+  const d = BODY_DEFS[body.kind];
+  if (executiveIsYou(state, body.level, body.where)) {
+    body.executive = { ...(body.executive ?? {}), name: `${state.character.firstName} ${state.character.lastName}`, caucus: body.executive?.you ? body.executive.caucus : (state.civic?.party?.bloc ?? state.legislature?.seat?.caucus ?? body.executive?.caucus ?? 'labor'), you: true, since: body.executive?.you ? body.executive.since : age, approval: state.politics.office.approval };
+    return;
+  }
+  const ex = (body.executive ??= { name: personName(rng), caucus: rng.chance(0.5) ? 'labor' : 'business' });
+  if (ex.you) Object.assign(ex, { name: personName(rng), you: false, since: age, terms: 1, approval: 55 });
+  ex.since ??= age - rng.int(0, 3);
+  ex.terms ??= 1;
+  ex.approval ??= rng.int(42, 60);
+  const health = state.gov?.budgets?.[`${body.level === 'federal' ? 'national' : body.level}:${body.where}`]?.health ?? 60;
+  const economy = { recession: -6, recovery: -1, expansion: 1, peak: 2 }[state.economy?.phase] ?? 0;
+  ex.approval = Math.round(clamp(ex.approval + (50 - ex.approval) * 0.15 + economy + (health - 55) / 12 + rng.int(-5, 5), 5, 95));
+  const change = (caucus, why) => {
+    const old = ex.name;
+    Object.assign(ex, { name: personName(rng), caucus, since: age, terms: 1, approval: rng.int(52, 62) });
+    body.history = [...body.history.slice(-9), { age, text: `${d.executive}: ${ex.name} (${CAUCUSES[caucus].name}) replaced ${old} — ${why}.` }];
+  };
+  const dominant = body.level === 'federal' ? dominantParty(state) : null;
+  if (d.veto === false || dominant) {
+    // The majority's leader governs.
+    const majority = dominant?.bloc ?? (body.labor * 2 > body.seats ? 'labor' : 'business');
+    if (ex.caucus !== majority) change(majority, 'the majority changed hands');
+    else if (rng.chance(ex.approval < 35 ? 0.25 : 0.05)) change(majority, 'the party chose a new leader');
+    return;
+  }
+  const office = OFFICES[execOfficeOf(body)];
+  ex.nextElection = (ex.nextElection ?? rng.int(1, office?.term ?? 4)) - 1;
+  if (ex.nextElection > 0) return;
+  ex.nextElection = office?.term ?? 4;
+  const limited = office?.termLimit && ex.terms >= office.termLimit;
+  const hold = rng.chance(clamp(0.5 + (ex.approval - 50) / 90 + (limited ? -0.04 : 0.06), 0.12, 0.88));
+  if (hold && !limited) { ex.terms += 1; return; }
+  change(hold ? ex.caucus : ex.caucus === 'labor' ? 'business' : 'labor', hold ? 'term-limited; the party held the office' : 'lost the election');
 }
 
 /**
@@ -618,6 +679,16 @@ export const Legislature = {
       // Campaign season for the national election: how will you vote?
       else if (body.nextElection === 1 && body.id === bodyId(national, whereFor(state, 'federal'))) ballotPrompt(ctx, body);
     }
+    // The executives over each legislature.
+    for (const level of LEVELS) {
+      const where = whereFor(state, level);
+      const first = chambersFor(level, where)[0];
+      const body = first ? state.legislature.bodies[bodyId(first, where)] : null;
+      if (!body) continue;
+      executiveYear(ctx, body, rng);
+      const second = chambersFor(level, where)[1];
+      if (second && state.legislature.bodies[bodyId(second, where)]) state.legislature.bodies[bodyId(second, where)].executive = body.executive;
+    }
     // Your office: staff pay off in approval; leadership pays a stipend on top of the salary.
     if (seat) {
       const o = state.politics.office;
@@ -656,6 +727,30 @@ export const Legislature = {
   },
 
   actions: {
+    /**
+     * An executive's agenda: send the legislature a bill ("lawId|up" or "lawId|down"). Your
+     * standing moves votes; the legislature still has to pass it, and you'll sign it.
+     */
+    executiveBill(ctx, arg) {
+      const { state } = ctx;
+      const level = execLevel(state.politics?.office?.id);
+      if (!level) return ctx.toast('Only a mayor, governor, premier, president or prime minister sends bills this way.', 'warn');
+      const where = whereFor(state, level);
+      const [lawId, direction] = String(arg).split('|');
+      if (!LAWS[lawId]?.levels.includes(level) || !lawHere(lawId, level, where)) return ctx.toast('Not something your legislature can pass.', 'warn');
+      if (yearlyCount(state, 'legislature.agenda') >= 2) return ctx.toast('Two agenda bills a year.', 'warn');
+      ensureBodies(state);
+      const origin = state.legislature.bodies[bodyId(chambersFor(level, where)[0], where)];
+      if (!origin) return undefined;
+      if (origin.bills.some((b) => b.lawId === lawId && b.stage === 'introduced')) return ctx.toast('A bill on that is already in the hopper.', 'warn');
+      const approval = state.politics.office.approval ?? 50;
+      const bill = newBill(state, legRng(state), level, where, lawId, direction, 'you', clamp(0.03 + (approval - 50) / 500, -0.03, 0.12));
+      if (!bill) return ctx.toast('The law is already as far as it goes.', 'warn');
+      bumpYearly(state, 'legislature.agenda');
+      origin.bills.push(bill);
+      ctx.log(`You sent the ${origin.name} a bill: ${billTitle(bill)}. It comes to the floor this session.`, LAWS[lawId].icon, 'good');
+      return undefined;
+    },
     /** Introduce a bill: "lawId|up" or "lawId|down". */
     sponsor(ctx, arg) {
       const { state } = ctx;

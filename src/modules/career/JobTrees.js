@@ -606,7 +606,10 @@ export const setAvailabilityFilter = (fn) => { availabilityFilter = fn; };
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
   const local = (p) => !availabilityFilter || !state?.character || availabilityFilter(state, p);
-  if (cc === 'US') return PROFESSION_LIST.filter(local);
+  if (cc === 'US') {
+    const list = PROFESSION_LIST.filter(local);
+    return list.length === PROFESSION_LIST.length ? PROFESSION_LIST : list;
+  }
   const province = state.character.regionId ? stateIdOf(state) : null;
   return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province) && local(p)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
 }

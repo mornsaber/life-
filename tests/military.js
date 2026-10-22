@@ -15,7 +15,7 @@ import { ranksOf, annualActivePay, exposureOf } from '../src/modules/military/Mi
 import { PIPELINES, selectionEligibility, courseOdds } from '../src/modules/military/SpecialOps.js';
 import { reportMisconduct, preferCharges } from '../src/modules/military/UCMJ.js';
 import { pcsOrders, serviceLifeTick, belowZone, giBillTransferEligibility } from '../src/modules/military/MilitaryLife.js';
-import { tryPromotion, discharge } from '../src/modules/military/MilitaryEngine.js';
+import { tryPromotion, discharge, annualBasePay, FLAG_PAY_CAP } from '../src/modules/military/MilitaryEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { promotionOutlook } from '../src/modules/military/MilitaryEngine.js';
 import { transitionTick, veteranTick, transitionHiringBonus, UCX } from '../src/modules/military/Transition.js';
@@ -69,6 +69,37 @@ const recruit = (countryId, age) => {
 };
 
 const tests = {
+  'generals: pay stops at the cap, retirement needs three years in grade, and colonels and up command'() {
+    const { engine, state } = setup(31, 23);
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'history', year: 22 });
+    engine.dispatch('military.enlist', 'army:officer:active');
+    const p = state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+    if (p) engine.resolvePrompt(p.id, p.options.find((o) => !o.disabled).id);
+    const svc = state.military.service;
+    assert.ok(svc, 'commissioned');
+    Object.assign(svc, { grade: 9, yearsOfService: 34 });
+    assert.ok(annualBasePay(svc) <= FLAG_PAY_CAP * 12, 'four stars earn no more than the cap');
+    Object.assign(svc, { grade: 5, yearsOfService: 24, eval: 95, joint: true });
+    state.character.age = 48;
+    let offered = false;
+    for (let y = 0; y < 6 && state.military.service; y++) {
+      state.prompts = [];
+      engine.ageUp();
+      const o = state.prompts.find((x) => x.type === 'militaryCommands.offer');
+      if (o) { offered = true; engine.resolvePrompt(o.id, 'accept'); }
+      const d = state.prompts.find((x) => x.type === 'militaryCommands.decision');
+      if (d) engine.resolvePrompt(d.id, d.options.find((x) => x.tone !== 'danger').id);
+      if (state.military.service?.post?.kind === 'command') break;
+    }
+    assert.ok(offered || state.military.service?.post, 'a command or staff post');
+    // A one-star who retires within three years of promotion retires a grade lower.
+    const s2 = state.military.service;
+    if (s2) {
+      Object.assign(s2, { grade: 6, yearsInGrade: 1, yearsOfService: 30 });
+      discharge(engine.context(), 'retired', 'Test retirement.');
+      assert.match(state.log.at(-1).entries.map((e) => e.text).join(' '), /retire in the grade of Colonel/);
+    }
+  },
   'each force recruits within its own ages; veterans can rejoin older'() {
     assert.ok(enlistmentEligibility(recruit('US', 28).state, 'marines', 'enlisted', 'active').ok);
     assert.match(enlistmentEligibility(recruit('US', 29).state, 'marines', 'enlisted', 'active').reason, /17–28/);

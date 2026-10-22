@@ -30,6 +30,7 @@ import { leavePost } from './Executives.js';
 import { ensureDepartment } from '../career/ManagementEngine.js';
 import { recalcSalary } from '../career/Compensation.js';
 import { REGIONS } from '../life/Regions.js';
+import { executiveOf } from '../politics/Legislature.js';
 
 /** Which elected office holds the power behind an "appointed by …" phrase. */
 export const APPOINTING_OFFICE = {
@@ -109,9 +110,13 @@ export function politicalTurnover(ctx, job) {
   const rng = sideRng(state);
   org.adminSince ??= state.character.age - rng.int(0, 3);
   org.performance ??= rng.int(40, 70);
-  // A four-year cycle: elections for elected heads, a possible new administration for appointed ones.
-  if ((state.character.age - org.adminSince) % 4 !== 0 || state.character.age === org.adminSince) return;
-  const newAdministration = rng.chance(0.4);
+  // Elected heads face the voters every four years; appointed ones serve until a new
+  // administration takes over — the year a new mayor, governor, president or prime minister does.
+  const cycleYear = (state.character.age - org.adminSince) % 4 === 0 && state.character.age !== org.adminSince;
+  const exec = executiveOf(state, { municipal: 'city', state: 'state', public: 'state', federal: 'federal' }[org.sector] ?? 'state');
+  const newAdmin = exec ? exec.since === state.character.age : null;
+  if (!cycleYear && !newAdmin) return;
+  const newAdministration = newAdmin ?? rng.chance(0.4);
   const replace = (current, head, deptId) => {
     if (officeHeld(state, org, deptId)) return current;
     // You hold this post: an appointee serves at the pleasure of the administration.
@@ -125,7 +130,7 @@ export function politicalTurnover(ctx, job) {
       ctx.stat('happiness', -6);
       return null;
     }
-    const losesElection = head.selection === 'elected' && rng.chance(0.25);
+    const losesElection = head.selection === 'elected' && cycleYear && rng.chance(0.25);
     const swept = head.selection === 'appointed' && newAdministration && rng.chance(0.55);
     if (!losesElection && !swept) return current;
     const old = personOf(org, current);

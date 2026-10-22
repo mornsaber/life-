@@ -113,17 +113,33 @@ function npc(rng, org, rankIndex, ranks) {
  * organization with a commissioner, a deputy, directorates and region controllers, and paid
  * staff — the emergency-management career. null for independent or council-run units.
  */
+/**
+ * Which kind of organization a parent service is: a fire service is run by firefighters, a police
+ * service by police, an ambulance service by paramedics — only the civil-defence and SES-style
+ * services (rescue, response teams) are emergency-management agencies. A parent's career, by the
+ * volunteer service a unit belongs to.
+ */
+const HQ_CAREER = { fire: 'fire', wildland: 'stateFire', police: 'police', ambulance: 'ems', mrc: 'publicHealth', sar: 'emergencyManagement', cert: 'emergencyManagement', auxiliary: 'emergencyManagement', cap: 'emergencyManagement', redcross: 'nonprofit', skiPatrol: null };
+export const hqCareer = (org) => (org?.serviceId in HQ_CAREER ? HQ_CAREER[org.serviceId] : 'emergencyManagement');
+
 export function ensureHq(state, org) {
   const parent = org?.parent;
   if (!parent || parent.level === 'municipal') return null;
+  const career = hqCareer(org);
+  if (!career) return null;
   const name = parent.name.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase());
-  const hq = findOrCreateOrg(state, getProfession('emergencyManagement'), org.regionId ?? state.character.regionId, { name: `${name} — state headquarters` });
+  // One headquarters per parent service (a fire service and a rescue service are different bodies).
+  const where = parent.level === 'national' ? 'national headquarters' : 'state headquarters';
+  const hq = findOrCreateOrg(state, getProfession(career), org.regionId ?? state.character.regionId, { name: `${name} — ${where}` });
   if (!hq) return null;
   org.hqId = hq.id;
   hq.volunteerHq = true;
-  // Your region's controller and the head of operations are named people.
-  seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1);
-  seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1);
+  hq.hqCareer = career;
+  // Emergency-management services: your region's controller and the volunteer services manager are named people.
+  if (career === 'emergencyManagement') {
+    seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1);
+    seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1);
+  }
   return hq;
 }
 /** The headquarters' leadership, for display (no generation). */
@@ -132,9 +148,10 @@ export function hqLeaders(state, org) {
   if (!hq) return null;
   const head = personOf(hq, hq.head);
   const ops = personOf(hq, hq.departments?.operations?.head);
-  const [controller] = seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1, false);
-  const [volunteers] = seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1, false);
-  return { hq, head, ops, controller, volunteers, staff: Object.values(hq.departments ?? {}).reduce((n, d) => n + (d.headcount ?? 0), 0) };
+  const em = (hq.hqCareer ?? 'emergencyManagement') === 'emergencyManagement';
+  const [controller] = em ? seatHolders(state, hq, 'operations', 'emergencyManagement', 'controller', 1, false) : [];
+  const [volunteers] = em ? seatHolders(state, hq, 'operations', 'emergencyManagement', 'volunteerServices', 1, false) : [];
+  return { hq, head, ops, controller, volunteers, career: hq.hqCareer ?? 'emergencyManagement', staff: Object.values(hq.departments ?? {}).reduce((n, d) => n + (d.headcount ?? 0), 0) };
 }
 
 /** Find or build the organization behind your membership. */
@@ -152,6 +169,8 @@ export function ensureVolunteerOrg(state, service, member) {
   }
   // Old saves: who the unit belongs to.
   if (org.parent === undefined) org.parent = parentFor(state, service.id);
+  // Old saves put every parent under an emergency-management agency: rebuild it as the right kind.
+  if (org.parent && org.hqId && (state.orgs.byId[org.hqId]?.hqCareer ?? 'emergencyManagement') !== hqCareer(org)) org.hqId = null;
   if (org.parent && !org.hqId) ensureHq(state, org);
   member.orgId = key;
   // Old saves: a member already at an officer rank holds a seat.

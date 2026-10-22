@@ -369,6 +369,7 @@ export const AssignmentResolvers = {
       return;
     }
     svc.topPost = { title: data.title, yearsLeft: TOP_TERM };
+    svc.topPostServed = true;
     svc.assignment = null;
     // Service chiefs and the Chairman wear four stars.
     if (svc.track === 'officer') svc.grade = rankOf(svc).max;

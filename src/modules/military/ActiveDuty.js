@@ -455,7 +455,13 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   const sawCombat = rng.chance(peacetimeAbroad
     ? clamp(0.5 * exposure * combatTempo(svc.nation), 0, 0.6)
     : clamp(0.5 * exposure * serviceCombatFactor(ctx.state, svc) * (atWar ? 1.4 : 1), 0.15, 0.95));
-  if (sawCombat) {
+  // Colonels and generals command the fight from a headquarters (MilitaryCommands); they don't clear compounds.
+  const senior = svc.track === 'officer' && svc.grade >= 5;
+  if (sawCombat && senior) {
+    svc.combatTours += 1;
+    const people = { navy: 'sailors', coastguard: 'sailors', marines: 'Marines', airforce: 'airmen', spaceforce: 'guardians' }[svc.branch] ?? 'soldiers';
+    ctx.log(rng.pick(['Your headquarters ran the fight: attacks on the base, casualty reports at 3 a.m., and decisions that sent other people forward.', `You commanded from the operations center. You wrote letters to the families of the ${people} you lost.`, 'Your staff planned the operation; you briefed it and owned the result.']), '🗺️');
+  } else if (sawCombat) {
     svc.combatTours += 1;
     combatPrompt(ctx, svc, theaterName);
     if (rng.chance(0.3 * exposure)) combatPrompt(ctx, svc, theaterName);

@@ -30,9 +30,22 @@ export function runEligibility(state, officeId) {
   const euLocal = LOCAL_OFFICES.includes(officeId) && ['DE', 'IT'].includes(here) && ['DE', 'IT'].some((c) => isCitizen(state, c));
   if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
+  // China: offices go to Party cadres the Organization Department puts forward.
+  if (here === 'CN') {
+    const cpc = state.cpc;
+    const member = cpc?.status === 'member';
+    if (officeId === 'cn_premier' && (!member || cpc.rank < 8)) return { ok: false, reason: 'Chosen from the Politburo Standing Committee' };
+    if (officeId === 'mayor' && (!member || cpc.rank < 3)) return { ok: false, reason: 'Mayors are appointed through the Party: county Party secretary or higher' };
+    if (officeId === 'cn_deputy' && !member && (p.recognition ?? 0) < 60) return { ok: false, reason: 'Nominated by the Party (or, for a well-known figure, a minor party)' };
+  }
   // Members of the House of Lords can't sit in the Commons.
   if (officeId === 'gb_mp' && state.character.style?.peerage) return { ok: false, reason: 'Peers can\'t sit in the Commons' };
   if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: office.leader ? `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` : `Elected by local officials: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };
+  if (office.runningMate) return { ok: false, reason: 'Chosen as a running mate by the presidential nominee' };
+  if (office.selection === 'appointed') return { ok: false, reason: `Appointed by ${office.chosenBy}` };
+  if (office.naturalBorn && (state.migration?.naturalized ?? []).includes(here)) return { ok: false, reason: 'Natural-born citizens only' };
+  // A head of state is chosen from people of real standing: a past high office, or a household name.
+  if (office.stature && experienceLevel(state) < office.stature && (p.recognition ?? 0) < 75) return { ok: false, reason: `Needs national standing: past high office or name recognition 75+` };
   if (p.campaign) return { ok: false, reason: 'Already campaigning' };
   if (p.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (office.appointedBy) return { ok: false, reason: `Hired by ${office.appointedBy}, not elected` };
@@ -81,6 +94,14 @@ export function voteShare(state, officeId, campaign, { incumbent = false } = {})
       + post + (campaign?.endorsements.length ?? 0) * 0.015 + Math.min(0.04, prestige(state) / 2000) - scandalPenalty(state) + partyBonus(state) * 1.5;
     return clamp(lead, 0.05, 0.8);
   }
+  // Chosen by parliament or a convention: the governing majority's candidate, if your party holds it.
+  if (office.selection === 'parliament') {
+    const nat = Object.values(state.legislature?.bodies ?? {}).find((b) => b.level === 'federal');
+    const mine = state.civic?.party?.bloc;
+    const majority = nat ? (nat.labor * 2 > nat.seats ? 'labor' : 'business') : null;
+    const share = 0.3 + Math.min(0.15, p.recognition * 0.002) + Math.max(0, experienceLevel(state) - 3) * 0.04 + (mine && mine === majority ? 0.1 : mine ? -0.05 : 0) + partyBonus(state) * 1.5 + Math.min(0.04, prestige(state) / 2000) - scandalPenalty(state);
+    return clamp(share, 0.05, 0.8);
+  }
   let share = 0.38;
   share += Math.min(0.12, p.recognition * 0.0015);
   share += 0.08 * Math.min(1, (campaign?.funds ?? 0) / office.cost);
@@ -121,6 +142,7 @@ export function appointmentEligibility(state, officeId) {
   if (!office?.appointedBy) return { ok: false, reason: 'Not an appointed office' };
   if ((state.character.countryId ?? 'US') !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
   if (state.politics.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
+  if (office.cabinet) return { ok: false, reason: 'Nominated by the President, confirmed by the Senate' };
   if (state.character.age < office.minAge) return { ok: false, reason: `Must be ${office.minAge}+` };
   if (isIncarcerated(state)) return { ok: false, reason: 'Incarcerated' };
   if (office.req) {

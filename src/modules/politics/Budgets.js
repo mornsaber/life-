@@ -38,6 +38,7 @@ import { nationalWageLevel } from '../career/PayGrades.js';
 import { lawValue } from './Laws.js';
 import { LEGISLATURES } from './NationalOffices.js';
 import { executiveOf, unifiedGovernment } from './Legislature.js';
+import { cpcLevel } from './CommunistParty.js';
 
 export const LEVELS = ['city', 'state', 'national'];
 
@@ -217,7 +218,7 @@ export function closeBooks(state, b) {
   const rev = revenue(state, b);
   const spend = spending(state, b);
   const interest = b.debt * RATE[b.level];
-  b.balance = Math.round((rev - spend - interest) * 1000) / 1000;
+  b.balance = Math.round((rev - spend - interest) * 1000) / 1000 || 0;
   b.debt = Math.round(Math.max(0, b.debt - b.balance) * 100) / 100;
   b.health = healthOf(b);
   b.rating = ratingOf(b.health);
@@ -236,7 +237,7 @@ export function jobArea(job) {
   return { level, area };
 }
 /** The budget a public job is paid from, where the employer is. */
-export function jobBudget(state, job, { create = true } = {}) {
+export function jobBudget(state, job, { create = false } = {}) {
   const a = jobArea(job);
   if (!a) return null;
   const regionId = job.employer?.regionId ?? state.character.regionId;
@@ -251,7 +252,7 @@ export function jobFunding(state, job) {
   return b ? (b.funding[a.area] ?? 1) : 1;
 }
 /** Fiscal health behind a public job (60 when unknown). */
-export const jobFiscalHealth = (state, job) => jobBudget(state, job, { create: false })?.health ?? jobBudget(state, job)?.health ?? 60;
+export const jobFiscalHealth = (state, job) => jobBudget(state, job)?.health ?? 60;
 /** A fiscal emergency freezes within-grade step increases. */
 export const stepFreeze = (state, job) => Boolean(jobArea(job)) && jobFiscalHealth(state, job) < 22;
 
@@ -281,7 +282,7 @@ export function npcBudgetYear(state, b, bloc, rng) {
   const short = b.health < 35 || (b.level === 'city' && b.balance < -0.02 && b.debt > DEBT_NORM.city * 1.2);
   if (short) {
     if (labor && (b.levy ?? 0) < 0.06) {
-      b.levy = Math.round(((b.levy ?? 0) + 0.025) * 1000) / 1000;
+      b.levy = Math.round(((b.levy ?? 0) + 0.025) * 1000) / 1000 || 0;
       note = `${cap(b.name)} raised taxes and fees to close a budget gap.`;
     } else {
       for (const id of Object.keys(areas)) b.funding[id] = Math.round(clamp(b.funding[id] * 0.95, 0.6, 1.4) * 1000) / 1000;
@@ -289,11 +290,11 @@ export function npcBudgetYear(state, b, bloc, rng) {
     }
   } else if (b.health > 78) {
     if (labor) for (const [id, a] of Object.entries(areas)) { if (a.social) b.funding[id] = Math.round(clamp(b.funding[id] * 1.03, 0.6, 1.4) * 1000) / 1000; }
-    else if ((b.levy ?? 0) > -0.04) b.levy = Math.round(((b.levy ?? 0) - 0.02) * 1000) / 1000;
+    else if ((b.levy ?? 0) > -0.04) b.levy = Math.round(((b.levy ?? 0) - 0.02) * 1000) / 1000 || 0;
     note = labor ? `${cap(b.name)} put its surplus into services.` : `${cap(b.name)} returned its surplus as a tax rebate.`;
   }
   // Temporary levies fade as budgets recover.
-  if (!short && (b.levy ?? 0) > 0 && b.health > 55) b.levy = Math.round(Math.max(0, b.levy - 0.01) * 1000) / 1000;
+  if (!short && (b.levy ?? 0) > 0 && b.health > 55) b.levy = Math.round(Math.max(0, b.levy - 0.01) * 1000) / 1000 || 0;
   return note;
 }
 const cap = (s) => s.charAt(0).toUpperCase() + s.slice(1);
@@ -336,9 +337,10 @@ export function executiveLevel(officeId) {
   return null;
 }
 /** The budget you write, if you hold an executive office. */
-export function myBudget(state) {
-  const level = executiveLevel(state.politics?.office?.id);
-  return level ? budgetAt(state, level) : null;
+export function myBudget(state, { create = true } = {}) {
+  // In China a Party Secretary writes the budget beside (and above) the mayor or governor.
+  const level = executiveLevel(state.politics?.office?.id) ?? cpcLevel(state);
+  return level ? budgetAt(state, level, { create }) : null;
 }
 
 /** How much of your budget request the legislature gives you: all of it with your party in charge. */
@@ -386,7 +388,7 @@ export const BudgetsModule = {
     const job = state.career?.job;
     const mine = myBudget(state);
     const seen = new Set();
-    const books = [...LEVELS.map((level) => budgetAt(state, level)), jobBudget(state, job)].filter(Boolean);
+    const books = [...LEVELS.map((level) => budgetAt(state, level)), jobBudget(state, job, { create: true })].filter(Boolean);
     for (const b of books) {
       if (seen.has(b.key)) continue;
       seen.add(b.key);

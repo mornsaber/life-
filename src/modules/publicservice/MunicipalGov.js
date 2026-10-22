@@ -231,7 +231,7 @@ function adjustCity(state, { fiscal = 0, approval = 0, budgetId: id = null }) {
   const b = id ? jobBudget(state, state.career.job, { create: false }) : null;
   if (!b || b.level !== 'city') return;
   const scale = (areas, k) => { for (const a of areas) b.funding[a] = Math.round(clamp((b.funding[a] ?? 1) * k, 0.6, 1.4) * 1000) / 1000; };
-  if (id === 'taxes') b.levy = Math.round(((b.levy ?? 0) + 0.04) * 1000) / 1000;
+  if (id === 'taxes') b.levy = Math.round(((b.levy ?? 0) + 0.04) * 1000) / 1000 || 0;
   else if (id === 'cuts') scale(Object.keys(b.funding), 0.94);
   else if (id === 'bonds') { b.debt = Math.round((b.debt + 0.12) * 100) / 100; scale(['works'], 1.1); }
   else if (id === 'safety') scale(['police', 'fire', 'ems'], 1.06);

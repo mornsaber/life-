@@ -83,6 +83,34 @@ export const NATIONAL_OFFICES = {
 // Countries from packs bring their own offices.
 Object.assign(NATIONAL_OFFICES, packRows('offices'));
 
+/**
+ * Ceremonial heads of state, where the head of state isn't the head of government (and isn't a
+ * monarch). They sign laws, receive ambassadors, grant pardons and honours, and ask a party to
+ * form a government — and are chosen in their own way:
+ *   selection 'parliament'  elected by parliament or a special assembly (Germany's Federal
+ *                           Convention, Italy's joint session, the Knesset, India's electoral college)
+ *   selection 'popular'     a national election (Ireland, Singapore)
+ *   selection 'appointed'   named by the monarch on the prime minister's advice (a Governor-General)
+ *   stature                 the political (or public) standing it takes to be considered: a past
+ *                           office at this level or higher, or high name recognition
+ */
+const ceremonial = { fullTime: true, pension: 'electedOfficials', kind: 'head', ceremonial: true, headOfState: true, level: 6, residency: 0, termLimit: 0 };
+Object.assign(NATIONAL_OFFICES, {
+  de_praesident: { ...ceremonial, country: 'DE', name: 'Bundespräsident', icon: '🇩🇪', term: 5, termLimit: 2, salary: 290000, minAge: 40, cost: 0, selection: 'parliament', chosenBy: 'the Federal Convention', stature: 4 },
+  it_presidente: { ...ceremonial, country: 'IT', name: 'Presidente della Repubblica', icon: '🇮🇹', term: 7, salary: 280000, minAge: 50, cost: 0, selection: 'parliament', chosenBy: 'Parliament in joint session', stature: 4 },
+  in_president: { ...ceremonial, country: 'IN', name: 'President of India', icon: '🇮🇳', term: 5, salary: 120000, minAge: 35, cost: 0, selection: 'parliament', chosenBy: 'the electoral college of MPs and MLAs', stature: 4 },
+  il_president: { ...ceremonial, country: 'IL', name: 'President of Israel', icon: '🇮🇱', term: 7, termLimit: 1, salary: 190000, minAge: 35, cost: 0, selection: 'parliament', chosenBy: 'the Knesset', stature: 4 },
+  ie_president: { ...ceremonial, country: 'IE', name: 'Uachtarán na hÉireann (President of Ireland)', icon: '🇮🇪', term: 7, termLimit: 2, salary: 260000, minAge: 35, cost: 1200000, selection: 'popular', stature: 4 },
+  sg_president: { ...ceremonial, country: 'SG', name: 'President of Singapore', icon: '🇸🇬', term: 6, salary: 1100000, minAge: 45, cost: 800000, selection: 'popular', stature: 5 },
+  ca_gg: { ...ceremonial, country: 'CA', name: 'Governor General of Canada', icon: '🍁', term: 5, salary: 260000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
+  au_gg: { ...ceremonial, country: 'AU', name: 'Governor-General of Australia', icon: '🇦🇺', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
+  // Held by the General Secretary of the Communist Party (CommunistParty.js), elected by the NPC.
+  cn_president: { ...ceremonial, country: 'CN', name: 'President of the People\'s Republic of China', icon: '🇨🇳', term: 5, salary: 30000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the National People\'s Congress on the Party\'s nomination (the General Secretary)', stature: 6 },
+  nz_gg: { ...ceremonial, country: 'NZ', name: 'Governor-General of New Zealand', icon: '🇳🇿', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
+});
+/** Countries whose head of state is a monarch (no office to hold; their representatives are above). */
+export const MONARCHIES = ['GB', 'CA', 'AU', 'NZ', 'JP', 'SE', 'NL', 'ES'];
+
 /** Local office (shared with the US list) that every country has. */
 export const LOCAL_OFFICE_IDS = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];
 

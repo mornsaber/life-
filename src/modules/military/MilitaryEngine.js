@@ -269,8 +269,15 @@ const CONSCRIPT_PAY = { KR: [900, 1150, 1450, 2450], DE: [3600, 3600, 3600, 3600
 export function monthlyBasePay(svc) {
   if (svc.conscript && CONSCRIPT_PAY[svc.nation]) return CONSCRIPT_PAY[svc.nation][Math.min(svc.grade, 3)];
   const longevity = 1 + Math.min(svc.yearsOfService, 26) * 0.025;
-  return Math.round(PAY[svc.track][svc.grade] * longevity * (svc.nation ? nationalPay(svc.nation) : 1));
+  const pay = Math.round(PAY[svc.track][svc.grade] * longevity * (svc.nation ? nationalPay(svc.nation) : 1));
+  // US basic pay stops at Executive Schedule Level II (2025: $18,808 a month), so generals and admirals top out together.
+  return svc.nation ? pay : Math.min(pay, FLAG_PAY_CAP);
 }
+
+/** The US basic-pay cap (Executive Schedule Level II, monthly). */
+export const FLAG_PAY_CAP = 18808;
+/** Generals and admirals retire in a grade they've held for three years; otherwise one grade lower. */
+export const FLAG_RETIRE_YEARS = 3;
 
 /** Base pay alone: what retired pay and separation pay are computed from. */
 export const annualBasePay = (svc) => monthlyBasePay(svc) * 12;
@@ -560,7 +567,7 @@ export function tryPromotion(ctx, svc) {
   // General/flag officer and senior NCO boards are brutally selective.
   // A strong, joint-qualified colonel has a real shot at a star; each higher star is harder.
   // Roughly: a strong colonel ~15–30% a look for a star; about half of one-stars make two; a third of two-stars make three; few make four.
-  if (flagBoard) chance = (0.2 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 60 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0)) * jointFactor(svc) * [0.75, 1, 0.75, 0.45][svc.grade - 5];
+  if (flagBoard) chance = (0.2 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 60 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0) + (svc.flagRecord?.excellent ?? 0) * 0.1 + (svc.post?.kind === 'command' ? 0.05 : 0) - (svc.flagRecord?.poor ?? 0) * 0.08 - (svc.flagRecord?.relieved ? 1 : 0)) * jointFactor(svc) * [0.75, 1, 0.75, 0.45][svc.grade - 5];
   // Senior boards select a fraction of those eligible: about 45% for O-6, 40% for E-8, 20% for E-9.
   if (svc.track === 'officer' && svc.grade === 4) chance *= 0.65;
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;
@@ -646,13 +653,17 @@ export function discharge(ctx, type, reason) {
   if (type === 'kia') return;
 
   const multiplier = pensionMultiplier(state);
-  const basePay = annualBasePay(svc);
+  // Retiring as a general or admiral takes three years in grade (US: 10 U.S.C. § 1370); otherwise one grade down.
+  const retiredGrade = type === 'retired' && !svc.nation && svc.track === 'officer' && svc.grade >= 6 && (svc.yearsInGrade ?? 0) < FLAG_RETIRE_YEARS && !svc.topPostServed ? svc.grade - 1 : svc.grade;
+  if (retiredGrade !== svc.grade) addLog(state, `With under ${FLAG_RETIRE_YEARS} years as ${rank.title}, you retire in the grade of ${rankOf({ ...svc, grade: retiredGrade }).title}.`, '🎖️', 'military');
+  const basePay = annualBasePay({ ...svc, grade: retiredGrade });
   const plan = milPensionPlan(svc.nation);
   if (plan && ['retired', 'honorable', 'general', 'medical'].includes(type)) {
     nationalMilitaryPension(ctx, svc, plan, { basePay, multiplier, type });
   } else if (type === 'retired') {
     const reserve = svc.component === 'reserve';
-    const annual = Math.round(basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * (reserve ? 0.35 : 1) * multiplier);
+    // Retired pay is a share of basic pay (2.5% a year, 2% under BRS); decorations add to it, but never past full basic pay.
+    const annual = Math.round(Math.min(basePay, basePay * (svc.retirementPlan === 'brs' ? 0.02 : 0.025) * svc.yearsOfService * multiplier) * (reserve ? 0.35 : 1));
     const startAge = reserve ? Math.max(60, state.character.age) : state.character.age;
     ctx.emit('retirement:addPension', { pension: { id: 'military', label: `${branchOf(svc).name} retired pay`, annual, startAge, source: 'military', cola: 0.025 } });
     addLog(state, `Retirement pay: $${annual.toLocaleString()}/yr${reserve ? ' starting at age 60' : ''} (×${multiplier.toFixed(2)} decoration multiplier).`, '🏦', 'finance');

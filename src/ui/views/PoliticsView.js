@@ -4,7 +4,8 @@
  */
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
-import { governmentCard } from './GovernmentCard.js';
+import { governmentCard, partyCard } from './GovernmentCard.js';
+import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
 import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
@@ -30,14 +31,34 @@ function cityServicesCard(state) {
   return rows ? card('Public Services', `<ul class="history">${rows}</ul><p class="fine">Contracting out and privatizing save money and cost approval; abolishing a service saves it all. Bringing one back in-house is popular and expensive. Private providers need the law's permission (private policing, ambulances, prisons, fire). The people who work there transfer or are laid off.</p>`, { icon: '🏙️' }) : '';
 }
 
+/** What an executive (or a cabinet secretary) can do this year. */
+function executiveConsole(state) {
+  const o = state.politics.office;
+  if (o?.id === 'cabinetSecretary') return `<div class="action-grid">${button('💼 Fight for your department\'s budget', 'executive.lobbyDepartment', { hint: 'Once a budget cycle' })}</div>`;
+  const level = executiveLevel(o?.id);
+  if (!level) return '';
+  const lv = level === 'national' ? 'federal' : level;
+  const laws = Object.entries(LAWS).filter(([, l]) => l.levels.includes(lv));
+  const agenda = laws.map(([id, l]) => `<li class="report-row"><div>${l.icon} ${esc(l.name)} <small class="muted">${esc(describeValue(id, levelValue(state, id, lv, lv === 'city' ? state.character.regionId : lv === 'state' ? stateIdOf(state) : (state.character.countryId && state.character.countryId !== 'US' ? state.character.countryId : null))))}</small></div>
+    <div class="toggle-row">${button('▼', 'legislature.executiveBill', { arg: `${id}|down`, variant: 'tiny', hint: 'Send a bill to weaken / cut it' })}${button('▲', 'legislature.executiveBill', { arg: `${id}|up`, variant: 'tiny', hint: 'Send a bill to strengthen / raise it' })}</div></li>`).join('');
+  return `<div class="action-grid">
+      ${button('🎤 Address the public', 'executive.address', { hint: 'Once a year' })}
+      ${button('🧊 Freeze hiring', 'executive.hiringFreeze', { hint: 'Every department ~3% leaner' })}
+      ${level !== 'city' ? button('🕊️ Grant a pardon', 'executive.pardon', { hint: 'A gamble with the public' }) : ''}
+    </div>
+    ${disclosure('politics.agenda', '📜 Your legislative agenda (2 bills a year)', `<ul class="history">${agenda}</ul><p class="fine">Your bills go to the legislature with your standing behind them; it still has to pass them. Budgets are in "Your Government" below.</p>`)}`;
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
   const c = p.campaign;
   const office = o && OFFICES[o.id];
   const current = o
-    ? card(`${office.icon} ${office.name}`, `
+    ? card(`${office.icon} ${esc(o.title ?? office.name)}`, `
         ${meter(o.approval, { label: '🗳️ Approval' })}
+        ${o.drivers?.length ? `<p class="fine">Last year: ${o.drivers.map((d) => `${esc(d.label)} <span class="${d.delta >= 0 ? 'pos' : 'neg'}">${d.delta >= 0 ? '+' : ''}${d.delta}</span>`).join(' · ')}</p>` : ''}
+        ${executiveConsole(state)}
         ${kv([['Term', `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
         <div class="row-end">${button('👋 Resign', 'politics.resign', { variant: 'danger small' })}</div>`, { icon: '🏛️', accent: 'yellow' })
     : '';
@@ -79,6 +100,7 @@ export function politicsView(state) {
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
+    ${partyCard(state)}
     ${governmentCard(state)}
     ${legislatureCards(state)}
     ${card('Political History', history, { icon: '🗂️' })}`;

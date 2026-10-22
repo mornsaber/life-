@@ -323,6 +323,12 @@ export const MilitaryModule = {
       const svc = state.military.service;
       if (!svc) return;
       if (optionId === 'reenlist') {
+        // Officers past their first obligation serve on indefinitely, until they retire or are retired.
+        if (svc.track !== 'enlisted' && svc.yearsOfService >= 10) {
+          svc.contractYearsLeft = 99;
+          ctx.log(`You continue to serve as a ${rankOf(svc).title} — no more fixed terms: you serve until you ask to retire, or reach the limits for your grade.`, '✍️', 'good');
+          return;
+        }
         svc.contractYearsLeft = ENLIST_CONTRACT[svc.component];
         if (svc.track === 'enlisted' && svc.eval >= 60) {
           const bonus = rng.int(2, 8) * 5000;
