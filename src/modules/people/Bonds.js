@@ -332,8 +332,8 @@ function romanceYear(ctx) {
   // (less than it fades: it still drifts down untended, but a good marriage doesn't hit bottom).
   if (p.relationship >= 50) p.spark = clamp(p.spark + rng.int(0, 1) + (state.stats.happiness > 60 ? 0.5 : 0) + (p.spark < 30 && p.relationship >= 60 ? 2 : 0), 0, 100);
   // Spark feeds the relationship; a dead spark wears it down.
-  if (p.spark < 15) p.relationship = clampRel(p.relationship - 2);
-  else if (p.spark < 30 && rng.chance(0.5)) p.relationship = clampRel(p.relationship - 1);
+  if (p.spark < 15) p.relationship = clampRel(p.relationship - (rng.chance(0.5) ? 2 : 1));
+  else if (p.spark < 30 && rng.chance(0.3)) p.relationship = clampRel(p.relationship - 1);
   else if (p.spark > 70) p.relationship = clampRel(p.relationship + 1);
   // Anniversaries.
   if (p.relation === 'spouse' && years >= 1 && p.lastAnniversary !== state.character.age && !state.prompts.some((x) => x.type === 'bonds.anniversary')) {
