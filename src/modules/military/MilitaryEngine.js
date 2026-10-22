@@ -503,9 +503,13 @@ export function updateEvaluation(ctx, svc) {
   svc.eval = Math.round(clamp(svc.eval * 0.5 + target * 0.5, 0, 100));
 }
 
+/** The professional corps' highest grade: O-9 Surgeon General and Judge Advocate General; O-8 Chief of Chaplains. */
+export const CORPS_TOP_GRADE = { medical: 8, legal: 8, chaplain: 7 };
+
 export function promotionOutlook(svc) {
   const max = rankTitles(svc).length - 1;
   if (svc.grade >= max) return { eligible: false, reason: 'Highest grade' };
+  if (svc.track === 'officer' && svc.grade >= (CORPS_TOP_GRADE[svc.specialty] ?? 99)) return { eligible: false, reason: `The top grade for your corps (${SPECIALTIES[svc.specialty]?.name ?? 'your corps'})` };
   const tig = timeInGradeRequired(svc);
   if (svc.yearsInGrade < tig) return { eligible: false, reason: `${tig - svc.yearsInGrade} yr time-in-grade` };
   const school = pmeBlock(svc);
@@ -538,6 +542,7 @@ export function tryPromotion(ctx, svc) {
     }
     return;
   }
+  if (svc.track === 'officer' && svc.grade >= (CORPS_TOP_GRADE[svc.specialty] ?? 99)) return false;
   // Top performers can be picked up a year early.
   if (svc.track && !pmeBlock(svc) && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
     svc.grade += 1;

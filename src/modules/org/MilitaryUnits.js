@@ -40,6 +40,32 @@ export const BILLETS = {
   corps: { member: 'Officer', teamLeader: 'Officer', squadLeader: 'Officer', platoonSergeant: 'Officer', opsNco: 'Officer', firstSergeant: 'Officer', seniorStaffNco: 'Officer', csm: 'Officer', platoonLeader: 'Program Officer', xo: 'Deputy Director', companyCommander: 'Office Director', staff: 'Regional Staff', battalionCommander: 'Commanding Officer', higher: 'Headquarters Staff', units: { squad: 'Team', platoon: 'Branch', company: 'Office', battalion: 'Center' } },
 };
 
+/**
+ * What each billet is called in a specialty: a JAG lieutenant is a trial counsel, not a platoon
+ * leader; an Army doctor is a staff physician; an intelligence captain is the battalion S-2.
+ * (Engineers and aviators only differ in the Army's and Marines' ground units.)
+ */
+export const SPECIALTY_BILLETS = {
+  medical: { member: 'Hospital Technician', teamLeader: 'Senior Technician', squadLeader: 'Ward NCOIC', platoonSergeant: 'Department NCOIC', opsNco: 'Clinical Operations NCO', firstSergeant: 'Hospital First Sergeant', seniorStaffNco: 'Chief Medical NCO', csm: 'Hospital Senior Enlisted Leader', platoonLeader: 'Staff Physician / Clinical Nurse', xo: 'Assistant Department Chief', companyCommander: 'Department Chief', staff: 'Chief of a Hospital Service', battalionCommander: 'Hospital Commander', higher: 'Deputy Commander for Clinical Services' },
+  legal: { member: 'Paralegal Specialist', teamLeader: 'Senior Paralegal', squadLeader: 'Paralegal NCOIC', platoonSergeant: 'Chief Paralegal NCO', opsNco: 'Senior Paralegal NCO', firstSergeant: 'Legal Office Senior NCO', seniorStaffNco: 'Command Paralegal NCO', csm: 'Command Paralegal NCO', platoonLeader: 'Trial Counsel', xo: 'Defense Counsel', companyCommander: 'Chief of Military Justice', staff: 'Deputy Staff Judge Advocate', battalionCommander: 'Staff Judge Advocate', higher: 'Senior Legal Adviser, division staff' },
+  chaplain: { member: 'Religious Affairs Specialist', teamLeader: 'Religious Affairs NCO', squadLeader: 'Senior Religious Affairs NCO', platoonSergeant: 'Senior Religious Affairs NCO', opsNco: 'Religious Support NCO', seniorStaffNco: 'Command Religious Affairs NCO', platoonLeader: 'Battalion Chaplain', xo: 'Battalion Chaplain', companyCommander: 'Brigade Chaplain', staff: 'Brigade Chaplain', battalionCommander: 'Brigade Chaplain', higher: 'Division Chaplain' },
+  intel: { member: 'Intelligence Analyst', teamLeader: 'Senior Analyst', squadLeader: 'Analysis Section Sergeant', platoonSergeant: 'Intelligence NCOIC', opsNco: 'Intelligence Operations NCO', seniorStaffNco: 'Senior Intelligence Sergeant', platoonLeader: 'Assistant Intelligence Officer', xo: 'Battalion Intelligence Officer (S-2)', companyCommander: 'Military Intelligence Company Commander', staff: 'Brigade Intelligence Officer (S-2)', battalionCommander: 'Military Intelligence Battalion Commander', higher: 'Division Intelligence Staff (G-2)' },
+  cyber: { member: 'Cyber Operator', teamLeader: 'Senior Operator', squadLeader: 'Team Sergeant', platoonSergeant: 'Mission Element NCOIC', opsNco: 'Cyber Operations NCO', seniorStaffNco: 'Senior Cyber NCO', platoonLeader: 'Cyber Operations Officer', xo: 'Mission Element Lead', companyCommander: 'Cyber Protection Team Lead', staff: 'Cyber Mission Force Planner', battalionCommander: 'Cyber Battalion Commander', higher: 'Cyber Command Staff' },
+  logistics: { member: 'Supply Specialist', teamLeader: 'Supply Team Leader', squadLeader: 'Supply Sergeant', platoonSergeant: 'Distribution Platoon Sergeant', opsNco: 'Support Operations NCO', platoonLeader: 'Distribution Platoon Leader', xo: 'Support Company Executive Officer', companyCommander: 'Support Company Commander', staff: 'Support Operations Officer', battalionCommander: 'Support Battalion Commander', higher: 'Brigade Logistics Officer (S-4)' },
+  engineer: { ground: true, member: 'Combat Engineer', teamLeader: 'Sapper Team Leader', squadLeader: 'Engineer Squad Leader', platoonSergeant: 'Engineer Platoon Sergeant', platoonLeader: 'Engineer Platoon Leader', xo: 'Engineer Company Executive Officer', companyCommander: 'Engineer Company Commander', staff: 'Battalion Engineer Operations Officer', battalionCommander: 'Engineer Battalion Commander' },
+  aviation: { ground: true, member: 'Aircraft Crew Chief', teamLeader: 'Flight Line Team Leader', squadLeader: 'Maintenance Section Sergeant', platoonSergeant: 'Flight Platoon Sergeant', platoonLeader: 'Pilot / Section Leader', xo: 'Flight Platoon Leader', companyCommander: 'Aviation Company Commander', staff: 'Aviation Battalion Operations Officer', battalionCommander: 'Aviation Battalion Commander' },
+};
+const specialtyTitle = (specialty, family, billet) => {
+  const t = SPECIALTY_BILLETS[specialty];
+  if (!t || (t.ground && family !== 'ground')) return null;
+  return t[billet] ?? null;
+};
+/** The professional corps serve in their own units: a hospital, a legal office. */
+const CORPS_UNITS = {
+  medical: { word: 'Department', companies: ['Emergency Medicine', 'Surgery', 'Internal Medicine', 'Nursing'], name: (family, rng, nation) => (nation ? `${rng.pick(['Joint', 'Central', 'Garrison'])} Military Hospital` : family === 'naval' ? `Naval Medical Center ${rng.pick(['San Diego', 'Portsmouth', 'Camp Lejeune', 'Okinawa'])}` : family === 'air' ? `${rng.pick(['59th', '88th', '96th', '60th'])} Medical Group` : `${rng.pick(['Brooke', 'Madigan', 'Womack', 'Darnall', 'Tripler'])} Army Medical Center`) },
+  legal: { word: 'Section', companies: ['Military Justice', 'Administrative Law', 'Legal Assistance', 'Trial Defense'], name: (family, rng, nation) => (nation ? 'Defence Legal Services Office' : family === 'naval' ? `Region Legal Service Office ${rng.pick(['Southwest', 'Mid-Atlantic', 'Japan', 'Hawaii'])}` : family === 'air' ? `${rng.pick(['4th', '20th', '388th', '97th'])} Wing Legal Office` : `Office of the Staff Judge Advocate, ${rng.pick(['1st Cavalry', '82nd Airborne', '101st Airborne', '3rd Infantry', '10th Mountain'])} Division`) },
+};
+
 /** Command posts: filled by boards for a tour of duty. */
 export const COMMAND_POSTS = {
   companyCommander: { track: 'officer', grade: 2, tour: 2, label: 'company command' },
@@ -55,7 +81,7 @@ const NCO_LEADERS = new Set(['teamLeader', 'squadLeader', 'platoonSergeant', 'fi
 export const isNcoLeader = (billet) => NCO_LEADERS.has(billet);
 
 export const familyOf = (svc) => FAMILY[svc?.branch] ?? 'ground';
-export const billetTitle = (svc, billet) => localBillet(svc?.nation, svc?.branch, billet) ?? BILLETS[familyOf(svc)][billet] ?? billet;
+export const billetTitle = (svc, billet) => specialtyTitle(svc?.specialty, familyOf(svc), billet) ?? localBillet(svc?.nation, svc?.branch, billet) ?? BILLETS[familyOf(svc)][billet] ?? billet;
 export const canImposeNjp = (billet) => COMMANDERS.has(billet);
 export const leads = (billet) => LEADS.has(billet);
 
@@ -80,7 +106,7 @@ function soldier(rng, org, { grade, track = 'enlisted', billet, company = null, 
   const gender = rng.pick(['male', 'female', 'male']);
   const n = randomName(rng, gender);
   const p = { id: rng.id('sm_'), name: `${n.firstName} ${n.lastName}`, gender, age: track === 'officer' ? 22 + grade * 3 + rng.int(0, 3) : 18 + grade * 2 + rng.int(0, 4), grade, track, billet, rank: ranks?.[track]?.[grade] ?? '', deptId: company, years: rng.int(0, 3), performance: rng.int(45, 85), rel: rng.int(40, 65), discipline: 0, professionId: null, levelId: billet, title: '' };
-  p.title = `${p.rank} — ${localBillet(org.nation, org.branch, billet) ?? BILLETS[org.family][billet] ?? billet}`;
+  p.title = `${p.rank} — ${specialtyTitle(org.specialty, org.family, billet) ?? localBillet(org.nation, org.branch, billet) ?? BILLETS[org.family][billet] ?? billet}`;
   org.people[p.id] = p;
   return p;
 }
@@ -91,16 +117,18 @@ export function ensureUnit(state, svc, ranks) {
   const family = familyOf(svc);
   // Special operators serve in their own command (the Ranger Regiment, a SEAL Team…), wherever they're based.
   const pre = svc.nation ? `${svc.nation}:` : '';
-  const key = svc.sof ? `unit:${pre}${svc.branch}:sof:${svc.sof.pipeline}` : `unit:${pre}${svc.branch}:${svc.station ?? 'initial'}`;
+  // Doctors serve in a hospital and lawyers in a legal office; everyone else in their station's unit.
+  const corps = !svc.sof && family !== 'corps' ? CORPS_UNITS[svc.specialty] : null;
+  const key = svc.sof ? `unit:${pre}${svc.branch}:sof:${svc.sof.pipeline}` : `unit:${pre}${svc.branch}:${svc.station ?? 'initial'}${corps ? `:${svc.specialty}` : ''}`;
   let org = state.orgs.byId[key];
   const rng = sideRng(state);
   if (!org) {
-    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, nation: svc.nation ?? null, name: svc.sof?.unitName ?? localUnitName(svc.nation, svc.branch, rng) ?? UNIT_NAMES[family](rng), sof: Boolean(svc.sof), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
+    org = { id: key, typeId: `unit:${svc.branch}`, military: true, family, branch: svc.branch, nation: svc.nation ?? null, specialty: corps ? svc.specialty : null, name: corps ? corps.name(family, rng, svc.nation) : svc.sof?.unitName ?? localUnitName(svc.nation, svc.branch, rng) ?? UNIT_NAMES[family](rng), sof: Boolean(svc.sof), scope: 'nation', sector: 'federal', regionId: state.character.regionId, size: 'large', head: null, departments: {}, people: {}, founded: state.character.age, csm: null, readiness: 60 };
     org.head = soldier(rng, org, { grade: 4, track: 'officer', billet: 'battalionCommander', ranks }).id;
     org.csm = soldier(rng, org, { grade: 8, billet: 'csm', ranks }).id;
-    for (const name of COMPANIES[family]) {
+    for (const name of corps?.companies ?? COMPANIES[family]) {
       const id = name.toLowerCase().replace(/\s+/g, '');
-      const dept = { id, name: `${name} ${localUnitWord(svc.nation, svc.branch, 'company') ?? BILLETS[family].units.company}`, head: null, firstSergeant: null, headcount: rng.int(90, 160), seats: {}, readiness: rng.int(50, 70) };
+      const dept = { id, name: `${name} ${corps?.word ?? localUnitWord(svc.nation, svc.branch, 'company') ?? BILLETS[family].units.company}`, head: null, firstSergeant: null, headcount: rng.int(90, 160), seats: {}, readiness: rng.int(50, 70) };
       org.departments[id] = dept;
       dept.head = soldier(rng, org, { grade: 2, track: 'officer', billet: 'companyCommander', company: id, ranks }).id;
       dept.firstSergeant = soldier(rng, org, { grade: 7, billet: 'firstSergeant', company: id, ranks }).id;
@@ -201,14 +229,16 @@ export function unitView(state, svc) {
   const pl = dept?.platoon;
   const b = u.billet;
   const chain = [];
+  // Your leaders carry the unit's titles (an intelligence soldier's battalion is still an infantry battalion).
+  const unitSvc = { ...svc, specialty: org.specialty };
   const add = (label, id) => { if (id === PLAYER) return; const p = person(org, id); if (p) chain.push({ label, person: p }); };
-  if (['member', 'teamLeader'].includes(b)) add(billetTitle(svc, 'squadLeader'), pl?.squads[0].leader);
-  if (['member', 'teamLeader', 'squadLeader'].includes(b)) add(billetTitle(svc, 'platoonSergeant'), pl?.sergeant);
-  if (['member', 'teamLeader', 'squadLeader', 'platoonSergeant'].includes(b)) add(billetTitle(svc, 'platoonLeader'), pl?.leader);
-  if (b !== 'companyCommander' && b !== 'battalionCommander' && b !== 'csm' && b !== 'higher' && b !== 'staff' && b !== 'seniorStaffNco') add(billetTitle(svc, 'firstSergeant'), dept?.firstSergeant);
-  if (!['companyCommander', 'battalionCommander', 'csm', 'higher', 'staff', 'seniorStaffNco'].includes(b)) add(billetTitle(svc, 'companyCommander'), dept?.head);
-  if (b !== 'csm') add(billetTitle(svc, 'csm'), org.csm);
-  if (b !== 'battalionCommander') add(billetTitle(svc, 'battalionCommander'), org.head);
+  if (['member', 'teamLeader'].includes(b)) add(billetTitle(unitSvc, 'squadLeader'), pl?.squads[0].leader);
+  if (['member', 'teamLeader', 'squadLeader'].includes(b)) add(billetTitle(unitSvc, 'platoonSergeant'), pl?.sergeant);
+  if (['member', 'teamLeader', 'squadLeader', 'platoonSergeant'].includes(b)) add(billetTitle(unitSvc, 'platoonLeader'), pl?.leader);
+  if (b !== 'companyCommander' && b !== 'battalionCommander' && b !== 'csm' && b !== 'higher' && b !== 'staff' && b !== 'seniorStaffNco') add(billetTitle(unitSvc, 'firstSergeant'), dept?.firstSergeant);
+  if (!['companyCommander', 'battalionCommander', 'csm', 'higher', 'staff', 'seniorStaffNco'].includes(b)) add(billetTitle(unitSvc, 'companyCommander'), dept?.head);
+  if (b !== 'csm') add(billetTitle(unitSvc, 'csm'), org.csm);
+  if (b !== 'battalionCommander') add(billetTitle(unitSvc, 'battalionCommander'), org.head);
   let team = [];
   if (b === 'member') team = (pl?.squads[0].members ?? []).filter((id) => id !== PLAYER);
   else if (b === 'teamLeader') team = (pl?.squads[0].members ?? []).filter((id) => id !== PLAYER).slice(0, 3);
