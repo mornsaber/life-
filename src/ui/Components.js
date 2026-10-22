@@ -301,13 +301,14 @@ export function newLifeForm(rngName) {
   </div>`;
 }
 
-export function tombstone({ name, born, died, age, cause, epitaph, facts, honors }, extra = '') {
+export function tombstone({ name, born, died, age, cause, epitaph, distinctions = [], facts, honors }, extra = '') {
   return `<div class="tombstone-wrap">
     <div class="tombstone">
       <div class="rip">R.I.P.</div>
       <h2>${esc(name)}</h2>
       <p class="dates">${born} – ${died} · Age ${age}</p>
       <p class="cause">${esc(cause)}</p>
+      ${distinctions.length ? `<p class="distinctions">${distinctions.map(esc).join('<br>')}</p>` : ''}
       <p class="epitaph">“${esc(epitaph)}”</p>
       ${honors.length ? `<div class="tomb-rack">${ribbonRack(honors)}</div>` : ''}
       ${kv(facts)}

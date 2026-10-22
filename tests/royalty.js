@@ -17,7 +17,7 @@ import { peerChamber, lordSpiritual } from '../src/modules/politics/Legislature.
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { conferOptions, familyTitle } from '../src/modules/world/RoyalHousehold.js';
 import { fullName } from '../src/modules/people/People.js';
-import { VIEWS } from '../src/ui/Renderer.js';
+import { VIEWS, Renderer } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 3) {
@@ -264,6 +264,61 @@ const tests = {
     const pop = state.royal.popularity;
     MODULES.find((m) => m.id === 'royalHousehold').resolvers.assent(ctx, { bill: 'a bill' }, 'refuse');
     assert.ok(state.royal.popularity < pop, 'refusing assent is a crisis');
+  },
+  'a royal can renounce everything; a reigning monarch abdicates and renounces at once'() {
+    const { engine, state } = life({ difficulty: 'royal', royalLevel: 'child' }, 21);
+    year(engine, state, 20);
+    state.prompts = [];
+    engine.dispatch('crown.renounce');
+    assert.equal(state.royal, null);
+    assert.ok(state.character.formerRoyal);
+    assert.ok(!state.character.style?.prefix);
+    assert.equal(styledName(state), `${state.character.firstName} ${state.character.lastName}`);
+    year(engine, state, 2);
+    assert.equal(state.royal, null, 'stays renounced');
+    const m = life({ difficulty: 'royal', royalLevel: 'heir' }, 22);
+    year(m.engine, m.state, 20);
+    m.state.prompts = [];
+    const crown = m.state.world.crowns[m.state.royal.crownId];
+    if (!m.state.royal.reigning) { m.state.royal.reigning = true; m.state.royal.line = 0; crown.monarch.you = true; crown.heir = { name: 'Arthur', gender: 'male', age: 1 }; }
+    m.engine.dispatch('crown.renounce');
+    assert.equal(m.state.royal, null);
+    assert.ok(m.state.character.formerRoyal.reigned);
+    assert.ok(!crown.monarch.you && !crown.heir.you, 'someone else reigns');
+  },
+  'name changes: deed poll and married names'() {
+    const { engine, state } = life({}, 23);
+    year(engine, state, 20);
+    state.prompts = [];
+    state.finances.cash = 5000;
+    const before = state.character.lastName;
+    engine.dispatch('names.change');
+    const q = state.prompts.find((p) => p.type === 'names.deedPoll');
+    assert.ok(q);
+    const opt = q.options.find((o) => o.id.startsWith('last|'));
+    engine.resolvePrompt(q.id, opt.id);
+    assert.notEqual(state.character.lastName, before);
+    assert.equal(state.character.birthName.lastName, before);
+    assert.ok(state.character.formerNames.length);
+    const ctx = engine.context();
+    state.people.list.push({ id: 'sp1', firstName: 'Ann', lastName: 'Zed', gender: 'female', relation: 'spouse', alive: true, ageOffset: 0 });
+    ctx.emit('people:married', { personId: 'sp1' });
+    const mq = state.prompts.find((p) => p.type === 'names.marriage');
+    engine.resolvePrompt(mq.id, 'double');
+    assert.ok(state.character.lastName.endsWith('-Zed'));
+  },
+  'the tombstone carries titles, offices and honours'() {
+    const { engine, state } = life({ difficulty: 'royal', royalLevel: 'heir' }, 24);
+    year(engine, state, 30);
+    state.prompts = [];
+    engine.dispatch('crown.abdicate');
+    state.honors.push({ id: 'order.GB.kbe', source: 'order', name: 'Knight Commander of the Order of the British Empire', post: 'KBE', prestige: 30, citation: 'For services to charity.' });
+    state.politics.history = [{ officeId: 'gb_pm', startAge: 40, endAge: 45 }];
+    const ob = new Renderer({ root: null, toastRoot: null, engine }).obituary(state);
+    assert.ok(ob.distinctions.some((d) => /Knight Commander/.test(d)), ob.distinctions.join(' | '));
+    assert.ok(ob.distinctions.some((d) => /Prime Minister/.test(d)), ob.distinctions.join(' | '));
+    assert.ok(ob.distinctions.some((d) => /once reigned/.test(d)), ob.distinctions.join(' | '));
+    assert.ok(/KBE/.test(ob.name), ob.name);
   },
 };
 void PeerageModule;

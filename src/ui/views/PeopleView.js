@@ -321,7 +321,20 @@ export function peopleView(state) {
     ${dynastyCard(state)}
     ${legacyCard(state)}
     ${lineage(state)}
+    ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
+}
+
+/** Your name, any former names, and the deed poll. */
+function nameCard(state) {
+  const c = state.character;
+  if (c.age < 18 && !c.formerNames?.length) return '';
+  return card('Your Name', `${kv([
+    ['Name', esc(`${c.firstName} ${c.lastName}`)],
+    c.birthName ? ['Born', esc(`${c.birthName.firstName} ${c.birthName.lastName}`)] : null,
+    c.formerNames?.length ? ['Former names', esc(c.formerNames.join(' · '))] : null,
+  ].filter(Boolean))}
+  ${c.age >= 18 && !state.royal ? `<div class="action-grid">${button('🪪 Change your name by deed poll', 'names.change', { hint: 'About $200 · once a year' })}</div>` : ''}`, { icon: '🪪' });
 }
 
 /** Tombstone extra: continue as one of your children. */

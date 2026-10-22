@@ -344,6 +344,21 @@ export function royalStyledName(state) {
   return p ? `${p} ${c.firstName}` : null;
 }
 
+/** The reigning player gives up the throne: the heir accedes. Returns the old regnal name. */
+function handOver(ctx) {
+  const { state } = ctx;
+  const r = state.royal;
+  const c = state.world.crowns[r.crownId];
+  const was = monarchName(state, r.crownId);
+  const def = CROWNS[r.crownId];
+  const g = c.heir.gender ?? 'male';
+  c.monarch = { name: c.heir.name === 'your eldest child' ? pickName(ctx.rng, def, g) : c.heir.name, gender: g, age: c.heir.age, number: 1 };
+  c.heir = newHeir(ctx.rng, def, c.monarch);
+  c.since = currentYear(state);
+  c.crowned = false;
+  return was;
+}
+
 /** Set up a royal birth (createInitialState put the chosen level in state.royal). */
 function bornRoyal(state, rng) {
   const r = state.royal;
@@ -506,17 +521,38 @@ export const CrownModule = {
       const { state } = ctx;
       const r = state.royal;
       if (!r?.reigning) return ctx.toast('Only a reigning monarch can abdicate.', 'warn');
-      const c = state.world.crowns[r.crownId];
-      const was = monarchName(state, r.crownId);
-      const def = CROWNS[r.crownId];
-      const g = c.heir.gender ?? 'male';
-      c.monarch = { name: c.heir.name === 'your eldest child' ? pickName(ctx.rng, def, g) : c.heir.name, gender: g, age: c.heir.age, number: 1 };
-      c.heir = newHeir(ctx.rng, def, c.monarch);
-      c.since = currentYear(state);
-      c.crowned = false;
+      const was = handOver(ctx);
       Object.assign(r, { reigning: false, line: 2, working: false, abdicated: true });
-      state.character.style = { ...(state.character.style ?? {}), prefix: def.titles.royal[genderIdx(state.character.gender)] };
+      state.character.style = { ...(state.character.style ?? {}), prefix: CROWNS[r.crownId].titles.royal[genderIdx(state.character.gender)] };
       ctx.log(`${was} abdicated. ${monarchName(state, r.crownId)} reigns; you keep your title and lose the throne.`, '👑', 'milestone');
+      return undefined;
+    },
+    /** Leave the royal family altogether: the throne (if you hold it), your place in the line, every title — yours and your family's. */
+    renounce(ctx) {
+      const { state } = ctx;
+      const r = state.royal;
+      if (!r) return undefined;
+      if (state.character.age < 18) return ctx.toast('You can renounce your rights at 18.', 'warn');
+      const c = state.world.crowns[r.crownId];
+      const def = CROWNS[r.crownId];
+      const reigned = r.reigning;
+      const was = reigned ? handOver(ctx) : null;
+      if (!reigned && c?.heir?.you) c.heir = newHeir(ctx.rng, def, c.monarch);
+      const ch = state.character;
+      if (ch.peerage?.kind === 'royal') delete ch.peerage;
+      ch.style = { ...(ch.style ?? {}), prefix: null, peerage: null };
+      for (const p of state.people?.list ?? []) {
+        if (!['spouse', 'child'].includes(p.relation)) continue;
+        delete p.title;
+        delete p.dukedom;
+      }
+      ch.formerRoyal = { crownId: r.crownId, level: r.level, year: currentYear(state), age: ch.age, reigned: Boolean(reigned), regnal: reigned ? was : null };
+      state.royal = null;
+      ctx.stat('happiness', 6);
+      ctx.stat('stress', -10);
+      ctx.log(reigned
+        ? `${was} abdicated — and renounced every title and right of succession for yourself and your descendants. ${monarchName(state, ch.formerRoyal.crownId)} reigns; you are plain ${ch.firstName} ${ch.lastName} now.`
+        : `You renounced your place in the line of succession and every royal title, for yourself and your descendants. No grant, no household — and no duties. You are plain ${ch.firstName} ${ch.lastName}.`, '📜', 'milestone');
       return undefined;
     },
   },

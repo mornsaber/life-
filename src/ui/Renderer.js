@@ -4,7 +4,9 @@
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
 import { styledName, postNominals } from '../modules/world/Honours.js';
-import { fullName, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
+import { OFFICES } from '../modules/politics/Offices.js';
+import { CROWNS } from '../modules/world/Crown.js';
+import { currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
   esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
@@ -426,8 +428,33 @@ export class Renderer {
     else if (peakJob?.peakGrade >= 9) epitaph = 'Made it to the top.';
     else if (netWorth(state) > 1e6) epitaph = 'Died rich.';
 
+    // Rank, office and honours: what the stone says beneath the name.
+    const r = state.royal;
+    const g = c.gender === 'female' ? 1 : 0;
+    const offices = [...(state.politics?.history ?? []), state.politics?.office && { officeId: state.politics.office.id, startAge: state.politics.office.startAge, endAge: c.age }]
+      .filter((o) => o && OFFICES[o.officeId]);
+    const topOffice = offices.sort((a, b) => (OFFICES[b.officeId].level ?? 0) - (OFFICES[a.officeId].level ?? 0))[0];
+    const orders = state.honors.filter((h) => h.source === 'order').sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0));
+    const topHonours = [...orders, ...state.honors.filter((h) => h.source !== 'order').sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0))]
+      .map((h) => h.name).filter((n, i, a) => n && a.indexOf(n) === i).slice(0, 3);
+    const distinctions = [
+      r?.reigning ? `${CROWNS[r.crownId]?.titles.monarch[g] ?? 'Sovereign'}, reigned ${currentYear(state) - (state.world.crowns?.[r.crownId]?.since ?? currentYear(state))} years` : null,
+      r && !r.reigning ? `${r.line === 1 ? CROWNS[r.crownId]?.titles.heir[g] : CROWNS[r.crownId]?.titles.royal[g]}${r.abdicated ? ', who once reigned' : ''}` : null,
+      c.formerRoyal ? (c.formerRoyal.reigned ? `Once ${c.formerRoyal.regnal}, who gave up the throne` : 'Born royal; gave it all up') : null,
+      c.style?.peerage ?? null,
+      topOffice ? `${OFFICES[topOffice.officeId].name}${topOffice.endAge > topOffice.startAge ? ` (${topOffice.endAge - topOffice.startAge} yr)` : ''}` : null,
+      ...topHonours,
+    ].filter(Boolean);
+    if (r?.reigning) epitaph = `Long live the ${c.gender === 'female' ? 'Queen' : 'King'}.`;
+    else if (c.formerRoyal) epitaph = 'They chose their own life.';
+    else if (moh) epitaph = 'Above and beyond the call of duty.';
+    else if (topOffice && (OFFICES[topOffice.officeId].level ?? 0) >= 5) epitaph = `They served the nation as ${OFFICES[topOffice.officeId].name}.`;
+    else if (c.peerage) epitaph = 'A voice in the councils of the realm.';
+    else if (orders.length && !felon && epitaph === 'They lived a quiet life.') epitaph = `For services to ${orders[0].citation?.match(/For services to ([^.]+)/)?.[1] ?? 'the community'}.`;
+
     return {
-      name: fullName(state),
+      name: `${styledName(state)}${postNominals(state) ? ` ${postNominals(state)}` : ''}`,
+      distinctions,
       born: c.birthYear,
       died: currentYear(state),
       age: c.age,

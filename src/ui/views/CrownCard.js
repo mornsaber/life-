@@ -56,6 +56,7 @@ export function crownCards(state) {
         ${r.reigning || (r.working && r.line === 1) ? button('🏷️ Grant a royal warrant', 'royalHousehold.warrant', { hint: 'One a year' }) : ''}
         ${!r.reigning && state.character.age >= 18 && state.character.age <= 30 && !state.military.service ? button('🎖️ Serve in the armed forces', 'royalHousehold.serve', { hint: 'As an officer cadet' }) : ''}
         ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
+        ${state.character.age >= 18 ? button(r.reigning ? '🚪 Abdicate and renounce everything' : '🚪 Renounce your rights and titles', 'crown.renounce', { variant: 'danger', hint: 'Leave the royal family for good — titles, line, grant' }) : ''}
       </div>
       ${r.reigning ? `<h4 class="sub">Confer honours <small class="muted">three a year · ${esc(ROYAL_ORDERS[r.crownId]?.great[0] ?? '')}, ${esc(ROYAL_ORDERS[r.crownId]?.personal[0] ?? '')}</small></h4>
       <div class="toggle-row chips-row">${button('🎗️ Honour a deserving member of the public', 'royalHousehold.confer', { arg: 'public', variant: 'tiny' })}${conferOptions(state).map((o) => button(o.label, 'royalHousehold.confer', { arg: `${o.person.id}|${o.id}`, variant: 'tiny' })).join('')}</div>

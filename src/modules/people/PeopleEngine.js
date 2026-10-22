@@ -651,6 +651,7 @@ export const PeopleEngine = {
       person.relationship = clampRel(person.relationship + (kind === 'big' ? 8 : 4));
       ctx.stat('happiness', kind === 'big' ? 18 : 12);
       ctx.log(`You married ${person.firstName}. ${w.icon}`, '💒', 'milestone');
+      ctx.emit('people:married', { personId: person.id });
     },
     fileForDivorce(ctx) {
       const spouse = spouseOf(ctx.state);

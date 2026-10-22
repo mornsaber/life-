@@ -543,6 +543,7 @@ fieldset.gender label { flex-direction: row; align-items: center; color: var(--i
 .tombstone .dates { margin: 0; font-family: var(--pixel); font-size: 10px; color: #d6dae4; }
 .tombstone .cause { margin: 10px 0 4px; color: #ffd0d6; font-weight: 600; }
 .tombstone .epitaph { margin: 0 0 16px; font-style: italic; color: #f2f3f7; }
+.tombstone .distinctions { margin: 0 0 8px; font-size: 0.85em; color: #c9ccd6; line-height: 1.4; }
 .tomb-rack { display: flex; justify-content: center; }
 .tomb-rack .rack { justify-content: center; }
 .tombstone .kv { text-align: left; background: rgba(0, 0, 0, 0.2); padding: 12px; border-radius: 8px; margin-bottom: 18px; }
