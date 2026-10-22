@@ -95,7 +95,7 @@ export const INVESTIGATION_CAREERS = {
   usss: {
     label: 'Your Case', icon: '🕶️', weights: { smarts: 3 },
     kinds: ['counterfeit currency', 'bank fraud', 'cyber financial crime', 'threats against a protectee'],
-    target: (rng) => `${pick(rng, ['a counterfeit print shop', 'a card-skimming ring', 'a business-email-compromise crew', 'a man posting threats against the President'])}`,
+    target: (rng) => `${pick(rng, ['a counterfeit print shop', 'a card-skimming ring', 'a business-email-compromise crew', 'a man posting threats against the head of state'])}`,
     award: { id: 'usss.director', name: 'Secret Service Director\'s Award', icon: '🏅' },
     deck: [
       D('detail', '🛡️', 'Pulled for a Detail', 'A protective detail needs bodies for a foreign visit. Your case will sit for two months.', [

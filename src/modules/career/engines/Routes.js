@@ -123,7 +123,7 @@ export const ROUTE_CAREERS = {
     deck: [
       D('pressure', '🌩️', 'The CEO Wants to Go', 'Thunderstorms at the destination. The CEO wants to leave now.', [
         { id: 'delay', label: '⏳ Delay two hours', text: 'He fumed, then thanked you when the line cleared.', rep: 3 },
-        { id: 'go', label: '🛫 Go', check: 55, text: 'You threaded the cells and he made his meeting.', perf: 3, fail: { text: 'Severe turbulence. Two passengers hurt. An FAA inquiry.', perf: -8, trauma: 6 } },
+        { id: 'go', label: '🛫 Go', check: 55, text: 'You threaded the cells and he made his meeting.', perf: 3, fail: { text: 'Severe turbulence. Two passengers hurt. An aviation-authority inquiry.', perf: -8, trauma: 6 } },
       ]),
     ],
   },

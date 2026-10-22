@@ -1,0 +1,268 @@
+/**
+ * Rural towns and small places in every country (Singapore aside — it's a
+ * city-state). Each sits in one of its country's existing provinces;
+ * prices, pay and transit are derived from the cheapest city in that
+ * province (see ruralCities), so a town is always a bit cheaper, lower
+ * paid and more car-dependent than its province's cities.
+ *
+ *   T(name, icon, province, town population, catchment population, extra)
+ *   extra: { type, transit (0–100), col, market, locality, walkable } overrides
+ */
+const T = (name, icon, state, town, area = town, o = {}) => ({ name, icon, state, population: [town, Math.max(town, area)], ...o });
+const R = 'Rural';
+const S = 'Small town';
+
+export const RURAL_TOWNS = {
+  CA: {
+    kenora: T('Kenora, Ontario', '🛶', 'CA-ON', 15000, 40000, { type: R }),
+    timmins: T('Timmins, Ontario', '⛏️', 'CA-ON', 41000, 50000, { type: S }),
+    rimouski: T('Rimouski, Quebec', '🌊', 'CA-QC', 49000, 55000, { type: S }),
+    valdor: T('Val-d\'Or, Quebec', '⛏️', 'CA-QC', 33000, 45000, { type: R }),
+    grandeprairie: T('Grande Prairie, Alberta', '🛢️', 'CA-AB', 64000, 90000, { type: S }),
+    medicinehat: T('Medicine Hat, Alberta', '🌾', 'CA-AB', 63000, 76000, { type: S }),
+    princegeorge: T('Prince George, BC', '🌲', 'CA-BC', 77000, 90000, { type: S }),
+    princealbert: T('Prince Albert, Saskatchewan', '🌲', 'CA-SK', 37000, 45000, { type: R }),
+    yarmouth: T('Yarmouth, Nova Scotia', '🦞', 'CA-NS', 6500, 25000, { type: R }),
+    antigonish: T('Antigonish, Nova Scotia', '🐑', 'CA-NS', 4700, 20000, { type: R }),
+  },
+  GB: {
+    hexham: T('Hexham, Northumberland', '🏰', 'GB-ENG', 13000, 320000, { type: R }),
+    barnstaple: T('Barnstaple, Devon', '🐄', 'GB-ENG', 24000, 95000, { type: S }),
+    thetford: T('Thetford, Norfolk', '🌲', 'GB-ENG', 25000, 140000, { type: S }),
+    skipton: T('Skipton, North Yorkshire', '🐑', 'GB-ENG', 14600, 57000, { type: R }),
+    stornoway: T('Stornoway, Isle of Lewis', '🐟', 'GB-SCT', 8000, 26000, { type: R }),
+    oban: T('Oban, Argyll', '⛴️', 'GB-SCT', 8500, 86000, { type: R }),
+    dumfries: T('Dumfries', '🐄', 'GB-SCT', 33000, 148000, { type: S }),
+    brecon: T('Brecon, Powys', '⛰️', 'GB-WLS', 8300, 133000, { type: R }),
+    llandudno: T('Llandudno, Conwy', '🏖️', 'GB-WLS', 20000, 115000, { type: S }),
+    omagh: T('Omagh, County Tyrone', '🐄', 'GB-NIR', 20000, 115000, { type: R }),
+  },
+  AU: {
+    longreach: T('Longreach, Queensland', '🐄', 'AU-QLD', 3000, 4000, { type: R, transit: 0 }),
+    mountisa: T('Mount Isa, Queensland', '⛏️', 'AU-QLD', 18000, 21000, { type: R }),
+    bundaberg: T('Bundaberg, Queensland', '🌾', 'AU-QLD', 72000, 100000, { type: S }),
+    broome: T('Broome, Western Australia', '🐪', 'AU-WA', 14000, 17000, { type: R }),
+    esperance: T('Esperance, Western Australia', '🏖️', 'AU-WA', 12000, 14000, { type: R, transit: 0 }),
+    geraldton: T('Geraldton, Western Australia', '🦞', 'AU-WA', 40000, 42000, { type: S }),
+    waggawagga: T('Wagga Wagga, New South Wales', '🌾', 'AU-NSW', 57000, 67000, { type: S }),
+    bourke: T('Bourke, New South Wales', '🐑', 'AU-NSW', 2300, 2500, { type: R, transit: 0 }),
+    horsham: T('Horsham, Victoria', '🌾', 'AU-VIC', 17000, 20000, { type: R }),
+    bairnsdale: T('Bairnsdale, Victoria', '🌲', 'AU-VIC', 15000, 47000, { type: R }),
+    portaugusta: T('Port Augusta, South Australia', '☀️', 'AU-SA', 13500, 14000, { type: R }),
+    cooberpedy: T('Coober Pedy, South Australia', '💎', 'AU-SA', 1600, 1600, { type: R, transit: 0 }),
+    katherine: T('Katherine, Northern Territory', '🐊', 'AU-NT', 10000, 10000, { type: R, transit: 0 }),
+    tennantcreek: T('Tennant Creek, Northern Territory', '🏜️', 'AU-NT', 3000, 3000, { type: R, transit: 0 }),
+    burnie: T('Burnie, Tasmania', '🌊', 'AU-TAS', 20000, 28000, { type: S }),
+  },
+  DE: {
+    passau: T('Passau, Bavaria', '⛪', 'DE-BY', 53000, 190000, { type: S }),
+    garmisch: T('Garmisch-Partenkirchen, Bavaria', '🏔️', 'DE-BY', 27000, 88000, { type: R }),
+    titisee: T('Titisee-Neustadt, Black Forest', '🌲', 'DE-BW', 12000, 260000, { type: R }),
+    goerlitz: T('Görlitz, Saxony', '🏰', 'DE-SN', 56000, 250000, { type: S }),
+    winterberg: T('Winterberg, Sauerland', '⛷️', 'DE-NW', 12500, 260000, { type: R }),
+    fulda: T('Fulda, Hesse', '⛪', 'DE-HE', 70000, 225000, { type: S }),
+    cochem: T('Cochem, Moselle', '🍇', 'DE-RP', 5300, 61000, { type: R }),
+  },
+  FR: {
+    lepuy: T('Le Puy-en-Velay, Haute-Loire', '⛪', 'FR-ARA', 19000, 227000, { type: S }),
+    aurillac: T('Aurillac, Cantal', '🧀', 'FR-ARA', 25000, 144000, { type: R }),
+    rodez: T('Rodez, Aveyron', '🐑', 'FR-OCC', 24000, 280000, { type: S }),
+    mende: T('Mende, Lozère', '⛰️', 'FR-OCC', 12000, 76000, { type: R }),
+    gueret: T('Guéret, Creuse', '🌳', 'FR-NAQ', 13000, 115000, { type: R }),
+    perigueux: T('Périgueux, Dordogne', '🦆', 'FR-NAQ', 30000, 410000, { type: S }),
+    morlaix: T('Morlaix, Finistère', '⛵', 'FR-BRE', 15000, 65000, { type: R }),
+    verdun: T('Verdun, Meuse', '🕊️', 'FR-GES', 17000, 180000, { type: S }),
+    digne: T('Digne-les-Bains, Alpes-de-Haute-Provence', '💜', 'FR-PAC', 16000, 165000, { type: R }),
+  },
+  IT: {
+    rieti: T('Rieti, Lazio', '⛰️', 'IT-62', 46000, 150000, { type: S }),
+    sondrio: T('Sondrio, Valtellina', '🍷', 'IT-25', 21000, 180000, { type: R }),
+    benevento: T('Benevento, Campania', '🏛️', 'IT-72', 56000, 270000, { type: S }),
+    belluno: T('Belluno, Dolomites', '🏔️', 'IT-34', 35000, 200000, { type: S }),
+    cortina: T('Cortina d\'Ampezzo', '⛷️', 'IT-34', 5800, 200000, { type: R }),
+    tolmezzo: T('Tolmezzo, Carnia', '🌲', 'IT-36', 10000, 38000, { type: R }),
+    enna: T('Enna, Sicily', '🌾', 'IT-82', 26000, 160000, { type: R }),
+    corleone: T('Corleone, Sicily', '🍋', 'IT-82', 11000, 30000, { type: R }),
+  },
+  JP: {
+    furano: T('Furano, Hokkaido', '💜', 'JP-01', 20000, 40000, { type: R }),
+    wakkanai: T('Wakkanai, Hokkaido', '🐟', 'JP-01', 32000, 32000, { type: R }),
+    obihiro: T('Obihiro, Hokkaido', '🐄', 'JP-01', 165000, 340000, { type: S }),
+    ishigaki: T('Ishigaki, Okinawa', '🏝️', 'JP-47', 50000, 53000, { type: R }),
+    yame: T('Yame, Fukuoka', '🍵', 'JP-40', 60000, 60000, { type: R }),
+    hachijojima: T('Hachijō-jima, Tokyo', '🌋', 'JP-13', 7000, 7000, { type: R }),
+    hakone: T('Hakone, Kanagawa', '♨️', 'JP-14', 11000, 11000, { type: R }),
+  },
+  KR: {
+    andong: T('Andong, North Gyeongsang', '🎭', 'KR-47', 155000, 155000, { type: S }),
+    uljin: T('Uljin, North Gyeongsang', '🦀', 'KR-47', 47000, 47000, { type: R }),
+    gyeongju: T('Gyeongju, North Gyeongsang', '🏯', 'KR-47', 250000, 250000, { type: S }),
+    gapyeong: T('Gapyeong, Gyeonggi', '🏞️', 'KR-41', 62000, 62000, { type: R }),
+    yeoncheon: T('Yeoncheon, Gyeonggi', '🌾', 'KR-41', 42000, 42000, { type: R }),
+    seogwipo: T('Seogwipo, Jeju', '🍊', 'KR-50', 180000, 180000, { type: R }),
+  },
+  MX: {
+    puertoescondido: T('Puerto Escondido, Oaxaca', '🏄', 'MX-OAX', 45000, 50000, { type: R }),
+    tequila: T('Tequila, Jalisco', '🌵', 'MX-JAL', 30000, 45000, { type: R }),
+    mascota: T('Mascota, Jalisco', '⛰️', 'MX-JAL', 14000, 14000, { type: R }),
+    valladolidmx: T('Valladolid, Yucatán', '⛪', 'MX-YUC', 56000, 85000, { type: S }),
+    izamal: T('Izamal, Yucatán', '💛', 'MX-YUC', 16000, 27000, { type: R }),
+    linaresmx: T('Linares, Nuevo León', '🍊', 'MX-NLE', 85000, 85000, { type: S }),
+    bacalar: T('Bacalar, Quintana Roo', '🏝️', 'MX-ROO', 12000, 40000, { type: R }),
+  },
+  PH: {
+    baler: T('Baler, Aurora', '🏄', 'PH-03', 43000, 240000, { type: R }),
+    iba: T('Iba, Zambales', '🥭', 'PH-03', 57000, 650000, { type: R }),
+    bantayan: T('Bantayan Island, Cebu', '🏝️', 'PH-07', 80000, 160000, { type: R }),
+    moalboal: T('Moalboal, Cebu', '🐠', 'PH-07', 36000, 36000, { type: R }),
+    mati: T('Mati, Davao Oriental', '🥥', 'PH-11', 150000, 590000, { type: S }),
+    samal: T('Island Garden City of Samal', '🏝️', 'PH-11', 115000, 115000, { type: R }),
+  },
+  IN: {
+    mahabaleshwar: T('Mahabaleshwar, Maharashtra', '🍓', 'IN-MH', 13000, 120000, { type: R }),
+    gadchiroli: T('Gadchiroli, Maharashtra', '🌳', 'IN-MH', 55000, 1100000, { type: R }),
+    hampi: T('Hampi, Karnataka', '🏛️', 'IN-KA', 3000, 120000, { type: R }),
+    madikeri: T('Madikeri, Kodagu', '☕', 'IN-KA', 35000, 550000, { type: R }),
+    ooty: T('Ooty, Nilgiris', '🍵', 'IN-TN', 90000, 735000, { type: S }),
+    kumbakonam: T('Kumbakonam, Tamil Nadu', '🛕', 'IN-TN', 140000, 400000, { type: S }),
+    darjeeling: T('Darjeeling, West Bengal', '🍵', 'IN-WB', 120000, 1600000, { type: S }),
+    bankura: T('Bankura, West Bengal', '🌾', 'IN-WB', 140000, 3600000, { type: R }),
+    chitrakoot: T('Chitrakoot, Uttar Pradesh', '🛕', 'IN-UP', 60000, 990000, { type: R }),
+  },
+  NZ: {
+    kaikoura: T('Kaikōura, Canterbury', '🐋', 'NZ-CAN', 2300, 4000, { type: R, transit: 0 }),
+    ashburton: T('Ashburton, Canterbury', '🐄', 'NZ-CAN', 21000, 36000, { type: S }),
+    taupo: T('Taupō, Waikato', '🌋', 'NZ-WKO', 27000, 41000, { type: S }),
+    opotiki: T('Ōpōtiki, Bay of Plenty', '🥝', 'NZ-BOP', 4800, 10000, { type: R, transit: 0 }),
+    greatbarrier: T('Great Barrier Island, Auckland', '🏝️', 'NZ-AUK', 1000, 1000, { type: R, transit: 0 }),
+    alexandra: T('Alexandra, Central Otago', '🍑', 'NZ-OTA', 6000, 25000, { type: R }),
+    gore: T('Gore, Southland', '🎸', 'NZ-STL', 8000, 13000, { type: R }),
+  },
+  IE: {
+    donegaltown: T('Donegal Town', '🏰', 'IE-U', 3000, 167000, { type: R }),
+    cavan: T('Cavan', '🐄', 'IE-U', 11000, 81000, { type: S }),
+    westportie: T('Westport, County Mayo', '⛰️', 'IE-C', 6900, 137000, { type: R }),
+    ballina: T('Ballina, County Mayo', '🐟', 'IE-C', 10500, 137000, { type: R }),
+    dingle: T('Dingle, County Kerry', '🐬', 'IE-M', 2100, 156000, { type: R, transit: 0 }),
+    skibbereen: T('Skibbereen, West Cork', '🌊', 'IE-M', 2800, 60000, { type: R }),
+    tullamore: T('Tullamore, County Offaly', '🥃', 'IE-L', 15000, 83000, { type: S }),
+  },
+  ES: {
+    ronda: T('Ronda, Andalusia', '🌉', 'ES-AN', 33000, 60000, { type: S }),
+    ubeda: T('Úbeda, Jaén', '🫒', 'ES-AN', 34000, 80000, { type: R }),
+    teruel: T('Teruel, Aragon', '🐂', 'ES-AR', 35000, 134000, { type: R }),
+    jaca: T('Jaca, Pyrenees', '⛷️', 'ES-AR', 13000, 25000, { type: R }),
+    olot: T('Olot, Garrotxa', '🌋', 'ES-CT', 36000, 58000, { type: R }),
+    laseu: T('La Seu d\'Urgell', '⛰️', 'ES-CT', 12000, 20000, { type: R }),
+    morella: T('Morella, Els Ports', '🏰', 'ES-VC', 2500, 5000, { type: R, transit: 0 }),
+    gernika: T('Gernika', '🌳', 'ES-PV', 17000, 45000, { type: R }),
+  },
+  NL: {
+    delfzijl: T('Delfzijl, Groningen', '⚓', 'NL-GR', 25000, 60000, { type: S }),
+    texel: T('Den Burg, Texel', '🐑', 'NL-NH', 7000, 13600, { type: R }),
+    winterswijk: T('Winterswijk, Achterhoek', '🚲', 'NL-GE', 29000, 80000, { type: R }),
+    boxmeer: T('Boxmeer, North Brabant', '🐖', 'NL-NB', 12000, 60000, { type: R }),
+    middelharnis: T('Middelharnis, Goeree-Overflakkee', '🌾', 'NL-ZH', 18000, 50000, { type: R }),
+  },
+  SE: {
+    lycksele: T('Lycksele, Västerbotten', '🦌', 'SE-AC', 8500, 12000, { type: R }),
+    storuman: T('Storuman, Lapland', '❄️', 'SE-AC', 2200, 6000, { type: R, transit: 0 }),
+    stromstad: T('Strömstad, Bohuslän', '🦐', 'SE-O', 7000, 13000, { type: R }),
+    lidkoping: T('Lidköping, Västra Götaland', '🌾', 'SE-O', 30000, 40000, { type: S }),
+    ystad: T('Ystad, Skåne', '🕵️', 'SE-M', 19000, 31000, { type: S }),
+    simrishamn: T('Simrishamn, Österlen', '🍎', 'SE-M', 6500, 19000, { type: R }),
+    vadstena: T('Vadstena, Östergötland', '⛪', 'SE-E', 5700, 7500, { type: R }),
+    osthammar: T('Östhammar, Uppland', '🌲', 'SE-C', 4800, 22000, { type: R }),
+  },
+  BR: {
+    ouropreto: T('Ouro Preto, Minas Gerais', '⛪', 'BR-MG', 74000, 74000, { type: S }),
+    diamantina: T('Diamantina, Minas Gerais', '💎', 'BR-MG', 47000, 47000, { type: R }),
+    lencois: T('Lençóis, Chapada Diamantina', '⛰️', 'BR-BA', 11000, 11000, { type: R }),
+    juazeiro: T('Juazeiro, Bahia', '🍇', 'BR-BA', 240000, 240000, { type: S }),
+    gramado: T('Gramado, Serra Gaúcha', '🍫', 'BR-RS', 40000, 40000, { type: R }),
+    bage: T('Bagé, Pampa', '🐄', 'BR-RS', 117000, 117000, { type: S }),
+    petrolina: T('Petrolina, Pernambuco', '🥭', 'BR-PE', 390000, 390000, { type: S }),
+    registro: T('Registro, Vale do Ribeira', '🍌', 'BR-SP', 56000, 56000, { type: R }),
+    paraty: T('Paraty, Rio de Janeiro', '⛵', 'BR-RJ', 45000, 45000, { type: R }),
+  },
+  IL: {
+    kiryatshmona: T('Kiryat Shmona, Upper Galilee', '⛰️', 'IL-Z', 23000, 60000, { type: S }),
+    katzrin: T('Katzrin, Golan Heights', '🍇', 'IL-Z', 8000, 30000, { type: R }),
+    safed: T('Safed', '🕍', 'IL-Z', 38000, 60000, { type: S }),
+    mitzperamon: T('Mitzpe Ramon, Negev', '🌌', 'IL-D', 5500, 5500, { type: R }),
+    yeruham: T('Yeruham, Negev', '🏜️', 'IL-D', 11000, 11000, { type: R }),
+    eilat: T('Eilat', '🐠', 'IL-D', 53000, 53000, { type: S }),
+    zikhron: T('Zikhron Ya\'akov', '🍷', 'IL-HA', 24000, 40000, { type: R }),
+  },
+  PS: {
+    birzeit: T('Birzeit', '🎓', 'PS-RBH', 6000, 40000, { type: R }),
+    beitsahour: T('Beit Sahour', '🫒', 'PS-BTH', 16000, 40000, { type: R }),
+    qabatiya: T('Qabatiya', '🌾', 'PS-JEN', 25000, 50000, { type: R }),
+    dura: T('Dura', '🫒', 'PS-HBN', 40000, 60000, { type: R }),
+  },
+  CN: {
+    kangding: T('Kangding, Garzê', '🏔️', 'CN-SC', 130000, 130000, { type: R }),
+    langzhong: T('Langzhong, Sichuan', '🏯', 'CN-SC', 300000, 700000, { type: S }),
+    wuzhen: T('Wuzhen, Zhejiang', '🛶', 'CN-ZJ', 60000, 60000, { type: R }),
+    anji: T('Anji, Zhejiang', '🎋', 'CN-ZJ', 120000, 590000, { type: R }),
+    enshi: T('Enshi, Hubei', '🍵', 'CN-HB', 300000, 800000, { type: S }),
+    shennongjia: T('Shennongjia, Hubei', '🐒', 'CN-HB', 70000, 70000, { type: R }),
+    gubeikou: T('Gubeikou, Miyun', '🧱', 'CN-BJ', 10000, 500000, { type: R }),
+    nanxiong: T('Nanxiong, Guangdong', '🌾', 'CN-GD', 330000, 480000, { type: R }),
+  },
+  NG: {
+    epe: T('Epe, Lagos', '🐟', 'NG-LA', 180000, 330000, { type: R }),
+    badagry: T('Badagry, Lagos', '🏝️', 'NG-LA', 240000, 240000, { type: S }),
+    kwali: T('Kwali, FCT', '🏺', 'NG-FC', 90000, 90000, { type: R }),
+    wudil: T('Wudil, Kano', '🌾', 'NG-KN', 190000, 190000, { type: R }),
+    saki: T('Saki, Oyo', '🥜', 'NG-OY', 180000, 270000, { type: R }),
+    nsukka: T('Nsukka, Enugu', '🎓', 'NG-EN', 110000, 310000, { type: S }),
+    bori: T('Bori, Ogoni', '🌴', 'NG-RI', 60000, 300000, { type: R }),
+  },
+  KE: {
+    naivasha: T('Naivasha, Nakuru County', '🦩', 'KE-NKU', 200000, 350000, { type: S }),
+    molo: T('Molo, Nakuru County', '🥔', 'KE-NKU', 40000, 160000, { type: R }),
+    moiben: T('Moiben, Uasin Gishu', '🌽', 'KE-UGI', 30000, 200000, { type: R }),
+    limuru: T('Limuru, Kiambu County', '🍵', 'KE-KBU', 70000, 160000, { type: R }),
+    ahero: T('Ahero, Kisumu County', '🌾', 'KE-KSM', 25000, 140000, { type: R }),
+  },
+  ZA: {
+    oudtshoorn: T('Oudtshoorn, Karoo', '🦤', 'ZA-WC', 60000, 95000, { type: S }),
+    clanwilliam: T('Clanwilliam, Cederberg', '🍊', 'ZA-WC', 8000, 52000, { type: R }),
+    graaffreinet: T('Graaff-Reinet, Karoo', '🐑', 'ZA-EC', 36000, 50000, { type: R }),
+    mthatha: T('Mthatha', '🏞️', 'ZA-EC', 80000, 500000, { type: S }),
+    eshowe: T('Eshowe, Zululand', '🌿', 'ZA-KZN', 15000, 230000, { type: R }),
+    ladysmith: T('Ladysmith, KwaZulu-Natal', '🌾', 'ZA-KZN', 65000, 240000, { type: S }),
+    clarens: T('Clarens, Free State', '⛰️', 'ZA-FS', 6000, 6000, { type: R, transit: 0 }),
+    cullinan: T('Cullinan, Gauteng', '💎', 'ZA-GP', 6000, 30000, { type: R }),
+  },
+  ID: {
+    ubud: T('Ubud, Bali', '🌾', 'ID-BA', 75000, 520000, { type: R }),
+    singaraja: T('Singaraja, Bali', '🏝️', 'ID-BA', 125000, 820000, { type: S }),
+    garut: T('Garut, West Java', '🌋', 'ID-JB', 130000, 2600000, { type: R }),
+    banyuwangi: T('Banyuwangi, East Java', '🌋', 'ID-JI', 120000, 1700000, { type: R }),
+    berastagi: T('Berastagi, Karo', '🍓', 'ID-SU', 45000, 400000, { type: R }),
+    parapat: T('Parapat, Lake Toba', '🏞️', 'ID-SU', 6000, 120000, { type: R }),
+    rantepao: T('Rantepao, Toraja', '🏘️', 'ID-SN', 50000, 230000, { type: R }),
+  },
+};
+
+/** Fill in each town's prices, pay and transit from the cheapest city in its province. */
+export function ruralCities(cc, towns, cities) {
+  const own = Object.values(cities);
+  return Object.fromEntries(Object.entries(towns).map(([id, t]) => {
+    const peers = own.filter((c) => c.state === t.state);
+    const base = (peers.length ? peers : own).reduce((a, b) => (b.col < a.col ? b : a));
+    const transit = t.transit ?? (t.type === R ? 6 : 15);
+    return [id, {
+      type: S, ...t,
+      col: t.col ?? Math.round(base.col * 0.82 * 100) / 100,
+      market: t.market ?? Math.round(base.market * 0.85 * 100) / 100,
+      locality: t.locality ?? Math.max(0.15, Math.round(base.locality * 0.82 * 100) / 100),
+      transit,
+      fare: transit ? Math.round((base.fare ?? 0) * 0.6) : 0,
+      walkable: t.walkable ?? false,
+      size: 'small',
+    }];
+  }));
+}

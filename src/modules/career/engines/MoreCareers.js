@@ -656,7 +656,7 @@ Object.assign(ROUTE_CAREERS, {
     ],
   },
   railroad: {
-    label: 'Your Board', icon: '🚂', unit: 'train miles', volume: [40000, 75000], weights: { smarts: 2, health: 1 }, checkEvery: 3, checkName: 'FRA recertification check ride',
+    label: 'Your Board', icon: '🚂', unit: 'train miles', volume: [40000, 75000], weights: { smarts: 2, health: 1 }, checkEvery: 3, checkName: 'rail-safety recertification check ride',
     lines: {
       extra: Ln('Extra board', '📟', 'On call around the clock for any train.', { stress: 5, away: 4 }),
       yard: Ln('Yard job', '🛤️', 'Switching cars in the yard. Home every night.', { years: 2, pay: 0.95, stress: 3, rate: 0.4 }),
@@ -676,7 +676,7 @@ Object.assign(ROUTE_CAREERS, {
       ] },
       { id: 'fatigue', icon: '😴', title: 'Called Again', text: 'The crew office calls before your rest is up, short of crews.', options: [
         { id: 'rest', label: '🛏️ Take your full rest', text: 'They found someone else.', perf: -1 },
-        { id: 'go', label: '🚂 Go anyway', tone: 'danger', text: 'You worked the train.', money: 900, moneyLabel: 'Extra trip', risk: { chance: 0.15, text: 'You missed a restricted-speed signal. An FRA decertification hearing followed.', perf: -12, stress: 8 } },
+        { id: 'go', label: '🚂 Go anyway', tone: 'danger', text: 'You worked the train.', money: 900, moneyLabel: 'Extra trip', risk: { chance: 0.15, text: 'You missed a restricted-speed signal. A decertification hearing followed.', perf: -12, stress: 8 } },
       ] },
     ],
   },

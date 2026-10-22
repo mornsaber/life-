@@ -120,7 +120,7 @@ export const SHIFT_CAREERS = {
         { id: 'calm', label: '🙂 Explain each step calmly, with a supervisor', check: 40, text: 'The video went viral — as an example of a professional screener.', perf: 3, rep: 5, fail: { text: 'The clip was edited. You were briefly the most hated screener in America.', stress: 6, complaint: 0.5 } },
         { id: 'refuse', label: '🚫 Refuse her screening', text: 'She missed her flight. The complaint went nowhere.', perf: -1, complaint: 0.5 },
       ]),
-      C('shutdown', '🏛️', 'Government Shutdown', 'Congress shut the government down. You\'re "essential": work without pay until it ends.', [
+      C('shutdown', '🏛️', 'Government Shutdown', 'The budget lapsed and the government shut down. You\'re "essential": work without pay until it ends.', [
         { id: 'work', label: '💼 Keep showing up', text: 'Five weeks without a paycheck. Back pay came eventually.', perf: 4, stress: 8 },
         { id: 'sick', label: '🤒 Call in sick', text: 'Thousands did. The lines got very long.', perf: -4 },
       ]),

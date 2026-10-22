@@ -136,7 +136,7 @@ export const CASE_CAREERS = {
     good: (c) => `Your investigation of ${c.kind} (${c.name}) led to a referral and recovered funds.`, bad: (c) => `The ${c.kind} investigation of ${c.name} was closed unsubstantiated.`,
     deck: [
       D('political', '🏛️', 'A Call From Above', 'Your investigation is closing in on an appointee. The front office suggests "reprioritizing".', [
-        { id: 'continue', label: '🔎 Keep going', check: 50, text: 'Your report went to Congress. The appointee resigned.', perf: 8, rep: 10, fail: { text: 'The case stalled and you were moved to audits.', perf: -4 } },
+        { id: 'continue', label: '🔎 Keep going', check: 50, text: 'Your report went to the legislature. The appointee resigned.', perf: 8, rep: 10, fail: { text: 'The case stalled and you were moved to audits.', perf: -4 } },
         { id: 'drop', label: '📁 Reprioritize', text: 'The front office was pleased.', perf: 1, rep: -8 },
       ]),
     ],

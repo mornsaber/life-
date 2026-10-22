@@ -25,6 +25,7 @@
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
 import { packCountries } from './packs/index.js';
+import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
 import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
 
@@ -379,6 +380,14 @@ export const PROVINCE_POPULATION = {
   ...KR.population, ...IT.population, ...MX.population, ...PH.population, ...IN.population, ...AU.population, ...FR.population,
   ...Object.assign({}, ...Object.values(packCountries()).map((c) => c.population ?? {})),
 };
+
+// Rural towns everywhere (RuralTowns.js), priced from their province's cities.
+for (const [cc, towns] of Object.entries(RURAL_TOWNS)) {
+  const c = COUNTRIES[cc];
+  if (!c?.cities) continue;
+  const fresh = Object.fromEntries(Object.entries(towns).filter(([id]) => !c.cities[id]));
+  Object.assign(c.cities, ruralCities(cc, fresh, c.cities));
+}
 
 /** Every foreign province and city, keyed by id, tagged with its country. */
 export const FOREIGN_PROVINCES = Object.fromEntries(Object.values(COUNTRIES).flatMap((c) => Object.entries(c.provinces ?? {}).map(([id, p]) => [id, { ...p, country: c.id }])));
