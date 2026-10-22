@@ -35,7 +35,7 @@ import { ORG_TYPES, orgTypesFor, soloType, bodyType, businessOrgType } from './O
 import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { localAgency, serviceAuthority, serviceBody, isNationalService } from '../world/LocalAgencies.js';
 import { ladderFor, levelById } from '../career/Ladder.js';
-import { seatsAt, NAMED_SEATS } from './Vacancies.js';
+import { seatsAt, NAMED_SEATS, layerExists } from './Vacancies.js';
 
 const HEADCOUNT = { micro: [3, 30], small: [12, 45], medium: [50, 400], large: [400, 4000], enterprise: [4000, 40000], mega: [15000, 60000] };
 const SIZE_RANK = { micro: -1, small: 0, medium: 1, large: 2, enterprise: 3, mega: 4 };
@@ -548,13 +548,17 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   const chain = [];
   for (const l of levelsAbove(profession, size, job.levelId)) {
     if (chain.length >= 2) break;
+    // A layer of management the department is too small to have.
+    if (!layerExists(org, dept.id, profession, l, size) && !seatHolders(state, org, dept.id, job.professionId, l.id, 1, false).length) continue;
     const holder = vacant(l.id) ? seatHolders(state, org, dept.id, job.professionId, l.id, 1, false)[0] : seatHolders(state, org, dept.id, job.professionId, l.id, 1, generate)[0];
     if (holder) chain.push(holder);
   }
   const t = orgType(org.typeId);
   // The player holds the organization's top job: they answer to whoever appointed or elected them.
   const isHead = t?.head.occupation === job.professionId && t.head.levelId === job.levelId;
-  const deptHead = isHead ? null : personOf(org, dept.head);
+  // In a small organization the department head and the boss are one level: show the boss.
+  const tiny = Object.values(org.departments).reduce((n, d) => n + (d.headcount ?? 0), 0) < 15 && Boolean(org.head ?? org.ceo);
+  const deptHead = isHead || tiny ? null : personOf(org, dept.head);
   const orgHead = isHead ? overseer(t) : personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org);
   const supervisor = chain[0] ?? (deptHead && !job.abilities?.includes('exec') ? deptHead : orgHead);
   const manager = chain[1] ?? (chain[0] ? deptHead : supervisor === deptHead ? orgHead : null);

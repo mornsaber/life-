@@ -71,7 +71,7 @@ export function seatsAt(org, deptId, profession, level, size) {
   if (headPostOf(org, deptId, profession, level)) return 1;
   const t = orgType(org.typeId);
   const occupations = t?.departments.find((d) => d.id === deptId)?.occupations.length ?? 1;
-  const pool = Math.max(6, POOL[size ?? 'medium'] / occupations);
+  const pool = Math.max(6, (POOL[size ?? 'medium'] ?? 6) / occupations);
   if (level.abilities?.includes('exec') || level.appointed) return 1;
   const ladder = ladderFor(profession, size);
   const idx = ladder.findIndex((l) => l.id === level.id);
@@ -79,6 +79,21 @@ export function seatsAt(org, deptId, profession, level, size) {
   if (depth) return Math.max(1, Math.round(pool / 6 ** depth));
   // Individual-contributor levels thin out with grade, too.
   return Math.max(1, Math.round((pool * 0.5) / 2 ** Math.max(0, level.grade - 4)));
+}
+
+/**
+ * Does a small department have this layer of management at all? Seven people don't have a
+ * supervisor, a manager and a director: below about eight, the department head runs the crew. (Anyone already in such a
+ * post keeps it; the layer just isn't filled or promoted into.)
+ */
+export function layerExists(org, deptId, profession, level, size) {
+  const hc = org.departments?.[deptId]?.headcount;
+  if (!(Number.isFinite(hc) && hc > 0 && hc < 40) || org.business) return true;
+  if (headPostOf(org, deptId, profession, level) || level.abilities?.includes('exec') || level.appointed) return true;
+  const ladder = ladderFor(profession, size);
+  const depth = ladder.slice(0, ladder.findIndex((l) => l.id === level.id) + 1).filter(supervises).length;
+  // A first-line supervisor needs a crew of about eight; each layer above needs six times as many.
+  return depth < 1 || hc >= 8 * 6 ** (depth - 1);
 }
 
 /** Why a named holder leaves this year (null = stays). */
@@ -196,6 +211,7 @@ export const hasOpening = (job, level) => !job.openings || job.openings[level.id
 
 export function openingReason(job, level) {
   const v = job.openings?.[level.id];
+  if (v === 'none') return `No ${level.title} post: the department is too small for one`;
   if (v === 'filled' || v === undefined) return `No ${level.title} opening this year`;
   return `No ${level.title} opening — ${v} ${v.includes(' and ') ? 'hold the posts' : 'holds the post'}`;
 }
@@ -219,7 +235,8 @@ export function computeOpenings(state, job) {
       job.openings[level.id] = mine ? 'filled' : holder ? holder.name : 'open';
       continue;
     }
-    if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
+    if (!layerExists(org, dept.id, profession, level, size)) job.openings[level.id] = 'none';
+    else if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
     else if (seats <= NAMED_SEATS) {
       const holders = seatHolders(state, org, dept.id, job.professionId, level.id, seats);
       job.openings[level.id] = !holders.length ? 'open' : holders.length === 1 ? holders[0].name : `${holders.map((h) => h.name).slice(0, -1).join(', ')} and ${holders.at(-1).name}`;
