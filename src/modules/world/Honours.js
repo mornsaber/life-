@@ -122,22 +122,22 @@ export const ORDERS = {
     { id: 'freedom', name: 'Presidential Medal of Freedom', min: 230, ribbon: R('#002868', '#fff', '#002868') },
   ] },
   GB: { minAge: 30, tiers: [
-    { id: 'mbe', name: 'Member of the Order of the British Empire (MBE)', min: 35, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
-    { id: 'obe', name: 'Officer of the Order of the British Empire (OBE)', min: 70, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
-    { id: 'cbe', name: 'Commander of the Order of the British Empire (CBE)', min: 110, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
-    { id: 'knight', name: { male: 'Knight Bachelor', female: 'Dame Commander of the Order of the British Empire (DBE)' }, prefix: { male: 'Sir', female: 'Dame' }, min: 165, ribbon: R('#c8102e', '#ffd100', '#c8102e') },
+    { id: 'mbe', name: 'Member of the Order of the British Empire (MBE)', post: 'MBE', min: 35, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
+    { id: 'obe', name: 'Officer of the Order of the British Empire (OBE)', post: 'OBE', min: 70, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
+    { id: 'cbe', name: 'Commander of the Order of the British Empire (CBE)', post: 'CBE', min: 110, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
+    { id: 'knight', name: { male: 'Knight Bachelor', female: 'Dame Commander of the Order of the British Empire (DBE)' }, prefix: { male: 'Sir', female: 'Dame' }, post: { male: '', female: 'DBE' }, min: 165, ribbon: R('#c8102e', '#ffd100', '#c8102e') },
     { id: 'peer', name: { male: 'Life peer (Baron)', female: 'Life peer (Baroness)' }, prefix: { male: 'Lord', female: 'Baroness' }, min: 240, peer: true, ribbon: R('#8b0a1d', '#fff', '#8b0a1d') },
   ] },
   CA: { minAge: 30, tiers: [
-    { id: 'cm', name: 'Member of the Order of Canada (CM)', min: 70, ribbon: R('#c8102e', '#fff', '#c8102e') },
-    { id: 'oc', name: 'Officer of the Order of Canada (OC)', min: 120, ribbon: R('#c8102e', '#fff', '#c8102e') },
-    { id: 'cc', name: 'Companion of the Order of Canada (CC)', min: 190, ribbon: R('#c8102e', '#fff', '#c8102e') },
+    { id: 'cm', name: 'Member of the Order of Canada (CM)', post: 'CM', min: 70, ribbon: R('#c8102e', '#fff', '#c8102e') },
+    { id: 'oc', name: 'Officer of the Order of Canada (OC)', post: 'OC', min: 120, ribbon: R('#c8102e', '#fff', '#c8102e') },
+    { id: 'cc', name: 'Companion of the Order of Canada (CC)', post: 'CC', min: 190, ribbon: R('#c8102e', '#fff', '#c8102e') },
   ] },
   AU: { minAge: 30, tiers: [
-    { id: 'oam', name: 'Medal of the Order of Australia (OAM)', min: 35, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
-    { id: 'am', name: 'Member of the Order of Australia (AM)', min: 70, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
-    { id: 'ao', name: 'Officer of the Order of Australia (AO)', min: 120, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
-    { id: 'ac', name: 'Companion of the Order of Australia (AC)', min: 190, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
+    { id: 'oam', name: 'Medal of the Order of Australia (OAM)', post: 'OAM', min: 35, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
+    { id: 'am', name: 'Member of the Order of Australia (AM)', post: 'AM', min: 70, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
+    { id: 'ao', name: 'Officer of the Order of Australia (AO)', post: 'AO', min: 120, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
+    { id: 'ac', name: 'Companion of the Order of Australia (AC)', post: 'AC', min: 190, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
   ] },
   FR: { minAge: 30, tiers: [
     { id: 'onm', name: 'Chevalier de l\'Ordre national du Mérite', min: 40, ribbon: R('#1f5fbf') },
@@ -233,19 +233,66 @@ export function honoursList(ctx) {
     ctx.log(`You were made an honorary ${name.replace(' (honorary)', '')} — the country's thanks to a foreigner who made a difference here.`, '🎗️', 'honor');
     return t;
   }
+  // Appointed at the highest grade your standing earns, above any you already hold.
   const held = heldTiers(state, cc);
-  const next = orders.tiers.find((t) => !held.includes(t.id) && score >= t.min);
+  const top = Math.max(-1, ...held.map((id) => orders.tiers.findIndex((x) => x.id === id)));
+  const next = [...orders.tiers].reverse().find((t, i) => orders.tiers.length - 1 - i > top && score >= t.min && (!t.peer || orders.tiers.length - 1 - i === top + 1 || !orders.tiers.slice(top + 1).some((x) => !x.peer && score >= x.min)));
   if (!next || !rng.chance(0.3)) return null;
   // Only the very top of public life sits in the Lords.
   if (next.peer && !(state.politics?.history ?? []).concat(state.politics?.office ? [state.politics.office] : []).some((h) => (OFFICES[h.officeId ?? h.id]?.level ?? 0) >= 4) && score < next.min + 60) return null;
   return award(ctx, cc, next);
 }
 
+/**
+ * What a grade of an order means in hand. Grades differ in insignia (a medal, a badge on a
+ * ribbon, a neck badge, a breast star, a sash), in who invests you (a regional ceremony for
+ * the lower grades, the head of state for the higher), in the ribbon's trim, in post-nominal
+ * letters, and in standing. A promotion within an order replaces the lower grade.
+ */
+const INSIGNIA = ['a medal on a ribbon', 'a badge on a ribbon', 'a badge worn at the neck', 'a breast star and a neck badge', 'a sash, a breast star and the collar of the order'];
+const GRADE_ICONS = ['🏅', '🎖️', '🎗️', '✴️', '🌟'];
+const INVESTITURE = {
+  GB: ['by the Lord-Lieutenant of your county', 'at an investiture at Windsor Castle', 'by the King at Buckingham Palace'],
+  CA: ['at Rideau Hall', 'by the Governor General at Rideau Hall', 'by the Governor General at Rideau Hall'],
+  AU: ['by the state Governor', 'by the Governor-General at Government House', 'by the Governor-General at Government House'],
+  default: ['at a regional ceremony', 'at a ceremony in the capital', 'by the head of state'],
+};
+export function gradeInfo(cc, t) {
+  const tiers = ORDERS[cc]?.tiers ?? [t];
+  const idx = Math.max(0, tiers.findIndex((x) => x.id === t.id));
+  const level = tiers.length > 1 ? idx / (tiers.length - 1) : 1;
+  const insignia = INSIGNIA[Math.min(4, Math.round(level * (tiers.length >= 4 ? 4 : 3)))];
+  const inv = (INVESTITURE[cc] ?? INVESTITURE.default)[level < 0.34 ? 0 : level < 0.75 ? 1 : 2];
+  return { idx, level, insignia, investiture: inv, icon: t.peer ? '👑' : GRADE_ICONS[Math.min(4, Math.round(level * 4))] };
+}
+/** The trim that sets higher grades apart on the ribbon bar: gold edges, then a rosette. */
+const gradeRibbon = (t, level) => (level >= 0.5 && t.ribbon ? [['#d4af37', 0.18], ...t.ribbon, ['#d4af37', 0.18]] : t.ribbon);
+const tierPost = (t, gender) => (typeof t.post === 'object' ? t.post[gender === 'female' ? 'female' : 'male'] : t.post ?? null);
+
+/** What you're being honoured for, in the words of the honours list. */
+function servicesTo(state) {
+  const p = state.politics ?? {};
+  if (p.office || (p.history ?? []).length) return 'public life';
+  if ([state.military.service, ...(state.military.history ?? [])].some((s) => s?.track === 'officer' && (s.grade ?? 0) >= 5)) return 'the armed forces';
+  const job = state.career.job ?? state.career.history?.at(-1);
+  const field = { medicine: 'medicine', nursing: 'health care', law: 'law', prosecution: 'justice', academia: 'education', education: 'education', research: 'science', police: 'policing', fire: 'the fire and rescue service', ems: 'emergency care' }[job?.professionId];
+  if (field) return field;
+  if (netWorth(state) >= 1e7) return 'business and philanthropy';
+  return 'the community';
+}
+
 function award(ctx, cc, t) {
   const { state } = ctx;
   const gender = state.character.gender;
   const name = tierName(t, gender);
-  addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, name, icon: t.peer ? '👑' : '🎗️', ribbon: t.ribbon, precedence: 5, prestige: t.min / 2, citation: 'For services to the nation.' });
+  const g = gradeInfo(cc, t);
+  // A promotion within the order: the new grade replaces the old one.
+  const order = ORDERS[cc]?.tiers ?? [];
+  const lower = state.honors.filter((h) => h.source === 'order' && h.country === cc && order.findIndex((x) => x.id === h.tier) < g.idx && !order.find((x) => x.id === h.tier)?.peer);
+  const promotedFrom = lower.length ? lower.at(-1).name : null;
+  if (lower.length) state.honors = state.honors.filter((h) => !lower.includes(h));
+  const post = tierPost(t, gender);
+  addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, name, post, insignia: g.insignia, icon: g.icon, ribbon: gradeRibbon(t, g.level), device: g.level >= 0.99 && order.length >= 3 && !t.peer ? '✦' : null, precedence: 5 - g.level, prestige: Math.round(t.min / 2), citation: `For services to ${servicesTo(state)}. Invested ${g.investiture}; ${g.insignia}${post ? `; the letters ${post} after your name` : ''}.` });
   const prefix = tierPrefix(t, gender);
   if (prefix) {
     state.character.style = { ...(state.character.style ?? {}), prefix };
@@ -254,11 +301,18 @@ function award(ctx, cc, t) {
       state.character.style.peerage = `${gender === 'female' ? 'Baroness' : 'Baron'} ${state.character.lastName}, of ${city}`;
     }
   }
+  // Standing that comes with it: a higher grade opens more doors.
+  if (state.politics) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + Math.round(3 + g.level * 9));
   ctx.log(t.peer
     ? `You were created a life peer: ${state.character.style.peerage}. You took your seat in the House of Lords.`
-    : `You were appointed ${name}.${prefix && ['Sir', 'Dame'].includes(prefix) ? ` You are now ${styledName(state)}.` : ''}`, t.peer ? '👑' : '🎗️', 'honor');
-  ctx.stat('happiness', 8);
+    : `${promotedFrom ? `You were promoted within the order, from ${promotedFrom} to ${name}` : `You were appointed ${name}`}, invested ${g.investiture}.${prefix && ['Sir', 'Dame'].includes(prefix) ? ` You are now ${styledName(state)}.` : post ? ` You may now write ${post} after your name.` : ''}`, g.icon, 'honor');
+  ctx.stat('happiness', Math.round(4 + g.level * 8));
   return t;
+}
+
+/** Post-nominal letters from the orders you hold (highest grade of each order). */
+export function postNominals(state) {
+  return state.honors.filter((h) => h.source === 'order' && h.post).map((h) => h.post).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
 /** Your name with any title an honour gave you: Sir John Smith, Lord Smith, Cav. Maria Rossi. */

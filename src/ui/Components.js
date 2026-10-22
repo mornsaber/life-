@@ -159,7 +159,7 @@ export function ribbon(raw, { device = null, count = 1, title = '' } = {}) {
       return `${color} ${from}% ${(at / total) * 100}%`;
     })
     .join(', ');
-  const marks = [device === 'V' ? '<i class="dev-v">V</i>' : '', count > 1 ? `<i class="dev-oak">${'🍂'.repeat(Math.min(count - 1, 3))}</i>` : ''].join('');
+  const marks = [device ? `<i class="dev-v">${esc(device)}</i>` : '', count > 1 ? `<i class="dev-oak">${'🍂'.repeat(Math.min(count - 1, 3))}</i>` : ''].join('');
   return `<span class="ribbon" style="background:linear-gradient(90deg, ${stops})" title="${esc(title)}">${marks}</span>`;
 }
 
@@ -191,7 +191,7 @@ export function medalCase(honors) {
       (h) => `<li class="medal ${h.posthumous ? 'posthumous' : ''}">
         <div class="medal-art">${ribbon(h.ribbon, { device: h.device })}<span class="medal-icon">${h.icon}</span></div>
         <div class="medal-text">
-          <b>${honorName(h)}${h.device ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
+          <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
           <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${COUNTRIES[h.country]?.flag ?? ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
           ${h.citation ? `<p>${h.country ? `<span data-raw>${esc(h.citation)}</span>` : esc(h.citation)}</p>` : ''}
         </div>
