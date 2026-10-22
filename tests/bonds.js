@@ -49,6 +49,8 @@ const tests = {
   'romance: spark fades unless tended; date nights and "I love you"'() {
     const { engine, state } = life(28);
     const p = partner(engine, state);
+    // Sparks fade in a couple that has drifted apart; a close couple can find its way back.
+    p.relationship = 40;
     const before = p.spark;
     for (let y = 0; y < 3; y++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
     assert.ok(p.spark < before, 'sparks fade');
