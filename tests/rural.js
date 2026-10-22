@@ -43,13 +43,15 @@ const tests = {
     const { state } = life('elko');
     for (const id of ['agriculture', 'nursing', 'education', 'retail', 'trucking']) assert.ok(ruralHiring(state, id).ok, id);
     assert.equal(ruralHiring(state, 'aviation').ok, false, 'no airline pilots in the outback');
-    const town = life('asheville').state;
+    const town = life('clarksville').state;
     const fin = ruralHiring(town, 'finance');
-    assert.ok(fin.ok && fin.commute?.to, 'a small town commutes to the city for banking');
-    assert.equal(fin.commute.regionId, nearestCity(town).id);
+    assert.ok(fin.ok && fin.commute?.to, 'a commuter town commutes to the city for banking');
+    assert.equal(fin.commute.regionId, 'nashville');
+    assert.equal(nearestCity(life('asheville').state), null, 'Asheville is too far from Charlotte to commute');
+    assert.equal(ruralHiring(life('asheville').state, 'finance').ok, false, 'so banking means moving');
   },
   'commuting costs you every year, unless you work remotely'() {
-    const { engine, state } = life('asheville');
+    const { engine, state } = life('clarksville');
     state.stats.health = 95;
     const id = professionsFor(state).find((p) => applicationEligibility(state, p.id).commute)?.id;
     assert.ok(id, 'a commutable job exists');

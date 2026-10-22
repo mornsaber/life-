@@ -5,7 +5,7 @@
  */
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { engineSections } from './EngineViews.js';
-import { remoteness, nearestCity, commuteOf, COMMUTE_MINUTES } from '../../modules/life/RuralLife.js';
+import { remoteness, nearestCity, commuteOf } from '../../modules/life/RuralLife.js';
 import { cityName } from '../../modules/career/Employers.js';
 import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
@@ -351,7 +351,7 @@ function jobBoard(state, ui = {}) {
   const tools = `<div class="job-tools"><input type="search" id="job-search" placeholder="Search jobs…" aria-label="Search jobs" autocomplete="off"><div class="toggle-row" role="group" aria-label="Sort jobs">${sorts}</div></div>`;
   const where = remoteness(state);
   const city = where ? nearestCity(state) : null;
-  const ruralNote = where ? `<p class="fine">🌾 ${esc(cityName(state.character.regionId))} is ${where === 'remote' ? 'a remote rural area' : 'a small town'}: fewer employers, and the list of who's hiring changes every year. ${where === 'town' && city ? `Jobs marked 🚗 mean commuting to ${esc(city.name)} (${COMMUTE_MINUTES.town} minutes each way).` : 'Most city careers mean moving.'}</p>` : '';
+  const ruralNote = where ? `<p class="fine">🌾 ${esc(cityName(state.character.regionId))} is ${where === 'remote' ? 'a remote rural area' : 'a small town'}: fewer employers, and the list of who's hiring changes every year. ${city ? `Jobs marked 🚗 mean commuting to ${esc(city.name)} (${city.minutes} minutes each way).` : 'There\'s no city within a daily drive: most city careers mean moving.'}</p>` : '';
   const header = `${ruralNote}<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
   const sorted = (list) => [...list].sort(SORTS[sort][1]);
   if (field === 'open') {

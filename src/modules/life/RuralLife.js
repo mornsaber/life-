@@ -6,9 +6,9 @@
  *                outside town) always hire. Other careers hire locally only
  *                some years, and big-city careers (airlines, banks,
  *                universities, intelligence) never do.
- *   Commuting    From a small town you can commute to the nearest city
- *                (about 40 minutes each way); from a remote place, only
- *                what's local. Remote-capable jobs work from anywhere.
+ *   Commuting    Towns within a realistic drive of a city (COMMUTES) can
+ *                take city work by commuting; everywhere else, the work is
+ *                what's in town. Remote-capable jobs work from anywhere.
  *                Commuting costs fuel, time and patience every year.
  *   Distance     A serious emergency is a long way from a hospital
  *                (HealthEngine asks ruralRisk).
@@ -16,7 +16,7 @@
  *                road cut off, the last shop closing, and grown children
  *                leaving for the city.
  */
-import { REGIONS, regionsInState } from './Regions.js';
+import { REGIONS } from './Regions.js';
 import { cityName } from '../career/Employers.js';
 import { ageOf } from '../people/People.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
@@ -32,15 +32,32 @@ export function remoteness(state) {
   return null;
 }
 export const isRural = (state) => Boolean(remoteness(state));
-export const COMMUTE_MINUTES = { town: 40, remote: 90 };
+/**
+ * Small places within a realistic daily commute of a city: [city, minutes each way].
+ * Everywhere else, the work is what's in town.
+ */
+export const COMMUTES = {
+  // US
+  clarksville: ['nashville', 50], ogden: ['saltlake', 40], stafford: ['dc', 60],
+  // Germany, Italy, Japan, Korea, Mexico, New Zealand
+  fulda: ['frankfurt', 60], garmisch: ['munich', 75], rieti: ['rome', 75], benevento: ['naples', 60],
+  yame: ['fukuoka', 60], gapyeong: ['seoul', 60], gyeongju: ['pohang', 35], tequila: ['guadalajara', 60], ashburton: ['christchurch', 60],
+  // Netherlands, Sweden
+  delfzijl: ['groningen', 35], boxmeer: ['nijmegen', 35], winterswijk: ['nijmegen', 60], middelharnis: ['rotterdam', 40],
+  osthammar: ['uppsala', 60], ystad: ['malmo', 45], simrishamn: ['malmo', 60], vadstena: ['linkoping', 45],
+  // Israel, Palestine, China
+  zikhron: ['haifa', 35], nazareth: ['haifa', 40], birzeit: ['ramallah', 20], dura: ['hebron', 15], qabatiya: ['nablus', 40], wuzhen: ['hangzhou', 60], anji: ['hangzhou', 60],
+  // Nigeria, Kenya, South Africa, Indonesia
+  epe: ['lagos', 75], badagry: ['lagos', 75], kwali: ['abuja', 60], wudil: ['kano', 45], nsukka: ['enugu', 60],
+  limuru: ['nairobi', 45], thika: ['nairobi', 50], naivasha: ['nakuru', 60], molo: ['nakuru', 60], ahero: ['kisumu', 30], moiben: ['eldoret', 40],
+  cullinan: ['pretoria', 40], ubud: ['denpasar', 60],
+};
 
-/** The nearest real city: the biggest place in your state or province. */
+/** The city you could commute to from here, if any: { ...region, minutes }. */
 export function nearestCity(state) {
-  const here = REGIONS[state.character.regionId];
-  if (!here) return null;
-  const rank = { mega: 5, enterprise: 4, large: 3, medium: 2 };
-  const cities = regionsInState(here.state).filter((r) => r.id !== here.id && rank[r.size]);
-  return cities.sort((a, b) => rank[b.size] - rank[a.size])[0] ?? null;
+  const c = COMMUTES[state.character.regionId];
+  const r = c && REGIONS[c[0]];
+  return r ? { ...r, minutes: c[1] } : null;
 }
 
 /** Work that every small place has. */
@@ -82,9 +99,9 @@ export function ruralHiring(state, professionId) {
   const city = nearestCity(state);
   const local = !CITY_ONLY.has(id) && hiringThisYear(state, id, where === 'town' ? 0.35 : 0.25);
   if (local) return { ok: true, note: `Hiring in ${town} this year` };
-  // From a small town: city careers by commuting, and the rest only if the city happens to be hiring.
-  if (where === 'town' && city && (CITY_ONLY.has(id) || hiringThisYear(state, `${id}@city`, 0.4))) return { ok: true, commute: { to: city.name, regionId: city.id, minutes: COMMUTE_MINUTES.town } };
-  return { ok: false, reason: CITY_ONLY.has(id) ? `No ${p?.name ?? 'such'} jobs out here — you'd have to move${city ? ` to somewhere like ${city.name}` : ' to a city'}` : `Nobody's hiring within reach of ${town} this year${city && where === 'remote' ? ` — the jobs are in places like ${city.name}` : ''}` };
+  // Within reach of a city: city careers by commuting, and the rest only if the city happens to be hiring.
+  if (city && (CITY_ONLY.has(id) || hiringThisYear(state, `${id}@city`, 0.4))) return { ok: true, commute: { to: city.name, regionId: city.id, minutes: city.minutes } };
+  return { ok: false, reason: CITY_ONLY.has(id) ? `No ${p?.name ?? 'such'} jobs out here — you'd have to move to a city` : `Nobody's hiring within reach of ${town} this year` };
 }
 
 /** How far you drive to work each way (0 if you work where you live or from home). */
@@ -95,7 +112,10 @@ export function commuteOf(state, job = state.career.job) {
   if (job.employer.stateId && job.employer.stateId !== REGIONS[state.character.regionId]?.state) return 0;
   const mode = workModeOf(job);
   if (mode === 'remote') return 0;
-  return Math.round(COMMUTE_MINUTES[where] * (mode === 'hybrid' ? 0.5 : 1));
+  // To the city you can commute to; a job anywhere else in the province is a long drive.
+  const near = nearestCity(state);
+  const mins = near && job.employer.city === cityName(near.id) ? near.minutes : where === 'remote' ? 120 : 90;
+  return Math.round(mins * (mode === 'hybrid' ? 0.5 : 1));
 }
 
 /** Extra risk of a serious emergency far from a hospital (0 in a city). */
