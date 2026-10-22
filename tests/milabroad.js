@@ -23,7 +23,7 @@ const problems = new Map();
 const flag = (msg, where) => { if (!problems.has(msg)) problems.set(msg, where); };
 const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Terms that belong to the US forces only. */
-const US_TERMS = /Article 15|\bPCS\b|stateside|Pentagon|(?<!National |People's |Progressives )Congress(ional)?\b|ASVAB|Landstuhl|Fort (Jackson|Bragg|Hood|Benning)|Parris Island|West Point|\bUSS\b|(?<!Scout )Ranger Regiment|Green Beret|Navy SEAL|Joint Chiefs of Staff(?! \()|Secretary of Defense|Senate Armed Services|Marine Security Guard|(?<!Regimental )Sergeant Major of the Army|Green to Gold|STA-21|Arlington|Air Assault (School|Badge)/;
+const US_TERMS = /Article 15|\bPCS\b|stateside|Pentagon|(?<!National |People's |Progressives |Democratic |Malawi |Trades Union |Trade Union )Congress(?! of the Republic| Party| of Trade)(ional)?\b|ASVAB|Landstuhl|Fort (Jackson|Bragg|Hood|Benning)|Parris Island|West Point|\bUSS\b|(?<!Scout )Ranger Regiment|Green Beret|Navy SEAL|Joint Chiefs of Staff(?! \()|Secretary of Defense|Senate Armed Services|Marine Security Guard|(?<!Regimental )Sergeant Major of the Army|Green to Gold|STA-21|Arlington|Air Assault (School|Badge)/;
 
 const ACTIONS = [
   ['military.pt'], ['military.extraDuty'], ['military.requestDeployment', null, 0.3], ['military.applyOCS', null, 0.2],

@@ -64,7 +64,7 @@ export const TEMPTATIONS = [
   {
     id: 'visas', when: (job) => job.abilities.includes('diplomatic') && job.posting, title: 'Consular Window',
     text: 'A local fixer offers $10,000 per visa approval, no questions asked.',
-    take: { label: '🛂 Start approving his clients', offenseId: 'visaFraud', money: [60000, 150000], discovery: 0.3, evidence: 0.85, text: 'You sold visas. Diplomatic immunity won\'t cover crimes against the U.S.' },
+    take: { label: '🛂 Start approving his clients', offenseId: 'visaFraud', money: [60000, 150000], discovery: 0.3, evidence: 0.85, text: 'You sold visas. Diplomatic immunity won\'t cover crimes against your own government.' },
   },
   {
     id: 'pouch', when: (job) => job.abilities.includes('diplomatic') && job.posting, title: 'The Diplomatic Pouch',

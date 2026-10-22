@@ -121,3 +121,15 @@ the life story, prompts and screens for:
 - the base country's own words
 
 Give your country an entry in `LEAKS` in that file: a pattern of your base country's tell-tale words.
+
+## A shorter route: `nation()`
+
+Most countries the game mentions (Norway, Iraq, Somalia, Taiwan, Argentina…) are built
+with `nation(spec)` in `packs/Nation.js`, grouped by region in `packs/nations/`. A spec
+names what makes the country itself — money and PPP, taxes, provinces and cities, name
+pools, government (presidential, parliamentary, monarchy, absolute, military, one-party),
+police, armed forces (with ranks, bases, missions abroad, conscription), wars, courts,
+schools, honours, religion mix and farming — and `nation()` writes every table from it.
+Add the export to a region file and it is playable; `node tests/packs.js 1 1 XX` checks it.
+Postings abroad (Posting.js) resolve to these countries, so a deployment moves you to one
+of their cities for its duration.

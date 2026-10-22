@@ -8,8 +8,9 @@
  *   fundamentalist high-control: strict rules, shunning if you leave
  *   schism         { risk, issue, breakaway } — what the congregation might split over
  *
- * Pure data and helpers (no module imports) so the job tree can use them.
+ * Pure data and helpers (only the plain-data country packs imported) so the job tree can use them.
  */
+import { PACKS } from '../world/packs/index.js';
 const CHRISTIAN_TITLES = (associate, minister, senior, regional) => ({ seminarian: 'Seminarian', associate, minister, senior, regional, chaplain: 'Chaplain' });
 
 export const TRADITIONS = {
@@ -81,6 +82,8 @@ export const RELIGION_MIX = {
   ZA: { evangelical: 30, pentecostal: 15, mainline: 16, catholic: 7, anglican: 4, sunni: 2, hindu: 1, none: 15 },
   ID: { sunni: 87, evangelical: 7, catholic: 3, hindu: 1.7, buddhist: 0.7, none: 0.1 },
 };
+// Countries added as packs carry their own mix.
+for (const p of PACKS) if (p.religion) RELIGION_MIX[p.id] ??= p.religion;
 
 /** Religious upbringing at birth (by country): a tradition id, or null for none. */
 export function upbringing(rng, countryId = 'US') {

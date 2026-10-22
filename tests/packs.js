@@ -29,11 +29,14 @@ import { setCurrentCountry } from '../src/core/Locale.js';
 
 const PER = Number(process.argv[2] ?? 6);
 const SEED = Number(process.argv[3] ?? 1);
+/** Only these countries (comma-separated), to test one new pack quickly. */
+const ONLY = process.argv[4]?.split(',') ?? null;
+const TESTED = ONLY ? PACKS.filter((p) => ONLY.includes(p.id)) : PACKS;
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */
 const MX_WORDS = /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja|Servicio Militar Nacional|Policía|Bomberos|Secretaría|Licencia/;
-const PH_WORDS = /(?<!(from|war in) (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|(?<!Station )Manila|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
+const PH_WORDS = /(?<!(from|war in|to) (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|(?<!Station )Manila|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
 const GB_WORDS = /\bBritish\b|(?<!from the )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster|Council Tax|\bGP\b|Universal Credit/;
 const LEAKS = {
   SG: GB_WORDS,
@@ -64,7 +67,8 @@ const scan = (cc, text, where, seen) => {
   if (bad) flag(`${cc} broken text: "…${text.slice(Math.max(0, bad.index - 100), bad.index + 60)}"`, where);
   const us = text.match(US_POSTS);
   if (us) flag(`${cc} US-only post "${us[0]}": "…${text.slice(Math.max(0, us.index - 80), us.index + 60)}"`, where);
-  const m = LEAKS[cc] && text.match(LEAKS[cc]);
+  const leak = LEAKS[cc] ?? (PACKS.find((p) => p.id === cc)?.nation ? PH_WORDS : null);
+  const m = leak && text.match(leak);
   if (m) flag(`${cc} base-country word "${m[0]}": "…${text.slice(Math.max(0, m.index - 80), m.index + 60)}"`, where);
 };
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
@@ -78,8 +82,10 @@ for (const p of PACKS) {
   assert.ok(FORCES[cc]?.branches?.army, `${cc} has forces`);
   for (const [, list] of Object.entries(FORCES[cc].bases)) for (const [regionId] of list) assert.equal(FOREIGN_CITIES[regionId]?.country, cc, `${cc} base in ${regionId}`);
   const L = LEGISLATURES[cc];
-  assert.ok(L?.lower && NATIONAL_OFFICES[L.lower.office]?.country === cc, `${cc} parliament`);
-  assert.ok(NATIONAL_OFFICES[L.execOffice], `${cc} head of government`);
+  // Kingdoms ruled by decree, juntas and one-party states have no elected parliament or head of government.
+  const elected = Object.keys(p.offices ?? {}).length > 0;
+  assert.ok(L?.lower && (!elected || NATIONAL_OFFICES[L.lower.office]?.country === cc), `${cc} parliament`);
+  assert.ok(!elected || NATIONAL_OFFICES[L.execOffice], `${cc} head of government`);
   assert.ok(IMMIGRATION[cc]?.visas?.work && IMMIGRATION[cc].visas.workingHoliday === WORKING_HOLIDAY[cc], `${cc} visas`);
   for (const other of Object.keys(WORKING_HOLIDAY[cc]?.partners ?? {})) if (WORKING_HOLIDAY[other]) assert.ok(WORKING_HOLIDAY[other].partners[cc], `${other} takes ${cc} working holidaymakers`);
   for (const other of p.agreements ?? []) assert.ok(totalizes(cc, other), `${cc}–${other} pension agreement`);
@@ -139,7 +145,7 @@ function life(cc, seed) {
 }
 
 /* Every local career, once, with its titles and employer. */
-for (const p of PACKS) {
+for (const p of TESTED) {
   const cc = p.id;
   const engine = new Engine({ store: new Store(memory()), rng: new Random(5), modules: MODULES });
   const state = engine.newLife({ countryId: cc });
@@ -151,10 +157,10 @@ for (const p of PACKS) {
   }
 }
 
-for (const p of PACKS) for (let i = 0; i < PER; i++) life(p.id, SEED * 100 + i);
+for (const p of TESTED) for (let i = 0; i < PER; i++) life(p.id, SEED * 100 + i);
 if (problems.size) {
   for (const [msg, where] of problems) console.log(`  ✘ ${msg}\n      ${String(where).split('\n').join('\n      ')}`);
   console.log(`\n${problems.size} distinct problem(s)`);
   process.exit(1);
 }
-console.log(`✔ Country packs passed — ${PACKS.map((p) => p.id).join(', ')}: tables wired, ${PER * PACKS.length} lives, ${careers} careers, no base-country leaks`);
+console.log(`✔ Country packs passed — ${TESTED.map((p) => p.id).join(', ')}: tables wired, ${PER * TESTED.length} lives, ${careers} careers, no base-country leaks`);

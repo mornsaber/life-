@@ -1,4 +1,4 @@
-import { fromPacks, packRows } from '../world/packs/index.js';
+import { fromPacks, packRows, PACKS } from '../world/packs/index.js';
 /**
  * Elected offices abroad, on the same shape as Offices.js (salaries and
  * campaign costs in PPP dollars, 2025 pay scales). Local office (council,
@@ -114,7 +114,7 @@ Object.assign(NATIONAL_OFFICES, {
   nz_gg: { ...ceremonial, country: 'NZ', name: 'Governor-General of New Zealand', icon: '🇳🇿', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
 });
 /** Countries whose head of state is a monarch (no office to hold; their representatives are above). */
-export const MONARCHIES = ['GB', 'CA', 'AU', 'NZ', 'JP', 'SE', 'NL', 'ES'];
+export const MONARCHIES = ['GB', 'CA', 'AU', 'NZ', 'JP', 'SE', 'NL', 'ES', ...PACKS.filter((p) => p.monarchy).map((p) => p.id)];
 
 /** Local office (shared with the US list) that every country has. */
 export const LOCAL_OFFICE_IDS = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];

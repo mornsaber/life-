@@ -6,11 +6,18 @@
  * and you come home when it ends. Home (your region, residency, taxes) stays
  * where it was: this is where you are, not where you're from.
  *
- * state.character.posting = { place, country, language, atSea, kind, since, until }
+ * Every country a posting can send you to is a playable country, so the posting
+ * moves you there for its duration: you live in one of its cities (the one
+ * named, the base's town, or the capital), the top bar shows it, and its war
+ * and its language are yours while you're there. Territories count as their
+ * country (Guam, Greenland, Gibraltar, the Falklands).
+ *
+ * state.character.posting = { place, country, countryId, regionId, language, atSea, kind, since, until }
  *   kind: 'deployment' | 'tour' | 'secondment' | 'exercise' | 'mission'
  */
-import { COUNTRIES } from './Countries.js';
+import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { speaks, LANGUAGE_FLUENT } from './Immigration.js';
+import { FORCES } from './NationalForces.js';
 
 /** Countries a posting can be in, with the language you'd pick up there. */
 export const WORLD = {
@@ -28,8 +35,42 @@ const ALIASES = [
   [/Turkey/, 'Türkiye'], [/Ramstein|Grafenwöhr|Stuttgart|Bavaria/, 'Germany'], [/Humphreys|Osan|Mujuk/, 'South Korea'], [/Lyon/, 'France'], [/The Hague/, 'Netherlands'], [/Golan/, 'Syria'],
   [/Kabul/, 'Afghanistan'], [/Lakenheath|Fylingdales/, 'United Kingdom'], [/Pituffik/, 'Greenland'], [/Rota/, 'Spain'], [/Naples|Aviano|Vicenza/, 'Italy'],
 ];
+/** Territories, and the country they belong to. */
+const TERRITORIES = { Greenland: 'DK', Guam: 'US', 'Puerto Rico': 'US', Gibraltar: 'GB', 'Falkland Islands': 'GB', 'Diego Garcia': 'GB', Okinawa: 'JP', 'New Caledonia': 'FR', 'French Guiana': 'FR', Mayotte: 'FR', Réunion: 'FR', Curaçao: 'NL', Aruba: 'NL' };
+/** Other spellings of playable countries. */
+const OTHER_NAMES = { 'Democratic Republic of the Congo': 'CD', Turkey: 'TR', 'Republic of Korea': 'KR', Burma: 'MM', UAE: 'AE', 'Gaza': 'PS', 'West Bank': 'PS' };
+/** The playable country a place name belongs to (by name, territory or other spelling). */
+export function countryIdOfName(name) {
+  if (!name) return null;
+  return Object.values(COUNTRIES).find((c) => c.name === name)?.id ?? TERRITORIES[name] ?? OTHER_NAMES[name] ?? null;
+}
+/** Where in that country you live: a city named in the place, the base's town, or the capital. */
+/** Bases and missions, and the town you'd live in. */
+const CITY_HINTS = [
+  [/Ramstein|Landstuhl/, 'kaiserslautern'], [/Grafenwöhr|Vilseck/, 'grafenwoehr'], [/Pituffik|Greenland/, 'nuuk'], [/UNIFIL/, 'naqoura'], [/Golan|UNDOF/, 'damascus'],
+  // NATO's battlegroups on the eastern flank (the country check picks the right one).
+  [/Forward Presence|battlegroup|Rukla/, 'rukla'], [/Forward Presence|battlegroup|Ādaži|Adazi/, 'adazi'], [/Forward Presence|battlegroup|Tapa\b/, 'tapa'],
+  [/Forward Presence|battlegroup|Żagań|Zagan/, 'zagan'], [/Forward Presence|battlegroup|Kogălniceanu|Kogalniceanu/, 'kogalniceanu'], [/KFOR|Bondsteel/, 'ferizaj'], [/EUFOR|Butmir/, 'butmir'],
+  [/Arifjan/, 'arifjan'], [/Buehring|Ali Al Salem/, 'jahra'], [/Udeid/, 'aludeid'], [/Al Asad/, 'alasad'], [/Erbil|Kurd|Peshmerga/, 'erbil'], [/Bagram/, 'bagram'], [/Incirlik/, 'incirlik'],
+  [/Baledogle/, 'baledogle'], [/Lemonnier/, 'djibouti'], [/Agadez|Air Base 201/, 'agadez'], [/Gao\b|MINUSMA/, 'gao'], [/MONUSCO/, 'goma'], [/MINUSCA/, 'bangui'], [/UNMISS/, 'juba'], [/UNFICYP/, 'nicosia'],
+];
+function cityFor(countryId, place) {
+  const cities = Object.entries(FOREIGN_CITIES).filter(([, c]) => c.country === countryId);
+  if (!cities.length) return null;
+  const s = String(place ?? '');
+  const hinted = CITY_HINTS.find(([re, id]) => re.test(s) && FOREIGN_CITIES[id]?.country === countryId);
+  if (hinted) return hinted[1];
+  const named = cities.find(([, c]) => s.includes(c.name.split(',')[0]));
+  if (named) return named[0];
+  const bases = Object.values(FORCES[countryId]?.bases ?? {}).flat();
+  const base = bases.find(([, name]) => s.includes(String(name).split(/[ ,(]/)[0]));
+  if (base) return base[0];
+  const capital = COUNTRIES[countryId]?.capital;
+  return (cities.find(([, c]) => c.name.split(',')[0] === capital) ?? cities[0])[0];
+}
+
 /** At sea: a deployment aboard ship has no country to live in. */
-const AT_SEA = /\bSea\b|Strait|Gulf\b|Pacific|Caribbean|Mediterranean|Atlantic|amphibious|maritime task force|aboard/i;
+const AT_SEA = /\bSea\b|Strait|Gulf\b|Pacific|Caribbean|Mediterranean|Atlantic|amphibious|maritime task force|aboard|Mozambique Channel/i;
 
 /** Which country (and language) a place is in. */
 export function placeCountry(text) {
@@ -38,7 +79,8 @@ export function placeCountry(text) {
   const names = { ...Object.fromEntries(Object.values(COUNTRIES).map((c) => [c.name, c.languages?.[0] ?? 'English'])), ...WORLD };
   let country = Object.keys(names).filter((n) => s.includes(n)).sort((a, b) => b.length - a.length)[0] ?? null;
   if (!country) country = ALIASES.find(([re]) => re.test(s))?.[1] ?? null;
-  return { country, language: country ? names[country] ?? null : null, atSea: false };
+  const countryId = countryIdOfName(country);
+  return { country, countryId, regionId: countryId ? cityFor(countryId, s) : null, language: country ? names[country] ?? COUNTRIES[countryId]?.languages?.[0] ?? null : null, atSea: false };
 }
 
 export const postingOf = (state) => state.character?.posting ?? null;
@@ -46,10 +88,11 @@ export const postingOf = (state) => state.character?.posting ?? null;
 /** Post the player abroad for `years` (a deployment inside the year: 1). */
 export function postAbroad(ctx, { place, kind = 'deployment', years = 1, country = null }) {
   const { state } = ctx;
-  const where = country ? { country, language: WORLD[country] ?? Object.values(COUNTRIES).find((c) => c.name === country)?.languages?.[0] ?? null, atSea: false } : placeCountry(place);
+  const id = country ? countryIdOfName(country) : null;
+  const where = country ? { country, countryId: id, regionId: id ? cityFor(id, place) : null, language: WORLD[country] ?? COUNTRIES[id]?.languages?.[0] ?? null, atSea: false } : placeCountry(place);
   // A posting to the country you already live in is just work.
-  const home = COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'United States';
-  if (where.country === home) return null;
+  const home = state.character.countryId ?? 'US';
+  if (where.countryId === home || where.country === COUNTRIES[home]?.name) return null;
   state.character.posting = { place, ...where, kind, since: state.character.age, until: state.character.age + years };
   // Volunteer service at home goes on hold while you're away.
   for (const [id, m] of Object.entries(state.emergency ?? {})) {
@@ -75,7 +118,18 @@ export function endPosting(ctx, why) {
 }
 
 /** A label for where you are: "Camp Humphreys, South Korea" or "at sea". */
-export const postingLabel = (p) => (p.atSea ? `${p.place} (at sea)` : p.country && !p.place.includes(p.country) ? `${p.place}, ${p.country}` : p.place);
+export const postingLabel = (p) => {
+  const town = p.regionId ? FOREIGN_CITIES[p.regionId]?.name.split(',')[0] : null;
+  const base = p.atSea ? `${p.place} (at sea)` : p.country && !p.place.includes(p.country) ? `${p.place}, ${p.country}` : p.place;
+  return `${p.countryId ? `${COUNTRIES[p.countryId]?.flag ?? ''} ` : ''}${base}${town && !base.includes(town) ? ` · ${town}` : ''}`;
+};
+
+/** Where you physically are: the country and city of a posting, or home. */
+export function whereNow(state) {
+  const p = postingOf(state);
+  if (p?.countryId) return { countryId: p.countryId, regionId: p.regionId ?? null, posted: true };
+  return { countryId: state.character.countryId ?? 'US', regionId: state.character.regionId, posted: false };
+}
 
 export const PostingModule = {
   id: 'posting',
