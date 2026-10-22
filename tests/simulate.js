@@ -27,6 +27,7 @@ import { STATES } from '../src/modules/life/States.js';
 import { DUTIES } from '../src/modules/career/ManagementEngine.js';
 import { Renderer, VIEWS } from '../src/ui/Renderer.js';
 import { OFFICES } from '../src/modules/politics/index.js';
+import { lordSpiritual } from '../src/modules/politics/Legislature.js';
 import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestate/index.js';
 import { promptModal } from '../src/ui/Components.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
@@ -224,7 +225,7 @@ function checkInvariants(state) {
   if (state.unions?.mine) assert.ok(state.career.job?.unionMember && state.unions.byId[state.unions.mine.unionId], 'union membership follows the job');
   for (const body of Object.values(state.legislature?.bodies ?? {})) assert.ok(body.labor >= 0 && body.labor <= body.seats && body.leaders?.presiding?.name, `legislature ${body.name}`);
   // A seat comes with an office — or, in the Lords, with a peerage.
-  if (state.legislature?.seat) assert.ok((state.politics.office || (state.legislature.seat.peer && state.character.style?.peerage)) && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
+  if (state.legislature?.seat) assert.ok((state.politics.office || (state.legislature.seat.peer && (state.character.style?.peerage || lordSpiritual(state)))) && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
   if (state.farm?.acres) assert.ok(state.farm.valuePerAcre > 0 && (!state.farm.loan || state.farm.loan.balance >= 0), 'farm');
   const civ = state.civic;
   assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');

@@ -355,7 +355,7 @@ export const DIRECT_COMMISSIONS = {
     cap: { active: 2, reserve: 3 },
     credit(state) {
       if (!hasDegree(state, ['seminary'])) return null;
-      const yrs = yearsInProfession(state, ['clergy', 'catholicClergy']);
+      const yrs = yearsInProfession(state, ['clergy', 'catholicClergy', 'anglicanClergy']);
       if (yrs < 2) return null;
       return 2 + Math.floor(yrs / 2);
     },

@@ -41,12 +41,12 @@ export const VOLUNTEER_ORGS = {
   campaign: { name: 'Community organizing', icon: '📣', minAge: 16, desc: 'Tenant unions, voter drives, town halls.' },
 };
 
-const fresh = (rng) => {
-  const t = upbringing(rng);
+const fresh = (rng, countryId) => {
+  const t = upbringing(rng, countryId ?? 'US');
   return newCommunity(t, t ? congregationName(rng, t) : null, 0);
 };
 
-export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy'];
+export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy', 'anglicanClergy'];
 export const isClergy = (state) => CLERGY_PROFESSIONS.includes(state.career.job?.professionId);
 
 /* ------------------------------------------------------------------ */
@@ -271,7 +271,7 @@ export const Community = {
     if (!state.community) {
       // A side stream, so adding this slice doesn't reshuffle every other roll in the life.
       const rng = new Random((engineRng.seed ^ 0x5eed) >>> 0);
-      state.community = fresh(rng);
+      state.community = fresh(rng, state.character.countryId ?? 'US');
       // Adults from older saves: most raised in a faith still claim it.
       if (state.character.age >= 18 && state.community.faith && rng.chance(0.4)) {
         state.community.former.push({ traditionId: state.community.faith.traditionId, leftAge: 18, why: 'drifted away' });

@@ -48,6 +48,7 @@ export const TRAINEE_LEVELS = {
   'pharmacy.intern': { next: 'pharmacist', grace: 1, label: 'your internship (pharmacist license)' },
   'regulatory.trainee': { next: 'examiner', grace: 0, label: 'examiner training' },
   'catholicClergy.seminarian': { next: 'deacon', grace: 1, label: 'priestly formation in seminary' },
+  'anglicanClergy.ordinand': { next: 'deacon', grace: 1, label: 'training for ordination at theological college' },
   'privateSecurity.trainee': { next: 'officer', grace: 0, academy: true, label: 'guard-card training' },
   'privatePolice.recruit': { next: 'officer', grace: 1, academy: true, label: 'the police academy' },
   'tsa.trainee': { next: 'officer', grace: 0, academy: true, label: 'TSA screener training' },
@@ -82,6 +83,7 @@ export const TRAINEE_LEVELS = {
   'merchantMarine.ordinary': { next: 'able', grace: 1, academy: true, label: 'your first sea time and Able Seaman endorsement' },
   'cruise.steward': { next: 'waiter', grace: 1, academy: true, label: 'STCW safety training and your first contract' },
   'catholicClergy.deacon': { next: 'vicar', grace: 0, label: 'your diaconate year before priestly ordination' },
+  'anglicanClergy.deacon': { next: 'curate', grace: 0, label: 'your diaconate year before ordination to the priesthood' },
 };
 export const traineeProgram = (job) => (job ? TRAINEE_LEVELS[`${job.professionId}.${job.levelId}`] ?? null : null);
 

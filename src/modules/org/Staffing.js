@@ -52,6 +52,7 @@ const RATIOS = {
   airportAuthority: { base: 'county', police: 0.06, arff: 0.05, admin: 0.25 },
   communityCollegeDistrict: { base: 'county', instruction: 0.9 },
   diocese: { base: 'county', parishes: 0.15 },
+  anglicanDiocese: { base: 'county', parishes: 0.12 },
   statePublicSafety: { base: 'state', statePolice: 0.16, crimeLab: 0.015 },
   stateCorrections: { base: 'state', institutions: 1.0, community: 0.25 },
   stateJustice: { base: 'state', courts: 0.6, publicDefender: 0.08 },

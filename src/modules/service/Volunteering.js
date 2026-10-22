@@ -49,7 +49,7 @@ export const ROLES = {
   },
   hospice: {
     name: 'Hospice Volunteer', icon: '🕊️', minAge: 18, hours: 60, training: '20 hours of training',
-    desc: 'Sit with dying patients so their families can rest.', careers: ['nursing', 'medical', 'clergy', 'catholicClergy', 'counseling'],
+    desc: 'Sit with dying patients so their families can rest.', careers: ['nursing', 'medical', 'clergy', 'catholicClergy', 'anglicanClergy', 'counseling'],
   },
   habitat: {
     name: 'Habitat for Humanity Builder', icon: '🔨', minAge: 16, hours: 80,

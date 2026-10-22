@@ -71,7 +71,14 @@ const electionCycle = (d) => (d.office && OFFICES[d.office]?.term && d.country ?
 /** Local titles of a chamber's leaders. */
 export const leaderTitle = (kind, which) => BODY_DEFS[kind]?.leaders?.[which] ?? (which === 'majority' ? 'Majority leader' : 'Minority leader');
 /** Life peers sit in their country's upper house. */
+/** A Church of England diocesan bishop (or archbishop) sits in the Lords as a Lord Spiritual, until 70. */
+export const lordSpiritual = (state) => {
+  const j = state.career?.job;
+  return (state.character.countryId ?? 'US') === 'GB' && j?.professionId === 'anglicanClergy' && ['bishop', 'archbishop'].includes(j.levelId)
+    && state.character.age < 70 && !/Scottish Episcopal|Church in Wales/.test(j.employer?.name ?? '');
+};
 export const peerChamber = (state) => {
+  if (lordSpiritual(state)) return 'upper_GB';
   // Life peers sit; hereditary peers only when the other hereditaries elect them; royal dukes don't.
   if (!state.character.style?.peerage || state.character.peerage?.seat === false) return null;
   const cc = state.character.countryId ?? 'US';

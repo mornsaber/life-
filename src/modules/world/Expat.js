@@ -48,7 +48,8 @@ function offerAssignment(ctx) {
   if ((job.yearsAtEmployer ?? 0) < 2 || (job.grade ?? 0) < 4 || onAssignment(state) || departureBlock(state)) return;
   if (state.character.age < 25 || state.character.age > 58 || !rng.chance(0.07)) return;
   // Somewhere the company has an office and that isn't at war.
-  const options = Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2));
+  const within = bodyOfJob(job)?.countries;
+  const options = Object.keys(COUNTRIES).filter((c) => c !== cc && IMMIGRATION[c].visas.transfer && !(warIn(state, c)?.homeFront >= 0.2) && (!within || within.includes(c)));
   const to = rng.pick(options);
   if (!to) return;
   // A priest serves abroad in the diocese there, lent by the home bishop — not in a branch office.

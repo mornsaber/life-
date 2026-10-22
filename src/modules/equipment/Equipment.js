@@ -133,7 +133,7 @@ const JOB_GROUP = {
   realestate: 'corpOffice', insurance: 'corpOffice', propertyManagement: 'corpOffice', actuary: 'corpOffice', marketing: 'corpOffice', sales: 'corpOffice',
   humanResources: 'corpOffice', design: 'corpOffice', cybersecurity: 'corpOffice', dataScience: 'corpOffice', gameDevelopment: 'corpOffice',
   interpreter: 'corpOffice', nonprofit: 'corpOffice', privateInvestigator: 'corpOffice', bailBonds: 'corpOffice',
-  engineering: 'designOffice', architecture: 'designOffice', journalism: 'newsroom', clergy: 'church', catholicClergy: 'church',
+  engineering: 'designOffice', architecture: 'designOffice', journalism: 'newsroom', clergy: 'church', catholicClergy: 'church', anglicanClergy: 'church',
   flightAttendant: 'airline', physicianAssistant: 'clinic', counseling: 'therapyOffice', psychology: 'therapyOffice', dietitian: 'therapyOffice', speechPathology: 'therapyOffice',
   socialWork: 'agencyOffice', cps: 'agencyOffice', benefitsClaims: 'agencyOffice', revenue: 'agencyOffice', regulatory: 'agencyOffice', municipalAdmin: 'agencyOffice',
   planning: 'agencyOffice', councilInspector: 'agencyOffice', oig: 'agencyOffice', legislativeStaff: 'agencyOffice', foreignService: 'agencyOffice', prosecution: 'agencyOffice', publicDefender: 'agencyOffice',

@@ -290,8 +290,8 @@ export function newLifeForm(rngName) {
           <legend>Difficulty</legend>
           ${Object.entries(DIFFICULTIES).map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
         </fieldset>
-        <label class="country-pick">If born royal<select name="royalLevel">${Object.entries(ROYAL_LEVELS).map(([id, l]) => `<option value="${id}"${id === 'child' ? ' selected' : ''}>${esc(l.name)} — ${esc(l.desc)}</option>`).join('')}</select></label>
-        <p class="fine">Born royal: in Britain, Japan, Sweden, the Netherlands or Spain (Britain if you pick another country).</p>
+        <label class="country-pick">Born royal<select name="royalLevel"><option value="none" selected>👤 Not royal</option>${Object.entries(ROYAL_LEVELS).map(([id, l]) => `<option value="${id}">${esc(l.name)} — ${esc(l.desc)}</option>`).join('')}</select></label>
+        <p class="fine">Pick a place in the royal family to be born royal in a kingdom: Britain, Japan, Sweden, the Netherlands or Spain (Canada, Australia and New Zealand share Britain's royal family). Republics have no crown — unless you choose the Born Royal difficulty, which takes you to Britain.</p>
         <label class="check"><input type="checkbox" name="noble"> 🏰 Allow a noble birth (very rare: a titled family in Britain or Spain)</label>
         <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>

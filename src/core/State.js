@@ -63,10 +63,27 @@ export function randomCountryId(rng) {
 
 /** A royal birth is in a kingdom: the country you chose if it has a crown of its own, else Britain. */
 const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES'];
+/** Realms that share the British crown: its royal family lives in Britain. */
+const SHARED_CROWN = ['CA', 'AU', 'NZ'];
+export const ROYAL_LEVEL_IDS = ['heir', 'child', 'grandchild', 'distant'];
+
+/**
+ * Whether a new life is born royal, and where. Picking a place in the family on the start
+ * screen makes you royal wherever there's a crown (a realm's is the British one); the Born
+ * Royal difficulty always does (in Britain if you chose a republic).
+ */
+export function royalBirth(rng, options) {
+  const level = ROYAL_LEVEL_IDS.includes(options.royalLevel) ? options.royalLevel : null;
+  if (options.difficulty !== 'royal' && !level) return null;
+  const cc = options.countryId;
+  const home = ROYAL_HOMES.includes(cc) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : null;
+  return home ? { countryId: home, level: level ?? 'child' } : null;
+}
 
 export function createInitialState(rng, options = {}) {
-  const royal = options.difficulty === 'royal';
-  if (royal) options = { ...options, countryId: ROYAL_HOMES.includes(options.countryId) ? options.countryId : options.countryId === 'random' ? rng.pick(ROYAL_HOMES) : 'GB' };
+  const birth = royalBirth(rng, options);
+  const royal = Boolean(birth);
+  if (royal) options = { ...options, countryId: birth.countryId, royalLevel: birth.level };
   if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
   setNameCountry(country?.id ?? 'US');
@@ -134,7 +151,7 @@ export function createInitialState(rng, options = {}) {
     challenge: options.challenge ? { id: options.challenge, status: 'active' } : null,
     difficulty: { id: DIFFICULTIES[options.difficulty] ? options.difficulty : 'normal', assisted: false },
     // Born royal (Crown.js finishes setting it up) — and a noble birth, only if you opted in (Peerage.js).
-    royal: royal ? { crownId: options.countryId, level: ['heir', 'child', 'grandchild', 'distant'].includes(options.royalLevel) ? options.royalLevel : 'child' } : null,
+    royal: royal ? { crownId: options.countryId, level: options.royalLevel } : null,
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
@@ -415,10 +432,13 @@ export function netWorth(state) {
   return Math.round(f.cash + state.retirement.dc + homeEquity(state) + investmentsValue(state) + businessEquity(state) + vehicleEquity(state) + farmlandEquity(state) - f.loans - (state.health?.medicalDebt ?? 0) - (f.tax?.debt ?? 0) - (state.civil?.judgments ?? 0));
 }
 
-/** Farmland you own, net of its loan. Mirrors farm/Farm.js. */
+/** Farmland you own, the herd, machinery and stored grain, net of the farm loan. Mirrors farm/Farm.js farmEquity. */
+const HEAD_VALUE = { beef: 1600, dairy: 1900, sheep: 220 };
 export function farmlandEquity(state) {
   const f = state.farm;
-  return f?.acres ? Math.max(0, Math.round(f.acres * f.valuePerAcre - (f.loan?.balance ?? 0))) : 0;
+  if (!f?.acres && !f?.leased) return 0;
+  const herd = f.herd?.head ? f.herd.head * (HEAD_VALUE[f.herd.kind] ?? 0) : 0;
+  return Math.max(0, Math.round((f.acres ?? 0) * f.valuePerAcre + herd + (f.machinery?.value ?? 0) + (f.stored ?? 0) * 0.97 - (f.loan?.balance ?? 0)));
 }
 
 /** Vehicles you own, net of their loans (leases carry no equity). Mirrors vehicles/Vehicles.js. */

@@ -470,7 +470,7 @@ const CONGREGATION = {
     ]),
   ],
 };
-Object.assign(AUDIENCE_CAREERS, { clergy: CONGREGATION, catholicClergy: { ...CONGREGATION, label: 'Your Parish', noun: 'parishioners', perFan: 0, payLabel: '', start: 400, ceiling: 12000 } });
+Object.assign(AUDIENCE_CAREERS, { clergy: CONGREGATION, catholicClergy: { ...CONGREGATION, label: 'Your Parish', noun: 'parishioners', perFan: 0, payLabel: '', start: 400, ceiling: 12000 }, anglicanClergy: { ...CONGREGATION, label: 'Your Parish', noun: 'parishioners', perFan: 0, payLabel: '', start: 150, ceiling: 4000 } });
 
 /* ------------------------------------------------------------------ */
 /* Second engines: careers with two sides to the work                  */

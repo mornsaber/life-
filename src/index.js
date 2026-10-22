@@ -49,7 +49,7 @@ function startNewLife(form) {
     countryId: data.get('countryId') || 'US',
     challenge: data.get('challenge') || null,
     difficulty: data.get('difficulty') || 'normal',
-    royalLevel: data.get('royalLevel') || 'child',
+    royalLevel: data.get('royalLevel') || 'none',
     noble: data.get('noble') === 'on',
   });
 }

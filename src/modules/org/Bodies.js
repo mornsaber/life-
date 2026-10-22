@@ -13,7 +13,7 @@ import { REGIONS } from '../life/Regions.js';
 import { getProfession } from '../career/JobTrees.js';
 import { attachOrg, orgOf } from './Organizations.js';
 
-import { dioceseName } from '../community/Dioceses.js';
+import { dioceseName, anglicanDioceseName, ANGLICAN_PROVINCES } from '../community/Dioceses.js';
 
 export { dioceseName };
 
@@ -25,6 +25,17 @@ export const BODIES = {
       title: 'A Call to Serve Abroad',
       text: (home, unit, country) => `The Church in ${country} is short of priests. Your bishop has agreed to lend you to ${unit} for three years as a fidei donum priest: you serve there under its bishop, then come home to ${home}.`,
       accept: 'Go as a fidei donum priest',
+    },
+  },
+  anglican: {
+    name: 'the Anglican Communion', head: 'the Archbishop of Canterbury (first among equals)',
+    unitName: (countryId, city, size) => anglicanDioceseName(countryId, city, size === 'enterprise' || size === 'mega'),
+    // A companion-link loan only goes to another Anglican province.
+    countries: ANGLICAN_PROVINCES,
+    overseas: {
+      title: 'A Companion-Diocese Link',
+      text: (home, unit, country) => `${home} has a companion link with ${unit} in ${country}. Your bishop asks whether you would go for three years as a mission partner, licensed by the bishop there, then come home.`,
+      accept: 'Go as a mission partner',
     },
   },
 };

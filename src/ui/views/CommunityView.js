@@ -4,7 +4,7 @@
  */
 import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
-import { clergyEligibility } from '../../modules/community/Religions.js';
+import { clergyEligibility, traditionName } from '../../modules/community/Religions.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
@@ -19,21 +19,21 @@ function faithCard(state) {
   const c = state.community;
   const f = c.faith;
   const age = state.character.age;
-  const raisedIn = c.upbringing ? TRADITIONS[c.upbringing].name : 'no religion';
+  const raisedIn = c.upbringing ? traditionName(c.upbringing, state.character.countryId ?? 'US') : 'no religion';
   if (!f) {
     const former = c.former.at(-1);
-    return card('Faith', `<p class="muted">You don't belong to a congregation. Raised in ${esc(raisedIn)}${former ? `; you left ${esc(TRADITIONS[former.traditionId].name)} at ${former.leftAge}` : ''}.</p>`, { icon: '🕊️' });
+    return card('Faith', `<p class="muted">You don't belong to a congregation. Raised in ${esc(raisedIn)}${former ? `; you left ${esc(traditionName(former.traditionId, state.character.countryId ?? 'US'))} at ${former.leftAge}` : ''}.</p>`, { icon: '🕊️' });
   }
   const t = TRADITIONS[f.traditionId];
   const elig = clergyEligibility(state);
   return card(f.congregation, `
     ${kv([
-      ['Tradition', `${t.icon} ${esc(t.name)}${t.fundamentalist ? ` ${chip('high-control', 'bad')}` : ''}`],
+      ['Tradition', `${t.icon} ${esc(traditionName(f.traditionId, state.character.countryId ?? 'US'))}${t.fundamentalist ? ` ${chip('high-control', 'bad')}` : ''}`],
       ['Member since', f.raised ? 'birth' : `age ${f.joinedAge}`],
       ['Attendance', `${ATTENDANCE[f.attendance].icon} ${ATTENDANCE[f.attendance].label}${f.attendance === 'devout' ? ` · ${f.devoutYears} yr` : ''}`],
       f.role ? ['Lay role', esc(f.role)] : null,
       ['Giving', c.giving ? `${c.giving}% of income${c.givenThisYear ? ` · ${money(c.givenThisYear)} this year` : ''}` : 'None'],
-      ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
+      ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : f.traditionId === 'anglican' ? 'Anglican Holy Orders (selection through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
     ])}
     ${t.schism ? `<p class="fine">Tensions over ${esc(t.schism.issue)} could split this ${t.house.toLowerCase()}.</p>` : ''}
     ${t.fundamentalist ? '<p class="fine">Leaving a high-control group usually means being shunned by the congregation and by family who stay.</p>' : ''}

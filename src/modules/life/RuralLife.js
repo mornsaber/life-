@@ -65,7 +65,7 @@ const STAPLES = new Set([
   'agriculture', 'retail', 'culinary', 'hospitality', 'education', 'nursing', 'travelNursing', 'caregiving', 'childcare', 'medical', 'physicianAssistant', 'pharmacy',
   'trucking', 'logistics', 'trades', 'plumbing', 'hvac', 'welding', 'automotive', 'carpentry', 'lineworker', 'fishing', 'realestate', 'insurance', 'funeral',
   'police', 'sheriff', 'statePolice', 'fire', 'ems', 'privateEms', 'stateFire', 'corrections', 'jail', 'federalPrisons', 'privatePrisons', 'borderPatrol', 'parkService', 'gameWarden', 'forester',
-  'postal', 'clergy', 'catholicClergy', 'schoolBus', 'library', 'waterUtility', 'publicWorks', 'municipalAdmin', 'councilInspector', 'emergencyManagement', 'contentCreator',
+  'postal', 'clergy', 'catholicClergy', 'anglicanClergy', 'schoolBus', 'library', 'waterUtility', 'publicWorks', 'municipalAdmin', 'councilInspector', 'emergencyManagement', 'contentCreator',
 ]);
 /** Careers that only exist in cities. */
 const CITY_ONLY = new Set([

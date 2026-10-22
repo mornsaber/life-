@@ -45,6 +45,7 @@ export const PROFESSION_RULES = {
   sigint: { restricted: ['consulting', 'softwareShop', 'piAgency'], note: 'Cleared employees need agency approval for outside business — conflicts are refused.' },
   foreignService: { canOwn: true, restricted: ['consulting'], note: 'Diplomats may not do business in their host country.' },
   catholicClergy: { canOwn: false, note: 'Your diocese expects you to serve, not run a business.' },
+  anglicanClergy: { canOwn: false, note: 'Your licence from the bishop is to serve the parish, not to run a business.' },
   benefitsClaims: { restricted: ['consulting'] },
 };
 

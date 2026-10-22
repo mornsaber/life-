@@ -13,7 +13,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { CROWNS, ensureCrown, monarchName, CRISIS_CHANCE, CrownModule, crownOf, sovereign } from '../src/modules/world/Crown.js';
 import { nobleBirth, NOBLE_BIRTH_CHANCE, PeerageModule, grantPeerage } from '../src/modules/world/Peerage.js';
 import { styledName, chivalryList, postNominals, honoursList, knighthoodsOn, setKnighthoods } from '../src/modules/world/Honours.js';
-import { peerChamber } from '../src/modules/politics/Legislature.js';
+import { peerChamber, lordSpiritual } from '../src/modules/politics/Legislature.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
@@ -206,6 +206,27 @@ const tests = {
     }
     assert.ok(state.character.peerage.byElections >= 1, 'stood');
     if (state.character.peerage.seat) assert.ok(peerChamber(state), 'and sits');
+  },
+  'the start menu: picking a place in the family makes you royal where there is a crown'() {
+    const se = life({ countryId: 'SE', royalLevel: 'grandchild' }).state;
+    assert.equal(se.royal?.crownId, 'SE');
+    assert.equal(se.royal.level, 'grandchild');
+    assert.equal(se.difficulty.id, 'normal', 'any difficulty');
+    const ca = life({ countryId: 'CA', royalLevel: 'heir' }).state;
+    assert.equal(ca.royal?.crownId, 'GB', 'a realm shares the British royal family');
+    const us = life({ countryId: 'US', royalLevel: 'heir' }).state;
+    assert.equal(us.royal, null, 'a republic has no crown');
+    assert.equal(us.character.countryId ?? 'US', 'US');
+    assert.equal(life({ countryId: 'GB', royalLevel: 'none' }).state.royal, null);
+  },
+  'Lords Spiritual: a Church of England diocesan bishop sits in the Lords'() {
+    const { state } = life({ countryId: 'GB' });
+    state.character.age = 58;
+    state.career.job = { professionId: 'anglicanClergy', levelId: 'bishop', employer: { name: 'Diocese of Leeds' } };
+    assert.ok(lordSpiritual(state));
+    assert.equal(peerChamber(state), 'upper_GB');
+    state.career.job.levelId = 'archdeacon';
+    assert.equal(peerChamber(state), null);
   },
 };
 void PeerageModule;

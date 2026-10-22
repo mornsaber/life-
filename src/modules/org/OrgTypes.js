@@ -352,6 +352,12 @@ export const ORG_TYPES = {
     head: { title: 'Bishop', selection: 'appointed', appointedBy: 'the Pope', occupation: 'catholicClergy', levelId: 'bishop' },
     departments: [{ id: 'parishes', name: 'Parishes', occupations: ['catholicClergy'], head: { title: 'Vicar General', selection: 'internal' } }],
   },
+  /** An Anglican diocese: the bishop is chosen by the Crown Nominations Commission and appointed by the Crown (in England). */
+  anglicanDiocese: {
+    name: (c) => c.name ?? `Diocese of ${city(c)}`, scope: 'region', sector: 'private', body: 'anglican',
+    head: { title: 'Diocesan Bishop', selection: 'appointed', appointedBy: 'the Crown, on the Crown Nominations Commission\'s choice', occupation: 'anglicanClergy', levelId: 'bishop' },
+    departments: [{ id: 'parishes', name: 'Parishes & Deaneries', occupations: ['anglicanClergy'], head: { title: 'Archdeacon', selection: 'internal' } }],
+  },
   privateUniversity: {
     name: (c) => c.rng.pick(['Whitmore College', 'Ashford University', 'St. Anselm College', 'Carrow Institute of Technology', 'Bellmont University', 'Hollis College']), scope: 'market', sector: 'private',
     head: { title: 'President', selection: 'board', appointedBy: 'the board of trustees' },

@@ -41,7 +41,7 @@ import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/Nationa
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
-import { dioceseName } from '../community/Dioceses.js';
+import { dioceseName, anglicanDioceseName } from '../community/Dioceses.js';
 
 /** Traditions whose clergy follow the Catholic hierarchy (diocese, bishops, cardinals). */
 const HIERARCHICAL = ['catholic', 'tradCatholic'];
@@ -421,7 +421,8 @@ Object.assign(PRIVATE_PROFESSIONS, {
     employers: ['Community Congregation'],
     // Ordination depends on your tradition; titles come from it too (Parish Priest, Rabbi, Imam…).
     // Catholic priests are ordained through a diocese (see catholicClergy).
-    eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? { ok: false, reason: 'Catholic priests are ordained through a diocese — see Catholic Priesthood' } : clergyEligibility(state)),
+    eligible: (state) => (HIERARCHICAL.includes(state.community?.faith?.traditionId) ? { ok: false, reason: 'Catholic priests are ordained through a diocese — see Catholic Priesthood' }
+      : state.community?.faith?.traditionId === 'anglican' ? { ok: false, reason: 'Anglican clergy are selected and ordained through a diocese — see Anglican Holy Orders' } : clergyEligibility(state)),
     prepare: (state, job) => {
       const t = TRADITIONS[state.community?.faith?.traditionId];
       if (t) {
@@ -459,6 +460,31 @@ Object.assign(PRIVATE_PROFESSIONS, {
       L('bishop', 'Bishop', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 300 }),
       L('archbishop', 'Archbishop', 9, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 900 }),
       L('cardinal', 'Cardinal', 10, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 900 }),
+    ],
+  },
+  anglicanClergy: {
+    id: 'anglicanClergy', name: 'Anglican Holy Orders', icon: '⛪', sector: 'private', payMultiplier: 0.55, minAge: 18, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.35,
+    // The Church of England and the rest of the Anglican Communion: a diocese selects, trains and
+    // licenses its clergy. Women are ordained (bishops too) and clergy may marry.
+    body: 'anglican',
+    employerName: (city) => anglicanDioceseName(currentCountry() ?? 'US', city),
+    eligible: (state) => (state.community?.faith?.traditionId === 'anglican' ? clergyEligibility(state) : { ok: false, reason: 'Belong to an Anglican church (the Church of England and its sister churches)' }),
+    prepare: (state, job) => {
+      job.tradition = 'anglican';
+      if (job.employer.size === 'enterprise') job.employer.name = anglicanDioceseName(state.character.countryId ?? 'US', REGIONS[state.character.regionId]?.name ?? job.employer.name, true);
+    },
+    levels: [
+      L('ordinand', 'Ordinand', 1, { years: 3 }),
+      L('deacon', 'Deacon (Curate)', 2, { years: 1 }),
+      L('curate', 'Assistant Curate', 3, { years: 2 }),
+      L('vicar', 'Vicar', 4, { abilities: ['supervise'], reports: 4 }),
+      L('canon', 'Canon', 5, { track: 'ic' }),
+      L('ruralDean', 'Rural Dean', 5, { track: 'mgmt', abilities: ['supervise'], reports: 15 }),
+      L('archdeacon', 'Archdeacon', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 60 }),
+      L('dean', 'Dean of the Cathedral', 7, { track: 'ic', minSize: 'large' }),
+      L('suffragan', 'Suffragan Bishop', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate'], reports: 150 }),
+      L('bishop', 'Diocesan Bishop', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 300 }),
+      L('archbishop', 'Archbishop', 10, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 900 }),
     ],
   },
   hospitality: {
@@ -511,7 +537,7 @@ export const JOB_FIELDS = {
   safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'universityPolice', 'airportPolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'dispatch', 'emergencyManagement', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'interpreter'] },
+  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'anglicanClergy', 'interpreter'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
