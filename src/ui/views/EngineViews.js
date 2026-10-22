@@ -186,7 +186,7 @@ function tradeSection(state) {
     const book = takeEligibility(state, i, 'book');
     const cash = takeEligibility(state, i, 'cash');
     const buttons = mine ? chip(mine.how === 'cash' ? '💵 Side job' : '✅ Taken', 'good') : `${button('✅ Take it', 'tradeWork.take', { arg: `${i}:book`, variant: 'tiny', disabled: !book.ok, hint: book.ok ? `+${Math.round(j.pay * 100)}% of salary if done right` : book.reason })}${j.cash ? button('💵 Cash side job', 'tradeWork.take', { arg: `${i}:cash`, variant: 'tiny danger', disabled: !cash.ok, hint: cash.ok ? `$${j.cash.toLocaleString()} off the books` : cash.reason }) : ''}`;
-    return `<li class="report-row"><div><b>${j.icon} ${esc(j.name)}</b> <small class="muted">${'●'.repeat(Math.max(1, Math.round(j.diff / 20)))} difficulty${j.injury >= 0.05 ? ' · dangerous' : ''}</small></div><div>${buttons}</div></li>`;
+    return `<li class="trade-job"><div><b>${j.icon} ${esc(j.name)}</b> <small class="muted">${'●'.repeat(Math.max(1, Math.round(j.diff / 20)))} difficulty${j.injury >= 0.05 ? ' · dangerous' : ''}</small></div><div class="action-grid">${buttons}</div></li>`;
   }).join('');
   const stats = rec ? `<p>${chip(`✅ ${rec.done} jobs done right`, 'good')} ${rec.callbacks ? chip(`🔁 ${rec.callbacks} warranty calls`, 'warn') : ''} ${rec.sideCash ? chip(`💵 $${rec.sideCash.toLocaleString()} in side jobs`) : ''}</p>${meter(rec.rep, { label: 'Reputation' })}` : '';
   const hours = apprentice ? meter(Math.min(100, Math.round((rec?.hours ?? 0) / cfg.hours * 100)), { label: `Apprenticeship hours: ${(rec?.hours ?? 0).toLocaleString()} of ${cfg.hours.toLocaleString()}` }) : '';
@@ -216,8 +216,10 @@ function emSection(state) {
   return disclosure('engine.em', '🚨 Your Emergency Management Office', `<h4 class="sub">Your area's hazards</h4><p>${haz}</p><h4 class="sub">Readiness</h4>${meters}<h4 class="sub">Preparedness — ${Math.max(0, points - used)} of ${points} program actions left this year</h4><div class="toggle-row">${actions}</div><h4 class="sub">Mitigation</h4><div class="toggle-row">${grants || '<span class="fine">No mitigation projects for these hazards.</span>'}</div>${projects ? `<ul class="history">${projects}</ul>` : ''}${claims ? `<h4 class="sub">Recovery claims</h4><ul class="history">${claims}</ul>${button('📁 Push the recovery paperwork', 'emergencyMgmt.paperwork', { variant: 'small', disabled: Boolean(state.yearly['emergencyMgmt.paperwork']), hint: 'Keeps the auditors away' })}` : ''}${acts ? `<h4 class="sub">Activations</h4><ul class="history">${acts}</ul>` : ''}<p class="fine">Readiness slips every year you don't work at it, and it decides how the next disaster goes. Finished mitigation projects make the next disaster of that kind less severe where you live.</p>`, { count: r ? `readiness ${Math.round(Object.values(r).reduce((a, b) => a + b, 0) / 5)}%` : null });
 }
 
-/** Every engine that applies to the job you hold. */
+/** Every engine that applies to the job you hold: the first one open, the rest folded. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [emSection(state), diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state), incidentsSection(state)].join('');
+  const parts = [emSection(state), diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state)].filter(Boolean);
+  if (parts.length) parts[0] = parts[0].replace('<details class="disclosure"', '<details class="disclosure" open');
+  return parts.join('') + incidentsSection(state);
 }

@@ -98,7 +98,7 @@ function jobMarketCard(state) {
       c ? ['Open claim', `${esc(BASES[c.basis])} vs. ${esc(c.employer)} — ${stage}${c.retaliated ? ' · retaliation' : ''}`] : null,
       claims?.history.length ? ['Past claims', claims.history.map((h) => `${h.age}: ${h.result}${h.net ? ` (${money(h.net)})` : ''}`).join(' · ')] : null,
     ])}
-    ${job ? engineSections(state) : ''}${job ? intlSection(state) : ''}${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
+    ${job ? `<div class="toggle-row">${button('🔎 Look for a new employer', 'jobMarket.search', { variant: 'small', disabled: Boolean(state.yearly['jobMarket.search']), hint: RANK_SECTORS.includes(job.sector) ? 'Lateral move: you start at the working rank with pay steps for your experience' : 'Same career, different company: up to 3 offers' })}${seniorMoveButtons(state, job)}</div>
     <h4 class="sub">Work arrangement</h4><div class="toggle-row">${modes}</div>` : ''}
     <p class="fine">Strong performers get calls from recruiters. A competing offer can win you a raise where you are — but your boss will remember. Remote work means no commute, but you're out of sight when promotions come up.</p>`, { icon: '📨' });
 }
@@ -389,7 +389,7 @@ export function careerView(state, ui = {}) {
   }).join('');
   const ownJob = posts.length ? card('Your Job: Your Own Company', `${postLines}<p class="fine">Set your focus and make the year's big moves from the Business tab.</p>`, { icon: '👔', accent: 'cyan' }) : '';
   const current = job
-    ? currentJob(state) + jobLicensesCard(state) + organizationCard(state, job) + managementConsole(job) + ownJob
+    ? currentJob(state) + managementConsole(job) + ownJob
     : ownJob || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   // Jobs and businesses you ran, one timeline.
   const stints = [
@@ -403,7 +403,10 @@ export function careerView(state, ui = {}) {
   // No job: the job board comes first, before everything else on this screen.
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰', open: !job });
   const fastPaths = directEntryCard(state);
-  return `${current}${unionCards(state)}${job ? '' : `${board}${fastPaths}`}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${equipmentCard(state, 'job')}${clinicalCard(state)}${sesCard(state)}${gearCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  // Your job, its own dedicated cards, then the year's work; reference material folded after.
+  const systems = job ? `${engineSections(state)}${intlSection(state)}` : '';
+  const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
+  return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** One past job in the history list. */

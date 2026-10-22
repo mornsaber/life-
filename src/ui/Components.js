@@ -49,7 +49,9 @@ const foldKey = (title) => `card.${String(title).replace(/<[^>]+>/g, '').toLower
  * short line shown in the header, useful when it's folded.
  */
 /** Catalogs and secondary panels start folded (one tap to open; the game remembers). */
-const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses for Sale', 'Disaster Response Teams', 'Executive Search', 'Businesses in Your Field', 'Risky Business', 'Volunteering & Mentoring', 'Licenses for Your Job', 'Convert', 'Find a Congregation', 'Career History', 'Political History', 'Laws in Force', 'Legislatures', 'Veterans Posts', 'Selective Service', 'Government Climate', 'Department Fleet & Facilities', 'Labor in Texas', 'Diplomas']);
+const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses for Sale', 'Disaster Response Teams', 'Executive Search', 'Businesses in Your Field', 'Risky Business', 'Volunteering & Mentoring', 'Licenses for Your Job', 'Convert', 'Find a Congregation', 'Career History', 'Political History', 'Laws in Force', 'Legislatures', 'Veterans Posts', 'Selective Service', 'Government Climate', 'Department Fleet & Facilities', 'Labor in Texas', 'Diplomas',
+  // Career tab reference cards: the year's decisions live in "This Year at Work".
+  'Organization', 'Your Work Gear', 'Job Market', 'Former Employers']);
 
 export function card(title, body, { icon = '', accent = '', extra = '', className = '', open = !FOLDED_BY_DEFAULT.has(String(title).replace(/^Labor in .+/, 'Labor in Texas')), summary = '', fold = true } = {}) {
   const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${icon}</span>` : ''}${title}</h3>${summary ? `<span class="card-sum">${summary}</span>` : ''}${extra}`;
