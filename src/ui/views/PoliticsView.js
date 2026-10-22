@@ -16,6 +16,10 @@ import { ratingLabel } from '../../modules/career/PayGrades.js';
 import { legislatureCards } from './LegislatureView.js';
 import { officeOrderFor } from '../../modules/politics/NationalOffices.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
+import { ISSUES, ISSUE_IDS, platformView, ideology, ideologyLabel, credibility, recordOn } from '../../modules/politics/Platform.js';
+import { electorateOf, generalShare, primaryShare, nextElectionYear, FILING_WINDOW, outsideCalendar, opponentLabel, isPartisan } from '../../modules/politics/Elections.js';
+import { partyName } from '../../modules/politics/Parties.js';
+import { currentYear } from '../../core/State.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -62,21 +66,7 @@ export function politicsView(state) {
         ${kv([['Term', `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
         <div class="row-end">${button('👋 Resign', 'politics.resign', { variant: 'danger small' })}</div>`, { icon: '🏛️', accent: 'yellow' })
     : '';
-  const campaign = c
-    ? card(`Campaign: ${OFFICES[c.officeId].name}`, `
-        ${meter(Math.min(100, (c.funds / OFFICES[c.officeId].cost) * 100), { label: `💰 War chest ${money(c.funds)} of ~${money(OFFICES[c.officeId].cost)}`, suffix: '%' })}
-        ${meter(Math.round(voteShare(state, c.officeId, c) * 100), { label: '📊 Projected vote share', tone: voteShare(state, c.officeId, c) > 0.5 ? 'good' : 'mid' })}
-        ${c.vsIncumbent ? `<p class="why">You're challenging an entrenched incumbent.</p>` : ''}
-        <div class="abilities">${Object.entries(ENDORSEMENTS).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${e.name} ✓`, 'good') : button(`${e.icon} Seek ${e.name}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
-        <div class="action-grid">
-          ${button('📞 Fundraise', 'politics.fundraise', { hint: 'Twice a year' })}
-          ${button('💵 Self-fund (25% of cash)', 'politics.selfFund')}
-          ${button('🚪 Canvass', 'politics.canvass', { hint: '+Name recognition' })}
-          ${button('🎤 Debate', 'politics.debate', { hint: 'Once' })}
-          ${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}
-        </div>
-        <p class="fine">The election is held when you next age up. Scandal drag: −${Math.round(scandalPenalty(state) * 100)} pts.</p>`, { icon: '🗳️', accent: 'green' })
-    : '';
+  const campaign = c ? campaignCard(state, c) : '';
   const openIds = new Set();
   const rowsFor = (id) => {
     const of = OFFICES[id];
@@ -84,11 +74,15 @@ export function politicsView(state) {
     const check = appointed ? appointmentEligibility(state, id) : runEligibility(state, id);
     if (check.ok) openIds.add(id);
     const est = check.ok && !appointed ? Math.round(voteShare(state, id, { funds: of.cost * 0.4, endorsements: [] }) * 100) : null;
+    // The calendar: when the next election is, and whether filing is open.
+    const legacy = appointed || outsideCalendar(state, id);
+    const year = legacy ? null : nextElectionYear(state, id);
+    const filing = legacy || year - currentYear(state) <= FILING_WINDOW(id);
     return `<li class="job-row ${check.ok ? '' : 'locked'}">
       <span class="job-icon">${of.icon}</span>
       <div class="job-info"><b>${of.name}</b><small>${money(of.salary)}/yr · ${appointed ? `${of.term}-yr contract · hired by ${of.appointedBy}` : `${of.term}-yr term${of.termLimit ? `, ${of.termLimit}-term limit` : ''} · campaign ~${money(of.cost)}`} · ${of.fullTime ? 'full-time' : 'part-time'}${of.judicial ? ' · usually filled by appointment' : ''}</small>
-        ${est !== null ? `<small class="req">Projected ≈${est}% with a typical campaign</small>` : ''}</div>
-      ${appointed ? button(check.ok ? 'Apply' : '🔒', 'politics.applyAppointed', { arg: id, variant: 'small', disabled: !check.ok, title: check.reason ?? '' }) : button(check.ok ? 'Run' : '🔒', 'politics.run', { arg: id, variant: 'small', disabled: !check.ok || Boolean(c), title: check.reason ?? '' })}
+        ${est !== null ? `<small class="req">Projected ≈${est}% with a typical campaign${year ? ` · election ${year}${filing ? ' · filing open' : ` · filing opens ${year - FILING_WINDOW(id)}`}` : ''}</small>` : ''}</div>
+      ${appointed ? button(check.ok ? 'Apply' : '🔒', 'politics.applyAppointed', { arg: id, variant: 'small', disabled: !check.ok, title: check.reason ?? '' }) : button(check.ok ? (filing ? 'Run' : 'Not yet') : '🔒', 'politics.run', { arg: id, variant: 'small', disabled: !check.ok || !filing || Boolean(c), title: check.reason ?? (filing ? '' : `Filing opens ${year - FILING_WINDOW(id)}`) })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
   };
@@ -97,13 +91,15 @@ export function politicsView(state) {
   const openRows = allRows.filter(([id]) => openIds.has(id)).map(([, r]) => r).join('');
   const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
+  const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
-    ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
+    ${platformCard(state)}
+    ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
     ${partyCard(state)}
     ${governmentCard(state)}
     ${legislatureCards(state)}
-    ${card('Political History', history, { icon: '🗂️' })}`;
+    ${card('Political History', `${history}${results}`, { icon: '🗂️' })}`;
 }
 
 /** The agency heads your office appoints, and who holds each post now. */
@@ -142,4 +138,68 @@ function officeCard(state) {
     ${meter(h.morale ?? 60, { label: '😊 Staff morale' })}
     <p class="fine">How well the office runs moves your approval every year. ${left > 0 ? `${left} management action${left > 1 ? 's' : ''} left this year.` : 'No management actions left this year.'}</p>
     ${body}`, { icon: '🏛️', accent: 'yellow' });
+}
+
+/** Where you stand: your platform on each issue, your record, your credibility — and, when you're running or serving, your voters. */
+function platformCard(state) {
+  const p = state.politics;
+  const pf = platformView(state);
+  const officeId = p.campaign?.officeId ?? p.office?.id ?? null;
+  const e = officeId && OFFICES[officeId] && !OFFICES[officeId].appointedBy ? electorateOf(state, officeId) : null;
+  const rows = ISSUE_IDS.map((id) => {
+    const i = ISSUES[id];
+    const v = pf[id];
+    const rec = recordOn(state, id);
+    const voters = e ? Math.round(e.median[id]) : null;
+    const gap = voters === null ? null : Math.abs(v - e.median[id]);
+    return `<li class="report-row"><div>${i.icon} <b>${esc(i.name)}</b> <small class="muted">"${esc(i.stances[v + 2])}"</small>
+        ${voters !== null ? `<br><small class="${gap >= 1.5 ? 'neg' : gap <= 0.5 ? 'pos' : ''}">Your voters: "${esc(i.stances[voters + 2])}"</small>` : ''}
+        ${rec !== null ? `<br><small class="${Math.sign(rec) && Math.sign(v) && Math.sign(rec) !== Math.sign(v) ? 'neg' : 'muted'}">Your record: ${rec < -0.3 ? 'votes with the left' : rec > 0.3 ? 'votes with the right' : 'mixed'}</small>` : ''}</div>
+      <div class="toggle-row">${button('◀ Left', 'politics.stance', { arg: `${id}|${v - 1}`, variant: 'tiny', disabled: v <= -2 })}${button('Right ▶', 'politics.stance', { arg: `${id}|${v + 1}`, variant: 'tiny', disabled: v >= 2 })}</div></li>`;
+  }).join('');
+  const x = ideology(state);
+  return card('Where You Stand', `
+    <p class="muted">${esc(ideologyLabel(x))}${state.civic?.party ? ` · ${esc(partyName(state, state.civic.party.bloc))}` : ' · no party'}${e ? ` · your electorate: ${esc(e.label)}` : ''}</p>
+    ${meter(credibility(state), { label: '🤝 Credibility', tone: credibility(state) >= 60 ? 'good' : 'mid' })}
+    <ul class="history">${rows}</ul>
+    <p class="fine">Primary voters want you on their side of every issue; general-election voters want you near them. Change one stance a year; a big swing, or any change in the last year of a campaign, is a flip-flop. Votes against your own platform cost credibility.${(p.flipflops ?? []).length ? ` Flip-flops on record: ${p.flipflops.length}.` : ''}</p>`, { icon: '🧭' });
+}
+
+/** A campaign: the race, the polls, the other candidate, and the work. */
+function campaignCard(state, c) {
+  const office = OFFICES[c.officeId];
+  if (c.legacy) {
+    return card(`Campaign: ${office.name}`, `
+      ${meter(Math.min(100, (c.funds / office.cost) * 100), { label: `💰 War chest ${money(c.funds)} of ~${money(office.cost)}`, suffix: '%' })}
+      ${meter(Math.round(voteShare(state, c.officeId, c) * 100), { label: '📊 Projected support', tone: voteShare(state, c.officeId, c) > 0.5 ? 'good' : 'mid' })}
+      <div class="abilities">${Object.entries(ENDORSEMENTS).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${e.name} ✓`, 'good') : button(`${e.icon} Seek ${e.name}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
+      <div class="action-grid">${button('📞 Fundraise', 'politics.fundraise', { hint: 'Twice a year' })}${button('🚪 Canvass', 'politics.canvass')}${button('🎤 Debate', 'politics.debate')}${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}</div>
+      <p class="fine">Decided when you next age up.</p>`, { icon: '🗳️', accent: 'green' });
+  }
+  const primary = c.stage === 'primary';
+  const g = generalShare(state, c.officeId, c, { incumbent: c.incumbent });
+  const share = primary ? primaryShare(state, c.officeId, c) : g.share;
+  const opp = c.opponent;
+  const years = c.electionYear - currentYear(state);
+  const polls = (c.polls ?? []).map((x) => `${x.you}%`).join(' → ');
+  const adCost = Math.round(office.cost * 0.1);
+  return card(`${c.incumbent ? 'Re-election' : 'Campaign'}: ${office.name}`, `
+    <p class="muted">${primary ? `${isPartisan(c.officeId) ? 'Primary' : 'Election'} first` : 'General election'} · ${years > 0 ? `election in ${c.electionYear} (${years} yr)` : 'election this year — at your next birthday'}${polls ? ` · polls: ${polls}` : ''}</p>
+    ${meter(Math.round(share * 100), { label: primary ? '📊 Primary projection' : '📊 Projected vote share', tone: share > 0.5 ? 'good' : 'mid' })}
+    ${meter(Math.min(100, (c.funds / office.cost) * 100), { label: `💰 War chest ${money(c.funds)} (${opp ? `${esc(opp.name)}: ${money(opp.funds)}` : `~${money(office.cost)} typical`})`, suffix: '%' })}
+    ${opp ? `<p><b>${primary ? 'Waiting in the general' : 'Your opponent'}:</b> ${esc(opponentLabel(state, opp))}, ${esc(opp.background)} · quality ${opp.quality}${opp.scandal ? ` · <span class="neg">${opp.scandal} scandal${opp.scandal > 1 ? 's' : ''}</span>` : ''}${c.oppoDone ? ` · file: ${esc(opp.weakness)}` : ''}</p>` : ''}
+    ${primary && c.rivals.length ? `<p><b>Primary field:</b> ${c.rivals.map((r) => `${esc(r.name)} (quality ${r.quality})`).join(', ')}. Primary voters want a candidate firmly on their side.</p>` : ''}
+    ${primary ? '' : `<p class="fine">${g.parts.map((x) => `${esc(x.label)} <span class="${x.v >= 0 ? 'pos' : 'neg'}">${x.v >= 0 ? '+' : ''}${Math.round(x.v * 1000) / 10}</span>`).join(' · ')}</p>`}
+    <div class="abilities">${Object.entries(ENDORSEMENTS).map(([id, e]) => c.endorsements.includes(id) ? chip(`${e.icon} ${e.name} ✓`, 'good') : button(`${e.icon} Seek ${e.name}`, 'politics.endorse', { arg: id, variant: 'tiny' })).join(' ')}</div>
+    <div class="action-grid">
+      ${button('📞 Fundraise', 'politics.fundraise', { hint: 'Twice a year' })}
+      ${button('💵 Self-fund (25% of cash)', 'politics.selfFund')}
+      ${button('📺 Run an ad', 'politics.ad', { arg: 'positive', hint: money(adCost), disabled: c.funds < adCost })}
+      ${button('🗡️ Attack ad', 'politics.ad', { arg: 'attack', hint: money(adCost), disabled: c.funds < adCost })}
+      ${button('🚪 Canvass', 'politics.canvass', { hint: '+Name recognition' })}
+      ${button('🔎 Opposition research', 'politics.oppo', { hint: money(office.cost * 0.05), disabled: c.oppoDone })}
+      ${button('🎤 Debate', 'politics.debate', { hint: 'Once a year' })}
+      ${button('🏳️ Drop out', 'politics.dropOut', { variant: 'danger' })}
+    </div>
+    ${disclosure('politics.townhall', '🏟️ Town halls: make the race about an issue', `<div class="toggle-row">${ISSUE_IDS.map((id) => button(`${ISSUES[id].icon} ${ISSUES[id].name}`, 'politics.townHall', { arg: id, variant: 'tiny' })).join('')}</div><p class="fine">Pick one where you're closer to the voters than ${esc(opp?.name ?? 'your opponent')} is.</p>`)}`, { icon: '🗳️', accent: 'green' });
 }

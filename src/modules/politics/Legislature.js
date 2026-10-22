@@ -22,7 +22,7 @@
  * bill = { id, lawId, direction, value, sponsor, stage, yes, no, push, outcome }
  */
 import { Random, clamp } from '../../core/Random.js';
-import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
+import { randomName, yearlyCount, bumpYearly, currentYear } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { OFFICES } from './Offices.js';
@@ -30,6 +30,8 @@ import { ballotPrompt, ballotSwing, ballotResult, dominantParty } from './Partie
 import { LEGISLATURES } from './NationalOffices.js';
 import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describeValue, ensureLaws } from './Laws.js';
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
+import { recordVote, LAW_ISSUE } from './Platform.js';
+import { voteReaction, nextElectionYear } from './Elections.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -441,6 +443,14 @@ function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
   return finish(ctx, bill, 'law', 'signed into law');
 }
 
+/** Your vote (or signature) on the record: your platform's credibility, and your voters' reaction. */
+function onTheRecord(state, bill, yes) {
+  const side = (favorsLabor(bill.lawId, bill.direction) ? -1 : 1) * (yes ? 1 : -1);
+  recordVote(state, bill.lawId, side);
+  const o = state.politics.office;
+  if (o) o.approval = Math.round(clamp(o.approval + voteReaction(state, o.id, LAW_ISSUE[bill.lawId], side), 0, 100));
+}
+
 export const billTitle = (bill) => {
   const law = LAWS[bill.lawId];
   if (law.kind === 'flag') return `${bill.value ? 'Enact' : 'Repeal'} ${law.name.toLowerCase()}`;
@@ -582,10 +592,19 @@ function executiveYear(ctx, body, rng) {
     else if (rng.chance(ex.approval < 35 ? 0.25 : 0.05)) change(majority, 'the party chose a new leader');
     return;
   }
-  const office = OFFICES[execOfficeOf(body)];
-  ex.nextElection = (ex.nextElection ?? rng.int(1, office?.term ?? 4)) - 1;
-  if (ex.nextElection > 0) return;
-  ex.nextElection = office?.term ?? 4;
+  const officeId = execOfficeOf(body);
+  const office = OFFICES[officeId];
+  if (!d.country && office) {
+    // On the calendar: presidents every four years, governors mostly in the midterms, mayors in odd years.
+    const y = currentYear(state);
+    ex.nextElection = nextElectionYear(state, officeId, y) - y;
+    if (ex.nextElection > 0) return;
+    ex.nextElection = office.term;
+  } else {
+    ex.nextElection = (ex.nextElection ?? rng.int(1, office?.term ?? 4)) - 1;
+    if (ex.nextElection > 0) return;
+    ex.nextElection = office?.term ?? 4;
+  }
   const limited = office?.termLimit && ex.terms >= office.termLimit;
   const hold = rng.chance(clamp(0.5 + (ex.approval - 50) / 90 + (limited ? -0.04 : 0.06), 0.12, 0.88));
   if (hold && !limited) { ex.terms += 1; return; }
@@ -674,7 +693,11 @@ export const Legislature = {
     const national = chambersFor('federal', whereFor(state, 'federal'))[0];
     for (const body of bodiesHere(state)) {
       if (BODY_DEFS[body.kind]?.appointed) { body.nextElection = null; appointmentsYear(ctx, body, rng); continue; }
-      body.nextElection = (body.nextElection ?? electionCycle(BODY_DEFS[body.kind])) - 1;
+      if (!BODY_DEFS[body.kind]?.country) {
+        // American legislatures vote on the calendar: Congress and the statehouses in even years, city councils in odd.
+        const due = (currentYear(state) - (body.kind === 'council' ? 1 : 0)) % 2 === 0;
+        body.nextElection = due ? 0 : 1;
+      } else body.nextElection = (body.nextElection ?? electionCycle(BODY_DEFS[body.kind])) - 1;
       if (body.nextElection <= 0) electionYear(ctx, body, rng);
       // Campaign season for the national election: how will you vote?
       else if (body.nextElection === 1 && body.id === bodyId(national, whereFor(state, 'federal'))) ballotPrompt(ctx, body);
@@ -938,6 +961,7 @@ export const Legislature = {
       const withCaucus = yes === ((seat?.caucus === 'labor') === favorsLabor(bill.lawId, bill.direction));
       if (state.politics.office) state.politics.office.approval = Math.round(clamp(state.politics.office.approval + (withCaucus ? 1 : -1), 0, 100));
       if (yes && favorsLabor(bill.lawId, bill.direction)) state.politics.laborVotes = (state.politics.laborVotes ?? 0) + 1;
+      onTheRecord(state, bill, yes);
       // Your vote breaks the tie; the bill then goes on to the other chamber and the executive.
       const out = runBill(ctx, bill, legRng(state), { from: bill.chamber ?? 0, myVote: yes });
       if (out) ctx.log(`Your vote decided it: ${billTitle(bill)} ${out}.`, '🗳️', 'milestone');
@@ -959,12 +983,14 @@ export const Legislature = {
       if (o) o.approval = Math.round(clamp(o.approval + (withCaucus ? 1 : -1), 0, 100));
       if (!withCaucus) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + 2);
       if (yes && favorsLabor(bill.lawId, bill.direction)) state.politics.laborVotes = (state.politics.laborVotes ?? 0) + 1;
+      onTheRecord(state, bill, yes);
       seat.record = [...seat.record.slice(-19), { age: state.character.age, text: `Voted ${yes ? 'yes' : 'no'}${withCaucus ? '' : ' (broke with your caucus)'}: ${billTitle(bill)}` }];
     },
     sign(ctx, data, optionId) {
       const { state } = ctx;
       const bill = Object.values(state.legislature.bodies).flatMap((b) => b.bills).find((b) => b.id === data.id);
       if (!bill || bill.stage !== 'desk') return;
+      onTheRecord(state, bill, optionId === 'sign');
       if (optionId === 'sign') {
         finish(ctx, bill, 'law', 'signed into law by you');
         if (state.politics.office) state.politics.office.approval = Math.min(100, state.politics.office.approval + 1);

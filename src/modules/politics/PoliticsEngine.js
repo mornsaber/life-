@@ -16,7 +16,11 @@ import { stateOf, regionOf } from '../life/Regions.js';
 import { promotionStatus } from '../career/CareerEngine.js';
 import { OFFICES } from './Offices.js';
 import { SEAT_OFFICES } from './Legislature.js';
-import { voteShare, CampaignActions, CampaignResolvers, appointmentEligibility } from './Campaigns.js';
+import { voteShare, appointmentEligibility } from './Campaigns.js';
+import { CampaignTrail, campaignYear } from './CampaignTrail.js';
+import { newCampaign, outsideCalendar, electorateOf, distance } from './Elections.js';
+import { platformOf, platformView, platformYear, recordStance, ISSUES, partyLine } from './Platform.js';
+import { currentYear } from '../../core/State.js';
 import { runsGovernment, executiveYear, headYear, offersYear, ticketYear, CABINET } from './Executive.js';
 import { COUNTRIES } from '../world/Countries.js';
 
@@ -58,87 +62,76 @@ function leaveOffice(ctx, reason, { keepSeat = false } = {}) {
   if (!keepSeat) ctx.emit('politics:officeChanged', { officeId: p.office?.id ?? null });
 }
 
-function resolveElection(ctx) {
-  const { state, rng } = ctx;
-  const p = state.politics;
-  const c = p.campaign;
-  p.campaign = null;
-  const office = OFFICES[c.officeId];
-  // Higher offices have a contested primary before the general election.
-  if (office.level >= 3) {
-    const primary = voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08);
-    if (primary <= 0.5) {
-      p.recognition = Math.min(100, p.recognition + 3);
-      ctx.log(state.character.countryId && state.character.countryId !== 'US' ? `🗳️ Your party didn't select you as its candidate for ${office.name}.` : `🗳️ You lost the primary for ${office.name}.`, '📉', 'bad');
-      ctx.stat('happiness', -6);
-      p.everRan = true;
-      return;
-    }
-    ctx.log(state.character.countryId && state.character.countryId !== 'US' ? `🗳️ Your party selected you as its candidate for ${office.name}!` : `🗳️ You won the primary for ${office.name}!`, '🗳️', 'good');
-  }
-  const share = clamp(voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08), 0.02, 0.9);
-  const pct = Math.round(share * 1000) / 10;
-  if (share > 0.5) {
-    ctx.log(`🗳️ Election night: you won ${office.name} with ${pct}% of the vote!`, '🎉', 'good');
-    takeOffice(ctx, c.officeId);
-  } else {
-    p.recognition = Math.min(100, p.recognition + 4);
-    ctx.log(`🗳️ Election night: you lost the race for ${office.name} (${pct}%).`, '📉', 'bad');
-    ctx.stat('happiness', -8);
-  }
-  p.everRan = true;
-}
-
+/**
+ * The decisions of an office, each on a real issue. An option's `side` is where it puts you:
+ * -1 the left's side, +1 the right's, 'district' however your voters lean, 'platform' your own
+ * stance, 'party' your party's line. Siding with your voters is popular; going against your own
+ * platform costs credibility; donors fill your war chest.
+ */
 const DECISIONS = {
   legislative: {
     title: 'Floor Vote',
     text: 'A contentious bill is up for a vote: {issue}.',
-    issues: ['a minimum-wage increase', 'police reform', 'a gas tax for road repair', 'school vouchers', 'a public-sector pay raise', 'a data-privacy law'],
+    issues: [
+      { text: 'a minimum-wage increase', issue: 'labor', yes: -1 }, { text: 'police reform', issue: 'crime', yes: -1 }, { text: 'a gas tax for road repair', issue: 'taxes', yes: -1 },
+      { text: 'school vouchers', issue: 'services', yes: 1 }, { text: 'a public-sector pay raise', issue: 'services', yes: -1 }, { text: 'a permitless-carry bill', issue: 'guns', yes: 1 },
+      { text: 'a clean-energy mandate', issue: 'environment', yes: -1 }, { text: 'Medicaid expansion', issue: 'healthcare', yes: -1 }, { text: 'a sanctuary-policy ban', issue: 'immigration', yes: 1 },
+    ],
     options: [
-      { id: 'popular', label: '📊 Vote with the polls', approval: 5, funds: 0 },
-      { id: 'principle', label: '🧭 Vote your conscience', approval: -2, recognition: 4 },
-      { id: 'donors', label: '💼 Vote with your donors', approval: -4, funds: 0.15 },
-      { id: 'labor', label: '✊ Vote with organized labor', approval: 1, labor: 1 },
+      { id: 'district', label: '📊 Vote the way your district leans', side: 'district' },
+      { id: 'platform', label: '🧭 Vote your platform', side: 'platform', recognition: 2 },
+      { id: 'party', label: '🏛️ Vote the party line', side: 'party', partyLoyal: true },
+      { id: 'donors', label: '💼 Vote with your donors', side: 1, warChest: 0.12 },
     ],
   },
   executive: {
     title: 'Executive Decision',
     text: 'Your administration must decide on {issue}.',
-    issues: ['a budget shortfall', 'a prison overcrowding crisis', 'a teachers\' strike', 'a corporate relocation incentive package', 'emergency housing for the homeless'],
+    issues: [
+      { text: 'a budget shortfall: raise fees or cut programs', issue: 'taxes', yes: -1 }, { text: 'a prison overcrowding crisis: build or release', issue: 'crime', yes: 1 },
+      { text: 'a teachers\' strike', issue: 'labor', yes: -1 }, { text: 'a corporate relocation incentive package', issue: 'taxes', yes: 1 }, { text: 'emergency housing for the homeless', issue: 'services', yes: -1 },
+    ],
     options: [
-      { id: 'bold', label: '⚡ Bold action', approval: 0, gamble: 14 },
-      { id: 'compromise', label: '🤝 Broker a compromise', approval: 4 },
-      { id: 'delay', label: '🗄️ Commission a study', approval: -3 },
+      { id: 'district', label: '📊 Do what the voters want', side: 'district' },
+      { id: 'platform', label: '🧭 Do what you ran on', side: 'platform', recognition: 2 },
+      { id: 'compromise', label: '🤝 Broker a compromise', side: 0, approval: 2 },
+      { id: 'bold', label: '⚡ Bold action', side: 'platform', gamble: 12 },
     ],
   },
   prosecutor: {
     title: 'Charging Decision',
     text: 'As District Attorney you have to decide on {issue}.',
-    issues: ['charging a police officer who shot an unarmed man', 'seeking the death penalty in a triple homicide', 'ending cash bail for misdemeanors', 'a plea deal for a well-connected developer', 'reopening a 20-year-old conviction with new DNA evidence'],
+    issues: [
+      { text: 'charging a police officer who shot an unarmed man', issue: 'crime', yes: -1 }, { text: 'seeking the death penalty in a triple homicide', issue: 'crime', yes: 1 },
+      { text: 'ending cash bail for misdemeanors', issue: 'crime', yes: -1 }, { text: 'a plea deal for a well-connected developer', issue: 'crime', yes: -1 }, { text: 'reopening a 20-year-old conviction with new DNA evidence', issue: 'crime', yes: -1 },
+    ],
     options: [
-      { id: 'law', label: '📖 Follow the evidence wherever it leads', approval: 1, recognition: 4 },
-      { id: 'tough', label: '🔨 Take the tough-on-crime line', approval: 3, gamble: 8 },
-      { id: 'reform', label: '⚖️ Take the reform line', approval: -1, gamble: 10 },
-      { id: 'donors', label: '💼 Do what your donors want', approval: -4, funds: 0.15 },
+      { id: 'law', label: '📖 Follow the evidence wherever it leads', side: 0, approval: 1, recognition: 4 },
+      { id: 'tough', label: '🔨 Take the tough-on-crime line', side: 1 },
+      { id: 'reform', label: '⚖️ Take the reform line', side: -1 },
+      { id: 'donors', label: '💼 Do what your donors want', side: 0, approval: -4, warChest: 0.12 },
     ],
   },
   sheriff: {
     title: 'Sheriff\'s Decision',
     text: 'Your office has to decide on {issue}.',
-    issues: ['honoring federal immigration detainers at the jail', 'jail overcrowding and early releases', 'a deputy caught on video beating a handcuffed man', 'buying an armored vehicle with a federal grant', 'enforcing a state gun law you disagree with'],
+    issues: [
+      { text: 'honoring federal immigration detainers at the jail', issue: 'immigration', yes: 1 }, { text: 'jail overcrowding and early releases', issue: 'crime', yes: -1 },
+      { text: 'a deputy caught on video beating a handcuffed man', issue: 'crime', yes: -1 }, { text: 'buying an armored vehicle with a federal grant', issue: 'crime', yes: 1 }, { text: 'enforcing a state gun law you disagree with', issue: 'guns', yes: -1 },
+    ],
     options: [
-      { id: 'popular', label: '📊 Go with the county\'s mood', approval: 5 },
-      { id: 'principle', label: '🧭 Do what you think is right', approval: -2, recognition: 4 },
-      { id: 'bold', label: '⚡ Make a bold public stand', approval: 0, gamble: 14 },
+      { id: 'district', label: '📊 Go with the county\'s mood', side: 'district' },
+      { id: 'platform', label: '🧭 Do what you think is right', side: 'platform', recognition: 4 },
+      { id: 'bold', label: '⚡ Make a bold public stand', side: 'platform', gamble: 14 },
     ],
   },
   judicial: {
     title: 'High-Profile Ruling',
     text: 'A case on {issue} has the whole state watching.',
-    issues: ['police use of force', 'a corporate fraud', 'a death-penalty appeal', 'a contested election result'],
+    issues: [{ text: 'police use of force', issue: 'crime', yes: 0 }, { text: 'a corporate fraud', issue: 'labor', yes: 0 }, { text: 'a death-penalty appeal', issue: 'crime', yes: 0 }, { text: 'a contested election result', issue: 'services', yes: 0 }],
     options: [
-      { id: 'law', label: '📖 Rule strictly on the law', approval: 2, recognition: 3 },
-      { id: 'popular', label: '📣 Rule with public opinion', approval: 5 },
+      { id: 'law', label: '📖 Rule strictly on the law', side: 0, approval: 2, recognition: 3 },
+      { id: 'popular', label: '📣 Rule with public opinion', side: 'district', approval: 2 },
     ],
   },
 };
@@ -147,14 +140,18 @@ function officeDecision(ctx) {
   const { state, rng } = ctx;
   const office = OFFICES[state.politics.office.id];
   const kind = office.kind ?? (office.judicial ? 'judicial' : office.executive || state.politics.office.id === 'mayor' ? 'executive' : 'legislative');
-  const d = DECISIONS[kind];
+  const d = DECISIONS[kind] ?? DECISIONS.legislative;
+  const item = rng.pick(d.issues);
+  const e = electorateOf(state, state.politics.office.id);
+  const lean = e.median[item.issue];
+  const mine = platformOf(state)[item.issue];
   ctx.prompt({
     type: 'politics.decision',
     icon: office.icon,
     title: d.title,
-    text: `${office.name} · Approval ${state.politics.office.approval}%\n${d.text.replace('{issue}', rng.pick(d.issues))}`,
+    text: `${office.name} · Approval ${state.politics.office.approval}%\n${d.text.replace('{issue}', item.text)}\n${ISSUES[item.issue].icon} Your voters: "${ISSUES[item.issue].stances[Math.round(lean) + 2]}" · You: "${ISSUES[item.issue].stances[mine + 2]}"`,
     options: d.options.map((o) => ({ id: o.id, label: o.label })),
-    data: { kind },
+    data: { kind, issue: item.issue, yes: item.yes },
   });
 }
 
@@ -237,7 +234,9 @@ export const PoliticsEngine = {
   onAgeUp(ctx) {
     const { state, rng } = ctx;
     const p = state.politics;
-    if (p.campaign && p.campaign.startAge < state.character.age) resolveElection(ctx);
+    platformYear(state);
+    // On the trail, or election night (CampaignTrail).
+    if (p.campaign) campaignYear(ctx);
 
     const o = p.office;
     if (o) {
@@ -253,7 +252,9 @@ export const PoliticsEngine = {
       if (runsGovernment(o.id)) executiveYear(ctx);
       else if (office.kind === 'head') headYear(ctx);
       else {
-        o.approval = Math.round(clamp(o.approval + (55 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
+        // Approval drifts toward how well you fit your voters: a centrist in a swing seat sits higher.
+        const fit = distance(platformView(state), electorateOf(state, o.id));
+        o.approval = Math.round(clamp(o.approval + (64 - fit * 9 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
         if (rng.chance(0.6)) { if (!SEAT_OFFICES[o.id] && office.kind !== 'head') officeDecision(ctx); }
       }
       if (rng.chance(0.15)) bribeOffer(ctx);
@@ -270,9 +271,27 @@ export const PoliticsEngine = {
           ],
         });
       }
-      if (o.termYearsLeft <= 0) {
-        const served = p.history.filter((h) => h.officeId === o.id).reduce((s, h) => s + h.terms, 0) + o.terms;
-        if (office.termLimit && served >= office.termLimit) leaveOffice(ctx, 'Term-limited');
+      // Elected on the calendar, you decide a year before your term ends, so there's a year to campaign;
+      // a re-election race under way keeps you in office until the count.
+      const served = p.history.filter((h) => h.officeId === o.id).reduce((s, h) => s + h.terms, 0) + o.terms;
+      const limited = office.termLimit && served >= office.termLimit;
+      const onCalendar = !office.appointedBy && !outsideCalendar(state, o.id);
+      const reelectionPrompt = () => ctx.prompt({
+        type: 'politics.reelection',
+        icon: '🗳️',
+        title: onCalendar ? 'Your Term Ends Next Year' : 'Your Term Is Up',
+        text: `Approval ${o.approval}%. ${office.termLimit ? `Term ${served} of ${office.termLimit}.` : ''} Run again?`,
+        options: [
+          { id: 'run', label: '🗳️ Run for re-election', hint: `≈${Math.round(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) * 100)}% projected` },
+          { id: 'retire', label: onCalendar ? '👋 Don\'t seek re-election' : '👋 Retire from office' },
+        ],
+      });
+      if (p.campaign?.officeId === o.id) { /* the campaign decides */ }
+      else if (onCalendar && o.termYearsLeft === 1 && !limited && !o.retiring && !o.asked) {
+        o.asked = true;
+        reelectionPrompt();
+      } else if (o.termYearsLeft <= 0) {
+        if (limited) leaveOffice(ctx, 'Term-limited');
         else if (office.appointedBy) {
           // Appointed: the council renews your contract if things are going well.
           if (o.approval >= 45) {
@@ -280,18 +299,8 @@ export const PoliticsEngine = {
             o.termYearsLeft = office.term;
             ctx.log(`${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} renewed your contract as ${office.name}.`, '✍️', 'good');
           } else leaveOffice(ctx, `${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} declined to renew your contract`);
-        } else {
-          ctx.prompt({
-            type: 'politics.reelection',
-            icon: '🗳️',
-            title: 'Your Term Is Up',
-            text: `Approval ${o.approval}%. ${office.termLimit ? `Term ${served} of ${office.termLimit}.` : ''} Run again?`,
-            options: [
-              { id: 'run', label: '🗳️ Run for re-election', hint: `≈${Math.round(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) * 100)}% projected` },
-              { id: 'retire', label: '👋 Retire from office' },
-            ],
-          });
-        }
+        } else if (onCalendar) leaveOffice(ctx, o.retiring ? 'Retired from office' : 'Did not seek re-election');
+        else reelectionPrompt();
       }
     }
 
@@ -327,7 +336,7 @@ export const PoliticsEngine = {
   },
 
   actions: {
-    ...CampaignActions,
+    ...CampaignTrail.actions,
     /** Apply for an appointed office (city manager). */
     applyAppointed(ctx, officeId) {
       const { state, rng } = ctx;
@@ -352,18 +361,31 @@ export const PoliticsEngine = {
   },
 
   resolvers: {
-    ...CampaignResolvers,
+    ...CampaignTrail.resolvers,
     decision(ctx, data, optionId) {
       const { state, rng } = ctx;
       const o = state.politics.office;
       if (!o) return;
-      const opt = DECISIONS[data.kind].options.find((x) => x.id === optionId);
+      const d = DECISIONS[data.kind] ?? DECISIONS.legislative;
+      const opt = d.options.find((x) => x.id === optionId);
+      if (!opt) return;
+      const issue = data.issue;
+      const e = issue ? electorateOf(state, o.id) : null;
+      const lean = e ? e.median[issue] : 0;
+      const stance = issue ? platformOf(state)[issue] : 0;
+      // Which side this puts you on.
+      const side = opt.side === 'district' ? Math.sign(Math.round(lean)) : opt.side === 'platform' ? Math.sign(stance) : opt.side === 'party' ? partyLine(state.civic?.party?.bloc) : opt.side ?? 0;
       let delta = opt.approval ?? 0;
+      // Your voters: with them is popular, against them costs — more where they feel strongly.
+      if (issue && side) delta += Math.round(side * Math.sign(lean) * (1 + Math.abs(lean) * 2.5));
       if (opt.gamble) delta += rng.chance(0.5) ? opt.gamble : -opt.gamble;
       o.approval = Math.round(clamp(o.approval + delta, 0, 100));
+      // On the record: going against your own platform costs credibility.
+      if (issue && side) recordStance(state, issue, side);
       if (opt.recognition) state.politics.recognition = Math.min(100, state.politics.recognition + opt.recognition);
-      if (opt.labor) state.politics.laborVotes += 1;
-      ctx.log(`${DECISIONS[data.kind].title}: ${opt.label.slice(2).trim()} (approval ${o.approval}%).`, '🏛️');
+      if (opt.warChest) state.politics.warChest = (state.politics.warChest ?? 0) + Math.round(OFFICES[o.id].cost * opt.warChest);
+      if (side < 0 && issue === 'labor') state.politics.laborVotes = (state.politics.laborVotes ?? 0) + 1;
+      ctx.log(`${d.title}: ${opt.label.slice(2).trim()} (approval ${o.approval}%${delta ? `, ${delta > 0 ? '+' : ''}${delta}` : ''}).`, '🏛️');
     },
     bribe(ctx, _data, optionId) {
       const { state, rng } = ctx;
@@ -394,16 +416,31 @@ export const PoliticsEngine = {
       const o = state.politics.office;
       if (!o) return;
       const office = OFFICES[o.id];
-      if (optionId === 'retire') return leaveOffice(ctx, 'Retired from office');
-      const share = clamp(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) + rng.float(-0.07, 0.07), 0.05, 0.85);
-      if (share > 0.5) {
-        o.terms += 1;
-        o.termYearsLeft = office.term;
-        ctx.log(`Re-elected as ${office.name} with ${Math.round(share * 1000) / 10}%!`, '🎉', 'good');
-      } else {
-        ctx.log(`You lost your re-election bid (${Math.round(share * 1000) / 10}%).`, '📉', 'bad');
-        leaveOffice(ctx, 'Lost re-election');
+      if (optionId === 'retire') {
+        if (outsideCalendar(state, o.id) || o.termYearsLeft <= 0) return leaveOffice(ctx, 'Retired from office');
+        o.retiring = true;
+        return ctx.log(`You announced you won't seek another term as ${office.name}. You serve out this year.`, '👋');
       }
+      // Party leaders and appointed-by-parliament offices: the old one-step vote.
+      if (outsideCalendar(state, o.id)) {
+        const share = clamp(voteShare(state, o.id, { funds: office.cost * 0.6, endorsements: [] }, { incumbent: true }) + rng.float(-0.07, 0.07), 0.05, 0.85);
+        if (share > 0.5) {
+          o.terms += 1;
+          o.termYearsLeft = office.term;
+          ctx.log(`Re-elected as ${office.name} with ${Math.round(share * 1000) / 10}%!`, '🎉', 'good');
+        } else {
+          ctx.log(`You lost your re-election bid (${Math.round(share * 1000) / 10}%).`, '📉', 'bad');
+          leaveOffice(ctx, 'Lost re-election');
+        }
+        return undefined;
+      }
+      // A real race: a primary challenge if your base is restless, then the other party's nominee.
+      const c = newCampaign(state, o.id, rng, { incumbent: true, electionYear: currentYear(state) + Math.max(0, o.termYearsLeft) });
+      c.funds += Math.round(office.cost * 0.4) + (state.politics.warChest ?? 0);
+      state.politics.warChest = 0;
+      state.politics.campaign = c;
+      ctx.log(`You're running for re-election as ${office.name}. ${c.rivals.length ? `${c.rivals[0].name} is challenging you in the primary. ` : ''}The other side is running ${c.opponent.name}, ${c.opponent.background}.`, '🗳️');
+      return undefined;
     },
     appointmentOffer(ctx, data, optionId) {
       if (optionId !== 'accept') return ctx.log('You declined the governor\'s offer.', '🙅');

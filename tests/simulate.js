@@ -461,7 +461,8 @@ function randomActions(state) {
   }
   // Politics
   if (age >= 18 && !state.politics.campaign && player.chance(0.04)) tries.push(() => act('politics.run', player.pick(Object.keys(OFFICES))));
-  if (state.politics.campaign) tries.push(() => act(`politics.${player.pick(['fundraise', 'selfFund', 'canvass', 'debate'])}`), () => act('politics.endorse', player.pick(['labor', 'veterans', 'lawEnforcement', 'party', 'editorial', 'bar'])));
+  if (state.politics.campaign) tries.push(() => act(`politics.${player.pick(['fundraise', 'selfFund', 'canvass', 'debate', 'oppo'])}`), () => act('politics.endorse', player.pick(['labor', 'veterans', 'lawEnforcement', 'party', 'editorial', 'bar'])), () => act('politics.ad', player.pick(['positive', 'attack'])), () => act('politics.townHall', player.pick(['taxes', 'crime', 'services', 'guns', 'healthcare'])));
+  if (age >= 18 && player.chance(0.03)) tries.push(() => act('politics.stance', `${player.pick(['taxes', 'services', 'crime', 'guns', 'immigration', 'healthcare', 'environment', 'labor'])}|${player.int(-2, 2)}`));
   if (age >= 17 && age < 40 && !state.military.service && player.chance(0.06)) {
     tries.push(() => act('military.enlist', `${player.pick(Object.keys(BRANCHES))}:${player.pick(['enlisted', 'officer'])}:${player.pick(['active', 'reserve'])}`));
   }
