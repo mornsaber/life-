@@ -27,6 +27,7 @@ import { clamp, Random } from '../../core/Random.js';
 import { rankOf, branchOf, discharge } from './MilitaryEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { serviceLevel, budgetAt } from '../politics/Budgets.js';
+import { pastTenure } from './Separation.js';
 
 const FAMILY = { army: 'ground', guard: 'ground', marines: 'marines', navy: 'naval', coastguard: 'naval', airforce: 'air', spaceforce: 'space' };
 export const familyOf = (svc) => FAMILY[svc?.branch] ?? null;
@@ -231,7 +232,8 @@ export function seniorYear(ctx) {
   if (state.prompts.some((p) => p.type.startsWith('militaryCommands.'))) return;
   // A promotion (or a new grade) ends the old post.
   if (svc.post && (svc.post.grade !== svc.grade || state.character.age >= svc.post.untilAge)) endTour(ctx, svc);
-  if (!svc.post) return newPost(ctx, svc);
+  // Past your limits, no new post: the tour you were on was your last.
+  if (!svc.post) return pastTenure(state, svc) ? undefined : newPost(ctx, svc);
   const p = svc.post;
   if (p.kind === 'command') {
     // Readiness follows the defense budget and drifts back toward it.

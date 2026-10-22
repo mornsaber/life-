@@ -38,20 +38,52 @@ export const noTenureLimit = (svc) => svc.branch === 'guard';
 export const serviceLimit = (svc) => (noTenureLimit(svc) ? Infinity : null) ?? ({ officer: OFFICER_MAX_SERVICE, warrant: WARRANT_MAX_SERVICE }[svc.track] ?? (svc.component === 'reserve' ? RESERVE_HYT : ENLISTED_HYT))[svc.grade] ?? 30;
 
 /**
- * When service must end: 30 years for most, longer for general/flag
- * officers (35 for one and two stars, 38 for three, 40 for four), and by
- * age 62 — 64 for generals and admirals.
+ * When service must end. Officers count commissioned service (enlisted years before a
+ * commission don't use up an officer's tenure): 30 years for a colonel, 35 for one and two
+ * stars, 38 for three, 40 for four (10 U.S.C. 634–636). A general or admiral always gets
+ * five years in a new grade, however late the star came, and nobody is pulled out of a
+ * command or top post mid-tour: the retirement is deferred to the end of the tour (a staff
+ * job isn't held open).
+ * Age: 62, or 64 for generals and admirals — deferrable to 66 (68 for four stars and the
+ * top posts) for an officer serving in a post.
  */
 const terms = (svc) => (svc?.nation ? SERVICE_TERMS[svc.nation] ?? null : null);
-export const maxServiceYears = (svc) => (terms(svc) ? terms(svc).maxYears[svc.track === 'enlisted' ? 'enlisted' : 'officer'] : noTenureLimit(svc) ? Infinity : Math.max(30, serviceLimit(svc)));
+export const FLAG_GRADE_YEARS = 5;
+const isFlag = (svc) => svc.track === 'officer' && svc.grade >= 6;
+const tenureYears = (svc) => (svc.track === 'enlisted' || terms(svc) ? svc.yearsOfService : commissionedYears(svc));
+/** The age a current command or top post runs to (staff jobs don't hold off retirement). */
+const postEnds = (state, svc) => Math.max(svc.post?.kind === 'command' ? svc.post.untilAge ?? 0 : 0, svc.topPost ? state.character.age + Math.max(1, svc.topPost.yearsLeft ?? 1) : 0);
+export const maxServiceYears = (svc) => {
+  const t = terms(svc);
+  let limit = t ? t.maxYears[svc.track === 'enlisted' ? 'enlisted' : 'officer'] : noTenureLimit(svc) ? Infinity : Math.max(30, serviceLimit(svc));
+  // Five years in a new star, whatever the table says.
+  if (isFlag(svc)) limit = Math.max(limit, tenureYears(svc) - (svc.yearsInGrade ?? 0) + FLAG_GRADE_YEARS);
+  return limit;
+};
 export const mandatoryRetirementAge = (svc) => {
   const t = terms(svc);
-  if (t) return svc.track === 'officer' && svc.grade >= 6 ? t.ages.flag : t.ages[svc.track === 'enlisted' ? 'enlisted' : 'officer'];
+  if (t) return isFlag(svc) ? t.ages.flag : t.ages[svc.track === 'enlisted' ? 'enlisted' : 'officer'];
   // Guard and Reserve enlisted members leave at 60; officers at 62 (64 for generals and admirals).
   if (svc.track === 'enlisted' && svc.component === 'reserve') return 60;
-  return svc.track === 'officer' && svc.grade >= 6 ? 64 : 62;
+  return isFlag(svc) ? 64 : 62;
 };
-export const mustRetire = (state, svc) => svc.yearsOfService >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
+/** How far a serving general's retirement can be deferred to finish a post. */
+const deferredAge = (svc) => mandatoryRetirementAge(svc) + (isFlag(svc) ? (svc.grade >= 9 || svc.topPost ? 4 : 2) : 0);
+/** Past the limits for years or age (a tour in progress may still defer the retirement). */
+export const pastTenure = (state, svc) => tenureYears(svc) >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
+export function mustRetire(state, svc) {
+  const age = state.character.age;
+  if (!pastTenure(state, svc)) return false;
+  // Mid-tour in a command or top post: serve it out (up to the deferral limit).
+  if (svc.track === 'officer' && svc.grade >= 5 && postEnds(state, svc) > age && age < deferredAge(svc)) return false;
+  return true;
+}
+/** Years (and the reason) until mandatory retirement, for the service card. */
+export function retirementOutlook(state, svc) {
+  const byYears = maxServiceYears(svc) - tenureYears(svc);
+  const byAge = mandatoryRetirementAge(svc) - state.character.age;
+  return { years: Math.max(0, Math.min(byYears, byAge)), reason: byYears <= byAge ? `${maxServiceYears(svc)} years of ${svc.track === 'enlisted' || terms(svc) ? '' : 'commissioned '}service` : `age ${mandatoryRetirementAge(svc)}` };
+}
 
 /** Involuntary separation pay (full rate): 10% × years × annual base pay, for 6–20 years. */
 export function separationPay(svc) {
@@ -65,7 +97,8 @@ export function upOrOut(ctx, svc) {
   if (!upOrOutApplies(svc.nation)) return false;
   const rank = rankOf(svc);
   const passedOver = svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) && (svc.passovers ?? 0) >= PASSOVER_LIMIT;
-  const overLimit = commissionedYears(svc) >= serviceLimit(svc);
+  // Generals' and admirals' tenure runs through mustRetire (five years in grade, tours served out).
+  const overLimit = !isFlag(svc) && commissionedYears(svc) >= serviceLimit(svc);
   if (!passedOver && !overLimit) return false;
   if (svc.yearsOfService >= RETIREMENT_YEARS) {
     discharge(ctx, 'retired', overLimit ? `Reached the high-year tenure limit for ${rank.title}.` : `Retired after twice being passed over for ${rankOf({ ...svc, grade: svc.grade + 1 }).title}.`);

@@ -159,6 +159,35 @@ const tests = {
     assert.ok(made >= 15, `two stars in ${made}/40`);
   },
 
+  'generals: a late star still gets five years, a command is served out, and a forced retirement keeps the grade'() {
+    const { engine, state, ctx } = setup(41, 22);
+    Object.assign(state.stats, { smarts: 90, fitness: 85 });
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'history', schoolId: 'state', gpa: 3.6, year: 22 });
+    engine.dispatch('military.enlist', 'army:officer:active');
+    engine.resolvePrompt(state.prompts.find((x) => x.type === 'military.chooseSpecialty').id, state.prompts.find((x) => x.type === 'military.chooseSpecialty').options.find((o) => !o.disabled).id);
+    const svc = state.military.service;
+    // Two stars at 33 years: the 35-year limit would leave two; the law gives five in grade.
+    Object.assign(svc, { grade: 7, yearsOfService: 33, commissionedYos: 0, yearsInGrade: 0 });
+    state.character.age = 55;
+    assert.equal(maxServiceYears(svc), 38);
+    svc.yearsOfService = 36;
+    svc.yearsInGrade = 3;
+    assert.ok(!mustRetire(state, svc), 'three years into the second star, still serving');
+    svc.yearsOfService = 38;
+    svc.yearsInGrade = 5;
+    assert.ok(mustRetire(state, svc), 'five years on, out');
+    // Mid-command: the tour is served out.
+    svc.post = { kind: 'command', title: 'Commanding General', unit: '1st Cavalry Division', grade: 7, untilAge: 57 };
+    assert.ok(!mustRetire(state, svc), 'finishes the division command');
+    svc.post.kind = 'staff';
+    assert.ok(mustRetire(state, svc), 'a staff job is not held open');
+    // Forced out with under three years in grade: retires in grade anyway.
+    Object.assign(svc, { grade: 8, yearsInGrade: 1, yearsOfService: 40, post: null, mandatoryRetirement: true });
+    state.character.age = 64;
+    discharge(ctx, 'retired', 'Mandatory retirement');
+    assert.match(state.military.history.at(-1).rankTitle, /Lieutenant General/);
+  },
+
   'a new soldier joins a unit with a named chain of command'() {
     const { engine, state } = setup(1);
     const svc = enlist(engine);

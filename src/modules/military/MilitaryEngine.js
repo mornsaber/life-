@@ -654,7 +654,8 @@ export function discharge(ctx, type, reason) {
 
   const multiplier = pensionMultiplier(state);
   // Retiring as a general or admiral takes three years in grade (US: 10 U.S.C. § 1370); otherwise one grade down.
-  const retiredGrade = type === 'retired' && !svc.nation && svc.track === 'officer' && svc.grade >= 6 && (svc.yearsInGrade ?? 0) < FLAG_RETIRE_YEARS && !svc.topPostServed ? svc.grade - 1 : svc.grade;
+  // A mandatory retirement (years or age) waives the time-in-grade rule.
+  const retiredGrade = type === 'retired' && !svc.nation && svc.track === 'officer' && svc.grade >= 6 && (svc.yearsInGrade ?? 0) < FLAG_RETIRE_YEARS && !svc.topPostServed && !svc.mandatoryRetirement ? svc.grade - 1 : svc.grade;
   if (retiredGrade !== svc.grade) addLog(state, `With under ${FLAG_RETIRE_YEARS} years as ${rank.title}, you retire in the grade of ${rankOf({ ...svc, grade: retiredGrade }).title}.`, '🎖️', 'military');
   const basePay = annualBasePay({ ...svc, grade: retiredGrade });
   const plan = milPensionPlan(svc.nation);

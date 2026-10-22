@@ -581,6 +581,7 @@ function resolveDutyEvent(ctx, data, optionId) {
 export function openContractReview(ctx, svc) {
   const otherComponent = svc.component === 'active' ? 'reserve' : 'active';
   const mandatory = mustRetire(ctx.state, svc);
+  svc.mandatoryRetirement = mandatory || undefined;
   const options = mandatory
     ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
     : [

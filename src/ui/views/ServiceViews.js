@@ -21,7 +21,7 @@ import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, FLAG_LOOKS, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS, retirementYearsFor,
 } from '../../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../../modules/military/MedalEngine.js';
-import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT } from '../../modules/military/Separation.js';
+import { serviceLimit, transferEligibility, transferChance, UP_OR_OUT_GRADES, PASSOVER_LIMIT, retirementOutlook } from '../../modules/military/Separation.js';
 import { volunteerServiceHere } from '../../modules/world/CountryLaw.js';
 import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember } from '../../modules/emergency/EmergencyEngine.js';
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
@@ -130,7 +130,8 @@ export function militaryView(state) {
           ['Retirement', svc.retirementPlan === 'brs' ? 'Blended (2%/yr + matched TSP)' : svc.retirementPlan === 'legacy' ? 'Legacy (2.5%/yr at 20)' : 'Legacy until year 2'],
           ['Wounds', svc.wounds ? `<span class="neg">${svc.wounds}</span>` : '0'],
           svc.disciplinary ? ['Disciplinary', `<span class="neg">${svc.disciplinary}${svc.njp?.length ? ` · ${svc.njp.length} ${svc.nation ? 'summary punishment' : 'Article 15'}${svc.njp.length > 1 ? 's' : ''}` : ''}${svc.courtsMartial ? ` · ${svc.courtsMartial} court-martial` : ''}${svc.reprimand ? ' · reprimand on file' : ''}</span>`] : null,
-          ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs${svc.track === 'enlisted' ? '' : ` commissioned service (${commissionedYears(svc)} so far)`} at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
+          svc.track === 'officer' && svc.grade >= 6 ? null : ['Up-or-out', `${svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) ? `${svc.passovers ?? 0}/${PASSOVER_LIMIT} non-selections · ` : ''}${Number.isFinite(serviceLimit(svc)) ? `max ${serviceLimit(svc)} yrs${svc.track === 'enlisted' ? '' : ` commissioned service (${commissionedYears(svc)} so far)`} at this grade` : 'no tenure limit (serve to age 62)'}${svc.sanctuary ? ' · sanctuary to 20' : ''}`],
+          svc.conscript ? null : (() => { const r = retirementOutlook(state, svc); return Number.isFinite(r.years) ? ['Mandatory retirement', `${r.years ? `in ${r.years} yr${r.years > 1 ? 's' : ''}` : '<span class="neg">this year</span>'} (${esc(r.reason)})${svc.track === 'officer' && svc.grade >= 6 ? ' · at least 5 years in each star; a command is served out' : ''}`] : null; })(),
         ])}
       </div>
     </div>
