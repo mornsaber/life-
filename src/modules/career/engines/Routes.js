@@ -264,6 +264,7 @@ export const RouteWorkModule = {
     rec.logged += n;
     ctx.stat('stress', line.stress);
     if (line.away) ctx.stat('happiness', -Math.round(line.away / 2));
+    if (line.happiness) ctx.stat('happiness', line.happiness);
     const bump = (line.pay - 1) + Object.keys(rec.quals).reduce((s, id) => s + (cfg.quals[id]?.pay ?? 0), 0);
     if (bump > 0) ctx.earn(Math.round(job.salary * bump / 100) * 100, `${line.name} & qualification pay`, { wage: true });
     // Safety: an incident or another clean year.

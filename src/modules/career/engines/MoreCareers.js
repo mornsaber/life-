@@ -13,6 +13,8 @@
  *   Book of business  property management
  *   Seasons           state forestry (emergency management has its own module: EmergencyMgmt.js)
  *   Audience          clergy (a congregation)
+ *   Route & logbook   bus and rail operators · railroaders · airline pilots
+ *   Job board         transit maintenance
  */
 import { SHIFT_CAREERS } from './ShiftIncident.js';
 import { CASE_CAREERS } from './Caseload.js';
@@ -20,6 +22,8 @@ import { PROJECT_CAREERS } from './Projects.js';
 import { BOOK_CAREERS } from './ClientBook.js';
 import { SEASON_CAREERS } from './Seasons.js';
 import { AUDIENCE_CAREERS } from './Audience.js';
+import { ROUTE_CAREERS } from './Routes.js';
+import { TRADE_CAREERS } from './TradeJobs.js';
 
 const P = (name, icon, desc, o = {}) => ({ name, icon, desc, stress: 3, pay: 1, rate: 1, years: 0, ...o });
 const D = (id, icon, title, text, options) => ({ id, icon, title, text, options });
@@ -617,3 +621,106 @@ Object.assign(BOOK_CAREERS, {
     ],
   },
 });
+
+/* ------------------------------------------------------------------ */
+/* Transit, rail and the airlines                                      */
+/* ------------------------------------------------------------------ */
+
+const Ln = (name, icon, desc, o = {}) => ({ name, icon, desc, years: 0, pay: 1, stress: 3, away: 0, risk: 1, rate: 1, ...o });
+const Q = (name, icon, desc, o = {}) => ({ name, icon, desc, cost: 0, years: 0, pay: 0, ...o });
+
+Object.assign(ROUTE_CAREERS, {
+  transit: {
+    label: 'Your Run', icon: '🚌', unit: 'passengers carried', volume: [60000, 140000], weights: { happiness: 2, smarts: 1 }, checkEvery: 2, checkName: 'operator recertification',
+    lines: {
+      extra: Ln('Extra board', '📟', 'Covering open runs: different route, different hours, every day.', { stress: 5 }),
+      crosstown: Ln('Crosstown local', '🚌', 'A regular route, the same regulars every morning.', { years: 1 }),
+      express: Ln('Express & commuter routes', '🛣️', 'Highway runs, split shifts, quieter buses.', { years: 3, pay: 1.03, stress: 2 }),
+      owl: Ln('Owl service', '🌙', 'Overnight routes. Differential pay and the city at its strangest.', { years: 1, pay: 1.08, stress: 5, risk: 1.3 }),
+      rail: Ln('Light rail / subway', '🚇', 'The train, the tunnel and the timetable.', { years: 4, pay: 1.06, needs: 'railCert' }),
+    },
+    quals: {
+      railCert: Q('Rail operator certification', '🚇', 'Signals, interlockings and the rulebook.', { years: 2, pay: 0.03 }),
+      instructor: Q('Operator instructor', '🎓', 'Train the new hires on the road.', { years: 4, pay: 0.04 }),
+      steward: Q('Union shop steward', '✊', 'Represent your division in grievances.', { years: 3 }),
+    },
+    milestones: [[1000000, { id: 'transit.safe', name: 'Million-Passenger Safe Operator Award', icon: '🏅' }]], safeAt: true,
+    deck: [
+      { id: 'assault', icon: '😡', title: 'Fare Dispute', text: 'A passenger refuses to pay, gets in your face, and spits at you.', options: [
+        { id: 'calm', label: '🗣️ Stay calm and call it in', text: 'Transit police met the bus two stops later.', perf: 2 },
+        { id: 'eject', label: '🚪 Order him off', check: 50, text: 'He got off, cursing.', perf: 1, fail: { text: 'He swung at you. A week off and a court date as a witness.', injury: 0.5, trauma: 4 } },
+      ] },
+      { id: 'lost', icon: '🧒', title: 'The Lost Kid', text: 'A five-year-old is riding alone at the end of the line, crying.', options: [
+        { id: 'stay', label: '🧸 Stay with her and call dispatch', text: 'Her frantic mother reached the depot an hour later and hugged you.', rep: 6, happiness: 4 },
+      ] },
+    ],
+  },
+  railroad: {
+    label: 'Your Board', icon: '🚂', unit: 'train miles', volume: [40000, 75000], weights: { smarts: 2, health: 1 }, checkEvery: 3, checkName: 'FRA recertification check ride',
+    lines: {
+      extra: Ln('Extra board', '📟', 'On call around the clock for any train.', { stress: 5, away: 4 }),
+      yard: Ln('Yard job', '🛤️', 'Switching cars in the yard. Home every night.', { years: 2, pay: 0.95, stress: 3, rate: 0.4 }),
+      pool: Ln('Pool freight', '🔁', 'First in, first out on a fixed route.', { years: 4, pay: 1.04, stress: 3, away: 3 }),
+      passenger: Ln('Passenger service', '🚆', 'Schedules, stations and people instead of coal.', { years: 6, pay: 1.06, stress: 2, needs: 'passenger' }),
+      local: Ln('Regular local assignment', '📅', 'Your own job and your own days off.', { years: 10, pay: 1.02, stress: 1 }),
+    },
+    quals: {
+      remote: Q('Remote-control operator', '🎮', 'Run yard engines from a belt pack.', { years: 1, pay: 0.02 }),
+      hazmat: Q('Hazmat & key-train training', '☣️', 'The trains that can\'t have a bad day.', { years: 2, pay: 0.03 }),
+      passenger: Q('Passenger qualification', '🚆', 'Passenger rules, station work and the timetable.', { years: 4, pay: 0.03 }),
+    },
+    milestones: [], safeAt: true,
+    deck: [
+      { id: 'crossing', icon: '🚗', title: 'The Car on the Crossing', text: 'A car is stalled on the crossing ahead. You\'re pulling 12,000 tons; you can\'t stop in time.', options: [
+        { id: 'emergency', label: '🛑 Dump the air — emergency brake', text: 'You hit it anyway, slower. The driver had got out. You didn\'t sleep for a week.', trauma: 10, perf: 2 },
+      ] },
+      { id: 'fatigue', icon: '😴', title: 'Called Again', text: 'The crew office calls before your rest is up, short of crews.', options: [
+        { id: 'rest', label: '🛏️ Take your full rest', text: 'They found someone else.', perf: -1 },
+        { id: 'go', label: '🚂 Go anyway', tone: 'danger', text: 'You worked the train.', money: 900, moneyLabel: 'Extra trip', risk: { chance: 0.15, text: 'You missed a restricted-speed signal. An FRA decertification hearing followed.', perf: -12, stress: 8 } },
+      ] },
+    ],
+  },
+  aviation: {
+    label: 'Your Logbook', icon: '✈️', unit: 'flight hours', volume: [700, 950], weights: { smarts: 2, health: 1 }, checkEvery: 1, checkName: 'recurrent proficiency check in the simulator',
+    lines: {
+      reserve: Ln('Reserve', '📟', 'On call. Holidays, red-eyes and wherever crew scheduling needs you.', { stress: 5, away: 4, pay: 0.95 }),
+      domestic: Ln('Domestic line', '🛫', 'Turns and overnights you bid for.', { years: 3, stress: 3, away: 3 }),
+      commuter: Ln('Commutable line', '🧳', 'Trips that start late and end early, so you can live somewhere else.', { years: 5, stress: 2, away: 3, happiness: 2 }),
+      international: Ln('International widebody', '🌍', 'Long-haul, augmented crews, layovers in Tokyo and Frankfurt.', { years: 8, pay: 1.1, stress: 3, away: 5, needs: 'oceanic' }),
+    },
+    quals: {
+      oceanic: Q('Oceanic & ETOPS qualification', '🌊', 'Long overwater flying and the procedures that go with it.', { years: 3, pay: 0.03 }),
+      safety: Q('Union safety committee', '🦺', 'Investigate incidents and fight for better procedures.', { years: 4 }),
+      lca: Q('Line check airman', '🎓', 'Check other pilots on real trips.', { years: 8, pay: 0.05 }),
+    },
+    milestones: [[10000, { id: 'aviation.10k', name: '10,000 Hours', icon: '✈️' }], [20000, { id: 'aviation.20k', name: '20,000 Hours', icon: '🛩️' }]], safeAt: true,
+    deck: [
+      { id: 'goaround', icon: '🌫️', title: 'Unstable Approach', text: 'At 500 feet you\'re fast and high. The captain says "we can make it."', options: [
+        { id: 'goaround', label: '🔄 Call the go-around', text: 'A second approach, a smooth landing, and a nod from the captain at the gate.', perf: 3, rep: 4 },
+        { id: 'land', label: '🛬 Land it', text: 'You landed long.', risk: { chance: 0.2, text: 'You ran off the end into the overrun. Nobody hurt; a long investigation.', perf: -10, stress: 8 } },
+      ] },
+      { id: 'drunk', icon: '🍺', title: 'The Smell', text: 'Your captain smells of alcohol at the 6 a.m. report.', options: [
+        { id: 'report', label: '📞 Call the union peer program', text: 'He was pulled from the trip and into treatment. Years later he thanked you.', rep: 6 },
+        { id: 'fly', label: '🤐 Say nothing and fly', tone: 'danger', text: 'The flight was fine.', risk: { chance: 0.3, text: 'Security noticed. Both of you were pulled off the plane on camera.', perf: -12, rep: -10 } },
+      ] },
+    ],
+  },
+});
+
+TRADE_CAREERS.transitMaintenance = {
+  label: 'The Work Orders', icon: '🛠️', weights: { smarts: 2, fitness: 1 }, hours: 6000, licence: 'mechanic\'s certification',
+  jobs: [
+    { name: 'Brake overhaul on a forty-foot bus', icon: '🚌', diff: 35, pay: 0.02, injury: 0.02, cash: 0 },
+    { name: 'Rail car traction-motor swap', icon: '🚇', diff: 55, pay: 0.04, injury: 0.03, cash: 0 },
+    { name: 'Signal failure at rush hour', icon: '🚦', diff: 60, pay: 0.05, injury: 0.03, cash: 0 },
+    { name: 'Hybrid-bus battery fault', icon: '🔋', diff: 50, pay: 0.03, injury: 0.02, cash: 0 },
+    { name: 'Overnight track inspection', icon: '🛤️', diff: 40, pay: 0.03, injury: 0.04, cash: 0 },
+    { name: 'Wheelchair-lift repairs across the fleet', icon: '♿', diff: 30, pay: 0.02, injury: 0.01, cash: 0 },
+  ],
+  deck: [
+    { id: 'pressure', icon: '⏰', title: 'Get It Back Out', text: 'Operations wants a bus back in service for rush hour. The brakes are borderline.', options: [
+      { id: 'hold', label: '🛑 Red-tag it', text: 'Rush hour was short a bus. Nobody died.', rep: 4, perf: -1 },
+      { id: 'release', label: '✅ Sign it out', text: 'It made its runs.', perf: 2, risk: { chance: 0.15, text: 'The brakes failed on a hill. A minor crash and an investigation that found your signature.', perf: -12, rep: -10 } },
+    ] },
+  ],
+};

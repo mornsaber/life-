@@ -417,7 +417,7 @@ export { compactMoney };
 function transportRows(state, job, profession) {
   const level = currentLevel(job);
   const rows = [];
-  if (profession.id === 'railroad' && level?.track !== 'mgmt') rows.push(['Seniority board', RAIL_BOARDS[railBoard(job)].label]);
+  if (profession.id === 'railroad' && level?.track !== 'mgmt') rows.push(['Seniority board', RAIL_BOARDS[railBoard(job, state)].label]);
   else if (profession.seniority) rows.push(['Seniority list', { junior: '🗓️ Junior — reserve & holidays', mid: '📅 Mid-list', senior: '⭐ Senior — holds the best trips' }[seniorityTier(job)]]);
   if (level?.flying) rows.push(['FAA medical', job.grounded ? '<span class="neg">Deferred — grounded</span>' : '✅ First-class, current']);
   if (level?.part121) rows.push(['Age-65 rule', `${Math.max(0, AGE_LIMIT_121 - state.character.age)} yr of airline flying left`]);

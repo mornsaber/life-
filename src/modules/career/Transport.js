@@ -72,7 +72,10 @@ const BIDS = {
  * around the clock, called with two hours' notice for any train, any time.
  * Seniority eventually holds a regular assignment with predictable days off.
  */
-export function railBoard(job) {
+export function railBoard(job, state = null) {
+  // The board you bid (engines/Routes.js), when you've bid one.
+  const bid = state?.careerLife?.routeWork?.professionId === job.professionId ? state.careerLife.routeWork.line : null;
+  if (bid) return bid === 'extra' ? 'extra' : bid === 'pool' ? 'pool' : 'regular';
   if (job.yearsAtEmployer < 4) return 'extra';
   if (job.yearsAtEmployer < 10) return 'pool';
   return 'regular';
@@ -84,12 +87,12 @@ export const RAIL_BOARDS = {
 };
 
 function railBoardTick(ctx, job) {
-  const b = RAIL_BOARDS[railBoard(job)];
+  const b = RAIL_BOARDS[railBoard(job, ctx.state)];
   ctx.stat('stress', b.stress);
   ctx.stat('happiness', b.happy);
   if (ctx.rng.chance(0.5)) ctx.log(ctx.rng.pick(b.text), '🚂');
   // Fatigue: the extra board is where the close calls happen.
-  if (railBoard(job) === 'extra' && ctx.rng.chance(0.04)) {
+  if (railBoard(job, ctx.state) === 'extra' && ctx.rng.chance(0.04)) {
     job.performance = Math.max(0, job.performance - 10);
     ctx.log('Exhausted after a 13-hour call, you missed a signal. The train stopped short of the red — barely. The FRA investigation went in your file.', '🚦', 'bad');
   }
