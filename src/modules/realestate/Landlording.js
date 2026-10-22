@@ -107,7 +107,8 @@ function commercialTick(ctx, property, units) {
     }
     collected += t.rent * 12;
     t.rent = Math.round(t.rent * 1.03);
-    t.yearsLeft -= 1;
+    // A tenant from before the building went commercial has no lease term: treat it as ending now.
+    t.yearsLeft = (t.yearsLeft ?? 1) - 1;
     if (t.yearsLeft <= 0) {
       if (rng.chance(0.65)) {
         t.yearsLeft = rng.int(3, 7);

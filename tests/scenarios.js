@@ -2498,10 +2498,12 @@ const tests = {
     f.engine.dispatch('farm.buy', '160:cash');
     assert.equal(f.state.farm.acres, 160);
     f.engine.dispatch('farm.insurance', '0.85');
+    f.engine.dispatch('farm.setCrop', 'corn');
     f.state.farm.prices.corn = 0.8;
     const farm = MODULES.find((m) => m.id === 'farm');
-    f.engine.rng.float = (a, b) => (b === 100 ? 74 : a);
+    f.engine.rng.float = (a) => a;
     f.engine.rng.chance = () => false;
+    f.engine.rng.weighted = (items) => items.find((w) => w.id === 'drought') ?? items[0];
     farm.onAgeUp(f.engine.context());
     const ly = f.state.farm.lastYear;
     assert.ok(ly.indemnity > 0, `indemnity ${JSON.stringify(ly)}`);

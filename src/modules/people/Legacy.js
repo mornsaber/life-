@@ -331,6 +331,7 @@ export function buildHeirState(rng, old, childId) {
   heirStats(s, child);
   passBusinesses(old, s, child, childAge, legacy, new Set(list.map((p) => p.id)));
   passCrownAndTitles(old, s, child, childAge);
+  passFarm(old, s, childAge);
 
   // Children are raised in the family's faith.
   const faith = old.community?.faith;
@@ -470,6 +471,22 @@ const ordinalWord = (n) => ['zeroth', 'first', 'second', 'third', 'fourth', 'fif
  * crown's law accedes at once; a hereditary title passes to the eldest son (or, with none, the
  * eldest child); other children keep royal or courtesy styles.
  */
+/**
+ * The family farm passes whole to the heir who carries on (land, herd, machinery and the
+ * loan with it) — farms are handed down, not split and sold. A young heir's land is let
+ * to a neighbour until they're 18.
+ */
+function passFarm(old, s, childAge) {
+  const f = old.farm;
+  if (!f?.acres) return;
+  s.farm = { ...structuredClone(f), leased: 0, extras: { ...structuredClone(f.extras ?? {}), shop: false } };
+  if (childAge < 18) {
+    s.farm.mode = 'rent';
+    if (s.farm.herd) s.farm.herd.head = 0;
+  }
+  addLog(s, `The family farm is yours now: ${f.acres.toLocaleString()} acres${f.loan ? `, and the loan on it` : ''}.${childAge < 18 ? ' A neighbour rents the land until you\'re old enough to farm it.' : ''}`, '🚜', 'milestone');
+}
+
 function passCrownAndTitles(old, s, child, childAge) {
   if (old.world?.crowns) {
     s.world = { ...(s.world ?? {}), crowns: structuredClone(old.world.crowns), republics: structuredClone(old.world.republics ?? {}), crises: structuredClone(old.world.crises ?? []) };

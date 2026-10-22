@@ -28,6 +28,7 @@ import { DUTIES } from '../src/modules/career/ManagementEngine.js';
 import { Renderer, VIEWS } from '../src/ui/Renderer.js';
 import { OFFICES } from '../src/modules/politics/index.js';
 import { lordSpiritual } from '../src/modules/politics/Legislature.js';
+import { plotsFor } from '../src/modules/farm/Farm.js';
 import { RENT_TIERS, RENOVATIONS, housingStatus } from '../src/modules/realestate/index.js';
 import { promptModal } from '../src/ui/Components.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
@@ -227,6 +228,7 @@ function checkInvariants(state) {
   // A seat comes with an office — or, in the Lords, with a peerage.
   if (state.legislature?.seat) assert.ok((state.politics.office || (state.legislature.seat.peer && (state.character.style?.peerage || lordSpiritual(state)))) && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
   if (state.farm?.acres) assert.ok(state.farm.valuePerAcre > 0 && (!state.farm.loan || state.farm.loan.balance >= 0), 'farm');
+  if (state.farm?.fields) assert.ok(state.farm.fields.length === 4 && state.farm.herd.head >= 0 && state.farm.soil >= 0 && state.farm.soil <= 100 && state.farm.leased >= 0, 'farm fields');
   const civ = state.civic;
   assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');
   if (civ.activism) assert.ok(civ.activism.influence >= 0 && civ.activism.influence <= 100 && (!civ.activism.cause || CAUSES[civ.activism.cause]), 'activism');
@@ -326,8 +328,11 @@ function randomActions(state) {
   if (state.career.job?.professionId === 'education' && player.chance(0.2)) tries.push(() => act('teaching.summer', player.pick(['rest', 'summerSchool', 'camp', 'tutoring', 'seasonal', 'curriculum'])));
   if (age >= 16 && player.chance(0.05)) tries.push(() => act('transit.setMode', player.pick(['auto', 'drive', 'transit', 'bike', 'walk', 'rideshare'])));
   if (age >= 25 && player.chance(0.02)) tries.push(() => act('civic.transitBoard'), () => act('politics.applyAppointed', 'cityManager'));
-  if (age >= 18 && player.chance(0.02)) tries.push(() => act('farm.buy', `${player.pick([80, 160, 320])}:${player.pick(['loan', 'cash'])}`));
-  if (state.farm?.acres && player.chance(0.2)) tries.push(() => act('farm.setCrop', player.pick(['corn', 'soybeans', 'wheat', 'hay', 'cattle'])), () => act('farm.insurance', player.pick(['0', '0.7', '0.85'])), () => act('farm.setMode', player.pick(['operate', 'rent'])), () => act('farm.sell'));
+  if (age >= 18 && player.chance(0.02) && plotsFor(state).length) tries.push(() => act('farm.buy', `${player.pick(plotsFor(state).slice(0, 3))}:${player.pick(['loan', 'cash'])}`), () => act('farm.lease', String(player.pick(plotsFor(state).slice(0, 3)))));
+  if ((state.farm?.acres || state.farm?.leased) && player.chance(0.2)) {
+    tries.push(() => act('farm.setCrop', player.pick(['corn', 'soybeans', 'wheat', 'hay', 'pasture', 'rice', 'vineyard'])), () => act('farm.setField', `${player.int(0, 3)}:${player.pick(['corn', 'soybeans', 'wheat', 'pasture', 'vegetables', 'orchard'])}`), () => act('farm.insurance', player.pick(['0', '0.7', '0.85'])), () => act('farm.setMode', player.pick(['operate', 'rent'])), () => act('farm.sell'));
+    tries.push(() => act('farm.practice', player.pick(['cover', 'noTill', 'organic', 'rotate'])), () => act('farm.marketing', player.pick(['harvest', 'store', 'forward'])), () => act('farm.build', player.pick(['machinery', 'bins', 'shop', 'parlour'])), () => act('farm.herdKind', player.pick(['beef', 'dairy', 'sheep'])), () => act('farm.stock', player.pick(['+10', '+50', '-10'])), () => act('farm.unlease'), () => act('farm.sellMachinery'));
+  }
   const cv = state.civic;
   if (age >= 14 && player.chance(0.04)) tries.push(() => act('civic.joinCause', player.pick(Object.keys(CAUSES))));
   if (cv.activism && player.chance(0.3)) tries.push(() => act('civic.protest', player.pick(Object.keys(TACTICS))));
