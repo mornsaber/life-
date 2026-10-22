@@ -2,7 +2,9 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
-import { SERVICES, canChoose, mayorChoice, arrangementOf, providerOf } from '../../modules/politics/PublicServices.js';
+import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
+import { executiveLevel } from '../../modules/politics/Budgets.js';
+import { governmentCard } from './GovernmentCard.js';
 import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
@@ -14,16 +16,18 @@ import { legislatureCards } from './LegislatureView.js';
 import { officeOrderFor } from '../../modules/politics/NationalOffices.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
 
-/** As mayor: who polices and protects the city — your own departments or a contract. */
+/** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
-  if (!/mayor/i.test(state.politics.office?.id ?? '')) return '';
-  const rows = SERVICES.filter((s) => canChoose(state, s)).map((s) => {
-    const c = mayorChoice(state, s);
-    const own = arrangementOf(state, s) === 'own';
-    return `<li class="report-row"><div><b>${s === 'police' ? '🚓 Policing' : '🚒 Fire protection'}</b> <small class="muted">${own ? 'City department' : `Contracted to ${esc(providerOf(state, s).name)}`}</small></div>
-      ${c.label ? button(c.label, 'cityServices.decide', { arg: s, variant: 'tiny', disabled: !c.ok, hint: c.ok ? c.effect : c.reason }) : `<small class="why">${esc(c.reason)}</small>`}</li>`;
+  const level = executiveLevel(state.politics.office?.id) ?? (/mayor/i.test(state.politics.office?.id ?? '') ? 'city' : null);
+  if (!level) return '';
+  const rows = Object.entries(CATALOG).filter(([id, s]) => s.level === level && canChoose(state, id)).map(([id, s]) => {
+    const now = arrangementOf(state, id);
+    const c = executiveChoice(state, id);
+    const opts = c.options ?? [];
+    return `<li class="report-row"><div><b>${s.icon} ${esc(s.label)}</b> <small class="muted">${ARRANGEMENTS[now].icon} ${esc(ARRANGEMENTS[now].label)}</small></div>
+      <div class="toggle-row">${opts.length ? opts.map((o) => button(o.label, 'cityServices.decide', { arg: `${id}|${o.to}`, variant: 'tiny', disabled: !o.ok || !c.ok && c.reason === 'One change a year', hint: o.ok ? o.effect : o.reason })).join('') : `<small class="why">${esc(c.reason ?? '')}</small>`}</div></li>`;
   }).join('');
-  return rows ? card('City Services', `<ul class="history">${rows}</ul><p class="fine">Contracting out saves money and costs approval; founding a department is popular and expensive. The people who work there are transferred or laid off.</p>`, { icon: '🏙️' }) : '';
+  return rows ? card('Public Services', `<ul class="history">${rows}</ul><p class="fine">Contracting out and privatizing save money and cost approval; abolishing a service saves it all. Bringing one back in-house is popular and expensive. Private providers need the law's permission (private policing, ambulances, prisons, fire). The people who work there transfer or are laid off.</p>`, { icon: '🏙️' }) : '';
 }
 
 export function politicsView(state) {
@@ -75,6 +79,7 @@ export function politicsView(state) {
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Experience in lower office, money, endorsements and honors win races; your legal record loses them. Governors appoint judges and agency heads.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
+    ${governmentCard(state)}
     ${legislatureCards(state)}
     ${card('Political History', history, { icon: '🗂️' })}`;
 }

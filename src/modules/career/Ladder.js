@@ -177,7 +177,9 @@ export function previousLevel(profession, size, levelId) {
   const ladder = ladderFor(profession, size);
   const idx = ladder.findIndex((l) => l.id === levelId);
   const current = ladder[idx];
-  const before = ladder.slice(0, idx).reverse();
+  // Never back into a training post (a recruit or a trainee is still in the academy).
+  const entry = ladder.findIndex((l) => l.entry);
+  const before = ladder.slice(Math.max(0, entry), idx).reverse();
   return before.find((l) => l.track === current.track) ?? before.find((l) => l.track === 'shared') ?? null;
 }
 

@@ -16,7 +16,7 @@ import { prestige, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession } from './JobTrees.js';
 import { levelById } from './Ladder.js';
-import { salaryBreakdown } from './PayGrades.js';
+import { salaryBreakdown, onBands, payGradeLabel, payCap } from './PayGrades.js';
 import { createEmployer, resolveDutyStation } from './Employers.js';
 import { applicationEligibility, bestEntryLevel, backgroundCheck, levelCheck, hire } from './CareerEngine.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -230,7 +230,8 @@ export function hireChance(state, profession, level, score, maxScore, employer =
 }
 
 function offerSalary(state, profession, level, employer, step, merit) {
-  return salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
+  const total = salaryBreakdown({ grade: level.grade, step, merit, payMultiplier: profession.payMultiplier, sector: profession.sector, size: employer.size, regionId: state.character.regionId, posting: null, exec: level.abilities.includes('exec') }).total;
+  return Math.min(total, payCap({ sector: profession.sector, professionId: profession.id, grade: level.grade, abilities: level.abilities }, state.character.countryId));
 }
 
 function offerPrompt(ctx, data) {
@@ -238,12 +239,12 @@ function offerPrompt(ctx, data) {
   const profession = getProfession(data.professionId);
   const level = levelById(profession, data.levelId);
   const salary = offerSalary(state, profession, level, data.employer, data.step, data.merit);
-  const isPublic = profession.sector !== 'private';
+  const isPublic = !onBands({ sector: profession.sector, professionId: profession.id });
   ctx.prompt({
     type: 'career.negotiate',
     icon: '💰',
     title: 'Job Offer!',
-    text: `${data.employer.name} offers you ${level.title} [G${level.grade}, step ${data.step}] at $${salary.toLocaleString()}/yr.` +
+    text: `${data.employer.name} offers you ${level.title} [${isPublic ? `${payGradeLabel({ sector: profession.sector, grade: level.grade }, state.character.countryId)}, step ${data.step}` : `Band ${level.grade}`}] at $${salary.toLocaleString()}/yr.` +
       (profession.dutyStation ? '\nDuty station: a remote park with government housing provided.' : '') +
       (state.career.job ? `\nAccepting means resigning as ${state.career.job.title}.` : ''),
     options: isPublic

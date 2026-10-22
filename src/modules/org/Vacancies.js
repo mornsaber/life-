@@ -145,7 +145,7 @@ export const hasOpening = (job, level) => !job.openings || job.openings[level.id
 export function openingReason(job, level) {
   const v = job.openings?.[level.id];
   if (v === 'filled' || v === undefined) return `No ${level.title} opening this year`;
-  return `No ${level.title} opening — ${v} holds the post`;
+  return `No ${level.title} opening — ${v} ${v.includes(' and ') ? 'hold the posts' : 'holds the post'}`;
 }
 
 /** This year's openings one rung up from the player's level. */
@@ -159,7 +159,10 @@ export function computeOpenings(state, job) {
   for (const level of nextLevels(profession, size, job.levelId).filter((l) => !l.appointed)) {
     const seats = seatsAt(org, dept.id, profession, level, size);
     if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
-    else if (seats <= NAMED_SEATS) job.openings[level.id] = seatHolders(state, org, dept.id, job.professionId, level.id, seats)[0]?.name ?? 'open';
+    else if (seats <= NAMED_SEATS) {
+      const holders = seatHolders(state, org, dept.id, job.professionId, level.id, seats);
+      job.openings[level.id] = !holders.length ? 'open' : holders.length === 1 ? holders[0].name : `${holders.map((h) => h.name).slice(0, -1).join(', ')} and ${holders.at(-1).name}`;
+    }
     // Posts with many seats turn over every year: there's always somewhere to move up to.
     else job.openings[level.id] = 'open';
   }

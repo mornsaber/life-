@@ -293,7 +293,8 @@ export const FederalAgencies = {
     const downturn = state.economy.phase === 'recession' ? -6 : 0;
     fed.stability = Math.round(clamp(fed.stability + (55 - fed.stability) * 0.1 + downturn + rng.int(election ? -15 : -6, election ? 10 : 6), 0, 100));
     // Shutdowns are a US budget phenomenon; other governments keep running on a provisional budget.
-    fed.shutdown = !state.character.countryId && fed.stability < 35 && rng.chance(0.55);
+    // ...and a deadlocked budget (divided government, a deficit fight) shuts it down too.
+    fed.shutdown = !state.character.countryId && ((fed.stability < 35 && rng.chance(0.55)) || Boolean(state.gov?.budgets?.['national:US']?.shutdown));
 
     const job = state.career.job;
     if (!job || job.sector !== 'federal') return;

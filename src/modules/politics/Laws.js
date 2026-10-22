@@ -120,6 +120,40 @@ export const LAWS = {
     base: { city: () => 'standard' },
     effect: 'Upzoning means more building work for builders and trades; restrictive zoning means less.',
   },
+  incomeTax: {
+    name: 'National income tax', icon: '🏦', kind: 'choice', levels: ['federal'], choices: ['cut', 'standard', 'hike'], lean: 'labor', combine: 'federal',
+    labels: { cut: 'Cut 10%', standard: 'Current rates', hike: 'Raised 10%' },
+    base: { federal: () => 'standard' },
+    effect: 'Scales the national income tax everyone pays, and the national government\'s revenue with it.',
+  },
+  propertyTax: {
+    name: 'City property tax', icon: '🏠', kind: 'choice', levels: ['city'], choices: ['cut', 'standard', 'hike'], lean: 'labor', combine: 'city',
+    labels: { cut: 'Cut 15%', standard: 'Current rate', hike: 'Raised 20%' },
+    base: { city: () => 'standard' },
+    effect: 'What homeowners pay the city, and most of what the city has to spend on police, fire and parks.',
+  },
+  privatePolicing: {
+    name: 'Private policing', icon: '🛡️', kind: 'choice', levels: ['state'], choices: ['banned', 'licensed', 'contracting'], lean: 'business', combine: 'state',
+    labels: { banned: 'Banned: only public police', licensed: 'Licensed (campus, hospital and railroad police)', contracting: 'Cities may contract policing to private firms' },
+    base: { state: (st) => (countryOfProvince(st) === 'US' ? 'licensed' : 'banned') },
+    effect: 'Whether private police departments can exist with arrest powers, and whether a city can hand its policing to one.',
+  },
+  privateEms: {
+    name: 'Private ambulance services', icon: '🚑', kind: 'choice', levels: ['state'], choices: ['public', 'licensed', 'open'], lean: 'business', combine: 'state',
+    labels: { public: 'Public only (government EMS)', licensed: 'Licensed (transfers and contracts)', open: 'Open market for 911 contracts' },
+    base: { state: () => 'licensed' },
+    effect: 'Whether private ambulance companies operate, and whether cities can contract out 911 ambulance service.',
+  },
+  privatePrisons: {
+    name: 'Private prisons', icon: '🔒', kind: 'flag', levels: ['state', 'federal'], lean: 'business', combine: 'level',
+    base: { federal: (cc) => ['GB', 'AU', 'NZ'].includes(cc ?? 'US'), state: (st) => (countryOfProvince(st) === 'US' ? !['CA', 'IL', 'NV', 'NY', 'WA'].includes(st) : ['GB', 'AU', 'NZ'].includes(countryOfProvince(st))) },
+    effect: 'Whether governments can contract prisons and jails to private operators.',
+  },
+  privateFire: {
+    name: 'Private fire protection', icon: '🧯', kind: 'flag', levels: ['state'], lean: 'business', combine: 'state',
+    base: { state: (st) => countryOfProvince(st) === 'US' },
+    effect: 'Whether private fire companies can protect towns under contract (subscription and contract fire services).',
+  },
   publicPay: {
     name: 'Public-employee pay', icon: '🏛️', kind: 'number', levels: ['city', 'state', 'federal'], step: 0.02, min: -0.04, max: 0.12, lean: 'labor', combine: 'level',
     unit: (v) => `${v >= 0 ? '+' : ''}${Math.round(v * 100)}% pay adjustment`,

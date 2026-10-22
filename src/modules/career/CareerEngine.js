@@ -20,7 +20,8 @@ import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { unitFor } from './Units.js';
-import { stepIncrease, MAX_STEP, ratingLabel } from './PayGrades.js';
+import { stepFreeze } from '../politics/Budgets.js';
+import { MAX_STEP, ratingLabel, onBands, scheduleYear, bandYear, bonusFor, bandFromStep, BAND_MIN, BAND_MAX, payGradeLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, nearestCareerRegion, cityName } from './Employers.js';
 import { checkRequirements } from '../credentials/LicensingEngine.js';
@@ -56,6 +57,8 @@ import { ruralHiring } from '../life/RuralLife.js';
 export const STANDARD_DEDUCTION = 15000;
 /** Failed senior (G7+) promotion reviews before you plateau at an employer. */
 export const PLATEAU_AFTER = 3;
+/** A plateau isn't forever: after a few years a new leadership team looks at you again. */
+export const PLATEAU_YEARS = 4;
 /** [upper bound of bracket, marginal rate] — single filer, simplified. */
 export const TAX_BRACKETS = [
   [11925, 0.1],
@@ -208,6 +211,21 @@ export function applicationEligibility(state, professionId, { anywhere = false }
 
 /** Smallest step at a new grade that keeps pay from going backwards. */
 export function stepForAtLeast(state, job, minimum) {
+  // A company sets your place in the new band; government, your step on the new grade.
+  if (onBands(job)) {
+    let lo = BAND_MIN;
+    let hi = BAND_MAX;
+    job.band = hi;
+    if (recalcSalary(state, job) < minimum) return job.step;
+    for (let i = 0; i < 12; i++) {
+      job.band = (lo + hi) / 2;
+      if (recalcSalary(state, job) >= minimum) hi = job.band;
+      else lo = job.band;
+    }
+    job.band = Math.round(hi * 1000) / 1000;
+    recalcSalary(state, job);
+    return job.step;
+  }
   for (let step = 1; step <= MAX_STEP; step++) {
     job.step = step;
     if (recalcSalary(state, job) >= minimum) return step;
@@ -250,6 +268,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
     employer,
     remote: employer.remote,
     step,
+    // Company pay: where you start in the salary band (from the step you negotiated).
+    ...(onBands({ sector: profession.sector, professionId }) ? { band: bandFromStep(step) } : {}),
     merit,
     posting: null,
     postingYears: 0,
@@ -350,7 +370,8 @@ export function returnFromLeave(ctx) {
   }
   job.yearsAtEmployer += years;
   job.yearsInLevel += years;
-  job.step = Math.min(MAX_STEP, job.step + years);
+  // Military leave counts toward within-grade increases (USERRA's escalator).
+  if (!onBands(job)) job.step = Math.min(MAX_STEP, job.step + Math.round(years / 2));
   job.probationLeft = 0;
   resetBudget(state, job.employer, job.sector);
   state.career.job = job;
@@ -426,7 +447,8 @@ export function promotionStatus(state) {
   const level = levelById(profession, job.levelId);
   const next = nextLevels(profession, job.employer.size, job.levelId);
   const all = next.filter((l) => !l.appointed);
-  if (!next.length) {
+  // Heading a department or the organization sits above the ladder: the next move is the post above, not the next rung.
+  if (!next.length || (job.headOf && !job.headOf.mapped)) {
     const post = nextPost(state, job);
     const reason = post ? `Top of the ladder — next: ${post.def.title}, ${post.def.appointedBy ? `appointed by ${post.def.appointedBy}` : 'chosen by the board'} when the post opens` : job.headOf ? `You lead ${job.headOf.deptId ? 'the department' : 'the organization'}` : 'Top of the ladder here';
     return { eligible: false, reason, options: [], all, nextPost: post };
@@ -443,7 +465,10 @@ export function promotionStatus(state) {
     return { eligible: false, reason: left ? `Tenure review in ${left} yr${left > 1 ? 's' : ''}` : 'Your tenure case is under review', options: [], all, tenureTrack: true };
   }
   if (!all.length) return { eligible: false, reason: `The next post is appointed by ${next[0].appointedBy ?? 'the governor'}`, options: [], all, appointable: next };
-  if ((job.passovers ?? 0) >= PLATEAU_AFTER) return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here (a new employer resets this)`, options: [], all, plateaued: true };
+  if ((job.passovers ?? 0) >= PLATEAU_AFTER && (job.plateauUntil ?? Infinity) > state.character.age) {
+    const left = Number.isFinite(job.plateauUntil) ? job.plateauUntil - state.character.age : null;
+    return { eligible: false, reason: `Passed over ${PLATEAU_AFTER}× — plateaued here${left ? ` for ${left} more year${left > 1 ? 's' : ''}` : ''} (a new employer resets this)`, options: [], all, plateaued: true };
+  }
   if (job.yearsInLevel < levelYears(job, level)) {
     const left = levelYears(job, level) - job.yearsInLevel;
     return { eligible: false, reason: `${left} more year${left > 1 ? 's' : ''} in role`, options: [], all };
@@ -493,6 +518,8 @@ export function promote(ctx, levelId) {
   job.warnings = 0;
   job.lowYears = 0;
   job.passovers = 0;
+  job.plateauUntil = null;
+  job.nextInLine = null;
   job.performance = Math.round(clamp(job.performance - 15, 40, 100));
   job.lastRaiseAge = state.character.age;
   ensureDepartment(job, level);
@@ -525,7 +552,8 @@ export function demote(ctx, reason) {
   if (!prev) return false;
   applyLevel(job, prev);
   unionAfterMove(ctx, job);
-  job.step = Math.max(1, job.step - 2);
+  if (onBands(job)) job.band = Math.max(BAND_MIN, Math.round((job.band ?? BAND_MIN) * 0.97 * 1000) / 1000);
+  else job.step = Math.max(1, job.step - 2);
   recalcSalary(state, job);
   job.warnings = 0;
   job.lowYears = 0;
@@ -734,11 +762,25 @@ export function careerOnAgeUp(ctx) {
   const reviewer = chainOfCommand(state, job, { generate: false })?.supervisor;
   const by = reviewer && !reviewer.body ? ` (${reviewer.name}, ${reviewer.title})` : '';
 
-  // Within-grade steps (and a small private-sector merit bump)
-  const steps = stepIncrease(job.performance);
-  if (steps && job.step < MAX_STEP) job.step = Math.min(MAX_STEP, job.step + steps);
-  if (job.sector === 'private' && job.performance >= 80) job.merit = Math.round((job.merit + 0.01) * 1000) / 1000;
-  recalcSalary(state, job);
+  // Government: within-grade steps on the schedule's waiting periods. Companies: a merit raise
+  // up the band, and a bonus.
+  let raiseNote = '';
+  if (onBands(job)) {
+    const raise = bandYear(job, state.economy?.phase);
+    recalcSalary(state, job);
+    raiseNote = raise > 0 ? ` Merit raise ${Math.round(raise * 1000) / 10}%.` : job.band >= BAND_MAX ? ' Top of your band: no merit raise.' : ' No merit raise.';
+    const bonus = profession.commission ? 0 : bonusFor(job, state.economy?.phase);
+    if (bonus > 0) {
+      ctx.earn(bonus, `Annual bonus — ${job.title}`, { wage: true, ssCovered: jobPayCovered(state, job) });
+      raiseNote += ` Bonus $${bonus.toLocaleString()}.`;
+    }
+  } else if (stepFreeze(state, job)) {
+    raiseNote = ' Step increases are frozen: the budget is in a fiscal emergency.';
+  } else {
+    const gained = scheduleYear(job, state.character.age);
+    recalcSalary(state, job);
+    raiseNote = gained > 1 ? ' Quality Step Increase.' : job.pay?.capped ? ' Pay is at the legal cap.' : '';
+  }
 
   if (layoffCheck(ctx, job)) return;
   if (job.sector !== 'private') publicRifTick(ctx, job, RIF_DEPS);
@@ -759,6 +801,16 @@ export function careerOnAgeUp(ctx) {
     }
   }
 
+  // A plateau lifts after a few years: new leadership, a fresh look (but you start one pass-over down).
+  if ((job.passovers ?? 0) >= PLATEAU_AFTER) {
+    job.plateauUntil ??= state.character.age + PLATEAU_YEARS;
+    if (state.character.age >= job.plateauUntil) {
+      job.passovers = 1;
+      job.plateauUntil = null;
+      ctx.log(`New leadership at ${job.employer.name} is taking a fresh look at you for promotion.`, '🔄', 'good');
+    }
+  }
+  if (job.nextInLine && state.character.age - job.nextInLine.age > 6) job.nextInLine = null;
   const status = promotionStatus(state);
   const grievanceLimit = job.unionMember ? 3 + (['steward', 'officer', 'president'].includes(state.unions?.mine?.role) ? 1 : 0) : 2;
   // Ready to move up with nowhere to go: after a couple of years, another employer offers the promotion.
@@ -788,7 +840,7 @@ export function careerOnAgeUp(ctx) {
   } else {
     job.lowYears = 0;
     if (job.performance >= 50) job.warnings = Math.max(0, job.warnings - 1);
-    ctx.log(`Annual review at ${job.employer.name}${by}: ${rating} (${job.performance}%). Step ${job.step}, $${job.salary.toLocaleString()}/yr.${job.performance >= 75 && status.noOpening ? ` Ready to move up — but ${status.reason.charAt(0).toLowerCase()}${status.reason.slice(1)}.` : ''}`, '📈');
+    ctx.log(`Annual review at ${job.employer.name}${by}: ${rating} (${job.performance}%). ${onBands(job) ? '' : `${payGradeLabel(job, state.character.countryId)}, step ${job.step}, `}$${job.salary.toLocaleString()}/yr.${raiseNote}${job.performance >= 75 && status.noOpening ? ` Ready to move up — but ${status.reason.charAt(0).toLowerCase()}${status.reason.slice(1)}.` : ''}`, '📈');
   }
 }
 

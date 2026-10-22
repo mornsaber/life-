@@ -539,8 +539,11 @@ export function soloType(profession) {
   return {
     name: null, scope: profession.sector === 'private' ? 'market' : profession.sector === 'federal' ? 'nation' : profession.sector === 'state' ? 'state' : 'region',
     sector: profession.sector,
-    head: { title: 'Owner / Chief Executive', selection: profession.sector === 'private' ? 'internal' : 'appointed', appointedBy: 'the agency\'s oversight board' },
-    departments: [{ id: 'main', name: profession.name, occupations: [profession.id], head: { title: 'Department Head', selection: 'internal' } }],
+    // A company has an owner; a government body has a director appointed over it.
+    head: profession.sector === 'private'
+      ? { title: 'Owner / Chief Executive', selection: 'internal' }
+      : { title: profession.sector === 'federal' ? 'Agency Director' : profession.sector === 'state' ? 'State Director' : 'Director', selection: 'appointed', appointedBy: profession.sector === 'municipal' ? 'the city manager' : profession.sector === 'federal' ? 'the national government' : 'the state government' },
+    departments: [{ id: 'main', name: profession.name, occupations: [profession.id], head: { title: profession.sector === 'private' ? 'Department Head' : 'Deputy Director', selection: 'internal' } }],
     solo: true,
   };
 }

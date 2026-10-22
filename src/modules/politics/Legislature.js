@@ -269,6 +269,29 @@ export function ensureBodies(state) {
   return out;
 }
 
+/**
+ * Who runs the government at a level where you live: { name, caucus, title, you, since }.
+ * Levels: 'city', 'state', 'federal' (or 'national').
+ */
+export function executiveOf(state, level) {
+  const lv = level === 'national' ? 'federal' : level;
+  const where = whereFor(state, lv);
+  const kind = chambersFor(lv, where)[0];
+  const body = state.legislature?.bodies?.[bodyId(kind, where)];
+  const title = BODY_DEFS[kind]?.executive ?? (lv === 'city' ? 'Mayor' : lv === 'state' ? 'Governor' : 'President');
+  if (executiveIsYou(state, lv, where)) return { name: `${state.character.firstName} ${state.character.lastName}`, caucus: state.legislature?.seat?.caucus ?? state.civic?.party?.bloc ?? body?.executive?.caucus ?? 'labor', title, you: true, since: state.politics.office.startAge };
+  return body?.executive ? { ...body.executive, title } : null;
+}
+/** Does the executive's party hold the (first chamber of the) legislature at this level? */
+export function unifiedGovernment(state, level) {
+  const lv = level === 'national' ? 'federal' : level;
+  const where = whereFor(state, lv);
+  const bodies = chambersFor(lv, where).map((k) => state.legislature?.bodies?.[bodyId(k, where)]).filter(Boolean);
+  const exec = executiveOf(state, lv);
+  if (!bodies.length || !exec) return true;
+  return bodies.every((b) => (b.labor * 2 > b.seats) === (exec.caucus === 'labor'));
+}
+
 /** Read-only for views. */
 export function bodiesHere(state) {
   return LEVELS.flatMap((level) => chambersFor(level, whereFor(state, level)).map((k) => state.legislature?.bodies?.[bodyId(k, whereFor(state, level))]).filter(Boolean));
@@ -288,11 +311,11 @@ export const inMajority = (state) => {
 };
 
 /** What the executive above a body is: you (as mayor or governor), or an NPC. */
-function executiveIsYou(state, level, where) {
+export function executiveIsYou(state, level, where = whereFor(state, level)) {
   const o = state.politics?.office?.id;
   const def = BODY_DEFS[chambersFor(level, where)[0]];
   if (def?.country) return Boolean(o && o === def.execOffice);
-  return (level === 'city' && o === 'mayor') || (level === 'state' && o === 'governor');
+  return (level === 'city' && o === 'mayor') || (level === 'state' && o === 'governor') || (level === 'federal' && o === 'president');
 }
 
 /* ------------------------------------------------------------------ */

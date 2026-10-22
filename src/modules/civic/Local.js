@@ -42,7 +42,9 @@ export function localPolicy(state, regionId = state.character.regionId) {
 
 /** Read-only view (no state mutation) for pure helpers like carrying costs. */
 export function localTaxMult(state, regionId) {
-  return state?.civic?.local?.[regionId]?.taxMult ?? 1;
+  // Ballot measures, and the city's property-tax rate (cut or raised by the council).
+  const rate = { cut: 0.85, standard: 1, hike: 1.2 }[state?.laws?.cities?.[regionId]?.propertyTax] ?? 1;
+  return (state?.civic?.local?.[regionId]?.taxMult ?? 1) * rate;
 }
 
 /** Measures that could qualify for the ballot here this year. */

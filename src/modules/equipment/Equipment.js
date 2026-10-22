@@ -43,6 +43,7 @@ import { SDF_RANKS } from '../service/StateForces.js';
 import { deptOf, orgOf } from '../org/Organizations.js';
 import { grantFor } from '../org/VolunteerOrgs.js';
 import { fundsFloor } from '../org/VolunteerGrowth.js';
+import { jobFiscalHealth, jobFunding, serviceLevel } from '../politics/Budgets.js';
 
 /* ------------------------------------------------------------------ */
 /* Staff: sworn and civilian, and the equipment they need             */
@@ -167,14 +168,17 @@ export function contexts(state) {
   const out = [];
   const job = state.career?.job;
   if (job && JOB_GROUP[job.professionId]) {
-    const span = job.abilities.includes('budget') ? commandSpan(job) : 1;
     // In a big national or regional body the fleet is bought centrally: below headquarters you bid for it.
     const body = orgOf(state, job.employer);
-    const central = isCentralBody(body) && (span < 1 || !job.abilities.includes('budget'));
-    out.push({ kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.division ?? job.employer.name,
-      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: central ? 'om' : 'budget', sector: job.sector,
+    const head = isCentralBody(body) && job.abilities.includes('budget') && commandSpan(job) >= 1;
+    const central = isCentralBody(body) && !head;
+    const c = { kind: 'job', ref: 'job', key: job.employer.id, group: JOB_GROUP[job.professionId], size: SIZES.includes(job.employer.size) ? job.employer.size : ({ micro: 'small', mega: 'enterprise' }[job.employer.size] ?? 'medium'), label: job.employer.division ?? job.employer.name,
+      growth: state.deptEquip?.[job.employer.id]?.growth ?? 1, span: 1, manager: job.abilities.includes('budget'), requester: job.abilities.includes('supervise'), money: central ? 'om' : 'budget', sector: job.sector,
       staff: PER_STAFF[JOB_GROUP[job.professionId]] ? agencyStaff(state, job) : null,
-      ...(central ? { issued: true, hq: body.name, hqOrg: body } : {}), ...(isCentralBody(body) && !central ? { fleetHead: body } : {}) });
+      ...(central ? { issued: true, hq: body.name, hqOrg: body } : {}), ...(head ? { fleetHead: body } : {}) };
+    // Below headquarters you see your own piece of a central fleet: a station, a group, an area.
+    c.span = central ? centralSpan(job, c) : job.abilities.includes('budget') ? commandSpan(job) : 1;
+    out.push(c);
   }
   const biz = currentBusiness(state);
   if (biz && BUSINESS_GROUP[biz.typeId]) out.push({ kind: 'business', ref: 'business', key: `biz:${biz.id}`, group: BUSINESS_GROUP[biz.typeId], size: bizSize(biz.scale ?? 1), label: biz.name, manager: true, requester: false, money: 'cash', biz });
@@ -251,9 +255,9 @@ function bindFunds(state, c, d, peek) {
 export const isCentralBody = (org) => Boolean(org) && (org.typeId === 'emergencyService' || org.typeId?.startsWith('body:')) && ['large', 'enterprise', 'mega'].includes(org.size);
 /** How headquarters runs the fleet, set by the agency-wide head. */
 export const FLEET_POLICIES = {
-  schedule: { label: '📅 Replace on schedule', share: 0.5, hint: 'Half of what\'s overdue each year, standard models' },
-  stretch: { label: '🪢 Stretch the fleet', share: 0.2, hint: 'Keep old units running: saves money, readiness suffers' },
-  premium: { label: '⭐ Premium fleet', share: 0.6, premium: true, hint: 'Replace with the best models: costs more, lasts and performs better' },
+  schedule: { label: '📅 Replace on schedule', share: 0.5, funding: 1, hint: 'Half of what\'s overdue each year, standard models · full capital budget' },
+  stretch: { label: '🪢 Stretch the fleet', share: 0.2, funding: 0.6, hint: 'Keep old units running: 60% of the capital budget, readiness suffers' },
+  premium: { label: '⭐ Premium fleet', share: 0.6, funding: 1.25, premium: true, hint: 'Replace with the best models: 125% of the capital budget, lasts and performs better' },
 };
 /**
  * Headquarters' fleet programme reaches your station: some overdue units are replaced and some
@@ -314,6 +318,27 @@ export function isAgencyWide(profession, level, sector) {
   if (level.id === top?.id || level.id === deputy?.id || level.abilities?.includes('exec')) return true;
   return sector !== 'private' && AGENCY_WIDE.test(level.title ?? '');
 }
+/**
+ * Your piece of a central service, in stations: the station (or watch) officers run one, and
+ * each rung up runs geometrically more, so the rung below the executive tier has about a fifth
+ * of a 100-station service — not, as a flat share would give, ten stations for a watch manager.
+ */
+export function centralSpan(job, c) {
+  const profession = getProfession(job.professionId);
+  if (!profession) return 0.01;
+  const stationsCat = Object.values(cats(c)).find((cat) => cat.facility && PER_STAFF[c.group]?.[cat.id]);
+  const n = stationsCat ? Math.max(1, needOf(stationsCat, { ...c, span: 1 })) : 20;
+  const ladder = ladderFor(profession, job.employer.size);
+  const sector = job.sector ?? profession.sector;
+  const rungs = ladder.filter((l) => (l.abilities?.includes('supervise') || l.track === 'mgmt') && !isAgencyWide(profession, l, sector))
+    .sort((a, b) => a.grade - b.grade || ladder.indexOf(a) - ladder.indexOf(b));
+  const k = rungs.findIndex((l) => l.id === job.levelId);
+  // Line staff and the first-line supervisors work out of one station.
+  if (k <= 1 || rungs.length < 3) return Math.min(1, 1 / n);
+  const stations = n ** ((k - 1) / (rungs.length - 1));
+  return Math.min(1, Math.max(1, Math.round(stations)) / n);
+}
+
 export function commandSpan(job) {
   if (job.headOf) return 1;
   const profession = getProfession(job.professionId);
@@ -517,14 +542,20 @@ function schedule(c) {
   }, 0);
 }
 
+/** How well your public employer's area is funded this year (1 = normal). */
+const publicFunding = (state) => clamp(jobFunding(state, state.career?.job), 0.6, 1.4);
+
 /** The yearly money: capital budget, district levy, or O&M allocation. */
 export function annualMoney(state, c) {
   if (c.money === 'cash') return 0;
   // A district levy covers part of the replacement schedule; a parent service pays most of the rest.
   if (c.money === 'funds') return Math.round((schedule(c) * (0.4 + 0.6 * (c.parent?.funds ?? 0))) / 1000) * 1000;
-  if (c.money === 'om') return Math.round((schedule(c) * 0.12) / 1000) * 1000;
-  const fiscal = c.sector === 'private' ? 1 : clamp((state.publicService?.city?.fiscalHealth ?? 60) / 65, 0.55, 1.3);
-  return Math.round((schedule(c) * fiscal) / 1000) * 1000;
+  // Issued equipment's O&M follows the program's funding: defense for the military, your area's budget otherwise.
+  if (c.money === 'om') return Math.round((schedule(c) * 0.12 * (c.kind === 'military' ? serviceLevel(state, 'national', 'defense') : c.kind === 'job' ? publicFunding(state) : 1)) / 1000) * 1000;
+  const fiscal = c.sector === 'private' ? 1 : clamp((jobFiscalHealth(state, state.career?.job) * 0.5 + (state.publicService?.city?.fiscalHealth ?? 60) * 0.5) / 65, 0.55, 1.3) * publicFunding(state);
+  // The head of a central service funds the whole fleet at the pace their fleet policy sets.
+  const policy = c.fleetHead ? FLEET_POLICIES[c.fleetHead.fleetPolicy ?? 'schedule']?.funding ?? 1 : 1;
+  return Math.round((schedule(c) * fiscal * policy) / 1000) * 1000;
 }
 
 /** Premises the organization already rents when you arrive are in its operating budget, not your equipment budget. */

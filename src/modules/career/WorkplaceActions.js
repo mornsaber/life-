@@ -11,15 +11,19 @@ import { createEmployer, cityName } from './Employers.js';
 import { STATES } from '../life/States.js';
 import { getProfession } from './JobTrees.js';
 import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
-import { MAX_STEP } from './PayGrades.js';
-import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast } from './CareerEngine.js';
+import { MAX_STEP, onBands, BAND_MAX } from './PayGrades.js';
+import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast, PLATEAU_AFTER, PLATEAU_YEARS } from './CareerEngine.js';
 import { regionsHere } from '../life/Regions.js';
 import { knob } from '../../core/Difficulty.js';
 
 const DIMINISH = [1, 0.6, 0.3, 0];
 /** Promotion odds multiplier by the grade being competed for. */
 // Fewer seats at each rung: calibrated so ~1 in 3 workers ever supervises and mid-career pay lands near real medians.
-const COMPETITION = { 3: 0.9, 4: 0.75, 5: 0.6, 6: 0.5, 7: 0.38, 8: 0.26, 9: 0.17, 10: 0.1 };
+/**
+ * The air thins near the top. The seat itself is scarce (Vacancies: one chief, a few deputies)
+ * and the contest is against named rivals, so this only shades the odds once a seat is open.
+ */
+const COMPETITION = { 3: 0.95, 4: 0.9, 5: 0.85, 6: 0.8, 7: 0.72, 8: 0.62, 9: 0.52, 10: 0.45 };
 
 function withJob(ctx) {
   const job = ctx.state.career.job;
@@ -149,7 +153,7 @@ export const WorkplaceActions = {
       if (yearlyCount(state, 'career.askRaise')) return ctx.toast('You already asked this year.', 'warn');
       if (job.lastRaiseAge === state.character.age) return ctx.toast('Too soon since your last raise.', 'warn');
       bumpYearly(state, 'career.askRaise');
-      if (job.sector !== 'private') {
+      if (!onBands(job)) {
         if (job.step >= MAX_STEP) return ctx.toast('You\'re at the top step of your grade.', 'warn');
         if (job.performance >= 80 && rng.chance(0.5 + job.boss / 300)) {
           job.step += 1;
@@ -158,15 +162,17 @@ export const WorkplaceActions = {
           ctx.log(`Your supervisor approved a Quality Step Increase to step ${job.step} ($${job.salary.toLocaleString()}).`, '📈', 'good');
           ctx.toast('Quality Step Increase approved', 'good');
         } else {
-          ctx.log('"Your pay is set by the GS table." QSI request denied.', '📄', 'warn');
+          ctx.log(`"Your pay is set by the ${job.sector === 'federal' && !state.character.countryId ? 'GS table' : 'pay scale'}." QSI request denied.`, '📄', 'warn');
           ctx.toast('QSI denied', 'bad');
         }
         return;
       }
+      if ((job.band ?? 0) >= BAND_MAX) return ctx.toast('You\'re at the top of your pay band: only a promotion (or a new employer) pays more.', 'warn');
       const chance = clamp(0.1 + job.performance / 200 + job.boss / 250, 0.05, 0.9);
       if (rng.chance(chance)) {
-        const pct = rng.int(4, 12);
-        job.merit = Math.round((job.merit + pct / 100) * 1000) / 1000;
+        const before = job.band ?? BAND_MAX;
+        job.band = Math.round(Math.min(BAND_MAX, before * (1 + rng.int(4, 12) / 100)) * 1000) / 1000;
+        const pct = Math.round((job.band / before - 1) * 100);
         job.lastRaiseAge = state.character.age;
         recalcSalary(state, job);
         ctx.log(`You negotiated a ${pct}% raise. New salary: $${job.salary.toLocaleString()}.`, '💵', 'good');
@@ -295,6 +301,9 @@ export const WorkplaceActions = {
       // Some fields have few management seats per worker (hotels, the trades).
       chance *= (getProfession(job.professionId).promotionOdds ?? 1) * knob(state, 'promotion');
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
+      // Runner-up last time: a civil-service list ranks you first for the next opening; a company remembers.
+      const listed = job.nextInLine?.levelId === target.id && job.performance >= 70;
+      if (listed) chance = job.sector === 'private' ? chance * 1.35 : Math.max(chance, 0.9);
 
       if (rng.chance(clamp(chance, 0.05, 0.95))) {
         // Big employers often attach a relocation to senior promotions.
@@ -318,6 +327,9 @@ export const WorkplaceActions = {
         return;
       }
       if (nextGrade >= 7) job.passovers = (job.passovers ?? 0) + 1;
+      if (job.passovers >= PLATEAU_AFTER) job.plateauUntil = state.character.age + PLATEAU_YEARS;
+      // A strong runner-up goes to the top of the list for the next opening.
+      if (job.performance >= 75) job.nextInLine = { levelId: target.id, age: state.character.age };
       if (optionId === 'ultimatum') {
         if (rng.chance(0.5)) {
           leaveJob(ctx, 'They called your bluff and accepted your resignation', { fired: true });

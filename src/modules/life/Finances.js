@@ -114,9 +114,11 @@ export const Finances = {
       stateTax = (stateRate === 1 ? (x) => x : (x) => Math.round(x * stateRate))(joint((x) => stateIncomeTax(stateIdOf(state), x), provincialBase));
       if (province?.ownIncomeTax) stateTax = joint((x) => stateIncomeTax(stateIdOf(state), x), Math.max(0, taxable - deductible));
     }
+    // The national legislature can cut or raise income tax rates (politics/Laws).
+    const nationalRate = { cut: 0.9, standard: 1, hike: 1.1 }[lawValue(state, 'incomeTax')] ?? 1;
     let federalTax = abroad
-      ? joint((x) => nationalIncomeTax(country, x, STATES[stateIdOf(state)]), Math.max(0, taxable - deductible)) + capitalGainsTax + contributions
-      : Math.max(0, joint(calculateIncomeTax, taxable) - kidsCredit) + capitalGainsTax;
+      ? Math.round(joint((x) => nationalIncomeTax(country, x, STATES[stateIdOf(state)]), Math.max(0, taxable - deductible)) * nationalRate) + capitalGainsTax + contributions
+      : Math.max(0, Math.round(joint(calculateIncomeTax, taxable) * nationalRate) - kidsCredit) + capitalGainsTax;
     // US citizens owe US tax wherever they live. The foreign earned income exclusion and credits
     // for tax paid abroad mean most owe nothing; high earners in low-tax countries pay the difference.
     let usAbroadTax = 0;

@@ -5,7 +5,7 @@
  */
 import { getProfession } from './JobTrees.js';
 import { levelById } from './Ladder.js';
-import { salaryBreakdown } from './PayGrades.js';
+import { salaryBreakdown, onBands, bandFromStep, payCap } from './PayGrades.js';
 import { stateOf } from '../life/Regions.js';
 import { clearedPremium } from './ClearedWork.js';
 import { lawValue } from '../politics/Laws.js';
@@ -25,9 +25,12 @@ export function recalcSalary(state, job) {
   const rankPay = (level?.rankPay ?? 1) * (job.employer.size === 'mega' && level?.megaHeadPay ? level.megaHeadPay : 1);
   // Command staff only (lieutenants and sergeants are on the union scale); federal pay is set nationally.
   const agencyScale = ['municipal', 'state', 'public'].includes(job.sector) && managerial && (level?.grade ?? 0) >= 7 ? PUBLIC_MGMT_SCALE[job.employer.size] ?? 1 : 1;
+  // Old saves: a company job's position in its band starts where its step put it.
+  if (onBands(job)) job.band ??= bandFromStep(job.step);
   job.pay = salaryBreakdown({
     grade: job.grade,
     step: job.step,
+    band: onBands(job) ? job.band : null,
     merit: job.merit,
     // Job-specific adjustments (a physician's specialty) ride on top of the profession's market premium.
     // Cleared roles on classified programs pay a premium.
@@ -45,6 +48,10 @@ export function recalcSalary(state, job) {
   const publicAdj = job.sector === 'federal' ? adj?.federal : job.sector === 'state' ? adj?.state : job.sector === 'municipal' ? adj?.city : 0;
   // Difficulty: everyone's paid a little more (Story) or less (Hard, Brutal).
   const total = Math.round(job.pay.total * knob(state, 'income'));
-  job.salary = Math.max(publicAdj ? Math.round(total * (1 + publicAdj)) : total, job.sector === 'federal' ? 0 : floor);
+  // Government pay stops at the legal cap, however senior the post.
+  const cap = Math.round(payCap(job, state.character.countryId) * knob(state, 'income'));
+  const capped = Math.min(publicAdj ? Math.round(total * (1 + publicAdj)) : total, cap);
+  job.pay.capped = capped < total;
+  job.salary = Math.max(capped, job.sector === 'federal' ? 0 : floor);
   return job.salary;
 }

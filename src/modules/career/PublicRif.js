@@ -25,6 +25,7 @@ import { clamp } from '../../core/Random.js';
 import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { lawValue } from '../politics/Laws.js';
 import { orgOf } from '../org/Organizations.js';
+import { jobFiscalHealth, jobFunding } from '../politics/Budgets.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -32,16 +33,20 @@ const money = (x) => `$${Math.round(x).toLocaleString()}`;
 export function budgetPressure(state, job) {
   if (!job || job.sector === 'private') return 0;
   const pay = lawValue(state, 'publicPay');
+  // The budget that pays you: a government in fiscal trouble, or your area cut back, means positions go.
+  const health = job.employer ? jobFiscalHealth(state, job) : 60;
+  const funding = job.employer ? jobFunding(state, job) : 1;
+  const cut = clamp((0.95 - funding) * 3, 0, 0.6);
   if (job.sector === 'municipal') {
-    const fh = state.publicService?.city?.fiscalHealth ?? 60;
-    return clamp((35 - fh) / 35, 0, 1) + ((pay?.city ?? 0) < 0 ? 0.25 : 0);
+    const fh = Math.min(health, state.publicService?.city?.fiscalHealth ?? health);
+    return clamp((35 - fh) / 35, 0, 1) + cut + ((pay?.city ?? 0) < 0 ? 0.25 : 0);
   }
   if (job.sector === 'state' || job.sector === 'public') {
-    return (state.economy?.phase === 'recession' ? 0.35 : 0) + ((pay?.state ?? 0) < 0 ? 0.25 : 0);
+    return clamp((35 - health) / 35, 0, 1) + cut + (state.economy?.phase === 'recession' ? 0.2 : 0) + ((pay?.state ?? 0) < 0 ? 0.25 : 0);
   }
   if (job.sector === 'federal') {
     const stab = state.publicService?.federal?.stability ?? 60;
-    return clamp((40 - stab) / 40, 0, 1) + ((pay?.federal ?? 0) < 0 ? 0.25 : 0);
+    return clamp((40 - stab) / 40, 0, 1) * 0.6 + clamp((30 - health) / 30, 0, 1) + cut + ((pay?.federal ?? 0) < 0 ? 0.25 : 0);
   }
   return 0;
 }

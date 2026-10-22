@@ -19,7 +19,7 @@ import { hasCredential as holds } from '../../modules/credentials/LicensingEngin
 import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS, professionsFor, fieldIdsFor } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck, veteranPlacementNote } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
-import { EMPLOYER_SIZES, ratingLabel } from '../../modules/career/PayGrades.js';
+import { EMPLOYER_SIZES, ratingLabel, onBands, payGradeLabel, payGradeShort, nextStepIn, BAND_MIN, BAND_MAX, BONUS_TARGET } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
 import { chainOfCommand } from '../../modules/org/Organizations.js';
 import { assignmentFor } from '../../modules/career/Units.js';
@@ -127,11 +127,21 @@ function gigCard(state) {
     <p class="fine">${state.character.countryId ? 'Gig pay is self-employed income: you pay your own social contributions, there\'s no employer pension or sick pay' : 'Gig pay is 1099 income: you owe 15.3% self-employment tax, there\'s no employer health plan or 401(k) match'}, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
 }
 
-function payBreakdown(job) {
+function payBreakdown(job, countryId) {
   const p = job.pay;
   if (!p) return '';
   const pct = (x) => `${x >= 1 ? '+' : ''}${Math.round((x - 1) * 100)}%`;
-  return `<p class="fine">G${job.grade} base ${money(p.base)} × market ${pct(p.payMultiplier)} × employer ${pct(p.sizeMult)} × step ${job.step} ${pct(p.steps)} × ${job.sector === 'federal' ? 'locality' : 'region'} ${pct(p.locality)}${p.merit ? ` × merit +${Math.round(p.merit * 100)}%` : ''}</p>`;
+  const where = onBands(job) ? `${Math.round(((job.band - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band ${pct(p.steps)}` : `step ${job.step} ${pct(p.steps)}`;
+  return `<p class="fine">${payGradeLabel(job, countryId)} base ${money(p.base)} × market ${pct(p.payMultiplier)} × employer ${pct(p.sizeMult)} × ${where} × ${job.sector === 'federal' ? 'locality' : 'region'} ${pct(p.locality)}${p.merit ? ` × merit +${Math.round(p.merit * 100)}%` : ''}${p.capped ? ' · capped at the government pay limit' : ''}</p>`;
+}
+/** The pay row: a step schedule in government, a band and a bonus in a company. */
+function payRow(job, countryId) {
+  if (onBands(job)) {
+    const bonus = BONUS_TARGET[job.grade] ? ` · bonus target ${Math.round(BONUS_TARGET[job.grade] * (job.abilities.includes('exec') ? 1.5 : 1) * 100)}%` : '';
+    return ['Pay band', `${payGradeLabel(job, countryId)} · ${job.band >= BAND_MAX ? 'top of band' : `${Math.round(((job.band - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band`}${bonus}`];
+  }
+  const next = nextStepIn(job);
+  return ['Pay grade', `${payGradeLabel(job, countryId)}, step ${job.step}${next ? ` · next step in ${next} yr` : ' · top step'}${job.pay?.capped ? ' · <span class="warn-text">at the pay cap</span>' : ''}`];
 }
 
 function managementConsole(job) {
@@ -171,17 +181,19 @@ function currentJob(state) {
 
   return card(esc(job.title), `
     <div class="job-head">
-      ${rankBadge(`G${job.grade} · S${job.step}`, job.title, (job.grade - 1) / 9, { icon: profession.icon })}
+      ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon })}
       <div class="job-meta">
         <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
           ['Salary', `<b>${money(job.salary)}</b>/yr`],
           ['Rating', ratingLabel(job.performance)],
+          payRow(job, state.character.countryId),
           ['In level', `${job.yearsInLevel} yr`],
           ['Seniority', `${job.yearsAtEmployer} yr`],
           trainee ? ['Training', `<span class="warn-text">${esc(trainee.label)}</span>`] : job.probationLeft > 0 ? ['Status', `<span class="warn-text">Probation · ${job.probationLeft} yr left</span>`] : isTenured(job) ? ['Status', '🎓 Tenured'] : null,
           job.warnings ? ['Warnings', `<span class="neg">${job.warnings}</span>`] : null,
-          job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>`] : null,
+          job.passovers ? ['Passed over', `<span class="neg">${job.passovers}/3</span>${job.plateauUntil ? ` · plateau lifts at ${job.plateauUntil}` : ''}`] : null,
+          job.nextInLine && status.all?.some((l) => l.id === job.nextInLine.levelId) ? ['Promotion list', `🥇 First in line for ${esc(status.all.find((l) => l.id === job.nextInLine.levelId).title)}`] : null,
           ...transportRows(state, job, profession),
           ...medicineRows(state, job),
           ...teachingRows(state, job),
@@ -196,12 +208,12 @@ function currentJob(state) {
     </div>
     <p class="promo ${status.eligible ? 'ready' : ''}">${nextHint}</p>
     ${needs?.length ? `<p class="fine">🔐 Promotion to ${esc(needs[0].l.title)} triggers a ${esc(needs[0].c.clearanceNeeded)} clearance investigation.</p>` : ''}
-    <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' && job.sector !== 'private' ? 'Quality Step Increase' : a.desc })).join('')}
+    <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' ? (onBands(job) ? 'Out-of-cycle raise up your band' : 'Quality Step Increase') : a.desc })).join('')}
       ${lateral ? button(`🔀 Move to ${esc(lateral.title)}`, 'career.switchTrack', { hint: `${TRACK_LABEL[lateral.track]} track` }) : ''}
     </div>
     ${summerPanel(state, job)}
     ${disclosure('job.ladder', '🪜 Career ladder', progression(state, job, profession, size))}
-    ${disclosure('job.pay', '💵 Pay, benefits & powers', `${payBreakdown(job)}
+    ${disclosure('job.pay', '💵 Pay, benefits & powers', `${payBreakdown(job, state.character.countryId)}
       <div class="benefits">${benefitsSummary(b).map((x) => chip(esc(x))).join(' ')}${b.pension ? ` ${chip(`🏦 ${PENSION_PLANS[b.pension].short}`, 'green')}` : ''}</div>
       ${job.abilities.length ? `<div class="abilities">${job.abilities.map((a) => chip(`${ABILITIES[a].icon} ${ABILITIES[a].label}`)).join(' ')}</div>` : ''}`)}
     ${unionFold(state, job)}

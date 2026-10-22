@@ -11,6 +11,7 @@
 import { pickFresh } from '../../core/Pools.js';
 import { L, detectiveRanks } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
+import { jobBudget } from '../politics/Budgets.js';
 
 const PD = (city) => `${city} Police Department`;
 
@@ -221,11 +222,19 @@ export const MUNICIPAL_EVENTS = {
   },
 };
 
-function adjustCity(state, { fiscal = 0, approval = 0 }) {
+function adjustCity(state, { fiscal = 0, approval = 0, budgetId: id = null }) {
   const city = state.publicService.city;
   if (!city) return;
   city.fiscalHealth = Math.round(clamp(city.fiscalHealth + fiscal, 0, 100));
   city.approval = Math.round(clamp(city.approval + approval, 0, 100));
+  // The city manager's budget recommendation changes the city's actual books.
+  const b = id ? jobBudget(state, state.career.job, { create: false }) : null;
+  if (!b || b.level !== 'city') return;
+  const scale = (areas, k) => { for (const a of areas) b.funding[a] = Math.round(clamp((b.funding[a] ?? 1) * k, 0.6, 1.4) * 1000) / 1000; };
+  if (id === 'taxes') b.levy = Math.round(((b.levy ?? 0) + 0.04) * 1000) / 1000;
+  else if (id === 'cuts') scale(Object.keys(b.funding), 0.94);
+  else if (id === 'bonds') { b.debt = Math.round((b.debt + 0.12) * 100) / 100; scale(['works'], 1.1); }
+  else if (id === 'safety') scale(['police', 'fire', 'ems'], 1.06);
 }
 
 /** More municipal events per department, so city careers don't repeat one scenario. */
@@ -378,7 +387,7 @@ export const MunicipalGov = {
       const choice = BUDGET_CHOICES.find((c) => c.id === optionId);
       const city = ctx.state.publicService.city;
       if (!choice || !city) return;
-      adjustCity(ctx.state, choice);
+      adjustCity(ctx.state, { ...choice, budgetId: choice.id });
       ctx.log(`Budget adopted: ${choice.label.slice(2).trim()}. Fiscal health ${city.fiscalHealth}, approval ${city.approval}.`, '🏛️');
       ctx.emit('career:adjust', { performance: choice.perf + Math.round((city.approval - 50) / 10), boss: 0 });
     },
