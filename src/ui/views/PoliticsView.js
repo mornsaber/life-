@@ -2,6 +2,7 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
+import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
 import { governmentCard, partyCard } from './GovernmentCard.js';
@@ -54,6 +55,16 @@ function executiveConsole(state) {
     ${disclosure('politics.agenda', '📜 Your legislative agenda (2 bills a year)', `<ul class="history">${agenda}</ul><p class="fine">Your bills go to the legislature with your standing behind them; it still has to pass them. Budgets are in "Your Government" below.</p>`)}`;
 }
 
+/** Honours you can put names forward for (Patronage.js). */
+function patronageCard(state) {
+  const powers = honourPowers(state);
+  if (!powers) return '';
+  const used = state.yearly?.['patronage.nominate'] ?? 0;
+  const left = powers.kind === 'resignation' ? powers.perYear : Math.max(0, powers.perYear - used);
+  const rows = nominees(state).map((n) => `<li class="report-row"><div><b>${esc(n.name)}</b> <small class="muted">${esc(n.who)}${n.kind === 'family' ? ' · nepotism risk' : n.kind === 'personal' ? ' · cronyism risk' : ''}</small></div><div class="toggle-row">${button('🎗️ Nominate', 'patronage.nominate', { arg: n.id, variant: 'tiny', disabled: !left })}${powers.peers && n.kind !== 'family' ? button('👑 Peerage', 'patronage.nominate', { arg: `${n.id}|peer`, variant: 'tiny', disabled: !left }) : ''}</div></li>`).join('');
+  return card(powers.label, `<p class="fine">${left} nomination${left === 1 ? '' : 's'} left${powers.kind === 'resignation' ? '' : ' this year'}. The worthy are popular; friends, family and staff can make headlines.</p>${rows ? `<ul class="history">${rows}</ul>` : '<p class="muted">No names this year.</p>'}`, { icon: '🎗️' });
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -95,6 +106,7 @@ export function politicsView(state) {
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+    ${patronageCard(state)}
     ${crownCards(state)}
     ${platformCard(state)}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}

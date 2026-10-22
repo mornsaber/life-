@@ -7,6 +7,9 @@ import { CROWNS, crownOf, monarchName, ROYAL_LEVELS } from '../../modules/world/
 import { currentYear } from '../../core/State.js';
 import { peerAddress, RANKS } from '../../modules/world/Peerage.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
+import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/RoyalHousehold.js';
+import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
+import { OFFICES } from '../../modules/politics/Offices.js';
 
 export function crownCards(state) {
   const r = state.royal;
@@ -23,8 +26,10 @@ export function crownCards(state) {
       ['Heir', c.monarch.you ? esc(c.heir.name) : `${esc(c.heir.name)}, ${esc(def.titles.heir[c.heir.gender === 'female' ? 1 : 0])}${c.heir.you ? ' (you)' : ''}`],
       realms.length > 1 ? ['Realms', realms.join(' · ')] : null,
       crises.length ? ['Last constitutional crisis', `${crises.at(-1).year}`] : null,
+      ...Object.values(state.world?.viceRegal ?? {}).filter((h) => VICE_REGAL[h.postId]?.country === (state.character.countryId ?? 'US') && OFFICES[h.postId]).map((h) => [esc(OFFICES[h.postId].name), `${esc(h.name)}${h.you ? ' (you)' : ` · ${esc(h.background)}`} · until ${h.until}`]),
       (state.character.countryId ?? 'US') in KNIGHTHOODS_DEFAULT ? ['Knighthoods in the national order', knighthoodsOn(state, state.character.countryId) ? 'Awarded' : 'Not awarded (abolished)'] : null,
     ].filter(Boolean))}
+    ${Object.entries(state.world?.viceRegal ?? {}).filter(([, h]) => !h.you && youAdvise(state, h.postId)).map(([key, h]) => `<p class="fine">You advise ${esc(state.character.countryId === 'CA' && h.postId === 'ca_lg' ? 'the Governor General' : 'the Crown')} on the ${esc(OFFICES[h.postId].name)}: when ${esc(h.name)}'s term ends, the shortlist comes to you.</p><div class="action-grid">${button(`📜 Advise recalling ${esc(h.name)}`, 'viceRegal.recall', { arg: key, variant: 'danger', hint: 'Rare, and costly' })}</div>`).join('')}
     ${/^(au|nz)_pm$/.test(state.politics?.office?.id ?? '') ? `<div class="action-grid">${button(knighthoodsOn(state, state.character.countryId) ? '📜 Abolish new knighthoods' : '⚔️ Restore knighthoods', 'honours.knighthoods', { hint: 'On your advice; unpopular to restore' })}</div>` : ''}`, { icon: '👑' }));
   }
   if (r) {
@@ -38,14 +43,23 @@ export function crownCards(state) {
         ['Status', r.reigning ? 'Monarch' : r.working ? 'Working royal' : r.steppedBack ? 'Stepped back' : 'Private life'],
         ['Allowance', r.reigning ? `${money(20000000)}/yr` : r.working ? `${money(r.line === 1 ? ROYAL_LEVELS.heir.allowance : lv?.allowance ?? 0)}/yr from the ${esc(def.grant)} (from 18)` : 'Family trust only'],
         r.patronages?.length ? ['Patronages', esc(r.patronages.join(', '))] : null,
+        militaryPosts(state).rank ? ['Armed forces', esc(militaryPosts(state).rank)] : null,
+        militaryPosts(state).posts.length ? ['Military appointments', esc(militaryPosts(state).posts.join(' · '))] : null,
+        r.household?.conferred ? ['Honours you have conferred', String(r.household.conferred)] : null,
       ].filter(Boolean))}
       <div class="action-grid">
         ${r.working || r.reigning ? button('🤝 Royal engagement', 'crown.engagement', { hint: '3 a year' }) : ''}
         ${r.working ? button('🎗️ Take a patronage', 'crown.patronage', { hint: 'One a year' }) : ''}
         ${r.working || r.reigning ? button('✈️ Royal tour', 'crown.tour', { hint: 'Senior royals' }) : ''}
         ${working ? button('🚪 Step back from royal duties', 'crown.stepBack', { variant: 'danger', hint: 'No grant, no title in use. For good.' }) : ''}
+        ${r.reigning || (r.working && r.line != null && r.line <= 4 && state.character.age >= 25) ? button('⚔️ Hold an investiture', 'royalHousehold.investiture', { hint: 'Two a year' }) : ''}
+        ${r.reigning || (r.working && r.line === 1) ? button('🏷️ Grant a royal warrant', 'royalHousehold.warrant', { hint: 'One a year' }) : ''}
+        ${!r.reigning && state.character.age >= 18 && state.character.age <= 30 && !state.military.service ? button('🎖️ Serve in the armed forces', 'royalHousehold.serve', { hint: 'As an officer cadet' }) : ''}
         ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
       </div>
+      ${r.reigning ? `<h4 class="sub">Confer honours <small class="muted">three a year · ${esc(ROYAL_ORDERS[r.crownId]?.great[0] ?? '')}, ${esc(ROYAL_ORDERS[r.crownId]?.personal[0] ?? '')}</small></h4>
+      <div class="toggle-row chips-row">${button('🎗️ Honour a deserving member of the public', 'royalHousehold.confer', { arg: 'public', variant: 'tiny' })}${conferOptions(state).map((o) => button(o.label, 'royalHousehold.confer', { arg: `${o.person.id}|${o.id}`, variant: 'tiny' })).join('')}</div>
+      <p class="fine">As sovereign you give royal assent, grant mercy, dissolve parliament and, in a crisis, use the reserved powers — the decisions come to you through the year.</p>` : ''}
       <p class="fine">Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.</p>`, { icon: '👑', accent: 'yellow' }));
   }
   const p = state.character.peerage;

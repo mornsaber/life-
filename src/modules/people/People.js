@@ -44,4 +44,5 @@ export function spousalBenefit(state) {
   return s ? Math.round(spouseSocialSecurity(s) * 0.5) : 0;
 }
 
-export const fullName = (p) => `${p.firstName} ${p.lastName}`;
+/** "Princess Anne Ashcombe", "Anne Ashcombe, Duchess of Albany", "Sir Tom Hale" — with any title they hold. */
+export const fullName = (p) => (!p.title ? `${p.firstName} ${p.lastName}` : / of /.test(p.title) ? `${p.firstName} ${p.lastName}, ${p.title}` : `${p.title} ${p.firstName} ${p.lastName}`);

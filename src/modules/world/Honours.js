@@ -222,8 +222,8 @@ function knighthoodPolicyYear(ctx) {
   if (rng.chance(knighthoodsOn(state, cc) ? 0.02 : 0.012)) setKnighthoods(ctx, cc, !knighthoodsOn(state, cc));
 }
 
-const tierName = (t, gender) => (typeof t.name === 'string' ? t.name : t.name[gender === 'female' ? 'female' : 'male']);
-const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefix[gender === 'female' ? 'female' : 'male'] : t.prefix ?? null);
+export const tierName = (t, gender) => (typeof t.name === 'string' ? t.name : t.name[gender === 'female' ? 'female' : 'male']);
+export const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefix[gender === 'female' ? 'female' : 'male'] : t.prefix ?? null);
 
 /**
  * How eminent a life is: public office, a senior career, flag rank, a
@@ -313,7 +313,7 @@ function servicesTo(state) {
   return 'the community';
 }
 
-function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? []) {
+export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? []) {
   const { state } = ctx;
   const gender = state.character.gender;
   const name = tierName(t, gender);

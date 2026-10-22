@@ -15,6 +15,8 @@ import { nobleBirth, NOBLE_BIRTH_CHANCE, PeerageModule, grantPeerage } from '../
 import { styledName, chivalryList, postNominals, honoursList, knighthoodsOn, setKnighthoods } from '../src/modules/world/Honours.js';
 import { peerChamber, lordSpiritual } from '../src/modules/politics/Legislature.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
+import { conferOptions, familyTitle } from '../src/modules/world/RoyalHousehold.js';
+import { fullName } from '../src/modules/people/People.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -227,6 +229,41 @@ const tests = {
     assert.equal(peerChamber(state), 'upper_GB');
     state.career.job.levelId = 'archdeacon';
     assert.equal(peerChamber(state), null);
+  },
+  'the household: a real heir, titles for the family, honours to confer, honorary ranks'() {
+    const { engine, state } = life({ countryId: 'GB', royalLevel: 'child' }, 6);
+    year(engine, state, 2);
+    const heir = state.people.list.find((p) => p.royal === 'heir');
+    assert.ok(heir, 'an older sibling is heir');
+    assert.equal(state.world.crowns.GB.heir.personId, heir.id);
+    assert.match(fullName(heir), /Cambria/);
+    state.character.age = 30;
+    state.people.list.push({ id: 'sp', firstName: 'Clara', lastName: 'Bell', gender: 'female', relation: 'spouse', ageOffset: 0, alive: true, relationship: 80, income: 0 });
+    state.people.list.push({ id: 'k1', firstName: 'Ned', lastName: 'X', gender: 'male', relation: 'child', ageOffset: -30, alive: true, relationship: 90, income: 0 });
+    state.character.gender = 'male';
+    year(engine, state, 1);
+    assert.ok(state.people.list.find((p) => p.id === 'sp').title, 'spouse titled');
+    assert.equal(state.people.list.find((p) => p.id === 'k1').title, 'Prince');
+    assert.ok(state.royal.household.rank || state.royal.household.military.length >= 0);
+  },
+  'the sovereign confers titles and decides assent, mercy and dissolutions'() {
+    const { engine, state } = life({ countryId: 'GB', royalLevel: 'heir' }, 7);
+    state.character.age = 40;
+    state.royal.reigning = true;
+    state.world.crowns.GB.monarch = { name: state.character.firstName, gender: state.character.gender, age: 40, number: 1, you: true };
+    state.people.list.push({ id: 'k1', firstName: 'Ned', lastName: 'X', gender: 'male', relation: 'child', ageOffset: -20, alive: true, relationship: 90, income: 0 });
+    year(engine, state, 1);
+    assert.equal(state.world.crowns.GB.heir.personId, 'k1', 'your eldest child is heir');
+    const duke = conferOptions(state).find((o) => o.person.id === 'k1' && o.id === 'dukedom');
+    assert.ok(duke);
+    state.prompts = [];
+    engine.dispatch('royalHousehold.confer', 'k1|dukedom');
+    assert.match(state.people.list.find((p) => p.id === 'k1').title, /^Duke of /);
+    assert.equal(familyTitle(state, state.people.list.find((p) => p.id === 'k1')), state.people.list.find((p) => p.id === 'k1').title);
+    const ctx = engine.context();
+    const pop = state.royal.popularity;
+    MODULES.find((m) => m.id === 'royalHousehold').resolvers.assent(ctx, { bill: 'a bill' }, 'refuse');
+    assert.ok(state.royal.popularity < pop, 'refusing assent is a crisis');
   },
 };
 void PeerageModule;

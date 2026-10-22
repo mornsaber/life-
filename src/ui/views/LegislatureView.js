@@ -4,6 +4,7 @@
  * committee, staff) and lobbying.
  */
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
+import { staffTitle, staffBudget, BACKGROUNDS, positions } from '../../modules/politics/Staffers.js';
 import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority } from '../../modules/politics/Legislature.js';
 import { partyName } from '../../modules/politics/Parties.js';
 import { LAWS, levelValue, lawValue, describeValue, proposedValue } from '../../modules/politics/Laws.js';
@@ -79,8 +80,8 @@ function seatCard(state) {
     return `<li class="report-row"><div>${law.icon} <b>${esc(law.name)}</b> <small class="muted">now ${esc(describeValue(id, cur))}</small></div><div class="toggle-row">${up !== null ? button(`⬆️ ${esc(describeValue(id, up))}`, 'legislature.sponsor', { arg: `${id}|up`, variant: 'tiny', disabled: left <= 0 }) : ''}${down !== null ? button(`⬇️ ${esc(describeValue(id, down))}`, 'legislature.sponsor', { arg: `${id}|down`, variant: 'tiny', disabled: left <= 0 }) : ''}</div></li>`;
   }).join('');
   const posts = Object.entries(POSTS).map(([id, P]) => button(seat.post === id ? `✓ ${P.title}` : `Run for ${P.title.toLowerCase()}`, 'legislature.runPost', { arg: id, variant: seat.post === id ? 'tiny on' : 'tiny', disabled: seat.post === id || terms < P.minTerms || (P.majority && !inMajority(state)) || Boolean(state.yearly['legislature.runPost']), hint: terms < P.minTerms ? `${P.minTerms} terms` : P.majority && !inMajority(state) ? 'Majority caucus only' : `+${Math.round(P.pay * 100)}% pay` })).join('');
-  const staff = seat.staff.map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(STAFF_ROLES[p.role].title)} · skill ${p.skill}</small></div>${button('Let go', 'legislature.fireStaff', { arg: p.id, variant: 'tiny danger' })}</li>`).join('');
-  const allowance = BODY_DEFS[body.kind].allowance;
+  const staff = seat.staff.map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(staffTitle(p.role, state))} · skill ${p.skill}${p.bg ? ` · ${esc(BACKGROUNDS[p.bg]?.label ?? '')}` : ''}${p.salary ? ` · $${p.salary.toLocaleString()}/yr` : ''}</small></div>${button('Let go', 'legislature.fireStaff', { arg: p.id, variant: 'tiny danger' })}</li>`).join('');
+  const allowance = staffBudget(seat);
   const pending = body.bills.filter((b) => b.stage === 'introduced');
   return card(`Your Seat: ${esc(body.name)}`, `
     <p>${chip(`${CAUCUSES[seat.caucus].icon} ${CAUCUSES[seat.caucus].name}`, 'cyan')} ${chip(inMajority(state) ? 'In the majority' : 'In the minority', inMajority(state) ? 'green' : 'warn')} ${seat.post ? chip(POSTS[seat.post].title, 'gold') : ''} ${seat.committee ? chip(`🗂️ ${COMMITTEES[seat.committee].name}`) : ''} ${seat.peer ? chip('👑 Life peer', 'gold') : ''}</p>
@@ -90,9 +91,9 @@ function seatCard(state) {
     ${seat.post && pending.length ? `<h4 class="sub">Whip votes</h4><div class="toggle-row">${pending.map((b) => button(`📋 ${esc(billTitle(b))}`, 'legislature.whip', { arg: b.id, variant: 'tiny', disabled: left <= 0 })).join('')}</div>` : ''}
     <h4 class="sub">Leadership</h4><div class="toggle-row">${posts}</div>
     <h4 class="sub">Committee</h4><div class="toggle-row">${Object.entries(COMMITTEES).map(([id, c]) => button(c.name, 'legislature.committee', { arg: id, variant: seat.committee === id ? 'tiny on' : 'tiny' })).join('')}</div>
-    <h4 class="sub">Your staff <small class="muted">${seat.staff.length}/${allowance} funded</small></h4>
-    ${staff ? `<ul class="history">${staff}</ul>` : '<p class="muted">No staff yet.</p>'}
-    <div class="toggle-row">${Object.entries(STAFF_ROLES).map(([id, r]) => button(`Hire ${r.title.toLowerCase()}`, 'legislature.hireStaff', { arg: id, variant: 'tiny', disabled: seat.staff.length >= allowance, hint: r.desc })).join('')}</div>
+    <h4 class="sub">Your staff <small class="muted">${allowance ? `${seat.staff.length}/${allowance} funded by the office budget` : 'no staff budget'}</small></h4>
+    ${!allowance ? '<p class="fine">Members of the Lords get a daily allowance, not an office: no funded staff.</p>' : staff ? `<ul class="history">${staff}</ul>` : '<p class="muted">No staff yet. Each hire comes from a shortlist of three.</p>'}
+    ${allowance ? `<h4 class="sub">Positions <small class="muted">${positions(seat).reduce((n, p) => n + p.max, 0)} posts, budget for ${allowance} — choose which to fill</small></h4><ul class="history">${positions(seat).map((p) => `<li class="report-row"><div><b>${esc(staffTitle(p.role, state))}</b> <small class="muted">${p.filled}/${p.max} · ${esc(STAFF_ROLES[p.role].desc)}</small></div>${button('Hire', 'staffers.shortlist', { arg: p.role, variant: 'tiny', disabled: p.filled >= p.max || seat.staff.length >= allowance })}</li>`).join('')}</ul>` : ''}
     <div class="toggle-row">${Object.entries(CAUCUSES).filter(([id]) => id !== seat.caucus).map(([id, c]) => button(`🔀 Switch to the ${c.name}`, 'legislature.caucus', { arg: id, variant: 'tiny ghost', hint: 'Costs approval' })).join('')}</div>
     ${seat.record.length ? disclosure('my-record', 'Your record', `<ul class="history">${seat.record.slice().reverse().map((r) => `<li><small>age ${r.age}</small> ${esc(r.text)}</li>`).join('')}</ul>`) : ''}`, { icon: '🏛️', accent: 'yellow' });
 }

@@ -137,7 +137,7 @@ function crownMedal(ctx, cc, kind, crownId) {
 }
 
 /** The monarch dies (or abdicates): the heir accedes. */
-function demise(ctx, crownId, why) {
+export function demise(ctx, crownId, why) {
   const { state, rng } = ctx;
   const def = CROWNS[crownId];
   const c = state.world.crowns[crownId];

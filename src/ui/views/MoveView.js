@@ -3,6 +3,7 @@
  * pay, state income tax, laws, disaster risk, which of your licenses would
  * need transferring, and what happens to your job and pension.
  */
+import { servicePassports, PASSPORT_LABEL, PASSPORT_ICON } from '../../modules/world/Passports.js';
 import { esc, money, button, card, chip, disclosure } from '../Components.js';
 import { REGIONS, MOVE_COST, regionOf, residencyYears } from '../../modules/life/Regions.js';
 import { STATES, topStateRate, DISASTER_LABEL, stateIncomeTax } from '../../modules/life/States.js';
@@ -148,7 +149,8 @@ function passportCard(state) {
   const learnable = [...new Set([target, ...Object.values(COUNTRIES).map((c) => c.languages[0])])].filter((l) => !native.includes(l) && (state.migration?.languages?.[l] ?? 0) < LANGUAGE_FLUENT);
   const classes = state.character.age >= 12 && learnable.length ? `<div class="btn-row">${learnable.slice(0, 6).map((l) => button(`📚 ${l}`, 'migration.study', { arg: l, variant: 'tiny ghost', hint: money(LANGUAGE_CLASS_COST), disabled: Boolean(state.yearly['migration.study']) })).join('')}</div>` : '';
   const renounce = citizenshipsOf(state).length > 1 ? citizenshipsOf(state).filter((c) => c !== here).map((c) => button(`Renounce ${COUNTRIES[c].demonym}`, 'migration.renounce', { arg: c, variant: 'tiny ghost' })).join('') : '';
-  return card('Passports & Residency', `<p>${passports}</p>${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => COUNTRIES[c].flag).join('')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
+  const service = servicePassports(state).map((p) => chip(`${PASSPORT_ICON[p.kind]} ${COUNTRIES[p.country]?.flag ?? ''} ${PASSPORT_LABEL[p.kind]} · ${esc(p.why)}`, p.kind === 'diplomatic' ? 'honor' : 'cyan')).join(' ');
+  return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => COUNTRIES[c].flag).join('')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
 }
 
 /** Every other country, with each route in and your odds. */

@@ -37,9 +37,9 @@ const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
 /** The bodies above a place, smallest first. */
 export const BODY_DEFS = {
-  council: { level: 'city', name: (w) => `${REGIONS[w]?.name.split(',')[0] ?? 'City'} City Council`, seats: () => 9, presiding: 'Council President', office: 'cityCouncil', executive: 'Mayor', staffCount: 25, allowance: 1 },
-  house: { level: 'state', name: (w) => `${STATES[w]?.name ?? w} House of Representatives`, seats: () => 100, presiding: 'Speaker of the House', office: 'stateRep', executive: 'Governor', staffCount: 420, allowance: 3 },
-  senate: { level: 'state', name: (w) => `${STATES[w]?.name ?? w} State Senate`, seats: () => 40, presiding: 'Senate President', office: 'stateSenator', executive: 'Governor', staffCount: 260, allowance: 4 },
+  council: { level: 'city', name: (w) => `${REGIONS[w]?.name.split(',')[0] ?? 'City'} City Council`, seats: () => 9, presiding: 'Council President', office: 'cityCouncil', executive: 'Mayor', staffCount: 25, allowance: 2 },
+  house: { level: 'state', name: (w) => `${STATES[w]?.name ?? w} House of Representatives`, seats: () => 100, presiding: 'Speaker of the House', office: 'stateRep', executive: 'Governor', staffCount: 420, allowance: 5 },
+  senate: { level: 'state', name: (w) => `${STATES[w]?.name ?? w} State Senate`, seats: () => 40, presiding: 'Senate President', office: 'stateSenator', executive: 'Governor', staffCount: 260, allowance: 7 },
   usHouse: { level: 'federal', name: () => 'U.S. House of Representatives', seats: () => 435, presiding: 'Speaker of the House', office: 'usRep', executive: 'President', staffCount: 9000, allowance: 14 },
   usSenate: { level: 'federal', name: () => 'U.S. Senate', seats: () => 100, presiding: 'Senate Majority Leader', office: 'usSenator', executive: 'President', staffCount: 6000, allowance: 20 },
 };
@@ -51,7 +51,7 @@ const LEVELS = ['city', 'state', 'federal'];
 const extraOffices = [];
 for (const [cc, L] of Object.entries(LEGISLATURES)) {
   if (L.prov) {
-    BODY_DEFS[`prov_${cc}`] = { level: 'state', country: cc, name: (w) => L.prov.name(STATES[w]?.name ?? w), seats: () => L.prov.seats, presiding: L.prov.presiding, office: typeof L.prov.office === 'string' ? L.prov.office : null, executive: L.prov.exec, execOffice: L.prov.execOffice, veto: L.prov.veto, staffCount: 150, allowance: 3 };
+    BODY_DEFS[`prov_${cc}`] = { level: 'state', country: cc, name: (w) => L.prov.name(STATES[w]?.name ?? w), seats: () => L.prov.seats, presiding: L.prov.presiding, office: typeof L.prov.office === 'string' ? L.prov.office : null, executive: L.prov.exec, execOffice: L.prov.execOffice, veto: L.prov.veto, staffCount: 150, allowance: 5 };
     if (typeof L.prov.office === 'function') for (const st of Object.keys(STATES).concat(Object.getOwnPropertyNames(STATES))) { const o = L.prov.office(st); if (o) extraOffices.push([o, `prov_${cc}`]); }
   }
   BODY_DEFS[`lower_${cc}`] = { level: 'federal', country: cc, name: () => L.lower.name, seats: () => L.lower.seats, presiding: L.lower.presiding, office: L.lower.office, executive: L.exec, execOffice: L.execOffice, veto: L.veto, staffCount: 3000, allowance: 10, leaders: L.lower.leaders };
@@ -123,12 +123,48 @@ export const POSTS = {
   presiding: { title: 'Presiding Officer', pay: 0.3, push: 0.07, minTerms: 4, majority: true },
 };
 
+/**
+ * Staff roles. `kind` is what the role does for you: chief (runs the office — one more
+ * legislative action), policy (your bills draw votes), press (approval and recognition),
+ * constituency (approval at home), field (presence in the district), admin (your diary and
+ * your stress). Offices differ in which roles they have and how many (OFFICE_STAFF).
+ */
 export const STAFF_ROLES = {
-  chiefOfStaff: { title: 'Chief of Staff', desc: 'One more legislative action a year.' },
-  legislativeDirector: { title: 'Legislative Director', desc: 'Your bills draw more votes.' },
-  communications: { title: 'Communications Director', desc: 'Approval and name recognition.' },
-  caseworker: { title: 'Constituent Caseworker', desc: 'Approval at home.' },
+  chiefOfStaff: { title: 'Chief of Staff', kind: 'chief', desc: 'Runs the office: one more legislative action a year.' },
+  legislativeDirector: { title: 'Legislative Director', kind: 'policy', desc: 'Leads policy: your bills draw more votes.' },
+  legislativeAssistant: { title: 'Legislative Assistant', kind: 'policy', desc: 'Covers a policy area: more votes, less with each extra.' },
+  researcher: { title: 'Policy Researcher', kind: 'policy', desc: 'Briefings and amendments: more votes.' },
+  councilAide: { title: 'Council Aide', kind: 'policy', desc: 'Drafts your motions and reads the agenda.' },
+  communications: { title: 'Communications Director', kind: 'press', desc: 'Strategy and message: approval and recognition.' },
+  pressSecretary: { title: 'Press Secretary', kind: 'press', desc: 'Handles the reporters: recognition.' },
+  caseworker: { title: 'Caseworker', kind: 'constituency', desc: 'Solves voters\' problems with agencies: approval at home.' },
+  legislativeCorrespondent: { title: 'Legislative Correspondent', kind: 'constituency', desc: 'Answers the mail: approval.' },
+  constituentLiaison: { title: 'Constituent Services Liaison', kind: 'constituency', desc: 'Potholes and permits: approval.' },
+  districtDirector: { title: 'District Director', kind: 'field', desc: 'Runs the home offices: approval and recognition at home.' },
+  fieldRep: { title: 'Field Representative', kind: 'field', desc: 'Shows up for you around the district.' },
+  scheduler: { title: 'Scheduler', kind: 'admin', desc: 'Guards your diary: less stress.' },
+  staffAssistant: { title: 'Staff Assistant', kind: 'admin', desc: 'Front desk and tours: less stress.' },
+  parliamentaryAssistant: { title: 'Parliamentary Assistant', kind: 'admin', desc: 'Correspondence and diary: less stress.' },
 };
+/** Which positions each kind of office has: [role, how many]. */
+export const OFFICE_STAFF = {
+  usFederal: [['chiefOfStaff', 1], ['legislativeDirector', 1], ['legislativeAssistant', 5], ['communications', 1], ['pressSecretary', 1], ['scheduler', 1], ['districtDirector', 1], ['caseworker', 4], ['fieldRep', 3], ['legislativeCorrespondent', 2], ['staffAssistant', 2]],
+  usState: [['chiefOfStaff', 1], ['legislativeDirector', 1], ['legislativeAssistant', 1], ['communications', 1], ['caseworker', 2], ['scheduler', 1]],
+  council: [['councilAide', 1], ['constituentLiaison', 1]],
+  parliament: [['chiefOfStaff', 1], ['legislativeDirector', 1], ['researcher', 3], ['communications', 1], ['caseworker', 4], ['parliamentaryAssistant', 2], ['scheduler', 1]],
+  provincial: [['chiefOfStaff', 1], ['researcher', 1], ['communications', 1], ['caseworker', 2]],
+};
+export function staffPlan(seat) {
+  const kind = seat?.bodyId?.split(':')[0] ?? '';
+  if (kind === 'council') return OFFICE_STAFF.council;
+  if (kind === 'house' || kind === 'senate') return OFFICE_STAFF.usState;
+  if (kind === 'usHouse' || kind === 'usSenate') return OFFICE_STAFF.usFederal;
+  if (kind.startsWith('prov_')) return OFFICE_STAFF.provincial;
+  return OFFICE_STAFF.parliament;
+}
+const kindOf = (s) => STAFF_ROLES[s.role]?.kind;
+/** A kind's contribution, each extra person worth less than the last. */
+const diminishing = (list, value) => list.map(value).sort((a, b) => b - a).reduce((sum, v, i) => sum + v * [1, 0.6, 0.4, 0.3, 0.2][Math.min(4, i)], 0);
 export const SPONSOR_PER_YEAR = 2;
 
 /* ------------------------------------------------------------------ */
@@ -668,10 +704,10 @@ function syncSeat(ctx) {
 }
 
 const staffAllowance = (seat) => BODY_DEFS[seat.bodyId.split(':')[0]]?.allowance ?? 1;
-export const legActionsPerYear = (seat) => SPONSOR_PER_YEAR + (seat?.staff?.some((s) => s.role === 'chiefOfStaff') ? 1 : 0);
+export const legActionsPerYear = (seat) => SPONSOR_PER_YEAR + (seat?.staff?.some((s) => kindOf(s) === 'chief') ? 1 : 0) + ((seat?.staff ?? []).filter((s) => kindOf(s) === 'policy').length >= 4 ? 1 : 0);
 
 function sponsorPush(state, seat) {
-  const staff = (seat.staff ?? []).filter((s) => s.role === 'legislativeDirector').reduce((n, s) => n + s.skill / 2500, 0);
+  const staff = diminishing((seat.staff ?? []).filter((s) => kindOf(s) === 'policy'), (s) => s.skill / 2500);
   return (state.politics.recognition ?? 0) / 1200 + staff + (seat.post ? POSTS[seat.post].push : 0) + (inMajority(state) ? 0.02 : 0);
 }
 
@@ -723,8 +759,12 @@ export const Legislature = {
     // Your office: staff pay off in approval; leadership pays a stipend on top of the salary.
     if (seat) {
       const o = state.politics.office;
-      const comms = seat.staff.filter((s) => ['communications', 'caseworker'].includes(s.role)).length;
-      if (o && comms) o.approval = Math.min(100, o.approval + comms);
+      const home = diminishing(seat.staff.filter((s) => ['press', 'constituency', 'field'].includes(kindOf(s))), (s) => 0.6 + s.skill / 200);
+      if (o && home) o.approval = Math.min(100, Math.round(o.approval + Math.min(5, home)));
+      const press = seat.staff.filter((s) => ['press', 'field'].includes(kindOf(s))).length;
+      if (press) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + Math.min(2, press));
+      const admin = seat.staff.filter((s) => kindOf(s) === 'admin').length;
+      if (admin) ctx.stat('stress', -Math.min(3, admin));
       if (seat.post && o) ctx.earn(Math.round(OFFICES[o.id].salary * POSTS[seat.post].pay), `${POSTS[seat.post].title} stipend`, { wage: true });
       // Peers are unpaid: a daily attendance allowance for the days they sit.
       if (seat.peer && !state.legal.incarceration && state.character.age < 90) ctx.earn(rng.int(18000, 34000), 'Lords attendance allowance');

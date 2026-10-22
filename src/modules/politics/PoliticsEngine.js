@@ -53,6 +53,7 @@ function leaveOffice(ctx, reason, { keepSeat = false } = {}) {
   p.history.push({ officeId: was.id, startAge: was.startAge, endAge: state.character.age, terms: was.terms, reason });
   ctx.log(`You left office as ${OFFICES[was.id].name}: ${reason}.`, '🏛️');
   p.office = null;
+  ctx.emit('politics:left', { officeId: was.id, reason, years: state.character.age - (was.startAge ?? state.character.age) });
   // Out of the top job but still a member of the house you led from.
   if (was.seatOffice && OFFICES[was.seatOffice] && !OUT_OF_POLITICS.test(reason)) {
     const seat = OFFICES[was.seatOffice];
