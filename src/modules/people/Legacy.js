@@ -33,6 +33,8 @@ import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { heirCitizenships } from '../world/Immigration.js';
 import { inheritanceTax, INHERITANCE } from '../world/CountryLaw.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { REGIONS } from '../life/Regions.js';
+import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -434,7 +436,9 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
   const years = child.familyBizYears ?? 0;
   if (ready && type?.professions?.[0]) {
     // Years in the trade earned them its licenses, and they can run it themselves (cheaper than a hired manager).
-    for (const c of type.credentials ?? []) if (!['barLicense', 'medicalLicense', 'dentalLicense', 'cpa'].includes(c)) s.credentials.held[c] = { earnedAge: Math.max(18, childAge - Math.max(1, years)), renewedAge: childAge, status: 'active' };
+    // A state license is issued by the state the business is in.
+    const st = REGIONS[s.character.regionId]?.state;
+    for (const c of type.credentials ?? []) if (!['barLicense', 'medicalLicense', 'dentalLicense', 'cpa'].includes(c)) s.credentials.held[c] = { earnedAge: Math.max(18, childAge - Math.max(1, years)), renewedAge: childAge, status: 'active', ...(CREDENTIALS[c]?.jurisdiction === 'state' && st ? { states: [st] } : {}) };
     if (childAge >= 21 && main.scale <= 5) {
       main.role = 'operator';
       main.autopilot = false;
