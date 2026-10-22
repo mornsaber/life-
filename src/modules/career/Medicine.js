@@ -94,7 +94,7 @@ export const isDoctor = (job) => job?.professionId === 'medical';
 export function matchOdds(state, specialtyId) {
   const s = SPECIALTIES[specialtyId];
   const md = medicalDegree(state);
-  const prestige = SCHOOLS[md?.schoolId]?.prestige ?? 1;
+  const prestige = md?.prestige ?? SCHOOLS[md?.schoolId]?.prestige ?? 1;
   // D.O.s match well into primary care and less often into the most competitive fields; offshore graduates
   // (international medical graduates) face the steepest odds, most of all in competitive specialties.
   const route = md?.programId === 'do' ? -0.12 * s.comp : md?.programId === 'imd' ? -0.08 - 0.3 * s.comp : 0;

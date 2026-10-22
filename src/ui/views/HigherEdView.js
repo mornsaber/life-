@@ -3,6 +3,7 @@
  * degrees, early decision, campus jobs, fellowships (School tab); adjunct
  * teaching and publishing (Career tab).
  */
+import { universitiesFor } from '../../modules/education/Universities.js';
 import { esc, button, card, chip, kv, optionRow, disclosure, money } from '../Components.js';
 import { MAJORS, SCHOOLS, PROGRAMS } from '../../modules/education/Catalog.js';
 import {
@@ -29,7 +30,9 @@ export function higherEdCard(state) {
   const firstTimer = state.character.age >= 17 && !e && !state.education.degrees.some((d) => ['bachelor', 'associate'].includes(d.type));
   if (firstTimer && state.education.degrees.some((d) => d.type === 'highschool')) {
     const major = Object.keys(MAJORS).find((m) => MAJORS[m].levels.includes('bachelor'));
-    const ed = ['elite', 'private', 'state'].map((sc) => btn(`💌 Early Decision: ${SCHOOLS[sc].name}`, 'higherEd.earlyDecision', edEligibility(state, sc), { arg: `bachelor:${sc}:${major}`, hint: 'Binding; better odds' })).join('');
+    const pool = universitiesFor(state, 'bachelor', { abroad: false });
+    const picks = ['elite', 'private', 'state'].map((t) => pool.find((u) => u.type === t)).filter(Boolean);
+    const ed = picks.map((u) => btn(`💌 Early Decision: ${u.name}`, 'higherEd.earlyDecision', edEligibility(state, u.id), { arg: `bachelor:${u.id}:${major}`, hint: 'Binding; better odds' })).join('');
     parts.push(`<h4 class="sub">Applying to college</h4><div class="action-grid">${ed}${h.bsmdTried ? '' : button('🩺 Apply to a BS/MD program', 'higherEd.applyBsmd', { arg: 'state', variant: 'small', hint: '7 years, guaranteed medical school seat — very selective' })}</div>`);
   }
   // In college.

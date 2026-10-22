@@ -3,6 +3,7 @@
  * government, sports, parties, internships and return offers, mentors,
  * ROTC / academies, scholarships, probation and study abroad.
  */
+import { universityOf } from '../../modules/education/Universities.js';
 import { esc, money, button, card, chip, kv, select } from '../Components.js';
 import { CLUBS, ROOM_AND_BOARD, ROTC_BRANCHES, ACADEMIES, onCampus, internshipEligibility, internshipChance, rotcEligibility, rotcName, academyFor } from '../../modules/campus/index.js';
 import { campusSocieties } from '../../modules/world/MilitaryLocal.js';
@@ -63,7 +64,7 @@ export function campusView(state) {
     return button(`${BRANCHES[b].icon} ${esc(rotcName(state, b))}`, 'campus.joinRotc', { arg: b, variant: 'small', disabled: !ok.ok, hint: ok.ok ? 'Scholarship chance; commission at graduation' : ok.reason });
   }).join('')}</div>` : c.rotc ? `<div class="toggle-row">${button('🚪 Quit the programme', 'campus.quitRotc', { variant: 'small danger', hint: c.rotc.contracted ? 'You will repay the scholarship' : 'No obligation yet' })}</div>` : '';
 
-  return card(`Campus Life${SCHOOLS[e.schoolId] ? ` · ${esc(SCHOOLS[e.schoolId].name)}` : ''}`, `
+  return card(`Campus Life${universityOf(e.universityId)?.name ?? SCHOOLS[e.schoolId]?.name ? ` · ${esc(universityOf(e.universityId)?.name ?? SCHOOLS[e.schoolId].name)}` : ''}`, `
     ${status}
     ${scholarships ? `<h4 class="sub">Scholarships</h4><ul class="history">${scholarships}</ul>` : ''}
     ${life}

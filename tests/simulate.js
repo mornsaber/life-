@@ -19,6 +19,7 @@ import { levelById } from '../src/modules/career/Ladder.js';
 import { BRANCHES } from '../src/modules/military/MilitaryEngine.js';
 import { SERVICES } from '../src/modules/emergency/EmergencyEngine.js';
 import { PROGRAMS, majorsFor } from '../src/modules/education/Catalog.js';
+import { universitiesFor } from '../src/modules/education/Universities.js';
 import { CREDENTIALS } from '../src/modules/credentials/CredentialRegistry.js';
 import { EXAMS } from '../src/modules/publicservice/PublicServiceEngine.js';
 import { RISKY_ACTIONS } from '../src/modules/legal/index.js';
@@ -490,6 +491,9 @@ function randomActions(state) {
     const pid = player.pick(Object.keys(PROGRAMS));
     const major = player.pick(majorsFor(pid)) ?? '';
     tries.push(() => act('education.enroll', `${pid}:${player.pick(SCHOOLS_FOR(pid))}:${major}:${player.pick(['full', 'part'])}`));
+    // The application season: real universities, at home or abroad.
+    const unis = universitiesFor(state, pid);
+    if (unis.length) tries.push(() => act('education.apply', `${pid}:${player.pick(unis).id}:${major}:${player.pick(['full', 'part'])}`));
   }
   if (state.education.enrolled) tries.push(() => act(player.pick(['education.study', 'education.study', 'education.switchPace'])));
   if (player.chance(0.06)) tries.push(() => act(`legal.${player.pick(RISKY_ACTIONS).id}`));

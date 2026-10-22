@@ -133,3 +133,15 @@ schools, honours, religion mix and farming — and `nation()` writes every table
 Add the export to a region file and it is playable; `node tests/packs.js 1 1 XX` checks it.
 Postings abroad (Posting.js) resolve to these countries, so a deployment moves you to one
 of their cities for its duration.
+
+## Universities
+
+Real universities live in `src/modules/education/Universities.js`: name, city id, type
+(`elite`, `state`, `private`, `academy`…), acceptance rate, prestige (0–3) and the
+professional schools each has (`med`, `law`, `dent`, `vet`, `pharm`, `opt`, `phd`). Fees
+come from the country's own table (`EDUCATION[cc].tuition`), so a pack needs no fee data.
+
+A country with no named universities still gets its own: the pack's `edu` names (`state`,
+`private`, `elite`, `academy`) become universities in the capital and second city, and
+every city gets a community college and a technical college. Studying anywhere but your
+own city means moving there; studying abroad means a student visa (or free movement).

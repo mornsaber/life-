@@ -311,6 +311,10 @@ const tests = {
     const { engine, state } = life({ difficulty: 'royal', royalLevel: 'heir' }, 24);
     year(engine, state, 30);
     state.prompts = [];
+    const c = state.world.crowns[state.royal.crownId];
+    Object.assign(state.royal, { reigning: true, line: 0 });
+    c.monarch.you = true;
+    c.heir = { name: 'Arthur', gender: 'male', age: 1 };
     engine.dispatch('crown.abdicate');
     state.honors.push({ id: 'order.GB.kbe', source: 'order', name: 'Knight Commander of the Order of the British Empire', post: 'KBE', prestige: 30, citation: 'For services to charity.' });
     state.politics.history = [{ officeId: 'gb_pm', startAge: 40, endAge: 45 }];

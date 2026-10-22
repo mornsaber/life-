@@ -165,5 +165,5 @@ export function educationFields(state) {
 
 /** Best school prestige among your college degrees. */
 export function schoolPrestige(state) {
-  return state.education.degrees.reduce((best, d) => Math.max(best, SCHOOLS[d.schoolId]?.prestige ?? 0), 0);
+  return state.education.degrees.reduce((best, d) => Math.max(best, d.prestige ?? SCHOOLS[d.schoolId]?.prestige ?? 0), 0);
 }

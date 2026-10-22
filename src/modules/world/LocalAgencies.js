@@ -34,6 +34,8 @@ const GB_AREA = {
   'Truro, Cornwall': { police: 'Devon and Cornwall Police', fire: 'Cornwall Fire and Rescue Service', ems: 'South Western Ambulance Service NHS Trust' },
   Cardiff: { police: 'South Wales Police', fire: 'South Wales Fire and Rescue Service' },
   'Kendal, Cumbria': { police: 'Cumbria Constabulary', fire: 'Cumbria Fire and Rescue Service', ems: 'North West Ambulance Service NHS Trust' },
+  'Oxford, Oxfordshire': { police: 'Thames Valley Police', fire: 'Oxfordshire Fire and Rescue Service', ems: 'South Central Ambulance Service NHS Foundation Trust' },
+  'Cambridge, Cambridgeshire': { police: 'Cambridgeshire Constabulary', fire: 'Cambridgeshire Fire and Rescue Service', ems: 'East of England Ambulance Service NHS Trust' },
   'Lincoln, Lincolnshire': { police: 'Lincolnshire Police', fire: 'Lincolnshire Fire and Rescue', ems: 'East Midlands Ambulance Service NHS Trust' },
   'Aberystwyth, Ceredigion': { police: 'Dyfed-Powys Police', fire: 'Mid and West Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
 };

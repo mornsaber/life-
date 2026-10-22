@@ -356,7 +356,7 @@ export function competitiveness(state) {
   const rec = state.academia.phdRecord ?? {};
   const field = fieldOf(state);
   const postdocYears = state.career.history.filter((h) => h.levelId === 'postdoc').reduce((sum, h) => sum + (h.endAge - h.startAge), 0) + (state.career.job?.levelId === 'postdoc' ? state.career.job.yearsInLevel : 0);
-  return (s.firstAuthor ?? 0) * 4 + (s.hIndex ?? 0) * 2 + (rec.advisorFame ?? 40) / 8 + (SCHOOLS[rec.schoolId]?.prestige ?? 1) * 3 + Math.min(3, postdocYears) * 3 + (rec.conference ?? 0) * 2
+  return (s.firstAuthor ?? 0) * 4 + (s.hIndex ?? 0) * 2 + (rec.advisorFame ?? 40) / 8 + ((rec.prestige ?? SCHOOLS[rec.schoolId]?.prestige) ?? 1) * 3 + Math.min(3, postdocYears) * 3 + (rec.conference ?? 0) * 2
     + (HOT_FIELDS.includes(field) ? 6 : HUMANITIES.includes(field) ? -8 : 0) + (state.stats.smarts - 70) / 4
     + Math.min(4, state.higherEd?.adjunctYears ?? 0) + (s.topPapers ?? 0) * 4 + (s.books ?? 0) * (HUMANITIES.includes(field) ? 6 : 2) - (s.predatory ?? 0) * 3
     + Object.keys(state.higherEd?.fellowships ?? {}).length * 3;

@@ -280,7 +280,7 @@ function schoolTick(ctx) {
   const l = law(state);
   const s = (l.school ??= { rank: null, lawReview: false, moot: false, oci: null });
   const year = Math.floor(e.progress) + 1;
-  const prestige = SCHOOLS[e.schoolId]?.prestige ?? 1;
+  const prestige = e.prestige ?? SCHOOLS[e.schoolId]?.prestige ?? 1;
   ctx.stat('stress', year === 1 ? 7 : 4);
   if (year === 1 && s.rank == null) {
     // 1L grades are curved: your rank is your smarts against everyone else's, plus a lot of luck.
@@ -510,7 +510,7 @@ export const LawLifeModule = {
       const l = law(state);
       const s = (l.school ??= {});
       s.oci = optionId;
-      const prestige = SCHOOLS[state.education.enrolled?.schoolId]?.prestige ?? 1;
+      const prestige = state.education.enrolled?.prestige ?? SCHOOLS[state.education.enrolled?.schoolId]?.prestige ?? 1;
       if (optionId === 'biglaw' && !rng.chance(ociOdds(state, prestige))) {
         s.oci = 'midsize';
         return ctx.log('Twenty interviews, three callbacks, no big-firm offers. A regional firm took you on for the summer instead.', '🤵', 'warn');

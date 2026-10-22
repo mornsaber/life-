@@ -26,6 +26,7 @@
 import { clamp } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { PROGRAMS, MAJORS, SCHOOLS } from '../education/Catalog.js';
+import { universityOf } from '../education/Universities.js';
 import { ADMISSION_HOOKS, YEAR_HOOKS, EducationEngine } from '../education/EducationEngine.js';
 import { ROOM_AND_BOARD } from '../campus/HousingDorms.js';
 import { tenureClock } from './Academia.js';
@@ -128,7 +129,8 @@ export function mphEligibility(state) {
 export function edEligibility(state, schoolId) {
   if (he(state).edUsed) return { ok: false, reason: 'Early Decision is once' };
   if (hasDegree(state, ['bachelor', 'master', 'doctorate', 'professional'])) return { ok: false, reason: 'For first-time college applicants' };
-  if (!SCHOOLS[schoolId] || !['private', 'elite', 'state'].includes(schoolId)) return { ok: false, reason: 'Selective colleges only' };
+  const type = universityOf(schoolId)?.type ?? schoolId;
+  if (!SCHOOLS[type] || !['private', 'elite', 'state'].includes(type)) return { ok: false, reason: 'Selective colleges only' };
   return { ok: true };
 }
 
@@ -143,7 +145,7 @@ function earlyDecision(ctx, arg) {
   he(state).edBoost = true;
   EducationEngine.actions.enroll(ctx, `${programId}:${schoolId}:${major ?? ''}:full`);
   he(state).edBoost = false;
-  if (enrolled(state)?.schoolId === schoolId) ctx.log('Admitted Early Decision in December. Binding: you withdrew every other application.', '💌', 'good');
+  if (enrolled(state) && [enrolled(state).schoolId, enrolled(state).universityId].includes(schoolId)) ctx.log('Admitted Early Decision in December. Binding: you withdrew every other application.', '💌', 'good');
 }
 
 /** BS/MD: a high-school senior admitted to college and medical school at once (7 years). arg: schoolId */
@@ -243,7 +245,7 @@ function applyFellowship(ctx, id) {
   if (yearlyCount(state, `higherEd.fellowship.${id}`)) return ctx.toast('Already applied', 'warn');
   if (e.gpa < f.minGpa) return ctx.toast(`Needs a ${f.minGpa} GPA`, 'warn');
   bumpYearly(state, `higherEd.fellowship.${id}`);
-  const odds = clamp(f.odds + (state.stats.smarts - 85) / 300 + (SCHOOLS[e.schoolId].prestige - 1) * 0.01 + (he(state).ugResearch ?? 0) * 0.01 + (he(state).thesis ? 0.01 : 0), 0.005, 0.5);
+  const odds = clamp(f.odds + (state.stats.smarts - 85) / 300 + ((e.prestige ?? SCHOOLS[e.schoolId].prestige) - 1) * 0.01 + (he(state).ugResearch ?? 0) * 0.01 + (he(state).thesis ? 0.01 : 0), 0.005, 0.5);
   ctx.stat('stress', 4);
   if (!rng.chance(odds)) return ctx.log(`You were a finalist for the ${f.name}, but not selected.`, '📭', 'warn');
   (he(state).fellowships ??= {})[id] = state.character.age;
