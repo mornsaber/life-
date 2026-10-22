@@ -112,6 +112,21 @@ const tests = {
     const s = promotionStatus(state);
     assert.ok(!s.eligible, s.reason);
   },
+  'promotions: a rank that is a head post has one holder — the head (Library Director)'() {
+    const { engine, state, job } = worker('US', null, 'library', getProfession('library').levels.find((l) => l.entry).id, { seed: 7 });
+    const org = state.orgs.byId[job.employer.orgId];
+    const deptId = job.employer.deptId;
+    for (let i = 0; i < 12; i++) {
+      state.prompts = [];
+      state.stats.health = 90;
+      engine.ageUp();
+      const dept = org.departments[deptId];
+      const directors = Object.values(org.people).filter((p) => p.deptId === deptId && p.levelId === 'director');
+      const mine = state.career.job?.levelId === 'director' && state.career.job.employer.orgId === org.id;
+      assert.ok(directors.length + (mine ? 1 : 0) <= 1, `year ${i}: ${directors.map((p) => p.name).join(', ')}${mine ? ' + you' : ''}`);
+      if (directors.length) assert.equal(dept.head, directors[0].id, 'the director is the department head');
+    }
+  },
 };
 
 let failed = 0;

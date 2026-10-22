@@ -30,7 +30,45 @@ const POOL = { small: 30, medium: 220, large: 2000, enterprise: 12000 };
 /** Seats at or below which named people hold the post. */
 export const NAMED_SEATS = 3;
 
+/**
+ * A ladder level that *is* a head post (the Library Director runs the library department; a
+ * fire chief may head the fire department): it has one seat, and its holder is the head.
+ */
+export function headPostOf(org, deptId, profession, level) {
+  const t = orgType(org?.typeId);
+  if (!t || !profession || !level) return null;
+  const d = t.departments?.find((x) => x.id === deptId)?.head;
+  if (d?.occupation === profession.id && d.levelId === level.id) return { deptId };
+  if (t.head?.occupation === profession.id && t.head.levelId === level.id) return { deptId: null };
+  return null;
+}
+const headIdOf = (org, post) => (post.deptId ? org.departments[post.deptId]?.head : org.head);
+
+/**
+ * Keep a head post and its ladder seat the same person: the head holds the seat; if there is
+ * no head yet, the seat's holder becomes the head; anyone else in the seat moves on.
+ */
+export function syncHeadSeat(org, deptId, profession, level) {
+  const post = headPostOf(org, deptId, profession, level);
+  const dept = org?.departments?.[deptId];
+  if (!post || !dept) return null;
+  const mine = post.deptId ? org.departments[post.deptId]?.playerHead : org.playerHead;
+  const list = (dept.seats[profession.id]?.[level.id] ?? []).filter((id) => org.people[id]);
+  let head = org.people[headIdOf(org, post)] ?? null;
+  if (!head && !mine && list.length) {
+    head = org.people[list[0]];
+    if (post.deptId) org.departments[post.deptId].head = head.id;
+    else org.head = head.id;
+  }
+  for (const id of list) if (id !== head?.id) delete org.people[id];
+  dept.seats[profession.id] ??= {};
+  dept.seats[profession.id][level.id] = head && !mine ? [head.id] : [];
+  if (head) Object.assign(head, { professionId: profession.id, levelId: level.id, deptId });
+  return head;
+}
+
 export function seatsAt(org, deptId, profession, level, size) {
+  if (headPostOf(org, deptId, profession, level)) return 1;
   const t = orgType(org.typeId);
   const occupations = t?.departments.find((d) => d.id === deptId)?.occupations.length ?? 1;
   const pool = Math.max(6, POOL[size ?? 'medium'] / occupations);
@@ -72,6 +110,20 @@ export function seat(org, deptId, professionId, levelId, person, title) {
 /** Someone else wins an opening: a coworker moves up, or an outside hire arrives. */
 function fillWithRival(state, org, deptId, profession, level, rival, size = org.size) {
   const rng = sideRng(state);
+  // A head post: whoever heads the department holds it; a winner becomes the head.
+  const post = headPostOf(org, deptId, profession, level);
+  if (post) {
+    const holder = org.people[headIdOf(org, post)];
+    if (holder && holder.id !== rival?.person?.id) return holder;
+    const person = rival?.person ?? newPerson(rng, org, { selection: 'hired', years: 0, age: Math.min(62, 30 + level.grade * 3 + rng.int(0, 8)) });
+    if (person.levelId) removeSeat(org.departments[person.deptId ?? deptId] ?? org.departments[deptId], person.professionId ?? profession.id, person.levelId, person.id);
+    Object.assign(person, { professionId: profession.id, levelId: level.id, deptId, title: level.title, selection: rival?.person && !rival.external ? 'internal' : 'hired' });
+    if (post.deptId) org.departments[post.deptId].head = person.id;
+    else org.head = person.id;
+    syncHeadSeat(org, deptId, profession, level);
+    org.departments[deptId].vacancies = (org.departments[deptId].vacancies ?? []).filter((v) => !(v.professionId === profession.id && v.levelId === level.id));
+    return person;
+  }
   // A named post never holds more people than it has seats.
   const seats = seatsAt(org, deptId, profession, level, size);
   const holders = (org.departments[deptId]?.seats[profession.id]?.[level.id] ?? []).filter((id) => org.people[id]);
@@ -156,8 +208,17 @@ export function computeOpenings(state, job) {
   const profession = getProfession(job.professionId);
   const size = job.employer.size;
   job.openings = {};
+  // Every rank here that doubles as a head post keeps one holder, not just the next rung up.
+  for (const level of profession.levels) if (headPostOf(org, dept.id, profession, level)) syncHeadSeat(org, dept.id, profession, level);
   for (const level of nextLevels(profession, size, job.levelId).filter((l) => !l.appointed)) {
     const seats = seatsAt(org, dept.id, profession, level, size);
+    const post = headPostOf(org, dept.id, profession, level);
+    if (post) {
+      const holder = syncHeadSeat(org, dept.id, profession, level);
+      const mine = post.deptId ? org.departments[post.deptId]?.playerHead : org.playerHead;
+      job.openings[level.id] = mine ? 'filled' : holder ? holder.name : 'open';
+      continue;
+    }
     if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
     else if (seats <= NAMED_SEATS) {
       const holders = seatHolders(state, org, dept.id, job.professionId, level.id, seats);
@@ -211,6 +272,9 @@ export function vacancyTick(ctx, job) {
       removeSeat(dept, job.professionId, levelId, id);
       rememberDeparture(state, org, p, why);
       delete org.people[id];
+      // A head post's holder leaving leaves the post empty, to be filled like any seat.
+      if (dept.head === id) dept.head = null;
+      if (org.head === id) org.head = null;
       if (seats <= NAMED_SEATS || id === supervisorBefore) dept.vacancies.push({ professionId: job.professionId, levelId, since: state.character.age, why });
       if (id === supervisorBefore) ctx.log(`Your supervisor, ${p.name} (${p.title}), ${why}.`, '🪑');
     }
