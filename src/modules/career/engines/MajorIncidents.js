@@ -15,12 +15,13 @@
 import { clamp } from '../../../core/Random.js';
 import { addHonor } from '../../../core/State.js';
 import { skill, engineKey } from './Kit.js';
+import { activate } from './EmergencyMgmt.js';
 
 export const ROLES = {
   responder: { label: 'Responder', ids: ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'ems', 'privateEms', 'borderPatrol', 'usms', 'fbi', 'atf'] },
   dispatch: { label: 'Dispatcher', ids: ['dispatch'] },
   health: { label: 'Hospital', ids: ['nursing', 'travelNursing', 'medical', 'physicianAssistant', 'respiratoryTherapy', 'imaging', 'pharmacy'] },
-  coordination: { label: 'Coordination', ids: ['emergencyManagement', 'municipalAdmin', 'publicHealth'] },
+  coordination: { label: 'Coordination', ids: ['emergencyManagement', 'municipalAdmin', 'publicHealth'] }, // emergency managers: EmergencyMgmt.js
   infrastructure: { label: 'Infrastructure', ids: ['publicWorks', 'waterUtility', 'lineworker', 'trades', 'plumbing', 'craneOperator', 'engineering', 'dot'] },
   media: { label: 'Press', ids: ['journalism'] },
 };
@@ -41,6 +42,8 @@ const SUPERVISOR = /captain|chief|lieutenant|sergeant|supervisor|commander|direc
 function rolePrompt(ctx, incident, mutualAid = false) {
   const { state } = ctx;
   const job = state.career.job;
+  // Emergency managers run the operations centre (EmergencyMgmt.js).
+  if (engineKey(job) === 'emergencyManagement') return void activate(ctx, { ...incident, mutualAid });
   const role = roleOf(job);
   const where = mutualAid ? `${incident.name} (mutual aid to a neighbouring area)` : incident.name;
   const agencies = 'Fire, police and EMS, dispatch, the hospitals, public works and the utilities, the emergency operations centre and the volunteer units';

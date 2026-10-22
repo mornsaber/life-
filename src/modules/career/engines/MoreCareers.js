@@ -11,7 +11,7 @@
  *   Projects          nonprofits · public works · city administration · legislative staff ·
  *                     actuarial science
  *   Book of business  property management
- *   Seasons           state forestry · emergency management
+ *   Seasons           state forestry (emergency management has its own module: EmergencyMgmt.js)
  *   Audience          clergy (a congregation)
  */
 import { SHIFT_CAREERS } from './ShiftIncident.js';
@@ -434,21 +434,6 @@ Object.assign(SEASON_CAREERS, {
     deck: [
       D('escape', '🔥', 'The Escaped Burn', 'A prescribed burn jumps the line in a wind shift.', [
         { id: 'catch', label: '🧯 Catch it with the crew', check: 50, text: 'You caught it at four acres.', perf: 4, fail: { text: 'It burned a barn. An investigation followed.', perf: -8, rep: -8 } },
-      ]),
-    ],
-  },
-  emergencyManagement: {
-    label: 'Disaster Season', icon: '🚨', weights: { smarts: 2, happiness: 1 }, payLabel: 'Activation overtime',
-    plans: {
-      plans: { name: 'Plans & exercises', icon: '📋', desc: 'Write the plans and run the drills before anything happens.', edge: 6, spread: 15, pay: 0.05, injury: 0, stress: 2 },
-      grants: { name: 'Mitigation grants', icon: '💰', desc: 'Buy out flood homes and harden shelters.', edge: 3, spread: 18, pay: 0.05, injury: 0, stress: 3 },
-      eoc: { name: 'Run the operations centre', icon: '🖥️', desc: 'When the storm hits, you\'re in charge of the room.', edge: 0, spread: 25, pay: 0.25, injury: 0, stress: 7 },
-    },
-    tiers: [[80, 'a disaster season you handled superbly', 1, 'good'], [55, 'a busy season, well managed', 0.6], [35, 'a season with mistakes the after-action report found', 0.3, 'warn'], [-999, 'a disaster response that went wrong', 0.1, 'warn']],
-    deck: [
-      D('evac', '🌀', 'Evacuate?', 'A hurricane is two days out. Evacuating costs millions and might be unnecessary.', [
-        { id: 'order', label: '📢 Recommend the evacuation', check: 45, text: 'It hit. The shelters were full and nobody drowned.', perf: 8, commend: 0.5, fail: { text: 'It turned away at the last minute. A costly evacuation and a lot of criticism.', perf: -3 } },
-        { id: 'wait', label: '⏳ Wait another day', text: 'The storm turned. You got lucky.', risk: { chance: 0.4, text: 'It didn\'t turn. Roads jammed and people were trapped.', perf: -12, trauma: 10 } },
       ]),
     ],
   },

@@ -17,6 +17,7 @@ import { officeView, BUCKETS } from '../../modules/career/engines/OfficePolitics
 import { dealsView, STAGES, KINDS } from '../../modules/career/engines/Deals.js';
 import { tradeView, takeEligibility, MAX_JOBS } from '../../modules/career/engines/TradeJobs.js';
 import { ROLES } from '../../modules/career/engines/MajorIncidents.js';
+import { emView, READINESS, ACTIONS, PROJECTS, actionEligibility, grantEligibility, mitigatedHere } from '../../modules/career/engines/EmergencyMgmt.js';
 import { seasonView } from '../../modules/career/engines/Seasons.js';
 import { audienceView, PACE, fansLabel } from '../../modules/career/engines/Audience.js';
 
@@ -199,8 +200,24 @@ function incidentsSection(state) {
   return disclosure('engine.incidents', '🚨 Major Incidents You Worked', `<ul class="history">${rows}</ul><p class="fine">Disasters and major incidents pull in every agency — and you, in whatever part your job gives you.</p>`, { count: list.length });
 }
 
+function emSection(state) {
+  const v = emView(state);
+  if (!v) return '';
+  const { rec, hazards, points, used } = v;
+  const done = mitigatedHere(state);
+  const haz = hazards.length ? hazards.map((h) => chip(`${h.icon} ${esc(h.name)} ${Math.round(h.p * 100)}%/yr${done[h.type] ? ' · mitigated' : ''}`, done[h.type] ? 'good' : h.p >= 0.08 ? 'warn' : '')).join(' ') : chip('No major natural hazards on record');
+  const r = rec?.readiness;
+  const meters = r ? Object.entries(READINESS).map(([k, x]) => meter(r[k], { label: `${x.icon} ${x.label}` })).join('') : '<p class="fine">Readiness is assessed with your first year.</p>';
+  const actions = Object.entries(ACTIONS).map(([id, a]) => { const ok = actionEligibility(state, id); return button(`${a.icon} ${a.name}${a.cost > 1 ? ` (${a.cost})` : ''}`, 'emergencyMgmt.prepare', { arg: id, variant: 'small', disabled: !ok.ok, hint: ok.ok ? a.desc : ok.reason }); }).join('');
+  const grants = hazards.filter((h) => PROJECTS[h.type]).map((h) => { const ok = grantEligibility(state, h.type); return button(`💰 ${esc(h.name)} mitigation grant`, 'emergencyMgmt.grant', { arg: h.type, variant: 'small', disabled: !ok.ok, hint: ok.ok ? PROJECTS[h.type].map((p) => p.name).join(' or ') : ok.reason }); }).join('');
+  const projects = (rec?.projects ?? []).map((p) => `<li class="report-row"><div><b>🏗️ ${esc(p.name.replace(/^./, (c) => c.toUpperCase()))}</b> <small class="muted">${esc(p.hazard)}</small></div><small>${p.left} year${p.left === 1 ? '' : 's'} to go</small></li>`).join('');
+  const claims = (rec?.claims ?? []).map((c) => `<li class="report-row"><div><b>📁 ${esc(c.name.replace(/^the /, '').replace(/^./, (x) => x.toUpperCase()))}</b> <small class="muted">paperwork ${c.paperwork}%</small></div><small class="${c.paperwork < 30 ? 'neg' : ''}">${(c.reimbursed / 1e6).toFixed(0)} of ${(c.amount / 1e6).toFixed(0)}M recovered</small></li>`).join('');
+  const acts = (rec?.activations ?? []).slice(0, 5).map((a) => `<li class="report-row"><div><b>${esc(a.name.replace(/^the /, '').replace(/^./, (x) => x.toUpperCase()))}</b> <small class="muted">age ${a.age} · ${esc(a.level)} activation${a.mutualAid ? ' · mutual aid' : ''}</small></div><small class="${['troubled', 'failure'].includes(a.tier) ? 'neg' : ''}">${{ exemplary: '🏆 exemplary', good: '✅ good', troubled: '⚠️ troubled', failure: '❌ failure' }[a.tier]}</small></li>`).join('');
+  return disclosure('engine.em', '🚨 Your Emergency Management Office', `<h4 class="sub">Your area's hazards</h4><p>${haz}</p><h4 class="sub">Readiness</h4>${meters}<h4 class="sub">Preparedness — ${Math.max(0, points - used)} of ${points} program actions left this year</h4><div class="toggle-row">${actions}</div><h4 class="sub">Mitigation</h4><div class="toggle-row">${grants || '<span class="fine">No mitigation projects for these hazards.</span>'}</div>${projects ? `<ul class="history">${projects}</ul>` : ''}${claims ? `<h4 class="sub">Recovery claims</h4><ul class="history">${claims}</ul>${button('📁 Push the recovery paperwork', 'emergencyMgmt.paperwork', { variant: 'small', disabled: Boolean(state.yearly['emergencyMgmt.paperwork']), hint: 'Keeps the auditors away' })}` : ''}${acts ? `<h4 class="sub">Activations</h4><ul class="history">${acts}</ul>` : ''}<p class="fine">Readiness slips every year you don't work at it, and it decides how the next disaster goes. Finished mitigation projects make the next disaster of that kind less severe where you live.</p>`, { count: r ? `readiness ${Math.round(Object.values(r).reduce((a, b) => a + b, 0) / 5)}%` : null });
+}
+
 /** Every engine that applies to the job you hold. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  return [diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state), incidentsSection(state)].join('');
+  return [emSection(state), diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state), incidentsSection(state)].join('');
 }

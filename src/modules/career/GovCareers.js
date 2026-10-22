@@ -78,7 +78,7 @@ export const GOV_PROFESSIONS = {
     union: { chance: 0.4, name: 'Public Service Association', strike: false },
     employerName: emergencyHq,
     entry: { education: { level: 'bachelor' } },
-    valued: ['emt', 'ff1', 'fireOfficer1'],
+    valued: ['emt', 'ff1', 'fireOfficer1', 'cem'],
     levels: [
       L('trainee', 'Emergency Management Officer (Trainee)', 3, { years: 1 }),
       L('officer', 'Emergency Management Officer', 4),

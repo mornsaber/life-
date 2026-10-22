@@ -57,9 +57,9 @@ export function year(engine, state, types) {
 const BAD = /\bundefined\b|\bNaN\b|\[object |\bInfinity\b/;
 const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&#39;/g, "'").replace(/&quot;/g, '"').replace(/&amp;/g, '&');
 /** Enabled engine buttons on the career tab. */
-const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|tradeWork|routeWork|investigations|diplomacy|classroom|office|deals|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
+const engineButtons = (html) => [...html.matchAll(/<button class="btn[^"]*" data-action="((?:shiftWork|tradeWork|emergencyMgmt|routeWork|investigations|diplomacy|classroom|office|deals|caseload|clientBook|projectWork|seasonWork|audience|emsLife)\.[^"]+)"((?: data-arg="[^"]*")?)[^>]*?((?: disabled)?)>/g)].filter((m) => !m[3]).map((m) => ({ action: m[1], arg: m[2] ? m[2].slice(11, -1) : undefined }));
 /** Every career an engine covers. */
-export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, TRADE_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys)), 'foreignService', 'education', ...OFFICE_CAREERS];
+export const ENGINE_CAREERS = () => [...new Set([SHIFT_CAREERS, TRADE_CAREERS, ROUTE_CAREERS, INVESTIGATION_CAREERS, CASE_CAREERS, BOOK_CAREERS, PROJECT_CAREERS, SEASON_CAREERS, AUDIENCE_CAREERS].flatMap(Object.keys)), 'foreignService', 'education', 'emergencyManagement', ...OFFICE_CAREERS];
 const pure = (state, fn) => { const before = JSON.stringify(state); const html = fn(); assert.equal(JSON.stringify(state), before, 'rendering changed state'); return html; };
 
 const tests = {
@@ -314,6 +314,37 @@ const tests = {
       for (let y = 0; y < 3; y++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); if (state.prompts.some((x) => x.type === 'majorIncidents.mutualAid')) aid += 1; }
     }
     assert.ok(aid > 0, 'mutual-aid requests happen');
+  },
+  'emergency management: readiness, mitigation that softens disasters, and running the operations centre'() {
+    const { engine, state } = worker('emergencyManagement', 37, 'neworleans');
+    assert.ok(state.career.job, 'hired');
+    Object.assign(state.career.job, { levelId: 'director', performance: 70 });
+    year(engine, state, ['emergencyMgmt.']);
+    state.prompts = [];
+    const before = state.careerLife.emergencyMgmt.readiness.plans;
+    engine.dispatch('emergencyMgmt.prepare', 'plan');
+    assert.ok(state.careerLife.emergencyMgmt.readiness.plans > before, 'planning builds readiness');
+    for (const id of ['shelters', 'alerts', 'volunteers', 'fullScale']) engine.dispatch('emergencyMgmt.prepare', id);
+    assert.ok(Object.keys(state.yearly).filter((k) => k.startsWith('emergencyMgmt.') && k !== 'emergencyMgmt.points').length <= 5, 'program actions are limited');
+    // A disaster: three decisions, an outcome, a declaration.
+    state.prompts = [];
+    engine.bus.emit('disaster:struck', { ctx: engine.context(), disaster: { type: 'hurricane', severity: 3, name: 'Hurricane Celia', stateId: 'LA', regionId: 'neworleans' } });
+    for (const [type, pick] of [['emergencyMgmt.level', 'full'], ['emergencyMgmt.protect', 'early'], ['emergencyMgmt.resources', 'declare']]) {
+      const p = state.prompts.find((x) => x.type === type);
+      assert.ok(p, type);
+      engine.resolvePrompt(p.id, pick);
+    }
+    const rec = state.careerLife.emergencyMgmt;
+    assert.equal(rec.activations[0].name, 'Hurricane Celia');
+    assert.ok(rec.claims.length === 1, 'a declaration opens recovery claims');
+    assert.equal(state.majorIncidents[0].role, 'coordination');
+    // Mitigation: a funded project, built, softens the next one.
+    let funded = false;
+    for (let i = 0; i < 8 && !funded; i++) { state.yearly = {}; state.prompts = []; engine.dispatch('emergencyMgmt.grant', 'hurricane'); funded = rec.projects.length > 0; }
+    assert.ok(funded, 'a grant gets funded eventually');
+    for (let y = 0; y < 5 && state.career.job; y++) year(engine, state, ['emergencyMgmt.']);
+    assert.ok(state.mitigation?.LA?.hurricane, 'the project was finished');
+    assert.match(pure(state, () => VIEWS.career(state, {})), /Emergency Management Office/);
   },
   'engine cards: random clicks on every engine career never break'() {
     const problems = [];

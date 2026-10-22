@@ -9,6 +9,7 @@
  */
 import { stateIdOf, regionOf } from './Regions.js';
 import { STATES, DISASTER_LABEL } from './States.js';
+import { mitigates } from '../career/engines/EmergencyMgmt.js';
 
 const SEVERITY = ['', 'moderate', 'severe', 'catastrophic'];
 
@@ -21,11 +22,15 @@ export const Disasters = {
     const stateId = stateIdOf(state);
     for (const [type, p] of Object.entries(STATES[stateId].disasters)) {
       if (!rng.chance(p)) continue;
-      const severity = rng.weighted([[1, 6], [2, 3], [3, 1]], ([, w]) => w)[0];
+      let severity = rng.weighted([[1, 6], [2, 3], [3, 1]], ([, w]) => w)[0];
+      // Mitigation you built as an emergency manager takes the edge off.
+      const softened = severity > 1 && mitigates(state, type);
+      if (softened) severity -= 1;
       const label = DISASTER_LABEL[type];
       const name = `${type === 'hurricane' ? `Hurricane ${rng.pick(['Alma', 'Bertrand', 'Celia', 'Dorian', 'Esme', 'Felix', 'Greta'])}` : label.name}`;
       const disaster = { type, severity, stateId, regionId: regionOf(state).id, name };
       ctx.log(`${label.icon} A ${SEVERITY[severity]} ${type} struck ${STATES[stateId].name}: ${name}.`, label.icon, 'warn');
+      if (softened) ctx.log(`The ${type} mitigation you built held: it could have been much worse.`, '🏗️', 'good');
       if (state.legal.incarceration) continue;
       if (severity === 3 && rng.chance(0.1)) {
         ctx.stat('health', -rng.int(5, 20));
