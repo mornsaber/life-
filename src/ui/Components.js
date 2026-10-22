@@ -5,6 +5,7 @@
  */
 import { STAT_META, STAT_KEYS, tidyText } from '../core/State.js';
 import { CHALLENGES } from '../modules/life/Achievements.js';
+import { ROYAL_LEVELS } from '../modules/world/Crown.js';
 import { DIFFICULTIES } from '../core/Difficulty.js';
 import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
 
@@ -289,6 +290,9 @@ export function newLifeForm(rngName) {
           <legend>Difficulty</legend>
           ${Object.entries(DIFFICULTIES).map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
         </fieldset>
+        <label class="country-pick">If born royal<select name="royalLevel">${Object.entries(ROYAL_LEVELS).map(([id, l]) => `<option value="${id}"${id === 'child' ? ' selected' : ''}>${esc(l.name)} — ${esc(l.desc)}</option>`).join('')}</select></label>
+        <p class="fine">Born royal: in Britain, Japan, Sweden, the Netherlands or Spain (Britain if you pick another country).</p>
+        <label class="check"><input type="checkbox" name="noble"> 🏰 Allow a noble birth (very rare: a titled family in Britain or Spain)</label>
         <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>

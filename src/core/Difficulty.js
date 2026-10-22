@@ -40,6 +40,16 @@ export const DIFFICULTIES = {
     score: 1.5,
   },
 };
+/**
+ * Born royal: a start of its own, played at Normal odds, at a chosen place in a royal family
+ * (Crown.js ROYAL_LEVELS). Not on the easier-harder scale: it can't be eased into or out of.
+ */
+DIFFICULTIES.royal = {
+  name: 'Born royal', icon: '👑', desc: 'Born into a royal family, at the place in the line you choose. Normal odds; a very different life.',
+  knobs: { wealth: { low: 0, middle: 0, upper: 100 } },
+  score: 0.9,
+  royal: true,
+};
 export const DIFFICULTY_ORDER = ['story', 'normal', 'hard', 'brutal'];
 
 /** Multiplicative knobs default to 1; additive ones (exams) to 0. */

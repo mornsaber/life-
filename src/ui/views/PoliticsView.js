@@ -5,6 +5,7 @@
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
 import { governmentCard, partyCard } from './GovernmentCard.js';
+import { crownCards } from './CrownCard.js';
 import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
 import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
@@ -94,6 +95,7 @@ export function politicsView(state) {
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+    ${crownCards(state)}
     ${platformCard(state)}
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
     ${partyCard(state)}

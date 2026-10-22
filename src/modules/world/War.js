@@ -373,7 +373,10 @@ export const WarModule = {
   order: 19,
 
   init(state, rng) {
-    state.world ??= { war: null, history: [] };
+    // Other modules may have made the world first: fill in this module's fields either way.
+    state.world ??= {};
+    state.world.war ??= null;
+    state.world.history ??= [];
     const w = state.world;
     w.seed ??= rng ? rng.int(1, 2 ** 30) : 1;
     w.wars ??= {};

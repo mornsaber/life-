@@ -1,6 +1,17 @@
 # Royalty, the Crown and the Honours System — Draft Plan
 
-Status: **draft for review**. Nothing here is implemented yet beyond what "Today" lists.
+Status: **implemented** (world/Crown.js, world/Peerage.js, world/Honours.js CHIVALRY, the vice-regal
+offices in politics/NationalOffices.js, ui/views/CrownCard.js; tests/royalty.js), with these decisions:
+
+- **Fictional monarchs** and royal houses (no real people).
+- **Born royal** is a difficulty of its own (Normal odds), with the place in the family chosen at the
+  start: heir, child of the monarch, grandchild, or distant royal.
+- **Noble births** only when the player opts in on the start screen, and then very rarely (0.4%).
+- **Constitutional crises** about once or twice in a lifetime (2% a year in a monarchy); the player
+  decides only when they hold the Governor-Generalship or the throne, otherwise it's news.
+
+Not built yet: dukes and marquesses by creation for commoners, realm-specific orders (Australia's
+knighthoods), hereditary peers' by-elections beyond a yearly chance.
 
 ## Today
 

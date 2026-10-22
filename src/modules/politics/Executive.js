@@ -28,6 +28,7 @@ import { budgetAt, executiveLevel, AREAS } from './Budgets.js';
 import { executiveOf, unifiedGovernment } from './Legislature.js';
 import { enact, lawValue } from './Laws.js';
 import { experienceLevel } from './Campaigns.js';
+import { sovereign } from '../world/Crown.js';
 
 const CAP = (s) => s.charAt(0).toUpperCase() + s.slice(1);
 
@@ -283,17 +284,30 @@ export function offersYear(ctx) {
       });
     }
   }
-  // Governors-General: appointed on the prime minister's advice from people of standing.
-  const gg = { CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' }[cc];
-  if (gg && !o && state.character.age >= 50 && (experienceLevel(state) >= 4 || p.recognition >= 70 || state.character.style?.knighthood || state.character.style?.peerage) && rng.chance(0.03)) {
+  // The Crown's representatives: Governors-General, lieutenant governors, state governors and
+  // lords-lieutenant, appointed on advice from people of standing — none in a realm that became a republic.
+  const king = sovereign(state, cc);
+  if (!king || o) return;
+  const honoured = state.honors.some((h) => h.source === 'order') || Boolean(state.character.style?.peerage);
+  const standing = experienceLevel(state);
+  const posts = [
+    [{ CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' }[cc], state.character.age >= 50 && (standing >= 4 || p.recognition >= 70 || honoured), 0.03, 'five years at Government House as the representative of the Crown'],
+    [{ CA: 'ca_lg', AU: 'au_governor' }[cc], state.character.age >= 45 && (standing >= 3 || p.recognition >= 55 || honoured), 0.03, 'five years as the Crown\'s representative in your province or state'],
+    [cc === 'GB' ? 'gb_lordLieutenant' : null, state.character.age >= 50 && (honoured || isFlag(state) || standing >= 3), 0.025, 'the Crown\'s representative in your county, unpaid, until 75'],
+    [cc === 'GB' ? 'gb_deputyLieutenant' : null, state.character.age >= 40 && (honoured || isFlag(state) || p.recognition >= 40 || state.military.history.some((h) => h.track === 'officer')), 0.03, 'a deputy to the Lord-Lieutenant: investitures, royal visits, citizenship ceremonies'],
+  ];
+  for (const [id, ok, chance, what] of posts) {
+    if (!id || !OFFICES[id] || !ok || !rng.chance(chance)) continue;
     ctx.prompt({
-      type: 'executive.ggOffer', icon: OFFICES[gg].icon, title: `${OFFICES[gg].name}`,
-      text: `The Prime Minister will recommend you to the King as the next ${OFFICES[gg].name}: five years at Government House as the representative of the Crown.`,
+      type: 'executive.ggOffer', icon: OFFICES[id].icon, title: OFFICES[id].name,
+      text: `You will be recommended to ${king} as ${OFFICES[id].name}: ${what}.`,
       options: [{ id: 'accept', label: '👑 Accept' }, { id: 'decline', label: '🙅 Decline' }],
-      data: { officeId: gg },
+      data: { officeId: id },
     });
+    return;
   }
 }
+const isFlag = (state) => [state.military.service, ...(state.military.history ?? [])].some((s) => s?.track === 'officer' && (s.grade ?? 0) >= 6);
 
 /** Cabinet departments: the budget area a secretary fights for. */
 export const CABINET = {

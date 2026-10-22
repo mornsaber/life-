@@ -49,6 +49,8 @@ function startNewLife(form) {
     countryId: data.get('countryId') || 'US',
     challenge: data.get('challenge') || null,
     difficulty: data.get('difficulty') || 'normal',
+    royalLevel: data.get('royalLevel') || 'child',
+    noble: data.get('noble') === 'on',
   });
 }
 

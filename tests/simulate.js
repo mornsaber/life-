@@ -223,7 +223,8 @@ function checkInvariants(state) {
   for (const u of Object.values(state.unions?.byId ?? {})) assert.ok(u.members > 0 && u.treasury >= 0 && u.strikeFund >= 0 && u.density > 0 && u.density <= 1 && Number.isFinite(u.militancy), `union ${u.name}`);
   if (state.unions?.mine) assert.ok(state.career.job?.unionMember && state.unions.byId[state.unions.mine.unionId], 'union membership follows the job');
   for (const body of Object.values(state.legislature?.bodies ?? {})) assert.ok(body.labor >= 0 && body.labor <= body.seats && body.leaders?.presiding?.name, `legislature ${body.name}`);
-  if (state.legislature?.seat) assert.ok(state.politics.office && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
+  // A seat comes with an office — or, in the Lords, with a peerage.
+  if (state.legislature?.seat) assert.ok((state.politics.office || (state.legislature.seat.peer && state.character.style?.peerage)) && state.legislature.bodies[state.legislature.seat.bodyId], 'legislative seat follows the office');
   if (state.farm?.acres) assert.ok(state.farm.valuePerAcre > 0 && (!state.farm.loan || state.farm.loan.balance >= 0), 'farm');
   const civ = state.civic;
   assert.ok(civ && Array.isArray(civ.neighbors) && civ.neighbors.every((n) => n.rel >= 0 && n.rel <= 100), 'neighbors');
@@ -462,6 +463,9 @@ function randomActions(state) {
   // Politics
   if (age >= 18 && !state.politics.campaign && player.chance(0.04)) tries.push(() => act('politics.run', player.pick(Object.keys(OFFICES))));
   if (state.politics.campaign) tries.push(() => act(`politics.${player.pick(['fundraise', 'selfFund', 'canvass', 'debate', 'oppo'])}`), () => act('politics.endorse', player.pick(['labor', 'veterans', 'lawEnforcement', 'party', 'editorial', 'bar'])), () => act('politics.ad', player.pick(['positive', 'attack'])), () => act('politics.townHall', player.pick(['taxes', 'crime', 'services', 'guns', 'healthcare'])));
+  if (state.royal && age >= 18) tries.push(() => act(`crown.${player.pick(['engagement', 'patronage', 'tour'])}`));
+  if (state.royal && age >= 30 && player.chance(0.01)) tries.push(() => act(player.pick(['crown.stepBack', 'crown.abdicate'])));
+  if (state.character.peerage?.kind === 'hereditary' && player.chance(0.02)) tries.push(() => act('peerage.disclaim'));
   if (age >= 18 && player.chance(0.03)) tries.push(() => act('politics.stance', `${player.pick(['taxes', 'services', 'crime', 'guns', 'immigration', 'healthcare', 'environment', 'labor'])}|${player.int(-2, 2)}`));
   if (age >= 17 && age < 40 && !state.military.service && player.chance(0.06)) {
     tries.push(() => act('military.enlist', `${player.pick(Object.keys(BRANCHES))}:${player.pick(['enlisted', 'officer'])}:${player.pick(['active', 'reserve'])}`));
@@ -578,7 +582,10 @@ function checkEstate(state) {
 }
 
 for (let life = 0; life < LIVES; life++) {
-  let state = engine.newLife(COUNTRY ? { countryId: COUNTRY === 'ALL' ? FOREIGN[life % FOREIGN.length] : COUNTRY } : undefined);
+  // Every 25th life is born royal (at each place in the family in turn); every 30th opts in to a noble birth.
+  const royal = life % 25 === 24 ? { difficulty: 'royal', royalLevel: ['heir', 'child', 'grandchild', 'distant'][Math.floor(life / 25) % 4] } : {};
+  const noble = life % 30 === 29 ? { noble: true } : {};
+  let state = engine.newLife({ ...(COUNTRY ? { countryId: COUNTRY === 'ALL' ? FOREIGN[life % FOREIGN.length] : COUNTRY } : {}), ...royal, ...noble });
   let generation = 1;
   for (;;) {
   let years = 0;

@@ -72,7 +72,8 @@ const electionCycle = (d) => (d.office && OFFICES[d.office]?.term && d.country ?
 export const leaderTitle = (kind, which) => BODY_DEFS[kind]?.leaders?.[which] ?? (which === 'majority' ? 'Majority leader' : 'Minority leader');
 /** Life peers sit in their country's upper house. */
 export const peerChamber = (state) => {
-  if (!state.character.style?.peerage) return null;
+  // Life peers sit; hereditary peers only when the other hereditaries elect them; royal dukes don't.
+  if (!state.character.style?.peerage || state.character.peerage?.seat === false) return null;
   const cc = state.character.countryId ?? 'US';
   return BODY_DEFS[`upper_${cc}`]?.peers ? `upper_${cc}` : null;
 };

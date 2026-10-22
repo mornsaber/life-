@@ -35,6 +35,8 @@ import { inheritanceTax, INHERITANCE } from '../world/CountryLaw.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { REGIONS } from '../life/Regions.js';
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
+import { CROWNS, royalPrefix } from '../world/Crown.js';
+import { peerTitle, RANKS, courtesy } from '../world/Peerage.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -328,6 +330,7 @@ export function buildHeirState(rng, old, childId) {
   for (const p of heirFamily(rng, child, old)) list.push(p);
   heirStats(s, child);
   passBusinesses(old, s, child, childAge, legacy, new Set(list.map((p) => p.id)));
+  passCrownAndTitles(old, s, child, childAge);
 
   // Children are raised in the family's faith.
   const faith = old.community?.faith;
@@ -449,3 +452,47 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
 }
 
 const ordinalWord = (n) => ['zeroth', 'first', 'second', 'third', 'fourth', 'fifth', 'sixth', 'seventh', 'eighth', 'ninth', 'tenth'][n] ?? `${n}th`;
+
+/**
+ * The crown and the titles: the same royal family and world; a reigning parent's heir by the
+ * crown's law accedes at once; a hereditary title passes to the eldest son (or, with none, the
+ * eldest child); other children keep royal or courtesy styles.
+ */
+function passCrownAndTitles(old, s, child, childAge) {
+  if (old.world?.crowns) {
+    s.world = { ...(s.world ?? {}), crowns: structuredClone(old.world.crowns), republics: structuredClone(old.world.republics ?? {}), crises: structuredClone(old.world.crises ?? []) };
+  }
+  const kids = old.people.list.filter((p) => p.relation === 'child' && p.alive).sort((a, b) => ageOf(old, b) - ageOf(old, a));
+  const eldestSon = kids.find((k) => k.gender === 'male');
+  const r = old.royal;
+  if (r?.crownId && CROWNS[r.crownId]) {
+    const rule = CROWNS[r.crownId].rule;
+    const heir = rule === 'absolute' ? kids[0] : eldestSon ?? (rule === 'agnatic' ? null : kids[0]);
+    const isHeir = heir?.id === child.id;
+    const order = kids.indexOf(child);
+    const stepped = r.steppedBack;
+    s.royal = { crownId: r.crownId, level: stepped ? 'distant' : r.reigning ? (isHeir ? 'heir' : 'child') : 'grandchild', line: r.line == null ? null : r.reigning ? (isHeir ? 1 : 2 + order) : r.line + 1 + order, working: !stepped && childAge >= 0, popularity: 60, reigning: false, patronages: [], since: 0 };
+    const crown = s.world?.crowns?.[r.crownId];
+    if (r.reigning && isHeir && crown) {
+      crown.monarch = { name: child.firstName, gender: child.gender, age: childAge, number: 1, you: true };
+      crown.since = currentYear(old);
+      crown.crowned = false;
+      crown.heir = { name: 'your eldest child', gender: 'male', age: Math.max(0, childAge - 28), relation: 'child' };
+      Object.assign(s.royal, { reigning: true, line: 0, regnal: 1 });
+      addLog(s, `${CROWNS[r.crownId].titles.monarch[child.gender === 'female' ? 1 : 0]} at your ${old.character.gender === 'female' ? 'mother' : 'father'}'s death: the accession council proclaimed you.`, '👑', 'milestone');
+    }
+    s.character.style = { ...(s.character.style ?? {}), prefix: royalPrefix(s) };
+  }
+  const p = old.character.peerage;
+  if (p?.kind === 'hereditary' || (p?.kind === 'royal' && p.rank === 'duke')) {
+    const heir = eldestSon ?? kids[0];
+    if (heir?.id === child.id) {
+      s.character.peerage = { ...p, seat: false, created: childAge };
+      s.character.style = { ...(s.character.style ?? {}), peerage: peerTitle(p.rank, p.place, child.gender, child.lastName), ...(s.royal ? {} : { prefix: RANKS[p.rank].style[child.gender === 'female' ? 'female' : 'male'] }) };
+      addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as ${s.character.style.peerage}.`, '👑', 'milestone');
+    } else if (!s.royal) {
+      s.noble = { rank: p.rank, place: p.place, holderId: null, heir: false };
+      s.character.style = { ...(s.character.style ?? {}), prefix: courtesy(s) };
+    }
+  }
+}

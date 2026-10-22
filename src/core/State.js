@@ -61,7 +61,12 @@ export function randomCountryId(rng) {
   return rng.weighted(ids.map((id) => [id, id === 'US' ? 3 : 1]), ([, w]) => w)[0];
 }
 
+/** A royal birth is in a kingdom: the country you chose if it has a crown of its own, else Britain. */
+const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES'];
+
 export function createInitialState(rng, options = {}) {
+  const royal = options.difficulty === 'royal';
+  if (royal) options = { ...options, countryId: ROYAL_HOMES.includes(options.countryId) ? options.countryId : options.countryId === 'random' ? rng.pick(ROYAL_HOMES) : 'GB' };
   if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
   setNameCountry(country?.id ?? 'US');
@@ -128,10 +133,12 @@ export function createInitialState(rng, options = {}) {
     achievements: {},
     challenge: options.challenge ? { id: options.challenge, status: 'active' } : null,
     difficulty: { id: DIFFICULTIES[options.difficulty] ? options.difficulty : 'normal', assisted: false },
+    // Born royal (Crown.js finishes setting it up) — and a noble birth, only if you opted in (Peerage.js).
+    royal: royal ? { crownId: options.countryId, level: ['heir', 'child', 'grandchild', 'distant'].includes(options.royalLevel) ? options.royalLevel : 'child' } : null,
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
-    flags: { promptSeq: 0 },
+    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}) },
   };
 }
 
