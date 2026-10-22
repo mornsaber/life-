@@ -163,7 +163,8 @@ export const RuralLifeModule = {
     const mins = commuteOf(state, job);
     if (mins) {
       const cost = Math.round(mins * 70 * priceLevel(state) / 10) * 10;
-      ctx.spend(cost, `Commuting to ${job.employer.city} (${mins} min each way)`, { allowDebt: true });
+      // Fuel and wear come out of your pay; when money's that tight, the stress shows instead of a debt.
+      if (!ctx.spend(cost, `Commuting to ${job.employer.city} (${mins} min each way)`)) { ctx.spend(Math.max(0, state.finances.cash), `Commuting to ${job.employer.city}`); ctx.stat('stress', 4); }
       ctx.stat('stress', Math.round(mins / 20));
       ctx.stat('happiness', -Math.round(mins / 30));
       if (rng.chance(0.25)) ctx.log(`Another year of ${mins} minutes each way to ${job.employer.city}. You know every pothole.`, '🚗');
@@ -195,15 +196,15 @@ export const RuralLifeModule = {
         case 'neighbour.meal': ctx.stat('happiness', 4); ctx.log('The whole street took turns. That\'s how it works out here.', '🍲', 'good'); break;
         case 'neighbour.no': ctx.stat('happiness', -2); ctx.log('Word got around that you didn\'t help.', '🗣️'); break;
         case 'cutoff.wait': ctx.stat('stress', 2); ctx.log('Four days of board games and tinned food. The road reopened on Friday.', '🥫'); break;
-        case 'cutoff.drive': if (rng.chance(0.3)) { ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(15, 35) }); ctx.spend(2500, 'Vehicle recovery and repairs', { allowDebt: true }); ctx.log('The back road was worse. A tow truck and a doctor later, you made it out.', '🚙', 'bad'); } else ctx.log('Mud to the axles, but you made it through.', '🚙'); break;
+        case 'cutoff.drive': if (rng.chance(0.3)) { ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(15, 35) }); ctx.spend(2500, 'Vehicle recovery and repairs', { credit: true }); ctx.log('The back road was worse. A tow truck and a doctor later, you made it out.', '🚙', 'bad'); } else ctx.log('Mud to the axles, but you made it through.', '🚙'); break;
         case 'closing.fight': if (rng.chance(0.3)) { ctx.stat('happiness', 8); ctx.log('Your campaign worked: a community co-op took it over.', '📣', 'good'); } else { ctx.stat('happiness', -2); ctx.log('It closed anyway. At least you tried.', '📣'); } break;
         case 'closing.shrug': ctx.stat('stress', 1); ctx.log('One more errand that takes half a day now.', '🚗'); break;
-        case 'internet.satellite': ctx.spend(600, 'Satellite internet', { allowDebt: true }); ctx.stat('happiness', 3); ctx.log('Video calls that don\'t freeze. Luxury.', '🛰️', 'good'); break;
+        case 'internet.satellite': if (!ctx.spend(600, 'Satellite internet', { credit: true })) return void ctx.log('You couldn\'t afford satellite internet this year.', '📶'); ctx.stat('happiness', 3); ctx.log('Video calls that don\'t freeze. Luxury.', '🛰️', 'good'); break;
         case 'internet.live': ctx.stat('stress', 1); ctx.log('You drive to the library car park to upload anything big.', '📻'); break;
         case 'gossip.laugh': ctx.stat('happiness', 1); ctx.log('By next week they\'d moved on to someone else.', '😄'); break;
         case 'gossip.confront': ctx.stat('stress', 3); ctx.log('You found out. Now you have a feud. Small towns are long-memoried.', '😠'); break;
-        case 'wildlife.brake': if (rng.chance(0.4)) { ctx.spend(1800, 'Car repairs', { allowDebt: true }); ctx.log('You couldn\'t quite stop. A dented bonnet and a shaken driver.', '🚗', 'warn'); } else ctx.log('You stopped with a metre to spare. It looked at you and wandered off.', '😮‍💨'); break;
-        case 'wildlife.swerve': if (rng.chance(0.35)) { ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 45) }); ctx.spend(4000, 'Car repairs', { allowDebt: true }); ctx.log('You went into the ditch. The car and your back both need work.', '🚑', 'bad'); } else ctx.log('A wild swerve, two wheels on the gravel, and you were fine.', '😮‍💨'); break;
+        case 'wildlife.brake': if (rng.chance(0.4)) { ctx.spend(1800, 'Car repairs', { credit: true }); ctx.log('You couldn\'t quite stop. A dented bonnet and a shaken driver.', '🚗', 'warn'); } else ctx.log('You stopped with a metre to spare. It looked at you and wandered off.', '😮‍💨'); break;
+        case 'wildlife.swerve': if (rng.chance(0.35)) { ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 45) }); ctx.spend(4000, 'Car repairs', { credit: true }); ctx.log('You went into the ditch. The car and your back both need work.', '🚑', 'bad'); } else ctx.log('A wild swerve, two wheels on the gravel, and you were fine.', '😮‍💨'); break;
         default: break;
       }
     },
