@@ -6,6 +6,7 @@ import { esc, money, button, card, meter, kv } from '../Components.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS } from '../../modules/world/Crown.js';
 import { currentYear } from '../../core/State.js';
 import { peerAddress, RANKS } from '../../modules/world/Peerage.js';
+import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 
 export function crownCards(state) {
   const r = state.royal;
@@ -22,7 +23,9 @@ export function crownCards(state) {
       ['Heir', c.monarch.you ? esc(c.heir.name) : `${esc(c.heir.name)}, ${esc(def.titles.heir[c.heir.gender === 'female' ? 1 : 0])}${c.heir.you ? ' (you)' : ''}`],
       realms.length > 1 ? ['Realms', realms.join(' · ')] : null,
       crises.length ? ['Last constitutional crisis', `${crises.at(-1).year}`] : null,
-    ].filter(Boolean))}`, { icon: '👑' }));
+      (state.character.countryId ?? 'US') in KNIGHTHOODS_DEFAULT ? ['Knighthoods in the national order', knighthoodsOn(state, state.character.countryId) ? 'Awarded' : 'Not awarded (abolished)'] : null,
+    ].filter(Boolean))}
+    ${/^(au|nz)_pm$/.test(state.politics?.office?.id ?? '') ? `<div class="action-grid">${button(knighthoodsOn(state, state.character.countryId) ? '📜 Abolish new knighthoods' : '⚔️ Restore knighthoods', 'honours.knighthoods', { hint: 'On your advice; unpopular to restore' })}</div>` : ''}`, { icon: '👑' }));
   }
   if (r) {
     const lv = ROYAL_LEVELS[r.level];
@@ -52,7 +55,7 @@ export function crownCards(state) {
       ['Rank', esc(RANKS[p.rank][state.character.gender === 'female' ? 'female' : 'male'])],
       ['Addressed as', esc(peerAddress(state) ?? '')],
       ['Kind', p.kind === 'life' ? 'Life peerage — dies with you' : p.kind === 'royal' ? 'Royal dukedom' : 'Hereditary — passes to your heir'],
-      ['House of Lords', p.seat ? 'You sit' : p.kind === 'hereditary' ? 'No seat (hereditary peers are elected by their peers)' : 'No seat'],
+      ['House of Lords', p.seat ? 'You sit' : p.kind === 'hereditary' ? `No seat yet — stand when a hereditary seat falls vacant${p.byElections ? ` (${p.byElections} attempt${p.byElections > 1 ? 's' : ''} so far)` : ''}` : 'No seat'],
     ])}
     ${p.kind === 'hereditary' ? `<div class="action-grid">${button('📜 Disclaim the title', 'peerage.disclaim', { variant: 'danger', hint: 'For life — to stand for the Commons' })}</div>` : ''}`, { icon: '🏰' }));
   }

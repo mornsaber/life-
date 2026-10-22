@@ -11,8 +11,8 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { CROWNS, ensureCrown, monarchName, CRISIS_CHANCE, CrownModule, crownOf, sovereign } from '../src/modules/world/Crown.js';
-import { nobleBirth, NOBLE_BIRTH_CHANCE, PeerageModule } from '../src/modules/world/Peerage.js';
-import { styledName, chivalryList, postNominals } from '../src/modules/world/Honours.js';
+import { nobleBirth, NOBLE_BIRTH_CHANCE, PeerageModule, grantPeerage } from '../src/modules/world/Peerage.js';
+import { styledName, chivalryList, postNominals, honoursList, knighthoodsOn, setKnighthoods } from '../src/modules/world/Honours.js';
 import { peerChamber } from '../src/modules/politics/Legislature.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -157,6 +157,55 @@ const tests = {
     const heir = buildHeirState(new Random(4), state, kid.id);
     assert.equal(heir.royal.reigning, true);
     assert.match(styledName(heir), /King Arthur/);
+  },
+  'Australia\'s knighthoods come and go with the government; a prime minister can restore them'() {
+    const { engine, state, ctx } = life({ countryId: 'AU' });
+    assert.equal(knighthoodsOn(state, 'AU'), false, 'abolished by default');
+    state.character.age = 60;
+    state.politics.history.push({ officeId: 'au_pm', startAge: 45, endAge: 55, terms: 2 }, { officeId: 'au_mp', startAge: 35, endAge: 55, terms: 5 });
+    state.finances.cash = 2e9;
+    for (let i = 0; i < 30; i++) honoursList({ ...ctx, rng: always(new Random(i)) });
+    assert.ok(!state.honors.some((h) => h.tier === 'ak'), 'no knighthood while abolished');
+    setKnighthoods(ctx, 'AU', true);
+    for (let i = 0; i < 5; i++) honoursList({ ...ctx, rng: always(new Random(i)) });
+    assert.ok(state.honors.some((h) => h.tier === 'ak'), JSON.stringify(state.honors.map((h) => h.tier)));
+    assert.match(styledName(state), /^(Sir|Dame) /);
+    ctx.emit('politics:take', { officeId: 'au_pm', appointed: true });
+    state.prompts = [];
+    engine.dispatch('honours.knighthoods');
+    assert.equal(knighthoodsOn(state, 'AU'), false, 'the prime minister abolished them again');
+  },
+  'a former prime minister is offered the customary earldom; a victorious commander a viscountcy or more'() {
+    const { engine, state } = life();
+    state.character.age = 62;
+    state.politics.history.push({ officeId: 'gb_pm', startAge: 50, endAge: 60, terms: 2 });
+    for (let i = 0; i < 25 && !state.prompts.some((p) => p.type === 'peerage.creation'); i++) { state.prompts = []; engine.ageUp(); }
+    const p = state.prompts.find((x) => x.type === 'peerage.creation');
+    assert.ok(p, 'an offer');
+    assert.match(p.text, /earldom/);
+    engine.resolvePrompt(p.id, 'accept');
+    assert.equal(state.character.peerage.rank, 'earl');
+    assert.equal(state.character.peerage.kind, 'hereditary');
+    assert.ok(state.character.peerage.seat);
+    assert.match(styledName(state), /^The (Earl|Countess) of /);
+    const v = life();
+    v.state.character.age = 58;
+    v.state.flags.victor = { grade: 8, top: false, nation: 'GB' };
+    for (let i = 0; i < 25 && !v.state.prompts.some((x) => x.type === 'peerage.creation'); i++) { v.state.prompts = []; v.engine.ageUp(); }
+    assert.match(v.state.prompts.find((x) => x.type === 'peerage.creation')?.text ?? '', /Viscount/);
+  },
+  'a hereditary peer stands in a Lords by-election when a seat falls vacant'() {
+    const { engine, state, ctx } = life();
+    state.character.age = 45;
+    grantPeerage(ctx, { rank: 'earl', place: 'Wexley', kind: 'hereditary', seat: false });
+    for (let i = 0; i < 40 && !state.character.peerage.seat; i++) {
+      state.prompts = [];
+      engine.ageUp();
+      const p = state.prompts.find((x) => x.type === 'peerage.byElection');
+      if (p) engine.resolvePrompt(p.id, 'campaign');
+    }
+    assert.ok(state.character.peerage.byElections >= 1, 'stood');
+    if (state.character.peerage.seat) assert.ok(peerChamber(state), 'and sits');
   },
 };
 void PeerageModule;

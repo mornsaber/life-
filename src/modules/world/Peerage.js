@@ -10,6 +10,14 @@
  *                  hereditary peers. A hereditary peer can disclaim the title (to stand for the
  *                  Commons) — for life.
  *   Royal          Royal dukedoms, created for the monarch's children (Crown.js).
+ *   Creations      The few hereditary titles still made for commoners: the customary earldom for
+ *                  a former prime minister, a viscountcy for a Speaker of the Commons or a
+ *                  victorious three-star commander, an earldom (or, once in a generation, a
+ *                  dukedom) for the commander who won a war, and a marquessate for a national
+ *                  figure of the very first rank. Spain's monarch still creates marquesados for
+ *                  eminent Spaniards. A higher creation raises an existing peer's rank.
+ *   By-elections   Hereditary peers win one of the Lords' hereditary seats when one falls vacant:
+ *                  a ballot of their own party's hereditary peers (or the crossbenchers').
  *
  * state.character.peerage = { rank, place, kind: 'life'|'hereditary'|'royal', seat, created }
  * state.character.style.peerage = 'Earl of Ashby' (the formal title; the Lords reads it)
@@ -17,6 +25,8 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { eminence } from './Honours.js';
+import { partyName } from '../politics/Parties.js';
 
 export const RANKS = {
   baron: { order: 1, male: 'Baron', female: 'Baroness', style: { male: 'Lord', female: 'Lady' }, of: false },
@@ -93,11 +103,112 @@ function peerageYear(ctx) {
       ctx.log(`Your ${holder?.relation ?? 'parent'} has died. You succeed to the title: ${c.style.peerage}.`, '👑', 'milestone');
     }
   }
+  // A hereditary seat falls vacant in your group: stand?
   const p = c.peerage;
-  if (p?.kind === 'hereditary' && !p.seat && c.age >= 21 && (state.politics?.recognition ?? 0) >= 20 && rng.chance(0.04)) {
-    p.seat = true;
-    ctx.log('The hereditary peers elected you to a vacant seat in the House of Lords.', '🏛️', 'good');
+  if (p?.kind === 'hereditary' && !p.seat && c.age >= 21 && (state.character.countryId ?? 'US') === 'GB' && !state.prompts.some((x) => x.type === 'peerage.byElection') && rng.chance(0.35)) {
+    const bloc = state.civic?.party?.bloc;
+    const group = bloc ? `${partyName(state, bloc).replace(/ Party$/, '')} hereditary peers` : 'crossbench hereditary peers';
+    ctx.prompt({
+      type: 'peerage.byElection', icon: '🏛️', title: 'A Hereditary By-Election',
+      text: `A hereditary peer has died, and his seat in the Lords is open. The electorate: the ${group}. ${p.byElections ? `You've stood ${p.byElections} time${p.byElections > 1 ? 's' : ''} before.` : 'Candidates write a 75-word statement; the electors vote by preference.'}`,
+      options: [
+        { id: 'stand', label: '✍️ Stand, with a statement' },
+        { id: 'campaign', label: '🍷 Stand, and lunch every elector', hint: '$15,000 of lunches' },
+        { id: 'skip', label: '🙅 Not this time' },
+      ],
+      data: { group },
+    });
   }
+  creationsYear(ctx);
+}
+
+/* ------------------------------------------------------------------ */
+/* Creations for commoners                                             */
+/* ------------------------------------------------------------------ */
+
+const held = (state, re) => (state.politics?.history ?? []).some((h) => re.test(h.officeId));
+const inOffice = (state, re) => re.test(state.politics?.office?.id ?? '');
+const rankOrder = (rank) => RANKS[rank]?.order ?? 0;
+
+/** What the Crown might offer this year, if anything: { rank, why }. */
+function creationFor(state, rng) {
+  const cc = state.character.countryId ?? 'US';
+  const c = state.character;
+  const offered = (state.peerageOffers ??= {});
+  const mine = rankOrder(c.peerage?.rank);
+  const pick = (key, rank, why, chance) => (!offered[key] && rankOrder(rank) > mine && rng.chance(chance) ? (offered[key] = true, { rank, why, key }) : null);
+  if (cc === 'ES') return eminence(state) >= 280 ? pick('es', 'marquess', 'the King\'s grant of a marquesado for services to Spain', 0.03) : null;
+  if (cc !== 'GB' || state.royal) return null;
+  const e = eminence(state);
+  // Victors: the commander of a won war.
+  const v = state.flags?.victor?.nation === 'GB' ? state.flags.victor : null;
+  if (v) {
+    if (v.grade >= 9 && v.top && e >= 420) return pick('duke', 'duke', 'the victory in the war — a dukedom, the first for a commoner in a century', 0.5);
+    if (v.grade >= 9) return pick('victor9', 'earl', 'command of the forces that won the war', 0.6);
+    if (v.grade >= 8) return pick('victor8', 'viscount', 'a decisive command in the war', 0.5);
+  }
+  if (held(state, /^gb_pm$/) && !inOffice(state, /^gb_pm$/)) return pick('pm', 'earl', 'the customary earldom for a former prime minister', 0.35);
+  if (state.politics?.wasSpeaker && !inOffice(state, /^gb_mp$/)) return pick('speaker', 'viscount', 'the customary viscountcy for a former Speaker of the Commons', 0.4);
+  if (e >= 380) return pick('marquess', 'marquess', 'service to the nation of the very first rank', 0.01);
+  return null;
+}
+
+function creationsYear(ctx) {
+  const { state, rng } = ctx;
+  // A Speaker's chair is remembered.
+  const seat = state.legislature?.seat;
+  if (seat?.post === 'presiding' && /^lower_GB/.test(seat.bodyId ?? '')) state.politics.wasSpeaker = true;
+  if (state.prompts.some((x) => x.type === 'peerage.creation') || !state.character.alive) return;
+  const offer = creationFor(state, rng);
+  if (!offer) return;
+  const c = state.character;
+  const title = peerTitle(offer.rank, rng.pick(PLACES), c.gender, c.lastName);
+  ctx.prompt({
+    type: 'peerage.creation', icon: '👑', title: 'A Hereditary Peerage',
+    text: `For ${offer.why}, the Crown offers you a hereditary title: ${title}. ${c.peerage ? `It would raise you from ${c.style?.peerage}.` : ''}${inOffice(state, /^gb_mp$/) ? ' You would leave the Commons for the Lords.' : ''}`,
+    options: [
+      { id: 'accept', label: `👑 Accept: ${title}`, hint: 'Hereditary: your heir inherits it' },
+      ...(offer.rank === 'earl' && offer.key === 'pm' ? [{ id: 'life', label: '🏛️ A life barony instead', hint: 'A seat in the Lords; nothing to pass on' }] : []),
+      { id: 'decline', label: '🙅 Decline with thanks' },
+    ],
+    data: { rank: offer.rank, place: title.split(' of ')[1] ?? null },
+  });
+}
+
+/** The Lords by-election: a handful of electors, a crowded field. */
+function byElection(ctx, data, optionId) {
+  const { state, rng } = ctx;
+  const p = state.character.peerage;
+  if (!p || optionId === 'skip') return;
+  if (optionId === 'campaign') ctx.spend(15000, 'Lunches for hereditary peers', { allowDebt: true });
+  p.byElections = (p.byElections ?? 0) + 1;
+  const electors = rng.int(3, 45);
+  const rivals = rng.int(2, 14);
+  const odds = clamp((1 + (state.politics?.recognition ?? 0) / 50 + (rankOrder(p.rank) - 1) * 0.1 + (state.civic?.party ? 0.3 : 0) + (optionId === 'campaign' ? 0.5 : 0) + (p.byElections - 1) * 0.2) / (rivals + 1), 0.03, 0.7);
+  if (rng.chance(odds)) {
+    p.seat = true;
+    const yours = Math.max(1, Math.round(electors * rng.float(0.3, 0.6)));
+    ctx.log(`You won the by-election among the ${data.group}: ${yours} of ${electors} first preferences against ${rivals} rivals. You take your seat in the House of Lords.`, '🏛️', 'good');
+    ctx.stat('happiness', 6);
+  } else ctx.log(`You lost the by-election among the ${data.group} (${rivals} rivals, ${electors} electors).`, '🏛️', 'warn');
+}
+
+function creation(ctx, data, optionId) {
+  const { state } = ctx;
+  if (optionId === 'decline') return ctx.log('You declined the peerage.', '🙅');
+  const c = state.character;
+  // Into the Lords: a sitting MP leaves the Commons.
+  if (inOffice(state, /^gb_mp$/)) ctx.emit('politics:leave', { reason: 'Elevated to the House of Lords' });
+  if (optionId === 'life') {
+    if (!c.peerage) grantPeerage(ctx, { rank: 'baron', place: data.place, kind: 'life', seat: true });
+    else c.peerage.seat = true;
+    return ctx.log(`You were created a life peer: ${c.style.peerage}.`, '🏛️', 'honor');
+  }
+  const was = c.style?.peerage;
+  grantPeerage(ctx, { rank: data.rank, place: data.place, kind: 'hereditary', seat: true });
+  // Those who create a title, rather than inherit one, sit for life.
+  if (state.noble) state.noble.heir = false;
+  return ctx.log(`${was ? `Raised from ${was}: you` : 'You'} were created ${c.style.peerage}, a hereditary title for you and your heirs.`, '👑', 'honor');
 }
 
 export const PeerageModule = {
@@ -106,8 +217,20 @@ export const PeerageModule = {
   init(state, rng) {
     if (state.flags?.nobleOptIn && !state.noble && state.character.age === 0 && rng) nobleBirth(state, rng);
   },
+  setup(engine) {
+    // The commander of a war won: remembered for a peerage.
+    engine.bus.on('world:peace', ({ ctx, outcome }) => {
+      const svc = ctx.state.military?.service;
+      if (!svc || svc.track !== 'officer' || svc.grade < 8 || !/clear victory/.test(outcome ?? '')) return;
+      ctx.state.flags.victor = { grade: svc.grade, top: Boolean(svc.topPost), nation: svc.nation ?? 'US' };
+    });
+  },
   onAgeUp(ctx) {
     peerageYear(ctx);
+  },
+  resolvers: {
+    byElection,
+    creation,
   },
   actions: {
     /** Disclaim a hereditary peerage for life (the Peerage Act 1963): to sit in the Commons. */

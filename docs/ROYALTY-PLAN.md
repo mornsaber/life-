@@ -10,8 +10,11 @@ offices in politics/NationalOffices.js, ui/views/CrownCard.js; tests/royalty.js)
 - **Constitutional crises** about once or twice in a lifetime (2% a year in a monarchy); the player
   decides only when they hold the Governor-Generalship or the throne, otherwise it's news.
 
-Not built yet: dukes and marquesses by creation for commoners, realm-specific orders (Australia's
-knighthoods), hereditary peers' by-elections beyond a yearly chance.
+Also built since: hereditary creations for commoners (the former prime minister's earldom, the
+Speaker's viscountcy, victorious commanders up to a dukedom, a rare marquessate; Spain's
+marquesados), knighthoods in Australia's and New Zealand's orders that governments restore and
+abolish (a prime minister can advise either way), and Lords by-elections for hereditary peers
+(a ballot of their party's hereditary peers, or the crossbenchers').
 
 ## Today
 

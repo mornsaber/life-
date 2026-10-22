@@ -411,6 +411,18 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
     listings: [],
     rivalGroups: structuredClone(old.business.rivalGroups ?? null) ?? undefined,
   };
+  // A unionized business keeps its union: the local comes with it.
+  for (const b of passed) {
+    const u = b.union && old.unions?.byId?.[b.union.unionId];
+    if (u) {
+      s.unions ??= { seed: old.unions.seed ?? 7, byId: {}, seeded: {}, mine: null };
+      s.unions.byId[u.id ?? b.union.unionId] = structuredClone(u);
+      if (b.staff) b.staff.unionized = true;
+    } else if (b.union) {
+      delete b.union;
+      if (b.staff) b.staff.unionized = false;
+    }
+  }
   // The same world: the economy's cycle and local property markets continue.
   if (old.economy) s.economy = structuredClone(old.economy);
   if (old.housing?.market) s.housing.market = structuredClone(old.housing.market);

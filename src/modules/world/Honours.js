@@ -140,6 +140,8 @@ export const ORDERS = {
     { id: 'am', name: 'Member of the Order of Australia (AM)', post: 'AM', min: 70, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
     { id: 'ao', name: 'Officer of the Order of Australia (AO)', post: 'AO', min: 120, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
     { id: 'ac', name: 'Companion of the Order of Australia (AC)', post: 'AC', min: 190, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
+    // Only while the government of the day allows them (1976–86, 2014–15 in real life).
+    { id: 'ak', name: { male: 'Knight of the Order of Australia (AK)', female: 'Dame of the Order of Australia (AD)' }, post: { male: 'AK', female: 'AD' }, prefix: { male: 'Sir', female: 'Dame' }, knighthood: true, min: 240, ribbon: R('#ffd100', '#1f5fbf', '#ffd100') },
   ] },
   FR: { minAge: 30, tiers: [
     { id: 'onm', name: 'Chevalier de l\'Ordre national du Mérite', min: 40, ribbon: R('#1f5fbf') },
@@ -194,6 +196,31 @@ export const ORDERS = {
   ] },
 };
 fromPacks(ORDERS, 'ORDERS');
+// New Zealand's knighthoods come and go with the government too (abolished 2000, restored 2009).
+for (const t of ORDERS.NZ?.tiers ?? []) if (t.id === 'knzm') t.knighthood = true;
+
+/**
+ * Knighthoods in the realms' own orders are a political choice: Australia's are off unless a
+ * government restores them; New Zealand's are on unless one abolishes them. Knights already
+ * made keep their titles either way. state.world.knighthoods[cc] = true|false
+ */
+export const KNIGHTHOODS_DEFAULT = { AU: false, NZ: true };
+export const knighthoodsOn = (state, cc) => state.world?.knighthoods?.[cc] ?? KNIGHTHOODS_DEFAULT[cc] ?? true;
+export function setKnighthoods(ctx, cc, on, who = 'The government') {
+  const { state } = ctx;
+  state.world ??= {};
+  state.world.knighthoods ??= {};
+  if (knighthoodsOn(state, cc) === on) return false;
+  state.world.knighthoods[cc] = on;
+  if ((state.character.countryId ?? 'US') === cc) ctx.log(`${who} ${on ? 'restored knighthoods and damehoods' : 'abolished new knighthoods and damehoods'} in the national order${on ? '.' : '; existing knights keep their titles.'}`, on ? '⚔️' : '📜', 'info');
+  return true;
+}
+function knighthoodPolicyYear(ctx) {
+  const { state, rng } = ctx;
+  const cc = state.character.countryId ?? 'US';
+  if (!(cc in KNIGHTHOODS_DEFAULT) || /^(au|nz)_pm$/.test(state.politics?.office?.id ?? '')) return;
+  if (rng.chance(knighthoodsOn(state, cc) ? 0.02 : 0.012)) setKnighthoods(ctx, cc, !knighthoodsOn(state, cc));
+}
 
 const tierName = (t, gender) => (typeof t.name === 'string' ? t.name : t.name[gender === 'female' ? 'female' : 'male']);
 const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefix[gender === 'female' ? 'female' : 'male'] : t.prefix ?? null);
@@ -240,7 +267,9 @@ export function honoursList(ctx) {
   // Appointed at the highest grade your standing earns, above any you already hold.
   const held = heldTiers(state, cc);
   const top = Math.max(-1, ...held.map((id) => orders.tiers.findIndex((x) => x.id === id)));
-  const next = [...orders.tiers].reverse().find((t, i) => orders.tiers.length - 1 - i > top && score >= t.min && (!t.peer || orders.tiers.length - 1 - i === top + 1 || !orders.tiers.slice(top + 1).some((x) => !x.peer && score >= x.min)));
+  // Knighthoods in the order only while the government allows them.
+  const open = (t) => !t.knighthood || knighthoodsOn(state, cc);
+  const next = [...orders.tiers].reverse().find((t, i) => open(t) && orders.tiers.length - 1 - i > top && score >= t.min && (!t.peer || orders.tiers.length - 1 - i === top + 1 || !orders.tiers.slice(top + 1).some((x) => !x.peer && score >= x.min)));
   if (!next || !rng.chance(0.3)) return null;
   // Only the very top of public life sits in the Lords.
   if (next.peer && !(state.politics?.history ?? []).concat(state.politics?.office ? [state.politics.office] : []).some((h) => (OFFICES[h.officeId ?? h.id]?.level ?? 0) >= 4) && score < next.min + 60) return null;
@@ -406,6 +435,23 @@ export const HonoursModule = {
   },
   onYearEnd(ctx) {
     if (!ctx.state.character.alive) return;
+    knighthoodPolicyYear(ctx);
     if (!honoursList(ctx)) chivalryList(ctx);
+  },
+  actions: {
+    /** A prime minister of Australia or New Zealand restores (or abolishes) knighthoods. Once a year. */
+    knighthoods(ctx) {
+      const { state } = ctx;
+      const cc = state.character.countryId ?? 'US';
+      if (!/^(au|nz)_pm$/.test(state.politics?.office?.id ?? '') || !(cc in KNIGHTHOODS_DEFAULT)) return ctx.toast('Only the prime minister can advise on that.', 'warn');
+      if (state.yearly['honours.knighthoods']) return ctx.toast('Once a year.', 'warn');
+      state.yearly['honours.knighthoods'] = 1;
+      const on = !knighthoodsOn(state, cc);
+      setKnighthoods(ctx, cc, on, 'On your advice, the Crown');
+      // Bringing knights back is a gift to opponents.
+      const o = state.politics.office;
+      if (o) o.approval = Math.max(0, o.approval + (on ? -6 : 2));
+      return undefined;
+    },
   },
 };
