@@ -324,6 +324,34 @@ const tests = {
     assert.ok(ob.distinctions.some((d) => /once reigned/.test(d)), ob.distinctions.join(' | '));
     assert.ok(/KBE/.test(ob.name), ob.name);
   },
+  'a royal who chooses to serve really joins the armed forces'() {
+    const { engine, state } = life({ difficulty: 'royal', royalLevel: 'child' }, 31);
+    year(engine, state, 19);
+    state.prompts = [];
+    state.stats.fitness = 80;
+    state.stats.health = 90;
+    engine.dispatch('royalHousehold.serve');
+    const svc = state.military.service;
+    assert.ok(svc, 'a service record');
+    assert.equal(svc.track, 'officer');
+    assert.ok(svc.royal);
+    year(engine, state, 2);
+    assert.ok(state.military.service || state.military.history.length, 'still serving or honourably out');
+    assert.ok(VIEWS.military(state, {}).length > 0);
+  },
+  'abroad, judgeships come from the country\'s own courts, not a US governor'() {
+    const { engine, state } = life({ countryId: 'GB' }, 32);
+    state.character.age = 45;
+    state.politics.recognition = 900;
+    state.credentials.held.barLicense = { status: 'active', age: 25 };
+    state.career.history.push({ professionId: 'law', startAge: 25, endAge: 45 });
+    const ctx = engine.context();
+    for (let i = 0; i < 40; i++) {
+      state.prompts = [];
+      MODULES.find((m) => m.id === 'politics').onAgeUp({ ...ctx, rng: always(ctx.rng) });
+      assert.ok(!state.prompts.some((p) => p.type === 'politics.appointmentOffer' && /state trial court/.test(p.text)), 'no US state trial court');
+    }
+  },
 };
 void PeerageModule;
 

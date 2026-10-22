@@ -31,6 +31,7 @@ import { localUnitName } from './MilitaryLocal.js';
 import { clamp } from '../../core/Random.js';
 import { ageOf, people, living } from '../people/People.js';
 import { enlist, enlistmentEligibility } from '../military/MilitaryEngine.js';
+import { defaultMos } from '../military/MOS.js';
 
 const g = (gender) => (gender === 'female' ? 1 : 0);
 
@@ -495,11 +496,16 @@ function joinForces(ctx) {
     household(state).served = 'blocked';
     return ctx.log(`You wanted to serve, but couldn't: ${check.reason}.`, '🎖️', 'warn');
   }
-  enlist(ctx, { branch, track: 'officer', component: 'active' });
-  const svc = state.military.service;
-  if (svc) svc.royal = true;
+  // Royals traditionally go to a cavalry or line regiment, or learn to fly.
+  const specialty = ['armor', 'infantry', 'aviation', 'logistics'].find((s) => defaultMos(branch, 'officer', s));
+  if (!specialty || !enlist(ctx, { branch, track: 'officer', component: 'active', specialty, cleared: true })) {
+    household(state).served = 'blocked';
+    return ctx.log('You wanted to serve, but the forces couldn\'t find you a place this year.', '🎖️', 'warn');
+  }
+  state.military.service.royal = true;
+  household(state).served = 'serving';
   state.royal.popularity = Math.min(100, state.royal.popularity + 4);
-  ctx.log(`${royalStyledName(state) ?? 'You'} joined the forces as an officer cadet — protection officers in the next bunk.`, '🎖️', 'milestone');
+  ctx.log(`${royalStyledName(state) ?? 'You'} began officer training — protection officers in the next bunk.`, '🎖️', 'milestone');
   return undefined;
 }
 

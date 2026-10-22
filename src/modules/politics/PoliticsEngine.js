@@ -315,17 +315,19 @@ export const PoliticsEngine = {
     if (!o && !p.campaign) {
       const job = state.career.job;
       const status = job ? promotionStatus(state) : null;
+      const us = (state.character.countryId ?? 'US') === 'US';
       if (status?.appointable && job.performance >= 75 && rng.chance(0.15)) {
         const level = status.appointable[0];
         ctx.prompt({
           type: 'politics.appointmentOffer',
           icon: '⭐',
-          title: 'A Call from the Governor',
-          text: `The governor wants to appoint you ${level.title}.`,
+          title: us ? 'A Call from the Governor' : 'A Government Appointment',
+          text: `${us ? 'The governor wants' : `${level.appointedBy ? `${level.appointedBy.charAt(0).toUpperCase()}${level.appointedBy.slice(1)} wants` : 'The government wants'}`} to appoint you ${level.title}.`,
           options: [{ id: 'accept', label: '🤝 Accept the appointment' }, { id: 'decline', label: '🙅 Decline' }],
           data: { kind: 'agency', levelId: level.id },
         });
-      } else if (hasCredential(state, 'barLicense') && yearsInProfession(state, ['law', 'prosecution', 'publicDefender', 'courts']) >= 7 && state.character.age >= 35 && rng.chance(0.04 + p.recognition / 1000)) {
+      // US state trial courts only: abroad, the country's own courts make their appointments (legal/Judiciary).
+      } else if (us && hasCredential(state, 'barLicense') && yearsInProfession(state, ['law', 'prosecution', 'publicDefender', 'courts']) >= 7 && state.character.age >= 35 && rng.chance(0.04 + p.recognition / 1000)) {
         ctx.prompt({
           type: 'politics.appointmentOffer',
           icon: '⚖️',
