@@ -297,7 +297,7 @@ export const InterviewSystem = {
       bumpYearly(state, 'career.apply');
 
       const profession = getProfession(professionId);
-      const employer = createEmployer(rng, state, profession, resolveDutyStation(rng, profession, state.character.regionId) ?? state.character.regionId);
+      const employer = createEmployer(rng, state, profession, resolveDutyStation(rng, profession, state.character.regionId) ?? check.commute?.regionId ?? state.character.regionId);
       const level = ownerEntryLevel(state, profession, employer.size) ?? bestEntryLevel(state, profession, employer.size) ?? check.level;
       if (rehireStanding(state, employer.orgId).blocked) {
         ctx.log(`${employer.name} (${employer.orgName}) flagged you as not eligible for rehire.`, '⛔', 'bad');

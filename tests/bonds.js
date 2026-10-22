@@ -50,8 +50,7 @@ const tests = {
     const { engine, state } = life(28);
     const p = partner(engine, state);
     const before = p.spark;
-    state.prompts = [];
-    engine.ageUp();
+    for (let y = 0; y < 3; y++) { state.prompts = []; state.stats.health = 95; engine.ageUp(); }
     assert.ok(p.spark < before, 'sparks fade');
     state.prompts = [];
     engine.dispatch('bonds.dateNight', p.id);

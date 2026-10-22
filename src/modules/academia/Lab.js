@@ -304,13 +304,13 @@ function labEvent(ctx, L) {
 export const AWARDS = {
   bestPaper: { name: 'Best Paper Award', icon: '📄', prestige: 3, repeat: true, citation: 'For the year\'s best paper at your field\'s top venue.' },
   sloan: { name: 'Sloan Research Fellowship', icon: '🌱', prestige: 8, cash: 75000, citation: 'Awarded to early-career scientists of outstanding promise.' },
-  packard: { name: 'Packard Fellowship', icon: '🚀', prestige: 14, cash: 175000, citation: '$875,000 over five years to pursue risky ideas.' },
+  packard: { name: 'Packard Fellowship', icon: '🚀', prestige: 14, cash: 175000, citation: 'Five years of unrestricted funding to pursue risky ideas.' },
   pecase: { name: 'Presidential Early Career Award for Scientists and Engineers', icon: '🇺🇸', prestige: 12, citation: 'The U.S. government\'s highest honor for early-career researchers.' },
   teaching: { name: 'Distinguished Teaching Award', icon: '🍎', prestige: 5, citation: 'Voted by students and colleagues.' },
   mentoring: { name: 'Graduate Mentoring Award', icon: '🫶', prestige: 6, citation: 'For training a generation of scientists.' },
   honorary: { name: 'Honorary Doctorate', icon: '🎓', prestige: 8, repeat: true, citation: 'Conferred at commencement by another university.' },
   medalOfScience: { name: 'National Medal of Science', icon: '🏅', prestige: 40, citation: 'Presented by the President at the White House.' },
-  breakthrough: { name: 'Breakthrough Prize', icon: '💫', prestige: 45, cash: 3000000, citation: 'Science\'s richest prize: $3 million.' },
+  breakthrough: { name: 'Breakthrough Prize', icon: '💫', prestige: 45, cash: 3000000, citation: 'Science\'s richest prize.' },
   wolf: { name: 'Wolf Prize', icon: '🐺', prestige: 30, cash: 100000, citation: 'Often a prelude to Stockholm.' },
   pulitzer: { name: 'Pulitzer Prize in History', icon: '📖', prestige: 35, cash: 15000, citation: 'For a distinguished book on American history.' },
 };

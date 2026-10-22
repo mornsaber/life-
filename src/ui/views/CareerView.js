@@ -5,6 +5,8 @@
  */
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { engineSections } from './EngineViews.js';
+import { remoteness, nearestCity, commuteOf, COMMUTE_MINUTES } from '../../modules/life/RuralLife.js';
+import { cityName } from '../../modules/career/Employers.js';
 import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
@@ -307,6 +309,7 @@ function jobRow(state, p, extra = false) {
   return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
       <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
+        ${check.ok && (check.commute || check.note) ? `<small class="req">${check.commute ? `🚗 Commute to ${esc(check.commute.to)} · ${check.commute.minutes} min each way` : `📍 ${esc(check.note)}`}</small>` : ''}
         ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
@@ -346,7 +349,10 @@ function jobBoard(state, ui = {}) {
     .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('');
   const sorts = Object.entries(SORTS).map(([id, [label]]) => button(label, 'ui.set', { arg: `jobSort=${id}`, variant: id === sort ? 'tiny on' : 'tiny' })).join('');
   const tools = `<div class="job-tools"><input type="search" id="job-search" placeholder="Search jobs…" aria-label="Search jobs" autocomplete="off"><div class="toggle-row" role="group" aria-label="Sort jobs">${sorts}</div></div>`;
-  const header = `<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
+  const where = remoteness(state);
+  const city = where ? nearestCity(state) : null;
+  const ruralNote = where ? `<p class="fine">🌾 ${esc(cityName(state.character.regionId))} is ${where === 'remote' ? 'a remote rural area' : 'a small town'}: fewer employers, and the list of who's hiring changes every year. ${where === 'town' && city ? `Jobs marked 🚗 mean commuting to ${esc(city.name)} (${COMMUTE_MINUTES.town} minutes each way).` : 'Most city careers mean moving.'}</p>` : '';
+  const header = `${ruralNote}<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
   const sorted = (list) => [...list].sort(SORTS[sort][1]);
   if (field === 'open') {
     if (!open.length) return `${header}<ul class="job-board"><li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li></ul>`;
@@ -404,7 +410,9 @@ export function careerView(state, ui = {}) {
   const board = card('Job Board', jobBoard(state, ui), { icon: '📰', open: !job });
   const fastPaths = directEntryCard(state);
   // Your job, its own dedicated cards, then the year's work; reference material folded after.
-  const systems = job ? `${engineSections(state)}${intlSection(state)}` : '';
+  const mins = job ? commuteOf(state, job) : 0;
+  const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
+  const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
   return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }

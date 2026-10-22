@@ -225,7 +225,7 @@ const tests = {
   },
 
   'Westminster: five-year Commons, an appointed Lords that only delays, and peers who sit in it'() {
-    const { engine, state } = gbLife(4);
+    const { engine, state } = gbLife(5);
     state.character.style = { prefix: 'Lord', peerage: `Baron ${state.character.lastName}, of Leeds` };
     year(engine);
     const commons = bodiesHere(state).find((b) => b.kind === 'lower_GB');

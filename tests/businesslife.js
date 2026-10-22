@@ -38,7 +38,9 @@ const year = (engine) => {
   for (let j = 0; j < 8 && state.prompts.length; j++) {
     const p = state.prompts[0];
     seen.push(p);
-    engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
+    // Keep the business: turn down buyout offers.
+    const keep = p.type === 'business.offer' ? p.options.find((o) => o.id === 'decline') : null;
+    engine.resolvePrompt(p.id, (keep ?? p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
   }
   return seen;
 };

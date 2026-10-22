@@ -47,6 +47,7 @@ import { isAbroad, US_ONLY, informality, countryOf, isCitizen } from '../world/C
 import { residencyOf } from '../world/Immigration.js';
 import { agencyExists } from '../world/LocalAgencies.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
+import { ruralHiring } from '../life/RuralLife.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -189,13 +190,16 @@ export function applicationEligibility(state, professionId, { anywhere = false }
     const extra = profession.eligible(state);
     if (!extra.ok) return extra;
   }
+  // Small places have fewer employers: some work means commuting, some means moving.
+  const rural = anywhere ? { ok: true } : ruralHiring(state, professionId);
+  if (!rural.ok) return { ok: false, reason: rural.reason };
   const sizeProbe = profession.sector === 'federal' ? 'large' : 'small';
   const level = bestEntryLevel(state, profession, sizeProbe) ?? bestEntryLevel(state, profession, 'enterprise');
   if (!level) {
     const first = profession.levels[0];
     return { ok: false, reason: `Needs ${levelCheck(state, first).missing.join(', ')}` };
   }
-  return { ok: true, level };
+  return { ok: true, level, ...(rural.commute ? { commute: rural.commute } : {}), ...(rural.note ? { note: rural.note } : {}) };
 }
 
 /* ------------------------------------------------------------------ */

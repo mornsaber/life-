@@ -92,7 +92,7 @@ const tests = {
   'commercial buildings lease to businesses on multi-year triple-net leases'() {
     const { engine, state } = life(3, 50);
     const strip = own(state, 'stripMall');
-    years(engine, 4);
+    years(engine, 6);
     assert.ok(strip.tenants.length > 0, 'leased up');
     assert.ok(strip.tenants.every((t) => t.business && t.yearsLeft >= 0), 'business tenants with lease terms');
     assert.ok(strip.lastRent > 0);

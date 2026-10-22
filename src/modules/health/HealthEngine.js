@@ -17,6 +17,7 @@
  * }
  */
 import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
+import { ruralRisk } from '../life/RuralLife.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
@@ -655,6 +656,13 @@ export const HealthEngine = {
       const { state, rng } = ctx;
       const a = ACUTE[data.id];
       if (optionId === 'treat') {
+        // Far from a hospital, the serious ones are a race against the clock.
+        const far = a.untreatedDeath >= 0.05 ? ruralRisk(state) : 0;
+        if (far) {
+          if (rng.chance(a.untreatedDeath * far)) return void ctx.die(`${a.name} (too far from a hospital)`);
+          if (far >= 0.3) medicalBill(ctx, 12000, 'Air ambulance');
+          ctx.log(far >= 0.3 ? 'The nearest emergency room was too far to drive. A rescue helicopter flew you there.' : 'It was a long drive to the nearest emergency room.', '🚁', 'warn');
+        }
         const oop = medicalBill(ctx, a.cost, a.name);
         ctx.stat('health', Math.round(-a.health * 0.9));
         ctx.log(`You were treated for ${a.name.toLowerCase()}${oop ? ` ($${oop.toLocaleString()} out of pocket)` : ''}.`, a.icon);

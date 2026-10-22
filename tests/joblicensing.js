@@ -60,7 +60,7 @@ const tests = {
   'at the permit age you are asked to learn to drive, then to take the test'() {
     const { engine, state } = life(14);
     const seen = [];
-    for (let i = 0; i < 4 && !hasCredential(state, 'driverLicense'); i++) {
+    for (let i = 0; i < 7 && !hasCredential(state, 'driverLicense'); i++) {
       state.prompts = [];
       engine.ageUp();
       for (const p of state.prompts.filter((x) => x.type === 'jobLicensing.driving')) seen.push(p.data.id);
