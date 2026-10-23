@@ -102,13 +102,44 @@ function electNpc(ctx, why) {
   if (catholic(state) || isCardinal(state)) ctx.log(`${why} Habemus papam: after ${rng.int(2, 5)} days in the Sistine Chapel the conclave elected ${rng.pick(['the Patriarch of', 'the Archbishop of', 'the Cardinal Prefect from'])} ${rng.pick(['Lisbon', 'Manila', 'Kinshasa', 'Bologna', 'Boston', 'Budapest', 'São Paulo', 'Colombo', 'Marseille', 'Vienna'])}, who took the name ${name}.`, '🕊️', 'milestone');
 }
 
+const RIVAL_FIRST = ['Pietro', 'Luis Antonio', 'Matteo', 'Péter', 'Jean-Marc', 'Fridolin', 'Charles', 'Robert', 'Pablo', 'Anders', 'Joseph', 'Malcolm'];
+const RIVAL_SEE = ['the Secretary of State', 'the Patriarch of Venice', 'the Archbishop of Manila', 'the Archbishop of Budapest', 'the Archbishop of Marseille', 'the Archbishop of Kinshasa', 'the Archbishop of Bologna', 'the Prefect for Bishops', 'the Archbishop of Colombo'];
+/** Two named front-runners for a conclave. */
+const rivals = (ctx) => ctx.rng.shuffle([...RIVAL_SEE]).slice(0, 2).map((see) => `Cardinal ${ctx.rng.pick(RIVAL_FIRST)}, ${see}`);
+
+/** Every 25 years the Church keeps a Jubilee: the Holy Door opens and pilgrims fill Rome. */
+function jubileeYear(ctx) {
+  const { state } = ctx;
+  const year = currentYear(state);
+  if (year % 25 !== 0 || state.holySee?.jubilee === year) return;
+  me(state).jubilee = year;
+  if (isPope(state)) {
+    state.holySee.popularity = Math.min(100, state.holySee.popularity + 8);
+    ctx.stat('stress', 6);
+    return ctx.log(`The Jubilee of ${year}: on Christmas Eve you knocked on the Holy Door of St Peter's and opened it. Thirty million pilgrims came to Rome.`, '🚪', 'milestone');
+  }
+  if (catholic(state)) {
+    ctx.stat('happiness', 3);
+    return ctx.log(`A Jubilee year, ${year}: your parish organised a pilgrimage to walk through the Holy Door in Rome.`, '🚪', 'info');
+  }
+  return undefined;
+}
+
+/** Retired to the Mater Ecclesiae monastery: prayer, books, and the occasional visit from your successor. */
+function emeritusYear(ctx) {
+  const { state, rng } = ctx;
+  if (!state.holySee?.emeritus) return;
+  if (rng.chance(0.5)) ctx.log(rng.pick(['You walked in the Vatican Gardens and prayed the rosary at the Lourdes grotto.', 'Your successor came to visit; you talked for an hour, mostly about theology.', 'You finished another book of reflections.', 'Old friends from your seminary days came to see you at Mater Ecclesiae.']), '🕊️');
+  ctx.stat('stress', -4);
+}
+
 function vacancy(ctx, why) {
   const { state } = ctx;
   if (isElector(state) && !state.prompts.some((p) => p.type === 'holySee.conclave')) {
     const odds = papabile(state);
     ctx.prompt({
       type: 'holySee.conclave', icon: '🗝️', title: 'Extra Omnes',
-      text: `${why} You are summoned to Rome. The cardinal electors process into the Sistine Chapel, swear the oath, and the doors are shut. Your name is ${odds >= 0.12 ? 'on every list of papabili' : odds >= 0.06 ? 'mentioned among the outsiders' : 'not one the papers mention'}.`,
+      text: `${why} You are summoned to Rome. The cardinal electors process into the Sistine Chapel, swear the oath, and the doors are shut. The papers' favourites are ${rivals(ctx).join(' and ')}; your name is ${odds >= 0.12 ? 'on every list of papabili too' : odds >= 0.06 ? 'mentioned among the outsiders' : 'not one the papers mention'}.`,
       options: [
         { id: 'candidate', label: '🕊️ Let your name be considered', hint: `~${Math.round(Math.min(0.45, odds * 1.8) * 100)}% — "who enters a conclave as pope leaves a cardinal"` },
         { id: 'kingmaker', label: '🗳️ Rally votes behind the front-runner', hint: 'The new pope will remember it' },
@@ -310,6 +341,8 @@ export const HolySeeModule = {
     popeYear(ctx);
     guardYear(ctx);
     papalHonours(ctx);
+    jubileeYear(ctx);
+    emeritusYear(ctx);
     if (isPope(state)) {
       if (job) job.performance = 100;
       hs.popularity = Math.round(clamp((hs.popularity ?? 70) + (65 - (hs.popularity ?? 70)) * 0.15 + rng.int(-3, 3), 0, 100));
@@ -378,6 +411,17 @@ export const HolySeeModule = {
       }
       hs.favour = (hs.favour ?? 0) + 1;
       return ctx.log(rng.pick(['You hosted dinners for visiting cardinals at your apartment near the Vatican.', 'You gave a lecture in Rome that was quoted approvingly by the Secretariat of State.', 'You travelled to the peripheries and made friends among the cardinals there.']), '🟥', 'good');
+    },
+    /** Convene a synod of bishops on a question that divides the Church. */
+    synod(ctx) {
+      const { state, rng } = ctx;
+      if (!isPope(state)) return ctx.toast('Only the Pope', 'warn');
+      if (state.character.age - (state.holySee.lastSynod ?? -9) < 3) return ctx.toast('Every three years or so', 'warn');
+      state.holySee.lastSynod = state.character.age;
+      const topic = rng.pick(['the family', 'young people and vocations', 'synodality itself', 'the Amazon and the environment', 'the role of women in the Church', 'evangelisation in a digital age']);
+      const swing = rng.int(-6, 9);
+      state.holySee.popularity = clamp(state.holySee.popularity + swing, 0, 100);
+      return ctx.log(`You convened a synod of bishops on ${topic}. ${swing >= 0 ? 'Its final document was welcomed far beyond the Church.' : 'It left both reformers and traditionalists unhappy — the press called it a mess.'}`, '⛪', swing >= 0 ? 'good' : 'warn');
     },
     /** Create new cardinals: the men who will choose your successor. */
     consistory(ctx) {

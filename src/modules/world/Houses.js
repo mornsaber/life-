@@ -123,6 +123,18 @@ export function restore(ctx, cc) {
       state.character.style = { ...(state.character.style ?? {}), prefix: CROWNS[cc].titles.royal[g(state)] };
     }
     h.restored = true;
+    // The first question of a restored reign: what kind of monarchy?
+    if (h.rank === 'head') {
+      ctx.prompt({
+        type: 'houses.constitution', icon: '📜', title: 'The New Constitution',
+        text: 'Parliament is drafting the restored kingdom\'s constitution. What powers will the throne keep?',
+        options: [
+          { id: 'constitutional', label: '🏛️ A constitutional monarchy', hint: 'Reign, not rule: the safest crown' },
+          { id: 'executive', label: '⚖️ Real powers: appoint the government, veto laws', hint: 'Popular with your old supporters, dangerous with everyone else', tone: 'danger' },
+        ],
+        data: { cc },
+      });
+    }
     ctx.log(h.rank === 'head'
       ? `The monarchy is restored. ${def.fell} is undone: you are proclaimed ${monarchName(state, cc)}, and move into ${CROWNS[cc].palace}.`
       : `The monarchy is restored: your family reigns again, and you are a ${CROWNS[cc].titles.royal[g(state)].toLowerCase()} of a reigning house${h.rank === 'heir' ? ' — and heir to the throne' : ''}.`, '👑', 'milestone');
@@ -195,6 +207,17 @@ function resolveVote(ctx, { cc, kind, called }, optionId) {
 /* ------------------------------------------------------------------ */
 /* The year                                                            */
 /* ------------------------------------------------------------------ */
+
+/** A restored throne with real powers is a target: unpopular, it can fall to a revolution. */
+function restoredReignYear(ctx) {
+  const { state, rng } = ctx;
+  const r = state.royal;
+  if (!r?.reigning || !state.world.restored?.[r.crownId]) return;
+  if (r.executive && rng.chance(0.03 + Math.max(0, 50 - (r.popularity ?? 60)) / 500)) {
+    ctx.log('Mass protests filled the capital for weeks; the army refused to clear the squares. Parliament voted to abolish the monarchy again.', '🔥', 'bad');
+    abolish(ctx, r.crownId);
+  }
+}
 
 function houseYear(ctx) {
   const { state, rng } = ctx;
@@ -269,6 +292,7 @@ export const HousesModule = {
     const ctx = { ...engineCtx, rng };
     if (state.flags?.houseStart && !state.house) bornIntoHouse(state, rng);
     houseYear(ctx);
+    restoredReignYear(ctx);
     monarchistYear(ctx);
   },
   actions: {
@@ -354,6 +378,18 @@ export const HousesModule = {
     },
   },
   resolvers: {
+    constitution(ctx, data, optionId) {
+      const { state } = ctx;
+      const r = state.royal;
+      if (!r) return undefined;
+      if (optionId === 'executive') {
+        r.executive = true;
+        r.popularity = Math.max(0, (r.popularity ?? 60) - 15);
+        return ctx.log('The constitution gave the throne real powers: you appoint the prime minister and can veto laws. The republicans are already organising.', '⚖️', 'warn');
+      }
+      r.popularity = Math.min(100, (r.popularity ?? 60) + 8);
+      return ctx.log('The constitution made you a constitutional monarch: a symbol above politics, like the crowns of Spain and Sweden.', '🏛️', 'good');
+    },
     referendum(ctx, data, optionId) {
       return resolveVote(ctx, data, optionId);
     },

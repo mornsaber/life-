@@ -12,6 +12,7 @@
  * }
  */
 import { fiveStarTitle } from './Wartime.js';
+import { academyFor } from './Academies.js';
 import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { belowZone, boardScore } from './MilitaryLife.js';
@@ -376,9 +377,10 @@ export function finishOfficerAcademy(ctx, svc) {
   const { state, rng } = ctx;
   delete svc.cadet;
   const odds = clamp(0.8 + (state.stats.smarts - 60) / 200 + (state.stats.fitness - 50) / 200, 0.55, 0.95);
-  const school = branchOf(svc).officerSchool;
+  const school = svc.academy?.name ?? branchOf(svc).officerSchool;
+  delete svc.academy;
   if (rng.chance(odds)) {
-    ctx.log(`You passed out of ${school} after a year as an officer cadet and were commissioned.`, '🎓', 'milestone');
+    ctx.log(`You passed out of ${school} and were commissioned.`, '🎓', 'milestone');
     return;
   }
   svc.track = 'enlisted';
@@ -477,7 +479,9 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   svc.schools = Object.assign({}, ...state.military.history.map((h) => h.schools ?? {}));
   for (const p of PME[track] ?? []) if (p.forGrade <= startGrade) svc.schools[p.id] ??= state.character.age;
   // No degree: a year at the academy as an officer cadet before the commission.
-  if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
+  // Abroad, officer cadets go through their country's academy (Sandhurst, Saint-Cyr, the IMA…).
+  const academy = nation && track === 'officer' && direct == null && !conscript ? academyFor(nation, meetsEducation(state, { level: 'bachelor' })) : null;
+  if (academy) { svc.cadet = true; svc.academy = academy; } else if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
   state.military.service = svc;
   state.military.academyCredit = 0;
   if (prior) ctx.log(`${prior} year${prior > 1 ? 's' : ''} of prior service (earlier enlistments and academy years) count toward your retirement.`, '📜', 'good');

@@ -32,6 +32,7 @@ export function holySeeCard(state) {
       ${button('✈️ Apostolic journey', 'holySee.journey', { hint: 'Two a year' })}
       ${button('😇 Canonize a saint', 'holySee.canonize', { hint: 'Once a year' })}
       ${button('🟥 Hold a consistory', 'holySee.consistory', { hint: 'Create cardinals' })}
+      ${button('⛪ Convene a synod of bishops', 'holySee.synod', { hint: 'Every three years' })}
       ${button('🕊️ Renounce the papacy', 'holySee.renounce', { variant: 'danger', hint: 'As Benedict XVI did: Pope Emeritus' })}
     </div>
     <h4 class="sub">Papal honours <small class="muted">three a year</small></h4><div class="toggle-row chips-row">${papalHonourOptions(state).map((p) => button(`🇻🇦 Honour ${esc(p.firstName)}`, 'holySee.honour', { arg: p.id, variant: 'tiny' })).join('')}</div>` : isCardinal(state) ? `<div class="action-grid">${button('🟥 Quietly build support', 'holySee.cultivate', { hint: 'Once a year; don\'t look ambitious' })}</div>` : '';

@@ -4,7 +4,11 @@ A plan for what to build next, in the order that gives the most for the effort. 
 phase is sized to fit one working session (a commit or two). Within a phase, the items
 are independent and can be picked off one at a time.
 
-## Phase 1 — Finish what's half-built (small, high value)
+## Phase 1 — Finish what's half-built (small, high value) ✅ done
+
+Built: academies abroad (`military/Academies.js`), life after captivity, the constitution
+question and revolutions for restored thrones, synods / Jubilees / named conclave rivals /
+Pope Emeritus life, and family life for Gurkhas and legionnaires.
 
 1. **Military academies abroad as real cadet years.** Sandhurst (44 weeks), Saint-Cyr
    (3 years), the Indian Military Academy, Duntroon, the Defence Academy of Japan: entry

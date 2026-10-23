@@ -206,7 +206,36 @@ function release(ctx, svc, how) {
   ctx.emit('health:trauma', { amount: 30 + years * 10, source: 'captivity' });
   addHonor(state, { id: `mil.pow.${state.character.age}`, source: 'military', name: 'Prisoner of War Medal', icon: '⛓️', prestige: 6, precedence: 30, citation: `Held as a prisoner of war for ${years || 'under a'} year${years === 1 ? '' : 's'}.` });
   ctx.stat('happiness', 15);
+  state.military.exPow = { years, since: state.character.age, resisted: Boolean(resisted) };
   ctx.log(`${how} After ${years || 'less than a'} year${years === 1 ? '' : 's'} in captivity you came home — thinner, older, and changed.`, '🕊️', 'milestone');
+}
+
+/** Life after captivity: the nightmares, the book, the reunions. */
+function exPowYear(ctx) {
+  const { state, rng } = ctx;
+  const x = state.military.exPow;
+  if (!x || state.military.service?.pow) return;
+  const since = state.character.age - x.since;
+  if (since < 1) return;
+  // The flashbacks fade, but never quite go.
+  if (rng.chance(Math.max(0.05, 0.35 - since * 0.03))) {
+    ctx.emit('health:trauma', { amount: 10, source: 'captivity' });
+    ctx.log(rng.pick(['A car backfired and you were back in the camp for a long minute.', 'The nightmares came back this winter.', 'The anniversary of your capture was a hard week.']), '🌫️', 'bad');
+  }
+  if (!x.book && since >= 2 && rng.chance(0.15)) {
+    x.book = true;
+    ctx.prompt({
+      type: 'wartime.powBook', icon: '📖', title: 'Your Story',
+      text: 'A publisher wants your account of captivity. Speaking agencies call too.',
+      options: [{ id: 'write', label: '📖 Write the book', hint: 'An advance — and reliving it' }, { id: 'speak', label: '🎤 Go on the speaking circuit' }, { id: 'no', label: '🤐 Keep it to yourself' }],
+      data: {},
+    });
+  }
+  if (!x.reunion && since >= 3 && rng.chance(0.12)) {
+    x.reunion = true;
+    ctx.stat('happiness', 8);
+    ctx.log('You went to a reunion of the men and women who were held with you. Nobody else understands like they do.', '🤝', 'good');
+  }
 }
 
 function powYear(ctx, svc, war) {
@@ -365,8 +394,22 @@ export const WartimeModule = {
     }
     liabilityYear(ctx);
     relativesYear(ctx);
+    exPowYear(ctx);
   },
   resolvers: {
+    powBook(ctx, data, optionId) {
+      const { rng } = ctx;
+      if (optionId === 'write') {
+        ctx.earn(rng.int(40, 250) * 1000, 'Book advance: a prisoner-of-war memoir');
+        ctx.emit('health:trauma', { amount: 8, source: 'captivity' });
+        return ctx.log('Your memoir of captivity was published. Strangers write to thank you; some nights it costs you.', '📖', 'milestone');
+      }
+      if (optionId === 'speak') {
+        ctx.earn(rng.int(20, 90) * 1000, 'Speaking fees');
+        return ctx.log('You spoke at military academies, companies and schools about surviving captivity.', '🎤', 'good');
+      }
+      return ctx.log('You kept your story to yourself.', '🤐');
+    },
     captivity(ctx, data, optionId) {
       const { state, rng } = ctx;
       const svc = state.military.service;

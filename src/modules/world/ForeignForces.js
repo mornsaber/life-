@@ -114,6 +114,7 @@ function joinGurkhas(ctx, where) {
     employer.name = p.employers[0];
     const job = hire(ctx, { professionId: 'gurkhaContingent', levelId: 'constable', employer });
     if (job) job.employer.benefits = { ...(job.employer.benefits ?? {}), housing: true };
+    if ((state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse')) ctx.log('Your family moved into the Contingent\'s cantonment at Mount Vernon: Nepali shops, a Hindu temple, and children who grow up speaking Singlish.', '👨‍👩‍👧', 'good');
     return ctx.log('You passed out of training as a Police Constable of the Gurkha Contingent: guarding the Istana, riot control, the most sensitive security jobs in Singapore. You live in the Contingent\'s cantonment at Mount Vernon.', '🗡️', 'milestone');
   }
   const cc = where === 'IN' ? 'IN' : 'GB';
@@ -122,6 +123,9 @@ function joinGurkhas(ctx, where) {
   const svc = state.military.service;
   Object.assign(svc, { gurkha: cc, contractYearsLeft: cc === 'GB' ? 15 : 17 });
   f.gurkha = cc;
+  // Since 2009 a British Gurkha's family can live with them in the UK.
+  const family = (state.people?.list ?? []).filter((p) => p.alive !== false && ['spouse', 'child'].includes(p.relation));
+  if (cc === 'GB' && family.length) ctx.log(`Your ${family.some((p) => p.relation === 'spouse') ? 'spouse' : 'children'} joined you in Britain on dependants' visas — something earlier generations of Gurkhas were never allowed.`, '👨‍👩‍👧', 'good');
   return ctx.log(cc === 'GB'
     ? 'You passed out of the Gurkha training company at Catterick as a Rifleman of the Brigade of Gurkhas, kukri at your belt: "Better to die than be a coward."'
     : 'You were sworn in as a Rifleman of the Indian Army\'s Gorkha Rifles.', '🗡️', 'milestone');
@@ -137,6 +141,12 @@ function legionYear(ctx) {
   const l = state.foreignForces?.legion;
   if (!svc?.legion || !l) return;
   const years = state.character.age - l.since;
+  // Regularised: the command's permission to marry, and family quarters.
+  const married = (state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse');
+  if (!l.declared && married && !l.marriagePermitted) {
+    l.marriagePermitted = true;
+    ctx.log('Your colonel granted permission to marry. The Legion found you family quarters near the regiment.', '💒', 'good');
+  }
   // Married under a declared identity: the Legion doesn't recognise it, and a legionnaire needs permission.
   if (l.declared && !l.marriageNoted && (state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse')) {
     l.marriageNoted = true;

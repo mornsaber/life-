@@ -147,6 +147,28 @@ const tests = {
     always(ctx.rng, () => discharge(ctx, 'retired', 'Retired.'));
     assert.equal(state.military.history.at(-1).brevet, rankTitles({ ...svc, grade: 7 })[7]);
   },
+  'officer cadets abroad go through their academy: Saint-Cyr takes three years and gives a master\'s'() {
+    const { engine, state, ctx } = life({ countryId: 'FR', gender: 'male' }, 12);
+    year(engine, state, 18);
+    state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 });
+    state.stats.fitness = 85;
+    state.stats.smarts = 85;
+    enlist(ctx, { branch: 'army', track: 'officer', component: 'active', specialty: 'infantry' });
+    const svc = state.military.service;
+    assert.match(svc?.academy?.name ?? '', /Saint-Cyr/);
+    assert.equal(svc.academy.yearsLeft, 3);
+    year(engine, state, 3);
+    assert.ok(!state.military.service?.academy, 'graduated');
+    assert.ok(state.education.degrees.some((d) => d.type === 'master' && /Saint-Cyr/.test(d.academy ?? '')));
+  },
+  'after captivity: a book offer, and the past coming back'() {
+    const { engine, state, ctx } = life({}, 13);
+    year(engine, state, 30);
+    state.military.exPow = { years: 2, since: state.character.age - 3 };
+    state.prompts = [];
+    always(ctx.rng, () => MODULES.find((m) => m.id === 'wartime').onAgeUp(ctx));
+    assert.ok(state.prompts.some((p) => p.type === 'wartime.powBook'));
+  },
   'abroad the reserve runs to an age limit, and a war calls you back'() {
     const { engine, state, ctx } = life({ countryId: 'DE', gender: 'male' }, 7);
     year(engine, state, 25);

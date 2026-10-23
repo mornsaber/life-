@@ -4,6 +4,7 @@
  * mobilized reservist deploys exactly like an active-duty member).
  */
 import { battlefieldPromotion, captured } from './Wartime.js';
+import { academyYear } from './Academies.js';
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
 import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
@@ -655,6 +656,8 @@ export function activeDutyTick(ctx, svc) {
   const { rng } = ctx;
   const branch = branchOf(svc);
 
+  // Officer cadets at an academy abroad: a cadet's year, then the commission.
+  if (academyYear(ctx, svc)) return;
   if (svc.isNew) {
     svc.isNew = false;
     ctx.log(`You survived ${entrySchool(svc)}, then finished ${specialtyName(svc)} training.`, '🎖️', 'military');

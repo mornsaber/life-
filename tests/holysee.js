@@ -117,6 +117,8 @@ const tests = {
     state.prompts = [];
     engine.dispatch('holySee.encyclical');
     engine.dispatch('holySee.journey');
+    engine.dispatch('holySee.synod');
+    assert.ok(state.holySee.lastSynod != null, 'a synod');
     assert.match(VIEWS.career(state, {}), /Apostolic Palace/);
     engine.dispatch('holySee.renounce');
     assert.ok(!isPope(state));
@@ -153,6 +155,10 @@ const tests = {
     restore(ctx, 'IT');
     assert.equal(crownOf(state, 'IT'), 'IT');
     assert.ok(state.royal?.reigning);
+    const k = state.prompts.find((p) => p.type === 'houses.constitution');
+    assert.ok(k, 'the constitution question');
+    engine.resolvePrompt(k.id, 'constitutional');
+    assert.ok(!state.royal.executive);
     assert.match(styledName(state), /^King /);
     year(engine, state, 1);
     assert.ok(state.royal?.reigning, 'the reign carries on');
