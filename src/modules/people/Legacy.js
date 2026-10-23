@@ -37,6 +37,7 @@ import { REGIONS } from '../life/Regions.js';
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { CROWNS, royalPrefix } from '../world/Crown.js';
 import { peerTitle, RANKS, courtesy } from '../world/Peerage.js';
+import { houseStyle } from '../world/Houses.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -489,7 +490,7 @@ function passFarm(old, s, childAge) {
 
 function passCrownAndTitles(old, s, child, childAge) {
   if (old.world?.crowns) {
-    s.world = { ...(s.world ?? {}), crowns: structuredClone(old.world.crowns), republics: structuredClone(old.world.republics ?? {}), crises: structuredClone(old.world.crises ?? []) };
+    s.world = { ...(s.world ?? {}), crowns: structuredClone(old.world.crowns), republics: structuredClone(old.world.republics ?? {}), restored: structuredClone(old.world.restored ?? {}), monarchists: structuredClone(old.world.monarchists ?? {}), holySee: structuredClone(old.world.holySee ?? undefined), crises: structuredClone(old.world.crises ?? []) };
   }
   const kids = old.people.list.filter((p) => p.relation === 'child' && p.alive).sort((a, b) => ageOf(old, b) - ageOf(old, a));
   const eldestSon = kids.find((k) => k.gender === 'male');
@@ -523,5 +524,14 @@ function passCrownAndTitles(old, s, child, childAge) {
       s.noble = { rank: p.rank, place: p.place, holderId: null, heir: false };
       s.character.style = { ...(s.character.style ?? {}), prefix: courtesy(s) };
     }
+  }
+  // A former ruling house: the claim goes to the eldest son (or eldest child), the rest are cadets.
+  const h = old.house;
+  if (h && !h.renounced && !s.royal) {
+    const heir = eldestSon ?? kids[0];
+    const head = h.rank === 'head' && heir?.id === child.id;
+    s.house = { ...structuredClone(h), rank: head ? 'head' : 'cadet', holderId: null, conferred: 0, campaigns: 0 };
+    s.character.style = { ...(s.character.style ?? {}), prefix: houseStyle(s) };
+    if (head) addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as head of the House of ${h.name}.`, '👑', 'milestone');
   }
 }

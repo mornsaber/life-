@@ -17,6 +17,10 @@ import { REGIONS, regionsIn } from '../life/Regions.js';
 import { severancePay, unemploymentBenefit } from './CountryLaw.js';
 import { warIn } from './War.js';
 import { bodyOfJob } from '../org/Bodies.js';
+import { INTL_ORG_PROFESSIONS } from '../career/IntlOrgCareers.js';
+
+/** International organisations post their own staff (IntlOrgs duty stations): no company assignments or moves. */
+const intlStaff = (job) => Boolean(job && INTL_ORG_PROFESSIONS[job.professionId]);
 
 export const ASSIGNMENT_YEARS = 3;
 export const ASSIGNMENT_UPLIFT = 0.15;
@@ -44,7 +48,7 @@ function offerAssignment(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const cc = here(state);
-  if (!job || job.sector !== 'private' || job.remote || !['large', 'enterprise'].includes(job.employer?.size)) return;
+  if (!job || job.sector !== 'private' || job.remote || intlStaff(job) || !['large', 'enterprise'].includes(job.employer?.size)) return;
   if ((job.yearsAtEmployer ?? 0) < 2 || (job.grade ?? 0) < 4 || onAssignment(state) || departureBlock(state)) return;
   if (state.character.age < 25 || state.character.age > 58 || !rng.chance(0.07)) return;
   // Somewhere the company has an office and that isn't at war.
@@ -110,7 +114,7 @@ function forcedRelocation(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const cc = here(state);
-  if (!job || job.sector !== 'private' || job.remote || !['enterprise', 'mega'].includes(job.employer?.size) || onAssignment(state) || bodyOfJob(job)) return;
+  if (!job || job.sector !== 'private' || job.remote || intlStaff(job) || !['enterprise', 'mega'].includes(job.employer?.size) || onAssignment(state) || bodyOfJob(job)) return;
   if (state.prompts.some((p) => p.type === 'expat.relocation') || !rng.chance(job.employer.size === 'mega' ? 0.05 : 0.03)) return;
   // A third of the moves cross a border.
   const abroad = rng.chance(0.33) && !departureBlock(state);

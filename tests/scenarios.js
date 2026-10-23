@@ -1996,12 +1996,19 @@ const tests = {
     job.levelId = 'cardinal';
     job.title = 'Cardinal';
     job.employer.size = 'enterprise';
-    const chance = engine.rng.chance.bind(engine.rng);
-    engine.rng.chance = (p) => (p === 0.06 ? true : chance(p));
+    // The see falls vacant; the conclave elects you and you choose a name.
     state.prompts = [];
+    state.world.holySee.pope.born = 1800; // past any doubt
+    const chance = engine.rng.chance.bind(engine.rng);
     engine.ageUp();
-    engine.rng.chance = chance;
     if (state.career.job) {
+      const q = state.prompts.find((p) => p.type === 'holySee.conclave');
+      assert.ok(q, 'a cardinal elector goes into the conclave');
+      engine.rng.chance = () => true;
+      engine.resolvePrompt(q.id, 'candidate');
+      engine.rng.chance = chance;
+      const n = state.prompts.find((p) => p.type === 'holySee.name');
+      engine.resolvePrompt(n.id, n.options[0].id);
       assert.match(state.career.job.title, /^Pope /);
       assert.ok(state.honors.some((h) => h.id === 'catholic.pope'));
     }

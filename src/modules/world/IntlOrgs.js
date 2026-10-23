@@ -83,23 +83,54 @@ const stationsOf = (employerName) => DUTY_STATIONS[employerName] ?? { hq: ['Gene
 function station(ctx, [place, country], years = ROTATION_YEARS) {
   const { state } = ctx;
   endPosting(ctx);
+  const job = state.career.job;
   const p = postAbroad(ctx, { place, country, kind: 'intl', years });
+  // Every tour on the record: where, and when.
+  if (job) {
+    const hist = (job.stations ??= []);
+    const last = hist.at(-1);
+    if (last && last.to == null) last.to = state.character.age;
+    hist.push({ place, country, from: state.character.age, to: null, hardship: HARDSHIP.includes(place) });
+    job.stationUntil = state.character.age + years;
+  }
   if (!p) return ctx.log(`Your duty station is ${place}, in your own country.`, '🌐', 'info');
   return ctx.log(`Your duty station: ${place}, ${country}.${HARDSHIP.includes(place) ? ' A hardship post: danger pay, rest-and-recuperation breaks — and real risk.' : ''}`, '🌐', 'milestone');
 }
 
-function rotate(ctx, job) {
-  const { rng } = ctx;
+/** Where the organisation could send you next (never where you are). */
+export function nextStations(state, job) {
   const st = stationsOf(job.employer.name);
-  const here = postingOf(ctx.state)?.place;
-  const options = [st.hq, ...(st.field ?? [])].filter((s) => s[0] !== here);
-  if (!options.length) { if (postingOf(ctx.state)) ctx.state.character.posting.until += ROTATION_YEARS; return; }
-  // Mobility: a field tour after headquarters, headquarters after the field.
-  const next = here === st.hq[0] || !st.field?.length ? rng.pick(st.field?.length ? st.field : options) : rng.chance(0.5) ? st.hq : rng.pick(options);
-  ctx.log('Rotation: the organisation\'s mobility policy moves you on.', '🔁', 'info');
-  station(ctx, next);
+  const here = postingOf(state)?.place ?? job.stations?.at(-1)?.place;
+  const seen = new Map();
+  for (const s of [st.hq, ...(st.field ?? [])]) if (s[0] !== here && !seen.has(s[0])) seen.set(s[0], s);
+  return [...seen.values()];
 }
 
+/**
+ * The mobility exercise: when a tour ends the organisation offers you a few posts (headquarters
+ * after the field, the field after headquarters) — or you can ask to extend where you are.
+ */
+function rotate(ctx, job, { asked = false } = {}) {
+  const { state, rng } = ctx;
+  if (state.prompts.some((p) => p.type === 'intlOrgs.rotation')) return;
+  const options = nextStations(state, job);
+  if (!options.length) { job.stationUntil = state.character.age + ROTATION_YEARS; if (postingOf(state)) state.character.posting.until = job.stationUntil; return; }
+  const st = stationsOf(job.employer.name);
+  const atHq = postingOf(state)?.place === st.hq[0];
+  // Field after headquarters; headquarters (or another field post) after the field.
+  const pool = rng.shuffle(options).sort((a, b) => ((a[0] === st.hq[0]) === atHq ? 1 : 0) - ((b[0] === st.hq[0]) === atHq ? 1 : 0)).slice(0, 3);
+  ctx.prompt({
+    type: 'intlOrgs.rotation', icon: '🔁', title: asked ? 'Your Reassignment Request' : 'The Mobility Exercise',
+    text: `${asked ? 'Human resources has posts for you.' : `Your tour${postingOf(state)?.place ? ` in ${postingOf(state).place}` : ''} is ending.`} The ${job.employer.name} can send you to:`,
+    options: [
+      ...pool.map(([place, country]) => ({ id: place, label: `${HARDSHIP.includes(place) ? '⚠️' : '🌐'} ${place}, ${country}`, hint: HARDSHIP.includes(place) ? 'Hardship post: danger pay, faster promotion' : place === st.hq[0] ? 'Headquarters' : 'Field post' })),
+      { id: 'extend', label: asked ? '🏠 Stay where you are' : '⏳ Ask to extend this tour', hint: asked ? '' : 'Two more years, if they agree' },
+    ],
+    data: { options: pool, asked },
+  });
+}
+
+/* ------------------------------------------------------------------ */
 /* ------------------------------------------------------------------ */
 /* Top appointments                                                    */
 /* ------------------------------------------------------------------ */
@@ -183,7 +214,9 @@ const MALTA_FEE = 3000;
 const OBLATION = 700;
 
 const catholic = (state) => ['catholic', 'tradCatholic'].includes(state.community?.faith?.traditionId);
-const noble = (state) => Boolean(state.character.peerage || state.royal || state.character.formerRoyal || state.character.style?.prefix === 'The Hon.' || state.character.noble);
+const noble = (state) => Boolean(state.character.peerage || state.royal || state.character.formerRoyal || state.character.style?.prefix === 'The Hon.' || state.character.noble || state.noble || (state.house && !state.house.renounced));
+/** Heads of royal houses (reigning or not) enter the Order at its highest lay grade. */
+const dynast = (state) => Boolean(state.royal?.reigning || (state.house && !state.house.renounced && state.house.rank === 'head'));
 const attached = (state) => living(state).some((p) => ['spouse', 'fiance', 'partner'].includes(p.relation));
 export const maltaGradeName = (state) => { const g = MALTA_GRADES[state.malta?.grade]; return g ? (state.character.gender === 'female' ? g.female : g.name) : null; };
 
@@ -308,8 +341,9 @@ export const IntlOrgsModule = {
           ctx.log(`${rng.pick(['Your convoy was ambushed outside', 'Shelling hit the compound in', 'You were briefly detained by an armed group near', 'A bomb went off a street from the office in'])} ${p.place}. You were hurt, and evacuated for treatment.`, '⚠️', 'bad');
         }
       }
-      if (!p && job.professionId && (state.character.age - (state.career.lastIntlStationAge ?? 0)) >= ROTATION_YEARS && rng.chance(0.4)) { state.career.lastIntlStationAge = state.character.age; rotate(ctx, job); }
-      else if (p?.kind === 'intl' && p.until <= state.character.age) { state.career.lastIntlStationAge = state.character.age; rotate(ctx, job); }
+      // The tour ends: the mobility exercise (a choice of posts, or an extension).
+      const until = job.stationUntil ?? p?.until ?? (state.career.lastIntlStationAge ?? state.character.age) + ROTATION_YEARS;
+      if (state.character.age >= until) { state.career.lastIntlStationAge = state.character.age; rotate(ctx, job); }
       // Appointed terms.
       if (job.intlTerm && state.character.age >= job.intlTerm) {
         const t = TOP_POSTS[job.intlPost];
@@ -327,6 +361,17 @@ export const IntlOrgsModule = {
     maltaYear(ctx);
   },
   actions: {
+    /** Ask human resources for a new post before your tour ends (after two years in it). */
+    requestMove(ctx) {
+      const { state } = ctx;
+      const job = state.career.job;
+      if (!isIntl(job)) return ctx.toast('International staff only', 'warn');
+      const since = job.stations?.at(-1)?.from ?? state.character.age;
+      if (state.character.age - since < 2) return ctx.toast('Two years in post first', 'warn');
+      if (yearlyCount(state, 'intlOrgs.requestMove')) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, 'intlOrgs.requestMove');
+      return rotate(ctx, job, { asked: true });
+    },
     /** Sit a recruitment competition (arg: ypp | epso | wbYpp). */
     sit(ctx, id) {
       const { state, rng } = ctx;
@@ -352,7 +397,7 @@ export const IntlOrgsModule = {
       bumpYearly(state, 'intlOrgs.joinMalta');
       if (!ctx.spend(MALTA_FEE, 'Passage fee, Order of Malta', { credit: true })) return ctx.toast('The passage fee is beyond you this year.', 'warn');
       if (!rng.chance(check.odds)) return ctx.log('Your sponsors put your name forward to the Order of Malta, but the national association did not admit you this year.', '✠', 'bad');
-      state.malta = { grade: noble(state) ? 'honour' : 'magistral', since: state.character.age, office: null };
+      state.malta = { grade: dynast(state) ? 'bailiff' : noble(state) ? 'honour' : 'magistral', since: state.character.age, office: null };
       maltaHonour(state);
       ctx.stat('happiness', 6);
       return ctx.log(`You were invested as a ${maltaGradeName(state)} of the Sovereign Military Order of Malta, in a Mass at the cathedral.`, '✠', 'honor');
@@ -404,6 +449,26 @@ export const IntlOrgsModule = {
     },
   },
   resolvers: {
+    rotation(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const job = state.career.job;
+      if (!isIntl(job)) return undefined;
+      if (optionId === 'extend') {
+        if (data.asked) return ctx.log('You stayed where you were.', '🏠', 'info');
+        if (rng.chance(0.6)) {
+          job.stationUntil = state.character.age + 2;
+          if (postingOf(state)) state.character.posting.until = job.stationUntil;
+          return ctx.log('Your extension was approved: two more years where you are.', '⏳', 'good');
+        }
+        ctx.log('Your extension was refused: the mobility policy applies to everyone.', '⏳', 'warn');
+        const [first] = data.options;
+        return first ? station(ctx, first) : undefined;
+      }
+      const pick = data.options.find(([place]) => place === optionId);
+      if (!pick) return undefined;
+      if (HARDSHIP.includes(pick[0])) job.performance = Math.min(100, (job.performance ?? 60) + 4);
+      return station(ctx, pick);
+    },
     appointment(ctx, data, optionId) {
       const { state, rng } = ctx;
       if (optionId !== 'accept') return ctx.log('You let it be known you weren\'t a candidate.', '🌐');

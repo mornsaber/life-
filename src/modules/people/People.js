@@ -45,4 +45,13 @@ export function spousalBenefit(state) {
 }
 
 /** "Princess Anne Ashcombe", "Anne Ashcombe, Duchess of Albany", "Sir Tom Hale" — with any title they hold. */
-export const fullName = (p) => (!p.title ? `${p.firstName} ${p.lastName}` : / of /.test(p.title) ? `${p.firstName} ${p.lastName}, ${p.title}` : `${p.title} ${p.firstName} ${p.lastName}`);
+/**
+ * A person's name with every title they hold: styles before the name ("Prince", "Lady"),
+ * territorial titles after it ("Duke of York, Earl of Inverness").
+ */
+export const fullName = (p) => {
+  const all = [p.title, ...(p.titles ?? [])].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i);
+  const before = all.filter((t) => !/ of |, /.test(t) && !/^(Baron|Baroness|Viscount|Viscountess) /.test(t));
+  const after = all.filter((t) => !before.includes(t));
+  return `${before.length ? `${before[0]} ` : ''}${p.firstName} ${p.lastName}${after.length ? `, ${after.join(', ')}` : ''}`;
+};

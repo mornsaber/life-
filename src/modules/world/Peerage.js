@@ -58,11 +58,34 @@ export function peerAddress(state) {
   return `${r.style[g]} ${state.character.lastName}`;
 }
 
+const SUB_PLACES = ['Carrow', 'Dunmere', 'Holcombe', 'Ilsley', 'Merrow', 'Penhallow', 'Rossmore', 'Stratton', 'Tolland', 'Wyvern', 'Ardley', 'Bexton'];
+const SUB_ORDER = ['marquess', 'earl', 'viscount', 'baron'];
+/**
+ * The lesser titles a great title carries with it (a duke is usually also a marquess, an earl
+ * and a baron): the eldest son uses the highest of them by courtesy. Deterministic from the place.
+ */
+export function subsidiaryTitles(rank, place, gender = 'male') {
+  const order = RANKS[rank]?.order ?? 1;
+  const seed = [...String(place)].reduce((n, ch) => n + ch.charCodeAt(0), 0);
+  const below = SUB_ORDER.filter((r) => RANKS[r].order < order).slice(0, order >= 5 ? 3 : order >= 3 ? 2 : 0);
+  return below.map((r, i) => {
+    const pl = SUB_PLACES[(seed + i * 5) % SUB_PLACES.length];
+    return RANKS[r].of ? `${RANKS[r][gender === 'female' ? 'female' : 'male']} of ${pl}` : `${RANKS[r][gender === 'female' ? 'female' : 'male']} ${pl}`;
+  });
+}
+const ORD = (n) => `${n}${[, 'st', 'nd', 'rd'][n % 100 > 10 && n % 100 < 14 ? 0 : n % 10] ?? 'th'}`;
+/** "7th Earl of Ashby" for an inherited title; the title alone for a new creation. */
+export const numberedTitle = (state) => {
+  const p = state.character.peerage;
+  const t = state.character.style?.peerage;
+  return p?.number > 1 && t ? `${ORD(p.number)} ${t}` : t ?? null;
+};
+
 /** Create (or inherit) a peerage. */
 export function grantPeerage(ctx, { rank, place, kind, seat }) {
   const { state } = ctx;
   const c = state.character;
-  c.peerage = { rank, place: place ?? null, kind, seat: Boolean(seat), created: c.age };
+  c.peerage = { rank, place: place ?? null, kind, seat: Boolean(seat), created: c.age, subsidiary: kind === 'life' ? [] : subsidiaryTitles(rank, place ?? c.lastName, c.gender), number: kind === 'hereditary' ? (state.noble?.number ?? 0) + 1 || 1 : 1 };
   c.style = { ...(c.style ?? {}), prefix: RANKS[rank].style[gkey(c.gender)], peerage: peerTitle(rank, place, c.gender, c.lastName) };
   if (kind === 'life') c.style.prefix = gkey(c.gender) === 'female' ? 'Baroness' : 'Lord';
   return c.peerage;
@@ -79,8 +102,24 @@ export function nobleBirth(state, rng) {
   const parents = (state.people?.list ?? []).filter((p) => p.relation === 'father' || p.relation === 'mother');
   const holder = parents.find((p) => p.relation === 'father') ?? parents[0];
   const heir = chosen?.heir ?? rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
-  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir };
-  if (holder) holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName);
+  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11) };
+  if (holder) {
+    holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName);
+    holder.titles = subsidiaryTitles(rank, state.noble.place, holder.gender);
+    // The holder's spouse takes the title's feminine (or masculine) form by marriage.
+    const other = parents.find((p) => p !== holder);
+    // (A peeress's husband takes no title.)
+    if (other?.gender === 'female') other.title = peerTitle(rank, state.noble.place, 'female', other.lastName);
+  }
+  // The heir uses the highest lesser title by courtesy ("Marquess of Carrow").
+  const subs = subsidiaryTitles(rank, state.noble.place, state.character.gender);
+  if (heir && subs.length) state.noble.courtesyTitle = subs[0];
+  // Brothers and sisters carry the courtesy style too: "Lord Henry Ashby", "The Hon. Clara Ashby".
+  const order = RANKS[rank].order;
+  for (const s of (state.people?.list ?? []).filter((p) => p.relation === 'sibling')) {
+    const female = s.gender === 'female';
+    s.title = order >= 4 || (order === 3 && female) ? (female ? 'Lady' : 'Lord') : 'The Hon.';
+  }
   if (state.people) state.people.wealth = 'upper';
   state.character.style = { ...(state.character.style ?? {}), prefix: courtesy(state) };
   return true;
@@ -104,6 +143,7 @@ function peerageYear(ctx) {
     const holder = state.people?.list.find((p) => p.id === n.holderId);
     if (!holder || holder.alive === false) {
       grantPeerage(ctx, { rank: n.rank, place: n.place, kind: 'hereditary', seat: false });
+      n.courtesyTitle = null;
       ctx.log(`Your ${holder?.relation ?? 'parent'} has died. You succeed to the title: ${c.style.peerage}.`, '👑', 'milestone');
     }
   }

@@ -53,6 +53,7 @@ function startNewLife(form) {
     noble: data.get('noble') === 'on',
     nobleRank: data.get('nobleRank') || 'none',
     nobleHeir: data.get('nobleHeir') || 'random',
+    housePlace: data.get('housePlace') || 'none',
   });
 }
 

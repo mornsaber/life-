@@ -21,9 +21,11 @@ import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
 import { REGIONS } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
-import { grantPeerage, peerAddress } from './Peerage.js';
+import { grantPeerage, peerAddress, numberedTitle } from './Peerage.js';
 import { royalStyledName, sovereign, CROWNS } from './Crown.js';
 import { withOfficialStyle, officeLetters } from './Styles.js';
+import { holySeeStyledName } from './HolySee.js';
+import { houseStyledName } from './Houses.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -199,6 +201,15 @@ export const ORDERS = {
 fromPacks(ORDERS, 'ORDERS');
 // Pack tiers without an id get one from their place in the ladder: "already held" and promotions match on it.
 for (const o of Object.values(ORDERS)) for (const [i, t] of (o?.tiers ?? []).entries()) if (!t.id) t.id = `t${i}`;
+// Letters after the name: from the tier's own "(MON)", "(AMN)", where a pack gives them only in the name.
+const NZ_LETTERS = ['KSM', 'MNZM', 'ONZM', 'CNZM', { male: 'KNZM', female: 'DNZM' }, 'ONZ'];
+for (const [cc, o] of Object.entries(ORDERS)) for (const [i, t] of (o?.tiers ?? []).entries()) {
+  if (t.post || t.peer) continue;
+  if (cc === 'NZ' && NZ_LETTERS[i]) { t.post = NZ_LETTERS[i]; continue; }
+  const name = typeof t.name === 'object' ? t.name.male : t.name;
+  const m = String(name ?? '').match(/\(([A-Z]{2,5})\)\s*$/);
+  if (m) t.post = m[1];
+}
 // New Zealand's knighthoods come and go with the government too (abolished 2000, restored 2009).
 for (const t of ORDERS.NZ?.tiers ?? []) if (t.id === 'knzm') t.knighthood = true;
 
@@ -360,7 +371,16 @@ export function styledName(state) {
   // Royalty by title and first name; peers by their title; then knights, dames and courtesy styles.
   const royal = royalStyledName(state);
   if (royal) return royal;
-  if (c.peerage) return peerAddress(state);
+  // The Pope, cardinals, nuncios and bishops (HolySee.js).
+  const church = holySeeStyledName(state);
+  if (church) return church;
+  // A former ruling house's courtesy style: "Prince Georg von Preußen, Prince of Prussia".
+  const house = houseStyledName(state);
+  if (house) return house;
+  // Peers by name and title, so it's clear who and what: "Edward Smith, 7th Earl of Ashby".
+  if (c.peerage) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${numberedTitle(state) ?? peerAddress(state)}`);
+  // A peer's heir uses the family's lesser title by courtesy.
+  if (state.noble?.courtesyTitle && !state.noble.disclaimed) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${state.noble.courtesyTitle}`);
   const base = !s?.prefix ? `${c.firstName} ${c.lastName}`
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
       : `${s.prefix} ${c.firstName} ${c.lastName}`;

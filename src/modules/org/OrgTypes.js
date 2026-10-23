@@ -572,6 +572,10 @@ const SOLO_HEADS = {
   icrc: { title: 'President of the ICRC', selection: 'outside', appointedBy: 'the Assembly' },
   maltaRelief: { title: 'Grand Hospitaller', selection: 'outside', appointedBy: 'the Sovereign Council' },
   maltaDiplomacy: { title: 'Grand Chancellor', selection: 'outside', appointedBy: 'the Sovereign Council' },
+  romanCuria: { title: 'Cardinal Prefect', selection: 'outside', appointedBy: 'the Pope' },
+  holySeeDiplomacy: { title: 'Cardinal Secretary of State', selection: 'outside', appointedBy: 'the Pope' },
+  swissGuard: { title: 'Commandant', selection: 'outside', appointedBy: 'the Pope' },
+  vaticanGendarmerie: { title: 'Inspector General', selection: 'outside', appointedBy: 'the Governorate of Vatican City State' },
 };
 const OWNER_LEVEL = /owner|partner/i;
 const topSupervisor = (levels) => [...levels].reverse().find((l) => !l.appointed && (l.abilities?.includes('supervise') || l.abilities?.includes('exec')));

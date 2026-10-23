@@ -297,6 +297,8 @@ export function newLifeForm(rngName) {
           <label class="country-pick">Place in it<select name="nobleHeir"><option value="random" selected>🎲 Either</option><option value="heir">👑 Heir to the title</option><option value="younger">🌿 A younger child (a courtesy style, no title to inherit)</option></select></label>
         </div>
         <p class="fine">A noble (not royal) birth in Britain or Spain — Britain if your country has no peerage. Royal births take precedence.</p>
+        <label class="country-pick">Born into a former ruling house<select name="housePlace"><option value="none" selected>👤 No</option><option value="random">🎲 Somewhere in the family</option><option value="heir">👑 Heir to the head of the house (the claim passes to you)</option><option value="cadet">🌿 A cadet branch (a courtesy title, no claim)</option></select></label>
+        <p class="fine">The Hohenzollerns (Germany), Orléans (France), Savoy (Italy), Habsburgs (Austria), Romanovs (Russia), Orléans-Braganza (Brazil) or the Romanian royal house — in your chosen country if it had one. Win back the throne in a referendum, or live with the claim.</p>
         <label class="check"><input type="checkbox" name="noble"> 🏰 Or just allow a noble birth by chance (very rare)</label>
         <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>

@@ -27,6 +27,7 @@
 import { clamp, Random } from '../../core/Random.js';
 import { OFFICES } from '../politics/Offices.js';
 import { currentYear, yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
+import { subsidiaryTitles } from './Peerage.js';
 
 /* ------------------------------------------------------------------ */
 /* The crowns                                                          */
@@ -64,10 +65,25 @@ export const CROWNS = {
     palace: 'the Palacio de Oriente', grant: 'Royal Household budget', dukedoms: ['Lugo', 'Palma', 'Soria', 'Cádiz'],
   },
 };
-export const CROWN_HOMES = Object.keys(CROWNS);
+/**
+ * Thrones that fell, kept for a restoration (Houses.js): they wear no crown until a referendum
+ * brings the monarchy back (state.world.restored[cc]).
+ */
+const RESTORABLE = {
+  DE: { houses: ['Hohenzollern'], rule: 'agnatic', names: { male: ['Wilhelm', 'Friedrich', 'Georg', 'Louis Ferdinand', 'Carl'], female: ['Viktoria', 'Luise', 'Sophie', 'Cecilie'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Berlin Palace' },
+  FR: { houses: ['Orléans'], rule: 'agnatic', names: { male: ['Henri', 'Jean', 'Louis', 'Gaston', 'François'], female: ['Isabelle', 'Marie', 'Hélène', 'Chantal'] }, titles: { monarch: ['King', 'Queen'], heir: ['Dauphin', 'Dauphine'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Tuileries' },
+  IT: { houses: ['Savoy'], rule: 'agnatic', names: { male: ['Vittorio Emanuele', 'Umberto', 'Emanuele Filiberto', 'Amedeo'], female: ['Maria Gabriella', 'Vittoria', 'Luisa', 'Margherita'] }, titles: { monarch: ['King', 'Queen'], heir: ['Prince of Piedmont', 'Princess of Piedmont'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Quirinal Palace' },
+  AT: { houses: ['Habsburg-Lorraine'], rule: 'agnatic', names: { male: ['Karl', 'Otto', 'Ferdinand', 'Franz Joseph', 'Leopold'], female: ['Maria Theresa', 'Gabriela', 'Eleonore', 'Elisabeth'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Archduke', 'Archduchess'], distant: ['Archduke', 'Archduchess'] }, palace: 'the Hofburg' },
+  RU: { houses: ['Romanov'], rule: 'malePreference', names: { male: ['Nikolai', 'Alexander', 'Georgy', 'Mikhail', 'Pavel'], female: ['Maria', 'Anastasia', 'Olga', 'Tatiana', 'Xenia'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Tsesarevich', 'Tsesarevna'], royal: ['Grand Duke', 'Grand Duchess'], distant: ['Prince', 'Princess'] }, palace: 'the Winter Palace' },
+  BR: { houses: ['Orléans-Braganza'], rule: 'malePreference', names: { male: ['Pedro', 'Luiz', 'Bertrand', 'Rafael', 'Antônio'], female: ['Isabel', 'Leopoldina', 'Maria Gabriela', 'Teresa'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Prince Imperial', 'Princess Imperial'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Palace of São Cristóvão' },
+  RO: { houses: ['Romania'], rule: 'absolute', names: { male: ['Carol', 'Mihai', 'Ferdinand', 'Nicolae'], female: ['Margareta', 'Elena', 'Maria', 'Sofia'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Royal Palace, Bucharest' },
+};
+for (const [cc, d] of Object.entries(RESTORABLE)) CROWNS[cc] = { name: 'the Crown', realms: [cc], grant: 'civil list', dukedoms: [], restorable: true, ...d };
+export const CROWN_HOMES = Object.keys(CROWNS).filter((id) => !CROWNS[id].restorable);
 /** The crown a country's head of state wears (null for republics, and after a realm votes to leave). */
 export function crownOf(state, cc = state.character.countryId ?? 'US') {
   if (state.world?.republics?.[cc]) return null;
+  if (state.world?.restored?.[cc] && CROWNS[cc]?.restorable) return cc;
   return CROWN_HOMES.find((id) => CROWNS[id].realms.includes(cc)) ?? null;
 }
 export const isRealmAbroad = (state, cc) => crownOf(state, cc) === 'GB' && cc !== 'GB';
@@ -355,9 +371,11 @@ export function royalStyledName(state) {
   if (!r) return null;
   const def = CROWNS[r.crownId];
   if (r.reigning) return monarchName(state, r.crownId);
-  if (r.line === 1 && r.working) return `${c.firstName}, ${def.titles.heir[genderIdx(c.gender)]}`;
+  // A royal dukedom (and its lesser titles) follows the royal style: "Prince Edmund, Duke of Albany".
+  const peer = c.style?.peerage ? `, ${c.style.peerage}` : '';
+  if (r.line === 1 && r.working) return `${c.firstName}, ${def.titles.heir[genderIdx(c.gender)]}${peer}`;
   const p = royalPrefix(state);
-  return p ? `${p} ${c.firstName}` : null;
+  return p ? `${p} ${c.firstName}${peer}` : null;
 }
 
 /** The reigning player gives up the throne: the heir accedes. Returns the old regnal name. */
@@ -399,7 +417,29 @@ function bornRoyal(state, rng) {
     p.royal = 'monarch';
     if (r.line === 1) c.heir = { name: state.character.firstName, gender: state.character.gender, age: 0, relation: 'you', you: true };
   }
-  for (const p of parents) p.lastName = state.character.lastName;
+  // Further down the line, a parent is the royal one: the monarch's child (a prince with a royal
+  // dukedom) for a grandchild, a lord or lady of the blood for a distant royal; their spouse takes
+  // the title by marriage.
+  if (['grandchild', 'distant'].includes(r.level) && parents.length) {
+    const royalParent = parents.find((x) => x.gender === 'male') ?? parents[0];
+    const other = parents.find((x) => x !== royalParent);
+    const gi = genderIdx(royalParent.gender);
+    royalParent.royal = r.level === 'grandchild' ? 'royalChild' : 'distant';
+    if (r.level === 'grandchild') {
+      royalParent.granted = def.titles.royal[gi];
+      const place = def.dukedoms.length ? def.dukedoms[[...royalParent.firstName].reduce((n, ch) => n + ch.charCodeAt(0), 0) % def.dukedoms.length] : null;
+      if (place) {
+        royalParent.titles = [`${['Duke', 'Duchess'][gi]} of ${place}`];
+        royalParent.dukedom = royalParent.titles[0];
+        if (other?.gender === 'female' && gi === 0) other.granted = `Duchess of ${place}`;
+      } else if (other?.gender === 'female' && gi === 0) other.granted = def.titles.royal[1];
+    } else {
+      royalParent.granted = def.titles.distant[gi];
+      if (other?.gender === 'female' && gi === 0) other.granted = def.titles.distant[1];
+    }
+    for (const p of parents) if (p.granted) p.title = p.granted;
+  }
+  for (const p of state.people?.list ?? []) if (['mother', 'father', 'sibling'].includes(p.relation)) p.lastName = state.character.lastName;
   if (state.people) state.people.wealth = 'upper';
   state.character.style = { ...(state.character.style ?? {}), prefix: royalPrefix(state) };
 }
@@ -457,7 +497,7 @@ function royalYear(ctx) {
   if (r.working && !r.reigning && def.dukedoms.length && r.line != null && r.line >= 2 && r.line <= 12 && (age >= 25 || married) && age >= 18 && !state.character.peerage) {
     const place = rng.pick(def.dukedoms);
     const female = state.character.gender === 'female';
-    state.character.peerage = { rank: 'duke', place, kind: 'royal', seat: false, created: age };
+    state.character.peerage = { rank: 'duke', place, kind: 'royal', seat: false, created: age, subsidiary: subsidiaryTitles('duke', place, state.character.gender).slice(0, 2), number: 1 };
     state.character.style = { ...(state.character.style ?? {}), peerage: `${female ? 'Duchess' : 'Duke'} of ${place}` };
     ctx.log(`${monarchName(state, r.crownId)} created you ${female ? 'Duchess' : 'Duke'} of ${place}.`, '👑', 'honor');
   }
@@ -573,6 +613,7 @@ export const CrownModule = {
       for (const p of state.people?.list ?? []) {
         if (!['spouse', 'child'].includes(p.relation)) continue;
         delete p.title;
+        if (p.dukedom) p.titles = (p.titles ?? []).filter((t) => t !== p.dukedom);
         delete p.dukedom;
       }
       ch.formerRoyal = { crownId: r.crownId, level: r.level, year: currentYear(state), age: ch.age, reigned: Boolean(reigned), regnal: reigned ? was : null };

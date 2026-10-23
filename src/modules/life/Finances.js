@@ -6,7 +6,10 @@
  */
 import { debtWord } from '../world/Regimes.js';
 import { calculateIncomeTax } from '../career/CareerEngine.js';
-import { isOnActiveDuty } from '../../core/State.js';
+import { isOnActiveDuty, dependant } from '../../core/State.js';
+
+/** Parents (or a guardian) alive to keep a dependant. */
+const familySupports = (state) => (state.people?.list ?? []).some((p) => p.alive !== false && ['mother', 'father', 'guardian'].includes(p.relation)) || Boolean(state.royal);
 import { regionOf, stateIdOf } from './Regions.js';
 import { stateIncomeTax, STATES } from './States.js';
 import { lawValue } from '../politics/Laws.js';
@@ -148,6 +151,8 @@ export const Finances = {
       if (isOnActiveDuty(state)) living = 3000 + Math.round(gross * 0.1);
       // Overseas volunteers live with a host family on an in-country allowance, with medical care provided.
       else if (state.service?.program?.id === 'peaceCorps') living = 0;
+      // A young adult still at home with no earnings: the family keeps them.
+      else if (dependant(state) && gross < 3000 && familySupports(state)) living = 0;
       else if (state.education.enrolled?.pace === 'full' && !state.career.job) {
         // Full-time students borrow for living costs — unless the GI Bill housing allowance covers them.
         if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += 8000;

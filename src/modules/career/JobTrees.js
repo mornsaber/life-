@@ -541,6 +541,7 @@ export const JOB_FIELDS = {
   education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'anglicanClergy', 'interpreter'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
+  holySee: { label: 'The Holy See', icon: '🇻🇦', ids: ['romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };

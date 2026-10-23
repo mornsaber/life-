@@ -41,6 +41,9 @@ export const ROYAL_ORDERS = {
   JP: { great: ['Supreme Order of the Chrysanthemum', '', ''], personal: ['Order of the Rising Sun', '', ''], knight: [null, null], forces: null, colonel: [], commodore: null, airCommodore: null },
   SE: { great: ['Royal Order of the Seraphim', 'RoKavKMO', 'LoKavKMO'], personal: ['Royal Order of the Polar Star', 'KNO', 'KNO'], knight: [null, null], forces: { army: 'General', navy: 'Admiral', air: 'General (Air Force)' }, colonel: ['the Life Guards', 'the Norrland Dragoons', 'the Skaraborg Regiment'], commodore: 'the Swedish Navy', airCommodore: 'the Skaraborg Wing' },
   NL: { great: ['Order of the Netherlands Lion (Grand Cross)', '', ''], personal: ['House Order of Orange', '', ''], knight: [null, null], forces: { army: 'General', navy: 'Admiral', air: 'General (Air Force)' }, colonel: ['the Garderegiment Grenadiers en Jagers', 'the Regiment Huzaren van Boreel', 'the Korps Mariniers'], commodore: 'the Royal Netherlands Navy', airCommodore: 'Volkel Air Base' },
+  // Restored thrones (Houses.js) revive their dynastic orders.
+  ...Object.fromEntries([['DE', 'Order of the Black Eagle', 'House Order of Hohenzollern'], ['FR', 'Order of the Holy Spirit', 'Order of Saint Michael'], ['IT', 'Supreme Order of the Most Holy Annunciation', 'Order of Saints Maurice and Lazarus'], ['AT', 'Order of the Golden Fleece (Austrian)', 'Order of St Stephen'], ['RU', 'Order of St Andrew the Apostle', 'Order of St Anna'], ['BR', 'Order of Pedro I', 'Order of the Rose'], ['RO', 'Order of Carol I', 'Order of the Crown of Romania']]
+    .map(([cc, great, personal]) => [cc, { great: [great, '', ''], personal: [personal, '', ''], knight: [null, null], forces: { army: 'General', navy: 'Admiral', air: 'General (Air Force)' }, colonel: [], commodore: null, airCommodore: null }])),
   ES: { great: ['Order of the Golden Fleece', '', ''], personal: ['Order of Charles III', '', ''], knight: [null, null], forces: { army: 'Capitán General', navy: 'Capitán General de la Armada', air: 'Capitán General del Aire' }, colonel: ['the Regimiento Inmemorial del Rey', 'the Guardia Real', 'the Legión'], commodore: 'the Spanish Navy', airCommodore: 'the Ejército del Aire' },
 };
 
@@ -74,7 +77,8 @@ export function familyTitle(state, p) {
     // Japan: a princess who marries leaves the Imperial Family.
     if (r.crownId === 'JP' && state.character.gender === 'female' && !r.reigning) return null;
     const royalGen = r.reigning || ['heir', 'child'].includes(r.level);
-    if (royalGen) return p.dukedom ?? def.titles.royal[g(p.gender)];
+    // A royal duke stays a prince: "Prince Henry, Duke of Kendal" (the dukedom rides in p.titles).
+    if (royalGen) return def.titles.royal[g(p.gender)];
     if (r.level === 'grandchild') return def.titles.distant[g(p.gender)];
     return null;
   }
@@ -392,8 +396,7 @@ function confer(ctx, arg) {
   if (kind === 'dukedom') {
     const place = rng.pick(def.dukedoms);
     p.dukedom = `${p.gender === 'female' ? 'Duchess' : 'Duke'} of ${place}`;
-    p.title = p.dukedom;
-    p.granted = p.dukedom;
+    p.titles = [...(p.titles ?? []).filter((t) => t !== p.dukedom), p.dukedom];
     return ctx.log(`You created ${p.firstName} ${p.dukedom}.`, '👑', 'honor');
   }
   if (kind === 'title') {

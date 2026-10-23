@@ -97,11 +97,22 @@ export function nobleStart(rng, options) {
   return { countryId: home, rank, heir };
 }
 
+/** Former ruling houses (Houses.js): born into one, in its own country (a random one if yours had none). */
+export const HOUSE_HOMES = ['DE', 'FR', 'IT', 'AT', 'RU', 'BR', 'RO'];
+export function houseStart(rng, options) {
+  const place = ['head', 'heir', 'cadet'].includes(options.housePlace) ? options.housePlace : options.housePlace === 'random' ? rng.pick(['heir', 'heir', 'cadet']) : null;
+  if (!place) return null;
+  const cc = HOUSE_HOMES.includes(options.countryId) ? options.countryId : rng.pick(HOUSE_HOMES);
+  return { countryId: cc, place };
+}
+
 export function createInitialState(rng, options = {}) {
   const birth = royalBirth(rng, options);
   const royal = Boolean(birth);
   if (royal) options = { ...options, countryId: birth.countryId, royalLevel: birth.level };
-  const noble = royal ? null : nobleStart(rng, options);
+  const house = royal ? null : houseStart(rng, options);
+  if (house) options = { ...options, countryId: house.countryId };
+  const noble = royal || house ? null : nobleStart(rng, options);
   if (noble) options = { ...options, countryId: noble.countryId };
   if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
@@ -174,7 +185,7 @@ export function createInitialState(rng, options = {}) {
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
-    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}) },
+    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}), ...(house ? { houseStart: house.place } : {}) },
   };
 }
 
@@ -550,7 +561,26 @@ export function creditLimit(state) {
 export const availableCredit = (state) => Math.max(0, creditLimit(state) + Math.min(0, state.finances.cash));
 
 /** Can you pay for a purchase with cash plus remaining credit? */
-export const canAfford = (state, amount) => state.finances.cash - amount >= -creditLimit(state);
+export const canAfford = (state, amount) => state.finances.cash - amount >= -creditLimit(state) || familyCovers(state, amount - Math.max(0, state.finances.cash));
+
+/**
+ * A child's bills are their parents' bills: until 18, what your own savings don't cover your family
+ * pays — application fees, exam fees, the doctor — up to what the household can manage. Null when
+ * you have no family to pay (or you're an adult).
+ */
+const FAMILY_CAP = { low: 400, middle: 3000, upper: 25000 };
+/** Still a dependant: a minor, or a young adult (to 21) living at home without earnings of their own. */
+export function dependant(state) {
+  const age = state.character.age;
+  if (age < 18) return true;
+  return age <= 21 && Boolean(state.housing?.withParents) && !state.career?.job && !state.business?.current && !state.military?.service && !(state.finances?.lastYear?.gross > 3000);
+}
+export function familyCovers(state, shortfall) {
+  if (!dependant(state) || shortfall <= 0) return shortfall <= 0 && dependant(state);
+  const parents = (state.people?.list ?? []).some((p) => p.alive !== false && ['mother', 'father', 'guardian'].includes(p.relation));
+  if (!parents && !state.royal) return false;
+  return shortfall <= (state.royal ? Infinity : FAMILY_CAP[state.people?.wealth] ?? FAMILY_CAP.middle);
+}
 
 export function isOnActiveDuty(state) {
   return state.military.service?.component === 'active';

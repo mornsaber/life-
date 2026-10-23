@@ -33,12 +33,15 @@ export function servicePassports(state) {
   if (job && LP[job.professionId]) add('laissezPasser', LP[job.professionId], `staff of the ${LP[job.professionId] === 'EU' ? 'European Union' : 'United Nations system'}`);
   const m = state.malta;
   if ((m?.office) || (job?.professionId === 'maltaDiplomacy' && job.abilities?.includes('diplomatic'))) add('diplomatic', 'SMOM', m?.office === 'grandMaster' ? 'the Prince and Grand Master' : m?.office ? 'the Sovereign Council' : 'an ambassador of the Order');
-  const intlJob = job && (LP[job.professionId] || ['nato', 'icrc', 'maltaRelief', 'maltaDiplomacy'].includes(job.professionId));
+  // The Holy See: the Pope, cardinals in the Curia, its diplomats and senior officials travel on Vatican diplomatic passports.
+  const hs = state.holySee;
+  if (hs?.pope || (hs?.cardinal && ['romanCuria', 'holySeeDiplomacy'].includes(job?.professionId)) || (job?.professionId === 'holySeeDiplomacy' && job.abilities?.includes('diplomatic')) || (job?.professionId === 'romanCuria' && (job.grade ?? 0) >= 7)) add('diplomatic', 'HS', hs?.pope ? 'the Supreme Pontiff' : job?.professionId === 'holySeeDiplomacy' ? 'the Holy See\'s diplomatic service' : 'the Roman Curia');
+  const intlJob = job && (LP[job.professionId] || ['nato', 'icrc', 'maltaRelief', 'maltaDiplomacy', 'holySeeDiplomacy', 'romanCuria', 'swissGuard', 'vaticanGendarmerie'].includes(job.professionId));
   if (job && !intlJob && (job.professionId === 'foreignService' || job.abilities?.includes('diplomatic') || job.posting?.immunity)) add('diplomatic', job.posting?.from ?? cc, job.posting?.immunity ? `accredited at ${job.posting.city}` : 'diplomatic service');
   if (o && (OFFICES[o.id]?.level ?? 0) >= 5) add('diplomatic', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
   if (o && /cabinet|_gg$|_lg$|au_governor/.test(o.id)) add('diplomatic', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
   if (r && (r.reigning || (r.working && r.line != null && r.line <= 4))) add('diplomatic', cc, r.reigning ? 'the sovereign' : 'royal duties');
-  if (!out.some((p) => p.kind === 'diplomatic' && p.country !== 'SMOM')) {
+  if (!out.some((p) => p.kind === 'diplomatic' && !['SMOM', 'HS'].includes(p.country))) {
     if (o && nationalOffice(o) && (OFFICES[o.id]?.kind === 'legislative' || o.id.startsWith('us'))) add('official', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
     if ((job?.posting && !intlJob) || state.character.posting?.kind === 'secondment' || state.character.posting?.kind === 'mission') add('official', cc, job?.posting ? `posted to ${job.posting.city}` : 'secondment abroad');
     if (svc && (state.character.posting || svc.overseas || svc.deployed)) add('official', svc.nation ?? cc, 'overseas service with the armed forces');
@@ -55,7 +58,7 @@ export function passportsOf(state) {
 export const PASSPORT_LABEL = { ordinary: 'Passport', official: 'Official passport', diplomatic: 'Diplomatic passport', laissezPasser: 'Laissez-passer' };
 export const PASSPORT_ICON = { ordinary: '🛂', official: '📘', diplomatic: '📕', laissezPasser: '🇺🇳' };
 /** Issuers that aren't countries. */
-export const ISSUERS = { UN: { flag: '🇺🇳', demonym: 'United Nations' }, EU: { flag: '🇪🇺', demonym: 'European Union' }, SMOM: { flag: '✠', demonym: 'Order of Malta' } };
+export const ISSUERS = { UN: { flag: '🇺🇳', demonym: 'United Nations' }, EU: { flag: '🇪🇺', demonym: 'European Union' }, SMOM: { flag: '✠', demonym: 'Order of Malta' }, HS: { flag: '🇻🇦', demonym: 'Holy See' } };
 
 export const PassportsModule = {
   id: 'passports',

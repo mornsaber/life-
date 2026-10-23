@@ -20,7 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
-import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, setNameCountry } from './State.js';
+import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, familyCovers, dependant, setNameCountry } from './State.js';
 import { Random } from './Random.js';
 import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
 
@@ -345,6 +345,19 @@ export class Engine {
        */
       spend(amount, reason, { allowDebt = false, credit = false } = {}) {
         const value = Math.round(amount);
+        // A minor's bills: their own savings first, then the family pays the rest.
+        if (dependant(state) && value > 0) {
+          const own = Math.max(0, Math.min(state.finances.cash, value));
+          const shortfall = value - own;
+          if (shortfall > 0 && (allowDebt || familyCovers(state, shortfall))) {
+            const parents = (state.people?.list ?? []).some((p) => p.alive !== false && ['mother', 'father', 'guardian'].includes(p.relation)) || state.royal;
+            if (parents) {
+              state.finances.cash -= own;
+              state.finances.ledger.expenses.push({ reason: `${reason} (paid by your family)`, amount: own, family: shortfall });
+              return true;
+            }
+          }
+        }
         if (credit && !allowDebt && !canAfford(state, value)) return false;
         if (!allowDebt && !credit && state.finances.cash < value) return false;
         state.finances.cash -= value;

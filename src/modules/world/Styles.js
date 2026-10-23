@@ -30,13 +30,14 @@ const FOR_LIFE = {
 };
 /** While in office. */
 const IN_OFFICE = {
+  IT: { it_deputato: 'On.', it_senatore: 'Sen.' },
+  ...Object.fromEntries(['NG', 'KE', 'GH', 'ZA', 'MW', 'GM', 'UG', 'ZM'].map((cc) => [cc, { [`${cc.toLowerCase()}_mp`]: HON, [`${cc.toLowerCase()}_senator`]: HON }])),
   CA: { ca_premier: HON },
   AU: { au_mp: HON, au_senator: HON, au_mlaState: HON, au_premier: HON },
-  NZ: { nz_mp: HON },
 };
 /** Letters after a sitting legislator's name. */
-const LETTERS = { gb_mp: 'MP', gb_msp: 'MSP', gb_ms: 'MS', gb_mla: 'MLA', ca_mp: 'MP', ca_mpp: 'MPP', au_mp: 'MP', nz_mp: 'MP', ie_td: 'TD', in_mp: 'MP', in_mla: 'MLA', au_mlaState: 'MLA', ie_mep: 'MEP' };
-const RANK = { [RT_HON]: 3, [HON]: 2, [US_HON]: 2 };
+const LETTERS = { de_mdb: 'MdB', de_mdl: 'MdL', gb_mp: 'MP', gb_msp: 'MSP', gb_ms: 'MS', gb_mla: 'MLA', ca_mp: 'MP', ca_mpp: 'MPP', au_mp: 'MP', nz_mp: 'MP', ie_td: 'TD', in_mp: 'MP', in_mla: 'MLA', au_mlaState: 'MLA', ie_mep: 'MEP' };
+const RANK = { [RT_HON]: 3, [HON]: 2, [US_HON]: 2, 'On.': 1, 'Sen.': 1 };
 
 const countryOfOffice = (id) => OFFICES[id]?.country ?? 'US';
 const pastOffices = (state) => (state.politics?.history ?? []).map((h) => h.officeId).filter((id) => OFFICES[id]);
@@ -67,7 +68,21 @@ export function officialStyle(state) {
 }
 
 /** Letters after the name from a seat you hold. */
-export const officeLetters = (state) => LETTERS[state.politics?.office?.id] ?? null;
+const COMMONWEALTH = ['GB', 'CA', 'AU', 'NZ', 'IN', 'SG', 'MY', 'NG', 'KE', 'ZA', 'GH', 'MT', 'CY', 'PK', 'GM', 'MW', 'MZ', 'PG', 'SB', 'VU', 'BN', 'JM', 'TT', 'UG', 'ZM'];
+export const officeLetters = (state) => {
+  const id = state.politics?.office?.id;
+  if (!id || !OFFICES[id]) return null;
+  if (LETTERS[id]) return LETTERS[id];
+  if (/_mep$/.test(id)) return 'MEP';
+  // Parliaments in the Westminster tradition: Members of Parliament, of the provincial assembly.
+  if (!COMMONWEALTH.includes(countryOfOffice(id))) return null;
+  if (/_mp$/.test(id)) return 'MP';
+  if (/_mpa$/.test(id)) return countryOfOffice(id) === 'PK' ? 'MPA' : 'MLA';
+  if (/_mla$/.test(id)) return 'MLA';
+  if (/_mpl$/.test(id)) return 'MPL';
+  if (/_mca$/.test(id)) return 'MCA';
+  return null;
+};
 
 /** "His Excellency the Rt Hon. Jane Smith", "The Honorable John Smith". */
 export function withOfficialStyle(state, name) {

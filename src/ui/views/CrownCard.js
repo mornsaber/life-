@@ -3,14 +3,15 @@
  * life (title, place in the line, popularity, duties), and a peer's title.
  */
 import { esc, money, button, card, meter, kv } from '../Components.js';
-import { CROWNS, crownOf, monarchName, ROYAL_LEVELS } from '../../modules/world/Crown.js';
+import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
 import { currentYear } from '../../core/State.js';
-import { peerAddress, RANKS } from '../../modules/world/Peerage.js';
+import { peerAddress, RANKS, numberedTitle, subsidiaryTitles } from '../../modules/world/Peerage.js';
 import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/RoyalHousehold.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
+import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName } from '../../modules/world/Houses.js';
 
 export function crownCards(state) {
   const r = state.royal;
@@ -39,6 +40,9 @@ export function crownCards(state) {
     cards.push(card(r.reigning ? 'Your Reign' : 'Royal Life', `
       ${meter(r.popularity ?? 60, { label: '📰 Popularity' })}
       ${kv([
+        ['Styled', esc(royalStyledName(state) ?? `${state.character.firstName} ${state.character.lastName}`)],
+        // A royal dukedom is part of the royal style, not a separate peerage.
+        state.character.peerage?.kind === 'royal' || state.character.style?.peerage ? ['Royal title', `${esc(state.character.style?.peerage ?? '')}${state.character.peerage?.subsidiary?.length ? ` · also ${esc(state.character.peerage.subsidiary.join(', '))}` : ''}`] : null,
         ['Born', esc(lv?.name ?? r.level)],
         ['Line of succession', r.reigning ? 'You reign' : r.line == null ? 'Not in the line (the succession law)' : `${r.line}${r.line === 1 ? ' — the heir' : ''}`],
         ['Status', r.reigning ? 'Monarch' : r.working ? 'Working royal' : r.steppedBack ? 'Stepped back' : 'Private life'],
@@ -65,19 +69,54 @@ export function crownCards(state) {
       <p class="fine">Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.</p>`, { icon: '👑', accent: 'yellow' }));
   }
   const p = state.character.peerage;
-  if (p) {
+  if (p && !(r && p.kind === 'royal')) {
     cards.push(card('Your Peerage', `${kv([
-      ['Title', esc(state.character.style?.peerage ?? '')],
+      ['Title', esc(numberedTitle(state) ?? '')],
+      p.subsidiary?.length ? ['Lesser titles', esc(p.subsidiary.join(', '))] : null,
       ['Rank', esc(RANKS[p.rank][state.character.gender === 'female' ? 'female' : 'male'])],
       ['Addressed as', esc(peerAddress(state) ?? '')],
       ['Kind', p.kind === 'life' ? 'Life peerage — dies with you' : p.kind === 'royal' ? 'Royal dukedom' : 'Hereditary — passes to your heir'],
       ['House of Lords', p.seat ? 'You sit' : p.kind === 'hereditary' ? `No seat yet — stand when a hereditary seat falls vacant${p.byElections ? ` (${p.byElections} attempt${p.byElections > 1 ? 's' : ''} so far)` : ''}` : 'No seat'],
-    ])}
+    ].filter(Boolean))}
     ${p.kind === 'hereditary' ? `<div class="action-grid">${button('📜 Disclaim the title', 'peerage.disclaim', { variant: 'danger', hint: 'For life — to stand for the Commons' })}</div>` : ''}`, { icon: '🏰' }));
   }
   const n = state.noble;
   if (n) cards.push(nobleCard(state));
+  cards.push(houseCard(state));
   return cards.join('');
+}
+
+/** A former ruling house: yours, or the one that claims your country's throne; and the referendums. */
+function houseCard(state) {
+  const h = houseOf(state);
+  const cc = state.character.countryId ?? 'US';
+  const local = FORMER_HOUSES[cc] && !state.world?.restored?.[cc] ? FORMER_HOUSES[cc] : null;
+  const leader = leads(state, cc);
+  const catholic = ['catholic', 'tradCatholic'].includes(state.community?.faith?.traditionId);
+  const constantinian = catholic && nobleBorn(state) && state.character.age >= 21 && !state.honors.some((x) => x.id === 'house.constantinian');
+  if (!h && !local && !(leader && crownOf(state, cc)) && !constantinian) return '';
+  const def = h ? FORMER_HOUSES[h.cc] : null;
+  const rows = h ? [
+    ['Styled', esc(houseStyledName(state) ?? '')],
+    ['House', `${esc(h.name)}${def ? ` · lost the throne in ${def.fell} (${esc(def.how)})` : h.deposed ? ` · deposed ${h.deposed}` : ''}`],
+    ['You', h.rank === 'head' ? 'Head of the house: the claimant' : h.rank === 'heir' ? 'Heir to the head of the house' : 'A member of a cadet branch'],
+    state.world?.restored?.[h.cc] ? ['Throne', `Restored in ${state.world.restored[h.cc].year}`] : ['Monarchists', `${monarchistSupport(state, h.cc)}% in ${esc(h.cc)} (a referendum needs about 35% to be forced)`],
+    def ? ['The law', esc(def.legal)] : null,
+    h.conferred ? ['Orders conferred', String(h.conferred)] : null,
+  ].filter(Boolean) : local ? [
+    ['Former ruling house', `The House of ${esc(local.name)} (the throne fell in ${local.fell})`],
+    ['Monarchists', `${monarchistSupport(state, cc)}%`],
+  ] : [];
+  return card(h ? `The House of ${esc(h.name)}` : 'The Monarchy Question', `${kv(rows)}
+    <div class="action-grid">
+      ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
+      ${h?.rank === 'head' ? button('⚜️ Confer the house order', 'houses.confer', { hint: 'On a loyal supporter; once a year' }) : ''}
+      ${local && leader ? button('🗳️ Call a referendum on restoring the monarchy', 'houses.callRestoration', { hint: `Support ~${Math.round(monarchistSupport(state, cc))}%` }) : ''}
+      ${crownOf(state, cc) && leader ? button('🏛️ Call a referendum on a republic', 'houses.callRepublic', { variant: 'danger', hint: 'Abolish the monarchy' }) : ''}
+      ${constantinian ? button('⚜️ Seek admission to the Constantinian Order', 'houses.constantinian', { hint: nobleBorn(state) ? 'Justice class, on proofs of nobility' : 'Merit class' }) : ''}
+      ${h ? button('📜 Renounce your claim', 'houses.renounce', { variant: 'danger', hint: 'For you and your heirs' }) : ''}
+    </div>
+    ${h ? '<p class="fine">Noble birth counts in the old orders: the Order of Malta admits you in Honour and Devotion (a head of a house as a Bailiff Grand Cross), and the Constantinian Order in its Justice class.</p>' : ''}`, { icon: '⚜️' });
 }
 
 /** A titled family's life: the estate, the allowance, society. */
@@ -89,7 +128,9 @@ function nobleCard(state) {
   const rank = RANKS[n.rank];
   const parentTitle = yours && state.character.style?.peerage ? state.character.style.peerage : `${rank.male} ${rank.of ? 'of ' : ''}${n.place}`;
   return card(yours ? `${esc(e.name)}` : 'Your Titled Family', `${kv([
-    ['Family title', `${esc(parentTitle)}${isGrandee(state) ? ' · Grandee of Spain (Excelentísimo)' : ''}`],
+    ['Family title', `${n.number && !yours ? `${n.number}${['th', 'st', 'nd', 'rd'][n.number % 10 > 3 || [11, 12, 13].includes(n.number % 100) ? 0 : n.number % 10]} ` : ''}${esc(parentTitle)}${isGrandee(state) ? ' · Grandee of Spain (Excelentísimo)' : ''}`],
+    subsidiaryTitles(n.rank, n.place).length ? ['Lesser titles', esc(subsidiaryTitles(n.rank, n.place).join(', '))] : null,
+    n.courtesyTitle ? ['Your courtesy title', `${esc(n.courtesyTitle)} — the heir uses the family's second title`] : null,
     ['You', yours ? 'Head of the family' : n.disclaimed ? 'You disclaimed the title' : n.heir ? 'The heir' : 'A younger child (courtesy style, no title to inherit)'],
     e ? ['Seat', `${esc(e.name)}${e.owner === null ? ' (sold)' : yours ? ` · worth ≈${money(e.value)}` : ''}`] : null,
     e && yours ? ['Run as', `${esc(STRATEGIES[e.strategy]?.label ?? '')}${e.exemptUntil ? ` · open to the public until ${e.exemptUntil} (tax exemption)` : ''}`] : null,

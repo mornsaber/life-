@@ -46,7 +46,7 @@ const fresh = (rng, countryId) => {
   return newCommunity(t, t ? congregationName(rng, t) : null, 0);
 };
 
-export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy', 'anglicanClergy'];
+export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy', 'anglicanClergy', 'holySeeDiplomacy'];
 export const isClergy = (state) => CLERGY_PROFESSIONS.includes(state.career.job?.professionId);
 
 /* ------------------------------------------------------------------ */
@@ -228,27 +228,8 @@ function clergyTick(ctx) {
   if (t.clergy.celibate && spouseOf(state)) {
     ctx.log('Marrying broke your vow of celibacy. The bishop removed you from ministry (laicization).', '⛓️', 'bad');
     ctx.emit('career:resign', { reason: 'Laicized after marrying' });
-    return;
   }
-  conclave(ctx);
-}
-
-const PAPAL_NAMES = ['Leo', 'John', 'Paul', 'Benedict', 'Pius', 'Gregory', 'Clement', 'Innocent', 'Francis', 'Celestine'];
-
-/** Cardinals under 80 vote in conclaves — and every so often, the smoke is white for you. */
-function conclave(ctx) {
-  const { state, rng } = ctx;
-  const job = state.career.job;
-  if (job.professionId !== 'catholicClergy' || job.levelId !== 'cardinal' || job.pope || state.character.age >= 80 || !rng.chance(0.06)) return;
-  if (rng.chance(0.06)) {
-    const name = `${rng.pick(PAPAL_NAMES)} ${rng.pick(['XIV', 'XV', 'XVI', 'XVII', 'II', 'III', 'XXIV', 'XIII', 'VII'])}`;
-    job.pope = true;
-    job.title = `Pope ${name}`;
-    job.employer.name = 'The Holy See';
-    addHonor(state, { id: 'catholic.pope', source: 'civil', name: 'Supreme Pontiff', icon: '🇻🇦', ribbon: ['#ffe000', '#ffffff', '#ffe000'], prestige: 100, precedence: 1, citation: `Elected Bishop of Rome, taking the name ${name}.` });
-    ctx.log(`White smoke over the Sistine Chapel. The conclave elected you Bishop of Rome. You took the name ${name}.`, '🇻🇦', 'milestone');
-    ctx.stat('happiness', 15);
-  } else ctx.log('You traveled to Rome for a conclave and cast your ballots under Michelangelo\'s ceiling. Another cardinal was elected.', '⛪');
+  // Conclaves, consistories and the papacy: world/HolySee.js.
 }
 
 export const Community = {
