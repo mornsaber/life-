@@ -12,6 +12,7 @@ import { STATE_DEFENSE_FORCES, SDF_RANKS, SDF_SCHOOLS, sdfEligibility, sdfNextRa
 import { TEAMS, teamEligibility } from '../../modules/service/DisasterTeams.js';
 import { POSTS, POST_RANKS, postEligibility, postLeader } from '../../modules/service/VeteranPosts.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
+import { stJohnCard } from './StJohnCard.js';
 import { STATES } from '../../modules/life/States.js';
 
 function nationalService(state) {
@@ -130,5 +131,5 @@ export function civicServiceView(state) {
   const us = abroad
     ? `${nationalService(state) ? `<div class="grid-2">${nationalService(state)}</div>` : ''}${s2.sdf ? stateGuard(state) : ''}${Object.values(s2.teams ?? {}).some(Boolean) ? disasterTeams(state) : ''}`
     : `<div class="grid-2">${nationalService(state)}${stateGuard(state)}</div>${disasterTeams(state)}`;
-  return `${volunteerRoles(state)}${us}${gear}${veteranPosts(state)}${history}`;
+  return `${volunteerRoles(state)}${us}${gear}${veteranPosts(state)}${stJohnCard(state)}${history}`;
 }
