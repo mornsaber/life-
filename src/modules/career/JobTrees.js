@@ -38,6 +38,7 @@ import { INTEL_PROFESSIONS } from './IntelCareers.js';
 import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
 import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { INTL_ORG_PROFESSIONS } from './IntlOrgCareers.js';
+import { FOREIGN_FORCE_PROFESSIONS } from './ForeignForceCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -504,7 +505,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -542,6 +543,7 @@ export const JOB_FIELDS = {
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
   holySee: { label: 'The Holy See', icon: '🇻🇦', ids: ['romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
+  foreignForces: { label: 'Recruited Abroad', icon: '🗡️', ids: ['gurkhaContingent'] },
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };

@@ -52,6 +52,7 @@ function life(cc, seed) {
       for (const chunk of text.split(/(?<=[.!?])\s|\s{2,}/)) scan(here(), chunk, `${where} ${name} view`, seen);
     }
   }, `render ${where}`);
+  let lastCountry = here();
   while (state.character.alive && state.character.age < 70) {
     const age = state.character.age;
     if (age === 22 && state.character.alive) {
@@ -70,7 +71,13 @@ function life(cc, seed) {
     tryDo(() => { state.prompts = []; engine.ageUp(); }, `ageUp ${cc} @${age} seed ${seed}`);
     for (const p of state.prompts) scan(here(), shown([p.title, p.text, ...p.options.map((o) => `${o.label} ${o.hint ?? ''}`)].join(' | '), countryNow()), `${cc} prompt ${p.type} @${age}`, seen);
     tryDo(solve, `solve ${cc} @${age}`);
-    for (const block of state.log.slice(-2)) for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(here(), shown(e.text, countryNow()), `${cc} log @${state.character.age} seed ${seed}`, seen);
+    // Each year's log is checked against the country it was written in (last year's, if you've just moved).
+    const blocks = state.log.slice(-2);
+    blocks.forEach((block, i) => {
+      const where = i === blocks.length - 1 ? here() : lastCountry;
+      for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(where, shown(e.text, COUNTRIES[where]), `${cc} log @${state.character.age} seed ${seed}`, seen);
+    });
+    lastCountry = here();
   }
   render(`${cc} end seed ${seed}`);
 }

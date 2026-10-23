@@ -210,7 +210,9 @@ export function rankOf(svc) {
   const prefix = svc.nation ? (svc.track === 'enlisted' ? 'OR' : 'OF') : svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E';
   // Five stars (Wartime.js) sit above the table; an acting rank says so.
   if (svc.fiveStar) return { code: `${prefix}-${svc.grade + 2}`, title: fiveStarTitle(svc), grade: svc.grade, max: titles.length - 1 };
-  return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${titles[svc.grade]}`, grade: svc.grade, max: titles.length - 1 };
+  // A Gurkha private is a Rifleman.
+  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : titles[svc.grade];
+  return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${title}`, grade: svc.grade, max: titles.length - 1 };
 }
 
 export function specialtyName(svc) {

@@ -264,6 +264,25 @@ export const AF = nation({
   farm: { price: 3000, unit: 'acre', plots: [1, 2, 5, 10, 25], prod: 0.3, grass: 0.4, drought: 2, flood: 1, crops: ['wheat', 'corn', 'rice', 'orchard', 'vegetables', 'pasture'] },
 });
 
+export const NP = nation({
+  id: 'NP', name: 'Nepal', flag: '🇳🇵', demonym: 'Nepali', capital: 'Kathmandu', cur: ['NPR', 'Rs'], ppp: 40, languages: ['Nepali', 'English'], emergency: '100 / 101 / 102', retire: 58, informality: 0.84, cityFare: 2,
+  tax: { allowance: 500000, brackets: [[500000, 0.01], [200000, 0.1], [300000, 0.2], [1000000, 0.3], [Infinity, 0.36]], contributions: [['Social Security Fund', 0.11, null]], label: 'Inland Revenue Department', vat: 0.13, corporate: 0.25 },
+  pension: { name: 'Social Security Fund pension', short: 'the SSF', rate: 0.05 }, health: { name: 'national health insurance (Swasthya Bima)', short: 'health insurance', coinsurance: 0.5, oopMax: 40 * 1500, wait: 8 },
+  names: { male: ['Bishal', 'Suman', 'Rajesh', 'Prakash', 'Dipendra', 'Kiran', 'Bikash', 'Sanjay', 'Ramesh', 'Hari', 'Tek', 'Dil'], female: ['Sita', 'Gita', 'Sarita', 'Anjali', 'Puja', 'Sunita', 'Kamala', 'Rina', 'Asmita', 'Laxmi', 'Pabitra', 'Manisha'], last: ['Gurung', 'Magar', 'Rai', 'Limbu', 'Thapa', 'Tamang', 'Shrestha', 'Sharma', 'Adhikari', 'Pun', 'Ghale', 'Shah'] },
+  provinceWord: 'Province', provinces: [['NP-P3', 'Bagmati Province', 6.1], ['NP-P4', 'Gandaki Province', 2.5], ['NP-P1', 'Koshi Province', 5.0]],
+  cities: [['kathmandu', 'Kathmandu', '🛕', 'Capital region', 'NP-P3', 'large', 1500000, 0.38, 0.22], ['pokhara', 'Pokhara', '🏔️', 'Mid-size city', 'NP-P4', 'medium', 520000, 0.34, 0.2], ['dharan', 'Dharan', '⛰️', 'Small town', 'NP-P1', 'small', 170000, 0.3, 0.18], ['gorkha', 'Gorkha', '🏞️', 'Rural', 'NP-P4', 'small', 30000, 0.26, 0.14]],
+  gov: { system: 'parliamentary', head: 'Prime Minister', lower: ['House of Representatives', 275, 'Member of the House of Representatives'], upper: ['National Assembly', 59, 'Member of the National Assembly', false], local: ['Chief Minister', 'Provincial Assembly'], term: 5, parties: ['Nepali Congress', 'CPN (Unified Marxist–Leninist)'], pardon: 'the President of Nepal' },
+  police: { name: 'Nepal Police', local: (c) => `Nepal Police — ${c.split(',')[0]} District Police Office`, academy: 'the National Police Academy', head: 'Inspector General of Police', ranks: ['Police recruit', 'Police Constable', 'Head Constable', 'Assistant Sub-Inspector', 'Sub-Inspector', 'Inspector', 'Deputy Superintendent', 'Superintendent', 'Senior Superintendent', 'Deputy Inspector General'] },
+  fire: 'municipal fire brigades', ems: 'Nepal Ambulance Service', prosecution: 'Office of the Attorney General', prosecutor: 'Attorney General', intel: 'National Investigation Department', foreign: 'Ministry of Foreign Affairs', prisons: 'Department of Prison Management', post: 'Nepal Post', centralBank: 'Nepal Rastra Bank', audit: 'Office of the Auditor General', nationalFire: true,
+  forces: { army: 'Nepali Army', navy: null, air: 'Nepali Army Air Service', reserve: 'Nepali Army reserve', academy: 'the Nepali Military Academy, Kharipati', head: 'Chief of the Army Staff', pay: 0.2, bases: { army: [['kathmandu', 'Army Headquarters, Bhadrakali'], ['pokhara', 'Western Division, Pokhara']], airforce: [['kathmandu', 'Tribhuvan airfield']] }, overseas: [['Lebanon', 'UN mission (UNIFIL)'], ['DR Congo', 'UN mission (MONUSCO)'], ['South Sudan', 'UN mission (UNMISS)']] },
+  orders: [['', 'Suprabal Janasewa Shree'], ['', 'Prasiddha Prabal Gorkha Dakshin Bahu'], ['', 'Rastra Gaurav Mana Padavi'], ['', 'Nepal Ratna Mana Padavi']],
+  courts: { top: 'Supreme Court of Nepal', high: 'District Court', appeal: 'High Court', magistrate: 'District Court judge', appointedBy: 'the Judicial Council' },
+  edu: { exam: 'National Examinations Board Grade 12', state: 'Tribhuvan University', private: 'Kathmandu University', elite: 'Tribhuvan University Institute of Engineering', tvet: 'CTEVT technical school' },
+  immig: { work: 'Work visa', pr: 'Non-tourist residence', natYears: 15, dual: false }, unions: 'General Federation of Nepalese Trade Unions (GEFONT)', stock: 'Nepal Stock Exchange', lender: 'Nabil Bank', fees: 40 * 800,
+  religion: { hindu: 81, buddhist: 9, sunni: 4, evangelical: 2, none: 4 },
+  farm: { price: 30000, unit: 'ropani', plots: [2, 5, 10, 20, 40], prod: 0.35, grass: 0.6, drought: 1.1, flood: 1.5, crops: ['rice', 'corn', 'wheat', 'vegetables', 'orchard', 'pasture'] },
+});
+
 export const PK = nation({
   id: 'PK', name: 'Pakistan', flag: '🇵🇰', demonym: 'Pakistani', capital: 'Islamabad', cur: ['PKR', 'Rs'], ppp: 50, languages: ['Urdu', 'English'], emergency: '15 / 1122', retire: 60, informality: 0.72, cityFare: 3, redCrescent: true, death: 'hanging',
   tax: { allowance: 600000, brackets: [[600000, 0.05], [1000000, 0.15], [1000000, 0.25], [1000000, 0.3], [Infinity, 0.35]], contributions: [['EOBI', 0.01, null]], label: 'Federal Board of Revenue (FBR)', vat: 0.18, corporate: 0.29 },

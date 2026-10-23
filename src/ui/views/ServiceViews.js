@@ -1,6 +1,7 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
+import { foreignForcesOptions } from '../../modules/world/ForeignForces.js';
 import { growthOf, growthCheck, struggling, isCombination, chiefPay, stationShare, fundsFloor } from '../../modules/org/VolunteerGrowth.js';
 import { unitView, billetTitle, leads, canImposeNjp, isNcoLeader, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
 import { PIPELINES, pipelineFor, pipelinesFor, selectionEligibility, courseOdds, MAX_ATTEMPTS } from '../../modules/military/SpecialOps.js';
@@ -99,6 +100,16 @@ function selectiveServiceCard(state) {
   return card('Selective Service', `<p class="muted">Men must register between 18 and 26 (most are registered automatically with a driver's license). Never registering bars you from federal jobs.</p><div class="action-grid">${button('📋 Register', 'volunteering.sssRegister', { variant: 'small', disabled: state.character.age < 18, hint: state.character.age < 18 ? 'At 18' : 'Takes two minutes online' })}</div>`, { icon: '📋' });
 }
 
+/** The Foreign Legion (from anywhere) and the Gurkha selection (in Nepal). */
+function foreignForcesCard(state) {
+  const opts = foreignForcesOptions(state);
+  if (!opts.length) return '';
+  const rows = opts.map((o) => o.id === 'legion'
+    ? `<li class="fund-row"><span>🎖️ <b>The French Foreign Legion</b> <small>Any nationality, 17½–39. Selection at Aubagne, a five-year contract under a new name, French nationality after three years (or at once if wounded).${o.check.ok ? '' : ` <span class="why">${esc(o.check.reason)}</span>`}</small></span>${button('🎖️ Go to Aubagne', 'foreignForces.legion', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}% taken` : '' })}</li>`
+    : `<li class="fund-row"><span>🗡️ <b>Gurkha selection, Pokhara</b> <small>The British Army's Brigade of Gurkhas and the Singapore Police Gurkha Contingent (and India's Gorkha Rifles). Nepali men 17½–21: the doko race, exams, interviews.${o.check.ok ? '' : ` <span class="why">${esc(o.check.reason)}</span>`}</small></span>${button('🗡️ Sit the selection', 'foreignForces.gurkha', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}%` : '' })}</li>`).join('');
+  return card('Serving Another Flag', `<ul class="funds">${rows}</ul>`, { icon: '🌍' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -107,7 +118,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${foreignForcesCard(state)}${history}`;
 
   const branch = branchOf(svc);
   const rank = rankOf(svc);
