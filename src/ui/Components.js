@@ -340,15 +340,15 @@ export function select(part, options, { label = '', value = '' } = {}) {
  * Branching ladder: shared levels, then Specialist and Management rows.
  * `available(level)` → false greys out levels this employer doesn't have.
  */
-export function trackLadder(levels, currentId, available = () => true) {
+export function trackLadder(levels, currentId, available = () => true, prefix = 'G') {
   const row = (list, label) => {
     if (!list.length) return '';
     const currentIdx = list.findIndex((l) => l.id === currentId);
     return `<div class="track-row"><span class="track-label">${label}</span><ol class="ladder compact">${list
       .map((l, i) => {
         const cls = l.id === currentId ? 'now' : currentIdx > -1 && i < currentIdx ? 'done' : available(l) ? 'todo' : 'na';
-        return `<li class="${cls}" title="${esc(l.title)} [G${l.grade}]${available(l) ? '' : ' — not at this employer'}">
-          <span class="ladder-dot">G${l.grade}</span><span class="ladder-title">${esc(l.title)}</span></li>`;
+        return `<li class="${cls}" title="${esc(l.title)} [${prefix}${l.grade}]${available(l) ? '' : ' — not at this employer'}">
+          <span class="ladder-dot">${prefix}${l.grade}</span><span class="ladder-title">${esc(l.title)}</span></li>`;
       })
       .join('')}</ol></div>`;
   };

@@ -21,7 +21,7 @@ import { hasCredential as holds } from '../../modules/credentials/LicensingEngin
 import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS, professionsFor, fieldIdsFor } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck, veteranPlacementNote } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
-import { EMPLOYER_SIZES, ratingLabel, onBands, payGradeLabel, payGradeShort, nextStepIn, BAND_MIN, BAND_MAX, BONUS_TARGET } from '../../modules/career/PayGrades.js';
+import { EMPLOYER_SIZES, ratingLabel, onBands, gradePrefix, payGradeLabel, payGradeShort, nextStepIn, BAND_MIN, BAND_MAX, BONUS_TARGET } from '../../modules/career/PayGrades.js';
 import { benefitsSummary } from '../../modules/career/Employers.js';
 import { chainOfCommand } from '../../modules/org/Organizations.js';
 import { assignmentFor } from '../../modules/career/Units.js';
@@ -176,7 +176,7 @@ function currentJob(state) {
   const b = job.employer.benefits;
   const relocatable = job.remote || job.sector === 'federal' || ['large', 'enterprise'].includes(size);
   const nextHint = status.eligible
-    ? `🌟 Eligible for ${status.options.map((o) => `${esc(o.title)} [G${o.grade}]`).join(' or ')} — reviews trigger at 75%+ performance`
+    ? `🌟 Eligible for ${status.options.map((o) => `${esc(o.title)} [${gradePrefix(job)}${o.grade}]`).join(' or ')} — reviews trigger at 75%+ performance`
     : `🪜 Next: ${esc(status.reason)}`;
   const needs = status.all?.map((l) => ({ l, c: levelCheck(state, l) })).filter((x) => x.c.clearanceNeeded);
   const trainee = traineeProgram(job);
@@ -322,9 +322,9 @@ function jobRow(state, p, extra = false) {
   const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
   return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
-      <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [G${p.levels[0].grade}] → ${esc(top.title)} [G${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
+      <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [${gradePrefix(p)}${p.levels[0].grade}] → ${esc(top.title)} [${gradePrefix(p)}${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
         ${check.ok && (check.commute || check.note) ? `<small class="req">${check.commute ? `🚗 Commute to ${esc(check.commute.to)} · ${check.commute.minutes} min each way` : `📍 ${esc(check.note)}`}</small>` : ''}
-        ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [G${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
+        ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
@@ -347,7 +347,7 @@ function directEntryCard(state) {
     const p = getProfession(pid);
     const d = directEntryEligibility(state, pid, r.id);
     const lvl = p?.levels.find((l) => l.id === r.levelId);
-    return `<li class="job-row ${d.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${p?.icon ?? '🚀'}</span><div class="job-info"><b>${esc(r.name)}</b><small>${esc(p?.name ?? pid)} · start as ${esc(lvl?.title ?? r.levelId)} [G${lvl?.grade ?? '?'}]${r.school ? ` · ${esc(r.school)}` : ''}${r.attempts ? ` · ${r.attempts} attempts` : ''}</small></div>
+    return `<li class="job-row ${d.ok ? '' : 'locked'}"><span class="job-icon" aria-hidden="true">${p?.icon ?? '🚀'}</span><div class="job-info"><b>${esc(r.name)}</b><small>${esc(p?.name ?? pid)} · start as ${esc(lvl?.title ?? r.levelId)} [${p ? gradePrefix(p) : 'G'}${lvl?.grade ?? '?'}]${r.school ? ` · ${esc(r.school)}` : ''}${r.attempts ? ` · ${r.attempts} attempts` : ''}</small></div>
       ${button(d.ok ? `Sit the exam (≈${Math.round(d.odds * 100)}%)` : '🔒', 'directEntry.apply', { arg: `${pid}|${r.id}`, variant: 'small', disabled: !d.ok, title: d.reason ?? '' })}${d.ok ? '' : `<span class="why">${esc(d.reason)}</span>`}</li>`;
   }).join('');
   return card('Direct Entry', `<p class="fine">Competitive exams that start graduates above the bottom rung, on an accelerated promotion track.</p><ul class="job-board">${rows}</ul>`, { icon: '🚀' });
@@ -507,7 +507,7 @@ function fieldBusinessesCard(state) {
 function progression(state, job, profession, size) {
   const here = ladderFor(profession, size);
   const currentId = job.headOf && !job.headOf.mapped ? null : job.levelId;
-  let html = trackLadder(here, currentId ?? '__post__');
+  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job));
   // What bigger (or smaller) agencies have that this one doesn't.
   const elsewhere = profession.levels.filter((l) => !here.includes(l));
   if (elsewhere.length) html += `<p class="fine">Not at this ${size === 'micro' ? 'small agency' : 'employer'}: ${elsewhere.map((l) => esc(l.title)).join(', ')}.</p>`;

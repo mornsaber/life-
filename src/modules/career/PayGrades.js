@@ -94,6 +94,8 @@ export function ratingLabel(performance) {
 export const MARKET_PROFESSIONS = new Set(['university', 'nationalLab']);
 /** Is this job on salary bands (private pay) rather than a grade-and-step schedule? */
 export const onBands = (job) => job.sector === 'private' || MARKET_PROFESSIONS.has(job.professionId);
+/** 'B' (salary band) or 'G' (grade) for a job or a profession, for ladder labels. */
+export const gradePrefix = (j) => (onBands({ sector: j.sector, professionId: j.professionId ?? j.id }) ? 'B' : 'G');
 
 /** Years at each step before the next: the General Schedule's waiting periods. */
 export const STEP_WAIT = [0, 1, 1, 1, 2, 2, 2, 3, 3, 3];
