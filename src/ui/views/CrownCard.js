@@ -3,6 +3,8 @@
  * life (title, place in the line, popularity, duties), and a peer's title.
  */
 import { esc, money, button, card, meter, kv } from '../Components.js';
+import { fullName, ageOf } from '../../modules/people/People.js';
+import { styledName } from '../../modules/world/Honours.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
 import { currentYear } from '../../core/State.js';
 import { peerAddress, RANKS, numberedTitle, subsidiaryTitles } from '../../modules/world/Peerage.js';
@@ -83,7 +85,27 @@ export function crownCards(state) {
   const n = state.noble;
   if (n) cards.push(nobleCard(state));
   cards.push(houseCard(state));
+  if (state.royal || state.noble || houseOf(state) || state.character.peerage) cards.push(familyTreeCard(state));
   return cards.join('');
+}
+
+/** The dynasty, generation by generation, with everyone's titles. */
+function familyTreeCard(state) {
+  const people = (state.people?.list ?? []).filter((p) => p.alive !== false || ['mother', 'father'].includes(p.relation));
+  const who = (rel) => people.filter((p) => rel.includes(p.relation));
+  const name = (p) => `${p.alive === false ? '✝ ' : ''}${esc(fullName(p))}${p.alive === false ? '' : ` <small class="muted">${ageOf(state, p)}</small>`}`;
+  const c = state.character;
+  const rows = [
+    ['Grandparents', who(['grandmother', 'grandfather'])],
+    ['Parents', who(['mother', 'father'])],
+    ['You & your siblings', [{ self: true }, ...who(['sibling'])]],
+    ['Spouse', who(['spouse'])],
+    ['Children', who(['child'])],
+    ['Grandchildren', who(['grandchild'])],
+  ].filter(([, list]) => list.length);
+  const line = (list) => list.map((p) => (p.self ? `<b>${esc(styledName(state))}</b>` : name(p))).join(' · ');
+  const crown = state.royal ? state.world?.crowns?.[state.royal.crownId] : null;
+  return card('Family Tree', `<ul class="history">${rows.map(([label, list]) => `<li><b>${label}</b><br>${line(list)}</li>`).join('')}</ul>${crown ? `<p class="fine">Line of succession: ${state.royal.reigning ? `you reign; your heir is ${esc(crown.heir?.name ?? '—')}` : state.royal.line == null ? 'you are not in it' : `you are ${state.royal.line}${state.royal.line === 1 ? 'st (the heir)' : state.royal.line === 2 ? 'nd' : state.royal.line === 3 ? 'rd' : 'th'}`}.</p>` : ''}${c.formerRoyal ? `<p class="fine">Formerly of the royal house of ${esc(CROWNS[c.formerRoyal.crownId]?.name ?? c.formerRoyal.crownId)}.</p>` : ''}`, { icon: '🌳' });
 }
 
 /** A former ruling house: yours, or the one that claims your country's throne; and the referendums. */
