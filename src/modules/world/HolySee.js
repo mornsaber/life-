@@ -245,7 +245,7 @@ function confer(ctx, id, tier, citation) {
   const grade = (female && o.female ? o.female : o.tiers)[tier];
   const name = o.tiers.length === 1 ? o.name : `${grade} of the ${o.name}`;
   state.honors = state.honors.filter((h) => h.id !== `holySee.${id}`);
-  addHonor(state, { id: `holySee.${id}`, tier, source: 'foreign', from: 'the Holy See', name, icon: '🇻🇦', ribbon: ['#ffe000', '#ffffff', '#ffe000'], prestige: o.prestige[tier], precedence: 9, citation });
+  addHonor(state, { id: `holySee.${id}`, tier, order: o.tiers.length > 1 ? o.name : null, grade: o.tiers.length > 1 ? tier : null, source: 'foreign', from: 'the Holy See', name, icon: '🇻🇦', ribbon: ['#ffe000', '#ffffff', '#ffe000'], prestige: o.prestige[tier], precedence: 9, citation });
   ctx.log(`The Holy See conferred on you the ${name}. ${citation}`, '🇻🇦', 'honor');
 }
 const yearsIn = (state, ids) => (state.career.history ?? []).filter((h) => ids.includes(h.professionId)).reduce((s, h) => s + Math.max(0, (h.endAge ?? 0) - (h.startAge ?? 0)), 0) + (ids.includes(state.career.job?.professionId) ? state.career.job.yearsAtEmployer ?? 0 : 0);

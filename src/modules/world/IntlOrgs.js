@@ -238,7 +238,7 @@ function maltaHonour(state) {
   const m = state.malta;
   const name = m.office ? MALTA_OFFICES[m.office] : maltaGradeName(state);
   state.honors = state.honors.filter((h) => !h.id.startsWith('smom.'));
-  addHonor(state, { id: `smom.${m.office ?? m.grade}`, source: 'foreign', from: 'the Sovereign Military Order of Malta', name: `${name} (Sovereign Military Order of Malta)`, icon: '✠', precedence: 7, prestige: m.office === 'grandMaster' ? 40 : m.office ? 18 : MALTA_GRADES[m.grade].prestige, citation: 'Tuitio fidei et obsequium pauperum: defence of the faith and service to the poor and the sick.' });
+  addHonor(state, { id: `smom.${m.office ?? m.grade}`, source: 'foreign', order: 'Sovereign Military Order of Malta', from: 'the Sovereign Military Order of Malta', name: `${name} (Sovereign Military Order of Malta)`, icon: '✠', precedence: 7, prestige: m.office === 'grandMaster' ? 40 : m.office ? 18 : MALTA_GRADES[m.grade].prestige, citation: 'Tuitio fidei et obsequium pauperum: defence of the faith and service to the poor and the sick.' });
 }
 
 function setMaltaStyle(state) {

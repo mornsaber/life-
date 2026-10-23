@@ -71,7 +71,7 @@ function awardForeign(ctx, s) {
   const t = tiers[idx];
   const name = `${tierName(t, state.character.gender)}`;
   if (prior) state.honors = state.honors.filter((h) => h !== prior);
-  addHonor(state, { id: `foreign.${s.cc}`, source: 'foreign', from: COUNTRIES[s.cc].name, country: s.cc, foreignTier: idx, name: `${name} (${COUNTRIES[s.cc].name}, honorary)`, icon: '🎖️', ribbon: t.ribbon, precedence: 8, prestige: Math.round(t.min / 4), citation: `Conferred by ${COUNTRIES[s.cc].name} for ${s.why}.` });
+  addHonor(state, { id: `foreign.${s.cc}`, source: 'foreign', from: COUNTRIES[s.cc].name, country: s.cc, foreignTier: idx, order: ORDERS[s.cc].order === null ? null : t.order ?? ORDERS[s.cc].order ?? `${COUNTRIES[s.cc].name} order of merit`, name: `${name} (${COUNTRIES[s.cc].name}, honorary)`, icon: '🎖️', ribbon: t.ribbon, precedence: 8, prestige: Math.round(t.min / 4), citation: `Conferred by ${COUNTRIES[s.cc].name} for ${s.why}.` });
   ctx.log(`${COUNTRIES[s.cc].flag} ${COUNTRIES[s.cc].name} ${prior ? 'raised you' : 'decorated you'}: ${name}, for ${s.why}. An honorary award — no title at home, but the insignia is yours.`, '🎖️', 'honor');
   ctx.stat('happiness', 4);
   return true;
@@ -93,7 +93,7 @@ function proMerito(ctx) {
   else if (job?.professionId === 'foreignService' && (job.grade ?? 0) >= 9) target = 2;
   if (target <= level || !rng.chance(head ? 0.15 : 0.08)) return false;
   if (held) state.honors = state.honors.filter((h) => h !== held);
-  addHonor(state, { id: 'smom.proMerito', source: 'foreign', from: 'the Sovereign Military Order of Malta', level: target, name: `${PRO_MERITO[target]} (Order of Malta)`, icon: '✠', precedence: 8, prestige: 6 + target * 4, citation: 'Conferred by the Grand Master of the Sovereign Military Order of Malta.' });
+  addHonor(state, { id: 'smom.proMerito', source: 'foreign', order: 'Order pro Merito Melitensi', from: 'the Sovereign Military Order of Malta', level: target, name: `${PRO_MERITO[target]} (Order of Malta)`, icon: '✠', precedence: 8, prestige: 6 + target * 4, citation: 'Conferred by the Grand Master of the Sovereign Military Order of Malta.' });
   ctx.log(`The Grand Master of the Order of Malta conferred the ${PRO_MERITO[target]} on you.`, '✠', 'honor');
   return true;
 }

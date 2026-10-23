@@ -4,7 +4,7 @@
  * disability coverage and VA rating.
  */
 import { systemHere, privatePremium, goPrivateCost, levySurcharge } from '../../modules/health/HealthSystems.js';
-import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, empty, select } from '../Components.js';
 import {
   CONDITIONS, KINDS, REHAB_COST, coverage, estimateOutOfPocket, vaCovers, dutyDisqualifier, disablingConditions, conditionMortality, VA_COMPENSATION, DUTY_STANDARD,
 } from '../../modules/health/index.js';
@@ -14,19 +14,30 @@ import { ssdiEligibility, ssdiAmount, approvalOdds, ATTORNEY_CAP, disabilityHere
 import { countryOf } from '../../modules/world/Countries.js';
 import { VETERANS } from '../../modules/world/CountryLaw.js';
 
-/** Therapy and medication choices for depression, anxiety and PTSD. */
+/** Therapy and medication for depression, anxiety and PTSD: two pickers, not a wall of buttons. */
 function carePlan(state, c) {
   if (!isMental(c) || c.remission) return '';
-  const care = c.care;
-  const therapies = Object.entries(THERAPIES).filter(([, t]) => !t.ptsd || c.id === 'ptsd').map(([id, t]) => button(`${t.icon} ${t.name}`, 'mental.therapy', { arg: `${c.id}:${id}`, variant: care?.therapy === id ? 'tiny on' : 'tiny', hint: t.desc })).join('');
-  const meds = Object.entries(MEDS).filter(([, m]) => (!m.anxietyOnly || c.id === 'anxiety') && (!m.ptsdOnly || c.id === 'ptsd')).map(([id, m]) => button(`${m.icon} ${m.name}`, 'mental.meds', { arg: `${c.id}:${id}`, variant: care?.meds === id ? 'tiny on' : 'tiny', hint: `${m.desc} Side effects: ${m.sideEffects}.` })).join('');
-  const status = care ? [
-    care.therapy ? `${THERAPIES[care.therapy].name}${care.waitlist ? ' (waitlisted)' : ''}${care.inNetwork ? '' : ' · out of network'} · ≈${money(therapyCost(state, { ...care, waitlist: false }))}/yr` : null,
-    care.meds ? `${MEDS[care.meds].name.split(' (')[0]} · year ${care.medYears}${care.taper ? ' · tapering' : ''}` : null,
-  ].filter(Boolean).join(' · ') : 'No care plan';
-  return `<div class="care-plan"><small>${esc(status)}</small>
-    <div class="toggle-row chips-row">${therapies}${care?.therapy ? button('Switch therapist', 'mental.switchTherapist', { arg: c.id, variant: 'tiny ghost' }) + button('Stop therapy', 'mental.therapy', { arg: `${c.id}:none`, variant: 'tiny ghost' }) : ''}</div>
-    <div class="toggle-row chips-row">${meds}${care?.meds ? button('📉 Taper off', 'mental.meds', { arg: `${c.id}:taper`, variant: 'tiny ghost', hint: 'Safer than stopping cold turkey' }) + button('Stop now', 'mental.meds', { arg: `${c.id}:stop`, variant: 'tiny ghost' }) : ''}</div></div>`;
+  const care = c.care ?? {};
+  const therapies = Object.entries(THERAPIES).filter(([, t]) => !t.ptsd || c.id === 'ptsd');
+  const meds = Object.entries(MEDS).filter(([, m]) => (!m.anxietyOnly || c.id === 'anxiety') && (!m.ptsdOnly || c.id === 'ptsd'));
+  const t = care.therapy ? THERAPIES[care.therapy] : null;
+  const m = care.meds ? MEDS[care.meds] : null;
+  const therapyOpts = [...therapies.map(([id, x]) => ({ value: id, label: `${x.icon} ${x.name}` })), ...(t ? [{ value: 'none', label: 'Stop therapy' }] : [])];
+  const medOpts = [...meds.map(([id, x]) => ({ value: id, label: `${x.icon} ${x.name.split(' (')[0]}` })), ...(m ? [{ value: 'taper', label: '📉 Taper off (safer)' }, { value: 'stop', label: 'Stop now' }] : [])];
+  return `<div class="care-plan">
+    <div class="care-line" data-collect-root>
+      <span class="care-label">Therapy</span>
+      <input type="hidden" data-part="c" value="${esc(c.id)}">${select('t', therapyOpts, { value: care.therapy ?? '' })}
+      ${button(t ? 'Change' : 'Start', 'mental.therapy', { variant: 'tiny', collect: true })}
+    </div>
+    ${t ? `<small class="care-note">${esc(t.name)}${care.waitlist ? ' · waitlisted' : ''}${care.inNetwork ? '' : ' · out of network'} · ≈${money(therapyCost(state, { ...care, waitlist: false }))}/yr ${button('Switch therapist', 'mental.switchTherapist', { arg: c.id, variant: 'tiny ghost' })}</small>` : `<small class="care-note">${esc(therapies[0][1].desc)}</small>`}
+    <div class="care-line" data-collect-root>
+      <span class="care-label">Medication</span>
+      <input type="hidden" data-part="c" value="${esc(c.id)}">${select('m', medOpts, { value: care.meds ?? '' })}
+      ${button(m ? 'Change' : 'Start', 'mental.meds', { variant: 'tiny', collect: true })}
+    </div>
+    ${m ? `<small class="care-note">${esc(m.name.split(' (')[0])} · year ${care.medYears}${care.taper ? ' · tapering' : ''} · side effects: ${esc(m.sideEffects)}</small>` : ''}
+  </div>`;
 }
 
 const fmtPct = (x) => (x === Infinity ? 'all' : `${Math.round(x * 100)}%`);
@@ -65,11 +76,12 @@ function conditionRow(state, c) {
     ? button('🏥 Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']), hint: `~${money(estimateOutOfPocket(state, REHAB_COST, c))}` })
     : c.waitUntil != null ? button('🏥 Go private', 'health.goPrivate', { arg: c.id, variant: 'tiny', hint: money(goPrivateCost(state, def)) })
       : isMental(c) ? '' : button(c.treated ? 'Stop treatment' : 'Treat', 'health.treat', { arg: c.id, variant: 'tiny' });
+  const status = c.remission ? chip('Remission', 'good') : c.waitUntil != null ? chip(`⏳ Waiting list to ${c.waitUntil}`, 'warn') : c.treated || (isMental(c) && (c.care?.therapy || c.care?.meds)) ? chip(isMental(c) ? 'In care' : 'Treated', 'good') : chip(addiction ? 'Active' : 'Untreated', 'bad');
+  const meta = [KINDS[def.kind].name, `since age ${c.onsetAge}`, risk >= 0.005 ? `${(risk * 100).toFixed(1)}%/yr mortality` : null, def.annualCost && !c.remission && !isMental(c) ? `treatment ~${money(cost)}/yr${vaCovers(state, c) ? ' (VA)' : ''}` : null, c.serviceConnected ? 'service-connected' : null].filter(Boolean).join(' · ');
   return `<li class="cond-row">
-    <span class="cond-name">${def.icon} <b>${esc(def.name)}</b> ${chip(KINDS[def.kind].name)} ${c.serviceConnected ? chip('Service-connected', 'warn') : ''} ${c.remission ? chip('Remission', 'good') : c.waitUntil != null ? chip(`⏳ Waiting list to ${c.waitUntil}`, 'warn') : c.treated ? chip('Treated', 'good') : chip(addiction ? 'Active' : 'Untreated', 'bad')}</span>
-    ${c.remission ? '<span></span>' : meter(c.severity, { tone: c.severity >= 70 ? 'bad' : c.severity >= 40 ? 'mid' : 'good', label: 'Severity', suffix: '' })}
-    ${action || '<span></span>'}
-    <small>since age ${c.onsetAge}${risk >= 0.005 ? ` · ${(risk * 100).toFixed(1)}%/yr mortality` : ''}${def.annualCost && !c.remission && !isMental(c) ? ` · treatment ~${money(cost)}/yr out of pocket${vaCovers(state, c) ? ' (VA)' : ''}` : ''}</small>
+    <div class="cond-head"><span class="cond-name">${def.icon} <b>${esc(def.name)}</b></span>${status}</div>
+    <small class="cond-meta">${esc(meta)}</small>
+    ${c.remission ? '' : `<div class="cond-body">${meter(c.severity, { tone: c.severity >= 70 ? 'bad' : c.severity >= 40 ? 'mid' : 'good', label: 'Severity', suffix: '' })}${action}</div>`}
     ${carePlan(state, c)}
   </li>`;
 }
@@ -86,8 +98,8 @@ export function healthView(state) {
   const d = h.disability;
 
   const conditions = card('Conditions', `
-    ${active.length ? `<ul class="history">${active.map((c) => conditionRow(state, c)).join('')}</ul>` : empty('No diagnosed conditions. Annual checkups catch silent ones (blood pressure, diabetes, early cancer).')}
-    ${past.length ? `<h4 class="sub">In remission / recovery</h4><ul class="history">${past.map((c) => conditionRow(state, c)).join('')}</ul>` : ''}
+    ${active.length ? `<ul class="cond-list">${active.map((c) => conditionRow(state, c)).join('')}</ul>` : empty('No diagnosed conditions. Annual checkups catch silent ones (blood pressure, diabetes, early cancer).')}
+    ${past.length ? `<h4 class="sub">In remission / recovery</h4><ul class="cond-list">${past.map((c) => conditionRow(state, c)).join('')}</ul>` : ''}
     ${standard ? `<p class="${ffd ? 'why' : 'req'}">${ffd ? `✗ Fails the ${standard} fitness-for-duty standard: ${esc(CONDITIONS[ffd.id].name)}` : `✓ Meets the ${standard} fitness-for-duty standard`}</p>` : ''}`, { icon: '🩺', accent: active.some((c) => !c.treated) ? 'yellow' : '' });
 
   const mind = card('Mind & Trauma', `

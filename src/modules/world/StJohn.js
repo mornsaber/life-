@@ -126,7 +126,7 @@ function sync(state) {
   const cc = state.character.countryId ?? 'GB';
   if (s.order !== 'venerable') {
     const a = ALLIANCE[s.order];
-    addHonor(state, { id: `stJohn.alliance.${s.office ?? s.grade}`, source: 'foreign', country: s.order, from: a.name, name: gradeName(state), icon: '✠', precedence: 9, prestige: s.office === 'head' ? 18 : s.grade === 'commendator' ? 10 : s.grade === 'justice' ? 8 : 6, citation: 'Pro fide, pro utilitate hominum: for the faith, in the service of humanity.' });
+    addHonor(state, { id: `stJohn.alliance.${s.office ?? s.grade}`, source: 'foreign', order: a.name.replace(/^the /, ''), country: s.order, from: a.name, name: gradeName(state), icon: '✠', precedence: 9, prestige: s.office === 'head' ? 18 : s.grade === 'commendator' ? 10 : s.grade === 'justice' ? 8 : 6, citation: 'Pro fide, pro utilitate hominum: for the faith, in the service of humanity.' });
     return;
   }
   if (s.office === 'sovereign') {
@@ -135,7 +135,7 @@ function sync(state) {
   }
   const g = GRADES[gradeIdx(s.grade)];
   const post = g2(g.post, state);
-  addHonor(state, { id: `stJohn.grade.${g.id}`, source: 'order', country: cc, from: 'the Order of St John', name: `${gradeName(state)} (${post})`, post, icon: '✠', precedence: 9, prestige: g.prestige, citation: 'Pro fide, pro utilitate hominum. A royal order of chivalry: the letters are used, but no title or precedence comes with it.' });
+  addHonor(state, { id: `stJohn.grade.${g.id}`, source: 'order', order: 'Order of St John', country: cc, from: 'the Order of St John', name: `${gradeName(state)} (${post})`, post, icon: '✠', precedence: 9, prestige: g.prestige, citation: 'Pro fide, pro utilitate hominum. A royal order of chivalry: the letters are used, but no title or precedence comes with it.' });
   if (s.office && OFFICES[s.office]) {
     const title = ['prior', 'chancellor'].includes(s.office) ? `${OFFICES[s.office]} of ${s.priory ?? 'the Priory'}` : OFFICES[s.office];
     addHonor(state, { id: `stJohn.office.${s.office}`, source: 'foreign', country: cc, from: 'the Order of St John', name: title, icon: '✠', precedence: 9, prestige: s.office === 'grandPrior' ? 18 : s.office === 'lordPrior' ? 14 : 8, citation: 'An office of the Order of St John.' });

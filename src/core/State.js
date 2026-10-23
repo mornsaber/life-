@@ -427,6 +427,12 @@ export function adjustStat(state, key, delta) {
  * Military honours come from the armed forces you serve in; everything else from where you live.
  */
 export function addHonor(state, honor) {
+  // Grades of one order: a higher grade replaces a lower one; a lower one is not added beside a higher.
+  if (honor.order && honor.grade != null) {
+    const same = state.honors.filter((h) => h.order === honor.order && h.grade != null && h.id !== honor.id);
+    if (same.some((h) => h.grade > honor.grade)) return false;
+    state.honors = state.honors.filter((h) => !same.includes(h) || h.grade >= honor.grade);
+  }
   const svc = state.military?.service;
   const country = honor.country ?? (honor.source === 'military' && svc ? svc.nation ?? 'US' : state.character.countryId ?? 'US');
   const name = country === 'US' ? honor.name : localizeTerms(honor.name, COUNTRIES[country]);

@@ -35,45 +35,45 @@ const R = (...c) => c.map((x) => (Array.isArray(x) ? x : [x, 1]));
 /** By country: US medal id → local name (or { branch: name }), optional ribbon; null: no equivalent. */
 const MEDALS = {
   GB: {
-    moh: { name: 'Victoria Cross', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Conspicuous Gallantry Cross', ribbon: R('#fff', '#8b0a1d', '#fff') },
-    dsm: { name: 'Distinguished Service Order', ribbon: R('#8b0a1d', '#002868', '#8b0a1d') }, silverStar: { name: { army: 'Military Cross', marines: 'Military Cross', navy: 'Distinguished Service Cross', airforce: 'Distinguished Flying Cross' }, ribbon: R('#fff', '#5b2a86', '#fff') },
-    legionOfMerit: { name: 'Officer of the Order of the British Empire (Military)' }, bronzeStar: { name: 'Mention in Despatches' }, purpleHeart: null,
+    moh: { name: 'Victoria Cross', post: 'VC', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Conspicuous Gallantry Cross', post: 'CGC', ribbon: R('#fff', '#8b0a1d', '#fff') },
+    dsm: { name: 'Distinguished Service Order', post: 'DSO', order: 'Distinguished Service Order', grade: 0, ribbon: R('#8b0a1d', '#002868', '#8b0a1d') }, silverStar: { name: { army: 'Military Cross', marines: 'Military Cross', navy: 'Distinguished Service Cross', airforce: 'Distinguished Flying Cross' }, post: { army: 'MC', marines: 'MC', navy: 'DSC', airforce: 'DFC' }, ribbon: R('#fff', '#5b2a86', '#fff') },
+    legionOfMerit: { name: 'Officer of the Order of the British Empire (Military)', post: 'OBE', order: 'Order of the British Empire', grade: 1 }, bronzeStar: { name: 'Mention in Despatches' }, purpleHeart: null,
     msm: { name: 'Meritorious Service Medal' }, commendation: { name: 'King\'s Commendation for Valuable Service' }, achievement: { name: 'Commander\'s Commendation' },
     combatAction: null, goodConduct: { name: 'Long Service and Good Conduct Medal' }, humanitarian: { name: 'Humanitarian Medal' }, expeditionary: { name: 'Operational Service Medal' }, ndsm: null,
   },
   CA: {
-    moh: { name: 'Victoria Cross (Canada)', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Star of Military Valour' }, silverStar: { name: 'Medal of Military Valour' },
-    dsm: { name: 'Meritorious Service Cross (Military)' }, legionOfMerit: { name: 'Officer of the Order of Military Merit' }, bronzeStar: { name: 'Mention in Dispatches' },
+    moh: { name: 'Victoria Cross (Canada)', post: 'VC', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Star of Military Valour', post: 'SMV' }, silverStar: { name: 'Medal of Military Valour', post: 'MMV' },
+    dsm: { name: 'Meritorious Service Cross (Military)', post: 'MSC' }, legionOfMerit: { name: 'Officer of the Order of Military Merit', post: 'OMM', order: 'Order of Military Merit', grade: 1 }, bronzeStar: { name: 'Mention in Dispatches' },
     purpleHeart: { name: 'Sacrifice Medal' }, msm: { name: 'Meritorious Service Medal (Military)' }, commendation: { name: 'Chief of the Defence Staff Commendation' }, achievement: { name: 'Commander\'s Commendation' },
     combatAction: { name: 'General Campaign Star' }, goodConduct: { name: 'Canadian Forces\' Decoration' }, humanitarian: { name: 'Special Service Medal (Humanitarian)' }, expeditionary: { name: 'Operational Service Medal' }, ndsm: null,
   },
   AU: {
-    moh: { name: 'Victoria Cross for Australia', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Star of Gallantry' }, silverStar: { name: 'Medal for Gallantry' },
-    dsm: { name: 'Distinguished Service Cross' }, legionOfMerit: { name: 'Conspicuous Service Cross' }, bronzeStar: { name: 'Commendation for Gallantry' }, purpleHeart: null,
+    moh: { name: 'Victoria Cross for Australia', post: 'VC', ribbon: R('#8b0a1d') }, serviceCross: { name: 'Star of Gallantry', post: 'SG' }, silverStar: { name: 'Medal for Gallantry', post: 'MG' },
+    dsm: { name: 'Distinguished Service Cross', post: 'DSC' }, legionOfMerit: { name: 'Conspicuous Service Cross', post: 'CSC' }, bronzeStar: { name: 'Commendation for Gallantry' }, purpleHeart: null,
     msm: { name: 'Conspicuous Service Medal' }, commendation: { name: 'Chief of the Defence Force Commendation' }, achievement: { name: 'Commander\'s Commendation' },
     combatAction: { name: 'Infantry Combat Badge' }, goodConduct: { name: 'Defence Long Service Medal' }, humanitarian: { name: 'Humanitarian Overseas Service Medal' }, expeditionary: { name: 'Australian Active Service Medal' }, ndsm: { name: 'Australian Defence Medal' },
   },
   DE: {
     moh: { name: 'Ehrenkreuz der Bundeswehr für Tapferkeit', ribbon: R('#000', '#dd0000', '#ffce00') }, serviceCross: { name: 'Ehrenkreuz der Bundeswehr in Gold (mit rotem Rand)' }, silverStar: { name: 'Ehrenkreuz der Bundeswehr in Silber' },
-    dsm: { name: 'Verdienstkreuz 1. Klasse des Verdienstordens' }, legionOfMerit: { name: 'Ehrenkreuz der Bundeswehr in Gold' }, bronzeStar: { name: 'Ehrenkreuz der Bundeswehr in Bronze' }, purpleHeart: { name: 'Gefechtsmedaille' },
+    dsm: { name: 'Verdienstkreuz 1. Klasse des Verdienstordens', order: 'Order of Merit of the Federal Republic of Germany', grade: 2 }, legionOfMerit: { name: 'Ehrenkreuz der Bundeswehr in Gold' }, bronzeStar: { name: 'Ehrenkreuz der Bundeswehr in Bronze' }, purpleHeart: { name: 'Gefechtsmedaille' },
     msm: { name: 'Ehrenmedaille der Bundeswehr' }, commendation: { name: 'Förmliche Anerkennung' }, achievement: { name: 'Förmliche Anerkennung (Bataillon)' },
     combatAction: { name: 'Einsatzmedaille Gefecht' }, goodConduct: { name: 'Treuedienst-Ehrenzeichen' }, humanitarian: { name: 'Einsatzmedaille Fluthilfe' }, expeditionary: { name: 'Einsatzmedaille der Bundeswehr' }, ndsm: null,
   },
   FR: {
-    moh: { name: 'Légion d\'honneur (à titre militaire, pour fait de guerre)', ribbon: R('#c8102e') }, serviceCross: { name: 'Médaille militaire', ribbon: R('#ffd100', '#1f6f43', '#ffd100') }, silverStar: { name: 'Croix de la Valeur militaire avec palme' },
-    dsm: { name: 'Commandeur de l\'Ordre national du Mérite' }, legionOfMerit: { name: 'Officier de l\'Ordre national du Mérite' }, bronzeStar: { name: 'Croix de la Valeur militaire' }, purpleHeart: { name: 'Médaille des blessés de guerre' },
+    moh: { name: 'Légion d\'honneur (à titre militaire, pour fait de guerre)', order: 'Légion d\'honneur', grade: 0, ribbon: R('#c8102e') }, serviceCross: { name: 'Médaille militaire', ribbon: R('#ffd100', '#1f6f43', '#ffd100') }, silverStar: { name: 'Croix de la Valeur militaire avec palme' },
+    dsm: { name: 'Commandeur de l\'Ordre national du Mérite', order: 'Ordre national du Mérite', grade: 2 }, legionOfMerit: { name: 'Officier de l\'Ordre national du Mérite', order: 'Ordre national du Mérite', grade: 1 }, bronzeStar: { name: 'Croix de la Valeur militaire' }, purpleHeart: { name: 'Médaille des blessés de guerre' },
     msm: { name: 'Médaille de la Défense nationale (échelon or)' }, commendation: { name: 'Témoignage de satisfaction' }, achievement: { name: 'Lettre de félicitations' },
     combatAction: { name: 'Croix du combattant' }, goodConduct: { name: 'Médaille de la Défense nationale (échelon bronze)' }, humanitarian: { name: 'Médaille de la reconnaissance de la Nation' }, expeditionary: { name: 'Médaille d\'outre-mer' }, ndsm: null,
   },
   IT: {
     moh: { name: 'Medaglia d\'oro al valor militare', ribbon: R('#1f5fbf') }, serviceCross: { name: 'Medaglia d\'argento al valor militare' }, silverStar: { name: 'Medaglia di bronzo al valor militare' },
-    dsm: { name: 'Ordine militare d\'Italia' }, legionOfMerit: { name: 'Croce d\'oro al merito dell\'Esercito' }, bronzeStar: { name: 'Croce al merito di guerra' }, purpleHeart: { name: 'Distintivo d\'onore per feriti in servizio' },
+    dsm: { name: 'Ordine militare d\'Italia', order: 'Military Order of Italy', grade: 0 }, legionOfMerit: { name: 'Croce d\'oro al merito dell\'Esercito' }, bronzeStar: { name: 'Croce al merito di guerra' }, purpleHeart: { name: 'Distintivo d\'onore per feriti in servizio' },
     msm: { name: 'Medaglia mauriziana' }, commendation: { name: 'Encomio solenne' }, achievement: { name: 'Elogio' },
     combatAction: { name: 'Croce commemorativa per le missioni di pace' }, goodConduct: { name: 'Croce per anzianità di servizio' }, humanitarian: { name: 'Medaglia di benemerenza per interventi umanitari' }, expeditionary: { name: 'Medaglia NATO' }, ndsm: null,
   },
   JP: {
     moh: { name: 'Special Certificate of Commendation (Tokubetsu Shōshi)' }, serviceCross: { name: '1st Class Certificate of Commendation' }, silverStar: { name: 'Defense Merit Badge (Distinguished)' },
-    dsm: { name: 'Order of the Rising Sun, Gold Rays' }, legionOfMerit: { name: 'Order of the Sacred Treasure' }, bronzeStar: { name: 'Defense Merit Badge' }, purpleHeart: null,
+    dsm: { name: 'Order of the Rising Sun, Gold Rays', order: 'Order of the Rising Sun', grade: 1 }, legionOfMerit: { name: 'Order of the Sacred Treasure', order: 'Order of the Sacred Treasure', grade: 0 }, bronzeStar: { name: 'Defense Merit Badge' }, purpleHeart: null,
     msm: { name: 'Defense Merit Badge, 1st class' }, commendation: { name: 'Certificate of Commendation (Shōshi)' }, achievement: { name: 'Letter of Appreciation' },
     combatAction: null, goodConduct: { name: 'Service Excellence Badge' }, humanitarian: { name: 'Disaster Relief Dispatch Badge' }, expeditionary: { name: 'International Peace Cooperation Badge' }, ndsm: null,
   },
@@ -110,7 +110,8 @@ export function localMedal(nation, medalId, branch) {
   if (m === null) return null;
   if (!m) return { name: 'Service medal' };
   const name = typeof m.name === 'string' ? m.name : m.name[branch] ?? Object.values(m.name)[0];
-  return { name, ribbon: m.ribbon };
+  const post = m.post && typeof m.post === 'object' ? m.post[branch] ?? Object.values(m.post)[0] : m.post;
+  return { name, ribbon: m.ribbon, post: post ?? null, order: m.order ?? null, grade: m.grade ?? null };
 }
 
 /* ------------------------------------------------------------------ */
@@ -122,23 +123,23 @@ export function localMedal(nation, medalId, branch) {
  * minAge: Japan honours people late in life.
  */
 export const ORDERS = {
-  US: { minAge: 30, tiers: [
+  US: { minAge: 30, order: null, tiers: [
     { id: 'citizens', name: 'Presidential Citizens Medal', min: 130, ribbon: R('#002868', '#fff', '#c8102e') },
     { id: 'freedom', name: 'Presidential Medal of Freedom', min: 230, ribbon: R('#002868', '#fff', '#002868') },
   ] },
-  GB: { minAge: 30, tiers: [
+  GB: { minAge: 30, order: 'Order of the British Empire', tiers: [
     { id: 'mbe', name: 'Member of the Order of the British Empire (MBE)', post: 'MBE', min: 35, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
     { id: 'obe', name: 'Officer of the Order of the British Empire (OBE)', post: 'OBE', min: 70, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
     { id: 'cbe', name: 'Commander of the Order of the British Empire (CBE)', post: 'CBE', min: 110, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
     { id: 'knight', name: { male: 'Knight Bachelor', female: 'Dame Commander of the Order of the British Empire (DBE)' }, prefix: { male: 'Sir', female: 'Dame' }, post: { male: '', female: 'DBE' }, min: 165, ribbon: R('#c8102e', '#ffd100', '#c8102e') },
-    { id: 'peer', name: { male: 'Life peer (Baron)', female: 'Life peer (Baroness)' }, prefix: { male: 'Lord', female: 'Baroness' }, min: 240, peer: true, ribbon: R('#8b0a1d', '#fff', '#8b0a1d') },
+    { id: 'peer', name: { male: 'Life peer (Baron)', female: 'Life peer (Baroness)' }, prefix: { male: 'Lord', female: 'Baroness' }, min: 240, peer: true, order: null, ribbon: R('#8b0a1d', '#fff', '#8b0a1d') },
   ] },
-  CA: { minAge: 30, tiers: [
+  CA: { minAge: 30, order: 'Order of Canada', tiers: [
     { id: 'cm', name: 'Member of the Order of Canada (CM)', post: 'CM', min: 70, ribbon: R('#c8102e', '#fff', '#c8102e') },
     { id: 'oc', name: 'Officer of the Order of Canada (OC)', post: 'OC', min: 120, ribbon: R('#c8102e', '#fff', '#c8102e') },
     { id: 'cc', name: 'Companion of the Order of Canada (CC)', post: 'CC', min: 190, ribbon: R('#c8102e', '#fff', '#c8102e') },
   ] },
-  AU: { minAge: 30, tiers: [
+  AU: { minAge: 30, order: 'Order of Australia', tiers: [
     { id: 'oam', name: 'Medal of the Order of Australia (OAM)', post: 'OAM', min: 35, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
     { id: 'am', name: 'Member of the Order of Australia (AM)', post: 'AM', min: 70, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
     { id: 'ao', name: 'Officer of the Order of Australia (AO)', post: 'AO', min: 120, ribbon: R('#1f5fbf', '#ffd100', '#1f5fbf') },
@@ -146,15 +147,15 @@ export const ORDERS = {
     // Only while the government of the day allows them (1976–86, 2014–15 in real life).
     { id: 'ak', name: { male: 'Knight of the Order of Australia (AK)', female: 'Dame of the Order of Australia (AD)' }, post: { male: 'AK', female: 'AD' }, prefix: { male: 'Sir', female: 'Dame' }, knighthood: true, min: 240, ribbon: R('#ffd100', '#1f5fbf', '#ffd100') },
   ] },
-  FR: { minAge: 30, tiers: [
-    { id: 'onm', name: 'Chevalier de l\'Ordre national du Mérite', min: 40, ribbon: R('#1f5fbf') },
+  FR: { minAge: 30, order: 'Légion d\'honneur', tiers: [
+    { id: 'onm', order: 'Ordre national du Mérite', name: 'Chevalier de l\'Ordre national du Mérite', min: 40, ribbon: R('#1f5fbf') },
     { id: 'lhc', name: 'Chevalier de la Légion d\'honneur', min: 75, ribbon: R('#c8102e') },
     { id: 'lho', name: 'Officier de la Légion d\'honneur', min: 120, ribbon: R('#c8102e') },
     { id: 'lhcd', name: 'Commandeur de la Légion d\'honneur', min: 170, ribbon: R('#c8102e') },
     { id: 'lhgo', name: 'Grand officier de la Légion d\'honneur', min: 225, ribbon: R('#c8102e') },
     { id: 'lhgc', name: 'Grand-croix de la Légion d\'honneur', min: 285, ribbon: R('#c8102e') },
   ] },
-  DE: { minAge: 30, tiers: [
+  DE: { minAge: 30, order: 'Order of Merit of the Federal Republic of Germany', tiers: [
     { id: 'vm', name: 'Verdienstmedaille des Verdienstordens', min: 35, ribbon: R('#dd0000', '#ffce00', '#000') },
     { id: 'bvk', name: 'Bundesverdienstkreuz am Bande', min: 70, ribbon: R('#dd0000', '#ffce00', '#000') },
     { id: 'bvk1', name: 'Bundesverdienstkreuz 1. Klasse', min: 115, ribbon: R('#dd0000', '#ffce00', '#000') },
@@ -162,38 +163,38 @@ export const ORDERS = {
     { id: 'gvks', name: 'Großes Verdienstkreuz mit Stern', min: 220, ribbon: R('#dd0000', '#ffce00', '#000') },
     { id: 'grk', name: 'Großkreuz des Verdienstordens', min: 285, ribbon: R('#dd0000', '#ffce00', '#000') },
   ] },
-  IT: { minAge: 30, tiers: [
+  IT: { minAge: 30, order: 'Order of Merit of the Italian Republic', tiers: [
     { id: 'cav', name: 'Cavaliere dell\'Ordine al merito della Repubblica', prefix: 'Cav.', min: 35, ribbon: R('#1f6f43', '#c8102e', '#1f6f43') },
     { id: 'uff', name: 'Ufficiale dell\'Ordine al merito della Repubblica', prefix: 'Uff.', min: 70, ribbon: R('#1f6f43', '#c8102e', '#1f6f43') },
     { id: 'comm', name: 'Commendatore dell\'Ordine al merito della Repubblica', prefix: 'Comm.', min: 115, ribbon: R('#1f6f43', '#c8102e', '#1f6f43') },
     { id: 'gu', name: 'Grande Ufficiale dell\'Ordine al merito della Repubblica', prefix: 'Grand\'Uff.', min: 170, ribbon: R('#1f6f43', '#c8102e', '#1f6f43') },
     { id: 'gc', name: 'Cavaliere di Gran Croce', min: 235, ribbon: R('#1f6f43', '#c8102e', '#1f6f43') },
   ] },
-  JP: { minAge: 65, tiers: [
+  JP: { minAge: 65, order: 'Order of the Rising Sun', tiers: [
     { id: 'rs6', name: 'Order of the Rising Sun, Silver Rays', min: 40, ribbon: R('#fff', '#c8102e', '#fff') },
     { id: 'rs4', name: 'Order of the Rising Sun, Gold Rays with Rosette', min: 90, ribbon: R('#fff', '#c8102e', '#fff') },
     { id: 'rs3', name: 'Order of the Rising Sun, Gold Rays with Neck Ribbon', min: 140, ribbon: R('#fff', '#c8102e', '#fff') },
     { id: 'rs2', name: 'Order of the Rising Sun, Gold and Silver Star', min: 190, ribbon: R('#fff', '#c8102e', '#fff') },
     { id: 'rs1', name: 'Grand Cordon of the Order of the Rising Sun', min: 250, ribbon: R('#fff', '#c8102e', '#fff') },
   ] },
-  KR: { minAge: 35, tiers: [
+  KR: { minAge: 35, order: 'Order of Civil Merit', tiers: [
     { id: 'seongnyu', name: 'Order of Civil Merit, Seongnyu Medal', min: 35, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
     { id: 'mongnyeon', name: 'Order of Civil Merit, Mongnyeon Medal', min: 70, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
     { id: 'dongbaek', name: 'Order of Civil Merit, Dongbaek Medal', min: 115, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
     { id: 'moran', name: 'Order of Civil Merit, Moran Medal', min: 170, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
     { id: 'mugunghwa', name: 'Order of Civil Merit, Mugunghwa Medal', min: 240, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
   ] },
-  IN: { minAge: 35, tiers: [
+  IN: { minAge: 35, order: null, tiers: [
     { id: 'padmashri', name: 'Padma Shri', min: 70, ribbon: R('#ff9933', '#fff', '#138808') },
     { id: 'padmabhushan', name: 'Padma Bhushan', min: 140, ribbon: R('#ff9933', '#fff', '#138808') },
     { id: 'padmavibhushan', name: 'Padma Vibhushan', min: 210, ribbon: R('#ff9933', '#fff', '#138808') },
     { id: 'bharatratna', name: 'Bharat Ratna', min: 320, ribbon: R('#fff') },
   ] },
-  PH: { minAge: 35, tiers: [
+  PH: { minAge: 35, order: null, tiers: [
     { id: 'merit', name: 'Presidential Medal of Merit', min: 80, ribbon: R('#1f5fbf', '#fff', '#c8102e') },
     { id: 'lakandula', name: 'Order of Lakandula (Grand Cross)', min: 200, ribbon: R('#1f5fbf', '#ffd100', '#c8102e') },
   ] },
-  MX: { minAge: 40, tiers: [
+  MX: { minAge: 40, order: null, tiers: [
     { id: 'premio', name: 'Premio Nacional de Ciencias y Artes', min: 130, ribbon: R('#1f6f43', '#fff', '#c8102e') },
     { id: 'belisario', name: 'Medalla Belisario Domínguez', min: 260, ribbon: R('#1f6f43', '#fff', '#c8102e') },
   ] },
@@ -238,6 +239,19 @@ function knighthoodPolicyYear(ctx) {
 
 export const tierName = (t, gender) => (typeof t.name === 'string' ? t.name : t.name[gender === 'female' ? 'female' : 'male']);
 export const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefix[gender === 'female' ? 'female' : 'male'] : t.prefix ?? null);
+/**
+ * The order a grade belongs to: grades of one order replace each other on promotion; a
+ * standalone award (a medal, a peerage, India's Padma awards) is kept alongside. null: standalone.
+ */
+export function orderOf(cc, t, fallback) {
+  if (t.peer) return null;
+  if (t.order !== undefined) return t.order;
+  if (fallback !== undefined) return fallback;
+  const o = ORDERS[cc];
+  return o && o.order !== undefined ? o.order : `${COUNTRIES[cc]?.name ?? cc} order of merit`;
+}
+/** Titles that come with a grade: a knighthood (Sir, Dame) or a peerage. These can be declined. */
+export const titular = (t, gender) => Boolean(t.peer || ['Sir', 'Dame', 'Lord', 'Baroness'].includes(tierPrefix(t, gender)));
 
 /**
  * How eminent a life is: public office, a senior career, flag rank, a
@@ -261,7 +275,7 @@ export function eminence(state) {
 const heldTiers = (state, cc) => state.honors.filter((h) => h.source === 'order' && h.country === cc).map((h) => h.tier);
 
 /** The yearly honours list: at most one new order a year. */
-export function honoursList(ctx) {
+export function honoursList(ctx, { offer = false } = {}) {
   const { state, rng } = ctx;
   const cc = state.character.countryId ?? 'US';
   const orders = ORDERS[cc];
@@ -287,7 +301,40 @@ export function honoursList(ctx) {
   if (!next || !rng.chance(0.3)) return null;
   // Only the very top of public life sits in the Lords.
   if (next.peer && !(state.politics?.history ?? []).concat(state.politics?.office ? [state.politics.office] : []).some((h) => (OFFICES[h.officeId ?? h.id]?.level ?? 0) >= 4) && score < next.min + 60) return null;
+  if (declinedRecently(state, cc, next)) return null;
+  if (offer && titular(next, state.character.gender)) return offerHonour(ctx, cc, next, null);
   return award(ctx, cc, next);
+}
+
+/* ------------------------------------------------------------------ */
+/* Offers you can decline                                              */
+/* ------------------------------------------------------------------ */
+
+/** Declined in the last ten years: the honours secretariat doesn't ask twice in a hurry. */
+const declinedRecently = (state, cc, t) => (state.honoursDeclined ?? []).some((d) => d.cc === cc && d.tier === t.id && state.character.age - d.age < 10);
+
+/** A knighthood or peerage is offered first, in confidence: you can say no. */
+function offerHonour(ctx, cc, t, chivalryId) {
+  const { state } = ctx;
+  const gender = state.character.gender;
+  const tiers = chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).tiers : ORDERS[cc].tiers;
+  const ord = orderOf(cc, t, chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).name : undefined);
+  const lesser = lesserGrade(state, cc, t, tiers, ord);
+  const name = tierName(t, gender);
+  ctx.prompt({ type: 'honours.offer', icon: t.peer ? '👑' : '⚔️', title: t.peer ? 'A Seat in the Lords' : 'A Letter in Confidence', text: `A letter marked "In Confidence" asks whether you would accept ${/^(Knight|Dame|Life)/.test(name) ? '' : 'appointment as '}${name}${tierPrefix(t, gender) ? `, styled ${tierPrefix(t, gender)}` : ''}. Nothing will be announced unless you agree.`, options: [
+    { id: 'accept', label: `✅ Accept${tierPrefix(t, gender) ? ` — become ${tierPrefix(t, gender)} ${tierPrefix(t, gender) === 'Lord' || tierPrefix(t, gender) === 'Baroness' ? state.character.lastName : state.character.firstName}` : ''}` },
+    ...(lesser ? [{ id: 'lesser', label: `🎗️ Ask for ${tierName(lesser, gender).replace(/ \([A-Z]+\)$/, '')} instead`, hint: 'An honour without a title' }] : []),
+    { id: 'decline', label: '🙅 Decline, privately', hint: 'Nobody will know, unless you tell them' },
+    { id: 'declinePublic', label: '📣 Decline, and say why', hint: 'A statement of principle; some will admire it' },
+  ], data: { cc, tier: t.id, chivalryId, lesser: lesser?.id ?? null } });
+  return t;
+}
+
+/** The highest grade below a titled one that you don't hold already: what people ask for instead. */
+function lesserGrade(state, cc, t, tiers, ord) {
+  const held = state.honors.filter((h) => h.country === cc && h.order === ord).map((h) => h.grade ?? -1);
+  const idx = tiers.indexOf(t);
+  return [...tiers.slice(0, idx)].reverse().find((x) => !titular(x, state.character.gender) && orderOf(cc, x, ord) === ord && tiers.filter((y) => orderOf(cc, y, ord) === ord).indexOf(x) > Math.max(-1, ...held)) ?? null;
 }
 
 /**
@@ -327,7 +374,7 @@ function servicesTo(state) {
   return 'the community';
 }
 
-export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? []) {
+export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
   const { state } = ctx;
   const gender = state.character.gender;
   const name = tierName(t, gender);
@@ -335,11 +382,12 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? []) {
   g.investiture = g.investiture.replace('{sovereign}', sovereign(state, cc) ?? 'the head of state').replace(/\{palace\}/g, CROWNS[cc]?.palace ?? 'the palace');
   // A promotion within the order: the new grade replaces the old one (other orders are kept).
   const rank = (h) => order.findIndex((x) => x.id === h.tier);
-  const lower = state.honors.filter((h) => h.source === 'order' && h.country === cc && rank(h) >= 0 && rank(h) < g.idx && !order[rank(h)]?.peer);
+  const ord = orderOf(cc, t, orderName);
+  const lower = ord ? state.honors.filter((h) => h.source === 'order' && h.country === cc && rank(h) >= 0 && rank(h) < g.idx && h.order === ord) : [];
   const promotedFrom = lower.length ? lower.at(-1).name : null;
   if (lower.length) state.honors = state.honors.filter((h) => !lower.includes(h));
   const post = tierPost(t, gender);
-  addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, name, post, insignia: g.insignia, icon: g.icon, ribbon: gradeRibbon(t, g.level), device: g.level >= 0.99 && order.length >= 3 && !t.peer ? '✦' : null, precedence: 5 - g.level, prestige: Math.round(t.min / 2), citation: `For services to ${servicesTo(state)}. Invested ${g.investiture}; ${g.insignia}${post ? `; the letters ${post} after your name` : ''}.` });
+  if (addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, order: ord, grade: ord ? order.filter((x) => orderOf(cc, x, orderName) === ord).indexOf(t) : null, name, post, insignia: g.insignia, icon: g.icon, ribbon: gradeRibbon(t, g.level), device: g.level >= 0.99 && order.length >= 3 && !t.peer ? '✦' : null, precedence: 5 - g.level, prestige: Math.round(t.min / 2), citation: `For services to ${servicesTo(state)}. Invested ${g.investiture}; ${g.insignia}${post ? `; the letters ${post} after your name` : ''}.` }) === false) return null;
   const prefix = tierPrefix(t, gender);
   if (t.peer) {
     // A life barony: a seat in the Lords for life (Peerage.js). A hereditary peer keeps the higher title.
@@ -361,7 +409,11 @@ export function postNominals(state) {
   // A monarch is sovereign of the orders, and doesn't use their letters.
   if (state.royal?.reigning) return '';
   // Orders first, then the seat you sit in (MP, MSP, TD…).
-  return [...state.honors.filter((h) => h.source === 'order' && h.post).map((h) => h.post), officeLetters(state)].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+  // The VC and George Cross come first; then the orders; then gallantry decorations (DSO, MC…); then office.
+  const supreme = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) <= 1);
+  const orders = state.honors.filter((h) => h.source === 'order' && h.post && !h.declined);
+  const gallantry = state.honors.filter((h) => h.source === 'military' && h.post && (h.precedence ?? 99) > 1).sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99));
+  return [...supreme, ...orders, ...gallantry].map((h) => h.post).concat(officeLetters(state)).filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
 /** Your name with any title an honour gave you: Sir John Smith, Lord Smith, Cav. Maria Rossi. */
@@ -430,7 +482,7 @@ export const CHIVALRY = {
 };
 
 /** The yearly chance at an order of chivalry you're eligible for (at most one a year). */
-export function chivalryList(ctx, { royalGift = false } = {}) {
+export function chivalryList(ctx, { royalGift = false, offer = false } = {}) {
   const { state, rng } = ctx;
   const cc = state.character.countryId ?? 'US';
   const orders = CHIVALRY[cc];
@@ -439,10 +491,12 @@ export function chivalryList(ctx, { royalGift = false } = {}) {
   for (const o of orders) {
     if (!o.eligible(state) || (royalGift && !o.gift)) continue;
     const held = state.honors.filter((h) => h.source === 'order' && h.country === cc).map((h) => o.tiers.findIndex((t) => t.id === h.tier)).filter((i) => i >= 0);
+    if ((state.honoursDeclined ?? []).some((d) => d.cc === cc && d.public && o.tiers.some((t) => t.id === d.tier))) continue;
     const top = Math.max(-1, ...held);
     const next = [...o.tiers].reverse().find((t, i) => o.tiers.length - 1 - i > top && score >= t.min);
-    if (!next || (!royalGift && !rng.chance(0.25))) continue;
-    const t = award(ctx, cc, next, o.tiers);
+    if (!next || (!royalGift && !rng.chance(0.25)) || declinedRecently(state, cc, next)) continue;
+    if (offer && !royalGift && titular(next, state.character.gender)) return offerHonour(ctx, cc, next, o.id);
+    const t = award(ctx, cc, next, o.tiers, o.name);
     // Knights of these orders are styled Sir or Dame — unless a peer or royal already.
     const prefix = tierPrefix(next, state.character.gender);
     if (prefix && !state.character.peerage && !state.royal) state.character.style = { ...(state.character.style ?? {}), prefix };
@@ -461,9 +515,46 @@ export const HonoursModule = {
   onYearEnd(ctx) {
     if (!ctx.state.character.alive) return;
     knighthoodPolicyYear(ctx);
-    if (!honoursList(ctx)) chivalryList(ctx);
+    if (!honoursList(ctx, { offer: true })) chivalryList(ctx, { offer: true });
+  },
+  resolvers: {
+    offer(ctx, data, optionId) {
+      const { state } = ctx;
+      const { cc, tier, chivalryId } = data;
+      const chiv = chivalryId ? CHIVALRY[cc]?.find((o) => o.id === chivalryId) : null;
+      const tiers = chiv ? chiv.tiers : ORDERS[cc]?.tiers ?? [];
+      const t = tiers.find((x) => x.id === tier);
+      if (!t) return undefined;
+      if (optionId === 'accept') return award(ctx, cc, t, tiers, chiv?.name);
+      if (optionId === 'lesser') {
+        const l = tiers.find((x) => x.id === data.lesser);
+        return l ? award(ctx, cc, l, tiers, chiv?.name) : undefined;
+      }
+      const loud = optionId === 'declinePublic';
+      (state.honoursDeclined ??= []).push({ cc, tier, name: tierName(t, state.character.gender), age: state.character.age, public: loud });
+      if (loud) {
+        if (state.politics) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + 4);
+        ctx.stat('happiness', 3);
+        return ctx.log(`You declined ${tierName(t, state.character.gender)} and said so: titles, you wrote, belong to another age. Some called it principled, some called it showing off.`, '🙅', 'info');
+      }
+      return ctx.log(`You declined ${tierName(t, state.character.gender)}, privately. The letter went back unsigned; nobody else will ever know.`, '🙅', 'info');
+    },
   },
   actions: {
+    /** Hand back an honour you hold (a protest, or a change of heart). */
+    renounce(ctx, id) {
+      const { state } = ctx;
+      const h = state.honors.find((x) => x.id === id && (x.source === 'order' || x.order));
+      if (!h) return ctx.toast('Nothing to hand back.', 'warn');
+      if (h.tier === 'peer' || state.royal?.reigning) return ctx.toast('A peerage can\'t be handed back like an order.', 'warn');
+      state.honors = state.honors.filter((x) => x !== h);
+      const c = state.character;
+      // A knight who returns the insignia stops using "Sir" or "Dame" unless another knighthood remains.
+      const stillKnight = state.honors.some((x) => x.source === 'order' && /^(Knight|Dame)/.test(x.name) && !/St John/.test(x.name));
+      if (['Sir', 'Dame'].includes(c.style?.prefix) && !stillKnight) c.style = { ...c.style, prefix: null };
+      (state.honoursDeclined ??= []).push({ cc: h.country, tier: h.tier, name: h.name, age: c.age, public: true, returned: true });
+      return ctx.log(`You returned the insignia of ${h.name} to ${h.from ?? 'the honours secretariat'}, with a letter explaining why.`, '📦', 'info');
+    },
     /** A prime minister of Australia or New Zealand restores (or abolishes) knighthoods. Once a year. */
     knighthoods(ctx) {
       const { state } = ctx;

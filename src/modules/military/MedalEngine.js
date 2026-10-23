@@ -98,6 +98,9 @@ export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false
     name,
     icon: medal.icon,
     ribbon: local?.ribbon ?? medal.ribbon,
+    // Some decorations are grades of an order (the OBE, the DSO, the Légion d'honneur) or carry letters (VC, MC).
+    ...(local?.post ? { post: local.post } : {}),
+    ...(local?.order ? { order: local.order, grade: local.grade, country: nation } : {}),
     precedence: medal.precedence,
     prestige: medal.prestige + (valorDevice ? 5 : 0),
     pension: medal.pension,

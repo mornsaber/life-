@@ -43,7 +43,7 @@ import { farmView } from './views/FarmView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
-import { countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
+import { COUNTRIES, countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
 import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
 import { gradePrefix } from '../modules/career/PayGrades.js';
@@ -87,6 +87,22 @@ function readTab() {
   } catch {
     return 'life';
   }
+}
+
+/** Orders of chivalry and merit: one row per order, at the grade you hold, with its letters and insignia. */
+function ordersCard(state, inOrder) {
+  const held = state.honors.filter(inOrder).sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99) || (b.prestige ?? 0) - (a.prestige ?? 0));
+  const declined = state.honoursDeclined ?? [];
+  if (!held.length && !declined.length) return '';
+  const rows = held.map((h) => `<li class="order-row">
+      <span class="order-icon" aria-hidden="true">${h.icon ?? '🎗️'}</span>
+      <span class="order-text"><small class="order-name">${esc(h.order ?? h.from?.replace(/^the /, '') ?? 'Order')}${h.country && COUNTRIES[h.country] ? ` · ${COUNTRIES[h.country].flag}` : ''}</small>
+        <span><b>${esc(h.name.replace(/ \([A-Z]{2,5}\)$/, ''))}</b>${h.post ? ` ${chip(esc(h.post), 'honor')}` : ''}</span>
+        <small class="muted">${h.insignia ? `${esc(h.insignia)} · ` : ''}age ${h.age}${h.source === 'foreign' ? ' · honorary or foreign' : ''}</small></span>
+      ${h.source === 'order' && !/^stJohn\./.test(h.id) && !state.royal?.reigning ? button('Return', 'honours.renounce', { arg: h.id, variant: 'tiny ghost', title: 'Hand back the insignia' }) : ''}
+    </li>`).join('');
+  const no = declined.length ? `<p class="fine">${declined.map((d) => `${d.returned ? 'Returned' : 'Declined'} ${esc(d.name)} at ${d.age}${d.public ? ' (publicly)' : ''}`).join(' · ')}</p>` : '';
+  return card('Orders', `${held.length ? `<ul class="order-list">${rows}</ul>` : ''}${no}<p class="fine">A higher grade of an order replaces the lower one. Knighthoods and peerages are offered in confidence first, and can be declined.</p>`, { icon: '🎗️' });
 }
 
 export const VIEWS = {
@@ -142,7 +158,8 @@ export const VIEWS = {
   },
   honors(state) {
     const mil = militaryHonors(state);
-    return `${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${card('Medal Case', medalCase(state.honors), { icon: '🏅' })}`;
+    const inOrder = (h) => Boolean(h.order) || (h.source === 'order' && h.tier !== 'peer');
+    return `${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 

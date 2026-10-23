@@ -236,7 +236,7 @@ function houseYear(ctx) {
   }
   // The house's own order, at 18.
   if (age === 18 && def?.order && !state.honors.some((x) => x.id === 'house.order')) {
-    addHonor(state, { id: 'house.order', source: 'foreign', from: `the House of ${h.name}`, name: `${state.character.gender === 'female' ? (h.rank === 'cadet' ? 'Dame' : 'Dame Grand Cross') : (h.rank === 'cadet' ? 'Knight' : 'Knight Grand Cross')} of the ${def.order} (dynastic)`, icon: '⚜️', prestige: 6, precedence: 12, citation: 'Conferred by the head of the house on coming of age.' });
+    addHonor(state, { id: 'house.order', source: 'foreign', order: def.order, from: `the House of ${h.name}`, name: `${state.character.gender === 'female' ? (h.rank === 'cadet' ? 'Dame' : 'Dame Grand Cross') : (h.rank === 'cadet' ? 'Knight' : 'Knight Grand Cross')} of the ${def.order} (dynastic)`, icon: '⚜️', prestige: 6, precedence: 12, citation: 'Conferred by the head of the house on coming of age.' });
   }
   // A family trust, where there's still money.
   if (age >= 18 && state.people?.wealth === 'upper') ctx.earn(h.rank === 'cadet' ? 15000 : 40000, `House of ${h.name} family trust`);
@@ -373,7 +373,7 @@ export const HousesModule = {
       const noble = nobleBorn(state);
       if (!rng.chance(noble ? 0.8 : 0.3)) return ctx.log('The Order\'s delegation did not admit you this year.', '⚜️', 'bad');
       const name = `${noble ? (state.character.gender === 'female' ? 'Dame of Justice' : 'Knight of Justice') : (state.character.gender === 'female' ? 'Dame of Merit' : 'Knight of Merit')} of the Sacred Military Constantinian Order of St George`;
-      addHonor(state, { id: 'house.constantinian', source: 'foreign', from: 'the Royal House of Bourbon-Two Sicilies', name, icon: '⚜️', prestige: noble ? 8 : 5, precedence: 11, citation: noble ? 'Admitted in the noble class, on proofs of nobility.' : 'Admitted for merit.' });
+      addHonor(state, { id: 'house.constantinian', source: 'foreign', order: 'Sacred Military Constantinian Order of Saint George', from: 'the Royal House of Bourbon-Two Sicilies', name, icon: '⚜️', prestige: noble ? 8 : 5, precedence: 11, citation: noble ? 'Admitted in the noble class, on proofs of nobility.' : 'Admitted for merit.' });
       return ctx.log(`You were invested as a ${name}.`, '⚜️', 'honor');
     },
   },
