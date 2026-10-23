@@ -52,7 +52,7 @@ export function hasHousingBenefit(state) {
   // Asylum seekers live in reception housing while their claim is pending.
   const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
   return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment
-    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus);
+    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus || state.foreignForces?.puyloubier);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */

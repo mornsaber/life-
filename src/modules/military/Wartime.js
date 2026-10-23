@@ -141,6 +141,12 @@ function fiveStarYear(ctx, svc, war) {
 /** The peace: acting ranks revert, wartime soldiers go home, and the drawdown cuts back the war's promotions. */
 function peace(ctx, svc) {
   const { state, rng } = ctx;
+  // Everyone who served in the war gets its campaign medal, and the victory parade.
+  const op = svc.warOp ?? 'the war';
+  if (!state.honors.some((h) => h.id === `mil.campaign.${op}`)) {
+    addHonor(state, { id: `mil.campaign.${op}`, source: 'military', name: `Campaign Medal (${op})`, icon: '🎖️', prestige: 4, precedence: 35, citation: `For service in ${op}.` });
+    ctx.log(`The war is over. You marched in the victory parade and were awarded the campaign medal for ${op}.`, '🎖️', 'honor');
+  }
   if (svc.acting) {
     svc.grade = svc.acting.substantive;
     delete svc.acting;
@@ -187,7 +193,16 @@ export function captured(ctx, svc, where) {
 function release(ctx, svc, how) {
   const { state } = ctx;
   const years = state.character.age - svc.pow.since;
+  const { resisted, collaborated } = svc.pow;
   delete svc.pow;
+  if (collaborated) {
+    svc.disciplinary = (svc.disciplinary ?? 0) + 2;
+    svc.eval = Math.max(0, (svc.eval ?? 60) - 25);
+    ctx.log('A board of inquiry examined your conduct in captivity. Your cooperation with the enemy is on your record.', '⚖️', 'bad');
+  } else if (resisted >= 2) {
+    svc.eval = Math.min(100, (svc.eval ?? 60) + 10);
+    ctx.log('Fellow prisoners testified to how you held out. Your conduct in captivity was commended.', '🎖️', 'honor');
+  }
   ctx.emit('health:trauma', { amount: 30 + years * 10, source: 'captivity' });
   addHonor(state, { id: `mil.pow.${state.character.age}`, source: 'military', name: 'Prisoner of War Medal', icon: '⛓️', prestige: 6, precedence: 30, citation: `Held as a prisoner of war for ${years || 'under a'} year${years === 1 ? '' : 's'}.` });
   ctx.stat('happiness', 15);
@@ -205,9 +220,20 @@ function powYear(ctx, svc, war) {
     ctx.log('Through the Red Cross, the enemy confirmed you alive: your status changed from missing in action to prisoner of war. A first letter reached home.', '✉️', 'warn');
   }
   if (!war) return release(ctx, svc, 'With the peace, the prisoners were exchanged.');
-  if (rng.chance(0.08 + Math.max(0, state.stats.fitness - 60) / 300)) return release(ctx, svc, 'You escaped — three nights through enemy lines to a friendly patrol.');
   if (rng.chance(0.2)) return release(ctx, svc, 'You were freed in a prisoner exchange brokered by the Red Cross.');
-  ctx.log(rng.pick(['Another year in the camp: hunger, interrogations, and the other prisoners keeping each other alive.', 'You taught the younger prisoners to count the days and keep their heads.', 'A guard let a parcel through. Letters from home, months old.']), '⛓️', 'bad');
+  // A year in the camp: how you carry yourself is the one thing still yours.
+  if (!state.prompts.some((q) => q.type === 'wartime.captivity')) {
+    ctx.prompt({
+      type: 'wartime.captivity', icon: '⛓️', title: 'Another Year in the Camp',
+      text: 'Interrogations, hunger, and the other prisoners watching how you carry yourself.',
+      options: [
+        { id: 'resist', label: '🪖 Resist: name, rank and number', hint: 'Harder on you; honoured afterwards' },
+        { id: 'escape', label: '🏃 Plan an escape', hint: `~${Math.round(clamp(0.15 + (state.stats.fitness - 50) / 200, 0.05, 0.45) * 100)}% — and punishment if it fails` },
+        { id: 'cooperate', label: '🤝 Cooperate with the captors', hint: 'Easier now; a board of inquiry later', tone: 'danger' },
+      ],
+      data: {},
+    });
+  }
   return undefined;
 }
 
@@ -263,6 +289,47 @@ function liabilityYear(ctx) {
 /* Module                                                              */
 /* ------------------------------------------------------------------ */
 
+/** Relatives in uniform: called up in a war, and sometimes missing or captured. */
+function relativesYear(ctx) {
+  const { state, rng } = ctx;
+  const war = warIn(state, state.character.countryId ?? 'US');
+  const kin = (state.people?.list ?? []).filter((p) => p.alive !== false && ['child', 'sibling', 'spouse'].includes(p.relation) && (state.character.age + p.ageOffset) >= 18 && (state.character.age + p.ageOffset) <= 40);
+  for (const p of kin) {
+    if (!war) {
+      if (p.serving) {
+        delete p.serving;
+        if (p.pow) { delete p.pow; ctx.log(`${p.firstName} came home with the prisoner exchange at the end of the war.`, '🕊️', 'good'); }
+        else ctx.log(`${p.firstName} came home from the war.`, '🏠', 'good');
+      }
+      continue;
+    }
+    if (!p.serving && war.phase !== 'ceasefire' && rng.chance(war.draft ? 0.3 : 0.08)) {
+      p.serving = true;
+      ctx.log(`${p.firstName} was called up for ${war.operation}.`, '🪖', 'warn');
+      continue;
+    }
+    if (!p.serving || war.phase === 'ceasefire') continue;
+    if (p.mia) {
+      delete p.mia;
+      const roll = rng.float(0, 1);
+      if (roll < 0.3) {
+        p.alive = false;
+        p.diedAge = state.character.age + p.ageOffset;
+        p.causeOfDeath = `Killed in action — ${war.operation}`;
+        ctx.stat('happiness', -25);
+        ctx.log(`The news you dreaded: ${p.firstName}, missing since last year, was confirmed killed in action.`, '🕯️', 'death');
+      } else if (roll < 0.75) {
+        p.pow = true;
+        ctx.log(`A Red Cross letter: ${p.firstName} is alive, a prisoner of war.`, '✉️', 'warn');
+      } else ctx.log(`${p.firstName} turned up alive behind friendly lines after months missing.`, '🕊️', 'good');
+    } else if (!p.pow && rng.chance(0.03 * war.intensity)) {
+      p.mia = true;
+      ctx.stat('stress', 15);
+      ctx.log(`A telegram: ${p.firstName} is missing in action.`, '📨', 'bad');
+    }
+  }
+}
+
 export const WartimeModule = {
   id: 'wartime',
   // After the military's year (promotions, deployments).
@@ -284,6 +351,7 @@ export const WartimeModule = {
       if (war) {
         if (!svc.wartime) {
           svc.wartime = true;
+          svc.warOp = war.operation;
           if (svc.joinedAge >= war.startAge - 1 && (svc.yearsOfService - (svc.priorYears ?? 0)) <= war.years + 1) svc.warEnlisted = true;
         }
         if (war.phase !== 'ceasefire') {
@@ -296,8 +364,27 @@ export const WartimeModule = {
       }
     }
     liabilityYear(ctx);
+    relativesYear(ctx);
   },
   resolvers: {
+    captivity(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const svc = state.military.service;
+      if (!svc?.pow) return undefined;
+      if (optionId === 'resist') {
+        svc.pow.resisted = (svc.pow.resisted ?? 0) + 1;
+        ctx.stat('health', -6);
+        return ctx.log('You gave them name, rank and number, and nothing else. They made you pay for it.', '⛓️', 'bad');
+      }
+      if (optionId === 'cooperate') {
+        svc.pow.collaborated = true;
+        ctx.stat('health', 4);
+        return ctx.log('You answered their questions and recorded their statement. The food got better. The other prisoners stopped talking to you.', '🤝', 'warn');
+      }
+      if (rng.chance(clamp(0.15 + (state.stats.fitness - 50) / 200, 0.05, 0.45))) return release(ctx, svc, 'You escaped — three nights through enemy lines to a friendly patrol.');
+      ctx.stat('health', -12);
+      return ctx.log('The escape failed. They caught you at the wire; a month in solitary.', '⛓️', 'bad');
+    },
     demob(ctx, data, optionId) {
       const { state, rng } = ctx;
       const svc = state.military.service;

@@ -17,11 +17,11 @@
  * state.foreignForces = { legion: { realFirst, realLast, declared, since, citizen }, gurkha: 'GB'|'SG'|'IN'|null, gurkhaTries }
  */
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly, hasFelony, randomName, setNameCountry } from '../../core/State.js';
+import { yearlyCount, bumpYearly, hasFelony, randomName, setNameCountry, addHonor } from '../../core/State.js';
 import { enlist } from '../military/MilitaryEngine.js';
 import { arrive, ensureMigration } from './Migration.js';
 import { postAbroad } from './Posting.js';
-import { citizenshipsOf, isCitizen } from './Countries.js';
+import { citizenshipsOf, isCitizen, COUNTRIES } from './Countries.js';
 import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
 import { hire, leaveJob } from '../career/CareerEngine.js';
@@ -57,7 +57,7 @@ export function gurkhaCheck(state) {
 }
 
 /** Spain's armed forces take citizens of Spanish-speaking countries ("tropa extranjera"), 18–29. */
-export const IBERO = ['MX', 'AR', 'CO', 'PE', 'VE', 'CL', 'EC', 'GT', 'CU', 'BO', 'DO', 'HN', 'PY', 'SV', 'NI', 'CR', 'PA', 'UY', 'GQ'];
+export const IBERO = ['MX', 'AR', 'CO', 'PE', 'VE', 'CL', 'EC', 'GT', 'CU', 'BO', 'DO', 'HN', 'PY', 'SV', 'NI', 'CR', 'PA', 'UY', 'GQ'].filter((cc) => COUNTRIES[cc]);
 export function spainCheck(state) {
   const c = state.character;
   if (!citizenshipsOf(state).some((x) => IBERO.includes(x))) return { ok: false, reason: 'Citizens of Spanish-speaking countries' };
@@ -205,6 +205,16 @@ function separated(ctx, svc, type) {
   if (!f) return;
   const years = svc.yearsOfService - (svc.priorYears ?? 0);
   if (svc.legion) {
+    // Long service: the Legion's medal, and a place at its veterans' home if you want one.
+    if (years >= 15 || (svc.wounds ?? 0) > 0) {
+      addHonor(state, { id: 'legion.dnGold', source: 'military', name: 'Médaille de la Défense nationale (échelon or)', icon: '🎖️', prestige: 5, precedence: 32, citation: `For ${years} years in the Légion étrangère.` });
+      ctx.prompt({
+        type: 'foreignForces.puyloubier', icon: '🍇', title: 'Puyloubier',
+        text: 'The Legion looks after its own. Its veterans\' home at Puyloubier, under Mont Sainte-Victoire, has a room for you: a vineyard to work, a pottery, and men who understand.',
+        options: [{ id: 'yes', label: '🍇 Retire to Puyloubier', hint: 'Housed and fed by the Legion' }, { id: 'no', label: '🏠 Make my own way' }],
+        data: {},
+      });
+    }
     if (f.legion?.declared) { state.character.firstName = f.legion.realFirst; state.character.lastName = f.legion.realLast; }
     f.legion = f.legion ? { ...f.legion, declared: false, served: years } : null;
     const res = state.migration?.residences?.FR;
@@ -275,6 +285,18 @@ export const ForeignForcesModule = {
       Object.assign(state.military.service, { foreignTroop: 'ES', spanishLegion: legion, contractYearsLeft: 3 });
       return ctx.log(legion ? 'You joined the Spanish Legion — the Tercio, "novios de la muerte" — as a foreign volunteer.' : 'You enlisted in the Spanish Army as a foreign volunteer (tropa extranjera).', '🇪🇸', 'milestone');
     },
+    /** A former Gurkha back in the hills: village welfare work with the Gurkha Welfare Trust. */
+    welfare(ctx) {
+      const { state, rng } = ctx;
+      if (!gurkhaVeteran(state) || here(state) !== 'NP') return ctx.toast('Former Gurkhas back in Nepal', 'warn');
+      if (yearlyCount(state, 'foreignForces.welfare')) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, 'foreignForces.welfare');
+      const f = ff(state);
+      f.welfareYears = (f.welfareYears ?? 0) + 1;
+      ctx.stat('happiness', 6);
+      if (f.welfareYears === 5) ctx.log('The village asked you to sit on the council of elders: a former Gurkha\'s word carries weight in the hills.', '🏔️', 'honor');
+      return ctx.log(rng.pick(['You helped the Gurkha Welfare Trust build a water scheme for your village.', 'You visited old soldiers\' widows with their welfare pensions.', 'You organised a school roof repair with the Trust\'s engineers.', 'You coached the village boys for the doko race.']), '🗡️', 'good');
+    },
     /** A priest's three years in a mission diocese. */
     mission(ctx) {
       const { state, rng } = ctx;
@@ -321,6 +343,13 @@ export const ForeignForcesModule = {
     },
   },
   resolvers: {
+    puyloubier(ctx, data, optionId) {
+      const { state } = ctx;
+      if (optionId !== 'yes') return ctx.log('You left the Legion to make your own way.', '🏠');
+      ff(state).puyloubier = true;
+      if (state.housing) { state.housing.rental = null; state.housing.withParents = false; }
+      return ctx.log('You retired to the Institution des Invalides de la Légion étrangère at Puyloubier: wine from the Legion\'s own vines, and the képi blanc on the wall.', '🍇', 'milestone');
+    },
     mission(ctx, data, optionId) {
       if (optionId === 'stay') return ctx.log('You stayed with your parish.', '⛪');
       const [place, country] = MISSIONS.find(([p]) => p === optionId) ?? MISSIONS[0];
@@ -354,12 +383,15 @@ export const ForeignForcesModule = {
   },
 };
 
+export const gurkhaVeteran = (state) => state.military.history.some((h) => h.gurkha) || Boolean(state.retirement?.pensions?.some((p) => p.id === 'gurkhaSG'));
+
 /** Legion and Gurkha: what the military card offers. */
 export function foreignForcesOptions(state) {
   const out = [];
   if (!state.military.service && state.character.gender === 'male' && state.character.age >= 17 && state.character.age <= 39) out.push({ id: 'legion', check: legionCheck(state) });
   if (citizenshipsOf(state).some((x) => IBERO.includes(x)) && !isCitizen(state, 'ES') && state.character.age >= 18 && state.character.age <= 29 && !state.military.service) out.push({ id: 'spain', check: spainCheck(state) });
   if (state.career.job?.professionId === 'catholicClergy') out.push({ id: 'mission', check: missionCheck(state) });
+  if (gurkhaVeteran(state) && here(state) === 'NP') out.push({ id: 'welfare', check: yearlyCount(state, 'foreignForces.welfare') ? { ok: false, reason: 'Once a year' } : { ok: true } });
   if (isCitizen(state, 'NP') && state.character.age >= 17 && state.character.age <= 21 && !state.military.service && !state.foreignForces?.gurkha) out.push({ id: 'gurkha', check: gurkhaCheck(state) });
   return out;
 }

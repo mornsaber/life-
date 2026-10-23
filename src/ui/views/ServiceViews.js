@@ -107,6 +107,7 @@ function foreignForcesCard(state) {
   if (!opts.length) return '';
   const extra = {
     spain: ['🇪🇸', 'Spain\'s armed forces (tropa extranjera)', 'Citizens of Spanish-speaking countries, 18–29: the Army or the Spanish Legion, and Spanish nationality after two years.', 'foreignForces.spain', '🇪🇸 Apply'],
+    welfare: ['🏔️', 'Gurkha Welfare Trust', 'Village welfare work as a former Gurkha: water schemes, schools, widows\' pensions.', 'foreignForces.welfare', '🏔️ Help out'],
     mission: ['⛪', 'Fidei donum: a mission diocese', 'Your bishop lends you to a diocese abroad for three years.', 'foreignForces.mission', '⛪ Ask to go'],
   };
   const rows = opts.map((o) => extra[o.id]
