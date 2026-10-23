@@ -280,7 +280,7 @@ export const NP = nation({
   edu: { exam: 'National Examinations Board Grade 12', state: 'Tribhuvan University', private: 'Kathmandu University', elite: 'Tribhuvan University Institute of Engineering', tvet: 'CTEVT technical school' },
   immig: { work: 'Work visa', pr: 'Non-tourist residence', natYears: 15, dual: false }, unions: 'General Federation of Nepalese Trade Unions (GEFONT)', stock: 'Nepal Stock Exchange', lender: 'Nabil Bank', fees: 40 * 800,
   religion: { hindu: 81, buddhist: 9, sunni: 4, evangelical: 2, none: 4 },
-  farm: { price: 30000, unit: 'ropani', plots: [2, 5, 10, 20, 40], prod: 0.35, grass: 0.6, drought: 1.1, flood: 1.5, crops: ['rice', 'corn', 'wheat', 'vegetables', 'orchard', 'pasture'] },
+  farm: { price: 600000, unit: 'ha', plots: [0.5, 1, 2, 5, 10], prod: 0.35, grass: 0.6, drought: 1.1, flood: 1.5, crops: ['rice', 'corn', 'wheat', 'vegetables', 'orchard', 'pasture'] },
 });
 
 export const PK = nation({
