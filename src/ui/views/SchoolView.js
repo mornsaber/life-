@@ -16,6 +16,10 @@ import { phdCard } from './AcademiaView.js';
 import { medTrainingCard } from './MedicalView.js';
 import { lawTrainingCard } from './LawView.js';
 import { higherEdCard, publishingCard } from './HigherEdView.js';
+import { edEligibility } from '../../modules/academia/HigherEd.js';
+
+/** Early Decision is open to first-time applicants who haven't used it. */
+const edOpen = (state) => state.character.age >= 17 && !state.education.enrolled && state.higherEd && !state.higherEd.edUsed && edEligibility(state, 'state').reason !== 'For first-time college applicants' && state.education.degrees.some((d) => d.type === 'highschool');
 import { COUNTRIES } from '../../modules/world/Countries.js';
 
 function programRow(state, id) {
@@ -41,6 +45,7 @@ function programRow(state, id) {
       ${majors[0] !== null ? select('major', majors.map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }))) : '<input type="hidden" data-part="major" value="">'}
       ${select('pace', [{ value: 'full', label: 'Full-time' }, { value: 'part', label: 'Part-time (½ speed)' }])}
       ${button('Apply', 'education.apply', { variant: 'small primary', collect: true, disabled: blocking })}
+      ${id === 'bachelor' && edOpen(state) ? button('💌 Early Decision', 'higherEd.earlyDecision', { variant: 'small', collect: true, disabled: blocking, hint: 'Binding; better odds — the school and major you picked' }) : ''}
     </div>
   </li>`;
 }

@@ -172,7 +172,7 @@ const tests = {
     setKnighthoods(ctx, 'AU', true);
     for (let i = 0; i < 5; i++) honoursList({ ...ctx, rng: always(new Random(i)) });
     assert.ok(state.honors.some((h) => h.tier === 'ak'), JSON.stringify(state.honors.map((h) => h.tier)));
-    assert.match(styledName(state), /^(Sir|Dame) /);
+    assert.match(styledName(state), /^(The Hon\. )?(Sir|Dame) /);
     ctx.emit('politics:take', { officeId: 'au_pm', appointed: true });
     state.prompts = [];
     engine.dispatch('honours.knighthoods');

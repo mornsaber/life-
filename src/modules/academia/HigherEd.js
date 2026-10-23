@@ -137,13 +137,13 @@ export function edEligibility(state, schoolId) {
 /** Early Decision: apply early to one school, binding if admitted. arg: 'bachelor:schoolId:major' */
 function earlyDecision(ctx, arg) {
   const { state } = ctx;
-  const [programId, schoolId, major] = String(arg).split(':');
+  const [programId, schoolId, major, pace = 'full'] = String(arg).split(':');
   if (programId !== 'bachelor') return ctx.toast('Early Decision is for bachelor\'s programs', 'warn');
   const check = edEligibility(state, schoolId);
   if (!check.ok) return ctx.toast(check.reason, 'warn');
   he(state).edUsed = true;
   he(state).edBoost = true;
-  EducationEngine.actions.enroll(ctx, `${programId}:${schoolId}:${major ?? ''}:full`);
+  EducationEngine.actions.enroll(ctx, `${programId}:${schoolId}:${major ?? ''}:${pace}`);
   he(state).edBoost = false;
   if (enrolled(state) && [enrolled(state).schoolId, enrolled(state).universityId].includes(schoolId)) ctx.log('Admitted Early Decision in December. Binding: you withdrew every other application.', '💌', 'good');
 }

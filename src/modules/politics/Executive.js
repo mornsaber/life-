@@ -288,7 +288,7 @@ export function offersYear(ctx) {
   // lords-lieutenant, appointed on advice from people of standing — none in a realm that became a republic.
   const king = sovereign(state, cc);
   if (!king || o) return;
-  const honoured = state.honors.some((h) => h.source === 'order') || Boolean(state.character.style?.peerage);
+  const honoured = state.honors.some((h) => h.source === 'order') || Boolean(state.character.style?.peerage) || Boolean(state.noble?.estate?.owner === 'you');
   const standing = experienceLevel(state);
   const posts = [
     [{ CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' }[cc], state.character.age >= 50 && (standing >= 4 || p.recognition >= 70 || honoured), 0.03, 'five years at Government House as the representative of the Crown'],

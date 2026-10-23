@@ -25,6 +25,7 @@
  * state.royal = { crownId, level, line, working, popularity, reigning, regnal, patronages[], since }
  */
 import { clamp, Random } from '../../core/Random.js';
+import { OFFICES } from '../politics/Offices.js';
 import { currentYear, yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
 
 /* ------------------------------------------------------------------ */
@@ -125,14 +126,29 @@ function servesTheCrown(state, cc) {
   const job = state.career.job;
   return Boolean(state.military.service && (state.military.service.nation ?? 'US') === cc)
     || Boolean(job && job.sector && job.sector !== 'private' && (state.character.countryId ?? 'US') === cc)
-    || Boolean(state.politics?.office) || Boolean(state.royal);
+    || Boolean(state.politics?.office) || Boolean(state.royal) || servedTheCrown(state, cc);
+}
+/**
+ * Those who served before are on the list too: former governors-general, governors and
+ * lieutenant governors, former prime ministers, premiers and members of parliament, retired
+ * senior officers and senior public servants, peers, and holders of the realm's orders.
+ */
+const servesNow = (state, cc) => Boolean(state.military.service || (state.career.job?.sector && state.career.job.sector !== 'private') || state.politics?.office || state.royal);
+function servedTheCrown(state, cc) {
+  const held = (state.politics?.history ?? []).map((h) => OFFICES[h.officeId]).filter((o) => o && (o.country ?? 'US') === cc);
+  if (held.some((o) => o.level >= 4 || o.headOfState || o.ceremonial || o.leader)) return true;
+  if ((state.military.history ?? []).some((h) => (h.nation ?? 'US') === cc && h.track === 'officer' && (h.grade ?? 0) >= 4)) return true;
+  if ((state.career.history ?? []).some((h) => h.sector && h.sector !== 'private' && (h.peakGrade ?? h.grade ?? 0) >= 9)) return true;
+  if (state.character.peerage) return true;
+  return state.honors.some((h) => h.source === 'order' && h.country === cc);
 }
 function crownMedal(ctx, cc, kind, crownId) {
   const { state } = ctx;
   if ((state.character.countryId ?? 'US') !== cc || !servesTheCrown(state, cc) || state.royal?.reigning) return;
   const name = `${monarchName(state, crownId)} ${kind === 'coronation' ? 'Coronation' : 'Jubilee'} Medal`;
   if (state.honors.some((h) => h.name === name)) return;
-  addHonor(state, { id: `crown.${kind}.${currentYear(state)}`, source: 'civil', country: cc, name, icon: '👑', ribbon: [['#002868', 1], ['#c8102e', 1], ['#fff', 1], ['#c8102e', 1], ['#002868', 1]], precedence: 40, prestige: 4, citation: `Awarded to those serving the Crown in the ${kind === 'coronation' ? 'coronation' : 'jubilee'} year.` });
+  const former = !servesNow(state, cc);
+  addHonor(state, { id: `crown.${kind}.${currentYear(state)}`, source: 'civil', country: cc, name, icon: '👑', ribbon: [['#002868', 1], ['#c8102e', 1], ['#fff', 1], ['#c8102e', 1], ['#002868', 1]], precedence: 40, prestige: 4, citation: former ? `Awarded in the ${kind === 'coronation' ? 'coronation' : 'jubilee'} year for past service to the Crown.` : `Awarded to those serving the Crown in the ${kind === 'coronation' ? 'coronation' : 'jubilee'} year.` });
   ctx.log(`You received the ${name}.`, '👑', 'honor');
 }
 

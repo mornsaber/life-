@@ -3,11 +3,10 @@
  * degrees, early decision, campus jobs, fellowships (School tab); adjunct
  * teaching and publishing (Career tab).
  */
-import { universitiesFor } from '../../modules/education/Universities.js';
 import { esc, button, card, chip, kv, optionRow, disclosure, money } from '../Components.js';
-import { MAJORS, SCHOOLS, PROGRAMS } from '../../modules/education/Catalog.js';
+import { PROGRAMS } from '../../modules/education/Catalog.js';
 import {
-  CAMPUS_JOBS, FELLOWSHIPS, ADJUNCT_PAY, MAX_AP_CREDIT, apEligibility, overloadEligibility, fourPlusOneEligibility, mphEligibility, edEligibility, campusJobEligibility, adjunctEligibility,
+  CAMPUS_JOBS, FELLOWSHIPS, ADJUNCT_PAY, MAX_AP_CREDIT, apEligibility, overloadEligibility, fourPlusOneEligibility, mphEligibility, campusJobEligibility, adjunctEligibility,
 } from '../../modules/academia/HigherEd.js';
 import { VENUES, submitEligibility, acceptOdds, writingCapacity, expectation, recentOutput } from '../../modules/academia/Publishing.js';
 
@@ -29,11 +28,8 @@ export function higherEdCard(state) {
   // Applying to college.
   const firstTimer = state.character.age >= 17 && !e && !state.education.degrees.some((d) => ['bachelor', 'associate'].includes(d.type));
   if (firstTimer && state.education.degrees.some((d) => d.type === 'highschool')) {
-    const major = Object.keys(MAJORS).find((m) => MAJORS[m].levels.includes('bachelor'));
-    const pool = universitiesFor(state, 'bachelor', { abroad: false });
-    const picks = ['elite', 'private', 'state'].map((t) => pool.find((u) => u.type === t)).filter(Boolean);
-    const ed = picks.map((u) => btn(`💌 Early Decision: ${u.name}`, 'higherEd.earlyDecision', edEligibility(state, u.id), { arg: `bachelor:${u.id}:${major}`, hint: 'Binding; better odds' })).join('');
-    parts.push(`<h4 class="sub">Applying to college</h4><div class="action-grid">${ed}${h.bsmdTried ? '' : button('🩺 Apply to a BS/MD program', 'higherEd.applyBsmd', { arg: 'state', variant: 'small', hint: '7 years, guaranteed medical school seat — very selective' })}</div>`);
+    const ed = h.edUsed ? '<p class="fine">You\'ve used your Early Decision.</p>' : '<p class="fine">💌 Early Decision: pick a school and major in the bachelor\'s row of the catalog below and press "Early Decision" — binding if you\'re admitted, with better odds.</p>';
+    parts.push(`<h4 class="sub">Applying to college</h4>${ed}<div class="action-grid">${h.bsmdTried ? '' : button('🩺 Apply to a BS/MD program', 'higherEd.applyBsmd', { arg: 'state', variant: 'small', hint: '7 years (biology, then medicine), guaranteed medical school seat — very selective' })}</div>`);
   }
   // In college.
   if (e) {

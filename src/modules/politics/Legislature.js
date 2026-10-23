@@ -146,6 +146,18 @@ export const STAFF_ROLES = {
   scheduler: { title: 'Scheduler', kind: 'admin', desc: 'Guards your diary: less stress.' },
   staffAssistant: { title: 'Staff Assistant', kind: 'admin', desc: 'Front desk and tours: less stress.' },
   parliamentaryAssistant: { title: 'Parliamentary Assistant', kind: 'admin', desc: 'Correspondence and diary: less stress.' },
+  // Leadership offices: the chair's committee staff, the leader's floor team, the presiding officer's own office.
+  committeeCounsel: { title: 'Committee Counsel', kind: 'policy', desc: 'Runs your committee\'s hearings and markups: more votes.' },
+  floorAssistant: { title: 'Floor Assistant', kind: 'policy', desc: 'Counts votes and manages the floor: more votes.' },
+  deputyChief: { title: 'Deputy Chief of Staff', kind: 'admin', desc: 'Runs the office day to day: less stress.' },
+  parliamentarian: { title: 'Procedural Adviser', kind: 'policy', desc: 'Knows the rules of the house: more votes.' },
+};
+/** Extra positions (and budget) a leadership post brings: [role, how many]. */
+export const POST_STAFF = {
+  chair: [['committeeCounsel', 2]],
+  whip: [['floorAssistant', 2]],
+  majority: [['deputyChief', 1], ['floorAssistant', 3], ['communications', 1]],
+  presiding: [['deputyChief', 1], ['parliamentarian', 2], ['communications', 1], ['scheduler', 1]],
 };
 /** Which positions each kind of office has: [role, how many]. */
 export const OFFICE_STAFF = {
@@ -156,6 +168,18 @@ export const OFFICE_STAFF = {
   provincial: [['chiefOfStaff', 1], ['researcher', 1], ['communications', 1], ['caseworker', 2]],
 };
 export function staffPlan(seat) {
+  const base = basePlan(seat);
+  const extra = POST_STAFF[seat?.post] ?? [];
+  if (!extra.length) return base;
+  const plan = base.map(([r, n]) => [r, n]);
+  for (const [role, n] of extra) {
+    const row = plan.find(([r]) => r === role);
+    if (row) row[1] += n;
+    else plan.push([role, n]);
+  }
+  return plan;
+}
+function basePlan(seat) {
   const kind = seat?.bodyId?.split(':')[0] ?? '';
   if (kind === 'council') return OFFICE_STAFF.council;
   if (kind === 'house' || kind === 'senate') return OFFICE_STAFF.usState;

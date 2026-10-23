@@ -6,6 +6,7 @@ import { esc, money, button, card, meter, kv } from '../Components.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS } from '../../modules/world/Crown.js';
 import { currentYear } from '../../core/State.js';
 import { peerAddress, RANKS } from '../../modules/world/Peerage.js';
+import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/RoyalHousehold.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
@@ -74,5 +75,35 @@ export function crownCards(state) {
     ])}
     ${p.kind === 'hereditary' ? `<div class="action-grid">${button('📜 Disclaim the title', 'peerage.disclaim', { variant: 'danger', hint: 'For life — to stand for the Commons' })}</div>` : ''}`, { icon: '🏰' }));
   }
+  const n = state.noble;
+  if (n) cards.push(nobleCard(state));
   return cards.join('');
+}
+
+/** A titled family's life: the estate, the allowance, society. */
+function nobleCard(state) {
+  const n = state.noble;
+  const e = estateOf(state);
+  const age = state.character.age;
+  const yours = e?.owner === 'you';
+  const rank = RANKS[n.rank];
+  const parentTitle = yours && state.character.style?.peerage ? state.character.style.peerage : `${rank.male} ${rank.of ? 'of ' : ''}${n.place}`;
+  return card(yours ? `${esc(e.name)}` : 'Your Titled Family', `${kv([
+    ['Family title', `${esc(parentTitle)}${isGrandee(state) ? ' · Grandee of Spain (Excelentísimo)' : ''}`],
+    ['You', yours ? 'Head of the family' : n.disclaimed ? 'You disclaimed the title' : n.heir ? 'The heir' : 'A younger child (courtesy style, no title to inherit)'],
+    e ? ['Seat', `${esc(e.name)}${e.owner === null ? ' (sold)' : yours ? ` · worth ≈${money(e.value)}` : ''}`] : null,
+    e && yours ? ['Run as', `${esc(STRATEGIES[e.strategy]?.label ?? '')}${e.exemptUntil ? ` · open to the public until ${e.exemptUntil} (tax exemption)` : ''}`] : null,
+    e && !yours && e.owner === 'family' && age >= 18 ? ['Allowance', `${money(nobleAllowance(state))}/yr from the family trust`] : null,
+    e && yours ? ['Heirlooms', `${e.heirlooms} great piece${e.heirlooms === 1 ? '' : 's'} left`] : null,
+    n.patronages?.length ? ['Patron of', esc(n.patronages.join(', '))] : null,
+  ].filter(Boolean))}
+    <div class="action-grid">
+      ${age >= 18 ? button('🎯 Host a shooting party', 'nobility.shoot', { hint: 'Useful people come; once a year' }) : ''}
+      ${age >= 18 && age <= 32 ? button('💃 Do the Season', 'nobility.season', { hint: 'Balls, Ascot, Henley — matches are made' }) : ''}
+      ${age >= 21 ? button('🎗️ Become patron of a county cause', 'nobility.patron', { hint: 'Standing in the county' }) : ''}
+      ${yours && e.heirlooms ? button('🖼️ Sell an heirloom at auction', 'nobility.heirloom', { variant: 'danger', hint: 'Money now; the family won\'t forgive it' }) : ''}
+      ${yours ? button('🏚️ Sell the estate', 'nobility.sellEstate', { variant: 'danger', hint: 'Keep the title, lose the seat' }) : ''}
+    </div>
+    ${yours ? `<h4 class="sub">How the estate is run</h4><div class="toggle-row">${Object.entries(STRATEGIES).map(([id, s]) => button(s.label, 'nobility.strategy', { arg: id, variant: e.strategy === id ? 'tiny on' : 'tiny', hint: `${s.desc} · ≈${(s.yield * 100).toFixed(1)}%/yr before upkeep` })).join('')}</div>` : ''}
+    <p class="fine">A title opens doors: county society, the lieutenancy, the boards of charities and companies. ${yours ? 'The house costs a fortune to keep; the estate has to pay for it.' : 'When the title passes to you, so do the estate — and its inheritance tax.'}</p>`, { icon: '🏰', accent: 'yellow' });
 }

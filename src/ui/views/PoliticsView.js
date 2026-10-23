@@ -6,6 +6,7 @@ import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
 import { governmentCard, partyCard } from './GovernmentCard.js';
+import { officialStyle } from '../../modules/world/Styles.js';
 import { oneParty, partyHere, rankTitle, govPostRanks } from '../../modules/politics/CommunistParty.js';
 import { crownCards } from './CrownCard.js';
 import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
@@ -77,6 +78,13 @@ function partyPostsCard(state) {
     <li class="job-row"><span class="job-icon">🏛️</span><div class="job-info"><b>Deputy to ${esc(pt.congress)}</b><small>Senior cadres (city level and up) are put on the Party's list and returned unopposed</small></div></li></ul>`, { icon: '☭', accent: 'red' });
 }
 
+/** The style of address your offices give you. */
+function styleNote(state) {
+  const s = officialStyle(state);
+  if (!s) return '';
+  return `<p>${chip(`🎩 ${[s.excellency, s.prefix].filter(Boolean).join(' · ')}`, 'gold')} <small class="fine">${s.prefix ? `${esc(s.prefix)} as ${esc(s.why)}${/^former/.test(s.why ?? '') ? ', for life' : ''}.` : ''}${s.excellency ? ' "Excellency" while you serve.' : ''}</small></p>`;
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -125,7 +133,7 @@ export function politicsView(state) {
     ${partyCard(state)}
     ${governmentCard(state)}
     ${legislatureCards(state)}
-    ${card('Political History', `${history}${results}`, { icon: '🗂️' })}`;
+    ${card('Political History', `${styleNote(state)}${history}${results}`, { icon: '🗂️' })}`;
 }
 
 /** The agency heads your office appoints, and who holds each post now. */

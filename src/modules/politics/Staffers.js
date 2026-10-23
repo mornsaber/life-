@@ -14,7 +14,7 @@
  *
  * Shortlists come through `staffers.shortlist` (role) → prompt `staffers.hire`.
  */
-import { STAFF_ROLES, mySeat, BODY_DEFS, staffPlan } from './Legislature.js';
+import { STAFF_ROLES, mySeat, BODY_DEFS, staffPlan, POST_STAFF } from './Legislature.js';
 import { OFFICES } from './Offices.js';
 import { LEGISLATURES } from './NationalOffices.js';
 import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
@@ -50,7 +50,9 @@ export const BACKGROUNDS = {
 const BASE_PAY = 55000;
 
 /** An office's staff budget, in people (none for peers). */
-export const staffBudget = (seat) => (seat?.peer ? 0 : BODY_DEFS[seat?.bodyId?.split(':')[0]]?.allowance ?? 1);
+export const staffBudget = (seat) => (seat?.peer ? 0 : (BODY_DEFS[seat?.bodyId?.split(':')[0]]?.allowance ?? 1) + (POST_STAFF[seat?.post] ?? []).reduce((n, [, k]) => n + k, 0));
+/** The chief of staff, if you have one: they can run hiring for you. */
+export const chiefOf = (seat) => (seat?.staff ?? []).find((p) => p.role === 'chiefOfStaff') ?? null;
 
 function shortlist(ctx, role) {
   const { state, rng } = ctx;
@@ -80,10 +82,55 @@ function shortlist(ctx, role) {
   return undefined;
 }
 
+/** A candidate for a role, as a shortlist would offer. */
+function candidate(rng, state, role, bias = 0) {
+  const ids = Object.keys(BACKGROUNDS).filter((b) => b !== 'family');
+  const b = rng.pick(ids);
+  const B = BACKGROUNDS[b];
+  const n = randomName(rng, rng.chance(0.5) ? 'male' : 'female');
+  const skill = Math.min(99, rng.int(B.skill[0], B.skill[1]) + (B.likes === STAFF_ROLES[role]?.kind || B.likes === role ? 8 : 0) + bias);
+  return { bg: b, name: `${n.firstName} ${n.lastName}`, skill, loyalty: B.loyalty, salary: Math.round(BASE_PAY * B.pay * (0.8 + skill / 250) / 1000) * 1000 };
+}
+
+/**
+ * The chief of staff runs hiring when you let them: every open funded post is filled from their
+ * own shortlist (better hires the better the chief), and when the office shrinks — a leadership
+ * post lost — they decide who goes.
+ */
+function chiefHires(ctx) {
+  const { state, rng } = ctx;
+  const seat = mySeat(state);
+  const chief = chiefOf(seat);
+  if (!seat || !chief || !seat.delegateHiring) return;
+  const budget = staffBudget(seat);
+  // Over budget: the weakest go (never the chief).
+  while (seat.staff.length > budget) {
+    const weakest = seat.staff.filter((p) => p !== chief).sort((a, b) => a.skill - b.skill)[0];
+    if (!weakest) break;
+    seat.staff = seat.staff.filter((p) => p !== weakest);
+    ctx.log(`${chief.name}, your chief of staff, let ${weakest.name} go: the office budget shrank.`, '✂️', 'info');
+  }
+  const hired = [];
+  for (const pos of positions(seat)) {
+    for (let k = pos.filled; k < pos.max && seat.staff.length < budget; k++) {
+      const c = candidate(rng, state, pos.role, Math.round((chief.skill - 60) / 5));
+      seat.staff.push({ id: rng.id('staff_'), role: pos.role, name: c.name, skill: c.skill, bg: c.bg, loyalty: c.loyalty, salary: c.salary, years: 0, byChief: true });
+      hired.push(`${c.name} (${staffTitle(pos.role, state).toLowerCase()})`);
+    }
+  }
+  if (hired.length) ctx.log(`${chief.name}, your chief of staff, hired ${hired.length > 3 ? `${hired.length} staff, including ${hired.slice(0, 3).join(', ')}` : hired.join(', ')}.`, '🧑‍💼', 'info');
+}
+
 /** A year in your office: staff grow, leave and occasionally embarrass you. */
 function officeYear(ctx) {
   const { state, rng } = ctx;
   const seat = mySeat(state);
+  chiefHires(ctx);
+  // A smaller office (a leadership post lost): the last hired go first.
+  while (seat && !seat.delegateHiring && seat.staff.length > staffBudget(seat)) {
+    const out = seat.staff.pop();
+    ctx.log(`Your office budget shrank: ${out.name} (${staffTitle(out.role, state).toLowerCase()}) had to go.`, '✂️', 'info');
+  }
   if (!seat?.staff?.length) return;
   for (const p of [...seat.staff]) {
     p.skill = Math.min(99, (p.skill ?? 60) + rng.int(0, 3));
@@ -155,6 +202,14 @@ export const StaffersModule = {
   actions: {
     /** arg: role id — a shortlist of three candidates. */
     shortlist,
+    /** Let your chief of staff run hiring (or take it back). Filling now, then every year. */
+    delegate(ctx) {
+      const seat = mySeat(ctx.state);
+      if (!chiefOf(seat)) return ctx.toast('Hire a chief of staff first', 'warn');
+      seat.delegateHiring = !seat.delegateHiring;
+      if (seat.delegateHiring) chiefHires(ctx);
+      return ctx.log(seat.delegateHiring ? `${chiefOf(seat).name} now runs hiring for your office.` : 'You took hiring back into your own hands.', '🧑‍💼', 'info');
+    },
   },
   resolvers: {
     hire(ctx, data, optionId) {

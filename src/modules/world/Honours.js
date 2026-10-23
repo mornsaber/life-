@@ -23,6 +23,7 @@ import { REGIONS } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
 import { grantPeerage, peerAddress } from './Peerage.js';
 import { royalStyledName, sovereign, CROWNS } from './Crown.js';
+import { withOfficialStyle, officeLetters } from './Styles.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -348,7 +349,8 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? []) {
 export function postNominals(state) {
   // A monarch is sovereign of the orders, and doesn't use their letters.
   if (state.royal?.reigning) return '';
-  return state.honors.filter((h) => h.source === 'order' && h.post).map((h) => h.post).filter((x, i, a) => a.indexOf(x) === i).join(', ');
+  // Orders first, then the seat you sit in (MP, MSP, TD…).
+  return [...state.honors.filter((h) => h.source === 'order' && h.post).map((h) => h.post), officeLetters(state)].filter(Boolean).filter((x, i, a) => a.indexOf(x) === i).join(', ');
 }
 
 /** Your name with any title an honour gave you: Sir John Smith, Lord Smith, Cav. Maria Rossi. */
@@ -359,10 +361,11 @@ export function styledName(state) {
   const royal = royalStyledName(state);
   if (royal) return royal;
   if (c.peerage) return peerAddress(state);
-  if (!s?.prefix) return `${c.firstName} ${c.lastName}`;
-  if (s.prefix === 'Lord' || s.prefix === 'Baroness') return `${s.prefix} ${c.lastName}`;
-  if (s.prefix === 'The Hon.') return `The Hon. ${c.firstName} ${c.lastName}`;
-  return `${s.prefix} ${c.firstName} ${c.lastName}`;
+  const base = !s?.prefix ? `${c.firstName} ${c.lastName}`
+    : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
+      : `${s.prefix} ${c.firstName} ${c.lastName}`;
+  // Styles that come with office: the Rt Hon., the Hon., His/Her Excellency (Styles.js).
+  return withOfficialStyle(state, base);
 }
 
 /* ------------------------------------------------------------------ */

@@ -279,7 +279,7 @@ export const FederalAgencies = {
 
   setup(engine) {
     engine.bus.on('career:hired', ({ ctx, job, returning }) => {
-      if (isDiplomat(job) && !returning) postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
+      if (isDiplomat(job) && !returning && !job.political) postingPrompt(ctx, 'Welcome to the Foreign Service! Time to bid on your first tour.');
     });
   },
 
@@ -310,7 +310,7 @@ export const FederalAgencies = {
       const allowance = Math.round(job.salary * (job.posting.hardship + job.posting.danger));
       if (allowance) ctx.earn(allowance, `Post differential & danger pay — ${job.posting.city}`, { wage: true });
     }
-    if (isDiplomat(job) && (job.postingYears ?? 0) >= 3) {
+    if (isDiplomat(job) && !job.political && (job.postingYears ?? 0) >= 3) {
       postingPrompt(ctx, 'Your tour is ending. Bid on your next assignment.');
       return;
     }
