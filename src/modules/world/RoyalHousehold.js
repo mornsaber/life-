@@ -351,6 +351,23 @@ export function grantableTitle(crownId, p, rng) {
   return def.dukedoms.length ? `${female ? 'Duchess' : 'Duke'} of ${rng.pick(def.dukedoms)}` : null;
 }
 
+/** Noble titles the crown still creates, lowest first: Britain's peerage and Spain's títulos del Reino. */
+export const PEERAGE_GRANTS = {
+  GB: { ranks: [['Baron', 'Baroness'], ['Viscount', 'Viscountess'], ['Earl', 'Countess'], ['Marquess', 'Marchioness']], surname: 2, of: 'of', places: ['Ashby', 'Kendal', 'Wroxham', 'Malvern', 'Hexham', 'Alnwick', 'Tavistock', 'Lyndhurst', 'Ripon', 'Ludlow'], life: true },
+  ES: { ranks: [['Barón', 'Baronesa'], ['Vizconde', 'Vizcondesa'], ['Conde', 'Condesa'], ['Marqués', 'Marquesa'], ['Duque', 'Duquesa']], surname: 0, of: 'de', places: ['Almenara', 'Villaverde', 'Peñafiel', 'Torrelaguna', 'Aracena', 'Belmonte', 'Valdeflores'], life: false },
+};
+/** The royal family itself: they get royal titles and dukedoms, not peerages. */
+const ROYAL_KIN = ['spouse', 'child', 'grandchild', 'sibling', 'niece', 'nephew', 'mother', 'father'];
+
+/** The next title a person would get: a first peerage, or the step up from the one they hold. */
+export function nextPeerage(crownId, p) {
+  const g0 = PEERAGE_GRANTS[crownId];
+  if (!g0) return null;
+  const idx = p.peerage ? p.peerage.idx + 1 : 0;
+  if (idx >= g0.ranks.length) return null;
+  return { idx, rank: g0.ranks[idx][p.gender === 'female' ? 1 : 0] };
+}
+
 /** Who you can honour, and with what. */
 export function conferOptions(state) {
   const r = state.royal;
@@ -367,10 +384,14 @@ export function conferOptions(state) {
     if (['child', 'spouse', 'sibling', 'friend', 'bestFriend', 'mother', 'father'].includes(p.relation) && !has.includes('great')) out.push({ person: p, id: 'great', label: `🎗️ Appoint ${p.firstName} to the ${o.great[0]}` });
     if (['friend', 'bestFriend', 'coworker', 'mentor'].includes(p.relation) && !has.includes('personal')) out.push({ person: p, id: 'personal', label: `⭐ Appoint ${p.firstName} to the ${o.personal[0]}${o.knight[0] ? ` (a knighthood)` : ''}` });
     if (['friend', 'bestFriend', 'sibling', 'child'].includes(p.relation) && !has.includes('honoraryRank') && o.colonel.length) out.push({ person: p, id: 'honoraryRank', label: `🎖️ Make ${p.firstName} Honorary Colonel of ${o.colonel[0]}` });
+    // A peerage for anyone outside the royal family; a step up for a peer already made.
+    const next = !ROYAL_KIN.includes(p.relation) && !p.peerage?.life && nextPeerage(r.crownId, p);
+    if (next) out.push({ person: p, id: 'peerage', label: p.peerage ? `🎩 Raise ${p.firstName} to ${next.rank}` : `🎩 Create ${p.firstName} a hereditary ${next.rank}` });
+    if (!ROYAL_KIN.includes(p.relation) && !p.peerage && PEERAGE_GRANTS[r.crownId]?.life) out.push({ person: p, id: 'lifePeerage', label: `🏛️ Make ${p.firstName} a life peer (a seat in the Lords)` });
   }
-  // Titles and dukedoms first: they're the rarest gifts, and shouldn't fall off a long list.
-  const rank = (o) => (['dukedom', 'title'].includes(o.id) ? 0 : 1);
-  return out.sort((a, b) => rank(a) - rank(b)).slice(0, 16);
+  // Titles and dukedoms first: they're the rarest gifts.
+  const rank = (o) => (['dukedom', 'title'].includes(o.id) ? 0 : ['peerage', 'lifePeerage'].includes(o.id) ? 1 : 2);
+  return out.sort((a, b) => rank(a) - rank(b));
 }
 
 function confer(ctx, arg) {
@@ -390,7 +411,7 @@ function confer(ctx, arg) {
   }
   const [id, kind] = String(arg).split('|');
   const opt = conferOptions(state).find((x) => x.person.id === id && x.id === kind);
-  if (!opt) return;
+  if (!opt) return ctx.toast('That honour isn\'t yours to give them.', 'warn');
   bumpYearly(state, 'royalHousehold.confer');
   const p = opt.person;
   p.honours = [...(p.honours ?? []), kind];
@@ -416,6 +437,23 @@ function confer(ctx, arg) {
     return ctx.log(`You appointed ${p.firstName} to the ${o.personal[0]}${knight ? ` — now ${knight} ${p.firstName}` : ''}. The papers noticed it was a friend.`, '⭐', 'honor');
   }
   if (kind === 'honoraryRank') return ctx.log(`You made ${p.firstName} Honorary Colonel of ${o.colonel[0]}.`, '🎖️', 'honor');
+  if (kind === 'peerage' || kind === 'lifePeerage') {
+    const g0 = PEERAGE_GRANTS[r.crownId];
+    const life = kind === 'lifePeerage';
+    const next = life ? { idx: 0, rank: g0.ranks[0][p.gender === 'female' ? 1 : 0] } : nextPeerage(r.crownId, p);
+    if (!next) return undefined;
+    // Barons and viscounts take the family name in Britain; the rest a place.
+    const place = p.peerage?.place ?? rng.pick(g0.places);
+    const title = next.idx < g0.surname || life ? `${next.rank} ${p.lastName}` : `${next.rank} ${g0.of} ${place}`;
+    p.titles = [...(p.titles ?? []).filter((t) => t !== p.peerage?.title), title];
+    p.peerage = { idx: next.idx, title, place, life, seat: life || undefined };
+    p.relationship = clamp((p.relationship ?? 60) + 8, 0, 100);
+    // Ennobling your own circle is noticed.
+    if (['friend', 'bestFriend', 'partner', 'coworker'].includes(p.relation)) r.popularity = Math.max(0, r.popularity - 2);
+    return ctx.log(life
+      ? `On your sign manual ${p.firstName} ${p.lastName} was created a life peer, ${title}, and took a seat in the House of Lords.`
+      : `By letters patent you created ${p.firstName} ${p.lastName} ${title}${next.idx ? '' : ', a hereditary title that will pass to their heir'}.`, '🎩', 'honor');
+  }
   return undefined;
 }
 

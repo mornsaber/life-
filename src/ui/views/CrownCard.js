@@ -6,7 +6,7 @@ import { esc, money, button, card, meter, kv } from '../Components.js';
 import { fullName, ageOf } from '../../modules/people/People.js';
 import { styledName } from '../../modules/world/Honours.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
-import { currentYear } from '../../core/State.js';
+import { currentYear, yearlyCount } from '../../core/State.js';
 import { peerAddress, RANKS, numberedTitle, subsidiaryTitles } from '../../modules/world/Peerage.js';
 import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
@@ -14,6 +14,19 @@ import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
+
+/** The sovereign's honours: pick a person, then the honour, from one grouped list. */
+function conferForm(state) {
+  const byPerson = new Map();
+  for (const o of conferOptions(state)) {
+    if (!byPerson.has(o.person.id)) byPerson.set(o.person.id, { p: o.person, opts: [] });
+    byPerson.get(o.person.id).opts.push(o);
+  }
+  const groups = [...byPerson.values()].map(({ p, opts }) => `<optgroup label="${esc(`${fullName(p)} (${p.relation})`)}">${opts.map((o) => `<option value="${esc(`${o.person.id}|${o.id}`)}">${esc(o.label.replace(/^\S+ /, ''))}</option>`).join('')}</optgroup>`).join('');
+  const left = 3 - yearlyCount(state, 'royalHousehold.confer');
+  return `<div class="enroll-form" data-collect-root><label class="sel"><span>Honour</span><select data-part="pick"><option value="public">A deserving member of the public</option>${groups}</select></label>
+    ${button('🎗️ Confer', 'royalHousehold.confer', { variant: 'small primary', collect: true, disabled: left <= 0, hint: left > 0 ? '' : 'Next year' })}</div>`;
+}
 
 export function crownCards(state) {
   const r = state.royal;
@@ -65,8 +78,8 @@ export function crownCards(state) {
         ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
         ${state.character.age >= 18 ? button(r.reigning ? '🚪 Abdicate and renounce everything' : '🚪 Renounce your rights and titles', 'crown.renounce', { variant: 'danger', hint: 'Leave the royal family for good — titles, line, grant' }) : ''}
       </div>
-      ${r.reigning ? `<h4 class="sub">Confer honours <small class="muted">three a year · ${esc(ROYAL_ORDERS[r.crownId]?.great[0] ?? '')}, ${esc(ROYAL_ORDERS[r.crownId]?.personal[0] ?? '')}</small></h4>
-      <div class="toggle-row chips-row">${button('🎗️ Honour a deserving member of the public', 'royalHousehold.confer', { arg: 'public', variant: 'tiny' })}${conferOptions(state).map((o) => button(o.label, 'royalHousehold.confer', { arg: `${o.person.id}|${o.id}`, variant: 'tiny' })).join('')}</div>
+      ${r.reigning ? `<h4 class="sub">Confer honours <small class="muted">${Math.max(0, 3 - yearlyCount(state, 'royalHousehold.confer'))} of 3 left this year · ${esc(ROYAL_ORDERS[r.crownId]?.great[0] ?? '')}, ${esc(ROYAL_ORDERS[r.crownId]?.personal[0] ?? '')}</small></h4>
+      ${conferForm(state)}
       <p class="fine">As sovereign you give royal assent, grant mercy, dissolve parliament and, in a crisis, use the reserved powers — the decisions come to you through the year.</p>` : ''}
       <p class="fine">Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.</p>`, { icon: '👑', accent: 'yellow' }));
   }

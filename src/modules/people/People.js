@@ -51,7 +51,7 @@ export function spousalBenefit(state) {
  */
 export const fullName = (p) => {
   const all = [p.title, ...(p.titles ?? [])].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i);
-  const before = all.filter((t) => !/ of |, /.test(t) && !/^(Baron|Baroness|Viscount|Viscountess) /.test(t));
+  const before = all.filter((t) => !/ of | de |, /.test(t) && !/^(Baron|Baroness|Viscount|Viscountess) /.test(t));
   const after = all.filter((t) => !before.includes(t));
   return `${before.length ? `${before[0]} ` : ''}${p.firstName} ${p.lastName}${after.length ? `, ${after.join(', ')}` : ''}`;
 };

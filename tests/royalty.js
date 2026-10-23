@@ -267,6 +267,33 @@ const tests = {
     MODULES.find((m) => m.id === 'royalHousehold').resolvers.assent(ctx, { bill: 'a bill' }, 'refuse');
     assert.ok(state.royal.popularity < pop, 'refusing assent is a crisis');
   },
+  'the sovereign ennobles: a hereditary barony, raised to a viscountcy; a life peerage; all in one menu'() {
+    const { engine, state } = life({ countryId: 'GB', royalLevel: 'heir' }, 7);
+    state.character.age = 40;
+    state.royal.reigning = true;
+    state.world.crowns.GB.monarch = { name: state.character.firstName, gender: state.character.gender, age: 40, number: 1, you: true };
+    state.people.list.push({ id: 'f1', firstName: 'Tom', lastName: 'Archer', gender: 'male', relation: 'friend', ageOffset: 0, alive: true, relationship: 70, income: 0 });
+    state.people.list.push({ id: 'f2', firstName: 'Ann', lastName: 'Hale', gender: 'female', relation: 'coworker', ageOffset: 5, alive: true, relationship: 60, income: 0 });
+    for (let i = 0; i < 12; i++) state.people.list.push({ id: `x${i}`, firstName: `F${i}`, lastName: 'Y', gender: 'male', relation: 'friend', ageOffset: 0, alive: true, relationship: 50, income: 0 });
+    const opts = conferOptions(state);
+    assert.ok(opts.some((o) => o.person.id === 'f1' && o.id === 'peerage'));
+    assert.ok(opts.some((o) => o.person.id === 'x11'), 'nobody falls off the list');
+    const html = VIEWS.politics(state, {});
+    assert.match(html, /<select data-part="pick">/);
+    assert.match(html, /Create Tom a hereditary Baron/);
+    state.prompts = [];
+    engine.dispatch('royalHousehold.confer', 'f1|peerage');
+    const tom = state.people.list.find((p) => p.id === 'f1');
+    assert.equal(tom.peerage.title, 'Baron Archer');
+    engine.dispatch('royalHousehold.confer', 'f1|peerage');
+    assert.equal(tom.peerage.title, 'Viscount Archer');
+    assert.equal(fullName(tom), 'Tom Archer, Viscount Archer');
+    engine.dispatch('royalHousehold.confer', 'f2|lifePeerage');
+    const ann = state.people.list.find((p) => p.id === 'f2');
+    assert.ok(ann.peerage.life && ann.peerage.seat);
+    assert.equal(ann.peerage.title, 'Baroness Hale');
+    assert.match(VIEWS.politics(state, {}), /0 of 3 left/);
+  },
   'a royal can renounce everything; a reigning monarch abdicates and renounces at once'() {
     const { engine, state } = life({ difficulty: 'royal', royalLevel: 'child' }, 21);
     year(engine, state, 20);
