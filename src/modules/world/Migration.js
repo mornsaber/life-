@@ -326,6 +326,9 @@ function dualChoice(ctx) {
   const list = citizenshipsOf(state);
   const strict = list.find((c) => !IMMIGRATION[c].dualOut);
   if (!strict || list.length < 2 || state.migration?.dualChosen) return;
+  // Spain's dual-nationality treaties: Ibero-Americans (and Andorrans, Filipinos, Portuguese, Equatoguineans) keep both.
+  const SPAIN_DUAL = ['MX', 'AR', 'CO', 'PE', 'VE', 'CL', 'EC', 'GT', 'CU', 'BO', 'DO', 'HN', 'PY', 'SV', 'NI', 'CR', 'PA', 'UY', 'GQ', 'PH', 'PT', 'AD', 'BR'];
+  if (list.includes('ES') && list.every((c) => c === 'ES' || SPAIN_DUAL.includes(c))) return;
   ctx.prompt({
     type: 'migration.dual',
     icon: '🛂',

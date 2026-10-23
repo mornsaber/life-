@@ -3,7 +3,7 @@
  * combat / duty scenarios. Deployments are shared with the Reserves (a
  * mobilized reservist deploys exactly like an active-duty member).
  */
-import { battlefieldPromotion } from './Wartime.js';
+import { battlefieldPromotion, captured } from './Wartime.js';
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
 import { pcsOrders, serviceLifeTick } from './MilitaryLife.js';
@@ -523,6 +523,8 @@ function resolveCombat(ctx, data, optionId) {
   }
   awardForAction(ctx, svc, { valor, wounded, success, title });
   if (success && war) battlefieldPromotion(ctx, svc, valor);
+  // A fight that goes wrong in a war can end in capture.
+  else if (!success && war && rng.chance(clamp(option.risk * 0.12, 0.01, 0.15))) captured(ctx, svc, data.theaterName);
 
   if (wounded && state.stats.health < 25) {
     discharge(ctx, 'medical', 'Your wounds were too severe to continue serving.');

@@ -105,7 +105,13 @@ function selectiveServiceCard(state) {
 function foreignForcesCard(state) {
   const opts = foreignForcesOptions(state);
   if (!opts.length) return '';
-  const rows = opts.map((o) => o.id === 'legion'
+  const extra = {
+    spain: ['🇪🇸', 'Spain\'s armed forces (tropa extranjera)', 'Citizens of Spanish-speaking countries, 18–29: the Army or the Spanish Legion, and Spanish nationality after two years.', 'foreignForces.spain', '🇪🇸 Apply'],
+    mission: ['⛪', 'Fidei donum: a mission diocese', 'Your bishop lends you to a diocese abroad for three years.', 'foreignForces.mission', '⛪ Ask to go'],
+  };
+  const rows = opts.map((o) => extra[o.id]
+    ? `<li class="fund-row"><span>${extra[o.id][0]} <b>${extra[o.id][1]}</b> <small>${extra[o.id][2]}${o.check.ok ? '' : ` <span class="why">${esc(o.check.reason)}</span>`}</small></span>${button(extra[o.id][4], extra[o.id][3], { variant: 'tiny', disabled: !o.check.ok, hint: o.check.odds ? `~${Math.round(o.check.odds * 100)}%` : '' })}</li>`
+    : o.id === 'legion'
     ? `<li class="fund-row"><span>🎖️ <b>The French Foreign Legion</b> <small>Any nationality, 17½–39. Selection at Aubagne, a five-year contract under a new name, French nationality after three years (or at once if wounded).${o.check.ok ? '' : ` <span class="why">${esc(o.check.reason)}</span>`}</small></span>${button('🎖️ Go to Aubagne', 'foreignForces.legion', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}% taken` : '' })}</li>`
     : `<li class="fund-row"><span>🗡️ <b>Gurkha selection, Pokhara</b> <small>The British Army's Brigade of Gurkhas and the Singapore Police Gurkha Contingent (and India's Gorkha Rifles). Nepali men — and, for the British Army, women — 17½–21: the doko race, exams, interviews.${o.check.ok ? '' : ` <span class="why">${esc(o.check.reason)}</span>`}</small></span>${button('🗡️ Sit the selection', 'foreignForces.gurkha', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}%` : '' })}</li>`).join('');
   return card('Serving Another Flag', `<ul class="funds">${rows}</ul>`, { icon: '🌍' });

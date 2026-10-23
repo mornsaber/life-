@@ -170,6 +170,48 @@ function peace(ctx, svc) {
 }
 
 /* ------------------------------------------------------------------ */
+/* Missing in action, prisoner of war                                  */
+/* ------------------------------------------------------------------ */
+
+/** Overrun and taken: missing in action until the enemy reports you; held until an exchange or the peace. */
+export function captured(ctx, svc, where) {
+  const { state } = ctx;
+  if (!svc || svc.pow) return;
+  svc.pow = { since: state.character.age, where: where ?? 'the front', confirmed: false };
+  ctx.stat('stress', 25);
+  ctx.stat('happiness', -20);
+  ctx.log(`Your position was overrun${where ? ` (${where})` : ''}. You were taken prisoner. At home, your family got the telegram: missing in action.`, '⛓️', 'bad');
+  for (const p of (state.people?.list ?? []).filter((x) => x.alive !== false && ['spouse', 'mother', 'father'].includes(x.relation))) p.relationship = Math.min(100, (p.relationship ?? 50) + 5);
+}
+
+function release(ctx, svc, how) {
+  const { state } = ctx;
+  const years = state.character.age - svc.pow.since;
+  delete svc.pow;
+  ctx.emit('health:trauma', { amount: 30 + years * 10, source: 'captivity' });
+  addHonor(state, { id: `mil.pow.${state.character.age}`, source: 'military', name: 'Prisoner of War Medal', icon: '⛓️', prestige: 6, precedence: 30, citation: `Held as a prisoner of war for ${years || 'under a'} year${years === 1 ? '' : 's'}.` });
+  ctx.stat('happiness', 15);
+  ctx.log(`${how} After ${years || 'less than a'} year${years === 1 ? '' : 's'} in captivity you came home — thinner, older, and changed.`, '🕊️', 'milestone');
+}
+
+function powYear(ctx, svc, war) {
+  const { state, rng } = ctx;
+  const p = svc.pow;
+  if (!p) return;
+  ctx.stat('health', -rng.int(4, 12));
+  ctx.stat('stress', 10);
+  if (!p.confirmed) {
+    p.confirmed = true;
+    ctx.log('Through the Red Cross, the enemy confirmed you alive: your status changed from missing in action to prisoner of war. A first letter reached home.', '✉️', 'warn');
+  }
+  if (!war) return release(ctx, svc, 'With the peace, the prisoners were exchanged.');
+  if (rng.chance(0.08 + Math.max(0, state.stats.fitness - 60) / 300)) return release(ctx, svc, 'You escaped — three nights through enemy lines to a friendly patrol.');
+  if (rng.chance(0.2)) return release(ctx, svc, 'You were freed in a prisoner exchange brokered by the Red Cross.');
+  ctx.log(rng.pick(['Another year in the camp: hunger, interrogations, and the other prisoners keeping each other alive.', 'You taught the younger prisoners to count the days and keep their heads.', 'A guard let a parcel through. Letters from home, months old.']), '⛓️', 'bad');
+  return undefined;
+}
+
+/* ------------------------------------------------------------------ */
 /* The reserve after service                                           */
 /* ------------------------------------------------------------------ */
 
@@ -238,6 +280,7 @@ export const WartimeModule = {
     if (svc) {
       // A ceasefire isn't peace: wartime rules hold until a treaty ends the war (War.js deletes it).
       const war = warIn(state, svc.nation ?? 'US');
+      if (svc.pow) powYear(ctx, svc, war);
       if (war) {
         if (!svc.wartime) {
           svc.wartime = true;

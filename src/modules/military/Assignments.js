@@ -191,7 +191,7 @@ export function assignmentBoardBonus(svc) {
 export const jointFactor = (svc) => (svc.joint ? 1 : 0.5);
 
 /** True when the year should skip deployments (on a stateside tour, in college, or at the top). */
-export const keepsHome = (svc) => Boolean((svc.assignment && svc.assignment.id !== 'msg') || svc.commissioning || svc.topPost);
+export const keepsHome = (svc) => Boolean((svc.assignment && svc.assignment.id !== 'msg') || svc.commissioning || svc.topPost || svc.pow);
 
 /* ------------------------------------------------------------------ */
 /* Commissioning programs                                              */

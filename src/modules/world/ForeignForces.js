@@ -20,6 +20,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, hasFelony, randomName, setNameCountry } from '../../core/State.js';
 import { enlist } from '../military/MilitaryEngine.js';
 import { arrive, ensureMigration } from './Migration.js';
+import { postAbroad } from './Posting.js';
 import { citizenshipsOf, isCitizen } from './Countries.js';
 import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
@@ -54,6 +55,29 @@ export function gurkhaCheck(state) {
   if (state.stats.health < 50) return { ok: false, reason: 'Fails the medical' };
   return { ok: true, odds: clamp(0.03 + Math.max(0, state.stats.fitness - 55) / 90 + (state.stats.smarts - 50) / 500, 0.01, 0.4) };
 }
+
+/** Spain's armed forces take citizens of Spanish-speaking countries ("tropa extranjera"), 18–29. */
+export const IBERO = ['MX', 'AR', 'CO', 'PE', 'VE', 'CL', 'EC', 'GT', 'CU', 'BO', 'DO', 'HN', 'PY', 'SV', 'NI', 'CR', 'PA', 'UY', 'GQ'];
+export function spainCheck(state) {
+  const c = state.character;
+  if (!citizenshipsOf(state).some((x) => IBERO.includes(x))) return { ok: false, reason: 'Citizens of Spanish-speaking countries' };
+  if (isCitizen(state, 'ES')) return { ok: false, reason: 'Spaniards join directly' };
+  if (c.age < 18 || c.age > 29) return { ok: false, reason: 'Ages 18 to 29' };
+  if (state.military.service) return { ok: false, reason: 'Already serving' };
+  if (hasFelony(state)) return { ok: false, reason: 'A clean record' };
+  if (yearlyCount(state, 'foreignForces.spain')) return { ok: false, reason: 'Once a year' };
+  return { ok: true, odds: clamp(0.35 + (state.stats.fitness - 50) / 150, 0.15, 0.75) };
+}
+
+/** A Catholic priest lent to a mission diocese abroad for a few years (Fidei donum). */
+export function missionCheck(state) {
+  const job = state.career.job;
+  if (job?.professionId !== 'catholicClergy' || (job.grade ?? 0) < 3) return { ok: false, reason: 'Ordained Catholic priests' };
+  if (state.character.posting) return { ok: false, reason: 'Already abroad' };
+  if (yearlyCount(state, 'foreignForces.mission')) return { ok: false, reason: 'Once a year' };
+  return { ok: true };
+}
+const MISSIONS = [['Juba', 'South Sudan'], ['Kinshasa', 'DR Congo'], ['Manaus', 'Brazil'], ['Port Moresby', 'Papua New Guinea'], ['Lima', 'Peru'], ['Nairobi', 'Kenya'], ['Dhaka', 'Bangladesh'], ['Port-au-Prince', 'Haiti']];
 
 /* ------------------------------------------------------------------ */
 /* Joining                                                             */
@@ -147,6 +171,17 @@ function legionYear(ctx) {
   }
 }
 
+/** Ibero-American volunteers in Spain's forces can ask for Spanish nationality after two years. */
+function spainYear(ctx) {
+  const { state } = ctx;
+  const svc = state.military.service;
+  if (svc?.foreignTroop !== 'ES' || isCitizen(state, 'ES') || svc.yearsOfService - (svc.priorYears ?? 0) < 2 || svc.nationalityAsked) return;
+  svc.nationalityAsked = true;
+  state.character.citizenships = [...new Set([...citizenshipsOf(state), 'ES'])];
+  delete ensureMigration(state).residences.ES;
+  ctx.log('Two years in uniform: as an Ibero-American serving Spain, you were granted Spanish nationality (keeping your own).', '🇪🇸', 'milestone');
+}
+
 function gurkhaYear(ctx) {
   const { state } = ctx;
   const f = state.foreignForces;
@@ -208,6 +243,7 @@ export const ForeignForcesModule = {
   onAgeUp(ctx) {
     legionYear(ctx);
     gurkhaYear(ctx);
+    spainYear(ctx);
   },
   actions: {
     /** Make your way to France and join the Foreign Legion. */
@@ -223,6 +259,35 @@ export const ForeignForcesModule = {
         return ctx.log(`Three weeks at Aubagne: medicals, the Luc Léger run, psychotechnical tests, the "gestapo" interview. You weren't taken.${here(state) !== 'FR' ? ' You went home.' : ''}`, '🎖️', 'bad');
       }
       return joinLegion(ctx);
+    },
+    /** Join Spain's armed forces as a foreign volunteer (citizens of Spanish-speaking countries). */
+    spain(ctx) {
+      const { state, rng } = ctx;
+      const check = spainCheck(state);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      bumpYearly(state, 'foreignForces.spain');
+      if (here(state) !== 'ES' && !ctx.spend(900, 'Travel to Spain', { credit: true })) return ctx.toast('You can\'t afford the trip to Spain.', 'warn');
+      if (!rng.chance(check.odds)) return ctx.log('You sat the Spanish armed forces\' tests for foreign volunteers and didn\'t make the list this year.', '🇪🇸', 'bad');
+      if (state.career.job) leaveJob(ctx, 'Left to join the Spanish armed forces');
+      if (here(state) !== 'ES') arrive(ctx, 'ES', { visa: 'military', reason: 'You moved to Spain to join the armed forces as a foreign volunteer.' });
+      const legion = rng.chance(0.4);
+      if (!enlist(ctx, { branch: 'army', track: 'enlisted', component: 'active', specialty: 'infantry' })) return undefined;
+      Object.assign(state.military.service, { foreignTroop: 'ES', spanishLegion: legion, contractYearsLeft: 3 });
+      return ctx.log(legion ? 'You joined the Spanish Legion — the Tercio, "novios de la muerte" — as a foreign volunteer.' : 'You enlisted in the Spanish Army as a foreign volunteer (tropa extranjera).', '🇪🇸', 'milestone');
+    },
+    /** A priest's three years in a mission diocese. */
+    mission(ctx) {
+      const { state, rng } = ctx;
+      const check = missionCheck(state);
+      if (!check.ok) return ctx.toast(check.reason, 'warn');
+      bumpYearly(state, 'foreignForces.mission');
+      const picks = rng.shuffle([...MISSIONS]).slice(0, 3);
+      return ctx.prompt({
+        type: 'foreignForces.mission', icon: '⛪', title: 'Fidei Donum',
+        text: 'Your bishop will lend you to a diocese short of priests for three years. Where?',
+        options: [...picks.map(([p, c]) => ({ id: p, label: `⛪ ${p}, ${c}` })), { id: 'stay', label: '🏠 Stay with my parish' }],
+        data: {},
+      });
     },
     /** Sit the Gurkha selection in Pokhara. */
     gurkha(ctx) {
@@ -256,6 +321,13 @@ export const ForeignForcesModule = {
     },
   },
   resolvers: {
+    mission(ctx, data, optionId) {
+      if (optionId === 'stay') return ctx.log('You stayed with your parish.', '⛪');
+      const [place, country] = MISSIONS.find(([p]) => p === optionId) ?? MISSIONS[0];
+      postAbroad(ctx, { place, country, kind: 'mission', years: 3 });
+      ctx.stat('happiness', 6);
+      return ctx.log(`Your bishop lent you to the diocese of ${place} as a Fidei donum priest for three years: baptisms by the hundred, a parish the size of a county, and a motorbike.`, '⛪', 'milestone');
+    },
     gurkhaChoice(ctx, data, optionId) {
       if (optionId === 'no') return ctx.log('You went home to train for next year.', '🏠');
       return joinGurkhas(ctx, optionId);
@@ -286,6 +358,8 @@ export const ForeignForcesModule = {
 export function foreignForcesOptions(state) {
   const out = [];
   if (!state.military.service && state.character.gender === 'male' && state.character.age >= 17 && state.character.age <= 39) out.push({ id: 'legion', check: legionCheck(state) });
+  if (citizenshipsOf(state).some((x) => IBERO.includes(x)) && !isCitizen(state, 'ES') && state.character.age >= 18 && state.character.age <= 29 && !state.military.service) out.push({ id: 'spain', check: spainCheck(state) });
+  if (state.career.job?.professionId === 'catholicClergy') out.push({ id: 'mission', check: missionCheck(state) });
   if (isCitizen(state, 'NP') && state.character.age >= 17 && state.character.age <= 21 && !state.military.service && !state.foreignForces?.gurkha) out.push({ id: 'gurkha', check: gurkhaCheck(state) });
   return out;
 }

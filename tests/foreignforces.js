@@ -11,7 +11,9 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { COUNTRIES, isCitizen } from '../src/modules/world/Countries.js';
 import { legionCheck, gurkhaCheck } from '../src/modules/world/ForeignForces.js';
-import { rankOf, discharge } from '../src/modules/military/MilitaryEngine.js';
+import { rankOf, discharge, enlist } from '../src/modules/military/MilitaryEngine.js';
+import { declareWar } from '../src/modules/world/War.js';
+import { captured } from '../src/modules/military/Wartime.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -96,6 +98,34 @@ const tests = {
     year(engine, state, 1);
     assert.equal(state.character.countryId, 'NP', 'home at 45');
     assert.ok(state.retirement.pensions.some((p) => p.id === 'gurkhaSG'));
+  },
+  'a Mexican volunteer joins Spain\'s army and becomes Spanish after two years'() {
+    const { engine, state } = life({ countryId: 'MX' }, 9);
+    year(engine, state, 20);
+    state.stats.fitness = 80;
+    state.finances.cash = 5000;
+    state.prompts = [];
+    lucky(engine, () => engine.dispatch('foreignForces.spain'));
+    assert.equal(state.character.countryId, 'ES');
+    assert.equal(state.military.service?.foreignTroop, 'ES');
+    year(engine, state, 3);
+    if (state.military.service) assert.ok(isCitizen(state, 'ES'));
+  },
+  'captured in a war: missing in action, then a prisoner, freed at the peace'() {
+    const { engine, state, ctx } = life({}, 10);
+    year(engine, state, 20);
+    state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 });
+    state.stats.fitness = 90;
+    enlist(ctx, { branch: 'army', track: 'enlisted', component: 'active', specialty: 'infantry' });
+    const svc = state.military.service;
+    declareWar(ctx, 'US');
+    captured(ctx, svc, 'the front');
+    assert.ok(svc.pow);
+    delete state.world.wars.US;
+    state.prompts = [];
+    MODULES.find((m) => m.id === 'wartime').onAgeUp(ctx);
+    assert.ok(!svc.pow, 'released at the peace');
+    assert.ok(state.honors.some((h) => /Prisoner of War/.test(h.name)));
   },
   'only Nepali men sit the Gurkha selection'() {
     const { engine, state } = life({ countryId: 'IN' }, 8);
