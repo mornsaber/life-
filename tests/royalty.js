@@ -279,8 +279,9 @@ const tests = {
     assert.ok(opts.some((o) => o.person.id === 'f1' && o.id === 'peerage'));
     assert.ok(opts.some((o) => o.person.id === 'x11'), 'nobody falls off the list');
     const html = VIEWS.politics(state, {});
-    assert.match(html, /<select data-part="pick">/);
-    assert.match(html, /Create Tom a hereditary Baron/);
+    assert.match(html, /class="honour-row"/);
+    assert.match(html, /Tom Archer[\s\S]*?Create a hereditary Baron/);
+    assert.match(html, /Sovereign Powers/);
     state.prompts = [];
     engine.dispatch('royalHousehold.confer', 'f1|peerage');
     const tom = state.people.list.find((p) => p.id === 'f1');
@@ -293,6 +294,49 @@ const tests = {
     assert.ok(ann.peerage.life && ann.peerage.seat);
     assert.equal(ann.peerage.title, 'Baroness Hale');
     assert.match(VIEWS.politics(state, {}), /0 of 3 left/);
+  },
+  'sovereign powers: audiences build influence; a royal coup, decrees and unrest; a failed bid brings a referendum'() {
+    const { engine, state } = life({ countryId: 'GB', royalLevel: 'heir' }, 7);
+    state.character.age = 40;
+    state.royal.reigning = true;
+    state.world.crowns.GB.monarch = { name: state.character.firstName, gender: state.character.gender, age: 40, number: 1, you: true };
+    state.prompts = [];
+    const before = state.royal.influence ?? 30;
+    engine.dispatch('sovereign.openParliament');
+    engine.dispatch('sovereign.audience');
+    const q = state.prompts.find((p) => p.type === 'sovereign.audience');
+    assert.ok(q, 'the audience');
+    engine.resolvePrompt(q.id, 'encourage');
+    assert.ok(state.royal.influence > before);
+    engine.dispatch('sovereign.stateVisit');
+    engine.dispatch('sovereign.charter');
+    state.royal.popularity = 40;
+    assert.ok(!state.royal.executive);
+    const ctx = engine.context();
+    const chance = ctx.rng.chance;
+    // A coup that works.
+    state.royal.popularity = 80;
+    ctx.rng.chance = () => true;
+    engine.dispatch('sovereign.seizePower');
+    ctx.rng.chance = chance;
+    assert.ok(state.royal.executive, 'ruling');
+    assert.doesNotMatch(VIEWS.politics(state, {}), /Open Parliament/);
+    const unrest = state.royal.unrest;
+    engine.dispatch('sovereign.decree', 'crackdown');
+    assert.ok(state.royal.unrest > unrest);
+    engine.dispatch('sovereign.restoreConstitution');
+    assert.ok(!state.royal.executive);
+    // A coup that fails: the realm votes on the monarchy.
+    const t = life({ countryId: 'GB', royalLevel: 'heir' }, 8);
+    t.state.character.age = 40;
+    t.state.royal.reigning = true;
+    t.state.royal.popularity = 80;
+    t.state.prompts = [];
+    const c2 = t.engine.context();
+    c2.rng.chance = () => false;
+    t.engine.dispatch('sovereign.seizePower');
+    assert.ok(!t.state.royal.executive);
+    assert.ok(t.state.world.pendingReferendum?.GB, 'a referendum');
   },
   'a royal can renounce everything; a reigning monarch abdicates and renounces at once'() {
     const { engine, state } = life({ difficulty: 'royal', royalLevel: 'child' }, 21);

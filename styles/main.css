@@ -888,3 +888,16 @@ select:focus { border-color: var(--cyan); }
 /* Business pulse: star ratings */
 .stars { color: #d4a017; letter-spacing: 1px; white-space: nowrap; }
 .biz-tabs { margin-bottom: 8px; }
+
+/* The sovereign's honours: who, what, confer. */
+.honour-list { list-style: none; margin: 4px 0 0; padding: 0; }
+.honour-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 8px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.honour-row:last-child { border-bottom: 0; }
+.honour-row .who { grid-column: 1 / -1; min-width: 0; }
+.honour-row .who small { color: var(--muted); }
+.honour-row select { width: 100%; min-width: 0; }
+.honour-row .what { font-size: 13px; color: var(--muted); min-width: 0; }
+@media (min-width: 700px) {
+  .honour-row { grid-template-columns: minmax(0, 1.1fr) minmax(0, 1.4fr) auto; }
+  .honour-row .who { grid-column: auto; }
+}

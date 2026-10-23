@@ -2,7 +2,7 @@
  * The Crown on the Politics tab: the monarch and the heir where you live, a born royal's own
  * life (title, place in the line, popularity, duties), and a peer's title.
  */
-import { esc, money, button, card, meter, kv } from '../Components.js';
+import { esc, money, button, card, meter, kv, chip, disclosure, select } from '../Components.js';
 import { fullName, ageOf } from '../../modules/people/People.js';
 import { styledName } from '../../modules/world/Honours.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
@@ -10,22 +10,58 @@ import { currentYear, yearlyCount } from '../../core/State.js';
 import { peerAddress, RANKS, numberedTitle, subsidiaryTitles } from '../../modules/world/Peerage.js';
 import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
-import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/RoyalHousehold.js';
+import { conferOptions, militaryPosts, ROYAL_ORDERS, PEERAGE_GRANTS } from '../../modules/world/RoyalHousehold.js';
+import { DECREES, seizeCheck } from '../../modules/world/Sovereign.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 
-/** The sovereign's honours: pick a person, then the honour, from one grouped list. */
-function conferForm(state) {
+/** The sovereign's honours: one row per person, with what you can give them. */
+function honoursCard(state) {
+  const r = state.royal;
+  const o = ROYAL_ORDERS[r.crownId];
+  const left = Math.max(0, 3 - yearlyCount(state, 'royalHousehold.confer'));
   const byPerson = new Map();
-  for (const o of conferOptions(state)) {
-    if (!byPerson.has(o.person.id)) byPerson.set(o.person.id, { p: o.person, opts: [] });
-    byPerson.get(o.person.id).opts.push(o);
+  for (const x of conferOptions(state)) {
+    if (!byPerson.has(x.person.id)) byPerson.set(x.person.id, { p: x.person, opts: [] });
+    byPerson.get(x.person.id).opts.push(x);
   }
-  const groups = [...byPerson.values()].map(({ p, opts }) => `<optgroup label="${esc(`${fullName(p)} (${p.relation})`)}">${opts.map((o) => `<option value="${esc(`${o.person.id}|${o.id}`)}">${esc(o.label.replace(/^\S+ /, ''))}</option>`).join('')}</optgroup>`).join('');
-  const left = 3 - yearlyCount(state, 'royalHousehold.confer');
-  return `<div class="enroll-form" data-collect-root><label class="sel"><span>Honour</span><select data-part="pick"><option value="public">A deserving member of the public</option>${groups}</select></label>
-    ${button('🎗️ Confer', 'royalHousehold.confer', { variant: 'small primary', collect: true, disabled: left <= 0, hint: left > 0 ? '' : 'Next year' })}</div>`;
+  const row = (p, opts) => {
+    const held = [p.peerage?.title, p.dukedom, p.title && !/ of /.test(p.title) ? p.title : null].filter(Boolean).filter((t, i, a) => a.indexOf(t) === i);
+    const what = (x) => x.label.replace(/^\S+ /, '').replace(new RegExp(`\\b${p.firstName}\\b ?`), '');
+    return `<li class="honour-row" data-collect-root>
+      <span class="who"><b>${esc(`${p.firstName} ${p.lastName}`)}</b> <small>${esc(RELATION[p.relation] ?? p.relation)}${held.length ? ` · ${esc(held.join(', '))}` : ''}</small></span>
+      ${opts.length > 1 ? `<select data-part="pick" aria-label="Honour for ${esc(p.firstName)}">${opts.map((x) => `<option value="${esc(`${x.person.id}|${x.id}`)}">${esc(what(x))}</option>`).join('')}</select>` : `<input type="hidden" data-part="pick" value="${esc(`${opts[0].person.id}|${opts[0].id}`)}"><span class="what">${esc(what(opts[0]))}</span>`}
+      ${button('Confer', 'royalHousehold.confer', { variant: 'tiny', collect: true, disabled: !left })}
+    </li>`;
+  };
+  const people = [...byPerson.values()];
+  const rows = people.map(({ p, opts }) => row(p, opts));
+  const pub = `<li class="honour-row"><span class="who"><b>A deserving member of the public</b></span><span class="what">A nurse, a lifeboat coxswain, a national hero</span>${button('Confer', 'royalHousehold.confer', { arg: 'public', variant: 'tiny', disabled: !left })}</li>`;
+  return card('Honours', `<p class="muted honour-intro">${chip(`${left} of 3 left this year`, left ? 'good' : '')} Your own gifts: the ${esc(o.great[0])}, the ${esc(o.personal[0])}${PEERAGE_GRANTS[r.crownId] ? ', peerages' : ''}, titles for your family and honorary ranks.</p>
+    <ul class="honour-list">${pub}${rows.slice(0, 6).join('')}</ul>
+    ${rows.length > 6 ? disclosure('crown.honours.more', 'Everyone else', `<ul class="honour-list">${rows.slice(6).join('')}</ul>`, { count: rows.length - 6 }) : ''}`, { icon: '🎗️' });
+}
+const RELATION = { bestFriend: 'best friend', coworker: 'colleague', grandchild: 'grandchild', niece: 'niece', nephew: 'nephew' };
+
+/** Powers the sovereign uses by choice: the audience, the State Opening, state visits, charters — and, for the bold, rule. */
+function powersCard(state) {
+  const r = state.royal;
+  const used = (k) => yearlyCount(state, `sovereign.${k}`) > 0;
+  const seize = seizeCheck(state);
+  const constitutional = `<div class="action-grid">
+    ${button('🤝 Audience with the prime minister', 'sovereign.audience', { hint: used('audience') ? 'Done this year' : 'Encourage or warn', disabled: used('audience') })}
+    ${r.executive ? '' : button('🏛️ Open Parliament', 'sovereign.openParliament', { hint: used('open') ? 'Done this year' : 'Influence +4', disabled: used('open') })}
+    ${button('🌍 Host a state visit', 'sovereign.stateVisit', { hint: used('visit') ? 'Done this year' : 'Influence and popularity', disabled: used('visit') })}
+    ${button('📜 Grant a royal charter', 'sovereign.charter', { hint: used('charter') ? 'Done this year' : 'A university, a city, a society', disabled: used('charter') })}
+  </div>`;
+  const decrees = r.executive ? `<h4 class="sub">Rule by decree <small class="muted">${Math.max(0, 2 - yearlyCount(state, 'sovereign.decree'))} of 2 left this year</small></h4>
+    <div class="enroll-form" data-collect-root>${select('decree', Object.entries(DECREES).map(([id, d]) => ({ value: id, label: d.label })))}${button('Issue the decree', 'sovereign.decree', { variant: 'small primary', collect: true, disabled: yearlyCount(state, 'sovereign.decree') >= 2 })}</div>
+    <div class="action-grid">${button('🗳️ Dismiss the government', 'sovereign.dismissGovernment', { hint: 'Once a year', disabled: used('dismiss') })}${button('🏛️ Restore parliament', 'sovereign.restoreConstitution', { hint: 'Give the powers back' })}</div>
+    <p class="fine">Every decree stirs unrest. Too much, with too little popularity, and the crowds bring the monarchy down.</p>` : '';
+  const coup = r.executive ? '' : disclosure('crown.seize', '⚔️ Take real power', `<p class="fine">Suspend parliament and govern yourself. It needs popularity and influence; failing means a referendum on the monarchy.</p>
+    <div class="action-grid">${button('⚔️ Dismiss the government and rule', 'sovereign.seizePower', { variant: 'danger', disabled: !seize.ok, hint: seize.ok ? `~${Math.round(seize.odds * 100)}% the army stands by you` : seize.reason })}</div>`);
+  return card('Sovereign Powers', `${constitutional}${decrees}${coup}`, { icon: '⚖️' });
 }
 
 export function crownCards(state) {
@@ -52,36 +88,39 @@ export function crownCards(state) {
   if (r) {
     const lv = ROYAL_LEVELS[r.level];
     const working = r.working && !r.reigning;
+    const mil = militaryPosts(state);
+    const reign = r.reigning && c ? currentYear(state) - c.since : 0;
     cards.push(card(r.reigning ? 'Your Reign' : 'Royal Life', `
       ${meter(r.popularity ?? 60, { label: '📰 Popularity' })}
+      ${r.reigning ? meter(r.influence ?? 30, { label: '🤝 Influence with the government', tone: 'mid' }) : ''}
+      ${r.executive ? meter(r.unrest ?? 0, { label: '🔥 Unrest', tone: (r.unrest ?? 0) >= 50 ? 'bad' : 'mid' }) : ''}
       ${kv([
         ['Styled', esc(royalStyledName(state) ?? `${state.character.firstName} ${state.character.lastName}`)],
         // A royal dukedom is part of the royal style, not a separate peerage.
         state.character.peerage?.kind === 'royal' || state.character.style?.peerage ? ['Royal title', `${esc(state.character.style?.peerage ?? '')}${state.character.peerage?.subsidiary?.length ? ` · also ${esc(state.character.peerage.subsidiary.join(', '))}` : ''}`] : null,
-        ['Born', esc(lv?.name ?? r.level)],
-        ['Line of succession', r.reigning ? 'You reign' : r.line == null ? 'Not in the line (the succession law)' : `${r.line}${r.line === 1 ? ' — the heir' : ''}`],
-        ['Status', r.reigning ? 'Monarch' : r.working ? 'Working royal' : r.steppedBack ? 'Stepped back' : 'Private life'],
+        r.reigning ? ['Reign', `${reign} year${reign === 1 ? '' : 's'}${c && !c.crowned ? ' · not yet crowned' : ''}${r.executive ? ' · ruling by decree' : ''}`] : ['Born', esc(lv?.name ?? r.level)],
+        r.reigning ? (c?.heir ? ['Heir', esc(c.heir.name)] : null) : ['Line of succession', r.line == null ? 'Not in the line (the succession law)' : `${r.line}${r.line === 1 ? ' — the heir' : ''}`],
+        r.reigning ? null : ['Status', r.working ? 'Working royal' : r.steppedBack ? 'Stepped back' : 'Private life'],
         ['Allowance', r.reigning ? `${money(20000000)}/yr` : r.working ? `${money(r.line === 1 ? ROYAL_LEVELS.heir.allowance : lv?.allowance ?? 0)}/yr from the ${esc(def.grant)} (from 18)` : 'Family trust only'],
         r.patronages?.length ? ['Patronages', esc(r.patronages.join(', '))] : null,
-        militaryPosts(state).rank ? ['Armed forces', esc(militaryPosts(state).rank)] : null,
-        militaryPosts(state).posts.length ? ['Military appointments', esc(militaryPosts(state).posts.join(' · '))] : null,
-        r.household?.conferred ? ['Honours you have conferred', String(r.household.conferred)] : null,
+        mil.rank && !r.reigning ? ['Armed forces', esc(mil.rank)] : null,
+        r.household?.conferred ? ['Honours conferred', String(r.household.conferred)] : null,
       ].filter(Boolean))}
+      ${mil.posts.length || (mil.rank && r.reigning) ? disclosure('crown.military', '🎖️ Military appointments', `${mil.rank ? `<p class="fine">${esc(mil.rank)}</p>` : ''}<ul class="history">${mil.posts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { count: mil.posts.length }) : ''}
       <div class="action-grid">
         ${r.working || r.reigning ? button('🤝 Royal engagement', 'crown.engagement', { hint: '3 a year' }) : ''}
         ${r.working ? button('🎗️ Take a patronage', 'crown.patronage', { hint: 'One a year' }) : ''}
         ${r.working || r.reigning ? button('✈️ Royal tour', 'crown.tour', { hint: 'Senior royals' }) : ''}
-        ${working ? button('🚪 Step back from royal duties', 'crown.stepBack', { variant: 'danger', hint: 'No grant, no title in use. For good.' }) : ''}
         ${r.reigning || (r.working && r.line != null && r.line <= 4 && state.character.age >= 25) ? button('⚔️ Hold an investiture', 'royalHousehold.investiture', { hint: 'Two a year' }) : ''}
         ${r.reigning || (r.working && r.line === 1) ? button('🏷️ Grant a royal warrant', 'royalHousehold.warrant', { hint: 'One a year' }) : ''}
         ${!r.reigning && state.character.age >= 18 && state.character.age <= 30 && !state.military.service ? button('🎖️ Serve in the armed forces', 'royalHousehold.serve', { hint: 'As an officer cadet' }) : ''}
-        ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
-        ${state.character.age >= 18 ? button(r.reigning ? '🚪 Abdicate and renounce everything' : '🚪 Renounce your rights and titles', 'crown.renounce', { variant: 'danger', hint: 'Leave the royal family for good — titles, line, grant' }) : ''}
+        ${working ? button('🚪 Step back from royal duties', 'crown.stepBack', { variant: 'danger', hint: 'No grant, no title in use. For good.' }) : ''}
       </div>
-      ${r.reigning ? `<h4 class="sub">Confer honours <small class="muted">${Math.max(0, 3 - yearlyCount(state, 'royalHousehold.confer'))} of 3 left this year · ${esc(ROYAL_ORDERS[r.crownId]?.great[0] ?? '')}, ${esc(ROYAL_ORDERS[r.crownId]?.personal[0] ?? '')}</small></h4>
-      ${conferForm(state)}
-      <p class="fine">As sovereign you give royal assent, grant mercy, dissolve parliament and, in a crisis, use the reserved powers — the decisions come to you through the year.</p>` : ''}
-      <p class="fine">Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.</p>`, { icon: '👑', accent: 'yellow' }));
+      ${state.character.age >= 18 ? disclosure('crown.leave', r.reigning ? '🚪 Leave the throne' : '🚪 Leave royal life', `<div class="action-grid">
+        ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
+        ${button(r.reigning ? '🚪 Abdicate and renounce everything' : '🚪 Renounce your rights and titles', 'crown.renounce', { variant: 'danger', hint: 'Titles, line, grant — for good' })}</div>`) : ''}
+      <p class="fine">${r.reigning ? 'Assent, mercy, dissolutions and crises come to you through the year; the powers below are yours to use when you choose.' : 'Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.'}</p>`, { icon: '👑', accent: 'yellow' }));
+    if (r.reigning) cards.push(honoursCard(state), powersCard(state));
   }
   const p = state.character.peerage;
   if (p && !(r && p.kind === 'royal')) {

@@ -533,6 +533,12 @@ export const RoyalHouseholdModule = {
     assent(ctx, data, optionId) {
       const { state, rng } = ctx;
       const r = state.royal;
+      // A ruling monarch's veto is policy, not a constitutional crisis.
+      if (optionId === 'refuse' && r.executive) {
+        r.popularity = Math.max(0, r.popularity - 4);
+        r.unrest = Math.min(100, (r.unrest ?? 0) + 6);
+        return ctx.log(`You vetoed ${data.bill}. It's within your powers now; the opposition calls it tyranny.`, '⚖️', 'warn');
+      }
       if (optionId === 'refuse') {
         r.popularity = Math.max(0, r.popularity - 20);
         state.world.crises = [...(state.world.crises ?? []).slice(-5), { year: currentYear(state), cc: r.crownId, id: 'assent', choice: 'refuse', you: true }];
