@@ -11,7 +11,7 @@ import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.
 import { conferOptions, militaryPosts, ROYAL_ORDERS } from '../../modules/world/RoyalHousehold.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
-import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName } from '../../modules/world/Houses.js';
+import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 
 export function crownCards(state) {
   const r = state.royal;
@@ -103,6 +103,7 @@ function houseCard(state) {
     state.world?.restored?.[h.cc] ? ['Throne', `Restored in ${state.world.restored[h.cc].year}`] : ['Monarchists', `${monarchistSupport(state, h.cc)}% in ${esc(h.cc)} (a referendum needs about 35% to be forced)`],
     def ? ['The law', esc(def.legal)] : null,
     h.conferred ? ['Orders conferred', String(h.conferred)] : null,
+    h.banned ? ['Exile', `Banned from ${esc(h.cc)} until ${h.banned}`] : null,
   ].filter(Boolean) : local ? [
     ['Former ruling house', `The House of ${esc(local.name)} (the throne fell in ${local.fell})`],
     ['Monarchists', `${monarchistSupport(state, cc)}%`],
@@ -110,7 +111,8 @@ function houseCard(state) {
   return card(h ? `The House of ${esc(h.name)}` : 'The Monarchy Question', `${kv(rows)}
     <div class="action-grid">
       ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
-      ${h?.rank === 'head' ? button('⚜️ Confer the house order', 'houses.confer', { hint: 'On a loyal supporter; once a year' }) : ''}
+      ${h?.rank === 'head' ? button('⚜️ Confer the house order', 'houses.confer', { hint: 'On a loyal supporter; twice a year' }) : ''}
+      ${h?.rank === 'head' ? houseConferOptions(state).map((p) => button(`⚜️ Invest ${esc(p.firstName)}`, 'houses.confer', { arg: p.id, variant: 'tiny' })).join('') : ''}
       ${local && leader ? button('🗳️ Call a referendum on restoring the monarchy', 'houses.callRestoration', { hint: `Support ~${Math.round(monarchistSupport(state, cc))}%` }) : ''}
       ${crownOf(state, cc) && leader ? button('🏛️ Call a referendum on a republic', 'houses.callRepublic', { variant: 'danger', hint: 'Abolish the monarchy' }) : ''}
       ${constantinian ? button('⚜️ Seek admission to the Constantinian Order', 'houses.constantinian', { hint: nobleBorn(state) ? 'Justice class, on proofs of nobility' : 'Merit class' }) : ''}

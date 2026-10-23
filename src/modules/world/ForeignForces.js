@@ -47,7 +47,6 @@ export function legionCheck(state) {
 export function gurkhaCheck(state) {
   const c = state.character;
   if (!isCitizen(state, 'NP')) return { ok: false, reason: 'Nepali citizens only' };
-  if (c.gender !== 'male') return { ok: false, reason: 'Men only' };
   if (c.age < 17 || c.age > 21) return { ok: false, reason: 'Candidates are 17½ to 21' };
   if (state.military.service || ff(state).gurkha) return { ok: false, reason: 'Already serving' };
   if (here(state) !== 'NP') return { ok: false, reason: 'Selection is held in Pokhara' };
@@ -114,6 +113,13 @@ function legionYear(ctx) {
   const l = state.foreignForces?.legion;
   if (!svc?.legion || !l) return;
   const years = state.character.age - l.since;
+  // Married under a declared identity: the Legion doesn't recognise it, and a legionnaire needs permission.
+  if (l.declared && !l.marriageNoted && (state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse')) {
+    l.marriageNoted = true;
+    svc.disciplinary = (svc.disciplinary ?? 0) + 1;
+    svc.eval = Math.max(0, (svc.eval ?? 60) - 10);
+    ctx.log('You married without the Legion\'s permission, under a name that isn\'t yours. The marriage isn\'t recognised on your papers, and your captain gave you thirty days\' arrest.', '⛓️', 'bad');
+  }
   // Wounded in battle: French by the blood shed.
   if ((svc.wounds ?? 0) > 0 && !l.citizen && !isCitizen(state, 'FR')) {
     l.citizen = 'sang';
@@ -172,11 +178,21 @@ function separated(ctx, svc, type) {
       ctx.log('Your service earned you a ten-year carte de résident: France is yours to stay in.', '🪪', 'good');
     }
   }
+  // The service record says where you served, and what it earned.
+  const h = state.military.history.at(-1);
+  if (h && svc.gurkha) h.gurkha = svc.gurkha;
+  if (h && svc.legion) h.legion = true;
   if (svc.gurkha === 'GB') {
     f.gurkha = null;
+    // The Armed Forces Pension Scheme: an immediate pension from 18 years (Gurkhas' long engagements), preserved otherwise.
+    if (years >= 18 && ['honorable', 'retired', 'medical'].includes(type) && !state.retirement.pensions.some((p) => p.id === 'gurkhaGB')) {
+      ctx.emit('retirement:addPension', { pension: { id: 'gurkhaGB', label: 'Gurkha pension (Armed Forces Pension Scheme)', annual: Math.round(Math.max(6000, years * 650)), startAge: state.character.age, source: 'military', cola: 0.02 } });
+      if (h) h.gurkhaPension = true;
+    }
     const res = state.migration?.residences?.GB;
     if (res && !isCitizen(state, 'GB') && years >= 4 && ['honorable', 'retired', 'medical'].includes(type)) {
       Object.assign(res, { status: 'permanent', permanentSince: state.character.age, visa: 'settlement', qualifyingSince: res.qualifyingSince ?? state.character.age });
+      if (h) h.settlement = true;
       ctx.log('As a former Gurkha with four years\' service, you were granted settlement (indefinite leave to remain) in Britain.', '🪪', 'good');
     }
   }
@@ -220,14 +236,15 @@ export const ForeignForcesModule = {
         return ctx.prompt({
           type: 'foreignForces.gurkhaChoice', icon: '🗡️', title: 'Selected',
           text: 'You finished the doko race with minutes to spare and came through the exams and interviews: one of a few hundred chosen from thousands. The top recruits choose their service.',
+          // Britain opened Gurkha selection to women; Singapore's Contingent and India's Gorkha Rifles take men.
           options: [
             { id: 'GB', label: '🇬🇧 The British Army — Brigade of Gurkhas', hint: 'Settle in Britain after four years' },
-            { id: 'SG', label: '🇸🇬 The Singapore Police Gurkha Contingent', hint: 'Service to 45, then home' },
+            ...(state.character.gender === 'female' ? [] : [{ id: 'SG', label: '🇸🇬 The Singapore Police Gurkha Contingent', hint: 'Service to 45, then home' }]),
           ],
           data: {},
         });
       }
-      if (rng.chance(0.35)) {
+      if (state.character.gender !== 'female' && rng.chance(0.35)) {
         return ctx.prompt({
           type: 'foreignForces.gurkhaChoice', icon: '🗡️', title: 'The Gorkha Rifles',
           text: 'The British selection didn\'t take you, but the Indian Army\'s Gorkha Rifles will.',
@@ -269,6 +286,6 @@ export const ForeignForcesModule = {
 export function foreignForcesOptions(state) {
   const out = [];
   if (!state.military.service && state.character.gender === 'male' && state.character.age >= 17 && state.character.age <= 39) out.push({ id: 'legion', check: legionCheck(state) });
-  if (isCitizen(state, 'NP') && state.character.gender === 'male' && state.character.age >= 17 && state.character.age <= 21 && !state.military.service && !state.foreignForces?.gurkha) out.push({ id: 'gurkha', check: gurkhaCheck(state) });
+  if (isCitizen(state, 'NP') && state.character.age >= 17 && state.character.age <= 21 && !state.military.service && !state.foreignForces?.gurkha) out.push({ id: 'gurkha', check: gurkhaCheck(state) });
   return out;
 }

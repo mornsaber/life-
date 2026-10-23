@@ -10,7 +10,7 @@ export const FOREIGN_FORCE_PROFESSIONS = {
     id: 'gurkhaContingent', name: 'Singapore Police Force — Gurkha Contingent', icon: '🗡️', sector: 'private', payMultiplier: 0.75, background: 'strict', minAge: 18, layoffRate: 0,
     sizes: { enterprise: 1 }, union: null,
     employers: ['Gurkha Contingent, Mount Vernon Camp'],
-    eligible: (state) => (state.foreignForces?.gurkha === 'SG' ? { ok: true } : { ok: false, reason: 'Selected at the Gurkha recruitment in Pokhara (Nepali men only)' }),
+    eligible: (state) => (state.foreignForces?.gurkha === 'SG' ? { ok: true } : { ok: false, reason: 'Selected at the Gurkha recruitment in Pokhara (Nepali men)' }),
     levels: [
       L('constable', 'Police Constable', 2, { years: 3 }),
       L('corporal', 'Corporal', 3),

@@ -24,6 +24,7 @@ import { CROWNS, ensureCrown, crownOf, monarchName } from './Crown.js';
 import { OFFICES } from '../politics/Offices.js';
 import { COUNTRIES } from './Countries.js';
 import { living } from '../people/People.js';
+import { arrive } from './Migration.js';
 
 export const FORMER_HOUSES = {
   DE: { name: 'Hohenzollern', surname: 'von Preußen', head: ['Prince of Prussia', 'Princess of Prussia'], style: ['Prince', 'Princess'], fell: 1918, how: 'the November Revolution', order: 'Order of the Black Eagle', support: 4, legal: 'Since 1919 a noble title is only part of the surname ("Prinz von Preußen").' },
@@ -231,6 +232,16 @@ function monarchistYear(ctx) {
     const base = FORMER_HOUSES[cc].support;
     w[cc] = Math.round(clamp((w[cc] ?? base) + (base - (w[cc] ?? base)) * 0.08 + rng.float(-1, 1), 0, 80) * 10) / 10;
   }
+  // A government alarmed by the cause can ban the house's men from the country (Italy kept the Savoys out until 2002).
+  const h = houseOf(state);
+  if (h?.banned && state.character.age >= h.banned) {
+    h.banned = null;
+    ctx.log(`The exile law was repealed: the House of ${h.name} may come home.`, '🕊️', 'good');
+  } else if (h && h.rank !== 'cadet' && !h.banned && FORMER_HOUSES[h.cc] && !state.world.restored?.[h.cc] && monarchistSupport(state, h.cc) >= 20 && rng.chance(0.04)) {
+    h.banned = state.character.age + 10;
+    ctx.log(`Alarmed by the monarchist revival, parliament passed a law banning the head of the House of ${h.name} and their heirs from ${h.cc} for ten years.`, '🚫', 'bad');
+    if (state.character.countryId === h.cc) arrive(ctx, 'CH', { visa: 'resident', reason: 'You went into exile in Switzerland, like many dethroned houses before you.' });
+  }
   const cc = state.character.countryId;
   if (FORMER_HOUSES[cc] && !state.world.restored?.[cc] && monarchistSupport(state, cc) >= RESTORE_THRESHOLD && rng.chance(0.15)) {
     if (state.character.age >= 18) referendumPrompt(ctx, cc, 'restore');
@@ -266,24 +277,38 @@ export const HousesModule = {
       const { state, rng } = ctx;
       const h = houseOf(state);
       if (!h || h.rank === 'cadet' || state.world.restored?.[h.cc] || state.character.age < 18) return ctx.toast('The head of the house (or the heir) leads the cause.', 'warn');
+      if (h.banned) return ctx.toast(`The house is banned from ${h.cc} until ${h.banned}.`, 'warn');
       if (yearlyCount(state, 'houses.campaign')) return ctx.toast('Once a year', 'warn');
       if (!ctx.spend(25000, 'Monarchist campaign', { credit: true })) return ctx.toast('The campaign needs $25,000.', 'warn');
       bumpYearly(state, 'houses.campaign');
       h.campaigns = (h.campaigns ?? 0) + 1;
       const w = (state.world.monarchists ??= {});
+      ctx.stat('stress', 4);
+      // Rallies can backfire: a gaffe, a brawl, an embarrassing guest.
+      if (rng.chance(0.15)) {
+        w[h.cc] = Math.round(clamp(monarchistSupport(state, h.cc) - rng.float(1, 4), 0, 80) * 10) / 10;
+        ctx.stat('happiness', -5);
+        return ctx.log(rng.pick(['A rally turned into a brawl with counter-protesters; the papers blamed you.', 'A supporter on your platform turned out to have extremist ties. The scandal ran for weeks.', 'Your speech was mocked as out of touch: "a pretender to the twentieth century".']) + ` Support for a restoration fell to ${w[h.cc]}%.`, '📣', 'bad');
+      }
       const gain = rng.float(0.5, 3) + Math.max(0, (state.stats.looks - 60) / 40);
       w[h.cc] = Math.round(clamp(monarchistSupport(state, h.cc) + gain, 0, 80) * 10) / 10;
-      ctx.stat('stress', 4);
       return ctx.log(`You toured the provinces for the monarchist cause. Support for a restoration: ${w[h.cc]}%.`, '📣', 'good');
     },
     /** Confer the house's dynastic order on a supporter. */
-    confer(ctx) {
+    confer(ctx, personId) {
       const { state } = ctx;
       const h = houseOf(state);
       if (h?.rank !== 'head') return ctx.toast('Only the head of the house confers its orders.', 'warn');
-      if (yearlyCount(state, 'houses.confer')) return ctx.toast('Once a year', 'warn');
+      if (yearlyCount(state, 'houses.confer') >= 2) return ctx.toast('Twice a year', 'warn');
       bumpYearly(state, 'houses.confer');
       h.conferred = (h.conferred ?? 0) + 1;
+      const order = FORMER_HOUSES[h.cc]?.order ?? `Order of the House of ${h.name}`;
+      const p = personId ? houseConferOptions(state).find((x) => x.id === personId) : null;
+      if (p) {
+        p.houseOrder = order;
+        p.relationship = Math.min(100, (p.relationship ?? 50) + 8);
+        return ctx.log(`You invested ${p.firstName} ${p.lastName} in the ${order}.`, '⚜️', 'good');
+      }
       (state.world.monarchists ??= {})[h.cc] = Math.min(80, monarchistSupport(state, h.cc) + 0.5);
       return ctx.log(`You invested a loyal supporter in the ${FORMER_HOUSES[h.cc]?.order ?? `order of the House of ${h.name}`}. They will hear no word against you.`, '⚜️', 'good');
     },
@@ -334,6 +359,9 @@ export const HousesModule = {
     },
   },
 };
+
+/** Family and friends the head of a house can invest in its order. */
+export const houseConferOptions = (state) => living(state).filter((p) => !p.houseOrder && ['spouse', 'child', 'sibling', 'friend', 'bestFriend', 'mother', 'father', 'mentor'].includes(p.relation)).slice(0, 10);
 
 /** Living members of the family who carry the house's style. */
 export const houseFamily = (state) => living(state).filter((p) => ['father', 'mother', 'sibling', 'child'].includes(p.relation) && p.title);

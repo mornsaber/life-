@@ -40,6 +40,7 @@ import { living } from '../people/People.js';
 import { eminence } from './Honours.js';
 import { orgOf } from '../org/Organizations.js';
 import { seatsAt } from '../org/Vacancies.js';
+import { REGIONS } from '../life/Regions.js';
 
 const ROTATION_YEARS = 4;
 const isIntl = (job) => Boolean(job && INTL_ORG_PROFESSIONS[job.professionId]);
@@ -336,6 +337,9 @@ export const IntlOrgsModule = {
       const share = job.professionId === 'euInstitutions' ? 0.82 : usTaxed ? 0 : 1;
       if (share) for (const i of state.finances.ledger.income) if (/^(Salary|Annual bonus) — /.test(i.source) && i.source.endsWith(job.title) && !i.taxFree) i.taxFree = Math.round(i.amount * share);
       const p = postingOf(state);
+      // Post adjustment: expensive duty stations (Geneva, New York) pay a cost-of-living supplement.
+      const col = p?.kind === 'intl' ? REGIONS[p.regionId]?.col ?? 1 : 1;
+      if (col > 1.15 && job.salary) ctx.earn(Math.round(job.salary * Math.min(0.5, (col - 1) * 0.5)), `Post adjustment — ${p.place}`, { wage: true });
       if (p?.kind === 'intl' && HARDSHIP.includes(p.place)) {
         ctx.earn(15000, 'Danger pay and hardship allowance', { wage: true });
         if (rng.chance(0.03)) {

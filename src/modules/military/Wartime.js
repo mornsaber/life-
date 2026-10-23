@@ -70,6 +70,15 @@ export const LIABILITY = {
   PL: { age: { enlisted: 55, officer: 63 }, retirees: true, name: 'passive reserve' },
 };
 
+/** What the reserve obligation will be when you leave: "Individual Ready Reserve until 26". */
+export function reserveAfter(svc) {
+  const rule = LIABILITY[svc.nation ?? 'US'];
+  if (!rule || svc.fiveStar) return null;
+  const track = svc.track === 'enlisted' ? 'enlisted' : 'officer';
+  const until = rule.age ? `until ${rule.age[track]}` : rule.from === 'joined' ? `until ${svc.joinedAge - (svc.priorYears ?? 0) + rule.years}` : `for ${rule.years} years`;
+  return `${rule.name} ${until}${rule.retirees ? ' (retirees too)' : ''}`;
+}
+
 /* ------------------------------------------------------------------ */
 /* In a war                                                            */
 /* ------------------------------------------------------------------ */
@@ -227,14 +236,17 @@ export const WartimeModule = {
     const { state } = ctx;
     const svc = state.military.service;
     if (svc) {
-      const war = warFor(state, svc);
+      // A ceasefire isn't peace: wartime rules hold until a treaty ends the war (War.js deletes it).
+      const war = warIn(state, svc.nation ?? 'US');
       if (war) {
         if (!svc.wartime) {
           svc.wartime = true;
           if (svc.joinedAge >= war.startAge - 1 && (svc.yearsOfService - (svc.priorYears ?? 0)) <= war.years + 1) svc.warEnlisted = true;
         }
-        actingYear(ctx, svc);
-        fiveStarYear(ctx, svc, war);
+        if (war.phase !== 'ceasefire') {
+          actingYear(ctx, svc);
+          fiveStarYear(ctx, svc, war);
+        }
       } else if (svc.wartime) {
         svc.wartime = false;
         peace(ctx, svc);

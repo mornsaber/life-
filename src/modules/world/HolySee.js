@@ -264,6 +264,18 @@ export const HolySeeModule = {
   id: 'holySee',
   order: 61,
   init(state) { holySeeOf(state); },
+  setup(engine) {
+    // A pope reigns until death: the bells toll, the see falls vacant, the cardinals meet.
+    engine.bus.on('life:ended', ({ ctx }) => {
+      const { state } = ctx;
+      if (!state.holySee?.pope) return;
+      const name = state.holySee.pope.name;
+      state.holySee.diedPope = name;
+      state.holySee.pope = null;
+      holySeeOf(state).pope.you = false;
+      electNpc(ctx, `Pope ${name} died. The Camerlengo confirmed the death, the Fisherman's Ring was broken, and you lay in state in St Peter's while the cardinals gathered.`);
+    });
+  },
   onAgeUp(engineCtx) {
     // A side stream, so the world's church affairs don't reshuffle every other roll in the life.
     const { state } = engineCtx;
