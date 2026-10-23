@@ -11,6 +11,7 @@
  *   disciplinary, deployedThisYear, deploymentRequested, joinedAge, isNew
  * }
  */
+import { fiveStarTitle } from './Wartime.js';
 import { releaseUnit } from '../org/MilitaryUnits.js';
 import { MOS_PIPELINE, sofRecord } from './SpecialOpsCatalog.js';
 import { belowZone, boardScore } from './MilitaryLife.js';
@@ -207,7 +208,9 @@ export function rankOf(svc) {
   const titles = rankTitles(svc);
   // NATO rank codes (OR-/OF-) for other forces; US pay grades at home.
   const prefix = svc.nation ? (svc.track === 'enlisted' ? 'OR' : 'OF') : svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E';
-  return { code: `${prefix}-${svc.grade + 1}`, title: titles[svc.grade], grade: svc.grade, max: titles.length - 1 };
+  // Five stars (Wartime.js) sit above the table; an acting rank says so.
+  if (svc.fiveStar) return { code: `${prefix}-${svc.grade + 2}`, title: fiveStarTitle(svc), grade: svc.grade, max: titles.length - 1 };
+  return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${titles[svc.grade]}`, grade: svc.grade, max: titles.length - 1 };
 }
 
 export function specialtyName(svc) {
@@ -292,7 +295,9 @@ export function annualActivePay(svc) {
 
 export function timeInGradeRequired(svc) {
   const years = TIME_IN_GRADE[svc.track][svc.grade];
-  return svc.component === 'reserve' ? Math.ceil(years * 1.25) : years;
+  // In a war (Wartime.js) promotions come twice as fast.
+  const war = svc.wartime ? 0.5 : 1;
+  return Math.max(1, Math.ceil((svc.component === 'reserve' ? years * 1.25 : years) * war));
 }
 
 /* ------------------------------------------------------------------ */
@@ -590,12 +595,15 @@ export function tryPromotion(ctx, svc) {
     ctx.log(`The promotion board passed you over for ${rankTitles(svc)[svc.grade + 1]}.${flagBoard && svc.flagPassovers >= FLAG_LOOKS ? ' You will not be considered again.' : ''}`, '📋', 'warn');
     return false;
   }
-  svc.grade += 1;
+  // A promotion over an acting rank makes it substantive; a wartime one may not outlast the peace.
+  if (svc.acting) delete svc.acting;
+  else svc.grade += 1;
+  if (svc.wartime) svc.warPromotions = (svc.warPromotions ?? 0) + 1;
   svc.yearsInGrade = 0;
   svc.flagPassovers = 0;
   svc.passovers = 0;
   const rank = rankOf(svc);
-  ctx.log(`Promoted to ${rank.title} (${rank.code})!`, '⬆️', 'good');
+  ctx.log(`Promoted to ${rank.title} (${rank.code})${svc.wartime ? ' — wartime promotions come fast' : ''}!`, '⬆️', 'good');
   ctx.toast(`Promoted: ${rank.title}`, 'good');
   ctx.stat('happiness', 8);
   return true;

@@ -10,7 +10,8 @@ import { isOnActiveDuty, dependant } from '../../core/State.js';
 
 /** Parents (or a guardian) alive to keep a dependant. */
 const familySupports = (state) => (state.people?.list ?? []).some((p) => p.alive !== false && ['mother', 'father', 'guardian'].includes(p.relation)) || Boolean(state.royal);
-import { regionOf, stateIdOf } from './Regions.js';
+import { regionOf, stateIdOf, REGIONS } from './Regions.js';
+import { postedHousing, postingOf } from '../world/Posting.js';
 import { stateIncomeTax, STATES } from './States.js';
 import { lawValue } from '../politics/Laws.js';
 import { ltcgTax } from '../investing/Assets.js';
@@ -50,7 +51,8 @@ export function hasHousingBenefit(state) {
   const job = state.career.job;
   // Asylum seekers live in reception housing while their claim is pending.
   const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
-  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment);
+  return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment
+    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */
@@ -147,7 +149,9 @@ export const Finances = {
     let living = 0;
     let insurance = 0;
     if (age >= 18 && !state.legal.incarceration) {
-      const region = regionOf(state);
+      // Prices where you actually live: a duty station abroad, or home.
+      const postedRegion = postedHousing(state) ? REGIONS[postingOf(state).regionId] : null;
+      const region = postedRegion?.col && STATES[postedRegion.state] ? postedRegion : regionOf(state);
       if (isOnActiveDuty(state)) living = 3000 + Math.round(gross * 0.1);
       // Overseas volunteers live with a host family on an in-country allowance, with medical care provided.
       else if (state.service?.program?.id === 'peaceCorps') living = 0;
@@ -176,6 +180,8 @@ export const Finances = {
         const lifestyle = (LIVING_FLOOR * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
         // Spending flexes down when money is tight, but never below the bare minimum.
         living = Math.round(Math.max(minimum * knob(state, 'costOfLiving'), Math.min(lifestyle * knob(state, 'costOfLiving'), discretionary * 0.92)));
+        // A compound at a field post: housed and fed, with little to spend money on.
+        if (postedHousing(state) === 'provided' && postedRegion) living = Math.round(living * 0.6);
       }
       insurance = state.service?.program?.id === 'peaceCorps' ? 0 : healthPremium(state, ordinary);
     }

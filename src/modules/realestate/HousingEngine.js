@@ -18,6 +18,7 @@ import { isOnActiveDuty, yearlyCount, bumpYearly, canAfford } from '../../core/S
 import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
+import { postedHousing } from '../world/Posting.js';
 import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick, isResidential, isLand } from './PropertyMarket.js';
 import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan, closingRate } from './MortgageSystem.js';
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
@@ -254,6 +255,45 @@ export const HousingEngine = {
       if (!isOnActiveDuty(state) && !hasHousingBenefit(state) && !primaryHome(state) && state.character.age >= 18 && (voluntary || !state.housing.withParents)) startRental(ctx, tier, { auto: true });
       generateListings(ctx);
     });
+    // An international posting: the lease at home goes, a house you own is let (or kept, or sold),
+    // and at the duty station you rent locally — or the organisation houses you.
+    bus.on('housing:posted', ({ ctx, regionId }) => {
+      const { state } = ctx;
+      const h = state.housing;
+      if (h.rental) endLease(ctx, h.rental.posted ? null : 'You gave up your lease at home for the posting.', { fee: !h.rental.posted });
+      h.withParents = false;
+      const home = h.properties.find((p) => p.use === 'primary');
+      if (home && !state.prompts.some((p) => p.type === 'housing.postedHome')) {
+        ctx.prompt({
+          type: 'housing.postedHome', icon: '🏠', title: 'Your Home While You\'re Posted',
+          text: `You'll be living abroad for years. What happens to your ${home.typeName.toLowerCase()} in ${REGIONS[home.regionId]?.name ?? 'your home town'}?`,
+          options: [{ id: 'rent', label: '🔑 Let it, through a property manager', hint: 'Rent comes in; it\'s yours to come back to' }, { id: 'vacant', label: '🚪 Keep it empty', hint: 'Pay the carrying costs' }, { id: 'sell', label: '💰 Sell it' }],
+          data: { propertyId: home.id },
+        });
+      }
+      if (state.character.age < 18 || postedHousing(state) !== 'local' || !REGIONS[regionId]) {
+        if (postedHousing(state) === 'provided') ctx.log('The organisation houses you at the duty station: no rent to pay.', '🏠', 'info');
+        return;
+      }
+      const rent = tierRent(state, 'apartment', regionId);
+      ctx.spend(rent * 2, 'Security deposit + first month', { allowDebt: true });
+      h.rental = { tier: 'apartment', rent, leaseYearsLeft: 1, regionId, posted: true, subsidyUntil: state.character.age + 3 };
+      h.homelessYears = 0;
+      ctx.log(`You rented an apartment in ${REGIONS[regionId].name} for $${rent.toLocaleString()}/mo. The organisation's rental subsidy covers 40% for your first three years.`, '🏢');
+    });
+    // Home again: the duty-station lease ends; you move back into your own house, or find a place.
+    bus.on('housing:postingEnded', ({ ctx }) => {
+      const { state } = ctx;
+      const h = state.housing;
+      if (h.rental?.posted) endLease(ctx, null, { fee: false });
+      const home = h.properties.find((p) => p.id === h.postedHomeId);
+      delete h.postedHomeId;
+      if (home && home.regionId === state.character.regionId && home.use !== 'primary') {
+        home.use = 'primary';
+        return ctx.log(`You moved back into your ${home.typeName.toLowerCase()}.`, '🏠', 'info');
+      }
+      if (state.character.age >= 18 && !h.rental && !primaryHome(state) && !hasHousingBenefit(state) && !isOnActiveDuty(state)) startRental(ctx, 'apartment', { auto: true });
+    });
     bus.on('legal:incarcerated', ({ ctx }) => {
       endLease(ctx, 'Your landlord terminated your lease while you were incarcerated.', { fee: false });
       ctx.state.housing.withParents = false;
@@ -280,9 +320,11 @@ export const HousingEngine = {
     // Rent
     if (h.rental && status === 'renting') {
       if (RENT_TIERS[h.rental.tier].subsidized) h.rental.rent = tierRent(state, 'subsidized', state.character.regionId);
-      const annual = h.rental.rent * 12;
+      // An international organisation's rental subsidy, for a newcomer's first years at a duty station.
+      const subsidised = h.rental.posted && age < (h.rental.subsidyUntil ?? 0);
+      const annual = Math.round(h.rental.rent * 12 * (subsidised ? 0.6 : 1));
       if (canCover(state, annual)) {
-        ctx.spend(annual, 'Rent', { allowDebt: true });
+        ctx.spend(annual, subsidised ? 'Rent (after the rental subsidy)' : 'Rent', { allowDebt: true });
         h.credit.onTime += 1;
         h.rental.leaseYearsLeft = 1;
         // Renewals track the local market (in today's dollars), with a little landlord drift.
@@ -457,6 +499,16 @@ export const HousingEngine = {
   },
 
   resolvers: {
+    postedHome(ctx, data, optionId) {
+      const { state } = ctx;
+      const home = state.housing.properties.find((p) => p.id === data.propertyId);
+      if (!home) return;
+      if (optionId === 'sell') return sellProperty(ctx, home, { forced: true });
+      home.use = optionId === 'rent' ? 'rental' : 'vacant';
+      if (optionId === 'rent') state.housing.manager = true;
+      state.housing.postedHomeId = home.id;
+      ctx.log(optionId === 'rent' ? `A property manager will let your ${home.typeName.toLowerCase()} while you're away.` : `Your ${home.typeName.toLowerCase()} will wait for you, empty.`, '🔑');
+    },
     distress(ctx, data, optionId) {
       const property = ctx.state.housing.properties.find((p) => p.id === data.propertyId);
       if (!property?.mortgage) return;

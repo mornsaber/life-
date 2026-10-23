@@ -58,15 +58,16 @@ function uniLabel(state, u) {
   return `${flag}${STARS[u.prestige ?? 0] ? `${STARS[u.prestige]} ` : ''}${u.name}${u.region ? ` (${placeOf(u)})` : ' (online)'}${movesYou(state, u) ? ' 🚚' : ''}`;
 }
 
-/** Applications waiting on a decision. */
+/** This year's applications: offers to take up (or held), and the rejections. */
 function applicationsCard(state) {
   const apps = state.education.applications ?? [];
   if (!apps.length) return '';
   const rows = apps.map((a, i) => {
     const u = universityOf(a.universityId);
-    return `<li class="fund-row"><span>✉️ <b>${esc(u?.name ?? a.universityId)}</b> <small>${esc(degreeLabel({ programId: a.programId, major: a.major, type: PROGRAMS[a.programId].type }))} · ${Math.round(admissionChance(state, a.programId, a.universityId) * 100)}% odds</small></span>${button('Withdraw', 'education.withdrawApplication', { arg: String(i), variant: 'tiny ghost' })}</li>`;
+    const status = a.accepted ? '✅ accepted — you start when you finish where you are' : a.result === 'offer' ? '📬 offer' : a.result === 'rejected' ? '📭 rejected' : a.result === 'declined' ? 'declined' : `${Math.round(admissionChance(state, a.programId, a.universityId) * 100)}% odds`;
+    return `<li class="fund-row"><span>✉️ <b>${esc(u?.name ?? a.universityId)}</b> <small>${esc(degreeLabel({ programId: a.programId, major: a.major, type: PROGRAMS[a.programId].type }))} · ${status}</small></span>${a.result === 'offer' && !a.accepted ? button('🎓 Accept', 'education.acceptOffer', { arg: String(i), variant: 'tiny' }) : !a.result ? button('Withdraw', 'education.withdrawApplication', { arg: String(i), variant: 'tiny ghost' }) : ''}</li>`;
   }).join('');
-  return card('Applications', `<ul class="funds">${rows}</ul><p class="fine">Decisions arrive at the start of next year; then you pick one offer. ${applicationsThisCycle(state)} sent this year (up to ${applicationCap(state, 'bachelor')}). Universities in another city mean moving there (🚚); abroad, a student visa.</p>`, { icon: '✉️', accent: 'cyan' });
+  return card('Applications', `<ul class="funds">${rows}</ul><p class="fine">Decisions come straight back. Hold offers while you apply elsewhere; they stand until next year. ${applicationsThisCycle(state)} sent this year (up to ${applicationCap(state, 'bachelor')}). Universities in another city mean moving there (🚚); abroad, a student visa.</p>`, { icon: '✉️', accent: 'cyan' });
 }
 
 /** The universities where you live: selectivity, prestige, city and professional schools. */

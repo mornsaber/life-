@@ -173,6 +173,22 @@ function attend(ctx, uni) {
 }
 
 /** Start a program at a university (after an offer, or straight in at an open-admission college). */
+/** Take up an offer: start now if you're free to, or when you finish where you are. */
+function acceptOffer(ctx, a) {
+  const { state } = ctx;
+  const uni = universityOf(a.universityId);
+  if (!uni) return undefined;
+  const check = enrollmentEligibility(state, a.programId, uni.id, a.major, { applying: true });
+  const free = (check.ok || /applications a year|Already applied/.test(check.reason)) && !state.education.enrolled;
+  if (!free) {
+    for (const x of state.education.applications ?? []) x.accepted = false;
+    a.accepted = true;
+    return ctx.log(`You accepted ${uni.name}'s offer. You'll start when you've finished ${state.education.enrolled ? 'your current course' : 'school'}.`, '🎓', 'good');
+  }
+  state.education.applications = [];
+  return startEnrollment(ctx, { programId: a.programId, uni, major: a.major, pace: a.pace });
+}
+
 export function startEnrollment(ctx, { programId, uni, major, pace }) {
   const { state } = ctx;
   if (!attend(ctx, uni)) return false;
@@ -482,47 +498,50 @@ export const EducationEngine = {
     }
   },
 
-  /** Decision day: last year's applications come back, and you choose among the offers. */
+  /**
+   * Year end: an offer you accepted starts once you're free (high school finished, the old
+   * course done); unanswered offers lapse after a year. (Older saves: applications still
+   * waiting on a decision get one now.)
+   */
   onYearEnd(ctx) {
     const { state, rng } = ctx;
+    if (!state.character.alive) return;
+    const age = state.character.age;
     const apps = state.education.applications ?? [];
-    const due = apps.filter((a) => a.age < state.character.age);
-    if (!due.length || !state.character.alive) return;
-    state.education.applications = apps.filter((a) => a.age >= state.character.age);
-    const offers = [];
-    const no = [];
-    for (const a of due) {
+    for (const a of apps.filter((x) => !x.result && x.age < age)) {
       const uni = universityOf(a.universityId);
-      if (!uni) continue;
-      (rng.chance(admissionChance(state, a.programId, uni.id)) ? offers : no).push(a);
+      a.result = uni && rng.chance(admissionChance(state, a.programId, uni.id)) ? 'offer' : 'rejected';
     }
-    const names = (list) => list.map((a) => universityOf(a.universityId).name).join(', ');
-    ctx.log(`Decisions are in. ${offers.length ? `Offers: ${names(offers)}.` : 'No offers this year.'}${no.length ? ` Rejected: ${names(no)}.` : ''}`, offers.length ? '📬' : '📭', offers.length ? 'good' : 'bad');
-    if (!offers.length || state.education.enrolled) return;
-    ctx.prompt({
-      type: 'education.offers', icon: '📬', title: 'Your Offers',
-      text: 'Choose where to go — or turn them all down and try again next year.',
-      options: [
-        ...offers.map((a, i) => {
-          const uni = universityOf(a.universityId);
-          const label = degreeLabel({ programId: a.programId, major: a.major, type: PROGRAMS[a.programId].type });
-          return { id: `accept:${i}`, label: `🎓 ${uni.name} — ${label}`, hint: `${placeOf(uni)}${movesYou(state, uni) ? (uni.country !== homeCountry(state) ? ` ${COUNTRIES[uni.country]?.flag ?? ''} · moving abroad` : ' · moving') : ''} · $${annualTuition(a.programId, uni.id, state).toLocaleString()}/yr` };
-        }),
-        { id: 'decline', label: '🚫 Turn them all down' },
-      ],
-      data: { offers },
-    });
+    const held = apps.find((a) => a.accepted);
+    if (held && !state.education.enrolled) {
+      const uni = universityOf(held.universityId);
+      const ready = uni && enrollmentEligibility(state, held.programId, uni.id, held.major, { applying: true });
+      if (ready?.ok || /applications a year|Already applied/.test(ready?.reason ?? '')) {
+        state.education.applications = [];
+        startEnrollment(ctx, { programId: held.programId, uni, major: held.major, pace: held.pace });
+        return;
+      }
+    }
+    state.education.applications = apps.filter((a) => a.age >= age || ((a.result === 'offer' || a.accepted) && a.age >= age - 1));
   },
 
   resolvers: {
     offers(ctx, data, optionId) {
-      if (!String(optionId).startsWith('accept:')) return ctx.log('You turned down every offer.', '🚫');
-      const a = data.offers[Number(optionId.split(':')[1])];
-      const uni = a && universityOf(a.universityId);
-      if (!uni) return undefined;
-      const check = enrollmentEligibility(ctx.state, a.programId, uni.id, a.major, { applying: true });
-      if (!check.ok && !/applications a year|Already applied/.test(check.reason)) return ctx.toast(check.reason, 'warn');
-      return startEnrollment(ctx, { programId: a.programId, uni, major: a.major, pace: a.pace });
+      const { state } = ctx;
+      // Older saves: a list of offers to pick from.
+      if (data.offers) {
+        if (!String(optionId).startsWith('accept:')) return ctx.log('You turned down every offer.', '🚫');
+        const a = data.offers[Number(optionId.split(':')[1])];
+        return a ? acceptOffer(ctx, a) : undefined;
+      }
+      const a = (state.education.applications ?? []).find((x) => x.programId === data.programId && x.universityId === data.universityId && x.result === 'offer');
+      if (!a) return undefined;
+      if (optionId === 'accept') return acceptOffer(ctx, a);
+      if (optionId === 'decline') {
+        a.result = 'declined';
+        return ctx.log(`You turned down ${universityOf(a.universityId)?.name ?? 'the offer'}.`, '🚫');
+      }
+      return ctx.log(`You're holding the offer from ${universityOf(a.universityId)?.name ?? 'the university'} while you hear from others.`, '📬');
     },
   },
 
@@ -547,8 +566,8 @@ export const EducationEngine = {
     },
 
     /**
-     * Apply for next year (arg: 'programId:universityId:major:pace'). Decisions arrive with
-     * the new year; open-admission colleges take you straight away.
+     * Apply (arg: 'programId:universityId:major:pace'). The decision comes straight back;
+     * open-admission colleges take you without one.
      */
     apply(ctx, arg) {
       const { state } = ctx;
@@ -561,9 +580,34 @@ export const EducationEngine = {
       const check = enrollmentEligibility(state, programId, uni.id, major, { applying: true });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (!ctx.spend(APPLICATION_FEE, `Application fee — ${uni.name}`, { credit: true })) return ctx.toast('You can\'t cover the application fee.', 'warn');
-      (state.education.applications ??= []).push({ programId, universityId: uni.id, major, pace, age: state.character.age });
-      ctx.log(`You applied to ${uni.name} for ${degreeLabel({ programId, major, type: PROGRAMS[programId].type })}. Decisions come next year.`, '✉️');
+      // The decision comes straight back.
+      const offer = ctx.rng.chance(admissionChance(state, programId, uni.id));
+      const app = { programId, universityId: uni.id, major, pace, age: state.character.age, result: offer ? 'offer' : 'rejected' };
+      (state.education.applications ??= []).push(app);
+      const label = degreeLabel({ programId, major, type: PROGRAMS[programId].type });
+      if (!offer) {
+        ctx.toast(`Rejected by ${uni.name}`, 'bad');
+        return ctx.log(`${uni.name} turned down your application for ${label}.`, '📭', 'bad');
+      }
+      ctx.log(`${uni.name} offered you a place: ${label}.`, '📬', 'good');
+      ctx.prompt({
+        type: 'education.offers', icon: '📬', title: `An Offer from ${uni.name}`,
+        text: `${uni.name} has offered you a place to study ${label}${movesYou(state, uni) ? `, in ${placeOf(uni)}` : ''}. $${annualTuition(programId, uni.id, state).toLocaleString()} a year.`,
+        options: [
+          { id: 'accept', label: `🎓 Accept`, hint: state.education.enrolled || !state.education.degrees.some((d) => d.type === 'highschool') ? 'You start when you finish where you are' : movesYou(state, uni) ? 'You move there' : 'Start now' },
+          { id: 'hold', label: '📬 Hold it and keep applying', hint: 'Offers stand until next year' },
+          { id: 'decline', label: '🚫 Decline' },
+        ],
+        data: { programId, universityId: uni.id },
+      });
       return undefined;
+    },
+
+    /** Accept an offer you're holding (arg: index into the applications list). */
+    acceptOffer(ctx, index) {
+      const a = (ctx.state.education.applications ?? [])[Number(index)];
+      if (a?.result !== 'offer') return undefined;
+      return acceptOffer(ctx, a);
     },
 
     withdrawApplication(ctx, index) {

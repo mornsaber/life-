@@ -25,7 +25,7 @@
 import { L } from './Ladder.js';
 import { citizenshipsOf } from '../world/Countries.js';
 
-const INTL = { sizes: { enterprise: 1 }, minAge: 21, intl: true, union: { chance: 0.9, name: 'Staff Union', strike: false } };
+const INTL = { sizes: { enterprise: 1 }, minAge: 21, intl: true, layoffRate: 0.004, union: { chance: 0.9, name: 'Staff Union', strike: false } };
 
 /** EU and NATO members (citizenship gates). */
 export const EU_MEMBERS = ['AT', 'BE', 'CY', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LV', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'BG', 'CZ', 'HU'];

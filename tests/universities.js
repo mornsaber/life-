@@ -73,7 +73,7 @@ const tests = {
     assert.ok(admissionChance(state, 'bachelor', 'harvard') > 0.25, 'a top student has a real shot');
     assert.equal(admissionChance(state, 'associate', 'cc_midcity'), 1, 'community college is open admission');
   },
-  'apply as a senior, hear back next year, pick an offer and move there'() {
+  'apply as a senior: the decision is instant; the offer you accept starts when school ends, and you move there'() {
     const { engine, state } = life({ countryId: 'US' }, 9);
     for (let i = 0; i < 17; i++) nextYear(engine, state);
     state.stats.smarts = 90;
@@ -82,16 +82,28 @@ const tests = {
     const target = universitiesFor(state, 'bachelor', { abroad: false }).find((u) => u.region && u.region !== home && u.type === 'state' && !u.kind && u.accept < 0.9);
     assert.ok(enrollmentEligibility(state, 'bachelor', target.id, 'history', { applying: true }).ok);
     state.prompts = [];
-    engine.dispatch('education.apply', `bachelor:${target.id}:history:full`);
-    assert.equal(state.education.applications.length, 1);
-    assert.ok(!state.education.enrolled, 'no instant decision');
-    decide(engine, state);
+    withLuck(engine, () => engine.dispatch('education.apply', `bachelor:${target.id}:history:full`));
     const q = state.prompts.find((p) => p.type === 'education.offers');
-    assert.ok(q, 'an offer arrives');
-    engine.resolvePrompt(q.id, q.options[0].id);
+    assert.ok(q, 'the offer comes straight back');
+    engine.resolvePrompt(q.id, 'accept');
+    graduateHS(state, state.character.age);
+    if (!state.education.enrolled) MODULES.find((m) => m.id === 'education').onYearEnd(engine.context());
     assert.equal(state.education.enrolled?.universityId, target.id);
     assert.equal(state.character.regionId, target.region, 'you moved there');
     assert.equal(state.education.applications.length, 0);
+  },
+  'a rejection is instant too'() {
+    const { engine, state } = life({ countryId: 'US' }, 9);
+    graduateHS(state);
+    state.finances.cash = 20000;
+    state.prompts = [];
+    const rng = engine.context().rng;
+    const c = rng.chance;
+    rng.chance = () => false;
+    engine.dispatch('education.apply', 'bachelor:harvard:history:full');
+    rng.chance = c;
+    assert.equal(state.education.applications[0]?.result, 'rejected');
+    assert.ok(!state.prompts.some((p) => p.type === 'education.offers'));
   },
   'open-admission colleges take you straight away'() {
     const { engine, state } = life({ countryId: 'US' });
@@ -108,10 +120,9 @@ const tests = {
     const domestic = annualTuition('bachelor', 'oxford', { ...state, character: { ...state.character, countryId: 'GB', citizenships: ['GB'] } });
     assert.ok(annualTuition('bachelor', 'oxford', state) > domestic, 'overseas fees');
     state.prompts = [];
-    engine.dispatch('education.apply', 'bachelor:oxford:history:full');
-    decide(engine, state);
+    withLuck(engine, () => engine.dispatch('education.apply', 'bachelor:oxford:history:full'));
     const q = state.prompts.find((p) => p.type === 'education.offers');
-    withLuck(engine, () => engine.resolvePrompt(q.id, q.options[0].id));
+    withLuck(engine, () => engine.resolvePrompt(q.id, 'accept'));
     assert.equal(state.character.countryId, 'GB');
     assert.equal(state.character.regionId, 'oxford');
     assert.equal(state.migration.residences.GB?.visa, 'student');

@@ -82,9 +82,12 @@ const stationsOf = (employerName) => DUTY_STATIONS[employerName] ?? { hq: ['Gene
 
 function station(ctx, [place, country], years = ROTATION_YEARS) {
   const { state } = ctx;
-  endPosting(ctx);
+  endPosting(ctx, null, { moving: true });
   const job = state.career.job;
   const p = postAbroad(ctx, { place, country, kind: 'intl', years });
+  // Somewhere to live: your home is let or given up; at the station you rent, or are housed.
+  if (p) ctx.emit('housing:posted', { regionId: p.regionId });
+  else if (state.housing?.rental?.posted) ctx.emit('housing:postingEnded', {});
   // Every tour on the record: where, and when.
   if (job) {
     const hist = (job.stations ??= []);

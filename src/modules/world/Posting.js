@@ -18,6 +18,7 @@
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { speaks, LANGUAGE_FLUENT } from './Immigration.js';
 import { FORCES } from './NationalForces.js';
+import { INTL_ORG_PROFESSIONS, HARDSHIP, ordainedPriest } from '../career/IntlOrgCareers.js';
 
 /** Countries a posting can be in, with the language you'd pick up there. */
 export const WORLD = {
@@ -103,12 +104,28 @@ export function postAbroad(ctx, { place, kind = 'deployment', years = 1, country
   return state.character.posting;
 }
 
-/** Back home: the posting ends and your volunteer service picks up again. */
-export function endPosting(ctx, why) {
+/**
+ * Where you live at an international duty station: 'provided' (a compound at a hardship post,
+ * the Swiss Guard's barracks, a nunciature, a Vatican apartment) or 'local' (you rent in the city,
+ * with a rental subsidy at first). Null when you aren't on an international posting.
+ */
+export function postedHousing(state) {
+  const p = postingOf(state);
+  if (!p || p.kind !== 'intl') return null;
+  const job = state.career.job;
+  if (HARDSHIP.includes(p.place)) return 'provided';
+  if (['swissGuard', 'holySeeDiplomacy'].includes(job?.professionId)) return 'provided';
+  if (job?.professionId === 'romanCuria' && ordainedPriest(state)) return 'provided';
+  return 'local';
+}
+
+/** Back home: the posting ends and your volunteer service picks up again. `moving`: straight on to another post. */
+export function endPosting(ctx, why, { moving = false } = {}) {
   const { state } = ctx;
   const p = postingOf(state);
   if (!p) return;
   state.character.posting = null;
+  if (!moving && (p.kind === 'intl' || state.housing?.rental?.posted)) ctx.emit('housing:postingEnded', {});
   for (const [id, m] of Object.entries(state.emergency ?? {})) {
     if (id === 'history' || !m?.postingLeave) continue;
     m.onLeave = false;
@@ -147,6 +164,9 @@ export const PostingModule = {
       state.migration.languages[lang] = Math.min(LANGUAGE_FLUENT, before + Math.round(6 + state.stats.smarts / 12));
       if (state.migration.languages[lang] >= LANGUAGE_FLUENT) ctx.log(`Your ${lang} is fluent now — a souvenir of ${p.country}.`, '🗣️', 'good');
     }
-    if (state.character.age >= p.until) endPosting(ctx, p.kind === 'deployment' ? null : `Your time in ${postingLabel(p)} ended. You came home.`);
+    // An international organisation moves its staff between stations itself (IntlOrgs.js): no gap at the end of a tour.
+    const intlJob = INTL_ORG_PROFESSIONS[state.career.job?.professionId];
+    if (p.kind === 'intl' && intlJob) return;
+    if (state.character.age >= p.until || p.kind === 'intl') endPosting(ctx, p.kind === 'deployment' ? null : `Your time in ${postingLabel(p)} ended. You came home.`);
   },
 };

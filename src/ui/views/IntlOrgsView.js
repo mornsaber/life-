@@ -5,7 +5,7 @@
 import { esc, button, card, kv } from '../Components.js';
 import { COMPETITIONS, competitionCheck, maltaJoinCheck, maltaGradeName, MALTA_OFFICES } from '../../modules/world/IntlOrgs.js';
 import { INTL_ORG_PROFESSIONS } from '../../modules/career/IntlOrgCareers.js';
-import { postingOf } from '../../modules/world/Posting.js';
+import { postingOf, postedHousing } from '../../modules/world/Posting.js';
 
 export function intlOrgsCard(state) {
   if (state.character.age < 18) return '';
@@ -33,8 +33,9 @@ export function intlOrgsCard(state) {
     ${kv([
       ['Duty station', current ? `<b>${esc(current.place)}</b>, ${esc(current.country)}${current.hardship ? ' ⚠️ hardship post' : ''}${p?.kind === 'intl' ? '' : ' (your own country)'}` : '—'],
       ['Tour', job.stationUntil ? `since ${since} · ends at ${job.stationUntil}` : '—'],
+      postedHousing(state) ? ['Housing', postedHousing(state) === 'provided' ? 'Provided at the duty station: no rent' : state.housing.rental?.posted ? `Rented locally · $${state.housing.rental.rent.toLocaleString()}/mo${state.character.age < (state.housing.rental.subsidyUntil ?? 0) ? ` · 40% rental subsidy until ${state.housing.rental.subsidyUntil}` : ''}` : 'Renting locally'] : null,
       ['Next post', 'Chosen in the mobility exercise when the tour ends — or ask for a move'],
-    ])}
+    ].filter(Boolean))}
     ${tours.length > 1 ? `<h4 class="sub">Your tours</h4><ul class="history">${tours.slice(0, -1).reverse().map((t) => `<li>${t.hardship ? '⚠️' : '🌐'} ${esc(t.place)}, ${esc(t.country)} <small class="muted">age ${t.from}–${t.to ?? '?'}</small></li>`).join('')}</ul>` : ''}
     <div class="action-grid">${button('🔁 Request a reassignment', 'intlOrgs.requestMove', { disabled: state.character.age - since < 2 || Boolean(state.yearly['intlOrgs.requestMove']), hint: state.character.age - since < 2 ? 'After two years in post' : 'HR offers you posts' })}</div>
     <p class="fine">Your pay is exempt from national income tax${(state.character.citizenships ?? []).includes('US') && job.professionId !== 'euInstitutions' ? ' (but not US tax: Americans pay it wherever they work)' : ''}. Staff rotate between headquarters and the field every few years; hardship posts pay danger money and count for promotion.</p>` : '';

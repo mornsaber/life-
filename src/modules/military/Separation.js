@@ -73,6 +73,8 @@ const deferredAge = (svc) => mandatoryRetirementAge(svc) + (isFlag(svc) ? (svc.g
 export const pastTenure = (state, svc) => tenureYears(svc) >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
 export function mustRetire(state, svc) {
   const age = state.character.age;
+  // Five-star officers stay on the active list for life.
+  if (svc.fiveStar) return false;
   if (!pastTenure(state, svc)) return false;
   // Mid-tour in a command or top post: serve it out (up to the deferral limit).
   if (svc.track === 'officer' && svc.grade >= 5 && postEnds(state, svc) > age && age < deferredAge(svc)) return false;

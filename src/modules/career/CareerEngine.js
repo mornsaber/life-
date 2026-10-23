@@ -582,7 +582,10 @@ const LAYOFF_RATE = { expansion: 0.01, peak: 0.015, recession: 0.09, recovery: 0
 /** Annual reduction-in-force risk. Returns true if you were laid off. */
 export function layoffRisk(state, job) {
   let risk = 0;
-  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? getProfession(job.professionId).cyclical ?? 1 : 1);
+  const prof = getProfession(job.professionId);
+  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? prof.cyclical ?? 1 : 1);
+  // International organisations run on member-state budgets, not the business cycle: cuts are rare.
+  if (prof.layoffRate != null) risk = prof.layoffRate;
   // Government jobs are cut through a formal reduction in force instead (PublicRif).
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;
