@@ -22,7 +22,9 @@
 import { addHonor, currentYear, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp, Random } from '../../core/Random.js';
 import { ordainedPriest } from '../career/IntlOrgCareers.js';
-import { leaveJob } from '../career/CareerEngine.js';
+import { leaveJob, hire } from '../career/CareerEngine.js';
+import { getProfession } from '../career/JobTrees.js';
+import { createEmployer } from '../career/Employers.js';
 import { postAbroad, endPosting } from './Posting.js';
 import { eminence } from './Honours.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -162,6 +164,23 @@ export function becomePope(ctx, name) {
 /* Consistories: who gets a red hat                                    */
 /* ------------------------------------------------------------------ */
 
+/** Family and friends a pope can honour. */
+export const papalHonourOptions = (state) => (state.people?.list ?? []).filter((p) => p.alive !== false && !p.papalOrder && ['sibling', 'friend', 'bestFriend', 'mentor', 'mother', 'father'].includes(p.relation)).slice(0, 8);
+
+/** The Secretariat of State and the dicasteries need cardinals: an offer to a cardinal without a Roman post. */
+function romanOffer(ctx) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  if (!isCardinal(state) || isPope(state) || state.character.age >= 78 || ['romanCuria', 'holySeeDiplomacy'].includes(job?.professionId) || state.prompts.some((p) => p.type === 'holySee.roman') || !rng.chance(0.06 + (state.holySee?.favour ?? 0) * 0.01)) return;
+  const secState = rng.chance(0.25);
+  ctx.prompt({
+    type: 'holySee.roman', icon: '🇻🇦', title: secState ? 'The Secretariat of State' : 'A Call to Rome',
+    text: secState ? 'The Pope asks you to become Cardinal Secretary of State: the Church\'s prime minister and foreign minister.' : 'The Pope asks you to come to Rome as Prefect of a Dicastery of the Roman Curia.',
+    options: [{ id: 'accept', label: '🇻🇦 Accept' }, { id: 'decline', label: '🙏 Ask to stay where you are' }],
+    data: { secState },
+  });
+}
+
 function consistory(ctx) {
   const { state, rng } = ctx;
   if (isPope(state) || isCardinal(state) || !ordainedPriest(state) || !rng.chance(0.4)) return;
@@ -287,6 +306,7 @@ export const HolySeeModule = {
     // A cardinal by promotion (or the Secretary of State, always one).
     if (!hs?.cardinal && ((job?.professionId === 'catholicClergy' && job.levelId === 'cardinal') || (job?.professionId === 'holySeeDiplomacy' && job.levelId === 'secState'))) makeCardinal(ctx, `Pope ${holySeeOf(state).pope.name} created you a cardinal.`);
     consistory(ctx);
+    romanOffer(ctx);
     popeYear(ctx);
     guardYear(ctx);
     papalHonours(ctx);
@@ -332,6 +352,33 @@ export const HolySeeModule = {
       state.holySee.canonized += 1;
       return ctx.log(`In St Peter's Square you canonized ${rng.pick(['a nineteenth-century missionary nun', 'a martyred lay catechist', 'a teenage computer programmer', 'a founder of hospitals for the poor', 'a parish priest who hid refugees in the war'])}. The square was full.`, '😇', 'good');
     },
+    /** Confer a papal order on someone close to you (arg: person id). */
+    honour(ctx, personId) {
+      const { state } = ctx;
+      if (!isPope(state)) return ctx.toast('Only the Pope', 'warn');
+      if (yearlyCount(state, 'holySee.honour') >= 3) return ctx.toast('Three a year', 'warn');
+      const p = papalHonourOptions(state).find((x) => x.id === personId);
+      if (!p) return undefined;
+      bumpYearly(state, 'holySee.honour');
+      const order = p.relation === 'mentor' || p.relation === 'friend' || p.relation === 'bestFriend' ? 'Order of St Gregory the Great' : 'Order of Pius IX';
+      p.papalOrder = order;
+      p.relationship = Math.min(100, (p.relationship ?? 50) + 8);
+      return ctx.log(`You made ${p.firstName} ${p.lastName} a ${p.gender === 'female' ? 'Dame' : 'Knight'} of the ${order}.`, '🇻🇦', 'good');
+    },
+    /** A cardinal's quiet campaign: dinners, visits, a well-placed lecture. */
+    cultivate(ctx) {
+      const { state, rng } = ctx;
+      if (!isCardinal(state) || isPope(state)) return ctx.toast('Cardinals only', 'warn');
+      if (yearlyCount(state, 'holySee.cultivate')) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, 'holySee.cultivate');
+      const hs = me(state);
+      if (rng.chance(0.15)) {
+        hs.favour = Math.max(0, (hs.favour ?? 0) - 2);
+        return ctx.log('An Italian newspaper ran a story about your "campaign" for the papacy. Nothing hurts a papabile more than looking ambitious.', '📰', 'bad');
+      }
+      hs.favour = (hs.favour ?? 0) + 1;
+      return ctx.log(rng.pick(['You hosted dinners for visiting cardinals at your apartment near the Vatican.', 'You gave a lecture in Rome that was quoted approvingly by the Secretariat of State.', 'You travelled to the peripheries and made friends among the cardinals there.']), '🟥', 'good');
+    },
     /** Create new cardinals: the men who will choose your successor. */
     consistory(ctx) {
       const { state, rng } = ctx;
@@ -360,6 +407,16 @@ export const HolySeeModule = {
     },
   },
   resolvers: {
+    roman(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      if (optionId !== 'accept') return ctx.log('You asked to stay with your people. The Pope understood.', '🙏');
+      const prof = getProfession(data.secState ? 'holySeeDiplomacy' : 'romanCuria');
+      const employer = createEmployer(rng, state, prof, state.character.regionId);
+      employer.name = prof.employers[0];
+      const job = hire(ctx, { professionId: prof.id, levelId: data.secState ? 'secState' : 'prefect', employer });
+      if (!job) return undefined;
+      return ctx.log(data.secState ? 'You moved into the Apostolic Palace as Cardinal Secretary of State.' : 'You moved to Rome as Cardinal Prefect of a Dicastery.', '🇻🇦', 'milestone');
+    },
     conclave(ctx, data, optionId) {
       const { state, rng } = ctx;
       const hs = me(state);

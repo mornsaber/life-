@@ -142,8 +142,25 @@ export function courtesy(state) {
 }
 
 /** Yearly: the title passes when its holder dies; hereditary peers may win a seat in the Lords. */
+/** A peer's children take courtesy styles from birth; the eldest son of an earl or higher uses a lesser title. */
+function childStyles(state) {
+  const pe = state.character.peerage;
+  if (!pe || pe.kind === 'royal' || state.royal) return;
+  const order = RANKS[pe.rank]?.order ?? 1;
+  const kids = (state.people?.list ?? []).filter((p) => p.relation === 'child' && p.alive !== false).sort((a, b) => b.ageOffset - a.ageOffset);
+  const eldestSon = pe.kind === 'hereditary' ? kids.find((k) => k.gender === 'male') : null;
+  for (const k of kids) {
+    if (k.courtesyStyled) continue;
+    k.courtesyStyled = true;
+    const female = k.gender === 'female';
+    if (k === eldestSon && order >= 3 && pe.subsidiary?.length) k.titles = [...new Set([...(k.titles ?? []), pe.subsidiary[0]])];
+    else k.title = pe.kind !== 'life' && (order >= 4 || (order === 3 && female)) ? (female ? 'Lady' : 'Lord') : 'The Hon.';
+  }
+}
+
 function peerageYear(ctx) {
   const { state, rng } = ctx;
+  childStyles(state);
   const n = state.noble;
   const c = state.character;
   if (n?.heir && !c.peerage && !n.disclaimed) {

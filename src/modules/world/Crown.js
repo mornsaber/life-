@@ -186,6 +186,12 @@ export function demise(ctx, crownId, why) {
   c.crowned = false;
   const here = crownOf(state) === crownId;
   if (here) ctx.log(`${old} ${why} after ${reign} year${reign === 1 ? '' : 's'} on the throne. ${monarchName(state, crownId)} accedes. Long live the ${def.titles.monarch[genderIdx(next.gender)]}!`, '👑', 'milestone');
+  // A royal walks behind the coffin at the state funeral.
+  if (r && r.crownId === crownId && /died/.test(why)) {
+    r.popularity = Math.min(100, (r.popularity ?? 60) + 3);
+    ctx.stat('happiness', -6);
+    ctx.log(`The state funeral: you walked behind the gun carriage through streets lined ten deep, and stood in the abbey as the crown was lifted from the coffin. Millions watched.`, '⚱️', 'milestone');
+  }
   // A new reign is when a realm asks whether it still wants one.
   for (const cc of def.realms) if (cc !== crownId && rng.chance(0.08)) (state.world.pendingReferendum ??= {})[cc] = currentYear(state) + 1;
   return null;
@@ -523,6 +529,20 @@ const MONARCH_DUTIES = [
 export const CrownModule = {
   id: 'crown',
   order: 33.5,
+  setup(engine) {
+    // A royal wedding: a national occasion for the senior royals, a private one further down the line.
+    engine.bus.on('people:married', ({ ctx }) => {
+      const { state, rng } = ctx;
+      const r = state.royal;
+      if (!r || r.steppedBack) return;
+      const senior = r.reigning || (r.line != null && r.line <= 4);
+      r.popularity = Math.min(100, (r.popularity ?? 60) + (senior ? 8 : 3));
+      ctx.stat('happiness', 8);
+      ctx.log(senior
+        ? `The royal wedding: ${rng.pick(['the abbey', 'the cathedral', 'the palace chapel'])}, a carriage procession, a balcony kiss and a public holiday. ${rng.int(8, 30)} million watched on television.`
+        : 'A royal wedding in the family chapel: a few hundred guests, a photographer from the palace press office, and a mention on the evening news.', '💒', 'milestone');
+    });
+  },
   init(state, rng) {
     state.world ??= {};
     if (state.royal && state.royal.popularity == null && rng) bornRoyal(state, rng);
