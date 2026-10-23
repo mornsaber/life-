@@ -81,6 +81,13 @@ export const numberedTitle = (state) => {
   return p?.number > 1 && t ? `${ORD(p.number)} ${t}` : t ?? null;
 };
 
+/** The form of address, with the ordinal for an inherited title: "The 7th Earl of Ashby". */
+export const numberedAddress = (state) => {
+  const a = peerAddress(state);
+  const n = state.character.peerage?.number;
+  return n > 1 && a ? a.replace(/(the|The) (?=\S+ of )/, `$1 ${ORD(n)} `) : a;
+};
+
 /** Create (or inherit) a peerage. */
 export function grantPeerage(ctx, { rank, place, kind, seat }) {
   const { state } = ctx;

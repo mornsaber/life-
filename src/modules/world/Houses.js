@@ -19,7 +19,7 @@
  * state.world.monarchists = { [cc]: support % }; state.world.restored = { [cc]: { year, house } }
  */
 import { addHonor, currentYear, yearlyCount, bumpYearly } from '../../core/State.js';
-import { clamp } from '../../core/Random.js';
+import { clamp, Random } from '../../core/Random.js';
 import { CROWNS, ensureCrown, crownOf, monarchName } from './Crown.js';
 import { OFFICES } from '../politics/Offices.js';
 import { COUNTRIES } from './Countries.js';
@@ -251,8 +251,11 @@ export const HousesModule = {
   init(state, rng) {
     if (state.flags?.houseStart && !state.house && rng) bornIntoHouse(state, rng);
   },
-  onAgeUp(ctx) {
-    const { state, rng } = ctx;
+  onAgeUp(engineCtx) {
+    // A side stream: the monarchist tide doesn't reshuffle the rest of the life.
+    const { state } = engineCtx;
+    const rng = new Random(((state.world?.seed ?? 1) * 69069 + currentYear(state) * 257 + 0x40e) >>> 0);
+    const ctx = { ...engineCtx, rng };
     if (state.flags?.houseStart && !state.house) bornIntoHouse(state, rng);
     houseYear(ctx);
     monarchistYear(ctx);

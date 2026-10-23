@@ -230,7 +230,7 @@ export const INTL_ORG_PROFESSIONS = {
     ],
   },
   swissGuard: {
-    ...INTL, id: 'swissGuard', name: 'Pontifical Swiss Guard', icon: '⚔️', sector: 'government', payMultiplier: 0.5, background: 'strict', minAge: 19,
+    ...INTL, id: 'swissGuard', name: 'Pontifical Swiss Guard', icon: '⚔️', sector: 'private', payMultiplier: 0.5, background: 'strict', minAge: 19,
     employers: ['Pontifical Swiss Guard'],
     union: null,
     entry: { education: { level: 'highschool' } },
@@ -248,7 +248,7 @@ export const INTL_ORG_PROFESSIONS = {
     ],
   },
   vaticanGendarmerie: {
-    ...INTL, id: 'vaticanGendarmerie', name: 'Vatican Gendarmerie', icon: '🚓', sector: 'government', payMultiplier: 0.7, background: 'strict', minAge: 20,
+    ...INTL, id: 'vaticanGendarmerie', name: 'Vatican Gendarmerie', icon: '🚓', sector: 'private', payMultiplier: 0.7, background: 'strict', minAge: 20,
     // The Corps of Gendarmerie of Vatican City State: police, border, fire and close protection of
     // the Pope on journeys. Recruits are Catholic, mostly Italians with military or police service.
     employers: ['Gendarmerie Corps of Vatican City State'],
@@ -269,7 +269,7 @@ export const INTL_ORG_PROFESSIONS = {
     ],
   },
   holySeeDiplomacy: {
-    ...INTL, id: 'holySeeDiplomacy', name: 'Diplomatic Service of the Holy See', icon: '🇻🇦', sector: 'government', payMultiplier: 0.5, background: 'strict', minAge: 26,
+    ...INTL, id: 'holySeeDiplomacy', name: 'Diplomatic Service of the Holy See', icon: '🇻🇦', sector: 'private', payMultiplier: 0.5, background: 'strict', minAge: 26,
     // Priests chosen by their bishops study at the Pontifical Ecclesiastical Academy (canon law, a
     // doctorate, languages), then serve in nunciatures around the world. Nuncios are titular archbishops.
     employers: ['Secretariat of State — Diplomatic Service of the Holy See'],
@@ -289,7 +289,7 @@ export const INTL_ORG_PROFESSIONS = {
     ],
   },
   romanCuria: {
-    ...INTL, id: 'romanCuria', name: 'Roman Curia', icon: '🇻🇦', sector: 'government', payMultiplier: 0.55, background: 'strict', minAge: 25,
+    ...INTL, id: 'romanCuria', name: 'Roman Curia', icon: '🇻🇦', sector: 'private', payMultiplier: 0.55, background: 'strict', minAge: 25,
     // The dicasteries that govern the Church with the Pope. Since 2022 lay people can lead them too.
     employers: ['Roman Curia'],
     union: null,

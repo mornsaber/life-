@@ -21,7 +21,7 @@ import { COUNTRIES, isCitizen } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
 import { REGIONS } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
-import { grantPeerage, peerAddress, numberedTitle } from './Peerage.js';
+import { grantPeerage, numberedAddress } from './Peerage.js';
 import { royalStyledName, sovereign, CROWNS } from './Crown.js';
 import { withOfficialStyle, officeLetters } from './Styles.js';
 import { holySeeStyledName } from './HolySee.js';
@@ -377,8 +377,8 @@ export function styledName(state) {
   // A former ruling house's courtesy style: "Prince Georg von Preußen, Prince of Prussia".
   const house = houseStyledName(state);
   if (house) return house;
-  // Peers by name and title, so it's clear who and what: "Edward Smith, 7th Earl of Ashby".
-  if (c.peerage) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${numberedTitle(state) ?? peerAddress(state)}`);
+  // Peers by their title, numbered when inherited: "The 7th Earl of Ashby", "Lord Kowalski".
+  if (c.peerage) return withOfficialStyle(state, numberedAddress(state));
   // A peer's heir uses the family's lesser title by courtesy.
   if (state.noble?.courtesyTitle && !state.noble.disclaimed) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${state.noble.courtesyTitle}`);
   const base = !s?.prefix ? `${c.firstName} ${c.lastName}`

@@ -368,7 +368,9 @@ export function conferOptions(state) {
     if (['friend', 'bestFriend', 'coworker', 'mentor'].includes(p.relation) && !has.includes('personal')) out.push({ person: p, id: 'personal', label: `⭐ Appoint ${p.firstName} to the ${o.personal[0]}${o.knight[0] ? ` (a knighthood)` : ''}` });
     if (['friend', 'bestFriend', 'sibling', 'child'].includes(p.relation) && !has.includes('honoraryRank') && o.colonel.length) out.push({ person: p, id: 'honoraryRank', label: `🎖️ Make ${p.firstName} Honorary Colonel of ${o.colonel[0]}` });
   }
-  return out.slice(0, 16);
+  // Titles and dukedoms first: they're the rarest gifts, and shouldn't fall off a long list.
+  const rank = (o) => (['dukedom', 'title'].includes(o.id) ? 0 : 1);
+  return out.sort((a, b) => rank(a) - rank(b)).slice(0, 16);
 }
 
 function confer(ctx, arg) {

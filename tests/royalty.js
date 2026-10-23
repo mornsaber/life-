@@ -259,7 +259,8 @@ const tests = {
     assert.ok(duke);
     state.prompts = [];
     engine.dispatch('royalHousehold.confer', 'k1|dukedom');
-    assert.match(state.people.list.find((p) => p.id === 'k1').title, /^Duke of /);
+    assert.match(state.people.list.find((p) => p.id === 'k1').dukedom, /^Duke of /);
+    assert.ok(state.people.list.find((p) => p.id === 'k1').titles.includes(state.people.list.find((p) => p.id === 'k1').dukedom), 'the dukedom stacks with the royal title');
     assert.equal(familyTitle(state, state.people.list.find((p) => p.id === 'k1')), state.people.list.find((p) => p.id === 'k1').title);
     const ctx = engine.context();
     const pop = state.royal.popularity;

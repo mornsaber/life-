@@ -20,7 +20,7 @@
  *                         consistories, journeys, encyclicals, canonized, popularity }
  */
 import { addHonor, currentYear, yearlyCount, bumpYearly } from '../../core/State.js';
-import { clamp } from '../../core/Random.js';
+import { clamp, Random } from '../../core/Random.js';
 import { ordainedPriest } from '../career/IntlOrgCareers.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { postAbroad, endPosting } from './Posting.js';
@@ -264,8 +264,11 @@ export const HolySeeModule = {
   id: 'holySee',
   order: 61,
   init(state) { holySeeOf(state); },
-  onAgeUp(ctx) {
-    const { state, rng } = ctx;
+  onAgeUp(engineCtx) {
+    // A side stream, so the world's church affairs don't reshuffle every other roll in the life.
+    const { state } = engineCtx;
+    const rng = new Random(((state.world?.seed ?? 1) * 40503 + currentYear(state) * 131 + 0x5ee) >>> 0);
+    const ctx = { ...engineCtx, rng };
     if (!state.character.alive) return;
     const hs = state.holySee;
     const job = state.career.job;

@@ -129,10 +129,7 @@ const tests = {
     catholic(state);
     state.finances.cash = 5e8;
     state.malta = { grade: 'magistral', since: 40 };
-    const chance = engine.rng.chance.bind(engine.rng);
-    engine.rng.chance = (p) => (p === 0.06 ? true : chance(p));
-    year(engine, state, 1);
-    engine.rng.chance = chance;
+    for (let i = 0; i < 40 && !state.honors.some((h) => /^holySee\./.test(h.id)); i++) { year(engine, state, 1); catholic(state); state.stats.health = 95; }
     assert.ok(state.honors.some((h) => /^holySee\.(gregory|sylvester|proEcclesia)/.test(h.id)), state.honors.map((h) => h.id).join(','));
   },
   'born into a former ruling house: the claim passes; a referendum restores the throne to you'() {
