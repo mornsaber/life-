@@ -44,7 +44,7 @@ export const PRIORIES = {
   GB: 'the Priory of England and the Islands', 'GB-SCT': 'the Priory of Scotland', 'GB-WLS': 'the Priory for Wales',
   CA: 'the Priory of Canada', AU: 'the Priory of Australia', NZ: 'the Priory in New Zealand', ZA: 'the Priory of South Africa',
   US: 'the Priory of the United States of America', KE: 'the Priory of Kenya', SG: 'the Priory in Singapore', HK: 'the Priory of Hong Kong',
-  IN: 'St John Ambulance India', NG: 'St John Ambulance Nigeria', PG: 'St John PNG', MY: 'St John Ambulance Malaysia', JM: 'St John Jamaica', IE: 'the Commandery of Ards',
+  IN: 'St John Ambulance India', NG: 'St John Ambulance Nigeria', PG: 'St John PNG', MY: 'St John Ambulance Malaysia', JM: 'St John Jamaica', IE: 'St John Ambulance Ireland',
 };
 /** Where the Governor-General is Prior (ViceRegal.js keys). */
 const VICE_REGAL_PRIOR = { CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' };
