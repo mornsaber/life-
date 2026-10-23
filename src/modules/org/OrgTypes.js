@@ -541,15 +541,61 @@ export function bodyType(profession) {
   };
 }
 
+/**
+ * Who runs the organization a generic (solo) employer stands for. Owners can't be promoted
+ * into — you buy or found a practice instead (Business) — and the heads of international
+ * bodies are chosen by their member states, not from the staff ladder ('outside').
+ */
+const SOLO_HEADS = {
+  propertyManagement: { title: 'Chief Executive Officer', selection: 'board' },
+  clergy: { title: 'Presiding Bishop / Denominational President', selection: 'outside', appointedBy: 'the denomination\'s general assembly' },
+  privateFire: { title: 'Chief Executive Officer', selection: 'board' },
+  charterAviation: { title: 'Owner', selection: 'owner' },
+  privatePrisons: { title: 'Chief Executive Officer', selection: 'board' },
+  veterinary: { title: 'Practice Owner', selection: 'owner' },
+  automotive: { title: 'Dealer Principal (owner)', selection: 'owner' },
+  paratransit: { title: 'Contractor General Manager', selection: 'board' },
+  travelNursing: { title: 'Chief Executive Officer', selection: 'board' },
+  fishing: { title: 'Vessel Owner', selection: 'owner' },
+  agriculture: { title: 'Farm Owner', selection: 'owner' },
+  funeral: { title: 'Funeral Home Owner', selection: 'owner' },
+  dentalHygiene: { title: 'Practice Owner (dentist)', selection: 'owner' },
+  optometry: { title: 'Practice Owner', selection: 'owner' },
+  chiropractic: { title: 'Practice Owner', selection: 'owner' },
+  surveying: { title: 'Principal (owner)', selection: 'owner' },
+  unSecretariat: { title: 'Secretary-General', selection: 'outside', appointedBy: 'the General Assembly on the Security Council\'s recommendation' },
+  unAgencies: { title: 'Executive Head (Director-General)', selection: 'outside', appointedBy: 'the member states' },
+  euInstitutions: { title: 'President of the European Commission', selection: 'outside', appointedBy: 'the European Council and Parliament' },
+  nato: { title: 'Secretary General', selection: 'outside', appointedBy: 'the North Atlantic Council' },
+  intlFinance: { title: 'President / Managing Director', selection: 'outside', appointedBy: 'the board of governors' },
+  intlJustice: { title: 'Prosecutor', selection: 'outside', appointedBy: 'the Assembly of States Parties' },
+  icrc: { title: 'President of the ICRC', selection: 'outside', appointedBy: 'the Assembly' },
+  maltaRelief: { title: 'Grand Hospitaller', selection: 'outside', appointedBy: 'the Sovereign Council' },
+  maltaDiplomacy: { title: 'Grand Chancellor', selection: 'outside', appointedBy: 'the Sovereign Council' },
+};
+const OWNER_LEVEL = /owner|partner/i;
+const topSupervisor = (levels) => [...levels].reverse().find((l) => !l.appointed && (l.abilities?.includes('supervise') || l.abilities?.includes('exec')));
+// The owner of the firm (a founder rung): an owner you work for, never a promotion.
+const ownerPost = (l) => (l.founder ? { title: l.title, selection: 'owner' } : null);
+
 export function soloType(profession) {
+  const levels = profession.levels ?? [];
+  // The organization is the department: its head is the top of your own ladder (reaching
+  // it makes you the head), not a made-up "Department Head" seat above it.
+  const top = topSupervisor(levels);
+  const ownerTop = top && OWNER_LEVEL.test(top.title) ? top : null;
+  const deptLevel = ownerTop ? topSupervisor(levels.slice(0, levels.indexOf(ownerTop))) : top;
+  const map = (l) => ({ title: l.title, selection: 'internal', occupation: profession.id, levelId: l.id });
+  const deptHead = deptLevel ? map(deptLevel) : { title: 'Office Manager', selection: 'outside' };
+  let head;
+  if (ownerTop) head = ownerPost(ownerTop) ?? map(ownerTop); // the brokerage owner, the salon owner, the practice partner
+  else if (profession.sector === 'private') head = SOLO_HEADS[profession.id] ?? { title: 'Owner', selection: 'owner' };
+  else head = { title: profession.sector === 'federal' ? 'Agency Director' : profession.sector === 'state' ? 'State Director' : 'Director', selection: 'appointed', appointedBy: profession.sector === 'municipal' ? 'the city manager' : profession.sector === 'federal' ? 'the national government' : 'the state government' };
   return {
     name: null, scope: profession.sector === 'private' ? 'market' : profession.sector === 'federal' ? 'nation' : profession.sector === 'state' ? 'state' : 'region',
     sector: profession.sector,
-    // A company has an owner; a government body has a director appointed over it.
-    head: profession.sector === 'private'
-      ? { title: 'Owner / Chief Executive', selection: 'internal' }
-      : { title: profession.sector === 'federal' ? 'Agency Director' : profession.sector === 'state' ? 'State Director' : 'Director', selection: 'appointed', appointedBy: profession.sector === 'municipal' ? 'the city manager' : profession.sector === 'federal' ? 'the national government' : 'the state government' },
-    departments: [{ id: 'main', name: profession.name, occupations: [profession.id], head: { title: profession.sector === 'private' ? 'Department Head' : 'Deputy Director', selection: 'internal' } }],
+    head,
+    departments: [{ id: 'main', name: profession.name, occupations: [profession.id], head: deptHead }],
     solo: true,
   };
 }

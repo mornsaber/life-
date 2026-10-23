@@ -49,6 +49,12 @@ export const MIGRATIONS = {
   3(s) {
     if (s.housing) delete s.housing.cycle;
   },
+  // v4 → v5: owning the firm is no longer a rung on an employee's ladder (found or buy a business instead).
+  4(s) {
+    const back = { trades: ['pm', 'Construction Project Manager'], realestate: ['broker', 'Managing Broker'], cosmetology: ['manager', 'Salon Manager'], plumbing: ['foreman', 'Plumbing Foreman'], bailBonds: ['manager', 'Office Manager'] };
+    const job = s.career?.job;
+    if (job?.levelId === 'owner' && back[job.professionId]) [job.levelId, job.title] = back[job.professionId];
+  },
 };
 
 const isObject = (x) => x && typeof x === 'object' && !Array.isArray(x);

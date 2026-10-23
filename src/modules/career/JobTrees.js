@@ -97,7 +97,7 @@ export const PRIVATE_PROFESSIONS = {
       L('foreman', 'Foreman', 5, { track: 'mgmt', req: { credentials: ['journeymanElectrician'] }, abilities: ['supervise'], reports: 8, years: 4 }),
       L('super', 'Site Superintendent', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'inspect'], reports: 25 }),
       L('pm', 'Construction Project Manager', 7, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'sign'], reports: 60 }),
-      L('owner', 'Owner / President', 8, { track: 'mgmt', req: { credentials: ['masterElectrician'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'delegate', 'exec'], reports: 80 }),
+      L('owner', 'Owner / President', 8, { founder: true, track: 'mgmt', req: { credentials: ['masterElectrician'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'delegate', 'exec'], reports: 80 }),
     ],
   },
   trucking: {
@@ -313,7 +313,7 @@ export const PRIVATE_PROFESSIONS = {
       L('luxury', 'Luxury Property Specialist', 6, { track: 'ic', abilities: ['represent'] }),
       L('team', 'Team Leader', 5, { track: 'mgmt', abilities: ['supervise', 'represent'], reports: 6 }),
       L('broker', 'Managing Broker', 6, { track: 'mgmt', req: { credentials: ['brokerLicense'] }, abilities: ['supervise', 'hire', 'sign'], reports: 25 }),
-      L('owner', 'Brokerage Owner', 7, { track: 'mgmt', req: { credentials: ['brokerLicense'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'delegate', 'exec'], reports: 60 }),
+      L('owner', 'Brokerage Owner', 7, { founder: true, track: 'mgmt', req: { credentials: ['brokerLicense'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'delegate', 'exec'], reports: 60 }),
     ],
   },
 };
@@ -329,7 +329,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
       L('master', 'Master Stylist', 4, { track: 'ic' }),
       L('educator', 'Platform Artist & Educator', 5, { track: 'ic', minSize: 'medium' }),
       L('manager', 'Salon Manager', 4, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 8 }),
-      L('owner', 'Salon Owner', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 20 }),
+      L('owner', 'Salon Owner', 6, { founder: true, track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 20 }),
     ],
   },
   plumbing: {
@@ -344,7 +344,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
       L('master', 'Master Plumber', 5, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['sign'] }),
       L('inspector', 'Plumbing Inspector', 6, { track: 'ic', req: { credentials: ['masterPlumber'] }, abilities: ['inspect'] }),
       L('foreman', 'Plumbing Foreman', 5, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
-      L('owner', 'Plumbing Contractor (Owner)', 8, { track: 'mgmt', req: { credentials: ['masterPlumber'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 40 }),
+      L('owner', 'Plumbing Contractor (Owner)', 8, { founder: true, track: 'mgmt', req: { credentials: ['masterPlumber'] }, abilities: ['supervise', 'hire', 'budget', 'sign', 'exec'], reports: 40 }),
     ],
   },
   socialWork: {

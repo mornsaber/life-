@@ -61,12 +61,14 @@ export function detectiveRanks(ranks) {
 }
 
 export function ladderFor(profession, size) {
+  // Owning the firm isn't a promotion: you found or buy a business for that (Business).
+  const levels = profession.levels.filter((l) => !l.founder);
   // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
-  if (size === 'micro') return profession.levels.filter((l) => !l.minSize && !l.microDrop);
+  if (size === 'micro') return levels.filter((l) => !l.minSize && !l.microDrop);
   // A national agency is one employer, field office to headquarters: its whole chain of command is
   // yours to climb, whatever the size of the office you started in.
-  if (profession.sector === 'federal') return profession.levels;
-  return profession.levels.filter((l) => sizeRank(size) >= sizeRank(l.minSize));
+  if (profession.sector === 'federal') return levels;
+  return levels.filter((l) => sizeRank(size) >= sizeRank(l.minSize));
 }
 
 /* ------------------------------------------------------------------ */

@@ -24,7 +24,7 @@
  * state.royal.household = { titled: { [personId]: title }, military: [str], rank,
  *   schooled, cameOfAge, conferred: n, heirId }
  */
-import { CROWNS, ensureCrown, demise, royalStyledName } from './Crown.js';
+import { CROWNS, ensureCrown, demise, royalStyledName, monarchName } from './Crown.js';
 import { currentYear, yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
 import { eminence } from './Honours.js';
 import { localUnitName } from './MilitaryLocal.js';
@@ -52,6 +52,8 @@ export const ROYAL_ORDERS = {
 export function familyTitle(state, p) {
   const r = state.royal;
   if (!r || !p.alive) return p.title ?? null;
+  // A title the sovereign granted is the holder's for life.
+  if (p.granted) return p.granted;
   const def = CROWNS[r.crownId];
   const crown = state.world?.crowns?.[r.crownId];
   if (!def || !crown) return null;
@@ -101,6 +103,15 @@ function syncTitles(ctx) {
   }
   for (const p of people(state)) {
     if (!p.alive) continue;
+    // A working royal's spouse with no title by marriage (a princess's husband) may be given one.
+    if (p.relation === 'spouse' && !r.reigning && r.working && !r.steppedBack && !p.granted && !p.grantAsked && !familyTitle(state, p)) {
+      p.grantAsked = true;
+      const t = ctx.rng.chance(0.5) ? grantableTitle(r.crownId, p, ctx.rng) : null;
+      if (t) {
+        p.granted = t;
+        ctx.log(`${monarchName(state, r.crownId)} gave ${p.firstName} a title on your marriage: ${t}.`, '👑', 'honor');
+      }
+    }
     const t = familyTitle(state, p);
     if (t === (p.title ?? null)) continue;
     const had = p.title;
@@ -321,6 +332,21 @@ function powersYear(ctx) {
 /* Honours the monarch confers                                         */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A title the sovereign can grant someone in the family who has none: an earldom in Britain
+ * (as for a princess's husband), a duchy in Sweden and Spain, a Dutch prince's or princess's
+ * title by royal decree. Japan's peerage was abolished in 1947: nothing to grant.
+ */
+const EARLDOMS = { GB: ['Snowdon', 'Ulster', 'Forfar', 'Inverness', 'Merioneth', 'Dumbarton', 'St Andrews'] };
+export function grantableTitle(crownId, p, rng) {
+  const def = CROWNS[crownId];
+  const female = p.gender === 'female';
+  if (crownId === 'JP' || !def) return null;
+  if (crownId === 'NL') return `${female ? 'Princess' : 'Prince'} of Orange-Nassau`;
+  if (crownId === 'GB') return `${female ? 'Countess' : 'Earl'} of ${rng.pick(EARLDOMS.GB)}`;
+  return def.dukedoms.length ? `${female ? 'Duchess' : 'Duke'} of ${rng.pick(def.dukedoms)}` : null;
+}
+
 /** Who you can honour, and with what. */
 export function conferOptions(state) {
   const r = state.royal;
@@ -333,6 +359,7 @@ export function conferOptions(state) {
     if (age < 18) continue;
     const has = p.honours ?? [];
     if (p.relation === 'child' && !p.dukedom && def.dukedoms.length) out.push({ person: p, id: 'dukedom', label: `👑 Create ${p.firstName} a royal ${p.gender === 'female' ? 'duchess' : 'duke'}` });
+    else if (!p.title && !p.granted && r.crownId !== 'JP' && ['spouse', 'child', 'grandchild', 'sibling', 'niece', 'nephew', 'mother', 'father'].includes(p.relation)) out.push({ person: p, id: 'title', label: `👑 Grant ${p.firstName} a title` });
     if (['child', 'spouse', 'sibling', 'friend', 'bestFriend', 'mother', 'father'].includes(p.relation) && !has.includes('great')) out.push({ person: p, id: 'great', label: `🎗️ Appoint ${p.firstName} to the ${o.great[0]}` });
     if (['friend', 'bestFriend', 'coworker', 'mentor'].includes(p.relation) && !has.includes('personal')) out.push({ person: p, id: 'personal', label: `⭐ Appoint ${p.firstName} to the ${o.personal[0]}${o.knight[0] ? ` (a knighthood)` : ''}` });
     if (['friend', 'bestFriend', 'sibling', 'child'].includes(p.relation) && !has.includes('honoraryRank') && o.colonel.length) out.push({ person: p, id: 'honoraryRank', label: `🎖️ Make ${p.firstName} Honorary Colonel of ${o.colonel[0]}` });
@@ -366,7 +393,15 @@ function confer(ctx, arg) {
     const place = rng.pick(def.dukedoms);
     p.dukedom = `${p.gender === 'female' ? 'Duchess' : 'Duke'} of ${place}`;
     p.title = p.dukedom;
+    p.granted = p.dukedom;
     return ctx.log(`You created ${p.firstName} ${p.dukedom}.`, '👑', 'honor');
+  }
+  if (kind === 'title') {
+    const t = p.relation === 'spouse' && p.gender === 'male' && r.crownId === 'GB' ? 'Prince' : grantableTitle(r.crownId, p, rng);
+    if (!t) return undefined;
+    p.granted = t;
+    p.title = t;
+    return ctx.log(`By letters patent you made ${p.firstName} ${/ of /.test(t) ? t : `${t} ${p.firstName}`}.`, '👑', 'honor');
   }
   if (kind === 'great') return ctx.log(`You appointed ${p.firstName} to the ${o.great[0]}${o.great[1] ? ` (${p.gender === 'female' ? o.great[2] : o.great[1]})` : ''}.`, '🎗️', 'honor');
   if (kind === 'personal') {
@@ -532,6 +567,20 @@ export const HonoraryModule = {
   onAgeUp(ctx) {
     const { state, rng } = ctx;
     const age = state.character.age;
+    // Appointments run for a term (five years, renewable once); a Colonel of the Regiment serves to 70.
+    for (const h of state.honors.filter((x) => x.source === 'honoraryRank' && !state.royal)) {
+      h.until ??= h.colonelOf ? 70 : age + 5;
+      if (age < h.until) continue;
+      if (!h.colonelOf && !h.renewed && rng.chance(0.5)) {
+        h.renewed = true;
+        h.until = age + 5;
+        ctx.log(`Your appointment as ${h.name} was extended for another five years.`, '🎖️', 'good');
+      } else {
+        state.honors = state.honors.filter((x) => x !== h);
+        state.honoraryPast = [...(state.honoraryPast ?? []), h.name];
+        ctx.log(`Your term as ${h.name} came to an end. The regiment dined you out.`, '🎖️', 'info');
+      }
+    }
     if (state.royal || age < 40 || age > 80 || state.legal.incarceration || state.military.service) return;
     const held = state.honors.filter((h) => h.source === 'honoraryRank');
     if (held.length >= 2) return;
@@ -542,7 +591,8 @@ export const HonoraryModule = {
     if (!rng.chance(retiredFlag ? 0.08 : Math.min(0.06, score / 5000))) return;
     const unit = localUnitName(cc, rng.pick(['army', 'army', 'navy', 'airforce']), rng) ?? rng.pick(['the 1st Cavalry Regiment', 'the 3rd Infantry Regiment', 'a Naval Reserve center', 'an Air National Guard wing']);
     const name = retiredFlag ? `Colonel of the Regiment — ${unit}` : /Flotilla|HMS|HMAS|HMCS|HMNZS|INS|Fregatte|Navy|Naval/.test(unit) ? `Honorary Captain — ${unit}` : /Wing|Squadron|Air/.test(unit) ? `Honorary Air Commodore — ${unit}` : `Honorary Colonel — ${unit}`;
-    addHonor(state, { id: `honorary.${held.length}`, source: 'honoraryRank', name, icon: '🎖️', precedence: 7, prestige: 12, citation: retiredFlag ? 'The regiment asked its old officer to be its Colonel: guardian of its traditions, at its parades and its funerals.' : 'For services to the nation: an honorary appointment to the armed forces, with the right to wear the uniform on ceremonial occasions.' });
+    if ((state.honoraryPast ?? []).includes(name)) return;
+    addHonor(state, { id: `honorary.${held.length}.${age}`, source: 'honoraryRank', name, icon: '🎖️', precedence: 7, prestige: 12, until: retiredFlag ? Math.max(age + 5, 70) : age + 5, colonelOf: retiredFlag, citation: retiredFlag ? 'The regiment asked its old officer to be its Colonel: guardian of its traditions, at its parades and its funerals.' : 'For services to the nation: an honorary appointment to the armed forces, with the right to wear the uniform on ceremonial occasions.' });
     ctx.log(`You were appointed ${name}.`, '🎖️', 'honor');
   },
 };

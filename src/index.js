@@ -51,6 +51,8 @@ function startNewLife(form) {
     difficulty: data.get('difficulty') || 'normal',
     royalLevel: data.get('royalLevel') || 'none',
     noble: data.get('noble') === 'on',
+    nobleRank: data.get('nobleRank') || 'none',
+    nobleHeir: data.get('nobleHeir') || 'random',
   });
 }
 

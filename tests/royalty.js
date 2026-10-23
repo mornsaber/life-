@@ -16,6 +16,7 @@ import { styledName, chivalryList, postNominals, honoursList, knighthoodsOn, set
 import { peerChamber, lordSpiritual } from '../src/modules/politics/Legislature.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { conferOptions, familyTitle } from '../src/modules/world/RoyalHousehold.js';
+import { nobleStart } from '../src/core/State.js';
 import { fullName } from '../src/modules/people/People.js';
 import { VIEWS, Renderer } from '../src/ui/Renderer.js';
 
@@ -351,6 +352,47 @@ const tests = {
       MODULES.find((m) => m.id === 'politics').onAgeUp({ ...ctx, rng: always(ctx.rng) });
       assert.ok(!state.prompts.some((p) => p.type === 'politics.appointmentOffer' && /state trial court/.test(p.text)), 'no US state trial court');
     }
+  },
+  'a noble start: chosen rank and place in the family, in Britain or Spain'() {
+    const { state } = life({ countryId: 'US', nobleRank: 'earl', nobleHeir: 'heir' });
+    assert.equal(state.character.countryId, 'GB');
+    assert.equal(state.noble.rank, 'earl');
+    assert.equal(state.noble.heir, true);
+    assert.ok(state.character.style?.prefix);
+    const es = life({ countryId: 'ES', nobleRank: 'duke', nobleHeir: 'younger' }).state;
+    assert.equal(es.character.countryId, 'ES');
+    assert.equal(es.noble.heir, false);
+    assert.equal(nobleStart(new Random(1), { nobleRank: 'none' }), null);
+    // Royal births win.
+    const royal = life({ royalLevel: 'child', nobleRank: 'duke' }).state;
+    assert.ok(royal.royal && !royal.noble);
+    // The heir inherits.
+    const { engine, state: h } = life({ nobleRank: 'baron', nobleHeir: 'heir' }, 4);
+    for (const p of h.people.list) if (p.id === h.noble.holderId) p.alive = false;
+    year(engine, h, 1);
+    assert.equal(h.character.peerage?.kind, 'hereditary');
+  },
+  'an untitled royal is given a title on marriage; the sovereign can grant untitled relatives one'() {
+    const { engine, state } = life({ royalLevel: 'distant', gender: 'male' }, 6);
+    year(engine, state, 26);
+    state.people.list.push({ id: 'sp', firstName: 'Clara', lastName: 'Bell', gender: 'female', relation: 'spouse', ageOffset: 0, alive: true, relationship: 80, income: 0 });
+    state.royal.working = true;
+    for (let i = 0; i < 8 && !state.character.style?.peerage; i++) year(engine, state, 1);
+    assert.match(state.character.style?.peerage ?? '', / of /, 'given a title');
+    // Reigning: grant a title to an untitled relative.
+    const { engine: e2, state: q } = life({ royalLevel: 'heir', gender: 'female' }, 2);
+    year(e2, q, 30);
+    q.royal.reigning = true;
+    q.people.list.push({ id: 'hb', firstName: 'Tom', lastName: 'Ashe', gender: 'male', relation: 'spouse', ageOffset: 0, alive: true, relationship: 80, income: 0 });
+    delete q.people.list.find((p) => p.id === 'hb').title;
+    const opt = conferOptions(q).find((o) => o.person.id === 'hb' && o.id === 'title');
+    assert.ok(opt, 'can grant the consort a title');
+    q.yearly = {};
+    q.prompts = [];
+    e2.dispatch('royalHousehold.confer', 'hb|title');
+    const hb = q.people.list.find((p) => p.id === 'hb');
+    assert.ok(hb.granted);
+    assert.equal(familyTitle(q, hb), hb.granted, 'the grant survives the yearly title sync');
   },
 };
 void PeerageModule;

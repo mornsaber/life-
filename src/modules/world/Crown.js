@@ -425,7 +425,20 @@ function royalYear(ctx) {
   }
   // Coming of age: a royal dukedom on marriage (or at 25) for the monarch's children; orders at 21.
   if (r.working && age === 21 && r.line != null && r.line <= 4) ctx.emit('honours:royal', {});
-  if (r.working && !r.reigning && def.dukedoms.length && r.line != null && r.line >= 2 && r.line <= 12 && age >= 25 && !state.character.peerage) {
+  // A royal without a substantive title (further down the line, or a daughter of the House in a crown
+  // with no duchies to give) is usually given one on marriage.
+  const married = (state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse');
+  const minor = r.line == null || r.line > 12 || !def.dukedoms.length;
+  if (!r.reigning && !r.steppedBack && minor && married && !state.character.peerage && !r.titleGranted && r.crownId !== 'JP' && rng.chance(r.working ? 0.6 : 0.25)) {
+    r.titleGranted = true;
+    const female = state.character.gender === 'female';
+    const place = r.crownId === 'NL' ? null : rng.pick(def.dukedoms.length ? def.dukedoms : ['Snowdon']);
+    const t = r.crownId === 'NL' ? `${female ? 'Princess' : 'Prince'} of Orange-Nassau` : r.crownId === 'GB' ? `${female ? 'Countess' : 'Earl'} of ${rng.pick(['Snowdon', 'Ulster', 'Forfar', 'Inverness', 'Merioneth'])}` : `${female ? 'Duchess' : 'Duke'} of ${place}`;
+    if (r.crownId === 'GB') state.character.peerage = { rank: 'earl', place: t.replace(/^\S+ of /, ''), kind: 'royal', seat: false, created: age };
+    state.character.style = { ...(state.character.style ?? {}), peerage: t };
+    ctx.log(`On your marriage ${monarchName(state, r.crownId)} gave you a title of your own: ${t}.`, '👑', 'honor');
+  }
+  if (r.working && !r.reigning && def.dukedoms.length && r.line != null && r.line >= 2 && r.line <= 12 && (age >= 25 || married) && age >= 18 && !state.character.peerage) {
     const place = rng.pick(def.dukedoms);
     const female = state.character.gender === 'female';
     state.character.peerage = { rank: 'duke', place, kind: 'royal', seat: false, created: age };

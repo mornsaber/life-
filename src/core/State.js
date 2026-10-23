@@ -14,7 +14,7 @@ import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
 
-export const STATE_VERSION = 4;
+export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
 export const START_YEAR = 2026;
 
@@ -80,10 +80,29 @@ export function royalBirth(rng, options) {
   return home ? { countryId: home, level: level ?? 'child' } : null;
 }
 
+/** Countries whose peerages still pass titles (Peerage.js), and the ranks. */
+const PEERAGE_HOMES = ['GB', 'ES'];
+export const NOBLE_RANK_IDS = ['baron', 'viscount', 'earl', 'marquess', 'duke'];
+
+/**
+ * Born into the peerage (not royal): a titled family in Britain or Spain — Britain if you chose
+ * a country without one. { countryId, rank|null (random), heir: true|false|null (random) } or null.
+ */
+export function nobleStart(rng, options) {
+  const rank = NOBLE_RANK_IDS.includes(options.nobleRank) ? options.nobleRank : options.nobleRank === 'random' ? null : undefined;
+  if (rank === undefined) return null;
+  const cc = options.countryId;
+  const home = PEERAGE_HOMES.includes(cc) ? cc : cc === 'random' ? rng.pick(PEERAGE_HOMES) : 'GB';
+  const heir = options.nobleHeir === 'heir' ? true : options.nobleHeir === 'younger' ? false : null;
+  return { countryId: home, rank, heir };
+}
+
 export function createInitialState(rng, options = {}) {
   const birth = royalBirth(rng, options);
   const royal = Boolean(birth);
   if (royal) options = { ...options, countryId: birth.countryId, royalLevel: birth.level };
+  const noble = royal ? null : nobleStart(rng, options);
+  if (noble) options = { ...options, countryId: noble.countryId };
   if (options.countryId === 'random') options = { ...options, countryId: randomCountryId(rng) };
   const country = options.countryId && options.countryId !== 'US' ? COUNTRIES[options.countryId] : null;
   setNameCountry(country?.id ?? 'US');
@@ -155,7 +174,7 @@ export function createInitialState(rng, options = {}) {
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
-    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}) },
+    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}) },
   };
 }
 

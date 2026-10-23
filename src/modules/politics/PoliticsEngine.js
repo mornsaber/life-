@@ -15,7 +15,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { stateOf, regionOf } from '../life/Regions.js';
 import { promotionStatus } from '../career/CareerEngine.js';
 import { OFFICES } from './Offices.js';
-import { SEAT_OFFICES } from './Legislature.js';
+import { SEAT_OFFICES, executiveOf } from './Legislature.js';
 import { voteShare, appointmentEligibility } from './Campaigns.js';
 import { CampaignTrail, campaignYear } from './CampaignTrail.js';
 import { newCampaign, outsideCalendar, electorateOf, distance } from './Elections.js';
@@ -289,15 +289,40 @@ export const PoliticsEngine = {
           { id: 'retire', label: onCalendar ? '👋 Don\'t seek re-election' : '👋 Retire from office' },
         ],
       });
-      if (p.campaign?.officeId === o.id) { /* the campaign decides */ }
+      // Cabinet members serve at the President's pleasure: a new president brings a new cabinet.
+      const nat = office.cabinet ? executiveOf(state, 'national') : null;
+      if (nat && !nat.you) o.under ??= nat.name;
+      if (office.cabinet && nat && !nat.you && o.under !== nat.name) {
+        leaveOffice(ctx, `President ${nat.name} took office with a cabinet of their own`);
+      } else if (p.campaign?.officeId === o.id) { /* the campaign decides */ }
       else if (onCalendar && o.termYearsLeft === 1 && !limited && !o.retiring && !o.asked) {
         o.asked = true;
         reelectionPrompt();
       } else if (o.termYearsLeft <= 0) {
         if (limited) leaveOffice(ctx, 'Term-limited');
-        else if (office.appointedBy) {
-          // Appointed: the council renews your contract if things are going well.
-          if (o.approval >= 45) {
+        else if (office.selection === 'appointed') {
+          // Appointed for a fixed term (a Governor-General, a lord-lieutenant, a party state's president):
+          // usually one term; those who serve "until 75" go on to that age; a party state's
+          // president stays as long as they lead the Party.
+          const age = state.character.age;
+          const partyHead = ['cn_president', 'kp_president', 'vn_president'].includes(o.id);
+          const again = partyHead ? state.cpc?.status === 'member' && state.cpc.rank >= 9 && !state.cpc.retiredFrom
+            : office.serveTo ? age < office.serveTo : o.terms < 2 && o.approval >= 55 && rng.chance(0.15);
+          if (again) {
+            o.terms += 1;
+            o.termYearsLeft = office.serveTo ? Math.min(office.term, office.serveTo - age) : partyHead ? office.term : Math.min(office.term, 2);
+            ctx.log(`${office.chosenBy ? `${office.chosenBy[0].toUpperCase()}${office.chosenBy.slice(1)}` : 'The government'} ${partyHead ? 're-elected' : 'extended'} your appointment as ${office.name}.`, '✍️', 'good');
+          } else leaveOffice(ctx, office.serveTo && age >= office.serveTo ? `Retired at ${office.serveTo}` : 'Your term of appointment ended');
+        } else if (office.cabinet) {
+          // A president's two terms are the most a cabinet secretary can serve them.
+          if (o.terms < 2 && o.approval >= 45 && rng.chance(0.6)) {
+            o.terms += 1;
+            o.termYearsLeft = office.term;
+            ctx.log(`The President won a second term and kept you on as ${office.name}.`, '✍️', 'good');
+          } else leaveOffice(ctx, o.terms >= 2 ? 'The administration ended' : 'Left the cabinet at the end of the President\'s term');
+        } else if (office.appointedBy) {
+          // Appointed on contract (a city manager): the council renews if things are going well, less readily each time.
+          if (o.approval >= 45 && rng.chance(clamp(0.9 - (o.terms - 1) * 0.15, 0.25, 0.9))) {
             o.terms += 1;
             o.termYearsLeft = office.term;
             ctx.log(`${office.appointedBy[0].toUpperCase()}${office.appointedBy.slice(1)} renewed your contract as ${office.name}.`, '✍️', 'good');

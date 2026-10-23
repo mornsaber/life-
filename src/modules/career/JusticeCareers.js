@@ -224,7 +224,7 @@ export const JUSTICE_PROFESSIONS = {
       L('agent', 'Bail Agent', 3, { req: { credentials: ['bailAgent'] } }),
       L('recovery', 'Fugitive Recovery Agent', 4, { track: 'ic', req: { credentials: ['bailAgent'] } }),
       L('manager', 'Office Manager', 5, { track: 'mgmt', abilities: ['supervise', 'sign'], reports: 5 }),
-      L('owner', 'Bonding Agency Owner', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 15 }),
+      L('owner', 'Bonding Agency Owner', 6, { founder: true, track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 15 }),
     ],
   },
 };

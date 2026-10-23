@@ -225,7 +225,7 @@ function currentJob(state) {
     <p class="fine">Applications this year: ${state.yearly['career.apply'] ?? 0}/${APPLICATIONS_PER_YEAR}</p>`, { icon: profession.icon, accent: 'cyan' });
 }
 
-const SELECTION_LABEL = { appointed: 'appointed', elected: 'elected', board: 'hired by the board', internal: 'promoted from within', hired: 'external hire' };
+const SELECTION_LABEL = { appointed: 'appointed', elected: 'elected', board: 'hired by the board', internal: 'promoted from within', hired: 'external hire', owner: 'owner', outside: 'chosen by the members' };
 
 /** Who you work for and with: organization, department, chain of command, coworkers and reports. */
 function organizationCard(state, job) {
@@ -520,7 +520,7 @@ function progression(state, job, profession, size) {
   if (deptDef && !onLadder(deptDef)) posts.push({ def: deptDef, scope: org.departments[job.employer.deptId]?.name ?? t.departments.find((d) => d.id === job.employer.deptId)?.name ?? 'Department', mine: Boolean(job.headOf?.deptId) });
   if (orgDef && !onLadder(orgDef)) posts.push({ def: orgDef, scope: org.name, mine: Boolean(job.headOf) && !job.headOf.deptId });
   if (!posts.length) return html;
-  const how = (def) => (def.selection === 'elected' || def.office ? '🗳️ elected' : def.appointedBy ? `appointed by ${def.appointedBy}` : def.selection === 'board' ? 'chosen by the board' : 'promoted from within');
+  const how = (def) => (def.selection === 'elected' || def.office ? '🗳️ elected' : def.selection === 'owner' ? 'the owner (start or buy a business to be one)' : def.appointedBy ? `${def.selection === 'outside' ? 'chosen' : 'appointed'} by ${def.appointedBy}` : def.selection === 'board' ? 'chosen by the board' : 'promoted from within');
   const heldDept = Boolean(job.headOf?.deptId);
   const items = posts.map((p, i) => {
     const cls = p.mine ? 'now' : (i === 0 && heldDept && posts.length > 1 && !p.mine) ? 'done' : promotable(p.def) ? 'todo' : 'na';

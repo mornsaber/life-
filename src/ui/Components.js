@@ -292,7 +292,12 @@ export function newLifeForm(rngName) {
         </fieldset>
         <label class="country-pick">Born royal<select name="royalLevel"><option value="none" selected>👤 Not royal</option>${Object.entries(ROYAL_LEVELS).map(([id, l]) => `<option value="${id}">${esc(l.name)} — ${esc(l.desc)}</option>`).join('')}</select></label>
         <p class="fine">Pick a place in the royal family to be born royal in a kingdom: Britain, Japan, Sweden, the Netherlands or Spain (Canada, Australia and New Zealand share Britain's royal family). Republics have no crown — unless you choose the Born Royal difficulty, which takes you to Britain.</p>
-        <label class="check"><input type="checkbox" name="noble"> 🏰 Allow a noble birth (very rare: a titled family in Britain or Spain)</label>
+        <div class="form-row">
+          <label class="country-pick">Born into the peerage<select name="nobleRank"><option value="none" selected>👤 No title</option><option value="random">🎲 A titled family (any rank)</option>${['baron', 'viscount', 'earl', 'marquess', 'duke'].map((r) => `<option value="${r}">🏰 A ${r}'s family</option>`).join('')}</select></label>
+          <label class="country-pick">Place in it<select name="nobleHeir"><option value="random" selected>🎲 Either</option><option value="heir">👑 Heir to the title</option><option value="younger">🌿 A younger child (a courtesy style, no title to inherit)</option></select></label>
+        </div>
+        <p class="fine">A noble (not royal) birth in Britain or Spain — Britain if your country has no peerage. Royal births take precedence.</p>
+        <label class="check"><input type="checkbox" name="noble"> 🏰 Or just allow a noble birth by chance (very rare)</label>
         <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>

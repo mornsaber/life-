@@ -46,7 +46,7 @@ export const postDef = (org, deptId) => {
 };
 
 /** Posts the player can hold: not elected offices and not politics offices (city manager is hired through politics). */
-export const promotable = (def) => Boolean(def) && def.selection !== 'elected' && def.selection !== 'owner' && !def.office;
+export const promotable = (def) => Boolean(def) && !['elected', 'owner', 'outside'].includes(def.selection) && !def.office;
 
 const norm = (s) => String(s ?? '').toLowerCase().replace(/[^a-z]/g, '');
 

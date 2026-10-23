@@ -39,6 +39,7 @@ export const RANKS = {
 export const NOBLE_BIRTH_CHANCE = 0.004;
 /** Countries with a peerage that still passes titles. */
 export const PEERAGE_COUNTRIES = ['GB', 'ES'];
+const PLACES_ES = ['Valdeflores', 'Torrealta', 'Santa Inés', 'Peñaranda', 'Villafranca', 'Montesclaros', 'Almenara'];
 const PLACES = ['Ashby', 'Harcourt', 'Wexley', 'Brantham', 'Coldmoor', 'Elvaston', 'Sallowfield', 'Thornbury', 'Kilmarren', 'Ravensworth'];
 
 const gkey = (g) => (g === 'female' ? 'female' : 'male');
@@ -70,12 +71,15 @@ export function grantPeerage(ctx, { rank, place, kind, seat }) {
 /** A noble birth (opt-in, rare): a titled parent, a courtesy style, a family seat's wealth. */
 export function nobleBirth(state, rng) {
   const cc = state.character.countryId ?? 'US';
-  if (!state.flags?.nobleOptIn || !PEERAGE_COUNTRIES.includes(cc) || state.royal || !rng.chance(NOBLE_BIRTH_CHANCE)) return false;
-  const rank = rng.weighted([['baron', 40], ['viscount', 22], ['earl', 26], ['marquess', 7], ['duke', 5]], ([, w]) => w)[0];
+  // Chosen on the start screen (a rank, heir or younger child), or the rare opt-in chance.
+  const chosen = state.flags?.nobleStart;
+  if (!PEERAGE_COUNTRIES.includes(cc) || state.royal) return false;
+  if (!chosen && (!state.flags?.nobleOptIn || !rng.chance(NOBLE_BIRTH_CHANCE))) return false;
+  const rank = chosen?.rank ?? rng.weighted([['baron', 40], ['viscount', 22], ['earl', 26], ['marquess', 7], ['duke', 5]], ([, w]) => w)[0];
   const parents = (state.people?.list ?? []).filter((p) => p.relation === 'father' || p.relation === 'mother');
   const holder = parents.find((p) => p.relation === 'father') ?? parents[0];
-  const heir = rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
-  state.noble = { rank, place: rng.pick(PLACES), holderId: holder?.id ?? null, heir };
+  const heir = chosen?.heir ?? rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
+  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir };
   if (holder) holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName);
   if (state.people) state.people.wealth = 'upper';
   state.character.style = { ...(state.character.style ?? {}), prefix: courtesy(state) };
@@ -215,7 +219,7 @@ export const PeerageModule = {
   id: 'peerage',
   order: 33.6,
   init(state, rng) {
-    if (state.flags?.nobleOptIn && !state.noble && state.character.age === 0 && rng) nobleBirth(state, rng);
+    if ((state.flags?.nobleOptIn || state.flags?.nobleStart) && !state.noble && state.character.age === 0 && rng) nobleBirth(state, rng);
   },
   setup(engine) {
     // The commander of a war won: remembered for a peerage.

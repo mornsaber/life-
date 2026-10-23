@@ -111,8 +111,8 @@ Object.assign(NATIONAL_OFFICES, {
   // The Crown below the Governor-General: in each province, state and county.
   ca_lg: { ...ceremonial, country: 'CA', name: 'Lieutenant Governor', icon: '🍁', level: 5, term: 5, salary: 160000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Governor General on the Prime Minister\'s advice', stature: 3 },
   au_governor: { ...ceremonial, country: 'AU', name: 'State Governor', icon: '🇦🇺', level: 5, term: 5, salary: 280000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Crown on the Premier\'s advice', stature: 3 },
-  gb_lordLieutenant: { ...ceremonial, country: 'GB', name: 'Lord-Lieutenant of the County', icon: '🏰', level: 4, term: 10, salary: 0, fullTime: false, minAge: 50, cost: 0, selection: 'appointed', chosenBy: 'the Crown on the Prime Minister\'s advice', stature: 3 },
-  gb_deputyLieutenant: { ...ceremonial, country: 'GB', name: 'Deputy Lieutenant', icon: '🏰', level: 3, term: 10, salary: 0, fullTime: false, minAge: 40, cost: 0, selection: 'appointed', chosenBy: 'the Lord-Lieutenant', stature: 2 },
+  gb_lordLieutenant: { ...ceremonial, country: 'GB', name: 'Lord-Lieutenant of the County', icon: '🏰', level: 4, term: 10, salary: 0, fullTime: false, minAge: 50, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Crown on the Prime Minister\'s advice', stature: 3 },
+  gb_deputyLieutenant: { ...ceremonial, country: 'GB', name: 'Deputy Lieutenant', icon: '🏰', level: 3, term: 10, salary: 0, fullTime: false, minAge: 40, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Lord-Lieutenant', stature: 2 },
   nz_gg: { ...ceremonial, country: 'NZ', name: 'Governor-General of New Zealand', icon: '🇳🇿', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
 });
 /**

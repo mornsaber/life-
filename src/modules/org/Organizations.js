@@ -519,6 +519,13 @@ export function ensureHeads(state, org) {
   const t = orgType(org.typeId);
   if (!t) return;
   const rng = sideRng(state);
+  // Older saves: generic employers once had a "Department Head" and an "Owner / Chief Executive".
+  if (t.solo && !org.retitled) {
+    org.retitled = true;
+    const retitle = (h, post) => { if (h && post && /^(Department Head|Owner \/ Chief Executive)$/.test(h.title)) Object.assign(h, { title: post.title, selection: post.selection }); };
+    retitle(org.people[org.head], localizePost(org, null, t.head));
+    for (const d of t.departments) retitle(org.people[org.departments[d.id]?.head], localizePost(org, d.id, d.head));
+  }
   if (!org.head && !org.playerHead && !org.officeHead) org.head = newPerson(rng, org, { title: t.head.title, selection: t.head.selection === 'internal' ? 'internal' : t.head.selection, age: rng.int(45, 64), years: 0 }).id;
   for (const d of t.departments) {
     const dept = org.departments[d.id];
