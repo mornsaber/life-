@@ -19,6 +19,7 @@ import { assignmentBoardBonus, jointFactor } from './Assignments.js';
 import { offerBranchDetail } from './CareerFields.js';
 import { meetsEducation, prestige, addLog, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
+import { partyBoardFactor } from '../politics/CommunistParty.js';
 import { pensionMultiplier, careerEndAwards, militaryHonors, MOH_ANNUAL_PENSION } from './MedalEngine.js';
 import { hasClearance, adjudicate, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
 import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos, DIRECT_COMMISSIONS } from './MOS.js';
@@ -581,6 +582,8 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.4;
   if (svc.track === 'warrant' && svc.grade >= 3) chance *= 0.6;
+  // In a one-party state the unit's Party committee weighs in on every officer's promotion.
+  chance *= partyBoardFactor(ctx.state, svc);
   if (!ctx.rng.chance(clamp(chance, 0.02, 0.95))) {
     if (flagBoard) svc.flagPassovers = (svc.flagPassovers ?? 0) + 1;
     notSelected(ctx, svc);

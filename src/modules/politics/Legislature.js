@@ -32,6 +32,7 @@ import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describe
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
 import { recordVote, LAW_ISSUE } from './Platform.js';
 import { voteReaction, nextElectionYear } from './Elections.js';
+import { regimeOf } from '../world/Regimes.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -184,6 +185,24 @@ const homeState = (state) => (REGIONS[state.character.regionId] ?? REGIONS.midci
 const whereFor = (state, level) => (level === 'city' ? state.character.regionId : level === 'state' ? homeState(state) : state.character.countryId ?? 'US');
 export const bodyId = (kind, where) => `${kind}:${where}`;
 
+/**
+ * One-party states: every legislature is a people's congress. Deputies are returned unopposed
+ * from the Party's list; the Party's proposals pass all but unanimously; the executive is a cadre
+ * the Party appoints and moves on.
+ */
+const oneParty = (state) => Boolean(regimeOf(state.character.countryId ?? 'US').party);
+const CONGRESS_NAMES = { CN: 'Municipal People\'s Congress', VN: 'People\'s Council', KP: 'People\'s Assembly' };
+/** Laws a one-party state doesn't legislate on (no right-to-work fights, private prisons or cannabis). */
+const NOT_IN_PARTY_STATES = ['rightToWork', 'cardCheck', 'privatePrisons', 'privatePolicing', 'privateEms', 'privateFire', 'cannabis', 'publicBargaining', 'rentControl', 'nonCompeteBan'];
+const PARTY_BACKGROUNDS = ['Party official', 'State-enterprise manager', 'Factory director', 'Army officer', 'Model worker', 'Teacher', 'Physician', 'Village Party secretary', 'Engineer', 'Scientist', 'Farmer', 'Trade-union cadre'];
+function partyBody(state, body) {
+  if (!oneParty(state)) { delete body.oneParty; return; }
+  body.oneParty = true;
+  const cc = state.character.countryId;
+  if (body.kind === 'council' && CONGRESS_NAMES[cc] && !body.name.endsWith(CONGRESS_NAMES[cc])) body.name = `${body.name.replace(/ City Council$/, '')} ${CONGRESS_NAMES[cc]}`;
+  for (const m of body.members ?? []) if (m.background && !PARTY_BACKGROUNDS.includes(m.background) && m.background !== 'You') m.background = PARTY_BACKGROUNDS[m.name.length % PARTY_BACKGROUNDS.length];
+}
+
 function laborShareFor(state, kind, where) {
   if (kind === 'council') return REGIONS[where]?.size === 'small' || ['rural', 'smalltown'].includes(where) ? 0.42 : 0.6;
   if (kind === 'house' || kind === 'senate') return STATES[where]?.rightToWork ? 0.38 : 0.58;
@@ -239,8 +258,9 @@ function fillProfile(m, rng, body) {
 export const districtLabel = (body, m) => (body.kind === 'council' ? `Ward ${m.district}` : body.kind === 'usSenate' || body.kind === 'senate' ? `${body.kind === 'usSenate' ? 'Seat' : 'District'} ${m.district}` : `District ${m.district}`);
 
 /** How a named member votes on a bill: the caucus line, except moderates sometimes cross over (or follow their pet issue). */
-function memberVote(m, bill, rng) {
+function memberVote(m, bill, rng, body = null) {
   if (m.you) return null;
+  if (body?.oneParty) return rng.chance(0.98);
   const labor = favorsLabor(bill.lawId, bill.direction);
   const withCaucus = (m.caucus === 'labor') === labor;
   const firmness = Math.abs(m.lean) / 100;
@@ -302,6 +322,7 @@ export function ensureBodies(state) {
       if (!state.legislature.bodies[id]) state.legislature.bodies[id] = newBody(state, kind, where, legRng(state));
       // Older saves: name the members and committee chairs.
       const b = state.legislature.bodies[id];
+      partyBody(state, b);
       if (!b.members) pickLeaders(b, legRng(state));
       else if (b.members.some((m) => !m.id)) { const r = legRng(state); for (const m of b.members) fillProfile(m, r, b); }
       out.push(state.legislature.bodies[id]);
@@ -395,6 +416,8 @@ function pressure(state, bill, level, where) {
 }
 
 function floorVote(body, bill, push, rng) {
+  // A people's congress: the Party's bills pass with a handful of abstentions.
+  if (body.oneParty) { const no = rng.int(0, Math.ceil(body.seats * 0.03)); return { yes: body.seats - no, no }; }
   const labor = favorsLabor(bill.lawId, bill.direction);
   const pLabor = labor ? 0.92 : 0.1;
   const pBiz = labor ? 0.12 : 0.9;
@@ -445,7 +468,7 @@ function runBill(ctx, bill, rng, { from = 0, myVote = null } = {}) {
     bill.floorIn = body.id;
     // The named members' votes go on their records.
     for (const m of body.members ?? []) {
-      const vote = memberVote(m, bill, rng);
+      const vote = memberVote(m, bill, rng, body);
       if (vote === null) continue;
       m.votes = [...(m.votes ?? []).slice(-7), { age: state.character.age, lawId: bill.lawId, title: billTitle(bill), vote: vote ? 'yes' : 'no' }];
       if (bill.sponsor === 'you') m.rel = Math.round(clamp((m.rel ?? 50) + (vote ? 2 : -1), 0, 100));
@@ -539,7 +562,7 @@ function newBill(state, rng, level, where, lawId, direction, sponsor, push = 0) 
 
 /** Bills the majority brings up on its own. */
 function npcBills(state, body, rng) {
-  const laws = Object.keys(LAWS).filter((id) => LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where));
+  const laws = Object.keys(LAWS).filter((id) => LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where) && !(body.oneParty && NOT_IN_PARTY_STATES.includes(id)));
   const laborMajority = body.labor * 2 > body.seats;
   const out = [];
   for (let i = rng.int(1, 3); i > 0; i--) {
@@ -560,7 +583,7 @@ function npcBills(state, body, rng) {
 
 /** One-party systems: the national legislature keeps the dominant party's fixed supermajority. */
 function holdDominance(state, body, rng) {
-  const d = body.level === 'federal' ? dominantParty(state) : null;
+  const d = body.level === 'federal' ? dominantParty(state) ?? (oneParty(state) ? { bloc: 'labor', share: 0.97 } : null) : oneParty(state) ? { bloc: 'labor', share: 0.95 } : null;
   if (!d) return;
   const share = clamp(d.share + rng.float(-0.01, 0.01), 0.51, 0.99);
   body.labor = Math.round(body.seats * (d.bloc === 'labor' ? share : 1 - share));
@@ -569,6 +592,17 @@ function holdDominance(state, body, rng) {
 
 function electionYear(ctx, body, rng) {
   const { state } = ctx;
+  if (body.oneParty) {
+    // One list, one candidate a seat: the Party's nominees are returned, and a few deputies retire.
+    holdDominance(state, body, rng);
+    for (const m of body.members ?? []) m.terms += 1;
+    body.members = (body.members ?? []).filter((m) => m.you || !rng.chance(0.15 + Math.max(0, m.terms - 3) * 0.08));
+    pickLeaders(body, rng);
+    body.nextElection = electionCycle(BODY_DEFS[body.kind]);
+    body.history = [...body.history.slice(-9), { age: state.character.age, text: `Deputies were returned unopposed from the Party's list (turnout reported at 99%).` }];
+    ballotResult(ctx, body);
+    return;
+  }
   const majorityLabor = body.labor * 2 > body.seats;
   let swing = rng.float(-0.05, 0.05);
   // A bad economy punishes whoever runs things; strong unions turn out voters.
@@ -628,6 +662,16 @@ function executiveYear(ctx, body, rng) {
     Object.assign(ex, { name: personName(rng), caucus, since: age, terms: 1, approval: rng.int(52, 62) });
     body.history = [...body.history.slice(-9), { age, text: `${d.executive}: ${ex.name} (${CAUCUSES[caucus].name}) replaced ${old} — ${why}.` }];
   };
+  if (body.oneParty) {
+    // The Party appoints the mayor (or governor, or premier) and rotates them every few years.
+    ex.caucus = 'labor';
+    if (age - ex.since >= 4 && rng.chance(0.3)) {
+      const old = ex.name;
+      Object.assign(ex, { name: personName(rng), caucus: 'labor', since: age, terms: 1, approval: rng.int(52, 62) });
+      body.history = [...body.history.slice(-9), { age, text: `${d.executive}: the Party moved ${old} to another post and appointed ${ex.name}.` }];
+    }
+    return;
+  }
   const dominant = body.level === 'federal' ? dominantParty(state) : null;
   if (d.veto === false || dominant) {
     // The majority's leader governs.

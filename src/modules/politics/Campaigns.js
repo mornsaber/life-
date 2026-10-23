@@ -6,6 +6,7 @@
  */
 import { prestige, isOnActiveDuty, isIncarcerated } from '../../core/State.js';
 import { regimeOf } from '../world/Regimes.js';
+import { govPostRanks, rankTitle } from './CommunistParty.js';
 import { clamp } from '../../core/Random.js';
 import { residencyYears, stateOf } from '../life/Regions.js';
 import { hasCredential, checkRequirements } from '../credentials/LicensingEngine.js';
@@ -27,18 +28,16 @@ export function runEligibility(state, officeId) {
   const euLocal = LOCAL_OFFICES.includes(officeId) && ['DE', 'IT'].includes(here) && ['DE', 'IT'].some((c) => isCitizen(state, c));
   if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
-  // China: offices go to Party cadres the Organization Department puts forward.
-  if (here === 'CN') {
-    const cpc = state.cpc;
-    const member = cpc?.status === 'member';
-    if (officeId === 'cn_premier' && (!member || cpc.rank < 8)) return { ok: false, reason: 'Chosen from the Politburo Standing Committee' };
-    if (officeId === 'mayor' && (!member || cpc.rank < 3)) return { ok: false, reason: 'Mayors are appointed through the Party: county Party secretary or higher' };
-    if (officeId === 'cn_deputy' && !member && (p.recognition ?? 0) < 60) return { ok: false, reason: 'Nominated by the Party (or, for a well-known figure, a minor party)' };
+  // One-party states: no open races. Government posts go to Party cadres the Organization
+  // Department puts forward (CommunistParty.js); deputies are returned on the Party's list.
+  if (regimeOf(here).party) {
+    const rank = govPostRanks(state)[officeId];
+    if (rank) return { ok: false, reason: `Appointed by the Party: a cadre promoted to ${rankTitle(state, rank)} may be given it instead` };
+    if (office.selection === 'appointed') return { ok: false, reason: `Appointed by ${office.chosenBy}` };
+    if (office.leader) return { ok: false, reason: 'Chosen from the Politburo Standing Committee' };
+    return { ok: false, reason: 'No open elections: the Party nominates every candidate (senior cadres become deputies)' };
   }
-  // Other one-party states and the countries without elections.
-  const regime = regimeOf(here);
-  if (here !== 'CN' && regime.party && (state.cpc?.status !== 'member' || (state.cpc.rank ?? 0) < 1)) return { ok: false, reason: 'Candidates are chosen by the Party: rise as a cadre first' };
-  if (regime.elections === 'none' && here !== 'CN') return { ok: false, reason: 'There are no elections here: posts are appointed' };
+  if (regimeOf(here).elections === 'none') return { ok: false, reason: 'There are no elections here: posts are appointed' };
   // Members of the House of Lords can't sit in the Commons.
   if (officeId === 'gb_mp' && state.character.style?.peerage) return { ok: false, reason: 'Peers can\'t sit in the Commons' };
   if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: office.leader ? `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` : `Elected by local officials: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };

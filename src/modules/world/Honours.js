@@ -196,6 +196,8 @@ export const ORDERS = {
   ] },
 };
 fromPacks(ORDERS, 'ORDERS');
+// Pack tiers without an id get one from their place in the ladder: "already held" and promotions match on it.
+for (const o of Object.values(ORDERS)) for (const [i, t] of (o?.tiers ?? []).entries()) if (!t.id) t.id = `t${i}`;
 // New Zealand's knighthoods come and go with the government too (abolished 2000, restored 2009).
 for (const t of ORDERS.NZ?.tiers ?? []) if (t.id === 'knzm') t.knighthood = true;
 

@@ -80,7 +80,7 @@ export const ACHIEVEMENTS = {
   knighted: { name: 'Arise', icon: '⚔️', tier: 'gold', desc: 'Be knighted, or receive the like from your own country.', test: (s) => ['Sir', 'Dame'].includes(s.character.style?.prefix) || Boolean(s.character.style?.peerage) },
   peer: { name: 'Ennobled', icon: '👑', tier: 'gold', desc: 'Be made a life peer.', test: (s) => Boolean(s.character.style?.peerage) },
   // Public life
-  elected: { name: 'Elected', icon: '🗳️', tier: 'bronze', desc: 'Win an election.', test: (s) => officesHeld(s).length > 0 },
+  elected: { name: 'Elected', icon: '🗳️', tier: 'bronze', desc: 'Win an election.', test: (s) => [...(s.politics?.history ?? []), ...(s.politics?.office ? [s.politics.office] : [])].some((h) => !h.viaParty) },
   lawmaker: { name: 'Lawmaker', icon: '📜', tier: 'silver', desc: 'Pass a bill you sponsored.', test: (s) => (s.laws?.enacted ?? []).some((e) => e.sponsor === 'you') },
   leader: { name: 'Head of Government', icon: '🏛️', tier: 'gold', desc: 'Become president, prime minister or the equivalent.', test: (s) => topOfficeLevel(s) >= 5 },
   judge: { name: 'Your Honor', icon: '⚖️', tier: 'silver', desc: 'Take a seat on the bench.', test: (s) => Boolean(s.judiciary?.seat) || officesHeld(s).includes('judge') },

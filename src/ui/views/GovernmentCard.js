@@ -7,7 +7,8 @@ import { esc, money, button, card, meter, kv, disclosure } from '../Components.j
 import { LEVELS, AREAS, budgetAt, annualDollars, fundingLabel, pct, myBudget, BUDGET_MOVES, passShare } from '../../modules/politics/Budgets.js';
 import { executiveOf } from '../../modules/politics/Legislature.js';
 import { partyName, PARTY_ICON } from '../../modules/politics/Parties.js';
-import { CPC_RANKS, joinBlock, promotionOdds, partyHere, rankTitle } from '../../modules/politics/CommunistParty.js';
+import { CPC_RANKS, joinBlock, promotionOdds, partyHere, rankTitle, MIL_POSTS } from '../../modules/politics/CommunistParty.js';
+import { OFFICES } from '../../modules/politics/Offices.js';
 
 const LEVEL_LABEL = { city: '🏙️ City', state: '🗺️ State', national: '🏛️ National' };
 const big = (x) => (x >= 1e12 ? `$${(x / 1e12).toFixed(1)} trillion` : x >= 1e9 ? `$${(x / 1e9).toFixed(1)} billion` : `$${Math.round(x / 1e6)} million`);
@@ -50,12 +51,19 @@ export function partyCard(state) {
   const cap = (s) => s.replace(/^the /, '');
   const why = joinBlock(state);
   const status = { youthLeague: `${cap(pt.youth)} member`, applicant: 'Applicant (under review)', probationary: 'Probationary member', member: 'Party member', expelled: 'Expelled' }[c?.status] ?? 'Not a member';
-  const next = c?.status === 'member' && !c.retiredFrom && CPC_RANKS[c.rank + 1] ? rankTitle(state, c.rank + 1) : null;
+  const serving = Boolean(state.military?.service);
+  const next = c?.status === 'member' && !c.retiredFrom && !serving && CPC_RANKS[c.rank + 1] ? rankTitle(state, c.rank + 1) : null;
   return card(cap(pt.name), `
     ${kv([
       ['Status', esc(status)],
       c?.status === 'member' ? ['Post', c.retiredFrom ? `Retired ${esc(c.retiredFrom)}` : esc(rankTitle(state, c.rank))] : null,
       c?.status === 'member' && next ? ['Next', `${esc(next)} · ≈${Math.round(promotionOdds(state) * 100)}% at the next evaluation`] : null,
+      c?.status === 'member' && state.politics.office?.viaParty ? ['Government post', `${esc(OFFICES[state.politics.office.id]?.name ?? '')} (on the Party's nomination)`] : null,
+      c?.deputy ? ['Congress', `Deputy to ${esc(pt.congress)}`] : null,
+      c?.status === 'member' && serving && !c.military ? ['In the army', `Your Party standing rises with your rank: generals sit on the Central Committee`] : null,
+      c?.military ? ['In the army', `${esc(MIL_POSTS[c.military])}${c.military === 'cmcVice' ? ' (Politburo)' : ''}`] : null,
+      c?.rank === 9 && !c.retiredFrom ? ['Commander', `Chairman of ${esc(pt.cmc)}: ${esc(pt.army)} answers to you`] : null,
+      c?.commissar && state.military?.service ? ['Political work', 'Political commissar of your unit'] : null,
       c?.patron ? ['Patron', `${esc(c.patron.name)} (${esc(rankTitle(state, c.patron.rank))})${c.patron.fallen ? ' <span class="neg">— under investigation</span>' : ''}`] : null,
     ].filter(Boolean))}
     ${c?.status === 'member' ? `${meter(c.record, { label: '📈 Record (growth, stability, campaigns)' })}${meter(c.network, { label: '🤝 Network (guanxi)' })}` : ''}
@@ -64,6 +72,7 @@ export function partyCard(state) {
       ${!['applicant', 'probationary', 'member', 'expelled'].includes(c?.status) ? button('☭ Apply to join the Party', 'cpc.apply', { disabled: Boolean(why), hint: why ?? 'A political review, then a probationary year' }) : ''}
       ${['member', 'probationary'].includes(c?.status) ? button('📕 Lead political study', 'cpc.study', { hint: 'Once a year: +record' }) : ''}
       ${c?.status === 'member' ? button('🍶 Cultivate a patron', 'cpc.network', { hint: 'Banquets and favors: +network' }) : ''}
+      ${c?.status === 'member' && state.military?.service?.track === 'officer' ? button(c.commissar ? '🎖️ Return to command work' : '☭ Take up political work (commissar)', 'cpc.commissar', { hint: c.commissar ? '' : '+Party record each year; the Party committee weighs in on promotions' }) : ''}
     </div>
-    <p class="fine">${pt.flag} Here, power runs through ${esc(pt.short)}: posts from branch secretary to General Secretary are appointed by the Organization Department on your record, your patron and your age (county posts under 55, provincial under 63; "seven up, eight down" at the top). A city or provincial Party Secretary writes that budget; the General Secretary rules the state. ${esc(pt.topNote)} The discipline inspectors are always watching.</p>`, { icon: '☭', accent: 'red' });
+    <p class="fine">${pt.flag} Here, power runs through ${esc(pt.short)}: posts from branch secretary to General Secretary are appointed by the Organization Department on your record, your patron and your age (county posts under 55, provincial under 63; "seven up, eight down" at the top). A city or provincial Party Secretary writes that budget; at some promotions the Party can put you on the government side instead — mayor, governor, premier. The General Secretary rules the state and chairs ${esc(pt.cmc)}. ${esc(pt.topNote)} In ${esc(pt.army)}, officers are Party members: the unit's Party committee weighs in on every promotion, and generals sit on the Central Committee. The discipline inspectors are always watching.</p>`, { icon: '☭', accent: 'red' });
 }

@@ -331,6 +331,8 @@ export function executiveLevel(officeId) {
   if (officeId === 'mayor') return 'city';
   if (officeId === 'governor') return 'state';
   if (officeId === 'president') return 'national';
+  if (['cn_governor', 'vn_governor', 'kp_governor'].includes(officeId)) return 'state';
+  if (['vn_pm', 'kp_premier'].includes(officeId)) return 'national';
   for (const L of Object.values(LEGISLATURES)) {
     if (L.execOffice === officeId) return 'national';
     if (L.prov?.execOffice === officeId) return 'state';

@@ -22,6 +22,7 @@
  *   partisan, primary, funds, endorsements[], opponent, rivals[], focus{}, polls[],
  *   incumbent, attacks, ads, momentum }
  */
+import { regimeOf } from '../world/Regimes.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear, prestige, randomName } from '../../core/State.js';
 import { REGIONS, stateIdOf } from '../life/Regions.js';
@@ -134,7 +135,7 @@ export const FILING_WINDOW = (officeId) => (OFFICES[officeId].level >= 5 ? 2 : 1
 /** Offices still decided the old way: party leaders, parliaments' choices, and China's appointments. */
 export const outsideCalendar = (state, officeId) => {
   const o = OFFICES[officeId];
-  return Boolean(o.leader || o.selection || here(state) === 'CN');
+  return Boolean(o.leader || o.selection || regimeOf(here(state)).party);
 };
 
 /* ------------------------------------------------------------------ */

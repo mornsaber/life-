@@ -165,7 +165,7 @@ function regimeYear(ctx) {
   if (r.songbun && !g.songbun) g.songbun = rng.weighted(SONGBUN, ([, w]) => w)[0];
   if (!state.character.alive || state.legal.incarceration) return;
   // Assigned work: the unemployed adult is given a workplace.
-  if (r.jobs === 'assigned' && age >= 18 && age < 60 && !state.career.job && !state.education.enrolled && !state.military.service && !state.retirement?.retired) {
+  if (r.jobs === 'assigned' && age >= 18 && age < 60 && !state.career.job && !state.education.enrolled && !state.military.service && !state.retirement?.retired && !state.politics?.office?.fullTime && !(state.cpc?.rank > 0 && !state.cpc.retiredFrom)) {
     assignJob(ctx);
   }
   // Women barred from school past twelve (the Taliban's edict).

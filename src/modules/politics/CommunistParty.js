@@ -36,6 +36,8 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName, criminalRecord } from '../../core/State.js';
 import { budgetAt } from './Budgets.js';
 import { isCitizen } from '../world/Countries.js';
+import { OFFICES } from './Offices.js';
+import { discharge } from '../military/MilitaryEngine.js';
 
 export const CPC_RANKS = [
   { title: 'Party member', salary: 0, maxAge: 99 },
@@ -58,16 +60,39 @@ const DUES = 0.01;
  * Party, North Korea's Workers' Party and the Communist Party of Vietnam.
  */
 export const RULING_PARTIES = {
-  CN: { name: 'the Communist Party of China', short: 'the Party', youth: 'the Communist Youth League', capital: 'Beijing', thought: 'Xi Jinping Thought', office: 'cn_president', topNote: 'The National People\'s Congress will make you President of the PRC.', flag: '🇨🇳' },
-  KP: { name: 'the Workers\' Party of Korea', short: 'the Party', youth: 'the Socialist Patriotic Youth League', capital: 'Pyongyang', thought: 'Kimilsungism–Kimjongilism', office: 'kp_president', topNote: 'The Supreme People\'s Assembly will name you President of the State Affairs Commission.', flag: '🇰🇵',
+  CN: { name: 'the Communist Party of China', short: 'the Party', congress: 'the National People\'s Congress', army: 'the People\'s Liberation Army', cmc: 'the Central Military Commission', gov: { 4: 'mayor', 6: 'cn_governor', 8: 'cn_premier' }, youth: 'the Communist Youth League', capital: 'Beijing', thought: 'Xi Jinping Thought', office: 'cn_president', topNote: 'The National People\'s Congress will make you President of the PRC.', flag: '🇨🇳' },
+  KP: { name: 'the Workers\' Party of Korea', short: 'the Party', congress: 'the Supreme People\'s Assembly', army: 'the Korean People\'s Army', cmc: 'the Central Military Commission of the WPK', gov: { 4: 'mayor', 6: 'kp_governor', 8: 'kp_premier' }, youth: 'the Socialist Patriotic Youth League', capital: 'Pyongyang', thought: 'Kimilsungism–Kimjongilism', office: 'kp_president', topNote: 'The Supreme People\'s Assembly will name you President of the State Affairs Commission.', flag: '🇰🇵',
     titles: ['Party member', 'Party cell secretary', 'Ri (village) Party committee secretary', 'County Party committee chief secretary', 'City Party committee chief secretary', 'Member of a provincial Party committee', 'Provincial Party committee chief secretary', 'Member of the Politburo', 'Member of the Presidium of the Politburo', 'General Secretary of the Workers\' Party of Korea'] },
-  VN: { name: 'the Communist Party of Vietnam', short: 'the Party', youth: 'the Ho Chi Minh Communist Youth Union', capital: 'Hanoi', thought: 'Ho Chi Minh Thought', office: 'vn_president', topNote: 'The Central Committee leads the state; the National Assembly will confirm your colleagues in the top posts.', flag: '🇻🇳',
+  VN: { name: 'the Communist Party of Vietnam', short: 'the Party', congress: 'the National Assembly', army: 'the People\'s Army of Vietnam', cmc: 'the Central Military Commission', gov: { 4: 'mayor', 6: 'vn_governor', 8: 'vn_pm' }, youth: 'the Ho Chi Minh Communist Youth Union', capital: 'Hanoi', thought: 'Ho Chi Minh Thought', office: 'vn_president', topNote: 'The Central Committee leads the state; the National Assembly will confirm your colleagues in the top posts.', flag: '🇻🇳',
     titles: ['Party member', 'Party cell secretary', 'Commune Party secretary', 'District Party secretary', 'City Party secretary', 'Member of a provincial Party standing committee', 'Provincial Party secretary', 'Member of the Politburo', 'Standing member of the Secretariat', 'General Secretary of the Communist Party of Vietnam'] },
 };
 export const partyHere = (state) => RULING_PARTIES[state.character.countryId ?? 'US'] ?? null;
 const inChina = (state) => Boolean(partyHere(state));
 /** A cadre rank's title in this country's party. */
 export const rankTitle = (state, rank) => partyHere(state)?.titles?.[rank] ?? CPC_RANKS[rank]?.title;
+/** Is this a one-party state (its ruling party in RULING_PARTIES)? */
+export const oneParty = (state) => Boolean(partyHere(state));
+/** The government post a cadre can be given instead of the Party post at a rank (mayor, governor, premier). */
+export const govPostFor = (state, rank) => partyHere(state)?.gov?.[rank] ?? null;
+/** The Party ranks whose holders can be given a government post: { officeId: rank }. */
+export const govPostRanks = (state) => Object.fromEntries(Object.entries(partyHere(state)?.gov ?? {}).map(([r, id]) => [id, Number(r)]));
+/** The military Party posts, by seniority. */
+export const MIL_POSTS = { altCC: 'Alternate Member of the Central Committee', cc: 'Member of the Central Committee', cmc: 'Member of the Central Military Commission', cmcVice: 'Vice-Chairman of the Central Military Commission' };
+const MIL_ORDER = ['altCC', 'cc', 'cmc', 'cmcVice'];
+
+/**
+ * How Party standing weighs on a military promotion board in a one-party state: field-grade
+ * officers and up are Party members (the unit's Party committee reviews every promotion), and a
+ * good record and a patron help. 1 elsewhere.
+ */
+export function partyBoardFactor(state, svc) {
+  if (!svc || svc.track !== 'officer' || !RULING_PARTIES[svc.nation ?? state.character.countryId ?? 'US']) return 1;
+  const c = state.cpc;
+  if (c?.status === 'expelled') return 0;
+  if (!['member', 'probationary'].includes(c?.status)) return svc.grade >= 2 ? 0.35 : 0.8;
+  const patron = c.patron && !c.patron.fallen ? 0.1 : 0;
+  return clamp(1 + (c.network - 30) / 400 + (c.record - 60) / 300 + patron + (c.commissar ? 0.05 : 0), 0.7, 1.4);
+}
 export const cpcOf = (state) => state.cpc ?? null;
 export const isMember = (state) => ['member', 'probationary'].includes(state.cpc?.status);
 /** The level of government a Party post runs (a city, a province, the nation), or null. */
@@ -103,7 +128,7 @@ export function promotionOdds(state) {
   if (!next) return 0;
   if (state.character.age > next.maxAge - 2) return 0;
   // Cadres serve a full term or so in each post before the next.
-  if (state.character.age - (c.postSince ?? c.since ?? 0) < 2 + Math.floor(c.rank / 2) * 2) return 0;
+  if (state.character.age - (c.postSince ?? c.since ?? 0) < 2 + Math.floor(c.rank / 3)) return 0;
   const patron = c.patron && !c.patron.fallen && c.patron.rank > c.rank + 1 ? 0.12 : 0;
   return clamp(0.05 + (c.record - 60) / 150 + c.network / 500 + patron - c.rank * 0.03, 0.01, 0.45);
 }
@@ -116,9 +141,11 @@ export const CommunistPartyModule = {
   order: 33.2,
   onAgeUp(ctx) {
     const { state, rng } = ctx;
+    militaryYear(ctx);
     const c = state.cpc;
     if (!c || !inChina(state) || !['applicant', 'probationary', 'member'].includes(c.status)) return;
     const age = state.character.age;
+    if (c.status === 'member') congressYearFor(ctx);
     if (c.status === 'applicant') {
       // The branch reviews you: activists and the well-connected get in.
       if (rng.chance(0.55 + c.network / 200)) { c.status = 'probationary'; c.since = age; ctx.log('Your Party branch accepted you as a probationary member. A year of study and service, then full membership.', '☭', 'good'); }
@@ -156,22 +183,37 @@ export const CommunistPartyModule = {
       ctx.log(`You reached the age limit for ${rankTitle(state, c.rank)} and retired from your Party post. Retired cadres keep their membership — and some influence.`, '🎐', 'info');
       c.retiredFrom = post.title;
       c.rank = 0;
-      if (state.politics.office?.id === partyHere(state)?.office) ctx.emit('politics:leave', { reason: 'Retired' });
+      if (state.politics.office?.id === partyHere(state)?.office || state.politics.office?.viaParty) ctx.emit('politics:leave', { reason: 'Retired' });
       return;
     }
     if (c.retiredFrom) return;
+    // Serving officers hold the army's Party posts (militaryYear), not civilian ones.
+    if (state.military?.service) return;
     // Evaluations: the top ranks move only at a Party Congress.
     if (c.rank >= 6 && !congressYear(state)) { yearEvent(ctx); return; }
     if (rng.chance(promotionOdds(state))) {
       c.rank += 1;
       c.postSince = age;
-      ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
-      ctx.stat('happiness', 8);
+      // A government post held as a cadre goes with the promotion.
+      if (state.politics.office?.viaParty) ctx.emit('politics:leave', { reason: 'Promoted by the Party' });
+      c.track = 'party';
+      const gov = govPostFor(state, c.rank);
       if (c.rank === 9) {
         const pt = partyHere(state);
-        ctx.log(`The Central Committee elected you General Secretary. ${pt.topNote}`, pt.flag, 'milestone');
+        ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
+        ctx.log(`The Central Committee elected you General Secretary — and Chairman of ${pt.cmc}: the army answers to you. ${pt.topNote}`, pt.flag, 'milestone');
         ctx.emit('politics:take', { officeId: pt.office, appointed: true });
-      }
+        if (state.politics.office) state.politics.office.viaParty = true;
+      } else if (gov && OFFICES[gov]) {
+        // The Party decides which side of the system you serve on: the Party post, or the government post beside it.
+        ctx.prompt({
+          type: 'cpc.track', icon: '☭', title: 'The Organization Department',
+          text: `You are being promoted. The Party can make you ${rankTitle(state, c.rank)} — or put you in the government, as ${OFFICES[gov].name}, serving as the deputy Party secretary beside it.`,
+          options: [{ id: 'party', label: `☭ ${rankTitle(state, c.rank)}`, hint: 'The Party post outranks the government one' }, { id: 'gov', label: `🏛️ ${OFFICES[gov].name}`, hint: 'Run the government: budgets, crises, the public' }],
+          data: { rank: c.rank, officeId: gov },
+        });
+      } else ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
+      ctx.stat('happiness', 8);
       return;
     }
     yearEvent(ctx);
@@ -197,6 +239,15 @@ export const CommunistPartyModule = {
       c.since = state.character.age;
       ctx.log(`You submitted your application to join ${partyHere(state).name}, with an essay on your political convictions.`, '☭', 'good');
     },
+    /** An officer can take up political work: commissar of a unit, beside its commander. */
+    commissar(ctx) {
+      const { state } = ctx;
+      const c = state.cpc;
+      const svc = state.military?.service;
+      if (!c || !isMember(state) || svc?.track !== 'officer') return ctx.toast('Officers who are Party members', 'warn');
+      c.commissar = !c.commissar;
+      return ctx.log(c.commissar ? `You took up political work: political commissar (zhengwei) of your unit, sharing command with its commander and answering to the Party committee.` : 'You went back to military command work.', '☭', 'info');
+    },
     /** Political study: Xi Jinping Thought sessions, the study app's points. */
     study(ctx) {
       const { state } = ctx;
@@ -218,12 +269,27 @@ export const CommunistPartyModule = {
       c.network = Math.min(100, c.network + rng.int(6, 14));
       if (!c.patron || c.patron.fallen) {
         const n = randomName(rng, rng.pick(['male', 'female']));
-        c.patron = { name: `${n.lastName} ${n.firstName}`, rank: Math.min(9, c.rank + rng.int(2, 4)), fallen: false };
-        ctx.log(`${c.patron.name}, ${rankTitle(state, c.patron.rank).toLowerCase()}, has taken an interest in your career.`, '🤝', 'good');
+        c.patron = { name: `${n.lastName} ${n.firstName}`, rank: Math.min(8, c.rank + rng.int(2, 4)), fallen: false };
+        ctx.log(`${c.patron.name} (${rankTitle(state, c.patron.rank)}) has taken an interest in your career.`, '🤝', 'good');
       } else ctx.log(`Dinner with ${c.patron.name}'s circle went well.`, '🍶');
     },
   },
   resolvers: {
+    track(ctx, data, optionId) {
+      const { state } = ctx;
+      const c = state.cpc;
+      if (!c || c.rank !== data.rank) return;
+      if (optionId !== 'gov') return ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
+      c.track = 'gov';
+      ctx.emit('politics:take', { officeId: data.officeId, appointed: true });
+      const o = state.politics.office;
+      if (o?.id === data.officeId) {
+        o.viaParty = true;
+        // Paid on the cadre scale, not the (American) office's.
+        o.salary = Math.min(OFFICES[data.officeId].salary, Math.round(CPC_RANKS[c.rank].salary * 1.1));
+      }
+      return ctx.log(`On the Party's nomination you became ${OFFICES[data.officeId].name}, and deputy secretary of the Party committee beside you.`, '🏛️', 'milestone');
+    },
     investigation(ctx, _data, optionId) {
       const { state, rng } = ctx;
       const c = state.cpc;
@@ -238,7 +304,9 @@ export const CommunistPartyModule = {
       c.rank = 0;
       ctx.log('You were expelled from the Party "for serious violations of discipline" and handed to prosecutors.', '⛓️', 'bad');
       if (c.graft) ctx.emit('legal:offense', { offenseId: 'publicCorruption', context: 'abuse of a Party post', caught: true, evidence: optionId === 'confess' ? 0.95 : 0.8 });
-      if (state.politics.office?.id?.startsWith(`${(state.character.countryId ?? '').toLowerCase()}_`)) ctx.emit('politics:leave', { reason: 'Expelled from the Party' });
+      if (state.politics.office?.viaParty || state.politics.office?.id?.startsWith(`${(state.character.countryId ?? '').toLowerCase()}_`)) ctx.emit('politics:leave', { reason: 'Expelled from the Party' });
+      c.military = null;
+      if (state.military?.service?.track === 'officer') discharge(ctx, 'oth', 'Expelled from the Party: dismissed from the armed forces');
     },
     event(ctx, data, optionId) {
       const { state, rng } = ctx;
@@ -259,6 +327,56 @@ export const CommunistPartyModule = {
     },
   },
 };
+
+/**
+ * The army belongs to the Party. Officers join through their unit's Party committee; a political
+ * commissar's work builds a Party record; generals sit on the Central Committee, the top commanders
+ * on the Central Military Commission, and its vice-chairmen in the Politburo.
+ */
+function militaryYear(ctx) {
+  const { state, rng } = ctx;
+  const svc = state.military?.service;
+  const pt = partyHere(state);
+  if (!pt || svc?.track !== 'officer' || !state.character.alive || state.legal.incarceration) return;
+  const c = ensure(state);
+  if (c.status === 'expelled') return;
+  const barred = joinBlock(state);
+  if (!['applicant', 'probationary', 'member'].includes(c.status) && barred && !c.warnedMil && state.character.age >= 18 && !/Already/.test(barred)) {
+    c.warnedMil = true;
+    ctx.log(`Your unit's Party committee can't admit you (${barred.toLowerCase()}). In ${pt.army} an officer outside the Party rarely rises past captain.`, '☭', 'warn');
+  }
+  if (!['applicant', 'probationary', 'member'].includes(c.status) && state.character.age >= 18 && !barred) {
+    c.status = 'probationary';
+    c.since = state.character.age;
+    c.network += 5;
+    ctx.log(`Your unit's Party committee admitted you as a probationary member of ${pt.name}. In ${pt.army}, officers are Party members.`, '☭', 'good');
+    return;
+  }
+  if (c.status !== 'member') return;
+  if (c.commissar) { c.record = Math.min(100, c.record + 3); c.network = Math.min(100, c.network + 1); }
+  // Generals in the Party's leading bodies.
+  const want = svc.grade >= 9 && svc.topPost ? 'cmc' : svc.grade >= 8 ? 'cc' : svc.grade >= 7 ? 'altCC' : null;
+  const have = MIL_ORDER.indexOf(c.military);
+  if (want && MIL_ORDER.indexOf(want) > have && (want === 'altCC' || congressYear(state) || rng.chance(0.25))) {
+    c.military = want;
+    ctx.log(`The Party Congress made you ${MIL_POSTS[want]}${want === 'cmc' ? ` — one of the handful of commanders on ${pt.cmc}` : ''}.`, '☭', 'milestone');
+    if (want === 'cmc') c.rank = Math.max(c.rank, 5);
+  } else if (c.military === 'cmc' && congressYear(state) && rng.chance(0.3 + (c.record - 60) / 200)) {
+    c.military = 'cmcVice';
+    c.rank = Math.max(c.rank, 7);
+    ctx.log(`The Party Congress made you Vice-Chairman of ${pt.cmc} and a member of the Politburo: the senior uniformed officer in the Party-state.`, '☭', 'milestone');
+  }
+}
+
+/** Party congresses hand senior cadres seats in the people's congress. */
+function congressYearFor(ctx) {
+  const { state } = ctx;
+  const c = state.cpc;
+  const pt = partyHere(state);
+  if (c.deputy || c.rank < 4 || !pt?.congress) return;
+  c.deputy = true;
+  ctx.log(`The Party put your name on the list and you were returned as a deputy to ${pt.congress} — unopposed.`, '🏛️', 'honor');
+}
 
 /** A Party cadre's year: targets, campaigns and temptations. */
 const EVENTS = [

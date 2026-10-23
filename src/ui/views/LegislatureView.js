@@ -19,6 +19,7 @@ const STAGE = { law: ['✅ Law', 'green'], dead: ['✖ Dead', 'bad'], introduced
 function makeup(state, body) {
   const pct = Math.round((body.labor / body.seats) * 100);
   // National parliaments: the country's parties; councils and assemblies: the two blocs.
+  if (body.oneParty) return meter(pct, { label: `☭ ${partyName(state, 'labor')} ${body.labor} · allied parties and non-Party deputies ${body.seats - body.labor}`, tone: 'mid' });
   const name = (bloc) => (body.level === 'federal' ? partyName(state, bloc) : CAUCUSES[bloc].name);
   return `${meter(pct, { label: `✊ ${name('labor')} ${body.labor} · 💼 ${name('business')} ${body.seats - body.labor}`, tone: 'mid' })}`;
 }
@@ -27,6 +28,7 @@ function makeup(state, body) {
 function electionNote(body) {
   const d = BODY_DEFS[body.kind];
   if (d.appointed) return d.peers ? 'members appointed for life' : 'appointed, no elections';
+  if (body.oneParty) return `the Party's list is returned again in ${body.nextElection} yr`;
   return `election in ${body.nextElection} yr`;
 }
 
@@ -39,7 +41,7 @@ function bodyBlock(state, body) {
     ${kv([
       [d.presiding, `${esc(L.presiding.name)}${L.presiding.you ? ' (you)' : ''} ${CAUCUSES[L.presiding.caucus].icon}`],
       [leaderTitle(body.kind, 'majority'), `${esc(L.majority.name)}${L.majority.you ? ' (you)' : ''} ${CAUCUSES[L.majority.caucus].icon}`],
-      [leaderTitle(body.kind, 'minority'), `${esc(L.minority.name)} ${CAUCUSES[L.minority.caucus].icon}`],
+      body.oneParty ? null : [leaderTitle(body.kind, 'minority'), `${esc(L.minority.name)} ${CAUCUSES[L.minority.caucus].icon}`],
       body.executive ? [d.executive, `${esc(body.executive.name)} ${CAUCUSES[body.executive.caucus].icon}`] : null,
     ].filter(Boolean))}
     ${body.chairs ? `<p class="fine">🗂️ Chairs: ${Object.entries(body.chairs).filter(([id]) => COMMITTEES[id]).map(([id, c]) => `${esc(COMMITTEES[id].name)} — ${esc(c.name)}${c.you ? ' (you)' : ''}`).join(' · ')}</p>` : ''}
@@ -100,7 +102,7 @@ function seatCard(state) {
 
 /** Lobbying from outside: a business owner's money or a union officer's clout. */
 function lobbyCard(state) {
-  if (mySeat(state)) return '';
+  if (mySeat(state) || bodiesHere(state).some((b) => b.oneParty)) return '';
   const owner = state.business?.current || state.business?.holdings?.length;
   const union = isOfficer(state) && myUnion(state);
   if (!owner && !union) return '';
@@ -123,7 +125,9 @@ export function legislatureCards(state) {
   const national = bodies.find((b) => b.level === 'federal');
   const parliamentary = national && BODY_DEFS[national.kind].veto === false;
   const revising = bodies.map((b) => BODY_DEFS[b.kind]).find((d) => d.revising);
-  const how = parliamentary
+  const how = national?.oneParty
+    ? `These are people's congresses. The Party nominates every deputy and they are returned unopposed; the Party's proposals pass with a handful of abstentions. Mayors, governors and the premier are cadres the Party appoints and moves on. Lobbying and unions don't move votes here — the Party's committees decide.`
+    : parliamentary
     ? `Bills pass a vote in each chamber of parliament. The government commands the majority in the ${esc(national.name)}, so there's no veto: what passes becomes law${state.character.countryId === 'GB' ? ' on Royal Assent' : ''}.${revising ? ` The ${esc(revising.name())} can only delay a bill by a year (${esc(revising.revising)}).` : ''} Unions' clout and business lobbying move votes; general elections shift the parties.`
     : 'Bills pass a floor vote in each chamber, then need the executive\'s signature (a veto takes two-thirds to override). Unions\' clout and business lobbying move votes; elections shift the blocs.';
   return `${seatCard(state)}${card('Legislatures', `<p class="fine">${how}</p>${groups}`, { icon: '🏛️' })}${lawsCard(state)}${lobbyCard(state)}`;
@@ -136,7 +140,7 @@ function membersBlock(state, body) {
   const mine = seat?.bodyId === body.id;
   const myPending = mine && Object.values(state.legislature.bodies).some((b) => (b.bills ?? []).some((x) => x.sponsor === 'you' && x.stage === 'introduced'));
   const chairOf = (m) => Object.entries(body.chairs ?? {}).filter(([, c]) => c?.name === m.name).map(([id]) => COMMITTEES[id]?.name).filter(Boolean);
-  const leaderOf = (m) => Object.entries(body.leaders ?? {}).filter(([, l]) => l?.name === m.name).map(([k]) => ({ presiding: BODY_DEFS[body.kind].presiding, majority: leaderTitle(body.kind, 'majority'), minority: leaderTitle(body.kind, 'minority') }[k]));
+  const leaderOf = (m) => Object.entries(body.leaders ?? {}).filter(([k, l]) => l?.name === m.name && !(body.oneParty && k === 'minority')).map(([k]) => ({ presiding: BODY_DEFS[body.kind].presiding, majority: leaderTitle(body.kind, 'majority'), minority: leaderTitle(body.kind, 'minority') }[k]));
   const rows = body.members.slice().sort((a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.terms - a.terms).map((m) => {
     const titles = [...leaderOf(m), ...chairOf(m).map((c) => `Chair, ${c}`)];
     const summary = `${CAUCUSES[m.caucus].icon} ${esc(m.name)}${m.you ? ' (you)' : ''} · ${esc(districtLabel(body, m))}${titles.length ? ` · ${esc(titles[0])}` : ''}`;
@@ -144,7 +148,7 @@ function membersBlock(state, body) {
     const votes = (m.votes ?? []).slice().reverse().map((v) => `<li><small>age ${v.age}</small> ${v.vote === 'yes' ? '✅' : '❌'} ${esc(v.title)}</li>`).join('');
     const bills = (m.sponsored ?? []).slice().reverse().map((b) => `<li><small>age ${b.age}</small> 📜 ${esc(b.title)}</li>`).join('');
     const profile = `${kv([
-      ['Caucus', `${CAUCUSES[m.caucus].icon} ${esc(CAUCUSES[m.caucus].name)} · ${esc(leanLabel(m))}`],
+      body.oneParty ? ['Affiliation', m.caucus === 'labor' ? esc(partyName(state, 'labor')) : 'An allied party, or none'] : ['Caucus', `${CAUCUSES[m.caucus].icon} ${esc(CAUCUSES[m.caucus].name)} · ${esc(leanLabel(m))}`],
       ['Age', String(m.age)],
       ['Before office', esc(m.background)],
       ['Serving', `${m.terms} term${m.terms === 1 ? '' : 's'} · ${esc(districtLabel(body, m))}`],

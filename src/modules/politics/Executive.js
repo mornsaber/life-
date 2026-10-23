@@ -56,7 +56,7 @@ export function approvalDrivers(state) {
   }
   const years = state.character.age - (o?.startAge ?? state.character.age);
   if (years <= 1) out.push({ label: 'Honeymoon', delta: 3 });
-  else if (years >= 6) out.push({ label: 'Voter fatigue', delta: -2 });
+  else if (years >= 6) out.push({ label: o?.viaParty ? 'Fatigue with the same face' : 'Voter fatigue', delta: -2 });
   if ((state.politics.scandals ?? 0) > 0 && state.politics.scandalAge === state.character.age) out.push({ label: 'Scandal', delta: -8 });
   return out;
 }

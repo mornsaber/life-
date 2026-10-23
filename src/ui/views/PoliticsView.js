@@ -6,6 +6,7 @@ import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
 import { governmentCard, partyCard } from './GovernmentCard.js';
+import { oneParty, partyHere, rankTitle, govPostRanks } from '../../modules/politics/CommunistParty.js';
 import { crownCards } from './CrownCard.js';
 import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
 import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
@@ -65,6 +66,17 @@ function patronageCard(state) {
   return card(powers.label, `<p class="fine">${left} nomination${left === 1 ? '' : 's'} left${powers.kind === 'resignation' ? '' : ' this year'}. The worthy are popular; friends, family and staff can make headlines.</p>${rows ? `<ul class="history">${rows}</ul>` : '<p class="muted">No names this year.</p>'}`, { icon: '🎗️' });
 }
 
+/** One-party states: no races to run. Every post is filled by the Party from its cadres. */
+function partyPostsCard(state) {
+  const pt = partyHere(state);
+  const gov = govPostRanks(state);
+  const rows = Object.entries(gov).filter(([id]) => OFFICES[id]).map(([id, rank]) => `<li class="job-row"><span class="job-icon">${OFFICES[id].icon}</span><div class="job-info"><b>${esc(OFFICES[id].name)}</b><small>Offered to a cadre promoted to ${esc(rankTitle(state, rank))}, instead of the Party post</small></div></li>`).join('');
+  const top = OFFICES[pt.office];
+  return card('Posts in the Party-State', `<p class="muted">There are no open races here. ${esc(pt.short[0].toUpperCase() + pt.short.slice(1))} nominates every deputy and appoints every mayor, governor and minister from its own cadres. To hold office, rise in ${esc(pt.name)} (below): at some promotions the Organization Department lets you serve on the government side instead.</p>
+    <ul class="job-board">${rows}${top ? `<li class="job-row"><span class="job-icon">${top.icon}</span><div class="job-info"><b>${esc(top.name)}</b><small>Held by the General Secretary, who also chairs ${esc(pt.cmc)}</small></div></li>` : ''}
+    <li class="job-row"><span class="job-icon">🏛️</span><div class="job-info"><b>Deputy to ${esc(pt.congress)}</b><small>Senior cadres (city level and up) are put on the Party's list and returned unopposed</small></div></li></ul>`, { icon: '☭', accent: 'red' });
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -75,7 +87,7 @@ export function politicsView(state) {
         ${meter(o.approval, { label: '🗳️ Approval' })}
         ${o.drivers?.length ? `<p class="fine">Last year: ${o.drivers.map((d) => `${esc(d.label)} <span class="${d.delta >= 0 ? 'pos' : 'neg'}">${d.delta >= 0 ? '+' : ''}${d.delta}</span>`).join(' · ')}</p>` : ''}
         ${executiveConsole(state)}
-        ${kv([['Term', `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
+        ${kv([['Term', o.viaParty ? 'Until the Party moves you' : `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(o.salary ?? office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', o.viaParty ? 'Cadre pension (civil service)' : office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
         <div class="row-end">${button('👋 Resign', 'politics.resign', { variant: 'danger small' })}</div>`, { icon: '🏛️', accent: 'yellow' })
     : '';
   const campaign = c ? campaignCard(state, c) : '';
@@ -108,8 +120,8 @@ export function politicsView(state) {
   return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
-    ${platformCard(state)}
-    ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}
+    ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}
+    ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}`}
     ${partyCard(state)}
     ${governmentCard(state)}
     ${legislatureCards(state)}

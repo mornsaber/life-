@@ -35,7 +35,7 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
   p.office = { id: officeId, termYearsLeft: office.term, terms: 1, approval: appointed ? 55 : 60, startAge: state.character.age, fullTime: office.fullTime, ...(seatOffice ? { seatOffice } : {}) };
   p.recognition = Math.min(100, p.recognition + office.level * 6);
   const country = COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the United States';
-  const where = office.national || office.headOfState || office.cabinet ? country : office.level >= 5 || officeId === 'stateRep' || officeId === 'stateSenator' ? stateOf(state).name : regionOf(state).name.split(',')[0];
+  const where = office.national || office.headOfState || office.cabinet ? country : office.provincial || office.level >= 5 || officeId === 'stateRep' || officeId === 'stateSenator' ? stateOf(state).name : regionOf(state).name.split(',')[0];
   ctx.log(`${appointed ? 'Appointed' : 'Sworn in'} as ${office.name} (${where}). ${office.fullTime ? '' : 'It\'s a part-time citizen office — keep your day job.'}`, office.icon, 'milestone');
   ctx.toast(`${office.icon} ${office.name}`, 'honor');
   ctx.stat('happiness', 10);
@@ -50,7 +50,7 @@ function leaveOffice(ctx, reason, { keepSeat = false } = {}) {
   const p = state.politics;
   if (!p.office) return;
   const was = p.office;
-  p.history.push({ officeId: was.id, startAge: was.startAge, endAge: state.character.age, terms: was.terms, reason });
+  p.history.push({ officeId: was.id, startAge: was.startAge, endAge: state.character.age, terms: was.terms, reason, ...(was.viaParty ? { viaParty: true } : {}) });
   ctx.log(`You left office as ${OFFICES[was.id].name}: ${reason}.`, '🏛️');
   p.office = null;
   ctx.emit('politics:left', { officeId: was.id, reason, years: state.character.age - (was.startAge ?? state.character.age) });
@@ -242,7 +242,7 @@ export const PoliticsEngine = {
     const o = p.office;
     if (o) {
       const office = OFFICES[o.id];
-      ctx.earn(office.salary, `${office.name} salary`, { wage: true });
+      ctx.earn(o.salary ?? office.salary, `${office.name} salary`, { wage: true });
       ctx.emit('retirement:accrue', { planId: office.pension, salary: office.salary, employer: office.name });
       p.recognition = Math.min(100, p.recognition + 3);
       ctx.stat('stress', office.fullTime ? 6 : 3);
@@ -294,6 +294,9 @@ export const PoliticsEngine = {
       if (nat && !nat.you) o.under ??= nat.name;
       if (office.cabinet && nat && !nat.you && o.under !== nat.name) {
         leaveOffice(ctx, `President ${nat.name} took office with a cabinet of their own`);
+      } else if (o.viaParty) {
+        // A post the Party gave you: no campaign, no re-election — you hold it until the Party moves you (CommunistParty.js).
+        if (o.termYearsLeft <= 0) { o.terms += 1; o.termYearsLeft = office.term; }
       } else if (p.campaign?.officeId === o.id) { /* the campaign decides */ }
       else if (onCalendar && o.termYearsLeft === 1 && !limited && !o.retiring && !o.asked) {
         o.asked = true;
