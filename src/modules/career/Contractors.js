@@ -15,6 +15,7 @@
 import { L } from './Ladder.js';
 import { yearsInProfession } from '../../core/State.js';
 import { atWar } from '../world/War.js';
+import { postAbroad } from '../world/Posting.js';
 
 const COMBAT = ['infantry', 'medic', 'engineer'];
 
@@ -24,7 +25,9 @@ export function contractorBackground(state) {
   const sof = honorable.some((h) => h.sof);
   const combatYears = honorable.filter((h) => COMBAT.includes(h.specialty)).reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
   const anyYears = honorable.reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
-  const lawYears = yearsInProfession(state, ['police', 'sheriff', 'statePolice', 'fbi', 'usms', 'usss', 'dea', 'atf', 'borderPatrol']);
+  // Police anywhere count: a country's national police, gendarmerie or constabulary.
+  const lawIds = [...new Set([...(state.career.history ?? []).map((h) => h.professionId), state.career.job?.professionId].filter((id) => id && /police|sheriff|gendarm|constab|fbi|usms|usss|dea|atf|borderPatrol|carabin/i.test(id)))];
+  const lawYears = yearsInProfession(state, ['police', 'sheriff', 'statePolice', 'fbi', 'usms', 'usss', 'dea', 'atf', 'borderPatrol', ...lawIds]);
   return { sof, combatYears, anyYears, lawYears };
 }
 
@@ -39,6 +42,11 @@ export const CONTRACTOR_PROFESSIONS = {
     id: 'privateMilitary', name: 'Private Military & Security Contracting', icon: '🪖', sector: 'private', payMultiplier: 1.75, minAge: 21, sizes: { medium: 2, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.5,
     employers: ['Triton Global Security', 'Blackridge Defense Services', 'Sentinel Protective Group', 'Aegis Training Solutions'],
     eligible: contractorGate,
+    // Firms where you live: London's risk consultancies, France's ex-Legion outfits, South Africa's old hands.
+    prepare: (state, job) => {
+      const firms = LOCAL_FIRMS[state.character.countryId ?? 'US'];
+      if (firms) job.employer.name = firms[job.employer.name.length % firms.length];
+    },
     valued: ['emt', 'paramedic', 'execProtection', 'languageProficiency'],
     rotation: { label: 'on rotation overseas', away: 0.55 },
     hazard: { injury: 0.06, death: 0.003, cause: 'Killed when a protective-detail convoy was ambushed' },
@@ -55,9 +63,24 @@ export const CONTRACTOR_PROFESSIONS = {
   },
 };
 
+const LOCAL_FIRMS = {
+  GB: ['Halberd Risk Group (London)', 'Saxon Shield Ltd', 'Ironbridge Maritime Security', 'Kestrel Training Services'],
+  FR: ['Garde Prestige Sécurité', 'Opale Défense Conseil', 'Sentinelle Maritime', 'Atlas Formation Défense'],
+  ZA: ['Kestrel Protection Services (Pretoria)', 'Bushveld Risk Solutions', 'Cape Maritime Guard', 'Highveld Training Group'],
+  AU: ['Southern Cross Protective Services', 'Coral Sea Maritime Security', 'Outback Risk Consulting'],
+  CA: ['Northstar Protective Group', 'Laurentian Risk Services'],
+  IL: ['Carmel Security Consulting', 'Negev Protective Services'],
+  NP: ['Himalayan Guard Services (ex-Gurkha)', 'Annapurna Security International'],
+  IN: ['Rajput Risk & Protection', 'Deccan Security Services'],
+  PH: ['Mindanao Maritime Security', 'Luzon Protective Agency'],
+  CO: ['Andes Seguridad Internacional', 'Escudo Protección Ejecutiva'],
+};
+
+/** Where the contracts are: [what, the country you'd live in for the rotation]. */
 const ASSIGNMENTS = [
-  'a protective detail for diplomats in Baghdad', 'embassy security in Kabul', 'a convoy-escort contract in Somalia', 'training police recruits in Jordan',
-  'guarding an oil field in Kurdistan', 'anti-piracy security on cargo ships off Yemen', 'training a partner army\'s special forces in Eastern Europe', 'executive protection for a mining company in the Sahel',
+  ['a protective detail for diplomats in Baghdad', 'Iraq'], ['embassy security in Kabul', 'Afghanistan'], ['a convoy-escort contract in Somalia', 'Somalia'], ['training police recruits in Jordan', 'Jordan'],
+  ['guarding an oil field in Kurdistan', 'Iraq'], ['anti-piracy security on cargo ships off Yemen', null], ['training a partner army\'s special forces in Eastern Europe', 'Poland'], ['executive protection for a mining company in the Sahel', 'Mali'],
+  ['guarding a mine in the eastern Congo', 'DR Congo'], ['security for an aid convoy in South Sudan', 'South Sudan'],
 ];
 
 const EVENTS = [
@@ -92,7 +115,19 @@ export const ContractorModule = {
       ctx.die('Killed on a security contract overseas');
       return;
     }
-    ctx.log(`Rotation: ${rng.pick(ASSIGNMENTS)}.`, p.icon, 'muted');
+    // The rotation takes you there: you live in the country for the months away.
+    const [what, country] = rng.pick(ASSIGNMENTS);
+    if (country && !state.character.posting) postAbroad(ctx, { place: what.replace(/^.* (in|off) /, ''), country, kind: 'deployment', years: 1 });
+    ctx.log(`Rotation: ${what}.`, p.icon, 'muted');
+    // The darker market: a foreign armed group offering a fortune for someone who can fight.
+    if ((b.sof || b.combatYears >= 6) && rng.chance(0.05) && !state.prompts.some((q) => q.type === 'contractors.mercenary')) {
+      ctx.prompt({
+        type: 'contractors.mercenary', icon: '💰', title: 'An Offer Off the Books',
+        text: 'A middleman offers $250,000 for six months fighting for a foreign armed group in a civil war. Not security work: combat. Most countries make it a crime to fight as a mercenary.',
+        options: [{ id: 'decline', label: '🙅 Walk away' }, { id: 'accept', label: '💰 Take the money', tone: 'danger' }],
+        data: {},
+      });
+    }
     ctx.stat('stress', 6);
     // Former operators command premium day rates.
     if (b.sof) ctx.earn(Math.round(job.salary * 0.15), 'Special operations day-rate premium', { wage: true });
@@ -108,6 +143,19 @@ export const ContractorModule = {
   },
 
   resolvers: {
+    mercenary(ctx, data, optionId) {
+      const { rng } = ctx;
+      if (optionId !== 'accept') return ctx.log('You walked away. Some money isn\'t worth it.', '🙅', 'good');
+      if (rng.chance(0.06)) {
+        ctx.log('Six months into someone else\'s war, your unit was overrun.', '🕯️', 'death');
+        return ctx.die('Killed fighting as a mercenary');
+      }
+      ctx.earn(250000, 'Mercenary contract (off the books)', { informal: true });
+      ctx.stat('stress', 20);
+      ctx.emit('health:trauma', { amount: 30, source: 'combat' });
+      ctx.emit('legal:offense', { offenseId: 'mercenarism', context: 'fighting as a mercenary in a foreign war', discovery: 0.35, evidence: 0.7 });
+      return ctx.log('You came back with $250,000 in cash and things you don\'t talk about.', '💰', 'warn');
+    },
     event(ctx, data, optionId) {
       const { rng } = ctx;
       const o = EVENTS.find((e) => e.title === data.title)?.options.find((x) => x.id === optionId);
@@ -122,7 +170,7 @@ export const ContractorModule = {
       }
       ctx.log(o.text, '🪖');
       if (o.record && rng.chance(o.record)) {
-        ctx.log('A congressional inquiry into contractor conduct named your detail.', '🏛️', 'bad');
+        ctx.log(`${(ctx.state.character.countryId ?? 'US') === 'US' ? 'A congressional' : 'A parliamentary'} inquiry into contractor conduct named your detail.`, '🏛️', 'bad');
         ctx.emit('career:adjust', { performance: -10, boss: -6 });
       }
     },

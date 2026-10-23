@@ -22,6 +22,7 @@ const ILLEGAL_CHOICES = {
   'people.foreignContact:hide': 'lying on a security form',
   'intel.polygraph:beat': 'lying to federal investigators',
   'world.draft:evade': 'draft evasion',
+  'contractors.mercenary:accept': 'mercenary activity',
   'conscription.korea:refuse': 'refusing military service',
   'career.organizingDrive:fire': 'illegal retaliation against organizers',
   'medLife.pillMill:accept': 'prescription fraud',

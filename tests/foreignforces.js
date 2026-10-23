@@ -15,6 +15,9 @@ import { rankOf, discharge, enlist } from '../src/modules/military/MilitaryEngin
 import { declareWar } from '../src/modules/world/War.js';
 import { captured } from '../src/modules/military/Wartime.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { getProfession } from '../src/modules/career/JobTrees.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { hire } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -126,6 +129,21 @@ const tests = {
     MODULES.find((m) => m.id === 'wartime').onAgeUp(ctx);
     assert.ok(!svc.pow, 'released at the peace');
     assert.ok(state.honors.some((h) => /Prisoner of War/.test(h.name)));
+  },
+  'private military contracting abroad: local firms, rotations that take you there, and the mercenary offer'() {
+    const { engine, state, ctx } = life({ countryId: 'GB' }, 11);
+    year(engine, state, 30);
+    state.military.history.push({ branch: 'army', nation: 'GB', track: 'enlisted', specialty: 'infantry', yearsOfService: 8, priorYears: 0, discharge: 'honorable', rankCode: 'OR-4', rankTitle: 'Corporal' });
+    const p = getProfession('privateMilitary');
+    assert.ok(p.eligible(state).ok);
+    hire(ctx, { professionId: 'privateMilitary', levelId: 'psd', employer: createEmployer(engine.rng, state, p, state.character.regionId) });
+    assert.match(state.career.job.employer.name, /Halberd|Saxon|Ironbridge|Kestrel/);
+    state.career.job.paidThisYear = true;
+    const chance = ctx.rng.chance;
+    ctx.rng.chance = (x) => x === 0.05;
+    MODULES.find((m) => m.id === 'contractors').onAgeUp(ctx);
+    ctx.rng.chance = chance;
+    assert.ok(state.prompts.some((q) => q.type === 'contractors.mercenary'), 'the offer off the books');
   },
   'only Nepali men sit the Gurkha selection'() {
     const { engine, state } = life({ countryId: 'IN' }, 8);

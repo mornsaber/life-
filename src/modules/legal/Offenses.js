@@ -39,6 +39,7 @@ export const OFFENSES = {
   trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
   disorderly: { name: 'Disorderly Conduct / Failure to Disperse', icon: '📢', severity: 'misdemeanor', fine: [200, 1000], probation: 1 },
   serviceRefusal: { name: 'Refusing military service (Military Service Act)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 2], probation: 1 },
+  mercenarism: { name: 'Mercenary activity / foreign enlistment', icon: '💰', severity: 'felony', fine: [10000, 50000], prison: [2, 7], probation: 2 },
   draftEvasion: { name: 'Draft Evasion (Military Selective Service Act)', icon: '🏃', severity: 'felony', fine: [5000, 10000], prison: [1, 3], probation: 2, federal: true },
   underageDrinking: { name: 'Minor in Possession of Alcohol', icon: '🍻', severity: 'infraction', fine: [200, 600] },
   speeding: { name: 'Speeding', icon: '🚨', severity: 'infraction', fine: [150, 450] },
