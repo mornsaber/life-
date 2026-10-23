@@ -17,6 +17,7 @@ import { servicePassports } from '../src/modules/world/Passports.js';
 import { styledName } from '../src/modules/world/Honours.js';
 import { OFFICES } from '../src/modules/politics/Offices.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { foreignAwardsYear } from '../src/modules/world/ForeignAwards.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -129,6 +130,19 @@ const tests = {
   'MEPs are elected in EU member states'() {
     assert.ok(OFFICES.ie_mep && OFFICES.mt_mep && OFFICES.de_mep);
     assert.ok(!OFFICES.ch_mep && !OFFICES.us_mep);
+  },
+  'foreign states decorate ambassadors, leaders and generals; the Order of Malta its friends'() {
+    const { engine, state } = life({ countryId: 'GB' }, 41);
+    state.character.age = 50;
+    const ctx = engine.context();
+    const lucky = { ...ctx, rng: always(ctx.rng), log: ctx.log, stat: ctx.stat, earn: ctx.earn };
+    state.politics.office = { id: 'gb_pm', approval: 60, startAge: 45, terms: 1 };
+    foreignAwardsYear(lucky);
+    const foreign = state.honors.filter((h) => h.source === 'foreign' && h.country);
+    assert.ok(foreign.length, 'a foreign order');
+    assert.match(foreign[0].name, /honorary/);
+    assert.ok(state.honors.some((h) => h.id === 'smom.proMerito' && /Collar/.test(h.name)), 'a head of government gets the Collar pro Merito Melitensi');
+    assert.ok(!/^Sir /.test(styledName(state)) || state.honors.some((h) => h.source === 'order' && h.country === 'GB'), 'no title from a foreign award');
   },
 };
 

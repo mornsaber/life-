@@ -37,6 +37,7 @@ import { citizenshipsOf, COUNTRIES } from './Countries.js';
 import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { living } from '../people/People.js';
+import { eminence } from './Honours.js';
 import { orgOf } from '../org/Organizations.js';
 import { seatsAt } from '../org/Vacancies.js';
 
@@ -174,6 +175,8 @@ export const MALTA_GRADES = {
   honour: { name: 'Knight of Honour and Devotion', female: 'Dame of Honour and Devotion', icon: '✠', prestige: 8 },
   obedience: { name: 'Knight in Obedience', female: 'Dame in Obedience', icon: '✠', prestige: 9 },
   justice: { name: 'Knight of Justice (professed)', female: 'Dame of Justice', icon: '✠', prestige: 12 },
+  grandCross: { name: 'Knight Grand Cross of Magistral Grace', female: 'Dame Grand Cross of Magistral Grace', icon: '✠', prestige: 16 },
+  bailiff: { name: 'Bailiff Grand Cross of Honour and Devotion', female: 'Dame Grand Cross of Honour and Devotion', icon: '✠', prestige: 20 },
 };
 export const MALTA_OFFICES = { council: 'Member of the Sovereign Council', chancellor: 'Grand Chancellor', grandMaster: 'Prince and Grand Master of the Sovereign Military Order of Malta' };
 const MALTA_FEE = 3000;
@@ -190,7 +193,8 @@ export function maltaJoinCheck(state) {
   if (state.character.age < 21) return { ok: false, reason: 'From 21' };
   if (yearlyCount(state, 'intlOrgs.joinMalta')) return { ok: false, reason: 'One application a year' };
   if (state.legal.record.some((r) => r.severity === 'felony')) return { ok: false, reason: 'Of good standing (no criminal record)' };
-  return { ok: true, odds: clamp(0.25 + ({ devout: 0.15, regular: 0.05 }[state.community?.faith?.attendance] ?? -0.1) + Math.min(0.3, (state.honors?.length ?? 0) * 0.03) + (noble(state) ? 0.2 : 0), 0.08, 0.85) };
+  const ownStaff = ['maltaRelief', 'maltaDiplomacy'].includes(state.career.job?.professionId) ? 0.3 : 0;
+  return { ok: true, odds: clamp(ownStaff + 0.25 + ({ devout: 0.15, regular: 0.05 }[state.community?.faith?.attendance] ?? -0.1) + Math.min(0.3, (state.honors?.length ?? 0) * 0.03) + (noble(state) ? 0.2 : 0), 0.08, 0.85) };
 }
 
 function maltaHonour(state) {
@@ -233,6 +237,12 @@ function maltaYear(ctx) {
       setMaltaStyle(state);
       maltaHonour(state);
     }
+  }
+  // Eminent lay members are raised to a Grand Cross (a Bailiff's, for those of noble descent).
+  if (['magistral', 'honour'].includes(m.grade) && years >= 5 && eminence(state) >= 220 && rng.chance(0.1)) {
+    m.grade = m.grade === 'honour' ? 'bailiff' : 'grandCross';
+    maltaHonour(state);
+    ctx.log(`The Grand Master raised you to ${maltaGradeName(state)} of the Order of Malta.`, '✠', 'honor');
   }
   // Elections: the Chapter General chooses the Sovereign Council from senior members; the Grand Master comes from the professed.
   if (!m.office && years >= 10 && age >= 40 && ['obedience', 'justice'].includes(m.grade) && rng.chance(0.05)) {

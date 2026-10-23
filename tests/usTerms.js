@@ -9,7 +9,7 @@ export const US_TERMS = [
   [/\bSocial Security\b(?! System)/, ['TH', 'LY', 'MM', 'VN', 'KP']], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
   [/\bSAT\b/, ['MX', 'JP']], [/\bCongress(ional)?\b/, ['IN', 'MX', 'PH', 'CN', 'NG', 'ZA', 'GH', 'MW', 'PE', 'GT', 'MY', 'PG']], [/\bU\.S\./], [/\b(?<!Part-time )Sheriff(?! Principal| Court)/, ['GB']], [/\bTrooper\b/], [/\bDistrict Attorney\b/], [/Selective Service/], [/Hatch Act/],
   [/Section 8\b/], [/Peace Corps/], [/AmeriCorps/], [/\bFEMA\b/], [/National Guard/, ['LV', 'BH', 'KW', 'SA', 'CY']], [/GI Bill/], [/\bthe VA\b/], [/(?<![\d,.£€¥$])\b911\b(?![\d,])/, ['CA', 'MX', 'PH', 'VE', 'CR', 'AR', 'SA', 'JO']], [/\bNCLEX\b/], [/\bUSMLE\b/],
-  [/\bNCAA\b|\bNFL\b|\bNBA\b|\bMLB\b/], [/Thanksgiving|Fourth of July/], [/\b(?:the|a|state|your|our) governor\b(?!-General)|\bgovernor's\b|\bGovernor of\b/i, ['MX', 'PH', 'JP', 'KR', 'IN', 'AU', 'CA', 'IT', 'NG', 'KE', 'ID', 'BR', 'RU', 'CO', 'IQ', 'AR']],
+  [/\bNCAA\b|\bNFL\b|\bNBA\b|\bMLB\b/], [/Thanksgiving|Fourth of July/], [/\b(?:the|a|state|your|our) governor\b(?!-General)|\bgovernor's\b|\bGovernor of\b/i, ['MX', 'PH', 'JP', 'KR', 'IN', 'AU', 'CA', 'IT', 'NG', 'KE', 'ID', 'BR', 'RU', 'CO', 'IQ', 'AR', 'VE']],
   [/\b[Cc]ounty\b/, ['GB', 'IE', 'CA', 'KR', 'NZ', 'KE', 'SE', 'RO', 'NO', 'LT', 'EE']], [/\bState (Police|Senate|Legislature|Assembly)\b/, ['AU', 'IN', 'MX', 'DE', 'SO', 'SD', 'LV']], [/\bstate (tax|income tax)\b/i, ['AU', 'IN', 'MX', 'DE', 'CA']],
   [/\bGreen Card\b/i], [/\bW-2\b|\b1099(?:-| form| contractor)/], [/\bOSHA\b|\bEEOC\b|\bNLRB\b/], [/\bFBI\b|\bDEA\b|\bATF\b|\bCIA\b|\bNSA\b/], [/\bPOST\b/], [/\bHOA\b/], [/\bUSERRA\b/], [/(?<!(?:top|every|spare) )\bdollars?\b/i],
 ];

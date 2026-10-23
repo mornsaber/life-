@@ -46,13 +46,13 @@ export const bumpRel = (n, d) => { n.rel = Math.round(clamp(n.rel + d, 0, 100));
 export const LIFE_EVENTS = [
   { text: (n) => `${n.name} had a baby. You dropped off a casserole.`, rel: 4 },
   { text: (n) => `${n.contact} from ${n.name} lost their job. The car didn't move for weeks.`, rel: 0 },
-  { text: (n) => `${n.name} put in a pool. Suddenly everyone on the street is their friend.`, rel: 2 },
+  { text: (n) => `${n.name} put in a pool. Suddenly everyone on the street is their friend.`, rel: 2, affluent: true },
   { text: (n) => `${n.name}'s oldest graduated; the party spilled onto your lawn.`, rel: -1 },
   { text: (n) => `${n.name} are getting divorced. The arguments carry through the walls.`, rel: -2 },
   { text: (n) => `${n.contact} from ${n.name} beat cancer. The whole street came out to cheer the last chemo.`, rel: 5 },
   { text: (n) => `${n.name} adopted a very loud dog.`, rel: -3 },
-  { text: (n) => `${n.name} got a new truck and won't stop talking about it.`, rel: 1 },
-  { text: (n) => `${n.name}'s house was broken into while they were on vacation.`, rel: 0, safety: true },
+  { text: (n) => `${n.name} got a new truck and won't stop talking about it.`, rel: 1, affluent: true },
+  { text: (n) => `${n.name}'s house was broken into while they were on vacation.`, rel: 0, safety: true, affluent: true },
 ];
 
 /** Interactive neighbor situations. */

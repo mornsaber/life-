@@ -9,6 +9,7 @@
  * state.civic.ballots = { [bodyId]: { choice, canvassed } }   the coming election
  * state.civic.votes   = [{ age, body, choice, winner }]
  */
+import { electionsHere } from '../world/Regimes.js';
 import { isCitizen } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
 
@@ -61,6 +62,17 @@ export function partyBonus(state) {
 export function ballotPrompt(ctx, body) {
   const { state } = ctx;
   if (!canVote(state) || state.prompts.some((p) => p.type === 'party.ballot')) return;
+  const kind = electionsHere(state);
+  if (kind === 'none') return;
+  if (kind === 'sham') {
+    ctx.prompt({
+      type: 'party.ballot', icon: '🗳️', title: `Election: ${body.name}`,
+      text: 'Election day: one approved candidate per district, chosen by the Party. Turnout is compulsory and checked; a vote against means walking to a separate booth with a pen while officials watch.',
+      options: [{ id: 'endorse', label: '✅ Drop the ballot in unmarked (a vote for)' }, { id: 'crossOut', label: '✏️ Cross out the name', tone: 'danger' }],
+      data: { bodyId: body.id, sham: true },
+    });
+    return;
+  }
   const p = partyOf(state);
   const lean = body.labor * 2 > body.seats ? 'labor' : 'business';
   ctx.prompt({
@@ -88,9 +100,18 @@ export function ballotSwing(state, body) {
 /** After the count: how your side did. */
 export function ballotResult(ctx, body) {
   const { state } = ctx;
+  if (electionsHere(state) === 'none') return;
   const b = state.civic?.ballots?.[body.id];
   if (!b) return;
   delete state.civic.ballots[body.id];
+  if (b.sham) {
+    if (b.choice === 'crossOut' && ctx.rng.chance(0.7)) {
+      ctx.log('Your crossed-out ballot was noticed. You were taken for questioning.', '👁️', 'bad');
+      ctx.emit('legal:offense', { offenseId: 'antiState', context: 'voting against the Party\'s candidate', caught: true, evidence: 0.95 });
+      return;
+    }
+    return ctx.log(`${body.name} election: turnout 99.9%, and every official candidate elected with 99.9% of the vote.`, '🗳️', 'muted');
+  }
   const winner = body.labor * 2 > body.seats ? 'labor' : 'business';
   state.civic.votes = [...(state.civic.votes ?? []).slice(-19), { age: state.character.age, body: body.name, choice: b.choice, winner }];
   if (b.choice === 'skip') return ctx.log(`You sat out the ${body.name} election. The ${partyName(state, winner)} won.`, '🗳️', 'muted');
@@ -151,7 +172,7 @@ export const PartyModule = {
         state.civic.ballots[data.bodyId] = { choice: p.bloc, canvassed: true };
         return ctx.log(`You spent the campaign knocking on doors for the ${partyName(state, p.bloc)}.`, '🚪', 'good');
       }
-      state.civic.ballots[data.bodyId] = { choice: optionId };
+      state.civic.ballots[data.bodyId] = { choice: optionId, ...(data.sham ? { sham: true } : {}) };
       if (optionId === 'skip' && here(state) === 'AU') {
         ctx.spend(AU_NOT_VOTING_FINE, 'Fine for not voting', { allowDebt: true });
         ctx.log('You didn\'t vote. The Australian Electoral Commission sent a fine.', '📮', 'warn');

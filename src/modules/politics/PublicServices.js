@@ -31,6 +31,7 @@
  * Cities: state.world.municipal[regionId] = { [service]: arrangement }
  * States and countries: state.world.services[`${level}:${where}`] = { [service]: arrangement }
  */
+import { regimeHere } from '../world/Regimes.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { getProfession, PROFESSIONS, setAvailabilityFilter } from '../career/JobTrees.js';
@@ -239,6 +240,8 @@ export function changeService(ctx, service, to, { byMayor = false, byExecutive =
   const { state } = ctx;
   const s = CATALOG[service];
   if (!s) return;
+  // A state that owns everything doesn't privatize, merge or abolish on a council vote.
+  if (to !== 'own' && regimeHere(state).business === 'state') return;
   const where = s.level === 'city' ? regionId : whereAt(state, s.level);
   const from = arrangementOf(state, service, regionId);
   const p = providerFor(state, service, to === 'own' ? from : to);

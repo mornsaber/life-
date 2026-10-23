@@ -75,6 +75,11 @@ export const OFFENSES = {
   publicCorruption: { name: 'Honest-Services Fraud (Selling Official Acts)', icon: '💼', severity: 'felony', fine: [50000, 250000], prison: [3, 10], probation: 3, jobRelated: true, federal: true },
   illegalLobbying: { name: 'Illegal Lobbying Contact (Revolving Door)', icon: '🚪', severity: 'misdemeanor', fine: [10000, 50000], probation: 1 },
   // Street and organized crime
+  // Crimes only in closed states (world/Regimes.js).
+  antiState: { name: 'Anti-state activity', icon: '👁️', severity: 'felony', fine: [0, 0], prison: [5, 15], probation: 0, noSeal: true, political: true },
+  illegalWorship: { name: 'Illegal religious activity', icon: '✝️', severity: 'felony', fine: [0, 0], prison: [3, 12], probation: 0, noSeal: true, political: true },
+  foreignMedia: { name: 'Possessing reactionary foreign media', icon: '💾', severity: 'felony', fine: [0, 0], prison: [2, 10], probation: 0, noSeal: true, political: true },
+  illegalBorder: { name: 'Illegal border crossing (attempted defection)', icon: '🌊', severity: 'felony', fine: [0, 0], prison: [5, 15], probation: 0, noSeal: true, political: true },
   pettyTheft: { name: 'Petty Theft', icon: '👛', severity: 'misdemeanor', fine: [200, 1000], probation: 1, escalate: { after: 3, to: 'grandTheft' } },
   mailTheft: { name: 'Theft of Mail (18 U.S.C. § 1708)', icon: '📦', severity: 'felony', fine: [1000, 5000], prison: [0, 2], probation: 2, federal: true },
   streetRacing: { name: 'Illegal Street Racing', icon: '🏁', severity: 'misdemeanor', fine: [500, 2500], probation: 1 },

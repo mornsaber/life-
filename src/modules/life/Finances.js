@@ -4,6 +4,7 @@
  * health insurance, student loans and credit-card interest on debt.
  * Runs after every other module (order 90) so the ledger is complete.
  */
+import { debtWord } from '../world/Regimes.js';
 import { calculateIncomeTax } from '../career/CareerEngine.js';
 import { isOnActiveDuty } from '../../core/State.js';
 import { regionOf, stateIdOf } from './Regions.js';
@@ -206,13 +207,13 @@ export const Finances = {
       if (-f.cash > Math.max(60000, gross * 1.5)) {
         // Unmanageable debt: a bankruptcy attorney lays out the options (or collectors keep calling).
         debtCrisisPrompt(ctx);
-        ctx.log(`You owe $${(-f.cash).toLocaleString()} on credit cards — more than you can ever pay off at these interest rates.`, '💸', 'bad');
+        ctx.log(`You owe $${(-f.cash).toLocaleString()} ${debtWord(state)} — more than you can ever pay off at these interest rates.`, '💸', 'bad');
         ctx.stat('happiness', -6);
         ctx.stat('stress', 10);
       } else if (f.cash < -25000) {
         ctx.stat('stress', 8);
         ctx.stat('happiness', -4);
-        ctx.log(`Debt collectors keep calling. You owe $${(-f.cash).toLocaleString()} on credit cards.`, '📞', 'warn');
+        ctx.log(`Debt collectors keep calling. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, '📞', 'warn');
       }
     }
 

@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { workBlock } from '../world/Regimes.js';
 import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
 import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
@@ -155,6 +156,8 @@ export function applicationEligibility(state, professionId, { anywhere = false }
   if (state.character.age < minAge) return { ok: false, reason: `Must be ${minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (state.apprenticeship) return { ok: false, reason: 'In an apprenticeship' };
+  const barred = workBlock(state, profession);
+  if (barred) return { ok: false, reason: barred };
   if (residencyOf(state)?.status === 'visa' && residencyOf(state).visa === 'retiree') return { ok: false, reason: 'Your retiree visa doesn\'t allow work' };
   if (residencyOf(state)?.status === 'asylum' && state.character.age < residencyOf(state).workFrom) return { ok: false, reason: 'Asylum seekers can\'t work yet' };
   // Without papers only small private employers (often off the books) will take you on.

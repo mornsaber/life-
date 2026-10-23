@@ -14,6 +14,7 @@
  * keeps the job; a remote private-sector job stays remote). Public-pension
  * records stay with each country and pay out together when you claim.
  */
+import { exitBlock } from './Regimes.js';
 import { bodyOfJob, joinLocalUnit } from '../org/Bodies.js';
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
@@ -47,7 +48,7 @@ export function departureBlock(state) {
   if (underMobilization(state)) return 'General mobilization: men 18–60 can\'t leave the country';
   if (state.education.enrolled) return 'Finish or withdraw from school first';
   if (state.judiciary?.seat) return 'Resign from the bench first';
-  return null;
+  return exitBlock(state);
 }
 
 /** Your routes into a country: as a citizen, a returning resident, or by visa. */

@@ -5,6 +5,7 @@
  * (CampaignTrail).
  */
 import { prestige, isOnActiveDuty, isIncarcerated } from '../../core/State.js';
+import { regimeOf } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
 import { residencyYears, stateOf } from '../life/Regions.js';
 import { hasCredential, checkRequirements } from '../credentials/LicensingEngine.js';
@@ -34,6 +35,10 @@ export function runEligibility(state, officeId) {
     if (officeId === 'mayor' && (!member || cpc.rank < 3)) return { ok: false, reason: 'Mayors are appointed through the Party: county Party secretary or higher' };
     if (officeId === 'cn_deputy' && !member && (p.recognition ?? 0) < 60) return { ok: false, reason: 'Nominated by the Party (or, for a well-known figure, a minor party)' };
   }
+  // Other one-party states and the countries without elections.
+  const regime = regimeOf(here);
+  if (here !== 'CN' && regime.party && (state.cpc?.status !== 'member' || (state.cpc.rank ?? 0) < 1)) return { ok: false, reason: 'Candidates are chosen by the Party: rise as a cadre first' };
+  if (regime.elections === 'none' && here !== 'CN') return { ok: false, reason: 'There are no elections here: posts are appointed' };
   // Members of the House of Lords can't sit in the Commons.
   if (officeId === 'gb_mp' && state.character.style?.peerage) return { ok: false, reason: 'Peers can\'t sit in the Commons' };
   if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: office.leader ? `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` : `Elected by local officials: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };

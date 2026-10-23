@@ -98,6 +98,9 @@ import { HonoursModule } from './world/Honours.js';
 import { CrownModule } from './world/Crown.js';
 import { NamesModule } from './people/Names.js';
 import { IntlOrgsModule } from './world/IntlOrgs.js';
+import { ForeignAwardsModule } from './world/ForeignAwards.js';
+import { RegimesModule } from './world/Regimes.js';
+import { TravelModule } from './world/Travel.js';
 import { RoyalHouseholdModule, HonoraryModule } from './world/RoyalHousehold.js';
 import { ViceRegalModule } from './politics/ViceRegal.js';
 import { PassportsModule } from './world/Passports.js';
@@ -133,5 +136,5 @@ import { JobLicensingModule } from './career/JobLicensing.js';
 export const MODULES = [
   EconomyEngine, Lifecycle, Disasters, Relocation, Activities, LifeEvents, PeopleEngine, NationalityModule, FamilyAbroadModule, Friends, BondsModule, Community, ElderCare, EstatePlanning, Dynasty, NpcLives, K12Engine, AcademiaPhdModule, MedSchoolModule, HigherEdModule, EducationEngine, UniversityLife, CredentialsModule, WarModule, MilitaryModule,
   FederalAgencies, PublicServiceEngine, MunicipalGov, StateAgencies, OrgModule, CareerModule, LaborUnions, JusticeJobs, MedicineModule, TeachingModule, HealthScienceModule, TradesModule, ContractorModule, ClearedModule, IntelCommunityModule, AcademiaModule, LabModule, PublishingModule, MedLifeModule, CaseFilesModule, LawSchoolModule, LawLifeModule, EmsLifeModule, ClinicalModule, SeniorExecutiveModule, PoliceLifeModule, FireLifeModule, EquipmentModule, SpecialistCallsModule, PostingModule, LanguagesModule, IntlServiceModule, ShiftWorkModule, InvestigationsModule, CaseloadModule, ClientBookModule, ProjectWorkModule, SeasonWorkModule, AudienceModule, RouteWorkModule, DiplomacyModule, ClassroomModule, OfficePoliticsModule, DealsModule, TradeWorkModule, MajorIncidentsModule, EmergencyMgmtModule, RuralLifeModule, WorkGearModule, Emeritus, JobMarket, TransportModule, GigWork, BusinessEngine, BusinessLifeModule, WorkplaceClaims, PoliticsEngine, PartyModule, Legislature, BudgetsModule, ExecutiveModule, CommunistPartyModule, PopulationModule, MilitaryCommandsModule, Judiciary, LegalModule, CivilCourts, CivicModule,
-  EmergencyModule, ServiceModule, VolunteerModule, ConscriptionModule, MigrationModule, ExpatModule, SchoolPathsModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync, HonoursModule, CrownModule, NamesModule, IntlOrgsModule, RoyalHouseholdModule, HonoraryModule, ViceRegalModule, PassportsModule, StaffersModule, PatronageModule, PeerageModule, PublicServicesModule, ServiceMergersModule, DirectEntryModule, MoveAftermathModule, JobLicensingModule, AchievementsModule,
+  EmergencyModule, ServiceModule, VolunteerModule, ConscriptionModule, MigrationModule, ExpatModule, SchoolPathsModule, HealthEngine, MentalHealth, SSDI, HousingEngine, Vehicles, TransitModule, FarmModule, RetirementEngine, Taxes, CreditCards, BrokerageEngine, Finances, UnionSync, HonoursModule, CrownModule, NamesModule, IntlOrgsModule, ForeignAwardsModule, RegimesModule, TravelModule, RoyalHouseholdModule, HonoraryModule, ViceRegalModule, PassportsModule, StaffersModule, PatronageModule, PeerageModule, PublicServicesModule, ServiceMergersModule, DirectEntryModule, MoveAftermathModule, JobLicensingModule, AchievementsModule,
 ];

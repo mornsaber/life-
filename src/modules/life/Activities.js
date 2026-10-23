@@ -2,6 +2,7 @@
  * Self-improvement activities. Each can be done once per year.
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { regionsHere } from './Regions.js';
 
 export const ACTIVITIES = [
   { id: 'gym', label: 'Hit the Gym', icon: '🏋️', minAge: 12, cost: 0, desc: '+Fitness, +Health', run: (ctx) => { ctx.stat('fitness', ctx.rng.int(4, 8)); ctx.stat('health', ctx.rng.int(1, 3)); return 'You crushed a training block at the gym.'; } },
@@ -9,7 +10,8 @@ export const ACTIVITIES = [
   { id: 'meditate', label: 'Meditate', icon: '🧘', minAge: 10, cost: 0, desc: '−Stress, +Happiness', run: (ctx) => { ctx.stat('stress', -ctx.rng.int(8, 15)); ctx.stat('happiness', ctx.rng.int(2, 5)); return 'You found a little stillness.'; } },
   { id: 'doctor', label: 'See a Doctor', icon: '🩺', minAge: 0, cost: 400, insuredCost: 60, desc: '+Health', run: (ctx) => { ctx.stat('health', ctx.rng.int(5, 12)); ctx.emit('health:checkup', {}); return 'Your doctor ran a full checkup and treated what she found.'; } },
   { id: 'salon', label: 'Salon & Spa', icon: '💇', minAge: 14, cost: 250, desc: '+Looks ($250)', run: (ctx) => { ctx.stat('looks', ctx.rng.int(2, 6)); ctx.stat('happiness', 2); return 'You walked out looking sharp.'; } },
-  { id: 'vacation', label: 'Take a Vacation', icon: '🏝️', minAge: 18, cost: 3000, desc: '−Stress, +Happiness ($3,000)', run: (ctx) => { ctx.stat('stress', -ctx.rng.int(15, 25)); ctx.stat('happiness', ctx.rng.int(8, 14)); return `You spent a week in ${ctx.rng.pick(['Lisbon', 'Kyoto', 'Banff', 'Oaxaca', 'Cape Town', 'Maui'])}.`; } },
+  // A holiday at home; trips abroad (on your passports) are on the Move tab.
+  { id: 'vacation', label: 'Holiday at Home', icon: '🏝️', minAge: 18, cost: 1500, desc: '−Stress, +Happiness ($1,500) · abroad: Move tab', run: (ctx) => { ctx.stat('stress', -ctx.rng.int(12, 20)); ctx.stat('happiness', ctx.rng.int(6, 10)); const places = regionsHere(ctx.state).filter((r) => r.id !== ctx.state.character.regionId); return `You spent a week in ${places.length ? ctx.rng.pick(places).name : 'the countryside'}.`; } },
 ];
 
 /** Doctor visits are cheap with insurance (employer plan, under 26, Medicare, military). */

@@ -16,7 +16,9 @@ import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions } from '../../modules/world/Migration.js';
-import { optionRow } from '../Components.js';
+import { optionRow, kv } from '../Components.js';
+import { regimeSummary } from '../../modules/world/Regimes.js';
+import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
 
 function licenseImpact(state, toState) {
   const out = [];
@@ -67,7 +69,7 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return passportCard(state) + gapYearCard(state) + retireAbroadCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+  return regimeCard(state) + passportCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
 }
 
 /** Where you could retire, and what follows you there. */
@@ -93,6 +95,73 @@ function gapYearCard(state) {
 const STATUS_LABEL = { visa: 'Temporary visa', permanent: 'Permanent resident', asylum: 'Asylum seeker', refugee: 'Refugee', undocumented: 'No legal status' };
 
 /** Passports, your status where you live, and the road to staying for good. */
+const REGIME_WORDS = {
+  elections: { free: 'Free and contested', controlled: 'Held, but the ruling side always wins', sham: 'One candidate per seat; turnout 99.9%', none: 'None' },
+  press: { free: 'Free', state: 'State-controlled' },
+  exit: { free: 'Free to leave', restricted: 'Exit permits; travel bans for critics', closed: 'Leaving without permission is a crime' },
+  business: { free: 'Free enterprise', restricted: 'Licences go to the connected', state: 'Illegal: the state owns everything' },
+  religion: { free: 'Free', state: 'A state religion; apostasy is a crime', restricted: 'Registered congregations only', banned: 'Banned' },
+  internet: { open: 'Open', censored: 'Censored (VPNs needed)', none: 'None: a national intranet' },
+  women: { equal: 'Equal in law', restricted: 'Dress codes, guardianship, some jobs closed', barred: 'No school past 12, no university, most work closed' },
+  banking: { open: 'Open', domestic: 'Cut off from Visa, Mastercard and SWIFT', state: 'No consumer credit; cash only' },
+};
+
+/** What life is like under this government, and what you can do about it. */
+function regimeCard(state) {
+  const { r, s } = regimeSummary(state);
+  const c = COUNTRIES[state.character.countryId ?? 'US'];
+  if (r.kind === 'democracy' && !s) return '';
+  const g = state.regime ?? {};
+  const rows = [
+    ['Government', esc(r.name ?? r.kind)],
+    r.leader ? ['Rules', esc(r.leader)] : null,
+    ['Elections', esc(REGIME_WORDS.elections[r.elections])],
+    ['Press', esc(REGIME_WORDS.press[r.press] ?? r.press)],
+    ['Leaving', esc(REGIME_WORDS.exit[r.exit])],
+    r.business !== 'free' ? ['Business', esc(REGIME_WORDS.business[r.business])] : null,
+    r.religion !== 'free' ? ['Religion', esc(REGIME_WORDS.religion[r.religion])] : null,
+    r.internet !== 'open' ? ['Internet', esc(REGIME_WORDS.internet[r.internet])] : null,
+    r.women !== 'equal' ? ['Women', esc(REGIME_WORDS.women[r.women])] : null,
+    r.banking !== 'open' ? ['Banking', esc(REGIME_WORDS.banking[r.banking])] : null,
+    r.jobs === 'assigned' ? ['Work', 'Assigned by the state'] : null,
+    r.alcohol === false ? ['Alcohol', 'Prohibited'] : null,
+    r.songbun && g.songbun ? ['Your songbun', `${esc(g.songbun)} class${g.songbun === 'hostile' ? ' — barred from the Party, university and Pyongyang' : g.songbun === 'core' ? ' — trusted by the state' : ''}`] : null,
+    s ? ['Sanctions', `${chip(`🚫 Level ${s.level}`, s.level >= 2 ? 'bad' : 'warn')} by ${esc(s.by)}<br><small class="fine">${esc(s.note)}</small>`] : null,
+    g.sanctioned ? ['You', `<span class="neg">Personally sanctioned by ${esc(g.sanctioned.by)}${g.sanctioned.travelBan ? ': no travel to the West' : ''}</span>`] : null,
+  ];
+  const adult = state.character.age >= 16;
+  const btns = [
+    adult ? button('📢 Speak out', 'regime.speakOut', { hint: r.press === 'free' ? 'Free speech' : `Risky: ≈${Math.round(Math.min(0.9, r.surveillance * (1 + (g.dissent ?? 0) * 0.4)) * 100)}% arrest`, disabled: Boolean(state.yearly['regime.speakOut']) }) : '',
+    r.business === 'state' && adult ? button('🧺 Trade at the market', 'regime.trade', { hint: 'Jangmadang: the real economy', disabled: Boolean(state.yearly['regime.trade']) }) : '',
+    r.foreignMedia && state.character.age >= 14 ? button(g.foreignMedia ? '💾 Stop watching foreign dramas' : '💾 Watch smuggled foreign dramas', 'regime.foreignMedia', { hint: g.foreignMedia ? 'Safer' : '+Happiness, but the 109 Group raids' }) : '',
+    r.exit === 'closed' && adult ? button('🌊 Defect', 'regime.defect', { variant: 'danger', hint: 'Across the river, then to Seoul' }) : '',
+  ].join('');
+  return card(`Life in ${esc(c.name)}`, `${kv(rows.filter(Boolean))}${btns ? `<div class="action-grid">${btns}</div>` : ''}`, { icon: c.flag, accent: r.kind === 'democracy' ? 'yellow' : 'red', summary: esc(r.name ?? '') });
+}
+
+/** Holidays abroad, on your passports. */
+function travelCard(state) {
+  if (state.character.age < 18) return '';
+  const here = state.character.countryId ?? 'US';
+  const tr = state.travel ?? { countries: [] };
+  const KIND = { free: ['✅', 'good'], eta: ['📝', 'good'], evisa: ['💻', ''], tour: ['🚌', 'warn'], visa: ['🛂', 'warn'] };
+  const groups = Object.entries(CONTINENT).map(([name, list]) => {
+    const rows = list.filter((cc) => COUNTRIES[cc] && cc !== here).map((cc) => {
+      const c = COUNTRIES[cc];
+      const why = travelBlock(state, cc);
+      const e = why ? null : bestEntry(state, cc);
+      const warn = why ? null : advisory(state, cc);
+      const k = e ? KIND[e.kind] ?? ['🛂', ''] : null;
+      return `<li class="move-row"><div class="move-head">${c.flag} <b>${esc(c.name)}</b>${tr.countries?.includes(cc) ? ' <small class="fine">✓ visited</small>' : ''}</div>
+        ${why ? `<small class="why">${esc(why)}</small>` : `<div class="chips">${chip(`${k[0]} ${COUNTRIES[e.passport]?.flag ?? ''} ${e.note}${e.refusal >= 0.1 ? ` · ≈${Math.round(e.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2 })}`}
+      </li>`;
+    }).join('');
+    return disclosure(`travel.${name}`, esc(name), `<ul class="move-list">${rows}</ul>`, { count: list.filter((cc) => cc !== here && COUNTRIES[cc] && !travelBlock(state, cc)).length });
+  }).join('');
+  const out = travelBlock(state, Object.keys(COUNTRIES).find((cc) => cc !== here));
+  return card('Travel Abroad', `<p class="muted">Holidays on your own passports — ${Object.keys(TRIPS).length} styles, up to two trips a year. Free movement, e-visas and visa-free deals depend on the passport; some countries refuse some passports outright.</p>${out && /leave|travel ban|Undocumented|asylum|custody/i.test(out) ? `<p class="why">${esc(out)}</p>` : groups}`, { icon: '✈️', accent: 'cyan', summary: tr.countries?.length ? `${tr.countries.length} countries visited` : '' });
+}
+
 function passportCard(state) {
   const here = state.character.countryId ?? 'US';
   const passports = citizenshipsOf(state).map((c) => chip(`${COUNTRIES[c].flag} ${COUNTRIES[c].demonym}`, c === here ? 'good' : '')).join(' ');

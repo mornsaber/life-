@@ -106,6 +106,8 @@ Object.assign(NATIONAL_OFFICES, {
   au_gg: { ...ceremonial, country: 'AU', name: 'Governor-General of Australia', icon: '🇦🇺', term: 5, salary: 340000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the King on the Prime Minister\'s advice', stature: 4 },
   // Held by the General Secretary of the Communist Party (CommunistParty.js), elected by the NPC.
   cn_president: { ...ceremonial, country: 'CN', name: 'President of the People\'s Republic of China', icon: '🇨🇳', term: 5, salary: 30000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the National People\'s Congress on the Party\'s nomination (the General Secretary)', stature: 6 },
+  kp_president: { ...ceremonial, country: 'KP', name: 'President of the State Affairs Commission', icon: '🇰🇵', term: 5, salary: 10000, minAge: 30, cost: 0, selection: 'appointed', chosenBy: 'the Supreme People\'s Assembly on the Workers\' Party\'s nomination (the General Secretary)', stature: 6 },
+  vn_president: { ...ceremonial, country: 'VN', name: 'President of Vietnam', icon: '🇻🇳', term: 5, salary: 20000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the National Assembly on the Party\'s nomination', stature: 5 },
   // The Crown below the Governor-General: in each province, state and county.
   ca_lg: { ...ceremonial, country: 'CA', name: 'Lieutenant Governor', icon: '🍁', level: 5, term: 5, salary: 160000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Governor General on the Prime Minister\'s advice', stature: 3 },
   au_governor: { ...ceremonial, country: 'AU', name: 'State Governor', icon: '🇦🇺', level: 5, term: 5, salary: 280000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Crown on the Premier\'s advice', stature: 3 },

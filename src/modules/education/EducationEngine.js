@@ -9,6 +9,7 @@
  *   giBillYearsUsed,
  * }
  */
+import { studyBlock } from '../world/Regimes.js';
 import { yellowRibbon } from '../military/Transition.js';
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -212,6 +213,8 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
   // Applying for next year is allowed in your final year.
   if (cur && !(applying && cur.totalYears - cur.progress <= 1)) return { ok: false, reason: 'Already enrolled' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
+  const closed = p.type !== 'vocational' && p.type !== 'certificate' ? studyBlock(state, uni?.country) : null;
+  if (closed) return { ok: false, reason: closed };
   // High-school seniors apply in their final year.
   const senior = applying && requiresFor(state, programId, uni?.country).level === 'highschool' && inK12(state) && state.character.age >= 16;
   if (!senior && !meetsEducation(state, requiresFor(state, programId, uni?.country))) return { ok: false, reason: ['md', 'do'].includes(programId) ? 'Needs science major or pre-med post-bacc' : `Needs ${p.requires.level === 'bachelor' ? "a bachelor's" : 'a diploma'}` };

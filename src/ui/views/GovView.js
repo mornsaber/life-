@@ -6,6 +6,7 @@ import { currentCountry } from '../../core/Locale.js';
 import { vettingForm } from '../../modules/world/MilitaryLocal.js';
 import { CLEARANCE_PREMIUM, sponsorEligibility } from '../../modules/career/ClearedWork.js';
 import { esc, button, card, chip, meter, kv, empty } from '../Components.js';
+import { COMPETITIONS, competitionCheck } from '../../modules/world/IntlOrgs.js';
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
 import { MUNICIPAL_PROFESSIONS } from '../../modules/publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../../modules/publicservice/FederalAgencies.js';
@@ -56,5 +57,16 @@ export function govView(state) {
     ${ps.city ? `<h4 class="sub">${esc(ps.city.name)}</h4>${meter(ps.city.approval, { label: '🗳️ Community approval' })}${meter(ps.city.fiscalHealth, { label: '💰 City fiscal health' })}` : '<p class="fine">Work for a city to track its budget and approval rating.</p>'}
     <p class="fine">Public employers' training budgets rise and fall with these numbers.</p>`, { icon: '🦅', accent: 'blue' });
 
-  return `${card('Civil Service Exams', `<p class="muted">Public jobs hire from ranked eligibility lists. ${PASSING_SCORE}+ passes; higher scores rank higher. Scores last 4 years.</p><ul class="history">${exams}</ul>`, { icon: '📝', accent: 'cyan' })}${showClearance ? clearance : ''}${gov}`;
+  // International organisations recruit through their own competitions (world/IntlOrgs).
+  const comps = Object.entries(COMPETITIONS).map(([id, c]) => {
+    const s = state.intlOrgs?.competitions?.[id];
+    const check = competitionCheck(state, id);
+    if (!s?.passed && !check.ok && /citizens only|and under|From 21/.test(check.reason)) return '';
+    return `<li class="exam-row">
+      <div><b>${c.icon} ${c.name}</b><small>${esc(c.desc)}</small>${s?.passed ? '<small class="pos">Passed — on the reserve list: apply on the job board (International Organisations).</small>' : s?.sittings ? `<small>${s.sittings} sitting${s.sittings > 1 ? 's' : ''} so far</small>` : ''}${!s?.passed && !check.ok ? `<small class="why">${esc(check.reason)}</small>` : ''}</div>
+      ${s?.passed ? '' : button('Sit it', 'intlOrgs.sit', { arg: id, variant: 'small', disabled: !check.ok, hint: check.ok ? `≈${Math.round(check.odds * 100)}% pass` : '' })}
+    </li>`;
+  }).join('');
+  const intl = comps ? `<h4 class="sub">🌐 International organisations</h4><ul class="history">${comps}</ul>` : '';
+  return `${card('Civil Service Exams', `<p class="muted">Public jobs hire from ranked eligibility lists. ${PASSING_SCORE}+ passes; higher scores rank higher. Scores last 4 years.</p><ul class="history">${exams}</ul>${intl}`, { icon: '📝', accent: 'cyan' })}${showClearance ? clearance : ''}${gov}`;
 }

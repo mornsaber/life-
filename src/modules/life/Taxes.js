@@ -117,7 +117,7 @@ function debtTick(ctx) {
       const levy = Math.min(t.debt, Math.round(wages * LEVY_SHARE));
       ctx.spend(levy, 'IRS wage levy', { allowDebt: true });
       t.debt -= levy;
-      ctx.log(`The IRS levied your wages: $${levy.toLocaleString()} taken from your paychecks.`, '🏛️', 'bad');
+      ctx.log(`${(ctx.state.character.countryId ?? 'US') === 'US' ? 'The IRS' : 'The tax authority'} levied your wages: $${levy.toLocaleString()} taken from your paychecks.`, '🏛️', 'bad');
     }
     if (t.debt > PASSPORT_THRESHOLD && !t.passport && rng.chance(0.5)) {
       t.passport = true;

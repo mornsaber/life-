@@ -12,6 +12,7 @@
  *
  * state.finances.cards = { held: [{ id, typeId, opened }], strategy, transfer: { amount, untilAge } | null, rewards }
  */
+import { creditBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
 
 export const CARD_TYPES = {
@@ -50,6 +51,8 @@ export function applyCheck(state, typeId) {
   const t = CARD_TYPES[typeId];
   if (!t) return { ok: false, reason: 'Unknown card' };
   if (state.character.age < 18) return { ok: false, reason: '18+ (or a parent co-signer)' };
+  const noCredit = creditBlock(state);
+  if (noCredit) return { ok: false, reason: noCredit };
   if (heldCards(state).length >= MAX_CARDS) return { ok: false, reason: `${MAX_CARDS} cards is plenty` };
   if (heldCards(state).some((c) => c.typeId === typeId)) return { ok: false, reason: 'Already have one' };
   const score = state.housing?.credit?.score ?? 650;

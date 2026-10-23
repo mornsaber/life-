@@ -138,7 +138,9 @@ const TIME_IN_GRADE = {
 /** Minimum evaluation score to be competitive for the next grade. */
 const BOARD_THRESHOLD = {
   enlisted: [35, 40, 45, 60, 66, 72, 78, 85, 0],
-  officer: [40, 45, 65, 70, 76, 82, 85, 86, 88, 0],
+  // Flag boards (O-6 up) weigh the whole record, not just this year's report: a strong officer's
+  // evaluations run in the low 80s, so the bar for each star sits there.
+  officer: [40, 45, 65, 70, 76, 80, 78, 79, 80, 0],
   warrant: [45, 60, 70, 80, 0],
 };
 
@@ -571,8 +573,9 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade >= 5) chance -= 0.1 * (svc.njp ?? []).filter((n) => n.age >= svc.joinedAge + svc.yearsOfService - 5).length;
   // General/flag officer and senior NCO boards are brutally selective.
   // A strong, joint-qualified colonel has a real shot at a star; each higher star is harder.
-  // Roughly: a strong colonel ~15–30% a look for a star; about half of one-stars make two; a third of two-stars make three; few make four.
-  if (flagBoard) chance = (0.2 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 85) / 60 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0) + (svc.flagRecord?.excellent ?? 0) * 0.1 + (svc.post?.kind === 'command' ? 0.05 : 0) - (svc.flagRecord?.poor ?? 0) * 0.08 - (svc.flagRecord?.relieved ? 1 : 0)) * jointFactor(svc) * [0.75, 1, 0.75, 0.45][svc.grade - 5];
+  // Roughly, for a strong, joint-qualified officer who has commanded: most colonels like that make a star,
+  // most one-stars make two, about half of two-stars make three, and one in ten or so of those makes four.
+  if (flagBoard) chance = (0.26 + Math.min(0.06, prestige(ctx.state) / 3000) + (svc.eval - 80) / 50 + (svc.unit?.commanded?.battalionCommander ? 0.05 : 0) + (svc.flagRecord?.excellent ?? 0) * 0.1 + (svc.post?.kind === 'command' ? 0.05 : 0) - (svc.flagRecord?.poor ?? 0) * 0.08 - (svc.flagRecord?.relieved ? 1 : 0)) * jointFactor(svc) * [0.8, 1, 0.9, 0.75][svc.grade - 5];
   // Senior boards select a fraction of those eligible: about 45% for O-6, 40% for E-8, 20% for E-9.
   if (svc.track === 'officer' && svc.grade === 4) chance *= 0.65;
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;

@@ -17,6 +17,7 @@
  *   listings: [...businesses for sale],
  * }
  */
+import { businessBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
 import { yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -63,6 +64,8 @@ export const experienceYears = (state, type) => yearsInProfession(state, type.pr
 
 /** Starting a business: what's required and how you'd pay for it. */
 export function startEligibility(state, typeId, funding = 'cash', size = 'standard') {
+  const banned = businessBlock(state);
+  if (banned) return { ok: false, reason: banned };
   const type = BUSINESS_TYPES[typeId];
   if (!type) return { ok: false, reason: 'Unknown business' };
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18' };

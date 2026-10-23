@@ -1,5 +1,8 @@
 /**
- * The Communist Party of China: in China, real power runs through the Party.
+ * The ruling party of a one-party state: in China (the Communist Party), North Korea (the
+ * Workers' Party of Korea) and Vietnam (the Communist Party of Vietnam), real power runs
+ * through the Party. China's ladder is described below; the others share it under their
+ * own titles (RULING_PARTIES).
  *
  * Joining: apply at 18 (Communist Youth League members have an edge), pass a
  * political review — no criminal record, no religious belief, no suspect
@@ -50,7 +53,21 @@ export const CPC_RANKS = [
 export const RETIRE_AGE = 68;
 const DUES = 0.01;
 
-const inChina = (state) => (state.character.countryId ?? 'US') === 'CN';
+/**
+ * The ruling parties of the one-party states, on the same cadre ladder: China's Communist
+ * Party, North Korea's Workers' Party and the Communist Party of Vietnam.
+ */
+export const RULING_PARTIES = {
+  CN: { name: 'the Communist Party of China', short: 'the Party', youth: 'the Communist Youth League', capital: 'Beijing', thought: 'Xi Jinping Thought', office: 'cn_president', topNote: 'The National People\'s Congress will make you President of the PRC.', flag: '🇨🇳' },
+  KP: { name: 'the Workers\' Party of Korea', short: 'the Party', youth: 'the Socialist Patriotic Youth League', capital: 'Pyongyang', thought: 'Kimilsungism–Kimjongilism', office: 'kp_president', topNote: 'The Supreme People\'s Assembly will name you President of the State Affairs Commission.', flag: '🇰🇵',
+    titles: ['Party member', 'Party cell secretary', 'Ri (village) Party committee secretary', 'County Party committee chief secretary', 'City Party committee chief secretary', 'Member of a provincial Party committee', 'Provincial Party committee chief secretary', 'Member of the Politburo', 'Member of the Presidium of the Politburo', 'General Secretary of the Workers\' Party of Korea'] },
+  VN: { name: 'the Communist Party of Vietnam', short: 'the Party', youth: 'the Ho Chi Minh Communist Youth Union', capital: 'Hanoi', thought: 'Ho Chi Minh Thought', office: 'vn_president', topNote: 'The Central Committee leads the state; the National Assembly will confirm your colleagues in the top posts.', flag: '🇻🇳',
+    titles: ['Party member', 'Party cell secretary', 'Commune Party secretary', 'District Party secretary', 'City Party secretary', 'Member of a provincial Party standing committee', 'Provincial Party secretary', 'Member of the Politburo', 'Standing member of the Secretariat', 'General Secretary of the Communist Party of Vietnam'] },
+};
+export const partyHere = (state) => RULING_PARTIES[state.character.countryId ?? 'US'] ?? null;
+const inChina = (state) => Boolean(partyHere(state));
+/** A cadre rank's title in this country's party. */
+export const rankTitle = (state, rank) => partyHere(state)?.titles?.[rank] ?? CPC_RANKS[rank]?.title;
 export const cpcOf = (state) => state.cpc ?? null;
 export const isMember = (state) => ['member', 'probationary'].includes(state.cpc?.status);
 /** The level of government a Party post runs (a city, a province, the nation), or null. */
@@ -62,8 +79,9 @@ export function cpcLevel(state) {
 
 /** Why you can't join (null: you can). */
 export function joinBlock(state) {
-  if (!inChina(state)) return 'Only in China';
-  if (!isCitizen(state, 'CN')) return 'Chinese citizens only';
+  if (!inChina(state)) return 'Only in a one-party state';
+  if (!isCitizen(state, state.character.countryId)) return 'Citizens only';
+  if (state.regime?.songbun === 'hostile') return 'Your songbun (family background) bars you from the Party';
   if (state.character.age < 18) return 'Join the Communist Youth League first (14–28); the Party from 18';
   const c = state.cpc;
   if (c?.status === 'expelled') return 'Expelled members are not readmitted';
@@ -109,7 +127,7 @@ export const CommunistPartyModule = {
     }
     if (c.status === 'probationary') {
       c.status = 'member';
-      ctx.log('You were admitted as a full member of the Communist Party of China and took the oath before the Party flag.', '☭', 'milestone');
+      ctx.log(`You were admitted as a full member of ${partyHere(state).name} and took the oath before the Party flag.`, '☭', 'milestone');
       return;
     }
     // Dues, and the post's stipend.
@@ -135,10 +153,10 @@ export const CommunistPartyModule = {
     }
     // Age limits: retirement from the post (and the system).
     if (c.rank > 0 && (age >= RETIRE_AGE || age > post.maxAge) && !c.retiredFrom) {
-      ctx.log(`You reached the age limit for ${post.title} and retired from your Party post. Retired cadres keep their membership — and some influence.`, '🎐', 'info');
+      ctx.log(`You reached the age limit for ${rankTitle(state, c.rank)} and retired from your Party post. Retired cadres keep their membership — and some influence.`, '🎐', 'info');
       c.retiredFrom = post.title;
       c.rank = 0;
-      if (c.rank === 0 && state.politics.office?.id === 'cn_president') ctx.emit('politics:leave', { reason: 'Retired' });
+      if (state.politics.office?.id === partyHere(state)?.office) ctx.emit('politics:leave', { reason: 'Retired' });
       return;
     }
     if (c.retiredFrom) return;
@@ -147,12 +165,12 @@ export const CommunistPartyModule = {
     if (rng.chance(promotionOdds(state))) {
       c.rank += 1;
       c.postSince = age;
-      const r = CPC_RANKS[c.rank];
-      ctx.log(`The Organization Department appointed you ${r.title}.`, '☭', 'milestone');
+      ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
       ctx.stat('happiness', 8);
       if (c.rank === 9) {
-        ctx.log('The Central Committee elected you General Secretary. The National People\'s Congress will make you President of the PRC.', '🇨🇳', 'milestone');
-        ctx.emit('politics:take', { officeId: 'cn_president', appointed: true });
+        const pt = partyHere(state);
+        ctx.log(`The Central Committee elected you General Secretary. ${pt.topNote}`, pt.flag, 'milestone');
+        ctx.emit('politics:take', { officeId: pt.office, appointed: true });
       }
       return;
     }
@@ -162,13 +180,13 @@ export const CommunistPartyModule = {
     /** Join the Communist Youth League (14–28): the usual road into the Party. */
     joinLeague(ctx) {
       const { state } = ctx;
-      if (!inChina(state)) return ctx.toast('Only in China', 'warn');
+      if (!inChina(state)) return ctx.toast('Only in a one-party state', 'warn');
       if (state.character.age < 14 || state.character.age > 28) return ctx.toast('Ages 14 to 28', 'warn');
       const c = ensure(state);
       if (c.status) return ctx.toast('Already a member', 'warn');
       c.status = 'youthLeague';
       c.network += 10;
-      ctx.log('You joined the Communist Youth League.', '🔴', 'good');
+      ctx.log(`You joined ${partyHere(state).youth}.`, '🔴', 'good');
     },
     apply(ctx) {
       const { state } = ctx;
@@ -177,7 +195,7 @@ export const CommunistPartyModule = {
       const c = ensure(state);
       c.status = 'applicant';
       c.since = state.character.age;
-      ctx.log('You submitted your application to join the Communist Party of China, with an essay on your political convictions.', '☭', 'good');
+      ctx.log(`You submitted your application to join ${partyHere(state).name}, with an essay on your political convictions.`, '☭', 'good');
     },
     /** Political study: Xi Jinping Thought sessions, the study app's points. */
     study(ctx) {
@@ -187,7 +205,7 @@ export const CommunistPartyModule = {
       if (yearlyCount(state, 'cpc.study')) return ctx.toast('Once a year', 'warn');
       bumpYearly(state, 'cpc.study');
       c.record = Math.min(100, c.record + 4);
-      ctx.log('You led your branch\'s political study sessions and topped the study app\'s points table.', '📕');
+      ctx.log(`You led your branch's study sessions on ${partyHere(state)?.thought ?? 'Party doctrine'} and came top of the political-study rankings.`, '📕');
     },
     /** Cultivate a patron (guanxi): banquets, favors, loyalty. */
     network(ctx) {
@@ -201,7 +219,7 @@ export const CommunistPartyModule = {
       if (!c.patron || c.patron.fallen) {
         const n = randomName(rng, rng.pick(['male', 'female']));
         c.patron = { name: `${n.lastName} ${n.firstName}`, rank: Math.min(9, c.rank + rng.int(2, 4)), fallen: false };
-        ctx.log(`${c.patron.name}, ${CPC_RANKS[c.patron.rank].title.toLowerCase()}, has taken an interest in your career.`, '🤝', 'good');
+        ctx.log(`${c.patron.name}, ${rankTitle(state, c.patron.rank).toLowerCase()}, has taken an interest in your career.`, '🤝', 'good');
       } else ctx.log(`Dinner with ${c.patron.name}'s circle went well.`, '🍶');
     },
   },
@@ -220,7 +238,7 @@ export const CommunistPartyModule = {
       c.rank = 0;
       ctx.log('You were expelled from the Party "for serious violations of discipline" and handed to prosecutors.', '⛓️', 'bad');
       if (c.graft) ctx.emit('legal:offense', { offenseId: 'publicCorruption', context: 'abuse of a Party post', caught: true, evidence: optionId === 'confess' ? 0.95 : 0.8 });
-      if (state.politics.office?.id?.startsWith('cn_')) ctx.emit('politics:leave', { reason: 'Expelled from the Party' });
+      if (state.politics.office?.id?.startsWith(`${(state.character.countryId ?? '').toLowerCase()}_`)) ctx.emit('politics:leave', { reason: 'Expelled from the Party' });
     },
     event(ctx, data, optionId) {
       const { state, rng } = ctx;
@@ -249,11 +267,11 @@ const EVENTS = [
     { id: 'green', label: '🌳 Hold out for a cleaner project', record: -2, network: -2 },
     { id: 'graft', label: '💰 Approve it — for a stake in the company', record: 6, graft: true },
   ] },
-  { id: 'petition', title: 'Petitioners', text: 'Villagers whose land was taken for a factory are planning to petition in Beijing.', options: [
+  { id: 'petition', title: 'Petitioners', text: 'Villagers whose land was taken for a factory are planning to petition in the capital.', options: [
     { id: 'settle', label: '🤝 Meet them and pay fair compensation', record: 3, fund: { housing: 1.03, welfare: 1.02 } },
-    { id: 'stop', label: '🚧 Stop them reaching Beijing', record: 1, gamble: 6 },
+    { id: 'stop', label: '🚧 Stop them reaching the capital', record: 1, gamble: 6 },
   ] },
-  { id: 'campaign', title: 'A Central Campaign', text: 'Beijing has launched a campaign (poverty alleviation, pollution, "common prosperity"). Everyone is watching who delivers.', options: [
+  { id: 'campaign', title: 'A Central Campaign', text: 'The centre has launched a campaign (production targets, a loyalty drive, a "speed battle"). Everyone is watching who delivers.', options: [
     { id: 'zeal', label: '📣 Throw everything at it', record: 7, network: 2, gamble: 4 },
     { id: 'steady', label: '📋 Deliver it by the book', record: 3 },
   ] },
@@ -268,7 +286,7 @@ function yearEvent(ctx) {
   const e = rng.pick(EVENTS);
   ctx.prompt({
     type: 'cpc.event', icon: '☭', title: e.title,
-    text: `${CPC_RANKS[state.cpc.rank].title} · record ${state.cpc.record}\n${e.text}`,
+    text: `${rankTitle(state, state.cpc.rank)} · record ${state.cpc.record}\n${e.text}`,
     options: e.options.map((o) => ({ id: o.id, label: o.label, tone: o.graft ? 'danger' : undefined })),
     data: { id: e.id },
   });

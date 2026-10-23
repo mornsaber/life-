@@ -30,6 +30,7 @@
  * Budget = { key, level, where, name, funding: { [area]: share }, debt, balance, health, rating,
  *            levy, history: [{ age, balance, health }], since, shutdown, ask: { [area]: share } | null }
  */
+import { regimeOf } from '../world/Regimes.js';
 import { clamp, Random } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
@@ -291,7 +292,7 @@ export function npcBudgetYear(state, b, bloc, rng) {
   } else if (b.health > 78) {
     if (labor) for (const [id, a] of Object.entries(areas)) { if (a.social) b.funding[id] = Math.round(clamp(b.funding[id] * 1.03, 0.6, 1.4) * 1000) / 1000; }
     else if ((b.levy ?? 0) > -0.04) b.levy = Math.round(((b.levy ?? 0) - 0.02) * 1000) / 1000 || 0;
-    note = labor ? `${cap(b.name)} put its surplus into services.` : `${cap(b.name)} returned its surplus as a tax rebate.`;
+    note = labor || regimeOf(state.character.countryId ?? 'US').jobs === 'assigned' ? `${cap(b.name)} put its surplus into services.` : `${cap(b.name)} returned its surplus as a tax rebate.`;
   }
   // Temporary levies fade as budgets recover.
   if (!short && (b.levy ?? 0) > 0 && b.health > 55) b.levy = Math.round(Math.max(0, b.levy - 0.01) * 1000) / 1000 || 0;
@@ -406,6 +407,8 @@ export const BudgetsModule = {
       }
       closeBooks(state, b);
       // Ratings agencies notice; residents and public employees hear about it.
+      // Closed and sanctioned states have no rating to lose: nobody lends to them.
+      if (!regimeOf(state.character.countryId ?? 'US').ratings) b.rating = ratingBefore;
       if (b.rating !== ratingBefore && (here || b === jobBudget(state, job, { create: false }))) {
         const up = RATING_ORDER.indexOf(b.rating) > RATING_ORDER.indexOf(ratingBefore);
         ctx.log(`${cap(b.name)}'s credit rating was ${up ? 'upgraded' : 'downgraded'} to ${b.rating}${up ? '' : ': borrowing costs more, and cuts are coming'}.`, up ? '📈' : '📉', up ? 'good' : 'warn');

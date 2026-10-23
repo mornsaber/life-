@@ -6,6 +6,8 @@
  *
  * state.civic = { local, hoa, pta, activism, watch, neighbors, neighborsAt }
  */
+import { regimeHere } from '../world/Regimes.js';
+import { REGIONS } from '../life/Regions.js';
 import { isCitizen } from '../world/Countries.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
@@ -42,7 +44,9 @@ function neighborsTick(ctx) {
   // Their lives go on.
   if (rng.chance(0.45)) {
     const n = rng.pick(c.neighbors);
-    const ev = rng.pick(LIFE_EVENTS);
+    // Pools, new trucks and holidays belong to rich, free countries.
+    const poor = (REGIONS[state.character.regionId]?.market ?? 1) < 0.35 || regimeHere(state).jobs === 'assigned';
+    const ev = rng.pick(LIFE_EVENTS.filter((e) => !(poor && e.affluent)));
     bumpRel(n, ev.rel);
     ctx.log(ev.text(n), n.icon);
   }
