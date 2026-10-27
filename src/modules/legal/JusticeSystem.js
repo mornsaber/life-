@@ -133,6 +133,76 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
     return;
   }
   courtPrompt(ctx, id, context, evidence, abroad);
+  // A felony at home is a case with stages: the arraignment (plead, or pick counsel), bail, a plea offer, trial, sentencing, appeal.
+  const q = state.prompts.at(-1);
+  if (q?.type === 'legal.court' && offense.severity === 'felony' && !abroad && state.character.age >= 18) q.data = { ...q.data, felonyCase: true };
+}
+
+/* ------------------------------------------------------------------ */
+/* A felony case, stage by stage                                       */
+/* ------------------------------------------------------------------ */
+
+const money0 = (state, n) => Math.round(n * priceLevel(state));
+function bailPrompt(ctx, data) {
+  const { state } = ctx;
+  const { offenseId, context } = data;
+  const offense = OFFENSES[offenseId];
+  const bail = money0(state, offense.capital ? 1000000 : (offense.prison?.[1] ?? 2) >= 10 ? 250000 : 25000);
+  const remand = offense.capital || justiceHere(state)?.remand === 'strict';
+  ctx.prompt({ type: 'legal.bail', icon: '🔐', title: 'The Bail Hearing', text: `You were arrested and charged with ${offense.name}${context ? ` (${context})` : ''}. ${remand ? 'The prosecution asks that you be held until trial.' : `The judge set bail at $${bail.toLocaleString()}.`}`, options: [
+    ...(remand ? [] : [{ id: 'pay', label: `💵 Post bail ($${bail.toLocaleString()}, back if you show up)` }, { id: 'bond', label: `🏦 Use a bail bondsman ($${Math.round(bail / 10).toLocaleString()}, not refundable)` }]),
+    { id: 'custody', label: remand ? '🔒 Remanded in custody until trial' : '🔒 Stay in jail until trial', hint: 'You may lose your job; the time counts' },
+  ], data: { ...data, bail } });
+}
+
+/** The prosecutor's offer: a lesser plea for a lighter sentence. */
+function offerPrompt(ctx, data) {
+  const offense = OFFENSES[data.offenseId];
+  ctx.prompt({ type: 'legal.offer', icon: '🤝', title: 'A Plea Offer', text: `The prosecutor offers a deal: plead guilty to a reduced count of ${offense.name.toLowerCase()} and they will ask for about half the usual sentence. ${data.evidence >= 0.8 ? 'Your lawyer says the evidence is strong.' : data.evidence >= 0.6 ? 'Your lawyer calls the case "winnable, but risky".' : 'Your lawyer thinks their case is thin.'}`, options: [
+    { id: 'accept', label: '✍️ Take the deal', hint: 'Certain conviction, about half the time' },
+    { id: 'counter', label: '🗣️ Have your lawyer push for better', hint: 'Better counsel, better odds' },
+    { id: 'trial', label: '⚖️ Reject it: go to trial' },
+  ], data });
+}
+
+function trialPrompt(ctx, data) {
+  ctx.prompt({ type: 'legal.trial', icon: '🧑‍⚖️', title: 'The Trial', text: `The trial of the year, as far as you are concerned. ${justiceHere(ctx.state)?.trial === 'judge' ? 'A judge alone will decide.' : 'Twelve strangers will decide.'} What is your defence's strategy?`, options: [
+    { id: 'suppress', label: '📑 Attack the evidence (motion to suppress)', hint: 'Can gut the case; depends on your lawyer' },
+    { id: 'testify', label: '🎤 Take the stand yourself', hint: 'Persuasive or a disaster' },
+    { id: 'witnesses', label: '👥 Character witnesses and an alibi' },
+    { id: 'silent', label: '🤐 Say nothing: make them prove it' },
+  ], data });
+}
+
+function verdict(ctx, data, edge) {
+  const { state, rng } = ctx;
+  const defense = DEFENSE[data.defense] ?? DEFENSE.publicDefender;
+  const smarts = data.defense === 'self' ? (state.stats.smarts - 60) / 200 : 0;
+  const convict = rng.chance(clamp(data.evidence * defense.factor - smarts - edge, 0.03, 0.95));
+  if (!convict) {
+    ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');
+    ctx.toast('Acquitted!', 'good');
+    ctx.stat('happiness', 10);
+    if (data.custody) ctx.log('You walked out of the courtroom free, after months inside awaiting trial.', '🚪', 'info');
+    return;
+  }
+  const trial = justiceHere(state)?.trial ?? 'jury';
+  ctx.log(trial === 'jury' ? 'The jury returned a guilty verdict.' : 'The court found you guilty.', '🧑‍⚖️', 'bad');
+  ctx.prompt({ type: 'legal.sentencing', icon: '⚖️', title: 'Sentencing', text: 'Before the judge passes sentence, you may speak.', options: [
+    { id: 'remorse', label: '🙇 Express remorse and accept responsibility', hint: 'Lighter sentence' },
+    { id: 'letters', label: '✉️ Letters from family, employers and your community' },
+    { id: 'innocent', label: '✊ Maintain your innocence', hint: 'Keeps an appeal credible; heavier sentence' },
+  ], data });
+}
+
+function appealPrompt(ctx, data) {
+  const { state } = ctx;
+  if (!state.legal.incarceration) return;
+  const cost = money0(state, data.defense === 'topFirm' ? 150000 : 40000);
+  ctx.prompt({ type: 'legal.appeal', icon: '📜', title: 'An Appeal?', text: `Your lawyers think there are grounds to appeal${data.innocent ? ', and you never admitted guilt' : ''}. It will cost about $${cost.toLocaleString()} and take a year or two.`, options: [
+    { id: 'appeal', label: '📜 Appeal the conviction', hint: 'Most appeals fail' },
+    { id: 'accept', label: '🙇 Serve the sentence' },
+  ], data: { ...data, cost } });
 }
 
 function courtPrompt(ctx, offenseId, context, evidence, abroad) {
@@ -169,13 +239,13 @@ function civilPenalty(ctx, offenseId, context) {
 /* Sentencing                                                          */
 /* ------------------------------------------------------------------ */
 
-function sentence(ctx, offenseId, { plea, abroad }) {
+function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
   const { state, rng } = ctx;
   const offense = OFFENSES[offenseId];
   const lowHalf = (range) => (plea ? rng.int(range[0], Math.round((range[0] + range[1]) / 2)) : rng.int(...range));
   // Fines and fees are set in local money: scaled to the country's wage level.
   const fine = Math.round(lowHalf(offense.fine) * (offenseId.toLowerCase().includes('dui') ? stateOf(state).dui.fineMult : 1) * priceLevel(state));
-  let prison = offense.prison ? lowHalf(offense.prison) : 0;
+  let prison = offense.prison ? Math.round(lowHalf(offense.prison) * factor) : 0;
   // Other countries jail fewer people for less time (life terms stay life).
   const j = justiceHere(state);
   if (j && prison > 0 && prison < 25) prison = Math.max(offense.severity === 'felony' ? 1 : 0, Math.round(prison * j.sentence));
@@ -235,7 +305,9 @@ export const JusticeResolvers = {
     const { rng } = ctx;
     const defense = DEFENSE[optionId];
     if (defense.cost) ctx.spend(Math.round(defense.cost * priceLevel(ctx.state)), `Legal fees (${defense.label.slice(2).trim()})`, { allowDebt: true });
-    if (optionId === 'plead') return sentence(ctx, data.offenseId, { plea: true, abroad: data.abroad });
+    if (optionId === 'plead') return sentence(ctx, data.offenseId, { plea: true, abroad: data.abroad, factor: data.custody ? 0.85 : 1 });
+    // A felony case goes on: the prosecutor's offer, then (if you refuse) the trial.
+    if (data.felonyCase) return bailPrompt(ctx, { ...data, defense: optionId });
     const smartsEdge = optionId === 'self' ? (ctx.state.stats.smarts - 60) / 200 : 0;
     const convict = rng.chance(clamp(data.evidence * defense.factor - smartsEdge, 0.05, 0.95));
     if (convict) {
@@ -249,6 +321,61 @@ export const JusticeResolvers = {
     }
   },
 
+  bail(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    if (optionId === 'pay' && !ctx.spend(data.bail, 'Bail (returned if you appear)', { allowDebt: false })) optionId = 'bond';
+    if (optionId === 'pay') { ctx.earn(data.bail, 'Bail returned'); ctx.log('You posted bail and went home to wait for trial.', '💵', 'info'); }
+    else if (optionId === 'bond') { ctx.spend(Math.round(data.bail / 10), 'Bail bondsman\'s fee', { allowDebt: true }); ctx.log('A bondsman put up your bail for a ten per cent fee you will never see again.', '🏦', 'info'); }
+    else {
+      ctx.stat('happiness', -12);
+      ctx.log('You waited for trial in a county jail cell.', '🔒', 'bad');
+      if (state.career.job && rng.chance(0.5)) ctx.emit('career:resign', { reason: 'Jailed awaiting trial', fired: true });
+    }
+    return offerPrompt(ctx, { ...data, custody: optionId === 'custody' });
+  },
+  offer(ctx, data, optionId) {
+    const { rng } = ctx;
+    if (optionId === 'accept') return sentence(ctx, data.offenseId, { plea: true, abroad: false, factor: 0.5 * (data.custody ? 0.85 : 1) });
+    if (optionId === 'counter') {
+      const good = rng.chance({ topFirm: 0.7, privateAttorney: 0.5, self: 0.4 }[data.defense] ?? 0.25);
+      if (good) {
+        ctx.log('Your lawyer got the charge reduced: a plea to a lesser count, and a much shorter sentence.', '🤝', 'good');
+        return sentence(ctx, data.offenseId, { plea: true, abroad: false, factor: 0.3 });
+      }
+      ctx.log('The prosecutor withdrew the offer. It\'s trial.', '🤝', 'warn');
+    }
+    return trialPrompt(ctx, data);
+  },
+  trial(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const counsel = { topFirm: 0.25, privateAttorney: 0.15, self: 0.1 }[data.defense] ?? 0.06;
+    let edge = 0;
+    if (optionId === 'suppress') {
+      if (rng.chance(counsel + 0.1)) { edge = 0.3; ctx.log('The judge threw out the key evidence: an unlawful search. The prosecution\'s case is in pieces.', '📑', 'good'); } else ctx.log('The motion to suppress failed.', '📑', 'info');
+    } else if (optionId === 'testify') {
+      const good = rng.chance(0.4 + (state.stats.smarts - 50) / 200 + (state.stats.looks - 50) / 300);
+      edge = good ? 0.15 : -0.15;
+      ctx.log(good ? 'On the stand you were calm and believable.' : 'Cross-examination took you apart.', '🎤', good ? 'good' : 'bad');
+    } else if (optionId === 'witnesses') edge = 0.06;
+    return verdict(ctx, data, edge);
+  },
+  sentencing(ctx, data, optionId) {
+    const factor = { remorse: 0.75, letters: 0.85, innocent: 1.15 }[optionId] ?? 1;
+    sentence(ctx, data.offenseId, { plea: false, abroad: false, factor: factor * (data.custody ? 0.85 : 1) });
+    return appealPrompt(ctx, { ...data, innocent: optionId === 'innocent' });
+  },
+  appeal(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    if (optionId !== 'appeal') return undefined;
+    ctx.spend(data.cost, 'Appeal (legal fees)', { allowDebt: true });
+    const odds = ({ topFirm: 0.2, privateAttorney: 0.12, self: 0.08 }[data.defense] ?? 0.07) + (data.innocent ? 0.04 : 0) + (data.evidence < 0.6 ? 0.08 : 0);
+    if (!rng.chance(odds)) return ctx.log('The appeals court upheld your conviction.', '📜', 'bad');
+    const rec = [...state.legal.record].reverse().find((r) => r.offenseId === data.offenseId);
+    if (rec) state.legal.record = state.legal.record.filter((r) => r !== rec);
+    state.legal.incarceration = null;
+    ctx.stat('happiness', 20);
+    return ctx.log('The appeals court overturned your conviction. You walked out a free person, the record wiped.', '📜', 'milestone');
+  },
   immunity(ctx, data, optionId) {
     const { rng } = ctx;
     const offense = OFFENSES[data.offenseId];

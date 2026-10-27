@@ -38,6 +38,15 @@ import { quote } from '../src/modules/realestate/MortgageSystem.js';
 import { annualTuition } from '../src/modules/education/EducationEngine.js';
 import { Finances } from '../src/modules/life/Finances.js';
 import { PeopleEngine } from '../src/modules/people/index.js';
+/** A felony case after the arraignment: in custody, refuse the deal, stay silent at trial, maintain innocence, no appeal. */
+const throughTrial = (engine) => {
+  const pick = { 'legal.bail': 'custody', 'legal.offer': 'trial', 'legal.trial': 'silent', 'legal.sentencing': 'innocent', 'legal.appeal': 'accept' };
+  for (let i = 0; i < 8; i++) {
+    const q = engine.state.prompts.find((p) => pick[p.type]);
+    if (!q) break;
+    engine.resolvePrompt(q.id, pick[q.type]);
+  }
+};
 const PeopleEngineOnAgeUp = (ctx) => PeopleEngine.onAgeUp(ctx);
 import { BrokerageEngine } from '../src/modules/investing/index.js';
 import { HealthEngine, addCondition, medicalBill, coverageId, getCondition } from '../src/modules/health/index.js';
@@ -1277,6 +1286,7 @@ const tests = {
     const court = tx.state.prompts.find((p) => p.type === 'legal.court');
     tx.engine.rng.chance = () => true;
     tx.engine.resolvePrompt(court.id, 'publicDefender');
+    throughTrial(tx.engine);
     const inc = tx.state.legal.incarceration;
     assert.ok(inc?.deathRow, 'sentenced to death in Texas');
     assert.equal(tx.state.legal.record.at(-1).sentence, 'death sentence');
@@ -1292,6 +1302,7 @@ const tests = {
     const c2 = il.state.prompts.find((p) => p.type === 'legal.court');
     il.engine.rng.chance = () => true;
     il.engine.resolvePrompt(c2.id, 'publicDefender');
+    throughTrial(il.engine);
     assert.ok(il.state.legal.incarceration && !il.state.legal.incarceration.deathRow, 'Illinois abolished the death penalty');
 
     const ca = setup(86, 30);
