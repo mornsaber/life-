@@ -49,9 +49,11 @@ const tests = {
     const entry = p.levels.findIndex((l) => l.entry);
     assert.ok(p.levels.findIndex((l) => l.id === heir.career.job.levelId) > Math.max(0, entry));
   },
-  'a teenager or someone out of work starts without a job'() {
+  'a teenager starts without a job; an adult between jobs finds one'() {
     assert.equal(heirOf('Cashier', { childAge: 15, edu: 'none' }).heir.career.job, null);
-    assert.equal(heirOf(null).heir.career.job, null);
+    // Between jobs at 35: they find work their schooling fits.
+    const between = heirOf(null).heir;
+    assert.ok(between.career.job, 'an adult heir out of school is working');
   },
 };
 

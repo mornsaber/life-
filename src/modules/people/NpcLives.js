@@ -58,7 +58,7 @@ const LIVES = ['mother', 'father', 'sibling', 'partner', 'fiance', 'spouse', 'ex
 const managedJob = (p) => /family business|^Owner, /.test(p.job ?? '');
 const isPartner = (p) => ['partner', 'fiance', 'spouse'].includes(p.relation);
 
-function jobFor(rng, edu, smarts = 55) {
+export function jobFor(rng, edu, smarts = 55) {
   const rank = EDU_RANK[edu] ?? 0;
   // Most people work at (or just below) their education level; brighter ones reach the top of it.
   const fits = NPC_JOBS.filter(([, , , need]) => EDU_RANK[need] <= rank && EDU_RANK[need] >= rank - 1 - (rng.chance(0.25) ? 1 : 0));
@@ -128,7 +128,8 @@ function yearOf(ctx, p) {
 
   // School and graduation (a college degree PeopleEngine already handed out counts).
   if (p.degree && EDU_RANK[life.edu] < EDU_RANK.bachelor && !life.studying) life.edu = 'bachelor';
-  if (age === 18 && life.edu === 'none' && rng.chance(0.9)) life.edu = 'highschool';
+  // Your own children nearly all finish school; the wider family mostly do.
+  if (age === 18 && life.edu === 'none' && rng.chance(p.relation === 'child' ? 0.97 : 0.9)) life.edu = 'highschool';
   if (age === 18 && !life.studying && life.edu === 'highschool') {
     const smarts = p.traits?.smarts ?? rng.int(30, 85);
     const r = rng.next();

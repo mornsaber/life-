@@ -10,6 +10,7 @@ import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
 import { hire } from '../career/CareerEngine.js';
 import { grantCredential } from '../credentials/LicensingEngine.js';
+import { jobFor } from './NpcLives.js';
 
 /** NPC title → profession, the bachelor's major, and any further degree [type, programId]. */
 export const NPC_CAREERS = {
@@ -34,7 +35,14 @@ const ALTERNATES = { police: ['statePolice', 'sheriff'], fire: ['stateFire'], po
 const START_AGE = { none: 18, highschool: 18, trade: 20, associate: 20, bachelor: 22, master: 24, professional: 27, doctorate: 28 };
 
 /** What a family member's working life carries into yours: { job, edu, sector, income }. */
-export const heirWork = (p) => (p?.job && !/family business|^Owner, |part-time/.test(p.job) ? { job: p.job, edu: p.life?.edu ?? null, income: p.careerIncome ?? p.income ?? 0 } : null);
+export function heirWork(p, rng) {
+  if (!p) return null;
+  const edu = p.life?.edu ?? (p.degree ? 'bachelor' : 'highschool');
+  if (p.job && !/family business|^Owner, |part-time/.test(p.job)) return { job: p.job, edu, income: p.careerIncome ?? p.income ?? 0, employer: p.life?.employer ?? null };
+  // Between jobs, but of working age and out of school: the work their schooling fits.
+  if (rng && !p.life?.studying && !p.retired && p.ageNow >= 22 && p.ageNow < 65) return { job: jobFor(rng, edu, p.traits?.smarts)[0], edu, income: 0, employer: null, between: true };
+  return null;
+}
 
 /** The degrees a job needed, on your record if they aren't there already. */
 function ensureDegrees(state, map, edu) {
@@ -78,7 +86,8 @@ export function resumeHeirCareer(ctx, work) {
   const employer = createEmployer(rng, state, profession, state.character.regionId);
   const job = hire(ctx, { professionId: profession.id, levelId: level.id, employer });
   if (!job) return null;
-  job.yearsAtEmployer = Math.min(years, rng.int(1, 8));
-  ctx.log(`You carry on as ${/^[AEIOU]/i.test(job.title) ? 'an' : 'a'} ${job.title} at ${employer.name}, the job you already had.`, profession.icon ?? '💼', 'info');
+  job.yearsAtEmployer = work.between ? 0 : Math.min(years, rng.int(1, 8));
+  const a = /^[AEIOU]/i.test(job.title) ? 'an' : 'a';
+  ctx.log(work.between ? `Between jobs when you took over, you found work as ${a} ${job.title} at ${employer.name}.` : `You carry on as ${a} ${job.title} at ${employer.name}, the job you already had.`, profession.icon ?? '💼', 'info');
   return job;
 }

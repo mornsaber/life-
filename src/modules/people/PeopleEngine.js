@@ -462,7 +462,8 @@ export const PeopleEngine = {
     engine.continueAsChild = (childId) => {
       const old = engine.state;
       if (!old || old.character.alive) return null;
-      const work = heirWork(old.people.list.find((p) => p.id === childId));
+      const kid = old.people.list.find((p) => p.id === childId);
+      const work = kid ? heirWork({ ...kid, ageNow: old.character.age + kid.ageOffset }, engine.rng) : null;
       const heir = buildHeirState(engine.rng, old, childId);
       if (!heir) return null;
       engine.store.state = heir;
