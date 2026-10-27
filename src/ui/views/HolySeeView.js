@@ -5,6 +5,7 @@
 import { esc, button, card, kv } from '../Components.js';
 import { holySeeOf, isPope, isCardinal, isElector, papabile, papalHonourOptions } from '../../modules/world/HolySee.js';
 import { currentYear } from '../../core/State.js';
+import { catholicPriest } from '../../modules/community/HolyOrders.js';
 
 const VATICAN_JOBS = ['romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie', 'catholicClergy'];
 
@@ -36,6 +37,7 @@ export function holySeeCard(state) {
       ${button('🕊️ Renounce the papacy', 'holySee.renounce', { variant: 'danger', hint: 'As Benedict XVI did: Pope Emeritus' })}
     </div>
     <h4 class="sub">Papal honours <small class="muted">three a year</small></h4><div class="toggle-row chips-row">${papalHonourOptions(state).map((p) => button(`🇻🇦 Honour ${esc(p.firstName)}`, 'holySee.honour', { arg: p.id, variant: 'tiny' })).join('')}</div>` : isCardinal(state) ? `<div class="action-grid">${button('🟥 Quietly build support', 'holySee.cultivate', { hint: 'Once a year; don\'t look ambitious' })}</div>` : '';
+  const rome = job?.professionId === 'catholicClergy' && catholicPriest(state) ? `<div class="action-grid">${button('🇻🇦 Ask to be sent to the Academy', 'holyOrders.toRome', { arg: 'academy', hint: 'Diplomatic service · under 40' })}${button('🏛️ Ask to serve in the Curia', 'holyOrders.toRome', { arg: 'curia', hint: 'A dicastery in Rome' })}</div>` : '';
   const path = !pope && !isCardinal(state) && catholic ? '<p class="fine">The road to Rome: a priest (Catholic Priesthood) can be sent to the Pontifical Ecclesiastical Academy for the Holy See\'s diplomatic service, or called to the Curia; archbishops of great sees, Prefects and the Secretary of State are made cardinals, and cardinals under 80 elect the Pope. Swiss Catholic men of 19–30 can join the Pontifical Swiss Guard. Lay Catholics of distinction receive the papal orders.</p>' : '';
-  return card(pope ? 'The Apostolic Palace' : 'The Holy See', `${kv(rows)}${actions}${path}`, { icon: '🇻🇦' });
+  return card(pope ? 'The Apostolic Palace' : 'The Holy See', `${kv(rows)}${actions}${rome}${path}`, { icon: '🇻🇦' });
 }

@@ -5,6 +5,7 @@
 import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
 import { clergyEligibility, traditionName } from '../../modules/community/Religions.js';
+import { ordersOf } from '../../modules/community/HolyOrders.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
@@ -26,6 +27,7 @@ function faithCard(state) {
   }
   const t = TRADITIONS[f.traditionId];
   const elig = clergyEligibility(state);
+  const orders = ordersOf(state);
   return card(f.congregation, `
     ${kv([
       ['Tradition', `${t.icon} ${esc(traditionName(f.traditionId, state.character.countryId ?? 'US'))}${t.fundamentalist ? ` ${chip('high-control', 'bad')}` : ''}`],
@@ -33,7 +35,7 @@ function faithCard(state) {
       ['Attendance', `${ATTENDANCE[f.attendance].icon} ${ATTENDANCE[f.attendance].label}${f.attendance === 'devout' ? ` · ${f.devoutYears} yr` : ''}`],
       f.role ? ['Lay role', esc(f.role)] : null,
       ['Giving', c.giving ? `${c.giving}% of income${c.givenThisYear ? ` · ${money(c.givenThisYear)} this year` : ''}` : 'None'],
-      ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : f.traditionId === 'anglican' ? 'Anglican Holy Orders (selection through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
+      orders ? ['Holy orders', `${esc({ deacon: 'Deacon', priest: 'Priest', bishop: 'Bishop', minister: 'Ordained minister' }[orders.grade])} since age ${orders.since}${orders.diocese ? ` · ${esc(orders.diocese)}` : ''} <small class="muted">(for life: you return to ministry at this order)</small>`] : ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : f.traditionId === 'anglican' ? 'Anglican Holy Orders (selection through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
     ])}
     ${t.schism ? `<p class="fine">Tensions over ${esc(t.schism.issue)} could split this ${t.house.toLowerCase()}.</p>` : ''}
     ${t.fundamentalist ? '<p class="fine">Leaving a high-control group usually means being shunned by the congregation and by family who stay.</p>' : ''}
@@ -41,6 +43,7 @@ function faithCard(state) {
     <h4 class="sub">Giving</h4><div class="toggle-row">${GIVING_LEVELS.map((n) => button(n ? `${n}%${n === 10 ? ' (tithe)' : ''}` : 'None', 'community.give', { arg: String(n), variant: c.giving === n ? 'tiny on' : 'tiny' })).join('')}</div>
     <div class="toggle-row">
       ${f.role ? button('Step down', 'community.stepDown', { variant: 'small ghost' }) : ''}
+      ${orders ? button(['catholic', 'tradCatholic', 'anglican'].includes(orders.tradition) ? '📜 Seek laicization' : '📜 Give up your credentials', 'holyOrders.laicize', { variant: 'small ghost', hint: 'Out of ministry first' }) : ''}
       ${button('🚪 Leave', 'community.leave', { variant: 'small danger', disabled: age < 16 })}
     </div>`, { icon: t.icon, accent: 'yellow' });
 }

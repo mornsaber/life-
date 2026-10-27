@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { ordainedEntryLevel } from '../community/HolyOrders.js';
 import { workBlock } from '../world/Regimes.js';
 import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
 import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
@@ -116,6 +117,9 @@ export function backgroundCheck(state, profession) {
 
 /** Highest entry level the candidate qualifies for at an employer of this size (ignoring clearance). */
 export function bestEntryLevel(state, profession, size) {
+  // The ordained come back to ministry at their order, not as seminarians (HolyOrders.js).
+  const ordained = ordainedEntryLevel(state, profession);
+  if (ordained) return ordained;
   const candidates = entryLevels(profession, size).filter((l) => levelCheck(state, l).ok);
   const base = candidates.sort((a, b) => b.grade - a.grade)[0] ?? null;
   // Related military service (or senior leadership) can start you higher.

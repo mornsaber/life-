@@ -16,6 +16,7 @@
  *   flightHoursPerYear logs pilot time while employed
  *   levels            the ladder (see Ladder.js)
  */
+import { clergyCareerFor, CLERGY_CAREERS } from '../community/HolyOrders.js';
 import { PRIVATE_TITLES } from '../world/PrivateTitles.js';
 import { PROFESSION_TITLES } from '../world/ProfessionStandards.js';
 import { L, addGovernmentTiers } from './Ladder.js';
@@ -636,7 +637,9 @@ export const setAvailabilityFilter = (fn) => { availabilityFilter = fn; };
 
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
-  const local = (p) => !availabilityFilter || !state?.character || availabilityFilter(state, p);
+  // One ministry per faith: your own church's clergy career, not three side by side.
+  const ministry = state?.community ? clergyCareerFor(state.community.faith?.traditionId ?? state.community.orders?.tradition) : null;
+  const local = (p) => (!ministry || !CLERGY_CAREERS.includes(p.id) || p.id === ministry) && (!availabilityFilter || !state?.character || availabilityFilter(state, p));
   if (cc === 'US') {
     const list = PROFESSION_LIST.filter(local);
     return list.length === PROFESSION_LIST.length ? PROFESSION_LIST : list;

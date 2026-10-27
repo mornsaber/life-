@@ -43,7 +43,13 @@ const isCatholic = (state) => ['catholic', 'tradCatholic'].includes(state.commun
 const married = (state) => (state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse');
 const served = (state) => Boolean(state.military?.service || state.military?.history?.length || ['served', 'serving'].includes(state.military?.conscription?.status));
 /** An ordained Catholic priest: a parochial vicar or above, now or before. */
-export const ordainedPriest = (state) => [state.career.job, ...(state.career.history ?? [])].some((j) => j?.professionId === 'catholicClergy' && (j.peakGrade ?? j.grade ?? 0) >= 3) || ['holySeeDiplomacy'].includes(state.career.job?.professionId);
+export const ordainedPriest = (state) => {
+  // Holy orders are a status (HolyOrders.js); laicization ends them.
+  const o = state.community?.orders;
+  if (o) return !o.laicized && ['catholic', 'tradCatholic'].includes(o.tradition) && ['priest', 'bishop'].includes(o.grade);
+  return legacyPriest(state);
+};
+const legacyPriest = (state) => [state.career.job, ...(state.career.history ?? [])].some((j) => j?.professionId === 'catholicClergy' && (j.peakGrade ?? j.grade ?? 0) >= 3) || ['holySeeDiplomacy'].includes(state.career.job?.professionId);
 
 /**
  * The Pontifical Swiss Guard: Swiss Catholic men, 19 to 30, at least 1.74 m, unmarried on entry,
