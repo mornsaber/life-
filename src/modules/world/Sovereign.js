@@ -60,6 +60,7 @@ export const SovereignModule = {
     const risk = 0.02 + (r.unrest ?? 0) / 250 + Math.max(0, 45 - (r.popularity ?? 60)) / 300;
     if (rng.chance(risk)) {
       ctx.log('The protests became a revolution. The army would not fire on the crowds, and a provisional government declared a republic.', '🔥', 'bad');
+      for (const cc of CROWNS[r.crownId]?.realms ?? []) delete state.world.suspendedParliament?.[cc];
       abolish(ctx, r.crownId);
     } else if ((r.unrest ?? 0) >= 50) ctx.log('Unrest is spreading: strikes, marches, and graffiti on the palace walls.', '🔥', 'warn');
   },
@@ -124,6 +125,10 @@ export const SovereignModule = {
       bumpYearly(state, 'sovereign.seize');
       if (rng.chance(check.odds)) {
         r.executive = true;
+        state.world.suspendedParliament ??= {};
+        for (const cc of CROWNS[r.crownId]?.realms ?? []) state.world.suspendedParliament[cc] = currentYear(state);
+        // Whoever governed is out: ministers you name serve at your pleasure.
+        if (/_pm$|premier/.test(state.politics?.office?.id ?? '')) ctx.emit('politics:leave', { reason: 'Dismissed when the monarch suspended parliament' });
         bump(r, 'unrest', 30);
         pop(r, -10);
         return ctx.log('You dismissed the government, suspended parliament and announced that you would govern until a new constitution was ready. The army stood by you. The world\'s press called it a royal coup.', '⚔️', 'milestone');
@@ -164,6 +169,7 @@ export const SovereignModule = {
       const r = state.royal;
       if (!reigning(state) || !r.executive) return undefined;
       r.executive = false;
+      for (const cc of CROWNS[r.crownId]?.realms ?? []) delete state.world.suspendedParliament?.[cc];
       bump(r, 'unrest', -40);
       pop(r, 8);
       return ctx.log('You restored parliament and reigned as a constitutional monarch again. Elections followed within the year.', '🏛️', 'milestone');

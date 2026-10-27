@@ -296,6 +296,17 @@ function memberVote(m, bill, rng, body = null) {
 
 /** Members you can name: everyone on a council, the senior members of a bigger chamber. */
 export const ROSTER_SIZE = (body) => Math.min(body.seats, 15);
+/**
+ * Someone you put in an appointed chamber (a life peer the sovereign creates): a named member who
+ * remembers who sent them. Returns the member, or null if the chamber isn't in this life yet.
+ */
+export function seatAppointee(state, kind, where, person, { rng, title, caucus }) {
+  const body = state.legislature?.bodies?.[bodyId(kind, where)];
+  if (!body) return null;
+  const m = fillProfile({ name: title, caucus: caucus ?? (rng.chance(0.5) ? 'labor' : 'business'), district: 0, terms: 1, keep: true, personId: person.id, rel: Math.min(100, (person.relationship ?? 60) + 15), background: 'Appointed by the sovereign' }, rng, body);
+  body.members.push(m);
+  return m;
+}
 function syncMembers(body, rng) {
   const n = ROSTER_SIZE(body);
   const laborSeats = Math.round(n * body.labor / body.seats);
@@ -307,7 +318,7 @@ function syncMembers(body, rng) {
   let biz = body.members.length - labor;
   while (body.members.length > n) {
     const caucus = labor > laborSeats ? 'labor' : 'business';
-    const i = body.members.findIndex((m) => m.caucus === caucus && !m.you && !Object.values(body.leaders).some((l) => l?.name === m.name));
+    const i = body.members.findIndex((m) => m.caucus === caucus && !m.you && !m.keep && !Object.values(body.leaders).some((l) => l?.name === m.name));
     if (i < 0) break;
     body.members.splice(i, 1);
     if (caucus === 'labor') labor -= 1; else biz -= 1;
@@ -803,7 +814,11 @@ export const Legislature = {
     const rng = legRng(state);
     // Elections and leadership.
     const national = chambersFor('federal', whereFor(state, 'federal'))[0];
+    // A parliament suspended by a ruling monarch (Sovereign.js) holds no elections and passes nothing.
+    const suspended = (body) => Boolean(BODY_DEFS[body.kind]?.country && body.level !== 'city' && state.world?.suspendedParliament?.[BODY_DEFS[body.kind].country]);
     for (const body of bodiesHere(state)) {
+      body.suspended = suspended(body);
+      if (body.suspended) continue;
       if (BODY_DEFS[body.kind]?.appointed) { body.nextElection = null; appointmentsYear(ctx, body, rng); continue; }
       if (!BODY_DEFS[body.kind]?.country) {
         // American legislatures vote on the calendar: Congress and the statehouses in even years, city councils in odd.
@@ -842,7 +857,7 @@ export const Legislature = {
       const where = whereFor(state, level);
       const kinds = chambersFor(level, where);
       const origin = kinds.length ? state.legislature.bodies[bodyId(kinds[0], where)] : null;
-      if (!origin) continue;
+      if (!origin || origin.suspended) continue;
       const pending = (origin.bills ?? []).filter((b) => b.stage === 'introduced');
       // Bills a revising chamber held up for a year pass without it.
       const due = (origin.bills ?? []).filter((b) => b.stage === 'delayed' && b.dueAge <= state.character.age);

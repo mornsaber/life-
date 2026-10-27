@@ -73,7 +73,7 @@ export const OFFICES = {
 
 export const ALLIANCE = {
   DE: { name: 'the Johanniterorden', noble: false, grades: { honour: 'Ehrenritter des Johanniterordens', justice: 'Rechtsritter des Johanniterordens', commendator: 'Kommendator des Johanniterordens' }, head: 'Herrenmeister des Johanniterordens', work: 'the Johanniter-Unfall-Hilfe' },
-  NL: { name: 'the Johanniter Orde in Nederland', noble: true, grades: { honour: 'Ere-Ridder in de Johanniter Orde', justice: 'Rechtsridder in de Johanniter Orde', commendator: 'Commendator in de Johanniter Orde' }, head: 'Landcommandeur van de Johanniter Orde in Nederland', work: 'the Johanniter Hulpgroepen' },
+  NL: { name: 'the Johanniter Orde in Nederland', noble: true, women: true, grades: { honour: 'Ere-Ridder in de Johanniter Orde', justice: 'Rechtsridder in de Johanniter Orde', commendator: 'Commendator in de Johanniter Orde' }, female: { honour: 'Ere-Dame in de Johanniter Orde', justice: 'Rechtsdame in de Johanniter Orde', commendator: 'Commendatrix in de Johanniter Orde' }, head: 'Landcommandeur van de Johanniter Orde in Nederland', work: 'the Johanniter Hulpgroepen' },
   SE: { name: 'the Johanniterorden i Sverige', noble: true, grades: { honour: 'Riddare av Johanniterorden i Sverige', justice: 'Rättsriddare av Johanniterorden i Sverige', commendator: 'Kommendator av Johanniterorden i Sverige' }, head: 'Kommendator (head) of the Johanniterorden i Sverige', work: 'the order\'s hospice and youth work' },
 };
 
@@ -110,7 +110,7 @@ export function gradeName(state) {
   if (!s) return null;
   if (s.order !== 'venerable') {
     const a = ALLIANCE[s.order];
-    return s.office === 'head' ? a.head : a.grades[s.grade];
+    return s.office === 'head' ? a.head : ((state.character.gender === 'female' && a.female) || a.grades)[s.grade];
   }
   if (s.office === 'sovereign') return OFFICES.sovereign;
   const g = GRADES[gradeIdx(s.grade)];
@@ -290,11 +290,11 @@ function allianceYear(ctx) {
   if (s.grade === 'honour' && age - s.since >= 4 && rng.chance(0.3)) {
     s.grade = 'justice';
     sync(state);
-    ctx.log(`Dubbed at the order's Rittertag, you are now ${a.grades.justice}.`, '✠', 'honor');
+    ctx.log(`Dubbed at the order's Rittertag, you are now ${gradeName(state)}.`, '✠', 'honor');
   } else if (s.grade === 'justice' && age - s.since >= 12 && age >= 45 && rng.chance(0.06)) {
     s.grade = 'commendator';
     sync(state);
-    ctx.log(`You were elected ${a.grades.commendator}: you lead the order's work in your province.`, '✠', 'honor');
+    ctx.log(`You were elected ${gradeName(state)}: you lead the order's work in your province.`, '✠', 'honor');
   }
   // The German order's Herrenmeister is a Prince of Prussia; the others elect their head.
   const prussian = state.house?.cc === 'DE' && !state.house.renounced;
@@ -320,7 +320,7 @@ export function allianceCheck(state) {
   if (!a) return { ok: false, reason: 'No Alliance order here' };
   if (state.stJohn) return { ok: false, reason: 'Already a member of an Order of St John' };
   if (!protestant(state)) return { ok: false, reason: 'Protestant Christians only' };
-  if (state.character.gender === 'female') return { ok: false, reason: 'A men\'s order (women serve in its sisterhood and charities)' };
+  if (state.character.gender === 'female' && !a.women) return { ok: false, reason: 'A men\'s order (women serve in its sisterhood and charities)' };
   if (state.character.age < 25) return { ok: false, reason: 'From 25' };
   if (a.noble && !nobleBorn(state)) return { ok: false, reason: 'Of noble birth' };
   if (hasFelony(state)) return { ok: false, reason: 'Of good standing (no criminal record)' };
@@ -371,7 +371,7 @@ export const StJohnModule = {
       state.stJohn = { order: state.character.countryId, grade: 'honour', since: state.character.age, office: null };
       sync(state);
       ctx.stat('happiness', 5);
-      return ctx.log(`You were received into ${a.name} as ${a.grades.honour}, and pledged yourself to ${a.work}.`, '✠', 'honor');
+      return ctx.log(`You were received into ${a.name} as ${gradeName(state)}, and pledged yourself to ${a.work}.`, '✠', 'honor');
     },
     /** Resign from the Order. */
     resign(ctx) {

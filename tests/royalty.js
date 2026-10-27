@@ -293,6 +293,8 @@ const tests = {
     const ann = state.people.list.find((p) => p.id === 'f2');
     assert.ok(ann.peerage.life && ann.peerage.seat);
     assert.equal(ann.peerage.title, 'Baroness Hale');
+    const lords = state.legislature?.bodies?.['upper_GB:GB'];
+    if (lords) assert.ok(lords.members.some((m) => m.personId === 'f2' && m.keep), 'a named member of the Lords');
     assert.match(VIEWS.politics(state, {}), /0 of 3 left/);
   },
   'sovereign powers: audiences build influence; a royal coup, decrees and unrest; a failed bid brings a referendum'() {
@@ -320,12 +322,14 @@ const tests = {
     engine.dispatch('sovereign.seizePower');
     ctx.rng.chance = chance;
     assert.ok(state.royal.executive, 'ruling');
+    assert.ok(state.world.suspendedParliament?.GB, 'parliament suspended');
     assert.doesNotMatch(VIEWS.politics(state, {}), /Open Parliament/);
     const unrest = state.royal.unrest;
     engine.dispatch('sovereign.decree', 'crackdown');
     assert.ok(state.royal.unrest > unrest);
     engine.dispatch('sovereign.restoreConstitution');
     assert.ok(!state.royal.executive);
+    assert.ok(!state.world.suspendedParliament?.GB, 'parliament sits again');
     // A coup that fails: the realm votes on the monarchy.
     const t = life({ countryId: 'GB', royalLevel: 'heir' }, 8);
     t.state.character.age = 40;

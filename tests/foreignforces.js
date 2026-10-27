@@ -145,6 +145,22 @@ const tests = {
     ctx.rng.chance = chance;
     assert.ok(state.prompts.some((q) => q.type === 'contractors.mercenary'), 'the offer off the books');
   },
+  'Legion marriage: married under a declared name is punished; regularised, the colonel permits it'() {
+    const { engine, state } = life({}, 4);
+    year(engine, state, 20);
+    state.stats.fitness = 85;
+    state.prompts = [];
+    lucky(engine, () => engine.dispatch('foreignForces.legion'));
+    const l = state.foreignForces.legion;
+    assert.ok(l?.declared, 'a declared identity');
+    state.people.list.push({ id: 'sp', firstName: 'Ana', lastName: 'B', gender: 'female', relation: 'spouse', ageOffset: 0, alive: true, relationship: 80, income: 0 });
+    const mod = MODULES.find((m) => m.id === 'foreignForces');
+    mod.onAgeUp(engine.context());
+    assert.ok(l.marriageNoted && state.military.service.disciplinary >= 1, 'thirty days\' arrest');
+    l.declared = false;
+    mod.onAgeUp(engine.context());
+    assert.ok(l.marriagePermitted, 'permission to marry once regularised');
+  },
   'only Nepali men sit the Gurkha selection'() {
     const { engine, state } = life({ countryId: 'IN' }, 8);
     year(engine, state, 18);

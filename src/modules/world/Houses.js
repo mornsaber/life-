@@ -150,6 +150,7 @@ export function abolish(ctx, cc) {
   const crownId = crownOf(state, cc);
   state.world.republics ??= {};
   state.world.republics[cc] = { year: currentYear(state) };
+  if (state.world.suspendedParliament) delete state.world.suspendedParliament[cc];
   if (state.world.restored?.[cc]) delete state.world.restored[cc];
   const r = state.royal;
   if (r && r.crownId === crownId && (crownId === cc || CROWNS[crownId]?.realms?.[0] === cc)) {

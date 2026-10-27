@@ -29,6 +29,7 @@ import { currentYear, yearlyCount, bumpYearly, addHonor } from '../../core/State
 import { eminence } from './Honours.js';
 import { localUnitName } from './MilitaryLocal.js';
 import { clamp } from '../../core/Random.js';
+import { seatAppointee } from '../politics/Legislature.js';
 import { ageOf, people, living } from '../people/People.js';
 import { enlist, enlistmentEligibility } from '../military/MilitaryEngine.js';
 import { defaultMos } from '../military/MOS.js';
@@ -447,6 +448,8 @@ function confer(ctx, arg) {
     const title = next.idx < g0.surname || life ? `${next.rank} ${p.lastName}` : `${next.rank} ${g0.of} ${place}`;
     p.titles = [...(p.titles ?? []).filter((t) => t !== p.peerage?.title), title];
     p.peerage = { idx: next.idx, title, place, life, seat: life || undefined };
+    // A life peer takes a real seat in the Lords: a named member who owes you a favour.
+    if (life) seatAppointee(state, `upper_${r.crownId}`, r.crownId, p, { rng, title: `${title} (${p.firstName} ${p.lastName})` });
     p.relationship = clamp((p.relationship ?? 60) + 8, 0, 100);
     // Ennobling your own circle is noticed.
     if (['friend', 'bestFriend', 'partner', 'coworker'].includes(p.relation)) r.popularity = Math.max(0, r.popularity - 2);

@@ -94,7 +94,7 @@ const tests = {
     assert.match(styledName(state), /\bSir /);
     const html = VIEWS.honors(state, {});
     assert.match(html, /class="order-row"/);
-    assert.match(html, /Order of the British Empire/);
+    assert.match(html, /Knight Bachelor/);
     state.prompts = [];
     engine.dispatch('honours.renounce', 'order.GB.knight');
     assert.doesNotMatch(styledName(state), /\bSir /);

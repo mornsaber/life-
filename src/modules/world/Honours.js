@@ -131,7 +131,7 @@ export const ORDERS = {
     { id: 'mbe', name: 'Member of the Order of the British Empire (MBE)', post: 'MBE', min: 35, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
     { id: 'obe', name: 'Officer of the Order of the British Empire (OBE)', post: 'OBE', min: 70, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
     { id: 'cbe', name: 'Commander of the Order of the British Empire (CBE)', post: 'CBE', min: 110, ribbon: R('#e0559a', '#9ea3a9', '#e0559a') },
-    { id: 'knight', name: { male: 'Knight Bachelor', female: 'Dame Commander of the Order of the British Empire (DBE)' }, prefix: { male: 'Sir', female: 'Dame' }, post: { male: '', female: 'DBE' }, min: 165, ribbon: R('#c8102e', '#ffd100', '#c8102e') },
+    { id: 'knight', name: { male: 'Knight Bachelor', female: 'Dame Commander of the Order of the British Empire (DBE)' }, prefix: { male: 'Sir', female: 'Dame' }, post: { male: '', female: 'DBE' }, order: { male: null, female: 'Order of the British Empire' }, min: 165, ribbon: R('#c8102e', '#ffd100', '#c8102e') },
     { id: 'peer', name: { male: 'Life peer (Baron)', female: 'Life peer (Baroness)' }, prefix: { male: 'Lord', female: 'Baroness' }, min: 240, peer: true, order: null, ribbon: R('#8b0a1d', '#fff', '#8b0a1d') },
   ] },
   CA: { minAge: 30, order: 'Order of Canada', tiers: [
@@ -243,8 +243,10 @@ export const tierPrefix = (t, gender) => (typeof t.prefix === 'object' ? t.prefi
  * The order a grade belongs to: grades of one order replace each other on promotion; a
  * standalone award (a medal, a peerage, India's Padma awards) is kept alongside. null: standalone.
  */
-export function orderOf(cc, t, fallback) {
+export function orderOf(cc, t, fallback, gender) {
   if (t.peer) return null;
+  // Some grades depend on who holds them: a Knight Bachelor belongs to no order, a Dame Commander to the Order of the British Empire.
+  if (t.order && typeof t.order === 'object') return t.order[gender === 'female' ? 'female' : 'male'];
   if (t.order !== undefined) return t.order;
   if (fallback !== undefined) return fallback;
   const o = ORDERS[cc];
@@ -318,7 +320,7 @@ function offerHonour(ctx, cc, t, chivalryId) {
   const { state } = ctx;
   const gender = state.character.gender;
   const tiers = chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).tiers : ORDERS[cc].tiers;
-  const ord = orderOf(cc, t, chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).name : undefined);
+  const ord = orderOf(cc, t, chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).name : undefined, gender);
   const lesser = lesserGrade(state, cc, t, tiers, ord);
   const name = tierName(t, gender);
   ctx.prompt({ type: 'honours.offer', icon: t.peer ? '👑' : '⚔️', title: t.peer ? 'A Seat in the Lords' : 'A Letter in Confidence', text: `A letter marked "In Confidence" asks whether you would accept ${/^(Knight|Dame|Life)/.test(name) ? '' : 'appointment as '}${name}${tierPrefix(t, gender) ? `, styled ${tierPrefix(t, gender)}` : ''}. Nothing will be announced unless you agree.`, options: [
@@ -334,7 +336,7 @@ function offerHonour(ctx, cc, t, chivalryId) {
 function lesserGrade(state, cc, t, tiers, ord) {
   const held = state.honors.filter((h) => h.country === cc && h.order === ord).map((h) => h.grade ?? -1);
   const idx = tiers.indexOf(t);
-  return [...tiers.slice(0, idx)].reverse().find((x) => !titular(x, state.character.gender) && orderOf(cc, x, ord) === ord && tiers.filter((y) => orderOf(cc, y, ord) === ord).indexOf(x) > Math.max(-1, ...held)) ?? null;
+  return [...tiers.slice(0, idx)].reverse().find((x) => !titular(x, state.character.gender) && orderOf(cc, x, ord, state.character.gender) === ord && tiers.filter((y) => orderOf(cc, y, ord, state.character.gender) === ord).indexOf(x) > Math.max(-1, ...held)) ?? null;
 }
 
 /**
@@ -382,12 +384,12 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
   g.investiture = g.investiture.replace('{sovereign}', sovereign(state, cc) ?? 'the head of state').replace(/\{palace\}/g, CROWNS[cc]?.palace ?? 'the palace');
   // A promotion within the order: the new grade replaces the old one (other orders are kept).
   const rank = (h) => order.findIndex((x) => x.id === h.tier);
-  const ord = orderOf(cc, t, orderName);
+  const ord = orderOf(cc, t, orderName, gender);
   const lower = ord ? state.honors.filter((h) => h.source === 'order' && h.country === cc && rank(h) >= 0 && rank(h) < g.idx && h.order === ord) : [];
   const promotedFrom = lower.length ? lower.at(-1).name : null;
   if (lower.length) state.honors = state.honors.filter((h) => !lower.includes(h));
   const post = tierPost(t, gender);
-  if (addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, order: ord, grade: ord ? order.filter((x) => orderOf(cc, x, orderName) === ord).indexOf(t) : null, name, post, insignia: g.insignia, icon: g.icon, ribbon: gradeRibbon(t, g.level), device: g.level >= 0.99 && order.length >= 3 && !t.peer ? '✦' : null, precedence: 5 - g.level, prestige: Math.round(t.min / 2), citation: `For services to ${servicesTo(state)}. Invested ${g.investiture}; ${g.insignia}${post ? `; the letters ${post} after your name` : ''}.` }) === false) return null;
+  if (addHonor(state, { id: `order.${cc}.${t.id}`, source: 'order', country: cc, tier: t.id, order: ord, grade: ord ? order.filter((x) => orderOf(cc, x, orderName, gender) === ord).indexOf(t) : null, name, post, insignia: g.insignia, icon: g.icon, ribbon: gradeRibbon(t, g.level), device: g.level >= 0.99 && order.length >= 3 && !t.peer ? '✦' : null, precedence: 5 - g.level, prestige: Math.round(t.min / 2), citation: `For services to ${servicesTo(state)}. Invested ${g.investiture}; ${g.insignia}${post ? `; the letters ${post} after your name` : ''}.` }) === false) return null;
   const prefix = tierPrefix(t, gender);
   if (t.peer) {
     // A life barony: a seat in the Lords for life (Peerage.js). A hereditary peer keeps the higher title.
