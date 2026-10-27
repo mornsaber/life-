@@ -229,6 +229,8 @@ function pollYear(ctx) {
       const now = monarchistSupport(state, cc);
       // Opinion returns toward the country's settled view; the monarch's standing and the news move it.
       let v = now + (base - now) * 0.15 + (pop - 60) / 15 + rng.float(-2.5, 2.5);
+      // A monarch who has prepared the heir leaves the country confident about the next reign.
+      if (mine && state.royal.reigning) v += ((state.royal.heirReady ?? 30) - 40) / 120;
       // The long drift: realms far from the monarch's home drift away; the home country holds.
       if (cc !== crownId) v -= 0.4;
       if (rng.chance(0.04)) {

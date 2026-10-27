@@ -12,6 +12,7 @@ import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/w
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 import { conferOptions, militaryPosts, ROYAL_ORDERS, PEERAGE_GRANTS } from '../../modules/world/RoyalHousehold.js';
 import { DECREES, seizeCheck } from '../../modules/world/Sovereign.js';
+import { royalEstate, DUCHY_MODES } from '../../modules/world/RoyalLife.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
@@ -162,7 +163,32 @@ function familyTreeCard(state) {
 }
 
 /** A former ruling house: yours, or the one that claims your country's throne; and the referendums. */
+/** The house you belong to, reigning or not: its seat, your place in it, the estates, the heir, the family. */
+function reigningHouseCard(state) {
+  const r = state.royal;
+  const c = state.world?.crowns?.[r.crownId];
+  if (!c) return '';
+  const def = CROWNS[r.crownId];
+  const est = royalEstate(state);
+  const head = r.reigning;
+  const rows = [
+    ['House', `The House of ${esc(c.house.replace(/^the /, ''))} · reigning`],
+    ['Seat', esc(def.palace)],
+    ['You', head ? 'Head of the house (the sovereign)' : r.line === 1 ? 'Heir to the head of the house' : r.line != null ? `${r.line}${['st', 'nd', 'rd'][((r.line + 90) % 100 - 10) % 10 - 1] ?? 'th'} in line` : 'A member of the house, outside the line'],
+    est ? ['Estate', `${esc(est.name)} · ${money(est.value)} · ${esc(DUCHY_MODES[est.mode])}`] : null,
+    head ? ['The heir', `${esc(c.heir.name)} · readiness ${r.heirReady ?? 30}/100`] : null,
+  ].filter(Boolean);
+  return card(`The House of ${esc(c.house.replace(/^the /, ''))}`, `${kv(rows)}
+    ${est ? `<div class="enroll-form" data-collect-root>${select('mode', Object.entries(DUCHY_MODES).map(([value, label]) => ({ value, label })), { value: est.mode })}${button('🏰 Set the estate\'s course', 'royalLife.estate', { variant: 'small', collect: true })}</div>` : ''}
+    <div class="action-grid">
+      ${head ? button('🎓 Prepare the heir', 'royalLife.mentorHeir', { hint: 'Once a year · steadies the succession' }) : ''}
+      ${head || r.line === 1 ? button('🏰 Gather the family', 'royalLife.gathering', { hint: 'Once a year' }) : ''}
+    </div>
+    <p class="fine">Each year brings a choice of engagement, requests from relatives for consent to marry, and the press. Your popularity carries the country's view of the monarchy with it.</p>`, { icon: '🏰' });
+}
+
 function houseCard(state) {
+  if (state.royal && state.world?.crowns?.[state.royal.crownId]) return reigningHouseCard(state);
   const h = houseOf(state);
   const cc = state.character.countryId ?? 'US';
   const local = FORMER_HOUSES[cc] && !state.world?.restored?.[cc] ? FORMER_HOUSES[cc] : null;
@@ -186,6 +212,7 @@ function houseCard(state) {
   return card(h ? `The House of ${esc(h.name)}` : 'The Monarchy Question', `${kv(rows)}
     <div class="action-grid">
       ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
+      ${h?.rank === 'head' ? button('🏰 Gather the house at the old seat', 'royalLife.gathering', { hint: 'Once a year · $40,000' }) : ''}
       ${h?.rank === 'head' ? button('⚜️ Confer the house order', 'houses.confer', { hint: 'On a loyal supporter; twice a year' }) : ''}
       ${h?.rank === 'head' ? houseConferOptions(state).map((p) => button(`⚜️ Invest ${esc(p.firstName)}`, 'houses.confer', { arg: p.id, variant: 'tiny' })).join('') : ''}
       ${local && leader ? button('🗳️ Call a referendum on restoring the monarchy', 'houses.callRestoration', { hint: `Support ~${Math.round(monarchistSupport(state, cc))}%` }) : ''}
