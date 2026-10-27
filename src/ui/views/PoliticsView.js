@@ -2,6 +2,7 @@
  * Politics tab: current office and approval, an active campaign (funds,
  * endorsements, projected vote share), offices you could run for, history.
  */
+import { INITIATIVES } from '../../modules/politics/Statecraft.js';
 import { honourPowers, nominees } from '../../modules/politics/Patronage.js';
 import { CATALOG, ARRANGEMENTS, canChoose, executiveChoice, arrangementOf } from '../../modules/politics/PublicServices.js';
 import { executiveLevel } from '../../modules/politics/Budgets.js';
@@ -10,7 +11,7 @@ import { officialStyle } from '../../modules/world/Styles.js';
 import { oneParty, partyHere, rankTitle, govPostRanks } from '../../modules/politics/CommunistParty.js';
 import { crownCards } from './CrownCard.js';
 import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
-import { esc, money, button, card, chip, meter, kv, empty, disclosure } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, empty, disclosure, select } from '../Components.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
@@ -125,7 +126,7 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
     ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}
@@ -150,6 +151,18 @@ function appointmentsCard(state) {
 }
 
 /** The organization your office runs: performance, your second-in-command, named staff (or department heads). */
+/** Governing: political capital, a signature initiative, and the legacy so far. */
+function governingCard(state) {
+  const p = state.politics;
+  if (!p?.office && !(p?.legacy ?? []).length) return '';
+  const legacy = (p.legacy ?? []).map((l) => `<li>${esc(INITIATIVES[l.area].label.slice(0, 2))} <b>${esc(l.title)}</b> <small class="muted">${l.year}</small></li>`).join('');
+  const used = (state.yearly['statecraft.initiative'] ?? 0) > 0;
+  return card('Governing', `${p.office ? `${meter(p.capital ?? 20, { label: '💪 Political capital', tone: (p.capital ?? 20) >= 30 ? 'good' : 'mid' })}
+    <div class="enroll-form" data-collect-root>${select('area', Object.entries(INITIATIVES).map(([id, x]) => ({ value: id, label: x.label })))}${button('🏛️ Push a signature initiative', 'statecraft.initiative', { variant: 'small primary', collect: true, disabled: used || (p.capital ?? 0) < 30, hint: used ? 'Next year' : (p.capital ?? 0) < 30 ? 'Needs 30 capital' : '30 capital' })}</div>
+    <p class="fine">Capital comes from approval and time in office. Scandals, leadership challenges and impeachment come with low approval.</p>` : ''}
+    ${legacy ? `<h4 class="sub">Your legacy</h4><ul class="history">${legacy}</ul>` : ''}`, { icon: '🏛️' });
+}
+
 function officeCard(state) {
   const r = officeRoster(state);
   if (!r) return '';
