@@ -33,6 +33,7 @@ import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
 } from './People.js';
 import { settleEstate, buildHeirState, setStateLookup, WILL_PLANS } from './Legacy.js';
+import { heirWork, resumeHeirCareer } from './HeirCareer.js';
 import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 import { knob } from '../../core/Difficulty.js';
 
@@ -461,10 +462,13 @@ export const PeopleEngine = {
     engine.continueAsChild = (childId) => {
       const old = engine.state;
       if (!old || old.character.alive) return null;
+      const work = heirWork(old.people.list.find((p) => p.id === childId));
       const heir = buildHeirState(engine.rng, old, childId);
       if (!heir) return null;
       engine.store.state = heir;
       engine.hydrate(heir);
+      // The job they already had carries on (an inherited business can take its place).
+      if (!heir.career.job) resumeHeirCareer(engine.context(), work);
       engine.commit();
       return heir;
     };
