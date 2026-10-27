@@ -2,6 +2,7 @@
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
 import { foreignForcesOptions } from '../../modules/world/ForeignForces.js';
+import { royalGuardOptions } from '../../modules/military/RoyalGuards.js';
 import { reserveAfter } from '../../modules/military/Wartime.js';
 import { growthOf, growthCheck, struggling, isCombination, chiefPay, stationShare, fundsFloor } from '../../modules/org/VolunteerGrowth.js';
 import { unitView, billetTitle, leads, canImposeNjp, isNcoLeader, LEADER_ACTIONS } from '../../modules/org/MilitaryUnits.js';
@@ -119,6 +120,21 @@ function foreignForcesCard(state) {
   return card('Serving Another Flag', `<ul class="funds">${rows}</ul>`, { icon: '🌍' });
 }
 
+/** The sovereign's guard, and the Spanish Legion for Spanish soldiers. */
+function guardsCard(state) {
+  const opts = royalGuardOptions(state);
+  if (!opts.length) return '';
+  const svc = state.military.service;
+  const rows = opts.map((o) => {
+    const why = o.check.ok || o.serving ? '' : ` <span class="why">${esc(o.check.reason)}</span>`;
+    if (o.id === 'guard') {
+      return `<li class="fund-row"><span>${o.guard.icon} <b>${esc(o.guard.name[0].toUpperCase() + o.guard.name.slice(1))}</b> <small>${o.serving ? `Serving in the ${esc(svc.guardUnit ?? o.guard.unit[0])}${svc.guardYears ? ` · ${svc.guardYears} yr` : ''} · ${esc(o.guard.palace)}` : `Guard the sovereign at ${esc(o.guard.palace)}; ${esc(o.guard.ceremony)}. Height, bearing and a clean record.`}${why}</small></span>${o.serving ? button('Leave the guard', 'royalGuards.leaveGuard', { variant: 'tiny ghost' }) : button('🛡️ Volunteer', 'royalGuards.apply', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}%` : '' })}</li>`;
+    }
+    return `<li class="fund-row"><span>🇪🇸 <b>La Legión</b> <small>${o.serving ? `${esc(o.tercio?.[1] ?? 'The Tercio')}, ${esc(o.tercio?.[0] ?? '')}` : 'Ceuta, Melilla, Ronda, Almería; Holy Week in Málaga and UNIFIL in Lebanon.'}${why}</small></span>${o.serving ? '' : button('🇪🇸 Ask to transfer', 'royalGuards.tercio', { variant: 'tiny', disabled: !o.check.ok, hint: o.check.ok ? `~${Math.round(o.check.odds * 100)}%` : '' })}</li>`;
+  }).join('');
+  return card('Guards and the Legion', `<ul class="funds">${rows}</ul>`, { icon: '🛡️' });
+}
+
 /** UN peacekeeping: volunteer for a mission, or see the tour you're on. */
 function peacekeepingCard(state, svc) {
   if (svc.component !== 'active') return '';
@@ -195,7 +211,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${guardsCard(state)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {

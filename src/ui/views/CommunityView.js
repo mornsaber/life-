@@ -6,6 +6,7 @@ import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
 import { clergyEligibility, traditionName } from '../../modules/community/Religions.js';
 import { ordersOf } from '../../modules/community/HolyOrders.js';
+import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/community/ReligiousOrders.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
@@ -76,9 +77,35 @@ function serviceCard(state) {
     <p class="fine">Service counts toward a pardon, earns the President's Volunteer Service Award after five years, and is a good place to make friends.</p>`, { icon: '🤲', accent: 'green' });
 }
 
+/** Religious life: the Jesuits, Opus Dei and the Missionaries of Charity. */
+function religiousCard(state) {
+  const r = religiousSummary(state);
+  if (r) {
+    return card(r.order.name, `${kv([
+      ['Stage', `${esc(r.stage)}${r.kind ? ` · ${esc(r.kind)}` : ''}${r.nextIn != null ? ` <small class="muted">(${r.nextIn ? `${r.nextIn} yr to the next step` : 'next step this year'})</small>` : ''}`],
+      ['Since', `age ${r.since}`],
+      ['Vows', r.vows === 'final' ? (r.order === RELIGIOUS_ORDERS.opusDei ? 'The Fidelity (for life)' : 'Final vows (for life)') : r.vows === 'first' ? 'Temporary vows' : 'None yet'],
+      r.apostolate ? ['Mission', esc(r.apostolate)] : null,
+      r.office ? ['Office', esc(r.office)] : null,
+    ])}
+    <div class="toggle-row">${r.apostolate ? button('🔄 Ask for a new mission', 'religiousOrders.reassign', { variant: 'small ghost' }) : ''}${button(r.vows === 'final' ? '📜 Seek a dispensation' : '🚪 Leave', 'religiousOrders.leave', { variant: 'small danger' })}</div>`, { icon: r.order.icon, accent: 'yellow' });
+  }
+  if (!['catholic', 'tradCatholic'].includes(state.community.faith?.traditionId) || state.character.age < 18) return '';
+  const rows = [['jesuits', '✝️ The Society of Jesus', 'Men. A dozen years of formation to final vows and the priesthood; schools, universities, refugees, missions.'],
+    ['moc', '🤍 Missionaries of Charity', 'Women. The white sari; homes for the dying, children and the homeless, here and abroad.'],
+    ['opusDei:numerary', '✝️ Opus Dei — numerary', 'Keep your job; celibacy, life in a centre, your salary given to the Work.'],
+    ['opusDei:supernumerary', '✝️ Opus Dei — supernumerary', 'Keep your job and your family: daily prayer and a weekly circle.']]
+    .map(([arg, label, desc]) => {
+      const [id, kind] = arg.split(':');
+      const c = entryCheck(state, id, kind);
+      return `<li class="fund-row"><span><b>${label}</b> <small>${desc}${c.ok ? '' : ` <span class="why">${esc(c.reason)}</span>`}</small></span>${button('Ask to enter', 'religiousOrders.enter', { arg, variant: 'tiny', disabled: !c.ok })}</li>`;
+    }).join('');
+  return card('Religious Life', `<ul class="funds">${rows}</ul>`, { icon: '📿' });
+}
+
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${religiousCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
 }
 
 /** Party membership and how you've voted. */

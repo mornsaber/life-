@@ -52,7 +52,7 @@ export function hasHousingBenefit(state) {
   // Asylum seekers live in reception housing while their claim is pending.
   const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
   return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment
-    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus || state.foreignForces?.puyloubier);
+    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus || state.foreignForces?.puyloubier || state.community?.religious?.housed);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */
@@ -155,6 +155,8 @@ export const Finances = {
       if (isOnActiveDuty(state)) living = 3000 + Math.round(gross * 0.1);
       // Overseas volunteers live with a host family on an in-country allowance, with medical care provided.
       else if (state.service?.program?.id === 'peaceCorps') living = 0;
+      // Religious in community life: the house feeds and clothes you.
+      else if (state.community?.religious?.housed) living = 0;
       // A young adult still at home with no earnings: the family keeps them.
       else if (dependant(state) && gross < 3000 && familySupports(state)) living = 0;
       else if (state.education.enrolled?.pace === 'full' && !state.career.job) {
