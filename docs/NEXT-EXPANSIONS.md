@@ -25,7 +25,12 @@ Pope Emeritus life, and family life for Gurkhas and legionnaires.
 5. **Gurkha and Legion family life.** Family accompaniment (Gurkha families came to the
    UK only after 2009), Legion marriage permission, and the children's citizenship.
 
-## Phase 2 — The world reacts (medium)
+## Phase 2 — The world reacts (medium) ✅ done
+
+Built: coups and juntas (`world/Coups.js`: regimes change in play, parliaments suspended,
+sanctions, counter-coups, leading a junta and handing power back), sanctions that reach
+diplomats, businesses and traders, monarchy polling and republic referendums in every realm,
+and UN peacekeeping tours (`military/Peacekeeping.js`).
 
 6. **Coups and juntas.** In fragile states (and under military regimes) a coup can put
    generals in power; a senior officer can join, oppose or lead one. Ties into

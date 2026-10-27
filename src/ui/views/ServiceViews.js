@@ -31,7 +31,8 @@ import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 import { branchOf, branchFor } from '../../modules/military/MilitaryEngine.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
-import { isAbroad, countryOf } from '../../modules/world/Countries.js';
+import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
+import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
 function recruitingOffice(state) {
   const abroad = isAbroad(state);
@@ -118,6 +119,31 @@ function foreignForcesCard(state) {
   return card('Serving Another Flag', `<ul class="funds">${rows}</ul>`, { icon: '🌍' });
 }
 
+/** UN peacekeeping: volunteer for a mission, or see the tour you're on. */
+function peacekeepingCard(state, svc) {
+  if (svc.component !== 'active') return '';
+  const u = svc.un ?? {};
+  const check = volunteerCheck(state);
+  const on = u.mission ? MISSIONS[u.mission] : null;
+  if (!on && !check.ok && !u.tours && /active duty|training|Two years|Not while|own contingents/.test(check.reason)) return '';
+  const body = on
+    ? `<div class="next-step">🇺🇳 On a tour with <b>${esc(on.name)}</b> (${esc(on.full)}) at ${esc(on.place)}, until age ${u.until}.</div>`
+    : `<div class="enroll-form" data-collect-root>${select('mission', missionsFor(state).map(([id, m]) => ({ value: id, label: `${m.name} · ${m.country}${m.risk >= 0.01 ? ' (dangerous)' : ''}` })))}${button('🇺🇳 Volunteer', 'peacekeeping.volunteer', { variant: 'small primary', collect: true, disabled: !check.ok, hint: check.ok ? 'A year in a blue beret' : check.reason })}</div>`;
+  return card('UN Peacekeeping', `${body}${u.tours ? `<p class="fine">${u.tours} tour${u.tours > 1 ? 's' : ''} completed${u.staff ? ' · UN staff officer' : ''}${u.forceCommander ? ` · Force Commander, ${esc(MISSIONS[u.forceCommander].name)}` : ''}.</p>` : '<p class="fine">Your country\'s contingent serves under UN command. Each tour earns the mission\'s UN Medal; three tours open staff posts, and generals may be asked to command a mission.</p>'}`, { icon: '🇺🇳' });
+}
+
+/** Military rule: the junta you serve on, or lead. */
+function juntaCard(state) {
+  const g = state.regime?.junta;
+  if (!g) return '';
+  const j = state.world?.juntas?.[g.cc];
+  if (!j || j.civilian) return '';
+  if (g.role !== 'leader') return card('The Military Council', `<p>You sit on the junta that rules ${esc(COUNTRIES[g.cc]?.name ?? g.cc)}, under ${esc(j.leader)}.</p>`, { icon: '🪖' });
+  return card('Ruling by Decree', `${meter(g.unrest ?? 20, { label: '🔥 Unrest', tone: (g.unrest ?? 20) >= 50 ? 'bad' : 'mid' })}
+    <p>You are ${esc(j.leaderTitle)} of ${esc(COUNTRIES[g.cc]?.name ?? g.cc)}${j.sanctions ? `, under sanctions from ${esc(j.sanctions.by)}` : ''}. Counter-coups come from your own officers.</p>
+    <div class="action-grid">${button('🗳️ Call elections and stand down', 'coups.holdElections', { arg: 'stepDown', hint: 'Sanctions lifted' })}${button('🎖️ Call elections and stand', 'coups.holdElections', { arg: 'stand', hint: 'Out of uniform' })}${button('🚔 Crack down', 'coups.crackdown', { variant: 'danger', hint: 'Calm now, more sanctions' })}</div>`, { icon: '🪖', accent: 'red' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -169,7 +195,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {

@@ -78,6 +78,7 @@ export function crownCards(state) {
       ['Reigning since', `${c.since} (${currentYear(state) - c.since} yr)`],
       ['Heir', c.monarch.you ? esc(c.heir.name) : `${esc(c.heir.name)}, ${esc(def.titles.heir[c.heir.gender === 'female' ? 1 : 0])}${c.heir.you ? ' (you)' : ''}`],
       realms.length > 1 ? ['Realms', realms.join(' · ')] : null,
+      ['Support for the monarchy', `${Math.round(monarchistSupport(state, state.character.countryId ?? crownId))}%${realms.length > 1 ? ` here · ${realms.map((x) => `${x} ${Math.round(monarchistSupport(state, x))}%`).join(', ')}` : ''}`],
       crises.length ? ['Last constitutional crisis', `${crises.at(-1).year}`] : null,
       ...Object.values(state.world?.viceRegal ?? {}).filter((h) => VICE_REGAL[h.postId]?.country === (state.character.countryId ?? 'US') && OFFICES[h.postId]).map((h) => [esc(OFFICES[h.postId].name), `${esc(h.name)}${h.you ? ' (you)' : ` · ${esc(h.background)}`} · until ${h.until}`]),
       (state.character.countryId ?? 'US') in KNIGHTHOODS_DEFAULT ? ['Knighthoods in the national order', knighthoodsOn(state, state.character.countryId) ? 'Awarded' : 'Not awarded (abolished)'] : null,

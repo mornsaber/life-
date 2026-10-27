@@ -281,7 +281,11 @@ function referendumYear(ctx) {
 }
 function resolveReferendum(ctx, cc, push) {
   const { state, rng } = ctx;
-  const yes = clamp(0.42 + rng.float(-0.1, 0.12) + push, 0.2, 0.8);
+  // How the country polls on the monarchy decides the vote (Houses.js keeps the polls).
+  const support = state.world.monarchists?.[cc] ?? 55;
+  // The status quo has an edge: undecided voters keep what they have.
+  // Canada's needs every province to agree (the amending formula): even harder there.
+  const yes = clamp(1 - support / 100 - (cc === 'CA' ? 0.18 : 0.1) + rng.float(-0.08, 0.08) + push, 0.15, 0.85);
   if (yes > 0.5) {
     state.world.republics ??= {};
     state.world.republics[cc] = { year: currentYear(state) };

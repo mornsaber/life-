@@ -34,6 +34,12 @@ import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
 import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
+import { endPosting } from './Posting.js';
+
+/** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
+let coupHook = null;
+export const setCoupHook = (fn) => { coupHook = fn; };
+const coupNow = (ctx, cc, lead) => coupHook?.(ctx, cc, { leader: lead ? 'you' : null }) ?? null;
 
 const R = (o) => ({ kind: 'democracy', elections: 'free', press: 'free', exit: 'free', business: 'free', religion: 'free', internet: 'open', surveillance: 0.02, women: 'equal', alcohol: true, banking: 'open', jobs: 'market', ratings: true, ...o });
 const AUTOCRACY = { press: 'state', internet: 'censored', surveillance: 0.15 };
@@ -76,7 +82,26 @@ export const REGIMES = {
   CF: R({ ...FRAGILE, name: 'a fragile presidential state' }),
   PS: R({ ...FRAGILE, name: 'a territory under occupation and divided rule', elections: 'none', exit: 'restricted' }),
 };
-export const regimeOf = (cc) => REGIMES[cc] ?? R({});
+/**
+ * Regimes change in play (Coups.js): a junta seizes power, or hands it back. The overrides
+ * are set from state.world.juntas each year and on load, so every caller sees today's regime.
+ */
+let OVERRIDES = {};
+let SANCTION_OVERRIDES = {};
+export function setRegimeOverrides(juntas = {}) {
+  OVERRIDES = {};
+  SANCTION_OVERRIDES = {};
+  for (const [cc, j] of Object.entries(juntas ?? {})) {
+    // A junta that handed power back: an elected government, with the army still watching.
+    if (j.civilian) { OVERRIDES[cc] = { kind: 'hybrid', name: 'an elected government after military rule', elections: 'free', press: 'free', internet: 'open', surveillance: 0.04, coups: true, leader: 'the President' }; continue; }
+    OVERRIDES[cc] = { ...JUNTA, name: 'a military junta', leader: j.leaderTitle ?? 'the head of the military council', banking: REGIMES[cc]?.banking ?? 'open', ratings: false };
+    if (j.sanctions) SANCTION_OVERRIDES[cc] = j.sanctions;
+  }
+}
+/** Countries where the army can take power: those that have had coups, and fragile states. */
+export const coupProne = (cc) => Boolean(REGIMES[cc]?.coups || REGIMES[cc]?.kind === 'fragile' || REGIMES[cc]?.kind === 'junta');
+export const baseRegimeOf = (cc) => REGIMES[cc] ?? R({});
+export const regimeOf = (cc) => (OVERRIDES[cc] ? R({ ...(REGIMES[cc] ?? {}), ...OVERRIDES[cc] }) : REGIMES[cc] ?? R({}));
 export const regimeHere = (state) => regimeOf(state.character.countryId ?? 'US');
 export const isOpenSociety = (cc) => ['democracy'].includes(regimeOf(cc).kind);
 
@@ -91,7 +116,7 @@ export const SANCTIONS = {
   AF: { by: 'the UN (on Taliban leaders)', level: 1, note: 'Taliban leaders are sanctioned; the central bank\'s reserves are frozen abroad.' },
   SD: { by: 'the US and the UN', level: 1, note: 'An arms embargo and sanctions on both warring generals.' },
 };
-export const sanctionsOn = (cc) => SANCTIONS[cc] ?? null;
+export const sanctionsOn = (cc) => SANCTION_OVERRIDES[cc] ?? SANCTIONS[cc] ?? null;
 
 /* ------------------------------------------------------------------ */
 /* Rules other modules ask about                                       */
@@ -190,18 +215,46 @@ function regimeYear(ctx) {
   const s = sanctionsOn(cc);
   if (s && rng.chance(0.15 * s.level)) ctx.log(rng.pick([`Sanctions: imported medicine was nowhere to be found this year.`, `Sanctions: the currency fell again, and prices with it.`, `Sanctions: foreign firms left; their offices stand empty.`, `Sanctions: spare parts for anything foreign-made are impossible to get.`]), '🚫', 'warn');
   if (s) ctx.spend(Math.round(500 * s.level), 'Sanctions: shortages and black-market prices', { allowDebt: true });
+  // Sanctions reach careers.
+  if (s) sanctionedCareer(ctx, cc, s);
   // Senior figures of a sanctioned regime are sanctioned personally.
   if (s && !g.sanctioned && seniorFigure(state)) {
     g.sanctioned = { by: s.by, since: age, travelBan: s.level >= 2 };
     ctx.log(`You were added to the sanctions lists of ${s.by}: your assets abroad are frozen${s.level >= 2 ? ' and you may not travel there' : ''}.`, '🚫', 'bad');
   }
   // Juntas: senior officers are courted for, or forced into, a coup.
-  if (r.coups && state.military?.service?.track === 'officer' && state.military.service.grade >= 7 && rng.chance(0.04) && !state.prompts.some((p) => p.type === 'regime.coup')) {
+  if (coupProne(cc) && !g.junta && state.military?.service?.track === 'officer' && state.military.service.grade >= 7 && rng.chance(0.04) && !state.prompts.some((p) => p.type === 'regime.coup')) {
     ctx.prompt({
       type: 'regime.coup', icon: '🪖', title: 'A Knock at Night',
       text: 'Fellow generals are planning to seize power. They want you with them — or out of the way.',
-      options: [{ id: 'join', label: '🪖 Join the coup', tone: 'danger' }, { id: 'refuse', label: '🙅 Refuse and stay loyal' }, { id: 'report', label: '📞 Warn the government' }],
+      options: [{ id: 'join', label: '🪖 Join the coup', tone: 'danger' }, ...(state.military.service.grade >= 8 ? [{ id: 'lead', label: '⭐ Lead it yourself', tone: 'danger', hint: 'Head of the junta, if it works' }] : []), { id: 'refuse', label: '🙅 Refuse and stay loyal' }, { id: 'report', label: '📞 Warn the government' }],
     });
+  }
+}
+
+/** What sanctions do to a working life: diplomats expelled, exporters cut off, bank transfers frozen. */
+const SANCTIONING = ['US', 'GB', 'CA', 'AU', 'JP', 'FR', 'DE', 'IT', 'NL', 'SE', 'ES', 'IE', 'NZ'];
+function sanctionedCareer(ctx, cc, s) {
+  const { state, rng } = ctx;
+  const job = state.career?.job;
+  // A diplomat of a sanctioned state, posted to a capital that sanctions it, may be expelled.
+  const posting = state.character.posting;
+  if (job?.professionId?.endsWith('foreignService') && posting && SANCTIONING.includes(posting.countryId) && rng.chance(0.1 * s.level)) {
+    ctx.log(`${COUNTRIES[posting.countryId]?.name ?? 'Your host country'} declared you persona non grata in a round of sanctions expulsions. You had seventy-two hours to leave.`, '🛂', 'bad');
+    job.performance = Math.max(0, (job.performance ?? 60) - 5);
+    endPosting(ctx, null);
+  }
+  // A business here loses its export markets and its foreign suppliers.
+  const biz = state.business?.current;
+  if (biz && rng.chance(0.3 * s.level)) {
+    const hit = Math.round(Math.max(2000, (biz.lastYear?.revenue ?? 100000) * 0.04 * s.level));
+    biz.cash = (biz.cash ?? 0) - hit;
+    ctx.log(`Sanctions cost ${biz.name} its foreign customers and a supplier it couldn't replace: about $${hit.toLocaleString()} this year.`, '🚫', 'warn');
+  }
+  // Working in finance or trade: compliance freezes and lost deals.
+  if (['finance', 'logistics', 'trucking', 'merchantMarine', 'oilGas'].includes(job?.professionId) && rng.chance(0.15 * s.level)) {
+    job.performance = Math.max(0, (job.performance ?? 60) - 3);
+    ctx.log(rng.pick(['A foreign bank froze your company\'s payments for "compliance review".', 'A contract with a European partner was cancelled under the sanctions rules.', 'Your shipments were held at a foreign port for weeks.']), '🚫', 'warn');
   }
 }
 
@@ -306,16 +359,21 @@ export const RegimesModule = {
         if (rng.chance(0.6)) { ctx.stat('happiness', 3); return ctx.log('The plot collapsed; the government thanked you.', '🪖', 'good'); }
         return ctx.log('The coup succeeded anyway. The new junta knows what you did.', '🪖', 'bad');
       }
-      if (!rng.chance(0.55)) {
+      const lead = optionId === 'lead';
+      if (!rng.chance(lead ? 0.45 : 0.55)) {
         ctx.log('The coup failed. You were arrested.', '⛓️', 'bad');
         ctx.emit('legal:offense', { offenseId: 'antiState', context: 'a failed coup', caught: true, evidence: 0.99 });
         return undefined;
       }
       const g = ensure(state);
-      g.junta = { since: state.character.age };
+      const cc = state.character.countryId ?? 'US';
+      const j = coupNow(ctx, cc, lead);
+      g.junta = { cc, since: state.character.age, role: lead ? 'leader' : 'member', unrest: 20 };
       state.military.service.grade = Math.min(9, state.military.service.grade + 1);
       ctx.stat('happiness', 10);
-      return ctx.log('The coup succeeded. State television announced a "transitional council" — with you on it. You were promoted.', '🪖', 'milestone');
+      return ctx.log(lead
+        ? `The coup succeeded. You are ${j?.leaderTitle ?? 'head of the military council'}: you rule ${COUNTRIES[cc]?.name ?? 'the country'} by decree.`
+        : 'The coup succeeded. State television announced a "transitional council" — with you on it. You were promoted.', '🪖', 'milestone');
     },
   },
 };

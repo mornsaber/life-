@@ -39,7 +39,9 @@ const g = (state) => (state.character.gender === 'female' ? 1 : 0);
 const RESTORE_THRESHOLD = 35;
 
 export const houseOf = (state) => (state.house && !state.house.renounced ? state.house : null);
-export const monarchistSupport = (state, cc) => (state.world?.monarchists?.[cc] ?? FORMER_HOUSES[cc]?.support ?? 0);
+/** Support for a monarchy: for a restoration where there's none, for keeping it where there is. */
+export const CROWN_SUPPORT = { GB: 62, CA: 50, AU: 52, NZ: 55, JP: 80, SE: 72, NL: 70, ES: 55, NO: 75, DK: 80, BE: 55 };
+export const monarchistSupport = (state, cc) => (state.world?.monarchists?.[cc] ?? (crownOf(state, cc) ? CROWN_SUPPORT[cc] ?? 55 : FORMER_HOUSES[cc]?.support ?? 0));
 
 /** Are you the head of government (or state) of a country? */
 export function leads(state, cc) {
@@ -194,7 +196,7 @@ function resolveVote(ctx, { cc, kind, called }, optionId) {
   const lead = leads(state, cc) && called ? 0.06 : 0;
   const yes = kind === 'restore'
     ? clamp(monarchistSupport(state, cc) / 100 + rng.float(-0.06, 0.1) + push + lead, 0.02, 0.9)
-    : clamp(0.32 + rng.float(-0.08, 0.12) + push + lead - (state.royal?.reigning ? (state.royal.popularity - 50) / 400 : 0), 0.1, 0.85);
+    : clamp(1 - monarchistSupport(state, cc) / 100 - 0.08 + rng.float(-0.08, 0.08) + push + lead - (state.royal?.reigning ? (state.royal.popularity - 50) / 400 : 0), 0.1, 0.85);
   if (optionId !== 'vote') ctx.stat('stress', 3);
   if (yes > 0.5) {
     ctx.log(`The referendum passed with ${Math.round(yes * 100)}%.`, '🗳️', 'milestone');
@@ -203,6 +205,49 @@ function resolveVote(ctx, { cc, kind, called }, optionId) {
   if (kind === 'restore') (state.world.monarchists ??= {})[cc] = Math.max(0, monarchistSupport(state, cc) - 8);
   if (called && leads(state, cc) && state.politics) state.politics.approval = Math.max(0, (state.politics.approval ?? 50) - 8);
   return ctx.log(`The referendum failed: ${Math.round(yes * 100)}% voted yes.`, '🗳️', 'info');
+}
+
+/* ------------------------------------------------------------------ */
+/* The monarchy question in every crowned country                      */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Every realm polls on its monarchy. Support follows the monarch's popularity, the royal
+ * family's scandals and the times; when it sinks far enough, republicans force a vote.
+ */
+function pollYear(ctx) {
+  const { state, rng } = ctx;
+  const w = (state.world.monarchists ??= {});
+  const here = state.character.countryId ?? 'US';
+  for (const [crownId, def] of Object.entries(CROWNS)) {
+    if (def.restorable && !state.world.restored?.[crownId]) continue;
+    for (const cc of def.realms ?? [crownId]) {
+      if (state.world.republics?.[cc] || crownOf(state, cc) !== crownId) continue;
+      const mine = state.royal?.crownId === crownId;
+      const pop = mine ? state.royal.popularity ?? 60 : state.world.crowns?.[crownId]?.popularity ?? 60;
+      const base = CROWN_SUPPORT[cc] ?? 55;
+      const now = monarchistSupport(state, cc);
+      // Opinion returns toward the country's settled view; the monarch's standing and the news move it.
+      let v = now + (base - now) * 0.15 + (pop - 60) / 15 + rng.float(-2.5, 2.5);
+      // The long drift: realms far from the monarch's home drift away; the home country holds.
+      if (cc !== crownId) v -= 0.4;
+      if (rng.chance(0.04)) {
+        const d = -rng.int(3, 8);
+        v += d;
+        if (cc === here) ctx.log(rng.pick(['A royal scandal: leaked letters, a lavish holiday, a cousin\'s business deals.', 'A documentary about the royal finances dominated the news for a week.', 'A royal interview went badly wrong.']) + ` Support for the monarchy fell to ${Math.round(clamp(v, 5, 95))}%.`, '📰', 'warn');
+      }
+      w[cc] = Math.round(clamp(v, 5, 95) * 10) / 10;
+      // Republicans force the question.
+      // Republicans force the question (rarely: a vote settles it for a generation).
+      const last = state.world.lastMonarchyVote?.[cc] ?? -99;
+      if (w[cc] < 38 && currentYear(state) - last >= 20 && rng.chance(0.05) && !state.world.pendingReferendum?.[cc]) {
+        (state.world.lastMonarchyVote ??= {})[cc] = currentYear(state);
+        if (cc !== crownId) (state.world.pendingReferendum ??= {})[cc] = currentYear(state) + 1;
+        else if (cc === here && state.character.age >= 18) referendumPrompt(ctx, cc, 'republic');
+        else if (1 - w[cc] / 100 - 0.08 + rng.float(-0.08, 0.08) > 0.5) abolish(ctx, cc);
+      }
+    }
+  }
 }
 
 /* ------------------------------------------------------------------ */
@@ -295,6 +340,7 @@ export const HousesModule = {
     houseYear(ctx);
     restoredReignYear(ctx);
     monarchistYear(ctx);
+    pollYear(ctx);
   },
   actions: {
     /** Rally the monarchists: speeches, a newspaper, a march on the anniversary. */
