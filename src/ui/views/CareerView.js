@@ -6,6 +6,7 @@
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { intlOrgsCard } from './IntlOrgsView.js';
 import { shipCard, bureauCard, sportCard } from './AbroadWorkCards.js';
+import { jobInsignia } from '../Insignia.js';
 import { holySeeCard } from './HolySeeView.js';
 import { engineSections } from './EngineViews.js';
 import { remoteness, nearestCity, commuteOf } from '../../modules/life/RuralLife.js';
@@ -184,7 +185,7 @@ function currentJob(state) {
 
   return card(esc(job.title), `
     <div class="job-head">
-      ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon })}
+      ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon, insignia: jobInsignia(job, profession, state.character.countryId ?? 'US') ?? '' })}
       <div class="job-meta">
         <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([

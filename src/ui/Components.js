@@ -123,9 +123,9 @@ export function empty(text) {
 const METALS = ['iron', 'bronze', 'bronze', 'silver', 'silver', 'gold', 'platinum'];
 
 /** `level` 0..1 picks the badge metal. */
-export function rankBadge(code, title, level = 0, { icon = '' } = {}) {
+export function rankBadge(code, title, level = 0, { icon = '', insignia = '' } = {}) {
   const metal = METALS[Math.min(METALS.length - 1, Math.floor(level * (METALS.length - 1) + 0.0001))];
-  return `<div class="rank-badge metal-${metal}">
+  return `<div class="rank-badge metal-${metal}">${insignia ? `<div class="rank-insignia">${insignia}</div>` : ''}
     <div class="rank-code">${icon ? `<span>${icon}</span>` : ''}${esc(code)}</div>
     <div class="rank-title">${esc(title)}</div>
   </div>`;

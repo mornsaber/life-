@@ -938,3 +938,7 @@ select:focus { border-color: var(--cyan); }
 .insignia.ins-silver { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff, #b8bec6 60%, #6d737b); }
 .insignia.ins-bronze { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4c99a, #b0702f 60%, #6b3e14); }
 .insignia .ins-rosette { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle, #fff 30%, var(--ins, #c8102e) 32%); box-shadow: 0 0 0 1px rgba(0,0,0,.3); }
+
+/* Rank insignia: drawn on a dark cloth patch above the rank code. */
+.rank-insignia { display: flex; justify-content: center; align-items: center; min-height: 40px; margin: 0 auto 4px; padding: 3px 8px; border-radius: 6px; background: #1d2b4f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); width: fit-content; }
+.rank-insignia .insignia-svg { display: block; }

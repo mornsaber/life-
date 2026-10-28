@@ -32,6 +32,7 @@ import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 import { branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from '../../modules/military/MilitaryEngine.js';
 import { tierOf } from '../../modules/military/SecondCareer.js';
+import { militaryInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
@@ -203,7 +204,7 @@ export function militaryView(state) {
   const hasBachelor = meetsEducation(state, { level: 'bachelor' });
   return `${card(branch.name, `
     <div class="job-head">
-      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon })}
+      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null) })}
       <div class="job-meta">
         <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip({ officer: 'Officer', warrant: 'Warrant Officer' }[svc.track] ?? 'Enlisted')} ${svc.direct ? chip(`🎓 Direct commission · ${esc(DIRECT_COMMISSIONS[svc.direct].name)}`, 'green') : ''} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
         ${kv([
