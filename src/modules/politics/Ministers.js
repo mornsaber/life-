@@ -149,5 +149,8 @@ export const MinistersModule = {
   },
 };
 
+/** Out of the ministry for an outside reason (a coalition collapse). */
+export const leaveMinistry = (ctx, why) => endMinistry(ctx, why);
+
 /** Former foreign ministers (and current ones) travel on diplomatic passports. */
 export const wasForeignMinister = (state) => [...(state.politics?.ministries ?? []), state.politics?.ministry].some((m) => m?.dept === 'foreign' && m.rank === 'cabinet');

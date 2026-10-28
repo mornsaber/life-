@@ -269,7 +269,7 @@ market by city.
 - Coalition-building in parliaments is simple.
 
 **Next**
-- Coalition governments: negotiating with partners, confidence votes, collapses.
+- ✅ Coalition governments: negotiating with partners, confidence votes, collapses. *(done: Coalitions.js)*
 
 **Later**
 - Foreign policy for leaders: summits, treaties, sanctions you impose, wars you decide.

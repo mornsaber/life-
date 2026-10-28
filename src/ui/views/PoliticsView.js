@@ -29,6 +29,7 @@ import { ministryOf, DEPTS } from '../../modules/politics/Ministers.js';
 import { statesman, invitations, relationsWith } from '../../modules/politics/StateVisits.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { isMep, GROUPS, COMMITTEES, POSTS } from '../../modules/politics/EuropeanParliament.js';
+import { leadsCoalitionState } from '../../modules/politics/Coalitions.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -107,6 +108,19 @@ function worldStageCard(state) {
     ${past.length ? `<p class="fine">Former posts: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🌐', accent: 'cyan' });
 }
 
+/** Coalition government: partners, stability, the summit. */
+function coalitionCard(state) {
+  const c = state.coalition;
+  if (!c || !leadsCoalitionState(state)) return '';
+  const label = { partner: 'Coalition government', grand: 'Grand coalition', minority: 'Minority government', majority: 'Majority government' }[c.kind];
+  return card(`🧩 ${label}`, `
+    ${c.kind === 'majority' ? '<p class="fine">Your party governs alone.</p>' : `
+      ${kv([['Partners', c.partners.length ? esc(c.partners.join(', ')) : 'None — confidence and supply, vote by vote'], ['Formed', `age ${c.formedAge}`], ['Crises weathered', String(c.crises)]])}
+      ${meter(c.stability, { label: '🧩 Stability' })}
+      <div class="toggle-row">${button('🧩 Coalition summit', 'coalitions.summit', { variant: 'small', disabled: Boolean(state.yearly['coalitions.summit']), hint: '+stability, once a year' })}</div>
+      <p class="fine">At zero stability the government falls: a confidence vote, and perhaps a snap election.</p>`}`, { icon: '🧩', accent: 'purple' });
+}
+
 /** The European Parliament: this year's files, your report, the Bureau and the Commission. */
 function europarlCard(state) {
   const e = state.europarl;
@@ -181,7 +195,7 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${worldStageCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${worldStageCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
     ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}
