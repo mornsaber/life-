@@ -12,6 +12,7 @@ import { projectView, APPROACH } from '../../modules/career/engines/Projects.js'
 import { investigationView, TECHNIQUES, techniqueEligibility } from '../../modules/career/engines/Investigations.js';
 import { routeView, lineEligibility, qualEligibility } from '../../modules/career/engines/Routes.js';
 import { diplomacyView, CONES } from '../../modules/career/engines/Diplomacy.js';
+import { missionsView } from '../../modules/career/engines/Missions.js';
 import { classroomView, APPROACHES as TEACH, NEEDS } from '../../modules/career/engines/Classroom.js';
 import { officeView, BUCKETS } from '../../modules/career/engines/OfficePolitics.js';
 import { dealsView, STAGES, KINDS } from '../../modules/career/engines/Deals.js';
@@ -136,6 +137,17 @@ function diplomacySection(state) {
   return disclosure('engine.diplomacy', '🌐 Your Post', `${where}${rec?.cone ? `<p>${CONES[rec.cone].icon} <b>${esc(CONES[rec.cone].name)} cone</b> ${work}</p>` : '<p class="fine">You choose a cone with your first year at post.</p>'}${rec?.evacuations ? `<p>${chip(`🚁 ${rec.evacuations} evacuation${rec.evacuations === 1 ? '' : 's'}`, 'warn')}</p>` : ''}${rec ? meter(rec.rep, { label: 'Reputation' }) : ''}<h4 class="sub">Cone</h4><div class="toggle-row">${cones}</div><p class="fine">Tours last three years and you live at post. Hardship and danger posts pay more and count at promotion boards; senior officers with a strong record can be nominated ambassador.</p>`, { count: posting?.city ?? 'HQ' });
 }
 
+function missionsSection(state) {
+  const v = missionsView(state);
+  if (!v) return '';
+  const { cfg, rec } = v;
+  const arc = rec?.arc;
+  const story = cfg.arc === 'flock' && rec?.flock ? `<p>${chip(`⛪ Congregation of ${rec.flock}`)}</p>`
+    : cfg.arc === 'case' ? `<p>${arc ? chip(`⚖️ ${esc(arc.name)} · ${['investigation', 'indictment', 'trial', 'verdict'][arc.stage]}`) : '<span class="fine">A new case comes to your team.</span>'}${rec?.cases ? ` ${chip(`${rec.cases} case${rec.cases === 1 ? '' : 's'} to verdict`)}` : ''}</p>`
+      : cfg.arc === 'programme' ? `<p>${arc ? chip(`🏦 Programme with ${esc(arc.country)} · year ${arc.years + 1}`) : '<span class="fine">A country programme is coming your way.</span>'}</p>` : '';
+  return disclosure('engine.missions', `${cfg.icon} ${esc(cfg.label)}`, `${story}${rec ? `<p>${chip(`${rec.files} year${rec.files === 1 ? '' : 's'} of ${esc(cfg.unit)}`)}</p>${meter(rec.rep, { label: 'Reputation' })}` : '<p class="fine">Your first year\'s work comes at year end.</p>'}<p class="fine">Each year brings a file of its own: the decisions you make build your reputation and your record.</p>`, { count: rec ? `${rec.rep}` : '' });
+}
+
 function classroomSection(state) {
   const v = classroomView(state);
   if (!v) return '';
@@ -219,7 +231,7 @@ function emSection(state) {
 /** Every engine that applies to the job you hold: the first one open, the rest folded. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  const parts = [emSection(state), diplomacySection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state)].filter(Boolean);
+  const parts = [emSection(state), diplomacySection(state), missionsSection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state)].filter(Boolean);
   if (parts.length) parts[0] = parts[0].replace('<details class="disclosure"', '<details class="disclosure" open');
   return parts.join('') + incidentsSection(state);
 }

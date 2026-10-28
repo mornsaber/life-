@@ -8,7 +8,8 @@
  * With a master's licence, your field's businesses (Career tab) let you
  * open your own shop.
  *
- *   electricians · plumbers · HVAC · welders · auto technicians · lineworkers
+ *   electricians · plumbers · HVAC · welders · auto technicians · lineworkers · ironworkers ·
+ *   transit maintenance
  *
  * state.careerLife.tradeWork = { professionId, offers: [...], taken: [{ idx, how }], done, callbacks, sideCash, hours, rep }
  */
@@ -126,6 +127,48 @@ export const TRADE_CAREERS = {
       D('energized', '⚡', 'Is It Dead?', 'The crew is behind. The foreman says the line is de-energised but the grounds aren\'t on yet.', [
         { id: 'ground', label: '🔗 Ground it first', text: 'Ten minutes. Back-feed from a generator would have killed you.', rep: 4 },
         { id: 'go', label: '🧗 Go up now', text: 'You finished early.', risk: { chance: 0.08, text: 'A back-fed line. You took a jolt and fell from the bucket.', injury: 1, trauma: 10 } },
+      ]),
+    ],
+  },
+  ironworking: {
+    label: 'The Hall Board', icon: '🏗️', weights: { fitness: 3, smarts: 1 }, hours: 6000, licence: 'journeyman ironworker card',
+    jobs: [
+      J('Topping out a 40-storey tower', '🏙️', 60, { pay: 0.08, cash: 0, injury: 0.06 }),
+      J('Bridge girder erection over a river', '🌉', 60, { pay: 0.07, cash: 0, injury: 0.06 }),
+      J('Rebar on a hospital foundation', '🧱', 35, { pay: 0.03, cash: 0, injury: 0.03 }),
+      J('Stadium roof trusses', '🏟️', 55, { pay: 0.06, cash: 0, injury: 0.05 }),
+      J('Ornamental stair and railings', '🌀', 40, { pay: 0.02, cash: 2800 }),
+      J('Steel-frame barn for a farmer', '🛖', 30, { pay: 0.02, cash: 4500, injury: 0.03 }),
+    ],
+    deck: [
+      D('tieoff', '🪢', 'Tie Off or Move Fast', 'Connecting a beam sixty storeys up. Clipping in at every move slows the crane, and the foreman is counting picks.', [
+        { id: 'tie', label: '🪢 Stay tied off', text: 'Fewer picks, nobody hurt. The foreman grumbled and then quietly backed you.', rep: 3 },
+        { id: 'free', label: '🧗 Walk the beam free', text: 'You made the schedule.', perf: 2, risk: { chance: 0.05, text: 'A gust took you off the iron. The net and a broken pelvis.', injury: 1, trauma: 12 } },
+      ]),
+      D('hall', '📋', 'The Hall Calls You Out', 'The union hall has a long job four hours away — or you wait for one near home that may not come.', [
+        { id: 'travel', label: '🚗 Take the out-of-town job', text: 'Months in motels, good money and the hours to your next card.', money: 6000, moneyLabel: 'Per diem', stress: 4 },
+        { id: 'wait', label: '🏠 Wait for a local call', text: 'Three weeks on the bench, then a decent local job.', perf: -1 },
+      ]),
+    ],
+  },
+  transitMaintenance: {
+    label: 'The Depot Board', icon: '🛠️', weights: { smarts: 2, fitness: 1 }, hours: 4000, licence: 'ASE certification',
+    jobs: [
+      J('Overhaul an articulated bus engine', '🚌', 45, { pay: 0.03, cash: 0 }),
+      J('Rail car door fault that strands trains', '🚇', 55, { pay: 0.04, cash: 0 }),
+      J('Overnight track-switch inspection', '🔦', 50, { pay: 0.05, cash: 0, injury: 0.04 }),
+      J('Electric bus battery swap', '🔋', 50, { pay: 0.04, cash: 0 }),
+      J('Snow-storm emergency shift', '❄️', 40, { pay: 0.06, cash: 0, injury: 0.03 }),
+      J('Rebuilding a heritage streetcar', '🚋', 60, { pay: 0.03, cash: 0 }),
+    ],
+    deck: [
+      D('pullout', '⏰', 'Morning Pull-Out', 'Twelve buses short for the 5 a.m. pull-out. One has a brake warning you haven\'t traced yet.', [
+        { id: 'hold', label: '🛑 Hold it out of service', text: 'Riders waited an extra ten minutes on one route. The brakes were failing.', rep: 4, perf: 1 },
+        { id: 'send', label: '🚌 Clear it for service', text: 'Every route ran on time.', perf: 2, risk: { chance: 0.15, text: 'The bus lost its brakes on a downhill. Nobody was killed; the investigation found your sign-off.', perf: -8, rep: -8, trauma: 8 } },
+      ]),
+      D('derail', '🚃', 'The Derailment Board', 'A train derailed at low speed in the yard. The board wants to know whether the maintenance records were right.', [
+        { id: 'truth', label: '📋 Tell them exactly what was skipped', text: 'Budgets had cut inspections; your testimony got the money restored.', rep: 5, perf: -1 },
+        { id: 'cover', label: '🤐 Say the records speak for themselves', text: 'The board blamed "track geometry".', perf: 1, risk: { chance: 0.3, text: 'A colleague told the truth. You were disciplined for the gaps in your testimony.', perf: -6, rep: -6 } },
       ]),
     ],
   },

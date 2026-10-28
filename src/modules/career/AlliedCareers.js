@@ -82,6 +82,7 @@ export const ALLIED_PROFESSIONS = {
       L('senior', 'Senior Respiratory Therapist', 5),
       L('specialist', 'Neonatal / ECMO Specialist', 6, { track: 'ic' }),
       L('manager', 'Respiratory Care Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 25 }),
+      L('director', 'Director of Respiratory Care', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget'], reports: 70 }),
     ],
   },
   dentalHygiene: {
@@ -91,7 +92,9 @@ export const ALLIED_PROFESSIONS = {
       L('assistant', 'Dental Assistant', 1),
       L('hygienist', 'Registered Dental Hygienist', 4, { entry: true, req: { credentials: ['rdh'] } }),
       L('lead', 'Lead Hygienist', 5, { track: 'ic' }),
+      L('educator', 'Hygiene Program Director (dental school)', 6, { track: 'ic', minSize: 'medium', req: { experience: { professions: ['dentalHygiene'], years: 6 } } }),
       L('manager', 'Dental Practice Manager', 5, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 10 }),
+      L('regional', 'Regional Operations Manager (dental group)', 6, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget'], reports: 40 }),
     ],
   },
   occupationalTherapy: {
@@ -103,6 +106,7 @@ export const ALLIED_PROFESSIONS = {
       L('senior', 'Senior Occupational Therapist', 6),
       L('specialist', 'Certified Hand Therapist', 7, { track: 'ic' }),
       L('manager', 'Rehab Services Manager', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 20 }),
+      L('director', 'Director of Rehabilitation Services', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 70 }),
     ],
   },
   speechPathology: {
@@ -126,6 +130,7 @@ export const ALLIED_PROFESSIONS = {
       L('optometrist', 'Optometrist', 8, { abilities: ['prescribe'] }),
       L('specialist', 'Specialty Contact Lens / Low-Vision Optometrist', 8, { track: 'ic', abilities: ['prescribe'] }),
       L('director', 'Clinic Director', 8, { track: 'mgmt', abilities: ['prescribe', 'supervise', 'hire', 'budget'], reports: 12 }),
+      L('owner', 'Group Practice Owner (multi-location)', 9, { track: 'mgmt', minSize: 'medium', abilities: ['prescribe', 'supervise', 'hire', 'budget', 'sign'], reports: 40 }),
     ],
   },
   chiropractic: {
@@ -137,6 +142,7 @@ export const ALLIED_PROFESSIONS = {
       L('chiropractor', 'Chiropractor', 6),
       L('sports', 'Sports Chiropractor', 7, { track: 'ic' }),
       L('director', 'Clinic Director', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 8 }),
+      L('owner', 'Multi-Clinic Owner', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 25 }),
     ],
   },
 
