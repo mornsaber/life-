@@ -281,7 +281,7 @@ export function honoursList(ctx, { offer = false } = {}) {
   const { state, rng } = ctx;
   const cc = state.character.countryId ?? 'US';
   const orders = ORDERS[cc];
-  if (!orders || state.character.age < orders.minAge || hasFelony(state) || state.legal.incarceration) return null;
+  if (!orders?.tiers?.length || state.character.age < orders.minAge || hasFelony(state) || state.legal.incarceration) return null;
   // The monarch is the fount of honours, not a recipient; royals get the monarch's personal orders.
   if (state.royal && (state.royal.reigning || state.royal.working)) return null;
   const score = eminence(state);

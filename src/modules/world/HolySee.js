@@ -99,7 +99,7 @@ function electNpc(ctx, why) {
   const year = currentYear(state);
   w.pope = { name, born: year - rng.int(62, 78), since: year };
   w.conclaves.push({ year, elected: name });
-  if (catholic(state) || isCardinal(state)) ctx.log(`${why} Habemus papam: after ${rng.int(2, 5)} days in the Sistine Chapel the conclave elected ${rng.pick(['the Patriarch of', 'the Archbishop of', 'the Cardinal Prefect from'])} ${rng.pick(['Lisbon', 'Manila', 'Kinshasa', 'Bologna', 'Boston', 'Budapest', 'São Paulo', 'Colombo', 'Marseille', 'Vienna'])}, who took the name ${name}.`, '🕊️', 'milestone');
+  if (catholic(state) || isCardinal(state)) ctx.log(`${why} Habemus papam: after ${rng.int(2, 5)} days in the Sistine Chapel the conclave elected ${rng.pick(['the Patriarch of Lisbon', 'the Patriarch of Venice', 'the Archbishop of Kinshasa', 'the Archbishop of Bologna', 'the Archbishop of Boston', 'the Archbishop of Budapest', 'the Archbishop of São Paulo', 'the Archbishop of Colombo', 'the Archbishop of Marseille', 'the Archbishop of Vienna', 'a cardinal prefect of the Curia'])}, who took the name ${name}.`, '🕊️', 'milestone');
 }
 
 const RIVAL_FIRST = ['Pietro', 'Luis Antonio', 'Matteo', 'Péter', 'Jean-Marc', 'Fridolin', 'Charles', 'Robert', 'Pablo', 'Anders', 'Joseph', 'Malcolm'];

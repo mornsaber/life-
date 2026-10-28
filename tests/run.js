@@ -14,7 +14,7 @@ import { fileURLToPath } from 'node:url';
 
 const here = dirname(fileURLToPath(import.meta.url));
 /** Fuzzers and long simulations: minutes each. */
-export const LONG = ['abroad', 'milfuzz', 'milabroad', 'bizfuzz', 'orgfuzz', 'simulate', 'balance', 'clicker', 'content', 'countries', 'packs', 'nations'];
+export const LONG = ['abroad', 'milfuzz', 'milabroad', 'bizfuzz', 'orgfuzz', 'simulate', 'balance', 'clicker', 'content', 'countries', 'packs', 'nations', 'business', 'engines'];
 const args = process.argv.slice(2);
 const flags = new Set(args.filter((a) => a.startsWith('--')));
 const named = args.filter((a) => !a.startsWith('--'));

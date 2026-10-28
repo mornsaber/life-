@@ -248,7 +248,10 @@ const tests = {
     }
     // Another country's agency is closed; the US board is exactly as before.
     assert.match(applicationEligibility(born('CA').state, 'gb_fbi').reason, /another country/);
-    assert.equal(professionsFor(born('US').state), PROFESSION_LIST);
+    // The US board is the full list, less the other faiths' clergy careers (one ministry per faith).
+    const us = professionsFor(born('US').state);
+    assert.deepEqual(us.map((p) => p.id), PROFESSION_LIST.filter((p) => !['clergy', 'catholicClergy', 'anglicanClergy'].includes(p.id) || us.includes(p)).map((p) => p.id));
+    assert.ok(PROFESSION_LIST.length - us.length <= 2);
     assert.equal(PROFESSIONS.ca_fbi.levels.find((l) => l.id === 'agent').title, 'Constable');
   },
   'parliamentary politics: provincial and national seats, then party leadership'() {
