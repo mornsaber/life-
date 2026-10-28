@@ -24,7 +24,7 @@ export const SCHOOLS = {
  */
 export const MAJORS = {
   computerScience: { name: 'Computer Science', icon: '💻', fields: ['tech', 'intelligence', 'cybersecurity', 'dataScience'], levels: ['associate', 'bachelor', 'master'] },
-  engineering: { name: 'Engineering', icon: '📐', fields: ['engineering', 'publicWorks', 'tech', 'aviation', 'dot', 'manufacturing'], levels: ['bachelor', 'master'], science: true },
+  engineering: { name: 'Engineering', icon: '📐', fields: ['engineering', 'structuralEng', 'mechanicalEng', 'electricalEng', 'chemicalEng', 'aerospaceEng', 'petroleumEng', 'nuclearEng', 'publicWorks', 'tech', 'aviation', 'dot', 'manufacturing'], levels: ['bachelor', 'master'], science: true },
   nursing: { name: 'Nursing', icon: '🩺', fields: ['nursing', 'medical', 'ems'], levels: ['associate', 'bachelor', 'master'], science: true },
   biology: { name: 'Biology / Pre-Med', icon: '🧬', fields: ['medical', 'nursing', 'parkService', 'pharmacy', 'environmental'], levels: ['bachelor', 'master'], science: true },
   business: { name: 'Business Administration', icon: '📈', fields: ['corporate', 'finance', 'retail', 'realestate', 'accounting', 'trucking', 'marketing', 'sales', 'humanResources', 'logistics', 'nonprofit'], levels: ['associate', 'bachelor'] },

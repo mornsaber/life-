@@ -74,6 +74,22 @@ export const DRAFT_AGES = [18, 25];
 export const DRAFT_LOTTERY = 0.12;
 /** Men of military age can't leave a country under general mobilization. */
 export const MOBILIZATION_AGES = [18, 60];
+/**
+ * Who is actually called up, and how likely each year: a draft takes the young; a mobilization
+ * reaches further only as the war gets worse, and takes the young first even then.
+ *   draft, major war         18–25    total war   18–30
+ *   mobilization, major war  18–45    total war   18–55
+ */
+export function callUp(war) {
+  const total = war.intensity >= 4;
+  const ages = war.mobilized ? [18, total ? 55 : 45] : [18, total ? 30 : 25];
+  const odds = (age) => {
+    if (age < ages[0] || age > ages[1]) return 0;
+    if (!war.mobilized) return DRAFT_LOTTERY * (total ? 1.5 : 1);
+    return (total ? 0.3 : 0.2) * (age <= 30 ? 1 : age <= 40 ? 0.5 : 0.2);
+  };
+  return { ages, odds };
+}
 
 const CODENAMES = ['Iron', 'Silent', 'Northern', 'Desert', 'Steel', 'Resolute', 'Eagle', 'Crimson', 'Atlantic', 'Granite'];
 const CODEWORDS = ['Shield', 'Dawn', 'Spear', 'Guardian', 'Lance', 'Harbor', 'Thunder', 'Sentinel', 'Horizon', 'Anvil'];
@@ -195,11 +211,11 @@ function warYear(ctx, cc, war, rng) {
   // Manpower: the largest wars bring a draft or general mobilization.
   if (!war.draft && war.intensity >= 3 && (war.front < 0 || rng.chance(0.35))) {
     war.draft = true;
-    log(cc === 'US' ? '📰 Congress reinstated the draft: men 18–25 face the Selective Service lottery.' : '📰 The government called up conscripts and reservists.', '📨', 'warn');
+    log(cc === 'US' ? `📰 Congress reinstated the draft: men 18–${callUp(war).ages[1]} face the Selective Service lottery.` : '📰 The government called up conscripts and reservists.', '📨', 'warn');
   }
   if (!war.mobilized && war.homeFront >= 0.4 && war.intensity >= 3) {
     war.mobilized = true;
-    log('📰 General mobilization: men 18–60 are barred from leaving the country.', '🚫', 'bad');
+    log(`📰 General mobilization: men 18–${callUp(war).ages[1]} can be called up, and men 18–60 are barred from leaving the country.`, '🚫', 'bad');
   }
 
   // Casualties and the mood at home.
@@ -300,12 +316,12 @@ function homeFrontYear(ctx, war, rng) {
 function draftCheck(ctx, war, rng) {
   const { state } = ctx;
   const age = state.character.age;
-  const ages = war.mobilized ? MOBILIZATION_AGES : DRAFT_AGES;
+  const { ages, odds } = callUp(war);
   if (state.character.gender !== 'male' || age < ages[0] || age > ages[1]) return;
   if (!isCitizen(state, here(state))) return;
   if (state.military.service || state.legal.incarceration || state.prompts.some((p) => p.type === 'world.draft')) return;
   if (state.world.deferredAge === age) return;
-  if (!rng.chance(war.mobilized ? 0.3 : DRAFT_LOTTERY)) return;
+  if (!rng.chance(odds(age))) return;
   const enrolled = Boolean(state.education.enrolled);
   const us = here(state) === 'US';
   ctx.prompt({

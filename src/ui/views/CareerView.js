@@ -64,6 +64,12 @@ import { unionPanel, unionCards } from './UnionView.js';
 import { jobLicensesCard } from './JobLicensesView.js';
 import { servedPopulation } from '../../modules/org/Staffing.js';
 import { regionsHere } from '../../modules/life/Regions.js';
+import { splitAgencySite } from '../../modules/career/Employers.js';
+/** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
+const employerLabel = (job) => {
+  const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
+  return site ? `${name} · ${site}` : name;
+};
 
 /** Emeritus faculty: title, teaching, research — or, for current faculty, whether retiring would confer it. */
 function emeritusCard(state) {
@@ -187,7 +193,7 @@ function currentJob(state) {
     <div class="job-head">
       ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon, insignia: jobInsignia(job, profession, state.character.countryId ?? 'US') ?? '' })}
       <div class="job-meta">
-        <p>${chip(esc(job.employer.name))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
+        <p>${chip(esc(employerLabel(job)))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
           ['Salary', `<b>${money(job.salary)}</b>/yr`],
           ['Rating', ratingLabel(job.performance)],

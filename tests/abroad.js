@@ -27,7 +27,10 @@ const flag = (msg, where) => { if (!problems.has(msg)) problems.set(msg, where);
 const scan = (cc, text, where, seen) => {
   if (!text || seen.has(text)) return;
   seen.add(text);
-  for (const msg of usLeftovers(cc, text)) flag(msg, where);
+  // A life that emigrated reads its new country's words too ("GT @28": living in Guatemala).
+  const here = /^([A-Z]{2}) @/.exec(where ?? '')?.[1];
+  const there = here && here !== cc ? new Set(usLeftovers(here, text).map((m) => m.slice(3))) : null;
+  for (const msg of usLeftovers(cc, text)) if (!there || there.has(msg.slice(3))) flag(msg, where);
 };
 /** Text as the screen shows it: through the country's money and word swaps. */
 const shown = (text, country) => localizeHtml(`<p>${text}</p>`, country).slice(3, -4);

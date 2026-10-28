@@ -123,6 +123,13 @@ export function publicBudgetFactor(state, sector) {
   return 1;
 }
 
+/** "SIS — Vauxhall Cross" for a national profession → the agency, and the site. */
+export function splitAgencySite(profession, name) {
+  if (!/^[a-z]{2}_/.test(profession?.id ?? '') || !String(name).includes(' — ')) return { name, site: null };
+  const [, site] = String(name).split(' — ');
+  return { name: profession.name, site };
+}
+
 export function createEmployer(rng, state, profession, regionId) {
   const size = pickSize(rng, profession, regionId);
   // Abroad, the country's own union for that kind of work (or none where it's barred).
@@ -144,6 +151,10 @@ export function createEmployer(rng, state, profession, regionId) {
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;
+  // A national agency is the employer ("Secret Intelligence Service (MI6)"); what follows the
+  // dash in its listing ("Vauxhall Cross", "Heathrow") is the site you work at.
+  let site = null;
+  ({ name, site } = splitAgencySite(profession, name));
   const benefits = defaultBenefits(rng, profession, size, union);
   // Abroad, public servants join the country's own scheme (or none: a defined-contribution pot).
   if (cc && cc !== 'US') {
@@ -172,6 +183,7 @@ export function createEmployer(rng, state, profession, regionId) {
     benefits,
     budget: { annual, left: annual },
     remote: Boolean(profession.remote),
+    ...(site ? { site } : {}),
   };
   // Every employer is a department of a persistent organization.
   attachOrg(state, employer, profession, regionId);

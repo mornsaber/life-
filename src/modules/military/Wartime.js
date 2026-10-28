@@ -296,7 +296,9 @@ function liabilityYear(ctx) {
   }
   const war = warIn(state, l.nation);
   const home = (state.character.countryId ?? 'US') === l.nation;
-  if (war && war.phase !== 'ceasefire' && home && !state.prompts.some((p) => p.type === 'wartime.recall') && rng.chance(clamp(0.1 * war.intensity + (war.mobilized ? 0.3 : 0), 0, 0.9))) {
+  // A limited war calls few reservists back, and older ones last.
+  const recallOdds = war ? clamp((war.intensity >= 2 ? 0.08 * (war.intensity - 1) : 0.02) + (war.mobilized ? 0.2 : 0), 0, 0.6) * (age <= 35 ? 1 : age <= 45 ? 0.6 : 0.3) : 0;
+  if (war && war.phase !== 'ceasefire' && home && !state.prompts.some((p) => p.type === 'wartime.recall') && rng.chance(recallOdds)) {
     ctx.prompt({
       type: 'wartime.recall', icon: '📨', title: 'Recalled to the Colours',
       text: `${war.operation} needs every trained hand. Your recall orders arrived: report as a ${l.rankTitle} within thirty days.`,

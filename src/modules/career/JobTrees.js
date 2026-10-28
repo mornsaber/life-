@@ -41,6 +41,7 @@ import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { INTL_ORG_PROFESSIONS } from './IntlOrgCareers.js';
 import { FOREIGN_FORCE_PROFESSIONS } from './ForeignForceCareers.js';
 import { RELIGIOUS_ORDER_PROFESSIONS } from './ReligiousOrderCareers.js';
+import { ENGINEERING_PROFESSIONS } from './EngineeringCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -517,7 +518,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS, RELIGIOUS_ORDER_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS, RELIGIOUS_ORDER_PROFESSIONS, ENGINEERING_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -545,7 +546,7 @@ export const JOB_FIELDS = {
   travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
   transit: { label: 'Public Transit & Driving', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus', 'paratransit'] },
   business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'marketing', 'sales', 'humanResources', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory', 'nonprofit'] },
-  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'research', 'nationalLab', 'engineering', 'architecture', 'dot', 'planning', 'environmental', 'meteorology', 'surveying', 'gameDevelopment'] },
+  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'research', 'nationalLab', 'engineering', 'structuralEng', 'mechanicalEng', 'electricalEng', 'chemicalEng', 'aerospaceEng', 'petroleumEng', 'nuclearEng', 'architecture', 'dot', 'planning', 'environmental', 'meteorology', 'surveying', 'gameDevelopment'] },
   health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'privateEms', 'publicHealth', 'socialWork', 'cps', 'caregiving', 'childcare'] },
   therapy: { label: 'Therapy, Mental & Allied Health', icon: '🧠', ids: ['counseling', 'psychology', 'dietitian', 'imaging', 'respiratoryTherapy', 'dentalHygiene', 'occupationalTherapy', 'speechPathology', 'optometry', 'chiropractic'] },
   safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'universityPolice', 'airportPolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'dispatch', 'emergencyManagement', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },

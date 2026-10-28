@@ -22,7 +22,7 @@ const SEVERITY = ['', 'moderate', 'severe', 'catastrophic'];
 /** Hazards that come with a warning. */
 export const FORECAST = ['hurricane', 'wildfire', 'flood', 'blizzard'];
 const WARNING = {
-  hurricane: 'The forecast cone is over you: landfall in two days. The governor has ordered coastal evacuations.',
+  hurricane: 'The forecast cone is over you: landfall in two days. Coastal evacuations have been ordered.',
   wildfire: 'The fire jumped the ridge overnight. Your neighbourhood is under an evacuation warning.',
   flood: 'The river is forecast to crest four feet above flood stage tomorrow night.',
   blizzard: 'A blizzard warning: two feet of snow and hurricane-force winds for three days.',

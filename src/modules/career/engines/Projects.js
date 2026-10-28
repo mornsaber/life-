@@ -14,6 +14,7 @@
  */
 import { clamp } from '../../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
+import { ENGINEERING_PROJECTS, CIVIL_EXTRA_DECK } from '../EngineeringCareers.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 export const APPROACH = {
@@ -201,6 +202,10 @@ export const PROJECT_CAREERS = {
 };
 PROJECT_CAREERS.ironworking = { ...PROJECT_CAREERS.carpentry, icon: '🏗️' };
 PROJECT_CAREERS.craneOperator = { ...PROJECT_CAREERS.carpentry, icon: '🏗️', failure: { text: 'A lift you rushed swung into the steel. Nobody died; the investigation was long.', perf: -12, rep: -10, trauma: 6 } };
+
+// The engineering disciplines, and more for civil engineers.
+Object.assign(PROJECT_CAREERS, ENGINEERING_PROJECTS);
+PROJECT_CAREERS.engineering.deck.push(...CIVIL_EXTRA_DECK);
 
 const config = (job) => PROJECT_CAREERS[engineKey(job)];
 export const isProjectCareer = (job) => Boolean(config(job));
