@@ -15,7 +15,7 @@ import { hasCondition } from '../health/Conditions.js';
 import { PIPELINES, pipelineFor } from './SpecialOpsCatalog.js';
 import { serviceWar, serviceWarFactor, serviceCombatFactor, warContribution } from '../world/War.js';
 import { nationalOverseas } from '../world/NationalForces.js';
-import { upOrOut, mustRetire } from './Separation.js';
+import { upOrOut, mustRetire, waiverOpen } from './Separation.js';
 import { postAbroad } from '../world/Posting.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
@@ -589,7 +589,7 @@ export function openContractReview(ctx, svc) {
   if (mandatory) svc.mandatoryRetirement = mandatory;
   else delete svc.mandatoryRetirement;
   const options = mandatory
-    ? [{ id: 'retire', label: '🎖️ Retire with full honors' }]
+    ? [{ id: 'retire', label: '🎖️ Retire with full honors' }, ...(waiverOpen(ctx.state, svc) ? [{ id: 'waiver', label: '📝 Request a waiver to keep serving', hint: 'A strong record helps; a war helps more' }] : [])]
     : [
         { id: 'reenlist', label: `✍️ ${svc.track === 'officer' ? 'Continue service' : 'Re-enlist'} (${svc.component === 'active' ? 4 : 6} yrs)`, hint: svc.track === 'enlisted' && svc.eval >= 60 ? 'Bonus eligible' : undefined },
         branchOf(svc).reserveOnly || branchOf(svc).activeOnly ? null : { id: 'switch', label: otherComponent === 'reserve' ? '🏡 Transfer to the Reserves' : '🪖 Go active duty', hint: otherComponent === 'active' && ctx.state.career.job ? 'Your civilian job is held on military leave' : undefined },

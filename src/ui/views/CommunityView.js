@@ -18,6 +18,7 @@ import { atWar, warHere, PHASE_LABEL, INTENSITY_LABEL, frontLabel, homeDanger } 
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote } from '../../modules/politics/Parties.js';
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
+import { warRoles } from '../../modules/military/WarRoles.js';
 
 function faithCard(state) {
   const c = state.community;
@@ -132,7 +133,7 @@ function religiousCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${warRolesCard(state)}${partyCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
 }
 
 /** Party membership and how you've voted. */
@@ -151,6 +152,21 @@ function partyCard(state) {
 }
 
 /** The war your country is fighting, and conflicts elsewhere. */
+/** Your part in the war, and contracts abroad. */
+export function warRolesCard(state) {
+  const r = warRoles(state);
+  const c = state.military?.contract;
+  if (!r.leader && !r.legislator && !r.general && !r.soldier && !c) return '';
+  const done = (k) => Boolean(state.yearly[k]);
+  const rows = [];
+  if (r.leader) rows.push(`<h4 class="sub">As head of government</h4><div class="action-grid">${[['surge', '⚔️ Commit more forces'], ['negotiate', '🕊️ Offer talks'], ['fund', '💵 An emergency war budget'], ['mobilize', '📨 Draft / mobilize'], ['address', '🎙️ Address the nation']].map(([id, l]) => button(l, 'warRoles.lead', { arg: id, variant: 'small', disabled: done(`warRoles.lead.${id}`) })).join('')}</div>`);
+  if (r.legislator) rows.push(`<h4 class="sub">In the legislature</h4><div class="action-grid">${button('✅ Vote for war funding', 'warRoles.vote', { arg: 'for', variant: 'small', disabled: done('warRoles.vote') })}${button('❌ Vote against', 'warRoles.vote', { arg: 'against', variant: 'small', disabled: done('warRoles.vote') })}</div>`);
+  if (r.general) rows.push(`<h4 class="sub">Your campaign this year</h4><div class="action-grid">${[['offensive', '🗡️ Offensive'], ['defensive', '🛡️ Hold the line'], ['raid', '🎯 A deep raid']].map(([id, l]) => button(l, 'warRoles.campaign', { arg: id, variant: 'small', disabled: done('warRoles.campaign') })).join('')}</div>`);
+  if (r.soldier) rows.push(`<div class="action-grid">${button('⚔️ Volunteer for the front line', 'warRoles.front', { variant: 'small danger', disabled: done('warRoles.front'), hint: 'Combat, glory, and real danger' })}</div>`);
+  const war = r.war ?? r.svcWar;
+  return card('Your Part in the War', `${war ? `<p class="muted">${esc(war.operation)}: front ${war.front > 0 ? '+' : ''}${Math.round(war.front)}, public support ${war.support}%.</p>` : ''}${rows.join('')}${c ? `<p>✈️ On contract: <b>${esc(c.title)}</b> in ${esc(COUNTRIES[c.country]?.name ?? c.country)} until ${c.until} (${money(c.pay)}/yr).</p>` : ''}`, { icon: '🎖️', accent: 'red' });
+}
+
 function warCard(state) {
   const w = state.world;
   if (!w?.wars) return '';

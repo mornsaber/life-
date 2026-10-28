@@ -33,6 +33,10 @@ const FIVE_STAR = {
   RU: { army: 'Marshal of the Russian Federation', navy: 'Admiral of the Fleet', airforce: 'Marshal of the Russian Federation' },
   IN: { army: 'Field Marshal', navy: 'Admiral of the Fleet', airforce: 'Marshal of the Indian Air Force' },
 };
+/** Forces that have (or keep for great wars) a five-star rank; most have none at all. */
+export const FIVE_STAR_NATIONS = ['US', 'GB', 'FR', 'RU', 'IN', 'PK', 'BD', 'KR', 'TH', 'EG', 'JO', 'SA', 'IQ', 'NG', 'UG', 'SL', 'LK', 'NP', 'CN', 'KP', 'VN'];
+/** Where a retired chief is sometimes made an honorary five-star (the UK's honorary field marshals, India's Cariappa). */
+export const FIVE_STAR_ON_RETIREMENT = ['GB', 'IN', 'PK', 'LK', 'TH'];
 export function fiveStarTitle(svc) {
   const nation = FIVE_STAR[svc.nation ?? 'US'];
   return nation?.[svc.branch] ?? FIVE_STAR[branchOf(svc)?.theater ?? 'ground'] ?? 'Field Marshal';
@@ -127,7 +131,7 @@ function actingYear(ctx, svc) {
 
 function fiveStarYear(ctx, svc, war) {
   const { state, rng } = ctx;
-  if (svc.fiveStar || svc.track !== 'officer' || svc.grade < rankTitles(svc).length - 1) return;
+  if (svc.fiveStar || svc.track !== 'officer' || svc.grade < rankTitles(svc).length - 1 || !FIVE_STAR_NATIONS.includes(svc.nation ?? 'US')) return;
   if (war.intensity < 3 || war.years < 2 || war.fiveStar) return;
   if (!(svc.topPost || svc.post?.kind === 'command')) return;
   if (!rng.chance(0.2 + Math.max(0, war.front) / 400)) return;
@@ -468,6 +472,15 @@ export const WartimeModule = {
 function brevet(ctx, svc, type) {
   const { state, rng } = ctx;
   if (type !== 'retired' || svc.fiveStar) return;
+  // A retiring chief of the defence staff (or of a service) may be made an honorary five-star.
+  if (svc.topPost && svc.grade >= rankTitles(svc).length - 1 && FIVE_STAR_ON_RETIREMENT.includes(svc.nation ?? 'US') && rng.chance(0.35)) {
+    const title = fiveStarTitle(svc);
+    const h = state.military.history.at(-1);
+    if (h) h.fiveStarHonorary = title;
+    addHonor(state, { id: 'mil.fiveStarHonorary', source: 'military', name: `Honorary ${title}`, icon: '⭐', prestige: 25, precedence: 3, citation: 'Promoted on the retired list for a lifetime of service at the head of the armed forces.' });
+    ctx.log(`On your retirement the head of state made you an honorary ${title}: five stars, for life.`, '⭐', 'honor');
+    return;
+  }
   const valour = state.honors.filter((h) => h.source === 'military' && (h.valor || /Cross|Medal of Honor|Silver Star|Victoria|Valour|Valor/.test(h.name))).length;
   const score = valour * 2 + (svc.combatTours ?? 0) + (svc.eval >= 90 ? 2 : 0) + (svc.wounds ?? 0);
   if (score < 5 || svc.grade >= rankTitles(svc).length - 1 || !rng.chance(clamp(0.2 + score * 0.05, 0, 0.7))) return;

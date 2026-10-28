@@ -21,6 +21,7 @@ import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, a
 import { equivalentMos } from './MOS.js';
 import { nationalBranch } from '../world/NationalForces.js';
 import { SERVICE_TERMS, upOrOutApplies } from '../world/MilitaryLocal.js';
+import { warIn } from '../world/War.js';
 
 /** High-year tenure: maximum years of service at each grade (index = grade, 0-based). */
 export const ENLISTED_HYT = [6, 6, 8, 10, 14, 20, 26, 29, 32];
@@ -71,11 +72,24 @@ export const mandatoryRetirementAge = (svc) => {
 const deferredAge = (svc) => mandatoryRetirementAge(svc) + (isFlag(svc) ? (svc.grade >= 9 || svc.topPost ? 4 : 2) : 0);
 /** Past the limits for years or age (a tour in progress may still defer the retirement). */
 export const pastTenure = (state, svc) => tenureYears(svc) >= maxServiceYears(svc) || state.character.age >= mandatoryRetirementAge(svc);
+/** A major war suspends the retirement laws (stop-loss), up to four years past the age limit. */
+export const stopLoss = (state, svc) => {
+  const w = warIn(state, svc.nation ?? 'US');
+  return Boolean(w && w.phase !== 'ceasefire' && w.intensity >= 3);
+};
+/** How long past the age limit a waiver can carry you (and the most waivers a career gets). */
+export const WAIVER_YEARS = 6;
+export const MAX_WAIVERS = 2;
+/** Can you ask to keep serving past the limit? */
+export const waiverOpen = (state, svc) => (svc.waivers ?? 0) < MAX_WAIVERS && state.character.age < mandatoryRetirementAge(svc) + WAIVER_YEARS && (svc.eval ?? 60) >= 55;
 export function mustRetire(state, svc) {
   const age = state.character.age;
   // Five-star officers stay on the active list for life.
   if (svc.fiveStar) return false;
   if (!pastTenure(state, svc)) return false;
+  // A waiver granted at review, or a war that suspends the limits.
+  if ((svc.continuedUntil ?? 0) > age) return false;
+  if (stopLoss(state, svc) && age < mandatoryRetirementAge(svc) + 4) return false;
   // Mid-tour in a command or top post: serve it out (up to the deferral limit).
   if (svc.track === 'officer' && svc.grade >= 5 && postEnds(state, svc) > age && age < deferredAge(svc)) return false;
   return true;
@@ -98,12 +112,22 @@ export function upOrOut(ctx, svc) {
   // Other forces don't separate people for being passed over: they serve to the end of their engagement.
   if (!upOrOutApplies(svc.nation)) return false;
   // A recalled retiree serves the recall tour out; tenure limits were met long ago.
-  if (svc.recalled) return false;
+  if (svc.recalled || svc.warReturn) return false;
+  // A major war suspends up-or-out and tenure limits.
+  if (stopLoss(ctx.state, svc)) return false;
+  if ((svc.continuedUntil ?? 0) > ctx.state.character.age) return false;
   const rank = rankOf(svc);
   const passedOver = svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) && (svc.passovers ?? 0) >= PASSOVER_LIMIT;
   // Generals' and admirals' tenure runs through mustRetire (five years in grade, tours served out).
   const overLimit = !isFlag(svc) && commissionedYears(svc) >= serviceLimit(svc);
   if (!passedOver && !overLimit) return false;
+  // Selective continuation: a strong officer passed over is often kept on for a few more years.
+  if (passedOver && !svc.continuedOnce && (svc.eval ?? 60) >= 75 && ctx.rng.chance(0.55)) {
+    svc.continuedOnce = true;
+    svc.continuedUntil = ctx.state.character.age + 3;
+    ctx.log(`Passed over twice, you were selectively continued as a ${rank.title}: the service wants your experience for a few more years.`, '🛡️', 'good');
+    return false;
+  }
   if (svc.yearsOfService >= RETIREMENT_YEARS) {
     discharge(ctx, 'retired', overLimit ? `Reached the high-year tenure limit for ${rank.title}.` : `Retired after twice being passed over for ${rankOf({ ...svc, grade: svc.grade + 1 }).title}.`);
     return true;

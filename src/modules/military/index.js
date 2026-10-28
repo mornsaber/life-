@@ -16,7 +16,7 @@ import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publi
 import { awardMedal } from './MedalEngine.js';
 import { reserveTick } from './Reserves.js';
 import { MOS, mosFor, mosEligibility, hasDirectPath, directGrade, directCredit, enlistedStartGrade, defaultMos, DIRECT_COMMISSIONS, DIRECT_MAX_AGE } from './MOS.js';
-import { transferBranch, leaveServicePrompt, resolveLeaveService } from './Separation.js';
+import { transferBranch, leaveServicePrompt, resolveLeaveService, stopLoss } from './Separation.js';
 import { LeadershipActions, LeadershipResolvers } from '../org/MilitaryUnits.js';
 import { SpecialOpsActions, SpecialOpsResolvers } from './SpecialOps.js';
 import { UcmjResolvers, imposeNjp } from './UCMJ.js';
@@ -264,7 +264,7 @@ export const MilitaryModule = {
       if (yearlyCount(state, 'military.recall')) return ctx.toast('Once a year', 'warn');
       bumpYearly(state, 'military.recall');
       // The services take retirees back when they're short: always in a war, sometimes in peacetime.
-      const war = Boolean(state.world?.war || Object.keys(state.world?.wars ?? {}).length);
+      const war = Boolean(state.world?.wars?.[h.nation ?? 'US'] && state.world.wars[h.nation ?? 'US'].phase !== 'ceasefire');
       if (!rng.chance(war ? 0.85 : 0.35)) return ctx.log(`Your branch's retiree recall office thanked you: no vacancy for a ${h.rankTitle} with your skills this year.`, '📨', 'info');
       if (!enlist(ctx, { branch: h.branch, track: h.track, component: 'active', specialty: h.specialty, mos: h.mos, cleared: true })) return undefined;
       const svc = state.military.service;
@@ -362,6 +362,15 @@ export const MilitaryModule = {
         }
       } else if (optionId === 'switch') {
         switchComponent(ctx, svc);
+      } else if (optionId === 'waiver') {
+        // Waivers go to the strong, and to everyone in a war.
+        const flag = svc.track === 'officer' && svc.grade >= 6;
+        const odds = Math.max(0.05, Math.min(0.9, 0.25 + ((svc.eval ?? 60) - 60) / 80 + (flag ? 0.15 : 0) + (stopLoss(state, svc) ? 0.3 : 0) - (svc.waivers ?? 0) * 0.15));
+        svc.waivers = (svc.waivers ?? 0) + 1;
+        if (rng.chance(odds)) {
+          svc.continuedUntil = state.character.age + (flag ? 3 : 2);
+          ctx.log(`Your waiver was approved: you serve on as a ${rankOf(svc).title} until ${svc.continuedUntil}.`, '📝', 'good');
+        } else discharge(ctx, 'retired', `Waiver denied after ${svc.yearsOfService} years of faithful service.`);
       } else if (optionId === 'retire') {
         discharge(ctx, 'retired', `${svc.yearsOfService} years of faithful service.`);
       } else {
