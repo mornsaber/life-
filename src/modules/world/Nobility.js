@@ -38,6 +38,8 @@ const UPKEEP = 0.018;
 export const INHERITANCE_TAX = { rate: 0.4, threshold: 500000 };
 
 const rankOf = (state) => state.noble?.rank;
+/** The country the title (and the estate) belongs to — not wherever you happen to live. */
+export const titleCountry = (state) => state.noble?.cc ?? state.character.peerage?.cc ?? (['GB', 'ES'].includes(state.character.countryId) ? state.character.countryId : 'GB');
 const female = (state) => state.character.gender === 'female';
 
 /** The estate, made when first needed (older saves and new noble births alike). */
@@ -45,14 +47,14 @@ export function estateOf(state) {
   const n = state.noble;
   if (!n) return null;
   if (n.estate === undefined) {
-    const es = state.character.countryId === 'ES';
+    const es = titleCountry(state) === 'ES';
     n.estate = { name: es ? `${HOUSE_ES[n.rank]} de ${n.place}` : `${n.place} ${HOUSE[n.rank]}`, value: ESTATE_VALUE[n.rank], strategy: 'farm', owner: 'family', heirlooms: 1 + RANK_ORDER.indexOf(n.rank), exemptUntil: null };
   }
   return n.estate;
 }
 /** Do you hold the title (and so the estate)? */
 const holder = (state) => state.character.peerage?.kind === 'hereditary';
-const grandee = (state) => state.character.countryId === 'ES' && rankOf(state) === 'duke';
+const grandee = (state) => titleCountry(state) === 'ES' && rankOf(state) === 'duke';
 
 /** A noble family's year: allowance or estate income, succession, the house. */
 function nobilityYear(ctx) {
@@ -81,7 +83,9 @@ function nobilityYear(ctx) {
     // The estate pays (or doesn't), and the roof always needs mending.
     const s = STRATEGIES[e.strategy] ?? STRATEGIES.farm;
     const swing = rng.float(-0.006, 0.006) + (state.economy?.phase === 'recession' ? -0.006 : 0);
-    const net = Math.round(e.value * (s.yield + swing - UPKEEP));
+    // Living abroad, a land agent runs the estate — at a fee, and less well.
+    const away = (state.character.countryId ?? 'US') !== titleCountry(state);
+    const net = Math.round(e.value * (s.yield + swing - UPKEEP - (away ? 0.004 : 0)));
     if (net >= 0) ctx.earn(net, `${e.name} estate income`);
     else ctx.spend(-net, `${e.name}: upkeep beyond what the estate earns`, { allowDebt: true });
     e.value = Math.round(e.value * (1 + rng.float(-0.01, 0.03)));
@@ -114,6 +118,7 @@ export const NobilityModule = {
     shoot(ctx) {
       const { state, rng } = ctx;
       if (!state.noble || state.character.age < 18) return ctx.toast('From 18, in a titled family', 'warn');
+      if ((state.character.countryId ?? 'US') !== titleCountry(state)) return ctx.toast('At home, where the family seat is', 'warn');
       if (yearlyCount(state, 'nobility.party')) return ctx.toast('Once a year', 'warn');
       const cost = Math.round(8000 + RANK_ORDER.indexOf(rankOf(state)) * 6000);
       if (!ctx.spend(cost, 'Shooting party and dinner', { credit: true })) return ctx.toast('You can\'t afford it', 'warn');
@@ -131,6 +136,7 @@ export const NobilityModule = {
       const { state, rng } = ctx;
       const age = state.character.age;
       if (!state.noble || age < 18 || age > 32) return ctx.toast('18 to 32', 'warn');
+      if ((state.character.countryId ?? 'US') !== titleCountry(state)) return ctx.toast('At home, where the family seat is', 'warn');
       if (yearlyCount(state, 'nobility.season')) return ctx.toast('Once a year', 'warn');
       if (!ctx.spend(6000, 'The Season: balls, Ascot, Henley', { credit: true })) return ctx.toast('You can\'t afford it', 'warn');
       bumpYearly(state, 'nobility.season');
@@ -148,6 +154,7 @@ export const NobilityModule = {
       const { state, rng } = ctx;
       const n = state.noble;
       if (!n || state.character.age < 21) return ctx.toast('From 21, in a titled family', 'warn');
+      if ((state.character.countryId ?? 'US') !== titleCountry(state)) return ctx.toast('At home, where the family seat is', 'warn');
       if (yearlyCount(state, 'nobility.patron')) return ctx.toast('One a year', 'warn');
       bumpYearly(state, 'nobility.patron');
       const cause = rng.pick(['the county hospice', 'the cathedral restoration appeal', 'the agricultural show', 'the air ambulance', 'the county cricket club', 'a children\'s charity', 'the local museum']);

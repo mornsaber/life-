@@ -198,6 +198,7 @@ function resolveVote(ctx, { cc, kind, called }, optionId) {
     ? clamp(monarchistSupport(state, cc) / 100 + rng.float(-0.06, 0.1) + push + lead, 0.02, 0.9)
     : clamp(1 - monarchistSupport(state, cc) / 100 - 0.08 + rng.float(-0.08, 0.08) + push + lead - (state.royal?.reigning ? (state.royal.popularity - 50) / 400 : 0), 0.1, 0.85);
   if (optionId !== 'vote') ctx.stat('stress', 3);
+  if (kind === 'restore' && optionId === 'campaignNo') ctx.emit('dynastic:republican', { cc });
   if (yes > 0.5) {
     ctx.log(`The referendum passed with ${Math.round(yes * 100)}%.`, '🗳️', 'milestone');
     return kind === 'restore' ? restore(ctx, cc) : abolish(ctx, cc);

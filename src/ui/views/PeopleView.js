@@ -57,6 +57,8 @@ function personRow(state, p) {
     `${RELATION_LABEL[p.relation] ?? p.relation}`,
     p.alive ? `age ${age}` : `died at ${p.diedAge}`,
     p.alive && p.job ? p.job : null,
+    p.dynasticTitle ? `⚜️ ${p.dynasticTitle}` : null,
+    p.houseOrder ? `⚜️ ${p.houseOrder}` : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
     p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') && p.relation !== 'child' ? `from ${nationalityName(p)}` : null,
     p.relation === 'child' && p.citizenships && (p.citizenships.length > 1 || p.citizenships[0] !== (state.character.countryId ?? 'US')) ? `🛂 ${p.citizenships.map((c) => COUNTRIES[c]?.flag ?? c).join('')}${p.oci ? ' + OCI' : ''}` : null,

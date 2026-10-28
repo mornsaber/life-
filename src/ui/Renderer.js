@@ -49,6 +49,7 @@ import { COUNTRIES, countryOf, localizeHtml, localizeMoney, localizeTerms } from
 import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
 import { gradePrefix } from '../modules/career/PayGrades.js';
+import { fameSummary } from '../modules/life/Fame.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -107,6 +108,28 @@ function ordersCard(state, inOrder) {
   return card('Orders', `${held.length ? `<ul class="order-list">${rows}</ul>` : ''}${no}<p class="fine">A higher grade of an order replaces the lower one. Knighthoods and peerages are offered in confidence first, and can be declined.</p>`, { icon: '🎗️' });
 }
 
+/** Fame: one score, where it comes from, and what to do about it. */
+function fameCard(state) {
+  const f = fameSummary(state);
+  if (!f || (f.score < 5 && !f.peak)) return '';
+  const [, label, icon] = f.tier;
+  return card('Fame', `
+    ${meter(f.score, { max: 100, label: `${icon} ${label}${f.infamous ? ' (infamous)' : ''}`, suffix: '/100', tone: f.infamous ? 'bad' : 'good' })}
+    ${kv([
+      ['Known for', f.sources.slice(0, 4).map((s) => `${esc(s.label)} <small class="muted">${s.value}</small>`).join(' · ') || '—'],
+      f.peak > f.score ? ['Peak', `${f.peak}/100`] : null,
+      f.deals.length ? ['Endorsements', f.deals.map((d) => `${esc(d.brand)} ($${d.amount.toLocaleString()}/yr to ${d.until})`).join(' · ')] : null,
+      f.security ? ['Security', '🛡️ A close-protection team'] : null,
+      f.scandals.length ? ['Scandals', f.scandals.slice(-3).map((s) => `${esc(s.headline)} (${s.age})`).join(' · ')] : null,
+    ])}
+    <div class="toggle-row">
+      ${button('🕶️ Lie low this year', 'fame.lieLow', { variant: 'small', disabled: f.lowThisYear, hint: 'Buzz fades fast; fewer cameras' })}
+      ${button('📣 Publicity push', 'fame.publicity', { variant: 'small', disabled: f.pushedThisYear || f.lowThisYear, hint: 'A publicist, a cover, a podcast tour — buzz, at a price and a risk' })}
+      ${f.security ? button('Let security go', 'fame.dropSecurity', { variant: 'small ghost' }) : ''}
+    </div>
+    <p class="fine">Fame brings endorsements, talk shows and book deals — and paparazzi, stalkers and scandals that follow you into office, business and your audience.</p>`, { icon: '⭐', accent: 'yellow' });
+}
+
 export const VIEWS = {
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
@@ -155,7 +178,7 @@ export const VIEWS = {
     const heatPanel = crime ? `${meter(heat, { max: 100, label: '🚨 Heat', suffix: '/100', tone: heat >= TASK_FORCE_HEAT ? 'bad' : heat >= 35 ? 'mid' : 'good' })}
       <p class="fine">Heat makes arrests likelier and old cases resurface; above ${TASK_FORCE_HEAT} a task force builds cases against you. It fades each year — faster if you lay low.${crime.earned ? ` Criminal earnings: $${Math.round(crime.earned).toLocaleString()}.` : ''}</p>
       <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: crime.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}</div>` : '';
-    return `${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${fameCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}${underworldCard(state)}`;
   },
   honors(state) {

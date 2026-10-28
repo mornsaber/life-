@@ -211,6 +211,7 @@ export const AudienceModule = {
         reception = 'hit';
         grow(cfg, rec, rec.fans * (r.boost - 1) + r.floor * 2);
         applyFx(ctx, rec, { text: `${name} ${cfg.hit}. Your ${cfg.noun} surged.`, rep: 10, perf: 8, happiness: 8 }, '🚀');
+        ctx.emit('fame:buzz', { amount: 8 });
         if (cfg.award && rng.chance(0.15)) applyFx(ctx, rec, { text: `You won the ${cfg.award.name.toLowerCase()} for ${name}.`, honor: cfg.award, rep: 10 }, cfg.award.icon);
       } else if (score >= r.check) {
         reception = 'well received';

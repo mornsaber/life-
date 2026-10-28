@@ -97,6 +97,7 @@ function athleteYear(ctx) {
     s.olympics.push({ year, city, place, doped: s.doped });
     if (place) {
       medal(ctx, { place, event, year, discipline: s.discipline });
+      ctx.emit('fame:buzz', { amount: place === 1 ? 20 : 12 });
       ctx.stat('happiness', 12);
       ctx.log(`${{ 1: 'GOLD', 2: 'Silver', 3: 'Bronze' }[place]} at the Olympic Games in ${city}. ${place === 1 ? 'Your anthem, your flag, and a crowd on its feet.' : 'An Olympic medal: nobody can take that away.'}`, { 1: '🥇', 2: '🥈', 3: '🥉' }[place], 'milestone');
       if (place === 1) job.performance = Math.min(100, (job.performance ?? 60) + 10);
@@ -130,6 +131,7 @@ function banned(ctx) {
   state.honors = (state.honors ?? []).filter((h) => !(h.sport && stripped.has(h.year) && /Olympic/.test(h.name)));
   if (state.career.job?.professionId === 'athletics') leaveJob(ctx, 'Banned for doping', { fired: true });
   ctx.stat('happiness', -20);
+  ctx.emit('fame:scandal', { severity: 12, headline: 'a positive doping test and a four-year ban' });
   return ctx.log(`A positive test. The anti-doping agency banned you for four years${stripped.size ? ', and the IOC took back your Olympic medals' : ''}. The headlines wrote themselves.`, '💉', 'bad');
 }
 

@@ -92,7 +92,8 @@ export const numberedAddress = (state) => {
 export function grantPeerage(ctx, { rank, place, kind, seat }) {
   const { state } = ctx;
   const c = state.character;
-  c.peerage = { rank, place: place ?? null, kind, seat: Boolean(seat), created: c.age, subsidiary: kind === 'life' ? [] : subsidiaryTitles(rank, place ?? c.lastName, c.gender), number: kind === 'hereditary' ? (state.noble?.number ?? 0) + 1 || 1 : 1 };
+  // A title belongs to the country that created it, wherever you later live.
+  c.peerage = { cc: state.noble?.cc ?? c.countryId ?? 'GB', rank, place: place ?? null, kind, seat: Boolean(seat), created: c.age, subsidiary: kind === 'life' ? [] : subsidiaryTitles(rank, place ?? c.lastName, c.gender), number: kind === 'hereditary' ? (state.noble?.number ?? 0) + 1 || 1 : 1 };
   c.style = { ...(c.style ?? {}), prefix: RANKS[rank].style[gkey(c.gender)], peerage: peerTitle(rank, place, c.gender, c.lastName) };
   if (kind === 'life') c.style.prefix = gkey(c.gender) === 'female' ? 'Baroness' : 'Lord';
   return c.peerage;
@@ -109,7 +110,7 @@ export function nobleBirth(state, rng) {
   const parents = (state.people?.list ?? []).filter((p) => p.relation === 'father' || p.relation === 'mother');
   const holder = parents.find((p) => p.relation === 'father') ?? parents[0];
   const heir = chosen?.heir ?? rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
-  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11) };
+  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11), cc };
   if (holder) {
     holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName);
     holder.titles = subsidiaryTitles(rank, state.noble.place, holder.gender);
@@ -173,7 +174,7 @@ function peerageYear(ctx) {
   }
   // A hereditary seat falls vacant in your group: stand?
   const p = c.peerage;
-  if (p?.kind === 'hereditary' && !p.seat && c.age >= 21 && (state.character.countryId ?? 'US') === 'GB' && !state.prompts.some((x) => x.type === 'peerage.byElection') && rng.chance(0.35)) {
+  if (p?.kind === 'hereditary' && !p.seat && c.age >= 21 && (p.cc ?? 'GB') === 'GB' && (state.character.countryId ?? 'US') === 'GB' && !state.prompts.some((x) => x.type === 'peerage.byElection') && rng.chance(0.35)) {
     const bloc = state.civic?.party?.bloc;
     const group = bloc ? `${partyName(state, bloc).replace(/ Party$/, '')} hereditary peers` : 'crossbench hereditary peers';
     ctx.prompt({
@@ -205,6 +206,8 @@ function creationFor(state, rng) {
   const offered = (state.peerageOffers ??= {});
   const mine = rankOrder(c.peerage?.rank);
   const pick = (key, rank, why, chance) => (!offered[key] && rankOrder(rank) > mine && rng.chance(chance) ? (offered[key] = true, { rank, why, key }) : null);
+  // Only a country's own citizens are ennobled by it; an existing title stays in its own peerage.
+  if (!(c.citizenships ?? [cc]).includes(cc) || (c.peerage && (c.peerage.cc ?? 'GB') !== cc)) return null;
   if (cc === 'ES') return eminence(state) >= 280 ? pick('es', 'marquess', 'the King\'s grant of a marquesado for services to Spain', 0.03) : null;
   if (cc !== 'GB' || state.royal) return null;
   const e = eminence(state);

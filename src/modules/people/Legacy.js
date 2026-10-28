@@ -555,7 +555,7 @@ function passCrownAndTitles(old, s, child, childAge) {
       s.character.style = { ...(s.character.style ?? {}), peerage: peerTitle(p.rank, p.place, child.gender, child.lastName), ...(s.royal ? {} : { prefix: RANKS[p.rank].style[child.gender === 'female' ? 'female' : 'male'] }) };
       addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as ${s.character.style.peerage}.`, '👑', 'milestone');
     } else if (!s.royal) {
-      s.noble = { rank: p.rank, place: p.place, holderId: null, heir: false };
+      s.noble = { rank: p.rank, place: p.place, holderId: null, heir: false, cc: p.cc ?? old.noble?.cc ?? 'GB' };
       s.character.style = { ...(s.character.style ?? {}), prefix: courtesy(s) };
     }
   }

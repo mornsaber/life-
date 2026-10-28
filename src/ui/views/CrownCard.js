@@ -15,6 +15,7 @@ import { DECREES, seizeCheck } from '../../modules/world/Sovereign.js';
 import { royalEstate, DUCHY_MODES } from '../../modules/world/RoyalLife.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
+import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennobled } from '../../modules/world/DynasticTitles.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
@@ -199,7 +200,9 @@ function houseCard(state) {
   const leader = leads(state, cc);
   const catholic = ['catholic', 'tradCatholic'].includes(state.community?.faith?.traditionId);
   const constantinian = catholic && nobleBorn(state) && state.character.age >= 21 && !state.honors.some((x) => x.id === 'house.constantinian');
-  if (!h && !local && !(leader && crownOf(state, cc)) && !constantinian) return '';
+  const titles = dynasticTitles(state);
+  const support = supportableHouse(state);
+  if (!h && !local && !(leader && crownOf(state, cc)) && !constantinian && !titles.length) return '';
   const def = h ? FORMER_HOUSES[h.cc] : null;
   const rows = h ? [
     ['Styled', esc(houseStyledName(state) ?? '')],
@@ -213,6 +216,10 @@ function houseCard(state) {
     ['Former ruling house', `The House of ${esc(local.name)} (the throne fell in ${local.fell})`],
     ['Monarchists', `${monarchistSupport(state, cc)}%`],
   ] : [];
+  if (titles.length) rows.push(['Your titles', titles.map((t) => `⚜️ ${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))} <small class="muted">(House of ${esc(t.house)}, ${t.age})</small>`).join('<br>')]);
+  const revoked = (state.dynastic?.titles ?? []).filter((t) => t.revoked || t.returned);
+  if (revoked.length) rows.push(['Former titles', revoked.map((t) => `${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))} (${t.revoked ? `revoked at ${t.revoked}` : `returned at ${t.returned}`})`).join(' · ')]);
+  if (h?.rank === 'head' && ennobled(state).length) rows.push(['Titles you granted', ennobled(state).map((p) => `${esc(p.firstName)}: ${esc(p.dynasticTitle)}`).join(' · ')]);
   return card(h ? `The House of ${esc(h.name)}` : 'The Monarchy Question', `${kv(rows)}
     <div class="action-grid">
       ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
@@ -222,6 +229,10 @@ function houseCard(state) {
       ${local && leader ? button('🗳️ Call a referendum on restoring the monarchy', 'houses.callRestoration', { hint: `Support ~${Math.round(monarchistSupport(state, cc))}%` }) : ''}
       ${crownOf(state, cc) && leader ? button('🏛️ Call a referendum on a republic', 'houses.callRepublic', { variant: 'danger', hint: 'Abolish the monarchy' }) : ''}
       ${constantinian ? button('⚜️ Seek admission to the Constantinian Order', 'houses.constantinian', { hint: nobleBorn(state) ? 'Justice class, on proofs of nobility' : 'Merit class' }) : ''}
+      ${support && state.character.age >= 18 ? button(`⚜️ Support the House of ${esc(support.def.name)}`, 'dynastic.support', { hint: '$10,000 · once a year · the house may honour loyal supporters with a title' }) : ''}
+      ${titles.map((t) => button(`📜 Return ${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))}`, 'dynastic.returnTitle', { arg: t.cc, variant: 'tiny ghost' })).join('')}
+      ${h?.rank === 'head' ? ennobleOptions(state).map((p) => button(`👑 Ennoble ${esc(p.firstName)}`, 'dynastic.ennoble', { arg: p.id, variant: 'tiny', hint: 'Once a year' })).join('') : ''}
+      ${h?.rank === 'head' ? ennobled(state).map((p) => button(`✖ Revoke ${esc(p.firstName)}'s title`, 'dynastic.revokeGrant', { arg: p.id, variant: 'tiny ghost' })).join('') : ''}
       ${h ? button('📜 Renounce your claim', 'houses.renounce', { variant: 'danger', hint: 'For you and your heirs' }) : ''}
     </div>
     ${h ? '<p class="fine">Noble birth counts in the old orders: the Order of Malta admits you in Honour and Devotion (a head of a house as a Bailiff Grand Cross), and the Constantinian Order in its Justice class.</p>' : ''}`, { icon: '⚜️' });

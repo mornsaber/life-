@@ -26,6 +26,7 @@ import { royalStyledName, sovereign, CROWNS } from './Crown.js';
 import { withOfficialStyle, officeLetters } from './Styles.js';
 import { holySeeStyledName } from './HolySee.js';
 import { houseStyledName } from './Houses.js';
+import { dynasticStyledName } from './DynasticTitles.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -435,6 +436,9 @@ export function styledName(state) {
   if (c.peerage) return withOfficialStyle(state, numberedAddress(state));
   // A peer's heir uses the family's lesser title by courtesy.
   if (state.noble?.courtesyTitle && !state.noble.disclaimed) return withOfficialStyle(state, `${c.firstName} ${c.lastName}, ${state.noble.courtesyTitle}`);
+  // A title from a house that no longer reigns: "Mario Rossi, Conte di Valdora".
+  const dynastic = dynasticStyledName(state);
+  if (dynastic) return withOfficialStyle(state, dynastic);
   const base = !s?.prefix ? `${c.firstName} ${c.lastName}`
     : s.prefix === 'Lord' || s.prefix === 'Baroness' ? `${s.prefix} ${c.lastName}`
       : `${s.prefix} ${c.firstName} ${c.lastName}`;
