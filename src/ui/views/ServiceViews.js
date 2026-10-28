@@ -30,7 +30,7 @@ import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember }
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
-import { branchOf, branchFor } from '../../modules/military/MilitaryEngine.js';
+import { branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from '../../modules/military/MilitaryEngine.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
@@ -160,6 +160,24 @@ function juntaCard(state) {
     <div class="action-grid">${button('🗳️ Call elections and stand down', 'coups.holdElections', { arg: 'stepDown', hint: 'Sanctions lifted' })}${button('🎖️ Call elections and stand', 'coups.holdElections', { arg: 'stand', hint: 'Out of uniform' })}${button('🚔 Crack down', 'coups.crackdown', { variant: 'danger', hint: 'Calm now, more sanctions' })}</div>`, { icon: '🪖', accent: 'red' });
 }
 
+/** On the retired list: rank (Ret.), retired pay, and volunteering for recall. */
+function retiredListCard(state) {
+  const h = retiredFrom(state);
+  if (!h) return '';
+  const b = branchOf(h);
+  const pay = state.retirement.pensions.find((p) => p.id === 'military');
+  const age = state.character.age;
+  const recallable = age < RECALL_MAX_AGE;
+  return card('Retired List', `${kv([
+    ['Rank', `${b.icon} ${esc(h.rankTitle)} (Ret.), ${esc(b.name)}`],
+    ['Service', `${h.yearsOfService} years, retired at ${h.endAge}`],
+    pay ? ['Retired pay', `${money(Math.round(pay.annual * (pay.colaFactor ?? 1)))}/yr${pay.startAge > age ? ` from age ${pay.startAge}` : ''}`] : null,
+    ['Recall', recallable ? `Liable to recall until ${RECALL_MAX_AGE}` : 'No longer liable to recall'],
+  ].filter(Boolean))}
+    <p class="fine">Retirees don't enlist again as recruits. A retiree can volunteer for recall to active duty at their retired grade; retired pay stops while serving and is recomputed on retiring again.</p>
+    <div class="action-grid">${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${RECALL_MAX_AGE}` })}</div>`, { icon: '🎖️', accent: 'green' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -168,7 +186,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${selectiveServiceCard(state)}${veteranCard(state)}${recruitingOffice(state)}${foreignForcesCard(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${foreignForcesCard(state)}${history}`;
 
   const branch = branchOf(svc);
   const rank = rankOf(svc);

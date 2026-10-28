@@ -310,6 +310,14 @@ export function timeInGradeRequired(svc) {
 /** Years already served: veterans can rejoin older than first-time recruits. */
 const priorServiceYears = (state) => state.military.history.reduce((n, h) => n + (h.yearsOfService ?? 0), 0);
 
+/** Your last retirement from this country's forces (retirees stay on the retired list). */
+export function retiredFrom(state) {
+  const nation = isAbroad(state) ? countryOf(state).id : null;
+  return [...state.military.history].reverse().find((h) => h.discharge === 'retired' && (h.nation ?? null) === nation) ?? null;
+}
+/** Retirees can volunteer for recall to active duty under 60 (critical skills, wartime shortfalls). */
+export const RECALL_MAX_AGE = 60;
+
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;
   if (!BRANCHES[branchId]) return { ok: false, reason: 'Unknown branch' };
@@ -326,6 +334,8 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
   if (state.military.service) return { ok: false, reason: 'Already serving' };
+  // A retiree isn't a recruit: they come back only by recall (see military.recall).
+  if (retiredFrom(state)) return { ok: false, reason: 'Retired: only a recall brings you back' };
   if (state.military.history.some((h) => ['dishonorable', 'bcd', 'oth'].includes(h.discharge))) return { ok: false, reason: 'Barred: prior bad-conduct discharge' };
   if (hasFelony(state)) return { ok: false, reason: 'Barred: felony record' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
@@ -665,6 +675,7 @@ export function discharge(ctx, type, reason) {
     commissionedYears: svc.track === 'enlisted' ? 0 : Math.max(0, commissionedYears(svc) - (svc.priorCommissioned ?? 0)),
     rankCode: rank.code,
     rankTitle: rank.title,
+    grade: svc.grade,
     yearsOfService: svc.yearsOfService,
     deployments: svc.deployments,
     combatTours: svc.combatTours,

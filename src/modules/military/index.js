@@ -9,7 +9,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
-  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor } from './MilitaryEngine.js';
+  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
@@ -111,6 +111,8 @@ export const MilitaryModule = {
       }
     });
     engine.bus.on('military:discharged', ({ ctx, type, svc }) => onSeparation(ctx, svc, type));
+    // A recalled retiree who leaves without retiring again gets the old retired pay back.
+    engine.bus.on('military:discharged', ({ ctx, svc }) => { if (svc.recalled) for (const p of ctx.state.retirement.pensions) if (p.id === 'military') delete p.suspended; });
     engine.bus.on('business:started', ({ ctx }) => onBusinessStarted(ctx));
     // Governors activate the Guard for disasters, unrest and border missions (service/StateForces.js).
     // Caught deserters: the court-martial upgrades the discharge to dishonorable.
@@ -250,6 +252,27 @@ export const MilitaryModule = {
     leaveService(ctx) {
       if (!withService(ctx)) return;
       leaveServicePrompt(ctx);
+    },
+
+    /** A retiree volunteers to be recalled to active duty, at their retired grade. */
+    recall(ctx) {
+      const { state, rng } = ctx;
+      const h = retiredFrom(state);
+      if (!h || state.military.service) return ctx.toast('Retirees only', 'warn');
+      if (state.character.age >= RECALL_MAX_AGE) return ctx.toast(`Retirees are recalled before ${RECALL_MAX_AGE}`, 'warn');
+      if (state.legal.incarceration || state.stats.health < 50) return ctx.toast('Not fit for recall', 'warn');
+      if (yearlyCount(state, 'military.recall')) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, 'military.recall');
+      // The services take retirees back when they're short: always in a war, sometimes in peacetime.
+      const war = Boolean(state.world?.war || Object.keys(state.world?.wars ?? {}).length);
+      if (!rng.chance(war ? 0.85 : 0.35)) return ctx.log(`Your branch's retiree recall office thanked you: no vacancy for a ${h.rankTitle} with your skills this year.`, '📨', 'info');
+      if (!enlist(ctx, { branch: h.branch, track: h.track, component: 'active', specialty: h.specialty, mos: h.mos, cleared: true })) return undefined;
+      const svc = state.military.service;
+      const grade = h.grade ?? Math.max(0, Number(h.rankCode.match(/\d+/)?.[0] ?? 1) - 1);
+      Object.assign(svc, { grade, yearsOfService: h.yearsOfService, priorYears: h.yearsOfService, recalled: true, contractYearsLeft: 2, yearsInGrade: 0 });
+      svc.cadet = false;
+      for (const p of state.retirement.pensions) if (p.id === 'military') p.suspended = true;
+      return ctx.log(`You were recalled to active duty as a ${rankOf(svc).title}: a two-year tour. Your retired pay stops while you serve and is recomputed when you retire again.`, '🎖️', 'milestone');
     },
 
     retire(ctx) {

@@ -122,6 +122,8 @@ export const pensionName = (state) => (isAbroad(state) ? countryOf(state).pensio
 /* ------------------------------------------------------------------ */
 
 function addPension(state, pension) {
+  // Retired pay is recomputed when a recalled retiree retires again: the new award replaces the old.
+  if (pension.id === 'military') state.retirement.pensions = state.retirement.pensions.filter((p) => p.id !== 'military');
   state.retirement.pensions.push({ cola: 0, ...pension });
 }
 
@@ -245,7 +247,8 @@ export const RetirementEngine = {
     // COLAs track inflation, capped by each plan's COLA ceiling; Social Security gets full CPI.
     const inflation = Math.max(0, state.economy.inflation);
     for (const p of r.pensions) {
-      if (age < p.startAge) continue;
+      // Retired pay stops while a recalled retiree is back on active duty.
+      if (age < p.startAge || p.suspended) continue;
       // An early-departure pension rises to the full amount at pension age (the UK's EDP at 60).
       if (p.stepUp && age >= p.stepUp.age && !p.stepped) {
         p.annual = p.stepUp.annual;

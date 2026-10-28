@@ -97,6 +97,8 @@ export function separationPay(svc) {
 export function upOrOut(ctx, svc) {
   // Other forces don't separate people for being passed over: they serve to the end of their engagement.
   if (!upOrOutApplies(svc.nation)) return false;
+  // A recalled retiree serves the recall tour out; tenure limits were met long ago.
+  if (svc.recalled) return false;
   const rank = rankOf(svc);
   const passedOver = svc.track === 'officer' && UP_OR_OUT_GRADES.includes(svc.grade) && (svc.passovers ?? 0) >= PASSOVER_LIMIT;
   // Generals' and admirals' tenure runs through mustRetire (five years in grade, tours served out).

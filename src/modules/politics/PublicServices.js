@@ -110,7 +110,12 @@ export const CATALOG = {
 /** The city services (kept for the old police/fire callers). */
 export const SERVICES = Object.keys(CATALOG).filter((id) => CATALOG[id].level === 'city');
 const LABEL = { police: 'police department', fire: 'fire department' };
-const deptLabel = (service) => LABEL[service] ?? CATALOG[service]?.label.toLowerCase() ?? service;
+const deptLabel = (service) => {
+  const label = LABEL[service] ?? CATALOG[service]?.label ?? service;
+  const bare = label.replace(/^the /i, '');
+  // Acronyms keep their capitals ("the DEA"), other names read in lower case.
+  return /^[A-Z]{2,}\b/.test(bare) ? bare : bare.toLowerCase();
+};
 
 const cc = (state) => state.character.countryId ?? 'US';
 const cityName = (regionId) => REGIONS[regionId]?.name?.split(',')[0] ?? 'the city';
