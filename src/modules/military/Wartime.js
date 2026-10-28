@@ -91,15 +91,15 @@ const warFor = (state, svc) => {
   const w = warIn(state, svc?.nation ?? 'US');
   return w && w.phase !== 'ceasefire' ? w : null;
 };
-const ACTING_TOP = { enlisted: 6, officer: 4, warrant: 3 };
-const FIELD_TOP = { enlisted: 5, officer: 3, warrant: 2 };
+const ACTING_TOP = { enlisted: 7, officer: 5, warrant: 3 };
+const FIELD_TOP = { enlisted: 6, officer: 4, warrant: 3 };
 
 /** A field promotion for heroism (called from a won fight). */
 export function battlefieldPromotion(ctx, svc, valor) {
   const { state, rng } = ctx;
   if (!svc || !warFor(state, svc) || svc.conscript) return false;
   if (svc.grade >= (FIELD_TOP[svc.track] ?? 0) || svc.grade >= rankTitles(svc).length - 1) return false;
-  if (!rng.chance(clamp(0.05 + Math.max(0, valor - 60) / 120, 0, 0.35))) return false;
+  if (!rng.chance(clamp(0.12 + Math.max(0, valor - 50) / 100, 0, 0.5))) return false;
   if (svc.acting) delete svc.acting;
   svc.grade += 1;
   svc.yearsInGrade = 0;
@@ -116,14 +116,14 @@ function actingYear(ctx, svc) {
   const age = state.character.age;
   if (svc.acting) {
     // Held well for two years: confirmed in the rank.
-    if (age - svc.acting.since >= 2 && svc.eval >= 70 && rng.chance(0.5)) {
+    if (age - svc.acting.since >= 1 && svc.eval >= 65 && rng.chance(0.65)) {
       delete svc.acting;
       svc.warPromotions = (svc.warPromotions ?? 0) + 1;
       ctx.log(`You were confirmed in the rank of ${rankOf(svc).title}.`, '⬆️', 'good');
     }
     return;
   }
-  if (svc.grade >= (ACTING_TOP[svc.track] ?? 0) || svc.eval < 60 || svc.conscript || !rng.chance(0.14)) return;
+  if (svc.grade >= (ACTING_TOP[svc.track] ?? 0) || svc.eval < 55 || svc.conscript || !rng.chance(0.3)) return;
   svc.acting = { substantive: svc.grade, since: age };
   svc.grade += 1;
   ctx.log(`Casualties left a gap in the chain of command. You were made acting ${rankTitles(svc)[svc.grade]}: the job, the pay, and none of the security.`, '⬆️', 'military');

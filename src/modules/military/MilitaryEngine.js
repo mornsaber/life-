@@ -298,8 +298,8 @@ export function annualActivePay(svc) {
 
 export function timeInGradeRequired(svc) {
   const years = TIME_IN_GRADE[svc.track][svc.grade];
-  // In a war (Wartime.js) promotions come twice as fast.
-  const war = svc.wartime ? 0.5 : 1;
+  // In a war (Wartime.js) time in grade shrinks to a third: casualties and expansion open slots.
+  const war = svc.wartime ? 0.35 : 1;
   return Math.max(1, Math.ceil((svc.component === 'reserve' ? years * 1.25 : years) * war));
 }
 
@@ -536,9 +536,10 @@ export function promotionOutlook(svc) {
   if (svc.track === 'officer' && svc.grade >= (CORPS_TOP_GRADE[svc.specialty] ?? 99)) return { eligible: false, reason: `The top grade for your corps (${SPECIALTIES[svc.specialty]?.name ?? 'your corps'})` };
   const tig = timeInGradeRequired(svc);
   if (svc.yearsInGrade < tig) return { eligible: false, reason: `${tig - svc.yearsInGrade} yr time-in-grade` };
-  const school = pmeBlock(svc);
+  // Wartime suspends the staff colleges: schooling waits for the peace.
+  const school = svc.wartime ? null : pmeBlock(svc);
   if (school) return { eligible: false, school: true, reason: `Needs ${schoolName(svc, school.id)}` };
-  const threshold = BOARD_THRESHOLD[svc.track][svc.grade];
+  const threshold = BOARD_THRESHOLD[svc.track][svc.grade] - (svc.wartime ? 12 : 0);
   if (svc.eval < threshold) return { eligible: false, reason: `Eval ${svc.eval}/${threshold}` };
   return { eligible: true };
 }
@@ -550,7 +551,8 @@ export const FLAG_LOOKS = 5;
 const UP_OR_OUT = [1, 2, 3];
 
 function notSelected(ctx, svc) {
-  if (svc.track !== 'officer' || !UP_OR_OUT.includes(svc.grade)) return;
+  // No one is separated for non-selection in wartime.
+  if (svc.track !== 'officer' || !UP_OR_OUT.includes(svc.grade) || svc.wartime) return;
   // Capped: officers in the retirement sanctuary can keep being passed over without it mattering.
   svc.passovers = Math.min(2, (svc.passovers ?? 0) + 1);
   if (svc.passovers < 2) ctx.log(`Not selected for ${rankTitles(svc)[svc.grade + 1]} (1/2). A second non-selection means separation.`, '📋', 'warn');
@@ -603,6 +605,9 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.4;
   if (svc.track === 'warrant' && svc.grade >= 3) chance *= 0.6;
+  // A war's expanding force promotes nearly everyone fit for the next rank, and fast:
+  // the senior boards' quotas lift and generals are made in the field.
+  if (svc.wartime) chance = Math.max(chance * 1.6, chance + 0.3);
   // In a one-party state the unit's Party committee weighs in on every officer's promotion.
   chance *= partyBoardFactor(ctx.state, svc);
   if (!ctx.rng.chance(clamp(chance, 0.02, 0.95))) {

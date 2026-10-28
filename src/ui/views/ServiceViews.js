@@ -35,6 +35,7 @@ import { tierOf } from '../../modules/military/SecondCareer.js';
 import { militaryInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
+import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
 function recruitingOffice(state) {
@@ -187,6 +188,36 @@ function retiredListCard(state) {
     <div class="action-grid">${secondCareerButton(state)}${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${RECALL_MAX_AGE}` })}</div>`, { icon: '🎖️', accent: 'green' });
 }
 
+/** Coup plots (serving officers) and foreign-army contracts (retired officers): Kingmakers.js. */
+function kingmakerCard(state) {
+  const a = state.foreignAdvisor;
+  if (a) {
+    return card(`${COUNTRIES[a.cc]?.flag ?? ''} Building the ${esc(COUNTRIES[a.cc]?.name ?? a.cc)} Armed Forces`, `
+      ${kv([['Post', esc(a.title)], ['Year', `${a.years} of ${a.term}`], ['Salary', `${money(a.salary)}/yr, tax-free`]])}
+      ${meter(a.readiness, { label: '🎯 Readiness' })}
+      <div class="toggle-row">
+        ${button('🎯 Field exercise', 'kingmakers.train', { variant: 'small', disabled: Boolean(state.yearly['kingmakers.train']) })}
+        ${a.college ? '' : button('🏫 Found a staff college', 'kingmakers.college', { variant: 'small' })}
+        ${button('🧹 Purge the ghost soldiers', 'kingmakers.purge', { variant: 'small', disabled: Boolean(state.yearly['kingmakers.purge']), hint: 'Risky' })}
+        ${button('🚪 Resign', 'kingmakers.resignAdvisor', { variant: 'small ghost' })}
+      </div>`, { icon: '🎖️', accent: 'green' });
+  }
+  if (canAdvise(state).ok) {
+    return card('Foreign Armies Hiring', `<p class="fine">Retired officers are hired to build developing countries' forces: a contract general's rank and a tax-free salary.</p>
+      <div class="toggle-row">${clientOffers(state).map((cc) => button(`${COUNTRIES[cc].flag} ${esc(COUNTRIES[cc].name)}`, 'kingmakers.advise', { arg: cc, variant: 'small' })).join('')}</div>`, { icon: '🎖️' });
+  }
+  if (!canPlot(state).ok) return '';
+  const p = state.regime?.plot;
+  return card('🤫 The Conspiracy', `
+    <p class="fine">The army here has taken power before. An officer with friends in the right units could do it again — if no one talks.</p>
+    ${p ? meter(p.support, { label: '🪖 Support among the officers' }) : ''}
+    <div class="toggle-row">
+      ${button(p ? '🤫 Widen the circle' : '🤫 Sound out fellow officers', 'kingmakers.plot', { variant: 'small', disabled: Boolean(state.yearly['kingmakers.plot']), hint: 'Each year risks discovery' })}
+      ${p ? button('🪖 Strike now', 'kingmakers.strike', { variant: 'small danger' }) : ''}
+      ${p ? button('🤐 Call it off', 'kingmakers.abandonPlot', { variant: 'small ghost' }) : ''}
+    </div>`, { icon: '🪖', accent: 'red' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -195,14 +226,14 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${foreignForcesCard(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${kingmakerCard(state)}${foreignForcesCard(state)}${history}`;
 
   const branch = branchOf(svc);
   const rank = rankOf(svc);
   const outlook = promotionOutlook(svc);
   const titles = branch[svc.track];
   const hasBachelor = meetsEducation(state, { level: 'bachelor' });
-  return `${card(branch.name, `
+  return `${kingmakerCard(state)}${card(branch.name, `
     <div class="job-head">
       ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null) })}
       <div class="job-meta">
