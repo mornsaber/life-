@@ -25,6 +25,7 @@ import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
 import { regionsInState } from '../life/Regions.js';
+import { aidName } from '../life/Disasters.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -169,27 +170,113 @@ function completePurchase(ctx, listing, loanType, q) {
 /* ------------------------------------------------------------------ */
 
 const COVERAGE = { hurricane: 0.75, wildfire: 0.9, blizzard: 0.9, tornado: 0.9, flood: 0, earthquake: 0 };
+/** What insurers say when they won't pay. */
+const DENIALS = { hurricane: 'it was flood (storm surge), not wind', wildfire: 'the brush around the house breached the policy', blizzard: 'the roof was already in poor repair', tornado: 'the damage pre-dated the storm', flood: 'groundwater, not the river, came in' };
+/** Federal (or national) aid tops out here for a home. */
+const AID_CAP = 42500;
 
-function disasterDamage(ctx, { type, severity, stateId, name }) {
+/**
+ * The storm passes; the claims begin. Each damaged property gets an adjuster's decision —
+ * paid, underpaid (the policy limit hadn't kept up with the house) or denied — and a choice:
+ * rebuild, patch it, appeal, apply for aid, or sell as-is.
+ */
+function disasterDamage(ctx, { type, severity, stateId, name, stance }) {
   const { state, rng } = ctx;
   for (const regionId of regionsInState(stateId).map((r) => r.id)) {
     state.housing.market[regionId] = Math.round((state.housing.market[regionId] ?? 1) * (1 - severity * 0.03) * 1000) / 1000;
   }
+  let prompts = 0;
   for (const p of state.housing.properties) {
     if (REGIONS[p.regionId].state !== stateId || !rng.chance(0.5)) continue;
-    const damage = Math.round(p.value * severity * rng.float(0.03, 0.08));
+    // Staying home to defend it saves some of it (if you were there).
+    const defended = stance === 'stay' && p.use === 'primary' && p.regionId === state.character.regionId;
+    const damage = Math.round(p.value * severity * rng.float(0.03, 0.08) * (defended ? 0.6 : 1));
     const coverage = type === 'flood' && p.floodInsured ? 0.9 : COVERAGE[type];
-    const paid = p.insured ? Math.max(0, Math.round(damage * coverage - p.value * 0.02)) : 0;
-    ctx.spend(damage - paid, `${name} damage`, { allowDebt: true });
+    const owed = p.insured ? Math.max(0, Math.round(damage * coverage - p.value * 0.02)) : 0;
+    // The adjuster: most claims pay, some are underpaid, a few are denied.
+    const roll = owed > 0 ? rng.next() : 1;
+    const denied = roll < 0.08 + severity * 0.03;
+    const under = !denied && roll < 0.3 + severity * 0.03;
+    const paid = denied ? 0 : under ? Math.round(owed * rng.float(0.55, 0.8)) : owed;
     p.condition = Math.max(0, p.condition - severity * 10);
-    ctx.log(`The ${name.toLowerCase()} damaged your ${p.typeName}: $${damage.toLocaleString()} in damage, insurance paid $${paid.toLocaleString()}${coverage === 0 ? ` (standard policies exclude ${type}s)` : ''}.`, '🏚️', 'bad');
+    const why = coverage === 0 && p.insured ? ` Standard policies exclude ${type}s.` : denied ? ` The insurer denied the claim: ${DENIALS[type] ?? 'an exclusion applied'}.` : under ? ' The policy limit hadn\'t kept up with the house: the insurer paid less than the damage.' : !p.insured ? ' It wasn\'t insured.' : '';
+    ctx.log(`${name} damaged your ${p.typeName}: $${damage.toLocaleString()} in damage; insurance ${paid ? `paid $${paid.toLocaleString()}` : 'paid nothing'}.${why}`, '🏚️', 'bad');
+    if (paid) state.finances.cash += paid;
+    const gap = damage - paid;
+    if (gap <= 0) continue;
+    // Small damage just gets fixed; real damage is a decision (two at most a year).
+    if (gap < p.value * 0.03 || prompts >= 2) {
+      ctx.spend(gap, `${name} repairs`, { allowDebt: true });
+      p.condition = Math.min(100, p.condition + severity * 8);
+      continue;
+    }
+    prompts += 1;
+    const primary = p.use === 'primary';
+    ctx.prompt({
+      type: 'housing.disasterClaim', icon: '🏚️', title: `After ${name}: your ${p.typeName}`,
+      text: `$${damage.toLocaleString()} in damage, $${paid.toLocaleString()} from insurance: $${gap.toLocaleString()} is on you.`,
+      options: [
+        { id: 'rebuild', label: `🔨 Rebuild properly ($${gap.toLocaleString()})` },
+        primary ? { id: 'aid', label: '🏛️ Apply for disaster aid, then rebuild', hint: `Grants up to $${AID_CAP.toLocaleString()} for a primary home; not everyone qualifies` } : null,
+        denied || under ? { id: 'appeal', label: '📑 Hire a public adjuster and appeal', hint: 'They take 10% of what they win' } : null,
+        { id: 'patch', label: `🩹 Patch it up cheaply ($${Math.round(gap * 0.35).toLocaleString()})`, hint: 'It will never be quite right' },
+        { id: 'sell', label: '🪧 Sell it as-is to an investor', hint: 'At a steep discount' },
+      ].filter(Boolean),
+      data: { propertyId: p.id, damage, owed, paid, gap, severity, name, type },
+    });
   }
   const status = housingStatus(state);
   if (status === 'renting' || status === 'homeless') {
-    const cost = rng.int(500, 3000) * severity;
+    const cost = Math.round(rng.int(500, 3000) * severity * (stance === 'evacuate' ? 0.6 : 1));
     ctx.spend(cost, 'Disaster displacement', { allowDebt: true });
     ctx.log(`You were displaced for weeks and lost belongings ($${cost.toLocaleString()}).`, '🧳', 'warn');
   }
+}
+
+/** The choice after a disaster claim. */
+function resolveClaim(ctx, data, optionId) {
+  const { state, rng } = ctx;
+  const p = state.housing.properties.find((x) => x.id === data.propertyId);
+  if (!p) return;
+  let gap = data.gap;
+  const restore = () => { p.condition = Math.min(100, p.condition + data.severity * 10); };
+  if (optionId === 'aid') {
+    const ok = rng.chance(p.insured ? 0.45 : 0.65);
+    if (ok) {
+      const grant = Math.min(gap, AID_CAP, Math.round(gap * rng.float(0.3, 0.8)));
+      state.finances.cash += grant;
+      gap -= grant;
+      ctx.log(`${aidName(state)} approved a grant of $${grant.toLocaleString()} after three inspections and a lot of paperwork.`, '🏛️', 'good');
+    } else ctx.log(`${aidName(state)} turned you down: ${p.insured ? 'your insurance was expected to cover it' : 'the paperwork didn\'t prove ownership to their satisfaction'}.`, '🏛️', 'warn');
+    ctx.stat('stress', 4);
+  }
+  if (optionId === 'appeal') {
+    if (rng.chance(0.45)) {
+      const won = Math.max(0, data.owed - data.paid);
+      const fee = Math.round(won * 0.1);
+      state.finances.cash += won - fee;
+      gap -= won;
+      ctx.log(`The public adjuster won: the insurer paid another $${won.toLocaleString()} (less a $${fee.toLocaleString()} fee).`, '📑', 'good');
+    } else ctx.log('The appeal failed. The insurer\'s engineers had the last word.', '📑', 'bad');
+    ctx.stat('stress', 5);
+  }
+  if (optionId === 'sell') {
+    p.value = Math.max(1000, Math.round((p.value - data.damage) * 0.85));
+    ctx.log(`An investor offered $${p.value.toLocaleString()} for the ${p.typeName.toLowerCase()}, as it stood.`, '🪧', 'warn');
+    sellProperty(ctx, p, { forced: true });
+    if (!state.housing.properties.some((x) => x.use === 'primary') && !state.housing.rental) state.housing.withParents = state.character.age < 30;
+    return;
+  }
+  if (optionId === 'patch') {
+    ctx.spend(Math.round(gap * 0.35), `${data.name} — patch repairs`, { allowDebt: true });
+    p.condition = Math.max(0, p.condition - 5);
+    p.value = Math.round(p.value * 0.95);
+    ctx.log('Tarps, a contractor\'s cousin and a lot of paint. It\'ll do — for now.', '🩹', 'warn');
+    return;
+  }
+  if (gap > 0) ctx.spend(gap, `${data.name} — rebuilding`, { allowDebt: true });
+  restore();
+  ctx.log(`You rebuilt${gap > 0 ? `, paying $${Math.max(0, gap).toLocaleString()} yourself` : ''}. It took ${data.severity >= 3 ? 'a year' : 'months'} of contractors and permits.`, '🔨', 'good');
 }
 
 /* ------------------------------------------------------------------ */
@@ -499,6 +586,7 @@ export const HousingEngine = {
   },
 
   resolvers: {
+    disasterClaim: resolveClaim,
     postedHome(ctx, data, optionId) {
       const { state } = ctx;
       const home = state.housing.properties.find((p) => p.id === data.propertyId);
