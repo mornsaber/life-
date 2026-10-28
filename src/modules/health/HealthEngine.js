@@ -237,6 +237,14 @@ function medicalDebtTick(ctx) {
     ctx.log(`$${h.medicalDebt.toLocaleString()} in medical bills went to collections.`, '📞', 'bad');
   }
   const income = state.finances.lastYear?.gross ?? 0;
+  // Charity care: nonprofit hospitals must run a financial-assistance policy, and most forgive
+  // much or all of the bill for patients under about four times the poverty line who apply.
+  if (h.medicalDebt >= 5000 && income < 60000 && !h.charityCare && ctx.rng.chance(0.6)) {
+    h.charityCare = true;
+    const forgiven = Math.round(h.medicalDebt * (income < 30000 ? 1 : ctx.rng.float(0.4, 0.75)));
+    h.medicalDebt -= forgiven;
+    ctx.log(`You applied for the hospital's financial assistance programme: $${forgiven.toLocaleString()} of your bills ${h.medicalDebt <= 0 ? 'were' : 'was'} written off.`, '🏥', 'good');
+  }
   if (h.medicalDebt >= 30000 && h.medicalDebt > income * 0.6 && !yearlyCount(state, 'health.bankruptcyAsked')) {
     bumpYearly(state, 'health.bankruptcyAsked');
     ctx.prompt({
@@ -255,6 +263,7 @@ function medicalDebtTick(ctx) {
   if (h.medicalDebt <= 0) {
     h.medicalDebt = 0;
     h.collections = false;
+    h.charityCare = false;
   }
 }
 

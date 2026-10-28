@@ -211,18 +211,89 @@ export function ch13Tick(ctx) {
   }
 }
 
+/**
+ * A debt-management plan through a nonprofit credit counsellor: the card issuers cut the
+ * interest to about 8% and freeze fees, and you pay a fixed sum for five years. No court, no
+ * lost assets, a lighter mark on your credit — but miss payments and the deal is off.
+ */
+export function dmpTerms(state) {
+  const debt = Math.max(0, -state.finances.cash);
+  const annual = Math.round((debt * 1.18) / 5 / 100) * 100;
+  const gross = state.finances.lastYear?.gross ?? 0;
+  const ok = !state.finances.dmp && debt > 0 && annual <= gross * 0.25;
+  return { debt, annual, years: 5, ok, reason: state.finances.dmp ? 'Already on a plan' : 'Your income can\'t cover the payments' };
+}
+
+export function startDmp(ctx) {
+  const { state } = ctx;
+  const t = dmpTerms(state);
+  if (!t.ok) return false;
+  state.finances.cash += t.debt;
+  state.finances.dmp = { debt: t.debt, annual: t.annual, yearsLeft: t.years };
+  ctx.emit('credit:event', { type: 'default' });
+  ctx.log(`A nonprofit credit counsellor set up a debt-management plan: your cards are closed, the interest is cut, and you pay $${t.annual.toLocaleString()} a year for ${t.years} years.`, '🤝', 'info');
+  return true;
+}
+
+/** Collectors calling, but not yet hopeless: a credit counsellor's offer (every few years). */
+export function dmpOfferPrompt(ctx) {
+  const { state } = ctx;
+  const f = state.finances;
+  if (insolvencyHere(state) || f.dmp || state.character.age - (f.dmpOffered ?? -99) < 3 || state.prompts.some((p) => p.type.startsWith('finances.'))) return;
+  const t = dmpTerms(state);
+  if (!t.ok) return;
+  f.dmpOffered = state.character.age;
+  ctx.prompt({
+    type: 'finances.dmpOffer', icon: '🤝', title: 'A Way Out of Card Debt',
+    text: `You owe $${t.debt.toLocaleString()} on your cards. A nonprofit credit counsellor can get the interest cut if you close the cards and commit to a plan.`,
+    options: [
+      { id: 'dmp', label: '🤝 Enrol in a debt-management plan', hint: `${t.years} yrs × $${t.annual.toLocaleString()}/yr` },
+      { id: 'no', label: '💳 Keep the cards and pay it down yourself' },
+    ],
+  });
+}
+
+/** A year of the debt-management plan: paid from cash; miss two years and the deal is off. */
+export function dmpTick(ctx) {
+  const { state } = ctx;
+  const f = state.finances;
+  const plan = f.dmp;
+  if (!plan) return;
+  if (f.cash < plan.annual) {
+    plan.missed = (plan.missed ?? 0) + 1;
+    if (plan.missed < 2) {
+      ctx.log('You missed this year\'s debt-management payment. The counsellor added it to the end of the plan — one more miss and it\'s over.', '📞', 'warn');
+      return;
+    }
+    const remaining = Math.round((plan.annual * plan.yearsLeft) / 1.18);
+    f.cash -= remaining;
+    f.dmp = null;
+    ctx.log(`You fell behind on your debt-management plan and the creditors pulled out: $${remaining.toLocaleString()} is back on the cards at full interest.`, '📞', 'bad');
+    return;
+  }
+  ctx.spend(plan.annual, 'Debt-management plan payment');
+  plan.yearsLeft -= 1;
+  if (plan.yearsLeft <= 0) {
+    f.dmp = null;
+    ctx.log('You made the last payment on your debt-management plan. You are debt-free.', '🎉', 'good');
+    ctx.stat('happiness', 8);
+  }
+}
+
 /** A debt crisis: offer the chapters you qualify for, or keep struggling. */
 export function debtCrisisPrompt(ctx) {
   const { state } = ctx;
   if (state.prompts.some((p) => p.type === 'finances.debtCrisis' || p.type === 'health.bankruptcy')) return;
   const opts = bankruptcyOptions(state);
-  if (!opts.ch7.ok && !opts.ch13.ok) return;
+  const dmp = insolvencyHere(state) ? null : dmpTerms(state);
+  if (!opts.ch7.ok && !opts.ch13.ok && !dmp?.ok) return;
   ctx.prompt({
     type: 'finances.debtCrisis',
     icon: '💸',
     title: 'Drowning in Debt',
     text: `You owe $${opts.debt.toLocaleString()} on cards and medical bills, and the interest alone is more than you can pay. A bankruptcy attorney walks you through your options.`,
     options: [
+      ...(dmp ? [{ id: 'dmp', label: '🤝 A debt-management plan (credit counselling)', hint: dmp.ok ? `${dmp.years} yrs × $${dmp.annual.toLocaleString()}/yr at reduced interest; no court, keep everything` : dmp.reason, disabled: !dmp.ok }] : []),
       { id: 'ch7', label: `⚖️ ${state.character.countryId ? `File for ${routeName(state, 7)}` : 'File Chapter 7 (liquidation)'}`, hint: opts.ch7.ok ? `Wipes the debt; non-exempt assets sold${opts.preview.homeLost ? ' — including your home' : ''}` : opts.ch7.reason, disabled: !opts.ch7.ok },
       { id: 'ch13', label: `📆 ${state.character.countryId ? routeName(state, 13) : 'File Chapter 13 (repayment plan)'}`, hint: opts.ch13.ok ? `${opts.ch13.years} yrs × $${opts.ch13.annual.toLocaleString()}/yr; keep your property` : opts.ch13.reason, disabled: !opts.ch13.ok },
       { id: 'struggle', label: '😰 Keep paying what you can', hint: 'Collectors, 15% interest, ruined credit anyway', tone: 'danger' },

@@ -174,7 +174,7 @@ export async function playLives({ from, to, seed }) {
           id = id.id;
         }
         else if (p.type === 'business.temptation') id = persona.risky ? 'take' : 'honest';
-        else if (p.type === 'finances.debtCrisis') id = (options.find((o) => o.id === 'ch7') ?? options.find((o) => o.id === 'ch13') ?? options[0]).id;
+        else if (p.type === 'finances.debtCrisis') id = (options.find((o) => o.id === 'dmp') ?? options.find((o) => o.id === 'ch7') ?? options.find((o) => o.id === 'ch13') ?? options[0]).id;
         else if (p.type === 'people.date') id = persona.marry && choose.chance(0.7) ? options.find((o) => o.id === '0')?.id : options.find((o) => !/^\d$/.test(o.id))?.id;
         else if (p.type === 'people.meetCute') id = persona.marry && !s.people.list.some((x) => x.alive && ['partner', 'fiance', 'spouse'].includes(x.relation)) ? 'ask' : options.find((o) => o.id !== 'ask')?.id;
         else if (p.type === 'retirement.rollover') id = choose.chance(p.data.amount < 20000 ? 0.55 : 0.12) ? 'cashout' : 'rollover';
@@ -333,8 +333,9 @@ export async function playLives({ from, to, seed }) {
       console.log(JSON.stringify({ plan: persona.plan, type: h.typeId, outcome: h.outcome, years: h.years, startAge: h.startAge, bankrupt: s.finances.bankruptcies, lines: s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /founded|Founded|SBA|closed|bankrupt|guarantee|personally|crunch|Capital injection|credit line|You put/i.test(t)).slice(0, 8) }));
     }
     if (process.env.BALANCE_DEBUG === 'bankrupt' && s.finances.bankruptcies) {
-      const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /bankrupt|Year-end|Laid off|homeless|Retired|hired|job as/i.test(t));
-      console.log(`--- life ${i} plan ${persona.plan}\n${lines.slice(0, 30).join('\n')}`);
+      const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /bankrupt|debt-management|Year-end|Laid off|homeless|Retired|hired|job as/i.test(t));
+      const at = lines.findIndex((t) => /bankrupt/i.test(t));
+      console.log(`--- life ${i} plan ${persona.plan}\n${lines.slice(Math.max(0, at - 8), at + 1).join('\n')}`);
     }
     if (process.env.BALANCE_DEBUG === 'homeless' && stats.everHomeless) {
       const lines = s.log.flatMap((b) => b.entries.map((e) => `${b.age}: ${e.text}`)).filter((t) => /homeless|evict|lease|Year-end|Laid off|terminated|left your job|hired|parents|sold|prison|sentenced|foreclos|founded|closed|revenue|Capital|credit line|on the hook/i.test(t));

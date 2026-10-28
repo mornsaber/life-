@@ -17,7 +17,7 @@ import { lawValue } from '../politics/Laws.js';
 import { ltcgTax } from '../investing/Assets.js';
 import { coverage } from '../health/Insurance.js';
 import { isMarried, spouseIncome, minorChildren, ageOf } from '../people/People.js';
-import { fileBankruptcy, ch13Tick, debtCrisisPrompt } from './Bankruptcy.js';
+import { fileBankruptcy, ch13Tick, debtCrisisPrompt, dmpOfferPrompt, dmpTick, startDmp } from './Bankruptcy.js';
 import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.js';
 import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
@@ -181,8 +181,10 @@ export const Finances = {
         // A second adult adds about half again to household needs (OECD equivalence scale).
         const household = married ? 1.5 : 1;
         const lifestyle = (LIVING_FLOOR * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
-        // Spending flexes down when money is tight, but never below the bare minimum.
-        living = Math.round(Math.max(minimum * knob(state, 'costOfLiving'), Math.min(lifestyle * knob(state, 'costOfLiving'), discretionary * 0.92)));
+        // Spending flexes down when money is tight (harder once the cards are carrying a balance),
+        // but never below the bare minimum.
+        const squeeze = cardDebt > 5000 ? 0.8 : 0.92;
+        living = Math.round(Math.max(minimum * knob(state, 'costOfLiving'), Math.min(lifestyle * knob(state, 'costOfLiving') * (cardDebt > 5000 ? 0.9 : 1), discretionary * squeeze)));
         // A compound at a field post: housed and fed, with little to spend money on.
         if (postedHousing(state) === 'provided' && postedRegion) living = Math.round(living * 0.6);
       }
@@ -213,6 +215,7 @@ export const Finances = {
     }
 
     ch13Tick(ctx);
+    dmpTick(ctx);
 
     let interest = 0;
     const cards = state.character.age >= 18 ? settleCards(ctx, { living }) : { interest: 0 };
@@ -226,6 +229,7 @@ export const Finances = {
         ctx.stat('happiness', -6);
         ctx.stat('stress', 10);
       } else if (f.cash < -25000) {
+        dmpOfferPrompt(ctx);
         ctx.stat('stress', 8);
         ctx.stat('happiness', -4);
         ctx.log(`Debt collectors keep calling. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, '📞', 'warn');
@@ -257,8 +261,13 @@ export const Finances = {
   },
 
   resolvers: {
+    dmpOffer(ctx, _data, optionId) {
+      if (optionId === 'dmp') startDmp(ctx);
+      else ctx.log('You decided to dig yourself out alone.', '💳', 'info');
+    },
     debtCrisis(ctx, _data, optionId) {
-      if (optionId === 'ch7') fileBankruptcy(ctx, 7);
+      if (optionId === 'dmp') startDmp(ctx);
+      else if (optionId === 'ch7') fileBankruptcy(ctx, 7);
       else if (optionId === 'ch13') fileBankruptcy(ctx, 13);
       else ctx.log('You decided to keep paying what you can. The collectors keep calling.', '📞', 'warn');
     },

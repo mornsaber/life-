@@ -89,7 +89,7 @@ export const JUSTICE_PROFESSIONS = {
   },
 
   sheriff: {
-    ...LOCAL, id: 'sheriff', name: 'Sheriff\'s Office', icon: '⭐', payMultiplier: 0.97, minAge: 21,
+    ...LOCAL, id: 'sheriff', name: 'Sheriff\'s Office', icon: '⭐', payMultiplier: 0.88, minAge: 21,
     union: { chance: 0.7, name: 'Deputy Sheriffs\' Association', strike: false },
     benefits: { pension: 'publicSafety', ssCovered: false },
     employerName: (city) => `${city} County Sheriff's Office`,

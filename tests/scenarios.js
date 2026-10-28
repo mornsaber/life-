@@ -61,14 +61,14 @@ import { startEligibility, yearFinancials, exitProceeds, fundingCheck } from '..
 import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
 import { closeBusiness } from '../src/modules/business/BusinessEngine.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
-import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE } from '../src/modules/life/Bankruptcy.js';
+import { bankruptcyOptions, WILDCARD_EXEMPTION, CH7_FEE, startDmp, dmpTick } from '../src/modules/life/Bankruptcy.js';
 import { creditLimit } from '../src/core/State.js';
 import { membership, clergyEligibility } from '../src/modules/community/Religions.js';
 import { addFriend, friendsOf } from '../src/modules/people/Friends.js';
 import { careBill } from '../src/modules/people/ElderCare.js';
 import { riskMultiplier, purchaseCheck, autoRate } from '../src/modules/vehicles/Vehicles.js';
 import { itemizedDeductions, SALT_CAP } from '../src/modules/life/Taxes.js';
-import { cardApr, minimumPayoff, DEFAULT_APR } from '../src/modules/life/CreditCards.js';
+import { cardApr, minimumPayoff, DEFAULT_APR, cardLimit } from '../src/modules/life/CreditCards.js';
 import { gigEligibility } from '../src/modules/career/GigWork.js';
 import { benchEligibility, currentCourt, selectionFor } from '../src/modules/legal/Judiciary.js';
 import { ssdiEligibility, approvalOdds } from '../src/modules/health/SSDI.js';
@@ -478,12 +478,36 @@ const tests = {
     assert.equal(state.health.medicalDebt, 88000);
     state.prompts = [];
     state.yearly = {};
+    // The hospital's financial assistance was already used up (charity care is tested below).
+    state.health.charityCare = true;
     HealthEngine.onAgeUp(ctx);
     state.prompts = state.prompts.filter((p) => p.type === 'health.bankruptcy');
     resolve(engine, 'health.bankruptcy', 'file');
     assert.equal(state.health.medicalDebt, 0);
     assert.equal(state.finances.bankruptcies, 1);
     assert.ok(state.housing.credit.events.some((e) => e.type === 'bankruptcy'));
+  },
+
+  'low-income patients get hospital charity care; a credit counsellor offers a debt-management plan'() {
+    const { engine, state } = setup(34, 35);
+    state.health.marketplace = false;
+    state.finances.cash = 0;
+    state.finances.lastYear = { gross: 45000, ltcg: 0 };
+    const ctx = engine.context();
+    const oop = medicalBill(ctx, 40000, 'Emergency surgery');
+    assert.ok(oop > 30000, `uninsured: ${oop}`);
+    for (let i = 0; i < 10 && !state.health.charityCare; i++) { state.yearly = {}; state.finances.cash = 0; HealthEngine.onAgeUp(ctx); }
+    assert.ok(state.health.charityCare, 'applied for financial assistance');
+    assert.ok(state.health.medicalDebt <= oop * 0.6, `written off: ${state.health.medicalDebt}`);
+    state.prompts = [];
+    state.finances.cash = -30000;
+    state.finances.lastYear = { gross: 60000, ltcg: 0 };
+    assert.ok(startDmp(ctx), 'plan affordable');
+    assert.equal(state.finances.cash, 0);
+    state.finances.cash = 20000;
+    dmpTick(ctx);
+    assert.equal(state.finances.dmp.yearsLeft, 4);
+    assert.ok(cardLimit(state) >= 8000);
   },
 
   'combat trauma leads to service-connected PTSD and a VA rating at separation'() {

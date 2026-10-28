@@ -40,6 +40,14 @@ export function cardApr(state) {
   return held.reduce((s, c) => s + CARD_TYPES[c.typeId].apr, 0) / held.length;
 }
 
+/** Charged-off debt with a collection agency grows slowly (fees, statutory interest). */
+const COLLECTIONS_RATE = 0.04;
+/** Roughly what the issuers would lend you: scaled by income and how many cards you hold. */
+export function cardLimit(state) {
+  const income = state.finances.lastYear?.gross ?? 0;
+  return Math.round(Math.max(8000, income * 0.5) * (limitMultiplier(state) ?? 0.1));
+}
+
 /** More cards (that you've had a while) mean a bigger total limit. Secured-only = the deposit. */
 export function limitMultiplier(state) {
   const held = heldCards(state).filter((c) => c.typeId !== 'secured');
@@ -114,7 +122,11 @@ export function settleCards(ctx, { living }) {
     }
   }
   const promo = c.transfer?.amount ?? 0;
-  const interest = Math.round(Math.max(0, debt - promo) * cardApr(state));
+  // Interest compounds up to what the issuers would ever have lent you; beyond that the debt is
+  // charged off and sold to collectors, who add fees but nothing like card APR.
+  const limit = cardLimit(state);
+  const onCards = Math.min(Math.max(0, debt - promo), limit);
+  const interest = Math.round(onCards * cardApr(state) + Math.max(0, debt - promo - limit) * COLLECTIONS_RATE);
   if (c.strategy === 'minimum' && debt > 3000 && state.character.age % 5 === 0) {
     const p = minimumPayoff(debt, cardApr(state));
     ctx.log(`Paying only the minimum on $${debt.toLocaleString()}, you'd be debt-free in ${p.years >= 60 ? 'never' : `${p.years} years`} after $${p.interest.toLocaleString()} in interest.`, '🐌', 'warn');

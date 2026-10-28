@@ -17,7 +17,7 @@ const PD = (city) => `${city} Police Department`;
 
 export const MUNICIPAL_PROFESSIONS = {
   police: {
-    id: 'police', name: 'Police Department', icon: '🚓', sector: 'municipal', payMultiplier: 1.0, minAge: 21, background: 'strict', exam: 'publicSafety',
+    id: 'police', name: 'Police Department', icon: '🚓', sector: 'municipal', payMultiplier: 0.9, minAge: 21, background: 'strict', exam: 'publicSafety',
     union: { chance: 0.85, name: 'Fraternal Order of Police Lodge 7', strike: false },
     benefits: { pension: 'publicSafety', ssCovered: false },
     employerName: PD,

@@ -24,11 +24,12 @@ const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ??
 
 const problems = new Map();
 const flag = (msg, where) => { if (!problems.has(msg)) problems.set(msg, where); };
-const scan = (cc, text, where, seen) => {
+const scan = (cc, text, where, seen, also = null) => {
   if (!text || seen.has(text)) return;
   seen.add(text);
-  // A life that emigrated reads its new country's words too ("GT @28": living in Guatemala).
-  const here = /^([A-Z]{2}) @/.exec(where ?? '')?.[1];
+  // A life that emigrated reads its new country's words too ("GT @28": living in Guatemala),
+  // and the year it moved, the old country's (`also`).
+  const here = also ?? /^([A-Z]{2}) @/.exec(where ?? '')?.[1];
   const there = here && here !== cc ? new Set(usLeftovers(here, text).map((m) => m.slice(3))) : null;
   for (const msg of usLeftovers(cc, text)) if (!there || there.has(msg.slice(3))) flag(msg, where);
 };
@@ -78,7 +79,8 @@ function life(cc, seed) {
     const blocks = state.log.slice(-2);
     blocks.forEach((block, i) => {
       const where = i === blocks.length - 1 ? here() : lastCountry;
-      for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(where, shown(e.text, COUNTRIES[where]), `${cc} log @${state.character.age} seed ${seed}`, seen);
+      const moved = i === blocks.length - 1 && lastCountry && lastCountry !== where ? lastCountry : null;
+      for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(where, shown(e.text, COUNTRIES[where]), `${cc} log @${state.character.age} seed ${seed}`, seen, moved);
     });
     lastCountry = here();
   }
