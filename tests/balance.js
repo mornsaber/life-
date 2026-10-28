@@ -55,7 +55,7 @@ export const TARGETS = {
  * Physicians: BLS top-codes physician wages at $239,200, so use survey pay instead
  * (Medscape 2024: $363k average, about $300k for a mid-career median across specialties).
  */
-export const PAY_AT_40 = { tech: 120000, accounting: 85000, nursing: 90000, education: 66000, corporate: 85000, engineering: 105000, police: 75000, fire: 68000, trades: 66000, plumbing: 64000, trucking: 58000, retail: 38000, hospitality: 42000, culinary: 38000, medical: 300000, law: 150000 };
+export const PAY_AT_40 = { tech: 120000, accounting: 85000, nursing: 90000, education: 66000, corporate: 85000, engineering: 105000, police: 75000, fire: 68000, trades: 66000, plumbing: 64000, trucking: 58000, retail: 38000, hospitality: 42000, culinary: 38000, medical: 340000, law: 150000 }; // medical: Medscape 2024, ≈$363k average across specialties
 
 function money(x) {
   return `$${Math.round(x).toLocaleString()}`;
