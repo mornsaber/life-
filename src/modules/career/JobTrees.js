@@ -40,6 +40,7 @@ import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
 import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { INTL_ORG_PROFESSIONS } from './IntlOrgCareers.js';
 import { FOREIGN_FORCE_PROFESSIONS } from './ForeignForceCareers.js';
+import { RELIGIOUS_ORDER_PROFESSIONS } from './ReligiousOrderCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -421,6 +422,12 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
   clergy: {
     id: 'clergy', name: 'Clergy & Ministry', icon: '🙏', sector: 'private', payMultiplier: 0.75, minAge: 18, sizes: { small: 6, medium: 3, large: 1 }, background: 'standard', promotionOdds: 0.5,
+    // Congregations don't run layoffs: a small one can close, and a small faith's seminary can fold.
+    church: true,
+    layoffRate: (state, job) => {
+      const small = (TRADITIONS[job.tradition ?? state.community?.faith?.traditionId]?.weight ?? 1) < 1;
+      return job.levelId === 'seminarian' ? (small ? 0.03 : 0.003) : (small ? 0.015 : 0.004);
+    },
     employers: ['Community Congregation'],
     // Ordination depends on your tradition; titles come from it too (Parish Priest, Rabbi, Imam…).
     // Catholic priests are ordained through a diocese (see catholicClergy).
@@ -444,6 +451,8 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
   catholicClergy: {
     id: 'catholicClergy', name: 'Catholic Priesthood', icon: '✝️', sector: 'private', payMultiplier: 0.4, minAge: 18, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.35,
+    // A diocese reassigns its clergy; it never lays them off.
+    church: true, layoffRate: 0,
     // A diocese (archdiocese for the biggest sees) is the unit of the Church that ordains and assigns its priests.
     body: 'catholic',
     employerName: (city) => dioceseName(currentCountry() ?? 'US', city),
@@ -467,6 +476,8 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
   anglicanClergy: {
     id: 'anglicanClergy', name: 'Anglican Holy Orders', icon: '⛪', sector: 'private', payMultiplier: 0.55, minAge: 18, sizes: { small: 3, medium: 3, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.35,
+    // A diocese reassigns its clergy; it never lays them off.
+    church: true, layoffRate: 0,
     // The Church of England and the rest of the Anglican Communion: a diocese selects, trains and
     // licenses its clergy. Women are ordained (bishops too) and clergy may marry.
     body: 'anglican',
@@ -506,7 +517,7 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, MORE_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS, RELIGIOUS_ORDER_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);
@@ -540,10 +551,10 @@ export const JOB_FIELDS = {
   safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'universityPolice', 'airportPolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'dispatch', 'emergencyManagement', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education, Media & Ministry', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'clergy', 'catholicClergy', 'anglicanClergy', 'interpreter'] },
+  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'interpreter'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
-  holySee: { label: 'The Holy See', icon: '🇻🇦', ids: ['romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
+  holySee: { label: 'Faith & the Church', icon: '⛪', ids: ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc', 'romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
   foreignForces: { label: 'Recruited Abroad', icon: '🗡️', ids: ['gurkhaContingent'] },
   intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },

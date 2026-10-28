@@ -589,7 +589,8 @@ export function layoffRisk(state, job) {
   const prof = getProfession(job.professionId);
   if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? prof.cyclical ?? 1 : 1);
   // International organisations run on member-state budgets, not the business cycle: cuts are rare.
-  if (prof.layoffRate != null) risk = prof.layoffRate;
+  if (typeof prof.layoffRate === 'function') risk = prof.layoffRate(state, job);
+  else if (prof.layoffRate != null) risk = prof.layoffRate;
   // Government jobs are cut through a formal reduction in force instead (PublicRif).
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;
@@ -605,7 +606,8 @@ function layoffCheck(ctx, job) {
   if (!ctx.rng.chance(layoffRisk(ctx.state, job))) return false;
   const severance = severancePay(ctx.state.character.countryId, job.salary, job.yearsAtEmployer);
   const ui = unemploymentBenefit(ctx.state.character.countryId, job.salary);
-  leaveJob(ctx, 'Laid off in a reduction in force');
+  const church = getProfession(job.professionId).church;
+  leaveJob(ctx, church ? (/seminarian|ordinand/.test(job.levelId) ? 'The seminary closed its programme' : 'The congregation closed and merged with another') : 'Laid off in a reduction in force');
   if (severance) ctx.earn(severance, 'Severance pay', { wage: true });
   ctx.earn(ui.amount, ui.name);
   ctx.toast('Laid off', 'bad');
@@ -831,7 +833,7 @@ export function careerOnAgeUp(ctx) {
   const grievanceLimit = job.unionMember ? 3 + (['steward', 'officer', 'president'].includes(state.unions?.mine?.role) ? 1 : 0) : 2;
   // Ready to move up with nowhere to go: after a couple of years, another employer offers the promotion.
   job.stuckYears = job.performance >= 75 && status.noOpening ? (job.stuckYears ?? 0) + 1 : 0;
-  if (job.stuckYears >= 2 && rng.chance(0.4)) outsidePromotionOffer(ctx, job, profession);
+  if (job.stuckYears >= 2 && !profession.church && rng.chance(0.4)) outsidePromotionOffer(ctx, job, profession);
   if (job.performance >= 75 && status.eligible) {
     job.lowYears = 0;
     ctx.log(`Annual review${by}: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');
@@ -847,6 +849,14 @@ export function careerOnAgeUp(ctx) {
     }
     // Sustained low performance: demotion first, termination when there's nowhere lower to go.
     if (job.lowYears >= 2 && demote(ctx, `rated ${rating} two years running`)) return;
+    // Clergy aren't fired for a bad year: the bishop (or the board) moves them and sends them on retreat.
+    if (profession.church && (job.warnings >= grievanceLimit || job.performance < 12)) {
+      job.warnings = 0;
+      job.lowYears = 0;
+      job.performance = 45;
+      ctx.log(`${job.employer.name} moved you to a small, quiet ${/clergy/i.test(job.professionId) ? 'parish' : 'post'} and asked you to make a retreat first.`, '🕯️', 'warn');
+      return;
+    }
     if (job.warnings >= grievanceLimit || (job.performance < 12 && rng.chance(0.5))) {
       leaveJob(ctx, `Rated ${rating} after repeated warnings${job.unionMember ? ' (the union grievance failed)' : ''}.`, { fired: true });
       return;

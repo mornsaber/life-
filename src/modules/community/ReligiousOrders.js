@@ -26,7 +26,9 @@
  */
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
-import { leaveJob } from '../career/CareerEngine.js';
+import { leaveJob, hire, promote } from '../career/CareerEngine.js';
+import { getProfession } from '../career/JobTrees.js';
+import { createEmployer } from '../career/Employers.js';
 import { postAbroad } from '../world/Posting.js';
 
 const CATHOLIC = ['catholic', 'tradCatholic'];
@@ -124,6 +126,9 @@ function religiousYear(ctx) {
   const st = stageOf(r);
   // Leaving a community order to take an outside job means leaving the order.
   if (o.community) r.housed = true;
+  if (careerOf(r) && state.career.job?.professionId !== careerOf(r) && !state.career.job) syncCareer(ctx, r);
+  // Vowed poverty: whatever the order pays goes back to the community purse.
+  if (careerOf(r) && state.career.job?.professionId === careerOf(r) && state.career.job.salary > 0) ctx.spend(state.career.job.salary, 'Stipend returned to the community', { allowDebt: false });
   ctx.stat('happiness', rng.int(0, 3));
   ctx.stat('stress', -rng.int(0, 3));
   if (st?.years && state.character.age - r.stageSince >= st.years) {
@@ -152,6 +157,7 @@ function religiousYear(ctx) {
       r.office = next[0];
       (r.history ??= []).push({ age: state.character.age, office: next[1] });
       ctx.log(next[0] === 'general' ? `The General Congregation elected you ${next[1]} of ${o.name}${r.order === 'jesuits' ? ' — "the Black Pope" to the newspapers' : ''}.` : r.order === 'opusDei' && next[0] === 'prelate' ? 'The Pope appointed you Prelate of Opus Dei.' : `You were named ${next[1]}.`, o.icon, 'milestone');
+      syncCareer(ctx, r);
     }
   }
   // Opus Dei: numeraries give their earnings to the centre; supernumeraries give what they can.
@@ -168,6 +174,36 @@ function religiousYear(ctx) {
   }
 }
 
+/* The order is your career: a job in the Society of Jesus or the Missionaries of Charity whose
+   level follows your stage of formation and the office you hold (career/ReligiousOrderCareers.js). */
+const STAGE_LEVEL = {
+  jesuits: { novice: 'novice', philosophy: 'scholastic', regency: 'scholastic', theology: 'scholastic', tertianship: 'priest', professed: 'professed' },
+  moc: { postulant: 'postulant', novice: 'novice', junior: 'junior', professed: 'professed' },
+};
+const careerOf = (r) => (STAGE_LEVEL[r?.order] ? r.order : null);
+export const orderLevel = (r) => (r.office && careerOf(r) ? r.office : STAGE_LEVEL[r.order]?.[r.stage] ?? null);
+
+/** Put your career in step with the order: join it, or move to the level your formation or office now is. */
+function syncCareer(ctx, r) {
+  const { state, rng } = ctx;
+  const profId = careerOf(r);
+  if (!profId || r.left) return;
+  const levelId = orderLevel(r);
+  const job = state.career.job;
+  if (job?.professionId === profId) {
+    if (job.levelId !== levelId) promote(ctx, levelId);
+    return;
+  }
+  const p = getProfession(profId);
+  const employer = createEmployer(rng, state, p, state.character.regionId);
+  employer.name = p.employers[0];
+  employer.size = 'enterprise';
+  employer.benefits = { ...(employer.benefits ?? {}), housing: true };
+  r.joining = true;
+  hire(ctx, { professionId: profId, levelId, employer });
+  r.joining = false;
+}
+
 const apostolateOpen = (r) => ({ jesuits: ['professed', 'tertianship'], opusDei: ['member', 'fidelity'], moc: ['junior', 'professed'] }[r.order] ?? []).includes(r.stage);
 
 function advance(ctx, r) {
@@ -181,6 +217,7 @@ function advance(ctx, r) {
   r.stage = next.id;
   r.stageSince = ctx.state.character.age;
   ctx.log(st.text, o.icon, st.vows === 'final' || st.ordain ? 'milestone' : 'good');
+  syncCareer(ctx, r);
 }
 
 function leave(ctx, why) {
@@ -190,6 +227,7 @@ function leave(ctx, why) {
   const o = RELIGIOUS_ORDERS[r.order];
   r.left = state.character.age;
   r.housed = false;
+  if (careerOf(r) && state.career.job?.professionId === careerOf(r)) leaveJob(ctx, `Left ${o.short}`);
   if (state.character.posting?.kind === 'mission') state.character.posting = null;
   ctx.log(why ?? (r.vows === 'final' ? `Rome granted your indult: you were dispensed from your vows and left ${o.short}.${state.community.orders && !state.community.orders.laicized ? ' You remain a priest, and may seek a bishop to take you.' : ''}` : `You left ${o.short}. ${o.community ? 'Your superiors wished you well; you walked out with a small suitcase and a bus fare.' : ''}`), '🚪', 'warn');
 }
@@ -201,8 +239,9 @@ export const ReligiousOrdersModule = {
     // Taking an outside job means leaving community life.
     engine.bus.on('career:hired', ({ ctx, job }) => {
       const r = religiousOf(ctx.state);
-      if (!r || !RELIGIOUS_ORDERS[r.order].community) return;
-      if (['catholicClergy', 'education', 'professor', 'holySeeDiplomacy', 'romanCuria'].includes(job?.professionId)) return;
+      if (!r || !RELIGIOUS_ORDERS[r.order].community || r.joining) return;
+      // Your own order's posts, and the Holy See's service a superior can lend you to, keep you in.
+      if ([careerOf(r), 'holySeeDiplomacy', 'romanCuria'].includes(job?.professionId)) return;
       leave(ctx, `You took a job outside the order, and with it left ${RELIGIOUS_ORDERS[r.order].short}.`);
     });
   },
@@ -226,6 +265,7 @@ export const ReligiousOrdersModule = {
       const stage = orderId === 'jesuits' && priest ? 'tertianship' : o.stages[0].id;
       state.community.religious = { order: orderId, kind: orderId === 'opusDei' ? (kind === 'numerary' ? 'numerary' : 'supernumerary') : null, stage, since: state.character.age, stageSince: state.character.age, vows: null, apostolate: null, office: null, housed: o.community || kind === 'numerary', history: [] };
       if (state.community.religious.housed && state.housing) { state.housing.rental = null; state.housing.withParents = false; }
+      syncCareer(ctx, state.community.religious);
       return ctx.log({
         jesuits: 'You entered the Jesuit novitiate: the thirty-day Spiritual Exercises in silence, a "pilgrim experiment" with no money, and hospital work.',
         moc: 'You entered the Missionaries of Charity as an aspirant: a bucket, a plate, two saris and a crucifix are all you own now.',

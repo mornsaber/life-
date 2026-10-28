@@ -185,7 +185,8 @@ export const Finances = {
         // A compound at a field post: housed and fed, with little to spend money on.
         if (postedHousing(state) === 'provided' && postedRegion) living = Math.round(living * 0.6);
       }
-      insurance = state.service?.program?.id === 'peaceCorps' ? 0 : healthPremium(state, ordinary);
+      // Peace Corps volunteers and vowed religious have their care provided.
+      insurance = state.service?.program?.id === 'peaceCorps' || state.community?.religious?.housed ? 0 : healthPremium(state, ordinary);
     }
 
     f.cash -= tax + living + insurance;

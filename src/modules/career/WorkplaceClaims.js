@@ -9,6 +9,7 @@
 import { clamp } from '../../core/Random.js';
 import { minorChildren } from '../people/People.js';
 import { TRADITIONS } from '../community/Religions.js';
+import { getProfession } from './JobTrees.js';
 
 export const BASES = {
   sex: 'sexual harassment',
@@ -143,6 +144,11 @@ function retaliationRisk(ctx) {
   const c = state.career.claims.active;
   if (!job || !c || !rng.chance(0.3)) return;
   c.retaliated = true;
+  if (getProfession(job.professionId)?.church) {
+    ctx.log(`After you complained, ${job.employer.name} moved you to the most remote post it had. Retaliation, by transfer.`, '🕯️', 'bad');
+    ctx.emit('career:adjust', { performance: -10, boss: -25 });
+    return;
+  }
   if (rng.chance(0.4)) {
     ctx.log(`Two weeks after you complained, ${job.employer.name} fired you for "performance." That's textbook retaliation.`, '📦', 'bad');
     ctx.emit('career:resign', { reason: 'Terminated after complaining (retaliation)', fired: true });

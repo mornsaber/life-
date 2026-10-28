@@ -42,7 +42,7 @@ const always = (rng) => Object.assign(Object.create(Object.getPrototypeOf(rng)),
 
 const tests = {
   'the careers exist everywhere, on their own job-board field'() {
-    assert.deepEqual([...JOB_FIELDS.intl.ids, ...JOB_FIELDS.holySee.ids].sort(), [...INTL_ORG_IDS].sort());
+    assert.deepEqual([...JOB_FIELDS.intl.ids, ...JOB_FIELDS.holySee.ids.filter((id) => !['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc'].includes(id))].sort(), [...INTL_ORG_IDS].sort());
     for (const cc of ['US', 'IE', 'KE', 'CH', 'MT', 'ET']) {
       const { state } = life({ countryId: cc });
       const ids = professionsFor(state).map((p) => p.id);

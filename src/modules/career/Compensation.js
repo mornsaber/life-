@@ -52,6 +52,7 @@ export function recalcSalary(state, job) {
   const cap = Math.round(payCap(job, state.character.countryId) * knob(state, 'income'));
   const capped = Math.min(publicAdj ? Math.round(total * (1 + publicAdj)) : total, cap);
   job.pay.capped = capped < total;
-  job.salary = Math.max(capped, job.sector === 'federal' ? 0 : floor);
+  // Vowed religious draw no salary: the order houses and feeds them.
+  job.salary = profession.unpaid ? 0 : Math.max(capped, job.sector === 'federal' ? 0 : floor);
   return job.salary;
 }

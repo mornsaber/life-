@@ -133,7 +133,7 @@ function nonCompeteCheck(ctx) {
 function headhunterTick(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
-  if (!job || job.sector !== 'private' || job.probationLeft > 0 || state.prompts.some((p) => p.type === 'jobMarket.headhunter')) return;
+  if (!job || job.sector !== 'private' || job.probationLeft > 0 || getProfession(job.professionId).church || state.prompts.some((p) => p.type === 'jobMarket.headhunter')) return;
   const odds = clamp(0.02 + (job.performance - 60) / 400 + job.grade * 0.008 + prestige(state) / 4000 - (state.economy.phase === 'recession' ? 0.04 : 0), 0, 0.25);
   if (!rng.chance(odds)) return;
   const offer = makeOffer(ctx, { raise: [0.12, 0.3], headhunter: true });

@@ -11,6 +11,8 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { enlist } from '../src/modules/military/MilitaryEngine.js';
+import { layoffRisk } from '../src/modules/career/CareerEngine.js';
+import { JOB_FIELDS } from '../src/modules/career/JobTrees.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -50,6 +52,30 @@ const tests = {
     assert.equal(state.community.orders?.grade, 'priest');
     assert.equal(state.community.orders?.diocese, 'Society of Jesus');
     assert.ok(state.community.religious.apostolate, 'a mission');
+  },
+  'a Jesuit\'s career is the Society: novice to priest to provincial, unpaid, never laid off'() {
+    const { engine, state } = life({ gender: 'male' }, 5);
+    catholic(state);
+    state.career.job = null;
+    const c = engine.rng.chance; engine.rng.chance = () => true; engine.dispatch('religiousOrders.enter', 'jesuits'); engine.rng.chance = c;
+    assert.equal(state.career.job?.professionId, 'jesuits');
+    assert.equal(state.career.job.levelId, 'novice');
+    assert.equal(state.career.job.salary, 0);
+    assert.equal(layoffRisk({ ...state, economy: { ...state.economy, phase: 'recession' } }, state.career.job), 0);
+    year(engine, state, 15);
+    assert.equal(state.career.job?.professionId, 'jesuits', 'still a Jesuit, not diocesan clergy');
+    assert.ok(['professed', 'rector', 'provincial', 'general'].includes(state.career.job.levelId), state.career.job.levelId);
+    assert.ok(!state.career.history.some((h) => /Laid off/.test(h.reason ?? '')));
+  },
+  'diocesan priests and curates are never laid off; seminarians of big faiths rarely'() {
+    const { state } = life({}, 6);
+    const job = (professionId, levelId) => ({ professionId, levelId, abilities: [], sector: 'private', performance: 60, yearsAtEmployer: 3 });
+    const rec = { ...state, economy: { ...state.economy, phase: 'recession' } };
+    assert.equal(layoffRisk(rec, job('catholicClergy', 'vicar')), 0);
+    assert.equal(layoffRisk(rec, job('anglicanClergy', 'curate')), 0);
+    rec.community = { faith: { traditionId: 'baptist' } };
+    assert.ok(layoffRisk(rec, job('clergy', 'seminarian')) < 0.01);
+    assert.ok(JOB_FIELDS.holySee.ids.includes('catholicClergy') && JOB_FIELDS.holySee.ids.includes('jesuits'), 'one Faith & the Church field');
   },
   'a Missionary of Charity takes final vows and gives everything away'() {
     const { engine, state } = life({ gender: 'female' }, 4);
