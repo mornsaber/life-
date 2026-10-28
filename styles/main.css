@@ -919,3 +919,12 @@ select:focus { border-color: var(--cyan); }
 .order-icon { font-size: 20px; text-align: center; }
 .order-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .order-name { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; color: var(--muted); }
+
+/* Family tree: one generation per row, joined by a line, the heir's name marked. */
+.family-tree { list-style: none; margin: 0; padding: 0 0 0 14px; border-left: 2px solid var(--line, #ddd); }
+.family-tree .tree-gen { position: relative; padding: 4px 0 10px 10px; }
+.family-tree .tree-gen::before { content: ''; position: absolute; left: -19px; top: 9px; width: 8px; height: 8px; border-radius: 50%; background: var(--accent, #888); }
+.family-tree .tree-you::before { background: var(--good, #2a2); }
+.family-tree .tree-facts { margin-top: 2px; line-height: 1.35; }
+.family-tree .tree-kids { margin-top: 3px; font-size: 0.85em; }
+.family-tree .tree-heir { font-weight: 600; }

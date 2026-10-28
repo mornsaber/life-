@@ -302,7 +302,14 @@ function legacyCard(state) {
 function lineage(state) {
   const l = state.lineage;
   if (!l?.ancestors?.length) return '';
-  return card(`Family Line · Generation ${l.generation}`, `<ul class="history">${l.ancestors.map((a) => `<li>🕯️ <b>${esc(a.name)}</b> <small>${a.born}–${a.died} · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}${a.businesses?.length ? ` · 🏪 ${esc(a.businesses.join(', '))}` : ''}</small></li>`).join('')}</ul>`, { icon: '🌳' });
+  const gens = l.ancestors.map((a) => {
+    const kids = a.children?.length ? `<div class="tree-kids">${a.children.map((k) => `<span class="${k.heir ? 'tree-heir' : ''}">${k.heir ? '⬇️ ' : ''}${esc(k.name)}${k.alive ? '' : ' 🕯️'}</span>`).join(' · ')}</div>` : '';
+    const facts = [a.career ? `💼 ${esc(a.career)}` : null, a.military ? `🎖️ ${esc(a.military)}` : null, a.education ? `🎓 ${esc(a.education)}` : null, a.honours?.length ? `🏅 ${esc(a.honours.join(', '))}` : null, a.businesses?.length ? `🏪 ${esc(a.businesses.join(', '))}` : null].filter(Boolean);
+    return `<li class="tree-gen"><div class="tree-head"><b>${esc(a.styled ?? a.name)}</b>${a.spouse ? ` <small>⚭ ${esc(a.spouse)}</small>` : ''}</div>
+      <small class="muted">Generation ${a.generation} · ${a.born}–${a.died} (${a.age}) · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}</small>
+      ${facts.length ? `<div class="tree-facts"><small>${facts.join('<br>')}</small></div>` : ''}${kids}</li>`;
+  }).join('');
+  return card(`Family Tree · Generation ${l.generation}`, `<ol class="family-tree">${gens}<li class="tree-gen tree-you"><div class="tree-head"><b>${esc(state.character.firstName)} ${esc(state.character.lastName)}</b> <small>(you)</small></div></ol><p class="fine">The ${esc(state.character.lastName)} family since ${l.founderYear ?? '—'}. ⬇️ marks the child who carried the line on.</p>`, { icon: '🌳' });
 }
 
 export function peopleView(state) {

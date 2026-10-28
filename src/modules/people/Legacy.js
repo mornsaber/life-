@@ -38,6 +38,9 @@ import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { CROWNS, royalPrefix } from '../world/Crown.js';
 import { peerTitle, RANKS, courtesy } from '../world/Peerage.js';
 import { houseStyle } from '../world/Houses.js';
+import { styledName } from '../world/Honours.js';
+import { degreeLabel } from '../education/Catalog.js';
+import { highestDegree } from '../../core/State.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -252,6 +255,31 @@ export function inheritanceFor(legacy, personId) {
 /* ------------------------------------------------------------------ */
 
 /**
+ * What the family remembers of a life: the high point of a career, service, honours, schooling,
+ * the partner and the children (and which one carried the line on).
+ */
+export function ancestorRecord(old, heirId) {
+  const jobs = [...(old.career?.history ?? []), ...(old.career?.job ? [{ ...old.career.job, employerName: old.career.job.employer?.name }] : [])];
+  const top = jobs.reduce((best, j) => (!best || (j.peakGrade ?? 0) > (best.peakGrade ?? 0) ? j : best), null);
+  const mil = old.military?.history?.at(-1) ?? null;
+  const degree = highestDegree(old);
+  const spouse = (old.people?.list ?? []).filter((p) => ['spouse', 'ex'].includes(p.relation) && p.married !== false).map((p) => `${p.firstName} ${p.lastName ?? ''}`.trim())[0] ?? null;
+  const kids = (old.people?.list ?? []).filter((p) => p.relation === 'child');
+  const styled = styledName(old);
+  return {
+    styled: styled && styled !== `${old.character.firstName} ${old.character.lastName}` ? styled : null,
+    gender: old.character.gender,
+    career: top ? `${top.title}${top.employerName ? `, ${top.employerName}` : ''}` : null,
+    military: mil ? `${mil.rankTitle}${mil.yearsOfService ? ` (${mil.yearsOfService} yrs)` : ''}` : null,
+    honours: [...(old.honors ?? [])].sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0)).slice(0, 3).map((h) => h.name),
+    education: degree ? degreeLabel(degree) : null,
+    spouse,
+    children: kids.map((k) => ({ name: k.firstName, heir: k.id === heirId, alive: k.alive !== false })),
+    country: old.character.countryId ?? 'US',
+  };
+}
+
+/**
  * Build the next generation's state: the chosen child becomes the player,
  * inherits their share (and their 529), and keeps the family — the
  * surviving parent, siblings, and the lineage of everyone before.
@@ -347,6 +375,7 @@ export function buildHeirState(rng, old, childId) {
       name: `${old.character.firstName} ${old.character.lastName}`, born: old.character.birthYear, died: year, age: old.character.age,
       cause: old.character.causeOfDeath, netWorth: legacy.assets - legacy.debts, generation: old.lineage?.generation ?? 1,
       businesses: allBusinesses(old).map((b) => b.name),
+      ...ancestorRecord(old, child.id),
     }],
   };
   addLog(s, `You are ${child.firstName} ${child.lastName}, ${childAge} years old. Your ${old.character.gender === 'female' ? 'mother' : 'father'}, ${old.character.firstName}, has died.`, '🕯️', 'milestone');

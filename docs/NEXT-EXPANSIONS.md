@@ -42,7 +42,15 @@ and UN peacekeeping tours (`military/Peacekeeping.js`).
 9. **Peacekeeping as a career track.** UN blue helmets from any contributing country:
    rotations, the UN medal per mission, and the Dag Hammarskjöld Medal for the fallen.
 
-## Phase 3 — New careers abroad (medium–large)
+## Phase 3 — New careers abroad (medium–large) ✅ done
+
+Built: the Catholic religious orders (`community/ReligiousOrders.js`: the Jesuits' long formation
+to final vows and the priesthood, Opus Dei numeraries and supernumeraries, the Missionaries of
+Charity), the sovereign's guards in eleven monarchies and the Spanish Legion's tercios
+(`military/RoyalGuards.js`), international sport (`career/Sport.js`: caps, the Olympics and World
+Cups with medals as honours, doping bans, federations, the IOC and FIFA Council), the merchant
+navy (`career/Seafaring.js`) and foreign correspondents (`career/Correspondent.js`). Portugal has
+no foreign legion (its forces take nationals only), so it isn't modelled as one.
 
 10. **Spanish and Portuguese foreign legions in depth**, the Moroccan and Jordanian
     royal guards, and the Vatican's foreign missionary orders (Jesuits, Opus Dei,
@@ -54,7 +62,14 @@ and UN peacekeeping tours (`military/Peacekeeping.js`).
 13. **International journalism.** Foreign correspondents posted to war zones, press
     freedom (and arrests) by regime, the Pulitzer and its national equivalents.
 
-## Phase 4 — Systems that touch everything (large)
+## Phase 4 — Systems that touch everything (large) ✅ done
+
+Built: the family tree records each ancestor's career high point, service, schooling, honours,
+partner and children (marking who carried the line on) and draws it on the People tab; a
+`life/Housekeeping.js` pass trims old world, organisation, union and local-ballot history once a
+decade (a long life plateaus near 300 KB, and each generation starts a fresh world); and
+`tests/run.js` runs the suite in parallel, with `--fast` on every push and `--long` (the fuzzers
+and simulations) nightly in `.github/workflows/tests.yml`.
 
 14. **Family trees across generations.** The tree card shows one life; make it a real
     dynasty record that survives "continue as child" for every family, not only titled
@@ -67,6 +82,7 @@ and UN peacekeeping tours (`military/Peacekeeping.js`).
 ## How to work through it
 
 - One phase item per commit, with its own test file or additions to an existing one.
+- `npm test` runs the fast suite; `npm run test:all` runs everything.
 - Run the affected test files plus `tests/abroad.js` for anything touching countries,
   and `tests/milfuzz.js` / `tests/milabroad.js` for anything military.
 - New countries go through `docs/ADDING-A-COUNTRY.md` and `tests/packs.js`.

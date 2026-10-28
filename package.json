@@ -6,7 +6,9 @@
   "private": true,
   "scripts": {
     "start": "node server.js",
-    "test": "node tests/scenarios.js && node tests/simulate.js 150"
+    "test": "node tests/run.js --fast",
+    "test:long": "node tests/run.js --long",
+    "test:all": "node tests/run.js"
   },
   "engines": {
     "node": ">=18"

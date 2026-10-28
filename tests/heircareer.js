@@ -12,6 +12,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { NPC_JOBS } from '../src/modules/people/NpcLives.js';
 import { NPC_CAREERS } from '../src/modules/people/HeirCareer.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
+import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function heirOf(job, { childAge = 35, countryId = 'US', edu = 'bachelor', seed = 5 } = {}) {
@@ -54,6 +55,27 @@ const tests = {
     // Between jobs at 35: they find work their schooling fits.
     const between = heirOf(null).heir;
     assert.ok(between.career.job, 'an adult heir out of school is working');
+  },
+  'the family tree remembers the parent: career, honours, spouse, and which child carried on'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(7), modules: MODULES });
+    const state = engine.newLife({ countryId: 'GB' });
+    state.character.age = 70;
+    state.prompts = [];
+    state.career.history.push({ professionId: 'medical', title: 'Consultant Surgeon', employerName: 'St Thomas\' Hospital', peakGrade: 9, startAge: 30, endAge: 65 });
+    state.honors.push({ id: 'x', name: 'Order of the British Empire (OBE)', prestige: 20 });
+    state.people.list.push({ id: 'sp', firstName: 'Ann', lastName: 'Lee', gender: 'female', relation: 'spouse', ageOffset: 0, alive: true, relationship: 80 });
+    state.people.list.push({ id: 'kid', firstName: 'Sam', lastName: state.character.lastName, gender: 'female', relation: 'child', ageOffset: -30, alive: true, relationship: 80, income: 0, job: 'Nurse', life: { edu: 'bachelor' } });
+    state.people.list.push({ id: 'kid2', firstName: 'Jo', lastName: state.character.lastName, gender: 'male', relation: 'child', ageOffset: -28, alive: true, relationship: 80, income: 0 });
+    engine.context().die('Old age');
+    const heir = engine.continueAsChild('kid');
+    const a = heir.lineage.ancestors.at(-1);
+    assert.match(a.career, /Consultant Surgeon/);
+    assert.ok(a.honours.some((h) => /OBE/.test(h)));
+    assert.equal(a.spouse, 'Ann Lee');
+    assert.deepEqual(a.children.map((k) => [k.name, k.heir]), [['Sam', true], ['Jo', false]]);
+    const html = VIEWS.people(heir, {});
+    assert.match(html, /Family Tree/);
+    assert.match(html, /Consultant Surgeon/);
   },
 };
 
