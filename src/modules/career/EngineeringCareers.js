@@ -187,16 +187,16 @@ export const ENGINEERING_PROJECTS = {
 /** More for civil engineers, who had little to do. */
 export const CIVIL_EXTRA_DECK = [
   D('inspection', '🌉', 'A Bridge Inspection', 'Your inspection finds section loss on a bridge carrying 40,000 cars a day.', [
-    { id: 'close', label: '🚧 Close it now', text: 'Traffic chaos for a month; the repair crew found it worse than you thought.', rep: 10, perf: 3, stress: 4 },
-    { id: 'post', label: '⚖️ Post a weight limit and schedule repairs', check: 50, text: 'The limit held until the repair.', perf: 4, fail: { text: 'An overweight truck ignored the limit. The bridge held, barely; the headlines didn\'t.', perf: -6, rep: -6 } },
+    { id: 'close', label: '🚧 Close it now', text: 'Traffic chaos for a month; the repair crew found it worse than you thought.', rep: 5, perf: 1, stress: 4 },
+    { id: 'post', label: '⚖️ Post a weight limit and schedule repairs', check: 50, text: 'The limit held until the repair.', perf: 1, fail: { text: 'An overweight truck ignored the limit. The bridge held, barely; the headlines didn\'t.', perf: -6, rep: -6 } },
   ]),
   D('hearing', '🎤', 'A Public Hearing', 'Residents are furious about the interchange design that will take their homes.', [
-    { id: 'listen', label: '👂 Redesign around the neighbourhood', check: 55, text: 'You found an alignment that saved forty homes. The residents brought cake to the next meeting.', rep: 8, perf: 4, fail: { text: 'No alignment worked. The meeting got loud.', stress: 6 } },
-    { id: 'defend', label: '📊 Defend the design on the numbers', text: 'The design was approved; the neighbourhood never forgave the department.', perf: 2, rep: -2 },
+    { id: 'listen', label: '👂 Redesign around the neighbourhood', check: 55, text: 'You found an alignment that saved forty homes. The residents brought cake to the next meeting.', rep: 4, perf: 1, fail: { text: 'No alignment worked. The meeting got loud.', stress: 6 } },
+    { id: 'defend', label: '📊 Defend the design on the numbers', text: 'The design was approved; the neighbourhood never forgave the department.', perf: 1, rep: -2 },
   ]),
   D('bid', '📑', 'A Design-Build Bid', 'Your firm can bid on the region\'s biggest transit project. It means months of unpaid work.', [
-    { id: 'bid', label: '📝 Lead the bid', check: 60, text: 'You won it: ten years of work for the firm, and you lead the design.', perf: 10, rep: 8, stress: 6, fail: { text: 'Second place. A very expensive second place.', perf: -2, stress: 5 } },
-    { id: 'skip', label: '🙅 Pass', text: 'A competitor won it.', perf: 0 },
+    { id: 'bid', label: '📝 Lead the bid', check: 60, text: 'You won it: ten years of work for the firm, and you lead the design.', perf: 3, rep: 4, stress: 6, fail: { text: 'Second place. A very expensive second place.', perf: -2, stress: 5 } },
+    { id: 'skip', label: '🙅 Pass', text: 'A competitor won it.', perf: 1 },
   ]),
 ];
 

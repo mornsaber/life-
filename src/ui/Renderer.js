@@ -50,6 +50,7 @@ import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
 import { gradePrefix } from '../modules/career/PayGrades.js';
 import { fameSummary } from '../modules/life/Fame.js';
+import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -130,6 +131,25 @@ function fameCard(state) {
     <p class="fine">Fame brings endorsements, talk shows and book deals — and paparazzi, stalkers and scandals that follow you into office, business and your audience.</p>`, { icon: '⭐', accent: 'yellow' });
 }
 
+/** Retirement: how you spend the years, the bucket list, where you live. */
+function retirementLifeCard(state) {
+  const s = retirementLifeSummary(state);
+  if (!s) return '';
+  const rhythms = Object.entries(s.rhythms).map(([id, r]) => button(r.label, 'retirementLife.rhythm', { arg: id, variant: s.r.rhythm === id ? 'small on' : 'small', disabled: r.needsGrandkids && !s.grandkids, hint: `${r.desc}${r.cost ? ` (~$${r.cost.toLocaleString()}/yr)` : ''}` })).join('');
+  const bucket = Object.entries(s.bucket).map(([id, b]) => {
+    const done = s.r.bucket[id];
+    return button(`${b.label}${done != null ? ` ✓ ${done}` : ''}`, 'retirementLife.bucket', { arg: id, variant: done != null ? 'tiny on' : 'tiny', disabled: done != null || s.bucketThisYear, hint: b.cost ? `$${b.cost.toLocaleString()}` : 'Free' });
+  }).join('');
+  return card('Retirement', `
+    <h4 class="sub">How you spend the year</h4><div class="toggle-row">${rhythms}</div>
+    <h4 class="sub">Bucket list <small class="muted">(one a year)</small></h4><div class="toggle-row">${bucket}</div>
+    <h4 class="sub">Where you live</h4><div class="toggle-row">
+      ${button(s.r.community ? '🏠 Leave the retirement community' : `🏡 Move into a retirement community (~$${s.communityFee.toLocaleString()}/yr)`, 'retirementLife.community', { variant: 'small' })}
+      ${s.grandkids ? button('👨‍👩‍👧 Move near the grandchildren', 'retirementLife.nearFamily', { variant: 'small', hint: '~$8,000' }) : ''}
+    </div>
+    <p class="fine">Hobbies, volunteering and part-time work keep the mind sharp.</p>`, { icon: '🌅', accent: 'green' });
+}
+
 export const VIEWS = {
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
@@ -178,7 +198,7 @@ export const VIEWS = {
     const heatPanel = crime ? `${meter(heat, { max: 100, label: '🚨 Heat', suffix: '/100', tone: heat >= TASK_FORCE_HEAT ? 'bad' : heat >= 35 ? 'mid' : 'good' })}
       <p class="fine">Heat makes arrests likelier and old cases resurface; above ${TASK_FORCE_HEAT} a task force builds cases against you. It fades each year — faster if you lay low.${crime.earned ? ` Criminal earnings: $${Math.round(crime.earned).toLocaleString()}.` : ''}</p>
       <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: crime.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}</div>` : '';
-    return `${fameCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${retirementLifeCard(state)}${fameCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}${underworldCard(state)}`;
   },
   honors(state) {

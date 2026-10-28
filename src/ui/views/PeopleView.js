@@ -47,6 +47,7 @@ function planSection(state) {
     ${gifts ? `<h4 class="sub">Lifetime gifts (${money(ex)} per person per year is tax-free)</h4><ul class="history">${gifts}</ul>` : ''}`;
 }
 import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, POA_COST, GUARDIANSHIP_COST } from '../../modules/people/ElderCare.js';
+import { petsOf, SPECIES } from '../../modules/people/Pets.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
@@ -314,6 +315,20 @@ function lineage(state) {
   return card(`Family Tree · Generation ${l.generation}`, `<ol class="family-tree">${gens}<li class="tree-gen tree-you"><div class="tree-head"><b>${esc(state.character.firstName)} ${esc(state.character.lastName)}</b> <small>(you)</small></div></ol><p class="fine">The ${esc(state.character.lastName)} family since ${l.founderYear ?? '—'}. ⬇️ marks the child who carried the line on.</p>`, { icon: '🌳' });
 }
 
+/** Pets: who lives with you, and getting another. */
+function petsCard(state) {
+  const list = petsOf(state);
+  const rows = list.map((p) => {
+    const s = SPECIES[p.species];
+    return `<li class="fund-row"><span><b>${s.icon} ${esc(p.name)}</b> <small>${esc(p.breed)} · age ${p.age} · bond ${p.bond}${p.adopted ? ' · rescue' : ''}</small></span>${button('Play', 'pets.play', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`pets.play.${p.id}`]) })}${button('Rehome', 'pets.rehome', { arg: p.id, variant: 'tiny ghost' })}</li>`;
+  }).join('');
+  const get = Object.entries(SPECIES).map(([id, s]) => `${button(`${s.icon} Adopt a ${s.label.toLowerCase()}`, 'pets.get', { arg: `${id}:adopt`, variant: 'tiny', hint: `Shelter fee ~$${s.adopt.toLocaleString()} · ~$${s.cost.toLocaleString()}/yr${s.rural ? ' · needs land or a livery yard' : ''}` })}${button('Breeder', 'pets.get', { arg: `${id}:buy`, variant: 'tiny ghost', hint: `~$${s.buy.toLocaleString()}` })}`).join('');
+  const past = (state.petsPast ?? []).slice(-4).map((p) => `${SPECIES[p.species]?.icon ?? ''} ${esc(p.name)} (${p.age})`).join(' · ');
+  return card('Pets', `${list.length ? `<ul class="funds">${rows}</ul>` : '<p class="muted">No animals at home.</p>'}
+    <div class="toggle-row">${get}</div>
+    ${past ? `<p class="fine">Remembered: ${past}</p>` : ''}`, { icon: '🐾' });
+}
+
 export function peopleView(state) {
   if (!state.people) return '';
   const all = people(state);
@@ -325,6 +340,7 @@ export function peopleView(state) {
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${group('Family', '🏡', family, state)}
     ${elderCareCard(state)}
+    ${petsCard(state)}
     ${friendsCard(state, by('friend').filter((p) => p.alive))}
     ${group('Exes', '💔', by('ex'), state)}
     ${dynastyCard(state)}
