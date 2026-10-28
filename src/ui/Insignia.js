@@ -63,51 +63,100 @@ export function militaryInsignia(code, nation = null) {
   return [bars(1, GOLD), bars(1, SILVER), bars(2, SILVER), leaf(GOLD), leaf(SILVER), eagle(), stars(1), stars(2), stars(3), stars(4), stars(5, GOLD)][Math.max(0, g - 1)] ?? stars(5, GOLD);
 }
 
-/* --- police and fire ------------------------------------------------ */
-const UK_STYLE = ['GB', 'IE', 'AU', 'NZ', 'SG', 'MY', 'IN', 'HK'];
+/* --- civilian uniformed services ------------------------------------ */
+/*
+ * A uniformed career's insignia comes from its rank (the level id, the same in every country),
+ * not its translated title, and is drawn in the country's style:
+ *   us       chevrons, bars, oak leaves, the eagle, stars (police, sheriffs, corrections, EMS, wardens)
+ *   uk       chevrons, pips and crowns, crossed tipstaves for chief officers (Commonwealth police)
+ *   galons   stripes on the shoulder (France, Italy, Spain, Belgium, Portugal, Latin America)
+ *   fire     bugles everywhere
+ *   stripes  sleeve or shoulder stripes for ship's officers and pilots
+ */
+const UK_STYLE = ['GB', 'IE', 'AU', 'NZ', 'SG', 'MY', 'IN', 'HK', 'CA', 'PK', 'KE', 'NG', 'GH', 'ZA'];
+const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO', 'PE', 'CL', 'VA', 'CH'];
 
-/** Insignia from a uniformed job's title (police, sheriff, corrections, fire, EMS). */
-export function serviceInsignia(title, kind, country = 'US') {
-  const t = (title ?? '').toLowerCase();
-  if (kind === 'fire') {
-    if (/\bchief\b/.test(t) && !/battalion|deputy|assistant|division/.test(t)) return bugles(5, true);
-    if (/deputy|assistant|division/.test(t) && /chief/.test(t)) return bugles(4, true);
-    if (/battalion|district chief|station commander|group manager/.test(t)) return bugles(2, true);
-    if (/captain|watch manager|crew manager/.test(t)) return bugles(2);
-    if (/lieutenant|sub-officer|leading/.test(t)) return bugles(1);
-    if (/engineer|driver|senior firefighter/.test(t)) return chevrons(2, 0, '', '#c8102e');
-    return '';
-  }
-  // Police, sheriffs, corrections and the like.
-  if (UK_STYLE.includes(country)) {
-    if (/chief constable|commissioner/.test(t)) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`);
-    if (/deputy chief|assistant chief|commander/.test(t)) return swordBaton();
-    if (/chief superintendent/.test(t)) return pips(1, true, SILVER);
-    if (/superintendent/.test(t)) return pips(0, true, SILVER);
-    if (/chief inspector/.test(t)) return pips(3, false, SILVER);
-    if (/inspector/.test(t)) return pips(2, false, SILVER);
-    if (/sergeant/.test(t)) return chevrons(3, 0, '', SILVER);
-    return '';
-  }
-  if (/^chief|sheriff$|^sheriff|commissioner|superintendent/.test(t) && !/deputy|assistant/.test(t)) return stars(4, GOLD);
-  if (/deputy chief|undersheriff|assistant chief|deputy commissioner/.test(t)) return stars(2, GOLD);
-  if (/inspector|commander/.test(t)) return stars(1, GOLD);
-  if (/colonel/.test(t)) return eagle();
-  if (/major/.test(t)) return leaf(GOLD);
-  if (/captain|warden/.test(t)) return bars(2, GOLD);
-  if (/lieutenant/.test(t)) return bars(1, GOLD);
-  if (/sergeant/.test(t)) return chevrons(3, 0, '', SILVER);
-  if (/corporal/.test(t)) return chevrons(2, 0, '', SILVER);
-  return '';
-}
+/** A row of shoulder stripes (galons, or a pilot's / ship's officer's bars). */
+const galons = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${6 + i * 5}" width="24" height="3" rx="1" fill="${i === 1 && n === 5 ? SILVER : color}"/>`).join(''));
+const sleeve = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="4" y="${26 - i * 6}" width="26" height="3.4" rx="1" fill="${color}"/>`).join(''));
 
-const POLICE_LIKE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'privatePolice', 'borderPatrol', 'corrections', 'jail', 'federalPrisons', 'privatePrisons', 'gameWarden', 'parkService', 'vaticanGendarmerie', 'gurkhaContingent'];
-const FIRE_LIKE = ['fire', 'airportFire', 'stateFire', 'privateFire', 'ems', 'privateEms'];
-
-/** Insignia for a civilian job, if its people wear rank (null otherwise). */
-export function jobInsignia(job, profession, country = 'US') {
-  const key = profession?.template ?? profession?.id ?? job?.professionId;
-  if (POLICE_LIKE.includes(key) || /police/.test(key ?? '')) return serviceInsignia(job.title, 'police', country) || null;
-  if (FIRE_LIKE.includes(key) || /fire/.test(key ?? '')) return serviceInsignia(job.title, 'fire', country) || null;
+/** Rank keys: sgt, ssgt (senior NCO), lt, capt, major, col, 1star…4star; fire: f1…f5. */
+const CMD = (id) => { const m = /_cmd(\d)$/.exec(id); return m ? Number(m[1]) : 0; };
+const TOP = /^(chief|superintendent|undersheriff|administrator|director|regional|usMarshal|chiefPatrol|fsd)$/;
+function policeRank(id, key) {
+  if (/^(sergeant|detSergeant|corporalSergeant)$/.test(id)) return 'sgt';
+  if (/^(lieutenant|detLieutenant|supervisory)$/.test(id)) return 'lt';
+  if (/^(captain|detCaptain|chiefOfSecurity|watch)$/.test(id)) return 'capt';
+  if (/^(major|commander|deputyWarden|associateWarden|pail)$/.test(id)) return 'major';
+  if (id === 'warden' && key !== 'gameWarden') return 'col';
+  if (id === 'deputyChief') return '1star';
+  const c = CMD(id);
+  if (c) return ['major', 'col', '2star', '3star'][c - 1];
+  if (TOP.test(id)) return '4star';
   return null;
 }
+function fireRank(id) {
+  if (/^(lieutenant|helitack)$/.test(id)) return 'f1';
+  if (/^(captain|siteChief)$/.test(id)) return 'f2';
+  if (/^(battalion|division)$/.test(id)) return 'f2x';
+  if (/^(deputyChief|unitChief)$/.test(id)) return 'f3';
+  const c = CMD(id);
+  if (c) return c >= 2 ? 'f4' : 'f3';
+  if (/^(chief|director)$/.test(id)) return 'f5';
+  return null;
+}
+function emsRank(id) {
+  if (id === 'supervisor') return 'lt';
+  if (id === 'captain' || id === 'manager') return 'capt';
+  if (id === 'deputy') return '1star';
+  const c = CMD(id);
+  if (c) return ['col', '2star', '3star'][c - 1] ?? '3star';
+  if (id === 'chief' || id === 'director') return '4star';
+  return null;
+}
+const US_DRAW = { sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
+const UK_DRAW = { sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`) };
+const GALON_DRAW = { sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
+const FIRE_DRAW = { f1: () => bugles(1), f2: () => bugles(2), f2x: () => bugles(2, true), f3: () => bugles(3, true), f4: () => bugles(4, true), f5: () => bugles(5, true) };
+const draw = (rank, cc) => {
+  if (!rank) return '';
+  const table = UK_STYLE.includes(cc) ? UK_DRAW : GALONS.includes(cc) ? GALON_DRAW : US_DRAW;
+  return (table[rank] ?? US_DRAW[rank])?.() ?? '';
+};
+
+const POLICE_LIKE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'privatePolice', 'borderPatrol', 'corrections', 'jail', 'federalPrisons', 'privatePrisons', 'gameWarden'];
+const FIRE_LIKE = ['fire', 'airportFire', 'stateFire', 'privateFire'];
+const EMS_LIKE = ['ems', 'privateEms'];
+/** Officers' stripes at sea and in the air (deck and engine; first officers and captains). */
+const STRIPES = {
+  merchantMarine: { thirdMate: 1, thirdAE: 1, firstAE: 3, chiefMate: 3, chiefEngineer: 4, master: 4, portCaptain: 4 },
+  cruise: { asstCd: 2, cruiseDirector: 3, hotelDirector: 4, vpHotelOps: 4, maitred: 2 },
+  aviation: { cfi: 2, fo: 3, majorFo: 3, captain: 4, majorCaptain: 4, widebodyCaptain: 4, checkAirman: 4, chiefPilot: 4, dfo: 4 },
+  charterAviation: { charterFo: 3, cargoFo: 3, charterCaptain: 4, cargoCaptain: 4, corporatePilot: 4, leadPilot: 4, flightDeptManager: 4 },
+  tsa: { officer: 2, lead: 3, bdo: 3, inspector: 3, supervisor: 4, manager: 4 },
+};
+/** Ranks of the Vatican's and Singapore's own services, and the Swiss Guard. */
+const OWN = {
+  vaticanGendarmerie: { viceBrigadier: 'sgt', brigadier: 'ssgt', inspector: 'lt', viceCommissioner: 'capt', commissioner: 'major', commandant: 'col' },
+  swissGuard: { viceCorporal: () => chevrons(1), corporal: () => chevrons(2), sergeant: () => chevrons(3), sergeantMajor: () => chevrons(3, 1), lieutenant: () => galons(2), captain: () => galons(3), ltColonel: () => galons(4), commandant: () => galons(5) },
+  gurkhaContingent: { corporal: () => chevrons(2, 0, '', SILVER), sergeant: () => chevrons(3, 0, '', SILVER), staffSergeant: () => chevrons(3, 0, 'star', SILVER), seniorStaffSergeant: () => chevrons(3, 1, 'star', SILVER), stationInspector: () => pips(2, false, SILVER), asp: () => pips(3, false, SILVER), dsp: () => pips(0, true, SILVER) },
+  privateSecurity: { supervisor: () => chevrons(3, 0, '', SILVER), siteManager: () => bars(2, SILVER) },
+};
+
+/** Insignia for a job, if its people wear rank (null otherwise). */
+export function jobInsignia(job, profession, country = 'US') {
+  const key = profession?.template ?? profession?.id ?? job?.professionId;
+  const id = job?.levelId;
+  if (!key || !id) return null;
+  const own = OWN[key]?.[id];
+  if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
+  if (OWN[key]) return null;
+  if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], key === 'tsa' ? SILVER : GOLD) : null;
+  if (POLICE_LIKE.includes(key)) return draw(policeRank(id, key), country) || null;
+  if (FIRE_LIKE.includes(key)) return fireRank(id) ? FIRE_DRAW[fireRank(id)]() : null;
+  if (EMS_LIKE.includes(key)) return draw(emsRank(id), country) || null;
+  return null;
+}
+
+/** For the insignia sheet: a rank key drawn in a country's style. */
+export const rankInsignia = (rank, cc = 'US') => (rank?.startsWith('f') ? FIRE_DRAW[rank]?.() ?? '' : draw(rank, cc));
