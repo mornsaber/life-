@@ -25,6 +25,9 @@ import { ISSUES, ISSUE_IDS, platformView, ideology, ideologyLabel, credibility, 
 import { electorateOf, generalShare, primaryShare, nextElectionYear, FILING_WINDOW, outsideCalendar, opponentLabel, isPartisan } from '../../modules/politics/Elections.js';
 import { partyName } from '../../modules/politics/Parties.js';
 import { currentYear } from '../../core/State.js';
+import { ministryOf, DEPTS } from '../../modules/politics/Ministers.js';
+import { statesman, invitations, relationsWith } from '../../modules/politics/StateVisits.js';
+import { COUNTRIES } from '../../modules/world/Countries.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -86,6 +89,23 @@ function styleNote(state) {
   return `<p>${chip(`🎩 ${[s.excellency, s.prefix].filter(Boolean).join(' · ')}`, 'gold')} <small class="fine">${s.prefix ? `${esc(s.prefix)} as ${esc(s.why)}${/^former/.test(s.why ?? '') ? ', for life' : ''}.` : ''}${s.excellency ? ' "Excellency" while you serve.' : ''}</small></p>`;
 }
 
+/** A ministry, and the world stage: state visits abroad and relations. */
+function worldStageCard(state) {
+  const m = ministryOf(state);
+  const who = statesman(state);
+  const past = state.politics.ministries ?? [];
+  if (!m && !who && !past.length && !(state.diplomacy?.visits?.length)) return '';
+  const inv = who ? invitations(state) : [];
+  const used = Boolean(state.yearly['stateVisits.go']);
+  const visits = (state.diplomacy?.visits ?? []).slice(-5).map((v) => `${COUNTRIES[v.cc]?.flag ?? ''} ${esc(COUNTRIES[v.cc]?.name ?? v.cc)} (${v.age}${v.outcome === 'gaffe' ? ', a gaffe' : v.outcome === 'triumph' ? ', a triumph' : ''})`).join(' · ');
+  return card(m ? `${DEPTS[m.dept].icon} ${esc(m.title)}` : 'The World Stage', `
+    ${m ? `${kv([['Since', `age ${m.since}`], ['Rank', m.rank === 'cabinet' ? 'Cabinet' : 'Junior minister'], m.residence ? ['Residence', esc(m.residence)] : null])}
+      <div class="toggle-row">${button('📑 Push your department\'s big idea', 'ministers.initiative', { variant: 'small', disabled: Boolean(state.yearly['ministers.initiative']), hint: 'Once a year: a name-maker or a U-turn' })}${button('🚪 Resign on principle', 'ministers.resign', { variant: 'small ghost' })}</div>` : ''}
+    ${who ? `<h4 class="sub">Visits abroad <small class="muted">(one a year)</small></h4><div class="toggle-row">${inv.map((cc) => button(`${COUNTRIES[cc].flag} ${esc(COUNTRIES[cc].name)}`, 'stateVisits.go', { arg: cc, variant: 'small', disabled: used, hint: `Relations ${relationsWith(state, cc) > 0 ? '+' : ''}${relationsWith(state, cc)}` })).join('')}</div>` : ''}
+    ${visits ? `<p class="fine">Recent visits: ${visits}</p>` : ''}
+    ${past.length ? `<p class="fine">Former posts: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🌐', accent: 'cyan' });
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -126,7 +146,7 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${worldStageCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
     ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}

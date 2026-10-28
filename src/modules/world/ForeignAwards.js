@@ -59,7 +59,7 @@ function suitors(state) {
 }
 
 /** A foreign state's order, at a grade matching your standing (one award per country, raised later if earned). */
-function awardForeign(ctx, s) {
+export function awardForeign(ctx, s) {
   const { state } = ctx;
   const tiers = ORDERS[s.cc].tiers.filter((t) => !t.peer && !t.knighthood);
   if (!tiers.length) return false;

@@ -242,7 +242,7 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
     if (state.character.age > 23) return { ok: false, reason: 'Academies admit ages 17–23' };
     if (hasFelony(state) || state.education.degrees.some((d) => d.type === 'bachelor')) return { ok: false, reason: 'Not eligible for an academy appointment' };
     if (state.stats.fitness < 55 || state.stats.health < 50) return { ok: false, reason: 'Fails the candidate fitness assessment' };
-    if (!state.campus?.nomination) return { ok: false, reason: 'Needs a congressional nomination' };
+    if (!state.campus?.nomination) return { ok: false, reason: (state.character.countryId ?? 'US') === 'US' ? 'Needs a congressional nomination' : 'Pass the entrance selection first' };
   }
   for (const h of ADMISSION_HOOKS) {
     const reason = h.eligibility?.(state, programId, schoolId);

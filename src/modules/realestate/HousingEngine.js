@@ -25,12 +25,14 @@ import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
 import { regionsInState } from '../life/Regions.js';
+import { officialResidence } from '../world/Residences.js';
 import { aidName } from '../life/Disasters.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
   military: { label: 'Military housing', icon: '🪖' },
   employerProvided: { label: 'Employer-provided housing', icon: '🏕️' },
+  official: { label: 'Official residence', icon: '🏛️' },
   owner: { label: 'Homeowner', icon: '🏡' },
   renting: { label: 'Renting', icon: '🔑' },
   dorm: { label: 'Campus housing', icon: '🛏️' },
@@ -44,6 +46,7 @@ export function primaryHome(state) {
 
 export function housingStatus(state) {
   if (state.legal.incarceration) return 'incarcerated';
+  if (officialResidence(state)) return 'official';
   if (isOnActiveDuty(state)) return 'military';
   if (hasHousingBenefit(state)) return 'employerProvided';
   if (primaryHome(state)) return 'owner';
@@ -344,8 +347,11 @@ export const HousingEngine = {
     });
     // An international posting: the lease at home goes, a house you own is let (or kept, or sold),
     // and at the duty station you rent locally — or the organisation houses you.
-    bus.on('housing:posted', ({ ctx, regionId }) => {
+    bus.on('housing:posted', ({ ctx, regionId: rid }) => {
       const { state } = ctx;
+      // A duty station without a mapped region (New York, Washington, Luxembourg): find it by name, else price it like a capital.
+      const place = state.character.posting?.place ?? '';
+      const regionId = REGIONS[rid] ? rid : Object.keys(REGIONS).find((id) => place && REGIONS[id].name?.startsWith(place.split(',')[0])) ?? (place ? state.character.regionId : rid);
       const h = state.housing;
       if (h.rental) endLease(ctx, h.rental.posted ? null : 'You gave up your lease at home for the posting.', { fee: !h.rental.posted });
       h.withParents = false;
@@ -362,11 +368,15 @@ export const HousingEngine = {
         if (postedHousing(state) === 'provided') ctx.log('The organisation houses you at the duty station: no rent to pay.', '🏠', 'info');
         return;
       }
-      const rent = tierRent(state, 'apartment', regionId);
+      // Senior international staff (and anyone with a family) rent a house; the organisation's rental
+      // subsidy runs for seven years at a duty station.
+      const senior = (state.career.job?.grade ?? 0) >= 7 || (state.people?.list ?? []).some((p) => p.alive !== false && ['spouse', 'child'].includes(p.relation));
+      const tier = senior ? 'house' : 'apartment';
+      const rent = tierRent(state, tier, regionId);
       ctx.spend(rent * 2, 'Security deposit + first month', { allowDebt: true });
-      h.rental = { tier: 'apartment', rent, leaseYearsLeft: 1, regionId, posted: true, subsidyUntil: state.character.age + 3 };
+      h.rental = { tier, rent, leaseYearsLeft: 1, regionId, posted: true, subsidyUntil: state.character.age + 7 };
       h.homelessYears = 0;
-      ctx.log(`You rented an apartment in ${REGIONS[regionId].name} for $${rent.toLocaleString()}/mo. The organisation's rental subsidy covers 40% for your first three years.`, '🏢');
+      ctx.log(`You rented ${senior ? 'a house' : 'an apartment'} in ${REGIONS[regionId].name} for $${rent.toLocaleString()}/mo. The organisation's rental subsidy covers 40% for up to seven years.`, senior ? '🏡' : '🏢');
     });
     // Home again: the duty-station lease ends; you move back into your own house, or find a place.
     bus.on('housing:postingEnded', ({ ctx }) => {
@@ -402,7 +412,7 @@ export const HousingEngine = {
 
     // Housing provided by the military or an employer replaces your lease.
     const status = housingStatus(state);
-    if (h.rental && (status === 'military' || status === 'employerProvided')) endLease(ctx, 'You gave up your lease for provided housing.', { fee: false });
+    if (h.rental && ['military', 'employerProvided', 'official'].includes(status)) endLease(ctx, 'You gave up your lease for provided housing.', { fee: false });
 
     // Rent
     if (h.rental && status === 'renting') {
@@ -410,7 +420,8 @@ export const HousingEngine = {
       // An international organisation's rental subsidy, for a newcomer's first years at a duty station.
       const subsidised = h.rental.posted && age < (h.rental.subsidyUntil ?? 0);
       const annual = Math.round(h.rental.rent * 12 * (subsidised ? 0.6 : 1));
-      if (canCover(state, annual)) {
+      // A duty-station lease is the organisation's arrangement: you pay it from salary, never downsized to a shared room.
+      if (canCover(state, annual) || h.rental.posted) {
         ctx.spend(annual, subsidised ? 'Rent (after the rental subsidy)' : 'Rent', { allowDebt: true });
         h.credit.onTime += 1;
         h.rental.leaseYearsLeft = 1;
@@ -466,7 +477,7 @@ export const HousingEngine = {
       if (!RENT_TIERS[tier] || RENT_TIERS[tier].subsidized) return;
       if (state.character.age < 18) return ctx.toast('You need to be 18 to sign a lease.', 'warn');
       if (primaryHome(state)) return ctx.toast('You own a home here.', 'warn');
-      if (['military', 'employerProvided', 'incarcerated'].includes(housingStatus(state))) return ctx.toast('Your housing is provided.', 'warn');
+      if (['military', 'employerProvided', 'official', 'incarcerated'].includes(housingStatus(state))) return ctx.toast('Your housing is provided.', 'warn');
       const recentEviction = state.housing.credit.events.some((e) => e.type === 'eviction' && state.character.age - e.age < 3);
       if (recentEviction && ctx.rng.chance(0.6)) return ctx.toast('The landlord saw your eviction record and passed.', 'bad');
       if (state.housing.credit.score < 560 && tier === 'house') return ctx.toast('Landlords want a 560+ credit score for a house.', 'warn');

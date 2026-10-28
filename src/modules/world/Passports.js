@@ -16,6 +16,7 @@
  */
 import { COUNTRIES, citizenshipsOf } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
+import { wasForeignMinister } from '../politics/Ministers.js';
 
 const nationalOffice = (o) => o && (OFFICES[o.id]?.level ?? 0) >= 4 && OFFICES[o.id]?.statewide !== false;
 
@@ -41,6 +42,14 @@ export function servicePassports(state) {
   if (o && (OFFICES[o.id]?.level ?? 0) >= 5) add('diplomatic', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
   if (o && /cabinet|_gg$|_lg$|au_governor/.test(o.id)) add('diplomatic', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
   if (r && (r.reigning || (r.working && r.line != null && r.line <= 4))) add('diplomatic', cc, r.reigning ? 'the sovereign' : 'royal duties');
+  // For life: former heads of state and government, former foreign ministers, a former monarch, an emeritus pope.
+  for (const h of state.politics?.history ?? []) {
+    const def = OFFICES[h.officeId];
+    if (def && ((def.level ?? 0) >= 5 && (def.leader || def.headOfState || def.ceremonial || h.officeId === 'president' || h.officeId === 'vicePresident'))) add('diplomatic', def.country ?? cc, `former ${def.name} (for life)`);
+  }
+  if (wasForeignMinister(state)) add('diplomatic', cc, 'a foreign minister, past or present');
+  if (r?.abdicated || state.character.formerRoyal?.reigned) add('diplomatic', r?.crownId ?? cc, 'a former sovereign (for life)');
+  if (hs?.emeritus) add('diplomatic', 'HS', 'Pope Emeritus');
   if (!out.some((p) => p.kind === 'diplomatic' && !['SMOM', 'HS'].includes(p.country))) {
     if (o && nationalOffice(o) && (OFFICES[o.id]?.kind === 'legislative' || o.id.startsWith('us'))) add('official', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
     if ((job?.posting && !intlJob) || state.character.posting?.kind === 'secondment' || state.character.posting?.kind === 'mission') add('official', cc, job?.posting ? `posted to ${job.posting.city}` : 'secondment abroad');

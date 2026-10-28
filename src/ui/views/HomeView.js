@@ -4,6 +4,7 @@
  */
 import { esc, money, button, card, chip, meter, kv, empty } from '../Components.js';
 import { REGIONS } from '../../modules/life/Regions.js';
+import { officialResidence } from '../../modules/world/Residences.js';
 import {
   housingStatus, primaryHome, STATUS_LABEL, PROPERTY_TYPES, RENT_TIERS, tierRent, sellingCostRate, LOAN_TYPES, quote, creditBand, helocLimit,
   RENOVATIONS, carryingCosts, rentableUnits, diyFactor, marketRent, loansFor, expectedNoi, isLand, isResidential, ZONING, buildQuote, demolitionQuote,
@@ -27,7 +28,7 @@ function residence(state) {
   const rentRows = Object.entries(RENT_TIERS).filter(([, t]) => !t.subsidized).map(([id, t]) => {
     const current = h.rental?.tier === id;
     return `<li class="region-row ${current ? 'here' : ''}"><span>${t.icon} <b>${t.name}</b></span><small>${money(tierRent(state, id, regionId))}/mo · deposit ${money(tierRent(state, id, regionId) * 2)}</small>
-      ${current ? chip('Your lease', 'good') : button('Rent', 'housing.rent', { arg: id, variant: 'tiny', disabled: state.character.age < 18 || ['owner', 'military', 'employerProvided', 'incarcerated'].includes(status) })}</li>`;
+      ${current ? chip('Your lease', 'good') : button('Rent', 'housing.rent', { arg: id, variant: 'tiny', disabled: state.character.age < 18 || ['owner', 'military', 'employerProvided', 'official', 'incarcerated'].includes(status) })}</li>`;
   }).join('');
   return card('Where You Live', `
     <p class="big-status">${s.icon} <b>${s.label}</b> · ${esc(REGIONS[regionId].name)}</p>
@@ -35,6 +36,7 @@ function residence(state) {
     ${status === 'homeless' ? `<p class="why">You've been homeless ${h.homelessYears} yr. Health, happiness and job performance suffer every year.</p>` : ''}
     ${status === 'military' ? '<p class="fine">Barracks or base housing — no rent while on active duty.</p>' : ''}
     ${status === 'employerProvided' ? '<p class="fine">Your employer provides housing (park quarters / embassy residence).</p>' : ''}
+    ${status === 'official' ? `<p class="fine">${officialResidence(state).icon} You live at ${esc(officialResidence(state).name)}, provided by ${esc(officialResidence(state).by)}: no rent, no mortgage, staff and security. Your own home waits for you.</p>` : ''}
     <h4 class="sub">Rentals in ${esc(REGIONS[regionId].name)}</h4><ul class="history">${rentRows}</ul>
     <div class="row-end">${button('🛋️ Move in with parents', 'housing.moveInWithParents', { variant: 'small ghost', disabled: status === 'parents' || state.character.age >= 45 })}</div>`, { icon: '🏠', accent: 'cyan' });
 }

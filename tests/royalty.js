@@ -385,7 +385,7 @@ const tests = {
     assert.ok(state.character.lastName.endsWith('-Zed'));
   },
   'the tombstone carries titles, offices and honours'() {
-    const { engine, state } = life({ difficulty: 'royal', royalLevel: 'heir' }, 24);
+    const { engine, state } = life({ difficulty: 'royal', royalLevel: 'heir' }, 25);
     year(engine, state, 30);
     state.prompts = [];
     const c = state.world.crowns[state.royal.crownId];

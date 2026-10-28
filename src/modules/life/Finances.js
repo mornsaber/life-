@@ -22,6 +22,7 @@ import { itemizedDeductions, standardDeduction, carryUnpaidTax } from './Taxes.j
 import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
 import { knob } from '../../core/Difficulty.js';
+import { officialResidence } from '../world/Residences.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 export const CHILD_TAX_CREDIT = 2000;
@@ -52,7 +53,7 @@ export function hasHousingBenefit(state) {
   // Asylum seekers live in reception housing while their claim is pending.
   const asylum = state.migration?.residences?.[state.character.countryId ?? 'US']?.status === 'asylum';
   return Boolean(job?.employer.benefits.housing || job?.posting?.housing || state.service?.program?.id === 'peaceCorps' || asylum || state.migration?.assignment
-    || postedHousing(state) === 'provided' || state.holySee?.pope || state.holySee?.emeritus || state.foreignForces?.puyloubier || state.community?.religious?.housed);
+    || postedHousing(state) === 'provided' || Boolean(officialResidence(state)) || state.holySee?.pope || state.holySee?.emeritus || state.foreignForces?.puyloubier || state.community?.religious?.housed);
 }
 
 /** Salary, pensions and Social Security: the income people set their lifestyle by. */

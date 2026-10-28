@@ -91,7 +91,7 @@ export function academyCard(state) {
   const abroad = (state.character.countryId ?? 'US') !== 'US';
   const steps = [
     check(age >= 17, 'Age 17–23 (apply senior year or later)'),
-    check(hasDiploma(state), 'High-school diploma or GED'),
+    check(hasDiploma(state), abroad ? 'School-leaving qualifications' : 'High-school diploma or GED'),
     check(nominated, abroad ? `Entrance selection: written exam and interview ${nominated ? '' : '(from 16; grades, activities and fitness help)'}` : `Congressional nomination ${nominated ? '' : '(apply from 16; JROTC, activities, GPA and military prep schools help)'}`),
     check(state.stats.fitness >= 55 && state.stats.health >= 50, `Candidate fitness assessment (fitness 55+, health 50+ — you: ${state.stats.fitness}/${state.stats.health})`),
     check(!hasFelony(state), 'Clean record'),
@@ -106,7 +106,7 @@ export function academyCard(state) {
     <div class="enroll-form" data-collect-root>
       <input type="hidden" data-part="program" value="bachelor"><input type="hidden" data-part="school" value="academy">
       ${select('major', majors)}<input type="hidden" data-part="pace" value="full">
-      ${button(`Apply for an appointment${eligible.ok ? ` · ${odds}% odds` : ''}`, 'education.enroll', { variant: 'small primary', collect: true, disabled: !eligible.ok, hint: eligible.ok ? '' : eligible.reason })}
+      ${button(`${abroad ? 'Apply for a place' : 'Apply for an appointment'}${eligible.ok ? ` · ${odds}% odds` : ''}`, 'education.enroll', { variant: 'small primary', collect: true, disabled: !eligible.ok, hint: eligible.ok ? '' : eligible.reason })}
     </div>`, { icon: '⚓', accent: 'blue' });
 }
 

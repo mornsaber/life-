@@ -50,6 +50,7 @@ import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
 import { gradePrefix } from '../modules/career/PayGrades.js';
 import { fameSummary } from '../modules/life/Fame.js';
+import { officialResidence } from '../modules/world/Residences.js';
 import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
@@ -436,9 +437,14 @@ export class Renderer {
     }
     if (state.politics.office) parts.push(`🗳️ ${state.politics.office.id === 'governor' ? 'Governor' : state.politics.office.id}`.replace('cityCouncil', 'City Council').replace('stateRep', 'State Rep').replace('stateSenator', 'State Senator').replace('usRep', 'U.S. Rep').replace('usSenator', 'U.S. Senator').replace('mayor', 'Mayor').replace('judge', 'Judge'));
     if (state.career.emeritus && !job) parts.push(`🎓 ${state.career.emeritus.title}`);
+    // The Crown is a role, not unemployment.
+    const r = state.royal;
+    if (!parts.length && r && !r.abdicated && state.character.age >= 18) parts.push(r.reigning ? `👑 ${CROWNS[r.crownId]?.titles.monarch[state.character.gender === 'female' ? 1 : 0] ?? 'Sovereign'}` : r.working && !r.steppedBack ? '👑 Working royal' : '👑 Member of the royal family');
     if (!parts.length) parts.push(state.character.age < 18 ? '🧒 Kid' : state.retirement.retired ? '🏖️ Retired' : '🛋️ Unemployed');
-    const hs = STATUS_LABEL[housingStatus(state)];
-    parts.push(`${hs.icon} ${hs.label}`);
+    const status = housingStatus(state);
+    const res = status === 'official' ? officialResidence(state) : null;
+    const hs = STATUS_LABEL[status];
+    parts.push(res ? `${res.icon} ${res.name.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase())}` : `${hs.icon} ${hs.label}`);
     return parts.map((p) => `<li>${esc(p)}</li>`).join('');
   }
 

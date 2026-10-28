@@ -111,6 +111,8 @@ export const MilitaryModule = {
       }
     });
     engine.bus.on('military:discharged', ({ ctx, type, svc }) => onSeparation(ctx, svc, type));
+    // Released from service by something outside it (an accession to the throne).
+    engine.bus.on('military:release', ({ ctx, reason }) => { if (ctx.state.military.service) discharge(ctx, 'honorable', reason); });
     // A recalled retiree who leaves without retiring again gets the old retired pay back.
     engine.bus.on('military:discharged', ({ ctx, svc }) => { if (svc.recalled) for (const p of ctx.state.retirement.pensions) if (p.id === 'military') delete p.suspended; });
     engine.bus.on('business:started', ({ ctx }) => onBusinessStarted(ctx));

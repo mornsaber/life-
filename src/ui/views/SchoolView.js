@@ -102,7 +102,19 @@ function apprenticeCard(state) {
   return card(sys.name, `<p class="muted">${sys.years} years of paid training (${money(sys.pay)}/yr) with an employer and a trade school, ending in the ${esc(sys.exam)}: a full trade qualification, no tuition.</p>${check.ok ? '' : `<p class="why">${esc(check.reason)}</p>`}<div class="toggle-row chips-row">${rows}</div>`, { icon: '🔧' });
 }
 
+/** A sovereign is educated by tutors, not admissions officers. */
+function royalEducationCard(state) {
+  const done = Boolean(state.yearly['royalLife.tutor']);
+  return card('A Sovereign\'s Education', `<p class="muted">The throne doesn't sit exams. Constitutional historians, ambassadors and the cabinet secretary come to you: the constitution, the realms, languages, the armed forces you head.</p>
+    <div class="toggle-row">${button('📚 A season with your tutors', 'royalLife.tutor', { variant: 'small', disabled: done, hint: done ? 'Done this year' : 'Once a year' })}</div>`, { icon: '👑', accent: 'yellow' });
+}
+
 export function schoolView(state) {
+  // A reigning monarch: school as a child, then tutors; no applications, apprenticeships or academies.
+  if (state.royal?.reigning && !state.royal.abdicated) {
+    const diplomas = state.education.degrees.length ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b></li>`).join('')}</ul>` : empty('No diplomas yet.');
+    return `${state.character.age < 18 ? k12View(state) : ''}${royalEducationCard(state)}${card('Diplomas', diplomas, { icon: '📜' })}`;
+  }
   const e = state.education.enrolled;
   let current = '';
   if (e) {

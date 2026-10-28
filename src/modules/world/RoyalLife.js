@@ -92,17 +92,45 @@ function yearOf(ctx) {
   }
 }
 
+/** On the throne, the sovereign gives up an ordinary job, active service and a student's life. */
+function sovereignDuties(ctx) {
+  const { state } = ctx;
+  if (!state.royal?.reigning || state.royal.abdicated) return;
+  if (state.military?.service && !state.military.service.honorary) ctx.emit('military:release', { reason: 'Acceded to the throne: the sovereign heads the armed forces and cannot serve in them' });
+  if (state.career?.job) ctx.emit('career:resign', { reason: 'Acceded to the throne' });
+  if (state.education?.enrolled && state.character.age >= 18) {
+    state.education.enrolled = null;
+    ctx.log('You left university: a reigning sovereign is taught by tutors and the cabinet secretary now.', '👑', 'info');
+  }
+}
+/** What a reigning sovereign can't do. */
+const SOVEREIGN_BARRED = /^(career\.apply|careerSearch\.|military\.enlist|education\.(apply|enroll|apprentice)|higherEd\.(apply|early)|gig\.|directEntry\.apply|intl\.apply)/;
+
 export const RoyalLifeModule = {
   id: 'royalLife',
   order: 33.8,
+  guard(state, actionId) {
+    if (state.royal?.reigning && !state.royal.abdicated && SOVEREIGN_BARRED.test(actionId)) return 'A reigning sovereign doesn\'t do that.';
+    return null;
+  },
   onAgeUp(engineCtx) {
     const { state } = engineCtx;
     if (!state.character.alive || !(state.royal || houseOf(state))) return;
+    sovereignDuties(engineCtx);
     // A side stream: royal life doesn't reshuffle the rest of the life.
     const rng = new Random(((state.world?.seed ?? 1) * 1597334677 + currentYear(state) * 211 + 0x7a1) >>> 0);
     yearOf({ ...engineCtx, rng });
   },
   actions: {
+    /** A sovereign's tutors: the constitution, the realms, languages. */
+    tutor(ctx) {
+      const { state, rng } = ctx;
+      if (!state.royal?.reigning) return ctx.toast('For the sovereign', 'warn');
+      if (yearlyCount(state, 'royalLife.tutor')) return ctx.toast('Once a year', 'warn');
+      bumpYearly(state, 'royalLife.tutor');
+      ctx.stat('smarts', 2);
+      return ctx.log(rng.pick(['A constitutional historian took you through the reserve powers, case by case.', 'An ambassador briefed you on every realm you reign over.', 'A season of French and Spanish for the state visits ahead.', 'The chiefs of staff explained the armed forces you head, unit by unit.']), '📚', 'good');
+    },
     /** Run the estate (arg: steady | green | develop). */
     estate(ctx, mode) {
       const est = estateOf(ctx.state);

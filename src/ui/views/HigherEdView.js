@@ -27,7 +27,8 @@ export function higherEdCard(state) {
   }
   // Applying to college.
   const firstTimer = state.character.age >= 17 && !e && !state.education.degrees.some((d) => ['bachelor', 'associate'].includes(d.type));
-  if (firstTimer && state.education.degrees.some((d) => d.type === 'highschool')) {
+  // Early Decision and BS/MD programmes are American.
+  if (firstTimer && (state.character.countryId ?? 'US') === 'US' && state.education.degrees.some((d) => d.type === 'highschool')) {
     const ed = h.edUsed ? '<p class="fine">You\'ve used your Early Decision.</p>' : '<p class="fine">💌 Early Decision: pick a school and major in the bachelor\'s row of the catalog below and press "Early Decision" — binding if you\'re admitted, with better odds.</p>';
     parts.push(`<h4 class="sub">Applying to college</h4>${ed}<div class="action-grid">${h.bsmdTried ? '' : button('🩺 Apply to a BS/MD program', 'higherEd.applyBsmd', { arg: 'state', variant: 'small', hint: '7 years (biology, then medicine), guaranteed medical school seat — very selective' })}</div>`);
   }
