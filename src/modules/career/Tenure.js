@@ -48,6 +48,7 @@ export const TRAINEE_LEVELS = {
   'pharmacy.intern': { next: 'pharmacist', grace: 1, label: 'your internship (pharmacist license)' },
   'regulatory.trainee': { next: 'examiner', grace: 0, label: 'examiner training' },
   'catholicClergy.seminarian': { next: 'deacon', grace: 1, label: 'priestly formation in seminary' },
+  'clergy.seminarian': { next: 'associate', grace: 1, label: 'ministerial training in your faith' },
   'anglicanClergy.ordinand': { next: 'deacon', grace: 1, label: 'training for ordination at theological college' },
   'privateSecurity.trainee': { next: 'officer', grace: 0, academy: true, label: 'guard-card training' },
   'privatePolice.recruit': { next: 'officer', grace: 1, academy: true, label: 'the police academy' },

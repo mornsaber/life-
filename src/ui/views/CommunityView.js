@@ -6,6 +6,8 @@ import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
 import { clergyEligibility, traditionName } from '../../modules/community/Religions.js';
 import { ordersOf } from '../../modules/community/HolyOrders.js';
+import { faithInstitutionSummary } from '../../modules/community/FaithInstitutions.js';
+import { RITES, COMING_OF_AGE } from '../../modules/community/FaithBodies.js';
 import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/community/ReligiousOrders.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
@@ -77,6 +79,31 @@ function serviceCard(state) {
     <p class="fine">Service counts toward a pardon, earns the President's Volunteer Service Award after five years, and is a good place to make friends.</p>`, { icon: '🤲', accent: 'green' });
 }
 
+const RITE_NAME = Object.fromEntries([...RITES, ...COMING_OF_AGE].map((r) => [r.id, `${r.icon} ${r.name}`]));
+
+/** Your faith's wider body, its offices, and the rites and pilgrimages you can keep. */
+function institutionsCard(state) {
+  const s = faithInstitutionSummary(state);
+  if (!s || (!s.body && !s.rites.length)) return '';
+  const rec = s.rec;
+  const rows = s.rites.map(({ rite, check, done }) => `<li class="fund-row"><span><b>${rite.icon} ${esc(rite.name)}</b> <small>${rite.cost ? `≈${money(rite.cost)}` : 'free'}${rite.once ? ' · once in a life' : ''}${done != null ? ` · kept at ${done}` : ''}${check.ok ? '' : ` <span class="why">${esc(check.reason)}</span>`}</small></span>${button(rite.years ? 'Answer the call' : 'Go', 'faithInstitutions.rite', { arg: rite.id, variant: 'tiny', disabled: !check.ok })}</li>`).join('');
+  return card('Faith & Its Institutions', `
+    ${kv([
+      s.body ? ['Body', esc(s.body)] : null,
+      s.training ? ['Clergy trained at', esc(s.training)] : null,
+      s.inst ? ['Your part', s.inst.role === 'minister' ? 'A minister of the body' : 'A lay leader (a delegate now and then)'] : null,
+      rec ? ['Standing', meter(rec.standing)] : null,
+      rec?.office ? ['Office', `${esc(rec.office.title)} since ${rec.office.since}${rec.office.until ? ` · term to ${rec.office.until}` : ''}`] : null,
+      s.history.length ? ['Former offices', s.history.map((h) => `${esc(h.title)} (${h.from}–${h.to})`).join(', ')] : null,
+      s.honorific ? ['Honorific', esc(s.honorific)] : null,
+      s.mission ? ['Mission', `📛 Serving in ${esc(s.mission.place)} until ${s.mission.until}`] : null,
+      s.kept.length ? ['Rites kept', s.kept.map(([id, age]) => `${RITE_NAME[id] ?? esc(id)} (${age})`).join(' · ')] : null,
+    ])}
+    ${s.inst?.role === 'minister' && s.offices.length && !rec?.office ? `<p class="fine">Offices of the body, by seniority: ${s.offices.map((o) => esc(o.title)).join(' → ')}. Standing in the body and your own seniority decide who is chosen.</p>` : ''}
+    ${rec?.office ? `<div class="toggle-row">${button('Step down from office', 'faithInstitutions.resignOffice', { variant: 'small ghost' })}</div>` : ''}
+    ${rows ? `<h4 class="sub">Rites & pilgrimages</h4><ul class="funds">${rows}</ul>` : ''}`, { icon: '🕍', accent: 'yellow' });
+}
+
 /** Religious life: the Jesuits, Opus Dei and the Missionaries of Charity. */
 function religiousCard(state) {
   const r = religiousSummary(state);
@@ -105,7 +132,7 @@ function religiousCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${religiousCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${partyCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
 }
 
 /** Party membership and how you've voted. */
