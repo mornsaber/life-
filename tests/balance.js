@@ -314,6 +314,7 @@ export async function playLives({ from, to, seed }) {
       // Yearly observations.
       if (s.character.age === 40) {
         stats.salaryAt40 = s.career.job?.salary ?? null;
+        stats.profAt40 = s.career.job?.professionId ?? null;
         stats.employedAt40 = Boolean(s.career.job || s.military.service);
       }
       if (s.housing.everOwned && stats.firstHomeAge == null) stats.firstHomeAge = s.character.age;
@@ -455,8 +456,10 @@ async function main() {
   }
   console.log(`\n  causes of death: ${Object.entries(causes).sort((a, b) => b[1] - a[1]).slice(0, 12).map(([c, n]) => `${c} ${pct(n / rs.length)}`).join(', ')}`);
   const byPlan = {};
-  for (const r of rs.filter((x) => x.salaryAt40)) (byPlan[r.plan] ??= []).push(r.salaryAt40);
-  console.log('  median salary at 40 vs. real-world median:');
+  // Pay in a career is measured among people working in it at 40 (those who washed out of
+  // medical school are counted in the job they took instead).
+  for (const r of rs.filter((x) => x.salaryAt40 && x.profAt40 === x.plan)) (byPlan[r.plan] ??= []).push(r.salaryAt40);
+  console.log('  median salary at 40 (working in the field) vs. real-world median:');
   let payOff = 0;
   for (const [p, xs] of Object.entries(byPlan).sort()) {
     const ratio = median(xs) / PAY_AT_40[p];

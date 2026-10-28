@@ -35,7 +35,7 @@ export function stJohnCard(state) {
     return `<p class="fine">${esc(alliance.name)} is the country's Protestant order of St John.</p><div class="action-grid">${button('✠ Seek an invitation', 'stJohn.joinAlliance', { disabled: !check.ok, hint: check.ok ? `~${Math.round(check.odds * 100)}%` : check.reason })}</div>`;
   })() : '';
   return card('Order of St John', `${rows.length ? kv(rows) : ''}${how}
-    <p class="fine">Members write MStJ, OStJ, CStJ, KStJ / DStJ or GCStJ after their names, but no title or precedence comes with them: a Knight of St John is not "Sir".</p>
+    <p class="fine">Members write MStJ, OStJ, CStJ, KStJ / DStJ or GCStJ after their names, but no title or precedence comes with them: a Knight of St John is not a knight bachelor and takes no prefix.</p>
     ${join}
     <div class="action-grid">${priory || s ? button('👁️ Give to the Eye Hospital', 'stJohn.give', { arg: 10000, hint: '$10,000 · once a year' }) : ''}${s && !s.viceRegal && s.office !== 'sovereign' ? button('🚪 Resign', 'stJohn.resign', { variant: 'danger' }) : ''}</div>`, { icon: '✠' });
 }
