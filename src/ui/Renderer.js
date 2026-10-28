@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { underworldCard } from './views/UnderworldView.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
 import { OFFICES } from '../modules/politics/Offices.js';
 import { CROWNS } from '../modules/world/Crown.js';
@@ -154,7 +155,7 @@ export const VIEWS = {
       <p class="fine">Heat makes arrests likelier and old cases resurface; above ${TASK_FORCE_HEAT} a task force builds cases against you. It fades each year — faster if you lay low.${crime.earned ? ` Criminal earnings: $${Math.round(crime.earned).toLocaleString()}.` : ''}</p>
       <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: crime.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}</div>` : '';
     return `${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
-      ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}`;
+      ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}${underworldCard(state)}`;
   },
   honors(state) {
     const mil = militaryHonors(state);

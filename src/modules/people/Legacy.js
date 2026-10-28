@@ -378,6 +378,11 @@ export function buildHeirState(rng, old, childId) {
       ...ancestorRecord(old, child.id),
     }],
   };
+  // The city's underworld goes on; a mobster's child is known to the family.
+  if (old.underworld) {
+    const me = old.underworld.me;
+    s.underworld = { outfits: structuredClone(old.underworld.outfits), me: null, family: me && !me.witsec && !me.left && me.rank >= 1 ? { outfitId: me.outfitId, rank: me.rank } : null };
+  }
   addLog(s, `You are ${child.firstName} ${child.lastName}, ${childAge} years old. Your ${old.character.gender === 'female' ? 'mother' : 'father'}, ${old.character.firstName}, has died.`, '🕯️', 'milestone');
   if (inheritance) addLog(s, `You inherited $${inheritance.toLocaleString()}${legacy.insurance.some((x) => x.to === child.id) ? ' (including life insurance)' : ''}${payouts.length ? ` — $${now.toLocaleString()} now, the rest ${payouts.map((p) => `$${p.amount.toLocaleString()} at ${p.age}`).join(', ')}` : ''}.`, '📜', 'good');
   if (gifted) addLog(s, `Over the years your ${old.character.gender === 'female' ? 'mother' : 'father'} gave you $${gifted.toLocaleString()}.`, '🎁', 'good');
