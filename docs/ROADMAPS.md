@@ -25,7 +25,7 @@ once-a-year activities, regions and rural life, achievements, and a yearly house
 **Next**
 - Hobbies and skills: instrument, sport, cooking, art, chess, coding, gardening. Levels, practice
   time, competitions, side income, and links into the music, sport and content-creation careers.
-- Pets: adopt, vet bills, happiness, ageing and death, and who keeps the pet after a divorce.
+- ✅ Pets: adopt, vet bills, happiness, ageing and death, and who keeps the pet after a divorce. *(done: Pets (Pets.js))*
 
 **Later**
 - A bucket list and life goals scored at death, and shown in the Hall of Fame.
@@ -48,7 +48,7 @@ once-a-year activities, regions and rural life, achievements, and a yearly house
 - No budgeting choices.
 
 **Next**
-- Tune the balance harness: a debt-management plan or settlement offer before filing; medical
+- ✅ Tune the balance harness: a debt-management plan or settlement offer before filing; medical *(done: charity care, debt-management plans, card limits)*
   charity care and payment plans; spending that cuts back faster under card debt.
 - A simple budget: frugal, normal or lavish, with the trade-offs shown.
 
@@ -87,7 +87,7 @@ traits, estate planning, legacy and continue-as-child, and a family tree with an
 families are basic.
 
 **Next**
-- Fertility: trying, IVF, surrogacy, adoption waits, twins.
+- ✅ Fertility: trying, IVF, surrogacy, adoption waits, twins. *(done: Fertility.js)*
 - Grown children's big moments as events you take part in: weddings, grandchildren, crises.
 
 **Later**
@@ -322,7 +322,7 @@ restorations, the monarchy question, peerages, orders of chivalry and the Order 
 Catholic Church.
 
 **Next**
-- Equivalent depth for other faiths' clergy: ordination paths, institutions, schisms.
+- ✅ Equivalent depth for other faiths' clergy: ordination paths, institutions, schisms. *(done: FaithInstitutions.js)*
 
 **Later**
 - Interfaith work and religious freedom abroad as events.
@@ -383,7 +383,7 @@ audiences for creators and performers.
 **Gaps.** Fame isn't one score shared across careers; sport is only professional.
 
 **Next**
-- A shared fame score: paparazzi, endorsements, stalkers, and scandals that carry over into
+- ✅ A shared fame score: paparazzi, endorsements, stalkers, and scandals that carry over into *(done: Fame.js)*
   politics and business.
 
 **Later**
@@ -433,7 +433,7 @@ retired pay with recall suspension, and retiring abroad.
 **Gaps.** Little to do once retired.
 
 **Next**
-- Retirement life: travel plans, volunteering, encore careers, moving near grandchildren.
+- ✅ Retirement life: travel plans, volunteering, encore careers, moving near grandchildren. *(done: RetirementLife.js)*
 
 **Later**
 - Care homes and assisted living as choices with costs.
@@ -467,7 +467,7 @@ retired pay with recall suspension, and retiring abroad.
 - Disasters are US-state based.
 
 **Next**
-- Disaster choices: evacuate or stay, insurance claims (denied, underinsured, flood excluded),
+- ✅ Disaster choices: evacuate or stay, insurance claims (denied, underinsured, flood excluded), *(done: Disasters.js)*
   rebuild or sell, aid.
 
 **Later**
@@ -505,7 +505,7 @@ retired pay with recall suspension, and retiring abroad.
 - Some tests check things loosely, only "if the job is still held".
 
 **Next**
-- Bring bankruptcy back into its band.
+- ✅ Bring bankruptcy back into its band. *(done: 14.6%)*
 - Tighten loose tests with fixed seeds.
 
 **Later**

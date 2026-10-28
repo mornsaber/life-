@@ -48,6 +48,7 @@ function planSection(state) {
 }
 import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, POA_COST, GUARDIANSHIP_COST } from '../../modules/people/ElderCare.js';
 import { petsOf, SPECIES } from '../../modules/people/Pets.js';
+import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../../modules/people/Fertility.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
@@ -260,9 +261,38 @@ function romance(state) {
   const family = partner && ['spouse', 'fiance', 'partner'].includes(partner.relation)
     ? `<div class="toggle-row">${button(p.expecting ? '🤰 Baby on the way' : '👶 Try for a baby', 'people.tryForBaby', { variant: 'small', disabled: Boolean(p.expecting) || Boolean(state.yearly['people.baby']) })}</div>` : '';
   return card('Love Life', `${body}${family}
-    ${age >= 25 ? `<div class="toggle-row">${button('🏠 Adopt a child', 'people.adopt', { variant: 'small', disabled: Boolean(p.expecting), hint: '$25,000 · 25+' })}</div>` : ''}
+    ${familyPlanning(state)}
     ${age >= 18 ? `<div class="toggle-row">${button('🌃 Go out on the town', 'bonds.goOut', { variant: 'small', disabled: Boolean(state.yearly['bonds.goOut']), hint: partner ? 'Careful…' : 'Meet someone new' })}</div>` : ''}
     <h4 class="sub">Interested in</h4><div class="toggle-row chips-row">${prefs}</div>`, { icon: '💘', accent: 'pink' });
+}
+
+/** Fertility treatment, surrogacy and adoption (Fertility.js). */
+function familyPlanning(state) {
+  const p = state.people;
+  const age = state.character.age;
+  if (age < 21) return '';
+  const f = p.fertility ?? {};
+  const busy = Boolean(p.expecting) || Boolean(f.surrogacy);
+  const carrier = carrierOf(state);
+  const ivf = ivfCost(state);
+  const ivfHint = (extra = 0) => (ivf.amount + extra ? `${money(ivf.amount + extra)} · ${ivf.why}` : 'Publicly funded');
+  const law = surrogacyLaw(state);
+  const status = p.expecting?.dueAge && p.expecting.dueAge > age ? `<p class="fine">${p.expecting.adopted ? `🏠 Adoption under way: your child comes home at ${p.expecting.dueAge}.` : `🤰 Due when you're ${p.expecting.dueAge}.`}</p>`
+    : f.surrogacy ? '<p class="fine">🤝 Surrogacy under way: matching and the embryo transfer.</p>' : '';
+  const treatments = carrier ? `
+      ${(f.tryingYears ?? 0) >= 1 && !f.workup ? button('🩺 Fertility workup', 'fertility.workup', { variant: 'small', hint: `${f.tryingYears} yr trying` }) : ''}
+      ${button('🧫 IVF cycle', 'fertility.ivf', { arg: 'own', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint() })}
+      ${f.frozen?.eggs ? button(`❄️ IVF with eggs frozen at ${f.frozen.age}`, 'fertility.ivf', { arg: 'frozen', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: `${f.frozen.eggs} left` }) : ''}
+      ${button('🧬 IVF with donor eggs', 'fertility.ivf', { arg: 'donor', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint(15000) })}` : '';
+  return disclosure('family-planning', '👪 Fertility, surrogacy & adoption', `
+    ${status}
+    ${f.workup ? `<p class="fine">🩺 Workup: ${esc(f.workup.route)}.</p>` : ''}
+    <div class="toggle-row">${treatments}
+      ${state.character.gender === 'female' && age >= 25 && age <= 40 && !f.frozen ? button('❄️ Freeze your eggs', 'fertility.freezeEggs', { variant: 'small' }) : ''}
+      ${law !== 'banned' ? button('🤝 Surrogacy', 'fertility.surrogacy', { variant: 'small', disabled: busy, hint: `${law === 'commercial' ? 'Commercial' : 'Altruistic only'} · ~${money(surrogacyCost(state))}` }) : ''}
+    </div>
+    <div class="toggle-row">${Object.entries(ADOPTION).map(([id, r]) => button(`🏠 Adopt: ${r.label.toLowerCase()}`, 'fertility.adopt', { arg: id, variant: 'small', disabled: busy || age < (id === 'foster' ? 21 : 25), hint: `${r.wait[0] === r.wait[1] ? r.wait[0] : `${r.wait[0]}–${r.wait[1]}`} yr wait` })).join('')}</div>
+    ${law === 'banned' ? '<p class="fine">Surrogacy is illegal here.</p>' : ''}`);
 }
 
 function legacyCard(state) {

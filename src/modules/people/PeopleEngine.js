@@ -36,6 +36,7 @@ import { settleEstate, buildHeirState, setStateLookup, WILL_PLANS } from './Lega
 import { heirWork, resumeHeirCareer } from './HeirCareer.js';
 import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 import { knob } from '../../core/Difficulty.js';
+import { noLuck, conceived } from './Fertility.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -308,19 +309,28 @@ function births(ctx) {
   const { state, rng } = ctx;
   const p = state.people;
   if (!p.expecting) return;
+  // An adoption wait, or a surrogate's pregnancy, runs to its due year.
+  if (p.expecting.dueAge && state.character.age < p.expecting.dueAge) return;
   const partner = partnerOf(state);
-  const gender = rng.pick(['male', 'female']);
-  // Not the same first name as anyone already in the family (up to a few tries).
-  const taken = new Set([state.character.firstName, ...p.list.map((x) => x.firstName)]);
-  let name = randomName(rng, gender);
-  for (let i = 0; i < 6 && taken.has(name.firstName); i++) name = randomName(rng, gender);
   const adopted = Boolean(p.expecting.adopted);
-  const age = adopted ? rng.int(0, 6) : 0;
-  const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: p.expecting.otherParentId ?? partner?.id ?? null, custody: p.expecting.apart || (p.expecting.otherParentId && state.character.gender !== 'female') ? 'ex' : 'you', ...(adopted ? { adopted: true } : {}) };
-  p.list.push(child);
+  const age = adopted ? p.expecting.childAge ?? rng.int(0, 6) : 0;
+  // About 1.5% of natural pregnancies are twins; IVF and surrogacy set it themselves.
+  const twins = !adopted && (p.expecting.twins || (!p.expecting.via && rng.chance(0.015)));
+  const born = [];
+  for (let n = 0; n < (twins ? 2 : 1); n++) {
+    const gender = rng.pick(['male', 'female']);
+    // Not the same first name as anyone already in the family (up to a few tries).
+    const taken = new Set([state.character.firstName, ...p.list.map((x) => x.firstName)]);
+    let name = randomName(rng, gender);
+    for (let i = 0; i < 6 && taken.has(name.firstName); i++) name = randomName(rng, gender);
+    const child = { id: rng.id('per_'), firstName: name.firstName, lastName: state.character.lastName, gender, relation: 'child', ageOffset: age - state.character.age, relationship: 85, alive: true, income: 0, careerIncome: 0, nationality: countryIdOf(state), otherParentId: p.expecting.otherParentId ?? partner?.id ?? null, custody: p.expecting.apart || (p.expecting.otherParentId && state.character.gender !== 'female') ? 'ex' : 'you', ...(adopted ? { adopted: true } : {}), ...(twins ? { twin: true } : {}) };
+    p.list.push(child);
+    settleNewborn(ctx, child);
+    born.push(child);
+  }
   p.expecting = null;
-  settleNewborn(ctx, child);
-  ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');
+  const child = born[0];
+  ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : twins ? `Twins! ${born[0].firstName} and ${born[1].firstName} were born. 🍼🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');
   ctx.stat('happiness', 15);
   ctx.stat('stress', 8);
   if (state.career.job && !state.prompts.some((x) => x.type === 'people.parentalLeave')) {
@@ -672,12 +682,16 @@ export const PeopleEngine = {
       bumpYearly(state, 'people.baby');
       const carrier = state.character.gender === 'female' ? state.character.age : partner.gender === 'female' ? ageOf(state, partner) : null;
       if (carrier == null) return ctx.toast('You two would need to adopt.', 'warn');
-      const chance = carrier < 18 ? 0 : carrier < 35 ? 0.55 : carrier < 40 ? 0.35 : carrier < 45 ? 0.1 : 0;
+      const chance = (carrier < 18 ? 0 : carrier < 35 ? 0.55 : carrier < 40 ? 0.35 : carrier < 45 ? 0.1 : 0) + (state.people.fertility?.boost ?? 0);
       if (rng.chance(chance)) {
         state.people.expecting = { since: state.character.age };
+        conceived(state);
         ctx.log('You\'re expecting a baby! 🤰', '🤰', 'milestone');
         ctx.stat('happiness', 8);
-      } else ctx.log('No luck this year.', '🍃');
+      } else {
+        ctx.log('No luck this year.', '🍃');
+        noLuck(ctx);
+      }
     },
     adopt(ctx) {
       const { state } = ctx;
