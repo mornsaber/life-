@@ -31,6 +31,8 @@ export const CH7_FEE = 1500;
 export const CH13_FEE = 4000;
 export const CH7_WAIT = 8;
 export const CH13_WAIT = 2;
+/** Chapter 13's unsecured debt limit (11 U.S.C. § 109(e), 2024). */
+export const CH13_LIMIT = 526700;
 /** Federal wildcard exemption for cash and investments (simplified). */
 export const WILDCARD_EXEMPTION = 15000;
 /** Homestead exemption by state (equity in your home you keep). Infinity = unlimited. */
@@ -104,7 +106,8 @@ export function bankruptcyOptions(state) {
   const ch13 = base ? { ok: false, reason: base }
     : last && age - last.age < CH13_WAIT ? { ok: false, reason: `Filed ${age - last.age} yr ago (${CH13_WAIT} required)` }
       : income < 12000 ? { ok: false, reason: 'Needs regular income to fund a plan' }
-        : { ok: true, years: income > median ? 5 : 3, annual: ch13Payment(state, debt) };
+        : debt > CH13_LIMIT ? { ok: false, reason: `Debt over the Chapter 13 limit ($${CH13_LIMIT.toLocaleString()})` }
+          : { ok: true, years: income > median ? 5 : 3, annual: ch13Payment(state, debt) };
   return { debt, income, median, ch7, ch13, preview: liquidationPreview(state) };
 }
 
