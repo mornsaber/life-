@@ -28,6 +28,7 @@ import { currentYear } from '../../core/State.js';
 import { ministryOf, DEPTS } from '../../modules/politics/Ministers.js';
 import { statesman, invitations, relationsWith } from '../../modules/politics/StateVisits.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { isMep, GROUPS, COMMITTEES, POSTS } from '../../modules/politics/EuropeanParliament.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -106,6 +107,40 @@ function worldStageCard(state) {
     ${past.length ? `<p class="fine">Former posts: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🌐', accent: 'cyan' });
 }
 
+/** The European Parliament: this year's files, your report, the Bureau and the Commission. */
+function europarlCard(state) {
+  const e = state.europarl;
+  if (!isMep(state) || !e) return '';
+  const y = (k) => Boolean(state.yearly[`europarl.${k}`]);
+  const o = state.politics.office;
+  const window = o.termYearsLeft === OFFICES[o.id].term || o.termYearsLeft === 3;
+  const files = (e.agenda ?? []).map((f) => `<li class="job-row">
+      <span class="job-icon">${f.rapporteur ? '📄' : '📜'}</span>
+      <div class="job-info"><b>${esc(f.name)}</b><small>${esc(f.kind)} · ${esc(COMMITTEES[f.committee])}${f.rapporteur ? ' · <b>your report</b>' : ''}${f.myVote ? ` · you vote <b>${f.myVote}</b>` : ''}</small></div>
+      <div class="row-end" style="margin-top:0;gap:6px">${['yes', 'no', 'abstain'].map((v) => button(v === 'yes' ? '👍' : v === 'no' ? '👎' : '🤷', 'europarl.vote', { arg: `${f.id}|${v}`, variant: `small${f.myVote === v ? ' primary' : ' ghost'}`, title: `Vote ${v}` })).join('')}
+        ${f.rapporteur ? button('🤝 Trilogue', 'europarl.trilogue', { arg: f.id, variant: 'small', disabled: Boolean(f.trilogue) }) : button('📄 Seek report', 'europarl.rapporteur', { arg: f.id, variant: 'small', disabled: y('rapporteur'), title: f.committee === e.committee ? 'Your committee' : 'Another committee: harder' })}</div></li>`).join('');
+  const reports = (e.reports ?? []).slice(-4).map((r) => `${esc(r.name)} (${r.age}, ${r.outcome})`).join(' · ');
+  return card('The European Parliament', `
+    ${kv([['Group', esc(GROUPS[e.group].name)], ['Committee', esc(COMMITTEES[e.committee])], ['Post', esc(POSTS[e.post].title)], ['Influence', `${e.influence}/100`]])}
+    <p class="fine">Adopted law applies in every member state — the vote is held at year's end. ${e.post === 'groupLeader' ? `As group leader, ${esc(GROUPS[e.group].short)} follows your whip.` : ''}</p>
+    ${files ? `<h4 class="sub">This year's plenary agenda</h4><ul class="job-list">${files}</ul>` : '<p class="fine">The agenda is set at the start of next year.</p>'}
+    <div class="toggle-row">
+      ${button('🎙️ Plenary speech', 'europarl.speech', { variant: 'small', disabled: y('speech') })}
+      ${button('💶 Cohesion money for home', 'europarl.budget', { variant: 'small', disabled: y('budget') || (e.committee !== 'BUDG' && POSTS[e.post].rank < 1), hint: 'Budgets committee or coordinator+' })}
+      ${button('⚖️ Censure the Commission', 'europarl.censure', { variant: 'small ghost', disabled: y('censure') || (POSTS[e.post].rank < 3 && e.influence < 50), hint: 'Two-thirds to pass' })}
+    </div>
+    <div class="toggle-row">
+      ${button('Stand for group leader', 'europarl.stand', { arg: 'groupLeader', variant: 'small', disabled: y('stand') || POSTS[e.post].rank >= 3 })}
+      ${button('Stand for Vice-President', 'europarl.stand', { arg: 'vicePresident', variant: 'small', disabled: y('stand') || !window || POSTS[e.post].rank >= 3, hint: window ? '' : 'Start or middle of the term' })}
+      ${button('Stand for President', 'europarl.stand', { arg: 'president', variant: 'small', disabled: y('stand') || !window || e.post === 'president', hint: window ? '' : 'Start or middle of the term' })}
+    </div>
+    ${disclosure('europarl-move', 'Change group or committee', `
+      <div class="enroll-form" data-collect-root>${select('group', Object.entries(GROUPS).filter(([id]) => id !== e.group).map(([id, g]) => ({ value: id, label: g.name })))}${button('🔀 Cross the floor', 'europarl.switchGroup', { variant: 'small', collect: true, disabled: y('switch') })}</div>
+      <div class="enroll-form" data-collect-root>${select('committee', Object.entries(COMMITTEES).filter(([id]) => id !== e.committee).map(([id, n]) => ({ value: id, label: n })))}${button('🗂️ Move committee', 'europarl.committee', { variant: 'small', collect: true, disabled: y('committee') })}</div>`)}
+    ${reports ? `<p class="fine">Your reports: ${reports}</p>` : ''}
+    ${(e.record ?? []).length ? `<p class="fine">Record: ${e.record.slice(-4).map((r) => esc(r.text)).join(' · ')}</p>` : ''}`, { icon: '🇪🇺', accent: 'blue' });
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -146,7 +181,7 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${worldStageCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${worldStageCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
     ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}

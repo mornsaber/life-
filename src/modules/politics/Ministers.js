@@ -37,11 +37,11 @@ const titleOf = (dept, rank, cc) => {
 const SALARY = { junior: 0.25, cabinet: 0.5 };
 
 const home = (state) => state.character.countryId ?? 'US';
-/** A national legislator abroad (ministers in the US are a separate, appointed office). */
+/** A national legislator abroad (ministers in the US are a separate, appointed office; MEPs sit in Europe, not the national parliament). */
 const legislator = (state) => {
   const o = state.politics?.office;
   const def = o && OFFICES[o.id];
-  return Boolean(def && def.country && def.country !== 'US' && def.kind === 'legislative' && (def.level ?? 0) >= 4 && !def.provinces);
+  return Boolean(def && def.country && def.country !== 'US' && def.kind === 'legislative' && (def.level ?? 0) >= 4 && !def.provinces && !def.european);
 };
 const governing = (state) => {
   const nat = executiveOf(state, 'national');

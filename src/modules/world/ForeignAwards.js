@@ -21,6 +21,7 @@ import { COUNTRIES, citizenshipsOf } from './Countries.js';
 import { countryIdOfName } from './Posting.js';
 import { OFFICES } from '../politics/Offices.js';
 import { INTL_ORG_PROFESSIONS, EU_MEMBERS, NATO_MEMBERS, DUTY_STATIONS } from '../career/IntlOrgCareers.js';
+import { ledEuroparl } from '../politics/EuropeanParliament.js';
 
 const home = (state) => state.character.countryId ?? 'US';
 const has = (state, id) => state.honors.some((h) => h.id === id);
@@ -112,7 +113,7 @@ function internationalPrizes(ctx) {
   }
   // The Charlemagne Prize: Aachen's prize for work for European unity.
   const european = citizenshipsOf(state).some((c) => EU_MEMBERS.includes(c));
-  const euTop = job?.professionId === 'euInstitutions' && job.intlPost;
+  const euTop = (job?.professionId === 'euInstitutions' && job.intlPost) || ledEuroparl(state);
   if (european && (led || euTop) && e >= 300 && !has(state, 'intl.charlemagne') && rng.chance(0.03)) {
     addHonor(state, { id: 'intl.charlemagne', source: 'international', name: 'International Charlemagne Prize of Aachen', icon: '🏅', precedence: 6, prestige: 25, citation: 'For services to European unity.' });
     ctx.log('The city of Aachen awarded you the International Charlemagne Prize, for services to European unity.', '🏅', 'honor');
