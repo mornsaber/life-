@@ -132,9 +132,13 @@ export function crownCards(state) {
       ['Rank', esc(RANKS[p.rank][state.character.gender === 'female' ? 'female' : 'male'])],
       ['Addressed as', esc(peerAddress(state) ?? '')],
       ['Kind', p.kind === 'life' ? 'Life peerage — dies with you' : p.kind === 'royal' ? 'Royal dukedom' : 'Hereditary — passes to your heir'],
-      ['House of Lords', p.seat ? 'You sit' : p.kind === 'hereditary' ? `No seat yet — stand when a hereditary seat falls vacant${p.byElections ? ` (${p.byElections} attempt${p.byElections > 1 ? 's' : ''} so far)` : ''}` : 'No seat'],
+      ['House of Lords', p.retiredLords ? `Retired from the House at ${p.retiredLords} (you keep the title)` : p.leave ? 'On leave of absence' : p.seat ? 'You sit' : p.kind === 'hereditary' ? `No seat yet — stand when a hereditary seat falls vacant${p.byElections ? ` (${p.byElections} attempt${p.byElections > 1 ? 's' : ''} so far)` : ''}` : 'No seat'],
     ].filter(Boolean))}
-    ${p.kind === 'hereditary' ? `<div class="action-grid">${button('📜 Disclaim the title', 'peerage.disclaim', { variant: 'danger', hint: 'For life — to stand for the Commons' })}</div>` : ''}`, { icon: '🏰' }));
+    <div class="action-grid">
+      ${p.seat && !p.retiredLords ? button(p.leave ? '🏛️ Return from leave' : '🧳 Take leave of absence', 'peerage.leave', { variant: 'small', hint: p.leave ? 'Take your seat again' : 'Step away from the House for now' }) : ''}
+      ${p.seat && !p.retiredLords ? button('🚪 Retire from the House of Lords', 'peerage.retireLords', { variant: 'small danger', hint: 'For good; you keep the title' }) : ''}
+      ${p.kind === 'hereditary' ? button('📜 Disclaim the title', 'peerage.disclaim', { variant: 'danger', hint: 'For life — to stand for the Commons' }) : ''}
+    </div>`, { icon: '🏰' }));
   }
   const n = state.noble;
   if (n) cards.push(nobleCard(state));

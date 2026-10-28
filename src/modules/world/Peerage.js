@@ -269,7 +269,7 @@ function creation(ctx, data, optionId) {
   if (inOffice(state, /^gb_mp$/)) ctx.emit('politics:leave', { reason: 'Elevated to the House of Lords' });
   if (optionId === 'life') {
     if (!c.peerage) grantPeerage(ctx, { rank: 'baron', place: data.place, kind: 'life', seat: true });
-    else c.peerage.seat = true;
+    else if (!c.peerage.retiredLords) c.peerage.seat = true;
     return ctx.log(`You were created a life peer: ${c.style.peerage}.`, '🏛️', 'honor');
   }
   const was = c.style?.peerage;
@@ -301,6 +301,26 @@ export const PeerageModule = {
     creation,
   },
   actions: {
+    /** Retire from the House of Lords (House of Lords Reform Act 2014): the title stays, the seat goes for good. */
+    retireLords(ctx) {
+      const { state } = ctx;
+      const p = state.character.peerage;
+      if (!p?.seat || p.retiredLords) return ctx.toast('You don\'t sit in the Lords.', 'warn');
+      p.seat = false;
+      p.leave = false;
+      p.retiredLords = state.character.age;
+      if (state.legislature?.seat?.bodyId?.startsWith('upper_')) state.legislature.seat = null;
+      ctx.stat('stress', -4);
+      return ctx.log(`You wrote to the Clerk of the Parliaments and retired from the House of Lords. You remain ${state.character.style?.peerage ?? 'a peer'}; you no longer sit, speak or vote.`, '🚪', 'milestone');
+    },
+    /** A leave of absence from the Lords (Standing Orders): no sitting until you return. */
+    leave(ctx) {
+      const { state } = ctx;
+      const p = state.character.peerage;
+      if (!p?.seat || p.retiredLords) return ctx.toast('You don\'t sit in the Lords.', 'warn');
+      p.leave = !p.leave;
+      return ctx.log(p.leave ? 'You applied for leave of absence from the House of Lords.' : 'You ended your leave of absence and took your seat again.', '🏛️', 'info');
+    },
     /** Disclaim a hereditary peerage for life (the Peerage Act 1963): to sit in the Commons. */
     disclaim(ctx) {
       const { state } = ctx;

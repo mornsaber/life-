@@ -81,7 +81,7 @@ export const lordSpiritual = (state) => {
 export const peerChamber = (state) => {
   if (lordSpiritual(state)) return 'upper_GB';
   // Life peers sit; hereditary peers only when the other hereditaries elect them; royal dukes don't.
-  if (!state.character.style?.peerage || state.character.peerage?.seat === false) return null;
+  if (!state.character.style?.peerage || state.character.peerage?.seat === false || state.character.peerage?.leave || state.character.peerage?.retiredLords) return null;
   const cc = state.character.countryId ?? 'US';
   return BODY_DEFS[`upper_${cc}`]?.peers ? `upper_${cc}` : null;
 };

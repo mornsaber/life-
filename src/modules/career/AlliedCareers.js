@@ -130,7 +130,7 @@ export const ALLIED_PROFESSIONS = {
       L('optometrist', 'Optometrist', 8, { abilities: ['prescribe'] }),
       L('specialist', 'Specialty Contact Lens / Low-Vision Optometrist', 8, { track: 'ic', abilities: ['prescribe'] }),
       L('director', 'Clinic Director', 8, { track: 'mgmt', abilities: ['prescribe', 'supervise', 'hire', 'budget'], reports: 12 }),
-      L('owner', 'Group Practice Owner (multi-location)', 9, { track: 'mgmt', minSize: 'medium', abilities: ['prescribe', 'supervise', 'hire', 'budget', 'sign'], reports: 40 }),
+      L('regionalDirector', 'Regional Clinical Director (group practice)', 9, { track: 'mgmt', minSize: 'medium', abilities: ['prescribe', 'supervise', 'hire', 'budget', 'sign'], reports: 40 }),
     ],
   },
   chiropractic: {
@@ -142,7 +142,7 @@ export const ALLIED_PROFESSIONS = {
       L('chiropractor', 'Chiropractor', 6),
       L('sports', 'Sports Chiropractor', 7, { track: 'ic' }),
       L('director', 'Clinic Director', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 8 }),
-      L('owner', 'Multi-Clinic Owner', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 25 }),
+      L('regionalDirector', 'Regional Clinic Director', 8, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget', 'sign'], reports: 25 }),
     ],
   },
 

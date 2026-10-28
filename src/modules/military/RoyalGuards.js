@@ -82,7 +82,7 @@ function guardYear(ctx) {
   ]), g.icon, 'good');
   // Years of close service to the sovereign are noticed.
   if (svc.guardYears === 6 && ['GB'].includes(svc.royalGuard)) {
-    addHonor(state, { id: 'guards.rvm', source: 'military', name: 'Royal Victorian Medal (Silver)', post: 'RVM', icon: '🎖️', prestige: 4, precedence: 40, citation: 'For personal service to the Sovereign in the Household Division.', order: 'Royal Victorian Order', grade: 0, country: 'GB' });
+    addHonor(state, { id: 'guards.rvm', source: 'military', name: 'Royal Victorian Medal (Silver)', post: 'RVM', icon: '🎖️', prestige: 4, precedence: 40, citation: 'For personal service to the Sovereign in the Household Division.', country: 'GB', ribbon: [['#1f3f8f', 1], ['#c8102e', 1], ['#ffffff', 1], ['#c8102e', 1], ['#1f3f8f', 1]] });
     ctx.log('The King gave you the Royal Victorian Medal for personal service.', '🎖️', 'honor');
   } else if (svc.guardYears === 6) {
     ctx.log(`After six years in ${g.name}, the palace sent a signed photograph and a letter of thanks.`, '✉️', 'honor');

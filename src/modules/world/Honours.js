@@ -395,7 +395,7 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
     // A life barony: a seat in the Lords for life (Peerage.js). A hereditary peer keeps the higher title.
     const city = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? COUNTRIES[cc]?.capital ?? 'London';
     if (!state.character.peerage) grantPeerage(ctx, { rank: 'baron', place: city, kind: 'life', seat: true });
-    else state.character.peerage.seat = true;
+    else if (!state.character.peerage.retiredLords) state.character.peerage.seat = true;
   } else if (prefix && !state.character.peerage && !state.royal) state.character.style = { ...(state.character.style ?? {}), prefix };
   // Standing that comes with it: a higher grade opens more doors.
   if (state.politics) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + Math.round(3 + g.level * 9));

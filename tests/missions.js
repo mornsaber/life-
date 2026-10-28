@@ -87,8 +87,8 @@ const tests = {
       if (state.career.job?.professionId === id) assert.ok(state.careerLife?.tradeWork, `${id} board`);
     }
   },
-  'allied health ladders reach a director or owner'() {
-    for (const [id, top] of [['optometry', 'owner'], ['chiropractic', 'owner'], ['dentistry', 'groupDirector'], ['dentalHygiene', 'regional'], ['respiratoryTherapy', 'director'], ['occupationalTherapy', 'director']]) {
+  'allied health ladders reach a director'() {
+    for (const [id, top] of [['optometry', 'regionalDirector'], ['chiropractic', 'regionalDirector'], ['dentalHygiene', 'regional'], ['respiratoryTherapy', 'director'], ['occupationalTherapy', 'director']]) {
       assert.ok(getProfession(id).levels.some((l) => l.id === top), `${id}.${top}`);
     }
   },

@@ -758,7 +758,8 @@ export function careerOnAgeUp(ctx) {
   job.paidThisYear = true;
   if (profession.flightHoursPerYear) ctx.emit('logbook:add', { hours: profession.flightHoursPerYear });
 
-  if (profession.mandatoryRetirement && state.character.age >= profession.mandatoryRetirement) {
+  // Retirement ages bind the career service, not political appointees (an ambassador serves at the head of government's pleasure).
+  if (profession.mandatoryRetirement && !job.political && state.character.age >= profession.mandatoryRetirement) {
     ctx.emit('retirement:mandatory', { age: profession.mandatoryRetirement });
     return;
   }

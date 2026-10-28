@@ -24,7 +24,6 @@ export const MORE_PROFESSIONS = {
       L('dentist', 'Dentist', 8, { abilities: ['prescribe'] }),
       L('specialist', 'Dental Specialist (Orthodontics / Oral Surgery)', 9, { track: 'ic', minSize: 'medium', req: { credentials: ['dentalLicense'], experience: { professions: ['dentistry'], years: 4 } }, abilities: ['prescribe'] }),
       L('partner', 'Practice Partner', 9, { track: 'mgmt', abilities: ['prescribe', 'supervise', 'hire', 'budget', 'sign'], reports: 15 }),
-      L('groupDirector', 'Clinical Director, Dental Group', 10, { track: 'mgmt', minSize: 'large', abilities: ['prescribe', 'supervise', 'hire', 'budget', 'sign', 'exec'], reports: 120 }),
     ],
   },
   physicalTherapy: {

@@ -31,6 +31,7 @@ import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 import { branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from '../../modules/military/MilitaryEngine.js';
+import { tierOf } from '../../modules/military/SecondCareer.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
@@ -160,6 +161,13 @@ function juntaCard(state) {
     <div class="action-grid">${button('🗳️ Call elections and stand down', 'coups.holdElections', { arg: 'stepDown', hint: 'Sanctions lifted' })}${button('🎖️ Call elections and stand', 'coups.holdElections', { arg: 'stand', hint: 'Out of uniform' })}${button('🚔 Crack down', 'coups.crackdown', { variant: 'danger', hint: 'Calm now, more sanctions' })}</div>`, { icon: '🪖', accent: 'red' });
 }
 
+/** Senior veterans can work their network for a senior civilian job (six years after leaving). */
+function secondCareerButton(state) {
+  const h = state.military.history.at(-1);
+  if (state.military.service || !tierOf(h) || state.character.age - h.endAge > 6) return '';
+  return button('🤝 Work your network', 'secondCareer.network', { variant: 'small', disabled: Boolean(state.yearly['secondCareer.network']), hint: 'Senior civilian jobs for former officers' });
+}
+
 /** On the retired list: rank (Ret.), retired pay, and volunteering for recall. */
 function retiredListCard(state) {
   const h = retiredFrom(state);
@@ -175,7 +183,7 @@ function retiredListCard(state) {
     ['Recall', recallable ? `Liable to recall until ${RECALL_MAX_AGE}` : 'No longer liable to recall'],
   ].filter(Boolean))}
     <p class="fine">Retirees don't enlist again as recruits. A retiree can volunteer for recall to active duty at their retired grade; retired pay stops while serving and is recomputed on retiring again.</p>
-    <div class="action-grid">${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${RECALL_MAX_AGE}` })}</div>`, { icon: '🎖️', accent: 'green' });
+    <div class="action-grid">${secondCareerButton(state)}${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${RECALL_MAX_AGE}` })}</div>`, { icon: '🎖️', accent: 'green' });
 }
 
 export function militaryView(state) {
@@ -482,5 +490,6 @@ function veteranCard(state) {
     (state.health?.va?.rating ?? 0) >= 50 ? '🏥 Your VA rating qualifies you for full VA health care.' : (state.health?.va?.rating ?? 0) > 0 ? '🏥 The VA covers care for your service-connected conditions.' : null,
     '🏠 VA home loans: no down payment, no PMI.',
   ].filter(Boolean);
-  return card('Veteran Transition', `<ul class="history">${items.map((i) => `<li>${i}</li>`).join('')}</ul>`, { icon: '🧭', accent: 'green' });
+  const net = retiredFrom(state) ? '' : secondCareerButton(state);
+  return card('Veteran Transition', `<ul class="history">${items.map((i) => `<li>${i}</li>`).join('')}</ul>${net ? `<div class="action-grid">${net}</div>` : ''}`, { icon: '🧭', accent: 'green' });
 }

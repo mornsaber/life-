@@ -57,6 +57,28 @@ const tests = {
     assert.ok(!pens[0].suspended);
     assert.ok(pens[0].annual >= before, 'recomputed with the extra years');
   },
+  'a retired colonel is offered senior civilian jobs, not the bottom rung'() {
+    const { engine, state } = retiree('US', 8);
+    const h = state.military.history.at(-1);
+    h.rankCode = 'O-6'; h.rankTitle = 'Colonel';
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', school: 'State', year: 2000 });
+    state.prompts = [];
+    engine.dispatch('secondCareer.network');
+    const q = state.prompts.find((p) => p.type === 'secondCareer.offer');
+    assert.ok(q, 'offers');
+    engine.resolvePrompt(q.id, '0');
+    assert.ok(state.career.job.grade >= 7, `senior job (${state.career.job.title}, grade ${state.career.job.grade})`);
+    assert.match(VIEWS.military(state, {}), /Work your network/);
+  },
+  'a British OF-5 counts as a senior officer for second careers'() {
+    const { engine, state } = retiree('GB', 9);
+    const h = state.military.history.at(-1);
+    h.rankCode = 'OF-6'; h.rankTitle = 'Brigadier';
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'business', school: 'State', year: 2000, country: 'GB' });
+    state.prompts = [];
+    engine.dispatch('secondCareer.network');
+    assert.ok(state.prompts.some((p) => p.type === 'secondCareer.offer') || state.log.at(-1).entries.some((e) => /comrades/.test(e.text)));
+  },
   'abroad: a British retiree is on the retired list too'() {
     const { state } = retiree('GB', 7);
     assert.match(strip(VIEWS.military(state, {})), /Retired List/);

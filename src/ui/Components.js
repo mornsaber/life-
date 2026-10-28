@@ -164,6 +164,44 @@ export function ribbon(raw, { device = null, count = 1, title = '' } = {}) {
   return `<span class="ribbon" style="background:linear-gradient(90deg, ${stops})" title="${esc(title)}">${marks}</span>`;
 }
 
+/* Honours that don't define a ribbon get one of their own, worked out from the name so the same
+   award always looks the same and different awards never share the default. */
+const RIBBON_PALETTE = ['#1f3f8f', '#c8102e', '#f2c400', '#0a7d3b', '#6b2c91', '#e8742a', '#00a3c4', '#7a1f1f', '#2e2e2e', '#ffffff', '#4a8c2a', '#d64f9b', '#8a6d3b', '#14335c'];
+const hashOf = (str) => { let h = 2166136261; for (const ch of String(str)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+export function ribbonFor(h) {
+  if (Array.isArray(h.ribbon) && h.ribbon.length) return h.ribbon;
+  const key = h.order ?? h.baseName ?? h.name ?? h.id ?? '';
+  const n = hashOf(key);
+  const pick = (i) => RIBBON_PALETTE[(n >>> (i * 4)) % RIBBON_PALETTE.length];
+  const a = pick(0); let b = pick(1); let c = pick(2);
+  if (b === a) b = RIBBON_PALETTE[(RIBBON_PALETTE.indexOf(a) + 5) % RIBBON_PALETTE.length];
+  if (c === a || c === b) c = RIBBON_PALETTE[(RIBBON_PALETTE.indexOf(b) + 3) % RIBBON_PALETTE.length];
+  switch (n % 5) {
+    case 0: return [[a, 3], [b, 1], [a, 3]]; // a centre stripe
+    case 1: return [[b, 1], [a, 4], [b, 1]]; // edge stripes
+    case 2: return [[a, 1], [b, 1], [c, 1]]; // three bands
+    case 3: return [[a, 2], [b, 1], [c, 1], [b, 1], [a, 2]]; // stripes within stripes
+    default: return [[a, 1], [c, 1], [a, 1], [c, 1], [a, 1]]; // pinstripes
+  }
+}
+/** What kind of insignia an honour is, for its shape in the medal case. */
+export function insigniaKind(h) {
+  if (h.sport && /gold/i.test(h.name)) return 'gold';
+  if (h.sport && /silver/i.test(h.name)) return 'silver';
+  if (h.sport && /bronze/i.test(h.name)) return 'bronze';
+  if (h.order || h.source === 'order' || /\bOrder\b/.test(h.name ?? '')) return 'order';
+  if (h.source === 'military' && /Cross|Star|Medal of Honor|Victoria/.test(h.name ?? '')) return 'cross';
+  return 'disc';
+}
+/** A small insignia: the honour's own colour, shape by kind, and a rosette for the senior grades of an order. */
+export function insignia(h) {
+  const colors = ribbonFor(h).map((x) => (Array.isArray(x) ? x[0] : x));
+  const main = colors.find((c) => c !== '#ffffff') ?? colors[0];
+  const kind = insigniaKind(h);
+  const rosette = h.order && (h.grade ?? 0) >= 2 ? '<i class="ins-rosette"></i>' : '';
+  return `<span class="insignia ins-${kind}" style="--ins:${main}">${esc(h.icon ?? '🎖️')}${rosette}</span>`;
+}
+
 /** Ribbon rack grouped by award (with oak-leaf clusters for repeats). */
 export function ribbonRack(honors) {
   if (!honors.length) return empty('No decorations yet.');
@@ -177,7 +215,7 @@ export function ribbonRack(honors) {
   }
   const sorted = [...groups.values()].sort((a, b) => (a.precedence ?? 99) - (b.precedence ?? 99));
   return `<div class="rack">${sorted
-    .map((g) => ribbon(g.ribbon, { device: g.valor ? 'V' : null, count: g.count, title: `${g.name}${g.count > 1 ? ` ×${g.count}` : ''}${g.country ? ` (${COUNTRIES[g.country]?.name ?? g.country})` : ''}` }))
+    .map((g) => ribbon(ribbonFor(g), { device: g.valor ? 'V' : g.order && (g.grade ?? 0) >= 2 ? '✦' : null, count: g.count, title: `${g.name}${g.count > 1 ? ` ×${g.count}` : ''}${g.country ? ` (${COUNTRIES[g.country]?.name ?? g.country})` : ''}` }))
     .join('')}</div>`;
 }
 
@@ -190,7 +228,7 @@ export function medalCase(honors) {
   return `<ul class="medal-list">${sorted
     .map(
       (h) => `<li class="medal ${h.posthumous ? 'posthumous' : ''}">
-        <div class="medal-art">${ribbon(h.ribbon, { device: h.device })}<span class="medal-icon">${h.icon}</span></div>
+        <div class="medal-art">${ribbon(ribbonFor(h), { device: h.device })}${insignia(h)}</div>
         <div class="medal-text">
           <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
           <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${COUNTRIES[h.country]?.flag ?? ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>

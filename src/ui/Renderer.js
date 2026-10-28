@@ -4,13 +4,14 @@
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
 import { underworldCard } from './views/UnderworldView.js';
+import { ceremonialPosts } from '../modules/world/Ceremonial.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
 import { OFFICES } from '../modules/politics/Offices.js';
 import { CROWNS } from '../modules/world/Crown.js';
 import { currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
-  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
+  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, ribbon, ribbonFor, insignia, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
 } from './Components.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession, PROFESSIONS } from '../modules/career/JobTrees.js';
@@ -96,7 +97,7 @@ function ordersCard(state, inOrder) {
   const declined = state.honoursDeclined ?? [];
   if (!held.length && !declined.length) return '';
   const rows = held.map((h) => `<li class="order-row">
-      <span class="order-icon" aria-hidden="true">${h.icon ?? '🎗️'}</span>
+      <span class="order-icon" aria-hidden="true">${insignia(h)}${ribbon(ribbonFor(h), { device: h.order && (h.grade ?? 0) >= 2 ? '✦' : null })}</span>
       <span class="order-text"><small class="order-name">${esc(h.order ?? h.from?.replace(/^the /, '') ?? 'Order')}${h.country && COUNTRIES[h.country] ? ` · ${COUNTRIES[h.country].flag}` : ''}</small>
         <span><b>${esc(h.name.replace(/ \([A-Z]{2,5}\)$/, ''))}</b>${h.post ? ` ${chip(esc(h.post), 'honor')}` : ''}</span>
         <small class="muted">${h.insignia ? `${esc(h.insignia)} · ` : ''}age ${h.age}${h.source === 'foreign' ? ' · honorary or foreign' : ''}</small></span>
@@ -160,7 +161,9 @@ export const VIEWS = {
   honors(state) {
     const mil = militaryHonors(state);
     const inOrder = (h) => Boolean(h.order) || (h.source === 'order' && h.tier !== 'peer');
-    return `${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    const posts = ceremonialPosts(state);
+    const duties = posts.length ? card('Ceremonial Duties', `${posts.map((p) => `<p><b>${esc(p.name)}</b>${p.rec ? ` <small class="muted">${p.rec.years} yr · ${p.rec.events} duties</small>` : ''}</p>${meter(p.rec?.standing ?? 50, { label: p.kind === 'lieutenancy' ? '🏰 Standing in the county' : '🎖️ Standing with the regiment' })}`).join('')}<p class="fine">Each year brings a duty: how you handle it decides whether the post is renewed and how you're remembered.</p>`, { icon: '🎖️' }) : '';
+    return `${duties}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 

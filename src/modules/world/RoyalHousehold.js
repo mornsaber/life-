@@ -30,6 +30,7 @@ import { eminence } from './Honours.js';
 import { localUnitName } from './MilitaryLocal.js';
 import { clamp } from '../../core/Random.js';
 import { seatAppointee } from '../politics/Legislature.js';
+import { standingOf } from './Ceremonial.js';
 import { ageOf, people, living } from '../people/People.js';
 import { enlist, enlistmentEligibility } from '../military/MilitaryEngine.js';
 import { defaultMos } from '../military/MOS.js';
@@ -623,7 +624,8 @@ export const HonoraryModule = {
     for (const h of state.honors.filter((x) => x.source === 'honoraryRank' && !state.royal)) {
       h.until ??= h.colonelOf ? 70 : age + 5;
       if (age < h.until) continue;
-      if (!h.colonelOf && !h.renewed && rng.chance(0.5)) {
+      // A post held well is renewed; one neglected is not.
+      if (!h.colonelOf && !h.renewed && rng.chance(Math.min(0.9, 0.15 + standingOf(state, h.id) / 100))) {
         h.renewed = true;
         h.until = age + 5;
         ctx.log(`Your appointment as ${h.name} was extended for another five years.`, '🎖️', 'good');

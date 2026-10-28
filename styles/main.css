@@ -914,9 +914,9 @@ select:focus { border-color: var(--cyan); }
 
 /* Orders: one row per order, at your grade. */
 .order-list { list-style: none; margin: 0; padding: 0; }
-.order-row { display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
+.order-row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 8px 0; border-bottom: 1px dashed var(--line); }
 .order-row:last-child { border-bottom: 0; }
-.order-icon { font-size: 20px; text-align: center; }
+.order-icon { display: flex; flex-direction: column; align-items: center; gap: 4px; }
 .order-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .order-name { text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px; color: var(--muted); }
 
@@ -928,3 +928,13 @@ select:focus { border-color: var(--cyan); }
 .family-tree .tree-facts { margin-top: 2px; line-height: 1.35; }
 .family-tree .tree-kids { margin-top: 3px; font-size: 0.85em; }
 .family-tree .tree-heir { font-weight: 600; }
+
+/* Insignia: each honour in its own colour, shaped by kind. */
+.insignia { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; font-size: 18px; background: var(--ins, #8a6d3b); box-shadow: inset 0 0 0 2px rgba(255,255,255,.55), 0 1px 2px rgba(0,0,0,.35); }
+.insignia.ins-disc { border-radius: 50%; }
+.insignia.ins-order { clip-path: polygon(50% 0, 61% 35%, 98% 35%, 68% 57%, 79% 92%, 50% 71%, 21% 92%, 32% 57%, 2% 35%, 39% 35%); width: 38px; height: 38px; }
+.insignia.ins-cross { clip-path: polygon(35% 0, 65% 0, 65% 35%, 100% 35%, 100% 65%, 65% 65%, 65% 100%, 35% 100%, 35% 65%, 0 65%, 0 35%, 35% 35%); }
+.insignia.ins-gold { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #fff3b0, #d4a017 60%, #8a6a00); }
+.insignia.ins-silver { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #ffffff, #b8bec6 60%, #6d737b); }
+.insignia.ins-bronze { border-radius: 50%; background: radial-gradient(circle at 35% 30%, #f4c99a, #b0702f 60%, #6b3e14); }
+.insignia .ins-rosette { position: absolute; top: -3px; right: -3px; width: 10px; height: 10px; border-radius: 50%; background: radial-gradient(circle, #fff 30%, var(--ins, #c8102e) 32%); box-shadow: 0 0 0 1px rgba(0,0,0,.3); }

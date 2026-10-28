@@ -39,8 +39,12 @@ const familyOf = (id) => FAMILIES.find((f) => f.includes(id)) ?? [id];
 
 /** Rank from a code like 'E-7', 'W-3', 'O-4'. */
 const parseRank = (code) => {
-  const m = /^([EWO])-(\d+)/.exec(code ?? '');
-  return m ? { kind: m[1], n: Number(m[2]) } : null;
+  // NATO codes abroad: OR-n is enlisted grade n; OF-n is roughly O-(n+1).
+  const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
+  if (!m) return null;
+  if (m[1] === 'OR') return { kind: 'E', n: Number(m[2]) };
+  if (m[1] === 'OF') return { kind: 'O', n: Number(m[2]) + 1 };
+  return { kind: m[1], n: Number(m[2]) };
 };
 const senior = (r) => r && ((r.kind === 'E' && r.n >= 7) || (r.kind === 'W' && r.n >= 3) || (r.kind === 'O' && r.n >= 4));
 
