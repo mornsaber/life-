@@ -304,10 +304,17 @@ const tests = {
     const oldest = Math.max(...d.units.tactical.map((u) => u.age));
     engine.dispatch('deptEquip.refurb', 'military|tactical');
     assert.ok(Math.max(...d.units.tactical.map((u) => u.age)) <= oldest, 'depot overhaul');
-    let fielded = false;
-    for (let i = 0; i < 20 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.requisition', 'military|tactical:jltv'); fielded = d.pending.length > 0; }
-    assert.ok(fielded, 'fielding approved');
+    // A fielding bid: matched from the unit fund and argued for, it clears the board within a few years.
+    engine.dispatch('deptEquip.requisition', 'military|tactical:jltv');
+    const bid = d.bids[0];
+    assert.ok(bid, 'bid in the queue');
+    d.reserve = 5_000_000;
+    engine.dispatch('deptEquip.matchBid', `military|${bid.id}:0.5`);
+    assert.ok(bid.match > 0, 'local match');
     const ctx = engine.context();
+    let fielded = false;
+    for (let i = 0; i < 4 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.makeCase', `military|${bid.id}`); tick(ctx, state); fielded = d.pending.length > 0 || d.units.tactical.some((u) => u.model === 'jltv'); }
+    assert.ok(fielded, 'fielding approved');
     tick(ctx, state);
     assert.ok(d.units.tactical.some((u) => u.model === 'jltv'), 'new JLTVs arrived');
     const html = VIEWS.military(state, {});
@@ -363,10 +370,18 @@ const tests = {
     engine.dispatch('deptEquip.fundraise', 'team.teamRubicon|');
     assert.ok(recordOf(state, tr).budget > 0, 'raised money');
     const kits = recordOf(state, fema).units.kits.length;
+    const fd = recordOf(state, fema);
+    fd.budget = 0; fd.reserve = 0;
     engine.dispatch('deptEquip.buy', 'team.fema|kits:kit');
-    assert.equal(recordOf(state, fema).units.kits.length, kits, 'federal teams can\'t buy their own');
+    assert.equal(fd.units.kits.length, kits, 'issued teams have no money of their own to spend');
+    // Big items are bid for; a matched, argued bid gets funded.
+    engine.dispatch('deptEquip.requisition', 'team.fema|vehicles:mdrc');
+    assert.ok(fd.bids.length === 1, 'bid filed');
+    fd.reserve = 2_000_000;
+    engine.dispatch('deptEquip.matchBid', `team.fema|${fd.bids[0].id}:0.5`);
     let fielded = false;
-    for (let i = 0; i < 20 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.requisition', 'team.fema|vehicles:mdrc'); fielded = recordOf(state, fema).pending.length > 0; }
+    const fctx = engine.context();
+    for (let i = 0; i < 4 && !fielded; i++) { state.yearly = {}; engine.dispatch('deptEquip.makeCase', `team.fema|${fd.bids[0]?.id}`); tick(fctx, state); fielded = fd.pending.length > 0 || fd.units.vehicles?.some((u) => u.model === 'mdrc'); }
     assert.ok(fielded, 'a mobile recovery center is on the way');
     state.service.sdf = { stateId: 'TX', name: 'Texas State Guard', rankIndex: 8, yearsInRank: 2, schools: {}, years: 12, activations: 3, joinedAge: 23 };
     assert.equal(contextOf(state, 'team.sdf')?.group, 'sdf');

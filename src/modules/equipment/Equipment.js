@@ -653,6 +653,59 @@ export function powers(c) {
   const issued = mil || c.issued;
   return { buy: !issued, used: !issued, lease: c.kind === 'job' || c.kind === 'business', retire: true, refurb: true, build: !issued, bank: c.money === 'budget', requisition: issued, fundraise: c.kind === 'volunteer' && !issued };
 }
+/**
+ * Issued equipment (a central service's station, a military unit, a parent-equipped volunteer
+ * unit): small-ticket kit can be bought locally from the station fund; big items are bid for.
+ */
+export const localLimit = (state, c) => Math.max(15000, Math.round(annualMoney(state, c) * 0.6 / 1000) * 1000);
+export const canBuyLocally = (state, c, m) => isIssued(c) && !m.build && !m.rent && m.cost <= localLimit(state, c);
+/** Headquarters' bar for funding a bid this year: tighter on a stretched budget, looser on a premium one. */
+export function bidThreshold(state, c) {
+  const policy = c.hqOrg?.fleetPolicy ?? c.parent?.fleetPolicy ?? 'schedule';
+  const base = { stretch: 78, schedule: 65, premium: 55 }[policy] ?? 65;
+  const funding = c.kind === 'military' ? serviceLevel(state, 'national', 'defense') : c.kind === 'job' ? publicFunding(state) : 1;
+  return Math.round(clamp(base / clamp(funding, 0.7, 1.3), 45, 90));
+}
+/** How headquarters scores a bid: need, wear, your local match, your case and your record, and how long it has waited. */
+export function bidScore(state, c, d, bid) {
+  const cat = cats(c)[bid.catId];
+  if (!cat) return 0;
+  const units = d.units[bid.catId] ?? [];
+  const needed = Math.max(1, needOf(cat, c));
+  const short = clamp(1 - countOf(cat, units) / needed, 0, 1);
+  const worn = clamp(units.filter((u) => u.age > (cat.models[u.model]?.life ?? 10)).length / needed, 0, 1);
+  const cost = bidCost(c, bid);
+  const record = c.kind === 'military' ? (state.military?.service?.eval ?? 60) : (state.career?.job?.performance ?? 60);
+  return Math.round(25 + short * 40 + worn * 30 + (cost ? clamp(bid.match / cost, 0, 0.5) * 80 : 0) + (bid.case ?? 0) + (record - 60) / 2.5 + (bid.waited ?? 0) * 8);
+}
+export const bidCost = (c, bid) => Math.round((cats(c)[bid.catId]?.models[bid.model]?.cost ?? 0) * bid.n);
+const bidsOf = (d) => (d.bids ??= []);
+/** Each year headquarters weighs every open bid; funded ones are fielded next year, the rest wait (or lapse after three years). */
+function bidsYear(ctx, c, d) {
+  const { state, rng } = ctx;
+  const bar = bidThreshold(state, c);
+  const who = c.hq ?? c.parent?.name ?? (c.kind === 'military' ? 'the fielding board' : 'headquarters');
+  for (const bid of [...bidsOf(d)]) {
+    const cat = cats(c)[bid.catId];
+    const m = cat?.models[bid.model];
+    if (!m) { d.bids = d.bids.filter((b) => b !== bid); continue; }
+    const score = bidScore(state, c, d, bid) + rng.int(-8, 8);
+    if (score >= bar) {
+      for (let i = 0; i < bid.n; i++) d.pending.push({ catId: bid.catId, model: bid.model, age: state.character.age + 1 });
+      d.bids = d.bids.filter((b) => b !== bid);
+      ctx.log(`${capital(who)} funded your bid: ${bid.n} new ${nice(m.name)}${bid.n > 1 ? 's' : ''} arrive next year${bid.match ? ` (your $${bid.match.toLocaleString()} local match helped)` : ''}.`, cat.icon, 'good');
+    } else if ((bid.waited ?? 0) >= 2) {
+      d.reserve += bid.match ?? 0;
+      d.bids = d.bids.filter((b) => b !== bid);
+      ctx.log(`Your bid for ${nice(m.name)}s lapsed after three years in ${who}'s queue${bid.match ? '; the local match went back into the station fund' : ''}.`, cat.icon, 'warn');
+    } else {
+      bid.waited = (bid.waited ?? 0) + 1;
+      bid.case = Math.max(0, (bid.case ?? 0) - 5);
+      if (c.manager || c.requester) ctx.log(`${capital(who)} didn't reach your ${nice(m.name)} bid this year (scored ${score}, the bar was ${bar}). It moves up the queue.`, '📋', 'info');
+    }
+  }
+}
+
 const refurbShare = (c, m) => (isIssued(c) ? 0.06 : m.remount ? 0.6 : 0.35);
 export const refurbCost = (c, m) => Math.round(m.cost * refurbShare(c, m));
 
@@ -753,6 +806,9 @@ function yearFor(ctx, c) {
     d.bond = null;
   }
   if (c.hq) hqProgramme(ctx, c, d);
+  if (isIssued(c) && d.bids?.length) bidsYear(ctx, c, d);
+  // Issued equipment: unspent maintenance money carries into the station fund (up to two years' worth) for local purchases and bid matches.
+  if (c.money === 'om' && d.budgetAge != null && d.budget > 0) d.reserve = Math.min(annualMoney(state, c) * 2, d.reserve + Math.round(d.budget * 0.75));
   // Money: what's left is spent by staff (all of it when you don't decide), then the new year's arrives.
   if (c.money !== 'cash' && d.budgetAge != null && d.budget > floorOf(c)) autoReplace(c, d, c.manager ? 0.5 : c.org ? 0.6 : 1);
   // Staff carry part of what's left into the reserve when something big is overdue.
@@ -849,11 +905,11 @@ export const EquipmentModule = {
       const { c, d, parts } = resolve(ctx, arg);
       if (!c) return;
       if (!c.manager) return ctx.toast('Only whoever holds the budget can buy', 'warn');
-      if (!powers(c).buy) return ctx.toast(c.kind === 'military' ? 'Military units request equipment through fielding' : 'Equipment is issued — request it from the program', 'warn');
       const [cid, mid, how] = parts;
       const cat = cats(c)[cid];
       const m = cat?.models[mid];
       if (!m || m.build) return;
+      if (!powers(c).buy && !(canBuyLocally(ctx.state, c, m) && !how)) return ctx.toast(isIssued(c) ? `Items over $${localLimit(ctx.state, c).toLocaleString()} are bid for — put in a bid` : 'Equipment is issued — request it from the program', 'warn');
       if ((how === 'used' && !m.usedCost) || (how === 'lease' && !m.lease)) return;
       const price = m.rent ? m.rent : how === 'used' ? m.usedCost : how === 'lease' ? Math.round((m.cost / m.life) * 1.3) : m.cost;
       if (price > available(c, d)) return ctx.toast(`$${price.toLocaleString()} — you have $${available(c, d).toLocaleString()}`, 'warn');
@@ -1056,25 +1112,64 @@ export const EquipmentModule = {
         ctx.log(`Your request went through: a new ${nice(m.name)}.`, cat.icon, 'good');
       } else ctx.log('Your equipment request died in the budget process.', '📋', 'warn');
     },
-    /** Military: request fielding of a newer model (arrives next year if approved). */
+    /** Issued equipment: put in a bid to headquarters (or the fielding board) for new units. arg 'ref|catId:modelId' */
     requisition(ctx, arg) {
-      const { state, rng } = ctx;
+      const { state } = ctx;
       const { c, d, parts } = resolve(ctx, arg);
       // Station officers in a central body bid too; elsewhere it's the commander's call.
       if (!(c?.manager || (c?.hq && c.requester)) || !isIssued(c)) return;
-      if (yearlyCount(state, `equip.requisition.${c.ref}`)) return ctx.toast('One request a year', 'warn');
-      bumpYearly(state, `equip.requisition.${c.ref}`);
       const [cid, mid] = parts;
       const cat = cats(c)[cid];
       if (!cat?.models[mid]) return;
-      // Headquarters (or a parent service) weighs your readiness and record against everyone else's bids.
-      const civil = c.kind !== 'military';
-      const odds = civil ? clamp(0.3 + (60 - readiness(state, c)) / 120 + ((state.career.job?.performance ?? 60) - 60) / 200, 0.15, 0.7) : 0.45;
-      const n = rng.chance(odds) ? Math.max(1, Math.round(needOf(cat, c) * rng.float(0.1, 0.3))) : 0;
-      const who = c.hq ?? c.parent?.name ?? null;
-      if (!n) return ctx.log(who ? `${who} put your bid for ${cat.models[mid].name}s in the queue: other stations are ahead of you this year.` : `Your request for ${cat.models[mid].name}s went up the chain — other units are ahead of you in the fielding schedule.`, cat.icon, 'warn');
-      for (let i = 0; i < n; i++) d.pending.push({ catId: cid, model: mid, age: state.character.age + 1 });
-      ctx.log(who ? `${who} approved your bid: ${n} new ${cat.models[mid].name}${n > 1 ? 's' : ''} arrive next year.` : `Approved: ${n} new ${cat.models[mid].name}${n > 1 ? 's' : ''} will be fielded to your unit next year.`, cat.icon, 'good');
+      if (bidsOf(d).length >= 3) return ctx.toast('Three bids are already in the queue', 'warn');
+      if (bidsOf(d).some((b) => b.catId === cid)) return ctx.toast('You already have a bid in for these', 'warn');
+      const units = d.units[cid] ?? [];
+      const needed = needOf(cat, c);
+      const worn = units.filter((u) => u.age > (cat.models[u.model]?.life ?? 10)).length;
+      const n = clamp(Math.ceil(Math.max(0, needed - countOf(cat, units))) + worn, 1, Math.max(1, Math.round(needed * 0.4)));
+      const bid = { id: `b${state.character.age}_${cid}`, catId: cid, model: mid, n, match: 0, case: 0, waited: 0, filed: state.character.age };
+      d.bids.push(bid);
+      const bar = bidThreshold(state, c);
+      return ctx.log(`You put in a bid for ${n} ${nice(cat.models[mid].name)}${n > 1 ? 's' : ''} (priority ${bidScore(state, c, d, bid)}; ${c.hq ?? c.parent?.name ?? 'the board'} funds bids scoring ${bar}+). Raise it with a local match or a business case.`, '📨', 'info');
+    },
+    /** 'ref|bidId:pct' — put station-fund money toward a bid (10, 25 or 50% of its cost). */
+    matchBid(ctx, arg) {
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c?.manager || !isIssued(c)) return;
+      const bid = bidsOf(d).find((b) => b.id === parts[0]);
+      if (!bid) return;
+      const want = Math.round(bidCost(c, bid) * clamp(Number(parts[1]) || 0.1, 0.05, 0.5)) - (bid.match ?? 0);
+      if (want <= 0) return ctx.toast('That bid is already matched to that level', 'warn');
+      const amount = Math.min(want, available(c, d));
+      if (amount < 1000) return ctx.toast('Not enough in the station fund', 'warn');
+      pay(c, d, amount);
+      bid.match = (bid.match ?? 0) + amount;
+      return ctx.log(`You put $${amount.toLocaleString()} of local money toward the bid. Its priority is now ${bidScore(ctx.state, c, d, bid)}.`, '🤝', 'info');
+    },
+    /** 'ref|bidId' — make the case to headquarters (once a year): data, a site visit, a call to the fleet manager. */
+    makeCase(ctx, arg) {
+      const { state } = ctx;
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!(c?.manager || c?.requester) || !isIssued(c)) return;
+      if (yearlyCount(state, `equip.case.${c.ref}`)) return ctx.toast('One business case a year', 'warn');
+      const bid = bidsOf(d).find((b) => b.id === parts[0]);
+      if (!bid) return;
+      bumpYearly(state, `equip.case.${c.ref}`);
+      const record = c.kind === 'military' ? (state.military?.service?.eval ?? 60) : (state.career?.job?.performance ?? 60);
+      const boost = Math.round(clamp(8 + (record - 50) / 3 + (60 - readiness(state, c)) / 4, 5, 25));
+      bid.case = (bid.case ?? 0) + boost;
+      ctx.stat('stress', 2);
+      return ctx.log(`You made the case: breakdown logs, response times, a walk-round with the fleet manager. Priority +${boost}, now ${bidScore(state, c, d, bid)}.`, '📊', 'good');
+    },
+    /** 'ref|bidId' — withdraw a bid (any local match comes back). */
+    withdrawBid(ctx, arg) {
+      const { c, d, parts } = resolve(ctx, arg);
+      if (!c) return;
+      const bid = bidsOf(d).find((b) => b.id === parts[0]);
+      if (!bid) return;
+      d.reserve += bid.match ?? 0;
+      d.bids = d.bids.filter((b) => b !== bid);
+      return ctx.log('You withdrew the bid.', '📋', 'info');
     },
     /** 'job|policy' — the head of a national or regional body sets how headquarters runs the fleet. */
     fleetPolicy(ctx, arg) {

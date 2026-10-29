@@ -5,7 +5,7 @@
  */
 import { esc, button, card, chip, meter, disclosure } from '../Components.js';
 import { specialistNote } from '../../modules/equipment/SpecialistCalls.js';
-import { FLEET_POLICIES, GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost, countOf, upkeepDelta, grantSchemeOf } from '../../modules/equipment/Equipment.js';
+import { FLEET_POLICIES, GROUPS, contextOf, isIssued, recordOf, readiness, annualMoney, available, powers, refurbCost, needOf, expansionCase, modelQuality, fleetQuality, gearSafety, renovationCost, buyoutCost, countOf, upkeepDelta, grantSchemeOf, localLimit, canBuyLocally, bidScore, bidThreshold, bidCost } from '../../modules/equipment/Equipment.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const short = (name) => name.replace(/ \(.*\)$/, '').replace(/^Leased /, '').toLowerCase();
@@ -31,7 +31,7 @@ function footer(state, c) {
   if (c.kind === 'business') return 'Paid from business cash. Worn-out equipment drags down quality and breaks down at the worst time; premises leases come out of cash every year.';
   const issuer = c.parent?.name ?? 'the program';
   if (c.kind === 'volunteer' && c.issued) return c.manager
-    ? `Equipment is issued by ${esc(issuer)}, not bought. You get about ${money(annualMoney(state, c))} a year to overhaul what you have and can request new equipment once a year.`
+    ? `Equipment is issued by ${esc(issuer)}. About ${money(annualMoney(state, c))} a year comes for overhauls; what you don't spend builds a station fund for small local purchases (up to ${money(localLimit(state, c))}) and for matching your bids.`
     : c.requester ? `Officers can request replacements; ${esc(issuer)} decides.` : `${esc(issuer)} issues your equipment. Officers request replacements.`;
   if (c.kind === 'volunteer') {
     const scheme = grantSchemeOf(state, c);
@@ -41,15 +41,38 @@ function footer(state, c) {
       : 'The chief and officers decide what gets bought. Anyone can help with the fund drive.';
   }
   if (c.kind === 'military') return c.manager
-    ? `Commanders don't buy equipment — you spend about ${money(annualMoney(state, c))} a year of O&M funds on depot overhauls and request newer models through the fielding process. Equipment readiness is on your evaluation.`
+    ? `About ${money(annualMoney(state, c))} a year of O&M funds pays for depot overhauls and local purchases of small kit (up to ${money(localLimit(state, c))}); unspent funds build a unit fund that can match a fielding bid. Big items come through fielding bids. Equipment readiness is on your evaluation.`
     : c.requester ? 'NCOs and staff can push requests up the chain; the commander decides.' : 'Your commander and the maintainers keep it running. Broken equipment shows up at inspections.';
   if (c.hq) return c.manager
-    ? `${esc(c.hq)} buys the fleet centrally: you keep ${esc(c.label)}'s equipment running with about ${money(annualMoney(state, c))} a year of maintenance money, bid to headquarters for new apparatus once a year, and its fleet programme replaces worn units as policy allows.`
+    ? `${esc(c.hq)} buys the fleet centrally and its fleet programme replaces worn units as policy allows. ${esc(c.label)} gets about ${money(annualMoney(state, c))} a year for maintenance: unspent money builds the station fund, which buys small kit locally (up to ${money(localLimit(state, c))}) and can match your bids to jump the queue.`
     : `${esc(c.hq)} buys the fleet centrally. Station officers bid for replacements; headquarters decides.`;
   return c.manager
     ? `You control the equipment budget (about ${money(annualMoney(state, c))} a year, depending on ${c.sector === 'private' ? 'the company' : 'the government\'s finances'}). Readiness is part of your evaluation.`
     : c.requester ? 'Supervisors can request replacements; whoever holds the budget decides.' : 'Your chiefs and managers decide what gets bought. Old equipment breaks down on the job.';
 }
+
+/** Bids in headquarters' queue: priority against the bar, and what you can do to raise it. */
+function bidsSection(state, c, d, ref) {
+  const bids = d.bids ?? [];
+  if (!isIssued(c) || (!bids.length && !(c.manager || c.requester))) return '';
+  const bar = bidThreshold(state, c);
+  const who = c.hq ?? c.parent?.name ?? (c.kind === 'military' ? 'the fielding board' : 'headquarters');
+  const caseUsed = Boolean(state.yearly?.[`equip.case.${ref}`]);
+  const rows = bids.map((b) => {
+    const cat = GROUPS[c.group].categories[b.catId];
+    const m = cat?.models[b.model];
+    if (!m) return '';
+    const score = bidScore(state, c, d, b);
+    const cost = bidCost(c, b);
+    const pct = cost ? Math.round((b.match ?? 0) / cost * 100) : 0;
+    const a = (rest) => `${ref}|${rest}`;
+    return `<li class="report-row"><div><b>${cat.icon} ${b.n} × ${esc(m.name)}</b> <small class="muted">${money(cost)} · priority <b class="${score >= bar ? 'pos' : 'neg'}">${score}</b> / bar ${bar}${b.waited ? ` · waited ${b.waited} yr` : ''}${b.match ? ` · ${pct}% local match` : ''}</small></div>
+      <div class="toggle-row">${c.manager ? [0.1, 0.25, 0.5].filter((x) => x * 100 > pct).map((x) => button(`🤝 Match ${x * 100}%`, 'deptEquip.matchBid', { arg: a(`${b.id}:${x}`), variant: 'tiny', disabled: Math.round(cost * x) - (b.match ?? 0) > available(c, d), hint: `${money(Math.round(cost * x) - (b.match ?? 0))} from the station fund` })).join('') : ''}${button('📊 Make the case', 'deptEquip.makeCase', { arg: a(b.id), variant: 'tiny', disabled: caseUsed, hint: 'Once a year · stronger with a good record and a struggling fleet' })}${button('✖ Withdraw', 'deptEquip.withdrawBid', { arg: a(b.id), variant: 'tiny ghost' })}</div></li>`;
+  }).join('');
+  return `<h4 class="sub">📨 Bids to ${esc(who)}</h4>${rows ? `<ul class="history">${rows}</ul>` : '<p class="muted">No bids in. Put one in from a category below.</p>'}
+    <p class="fine">${esc(capital(who))} funds bids scoring ${bar}+ each year (the bar follows ${c.kind === 'military' ? 'the defense budget' : 'the fleet policy and the budget'}). Priority comes from need and wear, your local match, your case, your record and time waiting; a bid lapses after three years.</p>`;
+}
+const capital = (t) => t.charAt(0).toUpperCase() + t.slice(1);
 
 /** The equipment card for one owner ('job' | 'business' | 'military' | 'vol.<serviceId>' | 'team.<id|sdf>'), or '' when it doesn't apply. */
 const qualityLabel = (q) => (q >= 1.08 ? 'premium' : q >= 1.02 ? 'above standard' : q >= 0.97 ? 'standard' : q >= 0.92 ? 'budget' : 'poor');
@@ -81,7 +104,11 @@ export function equipmentCard(state, ref) {
     let buttons = '';
     if (c.manager) {
       buttons = Object.entries(cat.models).map(([mid, m]) => {
-        if (can.requisition) return m.build || m.rent ? '' : button(c.kind === 'military' ? `📨 Request fielding: ${esc(m.name)}` : `📨 Ask ${esc(c.hq ?? c.parent?.name ?? 'headquarters')} for: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.requisition.${ref}`]), hint: 'One bid a year · arrives next year if approved' });
+        if (can.requisition) {
+          if (m.build || m.rent) return '';
+          const local = canBuyLocally(state, c, m) ? button(`🛒 Buy locally: ${esc(m.name)} ${money(m.cost)}`, 'deptEquip.buy', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: m.cost > pool, hint: `From the station fund · items up to ${money(localLimit(state, c))}` }) : '';
+          return local + button(c.kind === 'military' ? `📨 Bid for fielding: ${esc(m.name)}` : `📨 Bid to ${esc(c.hq ?? c.parent?.name ?? 'headquarters')}: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: (d.bids ?? []).some((b) => b.catId === cid) || (d.bids ?? []).length >= 3, hint: 'Goes into the queue; funded when its priority clears the bar' });
+        }
         if (m.build) {
           if (!can.build) return '';
           const how = c.kind === 'business' ? 'Loan' : c.kind === 'volunteer' ? 'Fund drive' : 'Bond';
@@ -122,7 +149,7 @@ export function equipmentCard(state, ref) {
       if (units.some((u) => !u.leased)) buttons += button(cat.facility ? '🚪 Close / end a lease' : isIssued(c) ? '📦 Turn in the oldest' : '🏷️ Retire & sell the oldest', 'deptEquip.retire', { arg: a(cid), variant: 'tiny' });
     } else if (c.requester && c.hq) {
       const [mid, m] = Object.entries(cat.models).find(([, x]) => !x.build && !x.rent) ?? [];
-      buttons = m ? button(`📨 Ask ${esc(c.hq)} for: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: Boolean(y[`equip.requisition.${ref}`]), hint: 'One bid a year · arrives next year if approved' }) : '';
+      buttons = m ? button(`📨 Bid to ${esc(c.hq)}: ${esc(m.name)}`, 'deptEquip.requisition', { arg: a(`${cid}:${mid}`), variant: 'tiny', disabled: (d.bids ?? []).some((b) => b.catId === cid) || (d.bids ?? []).length >= 3, hint: 'Goes into headquarters\' queue' }) : '';
     } else if (c.requester && !can.requisition) {
       buttons = button('📋 Request a replacement', 'deptEquip.request', { arg: a(cid), variant: 'tiny', disabled: Boolean(y[`equip.request.${ref}`]) });
     }
@@ -133,7 +160,7 @@ export function equipmentCard(state, ref) {
   const q = fleetQuality(state, c);
   const staff = c.staff ? `<p class="fine">👥 ${c.staff.total.toLocaleString()} staff${c.staff.label ? `: ${c.staff.operational.toLocaleString()} ${esc(c.staff.label.toLowerCase())} · ${c.staff.civilian.toLocaleString()} ${esc(c.staff.other.split(' (')[0].toLowerCase())}` : ''}. The standard fleet follows headcount.</p>` : '';
   const chips = c.manager || c.kind === 'volunteer'
-    ? `<p>${c.kind === 'job' && (c.span ?? 1) < 1 ? chip(`🧭 Your command: ~${Math.round((c.span ?? 1) * 100)}% of the department's fleet`) : ''} ${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} reserve`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
+    ? `<p>${c.kind === 'job' && (c.span ?? 1) < 1 ? chip(`🧭 Your command: ~${Math.round((c.span ?? 1) * 100)}% of the department's fleet`) : ''} ${chip(`💰 ${money(c.money === 'cash' ? pool : d.budget)} ${MONEY_LABEL[c.money]}`)} ${d.reserve ? chip(`🏦 ${money(d.reserve)} ${isIssued(c) ? 'station fund' : 'reserve'}`) : ''} ${d.bond ? chip('🏗️ Building under construction', 'good') : ''}</p>`
     : '';
   const actions = [
     c.manager && can.buy ? button(d.auto ? '🤖 Staff manage equipment: ON' : '🤖 Let staff manage equipment', 'deptEquip.autoManage', { arg: a(''), variant: d.auto ? 'small on' : 'small', hint: 'Each year they replace what\'s worn and fill shortfalls within the money available' }) : '',
@@ -146,6 +173,7 @@ export function equipmentCard(state, ref) {
   return card(`${title(c)} ${g.name}`, `${meter(r, { max: 100, label: c.kind === 'military' ? 'Equipment readiness' : 'Readiness', suffix: '%', tone: r >= 75 ? 'good' : r >= 55 ? 'mid' : 'bad' })}
     ${staff}${c.kind === 'volunteer' && c.org ? `<p class="fine">${c.parent ? `🏛️ Part of ${esc(c.parent.name)} · ` : ''}Standard for ${Object.keys(c.org.people ?? {}).length + 1} members and ${c.org.district?.stations ?? 1} station${(c.org.district?.stations ?? 1) > 1 ? 's' : ''}.</p>` : ''}<p>${chip(`⭐ Fleet quality: ${qualityLabel(q)}`, q >= 1.04 ? 'good' : q < 0.95 ? 'warn' : '')}${(() => { const u = c.kind === 'military' || isIssued(c) ? 0 : upkeepDelta(c, d); return Math.abs(u) >= 1000 ? ` ${chip(u < 0 ? `⛽ Running costs ${money(-u)}/yr below standard` : `⛽ Running costs ${money(u)}/yr above standard`, u < 0 ? 'good' : 'warn')}` : ''; })()} ${c.kind === 'job' ? chip(`🦺 Injury risk ×${gearSafety(state).toFixed(2)}`, gearSafety(state) > 1.05 ? 'warn' : 'good') : ''}</p>
     ${chips}${actions ? `<div class="action-grid">${actions}</div>` : ''}
+    ${bidsSection(state, c, d, ref)}
     ${rows}
     <p class="fine">${footer(state, c)}</p>`, { icon: '🛠️' });
 }
