@@ -195,6 +195,27 @@ const tests = {
     }
   },
 
+  'domestic abuse: control and assault cost the relationship, open cases, and drive partners away'() {
+    const { engine, state } = life({ countryId: 'GB' });
+    state.people.list.push({ id: 'p1', firstName: 'Alex', lastName: 'Reed', relation: 'spouse', alive: true, relationship: 80, ageOffset: 0 });
+    rig(engine, false, () => engine.dispatch('crime.abusePartner', 'control'));
+    const alex = state.people.list.find((p) => p.id === 'p1');
+    assert.ok(alex.relationship < 80);
+    assert.ok(state.legal.investigations.some((i) => i.offenseId === 'domesticAbuse'), 'coercive control is a crime in England');
+    rig(engine, false, () => engine.dispatch('crime.abusePartner', 'assault'));
+    assert.equal(state.legal.crime.abuse.incidents, 2);
+    assert.ok(state.legal.crime.guilt > 0);
+    clean(VIEWS.crime(state, {}));
+    assert.match(VIEWS.crime(state, {}), /perpetrator programme/);
+    engine.dispatch('crime.abuseProgramme');
+    assert.equal(state.legal.crime.abuse.programme, 1);
+    // Enough of it and they leave, with a protective order.
+    state.yearly = {};
+    rig(engine, true, () => engine.dispatch('crime.abusePartner', 'assault'));
+    assert.notEqual(alex.relation, 'spouse');
+    assert.ok(state.legal.flags.protectiveOrder != null);
+  },
+
   'justice careers get hard cases'() {
     const { engine, state, ctx } = life();
     state.career.job = { professionId: 'prosecution', levelId: 'x', employer: { name: 'DA' }, abilities: [], grade: 2 };

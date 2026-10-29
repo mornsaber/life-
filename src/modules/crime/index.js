@@ -16,6 +16,7 @@ import { addGuilt, guiltTick, confrontationTick, ViolenceActions, ViolenceResolv
 import { gangsTick, GangActions, GangResolvers } from './Gangs.js';
 import { victimTick, VictimResolvers } from './Victims.js';
 import { caseWorkTick, CaseWorkResolvers } from './CaseWork.js';
+import { abuseTick, DomesticAbuseActions, DomesticAbuseResolvers } from './DomesticAbuse.js';
 import { priceLevel } from '../world/Countries.js';
 import { Random } from '../../core/Random.js';
 
@@ -57,12 +58,13 @@ export const CrimeModule = {
     dirtyMoneyTick(ctx);
     gangsTick(ctx);
     confrontationTick(ctx);
+    abuseTick(ctx);
     victimTick(ctx);
     guiltTick(ctx);
     caseWorkTick(ctx);
   },
 
-  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions },
+  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions },
 
-  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers },
+  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers },
 };

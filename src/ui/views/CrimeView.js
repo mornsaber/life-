@@ -9,6 +9,7 @@ import { JUVENILE_CRIMES } from '../../modules/crime/Gangs.js';
 import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../modules/crime/CrimeWorld.js';
 import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
+import { partnerOf } from '../../modules/people/People.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
 const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
@@ -89,7 +90,16 @@ function crimesCard(state) {
     ${button('🔪 Carry a knife', 'crime.arm', { arg: 'knife', variant: 'small', disabled: age < 14 || armed === 'knife' })}
     ${button('🔫 Buy a gun', 'crime.arm', { arg: 'gun', variant: 'small danger', disabled: age < 14 || armed === 'gun', hint: `Guns here: ${{ easy: 'easy to get', market: 'a black market', hard: 'very hard to get' }[gunsHere(state)]}` })}
     ${armed ? button('🗑️ Get rid of it', 'crime.arm', { arg: 'none', variant: 'small' }) : ''}
-  </div><p class="fine">Carrying a weapon changes every confrontation: some people back down, some get hurt, and some die. Killing is never a choice on this screen — it is what happens when a choice goes wrong.</p>`);
+  </div>${(() => {
+    const partner = partnerOf(state);
+    const abuse = state.legal.crime?.abuse;
+    if (!partner && !abuse?.incidents) return '';
+    return `<h4 class="sub">🥀 At home</h4><div class="action-grid">
+      ${partner ? button(`📱 Control ${esc(partner.firstName)}`, 'crime.abusePartner', { arg: 'control', variant: 'danger', disabled: age < 16 || Boolean(state.yearly['risky.abuse.control']), hint: 'Their phone, their friends, their money' }) : ''}
+      ${partner ? button(`✋ Hit ${esc(partner.firstName)}`, 'crime.abusePartner', { arg: 'assault', variant: 'danger', disabled: age < 16 || Boolean(state.yearly['risky.abuse.assault']), hint: 'Domestic assault' }) : ''}
+      ${abuse?.incidents ? button('🪑 Join a perpetrator programme', 'crime.abuseProgramme', { variant: 'small', disabled: Boolean(state.yearly['crime.abuseProgramme']), hint: 'Accountability, and a way to stop' }) : ''}
+    </div><p class="fine">Abuse escalates, and it never pays: partners leave and report, children carry it, and courts issue protective orders.${abuse?.incidents ? ` Incidents with ${esc(partner?.firstName ?? 'your partner')}: ${abuse.incidents}.` : ''}</p>`;
+  })()}<p class="fine">Carrying a weapon changes every confrontation: some people back down, some get hurt, and some die. Killing is never a choice on this screen — it is what happens when a choice goes wrong.</p>`);
   return card('Crime', `<p class="muted">Every one of these can follow you: records, suspended licences, denied clearances, people you hurt. Streets here: ${level(crimeLevelHere(state))} crime, ${level(corruptionHere(state))} corruption.</p>${youth}${groups}${violence}`, { icon: '😈', accent: 'red' });
 }
 
