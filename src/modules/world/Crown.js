@@ -417,7 +417,8 @@ const CRISIS_IDS = Object.keys(CRISES);
 /** Is the player the one who decides (the Governor-General here, or the monarch at home)? */
 function decider(state, cc) {
   const o = state.politics?.office?.id;
-  if ({ CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' }[cc] === o) return 'gg';
+  const gg = { CA: 'ca_gg', AU: 'au_gg', NZ: 'nz_gg' }[cc];
+  if (gg && o === gg) return 'gg';
   const r = state.royal;
   if (r?.reigning && r.crownId === cc) return 'monarch';
   return null;
