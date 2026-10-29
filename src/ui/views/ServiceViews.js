@@ -37,6 +37,8 @@ import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
 import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcContracts.js';
+import { reserveStanding } from '../../modules/military/MerchantReserve.js';
+import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
 function recruitingOffice(state) {
@@ -207,6 +209,23 @@ export function contractMarketCard(state) {
     <p class="fine">Taking a contract puts you on a firm's books; reputation from finished contracts moves you up to team leader, detail leader and program manager.</p>`, { icon: '🪖', accent: 'yellow' });
 }
 
+/** The merchant marine reserve: inactive in peace, called up at any age in war (MerchantReserve.js). */
+export function merchantReserveCard(state) {
+  const s = reserveStanding(state);
+  const r = state.merchantReserve;
+  if (!s && !r?.served?.length) return '';
+  const war = s && warIn(state, s.nation);
+  const live = war && war.phase !== 'ceasefire' && (war.intensity >= 2 || war.mobilized);
+  const m = r?.mobilized;
+  const status = m ? `Mobilized for ${esc(m.war)} · ${m.voyages} voyage${m.voyages === 1 ? '' : 's'}` : s?.commissioned ? 'Active — academy staff commission' : live ? 'Liable to call-up' : 'Inactive (peacetime)';
+  return card('⚓ Merchant Marine Reserve', `
+    ${s ? `<p>${militaryInsignia(s.code, s.nation)} <b>${esc(s.rank.title)}</b> · ${esc(s.name)}</p>` : ''}
+    ${kv([['Status', status], ['Called up', 'In wartime, at any age']])}
+    ${live && !m ? `<div class="toggle-row">${button('🚢 Volunteer for the sealift', 'merchantReserve.volunteer', { variant: 'small' })}</div>` : ''}
+    ${(r?.served ?? []).length ? `<p class="fine">Wartime service: ${r.served.map((w) => `${esc(w.war)} (${w.from}–${w.to}, ${w.voyages} voyages)`).join(' · ')}</p>` : ''}
+    <p class="fine">Seafarers and maritime academy graduates are a wartime reserve: their ships are requisitioned and they sail under naval orders. Academy faculty and staff hold reserve commissions year-round.</p>`, { icon: '⚓', accent: m ? 'red' : 'blue' });
+}
+
 /** Coup plots (serving officers) and foreign-army contracts (retired officers): Kingmakers.js. */
 function kingmakerCard(state) {
   const a = state.foreignAdvisor;
@@ -245,7 +264,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${contractMarketCard(state)}${kingmakerCard(state)}${foreignForcesCard(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${contractMarketCard(state)}${merchantReserveCard(state)}${kingmakerCard(state)}${foreignForcesCard(state)}${history}`;
 
   const branch = branchOf(svc);
   const rank = rankOf(svc);

@@ -552,7 +552,7 @@ export const JOB_FIELDS = {
   safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'universityPolice', 'airportPolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'dispatch', 'emergencyManagement', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
   corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'library', 'journalism', 'interpreter'] },
+  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'maritimeFaculty', 'library', 'journalism', 'interpreter'] },
   government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
   intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
   holySee: { label: 'Faith & the Church', icon: '⛪', ids: ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc', 'romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },

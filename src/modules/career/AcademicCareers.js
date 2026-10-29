@@ -55,6 +55,21 @@ export const ACADEMIC_PROFESSIONS = {
       L('president', 'College President', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'exec', 'policy'], reports: 600 }),
     ],
   },
+  maritimeFaculty: {
+    id: 'maritimeFaculty', name: 'Maritime Academy Faculty & Staff', icon: '⚓', sector: 'state', payMultiplier: 1.05, minAge: 24, background: 'strict',
+    benefits: { pension: 'stateGov' },
+    employerName: (city, rng, stateName) => rng.pick([`${stateName ?? city} Maritime Academy`, `${city} Maritime College`, `${city} Nautical College`]),
+    entry: { anyOf: [{ credentials: ['mateLicense'] }, { credentials: ['engineerLicense'] }, { education: { level: 'master' } }] },
+    // Licensed faculty and the cadet staff hold commissions in the merchant marine reserve (the U.S. Maritime Service).
+    levels: [
+      L('instructor', 'Licensed Instructor', 4, { entry: true, req: { anyOf: [{ credentials: ['mateLicense'] }, { credentials: ['engineerLicense'] }, { education: { level: 'master' } }] } }),
+      L('professor', 'Professor of Marine Transportation', 6, { track: 'ic', req: { education: { level: 'bachelor' } }, abilities: ['tenure'] }),
+      L('trainingShipMaster', 'Master of the Training Ship', 8, { track: 'ic', req: { credentials: ['masterLicense'] }, abilities: ['command', 'supervise'], reports: 40 }),
+      L('deptHead', 'Department Head', 7, { track: 'mgmt', abilities: ['tenure', 'supervise', 'hire'], reports: 20 }),
+      L('commandant', 'Commandant of Cadets', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 900 }),
+      L('superintendent', 'Superintendent', 9, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'exec', 'policy'], reports: 1200 }),
+    ],
+  },
   nationalLab: {
     id: 'nationalLab', name: 'National Laboratory Science', icon: '⚛️', sector: 'federal', payMultiplier: 1.12, minAge: 24, background: 'strict',
     employerName: () => 'U.S. Department of Energy National Laboratories',

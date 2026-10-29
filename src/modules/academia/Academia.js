@@ -36,7 +36,7 @@ import { createEmployer } from '../career/Employers.js';
 import { levelById, ladderFor } from '../career/Ladder.js';
 import { SCHOOLS, MAJORS } from '../education/Catalog.js';
 
-export const ACADEMIC_JOBS = ['university', 'college', 'communityCollege', 'research', 'nationalLab'];
+export const ACADEMIC_JOBS = ['university', 'college', 'communityCollege', 'maritimeFaculty', 'research', 'nationalLab'];
 const TENURE_TRACK = ['university', 'college'];
 const HUMANITIES = ['history', 'english', 'arts', 'languages', 'religiousStudies', 'liberalArts', 'politicalScience', 'communications'];
 const HOT_FIELDS = ['computerScience', 'engineering', 'mathematics', 'economics', 'physics', 'dataScience'];
@@ -208,7 +208,7 @@ function citationsTick(ctx) {
 function studentsTick(ctx, job) {
   const { state, rng } = ctx;
   if (state.lab?.active) return; // a real lab trains its own students (academia/Lab.js)
-  if (!['associate', 'professor', 'endowed', 'university', 'distinguished', 'chair', 'assistant', 'pi', 'senior', 'fellow', 'group'].includes(job.levelId) || job.professionId === 'communityCollege') return;
+  if (!['associate', 'professor', 'endowed', 'university', 'distinguished', 'chair', 'assistant', 'pi', 'senior', 'fellow', 'group'].includes(job.levelId) || ['communityCollege', 'maritimeFaculty'].includes(job.professionId)) return;
   if (!rng.chance(job.levelId === 'assistant' ? 0.12 : 0.28)) return;
   const s = sci(state);
   s.students = (s.students ?? 0) + 1;
@@ -509,11 +509,11 @@ export const AcademiaModule = {
     // Published papers keep being cited, whatever you do now.
     if (sci(state).papers > 0) citationsTick(ctx);
     if (!academic || !job.paidThisYear) return;
-    if (['university', 'college', 'communityCollege'].includes(job.professionId)) teachingTick(ctx, job);
+    if (['university', 'college', 'communityCollege', 'maritimeFaculty'].includes(job.professionId)) teachingTick(ctx, job);
     tenureTick(ctx, job);
     if (!state.career.job) return;
     studentsTick(ctx, job);
-    if (job.professionId !== 'communityCollege') honorsTick(ctx, job);
+    if (!['communityCollege', 'maritimeFaculty'].includes(job.professionId)) honorsTick(ctx, job);
   },
   actions: {
     goOnMarket: (ctx) => goOnMarket(ctx),

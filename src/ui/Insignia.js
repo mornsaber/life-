@@ -265,6 +265,7 @@ const FIRE_LIKE = ['fire', 'airportFire', 'stateFire', 'privateFire'];
 const EMS_LIKE = ['ems'];
 /** Officers' stripes at sea and in the air (deck and engine; first officers and captains). */
 const STRIPES = {
+  maritimeFaculty: { instructor: 2, professor: 3, deptHead: 3, trainingShipMaster: 4, commandant: 4, superintendent: 4 },
   merchantMarine: { thirdMate: 1, thirdAE: 1, firstAE: 3, chiefMate: 3, chiefEngineer: 4, master: 4, portCaptain: 4 },
   cruise: { asstCd: 2, cruiseDirector: 3, hotelDirector: 4, vpHotelOps: 4, maitred: 2 },
   aviation: { cfi: 2, fo: 3, majorFo: 3, captain: 4, majorCaptain: 4, widebodyCaptain: 4, checkAirman: 4, chiefPilot: 4, dfo: 4 },

@@ -46,7 +46,7 @@ export function writingCapacity(state) {
   if (!job) return state.career.emeritus?.research ? 1 : 0;
   if (job.professionId === 'medical') return state.medicine?.practice === 'academic' ? 2 : 0;
   if (!ACADEMIC_JOBS.includes(job.professionId)) return 0;
-  if (job.professionId === 'communityCollege') return 1;
+  if (['communityCollege', 'maritimeFaculty'].includes(job.professionId)) return 1;
   if (job.professionId === 'college' && job.employer.size === 'small') return 1;
   return (job.levelId === 'adjunct' || job.levelId === 'lecturer' ? 1 : 3) + (state.lab?.buyout ? 1 : 0);
 }
@@ -56,7 +56,7 @@ export function expectation(state) {
   const job = state.career.job;
   if (!job) return 0;
   if (job.professionId === 'medical') return state.medicine?.practice === 'academic' ? 3 : 0;
-  if (!ACADEMIC_JOBS.includes(job.professionId) || ['adjunct', 'lecturer', 'instructor'].includes(job.levelId) || job.professionId === 'communityCollege') return 0;
+  if (!ACADEMIC_JOBS.includes(job.professionId) || ['adjunct', 'lecturer', 'instructor'].includes(job.levelId) || ['communityCollege', 'maritimeFaculty'].includes(job.professionId)) return 0;
   if (job.professionId === 'college') return { small: 2, medium: 4, large: 6 }[job.employer.size] ?? 4;
   return job.levelId === 'postdoc' ? 4 : 6;
 }
