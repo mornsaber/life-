@@ -47,7 +47,7 @@ function years(engine, n) {
   }
   return prompts;
 }
-const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
+const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
 
 const tests = {
   'small businesses can\'t delegate yet; a second location or 8 staff unlocks it'() {

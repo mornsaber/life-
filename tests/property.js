@@ -43,7 +43,7 @@ function years(engine, n) {
     }
   }
 }
-const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
+const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
 
 const tests = {
   'family and friends go to school, work, buy homes and build savings'() {

@@ -40,7 +40,7 @@ const tick = (ctx, state) => { if (state.career.job) state.career.job.paidThisYe
 const deptOf = (state, ref = 'job') => recordOf(state, contextOf(state, ref));
 const readiness = (state, ref = 'job') => readinessOf(state, contextOf(state, ref));
 const BUSINESS_GROUPS_OF = (c) => GROUPS[c.group].categories;
-const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
+const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
 
 const tests = {
   'a police captain manages the fleet: buy, lease, retire, bank'() {

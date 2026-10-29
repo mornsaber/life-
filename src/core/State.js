@@ -223,6 +223,9 @@ const migrationTemplate = () => createInitialState(new Random(1));
  *
  * Passing an explicit `key` keeps the old single-key behavior (tests, tools).
  */
+/** Test runs that never reload a save skip serializing the whole life after every action (tests/run.js). */
+const skipSaves = () => typeof process !== 'undefined' && process.env?.LIFE_SKIP_SAVES === '1';
+
 export class Store {
   constructor(storage = defaultStorage(), key = null) {
     this.storage = storage;
@@ -332,7 +335,7 @@ export class Store {
   }
 
   save() {
-    if (!this.state) return;
+    if (!this.state || skipSaves()) return;
     this.write(this.key, this.state);
     if (this.fixedKey) return;
     const idx = this.index();

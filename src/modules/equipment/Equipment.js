@@ -665,8 +665,13 @@ function autoReplace(c, d, share) {
   for (const [cid, cat] of Object.entries(all)) {
     if (cat.facility || isIssued(c)) continue;
     const [mid, m] = Object.entries(cat.models)[0];
-    while (countOf(cat, d.units[cid]) < needOf(cat, c) && m.cost <= money) {
+    // Count once and keep a running total: recounting per unit is quadratic for big fleets.
+    const need = needOf(cat, c);
+    let have = countOf(cat, d.units[cid]);
+    const per = m.capacity ?? 1;
+    while (have < need && m.cost <= money) {
       (d.units[cid] ??= []).push({ model: mid, age: 0, used: false, leased: false });
+      have += per;
       money -= m.cost;
       spent += m.cost;
     }

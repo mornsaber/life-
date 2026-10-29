@@ -21,7 +21,7 @@ import { enact, lawValue } from '../src/modules/politics/Laws.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
+const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
 function life(seed = 1) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({});

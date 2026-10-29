@@ -40,7 +40,7 @@ const year = (engine) => {
     engine.resolvePrompt(p.id, (hold || p.options.find((o) => !o.disabled && o.tone !== 'danger') || p.options[0]).id);
   }
 };
-const clean = (html) => assert.ok(!/NaN|undefined|\[object/.test(html), html.match(/.{60}(NaN|undefined|\[object).{60}/)?.[0]);
+const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
 
 const awaitedBoard = await import('../src/modules/business/GroupBoard.js');
 const tests = {
