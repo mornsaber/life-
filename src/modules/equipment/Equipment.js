@@ -125,7 +125,7 @@ const JOB_GROUP = {
   dentistry: 'dental', physicalTherapy: 'clinic', chiropractic: 'clinic', optometry: 'clinic', veterinary: 'clinic', occupationalTherapy: 'clinic',
   fitness: 'gym', retail: 'retail', childcare: 'care', funeral: 'funeral',
   merchantMarine: 'vessel', cruise: 'vessel', oilGas: 'rig', airTrafficControl: 'atc', meteorology: 'weather', forensics: 'crimeLab',
-  college: 'campus', communityCollege: 'campus', university: 'campus', publicHealth: 'publicHealth', probation: 'probation',
+  college: 'campus', communityCollege: 'campus', maritimeFaculty: 'campus', university: 'campus', publicHealth: 'publicHealth', probation: 'probation',
   surveying: 'fieldScience', environmental: 'fieldScience', renewableEnergy: 'renewables', privateMilitary: 'pmc', dentalHygiene: 'dental',
   music: 'studio', acting: 'studio', contentCreator: 'studio', education: 'campus', pharmacy: 'retail',
   // Desk jobs run on computers, systems and office space; managers keep them up like any other fleet.
@@ -133,7 +133,7 @@ const JOB_GROUP = {
   realestate: 'corpOffice', insurance: 'corpOffice', propertyManagement: 'corpOffice', actuary: 'corpOffice', marketing: 'corpOffice', sales: 'corpOffice',
   humanResources: 'corpOffice', design: 'corpOffice', cybersecurity: 'corpOffice', dataScience: 'corpOffice', gameDevelopment: 'corpOffice',
   interpreter: 'corpOffice', nonprofit: 'corpOffice', privateInvestigator: 'corpOffice', bailBonds: 'corpOffice',
-  engineering: 'designOffice', architecture: 'designOffice', journalism: 'newsroom', clergy: 'church', catholicClergy: 'church', anglicanClergy: 'church',
+  engineering: 'designOffice', mechanicalEng: 'designOffice', electricalEng: 'designOffice', chemicalEng: 'designOffice', aerospaceEng: 'designOffice', petroleumEng: 'designOffice', nuclearEng: 'designOffice', structuralEng: 'designOffice', architecture: 'designOffice', journalism: 'newsroom', clergy: 'church', catholicClergy: 'church', anglicanClergy: 'church', jesuits: 'church', moc: 'church',
   flightAttendant: 'airline', physicianAssistant: 'clinic', counseling: 'therapyOffice', psychology: 'therapyOffice', dietitian: 'therapyOffice', speechPathology: 'therapyOffice',
   socialWork: 'agencyOffice', cps: 'agencyOffice', benefitsClaims: 'agencyOffice', revenue: 'agencyOffice', regulatory: 'agencyOffice', municipalAdmin: 'agencyOffice',
   planning: 'agencyOffice', councilInspector: 'agencyOffice', oig: 'agencyOffice', legislativeStaff: 'agencyOffice', foreignService: 'agencyOffice', prosecution: 'agencyOffice', publicDefender: 'agencyOffice',

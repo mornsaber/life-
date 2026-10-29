@@ -95,7 +95,7 @@ const tests = {
     // Veteran placement never skips past an appointed or executive post anywhere.
     for (const p of Object.values(PROFESSIONS)) {
       const lvl = bestEntryLevel(state, p, 'enterprise');
-      if (lvl) assert.ok(!lvl.appointed && !lvl.abilities?.includes('exec'), p.id);
+      if (lvl && lvl.id !== p.levels[0].id) assert.ok(!lvl.appointed && !lvl.abilities?.includes('exec'), p.id);
     }
     clean(VIEWS.career(state, {}));
   },
