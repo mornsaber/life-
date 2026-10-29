@@ -508,7 +508,7 @@ export const ORG_TYPES = {
     ],
   },
   charity: {
-    name: (c) => c.rng.pick(['Hope Community Foundation', 'Greater Good Alliance', `${city(c)} Food Bank`, 'United Way of the Region']), scope: 'market', sector: 'private',
+    name: (c) => `${city(c)} ${c.rng.pick(['Community Foundation', 'Food Bank', 'Legal Aid Society', 'Youth Services', 'Housing Coalition'])}`, scope: 'market', sector: 'private',
     head: { title: 'President & CEO', selection: 'board', appointedBy: 'the board of trustees', occupation: 'nonprofit', levelId: 'ceo' },
     departments: [
       { id: 'programs', name: 'Programs & Services', occupations: ['nonprofit', 'socialWork'], head: { title: 'Chief Program Officer', selection: 'internal' } },

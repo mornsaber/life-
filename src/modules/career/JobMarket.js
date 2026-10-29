@@ -13,8 +13,8 @@ import { lawValue } from '../politics/Laws.js';
 import { yearlyCount, bumpYearly, prestige } from '../../core/State.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, nextLevels } from './Ladder.js';
-import { createEmployer, cityName } from './Employers.js';
-import { regionsHere } from '../life/Regions.js';
+import { createEmployer, cityName, campusRegions } from './Employers.js';
+import { regionsHere, REGIONS } from '../life/Regions.js';
 import { hire, stepForAtLeast, levelCheck } from './CareerEngine.js';
 import { recalcSalary } from './Compensation.js';
 import { candidateScore } from '../org/Vacancies.js';
@@ -60,24 +60,44 @@ export function makeOffer(ctx, { raise = [0.08, 0.22], headhunter = false, regio
 }
 
 /**
- * Up to `n` offers from employers other than yours. Where your town has only one employer for
- * the work (the city's police, the council, a provincial agency), the openings are in other cities.
+ * Up to `n` offers. A firm hires from anywhere; but a state agency, a national service or a
+ * federal agency is one employer: looking around there means bidding for a posting elsewhere in
+ * it (a transfer that keeps your rank and seniority) — plus, for a state agency, the odd lateral
+ * to another state's (which starts you over). A city's departments are each their own employer.
  */
 export function searchOffers(ctx, n, odds) {
   const { state, rng } = ctx;
   const job = state.career.job;
   const here = state.character.regionId;
+  const profession = getProfession(job.professionId);
+  const publicJob = profession.sector !== 'private';
+  const pool = profession.campus ? campusRegions(here) : regionsHere(state).map((r) => r.id);
+  // A state employee looks in their own state first.
+  const elsewhere = rng.shuffle(pool.filter((id) => id !== here)).slice(0, 10)
+    .sort((a, b) => (job.sector === 'state' ? Number(REGIONS[b]?.state === job.employer.stateId) - Number(REGIONS[a]?.state === job.employer.stateId) : 0));
   const seen = new Set([job.employer.orgId]);
-  const elsewhere = rng.shuffle(regionsHere(state).filter((r) => r.id !== here)).slice(0, 8).map((r) => r.id);
+  const posts = new Set([job.employer.city]);
   const offers = [];
+  let crossState = 0;
   // A town has many firms but one police department: look harder at home in the private sector.
   const tries = job.sector === 'private' ? [here, here, here] : [here];
   for (let i = 0; i < n; i++) {
     if (!rng.chance(odds)) continue;
     for (const regionId of [...tries, ...elsewhere]) {
-      const offer = makeOffer(ctx, regionId === here ? {} : { regionId });
+      const away = regionId !== here;
+      // At most one move to another state's agency: it means starting over there.
+      if (job.sector === 'state' && away && REGIONS[regionId]?.state !== job.employer.stateId && crossState) continue;
+      const offer = makeOffer(ctx, away ? { regionId } : {});
+      if (offer.employer.orgId === job.employer.orgId) {
+        // Your own agency elsewhere: a transfer, not a new employer.
+        if (!publicJob || !away || posts.has(offer.employer.city)) continue;
+        posts.add(offer.employer.city);
+        offers.push({ ...offer, transfer: true, levelId: job.levelId, title: job.title, salary: job.salary, step: undefined, lateral: false, workMode: 'onsite', nonCompete: 0, signing: 0 });
+        break;
+      }
       if (seen.has(offer.employer.orgId)) continue;
       seen.add(offer.employer.orgId);
+      if (job.sector === 'state' && away && REGIONS[regionId]?.state !== job.employer.stateId) crossState += 1;
       // A remote job elsewhere needs no move.
       if (offer.workMode === 'remote') delete offer.regionId;
       offers.push(offer);
@@ -87,12 +107,13 @@ export function searchOffers(ctx, n, odds) {
   return offers;
 }
 
-export const offerSummary = (o) => `${o.employer.name} (${o.employer.size})${o.regionId ? ` in ${cityName(o.regionId)} — you'd move` : ''} · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`;
+export const offerSummary = (o) => (o.transfer ? `Transfer within ${o.employer.orgName ?? o.employer.name} to ${o.employer.division ?? cityName(o.regionId)} (${cityName(o.regionId)}) — same rank, step and seniority; pay adjusted for the locality` : `${o.employer.name} (${o.employer.size})${o.regionId ? ` in ${cityName(o.regionId)} — you'd move` : ''} · ${o.title}${o.lateral ? ' (lateral: rank is earned again there)' : ''}${o.step ? ` · step ${o.step}` : ''} · $${o.salary.toLocaleString()}/yr · ${WORK_MODES[o.workMode].icon} ${WORK_MODES[o.workMode].label}${o.signing ? ` · $${o.signing.toLocaleString()} signing bonus` : ''}${o.employer.benefits.health ? '' : ' · no health plan'}${o.employer.benefits.match ? ` · ${Math.round(o.employer.benefits.match * 100)}% 401(k) match` : ' · no 401(k) match'}${o.nonCompete ? ` · ${o.nonCompete}-yr non-compete` : ''}`);
 
 /** Take an offer: a new employer in the same field (resigning the old job). */
 export function acceptOffer(ctx, offer) {
   const { state } = ctx;
   if (state.legal.incarceration) return ctx.log(`${offer.employer.name} withdrew its offer.`, '📭', 'bad');
+  if (offer.transfer) return acceptTransfer(ctx, offer);
   if (offer.regionId && offer.regionId !== state.character.regionId) ctx.emit('region:relocate', { regionId: offer.regionId, reason: `You moved to ${cityName(offer.regionId)} to join ${offer.employer.name}.` });
   const job = hire(ctx, { professionId: offer.professionId, levelId: offer.levelId, employer: offer.employer });
   if (!job) return undefined;
@@ -104,6 +125,19 @@ export function acceptOffer(ctx, offer) {
   if (offer.nonCompete) job.nonCompete = { years: offer.nonCompete };
   if (offer.signing) ctx.earn(offer.signing, 'Signing bonus', { wage: true });
   // An old non-compete is checked by the career:hired listener.
+}
+
+/** Move to a posting elsewhere in the same agency, keeping the job. */
+function acceptTransfer(ctx, offer) {
+  const { state } = ctx;
+  const job = state.career.job;
+  if (!job || job.employer.orgId !== offer.employer.orgId) return undefined;
+  state.career.relocating = true;
+  ctx.emit('region:relocate', { regionId: offer.regionId, reason: `${job.employer.orgName ?? job.employer.name} approved your transfer to ${cityName(offer.regionId)}.` });
+  delete state.career.relocating;
+  for (const k of ['name', 'city', 'cityName', 'stateId', 'division', 'site', 'deptId', 'deptName']) if (offer.employer[k] !== undefined) job.employer[k] = offer.employer[k];
+  recalcSalary(state, job);
+  return ctx.log(`You transferred to ${job.employer.division ?? job.employer.name} in ${cityName(offer.regionId)}: still ${job.title}, seniority intact, now $${job.salary.toLocaleString()}/yr.`, '🔁', 'milestone');
 }
 
 /** Starting a competing job while an old non-compete still binds you. */
@@ -214,7 +248,7 @@ export const JobMarket = {
       ctx.prompt({
         type: 'jobMarket.offers', icon: '📨', title: `${offers.length} Offer${offers.length > 1 ? 's' : ''} on the Table`,
         text: `You're ${job.title} at ${job.employer.name} ($${job.salary.toLocaleString()}/yr, ${WORK_MODES[workModeOf(job)].label.toLowerCase()}).\n${offers.map((o, i) => `${i + 1}. ${offerSummary(o)}`).join('\n')}`,
-        options: [...offers.map((o, i) => ({ id: String(i), label: `${i + 1}. Join ${o.employer.name}${o.regionId ? ` (${cityName(o.regionId)})` : ''}`, hint: `$${o.salary.toLocaleString()} · ${WORK_MODES[o.workMode].label}${o.regionId ? ' · relocate' : ''}` })), { id: 'counter', label: '🃏 Use the best offer to ask for a raise' }, { id: 'stay', label: '🏠 Stay where you are' }],
+        options: [...offers.map((o, i) => ({ id: String(i), label: o.transfer ? `${i + 1}. Transfer to ${cityName(o.regionId)}` : `${i + 1}. Join ${o.employer.name}${o.regionId ? ` (${cityName(o.regionId)})` : ''}`, hint: `$${o.salary.toLocaleString()} · ${WORK_MODES[o.workMode].label}${o.regionId ? ' · relocate' : ''}` })), ...(offers.some((o) => !o.transfer) ? [{ id: 'counter', label: '🃏 Use the best offer to ask for a raise' }] : []), { id: 'stay', label: '🏠 Stay where you are' }],
         data: { offers },
       });
     },

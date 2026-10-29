@@ -13,6 +13,7 @@ import { L, detectiveRanks } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 import { offenseName } from '../legal/Offenses.js';
 
+import { statePoliceName, prosecutorName } from './USAgencyNames.js';
 const AGENCY = { sector: 'state', stateAgency: true, exam: 'state', background: 'strict' };
 const agency = (suffix) => (_city, _rng, stateName) => `${stateName} ${suffix}`;
 
@@ -21,7 +22,7 @@ export const STATE_PROFESSIONS = {
     ...AGENCY, id: 'statePolice', name: 'State Police / Highway Patrol', icon: '🚔', payMultiplier: 1.0, minAge: 21, dutyStation: 'statewide',
     union: { chance: 0.7, name: 'State Troopers Association', strike: false },
     benefits: { pension: 'publicSafety', ssCovered: false },
-    employerName: agency('State Patrol'),
+    employerName: (_city, _rng, stateName, stateId) => statePoliceName(stateId, stateName),
     entry: { education: { level: 'highschool' }, credentials: ['driverLicense'], fitness: 50 },
     valued: ['postReserve', 'emt', 'trafficEnforcement'],
     levels: [
@@ -187,7 +188,7 @@ export const STATE_PROFESSIONS = {
   },
   prosecution: {
     ...AGENCY, id: 'prosecution', name: 'District Attorney\'s Office', icon: '👩‍⚖️', payMultiplier: 1.0, minAge: 24, exam: null,
-    employerName: (city) => `${city} County District Attorney`,
+    employerName: (city, _rng, _stateName, stateId, regionId) => prosecutorName(regionId, stateId, city),
     entry: { education: { program: 'jd' } },
     levels: [
       L('clerk', 'Law Clerk (DA)', 4),

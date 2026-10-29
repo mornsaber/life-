@@ -33,7 +33,8 @@ export const EM_AGENCIES = {
 };
 function emergencyHq(city, rng, stateName, stateId) {
   const cc = String(stateId ?? '').includes('-') ? stateId.split('-')[0] : 'US';
-  if (cc === 'US') return rng.chance(0.6) ? `${stateName} Office of Emergency Management` : `${city} Office of Emergency Management`;
+  // A state office (city and county emergency management are the city's own departments).
+  if (cc === 'US') return `${stateName} Office of Emergency Management`;
   const a = EM_AGENCIES[cc] ?? 'National disaster management agency';
   const name = (typeof a === 'string' ? a : a[stateId] ?? a['*']).replace('{state}', stateName ?? 'State');
   const provincial = typeof a !== 'string' || a.includes('{state}');

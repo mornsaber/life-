@@ -20,6 +20,7 @@ import { regionsInState, regionsIn } from '../life/Regions.js';
 import { localUnionName } from '../world/CountryLaw.js';
 import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 import { isNationalService } from '../world/LocalAgencies.js';
+import { UNIVERSITIES } from '../education/Universities.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -27,8 +28,22 @@ export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).nam
 export const stateNameOf = (regionId) => STATES[(REGIONS[regionId] ?? REGIONS.midcity).state].name;
 
 /** Where a job with a duty station puts you (null = where you already live). */
+/** Where a campus career exists: the cities of the country's maritime academies. */
+export function campusRegions(regionId) {
+  const cc = REGIONS[regionId]?.country ?? 'US';
+  return [...new Set(Object.values(UNIVERSITIES).filter((u) => u.country === cc && u.pro?.includes('maritime') && REGIONS[u.region]).map((u) => u.region))];
+}
+const campusAt = (regionId) => Object.values(UNIVERSITIES).find((u) => u.region === regionId && u.pro?.includes('maritime'))?.name ?? null;
+
 export function resolveDutyStation(rng, profession, regionId) {
   const stateId = (REGIONS[regionId] ?? REGIONS.midcity).state;
+  // A campus job is where a campus is: here if there is one, else in your state, else anywhere in the country.
+  if (profession.campus) {
+    const list = campusRegions(regionId);
+    if (!list.length || list.includes(regionId)) return null;
+    const inState = list.filter((r) => REGIONS[r].state === stateId);
+    return rng.pick(inState.length ? inState : list);
+  }
   const inState = regionsInState(stateId);
   if (profession.dutyStation === 'statewide') return rng.pick(inState).id;
   if (profession.dutyStation === 'stateRural') return (inState.find((r) => r.type === 'Rural') ?? rng.pick(inState)).id;
@@ -146,7 +161,8 @@ export function createEmployer(rng, state, profession, regionId) {
     ? { name: law.name ?? unionDef.name, strike: law.strike, ...(law.association ? { association: true } : {}), duesRate: law.association ? 0.008 : 0.013, agencyFee: !rtw && !law.association, contractYearsLeft: rng.int(1, 3) }
     : null;
   let name;
-  if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state);
+  if (profession.campus && campusAt(regionId)) name = campusAt(regionId);
+  else if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state, regionId);
   else name = rng.pick(profession.employers);
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;

@@ -19,6 +19,12 @@
  */
 import { L } from './Ladder.js';
 
+/** Local charities and advocacy groups, named for the place they serve. */
+export const NONPROFIT_NAMES = [
+  (c) => `${c} Community Foundation`, (c) => `${c} Food Bank`, (c) => `${c} Legal Aid Society`, (c) => `${c} Youth Services`,
+  (c) => `${c} Housing Coalition`, (c) => `${c} Literacy Council`, (c) => `${c} Environmental Council`, (c) => `${c} Refugee & Immigrant Services`,
+];
+
 export const BORDER_PATROL_MAX_AGE = 39;
 
 const fitnessGate = (min, maxAge) => (state) => {
@@ -272,6 +278,8 @@ export const WORKFORCE_PROFESSIONS = {
   nonprofit: {
     id: 'nonprofit', name: 'Nonprofit & Advocacy', icon: '💚', sector: 'private', payMultiplier: 0.85, minAge: 21, sizes: { small: 3, medium: 3, large: 2 }, background: 'standard',
     employers: ['Hope Community Foundation', 'Greater Good Alliance', 'Riverbend Food Bank', 'Citizens for Clean Water'],
+    // Local charities carry the city's name, so two cities never share one.
+    employerName: (city, rng) => rng.pick(NONPROFIT_NAMES)(city),
     entry: { education: { level: 'bachelor' } },
     levels: [
       L('assistant', 'Program Assistant', 2),

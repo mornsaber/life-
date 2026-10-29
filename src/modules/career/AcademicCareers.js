@@ -56,7 +56,7 @@ export const ACADEMIC_PROFESSIONS = {
     ],
   },
   maritimeFaculty: {
-    id: 'maritimeFaculty', name: 'Maritime Academy Faculty & Staff', icon: '⚓', sector: 'state', payMultiplier: 1.05, minAge: 24, background: 'strict',
+    id: 'maritimeFaculty', name: 'Maritime Academy Faculty & Staff', icon: '⚓', sector: 'state', payMultiplier: 1.05, minAge: 24, background: 'strict', campus: true,
     benefits: { pension: 'stateGov' },
     employerName: (city, rng, stateName) => rng.pick([`${stateName ?? city} Maritime Academy`, `${city} Maritime College`, `${city} Nautical College`]),
     entry: { anyOf: [{ credentials: ['mateLicense'] }, { credentials: ['engineerLicense'] }, { education: { level: 'master' } }] },
