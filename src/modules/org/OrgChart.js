@@ -9,7 +9,7 @@
  *
  * Read-only: charts never generate people (names appear once the game has met them).
  *
- * Node = { title, name?, meta?, you?, kind?, children?: Node[] }
+ * Node = { title, name?, meta?, you?, kind?, children?: Node[], levelId? (civilian rank), track?/grade? (military rank) }
  */
 import { orgOf, chainOfCommand } from './Organizations.js';
 import { getProfession } from '../career/JobTrees.js';
@@ -18,6 +18,8 @@ import { seatsAt } from './Vacancies.js';
 import { PLAYER, billetTitle } from './MilitaryUnits.js';
 
 const named = (org, id) => (id && org.people?.[id]) || null;
+/** A service member's rank, for the chart's insignia. */
+const rk = (p) => (p?.track && Number.isFinite(p.grade) ? { track: p.track, grade: p.grade } : {});
 const personNode = (p, title) => ({ title: title ?? p.title, name: p.name, meta: p.years != null ? `${p.years} yr` : null });
 
 /** The chart of a civilian workplace. */
@@ -40,7 +42,7 @@ export function workplaceChart(state, job) {
       const you = l.id === job.levelId;
       const names = holders.slice(0, 3).map((p) => p.name);
       return {
-        title: l.title, you,
+        title: l.title, you, levelId: l.id,
         name: you ? ['You', ...names.slice(0, 2)].join(', ') : names.join(', ') || null,
         meta: [seats && seats < 1e6 ? `${seats.toLocaleString()} post${seats === 1 ? '' : 's'}` : null, l.track === 'mgmt' ? 'management' : l.track === 'ic' ? 'specialist' : null].filter(Boolean).join(' · ') || null,
         kind: 'rank',
@@ -60,27 +62,27 @@ export function unitChart(state, svc) {
   const u = svc.unit;
   const unitSvc = { ...svc, specialty: org.specialty };
   const who = (id, billet) => {
-    if (id === PLAYER) return { title: billetTitle(unitSvc, billet), name: 'You', you: true };
+    if (id === PLAYER) return { title: billetTitle(unitSvc, billet), name: 'You', you: true, ...rk(svc) };
     const p = named(org, id);
-    return p ? { title: billetTitle(unitSvc, billet), name: `${p.rank ?? ''} ${p.name}`.trim() } : { title: billetTitle(unitSvc, billet), name: 'Vacant' };
+    return p ? { title: billetTitle(unitSvc, billet), name: `${p.rank ?? ''} ${p.name}`.trim(), ...rk(p) } : { title: billetTitle(unitSvc, billet), name: 'Vacant' };
   };
-  const you = (billet) => (u.billet === billet ? { name: 'You', you: true } : {});
+  const you = (billet) => (u.billet === billet ? { name: 'You', you: true, ...rk(svc) } : {});
   const companies = Object.values(org.departments).map((d) => {
     const mine = d.id === u.company;
     const co = { ...who(d.head, 'companyCommander'), ...(mine ? you('companyCommander') : {}) };
-    const node = { title: d.name, name: co.name, meta: `${co.title}${d.firstSergeant ? ` · ${billetTitle(unitSvc, 'firstSergeant')}: ${named(org, d.firstSergeant)?.name ?? (d.firstSergeant === PLAYER ? 'You' : '—')}` : ''}`, kind: 'unit', you: co.you };
+    const node = { title: d.name, name: co.name, track: co.track, grade: co.grade, meta: `${co.title}${d.firstSergeant ? ` · ${billetTitle(unitSvc, 'firstSergeant')}: ${named(org, d.firstSergeant)?.name ?? (d.firstSergeant === PLAYER ? 'You' : '—')}` : ''}`, kind: 'unit', you: co.you };
     if (!mine || !d.platoon) return node;
     const pl = d.platoon;
     const squads = pl.squads.map((s, i) => ({
       title: `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} squad`,
       name: s.leader === PLAYER ? 'You' : named(org, s.leader) ? `${named(org, s.leader).rank ?? ''} ${named(org, s.leader).name}`.trim() : 'Vacant',
-      meta: billetTitle(unitSvc, 'squadLeader'), you: s.leader === PLAYER, kind: 'unit',
-      children: s.members.map((id) => (id === PLAYER ? { title: billetTitle(unitSvc, u.billet === 'teamLeader' ? 'teamLeader' : 'member'), name: 'You', you: true } : named(org, id) ? personNode({ ...named(org, id), name: `${named(org, id).rank ?? ''} ${named(org, id).name}`.trim() }, named(org, id).title?.split(' — ')[1] ?? 'Soldier') : null)).filter(Boolean),
+      meta: billetTitle(unitSvc, 'squadLeader'), you: s.leader === PLAYER, kind: 'unit', ...rk(s.leader === PLAYER ? svc : named(org, s.leader)),
+      children: s.members.map((id) => (id === PLAYER ? { title: billetTitle(unitSvc, u.billet === 'teamLeader' ? 'teamLeader' : 'member'), name: 'You', you: true, ...rk(svc) } : named(org, id) ? { ...personNode({ ...named(org, id), name: `${named(org, id).rank ?? ''} ${named(org, id).name}`.trim() }, named(org, id).title?.split(' — ')[1] ?? 'Soldier'), ...rk(named(org, id)) } : null)).filter(Boolean),
     }));
     const platoon = { title: 'Platoon', ...who(pl.leader, 'platoonLeader'), meta: `${billetTitle(unitSvc, 'platoonLeader')} · ${billetTitle(unitSvc, 'platoonSergeant')}: ${pl.sergeant === PLAYER ? 'You' : named(org, pl.sergeant)?.name ?? '—'}`, kind: 'unit', open: true, children: squads };
     platoon.title = 'Platoon';
     return { ...node, open: true, children: [platoon] };
   });
   const top = who(org.head, 'battalionCommander');
-  return { title: org.name, name: top.name, meta: `${top.title} · ${billetTitle(unitSvc, 'csm')}: ${org.csm === PLAYER ? 'You' : named(org, org.csm)?.name ?? '—'}`, kind: 'top', you: top.you, open: true, children: companies };
+  return { title: org.name, name: top.name, track: top.track, grade: top.grade, meta: `${top.title} · ${billetTitle(unitSvc, 'csm')}: ${org.csm === PLAYER ? 'You' : named(org, org.csm)?.name ?? '—'}`, kind: 'top', you: top.you, open: true, children: companies };
 }

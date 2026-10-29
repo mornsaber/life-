@@ -158,6 +158,11 @@ export function changeRegion(ctx, regionId, reason, { voluntary = false, crossBo
   return true;
 }
 
+/** Professions whose people live ashore anywhere and work at sea. */
+const SEAGOING = ['merchantMarine', 'cruise'];
+/** Deep-sea seafarers live anywhere and fly out to join their ships (tugs and coastal work stay home). */
+export const keepsBerth = (job) => Boolean(job && SEAGOING.includes(job.professionId) && job.ship?.type !== 'tug');
+
 function completeMove(ctx, regionId) {
   const { state } = ctx;
   const region = REGIONS[regionId];
@@ -167,7 +172,7 @@ function completeMove(ctx, regionId) {
     return false;
   }
   const job = state.career.job;
-  if (job && !job.remote) ctx.emit('career:resign', { reason: `Moved to ${region.name}` });
+  if (job && !job.remote && !keepsBerth(job)) ctx.emit('career:resign', { reason: `Moved to ${region.name}` });
   changeRegion(ctx, regionId, 'You packed up the truck.', { voluntary: true });
   ctx.toast(`Moved to ${region.name}`, 'good');
   ctx.stat('stress', 6);

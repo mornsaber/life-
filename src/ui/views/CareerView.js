@@ -261,7 +261,7 @@ function organizationCard(state, job) {
   ])}
   ${c.coworkers.length ? disclosure('org.coworkers', '👥 Coworkers at your level', `<ul class="mini-list">${people(c.coworkers)}</ul>`, { count: c.coworkers.length }) : ''}
   ${c.reports.length ? reportsPanel(state, job, c.reports) : ''}
-  ${disclosure('org.chart', '🗂️ Organisation chart', orgTree(workplaceChart(state, job)))}
+  ${disclosure('org.chart', '🗂️ Organisation chart', orgTree(workplaceChart(state, job), { badge: (n) => (n.levelId ? jobInsignia({ ...job, levelId: n.levelId }, getProfession(job.professionId), state.character.countryId ?? 'US') ?? '' : '') }))}
   ${openingsLine(job)}
   ${internalMovesRow(state)}`, { icon: '🏢' });
 }

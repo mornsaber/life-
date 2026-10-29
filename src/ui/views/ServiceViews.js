@@ -42,6 +42,8 @@ import { reserveStanding, ssoEligibility } from '../../modules/military/Merchant
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
+/** A rank code (E-5, O-3, OR-4) for a grade on a track, in the service's own system. */
+const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
 function recruitingOffice(state) {
   const abroad = isAbroad(state);
   const branches = abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES);
@@ -221,7 +223,7 @@ export function merchantReserveCard(state) {
   const status = s?.sso ? (s.active ? 'Mobilized with the Navy' : 'Navy Reserve officer — drills each year, mobilized in war') : m ? `Mobilized for ${esc(m.war)} · ${m.voyages} voyage${m.voyages === 1 ? '' : 's'}` : s?.commissioned ? 'Active — academy staff commission' : live ? 'Liable to call-up' : 'Inactive (peacetime)';
   const sso = s && !s.sso ? ssoEligibility(state) : null;
   return card('⚓ Merchant Marine Reserve', `
-    ${s ? `<p>${militaryInsignia(s.code, s.nation)} <b>${esc(s.rank.title)}</b> · ${esc(s.name)}</p>` : ''}
+    ${s ? `<p>${militaryInsignia(s.code, s.nation, { branch: 'navy' })} <b>${esc(s.rank.title)}</b> · ${esc(s.name)}</p>` : ''}
     ${kv([['Status', status], ['Called up', 'In wartime, at any age']])}
     <div class="toggle-row">${live && !m && !s?.sso ? button('🚢 Volunteer for the sealift', 'merchantReserve.volunteer', { variant: 'small' }) : ''}${sso ? button('⚓ Take a Navy Reserve commission', 'merchantReserve.joinSso', { variant: 'small', disabled: !sso.ok, hint: sso.ok ? 'Strategic Sealift Officer: drills, a pension, sealift orders in war' : sso.reason }) : ''}</div>
     ${(r?.served ?? []).length ? `<p class="fine">Wartime service: ${r.served.map((w) => `${esc(w.war)} (${w.from}–${w.to}, ${w.voyages} voyages)`).join(' · ')}</p>` : ''}
@@ -275,7 +277,7 @@ export function militaryView(state) {
   const hasBachelor = meetsEducation(state, { level: 'bachelor' });
   return `${kingmakerCard(state)}${card(branch.name, `
     <div class="job-head">
-      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null) })}
+      ${rankBadge(rank.code, rank.title, svc.grade / rank.max, { icon: branch.icon, insignia: militaryInsignia(rank.code, svc.nation ?? null, { branch: svc.branch }) })}
       <div class="job-meta">
         <p>${chip(svc.component === 'active' ? '🪖 Active Duty' : '🏡 Reserve', svc.component === 'active' ? 'cyan' : 'green')} ${chip(`${SPECIALTIES[svc.specialty].icon} ${esc(specialtyName(svc))}`)} ${chip({ officer: 'Officer', warrant: 'Warrant Officer' }[svc.track] ?? 'Enlisted')} ${svc.direct ? chip(`🎓 Direct commission · ${esc(DIRECT_COMMISSIONS[svc.direct].name)}`, 'green') : ''} ${svc.clearance ? chip(`${CLEARANCES[svc.clearance].icon} ${CLEARANCES[svc.clearance].name}`, 'cyan') : ''} ${svc.deploymentRequested ? chip('✋ Deployment requested', 'warn') : ''}</p>
         ${kv([
@@ -297,7 +299,7 @@ export function militaryView(state) {
     </div>
     ${meter(svc.eval, { label: '📋 Evaluation' })}
     <p class="promo ${outlook.eligible ? 'ready' : ''}">${outlook.eligible ? `🌟 Board-eligible for ${esc(titles[svc.grade + 1])}` : `🪜 Next grade: ${esc(outlook.reason)}`}${flagNote(svc)}</p>
-    ${ladder(titles.map((t, i) => { const code = `${svc.nation ? (svc.track === 'enlisted' ? 'OR' : 'OF') : svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E'}-${i + 1}`; return { title: t, sub: code, badge: militaryInsignia(code, svc.nation ?? null) }; }), svc.grade, { compact: true })}
+    ${ladder(titles.map((t, i) => { const code = gradeCode(svc, svc.track, i); return { title: t, sub: code, badge: militaryInsignia(code, svc.nation ?? null, { branch: svc.branch }) }; }), svc.grade, { compact: true })}
     <div class="action-grid">
       ${button('🏃 Extra PT', 'military.pt', { hint: '+Fitness, +Eval' })}
       ${button('🫡 Volunteer for Duty', 'military.extraDuty', { hint: 'Once/yr, +Eval' })}
@@ -400,7 +402,7 @@ function unitCard(state, svc) {
     ${meter(v.readiness, { label: '🛡️ Unit readiness' })}
     <h4 class="sub">Chain of command</h4><ul class="history">${chain || '<li class="muted">You answer to higher headquarters.</li>'}</ul>
     ${v.team.length ? `<h4 class="sub">${iLead ? 'Your soldiers' : 'Your team'}</h4><ul class="history">${team}</ul>` : ''}
-    ${disclosure('military.chart', '🗂️ Unit organisation chart', orgTree(unitChart(state, svc)))}
+    ${disclosure('military.chart', '🗂️ Unit organisation chart', orgTree(unitChart(state, svc), { badge: (n) => (n.track ? militaryInsignia(gradeCode(svc, n.track, n.grade), svc.nation ?? null, { branch: svc.branch }) : '') }))}
     <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts are filled by selection boards, one at a time; commanding well is what gets you promoted. NCOs run training, discipline and junior promotions.</p>`, { icon: '🪖' });
 }
 

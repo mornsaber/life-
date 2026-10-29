@@ -152,14 +152,79 @@ const MIL_STYLES = {
 };
 const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY', 'NG', 'KE', 'GH'];
 
-/** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern. */
-export function militaryInsignia(code, nation = null) {
+/* --- naval ranks ---------------------------------------------------- */
+/*
+ * Navies wear rank on the sleeve (or on shoulder boards carrying the same lace):
+ *   officers   gold stripes, a thin stripe between for the half-grades (Lieutenant (j.g.),
+ *              Lieutenant Commander); flag officers one broad stripe and a narrow one per star.
+ *              Above the lace, a device: the U.S. Navy's star, the Coast Guard's shield, NOAA's
+ *              triangle, the PHS anchor-and-caduceus; Commonwealth and most other navies loop the
+ *              top stripe into the executive curl.
+ *   enlisted   U.S.: group-rate stripes for seamen, then the crow (eagle over red chevrons),
+ *              a rocker and anchor for chiefs, stars for senior and master chiefs.
+ *              Commonwealth: a fouled anchor for a leading rating, crossed anchors for petty
+ *              officers, a crown over them for chiefs, then the warrant officers' crown and arms.
+ */
+export const NAVAL_BRANCHES = ['navy', 'coastguard', 'noaa', 'usphs'];
+const NAVY = '#1d2b4f';
+const RED = '#c0392b';
+const DEVICE = { navy: '★', coastguard: '⛨', noaa: '▲', usphs: '⚕' };
+/** Lace for officer grade n: 1 full stripe, .5 thin, 2 broad. */
+const LACE = [[1], [1, 0.5], [1, 1], [1, 0.5, 1], [1, 1, 1], [1, 1, 1, 1], [2], [2, 1], [2, 1, 1], [2, 1, 1, 1], [2, 1, 1, 1, 1]];
+function navalLace(n, device = '', curl = false) {
+  const lace = LACE[Math.max(0, Math.min(10, n - 1))];
+  let y = 38;
+  let body = '';
+  for (const w of lace) {
+    const h = w === 2 ? 6 : w === 1 ? 3.2 : 1.8;
+    y -= h;
+    body += `<rect x="4" y="${y}" width="30" height="${h}" rx="0.8" fill="${GOLD}"/>`;
+    y -= 2.2;
+  }
+  const top = y + 2.2;
+  if (curl) body += `<circle cx="19" cy="${top - 4.5}" r="4" fill="none" stroke="${GOLD}" stroke-width="2"/>`;
+  else if (device) body += `<text x="19" y="${top - 1.5}" font-size="9" text-anchor="middle" fill="${GOLD}">${device}</text>`;
+  return svg(38, body, 40);
+}
+const crow = (n, { rocker = false, starsAbove = 0, color = RED } = {}) => {
+  let body = `<text x="17" y="${starsAbove ? 15 : 11}" font-size="10" text-anchor="middle" fill="${SILVER}">🦅</text>`;
+  if (starsAbove) body += Array.from({ length: starsAbove }, (_, i) => `<text x="${starsAbove === 1 ? 17 : 11 + i * 12}" y="6" font-size="6" text-anchor="middle" fill="${SILVER}">★</text>`).join('');
+  const top = starsAbove ? 17 : 13;
+  if (rocker) body += `<path d="M4 ${top + 3} Q17 ${top - 5} 30 ${top + 3}" fill="none" stroke="${color}" stroke-width="2.6"/>`;
+  for (let i = 0; i < n; i++) body += `<path d="M4 ${top + 6 + i * 5} L17 ${top + 14 + i * 5} L30 ${top + 6 + i * 5}" fill="none" stroke="${color}" stroke-width="2.6" stroke-linejoin="round"/>`;
+  return svg(34, body, Math.max(34, top + 18 + n * 5));
+};
+const groupRate = (n) => svg(30, Array.from({ length: n }, (_, i) => `<rect x="${6 + i * 7}" y="6" width="4" height="22" transform="rotate(-30 ${8 + i * 7} 17)" fill="${SILVER}" stroke="${NAVY}" stroke-width="0.6"/>`).join(''));
+const anchors = (crossed, crown = '') => svg(34, `${crown ? `<text x="17" y="10" font-size="9" text-anchor="middle" fill="${GOLD}">${crown}</text>` : ''}${crossed ? `<text x="12" y="28" font-size="15" text-anchor="middle" fill="${GOLD}" transform="rotate(-25 12 22)">⚓</text><text x="22" y="28" font-size="15" text-anchor="middle" fill="${GOLD}" transform="rotate(25 22 22)">⚓</text>` : `<text x="17" y="28" font-size="17" text-anchor="middle" fill="${GOLD}">⚓</text>`}`);
+
+function navalInsignia(kind, n, nation, branch) {
+  const commonwealth = COMMONWEALTH.includes(nation ?? '');
+  if (kind === 'W') return warrant(Math.max(1, n));
+  if (kind === 'O') return navalLace(n, nation ? '' : DEVICE[branch] ?? '★', Boolean(nation));
+  if (nation && !commonwealth) return null;
+  if (commonwealth) {
+    // Able rating, leading rating, petty officer, chief, then the warrant officers.
+    if (n <= 2) return '';
+    return [anchors(false), anchors(true), anchors(true, '♛'), svg(30, `<circle cx="15" cy="17" r="12" fill="none" stroke="#5fa35a" stroke-width="2"/><text x="15" y="22" font-size="13" text-anchor="middle" fill="${GOLD}">♛</text>`), svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">⚜</text>`)][Math.min(4, n - 3)];
+  }
+  if (n <= 3) return groupRate(n);
+  if (n <= 6) return crow(n - 3);
+  // Chiefs add the rocker over three chevrons; stars for senior and master chief.
+  return crow(3, { rocker: true, starsAbove: Math.min(2, n - 7) });
+}
+
+/** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern; naval branches wear sleeve lace. */
+export function militaryInsignia(code, nation = null, { branch = null } = {}) {
   const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
   if (!m) return '';
   const n = Number(m[2]);
   const commonwealth = COMMONWEALTH.includes(nation ?? '');
+  if (NAVAL_BRANCHES.includes(branch) && !SHOULDER.includes(nation ?? '')) {
+    const naval = navalInsignia(m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1], n, nation, branch);
+    if (naval != null) return naval;
+  }
   if (SHOULDER.includes(nation ?? '')) {
-    const army = '#4b5a3a';
+    const army = NAVAL_BRANCHES.includes(branch) ? NAVY : '#4b5a3a';
     // A private's board is plain; then cross stripes, then the sergeant-major's lengthwise stripe.
     // Private plain; lance-corporal one stripe; junior sergeant two; sergeant three; senior sergeant a
     // wide stripe; starshina the lengthwise stripe; warrant officers (praporshchik) stars down the middle.
@@ -206,7 +271,8 @@ const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO'
 
 /** A row of shoulder stripes (galons, or a pilot's / ship's officer's bars). */
 const galons = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${6 + i * 5}" width="24" height="3" rx="1" fill="${i === 1 && n === 5 ? SILVER : color}"/>`).join(''));
-const sleeve = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="4" y="${26 - i * 6}" width="26" height="3.4" rx="1" fill="${color}"/>`).join(''));
+/** Sleeve stripes; a ship's engineers wear purple between theirs. */
+const sleeve = (n, color = GOLD, between = null) => svg(34, `${between && n > 1 ? `<rect x="4" y="${29.4 - (n - 1) * 6}" width="26" height="${(n - 1) * 6 - 3.4}" fill="${between}"/>` : ''}${Array.from({ length: n }, (_, i) => `<rect x="4" y="${26 - i * 6}" width="26" height="3.4" rx="1" fill="${color}"/>`).join('')}`);
 
 /** Rank keys: cpl (senior officer/corporal), sgt, ssgt (senior NCO), lt, capt, major, col, 1star…4star; fire: f1…f5. */
 const CMD = (id) => { const m = /_cmd(\d)$/.exec(id); return m ? Number(m[1]) : 0; };
@@ -275,6 +341,7 @@ const STRIPES = {
   flightAttendant: { purser: 1, intlPurser: 2, supervisor: 2, baseManager: 3, director: 3 },
 };
 const SILVER_STRIPES = ['tsa', 'flightAttendant'];
+const ENGINEERS = /AE$|Engineer$/;
 /** Ranks of the Vatican's and Singapore's own services, and the Swiss Guard. */
 const OWN = {
   vaticanGendarmerie: { viceBrigadier: 'sgt', brigadier: 'ssgt', inspector: 'lt', viceCommissioner: 'capt', commissioner: 'major', commandant: 'col' },
@@ -298,7 +365,7 @@ export function jobInsignia(job, profession, country = 'US') {
   const own = OWN[key]?.[id];
   if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
   if (OWN[key]) return null;
-  if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], SILVER_STRIPES.includes(key) ? SILVER : GOLD) : null;
+  if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], SILVER_STRIPES.includes(key) ? SILVER : GOLD, ENGINEERS.test(id) ? '#7b4fa0' : null) : null;
   if (POLICE_LIKE.includes(key)) return draw(policeRank(id, key), country) || null;
   if (FIRE_LIKE.includes(key)) {
     // On the French/Italian pattern a driver or engineer is a caporal, with chevrons.
@@ -314,8 +381,9 @@ export const rankInsignia = (rank, cc = 'US') => (rank?.startsWith('f') ? FIRE_D
 
 /** Honorary and royal military ranks come as titles ("Honorary Colonel", "Air Vice-Marshal"): the rank's insignia, on the country's pattern. */
 const TITLE_GRADE = [
-  [/Field Marshal|Admiral of the Fleet|Marshal of the Royal Air Force/, 11], [/Air Chief Marshal|(^|\s)General(?! Officer)|(^|\s)Admiral/, 10],
-  [/Lieutenant General|Vice Admiral|Air Marshal/, 9], [/Major General|Rear Admiral|Air Vice-Marshal/, 8], [/Brigadier|Commodore|Air Commodore/, 7],
+  // Most specific first: "Rear Admiral" and "Lieutenant General" also contain the four-star words.
+  [/Field Marshal|Admiral of the Fleet|Marshal of the Royal Air Force/, 11],
+  [/Lieutenant General|Vice Admiral|Air Marshal/, 9], [/Major General|Rear Admiral|Air Vice-Marshal/, 8], [/Air Chief Marshal|(^|\s)General(?! Officer)|(^|\s)Admiral/, 10], [/Brigadier|Commodore|Air Commodore/, 7],
   [/Lieutenant Colonel|Wing Commander|(^|\s)Commander/, 5], [/Colonel|Captain \(Navy\)|Group Captain|Honorary Captain/, 6], [/Major|Squadron Leader|Lieutenant Commander/, 4],
   [/Captain|Flight Lieutenant|(^|\s)Lieutenant/, 3],
 ];
@@ -323,6 +391,7 @@ export function titleInsignia(title, cc = 'US') {
   const hit = TITLE_GRADE.find(([re]) => re.test(title ?? ''));
   if (!hit) return '';
   const commonwealth = COMMONWEALTH.includes(cc) || SHOULDER.includes(cc);
-  if (hit[1] === 11 && !commonwealth) return stars(5, GOLD);
-  return militaryInsignia(`${commonwealth ? 'OF' : 'O'}-${hit[1]}`, cc);
+  const naval = /Admiral|(^|\s)Commodore|Captain \(Navy\)|Lieutenant Commander|(^|\s)Commander(?!.*Air)|Navy|Naval/.test(title) && !/Air Commodore|Wing Commander/.test(title);
+  if (hit[1] === 11 && !commonwealth && !naval) return stars(5, GOLD);
+  return militaryInsignia(`${commonwealth ? 'OF' : 'O'}-${hit[1]}`, cc, { branch: naval ? 'navy' : null });
 }

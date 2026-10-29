@@ -49,6 +49,8 @@ export const heldCountries = (held) => [...new Set((held.states ?? []).map((s) =
 
 export function validHere(state, id, held = state.credentials.held[id]) {
   const cred = CREDENTIALS[id];
+  // Seafarers' certificates are international (the STCW convention): flag states endorse them.
+  if (cred?.category === 'maritime' && id !== 'fishingMaster') return true;
   // Earned in another country: it needs recognizing here first.
   if (held?.states?.length && !heldCountries(held).includes(countryIdOf(state))) return false;
   if (!held || cred.jurisdiction !== 'state' || !held.states) return true;

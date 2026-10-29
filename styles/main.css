@@ -957,6 +957,8 @@ select:focus { border-color: var(--cyan); }
 .org-node { display: inline-flex; flex-direction: column; gap: 1px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); min-width: 140px; max-width: 100%; }
 .org-node b { font-size: 0.86em; }
 .org-node span { font-size: 0.86em; }
+.org-node .org-badge { line-height: 0; }
+.org-node .org-badge svg { height: 22px; width: auto; }
 .org-node small { color: var(--muted); font-size: 0.75em; }
 .org-node.top { border-width: 2px; }
 .org-node.unit { background: var(--panel-2); }

@@ -458,9 +458,9 @@ export function optionRow({ icon = '', title, sub = '', meta = '', tone = '', ac
  * An organisational chart (org/OrgChart.js nodes): boxes joined by lines, top down.
  * Open nodes show their children; the rest fold away behind a tap.
  */
-export function orgTree(root) {
+export function orgTree(root, { badge = null } = {}) {
   if (!root) return '';
-  const box = (n) => `<div class="org-node${n.you ? ' you' : ''}${n.kind ? ` ${n.kind}` : ''}"><b>${esc(n.title)}</b>${n.name ? `<span>${esc(n.name)}</span>` : ''}${n.meta ? `<small>${esc(n.meta)}</small>` : ''}</div>`;
+  const box = (n) => `<div class="org-node${n.you ? ' you' : ''}${n.kind ? ` ${n.kind}` : ''}">${badge?.(n) ? `<span class="org-badge">${badge(n)}</span>` : ''}<b>${esc(n.title)}</b>${n.name ? `<span>${esc(n.name)}</span>` : ''}${n.meta ? `<small>${esc(n.meta)}</small>` : ''}</div>`;
   const li = (n) => {
     const kids = (n.children ?? []).filter(Boolean);
     if (!kids.length) return `<li>${box(n)}</li>`;

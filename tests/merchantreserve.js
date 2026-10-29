@@ -15,7 +15,9 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { UNIVERSITIES } from '../src/modules/education/Universities.js';
-import { jobInsignia } from '../src/ui/Insignia.js';
+import { jobInsignia, militaryInsignia } from '../src/ui/Insignia.js';
+import { arrive, departureBlock } from '../src/modules/world/Migration.js';
+import { validHere } from '../src/modules/credentials/LicensingEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc = 'US', seed = 5) {
@@ -129,6 +131,41 @@ const tests = {
     assert.ok(ssoEligibility(state).ok);
     state.character.age = 45;
     assert.ok(!ssoEligibility(state).ok);
+  },
+  'a deep-sea mariner keeps the berth and licences when moving abroad; a tug hand does not'() {
+    const { engine, state } = life('US', 9);
+    for (const id of ['twic', 'mmc', 'stcw', 'mateLicense']) state.credentials.held[id] = { earnedAge: 30, renewedAge: 39, status: 'active', states: ['CA'] };
+    job(engine, state, 'merchantMarine', 'chiefMate');
+    state.career.job.ship = { type: 'container', flag: 'LR' };
+    const employer = state.career.job.employer.name;
+    arrive(engine.context(), 'NZ', { visa: 'work' });
+    assert.equal(state.character.countryId, 'NZ');
+    assert.equal(state.career.job?.employer.name, employer, 'still employed by the same line');
+    assert.ok(validHere(state, 'mateLicense') && validHere(state, 'stcw'), 'STCW certificates are good anywhere');
+    for (let i = 0; i < 3; i++) { engine.ageUp(); state.prompts = []; }
+    assert.equal(state.career.job?.professionId, 'merchantMarine', 'still sailing three years on');
+    const tug = life('US', 10);
+    job(tug.engine, tug.state, 'merchantMarine', 'able');
+    tug.state.career.job.ship = { type: 'tug', flag: 'US' };
+    arrive(tug.engine.context(), 'NZ', { visa: 'work' });
+    assert.equal(tug.state.career.job, null, 'harbour tug work is local');
+  },
+  'a sealift officer can live abroad; other service members cannot leave'() {
+    const { state } = life('US', 11);
+    state.military.service = { branch: 'navy', component: 'reserve', mos: SSO_MOS, track: 'officer', grade: 2 };
+    assert.equal(departureBlock(state), null);
+    state.military.service = { branch: 'navy', component: 'active', mos: 'navy.ss', track: 'enlisted', grade: 3 };
+    assert.match(departureBlock(state), /military service/);
+  },
+  'naval ranks wear sleeve lace and the crow, not army bars and chevrons'() {
+    const lace = (h) => (h.match(/<rect/g) ?? []).length;
+    assert.equal(lace(militaryInsignia('O-3', null, { branch: 'navy' })), 2, 'a lieutenant: two stripes');
+    assert.equal(lace(militaryInsignia('O-8', null, { branch: 'navy' })), 2, 'a rear admiral: broad and one');
+    assert.notEqual(militaryInsignia('O-3', null, { branch: 'navy' }), militaryInsignia('O-3', null));
+    assert.match(militaryInsignia('E-5', null, { branch: 'navy' }), /🦅/);
+    assert.match(militaryInsignia('OR-4', 'GB', { branch: 'navy' }), /⚓/);
+    assert.match(militaryInsignia('OF-3', 'GB', { branch: 'navy' }), /circle/, 'the executive curl');
+    assert.match(jobInsignia({ professionId: 'merchantMarine', levelId: 'chiefEngineer' }, { id: 'merchantMarine' }), /#7b4fa0/, 'engineers wear purple');
   },
 };
 

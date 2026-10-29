@@ -23,7 +23,7 @@ import {
 } from './Immigration.js';
 import { homeDanger, underMobilization, warIn } from './War.js';
 import { spouseOf } from '../people/People.js';
-import { REGIONS, regionsIn, changeRegion, countryIdOf } from '../life/Regions.js';
+import { REGIONS, regionsIn, changeRegion, countryIdOf, keepsBerth } from '../life/Regions.js';
 import { NATIONAL_PROFESSIONS } from '../career/JobTrees.js';
 import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -39,12 +39,15 @@ export function ensureMigration(state) {
   return state.migration;
 }
 
+export { keepsBerth };
+
 /** Why you can't leave the country right now, or null. */
 export function departureBlock(state) {
   if (state.character.age < 18) return 'You can move abroad on your own at 18';
   if (state.legal.incarceration) return 'Incarcerated';
   if (state.legal.probationYears > 0) return 'On probation: the court holds your passport';
-  if (state.military.service) return 'Finish your military service first';
+  // A sealift officer's reserve duty is a few weeks a year: you can live abroad and fly home for it.
+  if (state.military.service && !(state.military.service.component === 'reserve' && state.military.service.mos === 'navy.1665')) return 'Finish your military service first';
   if (underMobilization(state)) return 'General mobilization: men 18–60 can\'t leave the country';
   if (state.education.enrolled) return 'Finish or withdraw from school first';
   if (state.judiciary?.seat) return 'Resign from the bench first';
@@ -144,7 +147,8 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   (m.lastRegion ??= {})[from] = state.character.regionId;
   const job = state.career.job;
   const national = job && (NATIONAL_PROFESSIONS[job.professionId] || job.sector === 'federal');
-  const stays = job && !national && job.sector === 'private' && (keepJob || job.remote);
+  const seafarer = keepsBerth(job);
+  const stays = job && ((!national && job.sector === 'private' && (keepJob || job.remote)) || seafarer);
   if (job && !stays) ctx.emit('career:resign', { reason: `Moved to ${COUNTRIES[to].name}` });
 
   if (to === 'US') delete state.character.countryId;
@@ -186,9 +190,10 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   // A unit of an international body (a diocese of the Catholic Church): you serve in the local unit here.
   if (stays && bodyOfJob(job)) joinLocalUnit(ctx);
   // A multinational's staff work in its office in the country they're in.
-  if (stays && !bodyOfJob(job) && !job.remote) job.employer.division = to === job.employer.homeCountry ? null : `${COUNTRIES[to].name} office`;
+  if (stays && !seafarer && !bodyOfJob(job) && !job.remote) job.employer.division = to === job.employer.homeCountry ? null : `${COUNTRIES[to].name} office`;
   if (stays && !bodyOfJob(job)) job.employer.homeCountry ??= from;
-  if (stays && bodyOfJob(job)) { /* logged by joinLocalUnit */ } else if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
+  if (seafarer) ctx.log(`You kept your berth with ${job.employer.name}: you'll fly out from ${COUNTRIES[to].name} to join each ship, and home again on leave.`, '🚢', 'good');
+  else if (stays && bodyOfJob(job)) { /* logged by joinLocalUnit */ } else if (stays) ctx.log(`${job.employer.name} kept you on${job.remote ? ' remotely' : ' at its office here'}.`, '💼', 'good');
   if (!speaksLocal(state, to)) ctx.log(`You don't speak ${localLanguage(to)} yet. Living here, you'll pick it up — classes speed it up.`, '🗣️', 'info');
   ctx.stat('stress', 8);
 }

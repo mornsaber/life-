@@ -15,7 +15,7 @@ import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countri
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
-import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions } from '../../modules/world/Migration.js';
+import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
 import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
@@ -44,7 +44,7 @@ export function moveView(state) {
     const licenses = crossState ? licenseImpact(state, r.state) : [];
     const disasters = Object.entries(st.disasters).map(([d, p]) => `${DISASTER_LABEL[d].icon}${Math.round(p * 100)}%`).join(' ');
     const impacts = [];
-    if (!isHere && job) impacts.push(job.remote ? `🌐 Remote job stays (pay ×${(r.market / here.market).toFixed(2)})` : job.sector === 'federal' || ['large', 'enterprise'].includes(job.employer.size) ? '📍 Ask for a transfer instead (Career tab)' : '🚪 You\'d leave your job');
+    if (!isHere && job) impacts.push(keepsBerth(job) ? '🚢 You keep sailing: fly out to each ship' : job.remote ? `🌐 Remote job stays (pay ×${(r.market / here.market).toFixed(2)})` : job.sector === 'federal' || ['large', 'enterprise'].includes(job.employer.size) ? '📍 Ask for a transfer instead (Career tab)' : '🚪 You\'d leave your job');
     if (!isHere && pensionPlan && !job?.remote) impacts.push(`🏦 ${PENSION_PLANS[pensionPlan].short} pension frozen (deferred)`);
     if (!isHere && crossState && !isAbroad(state)) impacts.push('🎓 Out-of-state tuition for 1 yr');
     if (!isHere && state.housing.properties.some((p) => p.use === 'primary')) impacts.push('🏡 Sell or rent out your home');
@@ -253,5 +253,5 @@ function abroadCard(state) {
     const open = list.filter((c) => routesFor[c.id].some((r) => r.ok && r.kind !== 'irregular')).length;
     return disclosure(`abroad.group.${name}`, esc(name), list.map(country).join(''), { count: `${open}/${list.length}` });
   }).join('');
-  return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${block ? `<p class="why">${esc(block)}</p>` : ''}${top}<h4 class="sub">🌍 Every country</h4>${groups}`, { icon: '✈️', accent: 'cyan' });
+  return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${keepsBerth(state.career.job) ? '<p class="fine">🚢 Seafarers live anywhere: you keep your berth and fly out from your new home to join each ship. STCW certificates are valid worldwide.</p>' : ''}${block ? `<p class="why">${esc(block)}</p>` : ''}${top}<h4 class="sub">🌍 Every country</h4>${groups}`, { icon: '✈️', accent: 'cyan' });
 }
