@@ -250,6 +250,8 @@ const HONORARY = [
 function militaryYear(ctx) {
   const { state, rng } = ctx;
   const r = state.royal;
+  // A deferred place at the officer academy comes up.
+  if (household(state).served === 'deferred' && state.character.age >= 21 && !state.military.service && !r.reigning) joinForces(ctx);
   const o = ROYAL_ORDERS[r.crownId];
   const h = household(state);
   if (!o?.forces || !(r.working || r.reigning) || r.line == null || (r.line > 12 && !r.reigning)) return;
@@ -533,6 +535,7 @@ export const RoyalHouseholdModule = {
   },
   resolvers: {
     school(ctx, data, optionId) {
+      if (!ctx.state.royal) return undefined;
       const { state } = ctx;
       household(state).schooled = optionId;
       const r = state.royal;
@@ -552,6 +555,7 @@ export const RoyalHouseholdModule = {
       return ctx.log('A year building schools abroad. The photographs did you no harm at all.', '🌍', 'good');
     },
     assent(ctx, data, optionId) {
+      if (!ctx.state.royal) return undefined;
       const { state, rng } = ctx;
       const r = state.royal;
       // A ruling monarch's veto is policy, not a constitutional crisis.
@@ -570,12 +574,14 @@ export const RoyalHouseholdModule = {
       return ctx.log(`You gave royal assent to ${data.bill}.`, '📜', 'info');
     },
     mercy(ctx, data, optionId) {
+      if (!ctx.state.royal) return undefined;
       const r = ctx.state.royal;
       const d = optionId === 'pardon' ? (ctx.rng.chance(0.6) ? 3 : -4) : 0;
       r.popularity = Math.round(clamp(r.popularity + d, 0, 100));
       ctx.log(optionId === 'pardon' ? `You granted a royal pardon. ${d > 0 ? 'The public cheered.' : 'The government was furious.'}` : 'You followed the minister\'s advice.', '🕊️', d < 0 ? 'warn' : 'info');
     },
     dissolve(ctx, data, optionId) {
+      if (!ctx.state.royal) return undefined;
       const r = ctx.state.royal;
       if (optionId === 'refuse') {
         const good = ctx.rng.chance(0.35);
@@ -586,6 +592,7 @@ export const RoyalHouseholdModule = {
     },
     broadcast(ctx, data, optionId) {
       const r = ctx.state.royal;
+      if (!r) return undefined;
       const d = { service: 2, family: ctx.rng.chance(0.5) ? 5 : -3, climate: ctx.rng.chance(0.5) ? 4 : -4, unity: 3 }[optionId] ?? 0;
       r.popularity = Math.round(clamp(r.popularity + d, 0, 100));
       ctx.log(`Your broadcast on ${{ service: 'service and duty', family: 'your family\'s year', climate: 'the planet', unity: 'unity' }[optionId]} was watched by millions. Popularity ${r.popularity}%.`, '📺', d >= 0 ? 'good' : 'warn');
@@ -598,6 +605,11 @@ function joinForces(ctx) {
   const branch = 'army';
   const check = enlistmentEligibility(state, branch, 'officer', 'active');
   if (!check.ok) {
+    // Officer entry here starts later than eighteen: the place is held, and you join when you're old enough.
+    if (/age/i.test(check.reason) && state.character.age < 21) {
+      household(state).served = 'deferred';
+      return ctx.log(`The officer academy here takes cadets from 21. Your place is held: you'll join then.`, '🎖️', 'info');
+    }
     household(state).served = 'blocked';
     return ctx.log(`You wanted to serve, but couldn't: ${check.reason}.`, '🎖️', 'warn');
   }

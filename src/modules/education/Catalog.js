@@ -56,6 +56,8 @@ export const MAJORS = {
   supplyChain: { name: 'Supply Chain Management', icon: '📦', fields: ['logistics', 'manufacturing', 'trucking'], levels: ['associate', 'bachelor'] },
   physics: { name: 'Physics', icon: '⚛️', fields: ['research', 'nationalLab', 'engineering', 'dataScience'], levels: ['bachelor', 'master'], science: true },
   chemistry: { name: 'Chemistry', icon: '⚗️', fields: ['research', 'nationalLab', 'pharmacy', 'manufacturing', 'environmental'], levels: ['bachelor', 'master'], science: true },
+  // Awarded only by the service academies (Sandhurst, Zaragoza, the National Defense Academy…); never on offer to civilians.
+  militaryScience: { name: 'Military Science', icon: '🎖️', fields: ['emergencyManagement', 'privateMilitary', 'privateSecurity', 'intelligence', 'police'], levels: [] },
   history: { name: 'History', icon: '📜', fields: ['education', 'college', 'library', 'journalism'], levels: ['bachelor', 'master'] },
   english: { name: 'English & Literature', icon: '📖', fields: ['education', 'college', 'journalism', 'library'], levels: ['bachelor', 'master'] },
   psychology: { name: 'Psychology', icon: '🧠', fields: ['counseling', 'psychology', 'socialWork', 'humanResources', 'cps'], levels: ['bachelor', 'master'], science: true },
@@ -150,7 +152,7 @@ export function majorsFor(programId) {
 export function degreeLabel(degree) {
   const program = PROGRAMS[degree.programId];
   const name = degree.programId === 'ged' || degree.type === 'ged' ? 'GED' : degree.type === 'highschool' ? 'High School Diploma' : program?.name ?? degree.type;
-  return `${name}${degree.major && program?.major === 'choose' ? ` — ${MAJORS[degree.major].name}` : ''}`;
+  return `${name}${degree.major && program?.major === 'choose' && MAJORS[degree.major] ? ` — ${MAJORS[degree.major].name}` : ''}`;
 }
 
 /** Career fields your education prepares you for. */

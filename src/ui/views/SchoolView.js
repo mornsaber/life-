@@ -134,7 +134,13 @@ export function schoolView(state) {
   const credits = state.education.credits ?? [];
   const banked = credits.length ? `<h4 class="sub">Transfer credit</h4><ul class="history">${credits.map((c) => `<li>📑 ${c.years} yr toward ${esc(PROGRAMS[c.programId].name)} <small>from age ${c.age}${state.character.age - c.age > 10 ? ' · older than 10 yrs, counts half' : ''}</small></li>`).join('')}</ul>` : '';
   const kid = state.character.age < 17 && !state.education.degrees.length;
-  return `${k12View(state)}${current}${entranceCard(state)}${apprenticeCard(state)}${phdCard(state)}${state.academia?.phd ? publishingCard(state) : ''}${medTrainingCard(state)}${lawTrainingCard(state)}${higherEdCard(state)}${academyCard(state)}${applicationsCard(state)}${campusView(state)}
+  // In uniform: officer cadets are at their academy; serving members study through the forces.
+  const svc = state.military?.service;
+  const uniform = svc ? card(svc.cadet ? 'Officer Cadet' : 'Studying in Uniform', svc.cadet
+    ? `<p>🎖️ You are an officer cadet at <b>${esc(svc.academy?.name ?? 'the military academy')}</b>${svc.academy?.yearsLeft ? ` — ${svc.academy.yearsLeft} year${svc.academy.yearsLeft === 1 ? '' : 's'} to commissioning` : ''}. Civilian applications and apprenticeships wait until you leave the forces; the academy is your education now.</p>`
+    : '<p class="fine">While serving, civilian study is part-time through the forces\' tuition assistance; apprenticeships and the academies are for civilians.</p>', { icon: '🎖️', accent: 'green' }) : '';
+  if (svc?.cadet) return `${uniform}${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
+  return `${uniform}${k12View(state)}${current}${entranceCard(state)}${svc ? '' : apprenticeCard(state)}${phdCard(state)}${state.academia?.phd ? publishingCard(state) : ''}${medTrainingCard(state)}${lawTrainingCard(state)}${higherEdCard(state)}${svc ? '' : academyCard(state)}${applicationsCard(state)}${campusView(state)}
     ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
     ${state.character.age >= 15 ? card('Universities', guideCard(state), { icon: '🏛️' }) : ''}
     ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
