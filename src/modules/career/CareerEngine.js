@@ -106,12 +106,15 @@ export function levelCheck(state, level) {
 
 export function backgroundCheck(state, profession) {
   const age = state.character.age;
-  const record = visibleRecord(state);
+  // Strict checks (police, teaching, care) see spent convictions too; sealed and pardoned ones are gone.
+  const record = state.legal.record.filter((r) => !r.pardoned && (!r.sealed || (r.spent && profession.background === 'strict' && ['misdemeanor', 'felony'].includes(r.severity))));
   const felonies = record.filter((r) => r.severity === 'felony');
   const recentMisd = record.filter((r) => r.severity === 'misdemeanor' && age - r.age <= 5).length;
   if (profession.background === 'strict' && felonies.length) return { ok: false, reason: 'Fails background check (felony record)' };
-  if (profession.background === 'standard' && felonies.some((f) => age - f.age <= 10)) return { ok: false, reason: 'Fails background check (recent felony)' };
-  const penalty = profession.background === 'lenient' ? felonies.length * 0.05 : recentMisd * (profession.background === 'strict' ? 0.12 : 0.06);
+  if (profession.background === 'standard' && felonies.some((f) => age - f.age <= 7)) return { ok: false, reason: 'Fails background check (recent felony)' };
+  // Old convictions weigh less on employers; years of going straight show.
+  const reformed = (state.legal.crime?.straightSince != null && age - state.legal.crime.straightSince >= 5) ? 0.5 : 1;
+  const penalty = (profession.background === 'lenient' ? felonies.filter((f) => age - f.age <= 15).length * 0.05 : recentMisd * (profession.background === 'strict' ? 0.12 : 0.06)) * reformed;
   return { ok: true, penalty };
 }
 

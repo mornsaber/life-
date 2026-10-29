@@ -106,10 +106,10 @@ export function casesTick(ctx) {
   for (const inv of state.legal.investigations) {
     for (const it of inv.items) it.strength = clamp(it.strength * (1 - (EVIDENCE[it.kind]?.decay ?? 0.03)), 0.02, 0.98);
     // New evidence: a tip, a pawned item, a test result back from the lab.
-    if (rng.chance(0.08) && inv.items.length < 5) {
+    if (rng.chance(0.04) && inv.items.length < 5) {
       const kind = rng.pick(['witness', 'informant', 'dna', 'digital']);
       inv.items.push({ kind, strength: rng.float(0.15, 0.45) });
-      inv.discovery = clamp(inv.discovery + 0.05, 0, 0.9);
+      inv.discovery = clamp(inv.discovery + 0.03, 0, 0.9);
     }
     refresh(inv);
     const stage = stageOf(inv);

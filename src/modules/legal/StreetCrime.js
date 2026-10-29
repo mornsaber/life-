@@ -48,7 +48,7 @@ export function crimeForMoney(ctx, { id, group = 'property', offenseId, money, c
   const skill = skillBonus(state, id ?? offenseId);
   c.heat = clamp(c.heat + (HEAT[group] ?? 6), 0, 100);
   c.layingLow = false;
-  const arrest = clamp(caughtNow * (1 + c.heat / 100) * (1 - skill * 0.06), 0.01, 0.95);
+  const arrest = clamp(caughtNow * (1 + c.heat / 200) * (1 - skill * 0.06), 0.01, 0.95);
   if (rng.chance(arrest)) return commitOffense(ctx, { offenseId, caught: true, context, evidence });
   const take = Math.round(rng.int(...money) * (1 + skill * 0.1));
   c.skill[id ?? offenseId] = (c.skill[id ?? offenseId] ?? 0) + 1;

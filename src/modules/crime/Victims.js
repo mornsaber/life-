@@ -30,7 +30,7 @@ const EVENTS = [
   { id: 'carTheft', weight: 3, minAge: 17, needs: (s) => (s.vehicles?.owned ?? []).length > 0, text: () => 'Your car was gone from where you parked it. Just glass on the road.' },
   { id: 'scam', weight: 3, minAge: 30, text: (s) => (s.character.age >= 65 ? 'A polite man from "your bank\'s fraud team" talked you into moving your savings to a "safe account". It wasn\'t.' : 'An investment app your friend recommended stopped letting anyone withdraw. Then it stopped existing.'), loss: [2000, 20000] },
   { id: 'abuse', weight: 1.5, minAge: 18, needs: (s) => partnerOf(s) && (partnerOf(s).relationship ?? 60) < 45, text: (s) => `${partnerOf(s).firstName} has been checking your phone, deciding who you can see, controlling the money. Last night, for the first time, ${partnerOf(s).firstName} hit you.`, trauma: 14 },
-  { id: 'sexualAssault', weight: 0.8, minAge: 14, text: () => 'Someone you trusted — someone you had known for months — sexually assaulted you. It was not your fault.', trauma: 30 },
+  { id: 'sexualAssault', weight: 0.12, minAge: 16, text: () => 'Someone you trusted — someone you had known for months — sexually assaulted you. It was not your fault.', trauma: 30 },
 ];
 
 /** Yearly: is this the year it happens to you? */

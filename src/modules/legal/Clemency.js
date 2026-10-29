@@ -64,6 +64,33 @@ export function spendMinorRecords(ctx) {
   if (spent.length) ctx.log(`${spent.length === 1 ? `Your old ${spent[0].name ?? 'ticket'} is` : `${spent.length} old tickets are`} now spent and off your record.`, '🧹');
 }
 
+/**
+ * Convictions that become spent on their own: rehabilitation-of-offenders laws (most countries)
+ * and US "clean slate" laws. Crime-free years count, not just time. Spent convictions drop off
+ * ordinary background checks; jobs with strict checks (police, teaching, care) still see them,
+ * and violent and sexual offences are never spent.
+ *
+ *   misdemeanor: 5 crime-free years (US: 7)    felony with ≤4 years' prison: 7 (US: 10)
+ */
+export const SPENT_YEARS = { misdemeanor: [5, 7], felony: [7, 10] };
+export function spentStatus(state, r) {
+  const offense = OFFENSES[r.offenseId] ?? {};
+  if (r.sealed || r.pardoned || !SPENT_YEARS[r.severity] || offense.violent || offense.noSeal || offense.registry || offense.capital) return null;
+  if (r.severity === 'felony' && /(\d+) yr prison/.test(r.sentence ?? '') && Number(r.sentence.match(/(\d+) yr prison/)[1]) > 4) return null;
+  const years = SPENT_YEARS[r.severity][(state.character.countryId ?? 'US') === 'US' ? 1 : 0];
+  return { years, at: Math.max(r.age, state.character.age - sinceLastConviction(state)) + years };
+}
+export function spendOldConvictions(ctx) {
+  const { state } = ctx;
+  if (state.legal.incarceration || state.legal.probationYears > 0) return;
+  const spent = state.legal.record.filter((r) => { const s = spentStatus(state, r); return s && sinceLastConviction(state) >= s.years && state.character.age - r.age >= s.years; });
+  for (const r of spent) { r.sealed = true; r.spent = true; }
+  if (spent.length) {
+    ctx.log(`${spent.length === 1 ? `Your conviction for ${spent[0].name.toLowerCase()} is` : `${spent.length} old convictions are`} now spent: after years without trouble, ordinary employers can no longer see ${spent.length === 1 ? 'it' : 'them'}.`, '🌱', 'good');
+    ctx.stat('happiness', 5);
+  }
+}
+
 export const ClemencyActions = {
   /** One petition seals every eligible conviction. */
   sealRecord(ctx) {

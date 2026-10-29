@@ -56,6 +56,13 @@ export function deathPenaltyIn(provinceId) {
 }
 
 const STATUTE_OF_LIMITATIONS = 7;
+/** A case's yearly chance of breaking is its discovery × CLEARANCE, and discovery cools by COLD each year. */
+const CLEARANCE = 0.55;
+const COLD = 0.85;
+/** Reasonable doubt: juries convict on strong evidence, and thin cases fall apart. */
+export const convictOdds = (evidence, defense) => evidence ** 1.5 * defense.factor;
+/** Prosecutors drop weak cases before they reach court. */
+export const dismissOdds = (evidence) => (evidence >= 0.85 ? 0 : clamp(0.65 - evidence * 0.7, 0.03, 0.5));
 
 export const FACILITIES = { misdemeanor: 'County Jail', felony: 'State Correctional Institution', federal: 'Federal Correctional Institution' };
 const PRIVATE_FACILITY = ['Crossroads Correctional Center', 'Prairie Correctional Facility', 'Red Rock Correctional Center', 'Bayside Detention Center'];
@@ -136,6 +143,13 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
     return;
   }
 
+  // A weak case is dropped before it gets to court.
+  const drop = dismissOdds(evidence);
+  if (drop && !rng.chance(1 - drop)) {
+    ctx.log(`You were arrested for ${offense.name.toLowerCase()}${context ? ` (${context})` : ''}, but prosecutors dropped the charges: not enough evidence to take to court.`, '🗂️', 'good');
+    return;
+  }
+
   // Children go to the youth court (unless prosecutors move a serious case to adult court).
   if (state.character.age < 18 && !abroad && juvenileCourt(ctx, { offenseId: id, context, evidence })) return;
 
@@ -203,7 +217,7 @@ function verdict(ctx, data, edge) {
   const { state, rng } = ctx;
   const defense = DEFENSE[data.defense] ?? DEFENSE.publicDefender;
   const smarts = data.defense === 'self' ? (state.stats.smarts - 60) / 200 : 0;
-  const convict = rng.chance(clamp(data.evidence * defense.factor - smarts - edge, 0.03, 0.95));
+  const convict = rng.chance(clamp(convictOdds(data.evidence, defense) - smarts - edge, 0.03, 0.95));
   if (!convict) {
     ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');
     ctx.toast('Acquitted!', 'good');
@@ -344,7 +358,7 @@ export const JusticeResolvers = {
     // A felony case goes on: the prosecutor's offer, then (if you refuse) the trial.
     if (data.felonyCase) return bailPrompt(ctx, { ...data, defense: optionId });
     const smartsEdge = optionId === 'self' ? (ctx.state.stats.smarts - 60) / 200 : 0;
-    const convict = rng.chance(clamp(data.evidence * defense.factor - smartsEdge, 0.05, 0.95));
+    const convict = rng.chance(clamp(convictOdds(data.evidence, defense) - smartsEdge, 0.05, 0.95));
     if (convict) {
       const trial = justiceHere(ctx.state)?.trial ?? 'jury';
       ctx.log(trial === 'jury' ? 'The jury returned a guilty verdict.' : trial === 'lay' ? 'The panel of judges and lay judges found you guilty.' : 'The judge found you guilty.', '🧑‍⚖️', 'bad');
@@ -521,7 +535,8 @@ export function justiceTick(ctx) {
   legal.investigations = [];
   let charged = false;
   for (const inv of open) {
-    let discovery = inv.discovery * knob(state, 'justice');
+    // Most crimes are never solved: a case is likeliest to break early, and goes cold as the years pass.
+    let discovery = inv.discovery * CLEARANCE * knob(state, 'justice');
     // Revenue departments audit their own staff, and income-tax states audit harder.
     if (inv.offenseId === 'taxEvasion') discovery *= (stateOf(state).incomeTax.length ? 1.3 : 1) * (state.career.job?.professionId === 'revenue' ? 3 : 1);
     if (!charged && rng.chance(discovery)) {
@@ -532,6 +547,7 @@ export function justiceTick(ctx) {
       continue;
     }
     inv.yearsLeft -= 1;
+    inv.discovery = Math.max(0.01, inv.discovery * COLD);
     if (inv.yearsLeft > 0) legal.investigations.push(inv);
     else ctx.log(`The statute of limitations quietly ran out on your ${OFFENSES[inv.offenseId].name.toLowerCase()}.`, '⌛', 'muted');
   }

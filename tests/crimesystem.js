@@ -216,6 +216,37 @@ const tests = {
     assert.ok(state.legal.flags.protectiveOrder != null);
   },
 
+  'going straight: convictions become spent after crime-free years; weak cases are dropped; cases go cold'() {
+    const { engine, state, ctx } = life({ countryId: 'GB' });
+    state.legal.record.push({ offenseId: 'burglary', name: 'Residential Burglary', severity: 'felony', age: 24, sentence: '2 yr prison' });
+    state.legal.record.push({ offenseId: 'assault', name: 'Assault', severity: 'misdemeanor', age: 23, sentence: 'fine' });
+    state.character.age = 25;
+    engine.dispatch('crime.goStraight');
+    assert.equal(state.legal.crime.straightSince, 25);
+    state.character.age = 29;
+    MODULES.find((m) => m.id === 'legal').onAgeUp({ ...ctx });
+    assert.ok(!state.legal.record[0].spent, 'a felony needs 7 crime-free years');
+    state.character.age = 31;
+    state.legal.incarceration = null;
+    MODULES.find((m) => m.id === 'legal').onAgeUp({ ...ctx });
+    assert.ok(state.legal.record[0].spent, 'spent');
+    assert.ok(!state.legal.record[1].spent, 'violence is never spent');
+    clean(VIEWS.legal(state, {}));
+    // A thin case usually never reaches court.
+    let dropped = 0;
+    for (let i = 0; i < 40; i++) { state.prompts = []; commitOffense(ctx, { offenseId: 'vandalism', caught: true, evidence: 0.3 }); if (!state.prompts.length) dropped += 1; }
+    assert.ok(dropped >= 8, `dropped ${dropped}/40`);
+    // An unsolved case mostly stays unsolved.
+    let solved = 0;
+    for (let seed = 1; seed <= 60; seed++) {
+      const b = life({ seed });
+      commitOffense(b.ctx, { offenseId: 'burglary', discovery: 0.12, evidence: 0.75 });
+      for (let y = 0; y < 8; y++) { b.state.prompts = []; MODULES.find((m) => m.id === 'legal').onAgeUp(b.ctx); if (!b.state.legal.investigations.length) break; }
+      if (b.state.legal.record.length || b.state.prompts.some((p) => /legal\./.test(p.type))) solved += 1;
+    }
+    assert.ok(solved <= 20, `solved ${solved}/60`);
+  },
+
   'justice careers get hard cases'() {
     const { engine, state, ctx } = life();
     state.career.job = { professionId: 'prosecution', levelId: 'x', employer: { name: 'DA' }, abilities: [], grade: 2 };

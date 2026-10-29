@@ -6,7 +6,7 @@
 import { esc, money, button, card, chip, kv, empty } from '../Components.js';
 import { SEVERITY_LABEL } from '../../modules/legal/index.js';
 import { paroleEligibility, APPEAL_COST } from '../../modules/legal/Prison.js';
-import { sealStatus, pardonStatus, SEAL_COST } from '../../modules/legal/Clemency.js';
+import { sealStatus, pardonStatus, SEAL_COST, spentStatus } from '../../modules/legal/Clemency.js';
 import { stateOf } from '../../modules/life/Regions.js';
 import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
 import { STATES } from '../../modules/life/States.js';
@@ -118,13 +118,14 @@ function secondChanceCard(state) {
   const rows = l.record.filter((r) => ['misdemeanor', 'felony'].includes(r.severity)).map((r) => {
     const seal = sealStatus(state, r);
     const pardon = pardonStatus(state, r);
-    const status = r.sealed ? chip('Sealed', 'good') : r.pardoned ? chip('Pardoned', 'good') : '';
+    const spent = spentStatus(state, r);
+    const status = r.spent ? chip('Spent', 'good') : r.sealed ? chip('Sealed', 'good') : r.pardoned ? chip('Pardoned', 'good') : spent ? chip(`Spent at ${spent.at} if you stay clean`, '') : '';
     const notes = [!r.sealed && !r.pardoned ? (seal.ok ? '✅ can be sealed' : `Seal: ${seal.reason}`) : '', !r.pardoned && r.severity === 'felony' ? (pardon.ok ? `🕊️ pardon odds ${Math.round(pardon.chance * 100)}% (${pardon.by})` : `Pardon: ${pardon.reason}`) : ''].filter(Boolean).join(' · ');
     return `<li><b>${esc(r.name)}</b> <small>age ${r.age}</small> ${status}<br><small class="muted">${esc(notes)}</small></li>`;
   }).join('');
   const canSeal = l.record.some((r) => sealStatus(state, r).ok);
   const canPardon = l.record.some((r) => pardonStatus(state, r).ok);
-  return card('Second Chances', `<p class="muted">Sealed records disappear from employer and licensing background checks. A pardon restores your rights. Violent crimes can't be sealed; federal crimes can only be pardoned.</p>
+  return card('Second Chances', `<p class="muted">Sealed records disappear from employer and licensing background checks. A pardon restores your rights. Violent crimes can't be sealed; federal crimes can only be pardoned. Most convictions also become <b>spent</b> on their own after enough crime-free years (5–10), hidden from ordinary employers — though police, schools and care work still see them.</p>
     <ul class="history">${rows}</ul>
     <div class="toggle-row">${button('🗃️ Petition to seal', 'legal.sealRecord', { variant: 'small', disabled: !canSeal || l.probationYears > 0 || Boolean(state.yearly['legal.seal']), hint: l.probationYears > 0 ? 'After probation' : `${money(SEAL_COST)} attorney & fees` })}${button('🕊️ Apply for a pardon', 'legal.seekPardon', { variant: 'small', disabled: !canPardon || Boolean(state.yearly['legal.pardon']), hint: 'Rarely granted' })}</div>`, { icon: '🕊️', accent: 'green' });
 }
