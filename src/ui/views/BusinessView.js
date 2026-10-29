@@ -8,7 +8,8 @@ import { EXPERTISE as BOARD_EXPERTISE, VERDICTS as BOARD_VERDICTS } from '../../
 import { DESIGNS, DIVISIONS, structureOf, canRestructure, ipoEligibility, ipoPrice, IPO_MIN_REVENUE } from '../../modules/business/Structure.js';
 import { marketPosition, exposure, enforcement } from '../../modules/business/Regulation.js';
 import { businessUnionPanel } from './UnionView.js';
-import { esc, money, button, card, chip, kv, meter, select, empty, disclosure } from '../Components.js';
+import { esc, money, button, card, chip, kv, meter, select, empty, disclosure, orgTree } from '../Components.js';
+import { businessChart, customUnits, unitLimit, unitOccupations, movableStaff, DESIGN_CHANGES } from '../../modules/business/OrgDesign.js';
 import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier } from '../../modules/business/Operations.js';
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, entitiesFor, entityName, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
@@ -166,6 +167,39 @@ function orgFate(state, b) {
   if (org.mergedInto) return ' · merged into another company';
   if (org.closed) return ' · closed';
   return org.owner?.kind === 'npc' ? ` · still open under ${esc(org.owner.name)}` : '';
+}
+
+/** Your organisation at a glance — and the designer: units, titles and posts. */
+function designCard(state, biz) {
+  const org = businessOrg(state, biz);
+  if (!org) return '';
+  const left = DESIGN_CHANGES - (state.yearly['business.orgDesign'] ?? 0);
+  const off = left <= 0;
+  const units = Object.values(org.departments).filter((d) => !d.branch);
+  const unitOpts = units.map((d) => ({ value: d.id, label: d.name }));
+  const occs = unitOccupations(state, biz).map((id) => ({ value: id, label: getProfession(id).name }));
+  const mine = customUnits(org);
+  const free = movableStaff(biz);
+  // Posts to rename: each unit's head and the rungs its people stand on.
+  const posts = units.flatMap((d) => [
+    ...(d.head ? [{ value: `${d.id}:head`, label: `${d.name} — ${org.people[d.head]?.title ?? 'Head'}` }] : []),
+    ...[...new Set(Object.values(org.people).filter((p) => p.deptId === d.id && p.levelId && p.id !== d.head && !p.post).map((p) => `${p.levelId}|${p.title}`))].map((k) => { const [lvl, title] = k.split('|'); return { value: `${d.id}:${lvl}`, label: `${d.name} — ${title}` }; }),
+  ]);
+  const created = Object.values(org.people).filter((p) => p.post);
+  const field = (part, placeholder) => `<input type="text" data-part="${part}" placeholder="${esc(placeholder)}" maxlength="40" class="text-in">`;
+  const unitRows = mine.map((d) => `<li class="report-row"><div><b>🧩 ${esc(d.name)}</b> <small class="muted">${esc(getProfession(d.occupation)?.name ?? '')} · ${d.headcount} staff</small></div>
+    <div class="toggle-row">${button('➕ Move 1 in', 'business.assignStaff', { arg: `${d.id}:1`, variant: 'tiny', disabled: off || !free })}${button('➕ Move 5 in', 'business.assignStaff', { arg: `${d.id}:5`, variant: 'tiny', disabled: off || free < 5 })}${button('🗑️ Close', 'business.closeUnit', { arg: d.id, variant: 'tiny danger', disabled: off })}</div></li>`).join('');
+  const postRows = created.map((p) => `<li class="report-row"><div><b>🪑 ${esc(p.title)}</b> <small class="muted">${esc(p.name)} · ${esc(org.departments[p.deptId]?.name ?? '')}</small></div>${button('🗑️ Abolish', 'business.removePost', { arg: p.id, variant: 'tiny danger', disabled: off })}</li>`).join('');
+  return card('Your Organisation', `
+    ${orgTree(businessChart(state, biz))}
+    <p class="fine">${off ? 'No organisation changes left this year.' : `${left} organisation change${left === 1 ? '' : 's'} left this year.`} ${unitLimit(biz) ? `Units of your own: ${mine.length} of ${unitLimit(biz)}.` : 'Units of your own open up at 5 staff.'} ${free} staff not yet assigned to a unit.</p>
+    ${disclosure(`biz.design.units.${biz.id}`, '🧩 Units', `${mine.length ? `<ul class="history">${unitRows}</ul>` : '<p class="muted">The departments above grow on their own. Add units of your own — a marketing team, a night shift, a training school.</p>'}
+      <div class="toggle-row" data-collect-root>${field('name', 'New unit name')}${select('occ', occs)}${button('➕ Create unit', 'business.createUnit', { variant: 'tiny', collect: true, disabled: off || mine.length >= unitLimit(biz) })}</div>
+      ${units.length > 1 ? `<div class="toggle-row" data-collect-root>${select('unit', unitOpts)}${field('name', 'Rename to')}${button('✏️ Rename', 'business.renameUnit', { variant: 'tiny', collect: true, disabled: off })}</div>` : ''}`, { count: units.length })}
+    ${disclosure(`biz.design.titles.${biz.id}`, '🏷️ Titles & posts', `${posts.length ? `<div class="toggle-row" data-collect-root>${select('post', posts)}${field('title', 'New title')}${button('🏷️ Retitle', 'business.retitle', { variant: 'tiny', collect: true, disabled: off })}</div>` : ''}
+      <div class="toggle-row" data-collect-root>${select('unit', unitOpts)}${field('title', 'New post (e.g. Head of Marketing)')}${button('🪑 Create post & hire', 'business.createPost', { variant: 'tiny', collect: true, disabled: off })}</div>
+      ${created.length ? `<ul class="history">${postRows}</ul>` : ''}
+      <p class="fine">A new post is a new hire on the payroll; abolishing it lets them go.</p>`, { count: created.length || null })}`, { icon: '🗂️', accent: 'cyan' });
 }
 
 /** The organization: your seat, who runs what, and what you can do about each person. */
@@ -630,7 +664,7 @@ function pulseCard(state, biz) {
     ${reached.length ? `<h4 class="sub">📌 Milestones</h4><p>${reached.map((m) => chip(`${m.icon} ${m.title}`)).join(' ')}</p>` : ''}`, { icon: '💓', accent: 'cyan' });
 }
 
-export const BIZ_TABS = { overview: '🏪 Overview', operations: '⚙️ Operations', market: '📊 Market & rules', money: '🏦 Money & exit' };
+export const BIZ_TABS = { overview: '🏪 Overview', people: '👥 People', operations: '⚙️ Operations', market: '📊 Market & rules', money: '🏦 Money & exit' };
 
 function ownedView(state, biz, ui = {}) {
   const type = typeOf(biz);
@@ -657,20 +691,23 @@ function ownedView(state, biz, ui = {}) {
     <h4 class="sub">Last year</h4>${pnl(biz.lastYear)}${historyTable(biz)}`, { icon: type.icon, accent: 'green' });
 
   const ops = card('Operations', `
-    ${s.headcount ? `${kv([['Staff', `${s.headcount}${biz.family.length ? ` (${biz.family.length} family)` : ''}`], ['Union risk', s.unionized ? 'Unionized' : `${s.unionRisk}%`]])}
-      ${meter(s.morale, { label: '😊 Morale' })}${meter(s.productivity, { label: '⚙️ Productivity' })}${businessUnionPanel(state, biz)}` : '<p class="muted">No employees yet — just you.</p>'}
     <h4 class="sub">Who runs it</h4><div class="toggle-row chips-row">${button('🧑‍💼 Run it yourself', 'business.setRole', { arg: 'operator', variant: biz.role === 'operator' ? 'tiny on' : 'tiny', disabled: Boolean(state.career.job), hint: state.career.job ? 'Quit your job first' : 'Your skill shows; full-time work' })}${button('🧑‍💼 Hire a general manager', 'business.setRole', { arg: 'absentee', variant: biz.role === 'absentee' ? 'tiny on' : 'tiny', hint: 'Salary cost; quality drifts' })}</div>
     <h4 class="sub">Marketing</h4><div class="toggle-row chips-row">${MARKETING.map((m, i) => button(m.label, 'business.setMarketing', { arg: String(i), variant: biz.marketing === i ? 'tiny on' : 'tiny', hint: m.share ? `${Math.round(m.share * 100)}% of revenue` : '' })).join('')}</div>
     <h4 class="sub">Profit you take out</h4><div class="toggle-row chips-row">${[0, 0.5, 1].map((p) => button(p === 0 ? 'Reinvest all' : p === 0.5 ? 'Half' : 'All of it', 'business.setDraw', { arg: String(p), variant: biz.drawPct === p ? 'tiny on' : 'tiny' })).join('')}</div>
-    ${s.headcount ? `<h4 class="sub">Workforce</h4><div class="toggle-row chips-row">${Object.entries(WORKFORCE_MODES).map(([id, m]) => button(`${m.icon} ${m.label}`, 'business.setWorkforce', { arg: id, variant: s.workforce === id ? 'tiny on' : 'tiny', hint: m.desc })).join('')}</div>
-    <h4 class="sub">Benefits you offer</h4><div class="toggle-row chips-row">${button('🩺 Health plan', 'business.toggleHealth', { variant: biz.benefits.health ? 'tiny on' : 'tiny', hint: '+12% payroll · morale' })}${[0, 0.03, 0.05].map((m) => button(m ? `401(k) ${m * 100}% match` : 'No 401(k)', 'business.setMatch', { arg: String(m), variant: biz.benefits.match === m ? 'tiny on' : 'tiny' })).join('')}</div>
-    <h4 class="sub">Delegate to managers</h4><div class="toggle-row chips-row">${Object.entries(DUTIES).map(([id, d]) => button(`${d.icon} ${d.label}`, 'business.toggleDelegation', { arg: id, variant: s.delegation[id] ? 'tiny on' : 'tiny', disabled: s.headcount < 8, hint: s.headcount < 8 ? '8+ staff' : `${Math.round(d.overhead * 100)}% of payroll` })).join('')}</div>` : ''}
+    ${type.startup ? '' : `<div class="action-grid">${expandButtons(state, biz)}</div>`}
+    <p class="fine">Staff, hiring, pay and benefits are on the 👥 People tab.</p>`, { icon: '⚙️' });
+
+  const staffing = card('Staff & Policies', `
+    ${s.headcount ? `${kv([['Staff', `${s.headcount}${biz.family.length ? ` (${biz.family.length} family)` : ''}`], ['Union risk', s.unionized ? 'Unionized' : `${s.unionRisk}%`]])}
+      ${meter(s.morale, { label: '😊 Morale' })}${meter(s.productivity, { label: '⚙️ Productivity' })}${businessUnionPanel(state, biz)}` : '<p class="muted">No employees yet — just you.</p>'}
     <div class="action-grid">
       ${type.startup ? `${button('🤝 Hire 5', 'business.hire', { arg: '5' })}${button('✂️ Lay off 30%', 'business.layoff', { variant: 'danger', disabled: !s.headcount })}` : ''}
       ${!type.startup && !opsOf(biz) ? `${button('🤝 Hire an employee', 'business.hire', { arg: '1', hint: `Staffing ${Math.round(staffFactor(biz) * 100)}% of normal output` })}${button('✂️ Let one go', 'business.letGo', { disabled: !s.headcount })}` : ''}
-      ${type.startup ? '' : expandButtons(state, biz)}
     </div>
-    ${relatives.length ? `<h4 class="sub">Family business</h4><div class="toggle-row chips-row">${relatives.map((p) => button(`👪 Hire ${esc(p.firstName)}`, 'business.hireRelative', { arg: p.id, variant: 'tiny' })).join('')}</div>` : ''}`, { icon: '⚙️' });
+    ${s.headcount ? disclosure(`biz.policies.${biz.id}`, '📜 Pay, benefits & delegation', `<h4 class="sub">Workforce</h4><div class="toggle-row chips-row">${Object.entries(WORKFORCE_MODES).map(([id, m]) => button(`${m.icon} ${m.label}`, 'business.setWorkforce', { arg: id, variant: s.workforce === id ? 'tiny on' : 'tiny', hint: m.desc })).join('')}</div>
+    <h4 class="sub">Benefits you offer</h4><div class="toggle-row chips-row">${button('🩺 Health plan', 'business.toggleHealth', { variant: biz.benefits.health ? 'tiny on' : 'tiny', hint: '+12% payroll · morale' })}${[0, 0.03, 0.05].map((m) => button(m ? `401(k) ${m * 100}% match` : 'No 401(k)', 'business.setMatch', { arg: String(m), variant: biz.benefits.match === m ? 'tiny on' : 'tiny' })).join('')}</div>
+    <h4 class="sub">Delegate to managers</h4><div class="toggle-row chips-row">${Object.entries(DUTIES).map(([id, d]) => button(`${d.icon} ${d.label}`, 'business.toggleDelegation', { arg: id, variant: s.delegation[id] ? 'tiny on' : 'tiny', disabled: s.headcount < 8, hint: s.headcount < 8 ? '8+ staff' : `${Math.round(d.overhead * 100)}% of payroll` })).join('')}</div>`) : ''}
+    ${relatives.length ? `<h4 class="sub">Family business</h4><div class="toggle-row chips-row">${relatives.map((p) => button(`👪 Hire ${esc(p.firstName)}`, 'business.hireRelative', { arg: p.id, variant: 'tiny' })).join('')}</div>` : ''}`, { icon: '👥' });
 
   const funding = card('Funding & Structure', `
     <div class="action-grid">
@@ -689,7 +726,8 @@ function ownedView(state, biz, ui = {}) {
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
   const sections = {
     overview: () => `${overview}${pulseCard(state, biz)}${postCard(state, biz)}${advisorCard(state, biz)}`,
-    operations: () => `${ops}${managementCard(state, biz)}${leversCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${orgCard(state, biz)}${structureCard(state, biz)}`,
+    people: () => `${designCard(state, biz)}${staffing}${orgCard(state, biz)}${structureCard(state, biz)}`,
+    operations: () => `${ops}${managementCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${leversCard(state, biz)}`,
     market: () => `${marketCard(state, biz)}${policyCard(state, biz)}${licensesCard(state, biz)}${regulatorsCard(state, biz)}`,
     money: () => `${funding}${boardCard(state, biz)}${exit}`,
   };

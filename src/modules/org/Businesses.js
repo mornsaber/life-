@@ -127,8 +127,10 @@ export function syncBusinessOrg(state, biz) {
     extraTotal = Object.values(extra).reduce((a, b) => a + b, 0);
   }
   const main = n - branchStaff - extraTotal;
-  const primary = depts[0];
-  const others = depts.slice(1);
+  const primary = depts.find((d) => !d.custom) ?? depts[0];
+  // Units you created hold just the staff you moved into them (OrgDesign).
+  const others = depts.filter((d) => d !== primary && !d.custom);
+  for (const d of depts) if (d.custom) d.headcount = 0;
   const otherShare = others.length ? Math.min(0.35, 0.1 * others.length) : 0;
   // Every support department has at least one person once there are enough staff to go around.
   const each = Math.round((main * otherShare) / Math.max(1, others.length));
@@ -143,8 +145,8 @@ export function syncBusinessOrg(state, biz) {
     const def = t.departments.find((x) => x.id === d.id);
     const needsHead = d.branch || (managed && d.headcount >= 3) || (n >= TIERS.executives && def);
     if (needsHead && !personOf(org, d.head)) {
-      const title = d.branch ? 'Branch Manager' : n >= TIERS.executives && def?.id === primary.id ? 'Chief Operating Officer' : def?.head.title ?? 'Manager';
-      const occ = d.branch ? occupationOf(t, primary.id) : occupationOf(t, d.id);
+      const title = org.titles?.[`${d.id}|head`] ?? d.headTitle ?? (d.branch ? 'Branch Manager' : n >= TIERS.executives && def?.id === primary.id ? 'Chief Operating Officer' : def?.head.title ?? 'Manager');
+      const occ = d.branch ? occupationOf(t, primary.id) : d.occupation ?? occupationOf(t, d.id);
       d.head = newPerson(rng, org, { title, deptId: d.id, professionId: occ ?? null, selection: 'hired', age: rng.int(32, 58), years: 0 }).id;
     }
     if (!needsHead && d.head && !d.branch) {
@@ -155,7 +157,7 @@ export function syncBusinessOrg(state, biz) {
 
   // Named staff on the careers' own ladders.
   for (const d of Object.values(org.departments)) {
-    const occ = d.branch ? occupationOf(t, primary.id) : occupationOf(t, d.id);
+    const occ = d.branch ? occupationOf(t, primary.id) : d.occupation ?? occupationOf(t, d.id);
     const profession = occ && getProfession(occ);
     if (!profession) continue;
     const { entry, skilled, lead } = staffLevels(profession, org.size);
@@ -183,6 +185,8 @@ export function syncBusinessOrg(state, biz) {
     }
   }
 
+  // Renamed posts (OrgDesign) carry their new titles.
+  if (org.titles) for (const p of Object.values(org.people)) { const dd = org.departments[p.deptId]; const tt = !p.post && (dd?.head === p.id ? org.titles[`${p.deptId}|head`] : org.titles[`${p.deptId}|${p.levelId}`]); if (tt) p.title = tt; }
   // Who runs it day to day.
   // You at the top (running it yourself, or as CEO/President of your own company): no hired chief executive.
   if (biz.role === 'operator' || (biz.role === 'executive' && biz.ownerPost?.post !== 'chair')) {

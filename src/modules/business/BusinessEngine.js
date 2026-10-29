@@ -11,6 +11,7 @@
  * Runs after the career module (order 31) so a year's work is in the ledger
  * before Finances settles taxes.
  */
+import { OrgDesignActions } from './OrgDesign.js';
 import { SECTOR_EVENTS, sectorEventsFor } from './BusinessLife.js';
 import { clamp } from '../../core/Random.js';
 import { selfEmploymentTax } from '../world/CountryLaw.js';
@@ -898,6 +899,7 @@ export const BusinessEngine = {
     ...StructureActions,
     ...PublicActions,
     ...InitiativeActions,
+    ...OrgDesignActions,
     /** arg: 'typeId:cash|sba:entity[:size[:name]]' */
     start(ctx, arg) {
       const [typeId, funding = 'cash', entity = 'llc', size = 'standard', ...name] = String(arg).split(':');

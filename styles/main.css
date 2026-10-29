@@ -963,3 +963,5 @@ select:focus { border-color: var(--cyan); }
 .org-node.you { border-color: var(--cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent); }
 .org-chart summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 .org-chart summary::-webkit-details-marker { display: none; }
+.text-in { background: var(--inset); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; min-width: 0; flex: 1 1 140px; }
+.text-in:focus { border-color: var(--cyan); outline: none; }
