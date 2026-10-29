@@ -26,6 +26,17 @@ import { JUSTICE } from '../world/CountryLaw.js';
 import { COUNTRIES, priceLevel } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 import { knob } from '../../core/Difficulty.js';
+import { juvenileCourt } from './JuvenileCourt.js';
+import { drugLawHere, corruptionHere } from '../crime/CrimeWorld.js';
+
+/**
+ * Hooks the crime modules set (crime/index.js), so they can shape what happens without the
+ * justice system importing them: openCase turns a new investigation into a visible case;
+ * onArrest can intercept an arrest on the spot (a bribe in a corrupt country) and returns true
+ * when it has dealt with it.
+ */
+const HOOKS = { openCase: null, onArrest: null };
+export const setJusticeHooks = (h) => Object.assign(HOOKS, h);
 
 /** The courts where you live: null in the US (state and federal rules below). */
 export const justiceHere = (state) => JUSTICE[state.character.countryId] ?? null;
@@ -71,6 +82,7 @@ export const FACILITY_EFFECTS = {
   federal: { stress: -2, happiness: 2, note: 'Federal prison: cleaner, calmer, real education programs.' },
   brig: { stress: -1, note: 'Military confinement: a strict routine, work details and rehabilitation programs.' },
   private: { stress: 3, health: -3, note: 'The private prison ran short-staffed again; lockdowns and fights were routine.' },
+  juvenile: { stress: 3, note: 'Youth detention: school in the morning, fights in the afternoon, and counsellors who mostly mean well.' },
 };
 
 function priorCount(state, offenseId) {
@@ -100,8 +112,14 @@ function hasImmunity(state, offense) {
 export function commitOffense(ctx, { offenseId, context = '', caught = false, discovery = 0.2, evidence = 0.75, yearsLeft = STATUTE_OF_LIMITATIONS }) {
   const { state } = ctx;
   const abroad = Boolean(state.career.job?.posting);
-  if (caught) return charge(ctx, { offenseId, context, evidence, abroad });
-  state.legal.investigations.push({ offenseId, context, discovery, evidence, abroad, yearsLeft });
+  if (caught) {
+    if (!abroad && HOOKS.onArrest?.(ctx, { offenseId, context, evidence })) return undefined;
+    return charge(ctx, { offenseId, context, evidence, abroad });
+  }
+  const inv = { offenseId, context, discovery, evidence, abroad, yearsLeft };
+  HOOKS.openCase?.(ctx, inv);
+  state.legal.investigations.push(inv);
+  return inv;
 }
 
 export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = false }) {
@@ -117,6 +135,9 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
     ctx.log(`You got a ticket for ${offense.name.toLowerCase()}: $${fine}.`, offense.icon, 'warn');
     return;
   }
+
+  // Children go to the youth court (unless prosecutors move a serious case to adult court).
+  if (state.character.age < 18 && !abroad && juvenileCourt(ctx, { offenseId: id, context, evidence })) return;
 
   if (abroad && hasImmunity(state, offense)) {
     ctx.prompt({
@@ -158,10 +179,14 @@ function bailPrompt(ctx, data) {
 /** The prosecutor's offer: a lesser plea for a lighter sentence. */
 function offerPrompt(ctx, data) {
   const offense = OFFENSES[data.offenseId];
+  // Where the courts are for sale, someone always knows someone.
+  const corrupt = corruptionHere(ctx.state);
+  const fix = corrupt >= 0.5 ? [{ id: 'fix', label: `💰 Pay to make the file disappear ($${money0(ctx.state, 20000 * (offense.prison?.[1] ?? 3)).toLocaleString()})`, tone: 'danger', illegal: 'bribery of a judicial officer', hint: 'Your lawyer knows a clerk who knows the judge' }] : [];
   ctx.prompt({ type: 'legal.offer', icon: '🤝', title: 'A Plea Offer', text: `The prosecutor offers a deal: plead guilty to a reduced count of ${offense.name.toLowerCase()} and they will ask for about half the usual sentence. ${data.evidence >= 0.8 ? 'Your lawyer says the evidence is strong.' : data.evidence >= 0.6 ? 'Your lawyer calls the case "winnable, but risky".' : 'Your lawyer thinks their case is thin.'}`, options: [
     { id: 'accept', label: '✍️ Take the deal', hint: 'Certain conviction, about half the time' },
     { id: 'counter', label: '🗣️ Have your lawyer push for better', hint: 'Better counsel, better odds' },
     { id: 'trial', label: '⚖️ Reject it: go to trial' },
+    ...fix,
   ], data });
 }
 
@@ -249,10 +274,17 @@ function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
   // Other countries jail fewer people for less time (life terms stay life).
   const j = justiceHere(state);
   if (j && prison > 0 && prison < 25) prison = Math.max(offense.severity === 'felony' ? 1 : 0, Math.round(prison * j.sentence));
+  // Drug supply is punished by the country's own drug laws.
+  const drugLaw = offense.drug ? drugLawHere(state) : null;
+  if (drugLaw && prison > 0) prison = Math.max(1, Math.round(prison * drugLaw.mult));
   const probation = offense.probation ?? 0;
   // Repeat misdemeanors and probation violations land you in jail.
   if (offense.severity === 'misdemeanor' && (state.legal.probationYears > 0 || state.legal.record.filter((r) => r.severity !== 'infraction').length >= 2)) prison = Math.max(prison, 1);
-  if (state.character.age < 18) prison = 0; // juvenile court: probation instead
+  // A child tried as an adult serves an adult term (capped below life); otherwise the youth court decides.
+  const minor = state.character.age < 18;
+  if (minor && !state.legal.flags.tryAsAdult) prison = 0;
+  if (minor) prison = Math.min(prison, 20);
+  delete state.legal.flags.tryAsAdult;
 
   state.legal.record.push({
     offenseId,
@@ -260,6 +292,8 @@ function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
     severity: offense.severity,
     age: state.character.age,
     abroad,
+    ...(minor ? { triedAsAdult: true } : {}),
+    ...(offense.registry ? { registry: true } : {}),
     sentence: [fine && `$${fine.toLocaleString()} fine`, prison && `${prison} yr prison`, probation && `${probation} yr probation`].filter(Boolean).join(', '),
   });
   ctx.spend(fine, `${offense.name} fine`, { allowDebt: true });
@@ -284,7 +318,8 @@ function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
     const dp = deathPenaltyHere(state);
     const death = dp?.status;
     const odds = { active: 0.03, moratorium: 0.02, rare: 0.01 }[death] ?? 0;
-    if (!abroad && ((offense.capital && !plea && odds > 0 && rng.chance(odds)) || fugitive?.deathRow)) {
+    const capital = offense.capital || (drugLaw?.death && offense.drug === 'trafficking');
+    if (!abroad && !minor && ((capital && !plea && odds > 0 && rng.chance(drugLaw?.death ? odds * 4 : odds)) || fugitive?.deathRow)) {
       inc.deathRow = { state: stateIdOf(state), sentencedAge: state.character.age };
       inc.yearsLeft = inc.total = 99;
       inc.facility = `death row in ${dp.where}`;
@@ -335,6 +370,13 @@ export const JusticeResolvers = {
   },
   offer(ctx, data, optionId) {
     const { rng } = ctx;
+    if (optionId === 'fix') {
+      const cost = money0(ctx.state, 20000 * (OFFENSES[data.offenseId].prison?.[1] ?? 3));
+      ctx.spend(cost, 'An envelope for the court', { allowDebt: true });
+      if (rng.chance(corruptionHere(ctx.state) * 0.85)) return ctx.log('A week later the case file was "lost". The charges were dropped for want of evidence.', '💰', 'warn');
+      ctx.log('The clerk was an anti-corruption informant. Now there are two cases against you.', '💰', 'bad');
+      commitOffense(ctx, { offenseId: 'judicialBribery', discovery: 0.9, evidence: 0.9, context: 'a recorded payment to a court clerk', yearsLeft: 3 });
+    }
     if (optionId === 'accept') return sentence(ctx, data.offenseId, { plea: true, abroad: false, factor: 0.5 * (data.custody ? 0.85 : 1) });
     if (optionId === 'counter') {
       const good = rng.chance({ topFirm: 0.7, privateAttorney: 0.5, self: 0.4 }[data.defense] ?? 0.25);

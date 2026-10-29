@@ -123,7 +123,7 @@ export function approachCheck(state, outfitId) {
   const o = state.underworld?.outfits?.[outfitId];
   if (!o) return { ok: false, reason: 'Unknown outfit' };
   const crime = state.legal.crime;
-  const street = crime ? Object.values(crime.skill ?? {}).reduce((a, b) => a + b, 0) : 0;
+  const street = crime ? Object.values(crime.skill ?? {}).reduce((a, b) => a + b, 0) + Math.floor((crime.rep ?? 0) / 10) + (crime.youthGang ? 3 : 0) : 0;
   const record = (state.legal.record ?? []).some((r) => r.severity !== 'infraction');
   const family = state.underworld?.family?.outfitId === outfitId;
   if (!street && !record && !family) return { ok: false, reason: 'They don\'t know you: build a name on the street first' };

@@ -112,6 +112,30 @@ export const TEMPTATIONS = [
     text: 'An executive at a company you regulate hints at a $400K job for you — if this year\'s findings are "softened."',
     take: { label: '🚪 Soften the findings', offenseId: 'bribery', perf: 2, discovery: 0.15, evidence: 0.6, text: 'You softened your findings. The job offer is "in the works."' },
   },
+  {
+    id: 'payoff', when: (job) => job.abilities.includes('arrest'), title: 'The Envelope',
+    text: 'A dealer who works a corner on your beat slides an envelope across the car seat: a monthly payment if you keep driving past.',
+    take: { label: '💵 Take the envelope', offenseId: 'policeCorruption', money: [12000, 40000], discovery: 0.2, evidence: 0.8, text: 'You took the money and stopped seeing his corner. Then he started asking for favours.' },
+    honest: { label: '🚔 Arrest him for attempted bribery', perf: 6, text: 'You cuffed him on the spot. The bribery charge stuck, and your sergeant noticed.' },
+  },
+  {
+    id: 'evidenceRoom', when: (job) => job.abilities.includes('arrest') && job.grade >= 2, title: 'The Evidence Room',
+    text: 'Three kilos from last month\'s raid are sitting in a locker nobody audits. A colleague says it\'s "a pension top-up" and half the squad has done it.',
+    take: { label: '🧱 Help yourself and sell it back to the street', offenseId: 'policeCorruption', money: [30000, 90000], discovery: 0.3, evidence: 0.85, text: 'You signed out evidence that never came back.' },
+    honest: { label: '📋 Report the missing evidence', perf: 4, text: 'You reported it. Internal affairs opened an investigation, and the squad stopped talking to you.' },
+  },
+  {
+    id: 'dropCase', when: (job) => job.professionId === 'prosecution', title: 'A Friend of the Family',
+    text: 'A defence lawyer you went to school with suggests a "consulting fee" if a drug case you are prosecuting quietly falls apart.',
+    take: { label: '💼 Let the case fall apart', offenseId: 'publicCorruption', money: [25000, 80000], discovery: 0.2, evidence: 0.8, text: 'You "lost" a lab report and the case was dismissed.' },
+    honest: { label: '📣 Report the approach to the bar', perf: 5, text: 'You reported it. The lawyer was disbarred.' },
+  },
+  {
+    id: 'customs', when: (job) => /customs|border|cbp|immigration/i.test(job.professionId) || /customs|border/i.test(job.employer?.name ?? ''), title: 'The Container',
+    text: 'A freight agent asks you to wave one container a month through without an X-ray. He doesn\'t say what\'s inside. He doesn\'t need to.',
+    take: { label: '🚢 Wave it through', offenseId: 'drugImportation', money: [40000, 150000], discovery: 0.25, evidence: 0.8, text: 'You waved the containers through.' },
+    honest: { label: '🔎 Flag it for a search', perf: 8, text: 'You flagged it. Inside: 400 kilos of cocaine under bananas. Your name was on the seizure report.' },
+  },
 ];
 
 const DECLINE = { label: '🙅 Walk away', text: 'You walked away. Your conscience is clean.' };

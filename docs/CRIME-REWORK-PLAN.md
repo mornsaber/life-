@@ -169,3 +169,21 @@ Each phase ships on its own and keeps old saves loading: `state.legal.crime` hea
 1. **How dark?** Murder and kidnapping as consequences only (proposed), or as deliberate acts too?
 2. **How punishing?** Should a well-planned career criminal be able to retire rich, or should the odds catch up with nearly everyone?
 3. **Drugs:** keep dealing abstract (a racket with income and heat), or model a supply chain (grow/import → cut → distribute)?
+
+## Status (implemented)
+
+| Piece | Where |
+|---|---|
+| ⚖️ Legal sub-tabs: Status, Cases, Crime, Underworld; Risky Business moved out of Activities | `ui/Renderer.js`, `ui/views/CrimeView.js` |
+| Visible cases: agency, named lead, evidence items, stages, warrant prompt (surrender / lawyer / run); counterplay (destroy evidence, alibi, lawyer, intimidate, fix, cooperate) | `crime/Cases.js` (hooked into `commitOffense`) |
+| Youth court: diversion, adjudication, juvenile probation, youth detention, waiver to adult court at 16–17, sealing at 18; juvenile crimes | `legal/JuvenileCourt.js`, `crime/Gangs.js` |
+| Violence: confrontations, weapons, stabbings and shootings, manslaughter and murder as consequences, the aftermath, muggings, express kidnapping, guilt and amends | `crime/Violence.js` |
+| Gangs: youth-gang recruitment, jumped in at 16, turf taxes, outfit orders (do it, refuse, inform) | `crime/Gangs.js` |
+| Corruption: roadside bribes, a detective on the payroll, fixing a case, the "fix" at plea stage, payoffs offered to police, prosecutors and customs | `crime/Corruption.js`, `legal/Misconduct.js`, `JusticeSystem.offerPrompt` |
+| Drug supply chain: connects by tier, labs, imports, cutting and fentanyl, hand-to-hand / weight / runners, territory, overdoses, weight-based charges, country drug laws (to the death penalty) | `crime/Drugs.js`, `crime/CrimeWorld.js` |
+| Dirty money and unexplained wealth | `StreetCrime.js` (`dirty`), `crime/index.js` |
+| Crimes against you, including sexual assault (never player-committable): reporting, support, trials | `crime/Victims.js` |
+| Justice careers handle hard cases (police, prosecutors, defenders, probation, social workers, judges) | `crime/CaseWork.js` |
+| Crime by country: corruption, crime level, drug law, guns, agencies, with regime-kind fallbacks for every country | `crime/CrimeWorld.js` |
+
+Still open from the plan: multi-stage heists (scout → plan → execute → fence), NPC crews with flip risk, interrogation, heat split by agency.

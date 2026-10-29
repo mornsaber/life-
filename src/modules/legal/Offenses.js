@@ -12,6 +12,8 @@
  *   violent:    can never be sealed or expunged
  *   noSeal:     excluded from record sealing (DUI in most states)
  *   capital:    a death-penalty-eligible offense in states that have it
+ *   drug:       'supply' | 'trafficking' — scaled by the country's drug laws (crime/CrimeWorld.js)
+ *   sexual:     a sexual offence (never player-committed); registry: the offender is put on a sex-offender register
  */
 export const OFFENSES = {
   payrollTaxEvasion: { name: 'Failure to Pay Over Payroll Taxes', icon: '💸', severity: 'felony', fine: [10000, 100000], prison: [0, 3], probation: 2, federal: true },
@@ -99,6 +101,35 @@ export const OFFENSES = {
   racketeering: { name: 'Racketeering (RICO)', icon: '🕴️', severity: 'felony', fine: [25000, 250000], prison: [5, 20], probation: 3, federal: true },
   carjacking: { name: 'Carjacking', icon: '🚘', severity: 'felony', fine: [5000, 20000], prison: [5, 15], probation: 3, federal: true, violent: true },
   bankRobbery: { name: 'Bank Robbery', icon: '🏦', severity: 'felony', fine: [10000, 50000], prison: [5, 20], probation: 3, federal: true, violent: true },
+  // Violence (crime/Violence.js): never a casual button — these come out of confrontations, jobs gone wrong and outfit orders.
+  robbery: { name: 'Robbery (Street Mugging)', icon: '🥷', severity: 'felony', fine: [1000, 5000], prison: [2, 7], probation: 3, violent: true },
+  aggravatedAssault: { name: 'Aggravated Assault (Deadly Weapon)', icon: '🔪', severity: 'felony', fine: [2000, 10000], prison: [2, 8], probation: 3, violent: true },
+  manslaughter: { name: 'Voluntary Manslaughter', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [5, 15], probation: 3, violent: true },
+  murder: { name: 'Second-Degree Murder', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [15, 30], probation: 0, violent: true },
+  firstDegreeMurder: { name: 'First-Degree Murder', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [25, 50], probation: 0, violent: true, capital: true },
+  kidnapping: { name: 'Kidnapping for Ransom', icon: '🚐', severity: 'felony', fine: [0, 0], prison: [10, 30], probation: 3, violent: true, federal: true },
+  witnessIntimidation: { name: 'Witness Intimidation', icon: '🤫', severity: 'felony', fine: [2000, 10000], prison: [1, 5], probation: 2, violent: true },
+  obstruction: { name: 'Obstruction of Justice (Destroying Evidence)', icon: '🗑️', severity: 'felony', fine: [2000, 15000], prison: [0, 3], probation: 2 },
+  weaponPossession: { name: 'Unlawful Possession of a Firearm', icon: '🔫', severity: 'felony', fine: [1000, 5000], prison: [1, 5], probation: 2 },
+  knifeCrime: { name: 'Possession of a Bladed Article', icon: '🔪', severity: 'misdemeanor', fine: [300, 1500], probation: 1 },
+  // Juvenile crimes (crime/Juvenile.js): heard in juvenile court below 18.
+  joyriding: { name: 'Taking a Vehicle Without Consent (Joyriding)', icon: '🚗', severity: 'misdemeanor', fine: [300, 1500], probation: 1, escalate: { after: 2, to: 'autoTheft' } },
+  truancy: { name: 'Habitual Truancy (Status Offence)', icon: '🎒', severity: 'infraction', fine: [50, 250] },
+  // The drug trade (crime/Drugs.js). `drug`: the supply tier, scaled by the country's drug laws.
+  possessionWithIntent: { name: 'Possession with Intent to Supply', icon: '💊', severity: 'felony', fine: [2000, 15000], prison: [1, 5], probation: 3, drug: 'supply' },
+  drugTrafficking: { name: 'Drug Trafficking (Weight)', icon: '🧱', severity: 'felony', fine: [25000, 250000], prison: [10, 25], probation: 3, federal: true, drug: 'trafficking' },
+  drugImportation: { name: 'Importation of a Controlled Drug', icon: '🚢', severity: 'felony', fine: [50000, 500000], prison: [12, 30], probation: 3, federal: true, drug: 'trafficking' },
+  drugInducedHomicide: { name: 'Drug-Induced Homicide (Supplying a Fatal Dose)', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [8, 20], probation: 3, drug: 'supply' },
+  // Corruption (crime/Corruption.js).
+  briberyOfficer: { name: 'Bribing a Police Officer', icon: '💵', severity: 'felony', fine: [2000, 15000], prison: [1, 4], probation: 2 },
+  judicialBribery: { name: 'Bribery of a Judicial Officer', icon: '⚖️', severity: 'felony', fine: [20000, 100000], prison: [3, 10], probation: 3, federal: true },
+  policeCorruption: { name: 'Misconduct in Public Office (Taking Payoffs)', icon: '🚔', severity: 'felony', fine: [10000, 50000], prison: [2, 8], probation: 3, jobRelated: true },
+  // Sexual offences. Never something the player can choose to do: they exist so the justice system, victims
+  // and the careers that handle them (police, prosecutors, defenders, judges, social workers) can deal with them.
+  sexualAssault: { name: 'Sexual Assault', icon: '⚠️', severity: 'felony', fine: [0, 0], prison: [4, 15], probation: 5, violent: true, sexual: true, registry: true, noSeal: true },
+  rape: { name: 'Rape', icon: '⚠️', severity: 'felony', fine: [0, 0], prison: [8, 25], probation: 5, violent: true, sexual: true, registry: true, noSeal: true },
+  childSexualAbuse: { name: 'Sexual Abuse of a Child', icon: '⚠️', severity: 'felony', fine: [0, 0], prison: [10, 30], probation: 10, violent: true, sexual: true, registry: true, noSeal: true },
+  domesticAbuse: { name: 'Domestic Abuse (Coercive Control and Assault)', icon: '⚠️', severity: 'felony', fine: [1000, 5000], prison: [1, 5], probation: 3, violent: true },
   unfairLaborPractice: { name: 'Unfair Labor Practice (NLRB)', icon: '⚖️', severity: 'civil', fine: [10000, 60000] },
 };
 

@@ -10,7 +10,9 @@
  *            mistakes, up to a point.
  *   earned   lifetime criminal income (laundering needs something to launder).
  *
- * state.legal.crime = { heat, skill: { [crimeId]: n }, earned, layingLow }
+ * state.legal.crime = { heat, skill: { [crimeId]: n }, earned, layingLow,
+ *   rep (street reputation), dirty (unlaundered money), guilt, armed, cop (on the payroll),
+ *   drugs (crime/Drugs.js), youthGang }
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
@@ -30,6 +32,8 @@ export const CRIME_GROUPS = {
 /** Heat each kind of job draws. */
 const HEAT = { personal: 2, petty: 4, property: 8, fraud: 6, organized: 12, violent: 22 };
 export const TASK_FORCE_HEAT = 70;
+/** Street reputation each kind of job earns. */
+const REP = { personal: 0, petty: 1, property: 2, fraud: 1, organized: 4, violent: 6, juvenile: 1 };
 
 export const crimeOf = (state) => (state.legal.crime ??= { heat: 0, skill: {}, earned: 0, layingLow: false });
 const skillBonus = (state, id) => Math.min(5, crimeOf(state).skill[id] ?? 0);
@@ -49,6 +53,8 @@ export function crimeForMoney(ctx, { id, group = 'property', offenseId, money, c
   const take = Math.round(rng.int(...money) * (1 + skill * 0.1));
   c.skill[id ?? offenseId] = (c.skill[id ?? offenseId] ?? 0) + 1;
   c.earned += take;
+  c.dirty = (c.dirty ?? 0) + take;
+  c.rep = clamp((c.rep ?? 0) + (REP[group] ?? 1), 0, 100);
   ctx.earn(take, 'Undisclosed income');
   ctx.log(`${text} (+$${take.toLocaleString()})`, icon, 'warn');
   if (discovery) commitOffense(ctx, { offenseId, context, discovery: clamp(discovery * (1 + c.heat / 150), 0, 0.9), evidence });
@@ -181,6 +187,7 @@ const CUSTOM = {
     const fee = Math.round(Math.min(c.earned, 200000) * rng.float(0.1, 0.2));
     ctx.spend(fee, 'Laundering costs', { allowDebt: true });
     c.earned = Math.round(c.earned * 0.5);
+    c.dirty = Math.round((c.dirty ?? 0) * 0.3);
     ctx.log(`You ran your dirty money through ${biz ? biz.name : 'a car wash and a few cash businesses'} ($${fee.toLocaleString()} in costs). The paper trail on your old jobs went cold.`, '🧺', 'warn');
     commitOffense(ctx, { offenseId: 'moneyLaundering', discovery: risk, evidence: 0.8, context: 'a bank filed suspicious-activity reports' });
   },

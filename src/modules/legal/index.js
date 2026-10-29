@@ -7,6 +7,7 @@ import { temptationTick, resolveTemptation, RiskyActions, RISKY_ACTIONS } from '
 import { PrisonActions } from './Prison.js';
 import { ClemencyActions, spendMinorRecords } from './Clemency.js';
 import { CrimeActions, crimeTick } from './StreetCrime.js';
+import { JuvenileResolvers } from './JuvenileCourt.js';
 
 /** Prompt choices that break the law, by `${promptType}:${optionId}`. */
 const ILLEGAL_CHOICES = {
@@ -29,7 +30,7 @@ const ILLEGAL_CHOICES = {
   'military.leaveService:desert': 'desertion',
 };
 
-const ALLOWED_IN_PRISON = new Set(['retirement.claimSocialSecurity', 'retirement.withdraw', 'legal.seekPardon', ...Object.keys(PrisonActions).map((id) => `legal.${id}`)]);
+const ALLOWED_IN_PRISON = new Set(['crime.amends', 'retirement.claimSocialSecurity', 'retirement.withdraw', 'legal.seekPardon', ...Object.keys(PrisonActions).map((id) => `legal.${id}`)]);
 
 export const LegalModule = {
   id: 'legal',
@@ -66,6 +67,7 @@ export const LegalModule = {
 
   resolvers: {
     ...JusticeResolvers,
+    ...JuvenileResolvers,
     temptation: resolveTemptation,
   },
 };

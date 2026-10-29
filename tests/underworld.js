@@ -45,7 +45,7 @@ const tests = {
     state.legal.crime = { heat: 0, skill: { burglary: 2 }, earned: 0 };
     join(engine, state);
     assert.equal(meOf(state).rank, 0);
-    assert.match(VIEWS.activities(state, {}), /The Underworld/);
+    assert.match(VIEWS.underworld(state, {}), /The Underworld/);
   },
   'members run rackets, kick up tribute, and earn dirty money that needs laundering'() {
     const { engine, state, ctx } = hood('US', 5);
@@ -82,7 +82,7 @@ const tests = {
     engine.resolvePrompt(state.prompts.at(-1).id, 'cooperate');
     assert.ok(me.witsec && me.marked);
     assert.ok(state.character.lastName !== name || state.character.regionId !== city);
-    assert.match(VIEWS.activities(state, {}), /Witness Protection/);
+    assert.match(VIEWS.underworld(state, {}), /Witness Protection/);
   },
   'the boss sets policy and pays off officials'() {
     const { engine, state } = hood('US', 8);
@@ -134,7 +134,7 @@ const tests = {
         state.prompts = [];
         state.stats.health = 90;
         engine.ageUp();
-        VIEWS.activities(state, {});
+        VIEWS.underworld(state, {});
       }
       assert.ok(OUTFIT_TYPES[outfitsHere(state)[0].type]);
     }

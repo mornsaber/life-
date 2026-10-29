@@ -61,8 +61,8 @@ const tests = {
     engine.dispatch('legal.layLow');
     MODULES.find((m) => m.id === 'legal').onAgeUp(ctx);
     assert.ok(c.heat <= Math.round(h * 0.3) + 1, `laying low cools things (${h} → ${c.heat})`);
-    clean(VIEWS.activities(state, {}));
-    assert.match(VIEWS.activities(state, {}), /Organized crime/);
+    clean(VIEWS.crime(state, {}));
+    assert.match(VIEWS.crime(state, {}), /Organized crime/);
   },
 
   'a hot record draws a task force'() {

@@ -3,7 +3,6 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
-import { underworldCard } from './views/UnderworldView.js';
 import { ceremonialPosts } from '../modules/world/Ceremonial.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
 import { OFFICES } from '../modules/politics/Offices.js';
@@ -21,7 +20,6 @@ import { SERVICE_LIST, rankOfMember } from '../modules/emergency/EmergencyEngine
 import { PROGRAMS } from '../modules/education/Catalog.js';
 import { ACTIVITIES, activityCost } from '../modules/life/Activities.js';
 import { regionOf } from '../modules/life/Regions.js';
-import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT } from '../modules/legal/index.js';
 import { careerView } from './views/CareerView.js';
 import { govView } from './views/GovView.js';
 import { licensesView } from './views/LicensesView.js';
@@ -29,6 +27,7 @@ import { schoolView } from './views/SchoolView.js';
 import { businessView } from './views/BusinessView.js';
 import { moneyView } from './views/MoneyView.js';
 import { legalView } from './views/LegalView.js';
+import { casesView, crimeView, underworldView } from './views/CrimeView.js';
 import { militaryView, emergencyView } from './views/ServiceViews.js';
 import { civicServiceView } from './views/CivicServiceView.js';
 import { homeView } from './views/HomeView.js';
@@ -61,7 +60,7 @@ export const SECTIONS = [
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
   { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
   { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }, { id: 'health', label: 'Health', icon: '🩺' }] },
-  { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Legal', icon: '⚖️' }] },
+  { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Status', icon: '⚖️' }, { id: 'cases', label: 'Cases', icon: '🗂️' }, { id: 'crime', label: 'Crime', icon: '🕶️' }, { id: 'underworld', label: 'Underworld', icon: '🕴️' }] },
 ];
 /** Every screen, in section order (keyboard [ ] walks this list). */
 export const TABS = SECTIONS.flatMap((s) => s.tabs.map((t) => ({ ...t, section: s.id })));
@@ -172,6 +171,9 @@ export const VIEWS = {
   health: healthView,
   people: peopleView,
   legal: legalView,
+  cases: casesView,
+  crime: crimeView,
+  underworld: underworldView,
   home: homeView,
   move: moveView,
   politics: politicsView,
@@ -183,24 +185,8 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    const partnered = (state.people?.list ?? []).some((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
-    const crimeButton = (r) => {
-      const why = r.needs?.(state);
-      return button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: state.character.age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered) || Boolean(why), hint: why ?? (state.character.age < r.minAge ? `Age ${r.minAge}+` : r.desc) });
-    };
-    const groups = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
-      const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid);
-      if (!list.length) return '';
-      const body = `<div class="action-grid">${list.map(crimeButton).join('')}</div>`;
-      return gid === 'personal' ? `<h4 class="sub">${g.icon} ${g.label}</h4>${body}` : disclosure(`crime.${gid}`, `${g.icon} ${g.label}`, body, { count: list.length });
-    }).join('');
-    const crime = state.legal.crime;
-    const heat = crime?.heat ?? 0;
-    const heatPanel = crime ? `${meter(heat, { max: 100, label: '🚨 Heat', suffix: '/100', tone: heat >= TASK_FORCE_HEAT ? 'bad' : heat >= 35 ? 'mid' : 'good' })}
-      <p class="fine">Heat makes arrests likelier and old cases resurface; above ${TASK_FORCE_HEAT} a task force builds cases against you. It fades each year — faster if you lay low.${crime.earned ? ` Criminal earnings: $${Math.round(crime.earned).toLocaleString()}.` : ''}</p>
-      <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: crime.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}</div>` : '';
     return `${retirementLifeCard(state)}${fameCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
-      ${card('Risky Business', `<p class="muted">Every one of these can follow you: records, suspended licenses, denied clearances. Experience pays — each kind of job gets more lucrative and less sloppy the more you do it.</p>${heatPanel}${groups}`, { icon: '😈', accent: 'red' })}${underworldCard(state)}`;
+      <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {
     const mil = militaryHonors(state);

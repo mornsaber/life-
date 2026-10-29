@@ -1,0 +1,140 @@
+/**
+ * ⚖️ Legal → 🗂️ Cases, 🕶️ Crime and 🕴️ Underworld.
+ */
+import { esc, button, card, chip, kv, meter, disclosure, empty, select } from '../Components.js';
+import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT, OFFENSES, SEVERITY_LABEL } from '../../modules/legal/index.js';
+import { EVIDENCE, stageOf, STAGE_LABEL } from '../../modules/crime/Cases.js';
+import { PRODUCTS, LABS, BUYS, priceHere, canImport, kg } from '../../modules/crime/Drugs.js';
+import { JUVENILE_CRIMES } from '../../modules/crime/Gangs.js';
+import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../modules/crime/CrimeWorld.js';
+import { underworldCard } from './UnderworldView.js';
+import { meOf } from '../../modules/legal/Underworld.js';
+
+const pct = (n) => `${Math.round(n * 100)}%`;
+const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
+
+/* ------------------------------------------------------------------ */
+/* Cases                                                               */
+/* ------------------------------------------------------------------ */
+
+function caseCard(state, inv) {
+  const o = OFFENSES[inv.offenseId];
+  const stage = stageOf(inv);
+  const items = (inv.items ?? []).map((i) => `<li>${EVIDENCE[i.kind]?.icon ?? '•'} ${esc(EVIDENCE[i.kind]?.label ?? i.kind)}${i.kind === 'alibi' ? '' : ` <small class="muted">${pct(i.strength)}</small>`}</li>`).join('');
+  const destroyable = (inv.items ?? []).some((i) => EVIDENCE[i.kind]?.destroyable);
+  const witness = (inv.items ?? []).some((i) => EVIDENCE[i.kind]?.intimidate);
+  const done = (what) => Boolean(state.yearly[`case.${inv.id}.${what}`]);
+  const corrupt = corruptionHere(state) >= 0.3 || state.legal.crime?.cop;
+  const actions = [
+    button('🗑️ Destroy evidence', 'crime.destroyEvidence', { arg: inv.id, variant: 'small danger', disabled: !destroyable || done('destroy'), hint: destroyable ? 'Obstruction if you\'re seen' : 'Nothing you can reach' }),
+    button('🤝 Ask for an alibi', 'crime.alibi', { arg: inv.id, variant: 'small', disabled: done('alibi') || Boolean(inv.alibi), hint: inv.alibi ? `${inv.alibi} will vouch for you` : 'Someone close to you' }),
+    button('👔 Lawyer up', 'crime.lawyerUp', { arg: inv.id, variant: 'small', disabled: Boolean(inv.lawyer), hint: inv.lawyer ? 'Retained' : 'A retainer now' }),
+    button('🤫 Lean on a witness', 'crime.intimidate', { arg: inv.id, variant: 'small danger', disabled: !witness || done('intimidate'), hint: 'Witness intimidation is a felony' }),
+    corrupt ? button('💰 Make it go away', 'crime.fixCase', { arg: inv.id, variant: 'small danger', disabled: done('fix'), hint: `Corruption here: ${level(corruptionHere(state))}` }) : '',
+    button('🐀 Cooperate', 'crime.cooperate', { arg: inv.id, variant: 'small', hint: 'Give them someone bigger' }),
+  ].join('');
+  return `<div class="case-file">
+    <h4>${o?.icon ?? '🗂️'} ${esc(o?.name ?? inv.offenseId)} ${chip(SEVERITY_LABEL[o?.severity] ?? '', o?.severity === 'felony' ? 'bad' : 'warn')} ${chip(STAGE_LABEL[stage], stage === 'warrant' ? 'bad' : stage === 'suspect' ? 'warn' : '')}</h4>
+    ${kv([['Investigating', esc(inv.agency ?? 'the police')], ['Lead', esc(inv.lead ?? '—')], inv.context ? ['About', esc(inv.context)] : null, ['Statute', inv.yearsLeft >= 50 ? 'No limit' : `${inv.yearsLeft} yr left`]])}
+    ${meter(inv.evidence * 100, { label: '⚖️ Evidence', tone: inv.evidence >= 0.75 ? 'bad' : inv.evidence >= 0.5 ? 'mid' : 'good' })}
+    ${meter(inv.discovery * 100, { max: 90, label: '🎯 How close they are', tone: stage === 'warrant' ? 'bad' : stage === 'suspect' ? 'mid' : 'good' })}
+    <ul class="plain">${items}</ul>
+    <div class="action-grid">${actions}</div>
+  </div>`;
+}
+
+export function casesView(state) {
+  const list = state.legal.investigations ?? [];
+  const body = list.length
+    ? `<p class="muted">What the police have on you — and what you can still do about it. Every counter-move is once a year per case, and most of them are crimes too.</p>${list.map((inv) => caseCard(state, inv)).join('<hr>')}`
+    : empty('No open cases. As far as you know.');
+  return card('Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
+}
+
+/* ------------------------------------------------------------------ */
+/* Crime                                                               */
+/* ------------------------------------------------------------------ */
+
+function streetCard(state) {
+  const c = state.legal.crime;
+  if (!c || !(c.heat || c.earned || c.rep || c.guilt)) return '';
+  const heat = c.heat ?? 0;
+  return card('On the Street', `${meter(heat, { max: 100, label: '🚨 Heat', suffix: '/100', tone: heat >= TASK_FORCE_HEAT ? 'bad' : heat >= 35 ? 'mid' : 'good' })}
+    ${meter(c.rep ?? 0, { max: 100, label: '🗣️ Street reputation', suffix: '/100', tone: 'mid' })}
+    ${c.guilt ? meter(c.guilt, { max: 100, label: '🌑 Guilt', suffix: '/100', tone: c.guilt >= 50 ? 'bad' : 'mid' }) : ''}
+    ${kv([['Criminal earnings', `$${Math.round(c.earned ?? 0).toLocaleString()}`], ['Dirty money (unlaundered)', `$${Math.round(c.dirty ?? 0).toLocaleString()}`], ['Carrying', c.armed ? (c.armed === 'gun' ? '🔫 A gun' : '🔪 A knife') : 'Nothing'], c.cop ? ['On your payroll', esc(c.cop.name)] : null, c.youthGang ? ['Running with', esc(c.youthGang.name)] : null])}
+    <p class="fine">Heat makes arrests likelier and old cases surface; above ${TASK_FORCE_HEAT} a task force builds cases. It fades each year — faster if you lay low. Dirty money you can't explain draws the tax authority.</p>
+    <div class="action-grid">${button('🙈 Lay low this year', 'legal.layLow', { variant: 'small', disabled: c.layingLow || !heat, hint: 'Heat falls ~70% instead of ~40%' })}${c.guilt ? button('🕯️ Make amends', 'crime.amends', { variant: 'small', disabled: Boolean(state.yearly['crime.amends']) }) : ''}${c.youthGang ? button('🚶 Leave the crew', 'crime.leaveYouthGang', { variant: 'small' }) : ''}</div>`, { icon: '🕶️' });
+}
+
+function crimesCard(state) {
+  const age = state.character.age;
+  const partnered = (state.people?.list ?? []).some((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
+  const crimeButton = (r) => {
+    const why = r.needs?.(state);
+    return button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered) || Boolean(why), hint: why ?? (age < r.minAge ? `Age ${r.minAge}+` : r.desc) });
+  };
+  const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
+  const groups = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
+    const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid);
+    if (!list.length) return '';
+    const body = `<div class="action-grid">${list.map(crimeButton).join('')}</div>`;
+    return gid === 'personal' ? `<h4 class="sub">${g.icon} ${g.label}</h4>${body}` : disclosure(`crime.${gid}`, `${g.icon} ${g.label}`, body, { count: list.length });
+  }).join('');
+  const kidnapHere = ['MX', 'VE', 'BR', 'CO', 'NG', 'ZA', 'PH', 'HT', 'GT', 'PE', 'EC', 'IN', 'PK'].includes(state.character.countryId);
+  const armed = state.legal.crime?.armed;
+  const violence = disclosure('crime.violence', '🩸 Violence', `<div class="action-grid">
+    ${button('🥷 Mug someone', 'crime.mug', { variant: 'danger', disabled: age < 13 || Boolean(state.yearly['risky.mug']), hint: armed ? 'Armed robbery' : 'Robbery' })}
+    ${kidnapHere ? button('🚐 Express kidnapping', 'crime.kidnap', { variant: 'danger', disabled: age < 18 || !armed || Boolean(state.yearly['risky.kidnap']), hint: armed ? 'ATM to ATM until the accounts are empty' : 'You would need a weapon' }) : ''}
+    ${button('🔪 Carry a knife', 'crime.arm', { arg: 'knife', variant: 'small', disabled: age < 14 || armed === 'knife' })}
+    ${button('🔫 Buy a gun', 'crime.arm', { arg: 'gun', variant: 'small danger', disabled: age < 14 || armed === 'gun', hint: `Guns here: ${{ easy: 'easy to get', market: 'a black market', hard: 'very hard to get' }[gunsHere(state)]}` })}
+    ${armed ? button('🗑️ Get rid of it', 'crime.arm', { arg: 'none', variant: 'small' }) : ''}
+  </div><p class="fine">Carrying a weapon changes every confrontation: some people back down, some get hurt, and some die. Killing is never a choice on this screen — it is what happens when a choice goes wrong.</p>`);
+  return card('Crime', `<p class="muted">Every one of these can follow you: records, suspended licences, denied clearances, people you hurt. Streets here: ${level(crimeLevelHere(state))} crime, ${level(corruptionHere(state))} corruption.</p>${youth}${groups}${violence}`, { icon: '😈', accent: 'red' });
+}
+
+function drugsCard(state) {
+  if (state.character.age < 14) return '';
+  const d = state.legal.crime?.drugs;
+  const law = drugLawHere(state);
+  const products = Object.entries(PRODUCTS).map(([id, p]) => ({ value: id, label: `${p.icon} ${p.label} — $${priceHere(state, id).toLocaleString()}/kg wholesale, $${priceHere(state, id, 'retail').toLocaleString()} street` }));
+  const sizes = Object.entries(BUYS).map(([id, b]) => ({ value: id, label: `${b.label}${b.rep ? ` (rep ${b.rep}+)` : ''}` }));
+  const has = d && d.stash > 0.05;
+  const status = d && (has || d.lab || d.runners || d.shipment) ? kv([
+    ['Stash', has ? `${kg(d.stash)} kg ${PRODUCTS[d.product].label.toLowerCase()} · ${Math.round(d.purity * 100)}% pure${d.laced ? ' · ☠️ laced with fentanyl' : ''}` : 'Empty'],
+    d.lab ? ['Production', `${LABS[d.lab].icon} ${LABS[d.lab].label}`] : null,
+    ['Runners', d.runners || 'None'],
+    ['Territory', `${Math.round(d.territory)}% of the local market`],
+    d.shipment ? ['Shipment', `🚢 ${d.shipment.weight} kg ${PRODUCTS[d.shipment.product].label.toLowerCase()} on the water`] : null,
+    ['Lifetime sales', `$${Math.round(d.sold).toLocaleString()}`],
+  ]) : '<p class="muted">You\'re not in the trade.</p>';
+  const y = (k) => Boolean(state.yearly[k]);
+  const source = `<h4 class="sub">1 · Source</h4><div class="toggle-row" data-collect-root>${select('product', products)}${select('size', sizes)}${button('🤝 Buy from a connect', 'crime.drugBuy', { variant: 'small danger', collect: true })}</div>
+    <div class="action-grid">${Object.entries(LABS).map(([id, l]) => button(`${l.icon} ${l.label}`, 'crime.drugLab', { arg: id, variant: 'small danger', disabled: Boolean(d?.lab) || state.character.age < 18, hint: `${PRODUCTS[l.product].label}, $${l.cost.toLocaleString()}` })).join('')}${d?.lab ? button('🧽 Shut the lab', 'crime.closeLab', { variant: 'small' }) : ''}
+    ${Object.keys(PRODUCTS).filter((id) => id !== 'cannabis').map((id) => button(`🚢 Import ${PRODUCTS[id].label.toLowerCase()}`, 'crime.drugImport', { arg: id, variant: 'small danger', disabled: !canImport(state) || Boolean(d?.shipment), hint: canImport(state) ? '100 kg in a container' : 'Needs an outfit or 60+ rep' })).join('')}</div>`;
+  const process = `<h4 class="sub">2 · Process</h4><div class="action-grid">${button('⚖️ Cut it', 'crime.drugCut', { arg: 'cut', variant: 'small danger', disabled: !has || y('drug.cut'), hint: '+50% weight, lower purity' })}${button('☠️ Stretch it with fentanyl', 'crime.drugCut', { arg: 'fentanyl', variant: 'small danger', disabled: !has || y('drug.cut') || !['heroin', 'cocaine'].includes(d?.product), hint: 'Double the weight. People will die.' })}</div>`;
+  const runnerOpts = [1, 2, 4, 6, 10].map((n) => button(`🧢 ${n} runner${n === 1 ? '' : 's'}`, 'crime.drugRunners', { arg: n, variant: 'tiny', disabled: y('drug.runners') || d?.runners === n })).join('');
+  const distribute = `<h4 class="sub">3 · Distribute</h4><div class="action-grid">${button('✋ Sell hand to hand', 'crime.drugSell', { arg: 'street', variant: 'small danger', disabled: !has || y('drug.sell.street'), hint: 'Retail money, retail risk' })}${button('📦 Sell weight to dealers', 'crime.drugSell', { arg: 'weight', variant: 'small danger', disabled: !has || y('drug.sell.weight'), hint: 'Less money, less risk, more informants' })}</div>
+    <div class="action-grid">${runnerOpts}${d?.runners ? button('Pull them off', 'crime.drugRunners', { arg: 0, variant: 'tiny' }) : ''}</div>
+    ${d && (has || d.lab || d.runners) ? `<div class="action-grid">${button('🚽 Get out of the trade', 'crime.drugQuit', { variant: 'small' })}</div>` : ''}`;
+  return card('The Drug Trade', `${status}${disclosure('crime.drugs.chain', '🔗 The supply chain', `${source}${process}${distribute}`, { open: Boolean(has) })}
+    <p class="fine">${law.note ? `${esc(law.note)} ` : ''}Caught with up to a kilo: possession with intent; up to ten: distribution; more: trafficking${law.death ? ' — a capital crime here' : ''}. Runners sell all year and some of them talk. Every customer who overdoses was someone's child.</p>`, { icon: '💊', accent: 'red' });
+}
+
+function corruptionCard(state) {
+  const c = state.legal.crime;
+  if (!c || !(c.heat || c.drugs?.stash || c.cop)) return '';
+  const corrupt = corruptionHere(state);
+  return card('Friends in Uniform', `<p class="muted">Corruption here is ${level(corrupt)}: ${corrupt >= 0.5 ? 'police and court clerks are routinely paid off.' : corrupt >= 0.3 ? 'some officers can be bought — and some are watching for people who try.' : 'trying to bribe an officer is the fastest way to a second charge.'}</p>
+    ${c.cop ? kv([['On the payroll', esc(c.cop.name)], ['Retainer', `$${c.cop.fee.toLocaleString()}/yr`]]) : ''}
+    <div class="action-grid">${c.cop ? button('✂️ Stop paying', 'crime.dropCop', { variant: 'small' }) : button('🚔 Put a detective on the payroll', 'crime.payrollCop', { variant: 'small danger', disabled: Boolean(state.yearly['crime.payroll']), hint: 'Warnings before raids; slower cases' })}</div>`, { icon: '💵' });
+}
+
+export function crimeView(state) {
+  return `${streetCard(state)}${crimesCard(state)}${drugsCard(state)}${corruptionCard(state)}`;
+}
+
+export function underworldView(state) {
+  const card0 = underworldCard(state);
+  return card0 || card('The Underworld', empty(meOf(state) ? '' : 'No outfit knows your name yet. Build a reputation on the street first.'), { icon: '🕴️' });
+}

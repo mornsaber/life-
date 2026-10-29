@@ -33,6 +33,7 @@ const year = (engine, state, n = 1) => {
     for (let k = 0; k < 12 && state.prompts.length; k++) { const q = state.prompts[0]; engine.resolvePrompt(q.id, (q.options.find((o) => !o.disabled && o.tone !== 'danger') ?? q.options[0]).id); }
     state.prompts = [];
     state.stats.health = 95;
+    if (state.health) state.health.conditions = [];
     engine.ageUp();
   }
 };
