@@ -92,7 +92,7 @@ const tests = {
     const { state, engine } = worker('GB', 'manchester', 'fire', 'captain');
     const c = contextOf(state, 'job');
     assert.ok(c.hq, 'bought centrally');
-    assert.match(equipmentCard(state, 'job'), /Ask .* for/);
+    assert.match(equipmentCard(state, 'job'), /Bid to .* for|Bid to [^:]*:/);
     engine.dispatch('deptEquip.requisition', `job|${Object.keys(c.groups ?? {})[0] ?? 'apparatus'}`);
     const chief = worker('GB', 'manchester', 'fire', 'chief', { seed: 4 });
     const cc = contextOf(chief.state, 'job');
