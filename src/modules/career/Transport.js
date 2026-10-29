@@ -26,6 +26,7 @@ import { createEmployer } from './Employers.js';
 import { hasCredential, grantCredential } from '../credentials/LicensingEngine.js';
 import { isRecession } from '../economy/EconomyEngine.js';
 import { isDeployed } from '../../core/State.js';
+import { signOn, shipLine, routeOf, SHIP_TYPES } from './Seafaring.js';
 
 export const AGE_LIMIT_121 = 65;
 const RECALL_YEARS = 5;
@@ -176,8 +177,10 @@ function rotationTick(ctx, job, profession, level) {
   const { state, rng } = ctx;
   const { rotation } = profession;
   if (profession.id === 'merchantMarine') {
-    const months = rng.int(5, 7);
-    ctx.log(`${months} months ${rotation.label} aboard the ${job.employer.name} ${rng.pick(['tanker', 'container ship', 'bulk carrier', 'car carrier', 'offshore supply vessel'])} ${rng.pick(['MV Resolute', 'MV Pacific Star', 'SS Liberty Bell', 'MV Northern Light', 'MV Gulf Trader'])}, then months at home.`, '🚢');
+    // The ship is the one Seafaring signed you on; crewing-agency contracts log their own year there.
+    const ship = job.ship ?? signOn(ctx, job);
+    if (job.contract) { /* the crewing agency's contract year is logged by Seafaring */ } else if (ship.type === 'tug') ctx.log(`Two weeks on, two weeks off aboard the ${ship.name}, ${shipLine(ship)}, working ${routeOf(job).name}.`, '⚓');
+    else ctx.log(`${rng.int(5, 7)} months ${rotation.label} aboard the ${ship.name}, ${shipLine(ship)}, trading ${routeOf(job).name}, then months at home.`, SHIP_TYPES[ship.type]?.icon ?? '🚢');
   } else if (profession.id === 'cruise') {
     ctx.log(`A ${rng.int(6, 9)}-month contract ${rng.pick(['in the Caribbean', 'in Alaska and the Mediterranean', 'on Northern European itineraries', 'on a world cruise'])}. Crew quarters, crew mess, and two months off between contracts.`, '🛳️');
     if (profession.tips && level.track !== 'mgmt') {
@@ -193,10 +196,6 @@ const SEA_EVENTS = {
     { id: 'storm', title: '🌊 Heavy Weather', text: 'A North Atlantic storm: 40-foot seas and cargo lashings working loose on deck.', options: [
       { id: 'secure', label: '🪢 Go out on deck to re-secure the containers', risk: 0.3, success: 0.7, good: 'You saved the deck stack. The chief mate noticed.', bad: 'A wave knocked you into a hatch coaming.' },
       { id: 'heave', label: '🧭 Heave to and ride it out', risk: 0, success: 1, good: 'Three miserable days, no damage.' },
-    ] },
-    { id: 'pirates', title: '🏴‍☠️ Suspicious Approach', text: 'Off the Horn of Africa, two skiffs close at high speed.', options: [
-      { id: 'citadel', label: '🔒 Muster the crew in the citadel', risk: 0.05, success: 0.9, good: 'The armed guards fired warning shots; the skiffs turned away.', bad: 'Shots hit the bridge wing. Nobody was hurt — barely.' },
-      { id: 'hoses', label: '🚿 Man the fire hoses at the rail', risk: 0.35, success: 0.6, good: 'The hoses kept them off the ladder.', bad: 'A ricochet caught you in the arm.' },
     ] },
     { id: 'rescue', title: '🛟 Mayday at Sea', text: 'A sinking fishing boat 20 miles off; you\'re the closest ship.', options: [
       { id: 'divert', label: '🚢 Divert and launch the rescue boat', risk: 0.2, success: 0.8, good: 'You pulled six fishermen from the water. The Coast Guard sent a commendation.', bad: 'You found only debris.', hero: true },

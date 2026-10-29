@@ -130,7 +130,7 @@ export const MerchantReserveModule = {
       if (s.commissioned && rng.chance(0.3)) ctx.log(rng.pick([`The summer training cruise: three months at sea with ${rng.int(200, 600)} cadets, and you as a ${s.rank.title} in the ${s.name}.`, `Graduation day: you pinned licences and reserve commissions on a new class of mates and engineers.`, `An inspection from the ${s.name}: the cadet regiment marched, the training ship passed.`]), '⚓', 'info');
       return;
     }
-    if (state.prompts.some((p) => p.type === 'merchantReserve.callup')) return;
+    if (state.prompts.some((p) => p.type === 'merchantReserve.callup') || r?.answered === war.operation || state.character.age >= 85) return;
     // Called up at any age: working seafarers and academy staff first.
     const odds = (isMariner(state.career?.job) || s.commissioned ? 0.55 : 0.3) * (war.mobilized ? 1.4 : 1) * (war.intensity >= 3 ? 1.3 : 1);
     if (!rng.chance(Math.min(0.9, odds))) return;
@@ -165,9 +165,10 @@ export const MerchantReserveModule = {
       if (!war || war.operation !== data?.war) return ctx.log('The call-up was cancelled before you sailed.', '⚓', 'info');
       if (optionId === 'exempt') {
         const age = state.character.age;
-        if (state.stats.health < 40 || age >= 78 || rng.chance(age >= 65 ? 0.4 : 0.15)) return ctx.log('Excused: the board sent you home.', '📄', 'good');
+        if (state.stats.health < 40 || age >= 78 || rng.chance(age >= 65 ? 0.4 : 0.15)) { mr(state).answered = war.operation; return ctx.log('Excused: the board sent you home for the rest of the war.', '📄', 'good'); }
         ctx.log('The board refused to excuse you. The ships need every licence they can find.', '📄', 'warn');
       } else if (optionId === 'refuse') {
+        mr(state).answered = war.operation;
         ctx.emit('legal:offense', { offenseId: 'draftEvasion', context: 'refusing to sail under wartime orders', discovery: 0.7, evidence: 0.8 });
         return ctx.log('You refused to sail. The maritime authority has your name, and your licences are on the line.', '🙅', 'bad');
       }

@@ -130,8 +130,8 @@ export const ROUTE_CAREERS = {
   merchantMarine: {
     label: 'Your Sea Time', icon: '⚓', unit: 'sea days', volume: [150, 220], weights: { smarts: 2, fitness: 1 }, checkEvery: 2, checkName: 'STCW refresher & sea-service review',
     lines: {
-      coastal: Ln('Coastwise & tugs', '🚢', 'Two weeks on, two off.', { away: 3, stress: 3 }),
-      container: Ln('Deep-sea container ships', '🌊', 'Four months on, ports you\'ll see for six hours.', { years: 1, pay: 1.1, away: 7, stress: 4 }),
+      container: Ln('Deep-sea ships', '🌊', 'Four months on, ports you\'ll see for six hours.', { pay: 1.1, away: 7, stress: 4 }),
+      coastal: Ln('Coastwise & tugs', '🚢', 'Two weeks on, two off: home every fortnight.', { away: 3, stress: 3 }),
       tanker: Ln('Tankers', '🛢️', 'The best pay at sea, the strictest ships.', { years: 2, pay: 1.18, away: 7, stress: 5, risk: 1.3, needs: 'tankerman' }),
       offshore: Ln('Offshore supply & DP vessels', '🛠️', 'Rigs and wind farms. Precision ship-handling.', { years: 3, pay: 1.15, away: 5, needs: 'dp' }),
     },

@@ -19,6 +19,9 @@
  * job.ship = { name, flag, type, route }; job.contract = { agency, signedOn }
  */
 import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
+import { hasCredential, pursueEligibility, pursueCredential } from '../credentials/LicensingEngine.js';
+import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
+import { COUNTRIES } from '../world/Countries.js';
 import { clamp } from '../../core/Random.js';
 
 export const FLAGS = { PA: 'Panama', LR: 'Liberia', MH: 'the Marshall Islands', MT: 'Malta', BS: 'the Bahamas', SG: 'Singapore', HK: 'Hong Kong', GR: 'Greece', NO: 'Norway' };
@@ -31,7 +34,16 @@ export const SHIP_TYPES = {
   tanker: { name: 'oil tanker', pay: 1.2, icon: '🛢️' },
   lng: { name: 'LNG carrier', pay: 1.35, icon: '🧊' },
   carCarrier: { name: 'car carrier', pay: 1, icon: '🚗' },
+  offshore: { name: 'offshore supply vessel', pay: 1.1, icon: '🛠️' },
+  tug: { name: 'harbour tug', pay: 0.9, icon: '⚓' },
 };
+/** The line you bid (engines/Routes.js) decides which ships you sail on. */
+const LINE_SHIPS = { coastal: ['tug'], container: ['container', 'bulk', 'carCarrier'], tanker: ['tanker', 'lng'], offshore: ['offshore'] };
+const lineOf = (state) => state.careerLife?.routeWork?.line ?? null;
+/** The licence ladder: deck officers and engineers. */
+const DECK = ['mateLicense', 'chiefMateLicense', 'masterLicense'];
+const ENGINE = ['engineerLicense', 'chiefEngineerLicense'];
+const engineRoom = (job) => ['qmed', 'thirdAE', 'firstAE', 'chiefEngineer'].includes(job?.levelId);
 const ROUTES = [
   { id: 'aden', name: 'Suez–Gulf of Aden–Singapore', piracy: 0.012 },
   { id: 'guinea', name: 'the West African coast (Gulf of Guinea)', piracy: 0.02 },
@@ -39,6 +51,7 @@ const ROUTES = [
   { id: 'pacific', name: 'the trans-Pacific', piracy: 0 },
   { id: 'atlantic', name: 'the North Atlantic', piracy: 0 },
   { id: 'cape', name: 'round the Cape of Good Hope', piracy: 0.002 },
+  { id: 'coastal', name: 'coastal and harbour waters', piracy: 0, local: true },
 ];
 const SHIP_NAMES = ['Ocean Pioneer', 'Star Harmony', 'Pacific Grace', 'Nordic Dawn', 'Maersk Elba', 'Golden Venture', 'Atlantic Crown', 'Sea Diamond', 'Eastern Fortune', 'Cape Horizon', 'Silver Phoenix', 'Andaman Spirit'];
 
@@ -51,13 +64,20 @@ export function signOn(ctx, job, { type, route } = {}) {
   const cc = state.character.countryId ?? 'US';
   const crew = CREW_NATIONS[cc];
   const flag = crew || rng.chance(0.6) ? rng.pick(OPEN_REGISTRIES) : cc;
-  const t = type ?? rng.weighted(Object.keys(SHIP_TYPES), (k) => ({ bulk: 4, container: 4, tanker: 3, lng: 1, carCarrier: 1 }[k]));
-  const r = route ? ROUTES.find((x) => x.id === route) : rng.pick(ROUTES);
-  job.ship = { name: `MV ${rng.pick(SHIP_NAMES)}`, flag, type: t, route: r.id };
+  const allowed = LINE_SHIPS[lineOf(state)] ?? ['bulk', 'container', 'tanker', 'lng', 'carCarrier'];
+  const t = type ?? rng.weighted(allowed, (k) => ({ bulk: 4, container: 4, tanker: 3, lng: 1, carCarrier: 1, offshore: 1, tug: 1 }[k]));
+  const r0 = t === 'tug' ? 'coastal' : route;
+  const r = r0 ? ROUTES.find((x) => x.id === r0) : rng.pick(ROUTES.filter((x) => !x.local));
+  // Tugs and coastal work fly the home flag (cabotage laws such as the Jones Act).
+  const homeFlag = t === 'tug' ? cc : null;
+  job.ship = { name: `${t === 'tug' ? 'Tug' : 'MV'} ${rng.pick(SHIP_NAMES)}`, flag: homeFlag ?? flag, type: t, route: r.id, line: lineOf(state) };
   job.contract = crew ? { agency: crew, signedOn: state.character.age } : null;
   return job.ship;
 }
-export const flagName = (cc) => FLAGS[cc] ?? cc;
+const THE = /^(Philippines|United States|United Kingdom|Netherlands|Bahamas|Marshall Islands|Maldives|Gambia)/;
+export const flagName = (cc) => FLAGS[cc] ?? ((n) => (THE.test(n) ? `the ${n}` : n))(COUNTRIES[cc]?.name ?? cc);
+/** "a bulk carrier flagged in Panama" */
+export const shipLine = (ship) => `${/^[aeiou]/i.test(SHIP_TYPES[ship.type]?.name ?? 's') ? 'an' : 'a'} ${SHIP_TYPES[ship.type]?.name ?? 'ship'} flagged in ${flagName(ship.flag)}`;
 export const routeOf = (job) => ROUTES.find((r) => r.id === job?.ship?.route) ?? ROUTES[3];
 
 function seaYear(ctx) {
@@ -65,13 +85,23 @@ function seaYear(ctx) {
   const job = state.career.job;
   if (!atSea(job)) return;
   if (!job.ship) signOn(ctx, job);
+  // Bid a different line and you go to a different kind of ship.
+  const allowed = LINE_SHIPS[lineOf(state)];
+  if (allowed && !allowed.includes(job.ship.type)) {
+    const quiet = !job.ship.line;
+    const s = signOn(ctx, job);
+    if (!quiet) ctx.log(`New line, new ship: you signed on the ${s.name}, a ${SHIP_TYPES[s.type].name}.`, SHIP_TYPES[s.type].icon, 'info');
+  }
+  // A crewing-agency contract is one ship; the next contract is usually another.
+  if (job.contract && state.character.age > job.contract.signedOn && rng.chance(0.7)) signOn(ctx, job);
+  licenceOffer(ctx, job);
   const ship = job.ship;
   const type = SHIP_TYPES[ship.type];
   const cc = state.character.countryId ?? 'US';
   // The rhythm of contracts: months away, and a family that pays for it.
   const family = (state.people?.list ?? []).filter((p) => p.alive !== false && ['spouse', 'partner', 'child'].includes(p.relation));
   for (const p of family) p.relationship = clamp((p.relationship ?? 60) - rng.int(1, 4), 0, 100);
-  if (job.contract) ctx.log(`Another nine-month contract on the ${ship.name}, a ${flagName(ship.flag)}-flagged ${type.name}, through ${job.contract.agency}. ${family.length ? 'Video calls home when the ship had signal.' : ''}`, type.icon, 'info');
+  if (job.contract) ctx.log(`Another nine-month contract on the ${ship.name}, ${shipLine(ship)}, through ${job.contract.agency}. ${family.length ? 'Video calls home when the ship had signal.' : ''}`, type.icon, 'info');
   // Tankers and gas carriers pay a premium; seafarers abroad from the Philippines and India pay no tax at home on it.
   if (type.pay > 1 && job.salary) ctx.earn(Math.round(job.salary * (type.pay - 1)), `${type.name[0].toUpperCase()}${type.name.slice(1)} premium`, { wage: true });
   if (job.contract && ['PH', 'IN'].includes(cc)) for (const i of state.finances.ledger.income) if (/^Salary — /.test(i.source) && !i.taxFree) i.taxFree = i.amount;
@@ -102,6 +132,26 @@ function seaYear(ctx) {
   }
 }
 
+/** Once you have the sea time, the company offers to put you up for your next licence. */
+function licenceOffer(ctx, job) {
+  const { state } = ctx;
+  if (state.prompts.some((p) => p.type === 'seafaring.licence') || (job.licenceAsked != null && state.character.age - job.licenceAsked < 2)) return;
+  const ladder = engineRoom(job) ? ENGINE : DECK;
+  const next = ladder.find((id) => !hasCredential(state, id));
+  if (!next || !CREDENTIALS[next] || !pursueEligibility(state, next).ok) return;
+  job.licenceAsked = state.character.age;
+  const c = CREDENTIALS[next];
+  ctx.prompt({
+    type: 'seafaring.licence', icon: c.icon ?? '🧭', title: 'Your Next Licence',
+    text: `You have the sea time to sit for your ${c.name}. The company will give you the leave for the course and the exams.`,
+    options: [
+      { id: 'sit', label: `📝 Sit for the ${c.name}`, hint: 'Pass, and the officer berths open up' },
+      { id: 'later', label: '⏳ Not this year' },
+    ],
+    data: { id: next },
+  });
+}
+
 export const SeafaringModule = {
   id: 'seafaring',
   order: 52,
@@ -121,10 +171,17 @@ export const SeafaringModule = {
       if (['tanker', 'lng'].includes(type) && !state.credentials?.held?.tankerEndorsement && (state.career.job.yearsAtEmployer ?? 0) < 2) return ctx.toast('Tankers want two years at sea first', 'warn');
       bumpYearly(state, 'seafaring.changeShip');
       const ship = signOn(ctx, job, { type: SHIP_TYPES[type] ? type : undefined });
-      return ctx.log(`You signed on the ${ship.name}, a ${flagName(ship.flag)}-flagged ${SHIP_TYPES[ship.type].name} trading ${routeOf(job).name}.`, SHIP_TYPES[ship.type].icon, 'good');
+      // The ship decides the line you work.
+      const line = Object.entries(LINE_SHIPS).find(([, types]) => types.includes(ship.type))?.[0];
+      if (line && state.careerLife?.routeWork) state.careerLife.routeWork.line = line;
+      return ctx.log(`You signed on the ${ship.name}, ${shipLine(ship)}, trading ${routeOf(job).name}.`, SHIP_TYPES[ship.type].icon, 'good');
     },
   },
   resolvers: {
+    licence(ctx, data, optionId) {
+      if (optionId !== 'sit') return ctx.log('You stayed a rating for another year.', '⏳', 'info');
+      return pursueCredential(ctx, data.id);
+    },
     pirates(ctx, data, optionId) {
       const { state, rng } = ctx;
       if (optionId === 'citadel') {
