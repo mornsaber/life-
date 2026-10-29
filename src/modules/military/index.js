@@ -9,7 +9,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
-  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from './MilitaryEngine.js';
+  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
@@ -261,7 +261,8 @@ export const MilitaryModule = {
       const { state, rng } = ctx;
       const h = retiredFrom(state);
       if (!h || state.military.service) return ctx.toast('Retirees only', 'warn');
-      if (state.character.age >= RECALL_MAX_AGE) return ctx.toast(`Retirees are recalled before ${RECALL_MAX_AGE}`, 'warn');
+      const maxAge = recallMaxAge(state, h.nation);
+      if (state.character.age >= maxAge) return ctx.toast(`Retirees are recalled before ${maxAge}`, 'warn');
       if (state.legal.incarceration || state.stats.health < 50) return ctx.toast('Not fit for recall', 'warn');
       if (yearlyCount(state, 'military.recall')) return ctx.toast('Once a year', 'warn');
       bumpYearly(state, 'military.recall');

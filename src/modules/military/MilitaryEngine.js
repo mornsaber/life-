@@ -317,6 +317,19 @@ export function retiredFrom(state) {
 }
 /** Retirees can volunteer for recall to active duty under 60 (critical skills, wartime shortfalls). */
 export const RECALL_MAX_AGE = 60;
+/**
+ * How old a retiree can be and still be recalled: 60 in peacetime and small wars, rising in a
+ * great-power war (72) and under full mobilization or a war for national survival (80) — when
+ * old officers run depots, staffs, training schools and the home defence.
+ */
+export function recallMaxAge(state, nation = 'US') {
+  const w = state.world?.wars?.[nation ?? 'US'];
+  if (!w || w.phase === 'ceasefire') return RECALL_MAX_AGE;
+  if (w.mobilized || w.intensity >= 4) return 80;
+  if (w.intensity >= 3) return 72;
+  if (w.intensity >= 2) return 65;
+  return RECALL_MAX_AGE;
+}
 
 export function enlistmentEligibility(state, branchId, track, component = 'reserve', { maxOfficerAge = 39 } = {}) {
   const age = state.character.age;

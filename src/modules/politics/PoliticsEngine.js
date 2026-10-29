@@ -43,7 +43,7 @@ function takeOffice(ctx, officeId, { appointed = false } = {}) {
 }
 
 /** Reasons that end a political career outright (a prime minister otherwise falls back to the backbenches). */
-const OUT_OF_POLITICS = /felony|incarcerat|jurisdiction|Retired/i;
+const OUT_OF_POLITICS = /felony|incarcerat|jurisdiction|Retired|throne/i;
 
 function leaveOffice(ctx, reason, { keepSeat = false } = {}) {
   const { state } = ctx;

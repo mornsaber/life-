@@ -17,6 +17,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
+import { OFFICES } from '../politics/Offices.js';
 
 /** Posts by the crown that fills them. kind: royal | military | diplomat — who it usually goes to. */
 export const POSTS = {
@@ -40,10 +41,19 @@ export const POSTS = {
 };
 
 const cc = (state) => state.character.countryId ?? 'US';
+/** Head of state or government, a minister or a national legislator: no time to govern a colony too. */
+const highOffice = (state) => (OFFICES[state.politics?.office?.id]?.level ?? 0) >= 4 || Boolean(state.politics?.ministry);
+/** What makes you give up the post mid-term, if anything. */
+function calledAway(state) {
+  if (state.royal?.reigning && !state.royal.abdicated) return 'You acceded to the throne: a sovereign cannot be their own representative. You left Government House for the palace.';
+  if (highOffice(state)) return `You resigned to take up office as ${OFFICES[state.politics.office?.id]?.name ?? 'a minister'}.`;
+  if (state.military?.service) return 'You were recalled to the colours and resigned the governorship.';
+  return null;
+}
 /** Who you are to the Crown, for these posts: 'royal' | 'military' | 'diplomat' | null, and which crown. */
 export function candidacy(state) {
   const age = state.character.age;
-  if (state.overseasPost || age < 35 || age > 72 || state.legal?.incarceration) return null;
+  if (state.overseasPost || age < 35 || age > 72 || state.legal?.incarceration || highOffice(state) || state.foreignAdvisor) return null;
   const r = state.royal;
   if (r && !r.abdicated && !r.reigning && r.line !== 1 && (r.working || (r.line ?? 99) <= 12)) return { kind: 'royal', crown: r.crownId };
   if (!state.military?.service && (state.military?.history ?? []).some((h) => h.track === 'officer' && (h.grade ?? 0) >= 7 && ['GB', 'DK', 'NL'].includes(h.nation))) {
@@ -89,6 +99,8 @@ export const OverseasPostsModule = {
     if (!state.character.alive) return;
     const o = state.overseasPost;
     if (o) {
+      const away = calledAway(state);
+      if (away) return endPost(ctx, away);
       ctx.earn(state.royal ? 0 : 140000, `${o.title} (salary)`, { wage: true });
       o.standing = Math.round(clamp(o.standing + rng.int(-4, 3), 0, 100));
       const p = POSTS[o.id];

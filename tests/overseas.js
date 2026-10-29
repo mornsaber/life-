@@ -15,6 +15,7 @@ import { candidacy, postsFor } from '../src/modules/world/OverseasPosts.js';
 import { officialResidence } from '../src/modules/world/Residences.js';
 import { servicePassports } from '../src/modules/world/Passports.js';
 import { titleInsignia, militaryInsignia } from '../src/ui/Insignia.js';
+import { recallMaxAge } from '../src/modules/military/MilitaryEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 4) {
@@ -50,6 +51,24 @@ const tests = {
     const c = candidacy(state);
     assert.equal(c?.kind, 'royal');
     assert.ok(postsFor(c).some((id) => ['canada', 'australia', 'newZealand', 'bermuda'].includes(id)));
+  },
+  'a royal governor who accedes to the throne leaves Government House'() {
+    const { engine, state } = life({ royalLevel: 'prince' });
+    if (!state.royal) return;
+    state.royal.reigning = false; state.royal.line = 2; state.royal.working = true;
+    state.overseasPost = { id: 'bermuda', title: 'Governor of Bermuda', place: 'Bermuda', residence: 'Government House, Hamilton', since: 48, until: 52, standing: 70 };
+    state.royal.reigning = true;
+    engine.ageUp();
+    assert.equal(state.overseasPost, null);
+    assert.equal(state.overseasPast.at(-1).id, 'bermuda');
+  },
+  'recall age rises with the war: 60 in peace, 80 under mobilization'() {
+    const { state } = life();
+    assert.equal(recallMaxAge(state, 'GB'), 60);
+    state.world.wars = { GB: { phase: 'war', intensity: 3 } };
+    assert.equal(recallMaxAge(state, 'GB'), 72);
+    state.world.wars.GB.mobilized = true;
+    assert.equal(recallMaxAge(state, 'GB'), 80);
   },
   'honorary and full insignia sets'() {
     assert.ok(titleInsignia('Honorary Colonel — the Rifles', 'GB'));

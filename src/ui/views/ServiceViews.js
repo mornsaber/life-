@@ -30,7 +30,7 @@ import { SERVICES, SERVICE_LIST, joinEligibility, nextRankStatus, rankOfMember }
 import { getCredential } from '../../modules/credentials/CredentialRegistry.js';
 import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
-import { branchOf, branchFor, retiredFrom, RECALL_MAX_AGE } from '../../modules/military/MilitaryEngine.js';
+import { branchOf, branchFor, retiredFrom, recallMaxAge } from '../../modules/military/MilitaryEngine.js';
 import { tierOf } from '../../modules/military/SecondCareer.js';
 import { militaryInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
@@ -177,15 +177,16 @@ function retiredListCard(state) {
   const b = branchOf(h);
   const pay = state.retirement.pensions.find((p) => p.id === 'military');
   const age = state.character.age;
-  const recallable = age < RECALL_MAX_AGE;
+  const recallAge = recallMaxAge(state, retiredFrom(state)?.nation);
+  const recallable = age < recallAge;
   return card('Retired List', `${kv([
     ['Rank', `${b.icon} ${esc(h.rankTitle)} (Ret.), ${esc(b.name)}`],
     ['Service', `${h.yearsOfService} years, retired at ${h.endAge}`],
     pay ? ['Retired pay', `${money(Math.round(pay.annual * (pay.colaFactor ?? 1)))}/yr${pay.startAge > age ? ` from age ${pay.startAge}` : ''}`] : null,
-    ['Recall', recallable ? `Liable to recall until ${RECALL_MAX_AGE}` : 'No longer liable to recall'],
+    ['Recall', recallable ? `Liable to recall until ${recallAge}` : 'No longer liable to recall'],
   ].filter(Boolean))}
     <p class="fine">Retirees don't enlist again as recruits. A retiree can volunteer for recall to active duty at their retired grade; retired pay stops while serving and is recomputed on retiring again.</p>
-    <div class="action-grid">${secondCareerButton(state)}${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${RECALL_MAX_AGE}` })}</div>`, { icon: '🎖️', accent: 'green' });
+    <div class="action-grid">${secondCareerButton(state)}${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${recallAge}` })}</div>`, { icon: '🎖️', accent: 'green' });
 }
 
 /** Coup plots (serving officers) and foreign-army contracts (retired officers): Kingmakers.js. */

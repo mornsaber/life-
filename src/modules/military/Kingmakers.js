@@ -20,6 +20,7 @@ import { COUNTRIES } from '../world/Countries.js';
 import { coupProne } from '../world/Regimes.js';
 import { coup, militaryRule } from '../world/Coups.js';
 import { rankTitles } from './MilitaryEngine.js';
+import { OFFICES } from '../politics/Offices.js';
 
 const here = (state) => state.character.countryId ?? 'US';
 const svcOf = (state) => state.military?.service ?? null;
@@ -39,6 +40,7 @@ export const CLIENT_ARMIES = ['SO', 'ML', 'NE', 'LR', 'SL', 'RW', 'UG', 'KE', 'N
 const retiredOfficer = (state) => [...(state.military?.history ?? [])].reverse().find((h) => h.discharge === 'retired' && h.track === 'officer' && (h.grade ?? 0) >= 3) ?? null;
 export function canAdvise(state) {
   if (svcOf(state)) return { ok: false, reason: 'Leave the service first' };
+  if (state.royal?.reigning || (OFFICES[state.politics?.office?.id]?.level ?? 0) >= 4 || state.overseasPost) return { ok: false, reason: 'Not while you hold high office' };
   if (state.foreignAdvisor) return { ok: false, reason: 'Already on contract' };
   if (!retiredOfficer(state)) return { ok: false, reason: 'Retired officers, major and above' };
   if (state.character.age > 70) return { ok: false, reason: 'Contracts go to officers under 70' };
@@ -65,6 +67,10 @@ function advisorYear(ctx) {
   const { state, rng } = ctx;
   const a = state.foreignAdvisor;
   if (!a) return;
+  // Called home: the throne, high office, or recall to your own forces.
+  if (state.royal?.reigning && !state.royal.abdicated) return endAdvising(ctx, 'You acceded to the throne and gave up your foreign contract.');
+  if ((OFFICES[state.politics?.office?.id]?.level ?? 0) >= 4) return endAdvising(ctx, `You resigned your contract to take up office as ${OFFICES[state.politics.office.id].name}.`);
+  if (svcOf(state)) return endAdvising(ctx, 'You were recalled to your own country\'s forces and left the contract.');
   a.years += 1;
   ctx.earn(a.salary, `Military adviser — ${COUNTRIES[a.cc].name}`, { wage: true });
   a.readiness = clamp(a.readiness + rng.int(0, 4) + (a.college ? 3 : 0), 0, 100);

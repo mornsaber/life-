@@ -98,6 +98,8 @@ function sovereignDuties(ctx) {
   if (!state.royal?.reigning || state.royal.abdicated) return;
   if (state.military?.service && !state.military.service.honorary) ctx.emit('military:release', { reason: 'Acceded to the throne: the sovereign heads the armed forces and cannot serve in them' });
   if (state.career?.job) ctx.emit('career:resign', { reason: 'Acceded to the throne' });
+  // The sovereign stands above politics: any elected or appointed office is given up.
+  if (state.politics?.office) ctx.emit('politics:leave', { reason: 'Acceded to the throne' });
   if (state.education?.enrolled && state.character.age >= 18) {
     state.education.enrolled = null;
     ctx.log('You left university: a reigning sovereign is taught by tutors and the cabinet secretary now.', '👑', 'info');

@@ -21,7 +21,7 @@
  * state.military.liability = { nation, branch, track, specialty, rankTitle, untilAge, name } | null
  */
 import { clamp } from '../../core/Random.js';
-import { rankOf, rankTitles, branchOf, enlist, discharge } from './MilitaryEngine.js';
+import { rankOf, rankTitles, branchOf, enlist, discharge, recallMaxAge } from './MilitaryEngine.js';
 import { warIn } from '../world/War.js';
 import { addHonor } from '../../core/State.js';
 
@@ -294,14 +294,16 @@ function liabilityYear(ctx) {
   const l = state.military.liability;
   if (!l || state.military.service) return;
   const age = state.character.age;
-  if (age >= l.untilAge) {
+  const war = warIn(state, l.nation);
+  // In a great war liability runs on: no one is discharged from the reserve while it lasts.
+  const extended = war && war.phase !== 'ceasefire' && age < recallMaxAge(state, l.nation);
+  if (age >= l.untilAge && !extended) {
     state.military.liability = null;
     return ctx.log(`Your reserve liability ended: you were discharged from the ${l.name} — finally a civilian, for good.`, '📋', 'info');
   }
-  const war = warIn(state, l.nation);
   const home = (state.character.countryId ?? 'US') === l.nation;
   // A limited war calls few reservists back, and older ones last.
-  const recallOdds = war ? clamp((war.intensity >= 2 ? 0.08 * (war.intensity - 1) : 0.02) + (war.mobilized ? 0.2 : 0), 0, 0.6) * (age <= 35 ? 1 : age <= 45 ? 0.6 : 0.3) : 0;
+  const recallOdds = war ? clamp((war.intensity >= 2 ? 0.08 * (war.intensity - 1) : 0.02) + (war.mobilized ? 0.2 : 0), 0, 0.6) * (age <= 35 ? 1 : age <= 45 ? 0.6 : age <= 60 ? 0.3 : 0.15) : 0;
   if (war && war.phase !== 'ceasefire' && home && !state.prompts.some((p) => p.type === 'wartime.recall') && rng.chance(recallOdds)) {
     ctx.prompt({
       type: 'wartime.recall', icon: '📨', title: 'Recalled to the Colours',

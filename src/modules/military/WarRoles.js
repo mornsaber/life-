@@ -25,7 +25,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { warIn, warContribution } from '../world/War.js';
 import { leads } from '../world/Houses.js';
 import { COUNTRIES } from '../world/Countries.js';
-import { enlist, rankOf, retiredFrom, RECALL_MAX_AGE } from './MilitaryEngine.js';
+import { enlist, rankOf, retiredFrom, recallMaxAge } from './MilitaryEngine.js';
 import { battlefieldPromotion } from './Wartime.js';
 
 const home = (state) => state.character.countryId ?? 'US';
@@ -68,7 +68,8 @@ function callBackYear(ctx) {
   if (!war || !h || state.military.service || war.intensity < 2 || (h.nation ?? 'US') !== cc) return;
   const age = state.character.age;
   const retired = h.discharge === 'retired';
-  if (age >= (retired ? RECALL_MAX_AGE : 45) || state.stats.health < 50 || state.legal?.incarceration) return;
+  const maxAge = recallMaxAge(state, cc);
+  if (age >= (retired ? maxAge : Math.max(45, maxAge - 15)) || state.stats.health < 50 || state.legal?.incarceration) return;
   const asked = (state.military.warAsked ??= {});
   if (asked[war.id ?? war.operation] || state.prompts.some((p) => p.type === 'warRoles.callBack') || !rng.chance(0.6)) return;
   asked[war.id ?? war.operation] = age;
@@ -76,7 +77,7 @@ function callBackYear(ctx) {
   ctx.prompt({
     type: 'warRoles.callBack', icon: '📨', title: 'Your Country Is Asking',
     text: retired
-      ? `${war.operation} is short of experienced leaders. Your old branch asks retired ${h.rankTitle}s under ${RECALL_MAX_AGE} to volunteer for recall.`
+      ? `${war.operation} is short of experienced leaders. Your old branch asks retired ${h.rankTitle}s under ${maxAge} to volunteer for recall${maxAge > 65 ? ' — for staffs, depots, training schools and home defence' : ''}.`
       : `${war.operation} needs trained soldiers. Former service members can re-enlist at their old rank (${h.rankTitle})${bonus ? ` with a $${bonus.toLocaleString()} bonus` : ''}.`,
     options: [{ id: 'serve', label: '🪖 Go back' }, { id: 'decline', label: '🙅 Not this time' }],
     data: { bonus, retired },
