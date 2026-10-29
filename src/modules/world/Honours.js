@@ -385,7 +385,9 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
   g.investiture = g.investiture.replace('{sovereign}', sovereign(state, cc) ?? 'the head of state').replace(/\{palace\}/g, CROWNS[cc]?.palace ?? 'the palace');
   // A promotion within the order: the new grade replaces the old one (other orders are kept).
   const rank = (h) => order.findIndex((x) => x.id === h.tier);
-  const ord = orderOf(cc, t, orderName, gender);
+  // An order's name is text; a name kept per gender resolves to the holder's.
+  const rawOrd = orderOf(cc, t, orderName, gender);
+  const ord = rawOrd && typeof rawOrd === 'object' ? rawOrd[gender === 'female' ? 'female' : 'male'] ?? null : rawOrd;
   const lower = ord ? state.honors.filter((h) => h.source === 'order' && h.country === cc && rank(h) >= 0 && rank(h) < g.idx && h.order === ord) : [];
   const promotedFrom = lower.length ? lower.at(-1).name : null;
   if (lower.length) state.honors = state.honors.filter((h) => !lower.includes(h));

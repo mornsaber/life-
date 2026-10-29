@@ -62,9 +62,9 @@ export function randomCountryId(rng) {
 }
 
 /** A royal birth is in a kingdom: the country you chose if it has a crown of its own, else Britain. */
-const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES'];
+const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES', 'NO', 'DK', 'BE', 'TH', 'MY', 'BN', 'KH', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE'];
 /** Realms that share the British crown: its royal family lives in Britain. */
-const SHARED_CROWN = ['CA', 'AU', 'NZ'];
+const SHARED_CROWN = ['CA', 'AU', 'NZ', 'PG', 'SB'];
 export const ROYAL_LEVEL_IDS = ['heir', 'child', 'grandchild', 'distant'];
 
 /**

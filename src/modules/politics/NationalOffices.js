@@ -131,7 +131,7 @@ for (const cc of EU_STATES) {
 }
 
 /** Countries whose head of state is a monarch (no office to hold; their representatives are above). */
-export const MONARCHIES = ['GB', 'CA', 'AU', 'NZ', 'JP', 'SE', 'NL', 'ES', ...PACKS.filter((p) => p.monarchy).map((p) => p.id)];
+export const MONARCHIES = [...new Set(['GB', 'CA', 'AU', 'NZ', 'PG', 'SB', 'JP', 'SE', 'NO', 'DK', 'NL', 'BE', 'ES', 'TH', 'MY', 'BN', 'KH', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE', ...PACKS.filter((p) => p.monarchy).map((p) => p.id)])];
 
 /** Local office (shared with the US list) that every country has. */
 export const LOCAL_OFFICE_IDS = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];

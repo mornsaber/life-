@@ -46,6 +46,23 @@ export const ROYAL_ORDERS = {
   // Restored thrones (Houses.js) revive their dynastic orders.
   ...Object.fromEntries([['DE', 'Order of the Black Eagle', 'House Order of Hohenzollern'], ['FR', 'Order of the Holy Spirit', 'Order of Saint Michael'], ['IT', 'Supreme Order of the Most Holy Annunciation', 'Order of Saints Maurice and Lazarus'], ['AT', 'Order of the Golden Fleece (Austrian)', 'Order of St Stephen'], ['RU', 'Order of St Andrew the Apostle', 'Order of St Anna'], ['BR', 'Order of Pedro I', 'Order of the Rose'], ['RO', 'Order of Carol I', 'Order of the Crown of Romania']]
     .map(([cc, great, personal]) => [cc, { great: [great, '', ''], personal: [personal, '', ''], knight: [null, null], forces: { army: 'General', navy: 'Admiral', air: 'General (Air Force)' }, colonel: [], commodore: null, airCommodore: null }])),
+  // The newer crowns' real orders: great order, personal/house order, the forces' top ranks and regiments.
+  ...Object.fromEntries([
+    ['NO', 'Royal Norwegian Order of St Olav', 'Royal Norwegian Order of Merit', ['His Majesty The King\'s Guard', 'the Telemark Battalion'], 'the Royal Norwegian Navy'],
+    ['DK', 'Order of the Elephant', 'Order of the Dannebrog', ['the Royal Life Guards', 'the Guard Hussar Regiment'], 'the Royal Danish Navy'],
+    ['BE', 'Order of Leopold', 'Order of the Crown', ['the Royal Escort', 'the Paracommando Brigade'], 'the Belgian Navy'],
+    ['TH', 'Order of the Royal House of Chakri', 'Order of Chula Chom Klao', ['the King\'s Own Bodyguard', 'the 1st Infantry Regiment, King\'s Guard'], 'the Royal Thai Navy'],
+    ['MY', 'Order of the Crown of the Realm', 'Order of the Defender of the Realm', ['the Royal Malay Regiment', 'the Royal Rangers'], 'the Royal Malaysian Navy'],
+    ['BN', 'Royal Family Order of the Crown of Brunei', 'Order of Paduka Seri Laila Jasa', ['the Royal Brunei Land Forces'], 'the Royal Brunei Navy'],
+    ['KH', 'Royal Order of Cambodia', 'Order of Sowathara', ['the Royal Bodyguard'], 'the Royal Cambodian Navy'],
+    ['JO', 'Order of al-Hussein bin Ali', 'Order of the Star of Jordan', ['the Royal Guard', 'the Special Operations Command'], 'the Royal Jordanian Naval Force'],
+    ['SA', 'Order of Abdulaziz al Saud', 'Order of King Faisal', ['the Royal Guard Regiment', 'the National Guard'], 'the Royal Saudi Navy'],
+    ['MA', 'Order of Muhammad', 'Order of the Throne', ['the Royal Guard', 'the Royal Armed Forces'], 'the Royal Moroccan Navy'],
+    ['KW', 'Order of Mubarak the Great', 'Order of Kuwait', ['the Amiri Guard'], 'the Kuwait Naval Force'],
+    ['QA', 'Order of Independence', 'Order of Merit (Qatar)', ['the Amiri Guard'], 'the Qatari Emiri Navy'],
+    ['BH', 'Order of Al Khalifa', 'Order of Sheikh Isa bin Salman', ['the Royal Guard'], 'the Royal Bahrain Naval Force'],
+    ['AE', 'Order of Zayed', 'Order of the Union', ['the Presidential Guard'], 'the UAE Navy'],
+  ].map(([cc, great, personal, colonel, commodore]) => [cc, { great: [great, '', ''], personal: [personal, '', ''], knight: [null, null], forces: { army: 'Field Marshal', navy: 'Admiral of the Fleet', air: 'Air Chief Marshal' }, colonel, commodore, airCommodore: null }])),
   ES: { great: ['Order of the Golden Fleece', '', ''], personal: ['Order of Charles III', '', ''], knight: [null, null], forces: { army: 'Capitán General', navy: 'Capitán General de la Armada', air: 'Capitán General del Aire' }, colonel: ['the Regimiento Inmemorial del Rey', 'the Guardia Real', 'the Legión'], commodore: 'the Spanish Navy', airCommodore: 'the Ejército del Aire' },
 };
 
