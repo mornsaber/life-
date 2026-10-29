@@ -62,9 +62,9 @@ export function randomCountryId(rng) {
 }
 
 /** A royal birth is in a kingdom: the country you chose if it has a crown of its own, else Britain. */
-const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES', 'NO', 'DK', 'BE', 'LU', 'TH', 'MY', 'BN', 'KH', 'BT', 'TO', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE', 'OM'];
+export const ROYAL_HOMES = ['GB', 'JP', 'SE', 'NL', 'ES', 'NO', 'DK', 'BE', 'LU', 'TH', 'MY', 'BN', 'KH', 'BT', 'TO', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE', 'OM'];
 /** Realms that share the British crown: its royal family lives in Britain. */
-const SHARED_CROWN = ['CA', 'AU', 'NZ', 'PG', 'SB', 'JM', 'BS'];
+export const SHARED_CROWN = ['CA', 'AU', 'NZ', 'PG', 'SB', 'JM', 'BS'];
 export const ROYAL_LEVEL_IDS = ['heir', 'child', 'grandchild', 'distant'];
 
 /**
@@ -76,7 +76,7 @@ export function royalBirth(rng, options) {
   const level = ROYAL_LEVEL_IDS.includes(options.royalLevel) ? options.royalLevel : null;
   if (options.difficulty !== 'royal' && !level) return null;
   const cc = options.countryId;
-  const home = ROYAL_HOMES.includes(cc) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : null;
+  const home = ROYAL_HOMES.includes(cc) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
   return home ? { countryId: home, level: level ?? 'child' } : null;
 }
 

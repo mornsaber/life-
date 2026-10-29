@@ -86,7 +86,7 @@ const tests = {
 
   'the start screen, top bar and Achievements tab show it'() {
     const html = newLifeForm({ firstName: 'A', lastName: 'B' });
-    for (const d of Object.values(DIFFICULTIES)) assert.ok(html.includes(d.name), d.name);
+    for (const [id, d] of Object.entries(DIFFICULTIES)) assert.ok(id === 'royal' ? html.includes('The royal family') : html.includes(d.name), d.name);
     const { state } = life('brutal');
     assert.match(VIEWS.achievements(state), /Difficulty: Brutal/);
   },

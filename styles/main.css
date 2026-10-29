@@ -965,3 +965,18 @@ select:focus { border-color: var(--cyan); }
 .org-chart summary::-webkit-details-marker { display: none; }
 .text-in { background: var(--inset); color: var(--ink); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; font: inherit; min-width: 0; flex: 1 1 140px; }
 .text-in:focus { border-color: var(--cyan); outline: none; }
+
+/* Start screen: steps and the "Born into" choice */
+.form-step { margin: 18px 0 6px; font-size: 14px; color: var(--muted); text-transform: uppercase; letter-spacing: .04em; }
+.birth-list { display: grid; gap: 8px; }
+.birth-opt { display: block; border: 2px solid var(--line); border-radius: 10px; padding: 10px 12px; cursor: pointer; }
+.birth-opt > input { margin-right: 8px; }
+.birth-opt .birth-head { display: inline-flex; flex-direction: column; vertical-align: top; }
+.birth-opt .birth-head small { color: var(--muted); font-weight: 400; }
+.birth-opt .birth-more { display: none; margin-top: 8px; }
+.birth-opt:has(input[name="birth"]:checked) { border-color: var(--accent, #6cf); }
+.birth-opt:has(input[name="birth"]:checked) .birth-more { display: block; }
+.more-options { margin: 14px 0; }
+.birth-list, .birth-opt, .birth-more { min-width: 0; max-width: 100%; box-sizing: border-box; }
+.birth-more select, .splash-card select { width: 100%; max-width: 100%; min-width: 0; }
+.birth-more .fine { text-align: left; font-weight: 400; }

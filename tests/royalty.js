@@ -16,7 +16,7 @@ import { styledName, chivalryList, postNominals, honoursList, knighthoodsOn, set
 import { peerChamber, lordSpiritual } from '../src/modules/politics/Legislature.js';
 import { buildHeirState } from '../src/modules/people/Legacy.js';
 import { conferOptions, familyTitle } from '../src/modules/world/RoyalHousehold.js';
-import { nobleStart } from '../src/core/State.js';
+import { nobleStart, ROYAL_HOMES } from '../src/core/State.js';
 import { fullName } from '../src/modules/people/People.js';
 import { VIEWS, Renderer } from '../src/ui/Renderer.js';
 
@@ -218,8 +218,7 @@ const tests = {
     const ca = life({ countryId: 'CA', royalLevel: 'heir' }).state;
     assert.equal(ca.royal?.crownId, 'GB', 'a realm shares the British royal family');
     const us = life({ countryId: 'US', royalLevel: 'heir' }).state;
-    assert.equal(us.royal, null, 'a republic has no crown');
-    assert.equal(us.character.countryId ?? 'US', 'US');
+    assert.ok(us.royal && ROYAL_HOMES.includes(us.character.countryId), 'a republic has no crown: you are born in a kingdom instead');
     assert.equal(life({ countryId: 'GB', royalLevel: 'none' }).state.royal, null);
   },
   'Lords Spiritual: a Church of England diocesan bishop sits in the Lords'() {

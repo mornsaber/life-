@@ -69,7 +69,7 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return regimeCard(state) + passportCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state);
+  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
 }
 
 /** Where you could retire, and what follows you there. */
@@ -222,12 +222,13 @@ function passportCard(state) {
   return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => COUNTRIES[c].flag).join('')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
 }
 
-/** Every other country, with each route in and your odds. */
+/** Every other country, with each route in and your odds: your best options first, the rest by continent. */
 function abroadCard(state) {
   const here = state.character.countryId ?? 'US';
   const block = departureBlock(state);
-  const rows = Object.values(COUNTRIES).filter((c) => c.id !== here).map((c) => {
-    const routes = routesTo(state, c.id);
+  const routesFor = {};
+  const country = (c) => {
+    const routes = routesFor[c.id] ?? routesTo(state, c.id);
     const anyOk = routes.some((r) => r.ok);
     const list = routes.map((r) => optionRow({
       icon: '',
@@ -239,6 +240,18 @@ function abroadCard(state) {
     })).join('');
     const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
     return disclosure(`abroad.${c.id}`, `${c.flag} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
+  };
+  const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
+  for (const c of others) routesFor[c.id] = routesTo(state, c.id);
+  // The easiest legal routes for you: home, free movement, then visas by their odds.
+  const RANK = { citizen: 0, resident: 1, freeMovement: 2 };
+  const best = others.map((c) => ({ c, r: routesFor[c.id].filter((r) => r.ok && r.kind !== 'irregular' && r.kind !== 'asylum').sort((a, b) => (RANK[a.kind] ?? 3) - (RANK[b.kind] ?? 3) || (b.odds ?? 0) - (a.odds ?? 0))[0] }))
+    .filter((x) => x.r).sort((a, b) => (RANK[a.r.kind] ?? 3) - (RANK[b.r.kind] ?? 3) || (b.r.odds ?? 0) - (a.r.odds ?? 0) || a.c.name.localeCompare(b.c.name)).slice(0, 8);
+  const top = best.length ? `<h4 class="sub">⭐ Your best options</h4>${best.map(({ c }) => country(c)).join('')}` : '<p class="muted">No legal route is open to you right now — study, a job offer, family or savings open most of them.</p>';
+  const groups = Object.entries(CONTINENT).map(([name, ids]) => {
+    const list = ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here).sort((a, b) => a.name.localeCompare(b.name));
+    const open = list.filter((c) => routesFor[c.id].some((r) => r.ok && r.kind !== 'irregular')).length;
+    return disclosure(`abroad.group.${name}`, esc(name), list.map(country).join(''), { count: `${open}/${list.length}` });
   }).join('');
-  return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${block ? `<p class="why">${esc(block)}</p>` : ''}${rows}`, { icon: '✈️', accent: 'cyan' });
+  return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${block ? `<p class="why">${esc(block)}</p>` : ''}${top}<h4 class="sub">🌍 Every country</h4>${groups}`, { icon: '✈️', accent: 'cyan' });
 }

@@ -16,6 +16,7 @@ import { routineChoice } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
+import { birthOptions } from './ui/Components.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -46,14 +47,10 @@ function startNewLife(form) {
     firstName: data.get('firstName'),
     lastName: data.get('lastName'),
     gender: gender === 'random' ? undefined : gender,
-    countryId: data.get('countryId') || 'US',
+    ...birthOptions(data),
     challenge: data.get('challenge') || null,
     difficulty: data.get('difficulty') || 'normal',
-    royalLevel: data.get('royalLevel') || 'none',
-    noble: data.get('noble') === 'on',
-    nobleRank: data.get('nobleRank') || 'none',
     nobleHeir: data.get('nobleHeir') || 'random',
-    housePlace: data.get('housePlace') || 'none',
   });
 }
 

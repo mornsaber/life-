@@ -8,6 +8,8 @@ import { CHALLENGES } from '../modules/life/Achievements.js';
 import { ROYAL_LEVELS } from '../modules/world/Crown.js';
 import { DIFFICULTIES } from '../core/Difficulty.js';
 import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
+import { ROYAL_HOMES, SHARED_CROWN, HOUSE_HOMES } from '../core/State.js';
+import { CONTINENT } from '../modules/world/Travel.js';
 import { titleInsignia } from './Insignia.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
@@ -308,12 +310,44 @@ export function promptModal(prompt, queued) {
   </div>`;
 }
 
+/** Countries grouped by continent and sorted by name, kingdoms marked 👑 and former monarchies ⚜️. */
+export function countryOptions({ selected = '', only = null, random = '🎲 Random country' } = {}) {
+  const mark = (id) => (ROYAL_HOMES.includes(id) ? ' 👑' : SHARED_CROWN.includes(id) ? ' 👑 (British Crown)' : HOUSE_HOMES.includes(id) ? ' ⚜️' : '');
+  const placed = new Set(Object.values(CONTINENT).flat());
+  const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
+  const opt = (id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].name)}${mark(id)}</option>`;
+  const body = Object.entries(groups).map(([name, ids]) => {
+    const list = ids.filter((id) => COUNTRIES[id] && (!only || only.includes(id))).sort((a, b) => COUNTRIES[a].name.localeCompare(COUNTRIES[b].name));
+    return list.length ? `<optgroup label="${esc(name)}">${list.map(opt).join('')}</optgroup>` : '';
+  }).join('');
+  return `${random ? `<option value="random">${random}</option>` : ''}${body}`;
+}
+
+const sel = (name, options) => `<select name="${name}">${options.map(([v, label, on]) => `<option value="${v}"${on ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
+
+/** The start screen's "Born into" choice, as new-life options (only the chosen kind of birth counts). */
+export function birthOptions(data) {
+  const birth = data.get('birth') || 'ordinary';
+  const country = data.get('countryId') || 'US';
+  const pick = (field) => data.get(field) || country;
+  return {
+    countryId: birth === 'royal' ? pick('royalCountry') : birth === 'noble' ? pick('nobleCountry') : birth === 'house' ? pick('houseCountry') : country,
+    royalLevel: birth === 'royal' ? data.get('royalLevel') || 'child' : 'none',
+    nobleRank: birth === 'noble' ? data.get('nobleRank') || 'random' : 'none',
+    housePlace: birth === 'house' ? data.get('housePlace') || 'random' : 'none',
+    noble: birth === 'ordinary' && data.get('noble') === 'on',
+  };
+}
+
 export function newLifeForm(rngName) {
+  const kingdoms = [...ROYAL_HOMES];
+  const birth = (id, icon, title, sub, panel, checked = false) => `<label class="birth-opt"><input type="radio" name="birth" value="${id}"${checked ? ' checked' : ''}><span class="birth-head"><b>${icon} ${title}</b><small>${sub}</small></span><div class="birth-more">${panel}</div></label>`;
   return `<div class="splash">
     <div class="splash-card">
       <h1 class="logo big">LIFE<span>//</span>SIM</h1>
       <p class="tagline">Careers · Service · School · Home · Health · Money</p>
       <form id="new-life-form" autocomplete="off">
+        <h3 class="form-step">1 · Who you are</h3>
         <div class="form-row">
           <label>First name<input name="firstName" maxlength="20" placeholder="${esc(rngName.firstName)}"></label>
           <label>Last name<input name="lastName" maxlength="20" placeholder="${esc(rngName.lastName)}"></label>
@@ -324,22 +358,30 @@ export function newLifeForm(rngName) {
           <label><input type="radio" name="gender" value="female"> 👩 Female</label>
           <label><input type="radio" name="gender" value="male"> 👨 Male</label>
         </fieldset>
-        <label class="country-pick">Born in<select name="countryId"><option value="random">🎲 Random country</option>${Object.values(COUNTRIES).map((c) => `<option value="${c.id}">${c.flag} ${esc(c.name)}</option>`).join('')}${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)} (coming later)</option>`).join('')}</select></label>
-        <fieldset class="gender">
-          <legend>Difficulty</legend>
-          ${Object.entries(DIFFICULTIES).map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
-        </fieldset>
-        <label class="country-pick">Born royal<select name="royalLevel"><option value="none" selected>👤 Not royal</option>${Object.entries(ROYAL_LEVELS).map(([id, l]) => `<option value="${id}">${esc(l.name)} — ${esc(l.desc)}</option>`).join('')}</select></label>
-        <p class="fine">Pick a place in the royal family to be born royal in a kingdom: Britain, Japan, Sweden, the Netherlands or Spain (Canada, Australia and New Zealand share Britain's royal family). Republics have no crown — unless you choose the Born Royal difficulty, which takes you to Britain.</p>
-        <div class="form-row">
-          <label class="country-pick">Born into the peerage<select name="nobleRank"><option value="none" selected>👤 No title</option><option value="random">🎲 A titled family (any rank)</option>${['baron', 'viscount', 'earl', 'marquess', 'duke'].map((r) => `<option value="${r}">🏰 A ${r}'s family</option>`).join('')}</select></label>
-          <label class="country-pick">Place in it<select name="nobleHeir"><option value="random" selected>🎲 Either</option><option value="heir">👑 Heir to the title</option><option value="younger">🌿 A younger child (a courtesy style, no title to inherit)</option></select></label>
+        <h3 class="form-step">2 · Where you're born</h3>
+        <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
+        <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
+        <h3 class="form-step">3 · Born into</h3>
+        <div class="birth-list">
+          ${birth('ordinary', '👤', 'An ordinary family', 'Most lives start here.', '<label class="check"><input type="checkbox" name="noble"> 🏰 A very small chance of being born titled</label>', true)}
+          ${birth('royal', '👑', 'The royal family', 'A prince or princess in a kingdom.', `<label class="country-pick">Place in the family${sel('royalLevel', Object.entries(ROYAL_LEVELS).map(([id, l], i) => [id, l.name, i === 1]))}</label>
+            <p class="fine">${Object.values(ROYAL_LEVELS).map((l) => `<b>${esc(l.name)}</b>: ${esc(l.desc)}`).join(' ')}</p>
+            <label class="country-pick">Kingdom<select name="royalCountry"><option value="">Same as above (if a kingdom)</option>${countryOptions({ only: kingdoms, random: '' })}</select></label>
+            <p class="fine">Canada, Australia, New Zealand, Jamaica and the other realms share Britain's royal family, who live in Britain.</p>`)}
+          ${birth('noble', '🏰', 'A noble family', 'A titled family in Britain or Spain.', `<div class="form-row"><label class="country-pick">Rank${sel('nobleRank', [['random', '🎲 Any rank', true], ...['baron', 'viscount', 'earl', 'marquess', 'duke'].map((r) => [r, r[0].toUpperCase() + r.slice(1)])])}</label>
+            <label class="country-pick">Place${sel('nobleHeir', [['random', '🎲 Either', true], ['heir', '👑 Heir to the title'], ['younger', '🌿 A younger child']])}</label></div>
+            <label class="country-pick">Peerage${sel('nobleCountry', [['', 'The country above, if it has one', true], ['GB', '🇬🇧 British peerage'], ['ES', '🇪🇸 Spanish nobility']])}</label>`)}
+          ${birth('house', '⚜️', 'A former ruling house', 'The family that lost a throne, and may win it back.', `<label class="country-pick">Place in the house${sel('housePlace', [['random', '🎲 Somewhere in the family', true], ['heir', '👑 Heir to the head of the house'], ['head', '⚜️ Head of the house'], ['cadet', '🌿 A cadet branch']])}</label>
+            <label class="country-pick">House<select name="houseCountry"><option value="">Same as above (if it had one)</option>${countryOptions({ only: HOUSE_HOMES, random: '' })}</select></label>
+            <p class="fine">Hohenzollern (Germany), Orléans (France), Savoy (Italy), Habsburg (Austria), Romanov (Russia), Orléans-Braganza (Brazil), Hohenzollern-Sigmaringen (Romania). Win back the throne in a referendum, or live with the claim.</p>`)}
         </div>
-        <p class="fine">A noble (not royal) birth in Britain or Spain — Britain if your country has no peerage. Royal births take precedence.</p>
-        <label class="country-pick">Born into a former ruling house<select name="housePlace"><option value="none" selected>👤 No</option><option value="random">🎲 Somewhere in the family</option><option value="heir">👑 Heir to the head of the house (the claim passes to you)</option><option value="cadet">🌿 A cadet branch (a courtesy title, no claim)</option></select></label>
-        <p class="fine">The Hohenzollerns (Germany), Orléans (France), Savoy (Italy), Habsburgs (Austria), Romanovs (Russia), Orléans-Braganza (Brazil) or the Romanian royal house — in your chosen country if it had one. Win back the throne in a referendum, or live with the claim.</p>
-        <label class="check"><input type="checkbox" name="noble"> 🏰 Or just allow a noble birth by chance (very rare)</label>
-        <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
+        <details class="disclosure more-options"><summary>⚙️ More options: difficulty and challenges</summary><div class="disclosure-body">
+          <fieldset class="gender">
+            <legend>Difficulty</legend>
+            ${Object.entries(DIFFICULTIES).filter(([id]) => id !== 'royal').map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
+          </fieldset>
+          <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
+        </div></details>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>
       <p class="fine">Your progress saves automatically in this browser.</p>
