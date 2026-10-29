@@ -100,7 +100,9 @@ export function viceRegalYear(ctx) {
     const n = randomName(rng, rng.chance(0.5) ? 'male' : 'female');
     const bg = rng.pick(CANDIDATES.filter((c) => !c.partisan)).label;
     appoint(ctx, post, { name: `${n.firstName} ${n.lastName}`, background: bg });
-    ctx.log(`${n.firstName} ${n.lastName}, ${bg}, was appointed ${title}${where ? ` of ${where}` : ''}.`, OFFICES[post.postId].icon, 'muted');
+    // News only when it touches you: a politician, a royal or peer, or the country's own Governor-General.
+    const interested = state.politics?.office || state.royal || state.character.peerage || !VICE_REGAL[post.postId].perState;
+    if (interested) ctx.log(`${n.firstName} ${n.lastName}, ${bg}, was appointed ${title}${where ? ` of ${where}` : ''}.`, OFFICES[post.postId].icon, 'muted');
   }
 }
 

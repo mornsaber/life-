@@ -55,7 +55,8 @@ export function candidacy(state) {
   const age = state.character.age;
   if (state.overseasPost || age < 35 || age > 72 || state.legal?.incarceration || highOffice(state) || state.foreignAdvisor) return null;
   const r = state.royal;
-  if (r && !r.abdicated && !r.reigning && r.line !== 1 && (r.working || (r.line ?? 99) <= 12)) return { kind: 'royal', crown: r.crownId };
+  // Only a working member of a reigning royal family (not a former ruling house) is sent.
+  if (r && !r.abdicated && !r.reigning && r.line !== 1 && r.working && !r.steppedBack && ['GB', 'DK', 'NL'].includes(r.crownId) && !state.world?.republics?.[r.crownId]) return { kind: 'royal', crown: r.crownId };
   if (!state.military?.service && (state.military?.history ?? []).some((h) => h.track === 'officer' && (h.grade ?? 0) >= 7 && ['GB', 'DK', 'NL'].includes(h.nation))) {
     const h = state.military.history.find((x) => x.track === 'officer' && (x.grade ?? 0) >= 7 && ['GB', 'DK', 'NL'].includes(x.nation));
     return { kind: 'military', crown: h.nation };

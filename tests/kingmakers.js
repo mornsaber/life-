@@ -56,6 +56,23 @@ const tests = {
     officer(state, 'SE', 5);
     assert.equal(canPlot(state).ok, false);
   },
+  'veterans see a contract market, sign on with a firm and rise on reputation'() {
+    const { engine, state } = life('US', 8);
+    state.military.history.push({ branch: 'army', specialty: 'infantry', track: 'enlisted', grade: 5, rankTitle: 'Staff Sergeant', rankCode: 'E-6', discharge: 'honorable', yearsOfService: 8, startAge: 20, endAge: 28 });
+    assert.match(VIEWS.military(state, {}), /Contract Work/);
+    const html = VIEWS.military(state, {});
+    const id = /data-action="pmcContracts.take" data-arg="([^"]+)"/.exec(html)[1];
+    engine.dispatch('pmcContracts.take', id);
+    assert.equal(state.career.job?.professionId, 'privateMilitary');
+    assert.ok(state.pmc.contract);
+    state.pmc.rep = 60;
+    state.prompts = [];
+    const cash = state.finances.cash;
+    engine.ageUp();
+    assert.ok(state.pmc.done.length === 1);
+    assert.ok(state.finances.cash > cash || state.character.alive === false);
+    if (state.career.job?.professionId === 'privateMilitary') assert.match(state.career.job.levelId, /teamLead|detailLead|psd|static/);
+  },
   'a retired colonel builds a foreign army on contract'() {
     const { engine, state } = life('GB');
     state.military.history.push({ branch: 'army', track: 'officer', grade: 5, rankTitle: 'Colonel', rankCode: 'O-6', discharge: 'retired', yearsOfService: 26, startAge: 22, endAge: 48 });

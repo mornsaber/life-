@@ -36,6 +36,7 @@ import { militaryInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
+import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcContracts.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
 function recruitingOffice(state) {
@@ -189,6 +190,23 @@ function retiredListCard(state) {
     <div class="action-grid">${secondCareerButton(state)}${button('🎖️ Volunteer for recall', 'military.recall', { variant: 'small', disabled: !recallable || Boolean(state.yearly['military.recall']), hint: recallable ? 'Likelier in wartime' : `Under ${recallAge}` })}</div>`, { icon: '🎖️', accent: 'green' });
 }
 
+/** The private military contract market (PmcContracts.js): visible to every veteran and ex-cop. */
+export function contractMarketCard(state) {
+  const p = state.pmc;
+  const ok = pmcEligibility(state);
+  const veteran = (state.military?.history ?? []).length || p;
+  if (!veteran && !ok.ok) return '';
+  const c = p?.contract;
+  const offers = ok.ok && !c ? pmcOffers(state) : [];
+  return card('🪖 Contract Work', `
+    ${kv([['Reputation', `${p?.rep ?? 0}`], ['Contracts done', String(p?.done?.length ?? 0)], state.career?.job?.professionId === 'privateMilitary' ? ['On the books at', esc(state.career.job.employer.name)] : null])}
+    ${c ? `<p>${c.icon} <b>${esc(c.title)}</b> — ${COUNTRIES[c.place]?.flag ?? ''} ${esc(COUNTRIES[c.place]?.name ?? c.place)} · ${c.days} days at ${money(c.rate)}/day${c.lead ? ' · team leader' : ''}. Pays out at year's end.</p>` : ''}
+    ${!ok.ok ? `<p class="fine">${esc(ok.reason)}.</p>` : ''}
+    ${offers.length ? `<ul class="job-list">${offers.map((o) => `<li class="job-row"><span class="job-icon">${o.icon}</span><div class="job-info"><b>${esc(o.title)}</b><small>${COUNTRIES[o.place]?.flag ?? ''} ${esc(COUNTRIES[o.place]?.name ?? o.place)} · ${o.days} days · ${money(o.rate)}/day (≈${money(o.rate * o.days)}) · risk ${pmcRisk(o)}${o.lead ? ' · team leader' : ''}${o.war ? ' · war zone' : ''}</small></div>${button('Sign', 'pmcContracts.take', { arg: o.id, variant: 'small' })}</li>`).join('')}</ul>` : ''}
+    ${(p?.done ?? []).length ? `<p class="fine">Past contracts: ${p.done.slice(-4).map((d) => `${esc(d.title)} (${d.age})`).join(' · ')}</p>` : ''}
+    <p class="fine">Taking a contract puts you on a firm's books; reputation from finished contracts moves you up to team leader, detail leader and program manager.</p>`, { icon: '🪖', accent: 'yellow' });
+}
+
 /** Coup plots (serving officers) and foreign-army contracts (retired officers): Kingmakers.js. */
 function kingmakerCard(state) {
   const a = state.foreignAdvisor;
@@ -227,7 +245,7 @@ export function militaryView(state) {
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
     : '';
-  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${kingmakerCard(state)}${foreignForcesCard(state)}${history}`;
+  if (!svc) return `${deserter}${selectiveServiceCard(state)}${retiredListCard(state)}${veteranCard(state)}${retiredFrom(state) ? '' : recruitingOffice(state)}${contractMarketCard(state)}${kingmakerCard(state)}${foreignForcesCard(state)}${history}`;
 
   const branch = branchOf(svc);
   const rank = rankOf(svc);

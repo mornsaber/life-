@@ -28,7 +28,7 @@ const warrant = (n) => svg(34, `<rect x="5" y="11" width="24" height="12" rx="2"
 const leaf = (color) => svg(30, `<path d="M15 3 C26 9 26 22 15 31 C4 22 4 9 15 3 Z" fill="${color}"/><path d="M15 6 V29" stroke="rgba(0,0,0,.25)" stroke-width="1.2"/>`);
 const eagle = () => svg(36, `<text x="18" y="25" font-size="22" text-anchor="middle" fill="${SILVER}">🦅</text>`);
 const stars = (n, color = SILVER) => svg(Math.max(16, n * 13 + 4), Array.from({ length: n }, (_, i) => `<text x="${9 + i * 13}" y="23" font-size="15" text-anchor="middle" fill="${color}">★</text>`).join(''));
-const pips = (n, crown = false, color = GOLD) => svg(10 + (n + (crown ? 1 : 0)) * 12, `${crown ? `<text x="11" y="23" font-size="15" text-anchor="middle" fill="${color}">♛</text>` : ''}${Array.from({ length: n }, (_, i) => `<text x="${(crown ? 23 : 11) + i * 12}" y="23" font-size="13" text-anchor="middle" fill="${color}">✦</text>`).join('')}`);
+const pips = (n, crown = false, color = GOLD, emblem = '♛', pip = '✦') => svg(10 + (n + (crown ? 1 : 0)) * 12, `${crown ? `<text x="11" y="23" font-size="15" text-anchor="middle" fill="${color}">${emblem}</text>` : ''}${Array.from({ length: n }, (_, i) => `<text x="${(crown ? 23 : 11) + i * 12}" y="23" font-size="13" text-anchor="middle" fill="${color}">${pip}</text>`).join('')}`);
 const swordBaton = (extra = '') => svg(38, `<path d="M8 28 L30 6 M30 28 L8 6" stroke="${GOLD}" stroke-width="3" stroke-linecap="round"/>${extra}`);
 /** A fire service bugle (speaking trumpet): mouthpiece, tube and bell. */
 const bugle = (x, y, rot = 0) => `<g transform="translate(${x} ${y}) rotate(${rot})"><path d="M-11 -1.5 L5 -2.5 L11 -7 L11 7 L5 2.5 L-11 1.5 Z" fill="${GOLD}"/><rect x="-13" y="-2.5" width="3" height="5" rx="1" fill="${GOLD}"/></g>`;
@@ -47,10 +47,13 @@ const deStars = (n, color) => svg(n * 11 + 8, Array.from({ length: n }, (_, i) =
  * cross stripes for sergeants, a lengthwise stripe for a sergeant-major, one or two
  * lengthwise gaps for junior and senior officers, a zigzag for generals; then stars.
  */
-const board = ({ cross = 0, wide = false, gaps = 0, small = 0, big = 0, zigzag = false, huge = false }, color = '#3d4f6e') => {
+const board = ({ cross = 0, wide = false, wideCross = false, vstars = 0, gaps = 0, small = 0, big = 0, zigzag = false, huge = false, chev = 0 }, color = '#3d4f6e') => {
   let b = `<rect x="6" y="2" width="20" height="36" rx="4" fill="${color}" stroke="${GOLD}" stroke-width="1"/>`;
   for (let i = 0; i < cross; i++) b += `<rect x="7" y="${28 - i * 5}" width="18" height="3" fill="${GOLD}"/>`;
   if (wide) b += `<rect x="13" y="4" width="6" height="32" fill="${GOLD}"/>`;
+  if (wideCross) b += `<rect x="7" y="24" width="18" height="7" fill="${GOLD}"/>`;
+  for (let i = 0; i < vstars; i++) b += `<text x="16" y="${33 - i * 9}" font-size="8" text-anchor="middle" fill="${GOLD}">★</text>`;
+  for (let i = 0; i < chev; i++) b += `<path d="M8 ${30 - i * 5} L16 ${25 - i * 5} L24 ${30 - i * 5}" stroke="${GOLD}" stroke-width="2.2" fill="none"/>`;
   if (gaps === 1) b += `<rect x="15" y="3" width="2" height="34" fill="${GOLD}"/>`;
   if (gaps === 2) b += `<rect x="11" y="3" width="2" height="34" fill="${GOLD}"/><rect x="19" y="3" width="2" height="34" fill="${GOLD}"/>`;
   if (zigzag) b += `<path d="M8 6 L12 10 L8 14 L12 18 L8 22 L12 26 L8 30 M24 6 L20 10 L24 14 L20 18 L24 22 L20 26 L24 30" stroke="${GOLD}" stroke-width="1.2" fill="none"/>`;
@@ -75,7 +78,78 @@ export const crownBadge = (kind = 'sovereign') => svg(34, kind === 'viceRegal'
 
 /* --- military ------------------------------------------------------- */
 /** Russian/Soviet-pattern shoulder boards. */
-const SHOULDER = ['RU', 'BY', 'UA', 'KZ', 'UZ', 'AZ', 'AM', 'KG', 'TJ', 'MN', 'CN', 'VN', 'KP', 'LA'];
+const SHOULDER = ['RU', 'BY', 'UA', 'KZ', 'UZ', 'AZ', 'AM', 'KG', 'TJ', 'MN', 'VN', 'KP', 'LA'];
+const HISPANIC = ['ES', 'MX', 'AR', 'CO', 'PE', 'CL', 'VE', 'EC', 'BO', 'UY', 'PY', 'GT', 'HN', 'SV', 'NI', 'CR', 'PA', 'DO', 'CU'];
+const six = (n, color = GOLD) => svg(n * 12 + 8, Array.from({ length: n }, (_, i) => `<text x="${10 + i * 12}" y="23" font-size="14" text-anchor="middle" fill="${color}">✶</text>`).join(''));
+const eight = (n, color = GOLD) => svg(n * 13 + 8, Array.from({ length: n }, (_, i) => `<text x="${10 + i * 13}" y="23" font-size="16" text-anchor="middle" fill="${color}">✷</text>`).join(''));
+const diamonds = (n, color = SILVER) => svg(n * 12 + 8, Array.from({ length: n }, (_, i) => `<text x="${10 + i * 12}" y="23" font-size="13" text-anchor="middle" fill="${color}">◆</text>`).join(''));
+const slashes = (n, color = '#c0392b') => svg(n * 7 + 14, Array.from({ length: n }, (_, i) => `<rect x="${7 + i * 7}" y="7" width="4" height="20" transform="rotate(20 ${9 + i * 7} 17)" fill="${color}"/>`).join(''));
+/**
+ * National military patterns built from the shared pieces. Each takes ('E'|'W'|'O', grade) and returns
+ * the badge ('' for none); undefined falls back to the US / Commonwealth / Soviet patterns.
+ */
+const MIL_STYLES = {
+  // People's Liberation Army: chevrons for enlisted on a green board, a stripe and stars for company
+  // officers, two stripes for field officers, a gold board with stars for generals.
+  CN: (k, n) => {
+    const g = '#3f5b2c';
+    if (k !== 'O') return board(n <= 2 ? { chev: n } : n <= 4 ? { chev: 2, cross: n - 2 } : { chev: 3, cross: Math.min(3, n - 4) }, g);
+    return board([{ gaps: 1, vstars: 1 }, { gaps: 1, vstars: 2 }, { gaps: 1, vstars: 3 }, { gaps: 2, vstars: 1 }, { gaps: 2, vstars: 2 }, { gaps: 2, vstars: 3 }, { gaps: 2, small: 4 }, { zigzag: true, vstars: 1 }, { zigzag: true, vstars: 2 }, { zigzag: true, vstars: 3 }, { zigzag: true, huge: true }][Math.min(10, n - 1)], g);
+  },
+  // India: Commonwealth pips (five-pointed stars) with the Ashoka lion emblem in place of the crown.
+  IN: (k, n) => {
+    const lion = '☸';
+    // Sepoy plain; Lance Naik, Naik, Havildar chevrons; the junior commissioned officers stars, then the emblem.
+    if (k !== 'O') return ['', chevrons(1), chevrons(2), chevrons(3), pips(1, false, GOLD, lion, '★'), pips(2, false, GOLD, lion, '★'), pips(0, true, GOLD, lion), pips(2, false, GOLD, lion, '★'), pips(3, false, GOLD, lion, '★')][Math.min(8, n - 1)];
+    // Lieutenant two stars, captain three, major the national emblem, then emblem and stars to brigadier.
+    if (n >= 7) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['★', '☸', '☸★', '☸'][Math.min(3, n - 7)]}</text>`);
+    return [pips(2, false, GOLD, lion, '★'), pips(3, false, GOLD, lion, '★'), pips(0, true, GOLD, lion), pips(1, true, GOLD, lion, '★'), pips(2, true, GOLD, lion, '★'), pips(3, true, GOLD, lion, '★')][n - 1];
+  },
+  // Spain and Spanish America: six-pointed stars for lieutenants and captains, eight-pointed for field
+  // officers, crossed sword and baton for generals; red slashes for corporals, gold for sergeants.
+  ...Object.fromEntries(HISPANIC.map((cc) => [cc, (k, n) => {
+    if (k === 'E') return n <= 1 ? '' : n <= 3 ? slashes(n - 1) : n <= 6 ? slashes(n - 3, GOLD) : chevrons(3, n - 6);
+    if (k === 'W') return six(1, SILVER);
+    if (n >= 7) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${'✷'.repeat(Math.min(4, n - 6))}</text>`);
+    return [six(1), six(2), six(3), eight(1), eight(2), eight(3)][n - 1];
+  }])),
+  // Israel: chevrons for enlisted; officers' bars, then fallafel leaves; generals a sword, olive and leaves.
+  IL: (k, n) => {
+    if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4));
+    if (k === 'W') return bars(1, SILVER);
+    if (n <= 3) return bars(n, '#b08d57');
+    if (n <= 6) return svg(n * 9, Array.from({ length: n - 3 }, (_, i) => `<path d="M${10 + i * 12} 4 C${18 + i * 12} 10 ${18 + i * 12} 22 ${10 + i * 12} 30 C${2 + i * 12} 22 ${2 + i * 12} 10 ${10 + i * 12} 4 Z" fill="#b08d57"/>`).join(''));
+    return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${'❦'.repeat(Math.min(3, n - 6))}</text>`);
+  },
+  // South Korea: bars for private to sergeant, diamonds for company officers, mugunghwa for field
+  // officers, stars for generals.
+  KR: (k, n) => {
+    if (k === 'E') return n <= 4 ? svg(n * 7 + 12, Array.from({ length: n }, (_, i) => `<rect x="${6 + i * 7}" y="6" width="4" height="22" fill="${SILVER}"/>`).join('')) : chevrons(Math.min(3, n - 4), Math.max(0, n - 7), '', SILVER);
+    if (k === 'W') return diamonds(1, GOLD);
+    if (n <= 3) return diamonds(n);
+    if (n <= 6) return flowers(n - 3);
+    return stars(Math.min(4, n - 6), GOLD);
+  },
+  // Japan Self-Defense Forces: gold plates — one bar and stars for company officers, two for field,
+  // none for generals; enlisted chevron-plates.
+  JP: (k, n) => {
+    if (k === 'E') return n <= 1 ? plate(0, 0, SILVER) : plate(Math.min(3, n - 1), Math.max(0, n - 4), SILVER);
+    if (k === 'W') return plate(1, 0);
+    if (n <= 3) return plate(1, n);
+    if (n <= 7) return plate(2, Math.min(3, n - 3));
+    return plate(0, Math.min(4, n - 6));
+  },
+  // The Bundeswehr: pips for lieutenants and captains, an oak wreath for field officers, gold oak and
+  // pips for generals; enlisted slants and chevrons.
+  DE: (k, n) => {
+    if (k === 'E') return n <= 1 ? '' : n <= 3 ? slashes(n - 1, SILVER) : chevrons(Math.min(3, n - 3), Math.max(0, n - 6), '', SILVER);
+    if (k === 'W') return deStars(1, SILVER);
+    const wreath = (body, color) => svg(48, `<path d="M6 30 Q24 38 42 30" stroke="${color}" stroke-width="3" fill="none"/>${body}`);
+    if (n <= 3) return deStars(n, SILVER);
+    if (n <= 6) return wreath(Array.from({ length: n - 3 }, (_, i) => `<text x="${14 + i * 10}" y="22" font-size="12" text-anchor="middle" fill="${SILVER}">✶</text>`).join(''), SILVER);
+    return wreath(Array.from({ length: Math.min(4, n - 6) }, (_, i) => `<text x="${12 + i * 9}" y="22" font-size="11" text-anchor="middle" fill="${GOLD}">✶</text>`).join(''), GOLD);
+  },
+};
 const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY', 'NG', 'KE', 'GH'];
 
 /** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern. */
@@ -87,10 +161,15 @@ export function militaryInsignia(code, nation = null) {
   if (SHOULDER.includes(nation ?? '')) {
     const army = '#4b5a3a';
     // A private's board is plain; then cross stripes, then the sergeant-major's lengthwise stripe.
-    if (m[1] === 'OR' || m[1] === 'E') return board(n <= 4 ? { cross: n - 1 } : { wide: true, small: n >= 8 ? 1 : 0 }, army);
+    // Private plain; lance-corporal one stripe; junior sergeant two; sergeant three; senior sergeant a
+    // wide stripe; starshina the lengthwise stripe; warrant officers (praporshchik) stars down the middle.
+    if (m[1] === 'OR' || m[1] === 'E') return board([{}, { cross: 1 }, { cross: 2 }, { cross: 3 }, { wideCross: true }, { wide: true }, { vstars: 2 }, { vstars: 3 }, { vstars: 3, wideCross: true }][Math.min(8, n - 1)], army);
     if (m[1] === 'W') return board({ small: Math.min(3, n + 1) }, army);
-    return board([{ gaps: 1, small: 2 }, { gaps: 1, small: 3 }, { gaps: 1, small: 4 }, { gaps: 2, big: 1 }, { gaps: 2, big: 2 }, { gaps: 2, big: 3 }, { zigzag: true, big: 1 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true, huge: true }, { zigzag: true, huge: true, small: 1 }][Math.min(10, n - 1)], army);
+    // Junior lieutenant one star, lieutenant two, captain four; a major's single big star on two stripes.
+    return board([{ gaps: 1, small: 1 }, { gaps: 1, small: 2 }, { gaps: 1, small: 4 }, { gaps: 2, big: 1 }, { gaps: 2, big: 2 }, { gaps: 2, big: 3 }, { zigzag: true, big: 1 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true, huge: true }, { zigzag: true, huge: true, small: 1 }][Math.min(10, n - 1)], army);
   }
+  const own = MIL_STYLES[nation ?? '']?.(m[1] === 'OR' || m[1] === 'E' ? 'E' : m[1] === 'W' ? 'W' : 'O', n);
+  if (own !== undefined) return own;
   if (m[1] === 'OF' && commonwealth) {
     // Second lieutenant to brigadier: pips and crowns; generals: crossed sword and baton.
     // Major-general a pip, lieutenant-general a crown, general a crown and pip, over the crossed sword and baton.
@@ -168,6 +247,8 @@ function emsRank(id) {
 const US_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
 const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛✦</text>`) };
 const GALON_DRAW = { cpl: () => chevrons(1), sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(4, GOLD), '4star': () => stars(5, GOLD) };
+const CN_DRAW = { cpl: () => board({ chev: 2 }), sgt: () => board({ chev: 3 }), ssgt: () => board({ chev: 3, cross: 1 }), lt: () => board({ gaps: 1, vstars: 1 }), capt: () => board({ gaps: 1, vstars: 3 }), major: () => board({ gaps: 2, vstars: 1 }), col: () => board({ gaps: 2, vstars: 3 }), '1star': () => board({ zigzag: true, vstars: 1 }), '2star': () => board({ zigzag: true, vstars: 2 }), '3star': () => board({ zigzag: true, vstars: 3 }), '4star': () => board({ zigzag: true, huge: true }) };
+const IN_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(1, false, SILVER, '☸', '★'), capt: () => pips(3, false, SILVER, '☸', '★'), major: () => pips(0, true, SILVER, '☸'), col: () => pips(1, true, SILVER, '☸', '★'), '1star': () => pips(3, true, SILVER, '☸', '★'), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">★</text>`), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">☸</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">☸★</text>`) };
 const DE_DRAW = { cpl: () => deStars(2, BLUE), sgt: () => deStars(3, BLUE), ssgt: () => deStars(4, BLUE), lt: () => deStars(1, SILVER), capt: () => deStars(2, SILVER), major: () => deStars(3, SILVER), col: () => deStars(1, GOLD), '1star': () => deStars(2, GOLD), '2star': () => deStars(3, GOLD), '3star': () => deStars(4, GOLD), '4star': () => svg(56, `<circle cx="28" cy="17" r="15" fill="none" stroke="${GOLD}" stroke-dasharray="2 2"/>${Array.from({ length: 4 }, (_, i) => `<text x="${13 + i * 10}" y="22" font-size="12" text-anchor="middle" fill="${GOLD}">✶</text>`).join('')}`) };
 const BOARD_DRAW = { cpl: () => board({ cross: 2 }), sgt: () => board({ cross: 3 }), ssgt: () => board({ wide: true }), lt: () => board({ gaps: 1, small: 2 }), capt: () => board({ gaps: 1, small: 4 }), major: () => board({ gaps: 2, big: 1 }), col: () => board({ gaps: 2, big: 3 }), '1star': () => board({ zigzag: true, big: 1 }), '2star': () => board({ zigzag: true, big: 2 }), '3star': () => board({ zigzag: true, big: 3 }), '4star': () => board({ zigzag: true, huge: true }) };
 const KR_DRAW = { cpl: () => flowers(2, true), sgt: () => flowers(3, true), ssgt: () => flowers(4, true), lt: () => flowers(1), capt: () => flowers(2), major: () => flowers(3), col: () => flowers(4), '1star': () => flowers(1, false, GOLD), '2star': () => flowers(2, false, GOLD), '3star': () => flowers(3, false, GOLD), '4star': () => flowers(4, false, GOLD) };
@@ -175,7 +256,7 @@ const JP_DRAW = { cpl: () => plate(1, 0, SILVER), sgt: () => plate(1, 1, SILVER)
 const FIRE_DRAW = { f1: () => bugles(1), f2: () => bugles(2), f2x: () => bugles(2, true), f3: () => bugles(3, true), f4: () => bugles(4, true), f5: () => bugles(5, true) };
 const draw = (rank, cc) => {
   if (!rank) return '';
-  const table = UK_STYLE.includes(cc) ? UK_DRAW : GALONS.includes(cc) ? GALON_DRAW : cc === 'DE' ? DE_DRAW : SHOULDER.includes(cc) ? BOARD_DRAW : cc === 'KR' ? KR_DRAW : cc === 'JP' ? JP_DRAW : US_DRAW;
+  const table = cc === 'CN' ? CN_DRAW : cc === 'IN' ? IN_DRAW : UK_STYLE.includes(cc) ? UK_DRAW : GALONS.includes(cc) ? GALON_DRAW : cc === 'DE' ? DE_DRAW : SHOULDER.includes(cc) ? BOARD_DRAW : cc === 'KR' ? KR_DRAW : cc === 'JP' ? JP_DRAW : US_DRAW;
   return (table[rank] ?? US_DRAW[rank])?.() ?? '';
 };
 

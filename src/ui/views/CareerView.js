@@ -65,6 +65,7 @@ import { jobLicensesCard } from './JobLicensesView.js';
 import { servedPopulation } from '../../modules/org/Staffing.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
+import { contractMarketCard } from './ServiceViews.js';
 /** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
 const employerLabel = (job) => {
   const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
@@ -417,7 +418,7 @@ export function careerView(state, ui = {}) {
   }).join('');
   const ownJob = posts.length ? card('Your Job: Your Own Company', `${postLines}<p class="fine">Set your focus and make the year's big moves from the Business tab.</p>`, { icon: '👔', accent: 'cyan' }) : '';
   const current = job
-    ? currentJob(state) + managementConsole(job) + ownJob
+    ? currentJob(state) + (job.professionId === 'privateMilitary' ? contractMarketCard(state) : '') + managementConsole(job) + ownJob
     : ownJob || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   // Jobs and businesses you ran, one timeline.
   const stints = [
