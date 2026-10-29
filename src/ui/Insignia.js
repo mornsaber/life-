@@ -49,11 +49,13 @@ export function militaryInsignia(code, nation = null) {
   if (m[1] === 'OF' && commonwealth) {
     // Second lieutenant to brigadier: pips and crowns; generals: crossed sword and baton.
     // Major-general a pip, lieutenant-general a crown, general a crown and pip, over the crossed sword and baton.
-    if (n >= 7) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', '♛', '♛✦', '♛'][Math.min(3, n - 7)]}</text>`);
-    return [pips(1), pips(1), pips(3), pips(0, true), pips(1, true), pips(2, true), pips(3, true)][n];
+    // OF-1 second lieutenant … OF-7 brigadier; OF-8 major-general and up.
+    if (n >= 8) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', '♛', '♛✦', '♛'][Math.min(3, n - 8)]}</text>`);
+    return [pips(1), pips(1), pips(2), pips(3), pips(0, true), pips(1, true), pips(2, true), pips(3, true)][n];
   }
+  // OR-/OF- codes here are the grade itself (OF-1 = second lieutenant), like E-/O-.
   const kind = m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1];
-  const g = m[1] === 'OF' ? Math.min(11, n + 1) : n;
+  const g = n;
   if (kind === 'E') {
     if (commonwealth && g >= 8) return svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">${g >= 9 ? '⚜' : '♛'}</text>`);
     return ['', chevrons(1), chevrons(1, 1), chevrons(2), chevrons(3), chevrons(3, 1), chevrons(3, 2), chevrons(3, 3, 'diamond'), chevrons(3, 3, 'star')][Math.max(0, g - 1)] ?? chevrons(3, 3, 'star');
