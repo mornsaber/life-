@@ -943,3 +943,23 @@ select:focus { border-color: var(--cyan); }
 /* Rank insignia: drawn on a dark cloth patch above the rank code. */
 .rank-insignia { display: flex; justify-content: center; align-items: center; min-height: 40px; margin: 0 auto 4px; padding: 3px 8px; border-radius: 6px; background: #1d2b4f; box-shadow: inset 0 0 0 1px rgba(255,255,255,.15); width: fit-content; }
 .rank-insignia .insignia-svg { display: block; }
+
+/* Organisational charts (Components.orgTree) */
+.org-chart { overflow-x: auto; padding: 4px 0; }
+.org-chart ul { list-style: none; margin: 0; padding-left: 14px; }
+.org-chart > ul { padding-left: 0; }
+.org-chart li { position: relative; padding: 3px 0 3px 12px; border-left: 1px solid var(--line); }
+.org-chart > ul > li { border-left: none; padding-left: 0; }
+.org-chart li::before { content: ''; position: absolute; left: 0; top: 16px; width: 10px; border-top: 1px solid var(--line); }
+.org-chart > ul > li::before { display: none; }
+.org-chart li:last-child { border-left-color: transparent; }
+.org-chart li:last-child::before { border-left: 1px solid var(--line); height: 16px; top: 0; border-top: none; border-bottom: 1px solid var(--line); }
+.org-node { display: inline-flex; flex-direction: column; gap: 1px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); min-width: 140px; max-width: 100%; }
+.org-node b { font-size: 0.86em; }
+.org-node span { font-size: 0.86em; }
+.org-node small { color: var(--muted); font-size: 0.75em; }
+.org-node.top { border-width: 2px; }
+.org-node.unit { background: var(--panel-2); }
+.org-node.you { border-color: var(--cyan); box-shadow: 0 0 0 2px color-mix(in srgb, var(--cyan) 30%, transparent); }
+.org-chart summary { list-style: none; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.org-chart summary::-webkit-details-marker { display: none; }

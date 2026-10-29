@@ -411,3 +411,19 @@ export function disclosure(key, summary, body, { open = false, count = null } = 
 export function optionRow({ icon = '', title, sub = '', meta = '', tone = '', action = '', locked = false }) {
   return `<li class="job-row opt-row ${locked ? 'locked' : ''}"><span class="job-icon" aria-hidden="true">${icon}</span><div class="job-info"><b>${title}</b>${sub ? `<small>${sub}</small>` : ''}${meta ? `<small class="opt-meta ${tone}">${meta}</small>` : ''}</div>${action}</li>`;
 }
+
+/**
+ * An organisational chart (org/OrgChart.js nodes): boxes joined by lines, top down.
+ * Open nodes show their children; the rest fold away behind a tap.
+ */
+export function orgTree(root) {
+  if (!root) return '';
+  const box = (n) => `<div class="org-node${n.you ? ' you' : ''}${n.kind ? ` ${n.kind}` : ''}"><b>${esc(n.title)}</b>${n.name ? `<span>${esc(n.name)}</span>` : ''}${n.meta ? `<small>${esc(n.meta)}</small>` : ''}</div>`;
+  const li = (n) => {
+    const kids = (n.children ?? []).filter(Boolean);
+    if (!kids.length) return `<li>${box(n)}</li>`;
+    const list = `<ul>${kids.map(li).join('')}</ul>`;
+    return n.open ? `<li>${box(n)}${list}</li>` : `<li><details><summary>${box(n)} <small class="muted">▸ ${kids.length}</small></summary>${list}</details></li>`;
+  };
+  return `<div class="org-chart"><ul>${li(root)}</ul></div>`;
+}

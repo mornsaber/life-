@@ -15,7 +15,8 @@ import { memberUnion } from '../../modules/career/BargainingUnits.js';
 import { clearedPremium } from '../../modules/career/ClearedWork.js';
 import { teenJobsCard } from './K12View.js';
 import { traineeProgram, isTenured, USERRA_YEARS } from '../../modules/career/Tenure.js';
-import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder, disclosure, optionRow } from '../Components.js';
+import { esc, money, compactMoney, button, card, chip, meter, kv, empty, rankBadge, trackLadder, disclosure, optionRow, orgTree } from '../Components.js';
+import { workplaceChart } from '../../modules/org/OrgChart.js';
 import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } from '../../modules/career/Transport.js';
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
@@ -260,6 +261,7 @@ function organizationCard(state, job) {
   ])}
   ${c.coworkers.length ? disclosure('org.coworkers', '👥 Coworkers at your level', `<ul class="mini-list">${people(c.coworkers)}</ul>`, { count: c.coworkers.length }) : ''}
   ${c.reports.length ? reportsPanel(state, job, c.reports) : ''}
+  ${disclosure('org.chart', '🗂️ Organisation chart', orgTree(workplaceChart(state, job)))}
   ${openingsLine(job)}
   ${internalMovesRow(state)}`, { icon: '🏢' });
 }

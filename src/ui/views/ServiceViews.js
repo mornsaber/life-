@@ -18,7 +18,8 @@ import { ASSIGNMENTS, assignmentName, assignmentEligibility, commissioningEligib
 import { CLEARANCES } from '../../modules/publicservice/PublicServiceEngine.js';
 import { PATHWAYS, BRIDGES, volunteerHireCheck } from '../../modules/emergency/PaidOpportunities.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
-import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select, disclosure, optionRow } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, rankBadge, ladder, ribbonRack, select, disclosure, optionRow, orgTree } from '../Components.js';
+import { unitChart } from '../../modules/org/OrgChart.js';
 import { meetsEducation } from '../../core/State.js';
 import {
   BRANCHES, SPECIALTIES, rankOf, specialtyName, enlistmentEligibility, promotionOutlook, FLAG_LOOKS, annualActivePay, commissionedYears, DISCHARGE_LABEL, RETIREMENT_YEARS, retirementYearsFor,
@@ -398,6 +399,7 @@ function unitCard(state, svc) {
     ${meter(v.readiness, { label: '🛡️ Unit readiness' })}
     <h4 class="sub">Chain of command</h4><ul class="history">${chain || '<li class="muted">You answer to higher headquarters.</li>'}</ul>
     ${v.team.length ? `<h4 class="sub">${iLead ? 'Your soldiers' : 'Your team'}</h4><ul class="history">${team}</ul>` : ''}
+    ${disclosure('military.chart', '🗂️ Unit organisation chart', orgTree(unitChart(state, svc)))}
     <p class="fine">${iLead ? `${left > 0 ? `${left} leadership action${left > 1 ? 's' : ''} left this year.` : 'No leadership actions left this year.'} Readiness of the people you lead counts toward your evaluation. ` : ''}Command posts are filled by selection boards, one at a time; commanding well is what gets you promoted. NCOs run training, discipline and junior promotions.</p>`, { icon: '🪖' });
 }
 
