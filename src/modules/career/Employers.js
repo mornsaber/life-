@@ -21,6 +21,7 @@ import { localUnionName } from '../world/CountryLaw.js';
 import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 import { isNationalService } from '../world/LocalAgencies.js';
 import { UNIVERSITIES } from '../education/Universities.js';
+import { COUNTRIES } from '../world/Countries.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -34,6 +35,24 @@ export function campusRegions(regionId) {
   return [...new Set(Object.values(UNIVERSITIES).filter((u) => u.country === cc && u.pro?.includes('maritime') && REGIONS[u.region]).map((u) => u.region))];
 }
 const campusAt = (regionId) => Object.values(UNIVERSITIES).find((u) => u.region === regionId && u.pro?.includes('maritime'))?.name ?? null;
+
+/** Is this place the national capital (where headquarters are)? */
+export function isCapital(regionId) {
+  const r = REGIONS[regionId];
+  const cc = r?.country ?? 'US';
+  if (cc === 'US') return regionId === 'dc';
+  const capital = COUNTRIES[cc]?.capital;
+  return Boolean(capital && String(r?.name ?? '').split(',')[0] === capital);
+}
+const HQ = /Headquarters|\bHQ\b/;
+/** Headquarters sit in the capital: elsewhere, the agency's other offices. */
+function headquartersHere(list, regionId) {
+  // (US federal divisions — the FBI Cyber Division — are headquarters units too.)
+  const hq = (n) => HQ.test(n) || ((REGIONS[regionId]?.country ?? 'US') === 'US' && / Division$/.test(n) && !/Field Division/.test(n));
+  const field = list.filter((n) => !hq(n));
+  if (!field.length || field.length === list.length) return list;
+  return isCapital(regionId) ? list : field;
+}
 
 export function resolveDutyStation(rng, profession, regionId) {
   const stateId = (REGIONS[regionId] ?? REGIONS.midcity).state;
@@ -163,7 +182,7 @@ export function createEmployer(rng, state, profession, regionId) {
   let name;
   if (profession.campus && campusAt(regionId)) name = campusAt(regionId);
   else if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state, regionId);
-  else name = rng.pick(profession.employers);
+  else name = rng.pick(headquartersHere(profession.employers, regionId));
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;

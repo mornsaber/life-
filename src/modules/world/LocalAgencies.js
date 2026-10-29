@@ -32,14 +32,22 @@ const GB_AREA = {
   Manchester: { police: 'Greater Manchester Police', fire: 'Greater Manchester Fire and Rescue Service', ems: 'North West Ambulance Service NHS Trust' },
   Birmingham: { police: 'West Midlands Police', fire: 'West Midlands Fire Service', ems: 'West Midlands Ambulance Service NHS Trust' },
   'Truro, Cornwall': { police: 'Devon and Cornwall Police', fire: 'Cornwall Fire and Rescue Service', ems: 'South Western Ambulance Service NHS Trust' },
-  Cardiff: { police: 'South Wales Police', fire: 'South Wales Fire and Rescue Service' },
+  Cardiff: { police: 'South Wales Police', fire: 'South Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
   'Kendal, Cumbria': { police: 'Cumbria Constabulary', fire: 'Cumbria Fire and Rescue Service', ems: 'North West Ambulance Service NHS Trust' },
   'Oxford, Oxfordshire': { police: 'Thames Valley Police', fire: 'Oxfordshire Fire and Rescue Service', ems: 'South Central Ambulance Service NHS Foundation Trust' },
   'Cambridge, Cambridgeshire': { police: 'Cambridgeshire Constabulary', fire: 'Cambridgeshire Fire and Rescue Service', ems: 'East of England Ambulance Service NHS Trust' },
   'Lincoln, Lincolnshire': { police: 'Lincolnshire Police', fire: 'Lincolnshire Fire and Rescue', ems: 'East Midlands Ambulance Service NHS Trust' },
   'Aberystwyth, Ceredigion': { police: 'Dyfed-Powys Police', fire: 'Mid and West Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
+  'Hexham, Northumberland': { police: 'Northumbria Police', fire: 'Northumberland Fire and Rescue Service', ems: 'North East Ambulance Service NHS Foundation Trust' },
+  'Barnstaple, Devon': { police: 'Devon and Cornwall Police', fire: 'Devon and Somerset Fire and Rescue Service', ems: 'South Western Ambulance Service NHS Trust' },
+  'Thetford, Norfolk': { police: 'Norfolk Constabulary', fire: 'Norfolk Fire and Rescue Service', ems: 'East of England Ambulance Service NHS Trust' },
+  'Skipton, North Yorkshire': { police: 'North Yorkshire Police', fire: 'North Yorkshire Fire and Rescue Service', ems: 'Yorkshire Ambulance Service NHS Trust' },
+  'Brecon, Powys': { police: 'Dyfed-Powys Police', fire: 'Mid and West Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
+  'Llandudno, Conwy': { police: 'North Wales Police', fire: 'North Wales Fire and Rescue Service', ems: 'Welsh Ambulance Service NHS Trust' },
 };
-const gbArea = (city, kind) => GB_AREA[city]?.[kind] ?? `${city.split(',')[0]} ${kind === 'police' ? 'Constabulary' : kind === 'fire' ? 'Fire and Rescue Service' : 'Ambulance Service NHS Trust'}`;
+/** Look a place up by its full name ("Truro, Cornwall") or just the town ("Truro"). */
+const gbAreaOf = (city) => GB_AREA[city] ?? Object.entries(GB_AREA).find(([k]) => k.split(',')[0] === String(city).split(',')[0])?.[1];
+const gbArea = (city, kind) => gbAreaOf(city)?.[kind] ?? `${city.split(',')[0]} ${kind === 'police' ? 'Constabulary' : kind === 'fire' ? 'Fire and Rescue Service' : 'Ambulance Service NHS Trust'}`;
 
 const AU_STATE_POLICE = { 'AU-NSW': 'NSW Police Force', 'AU-VIC': 'Victoria Police', 'AU-QLD': 'Queensland Police Service', 'AU-WA': 'Western Australia Police Force', 'AU-SA': 'South Australia Police', 'AU-ACT': 'ACT Policing', 'AU-NT': 'Northern Territory Police', 'AU-TAS': 'Tasmania Police' };
 const CA_PROVINCIAL_POLICE = { 'CA-ON': 'Ontario Provincial Police', 'CA-QC': 'Sûreté du Québec' };
