@@ -35,7 +35,7 @@ import { subsidiaryTitles } from './Peerage.js';
 
 export const CROWNS = {
   GB: {
-    name: 'the Crown', realms: ['GB', 'CA', 'AU', 'NZ', 'PG', 'SB'], rule: 'absolute', houses: ['Ashcombe', 'Valcourt', 'Ellesmere', 'Harrowgate'],
+    name: 'the Crown', realms: ['GB', 'CA', 'AU', 'NZ', 'PG', 'SB', 'JM', 'BS'], rule: 'absolute', houses: ['Ashcombe', 'Valcourt', 'Ellesmere', 'Harrowgate'],
     names: { male: ['Edmund', 'Arthur', 'Frederick', 'Albert', 'Alfred', 'Henry', 'Edward', 'Leopold'], female: ['Matilda', 'Eleanor', 'Alexandra', 'Margaret', 'Adelaide', 'Caroline', 'Beatrice'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Prince of Cambria', 'Princess of Cambria'], royal: ['Prince', 'Princess'], distant: ['Lord', 'Lady'] },
     palace: 'St Aldric\'s Palace', grant: 'Sovereign Grant', dukedoms: ['Wessex', 'Clarence', 'Rothesay', 'Albany', 'Lancaster', 'Kendal', 'Sussex'],
@@ -80,6 +80,30 @@ export const CROWNS = {
     names: { male: ['Philippe', 'Baudouin', 'Albert', 'Léopold', 'Gabriel'], female: ['Elisabeth', 'Éléonore', 'Astrid', 'Mathilde', 'Paola'] },
     titles: { monarch: ['King of the Belgians', 'Queen of the Belgians'], heir: ['Duke of Brabant', 'Duchess of Brabant'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] },
     palace: 'the Royal Palace of Laeken', grant: 'the civil list (dotation)', dukedoms: ['Brabant'],
+  },
+  LU: {
+    name: 'the Grand Ducal Crown', realms: ['LU'], rule: 'absolute', houses: ['Nassau-Weilburg', 'Bourbon-Parme'],
+    names: { male: ['Henri', 'Guillaume', 'Jean', 'Félix', 'Louis'], female: ['Charlotte', 'Stéphanie', 'Maria Teresa', 'Alexandra', 'Amalia'] },
+    titles: { monarch: ['Grand Duke', 'Grand Duchess'], heir: ['Hereditary Grand Duke', 'Hereditary Grand Duchess'], royal: ['Prince of Luxembourg', 'Princess of Luxembourg'], distant: ['Prince of Nassau', 'Princess of Nassau'] },
+    palace: 'the Grand Ducal Palace', grant: 'the civil list', dukedoms: [],
+  },
+  BT: {
+    name: 'the Wangchuck dynasty', realms: ['BT'], rule: 'malePreference', houses: ['Wangchuck'],
+    names: { male: ['Jigme', 'Khesar', 'Ugyen', 'Dorji', 'Namgyel'], female: ['Pema', 'Ashi Sonam', 'Dechen', 'Kesang', 'Euphelma'] },
+    titles: { monarch: ['Druk Gyalpo (Dragon King)', 'Druk Gyaltsuen (Dragon Queen)'], heir: ['Gyalsey (Crown Prince)', 'Gyalsem (Princess)'], royal: ['Dasho', 'Ashi'], distant: ['Dasho', 'Ashi'] },
+    palace: 'the Lingkana Palace, Thimphu', grant: 'the royal grant (kidu)', dukedoms: [],
+  },
+  TO: {
+    name: 'the Crown of Tonga', realms: ['TO'], rule: 'malePreference', houses: ['Tupou'],
+    names: { male: ['Tupou', 'Siaosi', 'Ulukalala', 'Ahoʻeitu', 'Viliami'], female: ['Sālote', 'Nanasipauʻu', 'Pilolevu', 'Lātūfuipeka', 'Halaevalu'] },
+    titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince (Tupouto\'a)', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Noble', 'Noble'] },
+    palace: 'the Royal Palace, Nukuʻalofa', grant: 'the palace office budget', dukedoms: [],
+  },
+  OM: {
+    name: 'the Al Said dynasty', realms: ['OM'], rule: 'agnatic', executive: true, houses: ['Al Said'],
+    names: { male: ['Haitham', 'Qaboos', 'Theyazin', 'Asaad', 'Shihab'], female: ['Ahd', 'Thuraya', 'Sayyida Sultana', 'Mayyan', 'Tania'] },
+    titles: { monarch: ['Sultan', 'Sultana'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Sayyid', 'Sayyida'], distant: ['Sayyid', 'Sayyida'] },
+    palace: 'Al Alam Palace, Muscat', grant: 'the Diwan of the Royal Court', dukedoms: [],
   },
   TH: {
     name: 'the Chakri dynasty', realms: ['TH'], rule: 'agnatic', houses: ['Chakri'],

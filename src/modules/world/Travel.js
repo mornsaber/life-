@@ -28,11 +28,11 @@ import { regimeOf, exitBlock, sanctionsOn } from './Regimes.js';
 import { warIn } from './War.js';
 
 export const CONTINENT = {
-  Europe: ['GB', 'IE', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'AT', 'BA', 'BE', 'CH', 'CY', 'DK', 'EE', 'LT', 'LV', 'MT', 'NO', 'PL', 'RO', 'RU', 'TR', 'UA', 'XK'],
-  Americas: ['US', 'CA', 'MX', 'BR', 'AR', 'CO', 'CR', 'GT', 'HT', 'PE', 'VE'],
-  'Asia & Pacific': ['JP', 'KR', 'KP', 'CN', 'TW', 'IN', 'PK', 'PH', 'SG', 'ID', 'MY', 'TH', 'VN', 'KH', 'MM', 'BN', 'AU', 'NZ', 'PG', 'SB', 'VU'],
-  'Middle East': ['IL', 'PS', 'AE', 'SA', 'QA', 'KW', 'BH', 'JO', 'LB', 'SY', 'IQ', 'IR', 'YE', 'EG', 'AF'],
-  Africa: ['NG', 'KE', 'ZA', 'MA', 'GH', 'SN', 'CI', 'ET', 'DJ', 'GM', 'GW', 'LY', 'ML', 'MW', 'MZ', 'NE', 'SD', 'SO', 'SS', 'TD', 'CD', 'CF'],
+  Europe: ['GB', 'IE', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'AT', 'BA', 'BE', 'CH', 'CY', 'DK', 'EE', 'LT', 'LV', 'MT', 'NO', 'PL', 'RO', 'RU', 'TR', 'UA', 'XK', 'GR', 'PT', 'FI', 'LU'],
+  Americas: ['US', 'CA', 'MX', 'BR', 'AR', 'CO', 'CR', 'GT', 'HT', 'PE', 'VE', 'PA', 'JM', 'BS', 'CL'],
+  'Asia & Pacific': ['JP', 'KR', 'KP', 'CN', 'TW', 'IN', 'PK', 'PH', 'SG', 'ID', 'MY', 'TH', 'VN', 'KH', 'MM', 'BN', 'AU', 'NZ', 'PG', 'SB', 'VU', 'BD', 'LK', 'BT', 'TO', 'MH'],
+  'Middle East': ['IL', 'PS', 'AE', 'SA', 'QA', 'KW', 'BH', 'JO', 'LB', 'SY', 'IQ', 'IR', 'YE', 'EG', 'AF', 'OM'],
+  Africa: ['NG', 'KE', 'ZA', 'MA', 'GH', 'SN', 'CI', 'ET', 'DJ', 'GM', 'GW', 'LY', 'ML', 'MW', 'MZ', 'NE', 'SD', 'SO', 'SS', 'TD', 'CD', 'CF', 'LR'],
 };
 const continentOf = (cc) => Object.keys(CONTINENT).find((k) => CONTINENT[k].includes(cc)) ?? 'Elsewhere';
 

@@ -68,7 +68,7 @@ export function officialStyle(state) {
 }
 
 /** Letters after the name from a seat you hold. */
-const COMMONWEALTH = ['GB', 'CA', 'AU', 'NZ', 'IN', 'SG', 'MY', 'NG', 'KE', 'ZA', 'GH', 'MT', 'CY', 'PK', 'GM', 'MW', 'MZ', 'PG', 'SB', 'VU', 'BN', 'JM', 'TT', 'UG', 'ZM'];
+const COMMONWEALTH = ['GB', 'CA', 'AU', 'NZ', 'IN', 'SG', 'MY', 'NG', 'KE', 'ZA', 'GH', 'MT', 'CY', 'PK', 'GM', 'MW', 'MZ', 'PG', 'SB', 'VU', 'BN', 'JM', 'TT', 'UG', 'ZM', 'BS', 'BD', 'LK', 'TO'];
 export const officeLetters = (state) => {
   const id = state.politics?.office?.id;
   if (!id || !OFFICES[id]) return null;

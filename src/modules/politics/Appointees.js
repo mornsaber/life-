@@ -26,7 +26,7 @@ import { nationalProfessionId } from '../world/NationalAgencies.js';
 import { postAbroad, endPosting } from '../world/Posting.js';
 import { regimeOf } from '../world/Regimes.js';
 
-const COMMONWEALTH = ['GB', 'CA', 'AU', 'NZ', 'IN', 'SG', 'NG', 'KE', 'ZA', 'GH', 'MT', 'CY', 'MY', 'PK', 'GM', 'MW', 'MZ', 'PG', 'SB', 'VU', 'BN'];
+const COMMONWEALTH = ['GB', 'CA', 'AU', 'NZ', 'IN', 'SG', 'NG', 'KE', 'ZA', 'GH', 'MT', 'CY', 'MY', 'PK', 'GM', 'MW', 'MZ', 'PG', 'SB', 'VU', 'BN', 'JM', 'BS', 'BD', 'LK', 'TO'];
 /** The posts donors are given. */
 const PLUM = ['FR', 'GB', 'IT', 'ES', 'JP', 'IE', 'CA', 'AU', 'NL', 'DE', 'SE', 'SG', 'NZ', 'CH', 'BE'];
 const OTHER = ['MX', 'BR', 'IN', 'KR', 'PL', 'TR', 'IL', 'AE', 'KE', 'ZA', 'AR', 'TH', 'PH', 'NG', 'EG', 'ID', 'VN', 'CO'];

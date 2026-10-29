@@ -62,6 +62,10 @@ export const ROYAL_ORDERS = {
     ['QA', 'Order of Independence', 'Order of Merit (Qatar)', ['the Amiri Guard'], 'the Qatari Emiri Navy'],
     ['BH', 'Order of Al Khalifa', 'Order of Sheikh Isa bin Salman', ['the Royal Guard'], 'the Royal Bahrain Naval Force'],
     ['AE', 'Order of Zayed', 'Order of the Union', ['the Presidential Guard'], 'the UAE Navy'],
+    ['LU', 'Order of the Gold Lion of the House of Nassau', 'Order of Adolphe of Nassau', ['the Luxembourg Army'], null],
+    ['BT', 'Order of the Dragon King', 'Royal Order of Bhutan', ['the Royal Bodyguard of Bhutan'], null],
+    ['TO', 'Order of King George Tupou I', 'Order of the Crown of Tonga', ['the Royal Guard', 'the Royal Tongan Marines'], 'the Tongan Maritime Force'],
+    ['OM', 'Order of Al-Said', 'Order of Oman', ['the Royal Guard of Oman', 'the Sultan\'s Special Force'], 'the Royal Navy of Oman'],
   ].map(([cc, great, personal, colonel, commodore]) => [cc, { great: [great, '', ''], personal: [personal, '', ''], knight: [null, null], forces: { army: 'Field Marshal', navy: 'Admiral of the Fleet', air: 'Air Chief Marshal' }, colonel, commodore, airCommodore: null }])),
   ES: { great: ['Order of the Golden Fleece', '', ''], personal: ['Order of Charles III', '', ''], knight: [null, null], forces: { army: 'Capitán General', navy: 'Capitán General de la Armada', air: 'Capitán General del Aire' }, colonel: ['the Regimiento Inmemorial del Rey', 'the Guardia Real', 'the Legión'], commodore: 'the Spanish Navy', airCommodore: 'the Ejército del Aire' },
 };
