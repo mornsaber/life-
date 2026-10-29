@@ -29,6 +29,8 @@ const NAMED = {
 
 /** Where you live officially, if anywhere: { name, by } (by: who provides it). */
 export function officialResidence(state) {
+  // Representing the Crown overseas: Government House comes first, even for a royal.
+  if (state.overseasPost) return { name: state.overseasPost.residence, by: 'the Crown', icon: '🏛️' };
   const r = state.royal;
   if (r && !r.abdicated) {
     const palace = CROWNS[r.crownId]?.palace ?? 'the royal palace';

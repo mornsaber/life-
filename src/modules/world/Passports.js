@@ -50,6 +50,7 @@ export function servicePassports(state) {
   if (wasForeignMinister(state)) add('diplomatic', cc, 'a foreign minister, past or present');
   if (r?.abdicated || state.character.formerRoyal?.reigned) add('diplomatic', r?.crownId ?? cc, 'a former sovereign (for life)');
   if (hs?.emeritus) add('diplomatic', 'HS', 'Pope Emeritus');
+  if (state.overseasPost) add('diplomatic', cc, state.overseasPost.title);
   if (!out.some((p) => p.kind === 'diplomatic' && !['SMOM', 'HS'].includes(p.country))) {
     if (o && nationalOffice(o) && (OFFICES[o.id]?.kind === 'legislative' || o.id.startsWith('us'))) add('official', OFFICES[o.id].country ?? cc, OFFICES[o.id].name);
     if ((job?.posting && !intlJob) || state.character.posting?.kind === 'secondment' || state.character.posting?.kind === 'mission') add('official', cc, job?.posting ? `posted to ${job.posting.city}` : 'secondment abroad');

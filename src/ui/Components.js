@@ -8,6 +8,7 @@ import { CHALLENGES } from '../modules/life/Achievements.js';
 import { ROYAL_LEVELS } from '../modules/world/Crown.js';
 import { DIFFICULTIES } from '../core/Difficulty.js';
 import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
+import { titleInsignia } from './Insignia.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -137,7 +138,7 @@ export function ladder(steps, current, { compact = false } = {}) {
       const state = i < current ? 'done' : i === current ? 'now' : 'todo';
       return `<li class="${state}" title="${esc(s.title)}${s.sub ? ` — ${esc(s.sub)}` : ''}">
         <span class="ladder-dot">${i < current ? '✓' : i + 1}</span>
-        <span class="ladder-title">${esc(s.title)}</span>
+        ${s.badge ? `<span class="ladder-badge">${s.badge}</span>` : ''}<span class="ladder-title">${esc(s.title)}</span>
         ${s.sub ? `<span class="ladder-sub">${esc(s.sub)}</span>` : ''}
       </li>`;
     })
@@ -228,7 +229,7 @@ export function medalCase(honors) {
   return `<ul class="medal-list">${sorted
     .map(
       (h) => `<li class="medal ${h.posthumous ? 'posthumous' : ''}">
-        <div class="medal-art">${ribbon(ribbonFor(h), { device: h.device })}${insignia(h)}</div>
+        <div class="medal-art">${ribbon(ribbonFor(h), { device: h.device })}${h.source === 'honoraryRank' ? titleInsignia(h.name, h.country ?? 'GB') : insignia(h)}</div>
         <div class="medal-text">
           <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
           <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${COUNTRIES[h.country]?.flag ?? ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
@@ -378,7 +379,7 @@ export function select(part, options, { label = '', value = '' } = {}) {
  * Branching ladder: shared levels, then Specialist and Management rows.
  * `available(level)` → false greys out levels this employer doesn't have.
  */
-export function trackLadder(levels, currentId, available = () => true, prefix = 'G') {
+export function trackLadder(levels, currentId, available = () => true, prefix = 'G', badge = () => '') {
   const row = (list, label) => {
     if (!list.length) return '';
     const currentIdx = list.findIndex((l) => l.id === currentId);
@@ -386,7 +387,7 @@ export function trackLadder(levels, currentId, available = () => true, prefix = 
       .map((l, i) => {
         const cls = l.id === currentId ? 'now' : currentIdx > -1 && i < currentIdx ? 'done' : available(l) ? 'todo' : 'na';
         return `<li class="${cls}" title="${esc(l.title)} [${prefix}${l.grade}]${available(l) ? '' : ' — not at this employer'}">
-          <span class="ladder-dot">${prefix}${l.grade}</span><span class="ladder-title">${esc(l.title)}</span></li>`;
+          <span class="ladder-dot">${prefix}${l.grade}</span>${badge(l) ? `<span class="ladder-badge">${badge(l)}</span>` : ''}<span class="ladder-title">${esc(l.title)}</span></li>`;
       })
       .join('')}</ol></div>`;
   };

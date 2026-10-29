@@ -17,6 +17,7 @@ import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
 import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennobled } from '../../modules/world/DynasticTitles.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
+import { titleInsignia, crownBadge } from '../Insignia.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
 function honoursCard(state) {
@@ -94,6 +95,7 @@ export function crownCards(state) {
     const mil = militaryPosts(state);
     const reign = r.reigning && c ? currentYear(state) - c.since : 0;
     cards.push(card(r.reigning ? 'Your Reign' : 'Royal Life', `
+      <div class="row-end" style="justify-content:flex-start;margin-top:0">${crownBadge(r.reigning ? 'sovereign' : r.line === 1 ? 'heir' : 'royal')}</div>
       ${meter(r.popularity ?? 60, { label: '📰 Popularity' })}
       ${r.reigning ? meter(r.influence ?? 30, { label: '🤝 Influence with the government', tone: 'mid' }) : ''}
       ${r.executive ? meter(r.unrest ?? 0, { label: '🔥 Unrest', tone: (r.unrest ?? 0) >= 50 ? 'bad' : 'mid' }) : ''}
@@ -106,7 +108,7 @@ export function crownCards(state) {
         r.reigning ? null : ['Status', r.working ? 'Working royal' : r.steppedBack ? 'Stepped back' : 'Private life'],
         ['Allowance', r.reigning ? `${money(20000000)}/yr` : r.working ? `${money(r.line === 1 ? ROYAL_LEVELS.heir.allowance : lv?.allowance ?? 0)}/yr from the ${esc(def.grant)} (from 18)` : 'Family trust only'],
         r.patronages?.length ? ['Patronages', esc(r.patronages.join(', '))] : null,
-        mil.rank && !r.reigning ? ['Armed forces', esc(mil.rank)] : null,
+        mil.rank && !r.reigning ? ['Armed forces', `${titleInsignia(mil.rank, state.character.countryId ?? 'GB')} ${esc(mil.rank)}`] : null,
         r.household?.conferred ? ['Honours conferred', String(r.household.conferred)] : null,
       ].filter(Boolean))}
       ${mil.posts.length || (mil.rank && r.reigning) ? disclosure('crown.military', '🎖️ Military appointments', `${mil.rank ? `<p class="fine">${esc(mil.rank)}</p>` : ''}<ul class="history">${mil.posts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { count: mil.posts.length }) : ''}

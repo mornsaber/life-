@@ -30,6 +30,8 @@ import { statesman, invitations, relationsWith } from '../../modules/politics/St
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { isMep, GROUPS, COMMITTEES, POSTS } from '../../modules/politics/EuropeanParliament.js';
 import { leadsCoalitionState } from '../../modules/politics/Coalitions.js';
+import { crownBadge } from '../Insignia.js';
+import { POSTS as OVERSEAS } from '../../modules/world/OverseasPosts.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -108,6 +110,19 @@ function worldStageCard(state) {
     ${past.length ? `<p class="fine">Former posts: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🌐', accent: 'cyan' });
 }
 
+/** The Crown's representative overseas (OverseasPosts.js). */
+function overseasCard(state) {
+  const o = state.overseasPost;
+  const past = state.overseasPast ?? [];
+  if (!o && !past.length) return '';
+  return card(o ? `🏛️ ${esc(o.title)}` : 'The Crown Overseas', `
+    ${o ? `<div class="row-end" style="justify-content:flex-start;margin-top:0">${crownBadge('viceRegal')}</div>
+      ${kv([['Residence', esc(o.residence)], ['Term', `age ${o.since}–${o.until}`]])}
+      ${meter(o.standing, { label: `🏝️ Standing in ${esc(OVERSEAS[o.id]?.place ?? o.place)}` })}
+      <div class="toggle-row">${button('🎩 Public duties', 'overseasPosts.duties', { variant: 'small', disabled: Boolean(state.yearly['overseasPosts.duties']) })}${button('🚪 Resign', 'overseasPosts.resignPost', { variant: 'small ghost' })}</div>` : ''}
+    ${past.length ? `<p class="fine">Formerly: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🏛️', accent: 'blue' });
+}
+
 /** Coalition government: partners, stability, the summit. */
 function coalitionCard(state) {
   const c = state.coalition;
@@ -162,6 +177,7 @@ export function politicsView(state) {
   const office = o && OFFICES[o.id];
   const current = o
     ? card(`${office.icon} ${esc(o.title ?? office.name)}`, `
+        ${/_gg$|_lg$|au_governor|governorOverseas/.test(o.id) ? `<div class="row-end" style="justify-content:flex-start;margin-top:0">${crownBadge('viceRegal')}</div>` : ''}
         ${meter(o.approval, { label: '🗳️ Approval' })}
         ${o.drivers?.length ? `<p class="fine">Last year: ${o.drivers.map((d) => `${esc(d.label)} <span class="${d.delta >= 0 ? 'pos' : 'neg'}">${d.delta >= 0 ? '+' : ''}${d.delta}</span>`).join(' · ')}</p>` : ''}
         ${executiveConsole(state)}
@@ -195,7 +211,7 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${worldStageCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
+  return `${current}${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
     ${patronageCard(state)}
     ${crownCards(state)}
     ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}

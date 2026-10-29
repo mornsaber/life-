@@ -257,7 +257,7 @@ export function militaryView(state) {
     </div>
     ${meter(svc.eval, { label: '📋 Evaluation' })}
     <p class="promo ${outlook.eligible ? 'ready' : ''}">${outlook.eligible ? `🌟 Board-eligible for ${esc(titles[svc.grade + 1])}` : `🪜 Next grade: ${esc(outlook.reason)}`}${flagNote(svc)}</p>
-    ${ladder(titles.map((t, i) => ({ title: t, sub: `${svc.track === 'officer' ? 'O' : 'E'}-${i + 1}` })), svc.grade, { compact: true })}
+    ${ladder(titles.map((t, i) => { const code = `${svc.nation ? (svc.track === 'enlisted' ? 'OR' : 'OF') : svc.track === 'officer' ? 'O' : svc.track === 'warrant' ? 'W' : 'E'}-${i + 1}`; return { title: t, sub: code, badge: militaryInsignia(code, svc.nation ?? null) }; }), svc.grade, { compact: true })}
     <div class="action-grid">
       ${button('🏃 Extra PT', 'military.pt', { hint: '+Fitness, +Eval' })}
       ${button('🫡 Volunteer for Duty', 'military.extraDuty', { hint: 'Once/yr, +Eval' })}

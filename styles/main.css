@@ -341,6 +341,7 @@ input:focus-visible, select:focus-visible { outline: 3px solid var(--focus); out
   background: var(--inset); color: var(--muted);
 }
 .ladder-title { font-size: 11px; line-height: 1.2; color: var(--muted); overflow-wrap: anywhere; }
+.ladder-badge { display: block; height: 22px; margin: 2px auto; } .ladder-badge svg { height: 22px; width: auto; }
 .ladder-sub { font-size: 10px; color: var(--muted); opacity: 0.7; }
 .ladder li.done .ladder-dot { background: var(--green); color: #031a0c; border-color: #031a0c; }
 .ladder li.now { background: rgba(255, 210, 63, 0.12); outline: 2px solid var(--yellow); }

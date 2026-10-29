@@ -47,7 +47,7 @@ const deStars = (n, color) => svg(n * 11 + 8, Array.from({ length: n }, (_, i) =
  * cross stripes for sergeants, a lengthwise stripe for a sergeant-major, one or two
  * lengthwise gaps for junior and senior officers, a zigzag for generals; then stars.
  */
-const board = ({ cross = 0, wide = false, gaps = 0, small = 0, big = 0, zigzag = false }, color = '#3d4f6e') => {
+const board = ({ cross = 0, wide = false, gaps = 0, small = 0, big = 0, zigzag = false, huge = false }, color = '#3d4f6e') => {
   let b = `<rect x="6" y="2" width="20" height="36" rx="4" fill="${color}" stroke="${GOLD}" stroke-width="1"/>`;
   for (let i = 0; i < cross; i++) b += `<rect x="7" y="${28 - i * 5}" width="18" height="3" fill="${GOLD}"/>`;
   if (wide) b += `<rect x="13" y="4" width="6" height="32" fill="${GOLD}"/>`;
@@ -56,6 +56,7 @@ const board = ({ cross = 0, wide = false, gaps = 0, small = 0, big = 0, zigzag =
   if (zigzag) b += `<path d="M8 6 L12 10 L8 14 L12 18 L8 22 L12 26 L8 30 M24 6 L20 10 L24 14 L20 18 L24 22 L20 26 L24 30" stroke="${GOLD}" stroke-width="1.2" fill="none"/>`;
   const sp = [[16, 30], [10, 22], [22, 22], [16, 14]];
   for (let i = 0; i < small; i++) b += `<text x="${sp[i][0]}" y="${sp[i][1]}" font-size="7" text-anchor="middle" fill="${GOLD}">★</text>`;
+  if (huge) b += `<text x="16" y="26" font-size="17" text-anchor="middle" fill="${GOLD}">★</text>`;
   const bp = [[16, 32], [16, 22], [16, 12]];
   for (let i = 0; i < big; i++) b += `<text x="${bp[i][0]}" y="${bp[i][1]}" font-size="11" text-anchor="middle" fill="${GOLD}">★</text>`;
   return svg(32, b, 40);
@@ -63,6 +64,14 @@ const board = ({ cross = 0, wide = false, gaps = 0, small = 0, big = 0, zigzag =
 /** Korean police: mugunghwa (rose of Sharon) leaves and flowers; Japanese police: a rank plate with bars and stars. */
 const flowers = (n, leaf = false, color = SILVER) => svg(n * 12 + 8, Array.from({ length: n }, (_, i) => `<text x="${10 + i * 12}" y="23" font-size="${leaf ? 11 : 14}" text-anchor="middle" fill="${color}">${leaf ? '❦' : '✿'}</text>`).join(''));
 const plate = (bars, stars, color = GOLD) => svg(40, `<rect x="2" y="6" width="36" height="22" rx="3" fill="#1d2b4f" stroke="${color}"/>${Array.from({ length: bars }, (_, i) => `<rect x="5" y="${9 + i * 4}" width="30" height="2" fill="${color}"/>`).join('')}${Array.from({ length: stars }, (_, i) => `<text x="${12 + i * 8}" y="25" font-size="7" text-anchor="middle" fill="${color}">★</text>`).join('')}`);
+
+/** Private companies' slide-on epaulettes: plain for officers, then one to four bars. */
+export const epaulette = (bars, color = SILVER) => svg(26, `<rect x="5" y="2" width="16" height="32" rx="3" fill="#20242c" stroke="#888"/><circle cx="13" cy="7" r="2" fill="${color}"/>${Array.from({ length: bars }, (_, i) => `<rect x="7" y="${28 - i * 5}" width="12" height="3" fill="${color}"/>`).join('')}`, 36);
+
+/** Vice-regal and royal badges: a crown, alone (the sovereign) or over a lion (the Crown's representative). */
+export const crownBadge = (kind = 'sovereign') => svg(34, kind === 'viceRegal'
+  ? `<circle cx="17" cy="19" r="13" fill="#1d2b6f" stroke="${GOLD}"/><text x="17" y="15" font-size="10" text-anchor="middle" fill="${GOLD}">♛</text><text x="17" y="28" font-size="10" text-anchor="middle" fill="${GOLD}">🦁</text>`
+  : kind === 'heir' ? `<text x="17" y="24" font-size="18" text-anchor="middle" fill="${SILVER}">⚜</text>` : kind === 'royal' ? `<text x="17" y="24" font-size="16" text-anchor="middle" fill="${SILVER}">♛</text>` : `<text x="17" y="25" font-size="22" text-anchor="middle" fill="${GOLD}">♛</text>`, 36);
 
 /* --- military ------------------------------------------------------- */
 /** Russian/Soviet-pattern shoulder boards. */
@@ -77,15 +86,18 @@ export function militaryInsignia(code, nation = null) {
   const commonwealth = COMMONWEALTH.includes(nation ?? '');
   if (SHOULDER.includes(nation ?? '')) {
     const army = '#4b5a3a';
-    if (m[1] === 'OR' || m[1] === 'E') return n <= 1 ? '' : board(n <= 4 ? { cross: n - 1 } : { wide: true, small: n >= 8 ? 1 : 0 }, army);
+    // A private's board is plain; then cross stripes, then the sergeant-major's lengthwise stripe.
+    if (m[1] === 'OR' || m[1] === 'E') return board(n <= 4 ? { cross: n - 1 } : { wide: true, small: n >= 8 ? 1 : 0 }, army);
     if (m[1] === 'W') return board({ small: Math.min(3, n + 1) }, army);
-    return board([{ gaps: 1, small: 2 }, { gaps: 1, small: 3 }, { gaps: 1, small: 4 }, { gaps: 2, big: 1 }, { gaps: 2, big: 2 }, { gaps: 2, big: 3 }, { zigzag: true, big: 1 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true, big: 3 }][Math.min(9, n - 1)], army);
+    return board([{ gaps: 1, small: 2 }, { gaps: 1, small: 3 }, { gaps: 1, small: 4 }, { gaps: 2, big: 1 }, { gaps: 2, big: 2 }, { gaps: 2, big: 3 }, { zigzag: true, big: 1 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true, huge: true }, { zigzag: true, huge: true, small: 1 }][Math.min(10, n - 1)], army);
   }
   if (m[1] === 'OF' && commonwealth) {
     // Second lieutenant to brigadier: pips and crowns; generals: crossed sword and baton.
     // Major-general a pip, lieutenant-general a crown, general a crown and pip, over the crossed sword and baton.
     // OF-1 second lieutenant … OF-7 brigadier; OF-8 major-general and up.
-    if (n >= 8) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', '♛', '♛✦', '♛'][Math.min(3, n - 8)]}</text>`);
+    // A field marshal: crossed batons in a wreath under the crown.
+    if (n >= 11) return swordBaton(`<circle cx="19" cy="17" r="13" fill="none" stroke="#5fa35a" stroke-width="2"/><text x="19" y="9" font-size="9" text-anchor="middle" fill="${GOLD}">♛</text>`);
+    if (n >= 8) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', '♛', '♛✦'][Math.min(2, n - 8)]}</text>`);
     return [pips(1), pips(1), pips(2), pips(3), pips(0, true), pips(1, true), pips(2, true), pips(3, true)][n];
   }
   // OR-/OF- codes here are the grade itself (OF-1 = second lieutenant), like E-/O-.
@@ -154,12 +166,12 @@ function emsRank(id) {
   return null;
 }
 const US_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
-const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`) };
-const GALON_DRAW = { cpl: () => chevrons(1), sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
-const DE_DRAW = { cpl: () => deStars(2, BLUE), sgt: () => deStars(3, BLUE), ssgt: () => deStars(4, BLUE), lt: () => deStars(1, SILVER), capt: () => deStars(2, SILVER), major: () => deStars(3, SILVER), col: () => deStars(1, GOLD), '1star': () => deStars(2, GOLD), '2star': () => deStars(3, GOLD), '3star': () => deStars(4, GOLD), '4star': () => deStars(4, GOLD) };
-const BOARD_DRAW = { cpl: () => board({ cross: 2 }), sgt: () => board({ cross: 3 }), ssgt: () => board({ wide: true }), lt: () => board({ gaps: 1, small: 2 }), capt: () => board({ gaps: 1, small: 4 }), major: () => board({ gaps: 2, big: 1 }), col: () => board({ gaps: 2, big: 3 }), '1star': () => board({ zigzag: true, big: 1 }), '2star': () => board({ zigzag: true, big: 2 }), '3star': () => board({ zigzag: true, big: 3 }), '4star': () => board({ zigzag: true, big: 3 }) };
+const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛✦</text>`) };
+const GALON_DRAW = { cpl: () => chevrons(1), sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(4, GOLD), '4star': () => stars(5, GOLD) };
+const DE_DRAW = { cpl: () => deStars(2, BLUE), sgt: () => deStars(3, BLUE), ssgt: () => deStars(4, BLUE), lt: () => deStars(1, SILVER), capt: () => deStars(2, SILVER), major: () => deStars(3, SILVER), col: () => deStars(1, GOLD), '1star': () => deStars(2, GOLD), '2star': () => deStars(3, GOLD), '3star': () => deStars(4, GOLD), '4star': () => svg(56, `<circle cx="28" cy="17" r="15" fill="none" stroke="${GOLD}" stroke-dasharray="2 2"/>${Array.from({ length: 4 }, (_, i) => `<text x="${13 + i * 10}" y="22" font-size="12" text-anchor="middle" fill="${GOLD}">✶</text>`).join('')}`) };
+const BOARD_DRAW = { cpl: () => board({ cross: 2 }), sgt: () => board({ cross: 3 }), ssgt: () => board({ wide: true }), lt: () => board({ gaps: 1, small: 2 }), capt: () => board({ gaps: 1, small: 4 }), major: () => board({ gaps: 2, big: 1 }), col: () => board({ gaps: 2, big: 3 }), '1star': () => board({ zigzag: true, big: 1 }), '2star': () => board({ zigzag: true, big: 2 }), '3star': () => board({ zigzag: true, big: 3 }), '4star': () => board({ zigzag: true, huge: true }) };
 const KR_DRAW = { cpl: () => flowers(2, true), sgt: () => flowers(3, true), ssgt: () => flowers(4, true), lt: () => flowers(1), capt: () => flowers(2), major: () => flowers(3), col: () => flowers(4), '1star': () => flowers(1, false, GOLD), '2star': () => flowers(2, false, GOLD), '3star': () => flowers(3, false, GOLD), '4star': () => flowers(4, false, GOLD) };
-const JP_DRAW = { cpl: () => plate(1, 0, SILVER), sgt: () => plate(1, 1, SILVER), ssgt: () => plate(1, 2, SILVER), lt: () => plate(2, 1), capt: () => plate(2, 2), major: () => plate(2, 3), col: () => plate(3, 1), '1star': () => plate(3, 2), '2star': () => plate(3, 3), '3star': () => plate(3, 4), '4star': () => plate(3, 4) };
+const JP_DRAW = { cpl: () => plate(1, 0, SILVER), sgt: () => plate(1, 1, SILVER), ssgt: () => plate(1, 2, SILVER), lt: () => plate(2, 1), capt: () => plate(2, 2), major: () => plate(2, 3), col: () => plate(3, 1), '1star': () => plate(3, 2), '2star': () => plate(3, 3), '3star': () => plate(3, 4), '4star': () => plate(4, 4) };
 const FIRE_DRAW = { f1: () => bugles(1), f2: () => bugles(2), f2x: () => bugles(2, true), f3: () => bugles(3, true), f4: () => bugles(4, true), f5: () => bugles(5, true) };
 const draw = (rank, cc) => {
   if (!rank) return '';
@@ -169,7 +181,7 @@ const draw = (rank, cc) => {
 
 const POLICE_LIKE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'privatePolice', 'borderPatrol', 'corrections', 'jail', 'federalPrisons', 'privatePrisons', 'gameWarden'];
 const FIRE_LIKE = ['fire', 'airportFire', 'stateFire', 'privateFire'];
-const EMS_LIKE = ['ems', 'privateEms'];
+const EMS_LIKE = ['ems'];
 /** Officers' stripes at sea and in the air (deck and engine; first officers and captains). */
 const STRIPES = {
   merchantMarine: { thirdMate: 1, thirdAE: 1, firstAE: 3, chiefMate: 3, chiefEngineer: 4, master: 4, portCaptain: 4 },
@@ -187,7 +199,10 @@ const OWN = {
   swissGuard: { viceCorporal: () => chevrons(1), corporal: () => chevrons(2), sergeant: () => chevrons(3), sergeantMajor: () => chevrons(3, 1), lieutenant: () => galons(2), captain: () => galons(3), ltColonel: () => galons(4), commandant: () => galons(5) },
   gurkhaContingent: { corporal: () => chevrons(2, 0, '', SILVER), sergeant: () => chevrons(3, 0, '', SILVER), staffSergeant: () => chevrons(3, 0, 'star', SILVER), seniorStaffSergeant: () => chevrons(3, 1, 'star', SILVER), stationInspector: () => pips(2, false, SILVER), asp: () => pips(3, false, SILVER), dsp: () => pips(0, true, SILVER) },
   // Contract guard forces: a lead officer's two chevrons, a supervisor's three, then officers' bars.
-  privateSecurity: { lead: 'cpl', supervisor: 'sgt', shiftLieutenant: 'lt', siteManager: 'capt' },
+  // Private companies use their own system: slide-on epaulettes with bars.
+  privateSecurity: { lead: () => epaulette(1), supervisor: () => epaulette(2), shiftLieutenant: () => epaulette(3), siteManager: () => epaulette(4), director: () => epaulette(4, GOLD) },
+  privateEms: { fto: () => epaulette(1, '#6fcf6f'), supervisor: () => epaulette(2, '#6fcf6f'), manager: () => epaulette(3, '#6fcf6f'), regional: () => epaulette(4, '#6fcf6f') },
+  privateMilitary: { teamLead: () => epaulette(2, '#c2a46a'), detailLead: () => epaulette(3, '#c2a46a'), programManager: () => epaulette(4, '#c2a46a') },
   // Uniformed probation departments and animal services wear police-pattern rank.
   probation: { supervisor: 'lt', chief_cmd1: 'major', chief_cmd2: 'col', chief_cmd3: '1star', chief: '2star' },
   animalControl: { senior: 'cpl', supervisor: 'sgt', director_cmd1: 'lt', director_cmd2: 'capt', director_cmd3: 'major', director: 'col' },
@@ -214,3 +229,18 @@ export function jobInsignia(job, profession, country = 'US') {
 
 /** For the insignia sheet: a rank key drawn in a country's style. */
 export const rankInsignia = (rank, cc = 'US') => (rank?.startsWith('f') ? FIRE_DRAW[rank]?.() ?? '' : draw(rank, cc));
+
+/** Honorary and royal military ranks come as titles ("Honorary Colonel", "Air Vice-Marshal"): the rank's insignia, on the country's pattern. */
+const TITLE_GRADE = [
+  [/Field Marshal|Admiral of the Fleet|Marshal of the Royal Air Force/, 11], [/Air Chief Marshal|(^|\s)General(?! Officer)|(^|\s)Admiral/, 10],
+  [/Lieutenant General|Vice Admiral|Air Marshal/, 9], [/Major General|Rear Admiral|Air Vice-Marshal/, 8], [/Brigadier|Commodore|Air Commodore/, 7],
+  [/Lieutenant Colonel|Wing Commander|(^|\s)Commander/, 5], [/Colonel|Captain \(Navy\)|Group Captain|Honorary Captain/, 6], [/Major|Squadron Leader|Lieutenant Commander/, 4],
+  [/Captain|Flight Lieutenant|(^|\s)Lieutenant/, 3],
+];
+export function titleInsignia(title, cc = 'US') {
+  const hit = TITLE_GRADE.find(([re]) => re.test(title ?? ''));
+  if (!hit) return '';
+  const commonwealth = COMMONWEALTH.includes(cc) || SHOULDER.includes(cc);
+  if (hit[1] === 11 && !commonwealth) return stars(5, GOLD);
+  return militaryInsignia(`${commonwealth ? 'OF' : 'O'}-${hit[1]}`, cc);
+}
