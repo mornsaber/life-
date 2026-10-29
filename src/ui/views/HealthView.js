@@ -13,6 +13,38 @@ import { THERAPIES, MEDS, therapyCost, isMental } from '../../modules/health/Men
 import { ssdiEligibility, ssdiAmount, approvalOdds, ATTORNEY_CAP, disabilityHere, disabilityName, stageLabel } from '../../modules/health/SSDI.js';
 import { countryOf } from '../../modules/world/Countries.js';
 import { VETERANS } from '../../modules/world/CountryLaw.js';
+import { lifestyleOf, riskProfile, bmiLabel, LEVELS } from '../../modules/health/Lifestyle.js';
+import { screeningsFor } from '../../modules/health/HealthEngine.js';
+import { careSystemHere, careCost, CARE_LABEL } from '../../modules/health/EndOfLife.js';
+
+/** Habits and what they do to your odds. */
+function lifestyleCard(state) {
+  const l = lifestyleOf(state);
+  if (!l) return '';
+  const age = state.character.age;
+  const habit = (key) => `<div class="toggle-row"><span class="care-label">${key[0].toUpperCase()}${key.slice(1)}</span>${Object.entries(LEVELS[key]).map(([lv, label]) => button(label, 'health.habit', { arg: `${key}:${lv}`, variant: l[key] === lv ? 'tiny on' : 'tiny', disabled: key === 'drinking' && lv !== 'none' && age < 16 })).join('')}</div>`;
+  const smoking = l.smoking === 'current'
+    ? `<div class="toggle-row"><span class="care-label">🚬 Quit</span>${button('Cold turkey', 'health.quitSmoking', { arg: 'cold', variant: 'tiny', disabled: Boolean(state.yearly['health.quit']) })}${button('Patches & gum', 'health.quitSmoking', { arg: 'nrt', variant: 'tiny', disabled: Boolean(state.yearly['health.quit']) })}${button('Prescription + support', 'health.quitSmoking', { arg: 'rx', variant: 'tiny', disabled: Boolean(state.yearly['health.quit']) })}</div>`
+    : age >= 13 ? `<div class="toggle-row">${button(l.smoking === 'former' ? '🚬 Start again' : '🚬 Start smoking', 'health.smoke', { variant: 'tiny danger' })}</div>` : '';
+  const risks = riskProfile(state);
+  return card('Lifestyle', `${kv([['Smoking', l.smoking === 'current' ? `Smoker · ${l.packYears} pack-years` : l.smoking === 'former' ? `Quit at ${l.quitAge}` : 'Never'], ['Weight', `BMI ${l.bmi.toFixed(1)} · ${bmiLabel(l.bmi)}`]])}
+    ${habit('exercise')}${habit('diet')}${age >= 16 ? habit('drinking') : ''}${smoking}
+    ${risks.length ? `<ul class="plain">${risks.map(([tone, t]) => `<li>${chip(tone === 'good' ? 'lowers risk' : 'raises risk', tone === 'good' ? 'good' : tone === 'bad' ? 'bad' : 'warn')} ${esc(t)}</li>`).join('')}</ul>` : ''}
+    <p class="fine">Your habits change the odds of almost everything on this page: smoking drives lung disease and cancer; weight drives diabetes and blood pressure; exercise protects the heart, mood and memory.</p>`, { icon: '🏃' });
+}
+
+/** Screenings due, vaccines, and planning for the end. */
+function preventionCard(state) {
+  const due = screeningsFor(state);
+  const h = state.health;
+  const care = h.care;
+  const sys = careSystemHere(state);
+  return card('Prevention & Planning', `
+    ${due.length ? `<p>Your next checkup includes: ${due.map((s) => esc(s.name.replace(/^An? /, ''))).join(', ')}.</p>` : '<p class="muted">No screenings due at your age.</p>'}
+    <div class="toggle-row">${button('💉 Flu jab', 'health.fluShot', { variant: 'small', disabled: Boolean(state.yearly['health.fluShot']), hint: 'Cuts flu and pneumonia this year' })}${state.character.age >= 18 ? button(h.directive ? '📝 Advance directive written' : '📝 Write an advance directive', 'health.directive', { variant: h.directive ? 'small on' : 'small', disabled: Boolean(h.directive), hint: 'What you want if you can\'t say' }) : ''}</div>
+    ${care ? kv([['Care', CARE_LABEL[care.kind]], ['Since', `age ${care.since}`], ['Costs you', `${money(careCost(state, care.kind))}/yr`]]) : ''}
+    ${state.character.age >= 60 ? `<p class="fine">Long-term care here is paid for by ${esc(sys.name)}. A care home would cost you about ${money(careCost(state, 'facility'))} a year.</p>` : ''}`, { icon: '🛡️' });
+}
 
 /** Therapy and medication for depression, anxiety and PTSD: two pickers, not a wall of buttons. */
 function carePlan(state, c) {
@@ -136,5 +168,5 @@ export function healthView(state) {
 
   const history = h.history.length ? card('Medical History', `<ul class="history">${[...h.history].reverse().slice(0, 12).map((e) => `<li><small>Age ${e.age}</small> ${esc(e.text)}</li>`).join('')}</ul>`, { icon: '📋' }) : '';
 
-  return `${coverageCard(state)}${conditions}${debt}${mind}${disability}${history}`;
+  return `${coverageCard(state)}${conditions}${lifestyleCard(state)}${preventionCard(state)}${debt}${mind}${disability}${history}`;
 }

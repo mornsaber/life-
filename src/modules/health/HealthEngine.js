@@ -18,13 +18,15 @@
  */
 import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
 import { ruralRisk } from '../life/RuralLife.js';
-import { clamp } from '../../core/Random.js';
+import { clamp, Random } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, isIncarcerated } from '../../core/State.js';
 import { ACUTE, CONDITIONS, BOARD_LICENSES, REHAB_COST, activeConditions, getCondition, vaRatingFor, combinedVaRating, VA_COMPENSATION } from './Conditions.js';
 import { coverage, outOfPocket } from './Insurance.js';
 import { waitYears, systemHere, goPrivateCost, levySurcharge } from './HealthSystems.js';
 import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
+import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } from './Lifestyle.js';
+import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -94,8 +96,11 @@ function diagnose(ctx, c, how) {
   queueForTreatment(ctx, c);
 }
 
-/** Yearly onset probability for each condition. */
+/** Yearly onset probability for each condition: its base rate, times what your habits do to it. */
 function onsetChance(state, id, h) {
+  return baseOnset(state, id, h) * lifestyleRisk(state, id);
+}
+function baseOnset(state, id, h) {
   const age = state.character.age;
   const { stress, fitness, happiness } = state.stats;
   const has = (x) => activeConditions(state).some((c) => c.id === x);
@@ -113,14 +118,32 @@ function onsetChance(state, id, h) {
     case 'alcohol': return age < 16 ? 0 : 0.0025 + (stress > 75 ? 0.006 : 0) + (has('ptsd') ? 0.03 : 0) + (has('depression') ? 0.01 : 0);
     case 'opioids': return age < 16 ? 0 : 0.0005 + (has('backInjury') ? 0.012 : 0) + (has('ptsd') ? 0.004 : 0);
     case 'gambling': return age < 18 ? 0 : 0.0015;
+    case 'copd': return age < 40 ? 0 : 0.0003 + (age - 40) * 0.00002;
+    case 'stroke': return age < 45 ? 0 : 0.001 + (age - 45) * 0.00018 + (untreated('hypertension') ? 0.006 : 0) + (has('diabetes') ? 0.002 : 0) + (has('heartDisease') ? 0.003 : 0);
+    case 'dementia': return age < 65 ? 0 : 0.002 + (age - 65) * 0.0012 + (has('stroke') ? 0.01 : 0);
+    case 'kidneyDisease': return age < 40 ? 0 : 0.0006 + (has('diabetes') ? 0.005 : 0) + (untreated('hypertension') ? 0.003 : 0);
+    case 'liverDisease': return age < 25 ? 0 : 0.0002 + (has('alcohol') ? 0.012 : 0) + (has('hepatitisC') ? 0.01 : 0);
+    case 'hiv': return age < 16 || age > 70 ? 0 : 0.0002;
+    case 'hepatitisC': return age < 16 ? 0 : 0.0002;
+    case 'stimulants': return age < 16 ? 0 : 0.0006 + (stress > 75 ? 0.002 : 0);
     default: return 0;
   }
 }
 
-function onsets(ctx) {
-  const { state, rng } = ctx;
+/** Conditions added after the first set roll on their own dice, so they never shift the older ones' rolls. */
+const LATER = ['copd', 'stroke', 'dementia', 'kidneyDisease', 'liverDisease', 'hiv', 'hepatitisC', 'stimulants'];
+export function healthSideRng(state) {
   const h = state.health;
-  for (const id of ['hypertension', 'diabetes', 'heartDisease', 'cancer', 'arthritis', 'asthma', 'depression', 'anxiety', 'ptsd', 'alcohol', 'opioids', 'gambling']) {
+  h.seed = ((h.seed ?? 11) * 1664525 + 1013904223) >>> 0;
+  return new Random(h.seed);
+}
+
+function onsets(ctx) {
+  const { state } = ctx;
+  const h = state.health;
+  const side = healthSideRng(state);
+  for (const id of ['hypertension', 'diabetes', 'heartDisease', 'cancer', 'arthritis', 'asthma', 'depression', 'anxiety', 'ptsd', 'alcohol', 'opioids', 'gambling', ...LATER]) {
+    const rng = LATER.includes(id) ? side : ctx.rng;
     const existing = getCondition(state, id);
     if (existing && !existing.remission) continue;
     // Recurrence after remission is less likely than a first onset for cancer, more likely for addiction.
@@ -432,8 +455,10 @@ function acuteEvent(ctx) {
   const age = state.character.age;
   const chance = 0.035 + (state.stats.fitness < 35 ? 0.015 : 0) + (age > 60 ? 0.025 : 0);
   if (!rng.chance(chance)) return;
-  const pool = Object.entries(ACUTE).filter(([, a]) => age >= a.minAge && !(a.minAge >= 16 && isIncarcerated(state)));
+  const pool = Object.entries(ACUTE).filter(([, a]) => !a.inflicted && age >= a.minAge && !(a.minAge >= 16 && isIncarcerated(state)));
   const [id, a] = rng.pick(pool);
+  // Vaccinated this year: flu and pneumonia mostly pass you by.
+  if (['flu', 'pneumonia'].includes(id) && state.health.vaccinatedAge === age - 1 && rng.chance(0.6)) return;
   if (a.trauma) ctx.emit('health:trauma', { amount: a.trauma, source: 'accident' });
   ctx.stat('health', a.health);
   if (a.fitness) ctx.stat('fitness', a.fitness);
@@ -457,6 +482,39 @@ function acuteEvent(ctx) {
     ],
     data: { id },
   });
+}
+
+/** Age-appropriate screenings a checkup runs. */
+export const SCREENINGS = [
+  { id: 'bp', name: 'A blood-pressure check', from: 30, to: 120, finds: ['hypertension', 'kidneyDisease'] },
+  { id: 'glucose', name: 'A blood-sugar test', from: 40, to: 120, finds: ['diabetes'] },
+  { id: 'colon', name: 'Bowel cancer screening', from: 45, to: 75, finds: ['cancer'] },
+  { id: 'mammogram', name: 'A mammogram', from: 50, to: 74, gender: 'female', finds: ['cancer'] },
+  { id: 'psa', name: 'A PSA test', from: 55, to: 69, gender: 'male', finds: ['cancer'] },
+  { id: 'lung', name: 'A low-dose lung CT (for smokers)', from: 50, to: 80, smokers: true, finds: ['cancer', 'copd'] },
+  { id: 'bloodborne', name: 'An HIV and hepatitis test', from: 16, to: 120, atRisk: true, finds: ['hiv', 'hepatitisC'] },
+  { id: 'memory', name: 'A memory assessment', from: 70, to: 120, finds: ['dementia'] },
+];
+export function screeningsFor(state) {
+  const age = state.character.age;
+  const l = state.health?.lifestyle;
+  return SCREENINGS.filter((s) => age >= s.from && age <= s.to && (!s.gender || s.gender === state.character.gender) && (!s.smokers || (l && l.smoking !== 'never' && l.packYears >= 20)) && (!s.atRisk || l?.injecting || isIncarcerated(state)));
+}
+
+/** An injury someone else did to you (or an overdose): treated in the emergency department. */
+export function inflictAcute(ctx, id) {
+  const { state, rng } = ctx;
+  const a = ACUTE[id];
+  if (!a) return;
+  if (a.trauma) ctx.emit('health:trauma', { amount: a.trauma, source: 'violence' });
+  ctx.stat('health', a.health);
+  if (a.fitness) ctx.stat('fitness', a.fitness);
+  // Critical injuries kill some people before help arrives.
+  if (rng.chance(a.untreatedDeath * 0.15 * (1 + ruralRisk(state)))) return void ctx.die(a.name);
+  if (a.injury && rng.chance(0.25)) addCondition(ctx, a.injury, { severity: rng.int(25, 55) });
+  const oop = medicalBill(ctx, a.cost, a.name);
+  ctx.stat('health', Math.round(-a.health * 0.6));
+  ctx.log(`${a.name}: ${isIncarcerated(state) ? 'the prison infirmary' : 'the emergency department'} patched you up${oop ? ` ($${oop.toLocaleString()} out of pocket)` : ''}.`, a.icon, 'bad');
 }
 
 /* ------------------------------------------------------------------ */
@@ -501,8 +559,18 @@ export const HealthEngine = {
     });
     bus.on('health:injury', ({ ctx, conditionId, severity, serviceConnected }) => addCondition(ctx, conditionId, { severity, serviceConnected }));
     bus.on('health:checkup', ({ ctx }) => {
-      for (const c of activeConditions(ctx.state)) if (!c.diagnosed && ctx.rng.chance(c.id === 'cancer' ? 0.7 : 0.9)) diagnose(ctx, c, 'Your checkup caught');
+      const screened = screeningsFor(ctx.state);
+      for (const c of activeConditions(ctx.state)) {
+        if (c.diagnosed) continue;
+        // An age-appropriate screening finds it sooner, before it has done much damage.
+        const screen = screened.find((s) => s.finds.includes(c.id));
+        if (!ctx.rng.chance(screen ? 0.95 : c.id === 'cancer' ? 0.5 : c.id === 'hiv' || c.id === 'hepatitisC' ? 0.3 : 0.85)) continue;
+        if (screen) c.severity = Math.max(5, Math.round(c.severity * 0.7));
+        diagnose(ctx, c, screen ? `${screen.name} caught` : 'Your checkup caught');
+      }
     });
+    // Other systems inflict injuries (a stabbing, a shooting, a beating, an overdose): bill them and treat.
+    bus.on('health:acute', ({ ctx, id }) => inflictAcute(ctx, id));
     bus.on('disaster:struck', ({ ctx }) => ctx.emit('health:trauma', { amount: 8, source: 'disaster' }));
     bus.on('military:discharged', ({ ctx, type }) => {
       if (type === 'kia' || type === 'dishonorable') return;
@@ -531,6 +599,9 @@ export const HealthEngine = {
     const mls = levySurcharge(ctx.state);
     if (mls) ctx.spend(mls, 'Medicare Levy Surcharge', { allowDebt: true });
     acuteEvent(ctx);
+    const side = { ...ctx, rng: healthSideRng(state) };
+    lifestyleTick(side);
+    endOfLifeTick(side);
     fitnessForDuty(ctx);
     disabilityTick(ctx);
     medicalDebtTick(ctx);
@@ -540,6 +611,17 @@ export const HealthEngine = {
   },
 
   actions: {
+    ...LifestyleActions,
+    ...EndOfLifeActions,
+    /** The yearly flu jab: cuts the odds of flu and pneumonia this year. */
+    fluShot(ctx) {
+      const { state } = ctx;
+      if (yearlyCount(state, 'health.fluShot')) return ctx.toast('Already vaccinated this year', 'warn');
+      bumpYearly(state, 'health.fluShot');
+      state.health.vaccinatedAge = state.character.age;
+      if (coverage(state).id === 'none') ctx.spend(40, 'Flu vaccine', { allowDebt: true });
+      ctx.log('You had your flu jab. A sore arm for a day.', '💉', 'info');
+    },
     checkup(ctx) {
       const { state } = ctx;
       if (yearlyCount(state, 'health.checkup')) return ctx.toast('You already had a checkup this year.', 'warn');
@@ -647,6 +729,8 @@ export const HealthEngine = {
   },
 
   resolvers: {
+    ...LifestyleResolvers,
+    ...EndOfLifeResolvers,
     driveDrunk(ctx, _data, optionId) {
       const { rng } = ctx;
       if (optionId === 'ride') {

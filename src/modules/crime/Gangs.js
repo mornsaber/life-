@@ -126,7 +126,7 @@ export function gangsTick(ctx) {
   if (c.youthGang && age < 18) {
     c.rep = clamp((c.rep ?? 0) + 3, 0, 100);
     const r = rng.next();
-    if (r < 0.15) { ctx.stat('health', -rng.int(5, 20)); ctx.log(`A boy from a rival estate stabbed one of ${crewName(state)} in the leg. Everyone says you have to go back for him.`, '🩸', 'bad'); }
+    if (r < 0.15) { if (rng.chance(0.3)) ctx.emit('health:acute', { id: 'stabWound' }); else ctx.stat('health', -rng.int(5, 20)); ctx.log(`A boy from a rival estate stabbed one of ${crewName(state)} in the leg. Everyone says you have to go back for him.`, '🩸', 'bad'); }
     else if (r < 0.3) { ctx.earn(Math.round(rng.int(200, 1500) * priceLevel(state)), 'Running packages'); ctx.log('You ran packages across town on a bike. You don\'t ask what\'s in them.', '🚲', 'warn'); commitOffense(ctx, { offenseId: 'possessionWithIntent', discovery: 0.1, evidence: 0.7, context: 'a county-lines investigation' }); }
     else if (r < 0.4) { state.stats.smarts = Math.max(0, state.stats.smarts - 2); ctx.log('You barely went to school this year.', '🎒', 'bad'); }
     // At 16: jumped in for real.
@@ -194,6 +194,7 @@ export const GangResolvers = {
       return ctx.log('You pulled your runners off their corners.', '🏳️', 'info');
     }
     crimeOf(state).rep = clamp((crimeOf(state).rep ?? 0) + 6, 0, 100);
+    if (rng.chance(0.15)) { ctx.log('They came for you first: a car slowed outside your building.', '🚗', 'bad'); ctx.emit('health:acute', { id: 'gunshotWound' }); }
     if (rng.chance(0.5)) {
       d.runners = Math.max(0, d.runners - 1);
       ctx.log('A week later one of your runners was shot dead on his corner. He was seventeen.', '⚰️', 'death');

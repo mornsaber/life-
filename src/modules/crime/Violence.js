@@ -109,6 +109,7 @@ export const ViolenceResolvers = {
         return commitOffense(ctx, { offenseId: 'manslaughter', caught: rng.chance(0.6), discovery: 0.6, evidence: 0.8, context: 'a one-punch death outside a bar', yearsLeft: 99 });
       }
       ctx.log(win ? 'You put him on the ground and left.' : 'You took a beating.', '👊', win ? 'warn' : 'bad');
+      if (!win && rng.chance(0.3)) ctx.emit('health:acute', { id: 'beating' });
       if (rng.chance(0.25)) commitOffense(ctx, { offenseId: 'assault', caught: rng.chance(0.4), discovery: 0.25, evidence: 0.6, context: 'a street fight' });
       return;
     }

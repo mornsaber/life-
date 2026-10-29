@@ -16,6 +16,7 @@ import { drugsOf, PRODUCTS, priceHere } from '../src/modules/crime/Drugs.js';
 import { corruptionOf, drugLawOf, CORRUPTION } from '../src/modules/crime/CrimeWorld.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { outfitsHere, meOf } from '../src/modules/legal/Underworld.js';
+import { gangsTick } from '../src/modules/crime/Gangs.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life({ seed = 3, age = 25, countryId } = {}) {
@@ -173,7 +174,7 @@ const tests = {
   'gangs recruit children; outfits tax your corners'() {
     const { engine, state, ctx } = life({ age: 13 });
     outfitsHere(state, engine.rng);
-    rig(engine, true, () => mod.onAgeUp({ ...ctx, crimeRng: engine.rng }));
+    rig(engine, true, () => gangsTick(ctx));
     answer(engine, state, 'crime.recruit', 'yes');
     assert.ok(state.legal.crime.youthGang);
     state.character.age = 16;

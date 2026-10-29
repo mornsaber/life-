@@ -29,6 +29,7 @@ import { crimeOf } from '../legal/StreetCrime.js';
 import { meOf, outfitsHere } from '../legal/Underworld.js';
 import { priceLevel } from '../world/Countries.js';
 import { drugLawHere } from './CrimeWorld.js';
+import { lifestyleOf } from '../health/Lifestyle.js';
 
 export const PRODUCTS = {
   cannabis: { label: 'Cannabis', icon: '🌿', wholesale: 2500, retail: 7000, origin: ['MX', 'CO', 'MA', 'TH', 'CA', 'US'], harm: 0, lab: 'grow' },
@@ -292,6 +293,15 @@ export function drugsTick(ctx) {
       if (rng.chance(0.3)) { commitOffense(ctx, { offenseId: drugCharge(state, qty), discovery: 0.35, evidence: 0.75, context: 'a runner who gave the police your name' }); break; }
     }
   }
+  // Dealers who use: the product is always there.
+  const hard = { heroin: 'opioids', fentanyl: 'opioids', meth: 'stimulants', cocaine: 'stimulants' }[d.product];
+  if (hard && d.stash > 0.05 && !d.using && rng.chance(0.04 + (state.stats.stress > 70 ? 0.06 : 0))) {
+    d.using = true;
+    ctx.log(`You started using your own ${PRODUCTS[d.product].label.toLowerCase()}. Just to get through the nights, at first.`, PRODUCTS[d.product].icon, 'bad');
+    ctx.emit('health:injury', { conditionId: hard, severity: rng.int(30, 50) });
+    if (d.product === 'heroin' && state.health) lifestyleOf(state).injecting = true;
+  }
+  if (d.using && hard && rng.chance(d.laced ? 0.15 : 0.05)) ctx.emit('health:acute', { id: 'overdose' });
   // Holding territory brings the outfits.
   const outfits = outfitsHere(state, rng);
   if (d.territory >= 15 && outfits.length && !meOf(state) && rng.chance(0.35)) {

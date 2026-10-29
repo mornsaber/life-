@@ -13,6 +13,10 @@
  *   remission    yearly remission chance while treated (mental/addiction/cancer)
  *   disabling    severity at which you can't keep working
  *   va           VA rating by severity band when service-connected
+ *   care         needs long-term care as it advances (EndOfLife.js)
+ *   cure         a short course of treatment cures it (remission is a cure)
+ *
+ * ACUTE `inflicted`: only other systems inflict it (health:acute), never the random yearly event.
  */
 import { clamp } from '../../core/Random.js';
 
@@ -29,6 +33,10 @@ export const ACUTE = {
   appendicitis: { name: 'Appendicitis', icon: '🔪', cost: 28000, health: -10, untreatedDeath: 0.25, minAge: 6 },
   concussion: { name: 'Concussion', icon: '💫', cost: 3500, health: -6, untreatedDeath: 0.01, minAge: 8 },
   pneumonia: { name: 'Pneumonia', icon: '🫁', cost: 14000, health: -10, untreatedDeath: 0.12, minAge: 50 },
+  stabWound: { name: 'Stab wound', icon: '🔪', cost: 30000, health: -18, untreatedDeath: 0.15, minAge: 10, trauma: 12, inflicted: true },
+  gunshotWound: { name: 'Gunshot wound', icon: '🩸', cost: 60000, health: -25, fitness: -6, untreatedDeath: 0.3, minAge: 10, trauma: 18, injury: 'backInjury', inflicted: true },
+  beating: { name: 'Beaten up', icon: '🤕', cost: 6000, health: -10, untreatedDeath: 0.01, minAge: 10, trauma: 8, injury: 'tbi', inflicted: true },
+  overdose: { name: 'Overdose', icon: '💊', cost: 15000, health: -15, untreatedDeath: 0.35, minAge: 12, trauma: 6, inflicted: true },
   carAccident: { name: 'Car accident', icon: '🚗', cost: 22000, health: -16, fitness: -4, untreatedDeath: 0.08, minAge: 16, trauma: 12, injury: 'backInjury' },
 };
 
@@ -43,6 +51,13 @@ export const CONDITIONS = {
   hearingLoss: { kind: 'chronic', name: 'Tinnitus / hearing loss', icon: '👂', annualCost: 300, drain: 0, treatedFactor: 0, mortality: 0, progress: 1, va: [[101, 10]] },
   arthritis: { kind: 'chronic', name: 'Arthritis', icon: '🦵', annualCost: 1800, drain: 1, treatedFactor: 0.3, mortality: 0, progress: 3 },
   asthma: { kind: 'chronic', name: 'Asthma', icon: '💨', annualCost: 1200, drain: 1, treatedFactor: 0, mortality: 0.004, progress: 1 },
+  copd: { kind: 'chronic', name: 'COPD (emphysema)', icon: '🫁', annualCost: 4000, drain: 2, treatedFactor: 0.5, mortality: 0.05, progress: 5, disabling: 80 },
+  stroke: { kind: 'chronic', name: 'Effects of a stroke', icon: '🧠', annualCost: 8000, drain: 2, treatedFactor: 0.4, mortality: 0.06, progress: 2, disabling: 60 },
+  dementia: { kind: 'chronic', name: 'Dementia (Alzheimer\'s)', icon: '🌫️', annualCost: 6000, drain: 1, treatedFactor: 0.8, mortality: 0.08, progress: 9, disabling: 45, care: true },
+  kidneyDisease: { kind: 'chronic', name: 'Chronic kidney disease', icon: '🫘', annualCost: 9000, drain: 2, treatedFactor: 0.4, mortality: 0.04, progress: 4, disabling: 85 },
+  liverDisease: { kind: 'chronic', name: 'Cirrhosis of the liver', icon: '🟤', annualCost: 7000, drain: 3, treatedFactor: 0.5, mortality: 0.08, progress: 6, disabling: 75 },
+  hiv: { kind: 'chronic', name: 'HIV', icon: '🎗️', annualCost: 20000, drain: 2, treatedFactor: 0.05, mortality: 0.08, progress: 6 },
+  hepatitisC: { kind: 'chronic', name: 'Hepatitis C', icon: '🟡', annualCost: 30000, drain: 1, treatedFactor: 0.3, mortality: 0.01, progress: 3, remission: 0.95, cure: true },
   // Mental health
   depression: { kind: 'mental', name: 'Depression', icon: '🌧️', annualCost: 2800, drain: 0, treatedFactor: 0.2, mortality: 0.004, progress: 6, remission: 0.3, happiness: -7, disabling: 90, va: [[40, 30], [70, 50], [101, 70]] },
   anxiety: { kind: 'mental', name: 'Anxiety disorder', icon: '😰', annualCost: 2200, drain: 0, treatedFactor: 0, mortality: 0, progress: 4, remission: 0.3, happiness: -3, stress: 6 },
@@ -50,6 +65,7 @@ export const CONDITIONS = {
   // Addiction
   alcohol: { kind: 'addiction', name: 'Alcohol use disorder', icon: '🍺', annualCost: 0, drain: 2, treatedFactor: 0.2, mortality: 0.012, progress: 8, happiness: -3, dui: 0.08, board: 0.12 },
   opioids: { kind: 'addiction', name: 'Opioid addiction', icon: '💊', annualCost: 0, drain: 3, treatedFactor: 0.2, mortality: 0.04, progress: 10, happiness: -4, board: 0.18, overdose: true },
+  stimulants: { kind: 'addiction', name: 'Stimulant addiction (meth / cocaine)', icon: '⚡', annualCost: 0, drain: 3, treatedFactor: 0.2, mortality: 0.02, progress: 10, happiness: -4, stress: 6, board: 0.15 },
   gambling: { kind: 'addiction', name: 'Gambling addiction', icon: '🎰', annualCost: 0, drain: 0, treatedFactor: 0, mortality: 0.003, progress: 8, happiness: -4, losses: [4000, 20000] },
 };
 
@@ -85,6 +101,7 @@ export const DEATH_CAUSE = {
   hypertension: 'Stroke', diabetes: 'Diabetes complications', heartDisease: 'Heart disease', cancer: 'Cancer',
   tbi: 'Complications of a brain injury', asthma: 'Asthma attack', depression: 'Suicide', ptsd: 'Suicide',
   alcohol: 'Alcohol-related liver failure', opioids: 'Opioid overdose', gambling: 'Suicide',
+  copd: 'COPD', stroke: 'Stroke', dementia: 'Dementia', kidneyDisease: 'Kidney failure', liverDisease: 'Cirrhosis', hiv: 'AIDS-related illness', hepatitisC: 'Liver cancer (hepatitis C)', stimulants: 'Stimulant overdose',
 };
 
 /** VA rating (0–100) for one service-connected condition. */

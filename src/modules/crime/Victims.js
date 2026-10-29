@@ -48,6 +48,8 @@ export function victimTick(ctx) {
     ctx.spend(Math.min(v.loss, Math.max(0, state.finances.cash)), e.id === 'scam' ? 'Lost to a scam' : 'Stolen');
   }
   if (e.health) ctx.stat('health', -rng.int(...e.health));
+  if (e.id === 'mugging' && rng.chance(0.15)) ctx.emit('health:acute', { id: 'stabWound' });
+  if (e.id === 'assault') ctx.emit('health:acute', { id: 'beating' });
   if (e.id === 'carTheft') {
     const car = state.vehicles.owned.sort((a, b) => b.value - a.value)[0];
     v.car = car.value;

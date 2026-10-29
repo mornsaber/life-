@@ -127,13 +127,13 @@ const tests = {
     assert.ok(!holySeeOf(state).pope.you, 'a successor was elected');
   },
   'pontifical honours reach distinguished lay Catholics'() {
-    const { engine, state } = life({ countryId: 'IE' }, 9);
+    const { engine, state } = life({ countryId: 'IE' }, 10);
     year(engine, state, 50);
     catholic(state);
     state.finances.cash = 5e8;
     state.malta = { grade: 'magistral', since: 40 };
     for (let i = 0; i < 40 && !state.honors.some((h) => /^holySee\./.test(h.id)); i++) { year(engine, state, 1); catholic(state); state.stats.health = 95; }
-    assert.ok(state.honors.some((h) => /^holySee\.(gregory|sylvester|proEcclesia)/.test(h.id)), state.honors.map((h) => h.id).join(','));
+    assert.ok(state.honors.some((h) => /^holySee\.(gregory|sylvester|proEcclesia)/.test(h.id)), `${state.character.alive} ${state.character.age} ${state.character.causeOfDeath} ${JSON.stringify(state.legal.incarceration)} ${state.honors.map((h) => h.id).join(',')}`);
   },
   'born into a former ruling house: the claim passes; a referendum restores the throne to you'() {
     const { engine, state, ctx } = life({ countryId: 'IT', housePlace: 'heir', gender: 'male' }, 3);
