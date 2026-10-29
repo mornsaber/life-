@@ -25,6 +25,14 @@ const DRILL_FLAVOR = [
   'Annual Training: joint exercise with active-duty units.',
 ];
 
+/** What a Strategic Sealift Officer's reserve year looks like. */
+const SEALIFT_DRILLS = [
+  'Sealift drill: a week aboard a Ready Reserve ship, testing her break-out from reduced operating status.',
+  'Annual training at a fleet headquarters, planning a convoy across a contested ocean.',
+  'Naval Cooperation and Guidance for Shipping course: how merchant ships sail under navy protection.',
+  'Two weeks with Military Sealift Command, standing watches on a fleet oiler.',
+];
+
 export function reserveTick(ctx, svc) {
   const { rng } = ctx;
   const branch = branchOf(svc);
@@ -51,11 +59,12 @@ export function reserveTick(ctx, svc) {
   const mobilizeChance = (serviceWar(ctx.state, svc)?.mobilized ? 0.7 : 0) + 0.08 * exposure * serviceWarFactor(ctx.state, svc) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
     ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
+    if (svc.mos === 'navy.1665') ctx.log(rng.pick(['Mobilized as a Strategic Sealift Officer: orders to an MSC ship loading tanks and ammunition for the theatre.', 'Your sealift orders came: chief mate of a Ready Reserve roll-on/roll-off ship, activated in five days.', 'You traded your merchant company\'s uniform for the Navy\'s and joined a convoy staff.']), '⚓', 'military');
     runDeployment(ctx, svc, { mobilized: true });
   } else {
     ctx.earn(monthlyBasePay(svc) * DRILL_PAY_MONTHS, `Reserve drill pay — ${rankOf(svc).code}`, { wage: true });
     if (flightHoursOf(svc)) ctx.emit('logbook:add', { hours: flightHoursOf(svc) });
-    ctx.log(`${rng.pick(DRILL_FLAVOR)} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
+    ctx.log(`${rng.pick(svc.mos === 'navy.1665' ? SEALIFT_DRILLS : DRILL_FLAVOR)} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
     ctx.stat('fitness', 1);
   }
 

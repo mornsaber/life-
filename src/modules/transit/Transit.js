@@ -14,6 +14,7 @@
 import { regionOf } from '../life/Regions.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
+import { getProfession } from '../career/JobTrees.js';
 
 export const MODES = {
   drive: { label: 'Drive', icon: '🚗' },
@@ -41,7 +42,8 @@ export function commutes(state) {
   if (state.legal.incarceration || state.character.age < 16) return false;
   if (state.military.service?.component === 'active') return false;
   const job = state.career.job;
-  const working = job && !job.remote && job.workMode !== 'remote' && !job.employer.benefits?.housing;
+  // Rotation jobs (seafarers, offshore hitches, travel nurses) travel to the work, not commute to it.
+  const working = job && !job.remote && job.workMode !== 'remote' && !job.employer.benefits?.housing && !getProfession(job.professionId)?.rotation;
   return Boolean(working || state.education.enrolled);
 }
 

@@ -112,6 +112,7 @@ const NAVY = {
   officer: [
     M('1130', 'Special Warfare Officer (SEAL)', 'infantry', { exposure: 2.0, minFitness: 70, selection: 0.3 }),
     M('1110', 'Surface Warfare Officer', 'logistics', { exposure: 0.8, civilian: 'merchantMarine' }),
+    M('1665', 'Strategic Sealift Officer', 'logistics', { exposure: 0.6, direct: 'sealift', reserveOnly: true, civilian: 'merchantMarine', desc: 'Licensed merchant officers in the Navy Reserve: in war you crew the sealift ships.' }),
     M('1120', 'Submarine Officer', 'engineer', { exposure: 0.4, minSmarts: 65, desc: 'Nuclear-trained; months under the sea.' }),
     M('1310', 'Naval Aviator', 'aviation', { pilot: true, minSmarts: 55, grants: ['commercialPilot', 'instrumentRating'], civilian: 'aviation' }),
     M('1830', 'Intelligence Officer', 'intel'),
@@ -395,6 +396,19 @@ export const DIRECT_COMMISSIONS = {
     credit(state) {
       if (!hasCredential(state, 'lcsw')) return null;
       return 2 + yearsInProfession(state, ['socialWork', 'cps']);
+    },
+  },
+  sealift: {
+    name: 'Strategic Sealift Officer Program', school: 'the Strategic Sealift Officer indoctrination course', maxAge: 42,
+    needs: 'A merchant officer\'s licence (deck or engineering) or a maritime academy degree',
+    cap: { active: 0, reserve: 4 },
+    credit(state) {
+      const lic = (id) => hasCredential(state, id);
+      const academy = hasDegree(state, ['maritimeAcademy']);
+      if (!academy && !lic('mateLicense') && !lic('engineerLicense')) return null;
+      // Ensign out of the academy; a chief mate or chief engineer comes in a few grades up.
+      const top = lic('masterLicense') || lic('chiefEngineerLicense') ? 10 : lic('chiefMateLicense') ? 4 : 0;
+      return Math.max(top, Math.floor(yearsInProfession(state, ['merchantMarine']) / 3));
     },
   },
   cyber: {

@@ -461,6 +461,8 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   // National vetting stands in for a US security clearance.
   if (nation) cleared = true;
   let job = wantedMos ? MOS[wantedMos] : defaultMos(branch, track, wanted);
+  // Some officer programs exist only in the reserve (the Strategic Sealift Officer).
+  if (job?.reserveOnly) component = 'reserve';
   const specialty = entryClearance(ctx, { track, specialty: job?.specialty ?? wanted, mos: job?.id, cleared });
   if (!specialty) return false;
   if (job && specialty !== job.specialty) job = defaultMos(branch, track, specialty);

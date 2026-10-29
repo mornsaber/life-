@@ -20,6 +20,24 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { addHonor } from '../../core/State.js';
 import { priceLevel, COUNTRIES } from '../world/Countries.js';
 import { OFFICES } from '../politics/Offices.js';
+import { enlist, branchFor, rankOf as militaryRank } from './MilitaryEngine.js';
+import { DIRECT_COMMISSIONS, MOS } from './MOS.js';
+
+/** The Navy Reserve's merchant officers: the Strategic Sealift Officer program (and its equivalents abroad). */
+export const SSO_MOS = 'navy.1665';
+const SSO_NAMES = { US: 'U.S. Navy Reserve — Strategic Sealift Officer', GB: 'Royal Naval Reserve (Merchant Navy branch)', CA: 'Royal Canadian Navy Reserve (Naval Control of Shipping)', AU: 'Royal Australian Navy Reserve (Maritime Trade Operations)' };
+export const isSso = (state) => state.military?.service?.mos === SSO_MOS;
+/** Can you take a reserve commission as a sealift officer? { ok, reason, grade } */
+export function ssoEligibility(state) {
+  if (state.military?.service) return { ok: false, reason: 'Already serving' };
+  if (state.military?.history?.some((h) => h.mos === SSO_MOS)) return { ok: false, reason: 'You have already served your sealift commission' };
+  if (!branchFor(state, 'navy')) return { ok: false, reason: 'No navy here' };
+  const dc = DIRECT_COMMISSIONS.sealift;
+  if (state.character.age > dc.maxAge) return { ok: false, reason: `Age ${dc.maxAge} or under` };
+  if (state.character.age < 21) return { ok: false, reason: '21+' };
+  if (dc.credit(state) == null) return { ok: false, reason: dc.needs };
+  return { ok: true, grade: dc.grade(state, 'reserve') };
+}
 
 const NAMES = {
   US: { pool: 'U.S. Merchant Marine (sealift pool)', staff: 'U.S. Maritime Service', command: 'the Military Sealift Command', medal: 'Merchant Marine Expeditionary Medal', combat: 'Merchant Marine Combat Bar', wound: "Mariner's Medal" },
@@ -55,7 +73,15 @@ export const reserveCode = (r, cc) => (cc === 'US' ? `${r.officer ? 'O' : 'E'}-$
 
 /** The player's place in the merchant marine reserve, or null. */
 export function reserveStanding(state) {
-  if (!state.character?.alive || state.military?.service) return null;
+  if (!state.character?.alive) return null;
+  // A sealift officer is in the Navy Reserve proper: the military reserve system runs drills and mobilization.
+  if (isSso(state)) {
+    const svc = state.military.service;
+    const cc = svc.nation ?? state.character.countryId ?? 'US';
+    const r = militaryRank(svc);
+    return { nation: cc, names: namesFor(cc, COUNTRIES[cc]?.demonym ?? 'National'), name: SSO_NAMES[cc] ?? `${branchFor(state, 'navy')?.name ?? 'Navy'} Reserve (sealift)`, rank: { title: r.title, grade: svc.grade + 1, officer: true }, code: r.code, commissioned: true, sso: true, active: Boolean(svc.deployedThisYear) };
+  }
+  if (state.military?.service) return null;
   const job = state.career?.job;
   const credentialed = hasCredential(state, 'mmc') || hasCredential(state, 'twic');
   if (!(isStaff(job) || isMariner(job) || academyGrad(state) || (credentialed && wentToSea(state)))) return null;
@@ -110,6 +136,27 @@ function voyageYear(ctx, war) {
   ]), '🚢', 'info');
 }
 
+/** Academy graduates and newly licensed officers are offered a Navy Reserve commission. */
+function ssoOffer(ctx) {
+  const { state } = ctx;
+  const r = mr(state);
+  const e = ssoEligibility(state);
+  if (!e.ok || state.prompts.some((p) => p.type === 'merchantReserve.sso')) return;
+  // Once out of the academy, then once more when you hold a licence, then every five years.
+  if (r.ssoAsked != null && state.character.age - r.ssoAsked < 5) return;
+  r.ssoAsked = state.character.age;
+  const cc = state.character.countryId ?? 'US';
+  const academy = state.education?.degrees?.some((d) => d.programId === 'maritimeAcademy');
+  ctx.prompt({
+    type: 'merchantReserve.sso', icon: '⚓', title: 'A Reserve Commission',
+    text: `${SSO_NAMES[cc] ?? 'The naval reserve'} wants licensed merchant officers: a commission as ${MOS[SSO_MOS] ? `a ${['Ensign', 'Lieutenant (junior grade)', 'Lieutenant', 'Lieutenant Commander', 'Commander'][e.grade] ?? 'naval officer'}` : 'a reserve officer'}, a few weeks of training a year alongside your sailing career, and — in war — orders to crew the sealift ships.${academy && cc === 'US' ? ' (Kings Point graduates owe it; state academy graduates on the Student Incentive Payment do too.)' : ''}`,
+    options: [
+      { id: 'accept', label: '⚓ Accept the commission', hint: 'Drill pay, a naval pension in time; mobilized in war' },
+      { id: 'decline', label: '🙅 Stay a civilian mariner' },
+    ],
+  });
+}
+
 export const MerchantReserveModule = {
   id: 'merchantReserve',
   order: 52.6,
@@ -123,7 +170,8 @@ export const MerchantReserveModule = {
       if (!war || war.operation !== r.mobilized.war || exempt(state)) return standDown(ctx, war);
       return voyageYear(ctx, war);
     }
-    if (!s || exempt(state)) return;
+    if (!s || exempt(state) || s.sso) return;
+    ssoOffer(ctx, s);
     const war = liveWar(state, s.nation);
     if (!war) {
       // Peacetime: inactive, but the academies' staff wear the uniform.
@@ -146,6 +194,12 @@ export const MerchantReserveModule = {
     });
   },
   actions: {
+    /** Take a Navy Reserve commission as a sealift officer. */
+    joinSso(ctx) {
+      const e = ssoEligibility(ctx.state);
+      if (!e.ok) return ctx.toast(e.reason, 'warn');
+      return enlist(ctx, { branch: 'navy', track: 'officer', component: 'reserve', mos: SSO_MOS });
+    },
     /** Volunteer for the sealift in wartime without waiting for orders. */
     volunteer(ctx) {
       const { state } = ctx;
@@ -158,6 +212,12 @@ export const MerchantReserveModule = {
     },
   },
   resolvers: {
+    sso(ctx, _data, optionId) {
+      if (optionId !== 'accept') return ctx.log('You stayed a civilian mariner. The sealift call-up still reaches you in wartime.', '⚓', 'info');
+      const e = ssoEligibility(ctx.state);
+      if (!e.ok) return ctx.log(`The commission fell through: ${e.reason}.`, '⚓', 'warn');
+      return enlist(ctx, { branch: 'navy', track: 'officer', component: 'reserve', mos: SSO_MOS });
+    },
     callup(ctx, data, optionId) {
       const { state, rng } = ctx;
       const s = reserveStanding(state);

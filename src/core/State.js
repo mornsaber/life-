@@ -634,7 +634,8 @@ export function getCommitments(state) {
   if (school) list.push({ id: 'school', label: `School (${school.pace === 'part' ? 'part-time' : 'full-time'})`, load: school.pace === 'part' ? 1.5 : 3 });
   for (const t of state.credentials.training) list.push({ id: `train.${t.id}`, label: `Training: ${t.name}`, load: 1 });
   const svc = state.military.service;
-  if (svc) list.push({ id: 'military', label: svc.component === 'active' ? 'Active duty' : 'Military reserves', load: svc.component === 'active' ? 4 : 1.5 });
+  // A sealift officer's reserve duty is a few weeks a year, fitted into a seafarer's time ashore.
+  if (svc) list.push({ id: 'military', label: svc.component === 'active' ? 'Active duty' : svc.mos === 'navy.1665' ? 'Navy Reserve (sealift)' : 'Military reserves', load: svc.component === 'active' ? 4 : svc.mos === 'navy.1665' ? 0.75 : 1.5 });
   const c = state.campus;
   if (c && school) {
     if (c.greek) list.push({ id: 'greek', label: c.greek.name, load: 0.5 });

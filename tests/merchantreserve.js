@@ -9,7 +9,8 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
-import { reserveStanding } from '../src/modules/military/MerchantReserve.js';
+import { reserveStanding, ssoEligibility, isSso, SSO_MOS } from '../src/modules/military/MerchantReserve.js';
+import { commutes } from '../src/modules/transit/Transit.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
@@ -86,6 +87,48 @@ const tests = {
     war(state, 'US');
     for (const v of ['career', 'military', 'academia']) if (VIEWS[v]) assert.match(VIEWS[v](state), /./);
     assert.match(VIEWS.career(state), /Merchant Marine Reserve/);
+  },
+  'a licensed mariner takes a Navy Reserve commission as a Strategic Sealift Officer, and keeps sailing'() {
+    const { engine, state } = life('US', 7);
+    state.character.age = 34;
+    for (const id of ['twic', 'mmc', 'stcw', 'mateLicense', 'chiefMateLicense']) state.credentials.held[id] = { earnedAge: 25, renewedAge: 33, status: 'active' };
+    job(engine, state, 'merchantMarine', 'chiefMate');
+    assert.ok(ssoEligibility(state).ok, JSON.stringify(ssoEligibility(state)));
+    state.prompts = [];
+    MODULES.find((m) => m.id === 'merchantReserve').onAgeUp(engine.context());
+    const q = state.prompts.find((p) => p.type === 'merchantReserve.sso');
+    assert.ok(q, 'offered a commission');
+    engine.resolvePrompt(q.id, 'accept');
+    const svc = state.military.service;
+    assert.equal(svc?.mos, SSO_MOS);
+    assert.equal(svc.component, 'reserve');
+    assert.ok(svc.grade >= 2, `a chief mate comes in as a lieutenant (grade ${svc.grade})`);
+    assert.equal(state.career.job?.professionId, 'merchantMarine', 'still sailing');
+    assert.ok(isSso(state) && reserveStanding(state).sso);
+    assert.ok(!commutes(state), 'seafarers do not commute');
+    // The military reserve runs the year: sealift drills, not land navigation.
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(state.military.service, 'still in the reserve');
+    const html = VIEWS.military(state, {});
+    assert.match(html, /Strategic Sealift Officer/);
+    assert.doesNotMatch(html, /NaN|undefined/);
+    // No second, civilian call-up runs alongside the Navy's.
+    war(state, 'US');
+    state.prompts = [];
+    MODULES.find((m) => m.id === 'merchantReserve').onAgeUp(engine.context());
+    assert.ok(!state.prompts.some((p) => p.type === 'merchantReserve.callup'));
+  },
+  'no commission without a licence or an academy degree; and only up to 42'() {
+    const { engine, state } = life('US', 8);
+    state.character.age = 30;
+    for (const id of ['twic', 'mmc', 'stcw']) state.credentials.held[id] = { earnedAge: 22, renewedAge: 29, status: 'active' };
+    job(engine, state, 'merchantMarine', 'able');
+    assert.ok(!ssoEligibility(state).ok);
+    state.credentials.held.mateLicense = { earnedAge: 29, renewedAge: 29, status: 'active' };
+    assert.ok(ssoEligibility(state).ok);
+    state.character.age = 45;
+    assert.ok(!ssoEligibility(state).ok);
   },
 };
 

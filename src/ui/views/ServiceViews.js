@@ -38,7 +38,7 @@ import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
 import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcContracts.js';
-import { reserveStanding } from '../../modules/military/MerchantReserve.js';
+import { reserveStanding, ssoEligibility } from '../../modules/military/MerchantReserve.js';
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 
@@ -218,13 +218,14 @@ export function merchantReserveCard(state) {
   const war = s && warIn(state, s.nation);
   const live = war && war.phase !== 'ceasefire' && (war.intensity >= 2 || war.mobilized);
   const m = r?.mobilized;
-  const status = m ? `Mobilized for ${esc(m.war)} · ${m.voyages} voyage${m.voyages === 1 ? '' : 's'}` : s?.commissioned ? 'Active — academy staff commission' : live ? 'Liable to call-up' : 'Inactive (peacetime)';
+  const status = s?.sso ? (s.active ? 'Mobilized with the Navy' : 'Navy Reserve officer — drills each year, mobilized in war') : m ? `Mobilized for ${esc(m.war)} · ${m.voyages} voyage${m.voyages === 1 ? '' : 's'}` : s?.commissioned ? 'Active — academy staff commission' : live ? 'Liable to call-up' : 'Inactive (peacetime)';
+  const sso = s && !s.sso ? ssoEligibility(state) : null;
   return card('⚓ Merchant Marine Reserve', `
     ${s ? `<p>${militaryInsignia(s.code, s.nation)} <b>${esc(s.rank.title)}</b> · ${esc(s.name)}</p>` : ''}
     ${kv([['Status', status], ['Called up', 'In wartime, at any age']])}
-    ${live && !m ? `<div class="toggle-row">${button('🚢 Volunteer for the sealift', 'merchantReserve.volunteer', { variant: 'small' })}</div>` : ''}
+    <div class="toggle-row">${live && !m && !s?.sso ? button('🚢 Volunteer for the sealift', 'merchantReserve.volunteer', { variant: 'small' }) : ''}${sso ? button('⚓ Take a Navy Reserve commission', 'merchantReserve.joinSso', { variant: 'small', disabled: !sso.ok, hint: sso.ok ? 'Strategic Sealift Officer: drills, a pension, sealift orders in war' : sso.reason }) : ''}</div>
     ${(r?.served ?? []).length ? `<p class="fine">Wartime service: ${r.served.map((w) => `${esc(w.war)} (${w.from}–${w.to}, ${w.voyages} voyages)`).join(' · ')}</p>` : ''}
-    <p class="fine">Seafarers and maritime academy graduates are a wartime reserve: their ships are requisitioned and they sail under naval orders. Academy faculty and staff hold reserve commissions year-round.</p>`, { icon: '⚓', accent: m ? 'red' : 'blue' });
+    <p class="fine">${s?.sso ? 'As a sealift officer your reserve service runs through the Military tab: drills, evaluations, promotions, a reserve pension, and mobilization in wartime to crew the sealift ships. Your sailing career carries on beside it.' : 'Seafarers and maritime academy graduates are a wartime reserve: their ships are requisitioned and they sail under naval orders. Licensed officers can instead take a Navy Reserve commission as Strategic Sealift Officers. Academy faculty and staff hold reserve commissions year-round.'}</p>`, { icon: '⚓', accent: m ? 'red' : 'blue' });
 }
 
 /** Coup plots (serving officers) and foreign-army contracts (retired officers): Kingmakers.js. */
