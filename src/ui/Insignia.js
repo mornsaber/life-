@@ -82,10 +82,12 @@ const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO'
 const galons = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${6 + i * 5}" width="24" height="3" rx="1" fill="${i === 1 && n === 5 ? SILVER : color}"/>`).join(''));
 const sleeve = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="4" y="${26 - i * 6}" width="26" height="3.4" rx="1" fill="${color}"/>`).join(''));
 
-/** Rank keys: sgt, ssgt (senior NCO), lt, capt, major, col, 1star…4star; fire: f1…f5. */
+/** Rank keys: cpl (senior officer/corporal), sgt, ssgt (senior NCO), lt, capt, major, col, 1star…4star; fire: f1…f5. */
 const CMD = (id) => { const m = /_cmd(\d)$/.exec(id); return m ? Number(m[1]) : 0; };
 const TOP = /^(chief|superintendent|undersheriff|administrator|director|regional|usMarshal|chiefPatrol|fsd)$/;
 function policeRank(id, key) {
+  // Senior patrol officers, senior troopers and senior detention officers wear a corporal's two chevrons.
+  if (/^(senior|corporal|seniorTrooper)$/.test(id) && key !== 'gameWarden') return 'cpl';
   if (/^(sergeant|detSergeant|corporalSergeant)$/.test(id)) return 'sgt';
   if (/^(lieutenant|detLieutenant|supervisory)$/.test(id)) return 'lt';
   if (/^(captain|detCaptain|chiefOfSecurity|watch)$/.test(id)) return 'capt';
@@ -116,9 +118,9 @@ function emsRank(id) {
   if (id === 'chief' || id === 'director') return '4star';
   return null;
 }
-const US_DRAW = { sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
-const UK_DRAW = { sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`) };
-const GALON_DRAW = { sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
+const US_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
+const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`) };
+const GALON_DRAW = { cpl: () => chevrons(1), sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
 const FIRE_DRAW = { f1: () => bugles(1), f2: () => bugles(2), f2x: () => bugles(2, true), f3: () => bugles(3, true), f4: () => bugles(4, true), f5: () => bugles(5, true) };
 const draw = (rank, cc) => {
   if (!rank) return '';
@@ -136,13 +138,19 @@ const STRIPES = {
   aviation: { cfi: 2, fo: 3, majorFo: 3, captain: 4, majorCaptain: 4, widebodyCaptain: 4, checkAirman: 4, chiefPilot: 4, dfo: 4 },
   charterAviation: { charterFo: 3, cargoFo: 3, charterCaptain: 4, cargoCaptain: 4, corporatePilot: 4, leadPilot: 4, flightDeptManager: 4 },
   tsa: { officer: 2, lead: 3, bdo: 3, inspector: 3, supervisor: 4, manager: 4 },
+  // Cabin crew: pursers and inflight managers wear sleeve stripes (silver), line crew their wings.
+  flightAttendant: { purser: 1, intlPurser: 2, supervisor: 2, baseManager: 3, director: 3 },
 };
+const SILVER_STRIPES = ['tsa', 'flightAttendant'];
 /** Ranks of the Vatican's and Singapore's own services, and the Swiss Guard. */
 const OWN = {
   vaticanGendarmerie: { viceBrigadier: 'sgt', brigadier: 'ssgt', inspector: 'lt', viceCommissioner: 'capt', commissioner: 'major', commandant: 'col' },
   swissGuard: { viceCorporal: () => chevrons(1), corporal: () => chevrons(2), sergeant: () => chevrons(3), sergeantMajor: () => chevrons(3, 1), lieutenant: () => galons(2), captain: () => galons(3), ltColonel: () => galons(4), commandant: () => galons(5) },
   gurkhaContingent: { corporal: () => chevrons(2, 0, '', SILVER), sergeant: () => chevrons(3, 0, '', SILVER), staffSergeant: () => chevrons(3, 0, 'star', SILVER), seniorStaffSergeant: () => chevrons(3, 1, 'star', SILVER), stationInspector: () => pips(2, false, SILVER), asp: () => pips(3, false, SILVER), dsp: () => pips(0, true, SILVER) },
   privateSecurity: { supervisor: () => chevrons(3, 0, '', SILVER), siteManager: () => bars(2, SILVER) },
+  // Uniformed probation departments and animal services wear police-pattern rank.
+  probation: { supervisor: 'lt', chief_cmd1: 'major', chief_cmd2: 'col', chief_cmd3: '1star', chief: '2star' },
+  animalControl: { senior: 'cpl', supervisor: 'sgt', director_cmd1: 'lt', director_cmd2: 'capt', director_cmd3: 'major', director: 'col' },
 };
 
 /** Insignia for a job, if its people wear rank (null otherwise). */
@@ -153,9 +161,13 @@ export function jobInsignia(job, profession, country = 'US') {
   const own = OWN[key]?.[id];
   if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
   if (OWN[key]) return null;
-  if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], key === 'tsa' ? SILVER : GOLD) : null;
+  if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], SILVER_STRIPES.includes(key) ? SILVER : GOLD) : null;
   if (POLICE_LIKE.includes(key)) return draw(policeRank(id, key), country) || null;
-  if (FIRE_LIKE.includes(key)) return fireRank(id) ? FIRE_DRAW[fireRank(id)]() : null;
+  if (FIRE_LIKE.includes(key)) {
+    // On the French/Italian pattern a driver or engineer is a caporal, with chevrons.
+    if (GALONS.includes(country) && /^(engineer|driver|heo)$/.test(id)) return chevrons(2);
+    return fireRank(id) ? FIRE_DRAW[fireRank(id)]() : null;
+  }
   if (EMS_LIKE.includes(key)) return draw(emsRank(id), country) || null;
   return null;
 }
