@@ -26,7 +26,7 @@ import { charge } from './TaxBook.js';
  *   field     crews, fleets and industrial work — jobs, sites and contracts
  */
 const B2B = ['lawFirm', 'cpaFirm', 'brokerage', 'propertyMgmt', 'consulting', 'engineeringFirm', 'softwareShop', 'developer', 'piAgency', 'insuranceAgency', 'productionCompany', 'recordingStudio', 'marketingAgency', 'staffingAgency', 'architecturePractice', 'surveyFirm', 'translationAgency', 'indieGameStudio', 'designStudio', 'itSecurityFirm', 'medicalBilling', 'answeringService', 'homeInspection', 'bailBondsAgency'];
-const FIELD = ['electrical', 'plumbing', 'trucking', 'hvacContractor', 'cleaning', 'securityCompany', 'courier', 'constructionCo', 'demolitionCo', 'homeBuilder', 'catering', 'charterOperator', 'solarInstaller', 'machineShop', 'warehouse3pl', 'fishingBoat', 'ambulanceService', 'privateFireService', 'nemt', 'towing', 'busCharter', 'movingCompany', 'landscaping', 'excavation', 'craneRental', 'roofing', 'wasteHauling', 'tourBoat', 'pestControl', 'fireProtection', 'homeCareAgency', 'homeHealth'];
+const FIELD = ['electrical', 'plumbing', 'trucking', 'hvacContractor', 'cleaning', 'securityCompany', 'courier', 'constructionCo', 'demolitionCo', 'homeBuilder', 'catering', 'charterOperator', 'solarInstaller', 'machineShop', 'warehouse3pl', 'fishingBoat', 'ambulanceService', 'privateFireService', 'privatePoliceAgency', 'nemt', 'towing', 'busCharter', 'movingCompany', 'landscaping', 'excavation', 'craneRental', 'roofing', 'wasteHauling', 'tourBoat', 'pestControl', 'fireProtection', 'homeCareAgency', 'homeHealth'];
 export const leverFamily = (typeId) => (B2B.includes(typeId) ? 'b2b' : FIELD.includes(typeId) ? 'field' : 'consumer');
 
 /**

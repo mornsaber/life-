@@ -31,7 +31,7 @@ import { licenseEffects, openingLicenseBlock, openingLicenseFees } from './Busin
 import { competitionFactor, effectiveLocations } from '../org/Businesses.js';
 import { initiativeEffects } from './Initiatives.js';
 import { focusEffects } from './OwnerJob.js';
-import { businessLawEffects } from '../politics/Laws.js';
+import { businessLawEffects, lawValue } from '../politics/Laws.js';
 import { structureEffects } from './Structure.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
@@ -73,6 +73,8 @@ export function startEligibility(state, typeId, funding = 'cash', size = 'standa
   if (currentBusiness(state)) return { ok: false, reason: 'You already own a business' };
   if (!holdsLicense(state, type)) return { ok: false, reason: `Needs ${type.credentials.map(credentialName).join(' or ')}` };
   if (type.minExperience && experienceYears(state, type) < type.minExperience) return { ok: false, reason: `Needs ${type.minExperience} yrs of industry experience` };
+  // A business the law must allow (sworn private police where state law licenses them).
+  if (type.law && !type.law[1].includes(lawValue(state, type.law[0]))) return { ok: false, reason: 'Not licensed in this state: private police aren\'t allowed here' };
   const rules = ownershipRules(state, typeId);
   if (!rules.ok) return { ok: false, reason: rules.reason };
   const licenseBlock = openingLicenseBlock(state, typeId);

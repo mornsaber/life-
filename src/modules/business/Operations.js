@@ -29,6 +29,7 @@
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { credentialName } from '../credentials/CredentialRegistry.js';
+import { lawValue } from '../politics/Laws.js';
 
 const U = (name, plural, icon, newCost, usedCost, life) => ({ name, plural, icon, newCost, usedCost, life });
 
@@ -64,6 +65,9 @@ export const OPERATIONS = {
   // Contract fire & rescue: each unit is an apparatus with a crew of four across shifts.
   privateFireService: { unit: U('fire apparatus', 'fire apparatus', '🚒', 900000, 320000, 15), crew: 4, crewName: 'firefighter', perUnit: 520000, upkeep: 35000, start: 2,
     clients: [['A refinery\'s industrial fire brigade', 1, 1.15, { minRep: 50 }], ['Film-set and event fire watch', 1, 0.85], ['A state agency\'s fire-season engine contract', 2, 1.05, { needs: 'wildlandFF2' }], ['A military base\'s fire services (federal contract)', 2, 1.0, { minRep: 60, minUnits: 3 }], ['A hospital campus fire watch', 1, 0.9], ['A private airfield\'s crash-rescue standby', 1, 1.1, { minRep: 45 }]] },
+  // Contract policing: each unit is a marked patrol car with sworn officers across the shifts.
+  privatePoliceAgency: { unit: U('patrol car', 'patrol cars', '🚓', 65000, 28000, 5), crew: 4, crewName: 'officer', perUnit: 420000, upkeep: 14000, start: 3,
+    clients: [['A university\'s campus police contract', 3, 1.05], ['A hospital system\'s police department', 2, 1.1, { minRep: 50 }], ['A freight railroad\'s special agents', 2, 1.15, { minRep: 55 }], ['A gated community\'s special police patrol', 1, 1.0], ['A transit authority\'s station police', 4, 1.05, { minUnits: 3, minRep: 55 }], ['A small town\'s whole police service', 5, 1.2, { minUnits: 4, minRep: 60, law: ['privatePolicing', 'contracting'] }]] },
   ambulanceService: { unit: U('ambulance', 'ambulances', '🚑', 240000, 95000, 8), crew: 2, crewName: 'EMT or paramedic', perUnit: 300000, upkeep: 30000, start: 3,
     clients: [['A hospital system\'s transfer contract', 2, 1.05], ['Nursing-home network discharges', 1, 0.95], ['The county\'s 911 contract', 6, 1.2, { minUnits: 6, minRep: 60, needs: 'paramedic' }], ['Stadium and event standby', 1, 1.1]] },
   nemt: { unit: U('wheelchair van', 'wheelchair vans', '♿', 70000, 30000, 7), crew: 1, crewName: 'driver', perUnit: 95000, upkeep: 6000, start: 5,
@@ -172,6 +176,8 @@ export function offerEligibility(state, biz, offer) {
   if (!o) return { ok: false, reason: 'No operations' };
   if (offer.minUnits && capacity(biz).units < offer.minUnits) return { ok: false, reason: `Needs a fleet of ${offer.minUnits}+ ${o.unit?.plural ?? `${o.crewName}s`}` };
   if (offer.minRep && biz.reputation < offer.minRep) return { ok: false, reason: `Wants a reputation of ${offer.minRep}+` };
+  // Some contracts need the law to allow them (a town can only hand its policing to a firm where the state permits it).
+  if (offer.law && lawValue(state, offer.law[0]) !== offer.law[1]) return { ok: false, reason: 'State law doesn\'t allow this contract here' };
   // Certified employees staff it (see StaffCerts); an owner who holds it covers a small job.
   if (offer.needs) {
     const holders = biz.certs ? biz.certs[offer.needs] ?? 0 : capacity(biz).units * o.crew;
@@ -225,6 +231,7 @@ function offerFrom(rng, [client, units, rate, opts = {}], tier = 0) {
     minUnits: Math.max(opts.minUnits ?? 0, tier >= 2 ? Math.round(size * 0.6) : 0),
     minRep: Math.max(opts.minRep ?? 0, t.minRep),
     needs: opts.needs ?? null,
+    ...(opts.law ? { law: opts.law } : {}),
     tier,
   };
 }

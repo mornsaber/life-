@@ -54,7 +54,7 @@ const SECTOR_TYPES = {
   health: ['practice', 'dentalPractice', 'vetClinic', 'homeHealth', 'counselingPractice', 'ptClinic', 'chiroClinic', 'nutritionPractice', 'homeCareAgency', 'ambulanceService'],
   transport: ['trucking', 'courier', 'charterOperator', 'warehouse3pl', 'nemt', 'busCharter', 'movingCompany', 'wasteHauling', 'tourBoat', 'fishingBoat'],
   tech: ['techStartup', 'softwareShop', 'indieGameStudio', 'designStudio', 'itSecurityFirm', 'productionCompany', 'recordingStudio'],
-  personal: ['salon', 'gym', 'personalTraining', 'cleaning', 'tutoring', 'privateTutoring', 'testPrep', 'privateSchool', 'daycare', 'funeralHome', 'kennel', 'shootingRange', 'flightSchool', 'cdlSchool', 'securityCompany', 'privateFireService'],
+  personal: ['salon', 'gym', 'personalTraining', 'cleaning', 'tutoring', 'privateTutoring', 'testPrep', 'privateSchool', 'daycare', 'funeralHome', 'kennel', 'shootingRange', 'flightSchool', 'cdlSchool', 'securityCompany', 'privatePoliceAgency', 'privateFireService'],
 };
 const SECTOR_OF = Object.fromEntries(Object.entries(SECTOR_TYPES).flatMap(([s, ids]) => ids.map((id) => [id, s])));
 export const SECTORS = {
