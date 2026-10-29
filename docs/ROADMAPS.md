@@ -100,14 +100,15 @@ families are basic.
 ## 5. Health (`health/`)
 
 **Today.** Conditions with care plans, mental health, health systems by country, insurance, SSDI,
-and VA ratings.
+and VA ratings. Lifestyle (smoking, drinking, diet, exercise, weight) drives onset risk; COPD,
+stroke, dementia, kidney and liver disease, HIV and hepatitis C; screenings and vaccines;
+injuries from violence; long-term care by country, hospice and advance directives. See
+`docs/HEALTH-ROADMAP.md`.
 
-**Gaps.** Lifestyle choices are shallow: diet, smoking and quitting, alcohol, cosmetic surgery,
-tattoos.
+**Gaps.** Cosmetic surgery and tattoos; epidemics; clinicians and patients sharing one world.
 
 **Next**
-- Habits: smoking, drinking and diet as ongoing states with quitting attempts, relapses and
-  long-term risk.
+- H6 and H7 from `docs/HEALTH-ROADMAP.md`: clinical careers treat the same conditions; epidemics.
 
 **Later**
 - Cosmetic procedures, tattoos and fitness programmes.
@@ -242,7 +243,10 @@ market by city.
 **Today.**
 - Charges, staged felony cases, prisons, clemency and civil courts.
 - Courts abroad and judicial careers.
-- Street crime and, now, organised crime.
+- Street crime and organised crime.
+- Visible cases with evidence and counterplay, youth court, corruption, violence, the drug
+  supply chain, crimes against you, and casework for the justice careers (`crime/`; see
+  `docs/CRIME-REWORK-PLAN.md`).
 
 **Gaps.**
 - Appeals are short.
@@ -250,6 +254,7 @@ market by city.
 
 **Next**
 - Reentry: parole conditions, halfway houses, ban-the-box jobs, expungement paths.
+- Crime part 2 (`docs/NEXT-STEPS.md` Phase B): heists, real crews, interrogation, heat by agency.
 
 **Later**
 - Wrongful convictions and innocence projects; long appeals that can take years.
