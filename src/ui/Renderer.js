@@ -20,6 +20,8 @@ import { pensionMultiplier, militaryHonors } from '../modules/military/MedalEngi
 import { SERVICE_LIST, rankOfMember } from '../modules/emergency/EmergencyEngine.js';
 import { PROGRAMS } from '../modules/education/Catalog.js';
 import { ACTIVITIES, activityCost } from '../modules/life/Activities.js';
+import { HOBBIES, MAX_HOBBIES, hobbiesOf, tierOf } from '../modules/life/Hobbies.js';
+import { priceLevel } from '../modules/world/Countries.js';
 import { regionOf } from '../modules/life/Regions.js';
 import { careerView } from './views/CareerView.js';
 import { govView } from './views/GovView.js';
@@ -186,7 +188,7 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    return `${retirementLifeCard(state)}${fameCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {
@@ -197,6 +199,21 @@ export const VIEWS = {
     return `${duties}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
+
+function hobbiesCard(state) {
+  const mine = hobbiesOf(state);
+  const ids = Object.keys(mine);
+  const rows = ids.map((id) => {
+    const d = HOBBIES[id];
+    const h = mine[id];
+    return `<div class="case-file"><h4>${d.icon} ${esc(d.label)} ${chip(tierOf(h.skill).label, h.skill >= 75 ? 'good' : '')} <small class="muted">since ${h.since}${h.wins ? ` · 🏆 ${h.wins}` : ''}${h.earned ? ` · earned $${h.earned.toLocaleString()}` : ''}</small></h4>
+      ${meter(h.skill, { label: 'Skill', suffix: '/100' })}${h.best ? `<p class="fine">Best: ${esc(h.best)}</p>` : ''}
+      <div class="action-grid">${button('🔁 Practise', 'hobbies.practise', { arg: id, variant: 'small', disabled: Boolean(state.yearly[`hobby.practise.${id}`]), hint: `$${Math.round(d.cost * priceLevel(state)).toLocaleString()} · skill fades without it` })}${button('🏆 Enter an event', 'hobbies.compete', { arg: id, variant: 'small', disabled: h.skill < 20 || Boolean(state.yearly[`hobby.compete.${id}`]), hint: h.skill < 20 ? 'Amateur level (20+) first' : 'The biggest your level allows' })}${button('✖ Give up', 'hobbies.drop', { arg: id, variant: 'small ghost' })}</div></div>`;
+  }).join('<hr>');
+  const take = ids.length < MAX_HOBBIES ? Object.entries(HOBBIES).filter(([id, d]) => !mine[id] && state.character.age >= d.minAge).map(([id, d]) => button(`${d.icon} ${d.label}`, 'hobbies.take', { arg: id, variant: 'tiny' })).join('') : '';
+  if (!rows && !take) return '';
+  return card('Hobbies', `<p class="muted">Up to ${MAX_HOBBIES}. Beginner → amateur → club → competitive → semi-pro → elite. Sport peaks young; the rest keeps improving. Semi-pros get paid.</p>${rows}${take ? `<p class="fine">Take up:</p><div class="toggle-row">${take}</div>` : ''}`, { icon: '🎯' });
+}
 
 export class Renderer {
   constructor({ root, toastRoot, engine }) {

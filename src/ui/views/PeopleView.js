@@ -8,9 +8,12 @@ import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
+import { STYLES, SCHOOLS, LESSONS, parentingStyle, parentingOf, myMinorChildren } from '../../modules/people/Parenting.js';
+import { laterLifeOf, attorneyCandidates } from '../../modules/people/LaterLife.js';
+import { bestFriend, friendGroupsOf, groupsOf } from '../../modules/people/FriendGroups.js';
 import { TRAITS, traitOf, closeness, interactEligibility, isRomantic } from '../../modules/people/Bonds.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
-import { COUNTRIES } from '../../modules/world/Countries.js';
+import { COUNTRIES, priceLevel } from '../../modules/world/Countries.js';
 import { livesAbroad, parentVisaCheck, VISIT_COST, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
@@ -200,8 +203,47 @@ function friendsCard(state, friends) {
   }).join('');
   const close = friends.filter((f) => f.relationship >= 50).length;
   const note = state.character.age >= 25 && !close ? '<p class="why">No close friends — loneliness takes a toll on happiness and health.</p>' : '';
-  return card('Friends', `${note}<div class="toggle-row">${button('🤝 Make a new friend', 'people.makeFriend', { variant: 'small', disabled: Boolean(state.yearly['people.friend']) })}</div>${groups}
+  const best = bestFriend(state);
+  const F = friendGroupsOf(state);
+  const candidates = friends.filter((f) => f.relationship >= 65 && f.id !== best?.id && !f.formerPartner);
+  const bestRow = `<p>${best ? `🫂 Best friend: <b>${esc(best.firstName)}</b> <small class="muted">since age ${F.since}${F.fallenOut != null ? ' · not speaking' : ''}</small>` : '<span class="muted">No best friend yet.</span>'}</p>${candidates.length ? `<div class="toggle-row">${candidates.slice(0, 4).map((f) => button(`🫂 ${esc(f.firstName)}`, 'friendGroups.best', { arg: f.id, variant: 'tiny', hint: best ? 'Make them your best friend instead' : 'Make them your best friend' })).join('')}</div>` : ''}`;
+  const circles = groupsOf(state).map((g) => `${CIRCLES[g.circle]?.icon ?? '👥'} ${esc(CIRCLES[g.circle]?.label ?? g.circle)} (${g.list.length})`).join(' · ');
+  return card('Friends', `${note}${bestRow}${circles ? `<p class="fine">Friend groups: ${circles}</p>` : ''}<div class="toggle-row">${button('🤝 Make a new friend', 'people.makeFriend', { variant: 'small', disabled: Boolean(state.yearly['people.friend']) })}</div>${groups}
     <p class="fine">Spending time with a friend who moved away means a trip (≈$400) or a video call.</p>`, { icon: '🤝' });
+}
+
+/** Raising your children: an approach, schools, lessons, and how each of them is doing. */
+function parentingCard(state) {
+  const kids = myMinorChildren(state);
+  if (!kids.length) return '';
+  const style = parentingStyle(state);
+  const styles = Object.entries(STYLES).map(([id, st]) => button(st.label, 'parenting.style', { arg: id, variant: state.parentingStyle?.id === id ? 'tiny on' : 'tiny', hint: st.desc })).join('');
+  const rows = kids.map((c) => {
+    const p = parentingOf(c);
+    const age = ageOf(state, c);
+    const schools = age >= 5 ? Object.entries(SCHOOLS).map(([id, sc]) => button(sc.label, 'parenting.school', { arg: `${c.id}:${id}`, variant: p.school === id ? 'tiny on' : 'tiny', disabled: p.school === id || Boolean(state.yearly[`parenting.school.${c.id}`]), hint: sc.fee ? `${money(Math.round(sc.fee * priceLevel(state)))}/yr` : 'Free' })).join('') : '';
+    const lessons = age >= 4 ? Object.entries(LESSONS).map(([id, l]) => button(l.label, 'parenting.lessons', { arg: `${c.id}:${id}`, variant: p.lessons.includes(id) ? 'tiny on' : 'tiny', hint: `${money(Math.round(l.fee * priceLevel(state)))}/yr` })).join('') : '';
+    return `<li><b>${esc(c.firstName)}</b> (${age})${p.school ? ` · ${esc(SCHOOLS[p.school].label.replace(/^\S+\s/, ''))}` : ''}${p.therapy ? ' · 🧠 in therapy' : ''}
+      ${meter(p.wellbeing, { label: '🌤️ Wellbeing', tone: p.wellbeing >= 60 ? 'good' : p.wellbeing >= 40 ? 'mid' : 'bad' })}
+      ${schools ? `<div class="toggle-row">${schools}</div>` : ''}${lessons ? `<div class="toggle-row">${lessons}</div>` : ''}
+      ${p.wellbeing < 50 && !p.therapy ? button('🧠 Find a therapist', 'parenting.therapy', { arg: c.id, variant: 'tiny' }) : ''}</li>`;
+  }).join('');
+  return card('Parenting', `<p class="muted">Your approach: <b>${style ? esc(style.label) : 'not chosen yet'}</b>. It shapes how close you stay and how well they cope.</p><div class="toggle-row">${styles}</div><ul class="history">${rows}</ul>`, { icon: '👪' });
+}
+
+/** Your own old age: who acts for you, and your wishes. */
+function laterLifeCard(state) {
+  if (state.character.age < 55) return '';
+  const L = laterLifeOf(state);
+  const att = L.poa === 'professional' ? 'A solicitor' : L.poa ? (living(state).find((p) => p.id === L.poa)?.firstName ?? '—') : null;
+  const picks = att ? '' : attorneyCandidates(state).slice(0, 4).map((p) => button(`📜 ${esc(p.firstName)}`, 'laterLife.poa', { arg: p.id, variant: 'tiny', hint: 'Power of attorney' })).join('') + button('📜 A solicitor', 'laterLife.poa', { arg: 'professional', variant: 'tiny', hint: 'Impartial; costs more' });
+  return card('Later Life', `${kv([
+    ['Power of attorney', att ? esc(att) : '<span class="neg">None — a court decides if you lose capacity</span>'],
+    ['Advance directive', state.health?.directive ? 'Written' : 'Not yet'],
+    ['Funeral plan', L.funeral ? 'Paid for' : 'None'],
+    ['Driving', L.keys ? 'Given up' : 'Still driving'],
+  ])}<div class="toggle-row">${picks}${state.health?.directive ? '' : button('📝 Write an advance directive', 'health.directive', { variant: 'tiny' })}${L.funeral ? '' : button('🕊️ Prepay your funeral', 'laterLife.funeral', { variant: 'tiny' })}</div>
+  <p class="fine">Care at home or a care home is decided when you need it, on the Health tab.</p>`, { icon: '🌇' });
 }
 
 /** Aging parents: care arrangements, who pays, and legal authority. */
@@ -369,8 +411,10 @@ export function peopleView(state) {
   return `${romance(state)}
     ${group('Partner', '💑', by('partner', 'fiance', 'spouse').filter((p) => p.alive), state)}
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
+    ${parentingCard(state)}
     ${group('Family', '🏡', family, state)}
     ${elderCareCard(state)}
+    ${laterLifeCard(state)}
     ${petsCard(state)}
     ${friendsCard(state, by('friend').filter((p) => p.alive))}
     ${group('Exes', '💔', by('ex'), state)}
