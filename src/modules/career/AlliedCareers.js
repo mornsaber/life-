@@ -99,7 +99,7 @@ export const ALLIED_PROFESSIONS = {
   },
   occupationalTherapy: {
     id: 'occupationalTherapy', name: 'Occupational Therapy', icon: '🧩', sector: 'private', payMultiplier: 1.0, minAge: 22, sizes: { small: 2, medium: 3, large: 3 }, background: 'standard',
-    employers: ['Regional Medical Center Rehab', 'Sunrise Pediatric Therapy', 'Green Valley Rehab & Nursing', 'County School District'],
+    employers: ['Regional Medical Center Rehab', 'Sunrise Pediatric Therapy', 'Green Valley Rehab & Nursing', 'Area Schools Therapy Service'],
     entry: { education: { program: 'mot' } },
     levels: [
       L('ot', 'Occupational Therapist', 5, { req: { credentials: ['otLicense'] } }),
@@ -111,7 +111,7 @@ export const ALLIED_PROFESSIONS = {
   },
   speechPathology: {
     id: 'speechPathology', name: 'Speech-Language Pathology', icon: '🗣️', sector: 'private', payMultiplier: 0.98, minAge: 22, sizes: { small: 2, medium: 3, large: 2 }, background: 'standard',
-    employers: ['County School District', 'Regional Medical Center Rehab', 'Talk Time Pediatric Therapy', 'Green Valley Rehab & Nursing'],
+    employers: ['Area Schools Therapy Service', 'Regional Medical Center Rehab', 'Talk Time Pediatric Therapy', 'Green Valley Rehab & Nursing'],
     entry: { education: { program: 'slpMaster' } },
     levels: [
       L('cf', 'SLP Clinical Fellow', 4, { years: 1 }),
