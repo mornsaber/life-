@@ -295,6 +295,32 @@ const tests = {
       assert.match(VIEWS.cases(state, {}), /Past cases/);
     }
   },
+  'more dockets: probation, child protection, investigators, journalists, court staff; police informants and IA; plea bargaining'() {
+    for (const [prof, lvl, role] of [['probation', 'officer', 'probation'], ['cps', 'caseworker', 'social'], ['privateInvestigator', 'investigator', 'investigator'], ['journalism', 'investigative', 'journalist'], ['courts', 'courtClerk', 'court']]) {
+      const { engine, state, ctx } = life({ age: 33 });
+      hire(ctx, { professionId: prof, levelId: lvl, employer: createEmployer(ctx.rng, state, getProfession(prof), state.character.regionId) });
+      assert.equal(docketRole(state), role, prof);
+      docketTick(ctx);
+      const c = state.docket.open[0];
+      clean(VIEWS.cases(state, {}));
+      engine.dispatch('crime.docket', `${c.id}:${resolutions(c)[0].id}`);
+      assert.ok(!state.docket.open.includes(c), `${role} case closed`);
+    }
+    const { engine, state, ctx } = life({ age: 33 });
+    hire(ctx, { professionId: 'police', levelId: 'detective', employer: createEmployer(ctx.rng, state, getProfession('police'), state.character.regionId) });
+    docketTick(ctx);
+    const c = state.docket.open[0];
+    assert.ok(workActions(c).some((w) => w.id === 'informant') && workActions(c).some((w) => w.id === 'pressure'));
+    rig(engine, true, () => engine.dispatch('crime.docket', `${c.id}:pressure`));
+    assert.equal(state.docket.ia, 1, 'a complaint to Internal Affairs');
+    const p = life({ age: 33 });
+    hire(p.ctx, { professionId: 'prosecution', levelId: 'ada', employer: createEmployer(p.ctx.rng, p.state, getProfession('prosecution'), p.state.character.regionId) });
+    docketTick(p.ctx);
+    const pc = p.state.docket.open[0];
+    assert.ok(resolutions(pc).some((r) => r.id === 'negotiate'));
+    p.engine.dispatch('crime.docket', `${pc.id}:negotiate`);
+    assert.ok(['win', 'settle'].includes(p.state.docket.closed.at(-1).result));
+  },
   'docket cases left too long resolve without you; recruits and commanders carry none'() {
     const { state, ctx } = life({ age: 35 });
     hire(ctx, { professionId: 'prosecution', levelId: 'ada', employer: createEmployer(ctx.rng, state, getProfession('prosecution'), state.character.regionId) });

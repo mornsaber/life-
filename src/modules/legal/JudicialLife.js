@@ -21,6 +21,7 @@
 import { clamp, Random } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { priceLevel } from '../world/Countries.js';
+import { leaveBench } from './Judiciary.js';
 
 export const lifeOf = (state) => (state.judiciary.life ??= { backlog: 30, clerks: 0, opinions: [], courts: [], committee: false, designations: 0, taught: 0, book: false, complaints: 0 });
 const seatOf = (state) => state.judiciary?.seat ?? null;
@@ -99,6 +100,8 @@ export const JudgeActions = {
         bumpYearly(state, key);
         const top = rng.chance(clamp(0.3 + seat.reputation / 200, 0.2, 0.85));
         L.clerks = Math.min(3, Math.max(L.clerks, 1) + (top ? 1 : 0));
+        // A clerkship lasts a year or two: this year's names, for chambers.
+        L.clerkNames = Array.from({ length: L.clerks }, () => { const n = randomName(rng, rng.chance(0.5) ? 'male' : 'female'); return `${n.firstName} ${n.lastName}`; });
         return ctx.log(top ? 'You hired clerks from the top of their class: law-review editors who could write before they arrived.' : 'You hired solid clerks from the local law school. They will learn on the job.', '🧑‍🎓', 'info');
       }
       case 'teach': {
@@ -170,6 +173,12 @@ export function judgeLifeTick(ctx) {
   const seat = seatOf(state);
   if (!seat) return;
   const L = lifeOf(state);
+  // Three findings of misconduct: the conduct commission recommends removal, and the court removes you.
+  if (L.complaints >= 3) {
+    L.complaints = 0;
+    ctx.log('The judicial conduct commission found a pattern of misconduct and recommended your removal. The supreme court agreed.', '📛', 'bad');
+    return leaveBench(ctx, 'Removed from the bench for misconduct');
+  }
   // Its own dice, so the bench's life never shifts the rest of the year's rolls.
   L.seed = ((L.seed ?? 11) * 1664525 + 1013904223) >>> 0;
   const rng = new Random(L.seed);

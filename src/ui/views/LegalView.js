@@ -67,7 +67,7 @@ function benchLife(state, court) {
   const opinions = L.opinions.slice(-6).reverse().map((o) => `<li>${o.landmark ? '🌟' : '✍️'} <i>${esc(o.name)}</i> <small class="muted">age ${o.age}${o.landmark ? ' · landmark' : ''}</small></li>`).join('');
   return `${meter(Math.min(100, L.backlog), { label: `📂 Backlog: ${L.backlog} cases waiting`, tone: L.backlog > 60 ? 'bad' : L.backlog > 35 ? 'mid' : 'good', suffix: '' })}
     ${kv([
-      ['Law clerks', L.clerks ? `${L.clerks}` : 'None — you research alone'],
+      ['Law clerks', L.clerks ? (L.clerkNames?.length ? esc(L.clerkNames.join(', ')) : `${L.clerks}`) : 'None — you research alone'],
       L.courts.length ? ['Problem-solving courts', L.courts.map((k) => `${SPECIAL_COURTS[k].icon} ${SPECIAL_COURTS[k].name}`).join(' · ')] : null,
       L.committee ? ['Committee', 'Judicial Conference committee member'] : null,
       L.designations ? ['Sat by designation', `${L.designations}×`] : null,
