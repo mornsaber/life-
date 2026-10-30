@@ -93,7 +93,8 @@ export const Disasters = {
         ctx.stat('stress', 6 + sev * 2);
         ctx.log(`You spent ${sev >= 2 ? 'a week' : 'three nights'} on a cot in a school gym with a few hundred neighbours and the Red Cross.`, '🏫', 'info');
       } else {
-        const [hurt, killed] = STAY_RISK[sev];
+        const kit = state.disasterPrep?.kit ? 0.6 : 1;
+        const [hurt, killed] = STAY_RISK[sev].map((x) => x * kit);
         if (rng.chance(killed)) {
           ctx.log(`You stayed to save the house. ${disaster.name} took you with it.`, '🪦', 'bad');
           ctx.die(`killed in ${disaster.name}`);
@@ -134,6 +135,10 @@ export const Disasters = {
 function afterStrike(ctx, disaster) {
   const { state, rng } = ctx;
   if (!state.character.alive || state.character.age < 16 || state.legal.incarceration) return;
+  if (state.disasterPrep?.cert) {
+    ctx.stat('happiness', 3);
+    ctx.log(`Your community emergency response team was activated for ${disaster.name}: you checked on the elderly neighbours, shut off gas mains and ran the street's first-aid point until the professionals got through.`, '🦺', 'good');
+  }
   if (state.prompts.some((p) => p.type === 'housing.disasterClaim' || p.type === 'disasters.help') || !rng.chance(0.6)) return;
   const gift = Math.max(50, Math.min(2000, Math.round(state.finances.cash * 0.02 / 50) * 50));
   ctx.prompt({
@@ -149,5 +154,5 @@ function afterStrike(ctx, disaster) {
 }
 
 /** Fuel, a motel and meals away from home, longer for a bigger storm. */
-export const evacuationCost = (state, severity) => Math.round((250 + severity * 450) * (state.character.countryId && state.character.countryId !== 'US' ? 0.8 : 1) / 10) * 10;
+export const evacuationCost = (state, severity) => Math.round((250 + severity * 450) * (state.character.countryId && state.character.countryId !== 'US' ? 0.8 : 1) * (state.disasterPrep?.kit ? 0.8 : 1) / 10) * 10;
 export { aidName };

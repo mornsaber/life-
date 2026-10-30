@@ -34,7 +34,8 @@ export function diyFactor(state) {
 
 export function insurancePremium(property) {
   const risk = Object.values(STATES[REGIONS[property.regionId].state].disasters).reduce((s, p) => s + p, 0);
-  return Math.round(property.value * 0.0035 * (1 + risk * 8));
+  // After big disasters premiums climb (life/DisasterSeason.js); a hardened house costs less to insure.
+  return Math.round(property.value * 0.0035 * (1 + risk * 8) * (property.premiumLoad ?? 1) * (property.hardened?.length ? 0.85 : 1));
 }
 
 export function carryingCosts(property, state = null) {

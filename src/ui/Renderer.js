@@ -47,6 +47,7 @@ import { farmView } from './views/FarmView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
+import { causeOf } from '../modules/economy/Shocks.js';
 import { COUNTRIES, countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
 import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
@@ -415,7 +416,7 @@ export class Renderer {
     const region = regionOf(state);
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
-      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${state.character.posting ? chip(`📍 ${esc(postingLabel(state.character.posting))}`, 'cyan') : chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}${difficultyId(state) !== 'normal' ? ` ${chip(`${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`, difficultyId(state) === 'story' ? 'cyan' : 'bad')}` : ''}</div>
+      <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label}${causeOf(state) ? ` (${causeOf(state).label})` : ''}${state.world?.pandemic?.active ? ' · 🦠 pandemic' : ''} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${state.character.posting ? chip(`📍 ${esc(postingLabel(state.character.posting))}`, 'cyan') : chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}${difficultyId(state) !== 'normal' ? ` ${chip(`${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`, difficultyId(state) === 'story' ? 'cyan' : 'bad')}` : ''}</div>
       <div class="mobile-status" aria-hidden="true">${esc(state.character.firstName)} · ${state.character.age} · <span class="${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span></div>
       <nav class="topbar-actions" aria-label="Game">
         ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo</button>` : ''}

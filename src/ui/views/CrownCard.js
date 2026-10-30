@@ -258,6 +258,7 @@ function nobleCard(state) {
     e && !yours && e.owner === 'family' && age >= 18 ? ['Allowance', `${money(nobleAllowance(state))}/yr from the family trust`] : null,
     e && yours ? ['Heirlooms', `${e.heirlooms} great piece${e.heirlooms === 1 ? '' : 's'} left`] : null,
     n.patronages?.length ? ['Patron of', esc(n.patronages.join(', '))] : null,
+    age >= 16 ? ['Standing in society', `${Math.round(n.standing ?? 55)}/100${n.debut ? ' · presented as a debutante' : ''}`] : null,
   ].filter(Boolean))}
     <div class="action-grid">
       ${age >= 18 ? button('🎯 Host a shooting party', 'nobility.shoot', { hint: 'Useful people come; once a year' }) : ''}

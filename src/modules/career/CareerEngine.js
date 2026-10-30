@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { shockFactor } from '../economy/Shocks.js';
 import { ordainedEntryLevel } from '../community/HolyOrders.js';
 import { workBlock } from '../world/Regimes.js';
 import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
@@ -590,7 +591,7 @@ const LAYOFF_RATE = { expansion: 0.01, peak: 0.015, recession: 0.09, recovery: 0
 export function layoffRisk(state, job) {
   let risk = 0;
   const prof = getProfession(job.professionId);
-  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? prof.cyclical ?? 1 : 1);
+  if (job.sector === 'private') risk = LAYOFF_RATE[state.economy.phase] * (state.economy.phase === 'recession' ? (prof.cyclical ?? 1) * shockFactor(state, job.professionId) : 1);
   // International organisations run on member-state budgets, not the business cycle: cuts are rare.
   if (typeof prof.layoffRate === 'function') risk = prof.layoffRate(state, job);
   else if (prof.layoffRate != null) risk = prof.layoffRate;

@@ -193,7 +193,7 @@ function disasterDamage(ctx, { type, severity, stateId, name, stance }) {
     if (REGIONS[p.regionId].state !== stateId || !rng.chance(0.5)) continue;
     // Staying home to defend it saves some of it (if you were there).
     const defended = stance === 'stay' && p.use === 'primary' && p.regionId === state.character.regionId;
-    const damage = Math.round(p.value * severity * rng.float(0.03, 0.08) * (defended ? 0.6 : 1));
+    const damage = Math.round(p.value * severity * rng.float(0.03, 0.08) * (defended ? 0.6 : 1) * ((p.hardened ?? []).includes(type) ? 0.5 : 1));
     const coverage = type === 'flood' && p.floodInsured ? 0.9 : COVERAGE[type];
     const owed = p.insured ? Math.max(0, Math.round(damage * coverage - p.value * 0.02)) : 0;
     // The adjuster: most claims pay, some are underpaid, a few are denied.
