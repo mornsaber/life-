@@ -21,7 +21,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
 import { stateOf, stateIdOf, regionOf } from '../life/Regions.js';
 import { PRIVATE_PRISON_SHARE } from '../career/JusticeCareers.js';
-import { deathRowTick } from './Prison.js';
+import { deathRowTick, startReentry } from './Prison.js';
 import { JUSTICE } from '../world/CountryLaw.js';
 import { COUNTRIES, priceLevel } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
@@ -499,6 +499,7 @@ export function justiceTick(ctx) {
     const parole = inc.total < 25 && inc.served >= Math.ceil(inc.total / 2) && rng.chance(0.25 + (inc.goodBehavior ?? 0) * 0.1);
     if (inc.yearsLeft <= 0 || parole) {
       legal.incarceration = null;
+      startReentry(state, inc.served);
       legal.probationYears = Math.max(legal.probationYears, 2);
       ctx.log(parole ? 'The parole board granted you early release.' : 'You were released from prison.', '🔓', 'milestone');
       ctx.toast('Released from prison', 'good');

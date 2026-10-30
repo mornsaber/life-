@@ -6,7 +6,7 @@
 import { esc, money, button, card, chip, kv, empty, meter, disclosure } from '../Components.js';
 import { lifeOf, judgeActions, SPECIAL_COURTS } from '../../modules/legal/JudicialLife.js';
 import { SEVERITY_LABEL } from '../../modules/legal/index.js';
-import { paroleEligibility, APPEAL_COST } from '../../modules/legal/Prison.js';
+import { paroleEligibility, APPEAL_COST, PRISON_JOBS, prisonJobBlock, releasePlan } from '../../modules/legal/Prison.js';
 import { sealStatus, pardonStatus, SEAL_COST, spentStatus } from '../../modules/legal/Clemency.js';
 import { stateOf } from '../../modules/life/Regions.js';
 import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
@@ -103,6 +103,12 @@ function civilCard(state) {
 const COUNTRY_NAME = (state) => COUNTRIES[state.character.countryId]?.name ?? 'The country';
 const DEATH_PENALTY_LABEL = { active: 'carries out executions', moratorium: 'has the death penalty but a moratorium on executions', rare: 'has the death penalty but almost never uses it' };
 
+function reentryCard(state) {
+  const r = state.legal.reentry;
+  if (!r || state.legal.incarceration) return '';
+  return card('Coming Home', `<p class="muted">Released at ${r.since} after ${r.served} yr inside. The first three years are the hardest: most people who go back, go back in them.</p>${kv([['Years out', r.years], ['Years in work', r.steady], ['Supervision', state.legal.probationYears > 0 ? `${state.legal.probationYears} yr of parole/probation left` : 'None']])}`, { icon: '🌅' });
+}
+
 function prisonCard(state) {
   const inc = state.legal.incarceration;
   if (!inc) return '';
@@ -111,7 +117,7 @@ function prisonCard(state) {
   const hasDiploma = state.education.degrees.some((d) => d.type === 'highschool');
   const actions = [
     button(hasDiploma ? '📚 Take college courses' : '📚 Study for the GED', 'legal.prisonStudy', { disabled: done('prison.study'), hint: hasDiploma ? `${inc.collegeYears ?? 0}/2 yrs toward an associate's` : '+Good behavior' }),
-    button('🧹 Work a prison job', 'legal.prisonWork', { disabled: done('prison.work'), hint: 'Cents an hour · +Good behavior' }),
+    ...Object.entries(PRISON_JOBS).map(([id, j]) => button(`${j.icon} ${inc.job === id ? `Keep working: ${j.label}` : j.label}`, 'legal.prisonWork', { arg: id, variant: inc.job === id ? 'small' : 'small ghost', disabled: done('prison.work') || Boolean(prisonJobBlock(state, id)), hint: prisonJobBlock(state, id) ?? (inc.job === id ? `${inc.jobYears} yr in this job` : 'Pay grows with seniority') })),
     button('🧠 Treatment program', 'legal.prisonProgram', { disabled: done('prison.program'), hint: inc.programDone || inc.deathRow ? 'Recovery and good behavior' : 'Can take a year off your sentence' }),
     button('🤝 Visiting day', 'legal.prisonVisit', { disabled: done('prison.visit'), hint: '+Happiness, family ties' }),
     button('🏋️ Work out in the yard', 'legal.prisonWorkout', { disabled: done('prison.workout'), hint: '+Fitness' }),
@@ -130,6 +136,8 @@ function prisonCard(state) {
     ['Served', `${inc.served} yr${inc.deathRow ? '' : ` · ${inc.yearsLeft} to go`}`],
     ['Good behavior', inc.goodBehavior ?? 0],
     inc.gang ? ['Gang', '<span class="neg">Affiliated</span>'] : null,
+    inc.job ? ['Prison job', `${PRISON_JOBS[inc.job]?.label ?? inc.job} · ${inc.jobYears ?? 0} yr${inc.trusty ? ' · 🗝️ Trusty' : ''}`] : null,
+    inc.deathRow ? null : ['Release plan', esc(releasePlan(state).text)],
   ])}<div class="action-grid">${actions}</div>`, { icon: '🔒', accent: 'red' });
 }
 
@@ -168,7 +176,7 @@ export function legalView(state) {
     ['Misdemeanors', l.record.filter((r) => r.severity === 'misdemeanor' && !r.sealed).length],
     ['Things that could still catch up with you', l.investigations.length ? `<span class="neg">${l.investigations.length}</span>` : '0'],
   ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(dp?.where ?? (state.character.countryId ? COUNTRY_NAME(state) : stateOf(state).name))} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}
-  ${prisonCard(state)}
+  ${prisonCard(state)}${reentryCard(state)}
   ${civilCard(state)}
   ${benchCard(state)}
   ${secondChanceCard(state)}

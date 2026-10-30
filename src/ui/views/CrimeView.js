@@ -11,6 +11,7 @@ import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../mod
 import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
+import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
 const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
@@ -182,8 +183,22 @@ function corruptionCard(state) {
     <div class="action-grid">${c.cop ? button('✂️ Stop paying', 'crime.dropCop', { variant: 'small' }) : button('🚔 Put a detective on the payroll', 'crime.payrollCop', { variant: 'small danger', disabled: Boolean(state.yearly['crime.payroll']), hint: 'Warnings before raids; slower cases' })}</div>`, { icon: '💵' });
 }
 
+function schemesCard(state) {
+  const list = schemesOf(state);
+  if (!list.length) return '';
+  const R = regulatorsHere(state);
+  const rows = list.map((s) => {
+    const d = SCHEMES[s.kind];
+    return `<div class="case-file"><h4>${d.icon} ${esc(d.name)} ${chip(`since age ${s.since}`)}</h4>
+      ${meter(Math.min(100, s.heat), { max: 100, label: '🔥 Heat', suffix: '/100', tone: s.heat >= 70 ? 'bad' : s.heat >= 40 ? 'mid' : 'good' })}
+      <p class="fine">Taken so far: $${s.take.toLocaleString()} · cover-ups: ${s.coverUps}</p>
+      <div class="action-grid">${button('🛑 Unwind it quietly', 'crime.scheme', { arg: `${s.kind}:stop`, variant: 'small', hint: 'The paper trail stays' })}${button(`🙋 Self-report to ${R.prosecutor}`, 'crime.scheme', { arg: `${s.kind}:confess`, variant: 'small danger', hint: 'Cooperation: a plea and less time' })}</div></div>`;
+  }).join('<hr>');
+  return card('White-Collar Schemes', `<p class="muted">They pay every year and they grow every year — and so does the paper trail. At 100 heat, it comes apart.</p>${rows}`, { icon: '📊', accent: 'red' });
+}
+
 export function crimeView(state) {
-  return `${streetCard(state)}${crimesCard(state)}${drugsCard(state)}${corruptionCard(state)}`;
+  return `${schemesCard(state)}${streetCard(state)}${crimesCard(state)}${drugsCard(state)}${corruptionCard(state)}`;
 }
 
 export function underworldView(state) {

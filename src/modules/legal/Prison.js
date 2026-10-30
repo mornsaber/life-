@@ -20,8 +20,19 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { STATES } from '../life/States.js';
 import { deathPenaltyIn } from './JusticeSystem.js';
+import { OFFENSES } from './Offenses.js';
 
 export const APPEAL_COST = 10000;
+
+export const PRISON_JOBS = {
+  kitchen: { label: 'Kitchen', icon: '🍳', pay: [300, 600], lines: ['You worked the 4 a.m. breakfast line in the kitchen.', 'You ran the steam trays in the kitchen.'] },
+  laundry: { label: 'Laundry', icon: '🧺', pay: [250, 500], lines: ['You folded sheets in the laundry until your hands cracked.'] },
+  library: { label: 'Law library clerk', icon: '📚', pay: [250, 450], stats: { smarts: 2 }, lines: ['You clerked in the law library, helping men write their own appeals.', 'You shelved books and read most of them.'], needs: (s) => (s.education.degrees.some((d) => d.type === 'highschool' || d.type === 'ged') ? null : 'Needs a diploma or GED') },
+  industries: { label: 'Prison industries', icon: '🪚', pay: [600, 1400], lines: ['You built office furniture for government agencies in the industries shop.', 'You ran a CNC machine in prison industries — a real trade.'] },
+  fireCrew: { label: 'Fire crew', icon: '🔥', pay: [900, 1800], behavior: 2, stats: { fitness: 4, stress: 4 }, lines: ['You cut fire line on an inmate hand crew for a dollar an hour and a day off your sentence for each one served.', 'Your crew held a ridge for three days while the fire went around you.'], needs: (s) => (['state', 'jail', 'private'].includes(s.legal.incarceration?.kind) && (s.legal.incarceration?.goodBehavior ?? 0) >= 3 && !OFFENSE_VIOLENT(s) ? null : 'Minimum custody, good behavior, no violent conviction') },
+};
+const OFFENSE_VIOLENT = (state) => state.legal.record.some((r) => OFFENSES[r.offenseId]?.violent);
+export const prisonJobBlock = (state, id) => PRISON_JOBS[id]?.needs?.(state) ?? null;
 export const DEATH_ROW_YEARS_BEFORE_EXECUTION = 10;
 
 const once = (ctx, key, message = 'Already done this year.') => {
@@ -48,10 +59,18 @@ export function paroleEligibility(state) {
   return { ok: true, chance: clamp(0.2 + (inc.goodBehavior ?? 0) * 0.08 - (inc.gang ? 0.15 : 0), 0.05, 0.85) };
 }
 
+/** Out: three years of rebuilding (crime/PrisonLife.js reentryTick). */
+export function startReentry(state, served) {
+  if (served < 1) return;
+  state.legal.reentry = { since: state.character.age, served, years: 0, steady: 0 };
+}
+
 export function release(ctx, how) {
   const { state } = ctx;
+  const served = state.legal.incarceration?.served ?? 0;
   state.legal.incarceration = null;
   state.legal.probationYears = Math.max(state.legal.probationYears, 2);
+  startReentry(state, served);
   ctx.log(how, '🔓', 'milestone');
   ctx.toast('Released from prison', 'good');
 }
@@ -75,12 +94,28 @@ export const PrisonActions = {
     } else ctx.log(`You took college courses by correspondence (${inc.collegeYears} yr).`, '📚');
   },
 
-  prisonWork(ctx) {
-    const inc = ctx.state.legal.incarceration;
-    if (!inc || !once(ctx, 'prison.work')) return;
-    ctx.earn(ctx.rng.int(400, 900), 'Prison job wages');
-    goodBehavior(inc, 1);
-    ctx.log(ctx.rng.pick(['You worked in the prison kitchen for 50 cents an hour.', 'You ran a sewing machine in the prison industries shop.', 'You fought wildfires on an inmate hand crew.', 'You mopped the infirmary floors.']), '🧹');
+  /** Arg: a prison job id. The same job year after year builds seniority, pay and trust. */
+  prisonWork(ctx, jobId) {
+    const { state, rng } = ctx;
+    const inc = state.legal.incarceration;
+    if (!inc) return;
+    const job = PRISON_JOBS[jobId] ?? PRISON_JOBS[inc.job] ?? PRISON_JOBS.kitchen;
+    const id = Object.keys(PRISON_JOBS).find((k) => PRISON_JOBS[k] === job);
+    const why = prisonJobBlock(state, id);
+    if (why) return ctx.toast(why, 'warn');
+    if (!once(ctx, 'prison.work')) return;
+    if (inc.job !== id) { inc.job = id; inc.jobYears = 0; }
+    inc.jobYears = (inc.jobYears ?? 0) + 1;
+    ctx.earn(Math.round(rng.int(...job.pay) * (1 + Math.min(4, inc.jobYears) * 0.15)), 'Prison job wages');
+    goodBehavior(inc, job.behavior ?? 1);
+    for (const [k, v] of Object.entries(job.stats ?? {})) ctx.stat(k, v);
+    if (id === 'fireCrew') state.legal.flags.fireCrewYears = (state.legal.flags.fireCrewYears ?? 0) + 1;
+    if (id === 'industries' && inc.jobYears >= 3) state.legal.flags.prisonTrade = true;
+    if (!inc.trusty && inc.jobYears >= 2 && (inc.goodBehavior ?? 0) >= 5 && !inc.gang) {
+      inc.trusty = true;
+      return ctx.log('Two clean years on the same job: you were made a trusty. Fewer pat-downs, more freedom of movement, a better word at your parole hearing.', '🗝️', 'good');
+    }
+    ctx.log(rng.pick(job.lines), job.icon);
   },
 
   prisonProgram(ctx) {
@@ -150,13 +185,25 @@ export const PrisonActions = {
     release(ctx, 'An appeals court vacated your conviction. You walked out a free person.');
   },
 
+  /** The hearing itself is a prompt: what you say, and what you can show you'll walk out to. */
   prisonParole(ctx) {
-    const { state, rng } = ctx;
+    const { state } = ctx;
     const check = paroleEligibility(state);
     if (!check.ok) return ctx.toast(check.reason, 'warn');
     if (!once(ctx, 'prison.parole', 'The parole board meets once a year.')) return;
-    if (rng.chance(check.chance)) release(ctx, 'The parole board granted your release.');
-    else ctx.log('The parole board denied you this year.', '📋', 'warn');
+    const inc = state.legal.incarceration;
+    const plan = releasePlan(state);
+    ctx.prompt({
+      type: 'legal.paroleHearing', icon: '📋', title: 'Parole Hearing',
+      text: `Three board members, your file, and ten minutes.${inc.trusty ? ' Your trusty status is in the file.' : ''}${victimOpposes(state) ? ' The victim has written to oppose your release.' : ''}
+Release plan: ${plan.text}.`,
+      data: { chance: check.chance },
+      options: [
+        { id: 'remorse', label: '🙇 Take responsibility, in your own words', hint: 'Boards want insight' },
+        { id: 'plan', label: '🗂️ Lead with your release plan', hint: plan.score ? 'A job, a home, people waiting' : 'You don\'t have much of one' },
+        { id: 'innocent', label: '✋ Maintain your innocence', hint: 'Honest, maybe — and boards rarely release people who do' },
+      ],
+    });
   },
 
   prisonEscape(ctx) {
@@ -201,3 +248,33 @@ export function deathRowTick(ctx) {
   ctx.log(`Year ${years} on death row${status === 'active' ? '' : ` (${dp?.where ?? 'the state'} has not carried out an execution in years)`}.`, '⛓️', 'bad');
 }
 
+
+/** What's waiting outside: family who'll take you in, a trade, an education. */
+export function releasePlan(state) {
+  const family = (state.people?.list ?? []).some((p) => p.alive && ['mother', 'father', 'spouse', 'sibling', 'partner'].includes(p.relation) && (p.relationship ?? 0) >= 50);
+  const trade = state.legal.flags.prisonTrade || state.legal.flags.fireCrewYears;
+  const study = (state.legal.incarceration?.collegeYears ?? 0) >= 1;
+  const parts = [family && 'family to live with', trade && 'a trade learned inside', study && 'college credits'].filter(Boolean);
+  return { score: parts.length, text: parts.length ? parts.join(', ') : 'nowhere to go yet' };
+}
+const victimOpposes = (state) => {
+  const r = [...state.legal.record].reverse().find((x) => /prison/.test(x.sentence ?? ''));
+  return Boolean(r && OFFENSES[r.offenseId]?.violent);
+};
+
+export const PrisonResolvers = {
+  paroleHearing(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const inc = state.legal.incarceration;
+    if (!inc) return;
+    const plan = releasePlan(state);
+    let chance = data.chance + (inc.trusty ? 0.1 : 0) - (victimOpposes(state) ? 0.1 : 0);
+    if (optionId === 'remorse') chance += 0.08 + (inc.programDone ? 0.07 : 0);
+    if (optionId === 'plan') chance += plan.score * 0.07;
+    if (optionId === 'innocent') chance -= 0.15;
+    if (rng.chance(clamp(chance, 0.03, 0.9))) return release(ctx, `The parole board granted your release${optionId === 'plan' && plan.score ? ` — they liked the plan: ${plan.text}` : ''}.`);
+    inc.paroleDenials = (inc.paroleDenials ?? 0) + 1;
+    ctx.stat('happiness', -6);
+    ctx.log(`The parole board denied you${optionId === 'innocent' ? ': "lack of insight into the offense"' : ''}. Next hearing in a year.`, '📋', 'warn');
+  },
+};

@@ -19,6 +19,7 @@ import { randomName } from '../../core/State.js';
 import { crimeLevelHere } from './CrimeWorld.js';
 import { priceLevel } from '../world/Countries.js';
 import { divorce } from '../people/PeopleEngine.js';
+import { victimJustice } from './VictimJustice.js';
 
 const partnerOf = (state) => (state.people?.list ?? []).find((p) => p.alive && ['spouse', 'partner'].includes(p.relation));
 const local = (state, n) => Math.round(n * priceLevel(state));
@@ -93,10 +94,15 @@ export const VictimResolvers = {
     const solved = rng.chance({ burglary: 0.12, carTheft: 0.15, mugging: 0.25, assault: 0.45, scam: 0.08 }[id] ?? 0.2);
     if (id === 'carTheft' && data.insured) ctx.earn(Math.round(data.car * 0.8), 'Insurance payout');
     if (id === 'burglary' && rng.chance(0.6)) ctx.earn(Math.round((data.loss ?? 0) * 0.7), 'Home insurance claim');
-    if (!solved) return ctx.log(`You were given a crime reference number. ${rng.pick(['Nobody ever called back.', 'An officer came, took photos, and left.', 'The case was closed after three weeks: no lines of enquiry.'])}`, '🗂️', 'muted');
-    ctx.log(`Police arrested ${data.offender}. ${rng.chance(0.6) ? `${data.offender} pleaded guilty.` : `You testified at the trial, and ${data.offender} was convicted.`}`, '⚖️', 'good');
-    ctx.emit('health:trauma', { amount: -4, source: 'justice' });
-    ctx.stat('happiness', 4);
+    if (!solved) {
+      ctx.log(`You were given a crime reference number. ${rng.pick(['Nobody ever called back.', 'An officer came, took photos, and left.', 'The case was closed after three weeks: no lines of enquiry.'])}`, '🗂️', 'muted');
+      return victimJustice(ctx, { id, offender: data.offender, outcome: 'unsolved' });
+    }
+    const convicted = rng.chance(0.85);
+    ctx.log(`Police arrested ${data.offender}. ${!convicted ? `You testified at the trial. The jury acquitted.` : rng.chance(0.6) ? `${data.offender} pleaded guilty.` : `You testified at the trial, and ${data.offender} was convicted.`}`, '⚖️', convicted ? 'good' : 'warn');
+    ctx.emit('health:trauma', { amount: convicted ? -4 : 3, source: 'justice' });
+    ctx.stat('happiness', convicted ? 4 : -3);
+    victimJustice(ctx, { id, offender: data.offender, outcome: convicted ? 'convicted' : 'acquitted' });
   },
 };
 
@@ -116,6 +122,7 @@ function abuse(ctx, data, optionId) {
   if (optionId === 'report') {
     const convicted = rng.chance(0.4);
     ctx.log(convicted ? `${partner.firstName} was arrested and later convicted of domestic abuse. A protective order keeps them away from you.` : `${partner.firstName} was arrested, but the case was dropped for lack of evidence. You got a protective order.`, '🚓', convicted ? 'good' : 'warn');
+    victimJustice(ctx, { id: 'abuse', offender: `${partner.firstName} ${partner.lastName ?? ''}`.trim(), outcome: convicted ? 'convicted' : 'acquitted' });
   } else ctx.log('You left with a bag and your phone. A refuge took you in; a support worker helped you with the rest.', '🚪', 'info');
   ctx.emit('health:trauma', { amount: -6, source: 'safety' });
   ctx.stat('stress', -10);
@@ -130,14 +137,17 @@ function sexualAssault(ctx, data, optionId) {
   }
   if (optionId === 'support') {
     ctx.emit('health:trauma', { amount: -10, source: 'crisis support' });
+    victimJustice(ctx, { id: 'sexualAssault', offender: data.offender, outcome: 'unsolved' });
     return ctx.log('A crisis-line volunteer listened for an hour and helped you find a counsellor. Healing isn\'t a straight line, but it has started.', '🫂', 'info');
   }
   // Reporting: a forensic exam, a statement, and the slow arithmetic of the justice system.
   ctx.emit('health:trauma', { amount: 5, source: 'reporting' });
   ctx.log('At the referral centre, a nurse examined you gently and an officer took your statement. A victim advocate gave you her number.', '🏥', 'info');
   const charged = rng.chance(0.3);
+  if (!charged) victimJustice(ctx, { id: 'sexualAssault', offender: data.offender, outcome: 'uncharged' });
   if (!charged) return ctx.log('Months later, the prosecutor decided there wasn\'t enough evidence to charge. Your advocate said it didn\'t mean they didn\'t believe you.', '🗂️', 'bad');
   const convicted = rng.chance(0.55);
   ctx.emit('health:trauma', { amount: convicted ? -12 : 8, source: 'trial' });
+  victimJustice(ctx, { id: 'sexualAssault', offender: data.offender, outcome: convicted ? 'convicted' : 'acquitted' });
   return ctx.log(convicted ? `${data.offender} was convicted of sexual assault after you testified, and placed on the sex-offender register. You read your victim impact statement aloud.` : `You testified for two days while the defence picked at every detail. The jury acquitted ${data.offender}.`, '⚖️', convicted ? 'good' : 'bad');
 }

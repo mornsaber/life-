@@ -1256,8 +1256,12 @@ const tests = {
     inc.served = 2;
     engine.rng.chance = () => true;
     engine.dispatch('legal.prisonParole');
+    const hearing = state.prompts.find((p) => p.type === 'legal.paroleHearing');
+    assert.ok(hearing, 'a parole hearing');
+    engine.resolvePrompt(hearing.id, 'remorse');
     engine.rng.chance = chance;
     assert.equal(state.legal.incarceration, null, 'paroled');
+    assert.ok(state.legal.reentry, 'reentry begins');
   },
 
   'dropping out banks transfer credit toward a later degree'() {

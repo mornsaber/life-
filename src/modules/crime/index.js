@@ -19,6 +19,9 @@ import { caseWorkTick, CaseWorkResolvers } from './CaseWork.js';
 import { abuseTick, DomesticAbuseActions, DomesticAbuseResolvers } from './DomesticAbuse.js';
 import { reformTick, ReformActions, ReformResolvers } from './Reform.js';
 import { docketTick, DocketActions } from './Docket.js';
+import { insideTick, reentryTick, PrisonLifeResolvers } from './PrisonLife.js';
+import { victimParoleTick, VictimJusticeResolvers } from './VictimJustice.js';
+import { whiteCollarTick, WhiteCollarActions, WhiteCollarResolvers } from './WhiteCollar.js';
 import { priceLevel } from '../world/Countries.js';
 import { Random } from '../../core/Random.js';
 
@@ -66,9 +69,13 @@ export const CrimeModule = {
     guiltTick(ctx);
     caseWorkTick(ctx);
     docketTick(ctx);
+    insideTick(ctx);
+    reentryTick(ctx);
+    victimParoleTick(ctx);
+    whiteCollarTick(ctx);
   },
 
-  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions, ...ReformActions, ...DocketActions },
+  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions, ...ReformActions, ...DocketActions, ...WhiteCollarActions },
 
-  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers, ...ReformResolvers },
+  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers, ...ReformResolvers, ...PrisonLifeResolvers, ...VictimJusticeResolvers, ...WhiteCollarResolvers },
 };

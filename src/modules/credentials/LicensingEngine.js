@@ -315,7 +315,7 @@ function revoke(ctx, id, status, years, reason, { offenseId = null, permanent = 
 export const REINSTATE_WAIT = { license: 5, certification: 3, endorsement: 3 };
 export const MAX_DENIALS = 3;
 export const REINSTATE_PROBATION = 3;
-const FRAUD = ['prescriptionFraud', 'securitiesFraud', 'insiderTrading', 'taxEvasion', 'falsifiedInspection', 'prosecutorialMisconduct'];
+const FRAUD = ['prescriptionFraud', 'securitiesFraud', 'insiderTrading', 'accountingFraud', 'ponziScheme', 'sanctionsEvasion', 'taxEvasion', 'falsifiedInspection', 'prosecutorialMisconduct'];
 /** Offenses after which a particular credential is gone for good. */
 const PERMANENT_ON = { excessiveForce: ['post', 'postReserve'] };
 
