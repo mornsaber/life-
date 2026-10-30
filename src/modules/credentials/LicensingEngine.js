@@ -169,11 +169,19 @@ export function credentialStatus(state, id) {
   return state.credentials.held[id]?.status ?? null;
 }
 
+/** Held from another country that won't recognize it (police and prison academies are national): you train again here. */
+export function retrainHere(state, id) {
+  const held = state.credentials.held[id];
+  if (held?.status !== 'active' || validHere(state, id)) return false;
+  const here = countryIdOf(state);
+  return !heldCountries(held).includes(here) && recognitionRoute(id, heldCountries(held), here).method === 'notRecognized';
+}
+
 /** Can the player start this credential now, and who pays? */
 export function pursueEligibility(state, id, { academy = false } = {}) {
   const cred = getCredential(id);
   const held = state.credentials.held[id];
-  if (held?.status === 'active') return { ok: false, reason: validHere(state, id) ? 'Held' : `Held in ${held.states.join('/')} — transfer it` };
+  if (held?.status === 'active' && !retrainHere(state, id)) return { ok: false, reason: validHere(state, id) ? 'Held' : `Held in ${held.states.join('/')} — transfer it` };
   if (held?.status === 'revoked') return { ok: false, reason: held.permanent ? 'Permanently revoked' : 'Revoked — petition the board for reinstatement' };
   if (held?.status === 'suspended') return { ok: false, reason: `Suspended until ${held.until}` };
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
@@ -223,7 +231,10 @@ function chargeCost(ctx, eligibility, what) {
 export function grantCredential(ctx, id, { sponsor = null, silent = false } = {}) {
   const { state } = ctx;
   const cred = getCredential(id);
-  state.credentials.held[id] = { earnedAge: state.character.age, renewedAge: state.character.age, status: 'active', sponsor, states: [stateIdOf(state)] };
+  // Retrained abroad: the new qualification sits alongside the one from home.
+  const prior = state.credentials.held[id];
+  const kept = prior?.status === 'active' ? (prior.states ?? []).filter((s) => s !== stateIdOf(state)) : [];
+  state.credentials.held[id] = { earnedAge: state.character.age, renewedAge: state.character.age, status: 'active', sponsor, states: [stateIdOf(state), ...kept] };
   if (!silent) {
     ctx.log(`You earned your ${cred.name}.`, cred.icon, 'good');
     ctx.toast(`${cred.icon} ${cred.name}`, 'good');

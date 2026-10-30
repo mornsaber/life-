@@ -15,6 +15,11 @@ import { makePerson } from '../src/modules/people/PeopleEngine.js';
 import { arrive } from '../src/modules/world/Migration.js';
 import { ExpatLifeModule, expatOf } from '../src/modules/world/ExpatLife.js';
 import { partnerOf } from '../src/modules/people/People.js';
+import { grantCredential, pursueEligibility, hasCredential } from '../src/modules/credentials/LicensingEngine.js';
+import { stateIdOf } from '../src/modules/life/Regions.js';
+import { hire } from '../src/modules/career/CareerEngine.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { getProfession } from '../src/modules/career/JobTrees.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId = 'US', seed = 3, age = 30) {
@@ -78,6 +83,22 @@ const tests = {
       clean(VIEWS.move(state, {}));
     }
     assert.ok(met >= 1 && settled >= 1, `met ${met}, settled ${settled}`);
+  },
+  'a police officer who moves abroad retrains at the local academy'() {
+    const { engine, state, ctx } = life('US', 4, 28);
+    state.stats.fitness = 80;
+    grantCredential(ctx, 'driverLicense', { silent: true });
+    grantCredential(ctx, 'post', { silent: true });
+    state.character.citizenships = ['US', 'GB'];
+    arrive(ctx, 'GB', {});
+    assert.ok(!hasCredential(state, 'post'), 'a US police certificate is not valid in the UK');
+    state.credentials.held.driverLicense.states.push(stateIdOf(state));
+    assert.doesNotMatch(pursueEligibility(state, 'post', { academy: true }).reason ?? '', /Held in/, 'the foreign certificate does not block retraining');
+    hire(ctx, { professionId: 'privatePolice', levelId: 'recruit', employer: createEmployer(engine.rng, state, getProfession('privatePolice'), state.character.regionId) });
+    assert.ok(state.credentials.training.some((t) => t.id === 'post'), 'the force puts you through its academy');
+    for (let y = 0; y < 2; y++) { state.prompts = []; engine.ageUp(); }
+    assert.ok(hasCredential(state, 'post'), 'certified here after the academy');
+    assert.ok(state.credentials.held.post.states.length >= 2, 'the home certificate is kept too');
   },
   'going home after years abroad'() {
     const { engine, state, ctx } = life('US', 9, 28);
