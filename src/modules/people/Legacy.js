@@ -26,7 +26,7 @@
  *   gifts        { [personId]: balance } given during your life
  */
 import { newCommunity } from '../community/Religions.js';
-import { createInitialState, currentYear, addLog, START_YEAR, businessEquity } from '../../core/State.js';
+import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, stocksValue } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
@@ -71,7 +71,7 @@ export const WILL_PLANS = {
 /** Everything you own and owe, for the estate (and the Legacy card). */
 export function estateBalance(state) {
   const inv = state.investing;
-  const holdings = inv ? Object.values(inv.holdings).reduce((s, h) => s + h.value, 0) + inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0) : 0;
+  const holdings = inv ? Object.values(inv.holdings).reduce((s, h) => s + h.value, 0) + inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0) + stocksValue(state) : 0;
   const iras = inv ? inv.ira.roth.value + inv.ira.traditional.value : 0;
   const homes = state.housing.properties.reduce((s, p) => s + p.value, 0);
   const business = businessEquity(state);

@@ -85,7 +85,7 @@ export function landlordTick(ctx, property) {
     property.condition = Math.max(0, property.condition - 5);
     ctx.log(`Tenants damaged your ${property.typeName}: $${cost.toLocaleString()} in repairs.`, '🔨', 'warn');
   }
-  if (managed && collected) ctx.spend(Math.round(collected * MANAGER_FEE), 'Property manager fee', { allowDebt: true });
+  if (managed && collected && !state.housing.empire?.company) ctx.spend(Math.round(collected * MANAGER_FEE), 'Property manager fee', { allowDebt: true });
   if (collected) ctx.earn(collected, `Rental income — ${property.typeName}`);
   const share = units / PROPERTY_TYPES[property.type].units;
   ctx.deduct(Math.round(((property.purchasePrice * 0.8) / 27.5) * share), 'Rental depreciation', { nonCash: true });

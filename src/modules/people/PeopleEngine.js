@@ -407,6 +407,12 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
       assets += part;
     }
   }
+  for (const [id, pos] of Object.entries(state.stocks?.positions ?? {})) {
+    const part = pos.shares * share;
+    assets += Math.round(part * (state.stocks.companies[id]?.price ?? 0));
+    pos.shares -= part;
+    pos.basis = Math.round(pos.basis * (1 - share));
+  }
   const dcGrowth = Math.max(0, state.retirement.dc - (spouse.dcAtMarriage ?? 0));
   const dcSplit = p.prenup ? 0 : Math.round(dcGrowth * 0.5);
   state.retirement.dc -= dcSplit;

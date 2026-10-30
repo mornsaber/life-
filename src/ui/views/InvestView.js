@@ -7,6 +7,7 @@ import { accountsHere, accountRoom } from '../../modules/investing/Brokerage.js'
 import { STOCK_INDEX } from '../../modules/world/CountryLaw.js';
 import { ASSETS, PROFILES, DC_FUNDS, IRA_LIMIT, portfolioValue } from '../../modules/investing/index.js';
 import { yearlyCount } from '../../core/State.js';
+import { stocksCard } from './StocksView.js';
 import { DC_RATES, DEFAULT_DC_RATE } from '../../modules/retirement/RetirementEngine.js';
 
 const pct = (x) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`;
@@ -57,5 +58,5 @@ export function investView(state) {
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">${esc(acc.dc)} fund</h4><div class="toggle-row">${funds}</div>
     `)}
-    <p class="fine">Dividends and gains on holdings kept 1+ year are taxed at long-term capital gains rates (0/15/20%); short-term gains and Treasury interest as ordinary income. Up to $3,000/yr of losses offset income.</p>`, { icon: '📈', accent: 'cyan' });
+    <p class="fine">Dividends and gains on holdings kept 1+ year are taxed at long-term capital gains rates (0/15/20%); short-term gains and Treasury interest as ordinary income. Up to $3,000/yr of losses offset income.</p>`, { icon: '📈', accent: 'cyan' }) + stocksCard(state);
 }

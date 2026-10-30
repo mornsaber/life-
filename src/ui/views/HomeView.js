@@ -11,6 +11,7 @@ import {
   ownBuilder, canDiy, REZONE_COST, SUBDIVIDE_LOTS,
 } from '../../modules/realestate/index.js';
 
+import { portfolio, empireOf, allRentals, RENT_POLICIES, RENT_CONTROL_CAP, COMPANY_MIN_PROPERTIES, companyCost } from '../../modules/realestate/PropertyEmpire.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
   const tone = score >= 740 ? 'good' : score >= 640 ? 'mid' : 'bad';
@@ -143,6 +144,19 @@ function propertyCard(state, p) {
     ${land || p.project ? buildSection(state, p) : `<h4 class="sub">Renovate (one project a year)</h4><div class="toggle-row">${reno}</div>`}`, { icon: t.icon, accent: p.use === 'primary' ? 'green' : '' });
 }
 
+function empireBlock(state) {
+  const pf = portfolio(state);
+  if (!pf.properties) return '';
+  const e = empireOf(state);
+  const controlled = Object.keys(state.housing.rentControl ?? {}).filter((r) => allRentals(state).some((p) => p.regionId === r)).map((r) => esc(REGIONS[r]?.name ?? r));
+  const policies = Object.entries(RENT_POLICIES).map(([id, p]) => button(p.label, 'propertyEmpire.policy', { arg: id, variant: e.policy === id ? 'small on' : 'small', hint: p.hint })).join('');
+  const company = e.company
+    ? button(`🏢 Wind up your management company (${e.company.staff} staff)`, 'propertyEmpire.closeCompany', { variant: 'small', hint: `≈${money(companyCost(state, pf.units))}/yr payroll` })
+    : button('🏢 Start your own management company', 'propertyEmpire.foundCompany', { variant: 'small', disabled: pf.properties < COMPANY_MIN_PROPERTIES, hint: pf.properties < COMPANY_MIN_PROPERTIES ? `Needs ${COMPANY_MIN_PROPERTIES}+ rental properties` : `≈${money(companyCost(state, pf.units))}/yr instead of 10% of rents` });
+  return `${kv([['Portfolio', `${pf.properties} properties · ${pf.let}/${pf.units} units let`], ['Rent roll', `${money(pf.roll)}/yr`], ['Value / debt', `${money(pf.value)} / ${money(pf.debt)}`], ['Average condition', `${pf.condition}/100`], ['Reputation', `${e.reputation}/100${e.reputation < 25 ? ' (slumlord)' : ''}`], ...(controlled.length ? [['Rent control', `${controlled.join(', ')} — rises capped at ${Math.round(RENT_CONTROL_CAP * 100)}%`]] : [])])}
+    <h4 class="sub">Rent reviews</h4><div class="toggle-row">${policies}</div><div class="toggle-row">${company}</div>`;
+}
+
 export function homeView(state) {
   const h = state.housing;
   const rentals = h.properties.filter((p) => rentableUnits(p) > 0).length;
@@ -150,6 +164,6 @@ export function homeView(state) {
   return `${residence(state)}
     ${card('Credit', `${creditGauge(h.credit.score)}${kv([['On-time payments', h.credit.onTime], ['Derogatory marks', h.credit.events.length ? h.credit.events.map((e) => `${e.type} (age ${e.age})`).join(', ') : 'None']])}<p class="fine">Built from on-time rent and mortgage payments; hurt by late payments, evictions, foreclosures, bankruptcy and credit-card debt. Marks fade after 3–10 years.</p>`, { icon: '📊' })}
     ${listings(state)}
-    ${h.properties.length ? `${rentals ? card('Landlording', `<p class="muted">${rentals} rental propert${rentals > 1 ? 'ies' : 'y'}.</p>${button(h.manager ? '🧑‍💼 Property manager: ON (10% of rents)' : '🧑‍💼 Hire a property manager', 'housing.toggleManager', { variant: h.manager ? 'small on' : 'small', hint: 'Handles tenants, evictions and vacancies' })}`, { icon: '🔑' }) : ''}${h.properties.map((p) => propertyCard(state, p)).join('')}` : card('Portfolio', empty('You don\'t own any property yet.'), { icon: '🏘️' })}
+    ${h.properties.length ? `${rentals ? card('Landlording', `<p class="muted">${rentals} rental propert${rentals > 1 ? 'ies' : 'y'}.</p>${h.empire?.company ? '' : button(h.manager ? '🧑‍💼 Property manager: ON (10% of rents)' : '🧑‍💼 Hire a property manager', 'housing.toggleManager', { variant: h.manager ? 'small on' : 'small', hint: 'Handles tenants, evictions and vacancies' })}${empireBlock(state)}`, { icon: '🔑' }) : ''}${h.properties.map((p) => propertyCard(state, p)).join('')}` : card('Portfolio', empty('You don\'t own any property yet.'), { icon: '🏘️' })}
     ${h.properties.length > 1 ? `<p class="fine">Portfolio: ${h.properties.length} properties worth ${money(worth)}.</p>` : ''}`;
 }

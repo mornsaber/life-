@@ -517,7 +517,18 @@ export function investmentsValue(state) {
   if (!inv) return 0;
   const holdings = Object.values(inv.holdings).reduce((s, h) => s + h.value, 0);
   const spec = inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0);
-  return holdings + spec + inv.ira.roth.value + inv.ira.traditional.value;
+  return holdings + spec + inv.ira.roth.value + inv.ira.traditional.value + stocksValue(state);
+}
+
+/** Named stocks, short positions (collateral plus or minus the result) and options. Mirrors investing/StockMarket.js. */
+export function stocksValue(state) {
+  const st = state.stocks;
+  if (!st) return 0;
+  const price = (id) => st.companies[id]?.price ?? 0;
+  const long = Object.entries(st.positions).reduce((s, [id, p]) => s + p.shares * price(id), 0);
+  const short = Object.entries(st.shorts).reduce((s, [id, p]) => s + Math.max(0, (2 * p.entry - price(id)) * p.shares), 0);
+  const options = st.options.reduce((s, o) => s + Math.max(0, (o.kind === 'call' ? price(o.companyId) - o.strike : o.strike - price(o.companyId)) * o.shares), 0);
+  return Math.round(long + short + options);
 }
 
 /** Academic rank of each degree type. Certificates/diplomas sit beside high school. */

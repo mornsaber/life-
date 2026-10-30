@@ -737,17 +737,19 @@ function ownedView(state, biz, ui = {}) {
   return `<div class="toggle-row chips-row biz-tabs">${tabs}</div>${sections[ui.bizTab]()}`;
 }
 
+import { inventionsCard } from './InventionsView.js';
+
 export function businessView(state, ui = {}) {
   if (!state.business) return '';
   const biz = currentBusiness(state);
   if (biz) {
     const page = ownedView(state, biz, ui);
-    if (!BIZ_TABS[ui.bizTab]) return `${conglomerateCard(state)}${page}${holdingsCard(state)}${rivalGroupsCard(state)}${historyCard(state)}`;
+    if (!BIZ_TABS[ui.bizTab]) return `${conglomerateCard(state)}${page}${holdingsCard(state)}${rivalGroupsCard(state)}${inventionsCard(state)}${historyCard(state)}`;
     // The group-level cards sit with the section they belong to.
-    return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
+    return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${inventionsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
   }
-  if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' });
-  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
+  if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' }) + inventionsCard(state);
+  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state)}${inventionsCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
 }
 
 /** Regulators: your share of each market, antitrust exposure, open cases and recent findings. */
