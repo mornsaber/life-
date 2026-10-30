@@ -95,6 +95,11 @@ export function inventionsTick(ctx) {
       continue;
     }
     if (p.status === 'licensed') ctx.earn(p.royalty, `Patent royalties — ${p.name}`);
+    // The company that held it closed or was sold without it: the patent comes back to you.
+    if (p.status === 'company' && ![state.business?.current, ...(state.business?.holdings ?? [])].some((b) => b?.patent?.name === p.name)) {
+      p.status = 'held';
+      ctx.log(`With your company gone, the ${p.name} patent is yours again to license or sell.`, '📜', 'info');
+    }
     // Someone big copies it.
     if (['held', 'company'].includes(p.status) && rng.chance(0.05 + p.quality / 1500) && !pending(state, 'inventions.infringe')) {
       ctx.prompt({

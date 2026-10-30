@@ -13,9 +13,10 @@
  * state.migration.expat = { cc, since, belonging, circle, settled, askedAt, returnedAt, yearsAway }
  */
 import { COUNTRIES, isCitizen } from './Countries.js';
-import { birthCountryOf, speaksLocal, localLanguage, LANGUAGE_FLUENT } from './Immigration.js';
+import { birthCountryOf, residencyOf, speaksLocal, localLanguage, LANGUAGE_FLUENT } from './Immigration.js';
 import { arrive, departureBlock, ensureMigration } from './Migration.js';
 import { countryIdOf } from '../life/Regions.js';
+import { warIn } from './War.js';
 import { partnerOf } from '../people/People.js';
 import { makePerson, divorce } from '../people/PeopleEngine.js';
 
@@ -38,7 +39,17 @@ function arrived(ctx, cc) {
   const { state } = ctx;
   const m = ensureMigration(state);
   const prev = m.expat;
-  m.expat = { cc, since: state.character.age, belonging: speaksLocal(state, cc) ? 40 : 15, circle: null, settled: false, askedAt: null, returnedAt: null, yearsAway: (prev?.yearsAway ?? 0) };
+  // Moved here as a child: this is where you grew up, not somewhere new.
+  const came = [...(m.history ?? [])].reverse().find((h) => h.to === cc);
+  const grewUp = !came || came.age < 16;
+  m.expat = { cc, since: came?.age ?? 0, belonging: grewUp ? 75 : speaksLocal(state, cc) ? 40 : 15, circle: grewUp ? 'local' : null, settled: grewUp, askedAt: null, returnedAt: null, yearsAway: (prev?.yearsAway ?? 0) };
+  return !grewUp;
+}
+
+/** Home is somewhere you could go back to: a citizen, free to leave, no war or persecution waiting. */
+function canReturn(state, home) {
+  const res = residencyOf(state);
+  return isCitizen(state, home) && !departureBlock(state) && !warIn(state, home) && state.legal?.flags?.persecuted !== home && !['asylum', 'refugee'].includes(res?.status);
 }
 
 function circlePrompt(ctx, e) {
@@ -88,7 +99,7 @@ function settlePrompt(ctx, e) {
   const home = birthCountryOf(state);
   const partner = partnerOf(state);
   const local = partner && partner.nationality === e.cc;
-  const canGoHome = isCitizen(state, home) && !departureBlock(state);
+  const canGoHome = canReturn(state, home);
   e.askedAt = state.character.age;
   ctx.prompt({
     type: 'expatLife.settle', icon: '🧭', title: 'Where Is Home Now?',
@@ -127,7 +138,7 @@ export const ExpatLifeModule = {
     }
     const e = m?.expat;
     if (!e || e.cc !== cc || e.returnedAt != null) {
-      arrived(ctx, cc);
+      if (!arrived(ctx, cc)) return;
       ctx.stat('stress', 4);
       ctx.log(`Culture shock in ${COUNTRIES[cc].name}: ${speaksLocal(state, cc) ? 'you speak the language, but not the unwritten rules' : 'menus, forms and jokes all go over your head'}.`, '🧳', 'info');
       return circlePrompt(ctx, m.expat);
@@ -219,7 +230,7 @@ export const ExpatLifeModule = {
       }
       if (optionId === 'open') return ctx.log('You decided not to decide. Another year, then.', '🤷');
       const home = birthCountryOf(state);
-      if (!isCitizen(state, home) || departureBlock(state)) return ctx.toast('You can\'t leave right now.', 'warn');
+      if (!canReturn(state, home)) return ctx.toast('You can\'t leave right now.', 'warn');
       const partner = partnerOf(state);
       if (partner && partner.nationality === e.cc) {
         if (rng.chance(Math.min(0.9, partner.relationship / 110))) {
