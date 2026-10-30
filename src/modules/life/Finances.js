@@ -149,6 +149,7 @@ export const Finances = {
     // (park housing, embassy quarters, base housing) waive the rent share.
     let living = 0;
     let insurance = 0;
+    let floor = 0;
     if (age >= 18 && !state.legal.incarceration) {
       // Prices where you actually live: a duty station abroad, or home.
       const postedRegion = postedHousing(state) ? REGIONS[postingOf(state).regionId] : null;
@@ -177,14 +178,16 @@ export const Finances = {
         const base = Math.min(spendable, Math.max(steadyIncome(state), spendable * 0.5));
         const discretionary = base - tax * (base / Math.max(1, ordinary + informalPay)) - housing - cashDeductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
-        const minimum = atHome ? LIVING_AT_HOME : LIVING_MINIMUM;
+        // The bare minimum is local: $6,000 in an average US city, far less in Lilongwe or Port-au-Prince.
+        const minimum = (atHome ? LIVING_AT_HOME : LIVING_MINIMUM) * (region.col ?? 1);
         // A second adult adds about half again to household needs (OECD equivalence scale).
         const household = married ? 1.5 : 1;
         const lifestyle = (LIVING_FLOOR * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
         // Spending flexes down when money is tight (harder once the cards are carrying a balance),
         // but never below the bare minimum.
         const squeeze = cardDebt > 5000 ? 0.8 : 0.92;
-        living = Math.round(Math.max(minimum * knob(state, 'costOfLiving'), Math.min(lifestyle * knob(state, 'costOfLiving') * (cardDebt > 5000 ? 0.9 : 1), discretionary * squeeze)));
+        floor = Math.round(minimum * knob(state, 'costOfLiving'));
+        living = Math.round(Math.max(floor, Math.min(lifestyle * knob(state, 'costOfLiving') * (cardDebt > 5000 ? 0.9 : 1), discretionary * squeeze)));
         // A compound at a field post: housed and fed, with little to spend money on.
         if (postedHousing(state) === 'provided' && postedRegion) living = Math.round(living * 0.6);
       }
@@ -192,6 +195,9 @@ export const Finances = {
       insurance = state.service?.program?.id === 'peaceCorps' || state.community?.religious?.housed ? 0 : healthPremium(state, ordinary);
     }
 
+    // Lifestyle comes out of what's left once the year's bills and taxes are paid: only the bare
+    // minimum can ever go on credit, so a good year can't end in tax arrears through spending.
+    if (living > floor && f.cash - tax - insurance - living < 0) living = Math.max(floor, Math.round(f.cash - tax - insurance));
     f.cash -= tax + living + insurance;
     f.taxesPaid += tax;
     // Taxes you can't pay become IRS debt (see Taxes), not credit-card debt.
@@ -250,6 +256,8 @@ export const Finances = {
     }
 
     f.lastYear = { gross, wages: payroll, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), ...(usAbroadTax ? { usAbroadTax } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
+    // Last year's itemised flows, for the Money tab's breakdown.
+    f.lastLedger = { income: f.ledger.income.slice(0, 60), expenses: f.ledger.expenses.slice(0, 80) };
     f.ledger = { income: [], expenses: [], deductions: [], itemize: [] };
   },
 

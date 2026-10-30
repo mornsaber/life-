@@ -103,8 +103,17 @@ export const lawHere = (lawId, level, where) => {
   const cc = level === 'state' ? STATES[where]?.country ?? 'US' : level === 'federal' ? where ?? 'US' : REGIONS[where]?.country ?? 'US';
   if (cc === 'US') return true;
   if (['rightToWork', 'cardCheck'].includes(lawId)) return false;
-  return !(level === 'federal' && lawId === 'minWage');
+  // Councils abroad run local matters: housing, roads, planning — not wages or leave.
+  if (level === 'city') return CITY_LAWS_ABROAD.includes(lawId);
+  // Most countries set one national minimum wage (provinces set it in Canada, Japan, China and India);
+  // only federations legislate employment rights region by region.
+  if (lawId === 'minWage') return REGIONAL_MIN_WAGE.includes(cc) ? level === 'state' : level === 'federal';
+  if (lawId === 'paidLeave' && level === 'state') return FEDERATIONS.includes(cc);
+  return true;
 };
+const CITY_LAWS_ABROAD = ['rentControl', 'infrastructure', 'zoning'];
+const REGIONAL_MIN_WAGE = ['CA', 'JP', 'CN', 'IN'];
+const FEDERATIONS = ['CA', 'AU', 'DE', 'AT', 'CH', 'BE', 'IN', 'BR', 'MX', 'AR', 'NG', 'ET', 'MY', 'PK', 'RU', 'AE', 'IQ', 'BA'];
 
 export const COMMITTEES = {
   labor: { name: 'Labor & Workforce', laws: ['minWage', 'rightToWork', 'cardCheck', 'paidLeave', 'publicBargaining', 'workplaceSafety', 'nonCompeteBan'] },

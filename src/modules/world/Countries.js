@@ -450,6 +450,8 @@ const ABROAD_TERMS = {
   'Your congressional nomination interview went nowhere this year.': 'You missed the cut in the academy\'s entrance selection this year.',
   'High-school GPA': 'School grade average', 'high-school GPA': 'school grades', GPA: 'grade average',
   HOA: 'owners\' association fees',
+  // Tax arrears: every country has a tax authority, not the IRS.
+  'You Owe the IRS': 'You Owe Back Taxes', 'IRS Audit': 'Tax Audit', 'IRS wage levy': 'Tax arrears deducted from wages', 'IRS installment': 'Tax payment-plan', 'IRS payment': 'Tax arrears payment', 'an IRS audit': 'a tax audit', 'IRS debt': 'tax debt', 'federal tax lien': 'tax charge', 'The IRS': 'The tax authority', 'the IRS': 'the tax authority', 'New city ordinance': 'New local bylaw', '401(k) contribution': 'Pension contribution', '401(k)': 'workplace pension',
   // State-police events: national and state forces abroad don't call their officers troopers.
   // Laws, events and offices with US names.
   'Standard (OSHA)': 'Standard', 'Forklift Operator Certification (OSHA)': 'Forklift operator licence', OSHA: 'the workplace-safety regulator',

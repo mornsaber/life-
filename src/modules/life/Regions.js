@@ -126,7 +126,22 @@ export const BASES = {
 export const MOVE_COST = 3500;
 
 // Foreign cities resolve by id but stay out of US iteration (seeds, lists and picks are unchanged).
-for (const [id, r] of Object.entries(FOREIGN_CITIES)) Object.defineProperty(REGIONS, id, { value: r, enumerable: false });
+/**
+ * Country packs give a city's transit fare in different units: most a monthly pass, some the
+ * year's pass (South Africa, Nigeria, Singapore…), some a single ride. Charged monthly, an annual
+ * figure costs twelve times over. Normalise to a monthly pass: a US pass runs about 30–130 per
+ * point of cost of living.
+ */
+function monthlyFare(r) {
+  const ratio = r.fare / (r.col || 1);
+  if (ratio > 200) return Math.round(r.fare / 12);
+  if (ratio > 0 && ratio < 15) return Math.round(r.fare * 40);
+  return r.fare;
+}
+for (const [id, r] of Object.entries(FOREIGN_CITIES)) {
+  if (r.fare) r.fare = monthlyFare(r);
+  Object.defineProperty(REGIONS, id, { value: r, enumerable: false });
+}
 
 /** The cities of a country, in order (the US list is exactly Object.values(REGIONS)). */
 export const regionsIn = (countryId = 'US') => (countryId === 'US' ? Object.values(REGIONS) : Object.values(FOREIGN_CITIES).filter((r) => r.country === countryId));

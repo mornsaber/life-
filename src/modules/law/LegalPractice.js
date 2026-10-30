@@ -347,7 +347,12 @@ function practiceTick(ctx) {
     if (l.chambers) {
       const fees = Math.round(job.salary * (l.reputation - 40) / 80);
       if (fees > 0) ctx.earn(fees, 'Brief fees', { wage: true });
-      else if (fees < 0) ctx.spend(-fees, 'Chambers rent in a thin year', { allowDebt: true });
+      else if (fees < 0) {
+        // Chambers rent and clerks' fees in a thin year: a share of a modest practice, and tax-deductible.
+        const rent = Math.min(-fees, Math.round(job.salary * 0.12));
+        ctx.spend(rent, 'Chambers rent in a thin year', { allowDebt: true });
+        ctx.deduct(rent, 'Chambers expenses', { nonCash: true });
+      }
     }
   }
   if (rng.chance(0.65)) matterPrompt(ctx);

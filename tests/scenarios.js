@@ -1664,7 +1664,8 @@ const tests = {
     assert.equal(it.salt, 10000, 'phased down to the floor');
     // A year you can't pay your taxes: the IRS, not the card, carries it.
     giveJob(engine, 'tech', 'swe');
-    state.finances.cash = -50000;
+    // Deep enough in the hole that even the year's salary can't cover the tax (lifestyle alone never causes arrears).
+    state.finances.cash = -250000;
     state.prompts = [];
     engine.ageUp();
     state.prompts = [];
