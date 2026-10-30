@@ -5,6 +5,17 @@
  */
 import { systemHere, privatePremium, goPrivateCost, levySurcharge } from '../../modules/health/HealthSystems.js';
 import { esc, money, button, card, chip, meter, kv, empty, select } from '../Components.js';
+import { genesOf, GENE_LABEL } from '../../modules/health/Genetics.js';
+
+/** Family history, the genetic test, and prevention once you know. */
+function geneticsBlock(state) {
+  const g = genesOf(state);
+  if (!g || state.character.age < 18) return '';
+  if (!g.known) return `<div class="toggle-row">${button('🧬 Take a genetic test', 'health.geneticTest', { variant: 'small', hint: 'Find out what runs in the family' })}</div>`;
+  const high = Object.keys(GENE_LABEL).filter((k) => g[k] >= 1.5);
+  const prevent = ['cancer', 'heart'].filter((k) => g[k] >= 1.5).map((k) => button(g.prevention[k] ? `✅ ${k === 'cancer' ? 'Risk-reducing surgery done' : 'On statins'}` : k === 'cancer' ? '🧬 Risk-reducing surgery' : '💊 Start statins', 'health.prevent', { arg: k, variant: 'small', disabled: Boolean(g.prevention[k]), hint: k === 'cancer' ? 'Cuts the risk by two-thirds' : 'A daily pill; cuts the risk' })).join('');
+  return `<p>🧬 Genetic risk: ${high.length ? high.map((k) => `<b>${esc(GENE_LABEL[k])}</b> ×${g[k]}`).join(', ') : 'nothing notable'}</p>${prevent ? `<div class="toggle-row">${prevent}</div>` : ''}`;
+}
 import {
   CONDITIONS, KINDS, REHAB_COST, coverage, estimateOutOfPocket, vaCovers, dutyDisqualifier, disablingConditions, conditionMortality, VA_COMPENSATION, DUTY_STANDARD,
 } from '../../modules/health/index.js';
@@ -42,6 +53,7 @@ function preventionCard(state) {
   return card('Prevention & Planning', `
     ${due.length ? `<p>Your next checkup includes: ${due.map((s) => esc(s.name.replace(/^An? /, ''))).join(', ')}.</p>` : '<p class="muted">No screenings due at your age.</p>'}
     <div class="toggle-row">${button('💉 Flu jab', 'health.fluShot', { variant: 'small', disabled: Boolean(state.yearly['health.fluShot']), hint: 'Cuts flu and pneumonia this year' })}${state.character.age >= 18 ? button(h.directive ? '📝 Advance directive written' : '📝 Write an advance directive', 'health.directive', { variant: h.directive ? 'small on' : 'small', disabled: Boolean(h.directive), hint: 'What you want if you can\'t say' }) : ''}</div>
+    ${geneticsBlock(state)}
     ${care ? kv([['Care', CARE_LABEL[care.kind]], ['Since', `age ${care.since}`], ['Costs you', `${money(careCost(state, care.kind))}/yr`]]) : ''}
     ${state.character.age >= 60 ? `<p class="fine">Long-term care here is paid for by ${esc(sys.name)}. A care home would cost you about ${money(careCost(state, 'facility'))} a year.</p>` : ''}`, { icon: '🛡️' });
 }

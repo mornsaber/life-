@@ -130,7 +130,7 @@ function yearOf(ctx, p) {
   if (p.degree && EDU_RANK[life.edu] < EDU_RANK.bachelor && !life.studying) life.edu = 'bachelor';
   // Your own children nearly all finish school; the wider family mostly do.
   if (age === 18 && life.edu === 'none' && rng.chance(p.relation === 'child' ? 0.97 : 0.9)) life.edu = 'highschool';
-  if (age === 18 && !life.studying && life.edu === 'highschool') {
+  if (age === 18 && !life.studying && life.edu === 'highschool' && !p.eduDecided) {
     const smarts = p.traits?.smarts ?? rng.int(30, 85);
     const r = rng.next();
     const college = 0.15 + smarts / 160 + (p.relation === 'child' && state.people.fund529?.[p.id] ? 0.15 : 0);

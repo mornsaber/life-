@@ -16,6 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
+import { geneFactor, geneticsTick, GeneticsResolvers, GeneticsActions } from './Genetics.js';
 import { recoveryTick, RecoveryResolvers } from './Recovery.js';
 import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
 import { ruralRisk } from '../life/RuralLife.js';
@@ -99,7 +100,7 @@ function diagnose(ctx, c, how) {
 
 /** Yearly onset probability for each condition: its base rate, times what your habits do to it. */
 function onsetChance(state, id, h) {
-  return baseOnset(state, id, h) * lifestyleRisk(state, id);
+  return baseOnset(state, id, h) * lifestyleRisk(state, id) * geneFactor(state, id);
 }
 function baseOnset(state, id, h) {
   const age = state.character.age;
@@ -589,6 +590,7 @@ export const HealthEngine = {
     const h = state.health;
     const job = state.career.job;
     recoveryTick(ctx);
+    geneticsTick(ctx);
     // Traumatic exposure: the job, prison, and life's random blows. It fades with time.
     if (job && OCCUPATIONAL_TRAUMA[job.professionId]) ctx.emit('health:trauma', { amount: OCCUPATIONAL_TRAUMA[job.professionId], source: 'work' });
     if (isIncarcerated(state)) ctx.emit('health:trauma', { amount: 6, source: 'prison' });
@@ -615,6 +617,8 @@ export const HealthEngine = {
   actions: {
     ...LifestyleActions,
     ...EndOfLifeActions,
+    geneticTest: GeneticsActions.test,
+    prevent: GeneticsActions.prevent,
     /** The yearly flu jab: cuts the odds of flu and pneumonia this year. */
     fluShot(ctx) {
       const { state } = ctx;
@@ -733,6 +737,7 @@ export const HealthEngine = {
   resolvers: {
     ...LifestyleResolvers,
     ...RecoveryResolvers,
+    trial: GeneticsResolvers.trial,
     ...EndOfLifeResolvers,
     driveDrunk(ctx, _data, optionId) {
       const { rng } = ctx;
