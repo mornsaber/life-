@@ -13,6 +13,7 @@ import { tierRent } from '../../modules/realestate/index.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
+import { livingAbroad, expatOf } from '../../modules/world/ExpatLife.js';
 import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
@@ -69,7 +70,7 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
+  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} years. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + expatLifeCard(state) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
 }
 
 /** Where you could retire, and what follows you there. */
@@ -85,6 +86,15 @@ function retireAbroadCard(state) {
 }
 
 /** A year out between school and what comes next. */
+const CIRCLE_LABEL = { expat: '🍻 The expat crowd', local: '🏘️ Locals', exchange: '🗣️ Language exchange' };
+function expatLifeCard(state) {
+  const e = expatOf(state);
+  if (!livingAbroad(state) || !e || e.cc !== (state.character.countryId ?? 'US') || e.returnedAt != null) return '';
+  const years = state.character.age - e.since;
+  const btns = Object.entries(CIRCLE_LABEL).map(([id, label]) => button(label, 'expatLife.circle', { arg: id, variant: e.circle === id ? 'small primary' : 'small' })).join('');
+  return card('Life Abroad', `${kv([['Here for', `${years} year${years === 1 ? '' : 's'}`], ['Belonging', `${e.belonging}/100`], ['Your circle', CIRCLE_LABEL[e.circle] ?? 'Still finding it'], ['Settled', e.settled ? 'Yes — this is home' : 'Not yet']])}<p class="muted">Locals and language partners make it feel like home faster; the expat crowd is easier but keeps you a visitor. After a few years you'll decide where to settle.</p><div class="action-grid">${btns}</div>`, { icon: '🧳', accent: 'cyan', summary: `Belonging ${e.belonging}` });
+}
+
 function gapYearCard(state) {
   const check = gapYearCheck(state);
   if (state.character.age < 17 || state.character.age > 26 || state.migration?.gapYear) return '';
