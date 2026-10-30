@@ -3,13 +3,14 @@
  * reacts to civilian convictions, and exposes service actions. Retired pay
  * and VA benefits are paid by the retirement module.
  */
+import { nationalPay, armyReserveIsGuard } from '../world/NationalForces.js';
 import { currentCountry } from '../../core/Locale.js';
 import { vettingForm, localMos } from '../world/MilitaryLocal.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import {
   BRANCHES, SPECIALTIES, ENLIST_CONTRACT, RETIREMENT_YEARS, retirementYearsFor,
-  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge } from './MilitaryEngine.js';
+  enlistmentEligibility, enlist, discharge, commission, rankOf, specialtyName, branchOf, branchFor, retiredFrom, recallMaxAge, reserveName } from './MilitaryEngine.js';
 import { activeDutyTick, ActiveDutyResolvers } from './ActiveDuty.js';
 import { monthlyBasePay, requiredClearance, clearanceDenied, needsOfficerAcademy, officerBoardOdds } from './MilitaryEngine.js';
 import { hasClearance, adjudicate, backgroundIssues, CLEARANCES } from '../publicservice/PublicServiceEngine.js';
@@ -67,14 +68,20 @@ function switchComponent(ctx, svc) {
   const { state } = ctx;
   const to = svc.component === 'active' ? 'reserve' : 'active';
   if (to === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school before going active.', 'warn');
-  if (to === 'active' && branchOf(svc).reserveOnly) return ctx.toast('The Guard has no active component — transfer to the Army first.', 'warn');
   if (branchOf(svc).activeOnly) return ctx.toast(`The ${branchOf(svc).name} has no reserve component.`, 'warn');
+  // Abroad, a soldier going part-time joins the Army Reserve (and back), where that is the army's reserve.
+  const swap = svc.nation && armyReserveIsGuard(svc.nation) && ((to === 'reserve' && svc.branch === 'army') || (to === 'active' && svc.branch === 'guard'));
+  if (swap) {
+    const branch = to === 'reserve' ? 'guard' : 'army';
+    svc.mos = MOS[svc.mos?.replace(/^\w+\./, `${branch}.`)] ? svc.mos.replace(/^\w+\./, `${branch}.`) : svc.mos;
+    svc.branch = branch;
+  } else if (to === 'active' && branchOf(svc).reserveOnly) return ctx.toast(`The ${branchOf(svc).name} has no active component — transfer to the regular forces first.`, 'warn');
   svc.component = to;
   svc.contractYearsLeft = ENLIST_CONTRACT[to];
   svc.deploymentRequested = false;
   if (to === 'active' && state.career.job) ctx.emit('career:militaryLeave', { reason: 'transferred to active duty' });
   if (to === 'reserve') ctx.emit('military:releasedFromActive', {});
-  ctx.log(to === 'active' ? 'You transferred to full-time active duty.' : 'You transferred to the Reserve. Weekend drills from here on.', branchOf(svc).icon, 'milestone');
+  ctx.log(to === 'active' ? `You transferred to full-time service in the ${branchOf(svc).name}.` : `You transferred to the ${reserveName(branchOf(svc))}. Drills alongside a civilian life from here on.`, branchOf(svc).icon, 'milestone');
   ctx.toast(to === 'active' ? 'Now on active duty' : 'Now in the Reserves', 'good');
 }
 
@@ -356,8 +363,9 @@ export const MilitaryModule = {
           return;
         }
         svc.contractYearsLeft = ENLIST_CONTRACT[svc.component];
-        if (svc.track === 'enlisted' && svc.eval >= 60) {
-          const bonus = rng.int(2, 8) * 5000;
+        if (svc.track === 'enlisted' && svc.eval >= 60 && (!svc.nation || rng.chance(0.4))) {
+          // US reserve bonuses are smaller than active ones; other forces pay modest commitment bonuses, when they pay one at all.
+          const bonus = svc.nation ? Math.round(rng.int(1, 4) * (svc.component === 'reserve' ? 600 : 2500) * nationalPay(svc.nation)) : svc.component === 'reserve' ? rng.int(2, 8) * 1000 : rng.int(2, 8) * 5000;
           ctx.earn(bonus, 'Re-enlistment bonus');
           ctx.log(`You re-enlisted and pocketed a $${bonus.toLocaleString()} bonus.`, '✍️', 'good');
         } else {

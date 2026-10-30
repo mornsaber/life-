@@ -34,7 +34,7 @@ import { hasCredential, pursueEligibility, findSponsor } from '../../modules/cre
 import { branchOf, branchFor, retiredFrom, recallMaxAge } from '../../modules/military/MilitaryEngine.js';
 import { tierOf } from '../../modules/military/SecondCareer.js';
 import { militaryInsignia, volunteerInsignia } from '../Insignia.js';
-import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
+import { nationalBranchIds, FORCES, armyReserveIsGuard } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
 import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcContracts.js';
@@ -48,10 +48,15 @@ function recruitingOffice(state) {
   const abroad = isAbroad(state);
   const branches = abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES);
   const rows = branches.map((b) => {
-    const enlisted = enlistmentEligibility(state, b.id, 'enlisted', b.activeOnly ? 'active' : 'reserve');
-    const officer = enlistmentEligibility(state, b.id, 'officer', b.activeOnly ? 'active' : 'reserve', { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 });
+    const opts = { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 };
+    const comp = b.reserveOnly ? 'reserve' : b.activeOnly ? 'active' : 'reserve';
+    // Where the army's part-time soldiers are the separate Army Reserve, the army row is judged on full-time service.
+    const rowComp = abroad && b.id === 'army' && armyReserveIsGuard(countryOf(state).id) ? 'active' : comp;
+    const noReserve = rowComp !== comp;
+    const enlisted = enlistmentEligibility(state, b.id, 'enlisted', rowComp);
+    const officer = enlistmentEligibility(state, b.id, 'officer', rowComp, opts);
     const btn = (track, component, base, label) => {
-      const check = b.reserveOnly && component === 'active' ? { ok: false, reason: 'Part-time state force' } : b.activeOnly && component !== 'active' ? { ok: false, reason: 'Active duty only' } : base;
+      const check = b.reserveOnly && component === 'active' ? { ok: false, reason: abroad ? 'A part-time force' : 'Part-time state force' } : b.activeOnly && component !== 'active' ? { ok: false, reason: 'Active duty only' } : component !== rowComp && base.ok ? enlistmentEligibility(state, b.id, track, component, opts) : base;
       return button(label, 'military.enlist', { arg: `${b.id}:${track}:${component}`, disabled: !check.ok, variant: 'small', title: check.reason ?? '' });
     };
     const open = [!b.officerOnly && enlisted.ok && 'enlisted', officer.ok && 'officer'].filter(Boolean);
@@ -59,14 +64,17 @@ function recruitingOffice(state) {
       <summary class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${open.length ? `Open to you: ${open.join(' and ')}` : 'Not open to you now'}</small></div></summary>
       <small class="fine">${esc(b.motto)}</small>
       <div class="branch-btns">
-        ${b.officerOnly ? '' : `${btn('enlisted', 'active', enlisted, 'Enlist · Active')}${btn('enlisted', 'reserve', enlisted, 'Enlist · Reserve')}`}
-        ${btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : 'Officer · Active')}${b.activeOnly ? '' : btn('officer', 'reserve', officer, 'Officer · Reserve')}${b.id === 'army' && !abroad ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
+        ${b.officerOnly ? '' : `${b.reserveOnly ? '' : btn('enlisted', 'active', enlisted, abroad ? 'Enlist · Regular' : 'Enlist · Active')}${b.activeOnly || noReserve ? '' : btn('enlisted', 'reserve', enlisted, b.reserveOnly ? 'Enlist' : 'Enlist · Reserve')}`}
+        ${b.reserveOnly ? '' : btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : abroad ? 'Officer · Regular' : 'Officer · Active')}${b.activeOnly || noReserve ? '' : btn('officer', 'reserve', officer, b.reserveOnly ? 'Officer' : 'Officer · Reserve')}${b.id === 'army' && !abroad ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
       </div>
-      ${b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
+      ${b.desc && abroad ? `<small>${esc(b.desc)}</small>` : b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
       <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>
     </details></li>`;
   }).join('');
-  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor's required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans' preference on civil-service exams, and a pension at 20 years.</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? countryOf(state).flag : '🇺🇸', accent: 'green' });
+  const how = abroad
+    ? `Other ranks OR-1 → OR-9; officers OF-1 → OF-10 — most forces take officer cadets straight from school through selection and the military academy. Each service has its own trades; professionals (doctors, lawyers, nurses, engineers, clergy) can join as specialist officers. <b>Regular</b> service is your full-time job. <b>Reservists</b> train part-time alongside a civilian career, are paid for the days they serve, and can be mobilised; the law protects their civilian job while they're away. Pensions follow ${esc(countryOf(state).name)}'s armed-forces scheme.`
+    : 'Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor\'s required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans\' preference on civil-service exams, and a pension at 20 years.';
+  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">${how}</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? countryOf(state).flag : '🇺🇸', accent: 'green' });
 }
 
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */

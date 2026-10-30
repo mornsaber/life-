@@ -18,7 +18,10 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { BRANCHES, ENLIST_CONTRACT, RETIREMENT_YEARS, rankOf, annualActivePay, annualBasePay, discharge, commissionedYears, branchOf } from './MilitaryEngine.js';
-import { equivalentMos } from './MOS.js';
+import { equivalentMos, crossMos, HEALTH_AND_OCEAN } from './MOS.js';
+
+const STEM_MAJORS = ['engineering', 'computerScience', 'biology', 'environmentalScience', 'nursing', 'marineTransportation', 'aviation', 'physics', 'chemistry', 'mathematics', 'geology', 'oceanography', 'medicine'];
+const hasStemDegree = (state) => (state.education?.degrees ?? []).some((d) => STEM_MAJORS.includes(d.major) || ['md', 'do', 'pharmd', 'phd'].includes(d.programId));
 import { nationalBranch } from '../world/NationalForces.js';
 import { SERVICE_TERMS, upOrOutApplies } from '../world/MilitaryLocal.js';
 import { warIn } from '../world/War.js';
@@ -157,7 +160,15 @@ export function transferEligibility(state, branchId) {
   if (branchId === svc.branch) return { ok: false, reason: 'Your branch' };
   if (svc.assignment || svc.commissioning || svc.topPost) return { ok: false, reason: 'Not during a special assignment' };
   if (target.reserveOnly && svc.component === 'active') return { ok: false, reason: `The ${branchOf({ ...svc, branch: branchId }).name} only takes reservists` };
-  if (target.nonCombat || branchOf(svc).nonCombat) return { ok: false, reason: 'USPHS and NOAA officers resign and apply anew' };
+  // Across the line between the armed forces and the PHS / NOAA Corps (or their equivalents): officers only, into a matching specialty.
+  const crossing = HEALTH_AND_OCEAN.includes(branchId) || HEALTH_AND_OCEAN.includes(svc.branch);
+  if (crossing) {
+    const name = branchOf({ ...svc, branch: branchId }).name;
+    if (svc.track !== 'officer') return { ok: false, reason: HEALTH_AND_OCEAN.includes(branchId) ? `The ${name} commissions officers only` : 'Officers only' };
+    if (target.maxAge && state.character.age > target.maxAge + Math.min(8, svc.yearsOfService)) return { ok: false, reason: `The ${name} takes officers up to ${target.maxAge} (plus prior service)` };
+    if (!crossMos(svc, branchId)) return { ok: false, reason: branchId === 'usphs' ? `The ${name} takes health professionals and engineers` : branchId === 'noaa' ? `The ${name} takes ship's officers, pilots, engineers and scientists` : `No matching specialty in the ${name}` };
+    if (branchId === 'noaa' && !hasStemDegree(state)) return { ok: false, reason: 'A science or engineering degree' };
+  }
   if (svc.yearsOfService < 2) return { ok: false, reason: 'Serve 2 years first' };
   if (svc.deployedThisYear) return { ok: false, reason: 'Not while deployed' };
   if (svc.disciplinary) return { ok: false, reason: 'Disciplinary record' };
@@ -188,7 +199,13 @@ export function transferBranch(ctx, branchId) {
     return ctx.toast('Transfer denied', 'bad');
   }
   const reduced = svc.track === 'enlisted' && svc.grade >= 3;
-  svc.mos = equivalentMos(svc, branchId)?.id ?? null;
+  const crossing = HEALTH_AND_OCEAN.includes(branchId) || HEALTH_AND_OCEAN.includes(svc.branch);
+  const next = crossing ? crossMos(svc, branchId) : equivalentMos(svc, branchId);
+  svc.mos = next?.id ?? null;
+  if (next?.specialty) svc.specialty = next.specialty;
+  if (crossing) svc.direct = next?.direct ?? null;
+  // The PHS and NOAA Corps (and the health corps abroad) are full-time only.
+  if (BRANCHES[branchId].activeOnly) svc.component = 'active';
   svc.branch = branchId;
   if (svc.sof) { svc.sofFormer = svc.sof.pipeline; svc.sof = null; }
   if (reduced) svc.grade -= 1;

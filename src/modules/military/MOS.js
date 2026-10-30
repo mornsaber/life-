@@ -491,6 +491,28 @@ export function hasDirectPath(state, branch) {
 }
 
 /** The closest job in another branch or track (same corps, else same specialty). */
+/** The uniformed services that aren't armed forces (and their equivalents abroad). */
+export const HEALTH_AND_OCEAN = ['usphs', 'noaa'];
+/**
+ * An officer's nearest specialty across the line between the armed forces and the USPHS / NOAA
+ * Corps: a doctor stays a doctor, a pilot a pilot, an engineer an engineer, a ship's officer a
+ * ship's officer; NOAA takes STEM officers into hydrographic survey. Null: no equivalent.
+ */
+export function crossMos(svc, branch) {
+  const old = mosOf(svc);
+  const list = mosFor(branch, 'officer');
+  if (!old) return null;
+  const engineer = (m) => m.specialty === 'engineer' || m.direct === 'engineer';
+  const ship = (m) => /\.(SHIP|DECK|1110)$/.test(m.id);
+  return (old.direct && list.find((m) => m.direct === old.direct))
+    ?? (old.pilot ? list.find((m) => m.pilot) : null)
+    ?? (engineer(old) ? list.find(engineer) : null)
+    ?? (ship(old) || old.specialty === 'science' ? list.find(ship) : null)
+    ?? (['medical', 'medic', 'publicHealth'].includes(old.specialty) ? list.find((m) => ['medical', 'medic', 'publicHealth'].includes(m.specialty) && !m.direct) : null)
+    ?? (branch === 'noaa' ? list.find((m) => m.id.endsWith('.HYDRO')) : null)
+    ?? null;
+}
+
 export function equivalentMos(svc, branch, track = svc.track) {
   const old = mosOf(svc);
   const list = mosFor(branch, track);

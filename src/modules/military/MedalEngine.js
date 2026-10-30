@@ -145,8 +145,17 @@ export function annualReview(ctx, svc) {
   if (svc.yearsOfService === 1 && !hasMedal(state, 'ndsm') && !['usphs', 'noaa'].includes(branch)) {
     awardMedal(ctx, 'ndsm', { branch, citation: 'For honorable active service during a period of national emergency.' });
   }
-  if (svc.track === 'enlisted' && svc.yearsOfService % 3 === 0 && svc.disciplinary === 0) {
-    awardMedal(ctx, 'goodConduct', { branch, citation: 'For three years of exemplary behavior, efficiency and fidelity.' });
+  // Good conduct: the US gives it every three years to active enlisted members (every four in the reserves).
+  // Other forces give one long-service medal — after 15 years (12 in Canada, 10 for reservists) — and a clasp each decade after.
+  if (svc.disciplinary === 0) {
+    const y = svc.yearsOfService;
+    const reserve = svc.component === 'reserve';
+    if (!svc.nation) {
+      if (svc.track === 'enlisted' && y % (reserve ? 4 : 3) === 0) awardMedal(ctx, 'goodConduct', { branch, citation: reserve ? 'For four years of exemplary service in the reserve components.' : 'For three years of exemplary behavior, efficiency and fidelity.' });
+    } else {
+      const first = reserve ? 10 : svc.nation === 'CA' ? 12 : 15;
+      if (y === first || (y > first && (y - first) % 10 === 0)) awardMedal(ctx, 'goodConduct', { branch, citation: y === first ? `For ${y} years of efficient${reserve ? ' reserve' : ''} service.` : `A clasp: ${y} years of service.` });
+    }
   }
   if (svc.eval >= 92 && rng.chance(0.3)) {
     awardMedal(ctx, 'commendation', { branch, citation: 'For meritorious service and sustained superior performance.' });

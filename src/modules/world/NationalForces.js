@@ -303,11 +303,63 @@ export const FORCES = {
 };
 fromPacks(FORCES, 'FORCES');
 
+/*
+ * The US has two uniformed services that aren't armed forces: the Public Health Service
+ * Commissioned Corps and the NOAA Corps. Few countries have anything quite like them; the nearest
+ * equivalents are laid over the same templates ('usphs', 'noaa'):
+ *   Health     the joint military medical services (Britain's Defence Medical Services, France's
+ *              Service de santé des armées, Germany's Sanitätsdienst — its own service branch),
+ *              commissioned doctors, nurses, pharmacists and health scientists. They are armed
+ *              forces, so they go to war (behind the line), unlike the USPHS.
+ *   Ocean      Canada's civilian Coast Guard (science ships, icebreakers, surveys), the Japan Coast
+ *              Guard's hydrographic department, and the navies' survey flotillas elsewhere.
+ * Countries without one simply don't list it.
+ */
+const HEALTH_CORPS = {
+  GB: ['Defence Medical Services', 'In arduis fidelis', 'the Defence Medical Academy, Whittington'],
+  CA: ['Canadian Forces Health Services', 'Militi succurrimus', 'the CF Health Services Training Centre, Borden'],
+  AU: ['Joint Health Command', 'Ready to care', 'the Army Logistic Training Centre, Bandiana'],
+  NZ: ['Defence Health', 'Ready to care', 'the Defence Health School, Burnham'],
+  FR: ['Service de santé des armées', 'Pro patria et humanitate', 'the École de santé des armées, Lyon-Bron', 'the École du Val-de-Grâce'],
+  DE: ['Sanitätsdienst der Bundeswehr', 'Wir. Dienen. Deutschland.', 'the Sanitätsakademie der Bundeswehr, Munich', null, ['Leutnant (Sanitätsoffizier-Anwärter)', 'Oberleutnant', 'Stabsarzt', 'Oberstabsarzt', 'Oberfeldarzt', 'Oberstarzt', 'Generalarzt', 'Generalstabsarzt', 'Generaloberstabsarzt', 'Generaloberstabsarzt (Inspekteur)']],
+  IT: ['Corpo sanitario dell\'Esercito', 'Per la salute del soldato', 'the Scuola di Sanità e Veterinaria Militare, Rome'],
+  ES: ['Cuerpo Militar de Sanidad', 'Por la salud de los ejércitos', 'the Escuela Militar de Sanidad, Madrid'],
+  NL: ['Defensie Gezondheidszorg Organisatie', 'Zorg voor de zorg', 'the Defensie Gezondheidszorg Opleidingscentrum, Hilversum'],
+  JP: ['JSDF Medical Service', 'To protect lives', 'the National Defense Medical College, Tokorozawa'],
+  KR: ['Armed Forces Medical Command', 'Saving lives', 'the Armed Forces Medical School, Daejeon'],
+  IN: ['Armed Forces Medical Services', 'Sarve Santu Niramaya', 'the Armed Forces Medical College, Pune'],
+  IL: ['IDF Medical Corps', 'For the life of every soldier', 'the IDF School of Military Medicine'],
+  SG: ['SAF Medical Corps', 'Fit to fight', 'the SAF Medical Training Institute'],
+  BR: ['Serviço de Saúde do Exército', 'Saúde e vida', 'the Escola de Saúde do Exército, Rio de Janeiro'],
+};
+for (const [cc, [name, motto, school, officerSchool, officer]] of Object.entries(HEALTH_CORPS)) {
+  const f = FORCES[cc];
+  if (!f?.branches?.army) continue;
+  f.branches.usphs = { name, icon: '⚕️', motto, basic: school, officerSchool: officerSchool ?? school, enlisted: [], officer: officer ?? f.branches.army.officer, nonCombat: false, healthCorps: true, desc: `${name}: commissioned doctors, nurses, pharmacists and health officers of the armed forces. They deploy with the fighting units, behind the line.` };
+}
+const NAVY_SURVEY = (cc, name, desc) => (FORCES[cc]?.branches?.navy ? { name, icon: '🌊', motto: 'Charting the seas', basic: FORCES[cc].branches.navy.basic, officerSchool: FORCES[cc].branches.navy.officerSchool, enlisted: [], officer: FORCES[cc].branches.navy.officer, nonCombat: false, desc } : null);
+const OCEAN_CORPS = {
+  CA: { name: 'Canadian Coast Guard', icon: '🍁', motto: 'Safety first, service always', basic: 'the Canadian Coast Guard College, Sydney (Nova Scotia)', officerSchool: 'the Canadian Coast Guard College', enlisted: [], officer: ['Officer Cadet', 'Third Officer', 'Second Officer', 'First Officer', 'Chief Officer', 'Commanding Officer', 'Senior Commanding Officer', 'Superintendent', 'Assistant Commissioner', 'Commissioner'], civilian: true, desc: 'A civilian fleet in uniform: science and fisheries ships, icebreakers in the Arctic, hydrographic surveys and search and rescue.' },
+  JP: { name: 'JCG Hydrographic and Oceanographic Department', icon: '🌊', motto: 'Guarding the seas', basic: 'the Japan Coast Guard Academy, Kure', officerSchool: 'the Japan Coast Guard Academy, Kure', enlisted: [], officer: ['Coast Guard Officer 3rd Grade', 'Coast Guard Officer 2nd Grade', 'Coast Guard Officer 1st Grade', 'Coast Guard Inspector 3rd Grade', 'Coast Guard Inspector 2nd Grade', 'Coast Guard Inspector 1st Grade', 'Superintendent 3rd Grade', 'Superintendent 2nd Grade', 'Superintendent 1st Grade', 'Commandant'], civilian: true, desc: 'The Japan Coast Guard\'s survey ships and oceanographers: seafloor charts, tides, and volcanic islands that appear overnight.' },
+  GB: NAVY_SURVEY('GB', 'Royal Navy Hydrographic Branch', 'Survey ships and the hydrographers who chart the world\'s oceans for the Admiralty charts.'),
+  AU: NAVY_SURVEY('AU', 'Australian Hydrographic Service', 'The Navy\'s survey ships charting the Australian continental shelf and the Antarctic approaches.'),
+  FR: NAVY_SURVEY('FR', 'Service hydrographique et océanographique de la Marine (SHOM)', 'The Navy\'s hydrographers and oceanographers.'),
+  IN: NAVY_SURVEY('IN', 'Indian Naval Hydrographic Department', 'Survey ships charting the Indian Ocean.'),
+};
+for (const [cc, def] of Object.entries(OCEAN_CORPS)) if (def && FORCES[cc]) FORCES[cc].branches.noaa = def;
+
 /** The national branch laid over a template, or null. */
 export function nationalBranch(countryId, templateId) {
   const def = FORCES[countryId]?.branches?.[templateId];
   return def ? { ...def, warrant: [], country: countryId } : null;
 }
+
+/**
+ * Where a country's "guard" entry is just its army's reserve (the British Army Reserve, Canada's
+ * Primary Reserve, the IDF's miluim), part-time soldiers join that — the army itself has no second
+ * reserve. Home guards, national guards and gendarmeries are separate forces and don't count.
+ */
+export const armyReserveIsGuard = (countryId) => /reserv|miluim|nsmen|miliz|askar wataniah|tiro de guerra/i.test(FORCES[countryId]?.branches?.guard?.name ?? '');
 
 /** Template ids of a country's forces, in display order. */
 export const nationalBranchIds = (countryId) => Object.keys(FORCES[countryId]?.branches ?? {});

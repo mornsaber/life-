@@ -28,7 +28,7 @@ import { MOS, mosOf, defaultMos, directGrade, enlistedStartGrade, equivalentMos,
 import { grantCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
-import { nationalBranch, nationalPay, nationalExposure } from '../world/NationalForces.js';
+import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
@@ -106,6 +106,8 @@ BRANCHES.noaa = {
   basic: 'Basic Officer Training Class', officerSchool: 'Basic Officer Training Class at the Coast Guard Academy',
   enlisted: [], warrant: [], officer: NAVAL_OFFICERS.slice(0, 9).map((t, i) => (i === 8 ? 'Vice Admiral (NOAA Corps Director)' : t)),
 };
+/** A branch's part-time force: its own name where it has one ("Royal Naval Reserve"), else "<branch> Reserve". */
+export const reserveName = (b) => b.reserveName ?? (b.reserveOnly ? b.name : /Reserve/.test(b.name) ? b.name : `${b.name.replace(/^U\.S\. /, 'U.S. ')} Reserve`);
 export const isNonCombat = (branchId) => Boolean(BRANCHES[branchId]?.nonCombat);
 
 export const SPECIALTIES = {
@@ -343,6 +345,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
+  if (isAbroad(state) && branchId === 'army' && component === 'reserve' && armyReserveIsGuard(countryOf(state).id)) return { ok: false, reason: `Part-time soldiers join the ${nationalBranch(countryOf(state).id, 'guard').name}` };
   if (b.officerOnly && track !== 'officer') return { ok: false, reason: 'Commissioned officers only' };
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };
   if (b.maxAge) maxOfficerAge = Math.max(maxOfficerAge, b.maxAge);
@@ -520,8 +523,9 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
     if (dc.bonus) ctx.earn(dc.bonus, `${dc.name} accession bonus`);
   }
   const verb = direct != null ? `received a direct commission into the ${DIRECT_COMMISSIONS[job.direct].name}` : track === 'officer' ? 'accepted a commission' : track === 'warrant' ? 'were accepted for warrant officer flight training' : 'enlisted';
-  const comp = component === 'active' ? 'active duty' : 'the Reserve';
-  ctx.log(`You ${verb} in the ${b.name} (${comp}) as a ${rankOf(svc).title}, ${specialtyName(svc)}. ${b.motto}!`, b.icon, 'milestone');
+  const title = rankOf(svc).title;
+  const where = component === 'active' || b.reserveOnly ? `the ${b.name}${component === 'active' && !nation ? ' (active duty)' : ''}` : `the ${reserveName(b)}`;
+  ctx.log(`You ${verb} in ${where} as ${/^[AEIOU]/.test(title) ? 'an' : 'a'} ${title}, ${specialtyName(svc)}. ${b.motto}!`, b.icon, 'milestone');
   ctx.toast(`Joined the ${b.name}`, 'good');
   offerBranchDetail(ctx, svc);
   return true;

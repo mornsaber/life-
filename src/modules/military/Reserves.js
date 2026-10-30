@@ -2,7 +2,8 @@
  * Reserve component: one weekend a month plus two weeks of annual training,
  * served alongside a civilian career or school. Reservists can be mobilized
  * (involuntarily or by volunteering), at which point they deploy exactly like
- * active-duty members and their civilian job is protected under USERRA.
+ * active-duty members and their civilian job is protected (USERRA in the US; each
+ * country's reservist-protection law elsewhere).
  */
 import { unitTick } from '../org/MilitaryUnits.js';
 import { sofTick } from './SpecialOps.js';
@@ -18,12 +19,30 @@ import { upOrOut, mustRetire } from './Separation.js';
 /** 48 drill periods (each a day's pay) + 15 days annual training ≈ 2.1 months of base pay. */
 export const DRILL_PAY_MONTHS = 2.1;
 
-const DRILL_FLAVOR = [
-  'Weekend drills: weapons qualification and land navigation.',
-  'Annual Training: two weeks of field exercises at a regional training center.',
-  'Drill weekend: equipment maintenance, briefings, and a ruck march.',
-  'Annual Training: joint exercise with active-duty units.',
-];
+/** A reserve year, by kind of force. */
+const DRILL_FLAVOR = {
+  ground: [
+    'Weekend drills: weapons qualification and land navigation.',
+    'Annual training: two weeks of field exercises at a regional training area.',
+    'Drill weekend: vehicle and equipment maintenance, briefings, and a loaded march.',
+    'Annual training: a joint exercise alongside the regulars.',
+    'A weekend on the ranges, then a night exercise in the rain.',
+  ],
+  naval: [
+    'Drill nights at the reserve unit, then a weekend at sea in a patrol vessel.',
+    'Annual training: two weeks aboard a frigate, standing watches with the regulars.',
+    'Damage-control and firefighting training in the ship simulator.',
+    'Harbour-protection exercise: boarding drills and night patrols.',
+    'Two weeks in a fleet headquarters, planning an exercise on the charts.',
+  ],
+  air: [
+    'Drill weekends with your squadron: aircraft maintenance and readiness checks.',
+    'Annual training: two weeks at an air base, supporting a major exercise.',
+    'A weekend of force-protection and airfield-damage-repair training.',
+    'Two weeks on an exercise abroad, working alongside allied air forces.',
+  ],
+};
+const theaterOf = (svc) => (['navy', 'coastguard', 'noaa'].includes(svc.branch) ? 'naval' : ['airforce', 'spaceforce'].includes(svc.branch) ? 'air' : 'ground');
 
 /** What a Strategic Sealift Officer's reserve year looks like. */
 const SEALIFT_DRILLS = [
@@ -64,7 +83,7 @@ export function reserveTick(ctx, svc) {
   } else {
     ctx.earn(monthlyBasePay(svc) * DRILL_PAY_MONTHS, `Reserve drill pay — ${rankOf(svc).code}`, { wage: true });
     if (flightHoursOf(svc)) ctx.emit('logbook:add', { hours: flightHoursOf(svc) });
-    ctx.log(`${rng.pick(svc.mos === 'navy.1665' ? SEALIFT_DRILLS : DRILL_FLAVOR)} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
+    ctx.log(`${rng.pick(svc.mos === 'navy.1665' ? SEALIFT_DRILLS : DRILL_FLAVOR[theaterOf(svc)])} Evaluation: ${svc.eval}/100.`, branch.icon, 'military');
     ctx.stat('fitness', 1);
   }
 

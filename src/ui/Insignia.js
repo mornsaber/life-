@@ -222,7 +222,8 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
   const commonwealth = COMMONWEALTH.includes(nation ?? '');
   // Commonwealth air forces: officers wear pale-blue lace on the naval pattern, without the curl.
   if (branch === 'airforce' && commonwealth && (m[1] === 'OF' || m[1] === 'O')) return navalLace(n, '', false, AIR_BLUE);
-  if (NAVAL_BRANCHES.includes(branch) && !SHOULDER.includes(nation ?? '')) {
+  // A health corps abroad wears its army's rank (Defence Medical Services, Sanitätsdienst).
+  if (NAVAL_BRANCHES.includes(branch) && !SHOULDER.includes(nation ?? '') && !(nation && branch === 'usphs')) {
     const naval = navalInsignia(m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1], n, nation, branch);
     if (naval != null) return naval;
   }
