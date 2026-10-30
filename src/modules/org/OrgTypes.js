@@ -19,6 +19,8 @@
  * not listed gets a generated single-department type (see orgTypesFor).
  */
 
+import { currentCountry } from '../../core/Locale.js';
+import { railwaysAbroad } from '../world/Countries.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 
 const city = (c) => c.city;
@@ -280,7 +282,7 @@ export const ORG_TYPES = {
     ],
   },
   railroadCo: {
-    name: (c) => c.rng.pick(['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail']), scope: 'market', sector: 'private',
+    name: (c) => c.rng.pick(currentCountry() === 'US' ? ['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail'] : railwaysAbroad(currentCountry())), scope: 'market', sector: 'private',
     head: { title: 'Chief Executive Officer', selection: 'board', appointedBy: 'the board of directors' },
     departments: [
       { id: 'transportation', name: 'Train Operations', occupations: ['railroad'], head: { title: 'VP of Transportation', selection: 'internal' } },

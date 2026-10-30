@@ -4,6 +4,8 @@
  * (conductors and locomotive engineers under FRA certification), and school
  * bus drivers.
  */
+import { currentCountry } from '../../core/Locale.js';
+import { railwaysAbroad } from '../world/Countries.js';
 import { L, detectiveRanks } from '../career/Ladder.js';
 
 export const TRANSIT_PROFESSIONS = {
@@ -65,6 +67,8 @@ export const TRANSIT_PROFESSIONS = {
     union: { chance: 0.9, name: 'SMART Transportation Division', strike: false },
     benefits: { unionPension: 'union' },
     employers: ['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail'],
+    // Abroad: the national railway and its freight arm rather than American railroads.
+    employerName: (city, rng) => (currentCountry() === 'US' ? rng.pick(['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail']) : rng.pick(railwaysAbroad(currentCountry()))),
     entry: { education: { level: 'highschool' } },
     rotation: { label: 'on call for trains', away: 0.3 }, seniority: true, furlough: true,
     levels: [

@@ -52,9 +52,9 @@ export const IPO_POOL = {
 export const ALL_COMPANIES = { ...COMPANIES, ...IPO_POOL };
 /** Each country's own blue chips, listed on its exchange: a bank, a utility and a retailer. */
 const LOCAL_KINDS = {
-  bank: { suffix: 'National Bank', ticker: 'B', sector: 'finance', vol: 0.2, div: 0.035, price: 40 },
-  power: { suffix: 'Power & Gas', ticker: 'P', sector: 'energy', vol: 0.18, div: 0.045, price: 30 },
-  retail: { suffix: 'Retail Group', ticker: 'R', sector: 'consumer', vol: 0.15, div: 0.03, price: 25 },
+  bank: { suffix: 'National Bank', ticker: 'BNK', sector: 'finance', vol: 0.2, div: 0.035, price: 40 },
+  power: { suffix: 'Power & Gas', ticker: 'PWR', sector: 'energy', vol: 0.18, div: 0.045, price: 30 },
+  retail: { suffix: 'Retail Group', ticker: 'RTL', sector: 'consumer', vol: 0.15, div: 0.03, price: 25 },
 };
 export const localIds = (cc) => (cc && cc !== 'US' ? Object.keys(LOCAL_KINDS).map((k) => `local_${cc}_${k}`) : []);
 /** A company's listing details, named or local (local_<CC>_<kind>). */
@@ -63,7 +63,7 @@ export function companyDef(id) {
   const m = /^local_([A-Z]{2})_(\w+)$/.exec(id);
   const k = m && LOCAL_KINDS[m[2]];
   if (!k || !COUNTRIES[m[1]]) return null;
-  return { ...k, name: `${COUNTRIES[m[1]].name} ${k.suffix}`, ticker: `${m[1]}${k.ticker}`, local: m[1] };
+  return { ...k, name: `${COUNTRIES[m[1]].name} ${k.suffix}`, ticker: `${m[1]}.${k.ticker}`, local: m[1] };
 }
 /** The exchange where you live. */
 export const exchangeName = (state) => (STOCK_INDEX[state.character.countryId ?? 'US'] ? `${STOCK_INDEX[state.character.countryId ?? 'US']} exchange` : `${COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'Local'} stock exchange`);
@@ -78,7 +78,8 @@ export function ensureStocks(state) {
   state.stocks ??= { companies: Object.fromEntries(Object.entries(COMPANIES).map(([id, c]) => [id, { price: c.price, eps: round2(c.price / 20), listedAge: 0 }])), positions: {}, shorts: {}, options: [], bubble: null, ipos: [] };
   return state.stocks;
 }
-export const listed = (state) => Object.entries(state.stocks?.companies ?? {}).filter(([, c]) => !c.delisted);
+/** What trades where you live: the global names, this country's blue chips, and anything you still hold from elsewhere. */
+export const listed = (state) => Object.entries(state.stocks?.companies ?? {}).filter(([id, c]) => !c.delisted && (!id.startsWith('local_') || localIds(state.character.countryId).includes(id) || state.stocks.positions[id] || state.stocks.shorts[id] || state.stocks.options.some((o) => o.companyId === id)));
 export const priceOf = (state, id) => state.stocks?.companies?.[id]?.price ?? 0;
 
 export function stockValue(state) {

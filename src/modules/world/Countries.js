@@ -621,3 +621,6 @@ export function nationalPension(country, earnings) {
   }
   return 0;
 }
+
+/** The railway companies of a country outside the US: the national passenger railway and its freight arm. */
+export const railwaysAbroad = (cc) => [`${COUNTRIES[cc]?.name ?? 'National'} Railways`, `${COUNTRIES[cc]?.name ?? 'National'} Rail Freight`];
