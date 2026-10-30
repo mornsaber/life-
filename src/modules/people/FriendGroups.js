@@ -15,10 +15,10 @@ import { friendsOf, CIRCLES } from './Friends.js';
 import { priceLevel } from '../world/Countries.js';
 
 const ofState = (state) => (state.friendGroups ??= { best: null, since: null, fallenOut: null, arc: [] });
-export const friendGroupsOf = ofState;
+export const friendGroupsOf = (state) => state.friendGroups ?? { best: null, since: null, fallenOut: null, arc: [] };
 const local = (state, n) => Math.round(n * priceLevel(state));
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 69317 + state.character.age * 389 + 0xf12) >>> 0);
-export const bestFriend = (state) => { const id = ofState(state).best; const p = id && byId(state, id); return p && p.alive ? p : null; };
+export const bestFriend = (state) => { const id = state.friendGroups?.best; const p = id && byId(state, id); return p && p.alive ? p : null; };
 
 /** The circles that are groups: three or more friends who all know each other. */
 export function groupsOf(state) {

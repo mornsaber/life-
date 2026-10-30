@@ -14,7 +14,7 @@
  */
 import { Random, clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { minorChildren, ageOf, byId } from './People.js';
+import { minorChildren, livingChildren, ageOf, byId } from './People.js';
 import { ensureTraits } from './Dynasty.js';
 import { priceLevel } from '../world/Countries.js';
 
@@ -74,6 +74,7 @@ export function parentingTick(main) {
     if (p.therapy) { fees += local(state, 2400); if (p.wellbeing >= 60) { p.therapy = false; main.log(`${c.firstName} finished therapy, doing much better.`, '🌤️', 'good'); } }
     if (age >= 8 && p.wellbeing < 40 && !p.therapy && rng.chance(0.5)) mindPrompt(ctx, c);
     else if (age >= 13 && rng.chance(clamp((0.12 + (60 - p.wellbeing) / 200) * style.trouble, 0.04, 0.5))) troublePrompt(ctx, c, style);
+    if (age === 17) { p.outcome = p.wellbeing >= 65 ? 'thriving' : p.wellbeing < 38 ? 'troubled' : 'ok'; }
     if (age === 17) main.log(`${c.firstName} is nearly grown: ${p.wellbeing >= 70 ? 'confident and kind' : p.wellbeing >= 45 ? 'finding their way' : 'struggling, but still talking to you'}, ${t.smarts >= 70 ? 'top of the class' : t.smarts >= 50 ? 'doing fine at school' : 'never one for school'}.`, '🎓', 'info');
   }
   if (fees) main.spend(fees, 'School fees, lessons and therapy for the children', { allowDebt: true });
@@ -109,7 +110,48 @@ function troublePrompt(ctx, c, style) {
   ] });
 }
 
+/** Grown children: how you raised them shows up for the rest of your life. */
+export function adultChildrenTick(main) {
+  const { state } = main;
+  const rng = new Random(((state.world?.seed ?? 1) * 86243 + state.character.age * 307 + 0xad7) >>> 0);
+  for (const c of livingChildren(state).filter((k) => ageOf(state, k) >= 18 && k.parenting?.outcome)) {
+    const out = c.parenting.outcome;
+    const age = ageOf(state, c);
+    // Closeness drifts toward how they were raised.
+    c.relationship = Math.round(clamp(c.relationship + (out === 'thriving' ? 1 : out === 'troubled' ? -1 : 0), 0, 100));
+    if (out === 'thriving' && c.relationship >= 60 && rng.chance(state.character.age >= 65 ? 0.4 : 0.15)) {
+      main.stat('happiness', 3);
+      main.log(rng.pick([`${c.firstName} came for Sunday lunch, as they do most weeks.`, `${c.firstName} rang just to talk.`, `${c.firstName} took you away for a weekend.`]), '🫶', 'good');
+      if (state.character.age >= 70 && state.finances.cash < 5000 && rng.chance(0.5)) { const gift = Math.round(rng.int(2000, 8000) * priceLevel(state)); main.earn(gift, `Help from ${c.firstName}`); main.log(`${c.firstName} quietly paid some of your bills.`, '💝', 'good'); }
+    }
+    if (out === 'troubled' && age <= 40 && !state.prompts.some((x) => x.type === 'parenting.grownTrouble') && rng.chance(0.18)) {
+      const kind = rng.pick(['money', 'arrest', 'addiction']);
+      const text = { money: `${c.firstName} needs money again — rent, they say, or a debt to someone you'd rather not meet.`, arrest: `${c.firstName} rang from a police station at 3 a.m.`, addiction: `${c.firstName} is using again. Their partner called you, crying.` }[kind];
+      main.prompt({ type: 'parenting.grownTrouble', icon: '📞', title: `${c.firstName}, Again`, text, data: { childId: c.id, kind }, options: [
+        { id: 'help', label: kind === 'arrest' ? '⚖️ Pay for a lawyer' : kind === 'addiction' ? '🏥 Pay for rehab' : '💵 Send the money', hint: `$${Math.round({ money: 2000, arrest: 5000, addiction: 12000 }[kind] * priceLevel(state)).toLocaleString()}` },
+        { id: 'tough', label: '🧱 Tough love: no money, but you\'re there if they want help' },
+        { id: 'cut', label: '🚪 Cut contact', hint: 'For your own sake' },
+      ] });
+    }
+  }
+}
+
 export const ParentingResolvers = {
+  grownTrouble(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const c = byId(state, data.childId);
+    if (!c) return;
+    if (optionId === 'help') {
+      ctx.spend(Math.round({ money: 2000, arrest: 5000, addiction: 12000 }[data.kind] * priceLevel(state)), `Helping ${c.firstName}`, { allowDebt: true });
+      c.relationship = clamp(c.relationship + 6, 0, 100);
+      if (data.kind === 'addiction' && rng.chance(0.4)) { c.parenting.outcome = 'ok'; return ctx.log(`Rehab worked this time. ${c.firstName} has been clean for a year.`, '🌱', 'good'); }
+      return ctx.log(`You helped ${c.firstName}. Again.`, '💵', 'info');
+    }
+    if (optionId === 'tough') { ctx.stat('stress', 5); if (rng.chance(0.25)) { c.parenting.outcome = 'ok'; return ctx.log(`${c.firstName} was furious — and then, a year later, got help on their own.`, '🌱', 'good'); } return ctx.log(`You held the line with ${c.firstName}. It was the hardest thing you've done.`, '🧱', 'info'); }
+    c.relationship = Math.min(c.relationship, 10);
+    ctx.stat('stress', -4);
+    ctx.log(`You stopped answering ${c.firstName}'s calls.`, '🚪', 'warn');
+  },
   schoolChoice(ctx, data, optionId) {
     const c = byId(ctx.state, data.childId);
     if (!c || !SCHOOLS[optionId]) return;
@@ -179,10 +221,10 @@ export const ParentingActions = {
 export const ParentingModule = {
   id: 'parenting',
   order: 9.6,
-  onAgeUp: parentingTick,
+  onAgeUp(ctx) { parentingTick(ctx); adultChildrenTick(ctx); },
   actions: ParentingActions,
   resolvers: ParentingResolvers,
 };
 
-export const parentingOf = pOf;
+export const parentingOf = (c) => c.parenting ?? { school: null, lessons: [], wellbeing: 65 };
 export const myMinorChildren = mine;

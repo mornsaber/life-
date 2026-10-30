@@ -112,6 +112,7 @@ const tests = {
       engine.dispatch('hobbies.practise', 'running');
       engine.dispatch('hobbies.compete', 'guitar');
       hobbiesTick(ctx);
+      for (const p of state.prompts.filter((x) => x.type === 'hobbies.pro')) engine.resolvePrompt(p.id, 'stay');
       state.character.age += 1;
     }
     assert.ok(g.skill >= 75, `guitar ${g.skill} (${tierOf(g.skill).label})`);

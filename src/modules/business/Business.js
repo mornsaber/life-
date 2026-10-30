@@ -17,6 +17,7 @@
  *   listings: [...businesses for sale],
  * }
  */
+import { businessShock } from '../economy/Shocks.js';
 import { businessBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
 import { yearsInProfession } from '../../core/State.js';
@@ -178,7 +179,7 @@ export function yearFinancials(state, biz, rng) {
   const stoppage = biz.strike ? clamp(biz.strike.weeks / 52, 0, 0.5) : 0;
   // How you've organized the company (Structure): divisions, lean or regional design.
   const sfx = structureEffects(state, biz);
-  const demand = law.demand * (1 + (phase - 1) * type.cyclical) * qualityDemand(biz.quality) * reputationDemand(biz.reputation) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
+  const demand = law.demand * (1 + (phase - 1) * type.cyclical) * businessShock(state, biz.typeId) * qualityDemand(biz.quality) * reputationDemand(biz.reputation) * MARKETING[biz.marketing].lift * (biz.fit ?? 1) * (biz.franchise?.lift ?? 1) * competition * lic.demand;
   const ramp = (biz.years <= 1 ? 0.7 : biz.years === 2 ? 0.9 : 1) * lic.revenue;
   // New businesses hire as customers arrive rather than staffing up on day one.
   const staffing = biz.years <= 1 ? 0.85 : biz.years === 2 ? 0.95 : 1;

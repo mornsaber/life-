@@ -10,6 +10,16 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { priceLevel } from '../world/Countries.js';
+import { getProfession } from '../career/JobTrees.js';
+import { createEmployer } from '../career/Employers.js';
+import { hire } from '../career/CareerEngine.js';
+
+/** The career an elite hobby can become, and the rung you'd start on. */
+export const PRO_PATHS = {
+  guitar: ['music', 'session'], piano: ['music', 'session'], singing: ['music', 'session'],
+  running: ['athletics', 'pro'], football: ['athletics', 'pro'], tennis: ['athletics', 'pro'], boxing: ['athletics', 'pro'], climbing: ['athletics', 'minor'],
+  painting: ['design', 'designer'], photography: ['design', 'designer'], cooking: ['culinary', 'partie'], writing: ['contentCreator', 'partTime'], chess: ['contentCreator', 'partTime'],
+};
 
 export const HOBBIES = {
   guitar: { label: 'Guitar', icon: '🎸', kind: 'music', cost: 400, stat: 'smarts', minAge: 7 },
@@ -45,7 +55,7 @@ EVENTS.writing = ['a library short-story contest', 'a literary magazine', 'a nat
 
 const local = (state, n) => Math.round(n * priceLevel(state));
 const mine = (state) => (state.hobbies ??= {});
-export const hobbiesOf = mine;
+export const hobbiesOf = (state) => state.hobbies ?? {};
 
 /** Sport peaks young: past 32 the body sets a ceiling that falls every year. */
 const ceiling = (state, h) => (HOBBIES[h].kind === 'sport' ? clamp(100 - Math.max(0, state.character.age - 32) * 2.5, 30, 100) : 100);
@@ -60,6 +70,15 @@ export function hobbiesTick(ctx) {
     h.practised = false;
     h.skill = Math.min(h.skill, ceiling(state, id));
     // Semi-pro: the hobby pays its way.
+    // Elite: someone offers to make it your job.
+    const path = PRO_PATHS[id];
+    if (h.skill >= 88 && !h.proOffered && path && getProfession(path[0]) && state.character.age >= 16 && state.character.age <= (def.kind === 'sport' ? 32 : 60) && rng.chance(0.5)) {
+      h.proOffered = state.character.age;
+      ctx.prompt({ type: 'hobbies.pro', icon: '🌟', title: `Go Pro in ${def.label}?`, text: `${def.kind === 'sport' ? 'A club' : def.kind === 'music' ? 'A label' : 'An agency'} has seen what you can do and offers you a place — as your job, not your hobby.${state.career.job ? ` You would leave ${state.career.job.title}.` : ''}`, data: { id }, options: [
+        { id: 'go', label: '🌟 Take it', hint: 'Doing what you love; less security' },
+        { id: 'stay', label: '🏡 Keep it a hobby' },
+      ] });
+    }
     if (h.skill >= 75 && def.kind !== 'sport' && rng.chance(0.6)) {
       const pay = local(state, rng.int(1500, 6000) * (h.skill >= 90 ? 4 : 1));
       h.earned = (h.earned ?? 0) + pay;
@@ -131,4 +150,18 @@ export const HobbyActions = {
   },
 };
 
-export const HobbiesModule = { id: 'hobbies', order: 5.5, onAgeUp: hobbiesTick, actions: HobbyActions };
+export const HobbyResolvers = {
+  pro(ctx, data, optionId) {
+    const { state, rng } = ctx;
+    const def = HOBBIES[data.id];
+    if (optionId !== 'go') return ctx.log(`You kept ${def.label.toLowerCase()} for yourself.`, def.icon, 'info');
+    const [profId, levelId] = PRO_PATHS[data.id];
+    const prof = getProfession(profId);
+    const employer = createEmployer(rng, state, prof, state.character.regionId);
+    if (state.career.job) ctx.emit('career:resign', { reason: `Went professional in ${def.label.toLowerCase()}` });
+    const ok = hire(ctx, { professionId: profId, levelId: prof.levels.some((l) => l.id === levelId) ? levelId : prof.levels[0].id, employer });
+    ctx.log(ok ? `You turned professional: ${def.label.toLowerCase()} is your job now.` : 'The offer fell through at the last minute.', '🌟', ok ? 'milestone' : 'warn');
+  },
+};
+
+export const HobbiesModule = { id: 'hobbies', order: 5.5, onAgeUp: hobbiesTick, actions: HobbyActions, resolvers: HobbyResolvers };

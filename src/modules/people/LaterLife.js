@@ -21,7 +21,8 @@ const ofState = (state) => (state.laterLife ??= { poa: null, keys: false, downsi
 const local = (state, n) => Math.round(n * priceLevel(state));
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 52711 + state.character.age * 173 + 0x01d) >>> 0);
 export const attorneyCandidates = (state) => living(state).filter((p) => ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && ageOf(state, p) >= 18);
-export const laterLifeOf = ofState;
+/** For views: read without creating. */
+export const laterLifeOf = (state) => state.laterLife ?? { poa: null, keys: false, downsized: false, funeral: false };
 
 const EVENTS = [
   { id: 'fall', minAge: 72, title: 'A Fall', text: 'You slipped in the bathroom and lay on the floor for two hours before anyone came.', options: [
@@ -46,6 +47,8 @@ const EVENTS = [
 export function laterLifeTick(main) {
   const { state } = main;
   const age = state.character.age;
+  const ltc = state.laterLife?.ltc;
+  if (ltc && !state.health?.care) main.spend(ltc.premium, 'Long-term-care insurance premium', { allowDebt: true });
   if (age < 70 || state.legal?.incarceration) return;
   const L = ofState(state);
   const rng = sideRng(state);
@@ -90,7 +93,19 @@ export const LaterLifeResolvers = {
   },
 };
 
+/** Long-term-care insurance: a yearly premium set by the age you buy it; it pays most of the care bill. */
+export const ltcPremium = (state, age = state.character.age) => Math.round((1200 + Math.max(0, age - 45) * 140) * priceLevel(state));
+
 export const LaterLifeActions = {
+  ltc(ctx) {
+    const { state } = ctx;
+    const L = ofState(state);
+    if (L.ltc) { L.ltc = null; return ctx.log('You cancelled your long-term-care insurance. The premiums you paid are gone.', '📄', 'warn'); }
+    if (state.character.age < 40 || state.character.age > 79) return ctx.toast('Sold from 40 to 79', 'warn');
+    if (hasCondition(state, 'dementia') || state.health?.care) return ctx.toast('Insurers won\'t cover a need you already have', 'warn');
+    L.ltc = { since: state.character.age, premium: ltcPremium(state) };
+    ctx.log(`You bought long-term-care insurance: $${L.ltc.premium.toLocaleString()} a year, locked at today's age.`, '📄', 'good');
+  },
   /** Arg: a person's id, or 'professional' for a solicitor. */
   poa(ctx, who) {
     const { state } = ctx;

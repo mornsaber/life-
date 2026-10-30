@@ -42,6 +42,9 @@ export function careCost(state, kind) {
   const sys = careSystemHere(state);
   const full = Math.round(CARE_COST[kind] * priceLevel(state));
   if (kind === 'family') return full;
+  // Long-term-care insurance (people/LaterLife.js) pays most of a paid carer or a care home, after three years of premiums.
+  const insured = state.laterLife?.ltc && state.character.age - state.laterLife.ltc.since >= 3 ? 0.3 : 1;
+  if (insured < 1) return Math.round(full * insured * (1 - (sys.cover ?? 0)));
   if (sys.means != null) return state.finances.cash > sys.means * priceLevel(state) ? full : Math.round(full * 0.1);
   return Math.round(full * (1 - (sys.cover ?? 0)));
 }

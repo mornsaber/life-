@@ -10,7 +10,7 @@ import {
 } from '../../modules/people/index.js';
 import { CIRCLES } from '../../modules/people/Friends.js';
 import { STYLES, SCHOOLS, LESSONS, parentingStyle, parentingOf, myMinorChildren } from '../../modules/people/Parenting.js';
-import { laterLifeOf, attorneyCandidates } from '../../modules/people/LaterLife.js';
+import { laterLifeOf, attorneyCandidates, ltcPremium } from '../../modules/people/LaterLife.js';
 import { bestFriend, friendGroupsOf, groupsOf } from '../../modules/people/FriendGroups.js';
 import { TRAITS, traitOf, closeness, interactEligibility, isRomantic } from '../../modules/people/Bonds.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
@@ -235,7 +235,7 @@ function parentingCard(state) {
 
 /** Your own old age: who acts for you, and your wishes. */
 function laterLifeCard(state) {
-  if (state.character.age < 55) return '';
+  if (state.character.age < 40) return '';
   const L = laterLifeOf(state);
   const att = L.poa === 'professional' ? 'A solicitor' : L.poa ? (living(state).find((p) => p.id === L.poa)?.firstName ?? '—') : null;
   const picks = att ? '' : attorneyCandidates(state).slice(0, 4).map((p) => button(`📜 ${esc(p.firstName)}`, 'laterLife.poa', { arg: p.id, variant: 'tiny', hint: 'Power of attorney' })).join('') + button('📜 A solicitor', 'laterLife.poa', { arg: 'professional', variant: 'tiny', hint: 'Impartial; costs more' });
@@ -244,7 +244,8 @@ function laterLifeCard(state) {
     ['Advance directive', state.health?.directive ? 'Written' : 'Not yet'],
     ['Funeral plan', L.funeral ? 'Paid for' : 'None'],
     ['Driving', L.keys ? 'Given up' : 'Still driving'],
-  ])}<div class="toggle-row">${picks}${state.health?.directive ? '' : button('📝 Write an advance directive', 'health.directive', { variant: 'tiny' })}${L.funeral ? '' : button('🕊️ Prepay your funeral', 'laterLife.funeral', { variant: 'tiny' })}</div>
+    ['Long-term-care insurance', L.ltc ? `${money(L.ltc.premium)}/yr since ${L.ltc.since}` : 'None'],
+  ])}<div class="toggle-row">${picks}${state.health?.directive ? '' : button('📝 Write an advance directive', 'health.directive', { variant: 'tiny' })}${L.funeral ? '' : button('🕊️ Prepay your funeral', 'laterLife.funeral', { variant: 'tiny' })}${button(L.ltc ? '📄 Cancel care insurance' : '📄 Buy long-term-care insurance', 'laterLife.ltc', { variant: 'tiny', hint: L.ltc ? 'Premiums are lost' : `${money(ltcPremium(state))}/yr · pays 70% of care` })}</div>
   <p class="fine">Care at home or a care home is decided when you need it, on the Health tab.</p>`, { icon: '🌇' });
 }
 
