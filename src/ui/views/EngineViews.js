@@ -3,8 +3,11 @@
  * book of business, projects, seasons, audience). Read-only: they never
  * create records.
  */
+import { showbizOf, showbizKind } from '../../modules/career/Showbiz.js';
+import { clubOf } from '../../modules/career/SportClubs.js';
+import { institutionOf, KINDS as INSTITUTION_KINDS } from '../../modules/career/Institutions.js';
 import '../../modules/career/engines/MoreCareers.js';
-import { esc, button, chip, disclosure, meter } from '../Components.js';
+import { esc, button, chip, disclosure, meter, kv } from '../Components.js';
 import { shiftView, postEligibility } from '../../modules/career/engines/ShiftIncident.js';
 import { caseView, FOCUS, scaleOf } from '../../modules/career/engines/Caseload.js';
 import { bookView } from '../../modules/career/engines/ClientBook.js';
@@ -228,10 +231,31 @@ function emSection(state) {
   return disclosure('engine.em', '🚨 Your Emergency Management Office', `<h4 class="sub">Your area's hazards</h4><p>${haz}</p><h4 class="sub">Readiness</h4>${meters}<h4 class="sub">Preparedness — ${Math.max(0, points - used)} of ${points} program actions left this year</h4><div class="toggle-row">${actions}</div><h4 class="sub">Mitigation</h4><div class="toggle-row">${grants || '<span class="fine">No mitigation projects for these hazards.</span>'}</div>${projects ? `<ul class="history">${projects}</ul>` : ''}${claims ? `<h4 class="sub">Recovery claims</h4><ul class="history">${claims}</ul>${button('📁 Push the recovery paperwork', 'emergencyMgmt.paperwork', { variant: 'small', disabled: Boolean(state.yearly['emergencyMgmt.paperwork']), hint: 'Keeps the auditors away' })}` : ''}${acts ? `<h4 class="sub">Activations</h4><ul class="history">${acts}</ul>` : ''}<p class="fine">Readiness slips every year you don't work at it, and it decides how the next disaster goes. Finished mitigation projects make the next disaster of that kind less severe where you live.</p>`, { count: r ? `readiness ${Math.round(Object.values(r).reduce((a, b) => a + b, 0) / 5)}%` : null });
 }
 
+function showbizSection(state) {
+  if (!showbizKind(state)) return '';
+  const S = showbizOf(state);
+  const credits = S.credits.slice().reverse().slice(0, 10).map((c) => `<li class="report-row"><div><b>${esc(c.title)}</b> <small class="muted">${c.year} · ${esc(c.genre)}</small></div><small>${esc(c.result)}</small></li>`).join('');
+  return disclosure('engine.showbiz', showbizKind(state) === 'acting' ? '🎬 Your Filmography' : '💿 Your Discography', `${kv([['Agent', S.agent ? (S.agent.tier === 'major' ? 'A major agency' : 'A boutique agency') : 'None'], ['Typecast', S.typecast ? `as ${esc(S.typecast)}` : 'No'], ['Award nominations · wins', `${S.noms} · ${S.wins}`]])}${credits ? `<ul class="history">${credits}</ul>` : '<p class="fine">Your first offers come with the year.</p>'}<div class="toggle-row">${button(S.agent ? '📇 Leave your agent' : '📇 Sign with an agent', 'showbiz.agent', { variant: 'small', hint: 'Better offers, for 10%' })}</div>`, { count: S.credits.length ? `${S.credits.length} credits` : null });
+}
+
+function clubSection(state) {
+  const c = clubOf(state);
+  if (!c || c.retired) return '';
+  return disclosure('engine.club', `🏟️ ${esc(c.name)}`, kv([['Contract', `${Math.max(0, c.years)} year${c.years === 1 ? '' : 's'} left`], ['Wage', `$${c.wage.toLocaleString()}/yr`], ['Club', ['A lower-league club', 'A mid-table club', 'A top-flight club', 'One of the biggest clubs in the world'][c.tier]]]), { count: null });
+}
+
+function institutionSection(state) {
+  const I = institutionOf(state);
+  if (!I) return '';
+  const K = INSTITUTION_KINDS[I.kind];
+  const ratings = I.ratings.slice(-4).map((r) => chip(`${r.rating} (${r.age})`, /Outstanding|Good/.test(r.rating) ? 'good' : 'bad')).join(' ');
+  return disclosure('engine.institution', `${K.icon} Running ${esc(I.name)}`, `${meter(I.staffing, { label: '👥 Staffing', suffix: '%' })}${meter(I.quality, { label: `📈 ${K.quality}` })}${meter(I.morale, { label: '🙂 Staff morale' })}${kv([['League table', I.rank ? `${I.rank} of 40` : '—'], ['Budget', I.budget > 0 ? `Investing (+${I.budget})` : I.budget < 0 ? `Cutting (${I.budget})` : 'Balanced'], ['Inspections', ratings || 'None yet']])}<p class="fine">Each year: a budget decision. Every third year: an inspection — two Inadequates in a row and the board will remove you. Scandals come; how you handle them decides whether they're about the institution or about you.</p>`, { count: I.rank ? `#${I.rank}` : null });
+}
+
 /** Every engine that applies to the job you hold: the first one open, the rest folded. */
 export function engineSections(state) {
   if (!state.career.job) return '';
-  const parts = [emSection(state), diplomacySection(state), missionsSection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state)].filter(Boolean);
+  const parts = [institutionSection(state), showbizSection(state), clubSection(state), emSection(state), diplomacySection(state), missionsSection(state), classroomSection(state), officeSection(state), dealsSection(state), shiftSection(state), investigationSection(state), caseSection(state), bookSection(state), projectSection(state), seasonSection(state), audienceSection(state), routeSection(state), tradeSection(state)].filter(Boolean);
   if (parts.length) parts[0] = parts[0].replace('<details class="disclosure"', '<details class="disclosure" open');
   return parts.join('') + incidentsSection(state);
 }
