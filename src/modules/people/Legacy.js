@@ -36,7 +36,7 @@ import { COUNTRIES } from '../world/Countries.js';
 import { REGIONS } from '../life/Regions.js';
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { CROWNS, royalPrefix } from '../world/Crown.js';
-import { peerTitle, RANKS, courtesy } from '../world/Peerage.js';
+import { peerTitle, RANKS, courtesy, NOBILITY, rankLabel } from '../world/Peerage.js';
 import { houseStyle } from '../world/Houses.js';
 import { styledName } from '../world/Honours.js';
 import { degreeLabel } from '../education/Catalog.js';
@@ -553,7 +553,7 @@ function passCrownAndTitles(old, s, child, childAge) {
     const heir = eldestSon ?? kids[0];
     if (heir?.id === child.id) {
       s.character.peerage = { ...p, seat: false, created: childAge };
-      s.character.style = { ...(s.character.style ?? {}), peerage: peerTitle(p.rank, p.place, child.gender, child.lastName), ...(s.royal ? {} : { prefix: RANKS[p.rank].style[child.gender === 'female' ? 'female' : 'male'] }) };
+      s.character.style = { ...(s.character.style ?? {}), peerage: peerTitle(p.rank, p.place, child.gender, child.lastName, p.cc ?? 'GB'), ...(s.royal ? {} : { prefix: (p.cc ?? 'GB') !== 'GB' && NOBILITY[p.cc] ? rankLabel(p.rank, child.gender, p.cc) : RANKS[p.rank].style[child.gender === 'female' ? 'female' : 'male'] }) };
       addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as ${s.character.style.peerage}.`, '👑', 'milestone');
     } else if (!s.royal) {
       s.noble = { rank: p.rank, place: p.place, holderId: null, heir: false, cc: p.cc ?? old.noble?.cc ?? 'GB' };

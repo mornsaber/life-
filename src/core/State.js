@@ -81,12 +81,13 @@ export function royalBirth(rng, options) {
 }
 
 /** Countries whose peerages still pass titles (Peerage.js), and the ranks. */
-const PEERAGE_HOMES = ['GB', 'ES'];
+/** Countries with a nobility to be born into (Peerage.NOBLE_COUNTRIES). */
+export const PEERAGE_HOMES = ['GB', 'ES', 'FR', 'BE', 'NL', 'SE', 'DK', 'IT', 'DE', 'AT', 'PT'];
 export const NOBLE_RANK_IDS = ['baron', 'viscount', 'earl', 'marquess', 'duke'];
 
 /**
- * Born into the peerage (not royal): a titled family in Britain or Spain — Britain if you chose
- * a country without one. { countryId, rank|null (random), heir: true|false|null (random) } or null.
+ * Born into the nobility (not royal): a titled family in a country that has one — Britain if you
+ * chose a country without one. { countryId, rank|null (random), heir: true|false|null (random) } or null.
  */
 export function nobleStart(rng, options) {
   const rank = NOBLE_RANK_IDS.includes(options.nobleRank) ? options.nobleRank : options.nobleRank === 'random' ? null : undefined;

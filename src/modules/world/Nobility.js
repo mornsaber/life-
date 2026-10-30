@@ -18,14 +18,13 @@
  */
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
-import { RANKS } from './Peerage.js';
+import { RANKS, NOBILITY, NOBLE_COUNTRIES, rankLabel } from './Peerage.js';
 import { makePerson } from '../people/PeopleEngine.js';
 
 const RANK_ORDER = ['baron', 'viscount', 'earl', 'marquess', 'duke'];
 const ESTATE_VALUE = { baron: 2.5e6, viscount: 4e6, earl: 7e6, marquess: 12e6, duke: 30e6 };
 const ALLOWANCE = { baron: 18000, viscount: 25000, earl: 40000, marquess: 60000, duke: 110000 };
 const HOUSE = { baron: 'Hall', viscount: 'House', earl: 'Park', marquess: 'Court', duke: 'Castle' };
-const HOUSE_ES = { baron: 'Casa', viscount: 'Casa', earl: 'Palacio', marquess: 'Palacio', duke: 'Castillo' };
 /** Each way of running the estate: yield on its value a year, and what it does to you. */
 export const STRATEGIES = {
   farm: { label: '🚜 Farm it in hand', yield: 0.022, desc: 'Steady, unglamorous' },
@@ -39,7 +38,7 @@ export const INHERITANCE_TAX = { rate: 0.4, threshold: 500000 };
 
 const rankOf = (state) => state.noble?.rank;
 /** The country the title (and the estate) belongs to — not wherever you happen to live. */
-export const titleCountry = (state) => state.noble?.cc ?? state.character.peerage?.cc ?? (['GB', 'ES'].includes(state.character.countryId) ? state.character.countryId : 'GB');
+export const titleCountry = (state) => state.noble?.cc ?? state.character.peerage?.cc ?? (NOBLE_COUNTRIES.includes(state.character.countryId) ? state.character.countryId : 'GB');
 const female = (state) => state.character.gender === 'female';
 
 /** The estate, made when first needed (older saves and new noble births alike). */
@@ -47,8 +46,8 @@ export function estateOf(state) {
   const n = state.noble;
   if (!n) return null;
   if (n.estate === undefined) {
-    const es = titleCountry(state) === 'ES';
-    n.estate = { name: es ? `${HOUSE_ES[n.rank]} de ${n.place}` : `${n.place} ${HOUSE[n.rank]}`, value: ESTATE_VALUE[n.rank], strategy: 'farm', owner: 'family', heirlooms: 1 + RANK_ORDER.indexOf(n.rank), exemptUntil: null };
+    const local = NOBILITY[titleCountry(state)];
+    n.estate = { name: local ? local.estate(n.place, n.rank) : `${n.place} ${HOUSE[n.rank]}`, value: ESTATE_VALUE[n.rank], strategy: 'farm', owner: 'family', heirlooms: 1 + RANK_ORDER.indexOf(n.rank), exemptUntil: null };
   }
   return n.estate;
 }
@@ -227,4 +226,4 @@ export const NobilityModule = {
 /** For the view. */
 export const nobleAllowance = (state) => (state.noble ? Math.round(ALLOWANCE[state.noble.rank] * (state.noble.heir ? 1 : 0.5)) : 0);
 export const isGrandee = grandee;
-export const rankName = (state) => RANKS[rankOf(state)]?.[female(state) ? 'female' : 'male'] ?? '';
+export const rankName = (state) => (rankOf(state) ? rankLabel(rankOf(state), state.character.gender, titleCountry(state)) : '');

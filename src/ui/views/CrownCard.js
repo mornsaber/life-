@@ -7,7 +7,7 @@ import { fullName, ageOf } from '../../modules/people/People.js';
 import { styledName } from '../../modules/world/Honours.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
 import { currentYear, yearlyCount } from '../../core/State.js';
-import { peerAddress, RANKS, numberedTitle, subsidiaryTitles } from '../../modules/world/Peerage.js';
+import { peerAddress, RANKS, numberedTitle, subsidiaryTitles, rankLabel, peerTitle } from '../../modules/world/Peerage.js';
 import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 import { conferOptions, militaryPosts, ROYAL_ORDERS, PEERAGE_GRANTS } from '../../modules/world/RoyalHousehold.js';
@@ -132,7 +132,7 @@ export function crownCards(state) {
     cards.push(card('Your Peerage', `${kv([
       ['Title', esc(numberedTitle(state) ?? '')],
       p.subsidiary?.length ? ['Lesser titles', esc(p.subsidiary.join(', '))] : null,
-      ['Rank', esc(RANKS[p.rank][state.character.gender === 'female' ? 'female' : 'male'])],
+      ['Rank', esc(rankLabel(p.rank, state.character.gender, p.cc ?? 'GB'))],
       ['Addressed as', esc(peerAddress(state) ?? '')],
       ['Kind', p.kind === 'life' ? 'Life peerage — dies with you' : p.kind === 'royal' ? 'Royal dukedom' : 'Hereditary — passes to your heir'],
       ['House of Lords', p.retiredLords ? `Retired from the House at ${p.retiredLords} (you keep the title)` : p.leave ? 'On leave of absence' : p.seat ? 'You sit' : p.kind === 'hereditary' ? `No seat yet — stand when a hereditary seat falls vacant${p.byElections ? ` (${p.byElections} attempt${p.byElections > 1 ? 's' : ''} so far)` : ''}` : 'No seat'],
@@ -246,13 +246,13 @@ function nobleCard(state) {
   const e = estateOf(state);
   const age = state.character.age;
   const yours = e?.owner === 'you';
-  const rank = RANKS[n.rank];
-  const parentTitle = yours && state.character.style?.peerage ? state.character.style.peerage : `${rank.male} ${rank.of ? 'of ' : ''}${n.place}`;
+  const cc = n.cc ?? 'GB';
+  const parentTitle = yours && state.character.style?.peerage ? state.character.style.peerage : peerTitle(n.rank, n.place, 'male', n.place, cc);
   return card(yours ? `${esc(e.name)}` : 'Your Titled Family', `${kv([
     ['Family title', `${n.number && !yours ? `${n.number}${['th', 'st', 'nd', 'rd'][n.number % 10 > 3 || [11, 12, 13].includes(n.number % 100) ? 0 : n.number % 10]} ` : ''}${esc(parentTitle)}${isGrandee(state) ? ' · Grandee of Spain (Excelentísimo)' : ''}`],
-    subsidiaryTitles(n.rank, n.place).length ? ['Lesser titles', esc(subsidiaryTitles(n.rank, n.place).join(', '))] : null,
+    subsidiaryTitles(n.rank, n.place, 'male', cc).length ? ['Lesser titles', esc(subsidiaryTitles(n.rank, n.place, 'male', cc).join(', '))] : null,
     n.courtesyTitle ? ['Your courtesy title', `${esc(n.courtesyTitle)} — the heir uses the family's second title`] : null,
-    ['You', yours ? 'Head of the family' : n.disclaimed ? 'You disclaimed the title' : n.heir ? 'The heir' : 'A younger child (courtesy style, no title to inherit)'],
+    ['You', yours ? 'Head of the family' : n.disclaimed ? 'You disclaimed the title' : n.heir ? 'The heir' : cc === 'GB' ? 'A younger child (courtesy style, no title to inherit)' : 'A younger child (no title to inherit)'],
     e ? ['Seat', `${esc(e.name)}${e.owner === null ? ' (sold)' : yours ? ` · worth ≈${money(e.value)}` : ''}`] : null,
     e && yours ? ['Run as', `${esc(STRATEGIES[e.strategy]?.label ?? '')}${e.exemptUntil ? ` · open to the public until ${e.exemptUntil} (tax exemption)` : ''}`] : null,
     e && !yours && e.owner === 'family' && age >= 18 ? ['Allowance', `${money(nobleAllowance(state))}/yr from the family trust`] : null,

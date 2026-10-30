@@ -37,13 +37,37 @@ export const RANKS = {
 };
 /** How rare a noble birth is, when you opt in: a few lives in a thousand. */
 export const NOBLE_BIRTH_CHANCE = 0.004;
-/** Countries with a peerage that still passes titles. */
+/** Countries with a peerage that still passes titles (and still creates new ones). */
 export const PEERAGE_COUNTRIES = ['GB', 'ES'];
+/**
+ * Where you can be born titled: the British and Spanish peerages; the nobilities the Benelux and
+ * Scandinavian monarchies still recognise; and the old families of republics, whose titles live on
+ * by courtesy and in the family (France, Italy, Germany, Austria, Portugal).
+ *   ranks [male, female] by peerage rank (viscount and marquess fold into the nearest local rank
+ *   where a country never had them) · of: the particle · estate: the family seat's name
+ */
+export const NOBILITY = {
+  ES: { ranks: { baron: ['Barón', 'Baronesa'], viscount: ['Vizconde', 'Vizcondesa'], earl: ['Conde', 'Condesa'], marquess: ['Marqués', 'Marquesa'], duke: ['Duque', 'Duquesa'] }, of: 'de', estate: (p, r) => `${{ baron: 'Casa', viscount: 'Casa', earl: 'Palacio', marquess: 'Palacio', duke: 'Castillo' }[r]} de ${p}` },
+  FR: { ranks: { baron: ['Baron', 'Baronne'], viscount: ['Vicomte', 'Vicomtesse'], earl: ['Comte', 'Comtesse'], marquess: ['Marquis', 'Marquise'], duke: ['Duc', 'Duchesse'] }, of: 'de', places: ['Beaumont', 'Valrose', 'Montfort', 'Rochebrune', 'Saint-Aubin', 'Chantelle', 'Brissac'], estate: (p) => `Château de ${p}`, recognised: false },
+  BE: { ranks: { baron: ['Baron', 'Baronne'], viscount: ['Vicomte', 'Vicomtesse'], earl: ['Comte', 'Comtesse'], marquess: ['Marquis', 'Marquise'], duke: ['Duc', 'Duchesse'] }, of: 'de', places: ['Hemricourt', 'Ligne', 'Beaufort', 'Merode', 'Ursel', 'Lannoy'], estate: (p) => `Château de ${p}` },
+  NL: { ranks: { baron: ['Baron', 'Barones'], viscount: ['Burggraaf', 'Burggravin'], earl: ['Graaf', 'Gravin'], marquess: ['Graaf', 'Gravin'], duke: ['Graaf', 'Gravin'] }, of: 'van', places: ['Wassenaer', 'Rechteren', 'Lynden', 'Heeckeren', 'Bentinck', 'Limburg'], estate: (p) => `Kasteel ${p}` },
+  SE: { ranks: { baron: ['Friherre', 'Friherrinna'], viscount: ['Friherre', 'Friherrinna'], earl: ['Greve', 'Grevinna'], marquess: ['Greve', 'Grevinna'], duke: ['Greve', 'Grevinna'] }, of: 'af', places: ['Wachtmeister', 'Bonde', 'De la Gardie', 'Piper', 'Wrede', 'Bielke'], estate: (p) => `${p}s slott` },
+  DK: { ranks: { baron: ['Baron', 'Baronesse'], viscount: ['Baron', 'Baronesse'], earl: ['Greve', 'Grevinde'], marquess: ['Lensgreve', 'Lensgrevinde'], duke: ['Lensgreve', 'Lensgrevinde'] }, of: 'af', places: ['Ahlefeldt', 'Moltke', 'Holstein', 'Reventlow', 'Danneskiold', 'Schack'], estate: (p) => `${p} Gods` },
+  IT: { ranks: { baron: ['Barone', 'Baronessa'], viscount: ['Visconte', 'Viscontessa'], earl: ['Conte', 'Contessa'], marquess: ['Marchese', 'Marchesa'], duke: ['Duca', 'Duchessa'] }, of: 'di', places: ['Valdora', 'Montebello', 'Roccalta', 'San Lorenzo', 'Castelvecchio', 'Sermoneta'], estate: (p) => `Castello di ${p}`, recognised: false },
+  DE: { ranks: { baron: ['Freiherr', 'Freifrau'], viscount: ['Freiherr', 'Freifrau'], earl: ['Graf', 'Gräfin'], marquess: ['Graf', 'Gräfin'], duke: ['Fürst', 'Fürstin'] }, of: 'von', places: ['Lindenau', 'Rosenfeld', 'Falkenstein', 'Waldeck', 'Eichberg', 'Stolberg'], estate: (p) => `Schloss ${p}`, recognised: false },
+  AT: { ranks: { baron: ['Freiherr', 'Freifrau'], viscount: ['Freiherr', 'Freifrau'], earl: ['Graf', 'Gräfin'], marquess: ['Graf', 'Gräfin'], duke: ['Fürst', 'Fürstin'] }, of: 'von', places: ['Harrach', 'Khevenhüller', 'Starhemberg', 'Trauttmansdorff', 'Kinsky', 'Esterházy'], estate: (p) => `Schloss ${p}`, recognised: false },
+  PT: { ranks: { baron: ['Barão', 'Baronesa'], viscount: ['Visconde', 'Viscondessa'], earl: ['Conde', 'Condessa'], marquess: ['Marquês', 'Marquesa'], duke: ['Duque', 'Duquesa'] }, of: 'de', places: ['Valença', 'Vila Real', 'Palmela', 'Lavradio', 'Belmonte', 'Murça'], estate: (p) => `Paço de ${p}`, recognised: false },
+};
+export const NOBLE_COUNTRIES = ['GB', ...Object.keys(NOBILITY)];
+/** A rank's name in its own country ("Graf", "Contessa", "Earl"). */
+export const rankLabel = (rank, gender, cc = 'GB') => NOBILITY[cc]?.ranks[rank]?.[gender === 'female' ? 1 : 0] ?? RANKS[rank]?.[gender === 'female' ? 'female' : 'male'] ?? '';
 const PLACES_ES = ['Valdeflores', 'Torrealta', 'Santa Inés', 'Peñaranda', 'Villafranca', 'Montesclaros', 'Almenara'];
 const PLACES = ['Ashby', 'Harcourt', 'Wexley', 'Brantham', 'Coldmoor', 'Elvaston', 'Sallowfield', 'Thornbury', 'Kilmarren', 'Ravensworth'];
 
 const gkey = (g) => (g === 'female' ? 'female' : 'male');
-export const peerTitle = (rank, place, gender, lastName) => {
+export const peerTitle = (rank, place, gender, lastName, cc = 'GB') => {
+  const n = NOBILITY[cc];
+  if (n) return `${rankLabel(rank, gender, cc)} ${n.of} ${place ?? lastName}`;
   const r = RANKS[rank];
   return r.of ? `${r[gkey(gender)]} of ${place}` : `${r[gkey(gender)]} ${lastName ?? place}${rank === 'baron' && place ? `, of ${place}` : ''}`;
 };
@@ -64,7 +88,9 @@ const SUB_ORDER = ['marquess', 'earl', 'viscount', 'baron'];
  * The lesser titles a great title carries with it (a duke is usually also a marquess, an earl
  * and a baron): the eldest son uses the highest of them by courtesy. Deterministic from the place.
  */
-export function subsidiaryTitles(rank, place, gender = 'male') {
+export function subsidiaryTitles(rank, place, gender = 'male', cc = 'GB') {
+  // Subsidiary titles and courtesy use of them are a British custom.
+  if (cc !== 'GB') return [];
   const order = RANKS[rank]?.order ?? 1;
   const seed = [...String(place)].reduce((n, ch) => n + ch.charCodeAt(0), 0);
   const below = SUB_ORDER.filter((r) => RANKS[r].order < order).slice(0, order >= 5 ? 3 : order >= 3 ? 2 : 0);
@@ -94,7 +120,9 @@ export function grantPeerage(ctx, { rank, place, kind, seat }) {
   const c = state.character;
   // A title belongs to the country that created it, wherever you later live.
   c.peerage = { cc: state.noble?.cc ?? c.countryId ?? 'GB', rank, place: place ?? null, kind, seat: Boolean(seat), created: c.age, subsidiary: kind === 'life' ? [] : subsidiaryTitles(rank, place ?? c.lastName, c.gender), number: kind === 'hereditary' ? (state.noble?.number ?? 0) + 1 || 1 : 1 };
-  c.style = { ...(c.style ?? {}), prefix: RANKS[rank].style[gkey(c.gender)], peerage: peerTitle(rank, place, c.gender, c.lastName) };
+  const cc = c.peerage.cc;
+  c.peerage.subsidiary = kind === 'life' ? [] : subsidiaryTitles(rank, place ?? c.lastName, c.gender, cc);
+  c.style = { ...(c.style ?? {}), prefix: NOBILITY[cc] ? rankLabel(rank, c.gender, cc) : RANKS[rank].style[gkey(c.gender)], peerage: peerTitle(rank, place, c.gender, c.lastName, cc) };
   if (kind === 'life') c.style.prefix = gkey(c.gender) === 'female' ? 'Baroness' : 'Lord';
   return c.peerage;
 }
@@ -104,29 +132,30 @@ export function nobleBirth(state, rng) {
   const cc = state.character.countryId ?? 'US';
   // Chosen on the start screen (a rank, heir or younger child), or the rare opt-in chance.
   const chosen = state.flags?.nobleStart;
-  if (!PEERAGE_COUNTRIES.includes(cc) || state.royal) return false;
+  if (!NOBLE_COUNTRIES.includes(cc) || state.royal) return false;
   if (!chosen && (!state.flags?.nobleOptIn || !rng.chance(NOBLE_BIRTH_CHANCE))) return false;
   const rank = chosen?.rank ?? rng.weighted([['baron', 40], ['viscount', 22], ['earl', 26], ['marquess', 7], ['duke', 5]], ([, w]) => w)[0];
   const parents = (state.people?.list ?? []).filter((p) => p.relation === 'father' || p.relation === 'mother');
   const holder = parents.find((p) => p.relation === 'father') ?? parents[0];
   const heir = chosen?.heir ?? rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
-  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11), cc };
+  state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : NOBILITY[cc]?.places ?? PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11), cc };
   if (holder) {
-    holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName);
-    holder.titles = subsidiaryTitles(rank, state.noble.place, holder.gender);
+    holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName, cc);
+    holder.titles = subsidiaryTitles(rank, state.noble.place, holder.gender, cc);
     // The holder's spouse takes the title's feminine (or masculine) form by marriage.
     const other = parents.find((p) => p !== holder);
     // (A peeress's husband takes no title.)
-    if (other?.gender === 'female') other.title = peerTitle(rank, state.noble.place, 'female', other.lastName);
+    if (other?.gender === 'female') other.title = peerTitle(rank, state.noble.place, 'female', other.lastName, cc);
   }
   // The heir uses the highest lesser title by courtesy ("Marquess of Carrow").
-  const subs = subsidiaryTitles(rank, state.noble.place, state.character.gender);
+  const subs = subsidiaryTitles(rank, state.noble.place, state.character.gender, cc);
   if (heir && subs.length) state.noble.courtesyTitle = subs[0];
   // Brothers and sisters carry the courtesy style too: "Lord Henry Ashby", "The Hon. Clara Ashby".
   const order = RANKS[rank].order;
   for (const s of (state.people?.list ?? []).filter((p) => p.relation === 'sibling')) {
     const female = s.gender === 'female';
-    s.title = order >= 4 || (order === 3 && female) ? (female ? 'Lady' : 'Lord') : 'The Hon.';
+    // On the Continent the children share the rank ("Graf", "Contessa"); in Britain they take courtesy styles.
+    s.title = cc !== 'GB' ? (cc === 'ES' ? null : rankLabel(rank, s.gender, cc)) : order >= 4 || (order === 3 && female) ? (female ? 'Lady' : 'Lord') : 'The Hon.';
   }
   if (state.people) state.people.wealth = 'upper';
   state.character.style = { ...(state.character.style ?? {}), prefix: courtesy(state) };
@@ -136,6 +165,8 @@ export function nobleBirth(state, rng) {
 export function courtesy(state) {
   const n = state.noble;
   if (!n || state.character.peerage) return null;
+  // Continental families: every child carries the rank (except in Spain, where only the holder does).
+  if ((n.cc ?? 'GB') !== 'GB') return n.cc === 'ES' ? null : rankLabel(n.rank, state.character.gender, n.cc);
   const rank = RANKS[n.rank].order;
   const female = state.character.gender === 'female';
   if (rank >= 4 || (rank === 3 && (female || n.heir))) return female ? 'Lady' : 'Lord';

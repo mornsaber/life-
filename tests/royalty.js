@@ -447,6 +447,19 @@ const tests = {
     year(engine, h, 1);
     assert.equal(h.character.peerage?.kind, 'hereditary');
   },
+  'noble families across Europe: local ranks, particles and seats; no British courtesy styles'() {
+    const de = life({ countryId: 'DE', nobleRank: 'duke', nobleHeir: 'heir' }).state;
+    assert.equal(de.character.countryId, 'DE');
+    assert.equal(de.noble.cc, 'DE');
+    const father = de.people.list.find((p) => p.id === de.noble.holderId);
+    assert.match(father.title, /^Fürst von /);
+    assert.ok(!de.noble.courtesyTitle, 'no subsidiary courtesy title outside Britain');
+    assert.ok(!/Lord|Lady|Hon/.test(de.character.style?.prefix ?? ''));
+    const it = life({ countryId: 'random', nobleRank: 'baron' }, 7).state;
+    assert.ok(['GB', 'ES', 'FR', 'BE', 'NL', 'SE', 'DK', 'IT', 'DE', 'AT', 'PT'].includes(it.character.countryId));
+    const fr = life({ countryId: 'US', nobleRank: 'earl' }).state;
+    assert.equal(fr.character.countryId, 'GB', 'a country without a nobility falls back to Britain');
+  },
   'an untitled royal is given a title on marriage; the sovereign can grant untitled relatives one'() {
     const { engine, state } = life({ royalLevel: 'distant', gender: 'male' }, 6);
     year(engine, state, 26);
