@@ -628,9 +628,71 @@ const MISSIONS = {
   ],
 };
 
+/** Civilian ocean services abroad (the Canadian Coast Guard, the JCG's survey ships): their own seas. */
+const NATIONAL_MISSIONS = {
+  CA: [
+    { text: 'A summer escorting cargo ships through the Arctic ice aboard a Coast Guard icebreaker.', deploy: true, stress: 6, eval: 5, away: true },
+    { text: 'Your search-and-rescue cutter pulled a fishing crew out of a November gale off Newfoundland.', deploy: true, stress: 8, eval: 7, risk: 0.02 },
+    { text: 'A fisheries science cruise on the Grand Banks: cod counts, nets and fog.', stress: 3, eval: 3, away: true },
+    { text: 'You resupplied Arctic communities before freeze-up, beach landings with barges.', deploy: true, stress: 4, eval: 4, away: true },
+    { text: 'Buoy tending on the St. Lawrence: unglamorous, essential, every spring.', stress: 2, eval: 2 },
+  ],
+  JP: [
+    { text: 'Your survey ship mapped a new volcanic island rising out of the sea south of Tokyo.', deploy: true, stress: 4, eval: 6, away: true },
+    { text: 'Months charting the seabed of the exclusive economic zone near the Senkakus, shadowed by foreign ships.', deploy: true, stress: 7, eval: 5, away: true },
+    { text: 'You surveyed the Tōhoku coast after an earthquake moved the seabed and silted the harbours.', deploy: true, stress: 6, eval: 6 },
+    { text: 'Tide and current tables for next year\'s charts — the quiet, careful work.', stress: 2, eval: 2 },
+  ],
+};
+const GENERIC_OCEAN = [
+  { text: 'Months at sea on a survey ship, charting the continental shelf.', deploy: true, stress: 5, eval: 4, away: true },
+  { text: 'You surveyed a harbour approach after a storm shifted the sandbanks.', stress: 3, eval: 4 },
+  { text: 'A research cruise to the edge of the ice: weeks of daylight and data.', deploy: true, stress: 6, eval: 5, away: true },
+];
+
+/**
+ * War: by executive order the PHS and NOAA Corps can be made part of the armed forces. PHS
+ * officers run casualty-receiving hospitals; NOAA officers chart landing beaches and route convoys.
+ */
+const WARTIME_MISSIONS = {
+  usphs: [
+    { text: 'Militarized: you ran a casualty-receiving ward at a military hospital, flights of wounded arriving nightly.', deploy: true, stress: 12, eval: 7 },
+    { text: 'You were attached to a field hospital behind the lines.', deploy: true, stress: 14, eval: 8, risk: 0.05 },
+    { text: 'You screened and vaccinated a quarter of a million new recruits at the training centers.', stress: 5, eval: 4 },
+  ],
+  noaa: [
+    { text: 'Militarized: your survey ship charted approaches for a naval landing, under air cover that didn\'t always come.', deploy: true, stress: 12, eval: 8, risk: 0.04, away: true },
+    { text: 'You forecast the weather for convoy routing — every ship you sent around a storm arrived.', stress: 6, eval: 6 },
+    { text: 'You flew weather reconnaissance ahead of the fleet.', deploy: true, stress: 10, eval: 7, risk: 0.03, pilot: true },
+  ],
+};
+
+/** Pandemic deployments: the PHS (and its civilian ocean colleagues' ships kept at sea). */
+const PANDEMIC_MISSION = { text: 'The pandemic: you deployed to run a field hospital in a convention center, then a mass-vaccination site.', deploy: true, stress: 14, eval: 8, risk: 0.08 };
+
+/** Is the US at war hard enough that the President militarizes the PHS and NOAA Corps? */
+function militarization(ctx, svc) {
+  if (svc.nation || !WARTIME_MISSIONS[svc.branch]) return false;
+  const war = serviceWar(ctx.state, svc);
+  const on = Boolean(war && war.intensity >= 2);
+  if (on && !svc.militarized) {
+    svc.militarized = true;
+    ctx.log(`By executive order the ${branchOf(svc).name} has been militarized. You now serve as part of the armed forces, under the laws of war.`, '🎖️', 'warn');
+  } else if (!on && svc.militarized) {
+    svc.militarized = false;
+    ctx.log(`The war is over and the ${branchOf(svc).name} has been returned to civilian control.`, '🕊️', 'military');
+  }
+  return on;
+}
+
 function missionTick(ctx, svc) {
   const { rng } = ctx;
-  const pool = MISSIONS[svc.branch] ?? [];
+  const atWar = militarization(ctx, svc);
+  const pandemic = ctx.state.world?.pandemic?.active && svc.branch === 'usphs' && !svc.nation;
+  const pool = pandemic ? [PANDEMIC_MISSION]
+    : atWar ? WARTIME_MISSIONS[svc.branch]
+      : svc.nation ? (svc.branch === 'noaa' ? NATIONAL_MISSIONS[svc.nation] ?? GENERIC_OCEAN : [])
+        : MISSIONS[svc.branch] ?? [];
   if (!pool.length) return;
   const m = rng.pick(pool.filter((x) => !x.pilot || flightHoursOf(svc)).length ? pool.filter((x) => !x.pilot || flightHoursOf(svc)) : pool);
   ctx.log(m.text, branchOf(svc).icon, 'military');

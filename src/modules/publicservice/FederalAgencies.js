@@ -132,7 +132,7 @@ function postingPrompt(ctx, reason) {
   ctx.prompt({
     type: 'federal.posting',
     icon: '🌐',
-    title: 'Foreign Service Bid List',
+    title: us ? 'Foreign Service Bid List' : 'The Postings Round',
     text: `${reason}\nHardship and danger posts pay differentials and earn promotion credit; embassy housing is provided overseas, and you'll carry diplomatic immunity.`,
     options: [
       ...choices.map((p) => ({ id: p.city, label: `${p.flavor} ${p.city}, ${p.country}`, hint: p.hardship || p.danger ? `+${Math.round(p.hardship * 100)}% hardship${p.danger ? ` · +${Math.round(p.danger * 100)}% danger` : ''}` : 'Comfortable post', tone: p.danger ? 'danger' : undefined })),
@@ -175,7 +175,7 @@ export const AGENCY_EVENTS = {
     ] },
   ],
   foreignService: [
-    { id: 'evacuation', title: 'Embassy Evacuation', text: 'Unrest is spreading through the capital. Hundreds of American citizens need to get out before the airport closes.', options: [
+    { id: 'evacuation', title: 'Embassy Evacuation', text: 'Unrest is spreading through the capital. Hundreds of your own citizens need to get out before the airport closes.', options: [
       { id: 'stay', label: '🛂 Stay behind to run the evacuation', perf: 10, danger: 0.2, award: 'heroism' },
       { id: 'leave', label: '✈️ Leave on the first flight with non-essential staff', perf: -4 },
     ] },
@@ -187,7 +187,19 @@ export const AGENCY_EVENTS = {
       { id: 'rules', label: '📜 Apply the law and refer the bribe attempt', perf: 4 },
       { id: 'review', label: '🔍 Re-interview them fairly', check: 'smarts', perf: 3 },
     ] },
-    { id: 'detained', title: 'American Detained', text: 'An American student was arrested at a protest. Consular access is being delayed.', options: [
+    { id: 'leak', title: 'Your Cable Leaked', text: 'A frank cable you wrote about the host government\'s ministers is on the front page of a local paper.', options: [
+      { id: 'own', label: '🙇 Call on the ministers and own it', check: 'smarts', perf: 3, stress: 6 },
+      { id: 'deny', label: '🤐 Say nothing and let it blow over', perf: -3, boss: -4 },
+    ] },
+    { id: 'visitPrep', title: 'The Minister Is Coming', text: 'Your foreign minister lands in nine days. Every meeting, motorcade and photo is yours to arrange.', options: [
+      { id: 'grind', label: '🗓️ Nine days without sleep', perf: 7, stress: 8, boss: 4 },
+      { id: 'delegate', label: '🤝 Lean on the local staff', check: 'smarts', perf: 4 },
+    ] },
+    { id: 'kidnap', title: 'Aid Worker Kidnapped', text: 'A citizen working for a charity has been taken by an armed group. The family calls you every hour.', options: [
+      { id: 'channels', label: '📞 Work every channel, by the rules', perf: 6, stress: 10, stability: 1 },
+      { id: 'ransom', label: '💼 Quietly put them in touch with a ransom negotiator', perf: 2, stress: 6, boss: -6 },
+    ] },
+    { id: 'detained', title: 'A Citizen Detained', text: 'A student from home was arrested at a protest. Consular access is being delayed.', options: [
       { id: 'press', label: '🏛️ Press the ministry every day', perf: 6, stress: 6, stability: 1 },
       { id: 'quiet', label: '🤝 Work quiet channels', check: 'smarts', perf: 5 },
     ] },

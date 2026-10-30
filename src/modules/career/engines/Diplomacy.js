@@ -111,7 +111,7 @@ export const DiplomacyModule = {
     const job = state.career.job;
     if (!isDiplomat(job) || job.levelId === 'trainee' || state.legal.incarceration) return;
     const rec = lifeOf(state, 'diplomacy', job.professionId, fresh());
-    if (!rec.cone) return void ctx.prompt({ type: 'diplomacy.cone', icon: '🌐', title: 'Choose Your Cone', text: 'Every Foreign Service officer specialises. Your cone shapes the work you do at every post.', options: Object.entries(CONES).map(([id, c]) => ({ id, label: `${c.icon} ${c.name}`, hint: c.desc })) });
+    if (!rec.cone) return void ctx.prompt({ type: 'diplomacy.cone', icon: '🌐', title: job.professionId === 'foreignService' ? 'Choose Your Cone' : 'Choose Your Stream', text: `Every ${job.professionId === 'foreignService' ? 'Foreign Service officer' : 'diplomat'} specialises. It shapes the work you do at every post.`, options: Object.entries(CONES).map(([id, c]) => ({ id, label: `${c.icon} ${c.name}`, hint: c.desc })) });
     const cone = CONES[rec.cone];
     const sk = skill(state, cone.weights);
     // The year's volume of work.

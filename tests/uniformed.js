@@ -13,6 +13,7 @@ import { VIEWS } from '../src/ui/Renderer.js';
 import { transferEligibility, transferBranch } from '../src/modules/military/Separation.js';
 import { branchOf, branchFor, enlistmentEligibility, reserveName } from '../src/modules/military/MilitaryEngine.js';
 import { annualReview } from '../src/modules/military/MedalEngine.js';
+import { activeDutyTick } from '../src/modules/military/ActiveDuty.js';
 import { nationalBranchIds, armyReserveIsGuard } from '../src/modules/world/NationalForces.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -76,6 +77,22 @@ const tests = {
     svc.yearsOfService = 10;
     annualReview(gb.ctx, svc);
     assert.equal(medals(), 1);
+  },
+  'a major war militarizes the PHS and NOAA Corps; ocean services abroad sail their own seas'() {
+    const a = life();
+    const svc = serving(a.state, { branch: 'noaa', track: 'officer', mos: 'noaa.SHIP', specialty: 'science', contractYearsLeft: 5 });
+    a.state.world.wars = { US: { phase: 'active', intensity: 3, front: 0 } };
+    activeDutyTick(a.ctx, svc);
+    assert.ok(svc.militarized);
+    assert.ok(a.state.log.flatMap((y) => y.entries).some((l) => /militarized/.test(l.text)));
+    a.state.world.wars = {};
+    activeDutyTick(a.ctx, svc);
+    assert.ok(!svc.militarized);
+    const ca = life('CA');
+    const csvc = serving(ca.state, { branch: 'noaa', track: 'officer', mos: 'noaa.SHIP', specialty: 'science', nation: 'CA', contractYearsLeft: 9 });
+    for (let i = 0; i < 6; i++) activeDutyTick(ca.ctx, csvc);
+    const text = ca.state.log.flatMap((y) => y.entries).map((l) => l.text).join(' ');
+    assert.doesNotMatch(text, /NOAA|Alaska|Florida/);
   },
 };
 
