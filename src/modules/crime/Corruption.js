@@ -18,7 +18,7 @@ import { OFFENSES } from '../legal/Offenses.js';
 import { charge, commitOffense } from '../legal/JusticeSystem.js';
 import { corruptionHere } from './CrimeWorld.js';
 import { priceLevel } from '../world/Countries.js';
-import { caseById, refresh } from './Cases.js';
+import { caseById, refresh, openCase } from './Cases.js';
 import { crimeOf } from '../legal/StreetCrime.js';
 
 const local = (state, n) => Math.round(n * priceLevel(state));
@@ -88,6 +88,7 @@ export const CorruptionActions = {
     const { state, rng } = ctx;
     const inv = caseById(state, caseId);
     if (!inv) return ctx.toast('No such case', 'warn');
+    if (!inv.id) openCase(ctx, inv);
     const corrupt = corruptionHere(state);
     if (corrupt < 0.3 && !crimeState(state).cop) return ctx.toast('Nobody here would take it — and asking is a crime', 'warn');
     if (yearlyCount(state, `case.${inv.id}.fix`)) return ctx.toast('Once a year for each case', 'warn');

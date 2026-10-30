@@ -2,6 +2,7 @@
  * People tab: family, partner, children, friends and exes, dating, and the
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
+import { militaryInsignia } from '../Insignia.js';
 import { esc, money, button, card, meter, kv, empty, disclosure } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
@@ -337,7 +338,7 @@ function lineage(state) {
   if (!l?.ancestors?.length) return '';
   const gens = l.ancestors.map((a) => {
     const kids = a.children?.length ? `<div class="tree-kids">${a.children.map((k) => `<span class="${k.heir ? 'tree-heir' : ''}">${k.heir ? '⬇️ ' : ''}${esc(k.name)}${k.alive ? '' : ' 🕯️'}</span>`).join(' · ')}</div>` : '';
-    const facts = [a.career ? `💼 ${esc(a.career)}` : null, a.military ? `🎖️ ${esc(a.military)}` : null, a.education ? `🎓 ${esc(a.education)}` : null, a.honours?.length ? `🏅 ${esc(a.honours.join(', '))}` : null, a.businesses?.length ? `🏪 ${esc(a.businesses.join(', '))}` : null].filter(Boolean);
+    const facts = [a.career ? `💼 ${esc(a.career)}` : null, a.military ? `${a.rank ? militaryInsignia(a.rank.code, a.rank.nation, { branch: a.rank.branch }) : '🎖️'} ${esc(a.military)}` : null, a.education ? `🎓 ${esc(a.education)}` : null, a.honours?.length ? `🏅 ${esc(a.honours.join(', '))}` : null, a.businesses?.length ? `🏪 ${esc(a.businesses.join(', '))}` : null].filter(Boolean);
     return `<li class="tree-gen"><div class="tree-head"><b>${esc(a.styled ?? a.name)}</b>${a.spouse ? ` <small>⚭ ${esc(a.spouse)}</small>` : ''}</div>
       <small class="muted">Generation ${a.generation} · ${a.born}–${a.died} (${a.age}) · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}</small>
       ${facts.length ? `<div class="tree-facts"><small>${facts.join('<br>')}</small></div>` : ''}${kids}</li>`;

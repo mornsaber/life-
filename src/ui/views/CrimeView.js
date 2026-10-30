@@ -3,7 +3,7 @@
  */
 import { esc, button, card, chip, kv, meter, disclosure, empty, select } from '../Components.js';
 import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT, OFFENSES, SEVERITY_LABEL } from '../../modules/legal/index.js';
-import { EVIDENCE, stageOf, STAGE_LABEL } from '../../modules/crime/Cases.js';
+import { EVIDENCE, stageOf, STAGE_LABEL, caseRef } from '../../modules/crime/Cases.js';
 import { PRODUCTS, LABS, BUYS, priceHere, canImport, kg } from '../../modules/crime/Drugs.js';
 import { JUVENILE_CRIMES } from '../../modules/crime/Gangs.js';
 import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../modules/crime/CrimeWorld.js';
@@ -18,21 +18,21 @@ const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'm
 /* Cases                                                               */
 /* ------------------------------------------------------------------ */
 
-function caseCard(state, inv) {
+function caseCard(state, inv, ref = inv.id) {
   const o = OFFENSES[inv.offenseId];
   const stage = stageOf(inv);
   const items = (inv.items ?? []).map((i) => `<li>${EVIDENCE[i.kind]?.icon ?? '•'} ${esc(EVIDENCE[i.kind]?.label ?? i.kind)}${i.kind === 'alibi' ? '' : ` <small class="muted">${pct(i.strength)}</small>`}</li>`).join('');
   const destroyable = (inv.items ?? []).some((i) => EVIDENCE[i.kind]?.destroyable);
   const witness = (inv.items ?? []).some((i) => EVIDENCE[i.kind]?.intimidate);
-  const done = (what) => Boolean(state.yearly[`case.${inv.id}.${what}`]);
+  const done = (what) => Boolean(inv.id && state.yearly[`case.${inv.id}.${what}`]);
   const corrupt = corruptionHere(state) >= 0.3 || state.legal.crime?.cop;
   const actions = [
-    button('🗑️ Destroy evidence', 'crime.destroyEvidence', { arg: inv.id, variant: 'small danger', disabled: !destroyable || done('destroy'), hint: destroyable ? 'Obstruction if you\'re seen' : 'Nothing you can reach' }),
-    button('🤝 Ask for an alibi', 'crime.alibi', { arg: inv.id, variant: 'small', disabled: done('alibi') || Boolean(inv.alibi), hint: inv.alibi ? `${inv.alibi} will vouch for you` : 'Someone close to you' }),
-    button('👔 Lawyer up', 'crime.lawyerUp', { arg: inv.id, variant: 'small', disabled: Boolean(inv.lawyer), hint: inv.lawyer ? 'Retained' : 'A retainer now' }),
-    button('🤫 Lean on a witness', 'crime.intimidate', { arg: inv.id, variant: 'small danger', disabled: !witness || done('intimidate'), hint: 'Witness intimidation is a felony' }),
-    corrupt ? button('💰 Make it go away', 'crime.fixCase', { arg: inv.id, variant: 'small danger', disabled: done('fix'), hint: `Corruption here: ${level(corruptionHere(state))}` }) : '',
-    button('🐀 Cooperate', 'crime.cooperate', { arg: inv.id, variant: 'small', hint: 'Give them someone bigger' }),
+    button('🗑️ Destroy evidence', 'crime.destroyEvidence', { arg: ref, variant: 'small danger', disabled: !destroyable || done('destroy'), hint: destroyable ? 'Obstruction if you\'re seen' : 'Nothing you can reach' }),
+    button('🤝 Ask for an alibi', 'crime.alibi', { arg: ref, variant: 'small', disabled: done('alibi') || Boolean(inv.alibi), hint: inv.alibi ? `${inv.alibi} will vouch for you` : 'Someone close to you' }),
+    button('👔 Lawyer up', 'crime.lawyerUp', { arg: ref, variant: 'small', disabled: Boolean(inv.lawyer), hint: inv.lawyer ? 'Retained' : 'A retainer now' }),
+    button('🤫 Lean on a witness', 'crime.intimidate', { arg: ref, variant: 'small danger', disabled: !witness || done('intimidate'), hint: 'Witness intimidation is a felony' }),
+    corrupt ? button('💰 Make it go away', 'crime.fixCase', { arg: ref, variant: 'small danger', disabled: done('fix'), hint: `Corruption here: ${level(corruptionHere(state))}` }) : '',
+    button('🐀 Cooperate', 'crime.cooperate', { arg: ref, variant: 'small', hint: 'Give them someone bigger' }),
   ].join('');
   return `<div class="case-file">
     <h4>${o?.icon ?? '🗂️'} ${esc(o?.name ?? inv.offenseId)} ${chip(SEVERITY_LABEL[o?.severity] ?? '', o?.severity === 'felony' ? 'bad' : 'warn')} ${chip(STAGE_LABEL[stage], stage === 'warrant' ? 'bad' : stage === 'suspect' ? 'warn' : '')}</h4>
@@ -47,7 +47,7 @@ function caseCard(state, inv) {
 export function casesView(state) {
   const list = state.legal.investigations ?? [];
   const body = list.length
-    ? `<p class="muted">What the police have on you — and what you can still do about it. Every counter-move is once a year per case, and most of them are crimes too.</p>${list.map((inv) => caseCard(state, inv)).join('<hr>')}`
+    ? `<p class="muted">What the police have on you — and what you can still do about it. Every counter-move is once a year per case, and most of them are crimes too.</p>${list.map((inv, i) => caseCard(state, inv, caseRef(inv, i))).join('<hr>')}`
     : empty('No open cases. As far as you know.');
   return card('Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
 }

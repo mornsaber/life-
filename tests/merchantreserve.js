@@ -15,7 +15,7 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { UNIVERSITIES } from '../src/modules/education/Universities.js';
-import { jobInsignia, militaryInsignia } from '../src/ui/Insignia.js';
+import { jobInsignia, militaryInsignia, volunteerInsignia, titleInsignia } from '../src/ui/Insignia.js';
 import { arrive, departureBlock } from '../src/modules/world/Migration.js';
 import { validHere } from '../src/modules/credentials/LicensingEngine.js';
 
@@ -166,6 +166,10 @@ const tests = {
     assert.match(militaryInsignia('OR-4', 'GB', { branch: 'navy' }), /⚓/);
     assert.match(militaryInsignia('OF-3', 'GB', { branch: 'navy' }), /circle/, 'the executive curl');
     assert.match(jobInsignia({ professionId: 'merchantMarine', levelId: 'chiefEngineer' }, { id: 'merchantMarine' }), /#7b4fa0/, 'engineers wear purple');
+    // Elsewhere: RAF lace, volunteer officers, honorary titles in the right order.
+    assert.match(militaryInsignia('OF-5', 'GB', { branch: 'airforce' }), /#a9c4e8/);
+    assert.match(titleInsignia('Honorary Air Commodore', 'GB'), /#a9c4e8/);
+    assert.ok(volunteerInsignia('fire', 6) && volunteerInsignia('police', 4, 'GB') && !volunteerInsignia('fire', 0) && !volunteerInsignia('redcross', 3));
   },
 };
 

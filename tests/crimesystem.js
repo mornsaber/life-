@@ -54,6 +54,17 @@ const tests = {
     assert.doesNotMatch(VIEWS.activities(state, {}), /Risky Business/);
   },
 
+  'cases from old saves (no case file yet) work from the Cases tab'() {
+    const { engine, state } = life();
+    state.legal.investigations.push({ offenseId: 'burglary', context: '', discovery: 0.2, evidence: 0.6, yearsLeft: 7 });
+    const html = VIEWS.cases(state, {});
+    clean(html);
+    assert.match(html, /data-arg="#0"/);
+    engine.dispatch('crime.lawyerUp', '#0');
+    const inv = state.legal.investigations[0];
+    assert.ok(inv.id && inv.lawyer && inv.items.length, JSON.stringify(inv));
+    assert.match(VIEWS.cases(state, {}), new RegExp(`data-arg="${inv.id}"`));
+  },
   'an offence opens a visible case with an agency, a lead and evidence; counterplay changes it'() {
     const { engine, state, ctx } = life();
     state.people.list.push({ id: 'f1', firstName: 'Sam', lastName: 'Lee', relation: 'friend', alive: true, relationship: 100, birthYear: 1990 });

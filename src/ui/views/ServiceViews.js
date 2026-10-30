@@ -33,7 +33,7 @@ import { equipmentCard } from './EquipmentView.js';
 import { hasCredential, pursueEligibility, findSponsor } from '../../modules/credentials/LicensingEngine.js';
 import { branchOf, branchFor, retiredFrom, recallMaxAge } from '../../modules/military/MilitaryEngine.js';
 import { tierOf } from '../../modules/military/SecondCareer.js';
-import { militaryInsignia } from '../Insignia.js';
+import { militaryInsignia, volunteerInsignia } from '../Insignia.js';
 import { nationalBranchIds, FORCES } from '../../modules/world/NationalForces.js';
 import { isAbroad, countryOf, COUNTRIES } from '../../modules/world/Countries.js';
 import { canPlot, canAdvise, clientOffers } from '../../modules/military/Kingmakers.js';
@@ -263,7 +263,7 @@ function kingmakerCard(state) {
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
-    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li><b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
+    ? card('Service Record', `<ul class="history">${[...state.military.history].reverse().map((h) => `<li>${militaryInsignia(h.rankCode, h.nation ?? null, { branch: h.branch })} <b>${branchOf(h).icon} ${esc(h.rankTitle)} (${h.rankCode})</b> · ${branchOf(h).name}${h.conscript ? ' (conscript)' : ''} ${h.component === 'reserve' ? 'Reserve' : ''} <small>${h.mos && MOS[h.mos] ? `${esc(MOS[h.mos].code)} ${esc(MOS[h.mos].title)} · ` : ''}age ${h.startAge}–${h.endAge}, ${h.yearsOfService} yrs, ${h.deployments} deployments — ${DISCHARGE_LABEL[h.discharge]}${h.brevet ? ` · brevet ${esc(h.brevet)}` : ''}${h.gurkha ? ` · 🗡️ ${h.gurkha === 'GB' ? 'Brigade of Gurkhas' : 'Gorkha Rifles'}${h.settlement ? ' · settled in Britain' : ''}${h.gurkhaPension ? ' · Gurkha pension' : ''}` : ''}${h.legion ? ' · 🎖️ Légion étrangère' : ''}</small></li>`).join('')}</ul>${state.military.liability ? `<p>📋 <b>${esc(state.military.liability.name)}</b>: liable to recall as a ${esc(state.military.liability.rankTitle)} until ${state.military.liability.untilAge}${state.military.liability.recalled ? ' (recalled once already)' : ''}.</p>` : ''}<p class="fine">Retired pay and VA benefits appear under 💰 Money → Retirement.</p>`, { icon: '🗂️' })
     : '';
   const deserter = state.military.deserter
     ? card('Wanted: Desertion', `<p class="neg">You deserted the ${esc(branchOf(state.military.deserter).name)} at age ${state.military.deserter.age}. ${state.military.deserter.nation && state.military.deserter.nation !== 'US' ? 'A warrant' : 'A federal warrant'} stays open — desertion has no statute of limitations. If you're caught: court-martial, prison and a dishonorable discharge.</p>`, { icon: '🏃', accent: 'red' })
@@ -345,7 +345,7 @@ export function emergencyView(state) {
     const nextXp = next.next?.xp ?? member.xp;
     return card(svc.name, `
       <div class="job-head">
-        ${rankBadge(`RANK ${member.rankIndex + 1}`, rank.title, member.rankIndex / (svc.ranks.length - 1), { icon: svc.icon })}
+        ${rankBadge(`RANK ${member.rankIndex + 1}`, rank.title, member.rankIndex / (svc.ranks.length - 1), { icon: svc.icon, insignia: volunteerInsignia(svc.id, member.rankIndex, state.character.countryId ?? 'US') })}
         <div class="job-meta">
           <p class="muted">${esc(member.unit)} ${member.onLeave ? chip('🪖 Military leave', 'warn') : ''}</p>
           ${kv([['Years', member.years], ['Calls run', member.calls.toLocaleString()], ['Lives saved', member.saves], ['Injuries', member.injuries], ['Unit training budget', `$${member.budget.left.toLocaleString()} left`], member.complaints ? ['Complaints', `<span class="neg">${member.complaints}/3</span>`] : null])}

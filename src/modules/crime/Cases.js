@@ -96,7 +96,14 @@ export function openCase(ctx, inv) {
 export function ensureCases(ctx) {
   for (const inv of ctx.state.legal.investigations ?? []) if (!inv.id) openCase(ctx, inv);
 }
-export const caseById = (state, id) => (state.legal.investigations ?? []).find((c) => c.id === id) ?? null;
+/** A case by its id — or, for one opened before cases had files ("#2"), by its place in the list. */
+export const caseById = (state, id) => {
+  const list = state.legal.investigations ?? [];
+  if (typeof id === 'string' && id.startsWith('#')) return list[Number(id.slice(1))] ?? null;
+  return list.find((c) => c.id === id) ?? null;
+};
+/** The id the Cases tab's buttons carry. */
+export const caseRef = (inv, i) => inv.id ?? `#${i}`;
 
 /** Yearly: evidence fades, witnesses come forward, and at the warrant stage you hear about it. */
 export function casesTick(ctx) {
@@ -139,6 +146,8 @@ const perCase = (ctx, inv, what) => {
 };
 function pick(ctx, caseId) {
   const inv = caseById(ctx.state, caseId);
+  // An old investigation gets its case file (evidence, lead, agency) the first time you act on it.
+  if (inv && !inv.id) openCase(ctx, inv);
   if (!inv) ctx.toast('No such case', 'warn');
   return inv;
 }

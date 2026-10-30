@@ -168,17 +168,18 @@ const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY'
 export const NAVAL_BRANCHES = ['navy', 'coastguard', 'noaa', 'usphs'];
 const NAVY = '#1d2b4f';
 const RED = '#c0392b';
+const AIR_BLUE = '#a9c4e8';
 const DEVICE = { navy: '★', coastguard: '⛨', noaa: '▲', usphs: '⚕' };
 /** Lace for officer grade n: 1 full stripe, .5 thin, 2 broad. */
 const LACE = [[1], [1, 0.5], [1, 1], [1, 0.5, 1], [1, 1, 1], [1, 1, 1, 1], [2], [2, 1], [2, 1, 1], [2, 1, 1, 1], [2, 1, 1, 1, 1]];
-function navalLace(n, device = '', curl = false) {
+function navalLace(n, device = '', curl = false, color = GOLD) {
   const lace = LACE[Math.max(0, Math.min(10, n - 1))];
   let y = 38;
   let body = '';
   for (const w of lace) {
     const h = w === 2 ? 6 : w === 1 ? 3.2 : 1.8;
     y -= h;
-    body += `<rect x="4" y="${y}" width="30" height="${h}" rx="0.8" fill="${GOLD}"/>`;
+    body += `<rect x="4" y="${y}" width="30" height="${h}" rx="0.8" fill="${color}"/>`;
     y -= 2.2;
   }
   const top = y + 2.2;
@@ -219,6 +220,8 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
   if (!m) return '';
   const n = Number(m[2]);
   const commonwealth = COMMONWEALTH.includes(nation ?? '');
+  // Commonwealth air forces: officers wear pale-blue lace on the naval pattern, without the curl.
+  if (branch === 'airforce' && commonwealth && (m[1] === 'OF' || m[1] === 'O')) return navalLace(n, '', false, AIR_BLUE);
   if (NAVAL_BRANCHES.includes(branch) && !SHOULDER.includes(nation ?? '')) {
     const naval = navalInsignia(m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1], n, nation, branch);
     if (naval != null) return naval;
@@ -376,6 +379,21 @@ export function jobInsignia(job, profession, country = 'US') {
   return null;
 }
 
+/** Volunteer emergency services: the ranks that wear insignia (by rank index), on the country's pattern. */
+const VOLUNTEER = {
+  fire: { 4: () => FIRE_DRAW.f1(), 5: () => FIRE_DRAW.f2(), 6: () => FIRE_DRAW.f5() },
+  ambulance: { 3: 'sgt', 4: 'lt', 5: 'capt', 6: 'major' },
+  police: { 3: 'cpl', 4: 'sgt', 5: 'lt', 6: 'capt' },
+  // Coast Guard Auxiliary officers wear silver lace on the Coast Guard pattern.
+  auxiliary: { 3: () => sleeve(2, SILVER), 4: () => sleeve(3, SILVER) },
+  cap: { 1: () => chevrons(3, 1, '', SILVER) },
+};
+export function volunteerInsignia(serviceId, rankIndex, cc = 'US') {
+  const r = VOLUNTEER[serviceId]?.[rankIndex];
+  if (!r) return '';
+  return typeof r === 'function' ? r() : draw(r, cc);
+}
+
 /** For the insignia sheet: a rank key drawn in a country's style. */
 export const rankInsignia = (rank, cc = 'US') => (rank?.startsWith('f') ? FIRE_DRAW[rank]?.() ?? '' : draw(rank, cc));
 
@@ -392,6 +410,7 @@ export function titleInsignia(title, cc = 'US') {
   if (!hit) return '';
   const commonwealth = COMMONWEALTH.includes(cc) || SHOULDER.includes(cc);
   const naval = /Admiral|(^|\s)Commodore|Captain \(Navy\)|Lieutenant Commander|(^|\s)Commander(?!.*Air)|Navy|Naval/.test(title) && !/Air Commodore|Wing Commander/.test(title);
-  if (hit[1] === 11 && !commonwealth && !naval) return stars(5, GOLD);
-  return militaryInsignia(`${commonwealth ? 'OF' : 'O'}-${hit[1]}`, cc, { branch: naval ? 'navy' : null });
+  const air = /Air (Chief |Vice-)?Marshal|Air Commodore|Group Captain|Wing Commander|Squadron Leader|Flight Lieutenant|Royal Air Force/.test(title);
+  if (hit[1] === 11 && !commonwealth && !naval && !air) return stars(5, GOLD);
+  return militaryInsignia(`${commonwealth ? 'OF' : 'O'}-${hit[1]}`, cc, { branch: naval ? 'navy' : air ? 'airforce' : null });
 }

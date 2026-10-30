@@ -271,6 +271,7 @@ export function ancestorRecord(old, heirId) {
     gender: old.character.gender,
     career: top ? `${top.title}${top.employerName ? `, ${top.employerName}` : ''}` : null,
     military: mil ? `${mil.rankTitle}${mil.yearsOfService ? ` (${mil.yearsOfService} yrs)` : ''}` : null,
+    rank: mil?.rankCode ? { code: mil.rankCode, nation: mil.nation ?? null, branch: mil.branch } : null,
     honours: [...(old.honors ?? [])].sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0)).slice(0, 3).map((h) => h.name),
     education: degree ? degreeLabel(degree) : null,
     spouse,

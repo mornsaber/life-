@@ -959,6 +959,7 @@ select:focus { border-color: var(--cyan); }
 .org-node span { font-size: 0.86em; }
 .org-node .org-badge { line-height: 0; }
 .org-node .org-badge svg { height: 22px; width: auto; }
+.history .insignia-svg, .tree-facts .insignia-svg { height: 18px; width: auto; vertical-align: middle; }
 .org-node small { color: var(--muted); font-size: 0.75em; }
 .org-node.top { border-width: 2px; }
 .org-node.unit { background: var(--panel-2); }
