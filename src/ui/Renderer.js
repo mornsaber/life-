@@ -15,7 +15,7 @@ import {
 } from './Components.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession, PROFESSIONS } from '../modules/career/JobTrees.js';
-import { BRANCHES, rankOf } from '../modules/military/MilitaryEngine.js';
+import { rankOf } from '../modules/military/MilitaryEngine.js';
 import { pensionMultiplier, militaryHonors } from '../modules/military/MedalEngine.js';
 import { SERVICE_LIST, rankOfMember } from '../modules/emergency/EmergencyEngine.js';
 import { PROGRAMS } from '../modules/education/Catalog.js';
@@ -543,7 +543,7 @@ export class Renderer {
         ['Net worth', money(netWorth(state))],
         ['Lifetime earnings', money(state.finances.lifetimeEarnings)],
         peakJob ? ['Career peak', `${esc(peakJob.title)} [${gradePrefix({ ...peakJob, sector: peakJob.sector ?? PROFESSIONS[peakJob.professionId]?.sector })}${peakJob.peakGrade}]`] : null,
-        topMil ? ['Military', `${esc(topMil.rankTitle)}, ${BRANCHES[topMil.branch].name}`] : null,
+        topMil ? ['Military', `${esc(topMil.rankTitle)}, ${esc(branchOf(topMil).name)}`] : null,
         responder ? ['First responder', esc(responder.rankTitle)] : null,
         ['Credentials', Object.values(state.credentials.held).filter((h) => h.status === 'active').length],
         ['Honors', `${state.honors.length} (⭐ ${prestige(state)})`],
