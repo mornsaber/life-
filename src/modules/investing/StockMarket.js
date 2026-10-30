@@ -192,8 +192,8 @@ export function stocksTick(ctx) {
         type: 'stocks.ipo', icon: '🔔', title: `IPO: ${def.name}`,
         text: `${def.name} (${def.ticker}) is going public at $${def.price} a share. Your broker can get you a small allocation at the offer price before it starts trading.`,
         options: [
-          { id: 'big', label: '🔔 Ask for $25,000 worth', disabled: state.finances.cash < 25000 },
           { id: 'small', label: '🎟️ Ask for $5,000 worth' },
+          { id: 'big', label: '🔔 Ask for $25,000 worth', disabled: state.finances.cash < 25000 },
           { id: 'pass', label: '🙅 Pass' },
         ],
         data: { id: next, offer: def.price, pop: round2(pop) },
