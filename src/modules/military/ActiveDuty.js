@@ -26,9 +26,9 @@ import {
 import { combatTempo } from '../world/NationalForces.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 
-/** Peacetime deployments of other countries' forces: their standing missions abroad. */
+/** Peacetime deployments of other countries' forces: their standing missions abroad (garrisons you take your family to are postings, not deployments). */
 const NATIONAL_THEATERS = (svc) => {
-  const list = nationalOverseas(svc.nation, svc.branch).map(([country, posting]) => `${posting}, ${country}`);
+  const list = nationalOverseas(svc.nation, svc.branch).filter(([, , , accompanied]) => !accompanied).map(([country, posting]) => `${posting}, ${country}`);
   return list.length ? list : ['UNIFIL — UN peacekeeping in Lebanon', 'UNMISS — UN peacekeeping in South Sudan', 'UNDOF — UN observers on the Golan Heights', 'a multinational exercise in Poland', 'a disaster-relief deployment to the Philippines'];
 };
 const THEATERS = {

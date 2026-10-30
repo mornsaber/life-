@@ -13,6 +13,7 @@ import { clamp } from '../../core/Random.js';
 import { BRANCHES, ranksOf, rankOf, specialtyName, exposureOf, flightHoursOf, completeTraining, finishOfficerAcademy, entrySchool, monthlyBasePay, annualActivePay, updateEvaluation, tryPromotion, branchOf } from './MilitaryEngine.js';
 import { annualReview } from './MedalEngine.js';
 import { serviceWar, serviceWarFactor } from '../world/War.js';
+import { combatTempo } from '../world/NationalForces.js';
 import { runDeployment, openContractReview } from './ActiveDuty.js';
 import { upOrOut, mustRetire } from './Separation.js';
 
@@ -75,7 +76,9 @@ export function reserveTick(ctx, svc) {
 
   const exposure = exposureOf(svc);
   // General mobilization calls up nearly every reservist.
-  const mobilizeChance = (serviceWar(ctx.state, svc)?.mobilized ? 0.7 : 0) + 0.08 * exposure * serviceWarFactor(ctx.state, svc) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
+  // In peacetime, reservists are called up for standing operations — often in the US, rarely in most other countries.
+  const peaceTempo = !serviceWar(ctx.state, svc) && svc.nation ? combatTempo(svc.nation) : 1;
+  const mobilizeChance = (serviceWar(ctx.state, svc)?.mobilized ? 0.7 : 0) + 0.08 * exposure * peaceTempo * serviceWarFactor(ctx.state, svc) ** 1.5 + (svc.deploymentRequested ? 0.6 : 0);
   if (rng.chance(clamp(mobilizeChance, 0, 0.9))) {
     ctx.earn(annualActivePay(svc), `Mobilized pay — ${rankOf(svc).code}`, { wage: true });
     if (svc.mos === 'navy.1665') ctx.log(rng.pick(['Mobilized as a Strategic Sealift Officer: orders to an MSC ship loading tanks and ammunition for the theatre.', 'Your sealift orders came: chief mate of a Ready Reserve roll-on/roll-off ship, activated in five days.', 'You traded your merchant company\'s uniform for the Navy\'s and joined a convoy staff.']), '⚓', 'military');
