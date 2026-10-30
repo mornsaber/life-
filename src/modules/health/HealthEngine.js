@@ -16,6 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
+import { recoveryTick, RecoveryResolvers } from './Recovery.js';
 import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
 import { ruralRisk } from '../life/RuralLife.js';
 import { clamp, Random } from '../../core/Random.js';
@@ -587,6 +588,7 @@ export const HealthEngine = {
     const { state, rng } = ctx;
     const h = state.health;
     const job = state.career.job;
+    recoveryTick(ctx);
     // Traumatic exposure: the job, prison, and life's random blows. It fades with time.
     if (job && OCCUPATIONAL_TRAUMA[job.professionId]) ctx.emit('health:trauma', { amount: OCCUPATIONAL_TRAUMA[job.professionId], source: 'work' });
     if (isIncarcerated(state)) ctx.emit('health:trauma', { amount: 6, source: 'prison' });
@@ -730,6 +732,7 @@ export const HealthEngine = {
 
   resolvers: {
     ...LifestyleResolvers,
+    ...RecoveryResolvers,
     ...EndOfLifeResolvers,
     driveDrunk(ctx, _data, optionId) {
       const { rng } = ctx;

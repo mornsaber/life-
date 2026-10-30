@@ -17,6 +17,7 @@ import { stateIdOf, regionOf } from './Regions.js';
 import { STATES, DISASTER_LABEL } from './States.js';
 import { mitigates } from '../career/engines/EmergencyMgmt.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { climateFactor, isWeather } from './ClimateMigration.js';
 
 const SEVERITY = ['', 'moderate', 'severe', 'catastrophic'];
 /** Hazards that come with a warning. */
@@ -40,7 +41,8 @@ export const Disasters = {
     const { state, rng } = ctx;
     const stateId = stateIdOf(state);
     for (const [type, p] of Object.entries(STATES[stateId].disasters)) {
-      if (!rng.chance(p)) continue;
+      // Weather disasters grow a little more likely every year (ClimateMigration.js).
+      if (!rng.chance(isWeather(type) ? p * climateFactor(state) : p)) continue;
       let severity = rng.weighted([[1, 6], [2, 3], [3, 1]], ([, w]) => w)[0];
       // Mitigation you built as an emergency manager takes the edge off.
       const softened = severity > 1 && mitigates(state, type);

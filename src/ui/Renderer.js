@@ -127,6 +127,7 @@ function fameCard(state) {
       f.deals.length ? ['Endorsements', f.deals.map((d) => `${esc(d.brand)} ($${d.amount.toLocaleString()}/yr to ${d.until})`).join(' · ')] : null,
       f.security ? ['Security', '🛡️ A close-protection team'] : null,
       f.scandals.length ? ['Scandals', f.scandals.slice(-3).map((s) => `${esc(s.headline)} (${s.age})`).join(' · ')] : null,
+      state.fame?.cancelled ? ['Status', `<span class="neg">🚫 Cancelled since ${state.fame.cancelled.since}</span>`] : state.fame?.comebacks ? ['Comebacks', state.fame.comebacks] : null,
     ])}
     <div class="toggle-row">
       ${button('🕶️ Lie low this year', 'fame.lieLow', { variant: 'small', disabled: f.lowThisYear, hint: 'Buzz fades fast; fewer cameras' })}

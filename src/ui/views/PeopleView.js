@@ -85,6 +85,7 @@ function personRow(state, p) {
     button('🎁 Gift', 'people.gift', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.gift.${p.id}`]) }),
     ['mother', 'father'].includes(p.relation) && state.character.age >= 16 ? button('💵 Ask for help', 'people.askForMoney', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly['people.ask']) }) : '',
     p.relation === 'partner' ? button('💍 Propose', 'people.propose', { arg: p.id, variant: 'tiny' }) : '',
+    p.relation === 'child' && age < 18 && ['ex', 'joint'].includes(p.custody) ? button('⚖️ Petition for custody', 'familyCourt.petition', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`familyCourt.${p.id}`]), hint: 'Mediation or a judge' }) : '',
     ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'tiny danger' }) : '',
     p.relation === 'child' ? nurtureButtons(state, p, age) : '',
     helpButtons(state, p, age),

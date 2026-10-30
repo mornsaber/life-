@@ -147,6 +147,7 @@ function lastParentDied(ctx) {
   if (share > 0) {
     state.finances.cash += share;
     ctx.log(`Your parents' estate was settled. Your share: $${share.toLocaleString()}.`, '📜', 'good');
+    if (heirs > 1) ctx.emit('people:estateShare', { share });
   }
   if (state.housing.withParents && state.character.age >= 18) {
     state.housing.withParents = false;

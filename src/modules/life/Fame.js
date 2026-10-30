@@ -99,6 +99,8 @@ export function scandal(ctx, severity, headline) {
   ctx.stat('stress', severity);
   ctx.stat('happiness', -Math.round(severity / 2));
   ctx.log(`Scandal: ${headline}`, '📰', 'bad');
+  // A big one can become a cancellation (Celebrity.js).
+  ctx.emit('fame:afterScandal', { severity, headline });
 }
 
 const SCANDALS = [
