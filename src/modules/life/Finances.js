@@ -25,6 +25,22 @@ import { knob } from '../../core/Difficulty.js';
 import { officialResidence } from '../world/Residences.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
+/**
+ * Capital gains and dividend tax abroad (2025, simplified to one rate and an annual exemption).
+ * rate: flat rate on gains · exempt: tax-free allowance each year (in today's dollars).
+ */
+export const CAPITAL_GAINS = {
+  GB: { rate: 0.2, exempt: 3800 }, IE: { rate: 0.33, exempt: 1400 }, DE: { rate: 0.264, exempt: 1100 }, FR: { rate: 0.3, exempt: 0 },
+  IT: { rate: 0.26, exempt: 0 }, ES: { rate: 0.21, exempt: 0 }, NL: { rate: 0.36, exempt: 0 }, JP: { rate: 0.203, exempt: 0 },
+  KR: { rate: 0.22, exempt: 50000 }, AU: { rate: 0.16, exempt: 0 }, CA: { rate: 0.15, exempt: 0 }, NZ: { rate: 0, exempt: 0 },
+  SG: { rate: 0, exempt: 0 }, IN: { rate: 0.125, exempt: 1500 }, MX: { rate: 0.1, exempt: 0 }, PH: { rate: 0.15, exempt: 0 },
+  CN: { rate: 0.2, exempt: 0 }, BR: { rate: 0.15, exempt: 0 }, SE: { rate: 0.3, exempt: 0 }, CH: { rate: 0, exempt: 0 },
+};
+export function localCapitalGainsTax(cc, gains) {
+  const r = CAPITAL_GAINS[cc] ?? { rate: 0.15, exempt: 0 };
+  return Math.max(0, Math.round((gains - r.exempt) * r.rate));
+}
+
 export const CHILD_TAX_CREDIT = 2000;
 
 const LOAN_RATE = 0.05;
@@ -107,7 +123,7 @@ export const Finances = {
     const itemized = abroad ? { total: 0 } : itemizedDeductions(state, { stateTax, agi: agi + ltcg });
     const itemizing = !abroad && itemized.total > standardDeduction(married);
     const taxable = Math.max(0, agi - (itemizing ? itemized.total - standardDeduction(married) : 0));
-    const capitalGainsTax = ltcgTax(taxable, ltcg);
+    const capitalGainsTax = abroad ? localCapitalGainsTax(country.id, ltcg) : ltcgTax(taxable, ltcg);
     const kids = minorChildren(state).filter((c) => c.custody !== 'ex');
     const kidsCredit = abroad ? 0 : kids.filter((c) => ageOf(state, c) < 17).length * CHILD_TAX_CREDIT;
     // Payroll contributions fall on employment pay (the self-employed pay their own rate as they earn).

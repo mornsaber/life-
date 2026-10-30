@@ -23,6 +23,8 @@
 import { Random } from '../../core/Random.js';
 import { SECTORS } from '../economy/EconomyEngine.js';
 import { realReturn } from './Assets.js';
+import { COUNTRIES } from '../world/Countries.js';
+import { STOCK_INDEX } from '../world/CountryLaw.js';
 
 export const COMPANIES = {
   novaq: { name: 'Novaq Systems', ticker: 'NVQ', sector: 'tech', vol: 0.35, div: 0, price: 180 },
@@ -48,9 +50,26 @@ export const IPO_POOL = {
   sprout: { name: 'Sprout Grocery Delivery', ticker: 'SPR', sector: 'consumer', vol: 0.5, div: 0, price: 22 },
 };
 export const ALL_COMPANIES = { ...COMPANIES, ...IPO_POOL };
+/** Each country's own blue chips, listed on its exchange: a bank, a utility and a retailer. */
+const LOCAL_KINDS = {
+  bank: { suffix: 'National Bank', ticker: 'B', sector: 'finance', vol: 0.2, div: 0.035, price: 40 },
+  power: { suffix: 'Power & Gas', ticker: 'P', sector: 'energy', vol: 0.18, div: 0.045, price: 30 },
+  retail: { suffix: 'Retail Group', ticker: 'R', sector: 'consumer', vol: 0.15, div: 0.03, price: 25 },
+};
+export const localIds = (cc) => (cc && cc !== 'US' ? Object.keys(LOCAL_KINDS).map((k) => `local_${cc}_${k}`) : []);
+/** A company's listing details, named or local (local_<CC>_<kind>). */
+export function companyDef(id) {
+  if (ALL_COMPANIES[id]) return ALL_COMPANIES[id];
+  const m = /^local_([A-Z]{2})_(\w+)$/.exec(id);
+  const k = m && LOCAL_KINDS[m[2]];
+  if (!k || !COUNTRIES[m[1]]) return null;
+  return { ...k, name: `${COUNTRIES[m[1]].name} ${k.suffix}`, ticker: `${m[1]}${k.ticker}`, local: m[1] };
+}
+/** The exchange where you live. */
+export const exchangeName = (state) => (STOCK_INDEX[state.character.countryId ?? 'US'] ? `${STOCK_INDEX[state.character.countryId ?? 'US']} exchange` : `${COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'Local'} stock exchange`);
 export const SHORT_FEE = 0.03;
 /** An option premium as a share of the stock price (one year, at the money). */
-export const premiumRate = (id) => Math.round((0.06 + ALL_COMPANIES[id].vol * 0.3) * 1000) / 1000;
+export const premiumRate = (id) => Math.round((0.06 + companyDef(id).vol * 0.3) * 1000) / 1000;
 
 const sideRng = (state, salt) => new Random(((state.world?.seed ?? 1) * 92821 + state.character.age * 3343 + salt) >>> 0);
 const round2 = (n) => Math.round(n * 100) / 100;
@@ -92,7 +111,7 @@ function sellPosition(ctx, id) {
   const p = state.stocks.positions[id];
   if (!p) return 0;
   const proceeds = p.shares * priceOf(state, id);
-  realise(ctx, proceeds, p.basis, ALL_COMPANIES[id].name, state.character.age - p.boughtAge >= 1);
+  realise(ctx, proceeds, p.basis, companyDef(id).name, state.character.age - p.boughtAge >= 1);
   delete state.stocks.positions[id];
   return Math.round(proceeds);
 }
@@ -105,13 +124,13 @@ function coverShort(ctx, id, forced = false) {
   state.finances.cash += Math.round(s.entry * s.shares);
   if (pnl > 0) {
     state.finances.cash -= pnl;
-    ctx.earn(pnl, `Short-sale gain — ${ALL_COMPANIES[id].name}`);
+    ctx.earn(pnl, `Short-sale gain — ${companyDef(id).name}`);
   } else {
     state.finances.cash += pnl;
     ctx.deduct(Math.min(3000, -pnl), 'Capital loss', { nonCash: true });
   }
   delete state.stocks.shorts[id];
-  ctx.log(forced ? `Margin call: your broker bought back your ${ALL_COMPANIES[id].ticker} short at a loss of $${(-pnl).toLocaleString()}.` : `You covered your ${ALL_COMPANIES[id].ticker} short: ${pnl >= 0 ? `+$${pnl.toLocaleString()}` : `-$${(-pnl).toLocaleString()}`}.`, '📉', pnl >= 0 ? 'good' : 'bad');
+  ctx.log(forced ? `Margin call: your broker bought back your ${companyDef(id).ticker} short at a loss of $${(-pnl).toLocaleString()}.` : `You covered your ${companyDef(id).ticker} short: ${pnl >= 0 ? `+$${pnl.toLocaleString()}` : `-$${(-pnl).toLocaleString()}`}.`, '📉', pnl >= 0 ? 'good' : 'bad');
   return pnl;
 }
 
@@ -122,6 +141,9 @@ export function stocksTick(ctx) {
   const e = state.economy;
   const rng = sideRng(state, 0x570c);
   const held = (id) => s.positions[id] || s.shorts[id] || s.options.some((o) => o.companyId === id);
+
+  // Your country's own exchange lists its blue chips.
+  for (const id of localIds(state.character.countryId)) s.companies[id] ??= { price: companyDef(id).price, eps: round2(companyDef(id).price / 15), listedAge: state.character.age };
 
   // Manias start in good times and end badly.
   let bubbleMove = null;
@@ -140,7 +162,7 @@ export function stocksTick(ctx) {
   }
 
   for (const [id, c] of listed(state)) {
-    const def = ALL_COMPANIES[id];
+    const def = companyDef(id);
     const sector = e.returns?.sectors?.[def.sector] ?? e.returns?.index ?? 0.05;
     // Earnings: a beat or a miss moves the stock more than the market does.
     const surprise = rng.float(-1, 1) * def.vol;
@@ -158,22 +180,22 @@ export function stocksTick(ctx) {
   }
 
   // Dividends on what you hold.
-  const div = Object.entries(s.positions).reduce((t, [id, p]) => t + p.shares * priceOf(state, id) * ALL_COMPANIES[id].div, 0);
+  const div = Object.entries(s.positions).reduce((t, [id, p]) => t + p.shares * priceOf(state, id) * companyDef(id).div, 0);
   if (div >= 1) ctx.earn(Math.round(div), 'Qualified dividends', { ltcg: true });
   // A delisted stock is worth nothing: the loss is realised.
-  for (const id of Object.keys(s.positions)) if (s.companies[id]?.delisted) { realise(ctx, 0, s.positions[id].basis, ALL_COMPANIES[id].name, true); delete s.positions[id]; }
+  for (const id of Object.keys(s.positions)) if (s.companies[id]?.delisted) { realise(ctx, 0, s.positions[id].basis, companyDef(id).name, true); delete s.positions[id]; }
   for (const id of Object.keys(s.shorts)) if (s.companies[id]?.delisted) { s.companies[id].price = 0; coverShort(ctx, id); }
 
   // Shorts: the borrow fee, and a margin call if the loss passes the collateral.
   for (const [id, sh] of Object.entries(s.shorts)) {
-    ctx.spend(Math.round(sh.entry * sh.shares * SHORT_FEE), `Stock borrow fee — ${ALL_COMPANIES[id].ticker}`, { allowDebt: true });
+    ctx.spend(Math.round(sh.entry * sh.shares * SHORT_FEE), `Stock borrow fee — ${companyDef(id).ticker}`, { allowDebt: true });
     if (priceOf(state, id) >= sh.entry * 2) coverShort(ctx, id, true);
   }
   // Options expire after a year: in the money pays out, out of the money is worth nothing.
   for (const o of [...s.options]) {
     if (state.character.age < o.expires) continue;
     const payout = Math.round(optionValue(state, o));
-    const label = `${ALL_COMPANIES[o.companyId].ticker} ${o.kind}`;
+    const label = `${companyDef(o.companyId).ticker} ${o.kind}`;
     realise(ctx, payout, o.premium, `${label} option`, false);
     ctx.log(payout > 0 ? `Your ${label} options expired in the money: $${payout.toLocaleString()} on $${o.premium.toLocaleString()} paid.` : `Your ${label} options expired worthless.`, '🎟️', payout > o.premium ? 'good' : 'bad');
     s.options = s.options.filter((x) => x !== o);
@@ -231,11 +253,11 @@ export const StockMarketModule = {
       p.basis += amount;
       p.boughtAge = state.character.age;
       state.finances.cash -= amount;
-      ctx.log(`You bought $${amount.toLocaleString()} of ${ALL_COMPANIES[id].name} (${ALL_COMPANIES[id].ticker}) at $${c.price.toLocaleString()}.`, '📈');
+      ctx.log(`You bought $${amount.toLocaleString()} of ${companyDef(id).name} (${companyDef(id).ticker}) at $${c.price.toLocaleString()}.`, '📈');
     },
     sell(ctx, id) {
       const proceeds = sellPosition(ctx, id);
-      if (proceeds) ctx.log(`You sold your ${ALL_COMPANIES[id].ticker} shares for $${proceeds.toLocaleString()}.`, '💵');
+      if (proceeds) ctx.log(`You sold your ${companyDef(id).ticker} shares for $${proceeds.toLocaleString()}.`, '💵');
     },
     /** arg 'companyId:amount' — sell borrowed shares; the proceeds are held as collateral. */
     short(ctx, arg) {
@@ -250,7 +272,7 @@ export const StockMarketModule = {
       if (state.finances.cash < amount) return ctx.toast(`Shorting $${amount.toLocaleString()} needs that much cash as margin.`, 'warn');
       s.shorts[id] = { shares: amount / c.price, entry: c.price };
       state.finances.cash -= amount;
-      ctx.log(`You shorted $${amount.toLocaleString()} of ${ALL_COMPANIES[id].ticker} at $${c.price.toLocaleString()}: you win if it falls.`, '📉', 'warn');
+      ctx.log(`You shorted $${amount.toLocaleString()} of ${companyDef(id).ticker} at $${c.price.toLocaleString()}: you win if it falls.`, '📉', 'warn');
     },
     cover(ctx, id) { coverShort(ctx, id); },
     /** arg 'companyId:call|put:premium' — one-year, at-the-money options. */
@@ -266,7 +288,7 @@ export const StockMarketModule = {
       const shares = premium / (c.price * premiumRate(id));
       s.options.push({ id: rng.id('opt_'), companyId: id, kind, strike: c.price, shares, premium, expires: state.character.age + 1 });
       state.finances.cash -= premium;
-      ctx.log(`You bought $${premium.toLocaleString()} of one-year ${ALL_COMPANIES[id].ticker} ${kind}s at a $${c.price.toLocaleString()} strike.`, '🎟️', 'warn');
+      ctx.log(`You bought $${premium.toLocaleString()} of one-year ${companyDef(id).ticker} ${kind}s at a $${c.price.toLocaleString()} strike.`, '🎟️', 'warn');
     },
   },
 

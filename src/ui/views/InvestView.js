@@ -8,6 +8,7 @@ import { STOCK_INDEX } from '../../modules/world/CountryLaw.js';
 import { ASSETS, PROFILES, DC_FUNDS, IRA_LIMIT, portfolioValue } from '../../modules/investing/index.js';
 import { yearlyCount } from '../../core/State.js';
 import { stocksCard } from './StocksView.js';
+import { CAPITAL_GAINS } from '../../modules/life/Finances.js';
 import { DC_RATES, DEFAULT_DC_RATE } from '../../modules/retirement/RetirementEngine.js';
 
 const pct = (x) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`;
@@ -58,5 +59,5 @@ export function investView(state) {
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">${esc(acc.dc)} fund</h4><div class="toggle-row">${funds}</div>
     `)}
-    <p class="fine">Dividends and gains on holdings kept 1+ year are taxed at long-term capital gains rates (0/15/20%); short-term gains and Treasury interest as ordinary income. Up to $3,000/yr of losses offset income.</p>`, { icon: '📈', accent: 'cyan' }) + stocksCard(state);
+    <p class="fine">${(state.character.countryId ?? 'US') === 'US' ? 'Dividends and gains on holdings kept 1+ year are taxed at long-term capital gains rates (0/15/20%); short-term gains and Treasury interest as ordinary income. Up to $3,000/yr of losses offset income.' : (() => { const r = CAPITAL_GAINS[state.character.countryId] ?? { rate: 0.15, exempt: 0 }; return `Dividends and long-held gains are taxed at ${Math.round(r.rate * 1000) / 10}%${r.exempt ? ` above a ${money(r.exempt)} yearly allowance` : ''}; short-term gains and interest as ordinary income.`; })()}</p>`, { icon: '📈', accent: 'cyan' }) + stocksCard(state);
 }
