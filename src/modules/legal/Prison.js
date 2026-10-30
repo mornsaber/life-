@@ -61,6 +61,7 @@ export function paroleEligibility(state) {
 
 /** Out: three years of rebuilding (crime/PrisonLife.js reentryTick). */
 export function startReentry(state, served) {
+  state.legal.yearsInside = (state.legal.yearsInside ?? 0) + (served ?? 0);
   if (served < 1) return;
   state.legal.reentry = { since: state.character.age, served, years: 0, steady: 0 };
 }
@@ -169,7 +170,8 @@ export const PrisonActions = {
     const inc = state.legal.incarceration;
     if (!inc || !once(ctx, 'prison.appeal', 'Your appeal is already pending.')) return;
     const lawyer = mode !== 'proSe' && ctx.spend(APPEAL_COST, 'Appellate attorney', { credit: true });
-    const chance = (lawyer ? 0.08 : 0.025) + (inc.deathRow ? 0.04 : 0);
+    // An innocence project takes on the wrongly convicted, and the odds change.
+    const chance = ((lawyer ? 0.08 : 0.025) + (inc.deathRow ? 0.04 : 0)) * (state.legal.flags.wronglyConvicted ? 4 : 1);
     if (!rng.chance(chance)) return ctx.log(`The appeals court affirmed your conviction${lawyer ? '' : ' (you filed pro se)'}.`, '⚖️', 'warn');
     const record = [...state.legal.record].reverse().find((r) => /prison|death/.test(r.sentence ?? ''));
     if (record) {
@@ -180,6 +182,14 @@ export const PrisonActions = {
       delete inc.deathRow;
       inc.facility = 'a maximum-security prison';
       ctx.log('An appeals court threw out your death sentence. You were resentenced to life.', '⚖️', 'good');
+      return;
+    }
+    if (state.legal.flags.wronglyConvicted) {
+      const years = inc.served ?? 0;
+      state.legal.flags.wronglyConvicted = false;
+      release(ctx, `Exonerated. The appeals court found you were wrongly convicted; after ${years} year${years === 1 ? '' : 's'}, you walked out to cameras and your family.`);
+      const award = Math.round(years * 50000 * (state.character.countryId && state.character.countryId !== 'US' ? 0.6 : 1));
+      if (award) ctx.earn(award, 'Compensation for wrongful conviction');
       return;
     }
     release(ctx, 'An appeals court vacated your conviction. You walked out a free person.');

@@ -542,6 +542,7 @@ fieldset.gender label { flex-direction: row; align-items: center; color: var(--i
 .rip { font-family: var(--pixel); font-size: 22px; color: #e8ebf2; text-shadow: 3px 3px 0 #1d2029; }
 .tombstone h2 { margin: 14px 0 4px; font-size: 24px; font-weight: 800; }
 .tombstone .dates { margin: 0; font-family: var(--pixel); font-size: 10px; color: #d6dae4; }
+.tombstone .headline { margin: 10px 0 0; font-family: Georgia, 'Times New Roman', serif; font-size: 15px; font-style: italic; color: #f2f3f7; }
 .tombstone .cause { margin: 10px 0 4px; color: #ffd0d6; font-weight: 600; }
 .tombstone .epitaph { margin: 0 0 16px; font-style: italic; color: #f2f3f7; }
 .tombstone .distinctions { margin: 0 0 8px; font-size: 0.85em; color: #c9ccd6; line-height: 1.4; }

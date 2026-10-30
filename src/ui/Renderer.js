@@ -48,6 +48,7 @@ import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
 import { PHASES } from '../modules/economy/EconomyEngine.js';
 import { causeOf } from '../modules/economy/Shocks.js';
+import { obituaryHeadline, lifeStoryFacts } from '../modules/life/LifeStory.js';
 import { COUNTRIES, countryOf, localizeHtml, localizeMoney, localizeTerms } from '../modules/world/Countries.js';
 import { branchOf } from '../modules/military/MilitaryEngine.js';
 import { postingLabel } from '../modules/world/Posting.js';
@@ -530,7 +531,12 @@ export class Renderer {
     else if (c.peerage) epitaph = 'A voice in the councils of the realm.';
     else if (orders.length && !felon && epitaph === 'They lived a quiet life.') epitaph = `For services to ${orders[0].citation?.match(/For services to ([^.]+)/)?.[1] ?? 'the community'}.`;
 
+    const headline = obituaryHeadline(state, {
+      officeName: topOffice && (OFFICES[topOffice.officeId].level ?? 0) >= 4 ? OFFICES[topOffice.officeId].name : null,
+      peakJob, topMil, militaryName: topMil ? branchOf(topMil).name : null, famous: (state.fame?.score ?? 0) >= 60,
+    });
     return {
+      headline,
       name: `${styledName(state)}${postNominals(state) ? ` ${postNominals(state)}` : ''}`,
       distinctions,
       born: c.birthYear,
@@ -548,6 +554,7 @@ export class Renderer {
         ['Credentials', Object.values(state.credentials.held).filter((h) => h.status === 'active').length],
         ['Honors', `${state.honors.length} (⭐ ${prestige(state)})`],
         felon ? ['Record', 'Felony conviction'] : null,
+        ...lifeStoryFacts(state),
         ['Difficulty', `${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`],
         ['Achievements', `${Object.keys(state.achievements ?? {}).length} of ${Object.keys(ACHIEVEMENTS).length}`],
         state.challenge && CHALLENGES[state.challenge.id] ? ['Challenge', `${CHALLENGES[state.challenge.id].icon} ${esc(CHALLENGES[state.challenge.id].name)} — ${state.challenge.status === 'won' ? 'won' : 'failed'}`] : null,

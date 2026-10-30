@@ -30,21 +30,21 @@ export const regulatorsHere = (state) => REGULATORS[state.character.countryId ??
 
 export const SCHEMES = {
   books: {
-    name: 'The Books', icon: '📊', offense: 'accountingFraud', take: 60000, heat: [10, 18],
+    name: 'The Books', icon: '📊', offense: 'accountingFraud', take: 35000, heat: [10, 18],
     when: (state, job) => Boolean(state.business?.current) || (job && (job.abilities?.includes('exec') || (['corporate', 'accounting', 'finance', 'insurance'].includes(job.professionId) && job.grade >= 5))),
     offer: (state) => `${state.business?.current ? `${state.business.current.name}` : 'The company'} will miss the quarter. Book next year's sales now, move some costs to "capital", and the numbers land — and the bonus, and the share price. Next year you'll have to beat these numbers too.`,
     start: '📊 Make the numbers work',
     year: 'You made the numbers again. They were bigger this year, so the hole was too.',
   },
   sanctions: {
-    name: 'The Front Companies', icon: '🚢', offense: 'sanctionsEvasion', take: 90000, heat: [12, 22],
+    name: 'The Front Companies', icon: '🚢', offense: 'sanctionsEvasion', take: 50000, heat: [12, 22],
     when: (state, job) => Boolean(state.business?.current) || (job && ['finance', 'logistics', 'corporate', 'merchantMarine'].includes(job.professionId) && job.grade >= 4),
     offer: () => 'A buyer in a sanctioned country will pay double for the cargo — if it ships to a "distributor" in a third country first. The paperwork would be yours to sign.',
     start: '🚢 Sign the paperwork',
     year: 'Another year of trans-shipments through front companies. The commissions landed offshore.',
   },
   ponzi: {
-    name: 'The Fund', icon: '🔺', offense: 'ponziScheme', take: 120000, heat: [8, 16],
+    name: 'The Fund', icon: '🔺', offense: 'ponziScheme', take: 60000, heat: [8, 16],
     when: (state, job) => job && ['finance', 'insurance'].includes(job.professionId) && job.grade >= 4,
     offer: () => 'Your clients\' returns lagged the market. A few new investors\' deposits could pay last year\'s promised returns — just until the next good year.',
     start: '🔺 Cover the returns with new money',
@@ -64,7 +64,7 @@ export function whiteCollarTick(ctx) {
   for (const s of [...wc.schemes]) {
     const def = SCHEMES[s.kind];
     const years = state.character.age - s.since;
-    const take = local(state, def.take * (1 + years * 0.4));
+    const take = local(state, def.take * (1 + Math.min(years, 8) * 0.25));
     ctx.earn(take, 'Undisclosed income');
     const c = state.legal.crime;
     if (c) c.dirty = (c.dirty ?? 0) + Math.round(take / 2);
@@ -158,8 +158,8 @@ export const WhiteCollarResolvers = {
       ctx.stat('stress', 12);
       if (rng.chance(0.35)) ctx.emit('career:resign', { reason: 'Pushed out after reporting fraud', fired: true });
       else ctx.emit('career:adjust', { boss: -20, coworkers: -8 });
-      if (R.award && rng.chance(0.4)) {
-        const award = local(state, rng.int(80000, 900000));
+      if (R.award && rng.chance(0.25)) {
+        const award = local(state, rng.int(50000, 600000));
         ctx.earn(award, 'Whistleblower award');
         ctx.emit('fame:buzz', { amount: 4 });
         return ctx.log(`Years later, after the enforcement action, ${R.award} paid you a share of the penalties.`, '📣', 'good');

@@ -39,6 +39,7 @@ export const OFFENSES = {
   ucmjAssault: { name: 'Aggravated Assault (UCMJ Art. 128)', icon: '👊', severity: 'felony', fine: [0, 0], prison: [1, 4], federal: true, military: true, violent: true },
   ucmjFraternization: { name: 'Fraternization (UCMJ Art. 134)', icon: '💑', severity: 'misdemeanor', fine: [0, 0], prison: [0, 1], federal: true, military: true },
   trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
+  childEndangerment: { name: 'Child Endangerment', icon: '🧒', severity: 'felony', fine: [2000, 10000], prison: [1, 4], probation: 3, jobRelated: true },
   disorderly: { name: 'Disorderly Conduct / Failure to Disperse', icon: '📢', severity: 'misdemeanor', fine: [200, 1000], probation: 1 },
   serviceRefusal: { name: 'Refusing military service (Military Service Act)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 2], probation: 1 },
   mercenarism: { name: 'Mercenary activity / foreign enlistment', icon: '💰', severity: 'felony', fine: [10000, 50000], prison: [2, 7], probation: 2 },

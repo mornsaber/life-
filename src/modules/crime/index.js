@@ -22,6 +22,7 @@ import { docketTick, DocketActions } from './Docket.js';
 import { insideTick, reentryTick, PrisonLifeResolvers } from './PrisonLife.js';
 import { victimParoleTick, VictimJusticeResolvers } from './VictimJustice.js';
 import { whiteCollarTick, WhiteCollarActions, WhiteCollarResolvers } from './WhiteCollar.js';
+import { accusationTick, FalseAccusationResolvers } from './FalseAccusation.js';
 import { priceLevel } from '../world/Countries.js';
 import { Random } from '../../core/Random.js';
 
@@ -73,9 +74,10 @@ export const CrimeModule = {
     reentryTick(ctx);
     victimParoleTick(ctx);
     whiteCollarTick(ctx);
+    accusationTick(ctx);
   },
 
   actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions, ...ReformActions, ...DocketActions, ...WhiteCollarActions },
 
-  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers, ...ReformResolvers, ...PrisonLifeResolvers, ...VictimJusticeResolvers, ...WhiteCollarResolvers },
+  resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers, ...ReformResolvers, ...PrisonLifeResolvers, ...VictimJusticeResolvers, ...WhiteCollarResolvers, ...FalseAccusationResolvers },
 };

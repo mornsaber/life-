@@ -141,23 +141,37 @@ const TRAIL_EVENTS = [
   { id: 'gaffe', title: 'A Hot Mic', text: 'A microphone you thought was off caught you mocking voters on the other side.', options: [{ id: 'apologize', label: '🙏 Apologize, sincerely' }, { id: 'double', label: '😤 Double down' }, { id: 'ignore', label: '🤐 Say nothing' }] },
   { id: 'attackAd', title: 'The Attack Ad', text: '{opp} is running ads calling you {charge}.', options: [{ id: 'respond', label: '📺 Answer it with your own ad', hint: 'Costs money' }, { id: 'counter', label: '🗡️ Hit back on their record' }, { id: 'ignore', label: '🙄 Ignore it' }] },
   { id: 'questionnaire', title: 'The Questionnaire', text: 'An influential {group} wants you to sign a pledge on {issue}. Their endorsement and their volunteers come with it.', options: [{ id: 'sign', label: '✍️ Sign the pledge', hint: 'Commits your stance' }, { id: 'decline', label: '🙅 Decline' }] },
+  { id: 'skeleton', needs: (s) => Boolean(skeletonOf(s)), title: 'Your Past Comes Out', text: 'A reporter has found {skeleton}, and {opp}\'s campaign is making sure every voter hears about it.', options: [{ id: 'own', label: '🙋 Own it in a long, honest interview' }, { id: 'deny', label: '🙅 Deny and attack the reporter', hint: 'If it unravels, it\'s over' }, { id: 'silent', label: '🤐 "No comment"' }] },
+  { id: 'volunteers', title: 'A Wave of Volunteers', text: 'Hundreds of people have signed up to volunteer since your last speech. Your field office can\'t cope.', options: [{ id: 'data', label: '📊 Spend on voter data and organisers to use them well', hint: 'Costs money' }, { id: 'rally', label: '📣 Throw a big rally', hint: 'Energy; less targeted' }] },
+  { id: 'manager', title: 'A Hired Gun', text: 'A campaign manager who has won three tough races is available — at a price.', options: [{ id: 'hire', label: '💼 Hire them', hint: 'Costs money; a sharper campaign' }, { id: 'friend', label: '🤝 Stick with your friend who\'s running it now', hint: 'Loyal, inexperienced' }] },
   { id: 'news', title: 'The Issue of the Moment', text: '{news} Suddenly every voter wants to hear about {issueName}.', options: [{ id: 'lead', label: '🎤 Lead on it' }, { id: 'change', label: '🔀 Change the subject' }] },
 ];
 const CHARGES = { taxes: 'a tax-and-spend extremist', services: 'out to gut services', crime: 'soft on crime', guns: 'coming for people\'s guns', immigration: 'for open borders', healthcare: 'a threat to your health care', environment: 'a puppet of polluters', labor: 'anti-worker' };
 const NEWS = { crime: 'A string of shootings leads the evening news.', taxes: 'Property tax bills just went up 12%.', services: 'A bridge failed inspection and the library cut its hours.', healthcare: 'The county hospital is closing its maternity ward.', environment: 'A chemical spill fouled the river.', immigration: 'A border surge dominates cable news.', labor: 'The biggest employer in town announced layoffs.', guns: 'A school lockdown shook the town.' };
 const GROUPS = { taxes: 'taxpayers\' association', services: 'teachers\' union', crime: 'police union', guns: 'gun-rights group', immigration: 'immigrant-rights coalition', healthcare: 'nurses\' association', environment: 'environmental group', labor: 'labor federation' };
 
+/** Something in your past a reporter could dig up, or null. */
+export function skeletonOf(state) {
+  if (state.legal?.yearsInside) return `that you served ${state.legal.yearsInside} year${state.legal.yearsInside === 1 ? '' : 's'} in prison`;
+  const felony = (state.legal?.record ?? []).find((r) => r.severity === 'felony' && !r.vacated);
+  if (felony) return `your conviction for ${felony.name.toLowerCase()}`;
+  if (state.finances?.bankruptcies) return 'your bankruptcy';
+  if ((state.legal?.record ?? []).some((r) => r.offenseId === 'dui')) return 'your drink-driving conviction';
+  if (state.people?.affair) return 'your affair';
+  return null;
+}
+
 function trailEvent(ctx, c) {
   const { state, rng } = ctx;
   if (state.prompts.some((x) => x.type === 'politics.trail')) return;
-  const e = rng.pick(TRAIL_EVENTS);
+  const e = rng.pick(TRAIL_EVENTS.filter((x) => !x.needs || x.needs(state)));
   const pf = platformOf(state);
   const electorate = electorateOf(state, c.officeId);
   // Attacks land on your most exposed issue: where you're furthest from the voters.
   const exposed = ISSUE_IDS.reduce((a, b) => (Math.abs(pf[b] - electorate.median[b]) > Math.abs(pf[a] - electorate.median[a]) ? b : a));
   const issue = e.id === 'attackAd' ? exposed : rng.pick(ISSUE_IDS);
   const side = rng.chance(0.5) ? -2 : 2;
-  const text = e.text.replace('{opp}', c.opponent.name).replace('{charge}', CHARGES[issue]).replace('{group}', GROUPS[issue]).replace('{issue}', `"${ISSUES[issue].stances[side + 2]}"`).replace('{news}', NEWS[issue]).replace('{issueName}', ISSUES[issue].name.toLowerCase());
+  const text = e.text.replace('{opp}', c.opponent.name).replace('{charge}', CHARGES[issue]).replace('{group}', GROUPS[issue]).replace('{issue}', `"${ISSUES[issue].stances[side + 2]}"`).replace('{skeleton}', skeletonOf(state) ?? '').replace('{news}', NEWS[issue]).replace('{issueName}', ISSUES[issue].name.toLowerCase());
   ctx.prompt({ type: 'politics.trail', icon: '🗞️', title: e.title, text, options: e.options, data: { event: e.id, issue, side } });
 }
 
@@ -498,6 +512,19 @@ export const CampaignTrail = {
             bump(0.01);
             ctx.log(`You signed the pledge: "${ISSUES[data.issue].stances[data.side + 2]}." Their volunteers are knocking doors for you.`, '✍️', 'good');
           } else ctx.log('You declined to sign anyone\'s pledge.', '🙅');
+          break;
+        case 'skeleton':
+          if (optionId === 'own') { bump(rng.chance(0.55) ? -0.005 : -0.02); state.politics.credibility = Math.min(100, (state.politics.credibility ?? 70) + 4); ctx.log('You told the whole story yourself. Some voters respected it.', '🙋', 'info'); }
+          else if (optionId === 'deny') { if (rng.chance(0.35)) { bump(0.005); ctx.log('The story faded under your counter-attack.', '🙅', 'warn'); } else { bump(-0.05); state.politics.credibility = Math.max(0, (state.politics.credibility ?? 70) - 15); ctx.log('The documents came out the next day. The denial became the story.', '🙅', 'bad'); } }
+          else { bump(-0.025); ctx.log('"No comment" ran for a week.', '🤐', 'warn'); }
+          break;
+        case 'volunteers':
+          if (optionId === 'data') { const cost = Math.round(office.cost * 0.05); if (c.funds >= cost) { c.funds -= cost; bump(0.02); ctx.log('Organisers, lists and an app: the volunteers knocked 40,000 doors.', '📊', 'good'); } else { bump(0.005); ctx.log('No money for organisers; half the volunteers drifted away.', '📊', 'warn'); } }
+          else { bump(0.01); ctx.log('A packed rally, wall-to-wall coverage, and a sore throat.', '📣', 'good'); }
+          break;
+        case 'manager':
+          if (optionId === 'hire') { const cost = Math.round(office.cost * 0.1); if (c.funds >= cost) { c.funds -= cost; c.manager = true; bump(0.015); ctx.log('Your new campaign manager rebuilt the operation in a month.', '💼', 'good'); } else ctx.log('You couldn\'t afford them. They went to work for the other side.', '💼', 'warn'); }
+          else { bump(rng.chance(0.5) ? 0.005 : -0.01); ctx.log('You stuck with your friend.', '🤝'); }
           break;
         case 'news':
           if (optionId === 'lead') c.focus[data.issue] = (c.focus[data.issue] ?? 0) + 1;

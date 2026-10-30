@@ -55,7 +55,9 @@ export function casesView(state) {
   const against = card(role ? 'Cases Against You' : 'Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
   // At work in the justice system, your own docket comes first (unless you're the one under investigation).
   const docket = docketCard(state, role);
-  return list.length ? `${against}${docket}` : `${docket}${against}`;
+  const a = state.legal.accused;
+  const accused = a ? card('Falsely Accused', `<p>${esc(a.accuser)} has accused you. It isn't true.</p>${kv([['Stage', a.stage === 'charged' ? 'Charged — awaiting trial' : 'Under investigation'], ['Since', `age ${a.since}`], ['Your lawyer', a.lawyer ? 'Retained' : 'None yet']])}<p class="fine">Most accusations are dropped. If it goes to trial, the jury decides — and juries can be wrong.</p>`, { icon: '😨', accent: 'red' }) : '';
+  return `${accused}${list.length ? `${against}${docket}` : `${docket}${against}`}`;
 }
 
 /* ------------------------------------------------------------------ */
@@ -89,7 +91,7 @@ function docketCard(state, role) {
   const body = `${role ? `<p class="muted">Your ${docketMeta(role).noun === 'family' ? 'families' : docketMeta(role).noun === 'story' ? 'stories' : `${docketMeta(role).noun}s`} stay open until you close them. Work each one once a year; resolve it when you're ready — but a case left too long resolves without you.</p>` : '<p class="muted">You no longer carry cases.</p>'}
     ${rec ? `<p>${rec}</p>` : ''}${lawRec}${judgeRec}
     ${open.length ? open.map((c) => docketCase(state, c)).join('<hr>') : role ? empty('Nothing on your desk right now. New cases arrive each year.') : ''}
-    ${role === 'prosecutor' ? '<p class="fine">Ambitious? The District Attorney is elected — run for it on the Politics tab once you\'ve built a record.</p>' : ''}
+    ${role === 'prosecutor' && (state.character.countryId ?? 'US') === 'US' ? '<p class="fine">Ambitious? The District Attorney is elected — run for it on the Politics tab once you\'ve built a record.</p>' : ''}
     ${past ? disclosure('docket.past', `📚 Past cases (${(d.closed ?? []).length})`, `<ul class="plain">${past}</ul>`) : ''}`;
   return card(role ? `Your Docket — ${ROLE_LABEL[role]}` : 'Your Docket', body, { icon: role ? docketMeta(role).icon : '📚', accent: open.some((c) => c.due <= state.character.age) ? 'red' : 'cyan' });
 }

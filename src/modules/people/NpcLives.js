@@ -55,7 +55,7 @@ function lifeRng(state) {
 
 const LIVES = ['mother', 'father', 'sibling', 'partner', 'fiance', 'spouse', 'ex', 'child', 'friend'];
 /** Jobs the game already manages: working for you, owning your old business, or a spouse's career (PeopleEngine). */
-const managedJob = (p) => /family business|^Owner, /.test(p.job ?? '');
+const managedJob = (p) => Boolean(p.service) || /family business|^Owner, /.test(p.job ?? '');
 const isPartner = (p) => ['partner', 'fiance', 'spouse'].includes(p.relation);
 
 export function jobFor(rng, edu, smarts = 55) {

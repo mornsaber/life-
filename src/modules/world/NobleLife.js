@@ -106,7 +106,7 @@ export const NobleLifeResolvers = {
     state.people.list.push(p);
     for (const x of parents) x.relationship = clamp(x.relationship + 8, 0, 100);
     bump(state, 6);
-    const settlement = Math.round((data.rich ? rng.int(400, 1500) : rng.int(100, 400)) * 1000);
+    const settlement = Math.round((data.rich ? rng.int(150, 600) : rng.int(40, 180)) * 1000);
     ctx.earn(settlement, 'Marriage settlement');
     const e = estateOf(state);
     if (e && !data.rich) e.value = Math.round(e.value * 1.15);

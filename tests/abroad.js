@@ -13,7 +13,9 @@ import { COUNTRIES, localizeHtml } from '../src/modules/world/Countries.js';
 import { professionsFor, PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
-import { VIEWS } from '../src/ui/Renderer.js';
+import { VIEWS, Renderer } from '../src/ui/Renderer.js';
+import { tombstone } from '../src/ui/Components.js';
+import { makePerson } from '../src/modules/people/PeopleEngine.js';
 import { usLeftovers } from './usTerms.js';
 
 const PER = Number(process.argv[2] ?? 4);
@@ -71,6 +73,11 @@ function life(cc, seed) {
         if (job) scan(here(), `${job.title} at ${job.employer.name}`, `${cc} hire ${prof.id}`, seen);
       }, `hire ${cc} ${prof.id}`);
     }
+    // The newer systems: a hobby practised every year, a child to raise, a power of attorney.
+    if (age === 16) tryDo(() => engine.dispatch('hobbies.take', rng.pick(['guitar', 'running', 'painting', 'chess'])), `hobby ${cc}`);
+    if (age >= 16) tryDo(() => { for (const id of Object.keys(state.hobbies ?? {})) { engine.dispatch('hobbies.practise', id); engine.dispatch('hobbies.compete', id); } }, `hobby ${cc} @${age}`);
+    if (age === 30) tryDo(() => { state.people.list.push(makePerson(ctx, { relation: 'child', age: 1, relationship: 80, custody: 'you' })); engine.dispatch('parenting.style', 'authoritative'); }, `child ${cc}`);
+    if (age === 60) tryDo(() => engine.dispatch('laterLife.poa', 'professional'), `poa ${cc}`);
     if (age % 7 === 0 && age >= 18) render(`${cc} @${age} seed ${seed}`);
     tryDo(() => { state.prompts = []; engine.ageUp(); }, `ageUp ${cc} @${age} seed ${seed}`);
     for (const p of state.prompts) scan(here(), shown([p.title, p.text, ...p.options.map((o) => `${o.label} ${o.hint ?? ''}`)].join(' | '), countryNow()), `${cc} prompt ${p.type} @${age}`, seen);
@@ -85,6 +92,13 @@ function life(cc, seed) {
     lastCountry = here();
   }
   render(`${cc} end seed ${seed}`);
+  // The death screen: as if this life ended now (with a spell in the army, so the service is named).
+  tryDo(() => {
+    if (!state.military.history.length) state.military.history.push({ branch: 'army', nation: here(), track: 'enlisted', rankCode: 'E-4', rankTitle: 'Corporal', yearsOfService: 4, discharge: 'honorable' });
+    state.character.causeOfDeath ??= 'old age';
+    const html = tombstone(Renderer.prototype.obituary.call({ ui: {} }, state));
+    for (const chunk of strip(localizeHtml(html, countryNow())).split(/(?<=[.!?])\s|\s{2,}/)) scan(here(), chunk, `${cc} death screen seed ${seed}`, seen);
+  }, `death screen ${cc}`);
 }
 
 

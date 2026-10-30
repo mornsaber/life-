@@ -3,6 +3,7 @@
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
 import { militaryInsignia } from '../Insignia.js';
+import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
 import { esc, money, button, card, meter, kv, empty, disclosure } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
@@ -62,7 +63,8 @@ function personRow(state, p) {
   const facts = [
     `${RELATION_LABEL[p.relation] ?? p.relation}`,
     p.alive ? `age ${age}` : `died at ${p.diedAge}`,
-    p.alive && p.job ? p.job : null,
+    p.alive && p.service ? null : p.alive && p.job ? p.job : null,
+    p.veteran?.rank ? `🎖️ veteran (${p.veteran.rank}, ${p.veteran.years} yr)` : null,
     p.dynasticTitle ? `⚜️ ${p.dynasticTitle}` : null,
     p.houseOrder ? `⚜️ ${p.houseOrder}` : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
@@ -93,7 +95,7 @@ function personRow(state, p) {
   const memories = p.alive && p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length }) : '';
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
     <span class="person-icon" aria-hidden="true">${p.alive ? ICON[p.relation] ?? '🙂' : '🕯️'}</span>
-    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}${memories}</div>
+    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${p.alive && p.service ? `<small class="traits">${militaryInsignia(rankCodeOf(p.service), p.service.nation, { branch: p.service.branch })} ${esc(serviceLabel(p.service))}${p.service.deployed ? ' · 🌍 deployed' : ''}</small>` : ''}${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}${memories}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
     <div class="person-actions">${bond}${actions}</div>
   </li>`;
