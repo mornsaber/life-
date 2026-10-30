@@ -268,7 +268,7 @@ export function vacancyTick(ctx, job) {
     const rivals = level.grade > job.grade ? rivalsFor(state, job, level) : [];
     const best = rivals.length ? rivals.reduce((a, b) => (b.score > a.score ? b : a)) : null;
     const person = fillWithRival(state, org, dept.id, profession, level, best, size);
-    if (person && nextLevels(profession, size, job.levelId).some((l) => l.id === level.id)) ctx.log(`${person.name} ${best && !best.external ? 'was promoted' : 'was hired'} as ${level.title} at ${job.employer.name}.`, '🪑');
+    if (person && nextLevels(profession, size, job.levelId).some((l) => l.id === level.id)) ctx.log(`${person.name} ${best && !best.external ? 'was promoted to' : 'was hired as'} ${level.title} at ${job.employer.name}.`, '🪑');
   }
   dept.vacancies = dept.vacancies.filter((x) => x.since >= state.character.age || x.professionId !== job.professionId);
 

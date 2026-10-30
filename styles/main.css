@@ -984,3 +984,11 @@ select:focus { border-color: var(--cyan); }
 .birth-list, .birth-opt, .birth-more { min-width: 0; max-width: 100%; box-sizing: border-box; }
 .birth-more select, .splash-card select { width: 100%; max-width: 100%; min-width: 0; }
 .birth-more .fine { text-align: left; font-weight: 400; }
+
+/* Long chips wrap rather than run past the card edge (travel advisories, long statuses). */
+.chip { max-width: 100%; }
+.card .chip { white-space: normal; overflow-wrap: anywhere; }
+/* Form rows: grid cells may shrink below their content, and selects fill their cell. */
+.toggle-row > * { min-width: 0; }
+.toggle-row .sel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.toggle-row .sel select { width: 100%; min-width: 0; text-overflow: ellipsis; }

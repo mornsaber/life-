@@ -109,7 +109,7 @@ export function checkRequirements(state, req = {}) {
   if (req.education && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
   for (const c of req.credentials ?? []) if (!hasCredential(state, c)) missing.push(credentialName(c));
   if (req.experience && yearsInProfession(state, req.experience.professions) < req.experience.years) {
-    missing.push(`${req.experience.years} yrs ${req.experience.professions[0]} experience`);
+    missing.push(`${req.experience.years} yrs ${(PROFESSIONS[req.experience.professions[0]]?.name ?? req.experience.professions[0]).toLowerCase()} experience`);
   }
   if (req.workYears && totalWorkYears(state) < req.workYears) missing.push(`${req.workYears} yrs work experience`);
   if (req.tenure && (state.career.job?.yearsAtEmployer ?? 0) < req.tenure) missing.push(`${req.tenure} yrs at current employer`);

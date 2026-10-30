@@ -392,7 +392,8 @@ export const fixMoneySigns = (s) => String(s).replace(/\$-(?=\d)/g, '-$');
 
 /** Player-facing text clean-up: money signs, doubled spaces, and an icon repeated at the start of the text. */
 export function tidyText(text, icon = '') {
-  let t = fixMoneySigns(text).replace(/ {2,}/g, ' ').trim();
+  // Collapse spaces, and the double full stop after a name ending in one ("Corner Hardware Co..").
+  let t = fixMoneySigns(text).replace(/ {2,}/g, ' ').replace(/(?<!\.)\.\.(?!\.)/g, '.').trim();
   if (icon && icon !== '•' && t.startsWith(icon)) t = t.slice(icon.length).trimStart();
   return t;
 }
