@@ -20,6 +20,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { isCitizen } from '../world/Countries.js';
 import { ABROAD_COURTS, benchFor, courtName } from './CourtsAbroad.js';
+import { recordCase } from '../crime/DocketRecord.js';
 
 export const COURTS = {
   magistrate: { name: 'State Magistrate', icon: '🔨', system: 'state', rank: 1, salary: 140000, term: 4, desc: 'Arraignments, bail, small claims and traffic court.' },
@@ -219,7 +220,7 @@ function schoolTick(ctx) {
 /* Cases                                                               */
 /* ------------------------------------------------------------------ */
 
-const CASES = {
+export const JUDGE_CASES = {
   trial: [
     { id: 'sentence', title: 'Sentencing', text: 'A 19-year-old first offender pleaded guilty to armed robbery of a gas station. Nobody was hurt; the gun was unloaded.', options: [['lenient', '🕊️ Probation and a diversion program', { approval: -3, rep: 1 }], ['guideline', '📖 A guideline sentence', { rep: 2 }], ['harsh', '⛓️ The maximum, as a message', { approval: 4, rep: -2, reverse: 0.2 }]] },
     { id: 'suppress', title: 'Motion to Suppress', text: 'Police found 4 kilos of fentanyl in a car — after a search with no warrant, no consent and a pretextual stop.', options: [['grant', '📖 Grant: the search was unconstitutional', { approval: -6, rep: 3 }], ['deny', '🚔 Deny: let the jury see the evidence', { approval: 4, rep: -3, reverse: 0.6 }]] },
@@ -238,12 +239,17 @@ const CASES = {
   ],
 };
 
+/** Which cases a court hears. Abroad: the lower rungs try cases, the top court is the supreme one, the rest hear appeals. */
+export function caseTier(court) {
+  const c = courtDef(court);
+  return c.system === 'national' ? (!c.next ? 'supreme' : c.rank <= 2 ? 'trial' : 'appellate') : c.rank <= 2 ? 'trial' : c.rank === 3 ? 'appellate' : 'supreme';
+}
+
 function casePrompt(ctx, court) {
   const { rng } = ctx;
   const c = courtDef(court);
-  // Abroad: the lower rungs try cases, the top court is the supreme one, the rest hear appeals.
-  const tier = c.system === 'national' ? (!c.next ? 'supreme' : c.rank <= 2 ? 'trial' : 'appellate') : c.rank <= 2 ? 'trial' : c.rank === 3 ? 'appellate' : 'supreme';
-  const pool = CASES[tier];
+  const tier = caseTier(court);
+  const pool = JUDGE_CASES[tier];
   const k = rng.pick(pool);
   ctx.prompt({
     type: 'judiciary.case', icon: c.icon, title: k.title,
@@ -251,6 +257,40 @@ function casePrompt(ctx, court) {
     options: k.options.map(([id, label]) => ({ id, label })),
     data: { caseId: k.id, court },
   });
+}
+
+/** Rule on a case. `careful`: you read every brief — appeals courts reverse you less. */
+export function rule(ctx, data, optionId, { careful = false } = {}) {
+  const { state, rng } = ctx;
+  const pool = [...JUDGE_CASES.trial, ...JUDGE_CASES.appellate, ...JUDGE_CASES.supreme];
+  const k = pool.find((x) => x.id === data.caseId);
+  const opt = k?.options.find(([id]) => id === optionId);
+  if (!opt) return null;
+  const fx = opt[2];
+  const seat = state.judiciary.seat;
+  const pol = state.politics?.office?.id === 'judge' ? state.politics.office : null;
+  if (seat) {
+    seat.rulings += 1;
+    seat.reputation = Math.round(clamp(seat.reputation + (fx.rep ?? 0), 0, 100));
+    seat.approval = Math.round(clamp(seat.approval + (fx.approval ?? 0), 0, 100));
+  }
+  if (pol) pol.approval = Math.round(clamp(pol.approval + (fx.approval ?? 0), 0, 100));
+  let note = '';
+  const reversed = Boolean(fx.reverse && rng.chance(fx.reverse * (careful ? 0.5 : 1)));
+  if (reversed) {
+    if (seat) {
+      seat.reversals += 1;
+      seat.reputation = Math.max(0, seat.reputation - 4);
+    }
+    note = ' The appeals court reversed you.';
+  }
+  if (fx.risk && rng.chance(fx.risk)) {
+    note += ' The defendant violated the order and hurt someone. The headlines named you.';
+    if (seat) seat.approval = Math.max(0, seat.approval - 12);
+    if (pol) pol.approval = Math.max(0, pol.approval - 12);
+  }
+  ctx.log(`${k.title}: ${opt[1].replace(/^\S+\s/, '')}.${note}`, '⚖️', note ? 'warn' : undefined);
+  return { title: k.title, ruling: opt[1].replace(/^\S+\s/, ''), reversed };
 }
 
 /** State seat payroll, terms, retention and promotions. */
@@ -458,34 +498,8 @@ export const Judiciary = {
 
   resolvers: {
     case(ctx, data, optionId) {
-      const { state, rng } = ctx;
-      const pool = [...CASES.trial, ...CASES.appellate, ...CASES.supreme];
-      const k = pool.find((x) => x.id === data.caseId);
-      const opt = k?.options.find(([id]) => id === optionId);
-      if (!opt) return;
-      const fx = opt[2];
-      const seat = state.judiciary.seat;
-      const pol = state.politics?.office?.id === 'judge' ? state.politics.office : null;
-      if (seat) {
-        seat.rulings += 1;
-        seat.reputation = Math.round(clamp(seat.reputation + (fx.rep ?? 0), 0, 100));
-        seat.approval = Math.round(clamp(seat.approval + (fx.approval ?? 0), 0, 100));
-      }
-      if (pol) pol.approval = Math.round(clamp(pol.approval + (fx.approval ?? 0), 0, 100));
-      let note = '';
-      if (fx.reverse && rng.chance(fx.reverse)) {
-        if (seat) {
-          seat.reversals += 1;
-          seat.reputation = Math.max(0, seat.reputation - 4);
-        }
-        note = ' The appeals court reversed you.';
-      }
-      if (fx.risk && rng.chance(fx.risk)) {
-        note += ' The defendant violated the order and hurt someone. The headlines named you.';
-        if (seat) seat.approval = Math.max(0, seat.approval - 12);
-        if (pol) pol.approval = Math.max(0, pol.approval - 12);
-      }
-      ctx.log(`${k.title}: ${opt[1].replace(/^\S+\s/, '')}.${note}`, '⚖️', note ? 'warn' : undefined);
+      const out = rule(ctx, data, optionId);
+      if (out) recordCase(ctx.state, { role: 'judge', title: out.title, result: out.reversed ? 'reversed' : 'ruled', note: out.ruling });
     },
     nomination(ctx, data, optionId) {
       const { state, rng } = ctx;

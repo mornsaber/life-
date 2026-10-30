@@ -1,7 +1,7 @@
 /**
  * Crime as a system, layered on the legal module (legal/): visible cases with evidence,
  * corruption, the drug supply chain, violence and guilt, gangs and the children they recruit,
- * crimes against you, and the cases the justice careers handle.
+ * crimes against you, and the cases the justice careers handle (the year's hard case, and the docket).
  *
  * The justice system itself (charges, courts, sentencing, prison) stays in legal/JusticeSystem.js;
  * this module hooks into it (setJusticeHooks) and adds what happens around it.
@@ -18,6 +18,7 @@ import { victimTick, VictimResolvers } from './Victims.js';
 import { caseWorkTick, CaseWorkResolvers } from './CaseWork.js';
 import { abuseTick, DomesticAbuseActions, DomesticAbuseResolvers } from './DomesticAbuse.js';
 import { reformTick, ReformActions, ReformResolvers } from './Reform.js';
+import { docketTick, DocketActions } from './Docket.js';
 import { priceLevel } from '../world/Countries.js';
 import { Random } from '../../core/Random.js';
 
@@ -64,9 +65,10 @@ export const CrimeModule = {
     victimTick(ctx);
     guiltTick(ctx);
     caseWorkTick(ctx);
+    docketTick(ctx);
   },
 
-  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions, ...ReformActions },
+  actions: { ...CaseActions, ...CorruptionActions, ...DrugActions, ...ViolenceActions, ...GangActions, ...DomesticAbuseActions, ...ReformActions, ...DocketActions },
 
   resolvers: { ...CaseResolvers, ...CorruptionResolvers, ...ViolenceResolvers, ...GangResolvers, ...VictimResolvers, ...CaseWorkResolvers, ...DomesticAbuseResolvers, ...ReformResolvers },
 };

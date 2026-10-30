@@ -4,6 +4,7 @@
 import { esc, button, card, chip, kv, meter, disclosure, empty, select } from '../Components.js';
 import { RISKY_ACTIONS, CRIME_GROUPS, TASK_FORCE_HEAT, OFFENSES, SEVERITY_LABEL } from '../../modules/legal/index.js';
 import { EVIDENCE, stageOf, STAGE_LABEL, caseRef } from '../../modules/crime/Cases.js';
+import { docketRole, ROLE_LABEL, resolutions, workActions, workedThisYear } from '../../modules/crime/Docket.js';
 import { PRODUCTS, LABS, BUYS, priceHere, canImport, kg } from '../../modules/crime/Drugs.js';
 import { JUVENILE_CRIMES } from '../../modules/crime/Gangs.js';
 import { corruptionHere, drugLawHere, gunsHere, crimeLevelHere } from '../../modules/crime/CrimeWorld.js';
@@ -49,7 +50,48 @@ export function casesView(state) {
   const body = list.length
     ? `<p class="muted">What the police have on you — and what you can still do about it. Every counter-move is once a year per case, and most of them are crimes too.</p>${list.map((inv, i) => caseCard(state, inv, caseRef(inv, i))).join('<hr>')}`
     : empty('No open cases. As far as you know.');
-  return card('Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
+  const role = docketRole(state);
+  const against = card(role ? 'Cases Against You' : 'Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
+  // At work in the justice system, your own docket comes first (unless you're the one under investigation).
+  const docket = docketCard(state, role);
+  return list.length ? `${against}${docket}` : `${docket}${against}`;
+}
+
+/* ------------------------------------------------------------------ */
+/* Your docket (police, prosecutors, defenders, lawyers, judges)       */
+/* ------------------------------------------------------------------ */
+
+const RESULT = { win: ['🏆', 'Won', 'good'], loss: ['😞', 'Lost', 'bad'], settle: ['🤝', 'Plea / settled', ''], lapsed: ['⏳', 'Went cold / lapsed', 'warn'], ruled: ['⚖️', 'Ruled', 'good'], reversed: ['↩️', 'Reversed on appeal', 'bad'] };
+const STRENGTH_LABEL = { police: '🧾 Evidence', prosecutor: '⚖️ Strength of your case', defender: '🛡️ Your client\'s position', lawyer: '📂 Your position' };
+const ROLE_NOUN = { police: 'investigation', prosecutor: 'prosecution', defender: 'client', lawyer: 'matter', judge: 'case' };
+
+function docketCase(state, c) {
+  const left = c.due - state.character.age;
+  const work = workActions(c).map((w) => button(w.label, 'crime.docket', { arg: `${c.id}:${w.id}`, variant: 'small', disabled: workedThisYear(state, c, w.id), hint: workedThisYear(state, c, w.id) ? 'Done this year' : w.hint })).join('');
+  const resolve = resolutions(c).map((r) => button(r.label, 'crime.docket', { arg: `${c.id}:${r.id}`, variant: 'small', hint: r.hint ?? '' })).join('');
+  return `<div class="case-file">
+    <h4>${esc(c.title)} ${chip(left <= 0 ? '⏳ Must be resolved this year' : `${left} yr left`, left <= 0 ? 'bad' : left === 1 ? 'warn' : '')} ${c.prep ? chip(`📎 Worked ×${c.prep}`) : ''} ${c.careful ? chip('📖 Briefs read', 'good') : ''}</h4>
+    <p>${esc(c.text)}</p>
+    ${c.suspect && c.role === 'police' ? `<p class="fine">Suspect: ${esc(c.suspect)}</p>` : ''}
+    ${STRENGTH_LABEL[c.role] ? meter(c.strength * 100, { label: STRENGTH_LABEL[c.role], tone: c.strength >= 0.6 ? 'good' : c.strength >= 0.35 ? 'mid' : 'bad' }) : ''}
+    <div class="action-grid">${work}${resolve}</div>
+  </div>`;
+}
+
+function docketCard(state, role) {
+  const d = state.docket;
+  if (!role && !d?.closed?.length) return '';
+  const open = (d?.open ?? []).filter((c) => c.role === role);
+  const rec = Object.entries(d?.record ?? {}).filter(([, n]) => n).map(([k, n]) => chip(`${RESULT[k]?.[0] ?? '•'} ${RESULT[k]?.[1] ?? k}: ${n}`, RESULT[k]?.[2] ?? '')).join(' ');
+  const seat = role === 'judge' ? state.judiciary.seat : null;
+  const lawRec = ['lawyer', 'defender', 'prosecutor'].includes(role) && state.law ? kv([['Reputation', `${Math.round(state.law.reputation ?? 30)}/100`], ['Wins · losses · settled', `${state.law.wins ?? 0} · ${state.law.losses ?? 0} · ${state.law.settled ?? 0}`]]) : '';
+  const judgeRec = seat ? kv([['Rulings', seat.rulings], ['Reversed on appeal', seat.reversals], ['Reputation', `${seat.reputation}/100`], ['Public approval', `${seat.approval}%`]]) : '';
+  const past = (d?.closed ?? []).slice().reverse().map((x) => `<li>${RESULT[x.result]?.[0] ?? '•'} <b>${esc(x.title)}</b> <small class="muted">age ${x.age}${x.note ? ` · ${esc(x.note)}` : ''}</small></li>`).join('');
+  const body = `${role ? `<p class="muted">Your ${ROLE_NOUN[role]}s stay open until you close them. Work each one once a year; resolve it when you're ready — but a case left too long resolves without you.</p>` : '<p class="muted">You no longer carry cases.</p>'}
+    ${rec ? `<p>${rec}</p>` : ''}${lawRec}${judgeRec}
+    ${open.length ? open.map((c) => docketCase(state, c)).join('<hr>') : role ? empty('Nothing on your desk right now. New cases arrive each year.') : ''}
+    ${past ? disclosure('docket.past', `📚 Past cases (${(d.closed ?? []).length})`, `<ul class="plain">${past}</ul>`) : ''}`;
+  return card(role ? `Your Docket — ${ROLE_LABEL[role]}` : 'Your Docket', body, { icon: { police: '🚓', prosecutor: '⚖️', defender: '🛡️', lawyer: '💼', judge: '🧑‍⚖️' }[role] ?? '📚', accent: open.some((c) => c.due <= state.character.age) ? 'red' : 'cyan' });
 }
 
 /* ------------------------------------------------------------------ */

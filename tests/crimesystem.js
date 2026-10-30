@@ -17,6 +17,11 @@ import { corruptionOf, drugLawOf, CORRUPTION } from '../src/modules/crime/CrimeW
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { outfitsHere, meOf } from '../src/modules/legal/Underworld.js';
 import { gangsTick } from '../src/modules/crime/Gangs.js';
+import { docketTick, docketRole, resolutions, workActions } from '../src/modules/crime/Docket.js';
+import { getProfession } from '../src/modules/career/JobTrees.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { hire } from '../src/modules/career/CareerEngine.js';
+import { courtsHere } from '../src/modules/legal/Judiciary.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life({ seed = 3, age = 25, countryId } = {}) {
@@ -265,6 +270,51 @@ const tests = {
     const p = state.prompts.find((x) => x.type === 'crime.casework');
     assert.ok(p, state.prompts.map((x) => x.type).join(','));
     engine.resolvePrompt(p.id, p.options[0].id);
+  },
+  'the docket: police, prosecutors, defenders, lawyers and judges carry cases they can work and close'() {
+    const roles = { police: ['police', 'detective'], prosecutor: ['prosecution', 'ada'], defender: ['publicDefender', 'apd'], lawyer: ['law', 'associate'], judge: null };
+    for (const [role, job] of Object.entries(roles)) {
+      const { engine, state, ctx } = life({ age: 35 });
+      if (job) hire(ctx, { professionId: job[0], levelId: job[1], employer: createEmployer(ctx.rng, state, getProfession(job[0]), state.character.regionId) });
+      if (role === 'lawyer') state.law = { area: 'litigation', reputation: 30, wins: 0, losses: 0, settled: 0, book: 0, hours: 2000, burnout: 0, seen: [] };
+      if (role === 'judge') state.judiciary.seat = { court: courtsHere(state)[0], since: 35, termLeft: 10, reputation: 60, approval: 55, rulings: 0, reversals: 0 };
+      assert.equal(docketRole(state), role);
+      docketTick(ctx);
+      const c = state.docket.open[0];
+      assert.ok(c && c.role === role, `${role}: ${JSON.stringify(state.docket)}`);
+      const html = VIEWS.cases(state, {});
+      clean(html);
+      assert.match(html, /Your Docket/);
+      assert.match(html, new RegExp(`data-arg="${c.id}:`));
+      const before = c.strength;
+      engine.dispatch('crime.docket', `${c.id}:${workActions(c)[0].id}`);
+      if (role === 'judge') assert.ok(c.careful); else assert.notEqual(c.strength, before);
+      engine.dispatch('crime.docket', `${c.id}:${resolutions(c)[0].id}`);
+      assert.ok(!state.docket.open.includes(c), `${role} case closed`);
+      assert.equal(state.docket.closed.at(-1).title, c.title);
+      assert.match(VIEWS.cases(state, {}), /Past cases/);
+    }
+  },
+  'docket cases left too long resolve without you; recruits and commanders carry none'() {
+    const { state, ctx } = life({ age: 35 });
+    hire(ctx, { professionId: 'prosecution', levelId: 'ada', employer: createEmployer(ctx.rng, state, getProfession('prosecution'), state.character.regionId) });
+    docketTick(ctx);
+    const first = state.docket.open[0];
+    state.character.age += 3;
+    docketTick(ctx);
+    assert.ok(!state.docket.open.includes(first));
+    assert.equal(state.docket.closed.at(-1).result, 'lapsed');
+    state.career.job.levelId = 'first_cmd1';
+    assert.equal(docketRole(state), null);
+    docketTick(ctx);
+    assert.equal(state.docket.open.length, 0, 'handed over');
+  },
+  'the year\'s big decisions go into the docket history'() {
+    const { engine, state, ctx } = life({ age: 35 });
+    state.judiciary.seat = { court: courtsHere(state)[0], since: 35, termLeft: 10, reputation: 60, approval: 55, rulings: 0, reversals: 0 };
+    ctx.prompt({ type: 'judiciary.case', title: 'Bail Hearing', text: '', options: [{ id: 'release', label: 'x' }], data: { caseId: 'bail', court: state.judiciary.seat.court } });
+    engine.resolvePrompt(state.prompts.at(-1).id, 'release');
+    assert.equal(state.docket.closed.at(-1).title, 'Bail Hearing');
   },
 };
 

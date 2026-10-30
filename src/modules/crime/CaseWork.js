@@ -9,6 +9,7 @@
  * plea), and they cost performance, stress and trauma either way.
  */
 import { currentCourt } from '../legal/Judiciary.js';
+import { recordCase } from './DocketRecord.js';
 
 const ROLE = {
   police: 'police', statePolice: 'police', sheriff: 'police', transitPolice: 'police', airportPolice: 'police', universityPolice: 'police', fbi: 'police', dea: 'police',
@@ -108,5 +109,6 @@ export const CaseWorkResolvers = {
     if (o.stress) ctx.stat('stress', o.stress);
     if (o.trauma) ctx.emit('health:trauma', { amount: o.trauma, source: 'casework' });
     ctx.log(o.text, '🗂️', o.perf >= 3 ? 'good' : o.perf < 0 ? 'bad' : 'info');
+    recordCase(ctx.state, { role: data.role, title: c.title, result: o.perf >= 3 ? 'win' : o.perf < 0 ? 'loss' : 'settle', note: o.text });
   },
 };

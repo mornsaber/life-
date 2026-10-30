@@ -26,6 +26,7 @@
  *   clerkship, area, chambers, hours, book, reputation, wins, losses, settled, burnout,
  *   partnerVote, silk, proBono, seen: [ids] }
  */
+import { recordCase, gist } from '../crime/DocketRecord.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, addHonor, yearsInProfession } from '../../core/State.js';
 import { ADMISSION_HOOKS } from '../education/EducationEngine.js';
@@ -190,7 +191,8 @@ export function matterPrompt(ctx) {
 
 export function resolveMatter(ctx, data, optionId) {
   const { state, rng } = ctx;
-  const m = MATTERS.find((x) => x.id === data.matterId);
+  // A docket case brings its own file (the facts, and how strong your preparation made it).
+  const m = data.matter ?? MATTERS.find((x) => x.id === data.matterId);
   if (!m) return null;
   const l = law(state);
   const out = playMatter(state, m, optionId, rng);
@@ -217,6 +219,7 @@ export function resolveMatter(ctx, data, optionId) {
     if (job?.professionId === 'law') l.book = Math.round((l.book ?? 0) + 15000);
   }
   ctx.log(out.note, out.result === 'win' ? '🏆' : out.result === 'loss' ? '😞' : '🤝', out.result === 'win' ? 'good' : out.result === 'loss' ? 'bad' : undefined);
+  if (!data.matter) recordCase(state, { role: m.kind === 'prosecution' ? 'prosecutor' : m.kind === 'defense' ? 'defender' : 'lawyer', title: m.title ?? gist(m.text), result: out.result, note: out.note });
   return out;
 }
 
