@@ -21,6 +21,7 @@ import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { isCitizen } from '../world/Countries.js';
 import { ABROAD_COURTS, benchFor, courtName } from './CourtsAbroad.js';
 import { recordCase } from '../crime/DocketRecord.js';
+import { judgeLifeTick, JudgeActions, resolveJudgeLife, taper } from './JudicialLife.js';
 
 export const COURTS = {
   magistrate: { name: 'State Magistrate', icon: '🔨', system: 'state', rank: 1, salary: 140000, term: 4, desc: 'Arraignments, bail, small claims and traffic court.' },
@@ -271,7 +272,7 @@ export function rule(ctx, data, optionId, { careful = false } = {}) {
   const pol = state.politics?.office?.id === 'judge' ? state.politics.office : null;
   if (seat) {
     seat.rulings += 1;
-    seat.reputation = Math.round(clamp(seat.reputation + (fx.rep ?? 0), 0, 100));
+    seat.reputation = Math.round(clamp(seat.reputation + taper(seat.reputation, fx.rep ?? 0), 0, 100));
     seat.approval = Math.round(clamp(seat.approval + (fx.approval ?? 0), 0, 100));
   }
   if (pol) pol.approval = Math.round(clamp(pol.approval + (fx.approval ?? 0), 0, 100));
@@ -439,6 +440,7 @@ export const Judiciary = {
       return;
     }
     seatTick(ctx);
+    judgeLifeTick(ctx);
     layTick(ctx);
     schoolTick(ctx);
     const lawyer = state.career.job && ['law', 'prosecution', 'publicDefender', 'courts'].includes(state.career.job.professionId);
@@ -453,6 +455,7 @@ export const Judiciary = {
   },
 
   actions: {
+    ...JudgeActions,
     resign(ctx) {
       if (ctx.state.judiciary.seat) leaveBench(ctx, 'Resigned from the bench');
     },
@@ -497,6 +500,9 @@ export const Judiciary = {
   },
 
   resolvers: {
+    life(ctx, data, optionId) {
+      resolveJudgeLife(ctx, data, optionId);
+    },
     case(ctx, data, optionId) {
       const out = rule(ctx, data, optionId);
       if (out) recordCase(ctx.state, { role: 'judge', title: out.title, result: out.reversed ? 'reversed' : 'ruled', note: out.ruling });

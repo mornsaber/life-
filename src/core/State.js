@@ -457,6 +457,24 @@ export function bumpYearly(state, key) {
 /* Read-only selectors                                                 */
 /* ------------------------------------------------------------------ */
 
+/**
+ * In work, in any form: a civilian job, active military service, a seat on the bench, a full-time
+ * elected office or ministry, running your own business, or the royal round. Reservists and
+ * part-time officeholders count only through their civilian job.
+ */
+export function isEmployed(state) {
+  const svc = state.military?.service;
+  return Boolean(
+    state.career?.job
+    || (svc && svc.component !== 'reserve')
+    || state.judiciary?.seat
+    || state.politics?.office?.fullTime
+    || state.politics?.ministry
+    || ['operator', 'executive'].includes(state.business?.current?.role)
+    || (state.royal?.working && !state.royal.steppedBack && !state.royal.abdicated),
+  );
+}
+
 export const fullName = (state) => `${state.character.firstName} ${state.character.lastName}`;
 
 export const currentYear = (state) => state.character.birthYear + state.character.age;

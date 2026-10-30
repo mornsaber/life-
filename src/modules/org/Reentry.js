@@ -13,7 +13,7 @@
  *    leaving — keeping your seniority and pension service.
  */
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { yearlyCount, bumpYearly, isEmployed } from '../../core/State.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { levelById, previousLevel, ladderFor } from '../career/Ladder.js';
 import { createEmployer } from '../career/Employers.js';
@@ -24,11 +24,13 @@ import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 
 /** Years since you last worked (0 while employed or before your first job). */
 export function workforceGap(state) {
-  if (state.career.job || !state.career.history.length) return 0;
-  // Running your own business is work; owning one passively isn't.
-  if (state.business?.current?.role === 'operator') return 0;
+  if (isEmployed(state) || !state.career.history.length) return 0;
+  // Running your own business is work; owning one passively isn't. Service, the bench and office are work too.
   const ranOwn = (state.business?.history ?? []).filter((h) => h.role === 'operator').map((h) => h.endAge);
-  const lastEnd = Math.max(...state.career.history.map((h) => h.endAge), ...ranOwn);
+  const served = (state.military?.history ?? []).filter((h) => h.component !== 'reserve').map((h) => h.endAge ?? 0);
+  const bench = (state.judiciary?.history ?? []).map((h) => h.endAge ?? 0);
+  const office = (state.politics?.history ?? []).map((h) => h.endAge ?? 0);
+  const lastEnd = Math.max(...state.career.history.map((h) => h.endAge), ...ranOwn, ...served, ...bench, ...office);
   return Math.max(0, state.character.age - lastEnd);
 }
 

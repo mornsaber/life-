@@ -249,7 +249,7 @@ export const Finances = {
       );
     }
 
-    f.lastYear = { gross, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), ...(usAbroadTax ? { usAbroadTax } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
+    f.lastYear = { gross, wages: payroll, ltcg, capitalGainsTax, married, kidsCredit, ...(abroad ? { contributions, childBenefit: benefit } : {}), ...(usAbroadTax ? { usAbroadTax } : {}), deductions, tax, federalTax, stateTax, living, insurance, loanPayment, interest, unpaidTax, itemized: itemizing ? itemized : null };
     f.ledger = { income: [], expenses: [], deductions: [], itemize: [] };
   },
 

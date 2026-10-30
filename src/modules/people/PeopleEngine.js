@@ -21,7 +21,7 @@
 import { currentCountry } from '../../core/Locale.js';
 import { vettingForm } from '../world/MilitaryLocal.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
-import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony } from '../../core/State.js';
+import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony, isEmployed } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
@@ -187,7 +187,7 @@ function relationshipTick(ctx) {
       const away = state.career.job ? PROFESSIONS[state.career.job.professionId]?.rotation?.away ?? 0 : 0;
       if (away) delta -= Math.round(away * 6);
       if (state.health?.conditions.some((c) => !c.remission && ['alcohol', 'opioids', 'gambling'].includes(c.id))) delta -= 8;
-      if (!state.career.job && !state.retirement.retired && state.character.age < 60 && !['operator', 'executive'].includes(state.business?.current?.role)) delta -= 2;
+      if (!isEmployed(state) && !state.retirement.retired && state.character.age < 60) delta -= 2;
     }
     person.relationship = clampRel(person.relationship + delta);
   }

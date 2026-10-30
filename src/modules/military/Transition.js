@@ -18,7 +18,7 @@
  * svc.tapDone, svc.skillBridge = { professionId, employerName }
  */
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { yearlyCount, bumpYearly, isEmployed } from '../../core/State.js';
 import { getProfession } from '../career/JobTrees.js';
 import { hire, bestEntryLevel, applicationEligibility, levelCheck } from '../career/CareerEngine.js';
 import { createEmployer } from '../career/Employers.js';
@@ -147,11 +147,11 @@ export function veteranTick(ctx) {
       ],
     });
   }
-  if (!state.career.job && since <= 1 && !t.ucxPaid) {
+  if (!isEmployed(state) && since <= 1 && !t.ucxPaid) {
     t.ucxPaid = true;
     ctx.earn(UCX, 'Unemployment compensation for ex-servicemembers (UCX)');
   }
-  if (!state.career.job && since <= FAIR_YEARS && rng.chance(0.6) && !state.prompts.some((p) => p.type === 'military.hiringFair')) {
+  if (!isEmployed(state) && since <= FAIR_YEARS && rng.chance(0.6) && !state.prompts.some((p) => p.type === 'military.hiringFair')) {
     const field = civilianField(state);
     if (field && applicationEligibility(state, field).ok) {
       const p = getProfession(field);

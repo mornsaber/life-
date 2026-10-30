@@ -3,7 +3,8 @@
  * life in prison (what to do with the year, appeals, parole, death row);
  * and second chances (sealing records, pardons).
  */
-import { esc, money, button, card, chip, kv, empty } from '../Components.js';
+import { esc, money, button, card, chip, kv, empty, meter, disclosure } from '../Components.js';
+import { lifeOf, judgeActions, SPECIAL_COURTS } from '../../modules/legal/JudicialLife.js';
 import { SEVERITY_LABEL } from '../../modules/legal/index.js';
 import { paroleEligibility, APPEAL_COST } from '../../modules/legal/Prison.js';
 import { sealStatus, pardonStatus, SEAL_COST, spentStatus } from '../../modules/legal/Clemency.js';
@@ -11,7 +12,7 @@ import { stateOf } from '../../modules/life/Regions.js';
 import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
 import { STATES } from '../../modules/life/States.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
-import { courtDef, courtTitle, courtsHere, benchHere, currentCourt, benchEligibility, benchYears, selectionFor, layEligibility, examEligibility, MANDATORY_RETIREMENT } from '../../modules/legal/Judiciary.js';
+import { courtDef, courtTitle, courtsHere, benchHere, currentCourt, benchEligibility, benchYears, selectionFor, layEligibility, examEligibility, MANDATORY_RETIREMENT, caseTier } from '../../modules/legal/Judiciary.js';
 import { CLAIMS, claimEligibility } from '../../modules/legal/CivilCourts.js';
 
 const SELECTION_LABEL = { elected: 'elected', merit: 'merit selection + retention votes', appointed: 'appointed', career: 'career judiciary: by seniority' };
@@ -52,10 +53,30 @@ function benchCard(state) {
       seat && c.system === 'national' ? ['Term', c.term ? `${seat.termLeft} yr left of a fixed term` : `Until retirement at ${c.retire}`] : null,
     ]) : `<p class="muted">${intro}</p>`}
     ${school}
-    ${lawyer || court ? `<ul class="history">${ladder}</ul>` : ''}
+    ${seat ? benchLife(state, court) : ''}
+    ${lawyer || court ? disclosure('bench.ladder', '🪜 The courts', `<ul class="history">${ladder}</ul>`) : ''}
     ${seat || exam ? `<div class="toggle-row">${exam}${seat ? button('Resign from the bench', 'judiciary.resign', { variant: 'small danger' }) : ''}</div>` : ''}
     ${lay ? `<h4 class="sub">Lay bench</h4>${lay}` : ''}
     <p class="fine">${bench ? 'Strong reputations draw invitations to higher courts; judges must be citizens, and moving abroad ends a seat.' : 'The elected trial seat is on the Politics tab. Strong reputations draw nominations to higher courts; reversals and unpopular rulings cost you at retention time. Federal judges can take senior status at full pay under the Rule of 80.'}</p>`, { icon: '⚖️', accent: 'yellow' });
+}
+
+/** A sitting judge's year: backlog, clerks, opinions, special courts and the bench's own work. */
+function benchLife(state, court) {
+  const L = lifeOf(state);
+  const acts = judgeActions(state, caseTier(court)).map((a) => button(a.label, 'judiciary.bench', { arg: a.id, variant: 'small', disabled: a.done, hint: a.done ? 'Done this year' : a.hint })).join('');
+  const opinions = L.opinions.slice(-6).reverse().map((o) => `<li>${o.landmark ? '🌟' : '✍️'} <i>${esc(o.name)}</i> <small class="muted">age ${o.age}${o.landmark ? ' · landmark' : ''}</small></li>`).join('');
+  return `${meter(Math.min(100, L.backlog), { label: `📂 Backlog: ${L.backlog} cases waiting`, tone: L.backlog > 60 ? 'bad' : L.backlog > 35 ? 'mid' : 'good', suffix: '' })}
+    ${kv([
+      ['Law clerks', L.clerks ? `${L.clerks}` : 'None — you research alone'],
+      L.courts.length ? ['Problem-solving courts', L.courts.map((k) => `${SPECIAL_COURTS[k].icon} ${SPECIAL_COURTS[k].name}`).join(' · ')] : null,
+      L.committee ? ['Committee', 'Judicial Conference committee member'] : null,
+      L.designations ? ['Sat by designation', `${L.designations}×`] : null,
+      L.taught ? ['Taught', `${L.taught} course${L.taught > 1 ? 's' : ''}`] : null,
+      L.complaints ? ['Conduct record', `<span class="neg">${L.complaints} finding${L.complaints > 1 ? 's' : ''}</span>`] : null,
+    ])}
+    <p class="fine">Your cases are on your docket (⚖️ Legal → 🗂️ Cases). Here is the rest of the job.</p>
+    <div class="action-grid">${acts}</div>
+    ${opinions ? `<h4 class="sub">Opinions</h4><ul class="plain">${opinions}</ul>` : ''}`;
 }
 
 /** Lawsuits, judgments and jury service. */

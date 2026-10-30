@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { courtTitle } from '../modules/legal/Judiciary.js';
 import { ceremonialPosts } from '../modules/world/Ceremonial.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
 import { OFFICES } from '../modules/politics/Offices.js';
@@ -422,6 +423,8 @@ export class Renderer {
       if (m) parts.push(`${s.icon} ${rankOfMember(s.id, m).title}`);
     }
     if (state.politics.office) parts.push(`🗳️ ${state.politics.office.id === 'governor' ? 'Governor' : state.politics.office.id}`.replace('cityCouncil', 'City Council').replace('stateRep', 'State Rep').replace('stateSenator', 'State Senator').replace('usRep', 'U.S. Rep').replace('usSenator', 'U.S. Senator').replace('mayor', 'Mayor').replace('judge', 'Judge'));
+    const seat = state.judiciary?.seat;
+    if (seat && state.politics.office?.id !== 'judge') parts.push(`🧑‍⚖️ ${courtTitle(state, seat.court)}`);
     if (state.career.emeritus && !job) parts.push(`🎓 ${state.career.emeritus.title}`);
     // The Crown is a role, not unemployment.
     const r = state.royal;

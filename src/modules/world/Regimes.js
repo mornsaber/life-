@@ -27,7 +27,7 @@
  * senior people.
  */
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly, criminalRecord } from '../../core/State.js';
+import { yearlyCount, bumpYearly, criminalRecord, isEmployed } from '../../core/State.js';
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { OFFICES } from '../politics/Offices.js';
 import { getProfession } from '../career/JobTrees.js';
@@ -190,7 +190,7 @@ function regimeYear(ctx) {
   if (r.songbun && !g.songbun) g.songbun = rng.weighted(SONGBUN, ([, w]) => w)[0];
   if (!state.character.alive || state.legal.incarceration) return;
   // Assigned work: the unemployed adult is given a workplace.
-  if (r.jobs === 'assigned' && age >= 18 && age < 60 && !state.career.job && !state.education.enrolled && !state.military.service && !state.retirement?.retired && !state.politics?.office?.fullTime && !(state.cpc?.rank > 0 && !state.cpc.retiredFrom)) {
+  if (r.jobs === 'assigned' && age >= 18 && age < 60 && !isEmployed(state) && !state.education.enrolled && !state.military.service && !state.retirement?.retired && !state.politics?.office?.fullTime && !(state.cpc?.rank > 0 && !state.cpc.retiredFrom)) {
     assignJob(ctx);
   }
   // Women barred from school past twelve (the Taliban's edict).

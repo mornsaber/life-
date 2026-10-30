@@ -10,6 +10,7 @@
  * Underwriting checks score, down payment and debt-to-income. Payments
  * amortize yearly; two missed years → foreclosure. Refinance and HELOC.
  */
+import { isEmployed } from '../../core/State.js';
 import { spouseIncome } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
 import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
@@ -128,7 +129,8 @@ export function vaEligible(state) {
  */
 export function qualifyingIncome(state) {
   const age = state.character.age;
-  const salary = state.career.job?.salary ?? 0;
+  // Pay from service, the bench or office counts like a salary (last year's wages stand in for it).
+  const salary = state.career.job?.salary ?? (isEmployed(state) ? state.finances.lastYear?.wages ?? 0 : 0);
   const pensions = state.retirement.pensions.filter((p) => age >= p.startAge).reduce((s, p) => s + p.annual * (p.colaFactor ?? 1), 0);
   const ss = state.retirement.socialSecurity?.annual ?? 0;
   // Self-employed: lenders average what the business paid you (two years of returns, simplified to last year).
@@ -178,7 +180,7 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   const base = { rate, down, principal, payment, mip, fee, dti, closing, reserves, cashNeeded: down + closing };
   if (t.va && !vaEligible(state)) return { ok: false, reason: 'VA loans need 2+ years of honorable service', ...base };
   if (score < t.minScore) return { ok: false, reason: `Needs a ${t.minScore}+ credit score`, ...base };
-  if (t.formalJob && (!state.career.job || state.career.job.informal)) return { ok: false, reason: 'Needs a formal job paying into the housing fund', ...base };
+  if (t.formalJob && (state.career.job ? state.career.job.informal : !isEmployed(state))) return { ok: false, reason: 'Needs a formal job paying into the housing fund', ...base };
   if (state.finances.cash < down + closing + reserves) return { ok: false, reason: `Needs $${(down + closing + reserves).toLocaleString()} cash (down payment, closing, reserves)`, ...base };
   // Commercial lenders size the loan to the building's income (1.25× debt coverage); your own income can make up a shortfall.
   const dscr = t.commercial && payment > 0 ? noi / payment : 0;

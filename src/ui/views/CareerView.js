@@ -7,6 +7,9 @@ import { MISSIONS, openMissions, missionEligibility } from '../../modules/career
 import { intlOrgsCard } from './IntlOrgsView.js';
 import { shipCard, bureauCard, sportCard } from './AbroadWorkCards.js';
 import { jobInsignia } from '../Insignia.js';
+import { isEmployed } from '../../core/State.js';
+import { branchOf, rankOf } from '../../modules/military/MilitaryEngine.js';
+import { courtTitle } from '../../modules/legal/Judiciary.js';
 import { holySeeCard } from './HolySeeView.js';
 import { engineSections } from './EngineViews.js';
 import { remoteness, nearestCity, commuteOf } from '../../modules/life/RuralLife.js';
@@ -421,7 +424,7 @@ export function careerView(state, ui = {}) {
   const ownJob = posts.length ? card('Your Job: Your Own Company', `${postLines}<p class="fine">Set your focus and make the year's big moves from the Business tab.</p>`, { icon: '👔', accent: 'cyan' }) : '';
   const current = job
     ? currentJob(state) + (job.professionId === 'privateMilitary' ? contractMarketCard(state) : '') + (['merchantMarine', 'maritimeFaculty'].includes(job.professionId) ? merchantReserveCard(state) : '') + managementConsole(job) + ownJob
-    : ownJob || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
+    : ownJob || otherWorkCard(state) || card('Employment', empty(state.character.age < 16 ? state.character.age >= 12 ? 'Full jobs start at 16 — try a part-time job below.' : 'Too young to work. Enjoy being a kid!' : state.legal.incarceration ? 'You are incarcerated.' : state.retirement.retired ? 'You are retired. Applying for a job will un-retire you.' : 'You are unemployed. Apply for a job below.'), { icon: '💼' });
   // Jobs and businesses you ran, one timeline.
   const stints = [
     ...state.career.history.map((h) => ({ kind: 'job', h, end: h.endAge })),
@@ -440,6 +443,22 @@ export function careerView(state, ui = {}) {
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
   return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+}
+
+/** No civilian job, but in work all the same: the services, the bench, office, the royal round. */
+function otherWorkCard(state) {
+  if (!isEmployed(state)) return '';
+  const lines = [];
+  const svc = state.military.service;
+  if (svc && svc.component !== 'reserve') lines.push(`${branchOf(svc).icon} <b>${esc(rankOf(svc).title)}</b>, ${esc(branchOf(svc).name)} — full-time service (🎖️ Service tab)`);
+  const seat = state.judiciary?.seat;
+  if (seat) lines.push(`🧑‍⚖️ <b>${esc(courtTitle(state, seat.court))}</b> — your court and your docket (⚖️ Legal tab)`);
+  if (state.politics?.office?.fullTime) lines.push(`🗳️ <b>Elected office</b> — full-time (Politics)`);
+  if (state.politics?.ministry) lines.push(`🏛️ <b>${esc(state.politics.ministry.title ?? 'Minister')}</b>`);
+  if (['operator', 'executive'].includes(state.business?.current?.role)) lines.push(`🏪 Running <b>${esc(state.business.current.name)}</b> (Business tab)`);
+  if (state.royal?.working && !state.royal.steppedBack) lines.push('👑 <b>Working royal</b> — engagements, patronages and duties');
+  if (!lines.length) return '';
+  return card('Employment', `${lines.map((l) => `<p>${l}</p>`).join('')}<p class="fine">This is your work: it pays a salary and counts as employment for lenders, visas and your CV. You can still take a civilian job below where the rules allow it.</p>`, { icon: '💼', accent: 'cyan' });
 }
 
 /** One past job in the history list. */
