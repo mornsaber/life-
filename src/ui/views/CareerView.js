@@ -146,14 +146,14 @@ function payBreakdown(job, countryId) {
   const p = job.pay;
   if (!p) return '';
   const pct = (x) => `${x >= 1 ? '+' : ''}${Math.round((x - 1) * 100)}%`;
-  const where = onBands(job) ? `${Math.round(((job.band - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band ${pct(p.steps)}` : `step ${job.step} ${pct(p.steps)}`;
+  const where = onBands(job) ? `${Math.round((((job.band ?? BAND_MIN) - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band ${pct(p.steps)}` : `step ${job.step} ${pct(p.steps)}`;
   return `<p class="fine">${payGradeLabel(job, countryId)} base ${money(p.base)} × market ${pct(p.payMultiplier)} × employer ${pct(p.sizeMult)} × ${where} × ${job.sector === 'federal' ? 'locality' : 'region'} ${pct(p.locality)}${p.merit ? ` × merit +${Math.round(p.merit * 100)}%` : ''}${p.capped ? ' · capped at the government pay limit' : ''}</p>`;
 }
 /** The pay row: a step schedule in government, a band and a bonus in a company. */
 function payRow(job, countryId) {
   if (onBands(job)) {
     const bonus = BONUS_TARGET[job.grade] ? ` · bonus target ${Math.round(BONUS_TARGET[job.grade] * (job.abilities.includes('exec') ? 1.5 : 1) * 100)}%` : '';
-    return ['Pay band', `${payGradeLabel(job, countryId)} · ${job.band >= BAND_MAX ? 'top of band' : `${Math.round(((job.band - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band`}${bonus}`];
+    return ['Pay band', `${payGradeLabel(job, countryId)} · ${job.band >= BAND_MAX ? 'top of band' : `${Math.round((((job.band ?? BAND_MIN) - BAND_MIN) / (BAND_MAX - BAND_MIN)) * 100)}% up the band`}${bonus}`];
   }
   const next = nextStepIn(job);
   return ['Pay grade', `${payGradeLabel(job, countryId)}, step ${job.step}${next ? ` · next step in ${next} yr` : ' · top step'}${job.pay?.capped ? ' · <span class="warn-text">at the pay cap</span>' : ''}`];

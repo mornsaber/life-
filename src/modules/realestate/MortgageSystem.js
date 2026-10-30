@@ -314,6 +314,25 @@ export function refinance(ctx, property) {
   ctx.log(`You refinanced into a ${LOAN_TYPES[keep].name} at ${(m.rate * 100).toFixed(2)}% (closing costs $${closing.toLocaleString()} rolled in). New payment: $${Math.round(m.payment / 12).toLocaleString()}/mo.`, '🏦', 'good');
 }
 
+/** Cash-out refinance: borrow up to 75% of the value at today's rate, take the difference as cash (taxed as nothing — it's a loan). */
+export const CASH_OUT_LTV = 0.75;
+export const cashOutAvailable = (property) => Math.max(0, Math.round(property.value * CASH_OUT_LTV - (property.mortgage?.balance ?? 0) - (property.heloc?.balance ?? 0)));
+export function cashOutRefinance(ctx, property) {
+  const { state } = ctx;
+  const out = cashOutAvailable(property);
+  if (out < 10000 || property.project) return ctx.toast('Not enough equity to pull out (75% loan-to-value).', 'warn');
+  if (state.housing.credit.score < 640) return ctx.toast('Needs a 640+ credit score.', 'warn');
+  const commercial = PROPERTY_TYPES[property.type]?.kind === 'commercial' || PROPERTY_TYPES[property.type]?.units > 4;
+  const type = property.mortgage?.type && LOAN_TYPES[property.mortgage.type] ? property.mortgage.type : commercial && LOAN_TYPES.commercial ? 'commercial' : 'conv30';
+  const rate = Math.round((state.housing.rates.base + scoreSpread(state.housing.credit.score) + 0.0025 + Math.max(0, LOAN_TYPES[type].rateAdj ?? 0)) * 10000) / 10000;
+  const balance = Math.round(property.value * CASH_OUT_LTV);
+  const closing = Math.round(balance * 0.025);
+  const years = LOAN_TYPES[type].years;
+  property.mortgage = { ...(property.mortgage ?? {}), type, balance, rate, yearsLeft: years, termYears: years, armResetIn: null, payment: annualPayment(balance, rate, years) };
+  state.finances.cash += out - closing;
+  ctx.log(`You took a cash-out refinance on your ${property.typeName}: $${(out - closing).toLocaleString()} in cash after closing costs, on a new ${(rate * 100).toFixed(2)}% loan of $${balance.toLocaleString()}.`, '🏦', 'finance');
+}
+
 export function helocLimit(property) {
   return Math.max(0, Math.round(property.value * 0.8 - (property.mortgage?.balance ?? 0) - (property.heloc?.balance ?? 0)));
 }

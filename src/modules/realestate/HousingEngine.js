@@ -20,7 +20,7 @@ import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
 import { postedHousing } from '../world/Posting.js';
 import { PROPERTY_TYPES, RENT_TIERS, priceOf, tierRent, sellingCostRate, generateListings, marketTick, isResidential, isLand } from './PropertyMarket.js';
-import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, drawHeloc, repayHeloc, canCover, modifyLoan, closingRate } from './MortgageSystem.js';
+import { LOAN_TYPES, loansFor, expectedNoi, quote, originate, serviceDebt, computeCreditScore, recordCreditEvent, refinance, cashOutRefinance, drawHeloc, repayHeloc, canCover, modifyLoan, closingRate } from './MortgageSystem.js';
 import { maintenanceTick, resolveRepair, renovate } from './Maintenance.js';
 import { landlordTick, resolveLateRent } from './Landlording.js';
 import { constructionTick, startBuild, demolish, subdivide, rezone } from './Construction.js';
@@ -531,6 +531,10 @@ export const HousingEngine = {
       p.use = use;
       if (use !== 'rental') p.tenants = [];
       ctx.log(`Your ${p.typeName} is now ${use === 'primary' ? 'your home' : use === 'rental' ? 'a rental' : use === 'vacation' ? 'your getaway' : 'vacant'}.`, '🏡');
+    },
+    cashOut(ctx, propertyId) {
+      const p = ctx.state.housing.properties.find((x) => x.id === propertyId);
+      if (p) cashOutRefinance(ctx, p);
     },
     refinance(ctx, propertyId) {
       const p = ctx.state.housing.properties.find((x) => x.id === propertyId);

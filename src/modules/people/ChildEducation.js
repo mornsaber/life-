@@ -15,7 +15,21 @@ import { ensureLife } from './NpcLives.js';
 import { ensureTraits } from './Dynasty.js';
 import { priceLevel } from '../world/Countries.js';
 
-const FEES = { US: { elite: 60000, good: 30000, local: 12000 }, GB: { elite: 9250, good: 9250, local: 9250 }, default: { elite: 8000, good: 4000, local: 1500 } };
+/** Yearly tuition (2025, in dollars) at a top, a good and the local university. Public universities are free in much of Europe. */
+const FEES = {
+  US: { elite: 60000, good: 30000, local: 12000 }, GB: { elite: 12000, good: 12000, local: 12000 }, IE: { elite: 3500, good: 3500, local: 3500 },
+  CA: { elite: 9000, good: 7500, local: 6500 }, AU: { elite: 10000, good: 8500, local: 8500 }, NZ: { elite: 7500, good: 7000, local: 7000 },
+  DE: { elite: 350, good: 350, local: 350 }, FR: { elite: 200, good: 200, local: 200 }, SE: { elite: 0, good: 0, local: 0 }, NO: { elite: 0, good: 0, local: 0 },
+  FI: { elite: 0, good: 0, local: 0 }, DK: { elite: 0, good: 0, local: 0 }, IT: { elite: 3500, good: 2500, local: 1500 }, ES: { elite: 2000, good: 1500, local: 1200 },
+  NL: { elite: 2800, good: 2800, local: 2800 }, JP: { elite: 5500, good: 8000, local: 5500 }, KR: { elite: 6500, good: 6000, local: 4500 },
+  CN: { elite: 1000, good: 900, local: 700 }, IN: { elite: 3000, good: 1500, local: 600 }, SG: { elite: 9000, good: 8500, local: 8000 },
+  MX: { elite: 12000, good: 6000, local: 300 }, BR: { elite: 0, good: 9000, local: 0 }, PH: { elite: 1500, good: 2500, local: 300 },
+  default: { elite: 8000, good: 4000, local: 1500 },
+};
+/** How students borrow: the national scheme and whether repayment follows income. */
+const LOANS = { US: 'federal student loans', GB: 'Student Finance loans, repaid out of salary', AU: 'a HECS-HELP loan, repaid through tax', NZ: 'an interest-free student loan', CA: 'government student loans', IE: 'a student loan', NL: 'a DUO student loan', SE: 'CSN living-cost loans', NO: 'Lånekassen living-cost loans', JP: 'a JASSO scholarship loan', KR: 'a KOSAF student loan' };
+const cap = (x) => x.replace(/^./, (c) => c.toUpperCase());
+const loansHere = (state) => LOANS[state.character.countryId ?? 'US'] ?? 'a student loan';
 const TIER = { elite: 'a top university', good: 'a good university', local: 'the local university' };
 const feesHere = (state) => FEES[state.character.countryId ?? 'US'] ?? FEES.default;
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 50021 + state.character.age * 563 + 0xed0) >>> 0);
@@ -43,9 +57,11 @@ export function childEducationTick(main) {
       if (s >= 58 || rng.chance(0.3)) offers.push('good');
       if ((s >= 78 && rng.chance(0.55)) || (s >= 68 && rng.chance(0.15))) offers.push('elite');
       const best = offers.at(-1);
-      main.prompt({ type: 'childEducation.next', icon: '🎓', title: `${c.firstName}'s Next Step`, text: `${c.firstName} has offers from ${offers.map((o) => TIER[o]).join(', ')}. Fees at ${TIER[best]}: about $${fee(state, best).toLocaleString()} a year.`, data: { childId: c.id, best }, options: [
-        { id: 'uniPay', label: `🎓 ${TIER[best].replace(/^./, (x) => x.toUpperCase())} — you pay the fees`, hint: `$${fee(state, best).toLocaleString()}/yr for 4 years` },
-        { id: 'uniLoan', label: `🎓 ${TIER[best].replace(/^./, (x) => x.toUpperCase())} — they take out loans` },
+      main.prompt({ type: 'childEducation.next', icon: '🎓', title: `${c.firstName}'s Next Step`, text: `${c.firstName} has offers from ${offers.map((o) => TIER[o]).join(', ')}.${fee(state, best) >= 500 ? ` Fees at ${TIER[best]}: about $${fee(state, best).toLocaleString()} a year.` : ' Public universities here charge no tuition.'}`, data: { childId: c.id, best }, options: [
+        ...(fee(state, best) < 500
+          ? [{ id: 'uniPay', label: `🎓 ${cap(TIER[best])} — tuition is free`, hint: fee(state, best) ? `Just a $${fee(state, best).toLocaleString()} enrolment fee each year` : 'Public universities charge no fees here' }]
+          : [{ id: 'uniPay', label: `🎓 ${cap(TIER[best])} — you pay the fees`, hint: `$${fee(state, best).toLocaleString()}/yr for 4 years` },
+            { id: 'uniLoan', label: `🎓 ${cap(TIER[best])} — they borrow`, hint: `On ${loansHere(state)}` }]),
         { id: 'apprentice', label: '🔧 An apprenticeship', hint: 'Paid to learn a trade' },
         { id: 'gap', label: '🎒 A gap year first, then university' },
         { id: 'work', label: '💼 Straight into work' },
@@ -76,7 +92,7 @@ export const ChildEducationResolvers = {
       if (optionId === 'uniPay') c.tuitionPaid = true;
       if (data.best === 'elite') { const t = ensureTraits(rng, state, c); t.smarts = Math.min(100, t.smarts + 5); }
       c.relationship = Math.min(100, c.relationship + (optionId === 'uniPay' ? 6 : 0));
-      return ctx.log(`${c.firstName} is off to ${TIER[data.best]}${optionId === 'uniLoan' ? ', on student loans' : ', with you paying the fees'}.`, '🎓', 'milestone');
+      return ctx.log(`${c.firstName} is off to ${TIER[data.best]}${optionId === 'uniLoan' ? `, on ${loansHere(state)}` : fee(state, data.best) < 500 ? '' : ', with you paying the fees'}.`, '🎓', 'milestone');
     }
     if (optionId === 'apprentice') { life.studying = { degree: 'trade', until: age + 4 }; c.income = Math.round(15000 * priceLevel(state)); return ctx.log(`${c.firstName} started an apprenticeship: paid to learn a trade.`, '🔧', 'good'); }
     if (optionId === 'gap') { life.studying = { degree: 'bachelor', until: age + 6 }; c.uni = { tier: data.best, paidByYou: false, until: age + 6 }; if (c.parenting) c.parenting.wellbeing = Math.min(100, c.parenting.wellbeing + 5); return ctx.log(`${c.firstName} took a gap year — a working season abroad — before university.`, '🎒', 'good'); }

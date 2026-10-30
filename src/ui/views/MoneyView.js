@@ -3,6 +3,7 @@
  * vesting status, 401(k)/TSP, Social Security estimate, military/VA), and
  * where you live (cost of living, locality, relocation).
  */
+import { empireCard } from './EmpireView.js';
 import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
 import { CREDIT, ACCOUNTS } from '../../modules/world/CountryLaw.js';
 import { countryOf } from '../../modules/world/Countries.js';
@@ -180,5 +181,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: regionsHere(state).length })}`, { icon: '🗺️' });
 
-  return `${finances}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
+  return `${finances}${empireCard(state)}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }

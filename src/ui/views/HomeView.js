@@ -11,6 +11,7 @@ import {
   ownBuilder, canDiy, REZONE_COST, SUBDIVIDE_LOTS,
 } from '../../modules/realestate/index.js';
 
+import { cashOutAvailable } from '../../modules/realestate/MortgageSystem.js';
 import { portfolio, empireOf, allRentals, RENT_POLICIES, RENT_CONTROL_CAP, COMPANY_MIN_PROPERTIES, companyCost } from '../../modules/realestate/PropertyEmpire.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
@@ -134,6 +135,7 @@ function propertyCard(state, p) {
     <div class="toggle-row">
       ${uses}
       ${button('🏦 Refinance', 'housing.refinance', { arg: p.id, variant: 'small', disabled: !m })}
+      ${p.use === 'rental' ? button('💵 Cash-out refinance', 'housing.cashOut', { arg: p.id, variant: 'small', disabled: cashOutAvailable(p) < 10000, hint: `Up to ${money(cashOutAvailable(p))} at 75% LTV` }) : ''}
       ${building ? button(`💳 HELOC draw`, 'housing.heloc', { arg: p.id, variant: 'small', hint: `${money(helocLimit(p))} available`, disabled: helocLimit(p) < 5000 }) : ''}
       ${p.heloc ? button('Pay down HELOC', 'housing.repayHeloc', { arg: p.id, variant: 'small' }) : ''}
       ${building ? button(p.floodInsured ? 'Drop flood insurance' : '🌊 Add flood insurance', 'housing.floodInsurance', { arg: p.id, variant: 'small' }) : ''}

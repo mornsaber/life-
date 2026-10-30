@@ -112,7 +112,12 @@ function inventionsAfterProjects(ctx, inv, rng, age) {
       ctx.log(`Your patent on the ${p.name} expired. Anyone can make it now.`, '📜', 'info');
       continue;
     }
-    if (p.status === 'licensed') ctx.earn(p.royalty, `Patent royalties — ${p.name}`);
+    if (p.status === 'licensed') {
+      ctx.earn(p.royalty, `Patent royalties — ${p.name}`);
+      // Good inventions sell more each year; weaker ones fade, and everything tails off as rivals design around it.
+      const left = p.expires - age;
+      p.royalty = Math.round(p.royalty * (left <= 3 ? 0.8 : p.quality >= 60 ? 1.06 : p.quality >= 40 ? 1.02 : 0.95));
+    }
     // The company that held it closed or was sold without it: the patent comes back to you.
     if (p.status === 'company' && ![state.business?.current, ...(state.business?.holdings ?? [])].some((b) => b?.patent?.name === p.name)) {
       p.status = 'held';

@@ -275,7 +275,13 @@ export function yearFinancials(state, biz, rng) {
  * seller's discretionary earnings; startups for a multiple of revenue that
  * rises with growth — or their last funding round.
  */
+/** A patent the company owns adds what a buyer would pay for the exclusivity (quality 0–100). */
+export const patentValue = (biz) => (biz.patent ? Math.round(biz.patent.quality * biz.patent.quality * 120) : 0);
+
 export function valuation(biz, ly = biz.lastYear) {
+  return baseValuation(biz, ly) + patentValue(biz);
+}
+function baseValuation(biz, ly) {
   const type = typeOf(biz);
   const debt = debtBalance(biz);
   if (type.startup) {

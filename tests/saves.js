@@ -6,6 +6,7 @@
  *   node tests/saves.js
  */
 import assert from 'node:assert/strict';
+import { VIEWS } from '../src/ui/Renderer.js';
 import fs from 'node:fs';
 import { Engine } from '../src/core/Engine.js';
 import { Store, STATE_VERSION, SAVE_INDEX_KEY, LOG_DETAIL_YEARS, LOG_MAX_PER_YEAR } from '../src/core/State.js';
@@ -18,6 +19,15 @@ const memory = (seed = {}) => {
 };
 const fixture = (name) => fs.readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
 const LEGACY = { 'save-v1.json': 'lifesim.save.v1', 'save-v2.json': 'lifesim.save.v2', 'save-v3.json': 'lifesim.save.v3', 'save-v4-early.json': 'lifesim.save.v4' };
+
+/** Every tab renders for a migrated life, without broken values. */
+function renderAll(state, label) {
+  for (const [name, view] of Object.entries(VIEWS)) {
+    const html = String(view(state, {}) ?? '');
+    const i = html.search(/NaN|undefined|\[object/);
+    assert.ok(i < 0, `${label}: ${name} view shows ${html.slice(Math.max(0, i - 60), i + 40)}`);
+  }
+}
 
 function playOn(engine, years, seed = 3) {
   const pick = new Random(seed);
@@ -56,7 +66,10 @@ const tests = {
       if (raw.finances.retirement) assert.equal(s.retirement.dc, raw.finances.retirement, 'v1 401(k) balance kept');
       if (raw.version < STATE_VERSION) assert.ok(s.log.some((b) => b.entries.some((e) => /upgraded from save version/.test(e.text))), `${file}: upgrade noted`);
       for (const slice of ['economy', 'housing', 'politics', 'investing', 'health', 'campus', 'retirement', 'credentials']) assert.ok(s[slice], `${file}: ${slice} slice`);
+      assert.ok(s.stocks?.companies, `${file}: stock market set up`);
+      renderAll(s, file);
       playOn(engine, 40);
+      renderAll(s, `${file} after 40 years`);
       const reloaded = new Store(storage).load();
       assert.deepEqual(reloaded, s, `${file}: round trip after migration`);
     }

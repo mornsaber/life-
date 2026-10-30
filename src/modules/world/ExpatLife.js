@@ -13,7 +13,7 @@
  * state.migration.expat = { cc, since, belonging, circle, settled, askedAt, returnedAt, yearsAway }
  */
 import { COUNTRIES, isCitizen } from './Countries.js';
-import { birthCountryOf, residencyOf, speaksLocal, localLanguage, LANGUAGE_FLUENT } from './Immigration.js';
+import { birthCountryOf, residencyOf, naturalizationYearsLeft, speaksLocal, localLanguage, LANGUAGE_FLUENT } from './Immigration.js';
 import { arrive, departureBlock, ensureMigration } from './Migration.js';
 import { countryIdOf } from '../life/Regions.js';
 import { warIn } from './War.js';
@@ -94,6 +94,13 @@ function meetLocal(ctx, e) {
   });
 }
 
+/** What staying means for your papers: already a citizen here (dual nationals), or how far from naturalizing. */
+function settleHint(state, cc) {
+  if (isCitizen(state, cc)) return 'You\'re a citizen here already';
+  const left = naturalizationYearsLeft(state);
+  return left == null ? 'Put down roots (citizenship needs permanent residence first)' : left <= 0 ? 'You can apply for citizenship now' : `Citizenship possible in ${left} year${left === 1 ? '' : 's'}`;
+}
+
 function settlePrompt(ctx, e) {
   const { state } = ctx;
   const home = birthCountryOf(state);
@@ -105,7 +112,7 @@ function settlePrompt(ctx, e) {
     type: 'expatLife.settle', icon: '🧭', title: 'Where Is Home Now?',
     text: `You've lived in ${COUNTRIES[e.cc].name} for ${yearsHere(state, e)} years. ${e.belonging >= 60 ? 'It feels like yours now.' : 'Some days it still feels borrowed.'}${local ? ` ${partner.firstName}'s whole life is here.` : ''}`,
     options: [
-      { id: 'stay', label: `${COUNTRIES[e.cc].flag} Stay for good`, hint: 'Put down roots' },
+      { id: 'stay', label: `${COUNTRIES[e.cc].flag} Stay for good`, hint: settleHint(state, e.cc) },
       ...(canGoHome ? [{ id: 'home', label: `${COUNTRIES[home].flag} Go home`, hint: local ? `Ask ${partner.firstName} to come with you` : 'Back to where you started' }] : []),
       { id: 'open', label: '🤷 Keep your options open' },
     ],
@@ -124,6 +131,13 @@ export const ExpatLifeModule = {
     const cc = countryIdOf(state);
     // Home again after years away: everything changed, and so did you.
     if (!livingAbroad(state)) {
+      // A partner who moved here for you: the first years are hard on them too.
+      const moved = partnerOf(state)?.movedWith;
+      if (moved && state.character.age - moved.age <= 3 && rng.chance(0.35)) {
+        const p = partnerOf(state);
+        p.relationship = Math.max(0, p.relationship - 3);
+        ctx.log(`${p.firstName} misses ${COUNTRIES[moved.from]?.name ?? 'home'} — the food, the language, their family.`, '🧳', 'info');
+      }
       const e = m?.expat;
       if (e && e.returnedAt == null && e.cc !== cc) {
         e.returnedAt = state.character.age;
@@ -235,6 +249,9 @@ export const ExpatLifeModule = {
       if (partner && partner.nationality === e.cc) {
         if (rng.chance(Math.min(0.9, partner.relationship / 110))) {
           ctx.log(`${partner.firstName} agreed to leave ${COUNTRIES[e.cc].name} for you — a huge thing to give up.`, '💞', 'good');
+          // They'll be the foreigner now: homesick at first, and their family is far away.
+          partner.movedWith = { from: e.cc, age: state.character.age };
+          partner.away = false;
           partner.relationship = Math.max(0, partner.relationship - 5);
         } else {
           if (partner.relation === 'spouse') divorce(ctx, partner);
