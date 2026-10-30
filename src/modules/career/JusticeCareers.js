@@ -16,6 +16,7 @@
  *     Texas, Florida, Colorado and Ohio.
  */
 import { L, detectiveRanks } from './Ladder.js';
+import { currentCountry } from '../../core/Locale.js';
 import { stateIdOf } from '../life/Regions.js';
 import { offenseName } from '../legal/Offenses.js';
 
@@ -55,6 +56,8 @@ export const JUSTICE_PROFESSIONS = {
     union: { chance: 0.4, name: 'Fraternal Order of Police — Special Police Lodge', strike: false },
     // Railroads everywhere; campus, hospital and company police only where state law allows.
     employerName: (city, rng, stateName) => {
+      // Abroad: port, airport-estate and campus constabularies rather than American railroad police.
+      if (currentCountry() !== 'US') return rng.pick([`${city} Port Police`, `${city} University Constabulary`, `${city} Airport Estate Police`, `${city} Parks Police`]);
       const railroad = `${rng.pick(['Union Continental', 'Great Plains & Pacific', 'Atlantic Coast Line'])} Railroad Police`;
       if (!PRIVATE_POLICE_STATE_NAMES.includes(stateName) || rng.chance(0.3)) return railroad;
       return rng.pick([`${city} University Police Department`, `${city} Medical Center Police`, `${city} Private Hospital System Police`]);

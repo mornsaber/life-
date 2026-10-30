@@ -6,7 +6,7 @@ import { COUNTRIES, localizeHtml } from '../src/modules/world/Countries.js';
 
 /** US-only things, and the countries where the same word is genuinely local. */
 export const US_TERMS = [
-  [/\bSocial Security\b(?! System)/, ['TH', 'LY', 'MM', 'VN', 'KP', 'MT']], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
+  [/Great Plains & Pacific|Union Continental Railroad|Atlantic Coast Line/], [/\bSocial Security\b(?! System)/, ['TH', 'LY', 'MM', 'VN', 'KP', 'MT']], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
   [/\bSAT\b/, ['MX', 'JP']], [/\bCongress(ional)?\b(?! of Trade Unions)(?<!Workers' Congress|Workers&#39; Congress|Trades Union Congress)/, ['IN', 'MX', 'PH', 'CN', 'NG', 'ZA', 'GH', 'MW', 'PE', 'GT', 'MY', 'PG', 'NP', 'LR', 'FM']], [/\bU\.S\./], [/\b(?<!Part-time )Sheriff(?! Principal| Court)/, ['GB']], [/\bTrooper\b/], [/\bDistrict Attorney\b/], [/Selective Service/], [/Hatch Act/],
   [/Section 8\b/], [/Peace Corps/], [/AmeriCorps/], [/\bFEMA\b/], [/National Guard/, ['LV', 'BH', 'KW', 'SA', 'CY', 'GR']], [/GI Bill/], [/\bthe VA\b/], [/(?<![\d,.£€¥$])\b911\b(?![\d,])/, ['CA', 'MX', 'PH', 'VE', 'CR', 'AR', 'SA', 'JO', 'MH', 'TO', 'PA', 'LR', 'FM', 'PW', 'BS']], [/\bNCLEX\b/], [/\bUSMLE\b/],
   [/\bNCAA\b|\bNFL\b|\bNBA\b|\bMLB\b/], [/Thanksgiving|Fourth of July/], [/\b(?:the|a|state|your|our) governor\b(?!-General)|\bgovernor's\b|\bGovernor of\b/i, ['MX', 'PH', 'JP', 'KR', 'IN', 'AU', 'CA', 'IT', 'NG', 'KE', 'ID', 'BR', 'RU', 'CO', 'IQ', 'AR', 'VE']],

@@ -47,6 +47,8 @@ export const retakeCost = (cred) => Math.max(50, Math.round(cred.cost * 0.15));
 /** Countries a held credential is recognized in (the countries of the places it's valid). */
 export const heldCountries = (held) => [...new Set((held.states ?? []).map((s) => STATES[s]?.country ?? 'US'))];
 
+const NATIONAL_ABROAD = ['post', 'postReserve', 'correctionsAcademy'];
+
 export function validHere(state, id, held = state.credentials.held[id]) {
   const cred = CREDENTIALS[id];
   // Seafarers' certificates are international (the STCW convention): flag states endorse them.
@@ -54,6 +56,8 @@ export function validHere(state, id, held = state.credentials.held[id]) {
   // Earned in another country: it needs recognizing here first.
   if (held?.states?.length && !heldCountries(held).includes(countryIdOf(state))) return false;
   if (!held || cred.jurisdiction !== 'state' || !held.states) return true;
+  // Outside the US, police and prison officers train to a national standard: valid in every region.
+  if (NATIONAL_ABROAD.includes(id) && countryIdOf(state) !== 'US') return true;
   const here = stateIdOf(state);
   if (held.states?.includes(here)) return true;
   if (cred.reciprocity === 'compact') return Boolean(STATES[here].nlc && held.states?.some((s) => STATES[s].nlc));

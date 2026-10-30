@@ -60,12 +60,15 @@ export function inventionsTick(ctx) {
       } else ctx.log(`The patent office rejected your ${pr.name} application: prior art. Someone got there first.`, '📜', 'bad');
       continue;
     }
-    if (!ctx.spend(local(state, f.cost), `Prototype development — ${pr.name}`)) {
-      ctx.log(`You couldn't fund work on the ${pr.name} this year.`, '🔧', 'warn');
+    if (pr.done) continue;
+    if (!ctx.spend(local(state, f.cost), `Prototype development — ${pr.name}`, { credit: true })) {
+      if (!pr.stalled) ctx.log(`You couldn't fund work on the ${pr.name}. It waits until you can.`, '🔧', 'warn');
+      pr.stalled = true;
       continue;
     }
+    pr.stalled = false;
     pr.spent += local(state, f.cost);
-    pr.progress += Math.round((100 / f.work) * (0.6 + state.stats.smarts / 200) * rng.float(0.8, 1.2));
+    pr.progress += Math.round((100 / f.work) * (0.8 + state.stats.smarts / 250) * rng.float(0.85, 1.2));
     pr.quality = Math.min(f.ceiling, Math.round(pr.quality + rng.int(8, 20) * (0.5 + state.stats.smarts / 100)));
     if (pr.progress < 100) continue;
     if (rng.chance(0.2 + Math.max(0, f.smarts - state.stats.smarts) / 100)) {
@@ -75,6 +78,18 @@ export function inventionsTick(ctx) {
       continue;
     }
     pr.done = true;
+    prototypePrompt(ctx, pr);
+  }
+  // A working prototype still waiting on a decision (the filing fee was out of reach).
+  for (const pr of inv.projects) if (pr.done && pr.pendingAt == null && pr.decideAt != null && pr.decideAt < age && !pending(state, 'inventions.prototype')) prototypePrompt(ctx, pr);
+  inventionsAfterProjects(ctx, inv, rng, age);
+}
+
+function prototypePrompt(ctx, pr) {
+  const { state } = ctx;
+  const f = FIELDS[pr.field];
+  pr.decideAt = state.character.age;
+  {
     ctx.prompt({
       type: 'inventions.prototype', icon: '💡', title: `It Works: the ${pr.name}`,
       text: `Your ${f.label.split(' ').slice(1).join(' ').toLowerCase()} prototype works${pr.quality >= 60 ? ' — and it\'s genuinely better than anything on the market' : ''}. What now?`,
@@ -86,7 +101,10 @@ export function inventionsTick(ctx) {
       data: { id: pr.id },
     });
   }
+}
 
+function inventionsAfterProjects(ctx, inv, rng, age) {
+  const { state } = ctx;
   for (const p of inv.patents) {
     if (p.status === 'expired' || p.status === 'sold' || p.status === 'open') continue;
     if (age >= p.expires) {
@@ -208,7 +226,7 @@ export const InventionsModule = {
       const pr = inv.projects.find((p) => p.id === data.id);
       if (!pr) return;
       if (optionId === 'patent') {
-        if (!ctx.spend(patentFee(state), 'Patent application')) return ctx.toast('You can\'t afford the filing fee.', 'warn');
+        if (!ctx.spend(patentFee(state), 'Patent application', { credit: true })) return ctx.log(`You couldn't afford the filing fee for the ${pr.name}. You can decide again next year.`, '📜', 'warn');
         pr.pendingAt = state.character.age;
         return ctx.log(`You filed a patent on the ${pr.name}. Patent pending.`, '📜', 'info');
       }
