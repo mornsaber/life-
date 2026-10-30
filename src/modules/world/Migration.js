@@ -115,13 +115,14 @@ export function regularizeOptions(state) {
 
 /** Fleeing a war: claim asylum on arrival (only while the danger at home is real). */
 export function asylumRoute(state, to) {
-  const danger = homeDanger(state);
+  // Persecuted for politics at home (Revolution.js) counts as much as a war.
+  const danger = Math.max(homeDanger(state), state.legal?.flags?.persecuted === countryIdOf(state) ? 0.5 : 0);
   if (danger < 0.15) return null;
   const law = ASYLUM[to];
   if (!law) return null;
   const war = warIn(state, countryIdOf(state));
   const eu = isEU(to);
-  const temporary = Boolean(law.temporary && eu && war.intensity >= 3 && war.homeFront >= 0.4);
+  const temporary = Boolean(war && law.temporary && eu && war.intensity >= 3 && war.homeFront >= 0.4);
   const odds = temporary ? 1 : Math.min(0.95, Math.max(law.odds, law.humanitarian ?? 0) + danger * 0.5);
   const label = temporary ? `🆘 ${law.temporary}` : `🆘 ${law.name}`;
   if (state.character.age < 16) return { kind: 'asylum', ok: false, reason: 'Minors flee with their families', label, odds, fee: 0 };

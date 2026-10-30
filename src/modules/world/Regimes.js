@@ -93,6 +93,8 @@ export function setRegimeOverrides(juntas = {}) {
   SANCTION_OVERRIDES = {};
   for (const [cc, j] of Object.entries(juntas ?? {})) {
     // A junta that handed power back: an elected government, with the army still watching.
+    // A revolution that won (Revolution.js): a young democracy.
+    if (j.revolution) { OVERRIDES[cc] = { kind: 'democracy', name: 'a young democracy after a revolution', elections: 'free', press: 'free', internet: 'open', surveillance: 0.03, exit: 'free', religion: 'free', leader: 'the President' }; continue; }
     if (j.civilian) { OVERRIDES[cc] = { kind: 'hybrid', name: 'an elected government after military rule', elections: 'free', press: 'free', internet: 'open', surveillance: 0.04, coups: true, leader: 'the President' }; continue; }
     OVERRIDES[cc] = { ...JUNTA, name: 'a military junta', leader: j.leaderTitle ?? 'the head of the military council', banking: REGIMES[cc]?.banking ?? 'open', ratings: false };
     if (j.sanctions) SANCTION_OVERRIDES[cc] = j.sanctions;

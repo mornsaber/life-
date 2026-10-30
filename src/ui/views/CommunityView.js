@@ -12,6 +12,8 @@ import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/co
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
+import { movementOf, STRATEGIES } from '../../modules/civic/Movements.js';
+import { sectOf, STYLES as SECT_STYLES } from '../../modules/community/Sects.js';
 import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
 import { atWar, warHere, PHASE_LABEL, INTENSITY_LABEL, frontLabel, homeDanger } from '../../modules/world/War.js';
@@ -228,6 +230,20 @@ function schoolCard(state) {
     </div>`, { icon: '🍎' });
 }
 
+function movementBlock(state, a) {
+  const m = movementOf(state);
+  if (m) return `<h4 class="sub">${esc(m.name)}</h4>${kv([['Members', m.members.toLocaleString()], ['Funds', money(m.funds)], ['Strength', `${m.strength}/100`], ['Campaign wins', String(m.wins)], ['Strategy', esc(STRATEGIES[m.strategy]?.label ?? '')]])}<p class="fine">Each year you choose a strategy; at strength 60+ campaigns start to win.</p>`;
+  if (!a?.cause) return '';
+  return `<div class="toggle-row">${button('🏛️ Found a movement', 'movements.found', { variant: 'small', disabled: (a.influence ?? 0) < 25, hint: (a.influence ?? 0) < 25 ? 'Needs influence 25+' : 'Members, money, strategy — and backlash' })}</div>`;
+}
+
+function sectCard(state) {
+  if (state.character.age < 21) return '';
+  const S = sectOf(state);
+  if (!S) return card('Found a Church', `<p class="muted">Start your own congregation: a rented hall, thirty people, and whatever you preach.</p><div class="toggle-row">${button('⛪ Found a church', 'sects.found', { variant: 'small' })}</div>`, { icon: '⛪' });
+  return card(esc(S.name), `${kv([['Members', S.members.toLocaleString()], ['Preaching', esc(SECT_STYLES[S.style]?.label ?? '')], ['Church funds', money(S.funds)], ['Controversy', `${S.controversy}/100`], ['Building', S.building ? 'Your own' : 'Rented hall'], ['TV ministry', S.tv ? 'Yes' : 'No']])}<div class="toggle-row">${button('Close the church', 'sects.close', { variant: 'small ghost' })}</div>`, { icon: '⛪' });
+}
+
 function activismCard(state) {
   const a = state.civic?.activism;
   if (state.character.age < 14) return '';
@@ -237,7 +253,8 @@ function activismCard(state) {
   return card('Causes & Protest', `
     ${a ? kv([['Cause', a.cause ? `${CAUSES[a.cause].icon} ${esc(CAUSES[a.cause].name)}` : '—'], ['Influence', `${a.influence}/100`], ['Protests', String(a.protests)], ['Arrests', a.arrests ? `<span class="neg">${a.arrests}</span>` : '0']]) : '<p class="muted">Pick a cause. Influence moves ballot measures, earns the activists\' endorsement and helps you on election day — and civil disobedience can get you arrested.</p>'}
     <h4 class="sub">Cause</h4><div class="toggle-row chips-row">${causes}</div>
-    ${tactics ? `<h4 class="sub">Take action (2 per year)</h4><div class="action-grid">${tactics}</div>${button('Step back from activism', 'civic.leaveCause', { variant: 'small ghost' })}` : ''}`, { icon: '🪧' });
+    ${tactics ? `<h4 class="sub">Take action (2 per year)</h4><div class="action-grid">${tactics}</div>${button('Step back from activism', 'civic.leaveCause', { variant: 'small ghost' })}` : ''}
+    ${movementBlock(state, a)}`, { icon: '🪧' });
 }
 
 function localCard(state) {
@@ -257,5 +274,5 @@ function localCard(state) {
 }
 
 export function civicView(state) {
-  return `${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${localCard(state)}`;
+  return `${neighborsCard(state)}${hoaCard(state)}${schoolCard(state)}${activismCard(state)}${sectCard(state)}${localCard(state)}`;
 }
