@@ -21,11 +21,8 @@ import { PRIVATE_TITLES } from '../world/PrivateTitles.js';
 import { PROFESSION_TITLES } from '../world/ProfessionStandards.js';
 import { L, addGovernmentTiers } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
-import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
-import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
-import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
-import { PACK_PROFESSIONS } from '../content/careerPacks.js';
+import { PACK_PROFESSIONS, MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../content/careerPacks.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
 import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
 import { INTEL_PROFESSIONS } from './IntelCareers.js';
@@ -40,7 +37,8 @@ import { dioceseName, anglicanDioceseName } from '../community/Dioceses.js';
 export const PRIVATE_PROFESSIONS = {};
 
 // Career packs (content/careerPacks.js) first; the careers still written as code follow.
-Object.assign(PRIVATE_PROFESSIONS, PACK_PROFESSIONS, GOV_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, INTL_ORG_PROFESSIONS);
+const PUBLIC_PACKS = new Set([...Object.keys(MUNICIPAL_PROFESSIONS), ...Object.keys(STATE_PROFESSIONS), ...Object.keys(FEDERAL_PROFESSIONS)]);
+Object.assign(PRIVATE_PROFESSIONS, Object.fromEntries(Object.entries(PACK_PROFESSIONS).filter(([id]) => !PUBLIC_PACKS.has(id))), GOV_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, INTL_ORG_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);

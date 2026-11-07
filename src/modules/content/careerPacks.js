@@ -19,8 +19,11 @@ import careersJustice from './packs/careers-justice.js';
 import careersWorkforce from './packs/careers-workforce.js';
 import careersHealthScience from './packs/careers-health-science.js';
 import careersTrades from './packs/careers-trades.js';
+import careersMunicipal from './packs/careers-municipal.js';
+import careersState from './packs/careers-state.js';
+import careersFederal from './packs/careers-federal.js';
 
-export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades];
+export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};
@@ -31,3 +34,9 @@ for (const pack of CAREER_PACKS) {
     PACK_PROFESSIONS[id] = compileCareer(id, def);
   }
 }
+
+/** The public-service catalogs by level of government, as packs (the job board and Gov view list them apart). */
+const pick = (pack) => Object.fromEntries(Object.keys(pack.careers).map((id) => [id, PACK_PROFESSIONS[id]]).filter(([, p]) => p));
+export const MUNICIPAL_PROFESSIONS = pick(careersMunicipal);
+export const STATE_PROFESSIONS = pick(careersState);
+export const FEDERAL_PROFESSIONS = pick(careersFederal);

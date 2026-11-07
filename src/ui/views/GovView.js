@@ -8,9 +8,7 @@ import { CLEARANCE_PREMIUM, sponsorEligibility } from '../../modules/career/Clea
 import { esc, button, card, chip, meter, kv, empty } from '../Components.js';
 import { COMPETITIONS, competitionCheck } from '../../modules/world/IntlOrgs.js';
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
-import { MUNICIPAL_PROFESSIONS } from '../../modules/publicservice/MunicipalGov.js';
-import { FEDERAL_PROFESSIONS } from '../../modules/publicservice/FederalAgencies.js';
-import { STATE_PROFESSIONS } from '../../modules/publicservice/StateAgencies.js';
+import { MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { professionsFor } from '../../modules/career/JobTrees.js';
 
 export function govView(state) {
