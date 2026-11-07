@@ -5,6 +5,7 @@
  */
 import { compileCareer, validateCareer } from './Careers.js';
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
+import careersPrivate from './packs/careers-private.js';
 import careersMore from './packs/careers-more.js';
 import careersAllied from './packs/careers-allied.js';
 import careersTransport from './packs/careers-transport.js';
@@ -19,7 +20,7 @@ import careersWorkforce from './packs/careers-workforce.js';
 import careersHealthScience from './packs/careers-health-science.js';
 import careersTrades from './packs/careers-trades.js';
 
-export const CAREER_PACKS = [careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades];
+export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};
