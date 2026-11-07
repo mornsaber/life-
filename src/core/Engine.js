@@ -382,7 +382,10 @@ export class Engine {
   }
 
   commit() {
-    this.store.save();
+    // A refused save (storage full) mustn't fail silently: warn once, until a save works again.
+    const saved = this.store.save() !== false;
+    if (!saved && !this.saveWarned) this.toast('Your browser\'s storage is full, so this life isn\'t being saved. Export it (Menu → Saved Lives → Export this life) or delete an old save.', 'bad');
+    this.saveWarned = !saved;
     this.bus.emit('change', this.state);
   }
 }

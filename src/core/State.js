@@ -335,13 +335,15 @@ export class Store {
     return this.state;
   }
 
+  /** Returns false when the browser refused the write (storage full or unavailable). */
   save() {
-    if (!this.state || skipSaves()) return;
-    this.write(this.key, this.state);
-    if (this.fixedKey) return;
+    if (!this.state || skipSaves()) return true;
+    const ok = this.write(this.key, this.state);
+    if (this.fixedKey) return ok;
     const idx = this.index();
     idx.slots[idx.active] = slotMeta(this.state);
     this.write(SAVE_INDEX_KEY, idx);
+    return ok;
   }
 
   clear() {
