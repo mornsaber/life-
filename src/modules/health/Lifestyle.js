@@ -26,12 +26,16 @@ export const LEVELS = {
 };
 const COST = { smoking: 2800, heavy: 2500, social: 600, active: 600 };
 
+const defaultLifestyle = (state) => ({ smoking: 'never', packYears: 0, quitAge: null, drinking: state.character.age >= 18 ? 'social' : 'none', diet: 'average', exercise: 'some', bmi: 23, injecting: false });
+/** Your lifestyle, created on first use (for code that changes it). */
 export function lifestyleOf(state) {
   const h = state.health;
   if (!h) return null;
-  h.lifestyle ??= { smoking: 'never', packYears: 0, quitAge: null, drinking: state.character.age >= 18 ? 'social' : 'none', diet: 'average', exercise: 'some', bmi: 23, injecting: false };
+  h.lifestyle ??= defaultLifestyle(state);
   return h.lifestyle;
 }
+/** Your lifestyle for reading only (views): never writes to the save. */
+export const peekLifestyle = (state) => (state.health ? state.health.lifestyle ?? defaultLifestyle(state) : null);
 export const bmiLabel = (bmi) => (bmi >= 35 ? 'Severely obese' : bmi >= 30 ? 'Obese' : bmi >= 25 ? 'Overweight' : bmi >= 18.5 ? 'Healthy weight' : 'Underweight');
 
 /** How much more (or less) likely each condition is, given how you live. */
@@ -58,7 +62,7 @@ export function lifestyleRisk(state, id) {
 
 /** A short list of what's raising or cutting your risk, for the Health tab. */
 export function riskProfile(state) {
-  const l = lifestyleOf(state);
+  const l = peekLifestyle(state);
   if (!l) return [];
   const out = [];
   if (l.smoking === 'current') out.push(['bad', `🚬 Smoking (${l.packYears} pack-years): lung disease, cancer, heart disease and stroke`]);

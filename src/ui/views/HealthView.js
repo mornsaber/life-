@@ -24,13 +24,13 @@ import { THERAPIES, MEDS, therapyCost, isMental } from '../../modules/health/Men
 import { ssdiEligibility, ssdiAmount, approvalOdds, ATTORNEY_CAP, disabilityHere, disabilityName, stageLabel } from '../../modules/health/SSDI.js';
 import { countryOf } from '../../modules/world/Countries.js';
 import { VETERANS } from '../../modules/world/CountryLaw.js';
-import { lifestyleOf, riskProfile, bmiLabel, LEVELS } from '../../modules/health/Lifestyle.js';
+import { peekLifestyle, riskProfile, bmiLabel, LEVELS } from '../../modules/health/Lifestyle.js';
 import { screeningsFor } from '../../modules/health/HealthEngine.js';
 import { careSystemHere, careCost, CARE_LABEL } from '../../modules/health/EndOfLife.js';
 
 /** Habits and what they do to your odds. */
 function lifestyleCard(state) {
-  const l = lifestyleOf(state);
+  const l = peekLifestyle(state);
   if (!l) return '';
   const age = state.character.age;
   const habit = (key) => `<div class="toggle-row"><span class="care-label">${key[0].toUpperCase()}${key.slice(1)}</span>${Object.entries(LEVELS[key]).map(([lv, label]) => button(label, 'health.habit', { arg: `${key}:${lv}`, variant: l[key] === lv ? 'tiny on' : 'tiny', disabled: key === 'drinking' && lv !== 'none' && age < 16 })).join('')}</div>`;

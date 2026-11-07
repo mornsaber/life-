@@ -64,7 +64,7 @@ export const GeneticsResolvers = {
     if (optionId === 'abroad') ctx.spend(local(state, 120000), 'Experimental treatment abroad', { allowDebt: true });
     const odds = optionId === 'trial' ? 0.3 : 0.15;
     ctx.stat('health', -rng.int(2, 8));
-    if (rng.chance(odds)) { c.severity = Math.max(10, c.severity - rng.int(30, 50)); c.remission = c.id === 'cancer' ? true : c.remission; return ctx.log(optionId === 'trial' ? 'You were on the real drug, and it worked. Your scans came back clear enough that the doctors used the word "remarkable".' : 'Against the odds, the treatment abroad bought you years.', '🌱', 'milestone'); }
+    if (rng.chance(odds)) { c.severity = Math.max(10, c.severity - rng.int(30, 50)); if (c.id === 'cancer') { c.remission = true; c.treated = false; } return ctx.log(optionId === 'trial' ? 'You were on the real drug, and it worked. Your scans came back clear enough that the doctors used the word "remarkable".' : 'Against the odds, the treatment abroad bought you years.', '🌱', 'milestone'); }
     ctx.log(optionId === 'trial' ? 'The trial drug did little but make you sick. You may have been on the placebo.' : 'The clinic took the money. The disease didn\'t notice.', '🧪', 'bad');
   },
 };

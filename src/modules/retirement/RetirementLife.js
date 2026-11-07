@@ -201,7 +201,7 @@ export const RetirementLifeModule = {
 /** For the view. */
 export function retirementLifeSummary(state) {
   if (!inRetirement(state)) return null;
-  const r = rl(state);
+  const r = state.retirementLife ?? { rhythm: 'easy', bucket: {}, community: null, encore: null }; // read only: views never write
   return { r, grandkids: grandkids(state), rhythms: RHYTHMS, bucket: BUCKET, communityFee: COMMUNITY_FEE, bucketThisYear: Boolean(state.yearly['retirementLife.bucket']) };
 }
 export { ageOf };

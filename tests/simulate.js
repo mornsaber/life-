@@ -673,7 +673,8 @@ for (let life = 0; life < LIVES; life++) {
   renderer.obituary(state);
   renderAll(state);
   const restored = new Store(engine.store.storage).load();
-  assert.deepEqual(restored, state);
+  // Saves are JSON: compare with the plain form (some fields, like equipment budgets, are live getters onto org funds).
+  assert.deepEqual(restored, JSON.parse(JSON.stringify(state)));
   checkEstate(state);
   totals.estates += 1;
   if (state.k12.history.length || state.k12.type !== 'public') totals.privateSchool += state.k12.history.some((h) => ['private', 'boarding', 'religious', 'militaryPrep'].includes(h.type)) || ['private', 'boarding', 'religious', 'militaryPrep'].includes(state.k12.type) ? 1 : 0;

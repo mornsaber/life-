@@ -141,7 +141,7 @@ export function skillsTick(ctx) {
   if (age >= 14) { practise(state, 'cooking', 1); used.add('cooking'); }
   // Languages: the best foreign language you speak.
   const langs = Object.values(state.migration?.languages ?? {});
-  if (langs.length) state.skills.languages = Math.max(skill(state, 'languages'), Math.min(100, Math.max(...langs)));
+  if (langs.length) (state.skills ??= {}).languages = Math.max(skill(state, 'languages'), Math.min(100, Math.max(...langs)));
   // Rust: skills you stopped using fade, slowly.
   for (const id of Object.keys(state.skills ?? {})) if (!used.has(id) && id !== 'languages' && state.skills[id] > 20) state.skills[id] = clamp(state.skills[id] - 0.8);
   if (age >= 16) skillMoments(ctx, rng);

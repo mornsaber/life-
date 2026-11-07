@@ -132,10 +132,10 @@ function resolveReentry(ctx, data, optionId) {
     case 'crew:yes': commitOffense(ctx, { offenseId: 'burglary', context: 'a job with the old crew while on parole', discovery: 0.55, evidence: 0.8 }); ctx.earn(Math.round(rng.int(4000, 12000) * priceLevel(state)), 'Cash from a job'); return ctx.log('One job. Everyone says that.', '💰', 'bad');
     case 'officer:comply': state.legal.probationYears = Math.max(0, state.legal.probationYears - 1); return ctx.log('A clean year of check-ins. Your officer recommended early discharge.', '📋', 'good');
     case 'officer:skip':
-      if (rng.chance(0.5)) { state.legal.incarceration = { yearsLeft: 1, total: 1, facility: 'the county jail', kind: 'jail', served: 0 }; return ctx.log('A technical violation. Your officer sent you back for a year.', '🚨', 'bad'); }
+      if (rng.chance(0.5)) { state.legal.incarceration = { yearsLeft: 1, total: 1, facility: 'the county jail', kind: 'jail', served: 0 }; ctx.log('A technical violation. Your officer sent you back for a year.', '🚨', 'bad'); ctx.emit('legal:incarcerated', { years: 1 }); return; }
       return ctx.log('Your officer let it go, with a warning in the file.', '📋', 'warn');
     case 'family:patient': for (const p of family) p.relationship = Math.min(100, (p.relationship ?? 50) + 6); return ctx.log('Slowly, you became part of the house again.', '🫶', 'good');
-    case 'family:push': for (const p of family) p.relationship = Math.max(0, (p.relationship ?? 50) + (rng.chance(0.5) ? 5 : -6)); return ctx.log('Some of them were ready. Some weren\'t.', '🏃', 'info');
+    case 'family:push': for (const p of family) p.relationship = Math.max(0, Math.min(100, (p.relationship ?? 50) + (rng.chance(0.5) ? 5 : -6))); return ctx.log('Some of them were ready. Some weren\'t.', '🏃', 'info');
     default: return undefined;
   }
 }

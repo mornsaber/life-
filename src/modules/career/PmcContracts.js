@@ -66,7 +66,7 @@ export function pmcOffers(state) {
     out.push({ kind: rng.pick(['convoy', 'static', 'psd']), title: `${rng.pick(['Logistics convoy security', 'Forward base security', 'Reconstruction agency detail'])} — ${w.operation ?? 'the war'}`, place: cc, war: true });
   }
   for (const s of rng.shuffle([...STANDING])) { if (out.length >= 3) break; out.push({ ...s }); }
-  const rep = pmc(state).rep;
+  const rep = state.pmc?.rep ?? 0; // read only: the view calls this
   const b = contractorBackground(state);
   return out.map((o, i) => {
     const k = KINDS[o.kind];

@@ -268,7 +268,7 @@ const tests = {
     let closed = 0;
     for (let i = 0; i < 4; i++) {
       const { engine, state } = worker('finance', 31 + i);
-      for (let y = 0; y < 4 && state.career.job; y++) { year(engine, state, ['deals.']); state.prompts = []; engine.dispatch('deals.pitch'); }
+      for (let y = 0; y < 8 && state.career.job; y++) { year(engine, state, ['deals.']); state.prompts = []; engine.dispatch('deals.pitch'); }
       closed += state.careerLife.deals.closed.length;
       if (state.career.job) assert.match(pure(state, () => VIEWS.career(state, {})), /Your Deals/);
     }
