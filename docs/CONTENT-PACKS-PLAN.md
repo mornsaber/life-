@@ -5,20 +5,19 @@ not code, and every addition is checked automatically.
 
 ## Where we are
 
-| Content | Count | How it's defined today | Pack support |
-|---|---|---|---|
-| Countries | ~110 | `packs/*.js` and `nation(spec)`, inheriting tables from a base country | ✅ done (`fromPacks`, ~70 tables) |
-| Careers (professions) | 174 | JS objects across ~60 files in `career/` (JobTrees, JusticeCareers…). 76 contain functions (`employerName`, `eligible`, custom hooks) | ❌ |
-| Life events | ~80 + many in-module | `LifeEvents.js` / `MoreLifeEvents.js` arrays with `when(state)` and `effect(ctx)` functions; another few hundred one-off prompts inside modules | ❌ |
-| Businesses | ~60 types | `BusinessTypes.js` objects (mostly data) | partial (per-country tables via `fromPacks`) |
-| Credentials | ~150 | `CredentialRegistry.js` objects (mostly data) | partial |
-| Crimes/offences | ~100 | `Offenses.js` (data) | partial |
-| Honours, ranks, insignia | many | per-country tables | ✅ via country packs |
+| Content | Count | Status |
+|---|---|---|
+| Countries | ~110 | ✅ country packs (`world/packs/`, `fromPacks`, `nation(spec)`) |
+| Life events | 71 + 2 follow-ups | ✅ `content/packs/life-core.js`, `life-stages.js` (rule language, `content/Rules.js`) |
+| Careers | 174 | ✅ all in `content/packs/careers-*.js`, compiled by `content/Careers.js` (ladder tuples, employer templates, `hooks`) |
+| Businesses, credentials, offences | ~60 / ~150 / ~100 | already plain data; per-country tables via `fromPacks` |
+| In-module one-off prompts | a few hundred | ⏳ move a module's prompts when the module is next worked on |
 
-The code is about 120k lines across 455 module files. What slows new content today:
-1. A career means touching 3–6 files: the profession, the ladder, units, insignia, skills map, and engine hooks.
-2. Events mix data (text, odds) with code (conditions, effects), so you can't validate them without running them.
-3. Nothing lists everything a pack must provide, so gaps show up as leaks in the abroad sweep.
+Every pack is validated at load (`PACK_PROBLEMS`, `CAREER_PROBLEMS`) and by `tests/contentpacks.js`:
+schema, references (credential ids), and every event played through every option, every career
+hired with a clean employer name at home and abroad. Each migration batch was checked against
+the code it replaced (compiled careers identical to the old objects; the fast suite and the
+abroad sweep green).
 
 ## Design
 
