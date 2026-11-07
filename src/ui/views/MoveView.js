@@ -54,10 +54,10 @@ export function moveView(state) {
       <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}</small></span>
         ${isHere ? chip('You live here', 'good') : button(`Move (${money(MOVE_COST)})`, 'region.move', { arg: r.id, variant: 'tiny', disabled: state.character.age < 18 })}</div>
       <div class="move-stats">
-        ${chip(`🏷️ COL ×${r.col.toFixed(2)}`)} ${chip(`💼 Pay ×${r.market.toFixed(2)}`)} ${chip(`🦅 Fed locality +${Math.round(r.locality * 100)}%`)}
-        ${chip(`🧾 State tax ${topStateRate(r.state) ? `${(topStateRate(r.state) * 100).toFixed(1)}% top${income ? ` (~${money(stateIncomeTax(r.state, income))})` : ''}` : 'none'}`, topStateRate(r.state) ? '' : 'good')}
+        ${chip(`🏷️ COL ×${r.col.toFixed(2)}`)} ${chip(`💼 Pay ×${r.market.toFixed(2)}`)} ${isAbroad(state) ? '' : chip(`🦅 Fed locality +${Math.round(r.locality * 100)}%`)}
+        ${chip(`🧾 ${isAbroad(state) ? 'Regional tax' : 'State tax'} ${topStateRate(r.state) ? `${(topStateRate(r.state) * 100).toFixed(1)}% top${income ? ` (~${money(stateIncomeTax(r.state, income))})` : ''}` : 'none'}`, topStateRate(r.state) ? '' : 'good')}
         ${chip(`🔑 Apt ${money(tierRent(state, 'apartment', r.id))}/mo`)}
-        ${chip(st.rightToWork ? '✊ Right-to-work' : '✊ Union-friendly')} ${chip(st.cannabis ? '🌿 Cannabis legal' : '🚫 Cannabis illegal')} ${chip(`🍺 DUI ×${st.dui.fineMult}`)} ${chip(`💵 Min wage $${st.minWage}`)}
+        ${isAbroad(state) ? '' : chip(st.rightToWork ? '✊ Right-to-work' : '✊ Union-friendly')} ${chip(st.cannabis ? '🌿 Cannabis legal' : '🚫 Cannabis illegal')} ${chip(`🍺 DUI ×${st.dui.fineMult}`)} ${chip(`💵 Min wage $${st.minWage}`)}
         ${disasters ? chip(`⚠️ ${disasters}`, 'warn') : ''}
       </div>
       ${licenses.length ? `<small class="why">🪪 Licenses to transfer: ${licenses.map(esc).join(' · ')}</small>` : ''}
