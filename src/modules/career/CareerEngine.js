@@ -11,6 +11,7 @@
  *   ContractingSystem direct staff vs. contractors
  *   UnionsAndLabor    union membership, CBAs, strikes, organizing drives
  */
+import { PHYSICAL, physicalWorkBarred } from '../health/Routine.js';
 import { shockFactor } from '../economy/Shocks.js';
 import { ordainedEntryLevel } from '../community/HolyOrders.js';
 import { workBlock } from '../world/Regimes.js';
@@ -172,6 +173,8 @@ export function applicationEligibility(state, professionId, { anywhere = false }
   if (residencyOf(state)?.status === 'undocumented' && (profession.sector !== 'private' || profession.country || ['tech', 'finance', 'law', 'medical', 'nursing', 'engineering', 'accounting', 'corporate'].includes(professionId))) return { ok: false, reason: 'Needs the right to work' };
   // Some countries' police and fire services are national forces that hire citizens only.
   if (profession.citizensOnly && !isCitizen(state, state.character.countryId ?? 'US')) return { ok: false, reason: 'Open to citizens only' };
+  // A disabling condition rules out work that needs you physically fit (health/Routine.js).
+  if (PHYSICAL.includes(professionId) && physicalWorkBarred(state)) return { ok: false, reason: 'Your health rules out physical work' };
   if ((state.character.countryId ?? 'US') !== 'US' && US_ONLY_PROFESSIONS.includes(professionId)) return { ok: false, reason: 'No such agency here' };
   if (!profession.country && !agencyExists(state.character.countryId ?? 'US', professionId, stateIdOf(state))) return { ok: false, reason: 'No such agency here' };
   // A small town's fire service is its volunteers; the career posts are in the cities.

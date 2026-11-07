@@ -48,6 +48,8 @@ for (const id of Object.keys(REGIONS)) {
   assert.equal(state.character.regionId, id, `moved to ${id}: ${JSON.stringify(state.prompts.map((p) => p.type))} ${state.legal.incarceration ? 'jailed' : ''} ${state.military.service?.component ?? ''} cash=${state.finances.cash} age=${state.character.age} mil=${JSON.stringify(state.military.service?.component)} log=${JSON.stringify(state.log?.slice?.(-3))}`);
   state.prompts = [];
   engine.ageUp();
+  // This walks every place, not a life: a rare random death mustn't end the tour.
+  if (!state.character.alive) { state.character.alive = true; delete state.character.causeOfDeath; }
   state.prompts = [];
   for (const tab of ['money', 'move', 'career']) if (VIEWS[tab]) assert.ok(!/NaN|undefined/.test(VIEWS[tab](state, {})), `${tab} in ${id}`);
 }

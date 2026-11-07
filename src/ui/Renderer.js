@@ -40,6 +40,7 @@ import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
 import { reputationCard, frontPageCard } from './views/CirclesView.js';
+import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -172,10 +173,10 @@ export const VIEWS = {
   military: militaryView,
   emergency: emergencyView,
   civic: civicServiceView,
-  school: schoolView,
+  school: (state, ui) => schoolView(state, ui) + skillsCard(state),
   licenses: licensesView,
   money: moneyView,
-  health: healthView,
+  health: (state, ui) => routineCard(state) + healthView(state, ui),
   people: peopleView,
   legal: legalView,
   cases: casesView,
@@ -192,7 +193,7 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    return `${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {
