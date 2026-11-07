@@ -92,6 +92,7 @@ const tests = {
     assert.ok(html.includes('Organize a new shop'), 'officer actions');
     // Officer powers.
     state.yearly = {};
+    state.prompts = [];
     u.treasury = 5_000_000;
     const members = u.members;
     const militancy = u.militancy;

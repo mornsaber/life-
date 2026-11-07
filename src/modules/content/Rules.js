@@ -12,16 +12,19 @@
  *   test: (state) => boolean   — the escape hatch, for JS packs only
  *
  * Effects (an object; every key optional), applied in order:
- *   stat: { happiness: 3 }     earn: n | [min, max] (+ source)    spend: n (+ reason)
+ *   stat: { happiness: 3 }     earn: n | [min, max] (+ source)    spend: n (+ reason; on credit)
+ *   bill: n | [min, max] (+ reason; a cost you can't refuse, into debt if need be)
+ *   afford: n (+ reason)       a splurge: only with three times n in savings, else `cantAfford` (an effect) instead
  *   cash: n (a gift, untaxed)  job: { performance: d, salary: pct }
  *   rep: { work: d }           skill: { cooking: d }              flag: { name: value }
- *   relation: { partner: d, kids: d, parents: d, siblings: d }
+ *   relation: { partner: d, kids: d, minorKids: d, parents: d, parent: d, siblings: d, sibling: d }  (singular: one living relative)
+ *   trauma: d                  checkup: true (a doctor looks you over)
  *   injury: 'conditionId' | { id, severity }                      offense: { id, discovery, evidence, context }
  *   plant: { id, years }       news: { headline, tier, weight }   log: 'text' (or [variants])
  *   run: (ctx) => text         — the escape hatch
  *
  * Options may branch: { check: { skill|stat: id, difficulty } | { chance: p }, pass: effect, fail: effect }.
- * Text anywhere may be an array of variants; one is chosen each time.
+ * Text anywhere may be an array of variants; one is chosen each time. Log text may use {spent} and {earned}.
  * An event may carry `weight` (relative odds against the others, default 1) for rare happenings.
  */
 import { isIncarcerated } from '../../core/State.js';
@@ -71,10 +74,18 @@ export function test(state, when = {}) {
 /** Apply an effect; returns the text to log (if any). */
 export function apply(ctx, effect = {}) {
   const { state, rng } = ctx;
+  const amount = (v) => (Array.isArray(v) ? rng.int(v[0], v[1]) : v);
+  const vars = {};
+  if (effect.afford != null) {
+    if ((state.finances?.cash ?? 0) < effect.afford * 3) return apply(ctx, effect.cantAfford ?? {});
+    ctx.spend(effect.afford, effect.reason ?? 'Treat', { credit: true });
+    vars.spent = effect.afford;
+  }
   for (const [k, v] of Object.entries(effect.stat ?? {})) ctx.stat(k, v);
-  if (effect.earn != null) ctx.earn(Array.isArray(effect.earn) ? rng.int(effect.earn[0], effect.earn[1]) : effect.earn, effect.source ?? 'Windfall');
-  if (effect.spend != null) ctx.spend(Array.isArray(effect.spend) ? rng.int(effect.spend[0], effect.spend[1]) : effect.spend, effect.reason ?? 'Expense', { credit: true });
-  if (effect.cash != null) state.finances.cash += Array.isArray(effect.cash) ? rng.int(effect.cash[0], effect.cash[1]) : effect.cash;
+  if (effect.earn != null) ctx.earn((vars.earned = amount(effect.earn)), effect.source ?? 'Windfall');
+  if (effect.spend != null) ctx.spend((vars.spent = amount(effect.spend)), effect.reason ?? 'Expense', { credit: true });
+  if (effect.bill != null) ctx.spend((vars.spent = amount(effect.bill)), effect.reason ?? 'Expense', { allowDebt: true });
+  if (effect.cash != null) state.finances.cash += (vars.earned = amount(effect.cash));
   const job = state.career?.job;
   if (job && effect.job) {
     if (effect.job.performance) job.performance = Math.max(0, Math.min(100, (job.performance ?? 50) + effect.job.performance));
@@ -87,14 +98,20 @@ export function apply(ctx, effect = {}) {
   const bump = (p, d) => { if (p) p.relationship = clampRel(p.relationship + d); };
   if (rel.partner) bump(partnerOf(state), rel.partner);
   if (rel.kids) livingChildren(state).forEach((p) => bump(p, rel.kids));
+  if (rel.minorKids) minorChildren(state).forEach((p) => bump(p, rel.minorKids));
   if (rel.parents) parentsOf(state).filter((p) => p.alive).forEach((p) => bump(p, rel.parents));
+  if (rel.parent) bump(parentsOf(state).find((p) => p.alive), rel.parent);
   if (rel.siblings) living(state).filter((p) => p.relation === 'sibling').forEach((p) => bump(p, rel.siblings));
+  if (rel.sibling) bump(living(state).find((p) => p.relation === 'sibling'), rel.sibling);
+  if (effect.trauma) ctx.emit('health:trauma', { amount: effect.trauma, source: effect.why ?? 'life' });
+  if (effect.checkup) ctx.emit('health:checkup', {});
   if (effect.injury) { const i = typeof effect.injury === 'string' ? { id: effect.injury } : effect.injury; ctx.emit('health:injury', { conditionId: i.id, severity: i.severity ?? 30 }); }
   if (effect.offense) ctx.emit('legal:offense', { offenseId: effect.offense.id, context: effect.offense.context ?? '', discovery: effect.offense.discovery ?? 0.2, evidence: effect.offense.evidence ?? 0.6 });
   if (effect.plant) state.eventSeeds = [...(state.eventSeeds ?? []), { id: effect.plant.id, dueAge: state.character.age + effect.plant.years }];
   if (effect.news) ctx.emit('news:story', { tier: effect.news.tier ?? 'local', headline: effect.news.headline, weight: effect.news.weight ?? 3, icon: effect.news.icon ?? '📰', you: true });
   const ran = effect.run ? effect.run(ctx) : '';
-  return [pickText(rng, effect.log), ran].filter(Boolean).join(' ');
+  const fill = (t) => String(t).replace(/\{(spent|earned)\}/g, (_, k) => (vars[k] ?? 0).toLocaleString());
+  return [effect.log ? fill(pickText(rng, effect.log)) : '', ran].filter(Boolean).join(' ');
 }
 
 /** Odds a check succeeds. */
@@ -140,6 +157,7 @@ export function validateEvent(def, { ids = new Set() } = {}) {
   if (!def.title && !def.run) p.push(`${def.id}: missing title`);
   if (!def.run && !(def.options?.length >= 1)) p.push(`${def.id}: needs options or run`);
   if (def.run && def.options) p.push(`${def.id}: run and options are exclusive`);
+  if (def.weight != null && !(def.weight > 0)) p.push(`${def.id}: weight must be positive`);
   for (const o of def.options ?? []) {
     if (!o.id || !o.label) p.push(`${def.id}: option missing id or label`);
     if (o.check && (!o.pass || !o.fail)) p.push(`${def.id}.${o.id}: a check needs pass and fail`);

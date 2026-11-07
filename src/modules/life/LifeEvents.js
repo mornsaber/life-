@@ -9,7 +9,7 @@
  */
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { priceLevel } from '../world/Countries.js';
-import { MORE_LIFE_EVENTS, FOLLOW_UPS, downPaymentAssistance } from './MoreLifeEvents.js';
+import { downPaymentAssistance } from './MoreLifeEvents.js';
 import { PACK_EVENTS, PACK_FOLLOW_UPS } from '../content/index.js';
 
 
@@ -17,8 +17,8 @@ import { PACK_EVENTS, PACK_FOLLOW_UPS } from '../content/index.js';
 const iconOf = (e) => e.icon ?? e.options?.[0]?.label.match(/^\p{Extended_Pictographic}\uFE0F?/u)?.[0] ?? '🎲';
 
 /** Every event that can come up at random (follow-ups only come when planted). */
-export const LIFE_EVENTS = [...PACK_EVENTS, ...MORE_LIFE_EVENTS.filter((e) => !e.followUp)];
-const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? FOLLOW_UPS[id] ?? PACK_FOLLOW_UPS[id];
+export const LIFE_EVENTS = PACK_EVENTS;
+const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? PACK_FOLLOW_UPS[id];
 
 /** How often something happens: kids and young adults have eventful years. */
 const yearlyChance = (age) => (age < 6 ? 0 : age < 18 ? 0.35 : age < 30 ? 0.4 : age < 65 ? 0.3 : 0.25);
@@ -52,7 +52,7 @@ export const LifeEvents = {
     let event = null;
     if (due) {
       state.eventSeeds = state.eventSeeds.filter((s) => s !== due);
-      event = FOLLOW_UPS[due.id] ?? PACK_FOLLOW_UPS[due.id] ?? null;
+      event = PACK_FOLLOW_UPS[due.id] ?? null;
     }
     if (!event) {
       if (!rng.chance(yearlyChance(state.character.age))) return;

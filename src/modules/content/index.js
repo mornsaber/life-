@@ -4,8 +4,9 @@
  */
 import { compileEvent, validateEvent } from './Rules.js';
 import lifeCore from './packs/life-core.js';
+import lifeStages from './packs/life-stages.js';
 
-export const CONTENT_PACKS = [lifeCore];
+export const CONTENT_PACKS = [lifeCore, lifeStages];
 
 const ids = new Set();
 export const PACK_PROBLEMS = [];

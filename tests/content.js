@@ -5,7 +5,7 @@
  *
  *   node tests/content.js
  */
-import { FOLLOW_UPS } from '../src/modules/life/MoreLifeEvents.js';
+import { PACK_FOLLOW_UPS as FOLLOW_UPS } from '../src/modules/content/index.js';
 import { UCMJ_OFFENSES } from '../src/modules/military/UCMJ.js';
 import assert from 'node:assert/strict';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
