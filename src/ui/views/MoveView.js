@@ -14,6 +14,7 @@ import { regionsHere } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { livingAbroad, expatOf } from '../../modules/world/ExpatLife.js';
+import { cityCard } from './CirclesView.js';
 import { UK_PENSION_FROZEN_IN } from '../../modules/retirement/RetirementEngine.js';
 import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, naturalizationYearsLeft, speaksLocal, localLanguage, nativeLanguages, birthCountryOf, LANGUAGE_FLUENT, EMIGRATION_COST, onTemporaryVisa, ASYLUM_COST } from '../../modules/world/Immigration.js';
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
@@ -70,7 +71,7 @@ export function moveView(state) {
     const list = places.filter((r) => r.state === sid);
     return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
-  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + expatLifeCard(state) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
+  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + cityCard(state) + expatLifeCard(state) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
 }
 
 /** Where you could retire, and what follows you there. */

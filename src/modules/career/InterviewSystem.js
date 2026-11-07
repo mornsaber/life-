@@ -6,6 +6,7 @@
  * investigation, where honesty is a real choice.
  */
 import { workRepBonus } from '../life/Reputation.js';
+import { cityJobsBonus } from '../life/Cities.js';
 import { currentCountry } from '../../core/Locale.js';
 import { vettingForm } from '../world/MilitaryLocal.js';
 import { serviceHiringBonus } from '../service/NationalService.js';
@@ -227,7 +228,7 @@ export function hireChance(state, profession, level, score, maxScore, employer =
   const market = (state.economy.unemployment - 0.045) * 2; // slack labor markets are brutal
   // Time out of work counts against you; a good record with this employer counts for you.
   const history = -reentryPenalty(state) + (employer?.orgId ? rehireStanding(state, employer.orgId).bonus : 0) + ownerExperienceBonus(state, profession);
-  return clamp(base + stats + candidateBonus(state, profession) - seniority - market + history + workRepBonus(state), 0.05, 0.95);
+  return clamp(base + stats + candidateBonus(state, profession) - seniority - market + history + workRepBonus(state) + cityJobsBonus(state), 0.05, 0.95);
 }
 
 function offerSalary(state, profession, level, employer, step, merit) {

@@ -39,7 +39,7 @@ import { politicsView } from './views/PoliticsView.js';
 import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
-import { reputationCard } from './views/CirclesView.js';
+import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -161,7 +161,7 @@ export const VIEWS = {
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
-    return card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
+    return frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
   business: businessView,

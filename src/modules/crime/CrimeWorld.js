@@ -6,6 +6,7 @@
  * to say, and the rest fall back deliberately on the kind of regime they have (a fragile state is
  * more corrupt and more violent than a stable democracy).
  */
+import { cityCrimeFactor } from '../life/Cities.js';
 import { regimeOf } from '../world/Regimes.js';
 import { REGIONS } from '../life/Regions.js';
 
@@ -108,7 +109,7 @@ export function crimeLevelHere(state) {
   const base = CRIME_LEVEL[cc] ?? FALLBACK_CRIME[kindOf(cc)] ?? 0.3;
   const r = REGIONS[state.character.regionId];
   const city = r?.type && /metro|city|capital|urban/i.test(r.type) ? 1.2 : r?.type && /rural|town/i.test(r.type) ? 0.7 : 1;
-  return Math.min(1, base * city);
+  return Math.min(1, base * city * cityCrimeFactor(state));
 }
 
 /** The agency on a case. */

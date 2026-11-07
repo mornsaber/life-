@@ -7,6 +7,9 @@ import { CIRCLES, reputationOf } from '../../modules/life/Reputation.js';
 import { rivalsOf, originLabel, rivalTitle, rivalAge } from '../../modules/people/Rivals.js';
 import { feudsOf, dynastyScore, dynastyLabel } from '../../modules/people/FamilyFeuds.js';
 import { byId } from '../../modules/people/People.js';
+import { TIERS, latestPage } from '../../modules/life/News.js';
+import { cityOf } from '../../modules/life/Cities.js';
+import { REGIONS } from '../../modules/life/Regions.js';
 
 const tone = (v) => (v >= 65 ? 'good' : v >= 40 ? 'mid' : 'bad');
 
@@ -34,4 +37,26 @@ export function familyCard(state) {
   if (!feuds.length && gens < 2 && score < 20) return '';
   const rows = feuds.map((f) => { const p = byId(state, f.personId); return `<li class="region-row"><span>🧊 <b>${esc(p.firstName)}</b> <small>since age ${f.since}</small></span>${button('🕊️ Try to mend it', 'familyFeuds.mend', { arg: p.id, variant: 'tiny' })}</li>`; }).join('');
   return card(`The ${esc(state.character.lastName)} Family`, `${kv([['Dynasty', `${score}/100 · ${dynastyLabel(score)}`], ['Generations played', String(gens)]])}${rows ? `<h4 class="sub">Not speaking</h4><ul class="history">${rows}</ul>` : ''}`, { icon: '🏛️' });
+}
+
+/** This year's front page (Life tab). */
+export function frontPageCard(state) {
+  const page = latestPage(state);
+  if (!page?.stories?.length) return '';
+  const sections = Object.entries(TIERS).map(([id, t]) => {
+    const s = page.stories.filter((x) => x.tier === id);
+    return s.length ? `<h4 class="sub">${t.icon} ${t.label}</h4><ul class="history">${s.map((x) => `<li>${x.icon} ${x.you ? '<b>' : ''}${esc(x.headline)}${x.you ? '</b>' : ''}</li>`).join('')}</ul>` : '';
+  }).join('');
+  return card(`Front Page · ${page.year}`, sections, { icon: '📰', summary: esc(page.stories[0].headline) });
+}
+
+/** Where you live, and how it's changing (Move tab). */
+export function cityCard(state) {
+  const c = cityOf(state);
+  const name = REGIONS[state.character.regionId]?.name ?? 'Your city';
+  const t = c.trend ?? [];
+  const arrow = (k) => { if (t.length < 2) return ''; const d = t.at(-1)[k] - t[Math.max(0, t.length - 5)][k]; return d > 2 ? ' ↑' : d < -2 ? ' ↓' : ' →'; };
+  return card(`Your City: ${esc(name)}`, `${meter(c.jobs, { label: `💼 Jobs${arrow('jobs')}`, tone: c.jobs >= 55 ? 'good' : c.jobs >= 40 ? 'mid' : 'bad' })}${meter(c.crime, { label: `🚨 Crime${arrow('crime')}`, tone: c.crime <= 35 ? 'good' : c.crime <= 60 ? 'mid' : 'bad' })}${meter(c.mood, { label: '🙂 Mood', tone: c.mood >= 55 ? 'good' : c.mood >= 40 ? 'mid' : 'bad' })}
+    ${kv([['House prices', `index ${c.prices}${arrow('prices')}`], ['Population', `index ${c.pop} (100 when you arrived)`]])}
+    <p class="fine">Cities change with the economy, disasters — and you: businesses you grow add jobs, a force you lead cuts crime, rental empires push up prices. A strong job market helps you get hired; high crime makes you likelier to be a victim.</p>`, { icon: '🏙️', summary: `Jobs ${c.jobs} · Crime ${c.crime}` });
 }
