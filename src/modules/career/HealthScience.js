@@ -19,68 +19,11 @@ import { L } from './Ladder.js';
 import { leaveJob } from './CareerEngine.js';
 import { currentLevel } from './Transport.js';
 import { JUSTICE_EVENTS, INCIDENT_ICONS } from './JusticeCareers.js';
+import { default as careersPack } from '../content/packs/careers-health-science.js';
 
-export const HEALTH_SCIENCE_PROFESSIONS = {
-  travelNursing: {
-    id: 'travelNursing', name: 'Travel Nursing', icon: '🧳', sector: 'private', payMultiplier: 1.3, minAge: 21, sizes: { medium: 3, large: 2 }, background: 'strict',
-    employers: ['Nomad Nurse Staffing', 'Wayfarer Healthcare Partners', 'Meridian Clinical Staffing', 'Compass Travel Health'],
-    benefits: { housing: true },
-    rotation: { label: 'on 13-week assignments', away: 0.6 },
-    entry: { credentials: ['rn'], experience: { professions: ['nursing'], years: 2 } },
-    levels: [
-      L('travel', 'Travel Nurse', 6, { req: { credentials: ['rn'] } }),
-      L('travelIcu', 'Travel ICU Nurse', 7, { track: 'ic', req: { credentials: ['ccrn'] } }),
-      L('crisis', 'Crisis & Strike Response Nurse', 8, { track: 'ic' }),
-      L('liaison', 'Clinical Liaison', 6, { track: 'mgmt', abilities: ['supervise'], reports: 40 }),
-      L('director', 'Director of Clinical Operations', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 400 }),
-    ],
-  },
-  privateEms: {
-    id: 'privateEms', name: 'Private Ambulance Service', icon: '🚐', sector: 'private', payMultiplier: 0.86, minAge: 18, sizes: { small: 2, medium: 3, large: 2, enterprise: 1 }, background: 'standard',
-    union: { chance: 0.2, name: 'Teamsters EMS Local 1199', strike: true },
-    employers: ['MedRide Ambulance', 'Lifeline Medical Transport', 'Apex Ambulance Service', 'Guardian EMS', 'Keystone Critical Care Transport', 'TriCounty Ambulance Co.'],
-    entry: { credentials: ['driverLicense'] },
-    valued: ['paramedic', 'evoc', 'acls', 'ccp'],
-    levels: [
-      L('emt', 'EMT', 2, { entry: true, req: { credentials: ['emt'] } }),
-      L('paramedic', 'Paramedic', 4, { entry: true, req: { credentials: ['paramedic'] }, abilities: ['prescribe'] }),
-      L('cct', 'Critical Care Transport Paramedic', 5, { track: 'ic', req: { credentials: ['ccp'] }, abilities: ['prescribe'] }),
-      L('flight', 'Flight Paramedic', 6, { track: 'ic', minSize: 'large', req: { credentials: ['flightParamedic'] }, abilities: ['prescribe'], airMedical: true }),
-      L('fto', 'Field Training Officer', 4, { track: 'mgmt', abilities: ['supervise'], reports: 4 }),
-      L('supervisor', 'Operations Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 25 }),
-      L('manager', 'Operations Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 80 }),
-      L('director', 'Regional Director of Operations', 8, { track: 'mgmt', minSize: 'large', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 400 }),
-    ],
-  },
-  publicHealth: {
-    id: 'publicHealth', name: 'County Public Health', icon: '🧫', sector: 'municipal', exam: 'municipal', background: 'standard', payMultiplier: 0.95, minAge: 21,
-    union: { chance: 0.5, name: 'AFSCME Public Health Local', strike: false },
-    benefits: { pension: 'municipal' },
-    employerName: (city) => `${city} County Health Department`,
-    entry: { education: { level: 'bachelor' } },
-    levels: [
-      L('inspector', 'Environmental Health Specialist (Health Inspector)', 4, { abilities: ['inspect'] }),
-      L('seniorInspector', 'Senior Health Inspector', 5, { req: { credentials: ['rehs'] }, abilities: ['inspect'] }),
-      L('epi', 'Epidemiologist', 6, { track: 'ic', entry: true, req: { education: { program: 'mph' } } }),
-      L('seniorEpi', 'Senior Epidemiologist', 7, { track: 'ic', req: { credentials: ['cph'] } }),
-      L('supervisor', 'Environmental Health Supervisor', 6, { track: 'mgmt', abilities: ['supervise', 'inspect'], reports: 12 }),
-      L('director', 'Director of Public Health', 9, { track: 'mgmt', minSize: 'medium', req: { anyOf: [{ education: { program: 'mph' } }, { education: { program: 'md' } }] }, abilities: ['supervise', 'hire', 'budget', 'delegate', 'policy'], reports: 300 }),
-    ],
-  },
-  research: {
-    id: 'research', name: 'Research Science', icon: '🔬', sector: 'private', payMultiplier: 1.0, minAge: 24, sizes: { medium: 2, large: 3, enterprise: 2 }, background: 'standard',
-    employers: ['Brightwater Research Institute', 'Helix Biosciences', 'National Laboratory for Applied Physics', 'Coastal Marine Science Center'],
-    entry: { education: { program: 'phd' } },
-    levels: [
-      L('postdoc', 'Postdoctoral Fellow', 5, { years: 3 }),
-      L('staff', 'Staff Scientist', 6),
-      L('senior', 'Senior Scientist', 7, { track: 'ic' }),
-      L('fellow', 'Distinguished Fellow', 9, { track: 'ic', minSize: 'large' }),
-      L('pi', 'Principal Investigator', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 12 }),
-      L('director', 'Institute Director', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 400 }),
-    ],
-  },
-};
+const HEALTH_SCIENCE_PROFESSIONS = careersPack.careers;
+
+/* The careers themselves (HEALTH_SCIENCE_PROFESSIONS) live in content/packs/careers-health-science.js. */
 
 export const POSTDOC_LIMIT = 5;
 export const GRANT_ODDS = 0.2;
