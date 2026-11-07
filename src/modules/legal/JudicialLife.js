@@ -180,7 +180,7 @@ export function judgeLifeTick(ctx) {
     return leaveBench(ctx, 'Removed from the bench for misconduct');
   }
   // Its own dice, so the bench's life never shifts the rest of the year's rolls.
-  L.seed = ((L.seed ?? 11) * 1664525 + 1013904223) >>> 0;
+  L.seed = ((L.seed ?? ((ctx.state.world?.seed ?? 11) ^ 0x1d6e)) * 1664525 + 1013904223) >>> 0;
   const rng = new Random(L.seed);
   L.backlog = Math.max(0, L.backlog + rng.int(8, 18) - L.clerks * 3);
   if (L.backlog > 60) {

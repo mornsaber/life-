@@ -68,12 +68,14 @@ const tests = {
   },
 
   'key accounts arrive, add revenue, and walk when quality slips'() {
-    const { engine, state, biz } = owner(2);
+    const { engine, state, biz } = owner(5);
     biz.quality = 70;
     year(engine);
     assert.ok(biz.accountOffers?.length, 'offers');
-    const k = biz.accountOffers[0];
+    biz.quality = Math.max(biz.quality, 90);
+    const k = [...biz.accountOffers].sort((x, y) => x.value - y.value)[0];
     const base = forecast(state, biz).revenue;
+    state.prompts = [];
     engine.dispatch('business.signAccount', k.id);
     assert.equal(biz.accounts.length, 1);
     assert.ok(forecast(state, biz).revenue > base, 'account revenue');

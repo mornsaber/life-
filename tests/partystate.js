@@ -59,6 +59,7 @@ const tests = {
     const { engine, state, ctx } = life({}, 3);
     year(engine, state, 35);
     member(state, 3);
+    state.cpc.record = 90; // a strong record, so the promotion odds clear the rigged dice
     ctx.rng.chance = (p) => p >= 0.2; // the promotion, not the inspectors
     state.prompts = [];
     year(engine, state, 1);

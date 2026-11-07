@@ -167,7 +167,7 @@ export const RuralLifeModule = {
       if (!ctx.spend(cost, `Commuting to ${job.employer.city} (${mins} min each way)`)) { ctx.spend(Math.max(0, state.finances.cash), `Commuting to ${job.employer.city}`); ctx.stat('stress', 4); }
       ctx.stat('stress', Math.round(mins / 20));
       ctx.stat('happiness', -Math.round(mins / 30));
-      if (rng.chance(0.25)) ctx.log(`Another year of ${mins} minutes each way to ${job.employer.city}. You know every pothole.`, '🚗');
+      if (rng.chance(0.25)) ctx.log(`Another year of ${mins} minutes each way to ${job.employer?.city ?? (typeof job.employer === "string" ? job.employer : "work")}. You know every pothole.`, '🚗');
     }
     // Grown children head for the city.
     for (const p of state.people?.list ?? []) {

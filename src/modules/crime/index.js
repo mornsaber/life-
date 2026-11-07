@@ -30,7 +30,7 @@ import { Random } from '../../core/Random.js';
 function sideCtx(ctx) {
   if (ctx.crimeRng) return { ...ctx, rng: ctx.crimeRng };
   const f = ctx.state.legal.flags;
-  f.crimeSeed = ((f.crimeSeed ?? 7) * 1664525 + 1013904223) >>> 0;
+  f.crimeSeed = ((f.crimeSeed ?? ((ctx.state.world?.seed ?? 7) ^ 0xc71e)) * 1664525 + 1013904223) >>> 0;
   return { ...ctx, rng: new Random(f.crimeSeed) };
 }
 

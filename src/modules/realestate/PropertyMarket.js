@@ -106,7 +106,7 @@ export function generateListings(ctx) {
   const rural = REGIONS[regionId].type === 'Rural';
   const pick = (weights) => rng.weighted(Object.entries(weights).filter(([id]) => !PROPERTY_TYPES[id].ruralOnly || rural), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
   // Investment listings draw from their own stream so they don't reshuffle the rest of the year.
-  state.housing.investSeed = (((state.housing.investSeed ?? 0x51ed) * 1664525) + 1013904223) >>> 0;
+  state.housing.investSeed = (((state.housing.investSeed ?? ((state.world?.seed ?? 0) ^ 0x51ed)) * 1664525) + 1013904223) >>> 0;
   const side = new Random(state.housing.investSeed);
   const sidePick = (weights) => side.weighted(Object.entries(weights).filter(([id]) => !PROPERTY_TYPES[id].ruralOnly || rural), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
   const listings = [
