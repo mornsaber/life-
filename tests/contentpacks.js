@@ -13,6 +13,11 @@ import { MODULES } from '../src/modules/registry.js';
 import { CONTENT_PACKS, PACK_PROBLEMS, PACK_EVENTS, PACK_FOLLOW_UPS } from '../src/modules/content/index.js';
 import { validateEvent, compileEvent, test as meets } from '../src/modules/content/Rules.js';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
+import { CAREER_PACKS, CAREER_PROBLEMS, PACK_PROFESSIONS } from '../src/modules/content/careerPacks.js';
+import { validateCareer } from '../src/modules/content/Careers.js';
+import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
+import { createEmployer } from '../src/modules/career/Employers.js';
+import { hire } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (seed, age, countryId = 'US') => {
@@ -77,6 +82,27 @@ const tests = {
       }
     }
     assert.ok(played > 50, `played ${played}`);
+  },
+  'career packs validate and join the catalog'() {
+    assert.deepEqual(CAREER_PROBLEMS, []);
+    const ids = CAREER_PACKS.flatMap((p) => Object.keys(p.careers ?? {}));
+    assert.ok(ids.length >= 10);
+    for (const id of ids) assert.equal(PROFESSIONS[id]?.id, id, `${id} is in PROFESSIONS`);
+    const p = validateCareer('x', { name: 'X', sector: 'nowhere', ladder: [['a', 'A', 1, { track: 'sideways', req: { credentials: ['noSuchCredential'] } }], ['a', 'A', 2]] }, { credentials: {} }).join('; ');
+    for (const re of [/unknown sector/, /needs employers/, /unknown track/, /unknown credential/, /duplicate level/]) assert.match(p, re);
+  },
+  'every pack career hires and names its employer at home and abroad'() {
+    for (const [cc, region] of [['US', null], ['GB', null]]) {
+      const { engine, state } = life(5, 30, cc);
+      for (const id of Object.keys(PACK_PROFESSIONS)) {
+        const prof = PROFESSIONS[id];
+        const employer = createEmployer(new Random(7), state, prof, region ?? state.character.regionId);
+        assert.ok(employer.name && !broken(employer.name) && !/[{}]/.test(employer.name), `${cc} ${id}: employer ${employer.name}`);
+        hire(engine.context(), { professionId: id, levelId: (prof.levels.find((l) => l.entry) ?? prof.levels[0]).id, employer });
+        assert.equal(state.career.job?.professionId, id, `${cc} ${id}: hired`);
+        state.career.job = null;
+      }
+    }
   },
 };
 
