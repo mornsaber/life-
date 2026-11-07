@@ -22,6 +22,7 @@
  *
  * Options may branch: { check: { skill|stat: id, difficulty } | { chance: p }, pass: effect, fail: effect }.
  * Text anywhere may be an array of variants; one is chosen each time.
+ * An event may carry `weight` (relative odds against the others, default 1) for rare happenings.
  */
 import { isIncarcerated } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';

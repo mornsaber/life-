@@ -7,7 +7,9 @@ export function pickFresh(rng, state, poolKey, pool, { memory = Math.ceil(pool.l
   if (!pool.length) return null;
   const recent = ((state.flags.recent ??= {})[poolKey] ??= []);
   const fresh = pool.filter((e) => !recent.includes(idOf(e)));
-  const event = rng.pick(fresh.length ? fresh : pool);
+  const from = fresh.length ? fresh : pool;
+  // Events may carry a relative `weight` (default 1): a lightning strike shouldn't be as common as a cold.
+  const event = from.some((e) => e.weight != null) ? rng.weighted(from, (e) => e.weight ?? 1) : rng.pick(from);
   recent.push(idOf(event));
   while (recent.length > Math.min(memory, pool.length - 1)) recent.shift();
   return event;
