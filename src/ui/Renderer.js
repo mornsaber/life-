@@ -41,6 +41,7 @@ import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
 import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
+import { governmentCard, empireCard } from './views/PowerView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -181,10 +182,10 @@ export const VIEWS = {
   legal: legalView,
   cases: casesView,
   crime: crimeView,
-  underworld: underworldView,
+  underworld: (state, ui) => empireCard(state) + underworldView(state, ui),
   home: homeView,
   move: moveView,
-  politics: politicsView,
+  politics: (state, ui) => governmentCard(state) + politicsView(state, ui),
   achievements: achievementsView,
   activities(state) {
     const items = ACTIVITIES.map((a) => {
