@@ -17,7 +17,7 @@ import { REGIONS, regionsIn } from '../life/Regions.js';
 import { severancePay, unemploymentBenefit } from './CountryLaw.js';
 import { warIn } from './War.js';
 import { bodyOfJob } from '../org/Bodies.js';
-import { INTL_ORG_PROFESSIONS } from '../career/IntlOrgCareers.js';
+import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 
 /** International organisations post their own staff (IntlOrgs duty stations): no company assignments or moves. */
 const intlStaff = (job) => Boolean(job && INTL_ORG_PROFESSIONS[job.professionId]);

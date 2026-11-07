@@ -20,7 +20,8 @@ import { addHonor, netWorth } from '../../core/State.js';
 import { COUNTRIES, citizenshipsOf } from './Countries.js';
 import { countryIdOfName } from './Posting.js';
 import { OFFICES } from '../politics/Offices.js';
-import { INTL_ORG_PROFESSIONS, EU_MEMBERS, NATO_MEMBERS, DUTY_STATIONS } from '../career/IntlOrgCareers.js';
+import { EU_MEMBERS, NATO_MEMBERS, DUTY_STATIONS } from '../career/IntlOrgCareers.js';
+import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 import { ledEuroparl } from '../politics/EuropeanParliament.js';
 
 const home = (state) => state.character.countryId ?? 'US';

@@ -27,7 +27,8 @@
  * state.malta    = { grade, since, office, officeSince, vowsAt, conferred }
  * job.intlTerm   = age an appointed term ends
  */
-import { INTL_ORG_PROFESSIONS, DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5 } from '../career/IntlOrgCareers.js';
+import { DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5 } from '../career/IntlOrgCareers.js';
+import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
 import { hire, leaveJob } from '../career/CareerEngine.js';

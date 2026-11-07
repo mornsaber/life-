@@ -18,7 +18,8 @@
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
 import { speaks, LANGUAGE_FLUENT } from './Immigration.js';
 import { FORCES } from './NationalForces.js';
-import { INTL_ORG_PROFESSIONS, HARDSHIP, ordainedPriest } from '../career/IntlOrgCareers.js';
+import { HARDSHIP, ordainedPriest } from '../career/IntlOrgCareers.js';
+import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 
 /** Countries a posting can be in, with the language you'd pick up there. */
 export const WORLD = {

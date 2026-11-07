@@ -16,65 +16,14 @@ import { L } from './Ladder.js';
 import { yearsInProfession } from '../../core/State.js';
 import { atWar } from '../world/War.js';
 import { postAbroad } from '../world/Posting.js';
+import careersPack, { LOCAL_FIRMS, contractorBackground, contractorGate } from '../content/packs/careers-contractors.js';
+export { LOCAL_FIRMS, contractorBackground, contractorGate };
 
-const COMBAT = ['infantry', 'medic', 'engineer'];
 
-/** Veterans with combat-arms time, former operators, or experienced police. */
-export function contractorBackground(state) {
-  const honorable = state.military.history.filter((h) => !['dishonorable', 'bcd', 'oth'].includes(h.discharge));
-  const sof = honorable.some((h) => h.sof);
-  const combatYears = honorable.filter((h) => COMBAT.includes(h.specialty)).reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
-  const anyYears = honorable.reduce((s, h) => s + h.yearsOfService - (h.priorYears ?? 0), 0);
-  // Police anywhere count: a country's national police, gendarmerie or constabulary.
-  const lawIds = [...new Set([...(state.career.history ?? []).map((h) => h.professionId), state.career.job?.professionId].filter((id) => id && /police|sheriff|gendarm|constab|fbi|usms|usss|dea|atf|borderPatrol|carabin/i.test(id)))];
-  const lawYears = yearsInProfession(state, ['police', 'sheriff', 'statePolice', 'fbi', 'usms', 'usss', 'dea', 'atf', 'borderPatrol', ...lawIds]);
-  return { sof, combatYears, anyYears, lawYears };
-}
 
-function contractorGate(state) {
-  const b = contractorBackground(state);
-  if (b.sof || b.combatYears >= 4 || b.anyYears >= 8 || b.lawYears >= 5) return { ok: true };
-  return { ok: false, reason: 'Hires veterans with 4+ years in combat arms (or 8+ in any role), former special operators, or 5+ years in law enforcement' };
-}
 
-export const CONTRACTOR_PROFESSIONS = {
-  privateMilitary: {
-    id: 'privateMilitary', name: 'Private Military & Security Contracting', icon: '🪖', sector: 'private', payMultiplier: 1.75, minAge: 21, sizes: { medium: 2, large: 2, enterprise: 1 }, background: 'strict', promotionOdds: 0.5,
-    employers: ['Triton Global Security', 'Blackridge Defense Services', 'Sentinel Protective Group', 'Aegis Training Solutions'],
-    eligible: contractorGate,
-    // Firms where you live: London's risk consultancies, France's ex-Legion outfits, South Africa's old hands.
-    prepare: (state, job) => {
-      const firms = LOCAL_FIRMS[state.character.countryId ?? 'US'];
-      if (firms) job.employer.name = firms[job.employer.name.length % firms.length];
-    },
-    valued: ['emt', 'paramedic', 'execProtection', 'languageProficiency'],
-    rotation: { label: 'on rotation overseas', away: 0.55 },
-    hazard: { injury: 0.06, death: 0.003, cause: 'Killed when a protective-detail convoy was ambushed' },
-    levels: [
-      L('static', 'Static Security Contractor', 4, { years: 2 }),
-      L('psd', 'Protective Security Specialist', 6),
-      L('trainer', 'Training Contract Instructor', 6, { track: 'ic', entry: true }),
-      L('medic', 'Detail Medic', 6, { track: 'ic', req: { credentials: ['paramedic'] } }),
-      L('teamLead', 'Protective Detail Team Leader', 7, { track: 'mgmt', abilities: ['supervise'], reports: 8 }),
-      L('detailLead', 'Detail Leader', 8, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 40 }),
-      L('programManager', 'Program Manager', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 300 }),
-      L('vpOps', 'Vice President of Operations', 10, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 2000 }),
-    ],
-  },
-};
+/* The careers themselves (CONTRACTOR_PROFESSIONS) live in content/packs/careers-contractors.js. */
 
-const LOCAL_FIRMS = {
-  GB: ['Halberd Risk Group (London)', 'Saxon Shield Ltd', 'Ironbridge Maritime Security', 'Kestrel Training Services'],
-  FR: ['Garde Prestige Sécurité', 'Opale Défense Conseil', 'Sentinelle Maritime', 'Atlas Formation Défense'],
-  ZA: ['Kestrel Protection Services (Pretoria)', 'Bushveld Risk Solutions', 'Cape Maritime Guard', 'Highveld Training Group'],
-  AU: ['Southern Cross Protective Services', 'Coral Sea Maritime Security', 'Outback Risk Consulting'],
-  CA: ['Northstar Protective Group', 'Laurentian Risk Services'],
-  IL: ['Carmel Security Consulting', 'Negev Protective Services'],
-  NP: ['Himalayan Guard Services (ex-Gurkha)', 'Annapurna Security International'],
-  IN: ['Rajput Risk & Protection', 'Deccan Security Services'],
-  PH: ['Mindanao Maritime Security', 'Luzon Protective Agency'],
-  CO: ['Andes Seguridad Internacional', 'Escudo Protección Ejecutiva'],
-};
 
 /** Where the contracts are: [what, the country you'd live in for the rotation]. */
 const ASSIGNMENTS = [
@@ -107,7 +56,7 @@ export const ContractorModule = {
     const { state, rng } = ctx;
     const job = state.career.job;
     if (job?.professionId !== 'privateMilitary' || !job.paidThisYear || state.legal.incarceration) return;
-    const p = CONTRACTOR_PROFESSIONS.privateMilitary;
+    const p = careersPack.careers.privateMilitary;
     const war = atWar(state) ? 1.5 : 1;
     const b = contractorBackground(state);
     if (rng.chance(p.hazard.death * war * (job.levelId === 'trainer' ? 0.3 : 1))) {

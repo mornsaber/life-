@@ -22,8 +22,12 @@ import careersTrades from './packs/careers-trades.js';
 import careersMunicipal from './packs/careers-municipal.js';
 import careersState from './packs/careers-state.js';
 import careersFederal from './packs/careers-federal.js';
+import careersGovernment from './packs/careers-government.js';
+import careersContractors from './packs/careers-contractors.js';
+import careersIntel from './packs/careers-intel.js';
+import careersIntlOrgs from './packs/careers-intl-orgs.js';
 
-export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal];
+export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal, careersGovernment, careersContractors, careersIntel, careersIntlOrgs];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};
@@ -40,3 +44,5 @@ const pick = (pack) => Object.fromEntries(Object.keys(pack.careers).map((id) => 
 export const MUNICIPAL_PROFESSIONS = pick(careersMunicipal);
 export const STATE_PROFESSIONS = pick(careersState);
 export const FEDERAL_PROFESSIONS = pick(careersFederal);
+export const CONTRACTOR_PROFESSIONS = pick(careersContractors);
+export const INTL_ORG_PROFESSIONS = pick(careersIntlOrgs);

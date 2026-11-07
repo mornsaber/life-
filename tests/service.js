@@ -18,7 +18,7 @@ import { stateEmergency, ensureSdfOrg, sdfNextRank, SDF_SLOTS } from '../src/mod
 import { deploymentRequest } from '../src/modules/service/DisasterTeams.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 import { enlistedStartGrade, MOS } from '../src/modules/military/MOS.js';
-import { CONTRACTOR_PROFESSIONS } from '../src/modules/career/Contractors.js';
+import { CONTRACTOR_PROFESSIONS } from '../src/modules/content/careerPacks.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function setup(seed = 7, age = 25) {

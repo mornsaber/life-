@@ -23,10 +23,6 @@ import { L, addGovernmentTiers } from './Ladder.js';
 import { REQUIRED_BY, CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
 import { PACK_PROFESSIONS, MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../content/careerPacks.js';
-import { GOV_PROFESSIONS } from './GovCareers.js';
-import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
-import { INTEL_PROFESSIONS } from './IntelCareers.js';
-import { INTL_ORG_PROFESSIONS } from './IntlOrgCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -38,7 +34,7 @@ export const PRIVATE_PROFESSIONS = {};
 
 // Career packs (content/careerPacks.js) first; the careers still written as code follow.
 const PUBLIC_PACKS = new Set([...Object.keys(MUNICIPAL_PROFESSIONS), ...Object.keys(STATE_PROFESSIONS), ...Object.keys(FEDERAL_PROFESSIONS)]);
-Object.assign(PRIVATE_PROFESSIONS, Object.fromEntries(Object.entries(PACK_PROFESSIONS).filter(([id]) => !PUBLIC_PACKS.has(id))), GOV_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, INTL_ORG_PROFESSIONS);
+Object.assign(PRIVATE_PROFESSIONS, Object.fromEntries(Object.entries(PACK_PROFESSIONS).filter(([id]) => !PUBLIC_PACKS.has(id))));
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);

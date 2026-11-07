@@ -4,7 +4,7 @@
  */
 import { esc, button, card, kv } from '../Components.js';
 import { COMPETITIONS, competitionCheck, maltaJoinCheck, maltaGradeName, MALTA_OFFICES } from '../../modules/world/IntlOrgs.js';
-import { INTL_ORG_PROFESSIONS } from '../../modules/career/IntlOrgCareers.js';
+import { INTL_ORG_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { postingOf, postedHousing } from '../../modules/world/Posting.js';
 
 export function intlOrgsCard(state) {
