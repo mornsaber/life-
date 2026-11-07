@@ -3,6 +3,7 @@
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
 import { militaryInsignia } from '../Insignia.js';
+import { rivalsCard, familyCard } from './CirclesView.js';
 import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
 import { esc, money, button, card, meter, kv, empty, disclosure } from '../Components.js';
 import {
@@ -424,7 +425,7 @@ export function peopleView(state) {
     ${group('Exes', '💔', by('ex'), state)}
     ${dynastyCard(state)}
     ${legacyCard(state)}
-    ${lineage(state)}
+    ${rivalsCard(state)}${familyCard(state)}${lineage(state)}
     ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
 }

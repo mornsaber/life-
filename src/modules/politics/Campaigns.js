@@ -4,6 +4,7 @@
  * and which endorsements you can earn. The campaign itself is on the trail
  * (CampaignTrail).
  */
+import { neighbourhoodVoteBonus } from '../life/Reputation.js';
 import { prestige, isOnActiveDuty, isIncarcerated } from '../../core/State.js';
 import { regimeOf } from '../world/Regimes.js';
 import { govPostRanks, rankTitle } from './CommunistParty.js';
@@ -97,7 +98,9 @@ export function voteShare(state, officeId, campaign, { incumbent = false } = {})
     return clamp(share, 0.05, 0.8);
   }
   // Everything else: the voters, the issues and the other candidate (Elections).
-  return generalShare(state, officeId, campaign, { incumbent }).share;
+  // Local races: the neighbours' opinion of you counts.
+  const local = (office.level ?? 9) <= 2 ? neighbourhoodVoteBonus(state) : 0;
+  return clamp(generalShare(state, officeId, campaign, { incumbent }).share + local, 0.02, 0.95);
 }
 
 export function endorsementEligible(state, id) {

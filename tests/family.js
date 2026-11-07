@@ -138,6 +138,7 @@ const tests = {
     const without = settleEstate(state);
     const probateWithout = probateAssets(state);
     state.character.alive = true;
+    state.prompts = [];
     engine.dispatch('dynasty.succession', b.id);
     assert.equal(state.people.plan.succession, b.id);
     state.character.alive = false;

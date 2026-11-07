@@ -407,6 +407,9 @@ function passBusinesses(old, s, child, childAge, legacy, ids) {
   const generation = (b) => (b.heritage?.generation ?? 1) + 1;
   const pass = (b, gift = false) => {
     const nb = structuredClone(b);
+    // The family firm: one more generation, and the name of the family that founded it.
+    nb.familyGens = (b.familyGens ?? 1) + 1;
+    nb.founderFamily ??= old.character.lastName;
     if (gift) {
       Object.assign(nb, { role: 'absentee', autopilot: true, family: [], foundedAge: childAge - (b.years ?? 0) });
       return nb;
