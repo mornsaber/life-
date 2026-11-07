@@ -6,8 +6,15 @@
 import { compileCareer, validateCareer } from './Careers.js';
 import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
 import careersMore from './packs/careers-more.js';
+import careersAllied from './packs/careers-allied.js';
+import careersTransport from './packs/careers-transport.js';
+import careersAcademic from './packs/careers-academic.js';
+import careersAirport from './packs/careers-airport.js';
+import careersForeignForces from './packs/careers-foreign-forces.js';
+import careersReligiousOrders from './packs/careers-religious-orders.js';
+import careersTransit from './packs/careers-transit.js';
 
-export const CAREER_PACKS = [careersMore];
+export const CAREER_PACKS = [careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersTransit];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};

@@ -4,11 +4,11 @@
  * (conductors and locomotive engineers under FRA certification), and school
  * bus drivers.
  */
-import { currentCountry } from '../../core/Locale.js';
-import { railwaysAbroad } from '../world/Countries.js';
-import { L, detectiveRanks } from '../career/Ladder.js';
+import { currentCountry } from '../../../core/Locale.js';
+import { railwaysAbroad } from '../../world/Countries.js';
+import { L, detectiveRanks } from '../../career/Ladder.js';
 
-export const TRANSIT_PROFESSIONS = {
+const careers = {
   transit: {
     id: 'transit', name: 'Public Transit Operations', icon: '🚌', sector: 'municipal', exam: 'municipal', background: 'standard', payMultiplier: 0.95, minAge: 21,
     sizes: { medium: 2, large: 3, enterprise: 2 },
@@ -16,15 +16,15 @@ export const TRANSIT_PROFESSIONS = {
     benefits: { pension: 'municipal' },
     employerName: (city) => `${city} Regional Transit Authority`,
     entry: { credentials: ['driverLicense'] },
-    levels: [
-      L('trainee', 'Bus Operator Trainee', 2, { years: 1 }),
-      L('operator', 'Bus Operator', 3, { req: { credentials: ['cdlB', 'passengerEndorsement'] } }),
-      L('senior', 'Senior Bus Operator', 4),
-      L('rail', 'Train Operator (Subway / Light Rail)', 5, { track: 'ic', minSize: 'large', req: { credentials: ['railOperatorCert'] } }),
-      L('controller', 'Rail Traffic Controller', 6, { track: 'ic', minSize: 'large', req: { credentials: ['railOperatorCert'] }, abilities: ['command'] }),
-      L('streetSupervisor', 'Street Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 30 }),
-      L('superintendent', 'Division Superintendent', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 400 }),
-      L('gm', 'Transit General Manager', 9, { track: 'mgmt', minSize: 'large', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec', 'policy'], reports: 8000 }),
+    ladder: [
+      ['trainee', 'Bus Operator Trainee', 2, { years: 1 }],
+      ['operator', 'Bus Operator', 3, { req: { credentials: ['cdlB', 'passengerEndorsement'] } }],
+      ['senior', 'Senior Bus Operator', 4],
+      ['rail', 'Train Operator (Subway / Light Rail)', 5, { track: 'ic', minSize: 'large', req: { credentials: ['railOperatorCert'] } }],
+      ['controller', 'Rail Traffic Controller', 6, { track: 'ic', minSize: 'large', req: { credentials: ['railOperatorCert'] }, abilities: ['command'] }],
+      ['streetSupervisor', 'Street Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 30 }],
+      ['superintendent', 'Division Superintendent', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 400 }],
+      ['gm', 'Transit General Manager', 9, { track: 'mgmt', minSize: 'large', req: { education: { level: 'bachelor' } }, abilities: ['supervise', 'budget', 'delegate', 'sign', 'exec', 'policy'], reports: 8000 }],
     ],
   },
   transitMaintenance: {
@@ -33,13 +33,13 @@ export const TRANSIT_PROFESSIONS = {
     union: { chance: 0.85, name: 'Transport Workers Union Local 100', strike: true },
     benefits: { pension: 'municipal' },
     employerName: (city) => `${city} Regional Transit Authority — Maintenance`,
-    levels: [
-      L('helper', 'Maintenance Helper', 2),
-      L('mechanic', 'Transit Bus Mechanic', 4, { req: { credentials: ['ase'] } }),
-      L('railTech', 'Rail Car Technician', 5, { track: 'ic', minSize: 'large' }),
-      L('signals', 'Signal Maintainer', 6, { track: 'ic', minSize: 'large', req: { credentials: ['journeymanElectrician'] } }),
-      L('foreman', 'Maintenance Foreman', 5, { track: 'mgmt', abilities: ['supervise'], reports: 15 }),
-      L('superintendent', 'Superintendent of Maintenance', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 300 }),
+    ladder: [
+      ['helper', 'Maintenance Helper', 2],
+      ['mechanic', 'Transit Bus Mechanic', 4, { req: { credentials: ['ase'] } }],
+      ['railTech', 'Rail Car Technician', 5, { track: 'ic', minSize: 'large' }],
+      ['signals', 'Signal Maintainer', 6, { track: 'ic', minSize: 'large', req: { credentials: ['journeymanElectrician'] } }],
+      ['foreman', 'Maintenance Foreman', 5, { track: 'mgmt', abilities: ['supervise'], reports: 15 }],
+      ['superintendent', 'Superintendent of Maintenance', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 300 }],
     ],
   },
   transitPolice: {
@@ -71,14 +71,14 @@ export const TRANSIT_PROFESSIONS = {
     employerName: (city, rng) => (currentCountry() === 'US' ? rng.pick(['Union Continental Railroad', 'Great Plains & Pacific', 'Atlantic Coast Line', 'National Passenger Rail']) : rng.pick(railwaysAbroad(currentCountry()))),
     entry: { education: { level: 'highschool' } },
     rotation: { label: 'on call for trains', away: 0.3 }, seniority: true, furlough: true,
-    levels: [
-      L('trainee', 'Conductor Trainee', 3, { years: 1 }),
-      L('conductor', 'Conductor', 5, { req: { credentials: ['conductorCert'] } }),
-      L('engineer', 'Locomotive Engineer', 6, { req: { credentials: ['locomotiveEngineer'] } }),
-      L('senior', 'Senior Locomotive Engineer', 7, { track: 'ic' }),
-      L('trainmaster', 'Trainmaster', 6, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 60 }),
-      L('roadForeman', 'Road Foreman of Engines', 7, { track: 'mgmt', req: { credentials: ['locomotiveEngineer'] }, abilities: ['supervise', 'hire'], reports: 120 }),
-      L('superintendent', 'Division Superintendent', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 1500 }),
+    ladder: [
+      ['trainee', 'Conductor Trainee', 3, { years: 1 }],
+      ['conductor', 'Conductor', 5, { req: { credentials: ['conductorCert'] } }],
+      ['engineer', 'Locomotive Engineer', 6, { req: { credentials: ['locomotiveEngineer'] } }],
+      ['senior', 'Senior Locomotive Engineer', 7, { track: 'ic' }],
+      ['trainmaster', 'Trainmaster', 6, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 60 }],
+      ['roadForeman', 'Road Foreman of Engines', 7, { track: 'mgmt', req: { credentials: ['locomotiveEngineer'] }, abilities: ['supervise', 'hire'], reports: 120 }],
+      ['superintendent', 'Division Superintendent', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 1500 }],
     ],
   },
   paratransit: {
@@ -88,12 +88,12 @@ export const TRANSIT_PROFESSIONS = {
     employers: ['MobilityLink Paratransit', 'Accessible Transit Services', 'CareRide Medical Transport', 'Senior Express Shuttle'],
     entry: { credentials: ['driverLicense'] },
     valued: ['passengerEndorsement', 'cdlB', 'emr', 'emt'],
-    levels: [
-      L('driver', 'Paratransit Driver', 2),
-      L('senior', 'Senior Paratransit Operator', 3),
-      L('travelTrainer', 'Travel Trainer', 4, { track: 'ic' }),
-      L('dispatcher', 'Paratransit Dispatcher', 3, { track: 'mgmt', abilities: ['supervise'], reports: 20 }),
-      L('opsManager', 'Paratransit Operations Manager', 5, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 120 }),
+    ladder: [
+      ['driver', 'Paratransit Driver', 2],
+      ['senior', 'Senior Paratransit Operator', 3],
+      ['travelTrainer', 'Travel Trainer', 4, { track: 'ic' }],
+      ['dispatcher', 'Paratransit Dispatcher', 3, { track: 'mgmt', abilities: ['supervise'], reports: 20 }],
+      ['opsManager', 'Paratransit Operations Manager', 5, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 120 }],
     ],
   },
   schoolBus: {
@@ -103,13 +103,15 @@ export const TRANSIT_PROFESSIONS = {
     benefits: { pension: 'municipal' },
     employerName: (city) => `${city} Public Schools — Transportation`,
     entry: { credentials: ['driverLicense'] },
-    levels: [
-      L('trainee', 'School Bus Driver Trainee', 1, { years: 1 }),
-      L('driver', 'School Bus Driver', 2, { req: { credentials: ['schoolBusEndorsement'] } }),
-      L('lead', 'Lead Driver & Trainer', 3, { track: 'ic' }),
-      L('router', 'Routing Coordinator', 4, { track: 'ic' }),
-      L('supervisor', 'Transportation Supervisor', 4, { track: 'mgmt', abilities: ['supervise'], reports: 25 }),
-      L('director', 'Director of Student Transportation', 6, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget'], reports: 150 }),
+    ladder: [
+      ['trainee', 'School Bus Driver Trainee', 1, { years: 1 }],
+      ['driver', 'School Bus Driver', 2, { req: { credentials: ['schoolBusEndorsement'] } }],
+      ['lead', 'Lead Driver & Trainer', 3, { track: 'ic' }],
+      ['router', 'Routing Coordinator', 4, { track: 'ic' }],
+      ['supervisor', 'Transportation Supervisor', 4, { track: 'mgmt', abilities: ['supervise'], reports: 25 }],
+      ['director', 'Director of Student Transportation', 6, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget'], reports: 150 }],
     ],
   },
 };
+
+export default { id: 'careers-transit', version: 1, careers };

@@ -175,7 +175,7 @@ function religiousYear(ctx) {
 }
 
 /* The order is your career: a job in the Society of Jesus or the Missionaries of Charity whose
-   level follows your stage of formation and the office you hold (career/ReligiousOrderCareers.js). */
+   level follows your stage of formation and the office you hold (content/packs/careers-religious-orders.js). */
 const STAGE_LEVEL = {
   jesuits: { novice: 'novice', philosophy: 'scholastic', regency: 'scholastic', theology: 'scholastic', tertianship: 'priest', professed: 'professed' },
   moc: { postulant: 'postulant', novice: 'novice', junior: 'junior', professed: 'professed' },

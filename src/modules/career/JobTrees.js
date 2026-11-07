@@ -25,22 +25,15 @@ import { MUNICIPAL_PROFESSIONS } from '../publicservice/MunicipalGov.js';
 import { FEDERAL_PROFESSIONS } from '../publicservice/FederalAgencies.js';
 import { STATE_PROFESSIONS } from '../publicservice/StateAgencies.js';
 import { TRADITIONS, clergyEligibility } from '../community/Religions.js';
-import { TRANSPORT_PROFESSIONS } from './TransportProfessions.js';
 import { JUSTICE_PROFESSIONS } from './JusticeCareers.js';
 import { PACK_PROFESSIONS } from '../content/careerPacks.js';
-import { TRANSIT_PROFESSIONS } from '../transit/TransitCareers.js';
 import { GOV_PROFESSIONS } from './GovCareers.js';
-import { AIRPORT_PROFESSIONS } from './AirportCareers.js';
 import { HEALTH_SCIENCE_PROFESSIONS } from './HealthScience.js';
 import { TRADE_PROFESSIONS } from './TradeCareers.js';
 import { WORKFORCE_PROFESSIONS } from './WorkforceCareers.js';
 import { CONTRACTOR_PROFESSIONS } from './Contractors.js';
 import { INTEL_PROFESSIONS } from './IntelCareers.js';
-import { ALLIED_PROFESSIONS } from './AlliedCareers.js';
-import { ACADEMIC_PROFESSIONS } from './AcademicCareers.js';
 import { INTL_ORG_PROFESSIONS } from './IntlOrgCareers.js';
-import { FOREIGN_FORCE_PROFESSIONS } from './ForeignForceCareers.js';
-import { RELIGIOUS_ORDER_PROFESSIONS } from './ReligiousOrderCareers.js';
 import { ENGINEERING_PROFESSIONS } from './EngineeringCareers.js';
 import { AGENCIES, NEUTRAL_TITLES, nationalProfessionId } from '../world/NationalAgencies.js';
 import { LOCAL_AGENCIES, agencyExists } from '../world/LocalAgencies.js';
@@ -518,7 +511,8 @@ Object.assign(PRIVATE_PROFESSIONS, {
   },
 });
 
-Object.assign(PRIVATE_PROFESSIONS, AIRPORT_PROFESSIONS, TRANSPORT_PROFESSIONS, JUSTICE_PROFESSIONS, PACK_PROFESSIONS, TRANSIT_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, ALLIED_PROFESSIONS, ACADEMIC_PROFESSIONS, INTL_ORG_PROFESSIONS, FOREIGN_FORCE_PROFESSIONS, RELIGIOUS_ORDER_PROFESSIONS, ENGINEERING_PROFESSIONS);
+// Career packs (content/careerPacks.js) first; the careers still written as code follow.
+Object.assign(PRIVATE_PROFESSIONS, PACK_PROFESSIONS, JUSTICE_PROFESSIONS, GOV_PROFESSIONS, HEALTH_SCIENCE_PROFESSIONS, TRADE_PROFESSIONS, WORKFORCE_PROFESSIONS, CONTRACTOR_PROFESSIONS, INTEL_PROFESSIONS, INTL_ORG_PROFESSIONS, ENGINEERING_PROFESSIONS);
 
 export const PROFESSIONS = { ...PRIVATE_PROFESSIONS, ...MUNICIPAL_PROFESSIONS, ...STATE_PROFESSIONS, ...FEDERAL_PROFESSIONS };
 export const PROFESSION_LIST = Object.values(PROFESSIONS);

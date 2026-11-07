@@ -3,7 +3,8 @@
  * career engine plays (see career/JobTrees.js for every field it reads).
  *
  *   ladder     [[id, title, grade, opts?], ...] — opts as Ladder.L() takes them
- *              (track, years, req, abilities, minSize, reports, entry...)
+ *              (track, years, req, abilities, minSize, reports, entry...). A JS pack may give
+ *              `levels` (built with Ladder helpers) instead.
  *   employers  ['Name', ...] or { US: [...], GB: [...], '*': [...] }; names may use {city}
  *              and {state} (the province or region abroad). Per country, '*' is the fallback.
  *   hooks      functions for the few careers that need logic (eligible, ...), merged in as-is.
@@ -21,7 +22,7 @@ const fill = (t, city, state) => t.replace(/\{city\}/g, city ?? '').replace(/\{s
 export function compileCareer(id, def) {
   const { ladder, employers, hooks, ...rest } = def;
   const p = { ...rest, id, ...(hooks ?? {}) };
-  p.levels = ladder.map(([lid, title, grade, opts]) => L(lid, title, grade, opts ?? {}));
+  if (ladder) p.levels = ladder.map(([lid, title, grade, opts]) => L(lid, title, grade, opts ?? {}));
   if (employers) {
     const byCountry = Array.isArray(employers) ? { '*': employers } : employers;
     const templated = !Array.isArray(employers) || employers.some((e) => e.includes('{'));
@@ -41,10 +42,11 @@ export function validateCareer(id, def, { known = new Set(), credentials = null 
   if (known.has(id)) p.push(`duplicate career ${id}`);
   if (!def.name) p.push(`${id}: missing name`);
   if (!SECTORS.includes(def.sector)) p.push(`${id}: unknown sector ${def.sector}`);
-  if (!Array.isArray(def.ladder) || !def.ladder.length) p.push(`${id}: needs a ladder`);
-  if (!def.employers && !def.hooks?.employerName && !def.campus) p.push(`${id}: needs employers`);
+  if (!(def.ladder?.length || def.levels?.length)) p.push(`${id}: needs a ladder`);
+  if (!def.employers && !def.employerName && !def.hooks?.employerName && !def.campus) p.push(`${id}: needs employers`);
   for (const k of Object.keys(def.sizes ?? {})) if (!SIZES.includes(k)) p.push(`${id}: unknown size ${k}`);
   const ids = new Set();
+  for (const l of def.levels ?? []) if (credentials) for (const c of l.req?.credentials ?? []) if (!credentials[c]) p.push(`${id}.${l.id}: unknown credential ${c}`);
   for (const step of def.ladder ?? []) {
     const [lid, title, grade, opts = {}] = step;
     if (!lid || !title || typeof grade !== 'number') { p.push(`${id}: bad ladder step ${JSON.stringify(step)}`); continue; }
