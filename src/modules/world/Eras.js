@@ -100,7 +100,7 @@ export const PROFESSION_FROM = {
   renewableEnergy: 2000, physicianAssistant: 1967, respiratoryTherapy: 1950, imaging: 1920, dentalHygiene: 1915,
   occupationalTherapy: 1920, speechPathology: 1925, airTrafficControl: 1930, ems: 1970, privateEms: 1960, paratransit: 1975,
   dispatch: 1968, tsa: 2002, travelNursing: 1980, emergencyManagement: 1979, atf: 1972, dea: 1973, fbi: 1908,
-  nato: 1949, unSecretariat: 1945, unAgencies: 1945, euInstitutions: 1958, intlFinance: 1945, intlJustice: 1946, maltaRelief: 1953,
+  nato: 1949, unSecretariat: 1920, unAgencies: 1919, euInstitutions: 1952, intlFinance: 1945, intlJustice: 1922, maltaRelief: 1953, icrc: 1863,
   caseOfficer: 1947, sigint: 1952, intelligence: 1947, nuclearEng: 1945, aerospaceEng: 1940, petroleumEng: 1915,
   flightAttendant: 1930, aviation: 1920, charterAviation: 1925, communityCollege: 1920, nationalLab: 1943, environmental: 1970,
   oig: 1978, privateMilitary: 1990, borderPatrol: 1924, federalPrisons: 1930, usss: 1865, caregiving: 1965, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915,
@@ -1043,8 +1043,42 @@ const RENAMES = [
   [/\bSSDI\b/g, 1956, () => 'disability'],
   [/Film, TV &(?:amp;)? Theater/g, 1950, (y) => (y < 1910 ? 'the Stage' : 'Stage &amp; Screen')],
   [/\bCDL\b/g, 1986, (y) => (y >= 1920 ? 'Chauffeur\'s' : 'Carter\'s')],
+  [/United Nations Secretariat/g, 1946, () => 'League of Nations Secretariat'],
+  [/UN Agencies, Funds &(?:amp;)? Programmes/g, 1946, () => 'League of Nations Technical Organisations'],
+  [/EU Institutions \(European Civil Service\)/g, 1993, (y) => (y < 1958 ? 'The European Coal and Steel Community' : 'The European Communities (European Civil Service)')],
+  [/Order of Malta — Malteser International/g, 2005, () => 'Order of Malta — Relief Service'],
   [/\bU\.S\. Air Force\b/g, 1947, (y) => (y >= 1941 ? 'U.S. Army Air Forces' : y >= 1926 ? 'U.S. Army Air Corps' : 'U.S. Army Signal Corps')],
 ];
+/**
+ * International organisations before today's: the League of Nations (1920–46) before the UN, the
+ * Permanent Court of International Justice before the ICJ, the Coal and Steel Community and the
+ * European Communities before the EU. [until, employers] per career, oldest first; later years
+ * keep the career's own list, less any body not founded yet (EMPLOYER_FROM).
+ */
+const PERIOD_EMPLOYERS = {
+  unSecretariat: [[1946, ['the League of Nations Secretariat (Geneva)', 'the League of Nations Secretariat — Mandates Section', 'the League of Nations Secretariat — Minorities Section']]],
+  unAgencies: [[1946, ['the International Labour Office (Geneva)', 'the League of Nations Health Organisation', 'the Nansen International Office for Refugees', 'the International Institute of Intellectual Co-operation (Paris)']]],
+  intlJustice: [[1946, ['the Permanent Court of International Justice (The Hague)']], [1993, ['International Court of Justice']], [2002, ['International Court of Justice', 'the International Criminal Tribunal for the former Yugoslavia (The Hague)', 'the International Criminal Tribunal for Rwanda (Arusha)']]],
+  euInstitutions: [[1958, ['the High Authority of the European Coal and Steel Community (Luxembourg)', 'the Common Assembly of the ECSC (Secretariat)', 'the Court of Justice of the ECSC']],
+    [1993, ['the Commission of the European Communities', 'the European Parliament (Secretariat)', 'the Council of the European Communities (General Secretariat)', 'the Court of Justice of the European Communities']]],
+  maltaRelief: [[2005, ['the Order of Malta\'s relief service (Malteser Hilfsdienst)', 'the Order of Malta\'s hospitals']]],
+};
+/** Employers founded later than the career they belong to. */
+const EMPLOYER_FROM = {
+  UNICEF: 1946, 'UNHCR (the UN Refugee Agency)': 1950, 'World Food Programme': 1961, 'World Health Organization': 1948, UNDP: 1965, 'International Atomic Energy Agency': 1957,
+  'International Criminal Court': 2002, 'European External Action Service': 2010, 'European Central Bank': 1998, 'NATO Communications and Information Agency': 2012,
+  'UN peace operations (Department of Peace Operations)': 1948, 'United Nations Office at Geneva': 1946, 'Court of Justice of the European Union': 2009,
+};
+/** A career's employers in the year being played. */
+export function periodEmployers(professionId, employers) {
+  const y = ERA_YEAR;
+  if (y >= PRESENT) return employers;
+  const old = (PERIOD_EMPLOYERS[professionId] ?? []).find(([until]) => y < until);
+  if (old) return old[1];
+  const now = (employers ?? []).filter((e) => !(EMPLOYER_FROM[e] > y));
+  return now.length ? now : employers;
+}
+
 /** Text as it would have read in the year being played (unchanged for today's lives). */
 export function periodText(text) {
   if (ERA_YEAR >= PRESENT || typeof text !== 'string') return text;

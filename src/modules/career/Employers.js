@@ -22,6 +22,7 @@ import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 import { isNationalService } from '../world/LocalAgencies.js';
 import { UNIVERSITIES } from '../education/Universities.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { periodEmployers } from '../world/Eras.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -182,7 +183,7 @@ export function createEmployer(rng, state, profession, regionId) {
   let name;
   if (profession.campus && campusAt(regionId)) name = campusAt(regionId);
   else if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state, regionId, cc);
-  else name = rng.pick(headquartersHere(profession.employers, regionId));
+  else name = rng.pick(headquartersHere(periodEmployers(profession.id, profession.employers), regionId));
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;
