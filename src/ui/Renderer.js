@@ -61,7 +61,7 @@ import { fameSummary } from '../modules/life/Fame.js';
 import { officialResidence } from '../modules/world/Residences.js';
 import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
-import { armsOf } from '../modules/world/Heraldry.js';
+import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
@@ -210,13 +210,24 @@ export const VIEWS = {
   },
 };
 
-/** Your coat of arms, the blazon, and what each part of it records. */
+/** Your coat of arms, the blazon, and what each part of it records — or how to get arms where you live. */
 function armsCard(state) {
   if (state.character.age < 16) return '';
   const a = armsOf(state);
-  return card('Coat of Arms', `<div class="arms-wrap">${armsSvg(a, { size: 190, title: `The arms of ${state.character.firstName} ${state.character.lastName}` })}<div class="arms-notes">
-    <p class="blazon"><i>${esc(a.blazon)}.</i></p><p class="fine">Motto: <i>${esc(a.motto)}</i></p>
-    <ul class="history">${a.legend.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></div>`, { icon: '🛡️', accent: 'yellow' });
+  const name = `${state.character.firstName} ${state.character.lastName}`;
+  if (!a.armigerous) {
+    const app = applicationFor(state);
+    const verb = { grant: 'Petition for a grant of arms', register: 'Register arms', roll: 'Record arms in the roll', assume: 'Adopt arms of your own' }[app.how] ?? 'Apply for arms';
+    const status = app.pending ? `<p>📜 Your petition is with ${esc(app.pending.authority)}. Letters patent usually take about a year.</p>`
+      : app.ok ? `<p class="fine">You qualify through ${esc(app.reason)}.</p>${button(`🛡️ ${verb}${app.cost ? ` (${money(app.cost)})` : ''}`, 'heraldry.apply', { variant: 'small' })}`
+        : `<p class="fine">${state.character.age < 18 ? 'Arms are granted to adults.' : 'You don\'t qualify yet.'}</p>`;
+    return card('Coat of Arms', `<div class="arms-wrap"><div class="arms-preview" aria-hidden="true">${armsSvg({ ...a, coronet: null, circlet: null, supporters: null, behind: null, badges: [] }, { size: 120, title: 'What your family\'s arms could look like' })}</div><div class="arms-notes">
+      <p>You don't bear arms. ${esc(app.bar)}</p>${status}
+      <p class="fine">Once you bear arms, your life adds to them: titles, orders, decorations, flag rank, vice-regal office.</p></div></div>`, { icon: '🛡️' });
+  }
+  return card('Coat of Arms', `<div class="arms-wrap">${armsSvg(a, { size: 190, title: `The arms of ${name}` })}<div class="arms-notes">
+    <p class="blazon"><i>${esc(a.blazon)}.</i></p>${a.mon ? '' : `<p class="fine">Motto: <i>${esc(a.motto)}</i></p>`}
+    <ul class="history">${a.legend.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></div>`, { icon: a.mon ? '⭕' : '🛡️', accent: 'yellow' });
 }
 
 function hobbiesCard(state) {
@@ -562,7 +573,7 @@ export class Renderer {
       cause: c.causeOfDeath,
       epitaph,
       honors: state.honors,
-      arms: (() => { const a = armsOf(state); return a.coronet || a.circlet || a.supporters || a.behind || a.hat || a.helm === 'knight' || a.badges.length ? armsSvg(a, { size: 130, title: `The arms of ${c.firstName} ${c.lastName}` }) : ''; })(),
+      arms: (() => { const a = armsOf(state); return a.armigerous ? armsSvg(a, { size: 130, title: `The arms of ${c.firstName} ${c.lastName}` }) : ''; })(),
       facts: [
         ['Net worth', money(netWorth(state))],
         ['Lifetime earnings', money(state.finances.lifetimeEarnings)],

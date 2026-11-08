@@ -67,11 +67,22 @@ function helm(kind, a, dy) {
 }
 
 /** Coronets of rank and the crowns, sitting on the shield's top edge (y ≈ 70). */
-function coronet(kind, y = 58) {
+function coronet(kind, y = 58, continental = false) {
   const band = `<rect x="78" y="${y + 6}" width="44" height="8" rx="2" fill="${GOLD}" stroke="#7a5a10" stroke-width=".6"/>`;
   const pearl = (x, py = y + 3, r = 2.6) => `<circle cx="${x}" cy="${py}" r="${r}" fill="#f4f1ea" stroke="#999" stroke-width=".5"/>`;
   const leaf = (x) => `<path d="M${x - 4} ${y + 6} Q${x} ${y - 6} ${x + 4} ${y + 6} Z" fill="${GOLD}" stroke="#7a5a10" stroke-width=".5"/>`;
   const spike = (x) => `<path d="M${x} ${y + 6} L${x} ${y - 4}" stroke="${GOLD}" stroke-width="1.5"/>${pearl(x, y - 6)}`;
+  if (continental && ['baron', 'viscount', 'earl', 'marquess', 'duke'].includes(kind)) {
+    // Continental coronets of rank: pearls on points for a baron (7) and a count (9); a viscount's
+    // four pearls; a marquis's leaves and pearl trefoils; a duke's five leaves.
+    switch (kind) {
+      case 'baron': return band + [82, 88, 94, 100, 106, 112, 118].map((x) => spike(x)).join('').replace(/r="2.6"/g, 'r="2"');
+      case 'earl': return band + [80, 85, 90, 95, 100, 105, 110, 115, 120].map((x) => `<path d="M${x} ${y + 6} L${x} ${y - 2}" stroke="${GOLD}" stroke-width="1.2"/>${pearl(x, y - 4, 2)}`).join('');
+      case 'viscount': return band + [84, 95, 105, 116].map((x) => pearl(x, y + 2, 3)).join('');
+      case 'marquess': return band + [84, 100, 116].map(leaf).join('') + [92, 108].map((x) => pearl(x, y - 1, 1.8) + pearl(x - 2.4, y + 2.5, 1.8) + pearl(x + 2.4, y + 2.5, 1.8)).join('');
+      default: return band + [80, 90, 100, 110, 120].map(leaf).join('');
+    }
+  }
   switch (kind) {
     case 'baron': return band + [84, 95, 105, 116].map((x) => pearl(x)).join('');
     case 'viscount': return band + [82, 88, 94, 100, 106, 112, 118].map((x) => pearl(x, y + 3, 2)).join('');
@@ -115,16 +126,26 @@ function circlet(c, id) {
 }
 const badges = (list) => list.map((b, i) => {
   const x = 100 + (i - (list.length - 1) / 2) * 22;
+  if (b.viceRegal) return `<rect x="${x - 3}" y="156" width="6" height="7" fill="${b.colour}"/><circle cx="${x}" cy="169" r="7" fill="#1f2b6f" stroke="${GOLD}"/><text x="${x}" y="167" font-size="5" text-anchor="middle" fill="${GOLD}">♛</text><text x="${x}" y="173" font-size="5" text-anchor="middle" fill="${GOLD}">🦁</text>`;
   return `<rect x="${x - 3}" y="156" width="6" height="9" fill="${b.colour}"/><text x="${x}" y="173" font-size="${b.valour ? 12 : 11}" text-anchor="middle" fill="${b.valour ? '#b87333' : GOLD}" stroke="#5a3d0c" stroke-width=".4">${b.valour ? '✠' : '✦'}︎</text>`;
 }).join('');
 const motto = (text, id) => `<path d="M40 192 Q48 184 56 190 L144 190 Q152 184 160 192 Q152 206 144 202 L56 202 Q48 206 40 192 Z" fill="#f4ecd6" stroke="#8a7a5a"/><path id="motto${id}" d="M50 199 H150" fill="none"/><text font-size="8" font-style="italic" font-family="Georgia, serif" fill="#3a2e1a"><textPath href="#motto${id}" startOffset="50%" text-anchor="middle">${esc(text)}</textPath></text>`;
 
+/** A kamon: the family crest in a ring (the imperial chrysanthemum for the imperial house). */
+export function monSvg(a, { size = 140, title = 'Kamon' } = {}) {
+  const glyph = a.imperial ? '✿' : CHARGES[a.charge][0];
+  const petals = a.imperial ? Array.from({ length: 16 }, (_, i) => `<ellipse cx="100" cy="62" rx="7" ry="30" fill="${GOLD}" stroke="#7a5a10" stroke-width=".8" transform="rotate(${i * 22.5} 100 100)"/>`).join('') + `<circle cx="100" cy="100" r="14" fill="${GOLD}" stroke="#7a5a10"/>` : '';
+  const body = a.imperial ? petals : `<circle cx="100" cy="100" r="62" fill="#f4f1ea"/><circle cx="100" cy="100" r="62" fill="none" stroke="#1d1d1d" stroke-width="9"/><text x="100" y="104" font-size="64" text-anchor="middle" dominant-baseline="central" fill="#1d1d1d">${glyph}\uFE0E</text>`;
+  return `<svg class="arms-svg" viewBox="30 30 140 140" width="${size}" height="${size}" role="img" aria-label="${esc(title)}">${body}</svg>`;
+}
+
 /** The whole achievement. size: the drawn width in px. */
 export function armsSvg(a, { size = 180, title = 'Coat of arms' } = {}) {
+  if (a.mon) return monSvg(a, { size: Math.round(size * 0.8), title });
   const id = ++uid;
   // With a circlet round the shield, the coronet and helm sit higher, above it.
   const lift = a.circlet ? 10 : 0;
-  const top = a.hat ? hat(a.hat) : a.coronet && a.helm ? helm(a.helm, a, -14 - lift) + coronet(a.coronet, 58 - lift) : a.coronet ? coronet(a.coronet, 58 - lift) : helm(a.helm, a, -lift);
+  const top = a.hat ? hat(a.hat) : a.coronet && a.helm ? helm(a.helm, a, -14 - lift) + coronet(a.coronet, 58 - lift, a.continental) : a.coronet ? coronet(a.coronet, 58 - lift, a.continental) : helm(a.helm, a, -lift);
   const defs = `<defs><clipPath id="shield${id}"><path d="${SHIELD}"/></clipPath>${a.division !== 'plain' ? `<clipPath id="second${id}"><path d="${SECOND[a.division]}"/></clipPath><mask id="first${id}"><rect x="0" y="0" width="200" height="220" fill="#fff"/><path d="${SECOND[a.division]}" fill="#000"/></mask>` : ''}</defs>`;
   // The keys of Peter, gold and silver, crossed behind the shield.
   const key = (colour, flip) => `<g transform="${flip ? 'translate(200 0) scale(-1 1)' : ''}" stroke="${colour}" fill="none" stroke-width="4" stroke-linecap="round"><path d="M56 168 L146 60"/><circle cx="50" cy="175" r="8"/><path d="M140 67 L148 74 M133 75 L141 82"/></g>`;

@@ -486,6 +486,8 @@ export const PeopleEngine = {
       if (!heir) return null;
       // The heir takes after the family (or their other parent).
       if (kid) heir.character.skinTone = personTone(old, kid);
+      // Arms granted to a parent pass to their children (who carry the name).
+      if (old.arms?.granted && heir.character.lastName === old.character.lastName) heir.arms = { granted: { ...old.arms.granted, inherited: true } };
       engine.store.state = heir;
       engine.hydrate(heir);
       // The job they already had carries on (an inherited business can take its place).

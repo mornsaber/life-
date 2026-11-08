@@ -16,9 +16,19 @@
  *   behind      crossed swords for a general, anchors for an admiral, wings for an air marshal,
  *               batons for a field marshal
  *   motto       the family's, on a scroll
- * Everything is read from the life; nothing is stored.
+ * Who bears arms at all, and how you get them, depends on the country (AUTHORITIES): royals,
+ * peers and titled nobles inherit theirs; anyone else applies — a grant from a heraldic
+ * authority (the College of Arms, Canada's Heraldic Authority, Ireland's Chief Herald) for
+ * those who qualify, registration where anyone may (Belgium, South Africa, Spain), burgher arms
+ * recorded in a roll (Germany, the Low Countries, the Nordics, Central Europe), or simply
+ * assumed where no authority exists. Japan has no shields: every family has its kamon.
+ * Arms once granted pass to your heirs; bishops, cardinals and popes bear arms by their office.
+ *
+ * state.arms = { granted: { age, authority, how }, pending: { age, authority } } (only for those who applied)
  */
 import { RANKS } from './Peerage.js';
+import { repIn } from '../life/Reputation.js';
+import { priceLevel } from './Countries.js';
 
 export const TINCTURES = {
   or: { name: 'Or', hex: '#e2b52f', metal: true }, argent: { name: 'Argent', hex: '#f1f1ee', metal: true },
@@ -42,6 +52,62 @@ const SUPPORTERS = { lion: 'lions', horse: 'horses', tower: 'griffins', key: 'st
 const hash = (s) => { let h = 2166136261; for (const ch of String(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0; return h; };
 const pick = (h, list, salt) => list[(h >>> salt) % list.length];
 
+/* ------------------------------------------------------------------ */
+/* Who grants arms, where                                              */
+/* ------------------------------------------------------------------ */
+
+const isOfficer = (s) => [...(s.military?.history ?? []), s.military?.service].some((t) => t && t.track === 'officer');
+const degree = (s) => (s.education?.degrees ?? []).some((d) => ['bachelor', 'master', 'doctorate', 'professional'].includes(d.type));
+const peakGrade = (s) => [...(s.career?.history ?? []), s.career?.job].filter(Boolean).reduce((m, j) => Math.max(m, j.peakGrade ?? j.grade ?? 0), 0);
+const anyOffice = (s) => Boolean(s.politics?.office) || (s.politics?.history ?? []).length > 0;
+const anyOrder = (s) => (s.honors ?? []).some((h) => h.order || h.prefix || /Order|Medal of Freedom|Cross/.test(h.name ?? ''));
+/** The College of Arms' test: "eminence" — honours, a commission, public office, or a degree and real professional standing. */
+function eminent(s) {
+  if (anyOrder(s)) return 'your honours';
+  if (isOfficer(s)) return 'your commission as an officer';
+  if (anyOffice(s)) return 'public office';
+  if (degree(s) && peakGrade(s) >= 6) return 'a degree and professional standing';
+  return null;
+}
+/** Canada's test: a contribution to your community. */
+function contributed(s) {
+  return eminent(s) ?? (repIn(s, 'neighbourhood') >= 65 ? 'your standing in the community' : (s.civic?.volunteerYears ?? 0) >= 5 ? 'years of volunteering' : null);
+}
+const COLLEGE = { authority: 'the College of Arms', how: 'grant', cost: 9500, years: 1, test: eminent, bar: 'The heralds grant arms to people of standing: an honour, a commission, public office, or a degree with a senior career.' };
+const BURGHER = (roll) => ({ authority: roll, how: 'roll', cost: 180, years: 0, test: () => 'citizens may adopt arms of their own', bar: 'Anyone may adopt arms and record them in the roll.' });
+export const AUTHORITIES = {
+  GB: COLLEGE, AU: COLLEGE, NZ: COLLEGE, JM: COLLEGE, BS: COLLEGE, PG: COLLEGE, SB: COLLEGE, TO: COLLEGE, BZ: COLLEGE,
+  CA: { authority: 'the Canadian Heraldic Authority', how: 'grant', cost: 1500, years: 1, test: contributed, bar: 'Canadians who have contributed to their community may petition the Chief Herald of Canada.' },
+  IE: { authority: 'the Chief Herald of Ireland', how: 'grant', cost: 4000, years: 1, test: (s) => eminent(s) ?? (degree(s) ? 'your standing' : null), bar: 'The Chief Herald grants arms to people of Irish birth or descent with some standing.' },
+  ZA: { authority: 'the Bureau of Heraldry', how: 'register', cost: 120, years: 0, test: () => 'anyone may register arms', bar: 'Anyone may register arms with the Bureau of Heraldry.' },
+  BE: { authority: 'the heraldic council', how: 'register', cost: 400, years: 0, test: () => 'any citizen may have arms registered', bar: 'The Flemish and Walloon heraldic councils register arms for private citizens.' },
+  ES: { authority: 'the Cronista Rey de Armas', how: 'register', cost: 900, years: 0, test: () => 'any citizen may have arms certified', bar: 'The king of arms certifies arms for private families.' },
+  ...Object.fromEntries(['DE', 'AT', 'CH', 'NL', 'LU', 'DK', 'NO', 'SE', 'FI', 'IS', 'PL', 'CZ', 'SK', 'HU', 'EE', 'LV', 'LT', 'SI', 'HR'].map((cc) => [cc, BURGHER({ DE: 'the Deutsche Wappenrolle', AT: 'the Austrian heraldic roll', CH: 'the cantonal armorial', NL: 'the Centraal Bureau voor Genealogie', SE: 'the Swedish heraldic roll', DK: 'the Danish heraldic roll', NO: 'the Norwegian heraldic roll', FI: 'the Finnish heraldic roll', PL: 'the Polish heraldic roll' }[cc] ?? 'the national heraldic roll')])),
+  JP: { authority: null, how: 'mon', cost: 0, years: 0, test: () => 'every family has its kamon', bar: 'Japanese families bear a kamon — a family crest — rather than a shield.' },
+};
+const ASSUME = { authority: null, how: 'assume', cost: 0, years: 0, test: () => 'no authority regulates arms here', bar: 'No heraldic authority here: you may adopt arms of your own.' };
+export const authorityFor = (cc) => AUTHORITIES[cc] ?? ASSUME;
+
+/** Whether you bear arms, and why. */
+export function bearsArms(state) {
+  const cc = state.character.countryId ?? 'US';
+  if (state.royal) return { yes: true, why: 'the royal house' };
+  if (state.character.peerage) return { yes: true, why: 'your peerage' };
+  if (state.noble) return { yes: true, why: 'a titled family' };
+  if (state.arms?.granted) return { yes: true, why: state.arms.granted.inherited ? 'arms inherited from your parent' : `${state.arms.granted.how === 'assume' ? 'arms you adopted' : `arms ${state.arms.granted.how === 'grant' ? 'granted by' : 'recorded with'} ${state.arms.granted.authority}`}` };
+  if (state.holySee?.pope || state.holySee?.cardinal || state.community?.orders?.grade === 'bishop') return { yes: true, why: 'your office in the Church' };
+  if (authorityFor(cc).how === 'mon') return { yes: true, why: 'the family kamon' };
+  return { yes: false, why: null };
+}
+
+/** What applying would take, here and now. */
+export function applicationFor(state) {
+  const cc = state.character.countryId ?? 'US';
+  const a = authorityFor(cc);
+  const reason = a.test(state);
+  return { ...a, cost: Math.round(a.cost * priceLevel(state)), ok: Boolean(reason) && state.character.age >= 18, reason, pending: state.arms?.pending ?? null };
+}
+
 /** The family's shield, from the surname: the same for everyone who bears the name. */
 export function familyShield(lastName = 'Smith') {
   const h = hash(String(lastName).toLowerCase());
@@ -63,6 +129,8 @@ const firstColour = (ribbon, fallback) => (Array.isArray(ribbon) && ribbon[0] ? 
 const GRAND = /Garter|Thistle|Grand Cross|Grand Officer|Grand Cordon|Grand Collar|Großkreuz|Grand-Croix|Gran Cruz|Knight Grand|Dame Grand/i;
 const COMMANDER = /Knight Commander|Dame Commander|Knight Companion|Lady Companion|Commandeur|Commander of the|Komtur/i;
 const VALOUR = /Victoria Cross|Medal of Honor|George Cross|Param Vir Chakra|Cross of Valour/i;
+const DECORATION = /Cross|Star|Order|Medal for Gallantry|Military Medal|Conspicuous|Distinguished/i;
+const CAMPAIGN = /Service Medal|Campaign|Expedition|Commendation|Achievement|Good Conduct|Jubilee|Coronation|Long Service|Defence|Defense Service|Operational Service/i;
 /** Your peak military grade, branch and track. */
 function peakMilitary(s) {
   const tours = [...(s.military?.history ?? []), s.military?.service].filter(Boolean);
@@ -116,6 +184,8 @@ export function armsOf(state) {
     if (h === grand || badges.length >= 3) continue;
     if (VALOUR.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#8b0a1d'), valour: true });
     else if (orders.includes(h)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#6b4fa0') });
+    // Decorations may hang below the shield whatever your rank; campaign and service medals don't.
+    else if (h.source === 'military' && DECORATION.test(h.name) && !CAMPAIGN.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#5b2a86') });
   }
   if (badges.length) legend.push(`🏅 Hung below the shield: ${badges.map((b) => b.name.replace(/\s*\([^)]*\)/g, '')).join('; ')}.`);
 
@@ -123,8 +193,13 @@ export function armsOf(state) {
   const ledCountry = HEAD_OF_GOVERNMENT.test(state.politics?.office?.id ?? '') || (state.politics?.history ?? []).some((h) => HEAD_OF_GOVERNMENT.test(h.officeId ?? ''));
   const mil = peakMilitary(state);
   const fieldMarshal = (mil?.grade ?? 0) >= 9;
-  const supporters = royal || peer || noble || grand || ledCountry || fieldMarshal ? SUPPORTERS[shield.charge] ?? SUPPORTERS.default : null;
-  if (supporters) legend.push(`🦁 Supporters (${supporters}): ${royal ? 'royalty' : peer || noble ? 'a peer\'s right' : grand ? 'a Grand Cross' : ledCountry ? 'you led a government' : 'a field marshal'}.`);
+  const offices = [state.politics?.office?.id, ...(state.politics?.history ?? []).map((h) => h.officeId)].filter(Boolean);
+  const governorGeneral = offices.some((id) => /_gg$/.test(id));
+  const viceRegal = governorGeneral || offices.some((id) => /_lg$|_governor$/.test(id));
+  if (governorGeneral) badges.unshift({ name: 'The vice-regal badge', colour: '#1f2b6f', viceRegal: true });
+  badges.splice(3);
+  const supporters = royal || peer || noble || grand || ledCountry || fieldMarshal || viceRegal ? SUPPORTERS[shield.charge] ?? SUPPORTERS.default : null;
+  if (supporters) legend.push(`🦁 Supporters (${supporters}): ${royal ? 'royalty' : peer || noble ? 'a peer\'s right' : grand ? 'a Grand Cross' : viceRegal ? `you served as the Crown's representative${governorGeneral ? ', and the vice-regal badge hangs below' : ''}` : ledCountry ? 'you led a government' : 'a field marshal'}.`);
 
   // Behind the shield: senior command.
   let behind = null;
@@ -133,8 +208,15 @@ export function armsOf(state) {
     legend.push(`${{ batons: '🎖️ Crossed batons', anchors: '⚓ Crossed anchors', wings: '🪽 Wings', swords: '⚔️ Crossed swords' }[behind]} behind the shield: ${fieldMarshal ? 'a five-star rank' : 'flag rank'}.`);
   }
 
-  if (!legend.length) legend.push('🛡️ The family\'s arms. What you do with your life — titles, orders, high command, the Church — will add to them.');
-  return { ...shield, female, coronet, helm, hat, circlet, badges, supporters, behind, legend, blazon: blazonOf(shield) };
+  const cc = c.countryId ?? 'US';
+  const mon = authorityFor(cc).how === 'mon' && !hat;
+  const bears = bearsArms(state);
+  if (bears.yes) legend.unshift(`🛡️ You bear arms by ${bears.why}.`);
+  if (mon) legend.unshift(royal ? '🌼 The chrysanthemum: the imperial crest.' : '⭕ The family kamon, in place of a shield.');
+  if (legend.length === 1) legend.push('What you do with your life — titles, orders, decorations, high command, vice-regal office, the Church — will add to them.');
+  // Continental nobles wear their own coronets of rank (a count's nine pearls, not an earl's leaves).
+  const continental = Boolean(coronet && !royal && cc !== 'GB' && !['IE', 'AU', 'NZ', 'CA'].includes(cc));
+  return { ...shield, female, coronet, continental, helm, hat, circlet, badges, supporters, behind, legend, mon, imperial: mon && Boolean(royal), armigerous: bears.yes, blazon: mon ? 'A kamon' : blazonOf(shield) };
 }
 
 /** The shield in words: "Azure, a fess Or between three mullets Or"; "Per pale Or and Gules, a bend counterchanged". */
@@ -150,3 +232,40 @@ export function blazonOf(s) {
   if (s.ordinary === 'chief') return `${T(s.field)}, on a chief ${T(s.second)} ${charges} ${T(s.field)}`;
   return `${T(s.field)}, ${ORDINARIES[s.ordinary]} between ${charges} ${T(s.second)}`;
 }
+
+/* ------------------------------------------------------------------ */
+/* Applying for arms                                                   */
+/* ------------------------------------------------------------------ */
+
+export const HeraldryModule = {
+  id: 'heraldry',
+  order: 97,
+
+  onAgeUp(ctx) {
+    const { state } = ctx;
+    const p = state.arms?.pending;
+    if (!p || state.character.age - p.age < 1) return;
+    state.arms.granted = { age: state.character.age, authority: p.authority, how: 'grant' };
+    state.arms.pending = null;
+    ctx.log(`Letters patent from ${p.authority}: arms are granted to you and your descendants. ${familyShield(state.character.lastName).motto}.`, '🛡️', 'milestone');
+  },
+
+  actions: {
+    /** Apply for (or register, or adopt) arms. */
+    apply(ctx) {
+      const { state } = ctx;
+      if (bearsArms(state).yes) return ctx.toast('You already bear arms.', 'info');
+      const app = applicationFor(state);
+      if (app.pending) return ctx.toast(`Your petition is with ${app.pending.authority}.`, 'info');
+      if (!app.ok) return ctx.toast(state.character.age < 18 ? 'Arms are granted to adults.' : app.bar, 'warn');
+      if (app.cost && !ctx.spend(app.cost, app.how === 'grant' ? 'Fees for a grant of arms' : 'Registering arms', { credit: true })) return ctx.toast('You can\'t afford the fees.', 'warn');
+      state.arms ??= {};
+      if (app.how === 'grant') {
+        state.arms.pending = { age: state.character.age, authority: app.authority };
+        return ctx.log(`You petitioned ${app.authority} for a grant of arms, on the strength of ${app.reason}. The heralds will design them with you; letters patent take about a year.`, '📜', 'info');
+      }
+      state.arms.granted = { age: state.character.age, authority: app.authority, how: app.how };
+      return ctx.log(app.how === 'assume' ? 'With no heraldic authority to ask, you adopted arms of your own and had them painted.' : `Your arms were recorded with ${app.authority}.`, '🛡️', 'good');
+    },
+  },
+};
