@@ -27,6 +27,7 @@ import { examStatus, adjudicate, backgroundIssues, CLEARANCES } from '../publics
 import { educationFields, schoolPrestige } from '../education/Catalog.js';
 import { networkBonus } from '../campus/Network.js';
 import { lateralStep } from './SeniorMoves.js';
+import { examRequired } from '../world/Eras.js';
 
 export const APPLICATIONS_PER_YEAR = 3;
 
@@ -212,7 +213,7 @@ export function candidateBonus(state, profession) {
   bonus += networkBonus(state, profession);
   bonus += Math.min(0.12, valuedCredentials(profession).filter((c) => hasCredential(state, c)).length * 0.04);
   bonus += Math.min(0.08, prestige(state) / 800);
-  if (profession.exam) {
+  if (profession.exam && examRequired(state, profession.exam)) {
     const exam = examStatus(state, profession.exam);
     bonus += clamp((exam.rankedScore - 75) / 100, -0.05, 0.2);
   }

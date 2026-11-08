@@ -395,6 +395,21 @@ export const periodDollars = (state, amount) => (yearNow(state) < PRESENT ? Math
 /* Licences and certifications: when each existed (loosely, US dates)  */
 /* ------------------------------------------------------------------ */
 
+/**
+ * A credential can exist years before employers ask for it: driving licences were issued from the
+ * 1910s, but nobody hired a policeman, a postman or a lorry driver on condition of one until the
+ * licence was universal. Before these years a job doesn't require it.
+ */
+const REQUIRED_FROM = { driverLicense: 1950, learnerPermit: 1950, motorcycle: 1960 };
+/** Does a job in this year require this credential? */
+export const credentialRequired = (state, id) => credentialExists(state, id) && !(REQUIRED_FROM[id] > yearNow(state));
+/** Civil-service entrance exams: Britain from 1870 (Northcote–Trevelyan), the US federal service from 1883 (Pendleton), cities and states from about 1900. Before, jobs went by patronage. */
+const EXAM_FROM = { municipal: 1900, publicSafety: 1900, state: 1905, federal: 1883, foreignService: 1924 };
+export const examRequired = (state, examId) => {
+  const y = yearNow(state);
+  if ((state.character.countryId ?? 'US') === 'GB' && examId !== 'foreignService') return y >= 1870;
+  return !(EXAM_FROM[examId] > y);
+};
 export const CREDENTIAL_FROM = {
   learnerPermit: 1930, driverLicense: 1910, motorcycle: 1920, cdlA: 1986, cdlB: 1986, passengerEndorsement: 1986, schoolBusEndorsement: 1986, hazmatEndorsement: 1986,
   studentPilot: 1927, privatePilot: 1927, instrumentRating: 1932, commercialPilot: 1927, cfi: 1930, atp: 1938, firstClassMedical: 1926, typeRating: 1960,

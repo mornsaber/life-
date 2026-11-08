@@ -379,6 +379,21 @@ const tests = {
     }
     assert.deepEqual(seen, []);
   },
+  'no job asks for a licence or an exam before its time'() {
+    for (const [y, prof] of [[1850, 'police'], [1925, 'police'], [1925, 'postal'], [1870, 'municipalAdmin']]) {
+      const { engine, state } = life({ countryId: 'US', startYear: y - 30 }, 2);
+      state.character.age = 30;
+      state.stats.smarts = 90;
+      engine.hydrate(state);
+      const r = applicationEligibility(state, prof).reason ?? '';
+      // Exams existed by 1925 (and can be sat); a driving licence wasn't asked of a policeman or a postman.
+      assert.doesNotMatch(r, y < 1900 ? /Driver's License|Civil Service Exam|Entrance Exam/ : /Driver's License/, `${prof} in ${y}: ${r}`);
+    }
+    const { engine, state } = life({ countryId: 'US', startYear: 1930 }, 2);
+    state.character.age = 30;
+    engine.hydrate(state);
+    assert.match(applicationEligibility(state, 'police').reason ?? '', /Exam|Needs|License/, 'by 1960 the police want both');
+  },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);
     assert.equal(colonyHere(state)?.ruler, 'ES');

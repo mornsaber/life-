@@ -56,7 +56,7 @@ import { ruralHiring } from '../life/RuralLife.js';
 import { jobSkills, skill } from '../life/Skills.js';
 import { workRepBonus } from '../life/Reputation.js';
 import { automationRisk } from '../world/Eras.js';
-import { periodTitle } from '../world/Eras.js';
+import { periodTitle, examRequired } from '../world/Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -201,7 +201,7 @@ export function applicationEligibility(state, professionId, { anywhere = false }
   if (state.career.job?.professionId === professionId) return { ok: false, reason: 'Already in this field' };
   const entry = checkRequirements(state, profession.entry);
   if (!entry.ok) return { ok: false, reason: `Needs ${entry.missing.join(', ')}` };
-  if (profession.exam) {
+  if (profession.exam && examRequired(state, profession.exam)) {
     const exam = examStatus(state, profession.exam);
     if (!exam.passed) return { ok: false, reason: `Pass the ${EXAMS[profession.exam].name}` };
   }
