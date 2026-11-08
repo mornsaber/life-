@@ -3,8 +3,12 @@
  * below stairs, at the typing pool and the switchboard, on the docks and the milk round. Each
  * opens and closes with its era (`fromYear`/`untilYear`, world/Eras.js): the job board shows
  * them only while they exist, and lives started today never see them.
+ *
+ * Each has a full ladder, from the bottom of the trade to the top of the firm that ran it.
  */
 const OLD = { sector: 'private', sizes: { small: 2, medium: 3, large: 3, enterprise: 2 }, minAge: 14, union: { chance: 0.6, name: 'the union', strike: true }, entry: {} };
+const SUP = (reports, extra = {}) => ({ abilities: ['supervise'], reports, ...extra });
+const MGMT = (reports, extra = {}) => ({ track: 'mgmt', abilities: ['supervise', 'budget', 'delegate'], reports, ...extra });
 
 const careers = {
   coalMining: {
@@ -12,12 +16,16 @@ const careers = {
     employers: ['the Colliery Company', 'the National Coal Board', 'Valley Pit No. 3', 'Deep Navigation Colliery'],
     union: { chance: 0.95, name: 'the Mineworkers\' Union', strike: true },
     ladder: [
-      ['pitBoy', 'Pit Boy', 1, { years: 2 }],
-      ['haulier', 'Haulier', 2],
-      ['collier', 'Collier (Face Worker)', 3],
-      ['deputy', 'Pit Deputy', 4, { abilities: ['supervise'], reports: 30 }],
-      ['overman', 'Overman', 5, { abilities: ['supervise'], reports: 120 }],
-      ['manager', 'Colliery Manager', 7, { track: 'mgmt', abilities: ['supervise', 'budget', 'hire'], reports: 900 }],
+      ['pitBoy', 'Pit Boy (Trapper)', 1, { years: 2 }],
+      ['haulier', 'Haulier', 2, { years: 2 }],
+      ['filler', 'Filler', 2, { years: 2 }],
+      ['collier', 'Collier (Face Worker)', 3, { years: 3 }],
+      ['shotfirer', 'Shotfirer', 4, { years: 2 }],
+      ['deputy', 'Pit Deputy', 4, SUP(30, { years: 3 })],
+      ['overman', 'Overman', 5, SUP(120, { years: 3 })],
+      ['undermanager', 'Under-Manager', 6, SUP(400, { years: 3 })],
+      ['manager', 'Colliery Manager', 7, MGMT(900, { years: 4 })],
+      ['agent', 'Area General Manager', 9, MGMT(6000)],
     ],
   },
   millWork: {
@@ -25,10 +33,14 @@ const careers = {
     employers: ['Riverside Cotton Mill', 'the Steelworks', 'Albion Spinning Company', 'the Brass Foundry'],
     ladder: [
       ['halfTimer', 'Half-Timer (Apprentice)', 1, { years: 2 }],
-      ['operative', 'Mill Operative', 2],
-      ['skilled', 'Skilled Hand (Weaver / Moulder)', 3],
-      ['overlooker', 'Overlooker', 4, { abilities: ['supervise'], reports: 25 }],
-      ['manager', 'Mill Manager', 6, { track: 'mgmt', abilities: ['supervise', 'budget', 'hire'], reports: 400 }],
+      ['piecer', 'Piecer', 1, { years: 2 }],
+      ['operative', 'Mill Operative', 2, { years: 2 }],
+      ['skilled', 'Skilled Hand (Weaver / Moulder)', 3, { years: 3 }],
+      ['tackler', 'Tackler (Loom Fixer)', 4, { years: 3 }],
+      ['overlooker', 'Overlooker', 4, SUP(25, { years: 3 })],
+      ['foreman', 'Shed Foreman', 5, SUP(120, { years: 3 })],
+      ['manager', 'Mill Manager', 6, MGMT(400, { years: 4 })],
+      ['director', 'Managing Director of the Mill', 8, MGMT(2500)],
     ],
   },
   domesticService: {
@@ -37,29 +49,40 @@ const careers = {
     employers: ['a great house in the country', 'a townhouse in the best square', 'a doctor\'s household', 'a merchant\'s family'],
     ladder: [
       ['scullery', 'Scullery Maid / Hall Boy', 1, { years: 2 }],
-      ['housemaid', 'Housemaid / Footman', 2],
-      ['lady', 'Lady\'s Maid / Valet', 3],
-      ['housekeeper', 'Housekeeper / Butler', 5, { abilities: ['supervise'], reports: 15 }],
+      ['kitchen', 'Kitchen Maid / Boot Boy', 1, { years: 2 }],
+      ['housemaid', 'Housemaid / Footman', 2, { years: 2 }],
+      ['headHousemaid', 'Head Housemaid / First Footman', 3, SUP(4, { years: 3 })],
+      ['lady', 'Lady\'s Maid / Valet', 3, { years: 3 }],
+      ['cook', 'Cook / Under-Butler', 4, SUP(6, { years: 3 })],
+      ['housekeeper', 'Housekeeper / Butler', 5, SUP(15, { years: 4 })],
+      ['steward', 'House Steward', 6, MGMT(40)],
     ],
   },
   typingPool: {
     ...OLD, id: 'typingPool', name: 'Typing Pool & Secretarial', icon: '⌨️', payMultiplier: 0.7, fromYear: 1900, untilYear: 1995, minAge: 16, union: null,
     employers: ['the Insurance Office', 'the Ministry', 'Consolidated Shipping', 'the Bank\'s head office'],
     ladder: [
+      ['messenger', 'Office Junior', 1, { years: 1 }],
       ['junior', 'Junior Typist', 1, { years: 1 }],
-      ['typist', 'Shorthand Typist', 2],
-      ['secretary', 'Secretary', 3],
-      ['private', 'Private Secretary to the Chairman', 4],
-      ['supervisor', 'Typing Pool Supervisor', 4, { abilities: ['supervise'], reports: 30 }],
+      ['typist', 'Shorthand Typist', 2, { years: 2 }],
+      ['senior', 'Senior Typist', 3, { years: 2 }],
+      ['secretary', 'Secretary', 3, { years: 3 }],
+      ['supervisor', 'Typing Pool Supervisor', 4, SUP(30, { years: 3 })],
+      ['private', 'Private Secretary to the Chairman', 5, { years: 3 }],
+      ['officeManager', 'Office Manager', 6, MGMT(120)],
     ],
   },
   switchboard: {
     ...OLD, id: 'switchboard', name: 'Telephone Exchange', icon: '☎️', payMultiplier: 0.7, fromYear: 1900, untilYear: 1980, minAge: 16,
     employers: ['the Telephone Exchange', 'the Post Office Telephones', 'the Bell Telephone Company'],
     ladder: [
-      ['operator', 'Switchboard Operator', 1, { years: 1 }],
-      ['senior', 'Senior Operator', 2],
-      ['supervisor', 'Exchange Supervisor', 4, { abilities: ['supervise'], reports: 40 }],
+      ['learner', 'Learner Operator', 1, { years: 1 }],
+      ['operator', 'Switchboard Operator', 1, { years: 2 }],
+      ['senior', 'Senior Operator', 2, { years: 2 }],
+      ['monitor', 'Monitor', 3, SUP(10, { years: 2 })],
+      ['supervisor', 'Exchange Supervisor', 4, SUP(40, { years: 3 })],
+      ['chief', 'Chief Operator', 5, SUP(150, { years: 3 })],
+      ['traffic', 'District Traffic Superintendent', 6, MGMT(600)],
     ],
   },
   docks: {
@@ -68,9 +91,13 @@ const careers = {
     union: { chance: 0.9, name: 'the Dockers\' Union', strike: true },
     ladder: [
       ['casual', 'Casual Docker', 1, { years: 2 }],
-      ['docker', 'Registered Docker', 2],
-      ['ganger', 'Ganger', 3, { abilities: ['supervise'], reports: 12 }],
-      ['foreman', 'Dock Foreman', 4, { abilities: ['supervise'], reports: 60 }],
+      ['docker', 'Registered Docker', 2, { years: 2 }],
+      ['stevedore', 'Stevedore', 3, { years: 2 }],
+      ['ganger', 'Ganger', 3, SUP(12, { years: 3 })],
+      ['foreman', 'Dock Foreman', 4, SUP(60, { years: 3 })],
+      ['superintendent', 'Berth Superintendent', 5, SUP(200, { years: 3 })],
+      ['dockmaster', 'Dock Master', 6, MGMT(800, { years: 4 })],
+      ['portManager', 'Port Manager', 8, MGMT(4000)],
     ],
   },
   milkRound: {
@@ -78,8 +105,12 @@ const careers = {
     employers: ['the Co-operative Dairy', 'United Dairies', 'Meadowbrook Farm Dairy'],
     ladder: [
       ['boy', 'Milk Boy', 1, { years: 1 }],
-      ['roundsman', 'Roundsman', 2],
-      ['depot', 'Depot Manager', 4, { abilities: ['supervise'], reports: 20 }],
+      ['roundsman', 'Roundsman', 2, { years: 2 }],
+      ['senior', 'Senior Roundsman', 2, { years: 3 }],
+      ['inspector', 'Rounds Inspector', 3, SUP(12, { years: 3 })],
+      ['depot', 'Depot Manager', 4, SUP(20, { years: 3 })],
+      ['district', 'District Manager', 5, MGMT(150, { years: 4 })],
+      ['director', 'Dairy Director', 7, MGMT(1000)],
     ],
   },
   steamRailway: {
@@ -88,50 +119,98 @@ const careers = {
     union: { chance: 0.9, name: 'the Railwaymen\'s Union', strike: true },
     ladder: [
       ['cleaner', 'Engine Cleaner', 1, { years: 2 }],
+      ['passed', 'Passed Cleaner', 2, { years: 2 }],
       ['fireman', 'Fireman (Stoker)', 2, { years: 3 }],
-      ['driver', 'Engine Driver', 4],
-      ['inspector', 'Locomotive Inspector', 5, { abilities: ['supervise'], reports: 40 }],
+      ['passedFireman', 'Passed Fireman', 3, { years: 2 }],
+      ['driver', 'Engine Driver', 4, { years: 3 }],
+      ['topLink', 'Top-Link Driver (Expresses)', 5, { years: 3 }],
+      ['inspector', 'Locomotive Inspector', 5, SUP(40, { years: 3 })],
+      ['shedMaster', 'Shed Master', 6, MGMT(300, { years: 4 })],
+      ['superintendent', 'Locomotive Superintendent', 8, MGMT(4000)],
     ],
   },
   travellingSales: {
     ...OLD, id: 'travellingSales', name: 'Travelling Salesman', icon: '🧳', payMultiplier: 0.8, untilYear: 1985, minAge: 18, union: null,
     employers: ['the Encyclopaedia Company', 'Fuller Brush', 'the Hoover Company', 'Imperial Sewing Machines'],
     ladder: [
-      ['rep', 'Door-to-Door Rep', 1, { years: 1 }],
-      ['traveller', 'Commercial Traveller', 2],
-      ['area', 'Area Manager', 4, { abilities: ['supervise'], reports: 15 }],
-      ['sales', 'Sales Director', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 120 }],
+      ['canvasser', 'Canvasser', 1, { years: 1 }],
+      ['rep', 'Door-to-Door Rep', 1, { years: 2 }],
+      ['traveller', 'Commercial Traveller', 2, { years: 2 }],
+      ['senior', 'Senior Traveller (Best Territory)', 3, { years: 3 }],
+      ['area', 'Area Manager', 4, SUP(15, { years: 3 })],
+      ['regional', 'Regional Sales Manager', 5, SUP(60, { years: 3 })],
+      ['sales', 'Sales Director', 7, MGMT(400)],
     ],
   },
   blacksmith: {
     ...OLD, id: 'blacksmith', name: 'The Forge', icon: '⚒️', payMultiplier: 0.7, untilYear: 1930, minAge: 13, union: null, sizes: { small: 4, medium: 1 },
     employers: ['the village forge', 'the coaching inn\'s smithy', 'the ironworks'],
-    ladder: [['apprentice', 'Apprentice Smith', 1, { years: 4 }], ['journeyman', 'Journeyman Blacksmith', 2], ['master', 'Master Blacksmith', 4, { abilities: ['supervise'], reports: 4 }], ['farrier', 'Master Farrier', 5]],
+    ladder: [
+      ['striker', 'Striker', 1, { years: 2 }],
+      ['apprentice', 'Apprentice Smith', 1, { years: 4 }],
+      ['journeyman', 'Journeyman Blacksmith', 2, { years: 3 }],
+      ['farrier', 'Farrier', 3, { years: 3 }],
+      ['master', 'Master Blacksmith', 4, SUP(4, { years: 3 })],
+      ['masterFarrier', 'Master Farrier', 5, SUP(6, { years: 3 })],
+      ['ironmaster', 'Ironmaster', 7, MGMT(200)],
+    ],
   },
   telegraph: {
     ...OLD, id: 'telegraph', name: 'The Telegraph Office', icon: '📠', payMultiplier: 0.8, fromYear: 1845, untilYear: 1970, minAge: 14,
     employers: ['Western Union', 'the General Post Office telegraphs', 'the Railway Telegraph'],
-    ladder: [['messenger', 'Telegraph Messenger Boy', 1, { years: 2 }], ['operator', 'Telegraph Operator', 2], ['chief', 'Chief Operator', 4, { abilities: ['supervise'], reports: 20 }], ['superintendent', 'Telegraph Superintendent', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 200 }]],
+    ladder: [
+      ['messenger', 'Telegraph Messenger Boy', 1, { years: 2 }],
+      ['learner', 'Learner Operator', 1, { years: 1 }],
+      ['operator', 'Telegraph Operator', 2, { years: 2 }],
+      ['first', 'First-Class Operator', 3, { years: 3 }],
+      ['chief', 'Chief Operator', 4, SUP(20, { years: 3 })],
+      ['manager', 'Office Manager', 5, SUP(60, { years: 3 })],
+      ['superintendent', 'Telegraph Superintendent', 6, MGMT(200, { years: 4 })],
+      ['general', 'General Superintendent', 8, MGMT(2000)],
+    ],
   },
   coachman: {
     ...OLD, id: 'coachman', name: 'Coaching & Carriage', icon: '🐎', payMultiplier: 0.6, untilYear: 1915, minAge: 13, union: null,
     employers: ['the Royal Mail coaches', 'the coaching inn', 'a great house\'s stables'],
-    ladder: [['stableboy', 'Stable Boy', 1, { years: 2 }], ['groom', 'Groom', 2], ['coachman', 'Coachman', 3], ['head', 'Head Coachman', 4, { abilities: ['supervise'], reports: 10 }]],
+    ladder: [
+      ['stableboy', 'Stable Boy', 1, { years: 2 }],
+      ['ostler', 'Ostler', 1, { years: 2 }],
+      ['groom', 'Groom', 2, { years: 2 }],
+      ['postilion', 'Postilion', 2, { years: 2 }],
+      ['coachman', 'Coachman', 3, { years: 3 }],
+      ['guard', 'Mail Guard', 3, { years: 3 }],
+      ['head', 'Head Coachman', 4, SUP(10, { years: 3 })],
+      ['proprietor', 'Coach Proprietor', 6, MGMT(80)],
+    ],
   },
   whaling: {
     ...OLD, id: 'whaling', name: 'Whaling', icon: '🐋', payMultiplier: 0.7, untilYear: 1925, minAge: 14, cyclical: 1.4, union: null,
     employers: ['a Nantucket whaler', 'a New Bedford whaling ship', 'the Dundee whaling fleet'],
-    ladder: [['greenhand', 'Greenhand', 1, { years: 1 }], ['seaman', 'Able Seaman', 2], ['harpooner', 'Harpooner', 3], ['mate', 'Mate', 4, { abilities: ['supervise'], reports: 12 }], ['captain', 'Whaling Captain', 6, { abilities: ['supervise', 'budget'], reports: 30 }]],
+    ladder: [
+      ['greenhand', 'Greenhand', 1, { years: 1 }],
+      ['seaman', 'Ordinary Seaman', 1, { years: 2 }],
+      ['able', 'Able Seaman', 2, { years: 2 }],
+      ['boatsteerer', 'Boatsteerer', 3, { years: 2 }],
+      ['harpooner', 'Harpooner', 3, { years: 3 }],
+      ['thirdMate', 'Third Mate', 4, SUP(6, { years: 2 })],
+      ['mate', 'First Mate', 5, SUP(12, { years: 3 })],
+      ['captain', 'Whaling Captain', 6, SUP(30, { abilities: ['supervise', 'budget'], years: 4 })],
+      ['agent', 'Whaling Agent', 8, MGMT(300)],
+    ],
   },
   lamplighter: {
     ...OLD, id: 'lamplighter', name: 'Lamplighter & Gas Works', icon: '🏮', payMultiplier: 0.6, untilYear: 1935, minAge: 14, union: null,
     employers: ['the Gas Light and Coke Company', 'the Corporation Gas Works'],
     ladder: [
       ['lamplighter', 'Lamplighter', 1, { years: 2 }],
-      ['fitter', 'Gas Fitter', 2],
-      ['foreman', 'Gas Works Foreman', 4, { abilities: ['supervise'], reports: 30 }],
+      ['stoker', 'Retort Stoker', 2, { years: 2 }],
+      ['fitter', 'Gas Fitter', 2, { years: 3 }],
+      ['inspector', 'Lamp Inspector', 3, SUP(20, { years: 3 })],
+      ['foreman', 'Gas Works Foreman', 4, SUP(30, { years: 3 })],
+      ['engineer', 'Gas Engineer', 5, { years: 3 }],
+      ['manager', 'Gas Works Manager', 7, MGMT(400)],
     ],
   },
 };
 
-export default { id: 'careers-period', version: 1, careers };
+export default { id: 'careers-period', version: 2, careers };

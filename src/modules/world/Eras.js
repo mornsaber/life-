@@ -300,6 +300,10 @@ export function colonyStage(state, cc) {
   return null;
 }
 export const colonyHere = (state) => colonyStage(state, state.character.countryId ?? 'US');
+/** The territories a country rules in the year being played. */
+export const empireColonies = (state, cc) => (state?.era ? Object.keys(COLONIES).filter((id) => id !== cc && colonyStage(state, id)?.ruler === cc) : []);
+/** Colonial work is open: you live in a colony, or your country still rules one. */
+export const colonialWorkOpen = (state) => Boolean(colonyHere(state)) || empireColonies(state, state.character.countryId ?? 'US').length > 0;
 
 /** The planned end year of a stage (event-ended stages: when that event happened, else never). */
 export const stageEnd = (state, st) => (typeof st.until === 'number' ? st.until : state.era?.events?.[st.until]?.year ?? Infinity);
@@ -483,7 +487,7 @@ export function eraHidden(state, p) {
   if (from && y < from) return true;
   if (p.untilYear && y >= p.untilYear) return true;
   if (p.futureNeeds && !futureOn(state, p.futureNeeds)) return true;
-  if (p.colonial && !colonyHere(state)) return true;
+  if (p.colonial && !colonialWorkOpen(state)) return true;
   return false;
 }
 

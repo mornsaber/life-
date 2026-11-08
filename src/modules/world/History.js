@@ -33,7 +33,8 @@ import { PRESENT, PERIOD_THRONES, PERIOD_THRONE_YEARS, EVENT_THRONES, REPUBLIC_G
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
-import { periodCountryName, setEraState } from './Eras.js';
+import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
+import { PROFESSIONS } from '../career/JobTrees.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -503,7 +504,7 @@ function independence(ctx, cc, st, rec, rng) {
   }
   // The colonial service is wound up: compensation for loss of career (as the British paid it).
   const job = state.career?.job;
-  if (job?.professionId === 'colonialService') {
+  if (job && PROFESSIONS[job.professionId]?.colonial && (state.character.countryId ?? 'US') === cc) {
     const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
     leaveJob(ctx, 'The colonial service was wound up at independence');
     ctx.earn(comp, 'Compensation for loss of career');
@@ -604,6 +605,17 @@ function tradeEnds(ctx) {
   if (!sideRng(state, 0x7d).chance(0.35)) return;
   leaveJob(ctx, 'The trade died out');
   ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
+}
+
+/** The last territory goes: an empire's colonial services are wound up for the people it posted out. */
+function endOfEmpire(ctx) {
+  const { state } = ctx;
+  const job = state.career?.job;
+  if (!job || !PROFESSIONS[job.professionId]?.colonial || colonialWorkOpen(state)) return;
+  const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
+  leaveJob(ctx, 'The empire\'s last territories became independent');
+  ctx.earn(comp, 'Compensation for loss of career');
+  ctx.log(`With the last of the colonies gone, the service was wound up. You came home with $${comp.toLocaleString()} in compensation for loss of career.`, '🏛️', 'warn');
 }
 
 /** Thrones without a history event of their own rise and fall on their dates: Napoleon III in 1852, the Ottoman sultanate in 1922, Spain's republics. */
@@ -724,6 +736,7 @@ export const HistoryModule = {
     leaveSchoolPrompt(ctx);
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     thronesOnTheirDates(ctx);
+    endOfEmpire(ctx);
     sync(state);
     governmentChange(ctx);
     movementPrompt(ctx);

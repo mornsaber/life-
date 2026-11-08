@@ -15,10 +15,15 @@ const careers = {
     entry: { education: { level: 'bachelor' } },
     ladder: [
       ['annotator', 'AI Trainer', 2, { years: 2 }],
-      ['operator', 'AI Systems Operator', 3, { entry: true }],
-      ['auditor', 'AI Safety Auditor', 5],
-      ['lead', 'AI Operations Lead', 6, { abilities: ['supervise'], reports: 20 }],
-      ['head', 'Head of AI Oversight', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'policy'], reports: 200 }],
+      ['seniorAnnotator', 'Senior AI Trainer', 2, { years: 2 }],
+      ['operator', 'AI Systems Operator', 3, { entry: true, years: 2 }],
+      ['seniorOperator', 'Senior AI Systems Operator', 4, { years: 2 }],
+      ['auditor', 'AI Safety Auditor', 5, { years: 3 }],
+      ['principalAuditor', 'Principal AI Auditor', 6, { years: 3 }],
+      ['lead', 'AI Operations Lead', 6, { abilities: ['supervise'], reports: 20, years: 3 }],
+      ['manager', 'AI Operations Manager', 7, { abilities: ['supervise', 'budget'], reports: 60, years: 3 }],
+      ['head', 'Head of AI Oversight', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'policy'], reports: 200, years: 3 }],
+      ['cao', 'Chief AI Officer', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 1500 }],
     ],
   },
   spaceIndustry: {
@@ -28,12 +33,17 @@ const careers = {
     entry: { education: { level: 'bachelor' } },
     ladder: [
       ['tech', 'Launch Technician', 2, { years: 2 }],
-      ['engineer', 'Orbital Systems Engineer', 4, { entry: true }],
-      ['astronaut', 'Commercial Astronaut', 6],
-      ['commander', 'Mission Commander', 7, { abilities: ['supervise'], reports: 12 }],
-      ['director', 'Director of Flight Operations', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'policy'], reports: 300 }],
+      ['seniorTech', 'Senior Launch Technician', 3, { years: 2 }],
+      ['engineer', 'Orbital Systems Engineer', 4, { entry: true, years: 2 }],
+      ['seniorEngineer', 'Senior Orbital Engineer', 5, { years: 3 }],
+      ['candidate', 'Astronaut Candidate', 5, { years: 2 }],
+      ['astronaut', 'Commercial Astronaut', 6, { years: 3 }],
+      ['commander', 'Mission Commander', 7, { abilities: ['supervise'], reports: 12, years: 3 }],
+      ['chiefAstronaut', 'Chief Astronaut', 8, { abilities: ['supervise', 'budget'], reports: 60, years: 3 }],
+      ['director', 'Director of Flight Operations', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'policy'], reports: 300, years: 3 }],
+      ['vp', 'Vice President of Spaceflight', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 2000 }],
     ],
   },
 };
 
-export default { id: 'careers-future', version: 1, careers };
+export default { id: 'careers-future', version: 2, careers };
