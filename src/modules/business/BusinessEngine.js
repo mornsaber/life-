@@ -46,6 +46,10 @@ import { FleetActions, FleetResolvers, opsTick, payEquipmentLoan, ensureOps } fr
 import { makeOffers, OPERATIONS } from './Operations.js';
 import { charge } from './TaxBook.js';
 import { sideRng } from '../org/Organizations.js';
+import { deck } from '../content/decks.js';
+
+/** Everyday business events (content/packs/business-events.js). */
+export const BUSINESS_EVENTS = deck('business.general');
 import {
   grantOpeningLicenses, grandfatherLicenses, licensesTick, suspendLicense, applyForLicense, openingLicenseFees, BUSINESS_LICENSES, requiredLicenses,
 } from './BusinessLicenses.js';
@@ -371,39 +375,6 @@ const bump = (obj, key, d) => {
   obj[key] = Math.round(clamp(obj[key] + d, 0, 100));
 };
 
-export const BUSINESS_EVENTS = [
-  { id: 'bigClient', title: 'A Big Contract', text: 'A large client wants to sign a contract that would stretch your capacity to the limit.', options: [
-    { id: 'accept', label: '✍️ Sign it', apply: (ctx, b) => { b.cash += Math.round((b.lastYear?.revenue ?? 50000) * 0.12); bump(b, 'quality', -5); bump(b.staff, 'morale', -6); return 'You signed. The money is great; the team is exhausted.'; } },
-    { id: 'decline', label: '🙅 Stay the size you are', apply: (ctx, b) => { bump(b.staff, 'morale', 3); return 'You passed. The team appreciated it.'; } },
-  ] },
-  { id: 'poached', title: 'Poaching Attempt', text: 'A competitor offered your best employee a raise to jump ship.', minStaff: 2, options: [
-    { id: 'match', label: '💵 Match the offer', apply: (ctx, b) => { b.staff.costPremium = Math.round((b.staff.costPremium + 0.02) * 100) / 100; bump(b.staff, 'morale', 4); return 'You matched it. Your best person stayed.'; } },
-    { id: 'let', label: '👋 Let them go', apply: (ctx, b) => { bump(b.staff, 'productivity', -8); bump(b, 'quality', -4); return 'They left — and took a couple of clients.'; } },
-  ] },
-  { id: 'lawsuit', title: 'Served With a Lawsuit', text: 'A customer is suing over an injury on your premises.', options: [
-    { id: 'settle', label: '🤝 Settle', apply: (ctx, b) => { const c = ctx.rng.int(15000, 60000); charge(b, c); return `You settled for ${money(c)}.`; } },
-    { id: 'fight', label: '⚖️ Fight it in court', apply: (ctx, b) => { if (ctx.rng.chance(0.6)) { charge(b, 20000); return 'You won, after $20,000 in legal fees.'; } const c = ctx.rng.int(60000, 200000); charge(b, c); bump(b, 'reputation', -6); return `You lost: a ${money(c)} judgment, and it made the local news.`; } },
-  ] },
-  { id: 'competitor', title: 'New Competition', text: 'A well-funded competitor opened nearby.', options: [
-    { id: 'price', label: '🏷️ Cut prices', apply: (ctx, b) => { charge(b, (b.lastYear?.revenue ?? 50000) * 0.05); bump(b, 'reputation', 3); return 'You cut prices and kept your customers — at a cost.'; } },
-    { id: 'quality', label: '✨ Out-serve them', apply: (ctx, b) => { if (ctx.state.stats.smarts + ctx.rng.int(-20, 20) > 60) { bump(b, 'quality', 6); return 'You doubled down on quality and customers noticed.'; } bump(b, 'reputation', -4); return 'You tried to out-serve them. They outspent you.'; } },
-    { id: 'ignore', label: '🙈 Ignore them', apply: (ctx, b) => { bump(b, 'reputation', -6); return 'You ignored them. Some regulars drifted away.'; } },
-  ] },
-  { id: 'supplier', title: 'Supplier Price Hike', text: 'Your main supplier raised prices 15%.', notStartup: true, options: [
-    { id: 'absorb', label: '🧾 Absorb it', apply: (ctx, b) => { charge(b, (b.lastYear?.cogs ?? 20000) * 0.15); return 'You absorbed the increase.'; } },
-    { id: 'switch', label: '🔄 Find a cheaper supplier', apply: (ctx, b) => { bump(b, 'quality', -5); return 'The new supplier is cheaper — and worse.'; } },
-    { id: 'raise', label: '📈 Raise your prices', apply: (ctx, b) => { bump(b, 'reputation', -3); return 'You passed it on to customers. Some grumbled.'; } },
-  ] },
-  { id: 'hiring', title: 'Hiring Decision', text: 'You have one open position and three finalists.', minStaff: 3, duty: 'hiring', options: [
-    { id: 'veteran', label: '🧓 The seasoned pro who wants top dollar', apply: (ctx, b) => { bump(b.staff, 'productivity', 5); b.staff.costPremium = Math.round((b.staff.costPremium + 0.01) * 100) / 100; return 'You hired the seasoned pro.'; } },
-    { id: 'promising', label: '🌱 The promising new grad', apply: (ctx, b) => { bump(b.staff, 'productivity', 2); bump(b.staff, 'morale', 2); return 'You took a chance on the new grad.'; } },
-    { id: 'friend', label: '👔 A friend who needs a job', apply: (ctx, b) => { bump(b.staff, 'productivity', -4); ctx.stat('happiness', 2); return 'You hired your friend. It\'s… fine.'; } },
-  ] },
-  { id: 'underperformer', title: 'Underperformer', text: 'One of your people has missed every target this year.', minStaff: 3, duty: 'reviews', options: [
-    { id: 'coach', label: '🧑‍🏫 Coach them', apply: (ctx, b) => { if (ctx.state.stats.smarts + ctx.rng.int(-15, 15) >= 50) { bump(b.staff, 'productivity', 4); return 'Your coaching turned them around.'; } ctx.stat('stress', 4); return 'Hours of coaching went nowhere.'; } },
-    { id: 'fire', label: '🚪 Let them go', apply: (ctx, b) => { bump(b.staff, 'productivity', 4); bump(b.staff, 'morale', -6); b.staff.unionRisk = Math.min(100, b.staff.unionRisk + 6); return 'You let them go. The team is rattled.'; } },
-  ] },
-];
 
 /** What a sensible manager does with each routine event. */
 export const AUTOPILOT_CHOICE = { bigClient: 'decline', poached: 'match', lawsuit: 'settle', competitor: 'price', supplier: 'raise', hiring: 'promising', underperformer: 'fire' };

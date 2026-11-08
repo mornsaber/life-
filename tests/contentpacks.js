@@ -19,6 +19,8 @@ import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
 import { DECK_PROBLEMS, deck, deckIds, validateDeckEvent } from '../src/modules/content/decks.js';
 import { resolveWorkEvent } from '../src/modules/career/WorkplaceEvents.js';
+import { BUSINESS_TYPES } from '../src/modules/business/BusinessTypes.js';
+import { currentBusiness } from '../src/modules/business/Business.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -128,6 +130,33 @@ const tests = {
       }
     }
     assert.ok(played > 200, `played ${played}`);
+  },
+  'every business event applies cleanly to a real business'() {
+    const owner = (typeId) => {
+      const { engine, state } = life(23, 34);
+      Object.assign(state.stats, { smarts: 70, health: 95 });
+      state.finances.cash = 3_000_000;
+      state.housing.credit.score = 790;
+      const t = BUSINESS_TYPES[typeId];
+      for (const c of t.credentials) state.credentials.held[c] = { earnedAge: 25, renewedAge: 33, status: 'active' };
+      state.career.history.push({ professionId: t.professions[0], title: 'Pro', levelId: 'x', employerName: 'Prior', sector: 'private', peakGrade: 5, startAge: 20, endAge: 33, reason: 'Left' });
+      engine.dispatch('business.start', `${typeId}:cash:llc`);
+      return { engine, biz: currentBusiness(state) };
+    };
+    let played = 0;
+    for (const e of [...deck('business.general'), ...deck('business.sector')]) {
+      for (const o of e.options) {
+        const { engine, biz } = owner('restaurant');
+        assert.ok(biz, 'a business');
+        biz.staff.headcount = Math.max(biz.staff.headcount, 8);
+        biz.lastYear = { ...(biz.lastYear ?? {}), revenue: 400000 };
+        const text = o.apply(engine.context(), biz);
+        assert.ok(typeof text === 'string' && text && !broken(text), `${e.id}.${o.id}: ${text}`);
+        assert.ok(Number.isFinite(biz.cash), `${e.id}.${o.id}: cash`);
+        played += 1;
+      }
+    }
+    assert.ok(played > 80, `played ${played}`);
   },
 };
 

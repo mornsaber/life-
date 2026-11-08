@@ -10,14 +10,23 @@
 import { STAT_KEYS } from '../../core/State.js';
 import { OFFENSES } from '../legal/Offenses.js';
 import workEvents from './packs/work-events.js';
+import businessEvents from './packs/business-events.js';
 
-export const DECK_PACKS = [workEvents];
+export const DECK_PACKS = [workEvents, businessEvents];
 
 const isFn = (v) => typeof v === 'function';
 const statsOk = (stats, where, p) => { for (const k of Object.keys(stats ?? {})) if (!STAT_KEYS.includes(k)) p.push(`${where}: unknown stat ${k}`); };
 
 /** Each kind: the option (and event) fields it knows, and any deeper checks. */
 export const DECK_KINDS = {
+  business: {
+    event: ['id', 'title', 'text', 'options', 'sectors', 'auto', 'owner', 'minStaff', 'notStartup', 'duty'],
+    option: ['id', 'label', 'apply', 'hint'],
+    check(e, o, where, p) {
+      if (typeof o.apply !== 'function') p.push(`${where}: needs apply(ctx, business)`);
+      if (e.auto && !e.options.some((x) => x.id === e.auto)) p.push(`${e.id}: auto picks ${e.auto}, which isn't an option`);
+    },
+  },
   work: {
     event: ['id', 'title', 'text', 'options', 'when', 'signature', 'minGrade', 'remote', 'sector', 'mgmt'],
     option: ['id', 'label', 'text', 'perf', 'boss', 'coworkers', 'stats', 'money', 'check', 'risky'],
