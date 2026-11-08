@@ -17,6 +17,7 @@ import { staffBudget, positions } from '../src/modules/politics/Staffers.js';
 import { mySeat, executiveOf } from '../src/modules/politics/Legislature.js';
 import { estateOf } from '../src/modules/world/Nobility.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { PrivyCouncilModule } from '../src/modules/world/PrivyCouncil.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -58,6 +59,27 @@ const tests = {
     us.ctx.emit('politics:leave', { reason: 'Retired' });
     assert.match(styledName(us.state), /^The Honorable/);
     assert.ok(officialStyle(us.state).why.startsWith('former'));
+  },
+  'privy councils: the Rt Hon. for a British minister, PC for a Canadian, the Hon. on a colony\'s council'() {
+    const gb = life({ countryId: 'GB', firstName: 'Ann', lastName: 'Hale', gender: 'female' });
+    gb.state.character.age = 50;
+    gb.state.politics.ministry = { dept: 'health', title: 'Health Secretary', rank: 'cabinet', since: 48 };
+    PrivyCouncilModule.onAgeUp(gb.ctx);
+    assert.ok(gb.state.privyCouncil.some((m) => m.council === 'GB'));
+    assert.match(styledName(gb.state), /^The Rt Hon\./);
+    const ca = life({ countryId: 'CA', firstName: 'Paul', lastName: 'Roy', gender: 'male' });
+    ca.state.character.age = 50;
+    ca.state.politics.ministry = { dept: 'finance', title: 'Minister of Finance', rank: 'cabinet', since: 48 };
+    PrivyCouncilModule.onAgeUp(ca.ctx);
+    assert.match(postNominals(ca.state), /\bPC\b/);
+    const ke = life({ countryId: 'KE', startYear: 1930, gender: 'male' });
+    ke.state.character.age = 25;
+    ke.engine.hydrate(ke.state);
+    ke.state.career.job = { professionId: 'colonialService', title: 'Chief Secretary', grade: 8, employer: { name: 'the Colonial Administrative Service' }, abilities: [] };
+    ke.state.character.age = 36;
+    PrivyCouncilModule.onAgeUp(ke.ctx);
+    assert.ok(ke.state.privyCouncil.some((m) => m.council === 'exco.KE'), 'on the Executive Council');
+    assert.match(styledName(ke.state), /^The Hon\./);
   },
   'coronation and jubilee medals reach former office-holders'() {
     const { engine, state, ctx } = life({ countryId: 'CA' }, 3);

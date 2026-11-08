@@ -15,6 +15,7 @@
  * A peer's or royal's own style takes precedence (Honours.styledName).
  */
 import { OFFICES } from '../politics/Offices.js';
+import { councilStyle } from './PrivyCouncil.js';
 
 const g = (state) => (state.character.gender === 'female' ? 'Her' : 'His');
 const RT_HON = 'The Rt Hon.';
@@ -50,6 +51,9 @@ export function officialStyle(state) {
   const cands = [];
   const add = (prefix, why) => prefix && cands.push({ prefix, why });
   for (const id of [now, ...pastOffices(state)].filter(Boolean)) add(FOR_LIFE[countryOfOffice(id)]?.[id], `${id === now ? '' : 'former '}${OFFICES[id].name}`);
+  // A Privy Counsellor (or a member of a colony's Executive Council): world/PrivyCouncil.js.
+  const council = councilStyle(state);
+  if (council) add(council.prefix, council.why);
   if (now) add(IN_OFFICE[countryOfOffice(now)]?.[now], OFFICES[now].name);
   // Judges of the higher courts.
   const seat = state.judiciary?.seat;
