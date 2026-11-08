@@ -395,10 +395,11 @@ export function newLifeForm(rngName) {
   </div>`;
 }
 
-export function tombstone({ headline, name, born, died, age, cause, epitaph, distinctions = [], facts, honors }, extra = '') {
+export function tombstone({ headline, name, born, died, age, cause, epitaph, distinctions = [], facts, honors, arms = '' }, extra = '') {
   return `<div class="tombstone-wrap">
     <div class="tombstone">
       <div class="rip">R.I.P.</div>
+      ${arms ? `<div class="tomb-arms">${arms}</div>` : ''}
       ${headline ? `<p class="headline">📰 ${esc(headline)}</p>` : ''}
       <h2>${esc(name)}</h2>
       <p class="dates">${born} – ${died} · Age ${age}</p>

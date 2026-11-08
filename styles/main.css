@@ -1013,3 +1013,10 @@ select:focus { border-color: var(--cyan); }
   main input[type=checkbox], main input[type=radio] { width: 22px; height: 22px; }
   .job-board .job-row .btn.small { min-height: 40px; }
 }
+
+/* Coat of arms (Honors tab, tombstone) */
+.arms-wrap { display: flex; flex-wrap: wrap; gap: 12px; align-items: flex-start; }
+.arms-wrap .arms-svg { flex: 0 0 auto; max-width: 100%; }
+.arms-notes { flex: 1 1 220px; min-width: 0; }
+.arms-notes .blazon { margin: 0 0 4px; }
+.tomb-arms { display: flex; justify-content: center; margin: 4px 0; }

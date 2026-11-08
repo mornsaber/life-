@@ -61,6 +61,8 @@ import { fameSummary } from '../modules/life/Fame.js';
 import { officialResidence } from '../modules/world/Residences.js';
 import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
+import { armsOf } from '../modules/world/Heraldry.js';
+import { armsSvg } from './Arms.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -204,9 +206,18 @@ export const VIEWS = {
     const inOrder = (h) => Boolean(h.order) || (h.source === 'order' && h.tier !== 'peer');
     const posts = ceremonialPosts(state);
     const duties = posts.length ? card('Ceremonial Duties', `${posts.map((p) => `<p><b>${esc(p.name)}</b>${p.rec ? ` <small class="muted">${p.rec.years} yr · ${p.rec.events} duties</small>` : ''}</p>${meter(p.rec?.standing ?? 50, { label: p.kind === 'lieutenancy' ? '🏰 Standing in the county' : '🎖️ Standing with the regiment' })}`).join('')}<p class="fine">Each year brings a duty: how you handle it decides whether the post is renewed and how you're remembered.</p>`, { icon: '🎖️' }) : '';
-    return `${duties}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    return `${armsCard(state)}${duties}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
+
+/** Your coat of arms, the blazon, and what each part of it records. */
+function armsCard(state) {
+  if (state.character.age < 16) return '';
+  const a = armsOf(state);
+  return card('Coat of Arms', `<div class="arms-wrap">${armsSvg(a, { size: 190, title: `The arms of ${state.character.firstName} ${state.character.lastName}` })}<div class="arms-notes">
+    <p class="blazon"><i>${esc(a.blazon)}.</i></p><p class="fine">Motto: <i>${esc(a.motto)}</i></p>
+    <ul class="history">${a.legend.map((l) => `<li>${esc(l)}</li>`).join('')}</ul></div></div>`, { icon: '🛡️', accent: 'yellow' });
+}
 
 function hobbiesCard(state) {
   const mine = hobbiesOf(state);
@@ -551,6 +562,7 @@ export class Renderer {
       cause: c.causeOfDeath,
       epitaph,
       honors: state.honors,
+      arms: (() => { const a = armsOf(state); return a.coronet || a.circlet || a.supporters || a.behind || a.hat || a.helm === 'knight' || a.badges.length ? armsSvg(a, { size: 130, title: `The arms of ${c.firstName} ${c.lastName}` }) : ''; })(),
       facts: [
         ['Net worth', money(netWorth(state))],
         ['Lifetime earnings', money(state.finances.lifetimeEarnings)],
