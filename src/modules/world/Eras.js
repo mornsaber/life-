@@ -430,6 +430,16 @@ export function dataRegimeAt(cc, y) {
     default: return null;
   }
 }
+/** A republic's presidency exists in the year being played: the country is sovereign and has no crown (the regime data). */
+export function presidencyInEra(state, cc) {
+  if (!state?.era) return true;
+  const y = yearNow(state);
+  if (y >= PRESENT - 10) return true;
+  if (colonyStage(state, cc)) return false;
+  const d = dataRegime(cc, y);
+  return d ? !d.monarchy : !periodThrone(cc, y);
+}
+
 /** A city's own state before unification or after a split (HistoricalData REGION_STATES), as a government. */
 export function regionRegimeAt(regionId, y) {
   const r = regionStateAt(regionId, y);

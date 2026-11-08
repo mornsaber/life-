@@ -17,6 +17,7 @@ import { isAbroad, US_ONLY, LOCAL_OFFICES, isCitizen } from '../world/Countries.
 import { partyBonus } from './Parties.js';
 import { generalShare, scandalDrag } from './Elections.js';
 import { stateIdOf } from '../life/Regions.js';
+import { presidencyInEra } from '../world/Eras.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
@@ -29,6 +30,7 @@ export function runEligibility(state, officeId) {
   const euLocal = LOCAL_OFFICES.includes(officeId) && ['DE', 'IT'].includes(here) && ['DE', 'IT'].some((c) => isCitizen(state, c));
   if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
+  if (office.headOfState && office.selection !== 'appointed' && !presidencyInEra(state, office.country)) return { ok: false, reason: 'No such office yet: the country isn\'t a republic of its own' };
   // One-party states: no open races. Government posts go to Party cadres the Organization
   // Department puts forward (CommunistParty.js); deputies are returned on the Party's list.
   if (regimeOf(here).party) {
