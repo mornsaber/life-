@@ -58,7 +58,7 @@ function promptStep(ctx, def, stepId) {
   const sc = sceneOf(state);
   const step = def.steps[stepId];
   sc.step = stepId;
-  const options = step.options.filter((o) => !o.when || o.when(state, sc)).map((o) => ({ id: o.id, label: o.label, ...(o.hint ? { hint: o.hint } : {}), ...(o.tone ? { tone: o.tone } : {}) }));
+  const options = step.options.filter((o) => !o.when || o.when(state, sc)).map((o) => ({ id: o.id, label: fill(o.label, sc.data, state), ...(o.hint ? { hint: fill(o.hint, sc.data, state) } : {}), ...(o.tone ? { tone: o.tone } : {}) }));
   ctx.prompt({ type: 'scenes.step', icon: step.icon ?? def.icon, title: `${def.title}${def.stepTitles === false ? '' : ` — ${step.title}`}`, text: fill(step.text, sc.data, state), options, data: { sceneId: def.id, step: stepId } });
 }
 
@@ -116,10 +116,27 @@ function finish(ctx) {
     if (job) job.warnings = (job.warnings ?? 0) + (sc.flags.includes('misconduct') ? 2 : 1);
   }
   if (def.news && (tier === 'outstanding' || tier === 'bad')) ctx.emit('news:story', { tier: 'local', headline: fill(def.news[tier] ?? def.news, sc.data, state), weight: 4, icon: def.icon, you: true });
+  if (o.rep) rep(ctx, 'work', o.rep, def.title);
   o.effects?.(ctx, sc, tier);
   ctx.log(text, def.icon, { outstanding: 'milestone', good: 'good', mixed: 'info', bad: 'bad' }[tier]);
   ((state.careerLife ??= {}).scenes ??= []).unshift({ age: state.character.age, id: sc.id, title: def.title, tier });
   state.careerLife.scenes.splice(12);
+}
+
+/** Partners move on: a soured partnership ends in a transfer; a long one, sometimes, in a promotion. */
+function partnerTurnover(ctx) {
+  const { state, rng } = ctx;
+  const p = state.careerLife?.partner;
+  if (!p) return;
+  const years = state.character.age - p.since;
+  if (p.trust < 20) {
+    ctx.log(`${p.name} put in for a transfer. Nobody needed to ask why.`, '🔁', 'warn');
+    state.careerLife.partner = null;
+  } else if (years >= 4 && rng.chance(0.08)) {
+    const why = p.trust >= 70 ? `${p.first} made rank and moved to another station. They still ring you before every big call.` : `${p.first} transferred to another unit. You'll ride with someone new.`;
+    ctx.log(why, '🔁', 'info');
+    state.careerLife.partner = null;
+  }
 }
 
 export const ScenesModule = {
@@ -132,9 +149,14 @@ export const ScenesModule = {
     if (sceneOf(state) && !state.prompts.some((p) => p.type === 'scenes.step')) finish(ctx);
     const job = state.career?.job;
     if (!job || state.legal?.incarceration || sceneOf(state)) return;
-    const pool = Object.values(SCENES).filter((s) => s.trigger !== 'manual' && s.for?.(state, job));
-    if (!pool.length || !rng.chance(pool[0].chance ?? 0.35)) return;
-    const def = rng.pick(pool);
+    partnerTurnover(ctx);
+    let pool = Object.values(SCENES).filter((s) => s.trigger !== 'manual' && s.for?.(state, job));
+    if (!pool.length || !rng.chance(Math.max(...pool.map((s) => s.chance ?? 0.35)))) return;
+    // Not the same call two years running.
+    const last = state.careerLife?.scenes?.[0];
+    if (pool.length > 1 && last?.age >= state.character.age - 1) pool = pool.filter((s) => s.id !== last.id);
+    let r = rng.next() * pool.reduce((a, s) => a + (s.weight ?? 1), 0);
+    const def = pool.find((s) => (r -= s.weight ?? 1) < 0) ?? pool[pool.length - 1];
     startScene(ctx, def.id);
   },
 

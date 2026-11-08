@@ -11,7 +11,9 @@ import { MODULES } from '../src/modules/registry.js';
 import { SCENES, startScene, tierOf, checkOdds, ScenesModule } from '../src/modules/career/Scenes.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'] };
+const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'],
+  'fire.crash': ['fire', 'Firefighter'], 'fire.wildland': ['stateFire', 'Firefighter'], 'police.pursuit': ['police', 'Police Officer'], 'police.missing': ['sheriff', 'Deputy'], 'police.stop': ['police', 'Police Officer'],
+  'ems.overdose': ['ems', 'Paramedic'], 'ems.mci': ['privateEms', 'EMT'], 'dispatch.whisper': ['dispatch', 'Dispatcher'], 'police.ois': ['police', 'Police Sergeant'], 'partner.line': ['ems', 'Paramedic'] };
 const life = (prof, title, seed = 1) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({ countryId: 'US', gender: 'female' });
@@ -34,6 +36,14 @@ const tests = {
       }
     }
   },
+  'every scene has a job that can draw it'() {
+    for (const id of Object.keys(SCENES)) assert.ok(JOBS[id], `${id} in the test's JOBS`);
+    for (const [id, [prof, title]] of Object.entries(JOBS)) {
+      const { state } = life(prof, title);
+      state.careerLife = { partner: { scenes: 3, trust: 50, professionId: prof } };
+      if (SCENES[id].trigger !== 'manual') assert.ok(SCENES[id].for(state, state.career.job), `${id} for a ${title}`);
+    }
+  },
   'every scene plays to an outcome with clean text, whatever you choose'() {
     for (const [id, [prof, title]] of Object.entries(JOBS)) for (let seed = 1; seed <= 12; seed++) {
       const { engine, state } = life(prof, title, seed);
@@ -41,13 +51,13 @@ const tests = {
       for (let g = 0; g < 12 && state.prompts.length; g++) {
         const p = state.prompts[0];
         assert.equal(p.type, 'scenes.step');
-        assert.doesNotMatch(p.text + p.title, BAD, `${id}: ${p.text}`);
+        assert.doesNotMatch(p.text + p.title + p.options.map((o) => o.label + (o.hint ?? '')).join(), BAD, `${id}: ${p.text}`);
         engine.resolvePrompt(p.id, p.options[(seed * 7 + g) % p.options.length].id);
       }
       assert.equal(state.scene, null, `${id} seed ${seed} finished`);
       assert.equal(state.careerLife.scenes[0].id, id);
       for (const l of lines(state)) assert.doesNotMatch(l, BAD, `${id}: ${l}`);
-      if (SCENES[id].partner) assert.ok(state.careerLife.partner.scenes >= 1);
+      if (SCENES[id].partner && id !== 'partner.line') assert.ok(state.careerLife.partner.scenes >= 1);
     }
   },
   'one scene at a time, and a reload closes a hanging one'() {

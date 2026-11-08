@@ -6,6 +6,7 @@
  *   fire.houseFire     a house fire with a child reported inside
  *   police.domestic    a domestic disturbance that might turn
  *   ems.arrest         a cardiac arrest in a crowded place
+ *   …and the calls in scenes-calls.js
  *
  * Step options: label, hint, tone, score { lives, crew, city, trust }, flag, next; or a check
  * { skills, stats, bar } with pass / fail branches ({ text, score, flag, next }).
@@ -13,6 +14,7 @@
  */
 import { isCop } from '../../publicsafety/PoliceLife.js';
 import { isFirefighter } from '../../publicsafety/FireLife.js';
+import { CALLS } from './scenes-calls.js';
 
 const SUPERVISOR = /captain|chief|lieutenant|sergeant|supervisor|commander|director|manager|deputy|superintendent|inspector/i;
 const COMMAND_RANK = (job) => SUPERVISOR.test(job?.title ?? '');
@@ -202,7 +204,7 @@ const arrest = {
   },
 };
 
-export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest].map((s) => {
+export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest, ...CALLS].map((s) => {
   // Complications become steps of their own (complication:<id>).
   for (const [id, step] of Object.entries(s.complications ?? {})) s.steps[`complication:${id}`] = step;
   return [s.id, s];
