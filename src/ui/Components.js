@@ -317,9 +317,9 @@ export function countryOptions({ selected = '', only = null, random = '🎲 Rand
   const mark = (id) => (ROYAL_HOMES.includes(id) ? ' 👑' : SHARED_CROWN.includes(id) ? ' 👑 (British Crown)' : HOUSE_HOMES.includes(id) ? ' ⚜️' : '');
   const placed = new Set(Object.values(CONTINENT).flat());
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
-  const opt = (id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].name)}${mark(id)}</option>`;
+  const opt = (id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].baseName ?? COUNTRIES[id].name)}${mark(id)}</option>`;
   const body = Object.entries(groups).map(([name, ids]) => {
-    const list = ids.filter((id) => COUNTRIES[id] && (!only || only.includes(id))).sort((a, b) => COUNTRIES[a].name.localeCompare(COUNTRIES[b].name));
+    const list = ids.filter((id) => COUNTRIES[id] && (!only || only.includes(id))).sort((a, b) => (COUNTRIES[a].baseName ?? COUNTRIES[a].name).localeCompare(COUNTRIES[b].baseName ?? COUNTRIES[b].name));
     return list.length ? `<optgroup label="${esc(name)}">${list.map(opt).join('')}</optgroup>` : '';
   }).join('');
   return `${random ? `<option value="random">${random}</option>` : ''}${body}`;

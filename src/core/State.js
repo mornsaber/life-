@@ -416,6 +416,8 @@ export function tidyText(text, icon = '') {
   // Collapse spaces, and the double full stop after a name ending in one ("Corner Hardware Co..").
   let t = fixMoneySigns(text).replace(/ {2,}/g, ' ').replace(/(?<!\.)\.\.(?!\.)/g, '.').trim();
   if (icon && icon !== '•' && t.startsWith(icon)) t = t.slice(icon.length).trimStart();
+  // A sentence that opens with a country's old name ("the Russian Empire…") still opens with a capital.
+  if (/^the [A-Z]/.test(t)) t = `T${t.slice(1)}`;
   return t;
 }
 

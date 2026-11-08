@@ -898,3 +898,13 @@ export function periodRentName(state, id, name) {
   return name;
 }
 
+/* ------------------------------------------------------------------ */
+/* Country names of the day, everywhere                                 */
+/* ------------------------------------------------------------------ */
+
+let ERA_STATE = null;
+/** The life being played, so a country's name (Countries.js) reads as it did that year. Set by History. */
+export const setEraState = (state) => { ERA_STATE = state?.era && state.era.start < PRESENT ? state : null; };
+/** A country's name in the year being played, or its name today. */
+export const eraCountryName = (cc, base) => (ERA_STATE ? periodCountryName(ERA_STATE, cc, base) : base);
+

@@ -199,7 +199,7 @@ export const KingmakersModule = {
       if (!a || a.college) return ctx.toast(a ? 'Already founded' : 'Advisers only', 'warn');
       a.college = true;
       a.readiness = clamp(a.readiness + 5, 0, 100);
-      return ctx.log(`${COUNTRIES[a.cc].flag} You founded the ${COUNTRIES[a.cc].name} Command and Staff College. Its first class of majors will run the army for twenty years.`, '🏫', 'milestone');
+      return ctx.log(`${COUNTRIES[a.cc].flag} You founded the ${COUNTRIES[a.cc].baseName ?? COUNTRIES[a.cc].name} Command and Staff College. Its first class of majors will run the army for twenty years.`, '🏫', 'milestone');
     },
     /** Purge the ghost soldiers and the fuel thieves. */
     purge(ctx) {

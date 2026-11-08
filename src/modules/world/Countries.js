@@ -24,6 +24,7 @@
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
+import { eraCountryName } from './Eras.js';
 import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
@@ -345,6 +346,13 @@ export const US = {
 /** Playable countries, in picker order. */
 // Countries from packs (world/packs/) join after the built-in ones.
 export const COUNTRIES = { US, CA, GB, AU, DE, FR, IT, JP, KR, MX, PH, IN, ...packCountries() };
+// A country's name reads as it did in the year being played (the Russian Empire, Siam, British India);
+// `baseName` is always today's.
+for (const [id, c] of Object.entries(COUNTRIES)) {
+  const base = c.name;
+  Object.defineProperty(c, 'baseName', { value: base, enumerable: false });
+  Object.defineProperty(c, 'name', { get: () => eraCountryName(id, base), set: () => {}, enumerable: true, configurable: true });
+}
 // Schools, school stages and license names join each country's display swaps.
 for (const c of Object.values(COUNTRIES)) {
   if (c.id === 'US') continue;

@@ -33,7 +33,7 @@ import { PRESENT, PERIOD_THRONES, PERIOD_THRONE_YEARS, EVENT_THRONES, REPUBLIC_G
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
-import { periodCountryName } from './Eras.js';
+import { periodCountryName, setEraState } from './Eras.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -576,7 +576,7 @@ function seedPast(state) {
   era.seeded = true;
 }
 
-export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); };
+export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); setEraState(state); };
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {
@@ -655,6 +655,7 @@ export const HistoryModule = {
   order: 0.9,
 
   init(state) {
+    setEraState(null);
     state.era ??= { start: state.character.birthYear ?? PRESENT, events: {}, colonies: {} };
     state.era.events ??= {};
     state.era.colonies ??= {};

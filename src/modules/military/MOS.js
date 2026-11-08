@@ -24,6 +24,7 @@
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { yearsInProfession, meetsEducation } from '../../core/State.js';
 import { joinAges } from '../world/MilitaryLocal.js';
+import { eraYear, PRESENT } from '../world/Eras.js';
 
 const M = (code, title, specialty, extra = {}) => ({ code, title, specialty, ...extra });
 
@@ -280,8 +281,47 @@ for (const [branch, tracks] of Object.entries(RAW)) {
   }
 }
 
-export const mosFor = (branch, track) => Object.values(MOS).filter((m) => m.branch === branch && m.track === track);
-export const mosOf = (svc) => (svc?.mos ? MOS[svc.mos] ?? null : null);
+/**
+ * Military jobs of their time: no helicopter mechanics before helicopters, no cyber operators
+ * before the internet, no Green Berets before 1952. [pattern on the title or specialty, first year]
+ */
+const MOS_FROM = [
+  [/cyber/i, 2009], [/Drone|Unmanned|\bUAS\b|\bRPA\b|MQ-/i, 2001], [/Information Technology|Computer|Network|Information Systems/i, 1980],
+  [/Satellite|Space|Missile Warning|Orbital/i, 1960], [/Helicopter|UH-60|AH-64|CH-47|Rotary/i, 1955], [/Missile|ICBM|Patriot/i, 1950],
+  [/Nuclear/i, 1950], [/Radar|Air Defense|Air Traffic/i, 1940], [/Special Forces|Green Beret/i, 1952], [/\bSEAL\b|Special Warfare/i, 1962],
+  [/Pararescue|Paratroop|Airborne|Parachut|Combat Control/i, 1940], [/Tank|Armor|M1 |Abrams|Mechanized/i, 1917], [/Explosive Ordnance|\bEOD\b/i, 1942],
+  [/Electronic Warfare|Sonar|Signals Intelligence|Cryptolog/i, 1917], [/Intelligence Analyst|Imagery/i, 1940], [/Paralegal|Religious Affairs/i, 1970],
+  [/Aviator|Pilot|Aircraft|Aviation|Aircrew|Flight|Air Crew|Loadmaster/i, 1910], [/Submarine/i, 1900], [/Linguist/i, 1917], [/Seabee/i, 1942], [/Intelligence Specialist/i, 1940], [/Nurse/i, 1901],
+];
+/** Old names for old jobs: [pattern, title, used until]. */
+const MOS_OLD_TITLES = [
+  [/^Combat Medic Specialist$/, 'Hospital Steward', 1887], [/^Combat Medic Specialist$/, 'Hospital Corps Private', 1950], [/^Hospital Corpsman/, 'Sick Berth Attendant', 1916],
+  [/^Motor Transport Operator$/, 'Wagoner', 1915], [/^Motor Transport Operator$/, 'Motor Transport Driver', 1950], [/^Military Police$/, 'Provost Guard', 1917],
+  [/^Combat Engineer$/, 'Sapper', 1940], [/^Cannon Crewmember$/, 'Artilleryman', 1950], [/^Cavalry Scout$/, 'Cavalry Trooper', 1942], [/^Unit Supply Specialist$/, 'Quartermaster Clerk', 1950],
+  [/^Logistics Specialist$/, 'Storekeeper', 2009], [/^Culinary Specialist$/, 'Ship\'s Cook', 2004], [/^Legalman$/, 'Yeoman', 1972],
+  [/^Military Police Officer$/, 'Provost Officer', 1941], [/^Military Intelligence Officer$/, 'Intelligence Officer', 1962],
+  [/^Infantry Officer$/, 'Officer of Infantry', 1920], [/^Engineer Officer$/, 'Officer of Engineers', 1920], [/^Logistics Officer$/, 'Quartermaster Officer', 1950],
+];
+/** A military job's title in the year being played. */
+export function periodMosTitle(title) {
+  const y = eraYear();
+  if (y >= PRESENT) return title;
+  return MOS_OLD_TITLES.find(([re, , until]) => re.test(title) && y < until)?.[1] ?? title;
+}
+const withTitle = (m) => { if (!m) return m; const t = periodMosTitle(m.title); return t === m.title ? m : { ...m, title: t }; };
+export const mosInEra = (m) => {
+  const y = eraYear();
+  if (y >= PRESENT) return true;
+  const text = `${m.title} ${m.specialty}`;
+  return !MOS_FROM.some(([re, from]) => re.test(text) && y < from);
+};
+/** The jobs a branch and track offer in the year being played (all of them, if none fit). */
+export const mosFor = (branch, track) => {
+  const all = Object.values(MOS).filter((m) => m.branch === branch && m.track === track);
+  const fit = all.filter(mosInEra);
+  return (fit.length ? fit : all).map(withTitle);
+};
+export const mosOf = (svc) => (svc?.mos ? withTitle(MOS[svc.mos]) ?? null : null);
 
 /** The first job in a broad specialty — used for old saves and specialty-only requests. */
 export function defaultMos(branch, track, specialty) {
