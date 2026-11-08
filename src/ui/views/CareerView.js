@@ -70,6 +70,7 @@ import { servedPopulation } from '../../modules/org/Staffing.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
 import { contractMarketCard, merchantReserveCard } from './ServiceViews.js';
+import { periodDollars, yearNow } from '../../modules/world/Eras.js';
 /** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
 const employerLabel = (job) => {
   const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
@@ -200,7 +201,7 @@ function currentJob(state) {
       <div class="job-meta">
         <p>${chip(esc(employerLabel(job)))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
-          ['Salary', `<b>${money(job.salary)}</b>/yr`],
+          ['Salary', `<b>${money(job.salary)}</b>/yr${periodDollars(state, job.salary) != null ? ` <small class="muted">(about ${money(periodDollars(state, job.salary))} in ${yearNow(state)} money)</small>` : ''}`],
           ['Rating', ratingLabel(job.performance)],
           payRow(job, state.character.countryId),
           ['In level', `${job.yearsInLevel} yr`],

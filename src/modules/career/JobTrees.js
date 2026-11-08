@@ -160,14 +160,16 @@ export const US_ONLY_PROFESSIONS = ['sheriff'];
 
 /** Careers on the job board where you live: everything except US federal jobs abroad, plus your country's own. */
 /** Politics registers who's hiring: services contracted out or abolished, private careers the law has closed. */
-let availabilityFilter = null;
-export const setAvailabilityFilter = (fn) => { availabilityFilter = fn; };
+const availabilityFilters = [];
+/** Hide professions that don't exist for this life (public services, the era). Several may register. */
+export const setAvailabilityFilter = (fn) => { availabilityFilters.push(fn); };
+const availabilityFilter = (state, p) => availabilityFilters.every((f) => f(state, p));
 
 export function professionsFor(state) {
   const cc = state?.character?.countryId ?? 'US';
   // One ministry per faith: your own church's clergy career, not three side by side.
   const ministry = state?.community ? clergyCareerFor(state.community.faith?.traditionId ?? state.community.orders?.tradition) : null;
-  const local = (p) => (!ministry || !CLERGY_CAREERS.includes(p.id) || p.id === ministry) && (!availabilityFilter || !state?.character || availabilityFilter(state, p));
+  const local = (p) => (!ministry || !CLERGY_CAREERS.includes(p.id) || p.id === ministry) && (!availabilityFilters.length || !state?.character || availabilityFilter(state, p));
   if (cc === 'US') {
     const list = PROFESSION_LIST.filter(local);
     return list.length === PROFESSION_LIST.length ? PROFESSION_LIST : list;

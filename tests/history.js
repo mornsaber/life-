@@ -15,7 +15,8 @@ import { yearNow, eraLayer, colonyHere, colonyStage, hasTech, PRESENT } from '..
 import { EVENTS, jimCrowHere, segregatedFrom } from '../src/modules/world/History.js';
 import { universitiesIn } from '../src/modules/education/Universities.js';
 import { crownOf } from '../src/modules/world/Crown.js';
-import { automationRisk, longevityFactor } from '../src/modules/world/Eras.js';
+import { automationRisk, longevityFactor, priceIndex, periodDollars } from '../src/modules/world/Eras.js';
+import { professionsFor } from '../src/modules/career/JobTrees.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
@@ -231,6 +232,34 @@ const tests = {
     assert.equal(longevityFactor(state, 70), 1);
     state.era.events.longevity = { year: 2040 };
     assert.ok(longevityFactor(state, 70) < 1);
+  },
+  'early eras have their own work, their own decade and their own money'() {
+    const { engine, state } = life({ countryId: 'GB', startYear: 1910 });
+    state.character.age = 18; // 1928
+    engine.hydrate(state);
+    const board = professionsFor(state).map((p) => p.id);
+    assert.ok(board.includes('coalMining') && board.includes('domesticService'), 'period jobs on the board');
+    assert.ok(!board.includes('dataScience') && !board.includes('aiOps'), 'no future jobs');
+    assert.ok(['millWork', 'coalMining', 'domesticService', 'docks', 'milkRound', 'steamRailway'].some((id) => applicationEligibility(state, id).ok), 'a period job is hiring');
+    const today = life({ countryId: 'GB' });
+    today.state.character.age = 18;
+    assert.ok(!professionsFor(today.state).some((p) => ['coalMining', 'lamplighter', 'colonialService'].includes(p.id)), 'none of it today');
+    const ids = eligible(LIFE_EVENTS, state).map((e) => e.id);
+    assert.ok(ids.some((id) => id.startsWith('dec.')), 'a decade event can happen in 1928');
+    assert.ok(!eligible(LIFE_EVENTS, today.state).some((e) => e.id.startsWith('dec.')), 'not today');
+    assert.ok(priceIndex(1930) > 0.03 && priceIndex(1930) < 0.07);
+    assert.equal(periodDollars(today.state, 1000), null);
+    assert.ok(periodDollars(state, 50000) < 5000);
+  },
+  'a dying trade lays you off'() {
+    const { engine, state } = life({ countryId: 'GB', startYear: 1910 }, 2);
+    state.character.age = 20;
+    engine.hydrate(state);
+    const ctx = engine.context();
+    const p = getProfession('lamplighter');
+    hire(ctx, { professionId: 'lamplighter', levelId: 'lamplighter', employer: createEmployer(ctx.rng, state, p, state.character.regionId) });
+    live(engine, state, 15); // to 1945
+    if (state.character.alive) assert.notEqual(state.career.job?.professionId, 'lamplighter');
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);

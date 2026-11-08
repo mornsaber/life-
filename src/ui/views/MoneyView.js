@@ -7,6 +7,7 @@ import { empireCard } from './EmpireView.js';
 import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
 import { CREDIT, ACCOUNTS } from '../../modules/world/CountryLaw.js';
 import { countryOf } from '../../modules/world/Countries.js';
+import { periodDollars, yearNow } from '../../modules/world/Eras.js';
 import { esc, money, button, card, chip, kv, empty, disclosure } from '../Components.js';
 import { netWorth, investmentsValue, creditLimit, availableCredit } from '../../core/State.js';
 import { investView } from './InvestView.js';
@@ -139,6 +140,7 @@ export function moneyView(state) {
     state.investing ? ['Investments', money(investmentsValue(state))] : null,
     ['Student loans', f.loans ? `<span class="neg">${money(f.loans)}</span>` : '$0'],
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
+    periodDollars(state, 1) != null ? [`In ${yearNow(state)} money`, `${money(periodDollars(state, netWorth(state)))} net worth · ${money(periodDollars(state, state.career?.job?.salary ?? 0))} a year in wages <small class="muted">(everything here is in today's dollars)</small>`] : null,
     ['Lifetime earnings', money(f.lifetimeEarnings)],
     ['Lifetime taxes', money(f.taxesPaid)],
     [esc(creditTitle(state)), esc(creditLabel(state))],

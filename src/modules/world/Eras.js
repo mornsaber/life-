@@ -37,7 +37,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 
 export const TECH = {
   radio: 1922, tv: 1950, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
-  internet: 1995, onlineDating: 1997, drones: 2001, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
+  internet: 1995, onlineDating: 1997, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
 
@@ -46,6 +46,7 @@ const TECH_WORDS = [
   ['crypto', /\bcrypto|bitcoin|\bNFTs?\b|blockchain/i],
   ['gigApps', /rideshare|\bUber\b|\bLyft\b|DoorDash|gig app|delivery app|Airbnb/i],
   ['smartphone', /smartphone|\bapps?\b|app store|selfie|\bswip|Tinder|Instagram|TikTok|WhatsApp|FaceTime|group chat|Zoom call|influencer|viral|hashtag|doomscroll/i],
+  ['vaping', /\bvap(?:e|es|ed|ing)\b|e-cig/i],
   ['drones', /\bdrones?\b|\bUAVs?\b|Reaper|Predator strike/i],
   ['streaming', /Netflix|streaming|binge-watch|Spotify|podcast/i],
   ['socialMedia', /social media|Facebook|Twitter|YouTube|followers online|went viral|\bposted (?:it|a|about|online)/i],
@@ -109,10 +110,12 @@ export function eraWorkBlock(state, profession) {
   const y = yearNow(state);
   const fb = futureWorkBlock(state, profession);
   if (fb) return fb;
+  if (profession?.untilYear && y >= profession.untilYear) return 'This work has all but disappeared';
   if (y >= PRESENT) return null;
   const id = profession?.id;
   const from = PROFESSION_FROM[id] ?? profession?.fromYear;
   if (from && y < from) return `Doesn't exist yet (from about ${from})`;
+  if (profession?.untilYear && y >= profession.untilYear) return 'This work has all but disappeared';
   const menUntil = MEN_ONLY_UNTIL[id] ?? MEN_ONLY_UNTIL[profession?.template];
   if (menUntil && y < menUntil && state.character.gender === 'female') return menUntil > PRESENT ? 'Closed to women' : `Closed to women (until about ${menUntil})`;
   if (apartheidHere(state) && skinToneOf(state) >= 3 && APARTHEID_RESERVED.includes(id)) return 'Reserved for white workers under apartheid';
@@ -312,3 +315,33 @@ export function futureWorkBlock(state, profession) {
   if (need && !futureOn(state, need)) return 'Doesn\'t exist yet';
   return null;
 }
+
+/** Professions this life's world doesn't have at all: not yet invented, long gone, a future that never came, a colony's service where there's no colony. The job board hides them. */
+export function eraHidden(state, p) {
+  const y = yearNow(state);
+  const from = PROFESSION_FROM[p.id] ?? p.fromYear;
+  if (from && y < from) return true;
+  if (p.untilYear && y >= p.untilYear) return true;
+  if (p.futureNeeds && !futureOn(state, p.futureNeeds)) return true;
+  if (p.colonial && !colonyHere(state)) return true;
+  return false;
+}
+
+/* ------------------------------------------------------------------ */
+/* Money then: amounts stay in today's dollars; this says what they were */
+/* ------------------------------------------------------------------ */
+
+/** Consumer prices by year (US CPI, 1982–84 = 100), loosely; 2026 ≈ 330. */
+const CPI = [[1900, 8], [1910, 9.1], [1920, 20], [1930, 16.7], [1940, 14], [1950, 24.1], [1960, 29.6], [1970, 38.8], [1980, 82.4], [1990, 130.7], [2000, 172.2], [2010, 218.1], [2020, 258.8], [2026, 330]];
+/** What today's dollar was worth in a given year (0.03 in 1930). */
+export function priceIndex(year) {
+  if (year >= PRESENT) return 1;
+  if (year <= CPI[0][0]) return CPI[0][1] / 330;
+  const i = CPI.findIndex(([y]) => y > year);
+  const [y0, c0] = CPI[i - 1];
+  const [y1, c1] = CPI[i];
+  return (c0 + ((c1 - c0) * (year - y0)) / (y1 - y0)) / 330;
+}
+/** An amount in the money of the year you're living in, or null today. */
+export const periodDollars = (state, amount) => (yearNow(state) < PRESENT ? Math.round(amount * priceIndex(yearNow(state))) : null);
+

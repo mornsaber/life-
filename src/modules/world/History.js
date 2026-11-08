@@ -19,6 +19,8 @@ import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
 import { setEraLayer } from './Regimes.js';
 import { leaveJob } from '../career/CareerEngine.js';
+import { setAvailabilityFilter, getProfession } from '../career/JobTrees.js';
+import { eraHidden } from './Eras.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
@@ -98,6 +100,7 @@ export const jimCrowHere = (state) => Boolean(state.era) && yearNow(state) < PRE
 /** A Black American anywhere before the Civil Rights Act: the movement is yours to join. */
 const beforeCivilRights = (state) => Boolean(state.era) && yearNow(state) < PRESENT && inUS(state) && !hap(state, 'civilRights') && skinToneOf(state) >= 4 && yearNow(state) >= 1950;
 setSegregationHook((state, uni) => segregatedFrom(state, uni));
+setAvailabilityFilter((state, p) => !eraHidden(state, p));
 addEraWorkRule((state, profession) => (jimCrowHere(state) && SEGREGATED_WORK.includes(profession?.id) ? 'Closed to Black applicants under Jim Crow' : null));
 /** A university in a segregated state turns you away. */
 export const segregatedFrom = (state, uni) => (jimCrowHere(state) && uni?.country === 'US' && uni.type !== 'online' && JIM_CROW.includes(stateOfRegion(uni.region)) ? 'Segregated: the state\'s universities turn away Black students (study out of state)' : null);
@@ -440,6 +443,30 @@ function seedPast(state) {
 
 export const sync = (state) => setEraLayer(eraLayer(state));
 
+/** Trades that die out take their workers with them: the pit closes, the docks containerise. */
+const TRADE_DIES = {
+  coalMining: 'The pit closed. The whole valley was laid off in a single morning.',
+  millWork: 'The mill shut for good: the work had gone abroad.',
+  domesticService: 'The household let its staff go. Nobody keeps servants any more.',
+  typingPool: 'The typing pool was closed: everyone types their own letters on computers now.',
+  switchboard: 'The exchange went automatic. The operators were let go.',
+  docks: 'The containers came: one crane does the work of a hundred dockers. You were laid off.',
+  milkRound: 'The dairy ended the round: everyone buys milk at the supermarket now.',
+  steamRailway: 'Steam was withdrawn. The diesels need fewer hands, and yours weren\'t among them.',
+  travellingSales: 'The firm stopped selling door to door.',
+  lamplighter: 'The street lamps went electric. Lamplighting is over.',
+};
+function tradeEnds(ctx) {
+  const { state } = ctx;
+  const job = state.career?.job;
+  if (!job) return;
+  const p = getProfession(job.professionId);
+  if (!p?.untilYear || yearNow(state) < p.untilYear) return;
+  if (!sideRng(state, 0x7d).chance(0.35)) return;
+  leaveJob(ctx, 'The trade died out');
+  ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
+}
+
 export const HistoryModule = {
   id: 'history',
   order: 0.9,
@@ -465,6 +492,7 @@ export const HistoryModule = {
     if (!state.era) HistoryModule.init(state);
     const y = yearNow(state);
     const presentLife = state.era.start >= PRESENT;
+    tradeEnds(ctx);
     const rng = sideRng(state, 0x415);
     const era = state.era;
     for (const [id, ev] of Object.entries(EVENTS)) {

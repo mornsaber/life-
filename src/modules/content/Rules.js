@@ -9,6 +9,7 @@
  *   cash: [min, max]           stat: { smarts: [min, max] }      skill: { cooking: min }
  *   rep: { work: [min, max] }  flag: 'name' | { name: value }     noFlag: 'name'
  *   economy: 'recession' | ['peak', 'expansion']                  free: false (allowed in prison)
+ *   year: [from, to]           the calendar year (historical and future lives)
  *   test: (state) => boolean   — the escape hatch, for JS packs only
  *
  * Effects (an object; every key optional), applied in order:
@@ -68,6 +69,7 @@ export function test(state, when = {}) {
   }
   if (when.noFlag && state.flags?.[when.noFlag]) return false;
   if (when.economy && ![].concat(when.economy).includes(state.economy?.phase)) return false;
+  if (when.year && !inRange(c.birthYear + c.age, when.year)) return false;
   if (when.test && !when.test(state)) return false;
   return true;
 }
@@ -166,7 +168,7 @@ export function validateEvent(def, { ids = new Set() } = {}) {
     if (!o.id || !o.label) p.push(`${def.id}: option missing id or label`);
     if (o.check && (!o.pass || !o.fail)) p.push(`${def.id}.${o.id}: a check needs pass and fail`);
   }
-  const KNOWN = ['age', 'country', 'job', 'partner', 'married', 'kids', 'minorKids', 'homeowner', 'student', 'business', 'cash', 'stat', 'skill', 'rep', 'flag', 'noFlag', 'economy', 'free', 'test'];
+  const KNOWN = ['age', 'country', 'job', 'partner', 'married', 'kids', 'minorKids', 'homeowner', 'student', 'business', 'cash', 'stat', 'skill', 'rep', 'flag', 'noFlag', 'economy', 'free', 'test', 'year'];
   for (const k of Object.keys(def.when ?? {})) if (!KNOWN.includes(k)) p.push(`${def.id}: unknown condition ${k}`);
   return p;
 }

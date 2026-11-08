@@ -15,6 +15,7 @@ import careersForeignForces from './packs/careers-foreign-forces.js';
 import careersReligiousOrders from './packs/careers-religious-orders.js';
 import careersColonial from './packs/careers-colonial.js';
 import careersFuture from './packs/careers-future.js';
+import careersPeriod from './packs/careers-period.js';
 import careersTransit from './packs/careers-transit.js';
 import careersEngineering from './packs/careers-engineering.js';
 import careersJustice from './packs/careers-justice.js';
@@ -29,7 +30,7 @@ import careersContractors from './packs/careers-contractors.js';
 import careersIntel from './packs/careers-intel.js';
 import careersIntlOrgs from './packs/careers-intl-orgs.js';
 
-export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersColonial, careersFuture, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal, careersGovernment, careersContractors, careersIntel, careersIntlOrgs];
+export const CAREER_PACKS = [careersPrivate, careersMore, careersAllied, careersTransport, careersAcademic, careersAirport, careersForeignForces, careersReligiousOrders, careersColonial, careersFuture, careersPeriod, careersTransit, careersEngineering, careersJustice, careersWorkforce, careersHealthScience, careersTrades, careersMunicipal, careersState, careersFederal, careersGovernment, careersContractors, careersIntel, careersIntlOrgs];
 
 export const CAREER_PROBLEMS = [];
 export const PACK_PROFESSIONS = {};

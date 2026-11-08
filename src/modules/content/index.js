@@ -4,9 +4,10 @@
  */
 import { compileEvent, validateEvent } from './Rules.js';
 import lifeCore from './packs/life-core.js';
+import lifeDecades from './packs/life-decades.js';
 import lifeStages from './packs/life-stages.js';
 
-export const CONTENT_PACKS = [lifeCore, lifeStages];
+export const CONTENT_PACKS = [lifeCore, lifeStages, lifeDecades];
 
 const ids = new Set();
 export const PACK_PROBLEMS = [];
