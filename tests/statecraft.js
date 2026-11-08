@@ -72,8 +72,13 @@ const tests = {
     assert.ok(state.honors.some((h) => /Coronation Medal/.test(h.name) && /past service/.test(h.citation)), 'a former lieutenant governor is on the list');
   },
   'political ambassadors: donors of the governing party get offers; the job ends with the president'() {
-    const { engine, state } = life({}, 9);
-    year(engine, state, 45);
+    // A life that reaches 45 (the first seed that does).
+    let engine, state;
+    for (const seed of [9, 10, 11, 12, 13, 14]) {
+      ({ engine, state } = life({}, seed));
+      year(engine, state, 45);
+      if (state.character.alive) break;
+    }
     state.finances.cash = 5e6;
     state.civic ??= {};
     state.civic.party = { bloc: executiveOf(state, 'national').caucus, role: 'member' };
@@ -86,6 +91,7 @@ const tests = {
     state.prompts = [];
     offer(ctx, { force: true });
     const q = state.prompts.find((p) => p.type === 'appointees.ambassador');
+    const chance = ctx.rng.chance;
     ctx.rng.chance = () => true; // the Senate confirms
     assert.ok(q, 'an offer');
     {
@@ -93,6 +99,7 @@ const tests = {
       engine.resolvePrompt(q.id, 'accept');
       assert.match(state.career.job?.title ?? '', /Ambassador|High Commissioner/);
       assert.ok(state.career.job.political);
+      ctx.rng.chance = chance;
       assert.match(styledName(state), /Excellency|Honorable/);
       state.career.job.political.under = 'Someone Else';
       state.prompts = [];

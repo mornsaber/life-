@@ -55,6 +55,7 @@ import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { ruralHiring } from '../life/RuralLife.js';
 import { jobSkills, skill } from '../life/Skills.js';
 import { workRepBonus } from '../life/Reputation.js';
+import { automationRisk } from '../world/Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -603,6 +604,8 @@ export function layoffRisk(state, job) {
   // Government jobs are cut through a formal reduction in force instead (PublicRif).
   if (job.abilities.includes('tenure')) risk = 0;
   else if (job.tenured) risk *= 0.3;
+  // The future's automation (world/Eras.js): AI, robotaxis, robots, fusion.
+  risk += automationRisk(state, job.professionId);
   if (job.probationLeft > 0) risk *= 1.5; // last in, first out
   if (job.informal) risk *= 1.6; // no contract, no notice
   if (job.unionMember && job.yearsAtEmployer >= 5) risk *= 0.3; // seniority

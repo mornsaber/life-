@@ -15,9 +15,12 @@ import { currentYear } from '../../core/State.js';
 import { stateIdOf, REGIONS, regionsInState } from './Regions.js';
 import { STATES } from './States.js';
 import { priceLevel } from '../world/Countries.js';
+import { climateTipped } from '../world/Eras.js';
 
 /** How much more likely a weather disaster is than in 2025. */
-export const climateFactor = (state) => Math.min(1.4, 1 + Math.max(0, currentYear(state) - 2025) * 0.005);
+export const climateFactor = (state) => (climateTipped(state)
+  ? Math.min(2, 1.15 + Math.max(0, currentYear(state) - 2025) * 0.012)
+  : Math.min(1.4, 1 + Math.max(0, currentYear(state) - 2025) * 0.005));
 const WEATHER = ['hurricane', 'wildfire', 'flood', 'blizzard', 'tornado'];
 export const isWeather = (type) => WEATHER.includes(type);
 

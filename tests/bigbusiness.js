@@ -32,7 +32,7 @@ function grow(typeId, seed, { years = 30, strategy = 'steady', ownerYears = 0 } 
   biz.drawPct = 0;
   // A well-run company starts from a typical site (a bad location is its own problem: the advisor says move).
   biz.fit = Math.max(biz.fit ?? 1, 1);
-  let peak = { scale: 1, units: 0, revenue: 0 };
+  let peak = { scale: 1, units: 0, revenue: 0, headcount: 0 };
   for (let y = 1; y <= years; y++) {
     if (y <= ownerYears && y >= 3) { state.yearly = {}; biz.expandTo = nextMarket(state, biz); engine.dispatch('business.expand', 'cash'); }
     if (y === Math.max(3, ownerYears + 1)) { engine.dispatch('business.handOff'); engine.dispatch('business.setPlan', strategy); }
@@ -46,7 +46,7 @@ function grow(typeId, seed, { years = 30, strategy = 'steady', ownerYears = 0 } 
     }
     const b = currentBusiness(state);
     if (!b) break;
-    peak = { scale: Math.max(peak.scale, b.scale), units: Math.max(peak.units, b.ops?.units?.length ?? 0), revenue: Math.max(peak.revenue, b.lastYear?.revenue ?? 0) };
+    peak = { scale: Math.max(peak.scale, b.scale), units: Math.max(peak.units, b.ops?.units?.length ?? 0), revenue: Math.max(peak.revenue, b.lastYear?.revenue ?? 0), headcount: Math.max(peak.headcount, b.staff?.headcount ?? 0) };
   }
   return { state, biz: currentBusiness(state), peak };
 }
@@ -69,8 +69,9 @@ const tests = {
   },
 
   'a security company grows its guard force'() {
-    const { biz } = grow('securityCompany', 1);
-    assert.ok(biz.staff.headcount >= 25, `guards: ${biz.staff.headcount}`);
+    // At its peak: a recession can still cost it contracts later.
+    const { peak } = grow('securityCompany', 1);
+    assert.ok(peak.headcount >= 25, `guards: ${peak.headcount}`);
   },
 
   'a crowded market cannibalizes: the twentieth store in one town adds less than one in a new city'() {

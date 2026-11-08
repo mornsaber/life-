@@ -21,7 +21,7 @@ import { enlistmentEligibility, enlist } from '../military/MilitaryEngine.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { regionsIn, changeRegion, stateIdOf } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
-import { yearNow } from './Eras.js';
+import { yearNow, tensionFactor } from './Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Theaters: the wars each country could plausibly fight              */
@@ -423,7 +423,7 @@ export const WarModule = {
       const war = w.wars[cc];
       if (war) warYear(ctx, cc, war, rng);
       // Before 1991 the wars are history's (world/History.js); today's theatres come after.
-      else if (state.character.age >= 5 && yearNow(state) >= 1991 && rng.chance(START_CHANCE[cc] ?? 0.01)) startWar(ctx, cc, rng);
+      else if (state.character.age >= 5 && yearNow(state) >= 1991 && rng.chance((START_CHANCE[cc] ?? 0.01) * tensionFactor(state))) startWar(ctx, cc, rng);
     }
     if (yearNow(state) >= 1991) globalYear(ctx, rng);
     const war = warHere(state);

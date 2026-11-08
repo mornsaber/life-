@@ -15,6 +15,7 @@ import { yearNow, eraLayer, colonyHere, colonyStage, hasTech, PRESENT } from '..
 import { EVENTS, jimCrowHere, segregatedFrom } from '../src/modules/world/History.js';
 import { universitiesIn } from '../src/modules/education/Universities.js';
 import { crownOf } from '../src/modules/world/Crown.js';
+import { automationRisk, longevityFactor } from '../src/modules/world/Eras.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
@@ -47,7 +48,8 @@ const tests = {
   'a life started today has all of history behind it and nothing changes'() {
     const { engine, state } = life({ countryId: 'RU' });
     assert.equal(state.character.birthYear, PRESENT);
-    assert.ok(Object.keys(EVENTS).every((id) => state.era.events[id]), 'every event is in the past');
+    assert.ok(Object.keys(EVENTS).filter((id) => !EVENTS[id].future).every((id) => state.era.events[id]), 'every past event is behind it');
+    assert.ok(Object.keys(EVENTS).filter((id) => EVENTS[id].future).every((id) => !state.era.events[id]), 'the future is ahead');
     assert.deepEqual(eraLayer(state), {});
     assert.doesNotMatch(regimeHere(state).name ?? '', /Soviet|Tsar/);
     state.character.age = 30;
@@ -195,6 +197,40 @@ const tests = {
     assert.equal(state.house?.cc, 'RU', 'a former ruling house now');
     const today = life({ countryId: 'DE' });
     assert.equal(crownOf(today.state, 'DE'), null, 'no Kaiser today');
+  },
+  'loose futures: after today, the future comes in its windows, and some never does'() {
+    const seen = new Set();
+    const skipped = new Set();
+    for (const seed of [1, 2, 3, 4]) {
+      const { engine, state } = life({ countryId: 'US' }, seed);
+      assert.match(applicationEligibility(state, 'aiOps').reason ?? '', /Doesn't exist yet|Must be/);
+      live(engine, state, 60);
+      for (const [id, e] of Object.entries(state.era.events)) {
+        if (!EVENTS[id].future) continue;
+        seen.add(id);
+        if (!e.quiet) assert.ok(e.year >= EVENTS[id].window[0] && e.year <= EVENTS[id].window[1], `${id} in ${e.year}`);
+      }
+      for (const id of state.era.skipped ?? []) skipped.add(id);
+      for (const t of allText(state)) assert.doesNotMatch(t, /undefined|NaN|\[object/, t);
+    }
+    assert.ok(seen.has('aiWave'), 'the AI wave always comes');
+    assert.ok(seen.size >= 6, `${seen.size} futures`);
+    assert.ok(skipped.size >= 1, 'some futures never come');
+  },
+  'the future changes jobs, money and lifespans'() {
+    const { state } = life({ countryId: 'FI' });
+    state.character.age = 30;
+    assert.equal(automationRisk(state, 'trucking'), 0);
+    state.era.events.aiWave = { year: 2030 };
+    state.era.events.selfDriving = { year: 2034 };
+    assert.ok(automationRisk(state, 'trucking') > 0.05, 'robotaxis');
+    assert.ok(automationRisk(state, 'legalSupport') > 0, 'AI');
+    assert.equal(automationRisk(state, 'nursing'), 0);
+    assert.equal(gigEligibility(state, 'rideshare').ok, false);
+    assert.equal(applicationEligibility(state, 'aiOps').reason !== "Doesn't exist yet", true);
+    assert.equal(longevityFactor(state, 70), 1);
+    state.era.events.longevity = { year: 2040 };
+    assert.ok(longevityFactor(state, 70) < 1);
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);

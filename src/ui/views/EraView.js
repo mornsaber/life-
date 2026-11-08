@@ -18,13 +18,18 @@ export const EVENT_LABELS = {
   carnationRevolution: 'Portugal\'s Carnation Revolution', francoDies: 'Franco dies; Spain turns democratic', reformOpening: 'China opens up',
   iranRevolution: 'the Iranian Revolution', koreaDemocracy: 'democracy in South Korea', taiwanDemocracy: 'martial law ends in Taiwan',
   sovietCollapse: 'the Soviet Union falls', apartheidEnds: 'apartheid ends', dotcom: 'the dot-com crash', afghanistan: 'the war in Afghanistan',
-  gfc: 'the financial crash', covid: 'the coronavirus pandemic', brownVBoard: 'Brown v. Board: school segregation struck down', civilRights: 'the Civil Rights Act',
+  gfc: 'the financial crash', covid: 'the coronavirus pandemic', aiWave: 'the AI wave', selfDriving: 'robotaxis and driverless trucks', humanoidRobots: 'humanoid robots',
+  ubi: 'universal basic income', carbonTax: 'the carbon tax', longevity: 'drugs that slow ageing', agingTherapy: 'therapies that reverse ageing', climateTipping: 'a climate tipping point',
+  spaceIndustry: 'the commercial space industry', marsLanding: 'humans on Mars', pandemic2: 'a second pandemic', blocTension: 'the new Cold War', greatPowerWar: 'the Pacific War',
+  detente: 'the grand bargain', fusionPower: 'fusion power', brownVBoard: 'Brown v. Board: school segregation struck down', civilRights: 'the Civil Rights Act',
 };
 const TECH_LABELS = { radio: 'radio', tv: 'television', creditCards: 'credit cards', personalComputer: 'personal computers', mobilePhone: 'mobile phones', internet: 'the internet', onlineDating: 'online dating', socialMedia: 'social media', streaming: 'streaming', smartphone: 'smartphones', crypto: 'crypto', gigApps: 'gig apps' };
 
 export function eraCard(state) {
   const era = state.era;
-  if (!era || era.start >= PRESENT || yearNow(state) > PRESENT + 1) return '';
+  if (!era) return '';
+  const future = Object.entries(era.events ?? {}).filter(([id, e]) => EVENTS[id]?.future && !e.past);
+  if (yearNow(state) > PRESENT + 1 || era.start >= PRESENT) return future.length ? futureCard(state, future) : '';
   const y = yearNow(state);
   const cc = state.character.countryId ?? 'US';
   const r = regimeHere(state);
@@ -46,3 +51,12 @@ export function eraCard(state) {
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
     ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id]} (about ${yr})`).join(', '))}. Money is in today's dollars.</p>` : ''}`, { icon: '🕰️' });
 }
+
+/** After today: what this world's future has brought so far. */
+function futureCard(state, happened) {
+  const y = yearNow(state);
+  const rows = happened.sort((a, b) => a[1].year - b[1].year).slice(-10).map(([id, e]) => `<li>${e.year}${e.ended && e.ended !== e.year ? `–${e.ended}` : ''} · ${esc(EVENT_LABELS[id] ?? id)}</li>`).join('');
+  const skipped = (state.era.skipped ?? []).filter((id) => EVENTS[id]?.future && EVENTS[id].window[1] < y).map((id) => EVENT_LABELS[id] ?? id);
+  return card(`The World in ${y}`, `<p class="fine">What the future has brought so far:</p><ul class="job-board">${rows}</ul>${skipped.length ? `<p class="fine">🔀 It never came to pass: ${esc(skipped.join(', '))}.</p>` : ''}`, { icon: '🔭' });
+}
+

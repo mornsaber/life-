@@ -129,7 +129,7 @@ const JOB_GROUP = {
   surveying: 'fieldScience', environmental: 'fieldScience', renewableEnergy: 'renewables', privateMilitary: 'pmc', dentalHygiene: 'dental',
   music: 'studio', acting: 'studio', contentCreator: 'studio', education: 'campus', pharmacy: 'retail',
   // Desk jobs run on computers, systems and office space; managers keep them up like any other fleet.
-  tech: 'corpOffice', corporate: 'corpOffice', finance: 'corpOffice', accounting: 'corpOffice', law: 'corpOffice', legalSupport: 'corpOffice',
+  tech: 'corpOffice', aiOps: 'corpOffice', spaceIndustry: 'designOffice', corporate: 'corpOffice', finance: 'corpOffice', accounting: 'corpOffice', law: 'corpOffice', legalSupport: 'corpOffice',
   realestate: 'corpOffice', insurance: 'corpOffice', propertyManagement: 'corpOffice', actuary: 'corpOffice', marketing: 'corpOffice', sales: 'corpOffice',
   humanResources: 'corpOffice', design: 'corpOffice', cybersecurity: 'corpOffice', dataScience: 'corpOffice', gameDevelopment: 'corpOffice',
   interpreter: 'corpOffice', nonprofit: 'corpOffice', privateInvestigator: 'corpOffice', bailBonds: 'corpOffice',

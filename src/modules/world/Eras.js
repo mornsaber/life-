@@ -107,6 +107,8 @@ export const addEraWorkRule = (fn) => { EXTRA_WORK.push(fn); };
 /** Why this work isn't open to you in this year, or null. */
 export function eraWorkBlock(state, profession) {
   const y = yearNow(state);
+  const fb = futureWorkBlock(state, profession);
+  if (fb) return fb;
   if (y >= PRESENT) return null;
   const id = profession?.id;
   const from = PROFESSION_FROM[id] ?? profession?.fromYear;
@@ -268,3 +270,45 @@ export function subjectRight(state, to) {
   return ruled ? `${SUBJECT_WORD[to]} (until ${SUBJECT_UNTIL[to]})` : null;
 }
 
+
+/* ------------------------------------------------------------------ */
+/* Loose futures: what this world's future has brought (History.js)    */
+/* ------------------------------------------------------------------ */
+
+/** Has this future arrived? (Future events are recorded like past ones.) */
+export const futureOn = (state, id) => Boolean(state?.era?.events?.[id]) && !state.era.events[id].skipped;
+
+/** How exposed each line of work is to each wave of automation (extra yearly layoff risk). */
+const AUTOMATION = {
+  aiWave: { retail: 0.02, legalSupport: 0.05, accounting: 0.04, insurance: 0.04, interpreter: 0.07, marketing: 0.03, design: 0.03, journalism: 0.03, humanResources: 0.03, sales: 0.02, tech: 0.02, dataScience: 0.01, benefitsClaims: 0.04, corporate: 0.015, dispatch: 0.02 },
+  selfDriving: { trucking: 0.08, logistics: 0.03, schoolBus: 0.05, transit: 0.04, paratransit: 0.05, railroad: 0.02 },
+  humanoidRobots: { manufacturing: 0.06, logistics: 0.05, culinary: 0.04, retail: 0.03, caregiving: 0.02, agriculture: 0.03, hospitality: 0.03, welding: 0.03 },
+  fusionPower: { oilGas: 0.08, petroleumEng: 0.05 },
+};
+/** Extra yearly layoff risk for a profession from the automation this world has had. */
+export function automationRisk(state, professionId) {
+  if (!state?.era) return 0;
+  let r = 0;
+  for (const [wave, table] of Object.entries(AUTOMATION)) if (futureOn(state, wave)) r += table[professionId] ?? 0;
+  return r;
+}
+export const AUTOMATED_BY = (professionId) => Object.entries(AUTOMATION).filter(([, t]) => t[professionId]).map(([w]) => w);
+
+/** Medicine pushes death back: background mortality falls after longevity breakthroughs. */
+export function longevityFactor(state, age) {
+  if (!state?.era || age < 50) return 1;
+  return (futureOn(state, 'longevity') ? 0.75 : 1) * (futureOn(state, 'agingTherapy') ? 0.6 : 1);
+}
+
+/** Past a climate tipping point, weather disasters climb faster. */
+export const climateTipped = (state) => futureOn(state, 'climateTipping');
+
+/** Great-power tension makes every war likelier. */
+export const tensionFactor = (state) => (futureOn(state, 'blocTension') && !futureOn(state, 'detente') ? 1.6 : 1);
+
+/** Future work that needs its future (careers-future.js), and work the future closed. */
+export function futureWorkBlock(state, profession) {
+  const need = profession?.futureNeeds;
+  if (need && !futureOn(state, need)) return 'Doesn\'t exist yet';
+  return null;
+}

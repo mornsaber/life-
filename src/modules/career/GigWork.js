@@ -10,7 +10,7 @@ import { clamp } from '../../core/Random.js';
 import { selfEmploymentTax } from '../world/CountryLaw.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { meetsEducation } from '../../core/State.js';
-import { hasTech, TECH } from '../world/Eras.js';
+import { hasTech, TECH, futureOn } from '../world/Eras.js';
 
 /**
  * rate      gross pay per hour at a 4.8 rating in a normal economy
@@ -42,6 +42,7 @@ export function gigEligibility(state, gigId, hours = 'side') {
   if (!g) return { ok: false, reason: 'Unknown gig' };
   const tech = ['tutoring', 'freelance'].includes(gigId) ? 'internet' : 'gigApps';
   if (!hasTech(state, tech)) return { ok: false, reason: `No ${tech === 'internet' ? 'internet' : 'gig apps'} yet (from about ${TECH[tech]})` };
+  if (['rideshare', 'delivery', 'shopper'].includes(gigId) && futureOn(state, 'selfDriving')) return { ok: false, reason: 'Robotaxis and delivery robots do this now' };
   if (state.character.age < g.minAge) return { ok: false, reason: `${g.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (hours === 'full' && state.career.job) return { ok: false, reason: 'You already have a full-time job' };

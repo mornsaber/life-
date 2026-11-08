@@ -22,6 +22,8 @@ import { leaveJob } from '../career/CareerEngine.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
+import { priceLevel } from './Countries.js';
+import { AUTOMATED_BY } from './Eras.js';
 import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
@@ -70,6 +72,11 @@ function expropriate(ctx, who) {
   ctx.log(`${who} seized private fortunes. You lost $${lost.toLocaleString()} — nearly everything.`, '🚩', 'bad');
 }
 const hereIs = (ctx, ...cc) => cc.includes(hereOf(ctx.state));
+/** Your job is in this wave's way. */
+function exposed(ctx, wave, text) {
+  const job = ctx.state.career?.job;
+  if (job && AUTOMATED_BY(job.professionId).includes(wave)) ctx.log(text, '⚠️', 'warn');
+}
 /** A throne of the period falls (the Kaiser, the Tsar): the house becomes a former ruling house. */
 function fallThrone(ctx, cc, headline) {
   const r = ctx.state.world?.restored?.[cc];
@@ -250,6 +257,78 @@ export const EVENTS = {
       if (s.era.civilRights?.marched) ctx.log('You were there, on the bridges and in the jails. This is partly yours.', '✊🏿', 'good');
     },
   },
+  /* ---------------- Loose futures: after today, nothing is certain ---------------- */
+  aiWave: {
+    future: true, at: 2029, window: [2027, 2033],
+    start(ctx) {
+      news(ctx, 'AI now does work that took whole offices of people', '🤖', 'world', 9);
+      ctx.log('🤖 AI systems can now do much of the work of clerks, paralegals, translators, junior coders and copywriters. Some jobs are going; new ones are appearing.', '🤖', 'milestone');
+      exposed(ctx, 'aiWave', 'Your line of work is one of the first the AI systems are taking over. Colleagues are being let go.');
+    },
+  },
+  selfDriving: {
+    future: true, at: 2034, window: [2030, 2040], odds: 0.8, needs: (s) => hap(s, 'aiWave'),
+    start(ctx) { news(ctx, 'Robotaxis and driverless trucks take over the roads', '🚗', 'world', 8); ctx.log('Driverless cars and lorries are everywhere now. Taxi ranks are empty; truck stops are closing.', '🚗', 'info'); exposed(ctx, 'selfDriving', 'Driverless vehicles are coming for your job. The company is "transitioning the fleet".'); },
+  },
+  humanoidRobots: {
+    future: true, at: 2041, window: [2036, 2048], odds: 0.65, needs: (s) => hap(s, 'aiWave'),
+    start(ctx) { news(ctx, 'Humanoid robots go on sale; factories and warehouses switch over', '🦾', 'world', 8); ctx.log('General-purpose robots are working in warehouses, kitchens and care homes.', '🦾', 'info'); exposed(ctx, 'humanoidRobots', 'Robots are doing your job on the next shift over. The writing is on the wall.'); },
+  },
+  ubi: {
+    future: true, at: 2040, window: [2034, 2050], odds: 0.5, needs: (s) => hap(s, 'aiWave'),
+    start(ctx, rec, rng) {
+      rec.countries = only(['FI', 'NO', 'SE', 'DK', 'NL', 'DE', 'CA', 'NZ', 'IE', 'GB', 'US', 'AU', 'KR', 'JP', 'CH', 'BE', 'AT', 'FR', 'ES', 'SG']).filter((cc) => rng.chance(cc === 'US' ? 0.3 : 0.45));
+      if (!rec.countries.length) rec.countries = ['FI'];
+      news(ctx, `${rec.countries.length} countries bring in a universal basic income`, '💶', 'world', 8);
+      if (rec.countries.includes(hereOf(ctx.state))) ctx.log('Parliament has passed a universal basic income: every adult gets a monthly payment, job or no job.', '💶', 'milestone');
+    },
+    tick(ctx, rec) {
+      const s = ctx.state;
+      // Vowed to poverty: it goes to the order.
+      if (s.community?.religious && !s.community.religious.left) return;
+      if (s.character.age >= 18 && (rec.countries ?? []).includes(hereOf(s))) ctx.earn(Math.round(12000 * priceLevel(s) / 100) * 100, 'Universal basic income');
+    },
+  },
+  carbonTax: {
+    future: true, at: 2032, window: [2028, 2042], odds: 0.6,
+    start(ctx, rec, rng) {
+      rec.countries = only(['GB', 'DE', 'FR', 'SE', 'NO', 'DK', 'NL', 'CA', 'NZ', 'IE', 'ES', 'IT', 'AT', 'BE', 'FI', 'CH', 'JP', 'KR', 'AU', 'US']).filter((cc) => rng.chance(cc === 'US' ? 0.3 : 0.6));
+      news(ctx, 'A carbon tax comes in across much of the rich world', '🏭');
+      if ((rec.countries ?? []).includes(hereOf(ctx.state))) ctx.log('A carbon tax has come in: petrol, gas heating and flights all cost more.', '🏭', 'warn');
+    },
+    tick(ctx, rec) {
+      const s = ctx.state;
+      if (s.character.age < 18 || !(rec.countries ?? []).includes(hereOf(s))) return;
+      if ((s.vehicles?.owned ?? []).length || (s.housing?.properties ?? []).length) ctx.spend(Math.round(900 * priceLevel(s) / 50) * 50, 'Carbon tax', { allowDebt: true });
+    },
+  },
+  longevity: { future: true, at: 2040, window: [2034, 2050], odds: 0.6, start(ctx) { news(ctx, 'New drugs slow the diseases of old age', '💊', 'world', 8); ctx.log('Doctors have new drugs that slow heart disease, dementia and the rest of what ageing brings. People are living longer.', '💊', 'info'); } },
+  agingTherapy: { future: true, at: 2058, window: [2050, 2070], odds: 0.35, needs: (s) => hap(s, 'longevity'), start(ctx) { news(ctx, 'Therapies that reverse ageing reach the clinic', '🧬', 'world', 9); ctx.log('Therapies that reverse parts of ageing are in the clinics. Eighty is the new sixty — for those who can afford it.', '🧬', 'milestone'); } },
+  climateTipping: { future: true, at: 2042, window: [2035, 2055], odds: 0.7, start(ctx) { news(ctx, 'Scientists: a climate tipping point has been crossed', '🌡️', 'world', 9); ctx.log('The ice sheets are going faster than anyone predicted. Storms, fires and floods will get worse every year now.', '🌡️', 'warn'); } },
+  spaceIndustry: { future: true, at: 2033, window: [2029, 2040], odds: 0.75, start(ctx) { news(ctx, 'Commercial space stations open as launch costs collapse', '🚀', 'world', 7); } },
+  marsLanding: { future: true, at: 2040, window: [2034, 2052], odds: 0.55, needs: (s) => hap(s, 'spaceIndustry'), start(ctx) { news(ctx, 'Humans walk on Mars', '🔴', 'world', 10); ctx.log('You watched the first people walk on Mars, live, with half the world.', '🔴', 'milestone'); } },
+  pandemic2: {
+    future: true, at: 2045, window: [2035, 2065], odds: 0.5,
+    start(ctx) {
+      const s = ctx.state;
+      news(ctx, 'A new pandemic: borders close again', '🦠', 'world', 10);
+      recession(ctx, 'pandemic', 0, '🦠 A new virus is spreading. The lockdowns are back.');
+      (s.world ??= {}).pandemic = { active: true, since: s.character.age, name: 'a new respiratory virus' };
+    },
+  },
+  blocTension: { future: true, at: 2029, window: [2027, 2034], odds: 0.6, start(ctx) { news(ctx, 'A new Cold War: the blocs harden', '🧊', 'world', 8); ctx.log('The great powers are arming again: sanctions, blocs, a race for chips and missiles. Wars everywhere feel closer.', '🧊', 'warn'); } },
+  greatPowerWar: {
+    future: true, at: 2042, window: [2035, 2060], odds: 0.2, lasts: [2, 5], needs: (s) => hap(s, 'blocTension') && !hap(s, 'detente'),
+    start(ctx) {
+      const homes = { TW: 0.8, JP: 0.3, KR: 0.3, PH: 0.4, CN: 0.3, US: 0.05, AU: 0.05 };
+      for (const cc of only(['US', 'JP', 'KR', 'TW', 'AU', 'PH', 'GB', 'CA', 'NZ'])) joinWar(ctx, cc, { id: 'greatPowerWar', name: 'the Pacific War', adversary: 'China', operation: 'the Pacific War', intensity: 4, homes });
+      joinWar(ctx, 'CN', { id: 'greatPowerWar', name: 'the Pacific War', adversary: 'the United States and its allies', operation: 'the Pacific War', intensity: 4, homes });
+      news(ctx, 'War in the Pacific', '⚔️', 'world', 10);
+    },
+    end(ctx) { endAll(ctx, 'greatPowerWar', () => 'ended in an exhausted armistice'); news(ctx, 'Armistice in the Pacific', '🕊️', 'world', 9); },
+  },
+  detente: { future: true, at: 2050, window: [2040, 2062], odds: 0.6, needs: (s) => hap(s, 'blocTension'), start(ctx) { news(ctx, 'The blocs sign a grand bargain; the new Cold War thaws', '🤝', 'world', 8); } },
+  fusionPower: { future: true, at: 2055, window: [2045, 2070], odds: 0.4, start(ctx) { news(ctx, 'The first fusion power stations switch on; oil prices collapse', '⚛️', 'world', 9); exposed(ctx, 'fusionPower', 'Cheap fusion power is ending the oil business. The rigs are being decommissioned.'); } },
   covid: {
     at: 2020, window: [2018, 2022],
     start(ctx) {
@@ -385,10 +464,11 @@ export const HistoryModule = {
     const { state } = ctx;
     if (!state.era) HistoryModule.init(state);
     const y = yearNow(state);
-    if (state.era.start >= PRESENT) return;
+    const presentLife = state.era.start >= PRESENT;
     const rng = sideRng(state, 0x415);
     const era = state.era;
     for (const [id, ev] of Object.entries(EVENTS)) {
+      if (presentLife && !ev.future) continue;
       const rec = era.events[id];
       if (rec) {
         if (rec.ended != null || rec.skipped) continue;
@@ -408,11 +488,18 @@ export const HistoryModule = {
         era.rolled[id] = true;
         if (!rng.chance(ev.odds)) { (era.skipped ??= []).push(id); continue; }
       }
+      // Years skipped past the whole window (an heir picked up decades on, a jump in age): it happened while you weren't looking.
+      if (y > to + 2) {
+        const lasts = ev.lasts ? Math.round((ev.lasts[0] + ev.lasts[1]) / 2) : null;
+        era.events[id] = { year: Math.min(ev.at, to), past: true, quiet: true, ...(lasts != null ? { lasts, ended: Math.min(ev.at, to) + lasts } : {}) };
+        continue;
+      }
       const fire = y >= to || rng.chance(Math.min(1, 1 / Math.max(1, to - y + 1) + (ev.boost?.(state) ?? 0)));
       if (!fire) continue;
       const r = (era.events[id] = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) });
       ev.start?.(ctx, r, rng);
     }
+    if (presentLife) return;
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     sync(state);
     movementPrompt(ctx);
