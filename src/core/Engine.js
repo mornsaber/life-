@@ -20,6 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
+import { snapshot, review } from './YearReview.js';
 import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, familyCovers, dependant, setNameCountry } from './State.js';
 import { Random } from './Random.js';
 import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
@@ -183,6 +184,7 @@ export class Engine {
     this.undoStack.push(JSON.stringify(state));
     if (this.undoStack.length > this.undoDepth) this.undoStack.shift();
     const ctx = this.context();
+    const before = snapshot(state);
 
     state.character.age += 1;
     state.yearly = {};
@@ -200,6 +202,7 @@ export class Engine {
     pruneStalePrompts(state);
     this.autoResolve();
     if (currentYearEntries(state).length === 0) addLog(state, 'A quiet year passed.', '🍃', 'muted');
+    state.lastYear = review(before, state);
     compactLog(state);
     this.commit();
     this.bus.emit('ageUp', state);

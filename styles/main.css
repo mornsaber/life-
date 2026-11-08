@@ -992,3 +992,10 @@ select:focus { border-color: var(--cyan); }
 .toggle-row > * { min-width: 0; }
 .toggle-row .sel { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .toggle-row .sel select { width: 100%; min-width: 0; text-overflow: ellipsis; }
+
+/* Year in review (Life tab) */
+.year-review .yr-list { list-style: none; margin: 6px 0; padding: 0; display: grid; gap: 4px; }
+.year-review .yr-list li { padding: 4px 8px; border-radius: 6px; background: rgba(127, 127, 127, 0.08); line-height: 1.35; }
+.year-review .yr-list li.good, .year-review .yr-list li.milestone { border-left: 3px solid var(--green); }
+.year-review .yr-list li.bad, .year-review .yr-list li.death, .year-review .yr-list li.warn { border-left: 3px solid var(--red, #e5484d); }
+.year-review .yr-money { margin: 6px 0; }
