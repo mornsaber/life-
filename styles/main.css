@@ -1004,3 +1004,12 @@ select:focus { border-color: var(--cyan); }
 .this-year .next-steps, .tips-card .tips { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 6px; }
 .this-year .next-steps .btn { width: 100%; justify-content: flex-start; text-align: left; }
 .tips-card .tips li { line-height: 1.4; }
+
+/* Touch screens: every control is at least 40px tall, so it can be tapped without zooming. */
+@media (pointer: coarse) {
+  .btn.small, .btn.tiny, .chips-row .btn { min-height: 40px; }
+  .btn.tiny { padding: 6px 10px; font-size: 13px; }
+  main input:not([type=checkbox]):not([type=radio]), main select, main textarea { min-height: 40px; font-size: 16px; }
+  main input[type=checkbox], main input[type=radio] { width: 22px; height: 22px; }
+  .job-board .job-row .btn.small { min-height: 40px; }
+}
