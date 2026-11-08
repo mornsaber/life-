@@ -28,7 +28,7 @@ import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
 import { priceLevel } from './Countries.js';
-import { AUTOMATED_BY } from './Eras.js';
+import { AUTOMATED_BY, leavingAge } from './Eras.js';
 import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
@@ -413,6 +413,20 @@ function independence(ctx, cc, st, rec, rng) {
   }
 }
 
+/** In early eras most children left school at fourteen (twelve before the 1880s) to work. */
+function leaveSchoolPrompt(ctx) {
+  const { state } = ctx;
+  const k = state.k12;
+  const at = leavingAge(state);
+  if (!at || !k || k.dropout || k.done || k.leaveAsked || state.character.age !== at) return;
+  k.leaveAsked = true;
+  const poor = state.people?.wealth === 'low';
+  ctx.prompt({ type: 'history.leaveSchool', icon: '🏭', title: 'Leaving School', text: `You're ${at}. Most children your age are leaving school for work${poor ? ', and your family needs the wages' : ''}. Staying on means more years of no pay.`, options: [
+    { id: 'leave', label: '🏭 Leave school and start work', hint: poor ? 'The family needs it' : 'Like nearly everyone' },
+    { id: 'stay', label: '📚 Stay on at school', hint: poor ? 'A sacrifice for your family' : 'For a better job later' },
+  ], data: {} });
+}
+
 function movementPrompt(ctx) {
   const { state } = ctx;
   const st = colonyHere(state);
@@ -539,6 +553,7 @@ export const HistoryModule = {
       ev.start?.(ctx, r, rng);
     }
     if (presentLife) return void setReformLayer(state.world?.reforms ?? {});
+    leaveSchoolPrompt(ctx);
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     sync(state);
     movementPrompt(ctx);
@@ -547,6 +562,19 @@ export const HistoryModule = {
   },
 
   resolvers: {
+    leaveSchool(ctx, _data, optionId) {
+      const { state } = ctx;
+      const k = state.k12;
+      if (!k) return;
+      if (optionId === 'leave') {
+        k.dropout = true;
+        k.leftEarly = true;
+        k.activities = [];
+        return void ctx.log(`You left school at ${state.character.age}, as most children did, and started work.`, '🏭', 'info');
+      }
+      if (state.people?.wealth === 'low') { ctx.stat('stress', 4); for (const p of state.people.list.filter((x) => ['mother', 'father'].includes(x.relation))) p.relationship = Math.max(0, p.relationship - 4); }
+      ctx.log('You stayed on at school. Not many of your friends did.', '📚', 'good');
+    },
     civilRights(ctx, data, optionId) {
       const { state, rng } = ctx;
       const cr = (state.era.civilRights ??= { pressure: 0 });

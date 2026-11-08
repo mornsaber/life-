@@ -29,6 +29,7 @@ import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
+import { credentialExists, diplomaExpected, CREDENTIAL_FROM } from '../world/Eras.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -106,8 +107,10 @@ export function checkRequirements(state, req = {}) {
   }
   const missing = [];
   if (req.age && state.character.age < req.age) missing.push(`age ${req.age}+`);
-  if (req.education && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
-  for (const c of req.credentials ?? []) if (!hasCredential(state, c)) missing.push(credentialName(c));
+  // The era: no diploma asked before the 1940s, no licence that didn't exist yet (world/Eras.js).
+  const diplomaOnly = req.education?.level === 'highschool' && !req.education.program && !req.education.major;
+  if (req.education && !(diplomaOnly && !diplomaExpected(state)) && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
+  for (const c of req.credentials ?? []) if (credentialExists(state, c) && !hasCredential(state, c)) missing.push(credentialName(c));
   if (req.experience && yearsInProfession(state, req.experience.professions) < req.experience.years) {
     missing.push(`${req.experience.years} yrs ${(PROFESSIONS[req.experience.professions[0]]?.name ?? req.experience.professions[0]).toLowerCase()} experience`);
   }
@@ -191,6 +194,7 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
   if (hasCredential(state, id)) return { ok: false, reason: 'Covered by a higher credential' };
   if (cred.grantedBy) return { ok: false, reason: cred.grantedBy };
+  if (!credentialExists(state, id)) return { ok: false, reason: `Doesn't exist yet (from about ${CREDENTIAL_FROM[id]})` };
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };

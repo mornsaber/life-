@@ -15,7 +15,7 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { CADETS } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
-import { hasTech } from '../world/Eras.js';
+import { hasTech, eraStudyBlock } from '../world/Eras.js';
 
 export const SCHOOL_TYPES = {
   public: { name: 'Public school', icon: '🏫', tuition: 0, rigor: 0, smarts: 0, desc: 'Free, close to home, a bit of everything' },
@@ -115,6 +115,8 @@ export function schoolAccess(state, typeId) {
   const k = state.k12;
   if (!t) return { ok: false, reason: 'Unknown school' };
   if (typeId === 'online' && !hasTech(state, 'internet')) return { ok: false, reason: 'Not until the internet' };
+  const eraBlock = eraStudyBlock(state, { schoolType: typeId });
+  if (eraBlock) return { ok: false, reason: eraBlock };
   if (age < 5) return { ok: false, reason: 'School starts at 5' };
   if (age >= 18) return { ok: false, reason: 'Too old for K-12' };
   if (k.type === typeId && !k.dropout) return { ok: false, reason: 'Your current school' };

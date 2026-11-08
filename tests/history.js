@@ -18,6 +18,8 @@ import { crownOf } from '../src/modules/world/Crown.js';
 import { automationRisk, longevityFactor, priceIndex, periodDollars } from '../src/modules/world/Eras.js';
 import { professionsFor } from '../src/modules/career/JobTrees.js';
 import { governsHere, reformsOpen } from '../src/modules/world/Reforms.js';
+import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js';
+import { schoolAccess } from '../src/modules/education/K12.js';
 import { LEGISLATURES } from '../src/modules/politics/NationalOffices.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
@@ -294,6 +296,26 @@ const tests = {
     engine.dispatch('reforms.enact', 'freePress');
     assert.equal(regimeHere(state).kind, 'democracy', 'free elections and a free press: a democracy');
     assert.match(VIEWS.politics(state, {}), /Change the rules/);
+  },
+  'licences and schools keep to their era'() {
+    const { engine, state } = life({ countryId: 'US', startYear: 1930 });
+    state.character.age = 20; // 1950
+    engine.hydrate(state);
+    assert.match(pursueEligibility(state, 'emt').reason, /Doesn't exist yet/);
+    assert.match(pursueEligibility(state, 'cdlA').reason, /Doesn't exist yet/);
+    assert.doesNotMatch(pursueEligibility(state, 'driverLicense').reason ?? '', /Doesn't exist yet/);
+    // A job that today needs a CNA certificate doesn't need one in 1950.
+    assert.ok(!(applicationEligibility(state, 'nursing').reason ?? '').includes('CNA'));
+    assert.match(schoolAccess(state, 'charter').reason ?? '', /No charter schools yet/);
+    const early = life({ countryId: 'US', startYear: 1910 }, 2);
+    early.state.character.age = 13;
+    early.engine.hydrate(early.state);
+    early.state.prompts = [];
+    early.engine.ageUp();
+    assert.ok(early.state.prompts.some((p) => p.type === 'history.leaveSchool'), 'leave school at 14 in 1924');
+    const today = life({ countryId: 'US' });
+    today.state.character.age = 20;
+    assert.doesNotMatch(pursueEligibility(today.state, 'emt').reason ?? '', /Doesn't exist yet/);
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);

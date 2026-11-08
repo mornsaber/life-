@@ -345,3 +345,53 @@ export function priceIndex(year) {
 /** An amount in the money of the year you're living in, or null today. */
 export const periodDollars = (state, amount) => (yearNow(state) < PRESENT ? Math.round(amount * priceIndex(yearNow(state))) : null);
 
+
+/* ------------------------------------------------------------------ */
+/* Licences and certifications: when each existed (loosely, US dates)  */
+/* ------------------------------------------------------------------ */
+
+export const CREDENTIAL_FROM = {
+  learnerPermit: 1930, driverLicense: 1910, motorcycle: 1920, cdlA: 1986, cdlB: 1986, passengerEndorsement: 1986, schoolBusEndorsement: 1986, hazmatEndorsement: 1986,
+  studentPilot: 1927, privatePilot: 1927, instrumentRating: 1932, commercialPilot: 1927, cfi: 1930, atp: 1938, firstClassMedical: 1926, typeRating: 1960,
+  cna: 1987, emr: 1995, evoc: 1980, emt: 1970, paramedic: 1972, np: 1965, boardCertified: 1917, ccrn: 1975, crnaLicense: 1956, ccp: 1990, flightParamedic: 1985,
+  rnSpecialty: 1975, cen: 1980, cnor: 1979, rncOb: 1980, cpn: 1990, ocn: 1986, pccn: 2004, cmsrn: 1995, pmhn: 1975, bcps: 1997, ocs: 1985, cht: 1980, arrtCt: 1995, arrtMr: 1995,
+  rdms: 1975, nrcpn: 1990, caqPa: 2011, paLicense: 1970, acls: 1974, rrt: 1969, rdn: 1969, otLicense: 1975, cccSlp: 1952, ptLicense: 1925, dcLicense: 1925, arrt: 1922, rdh: 1915,
+  ff1: 1975, ff2: 1975, hazmatOps: 1980, driverOperator: 1975, cem: 1993, fireOfficer1: 1975, fireOfficer2: 1975, fireInspector: 1960, arff: 1970,
+  postReserve: 1965, post: 1959, correctionsAcademy: 1970, fto: 1972, cit: 1988, trafficEnforcement: 1950, firearmsInstructor: 1950, supervisorCourse: 1950, commandCollege: 1960,
+  fletc: 1970, fbiAcademy: 1935, deaAcademy: 1973, cbpAcademy: 2003, tsaCert: 2002, k9Handler: 1960, apco: 1980, probationCert: 1960, forensicCert: 1975,
+  epa608: 1993, awsWelder: 1940, ase: 1972, journeymanLineman: 1940, atcCert: 1936, soaASA: 1949, soaFSA: 1949, sesCert: 1979, rehs: 1970, cph: 2008,
+  nccco: 1996, h2s: 1980, wellControl: 1980, fishingMaster: 1950, railOperatorCert: 1990, conductorCert: 2012, locomotiveEngineer: 1991,
+  guardCard: 1975, armedGuard: 1975, execProtection: 1980, piLicense: 1920, bailAgent: 1960, wildlandFF2: 1975, wildlandFF1: 1975, boatCrew: 1950, coxswain: 1950,
+  wfr: 1985, landNav: 1950, ropeRescue: 1985, swiftwater: 1990, avalanche: 1980, ics300: 2005, paralegalCP: 1976, fe: 1965, pe: 1907, realEstate: 1919, brokerLicense: 1919,
+  lcsw: 1970, insuranceProducer: 1920, journeymanElectrician: 1910, masterElectrician: 1910, cosmetologyLicense: 1930, oshaSafety: 1971, series7: 1974, series66: 1999,
+  pmp: 1984, sixSigmaGreen: 1990, sixSigmaBlack: 1990, leadershipProgram: 1960, awsCert: 2013, cissp: 1994, languageProficiency: 1955, cgfm: 1994, aicp: 1978,
+  buildingInspector: 1960, faCertificate: 2004, twic: 2007, stcw: 1984, mmc: 2009, servSafe: 1990, alcoholServer: 1985, acfChef: 1976, cha: 1980, cpm: 1970,
+  adminCert: 1960, nationalBoard: 1994, ptoe: 1996, cfa: 1963, shrm: 1997, securityPlus: 2002, hazwoper: 1990, flagger: 1980, courtManager: 1970, lpc: 1976,
+  psychLicense: 1950, pls: 1950, nabcep: 2003, courtInterpreter: 1978, sagAftra: 1933, cpt: 1990, forklift: 1999, cda: 1975, waterOperator: 1975, animalControlCert: 1980, drone: 2016,
+};
+/** Did this licence or certification exist in the year you're living in? */
+export const credentialExists = (state, id) => !(CREDENTIAL_FROM[id] > yearNow(state));
+/** Before the 1940s most working people had left school at 14: a high-school diploma wasn't asked for. */
+export const diplomaExpected = (state) => yearNow(state) >= 1945;
+
+/* ------------------------------------------------------------------ */
+/* Schools and universities by era                                     */
+/* ------------------------------------------------------------------ */
+
+/** Kinds of school that came later (K12 types; university types). */
+export const SCHOOL_FROM = { magnet: 1970, charter: 1991, online: 1998, community: 1920 };
+/** Why this school or university isn't open to you in this year, or null. */
+export function eraStudyBlock(state, { schoolType, uni } = {}) {
+  const y = yearNow(state);
+  if (y >= PRESENT) return null;
+  const t = schoolType ?? uni?.type;
+  if (SCHOOL_FROM[t] > y) return `No ${t === 'community' ? 'community colleges' : `${t} schools`} yet (from about ${SCHOOL_FROM[t]})`;
+  if (uni && state.character.gender === 'female' && y < 1870) return 'Universities don\'t admit women yet';
+  return null;
+}
+/** The age most children left school in this year (14 before the 1940s; 12 before the 1880s). */
+export const leavingAge = (state) => (yearNow(state) < 1880 ? 12 : yearNow(state) < 1945 ? 14 : null);
+/** The GI Bill (1944) and federal student loans (1958). */
+export const giBillExists = (state) => yearNow(state) >= 1944;
+export const studentLoansExist = (state) => yearNow(state) >= 1958;
+

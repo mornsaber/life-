@@ -10,7 +10,7 @@
  * }
  */
 import { studyBlock } from '../world/Regimes.js';
-import { hasTech, subjectRight } from '../world/Eras.js';
+import { hasTech, subjectRight, eraStudyBlock, giBillExists, studentLoansExist } from '../world/Eras.js';
 import { yellowRibbon } from '../military/Transition.js';
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -58,6 +58,7 @@ export function lastGpa(state) {
 export const MILITARY_TA = 4500;
 
 export function giBillEligible(state) {
+  if (!giBillExists(state)) return false;
   // (US service, used in the US.)
   const honorable = state.military.history.filter((h) => ['honorable', 'retired', 'medical'].includes(h.discharge) && (h.nation ?? 'US') === 'US' && (state.character.countryId ?? 'US') === 'US');
   const years = honorable.reduce((sum, h) => sum + h.yearsOfService - (h.priorYears ?? 0), 0);
@@ -226,6 +227,8 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
     if (!v.ok) return { ok: false, reason: `Student visa: ${v.reason}` };
   }
   if (uni?.type === 'online' && !hasTech(state, 'internet')) return { ok: false, reason: 'No online universities yet' };
+  const eraBlock = eraStudyBlock(state, { uni });
+  if (eraBlock) return { ok: false, reason: eraBlock };
   const segregated = segregationHook?.(state, uni);
   if (segregated) return { ok: false, reason: segregated };
   if (uni && movesYou(state, uni) && state.military.service?.component === 'active') return { ok: false, reason: 'On active duty: study online or near your base' };
@@ -416,7 +419,7 @@ function fundTuition(ctx, e) {
   }
   if (due > 0) {
     state.finances.loans += due;
-    notes.push(`$${due.toLocaleString()} in student loans`);
+    notes.push(studentLoansExist(state) ? `$${due.toLocaleString()} in student loans` : `$${due.toLocaleString()} borrowed from the bank (there are no student loans yet)`);
   }
   return notes;
 }
