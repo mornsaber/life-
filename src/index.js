@@ -48,6 +48,7 @@ function startNewLife(form) {
     firstName: data.get('firstName'),
     lastName: data.get('lastName'),
     gender: gender === 'random' ? undefined : gender,
+    skinTone: data.get('skinTone') || undefined,
     ...birthOptions(data),
     challenge: data.get('challenge') || null,
     difficulty: data.get('difficulty') || 'normal',

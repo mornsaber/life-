@@ -37,6 +37,7 @@ import { heirWork, resumeHeirCareer } from './HeirCareer.js';
 import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 import { knob } from '../../core/Difficulty.js';
 import { noLuck, conceived } from './Fertility.js';
+import { personTone } from './SkinTone.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -483,6 +484,8 @@ export const PeopleEngine = {
       const work = kid ? heirWork({ ...kid, ageNow: old.character.age + kid.ageOffset }, engine.rng) : null;
       const heir = buildHeirState(engine.rng, old, childId);
       if (!heir) return null;
+      // The heir takes after the family (or their other parent).
+      if (kid) heir.character.skinTone = personTone(old, kid);
       engine.store.state = heir;
       engine.hydrate(heir);
       // The job they already had carries on (an inherited business can take its place).

@@ -11,6 +11,7 @@ import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
 import { ROYAL_HOMES, SHARED_CROWN, HOUSE_HOMES } from '../core/State.js';
 import { CONTINENT } from '../modules/world/Travel.js';
 import { titleInsignia } from './Insignia.js';
+import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -357,6 +358,11 @@ export function newLifeForm(rngName) {
           <label><input type="radio" name="gender" value="random" checked> 🎲 Random</label>
           <label><input type="radio" name="gender" value="female"> 👩 Female</label>
           <label><input type="radio" name="gender" value="male"> 👨 Male</label>
+        </fieldset>
+        <fieldset class="gender skin">
+          <legend>Skin tone</legend>
+          <label><input type="radio" name="skinTone" value="" checked> 🎲 By where you're born</label>
+          ${[1, 2, 3, 4, 5].map((t) => `<label><input type="radio" name="skinTone" value="${t}" aria-label="${TONE_LABELS[t]}"> ${toned('🧑', t)}</label>`).join('')}
         </fieldset>
         <h3 class="form-step">2 · Where you're born</h3>
         <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>

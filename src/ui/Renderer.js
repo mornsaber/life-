@@ -60,6 +60,7 @@ import { gradePrefix } from '../modules/career/PayGrades.js';
 import { fameSummary } from '../modules/life/Fame.js';
 import { officialResidence } from '../modules/world/Residences.js';
 import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
+import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -463,7 +464,7 @@ export class Renderer {
 
   sidebar(state) {
     const c = state.character;
-    const avatar = c.age < 3 ? '👶' : c.age < 13 ? (c.gender === 'female' ? '👧' : '👦') : c.age < 60 ? (c.gender === 'female' ? '👩' : '👨') : c.gender === 'female' ? '👵' : '👴';
+    const avatar = toned(c.age < 3 ? '👶' : c.age < 13 ? (c.gender === 'female' ? '👧' : '👦') : c.age < 60 ? (c.gender === 'female' ? '👩' : '👨') : c.gender === 'female' ? '👵' : '👴', skinToneOf(state));
     const f = state.finances;
     const load = commitmentLoad(state);
     const commitments = getCommitments(state);

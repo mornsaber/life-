@@ -130,6 +130,7 @@ export function createInitialState(rng, options = {}) {
       firstName,
       lastName,
       gender,
+      ...(Number(options.skinTone) >= 1 && Number(options.skinTone) <= 5 ? { skinTone: Number(options.skinTone) } : {}),
       age: 0,
       birthYear: START_YEAR,
       alive: true,

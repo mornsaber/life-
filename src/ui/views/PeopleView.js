@@ -55,8 +55,22 @@ function planSection(state) {
 import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, POA_COST, GUARDIANSHIP_COST } from '../../modules/people/ElderCare.js';
 import { petsOf, SPECIES } from '../../modules/people/Pets.js';
 import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../../modules/people/Fertility.js';
+import { toned, personTone } from '../../modules/people/SkinTone.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
+/** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
+function personIcon(state, p) {
+  const icon = ICON[p.relation];
+  const face = (() => {
+    if (icon && !['🧑', '🧒', '👩', '👨'].includes(icon)) return icon;
+    const age = ageOf(state, p);
+    if (age < 3) return '👶';
+    if (age < 13) return p.gender === 'female' ? '👧' : p.gender === 'male' ? '👦' : '🧒';
+    if (age >= 65) return p.gender === 'female' ? '👵' : p.gender === 'male' ? '👴' : '🧓';
+    return p.gender === 'female' ? '👩' : p.gender === 'male' ? '👨' : icon ?? '🧑';
+  })();
+  return toned(face, personTone(state, p));
+}
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
 
 function personRow(state, p) {
@@ -96,7 +110,7 @@ function personRow(state, p) {
   const bond = p.alive && age >= 3 ? bondButtons(state, p) : '';
   const memories = p.alive && p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length }) : '';
   return `<li class="person-row ${p.alive ? '' : 'gone'}">
-    <span class="person-icon" aria-hidden="true">${p.alive ? ICON[p.relation] ?? '🙂' : '🕯️'}</span>
+    <span class="person-icon" aria-hidden="true">${p.alive ? personIcon(state, p) : '🕯️'}</span>
     <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${p.alive && p.service ? `<small class="traits">${militaryInsignia(rankCodeOf(p.service), p.service.nation, { branch: p.service.branch })} ${esc(serviceLabel(p.service))}${p.service.deployed ? ' · 🌍 deployed' : ''}</small>` : ''}${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}${memories}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
     <div class="person-actions">${bond}${actions}</div>
