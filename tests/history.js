@@ -20,6 +20,7 @@ import { professionsFor } from '../src/modules/career/JobTrees.js';
 import { governsHere, reformsOpen } from '../src/modules/world/Reforms.js';
 import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js';
 import { schoolAccess } from '../src/modules/education/K12.js';
+import { warMedals } from '../src/modules/military/WarMedals.js';
 import { LEGISLATURES } from '../src/modules/politics/NationalOffices.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
@@ -316,6 +317,13 @@ const tests = {
     const today = life({ countryId: 'US' });
     today.state.character.age = 20;
     assert.doesNotMatch(pursueEligibility(today.state, 'emt').reason ?? '', /Doesn't exist yet/);
+  },
+  'the wars of history have their own medals'() {
+    const gb = warMedals('ww2', 'GB', true).map((m) => m.name);
+    assert.ok(gb.includes('1939–45 Star') && gb.includes('War Medal 1939–1945') && gb.includes('World War II Victory Medal'));
+    assert.ok(!warMedals('ww1', 'DE', false).some((m) => /Victory/.test(m.name)), 'no victory medal for the losers');
+    assert.ok(warMedals('koreanWar', 'CA', false).some((m) => m.name === 'United Nations Korea Medal'));
+    for (const m of warMedals('ww1', 'US', true)) assert.ok(m.ribbon.length >= 1 && m.ribbon.every(([c, w]) => /^#/.test(c) && w > 0));
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);

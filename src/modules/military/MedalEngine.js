@@ -8,6 +8,7 @@
  */
 import { addHonor } from '../../core/State.js';
 import { localMedal } from '../world/Honours.js';
+import { WAR_MEDALS } from './WarMedals.js';
 
 /** Ribbon stripes are [color, relative width] from left to right. */
 export const MEDALS = {
@@ -166,7 +167,8 @@ export function annualReview(ctx, svc) {
 
 export function endOfTourAwards(ctx, svc, { sawCombat }) {
   const branch = svc.branch;
-  awardMedal(ctx, 'expeditionary', { branch, citation: `Deployment #${svc.deployments}.` });
+  // In a war of history its own medals come at the peace (military/WarMedals.js), not a modern deployment medal.
+  if (!(svc.wartime && WAR_MEDALS[svc.warId])) awardMedal(ctx, 'expeditionary', { branch, citation: `Deployment #${svc.deployments}.` });
   if (sawCombat && !hasMedal(ctx.state, 'combatAction')) {
     awardMedal(ctx, 'combatAction', { branch, citation: 'For satisfactory performance under enemy fire.' });
   }
