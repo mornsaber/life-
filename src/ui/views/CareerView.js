@@ -442,10 +442,23 @@ export function careerView(state, ui = {}) {
   const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
-  return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** No civilian job, but in work all the same: the services, the bench, office, the royal round. */
+/** Your partner on the job and the calls you remember (career/Scenes.js). */
+function scenesCard(state) {
+  const cl = state.careerLife;
+  const p = cl?.partner && cl.partner.professionId === state.career.job?.professionId ? cl.partner : null;
+  const calls = cl?.scenes ?? [];
+  if (!p && !calls.length) return '';
+  const mood = (t) => (t >= 80 ? 'would walk into fire for you' : t >= 60 ? 'trusts you' : t >= 40 ? 'still making up their mind' : t >= 20 ? 'wary of you' : 'wants a new partner');
+  const badge = { outstanding: '🎖️', good: '✅', mixed: '➖', bad: '⚠️' };
+  const partner = p ? `<p>🤝 <b>${esc(p.name)}</b>, your partner since age ${p.since} — ${mood(p.trust)} (trust ${p.trust}/100, ${p.scenes ?? 0} call${p.scenes === 1 ? '' : 's'} together). Trust shifts the odds on every hard call.</p>` : '';
+  const list = calls.length ? `<ul class="job-board">${calls.slice(0, 6).map((c) => `<li>${badge[c.tier] ?? ''} Age ${c.age}: ${esc(c.title)} — ${c.tier}</li>`).join('')}</ul>` : '';
+  return card('Calls You Remember', partner + list, { icon: '📻' });
+}
+
 function otherWorkCard(state) {
   if (!isEmployed(state)) return '';
   const lines = [];

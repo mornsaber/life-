@@ -182,7 +182,7 @@ const WILDLAND_CALLS = [
 
 function callPrompt(ctx) {
   const { state, rng } = ctx;
-  if (state.prompts.some((p) => p.type === 'fireLife.call')) return;
+  if (state.prompts.some((p) => p.type === 'fireLife.call' || p.type === 'scenes.step')) return;
   const st = fl(state).station;
   if ((state.career.job.professionId === 'stateFire' || st === 'contractWildland') && rng.chance(0.8)) {
     const w = rng.pick(WILDLAND_CALLS.filter((c) => c.id !== 'burnover' || rng.chance(0.4)));

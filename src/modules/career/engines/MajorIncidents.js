@@ -16,6 +16,7 @@ import { clamp } from '../../../core/Random.js';
 import { addHonor } from '../../../core/State.js';
 import { skill, engineKey } from './Kit.js';
 import { activate } from './EmergencyMgmt.js';
+import { startScene } from '../Scenes.js';
 
 export const ROLES = {
   responder: { label: 'Responder', ids: ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'ems', 'privateEms', 'borderPatrol', 'usms', 'fbi', 'atf'] },
@@ -127,6 +128,8 @@ function resolve(ctx, data, optionId, mutualAid) {
       else { ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(20, 50) }); ctx.emit('health:trauma', { amount: 12 + sev * 2, source: data.name }); perf(2); ctx.log(`You were hurt going in during ${data.name}. Your crew got you out.`, '🩹', 'bad'); outcome = 'injured'; }
       pay(0.04 * sev, 'Disaster overtime'); break;
     case 'command':
+      // You run it, step by step (Scenes.js: command.incident); the old roll if a scene is already running.
+      if (startScene(ctx, 'command.incident', { name: data.name, kind: data.kind, severity: sev, mutualAid })) { pay(0.03 * sev, 'Disaster overtime'); outcome = 'command'; break; }
       if (ok(55)) { perf(10); ctx.log(`You ran a branch of incident command for ${data.name}. The after-action report used your branch as the model.`, '🎛️', 'good'); citation(ctx, data.name); outcome = 'command'; }
       else { perf(-6); ctx.stat('stress', 8); ctx.log(`Your branch lost track of two crews for an hour during ${data.name}. The after-action report noticed.`, '🎛️', 'warn'); outcome = 'command trouble'; }
       pay(0.03 * sev, 'Disaster overtime'); break;

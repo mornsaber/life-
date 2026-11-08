@@ -155,7 +155,7 @@ const CALLS = [
 
 function callPrompt(ctx) {
   const { state, rng } = ctx;
-  if (state.prompts.some((p) => p.type === 'emsLife.call')) return;
+  if (state.prompts.some((p) => p.type === 'emsLife.call' || p.type === 'scenes.step')) return;
   const transfers = AGENCIES[ems(state)?.agency]?.transfers;
   const pool = CALLS.filter((c) => (isMedic(state) || !['pedi', 'violent'].includes(c.id)) && (!transfers || ['arrest', 'violent', 'refusal', 'frequent'].includes(c.id)));
   const c = rng.pick(pool);

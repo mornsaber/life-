@@ -265,7 +265,7 @@ const UNIT_EVENTS = {
 
 function callPrompt(ctx, job) {
   const { state, rng } = ctx;
-  if (state.prompts.some((p) => p.type === 'police.call')) return;
+  if (state.prompts.some((p) => p.type === 'police.call' || p.type === 'scenes.step')) return;
   const u = pd(state).unit;
   const campus = ['campus', 'gameday'].includes(pd(state).area) && job.professionId === 'universityPolice';
   const town = ['smalltown', 'rural'].includes(pd(state).area);
