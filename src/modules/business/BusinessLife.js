@@ -32,13 +32,13 @@ export const SECTOR_EVENTS = deck('business.sector');
 /* ------------------------------------------------------------------ */
 
 const SECTOR_TYPES = {
-  food: ['foodTruck', 'restaurant', 'catering'],
-  retail: ['retail', 'pharmacyStore', 'opticalShop'],
-  trades: ['electrical', 'plumbing', 'hvacContractor', 'constructionCo', 'demolitionCo', 'homeBuilder', 'roofing', 'solarInstaller', 'landscaping', 'excavation', 'craneRental', 'fireProtection', 'pestControl', 'autoShop', 'towing', 'machineShop', 'homeInspection'],
+  food: ['boardingHouse', 'dairyRound', 'foodTruck', 'restaurant', 'catering'],
+  retail: ['generalStore', 'tailorShop', 'coalMerchant', 'retail', 'pharmacyStore', 'opticalShop'],
+  trades: ['smithy', 'gristMill', 'electrical', 'plumbing', 'hvacContractor', 'constructionCo', 'demolitionCo', 'homeBuilder', 'roofing', 'solarInstaller', 'landscaping', 'excavation', 'craneRental', 'fireProtection', 'pestControl', 'autoShop', 'towing', 'machineShop', 'homeInspection'],
   professional: ['lawFirm', 'cpaFirm', 'brokerage', 'propertyMgmt', 'consulting', 'engineeringFirm', 'insuranceAgency', 'architecturePractice', 'surveyFirm', 'marketingAgency', 'staffingAgency', 'translationAgency', 'piAgency', 'bailBondsAgency', 'medicalBilling', 'answeringService', 'developer'],
   health: ['practice', 'dentalPractice', 'vetClinic', 'homeHealth', 'counselingPractice', 'ptClinic', 'chiroClinic', 'nutritionPractice', 'homeCareAgency', 'ambulanceService'],
-  transport: ['trucking', 'courier', 'charterOperator', 'warehouse3pl', 'nemt', 'busCharter', 'movingCompany', 'wasteHauling', 'tourBoat', 'fishingBoat'],
-  tech: ['techStartup', 'softwareShop', 'indieGameStudio', 'designStudio', 'itSecurityFirm', 'productionCompany', 'recordingStudio'],
+  transport: ['liveryStable', 'iceHouse', 'trucking', 'courier', 'charterOperator', 'warehouse3pl', 'nemt', 'busCharter', 'movingCompany', 'wasteHauling', 'tourBoat', 'fishingBoat'],
+  tech: ['printShop', 'photoStudio', 'techStartup', 'softwareShop', 'indieGameStudio', 'designStudio', 'itSecurityFirm', 'productionCompany', 'recordingStudio'],
   personal: ['salon', 'gym', 'personalTraining', 'cleaning', 'tutoring', 'privateTutoring', 'testPrep', 'privateSchool', 'daycare', 'funeralHome', 'kennel', 'shootingRange', 'flightSchool', 'cdlSchool', 'securityCompany', 'privatePoliceAgency', 'privateFireService'],
 };
 const SECTOR_OF = Object.fromEntries(Object.entries(SECTOR_TYPES).flatMap(([s, ids]) => ids.map((id) => [id, s])));

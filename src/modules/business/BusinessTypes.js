@@ -1,5 +1,5 @@
 import { fromPacks } from '../world/packs/index.js';
-import { entityInEra, yearNow } from '../world/Eras.js';
+import { entityInEra, yearNow, periodBusinessName } from '../world/Eras.js';
 /**
  * Business types. Licensed trades and professions are gated through the
  * credential registry; everything is in today's dollars at "scale 1"
@@ -123,17 +123,36 @@ export const BUSINESS_TYPES = {
   bailBondsAgency: { name: 'Bail Bonds Agency', icon: '🔓', credentials: ['bailAgent'], cost: 50000, revenue: 350000, cogs: 0.32, staff: 2, wage: 45000, rent: 18000, insurance: 15000, cyclical: 0.1, inspection: 'board', professions: ['bailBonds', 'privateInvestigator', 'police', 'sheriff'] },
   homeInspection: { name: 'Home Inspection Company', icon: '🔍', credentials: ['buildingInspector'], cost: 15000, revenue: 220000, cogs: 0.2, staff: 1, wage: 55000, rent: 6000, insurance: 6000, cyclical: 0.9, inspection: null, professions: ['planning', 'carpentry', 'realestate', 'publicWorks'], sizes: ['solo', 'standard'] },
   shootingRange: { name: 'Shooting Range & Training Center', icon: '🎯', credentials: ['firearmsInstructor'], minExperience: 3, cost: 1200000, revenue: 950000, cogs: 0.3, staff: 8, wage: 40000, rent: 60000, insurance: 50000, cyclical: 0.5, inspection: null, professions: ['police', 'sheriff', 'privateSecurity', 'privateMilitary', 'statePolice'], sizes: ['standard'] },
+  // Businesses of the past (Eras.js BUSINESS_UNTIL): opened in their day, not after.
+  generalStore: { name: 'General Store', icon: '🏪', credentials: [], cost: 60000, revenue: 380000, cogs: 0.62, staff: 3, wage: 24000, rent: 18000, insurance: 4000, cyclical: 0.6, inspection: null, professions: ['retail', 'travellingSales', 'agriculture'] },
+  liveryStable: { name: 'Livery Stable', icon: '🐴', credentials: [], cost: 80000, revenue: 260000, cogs: 0.3, staff: 4, wage: 22000, rent: 20000, insurance: 5000, cyclical: 0.6, inspection: null, professions: ['coachman', 'agriculture', 'blacksmith'] },
+  smithy: { name: 'Smithy & Farriery', icon: '⚒️', credentials: [], cost: 35000, revenue: 180000, cogs: 0.3, staff: 2, wage: 26000, rent: 9000, insurance: 3000, cyclical: 0.5, inspection: null, professions: ['blacksmith', 'coachman'] },
+  iceHouse: { name: 'Ice Merchant', icon: '🧊', credentials: [], cost: 70000, revenue: 240000, cogs: 0.25, staff: 4, wage: 23000, rent: 15000, insurance: 4000, cyclical: 0.4, inspection: null, professions: ['milkRound', 'docks', 'trucking'] },
+  boardingHouse: { name: 'Boarding House', icon: '🏚️', credentials: [], cost: 90000, revenue: 150000, cogs: 0.28, staff: 2, wage: 20000, rent: 0, insurance: 4000, cyclical: 0.5, inspection: null, professions: ['domesticService', 'hospitality'] },
+  gristMill: { name: 'Grist Mill', icon: '🌾', credentials: [], cost: 160000, revenue: 420000, cogs: 0.55, staff: 4, wage: 25000, rent: 10000, insurance: 8000, cyclical: 0.4, inspection: null, professions: ['millWork', 'agriculture'], sizes: ['standard', 'large'] },
+  coalMerchant: { name: 'Coal Merchant', icon: '⚫', credentials: [], cost: 90000, revenue: 520000, cogs: 0.6, staff: 5, wage: 25000, rent: 16000, insurance: 6000, cyclical: 0.7, inspection: null, professions: ['coalMining', 'docks', 'trucking'] },
+  dairyRound: { name: 'Dairy & Milk Round', icon: '🥛', credentials: [], cost: 75000, revenue: 330000, cogs: 0.5, staff: 4, wage: 24000, rent: 14000, insurance: 4000, cyclical: 0.2, inspection: 'health', professions: ['milkRound', 'agriculture'] },
+  tailorShop: { name: 'Tailor & Dressmaker', icon: '🧵', credentials: [], cost: 25000, revenue: 160000, cogs: 0.35, staff: 2, wage: 26000, rent: 12000, insurance: 2000, cyclical: 0.6, inspection: null, professions: ['retail', 'domesticService'] },
+  printShop: { name: 'Jobbing Printer', icon: '🖨️', credentials: [], cost: 70000, revenue: 300000, cogs: 0.35, staff: 4, wage: 30000, rent: 20000, insurance: 4000, cyclical: 0.7, inspection: null, professions: ['journalism', 'typingPool'] },
+  photoStudio: { name: 'Photographic Studio', icon: '📷', credentials: [], cost: 30000, revenue: 150000, cogs: 0.25, staff: 2, wage: 28000, rent: 14000, insurance: 2000, cyclical: 0.6, inspection: null, professions: ['journalism', 'contentCreator'] },
   kennel: { name: 'Boarding Kennel & Grooming', icon: '🐕', credentials: [], cost: 250000, revenue: 420000, cogs: 0.15, staff: 6, wage: 32000, rent: 40000, insurance: 10000, cyclical: 0.5, inspection: 'board', professions: ['animalControl', 'veterinary'] },
 };
 
+// Names of their time: a dry goods store in 1900, an eating house in 1850.
+for (const [id, t] of Object.entries(BUSINESS_TYPES)) {
+  const base = t.name;
+  Object.defineProperty(t, 'name', { get: () => periodBusinessName(id, base), enumerable: true, configurable: true });
+  t.baseName = base;
+}
+
 /** How the Start a Business list is grouped. */
 export const BUSINESS_GROUPS = {
-  transport: { label: 'Trucks, Fleets & Transportation', icon: '🚛', ids: ['trucking', 'courier', 'movingCompany', 'towing', 'busCharter', 'nemt', 'ambulanceService', 'privateFireService', 'wasteHauling', 'warehouse3pl', 'cdlSchool', 'charterOperator', 'flightSchool', 'fishingBoat', 'tourBoat'] },
-  trades: { label: 'Trades & Construction', icon: '🔨', ids: ['electrical', 'plumbing', 'hvacContractor', 'constructionCo', 'homeBuilder', 'demolitionCo', 'roofing', 'excavation', 'craneRental', 'solarInstaller', 'machineShop', 'autoShop', 'landscaping', 'pestControl', 'cleaning', 'homeInspection', 'fireProtection'] },
+  transport: { label: 'Trucks, Fleets & Transportation', icon: '🚛', ids: ['trucking', 'courier', 'liveryStable', 'iceHouse', 'coalMerchant', 'movingCompany', 'towing', 'busCharter', 'nemt', 'ambulanceService', 'privateFireService', 'wasteHauling', 'warehouse3pl', 'cdlSchool', 'charterOperator', 'flightSchool', 'fishingBoat', 'tourBoat'] },
+  trades: { label: 'Trades & Construction', icon: '🔨', ids: ['electrical', 'plumbing', 'smithy', 'gristMill', 'printShop', 'hvacContractor', 'constructionCo', 'homeBuilder', 'demolitionCo', 'roofing', 'excavation', 'craneRental', 'solarInstaller', 'machineShop', 'autoShop', 'landscaping', 'pestControl', 'cleaning', 'homeInspection', 'fireProtection'] },
   health: { label: 'Health Care', icon: '🩺', ids: ['practice', 'dentalPractice', 'ptClinic', 'pharmacyStore', 'homeHealth', 'counselingPractice', 'opticalShop', 'chiroClinic', 'nutritionPractice', 'vetClinic', 'medicalBilling'] },
   safety: { label: 'Security & Public Safety', icon: '🛡️', ids: ['securityCompany', 'privatePoliceAgency', 'piAgency', 'bailBondsAgency', 'shootingRange', 'answeringService', 'itSecurityFirm'] },
   professional: { label: 'Professional Services', icon: '💼', ids: ['lawFirm', 'cpaFirm', 'consulting', 'engineeringFirm', 'architecturePractice', 'surveyFirm', 'insuranceAgency', 'brokerage', 'propertyMgmt', 'developer', 'staffingAgency', 'marketingAgency', 'translationAgency'] },
-  food: { label: 'Food, Retail & Personal Services', icon: '🛍️', ids: ['foodTruck', 'restaurant', 'catering', 'retail', 'salon', 'gym', 'personalTraining', 'kennel', 'funeralHome'] },
+  food: { label: 'Food, Retail & Personal Services', icon: '🛍️', ids: ['generalStore', 'boardingHouse', 'dairyRound', 'tailorShop', 'photoStudio', 'foodTruck', 'restaurant', 'catering', 'retail', 'salon', 'gym', 'personalTraining', 'kennel', 'funeralHome'] },
   education: { label: 'Education & Care', icon: '🏫', ids: ['tutoring', 'privateTutoring', 'testPrep', 'privateSchool', 'daycare', 'homeCareAgency'] },
   creative: { label: 'Tech & Creative', icon: '💡', ids: ['techStartup', 'softwareShop', 'indieGameStudio', 'designStudio', 'productionCompany', 'recordingStudio'] },
 };

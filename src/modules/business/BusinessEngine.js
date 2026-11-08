@@ -24,7 +24,7 @@ import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/Stat
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor, entityAllowed, entityName } from './BusinessTypes.js';
-import { fitsEra } from '../world/Eras.js';
+import { fitsEra, businessInEra } from '../world/Eras.js';
 
 /** The form a new business takes: the one asked for, or the nearest one that exists here. */
 const localEntity = (state, entity) => (ENTITIES[entity] && entityAllowed(state, entity) ? entity : entityAllowed(state, 'llc') ? 'llc' : entity === 'sole' ? 'sole' : 'ccorp');
@@ -659,7 +659,7 @@ function listingsTick(ctx) {
     state.business.listings = [];
     return;
   }
-  const ids = Object.keys(BUSINESS_TYPES).filter((id) => !BUSINESS_TYPES[id].startup);
+  const ids = Object.keys(BUSINESS_TYPES).filter((id) => !BUSINESS_TYPES[id].startup && businessInEra(state, id));
   state.business.listings = Array.from({ length: 2 }, () => {
     const typeId = rng.pick(ids);
     const probe = newBusiness(rng, state, typeId, { name: businessName(rng, state, BUSINESS_TYPES[typeId], { seller: true }), years: rng.int(3, 20), scale: rng.pick([1, 1, 2]), quality: rng.int(45, 75), reputation: rng.int(40, 75), assets: Math.round(BUSINESS_TYPES[typeId].cost * 0.4), fit: Math.round(rng.float(0.9, 1.2) * 100) / 100 });

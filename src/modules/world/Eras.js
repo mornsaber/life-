@@ -847,8 +847,57 @@ const BUSINESS_FROM = {
   recordingStudio: 1925, homeInspection: 1970, shootingRange: 1950, busCharter: 1925, trucking: 1915, charterOperator: 1930, bailBondsAgency: 1898, designStudio: 1920,
   consulting: 1920, vetClinic: 1880, cpaFirm: 1896, salon: 1900, gym: 1900, marketingAgency: 1900, propertyMgmt: 1900, fireProtection: 1900, pestControl: 1900,
   landscaping: 1900, demolitionCo: 1900, movingCompany: 1920, tourBoat: 1900, courier: 1900,
+  warehouse3pl: 1975, tutoring: 1975, translationAgency: 1950, opticalShop: 1900, cleaning: 1890, catering: 1880, wasteHauling: 1895,
+  developer: 1890, kennel: 1920, securityCompany: 1855, piAgency: 1850, insuranceAgency: 1840, funeralHome: 1850, machineShop: 1840,
+  photoStudio: 1850,
 };
-export const businessInEra = (state, id) => !(BUSINESS_FROM[id] > yearNow(state));
+/** Businesses of the past: no longer started once their day is done. */
+const BUSINESS_UNTIL = {
+  generalStore: 1965, liveryStable: 1930, smithy: 1955, iceHouse: 1955, boardingHouse: 1965, gristMill: 1945, coalMerchant: 1975,
+  dairyRound: 1990, tailorShop: 1975, printShop: 1995, photoStudio: 2005,
+};
+/** What a kind of business was called before its modern name: [until year, name], oldest first. */
+const BUSINESS_NAMES = {
+  retail: [[1930, 'Dry Goods Store']],
+  restaurant: [[1880, 'Eating House'], [1920, 'Dining Rooms']],
+  gym: [[1950, 'Physical Culture Studio']],
+  salon: [[1925, 'Barber & Hairdresser']],
+  cleaning: [[1950, 'Laundry & Charring Service']],
+  autoShop: [[1940, 'Motor Garage']],
+  trucking: [[1935, 'Haulage Firm']],
+  courier: [[1920, 'Carrier & Express Office']],
+  pharmacyStore: [[1950, 'Chemist & Druggist']],
+  opticalShop: [[1950, 'Optician']],
+  funeralHome: [[1920, 'Undertaker']],
+  practice: [[1940, 'Doctor\'s Surgery']],
+  dentalPractice: [[1930, 'Dental Surgery']],
+  insuranceAgency: [[1930, 'Insurance Office']],
+  securityCompany: [[1940, 'Detective & Watchman Agency']],
+  piAgency: [[1940, 'Private Detective Agency']],
+  catering: [[1940, 'Caterer & Confectioner']],
+  developer: [[1945, 'Land & Building Company']],
+  consulting: [[1950, 'Efficiency Engineers']],
+  marketingAgency: [[1950, 'Advertising Agency']],
+  staffingAgency: [[1960, 'Employment Bureau']],
+  movingCompany: [[1940, 'Furniture Removers']],
+  wasteHauling: [[1950, 'Refuse Carting Company']],
+  propertyMgmt: [[1950, 'Rent Collecting Agency']],
+  kennel: [[1950, 'Boarding Kennels']],
+  homeBuilder: [[1940, 'Housebuilder']],
+  constructionCo: [[1920, 'Building Contractor']],
+  fireProtection: [[1950, 'Fire Appliance Company']],
+  landscaping: [[1950, 'Jobbing Gardener']],
+  tourBoat: [[1950, 'Excursion Steamer']],
+  pestControl: [[1940, 'Rat-Catcher & Exterminator']],
+  privateSchool: [[1900, 'Private Academy']],
+};
+export const businessInEra = (state, id) => !(BUSINESS_FROM[id] > yearNow(state)) && !(BUSINESS_UNTIL[id] <= yearNow(state));
+export const businessUntil = (id) => BUSINESS_UNTIL[id] ?? null;
+/** A kind of business by its name in the year being played. */
+export function periodBusinessName(id, base) {
+  const y = ERA_YEAR;
+  return (BUSINESS_NAMES[id] ?? []).find(([until]) => y < until)?.[1] ?? base;
+}
 export const businessFrom = (id) => BUSINESS_FROM[id] ?? null;
 /** Company forms: US LLCs from 1977 (Britain's LLPs from 2000), S corporations from 1958; the SBA lends from 1953; franchising from the 1950s. */
 export function entityInEra(state, id) {

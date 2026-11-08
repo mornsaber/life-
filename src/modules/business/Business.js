@@ -37,7 +37,7 @@ import { structureEffects } from './Structure.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
-import { businessInEra, businessFrom, smallBizLoansExist, credentialRequired } from '../world/Eras.js';
+import { businessInEra, businessFrom, smallBizLoansExist, credentialRequired, businessUntil, yearNow } from '../world/Eras.js';
 
 export const SS_WAGE_CAP = 176100;
 /** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
@@ -72,7 +72,7 @@ export function startEligibility(state, typeId, funding = 'cash', size = 'standa
   if (banned) return { ok: false, reason: banned };
   const type = BUSINESS_TYPES[typeId];
   if (!type) return { ok: false, reason: 'Unknown business' };
-  if (!businessInEra(state, typeId)) return { ok: false, reason: `Not a business yet (from about ${businessFrom(typeId)})` };
+  if (!businessInEra(state, typeId)) return { ok: false, reason: businessUntil(typeId) && yearNow(state) >= businessUntil(typeId) ? 'A business of the past: nobody starts one any more' : `Not a business yet (from about ${businessFrom(typeId)})` };
   if (funding === 'sba' && !smallBizLoansExist(state)) return { ok: false, reason: 'No small-business loans yet: pay cash or find a partner' };
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
