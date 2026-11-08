@@ -150,7 +150,150 @@ const MIL_STYLES = {
     return wreath(Array.from({ length: Math.min(4, n - 6) }, (_, i) => `<text x="${12 + i * 9}" y="22" font-size="11" text-anchor="middle" fill="${GOLD}">✶</text>`).join(''), GOLD);
   },
 };
-const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY', 'NG', 'KE', 'GH'];
+const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY', 'NG', 'KE', 'GH', 'MT', 'GM', 'MW', 'BN', 'JM', 'BS', 'LK', 'BD', 'PG', 'SB', 'VU', 'TO', 'NP', 'BT', 'ET', 'SO', 'SS'];
+/**
+ * Commonwealth pips and crowns: monarchies keep the crown; republics wear their own emblem in its
+ * place (Pakistan's crescent, Bangladesh's water lily, Malta's cross, Nigeria's eagle).
+ */
+const CW_EMBLEM = { PK: '☪', ZA: '✵', IE: '✦', SG: '✶', NG: '🦅', KE: '⚔', GH: '★', MT: '✠', GM: '✵', MW: '☀', LK: '❂', BD: '✿', VU: '✵', NP: '⚔', BT: '☸', ET: '✵', SO: '★', SS: '✵' };
+const cwEmblem = (cc) => CW_EMBLEM[cc] ?? '♛';
+
+/* --- national families ------------------------------------------------ */
+/*
+ * Most of the world's armies wear one of a few families of rank, each with national touches.
+ *   french      galons: stripes for officers (a lieutenant-colonel's alternate silver), stars for
+ *               generals; red chevrons for corporals, gold slants for sergeants (France, francophone
+ *               Africa, Haiti, Romania, Switzerland; the Portuguese galões are the same idea)
+ *   italian     stellette for company officers, a gold frame for field officers, the greca for generals
+ *   arab        stars, then the national emblem (Egypt's eagle, the Saudi swords, Jordan's crown,
+ *               Lebanon's cedar), then crossed sword and scimitar for generals
+ *   stars       a country's stars for company officers; for field officers the stars sit on a bar,
+ *               two bars, a laurel, inside a frame or under an emblem; generals wear the country's
+ *               own mark (crossed sword and baton, an emblem, a laurel, the Polish zigzag)
+ *   own glyphs  Indonesia's bars, melati and stars; Taiwan's plum blossoms; the Philippines'
+ *               triangles, suns and stars
+ */
+const RED_CHEVRON = '#c0392b';
+const row = (n, glyph, color, { y = 21, size = 13, step = 12, x0 = 0, w = 0 } = {}) => {
+  const start = x0 || (w ? w / 2 - ((n - 1) * step) / 2 : 10);
+  return Array.from({ length: n }, (_, i) => `<text x="${start + i * step}" y="${y}" font-size="${size}" text-anchor="middle" fill="${color}">${glyph}</text>`).join('');
+};
+/** Stars (or blossoms, roses…) with an optional field-officer mark beneath or around them. */
+function starsWith(n, glyph, color, mark = null, emblem = '') {
+  const w = Math.max(30, n * 12 + 12);
+  let b = '';
+  if (mark === 'frame') b += `<rect x="2" y="4" width="${w - 4}" height="26" rx="3" fill="none" stroke="${color}" stroke-width="2"/>`;
+  if (emblem) b += `<text x="${w / 2}" y="13" font-size="10" text-anchor="middle" fill="${color}">${emblem}</text>`;
+  b += row(n, glyph, color, { y: emblem ? 27 : mark && mark !== 'frame' ? 18 : 22, size: emblem ? 10 : 13, step: emblem ? 10 : 12, w });
+  if (mark === 'bar') b += `<rect x="5" y="25" width="${w - 10}" height="3.5" rx="1" fill="${color}"/>`;
+  if (mark === 'bars2') b += `<rect x="5" y="24" width="${w - 10}" height="2.6" rx="1" fill="${color}"/><rect x="5" y="29" width="${w - 10}" height="2.6" rx="1" fill="${color}"/>`;
+  if (mark === 'wreath') b += `<path d="M4 25 Q${w / 2} 36 ${w - 4} 25" stroke="${color}" stroke-width="3" fill="none"/>`;
+  if (mark === 'zigzag') b += `<path d="${Array.from({ length: Math.floor((w - 8) / 4) + 1 }, (_, i) => `${i ? 'L' : 'M'}${4 + i * 4} ${i % 2 ? 25 : 30}`).join(' ')}" stroke="${color}" stroke-width="1.8" fill="none"/>`;
+  return svg(w, b);
+}
+const galonsN = (n, { mixed = false, color = GOLD, thick = false } = {}) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${30 - i * 5}" width="24" height="${thick ? 4 : 3}" rx="1" fill="${mixed && i % 2 ? SILVER : color}"/>`).join(''));
+const triangles = (n, color = GOLD) => svg(n * 12 + 8, row(n, '▲', color, { size: 12 }));
+const suns = (n, color = GOLD) => svg(n * 13 + 8, row(n, '☀', color, { size: 14, step: 13 }));
+
+/** French galons (and the Portuguese galões). */
+const frenchStyle = (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : n <= 4 ? chevrons(n - 1, 0, '', RED_CHEVRON) : n <= 6 ? slashes(n - 3, GOLD) : n === 7 ? galonsN(1, { color: SILVER }) : galonsN(1, { thick: n >= 9 });
+  if (k === 'W') return galonsN(1, { color: SILVER });
+  if (n <= 4) return galonsN(n);
+  if (n === 5) return galonsN(5, { mixed: true });
+  if (n === 6) return galonsN(5);
+  return stars(Math.min(5, n - 5), SILVER);
+};
+/** Italy: stellette, a gold frame (the binario) for field officers, the greca for generals. */
+const italianStyle = (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4), '', n >= 5 ? GOLD : RED_CHEVRON);
+  if (k === 'W') return starsWith(1, '★', SILVER, 'bar');
+  if (n <= 3) return starsWith(n, '★', SILVER);
+  if (n <= 6) return starsWith(n - 3, '★', SILVER, 'frame');
+  return starsWith(Math.min(4, n - 6), '★', SILVER, 'zigzag');
+};
+/** The Arab pattern: stars, the national emblem, crossed sword and scimitar for generals. */
+const arabStyle = (emblem) => (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : n <= 4 ? chevrons(n - 1) : n <= 7 ? chevrons(3, n - 4) : pips(0, true, GOLD, emblem);
+  if (k === 'W') return pips(1, true, SILVER, emblem, '★');
+  if (n <= 3) return pips(n, false, GOLD, emblem, '★');
+  if (n <= 7) return pips(n - 4, true, GOLD, emblem, '★');
+  if (n >= 11) return swordBaton(`<circle cx="19" cy="17" r="13" fill="none" stroke="#5fa35a" stroke-width="2"/><text x="19" y="12" font-size="8" text-anchor="middle" fill="${GOLD}">${emblem}</text>`);
+  return swordBaton(`<text x="19" y="33" font-size="8" text-anchor="middle" fill="${GOLD}">${emblem}${'★'.repeat(n - 8)}</text>`);
+};
+/**
+ * Stars and bars: company officers' stars; field officers' stars over a mark; generals' own mark.
+ * gen: 'swordBaton' | 'zigzag' | 'wreath' | 'emblem'; field: 'bar' | 'bars2' | 'wreath' | 'frame' | 'emblem'.
+ */
+const starsStyle = ({ glyph = '★', field = 'bar', gen = 'swordBaton', emblem = '', color = GOLD, enlisted = GOLD } = {}) => (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4), '', enlisted);
+  if (k === 'W') return starsWith(1, glyph, SILVER, 'bar');
+  if (n <= 3) return starsWith(n, glyph, color);
+  if (n <= 6) return field === 'emblem' ? starsWith(n - 3, glyph, color, null, emblem) : starsWith(n - 3, glyph, color, field);
+  const m = Math.min(4, n - 6);
+  if (gen === 'swordBaton') return swordBaton(`<text x="19" y="33" font-size="8" text-anchor="middle" fill="${color}">${emblem}${glyph.repeat(m)}</text>`);
+  if (gen === 'emblem') return starsWith(m, glyph, color, null, emblem || '♛');
+  return starsWith(m, glyph, color, gen);
+};
+/** Indonesia: gold bars, then melati (jasmine), then stars. */
+const idStyle = (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4), '', n >= 5 ? GOLD : RED_CHEVRON);
+  if (k === 'W') return bars(1, SILVER);
+  if (n <= 3) return bars(n, GOLD);
+  if (n <= 6) return svg((n - 3) * 13 + 8, row(n - 3, '✿', GOLD, { size: 14, step: 13 }));
+  return stars(Math.min(4, n - 6), GOLD);
+};
+/** Taiwan (ROC): plum blossoms; field officers' on a bar; generals stars. */
+const twStyle = (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4), '', GOLD);
+  if (k === 'W') return starsWith(1, '❀', SILVER, 'bar');
+  if (n <= 3) return starsWith(n, '❀', GOLD);
+  if (n <= 6) return starsWith(n - 3, '❀', GOLD, 'bar');
+  return stars(Math.min(4, n - 6), GOLD);
+};
+/** The Philippines: triangles, suns, stars. */
+const phStyle = (k, n) => {
+  if (k === 'E') return n <= 1 ? '' : chevrons(Math.min(3, n - 1), Math.max(0, n - 4), n >= 8 ? 'star' : '', GOLD);
+  if (k === 'W') return triangles(1, SILVER);
+  if (n <= 3) return triangles(n);
+  if (n <= 6) return suns(n - 3);
+  return stars(Math.min(4, n - 6), GOLD);
+};
+const FAMILY = {
+  ...Object.fromEntries(['FR', 'CD', 'CF', 'CI', 'DJ', 'ML', 'NE', 'SN', 'TD', 'HT', 'RO', 'CH', 'PT', 'GW', 'MZ'].map((cc) => [cc, frenchStyle])),
+  IT: italianStyle,
+  ...Object.fromEntries(Object.entries({ EG: '🦅', SA: '⚔', AE: '🦅', IQ: '🦅', SY: '🦅', JO: '♛', KW: '🦅', QA: '⚔', BH: '♛', OM: '⚔', YE: '🦅', LY: '☪', SD: '🦅', PS: '🦅', LB: '🌲', MA: '♛', AF: '✵', IR: '☫' }).map(([cc, e]) => [cc, arabStyle(e)])),
+  NL: starsStyle({ glyph: '✶', field: 'bar', gen: 'swordBaton' }),
+  BE: starsStyle({ glyph: '✶', field: 'bar', gen: 'emblem', emblem: '♛' }),
+  LU: starsStyle({ glyph: '✶', field: 'bar', gen: 'emblem', emblem: '♛' }),
+  NO: starsStyle({ glyph: '✦', field: 'bar', gen: 'wreath', color: SILVER }),
+  SE: starsStyle({ glyph: '✦', field: 'bar', gen: 'emblem', emblem: '♛♛♛' }),
+  DK: starsStyle({ glyph: '✶', field: 'bar', gen: 'wreath', color: SILVER }),
+  FI: starsStyle({ glyph: '✿', field: 'bar', gen: 'emblem', emblem: '♌', enlisted: SILVER }),
+  PL: starsStyle({ glyph: '★', field: 'bars2', gen: 'zigzag', color: SILVER, enlisted: SILVER }),
+  EE: starsStyle({ glyph: '★', field: 'bar', gen: 'wreath' }),
+  LV: starsStyle({ glyph: '★', field: 'bar', gen: 'wreath' }),
+  LT: starsStyle({ glyph: '★', field: 'bar', gen: 'wreath' }),
+  BA: starsStyle({ glyph: '★', field: 'bar', gen: 'wreath' }),
+  XK: starsStyle({ glyph: '★', field: 'bar', gen: 'wreath' }),
+  AT: starsStyle({ glyph: '✱', field: 'frame', gen: 'wreath', color: SILVER }),
+  GR: starsStyle({ glyph: '★', field: 'emblem', emblem: '❂', gen: 'swordBaton' }),
+  CY: starsStyle({ glyph: '★', field: 'emblem', emblem: '❂', gen: 'swordBaton' }),
+  TR: starsStyle({ glyph: '★', field: 'wreath', gen: 'emblem', emblem: '☾' }),
+  BR: starsStyle({ glyph: '★', field: 'emblem', emblem: '✦', gen: 'emblem' }),
+  TH: starsStyle({ glyph: '★', field: 'wreath', gen: 'swordBaton', emblem: '♛' }),
+  KH: starsStyle({ glyph: '★', field: 'wreath', gen: 'swordBaton' }),
+  MM: starsStyle({ glyph: '★', field: 'wreath', gen: 'swordBaton' }),
+  ID: idStyle,
+  TW: twStyle,
+  PH: phStyle,
+};
+Object.assign(MIL_STYLES, FAMILY);
+// Israel Police wear the IDF's family of rank (bars, then leaves).
+FAMILY.IL = MIL_STYLES.IL;
+/** Police and other uniformed services wear their country's family too: rank keys as military grades. */
+const AS_GRADE = { cpl: ['E', 4], sgt: ['E', 5], ssgt: ['E', 7], lt: ['O', 2], capt: ['O', 3], major: ['O', 4], col: ['O', 6], '1star': ['O', 7], '2star': ['O', 8], '3star': ['O', 9], '4star': ['O', 10] };
+const familyDraw = (rank, cc) => (FAMILY[cc] && AS_GRADE[rank] ? FAMILY[cc](...AS_GRADE[rank]) : undefined);
 
 /* --- naval ranks ---------------------------------------------------- */
 /*
@@ -245,14 +388,15 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
     // OF-1 second lieutenant … OF-7 brigadier; OF-8 major-general and up.
     // A field marshal: crossed batons in a wreath under the crown.
     if (n >= 11) return swordBaton(`<circle cx="19" cy="17" r="13" fill="none" stroke="#5fa35a" stroke-width="2"/><text x="19" y="9" font-size="9" text-anchor="middle" fill="${GOLD}">♛</text>`);
-    if (n >= 8) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', '♛', '♛✦'][Math.min(2, n - 8)]}</text>`);
-    return [pips(1), pips(1), pips(2), pips(3), pips(0, true), pips(1, true), pips(2, true), pips(3, true)][n];
+    const em = cwEmblem(nation);
+    if (n >= 8) return swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${GOLD}">${['✦', em, `${em}✦`][Math.min(2, n - 8)]}</text>`);
+    return [pips(1), pips(1), pips(2), pips(3), pips(0, true, GOLD, em), pips(1, true, GOLD, em), pips(2, true, GOLD, em), pips(3, true, GOLD, em)][n];
   }
   // OR-/OF- codes here are the grade itself (OF-1 = second lieutenant), like E-/O-.
   const kind = m[1] === 'OR' ? 'E' : m[1] === 'OF' ? 'O' : m[1];
   const g = n;
   if (kind === 'E') {
-    if (commonwealth && g >= 8) return svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">${g >= 9 ? '⚜' : '♛'}</text>`);
+    if (commonwealth && g >= 8) return svg(30, `<text x="15" y="25" font-size="20" text-anchor="middle" fill="${GOLD}">${g >= 9 ? '⚜' : cwEmblem(nation)}</text>`);
     return ['', chevrons(1), chevrons(1, 1), chevrons(2), chevrons(3), chevrons(3, 1), chevrons(3, 2), chevrons(3, 3, 'diamond'), chevrons(3, 3, 'star')][Math.max(0, g - 1)] ?? chevrons(3, 3, 'star');
   }
   if (kind === 'W') return warrant(Math.max(1, g));
@@ -270,8 +414,8 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
  *   fire     bugles everywhere
  *   stripes  sleeve or shoulder stripes for ship's officers and pilots
  */
-const UK_STYLE = ['GB', 'IE', 'AU', 'NZ', 'SG', 'MY', 'IN', 'HK', 'CA', 'PK', 'KE', 'NG', 'GH', 'ZA'];
-const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO', 'PE', 'CL', 'VA', 'CH'];
+const UK_STYLE = ['GB', 'IE', 'AU', 'NZ', 'SG', 'MY', 'IN', 'HK', 'CA', 'PK', 'KE', 'NG', 'GH', 'ZA', 'MT', 'GM', 'MW', 'BN', 'JM', 'BS', 'LK', 'BD', 'PG', 'SB', 'VU', 'TO', 'NP', 'BT', 'ET', 'SO', 'SS'];
+const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO', 'PE', 'CL', 'VA', 'CH', 'CD', 'CF', 'CI', 'DJ', 'ML', 'NE', 'SN', 'TD', 'HT', 'RO', 'GW', 'MZ', 'CR', 'GT', 'PA', 'VE'];
 
 /** A row of shoulder stripes (galons, or a pilot's / ship's officer's bars). */
 const galons = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${6 + i * 5}" width="24" height="3" rx="1" fill="${i === 1 && n === 5 ? SILVER : color}"/>`).join(''));
@@ -315,7 +459,7 @@ function emsRank(id) {
   return null;
 }
 const US_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 1, '', SILVER), lt: () => bars(1, GOLD), capt: () => bars(2, GOLD), major: () => leaf(GOLD), col: () => eagle(), '1star': () => stars(1, GOLD), '2star': () => stars(2, GOLD), '3star': () => stars(3, GOLD), '4star': () => stars(4, GOLD) };
-const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: () => pips(0, true, SILVER), col: () => pips(1, true, SILVER), '1star': () => swordBaton(), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">♛✦</text>`) };
+const UK_DRAW = { cpl: () => '', sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(2, false, SILVER), capt: () => pips(3, false, SILVER), major: (cc) => pips(0, true, SILVER, cwEmblem(cc)), col: (cc) => pips(1, true, SILVER, cwEmblem(cc)), '1star': () => swordBaton(), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">✦</text>`), '3star': (cc) => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">${cwEmblem(cc)}</text>`), '4star': (cc) => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">${cwEmblem(cc)}✦</text>`) };
 const GALON_DRAW = { cpl: () => chevrons(1), sgt: () => chevrons(2), ssgt: () => chevrons(3), lt: () => galons(2), capt: () => galons(3), major: () => galons(4), col: () => galons(5), '1star': () => stars(2, GOLD), '2star': () => stars(3, GOLD), '3star': () => stars(4, GOLD), '4star': () => stars(5, GOLD) };
 const CN_DRAW = { cpl: () => board({ chev: 2 }), sgt: () => board({ chev: 3 }), ssgt: () => board({ chev: 3, cross: 1 }), lt: () => board({ gaps: 1, vstars: 1 }), capt: () => board({ gaps: 1, vstars: 3 }), major: () => board({ gaps: 2, vstars: 1 }), col: () => board({ gaps: 2, vstars: 3 }), '1star': () => board({ zigzag: true, vstars: 1 }), '2star': () => board({ zigzag: true, vstars: 2 }), '3star': () => board({ zigzag: true, vstars: 3 }), '4star': () => board({ zigzag: true, huge: true }) };
 const IN_DRAW = { cpl: () => chevrons(2, 0, '', SILVER), sgt: () => chevrons(3, 0, '', SILVER), ssgt: () => chevrons(3, 0, 'star', SILVER), lt: () => pips(1, false, SILVER, '☸', '★'), capt: () => pips(3, false, SILVER, '☸', '★'), major: () => pips(0, true, SILVER, '☸'), col: () => pips(1, true, SILVER, '☸', '★'), '1star': () => pips(3, true, SILVER, '☸', '★'), '2star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">★</text>`), '3star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">☸</text>`), '4star': () => swordBaton(`<text x="19" y="33" font-size="9" text-anchor="middle" fill="${SILVER}">☸★</text>`) };
@@ -326,8 +470,10 @@ const JP_DRAW = { cpl: () => plate(1, 0, SILVER), sgt: () => plate(1, 1, SILVER)
 const FIRE_DRAW = { f1: () => bugles(1), f2: () => bugles(2), f2x: () => bugles(2, true), f3: () => bugles(3, true), f4: () => bugles(4, true), f5: () => bugles(5, true) };
 const draw = (rank, cc) => {
   if (!rank) return '';
+  // Countries with a family of their own (and not a police pattern above) draw it.
+  if (!UK_STYLE.includes(cc) && !GALONS.includes(cc) && FAMILY[cc]) { const own = familyDraw(rank, cc); if (own !== undefined) return own; }
   const table = cc === 'CN' ? CN_DRAW : cc === 'IN' ? IN_DRAW : UK_STYLE.includes(cc) ? UK_DRAW : GALONS.includes(cc) ? GALON_DRAW : cc === 'DE' ? DE_DRAW : SHOULDER.includes(cc) ? BOARD_DRAW : cc === 'KR' ? KR_DRAW : cc === 'JP' ? JP_DRAW : US_DRAW;
-  return (table[rank] ?? US_DRAW[rank])?.() ?? '';
+  return (table[rank] ?? US_DRAW[rank])?.(cc) ?? '';
 };
 
 const POLICE_LIKE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'privatePolice', 'borderPatrol', 'corrections', 'jail', 'federalPrisons', 'privatePrisons', 'gameWarden'];
