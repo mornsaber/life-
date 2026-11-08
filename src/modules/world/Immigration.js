@@ -485,7 +485,7 @@ export function naturalizationYearsLeft(state) {
   // as a digital nomad or waiting on an asylum claim; time spent abroad pushes the date back.
   const qualifying = res.qualifyingSince ?? res.arrived;
   if (qualifying == null) return null;
-  if (law.fromArrival) return Math.max(0, years - (age - qualifying), (law.prMin ?? 0) - (age - res.permanentSince));
+  if (law.fromArrival) return Math.max(0, years - (age - qualifying), (law.prMin ?? 0) - (age - (res.permanentSince ?? age)));
   const since = law.needsPR ? Math.max(res.permanentSince, qualifying) : qualifying;
   return Math.max(0, years - (age - since));
 }
