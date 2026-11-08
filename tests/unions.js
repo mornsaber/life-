@@ -44,7 +44,7 @@ const year = (engine, choose = ['decline', 'wait', 'none', 'settle', 'ratify', '
   engine.state.prompts = [];
   engine.state.stats.health = 95;
   engine.ageUp();
-  for (let j = 0; j < 8 && engine.state.prompts.length; j++) {
+  for (let j = 0; j < 20 && engine.state.prompts.length; j++) {
     const p = engine.state.prompts[0];
     engine.resolvePrompt(p.id, (p.options.find((o) => choose.includes(o.id)) ?? p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
   }

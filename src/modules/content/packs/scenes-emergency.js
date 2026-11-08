@@ -15,6 +15,10 @@
 import { isCop } from '../../publicsafety/PoliceLife.js';
 import { isFirefighter } from '../../publicsafety/FireLife.js';
 import { CALLS } from './scenes-calls.js';
+import { CAREER_SCENES } from './scenes-careers.js';
+import { UNITS, UNIT_SCENES } from './scenes-units.js';
+
+export { UNITS };
 
 const SUPERVISOR = /captain|chief|lieutenant|sergeant|supervisor|commander|director|manager|deputy|superintendent|inspector/i;
 const COMMAND_RANK = (job) => SUPERVISOR.test(job?.title ?? '');
@@ -204,7 +208,7 @@ const arrest = {
   },
 };
 
-export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest, ...CALLS].map((s) => {
+export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest, ...CALLS, ...CAREER_SCENES, ...UNIT_SCENES].map((s) => {
   // Complications become steps of their own (complication:<id>).
   for (const [id, step] of Object.entries(s.complications ?? {})) s.steps[`complication:${id}`] = step;
   return [s.id, s];

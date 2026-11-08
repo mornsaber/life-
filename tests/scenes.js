@@ -14,7 +14,18 @@ const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ??
 const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'],
   'fire.crash': ['fire', 'Firefighter'], 'fire.wildland': ['stateFire', 'Firefighter'], 'police.pursuit': ['police', 'Police Officer'], 'police.missing': ['sheriff', 'Deputy'], 'police.stop': ['police', 'Police Officer'],
   'ems.overdose': ['ems', 'Paramedic'], 'ems.mci': ['privateEms', 'EMT'], 'dispatch.whisper': ['dispatch', 'Dispatcher'], 'police.ois': ['police', 'Police Sergeant'], 'partner.line': ['ems', 'Paramedic'],
-  'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'] };
+  'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'],
+  'med.er': ['medical', 'Attending Physician'], 'med.surgery': ['medical', 'Consultant Surgeon'], 'nurse.night': ['nursing', 'Registered Nurse'], 'law.trial': ['prosecution', 'Assistant District Attorney'],
+  'teach.class': ['education', 'Teacher'], 'pilot.engine': ['aviation', 'Captain'], 'press.leak': ['journalism', 'Reporter'], 'exec.takeover': ['corporate', 'Chief Executive'],
+  'mil.patrol': ['retail', 'Soldier'], 'unit.swat': ['police', 'Police Officer'], 'unit.k9': ['police', 'Police Officer'], 'unit.hazmat': ['fire', 'Firefighter'], 'unit.rescue': ['fire', 'Firefighter'], 'unit.flight': ['ems', 'Paramedic'] };
+/** What some scenes need besides a job: a unit, active service in a war, a senior grade. */
+const SETUP = {
+  'unit.swat': (s) => { s.careerLife.unit = { id: 'swat', since: 25 }; }, 'unit.k9': (s) => { s.careerLife.unit = { id: 'k9', since: 25 }; },
+  'unit.hazmat': (s) => { s.careerLife.unit = { id: 'hazmat', since: 25 }; }, 'unit.rescue': (s) => { s.careerLife.unit = { id: 'technicalRescue', since: 25 }; },
+  'unit.flight': (s) => { s.careerLife.unit = { id: 'flightMedic', since: 25 }; },
+  'mil.patrol': (s) => { s.military.service = { ...(s.military.service ?? {}), component: 'active' }; s.world.wars = { US: { id: 'x', name: 'a war', phase: 'active' } }; },
+  'exec.takeover': (s) => { s.career.job.grade = 8; },
+};
 const life = (prof, title, seed = 1) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({ countryId: 'US', gender: 'female' });
@@ -42,6 +53,7 @@ const tests = {
     for (const [id, [prof, title]] of Object.entries(JOBS)) {
       const { state } = life(prof, title);
       state.careerLife = { partner: { scenes: 3, trust: 50, professionId: prof } };
+      SETUP[id]?.(state);
       if (SCENES[id].trigger !== 'manual') assert.ok(SCENES[id].for(state, state.career.job), `${id} for a ${title}`);
     }
   },
@@ -70,6 +82,23 @@ const tests = {
     ScenesModule.onAgeUp(engine.context());
     assert.equal(state.scene, null);
     assert.equal(state.careerLife.scenes[0].id, 'police.domestic');
+  },
+  'a record of good calls brings a specialist unit, and its own calls'() {
+    const { engine, state } = life('police', 'Police Officer', 3);
+    state.careerLife = { scenes: [{ age: 27, id: 'police.stop', tier: 'good' }, { age: 28, id: 'police.pursuit', tier: 'outstanding' }, { age: 29, id: 'police.missing', tier: 'good' }] };
+    const ctx = engine.context();
+    for (let i = 0; i < 20 && !state.prompts.some((p) => p.type === 'scenes.unit'); i++) { state.careerLife.unitAsked = null; ScenesModule.onAgeUp(ctx); state.scene = null; state.prompts = state.prompts.filter((p) => p.type === 'scenes.unit'); }
+    const offer = state.prompts.find((p) => p.type === 'scenes.unit');
+    assert.ok(offer, 'an offer');
+    assert.ok(offer.options.some((o) => o.id === 'swat') && offer.options.some((o) => o.id === 'k9'));
+    const pay = state.career.job.salary;
+    const chance = ctx.rng.chance;
+    ctx.rng.chance = () => true;
+    ScenesModule.resolvers.unit(ctx, {}, 'k9');
+    ctx.rng.chance = chance;
+    assert.equal(state.careerLife.unit.id, 'k9');
+    assert.ok(state.career.job.salary > pay);
+    assert.ok(SCENES['unit.k9'].for(state, state.career.job));
   },
   'tiers and odds'() {
     assert.equal(tierOf({ lives: 3, crew: 1, city: 0, trust: 0 }), 'outstanding');

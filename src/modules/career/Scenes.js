@@ -20,9 +20,9 @@ import { clamp } from '../../core/Random.js';
 import { addHonor, randomName } from '../../core/State.js';
 import { skill } from '../life/Skills.js';
 import { rep } from '../life/Reputation.js';
-import { SCENES } from '../content/packs/scenes-emergency.js';
+import { SCENES, UNITS } from '../content/packs/scenes-emergency.js';
 
-export { SCENES };
+export { SCENES, UNITS };
 const DIMS = ['lives', 'crew', 'city', 'trust'];
 const sceneOf = (state) => state.scene ?? null;
 
@@ -93,7 +93,7 @@ function finish(ctx) {
   const text = fill(o.text ?? def.tiers?.[tier] ?? '', sc.data, state);
   const perf = { outstanding: 10, good: 5, mixed: -1, bad: -8 }[tier];
   if (job) job.performance = Math.round(clamp((job.performance ?? 50) + perf, 0, 100));
-  rep(ctx, 'work', { outstanding: 6, good: 3, mixed: 0, bad: -6 }[tier], def.title);
+  rep(ctx, def.circle ?? 'work', { outstanding: 6, good: 3, mixed: 0, bad: -6 }[tier], def.title);
   // What it costs you: trauma always, injury when the crew score went badly.
   ctx.emit('health:trauma', { amount: (def.trauma ?? 6) + (tier === 'bad' ? 6 : 0), source: def.title.toLowerCase() });
   if (sc.score.crew <= -2 && rng.chance(0.5)) ctx.emit('health:injury', { conditionId: def.injury ?? 'backInjury', severity: rng.int(20, 50) });
@@ -117,11 +117,28 @@ function finish(ctx) {
   }
   const headline = typeof def.news === 'string' ? def.news : def.news?.[tier];
   if (headline && (tier === 'outstanding' || tier === 'bad')) ctx.emit('news:story', { tier: 'local', headline: fill(headline, sc.data, state), weight: 4, icon: def.icon, you: true });
-  if (o.rep) rep(ctx, 'work', o.rep, def.title);
+  if (o.rep) rep(ctx, def.circle ?? 'work', o.rep, def.title);
   o.effects?.(ctx, sc, tier);
   ctx.log(text, def.icon, { outstanding: 'milestone', good: 'good', mixed: 'info', bad: 'bad' }[tier]);
   ((state.careerLife ??= {}).scenes ??= []).unshift({ age: state.character.age, id: sc.id, title: def.title, tier });
   state.careerLife.scenes.splice(12);
+}
+
+/** A record of good calls brings an offer from a specialist unit (SWAT, K9, hazmat, technical rescue, flight medic). */
+function unitOffer(ctx) {
+  const { state, rng } = ctx;
+  const job = state.career?.job;
+  const cl = state.careerLife;
+  if (!job || !cl || cl.unit || state.prompts.some((p) => p.type === 'scenes.unit')) return;
+  const units = Object.entries(UNITS).filter(([, u]) => u.for(state, job));
+  if (!units.length) return;
+  const good = (cl.scenes ?? []).filter((s) => s.tier === 'outstanding' || s.tier === 'good').length;
+  if (good < 3 || (cl.unitAsked != null && state.character.age - cl.unitAsked < 4) || !rng.chance(0.4)) return;
+  cl.unitAsked = state.character.age;
+  ctx.prompt({ type: 'scenes.unit', icon: '🎖️', title: 'A Specialist Unit', text: 'Your record on the calls has been noticed. The specialist units have openings, and they want you to try out.', options: [
+    ...units.map(([id, u]) => ({ id, label: `${u.icon} ${u.name}`, hint: u.hint })),
+    { id: 'stay', label: '🙂 Stay where you are' },
+  ], data: {} });
 }
 
 /** Partners move on: a soured partnership ends in a transfer; a long one, sometimes, in a promotion. */
@@ -148,10 +165,13 @@ export const ScenesModule = {
     const { state, rng } = ctx;
     // A scene left hanging (a reload drops prompts): close it on what was decided.
     if (sceneOf(state) && !state.prompts.some((p) => p.type === 'scenes.step')) finish(ctx);
-    const job = state.career?.job;
-    if (!job || state.legal?.incarceration || sceneOf(state)) return;
-    partnerTurnover(ctx);
-    let pool = Object.values(SCENES).filter((s) => s.trigger !== 'manual' && s.for?.(state, job));
+    const job = state.career?.job ?? null;
+    if (sceneOf(state)) return;
+    const inside = Boolean(state.legal?.incarceration);
+    if (job) partnerTurnover(ctx);
+    unitOffer(ctx);
+    // Most scenes are a job's; some are service in uniform (noJob) or life inside (inPrison).
+    let pool = Object.values(SCENES).filter((s) => s.trigger !== 'manual' && Boolean(s.inPrison) === inside && (job || s.noJob || s.inPrison) && s.for?.(state, job));
     if (!pool.length || !rng.chance(Math.max(...pool.map((s) => s.chance ?? 0.35)))) return;
     // Not the same call two years running.
     const last = state.careerLife?.scenes?.[0];
@@ -162,6 +182,17 @@ export const ScenesModule = {
   },
 
   resolvers: {
+    unit(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const u = UNITS[optionId];
+      if (!u) return void ctx.log('You stayed with your crew. Somebody has to answer the ordinary calls.', '🙂');
+      const odds = checkOdds(state, u.selection);
+      if (!rng.chance(odds)) return void ctx.log(`You tried out for ${u.name} and didn't make the cut. You can try again in a few years.`, u.icon, 'warn');
+      state.careerLife.unit = { id: optionId, since: state.character.age };
+      const job = state.career.job;
+      if (job) job.salary = Math.round(job.salary * 1.06);
+      ctx.log(`You passed selection and joined ${u.name}. ${u.joined}`, u.icon, 'milestone');
+    },
     step(ctx, data, optionId) {
       const { state, rng } = ctx;
       const sc = sceneOf(state);
