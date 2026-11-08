@@ -17,8 +17,11 @@ import { Random, clamp } from '../../core/Random.js';
 import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
-import { setEraLayer } from './Regimes.js';
+import { setEraLayer, setReformLayer } from './Regimes.js';
 import { leaveJob } from '../career/CareerEngine.js';
+import { LEGISLATURES } from '../politics/NationalOffices.js';
+import { OFFICES } from '../politics/Offices.js';
+import { commitOffense } from '../legal/JusticeSystem.js';
 import { setAvailabilityFilter, getProfession } from '../career/JobTrees.js';
 import { eraHidden } from './Eras.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
@@ -396,6 +399,13 @@ function independence(ctx, cc, st, rec, rng) {
     ctx.earn(comp, 'Compensation for loss of career');
     ctx.log(`The colonial service was wound up. You were paid $${comp.toLocaleString()} for loss of career.`, '🏛️', 'warn');
   }
+  // The leader of the movement leads the country.
+  const office = LEGISLATURES[cc]?.execOffice;
+  if (rec.leader && office && OFFICES[office] && !state.legal?.incarceration && state.character.age >= 25) {
+    ctx.emit('politics:take', { officeId: office, appointed: true });
+    ctx.log(`You were sworn in as the first ${OFFICES[office].name.replace(/^(?:the )?/i, '')} of independent ${cname(cc)}.`, '🏛️', 'milestone');
+    addHonor(state, { id: `founder.${cc}`, source: 'civil', country: cc, name: `Father of the Nation`.replace('Father', state.character.gender === 'female' ? 'Mother' : 'Father'), icon: '🏛️', prestige: 8, precedence: 5, citation: `For leading ${cname(cc)} to independence.` });
+  }
   if (rec.loyal) { ctx.stat('stress', 6); ctx.log(`People remember you served the ${rulerAdj(st.ruler)} administration. Not everyone has forgiven it.`, '👀', 'warn'); }
   if (st.partition && rng.chance(0.35)) {
     ctx.emit('health:trauma', { amount: 14, source: 'partition' });
@@ -414,6 +424,7 @@ function movementPrompt(ctx) {
   const ruler = rulerAdj(st.ruler);
   const job = state.career?.job;
   ctx.prompt({ type: 'history.movement', icon: '✊', title: 'The Independence Movement', text: `The movement to end ${ruler} rule over ${cname(hereOf(state))} is growing: meetings at night, strikes, boycotts of ${ruler} goods. Some go to prison for it.`, options: [
+    ...(rec.joined && state.character.age >= 21 ? [{ id: 'lead', label: '📣 Lead it', hint: 'Speeches, strategy, prison likely — and if it wins, the country', tone: 'danger' }] : []),
     { id: 'join', label: '✊ Join the movement', hint: 'Marches, organising, maybe prison' },
     { id: 'quiet', label: '🤫 Support it quietly', hint: 'Money and a spare room' },
     ...(job ? [{ id: 'loyal', label: `🏛️ Serve the ${ruler} administration loyally`, hint: 'Safe and well paid — for now' }] : []),
@@ -441,7 +452,7 @@ function seedPast(state) {
   era.seeded = true;
 }
 
-export const sync = (state) => setEraLayer(eraLayer(state));
+export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); };
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {
@@ -527,7 +538,7 @@ export const HistoryModule = {
       const r = (era.events[id] = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) });
       ev.start?.(ctx, r, rng);
     }
-    if (presentLife) return;
+    if (presentLife) return void setReformLayer(state.world?.reforms ?? {});
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     sync(state);
     movementPrompt(ctx);
@@ -555,6 +566,16 @@ export const HistoryModule = {
       const { state, rng } = ctx;
       const rec = (state.era.colonies[data.cc] ??= { done: [], pressure: 0 });
       switch (optionId) {
+        case 'lead':
+          rec.joined = true;
+          rec.leader = true;
+          rec.pressure = (rec.pressure ?? 0) + 4;
+          ctx.stat('stress', 8);
+          if (rng.chance(0.4)) {
+            ctx.log('You were arrested for sedition. Your speech from the dock was printed in every paper in the country.', '⛓️', 'bad');
+            commitOffense(ctx, { offenseId: 'antiState', caught: true, evidence: 0.85, context: 'leading the independence movement' });
+          } else ctx.log('You lead the movement now: the speeches, the strikes, the talks with the Governor. The crowds chant your name.', '📣', 'milestone');
+          break;
         case 'join':
           rec.joined = true;
           rec.pressure = (rec.pressure ?? 0) + 2;

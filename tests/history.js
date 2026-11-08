@@ -17,6 +17,8 @@ import { universitiesIn } from '../src/modules/education/Universities.js';
 import { crownOf } from '../src/modules/world/Crown.js';
 import { automationRisk, longevityFactor, priceIndex, periodDollars } from '../src/modules/world/Eras.js';
 import { professionsFor } from '../src/modules/career/JobTrees.js';
+import { governsHere, reformsOpen } from '../src/modules/world/Reforms.js';
+import { LEGISLATURES } from '../src/modules/politics/NationalOffices.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
@@ -260,6 +262,38 @@ const tests = {
     hire(ctx, { professionId: 'lamplighter', levelId: 'lamplighter', employer: createEmployer(ctx.rng, state, p, state.character.regionId) });
     live(engine, state, 15); // to 1945
     if (state.character.alive) assert.notEqual(state.career.job?.professionId, 'lamplighter');
+  },
+  'lead the movement, and lead the country when it wins'() {
+    const { engine, state } = life({ countryId: 'KE', startYear: 1930 }, 5);
+    live(engine, state, 26); // 1956
+    if (!colonyHere(state)) return;
+    state.era.colonies.KE = { ...(state.era.colonies.KE ?? { done: [] }), joined: true, leader: true, pressure: 8 };
+    state.legal.incarceration = null;
+    for (let i = 0; i < 12 && colonyHere(state) && state.character.alive; i++) { live(engine, state, 1); state.legal.incarceration = null; }
+    if (!state.character.alive) return;
+    assert.equal(colonyHere(state), null);
+    assert.equal(state.politics.office?.id, 'ke_president', 'the first President of independent Kenya');
+    assert.ok(state.honors.some((h) => h.id === 'founder.KE'));
+  },
+  'a head of government rewrites the rules'() {
+    const { engine, state } = life({ countryId: 'RU', startYear: 1950 }, 6);
+    state.character.age = 50;
+    engine.hydrate(state);
+    assert.equal(regimeHere(state).business, 'state');
+    engine.context().emit('politics:take', { officeId: LEGISLATURES.RU.execOffice, appointed: true });
+    assert.ok(governsHere(state), 'in charge');
+    assert.ok(reformsOpen(state).some((r) => r.id === 'freeElections'));
+    state.prompts = [];
+    engine.dispatch('reforms.enact', 'marketReform');
+    assert.equal(regimeHere(state).business, 'free', 'private enterprise is legal');
+    engine.dispatch('reforms.enact', 'freeElections');
+    assert.notEqual(regimeHere(state).elections, 'free', 'one reform a year');
+    state.yearly = {};
+    engine.dispatch('reforms.enact', 'freeElections');
+    state.yearly = {};
+    engine.dispatch('reforms.enact', 'freePress');
+    assert.equal(regimeHere(state).kind, 'democracy', 'free elections and a free press: a democracy');
+    assert.match(VIEWS.politics(state, {}), /Change the rules/);
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);

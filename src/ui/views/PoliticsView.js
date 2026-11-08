@@ -32,6 +32,7 @@ import { isMep, GROUPS, COMMITTEES, POSTS } from '../../modules/politics/Europea
 import { leadsCoalitionState } from '../../modules/politics/Coalitions.js';
 import { crownBadge } from '../Insignia.js';
 import { POSTS as OVERSEAS } from '../../modules/world/OverseasPosts.js';
+import { reformsOpen } from '../../modules/world/Reforms.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -170,6 +171,14 @@ function europarlCard(state) {
     ${(e.record ?? []).length ? `<p class="fine">Record: ${e.record.slice(-4).map((r) => esc(r.text)).join(' · ')}</p>` : ''}`, { icon: '🇪🇺', accent: 'blue' });
 }
 
+/** Changing the rules of the country (world/Reforms.js). */
+function reformsBlock(state) {
+  const open = reformsOpen(state);
+  if (!open.length) return '';
+  const used = Boolean(state.yearly['reforms.enact']);
+  return `<h4 class="sub">Change the rules</h4><p class="fine">How the country is governed is yours to change now: one great reform a year. Each costs approval; in an unfree state the old guard won't like it.</p><div class="action-grid">${open.map((r) => button(r.label, 'reforms.enact', { arg: r.id, disabled: used, hint: `−${r.cost} approval${r.risky ? ' · the old guard will resist' : ''}` })).join('')}</div>`;
+}
+
 export function politicsView(state) {
   const p = state.politics;
   const o = p.office;
@@ -181,6 +190,7 @@ export function politicsView(state) {
         ${meter(o.approval, { label: '🗳️ Approval' })}
         ${o.drivers?.length ? `<p class="fine">Last year: ${o.drivers.map((d) => `${esc(d.label)} <span class="${d.delta >= 0 ? 'pos' : 'neg'}">${d.delta >= 0 ? '+' : ''}${d.delta}</span>`).join(' · ')}</p>` : ''}
         ${executiveConsole(state)}
+        ${reformsBlock(state)}
         ${kv([['Term', o.viaParty ? 'Until the Party moves you' : `${o.terms}${office.termLimit ? ` of ${office.termLimit}` : ''} · ${o.termYearsLeft} yr left`], ['Salary', `${money(o.salary ?? office.salary)}/yr`], ['Type', office.fullTime ? 'Full-time' : 'Part-time (keep your job)'], ['Pension', o.viaParty ? 'Cadre pension (civil service)' : office.pension === 'fers' ? 'FERS' : 'Elected Officials Retirement Plan']])}
         <div class="row-end">${button('👋 Resign', 'politics.resign', { variant: 'danger small' })}</div>`, { icon: '🏛️', accent: 'yellow' })
     : '';

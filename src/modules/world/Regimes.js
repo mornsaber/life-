@@ -91,6 +91,9 @@ let OVERRIDES = {};
 /** The era's regimes (world/History.js): the Tsar, the Soviet Union, colonies. Juntas sit on top. */
 let ERA = {};
 export function setEraLayer(layer = {}) { ERA = layer ?? {}; }
+/** Reforms a head of government has made (world/Reforms.js): on top of the era, under any junta. */
+let REFORMS = {};
+export function setReformLayer(layer = {}) { REFORMS = layer ?? {}; }
 let SANCTION_OVERRIDES = {};
 export function setRegimeOverrides(juntas = {}) {
   OVERRIDES = {};
@@ -107,7 +110,7 @@ export function setRegimeOverrides(juntas = {}) {
 /** Countries where the army can take power: those that have had coups, and fragile states. */
 export const coupProne = (cc) => Boolean(REGIMES[cc]?.coups || REGIMES[cc]?.kind === 'fragile' || REGIMES[cc]?.kind === 'junta');
 export const baseRegimeOf = (cc) => REGIMES[cc] ?? R({});
-export const regimeOf = (cc) => (ERA[cc] ? R({ ...ERA[cc], ...(OVERRIDES[cc] ?? {}) }) : OVERRIDES[cc] ? R({ ...(REGIMES[cc] ?? {}), ...OVERRIDES[cc] }) : REGIMES[cc] ?? R({}));
+export const regimeOf = (cc) => (ERA[cc] || REFORMS[cc] ? R({ ...(ERA[cc] ?? REGIMES[cc] ?? {}), ...(REFORMS[cc] ?? {}), ...(OVERRIDES[cc] ?? {}) }) : OVERRIDES[cc] ? R({ ...(REGIMES[cc] ?? {}), ...OVERRIDES[cc] }) : REGIMES[cc] ?? R({}));
 export const regimeHere = (state) => regimeOf(state.character.countryId ?? 'US');
 export const isOpenSociety = (cc) => ['democracy'].includes(regimeOf(cc).kind);
 
