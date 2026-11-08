@@ -88,6 +88,12 @@ function loanDue(state, balance, gross, { exact = false } = {}) {
   return exact ? Math.min(balance, Math.max(3000, balance * 0.12)) : Math.min(balance, Math.max(3000, Math.round(balance * 0.12)));
 }
 
+/** Money is what couples fight about most: debts with collectors calling strain things at home. */
+function moneyStrain(state, amount) {
+  const p = (state.people?.list ?? []).find((x) => x.alive && ['spouse', 'partner', 'fiance'].includes(x.relation));
+  if (p) p.relationship = Math.max(0, Math.min(100, Math.round((p.relationship ?? 50) - amount)));
+}
+
 export const Finances = {
   id: 'finances',
   order: 90,
@@ -250,10 +256,12 @@ export const Finances = {
         ctx.log(`You owe $${(-f.cash).toLocaleString()} ${debtWord(state)} — more than you can ever pay off at these interest rates.`, '💸', 'bad');
         ctx.stat('happiness', -6);
         ctx.stat('stress', 10);
+        moneyStrain(state, 5);
       } else if (f.cash < -25000) {
         dmpOfferPrompt(ctx);
         ctx.stat('stress', 8);
         ctx.stat('happiness', -4);
+        moneyStrain(state, 3);
         ctx.log(`Debt collectors keep calling. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, '📞', 'warn');
       }
     }

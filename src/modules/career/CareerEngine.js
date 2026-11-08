@@ -53,6 +53,8 @@ import { residencyOf } from '../world/Immigration.js';
 import { agencyExists } from '../world/LocalAgencies.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { ruralHiring } from '../life/RuralLife.js';
+import { jobSkills, skill } from '../life/Skills.js';
+import { workRepBonus } from '../life/Reputation.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -677,7 +679,12 @@ export function performanceTarget(state, rng, departmentEffect = 0) {
   const stressPenalty = Math.max(0, state.stats.stress - 60) * 0.4;
   const overload = Math.max(0, commitmentLoad(state) - 3.5) * 2.5;
   const major = educationFields(state).has(job.professionId) ? 4 : 0;
-  return 24 + aptitude + job.boss * 0.2 + job.coworkers * 0.05 + effort + major + departmentEffect + rng.int(-10, 10) - stressPenalty - overload;
+  // The rest of your life shows up at work: being ill, being miserable, what colleagues say about you, and real skill.
+  const illness = Math.max(0, 40 - (state.stats.health ?? 60)) * 0.3;
+  const mood = (state.stats.happiness ?? 50) < 30 ? -(30 - state.stats.happiness) * 0.15 : (state.stats.happiness ?? 50) >= 75 ? 2 : 0;
+  const standing = workRepBonus(state) * 40;
+  const craft = Math.max(0, Math.min(3, (Math.max(0, ...jobSkills(job.professionId).map((id) => skill(state, id))) - 30) / 20));
+  return 24 + aptitude + job.boss * 0.2 + job.coworkers * 0.05 + effort + major + departmentEffect + rng.int(-10, 10) - stressPenalty - overload - illness + mood + standing + craft;
 }
 
 /** Graduates trainees whose next level is unlocked; lets go of those past the deadline. Returns true if the job ended. */

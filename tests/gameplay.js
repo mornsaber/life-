@@ -14,7 +14,7 @@ import { skillsTick, skill, practise, skillHireBonus } from '../src/modules/life
 import { routineTick, physicalWorkBarred } from '../src/modules/health/Routine.js';
 import { addCondition } from '../src/modules/health/HealthEngine.js';
 import { lifestyleOf } from '../src/modules/health/Lifestyle.js';
-import { applicationEligibility } from '../src/modules/career/CareerEngine.js';
+import { applicationEligibility, performanceTarget } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(countryId = 'US', seed = 3, age = 30) {
@@ -29,6 +29,24 @@ const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); asser
 const answer = (engine, state, type, opt) => { const p = state.prompts.find((x) => x.type === type); if (p) engine.resolvePrompt(p.id, opt ?? p.options[0].id); return p; };
 
 const tests = {
+  'the rest of your life shows up at work: illness, mood, reputation and skill'() {
+    const { state } = life('US', 5, 35);
+    state.career.job = { professionId: 'nursing', levelId: 'rn', title: 'Nurse', employer: { name: 'General' }, salary: 70000, effort: 1, boss: 50, coworkers: 50, performance: 50 };
+    const at = (fn) => { const keep = JSON.stringify(state); fn(); const v = performanceTarget(state, new Random(1)); Object.assign(state, JSON.parse(keep)); return v; };
+    const base = at(() => { Object.assign(state.stats, { health: 80, happiness: 55, stress: 30 }); });
+    assert.ok(at(() => { Object.assign(state.stats, { health: 15, happiness: 55, stress: 30 }); }) < base - 5, 'ill');
+    assert.ok(at(() => { Object.assign(state.stats, { health: 80, happiness: 10, stress: 30 }); }) < base - 2, 'miserable');
+    assert.ok(at(() => { Object.assign(state.stats, { health: 80, happiness: 55, stress: 30 }); state.skills = { ...(state.skills ?? {}), medicine: 95, caregiving: 95 }; }) > base, 'skilled');
+  },
+  'debt with collectors calling strains things at home'() {
+    const { engine, state, ctx } = life('US', 6, 35);
+    const p = { id: 'pp1', firstName: 'Sam', relation: 'spouse', alive: true, relationship: 70, ageOffset: 0, gender: 'female' };
+    state.people.list.push(p);
+    state.finances.cash = -40000;
+    state.prompts = [];
+    engine.ageUp();
+    assert.ok(p.relationship < 70 || !p.alive, `relationship ${p.relationship}`);
+  },
   'hours go where you put them, and long weeks burn you out'() {
     const { engine, state, ctx } = life('US', 4);
     const fit = state.stats.fitness;
