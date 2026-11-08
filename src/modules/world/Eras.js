@@ -451,8 +451,12 @@ export const eraYear = () => ERA_YEAR;
 
 /** Job titles as they were: [pattern, replacement, until]. */
 const OLD_TITLES = [
+  [/\bAccountant\b/, 'Bookkeeper', 1880], [/\bPharmacist\b/, 'Apothecary', 1870], [/\bReal Estate Agent\b/, 'Land Agent', 1900], [/\bVeterinarian\b/, 'Horse Doctor', 1880],
+  [/\bPsychiatrist\b/, 'Alienist', 1920], [/\bSocial Worker\b/, 'Almoner', 1930], [/\bChef\b/, 'Cook', 1900], [/\bTruck Driver\b/, 'Carter', 1920], [/\bBus Driver\b/, 'Omnibus Driver', 1930],
+  [/\bSales Associate\b/, 'Shop Assistant', 1980], [/\bCashier\b/, 'Shop Clerk', 1920], [/\bPhotographer\b/, 'Daguerreotypist', 1860], [/\bNurse Practitioner\b/, 'Nurse', 1970],
+  [/\bTeacher\b/, 'Schoolteacher', 1900],
   [/\bPolice Officer\b/, 'Patrolman', 1975], [/\bPolice Recruit\b/, 'Probationary Patrolman', 1975], [/\bFirefighter\b/, 'Fireman', 1975],
-  [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
+  [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bPatrolman\b/, 'Constable', 1890], [/\bProbationary Patrolman\b/, 'Probationary Constable', 1890], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
   [/\bChief Executive Officer\b/, 'Managing Director', 1975], [/\bAdministrative Assistant\b/, 'Secretary', 1985], [/\bSanitation Worker\b/, 'Dustman', 1980],
   [/\bChairperson\b/, 'Chairman', 1985], [/\bEMT\b/, 'Ambulance Attendant', 1970], [/\bParamedic\b/, 'Ambulance Driver', 1970], [/\bSoftware Engineer\b/, 'Programmer', 1985],
   [/\bHuman Resources\b/, 'Personnel', 1985], [/\bCustodian\b/, 'Janitor', 1990], [/\bNursing Assistant\b/, 'Orderly', 1987],
@@ -467,6 +471,41 @@ export function periodTitle(title) {
 
 /** Military ranks as they were (US forces especially changed): [nation|'*', branch, track, index, title, until]. */
 const OLD_RANKS = [
+  // The United States: no admirals before 1862, no lieutenant-generals between Washington and Grant.
+  ['US', 'navy', 'officer', 4, 'Master Commandant', 1838], ['US', 'navy', 'officer', 0, 'Passed Midshipman', 1862], ['US', 'navy', 'officer', 3, 'Lieutenant', 1862],
+  ['US', 'navy', 'officer', 7, 'Flag Officer', 1862], ['US', 'navy', 'officer', 8, 'Flag Officer', 1864], ['US', 'navy', 'officer', 9, 'Flag Officer', 1866], ['US', 'navy', 'officer', 1, 'Master', 1883],
+  ['US', 'army', 'officer', 8, 'Major General', 1864], ['US', 'army', 'officer', 9, 'Major General', 1866], ['US', 'army', 'enlisted', 2, 'Private', 1920],
+  ['US', 'marines', 'enlisted', 1, 'Private', 1958], ['US', 'marines', 'enlisted', 2, 'Private First Class', 1958], ['US', 'marines', 'officer', 9, 'Major General', 1945],
+  // Britain: ensigns until 1871, brigadier-generals until 1922, colour-sergeants before warrant officers.
+  ['GB', 'army', 'officer', 0, 'Ensign', 1871], ['GB', 'army', 'officer', 0, 'Sub-Lieutenant', 1877], ['GB', 'army', 'officer', 6, 'Brigadier-General', 1922], ['GB', 'army', 'officer', 6, 'Colonel-Commandant', 1928],
+  ['GB', 'army', 'enlisted', 6, 'Sergeant Major', 1881], ['GB', 'army', 'enlisted', 5, 'Colour Sergeant', 1915], ['GB', 'army', 'enlisted', 7, 'Regimental Sergeant Major', 1915], ['GB', 'army', 'enlisted', 8, 'Regimental Sergeant Major', 2015],
+  ['GB', 'navy', 'officer', 1, 'Mate', 1861], ['GB', 'navy', 'enlisted', 0, 'Ordinary Seaman', 1999], ['GB', 'navy', 'enlisted', 1, 'Able Seaman', 1999], ['GB', 'navy', 'enlisted', 2, 'Leading Seaman', 1999],
+  ['GB', 'navy', 'enlisted', 6, 'Chief Petty Officer', 1970], ['GB', 'navy', 'enlisted', 5, 'Chief Petty Officer', 2004],
+  // Russia: the Tsar's army, the Red Army's commanders without ranks, the commanders' ranks of 1935–40.
+  ['RU', 'army', 'officer', 0, 'Praporshchik (Ensign)', 1917], ['RU', 'army', 'officer', 1, 'Podporuchik', 1917], ['RU', 'army', 'officer', 2, 'Poruchik', 1917], ['RU', 'army', 'officer', 3, 'Shtabs-Kapitan', 1917],
+  ['RU', 'army', 'officer', 4, 'Major', 1884], ['RU', 'army', 'officer', 4, 'Kapitan', 1917], ['RU', 'army', 'officer', 5, 'Podpolkovnik', 1917], ['RU', 'army', 'officer', 6, 'Polkovnik', 1917],
+  ['RU', 'army', 'officer', 7, 'General-Major', 1917], ['RU', 'army', 'officer', 8, 'General-Leytenant', 1917], ['RU', 'army', 'officer', 9, 'General of Infantry', 1917],
+  ['RU', 'army', 'enlisted', 0, 'Ryadovoy', 1917], ['RU', 'army', 'enlisted', 1, 'Yefreytor', 1917], ['RU', 'army', 'enlisted', 2, 'Junior Unter-Ofitser', 1917], ['RU', 'army', 'enlisted', 3, 'Senior Unter-Ofitser', 1917],
+  ['RU', 'army', 'enlisted', 4, 'Feldfebel', 1917], ['RU', 'army', 'enlisted', 5, 'Podpraporshchik', 1917], ['RU', 'army', 'enlisted', 6, 'Zauryad-Praporshchik', 1917],
+  ['RU', 'army', 'officer', 0, 'Komvzvoda (Platoon Commander)', 1935], ['RU', 'army', 'officer', 1, 'Komvzvoda (Platoon Commander)', 1935], ['RU', 'army', 'officer', 2, 'Pomkomroty (Deputy Company Commander)', 1935],
+  ['RU', 'army', 'officer', 3, 'Komroty (Company Commander)', 1935], ['RU', 'army', 'officer', 4, 'Kombat (Battalion Commander)', 1935], ['RU', 'army', 'officer', 5, 'Pomkompolka (Deputy Regimental Commander)', 1935],
+  ['RU', 'army', 'officer', 6, 'Kompolka (Regimental Commander)', 1935], ['RU', 'army', 'officer', 7, 'Kombrig', 1940], ['RU', 'army', 'officer', 8, 'Komdiv', 1940], ['RU', 'army', 'officer', 9, 'Komkor', 1940],
+  ['RU', 'army', 'officer', 0, 'Lieutenant', 1937], ['RU', 'army', 'officer', 5, 'Major', 1939],
+  ['RU', 'army', 'enlisted', 0, 'Krasnoarmeyets (Red Army Man)', 1946], ['RU', 'army', 'enlisted', 1, 'Krasnoarmeyets (Red Army Man)', 1940], ['RU', 'army', 'enlisted', 2, 'Otdelyonny (Section Leader)', 1940],
+  ['RU', 'army', 'enlisted', 3, 'Pomkomvzvoda (Deputy Platoon Leader)', 1940], ['RU', 'army', 'enlisted', 6, 'Starshina', 1972], ['RU', 'army', 'enlisted', 7, 'Starshina', 1981], ['RU', 'army', 'enlisted', 8, 'Starshina', 1981],
+  ['RU', 'navy', 'officer', 9, 'Admiral of the Fleet', 1917], ['RU', 'navy', 'officer', 3, 'Lieutenant', 1917],
+  // Germany: no brigadier-generals before the Bundeswehr; a general "of the infantry" and a Generaloberst.
+  ['DE', 'army', 'officer', 6, 'Generalmajor', 1956], ['DE', 'army', 'officer', 7, 'Generalleutnant', 1956], ['DE', 'army', 'officer', 8, 'General der Infanterie', 1956], ['DE', 'army', 'officer', 9, 'Generaloberst', 1956],
+  ['DE', 'army', 'officer', 0, 'Sekondeleutnant', 1899], ['DE', 'army', 'officer', 1, 'Premierleutnant', 1899],
+  ['DE', 'navy', 'officer', 6, 'Kommodore', 1956],
+  // France: corps and army generals were appointments, not ranks, until 1939.
+  ['FR', 'army', 'officer', 8, 'Général de division (commandant de corps d\'armée)', 1939], ['FR', 'army', 'officer', 9, 'Général de division (commandant d\'armée)', 1939],
+  ['FR', 'army', 'officer', 3, 'Chef de bataillon', 1880], ['FR', 'army', 'enlisted', 8, 'Adjudant-chef', 1975],
+  // Japan's imperial forces.
+  ['JP', 'army', 'officer', 0, 'Shōi (Second Lieutenant)', 1945], ['JP', 'army', 'officer', 1, 'Chūi (First Lieutenant)', 1945], ['JP', 'army', 'officer', 2, 'Tai-i (Captain)', 1945], ['JP', 'army', 'officer', 3, 'Shōsa (Major)', 1945],
+  ['JP', 'army', 'officer', 4, 'Chūsa (Lieutenant Colonel)', 1945], ['JP', 'army', 'officer', 5, 'Taisa (Colonel)', 1945], ['JP', 'army', 'officer', 6, 'Shōshō (Major General)', 1945], ['JP', 'army', 'officer', 7, 'Chūjō (Lieutenant General)', 1945],
+  ['JP', 'army', 'officer', 8, 'Taishō (General)', 1945], ['JP', 'army', 'officer', 9, 'Gensui (Field Marshal)', 1945],
+  ['JP', 'navy', 'officer', 6, 'Shōshō (Rear Admiral)', 1945], ['JP', 'navy', 'officer', 7, 'Chūjō (Vice Admiral)', 1945], ['JP', 'navy', 'officer', 8, 'Taishō (Admiral)', 1945], ['JP', 'navy', 'officer', 9, 'Gensui (Fleet Admiral)', 1945],
   ['US', 'army', 'enlisted', 0, 'Private', 1920], ['US', 'army', 'enlisted', 1, 'Private', 1920], ['US', 'army', 'enlisted', 3, 'Corporal', 1955],
   ['US', 'army', 'enlisted', 6, 'Technical Sergeant', 1948], ['US', 'army', 'enlisted', 7, 'Master Sergeant', 1958], ['US', 'army', 'enlisted', 8, 'First Sergeant', 1958],
   ['US', 'navy', 'enlisted', 0, 'Apprentice Seaman', 1948], ['US', 'navy', 'enlisted', 1, 'Seaman Second Class', 1948], ['US', 'navy', 'enlisted', 2, 'Seaman First Class', 1948],
@@ -480,6 +519,20 @@ export function periodRank(nation, branch, track, index, title) {
   if (ERA_YEAR >= PRESENT) return title;
   const hit = OLD_RANKS.find(([n, b, t, i, , until]) => (n === (nation ?? 'US') || n === '*') && b === branch && t === track && i === index && ERA_YEAR < until);
   return hit ? hit[4] : title;
+}
+/** A service's name in its day: the Red Army, the Kaiser's army, the Wehrmacht, the Grande Armée. [nation, branch, name, until] */
+const OLD_BRANCHES = [
+  ['RU', 'army', 'Imperial Russian Army', 1918], ['RU', 'army', 'Red Army', 1946], ['RU', 'army', 'Soviet Army', 1992], ['RU', 'navy', 'Imperial Russian Navy', 1918], ['RU', 'navy', 'Soviet Navy', 1992], ['RU', 'airforce', 'Soviet Air Forces', 1992],
+  ['DE', 'army', 'Prussian Army', 1871], ['DE', 'army', 'Imperial German Army', 1919], ['DE', 'army', 'Reichswehr', 1935], ['DE', 'army', 'Wehrmacht (Heer)', 1946],
+  ['DE', 'navy', 'Prussian Navy', 1871], ['DE', 'navy', 'Imperial German Navy (Kaiserliche Marine)', 1919], ['DE', 'navy', 'Reichsmarine', 1935], ['DE', 'navy', 'Kriegsmarine', 1946], ['DE', 'airforce', 'Luftwaffe of the Wehrmacht', 1946],
+  ['FR', 'army', 'Grande Armée', 1815], ['FR', 'army', 'Armée française', 1945],
+  ['IT', 'army', 'Regio Esercito (Royal Army)', 1946], ['IT', 'navy', 'Regia Marina (Royal Navy)', 1946], ['IT', 'airforce', 'Regia Aeronautica', 1946],
+  ['JP', 'army', 'Imperial Japanese Army', 1946], ['JP', 'navy', 'Imperial Japanese Navy', 1946],
+  ['US', 'airforce', 'U.S. Army Air Forces', 1947], ['IN', 'army', 'British Indian Army', 1947], ['AU', 'army', 'Australian Military Forces', 1980],
+];
+export function periodBranch(nation, branch, name) {
+  if (ERA_YEAR >= PRESENT) return name;
+  return OLD_BRANCHES.find(([n, b, , until]) => n === (nation ?? 'US') && b === branch && ERA_YEAR < until)?.[2] ?? name;
 }
 /** When each branch existed: air forces from the 1910s–30s, the US Air Force from 1947, the Space Force from 2019. */
 const BRANCH_FROM = { US: { airforce: 1947, spaceforce: 2019, coastguard: 1915 }, GB: { airforce: 1918 }, CA: { airforce: 1924 }, AU: { airforce: 1921 }, NZ: { airforce: 1937 }, DE: { airforce: 1935 }, IN: { airforce: 1932 }, '*': { airforce: 1920, spaceforce: 2019 } };

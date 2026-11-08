@@ -11,7 +11,9 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { topOfficerGrade, FORCES } from '../src/modules/world/NationalForces.js';
 import { tryPromotion, rankOf, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
-import { periodTitle } from '../src/modules/world/Eras.js';
+import { periodTitle, setEraYear } from '../src/modules/world/Eras.js';
+import { branchOf } from '../src/modules/military/MilitaryEngine.js';
+import { militaryInsignia } from '../src/ui/Insignia.js';
 import { professionsFor, getProfession } from '../src/modules/career/JobTrees.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -55,6 +57,29 @@ const tests = {
     assert.equal(rankOf({ branch: 'army', track: 'enlisted', grade: 3 }).title, 'Specialist');
     assert.equal(periodTitle('Police Officer'), 'Police Officer');
     assert.doesNotMatch(enlistmentEligibility(now.state, 'airforce', 'enlisted', 'active').reason ?? '', /Doesn't exist yet/);
+  },
+  'ranks of the 19th century and of other nations, and their insignia'() {
+    life('US', 1830); // 1850 by the checks below
+    setEraYear(1850);
+    assert.equal(rankOf({ branch: 'navy', track: 'officer', grade: 7 }).title, 'Flag Officer', 'no US admirals before 1862');
+    assert.equal(rankOf({ branch: 'army', track: 'officer', grade: 8 }).title, 'Major General', 'no lieutenant-generals between Washington and Grant');
+    assert.equal(rankOf({ nation: 'GB', branch: 'army', track: 'officer', grade: 0 }).title, 'Ensign');
+    assert.equal(periodTitle('Pharmacist'), 'Apothecary');
+    assert.match(militaryInsignia('E-5', null, { branch: 'army' }), /scale\(1 -1\)/, 'American chevrons pointed down');
+    setEraYear(1930);
+    assert.equal(rankOf({ nation: 'RU', branch: 'army', track: 'officer', grade: 7 }).title, 'Kombrig');
+    assert.equal(branchOf({ nation: 'RU', branch: 'army' }).name, 'Red Army');
+    assert.match(militaryInsignia('OF-8', 'RU', { branch: 'army' }), /#c62828/, 'Red Army collar tabs');
+    setEraYear(1940);
+    assert.equal(rankOf({ nation: 'DE', branch: 'army', track: 'officer', grade: 6 }).title, 'Generalmajor', 'no Brigadegeneral in the Wehrmacht');
+    assert.equal(branchOf({ nation: 'DE', branch: 'army' }).name, 'Wehrmacht (Heer)');
+    setEraYear(1910);
+    assert.equal(rankOf({ nation: 'RU', branch: 'army', track: 'officer', grade: 6 }).title, 'Polkovnik');
+    setEraYear(2026);
+    assert.equal(rankOf({ nation: 'RU', branch: 'army', track: 'officer', grade: 7 }).title, 'Major General');
+    assert.ok(!FORCES.RU.branches.army.officer.includes('Brigadier General'), 'Russia has no brigadier-generals');
+    assert.equal(branchOf({ nation: 'DE', branch: 'army' }).name, FORCES.DE.branches.army.name);
+    assert.doesNotMatch(militaryInsignia('E-5', null, { branch: 'army' }), /scale\(1 -1\)/);
   },
 };
 

@@ -31,7 +31,7 @@ import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade } from '../world/NationalForces.js';
-import { periodRank, branchExists, branchFrom } from '../world/Eras.js';
+import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -195,7 +195,13 @@ export function retirementYearsFor(svc) {
 }
 
 /** A service member's branch: the US template, or the national force laid over it. */
-export const branchOf = (svc) => (svc?.nation ? { ...BRANCHES[svc.branch], ...nationalBranch(svc.nation, svc.branch) } : BRANCHES[svc.branch]);
+const baseBranch = (svc) => (svc?.nation ? { ...BRANCHES[svc.branch], ...nationalBranch(svc.nation, svc.branch) } : BRANCHES[svc.branch]);
+/** A service as it was called in the year being played (the Red Army, the Wehrmacht, the Army Air Forces). */
+export const branchOf = (svc) => {
+  const b = baseBranch(svc);
+  const name = b ? periodBranch(svc?.nation, svc?.branch, b.name) : null;
+  return b && name !== b.name ? { ...b, name } : b;
+};
 /** The branch a recruit would join where they live. */
 export const branchFor = (state, branchId) => (isAbroad(state) ? (nationalBranch(countryOf(state).id, branchId) ? { ...BRANCHES[branchId], ...nationalBranch(countryOf(state).id, branchId), id: branchId } : null) : BRANCHES[branchId]);
 

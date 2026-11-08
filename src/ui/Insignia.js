@@ -10,6 +10,7 @@
  *   Fire          bugles: one for a lieutenant, two for a captain, two crossed for a battalion chief,
  *                 more for the chiefs
  */
+import { eraYear, PRESENT } from '../modules/world/Eras.js';
 const GOLD = '#d4a017';
 const SILVER = '#c9ced6';
 const svg = (w, body, h = 34) => `<svg class="insignia-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${body}</svg>`;
@@ -362,6 +363,13 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
   const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
   if (!m) return '';
   const n = Number(m[2]);
+  const old = periodInsignia(m[1] === 'OR' || m[1] === 'E' ? 'E' : m[1] === 'W' ? 'W' : 'O', n, nation, branch);
+  if (old !== undefined) return old;
+  if (nation === 'RU' && !NAVAL_BRANCHES.includes(branch) && (m[1] === 'OF' || m[1] === 'O')) {
+    // Junior lieutenant one star, lieutenant two, senior lieutenant three, captain four; field officers
+    // big stars on two stripes; generals on the zigzag; a general of the army one great star.
+    return board([{ gaps: 1, small: 1 }, { gaps: 1, small: 2 }, { gaps: 1, small: 3 }, { gaps: 1, small: 4 }, { gaps: 2, big: 1 }, { gaps: 2, big: 2 }, { gaps: 2, big: 3 }, { zigzag: true, big: 1 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true, huge: true }][Math.min(10, n - 1)], '#4b5a3a');
+  }
   const commonwealth = COMMONWEALTH.includes(nation ?? '');
   // Commonwealth air forces: officers wear pale-blue lace on the naval pattern, without the curl.
   if (branch === 'airforce' && commonwealth && (m[1] === 'OF' || m[1] === 'O')) return navalLace(n, '', false, AIR_BLUE);
@@ -402,6 +410,75 @@ export function militaryInsignia(code, nation = null, { branch = null } = {}) {
   if (kind === 'W') return warrant(Math.max(1, g));
   // Officers: O-1 gold bar … O-10 four stars, five stars above.
   return [bars(1, GOLD), bars(1, SILVER), bars(2, SILVER), leaf(GOLD), leaf(SILVER), eagle(), stars(1), stars(2), stars(3), stars(4), stars(5, GOLD)][Math.max(0, g - 1)] ?? stars(5, GOLD);
+}
+
+/* --- insignia of their time -------------------------------------------- */
+/*
+ * Before today's insignia:
+ *   epaulettes     every army's officers until the mid-19th century: plain for company officers,
+ *                  heavy bullion for field officers, stars on the strap for generals
+ *   Britain        1855–1902: no badge for a second lieutenant, a star for a lieutenant, two for a
+ *                  captain, a crown for a major (the 1880 pattern); pips and crowns as now from 1902
+ *   United States  chevrons point down before 1902; a second lieutenant's plain strap before 1917
+ *   Russia         the Tsar's shoulder boards (no stars for a colonel or a full general); the Red
+ *                  Army's collar tabs, 1918–1943: triangles, squares, bars and diamonds
+ */
+const bullionEpaulette = (n) => {
+  const heavy = n >= 4;
+  const fringe = Array.from({ length: heavy ? 9 : 6 }, (_, i) => `<rect x="${(heavy ? 5 : 8) + i * (heavy ? 3 : 3.4)}" y="25" width="${heavy ? 2.2 : 1.4}" height="${heavy ? 12 : 8}" rx="1" fill="${GOLD}"/>`).join('');
+  const starsOn = n >= 7 ? Array.from({ length: Math.min(3, n - 6) }, (_, i) => `<text x="${(n - 6 === 1 ? 17 : n - 6 === 2 ? 13 : 10) + i * 7}" y="19" font-size="7" text-anchor="middle" fill="${SILVER}">★</text>`).join('') : '';
+  return svg(34, `<rect x="12" y="2" width="10" height="14" rx="3" fill="${GOLD}" opacity=".85"/><ellipse cx="17" cy="20" rx="13" ry="6" fill="${GOLD}"/><ellipse cx="17" cy="20" rx="9" ry="3.5" fill="#7a5b10"/>${starsOn}${fringe}`, 40);
+};
+/** A Red Army collar tab: crimson with the badges of rank. */
+const collarTab = (shape, count) => {
+  const draw = (i) => {
+    const x = 7 + i * 7;
+    if (shape === 'triangle') return `<path d="M${x} 21 L${x + 3} 13 L${x + 6} 21 Z" fill="${GOLD}"/>`;
+    if (shape === 'square') return `<rect x="${x}" y="13" width="5" height="5" fill="#a01818" stroke="${GOLD}" stroke-width="1"/>`;
+    if (shape === 'bar') return `<rect x="${x + 1}" y="11" width="4" height="10" fill="#a01818" stroke="${GOLD}" stroke-width="1"/>`;
+    return `<rect x="${x + 1}" y="13" width="5" height="5" transform="rotate(45 ${x + 3.5} 15.5)" fill="#a01818" stroke="${GOLD}" stroke-width="1"/>`;
+  };
+  return svg(38, `<path d="M3 8 H35 L31 26 H3 Z" fill="#c62828" stroke="#111" stroke-width="1.5"/>${Array.from({ length: count }, (_, i) => draw(i)).join('')}`);
+};
+/** Flip a drawing upside down: chevrons pointing down. */
+const pointDown = (html) => html.replace(/(<svg[^>]*viewBox="0 0 (\d+) (\d+)"[^>]*>)([\s\S]*)(<\/svg>)/, (_, open, w, h, body, close) => `${open}<g transform="translate(0 ${h}) scale(1 -1)">${body}</g>${close}`);
+
+/** Historical insignia for a rank (kind E/W/O, grade n), or undefined to use today's. */
+export function periodInsignia(kind, n, nation, branch) {
+  const y = eraYear();
+  if (y >= PRESENT) return undefined;
+  const cc = nation ?? 'US';
+  const naval = NAVAL_BRANCHES.includes(branch);
+  if (cc === 'RU' && !naval) {
+    if (y < 1917) {
+      if (kind === 'O') return board([{ gaps: 1, small: 1 }, { gaps: 1, small: 2 }, { gaps: 1, small: 3 }, { gaps: 1, small: 4 }, { gaps: 1 }, { gaps: 2, small: 3 }, { gaps: 2 }, { zigzag: true, big: 2 }, { zigzag: true, big: 3 }, { zigzag: true }][Math.min(9, n - 1)], '#4b5a3a');
+      return undefined;
+    }
+    if (y < 1943) {
+      if (kind === 'E') return n <= 2 ? collarTab('triangle', 0) : collarTab('triangle', Math.min(4, n - 2));
+      if (kind === 'W') return collarTab('triangle', 4);
+      return [collarTab('square', 1), collarTab('square', 2), collarTab('square', 3), collarTab('bar', 1), collarTab('bar', 2), collarTab('bar', 3), collarTab('bar', 4), collarTab('diamond', 1), collarTab('diamond', 2), collarTab('diamond', 3), collarTab('diamond', 4)][Math.min(10, n - 1)];
+    }
+    return undefined;
+  }
+  // Epaulettes: the officer's badge of rank before shoulder straps and pips.
+  if (kind === 'O' && !naval && y < (cc === 'US' ? 1832 : 1855)) return bullionEpaulette(n);
+  if (cc === 'GB' || (COMMONWEALTH.includes(cc) && y < 1947)) {
+    if (kind === 'O' && !naval && branch !== 'airforce' && y < 1902 && n <= 7) {
+      const em = '♛';
+      return [svg(16, `<rect x="4" y="4" width="8" height="26" rx="2" fill="none" stroke="${GOLD}" stroke-width="1.2"/>`), pips(1), pips(2), pips(0, true, GOLD, em), pips(1, true, GOLD, em), pips(2, true, GOLD, em), pips(2, true, GOLD, em)][Math.max(0, n - 1)];
+    }
+    return undefined;
+  }
+  if (cc === 'US') {
+    if (kind === 'E' && !naval && y < 1902) {
+      // A private wore none; a corporal two stripes, a sergeant three, a first sergeant's lozenge, a sergeant major's arcs.
+      const old = ['', '', '', chevrons(2), chevrons(3), chevrons(3), chevrons(3, 0, 'diamond'), chevrons(3, 3), chevrons(3, 3)][Math.min(8, Math.max(0, n - 1))];
+      return old ? pointDown(old) : old;
+    }
+    if (kind === 'O' && !naval && n === 1 && y < 1917) return svg(16, `<rect x="4" y="4" width="8" height="26" rx="2" fill="none" stroke="${GOLD}" stroke-width="1.2"/>`);
+  }
+  return undefined;
 }
 
 /* --- civilian uniformed services ------------------------------------ */
