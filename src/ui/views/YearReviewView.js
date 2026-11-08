@@ -5,6 +5,8 @@
 import { esc, money, card, chip } from '../Components.js';
 import { STAT_META } from '../../core/State.js';
 import { CONDITIONS } from '../../modules/health/Conditions.js';
+import { nextSteps, tipsFor } from '../../modules/life/Guide.js';
+import { button } from '../Components.js';
 
 const signed = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
 const moneyDelta = (n) => `${n >= 0 ? '+' : '−'}${money(Math.abs(n))}`;
@@ -29,4 +31,19 @@ export function yearReviewCard(state) {
     ? '<p class="muted">A quiet year. Nothing much changed.</p>'
     : `${stats ? `<div class="chip-row">${stats}</div>` : ''}${moneyLine}${rows.length ? `<ul class="yr-list">${rows.join('')}</ul>` : ''}${highlights ? `<h4 class="sub">Moments</h4><ul class="yr-list">${highlights}</ul>` : ''}${y.entries > (y.highlights?.length ?? 0) ? '<p class="fine">The full year is in your Life Story below.</p>' : ''}`;
   return card(`Age ${y.age}: The Year in Review`, body, { icon: '🗓️', accent: 'blue', className: 'year-review', fold: false });
+}
+
+/** "This year": a few things you could do now, each a button to the tab where you'd do it. */
+export function thisYearCard(state) {
+  const steps = nextSteps(state);
+  if (!steps.length) return '';
+  const rows = steps.map((x) => `<li>${button(`${x.icon} ${x.text}`, 'ui.tab', { arg: x.tab, variant: 'small ghost', hint: x.why })}</li>`).join('');
+  return card('This Year', `<ul class="next-steps">${rows}</ul>`, { icon: '🧭', className: 'this-year', summary: `${steps.length} idea${steps.length > 1 ? 's' : ''}` });
+}
+
+/** First-life tips; hidden for good from the card or in Settings. */
+export function tipsCard(state, show) {
+  if (!show || state.character.age > 30) return '';
+  const tips = tipsFor(state).map(([icon, html]) => `<li><span aria-hidden="true">${icon}</span> ${html}</li>`).join('');
+  return card('How to Play', `<ul class="tips">${tips}</ul><div class="row-end">${button('Got it — hide tips', 'ui.hideTips', { variant: 'small ghost' })}</div>`, { icon: '💡', accent: 'yellow', className: 'tips-card', fold: false });
 }

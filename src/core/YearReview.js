@@ -67,7 +67,7 @@ export function review(before, state) {
   const personal = (e) => e.kind === 'death' || e.kind === 'milestone' || /\b(you|your|you're|you've)\b/i.test(e.text);
   const ranked = year.filter((e) => rank[e.kind] != null).map((e) => ({ e, score: rank[e.kind] + (personal(e) ? 0 : 10) })).sort((x, y) => x.score - y.score);
   const mine = ranked.filter((r) => r.score < 10);
-  const highlights = (mine.length ? mine : ranked).slice(0, 4).map(({ e }) => ({ icon: e.icon, text: e.text, kind: e.kind }));
+  const highlights = (mine.length ? mine : ranked.filter(({ e }) => e.kind !== 'good' && e.kind !== 'warn').slice(0, 2)).slice(0, 4).map(({ e }) => ({ icon: e.icon, text: e.text, kind: e.kind }));
 
   // Where the money went, and where it came from (Finances keeps the year's flows).
   const f = state.finances ?? {};

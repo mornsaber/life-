@@ -110,6 +110,11 @@ function handleAction(el) {
       return renderer.setTab(arg);
     case 'ui.panel':
       return renderer.openPanel(arg);
+    case 'ui.hideTips':
+      settings = { ...settings, tips: false };
+      saveSettings(settings);
+      applySettings();
+      return renderer.render(engine.state);
     case 'ui.closePanel':
       renderer.panel = null;
       return renderer.render(engine.state);

@@ -999,3 +999,8 @@ select:focus { border-color: var(--cyan); }
 .year-review .yr-list li.good, .year-review .yr-list li.milestone { border-left: 3px solid var(--green); }
 .year-review .yr-list li.bad, .year-review .yr-list li.death, .year-review .yr-list li.warn { border-left: 3px solid var(--red, #e5484d); }
 .year-review .yr-money { margin: 6px 0; }
+
+/* This year / How to play (Life tab) */
+.this-year .next-steps, .tips-card .tips { list-style: none; margin: 4px 0; padding: 0; display: grid; gap: 6px; }
+.this-year .next-steps .btn { width: 100%; justify-content: flex-start; text-align: left; }
+.tips-card .tips li { line-height: 1.4; }

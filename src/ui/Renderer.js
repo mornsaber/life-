@@ -42,7 +42,7 @@ import { achievementsView } from './views/AchievementsView.js';
 import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
-import { yearReviewCard } from './views/YearReviewView.js';
+import { yearReviewCard, thisYearCard, tipsCard } from './views/YearReviewView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -164,7 +164,7 @@ export const VIEWS = {
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
-    return yearReviewCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
+    return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
   business: businessView,
@@ -300,7 +300,7 @@ export class Renderer {
       return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="layout single">${VIEWS.life(state, this.ui)}</div></main>${panel}`;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
     return `
@@ -310,7 +310,7 @@ export class Renderer {
         <aside class="sidebar" aria-label="Character">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
         <section class="main">
           ${this.tabNav()}
-          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${VIEWS[this.tab](state, this.ui)}</div>
+          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips })}</div>
         </section>
       </main>
       ${prompt ? promptModal(prompt, state.prompts.length) : panel}`;

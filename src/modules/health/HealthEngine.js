@@ -632,6 +632,7 @@ export const HealthEngine = {
       const { state } = ctx;
       if (yearlyCount(state, 'health.checkup')) return ctx.toast('You already had a checkup this year.', 'warn');
       bumpYearly(state, 'health.checkup');
+      state.health.lastCheckup = state.character.age;
       // Preventive care is free on any ACA-compliant plan.
       const plan = coverage(state);
       if (plan.id === 'none') ctx.spend(350, 'Checkup', { allowDebt: true });

@@ -53,6 +53,9 @@ export function settingsPanel(settings, { canUndo = false } = {}) {
       <label><input type="checkbox" data-setting="autoResolve"${settings.autoResolve ? ' checked' : ''}> Auto-resolve routine decisions</label>
       <p class="fine">Answers only decisions with one obviously safe choice (and any decision with a single option), and notes each one in your life story: ${Object.keys(ROUTINE).map((t) => esc(t.split('.')[1])).join(', ')}.</p>
     </fieldset>
+    <fieldset class="setting"><legend>Help</legend>
+      <label><input type="checkbox" data-setting="tips"${settings.tips !== false ? ' checked' : ''}> Show “How to Play” tips on the Life tab</label>
+    </fieldset>
     <fieldset class="setting"><legend>Debug</legend>
       <label><input type="checkbox" data-setting="debugUndo"${settings.debugUndo ? ' checked' : ''}> Show “Undo year” (keeps the last 5 years in memory)</label>
       ${settings.debugUndo ? button('↶ Undo last year', 'engine.undo', { variant: 'small', disabled: !canUndo }) : ''}

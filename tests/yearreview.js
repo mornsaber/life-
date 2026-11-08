@@ -10,6 +10,8 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { snapshot, review } from '../src/core/YearReview.js';
+import { nextSteps } from '../src/modules/life/Guide.js';
+import { TABS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (seed = 3) => {
@@ -48,6 +50,26 @@ const tests = {
     assert.equal(r.cash, 5000);
     assert.match(r.job.text, /Started as Sales Associate at Bayside Market/);
     engine.store.state.lastYear = r;
+  },
+  'this year: suggestions point at real tabs, change nothing, and fit the life'() {
+    const tabs = new Set(TABS.map((t) => t.id));
+    for (const seed of [1, 2, 3, 4]) {
+      const { engine, state } = life(seed);
+      for (let y = 0; y < 70 && state.character.alive; y++) {
+        play(engine);
+        const before = JSON.stringify(state);
+        const steps = nextSteps(state);
+        assert.equal(JSON.stringify(state), before, 'pure');
+        for (const x of steps) assert.ok(tabs.has(x.tab), `${x.text} → ${x.tab}`);
+        if (state.character.age === 19 && !state.prompts.length && !state.legal.incarceration && !state.career.job && !state.education.enrolled) assert.ok(steps.length, 'a 19-year-old with nothing on gets ideas');
+      }
+    }
+  },
+  'the tips show for new players and hide when turned off'() {
+    const { engine, state } = life(2);
+    play(engine);
+    assert.match(VIEWS.life(state, { tips: true }), /How to Play/);
+    assert.doesNotMatch(VIEWS.life(state, { tips: false }), /How to Play/);
   },
 };
 
