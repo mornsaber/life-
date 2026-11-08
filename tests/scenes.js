@@ -17,7 +17,7 @@ const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['p
   'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'],
   'med.er': ['medical', 'Attending Physician'], 'med.surgery': ['medical', 'Consultant Surgeon'], 'nurse.night': ['nursing', 'Registered Nurse'], 'law.trial': ['prosecution', 'Assistant District Attorney'],
   'teach.class': ['education', 'Teacher'], 'pilot.engine': ['aviation', 'Captain'], 'press.leak': ['journalism', 'Reporter'], 'exec.takeover': ['corporate', 'Chief Executive'],
-  'mil.patrol': ['retail', 'Soldier'], 'unit.swat': ['police', 'Police Officer'], 'unit.k9': ['police', 'Police Officer'], 'unit.hazmat': ['fire', 'Firefighter'], 'unit.rescue': ['fire', 'Firefighter'], 'unit.flight': ['ems', 'Paramedic'], 'resist.occupation': ['retail', 'Shop Assistant'] };
+  'mil.patrol': ['retail', 'Soldier'], 'unit.swat': ['police', 'Police Officer'], 'unit.k9': ['police', 'Police Officer'], 'unit.hazmat': ['fire', 'Firefighter'], 'unit.rescue': ['fire', 'Firefighter'], 'unit.flight': ['ems', 'Paramedic'], 'resist.occupation': ['retail', 'Shop Assistant'], 'marriage.crisis': ['retail', 'Shop Assistant'] };
 /** What some scenes need besides a job: a unit, active service in a war, a senior grade. */
 const SETUP = {
   'unit.swat': (s) => { s.careerLife.unit = { id: 'swat', since: 25 }; }, 'unit.k9': (s) => { s.careerLife.unit = { id: 'k9', since: 25 }; },
@@ -25,6 +25,7 @@ const SETUP = {
   'unit.flight': (s) => { s.careerLife.unit = { id: 'flightMedic', since: 25 }; },
   'mil.patrol': (s) => { s.military.service = { ...(s.military.service ?? {}), component: 'active' }; s.world.wars = { US: { id: 'x', name: 'a war', phase: 'active' } }; },
   'exec.takeover': (s) => { s.career.job.grade = 8; },
+  'marriage.crisis': (s) => { s.people.list.push({ id: 'sp1', firstName: 'Alex', lastName: 'Lee', gender: 'male', relation: 'spouse', ageOffset: 0, relationship: 40, spark: 30, since: 20, alive: true }); },
   'resist.occupation': (s) => { s.character.countryId = 'FR'; s.world.wars = { FR: { id: 'ww2', name: 'the Second World War', phase: 'active', homeFront: 0.6, front: -20 } }; },
 };
 const life = (prof, title, seed = 1) => {

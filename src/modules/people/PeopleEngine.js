@@ -444,6 +444,7 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
     child.otherParentId = spouse.id;
   }
   spouse.relation = 'ex';
+  spouse.endedAge = state.character.age;
   p.divorces = (p.divorces ?? 0) + 1;
   spouse.relationship = clampRel(spouse.relationship - 30);
   p.prenup = false;
@@ -634,6 +635,7 @@ export const PeopleEngine = {
       person.relation = 'friend';
       person.circle = 'neighborhood';
       person.formerPartner = true;
+      person.endedAge = state.character.age;
       person.relationship = clampRel(person.relationship - 25);
       ctx.stat('happiness', -6);
       ctx.log(`You broke up with ${person.firstName}.`, '💔', 'warn');
