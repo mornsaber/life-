@@ -10,7 +10,8 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { topOfficerGrade, FORCES } from '../src/modules/world/NationalForces.js';
-import { tryPromotion } from '../src/modules/military/MilitaryEngine.js';
+import { tryPromotion, rankOf, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
+import { periodTitle } from '../src/modules/world/Eras.js';
 import { professionsFor, getProfession } from '../src/modules/career/JobTrees.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -41,6 +42,19 @@ const tests = {
     assert.ok(professionsFor(life('AT', 1950).state).some((p) => p.id === 'at_gendarmerie'), 'Austria\'s gendarmerie in 1980');
     assert.ok(!professionsFor(life('AT').state).some((p) => p.id === 'at_gendarmerie'), 'merged into the police in 2005');
     assert.ok(!professionsFor(life('MX', 1950).state).some((p) => p.id === 'mx_gendarmerie'), 'no Guardia Nacional before 2019');
+  },
+  'ranks, branches and titles of their time'() {
+    const old = life('US', 1910); // 1940
+    assert.equal(rankOf({ branch: 'army', track: 'enlisted', grade: 3 }).title, 'Corporal', 'no Specialists before 1955');
+    assert.equal(rankOf({ branch: 'navy', track: 'enlisted', grade: 1 }).title, 'Seaman Second Class');
+    assert.match(enlistmentEligibility(old.state, 'airforce', 'enlisted', 'active').reason ?? '', /Doesn't exist yet \(from 1947\)/, 'the Army Air Forces, not a US Air Force');
+    assert.match(enlistmentEligibility(old.state, 'spaceforce', 'enlisted', 'active').reason ?? '', /Doesn't exist yet/);
+    assert.equal(periodTitle('Police Officer'), 'Patrolman');
+    assert.equal(periodTitle('Flight Attendant'), 'Stewardess');
+    const now = life('US');
+    assert.equal(rankOf({ branch: 'army', track: 'enlisted', grade: 3 }).title, 'Specialist');
+    assert.equal(periodTitle('Police Officer'), 'Police Officer');
+    assert.doesNotMatch(enlistmentEligibility(now.state, 'airforce', 'enlisted', 'active').reason ?? '', /Doesn't exist yet/);
   },
 };
 

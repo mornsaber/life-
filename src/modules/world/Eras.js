@@ -396,3 +396,53 @@ export const leavingAge = (state) => (yearNow(state) < 1880 ? 12 : yearNow(state
 export const giBillExists = (state) => yearNow(state) >= 1944;
 export const studentLoansExist = (state) => yearNow(state) >= 1958;
 
+/* ------------------------------------------------------------------ */
+/* Ranks and titles of their time                                      */
+/* ------------------------------------------------------------------ */
+
+/** The year of the life being played, for code that has no state to hand (rank tables, job titles). Set by History. */
+let ERA_YEAR = PRESENT;
+export const setEraYear = (y) => { ERA_YEAR = y ?? PRESENT; };
+export const eraYear = () => ERA_YEAR;
+
+/** Job titles as they were: [pattern, replacement, until]. */
+const OLD_TITLES = [
+  [/\bPolice Officer\b/, 'Patrolman', 1975], [/\bPolice Recruit\b/, 'Probationary Patrolman', 1975], [/\bFirefighter\b/, 'Fireman', 1975],
+  [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
+  [/\bChief Executive Officer\b/, 'Managing Director', 1975], [/\bAdministrative Assistant\b/, 'Secretary', 1985], [/\bSanitation Worker\b/, 'Dustman', 1980],
+  [/\bChairperson\b/, 'Chairman', 1985], [/\bEMT\b/, 'Ambulance Attendant', 1970], [/\bParamedic\b/, 'Ambulance Driver', 1970], [/\bSoftware Engineer\b/, 'Programmer', 1985],
+  [/\bHuman Resources\b/, 'Personnel', 1985], [/\bCustodian\b/, 'Janitor', 1990], [/\bNursing Assistant\b/, 'Orderly', 1987],
+];
+/** A job title in the words of its year. */
+export function periodTitle(title) {
+  if (!title || ERA_YEAR >= PRESENT) return title;
+  let t = title;
+  for (const [re, old, until] of OLD_TITLES) if (ERA_YEAR < until) t = t.replace(re, old);
+  return t;
+}
+
+/** Military ranks as they were (US forces especially changed): [nation|'*', branch, track, index, title, until]. */
+const OLD_RANKS = [
+  ['US', 'army', 'enlisted', 0, 'Private', 1920], ['US', 'army', 'enlisted', 1, 'Private', 1920], ['US', 'army', 'enlisted', 3, 'Corporal', 1955],
+  ['US', 'army', 'enlisted', 6, 'Technical Sergeant', 1948], ['US', 'army', 'enlisted', 7, 'Master Sergeant', 1958], ['US', 'army', 'enlisted', 8, 'First Sergeant', 1958],
+  ['US', 'navy', 'enlisted', 0, 'Apprentice Seaman', 1948], ['US', 'navy', 'enlisted', 1, 'Seaman Second Class', 1948], ['US', 'navy', 'enlisted', 2, 'Seaman First Class', 1948],
+  ['US', 'navy', 'enlisted', 7, 'Chief Petty Officer', 1958], ['US', 'navy', 'enlisted', 8, 'Chief Petty Officer', 1958], ['US', 'navy', 'officer', 6, 'Commodore', 1950],
+  ['US', 'airforce', 'enlisted', 0, 'Private', 1952], ['US', 'airforce', 'enlisted', 1, 'Private First Class', 1952], ['US', 'airforce', 'enlisted', 3, 'Airman First Class', 1976],
+  ['US', 'airforce', 'enlisted', 8, 'Master Sergeant', 1958], ['US', 'marines', 'enlisted', 3, 'Corporal', 1958],
+  ['GB', 'army', 'enlisted', 0, 'Private', 1920], ['GB', 'airforce', 'officer', 0, 'Pilot Officer', 9999],
+];
+/** A rank title in the words of its year (the year being played). */
+export function periodRank(nation, branch, track, index, title) {
+  if (ERA_YEAR >= PRESENT) return title;
+  const hit = OLD_RANKS.find(([n, b, t, i, , until]) => (n === (nation ?? 'US') || n === '*') && b === branch && t === track && i === index && ERA_YEAR < until);
+  return hit ? hit[4] : title;
+}
+/** When each branch existed: air forces from the 1910s–30s, the US Air Force from 1947, the Space Force from 2019. */
+const BRANCH_FROM = { US: { airforce: 1947, spaceforce: 2019, coastguard: 1915 }, GB: { airforce: 1918 }, CA: { airforce: 1924 }, AU: { airforce: 1921 }, NZ: { airforce: 1937 }, DE: { airforce: 1935 }, IN: { airforce: 1932 }, '*': { airforce: 1920, spaceforce: 2019 } };
+export function branchExists(state, cc, branch) {
+  const y = yearNow(state);
+  const from = BRANCH_FROM[cc]?.[branch] ?? BRANCH_FROM['*'][branch];
+  return !(from > y);
+}
+export const branchFrom = (cc, branch) => BRANCH_FROM[cc]?.[branch] ?? BRANCH_FROM['*'][branch] ?? null;
+

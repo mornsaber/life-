@@ -31,6 +31,7 @@ import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade } from '../world/NationalForces.js';
+import { periodRank, branchExists, branchFrom } from '../world/Eras.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -215,7 +216,7 @@ export function rankOf(svc) {
   // Five stars (Wartime.js) sit above the table; an acting rank says so.
   if (svc.fiveStar) return { code: `${prefix}-${svc.grade + 2}`, title: fiveStarTitle(svc), grade: svc.grade, max: titles.length - 1 };
   // A Gurkha private is a Rifleman.
-  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : titles[svc.grade];
+  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : periodRank(svc.nation, svc.branch, svc.track, svc.grade, titles[svc.grade]);
   return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${title}`, grade: svc.grade, max: titles.length - 1 };
 }
 
@@ -346,6 +347,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
+  if (!branchExists(state, isAbroad(state) ? countryOf(state).id : 'US', branchId)) return { ok: false, reason: `Doesn't exist yet (from ${branchFrom(isAbroad(state) ? countryOf(state).id : 'US', branchId)})` };
   if (isAbroad(state) && branchId === 'army' && component === 'reserve' && armyReserveIsGuard(countryOf(state).id)) return { ok: false, reason: `Part-time soldiers join the ${nationalBranch(countryOf(state).id, 'guard').name}` };
   if (b.officerOnly && track !== 'officer') return { ok: false, reason: 'Commissioned officers only' };
   if (b.activeOnly && component !== 'active') return { ok: false, reason: 'Active duty only' };

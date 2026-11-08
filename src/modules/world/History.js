@@ -28,7 +28,7 @@ import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
 import { priceLevel } from './Countries.js';
-import { AUTOMATED_BY, leavingAge } from './Eras.js';
+import { AUTOMATED_BY, leavingAge, setEraYear } from './Eras.js';
 import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
@@ -466,7 +466,7 @@ function seedPast(state) {
   era.seeded = true;
 }
 
-export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); };
+export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(state.world?.reforms ?? {}); setEraYear(yearNow(state)); };
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {
@@ -552,6 +552,7 @@ export const HistoryModule = {
       const r = (era.events[id] = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) });
       ev.start?.(ctx, r, rng);
     }
+    setEraYear(yearNow(state));
     if (presentLife) return void setReformLayer(state.world?.reforms ?? {});
     leaveSchoolPrompt(ctx);
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);

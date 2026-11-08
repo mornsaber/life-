@@ -56,6 +56,7 @@ import { ruralHiring } from '../life/RuralLife.js';
 import { jobSkills, skill } from '../life/Skills.js';
 import { workRepBonus } from '../life/Reputation.js';
 import { automationRisk } from '../world/Eras.js';
+import { periodTitle } from '../world/Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Tax                                                                 */
@@ -256,7 +257,7 @@ export function stepForAtLeast(state, job, minimum) {
 
 function applyLevel(job, level) {
   job.levelId = level.id;
-  job.title = job.titleMap?.[level.id] ?? level.title;
+  job.title = periodTitle(job.titleMap?.[level.id] ?? level.title);
   job.track = level.track;
   job.grade = level.grade;
   job.abilities = [...level.abilities];
