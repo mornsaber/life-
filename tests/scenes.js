@@ -13,7 +13,8 @@ import { SCENES, startScene, tierOf, checkOdds, ScenesModule } from '../src/modu
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'],
   'fire.crash': ['fire', 'Firefighter'], 'fire.wildland': ['stateFire', 'Firefighter'], 'police.pursuit': ['police', 'Police Officer'], 'police.missing': ['sheriff', 'Deputy'], 'police.stop': ['police', 'Police Officer'],
-  'ems.overdose': ['ems', 'Paramedic'], 'ems.mci': ['privateEms', 'EMT'], 'dispatch.whisper': ['dispatch', 'Dispatcher'], 'police.ois': ['police', 'Police Sergeant'], 'partner.line': ['ems', 'Paramedic'] };
+  'ems.overdose': ['ems', 'Paramedic'], 'ems.mci': ['privateEms', 'EMT'], 'dispatch.whisper': ['dispatch', 'Dispatcher'], 'police.ois': ['police', 'Police Sergeant'], 'partner.line': ['ems', 'Paramedic'],
+  'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'] };
 const life = (prof, title, seed = 1) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
   const state = engine.newLife({ countryId: 'US', gender: 'female' });

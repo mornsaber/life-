@@ -1,10 +1,10 @@
 /**
  * More emergency calls (played by career/Scenes.js; merged in scenes-emergency.js).
  *
- *   fire      fire.crash (extrication), fire.wildland (a flank that turns)
+ *   fire      fire.crash (extrication), fire.wildland (a flank that turns), fire.mayday (a company officer's lost firefighter)
  *   police    police.pursuit, police.missing (a missing child), police.stop (a night traffic stop)
- *   EMS       ems.overdose, ems.mci (a bus crash: triage with too few ambulances)
- *   dispatch  dispatch.whisper (a caller who can't speak)
+ *   EMS       ems.overdose, ems.mci (a bus crash: triage with too few ambulances), ems.birth
+ *   dispatch  dispatch.whisper (a caller who can't speak), dispatch.cpr (CPR taught over the phone)
  *   command   police.ois (a sergeant at one of their officers' shootings)
  *   partner   partner.line (your partner crosses a line in front of you)
  *
@@ -331,4 +331,87 @@ const partnerLine = {
   },
 };
 
-export const CALLS = [crash, wildland, pursuit, missing, stop, overdose, mci, whisper, ois, partnerLine];
+const mayday = {
+  id: 'fire.mayday', title: 'Mayday', icon: '🆘', partner: true, chance: 0.4, trauma: 7, honor: 'Medal of Valor', weight: 1.2,
+  inquiryText: 'A line-of-duty investigation will examine the fireground.',
+  for: (s, job) => isFirefighter(job) && /captain|lieutenant/i.test(job.title ?? '') && !/chief/i.test(job.title ?? ''),
+  data: (s, rng) => ({ place: rng.pick(['a carpet warehouse', 'a three-storey terrace', 'a church hall', 'a furniture store']), name: rng.pick(['Dana', 'Marcus', 'Priya', 'Tom']) }),
+  news: { outstanding: 'Trapped firefighter rescued from {place} blaze', bad: 'Firefighter seriously hurt in {place} fire' },
+  start: 'call',
+  steps: {
+    call: { title: 'The Call', icon: '📻', text: 'Your company is inside {place}. Then, on the radio: "Mayday, Mayday, Mayday." It\'s {name}, your newest firefighter. Lost, low on air, somewhere on the second floor.', options: [
+      { id: 'luna', label: '📋 Get LUNAR: location, unit, name, air, resources', hint: 'Calm and by the drill', check: { skills: ['leadership'], stats: { smarts: 1 }, bar: 45 },
+        pass: { text: '"Back room, by a window, ten minutes of air." Now you know where to send them.', score: { lives: 2, crew: 1 } }, fail: { text: '{name} is panicking and the radio is a wall of noise.', score: { lives: -1 } }, next: 'rit' },
+      { id: 'yourself', label: '🏃 Go in after them yourself', tone: 'danger', score: { lives: 1, crew: -2 }, next: 'rit' },
+    ] },
+    rit: { title: 'Rescue Team', icon: '🧑‍🚒', text: 'The rapid intervention team is ready at the door. The fire is growing on the first floor.', options: [
+      { id: 'send', label: '🧑‍🚒 Send the rescue team in; you keep command', score: { crew: 1, lives: 1 }, next: 'out' },
+      { id: 'ladder', label: '🪜 Ladder to the second-floor windows', check: { skills: ['leadership'], stats: { fitness: 1 }, bar: 55 },
+        pass: { text: 'A window, a hand, a face mask. {name} came out head-first onto the ladder.', score: { lives: 3 } }, fail: { text: 'Wrong window. Precious minutes.', score: { lives: -1 } }, next: 'out' },
+      { id: 'water', label: '💦 Hit the first floor hard to buy them time', score: { city: 1, crew: 1 }, next: 'out' },
+    ] },
+    out: { title: 'Afterwards', icon: '🌅', text: '{name} is on the kerb with oxygen. The rest of the company won\'t look at each other.', options: [
+      { id: 'debrief', label: '🗣️ Honest debrief tonight, mistakes included', score: { trust: 2, crew: 1 } },
+      { id: 'quiet', label: '🤐 Keep it in the company', score: { crew: 1, trust: -1 } },
+    ] },
+  },
+  tiers: {
+    outstanding: 'You got {name} out of {place}. The company went to breakfast together and nobody said much.',
+    good: '{name} came out of {place} alive. The lessons went into the next drill.',
+    mixed: '{name} came out of {place} hurt. The report will be fair to you; you won\'t be.',
+    bad: 'You lost track of {name} in {place} for too long. They\'ll live, but not in this job.',
+  },
+};
+
+const phoneCpr = {
+  id: 'dispatch.cpr', title: 'CPR by Phone', icon: '☎️', chance: 0.45, trauma: 4, honor: 'Lifesaving Award', inquiry: false, weight: 1.2,
+  for: (s, job) => job.professionId === 'dispatch',
+  data: (s, rng) => ({ place: rng.pick(PLACES), name: rng.pick(['Ella', 'Josh', 'Noor', 'Kai']) }),
+  news: { outstanding: 'Girl, 10, saves dad with CPR guided by 911 dispatcher' },
+  start: 'call',
+  steps: {
+    call: { title: 'The Call', icon: '📞', text: 'A ten-year-old called {name}: "My dad fell over and he\'s making a snoring noise." The ambulance is nine minutes away.', options: [
+      { id: 'cpr', label: '💪 "Put the phone on speaker. I\'m going to teach you something."', check: { skills: ['teaching', 'firstAid'], bar: 45 },
+        pass: { text: 'Hands in the middle of his chest. Push hard. Count with me.', score: { lives: 2 } }, fail: { text: '{name} is crying too hard to hear you.', score: { lives: -1 } }, next: 'tired' },
+      { id: 'neighbour', label: '🏃 "Is there a grown-up next door? Go and get them."', score: { lives: 1 }, next: 'tired' },
+    ] },
+    tired: { title: 'Six Minutes', icon: '⏱️', text: '"My arms hurt. I can\'t do it any more."', options: [
+      { id: 'count', label: '🎵 Count with her to the beat of a song', check: { skills: ['teaching', 'persuasion'], bar: 45 },
+        pass: { text: 'You counted every compression with her until the door opened.', score: { lives: 2, trust: 1 } }, fail: { text: 'She stopped, and started, and stopped.', score: { lives: -1 } } },
+      { id: 'swap', label: '🔁 Get her little brother to take turns', score: { lives: 1 } },
+    ] },
+  },
+  tiers: {
+    outstanding: '{name}\'s dad lived. You met them both at an awards evening, and she hugged you.',
+    good: 'The ambulance took over on {place} with a pulse. You took the next call.',
+    mixed: 'You never found out what happened to {name}\'s dad.',
+    bad: 'The crew called it on {place}. You sat with your headset off for a minute, then took the next call.',
+  },
+};
+
+const birth = {
+  id: 'ems.birth', title: 'Roadside Delivery', icon: '👶', partner: true, chance: 0.45, trauma: 1, honor: 'Stork Pin', inquiry: false, weight: 0.8,
+  for: (s, job) => isEms(job) && !COMMAND_RANK(job),
+  data: (s, rng) => ({ place: rng.pick(ROADS) }),
+  news: { outstanding: 'Baby born in ambulance on {place}' },
+  start: 'labour',
+  steps: {
+    labour: { title: 'Not Going to Make It', icon: '🚑', text: 'A woman in the back of your ambulance on {place}, contractions a minute apart. The hospital is twenty minutes away. {partner} is driving.', options: [
+      { id: 'pull', label: '🛑 Pull over and deliver here', score: { lives: 1, crew: 1 }, next: 'cord' },
+      { id: 'drive', label: '🏎️ Lights and sirens, try to make it', score: { lives: -1 }, next: 'cord' },
+    ] },
+    cord: { title: 'The Cord', icon: '⚠️', text: 'The head is out. The cord is round the neck.', options: [
+      { id: 'slip', label: '🤲 Slip it over the head, gently', check: { skills: ['medicine', 'firstAid'], bar: 45 },
+        pass: { text: 'It slipped over. A shoulder, the other, and then a very loud baby.', score: { lives: 3, trust: 1 } }, fail: { text: 'Too tight. You clamped and cut, and the baby was slow to cry.', score: { lives: -1 } } },
+      { id: 'radio', label: '📻 Get the obstetric unit on the radio first', score: { lives: 1 } },
+    ] },
+  },
+  tiers: {
+    outstanding: 'A girl, born on {place}. Her parents named her after {partner}.',
+    good: 'A healthy baby, delivered on {place}. The best call of the year.',
+    mixed: 'Mother and baby made it to hospital from {place}, both a little worse for the journey.',
+    bad: 'The baby on {place} needed more than you had in the ambulance.',
+  },
+};
+
+export const CALLS = [crash, wildland, pursuit, missing, stop, overdose, mci, whisper, ois, partnerLine, mayday, phoneCpr, birth];
