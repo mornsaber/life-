@@ -13,7 +13,7 @@ import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
-import { validStartYear, periodThrone, EARLIEST, PRESENT } from '../modules/world/Eras.js';
+import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT } from '../modules/world/Eras.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -80,7 +80,9 @@ export function royalBirth(rng, options) {
   const level = ROYAL_LEVEL_IDS.includes(options.royalLevel) ? options.royalLevel : null;
   if (options.difficulty !== 'royal' && !level) return null;
   const cc = options.countryId;
-  const home = ROYAL_HOMES.includes(cc) || periodThrone(cc, year) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
+  // A royal birth in a kingdom between its reigns (France in 1850, Spain in 1940) is a birth into its house.
+  if (level && betweenReigns(cc, year)) return null;
+  const home = (ROYAL_HOMES.includes(cc) && !republicGap(cc, year)) || periodThrone(cc, year) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
   return home ? { countryId: home, level: level ?? 'child' } : null;
 }
 
@@ -104,10 +106,16 @@ export function nobleStart(rng, options) {
 
 /** Former ruling houses (Houses.js): born into one, in its own country (a random one if yours had none). */
 export const HOUSE_HOMES = ['DE', 'FR', 'IT', 'AT', 'RU', 'BR', 'RO'];
+/** Every former ruling house's country (Houses.FORMER_HOUSES), for a life born into one. */
+const ALL_HOUSE_HOMES = [...HOUSE_HOMES, 'PT', 'TR', 'CN', 'IR', 'EG', 'GR', 'ET', 'AF', 'LY', 'IQ', 'KR', 'VN', 'MX', 'NP', 'YE', 'MM', 'ES'];
+/** A kingdom between its reigns in a year: its throne existed before and isn't standing now. */
+const betweenReigns = (cc, year) => (republicGap(cc, year) || (PERIOD_THRONE_YEARS[cc] && !periodThrone(cc, year) && PERIOD_THRONE_YEARS[cc][0][0] < year));
 export function houseStart(rng, options) {
-  const place = ['head', 'heir', 'cadet'].includes(options.housePlace) ? options.housePlace : options.housePlace === 'random' ? rng.pick(['heir', 'heir', 'cadet']) : null;
+  const year = validStartYear(options.startYear);
+  const royalAsked = ROYAL_LEVEL_IDS.includes(options.royalLevel) && betweenReigns(options.countryId, year);
+  const place = royalAsked ? (options.royalLevel === 'monarch' ? 'head' : 'heir') : ['head', 'heir', 'cadet'].includes(options.housePlace) ? options.housePlace : options.housePlace === 'random' ? rng.pick(['heir', 'heir', 'cadet']) : null;
   if (!place) return null;
-  const cc = HOUSE_HOMES.includes(options.countryId) ? options.countryId : rng.pick(HOUSE_HOMES);
+  const cc = ALL_HOUSE_HOMES.includes(options.countryId) ? options.countryId : rng.pick(HOUSE_HOMES);
   return { countryId: cc, place };
 }
 

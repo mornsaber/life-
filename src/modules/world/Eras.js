@@ -189,8 +189,6 @@ export const PERIODS = [
   { cc: ['TW'], regime: G({ kind: 'oneParty', name: 'a one-party state under martial law', elections: 'controlled', press: 'state', surveillance: 0.15, leader: 'the President' }), active: (s) => yearNow(s) >= 1945 && !hap(s, 'taiwanDemocracy') },
   { cc: ['ZA'], regime: G({ kind: 'apartheid', name: 'the apartheid state (only white South Africans vote)', elections: 'controlled', press: 'state', surveillance: 0.15, leader: 'the Prime Minister' }), active: (s) => hap(s, 'apartheid') && !hap(s, 'apartheidEnds') },
   { cc: ['IR'], regime: MONARCH('the Shah\'s monarchy', 'the Shah', { elections: 'controlled', surveillance: 0.15 }), active: (s) => !hap(s, 'iranRevolution') },
-  { cc: ['AF'], regime: MONARCH('the Kingdom of Afghanistan', 'the King', { women: 'restricted' }), active: (s) => yearNow(s) < 1973 },
-  { cc: ['AF'], regime: G({ kind: 'fragile', name: 'a country at war with itself', elections: 'none', press: 'state', women: 'restricted', ratings: false, banking: 'domestic', leader: 'whoever holds Kabul' }), active: (s) => yearNow(s) >= 1973 && yearNow(s) < 1996 },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -198,8 +196,26 @@ export const PERIODS = [
 /* ------------------------------------------------------------------ */
 
 /** Monarchies that reigned in early starts, and the year they fell in our history (History.js decides in this one). */
-export const PERIOD_THRONES = { DE: 1918, AT: 1918, RU: 1917, IT: 1946, RO: 1947, BR: 1889 };
-export const periodThrone = (cc, year) => year < (PERIOD_THRONES[cc] ?? -Infinity);
+/**
+ * Thrones that have since fallen, with the years each reigned: the Kaiser and the Tsar, the
+ * Napoleons and the Orléans kings, the Ottoman sultans and the Qing emperors, the shahs of Persia
+ * and Iran, the kings of Egypt, Greece, Afghanistan, Iraq and Libya, Ethiopia's emperors, Korea's,
+ * Vietnam's and Burma's last dynasties, Mexico's Habsburg emperor and Nepal's kings.
+ */
+export const PERIOD_THRONE_YEARS = {
+  DE: [[1800, 1918]], AT: [[1800, 1918]], RU: [[1800, 1917]], IT: [[1800, 1946]], RO: [[1866, 1947]], BR: [[1822, 1889]],
+  FR: [[1804, 1848], [1852, 1870]], PT: [[1800, 1910]], TR: [[1800, 1922]], CN: [[1800, 1912]], IR: [[1800, 1979]], EG: [[1805, 1953]],
+  GR: [[1832, 1924], [1935, 1973]], ET: [[1800, 1974]], AF: [[1823, 1973]], LY: [[1951, 1969]], IQ: [[1921, 1958]], KR: [[1800, 1910]],
+  VN: [[1802, 1945]], MX: [[1864, 1867]], NP: [[1800, 2008]], YE: [[1918, 1962]], MM: [[1800, 1885]],
+};
+/** Thrones whose fall comes from a history event (a lost war, a revolution) rather than its date. */
+export const EVENT_THRONES = ['DE', 'AT', 'RU', 'IT', 'RO', 'BR'];
+/** When each throne finally fell (the end of its last reign). */
+export const PERIOD_THRONES = Object.fromEntries(Object.entries(PERIOD_THRONE_YEARS).map(([cc, r]) => [cc, r.at(-1)[1]]));
+export const periodThrone = (cc, year) => (PERIOD_THRONE_YEARS[cc] ?? []).some(([from, until]) => year >= from && year < until);
+/** Today's monarchies that were republics for a time (Spain's First and Second Republics, and Franco). */
+export const REPUBLIC_GAPS = { ES: [[1873, 1875], [1931, 1975]] };
+export const republicGap = (cc, year) => (REPUBLIC_GAPS[cc] ?? []).some(([from, until]) => year >= from && year < until);
 
 /* ------------------------------------------------------------------ */
 /* Colonies                                                            */
@@ -288,11 +304,110 @@ export const colonyHere = (state) => colonyStage(state, state.character.countryI
 /** The planned end year of a stage (event-ended stages: when that event happened, else never). */
 export const stageEnd = (state, st) => (typeof st.until === 'number' ? st.until : state.era?.events?.[st.until]?.year ?? Infinity);
 
+/* ------------------------------------------------------------------ */
+/* Governments by year, where no period above decides                  */
+/* ------------------------------------------------------------------ */
+
+const KING = (name, leader = 'the King', o = {}) => G({ kind: 'monarchy', name, elections: 'controlled', press: 'state', surveillance: 0.06, leader, ...o });
+const JUNTA = (name, leader = 'the junta', o = {}) => G({ kind: 'junta', name, elections: 'none', press: 'state', surveillance: 0.2, ratings: false, leader, ...o });
+const ONE = (name, leader = 'the President', o = {}) => G({ kind: 'oneParty', name, elections: 'sham', press: 'state', surveillance: 0.15, ratings: false, leader, ...o });
+const AUTH = (name, leader = 'the President', o = {}) => G({ kind: 'authoritarian', name, elections: 'controlled', press: 'state', surveillance: 0.12, leader, ...o });
+const WAR = (name, leader = 'whoever holds the capital', o = {}) => G({ kind: 'fragile', name, elections: 'none', press: 'state', surveillance: 0.05, ratings: false, banking: 'domestic', leader, ...o });
+const DEMO = (name, leader = 'the President', o = {}) => G({ kind: 'democracy', name, leader, ...o });
+const OLIGARCHY = (name, leader = 'the President', o = {}) => G({ kind: 'hybrid', name, elections: 'controlled', press: 'free', surveillance: 0.04, leader, ...o });
+const TOTAL = (name, leader, o = {}) => G({ kind: 'totalitarian', name, elections: 'sham', press: 'state', exit: 'closed', business: 'state', religion: 'restricted', surveillance: 0.35, banking: 'state', jobs: 'assigned', ratings: false, leader, ...o });
+const PRECOLONIAL = (name, leader = 'the ruler') => MONARCH(name, leader, { women: 'restricted', banking: 'domestic' });
+const OTTOMAN_RULE = (name) => G({ kind: 'colony', name: `${name}, ruled from Constantinople`, elections: 'none', press: 'state', leader: 'the Ottoman governor', colony: 'TR' });
+
+/**
+ * Each country's governments, oldest first, as [until, regime]: the first whose `until` is after the
+ * year applies; after the last, today's government (Regimes.js). Colonial rule (COLONIES) and the
+ * history-driven periods above take precedence.
+ */
+const TIMELINES = {
+  AF: [[1826, WAR('the warring Durrani princes')], [1926, MONARCH('the Emirate of Afghanistan', 'the Emir', { women: 'restricted' })], [1973, MONARCH('the Kingdom of Afghanistan', 'the King', { women: 'restricted' })],
+    [1978, AUTH('Daoud Khan\'s republic', 'President Daoud')], [1992, TOTAL('the Democratic Republic of Afghanistan, a Soviet-backed communist state at war', 'the General Secretary')],
+    [1996, WAR('the civil war of the mujahideen factions')], [2001, G({ kind: 'theocracy', name: 'the Taliban\'s first Islamic Emirate', elections: 'none', press: 'state', religion: 'state', women: 'barred', alcohol: false, ratings: false, surveillance: 0.25, leader: 'the Amir al-Mu\'minin' })],
+    [2021, OLIGARCHY('the Islamic Republic of Afghanistan, at war with the Taliban', 'the President', { women: 'restricted' })]],
+  MX: [[1823, MONARCH('the First Mexican Empire', 'the Emperor')], [1864, WAR('a republic of coups and civil wars', 'the President (Santa Anna, as often as not)')], [1867, MONARCH('the Second Mexican Empire, under a Habsburg emperor', 'the Emperor')],
+    [1876, OLIGARCHY('the Restored Republic', 'the President')], [1911, DICTATOR('the Porfiriato: Porfirio Díaz\'s dictatorship', 'President Díaz')], [1929, WAR('the Mexican Revolution and its aftermath')],
+    [2000, ONE('the PRI\'s one-party state, in all but name', 'the President')]],
+  AR: [[1852, DICTATOR('Rosas\'s Argentine Confederation', 'the Governor of Buenos Aires')], [1916, OLIGARCHY('a conservative oligarchic republic')], [1930, DEMO('the Radical republic')], [1943, OLIGARCHY('the Infamous Decade of rigged elections')],
+    [1955, AUTH('Perón\'s government', 'President Perón')], [1973, JUNTA('a republic of coups')], [1976, AUTH('Perón\'s return')], [1983, JUNTA('the military junta of the Dirty War')]],
+  CL: [[1891, OLIGARCHY('the conservative republic')], [1925, OLIGARCHY('the Parliamentary Republic')], [1973, DEMO('the Chilean republic')], [1990, DICTATOR('Pinochet\'s military dictatorship', 'General Pinochet')]],
+  CO: [[1903, WAR('a republic of civil wars')], [1948, OLIGARCHY('a republic of two parties')], [1958, WAR('La Violencia')], [1974, OLIGARCHY('the National Front: the two parties take turns')]],
+  GT: [[1865, DICTATOR('Carrera\'s dictatorship', 'President Carrera')], [1944, DICTATOR('the liberal dictators', 'the President')], [1954, DEMO('the October Revolution\'s democracy')], [1986, JUNTA('military rule and civil war')]],
+  HT: [[1859, MONARCH('the Second Empire of Haiti', 'the Emperor')], [1915, WAR('a republic of coups')], [1934, G({ kind: 'colony', name: 'Haiti under US occupation', elections: 'controlled', press: 'state', leader: 'the American High Commissioner', colony: 'US' })],
+    [1957, AUTH('a fragile republic')], [1986, DICTATOR('the Duvaliers\' dictatorship', 'the President for Life')], [2004, WAR('a republic of coups and crises')]],
+  PE: [[1895, OLIGARCHY('a republic of caudillos')], [1919, OLIGARCHY('the Aristocratic Republic')], [1930, AUTH('Leguía\'s Oncenio')], [1968, OLIGARCHY('a republic of elections and coups')], [1980, JUNTA('the Revolutionary Government of the Armed Forces')]],
+  VE: [[1908, AUTH('a republic of caudillos')], [1935, DICTATOR('Juan Vicente Gómez\'s dictatorship', 'General Gómez')], [1948, OLIGARCHY('a republic in transition')], [1958, JUNTA('Pérez Jiménez\'s dictatorship')], [1999, DEMO('the Punto Fijo democracy')]],
+  CR: [[1948, OLIGARCHY('a coffee republic')]],
+  LR: [[1980, OLIGARCHY('an Americo-Liberian republic, where only the settlers\' descendants rule')], [1990, JUNTA('Samuel Doe\'s regime')], [2003, WAR('the Liberian civil wars')]],
+  TH: [[1932, MONARCH('the Kingdom of Siam', 'the King')], [1973, JUNTA('a kingdom ruled by its generals', 'the Prime Minister (a field marshal)')], [1976, DEMO('a constitutional monarchy', 'the Prime Minister')],
+    [1992, OLIGARCHY('a military-guided democracy', 'the Prime Minister')], [2006, DEMO('a constitutional monarchy', 'the Prime Minister')], [2023, JUNTA('a kingdom under military-backed government', 'the Prime Minister')]],
+  NP: [[1846, MONARCH('the Kingdom of Nepal', 'the King')], [1951, DICTATOR('the Rana regime: hereditary prime ministers rule in the King\'s name', 'the Rana Prime Minister')], [1960, KING('a kingdom finding a constitution')],
+    [1990, MONARCH('the Panchayat system: the King rules', 'the King')], [2008, KING('a constitutional monarchy at war with Maoist rebels', 'the King')]],
+  BT: [[1907, MONARCH('Bhutan under its Druk Desi and penlops', 'the Druk Desi')], [2008, MONARCH('the Kingdom of Bhutan', 'the Druk Gyalpo')]],
+  ET: [[1974, MONARCH('the Ethiopian Empire', 'the Emperor')], [1991, TOTAL('the Derg, a Marxist military regime', 'the Chairman')]],
+  YE: [[1918, OTTOMAN_RULE('Ottoman Yemen')], [1962, MONARCH('the Mutawakkilite Kingdom', 'the Imam')], [1990, AUTH('the Yemen Arab Republic', 'the President')], [2014, AUTH('Saleh\'s Republic of Yemen', 'President Saleh')]],
+  SA: [[1932, MONARCH('the Emirate of Nejd and the Hejaz', 'the Emir')]],
+  OM: [[1970, MONARCH('the Sultanate of Muscat and Oman', 'the Sultan', { exit: 'closed' })]],
+  JO: [[1946, G({ kind: 'colony', name: 'the Emirate of Transjordan, a British mandate', elections: 'none', press: 'state', leader: 'the Emir', colony: 'GB' })], [1989, MONARCH('the Hashemite Kingdom of Jordan, under martial law', 'the King')]],
+  IQ: [[1958, KING('the Hashemite Kingdom of Iraq', 'the King')], [1968, JUNTA('a republic of coups')], [2003, TOTAL('Saddam Hussein\'s Ba\'athist Iraq', 'the President')], [2005, WAR('Iraq under occupation')]],
+  SY: [[1963, WAR('a republic of coups')], [1970, JUNTA('the Ba\'athist military committee')], [2024, TOTAL('the Assads\' dictatorship', 'the President')]],
+  LY: [[1969, KING('the Kingdom of Libya', 'the King')], [2011, DICTATOR('Gaddafi\'s Jamahiriya', 'the Brotherly Leader')]],
+  LB: [[1975, DEMO('a confessional republic')], [1990, WAR('the Lebanese civil war')]],
+  TR: [[1950, ONE('the Kemalist one-party republic', 'the President')], [1960, DEMO('a democracy')], [1961, JUNTA('the 1960 junta')], [1980, DEMO('a democracy of coups and crises')], [1983, JUNTA('the 1980 junta')]],
+  PK: [[1958, OLIGARCHY('a dominion finding its constitution', 'the Prime Minister')], [1971, JUNTA('Ayub Khan\'s and Yahya Khan\'s military rule')], [1977, DEMO('Bhutto\'s democracy', 'the Prime Minister')], [1988, JUNTA('Zia\'s military rule')], [1999, OLIGARCHY('a fragile democracy', 'the Prime Minister')], [2008, JUNTA('Musharraf\'s military rule')]],
+  ID: [[1957, DEMO('the parliamentary republic')], [1966, AUTH('Sukarno\'s Guided Democracy', 'President Sukarno')], [1998, AUTH('Suharto\'s New Order', 'President Suharto')]],
+  PH: [[1972, DEMO('the Philippine republic')], [1986, DICTATOR('Marcos\'s martial-law dictatorship', 'President Marcos')]],
+  KR: [[1897, MONARCH('the Joseon kingdom', 'the King', { exit: 'closed' })], [1910, MONARCH('the Korean Empire', 'the Emperor')]],
+  KP: [[1897, MONARCH('the Joseon kingdom', 'the King', { exit: 'closed' })], [1910, MONARCH('the Korean Empire', 'the Emperor')], [1948, G({ kind: 'colony', name: 'Korea north of the 38th parallel, under Soviet occupation', elections: 'none', press: 'state', leader: 'the Soviet Civil Administration', colony: 'RU' })]],
+  VN: [[1945, MONARCH('the Nguyễn empire', 'the Emperor')], [1976, ONE('a divided Vietnam: the communist North and the authoritarian South at war', 'the President')]],
+  KH: [[1953, MONARCH('the Kingdom of Cambodia', 'the King')], [1970, KING('Sihanouk\'s kingdom', 'Prince Sihanouk')], [1975, WAR('the Khmer Republic at war')], [1979, TOTAL('Democratic Kampuchea, the Khmer Rouge state', 'Brother Number One')], [1993, ONE('the Vietnamese-backed People\'s Republic')]],
+  MM: [[1885, MONARCH('the Konbaung kingdom', 'the King')], [1962, DEMO('the Union of Burma')], [2011, JUNTA('military rule')], [2021, OLIGARCHY('a military-guided democracy')]],
+  MY: [[1874, MONARCH('the Malay sultanates', 'the Sultan')]],
+  CN: [],
+  BA: [[1878, OTTOMAN_RULE('Ottoman Bosnia')], [1918, G({ kind: 'colony', name: 'Bosnia under Austria-Hungary', elections: 'none', press: 'state', leader: 'the Governor', colony: 'AT' })], [1941, KING('the Kingdom of Yugoslavia', 'the King')],
+    [1945, TOTAL('the Independent State of Croatia, an Axis puppet', 'the Poglavnik')], [1992, ONE('Tito\'s Yugoslavia', 'Marshal Tito')], [1996, WAR('the Bosnian war')]],
+  XK: [[1912, OTTOMAN_RULE('the Vilayet of Kosovo')], [1945, KING('the Kingdom of Serbia, then Yugoslavia', 'the King')], [1999, ONE('Kosovo under Belgrade', 'the President of Yugoslavia')], [2008, G({ kind: 'transitional', name: 'Kosovo under UN administration', elections: 'controlled', leader: 'the UN Special Representative' })]],
+  GH: [[1874, PRECOLONIAL('the Asante Empire', 'the Asantehene')], [1964, DEMO('Nkrumah\'s Ghana', 'Prime Minister Nkrumah')], [1966, ONE('Nkrumah\'s one-party state')], [1992, JUNTA('a republic of coups')]],
+  NG: [[1900, PRECOLONIAL('the Sokoto Caliphate and the Yoruba and Igbo states', 'the Sultan of Sokoto')], [1966, DEMO('the First Republic')], [1979, JUNTA('military rule')], [1983, DEMO('the Second Republic')], [1999, JUNTA('military rule')]],
+  KE: [[1895, PRECOLONIAL('the Swahili coast and the peoples of the interior', 'the elders')], [1991, ONE('KANU\'s one-party state', 'the President')], [2002, OLIGARCHY('a multiparty republic under Moi')]],
+  MW: [[1891, PRECOLONIAL('the Maravi and Ngoni chiefdoms', 'the paramount chief')], [1994, DICTATOR('Hastings Banda\'s one-party state', 'the Life President')]],
+  CI: [[1893, PRECOLONIAL('the Kong Empire and the Baoulé chiefdoms', 'the king')], [1990, ONE('Houphouët-Boigny\'s one-party state')], [2011, WAR('a republic in crisis and civil war')]],
+  ML: [[1892, PRECOLONIAL('the Toucouleur Empire', 'the Almamy')], [1968, ONE('Modibo Keïta\'s socialist state')], [1991, JUNTA('Moussa Traoré\'s military rule')], [2012, DEMO('the Malian republic')]],
+  NE: [[1900, PRECOLONIAL('the Sultanate of Damagaram and the Tuareg confederations', 'the Sultan')], [1974, ONE('Diori\'s one-party state')], [1991, JUNTA('military rule')], [2023, OLIGARCHY('a fragile republic')]],
+  TD: [[1900, PRECOLONIAL('the Sultanates of Wadai and Bornu', 'the Sultan')], [1990, WAR('a republic at war with itself')]],
+  CD: [[1885, PRECOLONIAL('the Kingdom of Kongo and the Luba and Lunda states', 'the Mani Kongo')], [1965, WAR('the Congo crisis')], [1997, DICTATOR('Mobutu\'s Zaire', 'President Mobutu')], [2003, WAR('the Congo wars')]],
+  CF: [[1894, PRECOLONIAL('the sultanates of the savanna', 'the Sultan')], [1966, ONE('Dacko\'s one-party state')], [1979, DICTATOR('Bokassa\'s regime (an empire from 1976)', 'Bokassa')]],
+  SO: [[1889, PRECOLONIAL('the Somali sultanates', 'the Sultan')], [1969, DEMO('the Somali Republic')], [1991, DICTATOR('Siad Barre\'s regime', 'President Barre')], [2012, WAR('Somalia without a national government')]],
+  DJ: [[1884, PRECOLONIAL('the Afar sultanates', 'the Sultan')], [1999, ONE('Gouled\'s one-party state')]],
+  SD: [[1885, G({ kind: 'colony', name: 'the Turkiyya: Sudan under Egyptian rule', elections: 'none', press: 'state', leader: 'the Governor-General', colony: 'EG' })], [1899, G({ kind: 'theocracy', name: 'the Mahdist state', elections: 'none', press: 'state', religion: 'state', alcohol: false, leader: 'the Khalifa' })],
+    [1969, OLIGARCHY('a republic of coups')], [1985, DICTATOR('Nimeiry\'s regime')], [1989, DEMO('a brief democracy')], [2019, AUTH('Bashir\'s military-Islamist regime', 'President Bashir')]],
+  SS: [[1956, G({ kind: 'colony', name: 'southern Sudan, ruled from Khartoum', elections: 'none', press: 'state', leader: 'the Governor', colony: 'GB' })], [2011, WAR('southern Sudan at war with Khartoum')]],
+  MA: [[1912, MONARCH('the Sultanate of Morocco', 'the Sultan')], [1999, MONARCH('Hassan II\'s kingdom: the Years of Lead', 'the King')]],
+  TO: [[1875, MONARCH('the Tongan kingdom', 'the King')], [2010, KING('a kingdom where the nobles hold the parliament', 'the King')]],
+  ES: [[1923, OLIGARCHY('the Restoration monarchy of rigged elections', 'the Prime Minister')], [1931, DICTATOR('Primo de Rivera\'s dictatorship', 'General Primo de Rivera')], [1936, DEMO('the Second Republic', 'the President')], [1939, WAR('the Spanish Civil War')]],
+  GR: [[1832, OTTOMAN_RULE('Ottoman Greece')], [1924, KING('the Kingdom of Greece')], [1935, DEMO('the Second Hellenic Republic')], [1941, DICTATOR('Metaxas\'s dictatorship', 'General Metaxas')], [1945, G({ kind: 'colony', name: 'Greece under Axis occupation', elections: 'none', press: 'state', leader: 'the occupation authorities', colony: 'DE' })], [1967, KING('the Kingdom of Greece, after its civil war')], [1974, JUNTA('the Regime of the Colonels')]],
+  PT: [[1910, KING('the Kingdom of Portugal')], [1926, WAR('the First Republic of coups and crises')]],
+  EG: [[1953, KING('the Kingdom of Egypt, under British influence', 'the King')]],
+  IR: [],
+};
+for (const [cc, rows] of Object.entries(TIMELINES)) if (!rows.length) delete TIMELINES[cc];
+/** A country's government from its timeline in a year, or null. */
+export function timelineRegime(cc, y) {
+  const row = TIMELINES[cc]?.find(([until]) => y < until);
+  return row ? { ...row[1] } : null;
+}
+
 /** Every country's era regime now: { [cc]: regime }. Colonies over periods. */
 export function eraLayer(state) {
   const out = {};
   if (!state?.era || yearNow(state) >= PRESENT) return out;
   for (const p of PERIODS) if (p.active(state)) for (const cc of p.cc) out[cc] = { ...p.regime };
+  const y = yearNow(state);
+  for (const cc of Object.keys(TIMELINES)) if (!out[cc]) { const r = timelineRegime(cc, y); if (r) out[cc] = r; }
   for (const cc of Object.keys(COLONIES)) {
     const st = colonyStage(state, cc);
     if (!st) continue;

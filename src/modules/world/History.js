@@ -29,7 +29,7 @@ import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
 import { priceLevel } from './Countries.js';
 import { AUTOMATED_BY, leavingAge, setEraYear } from './Eras.js';
-import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
+import { PRESENT, PERIOD_THRONES, PERIOD_THRONE_YEARS, EVENT_THRONES, REPUBLIC_GAPS, republicGap, periodThrone, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
@@ -606,6 +606,33 @@ function tradeEnds(ctx) {
   ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
 }
 
+/** Thrones without a history event of their own rise and fall on their dates: Napoleon III in 1852, the Ottoman sultanate in 1922, Spain's republics. */
+function thronesOnTheirDates(ctx) {
+  const { state } = ctx;
+  const y = yearNow(state);
+  state.world ??= {};
+  for (const [cc, reigns] of Object.entries(PERIOD_THRONE_YEARS)) {
+    if (!CROWNS[cc]) continue;
+    const r = state.world.restored?.[cc];
+    if (!EVENT_THRONES.includes(cc) && r?.period && reigns.some(([, until]) => until === y)) {
+      news(ctx, `The monarchy falls in ${COUNTRIES[cc]?.name ?? cc}`, '👑', 'world', 6);
+      abolish(ctx, cc);
+    } else if (!r && reigns.some(([from]) => from === y && from > state.era.start)) {
+      (state.world.restored ??= {})[cc] = { year: y, house: CROWNS[cc].houses[0], period: true };
+      if (state.world.republics?.[cc]) delete state.world.republics[cc];
+      news(ctx, `A monarchy is proclaimed in ${COUNTRIES[cc]?.name ?? cc}`, '👑', 'world', 6);
+    }
+  }
+  for (const [cc, gaps] of Object.entries(REPUBLIC_GAPS)) {
+    if (gaps.some(([from]) => from === y) && !state.world.republics?.[cc]) { news(ctx, `${COUNTRIES[cc]?.name ?? cc} becomes a republic`, '🏛️', 'world', 6); abolish(ctx, cc); }
+    if (gaps.some(([, until]) => until === y) && state.world.republics?.[cc]) {
+      delete state.world.republics[cc];
+      delete state.world.crowns?.[cc];
+      news(ctx, `The monarchy is restored in ${COUNTRIES[cc]?.name ?? cc}`, '👑', 'world', 6);
+    }
+  }
+}
+
 /** When the country you live in changes its name or its form of government, you hear of it. */
 function governmentChange(ctx) {
   const { state } = ctx;
@@ -639,11 +666,13 @@ export const HistoryModule = {
         state.era.freeNorth = true;
       }
       // Thrones that still stood when this life began reign until history takes them.
-      for (const [cc, fell] of Object.entries(PERIOD_THRONES)) {
-        if (state.era.start >= fell || !CROWNS[cc]) continue;
+      for (const cc of Object.keys(PERIOD_THRONES)) {
+        if (!periodThrone(cc, state.era.start) || !CROWNS[cc]) continue;
         state.world ??= {};
         (state.world.restored ??= {})[cc] ??= { year: state.era.start, house: CROWNS[cc].houses[0], period: true };
       }
+      // Today's monarchies that were republics when this life began (Spain in the 1930s).
+      for (const cc of Object.keys(REPUBLIC_GAPS)) if (republicGap(cc, state.era.start)) (state.world.republics ??= {})[cc] = { year: state.era.start, period: true };
     }
     sync(state);
   },
@@ -693,6 +722,7 @@ export const HistoryModule = {
     if (presentLife) return void setReformLayer(state.world?.reforms ?? {});
     leaveSchoolPrompt(ctx);
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
+    thronesOnTheirDates(ctx);
     sync(state);
     governmentChange(ctx);
     movementPrompt(ctx);

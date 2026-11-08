@@ -27,6 +27,23 @@ import { living } from '../people/People.js';
 import { arrive } from './Migration.js';
 
 export const FORMER_HOUSES = {
+  PT: { name: 'Braganza', surname: 'de Bragança', head: ['Duke of Braganza', 'Duchess of Braganza'], style: ['Prince', 'Princess'], fell: 1910, how: 'the 5 October Revolution', order: 'Order of Our Lady of the Conception', support: 3, legal: 'The Republic recognises no titles.' },
+  TR: { name: 'Osman', surname: 'Osmanoğlu', head: ['Head of the House of Osman', 'Head of the House of Osman'], style: ['Şehzade', 'Sultan'], fell: 1922, how: 'the abolition of the sultanate', order: 'Order of the Medjidie', support: 2, legal: 'The family was exiled in 1924; titles have no legal standing.' },
+  CN: { name: 'Aisin-Gioro', surname: 'Aisin-Gioro', head: ['Head of the Aisin-Gioro', 'Head of the Aisin-Gioro'], style: ['Prince', 'Princess'], fell: 1912, how: 'the Xinhai Revolution', order: 'Order of the Double Dragon', support: 1, legal: 'Titles were abolished with the empire.' },
+  IR: { name: 'Pahlavi', surname: 'Pahlavi', head: ['Crown Prince of Iran', 'Crown Princess of Iran'], style: ['Prince', 'Princess'], fell: 1979, how: 'the Islamic Revolution', order: 'Order of the Lion and the Sun', support: 6, legal: 'The Islamic Republic recognises no titles.' },
+  EG: { name: 'Muhammad Ali', surname: 'of Egypt', head: ['Head of the House of Muhammad Ali', 'Head of the House of Muhammad Ali'], style: ['Prince', 'Princess'], fell: 1953, how: 'the Free Officers\' revolution', order: 'Order of Muhammad Ali', support: 2, legal: 'Titles were abolished in 1953.' },
+  GR: { name: 'Glücksburg', surname: 'de Grèce', head: ['Head of the Royal House of Greece', 'Head of the Royal House of Greece'], style: ['Prince', 'Princess'], fell: 1973, how: 'the colonels and the 1974 referendum', order: 'Order of the Redeemer', support: 10, legal: 'The Republic recognises no titles.' },
+  ET: { name: 'Solomon', surname: 'of Ethiopia', head: ['Crown Prince of Ethiopia', 'Crown Princess of Ethiopia'], style: ['Prince', 'Princess'], fell: 1974, how: 'the Derg', order: 'Order of the Star of Ethiopia', support: 4, legal: 'Titles were abolished with the empire.' },
+  AF: { name: 'Barakzai', surname: 'Barakzai', head: ['Head of the Royal House of Afghanistan', 'Head of the Royal House of Afghanistan'], style: ['Sardar', 'Princess'], fell: 1973, how: 'Daoud Khan\'s coup', order: 'Order of the Supreme Sun', support: 5, legal: 'Titles have no legal standing.' },
+  LY: { name: 'Senussi', surname: 'al-Senussi', head: ['Crown Prince of Libya', 'Crown Princess of Libya'], style: ['Prince', 'Princess'], fell: 1969, how: 'Gaddafi\'s coup', order: 'Order of Idris I', support: 3, legal: 'Titles have no legal standing.' },
+  IQ: { name: 'Hashim', surname: 'al-Hashimi', head: ['Head of the Royal House of Iraq', 'Head of the Royal House of Iraq'], style: ['Sharif', 'Sharifa'], fell: 1958, how: 'the 14 July Revolution', order: 'Order of the Two Rivers', support: 2, legal: 'Titles have no legal standing.' },
+  KR: { name: 'Yi', surname: 'Yi', head: ['Head of the House of Yi', 'Head of the House of Yi'], style: ['Prince', 'Princess'], fell: 1910, how: 'annexation by Japan', order: 'Order of the Plum Blossom', support: 1, legal: 'The Republic recognises no titles.' },
+  VN: { name: 'Nguyễn Phúc', surname: 'Nguyễn Phúc', head: ['Head of the Nguyễn Phúc', 'Head of the Nguyễn Phúc'], style: ['Prince', 'Princess'], fell: 1945, how: 'Bảo Đại\'s abdication', order: 'Order of the Dragon of Annam', support: 1, legal: 'Titles have no legal standing.' },
+  MX: { name: 'Habsburg', surname: 'de Habsburgo', head: ['Head of the Imperial House of Mexico', 'Head of the Imperial House of Mexico'], style: ['Prince', 'Princess'], fell: 1867, how: 'the fall of the Second Empire', order: 'Order of Guadalupe', support: 1, legal: 'The Republic recognises no titles.' },
+  NP: { name: 'Shah', surname: 'Shah', head: ['Head of the Shah dynasty', 'Head of the Shah dynasty'], style: ['Prince', 'Princess'], fell: 2008, how: 'the Constituent Assembly\'s vote', order: 'Order of Ojaswi Rajanya', support: 15, legal: 'The Republic recognises no titles.' },
+  YE: { name: 'Hamid al-Din', surname: 'Hamid al-Din', head: ['Head of the House of Hamid al-Din', 'Head of the House of Hamid al-Din'], style: ['Sayf al-Islam', 'Princess'], fell: 1962, how: 'the 26 September Revolution', order: 'Order of the Glory', support: 2, legal: 'Titles have no legal standing.' },
+  MM: { name: 'Konbaung', surname: 'Konbaung', head: ['Head of the Konbaung', 'Head of the Konbaung'], style: ['Prince', 'Princess'], fell: 1885, how: 'the British conquest of Mandalay', order: 'Order of the Golden Peacock', support: 1, legal: 'Titles have no legal standing.' },
+  ES: { name: 'Bourbon', surname: 'de Borbón', head: ['Count of Barcelona', 'Countess of Barcelona'], style: ['Infante', 'Infanta'], fell: 1931, how: 'the Second Republic', order: 'Order of the Golden Fleece', support: 10, legal: 'Titles were not recognised under the Republic.' },
   DE: { name: 'Hohenzollern', surname: 'von Preußen', head: ['Prince of Prussia', 'Princess of Prussia'], style: ['Prince', 'Princess'], fell: 1918, how: 'the November Revolution', order: 'Order of the Black Eagle', support: 4, legal: 'Since 1919 a noble title is only part of the surname ("Prinz von Preußen").' },
   FR: { name: 'Orléans', surname: 'd\'Orléans', head: ['Count of Paris', 'Countess of Paris'], style: ['Prince', 'Princess'], fell: 1848, how: 'the February Revolution', order: 'Order of Saint Michael', support: 3, legal: 'The Republic recognises no titles; courtesy keeps them alive.' },
   IT: { name: 'Savoy', surname: 'di Savoia', head: ['Duke of Savoy', 'Duchess of Savoy'], style: ['Prince', 'Princess'], fell: 1946, how: 'the 1946 institutional referendum', order: 'Order of Saints Maurice and Lazarus', support: 8, legal: 'The Constitution recognises no titles of nobility.' },
@@ -37,6 +54,7 @@ export const FORMER_HOUSES = {
 };
 const g = (state) => (state.character.gender === 'female' ? 1 : 0);
 const RESTORE_THRESHOLD = 35;
+const ORIGINAL_HOUSES = ['DE', 'FR', 'IT', 'AT', 'RU', 'BR', 'RO'];
 
 export const houseOf = (state) => (state.house && !state.house.renounced ? state.house : null);
 /** Support for a monarchy: for a restoration where there's none, for keeping it where there is. */
@@ -299,10 +317,13 @@ function houseYear(ctx) {
 function monarchistYear(ctx) {
   const { state, rng } = ctx;
   const w = (state.world.monarchists ??= {});
+  // The houses added for historical lives drift on their own dice, so today's lives play as before.
+  const side = new Random(((state.world?.seed ?? 1) * 92821 + currentYear(state) * 37 + 11) >>> 0);
   for (const cc of Object.keys(FORMER_HOUSES)) {
-    if (state.world.restored?.[cc]) continue;
+    if (state.world.restored?.[cc] || crownOf(state, cc)) continue;
     const base = FORMER_HOUSES[cc].support;
-    w[cc] = Math.round(clamp((w[cc] ?? base) + (base - (w[cc] ?? base)) * 0.08 + rng.float(-1, 1), 0, 80) * 10) / 10;
+    const dice = ORIGINAL_HOUSES.includes(cc) ? rng : side;
+    w[cc] = Math.round(clamp((w[cc] ?? base) + (base - (w[cc] ?? base)) * 0.08 + dice.float(-1, 1), 0, 80) * 10) / 10;
   }
   // A government alarmed by the cause can ban the house's men from the country (Italy kept the Savoys out until 2002).
   const h = houseOf(state);
@@ -315,7 +336,7 @@ function monarchistYear(ctx) {
     if (state.character.countryId === h.cc) arrive(ctx, 'CH', { visa: 'resident', reason: 'You went into exile in Switzerland, like many dethroned houses before you.' });
   }
   const cc = state.character.countryId;
-  if (FORMER_HOUSES[cc] && !state.world.restored?.[cc] && monarchistSupport(state, cc) >= RESTORE_THRESHOLD && rng.chance(0.15)) {
+  if (FORMER_HOUSES[cc] && !state.world.restored?.[cc] && !crownOf(state, cc) && monarchistSupport(state, cc) >= RESTORE_THRESHOLD && rng.chance(0.15)) {
     if (state.character.age >= 18) referendumPrompt(ctx, cc, 'restore');
     else resolveVote(ctx, { cc, kind: 'restore', called: false }, 'vote');
   }

@@ -33,6 +33,8 @@ import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
 import { eraFlag, START_ERAS } from '../src/modules/world/Eras.js';
 import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
+import { holySeeOf } from '../src/modules/world/HolySee.js';
+import { currentYear } from '../src/core/State.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (opts, seed = 1) => {
@@ -406,6 +408,21 @@ const tests = {
     }
     assert.ok(VIEWS.garage(state, {}).includes('Riding Horse'), 'horses for sale');
     assert.match(VIEWS.health(state, {}), /Charity ward|Sick club|Pay the doctor/);
+  },
+  'popes, thrones and governments of their time'() {
+    const rome = life({ countryId: 'IT', startYear: 1850 }, 1);
+    assert.equal(holySeeOf(rome.state).pope.name, 'Pius IX');
+    assert.ok(currentYear(rome.state) - holySeeOf(rome.state).pope.born > 0, 'a pope of a sensible age');
+    live(rome.engine, rome.state, 30);
+    if (rome.state.character.alive) assert.equal(holySeeOf(rome.state).pope.name, 'Leo XIII', 'Pius IX dies in 1878; Leo XIII follows');
+    const fr = life({ countryId: 'FR', startYear: 1860, royalLevel: 'child' }, 1).state;
+    assert.equal(fr.royal?.crownId, 'FR', 'born to the Second Empire');
+    const es = life({ countryId: 'ES', startYear: 1940, royalLevel: 'child' }, 1).state;
+    assert.ok(!es.royal && es.house?.cc === 'ES', 'Spain has no king in 1940: born into the Bourbons in exile');
+    const af = life({ countryId: 'AF', startYear: 1980 }, 1).state;
+    assert.equal(regimeHere(af).kind, 'totalitarian', 'the communist Democratic Republic');
+    const om = life({ countryId: 'OM' }, 1).state;
+    assert.notEqual(regimeHere(om).kind, 'democracy', 'Oman is a sultanate');
   },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);

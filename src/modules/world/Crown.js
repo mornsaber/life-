@@ -181,6 +181,22 @@ export const CROWNS = {
  * brings the monarchy back (state.world.restored[cc]).
  */
 const RESTORABLE = {
+  PT: { houses: ['Braganza'], rule: 'malePreference', names: { male: ['Pedro', 'Luís', 'Carlos', 'Miguel', 'João'], female: ['Maria', 'Amélia', 'Isabel', 'Teresa'] }, titles: { monarch: ['King', 'Queen'], heir: ['Prince Royal', 'Princess Royal'], royal: ['Infante', 'Infanta'], distant: ['Prince', 'Princess'] }, palace: 'the Necessidades Palace' },
+  TR: { houses: ['Osman'], rule: 'agnatic', names: { male: ['Mahmud', 'Abdülmecid', 'Mehmed', 'Murad', 'Selim', 'Ahmed'], female: ['Fatma', 'Ayşe', 'Hatice', 'Naciye'] }, titles: { monarch: ['Sultan', 'Valide Sultan'], heir: ['Şehzade', 'Sultan'], royal: ['Şehzade', 'Sultan'], distant: ['Bey', 'Hanım'] }, palace: 'the Dolmabahçe Palace' },
+  CN: { houses: ['Aisin-Gioro'], rule: 'agnatic', names: { male: ['Minning', 'Yizhu', 'Zaichun', 'Zaitian', 'Yongyan'], female: ['Rongshou', 'Shouzhuang', 'Ronghe'] }, titles: { monarch: ['Emperor', 'Empress Dowager'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Beile', 'Gege'] }, palace: 'the Forbidden City' },
+  IR: { houses: ['Qajar'], rule: 'agnatic', names: { male: ['Fath-Ali', 'Mohammad', 'Naser al-Din', 'Mozaffar al-Din', 'Ahmad', 'Reza'], female: ['Taj', 'Farah', 'Ashraf', 'Shams'] }, titles: { monarch: ['Shah', 'Shahbanu'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Mirza', 'Khanum'] }, palace: 'the Golestan Palace' },
+  EG: { houses: ['Muhammad Ali'], rule: 'agnatic', names: { male: ['Ismail', 'Tewfik', 'Abbas', 'Fuad', 'Farouk', 'Said'], female: ['Fawzia', 'Faiza', 'Fathia', 'Nazli'] }, titles: { monarch: ['Khedive', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Bey', 'Hanem'] }, palace: 'the Abdeen Palace' },
+  GR: { houses: ['Glücksburg'], rule: 'malePreference', names: { male: ['Georgios', 'Konstantinos', 'Alexandros', 'Pavlos', 'Otto'], female: ['Olga', 'Sophia', 'Frederica', 'Eleni'] }, titles: { monarch: ['King of the Hellenes', 'Queen of the Hellenes'], heir: ['Diadochos', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Royal Palace, Athens' },
+  ET: { houses: ['Solomon'], rule: 'agnatic', names: { male: ['Tewodros', 'Yohannes', 'Menelik', 'Iyasu', 'Haile Selassie'], female: ['Zewditu', 'Taytu', 'Menen'] }, titles: { monarch: ['Negusa Nagast', 'Empress'], heir: ['Crown Prince', 'Princess'], royal: ['Le\'ul', 'Le\'ulit'], distant: ['Ras', 'Woizero'] }, palace: 'the Menelik Palace' },
+  AF: { houses: ['Barakzai'], rule: 'agnatic', names: { male: ['Dost Mohammad', 'Sher Ali', 'Abdur Rahman', 'Habibullah', 'Amanullah', 'Zahir'], female: ['Soraya', 'Homaira', 'Bilqis'] }, titles: { monarch: ['Emir', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Sardar', 'Princess'], distant: ['Sardar', 'Bibi'] }, palace: 'the Arg, Kabul' },
+  LY: { houses: ['Senussi'], rule: 'agnatic', names: { male: ['Idris', 'Hasan', 'Muhammad'], female: ['Fatima', 'Aliya'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Sayyid', 'Sayyida'] }, palace: 'the Al-Khuld Palace, Tripoli' },
+  IQ: { houses: ['Hashim'], rule: 'agnatic', names: { male: ['Faisal', 'Ghazi', 'Abd al-Ilah', 'Zeid'], female: ['Aliya', 'Rajiha', 'Badiya'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Sharif', 'Sharifa'], distant: ['Sharif', 'Sharifa'] }, palace: 'the Rihab Palace, Baghdad' },
+  KR: { houses: ['Yi'], rule: 'agnatic', names: { male: ['Sunjo', 'Heonjong', 'Cheoljong', 'Gojong', 'Sunjong'], female: ['Myeongseong', 'Sunjeong', 'Deokhye'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'Gyeongbokgung Palace' },
+  VN: { houses: ['Nguyễn Phúc'], rule: 'agnatic', names: { male: ['Gia Long', 'Minh Mạng', 'Tự Đức', 'Thành Thái', 'Khải Định', 'Bảo Đại'], female: ['Nam Phương', 'Từ Cung'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Imperial City, Huế' },
+  MX: { houses: ['Habsburg'], rule: 'agnatic', names: { male: ['Maximiliano'], female: ['Carlota'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Imperial Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'Chapultepec Castle' },
+  NP: { houses: ['Shah'], rule: 'agnatic', names: { male: ['Rajendra', 'Surendra', 'Prithvi', 'Tribhuvan', 'Mahendra', 'Birendra', 'Gyanendra'], female: ['Aishwarya', 'Komal', 'Ratna'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Narayanhiti Palace' },
+  YE: { houses: ['Hamid al-Din'], rule: 'agnatic', names: { male: ['Yahya', 'Ahmad', 'Muhammad al-Badr'], female: ['Fatima'] }, titles: { monarch: ['Imam', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Sayf al-Islam', 'Princess'], distant: ['Sayyid', 'Sayyida'] }, palace: 'the Dar al-Hajar' },
+  MM: { houses: ['Konbaung'], rule: 'agnatic', names: { male: ['Bodawpaya', 'Bagyidaw', 'Tharrawaddy', 'Pagan', 'Mindon', 'Thibaw'], female: ['Supayalat', 'Sinbyumashin'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Mandalay Palace' },
   DE: { houses: ['Hohenzollern'], rule: 'agnatic', names: { male: ['Wilhelm', 'Friedrich', 'Georg', 'Louis Ferdinand', 'Carl'], female: ['Viktoria', 'Luise', 'Sophie', 'Cecilie'] }, titles: { monarch: ['Emperor', 'Empress'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Berlin Palace' },
   FR: { houses: ['Orléans'], rule: 'agnatic', names: { male: ['Henri', 'Jean', 'Louis', 'Gaston', 'François'], female: ['Isabelle', 'Marie', 'Hélène', 'Chantal'] }, titles: { monarch: ['King', 'Queen'], heir: ['Dauphin', 'Dauphine'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Tuileries' },
   IT: { houses: ['Savoy'], rule: 'agnatic', names: { male: ['Vittorio Emanuele', 'Umberto', 'Emanuele Filiberto', 'Amedeo'], female: ['Maria Gabriella', 'Vittoria', 'Luisa', 'Margherita'] }, titles: { monarch: ['King', 'Queen'], heir: ['Prince of Piedmont', 'Princess of Piedmont'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Quirinal Palace' },
@@ -190,6 +206,14 @@ const RESTORABLE = {
   RO: { houses: ['Romania'], rule: 'absolute', names: { male: ['Carol', 'Mihai', 'Ferdinand', 'Nicolae'], female: ['Margareta', 'Elena', 'Maria', 'Sofia'] }, titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] }, palace: 'the Royal Palace, Bucharest' },
 };
 for (const [cc, d] of Object.entries(RESTORABLE)) CROWNS[cc] = { name: 'the Crown', realms: [cc], grant: 'civil list', dukedoms: [], restorable: true, ...d };
+/** Crowns whose title changed with the years: France's emperors and kings, Afghanistan's emirs and kings, Egypt's khedives, sultans and kings. */
+const TITLE_IN = {
+  FR: (y) => (y < 1815 || (y >= 1852 && y < 1871) ? ['Emperor', 'Empress'] : null),
+  AF: (y) => (y < 1926 ? ['Emir', 'Queen'] : ['King', 'Queen']),
+  EG: (y) => (y < 1914 ? ['Khedive', 'Queen'] : y < 1922 ? ['Sultan', 'Queen'] : ['King', 'Queen']),
+};
+/** The monarch's title in the year being played. */
+export const monarchTitles = (crownId, year) => TITLE_IN[crownId]?.(year) ?? CROWNS[crownId].titles.monarch;
 export const CROWN_HOMES = Object.keys(CROWNS).filter((id) => !CROWNS[id].restorable);
 /** The crown a country's head of state wears (null for republics, and after a realm votes to leave). */
 export function crownOf(state, cc = state.character.countryId ?? 'US') {
@@ -234,14 +258,14 @@ export function monarchName(state, crownId) {
   const c = state.world?.crowns?.[crownId];
   if (!c) return null;
   const def = CROWNS[crownId];
-  return `${def.titles.monarch[genderIdx(c.monarch.gender)]} ${c.monarch.name}${c.monarch.number > 1 ? ` ${ROMAN[c.monarch.number] ?? c.monarch.number}` : ''}`;
+  return `${monarchTitles(crownId, currentYear(state))[genderIdx(c.monarch.gender)]} ${c.monarch.name}${c.monarch.number > 1 ? ` ${ROMAN[c.monarch.number] ?? c.monarch.number}` : ''}`;
 }
 /** "the King" / "the Queen" for a country (null in a republic). */
 export function sovereign(state, cc) {
   const id = crownOf(state, cc);
   if (!id) return null;
   const c = ensureCrown(state, id);
-  return `the ${CROWNS[id].titles.monarch[genderIdx(c.monarch.gender)]}`;
+  return `the ${monarchTitles(id, currentYear(state))[genderIdx(c.monarch.gender)]}`;
 }
 
 /* ------------------------------------------------------------------ */

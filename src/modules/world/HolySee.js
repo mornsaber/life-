@@ -36,10 +36,32 @@ const roman = (n) => ROMAN.reduce((s, [v, r]) => { while (n >= v) { s += r; n -=
 const regnal = (names, name) => (names[name] ? `${name} ${roman(names[name] + 1)}` : name);
 const catholic = (state) => ['catholic', 'tradCatholic'].includes(state.community?.faith?.traditionId);
 
+/** The popes since 1800: [regnal name, base name, born, elected]. History follows them until a life's own conclave changes it. */
+const POPES = [
+  ['Pius VII', 'Pius', 1742, 1800], ['Leo XII', 'Leo', 1760, 1823], ['Pius VIII', 'Pius', 1761, 1829], ['Gregory XVI', 'Gregory', 1765, 1831],
+  ['Pius IX', 'Pius', 1792, 1846], ['Leo XIII', 'Leo', 1810, 1878], ['Pius X', 'Pius', 1835, 1903], ['Benedict XV', 'Benedict', 1854, 1914],
+  ['Pius XI', 'Pius', 1857, 1922], ['Pius XII', 'Pius', 1876, 1939], ['John XXIII', 'John', 1881, 1958], ['Paul VI', 'Paul', 1897, 1963],
+  ['John Paul I', 'John Paul', 1912, 1978], ['John Paul II', 'John Paul', 1920, 1978], ['Benedict XVI', 'Benedict', 1927, 2005], ['Francis', 'Francis', 1936, 2013],
+  ['Leo XIV', 'Leo', 1955, 2025],
+];
+/** The pope reigning in a year (John Paul II, not John Paul I, for 1978). */
+export const historicalPope = (year) => POPES.filter(([, , , from]) => from <= year).at(-1) ?? POPES[0];
+/** How many popes had taken each name by a year (Pius had reached VII in 1800). */
+function namesBy(year) {
+  const names = { ...NAMES };
+  for (const [, base, , from] of POPES) if (from > year) names[base] = Math.max(0, (names[base] ?? 1) - 1);
+  if (!names.Francis) delete names.Francis;
+  if (!names['John Paul']) delete names['John Paul'];
+  return names;
+}
+
 export function holySeeOf(state) {
   state.world ??= {};
   const year = currentYear(state);
-  state.world.holySee ??= { pope: { name: 'Leo XIV', born: 1955, since: Math.min(year, 2025) }, names: { ...NAMES }, conclaves: [] };
+  if (!state.world.holySee) {
+    const [name, , born, since] = historicalPope(Math.min(year, 2025));
+    state.world.holySee = { pope: { name, born, since }, names: namesBy(year), conclaves: [], onScript: year < 2025 };
+  }
   return state.world.holySee;
 }
 const me = (state) => (state.holySee ??= { cardinal: null, pope: null, favour: 0, consistories: 0, journeys: 0, encyclicals: 0, canonized: 0, popularity: 70 });
@@ -98,6 +120,7 @@ function electNpc(ctx, why) {
   w.names[base] = (w.names[base] ?? 0) + 1;
   const year = currentYear(state);
   w.pope = { name, born: year - rng.int(62, 78), since: year };
+  w.onScript = false;
   w.conclaves.push({ year, elected: name });
   if (catholic(state) || isCardinal(state)) ctx.log(`${why} Habemus papam: after ${rng.int(2, 5)} days in the Sistine Chapel the conclave elected ${rng.pick(['the Patriarch of Lisbon', 'the Patriarch of Venice', 'the Archbishop of Kinshasa', 'the Archbishop of Bologna', 'the Archbishop of Boston', 'the Archbishop of Budapest', 'the Archbishop of São Paulo', 'the Archbishop of Colombo', 'the Archbishop of Marseille', 'the Archbishop of Vienna', 'a cardinal prefect of the Curia'])}, who took the name ${name}.`, '🕊️', 'milestone');
 }
@@ -157,7 +180,19 @@ function popeYear(ctx) {
   const { state, rng } = ctx;
   const w = holySeeOf(state);
   if (w.pope.you || isPope(state)) return;
-  const age = currentYear(state) - w.pope.born;
+  // History runs on its own until a conclave of this life's making: the real popes, on their real dates.
+  const year = currentYear(state);
+  if (w.onScript && year <= 2025) {
+    const [name, base, born, since] = historicalPope(year);
+    if (name === w.pope.name) return;
+    if (isElector(state)) { w.onScript = false; return vacancy(ctx, `Pope ${w.pope.name} has died. The bells of St Peter's tolled; the Camerlengo declared the see vacant.`); }
+    w.pope = { name, born, since };
+    w.names[base] = (w.names[base] ?? 0) + 1;
+    w.conclaves.push({ year, elected: name });
+    if (catholic(state)) ctx.log(`Habemus papam: the cardinals elected ${name}.`, '🕊️', 'milestone');
+    return undefined;
+  }
+  const age = year - w.pope.born;
   const die = age < 75 ? 0.015 : 0.04 + (age - 75) * 0.012;
   if (rng.chance(die)) return vacancy(ctx, `Pope ${w.pope.name} has died. The bells of St Peter's tolled; the Camerlengo declared the see vacant.`);
   if (age >= 85 && rng.chance(0.03)) return vacancy(ctx, `Pope ${w.pope.name} renounced the papacy, citing his age. The see is vacant.`);
