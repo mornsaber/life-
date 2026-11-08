@@ -578,6 +578,89 @@ export function eraFlag(state, cc, countries) {
   return today;
 }
 
+/** Stars on the US flag in a year (it changes on the 4th of July after a state joins). */
+const US_STARS = [[1795, 15], [1818, 20], [1819, 21], [1820, 23], [1822, 24], [1836, 25], [1837, 26], [1845, 27], [1846, 28], [1847, 29], [1848, 30], [1851, 31], [1858, 32], [1859, 33], [1861, 34], [1863, 35], [1865, 36], [1867, 37], [1877, 38], [1890, 43], [1891, 44], [1896, 45], [1908, 46], [1912, 48], [1959, 49], [1960, 50]];
+export const usStars = (y) => US_STARS.filter(([from]) => from <= y).at(-1)?.[1] ?? 15;
+
+/**
+ * The flag flown in the year being played, as { id } for a historical flag drawn by the game
+ * (ui/Flags.js) or { img: cc } for a country's flag image (icons/flags, from flag-icons, MIT).
+ * A colony flies its ruler's flag of the day. Loose history decides: if the Soviet Union never
+ * falls in this world, the red flag keeps flying.
+ */
+export function periodFlag(state, cc) {
+  if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
+  const y = yearNow(state);
+  const st = colonyStage(state, cc);
+  if (st && st.ruler !== cc) return periodFlag(state, st.ruler);
+  const ussr = hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse');
+  switch (cc) {
+    case 'US': return y < 1960 ? { id: 'usStars', n: usStars(y) } : { img: cc };
+    case 'GB': return y < 1801 ? { id: 'gbPre1801' } : { img: cc };
+    case 'RU': return ussr ? { id: 'ussr' } : { img: cc };
+    case 'UA': case 'BY': case 'KZ': case 'UZ': case 'GE': case 'AM': case 'AZ': case 'KG': case 'TJ': case 'TM': case 'MD':
+      return ussr && y >= 1922 ? { id: 'ussr' } : y < 1917 ? { img: 'RU' } : { img: cc };
+    case 'EE': case 'LV': case 'LT': return ussr && y >= 1940 ? { id: 'ussr' } : y < 1918 ? { img: 'RU' } : { img: cc };
+    case 'FI': return y < 1917 ? { img: 'RU' } : { img: cc };
+    case 'DE': return !hap(state, 'germanUnification') ? { id: 'prussia' } : y < 1919 || (y >= 1933 && y < 1946) ? { id: 'germanEmpire' } : { img: cc };
+    case 'IT': return y < 1848 ? { id: 'sardinia' } : y < 1946 ? { id: 'italyKingdom' } : { img: cc };
+    case 'FR': return y >= 1815 && y < 1830 ? { id: 'bourbon' } : { img: cc };
+    case 'CN': return !hap(state, 'xinhai') ? { id: 'qing' } : y < 1928 ? { id: 'fiveRaces' } : !hap(state, 'prc') ? { img: 'TW' } : { img: cc };
+    case 'IR': return y < 1979 ? { id: 'iranLionSun' } : { img: cc };
+    case 'CA': return y < 1965 ? { id: 'redEnsign' } : { img: cc };
+    case 'ZA': return y < 1928 ? { id: 'redEnsign' } : y < 1994 ? { id: 'southAfrica1928' } : { img: cc };
+    case 'BR': return y < 1889 ? { id: 'brazilEmpire' } : { img: cc };
+    case 'EG': return y >= 1922 && y < 1953 ? { id: 'egyptKingdom' } : { img: cc };
+    case 'PT': return y < 1910 ? { id: 'portugalMonarchy' } : { img: cc };
+    case 'LY': return y >= 1977 && y < 2011 ? { id: 'libyaGreen' } : { img: cc };
+    case 'CZ': case 'SK': return y < 1918 ? { img: 'AT' } : y < 1993 ? { img: 'CZ' } : { img: cc };
+    case 'HR': case 'SI': case 'BA': return y < 1918 ? { img: 'AT' } : y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    case 'RS': case 'MK': case 'ME': return y >= 1918 && y < 1991 ? { id: 'yugoslavia' } : { img: cc };
+    case 'PL': return y < 1918 ? { img: 'RU' } : { img: cc };
+    case 'IE': return y < 1922 ? { img: 'GB' } : { img: cc };
+    case 'BD': return y >= 1947 && y < 1971 ? { img: 'PK' } : { img: cc };
+    case 'HU': return y < 1918 ? { img: 'AT' } : { img: cc };
+    default: return { img: cc };
+  }
+}
+
+/** A country's name in the year being played: the Russian Empire, the Soviet Union, Prussia, Siam, Ceylon. */
+export function periodCountryName(state, cc, name) {
+  if (!state?.era || yearNow(state) >= PRESENT) return name;
+  const y = yearNow(state);
+  // A colony goes by its colonial name (British India, French Algeria, the Gold Coast).
+  const st = colonyStage(state, cc);
+  if (st && st.ruler !== cc && st.name) return st.name;
+  const ussr = hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse');
+  const soviet = (ssr) => (ussr && y >= 1922 ? `the Soviet Union (${ssr})` : null);
+  const R = {
+    RU: y < 1917 ? 'the Russian Empire' : ussr ? (y < 1922 ? 'Soviet Russia' : 'the Soviet Union') : null,
+    UA: soviet('the Ukrainian SSR') ?? (y < 1917 ? 'the Russian Empire (Ukraine)' : null), BY: soviet('the Byelorussian SSR'), KZ: soviet('the Kazakh SSR'), UZ: soviet('the Uzbek SSR'), GE: soviet('the Georgian SSR'),
+    AM: soviet('the Armenian SSR'), AZ: soviet('the Azerbaijan SSR'), EE: y >= 1940 ? soviet('the Estonian SSR') : y < 1918 ? 'the Russian Empire (Estonia)' : null, LV: y >= 1940 ? soviet('the Latvian SSR') : null, LT: y >= 1940 ? soviet('the Lithuanian SSR') : null,
+    FI: y < 1917 ? 'the Grand Duchy of Finland (Russian Empire)' : null,
+    DE: !hap(state, 'germanUnification') ? 'Prussia (the German Confederation)' : y < 1919 ? 'the German Empire' : y < 1933 ? 'the Weimar Republic' : y < 1945 ? 'Nazi Germany' : y < 1949 ? 'Allied-occupied Germany' : y < 1990 ? 'West Germany' : null,
+    IT: !hap(state, 'italianUnification') ? 'the Kingdom of Sardinia (the Italian states)' : y < 1946 ? 'the Kingdom of Italy' : null,
+    JP: !hap(state, 'meiji') ? 'Tokugawa Japan' : y < 1947 ? 'the Empire of Japan' : null,
+    CN: !hap(state, 'xinhai') ? 'Qing China' : !hap(state, 'prc') ? 'the Republic of China' : null,
+    TR: !hap(state, 'ottomanEnd') ? 'the Ottoman Empire' : null,
+    IR: y < 1935 ? 'Persia' : y < 1979 ? 'Imperial Iran' : null,
+    AT: y < 1867 ? 'the Austrian Empire' : y < 1918 ? 'Austria-Hungary' : y >= 1938 && y < 1945 ? 'Austria (annexed to Germany)' : null,
+    HU: y >= 1867 && y < 1918 ? 'Austria-Hungary (Kingdom of Hungary)' : null,
+    CZ: y < 1918 ? 'Austria-Hungary (Bohemia)' : y < 1993 ? 'Czechoslovakia' : null, SK: y < 1918 ? 'Austria-Hungary (Upper Hungary)' : y < 1993 ? 'Czechoslovakia' : null,
+    HR: y >= 1918 && y < 1991 ? 'Yugoslavia' : null, SI: y >= 1918 && y < 1991 ? 'Yugoslavia' : null, BA: y >= 1918 && y < 1992 ? 'Yugoslavia' : null, MK: y >= 1918 && y < 1991 ? 'Yugoslavia' : null,
+    RS: y >= 1918 && y < 1992 ? 'Yugoslavia' : y >= 1992 && y < 2006 ? 'Serbia and Montenegro' : null, ME: y >= 1918 && y < 1992 ? 'Yugoslavia' : y < 2006 && y >= 1992 ? 'Serbia and Montenegro' : null,
+    PL: y < 1918 ? 'Congress Poland (Russian Empire)' : y >= 1945 && y < 1989 ? "the Polish People's Republic" : null,
+    GB: y < 1801 ? 'the Kingdom of Great Britain' : y < 1922 ? 'the United Kingdom of Great Britain and Ireland' : null,
+    IE: y < 1922 ? 'Ireland (United Kingdom)' : y < 1937 ? 'the Irish Free State' : null,
+    BR: y < 1889 ? 'the Empire of Brazil' : null, ZA: y >= 1910 && y < 1961 ? 'the Union of South Africa' : null,
+    LK: y < 1972 ? 'Ceylon' : null, MM: y < 1989 ? 'Burma' : null, TH: y < 1939 ? 'Siam' : null, CD: y >= 1971 && y < 1997 ? 'Zaire' : null,
+    BD: y >= 1947 && y < 1971 ? 'East Pakistan' : null, KR: y >= 1948 ? null : null, VN: y >= 1954 && y < 1976 ? 'Vietnam (divided)' : null,
+    FR: y < 1804 ? 'the French Republic (the Consulate)' : y < 1814 ? 'the French Empire' : y < 1848 ? 'the Kingdom of France' : y < 1852 ? 'the Second Republic' : y < 1870 ? 'the Second French Empire' : y >= 1940 && y < 1944 ? 'Vichy France' : null,
+    MX: y >= 1864 && y < 1867 ? 'the Second Mexican Empire' : null, EG: y < 1914 ? 'the Khedivate of Egypt' : y < 1953 ? 'the Kingdom of Egypt' : null,
+  };
+  return R[cc] ?? name;
+}
+
 /* ------------------------------------------------------------------ */
 /* Money of its time: taxes, pensions, accounts, investments           */
 /* ------------------------------------------------------------------ */

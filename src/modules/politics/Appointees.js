@@ -105,7 +105,9 @@ export const AppointeesModule = {
       if (from === 'US' && !rng.chance(Math.max(0.3, 0.85 - (state.politics?.scandals ?? 0) * 0.15 - (data.kind === 'donor' ? 0.1 : 0)))) {
         return ctx.log('Your nomination stalled in the Senate Foreign Relations Committee and was quietly withdrawn.', '🏛️', 'bad');
       }
-      const prof = getProfession(from === 'US' ? 'foreignService' : nationalProfessionId(from, 'foreignService')) ?? getProfession('foreignService');
+      // A country without its own diplomatic service in the job trees posts you through the template.
+      const own = from === 'US' ? 'foreignService' : nationalProfessionId(from, 'foreignService');
+      const prof = (() => { try { return getProfession(own); } catch { return getProfession('foreignService'); } })();
       const level = prof.levels.find((l) => l.id === 'ambassador') ?? prof.levels.at(-1);
       const employer = createEmployer(rng, state, prof, state.character.regionId);
       const to = COUNTRIES[data.to];

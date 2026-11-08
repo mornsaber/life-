@@ -64,7 +64,8 @@ import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
-import { eraFlag, PRESENT as PRESENT_YEAR } from '../modules/world/Eras.js';
+import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist } from '../modules/world/Eras.js';
+import { flagHtml } from './Flags.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -495,15 +496,15 @@ export class Renderer {
     return `
       ${card('', `<div class="profile">
           <div class="avatar">${avatar}</div>
-          <div><h2>${esc(styledName(state))}${postNominals(state) ? ` <small class="muted">${esc(postNominals(state))}</small>` : ''}</h2><p class="age">Age <b>${c.age}</b>${c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age} ${eraFlag(state, c.countryId ?? 'US', COUNTRIES)}` : ''}</p></div>
+          <div><h2>${esc(styledName(state))}${postNominals(state) ? ` <small class="muted">${esc(postNominals(state))}</small>` : ''}</h2><p class="age">Age <b>${c.age}</b>${c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age}` : ''}</p><p class="country-line">${flagHtml(state, c.countryId ?? 'US')} ${esc(periodCountryName(state, c.countryId ?? 'US', COUNTRIES[c.countryId ?? 'US']?.name ?? ''))}</p></div>
         </div>
         <ul class="status-line">${this.statusLine(state)}</ul>`, { className: 'profile-card' })}
       ${card('Stats', statPanel(state.stats), { icon: '📊', className: 'stats-card' })}
       ${card('Money', kv([
         ['Cash', `<b class="${f.cash < 0 ? 'neg' : 'pos'}">${money(f.cash)}</b>`],
-        ['Retirement', money(state.retirement.dc)],
+        dcExists(state) || state.retirement.dc ? ['Retirement', money(state.retirement.dc)] : null,
         state.housing.properties.length ? ['Home equity', money(homeEquity(state))] : null,
-        ['Credit', `${state.housing.credit.score}`],
+        creditScoresExist(state) ? ['Credit', `${state.housing.credit.score}`] : null,
         f.loans ? ['Student loans', `<span class="neg">${money(f.loans)}</span>`] : null,
         ['Net worth', `<b>${money(netWorth(state))}</b>`],
       ]), { icon: '💰' })}

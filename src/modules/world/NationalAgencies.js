@@ -221,7 +221,7 @@ export const AGENCIES = {
     gendarmerie: { name: 'Gendarmería Nacional Argentina', employers: ['Agrupación de Gendarmería'], titles: { gendarme: 'Gendarme', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Suboficial Mayor', lieutenant: 'Teniente', captain: 'Capitán', major: 'Mayor', ltColonel: 'Comandante Principal', colonel: 'Comandante Mayor', general: 'Comandante General' } },
   },
   RU: {
-    gendarmerie: { name: 'National Guard (Rosgvardiya)', employers: ['Rosgvardiya District Command'], titles: { gendarme: 'Ryadovoy', corporal: 'Yefreytor', sergeant: 'Serzhant', adjutant: 'Praporshchik', lieutenant: 'Leytenant', captain: 'Kapitan', major: 'Mayor', ltColonel: 'Podpolkovnik', colonel: 'Polkovnik', general: 'General armii' }, fromYear: 2016 },
+    gendarmerie: { name: 'Rosgvardiya', employers: ['Rosgvardiya District Command'], titles: { gendarme: 'Ryadovoy', corporal: 'Yefreytor', sergeant: 'Serzhant', adjutant: 'Praporshchik', lieutenant: 'Leytenant', captain: 'Kapitan', major: 'Mayor', ltColonel: 'Podpolkovnik', colonel: 'Polkovnik', general: 'General armii' }, fromYear: 2016 },
   },
   PK: {
     gendarmerie: { name: 'Pakistan Rangers', employers: ['Rangers Wing (Punjab)', 'Rangers Wing (Sindh)'], titles: { gendarme: 'Sepoy', corporal: 'Lance Naik', sergeant: 'Havildar', adjutant: 'Subedar', lieutenant: 'Lieutenant', captain: 'Captain', major: 'Major', ltColonel: 'Lieutenant Colonel', colonel: 'Brigadier', general: 'Major General' } },
@@ -233,7 +233,7 @@ export const AGENCIES = {
     gendarmerie: { name: 'Jandarmeria Română', employers: ['Inspectoratul de Jandarmi Județean'], titles: { gendarme: 'Jandarm', corporal: 'Caporal', sergeant: 'Sergent', adjutant: 'Plutonier', lieutenant: 'Locotenent', captain: 'Căpitan', major: 'Maior', ltColonel: 'Locotenent-colonel', colonel: 'Colonel', general: 'General' } },
   },
   UA: {
-    gendarmerie: { name: 'National Guard of Ukraine', employers: ['National Guard Brigade'], titles: { gendarme: 'Soldat', corporal: 'Starshyi soldat', sergeant: 'Serzhant', adjutant: 'Starshyna', lieutenant: 'Leitenant', captain: 'Kapitan', major: 'Maior', ltColonel: 'Pidpolkovnyk', colonel: 'Polkovnyk', general: 'General' }, fromYear: 2014 },
+    gendarmerie: { name: 'Natsionalna Hvardiya Ukrainy (NGU)', employers: ['NGU Brigade'], titles: { gendarme: 'Soldat', corporal: 'Starshyi soldat', sergeant: 'Serzhant', adjutant: 'Starshyna', lieutenant: 'Leitenant', captain: 'Kapitan', major: 'Maior', ltColonel: 'Pidpolkovnyk', colonel: 'Polkovnyk', general: 'General' }, fromYear: 2014 },
   },
   MA: {
     gendarmerie: { name: 'Gendarmerie Royale', employers: ['Compagnie de la Gendarmerie Royale'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: 'Commandant', ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général de corps d'armée" } },

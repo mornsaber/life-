@@ -6,7 +6,10 @@
 import { esc, card, kv } from '../Components.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { warHere } from '../../modules/world/War.js';
-import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech, eraFlag } from '../../modules/world/Eras.js';
+import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech, periodCountryName } from '../../modules/world/Eras.js';
+import { flagHtml } from '../Flags.js';
+
+export const GOVERNMENT_WORD = { democracy: 'A democracy', monarchy: 'A monarchy', absoluteMonarchy: 'An absolute monarchy', oneParty: 'A one-party state', junta: 'A military junta', militarist: 'Ruled by the generals', theocracy: 'A theocracy', colony: 'A colony', authoritarian: 'An authoritarian state', totalitarian: 'A totalitarian dictatorship', dictatorship: 'A dictatorship', hybrid: 'Half free: elections, but not fair ones', fragile: 'A fragile state', transitional: 'A country in transition', apartheid: 'Apartheid: a vote for some' };
 import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 
@@ -42,7 +45,8 @@ export function eraCard(state) {
   const col = colonyHere(state);
   const war = warHere(state);
   const rows = [
-    ['Your country', `${eraFlag(state, cc, COUNTRIES)} ${esc(r.name ?? (r.kind === 'democracy' ? 'a democracy' : r.kind))}`],
+    ['Your country', `${flagHtml(state, cc)} ${esc(periodCountryName(state, cc, COUNTRIES[cc]?.name ?? cc))}`],
+    ['Government', esc(r.name ?? GOVERNMENT_WORD[r.kind] ?? r.kind)],
     ...(col ? [['Ruled by', `${esc(rulerName(col.ruler))} — through ${esc(col.leader ?? 'the Governor')}${col.noMovement ? '' : '. A movement for independence is growing'}`]] : []),
     ...(war ? [['At war', esc(war.name)]] : []),
     ...(jimCrowHere(state) ? [['Jim Crow', 'Segregated schools, buses and lunch counters; poll taxes and literacy tests keep Black voters off the rolls; many jobs and the state universities are closed to you']] : []),

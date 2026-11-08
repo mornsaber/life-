@@ -32,6 +32,8 @@ import { AUTOMATED_BY, leavingAge, setEraYear } from './Eras.js';
 import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
 import { stateIdOf, REGIONS } from '../life/Regions.js';
 import { skinToneOf } from '../people/SkinTone.js';
+import { regimeHere } from './Regimes.js';
+import { periodCountryName } from './Eras.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -604,6 +606,23 @@ function tradeEnds(ctx) {
   ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
 }
 
+/** When the country you live in changes its name or its form of government, you hear of it. */
+function governmentChange(ctx) {
+  const { state } = ctx;
+  const cc = state.character.countryId ?? 'US';
+  const r = regimeHere(state);
+  const name = periodCountryName(state, cc, COUNTRIES[cc]?.name ?? cc);
+  const sig = `${cc}|${r.kind}|${r.name ?? ''}|${name}`;
+  const prev = state.era.govSig;
+  state.era.govSig = sig;
+  if (!prev || prev === sig || prev.split('|')[0] !== cc) return;
+  const [, kind, rname, pname] = prev.split('|');
+  const what = r.name ?? GOVERNMENT_FORM[r.kind] ?? r.kind;
+  if (pname !== name) ctx.log(`🏛️ ${pname[0].toUpperCase()}${pname.slice(1)} is now ${name}.${rname !== (r.name ?? '') || kind !== r.kind ? ` ${what[0].toUpperCase()}${what.slice(1)}.` : ''}`, '🏛️', 'milestone');
+  else ctx.log(`🏛️ The government has changed: ${name} is now ${what}.`, '🏛️', 'milestone');
+}
+const GOVERNMENT_FORM = { democracy: 'a democracy', monarchy: 'a monarchy', absoluteMonarchy: 'an absolute monarchy', oneParty: 'a one-party state', junta: 'ruled by a junta', militarist: 'ruled by its generals', theocracy: 'a theocracy', colony: 'a colony', authoritarian: 'an authoritarian state', totalitarian: 'a totalitarian dictatorship', dictatorship: 'a dictatorship', hybrid: 'half free', fragile: 'a fragile state', transitional: 'in transition', apartheid: 'an apartheid state' };
+
 export const HistoryModule = {
   id: 'history',
   order: 0.9,
@@ -675,6 +694,7 @@ export const HistoryModule = {
     leaveSchoolPrompt(ctx);
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     sync(state);
+    governmentChange(ctx);
     movementPrompt(ctx);
     civilRightsPrompt(ctx);
     if (state.character.age === 6 && jimCrowHere(state)) ctx.log('You started at a segregated school: hand-me-down books from the white school and a building the county never repairs.', '🏫', 'info');
