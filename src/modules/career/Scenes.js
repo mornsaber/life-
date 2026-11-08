@@ -11,7 +11,9 @@
  *           city   property and the wider damage
  *           trust  what the public, the press and your bosses make of it
  *
- * Scenes are content (content/packs/scenes-emergency.js); this module plays them.
+ * Scenes are content (content/packs/scenes-emergency.js, which gathers the other scene packs —
+ * calls, careers, units, world, life and crime); this module plays them. A scene with
+ * `work: false` (a heist, life inside) leaves your day job's performance alone.
  *
  * state.scene = { id, step, score: { lives, crew, city, trust }, flags: [], data, startedAge } | null
  * state.careerLife.partner = { name, trust, since, professionId } — your partner or crew mate
@@ -92,7 +94,7 @@ function finish(ctx) {
   const o = def.outcome?.(sc, tier, state) ?? {};
   const text = fill(o.text ?? def.tiers?.[tier] ?? '', sc.data, state);
   const perf = { outstanding: 10, good: 5, mixed: -1, bad: -8 }[tier];
-  if (job) job.performance = Math.round(clamp((job.performance ?? 50) + perf, 0, 100));
+  if (job && def.work !== false) job.performance = Math.round(clamp((job.performance ?? 50) + perf, 0, 100));
   rep(ctx, def.circle ?? 'work', { outstanding: 6, good: 3, mixed: 0, bad: -6 }[tier], def.title);
   // What it costs you: trauma always, injury when the crew score went badly.
   ctx.emit('health:trauma', { amount: (def.trauma ?? 6) + (tier === 'bad' ? 6 : 0), source: def.title.toLowerCase() });

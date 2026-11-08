@@ -17,7 +17,8 @@ const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['p
   'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'],
   'med.er': ['medical', 'Attending Physician'], 'med.surgery': ['medical', 'Consultant Surgeon'], 'nurse.night': ['nursing', 'Registered Nurse'], 'law.trial': ['prosecution', 'Assistant District Attorney'],
   'teach.class': ['education', 'Teacher'], 'pilot.engine': ['aviation', 'Captain'], 'press.leak': ['journalism', 'Reporter'], 'exec.takeover': ['corporate', 'Chief Executive'],
-  'mil.patrol': ['retail', 'Soldier'], 'unit.swat': ['police', 'Police Officer'], 'unit.k9': ['police', 'Police Officer'], 'unit.hazmat': ['fire', 'Firefighter'], 'unit.rescue': ['fire', 'Firefighter'], 'unit.flight': ['ems', 'Paramedic'], 'resist.occupation': ['retail', 'Shop Assistant'], 'marriage.crisis': ['retail', 'Shop Assistant'] };
+  'mil.patrol': ['retail', 'Soldier'], 'unit.swat': ['police', 'Police Officer'], 'unit.k9': ['police', 'Police Officer'], 'unit.hazmat': ['fire', 'Firefighter'], 'unit.rescue': ['fire', 'Firefighter'], 'unit.flight': ['ems', 'Paramedic'], 'resist.occupation': ['retail', 'Shop Assistant'], 'marriage.crisis': ['retail', 'Shop Assistant'],
+  'crime.heist': ['retail', 'Shop Assistant'], 'prison.riot': ['retail', 'Inmate'], 'prison.yard': ['retail', 'Inmate'], 'detective.murder': ['police', 'Detective'] };
 /** What some scenes need besides a job: a unit, active service in a war, a senior grade. */
 const SETUP = {
   'unit.swat': (s) => { s.careerLife.unit = { id: 'swat', since: 25 }; }, 'unit.k9': (s) => { s.careerLife.unit = { id: 'k9', since: 25 }; },
@@ -26,6 +27,9 @@ const SETUP = {
   'mil.patrol': (s) => { s.military.service = { ...(s.military.service ?? {}), component: 'active' }; s.world.wars = { US: { id: 'x', name: 'a war', phase: 'active' } }; },
   'exec.takeover': (s) => { s.career.job.grade = 8; },
   'marriage.crisis': (s) => { s.people.list.push({ id: 'sp1', firstName: 'Alex', lastName: 'Lee', gender: 'male', relation: 'spouse', ageOffset: 0, relationship: 40, spark: 30, since: 20, alive: true }); },
+  'crime.heist': (s) => { s.legal.crime = { heat: 0, skill: { burglary: 4 }, earned: 0, rep: 10 }; },
+  'prison.riot': (s) => { s.legal.incarceration = { yearsLeft: 4, total: 6, served: 2, facility: 'State Prison', goodBehavior: 2 }; },
+  'prison.yard': (s) => { s.legal.incarceration = { yearsLeft: 4, total: 6, served: 2, facility: 'State Prison', goodBehavior: 2 }; },
   'resist.occupation': (s) => { s.character.countryId = 'FR'; s.world.wars = { FR: { id: 'ww2', name: 'the Second World War', phase: 'active', homeFront: 0.6, front: -20 } }; },
 };
 const life = (prof, title, seed = 1) => {
@@ -63,9 +67,9 @@ const tests = {
     for (const [id, [prof, title]] of Object.entries(JOBS)) for (let seed = 1; seed <= 12; seed++) {
       const { engine, state } = life(prof, title, seed);
       assert.ok(startScene(engine.context(), id, { name: 'the building collapse', kind: ['collapse', 'explosion', 'shooting'][seed % 3], severity: 1 + (seed % 3) }), id);
-      for (let g = 0; g < 12 && state.prompts.length; g++) {
+      // A scene can end in court (a heist gone wrong): the scene's own prompts come first.
+      for (let g = 0; g < 12 && state.prompts[0]?.type === 'scenes.step'; g++) {
         const p = state.prompts[0];
-        assert.equal(p.type, 'scenes.step');
         assert.doesNotMatch(p.text + p.title + p.options.map((o) => o.label + (o.hint ?? '')).join(), BAD, `${id}: ${p.text}`);
         engine.resolvePrompt(p.id, p.options[(seed * 7 + g) % p.options.length].id);
       }
@@ -101,6 +105,40 @@ const tests = {
     assert.equal(state.careerLife.unit.id, 'k9');
     assert.ok(state.career.job.salary > pay);
     assert.ok(SCENES['unit.k9'].for(state, state.career.job));
+  },
+  'crime end to end: the job pays or puts you away; prison scenes only inside; detectives work murders'() {
+    let paid = 0; let arrested = 0;
+    for (let seed = 1; seed <= 30; seed++) {
+      const { engine, state } = life('retail', 'Shop Assistant', seed);
+      SETUP['crime.heist'](state);
+      const cash = state.finances.cash;
+      assert.ok(startScene(engine.context(), 'crime.heist'));
+      for (let g = 0; g < 12 && state.prompts[0]?.type === 'scenes.step'; g++) {
+        const p = state.prompts[0];
+        engine.resolvePrompt(p.id, (p.options.find((o) => o.id !== 'walk') ?? p.options[0]).id);
+      }
+      assert.equal(state.scene, null);
+      assert.equal(state.career.job.performance, 50, 'a heist is not your day job');
+      if (state.finances.cash > cash) paid += 1;
+      if (state.prompts.some((p) => p.type !== 'scenes.step') || state.legal.incarceration || state.legal.record.length) arrested += 1;
+      assert.ok(state.legal.crime.skill.heist >= 1);
+    }
+    assert.ok(paid > 0, 'some jobs pay');
+    // Prison scenes need a sentence; a heist needs a name on the street.
+    const free = life('retail', 'Shop Assistant').state;
+    assert.ok(!SCENES['prison.riot'].for(free) && !SCENES['crime.heist'].for(free));
+    const { engine, state } = life('retail', 'Inmate', 3);
+    SETUP['prison.riot'](state);
+    state.career.job = null;
+    assert.ok(startScene(engine.context(), 'prison.riot'));
+    let p = state.prompts[0];
+    engine.resolvePrompt(p.id, 'join');
+    while (state.prompts[0]?.type === 'scenes.step') { p = state.prompts[0]; engine.resolvePrompt(p.id, p.options[0].id); }
+    assert.ok(state.legal.incarceration.yearsLeft >= 6, 'rioting adds time');
+    const det = life('police', 'Detective Sergeant').state;
+    assert.ok(SCENES['detective.murder'].for(det, det.career.job));
+    const beat = life('police', 'Police Officer').state;
+    assert.ok(!SCENES['detective.murder'].for(beat, beat.career.job), 'patrol officers don\'t run murders');
   },
   'tiers and odds'() {
     assert.equal(tierOf({ lives: 3, crew: 1, city: 0, trust: 0 }), 'outstanding');

@@ -19,6 +19,7 @@ import { CAREER_SCENES } from './scenes-careers.js';
 import { UNITS, UNIT_SCENES } from './scenes-units.js';
 import { WORLD_SCENES } from './scenes-world.js';
 import { LIFE_SCENES } from './scenes-life.js';
+import { CRIME_SCENES } from './scenes-crime.js';
 
 export { UNITS };
 
@@ -210,7 +211,7 @@ const arrest = {
   },
 };
 
-export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest, ...CALLS, ...CAREER_SCENES, ...UNIT_SCENES, ...WORLD_SCENES, ...LIFE_SCENES].map((s) => {
+export const SCENES = Object.fromEntries([command, houseFire, domestic, arrest, ...CALLS, ...CAREER_SCENES, ...UNIT_SCENES, ...WORLD_SCENES, ...LIFE_SCENES, ...CRIME_SCENES].map((s) => {
   // Complications become steps of their own (complication:<id>).
   for (const [id, step] of Object.entries(s.complications ?? {})) s.steps[`complication:${id}`] = step;
   return [s.id, s];
