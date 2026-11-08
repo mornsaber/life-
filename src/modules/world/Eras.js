@@ -15,6 +15,7 @@
  */
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
+import { dataRegime, regionStateAt, eraMortality, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
 
 export const PRESENT = 2026;
 /** The eras the start screen offers; each spans [from, to] and a life can start in any year of one. */
@@ -401,6 +402,43 @@ const TIMELINES = {
   IR: [],
 };
 for (const [cc, rows] of Object.entries(TIMELINES)) if (!rows.length) delete TIMELINES[cc];
+/** A monarch's title where the data says a crown ruled and no period above names one. */
+const CROWN_TITLE = { JP: 'the Emperor', CN: 'the Emperor', ET: 'the Emperor', VN: 'the Emperor', KR: 'the King', TR: 'the Sultan', MA: 'the Sultan', OM: 'the Sultan', BN: 'the Sultan', MY: 'the Sultan',
+  IR: 'the Shah', AF: 'the Emir', KW: 'the Emir', QA: 'the Emir', BH: 'the Emir', AE: 'the rulers of the emirates', LU: 'the Grand Duke', BT: 'the Druk Gyalpo', RU: 'the Tsar', AT: 'the Emperor', DE: 'the King of Prussia' };
+/**
+ * A government from the data (Anckar & Fredriksson's regime of each country-year), for the years
+ * no period or timeline above describes.
+ */
+export function dataRegimeAt(cc, y) {
+  if (y >= PRESENT - 10) return null;
+  const d = dataRegime(cc, y);
+  if (!d) return null;
+  const crown = CROWN_TITLE[cc] ?? 'the King';
+  switch (d.cat) {
+    case 'parl': return d.democracy ? DEMO(d.monarchy ? 'a parliamentary monarchy' : 'a parliamentary republic', 'the Prime Minister') : d.monarchy ? KING('a monarchy whose parliament is chosen by a narrow electorate', 'the Prime Minister') : OLIGARCHY('a parliamentary republic with a narrow franchise', 'the Prime Minister');
+    case 'pres': if (cc === 'CH') return DEMO('the Swiss Confederation, governed by its Federal Council', 'the Federal Council');
+      return d.democracy ? DEMO('a presidential republic', 'the President') : OLIGARCHY('a presidential republic with a narrow franchise', 'the President');
+    case 'semi': return d.democracy ? DEMO('a semi-presidential republic', 'the President') : OLIGARCHY('a semi-presidential republic with a narrow franchise', 'the President');
+    case 'absmon': return MONARCH('an absolute monarchy', crown);
+    case 'semimon': return KING('a monarchy where the crown still governs', crown);
+    case 'monolig': return KING('a monarchy ruled by its nobility', crown);
+    case 'olig': return OLIGARCHY('an oligarchic republic', 'the President');
+    case 'mil': return JUNTA('military rule', 'the junta');
+    case 'pers': return DICTATOR('a personal dictatorship', 'the dictator');
+    case 'oneparty': return ONE('a one-party state', 'the party leader');
+    case 'multiauth': return AUTH('an authoritarian state with token opposition parties', 'the President');
+    default: return null;
+  }
+}
+/** A city's own state before unification or after a split (HistoricalData REGION_STATES), as a government. */
+export function regionRegimeAt(regionId, y) {
+  const r = regionStateAt(regionId, y);
+  if (!r) return null;
+  const by = { monarchy: () => KING(r.name, r.leader), absolute: () => MONARCH(r.name, r.leader), city: () => OLIGARCHY(r.name, r.leader), republic: () => OLIGARCHY(`${r.name}, a republic where only white men vote`, r.leader),
+    colony: () => G({ kind: 'monarchy', name: r.name, elections: 'controlled', press: 'state', leader: r.leader }), eastbloc: () => ({ ...EAST_BLOC, name: r.name, leader: r.leader }), authoritarian: () => AUTH(r.name, r.leader) };
+  return by[r.kind]?.() ?? null;
+}
+
 /** A country's government from its timeline in a year, or null. */
 export function timelineRegime(cc, y) {
   const row = TIMELINES[cc]?.find(([until]) => y < until);
@@ -414,12 +452,18 @@ export function eraLayer(state) {
   for (const p of PERIODS) if (p.active(state)) for (const cc of p.cc) out[cc] = { ...p.regime };
   const y = yearNow(state);
   for (const cc of Object.keys(TIMELINES)) if (!out[cc]) { const r = timelineRegime(cc, y); if (r) out[cc] = r; }
+  // Everywhere else, the regime data (until a decade ago; then today's government).
+  for (const cc of DATA_COUNTRIES) if (!out[cc] && !colonyStage(state, cc)) { const r = dataRegimeAt(cc, y); if (r) out[cc] = r; }
   for (const cc of Object.keys(COLONIES)) {
     const st = colonyStage(state, cc);
     if (!st) continue;
     if (st.ruler === 'RU' && out.RU?.kind === 'totalitarian') { out[cc] = { ...out.RU, name: `${st.name}, a Soviet republic ruled from Moscow` }; continue; }
     out[cc] = G({ kind: 'colony', name: `${st.name}, ruled from ${RULER_CAPITAL[st.ruler] ?? 'abroad'}`, elections: 'none', press: 'state', surveillance: 0.08, leader: st.leader ?? 'the Governor', colony: st.ruler });
   }
+  // Your own city's state, where it wasn't yet (or no longer) the country's: Bavaria, the Two Sicilies, East Germany.
+  const here = state.character?.countryId ?? 'US';
+  const local = state.character?.regionId ? regionRegimeAt(state.character.regionId, y) : null;
+  if (local) out[here] = local;
   return out;
 }
 
@@ -464,9 +508,16 @@ export const AUTOMATED_BY = (professionId) => Object.entries(AUTOMATION).filter(
 
 /** Medicine pushes death back: background mortality falls after longevity breakthroughs. */
 export function longevityFactor(state, age) {
-  if (!state?.era || age < 50) return 1;
-  return (futureOn(state, 'longevity') ? 0.75 : 1) * (futureOn(state, 'agingTherapy') ? 0.6 : 1);
+  if (!state?.era) return 1;
+  // In the past, adults died younger (life expectancy then and now, by country: HistoricalData).
+  const y = yearNow(state);
+  const past = y < PRESENT - 10 ? eraMortality(state.character?.countryId ?? 'US', y, age) : 1;
+  if (age < 50) return past;
+  return past * (futureOn(state, 'longevity') ? 0.75 : 1) * (futureOn(state, 'agingTherapy') ? 0.6 : 1);
 }
+
+/** The money of the day where you live (francs before the euro, the old peso, the Reichsmark). */
+export const periodCurrency = (cc, currency) => (ERA_YEAR < PRESENT ? dataCurrency(cc, ERA_YEAR, currency) : currency);
 
 /** Past a climate tipping point, weather disasters climb faster. */
 export const climateTipped = (state) => futureOn(state, 'climateTipping');
@@ -582,7 +633,7 @@ export const studentLoansExist = (state) => yearNow(state) >= 1958;
 
 /** The year of the life being played, for code that has no state to hand (rank tables, job titles). Set by History. */
 let ERA_YEAR = PRESENT;
-export const setEraYear = (y) => { ERA_YEAR = y ?? PRESENT; };
+export const setEraYear = (y) => { ERA_YEAR = y ?? PRESENT; setDataYear(ERA_YEAR < PRESENT ? ERA_YEAR : 9999); };
 export const eraYear = () => ERA_YEAR;
 
 /** Job titles as they were: [pattern, replacement, until]. */
@@ -749,6 +800,10 @@ export function periodFlag(state, cc) {
 export function periodCountryName(state, cc, name) {
   if (!state?.era || yearNow(state) >= PRESENT) return name;
   const y = yearNow(state);
+  if (cc === (state.character?.countryId ?? 'US') && state.character?.regionId) {
+    const local = regionStateAt(state.character.regionId, y);
+    if (local) return local.name;
+  }
   // A colony goes by its colonial name (British India, French Algeria, the Gold Coast).
   const st = colonyStage(state, cc);
   if (st && st.ruler !== cc && st.name) return st.name;

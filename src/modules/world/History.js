@@ -35,6 +35,7 @@ import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
 import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
+import { warsStarting, warsEnding, warIntensity, demographyAt } from './HistoricalData.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -607,6 +608,37 @@ function tradeEnds(ctx) {
   ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
 }
 
+/**
+ * The Correlates of War record: every other war our countries fought before 1991 begins and ends
+ * on its dates (the great wars above are history's own). Civil wars are fought at home.
+ */
+const WAR_WORDS = /war|rebellion|revolt|revolution|insurrection|uprising|conflict|crisis|intervention|invasion|conquest|occupation|campaign|expedition|insurgency|emergency|defeat|problem|massacre|resistance|struggle|liberation|independence|unification|secession|mutiny|siege|pacification|annexation|coup|overthrow/i;
+function warTitle(name) {
+  const n = name.replace(/,? Phase \d+$/i, '').replace(/^(\w+)'s (.+)$/, '$2 in $1').trim();
+  return WAR_WORDS.test(n) ? `the ${n}` : `the ${n} War`;
+}
+function dataWars(ctx) {
+  const { state } = ctx;
+  const y = yearNow(state);
+  if (y >= 1991) return;
+  for (const w of warsEnding(y - 1)) {
+    endAll(ctx, `cow.${w.id}`, (cc) => (w.kind === 'civil' ? 'ended' : w.won?.includes(cc) ? 'ended in victory' : (w.won ?? []).length ? 'ended in defeat' : 'ended in a stalemate'));
+  }
+  for (const w of warsStarting(y)) {
+    const sides = [...w.a, ...w.b].filter((cc) => COUNTRIES[cc]);
+    const dead = Object.values(w.deaths ?? {}).reduce((a, b) => a + b, 0);
+    const title = warTitle(w.name);
+    if (dead >= 20000 || sides.includes(hereOf(state))) news(ctx, `War: ${title.replace(/^the /, 'the ').replace(/^./, (c) => c.toUpperCase())}`, '⚔️', 'world', dead >= 100000 ? 8 : 5);
+    for (const cc of sides) {
+      if (warIn(state, cc)) continue;
+      const civil = w.kind === 'civil';
+      const foes = civil ? (w.rebels && !/^-?\d+$/.test(w.rebels) ? `the ${w.rebels.replace(/^the /i, '')}` : 'the rebels')
+        : (w.a.includes(cc) ? w.b : w.a).filter((c) => COUNTRIES[c]).map((c) => periodCountryName(state, c, COUNTRIES[c].name)).join(', ') || 'the enemy';
+      joinWar(ctx, cc, { id: `cow.${w.id}`, name: title, adversary: foes, operation: title, intensity: warIntensity(w, cc), homes: { [cc]: civil ? 0.5 : 0.08 }, internal: civil, own: true, scripted: true });
+    }
+  }
+}
+
 /** The last territory goes: an empire's colonial services are wound up for the people it posted out. */
 function endOfEmpire(ctx) {
   const { state } = ctx;
@@ -737,6 +769,7 @@ export const HistoryModule = {
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     thronesOnTheirDates(ctx);
     endOfEmpire(ctx);
+    dataWars(ctx);
     sync(state);
     governmentChange(ctx);
     movementPrompt(ctx);

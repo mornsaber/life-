@@ -14,6 +14,7 @@ import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
 import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText } from '../modules/world/Eras.js';
+import { eraFirstNames, dataYear, setDataYear } from '../modules/world/HistoricalData.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -53,6 +54,10 @@ export function randomName(rng, gender) {
     const pool = mix?.pools.length && rng.chance(mix.share) ? rng.pick(mix.pools) : namePool;
     return { firstName: rng.pick(pool[gender] ?? pool.male), lastName: rng.pick(pool.last) };
   }
+  // In the past, the first names of the day (the SSA's most popular names of the decade).
+  const y = dataYear();
+  const then = y < 2010 ? eraFirstNames(y - 20, gender) : null;
+  if (then && rng.chance(0.85)) return { firstName: rng.pick(then), lastName: rng.pick(LAST_NAMES) };
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
 }
 
@@ -137,6 +142,8 @@ export function createInitialState(rng, options = {}) {
   const gender = options.gender === 'female' || options.gender === 'male' ? options.gender : rng.pick(['male', 'female']);
   // Any year from 1800, or a random one (world/Eras.js).
   const startYear = validStartYear(options.startYear);
+  // Names of the day for you and your family (HistoricalData), before anyone is named.
+  setDataYear(startYear < PRESENT ? startYear + 20 : 9999);
   const generated = randomName(rng, gender);
   const firstName = (options.firstName || '').trim() || generated.firstName;
   const lastName = (options.lastName || '').trim() || generated.lastName;

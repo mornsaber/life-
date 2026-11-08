@@ -12,6 +12,7 @@ import { flagHtml } from '../Flags.js';
 export const GOVERNMENT_WORD = { democracy: 'A democracy', monarchy: 'A monarchy', absoluteMonarchy: 'An absolute monarchy', oneParty: 'A one-party state', junta: 'A military junta', militarist: 'Ruled by the generals', theocracy: 'A theocracy', colony: 'A colony', authoritarian: 'An authoritarian state', totalitarian: 'A totalitarian dictatorship', dictatorship: 'A dictatorship', hybrid: 'Half free: elections, but not fair ones', fragile: 'A fragile state', transitional: 'A country in transition', apartheid: 'Apartheid: a vote for some' };
 import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { demographyAt } from '../../modules/world/HistoricalData.js';
 
 export const EVENT_LABELS = {
   napoleonicWars: 'the Napoleonic Wars', napoleonFalls: 'Napoleon falls', latinIndependence: 'the Americas rise against Spain', war1812: 'the War of 1812', cholera: 'the cholera',
@@ -34,6 +35,18 @@ export const EVENT_LABELS = {
 };
 const TECH_LABELS = { railway: 'railways', photography: 'photography', telegraph: 'the telegraph', telephone: 'the telephone', electricLight: 'electric light', automobile: 'motor cars', radio: 'radio', tv: 'television', creditCards: 'credit cards', personalComputer: 'personal computers', mobilePhone: 'mobile phones', internet: 'the internet', onlineDating: 'online dating', socialMedia: 'social media', streaming: 'streaming', smartphone: 'smartphones', crypto: 'crypto', gigApps: 'gig apps' };
 
+/** Population, wealth and life expectancy in the year (Maddison Project; OWID life expectancy). */
+function demographyRows(cc, y) {
+  const d = demographyAt(cc, y);
+  if (!d) return [];
+  const pop = d.pop == null ? null : d.pop >= 1000 ? `${(d.pop / 1000).toFixed(d.pop >= 10000 ? 0 : 1)} million` : `${Math.round(d.pop).toLocaleString('en-US')},000`;
+  return [
+    ...(pop ? [['Population', pop]] : []),
+    ...(d.gdp ? [['Income per head', `<span data-raw>$${Math.round(d.gdp).toLocaleString('en-US')}</span> a year (in 2011 dollars; about ${Math.round((d.gdp / (demographyAt(cc, 2018)?.gdp ?? d.gdp)) * 100)}% of today's)`]] : []),
+    ...(d.life ? [['Life expectancy', `${Math.round(d.life)} years at birth`]] : []),
+  ];
+}
+
 export function eraCard(state) {
   const era = state.era;
   if (!era) return '';
@@ -49,6 +62,7 @@ export function eraCard(state) {
     ['Government', esc(r.name ?? GOVERNMENT_WORD[r.kind] ?? r.kind)],
     ...(col ? [['Ruled by', `${esc(rulerName(col.ruler))} — through ${esc(col.leader ?? 'the Governor')}${col.noMovement ? '' : '. A movement for independence is growing'}`]] : []),
     ...(war ? [['At war', esc(war.name)]] : []),
+    ...demographyRows(cc, y),
     ...(jimCrowHere(state) ? [['Jim Crow', 'Segregated schools, buses and lunch counters; poll taxes and literacy tests keep Black voters off the rolls; many jobs and the state universities are closed to you']] : []),
   ];
   const seen = Object.entries(era.events ?? {}).filter(([id]) => EVENT_LABELS[id]).sort((a, b) => a[1].year - b[1].year);
@@ -59,7 +73,7 @@ export function eraCard(state) {
   return card(`The World in ${y}`, `${kv(rows)}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
-    ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id]} (about ${yr})`).join(', '))}. Money is in today's dollars.</p>` : ''}`, { icon: '🕰️' });
+    ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}. Money is in today's dollars.</p>` : ''}`, { icon: '🕰️' });
 }
 
 /** After today: what this world's future has brought so far. */
