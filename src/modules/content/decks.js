@@ -11,14 +11,47 @@ import { STAT_KEYS } from '../../core/State.js';
 import { OFFENSES } from '../legal/Offenses.js';
 import workEvents from './packs/work-events.js';
 import businessEvents from './packs/business-events.js';
+import militaryEvents from './packs/military-events.js';
+import { MEDALS } from '../military/MedalEngine.js';
+import { UCMJ_OFFENSES } from '../military/UCMJ.js';
 
-export const DECK_PACKS = [workEvents, businessEvents];
+export const DECK_PACKS = [workEvents, businessEvents, militaryEvents];
 
 const isFn = (v) => typeof v === 'function';
 const statsOk = (stats, where, p) => { for (const k of Object.keys(stats ?? {})) if (!STAT_KEYS.includes(k)) p.push(`${where}: unknown stat ${k}`); };
 
 /** Each kind: the option (and event) fields it knows, and any deeper checks. */
 export const DECK_KINDS = {
+  combat: {
+    event: ['id', 'title', 'text', 'options'],
+    option: ['id', 'label', 'success', 'risk', 'valor', 'specialty', 'medicOnly'],
+    check(e, o, where, p) {
+      if (!(o.success > 0 && o.success <= 1)) p.push(`${where}: success must be in (0, 1]`);
+      if (!(o.risk >= 0 && o.risk <= 1)) p.push(`${where}: risk must be in [0, 1]`);
+      if (o.valor != null && !(o.valor >= 0 && o.valor <= 110)) p.push(`${where}: valor must be 0–110`);
+      if (o.medicOnly && e.options.every((x) => x.medicOnly)) p.push(`${e.id}: every option is medic-only`);
+    },
+  },
+  duty: {
+    event: ['id', 'title', 'text', 'options'],
+    option: ['id', 'label', 'text', 'effects', 'check', 'failText', 'failEffects', 'risky', 'medal'],
+    check(e, o, where, p) {
+      const fx = (x, w) => { for (const k of Object.keys(x ?? {})) if (!['eval', 'disciplinary', 'cash', 'stats'].includes(k)) p.push(`${w}: unknown effect ${k}`); statsOk(x?.stats, w, p); };
+      if (!o.text || !o.effects) p.push(`${where}: needs text and effects`);
+      fx(o.effects, where);
+      if (o.check) {
+        if (!STAT_KEYS.includes(o.check.stat) || typeof o.check.min !== 'number') p.push(`${where}: check needs a stat and a min`);
+        if (!o.failText) p.push(`${where}: a check needs failText`);
+        fx(o.failEffects, `${where}.fail`);
+      }
+      if (o.risky) {
+        for (const k of Object.keys(o.risky)) if (!['chance', 'text', 'eval', 'disciplinary', 'ucmj'].includes(k)) p.push(`${where}: unknown risky field ${k}`);
+        if (!(o.risky.chance > 0 && o.risky.chance <= 1) || !o.risky.text) p.push(`${where}: risky needs a chance and text`);
+        if (o.risky.ucmj && !UCMJ_OFFENSES[o.risky.ucmj]) p.push(`${where}: unknown UCMJ offense ${o.risky.ucmj}`);
+      }
+      if (o.medal && !MEDALS[o.medal]) p.push(`${where}: unknown medal ${o.medal}`);
+    },
+  },
   business: {
     event: ['id', 'title', 'text', 'options', 'sectors', 'auto', 'owner', 'minStaff', 'notStartup', 'duty'],
     option: ['id', 'label', 'apply', 'hint'],

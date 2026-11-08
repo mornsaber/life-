@@ -158,6 +158,27 @@ const tests = {
     }
     assert.ok(played > 80, `played ${played}`);
   },
+  'every garrison duty event resolves every option for a serving soldier'() {
+    let played = 0;
+    for (const e of deck('duty.garrison')) {
+      for (const o of e.options) {
+        const { engine, state } = life(31, 22);
+        Object.assign(state.stats, { smarts: 80, fitness: 85, health: 95, happiness: 70 });
+        state.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: 18 });
+        engine.dispatch('military.enlist', 'army:enlisted:active');
+        const sp = state.prompts.find((x) => x.type === 'military.chooseSpecialty');
+        engine.resolvePrompt(sp.id, sp.options.find((x) => !x.disabled).id);
+        assert.ok(state.military.service, 'serving');
+        state.prompts = [];
+        engine.context().prompt({ type: 'military.dutyEvent', title: e.title, text: e.text, options: e.options.map(({ id, label }) => ({ id, label })), data: { eventId: e.id } });
+        engine.resolvePrompt(state.prompts.at(-1).id, o.id);
+        const text = (state.log.at(-1)?.entries ?? []).map((x) => x.text).join(' ');
+        assert.ok(!broken(text), `${e.id}.${o.id}: ${text}`);
+        played += 1;
+      }
+    }
+    assert.ok(played >= 30, `played ${played}`);
+  },
 };
 
 let failed = 0;
