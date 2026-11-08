@@ -30,7 +30,8 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { fitsEra } from '../src/modules/world/Eras.js';
 import { eligible } from '../src/core/Pools.js';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
-import { eraFlag } from '../src/modules/world/Eras.js';
+import { eraFlag, START_ERAS } from '../src/modules/world/Eras.js';
+import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -338,6 +339,26 @@ const tests = {
       const r = life({ countryId: 'GB', startYear: 'random' }, seed).state.character.birthYear;
       assert.ok(r >= 1800 && r <= PRESENT, `random year ${r}`);
     }
+  },
+  'the start screen picks an era, then any year in it or a chosen one'() {
+    assert.deepEqual(startYearOf('worldWars', 'any'), { from: 1914, to: 1945 });
+    assert.equal(startYearOf('worldWars', '1939'), 1939);
+    assert.deepEqual(startYearOf('worldWars', '1990'), { from: 1914, to: 1945 }, 'a year outside the era falls back to the era');
+    assert.equal(startYearOf('today', null), PRESENT);
+    assert.equal(startYearOf('random', null), 'random');
+    for (const e of START_ERAS) {
+      const html = eraYearOptions(e.id);
+      assert.ok(html.includes(`value="${e.from}"`) && html.includes(`value="${e.to}"`), e.id);
+    }
+    for (let seed = 1; seed < 8; seed++) {
+      const y = life({ countryId: 'GB', startYear: { from: 1815, to: 1870 } }, seed).state.character.birthYear;
+      assert.ok(y >= 1815 && y <= 1870, `era year ${y}`);
+    }
+    // The eras cover every year from 1800 to today, without gaps or overlaps.
+    const years = START_ERAS.flatMap((e) => Array.from({ length: e.to - e.from + 1 }, (_, i) => e.from + i)).sort((a, b) => a - b);
+    assert.equal(years.length, PRESENT - 1800 + 1);
+    assert.equal(years[0], 1800);
+    assert.equal(new Set(years).size, years.length);
   },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);

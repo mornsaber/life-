@@ -112,6 +112,10 @@ export function houseStart(rng, options) {
 }
 
 export function createInitialState(rng, options = {}) {
+  // A random year — anywhere since 1800, or within an era ({ from, to }) — is drawn first, so a
+  // royal or noble birth sees the same year the life starts in.
+  if (options.startYear === 'random') options = { ...options, startYear: rng.int(EARLIEST, PRESENT) };
+  else if (options.startYear && typeof options.startYear === 'object') options = { ...options, startYear: rng.int(validStartYear(options.startYear.from), validStartYear(options.startYear.to)) };
   const birth = royalBirth(rng, options);
   const royal = Boolean(birth);
   if (royal) options = { ...options, countryId: birth.countryId, royalLevel: birth.level };
@@ -124,7 +128,7 @@ export function createInitialState(rng, options = {}) {
   setNameCountry(country?.id ?? 'US');
   const gender = options.gender === 'female' || options.gender === 'male' ? options.gender : rng.pick(['male', 'female']);
   // Any year from 1800, or a random one (world/Eras.js).
-  const startYear = options.startYear === 'random' ? rng.int(EARLIEST, PRESENT) : validStartYear(options.startYear);
+  const startYear = validStartYear(options.startYear);
   const generated = randomName(rng, gender);
   const firstName = (options.firstName || '').trim() || generated.firstName;
   const lastName = (options.lastName || '').trim() || generated.lastName;

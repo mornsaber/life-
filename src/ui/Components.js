@@ -12,7 +12,7 @@ import { ROYAL_HOMES, SHARED_CROWN, HOUSE_HOMES } from '../core/State.js';
 import { CONTINENT } from '../modules/world/Travel.js';
 import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
-import { START_YEARS } from '../modules/world/Eras.js';
+import { START_ERAS, eraById } from '../modules/world/Eras.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -327,6 +327,28 @@ export function countryOptions({ selected = '', only = null, random = '🎲 Rand
 
 const sel = (name, options) => `<select name="${name}">${options.map(([v, label, on]) => `<option value="${v}"${on ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
 
+/** The year options for an era: any year in it, then each year (an era of one year is just that year). */
+export function eraYearOptions(eraId) {
+  const era = eraById(eraId);
+  if (!era) return '<option value="any">🎲 Any year</option>';
+  if (era.from === era.to) return `<option value="${era.from}">${era.from}</option>`;
+  const years = [];
+  for (let y = era.from; y <= era.to; y++) years.push(`<option value="${y}">${y}</option>`);
+  return `<option value="any" selected>🎲 Any year, ${era.from}–${era.to}</option>${years.join('')}`;
+}
+
+/** A line about the era, under the picker. */
+export const eraSub = (eraId) => (eraId === 'random' ? 'Any year from 1800 to today, chosen by the dice.' : eraById(eraId)?.sub ?? '');
+
+/** Era + year → the new life's startYear: a year, { from, to } for any year in an era, or 'random'. */
+export function startYearOf(eraId, year) {
+  if (eraId === 'random') return 'random';
+  const era = eraById(eraId) ?? START_ERAS[0];
+  const y = Number(year);
+  if (Number.isInteger(y) && y >= era.from && y <= era.to) return y;
+  return era.from === era.to ? era.from : { from: era.from, to: era.to };
+}
+
 /** The start screen's "Born into" choice, as new-life options (only the chosen kind of birth counts). */
 export function birthOptions(data) {
   const birth = data.get('birth') || 'ordinary';
@@ -338,7 +360,7 @@ export function birthOptions(data) {
     nobleRank: birth === 'noble' ? data.get('nobleRank') || 'random' : 'none',
     housePlace: birth === 'house' ? data.get('housePlace') || 'random' : 'none',
     noble: birth === 'ordinary' && data.get('noble') === 'on',
-    startYear: data.get('startYear') === 'random' ? 'random' : data.get('startYear') === 'custom' ? Number(data.get('customYear')) || undefined : Number(data.get('startYear')) || undefined,
+    startYear: startYearOf(data.get('startEra'), data.get('startYear')),
   };
 }
 
@@ -369,8 +391,9 @@ export function newLifeForm(rngName) {
         <h3 class="form-step">2 · Where you're born</h3>
         <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
         <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
-        <div class="form-row"><label class="country-pick">When${sel('startYear', [...START_YEARS.map((y, i) => [String(y.year), `${y.label} — ${y.sub}`, i === 0]), ['custom', '📅 A year of my choosing →'], ['random', '🎲 A random year (1800 onwards)']])}</label>
-        <label class="country-pick">Year<input name="customYear" type="number" min="1800" max="2026" step="1" placeholder="e.g. 1863" inputmode="numeric"></label></div>
+        <div class="form-row"><label class="country-pick">Era${sel('startEra', [...START_ERAS.map((e, i) => [e.id, e.from === e.to ? e.label : `${e.label} (${e.from}–${e.to})`, i === 0]), ['random', '🎲 Any era (1800 onwards)']])}</label>
+        <label class="country-pick">Year<select name="startYear" id="start-year">${eraYearOptions(START_ERAS[0].id)}</select></label></div>
+        <p class="fine" id="era-sub">${esc(eraSub(START_ERAS[0].id))}</p>
         <p class="fine">🕰️ An earlier start lives through history as it comes, loosely: wars, crashes, revolutions and the end of empires, on roughly their real dates. Some jobs don't exist yet, some are closed to women, and many countries are ruled by others. Money is shown in today's dollars.</p>
         <h3 class="form-step">3 · Born into</h3>
         <div class="birth-list">

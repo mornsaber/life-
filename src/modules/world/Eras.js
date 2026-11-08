@@ -17,17 +17,17 @@ import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
 
 export const PRESENT = 2026;
-export const START_YEARS = [
-  { year: PRESENT, label: 'Today', sub: 'The world as it is' },
-  { year: 1990, label: '1990', sub: 'The Cold War is ending' },
-  { year: 1970, label: '1970', sub: 'Vietnam, the oil shock, colonies winning freedom' },
-  { year: 1950, label: '1950', sub: 'After the war: empires breaking up, the Cold War' },
-  { year: 1930, label: '1930', sub: 'The Depression, the dictators, another war coming' },
-  { year: 1910, label: '1910', sub: 'Empires, the Tsar, the Great War ahead' },
-  { year: 1880, label: '1880', sub: 'Steam, telegraphs, the scramble for Africa' },
-  { year: 1850, label: '1850', sub: 'Railways, revolutions, slavery and its end' },
-  { year: 1800, label: '1800', sub: 'Napoleon, sailing ships, empires in the Americas' },
+/** The eras the start screen offers; each spans [from, to] and a life can start in any year of one. */
+export const START_ERAS = [
+  { id: 'today', label: 'Today', sub: 'The world as it is', from: PRESENT, to: PRESENT },
+  { id: 'modern', label: 'The End of the Century', sub: 'The Cold War ends, the internet arrives, the war on terror', from: 1980, to: PRESENT - 1 },
+  { id: 'postwar', label: 'The Post-War World', sub: 'Empires break up, the Cold War, Vietnam, the oil shock', from: 1946, to: 1979 },
+  { id: 'worldWars', label: 'The World Wars', sub: 'The Great War, the Depression, the dictators, another war', from: 1914, to: 1945 },
+  { id: 'empire', label: 'The Age of Empire', sub: 'Steam, telegraphs, the scramble for Africa, the Tsar', from: 1871, to: 1913 },
+  { id: 'revolutions', label: 'The Age of Revolutions', sub: 'Railways, 1848, slavery and its end, unification', from: 1815, to: 1870 },
+  { id: 'napoleonic', label: 'The Napoleonic Era', sub: 'Napoleon, sailing ships, empires in the Americas', from: 1800, to: 1814 },
 ];
+export const eraById = (id) => START_ERAS.find((e) => e.id === id) ?? null;
 export const EARLIEST = 1800;
 /** Any year from 1800 to today (anything else: today). 'random' is resolved by State with the life's dice. */
 export const validStartYear = (y) => { const n = Math.round(Number(y)); return Number.isFinite(n) && n >= EARLIEST && n <= PRESENT ? n : PRESENT; };

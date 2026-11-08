@@ -16,7 +16,7 @@ import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
-import { birthOptions } from './ui/Components.js';
+import { birthOptions, eraYearOptions, eraSub } from './ui/Components.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -197,6 +197,13 @@ document.addEventListener('submit', (event) => {
 document.addEventListener('change', (event) => {
   const el = event.target;
   if (el.id === 'import-file' && el.files?.[0]) return importLife(el.files[0]);
+  if (el.name === 'startEra' && el.form?.id === 'new-life-form') {
+    const year = el.form.querySelector('#start-year');
+    if (year) { year.innerHTML = eraYearOptions(el.value); year.disabled = el.value === 'random' || el.value === 'today'; }
+    const sub = el.form.querySelector('#era-sub');
+    if (sub) sub.textContent = eraSub(el.value);
+    return undefined;
+  }
   if (el.dataset.setting) {
     settings = { ...settings, [el.dataset.setting]: el.type === 'checkbox' ? el.checked : el.value };
     saveSettings(settings);
