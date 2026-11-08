@@ -6,11 +6,17 @@
 import { esc, card, kv } from '../Components.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { warHere } from '../../modules/world/War.js';
-import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech } from '../../modules/world/Eras.js';
+import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech, eraFlag } from '../../modules/world/Eras.js';
 import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 
 export const EVENT_LABELS = {
+  napoleonicWars: 'the Napoleonic Wars', napoleonFalls: 'Napoleon falls', latinIndependence: 'the Americas rise against Spain', war1812: 'the War of 1812', cholera: 'the cholera',
+  abolitionUK: 'slavery abolished in the British Empire', opiumWar: 'the Opium War', irishFamine: 'the Irish Famine', mexicanAmericanWar: 'the Mexican–American War',
+  revolutions1848: 'the revolutions of 1848', secondEmpire: 'the Second Empire', taiping: 'the Taiping Rebellion', crimeanWar: 'the Crimean War', indianRebellion: 'the Rebellion of 1857',
+  italianUnification: 'Italy unified', serfdomEnds: 'the serfs freed', usCivilWar: 'the American Civil War', meiji: 'the Meiji Restoration', francoPrussianWar: 'the Franco-Prussian War',
+  germanUnification: 'Germany unified', longDepression: 'the Long Depression', scrambleForAfrica: 'the scramble for Africa', brazilRepublic: 'Brazil a republic',
+  spanishAmericanWar: 'the Spanish–American War', boerWar: 'the Boer War', russoJapaneseWar: 'the Russo-Japanese War', ottomanEnd: 'the end of the Ottoman Empire',
   xinhai: 'China\'s last emperor falls', ww1: 'the Great War', spanishFlu: 'the influenza pandemic', russianRevolution: 'the Russian Revolution',
   fascismIT: 'Mussolini takes power', depression: 'the Great Depression', fascismDE: 'the Nazis take power in Germany', militarismJP: 'Japan\'s generals take over',
   spanishCivilWar: 'the Spanish Civil War', ww2: 'the Second World War', prc: 'the People\'s Republic of China', coldWar: 'the Cold War begins',
@@ -23,7 +29,7 @@ export const EVENT_LABELS = {
   spaceIndustry: 'the commercial space industry', marsLanding: 'humans on Mars', pandemic2: 'a second pandemic', blocTension: 'the new Cold War', greatPowerWar: 'the Pacific War',
   detente: 'the grand bargain', fusionPower: 'fusion power', brownVBoard: 'Brown v. Board: school segregation struck down', civilRights: 'the Civil Rights Act',
 };
-const TECH_LABELS = { radio: 'radio', tv: 'television', creditCards: 'credit cards', personalComputer: 'personal computers', mobilePhone: 'mobile phones', internet: 'the internet', onlineDating: 'online dating', socialMedia: 'social media', streaming: 'streaming', smartphone: 'smartphones', crypto: 'crypto', gigApps: 'gig apps' };
+const TECH_LABELS = { railway: 'railways', photography: 'photography', telegraph: 'the telegraph', telephone: 'the telephone', electricLight: 'electric light', automobile: 'motor cars', radio: 'radio', tv: 'television', creditCards: 'credit cards', personalComputer: 'personal computers', mobilePhone: 'mobile phones', internet: 'the internet', onlineDating: 'online dating', socialMedia: 'social media', streaming: 'streaming', smartphone: 'smartphones', crypto: 'crypto', gigApps: 'gig apps' };
 
 export function eraCard(state) {
   const era = state.era;
@@ -36,7 +42,7 @@ export function eraCard(state) {
   const col = colonyHere(state);
   const war = warHere(state);
   const rows = [
-    ['Your country', `${COUNTRIES[cc]?.flag ?? ''} ${esc(r.name ?? (r.kind === 'democracy' ? 'a democracy' : r.kind))}`],
+    ['Your country', `${eraFlag(state, cc, COUNTRIES)} ${esc(r.name ?? (r.kind === 'democracy' ? 'a democracy' : r.kind))}`],
     ...(col ? [['Ruled by', `${esc(rulerName(col.ruler))} — through ${esc(col.leader ?? 'the Governor')}${col.noMovement ? '' : '. A movement for independence is growing'}`]] : []),
     ...(war ? [['At war', esc(war.name)]] : []),
     ...(jimCrowHere(state) ? [['Jim Crow', 'Segregated schools, buses and lunch counters; poll taxes and literacy tests keep Black voters off the rolls; many jobs and the state universities are closed to you']] : []),

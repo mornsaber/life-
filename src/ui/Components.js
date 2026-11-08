@@ -338,7 +338,7 @@ export function birthOptions(data) {
     nobleRank: birth === 'noble' ? data.get('nobleRank') || 'random' : 'none',
     housePlace: birth === 'house' ? data.get('housePlace') || 'random' : 'none',
     noble: birth === 'ordinary' && data.get('noble') === 'on',
-    startYear: Number(data.get('startYear')) || undefined,
+    startYear: data.get('startYear') === 'random' ? 'random' : data.get('startYear') === 'custom' ? Number(data.get('customYear')) || undefined : Number(data.get('startYear')) || undefined,
   };
 }
 
@@ -369,7 +369,8 @@ export function newLifeForm(rngName) {
         <h3 class="form-step">2 · Where you're born</h3>
         <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
         <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
-        <label class="country-pick">When${sel('startYear', START_YEARS.map((y, i) => [String(y.year), `${y.label} — ${y.sub}`, i === 0]))}</label>
+        <div class="form-row"><label class="country-pick">When${sel('startYear', [...START_YEARS.map((y, i) => [String(y.year), `${y.label} — ${y.sub}`, i === 0]), ['custom', '📅 A year of my choosing →'], ['random', '🎲 A random year (1800 onwards)']])}</label>
+        <label class="country-pick">Year<input name="customYear" type="number" min="1800" max="2026" step="1" placeholder="e.g. 1863" inputmode="numeric"></label></div>
         <p class="fine">🕰️ An earlier start lives through history as it comes, loosely: wars, crashes, revolutions and the end of empires, on roughly their real dates. Some jobs don't exist yet, some are closed to women, and many countries are ruled by others. Money is shown in today's dollars.</p>
         <h3 class="form-step">3 · Born into</h3>
         <div class="birth-list">

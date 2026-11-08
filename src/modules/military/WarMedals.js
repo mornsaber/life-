@@ -18,6 +18,21 @@ const GB_WW2 = [
 ];
 
 export const WAR_MEDALS = {
+  napoleonicWars: {
+    GB: [{ name: 'Military General Service Medal', ribbon: R('#d0021b', ['#1f3f8f', 2], '#d0021b'), prestige: 3 }],
+    FR: [{ name: 'Médaille de Sainte-Hélène', ribbon: R('#2e7d32', '#d0021b', '#2e7d32', '#d0021b', '#2e7d32'), prestige: 3 }],
+    '*': [{ name: 'Campaign Medal 1813–1815', ribbon: R('#f5a623', '#000000', '#f5a623'), prestige: 3 }],
+    victory: { name: 'Waterloo Medal', ribbon: R('#d0021b', ['#1f3f8f', 3], '#d0021b'), prestige: 4 },
+  },
+  crimeanWar: {
+    GB: [{ name: 'Crimea Medal', ribbon: R('#4a90e2', ['#f8e71c', 1], '#4a90e2'), prestige: 3 }], TR: [{ name: 'Turkish Crimea Medal', ribbon: R('#d0021b', '#2e7d32', '#d0021b'), prestige: 3 }],
+    FR: [{ name: 'Médaille de Crimée', ribbon: R('#4a90e2', '#f8e71c', '#4a90e2'), prestige: 3 }], '*': [{ name: 'Crimean War Medal', ribbon: R('#000000', '#f5a623', '#000000'), prestige: 3 }],
+  },
+  usCivilWar: { '*': [{ name: 'Civil War Campaign Medal', ribbon: R('#1f3f8f', ['#9e9e9e', 2], '#1f3f8f'), prestige: 3 }] },
+  indianRebellion: { '*': [{ name: 'Indian Mutiny Medal', ribbon: R('#ffffff', '#d0021b', '#ffffff', '#d0021b', '#ffffff'), prestige: 3 }] },
+  boerWar: { GB: [{ name: 'Queen\'s South Africa Medal', ribbon: R('#d0021b', '#1f3f8f', ['#f5a623', 2], '#1f3f8f', '#d0021b'), prestige: 3 }], CA: [{ name: 'Queen\'s South Africa Medal', ribbon: R('#d0021b', '#1f3f8f', ['#f5a623', 2], '#1f3f8f', '#d0021b'), prestige: 3 }], AU: [{ name: 'Queen\'s South Africa Medal', ribbon: R('#d0021b', '#1f3f8f', ['#f5a623', 2], '#1f3f8f', '#d0021b'), prestige: 3 }], NZ: [{ name: 'Queen\'s South Africa Medal', ribbon: R('#d0021b', '#1f3f8f', ['#f5a623', 2], '#1f3f8f', '#d0021b'), prestige: 3 }], '*': [] },
+  spanishAmericanWar: { US: [{ name: 'Spanish Campaign Medal', ribbon: R('#f8e71c', ['#d0021b', 1], '#f8e71c', '#1f3f8f'), prestige: 3 }], '*': [] },
+  mexicanAmericanWar: { US: [{ name: 'Mexican War Service Medal', ribbon: R('#2e7d32', '#ffffff', '#d0021b'), prestige: 3 }], '*': [] },
   ww1: {
     GB: GB_WW1, CA: GB_WW1, AU: GB_WW1, NZ: GB_WW1, IN: GB_WW1, IE: GB_WW1,
     US: [{ name: 'World War I Victory Medal', ribbon: RAINBOW, prestige: 3, victory: true }],

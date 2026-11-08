@@ -64,6 +64,7 @@ import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
+import { eraFlag, PRESENT as PRESENT_YEAR } from '../modules/world/Eras.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -494,7 +495,7 @@ export class Renderer {
     return `
       ${card('', `<div class="profile">
           <div class="avatar">${avatar}</div>
-          <div><h2>${esc(styledName(state))}${postNominals(state) ? ` <small class="muted">${esc(postNominals(state))}</small>` : ''}</h2><p class="age">Age <b>${c.age}</b></p></div>
+          <div><h2>${esc(styledName(state))}${postNominals(state) ? ` <small class="muted">${esc(postNominals(state))}</small>` : ''}</h2><p class="age">Age <b>${c.age}</b>${c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age} ${eraFlag(state, c.countryId ?? 'US', COUNTRIES)}` : ''}</p></div>
         </div>
         <ul class="status-line">${this.statusLine(state)}</ul>`, { className: 'profile-card' })}
       ${card('Stats', statPanel(state.stats), { icon: '📊', className: 'stats-card' })}

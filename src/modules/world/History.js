@@ -137,6 +137,114 @@ const WW2_ALLIES = ['GB', 'FR', 'RU', 'CN', 'PL', 'NL', 'BE', 'NO', 'GR', 'DK', 
  * all), needs (state → bool), start(ctx, rec, rng), end(ctx, rec, rng), tick(ctx, rec, rng) }
  */
 export const EVENTS = {
+  /* ---------------- The nineteenth century ---------------- */
+  napoleonicWars: {
+    at: 1803, window: [1800, 1805], lasts: [9, 12],
+    start(ctx) {
+      const t = { id: 'napoleonicWars', name: 'the Napoleonic Wars', operation: 'the Napoleonic Wars', intensity: 4, homes: { ES: 0.5, PT: 0.4, AT: 0.4, DE: 0.4, RU: 0.3, IT: 0.3, PL: 0.4 } };
+      joinWar(ctx, 'FR', { ...t, adversary: 'the coalitions of Europe' });
+      for (const cc of only(['GB', 'AT', 'RU', 'DE', 'ES', 'PT', 'SE', 'NL'])) joinWar(ctx, cc, { ...t, adversary: 'Napoleon\'s France' });
+      news(ctx, 'Napoleon\'s armies march across Europe', '⚔️', 'world', 9);
+    },
+    end(ctx, rec, rng) {
+      rec.outcome = rng.chance(0.85) ? 'coalition' : 'france';
+      endAll(ctx, 'napoleonicWars', (cc) => ((cc === 'FR') === (rec.outcome === 'france') ? 'ended in victory' : 'ended in defeat'));
+      news(ctx, rec.outcome === 'coalition' ? 'Napoleon defeated at Waterloo; exiled to St Helena' : 'Napoleon dictates the peace of Europe', '🕊️', 'world', 10);
+    },
+  },
+  napoleonFalls: { at: 1814, window: [1812, 1816], needs: (s) => hap(s, 'napoleonicWars') && s.era.events.napoleonicWars.outcome !== 'france', start(ctx) { if (hereIs(ctx, 'FR')) ctx.log('The Emperor has abdicated. A Bourbon king is back on the throne of France.', '👑', 'milestone'); } },
+  latinIndependence: { at: 1810, window: [1808, 1812], start(ctx) { news(ctx, 'Revolt against Spain spreads across the Americas', '✊', 'world', 8); } },
+  war1812: {
+    at: 1812, window: [1811, 1813], lasts: [2, 3], odds: 0.85,
+    start(ctx) { joinWar(ctx, 'US', { id: 'war1812', name: 'the War of 1812', adversary: 'Britain', operation: 'the War of 1812', intensity: 2, homes: { US: 0.15, CA: 0.3 } }); joinWar(ctx, 'CA', { id: 'war1812', name: 'the War of 1812', adversary: 'the United States', operation: 'the War of 1812', intensity: 2, homes: { CA: 0.3 } }); news(ctx, 'War between America and Britain', '⚔️'); },
+    end(ctx) { endAll(ctx, 'war1812', () => 'ended in a peace that changed nothing'); },
+  },
+  cholera: {
+    at: 1832, window: [1830, 1834], lasts: [2, 3],
+    start(ctx) { news(ctx, 'Cholera arrives: thousands dead in the cities', '🦠', 'world', 8); ctx.log('Cholera is in the city. Nobody knows how it spreads; the rich are leaving for the country.', '🦠', 'warn'); },
+    tick(ctx, rec, rng) { if (rng.chance(0.2)) { ctx.stat('health', -rng.int(10, 25)); ctx.log('You caught the cholera and lived. Many on your street didn\'t.', '🤒', 'bad'); } },
+  },
+  abolitionUK: { at: 1833, window: [1831, 1836], start(ctx) { news(ctx, 'Parliament abolishes slavery across the British Empire', '⛓️', 'world', 8); } },
+  opiumWar: {
+    at: 1839, window: [1838, 1841], lasts: [2, 4],
+    start(ctx) { joinWar(ctx, 'CN', { id: 'opiumWar', name: 'the Opium War', adversary: 'Britain', operation: 'the Opium War', intensity: 2, homes: { CN: 0.3 }, own: true }); joinWar(ctx, 'GB', { id: 'opiumWar', name: 'the Opium War', adversary: 'Qing China', operation: 'the First Opium War', intensity: 1 }); news(ctx, 'Britain goes to war with China over opium', '⚔️'); },
+    end(ctx) { endAll(ctx, 'opiumWar', (cc) => (cc === 'CN' ? 'ended in defeat and an unequal treaty' : 'ended in victory')); },
+  },
+  irishFamine: {
+    at: 1845, window: [1845, 1846], lasts: [4, 5],
+    start(ctx) { news(ctx, 'The potato blight: famine in Ireland', '🥔', 'world', 8); if (hereIs(ctx, 'IE')) ctx.log('The potatoes have rotted in the ground. There is famine, and the landlords are still shipping grain to England.', '🥔', 'bad'); },
+    tick(ctx, rec, rng) { if (hereIs(ctx, 'IE') && rng.chance(0.3)) { ctx.stat('health', -rng.int(8, 20)); ctx.log(['Hunger and fever went through the family this winter.', 'Half the townland has gone to America on the coffin ships.'][yearNow(ctx.state) % 2], '🥔', 'bad'); } },
+  },
+  mexicanAmericanWar: {
+    at: 1846, window: [1845, 1847], lasts: [2, 2], odds: 0.9,
+    start(ctx) { joinWar(ctx, 'US', { id: 'mexicanAmericanWar', name: 'the Mexican–American War', adversary: 'Mexico', operation: 'the Mexican War', intensity: 2 }); joinWar(ctx, 'MX', { id: 'mexicanAmericanWar', name: 'the Mexican–American War', adversary: 'the United States', operation: 'the war with the United States', intensity: 3, homes: { MX: 0.4 } }); news(ctx, 'War between the United States and Mexico', '⚔️'); },
+    end(ctx) { endAll(ctx, 'mexicanAmericanWar', (cc) => (cc === 'MX' ? 'ended in defeat and the loss of half the country' : 'ended in victory')); },
+  },
+  revolutions1848: { at: 1848, window: [1847, 1849], start(ctx) { news(ctx, 'Revolution sweeps Europe: barricades in Paris, Vienna, Berlin', '🔥', 'world', 9); if (hereIs(ctx, 'FR', 'DE', 'AT', 'IT', 'HU')) ctx.log('There are barricades in the streets. The king has fled; everyone is talking about a constitution.', '🔥', 'milestone'); } },
+  secondEmpire: { at: 1852, window: [1851, 1853], needs: (s) => hap(s, 'revolutions1848'), start(ctx) { if (hereIs(ctx, 'FR')) ctx.log('Napoleon\'s nephew has made himself Emperor of the French.', '👑', 'milestone'); } },
+  taiping: {
+    at: 1850, window: [1849, 1852], lasts: [12, 14],
+    start(ctx) { joinWar(ctx, 'CN', { id: 'taiping', name: 'the Taiping Rebellion', adversary: 'the Taiping Heavenly Kingdom', operation: 'the Taiping Rebellion', intensity: 4, homes: { CN: 0.6 }, internal: true, own: true }); news(ctx, 'A rebel "Heavenly Kingdom" rises in southern China', '🔥'); },
+    end(ctx) { endAll(ctx, 'taiping', () => 'ended with the rebellion crushed, and twenty million dead'); },
+  },
+  crimeanWar: {
+    at: 1853, window: [1852, 1854], lasts: [2, 3],
+    start(ctx) {
+      const t = { id: 'crimeanWar', name: 'the Crimean War', operation: 'the Crimean War', intensity: 3 };
+      joinWar(ctx, 'RU', { ...t, adversary: 'Britain, France and the Ottomans', homes: { RU: 0.2 } });
+      for (const cc of only(['GB', 'FR', 'TR', 'IT'])) joinWar(ctx, cc, { ...t, adversary: 'Russia' });
+      news(ctx, 'War in the Crimea', '⚔️', 'world', 8);
+    },
+    end(ctx) { endAll(ctx, 'crimeanWar', (cc) => (cc === 'RU' ? 'ended in defeat' : 'ended in victory')); },
+  },
+  indianRebellion: {
+    at: 1857, window: [1856, 1858], lasts: [1, 2],
+    start(ctx) { joinWar(ctx, 'IN', { id: 'indianRebellion', name: 'the Rebellion of 1857', adversary: 'the Company\'s army', operation: 'the Rebellion', intensity: 3, homes: { IN: 0.5 }, internal: true, own: true }); news(ctx, 'Rebellion against the East India Company in India', '🔥', 'world', 8); },
+    end(ctx) { endAll(ctx, 'indianRebellion', () => 'ended with the rising crushed and the Company abolished'); },
+  },
+  italianUnification: { at: 1861, window: [1859, 1866], start(ctx) { news(ctx, 'A Kingdom of Italy is proclaimed', '🇮🇹', 'world', 8); if (hereIs(ctx, 'IT')) ctx.log('Garibaldi\'s redshirts and the King of Sardinia have made Italy one kingdom.', '🇮🇹', 'milestone'); } },
+  serfdomEnds: { at: 1861, window: [1855, 1865], start(ctx) { news(ctx, 'The Tsar frees Russia\'s serfs', '⛓️', 'world', 7); if (hereIs(ctx, 'RU', 'UA')) ctx.log('The serfs are free. Free, and owing the landlord for the land they farm.', '⛓️', 'milestone'); } },
+  usCivilWar: {
+    at: 1861, window: [1859, 1863], lasts: [4, 5],
+    start(ctx) {
+      joinWar(ctx, 'US', { id: 'usCivilWar', name: 'the Civil War', adversary: 'the Confederacy', operation: 'the Civil War', intensity: 4, homes: { US: 0.45 }, internal: true, own: true });
+      const w = warIn(ctx.state, 'US');
+      if (w?.id === 'usCivilWar') w.draft = true;
+      news(ctx, 'Civil war: the Southern states secede', '⚔️', 'world', 10);
+    },
+    end(ctx, rec, rng) {
+      rec.outcome = rng.chance(0.85) ? 'union' : 'confederacy';
+      endAll(ctx, 'usCivilWar', () => (rec.outcome === 'union' ? 'ended with the Union restored and slavery abolished' : 'ended with the South gone its own way'));
+      news(ctx, rec.outcome === 'union' ? 'The Confederacy surrenders; slavery is abolished' : 'The South wins its independence', '🕊️', 'world', 10);
+      if (hereIs(ctx, 'US')) ctx.log(rec.outcome === 'union' ? 'The war is over. Four million people who were enslaved are free.' : 'The war is over, and the country is two countries now.', '🕊️', 'milestone');
+    },
+  },
+  meiji: { at: 1868, window: [1866, 1870], start(ctx) { news(ctx, 'Japan\'s shogun falls; the Emperor Meiji opens the country', '🎌', 'world', 8); if (hereIs(ctx, 'JP')) ctx.log('The Shōgun has fallen. The Emperor rules now, and everything is changing: railways, Western clothes, a conscript army.', '🎌', 'milestone'); } },
+  francoPrussianWar: {
+    at: 1870, window: [1869, 1871], lasts: [1, 1],
+    start(ctx) { joinWar(ctx, 'FR', { id: 'francoPrussianWar', name: 'the Franco-Prussian War', adversary: 'Prussia', operation: 'the war with Prussia', intensity: 3, homes: { FR: 0.4 } }); joinWar(ctx, 'DE', { id: 'francoPrussianWar', name: 'the Franco-Prussian War', adversary: 'France', operation: 'the war with France', intensity: 3 }); news(ctx, 'France and Prussia at war', '⚔️', 'world', 8); },
+    end(ctx) { endAll(ctx, 'francoPrussianWar', (cc) => (cc === 'FR' ? 'ended in defeat and the loss of Alsace-Lorraine' : 'ended in victory')); if (hereIs(ctx, 'FR')) ctx.log('The Emperor has been captured at Sedan. France is a republic again.', '🏛️', 'milestone'); },
+  },
+  germanUnification: { at: 1871, window: [1866, 1872], start(ctx) { news(ctx, 'The German Empire is proclaimed at Versailles', '🦅', 'world', 8); if (hereIs(ctx, 'DE')) ctx.log('The King of Prussia is German Emperor now. There is one Germany.', '🦅', 'milestone'); } },
+  longDepression: { at: 1873, window: [1873, 1874], lasts: [6, 8], start(ctx) { news(ctx, 'Panic: banks fail from Vienna to New York', '📉', 'world', 8); recession(ctx, 'financial', 4, '📉 The Panic of 1873: banks have failed and the railways are bankrupt. The Long Depression has begun.'); } },
+  scrambleForAfrica: { at: 1884, window: [1883, 1886], start(ctx) { news(ctx, 'The powers carve up Africa at Berlin', '🗺️', 'world', 8); } },
+  brazilRepublic: { at: 1889, window: [1886, 1891], start(ctx) { fallThrone(ctx, 'BR', 'The Emperor of Brazil is deposed; a republic is proclaimed'); } },
+  spanishAmericanWar: {
+    at: 1898, window: [1897, 1899], lasts: [1, 1], odds: 0.9,
+    start(ctx) { joinWar(ctx, 'US', { id: 'spanishAmericanWar', name: 'the Spanish–American War', adversary: 'Spain', operation: 'the war with Spain', intensity: 2 }); joinWar(ctx, 'ES', { id: 'spanishAmericanWar', name: 'the Spanish–American War', adversary: 'the United States', operation: 'the disaster of \'98', intensity: 2 }); news(ctx, 'Remember the Maine! America at war with Spain', '⚔️'); },
+    end(ctx) { endAll(ctx, 'spanishAmericanWar', (cc) => (cc === 'ES' ? 'ended in defeat and the loss of the last colonies' : 'ended in victory')); },
+  },
+  boerWar: {
+    at: 1899, window: [1898, 1900], lasts: [2, 3],
+    start(ctx) { joinWar(ctx, 'ZA', { id: 'boerWar', name: 'the Boer War', adversary: 'the British Empire', operation: 'the war against the British', intensity: 3, homes: { ZA: 0.6 }, own: true }); for (const cc of only(['GB', 'CA', 'AU', 'NZ'])) joinWar(ctx, cc, { id: 'boerWar', name: 'the Boer War', adversary: 'the Boer republics', operation: 'the South African War', intensity: 2 }); news(ctx, 'War with the Boers in South Africa', '⚔️'); },
+    end(ctx) { endAll(ctx, 'boerWar', (cc) => (cc === 'ZA' ? 'ended in defeat; the Boer republics annexed' : 'ended in victory')); },
+  },
+  russoJapaneseWar: {
+    at: 1904, window: [1903, 1905], lasts: [1, 2],
+    start(ctx) { joinWar(ctx, 'RU', { id: 'russoJapaneseWar', name: 'the Russo-Japanese War', adversary: 'Japan', operation: 'the war with Japan', intensity: 3 }); joinWar(ctx, 'JP', { id: 'russoJapaneseWar', name: 'the Russo-Japanese War', adversary: 'Russia', operation: 'the war with Russia', intensity: 3 }); news(ctx, 'Japan attacks the Russian fleet at Port Arthur', '⚔️', 'world', 8); },
+    end(ctx) { endAll(ctx, 'russoJapaneseWar', (cc) => (cc === 'RU' ? 'ended in a humiliating defeat' : 'ended in victory')); },
+  },
+  ottomanEnd: { at: 1922, window: [1918, 1924], needs: (s) => over(s, 'ww1') || yearNow(s) >= 1923, start(ctx) { news(ctx, 'The Ottoman sultanate is abolished; a Turkish republic rises', '🌙', 'world', 8); if (hereIs(ctx, 'TR')) ctx.log('The Sultan is gone. The Republic of Turkey is proclaimed, and Atatürk is remaking everything.', '🌙', 'milestone'); } },
   xinhai: { at: 1911, window: [1908, 1913], start(ctx) { news(ctx, 'Revolution in China: the last emperor abdicates', '🏯'); if (hereIs(ctx, 'CN')) ctx.log('The Qing dynasty fell. China is a republic now — in name, at least; the warlords have other ideas.', '🏯', 'milestone'); } },
   ww1: {
     at: 1914, window: [1912, 1917], lasts: [3, 5],
@@ -470,6 +578,10 @@ export const sync = (state) => { setEraLayer(eraLayer(state)); setReformLayer(st
 
 /** Trades that die out take their workers with them: the pit closes, the docks containerise. */
 const TRADE_DIES = {
+  blacksmith: 'Nobody needs a smith now that the horses are gone. The forge went cold.',
+  telegraph: 'The telegraph office closed: everyone telephones now.',
+  coachman: 'The motor car has put the coaches out of business.',
+  whaling: 'Kerosene killed the whaling trade. The ship was sold for scrap.',
   coalMining: 'The pit closed. The whole valley was laid off in a single morning.',
   millWork: 'The mill shut for good: the work had gone abroad.',
   domesticService: 'The household let its staff go. Nobody keeps servants any more.',
@@ -502,6 +614,11 @@ export const HistoryModule = {
     state.era.colonies ??= {};
     if (!state.era.seeded) {
       seedPast(state);
+      // Before the Civil War, a Black American family in the game lives free, in the North.
+      if (state.era.start < 1865 && inUS(state) && JIM_CROW.includes(stateIdOf(state)) && skinToneOf(state) >= 4) {
+        state.character.regionId = ['philadelphia', 'nyc', 'boston'][state.era.start % 3];
+        state.era.freeNorth = true;
+      }
       // Thrones that still stood when this life began reign until history takes them.
       for (const [cc, fell] of Object.entries(PERIOD_THRONES)) {
         if (state.era.start >= fell || !CROWNS[cc]) continue;
@@ -515,6 +632,7 @@ export const HistoryModule = {
   onAgeUp(ctx) {
     const { state } = ctx;
     if (!state.era) HistoryModule.init(state);
+    if (state.era.freeNorth && state.character.age === 1) ctx.log('Your family are free Black Americans in the North. In the Southern states, nearly four million people are held in slavery.', '⛓️', 'info');
     const y = yearNow(state);
     const presentLife = state.era.start >= PRESENT;
     tradeEnds(ctx);

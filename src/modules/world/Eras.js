@@ -24,8 +24,13 @@ export const START_YEARS = [
   { year: 1950, label: '1950', sub: 'After the war: empires breaking up, the Cold War' },
   { year: 1930, label: '1930', sub: 'The Depression, the dictators, another war coming' },
   { year: 1910, label: '1910', sub: 'Empires, the Tsar, the Great War ahead' },
+  { year: 1880, label: '1880', sub: 'Steam, telegraphs, the scramble for Africa' },
+  { year: 1850, label: '1850', sub: 'Railways, revolutions, slavery and its end' },
+  { year: 1800, label: '1800', sub: 'Napoleon, sailing ships, empires in the Americas' },
 ];
-export const validStartYear = (y) => (START_YEARS.some((s) => s.year === Number(y)) ? Number(y) : PRESENT);
+export const EARLIEST = 1800;
+/** Any year from 1800 to today (anything else: today). 'random' is resolved by State with the life's dice. */
+export const validStartYear = (y) => { const n = Math.round(Number(y)); return Number.isFinite(n) && n >= EARLIEST && n <= PRESENT ? n : PRESENT; };
 
 export const yearNow = (state) => (state?.character?.birthYear != null ? currentYear(state) : PRESENT);
 const hap = (s, id) => Boolean(s.era?.events?.[id]);
@@ -36,6 +41,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 /* ------------------------------------------------------------------ */
 
 export const TECH = {
+  railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905,
   radio: 1922, tv: 1950, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
   internet: 1995, onlineDating: 1997, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
@@ -55,6 +61,9 @@ const TECH_WORDS = [
   ['personalComputer', /laptop|\bPC\b|spreadsheet|video ?games?|PlayStation|Xbox|Nintendo|gaming|printer/i],
   ['creditCards', /credit card/i],
   ['tv', /\bTV\b|television|sitcom|reality show/i],
+  ['automobile', /\b(?:cars?|car park|parking|driveway|trucks?|motorway|highway|garage|petrol|gas station|traffic)\b/i],
+  ['electricLight', /\blight switch|electric(?:ity)?\b|power cut|fridge|refrigerator|washing machine/i],
+  ['telephone', /\bphoned?\b|telephone|rang (?:you|her|him|them)|on the phone/i],
 ];
 /** The newest technology a piece of content needs, or null (cached on the object). */
 export function techNeeded(content) {
@@ -74,6 +83,9 @@ export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNee
 
 /** Roughly when each line of work opens up (the US dates, loosely; elsewhere similar). */
 export const PROFESSION_FROM = {
+  police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1900, trades: 1882, electricalEng: 1882, nursing: 1860,
+  railroad: 1830, transit: 1860, transitMaintenance: 1860, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
+  mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
   tech: 1955, cybersecurity: 1990, dataScience: 2010, contentCreator: 2006, gameDevelopment: 1975, design: 1930,
   renewableEnergy: 1980, physicianAssistant: 1967, respiratoryTherapy: 1950, imaging: 1920, dentalHygiene: 1915,
   occupationalTherapy: 1920, speechPathology: 1925, airTrafficControl: 1930, ems: 1970, privateEms: 1960, paratransit: 1975,
@@ -137,10 +149,24 @@ const MONARCH = (name, leader, o = {}) => G({ kind: 'absoluteMonarchy', name, el
 
 /** Periods of rule, each active while its condition holds in this world's history. */
 export const PERIODS = [
-  { cc: ['RU'], regime: MONARCH('the Russian Empire, ruled by the Tsar', 'the Tsar', { religion: 'state' }), active: (s) => !hap(s, 'russianRevolution') },
+  // ---- The nineteenth century ----
+  { cc: ['FR'], regime: DICTATOR('the Consulate of Napoleon Bonaparte', 'the First Consul'), active: (s) => yearNow(s) < 1804 },
+  { cc: ['FR'], regime: MONARCH('the Empire of the French, under Napoleon', 'the Emperor'), active: (s) => yearNow(s) >= 1804 && !hap(s, 'napoleonFalls') },
+  { cc: ['FR'], regime: G({ kind: 'monarchy', name: 'the restored kingdom of France', elections: 'controlled', press: 'state', leader: 'the King' }), active: (s) => hap(s, 'napoleonFalls') && !hap(s, 'revolutions1848') },
+  { cc: ['FR'], regime: MONARCH('the Second Empire, under Napoleon III', 'the Emperor', { elections: 'controlled' }), active: (s) => hap(s, 'secondEmpire') && !hap(s, 'francoPrussianWar') },
+  { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Confederation, led by Prussia and Austria', elections: 'none', press: 'state', leader: 'the King of Prussia' }), active: (s) => !hap(s, 'germanUnification') },
+  { cc: ['IT'], regime: G({ kind: 'monarchy', name: 'the Italian states (Austria in the north, the Pope in Rome, Bourbons in Naples)', elections: 'none', press: 'state', leader: 'your prince' }), active: (s) => !hap(s, 'italianUnification') },
+  { cc: ['JP'], regime: G({ kind: 'militarist', name: 'the Tokugawa shogunate', elections: 'none', press: 'state', exit: 'closed', surveillance: 0.15, leader: 'the Shōgun' }), active: (s) => !hap(s, 'meiji') },
+  { cc: ['JP'], regime: MONARCH('the Empire of Japan, modernising under the Emperor Meiji', 'the Emperor'), active: (s) => hap(s, 'meiji') && yearNow(s) < 1890 },
+  { cc: ['TR'], regime: MONARCH('the Ottoman Empire, under the Sultan', 'the Sultan', { religion: 'state' }), active: (s) => !hap(s, 'ottomanEnd') },
+  { cc: ['GB', 'BE', 'NL', 'SE', 'DK', 'NO', 'ES', 'PT', 'GR'], regime: G({ kind: 'monarchy', name: 'a monarchy where only men of property vote', elections: 'controlled', leader: 'the Crown' }), active: (s) => yearNow(s) < 1885 },
+  { cc: ['US'], regime: G({ kind: 'democracy', name: 'a republic where slavery is legal in the South', elections: 'controlled', leader: 'the President' }), active: (s) => !hap(s, 'usCivilWar') || !over(s, 'usCivilWar') },
+  { cc: ['BR'], regime: MONARCH('the Empire of Brazil', 'the Emperor', { elections: 'controlled' }), active: (s) => yearNow(s) >= 1822 && !hap(s, 'brazilRepublic') },
+  { cc: ['RU'], regime: MONARCH('the Russian Empire, where serfs are bound to the land', 'the Tsar', { religion: 'state', exit: 'restricted', jobs: 'assigned' }), active: (s) => !hap(s, 'serfdomEnds') },
+  { cc: ['RU'], regime: MONARCH('the Russian Empire, ruled by the Tsar', 'the Tsar', { religion: 'state' }), active: (s) => hap(s, 'serfdomEnds') && !hap(s, 'russianRevolution') },
   { cc: ['RU'], regime: SOVIET, active: (s) => hap(s, 'russianRevolution') && !hap(s, 'sovietCollapse') },
   { cc: ['PL', 'RO'], regime: EAST_BLOC, active: (s) => hap(s, 'coldWar') && !hap(s, 'sovietCollapse') },
-  { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Empire under the Kaiser', elections: 'controlled', leader: 'the Kaiser' }), active: (s) => !over(s, 'ww1') },
+  { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Empire under the Kaiser', elections: 'controlled', leader: 'the Kaiser' }), active: (s) => hap(s, 'germanUnification') && !over(s, 'ww1') },
   { cc: ['AT'], regime: G({ kind: 'monarchy', name: 'Austria-Hungary under the Emperor', elections: 'controlled', leader: 'the Emperor' }), active: (s) => !over(s, 'ww1') },
   { cc: ['DE', 'AT'], regime: DICTATOR('a totalitarian dictatorship, the Third Reich', 'the Führer', { kind: 'totalitarian', elections: 'sham', surveillance: 0.35, exit: 'restricted', party: true }), active: (s) => hap(s, 'fascismDE') && !(over(s, 'ww2') && !s.era.events.ww2.axisWon) },
   { cc: ['IT'], regime: DICTATOR('a fascist dictatorship', 'Il Duce', { elections: 'sham', surveillance: 0.2, party: true }), active: (s) => hap(s, 'fascismIT') && !(over(s, 'ww2') && !s.era.events.ww2.axisWon) },
@@ -163,16 +189,16 @@ export const PERIODS = [
 /* ------------------------------------------------------------------ */
 
 /** Monarchies that reigned in early starts, and the year they fell in our history (History.js decides in this one). */
-export const PERIOD_THRONES = { DE: 1918, AT: 1918, RU: 1917, IT: 1946, RO: 1947 };
+export const PERIOD_THRONES = { DE: 1918, AT: 1918, RU: 1917, IT: 1946, RO: 1947, BR: 1889 };
 export const periodThrone = (cc, year) => year < (PERIOD_THRONES[cc] ?? -Infinity);
 
 /* ------------------------------------------------------------------ */
 /* Colonies                                                            */
 /* ------------------------------------------------------------------ */
 
-const RULER = { GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
-export const RULER_CAPITAL = { GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Constantinople', AU: 'Canberra', PK: 'Karachi', MY: 'Kuala Lumpur', DE: 'Berlin' };
-export const RULER_NAME = { TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
+const RULER = { ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
+export const RULER_CAPITAL = { ES: 'Madrid', SE: 'Stockholm', CN: 'Peking', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Constantinople', AU: 'Canberra', PK: 'Karachi', MY: 'Kuala Lumpur', DE: 'Berlin' };
+export const RULER_NAME = { ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
 const S = (ruler, name, until, o = {}) => ({ ruler, name, until, ...o });
 const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', noMovement: true });
 
@@ -181,15 +207,24 @@ const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', 
  * event id); war: independence came through a war; from: the stage starts later than the last.
  */
 export const COLONIES = {
-  IN: [S('GB', 'British India', 1947, { leader: 'the Viceroy', partition: true })],
-  PK: [S('GB', 'British India', 1947, { leader: 'the Viceroy', partition: true })],
+  // ---- The Americas, and Europe's own subject nations, in the 1800s ----
+  MX: [S('ES', 'New Spain', 1821, { war: true, leader: 'the Viceroy' })], GT: [S('ES', 'the Captaincy General of Guatemala', 1821, { leader: 'the Captain General' })],
+  CR: [S('ES', 'the Captaincy General of Guatemala (Costa Rica)', 1821)], CO: [S('ES', 'the Viceroyalty of New Granada', 1819, { war: true, leader: 'the Viceroy' })],
+  VE: [S('ES', 'the Captaincy General of Venezuela', 1821, { war: true, leader: 'the Captain General' })], PA: [S('ES', 'New Granada (Panama)', 1821), S('CO', 'a department of Colombia', 1903, { noMovement: true, leader: 'the Governor' })],
+  PE: [S('ES', 'the Viceroyalty of Peru', 1824, { war: true, leader: 'the Viceroy' })], AR: [S('ES', 'the Viceroyalty of the Río de la Plata', 1816, { war: true, leader: 'the Viceroy' })],
+  CL: [S('ES', 'the Captaincy General of Chile', 1818, { war: true, leader: 'the Captain General' })], BR: [S('PT', 'the State of Brazil (Portuguese)', 1822, { leader: 'the Viceroy' })],
+  HT: [S('FR', 'Saint-Domingue', 1804, { war: true, leader: 'the Governor' })],
+  GR: [S('TR', 'Ottoman Greece', 1830, { war: true, leader: 'the Pasha' })], BE: [S('NL', 'the Southern Netherlands', 1830, { war: true, leader: 'the King of the Netherlands', noMovement: false })],
+  NO: [S('SE', 'Norway, in union with Sweden', 1905, { leader: 'the King of Sweden' })], RO: [S('TR', 'the Danubian Principalities (under the Ottomans)', 1878, { war: true })],
+  IN: [S('GB', 'Company rule in India (the East India Company)', 1858, { leader: 'the Governor-General', noMovement: true }), S('GB', 'British India', 1947, { leader: 'the Viceroy', partition: true })],
+  PK: [S('GB', 'Company rule in India (the East India Company)', 1858, { leader: 'the Governor-General', noMovement: true }), S('GB', 'British India', 1947, { leader: 'the Viceroy', partition: true })],
   BD: [S('GB', 'British India (Bengal)', 1947, { leader: 'the Viceroy', partition: true }), S('PK', 'East Pakistan', 1971, { war: true, leader: 'the Governor of East Pakistan' })],
-  LK: [S('GB', 'British Ceylon', 1948)], MM: [S('GB', 'British Burma', 1948)], MY: [S('GB', 'British Malaya', 1957, { war: true })],
-  SG: [S('GB', 'the Straits Settlements', 1963), S('MY', 'a state of Malaysia', 1965, { leader: 'the Prime Minister of Malaysia', noMovement: true })],
-  KE: [S('GB', 'Kenya Colony', 1963, { war: true })], NG: [S('GB', 'Colonial Nigeria', 1960)], GH: [S('GB', 'the Gold Coast', 1957)],
-  GM: [S('GB', 'the Gambia Colony', 1965)], SD: [S('GB', 'the Anglo-Egyptian Sudan', 1956, { leader: 'the Governor-General' })],
-  MW: [S('GB', 'Nyasaland', 1964)], SO: [S('IT', 'Italian Somaliland', 1960)], JM: [S('GB', 'the Colony of Jamaica', 1962)],
-  BS: [S('GB', 'the Bahamas', 1973)], CY: [S('GB', 'British Cyprus', 1960, { war: true })], MT: [S('GB', 'the Crown Colony of Malta', 1964)],
+  LK: [S('GB', 'British Ceylon', 1948)], MM: [S('GB', 'British Burma', 1948, { from: 1885 })], MY: [S('GB', 'British Malaya', 1957, { war: true, from: 1874 })],
+  SG: [S('GB', 'the Straits Settlements', 1963, { from: 1819 }), S('MY', 'a state of Malaysia', 1965, { leader: 'the Prime Minister of Malaysia', noMovement: true })],
+  KE: [S('GB', 'Kenya Colony', 1963, { war: true, from: 1895 })], NG: [S('GB', 'Colonial Nigeria', 1960, { from: 1900 })], GH: [S('GB', 'the Gold Coast', 1957, { from: 1874 })],
+  GM: [S('GB', 'the Gambia Colony', 1965)], SD: [S('GB', 'the Anglo-Egyptian Sudan', 1956, { leader: 'the Governor-General', from: 1899 })],
+  MW: [S('GB', 'Nyasaland', 1964, { from: 1891 })], SO: [S('IT', 'Italian Somaliland', 1960, { from: 1889 })], JM: [S('GB', 'the Colony of Jamaica', 1962)],
+  BS: [S('GB', 'the Bahamas', 1973)], CY: [OTTOMAN('Ottoman Cyprus'), S('GB', 'British Cyprus', 1960, { war: true, from: 1878 })], MT: [S('GB', 'the Crown Colony of Malta', 1964)],
   IE: [S('GB', 'Ireland, ruled from Westminster', 1922, { war: true, leader: 'the Lord Lieutenant' })],
   IL: [OTTOMAN('Ottoman Palestine'), S('GB', 'Mandatory Palestine', 1948, { war: true, leader: 'the High Commissioner' })],
   PS: [OTTOMAN('Ottoman Palestine'), S('GB', 'Mandatory Palestine', 1948, { leader: 'the High Commissioner' })],
@@ -197,26 +232,26 @@ export const COLONIES = {
   IQ: [OTTOMAN('Ottoman Mesopotamia'), S('GB', 'Mandatory Iraq', 1932, { leader: 'the High Commissioner' })],
   SY: [OTTOMAN('Ottoman Syria'), S('FR', 'the French Mandate of Syria', 1946, { leader: 'the High Commissioner' })],
   LB: [OTTOMAN('Ottoman Syria'), S('FR', 'Greater Lebanon (a French mandate)', 1943, { leader: 'the High Commissioner' })],
-  EG: [S('GB', 'the British protectorate of Egypt', 1922, { leader: 'the British High Commissioner' })],
-  KW: [S('GB', 'Kuwait, a British protectorate', 1961, { leader: 'the Political Agent', noMovement: true })],
-  BH: [S('GB', 'Bahrain, a British protectorate', 1971, { leader: 'the Political Agent', noMovement: true })],
-  QA: [S('GB', 'Qatar, a British protectorate', 1971, { leader: 'the Political Agent', noMovement: true })],
-  AE: [S('GB', 'the Trucial States', 1971, { leader: 'the Political Agent', noMovement: true })],
-  BN: [S('GB', 'the British protectorate of Brunei', 1984, { leader: 'the High Commissioner', noMovement: true })],
-  SB: [S('GB', 'the British Solomon Islands', 1978)], VU: [S('GB', 'the New Hebrides (an Anglo-French condominium)', 1980, { leader: 'the Resident Commissioners' })],
-  TO: [S('GB', 'Tonga, a British protected state', 1970, { leader: 'the British Agent', noMovement: true })],
-  PG: [S('AU', 'the Territory of Papua and New Guinea', 1975, { leader: 'the Administrator' })],
-  MH: [S('DE', 'German New Guinea (the Marshall Islands)', 1914, { noMovement: true }), S('JP', 'the South Seas Mandate', 1945, { noMovement: true }), S('US', 'the Trust Territory of the Pacific Islands', 1986, { leader: 'the High Commissioner' })],
-  DZ: [S('FR', 'French Algeria', 1962, { war: true, leader: 'the Governor-General' })], MA: [S('FR', 'the French protectorate of Morocco', 1956, { leader: 'the Resident-General' })],
-  SN: [S('FR', 'French West Africa (Senegal)', 1960)], CI: [S('FR', 'French West Africa (Ivory Coast)', 1960)], ML: [S('FR', 'French Sudan', 1960)],
-  NE: [S('FR', 'French West Africa (Niger)', 1960)], TD: [S('FR', 'French Equatorial Africa (Chad)', 1960)], CF: [S('FR', 'Ubangi-Shari', 1960)],
-  DJ: [S('FR', 'French Somaliland', 1977)], VN: [S('FR', 'French Indochina', 1954, { war: true })], KH: [S('FR', 'French Indochina (Cambodia)', 1953)],
+  EG: [S('TR', 'the Khedivate of Egypt (under the Ottomans)', 1882, { noMovement: true, leader: 'the Khedive' }), S('GB', 'the British protectorate of Egypt', 1922, { leader: 'the British High Commissioner' })],
+  KW: [S('GB', 'Kuwait, a British protectorate', 1961, { leader: 'the Political Agent', noMovement: true, from: 1899 })],
+  BH: [S('GB', 'Bahrain, a British protectorate', 1971, { leader: 'the Political Agent', noMovement: true, from: 1861 })],
+  QA: [S('GB', 'Qatar, a British protectorate', 1971, { leader: 'the Political Agent', noMovement: true, from: 1916 })],
+  AE: [S('GB', 'the Trucial States', 1971, { leader: 'the Political Agent', noMovement: true, from: 1820 })],
+  BN: [S('GB', 'the British protectorate of Brunei', 1984, { leader: 'the High Commissioner', noMovement: true, from: 1888 })],
+  SB: [S('GB', 'the British Solomon Islands', 1978, { from: 1893 })], VU: [S('GB', 'the New Hebrides (an Anglo-French condominium)', 1980, { leader: 'the Resident Commissioners', from: 1906 })],
+  TO: [S('GB', 'Tonga, a British protected state', 1970, { leader: 'the British Agent', noMovement: true, from: 1900 })],
+  PG: [S('AU', 'the Territory of Papua and New Guinea', 1975, { leader: 'the Administrator', from: 1906 })],
+  MH: [S('DE', 'German New Guinea (the Marshall Islands)', 1914, { noMovement: true, from: 1885 }), S('JP', 'the South Seas Mandate', 1945, { noMovement: true }), S('US', 'the Trust Territory of the Pacific Islands', 1986, { leader: 'the High Commissioner' })],
+  DZ: [OTTOMAN('the Regency of Algiers'), S('FR', 'French Algeria', 1962, { war: true, leader: 'the Governor-General', from: 1830 })], MA: [S('FR', 'the French protectorate of Morocco', 1956, { leader: 'the Resident-General', from: 1912 })],
+  SN: [S('FR', 'French West Africa (Senegal)', 1960)], CI: [S('FR', 'French West Africa (Ivory Coast)', 1960, { from: 1893 })], ML: [S('FR', 'French Sudan', 1960, { from: 1892 })],
+  NE: [S('FR', 'French West Africa (Niger)', 1960, { from: 1900 })], TD: [S('FR', 'French Equatorial Africa (Chad)', 1960, { from: 1900 })], CF: [S('FR', 'Ubangi-Shari', 1960, { from: 1903 })],
+  DJ: [S('FR', 'French Somaliland', 1977, { from: 1884 })], VN: [S('FR', 'French Indochina', 1954, { war: true, from: 1883 })], KH: [S('FR', 'French Indochina (Cambodia)', 1953, { from: 1863 })],
   MZ: [S('PT', 'Portuguese Mozambique', 1975, { war: true })], GW: [S('PT', 'Portuguese Guinea', 1974, { war: true })],
-  ID: [S('NL', 'the Dutch East Indies', 1949, { war: true })], CD: [S('BE', 'the Belgian Congo', 1960)],
-  PH: [S('US', 'the Philippine Islands, an American territory', 1946)], LY: [S('IT', 'Italian Libya', 1951)],
-  KR: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General' })], KP: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General' })],
-  TW: [S('JP', 'Taiwan under Japanese rule', 1945, { leader: 'the Governor-General' })],
-  FI: [S('RU', 'the Grand Duchy of Finland, under the Tsar', 1917, { leader: 'the Governor-General' })], PL: [S('RU', 'Russian Poland', 1918)],
+  ID: [S('NL', 'the Dutch East Indies', 1949, { war: true })], CD: [S('BE', 'the Congo Free State, King Leopold\'s private colony', 1908, { from: 1885, leader: 'King Leopold\'s agents', noMovement: true }), S('BE', 'the Belgian Congo', 1960)],
+  PH: [S('ES', 'the Spanish East Indies', 1898, { war: true, leader: 'the Governor-General' }), S('US', 'the Philippine Islands, an American territory', 1946)], LY: [OTTOMAN('Ottoman Tripolitania'), S('IT', 'Italian Libya', 1951, { from: 1911 })],
+  KR: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General', from: 1910 })], KP: [S('JP', 'Korea under Japanese rule', 1945, { leader: 'the Governor-General', from: 1910 })],
+  TW: [S('CN', 'Taiwan prefecture of the Qing Empire', 1895, { noMovement: true, leader: 'the Qing governor' }), S('JP', 'Taiwan under Japanese rule', 1945, { leader: 'the Governor-General' })],
+  FI: [S('SE', 'the eastern half of the Swedish realm', 1809, { noMovement: true }), S('RU', 'the Grand Duchy of Finland, under the Tsar', 1917, { leader: 'the Governor-General' })], PL: [S('RU', 'Russian Poland', 1918)],
   UA: [S('RU', 'Ukraine, ruled from Moscow', 'sovietCollapse')],
   EE: [S('RU', 'the Russian Empire (Estonia)', 1918), S('RU', 'a Soviet republic (Estonia)', 'sovietCollapse', { from: 1940 })],
   LV: [S('RU', 'the Russian Empire (Latvia)', 1918), S('RU', 'a Soviet republic (Latvia)', 'sovietCollapse', { from: 1940 })],
@@ -445,4 +480,24 @@ export function branchExists(state, cc, branch) {
   return !(from > y);
 }
 export const branchFrom = (cc, branch) => BRANCH_FROM[cc]?.[branch] ?? BRANCH_FROM['*'][branch] ?? null;
+
+/* ------------------------------------------------------------------ */
+/* Flags of their time                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Flags that aren't today's (no emoji exists for most old flags; these stand in). */
+const PERIOD_FLAG = { soviet: '🚩', qing: '🐉', shogunate: '🎌', ottoman: '🌙', confederation: '🏳️' };
+/** The flag a country flew in the year being played: a colony flies its ruler's; the Soviet Union the red flag. */
+export function eraFlag(state, cc, countries) {
+  const today = countries?.[cc]?.flag ?? '🏳️';
+  if (!state?.era || yearNow(state) >= PRESENT) return today;
+  const st = colonyStage(state, cc);
+  if (st) return st.ruler === 'TR' ? PERIOD_FLAG.ottoman : st.ruler === 'RU' && hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse') ? PERIOD_FLAG.soviet : countries?.[st.ruler]?.flag ?? today;
+  if (cc === 'RU' && hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse')) return PERIOD_FLAG.soviet;
+  if (cc === 'CN' && !hap(state, 'xinhai')) return PERIOD_FLAG.qing;
+  if (cc === 'TR' && !hap(state, 'ottomanEnd')) return PERIOD_FLAG.ottoman;
+  if (cc === 'JP' && !hap(state, 'meiji')) return PERIOD_FLAG.shogunate;
+  if ((cc === 'DE' && !hap(state, 'germanUnification')) || (cc === 'IT' && !hap(state, 'italianUnification'))) return PERIOD_FLAG.confederation;
+  return today;
+}
 

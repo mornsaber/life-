@@ -103,6 +103,26 @@ const careers = {
       ['sales', 'Sales Director', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 120 }],
     ],
   },
+  blacksmith: {
+    ...OLD, id: 'blacksmith', name: 'The Forge', icon: '⚒️', payMultiplier: 0.7, untilYear: 1930, minAge: 13, union: null, sizes: { small: 4, medium: 1 },
+    employers: ['the village forge', 'the coaching inn\'s smithy', 'the ironworks'],
+    ladder: [['apprentice', 'Apprentice Smith', 1, { years: 4 }], ['journeyman', 'Journeyman Blacksmith', 2], ['master', 'Master Blacksmith', 4, { abilities: ['supervise'], reports: 4 }], ['farrier', 'Master Farrier', 5]],
+  },
+  telegraph: {
+    ...OLD, id: 'telegraph', name: 'The Telegraph Office', icon: '📠', payMultiplier: 0.8, fromYear: 1845, untilYear: 1970, minAge: 14,
+    employers: ['Western Union', 'the General Post Office telegraphs', 'the Railway Telegraph'],
+    ladder: [['messenger', 'Telegraph Messenger Boy', 1, { years: 2 }], ['operator', 'Telegraph Operator', 2], ['chief', 'Chief Operator', 4, { abilities: ['supervise'], reports: 20 }], ['superintendent', 'Telegraph Superintendent', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 200 }]],
+  },
+  coachman: {
+    ...OLD, id: 'coachman', name: 'Coaching & Carriage', icon: '🐎', payMultiplier: 0.6, untilYear: 1915, minAge: 13, union: null,
+    employers: ['the Royal Mail coaches', 'the coaching inn', 'a great house\'s stables'],
+    ladder: [['stableboy', 'Stable Boy', 1, { years: 2 }], ['groom', 'Groom', 2], ['coachman', 'Coachman', 3], ['head', 'Head Coachman', 4, { abilities: ['supervise'], reports: 10 }]],
+  },
+  whaling: {
+    ...OLD, id: 'whaling', name: 'Whaling', icon: '🐋', payMultiplier: 0.7, untilYear: 1925, minAge: 14, cyclical: 1.4, union: null,
+    employers: ['a Nantucket whaler', 'a New Bedford whaling ship', 'the Dundee whaling fleet'],
+    ladder: [['greenhand', 'Greenhand', 1, { years: 1 }], ['seaman', 'Able Seaman', 2], ['harpooner', 'Harpooner', 3], ['mate', 'Mate', 4, { abilities: ['supervise'], reports: 12 }], ['captain', 'Whaling Captain', 6, { abilities: ['supervise', 'budget'], reports: 30 }]],
+  },
   lamplighter: {
     ...OLD, id: 'lamplighter', name: 'Lamplighter & Gas Works', icon: '🏮', payMultiplier: 0.6, untilYear: 1935, minAge: 14, union: null,
     employers: ['the Gas Light and Coke Company', 'the Corporation Gas Works'],

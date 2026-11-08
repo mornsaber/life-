@@ -30,6 +30,8 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { fitsEra } from '../src/modules/world/Eras.js';
 import { eligible } from '../src/core/Pools.js';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
+import { eraFlag } from '../src/modules/world/Eras.js';
+import { COUNTRIES } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (opts, seed = 1) => {
@@ -324,6 +326,32 @@ const tests = {
     assert.ok(!warMedals('ww1', 'DE', false).some((m) => /Victory/.test(m.name)), 'no victory medal for the losers');
     assert.ok(warMedals('koreanWar', 'CA', false).some((m) => m.name === 'United Nations Korea Medal'));
     for (const m of warMedals('ww1', 'US', true)) assert.ok(m.ribbon.length >= 1 && m.ribbon.every(([c, w]) => /^#/.test(c) && w > 0));
+  },
+  'lives can start in any year from 1800, or a random one'() {
+    const a = life({ countryId: 'FR', startYear: 1800 }, 3);
+    assert.equal(a.state.character.birthYear, 1800);
+    assert.equal(Object.values(a.state.era.events).filter((e) => e.past).length, 0, 'no history before 1800');
+    assert.match(regimeHere(a.state).name ?? '', /Consulate/);
+    const c = life({ countryId: 'US', startYear: 1863 }, 3);
+    assert.equal(c.state.character.birthYear, 1863);
+    for (let seed = 1; seed < 8; seed++) {
+      const r = life({ countryId: 'GB', startYear: 'random' }, seed).state.character.birthYear;
+      assert.ok(r >= 1800 && r <= PRESENT, `random year ${r}`);
+    }
+  },
+  'New Spain becomes Mexico'() {
+    const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);
+    assert.equal(colonyHere(state)?.ruler, 'ES');
+    live(engine, state, 30);
+    if (state.character.alive) assert.ok(!colonyHere(state) || colonyHere(state).ruler !== 'ES', 'independent of Spain by 1830');
+  },
+  'flags of their time'() {
+    const ru = life({ countryId: 'RU', startYear: 1950 }, 1).state;
+    assert.equal(eraFlag(ru, 'RU', COUNTRIES), '🚩');
+    const now = life({ countryId: 'RU' }, 1).state;
+    assert.equal(eraFlag(now, 'RU', COUNTRIES), COUNTRIES.RU.flag);
+    const cn = life({ countryId: 'CN', startYear: 1850 }, 1).state;
+    assert.equal(eraFlag(cn, 'CN', COUNTRIES), '🐉');
   },
   'loose history is still deterministic for a seed'() {
     const a = life({ countryId: 'FR', startYear: 1910 }, 7);
