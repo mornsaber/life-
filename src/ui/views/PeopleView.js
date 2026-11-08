@@ -56,6 +56,7 @@ import { careCases, careBill, arrangementOptions, hasAuthority, ARRANGEMENTS, PO
 import { petsOf, SPECIES } from '../../modules/people/Pets.js';
 import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../../modules/people/Fertility.js';
 import { toned, personTone } from '../../modules/people/SkinTone.js';
+import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 /** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
@@ -394,6 +395,18 @@ function legacyCard(state) {
     <p class="fine">Estates pay the funeral, then debts, then probate, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
 }
 
+/** The family's standing, its heirlooms and its seat (people/FamilyLegacy.js). */
+function familyLegacyCard(state) {
+  const d = state.dynasty;
+  const prestige = familyPrestige(state);
+  const [, tier, icon] = prestigeTier(prestige);
+  const looms = (d?.heirlooms ?? []).map((h) => `<li class="fund-row"><span>${h.icon} <b>${esc(h.name[0].toUpperCase() + h.name.slice(1))}</b><br><small class="muted">since ${h.since}, ${esc(h.story)}${h.value >= 100 ? ` · worth about ${money(h.value)}` : ''}</small></span>${h.value >= 100 ? button('Sell', 'familyLegacy.sellHeirloom', { arg: h.id, variant: 'tiny ghost', hint: 'Your relatives will mind' }) : ''}</li>`).join('');
+  if (!looms && !d?.seat && prestige < 15) return '';
+  return card('Family Legacy', `<p>${icon} The ${esc(state.character.lastName)}s are <b>${esc(tier)}</b> <small class="muted">(standing ${prestige}/100, built by every generation: honours, fortunes, titles, businesses, heirlooms, a seat)</small>.</p>
+    ${d?.seat ? `<p>🏡 The family seat: <b>${esc(d.seat.name)}</b>, since ${d.seat.since}.</p>` : '<p class="fine">A home you keep for fifteen years becomes the family seat.</p>'}
+    ${looms ? `<h4 class="sub">Heirlooms</h4><ul class="funds">${looms}</ul>` : '<p class="fine">Heirlooms come down from those before you: medals, rings, the things with stories.</p>'}`, { icon: '🏰' });
+}
+
 function lineage(state) {
   const l = state.lineage;
   if (!l?.ancestors?.length) return '';
@@ -439,7 +452,7 @@ export function peopleView(state) {
     ${group('Exes', '💔', by('ex'), state)}
     ${dynastyCard(state)}
     ${legacyCard(state)}
-    ${rivalsCard(state)}${familyCard(state)}${lineage(state)}
+    ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${lineage(state)}
     ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
 }

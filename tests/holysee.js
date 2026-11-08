@@ -150,7 +150,11 @@ const tests = {
     state.world.monarchists.IT = 30;
     state.finances.cash = 1e6;
     state.prompts = [];
+    // (No backfiring rally this time: the test is about the campaign working.)
+    const chance = ctx.rng.chance;
+    ctx.rng.chance = () => false;
     engine.dispatch('houses.campaign');
+    ctx.rng.chance = chance;
     assert.ok(state.world.monarchists.IT > 30);
     assert.equal(crownOf(state, 'IT'), null, 'a republic until the vote');
     restore(ctx, 'IT');

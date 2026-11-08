@@ -41,6 +41,7 @@ import { houseStyle } from '../world/Houses.js';
 import { styledName } from '../world/Honours.js';
 import { degreeLabel } from '../education/Catalog.js';
 import { highestDegree } from '../../core/State.js';
+import { inheritHeirlooms } from './FamilyLegacy.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -298,6 +299,10 @@ export function buildHeirState(rng, old, childId) {
   s.character.birthYear = year - childAge;
   // The world's history goes on (world/History.js).
   if (old.era) s.era = structuredClone(old.era);
+  // What the family keeps (people/FamilyLegacy.js): the heirlooms, and the chance to keep the seat.
+  const seatHome = old.dynasty?.seat ? old.housing.properties.find((p) => p.id === old.dynasty.seat.propertyId) : null;
+  s.dynasty = { heirlooms: inheritHeirlooms(old), seat: null, matchAsked: null,
+    seatOffer: seatHome ? { property: structuredClone(seatHome), value: Math.round(seatHome.value), name: old.dynasty.seat.name, since: old.dynasty.seat.since } : null };
   s.character.regionId = old.character.regionId;
   s.character.residencySince = 0;
   // Passports by descent and by birth; a child who isn't a citizen where the family lives holds residence as a dependent.
