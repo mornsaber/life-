@@ -14,12 +14,13 @@ const careers = {
   jesuits: {
     ...ORDER, id: 'jesuits', name: 'Society of Jesus (Jesuits)', icon: '✝️',
     employers: ['Society of Jesus'],
+    orderUnit: 'Province',
     eligible: enterThroughOrder('the Society of Jesus'),
     ladder: [
       ['novice', 'Jesuit Novice', 1, { appointed: true, appointedBy: 'the order' }],
       ['scholastic', 'Jesuit Scholastic', 2, { appointed: true, appointedBy: 'the order' }],
       ['priest', 'Jesuit Priest', 3, { appointed: true, appointedBy: 'the order' }],
-      ['professed', 'Professed Jesuit', 4, { appointed: true, appointedBy: 'the order' }],
+      ['professed', 'Jesuit Priest (Professed)', 4, { appointed: true, appointedBy: 'the order' }],
       ['rector', 'Rector of a Jesuit Community', 5, { track: 'mgmt', appointed: true, appointedBy: 'the order', abilities: ['supervise'], reports: 20 }],
       ['provincial', 'Jesuit Provincial', 7, { track: 'mgmt', appointed: true, appointedBy: 'the order', abilities: ['supervise', 'budget', 'delegate'], reports: 400 }],
       ['general', 'Superior General of the Society of Jesus', 9, { track: 'mgmt', appointed: true, appointedBy: 'the order', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 14000 }],
@@ -28,6 +29,7 @@ const careers = {
   moc: {
     ...ORDER, id: 'moc', name: 'Missionaries of Charity', icon: '🤍',
     employers: ['Missionaries of Charity'],
+    orderUnit: 'Region',
     eligible: enterThroughOrder('the Missionaries of Charity'),
     ladder: [
       ['postulant', 'Postulant', 1, { appointed: true, appointedBy: 'the order' }],

@@ -46,7 +46,7 @@ const fresh = (rng, countryId) => {
   return newCommunity(t, t ? congregationName(rng, t) : null, 0);
 };
 
-export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy', 'anglicanClergy', 'holySeeDiplomacy'];
+export const CLERGY_PROFESSIONS = ['clergy', 'catholicClergy', 'anglicanClergy', 'holySeeDiplomacy', 'jesuits'];
 export const isClergy = (state) => CLERGY_PROFESSIONS.includes(state.career.job?.professionId);
 
 /* ------------------------------------------------------------------ */
@@ -371,7 +371,7 @@ export const Community = {
       if (t.fundamentalist) c.giving = Math.max(c.giving, 10);
       ctx.log(`You left ${old} with the breakaway and helped found ${c.faith.congregation} (${t.name}).`, t.icon, 'milestone');
       const job = state.career.job;
-      if (isClergy(state)) {
+      if (isClergy(state) && job.professionId !== 'jesuits') {
         if (t.clergy.maleOnly && state.character.gender !== 'male') ctx.emit('career:resign', { reason: `${t.name} does not ordain women` });
         else {
           job.employer.name = c.faith.congregation;

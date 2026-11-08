@@ -10,6 +10,7 @@
  * `body: '<id>'` too, so organizations show what they're part of.
  */
 import { REGIONS } from '../life/Regions.js';
+import { COUNTRIES } from '../world/Countries.js';
 import { getProfession } from '../career/JobTrees.js';
 import { attachOrg, orgOf } from './Organizations.js';
 
@@ -57,7 +58,9 @@ export function joinLocalUnit(ctx) {
   if (!body) return false;
   const region = REGIONS[state.character.regionId];
   if (!region) return false;
-  const name = body.unitName(state.character.countryId ?? 'US', region.name, job.employer.size);
+  const prof = getProfession(job.professionId);
+  // Religious orders aren't dioceses: a Jesuit abroad serves in the Society's province there.
+  const name = prof?.orderUnit ? `${prof.employers[0]} — ${COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the'} ${prof.orderUnit}` : body.unitName(state.character.countryId ?? 'US', region.name, job.employer.size);
   if (name === job.employer.name && orgOf(state, job.employer)?.regionId === region.id) return false;
   const from = job.employer.name;
   job.employer.name = name;

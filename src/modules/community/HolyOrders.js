@@ -27,6 +27,8 @@ const ORDER_OF = {
   clergy: { associate: 'minister', minister: 'minister', chaplain: 'minister', senior: 'minister', regional: 'minister' },
   holySeeDiplomacy: { nuncio: 'bishop', relations: 'bishop', secState: 'bishop' },
   romanCuria: { secretary: 'bishop', prefect: 'bishop' },
+  // A Jesuit is ordained at the end of theology; every post after it is a priest's.
+  jesuits: { priest: 'priest', professed: 'priest', rector: 'priest', provincial: 'priest', general: 'priest' },
 };
 const CATHOLIC = ['catholic', 'tradCatholic'];
 export const CLERGY_CAREERS = ['clergy', 'catholicClergy', 'anglicanClergy'];
