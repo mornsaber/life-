@@ -68,7 +68,10 @@ function drivingPrompt(ctx) {
   const id = permit ? 'driverLicense' : 'learnerPermit';
   // Ask once for each step, then again every few years if you said not yet.
   const asked = (state.driving ??= { asked: {} }).asked;
-  if (asked[id] != null && state.character.age - asked[id] < 3) return;
+  // Say no twice and it asks every ten years; after three no's, past 40, it stops asking (the Licenses tab still offers it).
+  const refusals = state.driving.refusals?.[id] ?? 0;
+  if (refusals >= 3 && state.character.age >= 40) return;
+  if (asked[id] != null && state.character.age - asked[id] < (refusals >= 2 ? 10 : 3)) return;
   const e = pursueEligibility(state, id);
   // Parents usually pay for a teenager's permit, lessons and test.
   const parentsPay = !e.ok && /^Costs/.test(e.reason ?? '') && state.character.age < 21;
@@ -104,7 +107,12 @@ export const JobLicensingModule = {
 
   resolvers: {
     driving(ctx, data, optionId) {
-      if (optionId !== 'yes') return ctx.log('You decided driving can wait.', '🚌');
+      if (optionId !== 'yes') {
+        const d = (ctx.state.driving ??= { asked: {} });
+        const id = hasCredential(ctx.state, 'learnerPermit') ? 'driverLicense' : 'learnerPermit';
+        (d.refusals ??= {})[id] = (d.refusals[id] ?? 0) + 1;
+        return ctx.log(['You decided driving can wait.', 'Not yet. The bus is fine.', 'You\'ll learn to drive some other year.'][ctx.state.character.age % 3], '🚌');
+      }
       if (data.parentsPay) {
         ctx.earn(data.cost, 'Parents paid for driving lessons');
         ctx.log('Your parents paid for the lessons and the fees.', '👪');

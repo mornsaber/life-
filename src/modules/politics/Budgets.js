@@ -405,7 +405,11 @@ export const BudgetsModule = {
       } else {
         b.ask = null;
         const note = npcBudgetYear(state, b, exec?.caucus ?? (rng.chance(0.5) ? 'labor' : 'business'), rng);
-        if (note && here && (b.level !== 'national' || rng.chance(0.5))) ctx.log(note, '🏛️', 'info');
+        // Your employer's budget is your business; anyone else's is the news.
+        if (note && here && (b.level !== 'national' || rng.chance(0.5))) {
+          if (b === jobBudget(state, job, { create: false })) ctx.log(note, '🏛️', 'info');
+          else ctx.emit('news:story', { tier: b.level === 'national' ? 'national' : 'local', headline: note.replace(/\.$/, ''), weight: 2, icon: '🏛️' });
+        }
       }
       closeBooks(state, b);
       // Ratings agencies notice; residents and public employees hear about it.
@@ -413,7 +417,10 @@ export const BudgetsModule = {
       if (!regimeOf(state.character.countryId ?? 'US').ratings) b.rating = ratingBefore;
       if (b.rating !== ratingBefore && (here || b === jobBudget(state, job, { create: false }))) {
         const up = RATING_ORDER.indexOf(b.rating) > RATING_ORDER.indexOf(ratingBefore);
-        ctx.log(`${cap(b.name)}'s credit rating was ${up ? 'upgraded' : 'downgraded'} to ${b.rating}${up ? '' : ': borrowing costs more, and cuts are coming'}.`, up ? '📈' : '📉', up ? 'good' : 'warn');
+        const text = `${cap(b.name)}'s credit rating was ${up ? 'upgraded' : 'downgraded'} to ${b.rating}`;
+        // A downgrade at the place that pays you (or that you run) means cuts you'll feel; otherwise it's a headline.
+        if (b === mine || b === jobBudget(state, job, { create: false })) ctx.log(`${text}${up ? '' : ': borrowing costs more, and cuts are coming'}.`, up ? '📈' : '📉', up ? 'good' : 'warn');
+        else ctx.emit('news:story', { tier: b.level === 'national' ? 'national' : 'local', headline: text, weight: up ? 2 : 3, icon: up ? '📈' : '📉' });
       }
       // A US federal budget standoff: divided government and a deficit can shut it down.
       b.shutdown = b.level === 'national' && b.where === 'US' && !unifiedGovernment(state, 'national') && rng.chance(b.health < 40 ? 0.3 : 0.08);

@@ -308,7 +308,7 @@ export function vacancyTick(ctx, job) {
   if (sup?.id && sup.id !== supervisorBefore) {
     if (supervisorBefore) {
       job.boss = Math.round(50 + (job.boss - 50) * 0.3);
-      ctx.log(`You have a new supervisor: ${sup.name}, ${sup.title}.`, '🧑‍💼');
+      ctx.log([`You have a new supervisor: ${sup.name}, ${sup.title}.`, `A new boss: ${sup.name} (${sup.title}). Time to make a first impression.`, `${sup.name} took over as your ${sup.title.toLowerCase()}. New boss, new rules.`][state.character.age % 3], '🧑‍💼');
     }
     job.supervisorId = sup.id;
   }

@@ -62,7 +62,12 @@ export function addFriend(ctx, circle, { relationship, ageSpread = 4, quiet = fa
   if (circleFriends(state).length >= FRIEND_CAP) return null;
   const friend = makePerson(ctx, { relation: 'friend', age: Math.max(5, state.character.age + rng.int(-ageSpread, ageSpread)), relationship: relationship ?? rng.int(45, 70), circle, metAge: state.character.age });
   state.people.list.push(friend);
-  if (!quiet) ctx.log(`You became friends with ${friend.firstName}${circle !== 'neighborhood' ? ` (${CIRCLES[circle].label.toLowerCase().replace(/s$/, '')})` : ''}.`, '🤝', 'good');
+  if (!quiet) {
+    const where = circle !== 'neighborhood' ? CIRCLES[circle].label.toLowerCase().replace(/s$/, '') : null;
+    const n = friend.firstName;
+    const lines = where ? [`You became friends with ${n} (${where}).`, `You and ${n} hit it off (${where}).`, `${n} became a friend (${where}).`] : [`You became friends with ${n}.`, `You and ${n} hit it off.`, `${n} became a friend.`];
+    ctx.log(lines[(n.length + ctx.state.character.age) % lines.length], '🤝', 'good');
+  }
   return friend;
 }
 

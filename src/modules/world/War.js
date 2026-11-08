@@ -504,7 +504,7 @@ export const WarModule = {
         ctx.stat('happiness', 2);
         return ctx.log('You donated to the refugee appeal.', '💵');
       }
-      ctx.log('You watched it on the news.', '📺');
+      ctx.log(['You watched it on the news.', 'You changed the channel. It was on every channel.', 'You followed it on your phone, late into the night.'][ctx.state.character.age % 3], '📺');
     },
   },
 };

@@ -73,6 +73,20 @@ function nextPhase(e, rng, state) {
   return null;
 }
 
+/** Crypto manias are your story if you hold coins (or a fund that does); otherwise they're a headline. */
+function cryptoNews(ctx, boom) {
+  const { state } = ctx;
+  const inv = state.investing;
+  // Picked by the year, not the dice, so headlines never shift the rest of the year's rolls.
+  const pick = (list) => list[state.character.age % list.length];
+  const exposed = Boolean(inv?.holdings?.crypto?.value) || (inv?.speculative ?? []).some((p) => /crypto|coin|token/i.test(p.name ?? p.kind ?? ''));
+  const headline = boom
+    ? pick(['Crypto mania: coins hit record highs', 'Everyone\'s cousin is buying crypto', 'A meme coin is up 4,000% this month', 'Crypto ads are suddenly everywhere'])
+    : pick(['The crypto bubble bursts', 'Crypto crashes: coins lose most of their value', 'A crypto exchange collapses; withdrawals frozen', 'Crypto winter returns']);
+  if (exposed) ctx.log(boom ? `🪙 ${headline}. Your coins are flying.` : `💥 ${headline}. So are your coins.`, boom ? '🪙' : '💥', boom ? 'good' : 'bad');
+  else ctx.emit('news:story', { tier: 'world', headline, weight: 3, icon: boom ? '🪙' : '💥' });
+}
+
 export const EconomyEngine = {
   id: 'economy',
   order: 1,
@@ -91,12 +105,13 @@ export const EconomyEngine = {
       e.phaseYears = 0;
       if (next === 'expansion') e.expansionLength = rng.int(5, 9);
       const label = PHASES[next];
-      const msg = {
-        peak: 'The economy is running hot. Inflation is climbing and the Fed is raising rates.',
-        recession: '📉 The economy has tipped into recession. Layoffs are spreading.',
-        recovery: '🌱 The recession is over. Hiring is picking back up.',
-        expansion: '📈 The economy is expanding again.',
+      const lines = {
+        peak: ['The economy is running hot. Inflation is climbing and the central bank is raising rates.', 'Prices are rising faster than pay. Interest rates are going up.', 'Boom times: restaurants are full, rents are up, and borrowing just got dearer.'],
+        recession: ['📉 The economy has tipped into recession. Layoffs are spreading.', '📉 Recession. Firms are freezing hiring and cutting shifts.', '📉 The economy shrank two quarters running. Everyone knows someone who\'s been let go.'],
+        recovery: ['🌱 The recession is over. Hiring is picking back up.', '🌱 The worst is over: help-wanted signs are going back up.', '🌱 The economy has turned the corner. Confidence is slowly coming back.'],
+        expansion: ['📈 The economy is expanding again.', '📈 Growth is back. Pay rises are back on the table.', '📈 Good times: unemployment is falling and businesses are hiring.'],
       }[next];
+      const msg = lines[(state.character.age + (e.cycles ?? 0)) % lines.length];
       ctx.log(msg, label.icon, next === 'recession' ? 'warn' : 'info');
     }
 
@@ -117,11 +132,11 @@ export const EconomyEngine = {
     let crypto;
     if (!e.cryptoMania && rng.chance(0.12)) {
       e.cryptoMania = true;
-      ctx.log('🪙 Crypto mania! Everyone\'s cousin is buying coins.', '🪙', 'warn');
+      cryptoNews(ctx, true);
       crypto = rng.float(0.4, 1.5);
     } else if (e.cryptoMania && rng.chance(0.5)) {
       e.cryptoMania = false;
-      ctx.log('🪙 The crypto bubble burst.', '💥', 'warn');
+      cryptoNews(ctx, false);
       crypto = rng.float(-0.85, -0.55);
     } else crypto = e.cryptoMania ? rng.float(0.2, 1.2) : clamp(index * 1.5 + rng.float(-0.45, 0.35), -0.8, 1.2);
     const sectors = {};

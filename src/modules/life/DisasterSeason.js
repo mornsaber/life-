@@ -56,7 +56,9 @@ export function seasonTick(main) {
   if (home && !(home.hardened ?? []).includes(hz.type)) options.push({ id: 'harden', label: h.label, hint: `$${local(state, h.cost).toLocaleString()} · about half the damage, a cheaper premium` });
   if (home && hz.type === 'flood' && !home.floodInsured) options.push({ id: 'flood', label: '🌊 Add flood insurance', hint: 'Standard policies exclude floods' });
   if (!prepOf(state).kit) options.push({ id: 'kit', label: '🎒 A go-bag, a plan, copies of your documents', hint: `$${local(state, 300).toLocaleString()} · safer and cheaper if you have to leave` });
-  options.push({ id: 'cert', label: '🦺 Train with the community emergency response team', hint: 'Help your neighbours when it comes' });
+  if (!prepOf(state).cert) options.push({ id: 'cert', label: '🦺 Train with the community emergency response team', hint: 'Help your neighbours when it comes' });
+  // Nothing left to prepare: the season comes and goes without a decision.
+  if (!options.length) return;
   options.push({ id: 'nothing', label: '🤞 It won\'t happen this year' });
   main.prompt({ type: 'disasterSeason.season', icon: DISASTER_LABEL[hz.type]?.icon ?? '⚠️', title: h.season, text: `Where you live, ${hz.type}s are the big one (about ${Math.round(hz.p * 100)}% a year). What will you do before the season?`, data: { type: hz.type }, options });
 }

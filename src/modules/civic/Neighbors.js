@@ -53,6 +53,15 @@ export const LIFE_EVENTS = [
   { text: (n) => `${n.name} adopted a very loud dog.`, rel: -3 },
   { text: (n) => `${n.name} got a new truck and won't stop talking about it.`, rel: 1, affluent: true },
   { text: (n) => `${n.name}'s house was broken into while they were on vacation.`, rel: 0, safety: true, affluent: true },
+  { text: (n) => `${n.contact} from ${n.name} started running at dawn. Every dawn. Past your window.`, rel: -1 },
+  { text: (n) => `${n.name} built a treehouse that's nicer than your first flat.`, rel: 1 },
+  { text: (n) => `${n.contact} from ${n.name} retired and now tends the whole street's hedges, unasked.`, rel: 3 },
+  { text: (n) => `${n.name} had their kitchen redone. Three months of drilling.`, rel: -2 },
+  { text: (n) => `${n.name}'s teenager started a band in the garage.`, rel: -2 },
+  { text: (n) => `${n.contact} from ${n.name} lost their mother. You sent a card.`, rel: 3 },
+  { text: (n) => `${n.name} took in a foster child. The street rallied with hand-me-downs.`, rel: 3 },
+  { text: (n) => `${n.name} hung so many holiday lights the street glows.`, rel: 1 },
+  { text: (n) => `${n.contact} from ${n.name} finally finished the boat in their driveway. It has never seen water.`, rel: 1 },
 ];
 
 /** Interactive neighbor situations. */

@@ -89,7 +89,12 @@ export const TradesModule = {
     // The world oil market runs on its own random stream, so it doesn't reshuffle every other roll in the life.
     state.oil.seed = ((state.oil.seed ?? 1) * 1664525 + 1013904223) >>> 0;
     const phase = oilTick(state, new Random(state.oil.seed));
-    if (phase !== prev && phase !== 'normal') ctx.log(phase === 'boom' ? `📰 Oil prices spiked (index ${state.oil.price}). Drilling rigs are hiring everyone they can find.` : `📰 Oil prices crashed (index ${state.oil.price}). Rigs are stacking up idle across the oil patch.`, '🛢️');
+    if (phase !== prev && phase !== 'normal') {
+      // In the oil patch it's your livelihood; anywhere else it's a headline (and the price at the pump).
+      const oilJob = /oil|petroleum|drill/i.test(state.career.job?.professionId ?? '');
+      if (oilJob) ctx.log(phase === 'boom' ? `📰 Oil prices spiked (index ${state.oil.price}). Drilling rigs are hiring everyone they can find.` : `📰 Oil prices crashed (index ${state.oil.price}). Rigs are stacking up idle across the oil patch.`, '🛢️');
+      else ctx.emit('news:story', { tier: 'world', headline: phase === 'boom' ? 'Oil prices spike' : 'Oil prices crash', weight: 3, icon: '🛢️' });
+    }
 
     const job = state.career.job;
     const profession = job && TRADE_PROFESSIONS[job.professionId];

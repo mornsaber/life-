@@ -593,7 +593,7 @@ export const BondsModule = {
       };
       switch (`${data.momentId}.${optionId}`) {
         case 'birthday.go': ctx.spend(60, `Gift for ${p.firstName}`, { allowDebt: true }); return say(`You went to ${p.firstName}'s birthday with a gift that made them laugh.`, 7, 'good');
-        case 'birthday.skip': return say(`You texted ${p.firstName} happy birthday.`, -2);
+        case 'birthday.skip': return say([`You texted ${p.firstName} happy birthday.`, `You sent ${p.firstName} a birthday message and a cake emoji.`, `You missed ${p.firstName}'s party but called the next day.`][state.character.age % 3], -2);
         case 'trouble.go': ctx.stat('stress', 4); return say(`You drove over at 2 a.m. for ${p.firstName}. They'll never forget it.`, 14, 'good');
         case 'trouble.phone': return say(`You stayed on the phone with ${p.firstName} until the sun came up.`, 8, 'good');
         case 'trouble.skip': return say(`You let ${p.firstName}'s call go to voicemail. In the morning, they didn't call back.`, -12, 'bad');
