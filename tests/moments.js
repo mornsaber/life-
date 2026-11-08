@@ -10,7 +10,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { PROFESSIONS, getProfession } from '../src/modules/career/JobTrees.js';
-import { PROFESSION_MOMENTS } from '../src/modules/career/ProfessionMoments.js';
+import { PROFESSION_MOMENTS } from '../src/modules/career/WorkplaceEvents.js';
 import { workplaceEvent, resolveWorkEvent } from '../src/modules/career/WorkplaceEvents.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 import { createEmployer } from '../src/modules/career/Employers.js';

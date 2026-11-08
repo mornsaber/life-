@@ -17,6 +17,8 @@ import { CAREER_PACKS, CAREER_PROBLEMS, PACK_PROFESSIONS } from '../src/modules/
 import { validateCareer } from '../src/modules/content/Careers.js';
 import { PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { createEmployer } from '../src/modules/career/Employers.js';
+import { DECK_PROBLEMS, deck, deckIds, validateDeckEvent } from '../src/modules/content/decks.js';
+import { resolveWorkEvent } from '../src/modules/career/WorkplaceEvents.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -103,6 +105,29 @@ const tests = {
         state.career.job = null;
       }
     }
+  },
+  'decks validate, and the validator catches the usual mistakes'() {
+    assert.deepEqual(DECK_PROBLEMS, []);
+    assert.ok(deckIds().length >= 3);
+    const bad = validateDeckEvent('work', { id: 'x', title: 'T', text: 'x', colour: 1, options: [{ id: 'a', label: 'A', stats: { charm: 2 }, check: 'luck', risky: { chance: 2, offense: 'nope' } }, { id: 'a', label: 'B' }] }).join('; ');
+    for (const re of [/unknown field colour/, /unknown stat charm/, /unknown stat luck/, /risky.chance/, /risky needs text/, /unknown offense nope/, /duplicate option/]) assert.match(bad, re);
+  },
+  'every work event plays through every option with clean text'() {
+    let played = 0;
+    for (const id of deckIds().filter((d) => d.startsWith('work.'))) {
+      for (const e of deck(id)) {
+        for (const o of e.options) {
+          const { engine, state } = life(21, 35);
+          state.career.job = { professionId: 'retail', levelId: 'associate', title: 'Associate', employer: { name: 'Bayside Market' }, salary: 30000, sector: 'private', effort: 1, boss: 50, coworkers: 50, performance: 50 };
+          e.when?.(state);
+          resolveWorkEvent(engine.context(), { eventId: e.id }, o.id);
+          const text = (state.log.at(-1)?.entries ?? []).map((x) => x.text).join(' ');
+          assert.ok(!broken(text), `${e.id}.${o.id}: ${text}`);
+          played += 1;
+        }
+      }
+    }
+    assert.ok(played > 200, `played ${played}`);
   },
 };
 
