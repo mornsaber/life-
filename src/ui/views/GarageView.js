@@ -40,7 +40,7 @@ function showroom(state) {
     const how = (h) => purchaseCheck(state, id, h);
     const cash = how('cash');
     const loan = how('loan');
-    const lease = t.lease ? how('lease') : null;
+    const lease = t.lease && yearNow(state) >= 1990 ? how('lease') : null;
     const LICENSE = { privatePilot: 'pilot license', instrumentRating: 'instrument rating', motorcycle: 'motorcycle endorsement', driverLicense: "driver's license" };
     const needs = t.license && !hasCredential(state, t.license) ? ` ${chip(`needs ${LICENSE[t.license] ?? t.license}`, 'warn')}` : '';
     return `<li class="fund-row"><span>${t.icon} <b>${esc(t.name)}</b> <small>${money(t.price)} · ins. ≈${money(t.insurance)}/yr · upkeep ${money(t.upkeep)}/yr${t.crew ? ' incl. crew' : ''}${t.fun ? ' · fun' : ''}${t.charter ? ' · can charter' : ''}${t.appreciates ? ' · gains value' : ''}</small>${needs}</span>

@@ -96,13 +96,13 @@ export const PROFESSION_FROM = {
   railroad: 1830, transit: 1860, transitMaintenance: 1860, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
   mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
   tech: 1955, cybersecurity: 1990, dataScience: 2010, contentCreator: 2006, gameDevelopment: 1975, design: 1930,
-  renewableEnergy: 1980, physicianAssistant: 1967, respiratoryTherapy: 1950, imaging: 1920, dentalHygiene: 1915,
+  renewableEnergy: 2000, physicianAssistant: 1967, respiratoryTherapy: 1950, imaging: 1920, dentalHygiene: 1915,
   occupationalTherapy: 1920, speechPathology: 1925, airTrafficControl: 1930, ems: 1970, privateEms: 1960, paratransit: 1975,
   dispatch: 1968, tsa: 2002, travelNursing: 1980, emergencyManagement: 1979, atf: 1972, dea: 1973, fbi: 1908,
   nato: 1949, unSecretariat: 1945, unAgencies: 1945, euInstitutions: 1958, intlFinance: 1945, intlJustice: 1946, maltaRelief: 1953,
   caseOfficer: 1947, sigint: 1952, intelligence: 1947, nuclearEng: 1945, aerospaceEng: 1940, petroleumEng: 1915,
   flightAttendant: 1930, aviation: 1920, charterAviation: 1925, communityCollege: 1920, nationalLab: 1943, environmental: 1970,
-  oig: 1978, privateMilitary: 1990, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915,
+  oig: 1978, privateMilitary: 1990, borderPatrol: 1924, federalPrisons: 1930, usss: 1865, caregiving: 1965, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915,
   airportPolice: 1950, airportFire: 1950, cruise: 1970, privatePrisons: 1983, cps: 1974, publicDefender: 1914,
   gurkhaContingent: 1949, forensics: 1925, hvac: 1930, schoolBus: 1920, parkService: 1916, foreignService: 1924,
   humanResources: 1920, marketing: 1920, fitness: 1960, cosmetology: 1910, dietitian: 1920, optometry: 1910,
@@ -586,7 +586,7 @@ const OLD_TITLES = [
   [/\bSales Associate\b/, 'Shop Assistant', 1980], [/\bCashier\b/, 'Shop Clerk', 1920], [/\bPhotographer\b/, 'Daguerreotypist', 1860], [/\bNurse Practitioner\b/, 'Nurse', 1970],
   [/\bTeacher\b/, 'Schoolteacher', 1900],
   [/\bPolice Officer\b/, 'Patrolman', 1975], [/\bPolice Recruit\b/, 'Probationary Patrolman', 1975], [/\bFirefighter\b/, 'Fireman', 1975],
-  [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bPatrolman\b/, 'Constable', 1890], [/\bProbationary Patrolman\b/, 'Probationary Constable', 1890], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
+  [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bCDL Driver Trainee\b/, 'Driver\'s Mate', 1986], [/\bCDL /, '', 1986], [/\bPatrolman\b/, 'Constable', 1890], [/\bProbationary Patrolman\b/, 'Probationary Constable', 1890], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
   [/\bChief Executive Officer\b/, 'Managing Director', 1975], [/\bAdministrative Assistant\b/, 'Secretary', 1985], [/\bSanitation Worker\b/, 'Dustman', 1980],
   [/\bChairperson\b/, 'Chairman', 1985], [/\bEMT\b/, 'Ambulance Attendant', 1970], [/\bParamedic\b/, 'Ambulance Driver', 1970], [/\bSoftware Engineer\b/, 'Programmer', 1985],
   [/\bHuman Resources\b/, 'Personnel', 1985], [/\bCustodian\b/, 'Janitor', 1990], [/\bNursing Assistant\b/, 'Orderly', 1987],
@@ -907,4 +907,60 @@ let ERA_STATE = null;
 export const setEraState = (state) => { ERA_STATE = state?.era && state.era.start < PRESENT ? state : null; };
 /** A country's name in the year being played, or its name today. */
 export const eraCountryName = (cc, base) => (ERA_STATE ? periodCountryName(ERA_STATE, cc, base) : base);
+
+/* ------------------------------------------------------------------ */
+/* Names of institutions in their day                                  */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Agencies and programmes by the names of the year being played, applied to rendered text in past
+ * lives: the Bureau of Investigation before the FBI, the Bureau of Internal Revenue before the IRS,
+ * CHAMPUS before TRICARE, a crisis line before 988, the Dow before the S&P 500.
+ */
+const RENAMES = [
+  [/\bIRS debt\b/g, 1953, () => 'tax debt'],
+  [/\bIRS\b/g, 1953, (y) => (y >= 1862 ? 'Bureau of Internal Revenue' : 'tax collector')],
+  [/\bFBI\b/g, 1935, (y) => (y >= 1908 ? 'Bureau of Investigation' : 'Pinkertons')],
+  [/\bDEA\b/g, 1973, (y) => (y >= 1930 ? 'Federal Bureau of Narcotics' : 'narcotics')],
+  [/\bATF\b/g, 1972, (y) => (y >= 1920 ? 'Prohibition Bureau' : 'revenue')],
+  [/\bOSHA\b/g, 1971, () => 'safety'],
+  [/\bTRICARE\b/g, 1995, (y) => (y >= 1966 ? 'CHAMPUS' : 'military care')],
+  [/\b(?:Call or text|call or text|text) 988\b/g, 2022, (y) => (y >= 1958 ? 'Call a crisis line' : 'Send for the doctor')],
+  [/\b988 (?=\(|Suicide)/g, 2022, () => ''],
+  [/\bS&(?:amp;)?P(?: 500)?\b/g, 1957, (y) => (y >= 1896 ? 'Dow' : 'the market')],
+  [/\bcredit score\b/gi, 1989, () => 'credit'],
+  [/\bSecret Service\b/g, 1865, () => 'Treasury'],
+  [/\bSSDI\b/g, 1956, () => 'disability'],
+  [/Film, TV &(?:amp;)? Theater/g, 1950, (y) => (y < 1910 ? 'the Stage' : 'Stage &amp; Screen')],
+  [/\bCDL\b/g, 1986, (y) => (y >= 1920 ? 'Chauffeur\'s' : 'Carter\'s')],
+  [/\bU\.S\. Air Force\b/g, 1947, (y) => (y >= 1941 ? 'U.S. Army Air Forces' : y >= 1926 ? 'U.S. Army Air Corps' : 'U.S. Army Signal Corps')],
+];
+/** Text as it would have read in the year being played (unchanged for today's lives). */
+export function periodText(text) {
+  if (ERA_YEAR >= PRESENT || typeof text !== 'string') return text;
+  let t = text;
+  for (const [re, from, to] of RENAMES) if (ERA_YEAR < from) t = t.replace(re, () => to(ERA_YEAR));
+  return t;
+}
+
+/** When a credential existed (additions: radio amateurs, enrolled agents, OSHA cards, drone pilots). */
+Object.assign(CREDENTIAL_FROM, { hamTech: 1951, enrolledAgent: 1884, oshaSafety: 1971, forklift: 1999, drone: 2016, epa608: 1993 });
+/** Inventions of their time: no software before computers, no clean-energy patents before the 1970s. */
+const INVENTION_FROM = { software: 1960, gadget: 1920, green: 1970, medical: 1880 };
+export const inventionInEra = (state, id) => !(INVENTION_FROM[id] > yearNow(state));
+/** Universities and majors founded later: the Air Force Academy (1954), Computer Science (1965). */
+const UNI_FROM = { usafa: 1954 };
+const MAJOR_FROM = { computerScience: 1965, cybersecurity: 2000, dataScience: 2010 };
+export const uniInEra = (state, u) => !(UNI_FROM[u.id] > yearNow(state)) && !(SCHOOL_FROM[u.type] > yearNow(state));
+export const majorInEra = (state, id) => !(MAJOR_FROM[id] > yearNow(state));
+
+/** Courses of their time, by the course's name: [pattern, first year]. */
+const PROGRAM_FROM = [
+  [/Cyber|Homeland/i, 2000], [/Data Science|Analytics/i, 2010], [/Computer|Software|Information Tech/i, 1965], [/Solar|Wind|Renewable/i, 2005],
+  [/Paralegal|Medical Assistant|Fire Science|Physician Assistant/i, 1967], [/Emergency Medical|Paramedic|\bEMT\b/i, 1970], [/Nurse Practitioner|Nurse Anesthe/i, 1965],
+  [/Sonograph|Ultrasound|\bMRI\b|\bCT\b/i, 1975], [/Respiratory/i, 1950], [/Radiolog|Imaging|X-ray/i, 1920], [/Criminal Justice/i, 1960], [/HVAC|Refrigeration/i, 1930],
+  [/Aviation|Pilot|Aeronaut/i, 1925], [/Electrical|Electronics/i, 1890], [/Automotive|Diesel/i, 1910], [/Dental Hygien/i, 1915], [/Occupational Therapy|Physical Therapy|Speech/i, 1920],
+  [/Cosmetology|Esthetic/i, 1920], [/Welding/i, 1920], [/\bMBA\b|Business Administration/i, 1908], [/Public Health/i, 1916], [/Social Work/i, 1900],
+];
+export const programInEra = (state, name) => !PROGRAM_FROM.some(([re, from]) => re.test(name ?? '') && yearNow(state) < from);
 

@@ -9,6 +9,7 @@ import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHer
 import { RECIPROCITY_LABEL, CREDENTIALS } from '../../modules/credentials/CredentialRegistry.js';
 import { promotionCredentials } from '../../modules/career/JobLicensing.js';
 import { proficiencyLanguage } from '../../modules/world/Languages.js';
+import { credentialExists } from '../../modules/world/Eras.js';
 
 function payerHint(state, cred) {
   const sponsor = findSponsor(state, cred);
@@ -87,11 +88,11 @@ export function licensesView(state, ui = {}) {
   if (view === 'browse') {
     const cat = CATEGORIES[ui.licCat] ? ui.licCat : Object.keys(CATEGORIES)[0];
     const catChips = Object.entries(CATEGORIES).map(([id, c]) => {
-      const all = CREDENTIAL_LIST.filter((x) => x.category === id);
+      const all = CREDENTIAL_LIST.filter((x) => x.category === id && (credentialExists(state, x.id) || isMine(x)));
       const have = all.filter(isMine).length;
       return button(`${c.icon} ${c.name} ${have}/${all.length}`, 'ui.set', { arg: `licCat=${id}`, variant: id === cat ? 'tiny on' : 'tiny' });
     }).join('');
-    const list = CREDENTIAL_LIST.filter((c) => c.category === cat);
+    const list = CREDENTIAL_LIST.filter((c) => c.category === cat && (credentialExists(state, c.id) || isMine(c)));
     body = `<div class="toggle-row chips-row">${catChips}</div>${cat === 'aviation' ? logbook(state) : ''}<ul class="certs">${list.map((c) => credentialRow(state, c)).join('')}</ul>`;
   } else {
     const list = view === 'mine' ? mine : available;

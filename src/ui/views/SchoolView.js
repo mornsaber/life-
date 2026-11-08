@@ -21,10 +21,11 @@ import { edEligibility } from '../../modules/academia/HigherEd.js';
 /** Early Decision is open to first-time applicants who haven't used it. */
 const edOpen = (state) => state.character.age >= 17 && !state.education.enrolled && state.higherEd && !state.higherEd.edUsed && edEligibility(state, 'state').reason !== 'For first-time college applicants' && state.education.degrees.some((d) => d.type === 'highschool');
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { uniInEra, majorInEra, programInEra } from '../../modules/world/Eras.js';
 
 function programRow(state, id) {
   const p = PROGRAMS[id];
-  const majors = majorsFor(id);
+  const majors = majorsFor(id).filter((m) => m === null || (majorInEra(state, m) && programInEra(state, MAJORS[m]?.name)));
   const probeMajor = majors[0];
   const unis = universitiesFor(state, id);
   const probeSchool = unis.find((u) => enrollmentEligibility(state, id, u.id, probeMajor, { applying: true }).ok)?.id ?? unis[0]?.id ?? p.schools[0];
@@ -55,7 +56,7 @@ const STARS = ['', '★', '★★', '★★★'];
 function uniLabel(state, u) {
   const here = state.character.countryId ?? 'US';
   const flag = u.country !== here ? `${COUNTRIES[u.country]?.flag ?? ''} ` : '';
-  return `${flag}${STARS[u.prestige ?? 0] ? `${STARS[u.prestige]} ` : ''}${u.name}${u.region ? ` (${placeOf(u)})` : ' (online)'}${movesYou(state, u) ? ' 🚚' : ''}`;
+  return `${flag}${STARS[u.prestige ?? 0] ? `${STARS[u.prestige]} ` : ''}${u.name}${u.region || u.offshore ? ` (${placeOf(u)})` : ' (online)'}${movesYou(state, u) ? ' 🚚' : ''}`;
 }
 
 /** This year's applications: offers to take up (or held), and the rejections. */
@@ -73,9 +74,9 @@ function applicationsCard(state) {
 /** The universities where you live: selectivity, prestige, city and professional schools. */
 function guideCard(state) {
   const cc = state.character.countryId ?? 'US';
-  const list = universitiesIn(cc).filter((u) => ['elite', 'state', 'private', 'academy'].includes(u.type)).sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0) || a.accept - b.accept);
+  const list = universitiesIn(cc).filter((u) => ['elite', 'state', 'private', 'academy'].includes(u.type) && uniInEra(state, u)).sort((a, b) => (b.prestige ?? 0) - (a.prestige ?? 0) || a.accept - b.accept);
   const PRO = { med: 'Medicine', law: 'Law', dent: 'Dentistry', vet: 'Veterinary', pharm: 'Pharmacy', opt: 'Optometry', maritime: 'Maritime', phd: 'Doctoral research' };
-  const rows = list.map((u) => `<li>${STARS[u.prestige ?? 0] || '·'} <b>${esc(u.name)}</b> <small>${esc(u.region ? placeOf(u) : 'online')} · ${u.accept >= 1 ? 'open admission' : `admits ${u.accept < 0.01 ? '<1' : Math.round(u.accept * 100)}%`}${u.pro?.length ? ` · ${u.pro.map((x) => PRO[x]).filter(Boolean).join(', ')}` : ''}${u.known?.length ? ` · known for ${u.known.map((m) => MAJORS[m]?.name).filter(Boolean).slice(0, 3).join(', ')}` : ''}</small></li>`).join('');
+  const rows = list.map((u) => `<li>${STARS[u.prestige ?? 0] || '·'} <b>${esc(u.name)}</b> <small>${esc(u.region || u.offshore ? placeOf(u) : 'online')} · ${u.accept >= 1 ? 'open admission' : `admits ${u.accept < 0.01 ? '<1' : Math.round(u.accept * 100)}%`}${u.pro?.length ? ` · ${u.pro.map((x) => PRO[x]).filter(Boolean).join(', ')}` : ''}${u.known?.length ? ` · known for ${u.known.filter((m) => majorInEra(state, m)).map((m) => MAJORS[m]?.name).filter(Boolean).slice(0, 3).join(', ')}` : ''}</small></li>`).join('');
   return disclosure('universities.guide', `University guide — ${COUNTRIES[cc]?.name ?? cc}`, `<ul class="history">${rows}</ul>`, { count: list.length });
 }
 
@@ -126,7 +127,7 @@ export function schoolView(state) {
       <div class="action-grid">${button('📖 Study Hard', 'education.study', { hint: '+GPA, +Stress' })}${button(e.pace === 'part' ? '⏩ Go full-time' : '⏸️ Go part-time', 'education.switchPace')}${button('🚪 Drop Out', 'education.dropOut', { variant: 'danger' })}</div>`, { icon: '🏛️', accent: 'yellow' });
   }
   // Abroad, programmes the country doesn't have (a two-year associate's in Germany) aren't listed.
-  const offered = (id) => enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country' && universitiesFor(state, id).length > 0;
+  const offered = (id) => programInEra(state, PROGRAMS[id].name) && enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country' && universitiesFor(state, id).length > 0;
   const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');
   const degrees = state.education.degrees.length
     ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${COUNTRIES[d.country]?.flag ?? ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`

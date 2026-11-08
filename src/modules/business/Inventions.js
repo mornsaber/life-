@@ -15,6 +15,7 @@
  */
 import { Random } from '../../core/Random.js';
 import { priceLevel } from '../world/Countries.js';
+import { inventionInEra } from '../world/Eras.js';
 
 export const FIELDS = {
   kitchen: { label: '🍳 Kitchen gadget', cost: 3000, work: 1, ceiling: 55, smarts: 0, nouns: ['Peeler', 'Spatula', 'Lid', 'Blender Blade', 'Egg Timer'] },
@@ -198,7 +199,7 @@ export const InventionsModule = {
     start(ctx, field) {
       const { state } = ctx;
       const f = FIELDS[field];
-      if (!f) return;
+      if (!f || !inventionInEra(state, field)) return;
       if (state.character.age < 16) return ctx.toast('16+', 'warn');
       if (state.legal?.incarceration) return ctx.toast('Not from inside.', 'warn');
       const inv = ensure(state);

@@ -71,6 +71,7 @@ import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
 import { contractMarketCard, merchantReserveCard } from './ServiceViews.js';
 import { periodDollars, yearNow } from '../../modules/world/Eras.js';
+import { hasTech } from '../../modules/world/Eras.js';
 /** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
 const employerLabel = (job) => {
   const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
@@ -126,13 +127,15 @@ function gigCard(state) {
   if (state.character.age < 16 || !state.gig) return '';
   const a = state.gig.active;
   const ly = state.gig.lastYear;
-  const rows = Object.entries(GIGS).map(([id, g]) => {
+  // Gigs that need an app or the internet don't exist before them.
+  const rows = Object.entries(GIGS).filter(([id]) => !/yet \(from about/.test(gigEligibility(state, id, 'side').reason ?? '')).map(([id, g]) => {
     const side = gigEligibility(state, id, 'side');
     const full = gigEligibility(state, id, 'full');
     return `<li class="fund-row"><span>${g.icon} <b>${esc(g.name)}</b> <small>≈$${g.rate}/hr gross · ${Math.round(g.expenses * 100)}% costs · ${esc(g.desc)}</small>${side.ok ? '' : ` <span class="why">${esc(side.reason)}</span>`}</span>
       ${button('Side hustle', 'gig.start', { arg: `${id}:side`, variant: a?.gigId === id && a.hours === 'side' ? 'tiny on' : 'tiny', disabled: !side.ok })}
       ${button('Full time', 'gig.start', { arg: `${id}:full`, variant: a?.gigId === id && a.hours === 'full' ? 'tiny on' : 'tiny', disabled: !full.ok, title: full.reason ?? '' })}</li>`;
   }).join('');
+  if (!rows && !a) return '';
   return card('Gig Work', `
     ${a ? `${kv([
       ['Working', `${GIGS[a.gigId].icon} ${esc(GIGS[a.gigId].name)} · ${HOURS[a.hours].label.toLowerCase()} since ${a.since}`],
@@ -140,7 +143,7 @@ function gigCard(state) {
       ly ? ['Last year', `${money(ly.gross)} gross − ${money(ly.expenses)} costs = ${money(ly.net)} (before self-employment tax)`] : null,
     ])}<div class="toggle-row">${button('Log off for good', 'gig.stop', { variant: 'small ghost' })}</div>` : ''}
     <ul class="history">${rows}</ul>
-    <p class="fine">${state.character.countryId ? 'Gig pay is self-employed income: you pay your own social contributions, there\'s no employer pension or sick pay' : 'Gig pay is 1099 income: you owe 15.3% self-employment tax, there\'s no employer health plan or 401(k) match'}, and the app can deactivate you. Drivers put real miles on their cars.</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
+    <p class="fine">${state.character.countryId ? 'Gig pay is self-employed income: you pay your own social contributions, there\'s no employer pension or sick pay' : 'Gig pay is 1099 income: you owe 15.3% self-employment tax, there\'s no employer health plan or 401(k) match'}${hasTech(state, 'gigApps') ? ', and the app can deactivate you. Drivers put real miles on their cars.' : '.'}</p>`, { icon: '📱', open: !state.gig?.active && !state.career.job });
 }
 
 function payBreakdown(job, countryId) {

@@ -15,6 +15,7 @@ import { regionOf } from '../life/Regions.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
 import { getProfession } from '../career/JobTrees.js';
+import { yearNow } from '../world/Eras.js';
 
 export const MODES = {
   drive: { label: 'Drive', icon: '🚗' },
@@ -50,7 +51,7 @@ export function commutes(state) {
 /** Can you use this mode here? Returns { ok, reason }. */
 export function modeAvailable(state, mode) {
   const region = regionOf(state);
-  if (mode === 'drive') return canDrive(state) ? { ok: true } : { ok: false, reason: 'Needs a car and a license' };
+  if (mode === 'drive') return canDrive(state) ? { ok: true } : { ok: false, reason: yearNow(state) < 1905 ? 'Needs a horse' : yearNow(state) < 1950 ? 'Needs a motor car' : 'Needs a car and a license' };
   if (mode === 'transit') return transitQuality(state) >= 15 ? { ok: true } : { ok: false, reason: 'No usable transit here' };
   if (mode === 'walk') return region.walkable ? { ok: true } : { ok: false, reason: 'Too spread out to walk' };
   if (mode === 'bike') return state.stats.fitness >= 30 ? { ok: true } : { ok: false, reason: 'Needs 30+ fitness' };

@@ -46,18 +46,18 @@ export function investView(state) {
     <h4 class="sub">${acc.shared ? `IRAs (${money(Math.max(0, iraRoom))} room left this year)` : 'Tax-advantaged accounts'}</h4><div class="toggle-row">
       ${acc.roth && rothExists(state) ? button(`🌱 ${acc.roth.name}`, 'investing.iraContribute', { arg: 'roth', variant: 'small', disabled: age < 18 || accountRoom(state, 'roth') <= 0, hint: acc.shared ? 'After-tax, tax-free later' : `Tax-free growth · ${money(Math.max(0, accountRoom(state, 'roth')))} room` }) : ''}
       ${acc.traditional ? button(`🏦 ${acc.traditional.name}`, 'investing.iraContribute', { arg: 'traditional', variant: 'small', disabled: age < 18 || accountRoom(state, 'traditional') <= 0, hint: acc.shared ? 'Tax deduction now' : `Tax relief now · ${money(Math.max(0, accountRoom(state, 'traditional')))} room` }) : ''}
-      ${button('🏧 Withdraw $10K', 'investing.iraWithdraw', { variant: 'small', disabled: pv.ira <= 0, hint: !acc.shared ? 'Tax-free savings first' : age < 60 ? 'Roth contributions first; 10% penalty on Traditional' : 'Penalty-free' })}</div>`;
+      ${button('🏧 Withdraw $10K', 'investing.iraWithdraw', { variant: 'small', disabled: pv.ira <= 0, hint: !acc.shared ? 'Tax-free savings first' : age < 60 ? (rothExists(state) ? 'Roth contributions first; 10% penalty on Traditional' : '10% penalty before 59½') : 'Penalty-free' })}</div>`;
   const dcSection = () => `
     <h4 class="sub">${esc(acc.dc)} contribution</h4><div class="toggle-row">${DC_RATES.map((r) => button(`${Math.round(r * 100)}%`, 'retirement.setDcRate', { arg: String(r), variant: (state.retirement.dcRate ?? DEFAULT_DC_RATE) === r ? 'tiny on' : 'tiny' })).join('')}</div>
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">${esc(acc.dc)} fund</h4><div class="toggle-row">${funds}</div>`;
   return card('Invest', `
     <p>${chip(`Market: ${e.phase}`, e.phase === 'recession' ? 'bad' : e.phase === 'expansion' ? 'good' : '')} ${chip(`${STOCK_INDEX[state.character.countryId ?? 'US'] ?? 'S&P'} last yr ${pct(e.returns.index)}`, e.returns.index >= 0 ? 'green' : 'bad')} ${e.cryptoMania ? chip('🪙 Crypto mania', 'warn') : ''}</p>
-    ${kv([['Brokerage', money(pv.brokerage)], [iraExists(state) ? (acc.shared ? 'IRAs' : 'Tax-free & pension savings') : 'Savings accounts', `${money(pv.ira)}${iraExists(state) ? ` <small>(${[acc.roth || inv.ira.roth.value ? `${esc(acc.roth?.short ?? 'Tax-free')} ${money(inv.ira.roth.value)}` : '', acc.traditional ? `${esc(acc.traditional.short)} ${money(inv.ira.traditional.value)}` : ''].filter(Boolean).join(' · ')})</small>` : ''}`], ['Total invested', `<b>${money(pv.total)}</b>`]])}
+    ${kv([['Brokerage', money(pv.brokerage)], [iraExists(state) ? (acc.shared ? 'IRAs' : 'Tax-free & pension savings') : 'Savings accounts', `${money(pv.ira)}${iraExists(state) ? ` <small>(${[(acc.roth && rothExists(state)) || inv.ira.roth.value ? `${esc(acc.roth?.short ?? 'Tax-free')} ${money(inv.ira.roth.value)}` : '', acc.traditional ? `${esc(acc.traditional.short)} ${money(inv.ira.traditional.value)}` : ''].filter(Boolean).join(' · ')})</small>` : ''}`], ['Total invested', `<b>${money(pv.total)}</b>`]])}
     <h4 class="sub">Holdings</h4>${rows ? `<ul class="history">${rows}</ul>` : empty('No investments yet.')}
     ${spec ? `<h4 class="sub">Speculative bets</h4><ul class="history">${spec}</ul>` : ''}
     ${buyForm}
-    ${disclosure('invest.settings', `⚙️ Risk profile, auto-invest, ${!iraExists(state) ? 'and auto-invest' : acc.shared ? 'IRAs & 401(k)' : 'savings accounts & pension'}`, `
+    ${disclosure('invest.settings', `⚙️ Risk profile, auto-invest, ${!iraExists(state) ? 'and auto-invest' : acc.shared ? (dcExists(state) ? 'IRAs & 401(k)' : 'IRAs') : 'savings accounts & pension'}`, `
     <h4 class="sub">Risk profile</h4><div class="toggle-row">${profiles}
       ${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}
       ${button('⚖️ Rebalance', 'investing.rebalance', { variant: 'small', disabled: !rows, hint: 'Sells everything (taxable) and rebuys the mix' })}</div>

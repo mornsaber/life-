@@ -4,6 +4,7 @@
  */
 import { esc, money, button, card, chip, empty } from '../Components.js';
 import { FIELDS, inventionsOf, patentFee, PATENT_YEARS } from '../../modules/business/Inventions.js';
+import { inventionInEra } from '../../modules/world/Eras.js';
 
 const STATUS = { held: ['🗄️ Held', ''], licensed: ['📃 Licensed', 'good'], sold: ['💰 Sold', ''], company: ['🚀 In your company', 'good'], expired: ['⌛ Expired', ''], open: ['🌍 Open design', 'good'] };
 
@@ -16,7 +17,7 @@ export function inventionsCard(state) {
   const patents = inv.patents.map((p) => `<li class="region-row"><span>📜 <b>${esc(p.name)}</b> ${chip(...STATUS[p.status])}</span>
     <small>quality ${p.quality}${p.status === 'licensed' ? ` · ${money(p.royalty)}/yr from ${esc(p.licensee)}` : ''}${['held', 'licensed', 'company'].includes(p.status) ? ` · expires at ${p.expires}` : ''}</small>
     ${p.status === 'held' ? button('Shop it', 'inventions.shop', { arg: p.id, variant: 'tiny' }) : ''}</li>`).join('');
-  const fields = Object.entries(FIELDS).map(([id, f]) => button(f.label, 'inventions.start', { arg: id, variant: 'small', hint: `${money(Math.round(f.cost))}/yr · ~${f.work} yr${f.work > 1 ? 's' : ''}${f.smarts ? ` · smarts ${f.smarts}+` : ''}`, disabled: state.stats.smarts < f.smarts })).join('');
+  const fields = Object.entries(FIELDS).filter(([id]) => inventionInEra(state, id)).map(([id, f]) => button(f.label, 'inventions.start', { arg: id, variant: 'small', hint: `${money(Math.round(f.cost))}/yr · ~${f.work} yr${f.work > 1 ? 's' : ''}${f.smarts ? ` · smarts ${f.smarts}+` : ''}`, disabled: state.stats.smarts < f.smarts })).join('');
   return card('Workshop', `
     ${projects ? `<ul class="history">${projects}</ul>` : ''}
     ${patents ? `<h4 class="sub">Patents</h4><ul class="history">${patents}</ul>` : ''}

@@ -26,6 +26,7 @@ import { REGIONS } from '../life/Regions.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { EDUCATION } from '../world/Education.js';
 import { PROGRAMS } from './Catalog.js';
+import { uniInEra } from '../world/Eras.js';
 
 const U = (id, name, cc, region, type, accept, prestige, pro = [], opts = {}) => ({ id, name, country: cc, region, type, accept, prestige, pro, ...opts });
 const all = ['med', 'law', 'dent', 'pharm', 'phd'];
@@ -585,7 +586,7 @@ export function universitiesFor(state, programId, { abroad = true } = {}) {
   const cc = state.character.countryId ?? 'US';
   const here = state.character.regionId;
   const p = PROGRAMS[programId];
-  const home = universitiesIn(cc).filter((u) => offers(u, programId) && (!u.local || u.region === here));
+  const home = universitiesIn(cc).filter((u) => offers(u, programId) && (!u.local || u.region === here) && uniInEra(state, u));
   // Local colleges elsewhere in the country, if your own city has none of that type.
   for (const type of ['community', 'technical']) {
     if (!p.schools.includes(type) || home.some((u) => u.type === type)) continue;

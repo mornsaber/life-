@@ -163,14 +163,14 @@ export function moneyView(state) {
       ['Status', r.retired ? '🏖️ Retired' : 'Working age'],
       dcExists(state) || r.dc ? [ACCOUNTS[state.character.countryId]?.dc ?? '401(k)/403(b)/457/TSP', money(r.dc)] : null,
       ['Covered earning years', `${r.ssEarnings.length} of 35`],
-      !statePensionExists(state) && !r.socialSecurity ? ['State pension', 'None yet: in old age, your savings, your children or the parish'] : ['Social Security', r.socialSecurity ? `${money(r.socialSecurity.annual)}/yr (claimed at ${r.socialSecurity.claimAge})` : `≈${money(pia * 12)}/yr at ${SS_FULL_AGE}${age >= 62 ? ` · ${money(socialSecurityEstimate(state))} if claimed now` : ''}`],
+      !statePensionExists(state) && !r.socialSecurity ? ['State pension', 'None yet: in old age, your savings, your children or the parish'] : [(state.character.countryId ?? 'US') === 'US' ? 'Social Security' : 'State pension', r.socialSecurity ? `${money(r.socialSecurity.annual)}/yr (claimed at ${r.socialSecurity.claimAge})` : `≈${money(pia * 12)}/yr at ${SS_FULL_AGE}${age >= 62 ? ` · ${money(socialSecurityEstimate(state))} if claimed now` : ''}`],
     ])}
     <h4 class="sub">Pension plans</h4>${plans ? `<ul class="history">${plans}</ul>` : empty('No pension service credit. Public employers and some union/corporate jobs offer pensions.')}
     <h4 class="sub">Income in retirement</h4>${pensions ? `<ul class="history">${pensions}</ul>` : empty('No pensions or benefits yet.')}
     <div class="action-grid">
       ${button('🏖️ Retire', 'retirement.retire', { disabled: r.retired || (age < 50 && !earlyRetirementEligible(state)), hint: age < 50 && earlyRetirementEligible(state) ? 'Early retirement: your pension pays out now' : 'Ends your job; eligible pensions start' })}
       ${r.retired ? button('💼 Un-retire', 'retirement.unretire') : ''}
-      ${statePensionExists(state) ? button('🇺🇸 Claim Social Security', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' }) : ''}
+      ${statePensionExists(state) ? button((state.character.countryId ?? 'US') === 'US' ? '🇺🇸 Claim Social Security' : '🏦 Claim your state pension', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' }) : ''}
       ${dcExists(state) || r.dc ? button('🏧 Withdraw $10K', 'retirement.withdraw', { disabled: r.dc <= 0, hint: age < 60 ? '10% early penalty' : 'Penalty-free' }) : ''}
     </div>
     <p class="fine">Plans: ${Object.values(PENSION_PLANS).map((p) => p.short).join(' · ')}. Medals raise military retired pay.</p>`, { icon: '🏦', accent: 'yellow' });

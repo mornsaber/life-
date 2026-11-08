@@ -64,7 +64,7 @@ import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
-import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist } from '../modules/world/Eras.js';
+import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
 import { avatarHtml } from './Avatar.js';
 
@@ -337,10 +337,10 @@ export class Renderer {
         <aside class="sidebar" aria-label="Character">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
         <section class="main">
           ${this.tabNav()}
-          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips })}</div>
+          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${periodText(VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips }))}</div>
         </section>
       </main>
-      ${prompt ? promptModal(prompt, state.prompts.length) : panel}`;
+      ${prompt ? periodText(promptModal(prompt, state.prompts.length)) : panel}`;
   }
 
   /** Section bar plus (when the section has several screens) a compact sub-tab row. */

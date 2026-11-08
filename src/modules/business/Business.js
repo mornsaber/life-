@@ -37,7 +37,7 @@ import { structureEffects } from './Structure.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
-import { businessInEra, businessFrom, smallBizLoansExist } from '../world/Eras.js';
+import { businessInEra, businessFrom, smallBizLoansExist, credentialRequired } from '../world/Eras.js';
 
 export const SS_WAGE_CAP = 176100;
 /** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
@@ -59,7 +59,9 @@ export const currentBusiness = (state) => state.business?.current ?? null;
 export const typeOf = (biz) => BUSINESS_TYPES[biz.typeId];
 
 /** Can you legally run this type of business yourself? */
-export const holdsLicense = (state, type) => !type.credentials.length || type.credentials.some((c) => hasCredential(state, c));
+/** The licences a business needs in the year being played (none that didn't exist yet). */
+export const neededLicenses = (state, type) => type.credentials.filter((c) => credentialRequired(state, c));
+export const holdsLicense = (state, type) => !neededLicenses(state, type).length || neededLicenses(state, type).some((c) => hasCredential(state, c));
 
 /** Years of relevant experience you bring (jobs in related professions). */
 export const experienceYears = (state, type) => yearsInProfession(state, type.professions);
@@ -75,7 +77,7 @@ export function startEligibility(state, typeId, funding = 'cash', size = 'standa
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (currentBusiness(state)) return { ok: false, reason: 'You already own a business' };
-  if (!holdsLicense(state, type)) return { ok: false, reason: `Needs ${type.credentials.map(credentialName).join(' or ')}` };
+  if (!holdsLicense(state, type)) return { ok: false, reason: `Needs ${neededLicenses(state, type).map(credentialName).join(' or ')}` };
   if (type.minExperience && experienceYears(state, type) < type.minExperience) return { ok: false, reason: `Needs ${type.minExperience} yrs of industry experience` };
   // A business the law must allow (sworn private police where state law licenses them).
   if (type.law && !type.law[1].includes(lawValue(state, type.law[0]))) return { ok: false, reason: 'Not licensed in this state: private police aren\'t allowed here' };

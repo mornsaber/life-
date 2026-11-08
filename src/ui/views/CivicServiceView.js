@@ -43,7 +43,7 @@ function nationalService(state) {
   for (const a of s.alumni.filter((x) => x.completed)) perks.push(chip(`${PROGRAMS[a.id].icon} ${a.id === 'peaceCorps' ? 'Returned Peace Corps Volunteer' : 'AmeriCorps alum'}`));
   const intro = local
     ? `A year or two of full-time service for a living stipend${offered.includes('peaceCorps') ? ' — overseas volunteering pays a resettlement allowance when you come home' : ''}, plus an edge in public-sector hiring.`
-    : 'A year or two of full-time service for a living stipend. Finishing earns an education award (AmeriCorps) or a readjustment allowance (Peace Corps), plus an edge in federal hiring.';
+    : `A year or two of full-time service for a living stipend. Finishing earns ${[offered.includes('americorps') ? 'an education award (AmeriCorps)' : null, offered.includes('peaceCorps') ? 'a readjustment allowance (Peace Corps)' : null].filter(Boolean).join(' or ') || 'a reference'}, plus an edge in federal hiring.`;
   return card('National Service', `<p class="muted">${intro}</p>
     ${perks.length ? `<div class="chip-row">${perks.join('')}</div>` : ''}
     ${disclosure('civic.programs', `${offered.map((id) => PROGRAMS[id].name).join(' & ')} programs`, `<ul class="job-board">${rows.map((r) => r.html).join('')}</ul>`, { count: `${open} open` })}`, { icon: '🤝' });
@@ -83,7 +83,8 @@ function disasterTeams(state) {
     return optionRow({ icon: t.icon, title: esc(t.name), sub: esc(t.desc), meta: check.ok ? (t.dailyPay ? `≈${money(t.dailyPay)}/day deployed` : 'Volunteer — expenses covered') : esc(check.reason), tone: check.ok ? '' : 'warn', locked: !check.ok, action: button('Join', 'service.joinTeam', { arg: id, disabled: !check.ok, variant: 'small' }) });
   }).join('');
   if (!rows) return '';
-  return card('Disaster Response Teams', `<p class="muted">Keep your job and deploy when disasters strike: paid federal teams (FEMA, DMAT, Urban Search &amp; Rescue) and volunteer ones (Team Rubicon, ARES ham radio).</p><ul class="job-board">${rows}</ul>`, { icon: '🏕️' });
+  const teamNames = Object.keys(TEAMS).filter((id) => orgInEra(state, `team:${id}`)).map((id) => TEAMS[id].name).join(', ');
+  return card('Disaster Response Teams', `<p class="muted">Keep your job and deploy when disasters strike: ${esc(teamNames)}.</p><ul class="job-board">${rows}</ul>`, { icon: '🏕️' });
 }
 
 function veteranPosts(state) {

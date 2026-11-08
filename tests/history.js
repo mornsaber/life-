@@ -30,7 +30,7 @@ import { getProfession } from '../src/modules/career/JobTrees.js';
 import { fitsEra } from '../src/modules/world/Eras.js';
 import { eligible } from '../src/core/Pools.js';
 import { LIFE_EVENTS } from '../src/modules/life/LifeEvents.js';
-import { eraFlag, START_ERAS } from '../src/modules/world/Eras.js';
+import { eraFlag, START_ERAS, periodText } from '../src/modules/world/Eras.js';
 import { startYearOf, eraYearOptions } from '../src/ui/Components.js';
 import { COUNTRIES } from '../src/modules/world/Countries.js';
 import { holySeeOf } from '../src/modules/world/HolySee.js';
@@ -423,6 +423,21 @@ const tests = {
     assert.equal(regimeHere(af).kind, 'totalitarian', 'the communist Democratic Republic');
     const om = life({ countryId: 'OM' }, 1).state;
     assert.notEqual(regimeHere(om).kind, 'democracy', 'Oman is a sultanate');
+  },
+  'every tab keeps to its decade (1870, 1930, 1960)'() {
+    const TERMS = [[/\bSUV\b|Minivan|Electric Car/, 1984], [/\bLease\b/, 1990], [/Roth/, 1998], [/401\(k\)/, 1978], [/Crypto/, 2010], [/Medicare|Medicaid/, 1966], [/\bACA\b|Marketplace/, 2014],
+      [/TRICARE/, 1995], [/Fentanyl|Ransomware|Online Scam/, 1995], [/Tech Startup|Food Truck/, 1995], [/FEMA|AmeriCorps|Team Rubicon/, 1979], [/\bFBI\b/, 1935], [/\bIRS\b/, 1953],
+      [/S&(?:amp;)?P/, 1957], [/credit score/i, 1989], [/Film, TV/, 1950], [/\bCDL\b/, 1986], [/SBA/, 1953], [/Computer Science/, 1965]];
+    for (const year of [1870, 1930, 1960]) {
+      const { engine, state } = life({ countryId: 'US', startYear: year - 35 }, 2);
+      state.character.age = 35;
+      state.finances.cash = 300000;
+      engine.hydrate(state);
+      for (const tab of ['garage', 'money', 'health', 'legal', 'crime', 'business', 'civic', 'emergency', 'home', 'career', 'school']) {
+        const text = periodText(VIEWS[tab](state, {})).replace(/<[^>]+>/g, ' ');
+        for (const [re, from] of TERMS) if (year < from) assert.doesNotMatch(text, re, `${tab} in ${year}`);
+      }
+    }
   },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);

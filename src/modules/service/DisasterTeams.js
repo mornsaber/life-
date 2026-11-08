@@ -46,7 +46,7 @@ export const TEAMS = {
     name: 'ARES Emergency Radio', icon: '📻', dailyPay: 0, minAge: 12, trauma: 1, award: 'ARES Public Service Award',
     needs: ['hamTech'], needsText: 'Needs an amateur radio license (Technician)',
     ranks: ['Operator', 'Net Control Station', 'Emergency Coordinator', 'Section Emergency Coordinator'],
-    desc: 'Amateur Radio Emergency Service: when cell towers and the internet fail, licensed hams pass messages for shelters, hospitals and emergency managers.',
+    desc: 'Amateur Radio Emergency Service: when the phone lines go down, licensed hams pass messages for shelters, hospitals and emergency managers.',
     tasks: ['running the shelter net from a school gym', 'relaying hospital bed counts when phones went down', 'passing welfare messages for evacuees', 'staffing the county EOC radio room'],
   },
 };

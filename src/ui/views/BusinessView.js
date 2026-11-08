@@ -35,7 +35,7 @@ import { businessOrg, businessRoster, ownerPosition, competitorsOf, TIERS } from
 import { RIVAL_STRATEGIES, marketShare, underPriceWar } from '../../modules/business/Rivals.js';
 import { locationsByRegion, marketRoom } from '../../modules/org/Businesses.js';
 import { REGIONS } from '../../modules/life/Regions.js';
-import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, debtBalance, guaranteedDebt, LICENSEE_ONLY, staffFactor } from '../../modules/business/Business.js';
+import { currentBusiness, typeOf, startEligibility, fundingCheck, yearFinancials, newBusiness, holdsLicense, neededLicenses, debtBalance, guaranteedDebt, LICENSEE_ONLY, staffFactor } from '../../modules/business/Business.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { DUTIES } from '../../modules/career/ManagementEngine.js';
 import { credentialName } from '../../modules/credentials/CredentialRegistry.js';
@@ -72,7 +72,8 @@ function startCard(state) {
     const costs = sizes.map((z) => money(startupCostFor(t, z))).join(' – ');
     const blocked = !cash.ok && !sba.ok;
     const lic = requiredLicenses(id).filter((l) => l !== 'businessLicense').map((l) => BUSINESS_LICENSES[l].name);
-    const needs = `${t.credentials.length ? `You need ${t.credentials.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal license needed'}${lic.length ? ` · the business needs a ${lic.join(' + ')}` : ''} · ${money(openingLicenseFees(id))} in license fees`;
+    const personal = neededLicenses(state, t);
+    const needs = `${personal.length ? `You need ${personal.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal license needed'}${lic.length ? ` · the business needs a ${lic.join(' + ')}` : ''} · ${money(openingLicenseFees(id))} in license fees`;
     const o = OPERATIONS[id];
     const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established${o?.unit ? ` · starts with ${o.start} ${o.start === 1 ? o.unit.name : o.unit.plural}${t.startUsed ? ' (used)' : ''}; buy more and sign contracts` : o ? ' · sign contracts and hire to grow' : ''}`;
     return `<li class="program ${blocked ? 'locked' : ''}" data-collect-root>
@@ -82,7 +83,7 @@ function startCard(state) {
         <input type="hidden" data-part="type" value="${id}">
         ${select('funding', [
           ...(cash.ok || t.startup ? [{ value: 'cash', label: '💵 Pay cash' }] : []),
-          ...(!t.startup ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
+          ...(!t.startup && smallBizLoansExist(state) ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
         ])}
         ${select('entity', entityOptions(state, t.startup ? 'ccorp' : 'llc'))}
         ${select('size', sizes.map((z) => ({ value: z, label: `${SIZE_OPTIONS[z].label} · ${money(startupCostFor(t, z))}` })), { value: 'standard' })}
@@ -100,7 +101,7 @@ function startCard(state) {
     return disclosure(`biz.group.${gid}`, `${g.icon} ${g.label}`, `<ul class="programs">${ids.map(row).join('')}</ul>`, { count: `${open} of ${ids.length} open to you` });
   }).join('');
   const rows = `${mineIds.length ? disclosure('biz.group.mine', '⭐ From your career', `<ul class="programs">${mineIds.map(row).join('')}</ul>`, { open: mineIds.length <= 2, count: mineIds.length }) : ''}${groups}`;
-  return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee). Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
+  return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. ${smallBizLoansExist(state) ? `Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee).` : 'Pay cash, or bring in a partner with money.'} Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
     ${rows}
     <h4 class="sub">Legal structures</h4><ul class="history">${entitiesFor(state).map(([, e]) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
 }
@@ -738,7 +739,7 @@ function ownedView(state, biz, ui = {}) {
 }
 
 import { inventionsCard } from './InventionsView.js';
-import { businessInEra, franchisesExist } from '../../modules/world/Eras.js';
+import { businessInEra, franchisesExist, smallBizLoansExist } from '../../modules/world/Eras.js';
 
 export function businessView(state, ui = {}) {
   if (!state.business) return '';

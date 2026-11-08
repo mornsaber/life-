@@ -25,6 +25,7 @@ import { SECTORS } from '../economy/EconomyEngine.js';
 import { realReturn } from './Assets.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { STOCK_INDEX } from '../world/CountryLaw.js';
+import { yearNow } from '../world/Eras.js';
 
 export const COMPANIES = {
   novaq: { name: 'Novaq Systems', ticker: 'NVQ', sector: 'tech', vol: 0.35, div: 0, price: 180 },
@@ -79,7 +80,7 @@ export function ensureStocks(state) {
   return state.stocks;
 }
 /** What trades where you live: the global names, this country's blue chips, and anything you still hold from elsewhere. */
-export const listed = (state) => Object.entries(state.stocks?.companies ?? {}).filter(([id, c]) => !c.delisted && (!id.startsWith('local_') || localIds(state.character.countryId).includes(id) || state.stocks.positions[id] || state.stocks.shorts[id] || state.stocks.options.some((o) => o.companyId === id)));
+export const listed = (state) => Object.entries(state.stocks?.companies ?? {}).filter(([id, c]) => !c.delisted && !(COMPANIES[id]?.sector === 'tech' && yearNow(state) < 1975 && !state.stocks.positions[id]) && (!id.startsWith('local_') || localIds(state.character.countryId).includes(id) || state.stocks.positions[id] || state.stocks.shorts[id] || state.stocks.options.some((o) => o.companyId === id)));
 export const priceOf = (state, id) => state.stocks?.companies?.[id]?.price ?? 0;
 
 export function stockValue(state) {

@@ -13,7 +13,7 @@ import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
-import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT } from '../modules/world/Eras.js';
+import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText } from '../modules/world/Eras.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -418,7 +418,7 @@ export function tidyText(text, icon = '') {
   if (icon && icon !== '•' && t.startsWith(icon)) t = t.slice(icon.length).trimStart();
   // A sentence that opens with a country's old name ("the Russian Empire…") still opens with a capital.
   if (/^the [A-Z]/.test(t)) t = `T${t.slice(1)}`;
-  return t;
+  return periodText(t);
 }
 
 export function addLog(state, text, icon = '•', kind = 'info') {
