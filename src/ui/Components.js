@@ -12,6 +12,7 @@ import { ROYAL_HOMES, SHARED_CROWN, HOUSE_HOMES } from '../core/State.js';
 import { CONTINENT } from '../modules/world/Travel.js';
 import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
+import { START_YEARS } from '../modules/world/Eras.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -337,6 +338,7 @@ export function birthOptions(data) {
     nobleRank: birth === 'noble' ? data.get('nobleRank') || 'random' : 'none',
     housePlace: birth === 'house' ? data.get('housePlace') || 'random' : 'none',
     noble: birth === 'ordinary' && data.get('noble') === 'on',
+    startYear: Number(data.get('startYear')) || undefined,
   };
 }
 
@@ -367,6 +369,8 @@ export function newLifeForm(rngName) {
         <h3 class="form-step">2 · Where you're born</h3>
         <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
         <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
+        <label class="country-pick">When${sel('startYear', START_YEARS.map((y, i) => [String(y.year), `${y.label} — ${y.sub}`, i === 0]))}</label>
+        <p class="fine">🕰️ An earlier start lives through history as it comes, loosely: wars, crashes, revolutions and the end of empires, on roughly their real dates. Some jobs don't exist yet, some are closed to women, and many countries are ruled by others. Money is shown in today's dollars.</p>
         <h3 class="form-step">3 · Born into</h3>
         <div class="birth-list">
           ${birth('ordinary', '👤', 'An ordinary family', 'Most lives start here.', '<label class="check"><input type="checkbox" name="noble"> 🏰 A very small chance of being born titled</label>', true)}

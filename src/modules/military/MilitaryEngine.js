@@ -466,6 +466,8 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   let job = wantedMos ? MOS[wantedMos] : defaultMos(branch, track, wanted);
   // Some officer programs exist only in the reserve (the Strategic Sealift Officer).
   if (job?.reserveOnly) component = 'reserve';
+  // The National Guard (and other part-time forces) has no active component.
+  if (BRANCHES[branch]?.reserveOnly) component = 'reserve';
   const specialty = entryClearance(ctx, { track, specialty: job?.specialty ?? wanted, mos: job?.id, cleared });
   if (!specialty) return false;
   if (job && specialty !== job.specialty) job = defaultMos(branch, track, specialty);

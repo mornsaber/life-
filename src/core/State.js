@@ -13,6 +13,7 @@ import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
+import { validStartYear } from '../modules/world/Eras.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -132,7 +133,7 @@ export function createInitialState(rng, options = {}) {
       gender,
       ...(Number(options.skinTone) >= 1 && Number(options.skinTone) <= 5 ? { skinTone: Number(options.skinTone) } : {}),
       age: 0,
-      birthYear: START_YEAR,
+      birthYear: validStartYear(options.startYear),
       alive: true,
       causeOfDeath: null,
       regionId: rng.pick(country?.hometowns ?? HOMETOWNS),
@@ -186,7 +187,7 @@ export function createInitialState(rng, options = {}) {
     royal: royal ? { crownId: options.countryId, level: options.royalLevel } : null,
     yearly: {},
     prompts: [],
-    log: [{ age: 0, year: START_YEAR, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
+    log: [{ age: 0, year: validStartYear(options.startYear), entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
     flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}), ...(house ? { houseStart: house.place } : {}) },
   };
 }

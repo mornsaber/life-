@@ -296,6 +296,8 @@ export function buildHeirState(rng, old, childId) {
   // The family plays on at the same difficulty.
   s.difficulty = old.difficulty ? { ...old.difficulty } : s.difficulty;
   s.character.birthYear = year - childAge;
+  // The world's history goes on (world/History.js).
+  if (old.era) s.era = structuredClone(old.era);
   s.character.regionId = old.character.regionId;
   s.character.residencySince = 0;
   // Passports by descent and by birth; a child who isn't a citizen where the family lives holds residence as a dependent.

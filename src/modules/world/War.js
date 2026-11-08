@@ -21,6 +21,7 @@ import { enlistmentEligibility, enlist } from '../military/MilitaryEngine.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { regionsIn, changeRegion, stateIdOf } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
+import { yearNow } from './Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Theaters: the wars each country could plausibly fight              */
@@ -150,13 +151,14 @@ function startWar(ctx, cc, rng, theater = null) {
   if (!t) return null;
   const war = {
     id: t.id, country: cc, name: t.name, adversary: t.adversary, kind: t.internal ? 'internal' : 'interstate',
-    operation: `Operation ${rng.pick(CODENAMES)} ${rng.pick(CODEWORDS)}`,
+    operation: t.operation ?? `Operation ${rng.pick(CODENAMES)} ${rng.pick(CODEWORDS)}`,
     intensity: t.intensity, front: rng.int(-10, 15), support: rng.int(55, 80), casualties: 0, years: 0,
     phase: 'active', homeFront: t.home ?? 0, draft: false, mobilized: false, startAge: state.character.age,
+    ...(t.scripted ? { scripted: true } : {}),
   };
   state.world.wars[cc] = war;
   if (cc === here(state)) {
-    ctx.log(`📰 ${govName(cc)} went to war: ${war.name} (${war.operation}).${war.homeFront >= 0.3 ? ' The fighting reached home.' : ''}`, '⚔️', 'milestone');
+    ctx.log(`📰 ${govName(cc)} went to war: ${war.name}${war.scripted ? '' : ` (${war.operation})`}.${war.homeFront >= 0.3 ? ' The fighting reached home.' : ''}`, '⚔️', 'milestone');
     ctx.emit('world:war', { war });
   } else if (isCitizen(state, cc)) ctx.log(`📰 Back home, ${COUNTRIES[cc]?.name ?? cc} went to war: ${war.name}.`, '⚔️', 'warn');
   return war;
@@ -202,7 +204,7 @@ function warYear(ctx, cc, war, rng) {
   if (war.intensity < 4 && rng.chance(escalate)) {
     war.intensity += 1;
     if (war.homeFront > 0 && war.kind === 'interstate') war.homeFront = clamp(war.homeFront + rng.float(0.05, 0.2), 0, 1);
-    log(`📰 The war escalated: ${rng.pick(['new fronts opened', 'the adversary called up its reserves', 'missiles struck military bases', 'the air war widened', 'allies were drawn in'])}. ${INTENSITY_LABEL[war.intensity]} war now.`, '🔥', 'warn');
+    log(`📰 The war escalated: ${rng.pick(['new fronts opened', 'the adversary called up its reserves', 'missiles struck military bases', 'the air war widened', 'allies were drawn in'])}. ${INTENSITY_LABEL[war.intensity].replace(/ war$/, '')} war now.`, '🔥', 'warn');
   } else if (war.intensity > 1 && (war.support < 35 || rng.chance(0.08))) {
     war.intensity -= 1;
     log('📰 The fighting cooled: both sides dug in and the front went quiet.', '🌫️');
@@ -223,6 +225,13 @@ function warYear(ctx, cc, war, rng) {
   war.casualties += dead;
   const rally = war.years <= 1 ? 6 : 0;
   war.support = clamp(Math.round(war.support + rally - war.intensity * 3 - war.years * 1.5 - (war.front < -25 ? 6 : 0) + (war.front > 25 ? 4 : 0) + rng.int(-4, 4) + (war.homeFront >= 0.4 ? 8 : 0)), 0, 100);
+
+  // Wars of history (world/History.js) end when history says so.
+  if (war.scripted) {
+    war.front = clamp(war.front, -70, 70);
+    if (mine && rng.chance(0.5)) ctx.log(`📰 ${rng.pick(war.front > 25 ? ['the army broke through and retook a string of towns', 'an offensive drove the enemy back'] : war.front < -25 ? ['the front gave way and units fell back', 'casualty lists filled the morning papers'] : ['the front hasn\'t moved in months', 'another offensive bogged down in the mud', 'casualty lists filled the morning papers'])}.`, '⚔️');
+    return;
+  }
 
   // Decisive outcomes.
   if (war.front >= 85) return endWar(ctx, cc, war.kind === 'internal' ? 'ended with the insurgency broken' : 'ended in a clear victory');
@@ -413,9 +422,10 @@ export const WarModule = {
     for (const cc of Object.keys(THEATERS)) {
       const war = w.wars[cc];
       if (war) warYear(ctx, cc, war, rng);
-      else if (state.character.age >= 5 && rng.chance(START_CHANCE[cc] ?? 0.01)) startWar(ctx, cc, rng);
+      // Before 1991 the wars are history's (world/History.js); today's theatres come after.
+      else if (state.character.age >= 5 && yearNow(state) >= 1991 && rng.chance(START_CHANCE[cc] ?? 0.01)) startWar(ctx, cc, rng);
     }
-    globalYear(ctx, rng);
+    if (yearNow(state) >= 1991) globalYear(ctx, rng);
     const war = warHere(state);
     if (war && war.phase !== 'ceasefire') {
       warEconomy(ctx, war);
@@ -508,6 +518,17 @@ export const WarModule = {
     },
   },
 };
+
+/** Start a war of a given shape (world/History.js): { id, name, adversary, intensity, home, scripted, operation }. */
+export function declareWarWith(ctx, countryId, theater) {
+  WarModule.init(ctx.state, ctx.rng);
+  if (ctx.state.world.wars[countryId]) return null;
+  return startWar(ctx, countryId, worldRng(ctx.state), theater);
+}
+/** End a country's war now with an outcome (History ends its wars together). */
+export function endWarNow(ctx, countryId, outcome) {
+  if (ctx.state.world?.wars?.[countryId]) endWar(ctx, countryId, outcome);
+}
 
 /** Start a war in a country now (tests and scripted scenarios). */
 export function declareWar(ctx, countryId, theaterId = null) {

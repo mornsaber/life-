@@ -17,6 +17,7 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ASSETS, PROFILES, profileReturn, realReturn, IRA_LIMIT, ROTH_INCOME_LIMIT } from './Assets.js';
 import { ACCOUNTS } from '../world/CountryLaw.js';
+import { hasTech } from '../world/Eras.js';
 
 /** The tax-advantaged accounts where you live: names and yearly limits (the US IRAs share one limit). */
 export function accountsHere(state) {
@@ -222,6 +223,7 @@ export const BrokerageEngine = {
       const [asset, raw] = String(arg).split(':');
       const amount = Math.round(Number(raw));
       if (!ASSETS[asset] || !(amount > 0)) return;
+      if (asset === 'crypto' && !hasTech(ctx.state, 'crypto')) return ctx.toast('Crypto doesn\'t exist yet.', 'warn');
       if (ctx.state.character.age < 18) return ctx.toast('You need to be 18 to open a brokerage account.', 'warn');
       if (ctx.state.finances.cash < amount) return ctx.toast(`You need $${amount.toLocaleString()} in cash.`, 'warn');
       buy(ctx, asset, amount);
