@@ -22,7 +22,7 @@ import { ministryOf } from './Ministers.js';
 
 const home = (state) => state.character.countryId ?? 'US';
 const dip = (state) => (state.diplomacy ??= { visits: [], hosted: [] });
-const rel = (state, cc) => ((state.world.relations ??= {})[cc] ?? 0);
+const rel = (state, cc) => state.world?.relations?.[cc] ?? 0;
 const bumpRel = (state, cc, n) => { (state.world.relations ??= {})[cc] = Math.round(clamp(rel(state, cc) + n, -100, 100)); };
 
 /** Who you are on the world stage: 'sovereign' | 'headOfState' | 'headOfGovernment' | 'foreignMinister' | null. */
