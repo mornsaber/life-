@@ -115,7 +115,8 @@ function finish(ctx) {
     ctx.log(`${def.inquiryText ?? 'There will be a review of how it was handled.'}`, '🔍', 'warn');
     if (job) job.warnings = (job.warnings ?? 0) + (sc.flags.includes('misconduct') ? 2 : 1);
   }
-  if (def.news && (tier === 'outstanding' || tier === 'bad')) ctx.emit('news:story', { tier: 'local', headline: fill(def.news[tier] ?? def.news, sc.data, state), weight: 4, icon: def.icon, you: true });
+  const headline = typeof def.news === 'string' ? def.news : def.news?.[tier];
+  if (headline && (tier === 'outstanding' || tier === 'bad')) ctx.emit('news:story', { tier: 'local', headline: fill(headline, sc.data, state), weight: 4, icon: def.icon, you: true });
   if (o.rep) rep(ctx, 'work', o.rep, def.title);
   o.effects?.(ctx, sc, tier);
   ctx.log(text, def.icon, { outstanding: 'milestone', good: 'good', mixed: 'info', bad: 'bad' }[tier]);

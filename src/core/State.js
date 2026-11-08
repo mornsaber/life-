@@ -13,7 +13,7 @@ import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
-import { validStartYear } from '../modules/world/Eras.js';
+import { validStartYear, periodThrone } from '../modules/world/Eras.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -74,10 +74,13 @@ export const ROYAL_LEVEL_IDS = ['heir', 'child', 'grandchild', 'distant'];
  * Royal difficulty always does (in Britain if you chose a republic).
  */
 export function royalBirth(rng, options) {
+  const year = validStartYear(options.startYear);
+  // Born into the Hohenzollerns in 1910 is born royal: that throne still stands.
+  if (['head', 'heir', 'cadet', 'random'].includes(options.housePlace) && periodThrone(options.countryId, year)) return { countryId: options.countryId, level: options.housePlace === 'cadet' ? 'grandchild' : 'heir' };
   const level = ROYAL_LEVEL_IDS.includes(options.royalLevel) ? options.royalLevel : null;
   if (options.difficulty !== 'royal' && !level) return null;
   const cc = options.countryId;
-  const home = ROYAL_HOMES.includes(cc) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
+  const home = ROYAL_HOMES.includes(cc) || periodThrone(cc, year) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
   return home ? { countryId: home, level: level ?? 'child' } : null;
 }
 

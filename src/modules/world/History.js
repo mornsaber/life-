@@ -18,7 +18,13 @@ import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
 import { setEraLayer } from './Regimes.js';
-import { PRESENT, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL } from './Eras.js';
+import { leaveJob } from '../career/CareerEngine.js';
+import { setSegregationHook } from '../education/EducationEngine.js';
+import { abolish } from './Houses.js';
+import { CROWNS } from './Crown.js';
+import { PRESENT, PERIOD_THRONES, yearNow, eraLayer, COLONIES, colonyStage, colonyHere, stageEnd, rulerAdj, rulerName, RULER_CAPITAL, addEraWorkRule } from './Eras.js';
+import { stateIdOf, REGIONS } from '../life/Regions.js';
+import { skinToneOf } from '../people/SkinTone.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -64,6 +70,46 @@ function expropriate(ctx, who) {
   ctx.log(`${who} seized private fortunes. You lost $${lost.toLocaleString()} — nearly everything.`, '🚩', 'bad');
 }
 const hereIs = (ctx, ...cc) => cc.includes(hereOf(ctx.state));
+/** A throne of the period falls (the Kaiser, the Tsar): the house becomes a former ruling house. */
+function fallThrone(ctx, cc, headline) {
+  const r = ctx.state.world?.restored?.[cc];
+  if (!r?.period) return;
+  news(ctx, headline, '👑', 'world', 8);
+  abolish(ctx, cc);
+}
+
+/* ------------------------------------------------------------------ */
+/* Jim Crow: segregation in the American South until the Civil Rights Act */
+/* ------------------------------------------------------------------ */
+
+export const JIM_CROW = ['AL', 'AR', 'FL', 'GA', 'LA', 'MS', 'NC', 'SC', 'TN', 'TX', 'VA', 'OK', 'KY'];
+const SEGREGATED_WORK = ['police', 'sheriff', 'statePolice', 'fire', 'stateFire', 'courts', 'prosecution', 'legislativeStaff', 'aviation', 'flightAttendant', 'finance', 'corporate', 'airTrafficControl'];
+const inUS = (state) => (state.character.countryId ?? 'US') === 'US';
+/** Segregation applies to you: a Black American in the South before the Civil Rights Act. */
+export const jimCrowHere = (state) => Boolean(state.era) && yearNow(state) < PRESENT && inUS(state) && !hap(state, 'civilRights')
+  && JIM_CROW.includes(stateIdOf(state)) && skinToneOf(state) >= 4;
+/** A Black American anywhere before the Civil Rights Act: the movement is yours to join. */
+const beforeCivilRights = (state) => Boolean(state.era) && yearNow(state) < PRESENT && inUS(state) && !hap(state, 'civilRights') && skinToneOf(state) >= 4 && yearNow(state) >= 1950;
+setSegregationHook((state, uni) => segregatedFrom(state, uni));
+addEraWorkRule((state, profession) => (jimCrowHere(state) && SEGREGATED_WORK.includes(profession?.id) ? 'Closed to Black applicants under Jim Crow' : null));
+/** A university in a segregated state turns you away. */
+export const segregatedFrom = (state, uni) => (jimCrowHere(state) && uni?.country === 'US' && uni.type !== 'online' && JIM_CROW.includes(stateOfRegion(uni.region)) ? 'Segregated: the state\'s universities turn away Black students (study out of state)' : null);
+const stateOfRegion = (regionId) => REGIONS[regionId]?.state ?? null;
+
+function civilRightsPrompt(ctx) {
+  const { state } = ctx;
+  if (!beforeCivilRights(state) || state.character.age < 16 || state.legal?.incarceration) return;
+  const cr = (state.era.civilRights ??= { pressure: 0 });
+  if (cr.asked != null && yearNow(state) - cr.asked < 3) return;
+  if (!sideRng(state, 0xc1).chance(0.4)) return;
+  cr.asked = yearNow(state);
+  ctx.prompt({ type: 'history.civilRights', icon: '✊🏿', title: 'The Movement', text: 'The civil rights movement is organising: bus boycotts, lunch-counter sit-ins, voter registration drives, marches. Marchers are being beaten and jailed, and some are killed.', options: [
+    { id: 'march', label: '✊ March', hint: 'The front line; the police will be waiting' },
+    { id: 'register', label: '🗳️ Register voters door to door', hint: 'Quiet, dangerous work' },
+    { id: 'support', label: '🤝 Support it: money, meals, a ride to the march', hint: 'From the second line' },
+    { id: 'out', label: '🏠 Keep your family safe', hint: 'No one blames you' },
+  ], data: {} });
+}
 
 /* ------------------------------------------------------------------ */
 /* The timeline                                                        */
@@ -96,6 +142,7 @@ export const EVENTS = {
       rec.outcome = rng.chance(0.85) ? 'allies' : 'central';
       const won = (cc) => (WW1_CENTRAL.includes(cc) ? rec.outcome === 'central' : rec.outcome === 'allies');
       endAll(ctx, 'ww1', (cc) => (won(cc) ? 'ended in victory and an armistice' : 'ended in defeat and a harsh peace'));
+      if (rec.outcome === 'allies') { fallThrone(ctx, 'DE', 'The Kaiser abdicates; Germany is a republic'); fallThrone(ctx, 'AT', 'The Habsburg Emperor gives up the throne'); }
       news(ctx, rec.outcome === 'allies' ? 'Armistice: the guns fall silent on the Western Front' : 'The Central Powers dictate the peace', '🕊️', 'world', 9);
     },
   },
@@ -111,6 +158,7 @@ export const EVENTS = {
     at: 1917, window: [1915, 1920], needs: (s) => hap(s, 'ww1') || yearNow(s) >= 1918,
     start(ctx) {
       news(ctx, 'Revolution in Russia: the Tsar is overthrown; the Bolsheviks take power', '🚩', 'world', 9);
+      fallThrone(ctx, 'RU', 'The Tsar abdicates');
       if (hereIs(ctx, 'RU', 'UA')) { ctx.log('The Tsar is gone. The Bolsheviks have taken power, and civil war has followed.', '🚩', 'milestone'); expropriate(ctx, 'The Bolsheviks'); }
     },
   },
@@ -150,7 +198,8 @@ export const EVENTS = {
     },
   },
   prc: { at: 1949, window: [1945, 1951], needs: (s) => yearNow(s) >= 1945, start(ctx) { news(ctx, 'Mao proclaims the People\'s Republic of China', '🚩', 'world', 8); if (hereIs(ctx, 'CN')) { ctx.log('The Communists have won the civil war. Landlords and businesses are being taken over.', '🚩', 'milestone'); expropriate(ctx, 'The new government'); } } },
-  coldWar: { at: 1947, window: [1945, 1949], needs: (s) => over(s, 'ww2') && !s.era.events.ww2.axisWon && hap(s, 'russianRevolution'), start(ctx) { news(ctx, 'An Iron Curtain has descended across Europe', '🧱', 'world', 7); } },
+  coldWar: { at: 1947, window: [1945, 1949], needs: (s) => over(s, 'ww2') && !s.era.events.ww2.axisWon && hap(s, 'russianRevolution'), start(ctx) { news(ctx, 'An Iron Curtain has descended across Europe', '🧱', 'world', 7); fallThrone(ctx, 'RO', 'Romania\'s king forced to abdicate by the communists'); } },
+  italyRepublic: { at: 1946, window: [1945, 1948], odds: 0.6, needs: (s) => over(s, 'ww2') && Boolean(s.world?.restored?.IT?.period), start(ctx) { fallThrone(ctx, 'IT', 'Italy votes to become a republic'); } },
   apartheid: { at: 1948, window: [1946, 1950], odds: 0.9, start(ctx) { if (hereIs(ctx, 'ZA')) ctx.log('The National Party has won and brought in apartheid: separate areas, separate schools, separate lives, and votes for white South Africans only.', '🚫', 'bad'); news(ctx, 'South Africa\'s new government brings in apartheid', '🚫'); } },
   koreanWar: {
     at: 1950, window: [1949, 1953], odds: 0.8, lasts: [2, 4], needs: (s) => hap(s, 'coldWar'),
@@ -190,6 +239,17 @@ export const EVENTS = {
   dotcom: { at: 2000, window: [1999, 2002], start(ctx) { news(ctx, 'The dot-com bubble bursts', '💻'); recession(ctx, 'tech', 1, '💻 The dot-com bubble has burst. Start-ups are folding by the hundred.'); } },
   afghanistan: { at: 2001, window: [2000, 2003], odds: 0.9, start(ctx) { for (const cc of only(['US', 'GB', 'CA', 'AU'])) declareWarWith(ctx, cc, { id: 'afghanistan', name: 'the war in Afghanistan', adversary: 'the Taliban and al-Qaeda', intensity: cc === 'US' ? 2 : 1, home: 0 }); news(ctx, 'Attacks on America; war in Afghanistan', '🏙️', 'world', 10); } },
   gfc: { at: 2008, window: [2006, 2010], start(ctx) { news(ctx, 'Banks collapse: the worst crash since the Depression', '🏦', 'world', 9); recession(ctx, 'financial', 1, '🏦 The banks have collapsed. The worst crash since the Depression.'); } },
+  brownVBoard: { at: 1954, window: [1952, 1956], start(ctx) { news(ctx, 'Supreme Court: segregated schools are unconstitutional', '⚖️', 'national', 8); if (jimCrowHere(ctx.state)) ctx.log('The Supreme Court has ruled school segregation unconstitutional. The state government says it will never comply.', '⚖️', 'milestone'); } },
+  civilRights: {
+    at: 1964, window: [1961, 1967], boost: (s) => (s.era.civilRights?.pressure ?? 0) * 0.04,
+    start(ctx) {
+      const s = ctx.state;
+      const was = inUS(s) && JIM_CROW.includes(stateIdOf(s)) && skinToneOf(s) >= 4;
+      news(ctx, 'Civil Rights Act signed: segregation is outlawed', '⚖️', 'national', 10);
+      if (was) { ctx.log('The Civil Rights Act is law, and the Voting Rights Act is coming. The "Whites Only" signs are coming down. Nobody pretends that changes everything.', '⚖️', 'milestone'); ctx.stat('happiness', 6); }
+      if (s.era.civilRights?.marched) ctx.log('You were there, on the bridges and in the jails. This is partly yours.', '✊🏿', 'good');
+    },
+  },
   covid: {
     at: 2020, window: [2018, 2022],
     start(ctx) {
@@ -246,6 +306,14 @@ function independence(ctx, cc, st, rec, rng) {
     addHonor(state, { id: `independence.${cc}`, source: 'civil', country: cc, name: `${cname(cc)} Independence Medal`, icon: '🏅', prestige: 3, precedence: 60, citation: `For service in the struggle for the independence of ${cname(cc)}.` });
     ctx.log('You were there from the start. The new government gave the veterans of the movement a medal, and some of them jobs.', '🏅', 'honor');
   }
+  // The colonial service is wound up: compensation for loss of career (as the British paid it).
+  const job = state.career?.job;
+  if (job?.professionId === 'colonialService') {
+    const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
+    leaveJob(ctx, 'The colonial service was wound up at independence');
+    ctx.earn(comp, 'Compensation for loss of career');
+    ctx.log(`The colonial service was wound up. You were paid $${comp.toLocaleString()} for loss of career.`, '🏛️', 'warn');
+  }
   if (rec.loyal) { ctx.stat('stress', 6); ctx.log(`People remember you served the ${rulerAdj(st.ruler)} administration. Not everyone has forgiven it.`, '👀', 'warn'); }
   if (st.partition && rng.chance(0.35)) {
     ctx.emit('health:trauma', { amount: 14, source: 'partition' });
@@ -301,7 +369,15 @@ export const HistoryModule = {
     state.era ??= { start: state.character.birthYear ?? PRESENT, events: {}, colonies: {} };
     state.era.events ??= {};
     state.era.colonies ??= {};
-    if (!state.era.seeded) seedPast(state);
+    if (!state.era.seeded) {
+      seedPast(state);
+      // Thrones that still stood when this life began reign until history takes them.
+      for (const [cc, fell] of Object.entries(PERIOD_THRONES)) {
+        if (state.era.start >= fell || !CROWNS[cc]) continue;
+        state.world ??= {};
+        (state.world.restored ??= {})[cc] ??= { year: state.era.start, house: CROWNS[cc].houses[0], period: true };
+      }
+    }
     sync(state);
   },
 
@@ -332,7 +408,7 @@ export const HistoryModule = {
         era.rolled[id] = true;
         if (!rng.chance(ev.odds)) { (era.skipped ??= []).push(id); continue; }
       }
-      const fire = y >= to || rng.chance(1 / Math.max(1, to - y + 1));
+      const fire = y >= to || rng.chance(Math.min(1, 1 / Math.max(1, to - y + 1) + (ev.boost?.(state) ?? 0)));
       if (!fire) continue;
       const r = (era.events[id] = { year: y, ...(ev.lasts ? { lasts: rng.int(...ev.lasts) } : {}) });
       ev.start?.(ctx, r, rng);
@@ -340,9 +416,26 @@ export const HistoryModule = {
     for (const cc of Object.keys(COLONIES)) colonyYear(ctx, cc);
     sync(state);
     movementPrompt(ctx);
+    civilRightsPrompt(ctx);
+    if (state.character.age === 6 && jimCrowHere(state)) ctx.log('You started at a segregated school: hand-me-down books from the white school and a building the county never repairs.', '🏫', 'info');
   },
 
   resolvers: {
+    civilRights(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const cr = (state.era.civilRights ??= { pressure: 0 });
+      if (optionId === 'march' || optionId === 'register') {
+        cr.marched = true;
+        cr.pressure += optionId === 'march' ? 2 : 1;
+        if (rng.chance(optionId === 'march' ? 0.35 : 0.2)) {
+          ctx.stat('stress', 10);
+          if (rng.chance(0.4)) ctx.emit('health:injury', { conditionId: 'backInjury', severity: rng.int(15, 35) });
+          ctx.log(optionId === 'march' ? 'The police met the march with dogs, clubs and fire hoses. You spent two nights in jail.' : 'Night riders shot at the house where you were staying. You kept knocking on doors.', '🚨', 'bad');
+        } else ctx.log(optionId === 'march' ? 'You marched, arms linked, singing. The world was watching on television.' : 'You walked the back roads registering voters. Forty new names this summer.', '✊🏿', 'good');
+        ctx.stat('happiness', 3);
+      } else if (optionId === 'support') { cr.pressure += 1; ctx.log('You fed marchers, drove carpools during the boycott and put money in the plate.', '🤝', 'good'); }
+      else ctx.log('You kept your head down and your family safe.', '🏠');
+    },
     movement(ctx, data, optionId) {
       const { state, rng } = ctx;
       const rec = (state.era.colonies[data.cc] ??= { done: [], pressure: 0 });

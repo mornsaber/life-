@@ -177,7 +177,7 @@ export function armsOf(state) {
 
   // Orders: the highest becomes the circlet; the rest hang below as badges.
   const grand = orders.find((h) => /Garter/.test(h.name)) ?? orders.find((h) => GRAND.test(h.name));
-  const circlet = grand ? { name: grand.baseName ?? grand.name, colour: firstColour(grand.ribbon, '#1f3f8f'), motto: /Garter/.test(grand.name) ? 'HONI SOIT QUI MAL Y PENSE' : (grand.order ?? grand.name).replace(/\s*\([^)]*\)/g, '').toUpperCase().slice(0, 34) } : null;
+  const circlet = grand ? { name: grand.baseName ?? grand.name, colour: firstColour(grand.ribbon, '#1f3f8f'), motto: /Garter/.test(grand.name) ? 'HONI SOIT QUI MAL Y PENSE' : String(typeof grand.order === 'string' ? grand.order : grand.name).replace(/\s*\([^)]*\)/g, '').toUpperCase().slice(0, 34) } : null;
   if (circlet) legend.push(`🎗️ The circlet of the ${circlet.name.replace(/\s*\([^)]*\)/g, '')}.`);
   const badges = [];
   for (const h of honors) {

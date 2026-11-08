@@ -3,6 +3,7 @@
  * seen recently in the same pool so long lives stop repeating themselves;
  * the memory is a short id list per pool under state.flags.recent.
  */
+import { fitsEra } from '../modules/world/Eras.js';
 export function pickFresh(rng, state, poolKey, pool, { memory = Math.ceil(pool.length * 0.6), idOf = (e) => e.id ?? e.text ?? e.title } = {}) {
   if (!pool.length) return null;
   const recent = ((state.flags.recent ??= {})[poolKey] ??= []);
@@ -18,5 +19,5 @@ export function pickFresh(rng, state, poolKey, pool, { memory = Math.ceil(pool.l
 /** Eligible events by age window (minAge/maxAge) and optional `when(state)` predicate. */
 export function eligible(pool, state) {
   const age = state.character.age;
-  return pool.filter((e) => age >= (e.minAge ?? 0) && age <= (e.maxAge ?? 200) && (!e.when || e.when(state)));
+  return pool.filter((e) => age >= (e.minAge ?? 0) && age <= (e.maxAge ?? 200) && (!e.when || e.when(state)) && fitsEra(state, e));
 }

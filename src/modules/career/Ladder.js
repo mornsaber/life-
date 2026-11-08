@@ -77,7 +77,7 @@ export function ladderFor(profession, size) {
 
 export const GOV_SECTORS = ['municipal', 'state', 'federal', 'public'];
 /** Careers whose ladders aren't agency rank structures (universities, labs, courts' judges). */
-const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts'];
+const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts', 'colonialService'];
 
 const POLICE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice'];
 const CORRECTIONS = ['jail', 'corrections', 'federalPrisons'];

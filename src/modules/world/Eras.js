@@ -37,9 +37,35 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 
 export const TECH = {
   radio: 1922, tv: 1950, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
-  internet: 1995, onlineDating: 1997, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
+  internet: 1995, onlineDating: 1997, drones: 2001, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
+
+/** Words that give an event away as modern, by the technology they need (latest first). */
+const TECH_WORDS = [
+  ['crypto', /\bcrypto|bitcoin|\bNFTs?\b|blockchain/i],
+  ['gigApps', /rideshare|\bUber\b|\bLyft\b|DoorDash|gig app|delivery app|Airbnb/i],
+  ['smartphone', /smartphone|\bapps?\b|app store|selfie|\bswip|Tinder|Instagram|TikTok|WhatsApp|FaceTime|group chat|Zoom call|influencer|viral|hashtag|doomscroll/i],
+  ['drones', /\bdrones?\b|\bUAVs?\b|Reaper|Predator strike/i],
+  ['streaming', /Netflix|streaming|binge-watch|Spotify|podcast/i],
+  ['socialMedia', /social media|Facebook|Twitter|YouTube|followers online|went viral|\bposted (?:it|a|about|online)/i],
+  ['internet', /internet|\bonline\b|website|\be-?mails?\b|Google|Wi-?Fi|\bweb\b|download|\bblog|\bforums?\b|emoji|\bGPS\b|Amazon (?:order|package|delivery)|webcam|\bDMs?\b|\bDM'd/i],
+  ['mobilePhone', /cell ?phone|mobile phone|\btext(?:ed|ing|s)? (?:you|me|him|her|them|back)|text message|voicemail|ringtone|on (?:your|her|his|their) phone|phone screen|\bphones? buzz/i],
+  ['personalComputer', /laptop|\bPC\b|spreadsheet|video ?games?|PlayStation|Xbox|Nintendo|gaming|printer/i],
+  ['creditCards', /credit card/i],
+  ['tv', /\bTV\b|television|sitcom|reality show/i],
+];
+/** The newest technology a piece of content needs, or null (cached on the object). */
+export function techNeeded(content) {
+  if (content == null) return null;
+  if (typeof content === 'object' && '_tech' in content) return content._tech;
+  const text = typeof content === 'string' ? content : JSON.stringify(content, (k, v) => (k === '_tech' ? undefined : v));
+  const hit = TECH_WORDS.filter(([, re]) => re.test(text)).sort((a, b) => TECH[b[0]] - TECH[a[0]])[0]?.[0] ?? null;
+  if (typeof content === 'object') Object.defineProperty(content, '_tech', { value: hit, enumerable: false, writable: true });
+  return hit;
+}
+/** Can this content happen in this year? (Today, everything can.) */
+export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNeeded(content) || hasTech(state, techNeeded(content));
 
 /* ------------------------------------------------------------------ */
 /* Jobs: when they exist, and when women could do them                 */
@@ -74,6 +100,10 @@ export const MEN_ONLY_UNTIL = {
 /** Skilled work reserved for white South Africans under apartheid's job reservation. */
 const APARTHEID_RESERVED = ['trades', 'plumbing', 'welding', 'carpentry', 'ironworking', 'craneOperator', 'lineworker', 'railroad', 'aviation', 'airTrafficControl', 'manufacturing', 'mechanicalEng', 'electricalEng'];
 
+/** More rules, registered by world/History.js (segregation needs your US state, which this leaf can't import). */
+const EXTRA_WORK = [];
+export const addEraWorkRule = (fn) => { EXTRA_WORK.push(fn); };
+
 /** Why this work isn't open to you in this year, or null. */
 export function eraWorkBlock(state, profession) {
   const y = yearNow(state);
@@ -84,6 +114,7 @@ export function eraWorkBlock(state, profession) {
   const menUntil = MEN_ONLY_UNTIL[id] ?? MEN_ONLY_UNTIL[profession?.template];
   if (menUntil && y < menUntil && state.character.gender === 'female') return menUntil > PRESENT ? 'Closed to women' : `Closed to women (until about ${menUntil})`;
   if (apartheidHere(state) && skinToneOf(state) >= 3 && APARTHEID_RESERVED.includes(id)) return 'Reserved for white workers under apartheid';
+  for (const rule of EXTRA_WORK) { const r = rule(state, profession); if (r) return r; }
   return null;
 }
 export const apartheidHere = (state) => (state.character.countryId === 'ZA') && hap(state, 'apartheid') && !hap(state, 'apartheidEnds');
@@ -121,6 +152,14 @@ export const PERIODS = [
   { cc: ['AF'], regime: MONARCH('the Kingdom of Afghanistan', 'the King', { women: 'restricted' }), active: (s) => yearNow(s) < 1973 },
   { cc: ['AF'], regime: G({ kind: 'fragile', name: 'a country at war with itself', elections: 'none', press: 'state', women: 'restricted', ratings: false, banking: 'domestic', leader: 'whoever holds Kabul' }), active: (s) => yearNow(s) >= 1973 && yearNow(s) < 1996 },
 ];
+
+/* ------------------------------------------------------------------ */
+/* Thrones that still stood                                            */
+/* ------------------------------------------------------------------ */
+
+/** Monarchies that reigned in early starts, and the year they fell in our history (History.js decides in this one). */
+export const PERIOD_THRONES = { DE: 1918, AT: 1918, RU: 1917, IT: 1946, RO: 1947 };
+export const periodThrone = (cc, year) => year < (PERIOD_THRONES[cc] ?? -Infinity);
 
 /* ------------------------------------------------------------------ */
 /* Colonies                                                            */
@@ -213,3 +252,19 @@ export function eraLayer(state) {
   }
   return out;
 }
+
+/**
+ * Subjects of an empire could settle in its heart: British subjects in Britain until the
+ * Commonwealth Immigrants Act of 1962, Algerians in France until 1962, Portuguese colonial
+ * nationals until 1975. The right lasts until then even after independence.
+ */
+export const SUBJECT_UNTIL = { GB: 1962, FR: 1962, PT: 1975, NL: 1955, BE: 1960, IT: 1950, JP: 1945, US: 1934 };
+const SUBJECT_WORD = { GB: 'British subject', FR: 'French national', PT: 'Portuguese national', NL: 'Dutch subject', BE: 'Belgian colonial subject', IT: 'Italian colonial subject', JP: 'Japanese imperial subject', US: 'American national' };
+export function subjectRight(state, to) {
+  const y = yearNow(state);
+  if (!state.era || y >= PRESENT || !(y < (SUBJECT_UNTIL[to] ?? 0))) return null;
+  const born = state.migration?.birthCountry ?? state.character.countryId ?? 'US';
+  const ruled = (COLONIES[born] ?? []).some((st) => st.ruler === to && (st.from ?? 0) <= y);
+  return ruled ? `${SUBJECT_WORD[to]} (until ${SUBJECT_UNTIL[to]})` : null;
+}
+

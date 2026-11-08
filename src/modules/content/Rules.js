@@ -28,6 +28,7 @@
  * An event may carry `weight` (relative odds against the others, default 1) for rare happenings.
  */
 import { isIncarcerated } from '../../core/State.js';
+import { techNeeded } from '../world/Eras.js';
 import { rep } from '../life/Reputation.js';
 import { practise, skill as skillOf } from '../life/Skills.js';
 import { partnerOf, spouseOf, livingChildren, minorChildren, parentsOf, living, clampRel } from '../people/People.js';
@@ -140,6 +141,9 @@ export function compileEvent(def) {
     text: def.text,
     weight: def.weight,
   };
+  // What it needs invented (a dating app, a viral post), from every word of it (world/Eras.js).
+  techNeeded(ev);
+  ev._tech = techNeeded({ ...def, _x: 1 });
   if (def.run) {
     // A log-only event: [icon, text, kind].
     ev.run = (ctx) => [def.icon ?? '•', apply(ctx, def.run), def.kind ?? 'info'];

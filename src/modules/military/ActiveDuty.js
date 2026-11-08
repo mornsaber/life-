@@ -20,6 +20,7 @@ import { postAbroad } from '../world/Posting.js';
 import { pickFresh } from '../../core/Pools.js';
 import { clamp } from '../../core/Random.js';
 import { addHonor } from '../../core/State.js';
+import { fitsEra } from '../world/Eras.js';
 import {
   ranksOf,
   BRANCHES, SPECIALTIES, rankOf, specialtyName, exposureOf, flightHoursOf, isMedical, completeTraining, finishOfficerAcademy, entrySchool, annualActivePay, updateEvaluation, tryPromotion, discharge, RETIREMENT_YEARS, retirementYearsFor, branchOf } from './MilitaryEngine.js';
@@ -44,6 +45,8 @@ export const COMBAT_SCENARIOS = { ground: deck('combat.ground'), naval: deck('co
 
 /** Peacetime / garrison events (content/packs/military-events.js). */
 export const DUTY_EVENTS = deck('duty.garrison');
+/** The ones that fit the year (no drones in 1943); all of them if none do. */
+const era = (state, list) => { const ok = list.filter((e) => fitsEra(state, e)); return ok.length ? ok : list; };
 
 export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55 ? 'High risk' : risk >= 0.3 ? 'Moderate risk' : 'Low risk');
 
@@ -53,7 +56,7 @@ export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55
 
 function combatPrompt(ctx, svc, theaterName) {
   const branch = branchOf(svc);
-  const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, COMBAT_SCENARIOS[branch.theater]);
+  const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, era(ctx.state, COMBAT_SCENARIOS[branch.theater]));
   const options = scenario.options
     .filter((o) => !o.medicOnly || isMedical(svc))
     .map((o) => ({
@@ -199,7 +202,7 @@ function resolveCombat(ctx, data, optionId) {
 }
 
 function dutyEventPrompt(ctx) {
-  const event = pickFresh(ctx.rng, ctx.state, 'duty', DUTY_EVENTS);
+  const event = pickFresh(ctx.rng, ctx.state, 'duty', era(ctx.state, DUTY_EVENTS));
   ctx.prompt({
     type: 'military.dutyEvent',
     icon: '📯',

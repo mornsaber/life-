@@ -7,7 +7,7 @@ import { esc, card, kv } from '../Components.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 import { warHere } from '../../modules/world/War.js';
 import { PRESENT, yearNow, colonyHere, rulerName, TECH, hasTech } from '../../modules/world/Eras.js';
-import { EVENTS } from '../../modules/world/History.js';
+import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 
 export const EVENT_LABELS = {
@@ -18,7 +18,7 @@ export const EVENT_LABELS = {
   carnationRevolution: 'Portugal\'s Carnation Revolution', francoDies: 'Franco dies; Spain turns democratic', reformOpening: 'China opens up',
   iranRevolution: 'the Iranian Revolution', koreaDemocracy: 'democracy in South Korea', taiwanDemocracy: 'martial law ends in Taiwan',
   sovietCollapse: 'the Soviet Union falls', apartheidEnds: 'apartheid ends', dotcom: 'the dot-com crash', afghanistan: 'the war in Afghanistan',
-  gfc: 'the financial crash', covid: 'the coronavirus pandemic',
+  gfc: 'the financial crash', covid: 'the coronavirus pandemic', brownVBoard: 'Brown v. Board: school segregation struck down', civilRights: 'the Civil Rights Act',
 };
 const TECH_LABELS = { radio: 'radio', tv: 'television', creditCards: 'credit cards', personalComputer: 'personal computers', mobilePhone: 'mobile phones', internet: 'the internet', onlineDating: 'online dating', socialMedia: 'social media', streaming: 'streaming', smartphone: 'smartphones', crypto: 'crypto', gigApps: 'gig apps' };
 
@@ -34,6 +34,7 @@ export function eraCard(state) {
     ['Your country', `${COUNTRIES[cc]?.flag ?? ''} ${esc(r.name ?? (r.kind === 'democracy' ? 'a democracy' : r.kind))}`],
     ...(col ? [['Ruled by', `${esc(rulerName(col.ruler))} — through ${esc(col.leader ?? 'the Governor')}${col.noMovement ? '' : '. A movement for independence is growing'}`]] : []),
     ...(war ? [['At war', esc(war.name)]] : []),
+    ...(jimCrowHere(state) ? [['Jim Crow', 'Segregated schools, buses and lunch counters; poll taxes and literacy tests keep Black voters off the rolls; many jobs and the state universities are closed to you']] : []),
   ];
   const seen = Object.entries(era.events ?? {}).filter(([id]) => EVENT_LABELS[id]).sort((a, b) => a[1].year - b[1].year);
   const line = ([id, e]) => `<li>${e.year}${e.ended && e.ended !== e.year ? `–${e.ended}` : e.lasts && !e.ended ? '–' : ''} · ${esc(EVENT_LABELS[id])}${e.axisWon ? ' (the Axis won)' : ''}${e.outcome === 'central' ? ' (the Central Powers won)' : ''}${e.past ? '' : ' 🕰️'}</li>`;

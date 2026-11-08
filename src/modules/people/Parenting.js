@@ -17,6 +17,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { minorChildren, livingChildren, ageOf, byId } from './People.js';
 import { ensureTraits } from './Dynasty.js';
 import { priceLevel } from '../world/Countries.js';
+import { hasTech } from '../world/Eras.js';
 
 export const STYLES = {
   authoritative: { label: '🤝 Warm and firm', desc: 'Clear rules, explained; lots of warmth.', wellbeing: 3, rel: 2, trouble: 0.7 },
@@ -101,7 +102,7 @@ const TROUBLE = [
 ];
 
 function troublePrompt(ctx, c, style) {
-  const e = ctx.rng.pick(TROUBLE);
+  const e = ctx.rng.pick(TROUBLE.filter((t) => t.id !== 'online' || hasTech(ctx.state, 'internet')));
   ctx.prompt({ type: 'parenting.trouble', icon: '🚨', title: 'Teenage Trouble', text: `${e.text(c.firstName)}\nYour style: ${style.label}.`, data: { childId: c.id, kind: e.id }, options: [
     { id: 'talk', label: '🗣️ Sit down and talk it through' },
     { id: 'ground', label: '🔒 Grounded. Phone confiscated.' },

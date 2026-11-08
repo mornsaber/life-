@@ -10,6 +10,7 @@
  * }
  */
 import { studyBlock } from '../world/Regimes.js';
+import { hasTech, subjectRight } from '../world/Eras.js';
 import { yellowRibbon } from '../military/Transition.js';
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -36,7 +37,10 @@ const homeCountry = (state) => state.character.countryId ?? 'US';
 /** Whether studying there means moving: another city (or country); online and offshore programs don't. */
 export const movesYou = (state, uni) => Boolean(uni?.region) && (uni.region !== state.character.regionId);
 /** The right to study in the university's country without a student visa. */
-const mayStudyIn = (state, cc) => cc === homeCountry(state) || isCitizen(state, cc) || Boolean(freeMovementTo(citizenshipsOf(state), cc));
+/** Segregated universities (world/History.js registers the rule; it can't be imported here without a cycle). */
+let segregationHook = null;
+export const setSegregationHook = (fn) => { segregationHook = fn; };
+const mayStudyIn = (state, cc) => cc === homeCountry(state) || isCitizen(state, cc) || Boolean(freeMovementTo(citizenshipsOf(state), cc) ?? subjectRight(state, cc));
 
 export const GI_BILL = { maxYears: 4, annualCap: 28000, minService: 3 };
 const APPLICATIONS_PER_YEAR = 4;
@@ -221,6 +225,9 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
     const v = visaEligibility(state, uni.country, 'student');
     if (!v.ok) return { ok: false, reason: `Student visa: ${v.reason}` };
   }
+  if (uni?.type === 'online' && !hasTech(state, 'internet')) return { ok: false, reason: 'No online universities yet' };
+  const segregated = segregationHook?.(state, uni);
+  if (segregated) return { ok: false, reason: segregated };
   if (uni && movesYou(state, uni) && state.military.service?.component === 'active') return { ok: false, reason: 'On active duty: study online or near your base' };
   if (programId === 'associate' && !shortCycleOffered(state.character.countryId)) return { ok: false, reason: 'Not offered in this country' };
   if (p.usOnly && (state.character.countryId ?? 'US') !== 'US') return { ok: false, reason: 'Not offered in this country' };

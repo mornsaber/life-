@@ -3,6 +3,7 @@
  * life-stages content pack: src/modules/content/packs/life-stages.js.)
  */
 import { isIncarcerated } from '../../core/State.js';
+import { yearNow } from '../world/Eras.js';
 
 const working = (s) => !isIncarcerated(s) && Boolean(s.career.job);
 
@@ -14,6 +15,8 @@ const working = (s) => !isIncarcerated(s) && Boolean(s.career.job);
 export function downPaymentAssistance(ctx) {
   const s = ctx.state;
   const age = s.character.age;
+  // State first-time buyer programmes date from the 1970s.
+  if (yearNow(s) < 1975) return false;
   if (s.flags?.dpa || age < 25 || age > 40 || !working(s) || s.housing.properties.length || !ctx.rng.chance(0.12)) return false;
   s.flags = { ...s.flags, dpa: true };
   const n = ctx.rng.int(8, 15) * 1000;

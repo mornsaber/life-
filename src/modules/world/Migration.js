@@ -15,6 +15,7 @@
  * records stay with each country and pay out together when you claim.
  */
 import { exitBlock } from './Regimes.js';
+import { subjectRight } from './Eras.js';
 import { bodyOfJob, joinLocalUnit } from '../org/Bodies.js';
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
@@ -62,7 +63,7 @@ export function routesTo(state, to) {
   const res = residencesOf(state)[to];
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
   // EU, Common Travel Area and trans-Tasman citizens just move: no visa, the right to live and work.
-  const free = freeMovementTo(citizenshipsOf(state), to);
+  const free = freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
   const banned = bannedFrom(state, to);
   const visas = Object.keys(IMMIGRATION[to].visas).filter((kind) => IMMIGRATION[to].visas[kind]).map((kind) => (banned
@@ -175,7 +176,7 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
       // Free movement: the right to live and work, without a visa to run out.
       const rule = visa === 'freeMovement' ? { permanent: true } : IMMIGRATION[to].visas[visa] ?? {};
       if (visa === 'workingHoliday') m.whvUsed = [...(m.whvUsed ?? []), to];
-      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, ...(visa === 'freeMovement' ? { scheme: freeMovementTo(citizenshipsOf(state), to) } : {}), arrived: age, qualifyingSince: NON_QUALIFYING_VISAS.includes(visa) ? null : age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
+      m.residences[to] = { status: rule.permanent ? 'permanent' : 'visa', visa, ...(visa === 'freeMovement' ? { scheme: freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to) } : {}), arrived: age, qualifyingSince: NON_QUALIFYING_VISAS.includes(visa) ? null : age, ...(rule.years ? { expires: age + rule.years } : {}), ...(rule.permanent ? { permanentSince: age } : {}) };
     }
   }
   m.history.push({ age, from, to, visa });

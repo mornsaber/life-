@@ -16,6 +16,7 @@
  */
 import { clamp } from '../../core/Random.js';
 import { knob } from '../../core/Difficulty.js';
+import { hasTech } from '../world/Eras.js';
 
 /** Round to `p` and normalize -0 (which doesn't survive JSON). */
 const rnd = (x, p = 1000) => Math.round(x * p) / p + 0;
@@ -132,11 +133,11 @@ export const EconomyEngine = {
     let crypto;
     if (!e.cryptoMania && rng.chance(0.12)) {
       e.cryptoMania = true;
-      cryptoNews(ctx, true);
+      if (hasTech(state, 'crypto')) cryptoNews(ctx, true);
       crypto = rng.float(0.4, 1.5);
     } else if (e.cryptoMania && rng.chance(0.5)) {
       e.cryptoMania = false;
-      cryptoNews(ctx, false);
+      if (hasTech(state, 'crypto')) cryptoNews(ctx, false);
       crypto = rng.float(-0.85, -0.55);
     } else crypto = e.cryptoMania ? rng.float(0.2, 1.2) : clamp(index * 1.5 + rng.float(-0.45, 0.35), -0.8, 1.2);
     const sectors = {};

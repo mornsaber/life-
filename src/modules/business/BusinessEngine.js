@@ -24,6 +24,7 @@ import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/Stat
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor, entityAllowed, entityName } from './BusinessTypes.js';
+import { fitsEra } from '../world/Eras.js';
 
 /** The form a new business takes: the one asked for, or the nearest one that exists here. */
 const localEntity = (state, entity) => (ENTITIES[entity] && entityAllowed(state, entity) ? entity : entityAllowed(state, 'llc') ? 'llc' : entity === 'sole' ? 'sole' : 'ccorp');
@@ -380,10 +381,10 @@ const bump = (obj, key, d) => {
 export const AUTOPILOT_CHOICE = { bigClient: 'decline', poached: 'match', lawsuit: 'settle', competitor: 'price', supplier: 'raise', hiring: 'promising', underperformer: 'fire' };
 
 function eventPrompt(ctx, biz) {
-  const { rng } = ctx;
+  const { rng, state } = ctx;
   const type = typeOf(biz);
   const delegated = biz.staff.headcount >= 8 ? Object.keys(DUTIES).filter((d) => biz.staff.delegation[d]) : [];
-  const generic = BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup) && !(e.duty && delegated.includes(e.duty)));
+  const generic = BUSINESS_EVENTS.filter((e) => fitsEra(state, e) && (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup) && !(e.duty && delegated.includes(e.duty)));
   // Two in three events come from your own industry.
   const industry = sectorEventsFor(biz);
   const event = industry.length && (rng.chance(0.65) || !generic.length) ? rng.pick(industry) : rng.pick(generic);
@@ -788,7 +789,7 @@ function managedYear(ctx, biz) {
     biz.staff.unionRisk = biz.staff.unionized ? 0 : 60;
     ctx.log(`${biz.name}'s staff ${biz.staff.unionized ? 'voted to unionize' : 'voted down a union'} — management ran a lawful campaign.`, '✊', biz.staff.unionized ? 'warn' : undefined);
   } else if (rng.chance(0.3)) {
-    const pool = [...BUSINESS_EVENTS.filter((e) => (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup)), ...sectorEventsFor(biz)];
+    const pool = [...BUSINESS_EVENTS.filter((e) => fitsEra(state, e) && (!e.minStaff || biz.staff.headcount >= e.minStaff) && !(e.notStartup && type.startup)), ...sectorEventsFor(biz)];
     const event = rng.pick(pool);
     if (event) {
       const option = event.options.find((o) => o.id === (AUTOPILOT_CHOICE[event.id] ?? event.auto)) ?? event.options[0];
