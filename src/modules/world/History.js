@@ -503,14 +503,11 @@ function independence(ctx, cc, st, rec, rng) {
     addHonor(state, { id: `independence.${cc}`, source: 'civil', country: cc, name: `${cname(cc)} Independence Medal`, icon: '🏅', prestige: 3, precedence: 60, citation: `For service in the struggle for the independence of ${cname(cc)}.` });
     ctx.log('You were there from the start. The new government gave the veterans of the movement a medal, and some of them jobs.', '🏅', 'honor');
   }
-  // The colonial service is wound up: compensation for loss of career (as the British paid it).
+  // The colonial services pass to the new government, most of their local officers with them (the
+  // Indian Civil Service became the IAS; Kenya kept its District Officers). Not all: some were let go,
+  // the old regime's loyalists first; the Governor's post ends. Those let go are compensated.
   const job = state.career?.job;
-  if (job && PROFESSIONS[job.professionId]?.colonial && (state.character.countryId ?? 'US') === cc) {
-    const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
-    leaveJob(ctx, 'The colonial service was wound up at independence');
-    ctx.earn(comp, 'Compensation for loss of career');
-    ctx.log(`The colonial service was wound up. You were paid $${comp.toLocaleString()} for loss of career.`, '🏛️', 'warn');
-  }
+  if (job && PROFESSIONS[job.professionId]?.colonial && (state.character.countryId ?? 'US') === cc) handOver(ctx, cc, st, job, rec, rng);
   // The leader of the movement leads the country.
   const office = LEGISLATURES[cc]?.execOffice;
   if (rec.leader && office && OFFICES[office] && !state.legal?.incarceration && state.character.age >= 25) {
@@ -639,11 +636,56 @@ function dataWars(ctx) {
   }
 }
 
+/** The new state's name for a colonial service it takes over. */
+const SUCCESSOR = {
+  colonialService: (n) => `the ${n} Administrative Service`, colonialPolice: (n) => `the ${n} Police Service`, colonialTroops: (n) => `the ${n} Army`,
+  colonialMedical: (n) => `the ${n} Medical Service`, tradingCompany: () => null, plantation: () => null,
+};
+/** At independence: kept on by the new government (most local officers), or let go with compensation. */
+function handOver(ctx, cc, st, job, rec, rng) {
+  const { state } = ctx;
+  const p = PROFESSIONS[job.professionId];
+  const country = cname(cc);
+  const adj = COUNTRIES[cc]?.demonym ?? country;
+  const firm = job.employer?.name ?? 'the firm';
+  // Private firms (the trading houses, the estates) mostly carry on under new owners or the old ones.
+  if (p.sector === 'private') {
+    if (rng.chance(0.75)) { job.nationalized = { cc, since: state.character.age }; return ctx.log(`Independence changed the flag over ${firm}, not the work. You kept your post.`, '🌿'); }
+    const comp = Math.round((job.salary ?? 30000) * 0.75 / 100) * 100;
+    leaveJob(ctx, 'Nationalized after independence');
+    ctx.earn(comp, 'Severance');
+    return ctx.log(`The new government nationalized ${firm}. You were let go with $${comp.toLocaleString()} in severance.`, '🏳️', 'warn');
+  }
+  const keep = job.levelId !== 'governor' && rng.chance(rec.loyal ? 0.45 : 0.8);
+  if (keep) {
+    const name = SUCCESSOR[job.professionId]?.(adj) ?? `the ${adj} civil service`;
+    job.nationalized = { cc, since: state.character.age, from: job.employer?.name ?? p.name };
+    job.employer = { ...(job.employer ?? {}), name, site: undefined };
+    ctx.stat('happiness', 3);
+    return ctx.log(`The ${rulerAdj(st.ruler)} service passed to the new government as ${name}. You kept your rank as ${job.title}, now answering to ${country}'s own ministers.`, '🏛️', 'milestone');
+  }
+  const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
+  leaveJob(ctx, job.levelId === 'governor' ? 'The Governor\'s office ended at independence' : 'Not kept on by the new government');
+  ctx.earn(comp, 'Compensation for loss of career');
+  ctx.log(job.levelId === 'governor' ? `Your office ended with the flag. You were paid $${comp.toLocaleString()} for loss of career.` : `The new government didn't keep you on${rec.loyal ? ': too close to the old regime' : ''}. You were paid $${comp.toLocaleString()} for loss of career.`, '🏛️', 'warn');
+}
+
 /** The last territory goes: an empire's colonial services are wound up for the people it posted out. */
 function endOfEmpire(ctx) {
   const { state } = ctx;
   const job = state.career?.job;
-  if (!job || !PROFESSIONS[job.professionId]?.colonial || colonialWorkOpen(state)) return;
+  if (!job || !PROFESSIONS[job.professionId]?.colonial || job.nationalized && !job.contractUntil || colonialWorkOpen(state)) return;
+  // On contract to a new government: home when it runs out.
+  if (job.contractUntil) {
+    if (state.character.age < job.contractUntil) return;
+    leaveJob(ctx, 'Contract with the new government ended');
+    return ctx.log('Your contract with the new government ran out, and a local officer took over your post. You came home.', '🏠');
+  }
+  if (job.levelId !== 'governor' && ctx.rng.chance(0.3)) {
+    job.contractUntil = state.character.age + ctx.rng.int(3, 8);
+    job.nationalized = { since: state.character.age, contract: true };
+    return ctx.log(`The empire was gone, but the new government asked you to stay on, on contract, while it trained its own people. You stayed, for now.`, '📝', 'milestone');
+  }
   const comp = Math.round((job.salary ?? 40000) * 1.5 / 100) * 100;
   leaveJob(ctx, 'The empire\'s last territories became independent');
   ctx.earn(comp, 'Compensation for loss of career');

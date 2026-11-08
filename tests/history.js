@@ -149,7 +149,7 @@ const tests = {
     state.character.age = 40; // 1970
     assert.ok(!routesTo(state, 'GB').some((r) => r.kind === 'freeMovement'), 'the door closed in 1962');
   },
-  'the colonial service: open in a colony, wound up at independence'() {
+  'the colonial service: open in a colony, handed over or wound up at independence'() {
     const { engine, state } = life({ countryId: 'KE', startYear: 1930 }, 3);
     live(engine, state, 22);
     const ctx = engine.context();
@@ -160,8 +160,10 @@ const tests = {
     assert.equal(state.career.job?.professionId, 'colonialService');
     live(engine, state, 40);
     if (!state.character.alive) return;
-    assert.notEqual(state.career.job?.professionId, 'colonialService', 'no colonial service after independence');
-    assert.ok(allText(state).some((t) => /loss of career/.test(t)) || state.career.history.some((h) => h.professionId === 'colonialService'));
+    // Kept on by the new government, or let go with compensation.
+    const kept = state.career.job?.professionId === 'colonialService' && state.career.job.nationalized;
+    assert.ok(kept || state.career.job?.professionId !== 'colonialService', 'no colonial service after independence unless the new state kept you');
+    assert.ok(kept || allText(state).some((t) => /loss of career|passed to the new government/.test(t)) || state.career.history.some((h) => h.professionId === 'colonialService'));
     const today = life({ countryId: 'KE' });
     today.state.character.age = 30;
     assert.equal(applicationEligibility(today.state, 'colonialService').ok, false);
