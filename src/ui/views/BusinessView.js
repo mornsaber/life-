@@ -92,9 +92,9 @@ function startCard(state) {
     </li>`;
   };
   // Your careers' businesses first (open), then every category behind a click.
-  const mineIds = Object.keys(BUSINESS_TYPES).filter((id) => fromCareer.has(id));
+  const mineIds = Object.keys(BUSINESS_TYPES).filter((id) => fromCareer.has(id) && businessInEra(state, id));
   const groups = Object.entries(BUSINESS_GROUPS).map(([gid, g]) => {
-    const ids = g.ids.filter((id) => !fromCareer.has(id));
+    const ids = g.ids.filter((id) => !fromCareer.has(id) && businessInEra(state, id));
     if (!ids.length) return '';
     const open = ids.filter((id) => startEligibility(state, id, 'cash').ok || startEligibility(state, id, 'sba').ok).length;
     return disclosure(`biz.group.${gid}`, `${g.icon} ${g.label}`, `<ul class="programs">${ids.map(row).join('')}</ul>`, { count: `${open} of ${ids.length} open to you` });
@@ -106,7 +106,7 @@ function startCard(state) {
 }
 
 function franchiseCard(state) {
-  if (state.character.age < 21) return '';
+  if (state.character.age < 21 || !franchisesExist(state)) return '';
   const rows = Object.entries(FRANCHISE_BRANDS).map(([id, b]) => {
     const t = BUSINESS_TYPES[b.typeId];
     const elig = franchiseEligibility(state, id);
@@ -738,6 +738,7 @@ function ownedView(state, biz, ui = {}) {
 }
 
 import { inventionsCard } from './InventionsView.js';
+import { businessInEra, franchisesExist } from '../../modules/world/Eras.js';
 
 export function businessView(state, ui = {}) {
   if (!state.business) return '';

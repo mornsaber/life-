@@ -23,6 +23,7 @@ import { addHonor, hasFelony, currentYear } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { isAbroad } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
+import { orgInEra, orgFrom } from '../world/Eras.js';
 
 export const MAX_ROLES = 3;
 
@@ -67,6 +68,7 @@ export const activeRoles = (state) => Object.keys(s(state)?.roles ?? {});
 export function roleEligibility(state, id) {
   const r = ROLES[id];
   if (!r) return { ok: false, reason: 'Unknown role' };
+  if (!orgInEra(state, `role:${id}`)) return { ok: false, reason: `Not founded yet (from about ${orgFrom(`role:${id}`)})` };
   if (s(state).roles[id]) return { ok: false, reason: 'Already doing this' };
   if (state.character.age < r.minAge) return { ok: false, reason: `Must be ${r.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };

@@ -18,6 +18,7 @@ import { OFFICES } from '../politics/Offices.js';
 import { DC_FUNDS, profileReturn, realReturn } from '../investing/Assets.js';
 import { isAbroad, countryOf, nationalPension, COUNTRIES } from '../world/Countries.js';
 import { totalizes } from '../world/Immigration.js';
+import { statePensionExists, dcExists } from '../world/Eras.js';
 
 export const SS_WAGE_CAP = 176100;
 export const SS_FULL_AGE = 67;
@@ -296,7 +297,7 @@ export const RetirementEngine = {
     const job = state.career.job;
 
     const covered = state.finances.ledger.income.filter((i) => i.wage && i.ssCovered !== false).reduce((s, i) => s + i.amount, 0);
-    if (covered > 0) r.ssEarnings.push(Math.min(covered, SS_WAGE_CAP));
+    if (covered > 0 && statePensionExists(state)) r.ssEarnings.push(Math.min(covered, SS_WAGE_CAP));
 
     if (job?.paidThisYear) {
       const benefits = job.employer.benefits;
@@ -308,7 +309,7 @@ export const RetirementEngine = {
       }
       // Where the law makes employers pay into super (Australia), that replaces a 401(k)-style match.
       const sgOnly = Boolean(countryOf(state).employerSuper);
-      if (!sgOnly && (benefits.match > 0 || benefits.dcPlan)) {
+      if (!sgOnly && dcExists(state) && (benefits.match > 0 || benefits.dcPlan)) {
         // Employers match what you put in, up to their match rate.
         const employee = Math.round(job.salary * dcRate(state));
         const match = Math.round(job.salary * Math.min(dcRate(state), benefits.match));
@@ -363,6 +364,7 @@ export const RetirementEngine = {
       const { state } = ctx;
       const r = state.retirement;
       if (r.socialSecurity) return;
+      if (!statePensionExists(state)) return ctx.toast('There is no state pension yet.', 'warn');
       if (state.character.age < pensionEarliestAge(state)) return ctx.toast(`${pensionName(state)} starts at ${pensionEarliestAge(state)}.`, 'warn');
       if (!hasRecords(r) && !spousalBenefit(state) && !r.survivorBenefit) return ctx.toast('No covered earnings on record.', 'warn');
       // Your own benefit, or a spousal / survivor benefit if that's larger.

@@ -23,7 +23,7 @@ import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
 import { knob } from '../../core/Difficulty.js';
 import { officialResidence } from '../world/Residences.js';
-import { hasTech } from '../world/Eras.js';
+import { hasTech, eraTaxShare } from '../world/Eras.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 /**
@@ -166,7 +166,8 @@ export const Finances = {
       federalTax = Math.round(federalTax * 0.7);
       stateTax = Math.round(stateTax * 0.7);
     }
-    const tax = federalTax + stateTax;
+    // Income tax of its time (world/Eras.js): none in the US before 1913, and light until the Second World War.
+    const tax = Math.round((federalTax + stateTax) * eraTaxShare(state));
 
     // Cost of living: lifestyle scales with income and region; housing benefits
     // (park housing, embassy quarters, base housing) waive the rent share.

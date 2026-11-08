@@ -12,6 +12,7 @@ import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
 import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
+import { crimeInEra, drugInEra, labInEra } from '../../modules/world/Eras.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
 const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
@@ -122,7 +123,7 @@ function crimesCard(state) {
   };
   const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
   const groups = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
-    const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid);
+    const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid && crimeInEra(state, r.id));
     if (!list.length) return '';
     const body = `<div class="action-grid">${list.map(crimeButton).join('')}</div>`;
     return gid === 'personal' ? `<h4 class="sub">${g.icon} ${g.label}</h4>${body}` : disclosure(`crime.${gid}`, `${g.icon} ${g.label}`, body, { count: list.length });
@@ -152,7 +153,7 @@ function drugsCard(state) {
   if (state.character.age < 14) return '';
   const d = state.legal.crime?.drugs;
   const law = drugLawHere(state);
-  const products = Object.entries(PRODUCTS).map(([id, p]) => ({ value: id, label: `${p.icon} ${p.label} — $${priceHere(state, id).toLocaleString()}/kg wholesale, $${priceHere(state, id, 'retail').toLocaleString()} street` }));
+  const products = Object.entries(PRODUCTS).filter(([id]) => drugInEra(state, id)).map(([id, p]) => ({ value: id, label: `${p.icon} ${p.label} — $${priceHere(state, id).toLocaleString()}/kg wholesale, $${priceHere(state, id, 'retail').toLocaleString()} street` }));
   const sizes = Object.entries(BUYS).map(([id, b]) => ({ value: id, label: `${b.label}${b.rep ? ` (rep ${b.rep}+)` : ''}` }));
   const has = d && d.stash > 0.05;
   const status = d && (has || d.lab || d.runners || d.shipment) ? kv([
@@ -165,9 +166,9 @@ function drugsCard(state) {
   ]) : '<p class="muted">You\'re not in the trade.</p>';
   const y = (k) => Boolean(state.yearly[k]);
   const source = `<h4 class="sub">1 · Source</h4><div class="toggle-row" data-collect-root>${select('product', products)}${select('size', sizes)}${button('🤝 Buy from a connect', 'crime.drugBuy', { variant: 'small danger', collect: true })}</div>
-    <div class="action-grid">${Object.entries(LABS).map(([id, l]) => button(`${l.icon} ${l.label}`, 'crime.drugLab', { arg: id, variant: 'small danger', disabled: Boolean(d?.lab) || state.character.age < 18, hint: `${PRODUCTS[l.product].label}, $${l.cost.toLocaleString()}` })).join('')}${d?.lab ? button('🧽 Shut the lab', 'crime.closeLab', { variant: 'small' }) : ''}
-    ${Object.keys(PRODUCTS).filter((id) => id !== 'cannabis').map((id) => button(`🚢 Import ${PRODUCTS[id].label.toLowerCase()}`, 'crime.drugImport', { arg: id, variant: 'small danger', disabled: !canImport(state) || Boolean(d?.shipment), hint: canImport(state) ? '100 kg in a container' : 'Needs an outfit or 60+ rep' })).join('')}</div>`;
-  const process = `<h4 class="sub">2 · Process</h4><div class="action-grid">${button('⚖️ Cut it', 'crime.drugCut', { arg: 'cut', variant: 'small danger', disabled: !has || y('drug.cut'), hint: '+50% weight, lower purity' })}${button('☠️ Stretch it with fentanyl', 'crime.drugCut', { arg: 'fentanyl', variant: 'small danger', disabled: !has || y('drug.cut') || !['heroin', 'cocaine'].includes(d?.product), hint: 'Double the weight. People will die.' })}</div>`;
+    <div class="action-grid">${Object.entries(LABS).filter(([id]) => labInEra(state, id)).map(([id, l]) => button(`${l.icon} ${l.label}`, 'crime.drugLab', { arg: id, variant: 'small danger', disabled: Boolean(d?.lab) || state.character.age < 18, hint: `${PRODUCTS[l.product].label}, $${l.cost.toLocaleString()}` })).join('')}${d?.lab ? button('🧽 Shut the lab', 'crime.closeLab', { variant: 'small' }) : ''}
+    ${Object.keys(PRODUCTS).filter((id) => id !== 'cannabis' && drugInEra(state, id)).map((id) => button(`🚢 Import ${PRODUCTS[id].label.toLowerCase()}`, 'crime.drugImport', { arg: id, variant: 'small danger', disabled: !canImport(state) || Boolean(d?.shipment), hint: canImport(state) ? '100 kg in a container' : 'Needs an outfit or 60+ rep' })).join('')}</div>`;
+  const process = `<h4 class="sub">2 · Process</h4><div class="action-grid">${button('⚖️ Cut it', 'crime.drugCut', { arg: 'cut', variant: 'small danger', disabled: !has || y('drug.cut'), hint: '+50% weight, lower purity' })}${!drugInEra(state, 'fentanyl') ? '' : button('☠️ Stretch it with fentanyl', 'crime.drugCut', { arg: 'fentanyl', variant: 'small danger', disabled: !has || y('drug.cut') || !['heroin', 'cocaine'].includes(d?.product), hint: 'Double the weight. People will die.' })}</div>`;
   const runnerOpts = [1, 2, 4, 6, 10].map((n) => button(`🧢 ${n} runner${n === 1 ? '' : 's'}`, 'crime.drugRunners', { arg: n, variant: 'tiny', disabled: y('drug.runners') || d?.runners === n })).join('');
   const distribute = `<h4 class="sub">3 · Distribute</h4><div class="action-grid">${button('✋ Sell hand to hand', 'crime.drugSell', { arg: 'street', variant: 'small danger', disabled: !has || y('drug.sell.street'), hint: 'Retail money, retail risk' })}${button('📦 Sell weight to dealers', 'crime.drugSell', { arg: 'weight', variant: 'small danger', disabled: !has || y('drug.sell.weight'), hint: 'Less money, less risk, more informants' })}</div>
     <div class="action-grid">${runnerOpts}${d?.runners ? button('Pull them off', 'crime.drugRunners', { arg: 0, variant: 'tiny' }) : ''}</div>

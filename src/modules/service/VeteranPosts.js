@@ -15,6 +15,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { sideRng, initOrgs } from '../org/Organizations.js';
+import { orgInEra, orgFrom } from '../world/Eras.js';
 
 export const PLAYER = 'PLAYER';
 export const POST_RANKS = ['Member', 'Post Adjutant', 'Junior Vice Commander', 'Senior Vice Commander', 'Post Commander'];
@@ -28,6 +29,7 @@ export const POSTS = {
 const honorable = (h) => !['dishonorable', 'bcd', 'oth'].includes(h.discharge);
 
 export function postEligibility(state, id) {
+  if (!orgInEra(state, `post:${id}`)) return { ok: false, reason: `Not founded yet (from ${orgFrom(`post:${id}`)})` };
   if (!POSTS[id]) return { ok: false, reason: 'Unknown post' };
   if (state.service.posts[id]) return { ok: false, reason: 'Already a member' };
   const svc = state.military.service;

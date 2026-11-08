@@ -37,6 +37,7 @@ import { structureEffects } from './Structure.js';
 export { charge } from './TaxBook.js';
 import { royaltiesOn, franchisorFinancials } from './Franchising.js';
 import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations.js';
+import { businessInEra, businessFrom, smallBizLoansExist } from '../world/Eras.js';
 
 export const SS_WAGE_CAP = 176100;
 /** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
@@ -69,6 +70,8 @@ export function startEligibility(state, typeId, funding = 'cash', size = 'standa
   if (banned) return { ok: false, reason: banned };
   const type = BUSINESS_TYPES[typeId];
   if (!type) return { ok: false, reason: 'Unknown business' };
+  if (!businessInEra(state, typeId)) return { ok: false, reason: `Not a business yet (from about ${businessFrom(typeId)})` };
+  if (funding === 'sba' && !smallBizLoansExist(state)) return { ok: false, reason: 'No small-business loans yet: pay cash or find a partner' };
   if (state.character.age < 18) return { ok: false, reason: 'Must be 18' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (currentBusiness(state)) return { ok: false, reason: 'You already own a business' };

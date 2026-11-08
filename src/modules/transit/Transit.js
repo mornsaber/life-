@@ -34,7 +34,7 @@ export function transitQuality(state) {
   return Math.max(0, Math.min(100, (region.transit ?? 0) + (local?.passed?.includes('transitTax') ? TRANSIT_TAX_BOOST : 0) + (local?.transitBoost ?? 0)));
 }
 
-export const ownsCar = (state) => (state.vehicles?.owned ?? []).some((v) => ['car', 'bike'].includes(VEHICLE_TYPES[v.typeId]?.category));
+export const ownsCar = (state) => (state.vehicles?.owned ?? []).some((v) => ['car', 'bike', 'horse'].includes(VEHICLE_TYPES[v.typeId]?.category));
 export const canDrive = (state) => ownsCar(state) && (hasCredential(state, 'driverLicense') || hasCredential(state, 'motorcycle'));
 
 /** Does this person commute somewhere this year? */

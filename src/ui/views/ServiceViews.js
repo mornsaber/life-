@@ -42,6 +42,7 @@ import { reserveStanding, ssoEligibility } from '../../modules/military/Merchant
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
+import { orgInEra } from '../../modules/world/Eras.js';
 
 /** A rank code (E-5, O-3, OR-4) for a grade on a track, in the service's own system. */
 const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
@@ -338,7 +339,7 @@ function certList(state, serviceId) {
 }
 
 export function emergencyView(state) {
-  const open = SERVICE_LIST.filter((svc) => !state.emergency[svc.id] && volunteerServiceHere(state.character.countryId, svc.id)).map((svc) => {
+  const open = SERVICE_LIST.filter((svc) => !state.emergency[svc.id] && volunteerServiceHere(state.character.countryId, svc.id) && orgInEra(state, `svc:${svc.id}`)).map((svc) => {
     const check = joinEligibility(state, svc.id);
     const top = svc.ranks[svc.ranks.length - 1].title;
     return `<li class="job-row ${check.ok ? '' : 'locked'}">

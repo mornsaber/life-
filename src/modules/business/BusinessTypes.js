@@ -1,4 +1,5 @@
 import { fromPacks } from '../world/packs/index.js';
+import { entityInEra, yearNow } from '../world/Eras.js';
 /**
  * Business types. Licensed trades and professions are gated through the
  * credential registry; everything is in today's dollars at "scale 1"
@@ -185,8 +186,12 @@ const LOCAL_DESC = {
 /** The business forms you can use where you live, with their local names. */
 export function entitiesFor(state) {
   const local = LOCAL_ENTITIES[state?.character?.countryId];
-  if (!local) return Object.entries(ENTITIES);
-  return Object.entries(ENTITIES).filter(([id]) => local[id]).map(([id, e]) => [id, { ...e, name: local[id], desc: LOCAL_DESC[id] }]);
+  const era = ([id]) => !state || entityInEra(state, id);
+  // Before the 1990s: no venture capital rounds or QSBS, just shares and a board.
+  const old = state && yearNow(state) < 1993;
+  const desc = ([id, e]) => [id, old && id === 'ccorp' ? { ...e, desc: 'A company with shares, a board and limited liability. Profits are taxed, then dividends again. Needed to sell shares to the public.' } : e];
+  if (!local) return Object.entries(ENTITIES).filter(era).map(desc);
+  return Object.entries(ENTITIES).filter(([id]) => local[id] && era([id])).map(([id, e]) => [id, { ...e, name: local[id], desc: LOCAL_DESC[id] }]);
 }
 export const entityAllowed = (state, id) => entitiesFor(state).some(([eid]) => eid === id);
 export const entityName = (state, id) => entitiesFor(state).find(([eid]) => eid === id)?.[1].name ?? ENTITIES[id]?.name ?? id;

@@ -13,6 +13,7 @@ import {
 
 import { cashOutAvailable } from '../../modules/realestate/MortgageSystem.js';
 import { portfolio, empireOf, allRentals, RENT_POLICIES, RENT_CONTROL_CAP, COMPANY_MIN_PROPERTIES, companyCost } from '../../modules/realestate/PropertyEmpire.js';
+import { periodRentName } from '../../modules/world/Eras.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
   const tone = score >= 740 ? 'good' : score >= 640 ? 'mid' : 'bad';
@@ -29,7 +30,7 @@ function residence(state) {
   const regionId = state.character.regionId;
   const rentRows = Object.entries(RENT_TIERS).filter(([, t]) => !t.subsidized).map(([id, t]) => {
     const current = h.rental?.tier === id;
-    return `<li class="region-row ${current ? 'here' : ''}"><span>${t.icon} <b>${t.name}</b></span><small>${money(tierRent(state, id, regionId))}/mo · deposit ${money(tierRent(state, id, regionId) * 2)}</small>
+    return `<li class="region-row ${current ? 'here' : ''}"><span>${t.icon} <b>${esc(periodRentName(state, id, t.name))}</b></span><small>${money(tierRent(state, id, regionId))}/mo · deposit ${money(tierRent(state, id, regionId) * 2)}</small>
       ${current ? chip('Your lease', 'good') : button('Rent', 'housing.rent', { arg: id, variant: 'tiny', disabled: state.character.age < 18 || ['owner', 'military', 'employerProvided', 'official', 'incarcerated'].includes(status) })}</li>`;
   }).join('');
   return card('Where You Live', `

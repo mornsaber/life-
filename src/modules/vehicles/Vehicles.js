@@ -14,6 +14,7 @@
 import { canAfford } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
+import { yearNow } from '../world/Eras.js';
 
 /**
  * price       sticker price (new)
@@ -29,38 +30,49 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
  * appreciates classics gain value instead of losing it
  */
 export const VEHICLE_TYPES = {
-  beater: { name: 'Used Beater', icon: '🚗', category: 'car', price: 5000, depreciation: 0.12, insurance: 900, upkeep: 2600, license: 'driverLicense', used: true, risk: 1.1 },
-  usedSedan: { name: 'Used Sedan', icon: '🚗', category: 'car', price: 18000, depreciation: 0.12, insurance: 1500, upkeep: 2400, license: 'driverLicense', used: true },
-  sedan: { name: 'New Sedan', icon: '🚙', category: 'car', price: 30000, depreciation: 0.15, insurance: 1900, upkeep: 2200, license: 'driverLicense', lease: true },
-  ev: { name: 'Electric Car', icon: '🔋', category: 'car', price: 45000, depreciation: 0.17, insurance: 2400, upkeep: 1200, license: 'driverLicense', lease: true },
-  suv: { name: 'SUV', icon: '🚙', category: 'car', price: 48000, depreciation: 0.15, insurance: 2200, upkeep: 3000, license: 'driverLicense', lease: true },
-  pickup: { name: 'Pickup Truck', icon: '🛻', category: 'car', price: 55000, depreciation: 0.12, insurance: 2100, upkeep: 3400, license: 'driverLicense', lease: true },
-  luxury: { name: 'Luxury Sedan', icon: '🚘', category: 'car', price: 90000, depreciation: 0.2, insurance: 3600, upkeep: 3500, license: 'driverLicense', lease: true, fun: 2 },
-  sports: { name: 'Sports Car', icon: '🏎️', category: 'car', price: 130000, depreciation: 0.15, insurance: 5500, upkeep: 4500, license: 'driverLicense', lease: true, fun: 4, risk: 2 },
-  motorcycle: { name: 'Motorcycle', icon: '🏍️', category: 'bike', price: 14000, depreciation: 0.12, insurance: 800, upkeep: 900, license: 'motorcycle', fun: 3, risk: 1.8, deadly: 0.01 },
-  minivan: { name: 'Minivan', icon: '🚐', category: 'car', price: 42000, depreciation: 0.14, insurance: 1700, upkeep: 2800, license: 'driverLicense', lease: true },
-  classic: { name: 'Classic Car', icon: '🚗', category: 'car', price: 85000, depreciation: -0.03, insurance: 1200, upkeep: 3000, license: 'driverLicense', used: true, fun: 4, appreciates: true },
-  supercar: { name: 'Supercar', icon: '🏎️', category: 'car', price: 450000, depreciation: 0.1, insurance: 14000, upkeep: 12000, license: 'driverLicense', fun: 6, risk: 2.4 },
-  rv: { name: 'RV', icon: '🚐', category: 'fun', price: 140000, depreciation: 0.12, insurance: 2000, upkeep: 6000, license: 'driverLicense', fun: 3, risk: 0.5 },
-  jetSki: { name: 'Jet Ski', icon: '🌊', category: 'boat', price: 15000, depreciation: 0.12, insurance: 400, upkeep: 1200, fun: 3, risk: 0.6 },
-  pontoon: { name: 'Pontoon Boat', icon: '🚤', category: 'boat', price: 45000, depreciation: 0.1, insurance: 700, upkeep: 3000, fun: 3, risk: 0.3, charter: 0.12 },
-  fishingBoat: { name: 'Center-Console Fishing Boat', icon: '🎣', category: 'boat', price: 120000, depreciation: 0.08, insurance: 2200, upkeep: 9000, fun: 4, risk: 0.4, charter: 0.16 },
+  // Before the motor car: horses, carriages and (from the 1870s) the bicycle.
+  ridingHorse: { name: 'Riding Horse', icon: '🐎', category: 'horse', price: 4000, depreciation: 0.08, insurance: 0, upkeep: 2800, risk: 0.8, fun: 2, until: 1940 },
+  horseTrap: { name: 'Pony and Trap', icon: '🐴', category: 'horse', price: 7000, depreciation: 0.08, insurance: 0, upkeep: 3600, risk: 0.6, until: 1935 },
+  carriage: { name: 'Carriage and Pair (with a coachman)', icon: '🎠', category: 'horse', price: 45000, depreciation: 0.06, insurance: 0, upkeep: 30000, fun: 3, crew: true, risk: 0.4, until: 1920 },
+  bicycle: { name: 'Bicycle', icon: '🚲', category: 'bike', price: 600, depreciation: 0.1, insurance: 0, upkeep: 60, risk: 0.5, from: 1885 },
+  motorCar: { name: 'Motor Car', icon: '🚗', category: 'car', price: 25000, depreciation: 0.12, insurance: 600, upkeep: 2600, license: 'driverLicense', from: 1905, until: 1950 },
+  beater: { name: 'Used Beater', icon: '🚗', category: 'car', price: 5000, depreciation: 0.12, insurance: 900, upkeep: 2600, license: 'driverLicense', used: true, risk: 1.1, from: 1925 },
+  usedSedan: { name: 'Used Sedan', icon: '🚗', category: 'car', price: 18000, depreciation: 0.12, insurance: 1500, upkeep: 2400, license: 'driverLicense', used: true, from: 1925 },
+  sedan: { name: 'New Sedan', icon: '🚙', category: 'car', price: 30000, depreciation: 0.15, insurance: 1900, upkeep: 2200, license: 'driverLicense', lease: true, from: 1925 },
+  ev: { name: 'Electric Car', icon: '🔋', category: 'car', price: 45000, depreciation: 0.17, insurance: 2400, upkeep: 1200, license: 'driverLicense', lease: true, from: 2010 },
+  suv: { name: 'SUV', icon: '🚙', category: 'car', price: 48000, depreciation: 0.15, insurance: 2200, upkeep: 3000, license: 'driverLicense', lease: true, from: 1990 },
+  pickup: { name: 'Pickup Truck', icon: '🛻', category: 'car', price: 55000, depreciation: 0.12, insurance: 2100, upkeep: 3400, license: 'driverLicense', lease: true, from: 1925 },
+  luxury: { name: 'Luxury Sedan', icon: '🚘', category: 'car', price: 90000, depreciation: 0.2, insurance: 3600, upkeep: 3500, license: 'driverLicense', lease: true, fun: 2, from: 1910 },
+  sports: { name: 'Sports Car', icon: '🏎️', category: 'car', price: 130000, depreciation: 0.15, insurance: 5500, upkeep: 4500, license: 'driverLicense', lease: true, fun: 4, risk: 2, from: 1950 },
+  motorcycle: { name: 'Motorcycle', icon: '🏍️', category: 'bike', price: 14000, depreciation: 0.12, insurance: 800, upkeep: 900, license: 'motorcycle', fun: 3, risk: 1.8, deadly: 0.01, from: 1910 },
+  minivan: { name: 'Minivan', icon: '🚐', category: 'car', price: 42000, depreciation: 0.14, insurance: 1700, upkeep: 2800, license: 'driverLicense', lease: true, from: 1984 },
+  classic: { name: 'Classic Car', icon: '🚗', category: 'car', price: 85000, depreciation: -0.03, insurance: 1200, upkeep: 3000, license: 'driverLicense', used: true, fun: 4, appreciates: true, from: 1975 },
+  supercar: { name: 'Supercar', icon: '🏎️', category: 'car', price: 450000, depreciation: 0.1, insurance: 14000, upkeep: 12000, license: 'driverLicense', fun: 6, risk: 2.4, from: 1966 },
+  rv: { name: 'RV', icon: '🚐', category: 'fun', price: 140000, depreciation: 0.12, insurance: 2000, upkeep: 6000, license: 'driverLicense', fun: 3, risk: 0.5, from: 1960 },
+  jetSki: { name: 'Jet Ski', icon: '🌊', category: 'boat', price: 15000, depreciation: 0.12, insurance: 400, upkeep: 1200, fun: 3, risk: 0.6, from: 1972 },
+  pontoon: { name: 'Pontoon Boat', icon: '🚤', category: 'boat', price: 45000, depreciation: 0.1, insurance: 700, upkeep: 3000, fun: 3, risk: 0.3, charter: 0.12, from: 1952 },
+  fishingBoat: { name: 'Center-Console Fishing Boat', icon: '🎣', category: 'boat', price: 120000, depreciation: 0.08, insurance: 2200, upkeep: 9000, fun: 4, risk: 0.4, charter: 0.16, from: 1955 },
   sailboat: { name: 'Sailboat (38 ft)', icon: '⛵', category: 'boat', price: 240000, depreciation: 0.06, insurance: 3000, upkeep: 14000, fun: 5, risk: 0.3, charter: 0.14 },
-  boat: { name: 'Cabin Cruiser', icon: '🚤', category: 'boat', price: 90000, depreciation: 0.09, insurance: 1800, upkeep: 9000, fun: 4, risk: 0.3, charter: 0.12 },
-  sportfisher: { name: 'Sportfishing Yacht', icon: '🛥️', category: 'boat', price: 1200000, depreciation: 0.08, insurance: 18000, upkeep: 110000, fun: 6, risk: 0.2, charter: 0.14, crew: true },
+  boat: { name: 'Cabin Cruiser', icon: '🚤', category: 'boat', price: 90000, depreciation: 0.09, insurance: 1800, upkeep: 9000, fun: 4, risk: 0.3, charter: 0.12, from: 1920 },
+  sportfisher: { name: 'Sportfishing Yacht', icon: '🛥️', category: 'boat', price: 1200000, depreciation: 0.08, insurance: 18000, upkeep: 110000, fun: 6, risk: 0.2, charter: 0.14, crew: true, from: 1955 },
   yacht: { name: 'Yacht', icon: '🛥️', category: 'boat', price: 1500000, depreciation: 0.08, insurance: 25000, upkeep: 150000, fun: 7, risk: 0.2, charter: 0.13, crew: true },
-  superyacht: { name: 'Superyacht', icon: '🛳️', category: 'boat', price: 28000000, depreciation: 0.06, insurance: 450000, upkeep: 2600000, fun: 10, risk: 0.1, charter: 0.12, crew: true },
-  lightSport: { name: 'Light-Sport Aircraft', icon: '🛩️', category: 'air', price: 160000, depreciation: 0.05, insurance: 2500, upkeep: 14000, license: 'privatePilot', fun: 5, risk: 0.35, deadly: 0.15 },
-  plane: { name: 'Single-Engine Plane', icon: '🛩️', category: 'air', price: 280000, depreciation: 0.04, insurance: 4000, upkeep: 25000, license: 'privatePilot', fun: 5, risk: 0.3, deadly: 0.15, charter: 0.08 },
-  seaplane: { name: 'Seaplane', icon: '🛩️', category: 'air', price: 450000, depreciation: 0.04, insurance: 9000, upkeep: 35000, license: 'privatePilot', fun: 7, risk: 0.4, deadly: 0.15, charter: 0.12 },
-  twin: { name: 'Twin-Engine Plane', icon: '✈️', category: 'air', price: 850000, depreciation: 0.05, insurance: 14000, upkeep: 70000, license: 'instrumentRating', fun: 5, risk: 0.25, deadly: 0.12, charter: 0.11 },
-  helicopter: { name: 'Helicopter', icon: '🚁', category: 'air', price: 1400000, depreciation: 0.06, insurance: 45000, upkeep: 160000, license: 'privatePilot', fun: 7, risk: 0.45, deadly: 0.2, charter: 0.14 },
-  turboprop: { name: 'Turboprop (King Air)', icon: '✈️', category: 'air', price: 3800000, depreciation: 0.05, insurance: 35000, upkeep: 380000, fun: 7, risk: 0.15, deadly: 0.1, crew: true, charter: 0.13 },
-  jet: { name: 'Light Jet', icon: '🛫', category: 'air', price: 9000000, depreciation: 0.07, insurance: 60000, upkeep: 900000, fun: 9, risk: 0.1, deadly: 0.1, crew: true, charter: 0.12 },
-  heavyJet: { name: 'Long-Range Jet', icon: '🛫', category: 'air', price: 65000000, depreciation: 0.06, insurance: 300000, upkeep: 4200000, fun: 10, risk: 0.05, deadly: 0.1, crew: true, charter: 0.1 },
+  superyacht: { name: 'Superyacht', icon: '🛳️', category: 'boat', price: 28000000, depreciation: 0.06, insurance: 450000, upkeep: 2600000, fun: 10, risk: 0.1, charter: 0.12, crew: true, from: 1990 },
+  lightSport: { name: 'Light-Sport Aircraft', icon: '🛩️', category: 'air', price: 160000, depreciation: 0.05, insurance: 2500, upkeep: 14000, license: 'privatePilot', fun: 5, risk: 0.35, deadly: 0.15, from: 2004 },
+  plane: { name: 'Single-Engine Plane', icon: '🛩️', category: 'air', price: 280000, depreciation: 0.04, insurance: 4000, upkeep: 25000, license: 'privatePilot', fun: 5, risk: 0.3, deadly: 0.15, charter: 0.08, from: 1927 },
+  seaplane: { name: 'Seaplane', icon: '🛩️', category: 'air', price: 450000, depreciation: 0.04, insurance: 9000, upkeep: 35000, license: 'privatePilot', fun: 7, risk: 0.4, deadly: 0.15, charter: 0.12, from: 1930 },
+  twin: { name: 'Twin-Engine Plane', icon: '✈️', category: 'air', price: 850000, depreciation: 0.05, insurance: 14000, upkeep: 70000, license: 'instrumentRating', fun: 5, risk: 0.25, deadly: 0.12, charter: 0.11, from: 1950 },
+  helicopter: { name: 'Helicopter', icon: '🚁', category: 'air', price: 1400000, depreciation: 0.06, insurance: 45000, upkeep: 160000, license: 'privatePilot', fun: 7, risk: 0.45, deadly: 0.2, charter: 0.14, from: 1955 },
+  turboprop: { name: 'Turboprop (King Air)', icon: '✈️', category: 'air', price: 3800000, depreciation: 0.05, insurance: 35000, upkeep: 380000, fun: 7, risk: 0.15, deadly: 0.1, crew: true, charter: 0.13, from: 1964 },
+  jet: { name: 'Light Jet', icon: '🛫', category: 'air', price: 9000000, depreciation: 0.07, insurance: 60000, upkeep: 900000, fun: 9, risk: 0.1, deadly: 0.1, crew: true, charter: 0.12, from: 1965 },
+  heavyJet: { name: 'Long-Range Jet', icon: '🛫', category: 'air', price: 65000000, depreciation: 0.06, insurance: 300000, upkeep: 4200000, fun: 10, risk: 0.05, deadly: 0.1, crew: true, charter: 0.1, from: 1990 },
 };
 
-export const CATEGORIES = { car: 'Cars & Trucks', bike: 'Motorcycles', fun: 'RVs', boat: 'Boats', air: 'Aircraft' };
+export const CATEGORIES = { horse: 'Horses & Carriages', car: 'Cars & Trucks', bike: 'Bicycles & Motorcycles', fun: 'RVs', boat: 'Boats', air: 'Aircraft' };
+/** Can this be bought in the year being played? (Not yet built, or no longer made.) */
+export function vehicleInEra(state, t) {
+  const y = yearNow(state);
+  return !(t.from > y) && !(t.until <= y);
+}
 
 const LOAN_YEARS = 5;
 const LEASE_YEARS = 3;
@@ -107,7 +119,10 @@ export function purchaseCheck(state, typeId, how) {
   if (state.character.age < 16) return { ok: false, reason: 'You must be 16+' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (vehiclesOf(state).length >= MAX_VEHICLES) return { ok: false, reason: 'Your garage is full' };
-  if (how === 'lease' && !t.lease) return { ok: false, reason: 'Not available to lease' };
+  if (t.from > yearNow(state)) return { ok: false, reason: `Not built yet (from about ${t.from})` };
+  if (t.until <= yearNow(state)) return { ok: false, reason: 'Nobody sells these any more' };
+  if (how === 'lease' && (!t.lease || yearNow(state) < 1990)) return { ok: false, reason: 'Not available to lease' };
+  if (how === 'loan' && yearNow(state) < 1920) return { ok: false, reason: 'No one lends to buy one: pay cash' };
   if (how !== 'cash') {
     if (state.character.age < 18) return { ok: false, reason: 'Loans and leases need an adult signer' };
     const min = how === 'lease' ? 620 : 500;
@@ -223,7 +238,7 @@ function accidentTick(ctx) {
     const atFault = rng.chance(age < 25 ? 0.65 : 0.5);
     const severe = rng.chance(0.15);
     const damage = severe ? v.value : Math.round(v.value * rng.float(0.1, 0.4));
-    let text = `${t.icon} You ${t.category === 'boat' ? 'ran your boat aground' : t.category === 'air' ? 'had a hard landing' : `were in a ${severe ? 'serious ' : ''}crash in your ${t.name}`}${atFault ? '' : ' (not your fault)'}.`;
+    let text = `${t.icon} You ${t.category === 'boat' ? 'ran your boat aground' : t.category === 'air' ? 'had a hard landing' : t.category === 'horse' ? `were ${severe ? 'badly hurt when you were ' : ''}thrown when your ${t.name.toLowerCase()} bolted` : `were in a ${severe ? 'serious ' : ''}crash in your ${t.name}`}${atFault ? '' : ' (not your fault)'}.`;
     if (atFault) {
       r.accidents.push(age);
       if (drives) r.points += 3;
@@ -248,7 +263,7 @@ function accidentTick(ctx) {
     if (severe && rng.chance(0.6)) ctx.emit('health:injury', { conditionId: rng.pick(['backInjury', 'tbi']), severity: rng.int(20, 70) });
     ctx.stat('stress', 8);
     ctx.log(text, '💥', 'bad');
-    if (severe && t.deadly && rng.chance(t.deadly * 3)) return ctx.die(t.category === 'air' ? 'Plane crash' : 'Motorcycle crash');
+    if (severe && t.deadly && rng.chance(t.deadly * 3)) return ctx.die(t.category === 'air' ? 'Plane crash' : t.category === 'horse' ? 'Thrown from a horse' : 'Motorcycle crash');
     return; // one wreck a year is plenty
   }
 }

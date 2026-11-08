@@ -7,7 +7,7 @@ import { empireCard } from './EmpireView.js';
 import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
 import { CREDIT, ACCOUNTS } from '../../modules/world/CountryLaw.js';
 import { countryOf } from '../../modules/world/Countries.js';
-import { periodDollars, yearNow } from '../../modules/world/Eras.js';
+import { periodDollars, yearNow, creditScoresExist, dcExists, statePensionExists, studentLoansExist, hasTech, eraTaxShare } from '../../modules/world/Eras.js';
 import { esc, money, button, card, chip, kv, empty, disclosure } from '../Components.js';
 import { netWorth, investmentsValue, creditLimit, availableCredit } from '../../core/State.js';
 import { investView } from './InvestView.js';
@@ -22,7 +22,7 @@ import { regionsHere } from '../../modules/life/Regions.js';
 /** Your wallet: cards, rewards, payoff strategy and balance transfers. */
 function walletSection(state) {
   const c = state.finances.cards;
-  if (!c) return '';
+  if (!c || (!hasTech(state, 'creditCards') && !c.held.length)) return '';
   const debt = Math.max(0, -state.finances.cash);
   const held = c.held.map((x) => {
     const t = CARD_TYPES[x.typeId];
@@ -67,7 +67,7 @@ function taxCard(state) {
   const f = state.finances;
   const t = f.tax;
   const ly = f.lastYear;
-  if (state.character.age < 18 || !t) return '';
+  if (state.character.age < 18 || !t || !eraTaxShare(state)) return '';
   const it = ly?.itemized;
   const married = Boolean(ly?.married);
   if (state.character.countryId) return foreignTaxCard(state);
@@ -118,12 +118,15 @@ function debtCard(state) {
 function creditLabel(state) {
   const c = CREDIT[state.character.countryId];
   const score = state.housing.credit.score;
+  // Before credit scores, a name was good or bad with the bank and the shops.
+  if (!creditScoresExist(state)) return score >= 700 ? 'good name with the bank' : score >= 580 ? 'known to the bank' : 'a bad name with every shop in town';
   if (!c) return `score ${score}`;
   if (c.registry) return score >= 580 ? 'clean' : 'listed';
   return String(score);
 }
 
 const creditTitle = (state) => {
+  if (!creditScoresExist(state)) return 'Credit';
   const name = CREDIT[state.character.countryId]?.name;
   return name ? name[0].toUpperCase() + name.slice(1) : 'Credit score';
 };
@@ -136,9 +139,9 @@ export function moneyView(state) {
 
   const finances = card('Finances', `${kv([
     ['Cash', `<b class="${f.cash < 0 ? 'neg' : 'pos'}">${money(f.cash)}</b>`],
-    ['Retirement accounts', money(r.dc)],
+    dcExists(state) || r.dc ? ['Retirement accounts', money(r.dc)] : null,
     state.investing ? ['Investments', money(investmentsValue(state))] : null,
-    ['Student loans', f.loans ? `<span class="neg">${money(f.loans)}</span>` : '$0'],
+    f.loans || studentLoansExist(state) ? ['Student loans', f.loans ? `<span class="neg">${money(f.loans)}</span>` : '$0'] : null,
     ['Net worth', `<b>${money(netWorth(state))}</b>`],
     periodDollars(state, 1) != null ? [`In ${yearNow(state)} money`, `${money(periodDollars(state, netWorth(state)))} net worth · ${money(periodDollars(state, state.career?.job?.salary ?? 0))} a year in wages <small class="muted">(everything here is in today's dollars)</small>`] : null,
     ['Lifetime earnings', money(f.lifetimeEarnings)],
@@ -158,17 +161,17 @@ export function moneyView(state) {
   const retirement = card('Retirement', `
     ${kv([
       ['Status', r.retired ? '🏖️ Retired' : 'Working age'],
-      [ACCOUNTS[state.character.countryId]?.dc ?? '401(k)/403(b)/457/TSP', money(r.dc)],
+      dcExists(state) || r.dc ? [ACCOUNTS[state.character.countryId]?.dc ?? '401(k)/403(b)/457/TSP', money(r.dc)] : null,
       ['Covered earning years', `${r.ssEarnings.length} of 35`],
-      ['Social Security', r.socialSecurity ? `${money(r.socialSecurity.annual)}/yr (claimed at ${r.socialSecurity.claimAge})` : `≈${money(pia * 12)}/yr at ${SS_FULL_AGE}${age >= 62 ? ` · ${money(socialSecurityEstimate(state))} if claimed now` : ''}`],
+      !statePensionExists(state) && !r.socialSecurity ? ['State pension', 'None yet: in old age, your savings, your children or the parish'] : ['Social Security', r.socialSecurity ? `${money(r.socialSecurity.annual)}/yr (claimed at ${r.socialSecurity.claimAge})` : `≈${money(pia * 12)}/yr at ${SS_FULL_AGE}${age >= 62 ? ` · ${money(socialSecurityEstimate(state))} if claimed now` : ''}`],
     ])}
     <h4 class="sub">Pension plans</h4>${plans ? `<ul class="history">${plans}</ul>` : empty('No pension service credit. Public employers and some union/corporate jobs offer pensions.')}
     <h4 class="sub">Income in retirement</h4>${pensions ? `<ul class="history">${pensions}</ul>` : empty('No pensions or benefits yet.')}
     <div class="action-grid">
       ${button('🏖️ Retire', 'retirement.retire', { disabled: r.retired || (age < 50 && !earlyRetirementEligible(state)), hint: age < 50 && earlyRetirementEligible(state) ? 'Early retirement: your pension pays out now' : 'Ends your job; eligible pensions start' })}
       ${r.retired ? button('💼 Un-retire', 'retirement.unretire') : ''}
-      ${button('🇺🇸 Claim Social Security', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' })}
-      ${button('🏧 Withdraw $10K', 'retirement.withdraw', { disabled: r.dc <= 0, hint: age < 60 ? '10% early penalty' : 'Penalty-free' })}
+      ${statePensionExists(state) ? button('🇺🇸 Claim Social Security', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' }) : ''}
+      ${dcExists(state) || r.dc ? button('🏧 Withdraw $10K', 'retirement.withdraw', { disabled: r.dc <= 0, hint: age < 60 ? '10% early penalty' : 'Penalty-free' }) : ''}
     </div>
     <p class="fine">Plans: ${Object.values(PENSION_PLANS).map((p) => p.short).join(' · ')}. Medals raise military retired pay.</p>`, { icon: '🏦', accent: 'yellow' });
 

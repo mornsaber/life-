@@ -14,6 +14,7 @@
  */
 import { creditBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
+import { hasTech } from '../world/Eras.js';
 
 export const CARD_TYPES = {
   secured: { name: 'Secured Card', icon: '🔒', apr: 0.26, fee: 0, rewards: 0, minScore: 300, deposit: 500, desc: 'A $500 deposit is your limit. Builds credit from nothing.' },
@@ -58,6 +59,7 @@ export function limitMultiplier(state) {
 export function applyCheck(state, typeId) {
   const t = CARD_TYPES[typeId];
   if (!t) return { ok: false, reason: 'Unknown card' };
+  if (!hasTech(state, 'creditCards')) return { ok: false, reason: 'No credit cards yet (from about 1960)' };
   if (state.character.age < 18) return { ok: false, reason: '18+ (or a parent co-signer)' };
   const noCredit = creditBlock(state);
   if (noCredit) return { ok: false, reason: noCredit };

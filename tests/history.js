@@ -394,6 +394,19 @@ const tests = {
     engine.hydrate(state);
     assert.match(applicationEligibility(state, 'police').reason ?? '', /Exam|Needs|License/, 'by 1960 the police want both');
   },
+  'every tab keeps to 1850: garage, money, health, legal, crime, business, civic and home'() {
+    const MODERN = /\b(SUV|minivan|Electric Car|Pickup Truck|Roth|401\(k\)|IRA\b|Crypto|Marketplace \(ACA\)|Medicare|Medicaid|Fentanyl|Methamphetamine|Carjack|Ransomware|Online Scam|Tech Startup|Food Truck|LLC|S Corporation|FEMA|AmeriCorps|Peace Corps|Team Rubicon|30-yr Fixed|Condo\b|Travel Rewards Card|Lease\b)/;
+    const { engine, state } = life({ countryId: 'US', startYear: 1820 }, 1);
+    state.character.age = 30;
+    state.finances.cash = 200000;
+    engine.hydrate(state);
+    for (const tab of ['garage', 'money', 'health', 'legal', 'crime', 'business', 'civic', 'emergency', 'home']) {
+      const text = VIEWS[tab](state, {}).replace(/<[^>]+>/g, ' ');
+      assert.doesNotMatch(text, MODERN, tab);
+    }
+    assert.ok(VIEWS.garage(state, {}).includes('Riding Horse'), 'horses for sale');
+    assert.match(VIEWS.health(state, {}), /Charity ward|Sick club|Pay the doctor/);
+  },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);
     assert.equal(colonyHere(state)?.ruler, 'ES');

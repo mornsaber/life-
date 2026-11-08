@@ -30,6 +30,7 @@ import { meOf, outfitsHere } from '../legal/Underworld.js';
 import { priceLevel } from '../world/Countries.js';
 import { drugLawHere } from './CrimeWorld.js';
 import { lifestyleOf } from '../health/Lifestyle.js';
+import { drugInEra, labInEra } from '../world/Eras.js';
 
 export const PRODUCTS = {
   cannabis: { label: 'Cannabis', icon: '🌿', wholesale: 2500, retail: 7000, origin: ['MX', 'CO', 'MA', 'TH', 'CA', 'US'], harm: 0, lab: 'grow' },
@@ -37,6 +38,7 @@ export const PRODUCTS = {
   heroin: { label: 'Heroin', icon: '💉', wholesale: 45000, retail: 120000, origin: ['AF', 'MM', 'MX'], harm: 0.02 },
   meth: { label: 'Methamphetamine', icon: '🧪', wholesale: 7000, retail: 40000, origin: ['MX', 'MM', 'CN'], harm: 0.006, lab: 'cook' },
   mdma: { label: 'MDMA (ecstasy)', icon: '💊', wholesale: 9000, retail: 35000, origin: ['NL', 'BE'], harm: 0.002 },
+  opium: { label: 'Opium', icon: '🌺', wholesale: 9000, retail: 30000, origin: ['IN', 'CN', 'TR', 'AF', 'IR'], harm: 0.006 },
   fentanyl: { label: 'Fentanyl pills', icon: '☠️', wholesale: 12000, retail: 150000, origin: ['MX', 'CN'], harm: 0.06, lab: 'press' },
 };
 export const LABS = {
@@ -108,6 +110,7 @@ export const DrugActions = {
     const p = PRODUCTS[product];
     const b = BUYS[size];
     if (!p || !b) return ctx.toast('Pick a product and an amount', 'warn');
+    if (!drugInEra(state, product)) return ctx.toast('Nobody makes that yet.', 'warn');
     const d = drugsOf(state);
     if (d.stash > 0.01 && d.product !== product) return ctx.toast(`Move your ${PRODUCTS[d.product].label.toLowerCase()} first`, 'warn');
     if (repOf(state) < b.rep && outfitRank(state) < 1) return ctx.toast(`Nobody will front you that much yet (needs ${b.rep} street rep)`, 'warn');
@@ -127,6 +130,7 @@ export const DrugActions = {
     if (d.stash < 0.05) return ctx.toast('Nothing to cut', 'warn');
     if (!once(ctx, 'drug.cut')) return;
     if (how === 'fentanyl') {
+      if (!drugInEra(state, 'fentanyl')) return ctx.toast('Nobody makes that yet.', 'warn');
       if (!['heroin', 'cocaine'].includes(d.product)) return ctx.toast('Fentanyl goes into heroin and cocaine', 'warn');
       d.stash *= 2;
       d.laced = true;
@@ -179,7 +183,7 @@ export const DrugActions = {
   drugLab(ctx, type) {
     const { state } = ctx;
     const lab = LABS[type];
-    if (!lab) return;
+    if (!lab || !labInEra(state, type)) return;
     const d = drugsOf(state);
     if (state.character.age < 18) return ctx.toast('18+', 'warn');
     if (d.lab) return ctx.toast(`You already run a ${LABS[d.lab].label.toLowerCase()}`, 'warn');

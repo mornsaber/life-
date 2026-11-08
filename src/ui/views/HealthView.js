@@ -27,6 +27,7 @@ import { VETERANS } from '../../modules/world/CountryLaw.js';
 import { peekLifestyle, riskProfile, bmiLabel, LEVELS } from '../../modules/health/Lifestyle.js';
 import { screeningsFor } from '../../modules/health/HealthEngine.js';
 import { careSystemHere, careCost, CARE_LABEL } from '../../modules/health/EndOfLife.js';
+import { yearNow } from '../../modules/world/Eras.js';
 
 /** Habits and what they do to your odds. */
 function lifestyleCard(state) {
@@ -104,11 +105,11 @@ function coverageCard(state) {
     ])}
     <div class="toggle-row">
       ${button('🩺 Annual checkup', 'health.checkup', { variant: 'small', disabled: Boolean(state.yearly['health.checkup']), hint: 'Free preventive care; catches silent conditions early' })}
-      ${abroad ? '' : button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
+      ${abroad || yearNow(state) < 2014 ? '' : button(h.marketplace ? '🛒 Marketplace backup: ON' : '🛒 Marketplace backup: OFF', 'health.toggleMarketplace', { variant: h.marketplace ? 'small on' : 'small', hint: 'Buy an ACA plan when nothing else covers you' })}
       ${sys?.private && (plan.id === 'national' || h.privateCover) ? button(h.privateCover ? `🛡️ ${sys.private.name}: ON` : `🛡️ ${sys.private.name}: OFF`, 'health.togglePrivateCover', { variant: h.privateCover ? 'small on' : 'small', hint: `${money(privatePremium(state))}/yr · ${sys.private.skipsWait ? 'skip waiting lists' : 'covers co-payments'}` }) : ''}
     </div>
     ${sys ? `<p class="fine">${sys.wait ? `⏳ Non-urgent specialist care waits about ${sys.wait} months on the ${esc(sys.waitName)}.` : 'No waiting lists to speak of.'}${sys.note ? ` ${esc(sys.note)}` : ''}${levySurcharge(state) ? ` You pay a ${money(levySurcharge(state))} Medicare Levy Surcharge without private hospital cover.` : ''}</p>` : ''}
-    <p class="fine">${abroad ? `Everyone who lives here is covered by ${esc(countryOf(state).health.name)}, paid for through taxes and contributions: small co-payments, capped each year, and no medical debt spiral.` : 'Plans by circumstance: employer, TRICARE, a parent\'s plan to 26, Medicare at 65 (or after 2 yrs of SSDI), Medicaid on low income (not in TX/FL unless disabled), marketplace, or nothing.'}</p>`, { icon: '🏥', accent: plan.id === 'none' ? 'red' : 'green' });
+    <p class="fine">${plan.id === 'charity' || plan.id === 'friendlySociety' || plan.id === 'feeForService' || plan.id === 'blueCross' ? 'Before health insurance: a sick club through your work pays a lodge doctor, the charity ward and dispensary take the poor, and everyone else pays the doctor\'s bill.' : abroad && plan.id === 'national' ? `Everyone who lives here is covered by ${esc(countryOf(state).health.name)}, paid for through taxes and contributions: small co-payments, capped each year, and no medical debt spiral.` : 'Plans by circumstance: employer, TRICARE, a parent\'s plan to 26, Medicare at 65 (or after 2 yrs of SSDI), Medicaid on low income (not in TX/FL unless disabled), marketplace, or nothing.'}</p>`, { icon: '🏥', accent: plan.id === 'none' ? 'red' : 'green' });
 }
 
 function conditionRow(state, c) {
@@ -148,7 +149,7 @@ export function healthView(state) {
 
   const mind = card('Mind & Trauma', `
     ${meter(Math.min(100, h.trauma), { tone: h.trauma >= 40 ? 'bad' : h.trauma >= 20 ? 'mid' : 'good', label: 'Traumatic exposure', suffix: '' })}
-    <p class="fine">Combat, emergency calls, first-responder and CPS casework, prison and disasters build up exposure; it fades with time. High exposure can become PTSD — therapy (or VA care for service-connected PTSD) helps.</p>
+    <p class="fine">Combat, emergency calls, first-responder and CPS casework, prison and disasters build up exposure; it fades with time. High exposure can become ${yearNow(state) < 1915 ? 'a lasting case of nerves' : yearNow(state) < 1980 ? (yearNow(state) < 1940 ? 'shell shock' : 'combat fatigue') : 'PTSD — therapy (or VA care for service-connected PTSD) helps'}.</p>
     <p class="fine">Therapy works slowly and lasts; medication works faster with side effects; together they work best. In a crisis, call or text <b>988</b> (Suicide &amp; Crisis Lifeline) any time.</p>`, { icon: '🧠' });
 
   const benefits = d.benefits.map((b) => `<li><b>${esc(b.label)}</b> — ${money(b.annual)}/yr until ${b.endAge}</li>`).join('');
@@ -166,12 +167,12 @@ export function healthView(state) {
     ${benefits ? `<ul class="history">${benefits}</ul>` : ''}
     ${disabling.length ? `<p class="why">Disabling: ${disabling.map((c) => esc(CONDITIONS[c.id].name)).join(', ')}</p>` : ''}
     <div class="toggle-row">
-      ${button(d.policy ? '🛡️ Cancel disability policy' : '🛡️ Buy disability insurance', 'health.toggleDisabilityPolicy', { variant: d.policy ? 'small on' : 'small', hint: 'Pays 60% of salary if you can\'t work' })}
+      ${yearNow(state) < 1950 && !d.policy ? '' : button(d.policy ? '🛡️ Cancel disability policy' : '🛡️ Buy disability insurance', 'health.toggleDisabilityPolicy', { variant: d.policy ? 'small on' : 'small', hint: 'Pays 60% of salary if you can\'t work' })}
       ${button('♿ Claim disability', 'health.claimDisability', { variant: 'small', disabled: !disabling.length || d.benefits.length > 0, hint: `LTD, a ${disabilityName(state)} application and disability retirement` })}
       ${(() => { const e = ssdiEligibility(state); return button(`📨 Apply for ${disabilityName(state)}`, 'ssdi.apply', { variant: 'small', disabled: !e.ok, hint: e.ok ? (disabilityHere(state) ? 'A medical assessment decides it' : 'Most first applications are denied; appeals often win') : e.reason }); })()}
       ${state.military.history.length ? button(vetCare ? `🎖️ Claim through ${vetCare}` : '🇺🇸 File VA claim', 'health.vaClaim', { variant: 'small', hint: 'Re-rate service-connected conditions' }) : ''}
     </div>
-    <p class="fine">${disabilityHere(state) ? `${esc(disabilityName(state))}: a medical assessment of your capacity to work; refusals can be reviewed and appealed to a tribunal.` : `SSDI: 5-month waiting period; initial decisions approve about 1 in 3; a hearing before a judge comes a year or more later. Disability attorneys take 25% of back pay (max ${money(ATTORNEY_CAP)}). Medicare after 24 months of benefits.`}</p>`, { icon: '♿' });
+    <p class="fine">${yearNow(state) < 1956 ? 'There is no state disability pension yet: a private policy, your union\'s sick fund or your family is what stands between an injury and the poorhouse.' : disabilityHere(state) ? `${esc(disabilityName(state))}: a medical assessment of your capacity to work; refusals can be reviewed and appealed to a tribunal.` : `SSDI: 5-month waiting period; initial decisions approve about 1 in 3; a hearing before a judge comes a year or more later. Disability attorneys take 25% of back pay (max ${money(ATTORNEY_CAP)}). Medicare after 24 months of benefits.`}</p>`, { icon: '♿' });
 
   const debt = h.medicalDebt ? card('Medical Debt', `
     <p><b class="neg">${money(h.medicalDebt)}</b> ${h.collections ? chip('In collections', 'bad') : ''}</p>

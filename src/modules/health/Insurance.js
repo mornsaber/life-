@@ -10,6 +10,10 @@
  * tracked per calendar year. What you can't pay becomes medical debt.
  */
 import { yearlyCount } from '../../core/State.js';
+import { yearNow } from '../world/Eras.js';
+
+/** When each country's national health care began (Bismarck's sickness insurance, the NHS, Medicare in Canada). */
+const NATIONAL_HEALTH_FROM = { DE: 1883, AT: 1888, JP: 1961, GB: 1948, FR: 1945, CA: 1966, AU: 1975, NZ: 1938, SE: 1955, NO: 1956, DK: 1960, IT: 1978, ES: 1986, KR: 1989, TW: 1995, CN: 2009, IN: 2018, MX: 2003, BR: 1988, IL: 1995, NL: 1941, BE: 1945, CH: 1996, IE: 1970 };
 import { stateIdOf } from '../life/Regions.js';
 
 import { isAbroad, countryOf } from '../world/Countries.js';
@@ -29,6 +33,12 @@ export const PLANS = {
   medicare: { name: 'Medicare', icon: '🧓', premium: 2200, deductible: 260, coinsurance: 0.2, oopMax: 7000 },
   medicaid: { name: 'Medicaid', icon: '🏥', premium: 0, deductible: 0, coinsurance: 0.02, oopMax: 600 },
   marketplace: { name: 'Marketplace (ACA) plan', icon: '🛒', premium: 6500, deductible: 4500, coinsurance: 0.3, oopMax: 9200 },
+  // Before health insurance: the lodge doctor your sick club paid, the charity ward, or the doctor's bill.
+  friendlySociety: { name: 'Sick club (friendly society) doctor', icon: '🤝', premium: 250, deductible: 0, coinsurance: 0.35, oopMax: 5000 },
+  charity: { name: 'Charity ward and dispensary', icon: '⛪', premium: 0, deductible: 0, coinsurance: 0.1, oopMax: 1500 },
+  feeForService: { name: 'Pay the doctor yourself', icon: '🩺', premium: 0, deductible: 0, coinsurance: 0.45, oopMax: 12000 },
+  blueCross: { name: 'Blue Cross hospital plan', icon: '✚', premium: 2400, deductible: 800, coinsurance: 0.2, oopMax: 8000 },
+  militaryMedical: { name: 'Military medical care', icon: '🎖️', premium: 0, deductible: 0, coinsurance: 0, oopMax: 0 },
   none: { name: 'Uninsured', icon: '⚠️', premium: 0, deductible: Infinity, coinsurance: 1, oopMax: Infinity },
   // Universal coverage abroad: paid through taxes and payroll contributions, so no premium (see Countries.js).
   national: { name: 'National health insurance', icon: '🏥', premium: 0, deductible: 0, coinsurance: 0.05, oopMax: 900 },
@@ -48,7 +58,22 @@ export function isDisabled(state) {
 export function coverageId(state, earned = income(state)) {
   const age = state.character.age;
   if (state.legal.incarceration) return 'prison';
-  if (state.military.service?.component === 'active') return 'tricare';
+  const y = yearNow(state);
+  if (state.military.service?.component === 'active') return y < 1966 ? 'militaryMedical' : 'tricare';
+  // Before national health care or health insurance (world/Eras.js): sick clubs, charity and the doctor's bill.
+  const cc = state.character.countryId ?? 'US';
+  const modern = cc === 'US' ? y >= 1945 : !(NATIONAL_HEALTH_FROM[cc] > y) && y >= 1950;
+  if (!modern) {
+    if ((state.health?.va?.rating ?? 0) >= 50 && y >= 1930) return 'va';
+    if (earned < 20000) return 'charity';
+    return state.career.job ? 'friendlySociety' : 'feeForService';
+  }
+  if (cc === 'US' && y < 1966) {
+    if (state.career.job?.employer.benefits.health) return 'employer';
+    if ((state.health?.va?.rating ?? 0) >= 50) return 'va';
+    if (earned < 20000) return 'charity';
+    return 'blueCross';
+  }
   if (isAbroad(state)) {
     const res = state.migration?.residences?.[state.character.countryId];
     return res?.status === 'visa' && PRIVATE_COVER_VISAS.includes(res.visa) ? 'expat' : 'national';
@@ -58,9 +83,10 @@ export function coverageId(state, earned = income(state)) {
   if (state.retirement.pensions.some((p) => p.id === 'military')) return 'tricareRetiree';
   // Veterans rated 50%+ get full VA health care (priority group 1).
   if ((state.health?.va?.rating ?? 0) >= 50) return 'va';
-  if (age < 26) return 'parents';
+  if (age < 26 && y >= 2010) return 'parents';
   if (earned < MEDICAID_INCOME && (!NON_EXPANSION.has(stateIdOf(state)) || isDisabled(state))) return 'medicaid';
-  if (state.health?.marketplace !== false) return 'marketplace';
+  if (state.health?.marketplace !== false && y >= 2014) return 'marketplace';
+  if (y < 2014) return earned < 30000 ? 'charity' : 'blueCross';
   return 'none';
 }
 

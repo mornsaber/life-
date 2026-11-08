@@ -17,6 +17,7 @@ import { isCitizen } from '../world/Countries.js';
 import { NATIONAL_SERVICE } from '../world/CountryLaw.js';
 import { residencyOf, LANGUAGE_FLUENT, speaks } from '../world/Immigration.js';
 import { ensureMigration } from '../world/Migration.js';
+import { orgInEra, orgFrom } from '../world/Eras.js';
 
 export const PROGRAMS = {
   americorps: {
@@ -57,6 +58,7 @@ export function programEligibility(state, id, trackId) {
   const p = PROGRAMS[id];
   const t = p?.tracks[trackId];
   if (!p || !t) return { ok: false, reason: 'Unknown program' };
+  if (!orgInEra(state, `program:${id}`)) return { ok: false, reason: `Not founded yet (from ${orgFrom(`program:${id}`)})` };
   const here = state.character.countryId ?? 'US';
   // Abroad, the country's own scheme stands in (only the general community-service track).
   if (here !== 'US') {

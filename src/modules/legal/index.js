@@ -8,6 +8,7 @@ import { PrisonActions, PrisonResolvers } from './Prison.js';
 import { ClemencyActions, spendMinorRecords, spendOldConvictions } from './Clemency.js';
 import { CrimeActions, crimeTick } from './StreetCrime.js';
 import { JuvenileResolvers } from './JuvenileCourt.js';
+import { crimeInEra } from '../world/Eras.js';
 
 /** Prompt choices that break the law, by `${promptType}:${optionId}`. */
 const ILLEGAL_CHOICES = {
@@ -52,6 +53,7 @@ export const LegalModule = {
     if (actionId.startsWith('legal.')) {
       const risky = RISKY_ACTIONS.find((r) => `legal.${r.id}` === actionId);
       if (risky && state.character.age < risky.minAge) return `Too young (${risky.minAge}+).`;
+      if (risky && !crimeInEra(state, risky.id)) return 'Not something anyone could do yet.';
     }
     return null;
   },

@@ -578,3 +578,125 @@ export function eraFlag(state, cc, countries) {
   return today;
 }
 
+/* ------------------------------------------------------------------ */
+/* Money of its time: taxes, pensions, accounts, investments           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * How much of today's tax bill applied: the US had no income tax before 1913 (bar the Civil War
+ * years) and until the Second World War it fell on the well-off; Britain's came and went with the
+ * Napoleonic Wars, then stayed from 1842; most countries brought one in between the 1880s and 1914.
+ */
+export function eraTaxShare(state) {
+  const y = yearNow(state);
+  if (y >= 1945) return 1;
+  const cc = state.character.countryId ?? 'US';
+  if (cc === 'US') return y < 1862 ? 0 : y < 1873 ? 0.15 : y < 1913 ? 0 : y < 1942 ? 0.3 : 0.8;
+  if (cc === 'GB') return y < 1799 ? 0 : y < 1817 ? 0.2 : y < 1842 ? 0 : y < 1914 ? 0.25 : 0.6;
+  return y < 1890 ? 0.1 : y < 1914 ? 0.25 : 0.6;
+}
+/** When a state pension first covered workers: Bismarck's in 1889, Britain's 1909/1925, Social Security from 1937. */
+const PENSION_FROM = { DE: 1889, GB: 1909, NZ: 1898, AU: 1909, FR: 1910, US: 1937, CA: 1927, SE: 1913, DK: 1891, JP: 1942, IT: 1919, NL: 1919 };
+export const statePensionExists = (state, cc = state.character.countryId ?? 'US') => !((PENSION_FROM[cc] ?? 1950) > yearNow(state));
+/** Defined-contribution accounts: the 401(k) from 1978, IRAs from 1974, Roth IRAs from 1998; elsewhere personal pensions from about 1990. */
+export const dcExists = (state) => yearNow(state) >= ((state.character.countryId ?? 'US') === 'US' ? 1978 : 1990);
+export const iraExists = (state) => yearNow(state) >= 1974;
+export const rothExists = (state) => yearNow(state) >= 1998;
+/** Investments: index funds from 1976, tech shares from the 1970s, crypto from 2010. */
+const ASSET_FROM = { crypto: 2010, tech: 1975 };
+export const assetExists = (state, id) => !(ASSET_FROM[id] > yearNow(state));
+/** Old names for the same kind of holding. */
+export function periodAssetName(state, id, name) {
+  const y = yearNow(state);
+  if (id === 'index' && y < 1976) return 'Blue-chip shares (a spread)';
+  if (id === 'bonds' && y < 1986) return (state.character.countryId ?? 'US') === 'GB' ? 'Consols and gilts' : 'Government and railway bonds';
+  if (id === 'treasuries' && y < 1929) return 'Savings bank deposit';
+  return name;
+}
+/** Credit cards from 1960 (charge cards from 1950), credit scores from 1989. */
+export const creditScoresExist = (state) => yearNow(state) >= 1989;
+
+/* ------------------------------------------------------------------ */
+/* Crime of its time                                                   */
+/* ------------------------------------------------------------------ */
+
+/** When each street crime became possible: no porch pirates before parcel deliveries, no carjacking before cars. */
+const CRIME_FROM = {
+  porchPirate: 2000, fakeIds: 1970, streetRace: 1930, catalytic: 1975, torchCar: 1920, identity: 1995, ransomware: 2013, knockoffs: 1980,
+  growOp: 1975, carjack: 1925, scam: 1995, carTheft: 1910, catalyticConverter: 1975, cyberFraud: 1995, sim: 2000, skimmer: 1990, phishing: 2000, creditFraud: 1960,
+};
+export const crimeInEra = (state, id) => !(CRIME_FROM[id] > yearNow(state));
+/** Drugs and how they were made: cocaine and heroin are old; meth, ecstasy and fentanyl pills are not. */
+const DRUG_FROM = { meth: 1970, mdma: 1985, fentanyl: 2013 };
+const LAB_FROM = { grow: 1975, cook: 1980, press: 2014 };
+export const drugInEra = (state, id) => !(DRUG_FROM[id] > yearNow(state));
+export const labInEra = (state, id) => !(LAB_FROM[id] > yearNow(state));
+
+/* ------------------------------------------------------------------ */
+/* Businesses of their time                                            */
+/* ------------------------------------------------------------------ */
+
+/** When each kind of business could be started (the rest are as old as trade). */
+const BUSINESS_FROM = {
+  foodTruck: 2008, techStartup: 1995, softwareShop: 1980, solarInstaller: 2005, ambulanceService: 1970, privatePoliceAgency: 1970, privateFireService: 1980,
+  nemt: 1990, cdlSchool: 1986, flightSchool: 1927, indieGameStudio: 2005, itSecurityFirm: 1995, medicalBilling: 1970, answeringService: 1950, homeHealth: 1965,
+  homeCareAgency: 1965, counselingPractice: 1950, ptClinic: 1925, chiroClinic: 1900, nutritionPractice: 1970, personalTraining: 1980, testPrep: 1950, daycare: 1940,
+  hvacContractor: 1930, electrical: 1890, autoShop: 1910, towing: 1915, craneRental: 1950, excavation: 1920, staffingAgency: 1950, productionCompany: 1910,
+  recordingStudio: 1925, homeInspection: 1970, shootingRange: 1950, busCharter: 1925, trucking: 1915, charterOperator: 1930, bailBondsAgency: 1898, designStudio: 1920,
+  consulting: 1920, vetClinic: 1880, cpaFirm: 1896, salon: 1900, gym: 1900, marketingAgency: 1900, propertyMgmt: 1900, fireProtection: 1900, pestControl: 1900,
+  landscaping: 1900, demolitionCo: 1900, movingCompany: 1920, tourBoat: 1900, courier: 1900,
+};
+export const businessInEra = (state, id) => !(BUSINESS_FROM[id] > yearNow(state));
+export const businessFrom = (id) => BUSINESS_FROM[id] ?? null;
+/** Company forms: US LLCs from 1977 (Britain's LLPs from 2000), S corporations from 1958; the SBA lends from 1953; franchising from the 1950s. */
+export function entityInEra(state, id) {
+  const y = yearNow(state);
+  const cc = state.character.countryId ?? 'US';
+  if (id === 'llc') return y >= (cc === 'GB' ? 2000 : 1977);
+  if (id === 'scorp') return y >= 1958;
+  if (id === 'ccorp') return y >= (cc === 'GB' ? 1856 : cc === 'DE' ? 1892 : 1850);
+  return true;
+}
+export const smallBizLoansExist = (state) => yearNow(state) >= 1953;
+export const franchisesExist = (state) => yearNow(state) >= 1950;
+
+/* ------------------------------------------------------------------ */
+/* Civil society of its time                                           */
+/* ------------------------------------------------------------------ */
+
+/** When volunteer services, disaster teams, national-service programmes and veterans' posts were founded. */
+const ORG_FROM = {
+  'svc:ambulance': 1930, 'svc:cap': 1941, 'svc:auxiliary': 1939, 'svc:cert': 1993, 'svc:mrc': 2002, 'svc:police': 1920, 'svc:redcross': 1863, 'svc:sar': 1950,
+  'svc:skiPatrol': 1938, 'svc:wildland': 1910,
+  'team:fema': 1979, 'team:dmat': 1984, 'team:usar': 1989, 'team:teamRubicon': 2010, 'team:ares': 1935, 'team:sdf': 1917,
+  'program:americorps': 1994, 'program:peaceCorps': 1961,
+  'role:casa': 1977, 'role:crisisLine': 1958, 'role:pollWorker': 1850, 'role:coach': 1900, 'role:scouts': 1908, 'role:hospice': 1975, 'role:habitat': 1976, 'role:blood': 1940,
+  'post:vfw': 1899, 'post:legion': 1919,
+};
+export const orgInEra = (state, key) => !(ORG_FROM[key] > yearNow(state));
+export const orgFrom = (key) => ORG_FROM[key] ?? null;
+
+/* ------------------------------------------------------------------ */
+/* Housing of its time                                                 */
+/* ------------------------------------------------------------------ */
+
+/** Kinds of property that didn't exist yet: condominiums from the 1960s, strip malls after the war. */
+const PROPERTY_FROM = { condo: 1960, stripMall: 1950, aptComplex: 1920 };
+export const propertyInEra = (state, id) => !(PROPERTY_FROM[id] > yearNow(state));
+/**
+ * Home loans as they were: before 1934, a short loan for half the price, renewed or paid off in a lump;
+ * FHA loans from 1934, VA loans from 1944, the long fixed-rate mortgage from about 1948, ARMs from 1981.
+ */
+const LOAN_FROM = { fha: 1934, va: 1944, conv30: 1948, conv15: 1948, arm: 1981, commercial: 1900 };
+export const loanInEra = (state, id) => !(LOAN_FROM[id] > yearNow(state)) && !(id === 'balloon' && yearNow(state) >= 1948);
+/** Housing help: public housing from 1937, vouchers from 1974. */
+export const housingVouchersExist = (state) => yearNow(state) >= 1974;
+/** A rental's name in its day. */
+export function periodRentName(state, id, name) {
+  const y = yearNow(state);
+  if (id === 'apartment' && y < 1920) return 'Rooms in a tenement';
+  if (id === 'roommates' && y < 1950) return 'A room in a lodging house';
+  if (id === 'subsidized' && y < 1974) return 'Public housing';
+  return name;
+}
+

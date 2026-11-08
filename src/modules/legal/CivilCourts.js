@@ -16,6 +16,7 @@ import { currentCourt } from './Judiciary.js';
 import { JUSTICE } from '../world/CountryLaw.js';
 import { priceLevel, isCitizen } from '../world/Countries.js';
 import { fitsEra } from '../world/Eras.js';
+import { eraYear } from '../world/Eras.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -32,7 +33,7 @@ const DEFENSE = {
 export const CLAIMS = {
   smallClaims: { label: 'Small claims (deposit, bad repair, unpaid loan)', icon: '🧾', max: 10000, fee: 75, odds: 0.6, desc: 'No lawyer needed; up to $10,000.' },
   contractor: { label: 'Sue a contractor who botched a job', icon: '🔨', min: 15000, max: 80000, fee: 400, odds: 0.5, lawyer: 0.25, needs: 'home', desc: 'Lawyer on retainer; you front the fees.' },
-  injury: { label: 'Personal injury (car crash)', icon: '🚑', min: 20000, max: 400000, fee: 0, odds: 0.65, contingency: 0.33, needs: 'injury', desc: 'Contingency: the lawyer takes a third of any recovery.' },
+  injury: { get label() { return eraYear() < 1910 ? 'Personal injury (a runaway carriage)' : 'Personal injury (car crash)'; }, icon: '🚑', min: 20000, max: 400000, fee: 0, odds: 0.65, contingency: 0.33, needs: 'injury', desc: 'Contingency: the lawyer takes a third of any recovery.' },
   landlord: { label: 'Sue a landlord (habitability, deposit)', icon: '🏚️', min: 3000, max: 30000, fee: 75, odds: 0.55, needs: 'renter', desc: 'Mold, no heat, a stolen deposit.' },
 };
 

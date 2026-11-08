@@ -16,8 +16,11 @@ import { clamp } from '../../core/Random.js';
 import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
 import { MORTGAGES } from '../world/CountryLaw.js';
 import { knob } from '../../core/Difficulty.js';
+import { loanInEra } from '../world/Eras.js';
 
 export const LOAN_TYPES = {
+  // Before the 1930s: half down, a few years to pay, and a lump sum at the end (modelled as ten years).
+  balloon: { name: 'Short mortgage (half down)', years: 10, rateAdj: 0.01, minDown: 0.5, minScore: 600, maxDti: 0.35 },
   conv30: { name: '30-yr Fixed', years: 30, rateAdj: 0, minDown: 0.05, minScore: 620, maxDti: 0.43 },
   conv15: { name: '15-yr Fixed', years: 15, rateAdj: -0.006, minDown: 0.05, minScore: 620, maxDti: 0.43 },
   arm: { name: '5/1 ARM', years: 30, rateAdj: -0.0075, minDown: 0.05, minScore: 640, maxDti: 0.43, arm: true },
@@ -39,8 +42,10 @@ export const closingRate = (state) => MORTGAGES[state?.character?.countryId]?.cl
 export function loansFor(type, state = null) {
   if (isLand(type)) return ['land'];
   const cc = state?.character?.countryId;
+  // Before the long mortgage, anywhere: the short loan for half the price.
+  if (state && isResidential(type) && !loanInEra(state, 'conv30')) return ['balloon', ...['fha', 'va'].filter((id) => cc === 'US' && loanInEra(state, id))];
   if (isResidential(type) && MORTGAGES[cc]) return Object.keys(MORTGAGES[cc].products).map((id) => `${cc}_${id}`);
-  if (isResidential(type)) return ['conv30', 'conv15', 'arm', 'fha', 'va'];
+  if (isResidential(type)) return ['conv30', 'conv15', 'arm', 'fha', 'va'].filter((id) => !state || loanInEra(state, id));
   return ['commercial'];
 }
 

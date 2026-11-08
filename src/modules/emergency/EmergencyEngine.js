@@ -40,6 +40,7 @@ import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
 import { MedicalReserveCorps } from './MedicalReserveCorps.js';
 import { ensureVolunteerOrg, volunteerOrgTick, releaseVolunteerOrg, seatOpen, takeSeat, isSeatRank, isElectedRank, resolveElection, leaderAction, LEADERSHIP } from '../org/VolunteerOrgs.js';
+import { orgInEra, orgFrom } from '../world/Eras.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
@@ -81,6 +82,7 @@ export function joinEligibility(state, serviceId) {
   if (!svc) return { ok: false, reason: 'Unknown service' };
   if (state.emergency[serviceId]) return { ok: false, reason: 'Already a member' };
   if (!volunteerServiceHere(state.character.countryId, serviceId)) return { ok: false, reason: 'No such service here' };
+  if (!orgInEra(state, `svc:${serviceId}`)) return { ok: false, reason: `Not founded yet (from about ${orgFrom(`svc:${serviceId}`)})` };
   if (state.character.age < svc.minAge) return { ok: false, reason: `Must be ${svc.minAge}+` };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (isOnActiveDuty(state)) return { ok: false, reason: 'On active duty' };

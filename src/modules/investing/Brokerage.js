@@ -17,7 +17,7 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ASSETS, PROFILES, profileReturn, realReturn, IRA_LIMIT, ROTH_INCOME_LIMIT } from './Assets.js';
 import { ACCOUNTS } from '../world/CountryLaw.js';
-import { hasTech } from '../world/Eras.js';
+import { hasTech, assetExists, iraExists, rothExists } from '../world/Eras.js';
 
 /** The tax-advantaged accounts where you live: names and yearly limits (the US IRAs share one limit). */
 export function accountsHere(state) {
@@ -84,7 +84,8 @@ export function raiseCash(ctx, amount) {
 }
 
 function buyProfile(ctx, profileId, amount) {
-  for (const [asset, w] of Object.entries(PROFILES[profileId].mix)) buy(ctx, asset, Math.round(amount * w));
+  // What isn't invented yet goes into the broad market instead.
+  for (const [asset, w] of Object.entries(PROFILES[profileId].mix)) buy(ctx, assetExists(ctx.state, asset) ? asset : 'index', Math.round(amount * w));
 }
 
 function marketEvent(ctx) {
@@ -223,7 +224,7 @@ export const BrokerageEngine = {
       const [asset, raw] = String(arg).split(':');
       const amount = Math.round(Number(raw));
       if (!ASSETS[asset] || !(amount > 0)) return;
-      if (asset === 'crypto' && !hasTech(ctx.state, 'crypto')) return ctx.toast('Crypto doesn\'t exist yet.', 'warn');
+      if (!assetExists(ctx.state, asset)) return ctx.toast(`${ASSETS[asset].name} don't exist yet.`, 'warn');
       if (ctx.state.character.age < 18) return ctx.toast('You need to be 18 to open a brokerage account.', 'warn');
       if (ctx.state.finances.cash < amount) return ctx.toast(`You need $${amount.toLocaleString()} in cash.`, 'warn');
       buy(ctx, asset, amount);
@@ -252,6 +253,7 @@ export const BrokerageEngine = {
     },
     /** arg 'roth' | 'traditional' — contributes the remaining annual limit you can afford. */
     iraContribute(ctx, kind) {
+      if (!iraExists(ctx.state) || (kind === 'roth' && !rothExists(ctx.state))) return ctx.toast('That account doesn\'t exist yet.', 'warn');
       const { state } = ctx;
       if (!['roth', 'traditional'].includes(kind)) return;
       const earned = state.finances.ledger.income.filter((i) => i.wage).reduce((s, i) => s + i.amount, 0) || (state.career.job?.salary ?? 0);

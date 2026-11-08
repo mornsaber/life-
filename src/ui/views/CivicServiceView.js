@@ -14,6 +14,7 @@ import { POSTS, POST_RANKS, postEligibility, postLeader } from '../../modules/se
 import { stateIdOf } from '../../modules/life/Regions.js';
 import { stJohnCard } from './StJohnCard.js';
 import { STATES } from '../../modules/life/States.js';
+import { orgInEra } from '../../modules/world/Eras.js';
 
 function nationalService(state) {
   const s = state.service;
@@ -29,7 +30,7 @@ function nationalService(state) {
   }
   // Abroad, only the schemes the country actually runs.
   const local = NATIONAL_SERVICE[state.character.countryId];
-  const offered = Object.keys(PROGRAMS).filter((id) => !local || local[id === 'peaceCorps' ? 'overseas' : 'domestic']);
+  const offered = Object.keys(PROGRAMS).filter((id) => (!local || local[id === 'peaceCorps' ? 'overseas' : 'domestic']) && orgInEra(state, `program:${id}`));
   if (!offered.length) return '';
   const rows = offered.map((id) => [id, PROGRAMS[id]]).flatMap(([id, p]) => Object.entries(p.tracks).filter(([tid]) => !local || id !== 'americorps' || tid === 'state').map(([tid, t]) => {
     const check = programEligibility(state, id, tid);
@@ -75,18 +76,19 @@ function stateGuard(state) {
 }
 
 function disasterTeams(state) {
-  const rows = Object.entries(TEAMS).map(([id, t]) => {
+  const rows = Object.entries(TEAMS).filter(([id]) => state.service.teams[id] || orgInEra(state, `team:${id}`)).map(([id, t]) => {
     const m = state.service.teams[id];
     if (m) return optionRow({ icon: t.icon, title: esc(t.name), sub: `${esc(t.ranks[m.rankIndex])} · ${m.years} yrs · ${m.deployments} deployments`, meta: m.declined ? `${m.declined}/3 declines` : 'On the roster', tone: m.declined ? 'warn' : 'good', action: button('Resign', 'service.leaveTeam', { arg: id, variant: 'small danger' }) });
     const check = teamEligibility(state, id);
     return optionRow({ icon: t.icon, title: esc(t.name), sub: esc(t.desc), meta: check.ok ? (t.dailyPay ? `≈${money(t.dailyPay)}/day deployed` : 'Volunteer — expenses covered') : esc(check.reason), tone: check.ok ? '' : 'warn', locked: !check.ok, action: button('Join', 'service.joinTeam', { arg: id, disabled: !check.ok, variant: 'small' }) });
   }).join('');
+  if (!rows) return '';
   return card('Disaster Response Teams', `<p class="muted">Keep your job and deploy when disasters strike: paid federal teams (FEMA, DMAT, Urban Search &amp; Rescue) and volunteer ones (Team Rubicon, ARES ham radio).</p><ul class="job-board">${rows}</ul>`, { icon: '🏕️' });
 }
 
 function veteranPosts(state) {
   const left = 3 - (state.yearly['service.post'] ?? 0);
-  const rows = Object.entries(POSTS).map(([id, p]) => {
+  const rows = Object.entries(POSTS).filter(([id]) => state.service.posts[id] || orgInEra(state, `post:${id}`)).map(([id, p]) => {
     const m = state.service.posts[id];
     const org = m && state.orgs?.byId?.[m.orgId];
     if (org) {
@@ -108,7 +110,7 @@ function veteranPosts(state) {
 
 function volunteerRoles(state) {
   const mine = activeRoles(state);
-  const rows = Object.entries(ROLES).map(([id, r]) => {
+  const rows = Object.entries(ROLES).filter(([id]) => state.service.roles[id] || orgInEra(state, `role:${id}`)).map(([id, r]) => {
     const m = state.service.roles[id];
     if (m) return optionRow({ icon: r.icon, title: esc(r.name), sub: `${state.character.age - m.since} yrs · ${m.hours.toLocaleString()} hours${id === 'blood' && m.cases ? ` · ${m.cases} pints` : ''}${id === 'casa' && m.cases ? ` · ${m.cases} children` : ''}`, meta: r.paid ? `$${r.paid} per election` : 'Active', tone: 'good', action: button('Step down', 'volunteering.leave', { arg: id, variant: 'small' }) });
     const ok = roleEligibility(state, id);

@@ -5,8 +5,9 @@
 import { MODES, transitQuality, modeAvailable, resolvedMode, passCost, rideshareCost, commutes } from '../../modules/transit/Transit.js';
 import { regionOf } from '../../modules/life/Regions.js';
 import { esc, money, button, card, kv, chip } from '../Components.js';
-import { VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment, canCharter } from '../../modules/vehicles/Vehicles.js';
+import { vehicleInEra, VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment, canCharter } from '../../modules/vehicles/Vehicles.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
+import { yearNow } from '../../modules/world/Eras.js';
 
 function ownedCard(state) {
   const list = vehiclesOf(state);
@@ -24,17 +25,17 @@ function ownedCard(state) {
   return card('Your Vehicles', `
     ${kv([
       ['Driving record', `${r.points} point${r.points === 1 ? '' : 's'} · ${r.accidents.filter((a) => state.character.age - a < 5).length} at-fault accident(s) in 5 yr`],
-      ['Insurance rating', `×${riskMultiplier(state).toFixed(2)} of base`],
+      yearNow(state) >= 1925 ? ['Insurance rating', `×${riskMultiplier(state).toFixed(2)} of base`] : null,
       state.vehicles.repos.length ? ['Repossessions', `<span class="neg">${state.vehicles.repos.length}</span>`] : null,
     ])}
-    ${rows ? `<ul class="history">${rows}</ul>` : '<p class="muted">No vehicles. You get around by bus, bike and favors.</p>'}
+    ${rows ? `<ul class="history">${rows}</ul>` : `<p class="muted">No vehicles. You get around ${yearNow(state) < 1830 ? 'on foot and by the carrier\'s cart' : yearNow(state) < 1900 ? 'on foot, by omnibus and by train' : 'by bus, bike and favors'}.</p>`}
     <div class="toggle-row">${button('🚦 Defensive driving course', 'vehicles.trafficSchool', { variant: 'small', disabled: !r.points || Boolean(state.yearly['vehicles.school']), hint: '$150 · −2 points' })}</div>
     <p class="fine">Points, at-fault accidents and DUIs raise your premiums for years. Lenders require full coverage, and repossess when you fall far behind — you still owe what the auction doesn't cover.</p>`, { icon: '🚗', accent: 'cyan' });
 }
 
 function showroom(state) {
   const groups = {};
-  for (const [id, t] of Object.entries(VEHICLE_TYPES)) (groups[t.category] ??= []).push([id, t]);
+  for (const [id, t] of Object.entries(VEHICLE_TYPES)) if (vehicleInEra(state, t)) (groups[t.category] ??= []).push([id, t]);
   const rows = Object.entries(groups).map(([cat, list]) => `<h4 class="sub">${esc(CATEGORIES[cat])}</h4><ul class="history">${list.map(([id, t]) => {
     const how = (h) => purchaseCheck(state, id, h);
     const cash = how('cash');
@@ -47,7 +48,8 @@ function showroom(state) {
       ${button('Finance', 'vehicles.buy', { arg: `${id}:loan`, variant: 'tiny', disabled: !loan.ok, title: loan.reason ?? '', hint: loan.ok ? `${money(loanPayment(t.price * 0.9, autoRate(state, t.used), 5))}/yr` : '' })}
       ${lease ? button('Lease', 'vehicles.buy', { arg: `${id}:lease`, variant: 'tiny', disabled: !lease.ok, title: lease.reason ?? '', hint: lease.ok ? `${money(leasePayment(state, t).payment)}/yr` : '' }) : ''}</li>`;
   }).join('')}</ul>`).join('');
-  return card('Showroom', `${rows}<p class="fine">Loans: 10% down over 5 years at a rate set by your credit score. Leases: 3 years, then turn it in or buy it out.</p>`, { icon: '🏪' });
+  const y = yearNow(state);
+  return card(y < 1905 ? 'Stables & Dealers' : 'Showroom', `${rows}<p class="fine">${y < 1920 ? 'Horses, carriages and machines are bought for cash.' : `Loans: 10% down over 5 years at a rate set by your credit score.${y >= 1990 ? ' Leases: 3 years, then turn it in or buy it out.' : ''}`}</p>`, { icon: y < 1905 ? '🐎' : '🏪' });
 }
 
 export function garageView(state) {
@@ -63,7 +65,7 @@ function commuteCard(state) {
   const mode = state.transit.mode ?? 'auto';
   const resolved = resolvedMode(state);
   const last = state.transit.last;
-  const buttons = [['auto', '🔄 Automatic', 'Car if you have one, then transit, then walking']].concat(Object.entries(MODES).map(([id, m]) => {
+  const buttons = [['auto', '🔄 Automatic', yearNow(state) < 1905 ? 'Your horse if you keep one, then the omnibus, then walking' : 'Car if you have one, then transit, then walking']].concat(Object.entries(MODES).map(([id, m]) => {
     const check = modeAvailable(state, id);
     const cost = id === 'transit' ? `${money(passCost(state))}/yr pass` : id === 'rideshare' ? `≈${money(rideshareCost(state))}/yr` : id === 'drive' ? 'Your car costs' : 'Free';
     return [id, `${m.icon} ${m.label}`, check.ok ? cost : check.reason, !check.ok];

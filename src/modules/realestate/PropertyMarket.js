@@ -13,6 +13,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { PHASES } from '../economy/EconomyEngine.js';
 import { isAbroad } from '../world/Countries.js';
 import { regionsHere } from '../life/Regions.js';
+import { propertyInEra } from '../world/Eras.js';
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -104,11 +105,11 @@ export function generateListings(ctx) {
   const { state, rng } = ctx;
   const regionId = state.character.regionId;
   const rural = REGIONS[regionId].type === 'Rural';
-  const pick = (weights) => rng.weighted(Object.entries(weights).filter(([id]) => !PROPERTY_TYPES[id].ruralOnly || rural), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
+  const pick = (weights) => rng.weighted(Object.entries(weights).filter(([id]) => (!PROPERTY_TYPES[id].ruralOnly || rural) && propertyInEra(state, id)), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
   // Investment listings draw from their own stream so they don't reshuffle the rest of the year.
   state.housing.investSeed = (((state.housing.investSeed ?? ((state.world?.seed ?? 0) ^ 0x51ed)) * 1664525) + 1013904223) >>> 0;
   const side = new Random(state.housing.investSeed);
-  const sidePick = (weights) => side.weighted(Object.entries(weights).filter(([id]) => !PROPERTY_TYPES[id].ruralOnly || rural), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
+  const sidePick = (weights) => side.weighted(Object.entries(weights).filter(([id]) => (!PROPERTY_TYPES[id].ruralOnly || rural) && propertyInEra(state, id)), ([id, w]) => w * (rural && ['acreage', 'rural'].includes(id) ? 2 : 1))[0];
   const listings = [
     ...Array.from({ length: 5 }, () => listing(rng, state, pick(HOME_WEIGHTS), regionId)),
     ...Array.from({ length: 3 }, () => listing(side, state, sidePick(INVEST_WEIGHTS), regionId)),

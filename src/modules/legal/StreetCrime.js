@@ -20,6 +20,7 @@ import { commitOffense } from './JusticeSystem.js';
 import { regionOf } from '../life/Regions.js';
 import { currentBusiness } from '../business/Business.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
+import { crimeInEra } from '../world/Eras.js';
 
 export const CRIME_GROUPS = {
   personal: { label: 'Reckless choices', icon: '🍺' },
@@ -102,7 +103,7 @@ export const CRIMES = [
     run: { offenseId: 'poaching', money: [300, 3000], caughtNow: 0.15, discovery: 0.05, evidence: 0.8, context: 'a game warden\'s checkpoint', text: 'You took a trophy buck out of season and sold the antlers.' } },
   { id: 'catalytic', group: 'property', label: 'Steal Catalytic Converters', icon: '🔧', minAge: 15, desc: 'Two minutes with a saw',
     run: { offenseId: 'grandTheft', money: [1500, 9000], caughtNow: 0.15, discovery: 0.1, evidence: 0.75, context: 'caught under a car with a reciprocating saw', text: 'You cut converters off parked cars and sold them to a scrap yard.' } },
-  { id: 'fence', group: 'property', label: 'Fence Stolen Goods', icon: '🛍️', minAge: 18, desc: 'Buy hot merchandise cheap, sell it online',
+  { id: 'fence', group: 'property', label: 'Fence Stolen Goods', icon: '🛍️', minAge: 18, desc: 'Buy hot merchandise cheap and sell it on',
     run: { offenseId: 'receivingStolen', money: [3000, 20000], caughtNow: 0.08, discovery: 0.15, evidence: 0.75, context: 'an undercover sting', text: 'You moved stolen electronics through online marketplaces.' } },
   { id: 'torchCar', group: 'property', label: 'Torch Your Car for the Insurance', icon: '🔥', minAge: 18, desc: 'Arson and insurance fraud',
     needs: (state) => ((state.vehicles?.owned ?? []).some((v) => !v.lease) ? null : 'You need a car you own'),
@@ -208,6 +209,7 @@ const CUSTOM = {
 };
 
 export const CrimeActions = Object.fromEntries(CRIMES.map((cr) => [cr.id, (ctx) => {
+  if (!crimeInEra(ctx.state, cr.id)) return ctx.toast('Not a crime anyone could commit yet.', 'warn');
   const why = cr.needs?.(ctx.state);
   if (why) return ctx.toast(why, 'warn');
   if (!once(ctx, cr.id)) return;
