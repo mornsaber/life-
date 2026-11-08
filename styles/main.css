@@ -1027,3 +1027,10 @@ select:focus { border-color: var(--cyan); }
 .flag .flag-img { display: block; width: 100%; height: 100%; }
 img.flag { object-fit: cover; }
 .country-line { margin: 2px 0 0; font-size: .85em; color: var(--muted, #8a8f98); }
+
+/* The dressed-up avatar (ui/Avatar.js): a hat or helmet on top, a badge at the corner. */
+.avatar { position: relative; }
+.avatar-figure { line-height: 1; }
+.avatar-hat, .avatar-badge { position: absolute; font-size: 18px; line-height: 1; filter: drop-shadow(0 1px 1px rgba(0,0,0,.35)); }
+.avatar-hat { top: -9px; left: -7px; transform: rotate(-12deg); }
+.avatar-badge { bottom: -7px; right: -7px; }

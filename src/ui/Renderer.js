@@ -66,6 +66,7 @@ import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
 import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
+import { avatarHtml } from './Avatar.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -489,13 +490,12 @@ export class Renderer {
 
   sidebar(state) {
     const c = state.character;
-    const avatar = toned(c.age < 3 ? '👶' : c.age < 13 ? (c.gender === 'female' ? '👧' : '👦') : c.age < 60 ? (c.gender === 'female' ? '👩' : '👨') : c.gender === 'female' ? '👵' : '👴', skinToneOf(state));
     const f = state.finances;
     const load = commitmentLoad(state);
     const commitments = getCommitments(state);
     return `
       ${card('', `<div class="profile">
-          <div class="avatar">${avatar}</div>
+          ${avatarHtml(state)}
           <div><h2>${esc(styledName(state))}${postNominals(state) ? ` <small class="muted">${esc(postNominals(state))}</small>` : ''}</h2><p class="age">Age <b>${c.age}</b>${c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age}` : ''}</p><p class="country-line">${flagHtml(state, c.countryId ?? 'US')} ${esc(periodCountryName(state, c.countryId ?? 'US', COUNTRIES[c.countryId ?? 'US']?.name ?? ''))}</p></div>
         </div>
         <ul class="status-line">${this.statusLine(state)}</ul>`, { className: 'profile-card' })}
