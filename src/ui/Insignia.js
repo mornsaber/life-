@@ -584,11 +584,34 @@ const OWN = {
   animalControl: { senior: 'cpl', supervisor: 'sgt', director_cmd1: 'lt', director_cmd2: 'capt', director_cmd3: 'major', director: 'col' },
 };
 
+/**
+ * Colonial services wear the ruling power's pattern (`country` is the ruler): rank keys drawn in
+ * its style, or (British-pattern native ranks) chevrons, pips and the crown of the Indian Army's
+ * VCOs and the Imperial Police. A Governor wears the vice-regal crown.
+ */
+const VCO = {
+  lanceNaik: () => chevrons(1, 0, '', SILVER), naik: () => chevrons(2, 0, '', SILVER), havildar: () => chevrons(3, 0, '', SILVER),
+  havildarMajor: () => pips(0, true, SILVER), jemadar: () => pips(1, false, GOLD), subedar: () => pips(2, false, GOLD), subedarMajor: () => pips(1, true, GOLD),
+};
+const COLONIAL_RANKS = {
+  colonialPolice: { headConstable: 'sgt', subInspector: 'ssgt', inspector: 'lt', asp: 'capt', superintendent: 'major', seniorSuperintendent: 'col', deputyIG: '1star', ig: '3star' },
+  colonialTroops: { lanceNaik: 'cpl', naik: 'cpl', havildar: 'sgt', havildarMajor: 'ssgt', jemadar: 'lt', subedar: 'capt', subedarMajor: 'major' },
+  colonialService: { cadet: 'lt', districtOfficer: 'capt', seniorDistrictOfficer: 'major', districtCommissioner: 'col', resident: '1star', colonialSecretary: '2star', chiefSecretary: '3star', governor: () => crownBadge('viceRegal') },
+  colonialMedical: { subAssistantSurgeon: 'lt', medicalOfficer: 'capt', civilSurgeon: 'major', seniorMO: 'major', pmo: 'col', deputyDms: '1star', dms: '2star' },
+};
+function colonialInsignia(key, id, country) {
+  if (key === 'colonialTroops' && !GALONS.includes(country)) return VCO[id]?.() ?? null;
+  const r = COLONIAL_RANKS[key]?.[id];
+  if (!r) return null;
+  return (typeof r === 'function' ? r() : draw(r, country)) || null;
+}
+
 /** Insignia for a job, if its people wear rank (null otherwise). */
 export function jobInsignia(job, profession, country = 'US') {
   const key = profession?.template ?? profession?.id ?? job?.professionId;
   const id = job?.levelId;
   if (!key || !id) return null;
+  if (COLONIAL_RANKS[key]) return colonialInsignia(key, id, country);
   const own = OWN[key]?.[id];
   if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
   if (OWN[key]) return null;

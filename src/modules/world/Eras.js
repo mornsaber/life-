@@ -300,6 +300,8 @@ export function colonyStage(state, cc) {
   return null;
 }
 export const colonyHere = (state) => colonyStage(state, state.character.countryId ?? 'US');
+/** Whose pattern a colonial uniform follows: the ruler of your colony, or your own country posted out. */
+export const insigniaCountry = (state, profession) => (profession?.colonial ? colonyHere(state)?.ruler ?? state.character.countryId ?? 'US' : state.character.countryId ?? 'US');
 /** The territories a country rules in the year being played. */
 export const empireColonies = (state, cc) => (state?.era ? Object.keys(COLONIES).filter((id) => id !== cc && colonyStage(state, id)?.ruler === cc) : []);
 /** Colonial work is open: you live in a colony, or your country still rules one. */

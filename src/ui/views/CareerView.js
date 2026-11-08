@@ -71,7 +71,7 @@ import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
 import { contractMarketCard, merchantReserveCard } from './ServiceViews.js';
 import { periodDollars, yearNow } from '../../modules/world/Eras.js';
-import { hasTech } from '../../modules/world/Eras.js';
+import { hasTech, insigniaCountry } from '../../modules/world/Eras.js';
 /** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
 const employerLabel = (job) => {
   const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
@@ -200,7 +200,7 @@ function currentJob(state) {
 
   return card(esc(job.title), `
     <div class="job-head">
-      ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon, insignia: jobInsignia(job, profession, state.character.countryId ?? 'US') ?? '' })}
+      ${rankBadge(payGradeShort(job, state.character.countryId), job.title, (job.grade - 1) / 9, { icon: profession.icon, insignia: jobInsignia(job, profession, insigniaCountry(state, profession)) ?? '' })}
       <div class="job-meta">
         <p>${chip(esc(employerLabel(job)))} ${chip(EMPLOYER_SIZES[size].label + ' employer')} ${chip(TRACK_LABEL[job.track], job.track === 'mgmt' ? 'cyan' : job.track === 'ic' ? 'green' : '')} ${chip(job.employer.national || orgOf(state, job.employer)?.national ? '🏛️ National public service' : SECTOR_LABEL[job.sector])}${job.informal ? ` ${chip('🤝 Informal: cash pay, no contract', 'warn')}` : ''} ${job.posting ? chip(`🛂 ${esc(job.posting.city)} — immunity`, 'honor') : ''}${job.cleared ? chip(`🔐 Cleared program · +${Math.round(clearedPremium(job) * 100)}% pay`, 'honor') : job.clearance ? chip(`🔐 ${job.clearance}`) : ''}</p>
         ${kv([
@@ -268,7 +268,7 @@ function organizationCard(state, job) {
   ])}
   ${c.coworkers.length ? disclosure('org.coworkers', '👥 Coworkers at your level', `<ul class="mini-list">${people(c.coworkers)}</ul>`, { count: c.coworkers.length }) : ''}
   ${c.reports.length ? reportsPanel(state, job, c.reports) : ''}
-  ${disclosure('org.chart', '🗂️ Organisation chart', orgTree(workplaceChart(state, job), { badge: (n) => (n.levelId ? jobInsignia({ ...job, levelId: n.levelId }, getProfession(job.professionId), state.character.countryId ?? 'US') ?? '' : '') }))}
+  ${disclosure('org.chart', '🗂️ Organisation chart', orgTree(workplaceChart(state, job), { badge: (n) => (n.levelId ? jobInsignia({ ...job, levelId: n.levelId }, getProfession(job.professionId), insigniaCountry(state, getProfession(job.professionId))) ?? '' : '') }))}
   ${openingsLine(job)}
   ${internalMovesRow(state)}`, { icon: '🏢' });
 }
@@ -556,7 +556,7 @@ function progression(state, job, profession, size) {
   const currentId = job.headOf && !job.headOf.mapped ? null : job.levelId;
   // Each rung shows the rank insignia worn there (where the career wears rank).
   const cc = state.character.countryId ?? 'US';
-  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, cc) ?? '');
+  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, insigniaCountry(state, profession)) ?? '');
   // What bigger (or smaller) agencies have that this one doesn't.
   const elsewhere = profession.levels.filter((l) => !here.includes(l));
   if (elsewhere.length) html += `<p class="fine">Not at this ${size === 'micro' ? 'small agency' : 'employer'}: ${elsewhere.map((l) => esc(l.title)).join(', ')}.</p>`;
