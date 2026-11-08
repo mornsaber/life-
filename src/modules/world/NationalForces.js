@@ -380,3 +380,17 @@ export const COMBAT_TEMPO = {
 };
 fromPacks(COMBAT_TEMPO, 'COMBAT_TEMPO');
 export const combatTempo = (countryId) => (!countryId || countryId === 'US' ? 1 : COMBAT_TEMPO[countryId] ?? 0.2);
+
+/**
+ * The highest officer grade a country's forces have (0 = second lieutenant … 9 = full general or
+ * admiral): small forces stop short. New Zealand's and Ireland's chiefs are lieutenant generals;
+ * Malta's a brigadier; Papua New Guinea's and Brunei's major generals. Countries not listed have
+ * four-star chiefs. (Five-star ranks are for great wars: Wartime.js FIVE_STAR_NATIONS.)
+ */
+export const TOP_GRADE = {
+  NZ: 8, IE: 8, CH: 8, IL: 8, EE: 8, LV: 8, LT: 8, LU: 8, CY: 8, JM: 8, GH: 8, XK: 8, BA: 8, BT: 8, SO: 8, SS: 8, TD: 8, NE: 8, ML: 8,
+  PG: 7, BN: 7, GM: 7, MW: 7, DJ: 7, CF: 7, LR: 7, GW: 7,
+  MT: 6, TO: 6, BS: 6, VU: 5, SB: 5, MH: 4,
+};
+export const topOfficerGrade = (countryId) => TOP_GRADE[countryId] ?? 9;
+

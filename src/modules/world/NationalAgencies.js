@@ -97,6 +97,7 @@ export const AGENCIES = {
     nationalLab: { name: 'KIST & KAIST Research', employers: ['Korea Institute of Science and Technology'] },
   },
   IT: {
+    gendarmerie: { name: 'Arma dei Carabinieri', employers: ['Comando Provinciale Carabinieri', 'Comando Stazione Carabinieri'], titles: { gendarme: 'Carabiniere', corporal: 'Appuntato', sergeant: 'Brigadiere', adjutant: 'Maresciallo', lieutenant: 'Tenente', captain: 'Capitano', major: 'Maggiore', ltColonel: 'Tenente colonnello', colonel: 'Colonnello', general: "Generale di corpo d'armata" } },
     fbi: { name: 'Polizia di Stato (Squadra Mobile)', employers: ['Questura di Roma', 'Questura di Milano'], titles: { trainee: 'Allievo Agente', agent: 'Agente', senior: 'Ispettore', ssa: 'Commissario', asac: 'Vice Questore', sac: 'Questore' } },
     usms: { name: 'Arma dei Carabinieri', employers: ['Comando Provinciale Carabinieri'], titles: { trainee: 'Allievo Carabiniere', agent: 'Carabiniere', senior: 'Brigadiere', ssa: 'Maresciallo', asac: 'Capitano', sac: 'Colonnello' } },
     borderPatrol: { name: 'Guardia di Finanza', employers: ['Comando Provinciale Guardia di Finanza'] },
@@ -112,6 +113,7 @@ export const AGENCIES = {
     nationalLab: { name: 'CNR & INFN Research', employers: ['Consiglio Nazionale delle Ricerche'] },
   },
   MX: {
+    gendarmerie: { name: 'Guardia Nacional', employers: ['Coordinación Estatal de la Guardia Nacional'], titles: { gendarme: 'Guardia', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Suboficial', lieutenant: 'Teniente', captain: 'Capitán', major: 'Mayor', ltColonel: 'Teniente coronel', colonel: 'Coronel', general: 'General' }, fromYear: 2019 },
     fbi: { name: 'Fiscalía General de la República (AIC)', employers: ['FGR — Agencia de Investigación Criminal'], titles: POLICE_INVESTIGATOR },
     borderPatrol: { name: 'Guardia Nacional', employers: ['Guardia Nacional — Coordinación Estatal'] },
     usss: { name: 'Presidential Security (Ayudantía)', employers: ['Ayudantía de la Presidencia'] },
@@ -127,6 +129,7 @@ export const AGENCIES = {
     nationalLab: { name: 'CINVESTAV', employers: ['CINVESTAV — Zacatenco'] },
   },
   PH: {
+    gendarmerie: { name: 'Philippine Constabulary', employers: ['PC Provincial Command'], titles: { gendarme: 'Constable', corporal: 'Corporal', sergeant: 'Sergeant', adjutant: 'Master Sergeant', lieutenant: 'Lieutenant', captain: 'Captain', major: 'Major', ltColonel: 'Lieutenant Colonel', colonel: 'Colonel', general: 'Major General' }, untilYear: 1991 },
     fbi: { name: 'National Bureau of Investigation', employers: ['NBI — Manila'], titles: { trainee: 'Agent Trainee', agent: 'Special Investigator', senior: 'Senior Agent', ssa: 'Supervising Agent', asac: 'Assistant Regional Director', sac: 'Regional Director' } },
     dea: { name: 'Philippine Drug Enforcement Agency', employers: ['PDEA — Regional Office'] },
     usss: { name: 'Presidential Security Command', employers: ['PSC — Malacañang'] },
@@ -160,6 +163,7 @@ export const AGENCIES = {
     oig: { name: 'Australian National Audit Office', employers: ['ANAO'] },
   },
   FR: {
+    gendarmerie: { name: 'Gendarmerie nationale', employers: ['Groupement de gendarmerie départementale', 'Garde républicaine'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier-chef', sergeant: 'Maréchal des logis-chef', adjutant: 'Adjudant-chef', lieutenant: 'Lieutenant', captain: 'Capitaine', major: "Chef d'escadron", ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général d'armée" } },
     fbi: { name: 'Police judiciaire (DNPJ)', employers: ['Office central de lutte contre le crime organisé', 'Brigade criminelle, Paris'], titles: { trainee: 'Élève gardien de la paix', agent: 'Gardien de la paix', senior: 'Brigadier', ssa: 'Lieutenant de police', asac: 'Commandant de police', sac: 'Commissaire divisionnaire' } },
     dea: { name: 'Office anti-stupéfiants (OFAST)', employers: ['OFAST — Nanterre'] },
     usms: { name: 'Gendarmerie nationale', employers: ['Gendarmerie — brigade territoriale', 'GIGN — Satory'], titles: { trainee: 'Élève gendarme', agent: 'Gendarme', senior: 'Maréchal des logis-chef', ssa: 'Adjudant', asac: 'Capitaine', sac: 'Colonel' } },
@@ -179,6 +183,7 @@ export const AGENCIES = {
     oig: { name: 'Cour des comptes', employers: ['Cour des comptes'] },
   },
   IN: {
+    gendarmerie: { name: 'Central Reserve Police Force', employers: ['CRPF Battalion', 'CRPF Group Centre'], titles: { gendarme: 'Constable', corporal: 'Head Constable', sergeant: 'Assistant Sub-Inspector', adjutant: 'Sub-Inspector', lieutenant: 'Assistant Commandant', captain: 'Deputy Commandant', major: 'Second-in-Command', ltColonel: 'Commandant', colonel: 'Deputy Inspector General', general: 'Director General' } },
     fbi: { name: 'Central Bureau of Investigation', employers: ['CBI — New Delhi'], titles: { trainee: 'Sub-Inspector (trainee)', agent: 'Sub-Inspector', senior: 'Inspector', ssa: 'Deputy Superintendent', asac: 'Superintendent of Police', sac: 'Deputy Inspector General' } },
     dea: { name: 'Narcotics Control Bureau', employers: ['NCB — Zonal Unit'] },
     usms: { name: 'Central Reserve Police Force', employers: ['CRPF — Battalion'] },
@@ -196,6 +201,60 @@ export const AGENCIES = {
     foreignService: { name: 'Indian Foreign Service (MEA)', employers: ['Ministry of External Affairs'] },
     airTrafficControl: { name: 'Airports Authority of India ATC', employers: ['AAI — Delhi ACC'] },
     nationalLab: { name: 'ISRO & DRDO', employers: ['ISRO — Bengaluru', 'DRDO — New Delhi'] },
+  },
+  ES: {
+    gendarmerie: { name: 'Guardia Civil', employers: ['Comandancia de la Guardia Civil', 'Puesto de la Guardia Civil'], titles: { gendarme: 'Guardia civil', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Brigada', lieutenant: 'Teniente', captain: 'Capitán', major: 'Comandante', ltColonel: 'Teniente coronel', colonel: 'Coronel', general: 'Teniente general' } },
+  },
+  NL: {
+    gendarmerie: { name: 'Koninklijke Marechaussee', employers: ['Brigade Koninklijke Marechaussee Schiphol', 'District Koninklijke Marechaussee'], titles: { gendarme: 'Marechaussee', corporal: 'Wachtmeester', sergeant: 'Opperwachtmeester', adjutant: 'Adjudant', lieutenant: 'Luitenant', captain: 'Kapitein', major: 'Majoor', ltColonel: 'Luitenant-kolonel', colonel: 'Kolonel', general: 'Luitenant-generaal' } },
+  },
+  PT: {
+    gendarmerie: { name: 'Guarda Nacional Republicana', employers: ['Comando Territorial da GNR'], titles: { gendarme: 'Guarda', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Sargento-mor', lieutenant: 'Tenente', captain: 'Capitão', major: 'Major', ltColonel: 'Tenente-coronel', colonel: 'Coronel', general: 'Tenente-general' } },
+  },
+  TR: {
+    gendarmerie: { name: 'Jandarma', employers: ['Jandarma Bölge Komutanlığı', 'İl Jandarma Komutanlığı'], titles: { gendarme: 'Jandarma Er', corporal: 'Onbaşı', sergeant: 'Astsubay Çavuş', adjutant: 'Astsubay Kıdemli Başçavuş', lieutenant: 'Teğmen', captain: 'Yüzbaşı', major: 'Binbaşı', ltColonel: 'Yarbay', colonel: 'Albay', general: 'Orgeneral' } },
+  },
+  CL: {
+    gendarmerie: { name: 'Carabineros de Chile', employers: ['Prefectura de Carabineros', 'Comisaría de Carabineros'], titles: { gendarme: 'Carabinero', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Suboficial Mayor', lieutenant: 'Teniente', captain: 'Capitán', major: 'Mayor', ltColonel: 'Teniente coronel', colonel: 'Coronel', general: 'General Director' } },
+  },
+  AR: {
+    gendarmerie: { name: 'Gendarmería Nacional Argentina', employers: ['Agrupación de Gendarmería'], titles: { gendarme: 'Gendarme', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Suboficial Mayor', lieutenant: 'Teniente', captain: 'Capitán', major: 'Mayor', ltColonel: 'Comandante Principal', colonel: 'Comandante Mayor', general: 'Comandante General' } },
+  },
+  RU: {
+    gendarmerie: { name: 'National Guard (Rosgvardiya)', employers: ['Rosgvardiya District Command'], titles: { gendarme: 'Ryadovoy', corporal: 'Yefreytor', sergeant: 'Serzhant', adjutant: 'Praporshchik', lieutenant: 'Leytenant', captain: 'Kapitan', major: 'Mayor', ltColonel: 'Podpolkovnik', colonel: 'Polkovnik', general: 'General armii' }, fromYear: 2016 },
+  },
+  PK: {
+    gendarmerie: { name: 'Pakistan Rangers', employers: ['Rangers Wing (Punjab)', 'Rangers Wing (Sindh)'], titles: { gendarme: 'Sepoy', corporal: 'Lance Naik', sergeant: 'Havildar', adjutant: 'Subedar', lieutenant: 'Lieutenant', captain: 'Captain', major: 'Major', ltColonel: 'Lieutenant Colonel', colonel: 'Brigadier', general: 'Major General' } },
+  },
+  BR: {
+    gendarmerie: { name: 'Polícia Militar', employers: ['Batalhão de Polícia Militar'], titles: { gendarme: 'Soldado', corporal: 'Cabo', sergeant: 'Sargento', adjutant: 'Subtenente', lieutenant: 'Tenente', captain: 'Capitão', major: 'Major', ltColonel: 'Tenente-coronel', colonel: 'Coronel', general: 'Coronel Comandante-Geral' } },
+  },
+  RO: {
+    gendarmerie: { name: 'Jandarmeria Română', employers: ['Inspectoratul de Jandarmi Județean'], titles: { gendarme: 'Jandarm', corporal: 'Caporal', sergeant: 'Sergent', adjutant: 'Plutonier', lieutenant: 'Locotenent', captain: 'Căpitan', major: 'Maior', ltColonel: 'Locotenent-colonel', colonel: 'Colonel', general: 'General' } },
+  },
+  UA: {
+    gendarmerie: { name: 'National Guard of Ukraine', employers: ['National Guard Brigade'], titles: { gendarme: 'Soldat', corporal: 'Starshyi soldat', sergeant: 'Serzhant', adjutant: 'Starshyna', lieutenant: 'Leitenant', captain: 'Kapitan', major: 'Maior', ltColonel: 'Pidpolkovnyk', colonel: 'Polkovnyk', general: 'General' }, fromYear: 2014 },
+  },
+  MA: {
+    gendarmerie: { name: 'Gendarmerie Royale', employers: ['Compagnie de la Gendarmerie Royale'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: 'Commandant', ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général de corps d'armée" } },
+  },
+  SN: {
+    gendarmerie: { name: 'Gendarmerie nationale sénégalaise', employers: ['Légion de gendarmerie territoriale'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: "Chef d'escadron", ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: 'Général de division' } },
+  },
+  CI: {
+    gendarmerie: { name: "Gendarmerie nationale de Côte d'Ivoire", employers: ['Légion de gendarmerie'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: "Chef d'escadron", ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général de corps d'armée" } },
+  },
+  CN: {
+    gendarmerie: { name: "People's Armed Police", employers: ['PAP Provincial Corps'], titles: { gendarme: 'Private', corporal: 'Corporal', sergeant: 'Sergeant', adjutant: 'Master Sergeant', lieutenant: 'Lieutenant', captain: 'Captain', major: 'Major', ltColonel: 'Lieutenant Colonel', colonel: 'Senior Colonel', general: 'General' } },
+  },
+  IL: {
+    gendarmerie: { name: 'Border Police (Magav)', employers: ['Border Police District'], titles: { gendarme: 'Shoter', corporal: 'Rav-Shoter', sergeant: 'Samal', adjutant: 'Rav-Samal', lieutenant: 'Mefake', captain: 'Pakad', major: 'Sgan-Nitzav', ltColonel: 'Nitzav-Mishne', colonel: 'Tat-Nitzav', general: 'Nitzav' } },
+  },
+  AT: {
+    gendarmerie: { name: 'Bundesgendarmerie', employers: ['Landesgendarmeriekommando'], titles: { gendarme: 'Gendarm', corporal: 'Revierinspektor', sergeant: 'Gruppeninspektor', adjutant: 'Bezirksinspektor', lieutenant: 'Leutnant', captain: 'Oberleutnant', major: 'Major', ltColonel: 'Oberstleutnant', colonel: 'Oberst', general: 'Gendarmeriegeneral' }, untilYear: 2005 },
+  },
+  BE: {
+    gendarmerie: { name: 'Gendarmerie / Rijkswacht', employers: ['Groupe territorial de gendarmerie'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: 'Major', ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: 'Lieutenant-général' }, untilYear: 2001 },
   },
 };
 fromPacks(AGENCIES, 'AGENCIES');

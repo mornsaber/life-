@@ -30,6 +30,7 @@ import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
+import { topOfficerGrade } from '../world/NationalForces.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -590,6 +591,8 @@ export function tryPromotion(ctx, svc) {
     return;
   }
   if (svc.track === 'officer' && svc.grade >= (CORPS_TOP_GRADE[svc.specialty] ?? 99)) return false;
+  // A small country's forces stop short of four stars (world/NationalForces.js TOP_GRADE).
+  if (svc.track === 'officer' && svc.grade >= topOfficerGrade(svc.nation ?? 'US')) return false;
   // Top performers can be picked up a year early.
   if (svc.track && !pmeBlock(svc) && belowZone(svc, timeInGradeRequired(svc), BOARD_THRESHOLD[svc.track][svc.grade]) && ctx.rng.chance(0.25)) {
     svc.grade += 1;

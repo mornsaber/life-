@@ -105,6 +105,8 @@ for (const [cc, agencies] of Object.entries(AGENCIES)) {
       union: t.union ? { ...t.union, name: `${a.name} staff association` } : null,
       benefits: { ...(t.benefits ?? {}), pension: null },
       eligible: undefined,
+      templateOnly: false,
+      ...(a.fromYear ? { fromYear: a.fromYear } : {}), ...(a.untilYear ? { untilYear: a.untilYear } : {}),
       levels: t.levels.map((l) => { const title = a.titles?.[l.id] ?? NEUTRAL_TITLES[templateId]?.[l.id]; return title ? { ...l, title } : l; }),
     };
     NATIONAL_PROFESSIONS[id] = p;
@@ -175,7 +177,7 @@ export function professionsFor(state) {
     return list.length === PROFESSION_LIST.length ? PROFESSION_LIST : list;
   }
   const province = state.character.regionId ? stateIdOf(state) : null;
-  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province) && local(p)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc)];
+  return [...PROFESSION_LIST.filter((p) => p.sector !== 'federal' && !US_ONLY_PROFESSIONS.includes(p.id) && agencyExists(cc, p.id, province) && local(p)).map((p) => PROFESSIONS[p.id]), ...Object.values(NATIONAL_PROFESSIONS).filter((p) => p.country === cc && local(p))];
 }
 
 /** A job-board field's careers where you live (US federal ids swap for national counterparts abroad). */

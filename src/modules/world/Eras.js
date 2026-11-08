@@ -318,6 +318,7 @@ export function futureWorkBlock(state, profession) {
 
 /** Professions this life's world doesn't have at all: not yet invented, long gone, a future that never came, a colony's service where there's no colony. The job board hides them. */
 export function eraHidden(state, p) {
+  if (p.templateOnly) return true;
   const y = yearNow(state);
   const from = PROFESSION_FROM[p.id] ?? p.fromYear;
   if (from && y < from) return true;
