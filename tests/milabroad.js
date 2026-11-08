@@ -12,6 +12,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { FORCES } from '../src/modules/world/NationalForces.js';
+import { BRANCHES } from '../src/modules/military/MilitaryEngine.js';
 import { unitView } from '../src/modules/org/MilitaryUnits.js';
 import { declareWar } from '../src/modules/world/War.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -67,7 +68,7 @@ function life(cc, seed) {
     if (age === 18 && !state.military.service) {
       const track = rng.pick(['enlisted', 'enlisted', 'officer']);
       if (track === 'officer') state.education.degrees.push({ type: 'bachelor', major: 'history', gpa: 3.3, age });
-      tryDo(() => { engine.dispatch('military.enlist', `${rng.pick(Object.keys(FORCES[cc].branches).filter((b) => b !== 'guard'))}:${track}:active`); solve(); }, `enlist ${cc}`);
+      tryDo(() => { engine.dispatch('military.enlist', `${rng.pick(Object.keys(FORCES[cc].branches).filter((b) => b !== 'guard' && (track === 'officer' || !BRANCHES[b]?.officerOnly)))}:${track}:active`); solve(); }, `enlist ${cc}`);
     }
     if (war && age === 24 && state.military.service) tryDo(() => declareWar(engine.context(), cc), 'declare war');
     if (state.military.service) {

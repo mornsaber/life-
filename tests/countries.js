@@ -7,6 +7,7 @@
  *   node tests/countries.js
  */
 import assert from 'node:assert/strict';
+import { eraHidden } from '../src/modules/world/Eras.js';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
@@ -249,9 +250,12 @@ const tests = {
     // Another country's agency is closed; the US board is exactly as before.
     assert.match(applicationEligibility(born('CA').state, 'gb_fbi').reason, /another country/);
     // The US board is the full list, less the other faiths' clergy careers (one ministry per faith).
-    const us = professionsFor(born('US').state);
-    assert.deepEqual(us.map((p) => p.id), PROFESSION_LIST.filter((p) => !['clergy', 'catholicClergy', 'anglicanClergy'].includes(p.id) || us.includes(p)).map((p) => p.id));
-    assert.ok(PROFESSION_LIST.length - us.length <= 2);
+    // Careers of another era (the trades of the past, colonial and future work) are not on it today.
+    const usState = born('US').state;
+    const us = professionsFor(usState);
+    const today = PROFESSION_LIST.filter((p) => !eraHidden(usState, p));
+    assert.deepEqual(us.map((p) => p.id), today.filter((p) => !['clergy', 'catholicClergy', 'anglicanClergy'].includes(p.id) || us.includes(p)).map((p) => p.id));
+    assert.ok(today.length - us.length <= 2);
     assert.equal(PROFESSIONS.ca_fbi.levels.find((l) => l.id === 'agent').title, 'Constable');
   },
   'parliamentary politics: provincial and national seats, then party leadership'() {

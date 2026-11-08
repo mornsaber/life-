@@ -41,7 +41,7 @@ export function neighbourhoodTick(main) {
   const n = ensure(state);
   // The drift: slow, with momentum, nudged by the economy.
   const econ = state.economy?.phase === 'recession' ? -0.05 : state.economy?.phase === 'peak' ? 0.04 : 0.01;
-  n.trend = Math.round(clamp(n.trend * 0.85 + rng.float(-0.12, 0.14) + econ + (n.chair ? 0.02 : 0), -1, 1) * 100) / 100;
+  n.trend = Math.round(clamp(n.trend * 0.85 + rng.float(-0.12, 0.14) + econ + (n.chair ? 0.02 : 0), -1, 1) * 100) / 100 + 0;
   if (Math.abs(n.trend) >= 0.3) {
     const id = state.character.regionId;
     if (state.housing?.market?.[id] != null) state.housing.market[id] = Math.round(state.housing.market[id] * (1 + n.trend * 0.02) * 1000) / 1000;
