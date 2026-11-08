@@ -179,6 +179,8 @@ export function previousLevel(profession, size, levelId) {
   const ladder = ladderFor(profession, size);
   const idx = ladder.findIndex((l) => l.id === levelId);
   const current = ladder[idx];
+  // A level this employer's ladder doesn't have (a size change, an old save): nowhere to step down to.
+  if (!current) return null;
   // Never back into a training post (a recruit or a trainee is still in the academy).
   const entry = ladder.findIndex((l) => l.entry);
   const before = ladder.slice(Math.max(0, entry), idx).reverse();
