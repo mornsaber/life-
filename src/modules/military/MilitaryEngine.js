@@ -30,7 +30,7 @@ import { isAbroad, US_ONLY, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } from '../world/NationalForces.js';
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
-import { topOfficerGrade } from '../world/NationalForces.js';
+import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
@@ -637,6 +637,8 @@ export function tryPromotion(ctx, svc) {
   if (svc.track === 'enlisted' && svc.grade === 6) chance *= 0.6;
   if (svc.track === 'enlisted' && svc.grade >= 7) chance *= 0.4;
   if (svc.track === 'warrant' && svc.grade >= 3) chance *= 0.6;
+  // A smaller force has fewer posts above each rank (world/NationalForces.js FORCE_SIZE).
+  if ((svc.track === 'officer' && svc.grade >= 3) || (svc.track === 'enlisted' && svc.grade >= 6)) chance *= SIZE_PROMOTION[forceSizeOf(svc.nation ?? 'US')];
   // A war's expanding force promotes nearly everyone fit for the next rank, and fast:
   // the senior boards' quotas lift and generals are made in the field.
   if (svc.wartime) chance = Math.max(chance * 1.6, chance + 0.3);

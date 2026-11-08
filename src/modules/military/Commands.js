@@ -28,6 +28,8 @@ import { rankOf, branchOf, discharge } from './MilitaryEngine.js';
 import { awardMedal } from './MedalEngine.js';
 import { serviceLevel, budgetAt } from '../politics/Budgets.js';
 import { pastTenure } from './Separation.js';
+import { forceSizeOf } from '../world/NationalForces.js';
+import { eraYear } from '../world/Eras.js';
 
 const FAMILY = { army: 'ground', guard: 'ground', marines: 'marines', navy: 'naval', coastguard: 'naval', airforce: 'air', spaceforce: 'space' };
 export const familyOf = (svc) => FAMILY[svc?.branch] ?? null;
@@ -209,13 +211,35 @@ const NATIONAL_POSTS = {
   air: { 5: ['Station Commander', (r) => `${r.pick(['an air base', 'the main fighter station', 'the transport wing'])}`], 6: ['Air Commodore', () => 'an Air Group'], 7: ['Air Officer Commanding', () => 'Air Combat Group'], 8: ['Commander', () => 'Air Command'], 9: ['Commander', () => 'Joint Operations Command'] },
   space: { 5: ['Commander', () => 'the Space Operations Centre'], 6: ['Commander', () => 'Space Command'], 7: ['Commander', () => 'Space Command'], 8: ['Commander', () => 'Space Command'], 9: ['Commander', () => 'Joint Operations Command'] },
 };
+/** Smaller and larger forces: what each senior grade can command (grade 5 = colonel … 9 = four stars). */
+const SCALE_POSTS = {
+  micro: {
+    ground: { 5: ['Commanding Officer', () => 'the Land Force'], 6: ['Commander', () => 'the Armed Forces'], 7: ['Commander', () => 'the Armed Forces'] },
+    naval: { 5: ['Commanding Officer', () => 'the Maritime Squadron'], 6: ['Commander', () => 'the Armed Forces'] },
+    air: { 5: ['Commanding Officer', () => 'the Air Wing'], 6: ['Commander', () => 'the Armed Forces'] },
+  },
+  small: {
+    ground: { 5: ['Commander', (r) => `${r.pick(['1st', '2nd'])} Brigade`], 6: ['Land Component Commander', () => 'Joint Forces Command'], 7: ['Chief of Army', () => 'the Army'], 8: ['Chief of Defence', () => 'the Defence Force'] },
+    naval: { 5: ['Commanding Officer', () => 'the Fleet\'s largest ship'], 6: ['Maritime Component Commander', () => 'Joint Forces Command'], 7: ['Chief of Navy', () => 'the Navy'], 8: ['Chief of Defence', () => 'the Defence Force'] },
+    air: { 5: ['Base Commander', () => 'the main air base'], 6: ['Air Component Commander', () => 'Joint Forces Command'], 7: ['Chief of Air Force', () => 'the Air Force'], 8: ['Chief of Defence', () => 'the Defence Force'] },
+  },
+  large: {
+    ground: { 8: ['Commander', (r) => `${r.pick(['I', 'II', 'III', 'IV'])} Corps`], 9: ['Commander', (r) => r.pick(['the Western Military District', 'the Northern Army Group', 'the Southern Front', 'the Eastern Theatre Command'])] },
+    naval: { 8: ['Commander', (r) => `the ${r.pick(['Northern', 'Southern', 'Eastern', 'Western'])} Fleet`], 9: ['Commander-in-Chief', () => 'the Fleet'] },
+  },
+};
 const NATIONAL_STAFF = ['Assistant Chief of Staff, Defence headquarters', 'Director of Operations, Defence headquarters', 'Defence Attaché to an allied capital', 'Director of Plans, the Ministry of Defence'];
 
 /** The command (or none) a board can offer at this grade, for this officer's corps and force. */
 export function commandFor(svc, r) {
   const spec = SPECIALTY_POSTS[svc.specialty];
   const family = familyOf(svc);
-  if (svc.nation) {
+  // Before the modern US forces (no airborne divisions or combatant commands), and abroad: the force's own formations, at its scale.
+  if (svc.nation || eraYear() < 1947) {
+    const size = forceSizeOf(svc.nation ?? 'US');
+    const scaled = SCALE_POSTS[size]?.[family === 'marines' ? 'ground' : family];
+    if (scaled && (size === 'micro' || size === 'small')) return scaled[svc.grade] ? { title: scaled[svc.grade][0], unit: scaled[svc.grade][1](r), size: 'a national command' } : null;
+    if (scaled?.[svc.grade]) return { title: scaled[svc.grade][0], unit: scaled[svc.grade][1](r), size: 'a national command' };
     const ns = svc.specialty === 'engineer' && family !== 'ground' ? null : NATIONAL_SPECIALTY[svc.specialty];
     if (ns) return ns[svc.grade] ? { title: ns[svc.grade][0], unit: ns[svc.grade][1](r), size: 'a national command' } : null;
     const n = NATIONAL_POSTS[family]?.[svc.grade];

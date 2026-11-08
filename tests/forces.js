@@ -9,7 +9,9 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { topOfficerGrade, FORCES } from '../src/modules/world/NationalForces.js';
+import { topOfficerGrade, FORCES, forceSizeOf } from '../src/modules/world/NationalForces.js';
+import { commandFor } from '../src/modules/military/Commands.js';
+import { Random as Rng } from '../src/core/Random.js';
 import { tryPromotion, rankOf, enlistmentEligibility } from '../src/modules/military/MilitaryEngine.js';
 import { periodTitle, setEraYear } from '../src/modules/world/Eras.js';
 import { branchOf } from '../src/modules/military/MilitaryEngine.js';
@@ -57,6 +59,23 @@ const tests = {
     assert.equal(rankOf({ branch: 'army', track: 'enlisted', grade: 3 }).title, 'Specialist');
     assert.equal(periodTitle('Police Officer'), 'Police Officer');
     assert.doesNotMatch(enlistmentEligibility(now.state, 'airforce', 'enlisted', 'active').reason ?? '', /Doesn't exist yet/);
+  },
+  'smaller and larger forces: their commands and their senior posts'() {
+    setEraYear(2026);
+    assert.equal(forceSizeOf('US'), 'large');
+    assert.equal(forceSizeOf('NZ'), 'small');
+    assert.equal(forceSizeOf('MT'), 'micro');
+    const r = new Rng(1);
+    const nzColonel = commandFor({ nation: 'NZ', branch: 'army', grade: 6, specialty: 'infantry' }, r);
+    assert.doesNotMatch(nzColonel?.unit ?? '', /Division|Corps/, 'New Zealand has no divisions');
+    assert.equal(commandFor({ nation: 'MT', branch: 'army', grade: 8, specialty: 'infantry' }, r), null, 'nothing for a Maltese general to command');
+    assert.match(commandFor({ nation: 'IN', branch: 'army', grade: 8, specialty: 'infantry' }, r)?.unit ?? '', /Corps/, 'India has corps');
+    setEraYear(1880);
+    assert.equal(forceSizeOf('US'), 'small', 'the US Army between its wars');
+    assert.doesNotMatch(commandFor({ branch: 'army', grade: 7, specialty: 'infantry' }, r)?.unit ?? '', /Airborne|Combatant/);
+    setEraYear(1916);
+    assert.equal(forceSizeOf('NZ'), 'medium', 'the Great War swelled the dominions\' forces');
+    setEraYear(2026);
   },
   'ranks of the 19th century and of other nations, and their insignia'() {
     life('US', 1830); // 1850 by the checks below

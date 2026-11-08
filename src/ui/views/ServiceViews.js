@@ -41,6 +41,7 @@ import { pmcEligibility, pmcOffers, pmcRisk } from '../../modules/career/PmcCont
 import { reserveStanding, ssoEligibility } from '../../modules/military/MerchantReserve.js';
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
+import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
 
 /** A rank code (E-5, O-3, OR-4) for a grade on a track, in the service's own system. */
 const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
@@ -291,6 +292,7 @@ export function militaryView(state) {
         ${kv([
           ['Base pay', `${money(annualActivePay(svc))}/yr${svc.component === 'reserve' ? ' (active rate)' : ''}`],
           ['Service', `${svc.yearsOfService} yrs`],
+          ['Size of force', esc(SIZE_LABEL[forceSizeOf(svc.nation ?? 'US')])],
           ['Time in grade', `${svc.yearsInGrade} yrs`],
           ['Contract', svc.contractYearsLeft > 0 ? `${svc.contractYearsLeft} yrs left` : 'Up for renewal'],
           [svc.component === 'reserve' ? 'Home unit' : 'Duty station', svc.component === 'reserve' ? 'Drills near home' : svc.overseas ? `🌍 ${esc(svc.overseas.base)}, ${esc(svc.overseas.country)} (${svc.overseas.accompanied ? 'accompanied' : 'unaccompanied'}, until ${svc.overseas.until})` : esc(svc.station ?? 'Initial training')],

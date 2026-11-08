@@ -1,4 +1,5 @@
 import { fromPacks } from './packs/index.js';
+import { eraYear } from './Eras.js';
 /**
  * Every country's armed forces, laid over the military engine's US branch
  * templates (army, navy, airforce, marines, guard). A national branch keeps
@@ -393,4 +394,42 @@ export const TOP_GRADE = {
   MT: 6, TO: 6, BS: 6, VU: 5, SB: 5, MH: 4,
 };
 export const topOfficerGrade = (countryId) => TOP_GRADE[countryId] ?? 9;
+
+/**
+ * How big a country's forces are (active strength, today):
+ *   large   over ~150,000: corps, armies and military districts above the division
+ *   medium  ~30,000–150,000: brigades and divisions, a field army at the top
+ *   small   ~5,000–30,000: a brigade or two; the army's chief is its top commander
+ *   micro   under ~5,000: a battalion and a patrol boat; one or two colonels' posts
+ * Size decides which commands exist and how scarce senior promotions are. Countries not listed
+ * are medium (or small/micro where their top rank says so). In the world wars the belligerents
+ * swelled; the 19th-century US Army was tiny between its wars.
+ */
+export const FORCE_SIZE = {
+  US: 'large', CN: 'large', IN: 'large', RU: 'large', KP: 'large', KR: 'large', PK: 'large', IR: 'large', VN: 'large', EG: 'large', TR: 'large',
+  ID: 'large', TH: 'large', BR: 'large', CO: 'large', FR: 'large', JP: 'large', SA: 'large', MX: 'large', UA: 'large', MM: 'large', PL: 'large', DE: 'large', IT: 'large', GB: 'large', TW: 'large', IL: 'large',
+  AU: 'medium', CA: 'medium', ES: 'medium', NL: 'medium', GR: 'medium', RO: 'medium', ZA: 'medium', AR: 'medium', CL: 'medium', PE: 'medium', SG: 'medium', MY: 'medium', PH: 'medium', NG: 'medium', MA: 'medium', DZ: 'medium',
+  NZ: 'small', IE: 'small', DK: 'small', NO: 'small', FI: 'small', SE: 'small', BE: 'small', PT: 'small', AT: 'small', CH: 'small', CZ: 'small', HU: 'small', BG: 'small', RS: 'small', HR: 'small', SK: 'small', SI: 'small',
+  EE: 'small', LV: 'small', LT: 'small', CY: 'small', KE: 'small', GH: 'small', UY: 'small', BN: 'small', NA: 'small', BW: 'small', AL: 'small', MK: 'small', ME: 'micro', IS: 'micro',
+  MT: 'micro', LU: 'micro', JM: 'micro', BS: 'micro', PG: 'micro', FJ: 'micro', TO: 'micro', VU: 'micro', SB: 'micro', MH: 'micro', CR: 'micro', PA: 'small', TT: 'micro', BZ: 'micro', GM: 'micro', DJ: 'micro',
+};
+fromPacks(FORCE_SIZE, 'FORCE_SIZE');
+const SIZES = ['micro', 'small', 'medium', 'large'];
+const WORLD_WAR_POWERS = ['GB', 'FR', 'DE', 'IT', 'JP', 'US', 'RU', 'CA', 'AU', 'NZ', 'IN', 'ZA', 'PL', 'BE', 'NL'];
+/** A force's size in the year being played. */
+export function forceSizeOf(cc = 'US') {
+  const y = eraYear();
+  let size = FORCE_SIZE[cc] ?? (topOfficerGrade(cc) <= 6 ? 'micro' : topOfficerGrade(cc) <= 8 ? 'small' : 'medium');
+  if (cc === 'US') size = y < 1861 || (y > 1865 && y < 1898) ? 'small' : y < 1941 && !(y >= 1917 && y <= 1918) ? 'medium' : 'large';
+  if (WORLD_WAR_POWERS.includes(cc) && ((y >= 1914 && y <= 1918) || (y >= 1939 && y <= 1945))) size = SIZES[Math.min(3, SIZES.indexOf(size) + 1)];
+  return size;
+}
+/** How much harder senior promotion is in a smaller force (fewer posts above each rank). */
+export const SIZE_PROMOTION = { micro: 0.55, small: 0.75, medium: 0.9, large: 1 };
+export const SIZE_LABEL = {
+  micro: 'Very small — a battalion or two; few posts above major',
+  small: 'Small — a brigade or two; senior posts are scarce',
+  medium: 'Mid-sized — brigades and divisions',
+  large: 'Large — corps, armies and military districts',
+};
 
