@@ -6,7 +6,7 @@
  */
 import { esc, button } from '../Components.js';
 import { STATE_VERSION } from '../../core/State.js';
-import { ROUTINE } from '../../core/Routine.js';
+import { ROUTINE, DECISION_LEVELS } from '../../core/Routine.js';
 
 function dialog(id, title, body) {
   return `<div class="overlay panel-overlay" role="dialog" aria-modal="true" aria-labelledby="${id}-title" data-panel="${id}">
@@ -49,7 +49,11 @@ export function settingsPanel(settings, { canUndo = false } = {}) {
   const radio = (value, label) => `<label><input type="radio" name="theme" value="${value}" data-setting="theme"${settings.theme === value ? ' checked' : ''}> ${label}</label>`;
   return dialog('settings', '⚙️ Settings', `
     <fieldset class="setting"><legend>Theme</legend>${radio('auto', 'Match my device')}${radio('dark', 'Dark arcade')}${radio('light', 'Light')}</fieldset>
-    <fieldset class="setting"><legend>Decisions</legend>
+    <fieldset class="setting"><legend>Decisions per year</legend>
+      ${Object.entries(DECISION_LEVELS).map(([id, d]) => `<label><input type="radio" name="decisions" value="${id}" data-setting="decisions"${(settings.decisions ?? 'focused') === id ? ' checked' : ''}> ${esc(d.label)}</label>`).join('')}
+      <p class="fine">In a busy year, small social and civic moments beyond the limit (a ballot, a neighbour's favour, a rival's jab) are answered quietly with the safe choice and noted in your story. Anything that matters — work, money, health, the law, family — always asks.</p>
+    </fieldset>
+    <fieldset class="setting"><legend>Routine decisions</legend>
       <label><input type="checkbox" data-setting="autoResolve"${settings.autoResolve ? ' checked' : ''}> Auto-resolve routine decisions</label>
       <p class="fine">Answers only decisions with one obviously safe choice (and any decision with a single option), and notes each one in your life story: ${Object.keys(ROUTINE).map((t) => esc(t.split('.')[1])).join(', ')}.</p>
     </fieldset>

@@ -12,7 +12,7 @@
 import { Engine } from './core/Engine.js';
 import { Store } from './core/State.js';
 import { Random } from './core/Random.js';
-import { routineChoice } from './core/Routine.js';
+import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
@@ -30,6 +30,7 @@ let settings = loadSettings();
 function applySettings() {
   applyTheme(settings.theme);
   engine.autoResolver = settings.autoResolve ? routineChoice : null;
+  engine.promptBudget = (DECISION_LEVELS[settings.decisions] ?? DECISION_LEVELS.focused).budget;
   renderer.settings = settings;
 }
 applySettings();

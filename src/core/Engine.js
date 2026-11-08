@@ -21,6 +21,7 @@
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
 import { snapshot, review } from './YearReview.js';
+import { quietChoice } from './Routine.js';
 import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, familyCovers, dependant, setNameCountry } from './State.js';
 import { Random } from './Random.js';
 import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
@@ -65,6 +66,8 @@ export class Engine {
     this.undoDepth = 5;
     /** Optional (prompt) => optionId | null, applied to prompts raised during an age-up. */
     this.autoResolver = null;
+    /** Decisions per year before low-stakes ones are answered quietly (Infinity: ask every one). */
+    this.promptBudget = Infinity;
     /** `${promptType}:${optionId}` → the crime that choice commits (modules register them; see legal/index.js). */
     this.illegalChoices = {};
     modules.forEach((m) => this.register(m));
@@ -201,6 +204,7 @@ export class Engine {
 
     pruneStalePrompts(state);
     this.autoResolve();
+    this.trimPrompts();
     if (currentYearEntries(state).length === 0) addLog(state, 'A quiet year passed.', '🍃', 'muted');
     state.lastYear = review(before, state);
     compactLog(state);
@@ -273,6 +277,25 @@ export class Engine {
       state.prompts.splice(state.prompts.indexOf(prompt), 1);
       this.resolvers.get(prompt.type)(this.context(), prompt.data ?? {}, optionId, prompt);
       addLog(state, `Auto-decided "${prompt.title}": ${option.label.replace(/^\S+\s/, '')}`, '🤖', 'muted');
+    }
+  }
+
+  /**
+   * Over the player's decisions-per-year limit (promptBudget), answer low-stakes moments
+   * quietly with their safe default, newest first, and note each in the life story.
+   */
+  trimPrompts() {
+    const state = this.state;
+    if (!(this.promptBudget < Infinity)) return;
+    for (let guard = 0; guard < 20 && state.prompts.length > this.promptBudget && state.character.alive; guard++) {
+      pruneStalePrompts(state);
+      const prompt = [...state.prompts].reverse().find((p) => quietChoice(p));
+      if (!prompt) return;
+      const optionId = quietChoice(prompt);
+      const option = prompt.options.find((o) => o.id === optionId);
+      state.prompts.splice(state.prompts.indexOf(prompt), 1);
+      this.resolvers.get(prompt.type)(this.context(), prompt.data ?? {}, optionId, prompt);
+      addLog(state, `A busy year: "${prompt.title}" — ${option.label.replace(/^\S+\s/, '').toLowerCase()}.`, '🫥', 'muted');
     }
   }
 
