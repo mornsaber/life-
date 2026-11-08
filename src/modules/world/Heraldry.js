@@ -125,12 +125,16 @@ export function familyShield(lastName = 'Smith') {
 }
 
 const honorsOf = (s) => s.honors ?? [];
+/** As many insignia as qualify hang below the shield (the row fits seven). */
+const MAX_BADGES = 7;
+/** A ribbon as stripes [[colour, width]], whatever form the honour stores it in. */
+const stripes = (ribbon, fallback) => (Array.isArray(ribbon) && ribbon.length ? ribbon.map((s) => (Array.isArray(s) ? [s[0], s[1] ?? 1] : [s, 1])) : [[fallback, 1]]);
 const firstColour = (ribbon, fallback) => (Array.isArray(ribbon) && ribbon[0] ? (Array.isArray(ribbon[0]) ? ribbon[0][0] : ribbon[0]) : fallback);
 const GRAND = /Garter|Thistle|Grand Cross|Grand Officer|Grand Cordon|Grand Collar|Großkreuz|Grand-Croix|Gran Cruz|Knight Grand|Dame Grand/i;
 const COMMANDER = /Knight Commander|Dame Commander|Knight Companion|Lady Companion|Commandeur|Commander of the|Komtur/i;
 const VALOUR = /Victoria Cross|Medal of Honor|George Cross|Param Vir Chakra|Cross of Valour/i;
 const DECORATION = /Cross|Star|Order|Medal for Gallantry|Military Medal|Conspicuous|Distinguished/i;
-const CAMPAIGN = /Service Medal|Campaign|Expedition|Commendation|Achievement|Good Conduct|Jubilee|Coronation|Long Service|Defence|Defense Service|Operational Service/i;
+const CAMPAIGN = /Service Medal|Campaign|Expedition|Commendation|Achievement|Good Conduct|Jubilee|Coronation|Long Service|Defence|Defense Service|Operational Service|\d{4}[–-]\d{2,4} Star|War Medal|Victory Medal|Korea Medal|Vietnam Medal|Afghanistan Medal|Campaign Star|commémorative|commemorativa|Ehrenkreuz|NATO Medal/i;
 /** Your peak military grade, branch and track. */
 function peakMilitary(s) {
   const tours = [...(s.military?.history ?? []), s.military?.service].filter(Boolean);
@@ -181,11 +185,12 @@ export function armsOf(state) {
   if (circlet) legend.push(`🎗️ The circlet of the ${circlet.name.replace(/\s*\([^)]*\)/g, '')}.`);
   const badges = [];
   for (const h of honors) {
-    if (h === grand || badges.length >= 3) continue;
-    if (VALOUR.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#8b0a1d'), valour: true });
-    else if (orders.includes(h)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#6b4fa0') });
+    if (h === grand || badges.length >= MAX_BADGES) continue;
+    const kind = /Medal/i.test(h.name) && !/Order/i.test(h.name) ? 'medal' : 'cross';
+    if (VALOUR.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#8b0a1d'), ribbon: stripes(h.ribbon, '#8b0a1d'), valour: true, kind });
+    else if (orders.includes(h)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#6b4fa0'), ribbon: stripes(h.ribbon, '#6b4fa0'), kind: 'order' });
     // Decorations may hang below the shield whatever your rank; campaign and service medals don't.
-    else if (h.source === 'military' && DECORATION.test(h.name) && !CAMPAIGN.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#5b2a86') });
+    else if (h.source === 'military' && DECORATION.test(h.name) && !CAMPAIGN.test(h.name)) badges.push({ name: h.name, colour: firstColour(h.ribbon, '#5b2a86'), ribbon: stripes(h.ribbon, '#5b2a86'), kind });
   }
   if (badges.length) legend.push(`🏅 Hung below the shield: ${badges.map((b) => b.name.replace(/\s*\([^)]*\)/g, '')).join('; ')}.`);
 
@@ -197,7 +202,7 @@ export function armsOf(state) {
   const governorGeneral = offices.some((id) => /_gg$/.test(id));
   const viceRegal = governorGeneral || offices.some((id) => /_lg$|_governor$/.test(id));
   if (governorGeneral) badges.unshift({ name: 'The vice-regal badge', colour: '#1f2b6f', viceRegal: true });
-  badges.splice(3);
+  badges.splice(MAX_BADGES);
   const supporters = royal || peer || noble || grand || ledCountry || fieldMarshal || viceRegal ? SUPPORTERS[shield.charge] ?? SUPPORTERS.default : null;
   if (supporters) legend.push(`🦁 Supporters (${supporters}): ${royal ? 'royalty' : peer || noble ? 'a peer\'s right' : grand ? 'a Grand Cross' : viceRegal ? `you served as the Crown's representative${governorGeneral ? ', and the vice-regal badge hangs below' : ''}` : ledCountry ? 'you led a government' : 'a field marshal'}.`);
 

@@ -124,11 +124,23 @@ function circlet(c, id) {
   // The motto runs right round the circlet, starting at the foot.
   return `<path d="${path}" fill="none" stroke="${c.colour}" stroke-width="10"/><path id="circ${id}" d="M100 162 Q56 148 56 112 V64 H144 V112 Q144 148 100 162" fill="none"/><text font-size="6" font-weight="700" fill="${GOLD}" letter-spacing=".8" dominant-baseline="central"><textPath href="#circ${id}" startOffset="50%" text-anchor="middle">${esc(c.motto)}</textPath></text>`;
 }
-const badges = (list) => list.map((b, i) => {
-  const x = 100 + (i - (list.length - 1) / 2) * 22;
-  if (b.viceRegal) return `<rect x="${x - 3}" y="156" width="6" height="7" fill="${b.colour}"/><circle cx="${x}" cy="169" r="7" fill="#1f2b6f" stroke="${GOLD}"/><text x="${x}" y="167" font-size="5" text-anchor="middle" fill="${GOLD}">♛</text><text x="${x}" y="173" font-size="5" text-anchor="middle" fill="${GOLD}">🦁</text>`;
-  return `<rect x="${x - 3}" y="156" width="6" height="9" fill="${b.colour}"/><text x="${x}" y="173" font-size="${b.valour ? 12 : 11}" text-anchor="middle" fill="${b.valour ? '#b87333' : GOLD}" stroke="#5a3d0c" stroke-width=".4">${b.valour ? '✠' : '✦'}︎</text>`;
-}).join('');
+/** A short length of the honour's own ribbon: its stripes, left to right. */
+function ribbonRect(stripes, x, y, w, h) {
+  const total = stripes.reduce((s, [, sw]) => s + sw, 0) || 1;
+  let at = x;
+  return stripes.map(([c, sw]) => { const width = (w * sw) / total; const r = `<rect x="${at.toFixed(2)}" y="${y}" width="${width.toFixed(2)}" height="${h}" fill="${c}"/>`; at += width; return r; }).join('') + `<rect x="${x}" y="${y}" width="${w}" height="${h}" fill="none" stroke="#5a3d0c" stroke-width=".3"/>`;
+}
+const badges = (list) => {
+  const gap = Math.min(22, 128 / Math.max(1, list.length));
+  const w = Math.min(8, gap - 2);
+  return list.map((b, i) => {
+    const x = 100 + (i - (list.length - 1) / 2) * gap;
+    const ribbon = ribbonRect(b.ribbon ?? [[b.colour, 1]], x - w / 2, 156, w, 9);
+    if (b.viceRegal) return `${ribbonRect([[b.colour, 1]], x - w / 2, 156, w, 7)}<circle cx="${x}" cy="169" r="7" fill="#1f2b6f" stroke="${GOLD}"/><text x="${x}" y="167" font-size="5" text-anchor="middle" fill="${GOLD}">♛</text><text x="${x}" y="173" font-size="5" text-anchor="middle" fill="${GOLD}">🦁</text>`;
+    if (b.kind === 'medal') return `${ribbon}<circle cx="${x}" cy="170" r="${Math.min(5, w * 0.7)}" fill="${b.valour ? '#b87333' : GOLD}" stroke="#5a3d0c" stroke-width=".5"/>`;
+    return `${ribbon}<text x="${x}" y="173" font-size="${Math.min(b.valour ? 12 : 11, gap * 0.6)}" text-anchor="middle" fill="${b.valour ? '#b87333' : GOLD}" stroke="#5a3d0c" stroke-width=".4">${b.valour ? '✠' : '✦'}︎</text>`;
+  }).join('');
+};
 const motto = (text, id) => `<path d="M40 192 Q48 184 56 190 L144 190 Q152 184 160 192 Q152 206 144 202 L56 202 Q48 206 40 192 Z" fill="#f4ecd6" stroke="#8a7a5a"/><path id="motto${id}" d="M50 199 H150" fill="none"/><text font-size="8" font-style="italic" font-family="Georgia, serif" fill="#3a2e1a"><textPath href="#motto${id}" startOffset="50%" text-anchor="middle">${esc(text)}</textPath></text>`;
 
 /** A kamon: the family crest in a ring (the imperial chrysanthemum for the imperial house). */

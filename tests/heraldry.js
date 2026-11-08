@@ -24,6 +24,27 @@ const life = (seed = 3, countryId = 'GB') => {
 const wellFormed = (svg) => /^<svg class="arms-svg"/.test(svg) && svg.endsWith('</svg>') && !/undefined|NaN|null/.test(svg);
 
 const tests = {
+  'every qualifying insignia hangs below the shield, on its own ribbon'() {
+    const { state } = life(5);
+    state.arms = { granted: true };
+    const add = (id, name, ribbon, source = 'military') => state.honors.push({ id, name, ribbon, source, prestige: 6 });
+    add('vc', 'Victoria Cross', [['#8b0a1d', 1]]);
+    add('dso', 'Distinguished Service Order', [['#c8102e', 1], ['#1f3f8f', 3], ['#c8102e', 1]]);
+    add('mc', 'Military Cross', [['#fff', 1], ['#5b2a86', 1], ['#fff', 1]]);
+    add('dfc', 'Distinguished Flying Cross', [['#5b2a86', 1], ['#fff', 1]]);
+    add('cbe', 'Commander of the Order of the British Empire (CBE)', [['#e0218a', 1], ['#9e9e9e', 1]], 'civil');
+    state.honors.find((h) => h.id === 'cbe').order = 'Order of the British Empire';
+    add('star', '1939–45 Star', [['#1f3f8f', 1], ['#d0021b', 1], ['#4a90e2', 1]]);
+    add('wm', 'War Medal 1939–1945', [['#d0021b', 1]]);
+    const a = armsOf(state);
+    assert.ok(a.badges.length >= 5, `${a.badges.length} badges`);
+    assert.ok(!a.badges.some((b) => /1939–45 Star|War Medal/.test(b.name)), 'campaign medals do not hang below the shield');
+    const dso = a.badges.find((b) => /Distinguished Service Order/.test(b.name));
+    assert.deepEqual(dso.ribbon, [['#c8102e', 1], ['#1f3f8f', 3], ['#c8102e', 1]], 'its own ribbon');
+    const svg = armsSvg(a);
+    assert.ok(wellFormed(svg));
+    assert.ok(svg.includes('#1f3f8f') && svg.includes('#5b2a86'), 'the stripes are drawn');
+  },
   'the shield is the family\'s, and its blazon reads properly'() {
     assert.deepEqual(familyShield('Ashdown'), familyShield('Ashdown'));
     const seen = new Set();
