@@ -61,11 +61,14 @@ const careers = {
     ladder: [
       ['minor', 'Development / Minor-League Player', 2, { years: 2 }],
       ['pro', 'Professional Athlete', 6],
+      ['rotation', 'Rotation Player', 7],
       ['starter', 'Starter', 8, { track: 'ic' }],
       ['allStar', 'All-Star', 10, { track: 'ic', minSize: 'large' }],
       ['assistant', 'Assistant Coach', 5, { track: 'mgmt', abilities: ['supervise'], reports: 15 }],
+      ['coordinator', 'Coordinator', 6, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 15 }],
       ['headCoach', 'Head Coach', 8, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 50 }],
       ['gm', 'Team General Manager', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'sign', 'exec'], reports: 120 }],
+      ['president', 'President of Operations', 10, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'exec'], reports: 300 }],
     ],
   },
   fitness: {
@@ -232,10 +235,14 @@ const careers = {
     ladder: [
       ['aide', 'Childcare Aide', 1],
       ['teacher', 'Preschool Teacher', 2, { req: { credentials: ['cda'] } }],
+      ['teacher2', 'Preschool Teacher II', 3],
       ['lead', 'Lead Teacher', 3],
       ['specialist', 'Early Intervention Specialist', 4, { track: 'ic', req: { education: { level: 'bachelor' } } }],
+      ['coach', 'Instructional Coach', 5, { track: 'ic', minSize: 'medium' }],
+      ['assistantDirector', 'Assistant Director', 4, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 12 }],
       ['director', 'Center Director', 5, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 20 }],
       ['regional', 'Regional Director', 7, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 150 }],
+      ['area', 'Vice President of Centers', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 400 }],
     ],
   },
   caregiving: {
@@ -245,9 +252,13 @@ const careers = {
       ['pca', 'Personal Care Aide', 1],
       ['hha', 'Home Health Aide', 2, { req: { credentials: ['cna'] } }],
       ['senior', 'Senior Caregiver', 3],
+      ['lead', 'Lead Caregiver', 3],
       ['memoryCare', 'Memory Care Specialist', 4, { track: 'ic' }],
+      ['trainer', 'Dementia Care Trainer', 5, { track: 'ic', minSize: 'medium' }],
       ['coordinator', 'Care Coordinator', 4, { track: 'mgmt', abilities: ['supervise', 'hire'], reports: 15 }],
+      ['supervisor', 'Field Supervisor', 5, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 30 }],
       ['director', 'Agency Director', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 60 }],
+      ['regional', 'Regional Director', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate'], reports: 300 }],
     ],
   },
   funeral: {
@@ -255,11 +266,14 @@ const careers = {
     employers: ['Evergreen Funeral Home', 'Hillcrest Memorial Chapel', 'Riverside Mortuary', 'Dignity Memorial'],
     ladder: [
       ['attendant', 'Funeral Attendant', 1],
+      ['removal', 'Removal Technician', 2],
       ['apprentice', 'Apprentice Funeral Director', 3, { entry: true, req: { education: { program: 'mortuaryScience' } } }],
       ['director', 'Funeral Director & Embalmer', 5, { req: { credentials: ['funeralDirectorLicense'] } }],
       ['senior', 'Senior Funeral Director', 6, { track: 'ic' }],
+      ['chiefEmbalmer', 'Chief Embalmer', 7, { track: 'ic', minSize: 'medium' }],
       ['manager', 'Funeral Home Manager', 6, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 10 }],
       ['regional', 'Regional Manager', 8, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 80 }],
+      ['vp', 'VP of Operations', 9, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 600 }],
     ],
   },
   nonprofit: {

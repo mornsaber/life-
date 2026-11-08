@@ -77,10 +77,14 @@ const careers = {
     ladder: [
       ['postdoc', 'Postdoctoral Researcher', 5, { years: 3 }],
       ['staff', 'Staff Scientist', 6],
+      ['staff2', 'Staff Scientist II', 7],
       ['senior', 'Senior Scientist', 7, { track: 'ic' }],
       ['distinguished', 'Distinguished Fellow', 9, { track: 'ic' }],
       ['group', 'Group Leader', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 15 }],
+      ['deputyDivision', 'Deputy Division Director', 8, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate'], reports: 150 }],
       ['division', 'Division Director', 9, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 300 }],
+      ['ald', 'Associate Laboratory Director', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 1200 }],
+      ['labDirector', 'Laboratory Director', 10, { track: 'mgmt', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 4000 }],
     ],
   },
 };

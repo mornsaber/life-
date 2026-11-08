@@ -26,10 +26,14 @@ const careers = {
     entry: { credentials: ['rn'], experience: { professions: ['nursing'], years: 2 } },
     ladder: [
       ['travel', 'Travel Nurse', 6, { req: { credentials: ['rn'] } }],
+      ['experienced', 'Experienced Travel Nurse', 6],
       ['travelIcu', 'Travel ICU Nurse', 7, { track: 'ic', req: { credentials: ['ccrn'] } }],
+      ['charge', 'Travel Charge Nurse', 7, { track: 'ic' }],
       ['crisis', 'Crisis & Strike Response Nurse', 8, { track: 'ic' }],
       ['liaison', 'Clinical Liaison', 6, { track: 'mgmt', abilities: ['supervise'], reports: 40 }],
+      ['manager', 'Clinical Manager', 7, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 40 }],
       ['director', 'Director of Clinical Operations', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 400 }],
+      ['vp', 'VP of Clinical Services', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate'], reports: 300 }],
     ],
   },
   privateEms: {
@@ -71,9 +75,12 @@ const careers = {
     ladder: [
       ['postdoc', 'Postdoctoral Fellow', 5, { years: 3 }],
       ['staff', 'Staff Scientist', 6],
+      ['staff2', 'Senior Staff Scientist', 7],
       ['senior', 'Senior Scientist', 7, { track: 'ic' }],
+      ['principal', 'Principal Scientist', 8, { track: 'ic' }],
       ['fellow', 'Distinguished Fellow', 9, { track: 'ic', minSize: 'large' }],
       ['pi', 'Principal Investigator', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 12 }],
+      ['associateDirector', 'Associate Director', 9, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate'], reports: 150 }],
       ['director', 'Institute Director', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'hire', 'budget', 'delegate', 'exec'], reports: 400 }],
     ],
   },

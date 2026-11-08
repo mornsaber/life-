@@ -72,13 +72,16 @@ const careers = {
     entry: { education: { level: 'highschool' } },
     rotation: { label: 'on call for trains', away: 0.3 }, seniority: true, furlough: true,
     ladder: [
+      ['brakeman', 'Brakeman / Switchman', 2],
       ['trainee', 'Conductor Trainee', 3, { years: 1 }],
       ['conductor', 'Conductor', 5, { req: { credentials: ['conductorCert'] } }],
       ['engineer', 'Locomotive Engineer', 6, { req: { credentials: ['locomotiveEngineer'] } }],
       ['senior', 'Senior Locomotive Engineer', 7, { track: 'ic' }],
+      ['expressEngineer', 'Passenger Express Engineer', 8, { track: 'ic', minSize: 'medium' }],
       ['trainmaster', 'Trainmaster', 6, { track: 'mgmt', abilities: ['supervise', 'command'], reports: 60 }],
       ['roadForeman', 'Road Foreman of Engines', 7, { track: 'mgmt', req: { credentials: ['locomotiveEngineer'] }, abilities: ['supervise', 'hire'], reports: 120 }],
       ['superintendent', 'Division Superintendent', 8, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'delegate'], reports: 1500 }],
+      ['gm', 'General Manager', 9, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 2000 }],
     ],
   },
   paratransit: {
@@ -91,9 +94,14 @@ const careers = {
     ladder: [
       ['driver', 'Paratransit Driver', 2],
       ['senior', 'Senior Paratransit Operator', 3],
+      ['trainer', 'Driver Trainer', 3],
       ['travelTrainer', 'Travel Trainer', 4, { track: 'ic' }],
+      ['mobility', 'Mobility Coordinator', 5, { track: 'ic', minSize: 'medium' }],
       ['dispatcher', 'Paratransit Dispatcher', 3, { track: 'mgmt', abilities: ['supervise'], reports: 20 }],
+      ['roadSupervisor', 'Road Supervisor', 4, { track: 'mgmt', abilities: ['supervise', 'budget'], reports: 20 }],
       ['opsManager', 'Paratransit Operations Manager', 5, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget'], reports: 120 }],
+      ['director', 'Director of Paratransit', 6, { track: 'mgmt', minSize: 'medium', abilities: ['supervise', 'budget', 'delegate'], reports: 120 }],
+      ['transitOps', 'Transit Operations Director', 7, { track: 'mgmt', minSize: 'large', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 400 }],
     ],
   },
   schoolBus: {
