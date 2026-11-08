@@ -42,7 +42,7 @@ import { achievementsView } from './views/AchievementsView.js';
 import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
-import { yearReviewCard, thisYearCard, tipsCard } from './views/YearReviewView.js';
+import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -164,7 +164,7 @@ export const VIEWS = {
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
-    return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
+    return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + aspirationsCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
   business: businessView,

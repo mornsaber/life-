@@ -2,10 +2,11 @@
  * The year in review (Life tab, top): what changed since your last birthday, at a glance.
  * Built by the engine (core/YearReview.js); this only draws it.
  */
-import { esc, money, card, chip } from '../Components.js';
+import { esc, money, card, chip, meter } from '../Components.js';
 import { STAT_META } from '../../core/State.js';
 import { CONDITIONS } from '../../modules/health/Conditions.js';
 import { nextSteps, tipsFor } from '../../modules/life/Guide.js';
+import { ASPIRATIONS, aspirationsOf, progressOf } from '../../modules/life/Aspirations.js';
 import { button } from '../Components.js';
 
 const signed = (n) => `${n > 0 ? '+' : n < 0 ? '−' : ''}${Math.abs(n)}`;
@@ -46,4 +47,16 @@ export function tipsCard(state, show) {
   if (!show || state.character.age > 30) return '';
   const tips = tipsFor(state).map(([icon, html]) => `<li><span aria-hidden="true">${icon}</span> ${html}</li>`).join('');
   return card('How to Play', `<ul class="tips">${tips}</ul><div class="row-end">${button('Got it — hide tips', 'ui.hideTips', { variant: 'small ghost' })}</div>`, { icon: '💡', accent: 'yellow', className: 'tips-card', fold: false });
+}
+
+/** Aspirations: what you're working toward, with progress, and what you've already done. */
+export function aspirationsCard(state) {
+  const a = aspirationsOf(state);
+  if (state.character.age < 16 || (!a.active.length && !a.done.length)) return '';
+  const active = a.active.map((x) => {
+    const d = ASPIRATIONS[x.id];
+    return `<div class="aspiration">${meter(progressOf(state, x.id), { label: `${d.icon} ${esc(d.name)}`, tone: 'auto' })}<p class="fine">${esc(d.desc)} <small>Since ${x.since}.</small> ${button('Let it go', 'aspirations.drop', { arg: x.id, variant: 'tiny ghost' })}</p></div>`;
+  }).join('');
+  const done = a.done.map((x) => chip(`${ASPIRATIONS[x.id]?.icon ?? ''} ${ASPIRATIONS[x.id]?.name ?? x.id} · ${x.age}`, 'good')).join(' ');
+  return card('Aspirations', `${active || '<p class="muted">Nothing you\'re chasing right now. New aims come along every few years.</p>'}${done ? `<h4 class="sub">Fulfilled</h4><div class="chip-row">${done}</div>` : ''}`, { icon: '🌠', summary: a.active.length ? `${a.active.length} active` : '' });
 }

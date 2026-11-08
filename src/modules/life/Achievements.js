@@ -16,6 +16,7 @@ import { netWorth, prestige, criminalRecord, fullName, currentYear } from '../..
 import { OFFICES } from '../politics/Offices.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { scoreMultiplier, difficultyId, easeDifficulty, DIFFICULTIES } from '../../core/Difficulty.js';
+import { aspirationPoints } from './Aspirations.js';
 
 const GOV = ['municipal', 'state', 'federal', 'public'];
 const POINTS = { bronze: 10, silver: 25, gold: 50 };
@@ -131,7 +132,7 @@ export const achievementPoints = (s) => Object.keys(s.achievements ?? {}).reduce
 export function lifeScore(s) {
   const wealth = Math.min(400, Math.max(0, Math.round(netWorth(s) / 25000)));
   // Harder lives count for more; an assisted life never counts above Normal.
-  return Math.round((achievementPoints(s) + wealth + Math.min(300, prestige(s)) + (s.challenge?.status === 'won' ? 100 : 0)) * scoreMultiplier(s));
+  return Math.round((achievementPoints(s) + wealth + Math.min(300, prestige(s)) + (s.challenge?.status === 'won' ? 100 : 0) + aspirationPoints(s)) * scoreMultiplier(s));
 }
 
 function enshrine(state) {
@@ -139,7 +140,7 @@ function enshrine(state) {
   const peak = jobsOf(state).sort((a, b) => (b.peakGrade ?? 0) - (a.peakGrade ?? 0))[0];
   const entry = {
     name: fullName(state), countryId: c.countryId ?? 'US', born: c.birthYear, died: currentYear(state), age: c.age, cause: c.causeOfDeath ?? '—',
-    netWorth: Math.round(netWorth(state)), peak: peak?.title ?? null, achievements: Object.keys(state.achievements ?? {}).length,
+    netWorth: Math.round(netWorth(state)), peak: peak?.title ?? null, achievements: Object.keys(state.achievements ?? {}).length, aspirations: (state.aspirations?.done ?? []).length,
     challenge: state.challenge ? { id: state.challenge.id, status: state.challenge.status } : null, score: lifeScore(state),
     difficulty: difficultyId(state), assisted: Boolean(state.difficulty?.assisted),
   };

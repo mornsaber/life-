@@ -5,6 +5,7 @@
 import { HOBBIES, tierOf } from './Hobbies.js';
 import { bestFriend, friendGroupsOf } from '../people/FriendGroups.js';
 import { livingChildren, childrenOf } from '../people/People.js';
+import { ASPIRATIONS } from './Aspirations.js';
 
 /** The headline, from the most newsworthy thing about the life. */
 export function obituaryHeadline(state, { officeName, peakJob, topMil, militaryName, famous }) {
@@ -45,5 +46,9 @@ export function lifeStoryFacts(state) {
     const close = livingChildren(state).filter((k) => (k.relationship ?? 0) >= 60).length;
     facts.push(['Children', `${kids.length}${alive < kids.length ? ` (${kids.length - alive} died before you)` : ''}${alive ? ` · ${close === alive ? 'all close to you' : close ? `${close} close to you` : 'none close at the end'}` : ''}`]);
   }
+  const dreams = state.aspirations?.done ?? [];
+  if (dreams.length) facts.push(['Dreams fulfilled', dreams.map((d) => `${ASPIRATIONS[d.id]?.icon ?? ''} ${ASPIRATIONS[d.id]?.name ?? d.id} (at ${d.age})`).join(' · ')]);
+  const unfinished = (state.aspirations?.active ?? []).filter((x) => ASPIRATIONS[x.id]);
+  if (unfinished.length) facts.push(['Still chasing', unfinished.map((x) => `${ASPIRATIONS[x.id].icon} ${ASPIRATIONS[x.id].name}`).join(' · ')]);
   return facts;
 }

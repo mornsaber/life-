@@ -4,6 +4,7 @@
  * Pure reads: views call these.
  */
 import { netWorth } from '../../core/State.js';
+import { ASPIRATIONS, WORK_ON } from './Aspirations.js';
 
 const hasCred = (state, id) => Boolean(state.credentials?.held?.[id]);
 const partnered = (state) => (state.people?.list ?? []).some((p) => p.alive && ['partner', 'spouse', 'fiance'].includes(p.relation));
@@ -46,6 +47,10 @@ export function nextSteps(state, max = 4) {
   if (age >= 40 && !(state.health?.lastCheckup >= age - 2)) add('🩻', 'Book a check-up', 'health', 'Screenings catch things early');
   if (s.fitness < 35 && age >= 12 && age < 80) add('🏃', 'Get moving', 'health', `Fitness ${s.fitness}`);
   if (netWorth(state) > 1_000_000 && !state.business?.current && age < 65) add('🏪', 'Start or buy a business', 'business', 'You have the capital');
+
+  // Your aspirations: the one furthest from done.
+  const aims = (state.aspirations?.active ?? []).filter((x) => ASPIRATIONS[x.id]).map((x) => ({ x, p: ASPIRATIONS[x.id].progress(state) })).sort((a, b) => a.p - b.p);
+  if (aims.length) { const d = ASPIRATIONS[aims[0].x.id]; out.splice(Math.min(1, out.length), 0, { icon: d.icon, text: `Work toward: ${d.name}`, tab: WORK_ON[aims[0].x.id] ?? 'life', why: `${Math.round(aims[0].p * 100)}% there · ${d.desc}` }); }
 
   // Unique tabs, in order.
   const seen = new Set();
