@@ -33,6 +33,7 @@ import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUn
 import { recordVote, LAW_ISSUE } from './Platform.js';
 import { voteReaction, nextElectionYear } from './Elections.js';
 import { regimeOf } from '../world/Regimes.js';
+import { eraYear, PRESENT } from '../world/Eras.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -368,6 +369,8 @@ export function ensureBodies(state) {
       if (!state.legislature.bodies[id]) state.legislature.bodies[id] = newBody(state, kind, where, legRng(state));
       // Older saves: name the members and committee chairs.
       const b = state.legislature.bodies[id];
+      b.modernName ??= b.name;
+      b.name = periodChamber(b.modernName);
       partyBody(state, b);
       if (!b.members) pickLeaders(b, legRng(state));
       else if (b.members.some((m) => !m.id)) { const r = legRng(state); for (const m of b.members) fillProfile(m, r, b); }
@@ -606,9 +609,28 @@ function newBill(state, rng, level, where, lawId, direction, sponsor, push = 0) 
   return { id: rng.id('bill_'), level, where, lawId, direction, value, sponsor, stage: 'introduced', push };
 }
 
+/** A chamber's name in the year being played (the Reichstag before the Bundestag). */
+const OLD_CHAMBERS = {
+  Bundestag: [['Reichstag', 1949]], Bundesrat: [['Bundesrat of the Reich', 1919], ['Reichsrat', 1949]],
+  'National Assembly': [['Chamber of Deputies', 1946]], 'Lok Sabha': [['Central Legislative Assembly', 1952]], 'Rajya Sabha': [['Council of State', 1952]],
+  'House of Councillors': [['House of Peers', 1947]], 'Camera dei Deputati': [['Camera dei Deputati del Regno', 1946]],
+};
+export function periodChamber(name) {
+  const y = eraYear();
+  if (y >= PRESENT || typeof name !== 'string') return name;
+  return OLD_CHAMBERS[name]?.find(([, until]) => y < until)?.[0] ?? name;
+}
+/** When each law first came up anywhere (no minimum-wage bills in 1820). */
+export const LAW_FROM = {
+  minWage: 1912, rightToWork: 1944, cardCheck: 1935, paidLeave: 1990, businessTax: 1900, corporateRate: 1909, smallBizCredit: 1953, licensing: 1890,
+  antitrust: 1890, rentControl: 1915, stateIncomeTax: 1911, cannabis: 1970, nonCompeteBan: 2000, publicBargaining: 1958, workplaceSafety: 1910,
+  environmental: 1965, zoning: 1916, incomeTax: 1913, privatePolicing: 1975, privateEms: 1970, privatePrisons: 1983, privateFire: 1975, publicPay: 1900,
+};
+const lawInEra = (id) => !(LAW_FROM[id] > eraYear());
+
 /** Bills the majority brings up on its own. */
 function npcBills(state, body, rng) {
-  const laws = Object.keys(LAWS).filter((id) => LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where) && !(body.oneParty && NOT_IN_PARTY_STATES.includes(id)));
+  const laws = Object.keys(LAWS).filter((id) => lawInEra(id) && LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where) && !(body.oneParty && NOT_IN_PARTY_STATES.includes(id)));
   const laborMajority = body.labor * 2 > body.seats;
   const out = [];
   for (let i = rng.int(1, 3); i > 0; i--) {

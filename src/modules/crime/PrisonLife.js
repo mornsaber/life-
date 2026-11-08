@@ -13,6 +13,7 @@ import { clamp } from '../../core/Random.js';
 import { randomName } from '../../core/State.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { priceLevel } from '../world/Countries.js';
+import { hasTech } from '../world/Eras.js';
 
 const name = (rng) => { const n = randomName(rng, 'male'); return n.firstName; };
 
@@ -87,7 +88,7 @@ const REENTRY = [
     { id: 'lie', label: '⬜ Leave it blank', hint: 'Background checks exist', tone: 'danger' },
     { id: 'program', label: '🤝 Go through a reentry employment program', hint: 'Employers who hire people like you' },
   ] },
-  { id: 'crew', title: 'The Old Crew', text: (n) => `${n} picked you up from the bus station. He has an easy job lined up — a week's work, a year's money.`, options: [
+  { id: 'crew', title: 'The Old Crew', text: (n, s) => `${n} picked you up ${s && !hasTech(s, 'automobile') ? 'at the prison gate' : 'from the bus station'}. He has an easy job lined up — a week's work, a year's money.`, options: [
     { id: 'no', label: '🙅 Not this time. Not any time.' },
     { id: 'yes', label: '💰 One job', tone: 'danger' },
   ] },
@@ -117,7 +118,7 @@ export function reentryTick(ctx) {
   if (!rng.chance(0.75)) return;
   const pool = REENTRY.filter((e) => (e.id !== 'officer' || state.legal.probationYears > 0) && (e.id !== 'box' || !state.career.job));
   const e = rng.pick(pool);
-  ctx.prompt({ type: 'crime.reentry', icon: '🌅', title: e.title, text: `${typeof e.text === 'function' ? e.text(name(rng)) : e.text}\nYear ${r.years} out, after ${r.served} inside.`, data: { id: e.id }, options: e.options });
+  ctx.prompt({ type: 'crime.reentry', icon: '🌅', title: e.title, text: `${typeof e.text === 'function' ? e.text(name(rng), state) : e.text}\nYear ${r.years} out, after ${r.served} inside.`, data: { id: e.id }, options: e.options });
 }
 
 function resolveReentry(ctx, data, optionId) {

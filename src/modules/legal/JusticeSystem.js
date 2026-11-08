@@ -28,6 +28,7 @@ import { STATES } from '../life/States.js';
 import { knob } from '../../core/Difficulty.js';
 import { juvenileCourt } from './JuvenileCourt.js';
 import { drugLawHere, corruptionHere } from '../crime/CrimeWorld.js';
+import { yearNow } from '../world/Eras.js';
 
 /**
  * Hooks the crime modules set (crime/index.js), so they can shape what happens without the
@@ -520,7 +521,7 @@ export function justiceTick(ctx) {
           title: 'Life Inside',
           text: 'How do you spend this year?',
           options: [
-            hasDiploma ? { id: 'work', label: '🍲 Take a prison job' } : { id: 'ged', label: '🎓 Study for your GED' },
+            hasDiploma ? { id: 'work', label: '🍲 Take a prison job' } : { id: 'ged', label: yearNow(state) >= 1942 ? '🎓 Study for your GED' : '📖 Learn your letters in the prison school' },
             { id: 'yard', label: '🏋️ Lift weights in the yard' },
             { id: 'fight', label: '👊 Stand up to the yard bully', tone: 'danger' },
           ],

@@ -360,6 +360,25 @@ const tests = {
     assert.equal(years[0], 1800);
     assert.equal(new Set(years).size, years.length);
   },
+  'an 1800s life hears nothing of the modern world'() {
+    const MODERN = /\binternet\b|smartphone|posted about|porch pirate|laptop|doorbell|vaccine has been approved|\bGED\b|Bundestag|Car accident|credit cards?\b|community college|Blended Retirement|airport|roadside bomb|helicopter|Les Républicains|CDU|Labour Party|factories bombed|claim asylum/i;
+    const seen = [];
+    for (const [cc, year, seed] of [['US', 1820, 1], ['GB', 1800, 2], ['DE', 1830, 3], ['FR', 1840, 4]]) {
+      const { engine, state } = life({ countryId: cc, startYear: year }, seed);
+      for (let y = 0; y < 60 && state.character.alive && state.character.birthYear + state.character.age < 1895; y++) {
+        for (let g = 0; g < 40 && state.prompts.length; g++) {
+          const p = state.prompts[0];
+          const t = `${p.title} ${p.text} ${p.options.map((o) => o.label).join(' ')}`;
+          if (MODERN.test(t)) seen.push(`${state.character.birthYear + state.character.age} [${p.type}] ${t.slice(0, 100)}`);
+          const o = p.options.filter((x) => !x.disabled);
+          engine.resolvePrompt(p.id, o[(g + y) % o.length].id);
+        }
+        engine.ageUp();
+        for (const e of state.log.at(-1)?.entries ?? []) if (MODERN.test(e.text)) seen.push(`${state.character.birthYear + state.character.age - 1} ${e.text.slice(0, 100)}`);
+      }
+    }
+    assert.deepEqual(seen, []);
+  },
   'New Spain becomes Mexico'() {
     const { engine, state } = life({ countryId: 'MX', startYear: 1800 }, 2);
     assert.equal(colonyHere(state)?.ruler, 'ES');

@@ -20,13 +20,14 @@ import { crimeLevelHere } from './CrimeWorld.js';
 import { priceLevel } from '../world/Countries.js';
 import { divorce } from '../people/PeopleEngine.js';
 import { victimJustice } from './VictimJustice.js';
+import { hasTech } from '../world/Eras.js';
 
 const partnerOf = (state) => (state.people?.list ?? []).find((p) => p.alive && ['spouse', 'partner'].includes(p.relation));
 const local = (state, n) => Math.round(n * priceLevel(state));
 
 const EVENTS = [
-  { id: 'burglary', weight: 5, minAge: 18, text: (s) => 'You came home to a smashed back door. The TV, a laptop, your grandmother\'s ring — gone.', loss: [800, 6000] },
-  { id: 'mugging', weight: 3, minAge: 12, text: () => 'Two men stopped you on the walk home. One had a knife. You gave them your phone and wallet and they were gone in seconds.', loss: [100, 800], trauma: 8 },
+  { id: 'burglary', weight: 5, minAge: 18, text: (s) => `You came home to a smashed back door. ${hasTech(s, 'personalComputer') ? 'The TV, a laptop' : hasTech(s, 'radio') ? 'The wireless, the silver' : 'The silver, the clock'}, your grandmother's ring — gone.`, loss: [800, 6000] },
+  { id: 'mugging', weight: 3, minAge: 12, text: (s) => `Two men stopped you on the walk home. One had a knife. You gave them your ${hasTech(s, 'mobilePhone') ? 'phone and wallet' : 'watch and purse'} and they were gone in seconds.`, loss: [100, 800], trauma: 8 },
   { id: 'assault', weight: 2, minAge: 14, text: () => 'A stranger attacked you outside a bar for no reason anyone could find. You woke up in A&E with a broken cheekbone.', health: [8, 25], trauma: 10 },
   { id: 'carTheft', weight: 3, minAge: 17, needs: (s) => (s.vehicles?.owned ?? []).length > 0, text: () => 'Your car was gone from where you parked it. Just glass on the road.' },
   { id: 'scam', weight: 3, minAge: 30, text: (s) => (s.character.age >= 65 ? 'A polite man from "your bank\'s fraud team" talked you into moving your savings to a "safe account". It wasn\'t.' : 'An investment app your friend recommended stopped letting anyone withdraw. Then it stopped existing.'), loss: [2000, 20000] },

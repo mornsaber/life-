@@ -7,7 +7,7 @@ import { clamp } from '../../core/Random.js';
 import { pickFresh, eligible } from '../../core/Pools.js';
 import { healthMortality, DEATH_CAUSE } from '../health/Conditions.js';
 import { knob } from '../../core/Difficulty.js';
-import { longevityFactor } from '../world/Eras.js';
+import { longevityFactor, hasTech, yearNow } from '../world/Eras.js';
 
 const CHILDHOOD_EVENTS = [
   { minAge: 1, maxAge: 3, text: 'You said your first word. It was "no."', icon: '🗣️', stats: { smarts: 2, happiness: 2 } },
@@ -57,7 +57,10 @@ const BACKGROUND_CAUSES = [
   { cause: 'Heart attack', weight: (a) => (a < 35 ? 0.05 : 0.32) },
   { cause: 'Cancer', weight: (a) => (a < 35 ? 0.1 : 0.3) },
   { cause: 'Stroke', weight: (a) => (a < 45 ? 0.02 : 0.1) },
-  { cause: 'Car accident', weight: (a) => (a < 30 ? 0.35 : 0.04) },
+  { cause: 'Car accident', weight: (a, s) => (!hasTech(s, 'automobile') ? 0 : a < 30 ? 0.35 : 0.04) },
+  { cause: 'Thrown from a horse', weight: (a, s) => (hasTech(s, 'automobile') ? 0 : a < 30 ? 0.15 : 0.03) },
+  { cause: 'Tuberculosis', weight: (a, s) => (yearNow(s) < 1950 ? 0.3 : 0) },
+  { cause: 'Typhoid fever', weight: (a, s) => (yearNow(s) < 1920 ? 0.15 : 0) },
   { cause: 'Accidental fall', weight: (a) => (a < 65 ? 0.01 : 0.06) },
   { cause: 'Accident', weight: (a) => (a < 40 ? 0.25 : 0.05) },
   { cause: 'Respiratory illness', weight: (a) => (a < 50 ? 0.02 : 0.08) },
@@ -130,6 +133,6 @@ export const Lifecycle = {
     for (const p of conditions.parts) {
       if ((roll -= p.risk) <= 0) return ctx.die(DEATH_CAUSE[p.id] ?? 'Illness');
     }
-    ctx.die(age >= 85 ? 'Old age' : rng.weighted(BACKGROUND_CAUSES, (c) => c.weight(age)).cause);
+    ctx.die(age >= 85 ? 'Old age' : rng.weighted(BACKGROUND_CAUSES, (c) => c.weight(age, state)).cause);
   },
 };

@@ -17,6 +17,7 @@
 import { clamp } from '../../core/Random.js';
 import { stateIdOf } from './Regions.js';
 import { INSOLVENCY } from '../world/CountryLaw.js';
+import { hasTech } from '../world/Eras.js';
 
 /** The insolvency rules where you live (null in the US). */
 export const insolvencyHere = (state) => INSOLVENCY[state.character.countryId] ?? null;
@@ -291,7 +292,7 @@ export function debtCrisisPrompt(ctx) {
     type: 'finances.debtCrisis',
     icon: '💸',
     title: 'Drowning in Debt',
-    text: `You owe $${opts.debt.toLocaleString()} on cards and medical bills, and the interest alone is more than you can pay. A bankruptcy attorney walks you through your options.`,
+    text: `You owe $${opts.debt.toLocaleString()} ${hasTech(state, 'creditCards') ? 'on cards and medical bills' : 'to moneylenders, the doctor and every shop in town'}, and the interest alone is more than you can pay. A bankruptcy attorney walks you through your options.`,
     options: [
       ...(dmp ? [{ id: 'dmp', label: '🤝 A debt-management plan (credit counselling)', hint: dmp.ok ? `${dmp.years} yrs × $${dmp.annual.toLocaleString()}/yr at reduced interest; no court, keep everything` : dmp.reason, disabled: !dmp.ok }] : []),
       { id: 'ch7', label: `⚖️ ${state.character.countryId ? `File for ${routeName(state, 7)}` : 'File Chapter 7 (liquidation)'}`, hint: opts.ch7.ok ? `Wipes the debt; non-exempt assets sold${opts.preview.homeLost ? ' — including your home' : ''}` : opts.ch7.reason, disabled: !opts.ch7.ok },

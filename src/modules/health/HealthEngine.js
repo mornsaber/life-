@@ -29,6 +29,7 @@ import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
 import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } from './Lifestyle.js';
 import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
+import { fitsEra } from '../world/Eras.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -457,7 +458,7 @@ function acuteEvent(ctx) {
   const age = state.character.age;
   const chance = 0.035 + (state.stats.fitness < 35 ? 0.015 : 0) + (age > 60 ? 0.025 : 0);
   if (!rng.chance(chance)) return;
-  const pool = Object.entries(ACUTE).filter(([, a]) => !a.inflicted && age >= a.minAge && !(a.minAge >= 16 && isIncarcerated(state)));
+  const pool = Object.entries(ACUTE).filter(([, a]) => !a.inflicted && age >= a.minAge && !(a.minAge >= 16 && isIncarcerated(state)) && fitsEra(state, a.name));
   const [id, a] = rng.pick(pool);
   // Vaccinated this year: flu and pneumonia mostly pass you by.
   if (['flu', 'pneumonia'].includes(id) && state.health.vaccinatedAge === age - 1 && rng.chance(0.6)) return;

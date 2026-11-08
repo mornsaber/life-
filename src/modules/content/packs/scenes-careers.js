@@ -11,6 +11,7 @@
  *   business    exec.takeover (a hostile bid for your company)
  *   service     mil.patrol (a patrol that runs into an ambush; active duty, no civilian job)
  */
+import { yearNow } from '../../world/Eras.js';
 const is = (...ids) => (job) => ids.includes(job?.professionId);
 const SENIOR = (job) => (job?.grade ?? 0) >= 7 || job?.abilities?.includes('exec');
 const NAMES = ['Maria', 'Tom', 'Aisha', 'Daniel', 'Grace', 'Omar', 'Lena', 'Sam'];
@@ -254,7 +255,8 @@ const takeover = {
 
 const patrol = {
   id: 'mil.patrol', title: 'The Patrol', icon: '🪖', chance: 0.35, trauma: 8, honor: 'Commendation for Gallantry', noJob: true, inquiry: false, injury: 'backInjury',
-  for: (s) => Boolean(s.military?.service && s.military.service.component === 'active' && s.world?.wars && Object.keys(s.world.wars).length),
+  // Roadside bombs, radios and a helicopter lift: a modern war's patrol.
+  for: (s) => yearNow(s) >= 1960 && Boolean(s.military?.service && s.military.service.component === 'active' && s.world?.wars && Object.keys(s.world.wars).length),
   data: (s, rng) => ({ place: rng.pick(['a dry riverbed', 'a village at dawn', 'a mountain road', 'an abandoned factory']) }),
   start: 'contact',
   steps: {

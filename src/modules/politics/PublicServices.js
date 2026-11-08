@@ -43,6 +43,7 @@ import { clamp, Random } from '../../core/Random.js';
 import { lawValue } from './Laws.js';
 import { budgetAt, whereAt, executiveLevel, ARRANGEMENT_COST, setArrangementLookup, jurisdictionName } from './Budgets.js';
 import { executiveOf } from './Legislature.js';
+import { yearNow } from '../world/Eras.js';
 
 /** How each arrangement changes a service: what it costs and how much of it there is. */
 export const ARRANGEMENTS = {
@@ -463,6 +464,7 @@ export const PublicServicesModule = {
     const { state } = ctx;
     // Its own random stream, so council politics doesn't shift the rest of the life.
     const rng = new Random(((state.world?.seed ?? 1) * 40503 + state.character.age * 131 + 7) >>> 0);
+    if (yearNow(state) < 1970) return;
     npcReform(ctx, rng);
     lawClosures(ctx);
   },

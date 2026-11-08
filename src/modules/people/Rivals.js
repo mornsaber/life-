@@ -17,6 +17,7 @@ import { Random } from '../../core/Random.js';
 import { randomName } from '../../core/State.js';
 import { partnerOf } from './People.js';
 import { rep } from '../life/Reputation.js';
+import { hasTech } from '../world/Eras.js';
 
 export const MAX_RIVALS = 4;
 const ORIGIN = {
@@ -102,7 +103,7 @@ function crossing(ctx, rng) {
     reunion: { title: 'The Reunion', text: `Your ${state.character.age - 18}-year reunion. ${r.name} is there, ${rivalTitle(r).toLowerCase() === 'unknown' ? 'looking well' : `now ${rivalTitle(r)}`}.`, options: [{ id: 'brag', label: '🏆 Make sure they hear how well you\'re doing' }, { id: 'warm', label: '🍷 Bury the hatchet over a drink' }, { id: 'skip', label: '🚪 Leave early' }] },
     downfall: { title: `${r.name} in Trouble`, text: `${r.name} is caught up in a scandal. People are asking you what you know.`, options: [{ id: 'exploit', label: '📰 Tell everyone what you know', tone: 'danger' }, { id: 'help', label: '🫱 Quietly help them through it' }, { id: 'quiet', label: '🤐 Stay out of it' }] },
     feud: { title: 'The Feud', text: `${r.name} has been spreading stories about you.`, options: [{ id: 'sue', label: '⚖️ Sue for defamation', hint: '≈$25,000' }, { id: 'hitback', label: '🗣️ Hit back in kind', tone: 'danger' }, { id: 'peace', label: '🕊️ Offer to make peace' }] },
-    brag: { title: 'Keeping Up', text: `${r.name} posted about their ${r.married ? 'family holiday' : 'new car'}. It got to you more than it should have.`, options: [{ id: 'match', label: '🛍️ Splurge to keep up', hint: '≈$5,000' }, { id: 'shrug', label: '🧘 Let it go' }] },
+    brag: { title: 'Keeping Up', text: `${r.name} ${hasTech(state, 'socialMedia') ? 'posted about' : 'won\'t stop talking about'} their ${r.married ? 'family holiday' : hasTech(state, 'automobile') ? 'new car' : 'new carriage'}. It got to you more than it should have.`, options: [{ id: 'match', label: '🛍️ Splurge to keep up', hint: '≈$5,000' }, { id: 'shrug', label: '🧘 Let it go' }] },
   }[kind];
   ctx.prompt({ type: 'rivals.cross', icon: originLabel(r).icon, ...T, data: { id: r.id, kind } });
 }

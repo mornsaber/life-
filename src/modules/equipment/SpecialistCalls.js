@@ -15,6 +15,7 @@
 import { clamp } from '../../core/Random.js';
 import { GROUPS } from './EquipmentCatalog.js';
 import { contexts, recordOf, needOf, modelQuality } from './Equipment.js';
+import { fitsEra } from '../world/Eras.js';
 
 const S = (use, title, good, bad) => ({ use, title, good, bad });
 
@@ -137,6 +138,7 @@ function callFor(ctx, c) {
   if (!ids.length || !rng.chance(0.4)) return;
   const catId = rng.pick(ids);
   const s = table[catId];
+  if (!fitsEra(state, s)) return;
   const cov = coverage(state, c, catId);
   // Kit in service: usually goes well; better kit, better odds. Without it: mutual aid, late.
   const good = cov.count > 0 && rng.chance(clamp(0.55 + cov.share * 0.3 + (cov.quality - 1) * 0.8, 0.4, 0.95));

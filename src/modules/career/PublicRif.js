@@ -26,6 +26,8 @@ import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { lawValue } from '../politics/Laws.js';
 import { orgOf } from '../org/Organizations.js';
 import { jobFiscalHealth, jobFunding } from '../politics/Budgets.js';
+import { getProfession } from './JobTrees.js';
+import { eraHidden, eraWorkBlock } from '../world/Eras.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -105,7 +107,9 @@ export function recallTick(ctx, deps) {
   const { state, rng } = ctx;
   const r = state.career.recall;
   if (!r) return;
-  if (state.character.age > r.untilAge) {
+  // Past its age limit, or the job itself is gone (a colonial service wound up at independence).
+  const prof = getProfession(r.professionId);
+  if (state.character.age > r.untilAge || (prof && (eraHidden(state, prof) || eraWorkBlock(state, prof)))) {
     state.career.recall = null;
     return;
   }

@@ -23,6 +23,7 @@ import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
 import { knob } from '../../core/Difficulty.js';
 import { officialResidence } from '../world/Residences.js';
+import { hasTech } from '../world/Eras.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 /**
@@ -271,7 +272,7 @@ export const Finances = {
         `Year-end finances: earned $${gross.toLocaleString()}${cashDeductions ? ` ($${cashDeductions.toLocaleString()} pre-tax to retirement)` : ''}${deductions > cashDeductions ? ` ($${(deductions - cashDeductions).toLocaleString()} in depreciation and losses written off)` : ''}, paid $${federalTax.toLocaleString()} ${abroad ? 'income tax' : 'federal'}${contributions ? ` (incl. $${contributions.toLocaleString()} ${country.tax.contributions[0].name}${country.tax.contributions.length > 1 ? ' and other contributions' : ''})` : ''}${capitalGainsTax ? ` (incl. $${capitalGainsTax.toLocaleString()} capital gains)` : ''}${stateTax ? ` + $${stateTax.toLocaleString()} ${abroad ? `${STATES[stateIdOf(state)].name} ` : stateIdOf(state)}${abroad ? 'tax' : ''}` : ''}${abroad ? '' : ' tax'} and $${living.toLocaleString()} living costs` +
           (insurance ? `, $${insurance.toLocaleString()} health insurance` : '') +
           (loanPayment ? `, $${loanPayment.toLocaleString()} toward loans` : '') +
-          (interest ? `, $${interest.toLocaleString()} card interest` : '') +
+          (interest ? `, $${interest.toLocaleString()} ${hasTech(state, 'creditCards') ? 'card' : 'debt'} interest` : '') +
           (benefit ? `. ${country.childBenefit.name}: +$${benefit.toLocaleString()}` : '') +
           '.',
         '🧾',

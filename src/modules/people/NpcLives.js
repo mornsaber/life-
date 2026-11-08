@@ -20,6 +20,7 @@ import { clamp, Random } from '../../core/Random.js';
 import { ageOf, living, byId, clampRel } from './People.js';
 import { priceOf, marketRent } from '../realestate/PropertyMarket.js';
 import { rentableUnits } from '../realestate/Landlording.js';
+import { yearNow } from '../world/Eras.js';
 
 export const EDU_LABEL = {
   none: 'No diploma', highschool: 'High school', trade: 'Trade school', associate: "Associate's", bachelor: "Bachelor's", master: "Master's", professional: 'Professional degree', doctorate: 'PhD',
@@ -138,7 +139,7 @@ function yearOf(ctx, p) {
     else if (r < college + 0.15) life.studying = { degree: rng.pick(['trade', 'associate']), until: age + 2 };
     if (life.studying) {
       if (life.studying.degree === 'bachelor' && p.relation === 'child') life.home = { kind: 'dorm' };
-      say(`${p.firstName} started ${life.studying.degree === 'bachelor' ? 'college' : life.studying.degree === 'trade' ? 'trade school' : 'community college'}.`, '🎒');
+      say(`${p.firstName} started ${life.studying.degree === 'bachelor' ? 'college' : life.studying.degree === 'trade' ? 'trade school' : yearNow(state) < 1960 ? 'night classes' : 'community college'}.`, '🎒');
     }
   }
   if (life.studying && age >= life.studying.until) {

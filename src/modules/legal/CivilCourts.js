@@ -15,6 +15,7 @@ import { hasFelony, isIncarcerated } from '../../core/State.js';
 import { currentCourt } from './Judiciary.js';
 import { JUSTICE } from '../world/CountryLaw.js';
 import { priceLevel, isCitizen } from '../world/Countries.js';
+import { fitsEra } from '../world/Eras.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -225,7 +226,8 @@ export const CivilCourts = {
       }
       if (optionId === 'postpone') return ctx.log('The clerk pushed your service back a year.', '📅');
       if (!rng.chance(0.35)) return ctx.log('You spent a day in the jury assembly room and were sent home unpicked.', '🪑');
-      const t = rng.pick(TRIALS);
+      const fitting = TRIALS.filter((x) => fitsEra(state, x.text));
+      const t = rng.pick(fitting.length ? fitting : TRIALS);
       ctx.prompt({
         type: 'civil.verdict', icon: '🧑‍⚖️', title: t.kind === 'criminal' ? 'You\'re on a Jury' : 'You\'re on a Civil Jury',
         text: `${t.text}\n${t.kind === 'criminal' ? 'The standard is proof beyond a reasonable doubt.' : 'The standard is a preponderance of the evidence.'}`,

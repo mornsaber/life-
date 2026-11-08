@@ -17,6 +17,7 @@ import { BRANCHES, monthlyBasePay, annualActivePay, branchOf } from './MilitaryE
 import { branchDetailTick } from './CareerFields.js';
 import { nationalBases, nationalOverseas } from '../world/NationalForces.js';
 import { postAbroad, endPosting } from '../world/Posting.js';
+import { yearNow } from '../world/Eras.js';
 
 /** Bases and overseas postings: your own country's when you serve in a national force. */
 const basesFor = (svc) => (svc.nation ? nationalBases(svc.nation, svc.branch) : BASES[svc.branch] ?? []);
@@ -268,7 +269,7 @@ export function serviceLifeTick(ctx, svc) {
   branchDetailTick(ctx, svc);
   overseasTick(ctx, svc);
   brsTick(ctx, svc);
-  if (svc.component === 'active' && svc.yearsOfService === 2 && !svc.retirementPlan && !ctx.state.prompts.some((p) => p.type === 'military.brs')) {
+  if (svc.component === 'active' && svc.yearsOfService === 2 && !svc.retirementPlan && yearNow(ctx.state) >= 2018 && !ctx.state.prompts.some((p) => p.type === 'military.brs')) {
     ctx.prompt({
       type: 'military.brs',
       icon: '🏦',

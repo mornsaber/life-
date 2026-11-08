@@ -41,7 +41,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 /* ------------------------------------------------------------------ */
 
 export const TECH = {
-  railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905,
+  railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905, airTravel: 1950, emergencyNumber: 1968, ged: 1942, highSchool: 1920, cctv: 1980, video: 1980, dna: 1987, doorbellCam: 2015,
   radio: 1922, tv: 1950, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
   internet: 1995, onlineDating: 1997, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
@@ -50,20 +50,29 @@ export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
 /** Words that give an event away as modern, by the technology they need (latest first). */
 const TECH_WORDS = [
   ['crypto', /\bcrypto|bitcoin|\bNFTs?\b|blockchain/i],
+  ['doorbellCam', /porch pirate|doorbell cam|Ring camera|parcels? (?:stolen|left)|packages? (?:stolen|left)|stealing your packages/i],
+  ['dna', /\bDNA\b/],
+  ['cctv', /\bCCTV\b|security camera|dashcam|body ?cam/i],
+  ['video', /\bvideo\b|camcorder|\bVHS\b|\bDVD/i],
+  ['emergencyNumber', /(?<![\d,.$])\b(?:911|999)\b(?![,.]?\d)|emergency number/i],
+  ['airTravel', /\bairports?\b|\bflights?\b|airline|plane ticket|jet lag|budget airline|boarding pass/i],
   ['gigApps', /rideshare|\bUber\b|\bLyft\b|DoorDash|gig app|delivery app|Airbnb/i],
   ['smartphone', /smartphone|\bapps?\b|app store|selfie|\bswip|Tinder|Instagram|TikTok|WhatsApp|FaceTime|group chat|Zoom call|influencer|viral|hashtag|doomscroll/i],
   ['vaping', /\bvap(?:e|es|ed|ing)\b|e-cig/i],
   ['drones', /\bdrones?\b|\bUAVs?\b|Reaper|Predator strike/i],
   ['streaming', /Netflix|streaming|binge-watch|Spotify|podcast/i],
   ['socialMedia', /social media|Facebook|Twitter|YouTube|followers online|went viral|\bposted (?:it|a|about|online)/i],
-  ['internet', /internet|\bonline\b|website|\be-?mails?\b|Google|Wi-?Fi|\bweb\b|download|\bblog|\bforums?\b|emoji|\bGPS\b|Amazon (?:order|package|delivery)|webcam|\bDMs?\b|\bDM'd/i],
-  ['mobilePhone', /cell ?phone|mobile phone|\btext(?:ed|ing|s)? (?:you|me|him|her|them|back)|text message|voicemail|ringtone|on (?:your|her|his|their) phone|phone screen|\bphones? buzz/i],
+  ['internet', /internet|video calls?|upload|\bonline\b|website|\be-?mails?\b|Google|Wi-?Fi|\bweb\b|download|\bblog|\bforums?\b|emoji|\bGPS\b|Amazon (?:order|package|delivery)|webcam|\bDMs?\b|\bDM'd/i],
+  ['mobilePhone', /📱|phone maker|cell ?phone|mobile phone|\btext(?:ed|ing|s)? (?:you|me|him|her|them|back)|text message|voicemail|ringtone|on (?:your|her|his|their) phone|phone screen|\bphones? buzz/i],
   ['personalComputer', /laptop|\bPC\b|spreadsheet|video ?games?|PlayStation|Xbox|Nintendo|gaming|printer/i],
   ['creditCards', /credit card/i],
   ['tv', /\bTV\b|television|sitcom|reality show/i],
+  ['radio', /\bradio\b|\bwireless set\b/i],
+  ['ged', /\bGED\b/],
+  ['highSchool', /high school reunion|reunion in the old gym/i],
   ['automobile', /\b(?:cars?|car park|parking|driveway|trucks?|motorway|highway|garage|petrol|gas station|traffic)\b/i],
   ['electricLight', /\blight switch|electric(?:ity)?\b|power cut|fridge|refrigerator|washing machine/i],
-  ['telephone', /\bphoned?\b|telephone|rang (?:you|her|him|them)|on the phone/i],
+  ['telephone', /\bphoned?\b|telephone|rang (?:you|her|him|them)|on the phone|📞|\bcalls at \d|\bcall(?:ed)? (?:you|me|him|her|them) at\b/i],
 ];
 /** The newest technology a piece of content needs, or null (cached on the object). */
 export function techNeeded(content) {

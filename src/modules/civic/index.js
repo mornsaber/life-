@@ -21,6 +21,7 @@ import { VIOLATIONS, MONTHLY_FINE, LIEN_AT, hoaFor, newHoa, boardOdds } from './
 import { homeKey, makeNeighbor, avgRel, bumpRel, LIFE_EVENTS, SITUATIONS, TRAITS } from './Neighbors.js';
 import { CAUSES, TACTICS } from './Activism.js';
 import { transitBoardEligibility, boardTick, resolveBoardDecision } from './TransitBoard.js';
+import { fitsEra } from '../world/Eras.js';
 
 const recognize = (state, n) => {
   state.politics.recognition = Math.min(100, state.politics.recognition + n);
@@ -46,7 +47,7 @@ function neighborsTick(ctx) {
     const n = rng.pick(c.neighbors);
     // Pools, new trucks and holidays belong to rich, free countries.
     const poor = (REGIONS[state.character.regionId]?.market ?? 1) < 0.35 || regimeHere(state).jobs === 'assigned';
-    const ev = rng.pick(LIFE_EVENTS.filter((e) => !(poor && e.affluent)));
+    const ev = rng.pick(LIFE_EVENTS.filter((e) => !(poor && e.affluent) && fitsEra(state, e.text(n))));
     bumpRel(n, ev.rel);
     ctx.log(ev.text(n), n.icon);
   }
@@ -60,8 +61,9 @@ function neighborsTick(ctx) {
   // Situations that need you.
   if (state.character.age >= 18 && rng.chance(0.3) && !state.prompts.some((p) => p.type === 'civic.neighbor')) {
     const n = rng.pick(c.neighbors);
-    const s = rng.pick(SITUATIONS);
-    ctx.prompt({ type: 'civic.neighbor', icon: n.icon, title: s.title, text: s.text(n), options: s.options.map((o) => ({ id: o.id, label: o.label })), data: { neighborId: n.id, situationId: s.id } });
+    const fits = SITUATIONS.filter((x) => fitsEra(state, x));
+    const s = fits.length ? rng.pick(fits) : null;
+    if (s) ctx.prompt({ type: 'civic.neighbor', icon: n.icon, title: s.title, text: s.text(n), options: s.options.map((o) => ({ id: o.id, label: o.label })), data: { neighborId: n.id, situationId: s.id } });
   }
   // A good neighbor can become a friend.
   const close = c.neighbors.find((n) => n.rel >= 80 && !n.friend);

@@ -24,6 +24,7 @@ import { snapshot, review } from './YearReview.js';
 import { quietChoice } from './Routine.js';
 import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, familyCovers, dependant, setNameCountry } from './State.js';
 import { Random } from './Random.js';
+import { fitsEra } from '../modules/world/Eras.js';
 import { stampPrompt, isStale, pruneStalePrompts } from './PromptScope.js';
 
 export class EventBus {
@@ -52,6 +53,11 @@ function markIllegal(o) {
   const hint = o.hint && !/illegal|crime|fraud|felony/i.test(o.hint) ? ` · ${o.hint}` : '';
   return { ...o, illegal: true, tone: 'danger', hint: `⚖️ Illegal — ${what}${hint}` };
 }
+
+/** Prompt families that are everyday life rather than a system's machinery: an era check may skip them. */
+const ERA_CHECKED = new Set(['rivals', 'rural', 'shocks', 'civic', 'neighbourhood', 'bonds', 'friends', 'friendGroups', 'lifeEvents', 'crime', 'hobbies', 'pets', 'routine',
+  'relationships', 'people', 'parenting', 'aspirations', 'community', 'volunteering', 'travel', 'laterLife', 'retirementLife', 'familyFeuds', 'news', 'fame', 'celebrity',
+  'region', 'time', 'office', 'shiftWork', 'desk', 'jobMarket', 'secondCareer', 'elderCare', 'childEducation', 'campus', 'familyAbroad', 'expatLife', 'immigrantFamily', 'showbiz']);
 
 export class Engine {
   constructor({ store, rng = new Random(), modules = [] }) {
@@ -318,6 +324,9 @@ export class Engine {
         engine.bus.emit(event, { ...payload, ctx: this });
       },
       prompt(spec) {
+        // In a past year, an everyday moment that needs something not yet invented doesn't happen
+        // (world/Eras.js). Moments that drive a system (court, service, history) always do.
+        if (state.era && ERA_CHECKED.has(String(spec.type).split('.')[0]) && !fitsEra(state, `${spec.title ?? ''} ${typeof spec.text === 'string' ? spec.text : ''} ${spec.options.map((o) => `${o.label} ${o.hint ?? ''}`).join(' ')}`)) return null;
         state.flags.promptSeq = (state.flags.promptSeq ?? 0) + 1;
         const prompt = {
           id: `p${state.flags.promptSeq}`,

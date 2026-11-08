@@ -35,7 +35,7 @@ import { createEmployer } from '../career/Employers.js';
 import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
-import { eraWorkBlock } from './Eras.js';
+import { eraWorkBlock, hasTech } from './Eras.js';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
 let coupHook = null;
@@ -161,7 +161,7 @@ export function studyBlock(state, uniCountry) {
 /** Elections where you live: run normally, as a one-list ritual, or not at all. */
 export const electionsHere = (state) => regimeHere(state).elections;
 /** What debt is called where there are no cards. */
-export const debtWord = (state) => (regimeHere(state).banking === 'state' ? 'to market moneylenders (donju)' : 'on credit cards');
+export const debtWord = (state) => (regimeHere(state).banking === 'state' ? 'to market moneylenders (donju)' : !hasTech(state, 'creditCards') ? 'to moneylenders and shopkeepers' : 'on credit cards');
 
 /* ------------------------------------------------------------------ */
 /* The year under a regime                                             */

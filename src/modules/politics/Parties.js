@@ -12,6 +12,7 @@
 import { electionsHere } from '../world/Regimes.js';
 import { isCitizen } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
+import { eraYear, PRESENT } from '../world/Eras.js';
 
 /** Each country's main center-left (labor bloc) and center-right (business bloc) parties. */
 export const PARTY_NAMES = {
@@ -43,7 +44,33 @@ export const PARTY_DUES = 60;
 const AU_NOT_VOTING_FINE = 14;
 
 const here = (state) => state.character.countryId ?? 'US';
-export const partyName = (state, bloc) => PARTY_NAMES[here(state)]?.[bloc] ?? (bloc === 'labor' ? 'Labor bloc' : 'Business bloc');
+export const partyName = (state, bloc) => periodParty(here(state), bloc) ?? PARTY_NAMES[here(state)]?.[bloc] ?? (bloc === 'labor' ? 'Labor bloc' : 'Business bloc');
+
+/**
+ * The main parties before today's: [country, bloc, name, until]. The first row whose `until` is
+ * after the year being played wins; the "labor" bloc is the left of its day, "business" the right.
+ */
+const OLD_PARTIES = [
+  ['US', 'labor', 'Democratic-Republican Party', 1828], ['US', 'labor', 'Democratic Party', 9999],
+  ['US', 'business', 'Federalist Party', 1816], ['US', 'business', 'National Republican faction', 1834], ['US', 'business', 'Whig Party', 1854],
+  ['GB', 'labor', 'Whigs', 1859], ['GB', 'labor', 'Liberal Party', 1922], ['GB', 'business', 'Tories', 1834],
+  ['CA', 'labor', 'Reformers', 1867], ['CA', 'business', 'Progressive Conservative Party', 2003], ['CA', 'business', 'Conservative Party', 9999],
+  ['AU', 'business', 'Free Trade Party', 1909], ['AU', 'business', 'Commonwealth Liberal Party', 1917], ['AU', 'business', 'Nationalist Party', 1931], ['AU', 'business', 'United Australia Party', 1945],
+  ['DE', 'labor', 'Progress Party (Fortschrittspartei)', 1875], ['DE', 'labor', 'Social Democrats (SPD)', 9999], ['DE', 'business', 'Conservatives and National Liberals', 1919], ['DE', 'business', 'Centre Party', 1945],
+  ['FR', 'labor', 'Republicans (the Left)', 1905], ['FR', 'labor', 'Socialists (SFIO)', 1969], ['FR', 'business', 'Party of Order', 1870], ['FR', 'business', 'Moderate Republicans', 1945], ['FR', 'business', 'Gaullists', 2002], ['FR', 'business', 'UMP', 2015],
+  ['IT', 'labor', 'Historical Left (Sinistra storica)', 1892], ['IT', 'labor', 'Socialist Party (PSI)', 1946], ['IT', 'labor', 'Communist Party (PCI)', 1991], ['IT', 'labor', 'Democrats of the Left', 2007],
+  ['IT', 'business', 'Historical Right (Destra storica)', 1919], ['IT', 'business', 'Christian Democrats', 1994], ['IT', 'business', 'Forza Italia', 2022],
+  ['JP', 'labor', 'Kenseikai / Minseitō', 1945], ['JP', 'labor', 'Japan Socialist Party', 1996], ['JP', 'labor', 'Democratic Party of Japan', 2017], ['JP', 'business', 'Rikken Seiyūkai', 1945], ['JP', 'business', 'Liberal Party', 1955],
+  ['KR', 'business', 'Liberal Party', 1961], ['KR', 'business', 'Democratic Republican Party', 1981], ['KR', 'business', 'Democratic Justice Party', 1990], ['KR', 'business', 'Grand National Party', 2012], ['KR', 'business', 'Saenuri / Liberty Korea Party', 2020],
+  ['MX', 'labor', 'the Liberals', 1929], ['MX', 'labor', 'PRI', 2014], ['MX', 'business', 'the Conservatives', 1939],
+  ['IN', 'business', 'Bharatiya Jana Sangh', 1977], ['IN', 'business', 'Janata Party', 1980],
+  ['PH', 'labor', 'Nacionalista Party', 1946], ['PH', 'business', 'Nacionalista Party', 1991],
+];
+export function periodParty(cc, bloc) {
+  const y = eraYear();
+  if (y >= PRESENT) return null;
+  return OLD_PARTIES.find(([c, b, , until]) => c === cc && b === bloc && y < until)?.[2] ?? null;
+}
 /**
  * A one-party-dominant national legislature (China's NPC): the dominant bloc's share of seats
  * is fixed by the system, not swung by elections. PARTY_NAMES[cc].dominant = { bloc, share }.

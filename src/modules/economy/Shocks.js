@@ -14,6 +14,7 @@
  */
 import { Random } from '../../core/Random.js';
 import { REGIONS, regionsHere } from '../life/Regions.js';
+import { yearNow } from '../world/Eras.js';
 
 export const CAUSES = {
   financial: { label: 'a banking crisis', icon: '🏦', text: 'Banks that bet on bad loans are failing; credit has frozen.', sectors: { finance: 2.5, realestate: 2, insurance: 1.6, accounting: 1.3, corporate: 1.3 }, crash: [0.72, 0.82] },
@@ -54,7 +55,8 @@ export function shocksTick(main) {
   const rng = sideRng(state);
   // A new recession: what caused it.
   if (e.phase === 'recession' && !e.cause) {
-    const id = rng.weighted([['financial', 3], ['housing', 3], ['oil', 2], ['tech', 2], ['pandemic', 0.8]], ([, w]) => w)[0];
+    const y = yearNow(state);
+    const id = rng.weighted([['financial', 3], ['housing', y >= 1920 ? 3 : 0], ['oil', y >= 1970 ? 2 : 0], ['tech', y >= 1995 ? 2 : 0], ['pandemic', y >= 2019 ? 0.8 : 0]], ([, w]) => w)[0];
     const c = CAUSES[id];
     e.cause = { id, since: state.character.age };
     main.log(`${c.icon} The recession began with ${c.label}. ${c.text}`, c.icon, 'warn');

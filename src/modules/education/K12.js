@@ -15,7 +15,7 @@
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { CADETS } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
-import { hasTech, eraStudyBlock } from '../world/Eras.js';
+import { hasTech, eraStudyBlock, yearNow } from '../world/Eras.js';
 
 export const SCHOOL_TYPES = {
   public: { name: 'Public school', icon: '🏫', tuition: 0, rigor: 0, smarts: 0, desc: 'Free, close to home, a bit of everything' },
@@ -141,7 +141,7 @@ function graduate(ctx) {
   k.done = true;
   if (hasDiploma(state) || state.legal.incarceration) return;
   if (k.dropout) {
-    ctx.log("You're 18 without a high-school diploma. A GED is still an option.", '📄', 'warn');
+    if (yearNow(state) >= 1942) ctx.log("You're 18 without a high-school diploma. A GED is still an option.", '📄', 'warn');
     return;
   }
   if (k.gpa != null && k.gpa < 1.0) {

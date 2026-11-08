@@ -277,7 +277,7 @@ function warEconomy(ctx, war) {
     if (e.phase !== 'recession') {
       e.phase = 'recession';
       e.phaseYears = 0;
-      ctx.log('📉 The war has thrown the economy into recession: factories bombed, ports closed, investors fleeing.', '📉', 'bad');
+      ctx.log(yearNow(ctx.state) < 1914 ? '📉 The war has wrecked trade: ports blockaded, harvests requisitioned, merchants ruined.' : '📉 The war has thrown the economy into recession: factories bombed, ports closed, investors fleeing.', '📉', 'bad');
     }
     e.unemployment = Math.min(0.2, Math.round((e.unemployment + 0.02 * war.homeFront) * 1000) / 1000);
     e.returns.index = Math.round((e.returns.index - 0.08 * war.homeFront * war.intensity) * 1000) / 1000;
@@ -310,12 +310,12 @@ function homeFrontYear(ctx, war, rng) {
     const mobilized = underMobilization(state);
     ctx.prompt({
       type: 'world.homeFront', icon: '🏚️', title: 'War on Your Doorstep',
-      text: `${war.operation}: the fighting is close. Sirens most nights${war.mobilized ? '; men of military age can\'t leave the country' : ''}.`,
+      text: `${war.operation}: the fighting is close. ${yearNow(state) < 1914 ? 'Soldiers are billeted in the town and the guns can be heard at night' : 'Sirens most nights'}${war.mobilized ? '; men of military age can\'t leave the country' : ''}.`,
       options: [
         { id: 'stay', label: '🏠 Stay and carry on', hint: 'Keep your job and home' },
-        { id: 'defence', label: '🦺 Volunteer for civil defence', hint: 'Shelters, rubble, first aid' },
+        { id: 'defence', label: yearNow(state) < 1914 ? '🩹 Volunteer to nurse the wounded' : '🦺 Volunteer for civil defence', hint: yearNow(state) < 1914 ? 'Field hospitals and the church hall' : 'Shelters, rubble, first aid' },
         { id: 'relocate', label: '🚚 Move somewhere safer in the country', hint: 'Away from the front' },
-        { id: 'flee', label: '✈️ Flee abroad and claim asylum', hint: mobilized ? 'Barred: you\'re of military age' : 'Move tab: asylum routes', disabled: mobilized },
+        { id: 'flee', label: yearNow(state) < 1945 ? '🚢 Flee abroad as a refugee' : '✈️ Flee abroad and claim asylum', hint: mobilized ? 'Barred: you\'re of military age' : 'Move tab: asylum routes', disabled: mobilized },
       ],
       data: {},
     });
