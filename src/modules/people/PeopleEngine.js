@@ -830,6 +830,9 @@ export const PeopleEngine = {
 
 function startDating(ctx, person) {
   const { state } = ctx;
+  // Someone came along since this was offered (prompts resolve in turn): one partner at a time.
+  const now = partnerOf(state);
+  if (now && now.id !== person.id) return ctx.log(`You thought of ${now.firstName}, and let ${person.firstName} go.`, '🍃');
   person.relation = 'partner';
   person.since = state.character.age;
   person.relationship = clampRel(person.relationship + 10);

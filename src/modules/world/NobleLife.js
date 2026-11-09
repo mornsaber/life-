@@ -94,6 +94,9 @@ export const NobleLifeResolvers = {
     const p = { ...data.person };
     const parents = state.people.list.filter((x) => ['mother', 'father'].includes(x.relation));
     if (optionId === 'love') { for (const x of parents) x.relationship = clamp(x.relationship - 10, 0, 100); bump(state, -2); return ctx.log('You told your parents you would choose for yourself. Your mother didn\'t speak to you for a month.', '❤️', 'warn'); }
+    // Already spoken for: the match goes nowhere (one partner at a time).
+    const taken = state.people.list.find((x) => x.alive !== false && ['partner', 'fiance', 'spouse'].includes(x.relation));
+    if (taken) return ctx.log(`You reminded your parents about ${taken.firstName}. The match was quietly dropped.`, '🌹', 'info');
     if (optionId === 'court') {
       p.relationship = rng.int(45, 75);
       p.relation = p.relationship >= 60 ? 'partner' : 'friend';
