@@ -839,6 +839,9 @@ export function periodFlag(state, cc) {
     case 'PL': return y < 1918 ? { img: 'RU' } : { img: cc };
     case 'IE': return y < 1922 ? { img: 'GB' } : { img: cc };
     case 'BD': return y >= 1947 && y < 1971 ? { img: 'PK' } : { img: cc };
+    case 'KR': case 'KP': return y >= 1910 && y < 1945 ? { img: 'JP' } : y < 1948 ? { img: 'KR' } : { img: cc };
+    case 'VN': return y >= 1887 && y < 1945 ? { img: 'FR' } : { img: cc };
+    case 'YE': return y < 1918 ? { img: 'TR' } : { img: cc };
     case 'HU': return y < 1918 ? { img: 'AT' } : { img: cc };
     default: return { img: cc };
   }
@@ -878,7 +881,11 @@ export function periodCountryName(state, cc, name) {
     IE: y < 1922 ? 'Ireland (United Kingdom)' : y < 1937 ? 'the Irish Free State' : null,
     BR: y < 1889 ? 'the Empire of Brazil' : null, ZA: y >= 1910 && y < 1961 ? 'the Union of South Africa' : null,
     LK: y < 1972 ? 'Ceylon' : null, MM: y < 1989 ? 'Burma' : null, TH: y < 1939 ? 'Siam' : null, CD: y >= 1971 && y < 1997 ? 'Zaire' : null,
-    BD: y >= 1947 && y < 1971 ? 'East Pakistan' : null, KR: y >= 1948 ? null : null, VN: y >= 1954 && y < 1976 ? 'Vietnam (divided)' : null,
+    BD: y >= 1947 && y < 1971 ? 'East Pakistan' : null,
+    KR: y < 1897 ? 'Joseon Korea' : y < 1910 ? 'the Korean Empire' : y < 1945 ? 'Korea under Japanese rule' : y < 1948 ? 'Korea under Allied occupation' : null,
+    KP: y < 1897 ? 'Joseon Korea' : y < 1910 ? 'the Korean Empire' : y < 1945 ? 'Korea under Japanese rule' : y < 1948 ? 'Korea under Allied occupation' : null,
+    VN: y < 1887 ? 'the Nguyễn Empire (Đại Nam)' : y < 1945 ? 'French Indochina' : y < 1954 ? 'Vietnam (at war with France)' : y < 1976 ? 'Vietnam (divided)' : null,
+    YE: y < 1918 ? 'the Ottoman Empire (Yemen)' : y < 1962 ? 'the Mutawakkilite Kingdom of Yemen' : y < 1990 ? 'North Yemen (the Yemen Arab Republic)' : null,
     FR: y < 1804 ? 'the French Republic (the Consulate)' : y < 1814 ? 'the French Empire' : y < 1848 ? 'the Kingdom of France' : y < 1852 ? 'the Second Republic' : y < 1870 ? 'the Second French Empire' : y >= 1940 && y < 1944 ? 'Vichy France' : null,
     MX: y >= 1864 && y < 1867 ? 'the Second Mexican Empire' : null, EG: y < 1914 ? 'the Khedivate of Egypt' : y < 1953 ? 'the Kingdom of Egypt' : null,
   };
@@ -1065,6 +1072,44 @@ let ERA_STATE = null;
 export const setEraState = (state) => { ERA_STATE = state?.era && state.era.start < PRESENT ? state : null; };
 /** A country's name in the year being played, or its name today. */
 export const eraCountryName = (cc, base) => (ERA_STATE ? periodCountryName(ERA_STATE, cc, base) : base);
+export const getEraState = () => ERA_STATE;
+export const eraCountryFlag = (cc, base) => (ERA_STATE ? periodFlagEmoji(ERA_STATE, cc) : base);
+
+/** A two-letter code as its flag emoji. */
+export const codeEmoji = (code) => String(code).toUpperCase().replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
+/** Flags no emoji draws, as the nearest symbol: the eagle of Prussia and the Reich, the hammer of the Soviets. */
+const FLAG_SYMBOL = {
+  ussr: '☭', prussia: '🦅', germanEmpire: '🦅', weimar: '🦅', habsburg: '🦅', gdr: '⚒️', yugoslavia: '⭐', qing: '🐉', fiveRaces: '🏳️', papal: '✝️',
+  twoSicilies: '⚜️', bourbon: '⚜️', sardinia: '✠', italyKingdom: '🇮🇹', usStars: '🇺🇸', gbPre1801: '🇬🇧', redEnsign: '🇬🇧', blueEnsign: '🇬🇧',
+  iranLionSun: '🦁', brazilEmpire: '🇧🇷', egyptKingdom: '🇪🇬', portugalMonarchy: '🇵🇹', libyaGreen: '🟩', southAfrica1928: '🇿🇦', bavaria: '🔷',
+  wurttemberg: '🦌', saxony: '🟩', baden: '🟨', hamburg: '🏰', frankfurt: '🦅', hesse: '🦁', krakow: '🏰', danzig: '⚓', transvaal: '🇿🇦',
+  orangeFreeState: '🍊', zulu: '🛡️', quaiti: '🏳️', southVietnam: '🇻🇳', southYemen: '🇾🇪',
+};
+/** A flag of the day as an emoji (for lists and pickers that can't draw images). */
+export function flagEmoji(f) {
+  if (!f) return '🏳️';
+  if (typeof f === 'string') return f.length === 2 ? codeEmoji(f) : FLAG_SYMBOL[f] ?? '🏳️';
+  return f.img ? codeEmoji(f.img) : FLAG_SYMBOL[f.id] ?? '🏳️';
+}
+export const periodFlagEmoji = (state, cc) => flagEmoji(periodFlag(state, cc));
+
+/** The state a city of your country belonged to this year (East Germany, Bavaria), or null where it's the country's own. */
+export function cityStateOfDay(state, regionId) {
+  if (!state?.era || yearNow(state) >= PRESENT) return null;
+  const r = regionStateAt(regionId, yearNow(state));
+  return r ? { name: r.name, flag: flagEmoji(r.flag), kind: r.kind } : null;
+}
+/**
+ * A border inside today's country (the inner German border, the 17th parallel): why you can't simply
+ * move from one city to the other this year, or null. Communist states kept their people in.
+ */
+export function innerBorder(state, fromRegion, toRegion) {
+  const a = cityStateOfDay(state, fromRegion);
+  const b = cityStateOfDay(state, toRegion);
+  if ((a?.name ?? null) === (b?.name ?? null)) return null;
+  if (a?.kind === 'eastbloc' || b?.kind === 'eastbloc') return `The border between ${a?.name ?? 'here'} and ${b?.name ?? 'there'} is closed`;
+  return null;
+}
 
 /* ------------------------------------------------------------------ */
 /* Names of institutions in their day                                  */

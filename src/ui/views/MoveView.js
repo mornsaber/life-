@@ -20,6 +20,7 @@ import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, natural
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
 import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
+import { cityStateOfDay, innerBorder, getEraState } from '../../modules/world/Eras.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
 
 function licenseImpact(state, toState) {
@@ -39,6 +40,7 @@ export function moveView(state) {
   const job = state.career.job;
   const income = state.finances.lastYear?.gross ?? job?.salary ?? 0;
   const pensionPlan = job?.employer.benefits.pension;
+  const dayState = (id) => cityStateOfDay(state, id);
   const row = (r) => {
     const st = STATES[r.state];
     const isHere = r.id === here.id;
@@ -51,8 +53,8 @@ export function moveView(state) {
     if (!isHere && crossState && !isAbroad(state)) impacts.push('🎓 Out-of-state tuition for 1 yr');
     if (!isHere && state.housing.properties.some((p) => p.use === 'primary')) impacts.push('🏡 Sell or rent out your home');
     return `<li class="move-row ${isHere ? 'here' : ''}">
-      <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}</small></span>
-        ${isHere ? chip('You live here', 'good') : button(`Move (${money(MOVE_COST)})`, 'region.move', { arg: r.id, variant: 'tiny', disabled: state.character.age < 18 })}</div>
+      <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}${dayState(r.id) ? ` · ${dayState(r.id).flag} ${esc(dayState(r.id).name)}` : ''}</small></span>
+        ${isHere ? chip('You live here', 'good') : button(`Move (${money(MOVE_COST)})`, 'region.move', { arg: r.id, variant: 'tiny', disabled: state.character.age < 18 || Boolean(innerBorder(state, here.id, r.id)), hint: innerBorder(state, here.id, r.id) ?? '' })}</div>
       <div class="move-stats">
         ${chip(`🏷️ COL ×${r.col.toFixed(2)}`)} ${chip(`💼 Pay ×${r.market.toFixed(2)}`)} ${isAbroad(state) ? '' : chip(`🦅 Fed locality +${Math.round(r.locality * 100)}%`)}
         ${chip(`🧾 ${isAbroad(state) ? 'Regional tax' : 'State tax'} ${topStateRate(r.state) ? `${(topStateRate(r.state) * 100).toFixed(1)}% top${income ? ` (~${money(stateIncomeTax(r.state, income))})` : ''}` : 'none'}`, topStateRate(r.state) ? '' : 'good')}
@@ -233,6 +235,20 @@ function passportCard(state) {
   return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => COUNTRIES[c].flag).join('')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
 }
 
+/** A country divided this year (West and East Germany): each side's name, flag and a city on it. */
+function sidesOf(c) {
+  const st = getEraState();
+  if (!st) return [];
+  const towns = [...new Set([...(c.hometowns ?? []), ...Object.values(REGIONS).filter((r) => r.country === c.id).map((r) => r.id)])];
+  const seen = new Map();
+  for (const id of towns) {
+    const d = cityStateOfDay(st, id);
+    const key = d?.name ?? c.name;
+    if (!seen.has(key)) seen.set(key, { name: key, flag: d?.flag ?? c.flag, city: id, short: key.match(/\(([^)]+)\)$/)?.[1] ?? key.replace(/^the /, '') });
+  }
+  return seen.size > 1 ? [...seen.values()] : [];
+}
+
 /** Every other country, with each route in and your odds: your best options first, the rest by continent. */
 function abroadCard(state) {
   const here = state.character.countryId ?? 'US';
@@ -240,6 +256,7 @@ function abroadCard(state) {
   const routesFor = {};
   const country = (c) => {
     const routes = routesFor[c.id] ?? routesTo(state, c.id);
+    const sides = sidesOf(c);
     const anyOk = routes.some((r) => r.ok);
     const list = routes.map((r) => optionRow({
       icon: '',
@@ -247,10 +264,11 @@ function abroadCard(state) {
       meta: r.ok ? (r.kind === 'irregular' ? `⚠️ Illegal · ${money(r.fee)} to a smuggler · caught: sent back and banned · then life without papers` : r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
       tone: r.ok ? '' : 'why',
       locked: !r.ok,
-      action: button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
+      action: sides.length > 1 ? sides.map((sd) => button(`${r.kind === 'irregular' ? 'Cross' : 'Apply'}: ${sd.flag} ${sd.short}`, 'migration.emigrate', { arg: `${c.id}:${r.kind}:${sd.city}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) })).join(' ')
+        : button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
     })).join('');
     const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
-    return disclosure(`abroad.${c.id}`, `${c.flag} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
+    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${c.flag} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
   };
   const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
   for (const c of others) routesFor[c.id] = routesTo(state, c.id);

@@ -17,6 +17,7 @@
  * `region:changed` so housing, licenses, careers and residency can react.
  */
 import { canAfford } from '../../core/State.js';
+import { innerBorder } from '../world/Eras.js';
 import { STATES } from './States.js';
 import { FOREIGN_CITIES } from '../world/Countries.js';
 
@@ -212,6 +213,8 @@ export const Relocation = {
       const { state } = ctx;
       if (!REGIONS[regionId] || state.character.regionId === regionId) return;
       if (state.character.age < 18) return ctx.toast('You can move out at 18.', 'warn');
+      const border = innerBorder(state, state.character.regionId, regionId);
+      if (border) return ctx.toast(`${border}.`, 'warn');
       if (state.military.service?.component === 'active') return ctx.toast('The military decides where you live (PCS orders).', 'warn');
       const home = state.housing.properties.find((p) => p.use === 'primary');
       if (home) {

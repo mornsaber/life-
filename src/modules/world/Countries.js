@@ -24,7 +24,7 @@
 
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
-import { eraCountryName, periodCurrency } from './Eras.js';
+import { eraCountryName, eraCountryFlag, periodCurrency } from './Eras.js';
 import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
@@ -352,6 +352,10 @@ for (const [id, c] of Object.entries(COUNTRIES)) {
   const base = c.name;
   Object.defineProperty(c, 'baseName', { value: base, enumerable: false });
   Object.defineProperty(c, 'name', { get: () => eraCountryName(id, base), set: () => {}, enumerable: true, configurable: true });
+  // Its flag too: the Soviet hammer, the Reich's eagle, the Union Jack over a colony.
+  const flag = c.flag;
+  Object.defineProperty(c, 'baseFlag', { value: flag, enumerable: false });
+  Object.defineProperty(c, 'flag', { get: () => eraCountryFlag(id, flag), set: () => {}, enumerable: true, configurable: true });
 }
 // Schools, school stages and license names join each country's display swaps.
 for (const c of Object.values(COUNTRIES)) {

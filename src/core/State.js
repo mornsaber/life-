@@ -16,6 +16,7 @@ import { DIFFICULTIES } from './Difficulty.js';
 import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText } from '../modules/world/Eras.js';
 import { eraFirstNames, dataYear, setDataYear } from '../modules/world/HistoricalData.js';
 import { OLD_FIRST_NAMES, US_OLD_SURNAMES } from '../modules/world/data/oldNames.js';
+import { decodePicks } from '../modules/world/StartPicks.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -165,6 +166,15 @@ export function createInitialState(rng, options = {}) {
   // royal or noble birth sees the same year the life starts in.
   if (options.startYear === 'random') options = { ...options, startYear: rng.int(EARLIEST, PRESENT) };
   else if (options.startYear && typeof options.startYear === 'object') options = { ...options, startYear: rng.int(validStartYear(options.startYear.from), validStartYear(options.startYear.to)) };
+  // A state of the day (East Germany, Bavaria, Yugoslavia): one of today's countries, and its cities then.
+  let chosenRegion = null;
+  let chosenCc = null;
+  if (/[@|]/.test(options.countryId ?? '')) {
+    const [cc, regions] = rng.pick(decodePicks(options.countryId));
+    chosenRegion = regions ? rng.pick(regions) : null;
+    options = { ...options, countryId: cc };
+    chosenCc = cc;
+  }
   const birth = royalBirth(rng, options);
   const royal = Boolean(birth);
   if (royal) options = { ...options, countryId: birth.countryId, royalLevel: birth.level };
@@ -196,7 +206,7 @@ export function createInitialState(rng, options = {}) {
       birthYear: startYear,
       alive: true,
       causeOfDeath: null,
-      regionId: rng.pick(country?.hometowns ?? HOMETOWNS),
+      regionId: (chosenCc === options.countryId ? chosenRegion : null) ?? rng.pick(country?.hometowns ?? HOMETOWNS),
       residencySince: 0,
       ...(country ? { countryId: country.id } : {}),
     },

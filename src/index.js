@@ -16,7 +16,7 @@ import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
-import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked } from './ui/Components.js';
+import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked, startListYear } from './ui/Components.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -195,7 +195,9 @@ document.addEventListener('submit', (event) => {
 
 /** Redraw the start screen's kingdom and house lists (and the country marks) for the chosen year. */
 function refreshCrowns(form) {
-  const c = crownPicker(startYearPicked(form.querySelector('[name="startEra"]')?.value, form.querySelector('#start-year')?.value));
+  const era = form.querySelector('[name="startEra"]')?.value;
+  const yr = form.querySelector('#start-year')?.value;
+  const c = crownPicker(startYearPicked(era, yr), startListYear(era, yr));
   const swap = (selector, html) => { const s = form.querySelector(selector); if (!s) return; const v = s.value; s.innerHTML = html; if ([...s.options].some((o) => o.value === v)) s.value = v; };
   swap('#royal-country', c.royal);
   swap('#house-country', c.house);

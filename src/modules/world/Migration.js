@@ -181,7 +181,9 @@ export function arrive(ctx, to, { visa = null, reason = '', keepJob = false } = 
   }
   m.history.push({ age, from, to, visa });
   // Back to where you lived before, or the country's biggest city.
-  const city = REGIONS[m.lastRegion?.[to]] ?? regionsIn(to)[0];
+  const picked = m.toCity && REGIONS[m.toCity]?.country === to ? REGIONS[m.toCity] : null;
+  delete m.toCity;
+  const city = picked ?? REGIONS[m.lastRegion?.[to]] ?? regionsIn(to)[0];
   changeRegion(ctx, city.id, reason || `You landed in ${COUNTRIES[to].name} ${COUNTRIES[to].flag}.`, { voluntary: true, crossBorder: true });
   const res = m.residences[to];
   if (res?.status === 'asylum') ctx.log(`You claimed asylum at the border: ${ASYLUM[to].name}. You'll live in reception housing until a decision${ASYLUM[to].workAfter ? `, and can't work for the first ${ASYLUM[to].workAfter === 1 ? 'year' : `${ASYLUM[to].workAfter} years`}` : ''}.`, '🆘', 'warn');
@@ -453,8 +455,10 @@ export const MigrationModule = {
     /** arg: 'CC:route' (route: a visa kind, 'citizen' or 'resident'). */
     emigrate(ctx, arg) {
       const { state, rng } = ctx;
-      const [to, kind] = String(arg).split(':');
+      const [to, kind, city] = String(arg).split(':');
       if (!COUNTRIES[to] || to === countryIdOf(state)) return;
+      // Which side of a divided country (East or West Germany, North or South Vietnam).
+      ensureMigration(state).toCity = city && REGIONS[city]?.country === to ? city : null;
       const block = departureBlock(state);
       if (block) return ctx.toast(block, 'warn');
       const route = routesTo(state, to).find((r) => r.kind === kind);

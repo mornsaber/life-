@@ -13,6 +13,7 @@ import { CONTINENT } from '../modules/world/Travel.js';
 import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
 import { START_ERAS, eraById } from '../modules/world/Eras.js';
+import { startCountries, sortName } from '../modules/world/StartCountries.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -326,6 +327,20 @@ export function countryOptions({ selected = '', only = null, random = '🎲 Rand
   return `${random ? `<option value="random">${random}</option>` : ''}${body}`;
 }
 
+/** The start screen's countries in a year: the states of the day (West and East Germany, Bavaria, British India), by continent. */
+export function startCountryOptions(year, { selected = 'random' } = {}) {
+  const list = startCountries(year);
+  if (!list) return countryOptions({ selected, year });
+  const { kingdoms } = crownsIn(year);
+  const placed = new Set(Object.values(CONTINENT).flat());
+  const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
+  const body = Object.entries(groups).map(([name, ids]) => {
+    const here = list.filter((e) => ids.includes(e.home)).sort((a, b) => sortName(a.name).localeCompare(sortName(b.name)));
+    return here.length ? `<optgroup label="${esc(name)}">${here.map((e) => `<option value="${esc(e.value)}"${e.value === selected ? ' selected' : ''}>${e.flag} ${esc(e.name)}${!e.picks[0][1] && kingdoms.includes(e.home) ? ' 👑' : ''}</option>`).join('')}</optgroup>` : '';
+  }).join('');
+  return `<option value="random"${selected === 'random' ? ' selected' : ''}>🎲 Random country</option>${body}`;
+}
+
 const sel = (name, options) => `<select name="${name}">${options.map(([v, label, on]) => `<option value="${v}"${on ? ' selected' : ''}>${esc(label)}</option>`).join('')}</select>`;
 
 /** The year options for an era: any year in it, then each year (an era of one year is just that year). */
@@ -352,14 +367,16 @@ export function startYearOf(eraId, year) {
 
 /** The year a start-screen choice names (null for a range of years or a random one). */
 export const startYearPicked = (eraId, year) => { const y = startYearOf(eraId, year); return Number.isInteger(y) ? y : null; };
+/** The year whose countries the start screen lists: the year picked, or the middle of the era picked. */
+export const startListYear = (eraId, year) => startYearPicked(eraId, year) ?? (eraById(eraId) ? Math.round((eraById(eraId).from + eraById(eraId).to) / 2) : null);
 /** The start screen's crown lists for a year: kingdom and house options, and a line on what stood then. */
-export function crownPicker(year) {
+export function crownPicker(year, listYear = year) {
   const { kingdoms, houses } = crownsIn(year);
   const name = (cc) => COUNTRIES[cc]?.baseName ?? COUNTRIES[cc]?.name ?? cc;
   return {
     royal: `<option value="">Same as above (if a kingdom)</option>${countryOptions({ only: kingdoms, random: '', year })}`,
     house: `<option value="">Same as above (if it had one)</option>${countryOptions({ only: houses, random: '', year })}`,
-    country: countryOptions({ selected: 'random', year }),
+    country: startCountryOptions(listYear),
     note: year == null ? 'Canada, Australia, New Zealand, Jamaica and the other realms share Britain\'s royal family, who live in Britain. Pick a year to see the thrones that stood then.'
       : `Thrones standing in ${year}: ${kingdoms.map(name).join(', ') || 'none'}.${houses.length ? ` Houses without a throne in ${year}: ${houses.map(name).join(', ')}.` : ''}`,
   };
@@ -381,7 +398,7 @@ export function birthOptions(data) {
 }
 
 export function newLifeForm(rngName) {
-  const crowns = crownPicker(startYearPicked(START_ERAS[0].id, ''));
+  const crowns = crownPicker(startYearPicked(START_ERAS[0].id, ''), startListYear(START_ERAS[0].id, ''));
   const birth = (id, icon, title, sub, panel, checked = false) => `<label class="birth-opt"><input type="radio" name="birth" value="${id}"${checked ? ' checked' : ''}><span class="birth-head"><b>${icon} ${title}</b><small>${sub}</small></span><div class="birth-more">${panel}</div></label>`;
   return `<div class="splash">
     <div class="splash-card">
@@ -405,7 +422,7 @@ export function newLifeForm(rngName) {
           ${[1, 2, 3, 4, 5].map((t) => `<label><input type="radio" name="skinTone" value="${t}" aria-label="${TONE_LABELS[t]}"> ${toned('🧑', t)}</label>`).join('')}
         </fieldset>
         <h3 class="form-step">2 · Where you're born</h3>
-        <label class="country-pick">Country<select name="countryId">${countryOptions({ selected: 'random' })}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
+        <label class="country-pick">Country<select name="countryId">${crowns.country}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
         <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
         <div class="form-row"><label class="country-pick">Era${sel('startEra', [...START_ERAS.map((e, i) => [e.id, e.from === e.to ? e.label : `${e.label} (${e.from}–${e.to})`, i === 0]), ['random', '🎲 Any era (1800 onwards)']])}</label>
         <label class="country-pick">Year<select name="startYear" id="start-year">${eraYearOptions(START_ERAS[0].id)}</select></label></div>
