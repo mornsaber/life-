@@ -87,7 +87,8 @@ export function royalBirth(rng, options) {
   const cc = options.countryId;
   // A royal birth in a kingdom between its reigns (France in 1850, Spain in 1940) is a birth into its house.
   if (level && betweenReigns(cc, year)) return null;
-  const home = (ROYAL_HOMES.includes(cc) && !republicGap(cc, year)) || periodThrone(cc, year) ? cc : SHARED_CROWN.includes(cc) ? 'GB' : cc === 'random' ? rng.pick(ROYAL_HOMES) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(ROYAL_HOMES) : null;
+  const thrones = crownsIn(year < PRESENT ? year : null).kingdoms;
+  const home = thrones.includes(cc) ? cc : SHARED_CROWN.includes(cc) && thrones.includes('GB') ? 'GB' : cc === 'random' ? rng.pick(thrones) : options.difficulty === 'royal' ? 'GB' : level ? rng.pick(thrones) : null;
   return home ? { countryId: home, level: level ?? 'child' } : null;
 }
 
@@ -115,6 +116,29 @@ export const HOUSE_HOMES = ['DE', 'FR', 'IT', 'AT', 'RU', 'BR', 'RO'];
 const ALL_HOUSE_HOMES = [...HOUSE_HOMES, 'PT', 'TR', 'CN', 'IR', 'EG', 'GR', 'ET', 'AF', 'LY', 'IQ', 'KR', 'VN', 'MX', 'NP', 'YE', 'MM', 'ES'];
 /** A kingdom between its reigns in a year: its throne existed before and isn't standing now. */
 const betweenReigns = (cc, year) => (republicGap(cc, year) || (PERIOD_THRONE_YEARS[cc] && !periodThrone(cc, year) && PERIOD_THRONE_YEARS[cc][0][0] < year));
+/**
+ * The start screen's crowns in a year: kingdoms whose royal family you can be born into (a throne
+ * standing that year: today's monarchies outside their republican gaps and before they existed,
+ * the old thrones while they stood), and former ruling houses (a throne that had fallen by then,
+ * or is between reigns). A range of years or a random one: today's lists.
+ */
+export function crownsIn(year) {
+  const y = Number.isInteger(year) && year < PRESENT ? year : null;
+  if (y == null) return { kingdoms: [...ROYAL_HOMES], houses: ALL_HOUSE_HOMES.filter((cc) => betweenReigns(cc, PRESENT - 1)) };
+  // A crown can rule under military government (Thailand's generals, Japan's shoguns): only the
+  // years it was abolished count against it.
+  const lapsed = (cc) => (CROWN_LAPSES[cc] ?? []).some(([from, until]) => y >= from && y < until);
+  const standing = (cc) => (PERIOD_THRONE_YEARS[cc] ? periodThrone(cc, y) : ROYAL_HOMES.includes(cc) && !republicGap(cc, y) && !lapsed(cc) && crownFrom(cc) <= y);
+  const kingdoms = [...new Set([...ROYAL_HOMES, ...Object.keys(PERIOD_THRONE_YEARS)])].filter(standing);
+  const houses = ALL_HOUSE_HOMES.filter((cc) => betweenReigns(cc, y));
+  return { kingdoms, houses };
+}
+/** When today's kingdoms got their crowns as independent states (Belgium 1831, Norway 1905, the Gulf in 1961–71...). */
+const CROWN_FROM = { BE: 1831, NO: 1905, JO: 1946, SA: 1932, MA: 1956, KW: 1961, QA: 1971, BH: 1971, AE: 1971, BN: 1984, MY: 1957, KH: 1953, JM: 1962, BS: 1973, PG: 1975, SB: 1978, NL: 1815, TO: 1845, BT: 1907 };
+const crownFrom = (cc) => CROWN_FROM[cc] ?? 0;
+/** Years a crown of today was abolished (Cambodia's Khmer Republic, Khmer Rouge and People's Republic, 1970–93). */
+const CROWN_LAPSES = { KH: [[1970, 1993]] };
+
 export function houseStart(rng, options) {
   const year = validStartYear(options.startYear);
   const royalAsked = ROYAL_LEVEL_IDS.includes(options.royalLevel) && betweenReigns(options.countryId, year);

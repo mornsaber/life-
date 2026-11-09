@@ -3,7 +3,7 @@
  * none of them touch the DOM or mutate state. Interactive elements carry
  * `data-action` / `data-arg` attributes that index.js routes to the engine.
  */
-import { STAT_META, STAT_KEYS, tidyText } from '../core/State.js';
+import { STAT_META, STAT_KEYS, tidyText, crownsIn } from '../core/State.js';
 import { CHALLENGES } from '../modules/life/Achievements.js';
 import { ROYAL_LEVELS } from '../modules/world/Crown.js';
 import { DIFFICULTIES } from '../core/Difficulty.js';
@@ -313,8 +313,9 @@ export function promptModal(prompt, queued) {
 }
 
 /** Countries grouped by continent and sorted by name, kingdoms marked 👑 and former monarchies ⚜️. */
-export function countryOptions({ selected = '', only = null, random = '🎲 Random country' } = {}) {
-  const mark = (id) => (ROYAL_HOMES.includes(id) ? ' 👑' : SHARED_CROWN.includes(id) ? ' 👑 (British Crown)' : HOUSE_HOMES.includes(id) ? ' ⚜️' : '');
+export function countryOptions({ selected = '', only = null, random = '🎲 Random country', year = null } = {}) {
+  const { kingdoms, houses } = crownsIn(year);
+  const mark = (id) => (kingdoms.includes(id) ? ' 👑' : SHARED_CROWN.includes(id) && kingdoms.includes('GB') ? ' 👑 (British Crown)' : houses.includes(id) ? ' ⚜️' : '');
   const placed = new Set(Object.values(CONTINENT).flat());
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
   const opt = (id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].baseName ?? COUNTRIES[id].name)}${mark(id)}</option>`;
@@ -349,6 +350,21 @@ export function startYearOf(eraId, year) {
   return era.from === era.to ? era.from : { from: era.from, to: era.to };
 }
 
+/** The year a start-screen choice names (null for a range of years or a random one). */
+export const startYearPicked = (eraId, year) => { const y = startYearOf(eraId, year); return Number.isInteger(y) ? y : null; };
+/** The start screen's crown lists for a year: kingdom and house options, and a line on what stood then. */
+export function crownPicker(year) {
+  const { kingdoms, houses } = crownsIn(year);
+  const name = (cc) => COUNTRIES[cc]?.baseName ?? COUNTRIES[cc]?.name ?? cc;
+  return {
+    royal: `<option value="">Same as above (if a kingdom)</option>${countryOptions({ only: kingdoms, random: '', year })}`,
+    house: `<option value="">Same as above (if it had one)</option>${countryOptions({ only: houses, random: '', year })}`,
+    country: countryOptions({ selected: 'random', year }),
+    note: year == null ? 'Canada, Australia, New Zealand, Jamaica and the other realms share Britain\'s royal family, who live in Britain. Pick a year to see the thrones that stood then.'
+      : `Thrones standing in ${year}: ${kingdoms.map(name).join(', ') || 'none'}.${houses.length ? ` Houses without a throne in ${year}: ${houses.map(name).join(', ')}.` : ''}`,
+  };
+}
+
 /** The start screen's "Born into" choice, as new-life options (only the chosen kind of birth counts). */
 export function birthOptions(data) {
   const birth = data.get('birth') || 'ordinary';
@@ -365,7 +381,7 @@ export function birthOptions(data) {
 }
 
 export function newLifeForm(rngName) {
-  const kingdoms = [...ROYAL_HOMES];
+  const crowns = crownPicker(startYearPicked(START_ERAS[0].id, ''));
   const birth = (id, icon, title, sub, panel, checked = false) => `<label class="birth-opt"><input type="radio" name="birth" value="${id}"${checked ? ' checked' : ''}><span class="birth-head"><b>${icon} ${title}</b><small>${sub}</small></span><div class="birth-more">${panel}</div></label>`;
   return `<div class="splash">
     <div class="splash-card">
@@ -400,13 +416,13 @@ export function newLifeForm(rngName) {
           ${birth('ordinary', '👤', 'An ordinary family', 'Most lives start here.', '<label class="check"><input type="checkbox" name="noble"> 🏰 A very small chance of being born titled</label>', true)}
           ${birth('royal', '👑', 'The royal family', 'A prince or princess in a kingdom.', `<label class="country-pick">Place in the family${sel('royalLevel', Object.entries(ROYAL_LEVELS).map(([id, l], i) => [id, l.name, i === 1]))}</label>
             <p class="fine">${Object.values(ROYAL_LEVELS).map((l) => `<b>${esc(l.name)}</b>: ${esc(l.desc)}`).join(' ')}</p>
-            <label class="country-pick">Kingdom<select name="royalCountry"><option value="">Same as above (if a kingdom)</option>${countryOptions({ only: kingdoms, random: '' })}</select></label>
-            <p class="fine">Canada, Australia, New Zealand, Jamaica and the other realms share Britain's royal family, who live in Britain. In an early start the old thrones still stand: Germany and Austria before 1918, Russia before 1917, Italy before 1946, Romania before 1947 (pick the country above).</p>`)}
+            <label class="country-pick">Kingdom<select name="royalCountry" id="royal-country">${crowns.royal}</select></label>
+            <p class="fine" id="crown-note">${esc(crowns.note)}</p>`)}
           ${birth('noble', '🏰', 'A noble family', 'A titled family: Britain, Spain, the Low Countries, Scandinavia, or the old nobility of France, Italy, Germany, Austria and Portugal.', `<div class="form-row"><label class="country-pick">Rank${sel('nobleRank', [['random', '🎲 Any rank', true], ...['baron', 'viscount', 'earl', 'marquess', 'duke'].map((r) => [r, r[0].toUpperCase() + r.slice(1)])])}</label>
             <label class="country-pick">Place${sel('nobleHeir', [['random', '🎲 Either', true], ['heir', '👑 Heir to the title'], ['younger', '🌿 A younger child']])}</label></div>
             <label class="country-pick">Peerage${sel('nobleCountry', [['', 'The country above, if it has one', true], ['random', '🎲 Any'], ['GB', '🇬🇧 British peerage'], ['ES', '🇪🇸 Spanish nobility'], ['FR', '🇫🇷 French noblesse'], ['BE', '🇧🇪 Belgian nobility'], ['NL', '🇳🇱 Dutch adel'], ['SE', '🇸🇪 Swedish adel'], ['DK', '🇩🇰 Danish adel'], ['IT', '🇮🇹 Italian nobiltà'], ['DE', '🇩🇪 German Adel'], ['AT', '🇦🇹 Austrian Adel'], ['PT', '🇵🇹 Portuguese nobreza']])}</label>`)}
           ${birth('house', '⚜️', 'A former ruling house', 'The family that lost a throne, and may win it back.', `<label class="country-pick">Place in the house${sel('housePlace', [['random', '🎲 Somewhere in the family', true], ['heir', '👑 Heir to the head of the house'], ['head', '⚜️ Head of the house'], ['cadet', '🌿 A cadet branch']])}</label>
-            <label class="country-pick">House<select name="houseCountry"><option value="">Same as above (if it had one)</option>${countryOptions({ only: HOUSE_HOMES, random: '' })}</select></label>
+            <label class="country-pick">House<select name="houseCountry" id="house-country">${crowns.house}</select></label>
             <p class="fine">Hohenzollern (Germany), Orléans (France), Savoy (Italy), Habsburg (Austria), Romanov (Russia), Orléans-Braganza (Brazil), Hohenzollern-Sigmaringen (Romania). Win back the throne in a referendum, or live with the claim.</p>`)}
         </div>
         <details class="disclosure more-options"><summary>⚙️ More options: difficulty and challenges</summary><div class="disclosure-body">

@@ -16,7 +16,7 @@ import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
-import { birthOptions, eraYearOptions, eraSub } from './ui/Components.js';
+import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked } from './ui/Components.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -193,6 +193,18 @@ document.addEventListener('submit', (event) => {
   startNewLife(event.target);
 });
 
+/** Redraw the start screen's kingdom and house lists (and the country marks) for the chosen year. */
+function refreshCrowns(form) {
+  const c = crownPicker(startYearPicked(form.querySelector('[name="startEra"]')?.value, form.querySelector('#start-year')?.value));
+  const swap = (selector, html) => { const s = form.querySelector(selector); if (!s) return; const v = s.value; s.innerHTML = html; if ([...s.options].some((o) => o.value === v)) s.value = v; };
+  swap('#royal-country', c.royal);
+  swap('#house-country', c.house);
+  swap('[name="countryId"]', c.country);
+  const note = form.querySelector('#crown-note');
+  if (note) note.textContent = c.note;
+  return undefined;
+}
+
 // Settings toggles, the import file picker and the log filter.
 document.addEventListener('change', (event) => {
   const el = event.target;
@@ -202,8 +214,11 @@ document.addEventListener('change', (event) => {
     if (year) { year.innerHTML = eraYearOptions(el.value); year.disabled = el.value === 'random' || el.value === 'today'; }
     const sub = el.form.querySelector('#era-sub');
     if (sub) sub.textContent = eraSub(el.value);
+    refreshCrowns(el.form);
     return undefined;
   }
+  // The thrones that stood in the chosen year (start screen).
+  if (el.name === 'startYear' && el.form?.id === 'new-life-form') return refreshCrowns(el.form);
   if (el.dataset.setting) {
     settings = { ...settings, [el.dataset.setting]: el.type === 'checkbox' ? el.checked : el.value };
     saveSettings(settings);
