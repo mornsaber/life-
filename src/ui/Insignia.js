@@ -569,8 +569,24 @@ const STRIPES = {
 };
 const SILVER_STRIPES = ['tsa', 'flightAttendant'];
 const ENGINEERS = /AE$|Engineer$/;
+/** Clerical dress as rank: a priest's collar, a monsignor's purple piping, a bishop's purple skullcap and pectoral cross, a cardinal's scarlet, a pope's white. */
+const collar = (trim = '#111') => svg(34, `<rect x="6" y="8" width="22" height="20" rx="4" fill="${trim}"/><rect x="14" y="10" width="6" height="5" rx="1" fill="#fff"/>`);
+const zucchetto = (color, cross = false) => svg(34, `<path d="M6 22 Q17 4 28 22 Z" fill="${color}" stroke="rgba(0,0,0,.35)" stroke-width="0.8"/>${cross ? '<path d="M17 24 V33 M13.5 27 H20.5" stroke="#d4a017" stroke-width="2.4" stroke-linecap="round"/>' : ''}`);
+const PURPLE = '#7b2d8b';
+const SCARLET = '#c0182c';
+/** An astronaut's wings: gold wings over a shooting star. */
+const astronautWings = (color = GOLD) => svg(46, `<path d="M23 20 C14 12 8 14 3 12 C8 18 14 20 23 22 Z M23 20 C32 12 38 14 43 12 C38 18 32 20 23 22 Z" fill="${color}"/><circle cx="23" cy="16" r="4.2" fill="none" stroke="${color}" stroke-width="1.6"/><path d="M23 8 L23 30" stroke="${color}" stroke-width="1.6"/>`);
+
 /** Ranks of the Vatican's and Singapore's own services, and the Swiss Guard. */
 const OWN = {
+  // National gendarmeries (the Carabinieri, the Gendarmerie nationale, the Guardia Civil, the Jandarma, the Marechaussee):
+  // military ranks on their country's pattern.
+  gendarmerie: { corporal: 'cpl', sergeant: 'sgt', adjutant: 'ssgt', lieutenant: 'lt', captain: 'capt', major: 'major', ltColonel: 'col', colonel: 'col', general: '2star' },
+  catholicClergy: { deacon: () => collar(), vicar: () => collar(), pastor: () => collar(), monsignor: () => collar(PURPLE), vicarGeneral: () => collar(PURPLE), auxBishop: () => zucchetto(PURPLE, true), bishop: () => zucchetto(PURPLE, true), archbishop: () => zucchetto(PURPLE, true), cardinal: () => zucchetto(SCARLET, true) },
+  anglicanClergy: { deacon: () => collar(), curate: () => collar(), vicar: () => collar(), canon: () => collar(), ruralDean: () => collar(), archdeacon: () => collar(), dean: () => collar(), suffragan: () => zucchetto(PURPLE, true), bishop: () => zucchetto(PURPLE, true), archbishop: () => zucchetto(PURPLE, true) },
+  jesuits: { priest: () => collar(), tertian: () => collar(), professed: () => collar(), rector: () => collar(), socius: () => collar(), provincial: () => collar(), assistantGeneral: () => collar(), general: () => collar() },
+  clergy: { associate: () => collar(), minister: () => collar(), chaplain: () => collar(), seniorChaplain: () => collar(), senior: () => collar(), dean: () => collar(), regional: () => collar(), national: () => collar() },
+  spaceIndustry: { astronaut: () => astronautWings(SILVER), commander: () => astronautWings(), chiefAstronaut: () => astronautWings() },
   vaticanGendarmerie: { viceBrigadier: 'sgt', brigadier: 'ssgt', inspector: 'lt', viceCommissioner: 'capt', commissioner: 'major', commandant: 'col' },
   swissGuard: { viceCorporal: () => chevrons(1), corporal: () => chevrons(2), sergeant: () => chevrons(3), sergeantMajor: () => chevrons(3, 1), lieutenant: () => galons(2), captain: () => galons(3), ltColonel: () => galons(4), commandant: () => galons(5) },
   gurkhaContingent: { corporal: () => chevrons(2, 0, '', SILVER), sergeant: () => chevrons(3, 0, '', SILVER), staffSergeant: () => chevrons(3, 0, 'star', SILVER), seniorStaffSergeant: () => chevrons(3, 1, 'star', SILVER), stationInspector: () => pips(2, false, SILVER), asp: () => pips(3, false, SILVER), dsp: () => pips(0, true, SILVER) },
