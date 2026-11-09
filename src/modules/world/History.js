@@ -613,9 +613,23 @@ function tradeEnds(ctx) {
  * on its dates (the great wars above are history's own). Civil wars are fought at home.
  */
 const WAR_WORDS = /war|rebellion|revolt|revolution|insurrection|uprising|conflict|crisis|intervention|invasion|conquest|occupation|campaign|expedition|insurgency|emergency|defeat|problem|massacre|resistance|struggle|liberation|independence|unification|secession|mutiny|siege|pacification|annexation|coup|overthrow/i;
-function warTitle(name) {
-  const n = name.replace(/,? Phase \d+$/i, '').replace(/^(\w+)'s (.+)$/, '$2 in $1').trim();
-  return WAR_WORDS.test(n) ? `the ${n}` : `the ${n} War`;
+/**
+ * A Correlates of War name as a title: "First Argentina War" is the First Argentine Civil War;
+ * "Second Carlist" the Second Carlist War; a small rising ("Karbala") a revolt.
+ */
+function warTitle(w) {
+  const n = w.name.replace(/,? Phase \d+$/i, '').replace(/^(\w+)'s (.+)$/, '$2 in $1').trim();
+  if (w.kind !== 'civil') return WAR_WORDS.test(n) ? `the ${n}` : `the ${n} War`;
+  const own = COUNTRIES[w.a?.[0]];
+  const m = n.replace(/ War$/, '').match(/^((?:First|Second|Third|Fourth|Fifth|Sixth|Seventh|Eighth) )?(.+)$/);
+  if (own && m && [own.baseName ?? own.name, own.demonym].includes(m[2])) return `the ${m[1] ?? ''}${own.demonym} Civil War`;
+  // "Indonesia Darul Islam": the Darul Islam Rebellion in Indonesia.
+  const cname0 = own?.baseName ?? own?.name;
+  const where = cname0 && n.startsWith(`${cname0} `) ? ` in ${cname0}` : '';
+  const core = where ? n.slice(cname0.length + 1) : n;
+  if (WAR_WORDS.test(core)) return `the ${core}${where}`;
+  const dead = Object.values(w.deaths ?? {}).reduce((a, b) => a + b, 0);
+  return `the ${core} ${dead >= 10000 ? 'War' : where ? 'Rebellion' : 'Revolt'}${where}`;
 }
 function dataWars(ctx) {
   const { state } = ctx;
@@ -627,7 +641,7 @@ function dataWars(ctx) {
   for (const w of warsStarting(y)) {
     const sides = [...w.a, ...w.b].filter((cc) => COUNTRIES[cc]);
     const dead = Object.values(w.deaths ?? {}).reduce((a, b) => a + b, 0);
-    const title = warTitle(w.name);
+    const title = warTitle(w);
     if (dead >= 20000 || sides.includes(hereOf(state))) news(ctx, `War: ${title.replace(/^the /, 'the ').replace(/^./, (c) => c.toUpperCase())}`, '⚔️', 'world', dead >= 100000 ? 8 : 5);
     for (const cc of sides) {
       if (warIn(state, cc)) continue;
@@ -639,6 +653,13 @@ function dataWars(ctx) {
   }
 }
 
+/** The titles the new state's services used for the colonial ranks it kept. */
+const NATIONAL_TITLES = {
+  colonialService: { cadet: 'Assistant District Officer', resident: 'Provincial Commissioner', colonialSecretary: 'Permanent Secretary', chiefSecretary: 'Head of the Civil Service', governor: 'Governor-General' },
+  colonialTroops: { private: 'Private', lanceNaik: 'Lance Corporal', naik: 'Corporal', havildar: 'Sergeant', havildarMajor: 'Company Sergeant Major', jemadar: 'Lieutenant', subedar: 'Captain', subedarMajor: 'Major' },
+  colonialMedical: { dresser: 'Medical Orderly', hospitalAssistant: 'Clinical Assistant', subAssistantSurgeon: 'Assistant Medical Officer', civilSurgeon: 'District Medical Officer', pmo: 'Chief Medical Officer', deputyDms: 'Deputy Director of Health Services', dms: 'Director of Health Services' },
+  colonialPolice: { ig: 'Inspector-General of Police', asp: 'Assistant Superintendent of Police' },
+};
 /** The new state's name for a colonial service it takes over. */
 const SUCCESSOR = {
   colonialService: (n) => `the ${n} Administrative Service`, colonialPolice: (n) => `the ${n} Police Service`, colonialTroops: (n) => `the ${n} Army`,
@@ -663,6 +684,8 @@ function handOver(ctx, cc, st, job, rec, rng) {
   if (keep) {
     const name = SUCCESSOR[job.professionId]?.(adj) ?? `the ${adj} civil service`;
     job.nationalized = { cc, since: state.character.age, from: job.employer?.name ?? p.name };
+    job.titleMap = { ...(job.titleMap ?? {}), ...(NATIONAL_TITLES[job.professionId] ?? {}) };
+    if (job.titleMap[job.levelId]) job.title = job.titleMap[job.levelId];
     job.employer = { ...(job.employer ?? {}), name, site: undefined };
     ctx.stat('happiness', 3);
     return ctx.log(`The ${rulerAdj(st.ruler)} service passed to the new government as ${name}. You kept your rank as ${job.title}, now answering to ${country}'s own ministers.`, '🏛️', 'milestone');
@@ -763,6 +786,12 @@ function colonialTours(ctx) {
   const job = state.career?.job;
   const p = postingOf(state);
   const colonial = job && PROFESSIONS[job.professionId]?.colonial && !job.nationalized;
+  // At a desk at home: when the stint is done, the choice again.
+  if (colonial && !p && job.homeDesk) {
+    if (state.character.age < job.homeDesk.until || state.prompts.some((q) => q.type === 'history.tourEnds')) return undefined;
+    return ctx.prompt({ type: 'history.tourEnds', icon: '🏛️', title: 'Back to the Colonies?', text: `Your time at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'} is up.`,
+      options: [{ id: 'again', label: '⛵ A new posting overseas' }, { id: 'desk', label: '🏛️ Stay at the desk' }, { id: 'home', label: '🏠 Leave the service', hint: 'With a gratuity' }], data: { colony: null, why: 'deskDone' } });
+  }
   // Hired at home into a colonial service: posted out.
   if (colonial && !p && !colonyHere(state)) return postOut(ctx);
   if (p?.kind !== 'colonial' || state.prompts.some((q) => q.type === 'history.tourEnds')) return undefined;
@@ -776,6 +805,7 @@ function colonialTours(ctx) {
     options: [
       ...(colonial && empireColonies(state, state.character.countryId ?? 'US').some((cc) => cc !== p.colony) ? [{ id: 'again', label: '⛵ Home leave, then another tour', hint: 'The service posts you wherever it needs you' }] : []),
       ...(colonial && why !== 'independence' ? [{ id: 'extend', label: `🌴 Stay on in ${cname(p.colony)} for another tour` }] : []),
+      ...(colonial ? [{ id: 'desk', label: `🏛️ A desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'} at home`, hint: 'Stay in the service, at home' }] : []),
       { id: 'home', label: `🏠 Go home to ${cname(state.character.countryId ?? 'US')}`, hint: colonial ? 'You leave the service, with a gratuity' : '' },
       { id: 'settle', label: `🏡 Settle in ${cname(p.colony)} for good`, hint: colonial ? 'You leave the service' : '' },
     ],
@@ -783,6 +813,8 @@ function colonialTours(ctx) {
   });
 }
 const postingLabelOf = (p) => p.place ?? cname(p.colony);
+/** The home department that runs each empire's colonies. */
+const COLONIAL_OFFICE = { GB: 'Colonial Office in London', FR: 'Ministry of the Colonies in Paris', PT: 'Overseas Ministry in Lisbon', NL: 'Ministry of the Colonies in The Hague', BE: 'Ministry of the Colonies in Brussels', IT: 'Ministry of the Colonies in Rome', ES: 'Overseas Ministry in Madrid', JP: 'Colonial Ministry in Tokyo', US: 'Bureau of Insular Affairs in Washington', DE: 'Colonial Office in Berlin' };
 
 export const HistoryModule = {
   id: 'history',
@@ -883,7 +915,14 @@ export const HistoryModule = {
         p.until = state.character.age + rng.int(3, 5);
         return ctx.log(`You signed on for another tour in ${postingLabelOf(p)}.`, '🌴');
       }
+      if (optionId === 'desk' && inService) {
+        if (p) endPosting(ctx, `You came home to a desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'}.`);
+        job.homeDesk = { until: state.character.age + rng.int(3, 5) };
+        return undefined;
+      }
       if (optionId === 'again' && inService) {
+        if (job.homeDesk) delete job.homeDesk;
+        if (!p) return postOut(ctx);
         endPosting(ctx, 'Six months\' home leave, then a new posting.', { moving: true });
         const others = empireColonies(state, state.character.countryId ?? 'US').filter((cc) => cc !== data.colony);
         return postOut(ctx, others.length ? rng.pick(others) : data.colony);
@@ -894,6 +933,7 @@ export const HistoryModule = {
         return arrive(ctx, data.colony, { visa: 'freeMovement', reason: `You stayed on in ${cname(data.colony)} for good: a house, a few acres, and the club on Saturdays.` });
       }
       // Home.
+      if (inService && job.homeDesk) delete job.homeDesk;
       if (inService) {
         const gratuity = Math.round((job.salary ?? 40000) * 0.5 / 100) * 100;
         leaveJob(ctx, 'Came home from the colonies');

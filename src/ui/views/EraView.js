@@ -15,6 +15,8 @@ import { COUNTRIES } from '../../modules/world/Countries.js';
 import { demographyAt } from '../../modules/world/HistoricalData.js';
 import { moneyOfTheDay } from '../../modules/world/Eras.js';
 
+/** America's own milestones: shown in an American life, not as world history. */
+const US_HOME_EVENTS = ['brownVBoard', 'civilRights'];
 export const EVENT_LABELS = {
   napoleonicWars: 'the Napoleonic Wars', napoleonFalls: 'Napoleon falls', latinIndependence: 'the Americas rise against Spain', war1812: 'the War of 1812', cholera: 'the cholera',
   abolitionUK: 'slavery abolished in the British Empire', opiumWar: 'the Opium War', irishFamine: 'the Irish Famine', mexicanAmericanWar: 'the Mexican–American War',
@@ -66,7 +68,7 @@ export function eraCard(state) {
     ...demographyRows(cc, y),
     ...(jimCrowHere(state) ? [['Jim Crow', 'Segregated schools, buses and lunch counters; poll taxes and literacy tests keep Black voters off the rolls; many jobs and the state universities are closed to you']] : []),
   ];
-  const seen = Object.entries(era.events ?? {}).filter(([id]) => EVENT_LABELS[id]).sort((a, b) => a[1].year - b[1].year);
+  const seen = Object.entries(era.events ?? {}).filter(([id]) => EVENT_LABELS[id] && (cc === 'US' || !US_HOME_EVENTS.includes(id))).sort((a, b) => a[1].year - b[1].year);
   const line = ([id, e]) => `<li>${e.year}${e.ended && e.ended !== e.year ? `–${e.ended}` : e.lasts && !e.ended ? '–' : ''} · ${esc(EVENT_LABELS[id])}${e.axisWon ? ' (the Axis won)' : ''}${e.outcome === 'central' ? ' (the Central Powers won)' : ''}${e.past ? '' : ' 🕰️'}</li>`;
   const recent = seen.filter(([, e]) => !e.past).slice(-8);
   const skipped = (era.skipped ?? []).filter((id) => EVENT_LABELS[id] && EVENTS[id].window[1] < y);

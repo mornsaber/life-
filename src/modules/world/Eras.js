@@ -304,7 +304,9 @@ export const colonyHere = (state) => colonyStage(state, state.character.countryI
 /** Whose pattern a colonial uniform follows: the ruler of your colony, or your own country posted out. */
 export const insigniaCountry = (state, profession) => (profession?.colonial ? colonyHere(state)?.ruler ?? state.character.countryId ?? 'US' : state.character.countryId ?? 'US');
 /** The territories a country rules in the year being played. */
-export const empireColonies = (state, cc) => (state?.era ? Object.keys(COLONIES).filter((id) => id !== cc && colonyStage(state, id)?.ruler === cc) : []);
+const HOME_REALMS = ['IE', 'NO', 'FI', 'PL', 'EE', 'LV', 'LT', 'UA', 'BY', 'CZ', 'SK', 'HU', 'HR', 'SI', 'BA', 'RS', 'ME', 'MK', 'AL', 'XK', 'GR', 'BG', 'RO', 'MD', 'IS', 'BE', 'NL', 'LU', 'PT', 'ES', 'IT', 'AT', 'DE', 'FR', 'CH', 'DK', 'SE'];
+/** The overseas territories a country rules in the year being played (not Europe's own subject nations: Ireland, Poland, Finland...). */
+export const empireColonies = (state, cc) => (state?.era ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && colonyStage(state, id)?.ruler === cc) : []);
 /** Colonial work is open: you live in a colony, or your country still rules one. */
 export const colonialWorkOpen = (state) => Boolean(colonyHere(state)) || empireColonies(state, state.character.countryId ?? 'US').length > 0;
 
@@ -402,6 +404,8 @@ const TIMELINES = {
   IR: [],
 };
 for (const [cc, rows] of Object.entries(TIMELINES)) if (!rows.length) delete TIMELINES[cc];
+/** Today's kingdoms (their crowns stood through any military or one-party rule). */
+const TODAY_CROWNS = ['GB', 'JP', 'SE', 'NL', 'ES', 'NO', 'DK', 'BE', 'LU', 'TH', 'MY', 'BN', 'KH', 'BT', 'TO', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE', 'OM'];
 /** A monarch's title where the data says a crown ruled and no period above names one. */
 const CROWN_TITLE = { JP: 'the Emperor', CN: 'the Emperor', ET: 'the Emperor', VN: 'the Emperor', KR: 'the King', TR: 'the Sultan', MA: 'the Sultan', OM: 'the Sultan', BN: 'the Sultan', MY: 'the Sultan',
   IR: 'the Shah', AF: 'the Emir', KW: 'the Emir', QA: 'the Emir', BH: 'the Emir', AE: 'the rulers of the emirates', LU: 'the Grand Duke', BT: 'the Druk Gyalpo', RU: 'the Tsar', AT: 'the Emperor', DE: 'the King of Prussia' };
@@ -414,6 +418,14 @@ export function dataRegimeAt(cc, y) {
   const d = dataRegime(cc, y);
   if (!d) return null;
   const crown = CROWN_TITLE[cc] ?? 'the King';
+  // Generals, dictators or one party ruling under a king (Thailand, Japan, Iran, Nepal…).
+  const crowned = periodThrone(cc, y) || (TODAY_CROWNS.includes(cc) && !republicGap(cc, y) && !(cc === 'KH' && y >= 1970 && y < 1993));
+  if (crowned && ['mil', 'pers', 'oneparty', 'multiauth', 'olig'].includes(d.cat)) {
+    if (d.cat === 'mil') return JUNTA('a kingdom ruled by its generals', 'the Prime Minister (a general)');
+    if (d.cat === 'pers') return KING(`a kingdom ruled by ${crown === 'the King' ? 'the King\'s strongman' : 'a strongman'}`, 'the Prime Minister');
+    if (d.cat === 'oneparty') return KING('a kingdom ruled by a single party', 'the Prime Minister');
+    return KING('a kingdom with a managed parliament', 'the Prime Minister');
+  }
   switch (d.cat) {
     case 'parl': return d.democracy ? DEMO(d.monarchy ? 'a parliamentary monarchy' : 'a parliamentary republic', 'the Prime Minister') : d.monarchy ? KING('a monarchy whose parliament is chosen by a narrow electorate', 'the Prime Minister') : OLIGARCHY('a parliamentary republic with a narrow franchise', 'the Prime Minister');
     case 'pres': if (cc === 'CH') return DEMO('the Swiss Confederation, governed by its Federal Council', 'the Federal Council');

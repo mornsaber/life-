@@ -27,6 +27,7 @@ import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { warMedals, independenceMedal } from './WarMedals.js';
 import { colonyHere } from '../world/Eras.js';
+import { purchaseEra } from './Purchase.js';
 
 /** Five-star titles by theatre; some forces have their own marshals. */
 const FIVE_STAR = {
@@ -127,6 +128,8 @@ function actingYear(ctx, svc) {
     return;
   }
   if (svc.grade >= (ACTING_TOP[svc.track] ?? 0) || svc.eval < 55 || svc.conscript || !rng.chance(0.3)) return;
+  // A purchase regiment fills its gaps by seniority without purchase, not acting rank (Purchase.js).
+  if (svc.track === 'officer' && svc.grade < 4 && purchaseEra(ctx.state, svc)) return;
   svc.acting = { substantive: svc.grade, since: age };
   svc.grade += 1;
   ctx.log(`Casualties left a gap in the chain of command. You were made acting ${rankTitles(svc)[svc.grade]}: the job, the pay, and none of the security.`, '⬆️', 'military');

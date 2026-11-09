@@ -17,6 +17,9 @@ import { yearNow } from '../world/Eras.js';
 export const PURCHASE_ABOLISHED = 1871;
 /** Regulation price of each officer grade (second lieutenant/ensign … lieutenant-colonel), in pounds. */
 const REGULATION = [450, 700, 1800, 3200, 4500];
+/** The cavalry's and the Foot Guards' regulation prices (cornet/ensign … lieutenant-colonel). */
+const CAVALRY = [840, 1190, 3225, 4575, 6175];
+const GUARDS = [1200, 2050, 4800, 8300, 9000];
 const POUND = 160;
 const OVER_REGULATION = 1.5;
 /** The corps that never sold commissions (engineers; the medical, legal and chaplains' departments). */
@@ -28,12 +31,12 @@ const SERVE_FIRST = [2, 2, 3, 3];
 export function purchaseEra(state, { nation, branch, track, specialty } = {}) {
   return (nation ?? state.character.countryId) === 'GB' && branch === 'army' && track === 'officer' && yearNow(state) < PURCHASE_ABOLISHED && !NOT_PURCHASED.includes(specialty);
 }
-/** What a grade's commission cost (today's dollars, over regulation as usual). Null above lieutenant-colonel. */
-export function commissionPrice(grade, specialty = 'infantry') {
-  const base = REGULATION[grade];
+/** What a grade's commission cost (today's dollars, over regulation as usual), by regiment: the line, the cavalry or the Guards. Null above lieutenant-colonel. */
+export function commissionPrice(grade, svc = null) {
+  const table = svc?.royalGuard === 'GB' ? GUARDS : String(svc?.mos ?? '').startsWith('army.19') ? CAVALRY : REGULATION;
+  const base = table[grade];
   if (base == null) return null;
-  const mult = specialty === 'aviation' ? 1 : specialty === 'armor' || specialty === 'cavalry' ? 1.4 : 1;
-  return Math.round((base * mult * POUND * OVER_REGULATION) / 1000) * 1000;
+  return Math.round((base * POUND * OVER_REGULATION) / 1000) * 1000;
 }
 export const ENSIGN_PRICE = commissionPrice(0);
 /** The next step can be bought this year: in the purchase era, below lieutenant-colonel, time served. */
@@ -59,7 +62,7 @@ export function purchaseYear(ctx, svc) {
     return true;
   }
   if (!rng.chance(0.6)) return true;
-  const cost = commissionPrice(svc.grade + 1, svc.specialty) - commissionPrice(svc.grade, svc.specialty);
+  const cost = commissionPrice(svc.grade + 1, svc) - commissionPrice(svc.grade, svc);
   ctx.prompt({
     type: 'military.purchaseStep', icon: '💷', title: 'A Step for Sale',
     text: `An officer above you is selling out. His commission can be yours, if you can pay the difference between your rank and his: $${cost.toLocaleString()} (regulation price and the usual sum over regulation, to the regimental agents).`,
@@ -75,7 +78,7 @@ export function purchaseYear(ctx, svc) {
 /** Leaving the army: sell your commission (before 1871), or the government's compensation for it (after). */
 export function sellOut(ctx, svc) {
   if (!svc?.purchased) return;
-  const value = commissionPrice(Math.min(svc.grade, REGULATION.length - 1), svc.specialty);
+  const value = commissionPrice(Math.min(svc.grade, REGULATION.length - 1), svc);
   if (!value) return;
   const before = yearNow(ctx.state) < PURCHASE_ABOLISHED;
   ctx.earn(value, before ? 'Sale of your commission' : 'Compensation for your purchased commission');
