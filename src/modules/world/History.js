@@ -40,6 +40,9 @@ import { postAbroad, postingOf, endPosting } from './Posting.js';
 import { arrive } from './Migration.js';
 import { empireColonies } from './Eras.js';
 import { colonialStanding } from './ColonialLife.js';
+import { closeBusiness } from '../business/BusinessEngine.js';
+import { workBlock } from './Regimes.js';
+import { presidencyInEra } from './Eras.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -759,12 +762,68 @@ function governmentChange(ctx) {
   const sig = `${cc}|${r.kind}|${r.name ?? ''}|${name}`;
   const prev = state.era.govSig;
   state.era.govSig = sig;
+  // What the change means for you (offices, business, work, church), whatever the name says.
+  const flags = { kind: r.kind, elections: r.elections ?? 'free', party: Boolean(r.party), business: r.business ?? 'free', women: r.women ?? 'equal', religion: r.religion ?? 'free', press: r.press ?? 'free', exit: r.exit ?? 'free', monarchy: !presidencyInEra(state, cc), cc };
+  const before = state.era.govFlags;
+  state.era.govFlags = flags;
+  if (before && before.cc === cc) regimeConsequences(ctx, before, flags, r);
   if (!prev || prev === sig || prev.split('|')[0] !== cc) return;
   const [, kind, rname, pname] = prev.split('|');
   const what = r.name ?? GOVERNMENT_FORM[r.kind] ?? r.kind;
   if (pname !== name) ctx.log(`🏛️ ${pname[0].toUpperCase()}${pname.slice(1)} is now ${name}.${rname !== (r.name ?? '') || kind !== r.kind ? ` ${what[0].toUpperCase()}${what.slice(1)}.` : ''}`, '🏛️', 'milestone');
   else ctx.log(`🏛️ The government has changed: ${name} is now ${what}.`, '🏛️', 'milestone');
 }
+/**
+ * When the form of government changes where you live, your life follows it: elected offices end when
+ * elections do (and campaigns with them); a presidency ends with a restored crown; a one-party state
+ * keeps only its own; private business is nationalised; work barred to women, a banned church and
+ * a censored press reach you; closed borders, and free elections returning, are news to you.
+ */
+function regimeConsequences(ctx, a, b, r) {
+  const { state } = ctx;
+  const p = state.politics;
+  const office = p?.office ? OFFICES[p.office.id] : null;
+  const noVote = (f) => f.elections === 'none' || f.party;
+  // Elections abolished (a junta, a dictatorship, a single party): elected offices and races end.
+  if (office && !noVote(a) && noVote(b) && office.selection !== 'appointed' && !p.office.viaParty) {
+    ctx.emit('politics:leave', { reason: b.party ? 'The single party took over and abolished the old offices' : 'The new regime dissolved the elected bodies' });
+  }
+  if (p?.campaign && noVote(b) && !noVote(a)) { p.campaign = null; ctx.log('Your campaign ended: there will be no election.', '🗳️', 'warn'); }
+  // A crown restored: the presidency is gone.
+  const now = p?.office ? OFFICES[p.office.id] : null;
+  if (now?.headOfState && now.selection !== 'appointed' && !a.monarchy && b.monarchy) {
+    ctx.emit('politics:leave', { reason: 'The monarchy was restored and the presidency abolished' });
+  }
+  // Free elections return.
+  if (noVote(a) && !noVote(b)) ctx.log('Elections are back: parties can organise and you can stand for office again (Politics tab).', '🗳️', 'good');
+  // Private enterprise nationalised.
+  if (a.business !== 'state' && b.business === 'state' && state.business?.current) {
+    const biz = state.business.current;
+    // The state takes the business, its assets and its debts: nothing comes back, nothing is owed.
+    biz.debts = {};
+    if (biz.ops?.loan) biz.ops.loan.balance = 0;
+    biz.cash = 0;
+    biz.assets = 0;
+    const cash = state.finances.cash;
+    closeBusiness(ctx, 'Nationalised by the state', { liquidation: 0 });
+    state.finances.cash = cash;
+    ctx.log(`The state nationalised ${biz.name}, its stock, its premises and its debts. There was no compensation.`, '🚩', 'bad');
+  }
+  // Work barred to women, a banned church, a censored press.
+  const job = state.career?.job;
+  if (job && a.women !== 'barred' && b.women === 'barred' && state.character.gender === 'female') {
+    const why = workBlock(state, getProfession(job.professionId));
+    if (why) { leaveJob(ctx, 'Women were barred from your work'); ctx.log('The new government barred women from your work. You were sent home.', '🚫', 'bad'); }
+  }
+  if (job && a.religion !== 'banned' && b.religion === 'banned' && CLERGY.includes(job.professionId)) {
+    leaveJob(ctx, 'The state closed the churches');
+    ctx.log('The new government closed the churches and the seminaries. Your ministry went underground, or ended.', '⛪', 'bad');
+  } else if (job && a.religion === 'free' && b.religion === 'restricted' && CLERGY.includes(job.professionId)) ctx.log('The state now licenses clergy and reads your sermons.', '⛪', 'warn');
+  if (job?.professionId === 'journalism' && a.press === 'free' && b.press === 'state') ctx.log('The censors moved into the newsroom. Every story now goes to the ministry first.', '📰', 'warn');
+  if (a.exit !== 'closed' && b.exit === 'closed') ctx.log('The borders are closed: citizens need permission to leave, and it isn\'t given.', '🚧', 'warn');
+  if (a.exit === 'closed' && b.exit !== 'closed') ctx.log('The borders are open again: you can travel and emigrate.', '🛂', 'good');
+}
+const CLERGY = ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc'];
 const GOVERNMENT_FORM = { democracy: 'a democracy', monarchy: 'a monarchy', absoluteMonarchy: 'an absolute monarchy', oneParty: 'a one-party state', junta: 'ruled by a junta', militarist: 'ruled by its generals', theocracy: 'a theocracy', colony: 'a colony', authoritarian: 'an authoritarian state', totalitarian: 'a totalitarian dictatorship', dictatorship: 'a dictatorship', hybrid: 'half free', fragile: 'a fragile state', transitional: 'in transition', apartheid: 'an apartheid state' };
 
 /**

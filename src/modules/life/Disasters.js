@@ -17,6 +17,7 @@ import { stateIdOf, regionOf } from './Regions.js';
 import { STATES, DISASTER_LABEL } from './States.js';
 import { mitigates } from '../career/engines/EmergencyMgmt.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { yearNow } from '../world/Eras.js';
 import { climateFactor, isWeather } from './ClimateMigration.js';
 
 const SEVERITY = ['', 'moderate', 'severe', 'catastrophic'];
@@ -90,7 +91,13 @@ export const Disasters = {
       if (optionId === 'evacuate') {
         ctx.spend(data.cost, `Evacuation — ${disaster.name}`, { allowDebt: true });
         ctx.stat('stress', 4);
-        ctx.log(`You loaded the car and drove inland with everyone else. ${sev >= 3 ? 'From a motel two hundred miles away, you watched it on the news.' : 'A few nights in a motel.'}`, '🚗', 'info');
+        // Evacuating as people did then: by car to a motel, by train to relatives, or on foot with a cart.
+        const y = yearNow(state);
+        const us = (state.character.countryId ?? 'US') === 'US';
+        const how = y >= 1955 && us ? `You loaded the car and drove inland with everyone else. ${sev >= 3 ? 'From a motel two hundred miles away, you watched it on the news.' : 'A few nights in a motel.'}`
+          : y >= 1950 ? `You packed what you could and went inland with everyone else. ${sev >= 3 ? `From a relative's house far away, you followed it on the ${y >= 1965 ? 'television' : 'radio'}.` : 'A few nights with relatives.'}`
+            : `You loaded a cart with what you could carry and went inland with everyone else. ${sev >= 3 ? 'News of it came days later.' : 'A few nights sleeping in a church hall.'}`;
+        ctx.log(how, y >= 1950 ? '🚗' : '🛒', 'info');
       } else if (optionId === 'shelter') {
         ctx.stat('stress', 6 + sev * 2);
         ctx.log(`You spent ${sev >= 2 ? 'a week' : 'three nights'} on a cot in a school gym with a few hundred neighbours and the Red Cross.`, '🏫', 'info');
