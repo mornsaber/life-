@@ -15,6 +15,7 @@ import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
 import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText } from '../modules/world/Eras.js';
 import { eraFirstNames, dataYear, setDataYear } from '../modules/world/HistoricalData.js';
+import { OLD_FIRST_NAMES, US_OLD_SURNAMES } from '../modules/world/data/oldNames.js';
 
 export const STATE_VERSION = 5;
 export const SAVE_KEY = 'lifesim.save.v4';
@@ -41,8 +42,10 @@ const HOMETOWNS = ['smalltown', 'midcity', 'sunbelt', 'chicago', 'denver', 'miam
 /** Whose names people have: set when a life starts or loads (one life plays at a time). */
 let namePool = null;
 let mix = null;
+let nameCountry = 'US';
 export function setNameCountry(countryId = 'US') {
   setCurrentCountry(countryId);
+  nameCountry = countryId ?? 'US';
   namePool = countryId !== 'US' ? COUNTRIES[countryId]?.names ?? null : null;
   // Immigrant-background names, as common as they are in the country.
   const d = namePool ? DIASPORA[countryId] : null;
@@ -50,14 +53,23 @@ export function setNameCountry(countryId = 'US') {
 }
 
 export function randomName(rng, gender) {
-  if (namePool) {
-    const pool = mix?.pools.length && rng.chance(mix.share) ? rng.pick(mix.pools) : namePool;
-    return { firstName: rng.pick(pool[gender] ?? pool.male), lastName: rng.pick(pool.last) };
-  }
-  // In the past, the first names of the day (the SSA's most popular names of the decade).
+  // The year people are being named in (HistoricalData): born about twenty years before.
   const y = dataYear();
-  const then = y < 2010 ? eraFirstNames(y - 20, gender) : null;
-  if (then && rng.chance(0.85)) return { firstName: rng.pick(then), lastName: rng.pick(LAST_NAMES) };
+  const born = y - 20;
+  if (namePool) {
+    // Today's immigrant communities mostly arrived after the war: before then, the old names.
+    const pool = born >= 1950 && mix?.pools.length && rng.chance(mix.share) ? rng.pick(mix.pools) : namePool;
+    const old = born < 1950 ? OLD_FIRST_NAMES[nameCountry] : null;
+    const share = born < 1920 ? 0.9 : born < 1950 ? 0.6 : 0;
+    const first = old && pool === namePool && rng.chance(share) ? rng.pick(old[gender] ?? old.male) : rng.pick(pool[gender] ?? pool.male);
+    return { firstName: first, lastName: rng.pick(pool.last) };
+  }
+  // In the past, the first names of the day (the SSA's most popular names of the decade) and the
+  // surnames of the older censuses.
+  const then = y < 2010 ? eraFirstNames(born, gender) : null;
+  const surname = () => (born < 1950 && rng.chance(born < 1920 ? 0.85 : 0.6) ? rng.pick(US_OLD_SURNAMES) : rng.pick(LAST_NAMES));
+  if (then && rng.chance(0.85)) return { firstName: rng.pick(then), lastName: surname() };
+  if (then) return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: surname() };
   return { firstName: rng.pick(FIRST_NAMES[gender] ?? FIRST_NAMES.male), lastName: rng.pick(LAST_NAMES) };
 }
 
