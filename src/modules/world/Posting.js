@@ -168,6 +168,8 @@ export const PostingModule = {
     // An international organisation moves its staff between stations itself (IntlOrgs.js): no gap at the end of a tour.
     const intlJob = INTL_ORG_PROFESSIONS[state.career.job?.professionId];
     if (p.kind === 'intl' && intlJob) return;
+    // A colonial tour ends with a choice (world/History.js colonialTours).
+    if (p.kind === 'colonial') return;
     if (state.character.age >= p.until || p.kind === 'intl') endPosting(ctx, p.kind === 'deployment' ? null : `Your time in ${postingLabel(p)} ended. You came home.`);
   },
 };

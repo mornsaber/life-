@@ -36,6 +36,9 @@ import { regimeHere } from './Regimes.js';
 import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { warsStarting, warsEnding, warIntensity, demographyAt } from './HistoricalData.js';
+import { postAbroad, postingOf, endPosting } from './Posting.js';
+import { arrive } from './Migration.js';
+import { empireColonies } from './Eras.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -736,9 +739,59 @@ function governmentChange(ctx) {
 }
 const GOVERNMENT_FORM = { democracy: 'a democracy', monarchy: 'a monarchy', absoluteMonarchy: 'an absolute monarchy', oneParty: 'a one-party state', junta: 'ruled by a junta', militarist: 'ruled by its generals', theocracy: 'a theocracy', colony: 'a colony', authoritarian: 'an authoritarian state', totalitarian: 'a totalitarian dictatorship', dictatorship: 'a dictatorship', hybrid: 'half free', fragile: 'a fragile state', transitional: 'in transition', apartheid: 'an apartheid state' };
 
+/**
+ * Colonial tours. Joining a colonial service from the ruling country posts you out to one of its
+ * territories for a tour of three to five years (you live there; home stays home). At the end of
+ * a tour, or when the job or the colony ends, you choose: another tour, home, or settle there.
+ */
+function postOut(ctx, colony = null) {
+  const { state, rng } = ctx;
+  const home = state.character.countryId ?? 'US';
+  const options = empireColonies(state, home);
+  if (!options.length) return null;
+  const cc = colony && options.includes(colony) ? colony : rng.pick(options);
+  const st = colonyStage(state, cc);
+  const years = rng.int(3, 5);
+  const p = postAbroad(ctx, { place: st?.name ?? cname(cc), kind: 'colonial', years, country: COUNTRIES[cc].name });
+  if (!p) return null;
+  p.colony = cc;
+  ctx.log(`You sailed for ${st?.name ?? cname(cc)}: a ${years}-year tour with ${state.career.job?.employer?.name ?? 'the service'}.`, '⛵', 'milestone');
+  return p;
+}
+function colonialTours(ctx) {
+  const { state } = ctx;
+  const job = state.career?.job;
+  const p = postingOf(state);
+  const colonial = job && PROFESSIONS[job.professionId]?.colonial && !job.nationalized;
+  // Hired at home into a colonial service: posted out.
+  if (colonial && !p && !colonyHere(state)) return postOut(ctx);
+  if (p?.kind !== 'colonial' || state.prompts.some((q) => q.type === 'history.tourEnds')) return undefined;
+  const independent = p.colony && !colonyStage(state, p.colony);
+  const why = !colonial ? 'jobEnded' : independent ? 'independence' : state.character.age >= p.until ? 'tourDone' : null;
+  if (!why) return undefined;
+  const where = postingLabelOf(p);
+  const text = { tourDone: `Your tour in ${where} is over.`, jobEnded: `You're no longer in the service, and still in ${where}.`, independence: `${cname(p.colony)} is independent. The new government is replacing the old administration's officers.` }[why];
+  return ctx.prompt({
+    type: 'history.tourEnds', icon: '⛵', title: why === 'tourDone' ? 'End of Your Tour' : 'Going Home?', text,
+    options: [
+      ...(colonial && empireColonies(state, state.character.countryId ?? 'US').some((cc) => cc !== p.colony) ? [{ id: 'again', label: '⛵ Home leave, then another tour', hint: 'The service posts you wherever it needs you' }] : []),
+      ...(colonial && why !== 'independence' ? [{ id: 'extend', label: `🌴 Stay on in ${cname(p.colony)} for another tour` }] : []),
+      { id: 'home', label: `🏠 Go home to ${cname(state.character.countryId ?? 'US')}`, hint: colonial ? 'You leave the service, with a gratuity' : '' },
+      { id: 'settle', label: `🏡 Settle in ${cname(p.colony)} for good`, hint: colonial ? 'You leave the service' : '' },
+    ],
+    data: { colony: p.colony, why },
+  });
+}
+const postingLabelOf = (p) => p.place ?? cname(p.colony);
+
 export const HistoryModule = {
   id: 'history',
   order: 0.9,
+
+  setup(engine) {
+    // Joining a colonial service at home: you sail at once.
+    engine.bus.on('career:hired', ({ ctx }) => { if (ctx.state.era) colonialTours(ctx); });
+  },
 
   init(state) {
     setEraState(null);
@@ -812,6 +865,7 @@ export const HistoryModule = {
     thronesOnTheirDates(ctx);
     endOfEmpire(ctx);
     dataWars(ctx);
+    colonialTours(ctx);
     sync(state);
     governmentChange(ctx);
     movementPrompt(ctx);
@@ -820,6 +874,35 @@ export const HistoryModule = {
   },
 
   resolvers: {
+    tourEnds(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const job = state.career?.job;
+      const inService = job && PROFESSIONS[job.professionId]?.colonial && !job.nationalized;
+      const p = postingOf(state);
+      if (optionId === 'extend' && p && inService) {
+        p.until = state.character.age + rng.int(3, 5);
+        return ctx.log(`You signed on for another tour in ${postingLabelOf(p)}.`, '🌴');
+      }
+      if (optionId === 'again' && inService) {
+        endPosting(ctx, 'Six months\' home leave, then a new posting.', { moving: true });
+        const others = empireColonies(state, state.character.countryId ?? 'US').filter((cc) => cc !== data.colony);
+        return postOut(ctx, others.length ? rng.pick(others) : data.colony);
+      }
+      if (optionId === 'settle') {
+        if (inService) leaveJob(ctx, 'Left the service to settle in the colony');
+        endPosting(ctx, null);
+        return arrive(ctx, data.colony, { visa: 'freeMovement', reason: `You stayed on in ${cname(data.colony)} for good: a house, a few acres, and the club on Saturdays.` });
+      }
+      // Home.
+      if (inService) {
+        const gratuity = Math.round((job.salary ?? 40000) * 0.5 / 100) * 100;
+        leaveJob(ctx, 'Came home from the colonies');
+        ctx.earn(gratuity, 'Colonial service gratuity');
+        ctx.log(`You came home with a gratuity of $${gratuity.toLocaleString()}, a sunburn and a trunk of stories.`, '🏠', 'good');
+      }
+      endPosting(ctx, `You came home to ${cname(state.character.countryId ?? 'US')}.`);
+      return undefined;
+    },
     leaveSchool(ctx, _data, optionId) {
       const { state } = ctx;
       const k = state.k12;
