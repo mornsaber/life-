@@ -32,6 +32,7 @@ import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } fro
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
+import { purchaseEra, purchaseYear, sellOut } from './Purchase.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -521,6 +522,16 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   // Abroad, officer cadets go through their country's academy (Sandhurst, Saint-Cyr, the IMA…).
   const academy = nation && track === 'officer' && direct == null && !conscript ? academyFor(nation, meetsEducation(state, { level: 'bachelor' })) : null;
   if (academy) { svc.cadet = true; svc.academy = academy; } else if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
+  // A bought commission (before 1871): straight to the regiment, no academy.
+  if (state.military.pendingPurchase && track === 'officer' && purchaseEra(state, svc)) {
+    const price = state.military.pendingPurchase;
+    ctx.spend(price, 'Purchase of a commission', { allowDebt: true });
+    svc.purchased = true;
+    svc.cadet = false;
+    delete svc.academy;
+    ctx.log(`You bought your commission through the regimental agents for $${price.toLocaleString()}.`, '💷', 'milestone');
+  }
+  state.military.pendingPurchase = null;
   state.military.service = svc;
   state.military.academyCredit = 0;
   if (prior) ctx.log(`${prior} year${prior > 1 ? 's' : ''} of prior service (earlier enlistments and academy years) count toward your retirement.`, '📜', 'good');
@@ -599,6 +610,8 @@ export function tryPromotion(ctx, svc) {
     return;
   }
   if (svc.track === 'officer' && svc.grade >= (CORPS_TOP_GRADE[svc.specialty] ?? 99)) return false;
+  // A purchase regiment (British Army, before 1871): steps are bought, or come by a death.
+  if (purchaseEra(ctx.state, svc) && svc.grade < 4) { purchaseYear(ctx, svc); return false; }
   // A small country's forces stop short of four stars (world/NationalForces.js TOP_GRADE).
   if (svc.track === 'officer' && svc.grade >= topOfficerGrade(svc.nation ?? 'US')) return false;
   // Top performers can be picked up a year early.
@@ -699,6 +712,7 @@ export function discharge(ctx, type, reason) {
   const rank = rankOf(svc);
 
   if (type === 'retired' || type === 'medical') careerEndAwards(ctx, svc);
+  sellOut(ctx, svc);
 
   state.military.history.push({
     branch: svc.branch,

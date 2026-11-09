@@ -26,6 +26,7 @@ import { SchoolActions, SchoolResolvers } from './Schools.js';
 import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
 import { TransitionActions, TransitionResolvers, transitionTick, veteranTick, onSeparation, onBusinessStarted } from './Transition.js';
 import { AssignmentActions, AssignmentResolvers } from './Assignments.js';
+import { purchaseEra, ENSIGN_PRICE } from './Purchase.js';
 
 const ENLISTED_CODE = (grade, abroad = false) => `${abroad ? 'OR' : 'E'}-${grade + 1}`;
 
@@ -172,8 +173,12 @@ export const MilitaryModule = {
       if (!check.ok) return ctx.toast(check.reason, 'warn');
       if (component === 'active' && state.education.enrolled) return ctx.toast('Finish or drop school first (or join the Reserves).', 'warn');
       const b = branchFor(state, branch) ?? BRANCHES[branch];
-      // No degree: the officer selection board first — aptitude tests, interviews and command tasks.
-      if (track === 'officer' && !direct && needsOfficerAcademy(state, track, null)) {
+      // Before 1871 a British Army commission is bought, not won at a selection board.
+      state.military.pendingPurchase = null;
+      if (purchaseEra(state, { branch, track })) {
+        if (state.finances.cash < ENSIGN_PRICE) return ctx.toast(`An ensign's commission costs $${ENSIGN_PRICE.toLocaleString()} (regulation price and over), and you can't raise it. Enlist in the ranks, or find a patron.`, 'warn');
+        state.military.pendingPurchase = ENSIGN_PRICE;
+      } else if (track === 'officer' && !direct && needsOfficerAcademy(state, track, null)) {
         if (yearlyCount(state, 'military.officerBoard')) return ctx.toast('You sat the officer selection board this year.', 'warn');
         bumpYearly(state, 'military.officerBoard');
         if (!ctx.rng.chance(officerBoardOdds(state))) {
@@ -294,6 +299,17 @@ export const MilitaryModule = {
   },
 
   resolvers: {
+    purchaseStep(ctx, data, optionId) {
+      const svc = ctx.state.military.service;
+      if (!svc || svc.grade !== data.grade) return;
+      if (optionId !== 'buy') return ctx.log('A richer officer bought the step over your head.', '💷');
+      if (!ctx.spend(data.cost, 'Purchase of a commission step')) return ctx.toast('You can\'t raise the money.', 'warn');
+      svc.grade += 1;
+      svc.yearsInGrade = 0;
+      svc.purchased = true;
+      svc.acting = null;
+      ctx.log(`You bought the step: promoted to ${rankOf(svc).title}.`, '💷', 'milestone');
+    },
     ...LeadershipResolvers,
     ...SpecialOpsResolvers,
     ...UcmjResolvers,
@@ -305,7 +321,7 @@ export const MilitaryModule = {
     leaveService: resolveLeaveService,
 
     chooseSpecialty(ctx, data, optionId) {
-      if (optionId === 'cancel') return;
+      if (optionId === 'cancel') { ctx.state.military.pendingPurchase = null; return; }
       // A broad specialty id (older callers) picks that specialty's first job.
       const job = MOS[optionId] ?? defaultMos(data.branch, data.track, optionId);
       if (!job) return ctx.toast('That job isn\'t open in this branch.', 'warn');
