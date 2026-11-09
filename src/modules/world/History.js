@@ -39,6 +39,7 @@ import { warsStarting, warsEnding, warIntensity, demographyAt } from './Historic
 import { postAbroad, postingOf, endPosting } from './Posting.js';
 import { arrive } from './Migration.js';
 import { empireColonies } from './Eras.js';
+import { colonialStanding } from './ColonialLife.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -680,7 +681,11 @@ function handOver(ctx, cc, st, job, rec, rng) {
     ctx.earn(comp, 'Severance');
     return ctx.log(`The new government nationalized ${firm}. You were let go with $${comp.toLocaleString()} in severance.`, '🏳️', 'warn');
   }
-  const keep = job.levelId !== 'governor' && rng.chance(rec.loyal ? 0.45 : 0.8);
+  // The night the flag comes down: you're on duty at the ceremony.
+  ctx.log(`At midnight you stood in uniform as the ${rulerAdj(st.ruler)} flag came down and ${country}'s went up. ${rec.helped ? 'Someone in the crowd you once helped caught your eye and nodded.' : rec.loyal ? 'You felt the crowd\'s eyes on your old uniform.' : 'The cheering went on until dawn.'}`, '🏳️', 'milestone');
+  // Officers who helped the movement are kept; loyalists who served the old order are let go first.
+  const odds = rec.helped && !rec.loyal ? 0.95 : rec.loyal && !rec.helped ? 0.45 : 0.8;
+  const keep = job.levelId !== 'governor' && rng.chance(odds);
   if (keep) {
     const name = SUCCESSOR[job.professionId]?.(adj) ?? `the ${adj} civil service`;
     job.nationalized = { cc, since: state.character.age, from: job.employer?.name ?? p.name };
@@ -707,7 +712,7 @@ function endOfEmpire(ctx) {
     leaveJob(ctx, 'Contract with the new government ended');
     return ctx.log('Your contract with the new government ran out, and a local officer took over your post. You came home.', '🏠');
   }
-  if (job.levelId !== 'governor' && ctx.rng.chance(0.3)) {
+  if (job.levelId !== 'governor' && ctx.rng.chance(colonialStanding(state) >= 65 ? 0.6 : colonialStanding(state) <= 30 ? 0.1 : 0.3)) {
     job.contractUntil = state.character.age + ctx.rng.int(3, 8);
     job.nationalized = { since: state.character.age, contract: true };
     return ctx.log(`The empire was gone, but the new government asked you to stay on, on contract, while it trained its own people. You stayed, for now.`, '📝', 'milestone');
@@ -784,6 +789,12 @@ function postOut(ctx, colony = null) {
 function colonialTours(ctx) {
   const { state } = ctx;
   const job = state.career?.job;
+  // On contract to a new government after independence: home when it runs out.
+  if (job?.contractUntil && job.nationalized?.contract && state.character.age >= job.contractUntil) {
+    leaveJob(ctx, 'Contract with the new government ended');
+    if (postingOf(state)) endPosting(ctx, null);
+    return ctx.log('Your contract ran out and a local officer you trained took over your post. You came home.', '🏠');
+  }
   const p = postingOf(state);
   const colonial = job && PROFESSIONS[job.professionId]?.colonial && !job.nationalized;
   // At a desk at home: when the stint is done, the choice again.
@@ -799,13 +810,19 @@ function colonialTours(ctx) {
   const why = !colonial ? 'jobEnded' : independent ? 'independence' : state.character.age >= p.until ? 'tourDone' : null;
   if (!why) return undefined;
   const where = postingLabelOf(p);
-  const text = { tourDone: `Your tour in ${where} is over.`, jobEnded: `You're no longer in the service, and still in ${where}.`, independence: `${cname(p.colony)} is independent. The new government is replacing the old administration's officers.` }[why];
+  if (why === 'independence' && !p.flagDown) {
+    p.flagDown = true;
+    ctx.log(`You watched the flag come down at midnight in ${cname(p.colony)}. ${colonialStanding(state) >= 65 ? 'Some of the new ministers shook your hand afterwards.' : colonialStanding(state) <= 30 ? 'Nobody in the crowd looked at you.' : 'You went home to the bungalow and sat up late.'}`, '🏳️', 'milestone');
+  }
+  const trusted = why === 'independence' && colonial && colonialStanding(state) >= 65;
+  const text = { tourDone: `Your tour in ${where} is over.`, jobEnded: `You're no longer in the service, and still in ${where}.`, independence: `${cname(p.colony)} is independent. The new government is replacing the old administration's officers.${trusted ? ' Its ministers have asked you to stay on for a few years, on contract.' : ''}` }[why];
   return ctx.prompt({
     type: 'history.tourEnds', icon: '⛵', title: why === 'tourDone' ? 'End of Your Tour' : 'Going Home?', text,
     options: [
       ...(colonial && empireColonies(state, state.character.countryId ?? 'US').some((cc) => cc !== p.colony) ? [{ id: 'again', label: '⛵ Home leave, then another tour', hint: 'The service posts you wherever it needs you' }] : []),
       ...(colonial && why !== 'independence' ? [{ id: 'extend', label: `🌴 Stay on in ${cname(p.colony)} for another tour` }] : []),
       ...(colonial ? [{ id: 'desk', label: `🏛️ A desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'} at home`, hint: 'Stay in the service, at home' }] : []),
+      ...(trusted ? [{ id: 'contract', label: `📝 Stay on, on contract to the new government`, hint: 'A few more years, then home' }] : []),
       { id: 'home', label: `🏠 Go home to ${cname(state.character.countryId ?? 'US')}`, hint: colonial ? 'You leave the service, with a gratuity' : '' },
       { id: 'settle', label: `🏡 Settle in ${cname(p.colony)} for good`, hint: colonial ? 'You leave the service' : '' },
     ],
@@ -914,6 +931,13 @@ export const HistoryModule = {
       if (optionId === 'extend' && p && inService) {
         p.until = state.character.age + rng.int(3, 5);
         return ctx.log(`You signed on for another tour in ${postingLabelOf(p)}.`, '🌴');
+      }
+      if (optionId === 'contract' && inService && p) {
+        job.contractUntil = state.character.age + rng.int(3, 6);
+        job.nationalized = { cc: data.colony, since: state.character.age, contract: true };
+        p.until = job.contractUntil;
+        p.kind = 'contract';
+        return ctx.log(`You stayed on in ${cname(data.colony)}, on contract to its new government, training the officers who'll replace you.`, '📝', 'milestone');
       }
       if (optionId === 'desk' && inService) {
         if (p) endPosting(ctx, `You came home to a desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'}.`);
