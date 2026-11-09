@@ -29,7 +29,7 @@ import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
-import { credentialExists, credentialRequired, diplomaExpected, CREDENTIAL_FROM } from '../world/Eras.js';
+import { credentialExists, credentialRequired, diplomaExpected, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -194,7 +194,7 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   if (held?.status === 'expired') return { ok: false, reason: 'Expired — renew it' };
   if (hasCredential(state, id)) return { ok: false, reason: 'Covered by a higher credential' };
   if (cred.grantedBy) return { ok: false, reason: cred.grantedBy };
-  if (!credentialExists(state, id)) return { ok: false, reason: `Doesn't exist yet (from about ${CREDENTIAL_FROM[id]})` };
+  if (!credentialExists(state, id)) return { ok: false, reason: CREDENTIAL_UNTIL[id] <= yearNow(state) ? `No longer issued (abolished about ${CREDENTIAL_UNTIL[id]})` : `Doesn't exist yet (from about ${CREDENTIAL_FROM[id]})` };
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };

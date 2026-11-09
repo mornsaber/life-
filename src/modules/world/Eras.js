@@ -644,8 +644,17 @@ export const CREDENTIAL_FROM = {
   adminCert: 1960, nationalBoard: 1994, ptoe: 1996, cfa: 1963, shrm: 1997, securityPlus: 2002, hazwoper: 1990, flagger: 1980, courtManager: 1970, lpc: 1976,
   psychLicense: 1950, pls: 1950, nabcep: 2003, courtInterpreter: 1978, sagAftra: 1933, cpt: 1990, forklift: 1999, cda: 1975, waterOperator: 1975, animalControlCert: 1980, drone: 2016,
 };
+/** Licences of their day, abolished or replaced later (the Board of Trade certificates gave way to STCW, the chauffeur's licence to the ordinary one). */
+export const CREDENTIAL_UNTIL = {
+  indentures: 1970, hackneyLicence: 1930, chauffeurLicence: 1965, mateCertificate: 1984, mastersCertificate: 1984, wirelessOperator: 1995, telegraphist: 1975,
+  shotfirer: 1995, mineManager: 1995, apothecary: 1907, teachersCertificate: 1975, pitmanShorthand: 1995, publican: 2005, dockRegistration: 1989,
+};
+Object.assign(CREDENTIAL_FROM, {
+  indentures: 1800, hackneyLicence: 1838, chauffeurLicence: 1903, mateCertificate: 1850, mastersCertificate: 1850, wirelessOperator: 1912, telegraphist: 1850,
+  shotfirer: 1872, mineManager: 1872, apothecary: 1815, midwife: 1902, teachersCertificate: 1846, pitmanShorthand: 1870, pedlar: 1871, publican: 1800, dockRegistration: 1947,
+});
 /** Did this licence or certification exist in the year you're living in? */
-export const credentialExists = (state, id) => !(CREDENTIAL_FROM[id] > yearNow(state));
+export const credentialExists = (state, id) => !(CREDENTIAL_FROM[id] > yearNow(state)) && !(CREDENTIAL_UNTIL[id] <= yearNow(state));
 /** Before the 1940s most working people had left school at 14: a high-school diploma wasn't asked for. */
 export const diplomaExpected = (state) => yearNow(state) >= 1945;
 
@@ -1192,9 +1201,38 @@ const INVENTION_FROM = { software: 1960, gadget: 1920, green: 1970, medical: 188
 export const inventionInEra = (state, id) => !(INVENTION_FROM[id] > yearNow(state));
 /** Universities and majors founded later: the Air Force Academy (1954), Computer Science (1965). */
 const UNI_FROM = { usafa: 1954 };
-const MAJOR_FROM = { computerScience: 1965, cybersecurity: 2000, dataScience: 2010 };
+const MAJOR_FROM = {
+  computerScience: 1965, cybersecurity: 2000, dataScience: 2010, nursing: 1909, business: 1881, accounting: 1900, internationalRelations: 1919, criminalJustice: 1960,
+  publicAdministration: 1924, environmentalScience: 1970, urbanStudies: 1960, paramedicine: 1990, fireScience: 1970, aviation: 1925, marineTransportation: 1874,
+  communications: 1908, socialWork: 1904, hospitalityMgmt: 1922, forensicScience: 1950, architecture: 1865, kinesiology: 1960, marketing: 1910, earlyChildhood: 1920,
+  supplyChain: 1980, psychology: 1880, nutrition: 1910, atmosphericScience: 1940, geomatics: 1950, communicationDisorders: 1940, militaryScience: 1916, agriculture: 1855,
+  economics: 1820, politicalScience: 1880, education: 1880, engineering: 1820,
+};
+/** Majors that stopped being offered as such (none yet: Classics, the backbone of a nineteenth-century degree, is still taught). */
+const MAJOR_UNTIL = {};
 export const uniInEra = (state, u) => !(UNI_FROM[u.id] > yearNow(state)) && !(SCHOOL_FROM[u.type] > yearNow(state));
-export const majorInEra = (state, id) => !(MAJOR_FROM[id] > yearNow(state));
+export const majorInEra = (state, id) => !(MAJOR_FROM[id] > yearNow(state)) && !(MAJOR_UNTIL[id] <= yearNow(state));
+/** Programmes by when they began: the first junior colleges (1901), MBAs (1908), nurse-anaesthesia, PA and dual degrees later. */
+const PROGRAM_ID_FROM = {
+  teacherPrep: 1984, premedPostbacc: 1960, linemanSchool: 1950, culinaryArts: 1946, interpreterCert: 1941, msAccounting: 1960, counselingMaster: 1960, dieteticsMS: 1970,
+  imd: 1970, mdphd: 1964, jdmba: 1970, paMaster: 1967, mph: 1916, mba: 1908, mpa: 1924, msw: 1904, mls: 1887, mortuaryScience: 1882, do: 1892, dc: 1897, od: 1910,
+  associate: 1901, phd: 1861, maritimeAcademy: 1874, dvm: 1879, machinistTech: 1900, radiologyTech: 1920, respiratoryTech: 1950,
+};
+export const PRESENT_PROGRAM_FROM = PROGRAM_ID_FROM;
+export const programIdInEra = (state, id) => !(PROGRAM_ID_FROM[id] > yearNow(state));
+/** What a degree was called in its day: the LL.B. before the J.D., Natural Philosophy before Physics. [until, name]. */
+const OLD_DEGREE_NAMES = {
+  jd: [[1965, 'Bachelor of Laws (LL.B., Law School)']], pharmd: [[1950, 'Graduate in Pharmacy (Ph.G.)'], [2000, 'Bachelor of Pharmacy (B.Pharm.)']],
+  dpt: [[1960, 'Physical Therapy Certificate'], [2000, 'B.S. Physical Therapy']], mot: [[1960, 'Occupational Therapy Diploma'], [2007, 'B.S. Occupational Therapy']],
+  crnaProgram: [[1990, 'Nurse Anesthesia Certificate'], [2022, 'Master of Nurse Anesthesia (CRNA)']], psyd: [[1973, 'Ph.D. in Clinical Psychology']], paMaster: [[2000, 'Physician Assistant Certificate']],
+  dds: [[1900, 'Doctor of Dental Surgery (Dental College)']], md: [[1910, 'Doctor of Medicine (Medical College)']], seminary: [[1900, 'Bachelor of Divinity (Seminary)']],
+  // Majors.
+  physics: [[1900, 'Natural Philosophy']], economics: [[1900, 'Political Economy']], biology: [[1880, 'Natural History'], [1960, 'Biology / Pre-Medical']], psychology: [[1900, 'Mental Philosophy']],
+  business: [[1950, 'Commerce']], nursing: [[1960, 'Nursing (Diploma)']], communications: [[1960, 'Journalism']], kinesiology: [[1990, 'Physical Education']], liberalArts: [[1900, 'Arts (Classical Course)']],
+  languages: [[1900, 'Modern Languages']], agriculture: [[1900, 'Agriculture (Land-Grant)']],
+};
+/** A degree's or major's name in the year being played. */
+export const degreeNameOfDay = (id, base) => (OLD_DEGREE_NAMES[id] ?? []).find(([until]) => eraYear() < until)?.[1] ?? base;
 
 /** Courses of their time, by the course's name: [pattern, first year]. */
 const PROGRAM_FROM = [

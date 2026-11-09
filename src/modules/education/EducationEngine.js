@@ -10,7 +10,7 @@
  * }
  */
 import { studyBlock } from '../world/Regimes.js';
-import { hasTech, subjectRight, eraStudyBlock, giBillExists, studentLoansExist } from '../world/Eras.js';
+import { hasTech, subjectRight, eraStudyBlock, giBillExists, studentLoansExist, programIdInEra, majorInEra, PRESENT_PROGRAM_FROM } from '../world/Eras.js';
 import { yellowRibbon } from '../military/Transition.js';
 import { meetsEducation, netWorth, yearlyCount, bumpYearly, highestDegree, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
@@ -229,6 +229,9 @@ export function enrollmentEligibility(state, programId, schoolId, major, { apply
   if (uni?.type === 'online' && !hasTech(state, 'internet')) return { ok: false, reason: 'No online universities yet' };
   const eraBlock = eraStudyBlock(state, { uni });
   if (eraBlock) return { ok: false, reason: eraBlock };
+  // Programmes and majors that didn't exist yet (the MBA before 1908, Computer Science before 1965).
+  if (!programIdInEra(state, programId)) return { ok: false, reason: `Not offered yet (from about ${PRESENT_PROGRAM_FROM[programId]})` };
+  if (major && !majorInEra(state, major)) return { ok: false, reason: 'That subject isn\'t taught yet' };
   const segregated = segregationHook?.(state, uni);
   if (segregated) return { ok: false, reason: segregated };
   if (uni && movesYou(state, uni) && state.military.service?.component === 'active') return { ok: false, reason: 'On active duty: study online or near your base' };

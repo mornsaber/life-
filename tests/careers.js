@@ -170,7 +170,7 @@ for (const [pid, p] of Object.entries(PROFESSIONS)) {
     for (const c of credentialPlan(state, l.req?.credentials ?? [])) {
       state.yearly = {};
       const e = pursueEligibility(state, c);
-      if (!e.ok && !CREDENTIALS[c]?.grantedBy && !/Held|Covered|In training/.test(e.reason)) flag(`${pid}.${l.id}`, `can't earn ${c} on the job: ${e.reason}`);
+      if (!e.ok && !CREDENTIALS[c]?.grantedBy && !/Held|Covered|In training|No longer issued/.test(e.reason)) flag(`${pid}.${l.id}`, `can't earn ${c} on the job: ${e.reason}`);
       grantCredential(ctx, c, { silent: true });
     }
   }

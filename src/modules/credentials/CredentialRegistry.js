@@ -343,6 +343,30 @@ for (const [id, families] of Object.entries(COURSE_FAMILIES)) {
   if (c.sponsors) c.sponsors.professions = [...new Set([...(c.sponsors.professions ?? []), ...members])];
 }
 
+/*
+ * Licences of their day: the papers a working life needed before the modern ones existed, each
+ * open only in its years (world/Eras.js CREDENTIAL_FROM / CREDENTIAL_UNTIL). A licence you hold
+ * stays on your list after it's abolished.
+ */
+Object.assign(CREDENTIALS, {
+  indentures: { name: 'Indentures Served (Apprenticeship)', icon: '📜', category: 'trades', kind: 'certification', requires: { age: 14 }, trainingYears: 4, cost: 300, exam: D('smarts', 0.1), valuedBy: ['trades', 'carpentry', 'plumbing', 'welding', 'blacksmith', 'millWork', 'automotive', 'ironworking'] },
+  hackneyLicence: { name: 'Hackney Carriage Driver\'s Licence', icon: '🐎', category: 'driving', kind: 'license', requires: { age: 18, noFelony: true }, cost: 80, exam: D('smarts', 0.25), renewYears: 1, renewCost: 20, valuedBy: ['coachman', 'transit'], revokeOn: ['felony'] },
+  chauffeurLicence: { name: 'Chauffeur\'s Licence', icon: '🚘', category: 'driving', kind: 'license', requires: { age: 18, credentials: ['driverLicense'] }, cost: 60, exam: D('smarts', 0.2), renewYears: 1, renewCost: 15, valuedBy: ['coachman', 'domesticService', 'trucking', 'transit'], suspendOn: { dui: 2 } },
+  mateCertificate: { name: 'Mate\'s Certificate of Competency (Board of Trade)', icon: '🧭', category: 'maritime', kind: 'license', requires: { age: 19 }, cost: 400, exam: D('smarts', 0.35), sponsors: { professions: ['merchantMarine', 'whaling'] }, valuedBy: ['merchantMarine', 'whaling', 'fishing'] },
+  mastersCertificate: { name: 'Master\'s Certificate of Competency (Board of Trade)', icon: '⚓', category: 'maritime', kind: 'license', requires: { age: 23, credentials: ['mateCertificate'] }, cost: 600, exam: D('smarts', 0.45), sponsors: { professions: ['merchantMarine', 'whaling'] }, valuedBy: ['merchantMarine', 'whaling', 'fishing', 'cruise'] },
+  wirelessOperator: { name: 'Wireless Operator\'s Certificate (Postmaster General)', icon: '📻', category: 'maritime', kind: 'license', requires: { age: 16 }, cost: 250, exam: D('smarts', 0.35), valuedBy: ['merchantMarine', 'telegraph', 'aviation', 'cruise'] },
+  telegraphist: { name: 'Telegraphist\'s Certificate (Morse)', icon: '📠', category: 'trades', kind: 'certification', requires: { age: 14 }, cost: 100, exam: D('smarts', 0.25), sponsors: { professions: ['telegraph', 'railroad', 'steamRailway', 'postal'] }, academy: ['telegraph'], valuedBy: ['telegraph', 'railroad', 'steamRailway', 'postal'] },
+  shotfirer: { name: 'Shotfirer\'s Certificate', icon: '🧨', category: 'trades', kind: 'certification', requires: { age: 21, experience: { professions: ['coalMining'], years: 3 } }, cost: 150, exam: D('smarts', 0.3), sponsors: { professions: ['coalMining'] }, academy: ['coalMining'], valuedBy: ['coalMining', 'oilGas'] },
+  mineManager: { name: 'First-Class Certificate of Competency (Mine Manager)', icon: '⛏️', category: 'trades', kind: 'license', requires: { age: 23, experience: { professions: ['coalMining'], years: 5 } }, cost: 900, exam: D('smarts', 0.5), sponsors: { professions: ['coalMining'] }, academy: ['coalMining'], valuedBy: ['coalMining'] },
+  apothecary: { name: 'Licentiate of the Society of Apothecaries', icon: '⚗️', category: 'health', kind: 'license', requires: { age: 21 }, trainingYears: 3, cost: 2500, exam: D('smarts', 0.45), valuedBy: ['medical', 'pharmacy'] },
+  midwife: { name: 'Certified Midwife (Central Midwives Board)', icon: '🤱', category: 'health', kind: 'license', requires: { age: 21 }, trainingYears: 1, cost: 800, exam: D('smarts', 0.3), renewYears: 5, renewCost: 50, valuedBy: ['nursing', 'medical', 'publicHealth'] },
+  teachersCertificate: { name: 'Teacher\'s Certificate (Pupil-Teacher and Training College)', icon: '🍎', category: 'government', kind: 'license', requires: { age: 18 }, trainingYears: 2, cost: 600, exam: D('smarts', 0.35), valuedBy: ['education', 'library'] },
+  pitmanShorthand: { name: 'Pitman Shorthand Certificate (100 wpm)', icon: '✍️', category: 'corporate', kind: 'certification', requires: { age: 14 }, cost: 120, exam: D('smarts', 0.3), valuedBy: ['typingPool', 'corporate', 'legalSupport', 'journalism', 'courts'] },
+  pedlar: { name: 'Pedlar\'s Certificate', icon: '🧺', category: 'hospitality', kind: 'license', requires: { age: 17, noFelony: true }, cost: 20, exam: D('smarts', 0.05), renewYears: 1, renewCost: 20, valuedBy: ['travellingSales', 'retail', 'milkRound'] },
+  publican: { name: 'Publican\'s Licence (Justices\' Licence)', icon: '🍺', category: 'hospitality', kind: 'license', requires: { age: 21, noFelony: true }, cost: 300, exam: D('smarts', 0.15), renewYears: 1, renewCost: 60, valuedBy: ['hospitality', 'culinary'], revokeOn: ['felony'] },
+  dockRegistration: { name: 'Registered Dock Worker (Dock Labour Board)', icon: '⚓', category: 'transit', kind: 'license', requires: { age: 18 }, cost: 0, exam: D('fitness', 0.15), sponsors: { professions: ['docks'] }, academy: ['docks'], valuedBy: ['docks', 'logistics'] },
+});
+
 export const CREDENTIAL_LIST = Object.entries(CREDENTIALS).filter(([, c]) => !c.retired).map(([id, c]) => ({ id, ...c }));
 
 /**

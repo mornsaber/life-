@@ -8,6 +8,7 @@
  * pre-med prerequisites → medical school).
  */
 
+import { degreeNameOfDay } from '../world/Eras.js';
 export const SCHOOLS = {
   community: { name: 'Riverside Community College', icon: '🏫', type: 'Community college', tuition: 4200, admission: 0, prestige: 0, public: true },
   technical: { name: 'Metro Technical Institute', icon: '🛠️', type: 'Trade school', tuition: 9000, admission: 0, prestige: 0, public: true },
@@ -66,9 +67,15 @@ export const MAJORS = {
   geomatics: { name: 'Geomatics & Surveying', icon: '📏', fields: ['surveying', 'engineering', 'planning'], levels: ['associate', 'bachelor'] },
   communicationDisorders: { name: 'Communication Sciences & Disorders', icon: '🗣️', fields: ['speechPathology', 'education'], levels: ['bachelor'], science: true },
   languages: { name: 'Foreign Languages', icon: '🈺', fields: ['interpreter', 'foreignService', 'intelligence', 'caseOfficer'], levels: ['bachelor', 'master'] },
+  classics: { name: 'Classics (Greek & Latin)', icon: '🏛️', fields: ['education', 'college', 'university', 'legalSupport', 'law', 'foreignService', 'clergy', 'catholicClergy', 'anglicanClergy', 'colonialService', 'library'], levels: ['bachelor', 'master'] },
   liberalArts: { name: 'Liberal Arts', icon: '🎭', fields: ['education', 'legalSupport', 'foreignService', 'library', 'nonprofit'], levels: ['associate', 'bachelor'] },
 };
 
+// A major's name in the year being played: Natural Philosophy, Political Economy, Commerce.
+for (const [id, m] of Object.entries(MAJORS)) {
+  const base = m.name;
+  Object.defineProperty(m, 'name', { get: () => degreeNameOfDay(id, base), set: () => {}, enumerable: true, configurable: true });
+}
 export const SCIENCE_MAJORS = Object.entries(MAJORS).filter(([, m]) => m.science).map(([id]) => id);
 
 /**
@@ -132,6 +139,11 @@ export const PROGRAMS = {
   jdmba: { name: 'J.D.–M.B.A. Joint Degree', type: 'professional', years: 4, requires: { level: 'bachelor' }, major: null, schools: ['state', 'private', 'elite'], costFactor: 1.55, minSmarts: 62, minGpa: 3.2, grants: ['jd', 'mba'], fields: ['law', 'corporate', 'finance'] },
   phd: { name: 'Doctor of Philosophy (Ph.D.)', type: 'doctorate', years: 5, requires: { level: 'bachelor' }, major: 'choose', majorLevel: 'master', schools: ['state', 'elite'], costFactor: 0, stipend: 32000, minSmarts: 75, minGpa: 3.4 },
 };
+// A degree's name in its day: the LL.B. before the J.D., the Ph.G. before the Pharm.D.
+for (const [id, p] of Object.entries(PROGRAMS)) {
+  const base = p.name;
+  Object.defineProperty(p, 'name', { get: () => degreeNameOfDay(id, base), set: () => {}, enumerable: true, configurable: true });
+}
 
 export const PROGRAM_GROUPS = [
   { label: 'Certificates & Trade Diplomas', ids: ['paralegal', 'electricalTech', 'plumbingTech', 'hvacTech', 'weldingTech', 'autoTech', 'linemanSchool', 'cosmetologySchool', 'culinaryArts', 'machinistTech', 'teacherPrep', 'premedPostbacc'] },
