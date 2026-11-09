@@ -138,6 +138,9 @@ export const RelationshipsModule = {
       if (!ex) return;
       if (optionId === 'coffee') { ex.relationship = clampRel(ex.relationship + 15); ctx.stat('happiness', 3); return void ctx.log(`Coffee with ${ex.firstName} turned into three hours. You're friends now, which is more than you expected.`, '☕', 'good'); }
       if (optionId === 'rekindle') {
+        // Someone else came along in the meantime: no rekindling (one partner at a time).
+        const now = partnerOf(state);
+        if (now && now.id !== ex.id) { ex.relationship = clampRel(ex.relationship + 5); return void ctx.log(`You thought about it, and thought about ${now.firstName}. You and ${ex.firstName} left it at a long coffee.`, '☕'); }
         if (rng.chance(0.55)) { ex.relation = 'partner'; ex.since = state.character.age; ex.relationship = clampRel(ex.relationship + 25); ctx.stat('happiness', 8); return void ctx.log(`It was still there. You and ${ex.firstName} are together again.`, '💞', 'good'); }
         return void ctx.log(`It wasn't there any more. You parted kindly this time.`, '🍂');
       }
