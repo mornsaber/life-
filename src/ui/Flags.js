@@ -59,6 +59,43 @@ const DRAW = {
   egyptKingdom: () => wrap(`<rect width="${W}" height="${H}" fill="#2E8B57"/><circle cx="27" cy="22.5" r="9" fill="#fff"/><circle cx="30" cy="22.5" r="7.5" fill="#2E8B57"/>${star(34, 16, 2, '#fff')}${star(37, 22.5, 2, '#fff')}${star(34, 29, 2, '#fff')}`, 'The flag of the Kingdom of Egypt'),
   portugalMonarchy: () => wrap(`${bands(['#1F3F8F', '#fff'], true)}<rect x="24" y="13" width="12" height="16" rx="2" fill="#fff" stroke="#C8102E" stroke-width="1.6"/><text x="30" y="12" font-size="6" text-anchor="middle" fill="#B8860B">♛</text>`, 'The flag of the Kingdom of Portugal'),
   libyaGreen: () => wrap(`<rect width="${W}" height="${H}" fill="#009A00"/>`, 'The green flag of Libya'),
+  // States that split off or were merged: the German and Italian states before unification, the
+  // Boer republics, the Free Cities, the divided Germany, Yemen and Vietnam.
+  bavaria: () => {
+    let d = '';
+    for (let r = 0; r < 6; r++) for (let c = 0; c < 9; c++) {
+      const x = c * (W / 8) - (r % 2 ? W / 16 : 0);
+      const y = r * (H / 5);
+      d += `<polygon points="${x},${y} ${x + W / 16},${y + H / 10} ${x},${y + H / 5} ${x - W / 16},${y + H / 10}" fill="${(r + c) % 2 ? '#0098D4' : '#fff'}"/>`;
+    }
+    return wrap(`<rect width="${W}" height="${H}" fill="#fff"/>${d}`, 'The flag of the Kingdom of Bavaria');
+  },
+  wurttemberg: () => wrap(bands(['#111', '#DD0000']), 'The flag of the Kingdom of Württemberg'),
+  saxony: () => wrap(bands(['#fff', '#009B3A']), 'The flag of the Kingdom of Saxony'),
+  baden: () => wrap(bands(['#FFD700', '#DD0000', '#FFD700']), 'The flag of the Grand Duchy of Baden'),
+  hamburg: () => wrap(`<rect width="${W}" height="${H}" fill="#DD0000"/><rect x="22" y="16" width="16" height="16" fill="#fff"/><rect x="20" y="12" width="5" height="6" fill="#fff"/><rect x="35" y="12" width="5" height="6" fill="#fff"/><rect x="27.5" y="8" width="5" height="9" fill="#fff"/><rect x="28" y="24" width="4" height="8" fill="#DD0000"/>`, 'The flag of the Free and Hanseatic City of Hamburg'),
+  frankfurt: () => wrap(`${bands(['#DD0000', '#fff'])}<text x="30" y="29" font-size="13" text-anchor="middle" fill="#fff" stroke="#DD0000" stroke-width="0.4">🦅</text>`, 'The flag of the Free City of Frankfurt'),
+  hesse: () => wrap(bands(['#DD0000', '#fff']), 'The flag of the Electorate of Hesse'),
+  weimar: () => wrap(bands(['#111', '#DD0000', '#FFCE00']), 'The black-red-gold of the Weimar Republic'),
+  twoSicilies: () => wrap(`<rect width="${W}" height="${H}" fill="#F8F6EE" stroke="#ccc"/><rect x="21" y="12" width="18" height="21" rx="3" fill="#1F4E9E"/><text x="30" y="27" font-size="11" text-anchor="middle" fill="#C9A227">⚜</text>`, 'The flag of the Kingdom of the Two Sicilies'),
+  papal: () => wrap(`${bands(['#FFE000', '#fff'], true)}<text x="45" y="28" font-size="13" text-anchor="middle" fill="#C9A227">⚿</text>`, 'The flag of the Papal States'),
+  habsburg: () => wrap(bands(['#111', '#FFD700']), 'The black-gold flag of the Habsburg monarchy'),
+  krakow: () => wrap(`${bands(['#fff', '#1F4E9E'])}`, 'The flag of the Free City of Kraków'),
+  danzig: () => wrap(`<rect width="${W}" height="${H}" fill="#C8102E"/><text x="15" y="12" font-size="7" text-anchor="middle" fill="#FFD700">♛</text><text x="15" y="23" font-size="9" text-anchor="middle" fill="#fff">✠</text><text x="15" y="34" font-size="9" text-anchor="middle" fill="#fff">✠</text>`, 'The flag of the Free City of Danzig'),
+  transvaal: () => wrap(`${bands(['#DD0000', '#fff', '#1F4E9E'])}<rect width="${W / 4}" height="${H}" fill="#009B3A"/>`, 'The Vierkleur of the South African Republic'),
+  orangeFreeState: () => {
+    const sh = H / 7;
+    const stripes = Array.from({ length: 7 }, (_, k) => `<rect x="0" y="${k * sh}" width="${W}" height="${sh + 0.3}" fill="${k % 2 ? '#F7941D' : '#fff'}"/>`).join('');
+    const cw = W * 0.35;
+    const canton = ['#DD0000', '#fff', '#1F4E9E'].map((c, k) => `<rect x="0" y="${k * sh}" width="${cw}" height="${sh + 0.3}" fill="${c}"/>`).join('');
+    return wrap(`${stripes}${canton}`, 'The flag of the Orange Free State');
+  },
+  blueEnsign: () => wrap(`<rect width="${W}" height="${H}" fill="#012169"/>${union(W / 2, H / 2)}<circle cx="45" cy="30" r="6" fill="#fff" stroke="#999" stroke-width="0.6"/>`, 'The Blue Ensign of a British colony'),
+  zulu: () => wrap(`<rect width="${W}" height="${H}" fill="#7A4A1D"/><text x="30" y="30" font-size="18" text-anchor="middle">🛡️</text>`, 'The shield of the Zulu Kingdom'),
+  quaiti: () => wrap(`${bands(['#DD0000', '#FFD700'])}<circle cx="30" cy="22.5" r="6" fill="#1F4E9E"/>`, 'The flag of the Qu\'aiti Sultanate'),
+  gdr: () => wrap(`${bands(['#111', '#DD0000', '#FFCE00'])}<circle cx="30" cy="22.5" r="8" fill="#DD0000" stroke="#FFCE00" stroke-width="1"/><text x="30" y="26.5" font-size="9" text-anchor="middle" fill="#FFCE00">⚒</text>`, 'The flag of the German Democratic Republic'),
+  southVietnam: () => wrap(`<rect width="${W}" height="${H}" fill="#FFDA00"/>${[18, 22.5, 27].map((y) => `<rect x="0" y="${y - 1.4}" width="${W}" height="2.8" fill="#DA251D"/>`).join('')}`, 'The flag of the Republic of Vietnam'),
+  southYemen: () => wrap(`${bands(['#CE1126', '#fff', '#111'])}<polygon points="0,0 22,22.5 0,45" fill="#3D8ED0"/>${star(7, 22.5, 4.5, '#CE1126')}`, 'The flag of the People\'s Democratic Republic of Yemen'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };
 

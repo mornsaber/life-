@@ -527,7 +527,28 @@ export function longevityFactor(state, age) {
 }
 
 /** The money of the day where you live (francs before the euro, the old peso, the Reichsmark). */
-export const periodCurrency = (cc, currency) => (ERA_YEAR < PRESENT ? dataCurrency(cc, ERA_YEAR, currency) : currency);
+export function periodCurrency(cc, currency) {
+  if (ERA_YEAR >= PRESENT) return currency;
+  // Your city's own state had its own money (the gulden in Munich, the ducat in Naples).
+  const s = ERA_STATE;
+  if (s && cc === (s.character?.countryId ?? 'US') && s.character?.regionId) {
+    const local = regionStateAt(s.character.regionId, ERA_YEAR);
+    if (local?.currency && currency) { const [code, symbol, name, perModern, fx] = local.currency; return ofTheDay({ code, symbol, name, perUsd: perModern == null ? null : currency.perUsd * perModern, perModern, fx }, currency); }
+  }
+  return ofTheDay(dataCurrency(cc, ERA_YEAR, currency), currency);
+}
+/**
+ * Money of the day: before 1914 (or where no fixed rate links an old currency to today's), today's
+ * dollars are deflated to that year's prices and converted at the period exchange rate (the gold
+ * parity), so a labourer's wage in 1850 Munich reads as a few hundred gulden, not tens of thousands.
+ */
+function ofTheDay(c, modern) {
+  if (!c || c === modern) return c;
+  if (c.fx != null && (ERA_YEAR < 1914 || c.perModern == null)) return { code: c.code, symbol: c.symbol, name: c.name, perUsd: c.fx * priceIndex(ERA_YEAR), ofTheDay: true };
+  return c.perUsd == null ? modern : { code: c.code, symbol: c.symbol, name: c.name, perUsd: c.perUsd };
+}
+/** The money where you are is shown as it was then (prices of the day), not in today's value. */
+export const moneyOfTheDay = (state) => Boolean(periodCurrency(state?.character?.countryId ?? 'US', { perUsd: 1 })?.ofTheDay);
 
 /** Past a climate tipping point, weather disasters climb faster. */
 export const climateTipped = (state) => futureOn(state, 'climateTipping');
@@ -773,6 +794,11 @@ export const usStars = (y) => US_STARS.filter(([from]) => from <= y).at(-1)?.[1]
 export function periodFlag(state, cc) {
   if (!state?.era || yearNow(state) >= PRESENT) return { img: cc };
   const y = yearNow(state);
+  // Your own city's state flies its own flag (Bavaria's lozenges, the Transvaal's Vierkleur).
+  if (cc === (state.character?.countryId ?? 'US') && state.character?.regionId) {
+    const local = regionStateAt(state.character.regionId, y);
+    if (local?.flag) return local.flag.length === 2 ? { img: local.flag.toUpperCase() } : { id: local.flag };
+  }
   const st = colonyStage(state, cc);
   if (st && st.ruler !== cc) return periodFlag(state, st.ruler);
   const ussr = hap(state, 'russianRevolution') && !hap(state, 'sovietCollapse');

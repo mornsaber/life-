@@ -17,7 +17,7 @@ import { isAbroad, US_ONLY, LOCAL_OFFICES, isCitizen } from '../world/Countries.
 import { partyBonus } from './Parties.js';
 import { generalShare, scandalDrag } from './Elections.js';
 import { stateIdOf } from '../life/Regions.js';
-import { presidencyInEra } from '../world/Eras.js';
+import { presidencyInEra, yearNow, PRESENT } from '../world/Eras.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
@@ -31,6 +31,9 @@ export function runEligibility(state, officeId) {
   if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
   if (office.headOfState && office.selection !== 'appointed' && !presidencyInEra(state, office.country)) return { ok: false, reason: 'No such office yet: the country isn\'t a republic of its own' };
+  // Today's juntas and transitional councils: an earlier life has the government of its own day.
+  if (office.presentOnly && state.era && yearNow(state) < PRESENT - 5) return { ok: false, reason: 'Not in this era: the country had a different government then' };
+  if (office.junta) return { ok: false, reason: `Held by the head of the junta: a senior army officer who comes to power in a coup, chosen by ${office.chosenBy}` };
   // One-party states: no open races. Government posts go to Party cadres the Organization
   // Department puts forward (CommunistParty.js); deputies are returned on the Party's list.
   if (regimeOf(here).party) {

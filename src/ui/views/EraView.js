@@ -13,6 +13,7 @@ export const GOVERNMENT_WORD = { democracy: 'A democracy', monarchy: 'A monarchy
 import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { demographyAt } from '../../modules/world/HistoricalData.js';
+import { moneyOfTheDay } from '../../modules/world/Eras.js';
 
 export const EVENT_LABELS = {
   napoleonicWars: 'the Napoleonic Wars', napoleonFalls: 'Napoleon falls', latinIndependence: 'the Americas rise against Spain', war1812: 'the War of 1812', cholera: 'the cholera',
@@ -73,7 +74,8 @@ export function eraCard(state) {
   return card(`The World in ${y}`, `${kv(rows)}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
-    ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}. Money is in today's dollars.</p>` : ''}`, { icon: '🕰️' });
+    ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}.</p>` : ''}
+    <p class="fine">${moneyOfTheDay(state) ? '💰 Money is shown as it was then: prices of the day, in the local currency.' : (state.character.countryId ?? 'US') === 'US' ? '💰 Money is in today\'s dollars.' : '💰 Money is today\'s value, in the local currency of the day.'}</p>`, { icon: '🕰️' });
 }
 
 /** After today: what this world's future has brought so far. */
