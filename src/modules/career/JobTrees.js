@@ -55,27 +55,43 @@ for (const [credId, careers] of Object.entries(REQUIRED_BY)) for (const id of ca
 
 /** Career fields for the job board (every profession appears in exactly one). */
 export const JOB_FIELDS = {
-  service: { label: 'Service & Retail', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cosmetology', 'cruise', 'funeral'] },
-  arts: { label: 'Arts, Sports & Fitness', icon: '🎭', ids: ['acting', 'music', 'athletics', 'fitness', 'design', 'contentCreator'] },
-  trades: { label: 'Trades & Transport', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'automotive', 'lineworker', 'trucking', 'publicWorks', 'forester', 'manufacturing', 'logistics', 'waterUtility'] },
-  construction: { label: 'Construction, Energy & Land', icon: '🏗️', ids: ['carpentry', 'ironworking', 'craneOperator', 'oilGas', 'fishing', 'agriculture', 'renewableEnergy'] },
-  travel: { label: 'Air, Sea & Rail', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad'] },
-  transit: { label: 'Public Transit & Driving', icon: '🚌', ids: ['transit', 'transitMaintenance', 'transitPolice', 'schoolBus', 'paratransit'] },
-  business: { label: 'Business & Finance', icon: '📈', ids: ['corporate', 'marketing', 'sales', 'humanResources', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'revenue', 'regulatory', 'nonprofit'] },
-  tech: { label: 'Tech, Science & Engineering', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'research', 'nationalLab', 'engineering', 'structuralEng', 'mechanicalEng', 'electricalEng', 'chemicalEng', 'aerospaceEng', 'petroleumEng', 'nuclearEng', 'architecture', 'dot', 'planning', 'environmental', 'meteorology', 'surveying', 'gameDevelopment'] },
-  health: { label: 'Health & Social Care', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'physicalTherapy', 'pharmacy', 'veterinary', 'ems', 'privateEms', 'publicHealth', 'socialWork', 'cps', 'caregiving', 'childcare'] },
-  therapy: { label: 'Therapy, Mental & Allied Health', icon: '🧠', ids: ['counseling', 'psychology', 'dietitian', 'imaging', 'respiratoryTherapy', 'dentalHygiene', 'occupationalTherapy', 'speechPathology', 'optometry', 'chiropractic'] },
-  safety: { label: 'Public Safety & Security', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'privatePolice', 'universityPolice', 'airportPolice', 'fire', 'airportFire', 'stateFire', 'privateFire', 'dispatch', 'emergencyManagement', 'gameWarden', 'parkService', 'tsa', 'privateSecurity', 'privateMilitary', 'animalControl'] },
-  corrections: { label: 'Corrections & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
-  law: { label: 'Law & Justice', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  education: { label: 'Education & Media', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'maritimeFaculty', 'library', 'journalism', 'interpreter'] },
-  government: { label: 'Government & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'postal', 'benefitsClaims', 'foreignService'] },
+  service: { label: 'Shops, Food & Hospitality', icon: '🛍️', ids: ['retail', 'culinary', 'hospitality', 'cruise', 'travellingSales', 'milkRound', 'domesticService'] },
+  personal: { label: 'Personal Care & Childcare', icon: '💇', ids: ['cosmetology', 'fitness', 'caregiving', 'childcare', 'funeral'] },
+  arts: { label: 'Arts, Media & Sport', icon: '🎭', ids: ['acting', 'music', 'athletics', 'design', 'contentCreator', 'journalism', 'interpreter'] },
+  trades: { label: 'Skilled Trades', icon: '🔧', ids: ['trades', 'plumbing', 'hvac', 'welding', 'carpentry', 'ironworking', 'craneOperator', 'automotive', 'lineworker', 'blacksmith'] },
+  industry: { label: 'Factories, Mines & Energy', icon: '🏭', ids: ['manufacturing', 'millWork', 'coalMining', 'oilGas', 'renewableEnergy', 'waterUtility', 'publicWorks', 'lamplighter'] },
+  land: { label: 'Farming, Fishing & Forestry', icon: '🌾', ids: ['agriculture', 'plantation', 'fishing', 'whaling', 'forester'] },
+  transport: { label: 'Driving, Delivery & Transit', icon: '🚚', ids: ['trucking', 'logistics', 'docks', 'coachman', 'transit', 'transitMaintenance', 'schoolBus', 'paratransit'] },
+  travel: { label: 'Air, Sea, Rail & Space', icon: '✈️', ids: ['aviation', 'charterAviation', 'flightAttendant', 'airTrafficControl', 'merchantMarine', 'railroad', 'steamRailway', 'spaceIndustry'] },
+  business: { label: 'Business, Finance & Property', icon: '📈', ids: ['corporate', 'marketing', 'sales', 'humanResources', 'finance', 'accounting', 'actuary', 'insurance', 'realestate', 'propertyManagement', 'tradingCompany'] },
+  office: { label: 'Office, Post & Communications', icon: '📞', ids: ['typingPool', 'switchboard', 'telegraph', 'postal'] },
+  digital: { label: 'Technology & Computing', icon: '💻', ids: ['tech', 'cybersecurity', 'dataScience', 'aiOps', 'gameDevelopment'] },
+  tech: { label: 'Science & Engineering', icon: '🔬', ids: ['research', 'nationalLab', 'engineering', 'structuralEng', 'mechanicalEng', 'electricalEng', 'chemicalEng', 'aerospaceEng', 'petroleumEng', 'nuclearEng', 'architecture', 'surveying', 'environmental', 'meteorology'] },
+  health: { label: 'Medicine, Nursing & Ambulance', icon: '🩺', ids: ['medical', 'nursing', 'travelNursing', 'physicianAssistant', 'dentistry', 'pharmacy', 'veterinary', 'ems', 'privateEms'] },
+  therapy: { label: 'Therapy & Allied Health', icon: '🧠', ids: ['counseling', 'psychology', 'physicalTherapy', 'occupationalTherapy', 'speechPathology', 'respiratoryTherapy', 'imaging', 'dentalHygiene', 'dietitian', 'optometry', 'chiropractic'] },
+  social: { label: 'Social Work & Charities', icon: '🤝', ids: ['socialWork', 'cps', 'publicHealth', 'nonprofit'] },
+  education: { label: 'Teaching & Libraries', icon: '🍎', ids: ['education', 'university', 'college', 'communityCollege', 'maritimeFaculty', 'library'] },
+  safety: { label: 'Police, Fire & Emergency', icon: '🚓', ids: ['police', 'sheriff', 'statePolice', 'gendarmerie', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice', 'fire', 'stateFire', 'airportFire', 'privateFire', 'dispatch', 'emergencyManagement'] },
+  security: { label: 'Security, Parks & Wardens', icon: '🛡️', ids: ['tsa', 'privateSecurity', 'privateMilitary', 'gameWarden', 'parkService', 'animalControl'] },
+  corrections: { label: 'Prisons & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
+  law: { label: 'Law & the Courts', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
+  government: { label: 'Civil Service & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'benefitsClaims', 'revenue', 'regulatory', 'dot', 'planning', 'foreignService'] },
+  federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
+  intel: { label: 'Intelligence', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
+  empire: { label: 'Empire & the Colonies', icon: '🌍', ids: ['colonialService', 'colonialPolice', 'colonialTroops', 'colonialMedical', 'gurkhaContingent'] },
   intl: { label: 'International Organisations', icon: '🌐', ids: ['unSecretariat', 'unAgencies', 'euInstitutions', 'nato', 'intlFinance', 'intlJustice', 'icrc', 'maltaRelief', 'maltaDiplomacy'] },
   holySee: { label: 'Faith & the Church', icon: '⛪', ids: ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc', 'romanCuria', 'holySeeDiplomacy', 'swissGuard', 'vaticanGendarmerie'] },
-  foreignForces: { label: 'Recruited Abroad', icon: '🗡️', ids: ['gurkhaContingent'] },
-  intel: { label: 'Intelligence Community', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
-  federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
 };
+
+/** The fields, in the broad kinds of work they belong to (the job board's headings). */
+export const FIELD_GROUPS = [
+  ['Everyday work', ['service', 'personal', 'arts']],
+  ['Hands-on & on the move', ['trades', 'industry', 'land', 'transport', 'travel']],
+  ['Office & professional', ['business', 'office', 'digital', 'tech', 'law']],
+  ['Care & teaching', ['health', 'therapy', 'social', 'education']],
+  ['Public service & security', ['safety', 'security', 'corrections', 'government', 'federalLE', 'intel']],
+  ['Empire, the world & the Church', ['empire', 'intl', 'holySee']],
+];
 
 /* ------------------------------------------------------------------ */
 /* National government careers abroad                                  */

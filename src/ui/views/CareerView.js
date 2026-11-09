@@ -24,7 +24,7 @@ import { currentLevel, seniorityTier, AGE_LIMIT_121, railBoard, RAIL_BOARDS } fr
 import { SPECIALTIES as MED_SPECIALTIES, FELLOWSHIPS, malpracticePremium, employerCoversPremium, paidClaims, isDoctor, TRAINING_LEVELS } from '../../modules/career/Medicine.js';
 import { laneOf, contractStep, isClassroom, SUMMER_JOBS, NBCT_STIPEND } from '../../modules/career/Teaching.js';
 import { hasCredential as holds } from '../../modules/credentials/LicensingEngine.js';
-import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS, professionsFor, fieldIdsFor } from '../../modules/career/JobTrees.js';
+import { PROFESSION_LIST, getProfession, SECTOR_LABEL, JOB_FIELDS, FIELD_GROUPS, professionsFor, fieldIdsFor } from '../../modules/career/JobTrees.js';
 import { applicationEligibility, promotionStatus, levelCheck, veteranPlacementNote } from '../../modules/career/CareerEngine.js';
 import { ladderFor, ABILITIES, TRACK_LABEL, lateralLevel } from '../../modules/career/Ladder.js';
 import { EMPLOYER_SIZES, ratingLabel, onBands, gradePrefix, payGradeLabel, payGradeShort, nextStepIn, BAND_MIN, BAND_MAX, BONUS_TARGET } from '../../modules/career/PayGrades.js';
@@ -377,8 +377,15 @@ function jobBoard(state, ui = {}) {
   const limit = Number(ui.jobLimit) || PAGE;
   const local = professionsFor(state);
   const open = local.filter((p) => applicationEligibility(state, p.id).ok);
-  const chips = [['open', `✅ Open to me (${open.length})`], ['all', `📋 All (${local.length})`], ...Object.entries(JOB_FIELDS).map(([id, f]) => [id, `${f.icon} ${f.label} (${fieldIdsFor(state, id).length})`]).filter(([id]) => fieldIdsFor(state, id).length)]
-    .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('');
+  // Open and All as chips; the fields in a picker, under the kinds of work they belong to.
+  const localIds = new Set(local.map((p) => p.id));
+  const inField = (id) => fieldIdsFor(state, id).filter((pid) => localIds.has(pid));
+  const fieldPicker = `<label class="sel job-field"><span>Field</span><select id="job-field" aria-label="Job field"><option value=""${['open', 'all'].includes(field) ? ' selected' : ''}>— Pick a field —</option>${FIELD_GROUPS.map(([label, ids]) => {
+    const opts = ids.filter((id) => JOB_FIELDS[id] && inField(id).length).map((id) => `<option value="${id}"${id === field ? ' selected' : ''}>${JOB_FIELDS[id].icon} ${esc(JOB_FIELDS[id].label)} (${inField(id).length})</option>`).join('');
+    return opts ? `<optgroup label="${esc(label)}">${opts}</optgroup>` : '';
+  }).join('')}</select></label>`;
+  const chips = [['open', `✅ Open to me (${open.length})`], ['all', `📋 All (${local.length})`]]
+    .map(([id, label]) => button(label, 'ui.jobField', { arg: id, variant: id === field ? 'tiny on' : 'tiny' })).join('') + fieldPicker;
   const sorts = Object.entries(SORTS).map(([id, [label]]) => button(label, 'ui.set', { arg: `jobSort=${id}`, variant: id === sort ? 'tiny on' : 'tiny' })).join('');
   const tools = `<div class="job-tools"><input type="search" id="job-search" placeholder="Search jobs…" aria-label="Search jobs" autocomplete="off"><div class="toggle-row" role="group" aria-label="Sort jobs">${sorts}</div></div>`;
   const where = remoteness(state);
@@ -390,17 +397,18 @@ function jobBoard(state, ui = {}) {
     if (!open.length) return `${header}<ul class="job-board"><li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li></ul>`;
     // Group open jobs by field; the first group starts expanded.
     const seen = new Set();
-    const groups = Object.entries(JOB_FIELDS).map(([id, f]) => {
-      const jobs = sorted(open.filter((p) => f.ids.includes(p.id) && !seen.has(p.id)));
-      jobs.forEach((p) => seen.add(p.id));
-      return { id, f, jobs };
-    }).filter((g) => g.jobs.length);
+    const fieldOf = (id) => ({ id, f: JOB_FIELDS[id], jobs: sorted(open.filter((p) => (JOB_FIELDS[id].ids.includes(p.id) || fieldIdsFor(state, id).includes(p.id)) && !seen.has(p.id))) });
+    let first = true;
+    const html = FIELD_GROUPS.map(([label, ids]) => {
+      const fields = ids.filter((id) => JOB_FIELDS[id]).map((id) => { const g = fieldOf(id); g.jobs.forEach((p) => seen.add(p.id)); return g; }).filter((g) => g.jobs.length);
+      if (!fields.length) return '';
+      return `<h4 class="sub">${esc(label)}</h4>${fields.map((g) => { const d = disclosure(`jobs.${g.id}`, `${g.f.icon} ${esc(g.f.label)}`, `<ul class="job-board">${g.jobs.map((p) => jobRow(state, p)).join('')}</ul>`, { count: g.jobs.length, open: first }); first = false; return d; }).join('')}`;
+    }).join('');
     const rest = sorted(open.filter((p) => !seen.has(p.id)));
-    if (rest.length) groups.push({ id: 'other', f: { icon: '🧩', label: 'Other' }, jobs: rest });
-    const html = groups.map((g, i) => disclosure(`jobs.${g.id}`, `${g.f.icon} ${esc(g.f.label)}`, `<ul class="job-board">${g.jobs.map((p) => jobRow(state, p)).join('')}</ul>`, { count: g.jobs.length, open: i === 0 })).join('');
-    return `${header}<div class="job-groups">${html}</div><p class="fine" id="job-count"></p>`;
+    const other = rest.length ? disclosure('jobs.other', '🧩 Other', `<ul class="job-board">${rest.map((p) => jobRow(state, p)).join('')}</ul>`, { count: rest.length }) : '';
+    return `${header}<div class="job-groups">${html}${other}</div><p class="fine" id="job-count"></p>`;
   }
-  const list = sorted(field === 'all' ? local : fieldIdsFor(state, field).map(getProfession));
+  const list = sorted(field === 'all' ? local : inField(field).map(getProfession));
   // Every row is in the page (so search finds them all); rows past the limit start hidden.
   const rows = list.map((p, i) => jobRow(state, p, i >= limit)).join('');
   const more = list.length > limit ? `<div class="row-end" id="job-more">${button(`Show ${Math.min(PAGE, list.length - limit)} more (${list.length - limit} left)`, 'ui.set', { arg: `jobLimit=${limit + PAGE}`, variant: 'small ghost' })}</div>` : '';

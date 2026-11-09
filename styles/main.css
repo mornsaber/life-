@@ -764,8 +764,10 @@ select:focus { border-color: var(--cyan); }
 .chips-row { display: flex; flex-wrap: wrap; gap: 6px; }
 .chips-row .btn { flex: 0 0 auto; width: auto; min-width: 0; padding: 5px 10px; border-radius: 999px; }
 .chips-row .btn .btn-label { white-space: nowrap; font-size: 13px; }
+.chips-row .job-field { flex: 1 1 220px; display: flex; align-items: center; gap: 6px; margin: 0; }
+.chips-row .job-field select { flex: 1; min-width: 0; padding: 6px 8px; }
 @media (max-width: 700px) {
-  .chips-row { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; margin: 0 -4px; }
+  .chips-row { flex-wrap: wrap; }
   .chips-row::-webkit-scrollbar { display: none; }
 }
 

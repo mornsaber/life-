@@ -228,6 +228,11 @@ document.addEventListener('change', (event) => {
     renderer.render(engine.state);
     return undefined;
   }
+  if (el.id === 'job-field') {
+    renderer.ui.jobField = el.value || 'open';
+    renderer.render(engine.state);
+    return undefined;
+  }
   if (el.id === 'log-kind') {
     renderer.ui.logFilter.kind = el.value;
     renderer.applyLogFilter();
