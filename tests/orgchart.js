@@ -31,7 +31,8 @@ const tests = {
     const all = flat(chart);
     assert.ok(all.filter((n) => n.you).length === 1, 'you, once');
     assert.ok(all.some((n) => /Chief of Police/.test(n.title)));
-    assert.ok(chart.children.length >= 2, 'other departments shown');
+    assert.equal(chart.title, 'Answers to', 'the authority above the organisation');
+    assert.ok(chart.children[0].children.length >= 2, 'other departments shown');
     assert.match(VIEWS.career(state), /org-chart/);
   },
   'charts work for jobs everywhere they can be held'() {

@@ -11,7 +11,8 @@ import { officialStyle } from '../../modules/world/Styles.js';
 import { oneParty, partyHere, rankTitle, govPostRanks } from '../../modules/politics/CommunistParty.js';
 import { crownCards } from './CrownCard.js';
 import { LAWS, levelValue, describeValue } from '../../modules/politics/Laws.js';
-import { esc, money, button, card, chip, meter, kv, empty, disclosure, select } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, empty, disclosure, select, orgTree } from '../Components.js';
+import { governmentChart } from '../../modules/org/OrgChart.js';
 import { OFFICES, OFFICE_ORDER, ENDORSEMENTS, runEligibility, voteShare, scandalPenalty } from '../../modules/politics/index.js';
 import { appointmentEligibility } from '../../modules/politics/Campaigns.js';
 import { stateOf } from '../../modules/life/Regions.js';
@@ -228,6 +229,7 @@ export function politicsView(state) {
     ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}`}
     ${partyCard(state)}
     ${governmentCard(state)}
+    ${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}
     ${legislatureCards(state)}
     ${card('Political History', `${styleNote(state)}${history}${results}`, { icon: '🗂️' })}`;
 }
