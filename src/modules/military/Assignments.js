@@ -29,6 +29,7 @@ import { isMarried } from '../people/People.js';
 import { awardMedal } from './MedalEngine.js';
 import { rankOf, commission, discharge } from './MilitaryEngine.js';
 import { localDuty, localCommissioning, localServiceChief, localChairman, localTopEnlisted, appointingAuthority } from '../world/MilitaryLocal.js';
+import { historicDuty, historicTopTitle, historicCommissioning } from './MilitaryHistory.js';
 
 const BY_BRANCH = (army, navy, airforce, marines, coastguard, extra = {}) => ({ army, guard: army, navy, airforce, spaceforce: airforce, marines, coastguard, ...extra });
 
@@ -104,17 +105,20 @@ const TOP_PAY = { enlisted: 30000, officer: 40000 };
 export function dutyFor(svc, id) {
   const a = ASSIGNMENTS[id];
   if (!a) return null;
+  // Duties that hadn't been created yet (the Joint Staff, ROTC, embassy guards), and their old names.
+  const era = historicDuty(id, svc?.branch);
+  if (era === null) return null;
   if (svc?.nation) return localDuty(svc.nation, svc.branch, id, a);
-  const name = a.names[svc.branch];
-  return name ? { name, place: a.places?.[svc.branch] ?? null, desc: a.desc, flavor: a.flavor } : null;
+  const name = era.name ?? a.names[svc.branch];
+  return name ? { name, place: era.place !== undefined ? era.place : a.places?.[svc.branch] ?? null, desc: a.desc, flavor: a.flavor } : null;
 }
 const pickName = (a, svc) => dutyFor(svc, Object.keys(ASSIGNMENTS).find((k) => ASSIGNMENTS[k] === a))?.name ?? a.names[svc.branch] ?? Object.values(a.names)[0];
 export const assignmentName = (svc, id) => pickName(ASSIGNMENTS[id], svc);
 /** Senior posts and programmes, by country. */
-export const commissioningProgram = (svc) => (svc.nation ? localCommissioning(svc.nation) : COMMISSIONING[svc.branch]);
-const topEnlistedTitle = (svc) => (svc.nation ? localTopEnlisted(svc.nation, svc.branch) : TOP_ENLISTED[svc.branch]);
-const serviceChiefTitle = (svc) => (svc.nation ? localServiceChief(svc.nation, svc.branch) : SERVICE_CHIEF[svc.branch]);
-const chairmanTitle = (svc) => (svc.nation ? localChairman(svc.nation) : CHAIRMAN);
+export const commissioningProgram = (svc) => historicCommissioning(svc.nation ? localCommissioning(svc.nation) : COMMISSIONING[svc.branch]);
+const topEnlistedTitle = (svc) => (svc.nation ? localTopEnlisted(svc.nation, svc.branch) : historicTopTitle('enlisted', svc.branch, TOP_ENLISTED[svc.branch]));
+const serviceChiefTitle = (svc) => (svc.nation ? localServiceChief(svc.nation, svc.branch) : historicTopTitle('chief', svc.branch, SERVICE_CHIEF[svc.branch]));
+const chairmanTitle = (svc) => (svc.nation ? localChairman(svc.nation) : historicTopTitle('chairman', svc.branch, CHAIRMAN));
 const FIELDS = { infantry: 'politicalScience', engineer: 'engineering', intel: 'internationalRelations', cyber: 'computerScience', medic: 'nursing', logistics: 'business', aviation: 'aviation', legal: 'criminalJustice' };
 
 export function assignmentEligibility(state, id) {

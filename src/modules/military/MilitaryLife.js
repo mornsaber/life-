@@ -18,10 +18,11 @@ import { branchDetailTick } from './CareerFields.js';
 import { nationalBases, nationalOverseas } from '../world/NationalForces.js';
 import { postAbroad, endPosting } from '../world/Posting.js';
 import { yearNow } from '../world/Eras.js';
+import { historicHomeBases, historicOverseas } from './MilitaryHistory.js';
 
 /** Bases and overseas postings: your own country's when you serve in a national force. */
-const basesFor = (svc) => (svc.nation ? nationalBases(svc.nation, svc.branch) : BASES[svc.branch] ?? []);
-const overseasFor = (svc) => (svc.nation ? nationalOverseas(svc.nation, svc.branch) : OVERSEAS[svc.branch] ?? []);
+const basesFor = (svc) => (svc.nation ? nationalBases(svc.nation, svc.branch) : historicHomeBases(svc.branch, BASES[svc.branch] ?? []));
+const overseasFor = (svc) => (svc.nation ? nationalOverseas(svc.nation, svc.branch) : historicOverseas(svc.branch, OVERSEAS[svc.branch] ?? []));
 
 /** Overseas duty stations: [country, base, tour years, accompanied tour possible]. */
 export const OVERSEAS = {

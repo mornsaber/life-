@@ -9,6 +9,7 @@
 import { addHonor } from '../../core/State.js';
 import { localMedal } from '../world/Honours.js';
 import { WAR_MEDALS } from './WarMedals.js';
+import { historicMedal, sovereignWord } from './MilitaryHistory.js';
 
 /** Ribbon stripes are [color, relative width] from left to right. */
 export const MEDALS = {
@@ -89,16 +90,19 @@ export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false
   if (!medal) throw new Error(`Unknown medal ${medalId}`);
   // Other forces award their own decorations (and some have no equivalent: no Purple Heart in Britain).
   const nation = ctx.state.military.service?.nation ?? (ctx.state.military.service ? null : ctx.state.military.history?.at(-1)?.nation) ?? null;
-  const local = localMedal(nation, medalId, branch);
+  // The award as it stood in the year (military/MilitaryHistory.js): a Certificate of Merit before the Medal of Honor.
+  const hist = historicMedal(nation, medalId, branch);
+  if (hist === null) return null;
+  const local = hist?.borrowed ? localMedal(hist.borrowed, medalId, branch) : hist ?? localMedal(nation, medalId, branch);
   if (local === null) return null;
-  const name = local?.name ?? medalName(medalId, branch);
+  const name = (local?.name ?? medalName(medalId, branch)).replace(/\b(King's|Queen's)\b/, sovereignWord());
   valorDevice = valorDevice && !nation;
   addHonor(ctx.state, {
     id: medalId,
     source: 'military',
     name,
-    icon: medal.icon,
-    ribbon: local?.ribbon ?? medal.ribbon,
+    icon: local?.icon ?? medal.icon,
+    ribbon: local && 'ribbon' in local && hist ? local.ribbon : local?.ribbon ?? medal.ribbon,
     // Some decorations are grades of an order (the OBE, the DSO, the Légion d'honneur) or carry letters (VC, MC).
     ...(local?.post ? { post: local.post } : {}),
     ...(local?.order ? { order: local.order, grade: local.grade, country: nation } : {}),
@@ -110,7 +114,7 @@ export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false
     posthumous,
   });
   const label = `${name}${valorDevice ? ' with "V" device' : ''}${posthumous ? ' (posthumously)' : ''}`;
-  ctx.log(`Awarded the ${label}. ${citation ?? ''}`.trim(), medal.icon, 'honor');
+  ctx.log(`${/^(Mentioned|Brevet|Thanks|Letter|Cited)/.test(name) ? `${label}.` : `Awarded the ${label}.`} ${citation ?? ''}`.trim(), local?.icon ?? medal.icon, 'honor');
   if (!posthumous) ctx.toast(`🎖️ ${label}`, 'honor');
   return name;
 }
