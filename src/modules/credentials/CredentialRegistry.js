@@ -366,6 +366,11 @@ Object.assign(CREDENTIALS, {
   publican: { name: 'Publican\'s Licence (Justices\' Licence)', icon: '🍺', category: 'hospitality', kind: 'license', requires: { age: 21, noFelony: true }, cost: 300, exam: D('smarts', 0.15), renewYears: 1, renewCost: 60, valuedBy: ['hospitality', 'culinary'], revokeOn: ['felony'] },
   dockRegistration: { name: 'Registered Dock Worker (Dock Labour Board)', icon: '⚓', category: 'transit', kind: 'license', requires: { age: 18 }, cost: 0, exam: D('fitness', 0.15), sponsors: { professions: ['docks'] }, academy: ['docks'], valuedBy: ['docks', 'logistics'] },
 });
+// Licences of their day are national (the Board of Trade, the Home Office, the justices' bench).
+for (const id of ['indentures', 'hackneyLicence', 'chauffeurLicence', 'mateCertificate', 'mastersCertificate', 'wirelessOperator', 'telegraphist', 'shotfirer', 'mineManager', 'apothecary', 'midwife', 'teachersCertificate', 'pitmanShorthand', 'pedlar', 'publican', 'dockRegistration']) {
+  CREDENTIALS[id].jurisdiction = 'national';
+  CREDENTIALS[id].reciprocity = null;
+}
 
 export const CREDENTIAL_LIST = Object.entries(CREDENTIALS).filter(([, c]) => !c.retired).map(([id, c]) => ({ id, ...c }));
 

@@ -56,7 +56,7 @@ const STARS = ['', '★', '★★', '★★★'];
 /** "★★★ University of Oxford (Oxford) 🚚": prestige, name, city, and whether you'd move. */
 function uniLabel(state, u) {
   const here = state.character.countryId ?? 'US';
-  const flag = u.country !== here ? `${flagImg(u.country) || ''} ` : '';
+  const flag = u.country !== here ? `${COUNTRIES[u.country]?.flag ?? ''} ` : '';
   return `${flag}${STARS[u.prestige ?? 0] ? `${STARS[u.prestige]} ` : ''}${u.name}${u.region || u.offshore ? ` (${placeOf(u)})` : ' (online)'}${movesYou(state, u) ? ' 🚚' : ''}`;
 }
 
