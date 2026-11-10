@@ -32,7 +32,7 @@ import { nationalBranch, nationalPay, nationalExposure, armyReserveIsGuard } fro
 import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
-import { purchaseEra, purchaseYear, sellOut } from './Purchase.js';
+import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -370,6 +370,10 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     if (branchId !== 'army' && branchId !== 'guard') return { ok: false, reason: 'Warrant officers come from the enlisted ranks' };
     if (age < 18 || age > 32) return { ok: false, reason: 'Flight school: age 18–32' };
     if (!meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
+  } else if (track === 'officer' && purchaseEra(state, { nation: isAbroad(state) ? countryOf(state).id : 'US', branch: branchId, track })) {
+    // Before 1871 a British ensign bought his commission at sixteen: no degree, no selection board.
+    if (age < PURCHASE_MIN_AGE || age > 35) return { ok: false, reason: `Commissions by purchase: age ${PURCHASE_MIN_AGE}–35` };
+    if (purchaseMeans(state) < firstCommissionPrice('line')) return { ok: false, reason: `A commission costs $${firstCommissionPrice('line').toLocaleString()} or more; you and your family can raise $${purchaseMeans(state).toLocaleString()}` };
   } else if (track === 'officer') {
     // Most other forces take officer cadets straight from school (Sandhurst, Duntroon, the NDA); the US wants a degree.
     const abroad = isAbroad(state);
@@ -524,12 +528,19 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   if (academy) { svc.cadet = true; svc.academy = academy; } else if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
   // A bought commission (before 1871): straight to the regiment, no academy.
   if (state.military.pendingPurchase && track === 'officer' && purchaseEra(state, svc)) {
-    const price = state.military.pendingPurchase;
-    ctx.spend(price, 'Purchase of a commission', { allowDebt: true });
+    const pending = state.military.pendingPurchase;
+    const price = typeof pending === 'number' ? pending : pending.price;
+    const regiment = typeof pending === 'number' ? 'line' : pending.regiment;
+    // You pay what you can; your family finds the rest.
+    const own = Math.min(Math.max(0, state.finances.cash), price);
+    if (own) ctx.spend(own, 'Purchase of a commission');
+    const family = price - own;
     svc.purchased = true;
+    svc.regiment = regiment;
+    if (regiment === 'guards') svc.royalGuard = 'GB';
     svc.cadet = false;
     delete svc.academy;
-    ctx.log(`You bought your commission through the regimental agents for $${price.toLocaleString()}.`, '💷', 'milestone');
+    ctx.log(`You bought ${REGIMENTS[regiment]?.name ?? 'your commission'} through the regimental agents for $${price.toLocaleString()}${family ? `, $${family.toLocaleString()} of it from your family` : ''}.`, '💷', 'milestone');
   }
   state.military.pendingPurchase = null;
   state.military.service = svc;

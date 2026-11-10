@@ -43,6 +43,15 @@ import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
 import { orgInEra } from '../../modules/world/Eras.js';
+import { purchaseEra, REGIMENTS, firstCommissionPrice, familyPurse, PURCHASE_MIN_AGE } from '../../modules/military/Purchase.js';
+
+/** Before 1871: how a British commission is bought, what it costs, and what you can raise. */
+function purchaseNote(state, b) {
+  if (b.id !== 'army' || !purchaseEra(state, { nation: isAbroad(state) ? countryOf(state).id : 'US', branch: 'army', track: 'officer' })) return '';
+  const fam = familyPurse(state);
+  const prices = Object.entries(REGIMENTS).map(([id, r]) => `${r.icon} ${esc(r.short)} ${money(firstCommissionPrice(id))}`).join(' · ');
+  return `<p class="fine">💷 <b>Commissions are bought</b> until the Army Regulation Act of 1871: from age ${PURCHASE_MIN_AGE}, no degree or selection board. ${prices}. Each later step is bought too, when a vacancy comes up. You have ${money(Math.max(0, state.finances.cash))}${fam === Infinity ? '; your family will pay the rest' : fam ? `; your family can add ${money(fam)}` : '; your family can\'t help'}. Press <b>Officer · Regular</b> to choose a regiment.</p>`;
+}
 
 /** A rank code (E-5, O-3, OR-4) for a grade on a track, in the service's own system. */
 const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
@@ -65,6 +74,7 @@ function recruitingOffice(state) {
     return `<li class="branch-row"><details class="branch-fold" data-key="recruit.${b.id}">
       <summary class="branch-name"><span class="branch-icon">${b.icon}</span><div><b>${b.name}</b><small>${open.length ? `Open to you: ${open.join(' and ')}` : 'Not open to you now'}</small></div></summary>
       <small class="fine">${esc(b.motto)}</small>
+      ${purchaseNote(state, b)}
       <div class="branch-btns">
         ${b.officerOnly ? '' : `${b.reserveOnly ? '' : btn('enlisted', 'active', enlisted, abroad ? 'Enlist · Regular' : 'Enlist · Active')}${b.activeOnly || noReserve ? '' : btn('enlisted', 'reserve', enlisted, b.reserveOnly ? 'Enlist' : 'Enlist · Reserve')}`}
         ${b.reserveOnly ? '' : btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : abroad ? 'Officer · Regular' : 'Officer · Active')}${b.activeOnly || noReserve ? '' : btn('officer', 'reserve', officer, b.reserveOnly ? 'Officer' : 'Officer · Reserve')}${b.id === 'army' && !abroad ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}

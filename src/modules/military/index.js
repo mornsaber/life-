@@ -26,7 +26,7 @@ import { SchoolActions, SchoolResolvers } from './Schools.js';
 import { CareerFieldActions, CareerFieldResolvers } from './CareerFields.js';
 import { TransitionActions, TransitionResolvers, transitionTick, veteranTick, onSeparation, onBusinessStarted } from './Transition.js';
 import { AssignmentActions, AssignmentResolvers } from './Assignments.js';
-import { purchaseEra, ENSIGN_PRICE } from './Purchase.js';
+import { purchaseEra, REGIMENTS, firstCommissionPrice, purchaseMeans, familyPurse } from './Purchase.js';
 
 const ENLISTED_CODE = (grade, abroad = false) => `${abroad ? 'OR' : 'E'}-${grade + 1}`;
 
@@ -167,7 +167,7 @@ export const MilitaryModule = {
     /** arg: 'branch:track:component' — opens the job (MOS) selection. */
     enlist(ctx, arg) {
       const { state } = ctx;
-      const [branch, track, component] = String(arg).split(':');
+      const [branch, track, component, regiment] = String(arg).split(':');
       const direct = track === 'officer' && hasDirectPath(state, branch);
       const check = enlistmentEligibility(state, branch, track, component, { maxOfficerAge: direct ? DIRECT_MAX_AGE : 39 });
       if (!check.ok) return ctx.toast(check.reason, 'warn');
@@ -176,8 +176,21 @@ export const MilitaryModule = {
       // Before 1871 a British Army commission is bought, not won at a selection board.
       state.military.pendingPurchase = null;
       if (purchaseEra(state, { branch, track })) {
-        if (state.finances.cash < ENSIGN_PRICE) return ctx.toast(`An ensign's commission costs $${ENSIGN_PRICE.toLocaleString()} (regulation price and over), and you can't raise it. Enlist in the ranks, or find a patron.`, 'warn');
-        state.military.pendingPurchase = ENSIGN_PRICE;
+        // Which regiment: the line, the cavalry or the Guards, at their prices.
+        if (!REGIMENTS[regiment]) {
+          const means = purchaseMeans(state);
+          const fam = familyPurse(state);
+          return ctx.prompt({
+            type: 'military.buyCommission', icon: '💷', title: 'Buy a Commission',
+            text: `Before 1871 a British Army officer buys his first commission, and each step up to lieutenant-colonel, through the regimental agents: the regulation price, and usually half as much again "over regulation". You can sell it when you leave.\n\nYou have $${Math.max(0, state.finances.cash).toLocaleString()}${fam === Infinity ? ', and your family will pay whatever it costs.' : fam ? ` and your family can put up $${fam.toLocaleString()}.` : ', and your family has nothing to spare.'}`,
+            options: [
+              ...Object.entries(REGIMENTS).map(([id, r]) => ({ id, label: `${r.icon} ${r.short}: $${firstCommissionPrice(id).toLocaleString()}`, disabled: means < firstCommissionPrice(id), hint: means < firstCommissionPrice(id) ? 'More than you can raise' : id === 'guards' ? 'London, the Court, and dear steps' : id === 'cavalry' ? 'Horses and mess bills on top' : 'Garrisons across the Empire' })),
+              { id: 'cancel', label: '↩️ Not now' },
+            ],
+            data: { branch, track, component },
+          });
+        }
+        state.military.pendingPurchase = { price: firstCommissionPrice(regiment), regiment };
       } else if (track === 'officer' && !direct && needsOfficerAcademy(state, track, null)) {
         if (yearlyCount(state, 'military.officerBoard')) return ctx.toast('You sat the officer selection board this year.', 'warn');
         bumpYearly(state, 'military.officerBoard');
@@ -320,6 +333,10 @@ export const MilitaryModule = {
     ...AssignmentResolvers,
     leaveService: resolveLeaveService,
 
+    buyCommission(ctx, data, optionId) {
+      if (!REGIMENTS[optionId]) return undefined;
+      return MilitaryModule.actions.enlist(ctx, `${data.branch}:${data.track}:${data.component}:${optionId}`);
+    },
     chooseSpecialty(ctx, data, optionId) {
       if (optionId === 'cancel') { ctx.state.military.pendingPurchase = null; return; }
       // A broad specialty id (older callers) picks that specialty's first job.

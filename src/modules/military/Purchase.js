@@ -33,12 +33,33 @@ export function purchaseEra(state, { nation, branch, track, specialty } = {}) {
 }
 /** What a grade's commission cost (today's dollars, over regulation as usual), by regiment: the line, the cavalry or the Guards. Null above lieutenant-colonel. */
 export function commissionPrice(grade, svc = null) {
-  const table = svc?.royalGuard === 'GB' ? GUARDS : String(svc?.mos ?? '').startsWith('army.19') ? CAVALRY : REGULATION;
+  const table = svc?.regiment === 'guards' || svc?.royalGuard === 'GB' ? GUARDS : svc?.regiment === 'cavalry' || String(svc?.mos ?? '').startsWith('army.19') ? CAVALRY : REGULATION;
   const base = table[grade];
   if (base == null) return null;
   return Math.round((base * POUND * OVER_REGULATION) / 1000) * 1000;
 }
 export const ENSIGN_PRICE = commissionPrice(0);
+/** The three kinds of regiment a first commission could be bought in. */
+export const REGIMENTS = {
+  line: { name: 'an ensigncy in a line regiment of foot', short: 'Line infantry (ensign)', icon: '🎖️' },
+  cavalry: { name: 'a cornetcy in a cavalry regiment', short: 'Cavalry (cornet)', icon: '🐎' },
+  guards: { name: 'an ensigncy in the Foot Guards', short: 'Foot Guards (ensign)', icon: '🐻' },
+};
+export const firstCommissionPrice = (regiment) => commissionPrice(0, { regiment });
+/** The youngest a first commission could be bought: sixteen. */
+export const PURCHASE_MIN_AGE = 16;
+
+/**
+ * What your family can put towards a commission: a share of your parents' savings and a year or
+ * two of their income (whatever it takes, in a titled or royal family).
+ */
+export function familyPurse(state) {
+  if (state.royal || state.character?.title || state.peerage?.title) return Infinity;
+  const parents = (state.people?.list ?? []).filter((p) => (p.relation === 'mother' || p.relation === 'father') && p.alive !== false);
+  return Math.round(parents.reduce((s, p) => s + Math.max(0, p.wealth ?? 0) * 0.4 + Math.max(0, p.income ?? 0) * 1.5, 0) / 1000) * 1000;
+}
+/** Your money and your family's together. */
+export const purchaseMeans = (state) => Math.max(0, state.finances.cash) + familyPurse(state);
 /** The next step can be bought this year: in the purchase era, below lieutenant-colonel, time served. */
 export function stepForSale(state, svc) {
   return purchaseEra(state, { nation: svc.nation, branch: svc.branch, track: svc.track, specialty: svc.specialty })
