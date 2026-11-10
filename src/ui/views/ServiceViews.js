@@ -44,6 +44,7 @@ import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Pe
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
 import { orgInEra } from '../../modules/world/Eras.js';
 import { purchaseEra, REGIMENTS, firstCommissionPrice, familyPurse, PURCHASE_MIN_AGE } from '../../modules/military/Purchase.js';
+import { flagImg } from '../Flags.js';
 
 /** Before 1871: how a British commission is bought, what it costs, and what you can raise. */
 function purchaseNote(state, b) {
@@ -86,7 +87,7 @@ function recruitingOffice(state) {
   const how = abroad
     ? `Other ranks OR-1 → OR-9; officers OF-1 → OF-10 — most forces take officer cadets straight from school through selection and the military academy. Each service has its own trades; professionals (doctors, lawyers, nurses, engineers, clergy) can join as specialist officers. <b>Regular</b> service is your full-time job. <b>Reservists</b> train part-time alongside a civilian career, are paid for the days they serve, and can be mobilised; the law protects their civilian job while they're away. Pensions follow ${esc(countryOf(state).name)}'s armed-forces scheme.`
     : 'Enlisted E-1 → E-9; officers O-1 → O-10 (bachelor\'s required). Each branch has its own jobs (MOS, ratings, AFSCs); paramedics, truckers and IT pros enlist a few grades up, and lawyers, doctors, nurses, pharmacists, clergy and tech veterans can take a <b>direct commission</b> at a rank that matches their experience. <b>Active duty</b> is your full-time job with base housing. <b>Reserve</b> service runs alongside a civilian career. Veterans earn the GI Bill, veterans\' preference on civil-service exams, and a pension at 20 years.';
-  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">${how}</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? countryOf(state).flag : '🇺🇸', accent: 'green' });
+  return card('Recruiting Office', `<details class="fine"><summary>How military service works</summary><p class="muted">${how}</p></details><ul class="branch-list">${rows}</ul>`, { icon: abroad ? flagImg(countryOf(state).id) : '🇺🇸', accent: 'green' });
 }
 
 /** Inter-service transfer: pick a branch; the odds are shown because they're low. */
@@ -119,7 +120,7 @@ function conscriptionCard(state) {
   const country = countryOf(state);
   if (!c && !state.military.cartilla) return '';
   const lines = [c ? ['Status', CONSCRIPTION_LABEL[c.status] ?? c.status] : null, c?.grade ? ['Physical grade', String(c.grade)] : null, country.id === 'MX' ? ['Cartilla', state.military.cartilla ? '✅ Released' : '❌ None'] : null].filter(Boolean);
-  return card('National Service', `<ul class="history">${lines.map(([k, v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>`, { icon: country.flag });
+  return card('National Service', `<ul class="history">${lines.map(([k, v]) => `<li><b>${esc(k)}:</b> ${esc(v)}</li>`).join('')}</ul>`, { icon: flagImg(country.id) });
 }
 
 function selectiveServiceCard(state) {
@@ -225,9 +226,9 @@ export function contractMarketCard(state) {
   const offers = ok.ok && !c ? pmcOffers(state) : [];
   return card('🪖 Contract Work', `
     ${kv([['Reputation', `${p?.rep ?? 0}`], ['Contracts done', String(p?.done?.length ?? 0)], state.career?.job?.professionId === 'privateMilitary' ? ['On the books at', esc(state.career.job.employer.name)] : null])}
-    ${c ? `<p>${c.icon} <b>${esc(c.title)}</b> — ${COUNTRIES[c.place]?.flag ?? ''} ${esc(COUNTRIES[c.place]?.name ?? c.place)} · ${c.days} days at ${money(c.rate)}/day${c.lead ? ' · team leader' : ''}. Pays out at year's end.</p>` : ''}
+    ${c ? `<p>${c.icon} <b>${esc(c.title)}</b> — ${flagImg(c.place) || ''} ${esc(COUNTRIES[c.place]?.name ?? c.place)} · ${c.days} days at ${money(c.rate)}/day${c.lead ? ' · team leader' : ''}. Pays out at year's end.</p>` : ''}
     ${!ok.ok ? `<p class="fine">${esc(ok.reason)}.</p>` : ''}
-    ${offers.length ? `<ul class="job-list">${offers.map((o) => `<li class="job-row"><span class="job-icon">${o.icon}</span><div class="job-info"><b>${esc(o.title)}</b><small>${COUNTRIES[o.place]?.flag ?? ''} ${esc(COUNTRIES[o.place]?.name ?? o.place)} · ${o.days} days · ${money(o.rate)}/day (≈${money(o.rate * o.days)}) · risk ${pmcRisk(o)}${o.lead ? ' · team leader' : ''}${o.war ? ' · war zone' : ''}</small></div>${button('Sign', 'pmcContracts.take', { arg: o.id, variant: 'small' })}</li>`).join('')}</ul>` : ''}
+    ${offers.length ? `<ul class="job-list">${offers.map((o) => `<li class="job-row"><span class="job-icon">${o.icon}</span><div class="job-info"><b>${esc(o.title)}</b><small>${flagImg(o.place) || ''} ${esc(COUNTRIES[o.place]?.name ?? o.place)} · ${o.days} days · ${money(o.rate)}/day (≈${money(o.rate * o.days)}) · risk ${pmcRisk(o)}${o.lead ? ' · team leader' : ''}${o.war ? ' · war zone' : ''}</small></div>${button('Sign', 'pmcContracts.take', { arg: o.id, variant: 'small' })}</li>`).join('')}</ul>` : ''}
     ${(p?.done ?? []).length ? `<p class="fine">Past contracts: ${p.done.slice(-4).map((d) => `${esc(d.title)} (${d.age})`).join(' · ')}</p>` : ''}
     <p class="fine">Taking a contract puts you on a firm's books; reputation from finished contracts moves you up to team leader, detail leader and program manager.</p>`, { icon: '🪖', accent: 'yellow' });
 }
@@ -254,7 +255,7 @@ export function merchantReserveCard(state) {
 function kingmakerCard(state) {
   const a = state.foreignAdvisor;
   if (a) {
-    return card(`${COUNTRIES[a.cc]?.flag ?? ''} Building the ${esc(COUNTRIES[a.cc]?.name ?? a.cc)} Armed Forces`, `
+    return card(`${flagImg(a.cc) || ''} Building the ${esc(COUNTRIES[a.cc]?.name ?? a.cc)} Armed Forces`, `
       ${kv([['Post', esc(a.title)], ['Year', `${a.years} of ${a.term}`], ['Salary', `${money(a.salary)}/yr, tax-free`]])}
       ${meter(a.readiness, { label: '🎯 Readiness' })}
       <div class="toggle-row">
@@ -266,7 +267,7 @@ function kingmakerCard(state) {
   }
   if (canAdvise(state).ok) {
     return card('Foreign Armies Hiring', `<p class="fine">Retired officers are hired to build developing countries' forces: a contract general's rank and a tax-free salary.</p>
-      <div class="toggle-row">${clientOffers(state).map((cc) => button(`${COUNTRIES[cc].flag} ${esc(COUNTRIES[cc].name)}`, 'kingmakers.advise', { arg: cc, variant: 'small' })).join('')}</div>`, { icon: '🎖️' });
+      <div class="toggle-row">${clientOffers(state).map((cc) => button(`${flagImg(cc)} ${esc(COUNTRIES[cc].name)}`, 'kingmakers.advise', { arg: cc, variant: 'small' })).join('')}</div>`, { icon: '🎖️' });
   }
   if (!canPlot(state).ok) return '';
   const p = state.regime?.plot;

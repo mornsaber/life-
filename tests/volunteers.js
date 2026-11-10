@@ -158,7 +158,7 @@ const tests = {
     arrive(ctx, 'US', { visa: 'work' });
     const html = localizeHtml(medalCase(state.honors), COUNTRIES[state.character.countryId]);
     assert.match(html, /National Medical Research Prize/);
-    assert.match(html, /🇬🇧/);
+    assert.match(html, /flags\/gb\.svg/);
     const us = chief('US', 9);
     addHonor(us.state, { id: 'y', source: 'civil', name: 'Fire Department Medal of Valor', icon: '🔥', prestige: 1 });
     arrive(us.ctx, 'GB', { visa: 'work' });

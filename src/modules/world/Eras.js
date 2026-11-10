@@ -1106,7 +1106,7 @@ export const periodFlagEmoji = (state, cc) => flagEmoji(periodFlag(state, cc));
 export function cityStateOfDay(state, regionId) {
   if (!state?.era || yearNow(state) >= PRESENT) return null;
   const r = regionStateAt(regionId, yearNow(state));
-  return r ? { name: r.name, flag: flagEmoji(r.flag), kind: r.kind } : null;
+  return r ? { name: r.name, flag: flagEmoji(r.flag), spec: r.flag ? (r.flag.length === 2 ? { img: r.flag.toUpperCase() } : { id: r.flag }) : periodFlag(state, state.character?.countryId ?? 'US'), kind: r.kind } : null;
 }
 /**
  * A border inside today's country (the inner German border, the 17th parallel): why you can't simply

@@ -67,6 +67,7 @@ import { armsSvg } from './Arms.js';
 import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
 import { avatarHtml } from './Avatar.js';
+import { flagImg } from './Flags.js';
 
 /** Seven sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -116,7 +117,7 @@ function ordersCard(state, inOrder) {
   if (!held.length && !declined.length) return '';
   const rows = held.map((h) => `<li class="order-row">
       <span class="order-icon" aria-hidden="true">${insignia(h)}${ribbon(ribbonFor(h), { device: h.order && (h.grade ?? 0) >= 2 ? '✦' : null })}</span>
-      <span class="order-text"><small class="order-name">${esc((typeof h.order === 'string' ? h.order : null) ?? h.from?.replace(/^the /, '') ?? 'Order')}${h.country && COUNTRIES[h.country] ? ` · ${COUNTRIES[h.country].flag}` : ''}</small>
+      <span class="order-text"><small class="order-name">${esc((typeof h.order === 'string' ? h.order : null) ?? h.from?.replace(/^the /, '') ?? 'Order')}${h.country && COUNTRIES[h.country] ? ` · ${flagImg(h.country)}` : ''}</small>
         <span><b>${esc(h.name.replace(/ \([A-Z]{2,5}\)$/, ''))}</b>${h.post ? ` ${chip(esc(h.post), 'honor')}` : ''}</span>
         <small class="muted">${h.insignia ? `${esc(h.insignia)} · ` : ''}age ${h.age}${h.source === 'foreign' ? ' · honorary or foreign' : ''}</small></span>
       ${h.source === 'order' && !/^stJohn\./.test(h.id) && !state.royal?.reigning ? button('Return', 'honours.renounce', { arg: h.id, variant: 'tiny ghost', title: 'Hand back the insignia' }) : ''}

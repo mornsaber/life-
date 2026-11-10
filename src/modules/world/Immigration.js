@@ -24,6 +24,7 @@
 import { COUNTRIES } from './Countries.js';
 import { investmentsValue } from '../../core/State.js';
 import { fromPacks, joinGroup, mutual, joinPairs, PACKS } from './packs/index.js';
+import { eraYear } from './Eras.js';
 
 export const VISA_KINDS = {
   work: { icon: '💼', label: 'Work visa' },
@@ -375,14 +376,27 @@ const RICH_SYSTEMS = joinGroup(['US', 'CA', 'GB', 'AU', 'DE', 'FR', 'IT', 'JP', 
  * without a visa (EU free movement, the UK–Ireland Common Travel Area, the
  * Trans-Tasman Travel Arrangement). Packs add pairs with `freeMovement`.
  */
+/** When each member's citizens could move freely (workers' free movement, after transition periods). */
+const EU_FREE_FROM = {
+  BE: 1968, DE: 1968, FR: 1968, IT: 1968, LU: 1968, NL: 1968, DK: 1973, IE: 1973, GR: 1988, ES: 1992, PT: 1992, AT: 1994, FI: 1994, SE: 1994,
+  CZ: 2004, EE: 2004, HU: 2004, LV: 2004, LT: 2004, PL: 2004, SK: 2004, SI: 2004, CY: 2004, MT: 2004, BG: 2007, RO: 2007, HR: 2013,
+};
+const PAIR_FROM = { 'Common Travel Area': 1923, 'Trans-Tasman Travel Arrangement': 1973 };
+const NORDIC = ['NO', 'SE', 'DK', 'FI', 'IS'];
+/** When a free-movement pair began: the Nordic Passport Union 1954, the EEA (Norway, Iceland) 1994, Switzerland with the EU 2002. */
+const pairFrom = ([a, b, name]) => PAIR_FROM[name] ?? (NORDIC.includes(a) && NORDIC.includes(b) ? 1954 : [a, b].includes('CH') ? 2002 : [a, b].some((c) => ['NO', 'IS', 'LI'].includes(c)) ? 1994 : 1960);
 const FREE_PAIRS = [['GB', 'IE', 'Common Travel Area'], ['AU', 'NZ', 'Trans-Tasman Travel Arrangement']];
 for (const p of PACKS) for (const other of p.freeMovement ?? []) if (!(EU.includes(p.id) && EU.includes(other)) && !FREE_PAIRS.some(([a, b]) => (a === p.id && b === other) || (a === other && b === p.id))) FREE_PAIRS.push([p.id, other, 'free-movement agreement']);
 /** EU member states (for the EU-wide rules: free movement, temporary protection). */
 export const isEU = (cc) => EU.includes(cc);
 /** The scheme letting a holder of these passports move to `to` freely (null: none). */
-export function freeMovementTo(citizenships, to) {
-  if (EU.includes(to) && citizenships.some((c) => c !== to && EU.includes(c))) return 'EU free movement';
+export function freeMovementTo(citizenships, to, y = eraYear()) {
+  // Free movement of workers came with membership: the founding six in 1968, then each country at
+  // the end of its transition (Spain and Portugal 1992, the 2004 members in 2004, Croatia 2013).
+  const inEU = (cc) => EU.includes(cc) && !(EU_FREE_FROM[cc] > y);
+  if (inEU(to) && citizenships.some((c) => c !== to && inEU(c))) return y >= 1993 ? 'EU free movement' : 'EEC free movement of workers';
   const pair = FREE_PAIRS.find(([a, b]) => (to === a && citizenships.includes(b)) || (to === b && citizenships.includes(a)));
+  if (pair && pairFrom(pair) > y) return null;
   return pair?.[2] ?? null;
 }
 

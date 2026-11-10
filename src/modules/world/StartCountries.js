@@ -7,7 +7,7 @@
 import { COUNTRIES } from './Countries.js';
 import { REGIONS } from '../life/Regions.js';
 import { EVENTS } from './History.js';
-import { COLONIES, PRESENT, stageEnd, periodCountryName, periodFlagEmoji, flagEmoji } from './Eras.js';
+import { COLONIES, PRESENT, stageEnd, periodCountryName, periodFlagEmoji, flagEmoji, periodFlag } from './Eras.js';
 import { regionStateAt } from './HistoricalData.js';
 import { encodePicks, decodePicks } from './StartPicks.js';
 
@@ -45,9 +45,9 @@ export function startCountries(year) {
   if (!Number.isInteger(year) || year >= PRESENT) return null;
   const s = eraSnapshot(year);
   const out = new Map();
-  const add = (name, flag, cc, regions) => {
+  const add = (name, flag, cc, regions, spec) => {
     const key = sortName(name).toLowerCase();
-    const e = out.get(key) ?? { name: cap(name), flag, home: cc, picks: [] };
+    const e = out.get(key) ?? { name: cap(name), flag, spec, home: cc, picks: [] };
     const same = e.picks.find(([c]) => c === cc);
     if (same && same[1] && regions) same[1].push(...regions);
     else if (!same) e.picks.push([cc, regions]);
@@ -57,10 +57,10 @@ export function startCountries(year) {
     const towns = cc === 'US' ? US_TOWNS : [...new Set([...(COUNTRIES[cc].hometowns ?? []), ...(BY_COUNTRY[cc] ?? [])])];
     const own = towns.filter((r) => regionStateAt(r, year));
     const rest = (COUNTRIES[cc].hometowns ?? (cc === 'US' ? US_TOWNS : towns)).filter((r) => !regionStateAt(r, year));
-    if (rest.length) add(periodCountryName(s, cc, COUNTRIES[cc].baseName), periodFlagEmoji(s, cc), cc, own.length ? rest : null);
+    if (rest.length) add(periodCountryName(s, cc, COUNTRIES[cc].baseName), periodFlagEmoji(s, cc), cc, own.length ? rest : null, periodFlag(s, cc));
     for (const r of own) {
       const st = regionStateAt(r, year);
-      add(st.name, st.flag ? flagEmoji(st.flag) : periodFlagEmoji(s, cc), cc, [r]);
+      add(st.name, st.flag ? flagEmoji(st.flag) : periodFlagEmoji(s, cc), cc, [r], st.flag ? (st.flag.length === 2 ? { img: st.flag.toUpperCase() } : { id: st.flag }) : periodFlag(s, cc));
     }
   }
   return [...out.values()].map((e) => ({ ...e, value: encodePicks(e.picks) }));

@@ -57,6 +57,7 @@ import { petsOf, SPECIES } from '../../modules/people/Pets.js';
 import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../../modules/people/Fertility.js';
 import { toned, personTone } from '../../modules/people/SkinTone.js';
 import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
+import { flagImg } from '../Flags.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 /** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
@@ -85,7 +86,7 @@ function personRow(state, p) {
     p.houseOrder ? `⚜️ ${p.houseOrder}` : null,
     p.alive && p.relation === 'spouse' && p.income ? `${money(p.income)}/yr` : null,
     p.nationality && nationalityCode(p) !== (state.character.countryId ?? 'US') && p.relation !== 'child' ? `from ${nationalityName(p)}` : null,
-    p.relation === 'child' && p.citizenships && (p.citizenships.length > 1 || p.citizenships[0] !== (state.character.countryId ?? 'US')) ? `🛂 ${p.citizenships.map((c) => COUNTRIES[c]?.flag ?? c).join('')}${p.oci ? ' + OCI' : ''}` : null,
+    p.relation === 'child' && p.citizenships && (p.citizenships.length > 1 || p.citizenships[0] !== (state.character.countryId ?? 'US')) ? `🛂 ${p.citizenships.map((c) => flagImg(c) || c).join('')}${p.oci ? ' + OCI' : ''}` : null,
     p.alive && p.away ? 'moved away' : null,
     p.alive && livesAbroad(state, p) ? `🌍 lives in ${COUNTRIES[p.livesIn]?.name ?? p.livesIn}${state.people.remit?.[p.id] ? ` · you send ${money(state.people.remit[p.id])}/yr` : ''}${p.sponsor ? ` · moving here at your age ${p.sponsor.arrives}` : ''}` : null,
     p.owes ? `owes you ${money(p.owes.amount)}` : null,

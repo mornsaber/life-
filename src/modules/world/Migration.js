@@ -30,6 +30,7 @@ import { setNameCountry, yearlyCount, bumpYearly, canAfford, visibleRecord } fro
 import { clamp } from '../../core/Random.js';
 import { stampDegrees } from '../education/EducationEngine.js';
 import { fromPacks } from './packs/index.js';
+import { regimeOf } from './Regimes.js';
 
 export const LANGUAGE_CLASS_COST = 1200;
 const EU = ['DE', 'IT'];
@@ -62,6 +63,8 @@ export function routesTo(state, to) {
   if (isCitizen(state, to)) return [{ kind: 'citizen', ok: true, odds: 1, fee: 0, label: `${COUNTRIES[to].flag} Move home (citizen)` }];
   const res = residencesOf(state)[to];
   if (res?.status === 'permanent' && res.leftAt != null && state.character.age - res.leftAt <= IMMIGRATION[to].prLapse) return [{ kind: 'resident', ok: true, odds: 1, fee: 0, label: '🪪 Return as a permanent resident' }];
+  // A state that keeps its own people in takes no immigrants either (the Soviet Union, the GDR).
+  if (regimeOf(to)?.exit === 'closed') return [{ kind: 'closed', ok: false, odds: 0, fee: 0, reason: 'Closed: it lets no one in to settle', label: '🚧 Closed to immigrants' }];
   // EU, Common Travel Area and trans-Tasman citizens just move: no visa, the right to live and work.
   const free = freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];

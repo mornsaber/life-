@@ -21,6 +21,7 @@ import { COUNTRIES } from '../../modules/world/Countries.js';
 import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote } from '../../modules/politics/Parties.js';
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 import { warRoles } from '../../modules/military/WarRoles.js';
+import { flagImg } from '../Flags.js';
 
 function faithCard(state) {
   const c = state.community;
@@ -180,7 +181,7 @@ function warCard(state) {
     <p>${chip(PHASE_LABEL[war.phase], war.phase === 'active' ? 'bad' : war.phase === 'talks' ? 'warn' : 'good')} ${chip(INTENSITY_LABEL[war.intensity])} ${war.draft ? chip(here === 'US' ? '📨 Draft in force' : '📨 Call-ups', 'warn') : ''} ${war.mobilized ? chip('🚫 General mobilization', 'bad') : ''}</p>
     ${kv([['Front', frontLabel(war.front)], ['Year', String(war.years + 1)], ['Military dead', war.casualties.toLocaleString()], ['Danger at home', homeDanger(state) >= 0.3 ? '<span class="neg">High</span>' : homeDanger(state) > 0 ? 'Some' : 'None']])}
     <h4 class="sub">Public support</h4>${meter(war.support, { label: 'Back the war' })}` : '<p class="muted">Your country is at peace.</p>';
-  const others = [...elsewhere.map((x) => `${COUNTRIES[x.country]?.flag ?? ''} ${esc(x.name)} (${esc(PHASE_LABEL[x.phase].toLowerCase())})`), ...(w.global ?? []).map((g) => `🌍 ${esc(g.name)}`)];
+  const others = [...elsewhere.map((x) => `${flagImg(x.country) || ''} ${esc(x.name)} (${esc(PHASE_LABEL[x.phase].toLowerCase())})`), ...(w.global ?? []).map((g) => `🌍 ${esc(g.name)}`)];
   return card('War & World', `${main}${others.length ? `<h4 class="sub">Elsewhere</h4><ul class="history">${others.map((o) => `<li>${o}</li>`).join('')}</ul>` : ''}`, { icon: war ? '⚔️' : '🌍', accent: war ? 'red' : undefined, summary: war ? `${PHASE_LABEL[war.phase]} · ${frontLabel(war.front)}` : 'At peace' });
 }
 

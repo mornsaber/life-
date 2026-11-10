@@ -22,6 +22,7 @@ import { edEligibility } from '../../modules/academia/HigherEd.js';
 const edOpen = (state) => state.character.age >= 17 && !state.education.enrolled && state.higherEd && !state.higherEd.edUsed && edEligibility(state, 'state').reason !== 'For first-time college applicants' && state.education.degrees.some((d) => d.type === 'highschool');
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { uniInEra, majorInEra, programInEra, programIdInEra } from '../../modules/world/Eras.js';
+import { flagImg } from '../Flags.js';
 
 function programRow(state, id) {
   const p = PROGRAMS[id];
@@ -55,7 +56,7 @@ const STARS = ['', '★', '★★', '★★★'];
 /** "★★★ University of Oxford (Oxford) 🚚": prestige, name, city, and whether you'd move. */
 function uniLabel(state, u) {
   const here = state.character.countryId ?? 'US';
-  const flag = u.country !== here ? `${COUNTRIES[u.country]?.flag ?? ''} ` : '';
+  const flag = u.country !== here ? `${flagImg(u.country) || ''} ` : '';
   return `${flag}${STARS[u.prestige ?? 0] ? `${STARS[u.prestige]} ` : ''}${u.name}${u.region || u.offshore ? ` (${placeOf(u)})` : ' (online)'}${movesYou(state, u) ? ' 🚚' : ''}`;
 }
 
@@ -130,7 +131,7 @@ export function schoolView(state) {
   const offered = (id) => programInEra(state, PROGRAMS[id].name) && programIdInEra(state, id) && enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country' && universitiesFor(state, id).length > 0;
   const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');
   const degrees = state.education.degrees.length
-    ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${COUNTRIES[d.country]?.flag ?? ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
+    ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${flagImg(d.country) || ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');
   const credits = state.education.credits ?? [];
   const banked = credits.length ? `<h4 class="sub">Transfer credit</h4><ul class="history">${credits.map((c) => `<li>📑 ${c.years} yr toward ${esc(PROGRAMS[c.programId].name)} <small>from age ${c.age}${state.character.age - c.age > 10 ? ' · older than 10 yrs, counts half' : ''}</small></li>`).join('')}</ul>` : '';

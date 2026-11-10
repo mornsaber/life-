@@ -6,7 +6,8 @@
  *
  * Germany 1933–45 is shown with the black-white-red tricolour the Reich also flew, not the swastika flag.
  */
-import { periodFlag } from '../modules/world/Eras.js';
+import { periodFlag, getEraState } from '../modules/world/Eras.js';
+import { COUNTRIES } from '../modules/world/Countries.js';
 
 const W = 60;
 const H = 45;
@@ -99,10 +100,23 @@ const DRAW = {
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),
 };
 
-/** A country's flag in the year being played, as an image (HTML). */
-export function flagHtml(state, cc, { cls = '' } = {}) {
-  const f = periodFlag(state, cc ?? 'US');
+/** A flag spec ({ id, n? } drawn here, or { img: 'DE' } from flag-icons) as an image (HTML). */
+export function flagFrom(f, { cls = '' } = {}) {
+  if (!f) return '';
   if (f.id && DRAW[f.id]) return `<span class="flag ${cls}">${DRAW[f.id](f)}</span>`;
-  const code = String(f.img ?? cc ?? 'US').toLowerCase();
+  const code = String(f.img ?? f.id ?? 'US').toLowerCase();
+  if (!/^[a-z]{2}(-[a-z]+)?$/.test(code)) return '';
   return `<img class="flag ${cls}" src="icons/flags/${code}.svg" alt="" width="20" height="15" loading="lazy">`;
 }
+/** A country's flag in the year being played, as an image (HTML). */
+export function flagHtml(state, cc, { cls = '' } = {}) {
+  return flagFrom(periodFlag(state, cc ?? 'US'), { cls });
+}
+/** A country's flag in the year of the life being played (or today's), for views with no state to hand. Empty for unknown codes. */
+export function flagImg(cc, opts = {}) {
+  if (!cc || !COUNTRIES[cc]) return '';
+  return flagHtml(getEraState(), cc, opts);
+}
+/** A flag spec as a compact string for data attributes: "img:DE", "id:gdr", "id:usStars:34". */
+export const flagSpec = (f) => (!f ? '' : f.id ? `id:${f.id}${f.n != null ? `:${f.n}` : ''}` : `img:${f.img}`);
+export const parseFlagSpec = (s) => { const [kind, v, n] = String(s ?? '').split(':'); return kind === 'id' ? { id: v, ...(n ? { n: Number(n) } : {}) } : kind === 'img' ? { img: v } : null; };

@@ -34,6 +34,7 @@ import { leadsCoalitionState } from '../../modules/politics/Coalitions.js';
 import { crownBadge } from '../Insignia.js';
 import { POSTS as OVERSEAS } from '../../modules/world/OverseasPosts.js';
 import { reformsOpen } from '../../modules/world/Reforms.js';
+import { flagImg } from '../Flags.js';
 
 /** As an executive: how each service at your level is delivered, and what you can change. */
 function cityServicesCard(state) {
@@ -103,11 +104,11 @@ function worldStageCard(state) {
   if (!m && !who && !past.length && !(state.diplomacy?.visits?.length)) return '';
   const inv = who ? invitations(state) : [];
   const used = Boolean(state.yearly['stateVisits.go']);
-  const visits = (state.diplomacy?.visits ?? []).slice(-5).map((v) => `${COUNTRIES[v.cc]?.flag ?? ''} ${esc(COUNTRIES[v.cc]?.name ?? v.cc)} (${v.age}${v.outcome === 'gaffe' ? ', a gaffe' : v.outcome === 'triumph' ? ', a triumph' : ''})`).join(' · ');
+  const visits = (state.diplomacy?.visits ?? []).slice(-5).map((v) => `${flagImg(v.cc) || ''} ${esc(COUNTRIES[v.cc]?.name ?? v.cc)} (${v.age}${v.outcome === 'gaffe' ? ', a gaffe' : v.outcome === 'triumph' ? ', a triumph' : ''})`).join(' · ');
   return card(m ? `${DEPTS[m.dept].icon} ${esc(m.title)}` : 'The World Stage', `
     ${m ? `${kv([['Since', `age ${m.since}`], ['Rank', m.rank === 'cabinet' ? 'Cabinet' : 'Junior minister'], m.residence ? ['Residence', esc(m.residence)] : null])}
       <div class="toggle-row">${button('📑 Push your department\'s big idea', 'ministers.initiative', { variant: 'small', disabled: Boolean(state.yearly['ministers.initiative']), hint: 'Once a year: a name-maker or a U-turn' })}${button('🚪 Resign on principle', 'ministers.resign', { variant: 'small ghost' })}</div>` : ''}
-    ${who ? `<h4 class="sub">Visits abroad <small class="muted">(one a year)</small></h4><div class="toggle-row">${inv.map((cc) => button(`${COUNTRIES[cc].flag} ${esc(COUNTRIES[cc].name)}`, 'stateVisits.go', { arg: cc, variant: 'small', disabled: used, hint: `Relations ${relationsWith(state, cc) > 0 ? '+' : ''}${relationsWith(state, cc)}` })).join('')}</div>` : ''}
+    ${who ? `<h4 class="sub">Visits abroad <small class="muted">(one a year)</small></h4><div class="toggle-row">${inv.map((cc) => button(`${flagImg(cc)} ${esc(COUNTRIES[cc].name)}`, 'stateVisits.go', { arg: cc, variant: 'small', disabled: used, hint: `Relations ${relationsWith(state, cc) > 0 ? '+' : ''}${relationsWith(state, cc)}` })).join('')}</div>` : ''}
     ${visits ? `<p class="fine">Recent visits: ${visits}</p>` : ''}
     ${past.length ? `<p class="fine">Former posts: ${past.map((x) => `${esc(x.title)} (${x.from}–${x.to})`).join(' · ')}</p>` : ''}`, { icon: '🌐', accent: 'cyan' });
 }

@@ -14,6 +14,8 @@ import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
 import { START_ERAS, eraById } from '../modules/world/Eras.js';
 import { startCountries, sortName } from '../modules/world/StartCountries.js';
+import { flagImg } from './Flags.js';
+import { flagSpec } from './Flags.js';
 
 const ESCAPES = { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' };
 export const esc = (value) => String(value ?? '').replace(/[&<>"']/g, (c) => ESCAPES[c]);
@@ -35,9 +37,16 @@ export const compactMoney = (n) => {
 const LEADING_EMOJI = /^((?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:\uFE0F|\u200D|\p{Extended_Pictographic}|\p{Emoji_Modifier}|\p{Regional_Indicator})*)\s*/u;
 
 /** Hide a label's leading decorative emoji from screen readers (the words carry the meaning). */
+/** Flag emoji in text (🇩🇪) as the flag images (icons/flags), so flags look the same everywhere. Run after escaping. */
+const FLAG_EMOJI = /([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu;
+export const flagEmojiToImg = (html) => String(html).replace(FLAG_EMOJI, (_, a, b) => {
+  const code = String.fromCharCode(a.codePointAt(0) - 0x1f1e6 + 97, b.codePointAt(0) - 0x1f1e6 + 97);
+  return `<img class="flag" src="icons/flags/${code}.svg" alt="" width="20" height="15" loading="lazy">`;
+});
+
 export function a11yLabel(label) {
   const m = String(label).match(LEADING_EMOJI);
-  return m ? `<span aria-hidden="true">${m[1]}</span> ${String(label).slice(m[0].length)}` : label;
+  return flagEmojiToImg(m ? `<span aria-hidden="true">${m[1]}</span> ${String(label).slice(m[0].length)}` : label);
 }
 
 /** `collect: true` builds the arg from the <select data-part> fields in the nearest [data-collect-root]. */
@@ -61,7 +70,7 @@ const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses fo
   'Organization', 'Your Work Gear', 'Job Market', 'Former Employers']);
 
 export function card(title, body, { icon = '', accent = '', extra = '', className = '', open = !FOLDED_BY_DEFAULT.has(String(title).replace(/^Labor in .+/, 'Labor in Texas')), summary = '', fold = true } = {}) {
-  const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${icon}</span>` : ''}${title}</h3>${summary ? `<span class="card-sum">${summary}</span>` : ''}${extra}`;
+  const heading = `<h3>${icon ? `<span class="card-icon" aria-hidden="true">${flagEmojiToImg(icon)}</span>` : ''}${flagEmojiToImg(title)}</h3>${summary ? `<span class="card-sum">${flagEmojiToImg(summary)}</span>` : ''}${extra}`;
   if (!title || !fold) {
     return `<section class="card ${accent ? `accent-${accent}` : ''} ${className}">
     ${title ? `<header class="card-head">${heading}</header>` : ''}
@@ -237,7 +246,7 @@ export function medalCase(honors) {
         <div class="medal-art">${ribbon(ribbonFor(h), { device: h.device })}${h.source === 'honoraryRank' ? titleInsignia(h.name, h.country ?? 'GB') : insignia(h)}</div>
         <div class="medal-text">
           <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
-          <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${COUNTRIES[h.country]?.flag ?? ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
+          <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${flagImg(h.country) || ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
           ${h.citation ? `<p>${h.country ? `<span data-raw>${esc(h.citation)}</span>` : esc(h.citation)}</p>` : ''}
         </div>
       </li>`,
@@ -264,7 +273,7 @@ export const LOG_OPEN_YEARS = 3;
 const HEADLINE_KINDS = ['death', 'milestone', 'honor', 'bad', 'good'];
 
 function logEntries(y) {
-  return `<ul>${y.entries.map((e) => `<li class="log-${e.kind ?? 'info'}" data-kind="${e.kind ?? 'info'}"><span class="log-icon" aria-hidden="true">${e.icon ?? '•'}</span><span class="log-text">${esc(tidyText(e.text, e.icon))}</span></li>`).join('')}</ul>`;
+  return `<ul>${y.entries.map((e) => `<li class="log-${e.kind ?? 'info'}" data-kind="${e.kind ?? 'info'}"><span class="log-icon" aria-hidden="true">${flagEmojiToImg(e.icon ?? '•')}</span><span class="log-text">${flagEmojiToImg(esc(tidyText(e.text, e.icon)))}</span></li>`).join('')}</ul>`;
 }
 
 export function logView(log, { limit = Infinity, openYears = LOG_OPEN_YEARS } = {}) {
@@ -276,7 +285,7 @@ export function logView(log, { limit = Infinity, openYears = LOG_OPEN_YEARS } = 
         return `<article class="log-year ${i === 0 ? 'latest' : ''}" aria-label="Age ${y.age}, ${y.year}"><header>${head}</header>${logEntries(y)}</article>`;
       }
       const lead = HEADLINE_KINDS.map((k) => y.entries.find((e) => e.kind === k)).find(Boolean) ?? y.entries[0];
-      return `<details class="log-year folded" data-key="log.${y.age}" aria-label="Age ${y.age}, ${y.year}"><summary><header>${head}<span class="log-n">${y.entries.length} event${y.entries.length === 1 ? '' : 's'}</span></header>${lead ? `<span class="log-lead">${lead.icon ?? ''} ${esc(tidyText(lead.text, lead.icon))}</span>` : ''}</summary>${logEntries(y)}</details>`;
+      return `<details class="log-year folded" data-key="log.${y.age}" aria-label="Age ${y.age}, ${y.year}"><summary><header>${head}<span class="log-n">${y.entries.length} event${y.entries.length === 1 ? '' : 's'}</span></header>${lead ? `<span class="log-lead">${flagEmojiToImg(lead.icon ?? '')} ${flagEmojiToImg(esc(tidyText(lead.text, lead.icon)))}</span>` : ''}</summary>${logEntries(y)}</details>`;
     })
     .join('')}</div>`;
 }
@@ -299,8 +308,8 @@ export function promptModal(prompt, queued) {
   return `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="prompt-title" aria-describedby="prompt-text">
     <div class="modal">
       <div class="modal-icon" aria-hidden="true">${prompt.icon}</div>
-      <h2 id="prompt-title">${esc(prompt.title)}</h2>
-      <div id="prompt-text">${rest.length ? `<p class="modal-lead">${esc(lead)}</p><p class="modal-text">${esc(rest.join('\n'))}</p>` : `<p class="modal-text">${esc(lead)}</p>`}</div>
+      <h2 id="prompt-title">${flagEmojiToImg(esc(prompt.title))}</h2>
+      <div id="prompt-text">${rest.length ? `<p class="modal-lead">${flagEmojiToImg(esc(lead))}</p><p class="modal-text">${flagEmojiToImg(esc(rest.join('\n')))}</p>` : `<p class="modal-text">${flagEmojiToImg(esc(lead))}</p>`}</div>
       <div class="modal-options">${prompt.options
         .map(
           (o, i) => `<button class="option ${o.tone ?? ''}${o.illegal ? ' illegal' : ''}" data-action="engine.resolve" data-prompt="${esc(prompt.id)}" data-option="${esc(o.id)}"${o.illegal ? ' data-illegal="1"' : ''}${o.disabled ? ' disabled' : ''}>
@@ -319,7 +328,7 @@ export function countryOptions({ selected = '', only = null, random = '🎲 Rand
   const mark = (id) => (kingdoms.includes(id) ? ' 👑' : SHARED_CROWN.includes(id) && kingdoms.includes('GB') ? ' 👑 (British Crown)' : houses.includes(id) ? ' ⚜️' : '');
   const placed = new Set(Object.values(CONTINENT).flat());
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
-  const opt = (id) => `<option value="${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].baseName ?? COUNTRIES[id].name)}${mark(id)}</option>`;
+  const opt = (id) => `<option value="${id}" data-flag="img:${id}"${id === selected ? ' selected' : ''}>${COUNTRIES[id].flag} ${esc(COUNTRIES[id].baseName ?? COUNTRIES[id].name)}${mark(id)}</option>`;
   const body = Object.entries(groups).map(([name, ids]) => {
     const list = ids.filter((id) => COUNTRIES[id] && (!only || only.includes(id))).sort((a, b) => (COUNTRIES[a].baseName ?? COUNTRIES[a].name).localeCompare(COUNTRIES[b].baseName ?? COUNTRIES[b].name));
     return list.length ? `<optgroup label="${esc(name)}">${list.map(opt).join('')}</optgroup>` : '';
@@ -336,7 +345,7 @@ export function startCountryOptions(year, { selected = 'random' } = {}) {
   const groups = { ...CONTINENT, Elsewhere: Object.keys(COUNTRIES).filter((id) => !placed.has(id)) };
   const body = Object.entries(groups).map(([name, ids]) => {
     const here = list.filter((e) => ids.includes(e.home)).sort((a, b) => sortName(a.name).localeCompare(sortName(b.name)));
-    return here.length ? `<optgroup label="${esc(name)}">${here.map((e) => `<option value="${esc(e.value)}"${e.value === selected ? ' selected' : ''}>${e.flag} ${esc(e.name)}${!e.picks[0][1] && kingdoms.includes(e.home) ? ' 👑' : ''}</option>`).join('')}</optgroup>` : '';
+    return here.length ? `<optgroup label="${esc(name)}">${here.map((e) => `<option value="${esc(e.value)}" data-flag="${esc(flagSpec(e.spec))}"${e.value === selected ? ' selected' : ''}>${e.flag} ${esc(e.name)}${!e.picks[0][1] && kingdoms.includes(e.home) ? ' 👑' : ''}</option>`).join('')}</optgroup>` : '';
   }).join('');
   return `<option value="random"${selected === 'random' ? ' selected' : ''}>🎲 Random country</option>${body}`;
 }
@@ -515,7 +524,7 @@ export function statusPill(status) {
  * across re-renders, since the whole view is rebuilt on every change.
  */
 export function disclosure(key, summary, body, { open = false, count = null } = {}) {
-  return `<details class="disclosure" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${summary}${count != null ? ` <span class="count">${count}</span>` : ''}</summary><div class="disclosure-body">${body}</div></details>`;
+  return `<details class="disclosure" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${flagEmojiToImg(summary)}${count != null ? ` <span class="count">${count}</span>` : ''}</summary><div class="disclosure-body">${body}</div></details>`;
 }
 
 /** A compact choice row: icon, title, one line of detail, a status line (odds or what's missing) and an action. */

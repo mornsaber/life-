@@ -6,6 +6,7 @@ import { GROUPS, leadsCountry, deskOf } from '../../modules/politics/GovernmentD
 import { runsEmpire, empireOf } from '../../modules/legal/Empire.js';
 import { meOf, outfitsHere } from '../../modules/legal/Underworld.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
+import { flagImg } from '../Flags.js';
 
 export function governmentCard(state) {
   if (!leadsCountry(state)) return '';
@@ -13,7 +14,7 @@ export function governmentCard(state) {
   if (!d) return card('Government', '<p class="muted">Your government desk opens at the end of your first year in office.</p>', { icon: '🏛️' });
   const groups = Object.entries(GROUPS).map(([id, g]) => meter(d.groups[id], { label: `${g.icon} ${g.label}`, tone: d.groups[id] >= 55 ? 'good' : d.groups[id] >= 40 ? 'mid' : 'bad' })).join('');
   const used = Boolean(state.yearly['desk.diplomacy']);
-  const rel = Object.entries(d.relations).map(([cc, v]) => `<li class="region-row"><span>${COUNTRIES[cc]?.flag ?? ''} <b>${esc(COUNTRIES[cc]?.name ?? cc)}</b> ${chip(`${v}`, v >= 65 ? 'good' : v >= 40 ? '' : 'bad')}${d.deals.filter((x) => x.cc === cc).map((x) => ` ${chip(x.kind === 'trade' ? '🤝 Trade' : x.kind === 'alliance' ? '🛡️ Ally' : '🚫 Sanctioned', x.kind === 'sanction' ? 'bad' : 'good')}`).join('')}</span>
+  const rel = Object.entries(d.relations).map(([cc, v]) => `<li class="region-row"><span>${flagImg(cc) || ''} <b>${esc(COUNTRIES[cc]?.name ?? cc)}</b> ${chip(`${v}`, v >= 65 ? 'good' : v >= 40 ? '' : 'bad')}${d.deals.filter((x) => x.cc === cc).map((x) => ` ${chip(x.kind === 'trade' ? '🤝 Trade' : x.kind === 'alliance' ? '🛡️ Ally' : '🚫 Sanctioned', x.kind === 'sanction' ? 'bad' : 'good')}`).join('')}</span>
     <span>${button('🤝', 'desk.diplomacy', { arg: `${cc}:trade`, variant: 'tiny', disabled: used, title: 'Trade deal' })}${button('🛡️', 'desk.diplomacy', { arg: `${cc}:alliance`, variant: 'tiny', disabled: used, title: 'Alliance' })}${button('🚫', 'desk.diplomacy', { arg: `${cc}:sanction`, variant: 'tiny', disabled: used, title: 'Sanctions' })}</span></li>`).join('');
   const legacy = d.legacy.slice(-5).reverse().map((l) => `<li><small>age ${l.age}</small> ${esc(l.text)}</li>`).join('');
   return card('Government', `<h4 class="sub">How the country sees you</h4>${groups}

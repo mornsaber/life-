@@ -17,6 +17,7 @@ import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
 import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked, startListYear } from './ui/Components.js';
+import { enhanceFlagSelects, syncFlagSelects } from './ui/FlagPicker.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -204,6 +205,7 @@ function refreshCrowns(form) {
   swap('[name="countryId"]', c.country);
   const note = form.querySelector('#crown-note');
   if (note) note.textContent = c.note;
+  syncFlagSelects(form);
   return undefined;
 }
 
@@ -327,3 +329,7 @@ document.addEventListener('keydown', (event) => {
 
 if (!engine.boot()) renderer.render(null);
 else if (store.migratedFrom != null) renderer.toast(`Your save was upgraded from version ${store.migratedFrom}.`, 'good');
+
+// Country pickers with real flags on the start screen (native <option>s can only show emoji).
+new MutationObserver(() => { const form = document.getElementById('new-life-form'); if (form) enhanceFlagSelects(form); }).observe(document.body, { childList: true, subtree: true });
+{ const form = document.getElementById('new-life-form'); if (form) enhanceFlagSelects(form); }

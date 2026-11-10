@@ -22,6 +22,7 @@ import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
 import { cityStateOfDay, innerBorder, getEraState } from '../../modules/world/Eras.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
+import { flagImg, flagFrom } from '../Flags.js';
 
 function licenseImpact(state, toState) {
   const out = [];
@@ -53,7 +54,7 @@ export function moveView(state) {
     if (!isHere && crossState && !isAbroad(state)) impacts.push('🎓 Out-of-state tuition for 1 yr');
     if (!isHere && state.housing.properties.some((p) => p.use === 'primary')) impacts.push('🏡 Sell or rent out your home');
     return `<li class="move-row ${isHere ? 'here' : ''}">
-      <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}${dayState(r.id) ? ` · ${dayState(r.id).flag} ${esc(dayState(r.id).name)}` : ''}</small></span>
+      <div class="move-head"><span>${r.icon} <b>${esc(r.name)}</b> <small>${r.type} · ${st.name}${dayState(r.id) ? ` · ${flagFrom(dayState(r.id).spec)} ${esc(dayState(r.id).name)}` : ''}</small></span>
         ${isHere ? chip('You live here', 'good') : button(`Move (${money(MOVE_COST)})`, 'region.move', { arg: r.id, variant: 'tiny', disabled: state.character.age < 18 || Boolean(innerBorder(state, here.id, r.id)), hint: innerBorder(state, here.id, r.id) ?? '' })}</div>
       <div class="move-stats">
         ${chip(`🏷️ COL ×${r.col.toFixed(2)}`)} ${chip(`💼 Pay ×${r.market.toFixed(2)}`)} ${isAbroad(state) ? '' : chip(`🦅 Fed locality +${Math.round(r.locality * 100)}%`)}
@@ -82,7 +83,7 @@ function retireAbroadCard(state) {
   const here = state.character.countryId ?? 'US';
   const rows = Object.values(COUNTRIES).filter((c) => c.id !== here && IMMIGRATION[c.id].visas.retiree).map((c) => {
     const v = IMMIGRATION[c.id].visas.retiree;
-    return `<li>${c.flag} <b>${esc(c.name)}</b> — ${esc(v.name)} <small class="fine">age ${v.minAge}+ · show ${money(v.amount)}${v.permanent ? ' · permanent' : ''}</small></li>`;
+    return `<li>${flagImg(c.id)} <b>${esc(c.name)}</b> — ${esc(v.name)} <small class="fine">age ${v.minAge}+ · show ${money(v.amount)}${v.permanent ? ' · permanent' : ''}</small></li>`;
   }).join('');
   const ukFrozen = (state.retirement.records?.GB?.length || here === 'GB') ? `<p class="fine">🧊 A UK State Pension is frozen (never uprated) if you retire to ${UK_PENSION_FROZEN_IN.map((c) => COUNTRIES[c].name).join(', ')}.</p>` : '';
   return card('Retiring Abroad', `<p class="muted">Public pensions follow you: each country you worked in pays its share wherever you live. Retiree visas need private health insurance — about ${money(2500 + Math.max(0, state.character.age - 45) * 220)} a year at your age.</p><ul class="history">${rows}</ul>${ukFrozen}`, { icon: '🌴' });
@@ -149,7 +150,7 @@ function regimeCard(state) {
     r.foreignMedia && state.character.age >= 14 ? button(g.foreignMedia ? '💾 Stop watching foreign dramas' : '💾 Watch smuggled foreign dramas', 'regime.foreignMedia', { hint: g.foreignMedia ? 'Safer' : '+Happiness, but the 109 Group raids' }) : '',
     r.exit === 'closed' && adult ? button('🌊 Defect', 'regime.defect', { variant: 'danger', hint: 'Across the river, then to Seoul' }) : '',
   ].join('');
-  return card(`Life in ${esc(c.name)}`, `${kv(rows.filter(Boolean))}${btns ? `<div class="action-grid">${btns}</div>` : ''}`, { icon: c.flag, accent: r.kind === 'democracy' ? 'yellow' : 'red', summary: esc(r.name ?? '') });
+  return card(`Life in ${esc(c.name)}`, `${kv(rows.filter(Boolean))}${btns ? `<div class="action-grid">${btns}</div>` : ''}`, { icon: flagImg(c.id), accent: r.kind === 'democracy' ? 'yellow' : 'red', summary: esc(r.name ?? '') });
 }
 
 /** Holidays abroad, on your passports. */
@@ -165,8 +166,8 @@ function travelCard(state) {
       const e = why ? null : bestEntry(state, cc);
       const warn = why ? null : advisory(state, cc);
       const k = e ? KIND[e.kind] ?? ['🛂', ''] : null;
-      return `<li class="move-row"><div class="move-head">${c.flag} <b>${esc(c.name)}</b>${tr.countries?.includes(cc) ? ' <small class="fine">✓ visited</small>' : ''}</div>
-        ${why ? `<small class="why">${esc(why)}</small>` : `<div class="chips">${chip(`${k[0]} ${COUNTRIES[e.passport]?.flag ?? ''} ${e.note}${e.refusal >= 0.1 ? ` · ≈${Math.round(e.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2 })}`}
+      return `<li class="move-row"><div class="move-head">${flagImg(c.id)} <b>${esc(c.name)}</b>${tr.countries?.includes(cc) ? ' <small class="fine">✓ visited</small>' : ''}</div>
+        ${why ? `<small class="why">${esc(why)}</small>` : `<div class="chips">${chip(`${k[0]} ${flagImg(e.passport) || ''} ${e.note}${e.refusal >= 0.1 ? ` · ≈${Math.round(e.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2 })}`}
       </li>`;
     }).join('');
     return disclosure(`travel.${name}`, esc(name), `<ul class="move-list">${rows}</ul>`, { count: list.filter((cc) => cc !== here && COUNTRIES[cc] && !travelBlock(state, cc)).length });
@@ -177,7 +178,7 @@ function travelCard(state) {
 
 function passportCard(state) {
   const here = state.character.countryId ?? 'US';
-  const passports = citizenshipsOf(state).map((c) => chip(`${COUNTRIES[c].flag} ${COUNTRIES[c].demonym}`, c === here ? 'good' : '')).join(' ');
+  const passports = citizenshipsOf(state).map((c) => chip(`${flagImg(c)} ${COUNTRIES[c].demonym}`, c === here ? 'good' : '')).join(' ');
   const res = residencyOf(state);
   const law = IMMIGRATION[here];
   const lines = [];
@@ -231,8 +232,8 @@ function passportCard(state) {
   const learnable = [...new Set([target, ...Object.values(COUNTRIES).map((c) => c.languages[0])])].filter((l) => !native.includes(l) && (state.migration?.languages?.[l] ?? 0) < LANGUAGE_FLUENT);
   const classes = state.character.age >= 12 && learnable.length ? `<div class="btn-row">${learnable.slice(0, 6).map((l) => button(`📚 ${l}`, 'migration.study', { arg: l, variant: 'tiny ghost', hint: money(LANGUAGE_CLASS_COST), disabled: Boolean(state.yearly['migration.study']) })).join('')}</div>` : '';
   const renounce = citizenshipsOf(state).length > 1 ? citizenshipsOf(state).filter((c) => c !== here).map((c) => button(`Renounce ${COUNTRIES[c].demonym}`, 'migration.renounce', { arg: c, variant: 'tiny ghost' })).join('') : '';
-  const service = servicePassports(state).map((p) => chip(`${PASSPORT_ICON[p.kind]} ${COUNTRIES[p.country]?.flag ?? ISSUERS[p.country]?.flag ?? ''} ${PASSPORT_LABEL[p.kind]} · ${esc(p.why)}`, p.kind === 'diplomatic' ? 'honor' : 'cyan')).join(' ');
-  return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => COUNTRIES[c].flag).join('')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
+  const service = servicePassports(state).map((p) => chip(`${PASSPORT_ICON[p.kind]} ${flagImg(p.country) || (ISSUERS[p.country]?.flag ?? '')} ${PASSPORT_LABEL[p.kind]} · ${esc(p.why)}`, p.kind === 'diplomatic' ? 'honor' : 'cyan')).join(' ');
+  return card('Passports & Residency', `<p>${passports}${service ? ` ${service}` : ''}</p>${service ? '<p class="fine">Official and diplomatic passports belong to the state: they\'re for travel on duty, and go back when the job ends — except that former heads of state and government, foreign ministers and sovereigns keep a diplomatic passport for life. Immunity comes with accreditation, not the passport.</p>' : ''}${lines.join('')}<p>${langs}</p>${classes}${renounce ? `<div class="btn-row">${renounce}</div>` : ''}`, { icon: '🛂', accent: 'cyan', summary: `${citizenshipsOf(state).map((c) => flagImg(c)).join(' ')}${res ? ` · ${STATUS_LABEL[res.status]}` : ''}` });
 }
 
 /** A country divided this year (West and East Germany): each side's name, flag and a city on it. */
@@ -244,7 +245,7 @@ function sidesOf(c) {
   for (const id of towns) {
     const d = cityStateOfDay(st, id);
     const key = d?.name ?? c.name;
-    if (!seen.has(key)) seen.set(key, { name: key, flag: d?.flag ?? c.flag, city: id, short: key.match(/\(([^)]+)\)$/)?.[1] ?? key.replace(/^the /, '') });
+    if (!seen.has(key)) seen.set(key, { name: key, flag: d ? flagFrom(d.spec) : flagImg(c.id), city: id, short: key.match(/\(([^)]+)\)$/)?.[1] ?? key.replace(/^the /, '') });
   }
   return seen.size > 1 ? [...seen.values()] : [];
 }
@@ -268,7 +269,7 @@ function abroadCard(state) {
         : button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
     })).join('');
     const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
-    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${c.flag} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
+    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${flagImg(c.id)} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
   };
   const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
   for (const c of others) routesFor[c.id] = routesTo(state, c.id);
