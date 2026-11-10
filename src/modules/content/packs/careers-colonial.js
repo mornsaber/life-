@@ -8,12 +8,13 @@
  * (world/Eras.js colonialWorkOpen). The services end with independence, or when an empire has no
  * territories left: they are wound up, with compensation for loss of career (world/History.js).
  */
-import { colonyHere, rulerAdj, empireColonies, RULER_NAME } from '../../world/Eras.js';
+import { colonyHere, colonialHere, rulerAdj, empireColonies, RULER_NAME } from '../../world/Eras.js';
 import { COUNTRIES } from '../../world/Countries.js';
 
 /** Where you'd serve: your own colony, or (from the ruling country) one of its territories. */
 export function colonialPosting(state) {
-  const st = colonyHere(state);
+  const st = colonialHere(state);
+  if (!st && colonyHere(state)) return { ok: false, reason: `${colonyHere(state).name} is ruled as part of the state itself: there is no colonial service` };
   if (st) return { ok: true, note: `The ${rulerAdj(st.ruler)} administration of ${st.name}` };
   const cc = state.character.countryId ?? 'US';
   const terr = empireColonies(state, cc);

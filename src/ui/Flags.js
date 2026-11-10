@@ -45,7 +45,7 @@ const DRAW = {
     return wrap(`${stripes}<rect width="${cw}" height="${ch}" fill="#3C3B6E"/>${stars}`, `The Stars and Stripes (${n} stars)`);
   },
   gbPre1801: () => wrap(union(W, H, false), 'The Union Flag of Great Britain (1707–1800)'),
-  ussr: () => wrap(`<rect width="${W}" height="${H}" fill="#CC0000"/>${star(12, 7, 3, 'none').replace('fill="none"', 'fill="none" stroke="#FFD700" stroke-width="0.8"')}<text x="12" y="20" font-size="11" text-anchor="middle" fill="#FFD700">☭</text>`, 'The flag of the Soviet Union'),
+  ussr: () => wrap(`<rect width="${W}" height="${H}" fill="#CC0000"/>${star(12, 7, 3, 'none').replace('fill="none"', 'fill="none" stroke="#FFD700" stroke-width="0.8"')}<g fill="none" stroke="#FFD700" stroke-width="1.4" stroke-linecap="round"><path d="M8.5 13.5 A5 5 0 1 0 15.5 19.5"/><path d="M9 21.5 L15.5 15"/><path d="M14 13.5 L17 16.5"/></g>`, 'The flag of the Soviet Union'),
   prussia: () => wrap(bands(['#111', '#fff']), 'The flag of Prussia'),
   germanEmpire: () => wrap(bands(['#111', '#fff', '#DD0000']), 'The black-white-red of the German Reich'),
   sardinia: () => wrap(`<rect width="${W}" height="${H}" fill="#1F4E9E"/><rect x="18" y="10" width="24" height="25" fill="#C8102E"/><rect x="27.5" y="10" width="5" height="25" fill="#fff"/><rect x="18" y="20" width="24" height="5" fill="#fff"/>`, 'The flag of the Kingdom of Sardinia'),
@@ -94,7 +94,7 @@ const DRAW = {
   blueEnsign: () => wrap(`<rect width="${W}" height="${H}" fill="#012169"/>${union(W / 2, H / 2)}<circle cx="45" cy="30" r="6" fill="#fff" stroke="#999" stroke-width="0.6"/>`, 'The Blue Ensign of a British colony'),
   zulu: () => wrap(`<rect width="${W}" height="${H}" fill="#7A4A1D"/><text x="30" y="30" font-size="18" text-anchor="middle">🛡️</text>`, 'The shield of the Zulu Kingdom'),
   quaiti: () => wrap(`${bands(['#DD0000', '#FFD700'])}<circle cx="30" cy="22.5" r="6" fill="#1F4E9E"/>`, 'The flag of the Qu\'aiti Sultanate'),
-  gdr: () => wrap(`${bands(['#111', '#DD0000', '#FFCE00'])}<circle cx="30" cy="22.5" r="8" fill="#DD0000" stroke="#FFCE00" stroke-width="1"/><text x="30" y="26.5" font-size="9" text-anchor="middle" fill="#FFCE00">⚒</text>`, 'The flag of the German Democratic Republic'),
+  gdr: () => wrap(`${bands(['#111', '#DD0000', '#FFCE00'])}<circle cx="30" cy="22.5" r="8" fill="#DD0000" stroke="#FFCE00" stroke-width="1"/><g fill="none" stroke="#FFCE00" stroke-width="1.1" stroke-linecap="round"><path d="M26.5 26 L30 18.5 L33.5 26"/><path d="M30 17 V25"/><path d="M28 17 H32"/><path d="M25.5 22 A5 3.2 0 0 0 34.5 22"/></g>`, 'The flag of the German Democratic Republic'),
   southVietnam: () => wrap(`<rect width="${W}" height="${H}" fill="#FFDA00"/>${[18, 22.5, 27].map((y) => `<rect x="0" y="${y - 1.4}" width="${W}" height="2.8" fill="#DA251D"/>`).join('')}`, 'The flag of the Republic of Vietnam'),
   southYemen: () => wrap(`${bands(['#CE1126', '#fff', '#111'])}<polygon points="0,0 22,22.5 0,45" fill="#3D8ED0"/>${star(7, 22.5, 4.5, '#CE1126')}`, 'The flag of the People\'s Democratic Republic of Yemen'),
   yugoslavia: () => wrap(`${bands(['#003893', '#fff', '#DE0000'])}${star(30, 22.5, 7, '#DE0000').replace('/>', ' stroke="#FFD700" stroke-width="0.8"/>')}`, 'The flag of Yugoslavia'),

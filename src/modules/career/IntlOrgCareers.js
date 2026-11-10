@@ -24,8 +24,8 @@
  */
 import { L } from './Ladder.js';
 import { citizenshipsOf } from '../world/Countries.js';
-import careersPack, { EU_MEMBERS, NATO_MEMBERS, citizenOfAny, intlExperience, isCatholic, ordainedPriest, passed, served, swissGuardCheck, yearsIn } from '../content/packs/careers-intl-orgs.js';
-export { EU_MEMBERS, NATO_MEMBERS, citizenOfAny, intlExperience, isCatholic, ordainedPriest, passed, served, swissGuardCheck, yearsIn };
+import careersPack, { EU_MEMBERS, NATO_MEMBERS, memberIn, citizenOfAny, intlExperience, isCatholic, ordainedPriest, passed, served, swissGuardCheck, yearsIn } from '../content/packs/careers-intl-orgs.js';
+export { EU_MEMBERS, NATO_MEMBERS, memberIn, citizenOfAny, intlExperience, isCatholic, ordainedPriest, passed, served, swissGuardCheck, yearsIn };
 
 
 export const P5 = ['US', 'GB', 'FR', 'CN', 'RU'];

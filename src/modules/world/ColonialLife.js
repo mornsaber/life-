@@ -19,7 +19,7 @@
  */
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { COUNTRIES } from './Countries.js';
-import { colonyHere, colonyStage, rulerAdj, yearNow } from './Eras.js';
+import { colonyHere, colonyStage, rulerAdj, yearNow, colonialHere } from './Eras.js';
 import { postingOf } from './Posting.js';
 import { leaveJob } from '../career/CareerEngine.js';
 import { clamp } from '../../core/Random.js';
@@ -33,7 +33,7 @@ const colonialJob = (state) => {
 function servingIn(state) {
   const p = postingOf(state);
   if (p?.kind === 'colonial' && p.colony && colonyStage(state, p.colony)) return { cc: p.colony, expat: true, ruler: colonyStage(state, p.colony).ruler };
-  const st = colonyHere(state);
+  const st = colonialHere(state);
   if (st) return { cc: state.character.countryId ?? 'US', expat: false, ruler: st.ruler };
   return null;
 }

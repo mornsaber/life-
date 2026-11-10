@@ -17,7 +17,7 @@
 import { Random } from '../../core/Random.js';
 import { addHonor, currentYear, netWorth } from '../../core/State.js';
 import { LEGISLATURES } from '../politics/NationalOffices.js';
-import { colonyHere, rulerAdj } from './Eras.js';
+import { colonyHere, rulerAdj, colonialHere } from './Eras.js';
 import { COUNTRIES } from './Countries.js';
 import { familyPrestige } from '../people/FamilyLegacy.js';
 
@@ -69,7 +69,7 @@ export const PrivyCouncilModule = {
 function colonyCouncil(ctx) {
   const { state } = ctx;
   const cc = here(state);
-  const st = colonyHere(state);
+  const st = colonialHere(state);
   const seat = held(state).find((m) => m.council === `exco.${cc}` && m.until == null);
   if (seat && !st) {
     seat.until = currentYear(state);

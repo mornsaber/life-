@@ -14,6 +14,7 @@ import {
 import { cashOutAvailable } from '../../modules/realestate/MortgageSystem.js';
 import { portfolio, empireOf, allRentals, RENT_POLICIES, RENT_CONTROL_CAP, COMPANY_MIN_PROPERTIES, companyCost } from '../../modules/realestate/PropertyEmpire.js';
 import { periodRentName } from '../../modules/world/Eras.js';
+import { propertyBlock } from '../../modules/world/Regimes.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
   const tone = score >= 740 ? 'good' : score >= 640 ? 'mid' : 'bad';
@@ -46,6 +47,7 @@ function residence(state) {
 
 function listings(state) {
   if (state.character.age < 18) return '';
+  if (propertyBlock(state)) return card('Buying a Home', `<p class="muted">${esc(propertyBlock(state))}.</p>`, { icon: '🏢' });
   const rows = state.housing.listings.map((l) => {
     const t = PROPERTY_TYPES[l.type];
     const noi = expectedNoi(state, l.type, l.regionId, l.price);

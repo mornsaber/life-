@@ -38,6 +38,8 @@ import { budgetAt } from './Budgets.js';
 import { isCitizen } from '../world/Countries.js';
 import { OFFICES } from './Offices.js';
 import { discharge } from '../military/MilitaryEngine.js';
+import { regimeHere } from '../world/Regimes.js';
+import { yearNow, PRESENT } from '../world/Eras.js';
 
 export const CPC_RANKS = [
   { title: 'Party member', salary: 0, maxAge: 99 },
@@ -66,7 +68,37 @@ export const RULING_PARTIES = {
   VN: { name: 'the Communist Party of Vietnam', short: 'the Party', congress: 'the National Assembly', army: 'the People\'s Army of Vietnam', cmc: 'the Central Military Commission', gov: { 4: 'mayor', 6: 'vn_governor', 8: 'vn_pm' }, youth: 'the Ho Chi Minh Communist Youth Union', capital: 'Hanoi', thought: 'Ho Chi Minh Thought', office: 'vn_president', topNote: 'The Central Committee leads the state; the National Assembly will confirm your colleagues in the top posts.', flag: '🇻🇳',
     titles: ['Party member', 'Party cell secretary', 'Commune Party secretary', 'District Party secretary', 'City Party secretary', 'Member of a provincial Party standing committee', 'Provincial Party secretary', 'Member of the Politburo', 'Standing member of the Secretariat', 'General Secretary of the Communist Party of Vietnam'] },
 };
-export const partyHere = (state) => RULING_PARTIES[state.character.countryId ?? 'US'] ?? null;
+/**
+ * The ruling parties of the past, on the same cadre ladder: the Soviet Communist Party (and its
+ * republics), the parties of the Soviet bloc, Tito's League of Communists, and the parties of the
+ * fascist dictatorships.
+ */
+const CPSU_TITLES = ['Party member', 'Secretary of a primary Party organisation', 'Raion committee secretary', 'City committee (gorkom) first secretary', 'Member of an oblast committee', 'Oblast committee (obkom) first secretary', 'First Secretary of a republic\'s Central Committee', 'Candidate member of the Politburo', 'Member of the Politburo', 'General Secretary of the Communist Party of the Soviet Union'];
+const BLOC = (name, extra = {}) => ({ name, short: 'the Party', congress: 'the national assembly', army: 'the People\'s Army', cmc: 'the National Defence Council', gov: { 4: 'mayor' }, youth: 'the Communist youth league', capital: null, thought: 'Marxism–Leninism', office: null, topNote: 'You lead the Party, and through it the state.', flag: '☭', ...extra });
+const ERA_PARTIES = {
+  RU: BLOC('the Communist Party of the Soviet Union', { congress: 'the Supreme Soviet', army: 'the Soviet Army', cmc: 'the Defence Council of the USSR', youth: 'the Komsomol', capital: 'Moscow', titles: CPSU_TITLES }),
+  PL: BLOC('the Polish United Workers\' Party'), HU: BLOC('the Hungarian Socialist Workers\' Party'), CZ: BLOC('the Communist Party of Czechoslovakia'), SK: BLOC('the Communist Party of Czechoslovakia'),
+  BG: BLOC('the Bulgarian Communist Party'), RO: BLOC('the Romanian Communist Party'), AL: BLOC('the Party of Labour of Albania'), MN: BLOC('the Mongolian People\'s Revolutionary Party'),
+  RS: BLOC('the League of Communists of Yugoslavia', { army: 'the Yugoslav People\'s Army', topNote: 'You lead the League, and Yugoslavia with it.' }),
+  GDR: BLOC('the Socialist Unity Party of Germany (SED)', { army: 'the National People\'s Army', youth: 'the Free German Youth', capital: 'East Berlin' }),
+  NAZI: { name: 'the National Socialist German Workers\' Party (NSDAP)', short: 'the Party', congress: 'the Reichstag', army: 'the Wehrmacht', cmc: 'the Reich Defence Council', gov: { 4: 'mayor' }, youth: 'the Hitler Youth', capital: 'Berlin', thought: 'National Socialism', office: null, flag: '🦅', topNote: 'Second only to the Führer.',
+    titles: ['Party member', 'Blockleiter', 'Zellenleiter', 'Ortsgruppenleiter', 'Kreisleiter', 'Gauamtsleiter', 'Gauleiter', 'Reichsleiter', 'Member of the Reich Cabinet', 'Deputy Führer'] },
+  FASCIST: { name: 'the National Fascist Party', short: 'the Party', congress: 'the Chamber of Fasces and Corporations', army: 'the Royal Army', cmc: 'the Supreme Defence Commission', gov: { 4: 'mayor' }, youth: 'the Balilla', capital: 'Rome', thought: 'Fascism', office: null, flag: '🪓', topNote: 'Second only to the Duce.',
+    titles: ['Party member', 'Head of a nucleus', 'Section secretary', 'Fascio secretary', 'Federal vice-secretary', 'Federal secretary', 'Inspector of the Party', 'Member of the National Directorate', 'Member of the Grand Council of Fascism', 'Secretary of the National Fascist Party'] },
+};
+/** The party you'd join in the year being played: none where there's no single party (Qing China, post-Soviet Russia). */
+export const partyHere = (state) => {
+  const cc = state?.character?.countryId ?? 'US';
+  if (!state?.era || yearNow(state) >= PRESENT) return RULING_PARTIES[cc] ?? null;
+  const r = regimeHere(state);
+  if (!r.party) return null;
+  if (/Third Reich|annexed to Germany/.test(r.name ?? '') || (cc === 'AT' && r.kind === 'totalitarian')) return ERA_PARTIES.NAZI;
+  if (/fascist/i.test(r.name ?? '')) return ERA_PARTIES.FASCIST;
+  if (/German Democratic Republic/.test(r.name ?? '')) return ERA_PARTIES.GDR;
+  if (/Soviet/.test(r.name ?? '')) return ERA_PARTIES.RU;
+  if (/Yugoslavia/.test(r.name ?? '')) return ERA_PARTIES.RS;
+  return RULING_PARTIES[cc] ?? ERA_PARTIES[cc] ?? BLOC('the ruling party', { flag: '🚩' });
+};
 const inChina = (state) => Boolean(partyHere(state));
 /** A cadre rank's title in this country's party. */
 export const rankTitle = (state, rank) => partyHere(state)?.titles?.[rank] ?? CPC_RANKS[rank]?.title;
@@ -201,8 +233,8 @@ export const CommunistPartyModule = {
       if (c.rank === 9) {
         const pt = partyHere(state);
         ctx.log(`The Organization Department appointed you ${rankTitle(state, c.rank)}.`, '☭', 'milestone');
-        ctx.log(`The Central Committee elected you General Secretary — and Chairman of ${pt.cmc}: the army answers to you. ${pt.topNote}`, pt.flag, 'milestone');
-        ctx.emit('politics:take', { officeId: pt.office, appointed: true });
+        ctx.log(`${pt.titles ? `You rose to ${pt.titles.at(-1)}` : 'The Central Committee elected you General Secretary'} — and chair ${pt.cmc}: the army answers to you. ${pt.topNote}`, pt.flag, 'milestone');
+        if (pt.office && OFFICES[pt.office]) ctx.emit('politics:take', { officeId: pt.office, appointed: true });
         if (state.politics.office) state.politics.office.viaParty = true;
       } else if (gov && OFFICES[gov]) {
         // The Party decides which side of the system you serve on: the Party post, or the government post beside it.

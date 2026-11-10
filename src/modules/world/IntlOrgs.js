@@ -27,7 +27,7 @@
  * state.malta    = { grade, since, office, officeSince, vowsAt, conferred }
  * job.intlTerm   = age an appointed term ends
  */
-import { DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5 } from '../career/IntlOrgCareers.js';
+import { DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5, memberIn } from '../career/IntlOrgCareers.js';
 import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 import { getProfession } from '../career/JobTrees.js';
 import { createEmployer } from '../career/Employers.js';
@@ -46,7 +46,7 @@ import { REGIONS } from '../life/Regions.js';
 const ROTATION_YEARS = 4;
 const isIntl = (job) => Boolean(job && INTL_ORG_PROFESSIONS[job.professionId]);
 const cits = (state) => citizenshipsOf(state);
-const anyOf = (state, list) => cits(state).some((c) => list.includes(c));
+const anyOf = (state, list) => cits(state).some((c) => memberIn(list, c));
 
 /* ------------------------------------------------------------------ */
 /* Competitions                                                        */

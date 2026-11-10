@@ -11,12 +11,14 @@ import { yearlyCount } from '../../core/State.js';
 import { stocksCard } from './StocksView.js';
 import { CAPITAL_GAINS } from '../../modules/life/Finances.js';
 import { DC_RATES, DEFAULT_DC_RATE } from '../../modules/retirement/RetirementEngine.js';
+import { stockBlock } from '../../modules/world/Regimes.js';
 
 const pct = (x) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(1)}%`;
 
 export function investView(state) {
   const inv = state.investing;
   if (!inv) return '';
+  if (stockBlock(state)) return card('Savings & Investing', `<p class="muted">${esc(stockBlock(state))}. Your cash earns the bank's small fixed interest.</p>`, { icon: '🏦' });
   const age = state.character.age;
   const e = state.economy;
   const pv = portfolioValue(state);

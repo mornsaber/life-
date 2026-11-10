@@ -35,7 +35,8 @@ import { createEmployer } from '../career/Employers.js';
 import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
-import { eraWorkBlock, hasTech } from './Eras.js';
+import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow } from './Eras.js';
+const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
 let coupHook = null;
@@ -142,14 +143,38 @@ export function exitBlock(state) {
   return null;
 }
 /** Private business allowed? */
-export const businessBlock = (state) => (regimeHere(state).business === 'state' ? 'Private enterprise is illegal here — the markets (jangmadang) are as far as it goes' : null);
+export const businessBlock = (state) => (regimeHere(state).business === 'state' ? `Private enterprise is illegal here — ${(state.character.countryId ?? 'US') === 'KP' ? 'the markets (jangmadang) are as far as it goes' : 'a little trading on the black market is as far as it goes'}` : null);
+/** A stock market and a housing market exist? (Not in a planned economy: flats are allocated, savings go to the state bank.) */
+export const stockBlock = (state) => (regimeHere(state).business === 'state' ? 'There is no stock market here: savings go into the state savings bank' : null);
+export const propertyBlock = (state) => (regimeHere(state).business === 'state' ? 'Homes aren\'t bought and sold here: the state allocates flats, or you wait years for a cooperative one' : null);
 /** Consumer credit allowed? */
 export const creditBlock = (state) => (regimeHere(state).banking === 'state' ? 'No consumer credit exists here' : null);
 /** Work closed to women. */
 const WOMEN_OK = ['medical', 'nursing', 'education', 'publicHealth', 'caregiving', 'childcare', 'midwifery', 'pharmacy', 'dentistry', 'agriculture'];
+/** Trades that only exist in a market economy: nobody hires a bail bondsman or a hedge-fund analyst in a planned economy. */
+const MARKET_ONLY = ['propertyManagement', 'realestate', 'privateSecurity', 'privateInvestigator', 'bailBonds', 'privatePolice', 'privateFire', 'privateEms', 'privatePrisons', 'privateMilitary', 'finance', 'marketing', 'travellingSales', 'nonprofit', 'contentCreator', 'tradingCompany', 'plantation', 'charterAviation', 'insurance', 'actuary', 'icrc', 'maltaRelief', 'maltaDiplomacy'];
+/**
+ * The present-day state whose agencies the national careers are (the Federal Republic of Germany's
+ * Bundespolizei, India's IPS, the PRC's People's Armed Police): none before it existed.
+ */
+const NATIONAL_FROM = { DE: 1949, AT: 1955, IT: 1946, JP: 1947, KR: 1948, KP: 1948, CN: 1949, TW: 1949, IN: 1947, PK: 1947, BD: 1971, LK: 1948, MM: 1948, ID: 1949, PH: 1946, VN: 1976, IL: 1948, RU: 1991, UA: 1991, BY: 1991, KZ: 1991, EE: 1991, LV: 1991, LT: 1991, PL: 1989, CZ: 1993, SK: 1993, HU: 1989, HR: 1991, SI: 1991, RS: 2006, ES: 1977, PT: 1976, GR: 1974, IE: 1922, ZA: 1994, NG: 1960, KE: 1963, GH: 1957, EG: 1953, IQ: 1958, IR: 1979, MX: 1917, BR: 1889 };
+/** Agencies founded later than their state: China's People's Armed Police (1982), Germany's BaFin (2002). */
+const AGENCY_FROM = { cn_gendarmerie: 1982, de_regulatory: 2002, de_tsa: 1992, de_intelligence: 1956, de_caseOfficer: 1956, de_sigint: 1956 };
+const CLERGY_IDS = ['clergy', 'catholicClergy', 'anglicanClergy', 'jesuits', 'moc', 'romanCuria', 'holySeeDiplomacy'];
 export function workBlock(state, profession) {
   const r = regimeHere(state);
   if (r.women === 'barred' && state.character.gender === 'female' && !WOMEN_OK.includes(profession.id)) return 'Women are barred from this work here';
+  const base = profession.template ?? profession.id;
+  if (r.business === 'state' && (MARKET_ONLY.includes(base) || MARKET_ONLY.includes(profession.id))) return 'There\'s no such private trade in a planned economy: the state runs everything';
+  if (r.religion === 'banned' && CLERGY_IDS.includes(base)) return 'The state has closed the churches and seminaries';
+  if (profession.country && !profession.colonial) {
+    const y = yearNow(state);
+    const from = Math.max(NATIONAL_FROM[profession.country] ?? 0, AGENCY_FROM[profession.id] ?? 0);
+    if (y < from) return `Not founded yet (from about ${from})`;
+  }
+  // A country ruled from abroad (a Soviet republic, a colony) has no agencies of its own: the ruler's serve it.
+  const st = colonyStage(state, state.character.countryId ?? 'US');
+  if (st && st.ruler !== (state.character.countryId ?? 'US') && profession.country && profession.country !== st.ruler && !profession.colonial) return `No service of its own while the country is ruled from ${RULER_CAPITAL_OF(st.ruler)}`;
   return eraWorkBlock(state, profession);
 }
 /** Study closed. */

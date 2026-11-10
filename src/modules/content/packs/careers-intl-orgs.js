@@ -24,13 +24,19 @@
  */
 import { L } from '../../career/Ladder.js';
 import { citizenshipsOf } from '../../world/Countries.js';
+import { eraYear } from '../../world/Eras.js';
 
 /** EU and NATO members (citizenship gates). */
 export const EU_MEMBERS = ['AT', 'BE', 'CY', 'DE', 'DK', 'EE', 'ES', 'FI', 'FR', 'GR', 'HR', 'IE', 'IT', 'LT', 'LV', 'LU', 'MT', 'NL', 'PL', 'PT', 'RO', 'SE', 'SI', 'SK', 'BG', 'CZ', 'HU'];
 
 export const NATO_MEMBERS = ['US', 'CA', 'GB', 'FR', 'DE', 'IT', 'ES', 'NL', 'BE', 'DK', 'NO', 'PL', 'RO', 'TR', 'EE', 'LV', 'LT', 'SE', 'FI', 'CZ', 'HU', 'PT', 'GR', 'SK', 'SI', 'HR', 'BG', 'AL', 'ME', 'MK', 'IS', 'LU'];
 
-export const citizenOfAny = (state, list) => citizenshipsOf(state).some((c) => list.includes(c));
+/** When each country joined: the EEC/EU (1958 for the six) and NATO (1949 for the founders). */
+export const EU_JOINED = { BE: 1958, DE: 1958, FR: 1958, IT: 1958, LU: 1958, NL: 1958, DK: 1973, IE: 1973, GR: 1981, ES: 1986, PT: 1986, AT: 1995, FI: 1995, SE: 1995, CY: 2004, CZ: 2004, EE: 2004, HU: 2004, LV: 2004, LT: 2004, MT: 2004, PL: 2004, SK: 2004, SI: 2004, BG: 2007, RO: 2007, HR: 2013 };
+export const NATO_JOINED = { US: 1949, CA: 1949, GB: 1949, FR: 1949, IT: 1949, NL: 1949, BE: 1949, DK: 1949, NO: 1949, PT: 1949, IS: 1949, LU: 1949, GR: 1952, TR: 1952, DE: 1955, ES: 1982, CZ: 1999, HU: 1999, PL: 1999, BG: 2004, EE: 2004, LV: 2004, LT: 2004, RO: 2004, SK: 2004, SI: 2004, AL: 2009, HR: 2009, ME: 2017, MK: 2020, FI: 2023, SE: 2024 };
+/** Was this country a member in the year being played? */
+export const memberIn = (list, cc, y = eraYear()) => list.includes(cc) && !(((list === EU_MEMBERS ? EU_JOINED : list === NATO_MEMBERS ? NATO_JOINED : {})[cc] ?? 0) > y);
+export const citizenOfAny = (state, list) => citizenshipsOf(state).some((c) => memberIn(list, c));
 
 export const passed = (state, comp) => Boolean(state.intlOrgs?.competitions?.[comp]?.passed);
 
@@ -197,7 +203,7 @@ const careers = {
     employers: ['International Committee of the Red Cross'],
     union: null,
     entry: { education: { level: 'bachelor' } },
-    eligible: (state) => (state.character.age >= 25 ? { ok: true } : { ok: false, reason: 'Delegates are 25 or older, with work experience' }),
+    eligible: (state) => (eraYear() < 1992 && !citizenshipsOf(state).includes('CH') ? { ok: false, reason: 'ICRC delegates were Swiss citizens only until 1992' } : state.character.age >= 25 ? { ok: true } : { ok: false, reason: 'Delegates are 25 or older, with work experience' }),
     ladder: [
       ['field', 'Field Officer', 4],
       ['delegate', 'Delegate', 5, { years: 2 }],

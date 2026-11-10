@@ -27,6 +27,7 @@ import { constructionTick, startBuild, demolish, subdivide, rezone } from './Con
 import { regionsInState } from '../life/Regions.js';
 import { officialResidence } from '../world/Residences.js';
 import { aidName } from '../life/Disasters.js';
+import { propertyBlock } from '../world/Regimes.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -503,6 +504,7 @@ export const HousingEngine = {
       const listing = state.housing.listings.find((l) => l.id === listingId);
       if (!listing) return;
       if (state.character.age < 18) return ctx.toast('Too young to buy property.', 'warn');
+      if (propertyBlock(state)) return ctx.toast(propertyBlock(state), 'warn');
       if (yearlyCount(state, 'housing.buy') >= 2) return ctx.toast('Two purchases a year is plenty.', 'warn');
       financingPrompt(ctx, listing);
     },

@@ -11,6 +11,7 @@ import { CROWNS } from '../modules/world/Crown.js';
 import { currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
+  flagEmojiInPage,
   esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, ribbon, ribbonFor, insignia, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
 } from './Components.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
@@ -302,7 +303,7 @@ export class Renderer {
     this.disclosures ??= loadFolds();
     for (const d of this.root.querySelectorAll('details[data-key]')) this.disclosures[d.dataset.key] = d.open;
     this.watchFolds();
-    this.root.innerHTML = localizeHtml(fixMoneySigns(this.html(state)), state ? countryOf(state) : null);
+    this.root.innerHTML = flagEmojiInPage(localizeHtml(fixMoneySigns(this.html(state)), state ? countryOf(state) : null));
     for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
     this.applyLogFilter();

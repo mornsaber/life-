@@ -18,6 +18,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ASSETS, PROFILES, profileReturn, realReturn, IRA_LIMIT, ROTH_INCOME_LIMIT } from './Assets.js';
 import { ACCOUNTS } from '../world/CountryLaw.js';
 import { hasTech, assetExists, iraExists, rothExists } from '../world/Eras.js';
+import { stockBlock } from '../world/Regimes.js';
 
 /** The tax-advantaged accounts where you live: names and yearly limits (the US IRAs share one limit). */
 export function accountsHere(state) {
@@ -225,6 +226,7 @@ export const BrokerageEngine = {
       const amount = Math.round(Number(raw));
       if (!ASSETS[asset] || !(amount > 0)) return;
       if (!assetExists(ctx.state, asset)) return ctx.toast(`${ASSETS[asset].name} don't exist yet.`, 'warn');
+      if (stockBlock(ctx.state)) return ctx.toast(stockBlock(ctx.state), 'warn');
       if (ctx.state.character.age < 18) return ctx.toast('You need to be 18 to open a brokerage account.', 'warn');
       if (ctx.state.finances.cash < amount) return ctx.toast(`You need $${amount.toLocaleString()} in cash.`, 'warn');
       buy(ctx, asset, amount);

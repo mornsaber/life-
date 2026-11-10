@@ -26,6 +26,7 @@ import { realReturn } from './Assets.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { STOCK_INDEX } from '../world/CountryLaw.js';
 import { yearNow } from '../world/Eras.js';
+import { stockBlock } from '../world/Regimes.js';
 
 export const COMPANIES = {
   novaq: { name: 'Novaq Systems', ticker: 'NVQ', sector: 'tech', vol: 0.35, div: 0, price: 180 },
@@ -242,6 +243,7 @@ export const StockMarketModule = {
     /** arg 'companyId:amount' */
     buy(ctx, arg) {
       const { state } = ctx;
+      if (stockBlock(state)) return ctx.toast(stockBlock(state), 'warn');
       const { id, a } = parse(arg);
       const amount = Math.round(Number(a));
       const s = ensureStocks(state);
@@ -264,6 +266,7 @@ export const StockMarketModule = {
     /** arg 'companyId:amount' — sell borrowed shares; the proceeds are held as collateral. */
     short(ctx, arg) {
       const { state } = ctx;
+      if (stockBlock(state)) return ctx.toast(stockBlock(state), 'warn');
       const { id, a } = parse(arg);
       const amount = Math.round(Number(a));
       const s = ensureStocks(state);
@@ -280,6 +283,7 @@ export const StockMarketModule = {
     /** arg 'companyId:call|put:premium' — one-year, at-the-money options. */
     option(ctx, arg) {
       const { state, rng } = ctx;
+      if (stockBlock(state)) return ctx.toast(stockBlock(state), 'warn');
       const { id, a: kind, b } = parse(arg);
       const premium = Math.round(Number(b));
       const s = ensureStocks(state);

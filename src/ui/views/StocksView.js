@@ -5,12 +5,14 @@
 import { esc, money, button, card, chip, kv, select, disclosure } from '../Components.js';
 import { companyDef, exchangeName, listed, stockValue, optionValue, premiumRate, SHORT_FEE } from '../../modules/investing/StockMarket.js';
 import { SECTORS } from '../../modules/economy/EconomyEngine.js';
+import { stockBlock } from '../../modules/world/Regimes.js';
 
 const price = (n) => `$${n >= 100 ? Math.round(n).toLocaleString() : n.toFixed(2)}`;
 
 export function stocksCard(state) {
   const s = state.stocks;
   if (!s || !state.investing) return '';
+  if (stockBlock(state)) return '';
   const adult = state.character.age >= 18;
   const v = stockValue(state);
   const board = listed(state).map(([id, c]) => {

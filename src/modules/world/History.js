@@ -23,7 +23,7 @@ import { LEGISLATURES } from '../politics/NationalOffices.js';
 import { OFFICES } from '../politics/Offices.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { setAvailabilityFilter, getProfession } from '../career/JobTrees.js';
-import { eraHidden } from './Eras.js';
+import { eraHidden, colonialHere } from './Eras.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
@@ -863,7 +863,7 @@ function colonialTours(ctx) {
       options: [{ id: 'again', label: '⛵ A new posting overseas' }, { id: 'desk', label: '🏛️ Stay at the desk' }, { id: 'home', label: '🏠 Leave the service', hint: 'With a gratuity' }], data: { colony: null, why: 'deskDone' } });
   }
   // Hired at home into a colonial service: posted out.
-  if (colonial && !p && !colonyHere(state)) return postOut(ctx);
+  if (colonial && !p && !colonialHere(state)) return postOut(ctx);
   if (p?.kind !== 'colonial' || state.prompts.some((q) => q.type === 'history.tourEnds')) return undefined;
   const independent = p.colony && !colonyStage(state, p.colony);
   const why = !colonial ? 'jobEnded' : independent ? 'independence' : state.character.age >= p.until ? 'tourDone' : null;

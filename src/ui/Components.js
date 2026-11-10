@@ -39,6 +39,21 @@ const LEADING_EMOJI = /^((?:\p{Extended_Pictographic}|\p{Regional_Indicator})(?:
 /** Hide a label's leading decorative emoji from screen readers (the words carry the meaning). */
 /** Flag emoji in text (🇩🇪) as the flag images (icons/flags), so flags look the same everywhere. Run after escaping. */
 const FLAG_EMOJI = /([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu;
+/**
+ * The same, over a whole rendered page: only text between tags is touched (not attributes), and
+ * not inside <option>s or <textarea>s, which can't hold images.
+ */
+export function flagEmojiInPage(html) {
+  let skip = 0;
+  return String(html).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, text) => {
+    if (tag) {
+      if (/^<(option|textarea|title)\b/i.test(tag)) skip += 1;
+      else if (/^<\/(option|textarea|title)>/i.test(tag)) skip = Math.max(0, skip - 1);
+      return tag;
+    }
+    return skip ? text : flagEmojiToImg(text);
+  });
+}
 export const flagEmojiToImg = (html) => String(html).replace(FLAG_EMOJI, (_, a, b) => {
   const code = String.fromCharCode(a.codePointAt(0) - 0x1f1e6 + 97, b.codePointAt(0) - 0x1f1e6 + 97);
   return `<img class="flag" src="icons/flags/${code}.svg" alt="" width="20" height="15" loading="lazy">`;

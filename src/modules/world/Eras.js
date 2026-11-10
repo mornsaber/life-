@@ -175,7 +175,9 @@ export const PERIODS = [
   { cc: ['RU'], regime: MONARCH('the Russian Empire, where serfs are bound to the land', 'the Tsar', { religion: 'state', exit: 'restricted', jobs: 'assigned' }), active: (s) => !hap(s, 'serfdomEnds') },
   { cc: ['RU'], regime: MONARCH('the Russian Empire, ruled by the Tsar', 'the Tsar', { religion: 'state' }), active: (s) => hap(s, 'serfdomEnds') && !hap(s, 'russianRevolution') },
   { cc: ['RU'], regime: SOVIET, active: (s) => hap(s, 'russianRevolution') && !hap(s, 'sovietCollapse') },
-  { cc: ['PL', 'RO'], regime: EAST_BLOC, active: (s) => hap(s, 'coldWar') && !hap(s, 'sovietCollapse') },
+  { cc: ['PL', 'RO', 'HU', 'CZ', 'SK', 'BG', 'AL', 'MN'], regime: EAST_BLOC, active: (s) => hap(s, 'coldWar') && !hap(s, 'sovietCollapse') },
+  // Tito's Yugoslavia: one party and social ownership, but its people could work abroad from the 1960s.
+  { cc: ['RS', 'HR', 'SI', 'BA', 'MK', 'ME'], regime: { ...EAST_BLOC, name: 'socialist Yugoslavia, under the League of Communists', leader: 'Marshal Tito', exit: 'restricted' }, active: (s) => yearNow(s) >= 1945 && yearNow(s) < 1990 },
   { cc: ['DE'], regime: G({ kind: 'monarchy', name: 'the German Empire under the Kaiser', elections: 'controlled', leader: 'the Kaiser' }), active: (s) => hap(s, 'germanUnification') && !over(s, 'ww1') },
   { cc: ['AT'], regime: G({ kind: 'monarchy', name: 'Austria-Hungary under the Emperor', elections: 'controlled', leader: 'the Emperor' }), active: (s) => !over(s, 'ww1') },
   { cc: ['DE', 'AT'], regime: DICTATOR('a totalitarian dictatorship, the Third Reich', 'the Führer', { kind: 'totalitarian', elections: 'sham', surveillance: 0.35, exit: 'restricted', party: true }), active: (s) => hap(s, 'fascismDE') && !(over(s, 'ww2') && !s.era.events.ww2.axisWon) },
@@ -305,10 +307,20 @@ export const colonyHere = (state) => colonyStage(state, state.character.countryI
 export const insigniaCountry = (state, profession) => (profession?.colonial ? colonyHere(state)?.ruler ?? state.character.countryId ?? 'US' : state.character.countryId ?? 'US');
 /** The territories a country rules in the year being played. */
 const HOME_REALMS = ['IE', 'NO', 'FI', 'PL', 'EE', 'LV', 'LT', 'UA', 'BY', 'CZ', 'SK', 'HU', 'HR', 'SI', 'BA', 'RS', 'ME', 'MK', 'AL', 'XK', 'GR', 'BG', 'RO', 'MD', 'IS', 'BE', 'NL', 'LU', 'PT', 'ES', 'IT', 'AT', 'DE', 'FR', 'CH', 'DK', 'SE'];
+/**
+ * The empires that ran overseas colonial services (district officers, governors, a colonial
+ * office). Russia, the Soviet Union, the Ottomans, Austria, Sweden and China ruled their
+ * subject lands as provinces of the state itself: no colonial service, no handover at midnight.
+ */
+export const OVERSEAS_EMPIRES = ['GB', 'FR', 'NL', 'PT', 'ES', 'BE', 'DE', 'IT', 'JP', 'US', 'DK'];
+/** Is this stage of foreign rule a colony with a colonial administration (not an annexed province or a Soviet republic)? */
+export const isColonialRule = (cc, st) => Boolean(st) && st.ruler !== cc && OVERSEAS_EMPIRES.includes(st.ruler) && !HOME_REALMS.includes(cc);
+/** The colonial administration you live under, or null (also null in a Soviet republic or an Ottoman province). */
+export const colonialHere = (state) => { const cc = state.character.countryId ?? 'US'; const st = colonyStage(state, cc); return isColonialRule(cc, st) ? st : null; };
 /** The overseas territories a country rules in the year being played (not Europe's own subject nations: Ireland, Poland, Finland...). */
-export const empireColonies = (state, cc) => (state?.era ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && colonyStage(state, id)?.ruler === cc) : []);
+export const empireColonies = (state, cc) => (state?.era && OVERSEAS_EMPIRES.includes(cc) ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && colonyStage(state, id)?.ruler === cc) : []);
 /** Colonial work is open: you live in a colony, or your country still rules one. */
-export const colonialWorkOpen = (state) => Boolean(colonyHere(state)) || empireColonies(state, state.character.countryId ?? 'US').length > 0;
+export const colonialWorkOpen = (state) => Boolean(colonialHere(state)) || empireColonies(state, state.character.countryId ?? 'US').length > 0;
 
 /** The planned end year of a stage (event-ended stages: when that event happened, else never). */
 export const stageEnd = (state, st) => (typeof st.until === 'number' ? st.until : state.era?.events?.[st.until]?.year ?? Infinity);
