@@ -73,8 +73,8 @@ export function searchOffers(ctx, n, odds) {
   const publicJob = profession.sector !== 'private';
   const pool = profession.campus ? campusRegions(here) : regionsHere(state).map((r) => r.id);
   // A state employee looks in their own state first.
-  const elsewhere = rng.shuffle(pool.filter((id) => id !== here)).slice(0, 10)
-    .sort((a, b) => (job.sector === 'state' ? Number(REGIONS[b]?.state === job.employer.stateId) - Number(REGIONS[a]?.state === job.employer.stateId) : 0));
+  const elsewhere = rng.shuffle(pool.filter((id) => id !== here))
+    .sort((a, b) => (job.sector === 'state' ? Number(REGIONS[b]?.state === job.employer.stateId) - Number(REGIONS[a]?.state === job.employer.stateId) : 0)).slice(0, 10);
   const seen = new Set([job.employer.orgId]);
   const posts = new Set([job.employer.city]);
   const offers = [];
@@ -83,6 +83,9 @@ export function searchOffers(ctx, n, odds) {
   const tries = job.sector === 'private' ? [here, here, here] : [here];
   for (let i = 0; i < n; i++) {
     if (!rng.chance(odds)) continue;
+    // Government work isn't a market: you move by transfer within your service, and only now
+    // and then to another agency (a lateral to another force, a post in another ministry).
+    const outsideOk = !publicJob || (!job.employer.national && !profession.colonial && rng.chance(0.15));
     for (const regionId of [...tries, ...elsewhere]) {
       const away = regionId !== here;
       // At most one move to another state's agency: it means starting over there.
@@ -96,6 +99,7 @@ export function searchOffers(ctx, n, odds) {
         break;
       }
       if (seen.has(offer.employer.orgId)) continue;
+      if (!outsideOk) continue;
       seen.add(offer.employer.orgId);
       if (job.sector === 'state' && away && REGIONS[regionId]?.state !== job.employer.stateId) crossState += 1;
       // A remote job elsewhere needs no move.

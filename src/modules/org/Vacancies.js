@@ -235,6 +235,9 @@ export function computeOpenings(state, job) {
       job.openings[level.id] = mine ? 'filled' : holder ? holder.name : 'open';
       continue;
     }
+    // Government grades are earned, not waited for: a civil servant moves up a grade when they
+    // qualify, wherever the post is. Only management, the top rung and head posts wait for a seat.
+    if (job.sector !== 'private' && !profession.church && level.track !== 'mgmt' && level !== profession.levels.at(-1)) { job.openings[level.id] = 'open'; continue; }
     if (!layerExists(org, dept.id, profession, level, size)) job.openings[level.id] = 'none';
     else if ((dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === level.id)) job.openings[level.id] = 'open';
     else if (seats <= NAMED_SEATS) {

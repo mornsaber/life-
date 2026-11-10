@@ -66,16 +66,20 @@ const tests = {
     assert.ok(orgOf(au.state, nsw).departments.operations.headcount > 10000, 'NSW Police covers the state');
   },
 
-  'with one police department in town, a job search looks in other cities'() {
+  'government work: a lateral to another force is rare, and always in another city'() {
     const { engine, state, ctx } = life('US', 7, 'midcity');
     hire(ctx, { professionId: 'police', levelId: 'officer', employer: employer(state, 'police') });
     state.career.job.performance = 95;
-    const offers = searchOffers(engine.context(), 3, 1);
-    assert.ok(offers.length >= 2);
-    const orgs = new Set(offers.map((o) => o.employer.orgId));
-    assert.equal(orgs.size, offers.length, 'no duplicate employers');
-    assert.ok(!orgs.has(state.career.job.employer.orgId), 'not your own department');
-    assert.ok(offers.every((o) => o.regionId && o.regionId !== 'midcity'), 'in other cities');
+    let outside = 0;
+    for (let i = 0; i < 20; i++) {
+      const offers = searchOffers(engine.context(), 3, 1).filter((o) => !o.transfer);
+      outside += offers.length;
+      const orgs = new Set(offers.map((o) => o.employer.orgId));
+      assert.equal(orgs.size, offers.length, 'no duplicate employers');
+      assert.ok(!orgs.has(state.career.job.employer.orgId), 'not your own department');
+      assert.ok(offers.every((o) => o.regionId && o.regionId !== 'midcity'), 'in other cities');
+    }
+    assert.ok(outside > 0 && outside < 30, `${outside} outside offers in 20 searches of 3`);
   },
 
   'volunteer officer seats are filled by the members, not left vacant'() {
