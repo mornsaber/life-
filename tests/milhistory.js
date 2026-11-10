@@ -13,6 +13,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { awardMedal } from '../src/modules/military/MedalEngine.js';
+import { warMedalKey, warMedals } from '../src/modules/military/WarMedals.js';
 import { setEraYear } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -49,6 +50,24 @@ const tests = {
     assert.ok(state.honors.some((h) => /Despatches/.test(h.name)));
     assert.ok(!state.honors.some((h) => /Victoria Cross/.test(h.name)));
     setEraYear(9999);
+  },
+  'service medals are earned once (stars and clasps after); data wars get their real medals'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+    const state = engine.newLife({ countryId: 'US', startYear: 1960 });
+    state.character.age = 25;
+    setEraYear(1985);
+    state.military.service = { branch: 'army', track: 'enlisted', grade: 3 };
+    const ctx = engine.context();
+    for (let i = 0; i < 4; i++) awardMedal(ctx, 'expeditionary', { branch: 'army', citation: `Deployment #${i + 1}.` });
+    const afem = state.honors.filter((h) => h.name === 'Armed Forces Expeditionary Medal');
+    assert.equal(afem.length, 1, 'one medal');
+    assert.equal(afem[0].awards, 4, 'with service stars');
+    setEraYear(9999);
+    assert.equal(warMedalKey('cow.163'), 'vietnamWar');
+    assert.equal(warMedalKey('cow.748'), 'vietnamWar', 'Vietnam Phase 1');
+    assert.equal(warMedalKey('cow.211'), 'gulfWar');
+    assert.equal(warMedalKey('cow.106'), 'ww1');
+    assert.ok(warMedals('cow.211', 'US', true).some((m) => m.name === 'Southwest Asia Service Medal'));
   },
   'duties and senior posts created in their years'() {
     assert.equal(historicDuty('msg', 'marines', 1930), null);

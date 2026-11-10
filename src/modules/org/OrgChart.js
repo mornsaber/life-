@@ -20,7 +20,16 @@ import { regimeOf } from '../world/Regimes.js';
 import { OFFICES } from '../politics/Offices.js';
 import { LEGISLATURES, MONARCHIES, NATIONAL_OFFICES } from '../politics/NationalOffices.js';
 import { crownOf, ensureCrown, monarchName, monarchTitles } from '../world/Crown.js';
-import { currentYear } from '../../core/State.js';
+import { currentYear, randomName } from '../../core/State.js';
+import { Random } from '../../core/Random.js';
+import { rankOf } from '../military/MilitaryEngine.js';
+
+/** A steady name for a post nobody has been seated in yet (the same person each time you look, replaced every few years). */
+const hash = (s) => { let h = 2166136261; for (const ch of String(s)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; };
+const standIn = (state, key) => {
+  const n = randomName(new Random(hash(`${state.lifeId}:${key}:${Math.floor(currentYear(state) / 4)}`)), hash(key) % 2 ? 'male' : 'female');
+  return `${n.firstName} ${n.lastName}`;
+};
 import { executiveOf } from '../politics/Legislature.js';
 import { DEPTS } from '../politics/Ministers.js';
 
@@ -59,7 +68,7 @@ export function workplaceChart(state, job) {
     const names = holders.slice(0, 3).map((p) => p.name);
     return {
       title: title(l), you, levelId: l.id, kind: 'rank',
-      name: you ? ['You', ...names.slice(0, 2)].join(', ') : names.join(', ') || (seats === 0 ? 'Vacant' : null),
+      name: you ? ['You', ...names.slice(0, 2)].join(', ') : names.join(', ') || (seats === 0 ? 'Vacant' : standIn(state, `${org.id}:${myDept?.id}:${l.id}`)),
       meta: [seats && seats < 1e6 ? `${seats.toLocaleString()} post${seats === 1 ? '' : 's'}` : null, l.track === 'mgmt' ? 'management' : l.track === 'ic' ? 'specialist' : null].filter(Boolean).join(' · ') || null,
     };
   };
@@ -78,7 +87,7 @@ export function workplaceChart(state, job) {
   if (mine && nodes.get(mine).children) nodes.get(mine).open = true;
   const depts = Object.values(org.departments).map((d) => {
     const dh = named(org, d.head);
-    const node = { title: d.name, name: dh?.name ?? null, meta: `${dh?.title ? `${dh.title} · ` : ''}${(d.headcount ?? 0).toLocaleString()} staff`, kind: 'unit' };
+    const node = { title: d.name, name: dh?.name ?? standIn(state, `${org.id}:${d.id}:head`), meta: `${dh?.title ? `${dh.title} · ` : ''}${(d.headcount ?? 0).toLocaleString()} staff`, kind: 'unit' };
     if (d !== myDept) return node;
     const unitName = job.employer.division || (job.employer.name !== d.name && job.employer.name !== org.name ? job.employer.name : c?.division);
     const ranks = unitName && unitName !== d.name ? [{ title: unitName, kind: 'unit', open: true, children: tops }] : tops;
@@ -112,7 +121,7 @@ export function unitChart(state, svc) {
     if (!mine || !d.platoon) return node;
     const pl = d.platoon;
     const squads = pl.squads.map((s, i) => ({
-      title: `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} squad`,
+      title: `${i + 1}${['st', 'nd', 'rd'][i] ?? 'th'} ${svc.nation && svc.nation !== 'US' ? 'section' : 'squad'}`,
       name: s.leader === PLAYER ? 'You' : named(org, s.leader) ? `${named(org, s.leader).rank ?? ''} ${named(org, s.leader).name}`.trim() : 'Vacant',
       meta: billetTitle(unitSvc, 'squadLeader'), you: s.leader === PLAYER, kind: 'unit', ...rk(s.leader === PLAYER ? svc : named(org, s.leader)),
       children: s.members.map((id) => (id === PLAYER ? { title: billetTitle(unitSvc, u.billet === 'teamLeader' ? 'teamLeader' : 'member'), name: 'You', you: true, ...rk(svc) } : named(org, id) ? { ...personNode({ ...named(org, id), name: `${named(org, id).rank ?? ''} ${named(org, id).name}`.trim() }, named(org, id).title?.split(' — ')[1] ?? 'Soldier'), ...rk(named(org, id)) } : null)).filter(Boolean),
@@ -144,14 +153,26 @@ function higherCommand(state, svc, battalion) {
   const us = (svc.nation ?? state.character.countryId ?? 'US') === 'US';
   const [lower, upper] = FORMATIONS[branch] ?? FORMATIONS.army;
   const regime = regimeOf(svc.nation ?? state.character.countryId ?? 'US');
-  const cinc = us ? 'The President' : regime.kind === 'monarchy' || regime.kind === 'absoluteMonarchy' ? 'The Sovereign' : regime.leader ? regime.leader[0].toUpperCase() + regime.leader.slice(1) : 'The Head of State';
+  const crown = crownOf(state, svc.nation ?? state.character.countryId ?? 'US');
+  if (crown) ensureCrown(state, crown);
+  const cinc = us ? 'The President' : crown ? monarchName(state, crown) ?? 'The Sovereign' : regime.kind === 'monarchy' || regime.kind === 'absoluteMonarchy' ? 'The Sovereign' : regime.leader ? regime.leader[0].toUpperCase() + regime.leader.slice(1) : 'The Head of State';
   const usChief = { army: 'Chief of Staff of the Army', navy: 'Chief of Naval Operations', airforce: 'Chief of Staff of the Air Force', marines: 'Commandant of the Marine Corps', coastguard: 'Commandant of the Coast Guard', guard: 'Chief of the National Guard Bureau' };
-  const node = (title, name, children) => ({ title, name, kind: 'unit', open: true, children });
-  return node('Commander-in-Chief', cinc, [
-    node(us ? 'Secretary of Defense' : 'Minister of Defence', null, [
-      node(us ? usChief[branch] ?? 'Chief of Staff' : CHIEF[branch] ?? 'Chief of the Defence Staff', null, [
-        node(upper[0], upper[1], [node(lower[0], lower[1], [battalion])]),
-      ]),
+  const node = (title, name, meta, children, extra = {}) => ({ title, name, meta, kind: 'unit', open: true, children, ...extra });
+  // Commanders above you: a colonel (or captain at sea) for the brigade, a major general for the division, the service's top rank for its chief.
+  const max = rankOf({ ...svc, track: 'officer', grade: 0 }).max ?? 9;
+  const officer = (grade, key) => {
+    const g = Math.min(grade, max);
+    const r = rankOf({ ...svc, track: 'officer', grade: g });
+    return { name: `${r.title} ${standIn(state, `${svc.unit?.orgId}:${key}`)}`, track: 'officer', grade: g };
+  };
+  const brig = officer(5, 'brigade');
+  const div = officer(7, 'division');
+  const chief = officer(9, 'chief');
+  return node('Commander-in-Chief', cinc, null, [
+    node(us ? 'Secretary of Defense' : 'Minister of Defence', standIn(state, 'defenceMinister'), 'Civilian control of the armed forces', [
+      node(us ? usChief[branch] ?? 'Chief of Staff' : CHIEF[branch] ?? 'Chief of the Defence Staff', chief.name, null, [
+        node(upper[0], div.name, upper[1], [node(lower[0], brig.name, lower[1], [battalion], { track: brig.track, grade: brig.grade })], { track: div.track, grade: div.grade }),
+      ], { track: chief.track, grade: chief.grade }),
     ]),
   ]);
 }

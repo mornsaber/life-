@@ -25,7 +25,7 @@ import { rankOf, rankTitles, branchOf, enlist, discharge, recallMaxAge } from '.
 import { warIn } from '../world/War.js';
 import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from '../world/Countries.js';
-import { warMedals, independenceMedal } from './WarMedals.js';
+import { grantWarMedals } from './WarMedals.js';
 import { colonyHere } from '../world/Eras.js';
 import { purchaseEra } from './Purchase.js';
 
@@ -157,16 +157,9 @@ function peace(ctx, svc) {
   const cc = state.character.countryId ?? 'US';
   const last = [...(state.world?.history ?? [])].reverse().find((h) => h.country === cc);
   const won = /victory|favorable/i.test(last?.outcome ?? '');
-  const colony = colonyHere(state);
-  const named = svc.warId?.startsWith('independence.') ? [independenceMedal(COUNTRIES[cc]?.name ?? cc)] : warMedals(svc.warId, colony ? colony.ruler : cc, won);
-  if (named.length) {
-    const fresh = named.filter((m) => !state.honors.some((h) => h.id === `mil.war.${svc.warId}.${m.name}`));
-    for (const m of fresh) addHonor(state, { id: `mil.war.${svc.warId}.${m.name}`, source: 'military', name: m.name, icon: '🎖️', ribbon: m.ribbon, prestige: m.prestige, precedence: 34, citation: `For service in ${op}.` });
-    if (fresh.length) ctx.log(`The war is over. You marched in the ${won ? 'victory ' : ''}parade and were awarded ${fresh.map((m) => `the ${m.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`, '🎖️', 'honor');
-  } else if (!state.honors.some((h) => h.id === `mil.campaign.${op}`)) {
-    addHonor(state, { id: `mil.campaign.${op}`, source: 'military', name: `Campaign Medal (${op})`, icon: '🎖️', prestige: 4, precedence: 35, citation: `For service in ${op}.` });
-    ctx.log(`The war is over. You marched in the victory parade and were awarded the campaign medal for ${op}.`, '🎖️', 'honor');
-  }
+  const fresh = grantWarMedals(ctx, svc, { won, op });
+  if (fresh.length) ctx.log(`The war is over. You marched in the ${won ? 'victory ' : ''}parade and were awarded ${fresh.map((m) => `the ${m.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`, '🎖️', 'honor');
+  else ctx.log(`The war is over. You marched in the ${won ? 'victory ' : ''}parade.`, '🕊️', 'milestone');
   if (svc.acting) {
     svc.grade = svc.acting.substantive;
     delete svc.acting;

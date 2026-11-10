@@ -8,7 +8,7 @@
  */
 import { addHonor } from '../../core/State.js';
 import { localMedal } from '../world/Honours.js';
-import { WAR_MEDALS } from './WarMedals.js';
+import { warMedalKey, grantWarMedals } from './WarMedals.js';
 import { historicMedal, sovereignWord } from './MilitaryHistory.js';
 
 /** Ribbon stripes are [color, relative width] from left to right. */
@@ -97,6 +97,15 @@ export function awardMedal(ctx, medalId, { branch, citation, valorDevice = false
   if (local === null) return null;
   const name = (local?.name ?? medalName(medalId, branch)).replace(/\b(King's|Queen's)\b/, sovereignWord());
   valorDevice = valorDevice && !nation;
+  if (medal.tier === 'service') {
+    const held = ctx.state.honors.find((h) => h.source === 'military' && h.id === medalId && h.name === name);
+    if (held) {
+      held.awards = (held.awards ?? 1) + 1;
+      const device = nation && nation !== 'US' ? 'a clasp' : medalId === 'goodConduct' ? 'a knot (clasp)' : 'a bronze service star';
+      ctx.log(`${device[0].toUpperCase()}${device.slice(1)} for your ${name} (${held.awards} awards). ${citation ?? ''}`.trim(), local?.icon ?? medal.icon, 'honor');
+      return name;
+    }
+  }
   addHonor(ctx.state, {
     id: medalId,
     source: 'military',
@@ -171,8 +180,12 @@ export function annualReview(ctx, svc) {
 
 export function endOfTourAwards(ctx, svc, { sawCombat }) {
   const branch = svc.branch;
-  // In a war of history its own medals come at the peace (military/WarMedals.js), not a modern deployment medal.
-  if (!(svc.wartime && WAR_MEDALS[svc.warId])) awardMedal(ctx, 'expeditionary', { branch, citation: `Deployment #${svc.deployments}.` });
+  // In a war, its own campaign and service medals after your first tour (military/WarMedals.js); the
+  // victory medal comes at the peace. Otherwise the peacetime expeditionary medal of the day.
+  if (svc.wartime && svc.warId) {
+    const fresh = grantWarMedals(ctx, svc);
+    if (fresh.length) ctx.log(`For your tour in ${svc.warOp ?? 'the war'} you were awarded ${fresh.map((m) => `the ${m.name}`).join(', ').replace(/, ([^,]*)$/, ' and $1')}.`, '🎖️', 'honor');
+  } else awardMedal(ctx, 'expeditionary', { branch, citation: `Deployment #${svc.deployments}.` });
   if (sawCombat && !hasMedal(ctx.state, 'combatAction')) {
     awardMedal(ctx, 'combatAction', { branch, citation: 'For satisfactory performance under enemy fire.' });
   }

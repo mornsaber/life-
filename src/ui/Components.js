@@ -224,7 +224,7 @@ export function ribbonRack(honors) {
   for (const h of honors) {
     const key = `${h.source}:${h.country ?? ''}:${h.name}`;
     const g = groups.get(key) ?? { ...h, count: 0, valor: false };
-    g.count += 1;
+    g.count += h.awards ?? 1;
     g.valor ||= h.device === 'V';
     groups.set(key, g);
   }
@@ -245,7 +245,7 @@ export function medalCase(honors) {
       (h) => `<li class="medal ${h.posthumous ? 'posthumous' : ''}">
         <div class="medal-art">${ribbon(ribbonFor(h), { device: h.device })}${h.source === 'honoraryRank' ? titleInsignia(h.name, h.country ?? 'GB') : insignia(h)}</div>
         <div class="medal-text">
-          <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
+          <b>${honorName(h)}${h.post ? ` <em>(${esc(h.post)})</em>` : ''}${h.awards > 1 ? ` <em>×${h.awards}</em>` : ''}${h.device === 'V' ? ' <em>with "V"</em>' : ''}${h.posthumous ? ' <em>(posthumous)</em>' : ''}</b>
           <small>Age ${h.age} · ${h.year} · ${h.source === 'military' ? 'Military' : 'Civil'}${h.country ? ` · ${flagImg(h.country) || ''} ${esc(COUNTRIES[h.country]?.name ?? h.country)}` : ''} · +${h.prestige} prestige</small>
           ${h.citation ? `<p>${h.country ? `<span data-raw>${esc(h.citation)}</span>` : esc(h.citation)}</p>` : ''}
         </div>
