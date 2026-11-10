@@ -134,7 +134,7 @@ function callFor(ctx, c) {
   const { state, rng } = ctx;
   const table = SPECIALIST[c.group];
   if (!table) return;
-  const ids = Object.keys(table).filter((id) => GROUPS[c.group]?.categories?.[id]);
+  const ids = Object.keys(table).filter((id) => GROUPS[c.group]?.categories?.[id] && !GROUPS[c.group].categories[id].absent);
   if (!ids.length || !rng.chance(0.4)) return;
   const catId = rng.pick(ids);
   const s = table[catId];

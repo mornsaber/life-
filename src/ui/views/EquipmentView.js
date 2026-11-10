@@ -89,7 +89,7 @@ export function equipmentCard(state, ref) {
   const pool = available(c, d);
   const y = state.yearly ?? {};
   const a = (rest) => `${ref}|${rest}`;
-  const rows = Object.entries(g.categories).map(([cid, cat]) => {
+  const rows = Object.entries(g.categories).filter(([, cat]) => !cat.absent).map(([cid, cat]) => {
     const units = d.units[cid] ?? [];
     const needed = needOf(cat, c);
     const special = specialistNote(state, c, cid);

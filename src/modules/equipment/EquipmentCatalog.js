@@ -17,6 +17,8 @@
  *   life       lasts longer before it needs replacing
  * A cheaper alternative says what it gives up (capacity below 1).
  */
+import { eraYear, PRESENT as ERA_PRESENT_YEAR } from '../world/Eras.js';
+
 const need = (a, b, c, d) => ({ small: a, medium: b, large: c, enterprise: d });
 const M = (name, cost, life, upkeep, extra = {}) => ({ name, cost, life, upkeep, ...extra });
 
@@ -574,6 +576,204 @@ for (const [path, perk] of Object.entries(PERKS)) {
 // A category with stated perks is judged by them: the rest of its models are standard (quality 1).
 for (const g of Object.values(GROUPS)) for (const cat of Object.values(g.categories)) {
   if (Object.values(cat.models).some((m) => m.why)) for (const m of Object.values(cat.models)) m.quality ??= 1;
+}
+
+
+/* ------------------------------------------------------------------ */
+/* Equipment of its day                                                */
+/* ------------------------------------------------------------------ */
+
+/**
+ * The catalogue as it was in the year being played. A category that didn't exist yet (body
+ * cameras, drones, CT scanners, CNC machines) isn't needed and isn't offered; one that existed in
+ * an older form shows that form (horses and wagons before motor vehicles, horse-drawn steam
+ * engines, call boxes and whistles before radios, typewriters before computers, iceboxes before
+ * refrigeration); models that came later (SUVs, hybrids, electrics, P25 radios) are left off the
+ * list, though units already bought keep their records.
+ */
+const ERA_CATEGORIES = [
+  // [pattern on the category's name, first year, what stood in for it before (or null: nothing)]
+  [/^Radios & body cameras$/, 1935, { name: 'Call boxes & whistles', model: ['Police call box & whistle', 1500, 30, 50] }],
+  [/^Computers & software$/, 1980, { name: 'Typewriters & filing', model: ['Typewriters & filing cabinets', 900, 15, 60] }],
+  [/^Publishing & editing systems$/, 1985, { name: 'Typewriters & copy desk', model: ['Typewriters & copy desk', 900, 15, 60] }],
+  [/^CAD workstations/, 1985, { name: 'Drafting tables', model: ['Drafting table & instruments', 700, 20, 40] }],
+  [/^Servers/, 1965, null], [/^Case-management systems$/, 1990, null], [/^E-filing/, 1995, null], [/^Telehealth/, 2000, null], [/^Classified networks/, 1985, null], [/^Computing cluster$/, 1960, null], [/^Laptops/, 1995, null], [/^ELDs/, 2010, null],
+  [/^Dispatch consoles & CAD$/, 1975, { name: 'Switchboard & dispatch desk', model: ['Telephone switchboard & dispatch desk', 6000, 20, 300] }],
+  [/^Point of sale$/, 1975, { name: 'Cash registers', model: ['Mechanical cash register', 900, 25, 40] }],
+  [/^Classroom technology$/, 1980, { name: 'Blackboards & slates', model: ['Blackboards, slates & maps', 400, 20, 20] }],
+  [/^Phones & conferencing$/, 1880, null],
+  [/^Walk-ins & refrigeration$|^Shelving & refrigeration$|^Vaccine cold storage$/, 1925, { name: 'Ice room & iceboxes', model: ['Icebox & ice deliveries', 600, 15, 400] }],
+  [/^CNC machines$/, 1975, { name: 'Lathes & milling machines', model: ['Belt-driven lathe & mill', 12000, 30, 600] }],
+  [/^Forklifts$/, 1925, { name: 'Hand trucks & hoists', model: ['Hand truck & chain hoist', 800, 15, 50] }],
+  [/^Vehicle lifts$/, 1925, { name: 'Inspection pits', model: ['Inspection pit', 3000, 40, 50] }],
+  [/^Diagnostic scanners$/, 1996, null],
+  [/camera|Cameras & access control|Cameras & body scanners/i, 1975, null, /Cameras, consoles & lights|Cameras & audio kits/],
+  [/^Cameras, consoles & lights$|^Cameras & audio kits$/, 1900, null],
+  [/drone|Surveillance towers/i, 2005, null],
+  [/^ELDs/, 2010, null],
+  [/K-9/, 1960, null],
+  [/Armored/, 1935, null],
+  [/^Blue-light emergency phones$/, 1970, null],
+  [/SCBA/, 1945, { name: 'Smoke helmets & leather turnout', model: ['Smoke helmet & leather coat', 300, 10, 20] }],
+  [/^Air tankers$/, 1955, null], [/Helicopters|helitack/i, 1950, null], [/^Aircraft$|^Embarked aircraft$|^Aerospace ground equipment$|^Flightline vehicles$|^Ground support equipment$|^Hangars & gates$/, 1915, null], [/Hurricane-hunter/, 1944, null],
+  [/^ARFF/, 1945, null],
+  [/Cardiac monitors|AEDs/, 1970, null], [/^Power-load stretchers$/, 2010, { name: 'Stretchers', model: ['Stretcher', 200, 10, 10] }],
+  [/^Smart IV pumps$/, 1990, null], [/^Patient monitors$/, 1960, null], [/^Imaging \(CT\/MRI\)$/, 1975, null], [/^Imaging$/, 1900, null],
+  [/^911 centers/, 1968, { name: 'Telephone exchange & fire alarm boxes', model: ['Fire alarm telegraph', 20000, 30, 1000] }],
+  [/^Radio towers & repeaters$|^Repeaters$|^Radios & backups$|^Radios & comms$|^Radios$|^Radios & GPS$|^Radios & mission command$|^Communications trailer$/, 1935, null],
+  [/GPS/, 1995, null], [/^Plotters & 3D printers$/, 1985, null], [/^Sound, video & livestream$/, 1930, null], [/^Live trucks$/, 1955, null],
+  [/Body scanners|CT bag scanners|Explosive trace/, 2002, null], [/^Doppler radar$/, 1988, null], [/^Radar$/, 1940, null], [/^Satellite ground stations|Missile-warning/, 1960, null],
+  [/^Night vision/, 1960, null], [/^DNA instruments$/, 1987, null], [/^Drug chemistry/, 1970, null], [/^Drug-testing equipment$/, 1985, null], [/^Upper-air sounding/, 1930, null],
+  [/^Hi-rail trucks$/, 1940, null], [/^Shampoo bowls & dryers$/, 1920, null], [/^Cardio machines$/, 1970, null], [/^Racks & strength machines$/, 1950, null], [/^Performance tracking$/, 2000, null],
+  [/Snowmobiles/, 1960, null], [/^ATVs & horses$/, 1975, { name: 'Horses', model: ['Patrol horse', 8000, 15, 4000] }], [/^ATVs & snowmobiles$/, 1960, null],
+  [/Dozers|^Loaders & backhoes$|^Excavators & loaders$|^Heavy equipment$/, 1930, null], [/^Bucket trucks$|^Digger derricks$/, 1950, null],
+  [/^Paratransit vans$|^Accessible vans$/, 1975, null], [/Visit-verification/, 2010, null], [/^Gas monitors/, 1970, null], [/^Workover & frac/, 1950, null], [/^Body armor|^Radios & body armor$/, 1975, null],
+  [/^Tactical vehicles$/, 1916, { name: 'Horses & wagons', model: ['Cavalry horses & supply wagons', 4000, 12, 1500] }], [/^Combat vehicles$/, 1916, { name: 'Field artillery', model: ['Horse-drawn field gun', 15000, 25, 2000] }], [/^Amphibious & light armored vehicles$/, 1940, null], [/^Generators & lighting towers$/, 1910, null], [/^Mobile clinic|^Mobile units$|^Bookmobiles$|^Mobile clinics$/, 1910, null],
+  [/^Brush trucks?$|^Water tenders$|^Type 6 engines$|^Wildland engines/, 1920, null], [/^Tankers$/, 1910, null], [/^Thermal drones$|^Mapping drones$/, 2010, null],
+  [/trailers?$|^Tractor-trailers$/i, 1915, null], [/^Cache trucks$|^Shelter & POD kits$/, 1915, null],
+  [/^Courtroom technology$/, 1990, null], [/^Screening & security$/, 1970, null], [/^Ventilation & lead abatement$/, 1970, null], [/^Controller positions$|^Towers & TRACONs$/, 1930, null],
+  // Motor vehicles: horses and wagons before 1905.
+  [/^Engines$|^Heavy rescue$/, 1910, { name: 'Horse-drawn steam fire engines', model: ['Horse-drawn steam fire engine', 15000, 20, 3000] }],
+  [/^Ladder trucks$/, 1910, { name: 'Horse-drawn ladder wagons', model: ['Horse-drawn hook-and-ladder wagon', 8000, 20, 2500] }],
+  [/^Ambulances$/, 1910, { name: 'Horse-drawn ambulances', model: ['Horse-drawn ambulance', 4000, 15, 2000] }],
+  [/^Hearses & limousines$/, 1910, { name: 'Horse-drawn hearses', model: ['Horse-drawn glass hearse', 5000, 20, 2500] }],
+  [/^Buses$|^School buses$|^Vans & buses$|^Church vans & buses$|^Inmate transport vans/, 1905, { name: 'Horse buses & wagons', model: ['Horse-drawn omnibus', 4000, 15, 2500] }],
+  [/^Motorcycles$/, 1910, null],
+  [/^Delivery vehicles$/, 1905, { name: 'Mail wagons', model: ['Horse-drawn mail wagon', 2500, 15, 1500] }],
+  [/car|vehicle|truck|van\b|vans|^Motor pool$|Bucars|^Field cars$|^Armored SUVs$/i, 1905, { name: 'Horses & wagons', model: ['Horse and wagon', 3000, 12, 1500] }],
+  [/^Tractors$/, 1915, { name: 'Draught horses', model: ['Draught horse team', 2500, 12, 1500] }],
+  [/^Combines & harvesters$/, 1930, { name: 'Reapers & threshers', model: ['Horse-drawn reaper & threshing machine', 6000, 20, 400] }],
+];
+/** Models that came later than their category. */
+/** Categories known by a plainer name before a year: [pattern, until, older name]. */
+const NAME_OLD = [
+  [/^Radios & body cameras$/, 2014, 'Radios'], [/^Radios & GPS$/, 1995, 'Radios'], [/^Sound, video & livestream$/, 2010, 'Sound system'], [/^Nets, pots & electronics$/, 1950, 'Nets & pots'],
+  [/^Bicycles & carts$/, 1960, 'Bicycles'], [/^Body armor & comms$/, 1975, 'Radios & kit'],
+];
+/** Models known by an older name before a year: [pattern, until, older name] (the unit keeps its id). */
+const MODEL_OLD = [
+  [/^Digital X-ray$/, 1990, 'X-ray machine'], [/^Panoramic X-ray$/, 1960, 'Dental X-ray'], [/^Electric hospital bed$/, 1960, 'Hospital bed'],
+  [/^Commercial range\/oven$/, 1920, 'Coal-fired kitchen range'], [/^Hydraulic styling chair$/, 1930, 'Barber\'s chair'],
+  [/^Delivery barcode sorter$/, 1960, 'Pigeonhole sorting cases'], [/^Delivery barcode sorter$/, 1985, 'Letter-sorting machine'],
+  [/^Coordinate measuring machine$/, 1960, 'Gauges & surface plate'], [/^Pallet racking bay$/, 1940, 'Warehouse shelving'],
+  [/^Pro camera \/ console package$/, 1950, 'Studio camera & lights'], [/^Camera & audio kit$/, 1950, 'Press camera & notebook'],
+  [/^53-ft dry van$/, 1990, '40-ft van trailer'], [/^Crawler crane$/, 1920, 'Steam crane'], [/^Scissor lift \/ tool trailer$/, 1970, 'Scaffolding & hand tools'],
+  [/^AC4400 road locomotive$/, 1950, 'Steam locomotive'], [/^AC4400 road locomotive$/, 1994, 'Diesel road locomotive'], [/^Tamper \/ regulator$/, 1950, 'Section gang & handcar'],
+  [/^Grain bin \/ pole barn$/, 1940, 'Barn & granary'], [/^Trawler \/ longliner$/, 1920, 'Sailing schooner'], [/^Gear & electronics package$/, 1950, 'Nets & pots'],
+  [/^Cruise ship$/, 1965, 'Ocean liner'], [/^Enclosed lifeboat & davit$/, 1975, 'Open lifeboat & davit'], [/^Integrated bridge system$/, 1950, 'Bridge telegraph & compass'], [/^Integrated bridge system$/, 1990, 'Radar & gyrocompass'],
+  [/^Land drilling rig$/, 1930, 'Cable-tool derrick'], [/^STARS display position$/, 1950, 'Flight-strip board'], [/^STARS display position$/, 2000, 'Radar scope position'],
+  [/^Automated surface station$/, 1990, 'Weather station & observer'], [/^Lane with target retriever$/, 1950, 'Shooting lane & target butts'],
+  [/^PCR \/ sequencing instrument$/, 1985, 'Bacteriology bench'], [/^Accredited SCIF build-out$/, 1960, 'Secure vault & strongroom'],
+  [/^Training rig \/ recovery equipment$/, 1990, 'Training equipment & rubdown table'], [/^Patient lift & transfer aids$/, 1960, 'Invalid chair & bedside aids'],
+  [/^Chainsaw & tool cache$/, 1950, 'Axes, crosscut saws & hand tools'], [/^Rapid Deployment Force medical cache$/, 1980, 'Field medical chest'],
+  [/^Terminal surveillance radar$/, 1960, 'Search radar'], [/^Bedside patient monitor$/, 1970, 'Bedside monitor (scope)'], [/^Magnetometer & X-ray station$/, 1990, 'Metal detector & bag search'],
+  [/^Evidence & lab building/, 1930, 'Evidence room'], [/^Shelter kennel run$/, 1950, 'Dog pound pen'], [/^Commercial playground$/, 1950, 'Swings & sandpit'],
+  [/^Commercial treadmill$/, 1990, 'Exercise bicycle'], [/^Power rack & plates$/, 1970, 'Barbells & benches'], [/^Classroom outfit$/, 1950, 'Desks, slates & primers'],
+  [/^Workstation \+ licenses$/, 1995, 'Desktop computer & software'], [/^Server & networking rack$|^Server & network rack$/, 1995, 'Minicomputer & terminals'],
+  [/^Dispatch console \+ CAD seat$/, 1985, 'Radio dispatch console'], [/^POS terminal$/, 1985, 'Electronic cash register'], [/^5-axis CNC mill$/, 1990, 'NC milling machine'],
+  [/^HPC cluster node rack$/, 1995, 'Mainframe time'], [/^Live\/satellite truck$/, 1985, 'Microwave live truck'], [/^Ops console & cyber suite$/, 2005, 'Ops console'],
+  [/^P25 radio \+ body camera kit$/, 1960, 'Two-way car radio'], [/^P25 radio \+ body camera kit$/, 1995, 'Handheld two-way radio'], [/^P25 radio \+ body camera kit$/, 2014, 'P25 radio'],
+  [/^GSA-leased office space$/, 1949, 'Leased office space'],
+  [/^Police mountain bike$/, 1985, 'Police bicycle'], [/^Radio tower site & P25 repeater$/, 1995, 'Radio tower & repeater'], [/^Type II van ambulance$/, 1970, 'Ambulance car'],
+  [/^Type III ambulance$/, 1975, 'Ambulance'], [/^Pro camera \/ console package$/, 1980, 'Film camera & lights'], [/^Crew-cab pickup$/, 1960, 'Flatbed truck'], [/^15-passenger van$/, 1960, 'Station wagon'],
+  [/^Sound & livestream system$/, 2010, 'Sound system'], [/^Handheld radio \+ GPS$/, 1995, 'Handheld radio'], [/^Cessna 182/, 1956, 'Piper Cub with search equipment'],
+  [/^Surplus SUV \/ van$/, 1990, 'Surplus truck / van'], [/^Point-of-distribution kit$/, 2000, 'Relief supply cache'],
+];
+const MODEL_FROM = [
+  [/Bonded cellular/, 2008], [/K-9 SUV/, 1990],
+  [/Firehawk/, 1990], [/Skid steer/, 1958], [/Type III/, 1975], [/Type I ambulance/, 1974], [/powered stretcher/, 2010],
+  [/Combi oven/, 1976], [/Cone-beam/, 2001], [/Reefer/, 1940], [/tower crane/i, 1950], [/Confocal/, 1987], [/Cryo-electron/, 2013], [/Mass spectrometer/, 1950], [/Cloud/, 2008], [/rapid DNA/, 2012],
+  [/hybrid/i, 2000], [/electric (bus|school bus|patrol cart|terminal patrol cart)|battery-electric|\(electric\)|\bEV\b/i, 2012], [/SUV|Interceptor/i, 1990], [/P25/i, 1995], [/Next Generation/i, 2023], [/Long Life Vehicle/i, 1987], [/Tier 4/i, 2014],
+  [/Full-body scanner/i, 2008], [/IP /, 1998], [/LED/i, 2005], [/laptop|tablet|smart/i, 1995], [/jet/i, 1955], [/container/i, 1960], [/solar/i, 1980], [/MRI/i, 1980], [/\bCT\b/, 1975],
+  [/ultrasound/i, 1965], [/Abrams/, 1980], [/Bradley/, 1981], [/Stryker/, 2002], [/HMMWV/, 1985], [/JLTV/, 2019], [/LAV-25/, 1983], [/AAV-7/, 1972], [/Amphibious Combat Vehicle/, 2020],
+  [/F-35/, 2015], [/F-16/, 1978], [/Super Hornet/, 1999], [/C-130J/, 1999], [/C-130/, 1956], [/Osprey/, 2007], [/Seahawk|Jayhawk/, 1990], [/Gulfstream/, 1987], [/WP-3D/, 1975], [/RHIB/, 1965],
+  [/Response Boat/, 2008], [/Fast Response Cutter/, 2012], [/Night-vision/, 1960], [/phased-array/i, 1975], [/cyber/i, 2005], [/defibrillator|\bAED\b/i, 1965], [/digital/i, 1990], [/autonomous/i, 2015], [/drone/i, 2005],
+];
+/** The older type when every listed model is too new: a jeep before the Humvee, a Sherman before the Abrams. */
+const OLDER_TYPE = {
+  'K-9 vehicles': () => 'K-9 car', 'Explosives-detection K-9 vehicles': () => 'K-9 car',
+  'Patrol cars': () => 'Patrol car', 'Patrol vehicles': () => 'Patrol car', 'Delivery vehicles': (y) => (y < 1987 ? 'Mail truck' : 'Delivery van'),
+  'Helicopters (helitack)': (y) => (y < 1965 ? 'Bell 47 helicopter' : 'UH-1 Huey'),
+  'Major instruments': (y) => (y < 1950 ? 'Microscopes & glassware' : 'Spectrometers & centrifuges'),
+  'Phones & conferencing': (y) => (y < 1960 ? 'Desk telephones' : 'Office phone system'),
+  'Computing cluster': (y) => (y < 1995 ? 'Mainframe time' : 'Compute cluster'),
+  'Radios & body cameras': (y) => (y < 1960 ? 'Two-way car radio' : 'Handheld two-way radio'),
+  'Tactical vehicles': (y) => (y < 1941 ? 'Liberty truck' : y < 1960 ? 'Willys jeep' : 'M151 MUTT'),
+  'Combat vehicles': (y) => (y < 1930 ? 'Renault FT light tank' : y < 1950 ? 'M4 Sherman' : y < 1960 ? 'M48 Patton' : 'M60 tank'),
+  'Amphibious & light armored vehicles': (y) => (y < 1960 ? 'LVT amphibian tractor' : 'LVTP-5'),
+  Aircraft: (y) => (y < 1925 ? 'Biplane' : y < 1945 ? 'Piston fighter' : y < 1960 ? 'F-86 Sabre' : 'F-4 Phantom'),
+  'Embarked aircraft': (y) => (y < 1945 ? 'Carrier biplane / Wildcat' : y < 1956 ? 'F9F Panther' : y < 1974 ? 'A-4 Skyhawk' : 'F-14 Tomcat'),
+  Helicopters: (y) => (y < 1965 ? 'H-34 Choctaw' : 'UH-1 Huey'),
+  'Hurricane-hunter aircraft': (y) => (y < 1960 ? 'B-29 weather recon' : 'WC-130'),
+  Cutters: (y) => (y < 1936 ? 'Steam cutter' : y < 1960 ? 'Treasury-class cutter' : y < 1986 ? 'Point-class cutter' : 'Island-class cutter'),
+  'Response boats': (y) => (y < 1945 ? 'Motor lifeboat' : '44-ft motor lifeboat'),
+  'Small boats': (y) => (y < 1965 ? 'Motor whaleboat' : 'Rigid inflatable'),
+};
+const ZERO_NEED = { small: 0, medium: 0, large: 0, enterprise: 0 };
+const toModel = ([name, cost, life, upkeep]) => ({ name, cost, life, upkeep });
+function eraOf(raw, y) {
+  const v = eraOfBare(raw, y);
+  // The stand-in of earlier years stays resolvable for units bought then.
+  const sub = ERA_CATEGORIES.find(([re, , , unless]) => re.test(raw.name) && !(unless && unless.test(raw.name)))?.[2];
+  if (sub && !('period' in v.models)) {
+    v.models = withHidden(v.models, v.models);
+    Object.defineProperty(v.models, 'period', { value: toModel(sub.model), enumerable: false });
+  }
+  return v;
+}
+function eraOfBare(raw, y) {
+  if (y >= ERA_PRESENT_YEAR) return { name: raw.name, need: raw.need, models: raw.models };
+  const name = NAME_OLD.find(([re, until]) => re.test(raw.name) && y < until)?.[2] ?? raw.name;
+  const rule = ERA_CATEGORIES.find(([re, , , unless]) => re.test(raw.name) && !(unless && unless.test(raw.name)));
+  if (rule && y < rule[1]) {
+    const sub = rule[2];
+    if (!sub) return { name: raw.name, need: ZERO_NEED, models: hiddenAll(raw.models), absent: true };
+    return { name: sub.name, need: raw.need, models: withHidden({ period: toModel(sub.model) }, raw.models) };
+  }
+  const renamed = Object.fromEntries(Object.entries(raw.models).map(([id, m]) => {
+    const old = MODEL_OLD.find(([re, until]) => re.test(m.name) && y < until);
+    return [id, old ? { ...m, name: old[2], older: true } : m];
+  }));
+  const ok = Object.fromEntries(Object.entries(renamed).filter(([, m]) => m.older || !MODEL_FROM.some(([re, from]) => re.test(m.name) && y < from)));
+  if (!Object.keys(ok).length) {
+    const [id, first] = Object.entries(raw.models)[0];
+    const plain = first.name.replace(/\b(IP|digital|smart|LED|hybrid|electric|P25|SUV)\b ?/gi, '').trim();
+    const older = OLDER_TYPE[raw.name]?.(y) ?? (plain && plain !== first.name ? plain[0].toUpperCase() + plain.slice(1) : null);
+    return { name, need: raw.need, models: withHidden({ [id]: older ? { ...first, name: older } : first }, raw.models) };
+  }
+  return { name, need: raw.need, models: withHidden(ok, raw.models) };
+}
+/** Listed models first; models of other years kept for units already bought, unlisted. */
+function withHidden(listed, all) {
+  const out = { ...listed };
+  for (const [id, m] of Object.entries(all)) if (!(id in out)) Object.defineProperty(out, id, { value: m, enumerable: false });
+  return out;
+}
+const hiddenAll = (all) => withHidden({}, all);
+
+/** Outfits that came later as a whole: no air traffic control before the 1930s, no wind farms before the 1980s. */
+const GROUP_FROM = {
+  atc: 1930, screening: 1970, airline: 1920, arff: 1945, milSpace: 1957, pmc: 1990, cert: 1993, dmat: 1984, usar: 1989, teamRubicon: 2010,
+  ares: 1935, cap: 1941, mrc: 2002, fema: 1979, auxiliary: 1939, skiPatrol: 1938, renewables: 1980, milAir: 1907, airportPolice: 1950, campusPolice: 1900, borderPatrol: 1904, crimeLab: 1910,
+};
+for (const [gid, group] of Object.entries(GROUPS)) {
+  const siblings = Object.values(group.categories);
+  siblings.forEach((cat, i) => {
+    const raw = { name: cat.name, need: cat.need, models: cat.models };
+    let memo = null;
+    const compute = (y) => {
+      if (GROUP_FROM[gid] > y) return { name: raw.name, need: ZERO_NEED, models: hiddenAll(raw.models), absent: true };
+      const v = eraOf(raw, y);
+      // Two categories that both fall back to the same thing (patrol and unmarked cars both horses) are one.
+      if (!v.absent && v.name !== raw.name && siblings.slice(0, i).some((c) => !c.absent && c.name === v.name)) return { ...v, need: ZERO_NEED, absent: true };
+      return v;
+    };
+    const now = () => { const y = eraYear(); if (!memo || memo.y !== y) memo = { y, v: compute(y) }; return memo.v; };
+    Object.defineProperty(cat, 'name', { get: () => now().name, enumerable: true, configurable: true });
+    Object.defineProperty(cat, 'need', { get: () => now().need, enumerable: true, configurable: true });
+    Object.defineProperty(cat, 'models', { get: () => now().models, enumerable: true, configurable: true });
+    Object.defineProperty(cat, 'absent', { get: () => Boolean(now().absent), enumerable: false, configurable: true });
+  });
 }
 
 export const SIZES = ['small', 'medium', 'large', 'enterprise'];

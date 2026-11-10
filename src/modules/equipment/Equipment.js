@@ -400,7 +400,7 @@ function grow(ctx, c, d, why) {
   if (job) job.performance = Math.min(100, job.performance + 3);
   ctx.log(`${why} ${c.label} approved an expansion of your department: a bigger standard fleet${cost ? `, $${Math.round(cost * 0.85).toLocaleString()} to equip it` : ''}${dept ? ' and more staff' : ''}.`, '📈', 'milestone');
 }
-const cats = (c) => GROUPS[c.group].categories;
+const cats = (c) => Object.fromEntries(Object.entries(GROUPS[c.group].categories).filter(([, cat]) => !cat.absent));
 // Categories know their own id (needOf looks up per-staff ratios by it).
 for (const g of Object.values(GROUPS)) for (const [id, cat] of Object.entries(g.categories)) cat.id ??= id;
 
