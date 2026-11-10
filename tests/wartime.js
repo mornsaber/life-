@@ -159,7 +159,7 @@ const tests = {
     assert.equal(svc.academy.yearsLeft, 3);
     year(engine, state, 3);
     assert.ok(!state.military.service?.academy, 'graduated');
-    assert.ok(state.education.degrees.some((d) => d.type === 'master' && /Saint-Cyr/.test(d.academy ?? '')));
+    assert.ok(state.education.degrees.some((d) => d.type === 'bachelor' && /Saint-Cyr/.test(d.academy ?? '')));
   },
   'after captivity: a book offer, and the past coming back'() {
     const { engine, state, ctx } = life({}, 13);

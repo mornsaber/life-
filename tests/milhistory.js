@@ -14,6 +14,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { awardMedal } from '../src/modules/military/MedalEngine.js';
 import { warMedalKey, warMedals } from '../src/modules/military/WarMedals.js';
+import { academyFor } from '../src/modules/military/Academies.js';
 import { setEraYear } from '../src/modules/world/Eras.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -68,6 +69,16 @@ const tests = {
     assert.equal(warMedalKey('cow.211'), 'gulfWar');
     assert.equal(warMedalKey('cow.106'), 'ww1');
     assert.ok(warMedals('cow.211', 'US', true).some((m) => m.name === 'Southwest Asia Service Medal'));
+  },
+  'officer academies award a bachelor\'s, and only once they granted degrees'() {
+    assert.equal(academyFor('FR', false, 2010).degree, 'bachelor');
+    assert.equal(academyFor('DE', false, 1990).degree, 'bachelor');
+    assert.equal(academyFor('FR', false, 1960).degree, null, 'Saint-Cyr gave no degree in 1960');
+    assert.equal(academyFor('AU', false, 1950).degree, null);
+    assert.equal(academyFor('IN', false, 1965).degree, null);
+    assert.equal(academyFor('CA', false, 1965).degree, 'bachelor');
+    assert.equal(academyFor('FR', true, 2010).degree, null, 'graduates get no second degree');
+    assert.equal(academyFor('GB', false, 2010).degree, null, 'Sandhurst gives none');
   },
   'duties and senior posts created in their years'() {
     assert.equal(historicDuty('msg', 'marines', 1930), null);

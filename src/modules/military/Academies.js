@@ -3,7 +3,7 @@
  *
  *   Sandhurst (UK)      44 weeks for every officer cadet, graduates included; the Sovereign's
  *                       Parade and the Sword of Honour for the best cadet
- *   Saint-Cyr (FR)      three years, and a master's degree
+ *   Saint-Cyr (FR)      three years, and a bachelor's-level degree (from the 1980s)
  *   IMA / NDA (IN)      the National Defence Academy (three years, a degree) then the Indian
  *                       Military Academy; graduates go straight to the IMA
  *   Duntroon (AU)       ADFA's degree, then the Royal Military College
@@ -18,7 +18,7 @@ import { addHonor } from '../../core/State.js';
 /** [academy, years for a school-leaver, years for a graduate, degree awarded, best cadet's prize]. */
 export const ACADEMIES = {
   GB: ['the Royal Military Academy Sandhurst', 1, 1, null, 'the Sword of Honour'],
-  FR: ['the École spéciale militaire de Saint-Cyr', 3, 1, 'master', 'the major de promotion'],
+  FR: ['the École spéciale militaire de Saint-Cyr', 3, 1, 'bachelor', 'the major de promotion'],
   IN: ['the National Defence Academy and the Indian Military Academy', 4, 1, 'bachelor', 'the Sword of Honour'],
   AU: ['ADFA and the Royal Military College, Duntroon', 4, 2, 'bachelor', 'the Sword of Honour'],
   JP: ['the National Defense Academy of Japan', 4, 1, 'bachelor', 'the Director\'s Award'],
@@ -26,17 +26,26 @@ export const ACADEMIES = {
   IT: ['the Accademia Militare di Modena', 3, 1, 'bachelor', 'the Sciabola d\'onore'],
   ES: ['the Academia General Militar, Zaragoza', 5, 2, 'bachelor', 'the Despacho de número uno'],
   CN: ['a PLA military academy', 4, 1, 'bachelor', 'the academy\'s first-class merit'],
-  DE: ['the Offizierschule des Heeres and a Bundeswehr university', 4, 1, 'master', 'the Ehrensäbel'],
+  DE: ['the Offizierschule des Heeres and a Bundeswehr university', 4, 1, 'bachelor', 'the Ehrensäbel'],
   CA: ['the Royal Military College of Canada', 4, 1, 'bachelor', 'the Sword of Honour'],
   PK: ['the Pakistan Military Academy, Kakul', 2, 1, null, 'the Sword of Honour'],
   NG: ['the Nigerian Defence Academy', 4, 1, 'bachelor', 'the Sword of Honour'],
 };
 
+/**
+ * When each academy began to award a degree. Before, a cadet passed out with a commission and
+ * no degree (Duntroon's came with UNSW in 1967, the NDA's with JNU in the early 1970s, Saint-Cyr's
+ * in 1982, the Bundeswehr universities opened in 1973); 1970 where we don't know better.
+ */
+const DEGREE_FROM = { CA: 1959, AU: 1967, IN: 1974, JP: 1952, KR: 1955, IT: 1970, ES: 1970, CN: 1985, DE: 1973, FR: 1982, NG: 1985 };
+export const academyDegreeFrom = (nation) => DEGREE_FROM[nation] ?? 1970;
+
 /** The academy for a new officer cadet in a nation's forces (null where none is modelled). */
-export function academyFor(nation, graduate) {
+export function academyFor(nation, graduate, year = Infinity) {
   const a = ACADEMIES[nation];
   if (!a) return null;
-  return { name: a[0], yearsLeft: graduate ? a[2] : a[1], degree: graduate ? null : a[3], prize: a[4], score: 0 };
+  const degree = !graduate && a[3] && year >= academyDegreeFrom(nation) ? a[3] : null;
+  return { name: a[0], yearsLeft: graduate ? a[2] : a[1], degree, prize: a[4], score: 0 };
 }
 
 const EVENTS = [

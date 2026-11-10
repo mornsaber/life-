@@ -33,6 +33,7 @@ import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
 import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
+import { yearNow } from '../world/Eras.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -524,7 +525,7 @@ export function enlist(ctx, { branch, track, component, specialty: wanted, mos: 
   for (const p of PME[track] ?? []) if (p.forGrade <= startGrade) svc.schools[p.id] ??= state.character.age;
   // No degree: a year at the academy as an officer cadet before the commission.
   // Abroad, officer cadets go through their country's academy (Sandhurst, Saint-Cyr, the IMA…).
-  const academy = nation && track === 'officer' && direct == null && !conscript ? academyFor(nation, meetsEducation(state, { level: 'bachelor' })) : null;
+  const academy = nation && track === 'officer' && direct == null && !conscript ? academyFor(nation, meetsEducation(state, { level: 'bachelor' }), yearNow(state)) : null;
   if (academy) { svc.cadet = true; svc.academy = academy; } else if (needsOfficerAcademy(state, track, direct)) svc.cadet = true;
   // A bought commission (before 1871): straight to the regiment, no academy.
   if (state.military.pendingPurchase && track === 'officer' && purchaseEra(state, svc)) {
