@@ -74,7 +74,10 @@ const scan = (cc, text, where, seen) => {
   const m = leak && own.match(leak);
   if (m) flag(`${cc} base-country word "${m[0]}": "…${own.slice(Math.max(0, m.index - 80), m.index + 60)}"`, where);
 };
-const strip = (html) => html.replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
+// Flags are images now: read them back as the flag emoji the checks key on (a drawn historical flag as 🇺🇳).
+const RI = (code) => String(code).toUpperCase().replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
+const flagsBack = (html) => html.replace(/<img class="flag[^"]*" src="icons\/flags\/([a-z]{2})\.svg"[^>]*>/g, (_, c) => RI(c)).replace(/<span class="flag[^"]*">[\s\S]*?<\/svg><\/span>/g, RI('UN'));
+const strip = (html) => flagsBack(html).replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
 
 /* Tables: every pack country is fully wired. */
 for (const p of PACKS) {
