@@ -15,7 +15,7 @@
  * records stay with each country and pay out together when you claim.
  */
 import { exitBlock } from './Regimes.js';
-import { subjectRight } from './Eras.js';
+import { subjectRight, yearNow } from './Eras.js';
 import { bodyOfJob, joinLocalUnit } from '../org/Bodies.js';
 import { COUNTRIES, isCitizen, citizenshipsOf } from './Countries.js';
 import {
@@ -56,6 +56,9 @@ export function departureBlock(state) {
   return exitBlock(state);
 }
 
+/** Kinds of visa that came later: working holidays (1975), digital nomad visas (2015), investor visas (1990). */
+const VISA_FROM = { workingHoliday: 1975, nomad: 2015, investor: 1990, retiree: 1960, transfer: 1970 };
+
 /** Your routes into a country: as a citizen, a returning resident, or by visa. */
 export function routesTo(state, to) {
   const here = countryIdOf(state);
@@ -69,7 +72,7 @@ export function routesTo(state, to) {
   const free = freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
   const banned = bannedFrom(state, to);
-  const visas = Object.keys(IMMIGRATION[to].visas).filter((kind) => IMMIGRATION[to].visas[kind]).map((kind) => (banned
+  const visas = Object.keys(IMMIGRATION[to].visas).filter((kind) => IMMIGRATION[to].visas[kind] && !(VISA_FROM[kind] > yearNow(state))).map((kind) => (banned
     ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
     : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
   const asylum = asylumRoute(state, to);

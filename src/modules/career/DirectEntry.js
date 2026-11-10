@@ -25,6 +25,7 @@ import { hire, backgroundCheck } from './CareerEngine.js';
 import { isCitizen } from '../world/Countries.js';
 import { totalWorkYears } from '../credentials/LicensingEngine.js';
 import { PACKS } from '../world/packs/index.js';
+import { yearNow } from '../world/Eras.js';
 
 const route = (id, name, levelId, opts) => ({ id, name, levelId, education: 'bachelor', maxAge: 35, odds: 0.2, ...opts });
 
@@ -70,9 +71,13 @@ const EDU = { highschool: { level: 'highschool' }, bachelor: { level: 'bachelor'
 const attempts = (state, id) => state.career.directEntry?.[id] ?? 0;
 
 /** Can you sit this route's exam this year? */
+/** When each scheme began: India's IPS (1948, the Imperial Police before it), Britain's direct entry (2014–16). */
+export const DIRECT_FROM = { ips: 1948, dsp: 1950, si: 1950, dei: 2014, des: 2016 };
+export const directEntryInEra = (state, routeId) => !(DIRECT_FROM[routeId] > yearNow(state));
 export function directEntryEligibility(state, professionId, routeId) {
   const r = directEntryRoutes(state, professionId).find((x) => x.id === routeId);
   if (!r) return { ok: false, reason: 'No such route here' };
+  if (!directEntryInEra(state, routeId)) return { ok: false, reason: `No such scheme yet (from about ${DIRECT_FROM[routeId]})` };
   const age = state.character.age;
   if (!isCitizen(state, countryOf(state))) return { ok: false, reason: 'Citizens only' };
   if (age < 18 || age > r.maxAge) return { ok: false, reason: `Ages 18–${r.maxAge}` };

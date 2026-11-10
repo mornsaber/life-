@@ -14,11 +14,15 @@
  */
 import { Random } from '../../core/Random.js';
 import { fameScore } from './Fame.js';
+import { hasTech } from '../world/Eras.js';
+
+/** The circles that exist in the year being played. */
+export const circlesNow = (state) => Object.entries(CIRCLES).filter(([, c]) => !c.tech || hasTech(state, c.tech));
 
 export const CIRCLES = {
   work: { label: 'Work', icon: '💼' },
   neighbourhood: { label: 'Neighbourhood', icon: '🏘️' },
-  online: { label: 'Online', icon: '📱' },
+  online: { label: 'Online', icon: '📱', tech: 'internet' },
   underworld: { label: 'Underworld', icon: '🕶️' },
   family: { label: 'Family', icon: '👪' },
 };

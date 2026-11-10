@@ -58,6 +58,8 @@ import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../..
 import { toned, personTone } from '../../modules/people/SkinTone.js';
 import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
 import { flagImg } from '../Flags.js';
+import { circlesNow } from '../../modules/life/Reputation.js';
+import { hasTech, eraYear } from '../../modules/world/Eras.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 /** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
@@ -138,7 +140,7 @@ function lifeLine(p, age) {
   const l = p.life;
   const school = l.studying ? `studying for a ${EDU_LABEL[l.studying.degree].toLowerCase()} (done at ${l.studying.until})` : age < 18 ? (age < 14 ? 'in school' : 'in high school') : EDU_LABEL[l.edu];
   const work = p.job ? `${l.employer ? `at ${l.employer}` : ''}${p.income ? ` · ${money(p.income)}/yr` : ''}` : age >= 18 && !l.studying && !p.retired && age < 65 ? 'looking for work' : p.retired ? 'retired' : '';
-  const bits = [`🎓 ${school}`, work ? `💼 ${work.replace(/^ · /, '')}` : null, homeLabel(p) ? `🏠 ${homeLabel(p)}` : null, age >= 22 && l.netWorth ? `💰 ${money(l.netWorth)}` : null, l.car && age >= 17 ? `🚗 ${l.car}` : null].filter(Boolean);
+  const bits = [`🎓 ${school}`, work ? `💼 ${work.replace(/^ · /, '')}` : null, homeLabel(p) ? `🏠 ${homeLabel(p)}` : null, age >= 22 && l.netWorth ? `💰 ${money(l.netWorth)}` : null, l.car && age >= 17 ? `${eraYear() >= 1905 ? '🚗' : '🐎'} ${l.car}` : null].filter(Boolean);
   return `<small class="traits">${esc(bits.join(' · '))}</small>`;
 }
 
@@ -217,7 +219,7 @@ function group(title, icon, list, state, note = '') {
 
 /** Friends grouped by where you met them. */
 function friendsCard(state, friends) {
-  const groups = Object.entries(CIRCLES).map(([id, c]) => {
+  const groups = circlesNow(state).map(([id, c]) => {
     const list = friends.filter((f) => (f.circle ?? 'neighborhood') === id);
     return list.length ? disclosure(`friends.${id}`, `${c.icon} ${esc(c.label)}`, `<ul class="people">${list.map((p) => personRow(state, p)).join('')}</ul>`, { count: list.length, open: list.length <= 2 }) : '';
   }).join('');

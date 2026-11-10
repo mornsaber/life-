@@ -6,7 +6,7 @@ import { esc, money, button, card, chip, kv, empty, select, disclosure } from '.
 import { accountsHere, accountRoom } from '../../modules/investing/Brokerage.js';
 import { STOCK_INDEX } from '../../modules/world/CountryLaw.js';
 import { ASSETS, PROFILES, DC_FUNDS, IRA_LIMIT, portfolioValue } from '../../modules/investing/index.js';
-import { assetExists, periodAssetName, iraExists, rothExists, dcExists } from '../../modules/world/Eras.js';
+import { assetExists, periodAssetName, iraExists, rothExists, dcExists, hasTech } from '../../modules/world/Eras.js';
 import { yearlyCount } from '../../core/State.js';
 import { stocksCard } from './StocksView.js';
 import { CAPITAL_GAINS } from '../../modules/life/Finances.js';
@@ -54,7 +54,7 @@ export function investView(state) {
     <p class="fine">Pre-tax, from each paycheck. Employers match what you put in, up to their match rate.</p>
     <h4 class="sub">${esc(acc.dc)} fund</h4><div class="toggle-row">${funds}</div>`;
   return card('Invest', `
-    <p>${chip(`Market: ${e.phase}`, e.phase === 'recession' ? 'bad' : e.phase === 'expansion' ? 'good' : '')} ${chip(`${STOCK_INDEX[state.character.countryId ?? 'US'] ?? 'S&P'} last yr ${pct(e.returns.index)}`, e.returns.index >= 0 ? 'green' : 'bad')} ${e.cryptoMania ? chip('🪙 Crypto mania', 'warn') : ''}</p>
+    <p>${chip(`Market: ${e.phase}`, e.phase === 'recession' ? 'bad' : e.phase === 'expansion' ? 'good' : '')} ${chip(`${STOCK_INDEX[state.character.countryId ?? 'US'] ?? 'S&P'} last yr ${pct(e.returns.index)}`, e.returns.index >= 0 ? 'green' : 'bad')} ${e.cryptoMania && hasTech(state, 'crypto') ? chip('🪙 Crypto mania', 'warn') : ''}</p>
     ${kv([['Brokerage', money(pv.brokerage)], [iraExists(state) ? (acc.shared ? 'IRAs' : 'Tax-free & pension savings') : 'Savings accounts', `${money(pv.ira)}${iraExists(state) ? ` <small>(${[(acc.roth && rothExists(state)) || inv.ira.roth.value ? `${esc(acc.roth?.short ?? 'Tax-free')} ${money(inv.ira.roth.value)}` : '', acc.traditional ? `${esc(acc.traditional.short)} ${money(inv.ira.traditional.value)}` : ''].filter(Boolean).join(' · ')})</small>` : ''}`], ['Total invested', `<b>${money(pv.total)}</b>`]])}
     <h4 class="sub">Holdings</h4>${rows ? `<ul class="history">${rows}</ul>` : empty('No investments yet.')}
     ${spec ? `<h4 class="sub">Speculative bets</h4><ul class="history">${spec}</ul>` : ''}

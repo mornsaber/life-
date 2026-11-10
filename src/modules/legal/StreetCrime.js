@@ -20,7 +20,7 @@ import { commitOffense } from './JusticeSystem.js';
 import { regionOf } from '../life/Regions.js';
 import { currentBusiness } from '../business/Business.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
-import { crimeInEra } from '../world/Eras.js';
+import { crimeInEra, eraYear } from '../world/Eras.js';
 
 export const CRIME_GROUPS = {
   personal: { label: 'Reckless choices', icon: '🍺' },
@@ -30,6 +30,9 @@ export const CRIME_GROUPS = {
   organized: { label: 'Organized crime', icon: '🕴️' },
   violent: { label: 'Armed crime', icon: '🔫' },
 };
+// Before computers it was just fraud: forgery, swindles, bad cheques.
+Object.defineProperty(CRIME_GROUPS.fraud, 'label', { get: () => (eraYear() < 1980 ? 'Fraud & forgery' : 'Fraud & cybercrime'), enumerable: true });
+Object.defineProperty(CRIME_GROUPS.fraud, 'icon', { get: () => (eraYear() < 1980 ? '🖋️' : '💻'), enumerable: true });
 /** Heat each kind of job draws. */
 const HEAT = { personal: 2, petty: 4, property: 8, fraud: 6, organized: 12, violent: 22 };
 export const TASK_FORCE_HEAT = 70;

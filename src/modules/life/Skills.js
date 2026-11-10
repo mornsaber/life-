@@ -12,10 +12,14 @@
 import { Random } from '../../core/Random.js';
 import { hobbiesOf } from './Hobbies.js';
 import { partnerOf, clampRel } from '../people/People.js';
+import { yearNow } from '../world/Eras.js';
+
+/** Skills that can be learned in the year being played (no coding before computers, no flying before aeroplanes). */
+export const skillInEra = (state, id) => !(SKILLS[id]?.from > yearNow(state));
 
 export const SKILLS = {
-  coding: { label: 'Coding', icon: '💻' },
-  data: { label: 'Data & spreadsheets', icon: '📊' },
+  coding: { label: 'Coding', icon: '💻', from: 1960 },
+  data: { label: 'Data & spreadsheets', icon: '📊', from: 1980 },
   writing: { label: 'Writing', icon: '✍️' },
   publicSpeaking: { label: 'Public speaking', icon: '🎤' },
   negotiation: { label: 'Negotiation', icon: '🤝' },
@@ -29,8 +33,8 @@ export const SKILLS = {
   mechanics: { label: 'Mechanics', icon: '🔧' },
   carpentry: { label: 'Building & carpentry', icon: '🪚' },
   electrical: { label: 'Electrical', icon: '⚡' },
-  driving: { label: 'Driving', icon: '🚗' },
-  piloting: { label: 'Flying', icon: '✈️' },
+  driving: { label: 'Driving', icon: '🚗', from: 1905 },
+  piloting: { label: 'Flying', icon: '✈️', from: 1910 },
   combat: { label: 'Self-defence & combat', icon: '🥋' },
   marksmanship: { label: 'Marksmanship', icon: '🎯' },
   cooking: { label: 'Cooking', icon: '🍳' },

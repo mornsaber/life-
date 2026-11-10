@@ -25,7 +25,7 @@ import { SECTORS } from '../economy/EconomyEngine.js';
 import { realReturn } from './Assets.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { STOCK_INDEX } from '../world/CountryLaw.js';
-import { yearNow } from '../world/Eras.js';
+import { yearNow, eraYear } from '../world/Eras.js';
 import { stockBlock } from '../world/Regimes.js';
 
 export const COMPANIES = {
@@ -51,6 +51,25 @@ export const IPO_POOL = {
   ledgerly: { name: 'Ledgerly Pay', ticker: 'LDG', sector: 'finance', vol: 0.45, div: 0, price: 32 },
   sprout: { name: 'Sprout Grocery Delivery', ticker: 'SPR', sector: 'consumer', vol: 0.5, div: 0, price: 22 },
 };
+/** The earliest year each newcomer could come to market (no rocket company in 1860, no AI firm before 2015). */
+export const IPO_FROM = { quillon: 2015, stratus: 1958, genomix: 1980, ferro: 1975, ledgerly: 1998, sprout: 1999 };
+/** What the blue chips were in their day: the tech names were telegraph, typewriter and electrical firms; renewables were gas works. [until, name]. */
+const OLD_NAMES = {
+  novaq: [[1900, 'Novaq Telegraph & Cable'], [1950, 'Novaq Radio Corporation'], [1975, 'Novaq Business Machines']],
+  brightline: [[1900, 'Brightline Typewriter Company'], [1960, 'Brightline Office Machines'], [1980, 'Brightline Computing']],
+  halcyon: [[1910, 'Halcyon Electric Lamp Company'], [1960, 'Halcyon Valves & Electronics']],
+  solace: [[1950, 'Solace Gas & Coke'], [1990, 'Solace Power & Light']],
+  carewell: [[1940, 'Carewell Friendly Society'], [1980, 'Carewell Hospital Trust']],
+  vitalis: [[1900, 'Vitalis Chemical Works']],
+  orbitail: [[1900, 'Orbitail Dry Goods'], [1960, 'Orbitail Department Stores']],
+  terrapin: [[1900, 'Terrapin Coal & Iron'], [1950, 'Terrapin Oil']],
+  ironclad: [[1900, 'Ironclad Fire Office']],
+};
+for (const [id, rows] of Object.entries(OLD_NAMES)) {
+  const c = COMPANIES[id];
+  const base = c.name;
+  Object.defineProperty(c, 'name', { get: () => rows.find(([until]) => eraYear() < until)?.[1] ?? base, enumerable: true });
+}
 export const ALL_COMPANIES = { ...COMPANIES, ...IPO_POOL };
 /** Each country's own blue chips, listed on its exchange: a bank, a utility and a retailer. */
 const LOCAL_KINDS = {
@@ -205,7 +224,7 @@ export function stocksTick(ctx) {
   }
 
   // A new listing.
-  const next = Object.keys(IPO_POOL).find((id) => !s.ipos.includes(id));
+  const next = Object.keys(IPO_POOL).find((id) => !s.ipos.includes(id) && !(IPO_FROM[id] > yearNow(state)));
   const failed = Object.keys(COMPANIES).filter((id) => s.companies[id]?.delisted).length;
   if (next && rng.chance(['expansion', 'peak'].includes(e.phase) ? 0.2 + failed * 0.05 : 0.05)) {
     s.ipos.push(next);

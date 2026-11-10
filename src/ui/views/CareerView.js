@@ -36,7 +36,7 @@ import { ownershipRules } from '../../modules/business/OwnershipRules.js';
 import { ownerPosition } from '../../modules/org/Businesses.js';
 import { executiveEligibility, executiveOdds, executiveRecord, EXEC_APPLICATIONS, postDef, promotable } from '../../modules/org/Executives.js';
 import { orgOf, orgType } from '../../modules/org/Organizations.js';
-import { DIRECT_ENTRY, directEntryEligibility } from '../../modules/career/DirectEntry.js';
+import { DIRECT_ENTRY, directEntryEligibility, directEntryInEra } from '../../modules/career/DirectEntry.js';
 import { BODIES } from '../../modules/org/Bodies.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
@@ -359,7 +359,7 @@ const PAGE = 12;
  */
 /** Direct entry: competitive exams that start graduates above the bottom rung (India's IPS, UK Direct Entry Inspector). */
 function directEntryCard(state) {
-  const routes = Object.entries(DIRECT_ENTRY[state.character.countryId ?? 'US'] ?? {}).flatMap(([pid, list]) => list.map((r) => [pid, r]));
+  const routes = Object.entries(DIRECT_ENTRY[state.character.countryId ?? 'US'] ?? {}).flatMap(([pid, list]) => list.map((r) => [pid, r])).filter(([, r]) => directEntryInEra(state, r.id));
   if (!routes.length) return '';
   const rows = routes.map(([pid, r]) => {
     const p = getProfession(pid);

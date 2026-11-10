@@ -65,7 +65,7 @@ import { retirementLifeSummary } from '../modules/retirement/RetirementLife.js';
 import { toned, skinToneOf } from '../modules/people/SkinTone.js';
 import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
-import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText } from '../modules/world/Eras.js';
+import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText, hasTech } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
 import { avatarHtml } from './Avatar.js';
 import { flagImg } from './Flags.js';
@@ -144,7 +144,7 @@ function fameCard(state) {
     ])}
     <div class="toggle-row">
       ${button('🕶️ Lie low this year', 'fame.lieLow', { variant: 'small', disabled: f.lowThisYear, hint: 'Buzz fades fast; fewer cameras' })}
-      ${button('📣 Publicity push', 'fame.publicity', { variant: 'small', disabled: f.pushedThisYear || f.lowThisYear, hint: 'A publicist, a cover, a podcast tour — buzz, at a price and a risk' })}
+      ${button('📣 Publicity push', 'fame.publicity', { variant: 'small', disabled: f.pushedThisYear || f.lowThisYear, hint: `A publicist, a cover, ${hasTech(state, 'streaming') ? 'a podcast tour' : hasTech(state, 'tv') ? 'a chat-show tour' : 'a lecture tour'} — buzz, at a price and a risk` })}
       ${f.security ? button('Let security go', 'fame.dropSecurity', { variant: 'small ghost' }) : ''}
     </div>
     <p class="fine">Fame brings endorsements, talk shows and book deals — and paparazzi, stalkers and scandals that follow you into office, business and your audience.</p>`, { icon: '⭐', accent: 'yellow' });

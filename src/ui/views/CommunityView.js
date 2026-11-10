@@ -3,7 +3,7 @@
  * and mentoring.
  */
 import { esc, money, button, card, kv, chip, meter } from '../Components.js';
-import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS } from '../../modules/community/Community.js';
+import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS, volunteerInEra } from '../../modules/community/Community.js';
 import { clergyEligibility, traditionName } from '../../modules/community/Religions.js';
 import { ordersOf } from '../../modules/community/HolyOrders.js';
 import { faithInstitutionSummary } from '../../modules/community/FaithInstitutions.js';
@@ -22,6 +22,7 @@ import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote } from
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 import { warRoles } from '../../modules/military/WarRoles.js';
 import { flagImg } from '../Flags.js';
+import { yearNow } from '../../modules/world/Eras.js';
 
 function faithCard(state) {
   const c = state.community;
@@ -69,7 +70,7 @@ function joinCard(state) {
 function serviceCard(state) {
   const c = state.community;
   const age = state.character.age;
-  const orgs = Object.entries(VOLUNTEER_ORGS).map(([id, o]) => {
+  const orgs = Object.entries(VOLUNTEER_ORGS).filter(([id]) => volunteerInEra(state, id) || c.volunteering.includes(id)).map(([id, o]) => {
     const on = c.volunteering.includes(id);
     return button(`${o.icon} ${o.name}`, 'community.volunteer', { arg: id, variant: on ? 'small on' : 'small', disabled: !on && (age < o.minAge || c.volunteering.length >= 2), hint: `${o.desc}${age < o.minAge ? ` (${o.minAge}+)` : ''}` });
   }).join('');
@@ -249,7 +250,7 @@ function activismCard(state) {
   const a = state.civic?.activism;
   if (state.character.age < 14) return '';
   const war = atWar(state);
-  const causes = Object.entries(CAUSES).filter(([, c]) => !c.warOnly || war).map(([id, c]) => button(`${c.icon} ${c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
+  const causes = Object.entries(CAUSES).filter(([, c]) => (!c.warOnly || war) && !(c.from > yearNow(state))).map(([id, c]) => button(`${c.icon} ${c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
   const tactics = a?.cause ? Object.entries(TACTICS).map(([id, t]) => button(t.label, 'civic.protest', { arg: id, variant: 'small', hint: t.desc, disabled: (t.minInfluence && a.influence < t.minInfluence) || (state.yearly['civic.protest'] ?? 0) >= 2 })).join('') : '';
   return card('Causes & Protest', `
     ${a ? kv([['Cause', a.cause ? `${CAUSES[a.cause].icon} ${esc(CAUSES[a.cause].name)}` : '—'], ['Influence', `${a.influence}/100`], ['Protests', String(a.protests)], ['Arrests', a.arrests ? `<span class="neg">${a.arrests}</span>` : '0']]) : '<p class="muted">Pick a cause. Influence moves ballot measures, earns the activists\' endorsement and helps you on election day — and civil disobedience can get you arrested.</p>'}
@@ -270,7 +271,7 @@ function localCard(state) {
     ['Public safety', `${local?.safety ?? 50}/100`],
     ['National', war ? `⚔️ At war: ${esc(war.operation)}${war.draft ? ' · draft in effect' : ''}` : '🕊️ At peace'],
   ])}
-    <h4 class="sub">Transit authority board</h4>${state.civic.transitBoard ? `<p class="fine">🚇 ${state.civic.transitBoard.chair ? 'Board chair' : 'Director'} · ${state.civic.transitBoard.years} yr · $12,000 stipend</p>` : `<div class="toggle-row">${button('🚇 Seek an appointment', 'civic.transitBoard', { variant: 'small', hint: transitBoardEligibility(state).ok ? 'The mayor appoints directors' : transitBoardEligibility(state).reason, disabled: !transitBoardEligibility(state).ok })}</div>`}
+    ${yearNow(state) < 1960 && !state.civic.transitBoard ? '' : `<h4 class="sub">Transit authority board</h4>`}${yearNow(state) < 1960 && !state.civic.transitBoard ? '' : state.civic.transitBoard ? `<p class="fine">🚇 ${state.civic.transitBoard.chair ? 'Board chair' : 'Director'} · ${state.civic.transitBoard.years} yr · $12,000 stipend</p>` : `<div class="toggle-row">${button('🚇 Seek an appointment', 'civic.transitBoard', { variant: 'small', hint: transitBoardEligibility(state).ok ? 'The mayor appoints directors' : transitBoardEligibility(state).reason, disabled: !transitBoardEligibility(state).ok })}</div>`}
     ${recent.length ? `<h4 class="sub">Recent ballot measures</h4><ul class="history">${recent.map((h) => `<li>${MEASURES[h.id].icon} ${esc(MEASURES[h.id].name)} <small>age ${h.age} · ${h.passed ? 'passed' : 'failed'} (${h.yes}% yes)</small></li>`).join('')}</ul>` : '<p class="fine">Local measures appear on your ballot most years.</p>'}`, { icon: '🗳️' });
 }
 

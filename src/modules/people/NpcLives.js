@@ -20,7 +20,7 @@ import { clamp, Random } from '../../core/Random.js';
 import { ageOf, living, byId, clampRel } from './People.js';
 import { priceOf, marketRent } from '../realestate/PropertyMarket.js';
 import { rentableUnits } from '../realestate/Landlording.js';
-import { yearNow } from '../world/Eras.js';
+import { yearNow, eraYear } from '../world/Eras.js';
 
 export const EDU_LABEL = {
   none: 'No diploma', highschool: 'High school', trade: 'Trade school', associate: "Associate's", bachelor: "Bachelor's", master: "Master's", professional: 'Professional degree', doctorate: 'PhD',
@@ -45,6 +45,12 @@ export const NPC_JOBS = [
 const TEEN_WORK = [['Babysitter', 1800, 13], ['Lawn mowing', 1500, 13], ['Grocery bagger', 3500, 14], ['Fast-food crew', 5000, 15], ['Lifeguard', 4500, 15], ['Movie theater usher', 3800, 15], ['Retail cashier', 5200, 16], ['Tutor', 3000, 16], ['Summer camp counselor', 2500, 16]];
 const EMPLOYERS = ['the county', 'a regional hospital', 'a local school district', 'a national retailer', 'a tech company', 'a family-owned shop', 'a big logistics firm', 'the state', 'a bank', 'a small firm downtown', 'a startup', 'a construction company'];
 const CARS = ['a used sedan', 'a pickup truck', 'an SUV', 'a minivan', 'an electric car', 'a beat-up hatchback', 'a luxury sedan', 'a motorcycle'];
+/** What a relative drives (or rides) in the year being played. */
+const carsOfDay = (y) => (y < 1905 ? ['a pony and trap', 'a riding horse', 'a carriage and pair', 'a bicycle']
+  : y < 1930 ? ['a Model T', 'a motorcycle and sidecar', 'a pony and trap', 'a bicycle', 'a touring car']
+    : y < 1960 ? ['a family saloon', 'a motorcycle', 'a pickup truck', 'a bicycle', 'a little runabout']
+      : y < 1990 ? ['a used sedan', 'a pickup truck', 'a station wagon', 'a motorcycle', 'a beat-up hatchback', 'a luxury sedan']
+        : y < 2012 ? CARS.filter((c) => c !== 'an electric car') : CARS);
 const HOME_TYPES = ['condo', 'starter', 'starter', 'family', 'family', 'townhouse'];
 
 /** Their own random stream, so other people's lives don't reshuffle yours. */
@@ -94,7 +100,7 @@ export function ensureLife(rng, state, p) {
   const income = p.income || p.careerIncome || 40000;
   const tier = { low: 0.4, middle: 1, upper: 3.5 }[state.people?.wealth] ?? 1;
   if (age >= 25) life.netWorth = Math.round(income * Math.min(8, (age - 22) / 6) * rng.float(0.2, 1.2) * (['mother', 'father'].includes(p.relation) ? tier : 1));
-  if (age >= 17) life.car = rng.pick(CARS);
+  if (age >= 17) life.car = rng.pick(carsOfDay(eraYear()));
   life.home = startingHome(rng, state, p, age, life);
   return life;
 }

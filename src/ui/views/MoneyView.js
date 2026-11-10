@@ -95,10 +95,10 @@ function debtCard(state) {
   const filing = opts.debt >= 5000 || f.ch13;
   const abroad = (state.character.countryId ?? 'US') !== 'US';
   const option = (o, chapter, label, hint) => button(label, 'finances.fileBankruptcy', { arg: String(chapter), variant: 'small danger', disabled: !o.ok, hint: o.ok ? hint : o.reason });
-  return card('Credit & Debt', `${kv([
-    ['Credit limit', `${money(limit)} <small>(${esc(CREDIT[state.character.countryId] ? `${CREDIT[state.character.countryId].name}: ${creditLabel(state)}` : creditLabel(state))})</small>`],
-    ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at ${(cardApr(state) * 100).toFixed(1)}% APR` : '$0'],
-    ['Available credit', money(availableCredit(state))],
+  return card(hasTech(state, 'creditCards') ? 'Credit & Debt' : 'Debts', `${kv([
+    hasTech(state, 'creditCards') ? ['Credit limit', `${money(limit)} <small>(${esc(CREDIT[state.character.countryId] ? `${CREDIT[state.character.countryId].name}: ${creditLabel(state)}` : creditLabel(state))})</small>`] : null,
+    hasTech(state, 'creditCards') ? ['Card balance', cardDebt ? `<span class="neg">${money(cardDebt)}</span> at ${(cardApr(state) * 100).toFixed(1)}% APR` : '$0'] : ['Owed', cardDebt ? `<span class="neg">${money(cardDebt)}</span> to shopkeepers and moneylenders` : '$0'],
+    hasTech(state, 'creditCards') ? ['Available credit', money(availableCredit(state))] : null,
     medical ? ['Medical debt', `<span class="neg">${money(medical)}</span>`] : null,
     f.loans ? ['Student loans', `${money(f.loans)} <small>(not dischargeable)</small>`] : null,
     f.ch13 ? [f.ch13.conduct ? 'Insolvency payments' : abroad ? 'Repayment plan' : 'Chapter 13 plan', `${money(f.ch13.annual)}/yr · ${f.ch13.yearsLeft} yr left`] : null,

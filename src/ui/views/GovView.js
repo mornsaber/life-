@@ -10,6 +10,7 @@ import { COMPETITIONS, competitionCheck } from '../../modules/world/IntlOrgs.js'
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
 import { MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { professionsFor } from '../../modules/career/JobTrees.js';
+import { examRequired } from '../../modules/world/Eras.js';
 
 export function govView(state) {
   const ps = state.publicService;
@@ -17,7 +18,7 @@ export function govView(state) {
   const abroad = (state.character.countryId ?? 'US') !== 'US';
   // Abroad: only the exams for public jobs that exist here (no US federal assessments).
   const pool = abroad ? professionsFor(state) : [...Object.values(MUNICIPAL_PROFESSIONS), ...Object.values(STATE_PROFESSIONS), ...Object.values(FEDERAL_PROFESSIONS)];
-  const exams = Object.entries(EXAMS).filter(([id]) => !abroad || pool.some((p) => p.exam === id)).map(([id, exam]) => {
+  const exams = Object.entries(EXAMS).filter(([id]) => (!abroad || pool.some((p) => p.exam === id)) && examRequired(state, id)).map(([id, exam]) => {
     const st = examStatus(state, id);
     const usedBy = [...new Set(pool.filter((p) => p.exam === id).map((p) => p.name))];
     return `<li class="exam-row">

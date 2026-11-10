@@ -22,6 +22,7 @@ import { addHonor, hasFelony, isIncarcerated, bumpYearly, yearlyCount } from '..
 import { TRADITIONS, upbringing, congregationName, membership, newCommunity, LAY_ROLE } from './Religions.js';
 import { living, parentsOf, spouseOf, minorChildren, clampRel } from '../people/People.js';
 import { addFriend, friendsOf, dropFriend } from '../people/Friends.js';
+import { yearNow } from '../world/Eras.js';
 
 export const ATTENDANCE = {
   devout: { label: 'Devout', icon: '🙏', desc: 'Services weekly and more: study groups, holy days, serving.', happiness: 2, stress: -3, load: 0.5 },
@@ -31,13 +32,17 @@ export const ATTENDANCE = {
 
 export const GIVING_LEVELS = [0, 2, 5, 10];
 
+/** When each kind of volunteering began: Habitat for Humanity 1976, hospices 1967, crisis lines 1953, animal shelters 1866, food banks 1967 (soup kitchens before). */
+export const VOLUNTEER_FROM = { habitat: 1976, hospice: 1967, crisisLine: 1953, animalShelter: 1866, foodBank: 1967, tutoring: 1900 };
+export const volunteerInEra = (state, id) => !(VOLUNTEER_FROM[id] > yearNow(state));
+
 export const VOLUNTEER_ORGS = {
   foodBank: { name: 'Food bank', icon: '🥫', minAge: 12, desc: 'Sorting donations and serving meals.' },
   habitat: { name: 'Habitat for Humanity', icon: '🔨', minAge: 16, desc: 'Building homes on Saturdays.', fitness: 1 },
   tutoring: { name: 'Literacy tutoring', icon: '📖', minAge: 16, desc: 'Teaching adults and kids to read.', smarts: 1 },
   animalShelter: { name: 'Animal shelter', icon: '🐶', minAge: 14, desc: 'Walking dogs and socializing cats.' },
   hospice: { name: 'Hospice volunteer', icon: '🕊️', minAge: 18, desc: 'Sitting with the dying and their families.', stress: 1, happiness: 1 },
-  crisisLine: { name: 'Crisis line (988)', icon: '☎️', minAge: 18, desc: 'Trained listener on overnight shifts.', stress: 2, happiness: 1 },
+  crisisLine: { name: 'Crisis line', icon: '☎️', minAge: 18, desc: 'Trained listener on overnight shifts.', stress: 2, happiness: 1 },
   campaign: { name: 'Community organizing', icon: '📣', minAge: 16, desc: 'Tenant unions, voter drives, town halls.' },
 };
 
@@ -321,6 +326,7 @@ export const Community = {
       const c = state.community;
       const org = VOLUNTEER_ORGS[orgId];
       if (!org) return;
+      if (!c.volunteering.includes(orgId) && !volunteerInEra(state, orgId)) return ctx.toast(`Not founded yet (from about ${VOLUNTEER_FROM[orgId]})`, 'warn');
       if (c.volunteering.includes(orgId)) {
         c.volunteering = c.volunteering.filter((v) => v !== orgId);
         return ctx.log(`You stopped volunteering at the ${org.name.toLowerCase()}.`, org.icon);

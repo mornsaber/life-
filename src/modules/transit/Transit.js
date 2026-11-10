@@ -15,7 +15,7 @@ import { regionOf } from '../life/Regions.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
 import { getProfession } from '../career/JobTrees.js';
-import { yearNow } from '../world/Eras.js';
+import { yearNow, eraYear } from '../world/Eras.js';
 
 export const MODES = {
   drive: { label: 'Drive', icon: '🚗' },
@@ -24,6 +24,9 @@ export const MODES = {
   walk: { label: 'Walk', icon: '🚶' },
   rideshare: { label: 'Rideshare & taxis', icon: '🚕' },
 };
+// Their names in the year being played: the hackney cab, the taxi, then the app.
+Object.defineProperty(MODES.rideshare, 'label', { get: () => (eraYear() < 1905 ? 'Hackney cabs' : eraYear() < 2012 ? 'Taxis' : 'Rideshare & taxis'), enumerable: true });
+Object.defineProperty(MODES.transit, 'label', { get: () => (eraYear() < 1830 ? 'Stagecoach' : eraYear() < 1890 ? 'Omnibus & railway' : 'Public transit'), enumerable: true });
 /** Pre-tax commuter benefit limit (IRS §132(f), monthly × 12). */
 export const COMMUTER_BENEFIT = 325 * 12;
 export const TRANSIT_TAX_BOOST = 15;

@@ -42,7 +42,7 @@ import { reserveStanding, ssoEligibility } from '../../modules/military/Merchant
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
-import { orgInEra } from '../../modules/world/Eras.js';
+import { orgInEra, branchExists } from '../../modules/world/Eras.js';
 import { purchaseEra, REGIMENTS, firstCommissionPrice, familyPurse, PURCHASE_MIN_AGE } from '../../modules/military/Purchase.js';
 import { flagImg } from '../Flags.js';
 
@@ -58,7 +58,7 @@ function purchaseNote(state, b) {
 const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
 function recruitingOffice(state) {
   const abroad = isAbroad(state);
-  const branches = abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES);
+  const branches = (abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES)).filter((b) => b && branchExists(state, abroad ? countryOf(state).id : 'US', b.id));
   const rows = branches.map((b) => {
     const opts = { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 };
     const comp = b.reserveOnly ? 'reserve' : b.activeOnly ? 'active' : 'reserve';

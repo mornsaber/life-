@@ -26,6 +26,7 @@ import { residencesOf, residencyOf, birthCountryOf } from './Immigration.js';
 import { EU_MEMBERS } from '../career/IntlOrgCareers.js';
 import { regimeOf, exitBlock, sanctionsOn } from './Regimes.js';
 import { warIn } from './War.js';
+import { yearNow, PRESENT } from './Eras.js';
 
 export const CONTINENT = {
   Europe: ['GB', 'IE', 'DE', 'FR', 'IT', 'ES', 'NL', 'SE', 'AT', 'BA', 'BE', 'CH', 'CY', 'DK', 'EE', 'LT', 'LV', 'MT', 'NO', 'PL', 'RO', 'RU', 'TR', 'UA', 'XK', 'GR', 'PT', 'FI', 'LU'],
@@ -97,12 +98,23 @@ export function entryWith(passport, dest, state) {
 }
 
 const RANK = { free: 0, eta: 1, evisa: 2, tour: 3, visa: 4, closed: 8, barred: 9 };
+/** When each online travel permit began (ETIAS has yet to start). */
+const ETA_FROM = { ESTA: 2009, eTA: 2016, ETA: 2023, NZeTA: 2019, ETIAS: 2027 };
+/** An entry as it was in the year: no passports needed before the Great War, consulate visas before e-visas. */
+function entryOfDay(e, y) {
+  if (y >= PRESENT || ['barred', 'closed', 'tour'].includes(e.kind) || e.note === 'your own country' || e.note === 'you\'re a resident') return e;
+  if (y < 1914) return { ...e, kind: 'free', cost: 0, refusal: 0, note: 'no passport needed' };
+  if (e.kind === 'eta') return (ETA_FROM[e.note] ?? 2000) > y ? { ...e, kind: 'free', cost: 0, note: 'visa-free' } : e;
+  if (e.kind === 'evisa' && y < 2005) return { ...e, kind: 'visa', cost: Math.max(e.cost, 60), note: 'visa from the consulate' };
+  if (e.note === 'free movement' && y < 1993) return { ...e, note: 'visa-free' };
+  return e;
+}
 
 /** Your best way into a country: { passport, ...entry } or a block { kind: 'barred'|'closed', note }. */
 export function bestEntry(state, dest) {
   // Living there already: residents come and go.
   if (residencesOf(state)[dest] && ['permanent', 'visa', 'refugee'].includes(residencesOf(state)[dest].status)) return { passport: citizenshipsOf(state)[0], kind: 'free', cost: 0, refusal: 0, note: 'you\'re a resident' };
-  const all = citizenshipsOf(state).map((p) => ({ passport: p, ...entryWith(p, dest, state) }));
+  const all = citizenshipsOf(state).map((p) => ({ passport: p, ...entryOfDay(entryWith(p, dest, state), yearNow(state)) }));
   all.sort((a, b) => RANK[a.kind] - RANK[b.kind] || (a.refusal ?? 1) - (b.refusal ?? 1));
   return all[0];
 }

@@ -1166,6 +1166,9 @@ const RENAMES = [
   [/UN Agencies, Funds &(?:amp;)? Programmes/g, 1946, () => 'League of Nations Technical Organisations'],
   [/EU Institutions \(European Civil Service\)/g, 1993, (y) => (y < 1958 ? 'The European Coal and Steel Community' : 'The European Communities (European Civil Service)')],
   [/Order of Malta — Malteser International/g, 2005, () => 'Order of Malta — Relief Service'],
+  [/\bFire and Rescue Service\b/g, 2004, (y) => (y >= 1866 ? 'Fire Brigade' : 'insurance fire brigade')],
+  [/\bBritish Transport Police\b/g, 1949, (y) => (y >= 1830 ? 'Railway Police' : 'parish constables')],
+  [/\bTerritorial Police Force\b/g, 1839, () => 'Borough Watch'],
   [/\bU\.S\. Air Force\b/g, 1947, (y) => (y >= 1941 ? 'U.S. Army Air Forces' : y >= 1926 ? 'U.S. Army Air Corps' : 'U.S. Army Signal Corps')],
 ];
 /**

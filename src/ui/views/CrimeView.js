@@ -12,7 +12,7 @@ import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
 import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
-import { crimeInEra, drugInEra, labInEra } from '../../modules/world/Eras.js';
+import { crimeInEra, drugInEra, labInEra, hasTech } from '../../modules/world/Eras.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
 const level = (n) => (n >= 0.7 ? 'very high' : n >= 0.5 ? 'high' : n >= 0.3 ? 'moderate' : 'low');
@@ -141,7 +141,7 @@ function crimesCard(state) {
     const abuse = state.legal.crime?.abuse;
     if (!partner && !abuse?.incidents) return '';
     return `<h4 class="sub">🥀 At home</h4><div class="action-grid">
-      ${partner ? button(`📱 Control ${esc(partner.firstName)}`, 'crime.abusePartner', { arg: 'control', variant: 'danger', disabled: age < 16 || Boolean(state.yearly['risky.abuse.control']), hint: 'Their phone, their friends, their money' }) : ''}
+      ${partner ? button(`${hasTech(state, 'mobilePhone') ? '📱' : '✉️'} Control ${esc(partner.firstName)}`, 'crime.abusePartner', { arg: 'control', variant: 'danger', disabled: age < 16 || Boolean(state.yearly['risky.abuse.control']), hint: hasTech(state, 'mobilePhone') ? 'Their phone, their friends, their money' : 'Their letters, their friends, their money' }) : ''}
       ${partner ? button(`✋ Hit ${esc(partner.firstName)}`, 'crime.abusePartner', { arg: 'assault', variant: 'danger', disabled: age < 16 || Boolean(state.yearly['risky.abuse.assault']), hint: 'Domestic assault' }) : ''}
       ${abuse?.incidents ? button('🪑 Join a perpetrator programme', 'crime.abuseProgramme', { variant: 'small', disabled: Boolean(state.yearly['crime.abuseProgramme']), hint: 'Accountability, and a way to stop' }) : ''}
     </div><p class="fine">Abuse escalates, and it never pays: partners leave and report, children carry it, and courts issue protective orders.${abuse?.incidents ? ` Incidents with ${esc(partner?.firstName ?? 'your partner')}: ${abuse.incidents}.` : ''}</p>`;

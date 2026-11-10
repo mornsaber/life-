@@ -3,7 +3,7 @@
  */
 import { esc, button, card, chip, meter, kv } from '../Components.js';
 import { BUCKETS, timeOf, freeHours, usedHours, fixedHours } from '../../modules/life/TimeBudget.js';
-import { SKILLS, skillsOf, jobSkills } from '../../modules/life/Skills.js';
+import { SKILLS, skillsOf, jobSkills, skillInEra } from '../../modules/life/Skills.js';
 import { SLEEP, HABITS, routineOf, physicalWorkBarred } from '../../modules/health/Routine.js';
 
 export function weekCard(state) {
@@ -26,7 +26,7 @@ export function skillsCard(state) {
   const job = state.career.job ? jobSkills(state.career.job.professionId) : [];
   const known = Object.entries(s).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
   const rows = known.map(([id, v]) => meter(Math.round(v), { label: `${SKILLS[id].icon} ${SKILLS[id].label}${job.includes(id) ? ' · used at work' : ''}`, tone: v >= 70 ? 'good' : v >= 35 ? 'mid' : 'bad' })).join('');
-  const pick = Object.entries(SKILLS).map(([id, k]) => button(`${k.icon} ${k.label}`, 'time.study', { arg: id, variant: t.study === id ? 'tiny on' : 'tiny' })).join('');
+  const pick = Object.entries(SKILLS).filter(([id]) => skillInEra(state, id) || (state.skills?.[id] ?? 0) > 0).map(([id, k]) => button(`${k.icon} ${k.label}`, 'time.study', { arg: id, variant: t.study === id ? 'tiny on' : 'tiny' })).join('');
   return card('Skills', `${rows || '<p class="muted">You\'ll pick up skills from work, hobbies and the hours you spend learning.</p>'}
     <h4 class="sub">Spend your learning hours on</h4><div class="toggle-row chips-row">${pick}</div>
     <p class="fine">Employers hire for the skills a job needs, and life tests them now and then. Skills you stop using fade slowly.</p>`, { icon: '🧰', summary: known.length ? `${known.length} skills` : '' });

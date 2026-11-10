@@ -8,16 +8,16 @@
  * state.civic.activism = { cause, influence (0–100), protests, arrests, years, organizer }
  */
 export const CAUSES = {
-  climate: { name: 'Climate action', icon: '🌍', allies: ['editorial'] },
+  climate: { name: 'Climate action', icon: '🌍', allies: ['editorial'], from: 1988 },
   labor: { name: 'Workers\' rights', icon: '✊', allies: ['labor'] },
-  taxpayers: { name: 'Lower taxes', icon: '💸', allies: ['party'] },
-  gunRights: { name: 'Gun rights', icon: '🎯', allies: ['party'] },
-  gunSafety: { name: 'Gun safety', icon: '🕊️', allies: ['editorial'] },
-  policeReform: { name: 'Police reform', icon: '⚖️', allies: ['editorial'] },
-  backTheBlue: { name: 'Back the Blue', icon: '🚓', allies: ['lawEnforcement'] },
-  housing: { name: 'More housing (YIMBY)', icon: '🏗️', allies: ['editorial'] },
-  neighborhood: { name: 'Protect our neighborhood (NIMBY)', icon: '🏡', allies: ['party'] },
-  veterans: { name: 'Veterans\' care', icon: '🎖️', allies: ['veterans'] },
+  taxpayers: { name: 'Lower taxes', icon: '💸', allies: ['party'], from: 1900 },
+  gunRights: { name: 'Gun rights', icon: '🎯', allies: ['party'], from: 1970 },
+  gunSafety: { name: 'Gun safety', icon: '🕊️', allies: ['editorial'], from: 1990 },
+  policeReform: { name: 'Police reform', icon: '⚖️', allies: ['editorial'], from: 1965 },
+  backTheBlue: { name: 'Back the Blue', icon: '🚓', allies: ['lawEnforcement'], from: 2014 },
+  housing: { name: 'More housing (YIMBY)', icon: '🏗️', allies: ['editorial'], from: 2015 },
+  neighborhood: { name: 'Protect our neighborhood (NIMBY)', icon: '🏡', allies: ['party'], from: 1980 },
+  veterans: { name: 'Veterans\' care', icon: '🎖️', allies: ['veterans'], from: 1918 },
   antiwar: { name: 'End the war', icon: '☮️', allies: ['editorial'], warOnly: true },
 };
 

@@ -264,7 +264,7 @@ export const Finances = {
         ctx.stat('stress', 8);
         ctx.stat('happiness', -4);
         moneyStrain(state, 3);
-        ctx.log(`Debt collectors keep calling. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, '📞', 'warn');
+        ctx.log(`${hasTech(state, 'telephone') ? 'Debt collectors keep calling' : 'Your creditors keep sending round'}. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, hasTech(state, 'telephone') ? '📞' : '📜', 'warn');
       }
     }
 

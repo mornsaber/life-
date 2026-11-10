@@ -18,12 +18,13 @@ import { Random } from '../../core/Random.js';
 import { lifestyleOf } from './Lifestyle.js';
 import { addCondition, disablingConditions } from './HealthEngine.js';
 import { getCondition } from './Conditions.js';
+import { hasTech } from '../world/Eras.js';
 
 export const SLEEP = { short: '😵 Short (6 hrs)', normal: '😴 Normal (8 hrs)', long: '🛌 Long (9 hrs)' };
 export const HABITS = {
   drinking: { label: 'Drinking', icon: '🍺', condition: 'alcohol' },
   gambling: { label: 'Gambling', icon: '🎰', condition: 'gambling' },
-  gaming: { label: 'Gaming', icon: '🎮', condition: null },
+  gaming: { label: 'Gaming', icon: '🎮', condition: null, tech: 'video' },
 };
 /** Fields where the work is physical: closed to someone with a disabling condition. */
 export const PHYSICAL = ['police', 'fire', 'stateFire', 'airportFire', 'ems', 'privateEms', 'trades', 'trucking', 'parkService', 'culinary', 'publicWorks', 'military'];
@@ -50,6 +51,7 @@ function habitYear(ctx, r, rng) {
   };
   for (const [k, h] of Object.entries(HABITS)) {
     if (state.character.age < (k === 'drinking' || k === 'gambling' ? 16 : 10)) continue;
+    if (h.tech && !hasTech(state, h.tech)) continue;
     const before = r.habits[k];
     r.habits[k] = clamp(r.habits[k] + push[k] + rng.int(-3, 3));
     if (before < 70 && r.habits[k] >= 70) ctx.log(`Your ${h.label.toLowerCase()} has stopped being a choice. You need it now.`, h.icon, 'warn');
