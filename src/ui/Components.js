@@ -10,6 +10,7 @@ import { DIFFICULTIES } from '../core/Difficulty.js';
 import { COUNTRIES, PLANNED } from '../modules/world/Countries.js';
 import { ROYAL_HOMES, SHARED_CROWN, HOUSE_HOMES } from '../core/State.js';
 import { CONTINENT } from '../modules/world/Travel.js';
+import { periodIcons } from './PeriodIcons.js';
 import { titleInsignia } from './Insignia.js';
 import { toned, TONE_LABELS } from '../modules/people/SkinTone.js';
 import { START_ERAS, eraById } from '../modules/world/Eras.js';
@@ -45,13 +46,18 @@ const FLAG_EMOJI = /([\u{1F1E6}-\u{1F1FF}])([\u{1F1E6}-\u{1F1FF}])/gu;
  */
 export function flagEmojiInPage(html) {
   let skip = 0;
+  let raw = 0;
   return String(html).replace(/(<[^>]*>)|([^<]+)/g, (m, tag, text) => {
     if (tag) {
       if (/^<(option|textarea|title)\b/i.test(tag)) skip += 1;
       else if (/^<\/(option|textarea|title)>/i.test(tag)) skip = Math.max(0, skip - 1);
+      if (/^<(textarea|script|style)\b/i.test(tag)) raw += 1;
+      else if (/^<\/(textarea|script|style)>/i.test(tag)) raw = Math.max(0, raw - 1);
       return tag;
     }
-    return skip ? text : flagEmojiToImg(text);
+    if (raw) return text;
+    const period = periodIcons(text);
+    return skip ? period : flagEmojiToImg(period);
   });
 }
 export const flagEmojiToImg = (html) => String(html).replace(FLAG_EMOJI, (_, a, b) => {

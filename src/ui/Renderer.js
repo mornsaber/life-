@@ -14,6 +14,7 @@ import {
   flagEmojiInPage,
   esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, ribbon, ribbonFor, insignia, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
 } from './Components.js';
+import { periodIcons } from './PeriodIcons.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
 import { getProfession, PROFESSIONS } from '../modules/career/JobTrees.js';
 import { rankOf } from '../modules/military/MilitaryEngine.js';
@@ -285,7 +286,7 @@ export class Renderer {
     const el = document.createElement('div');
     el.className = `toast ${kind}`;
     const country = this.engine?.state ? countryOf(this.engine.state) : null;
-    el.textContent = country ? localizeTerms(localizeMoney(tidyText(text), country), country) : tidyText(text);
+    el.textContent = periodIcons(country ? localizeTerms(localizeMoney(tidyText(text), country), country) : tidyText(text));
     this.toastRoot.prepend(el);
     while (this.toastRoot.children.length > 5) this.toastRoot.lastChild.remove();
     setTimeout(() => el.remove(), 3200);

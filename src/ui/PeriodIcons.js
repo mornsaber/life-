@@ -1,0 +1,43 @@
+/**
+ * Icons of their day. The page's text can be period-correct while its emoji are not: a 🚗 beside
+ * "horse and trap" in 1880, a 📱 for writing to your sweetheart in 1925. This swaps each modern
+ * pictograph for what stood in for it in the year being played.
+ */
+import { eraYear, PRESENT } from '../modules/world/Eras.js';
+
+/** emoji → [[until year, stand-in], …] in ascending order: the first row whose year is still ahead wins. */
+const ICONS = {
+  '🚗': [[1905, '🐎']], '🚙': [[1905, '🐎']], '🚕': [[1905, '🐎']], '🏎️': [[1905, '🐎']], '🚘': [[1905, '🐎']],
+  '🚓': [[1905, '🐎']], '🚔': [[1905, '🐎']], '🚑': [[1905, '🐎']], '🚒': [[1905, '🐎']],
+  '🚌': [[1905, '🐎']], '🚍': [[1905, '🐎']], '🚐': [[1905, '🐎']], '🚚': [[1905, '🐎']], '🚛': [[1905, '🐎']], '🛻': [[1905, '🐎']],
+  '🏍️': [[1900, '🐎']], '🛵': [[1946, '🚲']], '🛴': [[1990, '🚲']], '⛽': [[1905, '🌾']], '🚦': [[1920, '👮']],
+  '🚂': [[1830, '🐎']], '🚇': [[1863, '🐎']], '🚤': [[1900, '⛵']],
+  '✈️': [[1920, '🚢']], '🛫': [[1920, '🚢']], '🛬': [[1920, '🚢']], '🛩️': [[1910, '🚢']], '🚁': [[1920, '🚢'], [1945, '✈️']],
+  '🚀': [[1945, '🔭']], '🛰️': [[1957, '🔭']],
+  '📱': [[1880, '✉️'], [1990, '☎️']], '📲': [[1880, '✉️'], [1990, '☎️']], '📞': [[1880, '✉️']], '☎️': [[1880, '✉️']], '📟': [[1880, '✉️'], [1975, '☎️']],
+  '📠': [[1970, '✉️']], '📧': [[1995, '✉️']],
+  '💻': [[1980, '📝']], '🖥️': [[1980, '📝']], '⌨️': [[1980, '📝']], '🖱️': [[1980, '📝']], '🖨️': [[1980, '📝']], '💾': [[1980, '📜']], '💿': [[1980, '📜']], '📀': [[1980, '📜']],
+  '🌐': [[1995, '🗺️']],
+  '📺': [[1922, '📰'], [1950, '📻']], '📻': [[1922, '📰']], '📡': [[1922, '📰'], [1950, '📻']],
+  '🎮': [[1972, '🃏']], '🕹️': [[1972, '🃏']], '🎧': [[1980, '🎵']], '🎙️': [[1920, '📣']], '🔊': [[1920, '📣']],
+  '📷': [[1840, '🎨']], '📸': [[1840, '🎨']], '🎥': [[1895, '🎭']], '📹': [[1895, '🎭']], '🎬': [[1895, '🎭']], '🎞️': [[1890, '🎭']],
+  '💳': [[1960, '💰']], '🏧': [[1967, '🏦']], '🪪': [[1940, '📜']],
+  '🤖': [[1990, '⚙️']], '🧬': [[1953, '🔬']],
+  '💡': [[1880, '🕯️']], '🔦': [[1900, '🏮']], '🧯': [[1900, '🪣']],
+};
+const bare = (e) => e.replace(/️/g, '');
+const BY_BARE = Object.fromEntries(Object.entries(ICONS).map(([e, rows]) => [bare(e), rows]));
+const PATTERN = new RegExp(`(?:${Object.keys(BY_BARE).sort((a, b) => b.length - a.length).map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')})\\uFE0F?`, 'gu');
+
+/** The icon as it would have been drawn in a year. */
+export function periodIcon(emoji, year = eraYear()) {
+  if (year >= PRESENT) return emoji;
+  const rows = BY_BARE[bare(emoji)];
+  return rows?.find(([until]) => year < until)?.[1] ?? emoji;
+}
+
+/** Every modern pictograph in some text, swapped for its stand-in of the year. */
+export function periodIcons(text, year = eraYear()) {
+  if (year >= PRESENT) return text;
+  return String(text).replace(PATTERN, (m) => periodIcon(m, year));
+}
