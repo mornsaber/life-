@@ -620,11 +620,12 @@ const ERA_CATEGORIES = [
   [/Cardiac monitors|AEDs/, 1970, null], [/^Power-load stretchers$/, 2010, { name: 'Stretchers', model: ['Stretcher', 200, 10, 10] }],
   [/^Smart IV pumps$/, 1990, null], [/^Patient monitors$/, 1960, null], [/^Imaging \(CT\/MRI\)$/, 1975, null], [/^Imaging$/, 1900, null],
   [/^911 centers/, 1968, { name: 'Telephone exchange & fire alarm boxes', model: ['Fire alarm telegraph', 20000, 30, 1000] }],
-  [/^Radio towers & repeaters$|^Repeaters$|^Radios & backups$|^Radios & comms$|^Radios$|^Radios & GPS$|^Radios & mission command$|^Communications trailer$/, 1935, null],
+  [/^Radio towers & repeaters$|^Repeaters$|^Radios & backups$|^Radios & comms$|^Radios$|^Radios & GPS$|^Communications trailer$/, 1935, null],
+  [/^Radios & mission command$/, 1935, { name: 'Field telegraph & signals', model: ['Field telegraph & signal flags', 6000, 15, 300] }],
   [/GPS/, 1995, null], [/^Plotters & 3D printers$/, 1985, null], [/^Sound, video & livestream$/, 1930, null], [/^Live trucks$/, 1955, null],
   [/Body scanners|CT bag scanners|Explosive trace/, 2002, null], [/^Doppler radar$/, 1988, null], [/^Radar$/, 1940, null], [/^Satellite ground stations|Missile-warning/, 1960, null],
-  [/^Night vision/, 1960, null], [/^DNA instruments$/, 1987, null], [/^Drug chemistry/, 1970, null], [/^Drug-testing equipment$/, 1985, null], [/^Upper-air sounding/, 1930, null],
-  [/^Hi-rail trucks$/, 1940, null], [/^Shampoo bowls & dryers$/, 1920, null], [/^Cardio machines$/, 1970, null], [/^Racks & strength machines$/, 1950, null], [/^Performance tracking$/, 2000, null],
+  [/^Night vision/, 1960, { name: 'Small arms & field glasses', model: ['Rifles, bayonets & field glasses', 2500, 20, 150] }], [/^DNA instruments$/, 1987, null], [/^Drug chemistry/, 1970, null], [/^Drug-testing equipment$/, 1985, null], [/^Upper-air sounding/, 1930, null],
+  [/^Hi-rail trucks$/, 1940, null], [/^Shampoo bowls & dryers$/, 1920, null], [/^Cardio machines$/, 1970, { name: 'Rowing machines & bicycles', model: ['Rowing machine & stationary bicycle', 1200, 15, 60] }], [/^Racks & strength machines$/, 1950, { name: 'Barbells & Indian clubs', model: ['Barbells, dumbbells & Indian clubs', 800, 25, 20] }], [/^Performance tracking$/, 2000, null],
   [/Snowmobiles/, 1960, null], [/^ATVs & horses$/, 1975, { name: 'Horses', model: ['Patrol horse', 8000, 15, 4000] }], [/^ATVs & snowmobiles$/, 1960, null],
   [/Dozers|^Loaders & backhoes$|^Excavators & loaders$|^Heavy equipment$/, 1930, null], [/^Bucket trucks$|^Digger derricks$/, 1950, null],
   [/^Paratransit vans$|^Accessible vans$/, 1975, null], [/Visit-verification/, 2010, null], [/^Gas monitors/, 1970, null], [/^Workover & frac/, 1950, null], [/^Body armor|^Radios & body armor$/, 1975, null],
@@ -709,6 +710,15 @@ const OLDER_TYPE = {
   'Response boats': (y) => (y < 1945 ? 'Motor lifeboat' : '44-ft motor lifeboat'),
   'Small boats': (y) => (y < 1965 ? 'Motor whaleboat' : 'Rigid inflatable'),
 };
+/** The icon of each stand-in. */
+const SUB_ICON = {
+  'Blackboards & slates': '🏫', 'Call boxes & whistles': '📣', 'Cash registers': '💰', 'Drafting tables': '📐', 'Draught horses': '🐴', 'Field artillery': '💣',
+  'Hand trucks & hoists': '⛓️', 'Horse buses & wagons': '🐎', 'Horse-drawn ambulances': '🐎', 'Horse-drawn hearses': '🐎', 'Horse-drawn ladder wagons': '🐎',
+  'Horse-drawn steam fire engines': '🐎', Horses: '🐎', 'Horses & wagons': '🐎', 'Ice room & iceboxes': '🧊', 'Inspection pits': '🔧', 'Lathes & milling machines': '⚙️',
+  'Mail wagons': '🐎', 'Reapers & threshers': '🌾', 'Smoke helmets & leather turnout': '⛑️', Stretchers: '🛏️', 'Switchboard & dispatch desk': '☎️',
+  'Telephone exchange & fire alarm boxes': '🔔', 'Typewriters & copy desk': '📝', 'Typewriters & filing': '📝', 'Field telegraph & signals': '🚩',
+  'Small arms & field glasses': '🔭', 'Rowing machines & bicycles': '🚣', 'Barbells & Indian clubs': '🏋️',
+};
 const ZERO_NEED = { small: 0, medium: 0, large: 0, enterprise: 0 };
 const toModel = ([name, cost, life, upkeep]) => ({ name, cost, life, upkeep });
 function eraOf(raw, y) {
@@ -728,7 +738,7 @@ function eraOfBare(raw, y) {
   if (rule && y < rule[1]) {
     const sub = rule[2];
     if (!sub) return { name: raw.name, need: ZERO_NEED, models: hiddenAll(raw.models), absent: true };
-    return { name: sub.name, need: raw.need, models: withHidden({ period: toModel(sub.model) }, raw.models) };
+    return { name: sub.name, icon: SUB_ICON[sub.name], need: raw.need, models: withHidden({ period: toModel(sub.model) }, raw.models) };
   }
   const renamed = Object.fromEntries(Object.entries(raw.models).map(([id, m]) => {
     const old = MODEL_OLD.find(([re, until]) => re.test(m.name) && y < until);
@@ -759,7 +769,7 @@ const GROUP_FROM = {
 for (const [gid, group] of Object.entries(GROUPS)) {
   const siblings = Object.values(group.categories);
   siblings.forEach((cat, i) => {
-    const raw = { name: cat.name, need: cat.need, models: cat.models };
+    const raw = { name: cat.name, need: cat.need, models: cat.models, icon: cat.icon };
     let memo = null;
     const compute = (y) => {
       if (GROUP_FROM[gid] > y) return { name: raw.name, need: ZERO_NEED, models: hiddenAll(raw.models), absent: true };
@@ -772,6 +782,7 @@ for (const [gid, group] of Object.entries(GROUPS)) {
     Object.defineProperty(cat, 'name', { get: () => now().name, enumerable: true, configurable: true });
     Object.defineProperty(cat, 'need', { get: () => now().need, enumerable: true, configurable: true });
     Object.defineProperty(cat, 'models', { get: () => now().models, enumerable: true, configurable: true });
+    Object.defineProperty(cat, 'icon', { get: () => now().icon ?? raw.icon, enumerable: true, configurable: true });
     Object.defineProperty(cat, 'absent', { get: () => Boolean(now().absent), enumerable: false, configurable: true });
   });
 }

@@ -47,6 +47,14 @@ const tests = {
       }
     }
   },
+  'period kit and icons for stand-ins'() {
+    assert.match(names(listed('gym', 1900)), /Indian clubs/);
+    assert.match(names(listed('milGround', 1880)), /Rifles.*field glasses/);
+    assert.match(names(listed('milGround', 1880)), /Field telegraph/);
+    setEraYear(1880);
+    assert.equal(GROUPS.fire.categories.engines?.icon ?? Object.values(GROUPS.fire.categories)[0].icon, '🐎');
+    setEraYear(PRESENT);
+  },
   'whole outfits that came later'() {
     assert.equal(listed('atc', 1910).length, 0);
     assert.equal(listed('renewables', 1960).length, 0);
