@@ -320,7 +320,7 @@ export const colonialHere = (state) => { const cc = state.character.countryId ??
 /** The overseas territories a country rules in the year being played (not Europe's own subject nations: Ireland, Poland, Finland...). */
 export const empireColonies = (state, cc) => (state?.era && OVERSEAS_EMPIRES.includes(cc) ? Object.keys(COLONIES).filter((id) => id !== cc && !HOME_REALMS.includes(id) && colonyStage(state, id)?.ruler === cc) : []);
 /** Colonial work is open: you live in a colony, or your country still rules one. */
-export const colonialWorkOpen = (state) => Boolean(colonialHere(state)) || empireColonies(state, state.character.countryId ?? 'US').length > 0;
+export const colonialWorkOpen = (state) => Boolean(colonialHere(state)) || empireColonies(state, state.character.posting?.home?.countryId ?? state.character.countryId ?? 'US').length > 0;
 
 /** The planned end year of a stage (event-ended stages: when that event happened, else never). */
 export const stageEnd = (state, st) => (typeof st.until === 'number' ? st.until : state.era?.events?.[st.until]?.year ?? Infinity);

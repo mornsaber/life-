@@ -17,6 +17,7 @@ import { stateIdOf } from './Regions.js';
 import { STATES, DISASTER_LABEL } from './States.js';
 import { REGIONS } from './Regions.js';
 import { priceLevel } from '../world/Countries.js';
+import { hasTech } from '../world/Eras.js';
 
 export const HARDEN = {
   wildfire: { label: '🌲 Clear defensible space, ember-proof vents, a Class A roof', cost: 15000, season: 'Fire season is coming' },
@@ -95,7 +96,7 @@ export const DisasterSeasonResolvers = {
       return ctx.log(`You hardened the house against ${data.type}s. Your insurer knocked a little off the premium.`, '🏗️', 'good');
     }
     if (optionId === 'flood' && home) { home.floodInsured = true; return ctx.log('You added flood insurance.', '🌊', 'good'); }
-    if (optionId === 'kit') { ctx.spend(local(state, 300), 'Go-bag and emergency plan'); prepOf(state).kit = true; return ctx.log('A go-bag by the door, a meeting place, documents in the cloud.', '🎒', 'good'); }
+    if (optionId === 'kit') { ctx.spend(local(state, 300), 'Go-bag and emergency plan'); prepOf(state).kit = true; return ctx.log(`A go-bag by the door, a meeting place, ${hasTech(state, 'internet') ? 'documents in the cloud' : 'papers in a tin box'}.`, '🎒', 'good'); }
     if (optionId === 'cert') { prepOf(state).cert = true; ctx.stat('smarts', 1); return ctx.log('Six Saturday sessions: triage, light search and rescue, shutting off the gas. You know your neighbours\' names now.', '🦺', 'good'); }
     ctx.log('You crossed your fingers.', '🤞', 'muted');
   },

@@ -36,13 +36,17 @@ import { regimeHere } from './Regimes.js';
 import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { warsStarting, warsEnding, warIntensity, demographyAt } from './HistoricalData.js';
-import { postAbroad, postingOf, endPosting } from './Posting.js';
+import { postAbroad, postingOf, endPosting, liveAtPosting, settleAtPosting } from './Posting.js';
+/** Your own country, while posted abroad too. */
+const homeCc = (state) => postingOf(state)?.home?.countryId ?? state.character.countryId ?? 'US';
 import { arrive } from './Migration.js';
 import { empireColonies } from './Eras.js';
 import { colonialStanding } from './ColonialLife.js';
 import { closeBusiness } from '../business/BusinessEngine.js';
 import { workBlock } from './Regimes.js';
 import { presidencyInEra } from './Eras.js';
+import { colonialEmployerName } from '../content/packs/careers-colonial.js';
+import { regionsIn } from '../life/Regions.js';
 
 const cname = (cc) => COUNTRIES[cc]?.name ?? cc;
 const hereOf = (state) => state.character.countryId ?? 'US';
@@ -477,7 +481,8 @@ function colonyYear(ctx, cc) {
   const y = yearNow(state);
   const end = stageEnd(state, st);
   const rng = sideRng(state, cc.charCodeAt(0) * 31 + cc.charCodeAt(1));
-  const mine = hereOf(state) === cc;
+  // Posted out from the ruling country, you watch it as a foreigner (the tour's end handles you).
+  const mine = hereOf(state) === cc && !postingOf(state)?.home;
   // A war of independence starts a few years before the end.
   if (st.war && typeof st.until === 'number' && !rec.war?.[st.index] && y >= end - 5 && rng.chance(0.4)) {
     (rec.war ??= {})[st.index] = y;
@@ -546,7 +551,7 @@ function leaveSchoolPrompt(ctx) {
 function movementPrompt(ctx) {
   const { state } = ctx;
   const st = colonyHere(state);
-  if (!st || st.noMovement || state.character.age < 16 || state.legal?.incarceration) return;
+  if (!st || st.noMovement || state.character.age < 16 || state.legal?.incarceration || postingOf(state)?.home) return;
   const rec = (state.era.colonies[hereOf(state)] ??= { done: [], pressure: 0 });
   if (rec.asked != null && yearNow(state) - rec.asked < 4) return;
   if (!sideRng(state, 0x30c).chance(0.35)) return;
@@ -836,14 +841,28 @@ function postOut(ctx, colony = null) {
   const home = state.character.countryId ?? 'US';
   const options = empireColonies(state, home);
   if (!options.length) return null;
-  const cc = colony && options.includes(colony) ? colony : rng.pick(options);
+  // Somewhere you can actually live (a town on the map), if the empire has one.
+  const livable = options.filter((id) => regionsIn(id).length);
+  const cc = colony && options.includes(colony) ? colony : rng.pick(livable.length ? livable : options);
   const st = colonyStage(state, cc);
   const years = rng.int(3, 5);
   const p = postAbroad(ctx, { place: st?.name ?? cname(cc), kind: 'colonial', years, country: COUNTRIES[cc].name });
   if (!p) return null;
   p.colony = cc;
+  p.countryId ??= cc;
   ctx.log(`You sailed for ${st?.name ?? cname(cc)}: a ${years}-year tour with ${state.career.job?.employer?.name ?? 'the service'}.`, '⛵', 'milestone');
+  liveAtPosting(ctx, p);
+  nameColonialEmployer(state, home, cc);
   return p;
+}
+/** Your employer under its real name for the empire and the territory. */
+function nameColonialEmployer(state, ruler, cc) {
+  const job = state.career?.job;
+  if (!job?.employer || job.nationalized || !PROFESSIONS[job.professionId]?.colonial) return;
+  const name = colonialEmployerName(job.professionId, ruler, cc, yearNow(state));
+  if (!name) return;
+  job.employer.name = name;
+  if (job.employer.orgName) job.employer.orgName = name;
 }
 function colonialTours(ctx) {
   const { state } = ctx;
@@ -859,7 +878,7 @@ function colonialTours(ctx) {
   // At a desk at home: when the stint is done, the choice again.
   if (colonial && !p && job.homeDesk) {
     if (state.character.age < job.homeDesk.until || state.prompts.some((q) => q.type === 'history.tourEnds')) return undefined;
-    return ctx.prompt({ type: 'history.tourEnds', icon: '🏛️', title: 'Back to the Colonies?', text: `Your time at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'} is up.`,
+    return ctx.prompt({ type: 'history.tourEnds', icon: '🏛️', title: 'Back to the Colonies?', text: `Your time at the ${COLONIAL_OFFICE[homeCc(state)] ?? 'Colonial Office'} is up.`,
       options: [{ id: 'again', label: '⛵ A new posting overseas' }, { id: 'desk', label: '🏛️ Stay at the desk' }, { id: 'home', label: '🏠 Leave the service', hint: 'With a gratuity' }], data: { colony: null, why: 'deskDone' } });
   }
   // Hired at home into a colonial service: posted out.
@@ -878,11 +897,11 @@ function colonialTours(ctx) {
   return ctx.prompt({
     type: 'history.tourEnds', icon: '⛵', title: why === 'tourDone' ? 'End of Your Tour' : 'Going Home?', text,
     options: [
-      ...(colonial && empireColonies(state, state.character.countryId ?? 'US').some((cc) => cc !== p.colony) ? [{ id: 'again', label: '⛵ Home leave, then another tour', hint: 'The service posts you wherever it needs you' }] : []),
+      ...(colonial && empireColonies(state, homeCc(state)).some((cc) => cc !== p.colony) ? [{ id: 'again', label: '⛵ Home leave, then another tour', hint: 'The service posts you wherever it needs you' }] : []),
       ...(colonial && why !== 'independence' ? [{ id: 'extend', label: `🌴 Stay on in ${cname(p.colony)} for another tour` }] : []),
-      ...(colonial ? [{ id: 'desk', label: `🏛️ A desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'} at home`, hint: 'Stay in the service, at home' }] : []),
+      ...(colonial ? [{ id: 'desk', label: `🏛️ A desk at the ${COLONIAL_OFFICE[homeCc(state)] ?? 'Colonial Office'} at home`, hint: 'Stay in the service, at home' }] : []),
       ...(trusted ? [{ id: 'contract', label: `📝 Stay on, on contract to the new government`, hint: 'A few more years, then home' }] : []),
-      { id: 'home', label: `🏠 Go home to ${cname(state.character.countryId ?? 'US')}`, hint: colonial ? 'You leave the service, with a gratuity' : '' },
+      { id: 'home', label: `🏠 Go home to ${cname(homeCc(state))}`, hint: colonial ? 'You leave the service, with a gratuity' : '' },
       { id: 'settle', label: `🏡 Settle in ${cname(p.colony)} for good`, hint: colonial ? 'You leave the service' : '' },
     ],
     data: { colony: p.colony, why },
@@ -898,7 +917,12 @@ export const HistoryModule = {
 
   setup(engine) {
     // Joining a colonial service at home: you sail at once.
-    engine.bus.on('career:hired', ({ ctx }) => { if (ctx.state.era) colonialTours(ctx); });
+    engine.bus.on('career:hired', ({ ctx }) => {
+      if (!ctx.state.era) return;
+      const st = colonialHere(ctx.state);
+      if (st) nameColonialEmployer(ctx.state, st.ruler, ctx.state.character.countryId ?? 'US');
+      colonialTours(ctx);
+    });
   },
 
   init(state) {
@@ -999,7 +1023,7 @@ export const HistoryModule = {
         return ctx.log(`You stayed on in ${cname(data.colony)}, on contract to its new government, training the officers who'll replace you.`, '📝', 'milestone');
       }
       if (optionId === 'desk' && inService) {
-        if (p) endPosting(ctx, `You came home to a desk at the ${COLONIAL_OFFICE[state.character.countryId ?? 'US'] ?? 'Colonial Office'}.`);
+        if (p) endPosting(ctx, `You came home to a desk at the ${COLONIAL_OFFICE[homeCc(state)] ?? 'Colonial Office'}.`);
         job.homeDesk = { until: state.character.age + rng.int(3, 5) };
         return undefined;
       }
@@ -1012,6 +1036,7 @@ export const HistoryModule = {
       }
       if (optionId === 'settle') {
         if (inService) leaveJob(ctx, 'Left the service to settle in the colony');
+        if (settleAtPosting(ctx)) { endPosting(ctx, null); return ctx.log(`You stayed on in ${cname(data.colony)} for good: a house, a few acres, and the club on Saturdays.`, '🏡', 'milestone'); }
         endPosting(ctx, null);
         return arrive(ctx, data.colony, { visa: 'freeMovement', reason: `You stayed on in ${cname(data.colony)} for good: a house, a few acres, and the club on Saturdays.` });
       }
@@ -1023,7 +1048,7 @@ export const HistoryModule = {
         ctx.earn(gratuity, 'Colonial service gratuity');
         ctx.log(`You came home with a gratuity of $${gratuity.toLocaleString()}, a sunburn and a trunk of stories.`, '🏠', 'good');
       }
-      endPosting(ctx, `You came home to ${cname(state.character.countryId ?? 'US')}.`);
+      endPosting(ctx, `You came home to ${cname(homeCc(state))}.`);
       return undefined;
     },
     leaveSchool(ctx, _data, optionId) {

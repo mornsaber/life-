@@ -168,6 +168,27 @@ const tests = {
     today.state.character.age = 30;
     assert.equal(applicationEligibility(today.state, 'colonialService').ok, false);
   },
+  'a colonial tour is lived in the colony, and you come home after'() {
+    const { engine, state } = life({ countryId: 'GB', startYear: 1876 }, 5);
+    state.character.age = 24; state.prompts = []; engine.ageUp(); state.prompts = [];
+    const homeRegion = state.character.regionId;
+    const ctx = engine.context();
+    hire(ctx, { professionId: 'colonialService', levelId: 'clerk', employer: createEmployer(ctx.rng, state, getProfession('colonialService'), state.character.regionId) });
+    const p = state.character.posting;
+    assert.equal(p?.kind, 'colonial');
+    assert.equal(state.character.countryId, p.colony, 'you live in the colony');
+    assert.notEqual(state.character.regionId, homeRegion);
+    assert.deepEqual(state.character.citizenships, ['GB'], 'still a British subject');
+    assert.doesNotMatch(state.career.job.employer.name, p.colony === 'IN' ? /^$/ : /Indian/);
+    for (let i = 0; i < 8 && state.character.posting; i++) {
+      for (const q of [...state.prompts]) engine.resolvePrompt(q.id, q.type === 'history.tourEnds' ? 'home' : (q.options.find((x) => !x.disabled && x.tone !== 'danger') ?? q.options[0]).id);
+      if (state.character.posting) engine.ageUp();
+    }
+    for (const q of [...state.prompts]) if (q.type === 'history.tourEnds') engine.resolvePrompt(q.id, 'home');
+    assert.equal(state.character.posting, null);
+    assert.equal(state.character.countryId, 'GB', 'home again');
+    assert.equal(state.character.regionId, homeRegion);
+  },
   'modern content waits for its technology'() {
     const { state } = life({ countryId: 'US', startYear: 1950 });
     state.character.age = 30;

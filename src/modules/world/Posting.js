@@ -16,6 +16,10 @@
  *   kind: 'deployment' | 'tour' | 'secondment' | 'exercise' | 'mission'
  */
 import { COUNTRIES, FOREIGN_CITIES } from './Countries.js';
+import { setNameCountry } from '../../core/State.js';
+import { eraYear } from './Eras.js';
+/** Capitals built later: the colonial seat was elsewhere (Lagos, not Abuja). */
+const LATER_CITY = { abuja: 1976, yamoussoukro: 1983, lilongwe: 1975, naypyidaw: 2005, islamabad: 1961, tema: 1962, putrajaya: 1999, shahalam: 1978 };
 import { speaks, LANGUAGE_FLUENT } from './Immigration.js';
 import { FORCES } from './NationalForces.js';
 import { HARDSHIP, ordainedPriest } from '../career/IntlOrgCareers.js';
@@ -120,12 +124,72 @@ export function postedHousing(state) {
   return 'local';
 }
 
+/**
+ * A posting you live at (a colonial tour): you move there for real, house, town and all, keeping
+ * your citizenship and your pension at home. `p.home` remembers where to come back to.
+ */
+export function liveAtPosting(ctx, p) {
+  const { state } = ctx;
+  const to = p.countryId;
+  const ofDay = (id) => !(LATER_CITY[id] > eraYear());
+  const city = FOREIGN_CITIES[p.regionId]?.country === to && ofDay(p.regionId) ? p.regionId : Object.values(FOREIGN_CITIES).find((r) => r.country === to && ofDay(r.id))?.id;
+  if (!to || !city) return false;
+  const from = state.character.countryId ?? 'US';
+  state.character.citizenships ??= [from];
+  const m = (state.migration ??= { birthCountry: from, residences: {}, languages: {}, history: [] });
+  m.residences ??= {};
+  p.home = { countryId: from, regionId: state.character.regionId };
+  m.residences[to] = { status: 'permanent', visa: 'official', arrived: state.character.age, qualifyingSince: null, posted: true };
+  if (to === 'US') delete state.character.countryId; else state.character.countryId = to;
+  setNameCountry(to);
+  ctx.emit('migration:moved', { from, to });
+  p.regionId = city;
+  state.character.regionId = city;
+  state.character.residencySince = state.character.age;
+  ctx.emit('region:changed', { from: p.home.regionId, to: city, voluntary: false });
+  const job = state.career?.job;
+  if (job?.employer) { job.employer.city = FOREIGN_CITIES[city].name.split(',')[0]; job.employer.stateId = FOREIGN_CITIES[city].state ?? job.employer.stateId; job.employer.homeCountry ??= from; }
+  return true;
+}
+
+/** Home from a posting you lived at: back to your own country and town. */
+function comeHome(ctx, p) {
+  const { state } = ctx;
+  const { countryId: to, regionId } = p.home;
+  const from = state.character.countryId ?? 'US';
+  const res = state.migration?.residences?.[from];
+  if (res?.posted) delete state.migration.residences[from];
+  if (to === 'US') delete state.character.countryId; else state.character.countryId = to;
+  setNameCountry(to);
+  ctx.emit('migration:moved', { from, to });
+  state.character.regionId = regionId;
+  state.character.residencySince = state.character.age;
+  ctx.emit('region:changed', { from: p.regionId, to: regionId, voluntary: false });
+  const job = state.career?.job;
+  if (job?.employer && job.employer.homeCountry === to) {
+    job.employer.city = (FOREIGN_CITIES[regionId]?.name ?? '').split(',')[0] || job.employer.city;
+    job.employer.stateId = FOREIGN_CITIES[regionId]?.state ?? job.employer.stateId;
+  }
+}
+
+/** Staying on where you were posted: the posting ends but you live there now, on your own account. */
+export function settleAtPosting(ctx) {
+  const { state } = ctx;
+  const p = postingOf(state);
+  if (!p?.home) return false;
+  const res = state.migration?.residences?.[state.character.countryId ?? 'US'];
+  if (res) { delete res.posted; res.visa = 'freeMovement'; res.qualifyingSince = state.character.age; res.permanentSince = state.character.age; }
+  delete p.home;
+  return true;
+}
+
 /** Back home: the posting ends and your volunteer service picks up again. `moving`: straight on to another post. */
 export function endPosting(ctx, why, { moving = false } = {}) {
   const { state } = ctx;
   const p = postingOf(state);
   if (!p) return;
   state.character.posting = null;
+  if (p.home) comeHome(ctx, p);
   if (!moving && (p.kind === 'intl' || state.housing?.rental?.posted)) ctx.emit('housing:postingEnded', {});
   for (const [id, m] of Object.entries(state.emergency ?? {})) {
     if (id === 'history' || !m?.postingLeave) continue;

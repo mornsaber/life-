@@ -16,11 +16,27 @@ export function colonialPosting(state) {
   const st = colonialHere(state);
   if (!st && colonyHere(state)) return { ok: false, reason: `${colonyHere(state).name} is ruled as part of the state itself: there is no colonial service` };
   if (st) return { ok: true, note: `The ${rulerAdj(st.ruler)} administration of ${st.name}` };
-  const cc = state.character.countryId ?? 'US';
+  const cc = state.character.posting?.home?.countryId ?? state.character.countryId ?? 'US';
   const terr = empireColonies(state, cc);
   if (!terr.length) return { ok: false, reason: 'Only in a colony, or for a country that still rules one' };
   const names = terr.slice(0, 3).map((id) => COUNTRIES[id]?.name ?? id).join(', ');
   return { ok: true, note: `Posted abroad by ${RULER_NAME[cc] ?? cc}: ${names}${terr.length > 3 ? ' and more' : ''}` };
+}
+
+/** The service's real name for an empire and a territory: the Indian Civil Service only in India. */
+export function colonialEmployerName(professionId, ruler, cc, year) {
+  const adj = rulerAdj(ruler);
+  const place = (COUNTRIES[cc]?.name ?? cc).replace(/^the /, '');
+  const IN = cc === 'IN' && ruler === 'GB';
+  switch (professionId) {
+    case 'colonialService': return IN ? 'the Indian Civil Service' : ({ GB: 'the Colonial Administrative Service', FR: 'the Corps of Colonial Administrators', NL: cc === 'ID' ? 'the Netherlands Indies Civil Service' : 'the Dutch Colonial Service', BE: 'the Congo Territorial Service', JP: `the Government-General of ${place}`, US: `the Insular Government of ${place}` })[ruler] ?? `the ${adj} Colonial Administration`;
+    case 'colonialPolice': return IN ? (year < 1905 ? 'the Indian Police' : 'the Indian Imperial Police') : ruler === 'FR' ? 'the Colonial Gendarmerie' : `the ${place} Police`;
+    case 'colonialMedical': return IN ? 'the Indian Medical Service' : ruler === 'FR' ? 'the Colonial Health Service' : ruler === 'GB' ? 'the Colonial Medical Service' : `the ${adj} Colonial Medical Service`;
+    case 'tradingCompany':
+      if (ruler === 'GB') return IN && year < 1858 ? 'the East India Company' : cc === 'NG' && year < 1900 ? 'the Royal Niger Company' : ['ZW', 'ZM'].includes(cc) && year < 1924 ? 'the British South Africa Company' : cc === 'CA' ? 'the Hudson\'s Bay Company' : `a ${place} trading house`;
+      return ruler === 'NL' && year < 1800 ? 'the Dutch East India Company' : `a ${adj} trading house in ${place}`;
+    default: return null;
+  }
 }
 
 const COLONIAL = { sector: 'state', payMultiplier: 1.05, minAge: 18, sizes: { enterprise: 1 }, dutyStation: true, background: 'strict', layoffRate: 0, union: null, noMarket: true, colonial: true, eligible: colonialPosting };
