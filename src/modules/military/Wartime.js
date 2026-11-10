@@ -28,6 +28,8 @@ import { COUNTRIES } from '../world/Countries.js';
 import { grantWarMedals } from './WarMedals.js';
 import { colonyHere } from '../world/Eras.js';
 import { purchaseEra } from './Purchase.js';
+import { charge } from '../legal/JusticeSystem.js';
+import { regimeOf } from '../world/Regimes.js';
 
 /** Five-star titles by theatre; some forces have their own marshals. */
 const FIVE_STAR = {
@@ -146,6 +148,101 @@ function fiveStarYear(ctx, svc, war) {
   addHonor(state, { id: 'mil.fiveStar', source: 'military', name: `Promoted ${fiveStarTitle(svc)}`, icon: '⭐', prestige: 40, precedence: 2, citation: `For the direction of ${war.operation}.` });
   ctx.log(`For leading ${war.operation}, the head of state promoted you to ${fiveStarTitle(svc)}: five stars, a rank created for the greatest wars. You will never retire: a five-star officer stays on the active list for life.`, '⭐', 'milestone');
   ctx.stat('happiness', 15);
+}
+
+/* ------------------------------------------------------------------ */
+/* Losing a war                                                        */
+/* ------------------------------------------------------------------ */
+
+const DEFEAT = /defeat|surrender|occupation|capitulat/i;
+const HARSH = ['totalitarian', 'dictatorship', 'junta', 'absoluteMonarchy', 'theocracy'];
+/** The lost war just ended for your country, if the last one was lost. */
+function defeatOf(state, operation) {
+  const cc = state.character.countryId ?? 'US';
+  const last = [...(state.world?.history ?? [])].reverse().find((h) => h.country === cc && (!operation || h.operation === operation));
+  return last && last.endAge >= state.character.age - 1 && DEFEAT.test(last.outcome ?? '') ? last : null;
+}
+
+/**
+ * After a lost war: an occupation disbands the armed forces (and cuts the old soldiers' pensions);
+ * a defeat without one purges the officer corps. Those who served may be investigated for war
+ * crimes, likelier the higher they rose and the worse the regime they served; a senior officer
+ * of a dictatorship faces an international tribunal. The purged are barred from public office.
+ */
+export function defeatAftermath(ctx, entry) {
+  const { state, rng } = ctx;
+  const m = state.military;
+  const key = `${entry.operation}:${entry.endAge}`;
+  m.defeats ??= [];
+  if (m.defeats.includes(key)) return;
+  m.defeats.push(key);
+  const svc = m.service;
+  const record = svc ?? [...m.history].reverse().find((h) => h.warOp === entry.operation);
+  if (!record) return;
+  const cc = state.character.countryId ?? 'US';
+  const r = regimeOf(cc);
+  const harsh = HARSH.includes(r.kind) || Boolean(r.party);
+  const occupied = /occupation|surrender|capitulat/i.test(entry.outcome ?? '');
+  const officer = record.track === 'officer';
+  const grade = record.grade ?? (record.rankTitle ? 0 : 0);
+  const senior = officer && grade >= 5;
+  const flag = officer && grade >= 7;
+  const rank = svc ? rankOf(svc).title : record.rankTitle ?? 'a veteran';
+
+  // The forces themselves.
+  if (svc && occupied) {
+    discharge(ctx, 'general', `The occupying powers disbanded the armed forces after ${entry.name}.`);
+    ctx.log(`${entry.name} was lost and the country occupied. The victors disbanded the armed forces: you were sent home${officer ? ', your commission void' : ''}, in uniform with the insignia cut off.`, '🏳️', 'bad');
+  } else if (svc && officer && (harsh || rng.chance(senior ? 0.5 : 0.2))) {
+    discharge(ctx, 'general', `Dismissed in the purge of the officer corps after ${entry.name}.`);
+    ctx.log(`After the defeat the new government purged the officer corps. You were dismissed as one of those who led the lost war.`, '🧹', 'bad');
+  } else if (svc) {
+    ctx.log('The defeat cut the forces to the bone. You kept your place, in a smaller and humbled service.', '🏳️', 'warn');
+  }
+  if (occupied) {
+    const pension = state.retirement?.pensions?.find((p) => p.id === 'military');
+    if (pension && !pension.cutByDefeat) {
+      pension.annual = Math.round(pension.annual / 2);
+      pension.cutByDefeat = true;
+      ctx.log('The occupation authorities halved military pensions. Old soldiers queued for work like everyone else.', '💸', 'bad');
+    }
+  }
+  // Purges of those who served the old regime.
+  if (occupied && harsh && officer) {
+    state.politics ??= {};
+    state.politics.barredUntil = Math.max(state.politics.barredUntil ?? 0, state.character.age + (senior ? 15 : 8));
+    ctx.log(`As an officer of the defeated regime you were classified in the purge and barred from public office until age ${state.politics.barredUntil}.`, '📋', 'warn');
+  }
+  ctx.emit('health:trauma', { amount: 6, source: 'defeat' });
+  ctx.stat('happiness', -10);
+
+  // War crimes.
+  const base = flag ? 0.35 : senior ? 0.15 : officer ? 0.05 : 0.02;
+  const misconduct = ((record.disciplinary ?? 0) + (record.njp?.length ?? 0)) * 0.04;
+  const odds = clamp(base * (harsh ? 2 : 1) * (occupied ? 1.5 : 0.6) + misconduct, 0, 0.75);
+  if (!rng.chance(odds)) return;
+  const tribunal = flag && harsh ? 'an international military tribunal' : occupied ? 'a military tribunal of the occupying powers' : 'a military court';
+  ctx.prompt({
+    type: 'wartime.tribunal', icon: '⚖️', title: 'Investigated for War Crimes',
+    text: `Investigators for ${tribunal} have your name. Orders you gave or carried out in ${entry.name} as ${rank} are under examination; witnesses are being found.`,
+    options: [
+      { id: 'stand', label: '⚖️ Face the tribunal', hint: 'Plead your case' },
+      { id: 'testify', label: '🗣️ Testify against your superiors', hint: 'Weaker case against you; your comrades won\'t forgive it' },
+      { id: 'flee', label: '🏃 Flee abroad under a false name', tone: 'danger', hint: 'The hunt may never end' },
+    ],
+    data: { war: entry.name, offenseId: flag && harsh ? 'crimesAgainstPeace' : 'warCrimes', tribunal, evidence: senior ? 0.7 : 0.5 },
+  });
+}
+
+/** A fugitive from a war-crimes tribunal: the hunters may still find you. */
+function huntedYear(ctx) {
+  const { state, rng } = ctx;
+  const h = state.military.hunted;
+  if (!h) return;
+  if (!rng.chance(0.04)) return;
+  state.military.hunted = null;
+  ctx.log(`After ${state.character.age - h.since} years under a false name you were found, arrested and extradited to stand trial for ${h.war}.`, '🕵️', 'bad');
+  charge(ctx, { offenseId: h.offenseId, context: `${h.war}, before ${h.tribunal}`, evidence: 0.8 });
 }
 
 /** The peace: acting ranks revert, wartime soldiers go home, and the drawdown cuts back the war's promotions. */
@@ -407,14 +504,42 @@ export const WartimeModule = {
         }
       } else if (svc.wartime) {
         svc.wartime = false;
+        const op = svc.warOp;
         peace(ctx, svc);
+        const lost = defeatOf(state, op);
+        if (lost) defeatAftermath(ctx, lost);
       }
     }
+    // Veterans of a lost war who had already left the service.
+    for (const entry of (state.world?.history ?? []).filter((h) => h.endAge >= state.character.age - 1 && h.country === (state.character.countryId ?? 'US') && DEFEAT.test(h.outcome ?? ''))) {
+      if (state.military.history.some((h) => h.warOp === entry.operation)) defeatAftermath(ctx, entry);
+    }
+    huntedYear(ctx);
     liabilityYear(ctx);
     relativesYear(ctx);
     exPowYear(ctx);
   },
   resolvers: {
+    tribunal(ctx, data, optionId) {
+      const { state, rng } = ctx;
+      const context = `${data.war}, before ${data.tribunal}`;
+      if (optionId === 'flee') {
+        if (rng.chance(0.3)) {
+          ctx.log('You were stopped at the border with false papers and handed over to the investigators.', '🚧', 'bad');
+          return charge(ctx, { offenseId: data.offenseId, context, evidence: data.evidence + 0.1 });
+        }
+        state.military.hunted = { war: data.war, offenseId: data.offenseId, tribunal: data.tribunal, since: state.character.age };
+        ctx.stat('stress', 15);
+        return ctx.log('You slipped away with false papers and a new name. Every knock at the door is the one you fear.', '🏃', 'warn');
+      }
+      if (optionId === 'testify') {
+        ctx.stat('happiness', -8);
+        ctx.log('You gave evidence about the orders that came down to you. The prosecutors were grateful; your old comrades will never forgive it.', '🗣️', 'warn');
+        if (rng.chance(0.5)) return ctx.log('In return the case against you was dropped.', '⚖️', 'good');
+        return charge(ctx, { offenseId: 'warCrimes', context, evidence: Math.max(0.3, data.evidence - 0.25) });
+      }
+      return charge(ctx, { offenseId: data.offenseId, context, evidence: data.evidence });
+    },
     powBook(ctx, data, optionId) {
       const { rng } = ctx;
       if (optionId === 'write') {

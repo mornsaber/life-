@@ -23,6 +23,7 @@ export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
   const p = state.politics;
   if (!office) return { ok: false, reason: 'Unknown office' };
+  if (state.politics?.barredUntil > state.character.age) return { ok: false, reason: `Barred from public office after the defeat (until age ${state.politics.barredUntil})` };
   const here = state.character.countryId ?? 'US';
   if (office.country ? office.country !== here : here !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: office.country ? 'An office in another country' : US_ONLY.office };
   if (office.country && !isCitizen(state, office.country)) return { ok: false, reason: 'Citizens only' };

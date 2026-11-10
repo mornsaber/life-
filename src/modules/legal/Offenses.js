@@ -109,6 +109,8 @@ export const OFFENSES = {
   robbery: { name: 'Robbery (Street Mugging)', icon: '🥷', severity: 'felony', fine: [1000, 5000], prison: [2, 7], probation: 3, violent: true },
   aggravatedAssault: { name: 'Aggravated Assault (Deadly Weapon)', icon: '🔪', severity: 'felony', fine: [2000, 10000], prison: [2, 8], probation: 3, violent: true },
   manslaughter: { name: 'Voluntary Manslaughter', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [5, 15], probation: 3, violent: true },
+  warCrimes: { name: 'War Crimes (before a military tribunal)', icon: '⚖️', severity: 'felony', fine: [0, 0], prison: [5, 25], probation: 0, violent: true },
+  crimesAgainstPeace: { name: 'Crimes against Peace and Humanity (before an international tribunal)', icon: '⚖️', severity: 'felony', fine: [0, 0], prison: [15, 40], probation: 0, violent: true },
   murder: { name: 'Second-Degree Murder', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [15, 30], probation: 0, violent: true },
   firstDegreeMurder: { name: 'First-Degree Murder', icon: '⚰️', severity: 'felony', fine: [0, 0], prison: [25, 50], probation: 0, violent: true, capital: true },
   kidnapping: { name: 'Kidnapping for Ransom', icon: '🚐', severity: 'felony', fine: [0, 0], prison: [10, 30], probation: 3, violent: true, federal: true },

@@ -727,6 +727,7 @@ export function discharge(ctx, type, reason) {
   sellOut(ctx, svc);
 
   state.military.history.push({
+    ...(svc.warOp ? { warOp: svc.warOp, warId: svc.warId } : {}),
     branch: svc.branch,
     ...(svc.nation ? { nation: svc.nation } : {}),
     ...(svc.conscript ? { conscript: true } : {}),
