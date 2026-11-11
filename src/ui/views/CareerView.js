@@ -54,6 +54,7 @@ import { BASES } from '../../modules/career/WorkplaceClaims.js';
 import { emeritusEligibility, COURSE_STIPEND, MIN_YEARS, EMERITUS_BY_PROFESSION } from '../../modules/career/Emeritus.js';
 import { researchCard } from './AcademiaView.js';
 import { medPracticeCard, caseFilesCard } from './MedicalView.js';
+import { vocationCard } from './VocationView.js';
 import { lawPracticeCard } from './LawView.js';
 import { emsCard } from './EmsView.js';
 import { clinicalCard } from './ClinicalView.js';
@@ -454,7 +455,7 @@ export function careerView(state, ui = {}) {
   const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
-  return `${current}${medPracticeCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** No civilian job, but in work all the same: the services, the bench, office, the royal round. */

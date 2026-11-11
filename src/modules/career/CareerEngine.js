@@ -104,10 +104,14 @@ export const levelYears = (job, level) => {
   return job.fastTrack && years ? Math.max(1, Math.ceil(years * 0.6)) : years;
 };
 
+/** Extra requirements other modules put on rungs (career/Vocations.js: courses, conditions on practice). */
+const LEVEL_GATES = [];
+export const addLevelGate = (fn) => { LEVEL_GATES.push(fn); };
 export function levelCheck(state, level) {
   const { clearance, ...rest } = level.req ?? {};
   const check = checkRequirements(state, rest);
-  return { ok: check.ok, missing: check.missing, clearanceNeeded: clearance && !hasClearance(state, clearance) ? clearance : null };
+  const extra = LEVEL_GATES.flatMap((g) => g(state, level) ?? []);
+  return { ok: check.ok && !extra.length, missing: [...check.missing, ...extra], clearanceNeeded: clearance && !hasClearance(state, clearance) ? clearance : null };
 }
 
 export function backgroundCheck(state, profession) {
