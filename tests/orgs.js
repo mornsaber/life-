@@ -280,6 +280,8 @@ if (s2.orgs.seed === before2.seed) flag('rng', 'org generation did not advance i
   s.prompts = [];
   const job = s.career.job;
   Object.assign(job, { performance: 95, yearsInLevel: 10, openings: { districtManager: 'Someone Else' } });
+  // The management course the vocation pack asks for (this test is about seats, not courses).
+  { const { VOCATIONS, vocationOf } = await import('../src/modules/career/Vocations.js'); vocationOf(s, VOCATIONS.service).courses.management = 34; }
   const st = promotionStatus(s);
   if (!st.noOpening) flag('stuck', `a held one-seat post should block promotion (${st.reason})`);
   outsidePromotionOffer(c6, job, PROFESSIONS.retail);
