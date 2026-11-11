@@ -22,7 +22,7 @@ import { pensionMultiplier, militaryHonors } from '../modules/military/MedalEngi
 import { SERVICE_LIST, rankOfMember } from '../modules/emergency/EmergencyEngine.js';
 import { PROGRAMS } from '../modules/education/Catalog.js';
 import { ACTIVITIES, activityCost } from '../modules/life/Activities.js';
-import { HOBBIES, MAX_HOBBIES, hobbiesOf, tierOf } from '../modules/life/Hobbies.js';
+import { HOBBIES, MAX_HOBBIES, hobbiesOf, tierOf, pursuitsOpen, governingBody, competeTier } from '../modules/life/Hobbies.js';
 import { priceLevel } from '../modules/world/Countries.js';
 import { regionOf } from '../modules/life/Regions.js';
 import { careerView } from './views/CareerView.js';
@@ -243,13 +243,18 @@ function hobbiesCard(state) {
   const rows = ids.map((id) => {
     const d = HOBBIES[id];
     const h = mine[id];
-    return `<div class="case-file"><h4>${d.icon} ${esc(d.label)} ${chip(tierOf(h.skill).label, h.skill >= 75 ? 'good' : '')} <small class="muted">since ${h.since}${h.wins ? ` · 🏆 ${h.wins}` : ''}${h.earned ? ` · earned $${h.earned.toLocaleString()}` : ''}</small></h4>
-      ${meter(h.skill, { label: 'Skill', suffix: '/100' })}${h.best ? `<p class="fine">Best: ${esc(h.best)}</p>` : ''}
-      <div class="action-grid">${button('🔁 Practise', 'hobbies.practise', { arg: id, variant: 'small', disabled: Boolean(state.yearly[`hobby.practise.${id}`]), hint: `$${Math.round(d.cost * priceLevel(state)).toLocaleString()} · skill fades without it` })}${button('🏆 Enter an event', 'hobbies.compete', { arg: id, variant: 'small', disabled: h.skill < 20 || Boolean(state.yearly[`hobby.compete.${id}`]), hint: h.skill < 20 ? 'Amateur level (20+) first' : 'The biggest your level allows' })}${button('✖ Give up', 'hobbies.drop', { arg: id, variant: 'small ghost' })}</div></div>`;
+    const body = governingBody(state, id);
+    const tier = competeTier(state, id);
+    const club = d.club ? button(h.club ? `🚪 Leave ${h.club.name}` : '🏟️ Join a club', 'hobbies.club', { arg: id, variant: h.club ? 'small ghost' : 'small', hint: h.club ? 'Saves the sub' : `$${Math.round(d.club.fee * priceLevel(state)).toLocaleString()}/yr · faster progress${['sport', 'mind'].includes(d.kind) ? ' · needed for club fixtures and up' : ''}` }) : '';
+    return `<div class="case-file"><h4>${d.icon} ${esc(d.label)} ${chip(tierOf(h.skill, id).label, h.skill >= 75 ? 'good' : '')} <small class="muted">since ${h.since}${h.wins ? ` · 🏆 ${h.wins}` : ''}${h.earned ? ` · earned $${h.earned.toLocaleString()}` : ''}</small></h4>
+      ${meter(h.skill, { label: 'Skill', suffix: '/100' })}
+      ${h.club ? `<p class="fine">🏟️ ${esc(h.club.name)}${h.club.role ? ` · ${h.club.role}` : ''}${body ? ` · ${esc(body)}` : ''}</p>` : body ? `<p class="fine">Governed by ${esc(body)}</p>` : ''}
+      ${h.best ? `<p class="fine">Best: ${esc(h.best)}</p>` : ''}${h.honours?.length ? `<p class="fine">Honours: ${h.honours.map((x) => esc(x.label)).join(', ')}</p>` : ''}
+      <div class="action-grid">${button('🔁 Practise', 'hobbies.practise', { arg: id, variant: 'small', disabled: Boolean(state.yearly[`hobby.practise.${id}`]), hint: `$${Math.round(d.cost * priceLevel(state)).toLocaleString()} · skill fades without it` })}${button('🏆 Enter an event', 'hobbies.compete', { arg: id, variant: 'small', disabled: h.skill < 20 || Boolean(state.yearly[`hobby.compete.${id}`]), hint: h.skill < 20 ? 'Amateur level (20+) first' : `Up to ${tier >= 0 ? ['friendly', 'local', 'regional', 'national', 'international'][tier] : 'local'} level` })}${club}${button('✖ Give up', 'hobbies.drop', { arg: id, variant: 'small ghost' })}</div></div>`;
   }).join('<hr>');
-  const take = ids.length < MAX_HOBBIES ? Object.entries(HOBBIES).filter(([id, d]) => !mine[id] && state.character.age >= d.minAge).map(([id, d]) => button(`${d.icon} ${d.label}`, 'hobbies.take', { arg: id, variant: 'tiny' })).join('') : '';
+  const take = ids.length < MAX_HOBBIES ? pursuitsOpen(state).map((id) => button(`${HOBBIES[id].icon} ${HOBBIES[id].label}`, 'hobbies.take', { arg: id, variant: 'tiny' })).join('') : '';
   if (!rows && !take) return '';
-  return card('Hobbies', `<p class="muted">Up to ${MAX_HOBBIES}. Beginner → amateur → club → competitive → semi-pro → elite. Sport peaks young; the rest keeps improving. Semi-pros get paid.</p>${rows}${take ? `<p class="fine">Take up:</p><div class="toggle-row">${take}</div>` : ''}`, { icon: '🎯' });
+  return card('Hobbies & Sport', `<p class="muted">Up to ${MAX_HOBBIES}. Practise every year; join a club to climb past the friendly level; enter the biggest event your level allows. Sport peaks young; the rest keeps improving.</p>${rows}${take ? `<p class="fine">Take up:</p><div class="toggle-row">${take}</div>` : ''}`, { icon: '🎯' });
 }
 
 export class Renderer {

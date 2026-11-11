@@ -38,7 +38,7 @@ export function lifeStoryFacts(state) {
   const hobbies = Object.entries(state.hobbies ?? {}).filter(([, h]) => h.skill >= 40).sort((a, b) => b[1].skill - a[1].skill);
   if (hobbies.length) {
     const [id, h] = hobbies[0];
-    facts.push(['Passion', `${HOBBIES[id].icon} ${HOBBIES[id].label} — ${tierOf(h.skill).label.toLowerCase()}${h.wins ? `, ${h.wins} win${h.wins === 1 ? '' : 's'}` : ''}`]);
+    facts.push(['Passion', `${HOBBIES[id].icon} ${HOBBIES[id].label} — ${tierOf(h.skill, id).label.toLowerCase()}${h.wins ? `, ${h.wins} win${h.wins === 1 ? '' : 's'}` : ''}`]);
   }
   const kids = childrenOf(state).filter((k) => k.relation === 'child');
   if (kids.length) {
