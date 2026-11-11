@@ -66,7 +66,7 @@ export const GUILD = {
 const CIVIL_EXAM_FROM = { GB: 1870, US: 1883, IN: 1855, FR: 1945, JP: 1894, DE: 1873, CA: 1908, AU: 1902, NZ: 1912, IE: 1923 };
 export const PUBLIC_SERVICE = {
   courses: [
-    { id: 'seniorCourse', name: (s) => (cc(s) === 'GB' && y(s) >= 1970 ? 'the Civil Service College senior course' : cc(s) === 'US' && y(s) >= 1968 ? 'the Federal Executive Institute' : cc(s) === 'FR' && y(s) >= 1945 ? 'the École nationale d\'administration' : 'the senior administrators\' course'), icon: '🏛️', from: 1945, cost: 6000, gateMgmt: true, minGrade: 5 },
+    { id: 'seniorCourse', name: (s) => (cc(s) === 'GB' && y(s) >= 1970 ? 'the Civil Service College senior course' : cc(s) === 'US' && y(s) >= 1968 ? 'the Federal Executive Institute' : cc(s) === 'FR' && y(s) >= 1945 ? 'the École nationale d\'administration' : 'the senior administrators\' course'), icon: '🏛️', from: 1945, cost: 6000, gateGrade: 9, minGrade: 6, perf: 3 },
   ],
   awards: [
     { id: 'longService', name: (s) => (cc(s) === 'GB' ? 'the Imperial Service Medal' : 'a long-service award'), icon: '🎖️', from: 1902, minYears: 25, chance: 0.4, prestige: 1, text: (s) => (cc(s) === 'GB' ? 'You were awarded the Imperial Service Medal for twenty-five years in the public service.' : 'Twenty-five years: the agency presented your long-service award.') },

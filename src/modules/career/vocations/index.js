@@ -11,5 +11,9 @@ import { LAW } from './law.js';
 import { HEALTH } from './health.js';
 import { EDUCATION } from './education.js';
 import { SCIENCE } from './science.js';
+import { SAFETY } from './safety.js';
+import { AGENCIES } from './agencies.js';
+import { JUSTICE } from './justice.js';
+import { GOVERNMENT } from './government.js';
 
-export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE, LAW, HEALTH, EDUCATION, SCIENCE];
+export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE, LAW, HEALTH, EDUCATION, SCIENCE, SAFETY, AGENCIES, JUSTICE, GOVERNMENT];
