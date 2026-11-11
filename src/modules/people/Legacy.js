@@ -42,6 +42,8 @@ import { styledName } from '../world/Honours.js';
 import { degreeLabel } from '../education/Catalog.js';
 import { highestDegree } from '../../core/State.js';
 import { inheritHeirlooms } from './FamilyLegacy.js';
+import { lawfulHeirShares, propertyBequests, passProperties } from './Succession.js';
+import { passesBySurvivorship, shareOf } from '../realestate/Title.js';
 
 export const FUNERAL_COST = 9000;
 export const PROBATE_RATE = 0.03;
@@ -74,17 +76,22 @@ export function estateBalance(state) {
   const inv = state.investing;
   const holdings = inv ? Object.values(inv.holdings).reduce((s, h) => s + h.value, 0) + inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0) + stocksValue(state) : 0;
   const iras = inv ? inv.ira.roth.value + inv.ira.traditional.value : 0;
-  const homes = state.housing.properties.reduce((s, p) => s + p.value, 0);
+  // A home held jointly with a living spouse passes to them outside the estate; a share counts as a share.
+  const inEstate = state.housing.properties.filter((p) => !passesBySurvivorship(state, p));
+  const homes = inEstate.reduce((s, p) => s + p.value * shareOf(p), 0);
   const business = businessEquity(state);
   const owned = (state.vehicles?.owned ?? []).filter((v) => !v.lease);
   const vehicles = owned.reduce((s, v) => s + v.value, 0);
   const assets = Math.max(0, state.finances.cash) + holdings + iras + state.retirement.dc + homes + business + vehicles;
   const debts = Math.max(0, -state.finances.cash)
-    + state.housing.properties.reduce((s, p) => s + (p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0) + (p.project?.loan?.balance ?? 0), 0)
+    + inEstate.reduce((s, p) => s + ((p.mortgage?.balance ?? 0) + (p.heloc?.balance ?? 0) + (p.project?.loan?.balance ?? 0)) * shareOf(p), 0)
     + state.finances.loans + (state.health?.medicalDebt ?? 0) + (state.people?.arrears ?? 0)
     + owned.reduce((s, v) => s + (v.loan?.balance ?? 0), 0) + (state.finances.tax?.debt ?? 0) + (state.civil?.judgments ?? 0);
   return { assets: Math.round(assets), debts: Math.round(debts) };
 }
+
+import { successionLaw } from '../world/SuccessionLaw.js';
+const lawName = (state) => { const l = successionLaw(state); return l.family === 'common' ? null : l.name; };
 
 export function estateTax(state, taxable) {
   // Outside the US: the country's inheritance tax on what passes to anyone but a spouse.
@@ -138,7 +145,7 @@ export function heirShares(state) {
     shares.push({ to: 'charity', label: 'Charity', share: 0.5 });
     family(0.5);
   } else family(1);
-  return shares;
+  return lawfulHeirShares(state, shares);
 }
 
 /** Retirement accounts and who they pass to by beneficiary designation (outside the will and probate). */
@@ -210,6 +217,13 @@ export function settleEstate(state) {
     left -= amount;
     bequests.push({ to: d.to, label: d.label, amount, heirTax: Math.round(Math.min(amount, d.pretax) * HEIR_TAX.named), designated: true });
   }
+  // Houses left to someone go to them in kind, ahead of the will's shares.
+  for (const b of propertyBequests(state)) {
+    const amount = Math.floor(Math.min(left, b.amount));
+    left -= amount;
+    const person = (state.people?.list ?? []).find((p) => p.id === b.to);
+    bequests.push({ to: b.to, label: `${person ? fullName(person) : 'Heir'} (the ${b.property.typeName.toLowerCase()})`, amount, heirTax: 0, inKind: true, propertyId: b.property.id });
+  }
   // The family businesses go to the successor in kind, ahead of the will's shares.
   if (succession) {
     const amount = Math.floor(Math.min(left, succession.equity));
@@ -226,6 +240,7 @@ export function settleEstate(state) {
   for (const r of residual) r.heirTax = ['charity', 'state'].includes(r.to) ? 0 : Math.round(r.amount * estatePretaxShare * HEIR_TAX.estate);
   bequests.push(...residual);
   const legacy = {
+    law: lawName(state),
     assets, debts, funeral, debtsPaid, probate, unpaidDebts: debts - debtsPaid, tax, net, bequests, insurance, will: Boolean(state.people?.will), trust: Boolean(plan.trust), settledYear: currentYear(state),
     succession: succession ? { to: succession.successor.id, name: succession.successor.firstName, equity: succession.equity, discount } : null,
   };
@@ -369,6 +384,7 @@ export function buildHeirState(rng, old, childId) {
   passBusinesses(old, s, child, childAge, legacy, new Set(list.map((p) => p.id)));
   passCrownAndTitles(old, s, child, childAge);
   passFarm(old, s, childAge);
+  passProperties(old, s, child, legacy);
 
   // Children are raised in the family's faith.
   const faith = old.community?.faith;

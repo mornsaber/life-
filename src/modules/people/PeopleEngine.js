@@ -41,6 +41,7 @@ import { personTone } from './SkinTone.js';
 import { pickProfession, startCareer, homemakerOdds } from './NpcCareers.js';
 import { childMortality, childCause, maternalRisk, childbirthCause, periodRng } from '../health/PeriodHealth.js';
 import { longevityFactor } from '../world/Eras.js';
+import { parentsEstate, spouseDied } from './Succession.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -136,6 +137,7 @@ export function personDies(ctx, person, cause) {
 
 /** Widowhood: life insurance on your spouse, Social Security survivor benefits and survivor pensions. */
 function widowed(ctx, spouse) {
+  spouseDied(ctx, spouse);
   const { state } = ctx;
   const p = state.people;
   const policy = p.lifeInsurance.spouse;
@@ -164,13 +166,12 @@ function lastParentDied(ctx) {
   // Long-term care spends down what parents would have left (see ElderCare).
   const estate = state.people.parentAssets != null ? Math.max(0, Math.min(rng.int(lo, hi), state.people.parentAssets)) : rng.int(lo, hi);
   const heirs = 1 + living(state).filter((x) => x.relation === 'sibling').length;
-  const share = Math.round(estate / heirs);
-  if (share > 0) {
-    state.finances.cash += share;
-    ctx.log(`Your parents' estate was settled. Your share: $${share.toLocaleString()}.`, '📜', 'good');
-    if (heirs > 1) ctx.emit('people:estateShare', { share });
-  }
-  if (state.housing.withParents && state.character.age >= 18) {
+  // Their house and their money, divided under the law of the day (people/Succession.js).
+  const before = state.finances.cash;
+  parentsEstate(ctx, estate);
+  const share = state.finances.cash - before;
+  if (heirs > 1 && share > 0) ctx.emit('people:estateShare', { share });
+  if (state.housing.withParents && state.character.age >= 18 && !state.succession?.parentsHome) {
     state.housing.withParents = false;
     ctx.log('With your parents gone, the family home was sold.', '🏚️', 'warn');
   }

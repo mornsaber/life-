@@ -15,6 +15,8 @@ import { cashOutAvailable } from '../../modules/realestate/MortgageSystem.js';
 import { portfolio, empireOf, allRentals, RENT_POLICIES, RENT_CONTROL_CAP, COMPANY_MIN_PROPERTIES, companyCost } from '../../modules/realestate/PropertyEmpire.js';
 import { periodRentName } from '../../modules/world/Eras.js';
 import { propertyBlock } from '../../modules/world/Regimes.js';
+import { titleCard } from './TitleCard.js';
+import { periodHomeName } from '../../modules/realestate/HomesOfTheDay.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
   const tone = score >= 740 ? 'good' : score >= 640 ? 'mid' : 'bad';
@@ -55,7 +57,7 @@ function listings(state) {
     const best = quotes.find(([, q]) => q.ok);
     return `<li class="listing">
       <span class="listing-icon">${t.icon}</span>
-      <div class="job-info"><b>${t.name}</b><small>${money(l.price)}${isLand(l.type) ? ` · zoned for ${esc(ZONING[l.type].map((id) => PROPERTY_TYPES[id].name.split(' (')[0].toLowerCase()).join(', '))}` : ` · condition ${l.condition}/100`}${t.units > 1 ? ` · ${t.units} ${t.kind === 'commercial' ? 'leasable spaces' : 'units'} (~${money(marketRent(state, l.type, l.regionId))}/mo each${noi ? `, NOI ≈${money(noi)}/yr` : ''})` : ''}${t.vacation ? ' · short-term rental or getaway' : ''}${t.hoa ? ` · HOA ${money(t.hoa)}/yr` : ''}</small>
+      <div class="job-info"><b>${esc(periodHomeName(state, l.type, t.name))}</b><small>${money(l.price)}${isLand(l.type) ? ` · zoned for ${esc(ZONING[l.type].map((id) => PROPERTY_TYPES[id].name.split(' (')[0].toLowerCase()).join(', '))}` : ` · condition ${l.condition}/100`}${t.units > 1 ? ` · ${t.units} ${t.kind === 'commercial' ? 'leasable spaces' : 'units'} (~${money(marketRent(state, l.type, l.regionId))}/mo each${noi ? `, NOI ≈${money(noi)}/yr` : ''})` : ''}${t.vacation ? ' · short-term rental or getaway' : ''}${t.hoa ? ` · HOA ${money(t.hoa)}/yr` : ''}</small>
         <small class="${best ? 'req' : 'why'}">${best ? `✓ Pre-approved: ${LOAN_TYPES[best[0]].name} ${(best[1].rate * 100).toFixed(2)}%, ${money(best[1].cashNeeded)} down+closing, ${money(Math.round((best[1].payment + best[1].mip) / 12))}/mo` : `✗ ${esc(quotes.at(-1)[1].reason)}`}</small></div>
       ${button('Make offer', 'housing.buy', { arg: l.id, variant: 'small' })}
     </li>`;
@@ -166,7 +168,7 @@ export function homeView(state) {
   const h = state.housing;
   const rentals = h.properties.filter((p) => rentableUnits(p) > 0).length;
   const worth = h.properties.reduce((n, p) => n + p.value, 0);
-  return `${residence(state)}
+  return `${residence(state)}${titleCard(state)}
     ${card('Credit', `${creditGauge(h.credit.score)}${kv([['On-time payments', h.credit.onTime], ['Derogatory marks', h.credit.events.length ? h.credit.events.map((e) => `${e.type} (age ${e.age})`).join(', ') : 'None']])}<p class="fine">Built from on-time rent and mortgage payments; hurt by late payments, evictions, foreclosures, bankruptcy and credit-card debt. Marks fade after 3–10 years.</p>`, { icon: '📊' })}
     ${listings(state)}
     ${h.properties.length ? `${rentals ? card('Landlording', `<p class="muted">${rentals} rental propert${rentals > 1 ? 'ies' : 'y'}.</p>${h.empire?.company ? '' : button(h.manager ? '🧑‍💼 Property manager: ON (10% of rents)' : '🧑‍💼 Hire a property manager', 'housing.toggleManager', { variant: h.manager ? 'small on' : 'small', hint: 'Handles tenants, evictions and vacancies' })}${empireBlock(state)}`, { icon: '🔑' }) : ''}${h.properties.map((p) => propertyCard(state, p)).join('')}` : card('Portfolio', empty('You don\'t own any property yet.'), { icon: '🏘️' })}

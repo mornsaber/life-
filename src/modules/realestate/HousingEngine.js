@@ -28,6 +28,7 @@ import { regionsInState } from '../life/Regions.js';
 import { officialResidence } from '../world/Residences.js';
 import { aidName } from '../life/Disasters.js';
 import { propertyBlock } from '../world/Regimes.js';
+import { periodHomeName } from './HomesOfTheDay.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -83,15 +84,17 @@ function startRental(ctx, tier, { auto = false } = {}) {
 
 function sellProperty(ctx, property, { forced = false } = {}) {
   const { state } = ctx;
-  const gross = property.value;
+  // A share (tenancy in common, realestate/Title.js): the co-owners take theirs of the sale.
+  const share = property.title?.share ?? 1;
+  const gross = Math.round(property.value * share);
   const costs = Math.round(gross * sellingCostRate(state));
-  const owed = (property.mortgage?.balance ?? 0) + (property.heloc?.balance ?? 0) + (property.project?.loan?.balance ?? 0);
+  const owed = Math.round(((property.mortgage?.balance ?? 0) + (property.heloc?.balance ?? 0) + (property.project?.loan?.balance ?? 0)) * share);
   const proceeds = gross - costs - owed;
   if (proceeds < 0 && !forced && state.finances.cash < -proceeds) {
     ctx.toast(`You're underwater — closing needs $${(-proceeds).toLocaleString()} you don't have.`, 'warn');
     return false;
   }
-  const gain = gross - costs - property.purchasePrice;
+  const gain = gross - costs - Math.round(property.purchasePrice * share);
   const heldYears = state.character.age - property.purchaseAge;
   const excluded = property.use === 'primary' && heldYears >= 2 ? 250000 : 0;
   const taxable = Math.max(0, gain - excluded);
@@ -138,7 +141,7 @@ function completePurchase(ctx, listing, loanType, q) {
   const property = {
     id: ctx.rng.id('prop_'),
     type: listing.type,
-    typeName: def.name,
+    typeName: periodHomeName(state, listing.type, def.name),
     regionId: listing.regionId,
     value: listing.price,
     valueAdj: Math.round((listing.price / priceOf(state, listing.type, listing.regionId)) * 1000) / 1000,
@@ -164,7 +167,7 @@ function completePurchase(ctx, listing, loanType, q) {
   }
   const first = isFirstHome(state);
   state.housing.everOwned = true;
-  ctx.log(`${first ? 'You bought your first property! ' : 'You bought '}${first ? '' : 'a '}${def.name} in ${REGIONS[listing.regionId].name} for $${listing.price.toLocaleString()}${q ? ` with a ${LOAN_TYPES[loanType].name} at ${(q.rate * 100).toFixed(2)}%` : ' in cash'}. ${property.use === 'primary' ? 'You moved in.' : isLand(listing.type) ? 'It\'s ready to build on.' : def.kind === 'commercial' ? 'Time to find tenants.' : 'It\'ll be a rental.'}`, def.icon, 'milestone');
+  ctx.log(`${first ? 'You bought your first property! ' : 'You bought '}${first ? '' : 'a '}${property.typeName} in ${REGIONS[listing.regionId].name} for $${listing.price.toLocaleString()}${q ? ` with a ${LOAN_TYPES[loanType].name} at ${(q.rate * 100).toFixed(2)}%` : ' in cash'}. ${property.use === 'primary' ? 'You moved in.' : isLand(listing.type) ? 'It\'s ready to build on.' : def.kind === 'commercial' ? 'Time to find tenants.' : 'It\'ll be a rental.'}`, def.icon, 'milestone');
   ctx.toast(`🏡 Bought: ${def.name}`, 'good');
   ctx.stat('happiness', first ? 12 : 5);
 }

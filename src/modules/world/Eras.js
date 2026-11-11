@@ -1094,8 +1094,13 @@ const LOAN_FROM = { fha: 1934, va: 1944, conv30: 1948, conv15: 1948, arm: 1981, 
 export const loanInEra = (state, id) => !(LOAN_FROM[id] > yearNow(state)) && !(id === 'balloon' && yearNow(state) >= 1948);
 /** Housing help: public housing from 1937, vouchers from 1974. */
 export const housingVouchersExist = (state) => yearNow(state) >= 1974;
+/** The place's own words for rented homes (realestate/HomesOfTheDay.js registers them; Eras stays a leaf). */
+let RENT_HERE = null;
+export const setRentNames = (fn) => { RENT_HERE = fn; };
 /** A rental's name in its day. */
 export function periodRentName(state, id, name) {
+  const here = RENT_HERE?.(state, id, name);
+  if (here) return here;
   const y = yearNow(state);
   if (id === 'apartment' && y < 1920) return 'Rooms in a tenement';
   if (id === 'roommates' && y < 1950) return 'A room in a lodging house';
