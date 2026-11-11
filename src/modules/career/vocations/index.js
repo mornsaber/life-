@@ -18,5 +18,8 @@ import { GOVERNMENT } from './government.js';
 import { TRANSPORT } from './transport.js';
 import { LAND } from './land.js';
 import { INDUSTRY } from './industry.js';
+import { DIGITAL, OFFICE } from './digital.js';
+import { SOCIAL } from './social.js';
+import { EMPIRE, INTL, FAITH } from './world.js';
 
-export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE, LAW, HEALTH, EDUCATION, SCIENCE, SAFETY, AGENCIES, JUSTICE, GOVERNMENT, TRANSPORT, LAND, INDUSTRY];
+export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE, LAW, HEALTH, EDUCATION, SCIENCE, SAFETY, AGENCIES, JUSTICE, GOVERNMENT, TRANSPORT, LAND, INDUSTRY, DIGITAL, OFFICE, SOCIAL, EMPIRE, INTL, FAITH];
