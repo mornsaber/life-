@@ -189,6 +189,20 @@ const tests = {
     assert.equal(state.character.countryId, 'GB', 'home again');
     assert.equal(state.character.regionId, homeRegion);
   },
+  'a trade that ends offers the work that replaced it'() {
+    const { engine, state } = life({ countryId: 'GB', startYear: 1934 }, 4);
+    state.character.age = 30; state.prompts = []; engine.ageUp(); state.prompts = [];
+    const ctx = engine.context();
+    const p = getProfession('steamRailway');
+    hire(ctx, { professionId: 'steamRailway', levelId: 'driver', employer: createEmployer(ctx.rng, state, p, state.character.regionId) });
+    let q = null;
+    for (let i = 0; i < 6 && !q; i++) { state.prompts = []; engine.ageUp(); q = state.prompts.find((x) => x.type === 'history.tradeEnds'); }
+    assert.ok(q, 'offered a move when steam ends');
+    assert.ok(q.options.some((o) => /Railroads/.test(o.label)) && q.options.some((o) => o.id === 'leave'));
+    engine.resolvePrompt(q.id, '0');
+    assert.equal(state.career.job?.professionId, 'railroad');
+    assert.equal(state.career.job?.levelId, 'engineer', 'a driver drives the diesels');
+  },
   'modern content waits for its technology'() {
     const { state } = life({ countryId: 'US', startYear: 1950 });
     state.character.age = 30;

@@ -18,12 +18,13 @@ import { addHonor } from '../../core/State.js';
 import { COUNTRIES } from './Countries.js';
 import { declareWarWith, endWarNow, warIn } from './War.js';
 import { setEraLayer, setReformLayer } from './Regimes.js';
-import { leaveJob } from '../career/CareerEngine.js';
+import { leaveJob, hire } from '../career/CareerEngine.js';
+import { createEmployer } from '../career/Employers.js';
 import { LEGISLATURES } from '../politics/NationalOffices.js';
 import { OFFICES } from '../politics/Offices.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { setAvailabilityFilter, getProfession } from '../career/JobTrees.js';
-import { eraHidden, colonialHere } from './Eras.js';
+import { eraHidden, colonialHere, eraWorkBlock } from './Eras.js';
 import { setSegregationHook } from '../education/EducationEngine.js';
 import { abolish } from './Houses.js';
 import { CROWNS } from './Crown.js';
@@ -606,15 +607,84 @@ const TRADE_DIES = {
   travellingSales: 'The firm stopped selling door to door.',
   lamplighter: 'The street lamps went electric. Lamplighting is over.',
 };
+/**
+ * What took over from a trade that ended: [profession, how you cross over, what it is]. 'rank'
+ * keeps your grade (a merger, a new kind of the same work); 'retrain' starts you near the bottom.
+ */
+const TRADE_SUCCESSOR = {
+  gendarmerie: [['police', 'rank', 'The gendarmerie merged into the national police', { gendarme: 'officer', corporal: 'senior', sergeant: 'sergeant', adjutant: 'sergeant', lieutenant: 'lieutenant', captain: 'captain', major: 'captain', ltColonel: 'deputyChief', colonel: 'deputyChief' }]],
+  steamRailway: [['railroad', 'rank', 'The diesels are coming, and crews who convert are kept on', { cleaner: 'brakeman', passed: 'brakeman', fireman: 'trainee', passedFireman: 'trainee', driver: 'engineer', topLink: 'expressEngineer', inspector: 'roadForeman', shedMaster: 'trainmaster', superintendent: 'superintendent' }]],
+  telegraph: [['dispatch', 'retrain', 'Radio and teleprinter work']],
+  switchboard: [['corporate', 'retrain', 'Office work'], ['dispatch', 'retrain', 'The emergency switchboard']],
+  typingPool: [['corporate', 'retrain', 'Administration, on a computer'], ['legalSupport', 'retrain', 'A legal secretary']],
+  docks: [['craneOperator', 'retrain', 'The container cranes'], ['logistics', 'retrain', 'The container terminal']],
+  milkRound: [['logistics', 'retrain', 'Delivery work']],
+  coachman: [['trucking', 'retrain', 'Motor driving']],
+  blacksmith: [['automotive', 'retrain', 'The smithy becomes a garage'], ['welding', 'retrain', 'Welding']],
+  lamplighter: [['lineworker', 'retrain', 'Electric street lighting']],
+  millWork: [['manufacturing', 'retrain', 'A modern factory']],
+  coalMining: [['craneOperator', 'retrain', 'Plant and machinery'], ['manufacturing', 'retrain', 'Factory work']],
+  domesticService: [['hospitality', 'retrain', 'Hotel service'], ['caregiving', 'retrain', 'Care work']],
+  plantation: [['agriculture', 'rank', 'The estate becomes a farm', { labourer: 'farmhand', kangany: 'hand', conductor: 'operator', creeper: 'headHerdsman', manager: 'manager', superintendent: 'estateManager', visitingAgent: 'operations', director: 'operations' }]],
+  whaling: [['fishing', 'retrain', 'The fishing fleet'], ['merchantMarine', 'retrain', 'Merchant ships']],
+  travellingSales: [['sales', 'rank', 'Selling from an office', { canvasser: 'sdr', rep: 'sdr', traveller: 'ae', senior: 'ae', area: 'seniorAe', branch: 'salesManager', regional: 'salesManager', national: 'director', sales: 'vpSales' }]],
+  tradingCompany: [['logistics', 'retrain', 'Shipping and trade'], ['corporate', 'retrain', 'Head office']],
+};
+const successorRows = (p) => TRADE_SUCCESSOR[p.id] ?? TRADE_SUCCESSOR[p.template] ?? [];
+/** The jobs that replaced yours, open to you this year. */
+function successorsOf(state, p) {
+  return successorRows(p)
+    .map(([id, how, label, levels]) => ({ p: getProfession(id), how, label, levels }))
+    .filter((x) => x.p && !x.p.templateOnly && !eraWorkBlock(state, x.p) && !workBlock(state, x.p));
+}
 function tradeEnds(ctx) {
   const { state } = ctx;
   const job = state.career?.job;
-  if (!job) return;
+  if (!job || state.prompts.some((q) => q.type === 'history.tradeEnds')) return;
   const p = getProfession(job.professionId);
   if (!p?.untilYear || yearNow(state) < p.untilYear) return;
-  if (!sideRng(state, 0x7d).chance(0.35)) return;
-  leaveJob(ctx, 'The trade died out');
-  ctx.log(TRADE_DIES[p.id] ?? 'Your line of work has disappeared.', '🏚️', 'bad');
+  // A merger happens on its date; a dying trade goes a little at a time.
+  const merger = successorRows(p)[0]?.[1] === 'rank';
+  if (!merger && !sideRng(state, 0x7d).chance(0.35)) return;
+  const next = successorsOf(state, p);
+  const end = TRADE_DIES[p.id] ?? (merger ? `${p.name} is being wound up.` : 'Your line of work has disappeared.');
+  if (!next.length) {
+    leaveJob(ctx, 'The trade died out');
+    return ctx.log(end, '🏚️', 'bad');
+  }
+  const pay = Math.round((job.salary ?? 30000) * 0.5 / 100) * 100;
+  const why = merger ? `${p.name} is coming to an end. ${next[0].label}.` : end.replace(/ You were laid off\.$| The operators were let go\.$/, '');
+  ctx.prompt({
+    type: 'history.tradeEnds', icon: '🔁', title: merger ? 'A New Service' : 'The End of Your Trade',
+    text: `${why} ${merger ? 'You can move across.' : 'Some of the old hands are being taken on in the work that replaced it.'}`,
+    options: [
+      ...next.map((x, i) => ({ id: String(i), label: `🔁 ${x.how === 'rank' ? 'Transfer' : 'Retrain'}: ${x.p.name}`, hint: `${x.label}${x.how === 'rank' ? ' · rank and years kept' : ' · starting near the bottom'}` })),
+      { id: 'leave', label: '📦 Take the redundancy pay', hint: `About $${pay.toLocaleString()}` },
+    ],
+    data: { options: next.map((x) => [x.p.id, x.how, x.levels ?? null]), pay, end, was: { professionId: job.professionId, levelId: job.levelId, yearsAtEmployer: job.yearsAtEmployer ?? 0 } },
+  });
+}
+/** Crossing into the work that replaced yours: a merger keeps your grade, retraining starts you low. */
+function crossOver(ctx, professionId, how, levels = null, was = null) {
+  const { state, rng } = ctx;
+  // The job you had when the news came (it may have gone since).
+  const old = was ?? state.career.job;
+  const p = getProfession(professionId);
+  const grade = old ? (getProfession(old.professionId)?.levels.find((l) => l.id === old.levelId)?.grade ?? 1) : 1;
+  const ladder = p.levels.filter((l) => !l.appointed && l.track !== 'mgmt');
+  // A merger maps rank to rank; otherwise your place on the old ladder to the same place on the new.
+  const mapped = how === 'rank' && levels?.[old?.levelId] ? p.levels.find((l) => l.id === levels[old.levelId]) : null;
+  const oldLadder = old ? getProfession(old.professionId).levels.filter((l) => !l.appointed) : ladder;
+  const lo = Math.min(...oldLadder.map((l) => l.grade)), hi = Math.max(...oldLadder.map((l) => l.grade));
+  const nlo = Math.min(...ladder.map((l) => l.grade)), nhi = Math.max(...ladder.map((l) => l.grade));
+  const target = nlo + (hi > lo ? (grade - lo) / (hi - lo) : 0) * (nhi - nlo);
+  const level = mapped ?? (how === 'rank' ? [...ladder].reverse().find((l) => l.grade <= target) ?? ladder[0] : ladder[Math.min(1, ladder.length - 1)]);
+  const years = old?.yearsAtEmployer ?? 0;
+  if (state.career.job) leaveJob(ctx, `Moved across to ${p.name}`);
+  const job = hire(ctx, { professionId, levelId: level.id, employer: createEmployer(rng, state, p, state.character.regionId) });
+  if (!job) return ctx.log(`You couldn't get a place in ${p.name}.`, '📭', 'warn');
+  if (how === 'rank') job.yearsAtEmployer = years;
+  return ctx.log(how === 'rank' ? `You moved across to ${p.name} as ${job.title}, your years of service counted.` : `You retrained and started over in ${p.name} as ${job.title}.`, '🔁', 'milestone');
 }
 
 /**
@@ -1006,6 +1076,13 @@ export const HistoryModule = {
   },
 
   resolvers: {
+    tradeEnds(ctx, data, optionId) {
+      const pick = data.options?.[Number(optionId)];
+      if (pick) return crossOver(ctx, pick[0], pick[1], pick[2], data.was);
+      if (ctx.state.career.job) leaveJob(ctx, 'The trade died out');
+      ctx.earn(data.pay ?? 0, 'Redundancy pay');
+      return ctx.log(`${data.end} You took $${(data.pay ?? 0).toLocaleString()} in redundancy pay.`, '🏚️', 'bad');
+    },
     tourEnds(ctx, data, optionId) {
       const { state, rng } = ctx;
       const job = state.career?.job;
