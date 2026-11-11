@@ -72,7 +72,7 @@ export function moveView(state) {
   const states = [...new Set(places.map((r) => r.state))].sort((a, b) => (a === here.state ? -1 : b === here.state ? 1 : STATES[a].name.localeCompare(STATES[b].name)));
   const rows = states.map((sid) => {
     const list = places.filter((r) => r.state === sid);
-    return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
+    return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, () => `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
   }).join('');
   return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + cityCard(state) + expatLifeCard(state) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
 }
@@ -160,7 +160,7 @@ function travelCard(state) {
   const tr = state.travel ?? { countries: [] };
   const KIND = { free: ['✅', 'good'], eta: ['📝', 'good'], evisa: ['💻', ''], tour: ['🚌', 'warn'], visa: ['🛂', 'warn'] };
   const groups = Object.entries(CONTINENT).map(([name, list]) => {
-    const rows = list.filter((cc) => COUNTRIES[cc] && cc !== here).map((cc) => {
+    const rows = () => list.filter((cc) => COUNTRIES[cc] && cc !== here).map((cc) => {
       const c = COUNTRIES[cc];
       const why = travelBlock(state, cc);
       const e = why ? null : bestEntry(state, cc);
@@ -170,7 +170,7 @@ function travelCard(state) {
         ${why ? `<small class="why">${esc(why)}</small>` : `<div class="chips">${chip(`${k[0]} ${flagImg(e.passport) || ''} ${e.note}${e.refusal >= 0.1 ? ` · ≈${Math.round(e.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2 })}`}
       </li>`;
     }).join('');
-    return disclosure(`travel.${name}`, esc(name), `<ul class="move-list">${rows}</ul>`, { count: list.filter((cc) => cc !== here && COUNTRIES[cc] && !travelBlock(state, cc)).length });
+    return disclosure(`travel.${name}`, esc(name), () => `<ul class="move-list">${rows()}</ul>`, { count: list.filter((cc) => cc !== here && COUNTRIES[cc] && !travelBlock(state, cc)).length });
   }).join('');
   const out = travelBlock(state, Object.keys(COUNTRIES).find((cc) => cc !== here));
   return card('Travel Abroad', `<p class="muted">Holidays on your own passports — ${Object.keys(TRIPS).length} styles, up to two trips a year. Free movement, e-visas and visa-free deals depend on the passport; some countries refuse some passports outright.</p>${out && /leave|travel ban|Undocumented|asylum|custody/i.test(out) ? `<p class="why">${esc(out)}</p>` : groups}`, { icon: '✈️', accent: 'cyan', summary: tr.countries?.length ? `${tr.countries.length} countries visited` : '' });
@@ -237,10 +237,15 @@ function passportCard(state) {
 }
 
 /** A country divided this year (West and East Germany): each side's name, flag and a city on it. */
+const TOWNS_OF = new Map();
+const townsOf = (c) => {
+  if (!TOWNS_OF.size) for (const r of Object.values(REGIONS)) { if (!TOWNS_OF.has(r.country)) TOWNS_OF.set(r.country, []); TOWNS_OF.get(r.country).push(r.id); }
+  return [...new Set([...(c.hometowns ?? []), ...(TOWNS_OF.get(c.id) ?? [])])];
+};
 function sidesOf(c) {
   const st = getEraState();
   if (!st) return [];
-  const towns = [...new Set([...(c.hometowns ?? []), ...Object.values(REGIONS).filter((r) => r.country === c.id).map((r) => r.id)])];
+  const towns = townsOf(c);
   const seen = new Map();
   for (const id of towns) {
     const d = cityStateOfDay(st, id);
@@ -259,7 +264,7 @@ function abroadCard(state) {
     const routes = routesFor[c.id] ?? routesTo(state, c.id);
     const sides = sidesOf(c);
     const anyOk = routes.some((r) => r.ok);
-    const list = routes.map((r) => optionRow({
+    const list = () => routes.map((r) => optionRow({
       icon: '',
       title: esc(r.label),
       meta: r.ok ? (r.kind === 'irregular' ? `⚠️ Illegal · ${money(r.fee)} to a smuggler · caught: sent back and banned · then life without papers` : r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
@@ -269,7 +274,7 @@ function abroadCard(state) {
         : button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
     })).join('');
     const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
-    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${flagImg(c.id)} ${esc(c.name)}`, `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list}</ul>`, { count: anyOk ? '✓' : null });
+    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${flagImg(c.id)} ${esc(c.name)}`, () => `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list()}</ul>`, { count: anyOk ? '✓' : null });
   };
   const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
   for (const c of others) routesFor[c.id] = routesTo(state, c.id);
@@ -281,7 +286,7 @@ function abroadCard(state) {
   const groups = Object.entries(CONTINENT).map(([name, ids]) => {
     const list = ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here).sort((a, b) => a.name.localeCompare(b.name));
     const open = list.filter((c) => routesFor[c.id].some((r) => r.ok && r.kind !== 'irregular')).length;
-    return disclosure(`abroad.group.${name}`, esc(name), list.map(country).join(''), { count: `${open}/${list.length}` });
+    return disclosure(`abroad.group.${name}`, esc(name), () => list.map(country).join(''), { count: `${open}/${list.length}` });
   }).join('');
   return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${keepsBerth(state.career.job) ? '<p class="fine">🚢 Seafarers live anywhere: you keep your berth and fly out from your new home to join each ship. STCW certificates are valid worldwide.</p>' : ''}${block ? `<p class="why">${esc(block)}</p>` : ''}${top}<h4 class="sub">🌍 Every country</h4>${groups}`, { icon: '✈️', accent: 'cyan' });
 }

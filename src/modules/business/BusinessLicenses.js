@@ -85,7 +85,11 @@ export const BUSINESS_LICENSES = {
 };
 
 /** Licenses a business type deals with. */
-export const licensesFor = (typeId) => Object.entries(BUSINESS_LICENSES).filter(([, l]) => l.types === '*' || l.types.includes(typeId)).map(([id]) => id);
+const LICENSES_FOR = new Map();
+export const licensesFor = (typeId) => {
+  if (!LICENSES_FOR.has(typeId)) LICENSES_FOR.set(typeId, Object.entries(BUSINESS_LICENSES).filter(([, l]) => l.types === '*' || l.types.includes(typeId)).map(([id]) => id));
+  return LICENSES_FOR.get(typeId);
+};
 export const requiredLicenses = (typeId) => licensesFor(typeId).filter((id) => BUSINESS_LICENSES[id].required);
 export const optionalLicenses = (typeId) => licensesFor(typeId).filter((id) => !BUSINESS_LICENSES[id].required);
 

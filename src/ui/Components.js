@@ -85,6 +85,9 @@ const foldKey = (title) => `card.${String(title).replace(/<[^>]+>/g, '').toLower
  * remembered. `open: false` starts it collapsed (catalogs and secondary panels); `summary` is a
  * short line shown in the header, useful when it's folded.
  */
+/** Which folds are open on screen: set by ui/Renderer.js before each render (null in tests: build everything). */
+let FOLDS = null;
+export const setFolds = (folds) => { FOLDS = folds; };
 /** Catalogs and secondary panels start folded (one tap to open; the game remembers). */
 const FOLDED_BY_DEFAULT = new Set(['Showroom', 'Buy a Franchise', 'Businesses for Sale', 'Disaster Response Teams', 'Executive Search', 'Businesses in Your Field', 'Risky Business', 'Volunteering & Mentoring', 'Licenses for Your Job', 'Convert', 'Find a Congregation', 'Career History', 'Political History', 'Laws in Force', 'Legislatures', 'Veterans Posts', 'Selective Service', 'Government Climate', 'Department Fleet & Facilities', 'Labor in Texas', 'Diplomas',
   // Career tab reference cards: the year's decisions live in "This Year at Work".
@@ -98,9 +101,12 @@ export function card(title, body, { icon = '', accent = '', extra = '', classNam
     <div class="card-body">${body}</div>
   </section>`;
   }
-  return `<section class="card fold ${accent ? `accent-${accent}` : ''} ${className}"><details class="card-fold" data-key="${foldKey(title)}"${open ? ' open' : ''}>
+  // Folded on screen: the body waits until it's opened (see disclosure below).
+  const key = foldKey(title);
+  const shown = !FOLDS || (FOLDS[key] ?? open);
+  return `<section class="card fold ${accent ? `accent-${accent}` : ''} ${className}"><details class="card-fold" data-key="${key}"${open ? ' open' : ''}${shown ? '' : ' data-lazy'}>
     <summary class="card-head">${heading}</summary>
-    <div class="card-body">${body}</div>
+    <div class="card-body">${shown ? body : ''}</div>
   </details></section>`;
 }
 
@@ -544,8 +550,14 @@ export function statusPill(status) {
  * A collapsible section. `key` lets the renderer keep it open (or closed)
  * across re-renders, since the whole view is rebuilt on every change.
  */
+/**
+ * Which folds are open on screen (ui/Renderer.js sets it before each render). With it, a fold whose
+ * body is a function is built only when open: the Move tab's 195 countries cost nothing until you
+ * look inside one. Without it (tests, the server), every body is built.
+ */
 export function disclosure(key, summary, body, { open = false, count = null } = {}) {
-  return `<details class="disclosure" data-key="${esc(key)}"${open ? ' open' : ''}><summary>${flagEmojiToImg(summary)}${count != null ? ` <span class="count">${count}</span>` : ''}</summary><div class="disclosure-body">${body}</div></details>`;
+  const shown = !FOLDS || (FOLDS[key] ?? open);
+  return `<details class="disclosure" data-key="${esc(key)}"${open ? ' open' : ''}${shown ? '' : ' data-lazy'}><summary>${flagEmojiToImg(summary)}${count != null ? ` <span class="count">${count}</span>` : ''}</summary><div class="disclosure-body">${shown ? (typeof body === 'function' ? body() : body) : ''}</div></details>`;
 }
 
 /** A compact choice row: icon, title, one line of detail, a status line (odds or what's missing) and an action. */

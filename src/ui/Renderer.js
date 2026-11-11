@@ -12,7 +12,7 @@ import { currentYear, netWorth, commitmentLoad, getCommitments, prestige, random
 import { Random } from '../core/Random.js';
 import {
   flagEmojiInPage,
-  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, ribbon, ribbonFor, insignia, logView, logControls, promptModal, newLifeForm, tombstone, disclosure,
+  esc, money, compactMoney, button, card, chip, meter, statPanel, statStrip, kv, ribbonRack, medalCase, ribbon, ribbonFor, insignia, logView, logControls, promptModal, newLifeForm, tombstone, disclosure, setFolds,
 } from './Components.js';
 import { periodIcons } from './PeriodIcons.js';
 import { savesPanel, settingsPanel, helpPanel, menuPanel } from './views/SystemViews.js';
@@ -309,6 +309,8 @@ export class Renderer {
     this.disclosures ??= loadFolds();
     for (const d of this.root.querySelectorAll('details[data-key]')) this.disclosures[d.dataset.key] = d.open;
     this.watchFolds();
+    this.lastState = state;
+    setFolds(this.disclosures);
     this.root.innerHTML = flagEmojiInPage(localizeHtml(fixMoneySigns(this.html(state)), state ? countryOf(state) : null));
     for (const d of this.root.querySelectorAll('details[data-key]')) if (d.dataset.key in this.disclosures) d.open = this.disclosures[d.dataset.key];
     this.restoreFocus(focusKey, state);
@@ -326,6 +328,8 @@ export class Renderer {
       this.disclosures ??= loadFolds();
       this.disclosures[key] = e.target.open;
       saveFolds(this.disclosures);
+      // A fold built only when opened (Components.disclosure): build it now.
+      if (e.target.open && e.target.hasAttribute('data-lazy') && this.lastState) this.render(this.lastState);
     }, true);
   }
 

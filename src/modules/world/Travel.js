@@ -65,9 +65,13 @@ export const TRIPS = {
   luxury: { label: '🥂 Five-star', base: 9000, stress: [20, 30], happy: [12, 18] },
 };
 
+const PRICE_OF = new Map();
 const priceOf = (cc) => {
+  if (PRICE_OF.has(cc)) return PRICE_OF.get(cc);
   const cities = Object.values(FOREIGN_CITIES).filter((r) => r.country === cc);
-  return cities.length ? cities.reduce((s, r) => s + r.market, 0) / cities.length : 1;
+  const v = cities.length ? cities.reduce((s, r) => s + r.market, 0) / cities.length : 1;
+  PRICE_OF.set(cc, v);
+  return v;
 };
 const sightsOf = (cc) => SIGHTS[cc] ?? (Object.values(COUNTRIES[cc]?.cities ?? {}).map((c) => c.name).slice(0, 2).join(' and ') || COUNTRIES[cc]?.capital);
 

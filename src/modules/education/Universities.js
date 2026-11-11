@@ -581,6 +581,17 @@ export function defaultUniversity(state, typeId, programId = null, major = null)
   return list.sort((a, b) => rank(a) - rank(b) || b.accept - a.accept)[0] ?? null;
 }
 
+const FAMOUS_ABROAD = new Map();
+/** The world's best-known universities for a programme, two from each country at most (fixed: listed once). */
+function famousAbroad(cc, programId) {
+  const key = `${cc}|${programId}`;
+  if (FAMOUS_ABROAD.has(key)) return FAMOUS_ABROAD.get(key);
+  const perCountry = {};
+  const list = Object.values(UNIVERSITIES).filter((u) => u.named && u.country !== cc && u.prestige >= 3 && u.type !== 'academy' && !u.kind && offers(u, programId))
+    .sort((a, b) => a.accept - b.accept).filter((u) => (perCountry[u.country] = (perCountry[u.country] ?? 0) + 1) <= 2).slice(0, 16);
+  FAMOUS_ABROAD.set(key, list);
+  return list;
+}
 /** The universities you could apply to for a program: at home (yours first), then famous ones abroad. */
 export function universitiesFor(state, programId, { abroad = true } = {}) {
   const cc = state.character.countryId ?? 'US';
@@ -597,10 +608,6 @@ export function universitiesFor(state, programId, { abroad = true } = {}) {
   home.sort((a, b) => (b.region === here) - (a.region === here) || b.prestige - a.prestige || a.name.localeCompare(b.name));
   const broad = ['bachelor', 'master', 'mba', 'phd'].includes(programId);
   // The world's best-known universities, two from each country at most.
-  const perCountry = {};
-  const intl = abroad && broad
-    ? Object.values(UNIVERSITIES).filter((u) => u.named && u.country !== cc && u.prestige >= 3 && u.type !== 'academy' && !u.kind && offers(u, programId))
-      .sort((a, b) => a.accept - b.accept).filter((u) => (perCountry[u.country] = (perCountry[u.country] ?? 0) + 1) <= 2).slice(0, 16)
-    : [];
+  const intl = abroad && broad ? famousAbroad(cc, programId) : [];
   return [...home.slice(0, broad ? 40 : 25), ...intl];
 }

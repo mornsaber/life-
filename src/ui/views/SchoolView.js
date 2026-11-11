@@ -24,7 +24,7 @@ import { COUNTRIES } from '../../modules/world/Countries.js';
 import { uniInEra, majorInEra, programInEra, programIdInEra } from '../../modules/world/Eras.js';
 import { flagImg } from '../Flags.js';
 
-function programRow(state, id) {
+function programRow(state, id, page = {}) {
   const p = PROGRAMS[id];
   const majors = majorsFor(id).filter((m) => m === null || (majorInEra(state, m) && programInEra(state, MAJORS[m]?.name)));
   const probeMajor = majors[0];
@@ -33,7 +33,7 @@ function programRow(state, id) {
   const check = enrollmentEligibility(state, id, probeSchool, probeMajor, { applying: true });
   const blocking = !check.ok && !['Not offered there'].includes(check.reason);
   // Abroad, the careers open here (national agencies stand in for US federal ones).
-  const open = state.character.countryId ? new Set(professionsFor(state).map((x) => x.id)) : null;
+  const open = state.character.countryId ? (page.open ??= new Set(professionsFor(state).map((x) => x.id))) : null;
   const localId = (f) => (!open || open.has(f) ? f : open.has(nationalProfessionId(state.character.countryId, f)) ? nationalProfessionId(state.character.countryId, f) : null);
   const fields = p.fields ? p.fields.map(localId).filter(Boolean) : [];
   const fieldsText = fields.length ? ` · Prepares for: ${fields.map((f) => getProfession(f)?.name ?? f).join(', ')}` : '';
@@ -129,7 +129,8 @@ export function schoolView(state) {
   }
   // Abroad, programmes the country doesn't have (a two-year associate's in Germany) aren't listed.
   const offered = (id) => programInEra(state, PROGRAMS[id].name) && programIdInEra(state, id) && enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country' && universitiesFor(state, id).length > 0;
-  const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, `<ul class="programs">${g.ids.map((id) => programRow(state, id)).join('')}</ul>`, { count: g.ids.length })).join('');
+  const page = {};
+  const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, () => `<ul class="programs">${g.ids.map((id) => programRow(state, id, page)).join('')}</ul>`, { count: g.ids.length })).join('');
   const degrees = state.education.degrees.length
     ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${flagImg(d.country) || ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');
