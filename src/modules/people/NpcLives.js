@@ -21,6 +21,8 @@ import { ageOf, living, byId, clampRel } from './People.js';
 import { priceOf, marketRent } from '../realestate/PropertyMarket.js';
 import { rentableUnits } from '../realestate/Landlording.js';
 import { yearNow, eraYear } from '../world/Eras.js';
+import { pickProfession, startCareer, careerYear, migrateJob, homemakerOdds } from './NpcCareers.js';
+import { spouseOf } from './People.js';
 
 export const EDU_LABEL = {
   none: 'No diploma', highschool: 'High school', trade: 'Trade school', associate: "Associate's", bachelor: "Bachelor's", master: "Master's", professional: 'Professional degree', doctorate: 'PhD',
@@ -43,6 +45,9 @@ export const NPC_JOBS = [
 ];
 /** [title, yearly pay, minimum age] — what teenagers in the family do for money. */
 const TEEN_WORK = [['Babysitter', 1800, 13], ['Lawn mowing', 1500, 13], ['Grocery bagger', 3500, 14], ['Fast-food crew', 5000, 15], ['Lifeguard', 4500, 15], ['Movie theater usher', 3800, 15], ['Retail cashier', 5200, 16], ['Tutor', 3000, 16], ['Summer camp counselor', 2500, 16]];
+/** What teenagers did before the babysitting and burger jobs. */
+const OLD_TEEN_WORK = [['Errand boy', 900, 12], ['Farm hand', 1200, 12], ['Mill half-timer', 1500, 12], ['Newspaper seller', 700, 11], ['Domestic help', 1100, 13], ['Pit boy', 1600, 13]];
+const MID_TEEN_WORK = [['Paper round', 900, 12], ['Saturday shop assistant', 1800, 14], ['Farm hand', 1500, 13], ['Delivery boy', 1300, 13], ['Babysitter', 1000, 14], ['Messenger', 1400, 14]];
 const EMPLOYERS = ['the county', 'a regional hospital', 'a local school district', 'a national retailer', 'a tech company', 'a family-owned shop', 'a big logistics firm', 'the state', 'a bank', 'a small firm downtown', 'a startup', 'a construction company'];
 const CARS = ['a used sedan', 'a pickup truck', 'an SUV', 'a minivan', 'an electric car', 'a beat-up hatchback', 'a luxury sedan', 'a motorcycle'];
 /** What a relative drives (or rides) in the year being played. */
@@ -79,6 +84,7 @@ const eduFromJob = (title) => NPC_JOBS.find((j) => j[0] === title)?.[3] ?? null;
 
 /** Pick an education for someone who is already an adult. */
 function pastEducation(rng, age, p) {
+  if (p.edu) return p.edu;
   const known = eduFromJob(p.job);
   if (known) return known;
   if (p.degree) return 'bachelor';
@@ -167,7 +173,8 @@ function yearOf(ctx, p) {
   // Teenagers in the family pick up part-time jobs.
   if (p.relation === 'child' || p.relation === 'sibling') {
     if (age >= 13 && age < 18 && !p.job && !life.teenJob && rng.chance(0.3)) {
-      const options = TEEN_WORK.filter((t) => age >= t[2]);
+      const y = yearNow(state);
+      const options = (y < 1920 ? OLD_TEEN_WORK : y < 1960 ? MID_TEEN_WORK : TEEN_WORK).filter((t) => age >= t[2]);
       const [title, pay] = rng.pick(options);
       p.job = `${title} (part-time)`;
       life.teenJob = true;
@@ -180,17 +187,41 @@ function yearOf(ctx, p) {
     }
     if (life.teenJob) life.netWorth += Math.round((p.income ?? 0) * 0.5);
   }
-  // Work.
+  // Work: a real profession of their day (people/NpcCareers.js), climbed like yours.
   const working = !managedJob(p) && !life.studying && age >= 18 && age < 70;
-  if (working && !p.retired) {
+  if (working && !p.retired && p.job && !p.career) migrateJob(rng, state, p, age, life.edu);
+  // Keeping house: most married women before 1970, fewer after; some go back to work later.
+  if (working && !p.job && p.gender === 'female' && !p.homemaker && p.homemakerAsked == null && age >= 22) {
+    p.homemakerAsked = true;
+    if (rng.chance(homemakerOdds(state))) p.homemaker = true;
+  }
+  if (p.homemaker && age >= 35 && rng.chance(yearNow(state) >= 1970 ? 0.06 : 0.01)) p.homemaker = false;
+  if (working && !p.retired && !p.homemaker) {
     if (!p.job && rng.chance(recession ? 0.45 : 0.75)) {
-      const [title, pay, sector] = jobFor(rng, life.edu, p.traits?.smarts);
-      p.job = title;
-      p.sector = sector;
-      p.careerIncome = Math.round(pay * rng.float(0.8, 1.05) * (1 + Math.max(0, age - 25) * 0.01));
-      if (!isPartner(p)) p.income = p.careerIncome;
-      life.employer = rng.pick(EMPLOYERS);
-      say(`${p.firstName} got a job as ${/^[AEIOU]/i.test(title) ? 'an' : 'a'} ${title.toLowerCase()} at ${life.employer}.`, '💼', 'good');
+      // A child may follow a parent into the trade; someone who lost a job looks in their own field.
+      const yours = state.career.job?.professionId ?? state.career.history.at(-1)?.professionId;
+      const other = spouseOf(state)?.career?.professionId;
+      const prefer = p.career?.professionId ?? (p.relation === 'child' && rng.chance(0.3) ? (rng.chance(0.65) ? yours : other) ?? yours : null);
+      const profession = pickProfession(rng, state, p, life.edu, { prefer });
+      if (profession) {
+        const back = p.career?.professionId === profession.id;
+        const was = back ? Math.max(0, profession.levels.filter((l) => !l.appointed).findIndex((l) => l.id === p.career.levelId) - 1) : null;
+        const footsteps = !back && p.relation === 'child' && profession.id === yours;
+        startCareer(rng, state, p, profession, { age, levelIdx: back ? was : age < 26 ? 0 : null });
+        if (!isPartner(p)) p.income = p.careerIncome;
+        life.employer = rng.pick(EMPLOYERS);
+        say(footsteps ? `${p.firstName} is following in your footsteps: ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.toLowerCase()}, like you.` : `${p.firstName} got a job as ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.toLowerCase()}.`, footsteps ? '👣' : '💼', 'good');
+      }
+    } else if (p.job && p.career) {
+      // Their year in the job: promotion, postings, awards, discipline, elite posts.
+      if (rng.chance(recession ? 0.06 : 0.02)) {
+        say(`${p.firstName} was laid off.`, '📦', 'warn');
+        p.job = null;
+        if (!isPartner(p)) p.income = 0;
+      } else {
+        careerYear(ctx, rng, p, { say });
+        if (!isPartner(p)) p.income = p.job ? p.careerIncome : 0;
+      }
     } else if (p.job) {
       if (rng.chance(recession ? 0.07 : 0.025)) {
         say(`${p.firstName} was laid off from ${life.employer ?? 'work'}.`, '📦', 'warn');

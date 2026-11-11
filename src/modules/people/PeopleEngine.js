@@ -22,7 +22,7 @@ import { currentCountry } from '../../core/Locale.js';
 import { vettingForm } from '../world/MilitaryLocal.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony, isEmployed } from '../../core/State.js';
-import { clamp } from '../../core/Random.js';
+import { clamp, Random } from '../../core/Random.js';
 import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
@@ -38,6 +38,7 @@ import { currentCircle, circleFriends, FRIEND_CAP } from './Friends.js';
 import { knob } from '../../core/Difficulty.js';
 import { noLuck, conceived } from './Fertility.js';
 import { personTone } from './SkinTone.js';
+import { pickProfession, startCareer, homemakerOdds } from './NpcCareers.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -60,12 +61,29 @@ export function makePerson(ctx, { relation, gender, age, lastName, relationship 
   const g = gender ?? rng.pick(['male', 'female']);
   const name = randomName(rng, g);
   const [title, pay, sector] = rng.pick(JOBS);
-  return {
+  const person = {
     id: rng.id('per_'), firstName: name.firstName, lastName: lastName ?? name.lastName, gender: g, relation,
     ageOffset: age - state.character.age, relationship: clampRel(relationship), alive: true,
     income: age >= 22 && age < 65 ? Math.round(pay * rng.float(0.75, 1.3)) : 0, careerIncome: Math.round(pay * rng.float(0.75, 1.3)),
     job: age >= 22 && age < 65 ? title : null, sector, nationality: countryIdOf(state), ...extra,
   };
+  // A real profession of their day (people/NpcCareers.js), fitted to a likely schooling.
+  // Their own stream, seeded by who they are, so the rest of the life rolls as it always did.
+  const own = new Random([...person.id].reduce((h, ch) => (h * 31 + ch.charCodeAt(0)) >>> 0, 7));
+  if (person.job && !extra.job && g === 'female' && age >= 22 && own.chance(homemakerOdds(state))) {
+    person.homemaker = true;
+    person.job = null;
+    person.income = 0;
+  }
+  if (person.job && !extra.job) {
+    person.edu = own.weighted([{ e: 'none', w: 12 }, { e: 'highschool', w: 40 }, { e: 'trade', w: 10 }, { e: 'bachelor', w: 26 }, { e: 'master', w: 8 }, { e: 'professional', w: 4 }], (x) => x.w).e;
+    const profession = pickProfession(own, state, person, person.edu);
+    if (profession) {
+      startCareer(own, state, person, profession, { age });
+      person.income = person.careerIncome;
+    }
+  }
+  return person;
 }
 
 /** Family of origin: two parents, 0–3 siblings and a wealth tier. */

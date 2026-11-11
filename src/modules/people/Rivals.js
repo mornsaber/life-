@@ -18,6 +18,8 @@ import { randomName } from '../../core/State.js';
 import { partnerOf } from './People.js';
 import { rep } from '../life/Reputation.js';
 import { hasTech } from '../world/Eras.js';
+import { startCareer, careerYear, careerTitle } from './NpcCareers.js';
+import { getProfession } from '../career/JobTrees.js';
 
 export const MAX_RIVALS = 4;
 const ORIGIN = {
@@ -40,7 +42,7 @@ const pending = (state, type) => state.prompts.some((p) => p.type === type);
 
 export const rivalsOf = (state) => (state.rivals ?? []).filter((r) => r.alive !== false);
 export const originLabel = (r) => ORIGIN[r.origin] ?? ORIGIN.school;
-export const rivalTitle = (r) => FIELDS[r.field]?.[Math.min(5, r.rung)] ?? 'Unknown';
+export const rivalTitle = (r) => (r.career ? careerTitle(r) : FIELDS[r.field]?.[Math.min(5, r.rung)] ?? 'Unknown');
 export const rivalAge = (state, r) => state.character.age + r.ageOffset;
 const fieldFor = (state, origin, rng) => (origin === 'business' ? 'business' : origin === 'work' && state.career.job ? (/law|legal|court/i.test(state.career.job.professionId) ? 'law' : /nurs|medic|doctor|physician|clinic/i.test(state.career.job.professionId) ? 'medicine' : 'corporate') : rng.pick(Object.keys(FIELDS)));
 
@@ -55,6 +57,14 @@ function addRival(ctx, origin, extra = {}) {
     ageOffset: rng.int(-2, 2), grudge: rng.int(35, 60), rung: Math.max(0, Math.min(2, (state.career.job?.grade ?? 1) - 2)), field: fieldFor(state, origin, rng),
     wealth: Math.round(rng.int(5, 40) * 1000), fame: 0, married: false, kids: 0, alive: true, friend: false, history: [], ...extra,
   };
+  // A work rival is on your own ladder, a rung or so from you (people/NpcCareers.js).
+  if (origin === 'work' && state.career.job) {
+    const prof = getProfession(state.career.job.professionId);
+    const ladder = prof.levels.filter((l) => !l.appointed);
+    const at = Math.max(0, ladder.findIndex((l) => l.id === state.career.job.levelId) + rng.int(-1, 1));
+    startCareer(rng, state, r, prof, { levelIdx: at, age: state.character.age + r.ageOffset });
+    r.firstName = n.firstName;
+  }
   (state.rivals ??= []).push(r);
   ctx.log(`${r.name} has become your ${originLabel(r).label.toLowerCase()}.`, originLabel(r).icon, 'info');
   return r;
@@ -69,7 +79,13 @@ function advance(ctx, r, rng) {
     r.alive = false;
     return ctx.log(`${r.name}, your old ${originLabel(r).label.toLowerCase()}, died at ${age}. You felt more than you expected.`, '🕯️', 'info');
   }
-  if (age >= 22 && age <= 62 && r.rung < 5 && rng.chance(0.12 + r.rung * -0.015)) {
+  if (r.career && age >= 22 && age <= 66) {
+    const before = r.career.levelId;
+    careerYear(ctx, rng, r, { rival: true, say: (text, icon) => rng.chance(0.5) && ctx.log(text.replace(r.firstName ?? '', r.name), icon, 'muted') });
+    if (r.career?.levelId !== before) r.history.push({ age: state.character.age, text: `became ${rivalTitle(r)}` });
+    const ladder = getProfession(r.career?.professionId ?? 'retail').levels.filter((l) => !l.appointed);
+    r.rung = Math.min(5, Math.floor((ladder.findIndex((l) => l.id === r.career?.levelId) / Math.max(1, ladder.length - 1)) * 5));
+  } else if (age >= 22 && age <= 62 && r.rung < 5 && rng.chance(0.12 + r.rung * -0.015)) {
     r.rung += 1;
     r.history.push({ age: state.character.age, text: `became ${rivalTitle(r)}` });
     if (r.rung >= 3 && rng.chance(0.5)) ctx.log(`You heard ${r.name} is now ${rivalTitle(r)}.`, originLabel(r).icon, 'muted');

@@ -94,7 +94,7 @@ export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNee
 /** Roughly when each line of work opens up (the US dates, loosely; elsewhere similar). */
 export const PROFESSION_FROM = {
   police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1900, trades: 1882, electricalEng: 1882, nursing: 1860,
-  railroad: 1830, transit: 1860, transitMaintenance: 1860, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
+  railroad: 1830, transit: 1860, transitMaintenance: 1905, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
   mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
   tech: 1955, cybersecurity: 1990, dataScience: 2010, contentCreator: 2006, gameDevelopment: 1975, design: 1930,
   renewableEnergy: 2000, physicianAssistant: 1967, respiratoryTherapy: 1950, imaging: 1920, dentalHygiene: 1915,
@@ -109,6 +109,7 @@ export const PROFESSION_FROM = {
   humanResources: 1920, marketing: 1920, fitness: 1960, cosmetology: 1910, dietitian: 1920, optometry: 1910,
   physicalTherapy: 1920, actuary: 1900, lineworker: 1900, meteorology: 1900, interpreter: 1900, interpretation: 1900,
   moc: 1950, privateSecurity: 1910, bailBonds: 1910, propertyManagement: 1920, insurance: 1900, gig: 2012,
+  welding: 1905, chiropractic: 1897, transitPolice: 1904, logistics: 1950, oilGas: 1860, dot: 1916, planning: 1910, gameWarden: 1880, universityPolice: 1894, stateFire: 1905, probation: 1878,
 };
 /** Work closed to women until about this year (loosely: the first women in, then the doors opening). */
 export const MEN_ONLY_UNTIL = {

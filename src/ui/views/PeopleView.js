@@ -83,6 +83,8 @@ function personRow(state, p) {
     `${RELATION_LABEL[p.relation] ?? p.relation}`,
     p.alive ? `age ${age}` : `died at ${p.diedAge}`,
     p.alive && p.service ? null : p.alive && p.job ? p.job : null,
+    p.alive && p.career?.elite ? `🏛️ ${p.career.elite.name}` : null,
+    p.career?.awards?.length ? `🏅 ${p.career.awards.length} award${p.career.awards.length > 1 ? 's' : ''}` : null,
     p.veteran?.rank ? `🎖️ veteran (${p.veteran.rank}, ${p.veteran.years} yr)` : null,
     p.dynasticTitle ? `⚜️ ${p.dynasticTitle}` : null,
     p.houseOrder ? `⚜️ ${p.houseOrder}` : null,
@@ -139,7 +141,7 @@ function bondButtons(state, p) {
 function lifeLine(p, age) {
   const l = p.life;
   const school = l.studying ? `studying for a ${EDU_LABEL[l.studying.degree].toLowerCase()} (done at ${l.studying.until})` : age < 18 ? (age < 14 ? 'in school' : 'in high school') : EDU_LABEL[l.edu];
-  const work = p.job ? `${l.employer ? `at ${l.employer}` : ''}${p.income ? ` · ${money(p.income)}/yr` : ''}` : age >= 18 && !l.studying && !p.retired && age < 65 ? 'looking for work' : p.retired ? 'retired' : '';
+  const work = p.job ? `${l.employer ? `at ${l.employer}` : ''}${p.income ? ` · ${money(p.income)}/yr` : ''}` : p.homemaker ? (eraYear() < 1970 ? 'keeps house' : 'stays at home') : age >= 18 && !l.studying && !p.retired && age < 65 ? 'looking for work' : p.retired ? 'retired' : '';
   const bits = [`🎓 ${school}`, work ? `💼 ${work.replace(/^ · /, '')}` : null, homeLabel(p) ? `🏠 ${homeLabel(p)}` : null, age >= 22 && l.netWorth ? `💰 ${money(l.netWorth)}` : null, l.car && age >= 17 ? `${eraYear() >= 1905 ? '🚗' : '🐎'} ${l.car}` : null].filter(Boolean);
   return `<small class="traits">${esc(bits.join(' · '))}</small>`;
 }
