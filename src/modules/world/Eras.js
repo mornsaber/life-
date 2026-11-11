@@ -701,11 +701,16 @@ export function eraStudyBlock(state, { schoolType, uni } = {}) {
   if (y >= PRESENT) return null;
   const t = schoolType ?? uni?.type;
   if (SCHOOL_FROM[t] > y) return `No ${t === 'community' ? 'community colleges' : `${t} schools`} yet (from about ${SCHOOL_FROM[t]})`;
-  if (uni && state.character.gender === 'female' && y < 1870) return 'Universities don\'t admit women yet';
+  if (uni && state.character.gender === 'female') { const g = UNI_GATE ? UNI_GATE(state) : y < 1870 ? 'Universities don\'t admit women yet' : null; if (g) return g; }
   return null;
 }
 /** The age most children left school in this year (14 before the 1940s; 12 before the 1880s). */
-export const leavingAge = (state) => (yearNow(state) < 1880 ? 12 : yearNow(state) < 1945 ? 14 : null);
+// The place's own laws register themselves (education/SchoolingOfTheDay.js); Eras stays a leaf.
+let LEAVING_HERE = null;
+let UNI_GATE = null;
+export const setLeavingAge = (fn) => { LEAVING_HERE = fn; };
+export const setUniversityGate = (fn) => { UNI_GATE = fn; };
+export const leavingAge = (state) => (LEAVING_HERE ? LEAVING_HERE(state) : yearNow(state) < 1880 ? 12 : yearNow(state) < 1945 ? 14 : null);
 /** The GI Bill (1944) and federal student loans (1958). */
 export const giBillExists = (state) => yearNow(state) >= 1944;
 export const studentLoansExist = (state) => yearNow(state) >= 1958;

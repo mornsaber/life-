@@ -23,6 +23,7 @@ const edOpen = (state) => state.character.age >= 17 && !state.education.enrolled
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { uniInEra, majorInEra, programInEra, programIdInEra } from '../../modules/world/Eras.js';
 import { flagImg } from '../Flags.js';
+import { schoolingCard } from './SchoolingCard.js';
 
 function programRow(state, id, page = {}) {
   const p = PROGRAMS[id];
@@ -143,7 +144,7 @@ export function schoolView(state) {
     ? `<p>🎖️ You are an officer cadet at <b>${esc(svc.academy?.name ?? 'the military academy')}</b>${svc.academy?.yearsLeft ? ` — ${svc.academy.yearsLeft} year${svc.academy.yearsLeft === 1 ? '' : 's'} to commissioning` : ''}. Civilian applications and apprenticeships wait until you leave the forces; the academy is your education now.</p>`
     : '<p class="fine">While serving, civilian study is part-time through the forces\' tuition assistance; apprenticeships and the academies are for civilians.</p>', { icon: '🎖️', accent: 'green' }) : '';
   if (svc?.cadet) return `${uniform}${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
-  return `${uniform}${k12View(state)}${current}${entranceCard(state)}${svc ? '' : apprenticeCard(state)}${phdCard(state)}${state.academia?.phd ? publishingCard(state) : ''}${medTrainingCard(state)}${lawTrainingCard(state)}${higherEdCard(state)}${svc ? '' : academyCard(state)}${applicationsCard(state)}${campusView(state)}
+  return `${uniform}${schoolingCard(state)}${k12View(state)}${current}${entranceCard(state)}${svc ? '' : apprenticeCard(state)}${phdCard(state)}${state.academia?.phd ? publishingCard(state) : ''}${medTrainingCard(state)}${lawTrainingCard(state)}${higherEdCard(state)}${svc ? '' : academyCard(state)}${applicationsCard(state)}${campusView(state)}
     ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
     ${state.character.age >= 15 ? card('Universities', guideCard(state), { icon: '🏛️' }) : ''}
     ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
