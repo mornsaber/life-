@@ -16,7 +16,7 @@ import { getProfession, PROFESSIONS } from '../src/modules/career/JobTrees.js';
 import { VOCATIONS, packFor, applies, nameOf, gates } from '../src/modules/career/Vocations.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const YEARS = [1830, 1890, 1935, 1975, 2010];
+const YEARS = [1835, 1890, 1935, 1975, 2010];
 const PLACES = ['US', 'GB', 'FR', 'IN', 'JP'];
 const MODERN = /\b(online|digital|computer|software|internet|e-?mail|app\b|ACLS|ATLS|CDL|cloud|cyber|drone|GPS|livestream|podcast|social media|MBA)\b/i;
 const MODERN_FROM = 1960;
@@ -24,8 +24,8 @@ const LISTS = ['courses', 'postings', 'awards', 'complaints', 'elite', 'specialt
 
 function lifeAt(cc, year, professionId) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
-  const state = engine.newLife({ countryId: cc, startYear: year - 35, gender: 'male' });
-  state.character.age = 35;
+  const state = engine.newLife({ countryId: cc, startYear: year - 30, gender: 'male' });
+  state.character.age = 30;
   state.prompts = [];
   const ctx = engine.context();
   const p = getProfession(professionId);

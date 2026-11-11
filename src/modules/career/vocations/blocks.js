@@ -33,7 +33,7 @@ export const WORKPLACE_COMPLAINTS = [
 /** Management, everywhere: a course before the management rungs. */
 export const MANAGEMENT = {
   courses: [
-    { id: 'management', name: (s) => (y(s) < 1960 ? 'a foremen\'s and supervisors\' course' : y(s) < 1990 ? 'a management course' : 'a leadership and management programme'), icon: '🧭', from: 1920, cost: 3000, gateMgmt: true, minGrade: 4 },
+    { id: 'management', name: (s) => (y(s) < 1960 ? 'a foremen\'s and supervisors\' course' : y(s) < 1990 ? 'a management course' : 'a leadership and management programme'), icon: '🧭', from: 1920, cost: 3000, gateMgmt: true, minGrade: 1 },
   ],
 };
 
@@ -51,7 +51,7 @@ export const UNION = {
 /** Guilds and apprenticeship: indentures before the modern qualifications. */
 export const GUILD = {
   courses: [
-    { id: 'indentures', name: (s) => (y(s) < 1900 ? 'your indentures (a guild apprenticeship)' : 'an indentured apprenticeship'), icon: '📜', until: 1965, years: 0, cost: 0, gateGrade: 3 },
+    { id: 'indentures', name: (s) => (y(s) < 1900 ? 'your indentures (a guild apprenticeship)' : 'an indentured apprenticeship'), icon: '📜', until: 1965, cost: 0, perf: 5 },
   ],
   awards: [
     { id: 'freedom', name: (s) => (y(s) < 1900 ? 'the freedom of your guild' : 'the freedom of your livery company'), icon: '🗝️', countries: ['GB'], minGrade: 3, minYears: 7, chance: 0.08, prestige: 1, text: 'You were made free of your trade\'s livery company in the City: a scroll, a dinner and the right to drive sheep over London Bridge.' },

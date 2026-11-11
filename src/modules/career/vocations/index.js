@@ -3,5 +3,9 @@
  * first pack that lists it.
  */
 import { MEDICINE } from './medicine.js';
+import { TRADES } from './trades.js';
+import { BUSINESS } from './business.js';
+import { ARTS } from './arts.js';
+import { SERVICE } from './service.js';
 
-export const PACKS = [MEDICINE];
+export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE];

@@ -53,9 +53,12 @@ export const VOCATIONS = Object.fromEntries(PACKS.map((p) => [p.id, compose(p)])
 const BY_PROFESSION = {};
 for (const pack of Object.values(VOCATIONS)) for (const id of pack.professions) BY_PROFESSION[id] = pack;
 
+let ENABLED = true;
+/** Tests compare careers with and without the packs. */
+export const setVocationsEnabled = (on) => { ENABLED = on; };
 /** The pack for your job (or a profession id), or null. */
 export function packFor(state, professionId = state.career?.job?.professionId) {
-  if (!professionId) return null;
+  if (!professionId || !ENABLED) return null;
   return BY_PROFESSION[professionId] ?? BY_PROFESSION[getProfession(professionId)?.template] ?? null;
 }
 export const vocationOf = (state, pack) => {
@@ -85,6 +88,7 @@ export function applies(state, pack, item) {
   if (item.countries && !item.countries.includes(cc(state))) return false;
   if (item.realm && crownOf(state) !== 'GB') return false;
   if (item.traits && !item.traits.some((t) => traitsOf(state, pack).includes(t))) return false;
+  if (item.professions && !item.professions.includes(state.career?.job?.professionId) && !item.professions.includes(getProfession(state.career?.job?.professionId ?? 'retail')?.template)) return false;
   if (item.when && !item.when(state)) return false;
   return true;
 }
@@ -128,6 +132,11 @@ function costOf(state, c) {
   const publicJob = state.career?.job && getProfession(state.career.job.professionId).sector !== 'private';
   return Math.round((c.cost ?? 0) * ((big || publicJob) && isRequired(c) ? 0.2 : 1));
 }
+/** What finishing a course does beyond the record: optional courses sharpen your work. */
+function courseDone(state, c) {
+  const job = state.career?.job;
+  if (job && c.perf) job.performance = clamp((job.performance ?? 50) + c.perf, 0, 100);
+}
 function takeCourse(ctx, pack, id) {
   const { state } = ctx;
   if (packFor(state) !== pack) return ctx.toast('Only while you work in the field.', 'warn');
@@ -148,6 +157,7 @@ function takeCourse(ctx, pack, id) {
     return ctx.log(`You sat ${nameOf(state, c)} and failed. You can try again next year.`, '📝', 'bad');
   }
   v.courses[c.id] = state.character.age;
+  courseDone(state, c);
   ctx.log(`${c.renew && v.history.includes(c.id) ? 'You renewed' : 'You completed'} ${nameOf(state, c)}.${c.post ? ` You can use the letters ${c.post} now.` : ''}`, c.icon ?? '📘', 'good');
   if (!v.history.includes(c.id)) v.history.push(c.id);
 }
@@ -368,6 +378,7 @@ export const VocationModule = {
     if (v.inCourse && state.character.age >= v.inCourse.until) {
       const c = pack.courses.find((x) => x.id === v.inCourse.id);
       v.courses[v.inCourse.id] = state.character.age;
+      if (c) courseDone(state, c);
       if (!v.history.includes(v.inCourse.id)) v.history.push(v.inCourse.id);
       v.inCourse = null;
       if (c) ctx.log(`You finished ${nameOf(state, c)}.${c.post ? ` You can use the letters ${c.post} now.` : ''}`, c.icon ?? '🎓', 'good');
