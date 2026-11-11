@@ -18,6 +18,7 @@ import { nationalityCode, nationalityName } from '../../modules/world/Immigratio
 import { COUNTRIES, priceLevel } from '../../modules/world/Countries.js';
 import { livesAbroad, parentVisaCheck, visitCost, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
 import { contactThen, journey } from '../../modules/world/TravelOfTheDay.js';
+import { familyHistory } from '../../modules/people/FamilyInHistory.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
@@ -442,13 +443,20 @@ function petsCard(state) {
     ${past ? `<p class="fine">Remembered: ${past}</p>` : ''}`, { icon: '🐾' });
 }
 
+/** What your family lived through: call-ups, emigrations, revolutions, grandparents' stories. */
+function familyHistoryCard(state) {
+  const ev = familyHistory(state);
+  if (!ev.length) return '';
+  return card('Your Family in History', `<ul class="history">${[...ev].reverse().slice(0, 12).map((e) => `<li>${e.icon} <b>${e.year}</b> ${esc(e.text)}</li>`).join('')}</ul>`, { icon: '📜', summary: `${ev.length}` });
+}
+
 export function peopleView(state) {
   if (!state.people) return '';
   const all = people(state);
   const by = (...rel) => all.filter((p) => rel.includes(p.relation) && ageOf(state, p) >= 0);
   const family = by('mother', 'father', 'sibling');
   const kids = by('child');
-  return `${romance(state)}
+  return `${romance(state)}${familyHistoryCard(state)}
     ${group('Partner', '💑', by('partner', 'fiance', 'spouse').filter((p) => p.alive), state)}
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${parentingCard(state)}
