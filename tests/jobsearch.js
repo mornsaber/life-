@@ -5,6 +5,7 @@
  *
  *   node tests/jobsearch.js
  */
+import { outsidePromotionOffer } from '../src/modules/career/CareerEngine.js';
 import assert from 'node:assert/strict';
 import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
@@ -32,6 +33,25 @@ function at(professionId, { cc = 'US', regionId = 'philadelphia', seed = 3 } = {
 const many = (ctx) => { const out = []; for (let i = 0; i < 6; i++) out.push(...searchOffers(ctx, 3, 1)); return out; };
 
 const tests = {
+  'a government promotion blocked here is a vacancy in your own service elsewhere, seniority kept'() {
+    const { state, ctx, engine } = at('statePolice');
+    const job = state.career.job;
+    job.yearsAtEmployer = 9;
+    job.performance = 90;
+    const before = { org: job.employer.orgId, start: job.startAge, region: state.character.regionId };
+    outsidePromotionOffer(ctx, job, getProfession('statePolice'));
+    const q = state.prompts.find((p) => p.type === 'career.outsidePromotion');
+    assert.ok(q, 'offered');
+    assert.match(q.text, /Pennsylvania State Police has one vacant/);
+    assert.doesNotMatch(q.text, /another agency|new probation/);
+    const from = job.levelId;
+    engine.resolvePrompt(q.id, 'accept');
+    const now = state.career.job;
+    assert.notEqual(now.levelId, from, 'promoted');
+    assert.equal(now.employer.orgId, before.org, 'same service');
+    assert.equal(now.startAge, before.start, 'seniority kept');
+    if (q.data.regionId) assert.equal(state.character.regionId, q.data.regionId, 'moved to the post');
+  },
   'a state trooper is offered transfers within the force, and one other state at most'() {
     const { state, ctx } = at('statePolice');
     assert.equal(state.career.job.employer.name, 'Pennsylvania State Police');

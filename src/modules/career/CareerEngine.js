@@ -51,7 +51,7 @@ import { probationYears, isTenured, traineeProgram, runAcademy, TENURE_PROFESSIO
 import { isAbroad, US_ONLY, informality, countryOf, isCitizen } from '../world/Countries.js';
 import { residencyOf } from '../world/Immigration.js';
 import { agencyExists } from '../world/LocalAgencies.js';
-import { stateIdOf, REGIONS } from '../life/Regions.js';
+import { stateIdOf, REGIONS, regionsHere } from '../life/Regions.js';
 import { ruralHiring } from '../life/RuralLife.js';
 import { jobSkills, skill } from '../life/Skills.js';
 import { workRepBonus } from '../life/Reputation.js';
@@ -639,11 +639,32 @@ export function outsidePromotionOffer(ctx, job, profession) {
   if (state.prompts.some((p) => p.type === 'career.outsidePromotion')) return;
   const target = nextLevels(profession, job.employer.size, job.levelId).find((l) => !l.appointed && levelCheck(state, l).ok && !levelCheck(state, l).clearanceNeeded);
   if (!target) return;
+  // In government the post is in your own service, at another office: a promotion with a move,
+  // seniority kept (a state agency stays in its state; a national one anywhere in the country).
+  if (profession.sector !== 'private') {
+    const here = state.character.regionId;
+    const stateId = REGIONS[here]?.state;
+    const offices = regionsHere(state).filter((r) => r.id !== here && (job.sector !== 'state' || r.state === stateId));
+    const office = offices.length ? ctx.rng.pick(offices) : null;
+    const service = job.employer.name;
+    ctx.prompt({
+      type: 'career.outsidePromotion',
+      icon: '🪜',
+      title: 'Promotion — With a Move',
+      text: `Every ${target.title} post in your office is filled, but ${service} has one vacant ${office ? `in ${office.name}` : 'in another division'}. You'd keep your seniority and pay step${office ? ', and move' : ''}.`,
+      options: [
+        { id: 'accept', label: `🪜 Take the ${target.title} post${office ? ` in ${office.name.split(',')[0]}` : ''}` },
+        { id: 'stay', label: '🏠 Stay put and wait for a vacancy here' },
+      ],
+      data: { levelId: target.id, internal: true, regionId: office?.id ?? null },
+    });
+    return;
+  }
   ctx.prompt({
     type: 'career.outsidePromotion',
     icon: '🪜',
     title: 'Promotion — Somewhere Else',
-    text: `There's no ${target.title} opening at ${job.employer.name}, but another ${profession.sector === 'private' ? 'employer' : 'agency'} in your field has one, and they want you. You'd start over on seniority${profession.sector === 'private' ? '' : ' and serve a new probation'}.`,
+    text: `There's no ${target.title} opening at ${job.employer.name}, but another employer in your field has one, and they want you. You'd start over on seniority.`,
     options: [
       { id: 'accept', label: `🪜 Take the ${target.title} job` },
       { id: 'stay', label: `🏠 Stay at ${job.employer.name} and wait` },

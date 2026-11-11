@@ -271,6 +271,15 @@ export const WorkplaceActions = {
       const profession = getProfession(job.professionId);
       const level = levelById(profession, data.levelId);
       if (!level || !levelCheck(state, level).ok) return;
+      // Your own service, another office: promoted where you are on its books, then you move.
+      if (data.internal) {
+        if (!promote(ctx, level.id)) return;
+        if (data.regionId) {
+          ctx.emit('region:relocate', { regionId: data.regionId, reason: `Promoted to ${job.title}.` });
+          job.employer.city = REGIONS[data.regionId]?.name.split(',')[0] ?? job.employer.city;
+        }
+        return ctx.log(`You took the ${job.title} post${data.regionId ? ` in ${REGIONS[data.regionId]?.name ?? 'another office'}` : ' in another division'}, seniority intact. $${job.salary.toLocaleString()}/yr.`, '🪜', 'good');
+      }
       const old = job.salary;
       const employer = createEmployer(rng, state, profession, state.character.regionId);
       const now = hire(ctx, { professionId: profession.id, levelId: level.id, employer });
