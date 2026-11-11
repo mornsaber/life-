@@ -3,6 +3,8 @@
  * played abroad (tests/abroad.js, and tests/simulate.js with COUNTRY set).
  */
 import { COUNTRIES, localizeHtml } from '../src/modules/world/Countries.js';
+import { PACKS } from '../src/modules/world/packs/index.js';
+const OWN_CONGRESS = new Set(PACKS.filter((p) => /Congress/.test(JSON.stringify([p.tables?.PARTY_NAMES, p.tables?.LEGISLATURES?.lower?.name, p.tables?.LEGISLATURES?.upper?.name]))).map((p) => p.id));
 
 /** US-only things, and the countries where the same word is genuinely local. */
 export const US_TERMS = [
@@ -23,6 +25,8 @@ export function usLeftovers(cc, text) {
   if (bad) out.push(`${cc} broken text: "…${text.slice(Math.max(0, bad.index - 100), bad.index + 60)}"`);
   for (const [re, ok] of US_TERMS) {
     if (ok?.includes(cc)) continue;
+    // A Congress the country really has: a party or chamber its own pack names.
+    if (re.source.includes('Congress') && OWN_CONGRESS.has(cc)) continue;
     // Countries that really dial 911 (their own pack says so).
     if (re.source.includes('911') && String(COUNTRIES[cc]?.emergency ?? '').includes('911')) continue;
     const m = text.match(re);
