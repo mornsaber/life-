@@ -30,11 +30,26 @@ import { crownOf } from '../world/Crown.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { postAbroad, postingOf } from '../world/Posting.js';
 import { getProfession } from './JobTrees.js';
-import { MEDICINE } from './vocations/medicine.js';
-import { addLevelGate } from './CareerEngine.js';
+import { PACKS } from './vocations/index.js';
+import { scopeOfType } from '../../core/PromptScope.js';
+import { addLevelGate, leaveJob } from './CareerEngine.js';
 
-/** Every pack, by id. Add new families here. */
-export const VOCATIONS = { medicine: MEDICINE };
+const LISTS = ['courses', 'postings', 'awards', 'complaints', 'elite', 'specialties'];
+/**
+ * A pack with its shared blocks (`use`) folded in: their courses, postings, awards, complaints
+ * and posts are added to the pack's own (the pack's own come first; an id the pack already has wins).
+ */
+export function compose(pack) {
+  const out = { ...pack };
+  for (const k of LISTS) {
+    const own = pack[k] ?? [];
+    const ids = new Set(own.map((x) => x.id));
+    out[k] = [...own, ...(pack.use ?? []).flatMap((b) => b[k] ?? []).filter((x) => !ids.has(x.id) && ids.add(x.id))];
+  }
+  return out;
+}
+/** Every pack, by id. Add new families in career/vocations/index.js. */
+export const VOCATIONS = Object.fromEntries(PACKS.map((p) => [p.id, compose(p)]));
 const BY_PROFESSION = {};
 for (const pack of Object.values(VOCATIONS)) for (const id of pack.professions) BY_PROFESSION[id] = pack;
 
@@ -54,7 +69,13 @@ const gradeOf = (state) => {
   return job ? getProfession(job.professionId).levels.find((l) => l.id === job.levelId)?.grade ?? 0 : 0;
 };
 const yearsIn = (state, pack) => yearsInProfession(state, pack.professions);
-const traitsOf = (state, pack) => pack.traits?.(state) ?? [];
+const traitsOf = (state, pack) => {
+  const job = state.career?.job;
+  const p = job ? getProfession(job.professionId) : null;
+  const v = vocationOf(state, pack);
+  return [p?.id, p?.template, v.specialty, ...(pack.traits?.(state) ?? [])].filter(Boolean);
+};
+export const vocationTraits = traitsOf;
 
 /** Does a dated, placed, specialised item apply to you this year? */
 export function applies(state, pack, item) {
@@ -80,10 +101,14 @@ export function courseCurrent(state, pack, course) {
   if (done == null) return false;
   return !course.renew || state.character.age - done < course.renew;
 }
-/** Courses this rung needs that you haven't got (or have let lapse). */
-export function missingCourses(state, pack, levelId) {
-  return pack.courses.filter((c) => c.required?.includes(levelId) && applies(state, pack, c) && !courseCurrent(state, pack, c));
+/** Does a course gate this rung? By id (`required`), by grade (`gateGrade`: this grade and up) or management (`gateMgmt`). */
+export const gates = (c, level) => Boolean(level && (c.required?.includes(level.id) || (c.gateGrade && level.grade >= c.gateGrade) || (c.gateMgmt && level.track === 'mgmt')));
+/** Courses this rung needs that you haven't got (or have let lapse). Takes a level (or a level id of your job's ladder). */
+export function missingCourses(state, pack, level) {
+  const lv = typeof level === 'string' ? getProfession(state.career.job.professionId).levels.find((l) => l.id === level) : level;
+  return pack.courses.filter((c) => gates(c, lv) && applies(state, pack, c) && !courseCurrent(state, pack, c));
 }
+const isRequired = (c) => Boolean(c.required?.length || c.gateGrade || c.gateMgmt);
 /** The courses open to you now, with why not where not. */
 export function courseOptions(state, pack) {
   const v = vocationOf(state, pack);
@@ -100,7 +125,8 @@ export function courseOptions(state, pack) {
 /** What you pay: a big employer funds required courses. */
 function costOf(state, c) {
   const big = ['large', 'enterprise'].includes(state.career?.job?.employer?.size);
-  return Math.round((c.cost ?? 0) * (big && c.required?.length ? 0.2 : 1));
+  const publicJob = state.career?.job && getProfession(state.career.job.professionId).sector !== 'private';
+  return Math.round((c.cost ?? 0) * ((big || publicJob) && isRequired(c) ? 0.2 : 1));
 }
 function takeCourse(ctx, pack, id) {
   const { state } = ctx;
@@ -221,8 +247,10 @@ function hearing(ctx, pack, data, optionId) {
   if (optionId === 'contest') level += data.guilty ? 1 : -1;
   const outcome = OUTCOMES[clamp(level, 0, OUTCOMES.length - 1)];
   v.record.push({ age: state.character.age, id: data.kind, outcome });
-  const lic = pack.licence;
+  const lic = typeof pack.licence === 'function' ? pack.licence(state) : pack.licence;
+  const held = lic && state.credentials.held[lic]?.status === 'active';
   const Reg = reg.name.charAt(0).toUpperCase() + reg.name.slice(1);
+  const job = state.career.job;
   const kind = pack.complaints.find((k) => k.id === data.kind);
   const what = kind?.short ?? 'the complaint';
   ctx.stat('stress', 6 + data.severity * 3);
@@ -232,13 +260,23 @@ function hearing(ctx, pack, data, optionId) {
     case 'warning': return ctx.log(`${Reg} issued a formal warning over ${what}. It stays on your record for five years.`, '⚖️', 'warn');
     case 'conditions':
       v.conditionsUntil = state.character.age + 3;
-      return ctx.log(`${Reg} put conditions on your practice over ${what}: supervision and retraining for three years. No promotion until they lift.`, '⚖️', 'bad');
+      if (job) job.performance = clamp((job.performance ?? 50) - 10, 0, 100);
+      return ctx.log(held ? `${Reg} put conditions on your practice over ${what}: supervision and retraining for three years. No promotion until they lift.` : `${Reg} gave you a final written warning over ${what}. No promotion for three years.`, '⚖️', 'bad');
     case 'suspension':
-      if (lic) ctx.emit('credential:suspend', { ids: [lic], years: 1, reason: `${reg.name}: ${what}` });
-      return ctx.log(`${Reg} suspended you for a year over ${what}.`, '⚖️', 'bad');
+      if (held) {
+        ctx.emit('credential:suspend', { ids: [lic], years: 1, reason: `${reg.name}: ${what}` });
+        return ctx.log(`${Reg} suspended you for a year over ${what}.`, '⚖️', 'bad');
+      }
+      v.conditionsUntil = state.character.age + 3;
+      if (job) ctx.spend(Math.round((job.salary ?? 30000) / 12), 'Unpaid suspension', { credit: true });
+      return ctx.log(`${Reg} suspended you without pay for a month over ${what}, with a final warning on file.`, '⚖️', 'bad');
     default:
-      if (lic) ctx.emit('credential:revoke', { ids: [lic], reason: `${reg.name}: ${what}` });
-      return ctx.log(`${Reg} ${pack.erasureWord ?? 'struck you off'} over ${what}.`, '⚖️', 'bad');
+      if (held) {
+        ctx.emit('credential:revoke', { ids: [lic], reason: `${reg.name}: ${what}` });
+        return ctx.log(`${Reg} ${pack.erasureWord ?? 'struck you off'} over ${what}.`, '⚖️', 'bad');
+      }
+      if (job) leaveJob(ctx, `Dismissed after a hearing over ${what}`, { fired: true });
+      return ctx.log(`${Reg} dismissed you over ${what}.`, '⚖️', 'bad');
   }
 }
 
@@ -265,13 +303,57 @@ export function vocationGate(state, level) {
   const job = state.career?.job;
   const pack = packFor(state);
   if (!job || !pack || !getProfession(job.professionId).levels.includes(level)) return [];
-  const missing = missingCourses(state, pack, level.id).map((c) => nameOf(state, c));
+  const missing = missingCourses(state, pack, level).map((c) => nameOf(state, c));
   const v = vocationOf(state, pack);
   if (v.conditionsUntil && state.character.age < v.conditionsUntil) missing.push(`conditions on your practice lifted (age ${v.conditionsUntil})`);
   return missing;
 }
 
 addLevelGate(vocationGate);
+
+/** The specialties open to you now (a field without one of its own, such as trades or law). */
+export const specialtiesOpen = (state, pack) => (pack.specialties ?? []).filter((x) => applies(state, pack, x) && (!x.professions || x.professions.includes(state.career.job?.professionId)));
+function specialtyPrompt(ctx, pack) {
+  const { state } = ctx;
+  const v = vocationOf(state, pack);
+  const open = specialtiesOpen(state, pack);
+  if (v.specialty || open.length < 2 || gradeOf(state) < (pack.specialtyAt ?? 2) || state.prompts.some((q) => q.type === 'vocation.specialty')) return false;
+  ctx.prompt({
+    type: 'vocation.specialty', icon: '🧭', title: pack.specialtyTitle ?? 'Your Specialty',
+    text: pack.specialtyText ?? 'You know the work now. Which part of it will you make yours?',
+    options: open.slice(0, 6).map((x) => ({ id: x.id, label: `${x.icon ?? '🧭'} ${nameOf(state, x)}`, hint: x.hint ?? '' })),
+    data: { pack: pack.id },
+  });
+  return true;
+}
+/**
+ * The employer sends you on what your next rung needs, as the services send you to school: a
+ * public body or a big employer most years, a small one sometimes. Nobody's career stalls on a
+ * course nobody told them about.
+ */
+function sentOnCourse(ctx, pack) {
+  const { state, rng } = ctx;
+  const job = state.career.job;
+  const v = vocationOf(state, pack);
+  if (v.inCourse || yearlyCount(state, `vocation.course.${pack.id}`)) return;
+  const profession = getProfession(job.professionId);
+  const next = profession.levels.filter((l) => l.grade > gradeOf(state) && l.grade <= gradeOf(state) + 1);
+  const due = [...new Set(next.flatMap((l) => missingCourses(state, pack, l)))].filter((c) => gradeOf(state) >= (c.minGrade ?? 0) && yearsIn(state, pack) >= (c.minYears ?? 0));
+  // Lapsed renewals too: they're the employer's problem as much as yours.
+  const lapsed = pack.courses.filter((c) => c.renew && v.courses[c.id] != null && !courseCurrent(state, pack, c) && applies(state, pack, c) && isRequired(c));
+  const c = [...lapsed, ...due][0];
+  if (!c) return;
+  const odds = profession.sector !== 'private' || ['large', 'enterprise'].includes(job.employer?.size) ? 0.7 : 0.35;
+  if (!rng.chance(odds)) return;
+  bumpYearly(state, `vocation.course.${pack.id}`);
+  if (c.years) { v.inCourse = { id: c.id, until: state.character.age + c.years }; return ctx.log(`${job.employer?.name ?? 'Your employer'} sent you on ${nameOf(state, c)}.`, c.icon ?? '📘', 'info'); }
+  if (c.passRate && !rng.chance(clamp(c.passRate + (state.stats.smarts - 60) / 200 + 0.1, 0.3, 0.97))) return ctx.log(`You sat ${nameOf(state, c)} on your employer's account, and failed. Another try next year.`, '📝', 'bad');
+  v.courses[c.id] = state.character.age;
+  if (!v.history.includes(c.id)) v.history.push(c.id);
+  ctx.log(`${job.employer?.name ?? 'Your employer'} sent you on ${nameOf(state, c)}, and you passed.${c.post ? ` You can use the letters ${c.post} now.` : ''}`, c.icon ?? '📘', 'good');
+}
+/** Prompts already waiting this year: a vocation adds nothing on a crowded year. */
+const crowded = (state) => state.prompts.filter((q) => scopeOfType(q.type) === 'job').length >= 2;
 
 export const VocationModule = {
   id: 'vocation',
@@ -305,9 +387,11 @@ export const VocationModule = {
     // An elite post's stipend.
     const e = v.elite && pack.elite.find((x) => x.id === v.elite.id);
     if (e?.stipend) ctx.earn(e.stipend, nameOf(state, e));
-    // At most one big thing a year: a complaint, an elite post, a posting; awards come quietly.
-    if (!complaintTick(ctx, pack) && !offerElite(ctx, pack)) offerPosting(ctx, pack);
+    sentOnCourse(ctx, pack);
     awardTick(ctx, pack);
+    // At most one big thing a year, and none on a crowded one: a specialty, a complaint, an elite post, a posting.
+    if (crowded(state)) return;
+    if (!specialtyPrompt(ctx, pack) && !complaintTick(ctx, pack) && !offerElite(ctx, pack)) offerPosting(ctx, pack);
   },
 
   actions: {
@@ -320,6 +404,13 @@ export const VocationModule = {
   },
 
   resolvers: {
+    specialty(ctx, data, optionId) {
+      const pack = VOCATIONS[data.pack];
+      const x = (pack.specialties ?? []).find((s2) => s2.id === optionId);
+      if (!x) return;
+      vocationOf(ctx.state, pack).specialty = x.id;
+      ctx.log(x.start ?? `You made ${nameOf(ctx.state, x)} your specialty.`, x.icon ?? '🧭', 'milestone');
+    },
     posting(ctx, data, optionId) {
       if (optionId === 'go') startPosting(ctx, VOCATIONS[data.pack], data.id, data.place);
     },

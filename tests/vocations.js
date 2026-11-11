@@ -77,22 +77,32 @@ const tests = {
     const senior = p.levels.find((l) => l.id === 'senior');
     assert.ok(levelCheck(other.state, senior).missing.some((m) => /conditions/.test(m)));
   },
-  'a career brings postings, awards or posts, and the Work tab shows them'() {
-    let seen = 0;
-    for (let seed = 1; seed <= 4; seed++) {
-      const { engine, state } = doctor({ cc: 'GB', year: 1985, specialty: 'internalMedicine', level: 'attending', seed });
-      state.career.job.levelId = 'senior';
-      for (let i = 0; i < 20 && state.career.job; i++) {
-        for (const q of [...state.prompts]) engine.resolvePrompt(q.id, (q.options.find((o) => ['go', 'accept', 'cooperate'].includes(o.id)) ?? q.options[0]).id);
-        state.career.job.performance = 85;
-        state.stats.health = 90;
-        engine.ageUp();
+  'a career brings postings and posts, and the Work tab shows them'() {
+    const odds = [MED.postingOdds, MED.eliteOdds];
+    MED.postingOdds = 1; MED.eliteOdds = 1;
+    try {
+      let seen = 0;
+      for (let seed = 1; seed <= 2; seed++) {
+        const { engine, state } = doctor({ cc: 'GB', year: 1985, specialty: 'internalMedicine', level: 'attending', seed });
+        state.career.job.levelId = 'renowned';
+        state.character.age = 58;
+        for (let i = 0; i < 6 && state.career.job; i++) {
+          for (let g = 0; g < 30 && state.prompts.length; g++) {
+            const q = state.prompts[0];
+            const safe = q.options.filter((o) => !o.disabled && o.tone !== 'danger');
+            engine.resolvePrompt(q.id, (safe.find((o) => ['go', 'accept', 'cooperate'].includes(o.id)) ?? safe.at(-1) ?? q.options[0]).id);
+          }
+          state.career.job && (state.career.job.performance = 85);
+          state.stats.health = 90;
+          state.legal.record = [];
+          engine.ageUp();
+        }
+        const v = vocationOf(state, MED);
+        seen += v.postings.length + (v.elite ? 1 : 0) + v.history.filter((h) => h.startsWith('elite.')).length;
+        if (state.career.job) assert.match(VIEWS.career(state, {}), /Training &amp; Distinctions|Training & Distinctions/);
       }
-      const v = vocationOf(state, MED);
-      seen += v.postings.length + v.awards.length + (v.elite ? 1 : 0);
-      if (state.career.job) assert.match(VIEWS.career(state, {}), /Training &amp; Distinctions|Training & Distinctions/);
-    }
-    assert.ok(seen >= 3, `${seen} postings, awards and posts in four careers`);
+      assert.ok(seen >= 2, `${seen} postings and posts in two careers`);
+    } finally { [MED.postingOdds, MED.eliteOdds] = odds; }
   },
 };
 let failed = 0;

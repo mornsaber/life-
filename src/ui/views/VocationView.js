@@ -20,11 +20,11 @@ export function vocationCard(state) {
   const profession = getProfession(job.professionId);
   // What the next rungs wait on.
   const next = nextLevels(profession, job.employer?.size ?? 'large', job.levelId);
-  const needs = next.flatMap((l) => missingCourses(state, pack, l.id).map((c) => `${esc(nameOf(state, c))} <small class="muted">for ${esc(l.title)}</small>`));
+  const needs = next.flatMap((l) => missingCourses(state, pack, l).map((c) => `${esc(nameOf(state, c))} <small class="muted">for ${esc(l.title)}</small>`));
   const courses = courseOptions(state, pack).map(({ course, reason, cost }) => {
     const current = courseCurrent(state, pack, course);
     const status = current ? `✅ ${course.renew ? `current until age ${v.courses[course.id] + course.renew}` : 'done'}` : '';
-    return `<div class="row">${course.icon ?? '📘'} ${esc(heading(nameOf(state, course)))}${course.required?.length ? ' <small class="muted">· required for promotion</small>' : ''} ${status}
+    return `<div class="row">${course.icon ?? '📘'} ${esc(heading(nameOf(state, course)))}${course.required?.length || course.gateGrade || course.gateMgmt ? ' <small class="muted">· required for promotion</small>' : ''} ${status}
       ${!current || (course.renew && age >= v.courses[course.id] + course.renew - 1) ? button(current ? 'Renew' : 'Take it', 'vocation.course', { arg: `${pack.id}:${course.id}`, variant: 'small', disabled: Boolean(reason), hint: reason ?? (cost ? `$${cost.toLocaleString()}` : 'Free') }) : ''}</div>`;
   }).join('');
   const postings = v.postings.map((p) => {

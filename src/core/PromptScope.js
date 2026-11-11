@@ -21,6 +21,7 @@ const JOB_TYPES = new Set([
   'police.call', 'fireLife.call',
   'shiftWork.call', 'caseload.focus', 'caseload.case', 'clientBook.event', 'projectWork.approach', 'projectWork.crisis', 'seasonWork.plan', 'seasonWork.event', 'audience.release', 'audience.event', 'investigations.event', 'routeWork.event', 'diplomacy.cone', 'diplomacy.event', 'diplomacy.nomination', 'classroom.moment', 'office.reorg', 'deals.event', 'tradeWork.event', 'majorIncidents.mutualAid', 'emergencyMgmt.level', 'emergencyMgmt.protect', 'emergencyMgmt.resources', 'emergencyMgmt.blame', 'emergencyMgmt.event',
   'ses.detail', 'ses.offer', 'ses.reassign', 'ses.transition', 'ses.nomination',
+  'vocation.posting', 'vocation.complaint', 'vocation.elite', 'vocation.specialty',
 ]);
 const SERVICE_TYPES = new Set([
   'military.branchDetail', 'military.brs', 'military.combat', 'military.commandOffer', 'military.contractEnd', 'military.courtMartial', 'military.dutyEvent', 'military.dutySelection',
