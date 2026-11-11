@@ -52,6 +52,19 @@ const tests = {
     assert.equal(now.startAge, before.start, 'seniority kept');
     if (q.data.regionId) assert.equal(state.character.regionId, q.data.regionId, 'moved to the post');
   },
+  'a city job promoted with no vacancy here stays in the city, and keeps the job'() {
+    const { state, ctx, engine } = at('police');
+    for (const c of ['post', 'supervisorCourse', 'fto']) state.credentials.held[c] = { earnedAge: 25, status: 'active' };
+    const job = state.career.job;
+    job.yearsAtEmployer = 9; job.performance = 90;
+    const region = state.character.regionId;
+    outsidePromotionOffer(ctx, job, getProfession('police'));
+    const q = state.prompts.find((p) => p.type === 'career.outsidePromotion');
+    assert.ok(q && q.data.internal && !q.data.regionId, 'another division, same city');
+    engine.resolvePrompt(q.id, 'accept');
+    assert.equal(state.career.job?.professionId, 'police', 'still on the force');
+    assert.equal(state.character.regionId, region);
+  },
   'a state trooper is offered transfers within the force, and one other state at most'() {
     const { state, ctx } = at('statePolice');
     assert.equal(state.career.job.employer.name, 'Pennsylvania State Police');

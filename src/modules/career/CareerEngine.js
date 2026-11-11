@@ -267,6 +267,7 @@ function applyLevel(job, level) {
   job.abilities = [...level.abilities];
   job.clearance = level.req?.clearance ?? job.clearance ?? null;
   job.yearsInLevel = 0;
+  job.missedReviews = 0;
   job.peakGrade = Math.max(job.peakGrade ?? 0, level.grade);
 }
 
@@ -335,6 +336,9 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
   const program = traineeProgram(job);
   // Trainees start probation when they graduate.
   job.probationLeft = program || isTenured(job) ? 0 : probationYears(profession);
+  // The same rank somewhere else straight after: your time in grade counts (up to three years).
+  const prev = state.career.history.at(-1);
+  if (prev && prev.professionId === professionId && prev.levelId === job.levelId && state.character.age - prev.endAge <= 1) job.yearsInLevel = Math.min(prev.yearsInLevel ?? 0, 3);
 
   ctx.log(`You were hired as ${job.title} [G${level.grade}] at ${employer.name} for $${job.salary.toLocaleString()}/yr.${job.probationLeft ? ` Probationary period: ${job.probationLeft} yr.` : ''}`, profession.icon, 'milestone');
   ctx.toast(`Hired: ${job.title}`, 'good');
@@ -438,6 +442,7 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
     employerName: job.employer.name,
     sector: job.sector,
     peakGrade: job.peakGrade,
+    yearsInLevel: job.yearsInLevel,
     startAge: job.startAge,
     endAge: state.character.age,
     reason,
@@ -462,7 +467,7 @@ export function leaveJob(ctx, reason, { fired = false } = {}) {
 /* ------------------------------------------------------------------ */
 
 /** Extra years at the top of one track before competing for the other. */
-export const CROSS_TRACK_YEARS = 6;
+export const CROSS_TRACK_YEARS = 3;
 
 /** (state, job, level) → reason a rung is held back, or null. */
 export const PROMO_GATES = [];
@@ -502,9 +507,9 @@ export function promotionStatus(state) {
   }
   // Crossing from the end of a specialist track into management (or back) takes extra seniority and a strong record.
   const crossing = all.filter((l) => level.track !== 'shared' && l.track !== level.track);
-  if (crossing.length && crossing.length === all.length && (job.yearsInLevel < levelYears(job, level) + CROSS_TRACK_YEARS || job.performance < 75)) {
+  if (crossing.length && crossing.length === all.length && (job.yearsInLevel < levelYears(job, level) + CROSS_TRACK_YEARS || job.performance < 70)) {
     const left = Math.max(0, levelYears(job, level) + CROSS_TRACK_YEARS - job.yearsInLevel);
-    return { eligible: false, reason: left ? `Top of your track — ${left} more year${left > 1 ? 's' : ''} before you can compete for ${crossing[0].title}` : `Top of your track — a strong record (75+) to compete for ${crossing[0].title}`, options: [], all };
+    return { eligible: false, reason: left ? `Top of your track — ${left} more year${left > 1 ? 's' : ''} before you can compete for ${crossing[0].title}` : `Top of your track — a strong record (70+) to compete for ${crossing[0].title}`, options: [], all };
   }
   const checked = all.filter((l) => levelCheck(state, l).ok);
   if (!checked.length) return { eligible: false, reason: `Needs ${levelCheck(state, all[0]).missing.join(', ')}`, options: checked, all };
@@ -614,8 +619,12 @@ export function layoffRisk(state, job) {
   if (job.probationLeft > 0) risk *= 1.5; // last in, first out
   if (job.informal) risk *= 1.6; // no contract, no notice
   if (job.unionMember && job.yearsAtEmployer >= 5) risk *= 0.3; // seniority
-  if (job.performance >= 80) risk *= 0.5;
+  // The strongest and the longest-serving are the last to go.
+  if (job.performance >= 80) risk *= 0.35;
+  else if (job.performance >= 65) risk *= 0.7;
   if (job.performance < 40) risk *= 1.5;
+  if (job.yearsAtEmployer >= 10) risk *= 0.5;
+  else if (job.yearsAtEmployer >= 5) risk *= 0.7;
   return risk;
 }
 
@@ -644,7 +653,8 @@ export function outsidePromotionOffer(ctx, job, profession) {
   if (profession.sector !== 'private') {
     const here = state.character.regionId;
     const stateId = REGIONS[here]?.state;
-    const offices = regionsHere(state).filter((r) => r.id !== here && (job.sector !== 'state' || r.state === stateId));
+    // A city's own service has no offices elsewhere: the post is in another division at home.
+    const offices = job.sector === 'municipal' && !job.employer.national ? [] : regionsHere(state).filter((r) => r.id !== here && (job.sector !== 'state' || r.state === stateId));
     const office = offices.length ? ctx.rng.pick(offices) : null;
     const service = job.employer.name;
     ctx.prompt({
@@ -876,8 +886,10 @@ export function careerOnAgeUp(ctx) {
   const grievanceLimit = job.unionMember ? 3 + (['steward', 'officer', 'president'].includes(state.unions?.mine?.role) ? 1 : 0) : 2;
   // Ready to move up with nowhere to go: after a couple of years, another employer offers the promotion.
   job.stuckYears = job.performance >= 75 && status.noOpening ? (job.stuckYears ?? 0) + 1 : 0;
-  if (job.stuckYears >= 2 && !profession.church && rng.chance(0.4)) outsidePromotionOffer(ctx, job, profession);
-  if (job.performance >= 75 && status.eligible) {
+  if (job.stuckYears >= 2 && !profession.church && rng.chance(0.6)) outsidePromotionOffer(ctx, job, profession);
+  // Up for promotion: a strong year, or a steady one after long enough in the rank.
+  const upForIt = job.performance >= 70 || (job.performance >= 55 && job.yearsInLevel >= 4);
+  if (upForIt && status.eligible) {
     job.lowYears = 0;
     ctx.log(`Annual review${by}: ${rating} (${job.performance}%). You're up for promotion.`, '🌟', 'good');
     bumpYearly(state, 'career.requestPromotion');

@@ -30,6 +30,7 @@ import { crownOf } from '../world/Crown.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { postAbroad, postingOf } from '../world/Posting.js';
 import { getProfession } from './JobTrees.js';
+import { nextLevels } from './Ladder.js';
 import { PACKS } from './vocations/index.js';
 import { scopeOfType } from '../../core/PromptScope.js';
 import { addLevelGate, leaveJob } from './CareerEngine.js';
@@ -363,13 +364,13 @@ function sentOnCourse(ctx, pack) {
   const v = vocationOf(state, pack);
   if (v.inCourse || yearlyCount(state, `vocation.course.${pack.id}`)) return;
   const profession = getProfession(job.professionId);
-  const next = profession.levels.filter((l) => l.grade > gradeOf(state) && l.grade <= gradeOf(state) + 1);
+  const next = nextLevels(profession, job.employer?.size ?? 'large', job.levelId);
   const due = [...new Set(next.flatMap((l) => missingCourses(state, pack, l)))].filter((c) => gradeOf(state) >= (c.minGrade ?? 0) && yearsIn(state, pack) >= (c.minYears ?? 0));
   // Lapsed renewals too: they're the employer's problem as much as yours.
   const lapsed = pack.courses.filter((c) => c.renew && v.courses[c.id] != null && !courseCurrent(state, pack, c) && applies(state, pack, c) && isRequired(c));
   const c = [...lapsed, ...due][0];
   if (!c) return;
-  const odds = profession.sector !== 'private' || ['large', 'enterprise'].includes(job.employer?.size) ? 0.7 : 0.35;
+  const odds = profession.sector !== 'private' || ['large', 'enterprise', 'mega'].includes(job.employer?.size) ? 0.8 : 0.45;
   if (!rng.chance(odds)) return;
   bumpYearly(state, `vocation.course.${pack.id}`);
   if (c.years) { v.inCourse = { id: c.id, until: state.character.age + c.years }; return ctx.log(`${job.employer?.name ?? 'Your employer'} sent you on ${nameOf(state, c)}.`, c.icon ?? '📘', 'info'); }

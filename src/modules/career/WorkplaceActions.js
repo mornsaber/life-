@@ -23,7 +23,8 @@ const DIMINISH = [1, 0.6, 0.3, 0];
  * The air thins near the top. The seat itself is scarce (Vacancies: one chief, a few deputies)
  * and the contest is against named rivals, so this only shades the odds once a seat is open.
  */
-const COMPETITION = { 3: 0.92, 4: 0.82, 5: 0.7, 6: 0.6, 7: 0.5, 8: 0.4, 9: 0.32, 10: 0.25 };
+/** The air thins near the top, but a strong record still gets there: one promotion every three or four years mid-career. */
+const COMPETITION = { 3: 0.97, 4: 0.92, 5: 0.86, 6: 0.79, 7: 0.71, 8: 0.62, 9: 0.52, 10: 0.42 };
 
 function withJob(ctx) {
   const job = ctx.state.career.job;
@@ -275,7 +276,9 @@ export const WorkplaceActions = {
       if (data.internal) {
         if (!promote(ctx, level.id)) return;
         if (data.regionId) {
+          state.career.relocating = true;
           ctx.emit('region:relocate', { regionId: data.regionId, reason: `Promoted to ${job.title}.` });
+          delete state.career.relocating;
           job.employer.city = REGIONS[data.regionId]?.name.split(',')[0] ?? job.employer.city;
         }
         return ctx.log(`You took the ${job.title} post${data.regionId ? ` in ${REGIONS[data.regionId]?.name ?? 'another office'}` : ' in another division'}, seniority intact. $${job.salary.toLocaleString()}/yr.`, '🪜', 'good');
@@ -299,7 +302,10 @@ export const WorkplaceActions = {
       if (optionId === 'results') chance = 0.2 + perf * 0.45 + (state.stats.smarts - 50) / 200;
       else if (optionId === 'team') chance = 0.2 + perf * 0.35 + job.boss / 250;
       else chance = job.performance >= 90 ? 0.85 : 0.2;
-      if (data.initiatedByPlayer) chance -= 0.1;
+      // Asking without the record to back it looks presumptuous; asking with it is just asking.
+      if (data.initiatedByPlayer && job.performance < 75) chance -= 0.1;
+      // Passed over before: each eligible review you lose makes the next harder to refuse.
+      chance += Math.min(0.3, (job.missedReviews ?? 0) * 0.08);
       // The air gets thinner near the top: fewer seats, more rivals.
       const nextGrade = Math.max(...status.options.map((o) => o.grade));
       chance *= COMPETITION[nextGrade] ?? 1;
@@ -335,6 +341,7 @@ export const WorkplaceActions = {
         else promote(ctx, status.options[0].id);
         return;
       }
+      job.missedReviews = (job.missedReviews ?? 0) + 1;
       if (nextGrade >= 7) job.passovers = (job.passovers ?? 0) + 1;
       if (job.passovers >= PLATEAU_AFTER) job.plateauUntil = state.character.age + PLATEAU_YEARS;
       // A strong runner-up goes to the top of the list for the next opening.
