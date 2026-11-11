@@ -70,7 +70,7 @@ const scan = (cc, text, where, seen) => {
   const leak = LEAKS[cc] ?? (PACKS.find((p) => p.id === cc)?.nation ? PH_WORDS : null);
   // Universities abroad (a flag, then the name and city) are named as they are.
   // …and so is anything a flag introduces (a war, a deployment): it's about that country.
-  const own = text.replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^—]*—/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^·(]*[·(]/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^.,;!?]*/gu, '');
+  const own = text.replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^.,;!?—]*/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^—]*—/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^·(]*[·(]/gu, '');
   const m = leak && own.match(leak);
   if (m) flag(`${cc} base-country word "${m[0]}": "…${own.slice(Math.max(0, m.index - 80), m.index + 60)}"`, where);
 };
