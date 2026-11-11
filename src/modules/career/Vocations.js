@@ -34,8 +34,8 @@ import { nextLevels } from './Ladder.js';
 import { scopeOfType } from '../../core/PromptScope.js';
 import { addLevelGate, leaveJob } from './CareerEngine.js';
 
-export { compose, VOCATIONS, packFor, vocationOf, setVocationsEnabled } from './vocations/registry.js';
-import { VOCATIONS, packFor, vocationOf } from './vocations/registry.js';
+export { compose, VOCATIONS, packFor, vocationOf, peekVocation, setVocationsEnabled } from './vocations/registry.js';
+import { VOCATIONS, packFor, vocationOf, peekVocation } from './vocations/registry.js';
 
 /**
  * The vocations' own random stream (a seed kept in the save), so adding a pack never shifts the
@@ -56,7 +56,7 @@ const yearsIn = (state, pack) => yearsInProfession(state, pack.professions);
 const traitsOf = (state, pack) => {
   const job = state.career?.job;
   const p = job ? getProfession(job.professionId) : null;
-  const v = vocationOf(state, pack);
+  const v = peekVocation(state, pack);
   return [p?.id, p?.template, v.specialty, ...(pack.traits?.(state) ?? [])].filter(Boolean);
 };
 export const vocationTraits = traitsOf;
@@ -82,7 +82,7 @@ export const nameOf = (state, item) => (typeof item.name === 'function' ? item.n
 
 /** Is a course done and still current? */
 export function courseCurrent(state, pack, course) {
-  const done = vocationOf(state, pack).courses[course.id];
+  const done = peekVocation(state, pack).courses[course.id];
   if (done == null) return false;
   return !course.renew || state.character.age - done < course.renew;
 }
@@ -96,7 +96,7 @@ export function missingCourses(state, pack, level) {
 const isRequired = (c) => Boolean(c.required?.length || c.gateGrade || c.gateMgmt);
 /** The courses open to you now, with why not where not. */
 export function courseOptions(state, pack) {
-  const v = vocationOf(state, pack);
+  const v = peekVocation(state, pack);
   return pack.courses.filter((c) => applies(state, pack, c)).map((c) => {
     let reason = null;
     if (v.inCourse) reason = v.inCourse.id === c.id ? `Under way, done at ${v.inCourse.until}` : 'One course at a time';
@@ -158,7 +158,7 @@ function offerPosting(ctx, pack) {
   const place = p.places ? rng.pick(p.places.filter((c) => COUNTRIES[c] && c !== cc(state))) : null;
   ctx.prompt({
     type: 'vocation.posting', icon: p.icon ?? '🧳', title: nameOf(state, p),
-    text: typeof p.text === 'function' ? p.text(state, place) : `${p.text}${place ? ` In ${COUNTRIES[place].name}.` : ''}`,
+    text: typeof p.text === 'function' ? p.text(state, place) : `${p.text}${place ? ` In ${COUNTRIES[place].flag ?? ''} ${COUNTRIES[place].name}.` : ''}`,
     options: [{ id: 'go', label: `${p.icon ?? '🧳'} Go, for ${p.years} year${p.years > 1 ? 's' : ''}`, hint: p.hint ?? '' }, { id: 'stay', label: '🏠 Not now' }],
     data: { pack: pack.id, id: p.id, place },
   });
@@ -175,7 +175,7 @@ function startPosting(ctx, pack, id, place) {
   ctx.stat('happiness', p.happiness ?? 3);
   const job = state.career?.job;
   if (job && p.performance) job.performance = clamp((job.performance ?? 50) + p.performance, 0, 100);
-  ctx.log(p.start ? p.start(state, place) : `You began ${nameOf(state, p).replace(/^A /, 'a ')}${place ? ` in ${COUNTRIES[place].name}` : ''}.`, p.icon ?? '🧳', 'milestone');
+  ctx.log(p.start ? p.start(state, place) : `You began ${nameOf(state, p).replace(/^A /, 'a ')}${place ? ` in ${COUNTRIES[place].flag ?? ''} ${COUNTRIES[place].name}` : ''}.`, p.icon ?? '🧳', 'milestone');
 }
 
 function awardTick(ctx, pack) {
@@ -300,7 +300,7 @@ export function vocationGate(state, level) {
   const pack = packFor(state);
   if (!job || !pack || !getProfession(job.professionId).levels.includes(level)) return [];
   const missing = missingCourses(state, pack, level).map((c) => nameOf(state, c));
-  const v = vocationOf(state, pack);
+  const v = peekVocation(state, pack);
   if (v.conditionsUntil && state.character.age < v.conditionsUntil) missing.push(`conditions on your practice lifted (age ${v.conditionsUntil})`);
   return missing;
 }

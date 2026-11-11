@@ -7,7 +7,7 @@ import { COUNTRIES, localizeHtml } from '../src/modules/world/Countries.js';
 /** US-only things, and the countries where the same word is genuinely local. */
 export const US_TERMS = [
   [/Great Plains & Pacific|Union Continental Railroad|Atlantic Coast Line/], [/\bSocial Security\b(?! System)/, ['TH', 'LY', 'MM', 'VN', 'KP', 'MT']], [/\b401\(k\)/], [/\bIRS\b/], [/\bMedicaid\b/], [/\bMedicare\b/, ['AU']], [/\bGED\b/, ['CA']], [/\bFAFSA\b/], [/\bDMV\b/],
-  [/\bSAT\b/, ['MX', 'JP']], [/\bCongress(ional)?\b(?! of Trade Unions)(?<!Workers' Congress|Workers&#39; Congress|Trades Union Congress)/, ['IN', 'MX', 'PH', 'CN', 'NG', 'ZA', 'GH', 'MW', 'PE', 'GT', 'MY', 'PG', 'NP', 'LR', 'FM']], [/\bU\.S\./], [/\b(?<!Part-time )Sheriff(?! Principal| Court)/, ['GB']], [/\bTrooper\b/], [/\bDistrict Attorney\b/], [/Selective Service/], [/Hatch Act/],
+  [/\bSAT\b/, ['MX', 'JP']], [/\bCongress(ional)?\b(?! of Trade Unions)(?<!Workers' Congress|Workers&#39; Congress|Trades Union Congress)/, ['IN', 'MX', 'PH', 'CN', 'NG', 'ZA', 'GH', 'MW', 'PE', 'GT', 'MY', 'PG', 'NP', 'LR', 'FM', 'BF']], [/\bU\.S\./], [/\b(?<!Part-time )Sheriff(?! Principal| Court)/, ['GB']], [/\bTrooper\b/], [/\bDistrict Attorney\b/], [/Selective Service/], [/Hatch Act/],
   [/Section 8\b/], [/Peace Corps/], [/AmeriCorps/], [/\bFEMA\b/], [/National Guard/, ['LV', 'BH', 'KW', 'SA', 'CY', 'GR']], [/GI Bill/], [/\bthe VA\b/], [/(?<![\d,.£€¥$])\b911\b(?![\d,])/, ['CA', 'MX', 'PH', 'VE', 'CR', 'AR', 'SA', 'JO', 'MH', 'TO', 'PA', 'LR', 'FM', 'PW', 'BS']], [/\bNCLEX\b/], [/\bUSMLE\b/],
   [/\bNCAA\b|\bNFL\b|\bNBA\b|\bMLB\b/], [/Thanksgiving|Fourth of July/], [/\b(?:the|a|state|your|our) governor\b(?!-General)|\bgovernor's\b|\bGovernor of\b/i, ['MX', 'PH', 'JP', 'KR', 'IN', 'AU', 'CA', 'IT', 'NG', 'KE', 'ID', 'BR', 'RU', 'CO', 'IQ', 'AR', 'VE']],
   [/\b[Cc]ounty\b/, ['GB', 'IE', 'CA', 'KR', 'NZ', 'KE', 'SE', 'RO', 'NO', 'LT', 'EE', 'LR', 'FI', 'TW']], [/\bState (Police|Senate|Legislature|Assembly)\b/, ['AU', 'IN', 'MX', 'DE', 'SO', 'SD', 'LV']], [/\bstate (tax|income tax)\b/i, ['AU', 'IN', 'MX', 'DE', 'CA']],
@@ -23,6 +23,8 @@ export function usLeftovers(cc, text) {
   if (bad) out.push(`${cc} broken text: "…${text.slice(Math.max(0, bad.index - 100), bad.index + 60)}"`);
   for (const [re, ok] of US_TERMS) {
     if (ok?.includes(cc)) continue;
+    // Countries that really dial 911 (their own pack says so).
+    if (re.source.includes('911') && String(COUNTRIES[cc]?.emergency ?? '').includes('911')) continue;
     const m = text.match(re);
     if (m) out.push(`${cc} "${m[0]}": "…${text.slice(Math.max(0, m.index - 70), m.index + 60)}"`);
   }

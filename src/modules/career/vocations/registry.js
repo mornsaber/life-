@@ -32,6 +32,8 @@ export function packFor(state, professionId = state.career?.job?.professionId) {
   if (!professionId || !ENABLED) return null;
   return BY_PROFESSION[professionId] ?? BY_PROFESSION[getProfession(professionId)?.template] ?? null;
 }
+/** The record, for reading (views, eligibility): never creates one, so rendering leaves the state alone. */
+export const peekVocation = (state, pack) => state.vocation?.[pack.id] ?? { courses: {}, inCourse: null, postings: [], awards: [], record: [], conditionsUntil: null, elite: null, history: [] };
 export const vocationOf = (state, pack) => {
   state.vocation ??= {};
   return (state.vocation[pack.id] ??= { courses: {}, inCourse: null, postings: [], awards: [], record: [], conditionsUntil: null, elite: null, history: [] });

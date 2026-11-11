@@ -37,7 +37,7 @@ const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */
 const MX_WORDS = /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja|Servicio Militar Nacional|Policía|Bomberos|Secretaría|Licencia/;
 const PH_WORDS = /(?<!(from|war in|breaks out in|holds in|power in|government of|to|Manila,) (the )?)Philippin|Filipin|\bPNP\b|\bBFP\b|[Bb]arangay|\bSSS\b|PhilHealth|Pag-IBIG|Bilibid|BJMP|(?<!Station |tour in |duty station: )Manila(?!, Philippines)|Malacañang|₱|\bpesos?\b|UPCAT|Lupon|Cebu|Davao|\bPMA\b|Tagalog|\bLTO\b|Lakas|4Ps|PSLINK/;
-const GB_WORDS = /\bBritish\b|(?<!from the )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster|Council Tax|\bGP\b|Universal Credit/;
+const GB_WORDS = /\bBritish\b|(?<!from the |in )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster|Council Tax|\bGP\b|Universal Credit/;
 const LEAKS = {
   SG: GB_WORDS,
   IL: GB_WORDS,
@@ -52,7 +52,7 @@ const LEAKS = {
   NL: /Bundes(?!liga)|Polizei|Feuerwehr|Finanzamt|Abitur|Staatsanwalt|Landtag|Bundestag|Schöffe|\bJVA\b|Kanzler|Rettungsdienst|Leitstelle|Erbschaftsteuer|SCHUFA|Pflichtverteidiger/,
   SE: /Bundes(?!liga)|Polizei|Feuerwehr|Finanzamt|Abitur|Staatsanwalt|Landtag|Bundestag|Schöffe|\bJVA\b|Kanzler|Rettungsdienst|Leitstelle|Erbschaftsteuer|SCHUFA|Pflichtverteidiger/,
   BR: /CDMX|Guardia Nacional|SEDENA|\bcartilla\b|Infonavit|\bIMSS\b|ISSSTE|\bSAT\b|\bpesos?\b|Morena|\bPAN\b|MX\$|Fiscalía|Cruz Roja Mexicana|Servicio Militar Nacional/,
-  IE: /\bBritish\b|(?<!from the )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|A-levels|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster/,
+  IE: /\bBritish\b|(?<!from the |in )United Kingdom|\bNHS\b|HMRC|Crown Prosecution|House of Commons|Police Constable|Chief Constable|Sandhurst|Royal Navy|Royal Air Force|\bRAF\b|Metropolitan Police|Police Scotland|A-levels|Royal Mail|Jobcentre|MI5|MI6|\bSir\b|\bDame\b|\bMBE\b|\bOBE\b|\bLord\b|Baroness|£|Westminster/,
 };
 
 /** US-only posts that no country abroad should show. */
@@ -70,7 +70,7 @@ const scan = (cc, text, where, seen) => {
   const leak = LEAKS[cc] ?? (PACKS.find((p) => p.id === cc)?.nation ? PH_WORDS : null);
   // Universities abroad (a flag, then the name and city) are named as they are.
   // …and so is anything a flag introduces (a war, a deployment): it's about that country.
-  const own = text.replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^—]*—/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^·(]*[·(]/gu, '');
+  const own = text.replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^—]*—/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^·(]*[·(]/gu, '').replace(/[\u{1F1E6}-\u{1F1FF}]{2} [^.,;!?]*/gu, '');
   const m = leak && own.match(leak);
   if (m) flag(`${cc} base-country word "${m[0]}": "…${own.slice(Math.max(0, m.index - 80), m.index + 60)}"`, where);
 };

@@ -3,7 +3,7 @@
  * (career/Vocations.js), on the Work tab.
  */
 import { esc, button, card, kv } from '../Components.js';
-import { packFor, vocationOf, courseOptions, courseCurrent, missingCourses, regulatorOf, nameOf } from '../../modules/career/Vocations.js';
+import { packFor, vocationOf, peekVocation, courseOptions, courseCurrent, missingCourses, regulatorOf, nameOf } from '../../modules/career/Vocations.js';
 import { getProfession } from '../../modules/career/JobTrees.js';
 import { nextLevels } from '../../modules/career/Ladder.js';
 
@@ -15,7 +15,7 @@ export function vocationCard(state) {
   const job = state.career?.job;
   const pack = packFor(state);
   if (!job || !pack) return '';
-  const v = vocationOf(state, pack);
+  const v = peekVocation(state, pack);
   const age = state.character.age;
   const profession = getProfession(job.professionId);
   // What the next rungs wait on.

@@ -58,7 +58,7 @@ export const AGENCIES = {
   ],
   eliteOdds: 0.035,
   elite: [
-    { id: 'sac', name: (s) => (SPIES.includes(prof(s)) ? 'Chief of Station in a major capital' : 'Special Agent in Charge of a major field office'), icon: '🏢', minGrade: 8, minYears: 18, years: 4, prestige: 3, stipend: 10000, text: 'The director wants you running one of the agency\'s most important offices.' },
+    { id: 'sac', name: (s) => (SPIES.includes(prof(s)) ? 'Chief of Station in a major capital' : (s.character?.countryId ?? 'US') === 'US' ? 'Special Agent in Charge of a major field office' : 'Head of a regional investigations bureau'), icon: '🏢', minGrade: 8, minYears: 18, years: 4, prestige: 3, stipend: 10000, text: 'The director wants you running one of the agency\'s most important offices.' },
     { id: 'director', name: (s) => (SPIES.includes(prof(s)) ? 'Deputy Director of the agency' : 'Deputy Director of the bureau'), icon: '🏛️', minGrade: 9, minYears: 24, minAwards: 1, years: 4, prestige: 5, stipend: 20000, text: 'You\'ve been chosen as the agency\'s deputy director.' },
   ],
 };
