@@ -18,6 +18,7 @@ import { hasHousingBenefit, healthPremium } from '../../modules/life/Finances.js
 import { CARD_TYPES, cardApr, applyCheck, minimumPayoff } from '../../modules/life/CreditCards.js';
 import { standardDeduction, auditOdds, PASSPORT_THRESHOLD } from '../../modules/life/Taxes.js';
 import { regionsHere } from '../../modules/life/Regions.js';
+import { moneyDayCard } from './MoneyDayCard.js';
 
 /** Your wallet: cards, rewards, payoff strategy and balance transfers. */
 function walletSection(state) {
@@ -186,5 +187,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: regionsHere(state).length })}`, { icon: '🗺️' });
 
-  return `${finances}${empireCard(state)}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
+  return `${finances}${moneyDayCard(state)}${empireCard(state)}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }
