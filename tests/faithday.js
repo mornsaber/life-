@@ -113,7 +113,7 @@ const tests = {
     const cash = state.finances.cash;
     state.prompts = [];
     engine.ageUp();
-    assert.ok(state.log.some((l) => /sick pay/.test(l.text)) || state.finances.cash !== cash);
+    assert.ok(state.log.flatMap((b) => b.entries ?? []).some((l) => /sick pay/.test(l.text)), 'sick pay drawn');
     state.prompts = [];
     engine.dispatch('faithDay.leave', 'friendly');
     assert.equal(state.faithDay.clubs.length, 0);

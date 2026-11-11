@@ -3,6 +3,7 @@
  * life in prison (what to do with the year, appeals, parole, death row);
  * and second chances (sealing records, pardons).
  */
+import { lawDayCard } from './LawDayCard.js';
 import { esc, money, button, card, chip, kv, empty, meter, disclosure } from '../Components.js';
 import { lifeOf, judgeActions, SPECIAL_COURTS } from '../../modules/legal/JudicialLife.js';
 import { SEVERITY_LABEL } from '../../modules/legal/index.js';
@@ -101,7 +102,7 @@ function civilCard(state) {
 }
 
 const COUNTRY_NAME = (state) => COUNTRIES[state.character.countryId]?.name ?? 'The country';
-const DEATH_PENALTY_LABEL = { active: 'carries out executions', moratorium: 'has the death penalty but a moratorium on executions', rare: 'has the death penalty but almost never uses it' };
+const DEATH_PENALTY_LABEL = { routine: 'executes most of those it condemns', active: 'carries out executions', moratorium: 'has the death penalty but a moratorium on executions', rare: 'has the death penalty but almost never uses it' };
 
 function reentryCard(state) {
   const r = state.legal.reentry;
@@ -176,7 +177,7 @@ export function legalView(state) {
     ['Misdemeanors', l.record.filter((r) => r.severity === 'misdemeanor' && !r.sealed).length],
     ['Things that could still catch up with you', l.investigations.length ? `<span class="neg">${l.investigations.length}</span>` : '0'],
   ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(dp?.where ?? (state.character.countryId ? COUNTRY_NAME(state) : stateOf(state).name))} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}
-  ${prisonCard(state)}${reentryCard(state)}
+  ${lawDayCard(state)}${prisonCard(state)}${reentryCard(state)}
   ${civilCard(state)}
   ${benchCard(state)}
   ${secondChanceCard(state)}

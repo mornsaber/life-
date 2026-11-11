@@ -36,13 +36,16 @@ import { yearNow } from '../world/Eras.js';
  * onArrest can intercept an arrest on the spot (a bribe in a corrupt country) and returns true
  * when it has dealt with it.
  */
-const HOOKS = { openCase: null, onArrest: null };
+const HOOKS = { openCase: null, onArrest: null, deathEra: null, facilityEra: null };
 export const setJusticeHooks = (h) => Object.assign(HOOKS, h);
 
 /** The courts where you live: null in the US (state and federal rules below). */
 export const justiceHere = (state) => JUSTICE[state.character.countryId] ?? null;
 /** Capital punishment where you live: { status, method, where } or null. */
 export function deathPenaltyHere(state) {
+  // The law of the year (legal/LawOfTheDay.js): undefined leaves it to today's law.
+  const era = HOOKS.deathEra?.(state);
+  if (era !== undefined) return era;
   const j = justiceHere(state);
   if (j) return j.death ? { ...j.death, where: COUNTRIES[state.character.countryId].name } : null;
   const st = stateOf(state);
@@ -70,6 +73,9 @@ const PRIVATE_FACILITY = ['Crossroads Correctional Center', 'Prairie Correctiona
 
 /** Where you serve: county jail for short terms, a state or federal prison — or a privately run one under contract. */
 export function assignFacility(state, rng, offense, years) {
+  // The prisons of an earlier year (legal/LawOfTheDay.js): Newgate, the convict ships, Sing Sing.
+  const era = HOOKS.facilityEra?.(state, offense, years);
+  if (era) return era;
   const j = justiceHere(state);
   if (j) {
     const city = regionOf(state).name.split(',')[0];
@@ -332,10 +338,10 @@ function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
     // Capital punishment: only for capital crimes, only after a trial, only in states that have it — and rarely even then.
     const dp = deathPenaltyHere(state);
     const death = dp?.status;
-    const odds = { active: 0.03, moratorium: 0.02, rare: 0.01 }[death] ?? 0;
+    const odds = { routine: 0.4, active: 0.03, moratorium: 0.02, rare: 0.01 }[death] ?? 0;
     const capital = offense.capital || (drugLaw?.death && offense.drug === 'trafficking');
     if (!abroad && !minor && ((capital && !plea && odds > 0 && rng.chance(drugLaw?.death ? odds * 4 : odds)) || fugitive?.deathRow)) {
-      inc.deathRow = { state: stateIdOf(state), sentencedAge: state.character.age };
+      inc.deathRow = { state: stateIdOf(state), sentencedAge: state.character.age, ...(state.era && death === 'routine' ? { routine: true } : {}), method: dp.method, where: dp.where };
       inc.yearsLeft = inc.total = 99;
       inc.facility = `death row in ${dp.where}`;
       state.legal.record[state.legal.record.length - 1].sentence = 'death sentence';

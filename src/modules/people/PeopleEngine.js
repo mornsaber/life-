@@ -244,7 +244,7 @@ function partnerTick(ctx) {
     partner.relationship = clampRel(partner.relationship - 10);
     ctx.log(`${partner.firstName} broke up with you.`, '💔', 'bad');
     ctx.stat('happiness', -8);
-  } else if (partner.relation === 'spouse' && partner.relationship < 20 && rng.chance(0.3) && !state.prompts.some((p) => p.type === 'people.divorce')) {
+  } else if (partner.relation === 'spouse' && partner.relationship < 20 && !DIVORCE_BAR.fn?.(state) && rng.chance(0.3) && !state.prompts.some((p) => p.type === 'people.divorce')) {
     ctx.prompt({
       type: 'people.divorce',
       icon: '💔',
@@ -422,6 +422,8 @@ function candidates(ctx, n) {
 /* Divorce                                                             */
 /* ------------------------------------------------------------------ */
 
+/** Whether divorce is barred here and now (legal/LawOfTheDay.js sets it): a reason or null. */
+export const DIVORCE_BAR = { fn: null };
 export function divorce(ctx, spouse, { contested = false } = {}) {
   const { state, rng } = ctx;
   const p = state.people;

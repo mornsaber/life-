@@ -249,7 +249,8 @@ export function deathRowTick(ctx) {
     ctx.log('A court found errors at your trial. Your death sentence was commuted to life.', '⚖️', 'good');
     return;
   }
-  const dp = deathPenaltyIn(row.state);
+  // Sentenced under the law of an earlier year: its method, and its executioner.
+  const dp = row.routine ? { status: 'active', method: row.method, where: row.where, country: true } : deathPenaltyIn(row.state);
   const status = dp?.status;
   if (status === 'active' && years >= DEATH_ROW_YEARS_BEFORE_EXECUTION && rng.chance(0.08)) {
     ctx.die(dp.country ? `Executed by ${dp.method} in ${dp.where}` : `Executed by the State of ${STATES[row.state].name}`);
