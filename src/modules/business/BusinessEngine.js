@@ -57,6 +57,7 @@ import {
 import {
   currentBusiness, typeOf, holdsLicense, startEligibility, fundingCheck, ownerSkill, debtBalance, guaranteedDebt,
   yearFinancials, valuation, newBusiness, exitProceeds, annualPayment, businessName, SS_WAGE_CAP, LICENSEE_ONLY, PHASE_DEMAND, premisesPrice,
+  addInvestor, fitInvestors,
 } from './Business.js';
 import {
   FRANCHISE_BRANDS, FDD_COST, TRANSFER_FEE, startupCost, franchiseEligibility, franchisorEligibility, franchisorTick, franchiseeTick, deBrand,
@@ -1068,7 +1069,8 @@ export const BusinessEngine = {
       biz.mso = true;
       biz.licensedManager = true;
       biz.ownerPct = Math.round(Math.min(biz.ownerPct, 0.85) * 10000) / 10000;
-      biz.investors.push({ round: 'licensed partner', pct: Math.round((1 - biz.ownerPct) * 10000) / 10000, invested: 0, partner: 'Licensed professional partner' });
+      biz.investors.push({ round: 'licensed partner', pct: Math.max(0, Math.round((1 - biz.ownerPct - biz.investors.reduce((s, i) => s + i.pct, 0)) * 10000) / 10000), invested: 0, partner: 'Licensed professional partner' });
+      fitInvestors(biz);
       biz.licenseGraceUntil = null;
       ctx.log(`${biz.name} restructured: a licensed partner owns the practice, and your management-services company runs everything else for about ${Math.round(biz.ownerPct * 100)}% of the profit.`, '🪪', 'milestone');
     },
@@ -1156,7 +1158,7 @@ export const BusinessEngine = {
       const raised = rng.int(...round.raise);
       const dilution = Math.round(rng.float(...round.dilution) * 100) / 100;
       biz.ownerPct = Math.round(biz.ownerPct * (1 - dilution) * 10000) / 10000;
-      biz.investors.push({ round: round.id, pct: dilution, invested: raised });
+      addInvestor(biz, { round: round.id, pct: dilution, invested: raised });
       biz.roundsRaised = (biz.roundsRaised ?? 0) + 1;
       biz.cash += raised;
       biz.lastRound = { id: round.id, post: Math.round(raised / dilution), year: biz.years };
@@ -1511,7 +1513,7 @@ export const BusinessEngine = {
         const raised = need * 2;
         biz.cash += raised;
         biz.ownerPct = Math.round(biz.ownerPct * 0.8 * 10000) / 10000;
-        biz.investors.push({ round: 'bridge', pct: 0.2, invested: raised });
+        addInvestor(biz, { round: 'bridge', pct: 0.2, invested: raised });
         ctx.log(`Your investors put in a ${money(raised)} bridge round. You gave up a fifth of your stake.`, '🌉', 'warn');
       } else if (optionId === 'cut' && biz.staff.headcount >= 3) {
         const cut = Math.round(biz.staff.headcount / 3);

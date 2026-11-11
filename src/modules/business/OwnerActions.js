@@ -13,7 +13,7 @@ import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor } from '../career/Ladder.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
-import { currentBusiness, typeOf, valuation, exitProceeds, debtBalance } from './Business.js';
+import { currentBusiness, typeOf, valuation, exitProceeds, debtBalance, addInvestor } from './Business.js';
 import {
   businessOrg, syncBusinessOrg, competitorsOf, closeBranch, openBranch, sizeForHeadcount, ownerPosition, dissolve, recruitCandidates, hireCandidate,
 } from '../org/Businesses.js';
@@ -333,7 +333,7 @@ export const OwnerActions = {
     const share = Math.round((theirs / (mine + theirs)) * 100) / 100;
     if (share > 0.6) return ctx.toast(`${target.name} is bigger than you — they'd be buying you.`, 'warn');
     biz.ownerPct = Math.round(biz.ownerPct * (1 - share) * 10000) / 10000;
-    biz.investors.push({ round: 'merger', pct: share, invested: 0, partner: target.owner.name });
+    addInvestor(biz, { round: 'merger', pct: share, invested: 0, partner: target.owner.name });
     absorb(state, biz, target, 'merged');
     ctx.log(`${biz.name} merged with ${target.name}. ${target.owner.name} owns ${Math.round(share * 100)}% of the combined company; you own ${Math.round(biz.ownerPct * 100)}%.`, '🔗', 'milestone');
   },

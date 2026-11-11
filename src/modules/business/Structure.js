@@ -27,7 +27,7 @@ import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { charge } from './TaxBook.js';
 import { businessOrg, closeBranch, syncBusinessOrg, locationsByRegion, npcBusiness } from '../org/Businesses.js';
 import { addToGroup, holdingsCap, conglomerateOf } from './Conglomerate.js';
-import { exitProceeds } from './Business.js';
+import { exitProceeds, fitInvestors } from './Business.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
@@ -262,6 +262,7 @@ export const PublicActions = {
     if (biz.cash < cost) return ctx.toast(`A 5% buyback costs ${money(cost)} — the company has ${money(biz.cash)}.`, 'warn');
     biz.cash -= cost;
     biz.ownerPct = Math.round((biz.ownerPct / (1 - pct)) * 10000) / 10000;
+    fitInvestors(biz);
     ctx.log(`${biz.name} bought back ${Math.round(pct * 100)}% of its stock (${money(cost)}). Your stake rose to ${Math.round(biz.ownerPct * 100)}%.`, '🔁', 'finance');
   },
   /** Buy out the public shareholders at a premium and delist. */

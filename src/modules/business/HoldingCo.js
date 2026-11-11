@@ -16,7 +16,7 @@ import { clamp } from '../../core/Random.js';
 import { randomName } from '../../core/State.js';
 import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
-import { valuation } from './Business.js';
+import { valuation, fitInvestors } from './Business.js';
 import { syncBusinessOrg, releaseBusinessOrg, locationsByRegion, openBranch } from '../org/Businesses.js';
 import { marketRent } from '../realestate/PropertyMarket.js';
 
@@ -268,6 +268,7 @@ export function mergeSubsidiaries(ctx, arg, { maxScale }) {
   a.initiatives = { ...(b.initiatives ?? {}), ...(a.initiatives ?? {}) };
   a.licenses = { ...(b.licenses ?? {}), ...(a.licenses ?? {}) };
   a.investors = [...(a.investors ?? []), ...(b.investors ?? [])];
+  fitInvestors(a);
   a.family = [...new Set([...(a.family ?? []), ...(b.family ?? [])])];
   a.taxBook = { expense: (a.taxBook?.expense ?? 0) + (b.taxBook?.expense ?? 0) + cost, capex: (a.taxBook?.capex ?? 0) + (b.taxBook?.capex ?? 0) };
   if (a.lastYear) a.valuation = valuation(a, a.lastYear);

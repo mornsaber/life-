@@ -40,6 +40,21 @@ import { OPERATIONS, opsOf, newOps, opsRevenue, fleetUpkeep } from './Operations
 import { businessInEra, businessFrom, smallBizLoansExist, credentialRequired, businessUntil, yearNow } from '../world/Eras.js';
 
 export const SS_WAGE_CAP = 176100;
+
+/** A new investor takes `inv.pct` of the whole company: you and the earlier investors are diluted alike. */
+export function addInvestor(biz, inv) {
+  biz.investors ??= [];
+  for (const i of biz.investors) i.pct = Math.round(i.pct * (1 - inv.pct) * 10000) / 10000;
+  biz.investors.push(inv);
+  fitInvestors(biz);
+}
+/** Investors own what you don't: never more than 1 − your stake. */
+export function fitInvestors(biz) {
+  const room = Math.max(0, 1 - (biz.ownerPct ?? 1));
+  const total = (biz.investors ?? []).reduce((s, i) => s + (i.pct ?? 0), 0);
+  if (total > room + 0.0001 && total > 0) for (const i of biz.investors) i.pct = Math.floor((i.pct * room / total) * 10000) / 10000;
+  biz.investors = (biz.investors ?? []).filter((i) => i.pct > 0.0001);
+}
 /** Net revenue effect of a price point (price × volume) and policy cost multipliers — see OwnerActions. */
 /** Premium prices pay when quality earns them; budget prices win volume when it doesn't. */
 export const priceFactor = (level, quality) => (level === 'premium' ? 0.94 + (quality - 40) / 300 : level === 'budget' ? 0.96 + (50 - quality) / 500 : 1);

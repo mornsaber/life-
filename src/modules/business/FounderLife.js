@@ -12,6 +12,7 @@
  *
  * biz.founder = { cofounder, badYears, prefs, boardControl }
  */
+import { addInvestor, fitInvestors } from './Business.js';
 import { Random, clamp } from '../../core/Random.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { closeBusiness, exitBusiness } from './BusinessEngine.js';
@@ -76,10 +77,10 @@ export const FounderResolvers = {
       case 'runway:personal': { const amt = Math.round(Math.max(0, state.finances.cash) * 0.6); if (amt > 0) { ctx.spend(amt, `Personal money into ${biz.name}`); biz.cash += amt; } return ctx.log(`You put ${money(amt)} of your own savings into the company.`, '💳', 'warn'); }
       case 'poach:counter': biz.cash -= 150000; return ctx.log('You matched it, with stock. She stayed.', '💵', 'good');
       case 'poach:let': biz.quality = Math.max(0, (biz.quality ?? 50) - 8); return ctx.log('She left. Three others followed her within a year.', '👋', 'warn');
-      case 'termsheet:take': { const amt = Math.max(2000000, (biz.valuation ?? 1000000) * 0.5); biz.cash += amt; biz.ownerPct = Math.round(biz.ownerPct * 0.8 * 10000) / 10000; f.prefs = 2; f.boardControl = true; biz.investors.push({ round: 'growth', pct: 0.2, invested: amt }); return ctx.log(`You signed. ${money(amt)} in the bank — and a board that can sell the company over your head.`, '✍️', 'warn'); }
-      case 'termsheet:negotiate': { const amt = Math.max(1000000, (biz.valuation ?? 1000000) * 0.3); biz.cash += amt; biz.ownerPct = Math.round(biz.ownerPct * 0.85 * 10000) / 10000; biz.investors.push({ round: 'growth', pct: 0.15, invested: amt }); return ctx.log(`You took less money on clean terms: ${money(amt)}, one board seat, no preference stack.`, '🤝', 'good'); }
+      case 'termsheet:take': { const amt = Math.max(2000000, (biz.valuation ?? 1000000) * 0.5); biz.cash += amt; biz.ownerPct = Math.round(biz.ownerPct * 0.8 * 10000) / 10000; f.prefs = 2; f.boardControl = true; addInvestor(biz, { round: 'growth', pct: 0.2, invested: amt }); return ctx.log(`You signed. ${money(amt)} in the bank — and a board that can sell the company over your head.`, '✍️', 'warn'); }
+      case 'termsheet:negotiate': { const amt = Math.max(1000000, (biz.valuation ?? 1000000) * 0.3); biz.cash += amt; biz.ownerPct = Math.round(biz.ownerPct * 0.85 * 10000) / 10000; addInvestor(biz, { round: 'growth', pct: 0.15, invested: amt }); return ctx.log(`You took less money on clean terms: ${money(amt)}, one board seat, no preference stack.`, '🤝', 'good'); }
       case 'termsheet:pass': return ctx.log('You passed. Your board thought you were mad.', '🙅', 'info');
-      case 'cofounder:buyout': { const cost = Math.round((biz.valuation ?? 0) * 0.08); ctx.spend(cost, 'Buying out your cofounder', { allowDebt: true }); biz.ownerPct = Math.min(1, biz.ownerPct + 0.1); f.cofounder = false; biz.quality = Math.max(0, (biz.quality ?? 50) - 5); return ctx.log('You bought your cofounder out. The company is more yours, and quieter.', '💼', 'info'); }
+      case 'cofounder:buyout': { const cost = Math.round((biz.valuation ?? 0) * 0.08); ctx.spend(cost, 'Buying out your cofounder', { allowDebt: true }); biz.ownerPct = Math.min(1, biz.ownerPct + 0.1); fitInvestors(biz); f.cofounder = false; biz.quality = Math.max(0, (biz.quality ?? 50) - 5); return ctx.log('You bought your cofounder out. The company is more yours, and quieter.', '💼', 'info'); }
       case 'cofounder:yield': f.cofounder = 'ceo'; ctx.stat('stress', -8); return ctx.log('Your cofounder took the CEO title. You went back to building the product, and slept better.', '🤝', 'info');
       default: f.cofounder = false; if (rng.chance(f.boardControl ? 0.3 : 0.6)) return ctx.log('The board backed you. Your cofounder left, and took their friends.', '⚔️', 'warn');
         ctx.log('The board backed your cofounder. You were removed as CEO of the company you started; they bought out your stake.', '⚔️', 'bad'); return exitBusiness(ctx, Math.round((biz.valuation ?? 0) * 0.8), 'Removed as CEO by the board');
