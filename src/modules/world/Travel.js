@@ -124,6 +124,8 @@ export function bestEntry(state, dest) {
 }
 
 /** Why you can't go there (null: you can). */
+/** The travel of an earlier year (world/TravelOfTheDay.js): voyages too long to take, and their price. */
+export const TRAVEL_ERA = { block: null, cost: null };
 export function travelBlock(state, dest) {
   const here = state.character.countryId ?? 'US';
   if (dest === here) return 'You live here';
@@ -132,6 +134,8 @@ export function travelBlock(state, dest) {
   if (state.legal.incarceration) return 'In custody';
   const out = exitBlock(state);
   if (out) return out;
+  const then = TRAVEL_ERA.block?.(state, dest);
+  if (then) return then;
   const res = residencyOf(state);
   if (res?.status === 'undocumented') return 'Undocumented: if you leave, you can\'t come back';
   if (res?.status === 'asylum') return 'Leaving would abandon your asylum claim';
@@ -152,7 +156,7 @@ export function tripCost(state, dest, tier) {
   const distance = continentOf(here) === continentOf(dest) ? 0.65 : 1.15;
   const detour = [here, dest].some((c) => ['RU', 'IR', 'KP', 'SY', 'VE'].includes(c)) ? 1.4 : 1;
   const entry = bestEntry(state, dest);
-  return Math.round((TRIPS[tier].base * clamp(0.4 + priceOf(dest) * 0.9, 0.5, 1.6) * distance * detour + (entry.cost ?? 0)) / 10) * 10;
+  return Math.round((TRIPS[tier].base * clamp(0.4 + priceOf(dest) * 0.9, 0.5, 1.6) * distance * detour * (TRAVEL_ERA.cost?.(state, dest) ?? 1) + (entry.cost ?? 0)) / 10) * 10;
 }
 
 /** "Do not travel": active wars and failed states. */

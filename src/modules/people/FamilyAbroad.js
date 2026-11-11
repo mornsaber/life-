@@ -17,6 +17,9 @@ import { fromPacks } from '../world/packs/index.js';
 /** Fees on sending money abroad (World Bank average ≈ 6%). */
 export const REMITTANCE_FEE = 0.06;
 export const VISIT_COST = 2200;
+/** A visit in an earlier year (world/TravelOfTheDay.js): { cost, j: { icon, time }, blocked }. */
+export const VISIT_ERA = { fn: null };
+export const visitCost = (state, p) => VISIT_ERA.fn?.(state, p, VISIT_COST)?.cost ?? VISIT_COST;
 
 /**
  * Bringing a parent to live with you (2025).
@@ -179,11 +182,15 @@ export const FamilyAbroadModule = {
       const p = state.people.list.find((x) => x.id === id);
       if (!p || !livesAbroad(state, p)) return;
       if (state.yearly[`family.visit.${id}`]) return ctx.toast('One trip a year.', 'warn');
-      if (!ctx.spend(VISIT_COST, `Trip to see ${p.firstName}`, { credit: true })) return ctx.toast(`Flights and a week away: about $${VISIT_COST.toLocaleString()}.`, 'warn');
+      const then = VISIT_ERA.fn?.(state, p, VISIT_COST);
+      if (then?.blocked) return ctx.toast(then.blocked.replace(': nobody goes for a holiday', ''), 'warn');
+      const cost = then?.cost ?? VISIT_COST;
+      if (!ctx.spend(cost, `Trip to see ${p.firstName}`, { credit: true })) return ctx.toast(`The journey and a week away: about $${cost.toLocaleString()}.`, 'warn');
       state.yearly[`family.visit.${id}`] = 1;
       p.relationship = clampRel(p.relationship + 12);
       ctx.stat('happiness', 5);
-      ctx.log(`You flew to ${COUNTRIES[p.livesIn]?.name ?? 'see family'} to spend a week with ${p.firstName}.`, '✈️', 'good');
+      const j = then?.j;
+      ctx.log(j && j.mode !== 'jet' ? `${j.icon} ${j.time[0].toUpperCase()}${j.time.slice(1)} to ${COUNTRIES[p.livesIn]?.name ?? 'see family'}, to spend time with ${p.firstName}.` : `You flew to ${COUNTRIES[p.livesIn]?.name ?? 'see family'} to spend a week with ${p.firstName}.`, j?.icon ?? '✈️', 'good');
     },
     sponsor(ctx, id) {
       const { state, rng } = ctx;

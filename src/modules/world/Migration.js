@@ -60,6 +60,8 @@ export function departureBlock(state) {
 const VISA_FROM = { workingHoliday: 1975, nomad: 2015, investor: 1990, retiree: 1960, transfer: 1970 };
 
 /** Your routes into a country: as a citizen, a returning resident, or by visa. */
+/** Routes of an earlier year (world/TravelOfTheDay.js): a steerage passage where the door was open. */
+export const ERA_ROUTES = { fn: null };
 export function routesTo(state, to) {
   const here = countryIdOf(state);
   if (to === here) return [];
@@ -72,6 +74,8 @@ export function routesTo(state, to) {
   const free = freeMovementTo(citizenshipsOf(state), to) ?? subjectRight(state, to);
   if (free && !bannedFrom(state, to)) return [{ kind: 'freeMovement', ok: true, odds: 1, fee: 0, label: `🤝 Move freely (${free})`, scheme: free }];
   const banned = bannedFrom(state, to);
+  const era = !banned && ERA_ROUTES.fn?.(state, to);
+  if (era) return [era];
   const visas = Object.keys(IMMIGRATION[to].visas).filter((kind) => IMMIGRATION[to].visas[kind] && !(VISA_FROM[kind] > yearNow(state))).map((kind) => (banned
     ? { kind, ok: false, reason: `Barred from re-entry until age ${state.migration.bans[to]}`, label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }
     : { kind, ...visaEligibility(state, to, kind), label: `${VISA_KINDS[kind].icon} ${IMMIGRATION[to].visas[kind].name}` }));
@@ -270,7 +274,7 @@ function finishEmigration(ctx, to, kind) {
     return ctx.toast(`Fled to ${COUNTRIES[to].name}`, 'warn');
   }
   if (!ctx.spend(EMIGRATION_COST, `Move to ${COUNTRIES[to].name}`, { credit: true })) return ctx.toast(`An international move costs $${EMIGRATION_COST.toLocaleString()}.`, 'warn');
-  arrive(ctx, to, { visa: ['citizen', 'resident'].includes(kind) ? null : kind, keepJob: kind === 'transfer' });
+  arrive(ctx, to, { visa: ['citizen', 'resident'].includes(kind) ? null : kind === 'passage' ? 'freeMovement' : kind, keepJob: kind === 'transfer' });
   ctx.toast(`Moved to ${COUNTRIES[to].name}`, 'good');
 }
 
@@ -485,7 +489,16 @@ export const MigrationModule = {
         }
         ctx.log(`After a frightening journey you crossed into ${COUNTRIES[to].name} without papers. Officially, you're not here: cash work, no benefits, and always looking over your shoulder.`, '🌙', 'warn');
       }
-      if (!['citizen', 'resident', 'asylum', 'freeMovement', 'irregular'].includes(kind)) {
+      if (kind === 'passage') {
+        if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast('One try a year.', 'warn');
+        bumpYearly(state, `migration.apply.${to}`);
+        ctx.spend(route.fee, `Passage to ${COUNTRIES[to].name}`, { credit: true });
+        if (!rng.chance(route.odds)) {
+          ctx.stat('happiness', -4);
+          ctx.log(`${route.rule.name}: you were turned away. You can try again next year.`, '🛂', 'bad');
+          return ctx.toast('Turned away', 'bad');
+        }
+      } else if (!['citizen', 'resident', 'asylum', 'freeMovement', 'irregular'].includes(kind)) {
         if (yearlyCount(state, `migration.apply.${to}`)) return ctx.toast(`One application to ${COUNTRIES[to].name} a year.`, 'warn');
         bumpYearly(state, `migration.apply.${to}`);
         ctx.spend(route.fee, `${route.rule.name} application`, { credit: true });

@@ -16,7 +16,8 @@ import { bestFriend, friendGroupsOf, groupsOf } from '../../modules/people/Frien
 import { TRAITS, traitOf, closeness, interactEligibility, isRomantic } from '../../modules/people/Bonds.js';
 import { nationalityCode, nationalityName } from '../../modules/world/Immigration.js';
 import { COUNTRIES, priceLevel } from '../../modules/world/Countries.js';
-import { livesAbroad, parentVisaCheck, VISIT_COST, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
+import { livesAbroad, parentVisaCheck, visitCost, REMITTANCE_FEE } from '../../modules/people/FamilyAbroad.js';
+import { contactThen, journey } from '../../modules/world/TravelOfTheDay.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
 import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
@@ -59,7 +60,7 @@ import { toned, personTone } from '../../modules/people/SkinTone.js';
 import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
 import { flagImg } from '../Flags.js';
 import { circlesNow } from '../../modules/life/Reputation.js';
-import { hasTech, eraYear } from '../../modules/world/Eras.js';
+import { hasTech, eraYear, yearNow } from '../../modules/world/Eras.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 /** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
@@ -152,7 +153,9 @@ function abroadButtons(state, p) {
   const regular = state.people.remit?.[p.id];
   const visa = ['mother', 'father'].includes(p.relation) ? parentVisaCheck(state, p) : null;
   return [
-    button('✈️ Visit', 'familyAbroad.visit', { arg: p.id, variant: 'tiny', hint: money(VISIT_COST), disabled: Boolean(state.yearly[`family.visit.${p.id}`]) }),
+    button(`${journey(state, state.character.countryId ?? 'US', p.livesIn).icon} Visit`, 'familyAbroad.visit', { arg: p.id, variant: 'tiny', hint: money(visitCost(state, p)), disabled: Boolean(state.yearly[`family.visit.${p.id}`]) }),
+    button('✉️ Write', 'travelDay.write', { arg: p.id, variant: 'tiny ghost', hint: contactThen(state, p.livesIn).letterTime, disabled: state.travelDay?.wrote?.[p.id] === yearNow(state) }),
+    contactThen(state, p.livesIn).phone ? button(contactThen(state, p.livesIn).video ? '📹 Video call' : '📞 Call', 'travelDay.call', { arg: p.id, variant: 'tiny ghost', hint: money(contactThen(state, p.livesIn).callCost), disabled: state.travelDay?.called?.[p.id] === yearNow(state) }) : '',
     button('💸 Send $1,000', 'familyAbroad.send', { arg: `${p.id}:1000`, variant: 'tiny', hint: `+${Math.round(REMITTANCE_FEE * 100)}% fees` }),
     button(regular ? '⏹️ Stop monthly transfer' : '🔁 Send $3,000/yr', 'familyAbroad.regular', { arg: `${p.id}:${regular ? 0 : 3000}`, variant: 'tiny ghost' }),
     visa ? button('🛂 Sponsor to live here', 'familyAbroad.sponsor', { arg: p.id, variant: 'tiny', hint: visa.ok ? `${Math.round(visa.odds * 100)}% · ${money(visa.fee)}` : visa.reason, disabled: !visa.ok }) : '',
