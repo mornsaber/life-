@@ -23,7 +23,7 @@
  * state.vocation[packId] = { courses: { id: ageDone }, inCourse: { id, until }, postings: [{ id, age, until }],
  *   awards: [id], record: [{ age, id, outcome }], conditionsUntil, elite: { id, since, until } | null, history: [id] }
  */
-import { clamp } from '../../core/Random.js';
+import { clamp, Random } from '../../core/Random.js';
 import { addHonor, yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
 import { yearNow } from '../world/Eras.js';
 import { crownOf } from '../world/Crown.js';
@@ -53,6 +53,16 @@ export const VOCATIONS = Object.fromEntries(PACKS.map((p) => [p.id, compose(p)])
 const BY_PROFESSION = {};
 for (const pack of Object.values(VOCATIONS)) for (const id of pack.professions) BY_PROFESSION[id] = pack;
 
+/**
+ * The vocations' own random stream (a seed kept in the save), so adding a pack never shifts the
+ * rolls of the rest of the game: a layoff or a diagnosis comes out the same with or without it.
+ */
+function vrng(state) {
+  state.vocation ??= {};
+  const seed = state.vocation.seed ?? (((state.world?.seed ?? 1) * 2654435761) >>> 0);
+  state.vocation.seed = (seed * 1664525 + 1013904223) >>> 0;
+  return new Random(state.vocation.seed);
+}
 let ENABLED = true;
 /** Tests compare careers with and without the packs. */
 export const setVocationsEnabled = (on) => { ENABLED = on; };
@@ -153,7 +163,7 @@ function takeCourse(ctx, pack, id) {
     return ctx.log(`You started ${nameOf(state, c)}: ${c.years} year${c.years > 1 ? 's' : ''} alongside the job.`, c.icon ?? '📘', 'info');
   }
   // A pass is likely, not certain: the exams that matter are hard.
-  if (c.passRate && !ctx.rng.chance(clamp(c.passRate + (state.stats.smarts - 60) / 200, 0.2, 0.97))) {
+  if (c.passRate && !vrng(state).chance(clamp(c.passRate + (state.stats.smarts - 60) / 200, 0.2, 0.97))) {
     return ctx.log(`You sat ${nameOf(state, c)} and failed. You can try again next year.`, '📝', 'bad');
   }
   v.courses[c.id] = state.character.age;
@@ -167,7 +177,8 @@ function takeCourse(ctx, pack, id) {
 /* ------------------------------------------------------------------ */
 
 function offerPosting(ctx, pack) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const v = vocationOf(state, pack);
   if (postingOf(state) || v.postings.some((p) => p.until > state.character.age)) return false;
   const open = (pack.postings ?? []).filter((p) => applies(state, pack, p) && gradeOf(state) >= (p.minGrade ?? 0) && yearsIn(state, pack) >= (p.minYears ?? 0) && !(p.once && v.postings.some((x) => x.id === p.id)));
@@ -197,7 +208,8 @@ function startPosting(ctx, pack, id, place) {
 }
 
 function awardTick(ctx, pack) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const v = vocationOf(state, pack);
   for (const a of pack.awards ?? []) {
     if (v.awards.includes(a.id) || !applies(state, pack, a)) continue;
@@ -220,7 +232,8 @@ export function regulatorOf(state, pack) {
   return r && yearNow(state) >= (r.from ?? 0) ? r : null;
 }
 function complaintTick(ctx, pack) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const reg = regulatorOf(state, pack);
   if (!reg || state.prompts.some((q) => q.type === 'vocation.complaint')) return false;
   const odds = clamp((pack.complaintOdds ?? 0.02) + (pack.risk?.(state) ?? 0), 0, 0.25);
@@ -245,7 +258,8 @@ function complaintTick(ctx, pack) {
 /** none · advice · warning · conditions · suspension · erasure */
 const OUTCOMES = ['none', 'advice', 'warning', 'conditions', 'suspension', 'erasure'];
 function hearing(ctx, pack, data, optionId) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const v = vocationOf(state, pack);
   const reg = regulatorOf(state, pack) ?? { name: 'the regulator' };
   if (optionId === 'lawyer' && !ctx.spend(data.fee, 'Defence lawyer', { credit: true })) optionId = 'cooperate';
@@ -291,7 +305,8 @@ function hearing(ctx, pack, data, optionId) {
 }
 
 function offerElite(ctx, pack) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const v = vocationOf(state, pack);
   if (v.elite && v.elite.until > state.character.age) return false;
   if (v.elite) { ctx.log(`Your term as ${v.elite.name} ended.`, '🏛️', 'info'); v.elite = null; }
@@ -342,7 +357,8 @@ function specialtyPrompt(ctx, pack) {
  * course nobody told them about.
  */
 function sentOnCourse(ctx, pack) {
-  const { state, rng } = ctx;
+  const { state } = ctx;
+  const rng = vrng(state);
   const job = state.career.job;
   const v = vocationOf(state, pack);
   if (v.inCourse || yearlyCount(state, `vocation.course.${pack.id}`)) return;
