@@ -19,6 +19,7 @@
  * ACUTE `inflicted`: only other systems inflict it (health:acute), never the random yearly event.
  */
 import { clamp } from '../../core/Random.js';
+import { conditionEraFactor } from './PeriodHealth.js';
 
 export const KINDS = {
   acute: { name: 'Acute', icon: '🚑' },
@@ -58,6 +59,10 @@ export const CONDITIONS = {
   liverDisease: { kind: 'chronic', name: 'Cirrhosis of the liver', icon: '🟤', annualCost: 7000, drain: 3, treatedFactor: 0.5, mortality: 0.08, progress: 6, disabling: 75 },
   hiv: { kind: 'chronic', name: 'HIV', icon: '🎗️', annualCost: 20000, drain: 2, treatedFactor: 0.05, mortality: 0.08, progress: 6 },
   hepatitisC: { kind: 'chronic', name: 'Hepatitis C', icon: '🟡', annualCost: 30000, drain: 1, treatedFactor: 0.3, mortality: 0.01, progress: 3, remission: 0.95, cure: true },
+  // Diseases of the period (health/PeriodHealth.js)
+  tuberculosis: { kind: 'chronic', name: 'Tuberculosis', icon: '🫁', annualCost: 2500, drain: 3, treatedFactor: 0.15, mortality: 0.12, progress: 6, remission: 0.2, disabling: 70 },
+  syphilis: { kind: 'chronic', name: 'Syphilis', icon: '🟤', annualCost: 800, drain: 1, treatedFactor: 0.1, mortality: 0.02, progress: 3, remission: 0.6, cure: true },
+  polioParalysis: { kind: 'chronic', name: 'Paralysis after polio', icon: '🦽', annualCost: 2000, drain: 1, treatedFactor: 1, mortality: 0.003, progress: 0, disabling: 60 },
   // Mental health
   depression: { kind: 'mental', name: 'Depression', icon: '🌧️', annualCost: 2800, drain: 0, treatedFactor: 0.2, mortality: 0.004, progress: 6, remission: 0.3, happiness: -7, disabling: 90, va: [[40, 30], [70, 50], [101, 70]] },
   anxiety: { kind: 'mental', name: 'Anxiety disorder', icon: '😰', annualCost: 2200, drain: 0, treatedFactor: 0, mortality: 0, progress: 4, remission: 0.3, happiness: -3, stress: 6 },
@@ -93,7 +98,8 @@ export function conditionMortality(c) {
  * consumed by Lifecycle's mortality roll.
  */
 export function healthMortality(state) {
-  const parts = activeConditions(state).map((c) => ({ id: c.id, risk: conditionMortality(c) })).filter((p) => p.risk > 0);
+  // Deadlier before their treatment existed (health/PeriodHealth.js).
+  const parts = activeConditions(state).map((c) => ({ id: c.id, risk: conditionMortality(c) * conditionEraFactor(state, c.id) })).filter((p) => p.risk > 0);
   return { total: clamp(parts.reduce((s, p) => s + p.risk, 0), 0, 0.9), parts };
 }
 
@@ -101,6 +107,7 @@ export const DEATH_CAUSE = {
   hypertension: 'Stroke', diabetes: 'Diabetes complications', heartDisease: 'Heart disease', cancer: 'Cancer',
   tbi: 'Complications of a brain injury', asthma: 'Asthma attack', depression: 'Suicide', ptsd: 'Suicide',
   alcohol: 'Alcohol-related liver failure', opioids: 'Opioid overdose', gambling: 'Suicide',
+  tuberculosis: 'Tuberculosis', syphilis: 'Syphilis', polioParalysis: 'Complications of polio',
   copd: 'COPD', stroke: 'Stroke', dementia: 'Dementia', kidneyDisease: 'Kidney failure', liverDisease: 'Cirrhosis', hiv: 'AIDS-related illness', hepatitisC: 'Liver cancer (hepatitis C)', stimulants: 'Stimulant overdose',
 };
 

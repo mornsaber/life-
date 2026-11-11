@@ -39,6 +39,8 @@ import { knob } from '../../core/Difficulty.js';
 import { noLuck, conceived } from './Fertility.js';
 import { personTone } from './SkinTone.js';
 import { pickProfession, startCareer, homemakerOdds } from './NpcCareers.js';
+import { childMortality, childCause, maternalRisk, childbirthCause, periodRng } from '../health/PeriodHealth.js';
+import { longevityFactor } from '../world/Eras.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -179,8 +181,10 @@ function mortalityTick(ctx) {
   for (const person of living(state)) {
     const age = ageOf(state, person);
     if (age < 0) continue;
-    const risk = person.relation === 'child' && age < 18 ? 0.0004 : backgroundMortality(age) * 1.4;
-    if (rng.chance(risk)) personDies(ctx, person, age >= 85 ? 'old age' : null);
+    // At the rates of their day (health/PeriodHealth.js): a child in 1880 often didn't reach five.
+    const young = age < 18;
+    const risk = young ? Math.max(0.0004, childMortality(state, age)) : backgroundMortality(age) * 1.4 * longevityFactor(state, age);
+    if (rng.chance(risk)) personDies(ctx, person, age >= 85 ? 'old age' : young && age < 15 ? childCause(state, age, periodRng(state)) : null);
   }
 }
 
@@ -348,8 +352,17 @@ function births(ctx) {
     settleNewborn(ctx, child);
     born.push(child);
   }
+  // Childbirth, at the risk of its day, for whoever gave birth.
+  const natural = !adopted && !p.expecting.via;
   p.expecting = null;
   const child = born[0];
+  if (natural) {
+    const mother = state.character.gender === 'female' ? null : partner?.gender === 'female' ? partner : null;
+    if ((state.character.gender === 'female' || mother) && periodRng(state).chance(maternalRisk(state))) {
+      if (!mother) { ctx.log(`${child.firstName} was born.`, '👶', 'milestone'); return void ctx.die(childbirthCause(state)); }
+      personDies(ctx, mother, childbirthCause(state));
+    }
+  }
   ctx.log(adopted ? `You adopted ${child.firstName}, age ${age}. 🍼` : twins ? `Twins! ${born[0].firstName} and ${born[1].firstName} were born. 🍼🍼` : `${child.firstName} was born! 🍼`, '👶', 'milestone');
   ctx.stat('happiness', 15);
   ctx.stat('stress', 8);
@@ -492,6 +505,8 @@ export const PeopleEngine = {
   },
 
   setup(engine) {
+    // Deaths raised elsewhere (an epidemic in health/PeriodHealth.js).
+    engine.bus.on('people:dies', ({ ctx, person, cause }) => { if (person?.alive) personDies(ctx, person, cause); });
     setStateLookup(stateIdOf);
     const { bus } = engine;
     // Estate settlement when you die; continuing as a child picks up from it.

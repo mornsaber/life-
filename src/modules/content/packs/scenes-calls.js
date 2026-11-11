@@ -10,6 +10,7 @@
  *
  * Same shape as scenes-emergency.js. `weight` makes a scene more or less likely to be picked.
  */
+import { yearNow } from '../../world/Eras.js';
 import { isCop } from '../../publicsafety/PoliceLife.js';
 import { isFirefighter } from '../../publicsafety/FireLife.js';
 
@@ -22,7 +23,7 @@ const PLACES = ['the Riverside estate', 'Maple Street', 'the old mill flats', 'H
 
 const crash = {
   id: 'fire.crash', title: 'Car Versus Tree', icon: '🚗', partner: true, chance: 0.4, trauma: 5, honor: 'Medal of Merit', injury: 'backInjury', inquiry: false,
-  for: (s, job) => isFirefighter(job) && !/chief/i.test(job.title ?? ''),
+  for: (s, job) => yearNow(s) >= 1960 && isFirefighter(job) && !/chief/i.test(job.title ?? ''),
   data: (s, rng) => ({ place: rng.pick(ROADS) }),
   start: 'arrive',
   steps: {
@@ -51,7 +52,7 @@ const crash = {
 
 const wildland = {
   id: 'fire.wildland', title: 'The Flank Turns', icon: '🌲', partner: true, chance: 0.4, trauma: 6, honor: 'Medal of Valor', injury: 'backInjury',
-  for: (s, job) => isFirefighter(job) && !/chief/i.test(job.title ?? '') && (job.professionId === 'stateFire' || ['AU', 'US', 'CA', 'GR', 'PT', 'ES', 'CL'].includes(s.character.countryId)),
+  for: (s, job) => yearNow(s) >= 1950 && isFirefighter(job) && !/chief/i.test(job.title ?? '') && (job.professionId === 'stateFire' || ['AU', 'US', 'CA', 'GR', 'PT', 'ES', 'CL'].includes(s.character.countryId)),
   data: (s, rng) => ({ place: rng.pick(['Cedar Ridge', 'the pine plantation above town', 'Dry Creek canyon', 'the hills behind the reservoir']) }),
   news: { outstanding: 'Crews save homes as fire races through {place}', bad: 'Firefighters forced to flee as {place} blaze turns' },
   start: 'line',
@@ -83,7 +84,7 @@ const wildland = {
 
 const pursuit = {
   id: 'police.pursuit', title: 'Pursuit', icon: '🚨', partner: true, chance: 0.4, trauma: 5, honor: 'Police Commendation',
-  for: (s, job) => isCop(job) && !COMMAND_RANK(job),
+  for: (s, job) => yearNow(s) >= 1955 && isCop(job) && !COMMAND_RANK(job),
   data: (s, rng) => ({ place: rng.pick(ROADS) }),
   news: { outstanding: 'Officers end high-speed chase on {place} without injury', bad: 'Bystander hurt in police chase on {place}' },
   start: 'flee',
@@ -115,7 +116,7 @@ const pursuit = {
 
 const missing = {
   id: 'police.missing', title: 'Missing Child', icon: '🧒', partner: true, chance: 0.4, trauma: 6, honor: 'Police Medal',
-  for: (s, job) => isCop(job) && !/chief|commander|superintendent/i.test(job.title ?? ''),
+  for: (s, job) => yearNow(s) >= 1950 && isCop(job) && !/chief|commander|superintendent/i.test(job.title ?? ''),
   data: (s, rng) => ({ place: rng.pick(PLACES), name: rng.pick(['Lily', 'Sam', 'Ava', 'Leo', 'Mia', 'Ben']) }),
   news: { outstanding: '{name}, 6, found safe after overnight search', bad: 'Search for missing {name} ends in tragedy' },
   start: 'report',
@@ -150,7 +151,7 @@ const missing = {
 
 const stop = {
   id: 'police.stop', title: 'Traffic Stop', icon: '🚔', partner: true, chance: 0.4, trauma: 3, honor: 'Police Commendation', weight: 1.3,
-  for: (s, job) => isCop(job) && !COMMAND_RANK(job),
+  for: (s, job) => yearNow(s) >= 1930 && isCop(job) && !COMMAND_RANK(job),
   data: (s, rng) => ({ place: rng.pick(ROADS) }),
   start: 'approach',
   steps: {
@@ -181,7 +182,7 @@ const stop = {
 
 const overdose = {
   id: 'ems.overdose', title: 'Overdose', icon: '💉', partner: true, chance: 0.45, trauma: 3, honor: 'EMS Lifesaving Award', inquiry: false, weight: 1.3,
-  for: (s, job) => isEms(job) && !COMMAND_RANK(job),
+  for: (s, job) => yearNow(s) >= 1970 && isEms(job) && !COMMAND_RANK(job),
   data: (s, rng) => ({ place: rng.pick(['a park toilet', 'a bus shelter', 'a stairwell in the Parkview towers', 'a car in a supermarket car park']) }),
   start: 'find',
   steps: {
@@ -212,7 +213,7 @@ const overdose = {
 
 const mci = {
   id: 'ems.mci', title: 'Bus Crash', icon: '🚌', partner: true, chance: 0.45, trauma: 8, honor: 'EMS Medal of Valor', weight: 0.6,
-  for: (s, job) => isEms(job) && !/chief|director/i.test(job.title ?? ''),
+  for: (s, job) => yearNow(s) >= 1960 && isEms(job) && !/chief|director/i.test(job.title ?? ''),
   data: (s, rng) => ({ place: rng.pick(ROADS) }),
   news: { outstanding: 'Paramedics praised after bus crash on {place}', bad: 'Ambulance delays blamed after {place} bus crash' },
   inquiryText: 'The coroner will examine the triage at the scene.',
@@ -243,7 +244,7 @@ const mci = {
 
 const whisper = {
   id: 'dispatch.whisper', title: 'The Whispered Call', icon: '🎧', chance: 0.45, trauma: 5, honor: 'Dispatcher of the Year', inquiry: false,
-  for: (s, job) => job.professionId === 'dispatch',
+  for: (s, job) => yearNow(s) >= 1968 && job.professionId === 'dispatch',
   data: (s, rng) => ({ place: rng.pick(PLACES) }),
   news: { outstanding: 'Quick-thinking 911 dispatcher saves woman hiding from intruder' },
   start: 'line',
@@ -274,7 +275,7 @@ const whisper = {
 const ois = {
   id: 'police.ois', title: 'Officer-Involved Shooting', icon: '🚨', chance: 0.3, trauma: 7, honor: 'Police Commendation', weight: 0.8,
   inquiryText: 'Internal affairs is examining how the scene was handled.',
-  for: (s, job) => isCop(job) && SERGEANT(job),
+  for: (s, job) => yearNow(s) >= 1950 && isCop(job) && SERGEANT(job),
   data: (s, rng) => ({ place: rng.pick(PLACES), name: rng.pick(['Officer Reyes', 'Officer Kim', 'Officer Walsh', 'Officer Okafor']) }),
   news: { outstanding: 'Police release body-camera footage of {place} shooting within hours', bad: 'Protests after police shooting on {place}' },
   start: 'scene',
@@ -334,7 +335,7 @@ const partnerLine = {
 const mayday = {
   id: 'fire.mayday', title: 'Mayday', icon: '🆘', partner: true, chance: 0.4, trauma: 7, honor: 'Medal of Valor', weight: 1.2,
   inquiryText: 'A line-of-duty investigation will examine the fireground.',
-  for: (s, job) => isFirefighter(job) && /captain|lieutenant/i.test(job.title ?? '') && !/chief/i.test(job.title ?? ''),
+  for: (s, job) => yearNow(s) >= 1970 && isFirefighter(job) && /captain|lieutenant/i.test(job.title ?? '') && !/chief/i.test(job.title ?? ''),
   data: (s, rng) => ({ place: rng.pick(['a carpet warehouse', 'a three-storey terrace', 'a church hall', 'a furniture store']), name: rng.pick(['Dana', 'Marcus', 'Priya', 'Tom']) }),
   news: { outstanding: 'Trapped firefighter rescued from {place} blaze', bad: 'Firefighter seriously hurt in {place} fire' },
   start: 'call',
@@ -365,7 +366,7 @@ const mayday = {
 
 const phoneCpr = {
   id: 'dispatch.cpr', title: 'CPR by Phone', icon: '☎️', chance: 0.45, trauma: 4, honor: 'Lifesaving Award', inquiry: false, weight: 1.2,
-  for: (s, job) => job.professionId === 'dispatch',
+  for: (s, job) => yearNow(s) >= 1980 && job.professionId === 'dispatch',
   data: (s, rng) => ({ place: rng.pick(PLACES), name: rng.pick(['Ella', 'Josh', 'Noor', 'Kai']) }),
   news: { outstanding: 'Girl, 10, saves dad with CPR guided by 911 dispatcher' },
   start: 'call',
@@ -391,7 +392,7 @@ const phoneCpr = {
 
 const birth = {
   id: 'ems.birth', title: 'Roadside Delivery', icon: '👶', partner: true, chance: 0.45, trauma: 1, honor: 'Stork Pin', inquiry: false, weight: 0.8,
-  for: (s, job) => isEms(job) && !COMMAND_RANK(job),
+  for: (s, job) => yearNow(s) >= 1965 && isEms(job) && !COMMAND_RANK(job),
   data: (s, rng) => ({ place: rng.pick(ROADS) }),
   news: { outstanding: 'Baby born in ambulance on {place}' },
   start: 'labour',

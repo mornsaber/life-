@@ -6,6 +6,7 @@
 import { systemHere, privatePremium, goPrivateCost, levySurcharge } from '../../modules/health/HealthSystems.js';
 import { esc, money, button, card, chip, meter, kv, empty, select } from '../Components.js';
 import { genesOf, GENE_LABEL } from '../../modules/health/Genetics.js';
+import { medicineCard } from './MedicineCard.js';
 
 /** Family history, the genetic test, and prevention once you know. */
 function geneticsBlock(state) {
@@ -181,5 +182,5 @@ export function healthView(state) {
 
   const history = h.history.length ? card('Medical History', `<ul class="history">${[...h.history].reverse().slice(0, 12).map((e) => `<li><small>Age ${e.age}</small> ${esc(e.text)}</li>`).join('')}</ul>`, { icon: '📋' }) : '';
 
-  return `${coverageCard(state)}${conditions}${lifestyleCard(state)}${preventionCard(state)}${debt}${mind}${disability}${history}`;
+  return `${coverageCard(state)}${medicineCard(state)}${conditions}${lifestyleCard(state)}${preventionCard(state)}${debt}${mind}${disability}${history}`;
 }

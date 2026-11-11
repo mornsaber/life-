@@ -30,6 +30,7 @@ import { discharge } from '../military/MilitaryEngine.js';
 import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } from './Lifestyle.js';
 import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
 import { fitsEra } from '../world/Eras.js';
+import { treatedAcuteDeath, available } from './PeriodHealth.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -546,6 +547,7 @@ export const HealthEngine = {
 
   setup(engine) {
     const { bus } = engine;
+    bus.on('health:addCondition', ({ ctx, id, severity }) => { if (CONDITIONS[id] && !getCondition(ctx.state, id)) addCondition(ctx, id, { severity }); });
     // Free treatment programs (prison RDAP, drug courts): a real shot at recovery.
     bus.on('health:treatAddiction', ({ ctx }) => {
       const c = activeConditions(ctx.state).find((x) => CONDITIONS[x.id].kind === 'addiction');
@@ -766,6 +768,8 @@ export const HealthEngine = {
           if (far >= 0.3) medicalBill(ctx, 12000, 'Air ambulance');
           ctx.log(far >= 0.3 ? 'The nearest emergency room was too far to drive. A rescue helicopter flew you there.' : 'It was a long drive to the nearest emergency room.', '🚁', 'warn');
         }
+        // Before modern medicine, treatment itself often failed (health/PeriodHealth.js).
+        if (rng.chance(treatedAcuteDeath(state, data.id))) return void ctx.die(`${a.name}${available(state, 'antisepsis') ? '' : ' (infection after the operation)'}`);
         const oop = medicalBill(ctx, a.cost, a.name);
         ctx.stat('health', Math.round(-a.health * 0.9));
         ctx.log(`You were treated for ${a.name.toLowerCase()}${oop ? ` ($${oop.toLocaleString()} out of pocket)` : ''}.`, a.icon);

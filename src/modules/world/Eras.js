@@ -546,7 +546,10 @@ export function longevityFactor(state, age) {
   if (!state?.era) return 1;
   // In the past, adults died younger (life expectancy then and now, by country: HistoricalData).
   const y = yearNow(state);
-  const past = y < PRESENT - 10 ? eraMortality(state.character?.countryId ?? 'US', y, age) : 1;
+  // The diseases of the day are rolled one by one now (health/PeriodHealth.js); the rest of the
+  // past's excess deaths stays in this factor (about two-thirds of it).
+  const raw = y < PRESENT - 10 ? eraMortality(state.character?.countryId ?? 'US', y, age) : 1;
+  const past = 1 + (raw - 1) * 0.65;
   if (age < 50) return past;
   return past * (futureOn(state, 'longevity') ? 0.75 : 1) * (futureOn(state, 'agingTherapy') ? 0.6 : 1);
 }
