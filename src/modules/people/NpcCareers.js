@@ -17,7 +17,7 @@
  * person.job stays the display title (other modules read it).
  */
 import { clamp } from '../../core/Random.js';
-import { PROFESSION_LIST, getProfession } from '../career/JobTrees.js';
+import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { nextLevels } from '../career/Ladder.js';
 import { eraWorkBlock, yearNow, periodTitle } from '../world/Eras.js';
 import { workBlock } from '../world/Regimes.js';
@@ -55,7 +55,8 @@ function poolFor(state, gender, rank) {
   // Their sex, not yours, decides what was open to them.
   const as = { ...state, character: { ...state.character, gender } };
   const pool = [];
-  for (const p of PROFESSION_LIST) {
+  // The careers that exist where you live (abroad: national agencies in place of US-only posts).
+  for (const p of professionsFor(state)) {
     if (p.templateOnly || p.church && rank < 1) continue;
     const need = needOf(p);
     if (need > rank || need < rank - 2) continue;
