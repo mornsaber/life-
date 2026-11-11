@@ -7,5 +7,9 @@ import { TRADES } from './trades.js';
 import { BUSINESS } from './business.js';
 import { ARTS } from './arts.js';
 import { SERVICE } from './service.js';
+import { LAW } from './law.js';
+import { HEALTH } from './health.js';
+import { EDUCATION } from './education.js';
+import { SCIENCE } from './science.js';
 
-export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE];
+export const PACKS = [MEDICINE, TRADES, BUSINESS, ARTS, SERVICE, LAW, HEALTH, EDUCATION, SCIENCE];

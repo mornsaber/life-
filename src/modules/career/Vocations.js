@@ -232,7 +232,7 @@ function complaintTick(ctx, pack) {
   const fee = Math.round((pack.lawyerFee ?? 8000) * (kind.severity + 1));
   ctx.prompt({
     type: 'vocation.complaint', icon: '⚖️', title: `A Complaint to ${reg.name}`,
-    text: `${kind.text} ${reg.name.charAt(0).toUpperCase()}${reg.name.slice(1)} has opened a case.`,
+    text: `${typeof kind.text === "function" ? kind.text(state) : kind.text} ${reg.name.charAt(0).toUpperCase()}${reg.name.slice(1)} has opened a case.`,
     options: [
       { id: 'cooperate', label: '🤝 Cooperate fully, and show insight', hint: 'Best for honest mistakes' },
       { id: 'lawyer', label: '🧑‍⚖️ Instruct a defence lawyer', hint: `About $${fee.toLocaleString()} · fewer harsh outcomes` },

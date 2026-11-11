@@ -76,11 +76,11 @@ const tests = {
         const p = getProfession(id);
         const ladder = p.levels.filter((l) => !l.appointed);
         const firstGrades = new Set(ladder.slice(0, 2).map((l) => l.grade));
-        for (const c of pack.courses ?? []) {
+        for (const c of (pack.courses ?? []).filter((c) => !c.professions || c.professions.includes(id))) {
           for (const l of ladder) {
             if (!gates(c, l)) continue;
             assert.ok(!firstGrades.has(l.grade) || ladder.indexOf(l) >= 2, `${pack.id}.${c.id} gates ${id}'s first rungs (${l.id})`);
-            const below = Math.max(...ladder.filter((x) => x.grade < l.grade).map((x) => x.grade), 0);
+            const below = Math.max(...ladder.filter((x) => x.grade < l.grade).map((x) => x.grade), ladder[0].grade);
             assert.ok((c.minGrade ?? 0) <= below, `${pack.id}.${c.id} needs grade ${c.minGrade} but gates ${id}.${l.id} (rung below is grade ${below})`);
             assert.ok((c.minYears ?? 0) <= 15, `${pack.id}.${c.id}: ${c.minYears} years is too long a wait`);
           }
