@@ -11,6 +11,7 @@
  *                 more for the chiefs
  */
 import { eraYear, PRESENT } from '../modules/world/Eras.js';
+import { PACKS } from '../modules/world/packs/index.js';
 const GOLD = '#d4a017';
 const SILVER = '#c9ced6';
 const svg = (w, body, h = 34) => `<svg class="insignia-svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}" aria-hidden="true">${body}</svg>`;
@@ -493,6 +494,25 @@ export function periodInsignia(kind, n, nation, branch) {
  */
 const UK_STYLE = ['GB', 'IE', 'AU', 'NZ', 'SG', 'MY', 'IN', 'HK', 'CA', 'PK', 'KE', 'NG', 'GH', 'ZA', 'MT', 'GM', 'MW', 'BN', 'JM', 'BS', 'LK', 'BD', 'PG', 'SB', 'VU', 'TO', 'NP', 'BT', 'ET', 'SO', 'SS'];
 const GALONS = ['FR', 'IT', 'ES', 'BE', 'PT', 'LU', 'MC', 'MX', 'BR', 'AR', 'CO', 'PE', 'CL', 'VA', 'CH', 'CD', 'CF', 'CI', 'DJ', 'ML', 'NE', 'SN', 'TD', 'HT', 'RO', 'GW', 'MZ', 'CR', 'GT', 'PA', 'VE'];
+
+// Countries from sketches (world/packs/Sketch.js) wear their family's pattern: Soviet shoulder boards,
+// the Warsaw Pact's stars on bars, French galons, Commonwealth pips (the national emblem in a republic),
+// Spanish America's six- and eight-pointed stars.
+const EAST_STARS = starsStyle({ glyph: '★', field: 'bars2', gen: 'zigzag', color: SILVER, enlisted: SILVER });
+const MICRO_STARS = starsStyle({ glyph: '✶', field: 'bar', gen: 'wreath' });
+for (const p of PACKS) {
+  const cc = p.id;
+  if (!p.sketch || SHOULDER.includes(cc) || UK_STYLE.includes(cc)) continue;
+  const fam = p.sketch;
+  if (fam === 'latin') { if (!GALONS.includes(cc)) GALONS.push(cc); MIL_STYLES[cc] ??= MIL_STYLES.ES; continue; }
+  if (MIL_STYLES[cc]) continue;
+  if (GALONS.includes(cc)) { MIL_STYLES[cc] = fam === 'micro' ? MICRO_STARS : frenchStyle; continue; }
+  if (fam === 'postSoviet' || (fam === 'asia' && p.country.languages?.[0] !== 'Dhivehi')) SHOULDER.push(cc);
+  else if (fam === 'eastBloc' || fam === 'yugoslav') { MIL_STYLES[cc] = EAST_STARS; FAMILY[cc] = EAST_STARS; }
+  else if (fam === 'micro' || fam === 'asia') { MIL_STYLES[cc] = MICRO_STARS; FAMILY[cc] = MICRO_STARS; }
+  else if (fam === 'francoAfrica' || fam === 'maghreb' || fam === 'lusoAfrica') { MIL_STYLES[cc] = frenchStyle; FAMILY[cc] = frenchStyle; GALONS.push(cc); }
+  else { COMMONWEALTH.push(cc); UK_STYLE.push(cc); if (!p.monarchy) CW_EMBLEM[cc] ??= '✵'; }
+}
 
 /** A row of shoulder stripes (galons, or a pilot's / ship's officer's bars). */
 const galons = (n, color = GOLD) => svg(34, Array.from({ length: n }, (_, i) => `<rect x="5" y="${6 + i * 5}" width="24" height="3" rx="1" fill="${i === 1 && n === 5 ? SILVER : color}"/>`).join(''));

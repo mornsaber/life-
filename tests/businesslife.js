@@ -35,7 +35,7 @@ const year = (engine) => {
   state.stats.health = 95;
   engine.ageUp();
   const seen = [];
-  for (let j = 0; j < 8 && state.prompts.length; j++) {
+  for (let j = 0; j < 16 && state.prompts.length; j++) {
     const p = state.prompts[0];
     seen.push(p);
     // Keep the business: turn down buyout offers.

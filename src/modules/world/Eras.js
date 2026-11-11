@@ -16,6 +16,7 @@
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
 import { dataRegime, regionStateAt, eraMortality, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
+import { PACKS } from './packs/index.js';
 
 export const PRESENT = 2026;
 /** The eras the start screen offers; each spans [from, to] and a life can start in any year of one. */
@@ -225,9 +226,9 @@ export const republicGap = (cc, year) => (REPUBLIC_GAPS[cc] ?? []).some(([from, 
 /* Colonies                                                            */
 /* ------------------------------------------------------------------ */
 
-const RULER = { ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
-export const RULER_CAPITAL = { ES: 'Madrid', SE: 'Stockholm', CN: 'Peking', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Constantinople', AU: 'Canberra', PK: 'Karachi', MY: 'Kuala Lumpur', DE: 'Berlin' };
-export const RULER_NAME = { ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
+const RULER = { DK: 'Danish', RO: 'Romanian', HT: 'Haitian', BR: 'Brazilian', ID: 'Indonesian', AT: 'Austrian', ZA: 'South African', NZ: 'New Zealand', ET: 'Ethiopian', HU: 'Hungarian', CO: 'Colombian', ES: 'Spanish', SE: 'Swedish', CN: 'Chinese', GB: 'British', FR: 'French', PT: 'Portuguese', NL: 'Dutch', BE: 'Belgian', US: 'American', IT: 'Italian', JP: 'Japanese', RU: 'Russian', TR: 'Ottoman', AU: 'Australian', PK: 'Pakistani', MY: 'Malaysian', DE: 'German' };
+export const RULER_CAPITAL = { DK: 'Copenhagen', RO: 'Bucharest', HT: 'Port-au-Prince', BR: 'Rio de Janeiro', ID: 'Jakarta', AT: 'Vienna', ZA: 'Pretoria', NZ: 'Wellington', ET: 'Addis Ababa', HU: 'Budapest', CO: 'Bogotá', ES: 'Madrid', SE: 'Stockholm', CN: 'Peking', GB: 'London', FR: 'Paris', PT: 'Lisbon', NL: 'The Hague', BE: 'Brussels', US: 'Washington', IT: 'Rome', JP: 'Tokyo', RU: 'Moscow', TR: 'Constantinople', AU: 'Canberra', PK: 'Karachi', MY: 'Kuala Lumpur', DE: 'Berlin' };
+export const RULER_NAME = { DK: 'Denmark', RO: 'Romania', HT: 'Haiti', BR: 'the Empire of Brazil', ID: 'Indonesia', AT: 'Austria-Hungary', ZA: 'South Africa', NZ: 'New Zealand', ET: 'Ethiopia', HU: 'Hungary', CO: 'Colombia', ES: 'Spain', SE: 'Sweden', CN: 'the Qing Empire', TR: 'the Ottoman Empire', RU: 'Russia', GB: 'Britain', FR: 'France', PT: 'Portugal', NL: 'the Netherlands', BE: 'Belgium', US: 'the United States', IT: 'Italy', JP: 'Japan', AU: 'Australia', PK: 'Pakistan', MY: 'Malaysia', DE: 'Germany' };
 const S = (ruler, name, until, o = {}) => ({ ruler, name, until, ...o });
 const OTTOMAN = (name) => S('TR', name, 1918, { leader: 'the Ottoman governor', noMovement: true });
 
@@ -286,6 +287,9 @@ export const COLONIES = {
   LV: [S('RU', 'the Russian Empire (Latvia)', 1918), S('RU', 'a Soviet republic (Latvia)', 'sovietCollapse', { from: 1940 })],
   LT: [S('RU', 'the Russian Empire (Lithuania)', 1918), S('RU', 'a Soviet republic (Lithuania)', 'sovietCollapse', { from: 1940 })],
 };
+// Country packs bring their own foreign rule (packs/Sketch.js `ruled`).
+for (const p of PACKS) if (p.history?.ruled?.length && !COLONIES[p.id]) COLONIES[p.id] = p.history.ruled.map(([ruler, name, until, o]) => (ruler === 'TR' && until === 1918 && !o ? OTTOMAN(name) : S(ruler, name, until, o ?? {})));
+const PACK_NAMES = Object.fromEntries(PACKS.filter((p) => p.history?.names).map((p) => [p.id, p.history.names]));
 export const rulerAdj = (cc) => RULER[cc] ?? cc;
 export const rulerName = (cc) => RULER_NAME[cc] ?? cc;
 
@@ -914,7 +918,7 @@ export function periodCountryName(state, cc, name) {
     FR: y < 1804 ? 'the French Republic (the Consulate)' : y < 1814 ? 'the French Empire' : y < 1848 ? 'the Kingdom of France' : y < 1852 ? 'the Second Republic' : y < 1870 ? 'the Second French Empire' : y >= 1940 && y < 1944 ? 'Vichy France' : null,
     MX: y >= 1864 && y < 1867 ? 'the Second Mexican Empire' : null, EG: y < 1914 ? 'the Khedivate of Egypt' : y < 1953 ? 'the Kingdom of Egypt' : null,
   };
-  return R[cc] ?? name;
+  return R[cc] ?? PACK_NAMES[cc]?.find(([until]) => y < until)?.[1] ?? name;
 }
 
 /* ------------------------------------------------------------------ */

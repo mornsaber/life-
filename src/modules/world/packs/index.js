@@ -24,8 +24,9 @@ import { KE } from './KE.js';
 import { ZA } from './ZA.js';
 import { ID } from './ID.js';
 import { NATIONS } from './nations/index.js';
+import { SKETCHES } from './sketches/index.js';
 
-export const PACKS = [NZ, IE, ES, NL, SE, BR, SG, IL, PS, CN, NG, KE, ZA, ID, ...NATIONS];
+export const PACKS = [NZ, IE, ES, NL, SE, BR, SG, IL, PS, CN, NG, KE, ZA, ID, ...NATIONS, ...SKETCHES];
 
 const entryFor = (p, table, key) => {
   const own = p.tables?.[key];

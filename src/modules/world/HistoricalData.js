@@ -17,6 +17,17 @@ import { US_NAMES_BY_DECADE } from './data/names.js';
 import { CURRENCY_HISTORY } from './data/currencies.js';
 import { WARS } from './data/wars.js';
 import { STATES, SOVEREIGN_YEARS } from './data/states.js';
+import { PACKS } from './packs/index.js';
+
+// Country packs bring their own history (packs/Sketch.js) where the datasets have none.
+for (const p of PACKS) {
+  const h = p.history;
+  if (!h) continue;
+  if (h.regimes && !REGIME_YEARS[p.id]) REGIME_YEARS[p.id] = h.regimes;
+  if (h.sovereign && !SOVEREIGN_YEARS[p.id]) SOVEREIGN_YEARS[p.id] = h.sovereign;
+  if (h.demography && !DEMOGRAPHY[p.id]) DEMOGRAPHY[p.id] = h.demography;
+  if (h.money && !CURRENCY_HISTORY[p.id]) CURRENCY_HISTORY[p.id] = h.money;
+}
 
 /* ---------------------------------------------------------------- government */
 

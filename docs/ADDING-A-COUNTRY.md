@@ -1,5 +1,28 @@
 # Adding a country
 
+There are three ways in, from most to least work:
+
+- **A full pack** (`NZ.js`, `IE.js`…): every table spelled out by hand. Below.
+- **`nation(spec)`** (`packs/Nation.js`, used in `packs/nations/`): one spec of the things that make
+  a country itself (money, taxes, places, names, government, police, forces, courts, schools,
+  honours) and everything else named from those.
+- **`sketch(spec)`** (`packs/Sketch.js`, used in `packs/sketches/`): a country in a few lines. It
+  starts from a *family* of countries with a shared inheritance — `postSoviet`, `eastBloc`,
+  `yugoslav`, `francoAfrica`, `angloAfrica`, `lusoAfrica`, `caribbean`, `latin`, `pacific`,
+  `micro`, `maghreb`, `asia` — that sets police and army ranks, courts, schools, religion and
+  defaults, and gives the pack a **history** the world reads:
+  - `ruled`: foreign rule before independence, as `[ruler, name, until, { from, war, leader }]`
+    (becomes world/Eras.js COLONIES stages; the ruler needs a name in Eras.js RULER tables);
+  - `regimes`: governments once sovereign, `[from, category, democracy, monarchy]` (the
+    categories of world/data/regimes.js); the years before the first foreign rule get the
+    country's own rulers, and the first government after independence reaches back a little,
+    because independence comes in a window;
+  - `life`, `gdp`, `pop` today: the family's curve is scaled to them for 1800–2020;
+  - `money`: earlier currencies; `periodNames`: what the country was called before.
+
+  `tests/countrypacks.js` checks every sketch in every era: a flag in `icons/flags/`, names, city
+  ids of its own, a government or foreign rule in every year, and screens that render.
+
 A new country is one file: a **country pack** in `src/modules/world/packs/`.
 New Zealand (`NZ.js`), Ireland (`IE.js`), Spain (`ES.js`), the Netherlands (`NL.js`), Sweden (`SE.js`) and Brazil (`BR.js`) are complete examples.
 
