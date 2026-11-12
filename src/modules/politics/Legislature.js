@@ -103,7 +103,10 @@ export function chambersFor(level, where) {
 export const lawHere = (lawId, level, where) => {
   const cc = level === 'state' ? STATES[where]?.country ?? 'US' : level === 'federal' ? where ?? 'US' : REGIONS[where]?.country ?? 'US';
   if (cc === 'US') return true;
-  if (['rightToWork', 'cardCheck'].includes(lawId)) return false;
+  // American institutions: right-to-work and card-check, state income tax, privatized police,
+  // ambulances and fire, occupational licensing boards, public-sector bargaining fights, non-competes.
+  if (US_ONLY_LAWS.includes(lawId)) return false;
+  if (lawId === 'stateIncomeTax') return FEDERATIONS.includes(cc);
   // Councils abroad run local matters: housing, roads, planning — not wages or leave.
   if (level === 'city') return CITY_LAWS_ABROAD.includes(lawId);
   // Most countries set one national minimum wage (provinces set it in Canada, Japan, China and India);
@@ -113,6 +116,7 @@ export const lawHere = (lawId, level, where) => {
   return true;
 };
 const CITY_LAWS_ABROAD = ['rentControl', 'infrastructure', 'zoning'];
+const US_ONLY_LAWS = ['rightToWork', 'cardCheck', 'privatePolicing', 'privateEms', 'privateFire', 'nonCompeteBan', 'publicBargaining', 'licensing'];
 const REGIONAL_MIN_WAGE = ['CA', 'JP', 'CN', 'IN'];
 const FEDERATIONS = ['CA', 'AU', 'DE', 'AT', 'CH', 'BE', 'IN', 'BR', 'MX', 'AR', 'NG', 'ET', 'MY', 'PK', 'RU', 'AE', 'IQ', 'BA'];
 

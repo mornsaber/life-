@@ -95,6 +95,10 @@ Object.assign(NATIONAL_OFFICES, packRows('offices'));
  *                           office at this level or higher, or high name recognition
  */
 const ceremonial = { fullTime: true, pension: 'electedOfficials', kind: 'head', ceremonial: true, headOfState: true, level: 6, residency: 0, termLimit: 0 };
+/** The Crown in a province or state: assent to its laws and a premier to appoint, but no head of state. */
+const provincialCrown = { ...ceremonial, headOfState: false, ceremonial: false, viceRegal: true, subNational: true };
+/** The Crown's representative in a county: an unpaid honour with duties (world/Ceremonial.js), not a government. */
+const lieutenancy = { fullTime: false, pension: null, kind: 'lieutenancy', ceremonial: false, headOfState: false, residency: 0, termLimit: 0 };
 Object.assign(NATIONAL_OFFICES, {
   de_praesident: { ...ceremonial, country: 'DE', name: 'Bundespräsident', icon: '🇩🇪', term: 5, termLimit: 2, salary: 290000, minAge: 40, cost: 0, selection: 'parliament', chosenBy: 'the Federal Convention', stature: 4 },
   it_presidente: { ...ceremonial, country: 'IT', name: 'Presidente della Repubblica', icon: '🇮🇹', term: 7, salary: 280000, minAge: 50, cost: 0, selection: 'parliament', chosenBy: 'Parliament in joint session', stature: 4 },
@@ -115,10 +119,10 @@ Object.assign(NATIONAL_OFFICES, {
   vn_pm: { ...executive, national: true, country: 'VN', name: 'Prime Minister of Vietnam', icon: '🇻🇳', level: 5, kind: 'executive', term: 5, termLimit: 2, salary: 22000, fullTime: true, minAge: 45, residency: 0, cost: 0, selection: 'appointed', chosenBy: 'the National Assembly on the Party\'s nomination', viaParty: true },
   kp_premier: { ...executive, national: true, country: 'KP', name: 'Premier of the Cabinet', icon: '🇰🇵', level: 5, kind: 'executive', term: 5, termLimit: 0, salary: 8000, fullTime: true, minAge: 45, residency: 0, cost: 0, selection: 'appointed', chosenBy: 'the Supreme People\'s Assembly on the Workers\' Party\'s nomination', viaParty: true },
   // The Crown below the Governor-General: in each province, state and county.
-  ca_lg: { ...ceremonial, country: 'CA', name: 'Lieutenant Governor', icon: '🍁', level: 5, term: 5, salary: 160000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Governor General on the Prime Minister\'s advice', stature: 3 },
-  au_governor: { ...ceremonial, country: 'AU', name: 'State Governor', icon: '🇦🇺', level: 5, term: 5, salary: 280000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Crown on the Premier\'s advice', stature: 3 },
-  gb_lordLieutenant: { ...ceremonial, country: 'GB', name: 'Lord-Lieutenant of the County', icon: '🏰', level: 4, term: 10, salary: 0, fullTime: false, minAge: 50, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Crown on the Prime Minister\'s advice', stature: 3 },
-  gb_deputyLieutenant: { ...ceremonial, country: 'GB', name: 'Deputy Lieutenant', icon: '🏰', level: 3, term: 10, salary: 0, fullTime: false, minAge: 40, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Lord-Lieutenant', stature: 2 },
+  ca_lg: { ...provincialCrown, country: 'CA', name: 'Lieutenant Governor', icon: '🍁', level: 5, term: 5, salary: 160000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Governor General on the Prime Minister\'s advice', stature: 3 },
+  au_governor: { ...provincialCrown, country: 'AU', name: 'State Governor', icon: '🇦🇺', level: 5, term: 5, salary: 280000, minAge: 45, cost: 0, selection: 'appointed', chosenBy: 'the Crown on the Premier\'s advice', stature: 3 },
+  gb_lordLieutenant: { ...lieutenancy, country: 'GB', name: 'Lord-Lieutenant of the County', icon: '🏰', level: 4, term: 10, salary: 0, fullTime: false, minAge: 50, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Crown on the Prime Minister\'s advice', stature: 3 },
+  gb_deputyLieutenant: { ...lieutenancy, country: 'GB', name: 'Deputy Lieutenant', icon: '🏰', level: 3, term: 10, salary: 0, fullTime: false, minAge: 40, cost: 0, serveTo: 75, selection: 'appointed', chosenBy: 'the Lord-Lieutenant', stature: 2 },
   // Republics whose presidents the list above lacked: chosen by the people (Austria, Finland, Poland,
   // Portugal, Romania, Lithuania), by parliament (Greece, Latvia, Estonia's Riigikogu, Malta,
   // Kosovo, Iraq, Lebanon, Bangladesh, Ethiopia, Somalia) or an electoral college (Pakistan, Nepal,

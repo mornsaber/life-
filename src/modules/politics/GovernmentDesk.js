@@ -43,7 +43,7 @@ export function leadsCountry(state) {
   const o = state.politics?.office;
   const def = o && OFFICES[o.id];
   if (!def) return false;
-  return o.id === 'president' || Boolean(def.leader && (def.level ?? 0) >= 5) || Boolean(def.executive && def.national && (def.level ?? 0) >= 5 && !def.ceremonial);
+  return o.id === 'president' || Boolean(def.leader && (def.level ?? 0) >= 5) || Boolean(def.executive && def.national && (def.level ?? 0) >= 5 && !def.ceremonial && !def.viceRegal);
 }
 export const deskOf = (state) => state.politics?.desk ?? null;
 function ensure(state) {

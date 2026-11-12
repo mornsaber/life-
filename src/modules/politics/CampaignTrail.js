@@ -13,6 +13,7 @@
  * base, go negative, stay positive) — the general election against the other party's
  * nominee.
  */
+import { filingFor, settleDeposit } from './FilingFees.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear, prestige, yearlyCount, bumpYearly, criminalRecord } from '../../core/State.js';
 import { OFFICES, ENDORSEMENTS } from './Offices.js';
@@ -57,6 +58,7 @@ function legacyElection(ctx) {
   }
   const share = clamp(voteShare(state, c.officeId, c) + rng.float(-0.08, 0.08), 0.02, 0.9);
   remember(state, c, 'general', share, share > 0.5, null);
+  settleDeposit(ctx, c, share);
   if (share > 0.5) {
     ctx.log(`🗳️ You won ${office.name} with ${pct(share)} of the vote!`, '🎉', 'good');
     ctx.emit('politics:take', { officeId: c.officeId });
@@ -114,6 +116,7 @@ function runGeneral(ctx, c) {
   const share = clamp(projected + rng.float(-0.04, 0.04), 0.02, 0.95);
   const opp = opponentLabel(state, c.opponent);
   remember(state, c, 'general', share, share > 0.5, c.opponent.name);
+  settleDeposit(ctx, c, share);
   if (share > 0.5) {
     ctx.stat('happiness', 10);
     if (c.incumbent && p.office?.id === c.officeId) {
@@ -251,14 +254,18 @@ export const CampaignTrail = {
       const legacy = outsideCalendar(state, officeId);
       const year = legacy ? currentYear(state) + 1 : nextElectionYear(state, officeId);
       if (!legacy && year - currentYear(state) > FILING_WINDOW(officeId)) return ctx.toast(`The next election for ${office.name} is in ${year}. Filing opens in ${year - FILING_WINDOW(officeId)}.`, 'warn');
-      if (!ctx.spend(Math.round(office.cost * 0.01), 'Filing fees', { credit: true })) return ctx.toast(`Filing fees: ${money(office.cost * 0.01)} — card declined.`, 'warn');
+      const filing = filingFor(state, officeId);
+      const due = filing.fee + filing.deposit;
+      if (due > 0 && !ctx.spend(due, filing.deposit ? 'Election deposit' : 'Filing fee', { credit: true })) return ctx.toast(`${filing.deposit ? 'The deposit' : 'The filing fee'} is ${money(due)}.`, 'warn');
       platformOf(state);
       if (legacy) {
-        p.campaign = { officeId, funds: 0, endorsements: [], startAge: state.character.age, electionAge: state.character.age + 1, vsIncumbent: Boolean(office.statewide) && rng.chance(0.6), legacy: true };
+        p.campaign = { officeId, funds: 0, endorsements: [], startAge: state.character.age, electionAge: state.character.age + 1, vsIncumbent: Boolean(office.statewide) && rng.chance(0.6), legacy: true, deposit: filing.deposit, refundAt: filing.refundAt };
         ctx.log(`You declared your candidacy for ${office.name}. It's decided next year.`, office.icon, 'milestone');
         return ctx.toast(`Running for ${office.name}`, 'good');
       }
       const c = newCampaign(state, officeId, rng);
+      c.deposit = filing.deposit;
+      c.refundAt = filing.refundAt;
       seatHolder(state, c, rng);
       // Money you banked in office (or from donors you did favors for) goes into the race.
       c.funds += p.warChest ?? 0;

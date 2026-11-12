@@ -243,7 +243,7 @@ export const PoliticsEngine = {
     if (o) {
       const office = OFFICES[o.id];
       ctx.earn(o.salary ?? office.salary, `${office.name} salary`, { wage: true });
-      ctx.emit('retirement:accrue', { planId: office.pension, salary: office.salary, employer: office.name });
+      if (office.pension) ctx.emit('retirement:accrue', { planId: office.pension, salary: office.salary, employer: office.name });
       p.recognition = Math.min(100, p.recognition + 3);
       ctx.stat('stress', office.fullTime ? 6 : 3);
       o.termYearsLeft -= 1;
@@ -252,13 +252,15 @@ export const PoliticsEngine = {
       // everyone else faces a decision of their office.
       if (runsGovernment(o.id)) executiveYear(ctx);
       else if (office.kind === 'head') headYear(ctx);
+      // A Lord-Lieutenant's year is the county's ceremonies (world/Ceremonial.js): no votes, no government.
+      else if (office.kind === 'lieutenancy') o.approval = Math.round(clamp(o.approval + (70 - o.approval) * 0.2, 0, 100));
       else {
         // Approval drifts toward how well you fit your voters: a centrist in a swing seat sits higher.
         const fit = distance(platformView(state), electorateOf(state, o.id));
         o.approval = Math.round(clamp(o.approval + (64 - fit * 9 - o.approval) * 0.1 + rng.int(-6, 5), 0, 100));
         if (rng.chance(0.6)) { if (!SEAT_OFFICES[o.id] && office.kind !== 'head') officeDecision(ctx); }
       }
-      if (rng.chance(0.15)) bribeOffer(ctx);
+      if (office.kind !== 'lieutenancy' && rng.chance(0.15)) bribeOffer(ctx);
       if (office.executive && office.kind !== 'executive' && rng.chance(0.5)) {
         ctx.prompt({
           type: 'politics.appoint',

@@ -45,7 +45,7 @@ export function servicePassports(state) {
   // For life: former heads of state and government, former foreign ministers, a former monarch, an emeritus pope.
   for (const h of state.politics?.history ?? []) {
     const def = OFFICES[h.officeId];
-    if (def && ((def.level ?? 0) >= 5 && (def.leader || def.headOfState || def.ceremonial || h.officeId === 'president' || h.officeId === 'vicePresident'))) add('diplomatic', def.country ?? cc, `former ${def.name} (for life)`);
+    if (def && ((def.level ?? 0) >= 5 && (def.leader || def.headOfState || h.officeId === 'president' || h.officeId === 'vicePresident'))) add('diplomatic', def.country ?? cc, `former ${def.name} (for life)`);
   }
   if (wasForeignMinister(state)) add('diplomatic', cc, 'a foreign minister, past or present');
   if (r?.abdicated || state.character.formerRoyal?.reigned) add('diplomatic', r?.crownId ?? cc, 'a former sovereign (for life)');

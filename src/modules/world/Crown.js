@@ -287,7 +287,7 @@ function servesTheCrown(state, cc) {
 const servesNow = (state, cc) => Boolean(state.military.service || (state.career.job?.sector && state.career.job.sector !== 'private') || state.politics?.office || state.royal);
 function servedTheCrown(state, cc) {
   const held = (state.politics?.history ?? []).map((h) => OFFICES[h.officeId]).filter((o) => o && (o.country ?? 'US') === cc);
-  if (held.some((o) => o.level >= 4 || o.headOfState || o.ceremonial || o.leader)) return true;
+  if (held.some((o) => o.level >= 4 || o.headOfState || o.viceRegal || o.leader)) return true;
   if ((state.military.history ?? []).some((h) => (h.nation ?? 'US') === cc && h.track === 'officer' && (h.grade ?? 0) >= 4)) return true;
   if ((state.career.history ?? []).some((h) => h.sector && h.sector !== 'private' && (h.peakGrade ?? h.grade ?? 0) >= 9)) return true;
   if (state.character.peerage) return true;

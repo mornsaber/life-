@@ -30,7 +30,7 @@ export function statesman(state) {
   if (state.royal?.reigning && !state.royal.abdicated) return 'sovereign';
   const o = state.politics?.office;
   const def = o && OFFICES[o.id];
-  if (def?.headOfState || def?.ceremonial || o?.id === 'president') return 'headOfState';
+  if (def?.headOfState || o?.id === 'president') return 'headOfState';
   if (def?.leader && (def.level ?? 0) >= 5) return 'headOfGovernment';
   const m = ministryOf(state);
   if ((m?.dept === 'foreign' && m.rank === 'cabinet') || (o?.id === 'cabinetSecretary' && o.dept === 'state')) return 'foreignMinister';

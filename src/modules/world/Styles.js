@@ -66,7 +66,7 @@ export function officialStyle(state) {
   // His/Her Excellency, while serving as a head of state or government, a governor-general or governor, or an ambassador.
   const def = now ? OFFICES[now] : null;
   const westminster = ['GB', 'CA', 'AU', 'NZ', 'IE', 'IN'].includes(countryOfOffice(now ?? ''));
-  const excellency = (def && (def.headOfState || def.ceremonial || /_gg$|governor|president/i.test(now) || (def.leader && def.executive && !westminster))) || ambassador(job);
+  const excellency = (def && (def.headOfState || def.viceRegal || /_gg$|governor|president/i.test(now) || (def.leader && def.executive && !westminster))) || ambassador(job);
   if (!best && !excellency) return null;
   return { prefix: best?.prefix ?? null, why: best?.why ?? null, excellency: excellency ? `${g(state)} Excellency` : null };
 }

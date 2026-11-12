@@ -43,7 +43,8 @@ export function officialResidence(state) {
     const def = OFFICES[o.id];
     const named = NAMED[o.id];
     if (named) return { name: named, by: 'the state', icon: '🏛️' };
-    if (def?.headOfState || def?.ceremonial) return { name: 'the presidential residence', by: 'the state', icon: '🏛️' };
+    if (def?.viceRegal) return { name: 'Government House', by: 'the Crown', icon: '🏛️' };
+    if (def?.headOfState) return { name: 'the presidential residence', by: 'the state', icon: '🏛️' };
     if (def?.leader && (def.level ?? 0) >= 5) return { name: 'the head of government\'s official residence', by: 'the state', icon: '🏛️' };
   }
   const m = state.politics?.ministry;
