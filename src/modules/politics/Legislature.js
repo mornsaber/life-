@@ -33,6 +33,7 @@ import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUn
 import { recordVote, LAW_ISSUE } from './Platform.js';
 import { voteReaction, nextElectionYear } from './Elections.js';
 import { regimeOf } from '../world/Regimes.js';
+import { allocateSeats, assignMemberParties, electionMood, partySystem, bodyCountry } from './PartySystem.js';
 import { eraYear, PRESENT } from '../world/Eras.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -258,6 +259,8 @@ function pickLeaders(body, rng) {
     minority: keep(body.leaders?.minority, laborMajority ? 'business' : 'labor'),
   };
   syncMembers(body, rng);
+  allocateSeats(body);
+  assignMemberParties(body);
   // Committee chairs come from the majority caucus.
   const majority = laborMajority ? 'labor' : 'business';
   body.chairs ??= {};
@@ -377,6 +380,7 @@ export function ensureBodies(state) {
       b.name = periodChamber(b.modernName);
       partyBody(state, b);
       if (!b.members) pickLeaders(b, legRng(state));
+      else if (!b.parties || b.system !== partySystem(bodyCountry(b), undefined, b.level === 'city' ? b.where : null).system) { allocateSeats(b); assignMemberParties(b); }
       else if (b.members.some((m) => !m.id)) { const r = legRng(state); for (const m of b.members) fillProfile(m, r, b); }
       out.push(state.legislature.bodies[id]);
     }
@@ -676,6 +680,7 @@ function electionYear(ctx, body, rng) {
     return;
   }
   const majorityLabor = body.labor * 2 > body.seats;
+  electionMood(body);
   let swing = rng.float(-0.05, 0.05);
   // A bad economy punishes whoever runs things; strong unions turn out voters.
   if (state.economy?.phase === 'recession') swing += majorityLabor ? -0.04 : 0.04;
@@ -809,12 +814,14 @@ function syncSeat(ctx) {
   }
   const id = bodyId(kind, whereFor(state, BODY_DEFS[kind].level));
   if (seat?.bodyId === id) return seat;
-  const caucus = (state.politics.laborVotes ?? 0) > 1 || state.career.job?.unionMember ? 'labor' : state.business?.current || state.business?.holdings?.length ? 'business' : (state.legislature.bodies[id]?.labor ?? 0) * 2 > (state.legislature.bodies[id]?.seats ?? 1) ? 'labor' : 'business';
-  state.legislature.seat = { bodyId: id, caucus, post: null, committee: null, staff: [], record: [], since: state.character.age, ...(seatKindFor(officeId) ? {} : { peer: true }) };
+  // You sit with your party; without one, your record and your money decide where.
+  const caucus = state.civic?.party?.bloc ?? ((state.politics.laborVotes ?? 0) > 1 || state.career.job?.unionMember ? 'labor' : state.business?.current || state.business?.holdings?.length ? 'business' : (state.legislature.bodies[id]?.labor ?? 0) * 2 > (state.legislature.bodies[id]?.seats ?? 1) ? 'labor' : 'business');
+  const party = state.civic?.party?.partyId ?? null;
+  state.legislature.seat = { bodyId: id, caucus, party, post: null, committee: null, staff: [], record: [], since: state.character.age, ...(seatKindFor(officeId) ? {} : { peer: true }) };
   const body = state.legislature.bodies[id];
   if (body?.members) {
     body.members = body.members.filter((m) => !m.you);
-    body.members.unshift(fillProfile({ name: `${state.character.firstName} ${state.character.lastName}`, caucus, district: 1, terms: 1, you: true, age: state.character.age, background: 'You', lean: caucus === 'labor' ? -50 : 50 }, legRng(state), body));
+    body.members.unshift(fillProfile({ name: `${state.character.firstName} ${state.character.lastName}`, caucus, ...(party ? { party } : {}), district: 1, terms: 1, you: true, age: state.character.age, background: 'You', lean: caucus === 'labor' ? -50 : 50 }, legRng(state), body));
   }
   return state.legislature.seat;
 }

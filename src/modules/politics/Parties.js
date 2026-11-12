@@ -13,6 +13,7 @@ import { electionsHere } from '../world/Regimes.js';
 import { isCitizen } from '../world/Countries.js';
 import { fromPacks } from '../world/packs/index.js';
 import { eraYear, PRESENT } from '../world/Eras.js';
+import { mainPartyOf, joinableParties, partySystem } from './PartySystem.js';
 
 /** Each country's main center-left (labor bloc) and center-right (business bloc) parties. */
 export const PARTY_NAMES = {
@@ -44,7 +45,15 @@ export const PARTY_DUES = 60;
 const AU_NOT_VOTING_FINE = 14;
 
 const here = (state) => state.character.countryId ?? 'US';
-export const partyName = (state, bloc) => periodParty(here(state), bloc) ?? PARTY_NAMES[here(state)]?.[bloc] ?? (bloc === 'labor' ? 'Labor bloc' : 'Business bloc');
+/** The main party of a bloc where you live, in the year you're living. */
+export const partyName = (state, bloc) => mainPartyOf(here(state), bloc)?.name ?? periodParty(here(state), bloc) ?? PARTY_NAMES[here(state)]?.[bloc] ?? (bloc === 'labor' ? 'Labor bloc' : 'Business bloc');
+/** Your own party's name (a member of a smaller party is in that party, not the bloc's biggest). */
+export function myPartyName(state) {
+  const p = state.civic?.party;
+  if (!p) return null;
+  const found = p.partyId && partySystem(here(state)).parties.find((x) => x.id === p.partyId);
+  return found?.name ?? p.name ?? partyName(state, p.bloc);
+}
 
 /**
  * The main parties before today's: [country, bloc, name, until]. The first row whose `until` is
@@ -155,6 +164,12 @@ export const PartyModule = {
     const { state } = ctx;
     const p = partyOf(state);
     if (!p) return;
+    if (p.partyId) {
+      const now = partySystem(here(state)).parties.find((x) => x.id === p.partyId);
+      if (p.underground && now?.status === 'legal') { delete p.underground; ctx.log(`The ${p.name} is legal again. You can say out loud what you've been for all along.`, '🕊️', 'milestone'); }
+      else if (!p.underground && now?.status === 'banned') { p.underground = true; ctx.log(`The ${p.name} was banned. Members who stay on risk prison.`, '🚫', 'bad'); }
+      if (p.underground && ctx.rng.chance(0.06)) { ctx.emit('legal:offense', { offenseId: 'antiState', context: `membership of the banned ${p.name}`, caught: true, evidence: 0.8 }); return; }
+    }
     ctx.spend(PARTY_DUES, 'Party membership dues', { allowDebt: true });
     // Years of work move you up the local party.
     const role = PARTY_ROLES[p.role];
@@ -163,26 +178,31 @@ export const PartyModule = {
       p.role = role.next;
       p.roleSince = state.character.age;
       p.canvassed = 0;
-      ctx.log(`You became a ${PARTY_ROLES[p.role].label.toLowerCase()} in the ${partyName(state, p.bloc)}.`, PARTY_ICON[p.bloc], 'good');
+      ctx.log(`You became a ${PARTY_ROLES[p.role].label.toLowerCase()} in the ${myPartyName(state)}.`, PARTY_ICON[p.bloc], 'good');
       state.politics.recognition = Math.min(100, state.politics.recognition + 3);
     }
   },
 
   actions: {
-    join(ctx, bloc) {
+    /** arg: a party id where you live (or, from older screens, a bloc: its main party). */
+    join(ctx, arg) {
       const { state } = ctx;
-      if (!PARTY_ICON[bloc]) return;
       if (state.character.age < 16) return ctx.toast('Party membership starts at 16.', 'warn');
-      if (partyOf(state)?.bloc === bloc) return;
-      state.civic.party = { bloc, since: state.character.age, role: 'member', canvassed: 0 };
-      ctx.log(`You joined the ${partyName(state, bloc)}.`, PARTY_ICON[bloc], 'good');
+      const sys = partySystem(here(state));
+      const party = sys.parties.find((p) => p.id === arg) ?? (PARTY_ICON[arg] ? mainPartyOf(here(state), arg) : null);
+      if (!party) return ctx.toast('No such party here.', 'warn');
+      if (partyOf(state)?.partyId === party.id) return;
+      if (party.status === 'allied') return ctx.toast('The allied parties take members the Party approves.', 'warn');
+      const underground = party.status === 'banned';
+      state.civic.party = { bloc: party.bloc, partyId: party.id, name: party.name, since: state.character.age, role: 'member', canvassed: 0, ...(underground ? { underground: true } : {}) };
+      ctx.log(underground ? `You joined the banned ${party.name}: meetings in back rooms, leaflets at night, and a police file if you're caught.` : `You joined the ${party.name}.`, underground ? '🕯️' : PARTY_ICON[party.bloc], underground ? 'warn' : 'good');
     },
     leave(ctx) {
       const { state } = ctx;
       const p = partyOf(state);
       if (!p) return;
       state.civic.party = null;
-      ctx.log(`You let your ${partyName(state, p.bloc)} membership lapse.`, '🗳️');
+      ctx.log(`You let your ${myPartyName(state)} membership lapse.`, '🗳️');
     },
   },
 
@@ -197,7 +217,7 @@ export const PartyModule = {
         ctx.stat('fitness', 1);
         state.politics.recognition = Math.min(100, state.politics.recognition + 1);
         state.civic.ballots[data.bodyId] = { choice: p.bloc, canvassed: true };
-        return ctx.log(`You spent the campaign knocking on doors for the ${partyName(state, p.bloc)}.`, '🚪', 'good');
+        return ctx.log(`You spent the campaign knocking on doors for the ${myPartyName(state)}.`, '🚪', 'good');
       }
       state.civic.ballots[data.bodyId] = { choice: optionId, ...(data.sham ? { sham: true } : {}) };
       if (optionId === 'skip' && here(state) === 'AU') {

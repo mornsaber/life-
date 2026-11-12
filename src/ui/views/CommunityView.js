@@ -19,7 +19,8 @@ import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
 import { atWar, warHere, PHASE_LABEL, INTENSITY_LABEL, frontLabel, homeDanger } from '../../modules/world/War.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
-import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote } from '../../modules/politics/Parties.js';
+import { PARTY_ROLES, PARTY_ICON, PARTY_DUES, partyName, partyOf, canVote, myPartyName } from '../../modules/politics/Parties.js';
+import { partySystem } from '../../modules/politics/PartySystem.js';
 import { transitBoardEligibility } from '../../modules/civic/TransitBoard.js';
 import { warRoles } from '../../modules/military/WarRoles.js';
 import { flagImg } from '../Flags.js';
@@ -146,10 +147,12 @@ function partyCard(state) {
   if (!state.civic || state.character.age < 16) return '';
   const p = partyOf(state);
   const votes = (state.civic.votes ?? []).slice(-5).reverse();
-  const join = ['labor', 'business'].map((b) => button(`${PARTY_ICON[b]} ${esc(partyName(state, b))}`, 'party.join', { arg: b, variant: p?.bloc === b ? 'tiny on' : 'tiny', hint: `${money(PARTY_DUES)}/yr` })).join('');
+  const sys = partySystem(state.character.countryId ?? 'US');
+  const dot = (c) => `<span style="display:inline-block;width:9px;height:9px;border-radius:50%;background:${c};margin-right:4px"></span>`;
+  const join = sys.parties.filter((x) => x.status !== 'allied').map((x) => button(`${x.status === 'banned' ? '🕯️ ' : ''}${dot(x.color)}${esc(x.name)}`, 'party.join', { arg: x.id, variant: p?.partyId === x.id ? 'tiny on' : x.status === 'banned' ? 'tiny danger' : 'tiny', hint: x.status === 'banned' ? 'Banned: join underground' : x.status === 'ruling' ? 'The ruling party' : `${money(PARTY_DUES)}/yr` })).join('');
   const role = p ? PARTY_ROLES[p.role] : null;
   return card('Party & Elections', `
-    ${p ? `<p>${chip(`${PARTY_ICON[p.bloc]} ${esc(partyName(state, p.bloc))}`, 'good')} ${chip(role.label)} <small class="fine">since age ${p.since}${role.next ? ` · canvass in campaigns to rise to ${PARTY_ROLES[role.next].label.toLowerCase()}` : ''}</small></p>` : '<p class="muted">Join a party to canvass in national elections, rise in the local party and get its backing when you run.</p>'}
+    ${p ? `<p>${chip(`${p.underground ? '🕯️' : PARTY_ICON[p.bloc]} ${esc(myPartyName(state))}${p.underground ? ' (underground)' : ''}`, p.underground ? 'warn' : 'good')} ${chip(role.label)} <small class="fine">since age ${p.since}${role.next ? ` · canvass in campaigns to rise to ${PARTY_ROLES[role.next].label.toLowerCase()}` : ''}</small></p>` : '<p class="muted">Join a party to canvass in national elections, rise in the local party and get its backing when you run.</p>'}
     ${canVote(state) ? '' : '<p class="why">Only citizens 18+ vote in national elections here.</p>'}
     <div class="toggle-row chips-row">${join}</div>
     ${p ? button('Leave the party', 'party.leave', { variant: 'small ghost' }) : ''}

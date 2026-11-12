@@ -3,6 +3,7 @@
  * session's bills), the laws in force, your seat (bills, leadership,
  * committee, staff) and lobbying.
  */
+import { partyBar } from './PartyVisuals.js';
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
 import { staffTitle, staffBudget, BACKGROUNDS, positions, chiefOf } from '../../modules/politics/Staffers.js';
 import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, POST_STAFF, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority } from '../../modules/politics/Legislature.js';
@@ -17,11 +18,12 @@ let LEVEL_LABEL = US_LEVELS;
 const STAGE = { law: ['✅ Law', 'green'], dead: ['✖ Dead', 'bad'], introduced: ['📥 In the hopper', ''], floor: ['🗳️ On the floor', 'warn'], desk: ['✍️ On the desk', 'warn'], delayed: ['⏳ Held up a year', 'warn'] };
 
 function makeup(state, body) {
-  const pct = Math.round((body.labor / body.seats) * 100);
-  // National parliaments: the country's parties; councils and assemblies: the two blocs.
-  if (body.oneParty) return meter(pct, { label: `☭ ${partyName(state, 'labor')} ${body.labor} · allied parties and non-Party deputies ${body.seats - body.labor}`, tone: 'mid' });
-  const name = (bloc) => (body.level === 'federal' ? partyName(state, bloc) : CAUCUSES[bloc].name);
-  return `${meter(pct, { label: `✊ ${name('labor')} ${body.labor} · 💼 ${name('business')} ${body.seats - body.labor}`, tone: 'mid' })}`;
+  const parties = body.parties ?? [];
+  if (!parties.length) {
+    const pct = Math.round((body.labor / body.seats) * 100);
+    return meter(pct, { label: `✊ ${partyName(state, 'labor')} ${body.labor} · 💼 ${partyName(state, 'business')} ${body.seats - body.labor}`, tone: 'mid' });
+  }
+  return partyBar(body);
 }
 
 /** When a chamber next faces the voters (appointed chambers never do). */
