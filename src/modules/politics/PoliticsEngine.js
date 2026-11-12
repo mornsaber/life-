@@ -9,6 +9,8 @@
  * state.politics = { office: { id, termYearsLeft, terms, approval, startAge, fullTime } | null,
  *                    campaign, history[], recognition, scandals, laborVotes }
  */
+import { watchdogHere } from './OfficeLife.js';
+import { corruptionHere } from '../crime/CrimeWorld.js';
 import { clamp } from '../../core/Random.js';
 import { yearsInProfession } from '../../core/State.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -166,7 +168,7 @@ function bribeOffer(ctx) {
     options: [
       { id: 'take', label: '💰 Take it', tone: 'danger' },
       { id: 'refuse', label: '🙅 Refuse' },
-      { id: 'report', label: '📞 Report it to the FBI' },
+      { id: 'report', label: `📞 Report it to ${watchdogHere(ctx.state)}` },
     ],
   });
 }
@@ -426,12 +428,12 @@ export const PoliticsEngine = {
       const { state, rng } = ctx;
       if (optionId === 'take') {
         ctx.earn(rng.int(150000, 500000), 'Undisclosed income');
-        ctx.emit('legal:offense', { offenseId: 'publicCorruption', context: 'selling official acts', discovery: 0.2, evidence: 0.8 });
+        ctx.emit('legal:offense', { offenseId: 'publicCorruption', context: 'selling official acts', discovery: clamp(0.3 - corruptionHere(state) * 0.25, 0.05, 0.3), evidence: 0.8 });
         ctx.log('You took the money.', '😈', 'warn');
       } else if (optionId === 'report') {
         state.politics.recognition = Math.min(100, state.politics.recognition + 10);
         if (state.politics.office) state.politics.office.approval = Math.min(100, state.politics.office.approval + 8);
-        ctx.log('You wore a wire for the FBI. The briber was indicted and you were hailed as a reformer.', '🕵️', 'good');
+        ctx.log(`You wore a wire for ${watchdogHere(state)}. The briber was charged and you were hailed as a reformer.`, '🕵️', 'good');
       } else ctx.log('You showed them the door.', '🙅');
     },
     appoint(ctx, _data, optionId) {
