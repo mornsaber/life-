@@ -60,16 +60,12 @@ function executiveConsole(state) {
   if (o?.id === 'cabinetSecretary') return `<div class="action-grid">${button('💼 Fight for your department\'s budget', 'executive.lobbyDepartment', { hint: 'Once a budget cycle' })}</div>`;
   const level = executiveLevel(o?.id);
   if (!level) return '';
-  const lv = level === 'national' ? 'federal' : level;
-  const laws = Object.entries(LAWS).filter(([, l]) => l.levels.includes(lv));
-  const agenda = laws.map(([id, l]) => `<li class="report-row"><div>${l.icon} ${esc(l.name)} <small class="muted">${esc(describeValue(id, levelValue(state, id, lv, lv === 'city' ? state.character.regionId : lv === 'state' ? stateIdOf(state) : (state.character.countryId && state.character.countryId !== 'US' ? state.character.countryId : null))))}</small></div>
-    <div class="toggle-row">${button('▼', 'legislature.executiveBill', { arg: `${id}|down`, variant: 'tiny', hint: 'Send a bill to weaken / cut it' })}${button('▲', 'legislature.executiveBill', { arg: `${id}|up`, variant: 'tiny', hint: 'Send a bill to strengthen / raise it' })}</div></li>`).join('');
   return `<div class="action-grid">
       ${button('🎤 Address the public', 'executive.address', { hint: 'Once a year' })}
       ${button('🧊 Freeze hiring', 'executive.hiringFreeze', { hint: 'Every department ~3% leaner' })}
       ${level !== 'city' ? button('🕊️ Grant a pardon', 'executive.pardon', { hint: 'A gamble with the public' }) : ''}
     </div>
-    ${disclosure('politics.agenda', '📜 Your legislative agenda (2 bills a year)', `<ul class="history">${agenda}</ul><p class="fine">Your bills go to the legislature with your standing behind them; it still has to pass them. Budgets are in "Your Government" below.</p>`)}`;
+    <p class="fine">✍️ Send the legislature your own bills from 🏛️ Chamber → Change a Law, with how each vote looks today.</p>`;
 }
 
 /** Honours you can put names forward for (Patronage.js). */

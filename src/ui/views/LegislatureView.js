@@ -4,6 +4,7 @@
  * committee, staff) and lobbying.
  */
 import { partyBar, partyTag } from './PartyVisuals.js';
+import { lawChangeCard } from './LawChangeCard.js';
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
 import { staffTitle, staffBudget, BACKGROUNDS, positions, chiefOf } from '../../modules/politics/Staffers.js';
 import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, POST_STAFF, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority } from '../../modules/politics/Legislature.js';
@@ -77,12 +78,6 @@ function seatCard(state) {
   const used = state.yearly['legislature.act'] ?? 0;
   const left = legActionsPerYear(seat) - used;
   const terms = seniority(state);
-  const sponsorRows = Object.entries(LAWS).filter(([id, l]) => l.levels.includes(body.level) && lawHere(id, body.level, body.where)).map(([id, law]) => {
-    const cur = levelValue(state, id, body.level, body.where);
-    const up = proposedValue(id, cur ?? (law.kind === 'number' ? law.min : cur), 'up');
-    const down = proposedValue(id, cur ?? (law.kind === 'number' ? law.min : cur), 'down');
-    return `<li class="report-row"><div>${law.icon} <b>${esc(law.name)}</b> <small class="muted">now ${esc(describeValue(id, cur))}</small></div><div class="toggle-row">${up !== null ? button(`⬆️ ${esc(describeValue(id, up))}`, 'legislature.sponsor', { arg: `${id}|up`, variant: 'tiny', disabled: left <= 0 }) : ''}${down !== null ? button(`⬇️ ${esc(describeValue(id, down))}`, 'legislature.sponsor', { arg: `${id}|down`, variant: 'tiny', disabled: left <= 0 }) : ''}</div></li>`;
-  }).join('');
   const posts = Object.entries(POSTS).map(([id, P]) => button(seat.post === id ? `✓ ${P.title}` : `Run for ${P.title.toLowerCase()}`, 'legislature.runPost', { arg: id, variant: seat.post === id ? 'tiny on' : 'tiny', disabled: seat.post === id || terms < P.minTerms || (P.majority && !inMajority(state)) || Boolean(state.yearly['legislature.runPost']), hint: terms < P.minTerms ? `${P.minTerms} terms` : P.majority && !inMajority(state) ? 'Majority caucus only' : `+${Math.round(P.pay * 100)}% pay` })).join('');
   const staff = seat.staff.map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(staffTitle(p.role, state))} · skill ${p.skill}${p.bg ? ` · ${esc(BACKGROUNDS[p.bg]?.label ?? '')}` : ''}${p.salary ? ` · $${p.salary.toLocaleString()}/yr` : ''}</small></div>${button('Let go', 'legislature.fireStaff', { arg: p.id, variant: 'tiny danger' })}</li>`).join('');
   const allowance = staffBudget(seat);
@@ -91,7 +86,7 @@ function seatCard(state) {
     <p>${chip(`${esc(myPartyName(state) ?? CAUCUSES[seat.caucus].name)}`, 'cyan')} ${chip(inMajority(state) ? 'In the majority' : 'In the minority', inMajority(state) ? 'green' : 'warn')} ${seat.post ? chip(POSTS[seat.post].title, 'gold') : ''} ${seat.committee ? chip(`🗂️ ${COMMITTEES[seat.committee].name}`) : ''} ${seat.peer ? chip('👑 Life peer', 'gold') : ''}</p>
     ${seat.peer ? `<p class="fine">As ${esc(state.character.style?.peerage ?? 'a life peer')} you sit in the ${esc(body.name)} for life: no elections, no salary (an attendance allowance instead), and your day job can carry on.${BODY_DEFS[body.kind].revising ? ` The ${esc(body.name)} revises and delays bills; under ${esc(BODY_DEFS[body.kind].revising)} it can hold one up for a year but not kill it.` : ''}</p>` : ''}
     <p class="fine">${left > 0 ? `${left} legislative action${left === 1 ? '' : 's'} left this year.` : 'No legislative actions left this year.'} Bills you introduce come to the floor at year-end; in a close vote, yours decides.</p>
-    <h4 class="sub">Introduce a bill</h4><ul class="history">${sponsorRows}</ul>
+    <p class="fine">✍️ Introduce bills below, in Change a Law.</p>
     ${seat.post && pending.length ? `<h4 class="sub">Whip votes</h4><div class="toggle-row">${pending.map((b) => button(`📋 ${esc(billTitle(b))}`, 'legislature.whip', { arg: b.id, variant: 'tiny', disabled: left <= 0 })).join('')}</div>` : ''}
     <h4 class="sub">Leadership</h4><div class="toggle-row">${posts}</div>
     <h4 class="sub">Committee</h4><div class="toggle-row">${Object.entries(COMMITTEES).map(([id, c]) => button(c.name, 'legislature.committee', { arg: id, variant: seat.committee === id ? 'tiny on' : 'tiny' })).join('')}</div>
@@ -104,19 +99,6 @@ function seatCard(state) {
     ${seat.record.length ? disclosure('my-record', 'Your record', `<ul class="history">${seat.record.slice().reverse().map((r) => `<li><small>age ${r.age}</small> ${esc(r.text)}</li>`).join('')}</ul>`) : ''}`, { icon: '🏛️', accent: 'yellow' });
 }
 
-/** Lobbying from outside: a business owner's money or a union officer's clout. */
-function lobbyCard(state) {
-  if (mySeat(state) || bodiesHere(state).some((b) => b.oneParty)) return '';
-  const owner = state.business?.current || state.business?.holdings?.length;
-  const union = isOfficer(state) && myUnion(state);
-  if (!owner && !union) return '';
-  const left = 2 - (state.yearly['legislature.lobby'] ?? 0);
-  const cc = state.character.countryId ?? 'US';
-  const where = (level) => (level === 'city' ? state.character.regionId : level === 'state' ? (REGIONS[state.character.regionId] ?? REGIONS.midcity).state : cc);
-  const rows = ['city', 'state', 'federal'].filter((level) => chambersFor(level, where(level)).length).flatMap((level) => Object.entries(LAWS).filter(([id, l]) => l.levels.includes(level) && lawHere(id, level, where(level))).map(([id, law]) => [level, id, law]));
-  const list = rows.map(([level, id, law]) => `<li class="report-row"><div>${law.icon} ${esc(law.name)} <small class="muted">${LEVEL_LABEL[level]}</small></div><div class="toggle-row">${button('⬆️ For', 'legislature.lobby', { arg: `${id}|up|${level}`, variant: 'tiny', disabled: left <= 0 })}${button('⬇️ Against', 'legislature.lobby', { arg: `${id}|down|${level}`, variant: 'tiny', disabled: left <= 0 })}</div></li>`).join('');
-  return card('Lobbying', `<p class="fine">${union ? 'As a union officer you can put the union\'s clout behind pro-labor bills.' : ''} ${owner ? `Your companies can fund a lobbying campaign: $25k for the city, $150k for the ${cc === 'US' ? 'state' : 'region'}, $1M ${cc === 'US' ? 'in Washington' : 'nationally'}.` : ''} ${left} campaign${left === 1 ? '' : 's'} left this year.</p>${disclosure('lobby-list', 'Laws you can push', `<ul class="history">${list}</ul>`)}`, { icon: '💼' });
-}
 
 export function legislatureCards(state) {
   LEVEL_LABEL = state.character.countryId ? ABROAD_LEVELS : US_LEVELS;
@@ -134,7 +116,7 @@ export function legislatureCards(state) {
     : parliamentary
     ? `Bills pass a vote in each chamber of parliament. The government commands the majority in the ${esc(national.name)}, so there's no veto: what passes becomes law${state.character.countryId === 'GB' ? ' on Royal Assent' : ''}.${revising ? ` The ${esc(revising.name())} can only delay a bill by a year (${esc(revising.revising)}).` : ''} Unions' clout and business lobbying move votes; general elections shift the parties.`
     : 'Bills pass a floor vote in each chamber, then need the executive\'s signature (a veto takes two-thirds to override). Unions\' clout and business lobbying move votes; elections shift the blocs.';
-  return `${seatCard(state)}${card('Legislatures', `<p class="fine">${how}</p>${groups}`, { icon: '🏛️' })}${lawsCard(state)}${lobbyCard(state)}`;
+  return `${seatCard(state)}${lawChangeCard(state)}${card('Legislatures', `<p class="fine">${how}</p>${groups}`, { icon: '🏛️' })}${lawsCard(state)}`;
 }
 
 /** The roster: each member opens into a profile. */

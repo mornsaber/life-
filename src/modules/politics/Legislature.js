@@ -33,7 +33,8 @@ import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUn
 import { recordVote, LAW_ISSUE } from './Platform.js';
 import { voteReaction, nextElectionYear } from './Elections.js';
 import { regimeOf } from '../world/Regimes.js';
-import { allocateSeats, assignMemberParties, electionMood, partySystem, bodyCountry } from './PartySystem.js';
+import { lawExistsHere } from './LawsByCountry.js';
+import { allocateSeats, assignMemberParties, electionMood, partySystem, bodyCountry, partyInfo } from './PartySystem.js';
 import { eraYear, PRESENT } from '../world/Eras.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
@@ -103,6 +104,8 @@ export function chambersFor(level, where) {
 /** Laws that only exist in US law (union-security and card-check rules), and the national minimum wage abroad (set by province). */
 export const lawHere = (lawId, level, where) => {
   const cc = level === 'state' ? STATES[where]?.country ?? 'US' : level === 'federal' ? where ?? 'US' : REGIONS[where]?.country ?? 'US';
+  // Laws exist from their country's own date (a minimum wage in Britain from 1999; never in Sweden).
+  if (!lawExistsHere(lawId, cc)) return false;
   if (cc === 'US') return true;
   // American institutions: right-to-work and card-check, state income tax, privatized police,
   // ambulances and fire, occupational licensing boards, public-sector bargaining fights, non-competes.
@@ -223,7 +226,7 @@ const personName = (rng) => {
   return `${n.firstName} ${n.lastName}`;
 };
 const homeState = (state) => (REGIONS[state.character.regionId] ?? REGIONS.midcity).state;
-const whereFor = (state, level) => (level === 'city' ? state.character.regionId : level === 'state' ? homeState(state) : state.character.countryId ?? 'US');
+export const whereFor = (state, level) => (level === 'city' ? state.character.regionId : level === 'state' ? homeState(state) : state.character.countryId ?? 'US');
 export const bodyId = (kind, where) => `${kind}:${where}`;
 
 /**
@@ -289,7 +292,11 @@ function fillProfile(m, rng, body) {
   m.age ??= rng.int(32, 74);
   m.background ??= rng.pick(BACKGROUNDS);
   if (m.lean == null) m.lean = (m.caucus === 'labor' ? -1 : 1) * rng.int(15, 100);
-  m.focus ??= rng.pick(PROFILE_LAWS.filter((id) => LAWS[id].levels.includes(body.level)));
+  // A pet issue that exists where they sit (no right-to-work crusaders in the Commons).
+  if (m.focus == null || (body.where && !lawHere(m.focus, body.level, body.where))) {
+    const here = PROFILE_LAWS.filter((id) => LAWS[id].levels.includes(body.level) && (!body.where || lawHere(id, body.level, body.where)));
+    m.focus = rng.pick(here.length ? here : PROFILE_LAWS.filter((id) => LAWS[id].levels.includes(body.level)));
+  }
   m.committee ??= rng.pick(Object.keys(COMMITTEES));
   m.rel ??= 50;
   m.votes ??= [];
@@ -436,7 +443,7 @@ export const inMajority = (state) => {
 
 /** What the executive above a body is: you (as mayor or governor), or an NPC. */
 /** The level an executive office governs, in the legislature's terms ('city', 'state', 'federal'). */
-function execLevel(officeId) {
+export function execLevel(officeId) {
   if (!officeId) return null;
   if (officeId === 'mayor') return 'city';
   if (officeId === 'governor') return 'state';
@@ -573,6 +580,34 @@ function onTheRecord(state, bill, yes) {
   recordVote(state, bill.lawId, side);
   const o = state.politics.office;
   if (o) o.approval = Math.round(clamp(o.approval + voteReaction(state, o.id, LAW_ISSUE[bill.lawId], side), 0, 100));
+}
+
+/**
+ * How a bill would fare if it came to the floor today: each chamber's likely yes and no, party by
+ * party (a party votes with its side, a few cross over; independents split), and whether the
+ * executive would sign it. Read-only: for the screens.
+ */
+export function projectBill(state, level, where, lawId, direction) {
+  const labor = favorsLabor(lawId, direction);
+  const chambers = chambersFor(level, where).map((k) => state.legislature?.bodies?.[bodyId(k, where)]).filter(Boolean);
+  if (!chambers.length) return null;
+  const rows = chambers.map((body) => {
+    let yes = 0;
+    const byParty = [];
+    for (const p of body.parties ?? [{ id: 'labor', seats: body.labor }, { id: 'business', seats: body.seats - body.labor }]) {
+      const info = p.id === 'labor' || p.id === 'business' ? { bloc: p.id, short: p.id } : partyInfo(body, p.id);
+      const share = body.oneParty || body.system === 'one' ? 0.99 : p.id === 'nonparty' ? 0.5 : (info.bloc === 'labor') === labor ? 0.93 : 0.07;
+      const y = Math.round(p.seats * share);
+      yes += y;
+      byParty.push({ id: p.id, short: info.short, yes: y, no: p.seats - y });
+    }
+    return { name: body.name, yes, no: body.seats - yes, passes: yes * 2 > body.seats, byParty, body };
+  });
+  const passes = rows.every((r) => r.passes);
+  const exec = chambers[0].executive;
+  const veto = BODY_DEFS[chambers[0].kind]?.veto !== false && exec && !exec.you && !chambers[0].oneParty && (exec.caucus === 'labor') !== labor;
+  const override = rows.every((r) => r.yes * 3 >= r.body.seats * 2);
+  return { rows, passes, vetoed: passes && veto && !override, short: Math.max(0, ...rows.map((r) => Math.floor(r.body.seats / 2) + 1 - r.yes)) };
 }
 
 export const billTitle = (bill) => {

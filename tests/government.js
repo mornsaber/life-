@@ -191,8 +191,10 @@ const tests = {
     take(ctx, 'president');
     year(engine, state);
     const html = VIEWS.politics(state);
-    assert.match(html, /Your Government/);
-    assert.match(html, /legislative agenda/);
+    const chamber = VIEWS.chamber(state, {});
+    assert.match(chamber, /Your Government/);
+    assert.match(chamber, /Change a Law/, 'the president sends bills from the Chamber tab');
+    assert.match(chamber, /Passes|Fails/, 'each change shows how the vote looks');
     assert.match(html, /Public Services/);
   },
 };
