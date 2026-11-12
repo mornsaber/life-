@@ -27,7 +27,8 @@ const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ??
 const problems = new Map();
 const flag = (msg, where) => { if (!problems.has(msg)) problems.set(msg, where); };
 const scan = (cc, text, where, seen, also = null) => {
-  if (!text || seen.has(text)) return;
+  // A life that moved to the US reads American words, rightly.
+  if (!text || seen.has(text) || cc === 'US') return;
   seen.add(text);
   // A life that emigrated reads its new country's words too ("GT @28": living in Guatemala),
   // and the year it moved, the old country's (`also`).
@@ -47,7 +48,8 @@ function life(cc, seed) {
   const ctx = engine.context();
   const seen = new Set();
   // Scanned against the country you live in now (a life can emigrate along the way).
-  const here = () => state.character.countryId ?? cc;
+  // No country code means the US (a move to America deletes it).
+  const here = () => state.character.countryId ?? 'US';
   const countryNow = () => COUNTRIES[here()];
   const tryDo = (fn, where) => { try { fn(); } catch (e) { flag(`threw: ${e.message.split('\n')[0]}`, `${where}\n${e.stack.split('\n').slice(1, 4).join('\n')}`); } };
   const solve = () => { for (let g = 0; g < 15 && state.prompts.length; g++) { const pr = state.prompts[0]; const opts = pr.options.filter((o) => !o.disabled && o.id !== 'cancel'); engine.resolvePrompt(pr.id, rng.pick(opts.length ? opts : pr.options).id); } };

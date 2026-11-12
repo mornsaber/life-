@@ -75,6 +75,12 @@ export function passProperties(old, s, child, legacy) {
     s.succession = { ...(s.succession ?? {}), familyHome: { property: inherited(home, old, s.character.age), equity: equityOf(home), share, others } };
   }
   s.housing.properties.push(...out);
+  // With no home of your own in that town, the house you were left becomes it.
+  const where = s.character.regionId;
+  if (!s.housing.properties.some((p) => p.use === 'primary')) {
+    const home = out.find((p) => p.regionId === where && p.use === 'vacant' && PROPERTY_TYPES[p.type]?.kind !== 'land');
+    if (home) { home.use = 'primary'; s.housing.withParents = false; s.housing.rental = null; }
+  }
   // A house you were left was counted in your inheritance as money: it's the house instead.
   s.finances.cash -= Math.min(Math.max(0, s.finances.cash), owed);
   return out;
@@ -86,6 +92,8 @@ function inherited(p, old, age) {
   q.purchasePrice = Math.round(p.value);
   q.purchaseAge = age;
   q.tenants = q.tenants ?? [];
+  // It was their home, not yet yours: empty until you move in, rent it or sell it.
+  if (q.use === 'primary') q.use = 'vacant';
   return q;
 }
 
