@@ -139,11 +139,12 @@ function religiousCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${warRolesCard(state)}${partyCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${warRolesCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
 }
 
 /** Party membership and how you've voted. */
-function partyCard(state) {
+/** Your party membership and votes (shown on Politics → 🎗️ Party). */
+export function partyCard(state) {
   if (!state.civic || state.character.age < 16) return '';
   const p = partyOf(state);
   const votes = (state.civic.votes ?? []).slice(-5).reverse();

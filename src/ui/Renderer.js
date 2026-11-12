@@ -37,7 +37,7 @@ import { militaryView, emergencyView } from './views/ServiceViews.js';
 import { civicServiceView } from './views/CivicServiceView.js';
 import { homeView } from './views/HomeView.js';
 import { moveView } from './views/MoveView.js';
-import { politicsView } from './views/PoliticsView.js';
+import { politicsView, chamberView, partyTabView, campaignView } from './views/PoliticsView.js';
 import { healthView } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
@@ -71,10 +71,11 @@ import { flagHtml } from './Flags.js';
 import { avatarHtml } from './Avatar.js';
 import { flagImg } from './Flags.js';
 
-/** Seven sections across the top; related screens sit in a compact sub-tab row. */
+/** Eight sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
   { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
-  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'politics', label: 'Politics', icon: '🗳️' }] },
+  { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }] },
+  { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
   { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
@@ -197,6 +198,9 @@ export const VIEWS = {
   home: homeView,
   move: moveView,
   politics: (state, ui) => governmentCard(state) + politicsView(state, ui),
+  chamber: (state) => chamberView(state),
+  party: (state) => partyTabView(state),
+  campaign: (state) => campaignView(state),
   achievements: achievementsView,
   activities(state) {
     const items = ACTIVITIES.map((a) => {

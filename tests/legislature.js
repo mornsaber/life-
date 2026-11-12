@@ -13,6 +13,8 @@ import { MODULES } from '../src/modules/registry.js';
 import { bodiesHere, mySeat, myBody, ensureBodies } from '../src/modules/politics/Legislature.js';
 import { lawValue, levelValue, LAWS, enact } from '../src/modules/politics/Laws.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+/** The Politics section: Office, Chamber, Party and Campaign together. */
+const allPolitics = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const clean = (html) => { const i = html.search(/NaN|undefined|\[object/); assert.ok(i < 0, i < 0 ? "" : html.slice(Math.max(0, i - 60), i + 70)); };
@@ -59,7 +61,7 @@ const tests = {
     }
     for (let i = 0; i < 25; i++) year(engine);
     assert.ok(state.laws.enacted.length > 0, 'some bills became law over 25 years');
-    const html = VIEWS.politics(state);
+    const html = allPolitics(state);
     clean(html);
     assert.ok(html.includes('Laws in Force') && html.includes('Legislatures'));
   },
@@ -77,7 +79,7 @@ const tests = {
     engine.dispatch('legislature.hireStaff', 'legislativeDirector');
     engine.dispatch('legislature.hireStaff', 'chiefOfStaff');
     assert.equal(s.staff.length, 2);
-    const html = VIEWS.politics(state);
+    const html = allPolitics(state);
     clean(html);
     assert.ok(html.includes('Introduce a bill'));
     // Sponsor a labor bill and a business bill.
@@ -158,8 +160,8 @@ const tests = {
     }
     assert.ok(recorded, 'a vote on the record');
     assert.ok(mySeat(state).record.length > 0);
-    clean(VIEWS.politics(state));
-    assert.ok(VIEWS.politics(state).includes('Chairs:'));
+    clean(allPolitics(state));
+    assert.ok(allPolitics(state).includes('Chairs:'));
   },
 
   'every named legislator has a profile, a voting record, and can be worked'() {
@@ -184,7 +186,7 @@ const tests = {
     for (const m of body.members.filter((x) => !x.you)) { engine.dispatch('legislature.askSupport', m.id); }
     pledged = Object.values(state.legislature.bodies).some((b) => b.bills.some((x) => x.sponsor === 'you' && (x.pledges ?? []).length));
     assert.ok(pledged, 'some colleagues co-sponsor');
-    const html = VIEWS.politics(state);
+    const html = allPolitics(state);
     clean(html);
     assert.ok(html.includes('Signature issue') && html.includes('Recent votes'));
   },
@@ -201,7 +203,7 @@ const tests = {
     enact(state, { level: 'city', where: 'chicago', lawId: 'zoning', value: 'upzoned', age: 35 });
     assert.equal(lawValue(state, 'zoning'), 'upzoned');
     assert.ok(Object.keys(LAWS).length >= 19);
-    clean(VIEWS.politics(state));
+    clean(allPolitics(state));
   },
 
   'business owners and union officers can lobby'() {
@@ -244,7 +246,7 @@ const tests = {
     year(engine);
     assert.equal(bill.stage, 'law', 'passed under the Parliament Acts');
     assert.match(bill.outcome, /Parliament Acts/);
-    const html = VIEWS.politics(state);
+    const html = allPolitics(state);
     clean(html);
     assert.match(html, /Life peer/);
     assert.match(html, /appointed for life/);

@@ -3,11 +3,11 @@
  * session's bills), the laws in force, your seat (bills, leadership,
  * committee, staff) and lobbying.
  */
-import { partyBar } from './PartyVisuals.js';
+import { partyBar, partyTag } from './PartyVisuals.js';
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
 import { staffTitle, staffBudget, BACKGROUNDS, positions, chiefOf } from '../../modules/politics/Staffers.js';
 import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, POST_STAFF, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority } from '../../modules/politics/Legislature.js';
-import { partyName } from '../../modules/politics/Parties.js';
+import { partyName, myPartyName } from '../../modules/politics/Parties.js';
 import { LAWS, levelValue, lawValue, describeValue, proposedValue } from '../../modules/politics/Laws.js';
 import { isOfficer, myUnion } from '../../modules/career/LaborUnions.js';
 import { REGIONS } from '../../modules/life/Regions.js';
@@ -41,10 +41,10 @@ function bodyBlock(state, body) {
   return `<h4 class="sub">${esc(body.name)} <small class="muted">${body.seats} seats · ${body.staffCount.toLocaleString()} staff · ${electionNote(body)}</small></h4>
     ${makeup(state, body)}
     ${kv([
-      [d.presiding, `${esc(L.presiding.name)}${L.presiding.you ? ' (you)' : ''} ${CAUCUSES[L.presiding.caucus].icon}`],
-      [leaderTitle(body.kind, 'majority'), `${esc(L.majority.name)}${L.majority.you ? ' (you)' : ''} ${CAUCUSES[L.majority.caucus].icon}`],
-      body.oneParty ? null : [leaderTitle(body.kind, 'minority'), `${esc(L.minority.name)} ${CAUCUSES[L.minority.caucus].icon}`],
-      body.executive ? [d.executive, `${esc(body.executive.name)} ${CAUCUSES[body.executive.caucus].icon}`] : null,
+      [d.presiding, `${esc(L.presiding.name)}${L.presiding.you ? ' (you)' : ''} ${partyTag(body, L.presiding)}`],
+      [leaderTitle(body.kind, 'majority'), `${esc(L.majority.name)}${L.majority.you ? ' (you)' : ''} ${partyTag(body, L.majority)}`],
+      body.oneParty ? null : [leaderTitle(body.kind, 'minority'), `${esc(L.minority.name)} ${partyTag(body, L.minority)}`],
+      body.executive ? [d.executive, `${esc(body.executive.name)} ${partyTag(body, body.executive)}`] : null,
     ].filter(Boolean))}
     ${body.chairs ? `<p class="fine">🗂️ Chairs: ${Object.entries(body.chairs).filter(([id]) => COMMITTEES[id]).map(([id, c]) => `${esc(COMMITTEES[id].name)} — ${esc(c.name)}${c.you ? ' (you)' : ''}`).join(' · ')}</p>` : ''}
     ${membersBlock(state, body)}
@@ -88,7 +88,7 @@ function seatCard(state) {
   const allowance = staffBudget(seat);
   const pending = body.bills.filter((b) => b.stage === 'introduced');
   return card(`Your Seat: ${esc(body.name)}`, `
-    <p>${chip(`${CAUCUSES[seat.caucus].icon} ${CAUCUSES[seat.caucus].name}`, 'cyan')} ${chip(inMajority(state) ? 'In the majority' : 'In the minority', inMajority(state) ? 'green' : 'warn')} ${seat.post ? chip(POSTS[seat.post].title, 'gold') : ''} ${seat.committee ? chip(`🗂️ ${COMMITTEES[seat.committee].name}`) : ''} ${seat.peer ? chip('👑 Life peer', 'gold') : ''}</p>
+    <p>${chip(`${esc(myPartyName(state) ?? CAUCUSES[seat.caucus].name)}`, 'cyan')} ${chip(inMajority(state) ? 'In the majority' : 'In the minority', inMajority(state) ? 'green' : 'warn')} ${seat.post ? chip(POSTS[seat.post].title, 'gold') : ''} ${seat.committee ? chip(`🗂️ ${COMMITTEES[seat.committee].name}`) : ''} ${seat.peer ? chip('👑 Life peer', 'gold') : ''}</p>
     ${seat.peer ? `<p class="fine">As ${esc(state.character.style?.peerage ?? 'a life peer')} you sit in the ${esc(body.name)} for life: no elections, no salary (an attendance allowance instead), and your day job can carry on.${BODY_DEFS[body.kind].revising ? ` The ${esc(body.name)} revises and delays bills; under ${esc(BODY_DEFS[body.kind].revising)} it can hold one up for a year but not kill it.` : ''}</p>` : ''}
     <p class="fine">${left > 0 ? `${left} legislative action${left === 1 ? '' : 's'} left this year.` : 'No legislative actions left this year.'} Bills you introduce come to the floor at year-end; in a close vote, yours decides.</p>
     <h4 class="sub">Introduce a bill</h4><ul class="history">${sponsorRows}</ul>
@@ -147,12 +147,12 @@ function membersBlock(state, body) {
   const leaderOf = (m) => Object.entries(body.leaders ?? {}).filter(([k, l]) => l?.name === m.name && !(body.oneParty && k === 'minority')).map(([k]) => ({ presiding: BODY_DEFS[body.kind].presiding, majority: leaderTitle(body.kind, 'majority'), minority: leaderTitle(body.kind, 'minority') }[k]));
   const rows = body.members.slice().sort((a, b) => (b.you ? 1 : 0) - (a.you ? 1 : 0) || b.terms - a.terms).map((m) => {
     const titles = [...leaderOf(m), ...chairOf(m).map((c) => `Chair, ${c}`)];
-    const summary = `${CAUCUSES[m.caucus].icon} ${esc(m.name)}${m.you ? ' (you)' : ''} · ${esc(districtLabel(body, m))}${titles.length ? ` · ${esc(titles[0])}` : ''}`;
+    const summary = `${partyTag(body, m)} ${esc(m.name)}${m.you ? ' (you)' : ''} · ${esc(districtLabel(body, m))}${titles.length ? ` · ${esc(titles[0])}` : ''}`;
     if (m.you) return `<li>${summary}</li>`;
     const votes = (m.votes ?? []).slice().reverse().map((v) => `<li><small>age ${v.age}</small> ${v.vote === 'yes' ? '✅' : '❌'} ${esc(v.title)}</li>`).join('');
     const bills = (m.sponsored ?? []).slice().reverse().map((b) => `<li><small>age ${b.age}</small> 📜 ${esc(b.title)}</li>`).join('');
     const profile = `${kv([
-      body.oneParty ? ['Affiliation', m.caucus === 'labor' ? esc(partyName(state, 'labor')) : 'An allied party, or none'] : ['Caucus', `${CAUCUSES[m.caucus].icon} ${esc(CAUCUSES[m.caucus].name)} · ${esc(leanLabel(m))}`],
+      ['Party', `${partyTag(body, m, { long: true })}${body.system === 'multi' || body.system === 'dominant' ? ` · ${esc(leanLabel(m))}` : ''}`],
       ['Age', String(m.age)],
       ['Before office', esc(m.background)],
       ['Serving', `${m.terms} term${m.terms === 1 ? '' : 's'} · ${esc(districtLabel(body, m))}`],

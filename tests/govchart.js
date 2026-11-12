@@ -65,10 +65,9 @@ const tests = {
       assert.ok(orgTree(chart).includes('<'));
     }
   },
-  'the politics tab shows the chart'() {
+  'the Chamber tab shows the chart'() {
     const { state } = life({ countryId: 'GB' });
-    const v = VIEWS.politics ?? Object.values(VIEWS).find((x) => x.id === 'politics');
-    const html = typeof v === 'function' ? v(state) : v?.render?.(state) ?? '';
+    const html = VIEWS.chamber(state, {});
     if (html) assert.ok(html.includes('Who answers to whom'));
   },
 };

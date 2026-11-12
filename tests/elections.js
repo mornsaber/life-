@@ -14,6 +14,8 @@ import { electorateOf, nextElectionYear, generalShare, primaryShare, makeOpponen
 import { platformOf, credibility, recordVote, ideology } from '../src/modules/politics/Platform.js';
 import { executiveOf } from '../src/modules/politics/Legislature.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+/** The Politics section: Office, Chamber, Party and Campaign together. */
+const allPolitics = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life({ seed = 5, regionId = 'midcity', age = 35, bloc = 'labor' } = {}) {
@@ -153,7 +155,7 @@ const tests = {
   'the Politics tab shows the platform, the race and the calendar'() {
     const { engine, state } = life();
     declare(engine, state, 'stateRep');
-    const html = VIEWS.politics(state);
+    const html = allPolitics(state);
     assert.match(html, /Where You Stand/);
     assert.match(html, /Projected vote share|Primary projection/);
     assert.match(html, /election (in|this year)/);

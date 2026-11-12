@@ -17,6 +17,8 @@ import { bodiesHere, ensureBodies } from '../src/modules/politics/Legislature.js
 import { enlist } from '../src/modules/military/MilitaryEngine.js';
 import { ORDERS } from '../src/modules/world/Honours.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+/** The Politics section: Office, Chamber, Party and Campaign together. */
+const allPolitics = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -51,7 +53,7 @@ const tests = {
         assert.match(r.reason, /Party/, `${cc} ${id}: ${r.reason}`);
       }
     }
-    const html = VIEWS.politics(life().state, {});
+    const html = allPolitics(life().state, {});
     assert.match(html, /Posts in the Party-State/);
     assert.doesNotMatch(html, /Run for Office|Where You Stand/);
   },
@@ -92,7 +94,7 @@ const tests = {
     assert.ok(bodies.some((b) => /People's Congress/.test(b.name)));
     const text = bodies.flatMap((b) => b.history.map((h) => h.text)).join('\n');
     assert.doesNotMatch(text, /lost the election|took the majority/);
-    const html = VIEWS.politics(state, {});
+    const html = allPolitics(state, {});
     assert.doesNotMatch(html, /Minority leader/);
   },
   'officers join the Party through their unit, and Party standing weighs on promotion boards'() {
@@ -125,7 +127,7 @@ const tests = {
     always(ctx.rng);
     year(engine, state, 1);
     assert.ok(['cc', 'cmc', 'cmcVice'].includes(state.cpc.military), state.cpc.military);
-    assert.match(VIEWS.politics(state, {}), /Central Committee|Central Military Commission/);
+    assert.match(allPolitics(state, {}), /Central Committee|Central Military Commission/);
   },
   'cadres reach the top ranks before the age limits'() {
     const { state } = life();

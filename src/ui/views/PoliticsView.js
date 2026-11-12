@@ -20,6 +20,10 @@ import { appointmentsInReach, APPOINTEE_KINDS } from '../../modules/org/Governme
 import { officeRoster, DEPUTY_KINDS, OFFICE_ACTIONS } from '../../modules/org/ElectedOffices.js';
 import { ratingLabel } from '../../modules/career/PayGrades.js';
 import { legislatureCards } from './LegislatureView.js';
+import { hemicycle, seatBar, partyLegend } from './PartyVisuals.js';
+import { partySystem, partyInfo } from '../../modules/politics/PartySystem.js';
+import { bodiesHere } from '../../modules/politics/Legislature.js';
+import { partyCard as memberPartyCard } from './CommunityView.js';
 import { officeOrderFor } from '../../modules/politics/NationalOffices.js';
 import { stateIdOf } from '../../modules/life/Regions.js';
 import { ISSUES, ISSUE_IDS, platformView, ideology, ideologyLabel, credibility, recordOn } from '../../modules/politics/Platform.js';
@@ -181,7 +185,7 @@ function reformsBlock(state) {
   return `<h4 class="sub">Change the rules</h4><p class="fine">How the country is governed is yours to change now: one great reform a year. Each costs approval; in an unfree state the old guard won't like it.</p><div class="action-grid">${open.map((r) => button(r.label, 'reforms.enact', { arg: r.id, disabled: used, hint: `−${r.cost} approval${r.risky ? ' · the old guard will resist' : ''}` })).join('')}</div>`;
 }
 
-export function politicsView(state) {
+function politicsParts(state) {
   const p = state.politics;
   const o = p.office;
   const c = p.campaign;
@@ -223,16 +227,46 @@ export function politicsView(state) {
   const ladder = `${openRows || '<li class="muted">No office is open to you yet.</li>'}${lockedRows ? `<li>${disclosure('politics.locked', '🔒 Offices not open to you yet', `<ul class="job-board">${lockedRows}</ul>`, { count: order.length - openIds.size })}</li>` : ''}`;
   const results = (p.results ?? []).length ? `<h4 class="sub">Election results</h4><ul class="history">${p.results.slice().reverse().map((r) => `<li>${r.won ? '✅' : '❌'} ${r.year} ${r.stage === 'primary' ? 'primary' : 'election'} · ${esc(OFFICES[r.officeId]?.name ?? r.officeId)} <small>${r.share}%${r.against ? ` vs ${esc(r.against)}` : ''}</small></li>`).join('')}</ul>` : '';
   const history = p.history.length ? `<ul class="history">${p.history.map((h) => `<li>${OFFICES[h.officeId].icon} <b>${OFFICES[h.officeId].name}</b> <small>age ${h.startAge}–${h.endAge}, ${h.terms} term${h.terms > 1 ? 's' : ''} — ${esc(h.reason)}</small></li>`).join('')}</ul>` : empty('No offices held yet.');
-  return `${current}${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${campaign}
-    ${patronageCard(state)}
-    ${crownCards(state)}
-    ${oneParty(state) ? partyPostsCard(state) : `${platformCard(state)}
-    ${card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' })}`}
-    ${partyCard(state)}
-    ${governmentCard(state)}
-    ${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}
-    ${legislatureCards(state)}
-    ${card('Political History', `${styleNote(state)}${history}${results}`, { icon: '🗂️' })}`;
+  const ladderCard = oneParty(state) ? '' : card('Run for Office', `<p class="muted">${esc(stateOf(state).name)} · name recognition ${p.recognition}/100. Elections come in their cycle years; file within a year of the vote (two for governor, senator or president). Your party and the district's lean, how close your platform is to the voters, money, experience and scandals decide it.</p><ul class="job-board">${ladder}</ul>`, { icon: '🗳️' });
+  return {
+    current, campaign, ladderCard,
+    history: card('Political History', `${styleNote(state)}${history}${results}`, { icon: '🗂️' }),
+  };
+}
+
+/** 🗳️ Office: the post you hold and everything it does. */
+export function politicsView(state) {
+  const x = politicsParts(state);
+  const work = `${worldStageCard(state)}${overseasCard(state)}${coalitionCard(state)}${europarlCard(state)}${governingCard(state)}${cityServicesCard(state)}${officeCard(state)}${appointmentsCard(state)}${patronageCard(state)}${crownCards(state)}`;
+  const none = x.current || work.trim() ? '' : card('No Office', `<p class="muted">You don't hold public office. ${oneParty(state) ? 'Posts are given by the Party: see 🎗️ Party.' : 'Stand for election from 📣 Campaign, and follow the chambers in 🏛️ Chamber.'}</p>`, { icon: '🗳️' });
+  return `${x.current}${none}${work}${x.history}`;
+}
+
+/** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */
+export function chamberView(state) {
+  return `${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;
+}
+
+/** 🎗️ Party: your party, your platform, your votes. */
+export function partyTabView(state) {
+  return `${memberPartyCard(state)}${partyCard(state)}${oneParty(state) ? partyPostsCard(state) : platformCard(state)}`;
+}
+
+/** 📣 Campaign: the race you're in, and the offices you could run for. */
+export function campaignView(state) {
+  const x = politicsParts(state);
+  return `${x.campaign}${x.ladderCard || card('Elections', '<p class="muted">There are no contested elections here: the Party fills every post.</p>', { icon: '🗳️' })}`;
+}
+
+/** The national chamber at a glance: the hemicycle, the parties, the government. */
+function chamberCard(state) {
+  const bodies = bodiesHere(state);
+  const national = bodies.filter((b) => b.level === 'federal' && b.parties?.length);
+  if (!national.length) return '';
+  const cc = state.character.countryId ?? 'US';
+  const banned = partySystem(cc).parties.filter((x) => x.status === 'banned');
+  const blocks = national.map((b, i) => `<h4 class="sub">${esc(b.name)}</h4>${hemicycle(b)}${seatBar(b)}${partyLegend(b, { banned: i === 0 ? banned : [] })}`).join('');
+  return card(national[0].name, blocks, { icon: '🏛️', summary: partyInfo(national[0], national[0].parties[0].id).short });
 }
 
 /** The agency heads your office appoints, and who holds each post now. */

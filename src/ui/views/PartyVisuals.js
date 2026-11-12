@@ -3,7 +3,7 @@
  * stands), a slim seat bar, and a legend with the government marked. Pure: reads, never writes.
  */
 import { esc } from '../Components.js';
-import { partyInfo, governingParties } from '../../modules/politics/PartySystem.js';
+import { partyInfo, governingParties, mainPartyOf, bodyCountry } from '../../modules/politics/PartySystem.js';
 
 /** Parties in a chamber, left to right, with their details. */
 function seated(body) {
@@ -81,3 +81,10 @@ export function partyLegend(body, { banned = [] } = {}) {
 
 /** Bar + legend, for compact places. */
 export const partyBar = (body) => `${seatBar(body)}${partyLegend(body)}`;
+
+/** A member's party as a coloured tag (short name, or the full name with long). Falls back to the bloc's main party. */
+export function partyTag(body, m, { long = false } = {}) {
+  if (!m) return '';
+  const info = m.party ? partyInfo(body, m.party) : mainPartyOf(bodyCountry(body), m.caucus) ?? partyInfo(body, 'nonparty');
+  return `<span style="display:inline-flex;align-items:center;gap:3px;white-space:nowrap"><span style="width:8px;height:8px;border-radius:50%;background:${info.color}"></span><small>${esc(long ? info.name : info.short)}</small></span>`;
+}

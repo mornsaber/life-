@@ -300,6 +300,11 @@ export function votingSystem(cc, y) {
   return 'pr';
 }
 const EXPONENT = { fptp: 2.2, mixed: 1.4, mmp: 1, pr: 1 };
+/** Appointed upper houses: the share sitting as crossbenchers or independents, and parties that take no seats there. */
+const APPOINTED_UPPER = {
+  GB: { cross: 0.25, laterCross: 0.25, none: ['snp', 'ref', 'ukip', 'sf', 'pc'] },
+  CA: { cross: 0.05, laterCross: 0.75, independentFrom: 2016, none: ['bq', 'ndp', 'ccf', 'grn', 'refca'] },
+};
 
 const inWindow = (r, y) => y >= r.from && y < r.until;
 const bannedThen = (r, y) => (r.banned ?? []).some(([a, b]) => y >= a && y < b);
@@ -381,6 +386,14 @@ export function allocateSeats(body, y = eraYear()) {
     body.parties = [{ id: 'ruling', seats: body.seats - indep - alliedSeats }, ...share(alliedSeats, allied.map((p) => ({ id: p.id, w: p.weight }))), { id: 'nonparty', seats: indep }].filter((x) => x.seats > 0);
     return body.parties;
   }
+  const appointed = APPOINTED_UPPER[cc] && String(body.kind ?? '').startsWith('upper_');
+  if (appointed) {
+    const a = APPOINTED_UPPER[cc];
+    const cross = Math.round(body.seats * (y >= (a.independentFrom ?? 9999) ? a.laterCross : a.cross));
+    const ps = sys.parties.filter((p) => p.status === 'legal' && !(a.none ?? []).includes(p.id) && p.weight >= 0.04);
+    body.parties = [...share(body.seats - cross, ps.map((p) => ({ id: p.id, w: p.weight ** 1.3 }))), { id: 'nonparty', seats: cross }].filter((x) => x.seats > 0).sort((a2, b2) => b2.seats - a2.seats);
+    return body.parties;
+  }
   const vs = votingSystem(cc, y);
   const exp = body.level === 'city' ? 1.6 : EXPONENT[vs];
   const thresh = THRESHOLD[cc] ?? 0;
@@ -409,7 +422,7 @@ export function electionMood(body) {
 
 /** A party's details by id in a body's country (nonparty: the independents and appointees). */
 export function partyInfo(body, id, y = eraYear()) {
-  if (id === 'nonparty') return { id, name: body.system === 'one' ? 'Non-Party deputies' : body.system === 'none' ? 'Appointed members (no parties)' : 'Independents', short: 'Ind', color: '#9aa0a6', pos: 0, bloc: B, status: 'legal' };
+  if (id === 'nonparty') return { id, name: body.system === 'one' ? 'Non-Party deputies' : body.system === 'none' ? 'Appointed members (no parties)' : body.kind === 'upper_GB' ? 'Crossbenchers and bishops' : body.kind === 'upper_CA' ? 'Independent and non-affiliated senators' : 'Independents', short: 'Ind', color: '#9aa0a6', pos: 0, bloc: B, status: 'legal' };
   const sys = partySystem(bodyCountry(body), y, body.level === 'city' ? body.where : null);
   return sys.parties.find((p) => p.id === id) ?? { id, name: id, short: id, color: '#9aa0a6', pos: 0, bloc: B, status: 'legal' };
 }
@@ -421,12 +434,17 @@ export function governingParties(body) {
   const half = body.seats / 2;
   const lead = ps[0];
   if (lead.seats > half || body.system === 'one') return body.system === 'one' ? ps.filter((p) => p.id !== 'nonparty').map((p) => p.id) : [lead.id];
-  const bloc = partyInfo(body, lead.id).bloc;
+  const leadInfo = partyInfo(body, lead.id);
+  const near = ps.slice(1).filter((p) => p.id !== 'nonparty').map((p) => ({ ...p, info: partyInfo(body, p.id) }))
+    .filter((p) => p.info.bloc === leadInfo.bloc || Math.abs(p.info.pos - leadInfo.pos) <= 30)
+    .sort((a, b) => (Math.abs(a.info.pos) >= 75) - (Math.abs(b.info.pos) >= 75) || Math.abs(a.info.pos - leadInfo.pos) - Math.abs(b.info.pos - leadInfo.pos));
   const gov = [lead.id];
   let seats = lead.seats;
-  for (const p of ps.slice(1)) {
+  for (const p of near) {
     if (seats > half) break;
-    if (partyInfo(body, p.id).bloc === bloc) { gov.push(p.id); seats += p.seats; }
+    if (Math.abs(p.info.pos) >= 75 && Math.abs(leadInfo.pos) < 60) break;
+    gov.push(p.id);
+    seats += p.seats;
   }
   return gov;
 }
