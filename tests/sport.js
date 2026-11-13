@@ -14,9 +14,9 @@ import { createEmployer } from '../src/modules/career/Employers.js';
 import { getProfession } from '../src/modules/career/JobTrees.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-function athlete(seed = 5, countryId = 'GB', levelId = 'allStar') {
+function athlete(seed = 5, countryId = 'GB', levelId = 'allStar', year = null) {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
-  const state = engine.newLife({ countryId });
+  const state = engine.newLife({ countryId, ...(year ? { startYear: year - 24 } : {}) });
   state.legal.record = [];
   state.character.age = 24;
   state.stats.fitness = 95;
@@ -31,6 +31,23 @@ const mod = MODULES.find((m) => m.id === 'sport');
 const with_ = (engine, chance, fn) => { const c = engine.rng.chance; engine.rng.chance = chance; try { return fn(); } finally { engine.rng.chance = c; } };
 
 const tests = {
+  'sport of its day: the maximum wage, the reserve clause, the colour line'() {
+    const clubs = MODULES.find((m) => m.id === 'sportClubs');
+    const gb = athlete(5, 'GB', 'allStar', 1955);
+    gb.state.sport = { discipline: 'football', caps: 0, olympics: [], cups: [] };
+    clubs.onAgeUp(gb.ctx);
+    assert.ok(gb.state.sport.club.wage <= 40000 * 1.5, `capped: ${gb.state.sport.club.wage}`);
+    const us = athlete(6, 'US', 'allStar', 1940);
+    us.state.sport = { discipline: 'basketball', caps: 0, olympics: [], cups: [] };
+    us.state.character.skinTone = 5;
+    clubs.onAgeUp(us.ctx);
+    assert.match(us.state.sport.club.name, /Negro leagues/);
+    us.state.sport.club.years = 0;
+    us.state.prompts = [];
+    clubs.onAgeUp(us.ctx);
+    const renew = us.state.prompts.find((x) => x.type === 'sportClubs.renew');
+    if (renew) assert.ok(renew.options.find((o) => o.id === 'market').disabled, 'the reserve clause');
+  },
   'an all-star is capped, goes to the Olympics, and the medal is an honour'() {
     const { engine, state } = athlete(3);
     state.sport = { discipline: 'rowing', caps: 0, captain: false, olympics: [], cups: [], doped: false, banUntil: null, federation: null, ioc: null, fifa: null };

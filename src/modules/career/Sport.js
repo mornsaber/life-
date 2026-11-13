@@ -32,7 +32,21 @@ export const DISCIPLINES = {
   rugby: { label: '🏉 Rugby union', cup: { name: 'Rugby World Cup', every: 3 }, olympic: false, strong: { NZ: 1.6, ZA: 1.6, IE: 1.3, FR: 1.3, GB: 1.2, AU: 1.1, AR: 0.9, JP: 0.6 } },
   cricket: { label: '🏏 Cricket', cup: { name: 'ICC Cricket World Cup', every: 3 }, olympic: false, strong: { IN: 1.6, AU: 1.6, GB: 1.2, NZ: 1.1, ZA: 1.1, PK: 1.0 } },
 };
-const HOSTS = { 2028: 'Los Angeles', 2032: 'Brisbane' };
+const HOSTS = {
+  1896: 'Athens', 1900: 'Paris', 1904: 'St. Louis', 1908: 'London', 1912: 'Stockholm', 1920: 'Antwerp', 1924: 'Paris', 1928: 'Amsterdam', 1932: 'Los Angeles', 1936: 'Berlin',
+  1948: 'London', 1952: 'Helsinki', 1956: 'Melbourne', 1960: 'Rome', 1964: 'Tokyo', 1968: 'Mexico City', 1972: 'Munich', 1976: 'Montreal', 1980: 'Moscow', 1984: 'Los Angeles',
+  1988: 'Seoul', 1992: 'Barcelona', 1996: 'Atlanta', 2000: 'Sydney', 2004: 'Athens', 2008: 'Beijing', 2012: 'London', 2016: 'Rio de Janeiro', 2020: 'Tokyo', 2024: 'Paris', 2028: 'Los Angeles', 2032: 'Brisbane',
+};
+/** The Games that weren't: the world wars, and the boycotts. */
+const NO_GAMES = [1916, 1940, 1944];
+const BOYCOTT = { 1980: ['US', 'CA', 'JP', 'KR', 'KE', 'CN', 'AR', 'TR', 'PK', 'NO'], 1984: ['RU', 'CU', 'PL', 'HU', 'BG', 'KP', 'VN', 'ET'] };
+/** When each world cup began, and the years it wasn't played. */
+const CUP_FROM = { football: 1930, basketball: 1950, rugby: 1987, cricket: 1975 };
+const NO_CUP = { football: [1942, 1946] };
+/** Professionals barred from the Olympics: the amateur rule until 1988, NBA players until 1992. */
+const prosBarredUntil = (discipline) => (discipline === 'basketball' ? 1992 : 1988);
+/** Before these years the sport was amateur at the top: expenses, a job at a sponsor's firm. */
+export const AMATEUR_UNTIL = { rugby: 1995, athletics: 1988, swimming: 1988, rowing: 9999, cycling: 0, football: 0, basketball: 0, cricket: 0 };
 const ACTIVE = ['minor', 'pro', 'starter', 'allStar'];
 const LEVEL_BASE = { minor: 45, pro: 60, starter: 72, allStar: 85 };
 
@@ -88,7 +102,10 @@ function athleteYear(ctx) {
     if (!s.captain && s.caps >= 50 && r >= 75 && rng.chance(0.3)) { s.captain = true; ctx.log('The coach made you captain of your country.', '©️', 'milestone'); }
   }
   // The tournaments.
-  if (inSquad && d.olympic && year % 4 === 0) {
+  const olympicsHeld = year >= 1896 && !NO_GAMES.includes(year);
+  if (inSquad && d.olympic && year % 4 === 0 && olympicsHeld && (BOYCOTT[year] ?? []).includes(cc)) ctx.log(`${COUNTRIES[cc]?.name ?? cc} boycotted the ${HOSTS[year]} Games. You watched them on television, furious.`, '🚫', 'bad');
+  else if (inSquad && d.olympic && year % 4 === 0 && olympicsHeld && year < prosBarredUntil(s.discipline) && (AMATEUR_UNTIL[s.discipline] ?? 0) <= year) ctx.log(`As a professional you were barred from the ${HOSTS[year] ?? ''} Games: the Olympics were for amateurs.`, '🚫', 'info');
+  if (inSquad && d.olympic && year % 4 === 0 && olympicsHeld && !(BOYCOTT[year] ?? []).includes(cc) && !(year < prosBarredUntil(s.discipline) && (AMATEUR_UNTIL[s.discipline] ?? 0) <= year)) {
     const city = HOSTS[year] ?? 'the Summer Games';
     const event = `${HOSTS[year] ? `${city} ` : ''}${year}`;
     const p = clamp((r - 66) / 100 * strength, 0, 0.45);
@@ -103,7 +120,7 @@ function athleteYear(ctx) {
       if (place === 1) job.performance = Math.min(100, (job.performance ?? 60) + 10);
     } else ctx.log(`You competed at the Olympic Games in ${city}: an Olympian for life, if not a medallist.`, '🏟️', 'good');
   }
-  if (inSquad && d.cup && year % 4 === d.cup.every) {
+  if (inSquad && d.cup && year % 4 === d.cup.every && year >= (CUP_FROM[s.discipline] ?? 0) && !(NO_CUP[s.discipline] ?? []).includes(year)) {
     const won = rng.chance(clamp((strength - 0.6) * 0.12 + (r - 70) / 400, 0.01, 0.25));
     s.cups.push({ year, name: d.cup.name, won });
     if (won) {

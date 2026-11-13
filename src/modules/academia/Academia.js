@@ -26,6 +26,7 @@
  * state.academia = { phd, phdRecord, debarredUntil, fabricated, lastSabbaticalAge, grantSeen }
  * state.science gains citations, hIndex, firstAuthor, students, grantsWon, retractions.
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { academicSystem } from '../world/ProfessionStandards.js';
 import { randomName, addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
@@ -297,6 +298,10 @@ const PRIZES = {
   engineering: 'Nobel Prize in Physics', environmentalScience: 'Nobel Prize in Chemistry', atmosphericScience: 'Nobel Prize in Physics', english: 'Nobel Prize in Literature',
   computerScience: 'Turing Award', mathematics: 'Abel Prize',
 };
+/** When each honour began. */
+const HONOR_FROM = { 'academia.career': 1995, 'academia.fellow': 1874, 'academia.guggenheim': 1925, 'academia.macarthur': 1981, 'academia.nas': 1863, 'academia.fields': 1936, 'academia.nobel': 1901 };
+const US_ONLY_HONORS = ['academia.career', 'academia.fellow', 'academia.guggenheim', 'academia.macarthur'];
+const ACADEMY = { GB: 'Fellow of the Royal Society', FR: 'Member of the Académie des sciences', DE: 'Member of the Leopoldina', IT: 'Member of the Accademia dei Lincei', SE: 'Member of the Royal Swedish Academy of Sciences', CA: 'Fellow of the Royal Society of Canada', AU: 'Fellow of the Australian Academy of Science', JP: 'Member of the Japan Academy', RU: 'Member of the Academy of Sciences', IE: 'Member of the Royal Irish Academy', NL: 'Member of the Royal Netherlands Academy', IN: 'Fellow of the Indian Academy of Sciences' };
 function honorsTick(ctx, job) {
   const { state, rng } = ctx;
   const s = sci(state);
@@ -304,6 +309,13 @@ function honorsTick(ctx, job) {
   const field = fieldOf(state);
   const has = (id) => state.honors.some((h) => h.id === id);
   const give = (id, name, icon, prestige, citation, cash = 0) => {
+    // Honours of their day and their country: none before it was founded; America's own prizes
+    // stay American, and abroad the national academy is the Royal Society, the Académie…
+    const y = yearNow(state);
+    const cc = state.character.countryId ?? 'US';
+    if (y < (HONOR_FROM[id] ?? 0) || (id === 'academia.nobel' && /Economic/.test(name) && y < 1969)) return;
+    if (cc !== 'US' && US_ONLY_HONORS.includes(id)) return;
+    if (cc !== 'US' && id === 'academia.nas') { name = ACADEMY[cc] ?? 'Member of the national academy of sciences'; citation = 'Elected by the leading scientists of your country.'; }
     addHonor(state, { id, source: 'civil', name, icon, prestige, precedence: 30, citation });
     if (cash) ctx.earn(cash, name);
     ctx.log(`${name}! ${citation}`, icon, 'honor');

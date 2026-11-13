@@ -47,6 +47,7 @@ import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
 import { eraCard } from './views/EraView.js';
+import { featsCard } from './views/FeatsView.js';
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
@@ -219,7 +220,7 @@ export const VIEWS = {
       const cost = activityCost(state, a);
       return button(`${a.icon} ${a.label}`, 'activities.do', { arg: a.id, disabled: done || tooYoung, hint: done ? 'Done this year' : tooYoung ? `Age ${a.minAge}+` : `${a.desc}${cost ? ` ($${cost.toLocaleString()})` : ''}` });
     }).join('');
-    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
+    return `${weekCard(state)}${retirementLifeCard(state)}${fameCard(state)}${hobbiesCard(state)}${featsCard(state)}${card('Activities', `<p class="muted">Each activity can be done once per year.</p><div class="action-grid">${items}</div>`, { icon: '🏃' })}
       <p class="fine">😈 Crime, the drug trade and the underworld have moved to ⚖️ Legal → 🕶️ Crime.</p>`;
   },
   honors(state) {

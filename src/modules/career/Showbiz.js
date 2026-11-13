@@ -15,6 +15,7 @@
 import { Random, clamp } from '../../core/Random.js';
 import { addHonor, currentYear } from '../../core/State.js';
 import { priceLevel } from '../world/Countries.js';
+import { yearNow } from '../world/Eras.js';
 
 const GENRES = ['drama', 'comedy', 'action', 'thriller', 'romance', 'horror', 'sci-fi'];
 const TITLES = [['The', 'A', 'Last', 'Before the', 'After the', 'Inside the'], ['Harbour', 'Silence', 'Long Night', 'Northern Line', 'Garden', 'Verdict', 'Heist', 'Storm', 'Summer']];
@@ -30,9 +31,32 @@ export const RECORDS = {
   tour: { label: '🚌 A world tour', pay: 300000, prestige: 0.1, check: 50 },
 };
 const AWARDS = { acting: { US: 'an Academy Award', GB: 'a BAFTA', FR: 'a César', default: 'the national film award' }, music: { US: 'a Grammy', GB: 'a Brit Award', default: 'the national music award' } };
+/** When each award began (none to win before). */
+const AWARDS_FROM = { acting: { US: 1929, GB: 1949, FR: 1976, default: 1950 }, music: { US: 1959, GB: 1977, default: 1965 } };
+/**
+ * The work of the day: the stage always; silent pictures from 1910 and talkies from 1927; radio
+ * serials 1925–55; television from 1948; independent film from 1960. Records from 1900 (78s),
+ * the long-playing album from 1950; before records, the music halls and vaudeville; the world
+ * tour from 1960.
+ */
+function menuOf(state, k) {
+  const y = yearNow(state);
+  if (k === 'acting') return {
+    ...(y >= 1948 ? { series: ROLES.series } : y >= 1925 ? { series: { ...ROLES.series, label: '📻 A radio serial', pay: 30000 } } : {}),
+    ...(y >= 1910 ? { studio: { ...ROLES.studio, label: y < 1927 ? '🎞️ A part in a silent picture' : ROLES.studio.label, pay: ROLES.studio.pay * (y < 1950 ? 0.3 : 1) } } : {}),
+    ...(y >= 1960 ? { indie: ROLES.indie } : {}),
+    stage: { ...ROLES.stage, label: y < 1900 ? '🎭 A season at the Theatre Royal' : ROLES.stage.label },
+  };
+  return {
+    ...(y >= 1950 ? { label: RECORDS.label } : y >= 1900 ? { label: { ...RECORDS.label, label: '💿 A record for the gramophone', pay: 20000 } } : {}),
+    ...(y >= 1960 ? { indie: RECORDS.indie } : {}),
+    tour: y >= 1960 ? RECORDS.tour : { ...RECORDS.tour, label: y < 1930 ? '🎪 A season on the music-hall and vaudeville circuit' : '🚌 A variety tour', pay: 40000 },
+  };
+}
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 63689 + state.character.age * 467 + 0x5b2) >>> 0);
 const kindOf = (state) => ({ acting: 'acting', music: 'music' }[state.career.job?.professionId] ?? null);
 const award = (state, k) => AWARDS[k][state.character.countryId ?? 'US'] ?? AWARDS[k].default;
+const awardExists = (state, k) => yearNow(state) >= (AWARDS_FROM[k][state.character.countryId ?? 'US'] ?? AWARDS_FROM[k].default);
 const SB = (state) => (state.showbiz ??= { credits: [], agent: null, typecast: null, noms: 0, wins: 0 });
 export const showbizOf = (state) => state.showbiz ?? { credits: [], agent: null, typecast: null, noms: 0, wins: 0 };
 export const showbizKind = kindOf;
@@ -45,7 +69,7 @@ export function showbizTick(main) {
   const rng = sideRng(state);
   const genre = rng.pick(GENRES);
   const typecast = S.typecast;
-  const menu = k === 'acting' ? ROLES : RECORDS;
+  const menu = menuOf(state, k);
   const options = Object.entries(menu).filter(([id]) => !typecast || k === 'music' || id !== 'indie' || S.agent?.tier === 'major').map(([id, r]) => ({ id, label: r.label, hint: `≈$${Math.round(r.pay * priceLevel(state) * (S.agent ? 1.3 : 1)).toLocaleString()}` }));
   options.push({ id: 'pass', label: '🛋️ Turn everything down this year' });
   main.prompt({ type: 'showbiz.offer', icon: k === 'acting' ? '🎬' : '🎤', title: S.agent ? 'Your Agent Calls' : 'This Year\'s Auditions', text: k === 'acting' ? `What's on the table this year${typecast ? ` — mostly ${typecast} parts; you've been typecast` : ''}. The genre: ${genre}.` : 'The label wants to know what\'s next.', data: { genre }, options });
@@ -57,7 +81,8 @@ export const ShowbizResolvers = {
     const k = kindOf(state);
     if (!k || optionId === 'pass') return optionId === 'pass' && ctx.log('You turned everything down and spent the year at home.', '🛋️', 'info');
     const S = SB(state);
-    const r = (k === 'acting' ? ROLES : RECORDS)[optionId];
+    const r = menuOf(state, k)[optionId];
+    if (!r) return;
     const skill = (k === 'acting' ? state.stats.looks * 0.5 + state.stats.smarts * 0.5 : state.stats.smarts * 0.6 + state.stats.looks * 0.4) + (S.agent ? 8 : 0) + Math.min(20, (state.fame?.score ?? 0) / 4);
     const got = rng.chance(clamp((skill - r.check + 50) / 100, 0.15, 0.9));
     if (!got) return ctx.log(rng.pick(['You didn\'t get it. "They went another way."', 'Down to the last two — and the other one got it.', 'The project fell apart before it started.']), '📭', 'warn');
@@ -66,7 +91,8 @@ export const ShowbizResolvers = {
     if (S.agent) ctx.spend(Math.round(pay * 0.1), 'Agent\'s 10%');
     const quality = rng.float(0, 1) + (skill - 60) / 100;
     const title = k === 'acting' ? `"${rng.pick(TITLES[0])} ${rng.pick(TITLES[1])}"` : `"${rng.pick(TITLES[1])}"`;
-    const result = optionId === 'studio' ? `$${Math.round(rng.int(20, 900) * (0.5 + quality))}M at the box office` : optionId === 'series' ? `${rng.int(1, 5)} season${quality > 0.6 ? 's' : ''}, ${quality > 0.7 ? 'a critics\' favourite' : 'solid ratings'}` : optionId === 'label' ? `No. ${Math.max(1, Math.round(60 - quality * 55))} in the charts` : optionId === 'tour' ? `${rng.int(40, 120)} dates, ${quality > 0.6 ? 'sold out' : 'half-full arenas'}` : quality > 0.7 ? 'raves from the critics' : quality > 0.4 ? 'good reviews' : 'mixed reviews';
+    const recordWord = yearNow(state) >= 1950 ? 'in the charts' : 'in the sheet-music and record sales';
+    const result = optionId === 'studio' ? (yearNow(state) < 1950 ? `${quality > 0.6 ? 'packed picture houses' : 'a modest run in the picture houses'}` : `$${Math.round(rng.int(20, 900) * (0.5 + quality))}M at the box office`) : optionId === 'series' ? `${rng.int(1, 5)} season${quality > 0.6 ? 's' : ''}, ${quality > 0.7 ? 'a critics\' favourite' : 'solid ratings'}` : optionId === 'label' ? `No. ${Math.max(1, Math.round(60 - quality * 55))} ${recordWord}` : optionId === 'tour' ? `${rng.int(40, 120)} dates, ${quality > 0.6 ? 'sold out' : 'half-full arenas'}` : quality > 0.7 ? 'raves from the critics' : quality > 0.4 ? 'good reviews' : 'mixed reviews';
     S.credits = [...S.credits, { year: currentYear(state), title, kind: optionId, genre: data.genre, result }].slice(-20);
     ctx.emit('fame:buzz', { amount: Math.round(2 + quality * 4) });
     ctx.log(`${title} (${data.genre}): ${result}.`, k === 'acting' ? '🎬' : '💿', quality > 0.6 ? 'good' : 'info');
@@ -75,7 +101,7 @@ export const ShowbizResolvers = {
     if (k === 'acting' && last3.length === 3 && last3.every((c) => c.genre === last3[0].genre)) { S.typecast = last3[0].genre; ctx.log(`Three ${S.typecast} roles in a row: casting directors only see you one way now.`, '🎭', 'warn'); }
     else if (S.typecast && data.genre !== S.typecast) S.typecast = null;
     // Awards season.
-    if (quality * r.prestige > 0.45 && rng.chance(0.6)) {
+    if (quality * r.prestige > 0.45 && awardExists(state, k) && rng.chance(0.6)) {
       S.noms += 1;
       ctx.prompt({ type: 'showbiz.awards', icon: '🏆', title: 'Nominated', text: `You've been nominated for ${award(state, k)} for ${title}.`, data: { title, k }, options: [
         { id: 'campaign', label: '📣 Run an awards campaign', hint: `≈$${Math.round(80000 * priceLevel(state)).toLocaleString()} of screenings and dinners` },
@@ -92,7 +118,7 @@ export const ShowbizResolvers = {
       addHonor(state, { id: `showbiz.${currentYear(state)}`, source: 'showbiz', name: award(state, data.k).replace(/^an? /, '').replace(/^the /, '').replace(/^./, (c) => c.toUpperCase()), icon: '🏆', prestige: 12, citation: `For ${data.title}.` });
       ctx.emit('fame:buzz', { amount: 15 });
       ctx.stat('happiness', 12);
-      return ctx.log(`You won ${award(state, data.k)} for ${data.title}. Your speech went viral.`, '🏆', 'milestone');
+      return ctx.log(`You won ${award(state, data.k)} for ${data.title}. ${yearNow(state) >= 2010 ? 'Your speech went viral.' : 'Your speech made the papers.'}`, '🏆', 'milestone');
     }
     ctx.log(`You lost to someone you secretly thought deserved it. You clapped anyway.`, '👏', 'info');
   },
