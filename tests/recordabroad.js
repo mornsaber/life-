@@ -13,6 +13,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { seenIn } from '../src/modules/legal/RecordAbroad.js';
 import { gradeIn, offenseNameIn } from '../src/modules/legal/LocalLaw.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { spentStatus, sealStatus, pardonStatus } from '../src/modules/legal/Clemency.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (cc = 'US') => {
@@ -90,6 +91,22 @@ const tests = {
     assert.equal(offenseNameIn('dui', 'GB'), 'Drink-Driving');
     assert.equal(offenseNameIn('mailTheft', 'FR'), 'Theft of Mail');
     assert.equal(offenseNameIn('mailTheft', 'US'), 'Theft of Mail (18 U.S.C. § 1708)');
+  },
+  'a conviction is spent by the rules of the country that handed it down'() {
+    const { state } = life('GB');
+    const uk = convict(state, 'burglary', 'felony', 'GB');
+    const de = convict(state, 'burglary', 'felony', 'DE');
+    const us = convict(state, 'burglary', 'felony', 'US');
+    assert.equal(spentStatus(state, uk).years, 4);
+    assert.equal(spentStatus(state, de).years, 10);
+    assert.equal(spentStatus(state, us).years, 10);
+  },
+  'only the convicting country can seal or pardon'() {
+    const { state } = life('GB');
+    const r = convict(state, 'shoplifting', 'misdemeanor', 'FR', 20);
+    assert.match(sealStatus(state, r).reason, /France/);
+    const f = convict(state, 'burglary', 'felony', 'FR', 20);
+    assert.match(pardonStatus(state, f).by ?? '', /France|President/);
   },
   'the record view says where each conviction is from and whether it counts here'() {
     const { state } = life('US');

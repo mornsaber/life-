@@ -239,10 +239,10 @@ const tests = {
     state.character.age = 25;
     engine.dispatch('crime.goStraight');
     assert.equal(state.legal.crime.straightSince, 25);
-    state.character.age = 29;
+    state.character.age = 27;
     MODULES.find((m) => m.id === 'legal').onAgeUp({ ...ctx });
-    assert.ok(!state.legal.record[0].spent, 'a felony needs 7 crime-free years');
-    state.character.age = 31;
+    assert.ok(!state.legal.record[0].spent, 'in England a felony-grade conviction needs 4 crime-free years');
+    state.character.age = 29;
     state.legal.incarceration = null;
     MODULES.find((m) => m.id === 'legal').onAgeUp({ ...ctx });
     assert.ok(state.legal.record[0].spent, 'spent');

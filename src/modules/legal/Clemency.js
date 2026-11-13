@@ -15,6 +15,9 @@
  *                          counting against you.
  *   Clemency               On death row, the governor can commute to life.
  */
+import { recordCountry } from './RecordAbroad.js';
+import { legalSystem } from './LocalLaw.js';
+import { COUNTRIES } from '../world/Countries.js';
 import { PARDON } from '../world/CountryLaw.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, prestige, SPENT_AFTER } from '../../core/State.js';
@@ -37,6 +40,7 @@ export function sealStatus(state, r) {
   if (!['misdemeanor', 'felony'].includes(r.severity)) return { ok: false, reason: 'Nothing to seal' };
   if (offense.violent) return { ok: false, reason: 'Violent offenses can never be sealed' };
   if (offense.noSeal) return { ok: false, reason: 'DUIs can\'t be sealed here' };
+  if (recordCountry(state, r) !== (state.character.countryId ?? 'US')) return { ok: false, reason: `Only the courts of ${COUNTRIES[recordCountry(state, r)]?.name ?? 'the country that convicted you'} can clear it` };
   if (offense.federal || r.abroad) return { ok: false, reason: 'Federal and foreign convictions can only be pardoned' };
   const wait = SEAL_WAIT[r.severity];
   if (state.character.age - r.age < wait) return { ok: false, reason: `Eligible ${wait} yr after conviction` };
@@ -51,8 +55,9 @@ export function pardonStatus(state, r) {
   const federal = Boolean(OFFENSES[r.offenseId]?.federal);
   const service = Object.entries(state.emergency ?? {}).some(([k, m]) => k !== 'history' && m) || state.military.history.some((h) => ['honorable', 'retired', 'medical'].includes(h.discharge)) || (state.community?.volunteerYears ?? 0) >= 3 || (state.community?.mentorYears ?? 0) >= 3;
   const chance = clamp((federal ? 0.02 : 0.08) + (service ? 0.05 : 0) + Math.min(0.05, prestige(state) / 2000) + Math.min(0.05, (sinceLastConviction(state) - PARDON_WAIT) * 0.005), 0.01, 0.25);
-  const cc = state.character.countryId ?? 'US';
-  if (cc !== 'US') return { ok: true, federal, chance, by: PARDON[cc] ?? 'the head of state' };
+  // A pardon comes from the country that convicted you, wherever you live now.
+  const cc = recordCountry(state, r);
+  if (cc !== 'US') return { ok: true, federal, chance, by: PARDON[cc] ?? `the head of state of ${COUNTRIES[cc]?.name ?? 'that country'}` };
   return { ok: true, federal, chance, by: federal ? 'the President' : `the Governor of ${stateOf(state).name}` };
 }
 
@@ -76,17 +81,36 @@ export const SPENT_YEARS = { misdemeanor: [5, 7], felony: [7, 10] };
 export function spentStatus(state, r) {
   const offense = OFFENSES[r.offenseId] ?? {};
   if (r.sealed || r.pardoned || !SPENT_YEARS[r.severity] || offense.violent || offense.noSeal || offense.registry || offense.capital) return null;
-  if (r.severity === 'felony' && /(\d+) yr prison/.test(r.sentence ?? '') && Number(r.sentence.match(/(\d+) yr prison/)[1]) > 4) return null;
-  const years = SPENT_YEARS[r.severity][(state.character.countryId ?? 'US') === 'US' ? 1 : 0];
-  return { years, at: Math.max(r.age, state.character.age - sinceLastConviction(state)) + years };
+  // The rules of the country that convicted you: how long, and how long a sentence can still be spent.
+  const rule = REHAB[legalSystem(recordCountry(state, r))] ?? REHAB.other;
+  const prison = /(\d+) yr prison/.test(r.sentence ?? '') ? Number(r.sentence.match(/(\d+) yr prison/)[1]) : 0;
+  if (prison > rule.maxPrison) return null;
+  const years = r.severity === 'felony' ? (prison > 4 ? rule.long : rule.felony) : rule.misdemeanor;
+  return { years, at: Math.max(r.age, state.character.age - sinceLastConviction(state)) + years, law: rule.law };
 }
+/**
+ * Rehabilitation by legal system (the convicting country's): crime-free years until a
+ * misdemeanor-grade or felony-grade conviction is spent, the wait after a long (4+ year)
+ * sentence, and the longest prison term that can be spent at all.
+ */
+export const REHAB = {
+  us: { misdemeanor: 7, felony: 10, long: 10, maxPrison: 4, law: 'a clean-slate law' },
+  common: { misdemeanor: 2, felony: 4, long: 7, maxPrison: 10, law: 'the rehabilitation of offenders laws' },
+  fr: { misdemeanor: 3, felony: 5, long: 10, maxPrison: 10, law: 'réhabilitation de plein droit' },
+  de: { misdemeanor: 5, felony: 10, long: 15, maxPrison: 15, law: 'erasure from the Federal Central Register' },
+  it: { misdemeanor: 5, felony: 8, long: 10, maxPrison: 10, law: 'riabilitazione' },
+  es: { misdemeanor: 2, felony: 5, long: 10, maxPrison: 10, law: 'cancelación de antecedentes' },
+  nl: { misdemeanor: 5, felony: 10, long: 20, maxPrison: 15, law: 'the judicial documentation rules' },
+  pt: { misdemeanor: 5, felony: 7, long: 10, maxPrison: 10, law: 'cancelamento do registo' },
+  other: { misdemeanor: 5, felony: 7, long: 10, maxPrison: 4, law: 'the rehabilitation rules' },
+};
 export function spendOldConvictions(ctx) {
   const { state } = ctx;
   if (state.legal.incarceration || state.legal.probationYears > 0) return;
   const spent = state.legal.record.filter((r) => { const s = spentStatus(state, r); return s && sinceLastConviction(state) >= s.years && state.character.age - r.age >= s.years; });
   for (const r of spent) { r.sealed = true; r.spent = true; }
   if (spent.length) {
-    ctx.log(`${spent.length === 1 ? `Your conviction for ${spent[0].name.toLowerCase()} is` : `${spent.length} old convictions are`} now spent: after years without trouble, ordinary employers can no longer see ${spent.length === 1 ? 'it' : 'them'}.`, '🌱', 'good');
+    ctx.log(`${spent.length === 1 ? `Your conviction for ${spent[0].name.toLowerCase()} is` : `${spent.length} old convictions are`} now spent under ${spentStatus(state, { ...spent[0], sealed: false, spent: false })?.law ?? 'the rehabilitation rules'}: after years without trouble, ordinary employers can no longer see ${spent.length === 1 ? 'it' : 'them'}.`, '🌱', 'good');
     ctx.stat('happiness', 5);
   }
 }

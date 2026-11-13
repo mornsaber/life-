@@ -29,7 +29,7 @@ const OF_THEIR_DAY = new Set(['grossIndecency', 'bootlegging', 'serviceRefusal',
 const travels = (o) => Boolean(o.violent || o.sexual || o.registry || o.capital || o.drug === 'trafficking');
 
 /** Where a conviction was handed down (older saves: the country you were born in). */
-export const recordCountry = (state, rec) => rec.country ?? state.migration?.birthCountry ?? 'US';
+export const recordCountry = (state, rec) => rec.country ?? state.migration?.birthCountry ?? state.character?.countryId ?? 'US';
 
 /** Is this conduct a crime in that country at all (dual criminality)? */
 function crimeIn(cc, rec) {
