@@ -58,12 +58,31 @@ export const FORMER_HOUSES = {
 };
 const g = (state) => (state.character.gender === 'female' ? 1 : 0);
 const RESTORE_THRESHOLD = 35;
+/** A throne that fell in this life (not history's dated republics): its house can try to come back. */
+export const fellInLife = (state, cc) => Boolean(CROWNS[cc] && state.world?.republics?.[cc] && !state.world.republics[cc].period);
+/** Can this country's monarchy be restored: history's former houses, and thrones that fell in this life. */
+export const restorable = (state, cc) => Boolean(FORMER_HOUSES[cc] || fellInLife(state, cc));
+/** Where a house's support settles: history's figure, or (for a throne lost in this life) a fifth of the country. */
+export function houseDefOf(state, cc) {
+  if (FORMER_HOUSES[cc]) return FORMER_HOUSES[cc];
+  const fellNow = state.world?.republics?.[cc]?.year;
+  return { name: (state.house?.cc === cc ? state.house.name : null) ?? state.world?.crowns?.[cc]?.house?.replace(/^the /, '') ?? CROWNS[cc]?.houses?.[0] ?? 'the old royal house', fell: `The republic of ${fellNow ?? 'recent years'}`, how: 'deposed', support: 18 };
+}
+const baseSupport = (state, cc) => FORMER_HOUSES[cc]?.support ?? (fellInLife(state, cc) ? 18 : 0);
+/** Seizing the throne back: a better chance the more of the country wants the house, and where the crown ruled until lately. */
+export function reclaimOdds(state, cc) {
+  const h = houseOf(state);
+  const support = monarchistSupport(state, cc);
+  const years = currentYear(state) - (state.world?.republics?.[cc]?.year ?? currentYear(state));
+  const ruled = CROWNS[cc]?.executive ? 1 : 0.4;
+  return clamp((0.05 + support / 120 + Math.min(10, h?.campaigns ?? 0) * 0.015) * ruled * (years <= 10 ? 1 : 0.6), 0.02, 0.6);
+}
 const ORIGINAL_HOUSES = ['DE', 'FR', 'IT', 'AT', 'RU', 'BR', 'RO'];
 
 export const houseOf = (state) => (state.house && !state.house.renounced ? state.house : null);
 /** Support for a monarchy: for a restoration where there's none, for keeping it where there is. */
 export const CROWN_SUPPORT = { GB: 62, CA: 50, AU: 52, NZ: 55, JP: 80, SE: 72, NL: 70, ES: 55, NO: 75, DK: 80, BE: 55 };
-export const monarchistSupport = (state, cc) => (state.world?.monarchists?.[cc] ?? (crownOf(state, cc) ? CROWN_SUPPORT[cc] ?? 55 : FORMER_HOUSES[cc]?.support ?? 0));
+export const monarchistSupport = (state, cc) => (state.world?.monarchists?.[cc] ?? (crownOf(state, cc) ? CROWN_SUPPORT[cc] ?? 55 : FORMER_HOUSES[cc]?.support ?? (state.world?.republics?.[cc] && CROWNS[cc] ? 18 : 0)));
 
 /** Are you the head of government (or state) of a country? */
 export function leads(state, cc) {
@@ -121,8 +140,7 @@ function bornIntoHouse(state, rng) {
 export function restore(ctx, cc) {
   const { state, rng } = ctx;
   // A throne that fell in this life (not one of history's former houses) comes back under its own house.
-  const fellNow = state.world.republics?.[cc]?.year;
-  const def = FORMER_HOUSES[cc] ?? { name: (state.house?.cc === cc ? state.house.name : null) ?? state.world.crowns?.[cc]?.house?.replace(/^the /, '') ?? CROWNS[cc]?.houses?.[0] ?? 'the old royal house', fell: `The republic of ${fellNow ?? 'recent years'}` };
+  const def = houseDefOf(state, cc);
   state.world.restored ??= {};
   state.world.restored[cc] = { year: currentYear(state), house: def.name };
   if (state.world.republics?.[cc]) delete state.world.republics[cc];
@@ -212,7 +230,7 @@ export const REPUBLIC_NOTE = 'A President of the Republic replaces the Crown; th
 function referendumPrompt(ctx, cc, kind, called = false) {
   const { state } = ctx;
   if (state.prompts.some((p) => p.type === 'houses.referendum')) return;
-  const def = FORMER_HOUSES[cc];
+  const def = houseDefOf(state, cc);
   ctx.prompt({
     type: 'houses.referendum', icon: '🗳️', title: kind === 'restore' ? 'A Referendum on the Monarchy' : 'A Republic Referendum',
     text: kind === 'restore'
@@ -338,9 +356,10 @@ function monarchistYear(ctx) {
   const w = (state.world.monarchists ??= {});
   // The houses added for historical lives drift on their own dice, so today's lives play as before.
   const side = new Random(((state.world?.seed ?? 1) * 92821 + currentYear(state) * 37 + 11) >>> 0);
-  for (const cc of Object.keys(FORMER_HOUSES)) {
+  const fallen = Object.keys(state.world.republics ?? {}).filter((cc) => fellInLife(state, cc) && !FORMER_HOUSES[cc]);
+  for (const cc of [...Object.keys(FORMER_HOUSES), ...fallen]) {
     if (state.world.restored?.[cc] || crownOf(state, cc)) continue;
-    const base = FORMER_HOUSES[cc].support;
+    const base = baseSupport(state, cc);
     const dice = ORIGINAL_HOUSES.includes(cc) ? rng : side;
     w[cc] = Math.round(clamp((w[cc] ?? base) + (base - (w[cc] ?? base)) * 0.08 + dice.float(-1, 1), 0, 80) * 10) / 10;
   }
@@ -349,13 +368,13 @@ function monarchistYear(ctx) {
   if (h?.banned && state.character.age >= h.banned) {
     h.banned = null;
     ctx.log(`The exile law was repealed: ${houseTitle(h.name)} may come home.`, '🕊️', 'good');
-  } else if (h && h.rank !== 'cadet' && !h.banned && FORMER_HOUSES[h.cc] && !state.world.restored?.[h.cc] && monarchistSupport(state, h.cc) >= 20 && rng.chance(0.04)) {
+  } else if (h && h.rank !== 'cadet' && !h.banned && restorable(state, h.cc) && !state.world.restored?.[h.cc] && monarchistSupport(state, h.cc) >= 20 && rng.chance(0.04)) {
     h.banned = state.character.age + 10;
     ctx.log(`Alarmed by the monarchist revival, parliament passed a law banning the head of ${houseTitle(h.name)} and their heirs from ${h.cc} for ten years.`, '🚫', 'bad');
     if (state.character.countryId === h.cc) arrive(ctx, 'CH', { visa: 'resident', reason: 'You went into exile in Switzerland, like many dethroned houses before you.' });
   }
   const cc = state.character.countryId;
-  if (FORMER_HOUSES[cc] && !state.world.restored?.[cc] && !crownOf(state, cc) && monarchistSupport(state, cc) >= RESTORE_THRESHOLD && rng.chance(0.15)) {
+  if (restorable(state, cc) && !state.world.restored?.[cc] && !crownOf(state, cc) && monarchistSupport(state, cc) >= RESTORE_THRESHOLD && rng.chance(0.15)) {
     if (state.character.age >= 18) referendumPrompt(ctx, cc, 'restore');
     else resolveVote(ctx, { cc, kind: 'restore', called: false }, 'vote');
   }
@@ -426,6 +445,28 @@ export const HousesModule = {
       (state.world.monarchists ??= {})[h.cc] = Math.min(80, monarchistSupport(state, h.cc) + 0.5);
       return ctx.log(`You invested a loyal supporter in the ${FORMER_HOUSES[h.cc]?.order ?? `order of ${houseTitle(h.name)}`}. They will hear no word against you.`, '⚜️', 'good');
     },
+    /** Take the throne back by force: loyal regiments, the old guard, a night in the capital. */
+    reclaim(ctx) {
+      const { state, rng } = ctx;
+      const h = houseOf(state);
+      if (!h || h.rank !== 'head' || !fellInLife(state, h.cc) || state.world.restored?.[h.cc] || state.character.age < 18) return ctx.toast('The head of a house whose throne fell can try to take it back.', 'warn');
+      if (h.banned) return ctx.toast(`You are banned from ${h.cc} until ${h.banned}.`, 'warn');
+      if (h.reclaimAge != null && state.character.age - h.reclaimAge < 3) return ctx.toast('Your supporters need time to regroup after the last attempt.', 'warn');
+      if (!ctx.spend(500000, 'Arms, officers and the cause', { credit: true })) return ctx.toast('It takes $500,000 to buy the loyalty you need.', 'warn');
+      h.reclaimAge = state.character.age;
+      ctx.stat('stress', 20);
+      const odds = reclaimOdds(state, h.cc);
+      if (rng.chance(odds)) {
+        ctx.log('Loyal regiments seized the capital before dawn. By noon the provisional government had fled, and crowds waved the old flag outside the palace.', '⚔️', 'milestone');
+        return restore(ctx, h.cc);
+      }
+      const w = (state.world.monarchists ??= {});
+      w[h.cc] = Math.round(clamp(monarchistSupport(state, h.cc) - 8, 0, 80) * 10) / 10;
+      h.banned = state.character.age + 15;
+      ctx.log(`The attempt failed: the army stayed loyal to the republic. Your officers were arrested; you were expelled and banned from the country for fifteen years. Support for the house fell to ${w[h.cc]}%.`, '⛓️', 'bad');
+      if (state.character.countryId === h.cc) arrive(ctx, 'CH', { visa: 'resident', reason: 'You fled into exile in Switzerland after the failed attempt.' });
+      return undefined;
+    },
     /** Give up the claim for yourself and your heirs. */
     renounce(ctx) {
       const { state } = ctx;
@@ -439,7 +480,7 @@ export const HousesModule = {
     callRestoration(ctx) {
       const { state } = ctx;
       const cc = state.character.countryId;
-      if (!FORMER_HOUSES[cc] || state.world.restored?.[cc] || !leads(state, cc)) return ctx.toast('A head of government in a country with a former ruling house can call it.', 'warn');
+      if (!restorable(state, cc) || state.world.restored?.[cc] || !leads(state, cc)) return ctx.toast('A head of government in a country with a former ruling house can call it.', 'warn');
       if (yearlyCount(state, 'houses.referendum')) return ctx.toast('One referendum a year', 'warn');
       bumpYearly(state, 'houses.referendum');
       return referendumPrompt(ctx, cc, 'restore', true);

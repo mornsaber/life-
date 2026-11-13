@@ -15,8 +15,11 @@
  */
 import { yearlyCount, bumpYearly, currentYear } from '../../core/State.js';
 import { clamp, Random } from '../../core/Random.js';
-import { CROWNS, ELECTION } from './Crown.js';
+import { CROWNS, ELECTION, crownOf } from './Crown.js';
+import { ROYAL_RULE, ROYAL_HOME } from './Reforms.js';
 import { lineOf, refreshLine } from './RoyalLine.js';
+import { LAWS, levelValue, proposedValue, enact, describeValue } from '../politics/Laws.js';
+import { lawHere } from '../politics/Legislature.js';
 
 export const MY_STATES = ['Johor', 'Pahang', 'Perak', 'Kedah', 'Kelantan', 'Negeri Sembilan', 'Selangor', 'Perlis', 'Terengganu'];
 export const RULER_TITLE = { Perlis: 'Raja', 'Negeri Sembilan': 'Yang di-Pertuan Besar' };
@@ -51,6 +54,17 @@ export function crownPrinceChoices(state) {
   if (!executiveHere(state)) return [];
   const y = currentYear(state);
   return lineOf(state).filter((n) => !n.block && !n.you && n.gender === 'male' && (n.born ?? y) <= y - 18).slice(0, 6);
+}
+
+/** Laws a ruling monarch can change by decree: every national law in force here, with the next step each way. */
+export function decreeOptions(state) {
+  if (!executiveHere(state)) return [];
+  const cc = state.character.countryId ?? 'US';
+  return Object.entries(LAWS).filter(([id, l]) => l.levels.includes('federal') && lawHere(id, 'federal', cc)).flatMap(([id, l]) => {
+    const now = levelValue(state, id, 'federal', cc === 'US' ? null : cc);
+    const cur = now ?? (l.kind === 'number' ? l.min : l.kind === 'flag' ? false : now);
+    return ['up', 'down'].map((dir) => ({ id, dir, l, from: cur, to: proposedValue(id, cur, dir) })).filter((x) => x.to !== null && x.to !== undefined && x.to !== x.from);
+  });
 }
 
 // ── Malaysia: the Conference of Rulers ───────────────────────────────────────────────────────
@@ -104,6 +118,8 @@ export const ThroneModule = {
   order: 33.9,
   setup() {
     ELECTION.fn = councilChooses;
+    ROYAL_RULE.fn = (state) => throneKind(state) === 'executive';
+    ROYAL_HOME.fn = (state) => crownOf(state);
   },
   onAgeUp(ctx) {
     const { state } = ctx;
@@ -161,6 +177,21 @@ export const ThroneModule = {
         return ctx.log(`You named ${pick.name} crown prince, passing over ${passed.name}. The allegiance council swore to him; ${passed.name} did not attend.`, '👑', 'milestone');
       }
       return ctx.log(`You confirmed ${pick.name} as crown prince. The allegiance council swore to him.`, '👑', 'milestone');
+    },
+    /** Change a national law by royal decree (arg: 'lawId|up' or 'lawId|down'): no parliament to ask. */
+    decree(ctx, arg) {
+      const { state } = ctx;
+      const r = state.royal;
+      if (!executiveHere(state)) return ctx.toast('Only a ruling monarch makes law by decree.', 'warn');
+      if (yearlyCount(state, 'throne.decree') >= 2) return ctx.toast('Two decrees a year: more and the country stops listening.', 'warn');
+      const [id, dir] = String(arg).split('|');
+      const o = decreeOptions(state).find((x) => x.id === id && x.dir === dir);
+      if (!o) return ctx.toast('Not a law you can change that way.', 'warn');
+      bumpYearly(state, 'throne.decree');
+      const cc = state.character.countryId ?? 'US';
+      enact(state, { level: 'federal', where: cc, lawId: id, value: o.to, sponsor: 'you', age: state.character.age });
+      bump(r, 'unrest', 2);
+      return ctx.log(`By royal decree: ${o.l.name}, ${describeValue(id, o.from)} → ${describeValue(id, o.to)}. It is law from today.`, '📜', 'milestone');
     },
     /** Cambodia: court the Royal Council of the Throne (once a year). */
     courtCouncil(ctx) {

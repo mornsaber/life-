@@ -17,11 +17,13 @@ import { royalEstate, DUCHY_MODES } from '../../modules/world/RoyalLife.js';
 import { VICE_REGAL, youAdvise } from '../../modules/politics/ViceRegal.js';
 import { OFFICES } from '../../modules/politics/Offices.js';
 import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennobled } from '../../modules/world/DynasticTitles.js';
-import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
+import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions, fellInLife, reclaimOdds } from '../../modules/world/Houses.js';
 import { titleInsignia, crownBadge } from '../Insignia.js';
 import { lineView, lawFor } from '../../modules/world/RoyalLine.js';
 import { protectionOf, threatOf, stateProtected, consentNeeded, PROTECTION_COST, PRESS_OFFICE, DEALS } from '../../modules/world/CourtLife.js';
-import { throneKind, GOVERNMENTS, BUDGETS, crownPrinceChoices, MY_STATES, rulerTitle } from '../../modules/world/Throne.js';
+import { throneKind, GOVERNMENTS, BUDGETS, crownPrinceChoices, MY_STATES, rulerTitle, decreeOptions } from '../../modules/world/Throne.js';
+import { describeValue } from '../../modules/politics/Laws.js';
+import { reformsBlock } from './PoliticsView.js';
 import { diaryOptions, diaryBudget, daysUsed, diaryOpen } from '../../modules/world/RoyalDiary.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
@@ -205,6 +207,7 @@ function houseCard(state) {
   const rows = h ? [
     ['Styled', esc(houseStyledName(state) ?? '')],
     ['House', `${esc(h.name)}${def ? ` · lost the throne in ${def.fell} (${esc(def.how)})` : h.deposed ? ` · deposed ${h.deposed}` : ''}`],
+    !def && fellInLife(state, h.cc) && !state.world?.restored?.[h.cc] ? ['The way back', `A restoration referendum once monarchist support passes 35% (rally them each year), a head of government who calls one, or force: ≈${Math.round(reclaimOdds(state, h.cc) * 100)}% now, better with more support and soon after the fall.`] : null,
     ['You', h.rank === 'head' ? 'Head of the house: the claimant' : h.rank === 'heir' ? 'Heir to the head of the house' : 'A member of a cadet branch'],
     state.world?.restored?.[h.cc] ? ['Throne', `Restored in ${state.world.restored[h.cc].year}`] : ['Monarchists', `${monarchistSupport(state, h.cc)}% in ${esc(h.cc)} (a referendum needs about 35% to be forced)`],
     def ? ['The law', esc(def.legal)] : null,
@@ -221,6 +224,7 @@ function houseCard(state) {
   return card(h ? `${esc(houseTitle(h.name).replace(/^t/, 'T'))}` : 'The Monarchy Question', `${kv(rows)}
     <div class="action-grid">
       ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
+      ${h?.rank === 'head' && fellInLife(state, h.cc) && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('⚔️ Take back the throne', 'houses.reclaim', { variant: 'danger', disabled: Boolean(h.banned) || (h.reclaimAge != null && state.character.age - h.reclaimAge < 3), hint: `≈${Math.round(reclaimOdds(state, h.cc) * 100)}% · $500,000 · failure means exile` }) : ''}
       ${h?.rank === 'head' ? button('🏰 Gather the house at the old seat', 'royalLife.gathering', { hint: 'Once a year · $40,000' }) : ''}
       ${h?.rank === 'head' ? button('⚜️ Confer the house order', 'houses.confer', { hint: 'On a loyal supporter; twice a year' }) : ''}
       ${h?.rank === 'head' ? houseConferOptions(state).map((p) => button(`⚜️ Invest ${esc(p.firstName)}`, 'houses.confer', { arg: p.id, variant: 'tiny' })).join('') : ''}
@@ -437,11 +441,13 @@ function throneCard(state) {
   if (kind === 'executive' && r.reigning) {
     const gov = r.government?.kind;
     const heirs = crownPrinceChoices(state);
-    return card('You Rule', `<p class="muted">An executive monarchy: you appoint the government, name the crown prince and set the palace's share of the budget.</p>
+    return card('You Rule', `<p class="muted">An executive monarchy: you appoint the government, make law by decree, name the crown prince and set the palace's share of the budget. Reforms to how the country is governed are below.</p>
       ${kv([['Government', gov ? `${esc(GOVERNMENTS[gov].label)} · since ${r.government.since}` : 'The ministers you inherited'], ['Palace budget', esc(BUDGETS[r.budget ?? 'balanced'].label)], ['Crown prince', esc(c?.heir?.name ?? '—')]])}
       <div class="enroll-form" data-collect-root>${select('gov', Object.entries(GOVERNMENTS).map(([value, g]) => ({ value, label: `${g.label} — ${g.note}` })), { value: gov ?? 'technocrat' })}${button('🏛️ Appoint the government', 'throne.appoint', { variant: 'small', collect: true })}</div>
       <div class="enroll-form" data-collect-root>${select('budget', Object.entries(BUDGETS).map(([value, b]) => ({ value, label: `${b.label} — ${b.note}` })), { value: r.budget ?? 'balanced' })}${button('💰 Set the budget', 'throne.budget', { variant: 'small', collect: true })}</div>
       ${heirs.length ? `<div class="enroll-form" data-collect-root>${select('heir', heirs.map((n) => ({ value: n.id, label: `${n.name} · ${y - n.born}${n.id === state.royal.tree?.designated ? ' (named)' : ''}` })))}${button('👑 Name the crown prince', 'throne.nameHeir', { variant: 'small', collect: true })}</div>` : ''}
+      ${(() => { const opts = decreeOptions(state); const left = Math.max(0, 2 - (state.yearly['throne.decree'] ?? 0)); return opts.length ? `<h4 class="sub">📜 Law by decree <small class="muted">${left} of 2 left this year</small></h4><div class="enroll-form" data-collect-root>${select('law', opts.map((o) => ({ value: `${o.id}|${o.dir}`, label: `${o.l.name}: ${describeValue(o.id, o.from)} → ${describeValue(o.id, o.to)}` })))}${button('📜 Decree it', 'throne.decree', { variant: 'small', collect: true, disabled: !left })}</div>` : ''; })()}
+      ${reformsBlock(state).replace('cost' + 's approval', 'costs popularity').replace(/−(\d+) approval/g, '−$1 popularity')}
       <p class="fine">Passing over the eldest costs you goodwill in the family; a government of hardliners keeps order, at a price.</p>`, { icon: '🏛️', summary: 'Executive' });
   }
   if (kind === 'executive') return card('The Throne', '<p class="muted">An executive monarchy: the sovereign appoints the government and names the crown prince — not always the eldest son.</p>', { icon: '🏛️', summary: 'Executive' });

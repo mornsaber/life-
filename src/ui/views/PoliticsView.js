@@ -176,7 +176,7 @@ function europarlCard(state) {
 }
 
 /** Changing the rules of the country (world/Reforms.js). */
-function reformsBlock(state) {
+export function reformsBlock(state) {
   const open = reformsOpen(state);
   if (!open.length) return '';
   const used = Boolean(state.yearly['reforms.enact']);

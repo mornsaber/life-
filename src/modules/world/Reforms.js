@@ -28,8 +28,14 @@ const UNFREE = ['authoritarian', 'oneParty', 'junta', 'theocracy', 'absoluteMona
 /** You run the national government of the country you live in. */
 export function governsHere(state) {
   const o = state.politics?.office;
-  return Boolean(o && executiveLevel(o.id) === 'national' && (OFFICES[o.id]?.country ?? 'US') === (state.character.countryId ?? 'US'));
+  if (o && executiveLevel(o.id) === 'national' && (OFFICES[o.id]?.country ?? 'US') === (state.character.countryId ?? 'US')) return true;
+  // A ruling monarch on their own throne governs too (the Gulf, Brunei, Morocco, a restored throne with real powers).
+  const r = state.royal;
+  return Boolean(r?.reigning && (r.executive || ROYAL_RULE.fn?.(state)) && r.crownId && ROYAL_HOME.fn?.(state) === r.crownId);
 }
+/** Set by Throne.js (avoids an import cycle): whether the reigning monarch rules, and the crown here. */
+export const ROYAL_RULE = { fn: null };
+export const ROYAL_HOME = { fn: null };
 /** The reforms still open to you, given how the country is governed now. */
 export function reformsOpen(state) {
   if (!governsHere(state)) return [];
@@ -59,8 +65,10 @@ export const ReformsModule = {
       if (after.elections === 'free' && after.press === 'free' && !['democracy'].includes(before.kind)) w[cc] = { ...w[cc], kind: 'democracy', name: `a democracy, reformed in ${currentYear(state)}` };
       (state.world.reformLog ??= []).push({ cc, id, year: currentYear(state) });
       setReformLayer(w);
-      const o = state.politics.office;
-      o.approval = Math.round(clamp((o.approval ?? 50) - def.cost + (UNFREE.includes(before.kind) ? 4 : 0), 0, 100));
+      // An elected leader pays in approval; a ruling monarch in popularity.
+      const o = state.politics.office ?? state.royal;
+      const key = state.politics.office ? 'approval' : 'popularity';
+      if (o) o[key] = Math.round(clamp((o[key] ?? 50) - def.cost + (UNFREE.includes(before.kind) ? 4 : 0), 0, 100));
       ctx.log(def.text, '📜', 'milestone');
       ctx.emit('news:story', { tier: 'national', headline: `${COUNTRIES[cc]?.name ?? cc}: ${def.label.replace(/^\S+\s/, '')}`, weight: 8, icon: '📜', you: true });
       // The old guard.
