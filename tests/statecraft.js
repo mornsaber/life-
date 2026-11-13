@@ -67,6 +67,7 @@ const tests = {
     PrivyCouncilModule.onAgeUp(gb.ctx);
     assert.ok(gb.state.privyCouncil.some((m) => m.council === 'GB'));
     assert.match(styledName(gb.state), /^The Rt Hon\./);
+    assert.match(VIEWS.honors(gb.state), /Councils[\s\S]*for life/, 'listed under Honours');
     const ca = life({ countryId: 'CA', firstName: 'Paul', lastName: 'Roy', gender: 'male' });
     ca.state.character.age = 50;
     ca.state.politics.ministry = { dept: 'finance', title: 'Minister of Finance', rank: 'cabinet', since: 48 };

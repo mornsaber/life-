@@ -287,7 +287,10 @@ export const VIEWS = {
     const inOrder = (h) => Boolean(h.order) || (h.source === 'order' && h.tier !== 'peer');
     const posts = ceremonialPosts(state);
     const duties = posts.length ? card('Ceremonial Duties', `${posts.map((p) => `<p><b>${esc(p.name)}</b>${p.rec ? ` <small class="muted">${p.rec.years} yr · ${p.rec.events} duties</small>` : ''}</p>${meter(p.rec?.standing ?? 50, { label: p.kind === 'lieutenancy' ? '🏰 Standing in the county' : '🎖️ Standing with the regiment' })}`).join('')}<p class="fine">Each year brings a duty: how you handle it decides whether the post is renewed and how you're remembered.</p>`, { icon: '🎖️' }) : '';
-    return `${armsCard(state)}${duties}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    // Privy councils and executive councils (world/PrivyCouncil.js): for life, or while you serve.
+    const councils = (state.privyCouncil ?? []).map((m) => `<li>📜 <b>${esc(m.name.replace(/^./, (c) => c.toUpperCase()))}</b>${m.letters ? ` (${esc(m.letters)})` : ''} <small class="muted">since ${m.since}${m.until ? `, until ${m.until}` : ', for life'} · ${esc(m.style ?? '')}</small></li>`).join('');
+    const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul><p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
+    return `${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 
