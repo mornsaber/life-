@@ -41,7 +41,7 @@ import { BODIES } from '../../modules/org/Bodies.js';
 import { canTerminate, SUPERVISION_PER_YEAR } from '../../modules/org/Supervision.js';
 import { internalMoves, formerEmployers, rehireCheck, workforceGap } from '../../modules/org/Reentry.js';
 import { WORKPLACE_ACTIONS } from '../../modules/career/WorkplaceActions.js';
-import { APPLICATIONS_PER_YEAR } from '../../modules/career/InterviewSystem.js';
+import { APPLICATIONS_PER_YEAR, hireChance } from '../../modules/career/InterviewSystem.js';
 import { DUTIES, canDelegate } from '../../modules/career/ManagementEngine.js';
 import { WORKFORCE_MODES } from '../../modules/career/ContractingSystem.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
@@ -227,6 +227,7 @@ function currentJob(state) {
       ${meter(job.coworkers, { label: '👥 Coworkers' })}
     </div>
     <p class="promo ${status.eligible ? 'ready' : ''}">${nextHint}</p>
+    ${promotionChecklist(state, job, status, profession, size)}
     ${needs?.length ? `<p class="fine">🔐 Promotion to ${esc(needs[0].l.title)} triggers a ${esc(needs[0].c.clearanceNeeded)} clearance investigation.</p>` : ''}
     <div class="action-grid">${WORKPLACE_ACTIONS.map((a) => button(`${a.icon} ${a.label}`, `career.${a.id}`, { hint: a.id === 'askRaise' ? (onBands(job) ? 'Out-of-cycle raise up your band' : 'Quality Step Increase') : a.desc })).join('')}
       ${lateral ? button(`🔀 Move to ${esc(lateral.title)}`, 'career.switchTrack', { hint: `${TRACK_LABEL[lateral.track]} track` }) : ''}
@@ -336,14 +337,22 @@ function formerEmployersCard(state) {
   return card('Former Employers', `${gap > 1 ? `<p class="fine">⏳ ${gap} years out of the workforce — employers will ask about the gap.</p>` : ''}<ul class="job-board">${rows}</ul>`, { icon: '🔁' });
 }
 
+/** Your odds of an offer with a decent interview (the interview itself can move it either way). */
+export function jobOdds(state, p, check = applicationEligibility(state, p.id)) {
+  if (!check.ok || !check.level) return null;
+  return hireChance(state, p, check.level, 0.6, 1);
+}
+const oddsChip = (o) => (o == null ? '' : chip(`${o >= 0.6 ? '🟢' : o >= 0.35 ? '🟡' : '🔴'} ≈${Math.round(o * 100)}% offer`, o >= 0.6 ? 'good' : o >= 0.35 ? '' : 'warn'));
+
 function jobRow(state, p, extra = false) {
   const check = applicationEligibility(state, p.id);
+  const odds = jobOdds(state, p, check);
   const top = p.levels.reduce((a, l) => (l.grade > a.grade ? l : a));
   return `<li class="job-row ${check.ok ? '' : 'locked'}"${extra ? ' data-extra hidden' : ''}>
       <span class="job-icon" aria-hidden="true">${p.icon}</span>
       <div class="job-info"><span class="job-title"><b>${esc(p.name)}</b> <small class="muted">· ${SECTOR_LABEL[p.sector]}</small></span><small>${esc(p.levels[0].title)} [${gradePrefix(p)}${p.levels[0].grade}] → ${esc(top.title)} [${gradePrefix(p)}${top.grade}] · ${p.levels.length} levels${p.exam ? ' · civil-service exam' : ''}${p.dutyStation ? ' · rural duty station + housing' : ''}</small>
         ${check.ok && (check.commute || check.note) ? `<small class="req">${check.commute ? `🚗 Commute to ${esc(check.commute.to)} · ${check.commute.minutes} min each way` : `📍 ${esc(check.note)}`}</small>` : ''}
-        ${check.ok ? `<small class="req">Entry: ${esc(check.level.title)} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
+        ${check.ok ? `<small class="req">${oddsChip(odds)} Entry: ${esc(check.level.title)} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
@@ -392,7 +401,11 @@ function jobBoard(state, ui = {}) {
   const where = remoteness(state);
   const city = where ? nearestCity(state) : null;
   const ruralNote = where ? `<p class="fine">🌾 ${esc(cityName(state.character.regionId))} is ${where === 'remote' ? 'a remote rural area' : 'a small town'}: fewer employers, and the list of who's hiring changes every year. ${city ? `Jobs marked 🚗 mean commuting to ${esc(city.name)} (${city.minutes} minutes each way).` : 'There\'s no city within a daily drive: most city careers mean moving.'}</p>` : '';
-  const header = `${ruralNote}<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
+  // Best bets: the open jobs you're most likely to land, weighted toward the better-paid.
+  const bets = open.map((p) => { const c = applicationEligibility(state, p.id); return { p, c, o: jobOdds(state, p, c) ?? 0 }; })
+    .sort((a, b) => b.o * (b.c.level?.grade ?? 1) - a.o * (a.c.level?.grade ?? 1)).slice(0, 4);
+  const best = bets.length ? `<h4 class="sub">⭐ Best bets for you</h4><ul class="job-board">${bets.map((x) => jobRow(state, x.p)).join('')}</ul><p class="fine">Odds assume a decent interview; your answers move them either way. A slack job market, a gap in your work history and your record all count.</p>` : '';
+  const header = `${ruralNote}${field === 'open' ? best : ''}<div class="toggle-row chips-row" role="group" aria-label="Filter jobs by field">${chips}</div>${tools}`;
   const sorted = (list) => [...list].sort(SORTS[sort][1]);
   if (field === 'open') {
     if (!open.length) return `${header}<ul class="job-board"><li class="empty">Nothing you can apply for right now — pick a field to see what each job requires.</li></ul>`;
@@ -630,4 +643,27 @@ function intlSection(state) {
     return optionRow({ icon: '🌐', title: `${esc(m.org)}: ${esc(m.name)}`, sub: `${esc(m.place)}, ${esc(m.country)} · ${m.years === 1 ? '1 year' : `${m.years} years`} · +${money(m.allowance)}/yr allowance${m.risk ? ' · some danger' : ''}`, meta: check.ok ? `About ${Math.round(check.odds * 100)}% to be selected` : esc(check.reason), tone: check.ok ? 'good' : 'warn', locked: !check.ok, action: button('Apply', 'intl.apply', { arg: id, variant: 'small', disabled: !check.ok }) });
   }).join('');
   return disclosure('career.intl', '🌐 International service', `<p class="fine">Secondments abroad from your job: you keep your post and pay, add a mission allowance, and live where you're posted.</p><ul class="job-board">${rows}</ul>`, { count: `${ids.filter((id) => missionEligibility(state, id).ok).length} open` });
+}
+
+/** What stands between you and the next rung, ticked off; and where the ladder goes after it. */
+function promotionChecklist(state, job, status, profession, size) {
+  const next = status.all ?? [];
+  if (!next.length || status.trainee || status.tenureTrack) return '';
+  const tick = (ok, text) => `<li>${ok ? '✅' : '⬜'} ${text}</li>`;
+  const perfOk = job.performance >= 70 || (job.performance >= 55 && job.yearsInLevel >= 4);
+  const items = [
+    tick(perfOk, `A strong review: 70%+ performance, or 55%+ after 4 years in the rank (you: ${job.performance}%, ${job.yearsInLevel} yr)`),
+    tick(status.eligible || !/yr|year/.test(status.reason ?? ''), status.eligible ? 'Time in the rank served' : esc(status.reason ?? '')),
+  ];
+  for (const l of next) {
+    const c = levelCheck(state, l);
+    for (const m of c.missing ?? []) items.push(tick(false, `For ${esc(l.title)}: ${esc(typeof m === 'string' ? m : m.label ?? m.reason ?? String(m))}`));
+    if (c.clearanceNeeded) items.push(tick(false, `For ${esc(l.title)}: a ${esc(c.clearanceNeeded)} clearance (investigated on promotion)`));
+  }
+  if (status.noOpening) items.push(tick(false, esc(status.reason)));
+  // The road after: the next few rungs on your track.
+  const ladder = ladderFor(profession, size);
+  const idx = ladder.findIndex((l) => l.id === job.levelId);
+  const road = ladder.slice(idx + 1).filter((l) => l.track === 'shared' || l.track === job.track || job.track === 'shared').slice(0, 4);
+  return `<div class="promo-check"><ul class="plain">${items.join('')}</ul>${road.length ? `<p class="fine">🪜 After that: ${road.map((l) => `${esc(l.title)} [${gradePrefix(job)}${l.grade}]`).join(' → ')}</p>` : ''}</div>`;
 }
