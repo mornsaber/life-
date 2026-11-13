@@ -20,6 +20,7 @@ import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennoble
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 import { titleInsignia, crownBadge } from '../Insignia.js';
 import { lineView, lawFor } from '../../modules/world/RoyalLine.js';
+import { throneKind, GOVERNMENTS, BUDGETS, crownPrinceChoices, MY_STATES, rulerTitle } from '../../modules/world/Throne.js';
 import { diaryOptions, diaryBudget, daysUsed, diaryOpen } from '../../modules/world/RoyalDiary.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
@@ -278,7 +279,7 @@ export function crownCards(state) {
 /** 👑 Court: your reign or royal life, the Crown, and the powers you use by choice. */
 export function courtView(state) {
   const x = crownParts(state);
-  const out = [x.royal, diaryCard(state), x.powers, x.crown, state.royal ? '' : x.house].filter(Boolean).join('');
+  const out = [x.royal, throneCard(state), diaryCard(state), x.powers, x.crown, state.royal ? '' : x.house].filter(Boolean).join('');
   return out || card('No Court', '<p class="muted">You are not part of a royal house.</p>', { icon: '👑' });
 }
 /** 🌳 Succession: the line, drawn, and the family. */
@@ -402,4 +403,46 @@ function diaryCard(state) {
     ${free > 0 ? `<div data-collect-root><ul class="honour-list">${head}${rows}</ul>
     <div class="row-end">${button('📅 Set the diary', 'royalDiary.plan', { collect: true, hint: 'Runs now; plan more later in the year' })}</div></div>` : '<p>Your diary is full for the year.</p>'}
     <p class="fine">${light ? 'A working royal who gives fewer than three days a year gets counted by the papers. ' : ''}A diary within two days of full costs you more stress.</p>`, { icon: '📅', summary: `${used}/${budget} days` });
+}
+
+/** The throne by its kind: what you hold, and the levers that come with it. */
+function throneCard(state) {
+  const r = state.royal;
+  if (!r) return '';
+  const kind = throneKind(state);
+  const y = currentYear(state);
+  const c = state.world?.crowns?.[r.crownId];
+  if (kind === 'elective' && r.crownId === 'MY' && c) {
+    const ag = c.agong;
+    const mine = c.house;
+    const turnsAway = ag ? ((MY_STATES.indexOf(mine) - MY_STATES.indexOf(ag.state) + MY_STATES.length) % MY_STATES.length) : 0;
+    const due = ag ? ag.since + 5 + (turnsAway - 1) * 5 : null;
+    const rows = MY_STATES.map((s) => `<li style="display:flex;gap:8px"><span style="min-width:1.4em">${ag?.state === s ? '👑' : ''}</span><span>${s === mine ? `<b>${esc(s)}</b> <small class="muted">your state</small>` : esc(s)}</span></li>`).join('');
+    return card('An Elected King', `${kv([
+      ['Your state', `${esc(mine)} · ruled by its ${esc(rulerTitle(mine))}`],
+      ['Yang di-Pertuan Agong', ag ? `${ag.you ? '<b>You</b>' : `The ${esc(rulerTitle(ag.state))} of ${esc(ag.state)}`} · since ${ag.since}` : '—'],
+      ['Your state\'s turn', r.agong ? `Now, until ${r.agong.since + 5}` : turnsAway === 0 ? 'Now' : due ? `About ${due}${r.reigning ? '' : ' (if you reign by then)'}` : '—'],
+    ])}
+      <ol style="list-style:none;padding:0;margin:6px 0;display:grid;gap:2px">${rows}</ol>
+      <p class="fine">The nine rulers elect the King from among themselves for five years, by a rotation among the states. When ${esc(mine)}'s turn comes and you rule it, the Conference of Rulers will ask you.</p>`, { icon: '🏛️', summary: r.agong ? 'King' : 'Elective' });
+  }
+  if (kind === 'elective' && r.crownId === 'KH') {
+    const can = !r.reigning && state.character.gender === 'male';
+    return card('The Throne Council', `${can ? meter(r.councilFavour ?? 0, { label: '🏛️ The council\'s favour' }) : ''}
+      <p class="fine">Cambodia's King is chosen by the Royal Council of the Throne from the men of the royal houses, when the throne falls vacant. Being first in line helps; it doesn't decide.</p>
+      ${can && state.character.age >= 18 ? `<div class="action-grid">${button('🏛️ Call on the council\'s members', 'throne.courtCouncil', { hint: 'Once a year · favour' })}</div>` : ''}
+      ${!r.reigning && state.character.gender !== 'male' ? '<p class="why">The council chooses only among the men of the houses.</p>' : ''}`, { icon: '🏛️', summary: 'Elective' });
+  }
+  if (kind === 'executive' && r.reigning) {
+    const gov = r.government?.kind;
+    const heirs = crownPrinceChoices(state);
+    return card('You Rule', `<p class="muted">An executive monarchy: you appoint the government, name the crown prince and set the palace's share of the budget.</p>
+      ${kv([['Government', gov ? `${esc(GOVERNMENTS[gov].label)} · since ${r.government.since}` : 'The ministers you inherited'], ['Palace budget', esc(BUDGETS[r.budget ?? 'balanced'].label)], ['Crown prince', esc(c?.heir?.name ?? '—')]])}
+      <div class="enroll-form" data-collect-root>${select('gov', Object.entries(GOVERNMENTS).map(([value, g]) => ({ value, label: `${g.label} — ${g.note}` })), { value: gov ?? 'technocrat' })}${button('🏛️ Appoint the government', 'throne.appoint', { variant: 'small', collect: true })}</div>
+      <div class="enroll-form" data-collect-root>${select('budget', Object.entries(BUDGETS).map(([value, b]) => ({ value, label: `${b.label} — ${b.note}` })), { value: r.budget ?? 'balanced' })}${button('💰 Set the budget', 'throne.budget', { variant: 'small', collect: true })}</div>
+      ${heirs.length ? `<div class="enroll-form" data-collect-root>${select('heir', heirs.map((n) => ({ value: n.id, label: `${n.name} · ${y - n.born}${n.id === state.royal.tree?.designated ? ' (named)' : ''}` })))}${button('👑 Name the crown prince', 'throne.nameHeir', { variant: 'small', collect: true })}</div>` : ''}
+      <p class="fine">Passing over the eldest costs you goodwill in the family; a government of hardliners keeps order, at a price.</p>`, { icon: '🏛️', summary: 'Executive' });
+  }
+  if (kind === 'executive') return card('The Throne', '<p class="muted">An executive monarchy: the sovereign appoints the government and names the crown prince — not always the eldest son.</p>', { icon: '🏛️', summary: 'Executive' });
+  return card('The Throne', `<p class="muted">A constitutional monarchy: ${r.reigning ? 'you reign; ministers rule. Your power is to be consulted, to encourage and to warn.' : 'the sovereign reigns; ministers rule.'}</p>`, { icon: '🏛️', summary: 'Constitutional' });
 }

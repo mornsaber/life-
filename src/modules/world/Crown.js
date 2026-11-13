@@ -259,6 +259,8 @@ export function monarchName(state, crownId) {
   const c = state.world?.crowns?.[crownId];
   if (!c) return null;
   const def = CROWNS[crownId];
+  // Malaysia: the throne you inherit is your state's; the Agong is elected from the nine rulers.
+  if (crownId === 'MY' && !(c.agong && c.agong.state === c.house)) return `${{ Perlis: 'Raja', 'Negeri Sembilan': 'Yang di-Pertuan Besar' }[c.house] ?? 'Sultan'} ${c.monarch.name} of ${c.house}`;
   return `${monarchTitles(crownId, currentYear(state))[genderIdx(c.monarch.gender)]} ${c.monarch.name}${c.monarch.number > 1 ? ` ${ROMAN[c.monarch.number] ?? c.monarch.number}` : ''}`;
 }
 /** "the King" / "the Queen" for a country (null in a republic). */
@@ -305,6 +307,9 @@ function crownMedal(ctx, cc, kind, crownId) {
 }
 
 /** The monarch dies (or abdicates): the heir accedes. */
+/** Elective thrones: set by Throne.js (who the council chooses on a vacancy). */
+export const ELECTION = { fn: null };
+
 export function demise(ctx, crownId, why) {
   const { state, rng } = ctx;
   const def = CROWNS[crownId];
@@ -312,8 +317,18 @@ export function demise(ctx, crownId, why) {
   const old = monarchName(state, crownId);
   const reign = currentYear(state) - c.since;
   const r = state.royal;
+  // An elective throne (Cambodia): the council may choose you, or pass over the heir.
+  const chosen = ELECTION.fn?.(ctx, crownId) ?? null;
+  if (chosen === 'you') {
+    ctx.log('The Royal Council of the Throne met within the week and chose you.', '🏛️', 'milestone');
+    return accede(ctx, old, why);
+  }
+  if (chosen && r?.tree) {
+    c.heir = { name: chosen.name, gender: chosen.gender, age: chosen.born != null ? currentYear(state) - chosen.born : c.heir.age, nodeId: chosen.id, personId: chosen.personId };
+    ctx.log(`The Royal Council of the Throne passed over you and chose ${chosen.name}.`, '🏛️', 'warn');
+  }
   // The player was the heir: the throne is theirs.
-  if (r && r.crownId === crownId && r.line === 1 && !r.reigning) return accede(ctx, old, why);
+  else if (r && r.crownId === crownId && r.line === 1 && !r.reigning) return accede(ctx, old, why);
   const sameName = Object.values(state.world.crowns).length && rng.chance(0.3);
   if (r?.crownId === crownId) treeDemise(state, c.heir.nodeId);
   const next = { name: c.heir.name, gender: c.heir.gender, age: c.heir.age, number: sameName ? c.monarch.number + 1 : rng.int(1, 3) };

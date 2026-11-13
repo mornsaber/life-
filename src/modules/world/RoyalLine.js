@@ -76,6 +76,11 @@ export function lineOf(state) {
     from = up;
     up = t.nodes[up].parent;
   }
+  // An executive monarch may name a crown prince over the natural order (the Gulf).
+  if (t.designated) {
+    const k = out.findIndex((n) => n.id === t.designated);
+    if (k > 0) out.unshift(...out.splice(k, 1));
+  }
   return out;
 }
 /** Your place in the line (1 = the heir), or null. Blocks count for their size. */
