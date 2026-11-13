@@ -32,23 +32,15 @@ const year = (engine, state, n = 1) => {
 const mod = MODULES.find((m) => m.id === 'royalLife');
 
 const tests = {
-  'a working royal gets the year\'s diary: choose the engagement that defines it'() {
+  'a working royal plans the year\'s diary: the headline engagement defines it'() {
     const { engine, state } = life({ royalLevel: 'child' }, 3);
     year(engine, state, 25);
     state.royal.working = true;
-    // The diary comes most years, not every year.
-    let q = null;
-    for (let i = 0; i < 10 && !q; i++) {
-      state.prompts = [];
-      state.yearly = {};
-      mod.onAgeUp(engine.context());
-      q = state.prompts.find((p) => p.type === 'royalLife.diary');
-      if (!q) { state.prompts = []; state.stats.health = 95; engine.ageUp(); state.prompts = []; }
-    }
-    assert.ok(q, 'the diary');
-    assert.equal(q.options.length, 3);
+    state.prompts = [];
+    state.yearly = {};
     const before = state.royal.popularity;
-    engine.resolvePrompt(q.id, q.options[0].id);
+    engine.dispatch('royalDiary.plan', 'headline=banquet');
+    assert.ok(state.yearly['royalLife.diary'], 'the headline happened');
     assert.notEqual(state.royal.popularity, before, 'it mattered');
   },
   'the sovereign gives or refuses consent; a refused relative may leave the line'() {

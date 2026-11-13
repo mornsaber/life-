@@ -20,6 +20,7 @@ import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennoble
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 import { titleInsignia, crownBadge } from '../Insignia.js';
 import { lineView, lawFor } from '../../modules/world/RoyalLine.js';
+import { diaryOptions, diaryBudget, daysUsed, diaryOpen } from '../../modules/world/RoyalDiary.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
 function honoursCard(state) {
@@ -115,11 +116,6 @@ export function crownParts(state) {
       ].filter(Boolean))}
       ${mil.posts.length || (mil.rank && r.reigning) ? disclosure('crown.military', '🎖️ Military appointments', `${mil.rank ? `<p class="fine">${esc(mil.rank)}</p>` : ''}<ul class="history">${mil.posts.map((x) => `<li>${esc(x)}</li>`).join('')}</ul>`, { count: mil.posts.length }) : ''}
       <div class="action-grid">
-        ${r.working || r.reigning ? button('🤝 Royal engagement', 'crown.engagement', { hint: '3 a year' }) : ''}
-        ${r.working ? button('🎗️ Take a patronage', 'crown.patronage', { hint: 'One a year' }) : ''}
-        ${r.working || r.reigning ? button('✈️ Royal tour', 'crown.tour', { hint: 'Senior royals' }) : ''}
-        ${r.reigning || (r.working && r.line != null && r.line <= 4 && state.character.age >= 25) ? button('⚔️ Hold an investiture', 'royalHousehold.investiture', { hint: 'Two a year' }) : ''}
-        ${r.reigning || (r.working && r.line === 1) ? button('🏷️ Grant a royal warrant', 'royalHousehold.warrant', { hint: 'One a year' }) : ''}
         ${!r.reigning && state.character.age >= 18 && state.character.age <= 30 && !state.military.service ? button('🎖️ Serve in the armed forces', 'royalHousehold.serve', { hint: 'As an officer cadet' }) : ''}
         ${working ? button('🚪 Step back from royal duties', 'crown.stepBack', { variant: 'danger', hint: 'No grant, no title in use. For good.' }) : ''}
       </div>
@@ -189,11 +185,7 @@ function reigningHouseCard(state) {
   ].filter(Boolean);
   return card(`${esc(houseTitle(c.house).replace(/^t/, 'T'))}`, `${kv(rows)}
     ${est ? `<div class="enroll-form" data-collect-root>${select('mode', Object.entries(DUCHY_MODES).map(([value, label]) => ({ value, label })), { value: est.mode })}${button('🏰 Set the estate\'s course', 'royalLife.estate', { variant: 'small', collect: true })}</div>` : ''}
-    <div class="action-grid">
-      ${head ? button('🎓 Prepare the heir', 'royalLife.mentorHeir', { hint: 'Once a year · steadies the succession' }) : ''}
-      ${head || r.line === 1 ? button('🏰 Gather the family', 'royalLife.gathering', { hint: 'Once a year' }) : ''}
-    </div>
-    <p class="fine">Each year brings a choice of engagement, requests from relatives for consent to marry, and the press. Your popularity carries the country's view of the monarchy with it.</p>`, { icon: '🏰' });
+    <p class="fine">The year's engagements, tours and family time go in the Royal Diary. Relatives ask consent to marry, and the press never sleeps. Your popularity carries the country's view of the monarchy with it.</p>`, { icon: '🏰' });
 }
 
 function houseCard(state) {
@@ -286,7 +278,7 @@ export function crownCards(state) {
 /** 👑 Court: your reign or royal life, the Crown, and the powers you use by choice. */
 export function courtView(state) {
   const x = crownParts(state);
-  const out = [x.royal, x.powers, x.crown, state.royal ? '' : x.house].filter(Boolean).join('');
+  const out = [x.royal, diaryCard(state), x.powers, x.crown, state.royal ? '' : x.house].filter(Boolean).join('');
   return out || card('No Court', '<p class="muted">You are not part of a royal house.</p>', { icon: '👑' });
 }
 /** 🌳 Succession: the line, drawn, and the family. */
@@ -379,4 +371,35 @@ function successionCard(state) {
   return card('Line of Succession', `<p class="fine">${c?.house ? `${esc(houseTitle(c.house).replace(/^t/, 'T'))}. ` : ''}The law: ${esc(LAW_NAME[law] ?? law)}.</p>
     <ol style="list-style:none;padding:0;margin:6px 0;display:grid;gap:3px">${top}${items}</ol>
     ${why ? `<p class="why">${esc(why)}</p>` : youRow && youRow.pos > 1 ? `<p class="fine">${ahead} ${ahead === 1 ? 'person stands' : 'people stand'} ahead of you that you can see. A birth to anyone above you moves you down; a death or a renunciation moves you up.</p>` : r.line === 1 ? '<p class="fine">You are the heir.</p>' : ''}`, { icon: '🌳', summary: r.reigning ? 'Reigning' : r.line != null ? `${r.line}${['th', 'st', 'nd', 'rd'][(r.line % 100 >= 11 && r.line % 100 <= 13) ? 0 : r.line % 10] ?? 'th'} in line` : 'Not in line' });
+}
+
+const signed = (n) => (n > 0 ? `+${n}` : String(n));
+/** The Royal Diary: the year's public life in one plan, each entry with what it will likely do. */
+function diaryCard(state) {
+  const r = state.royal;
+  if (!r) return '';
+  if (!diaryOpen(state)) return r.working ? card('The Royal Diary', '<p class="muted">Your diary opens at eighteen. Until then: school, and the odd balcony.</p>', { icon: '📅' }) : '';
+  const budget = diaryBudget(state);
+  const used = daysUsed(state);
+  const free = budget - used;
+  const { items, headlines } = diaryOptions(state);
+  const effects = (days, pop, stress, risk) => [
+    `${days} day${days === 1 ? '' : 's'}`,
+    pop[1] ? `📰 ${pop[0] === pop[1] ? signed(pop[0]) : `${signed(pop[0])} to ${signed(pop[1])}`}` : null,
+    stress ? `😰 ${signed(stress)}` : null,
+    risk ? `${Math.round(risk * 100)}% gaffe risk` : null,
+  ].filter(Boolean).join(' · ');
+  const rows = items.map((x) => {
+    const max = Math.min(x.remaining, Math.floor(free / x.days));
+    const opts = Array.from({ length: Math.max(0, max) + 1 }, (_, n) => `<option value="${x.id}=${n}">${n}</option>`).join('');
+    return `<li class="honour-row"><span class="who"><b>${x.icon} ${esc(x.label)}</b> <small>${esc(x.note)}</small><br><small class="muted">${esc(effects(x.days, x.pop, x.stress, 0))}${x.remaining ? ` · ${x.remaining} left` : ' · done this year'}</small></span>
+      ${max > 0 ? `<select data-part="${x.id}" aria-label="${esc(x.label)}" style="width:auto;min-width:4.5em;justify-self:end">${opts}</select>` : `<input type="hidden" data-part="${x.id}" value="${x.id}=0"><span class="what muted">—</span>`}</li>`;
+  }).join('');
+  const head = headlines.length && free >= 3 ? `<li class="honour-row"><span class="who"><b>⭐ The year's headline event</b> <small>One a year: it defines how the country sees you</small></span>
+      <select data-part="headline" aria-label="Headline event"><option value="headline=">None</option>${headlines.map((d) => `<option value="headline=${d.id}">${esc(d.label)} — ${esc(effects(3, [-4, d.pop[1]], d.stress, d.risk))}</option>`).join('')}</select></li>` : '';
+  const light = !r.reigning && state.character.age >= 21 && used < 3;
+  return card('The Royal Diary', `<p class="muted honour-intro">${chip(`${free} of ${budget} days free`, free ? 'good' : '')} Fill the year: each line shows its likely effect on your popularity (📰) and stress (😰).</p>
+    ${free > 0 ? `<div data-collect-root><ul class="honour-list">${head}${rows}</ul>
+    <div class="row-end">${button('📅 Set the diary', 'royalDiary.plan', { collect: true, hint: 'Runs now; plan more later in the year' })}</div></div>` : '<p>Your diary is full for the year.</p>'}
+    <p class="fine">${light ? 'A working royal who gives fewer than three days a year gets counted by the papers. ' : ''}A diary within two days of full costs you more stress.</p>`, { icon: '📅', summary: `${used}/${budget} days` });
 }

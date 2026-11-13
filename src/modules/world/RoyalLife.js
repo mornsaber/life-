@@ -23,7 +23,7 @@ import { houseOf, monarchistSupport } from './Houses.js';
 import { living, ageOf } from '../people/People.js';
 
 const DUCHIES = { GB: ['the Duchy of Cambria', 'the Duchy of Lancaster'], SE: ['the royal estates of Solliden', 'the Royal Djurgården'], NL: ['the Het Loo estate', 'the Crown estates'], ES: ['the Patrimonio Nacional apartments', 'the Patrimonio Nacional'], JP: ['the Imperial estates', 'the Imperial estates'] };
-const DIARY = [
+export const DIARY = [
   { id: 'banquet', label: '🍽️ Host a state banquet', pop: [2, 5], stress: 4, risk: 0.15, gaffe: 'Your toast mentioned a war the guests would rather forget.' },
   { id: 'disaster', label: '🌊 Visit a flood-hit town', pop: [4, 8], stress: 8, risk: 0.1, gaffe: 'The photographs made it look like a photo opportunity.' },
   { id: 'tour', label: '✈️ A tour of the realms and allies', pop: [3, 7], stress: 10, risk: 0.2, gaffe: 'Protesters met you at every stop, demanding an apology for the past.' },
@@ -61,12 +61,7 @@ function yearOf(ctx) {
     if (est.mode === 'green' && rng.chance(0.2)) { pop(r, 2); ctx.log(`Rewilding on ${est.name} brought back beavers and good headlines.`, '🌳', 'good'); }
   }
   if (state.prompts.some((p) => p.type?.startsWith('royalLife.'))) return;
-  // One defining engagement a year.
-  if (royalHere(state) && age >= 18 && !yearlyCount(state, 'royalLife.diary') && rng.chance(0.35)) {
-    const picks = rng.shuffle([...DIARY]).slice(0, 3);
-    ctx.prompt({ type: 'royalLife.diary', icon: '📅', title: 'The Year\'s Diary', text: 'The private secretary lays out the year. One engagement will define it: which?', options: picks.map((d) => ({ id: d.id, label: d.label })) });
-    return;
-  }
+  // The year's defining engagement is chosen in the Royal Diary (RoyalDiary.js).
   // A relative asks consent to marry.
   if (headOfHouse(state) && rng.chance(0.12)) {
     const kin = rng.pick(nearKin(state));
@@ -107,6 +102,19 @@ function sovereignDuties(ctx) {
 }
 /** What a reigning sovereign can't do. */
 const SOVEREIGN_BARRED = /^(career\.apply|careerSearch\.|military\.enlist|education\.(apply|enroll|apprentice)|higherEd\.(apply|early)|gig\.|directEntry\.apply|intl\.apply)/;
+
+/** The year's defining engagement: a triumph, mostly; sometimes a gaffe. */
+export function headline(ctx, id) {
+  const { state, rng } = ctx;
+  bumpYearly(state, 'royalLife.diary');
+  const r = state.royal;
+  const d = DIARY.find((x) => x.id === id);
+  if (!r || !d) return undefined;
+  ctx.stat('stress', d.stress);
+  if (rng.chance(d.risk)) { pop(r, -rng.int(2, 6)); return ctx.log(`${d.label.slice(3)}: ${d.gaffe}`, '📰', 'warn'); }
+  pop(r, rng.int(d.pop[0], d.pop[1]));
+  return ctx.log(`${d.label.slice(3)}: it went well, and the country noticed. Popularity ${r.popularity}%.`, '👑', 'good');
+}
 
 export const RoyalLifeModule = {
   id: 'royalLife',
@@ -165,17 +173,8 @@ export const RoyalLifeModule = {
     },
   },
   resolvers: {
-    diary(ctx, data, optionId) {
-      const { state, rng } = ctx;
-      bumpYearly(state, 'royalLife.diary');
-      const r = state.royal;
-      const d = DIARY.find((x) => x.id === optionId);
-      if (!r || !d) return undefined;
-      ctx.stat('stress', d.stress);
-      if (rng.chance(d.risk)) { pop(r, -rng.int(2, 6)); return ctx.log(`${d.label.slice(3)}: ${d.gaffe}`, '📰', 'warn'); }
-      pop(r, rng.int(d.pop[0], d.pop[1]));
-      return ctx.log(`${d.label.slice(3)}: it went well, and the country noticed. Popularity ${r.popularity}%.`, '👑', 'good');
-    },
+    /** Old saves: a diary prompt still pending. */
+    diary(ctx, data, optionId) { return headline(ctx, optionId); },
     consent(ctx, data, optionId) {
       const { state, rng } = ctx;
       const kin = state.people.list.find((p) => p.id === data.kin);

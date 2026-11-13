@@ -40,16 +40,14 @@ const tests = {
       for (const n of living) assert.ok(!names.includes(n), `${id} uses ${n}`);
     }
   },
-  'the year isn\'t always the same diary'() {
+  'no yearly diary prompt: the year is planned in the Royal Diary'() {
     const { engine, state } = royal('GB', 'child', 'male');
-    let diaries = 0;
-    for (let i = 0; i < 40 && state.character.alive; i++) {
+    for (let i = 0; i < 30 && state.character.alive; i++) {
       state.stats.health = 90;
       state.prompts = [];
       engine.ageUp();
-      if (state.prompts.some((p) => p.type === 'royalLife.diary')) diaries++;
+      assert.ok(!state.prompts.some((p) => p.type === 'royalLife.diary'));
     }
-    assert.ok(diaries < 22, `${diaries} diaries in 22 adult years`);
   },
 };
 let failed = 0;
