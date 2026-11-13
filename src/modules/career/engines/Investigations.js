@@ -34,7 +34,7 @@ const COMMON = [
   ]),
   D('shortcut', '📝', 'The Affidavit', 'Your probable cause is thin. A little "confidential source information" would make it airtight.', [
     { id: 'honest', label: '📑 Write what you actually have', text: 'The judge sent it back for more. It cost you a month.', rep: 2 },
-    { id: 'pad', label: '✏️ Pad it', tone: 'danger', text: 'Signed the same day.', perf: 3, offense: 'falseStatement', offenseContext: 'lying in a search-warrant affidavit', discovery: 0.25 },
+    { id: 'pad', label: '✏️ Pad it', tone: 'danger', text: 'Signed the same day.', perf: 3, offense: 'perjury', offenseContext: 'lying in a search-warrant affidavit', discovery: 0.25 },
   ]),
   D('taskforce', '🤝', 'A Task Force Wants In', 'Local police and another agency want to join your case — and share the credit.', [
     { id: 'join', label: '🤝 Bring them in', text: 'More bodies, more evidence, more names on the press release.', perf: 2, rep: 4 },

@@ -60,7 +60,7 @@ export const ENGINEERING_PROJECTS = {
   chemicalEng: {
     label: 'Your Plant', icon: '⚗️', weights: { smarts: 3 },
     name: (rng) => `the ${pick(rng, ['catalyst', 'distillation column', 'reactor', 'scale-up', 'solvent recovery', 'batch-to-continuous'])} ${pick(rng, ['project', 'debottleneck', 'retrofit', 'commissioning'])}`,
-    acclaim: 'an AIChE process award', failure: { text: 'A release from a unit you modified sent workers to hospital. The Chemical Safety Board report cited your management-of-change review.', perf: -18, rep: -15, stress: 14, offense: 'falsifiedRecords', offenseContext: 'a chemical release from a modified unit', discovery: 0.3 },
+    acclaim: 'an AIChE process award', failure: { text: 'A release from a unit you modified sent workers to hospital. The Chemical Safety Board report cited your management-of-change review.', perf: -18, rep: -15, stress: 14, offense: 'environmentalCrime', offenseContext: 'a chemical release from a modified unit', discovery: 0.3 },
     deck: [
       D('alarm', '🚨', 'A Pressure Alarm', 'A reactor is running hot at 2 a.m. Shutting it down costs a day\'s production.', [
         { id: 'shutdown', label: '🛑 Shut it down', text: 'It was a failing valve. Nobody got hurt; the plant manager grumbled about the lost day.', rep: 6, perf: 1 },
@@ -90,7 +90,7 @@ export const ENGINEERING_PROJECTS = {
   petroleumEng: {
     label: 'Your Wells', icon: '🛢️', weights: { smarts: 2, fitness: 1 },
     name: (rng) => `the ${pick(rng, ['Wolfcamp', 'Eagle Ford', 'North Sea', 'Gulf deepwater', 'Bakken', 'offshore Guyana'])} ${pick(rng, ['well program', 'completion design', 'field development', 'enhanced recovery project'])}`,
-    acclaim: 'an SPE award', failure: { text: 'A well you cut corners on lost control. The blowout made national news and the regulator shut the field.', perf: -18, rep: -15, stress: 14, offense: 'falsifiedRecords', offenseContext: 'a well blowout', discovery: 0.35 },
+    acclaim: 'an SPE award', failure: { text: 'A well you cut corners on lost control. The blowout made national news and the regulator shut the field.', perf: -18, rep: -15, stress: 14, offense: 'environmentalCrime', offenseContext: 'a well blowout', discovery: 0.35 },
     deck: [
       D('kick', '🌋', 'A Kick', 'Gas is coming up the well faster than it should. The rig wants to keep drilling.', [
         { id: 'shut', label: '🛑 Shut in the well', text: 'You lost three days. You also didn\'t lose the rig.', rep: 8, perf: 1 },

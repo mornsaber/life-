@@ -34,7 +34,7 @@ const PRISON = {
     C('contraband', '📦', 'A Package From the Inside', 'An inmate you get along with offers you $2,000 to carry a package in. "Nobody checks you."', [
       { id: 'report', label: '📝 Report the approach', text: 'Internal affairs used it to break a smuggling ring. Some inmates won\'t speak to you now.', perf: 4, commend: 0.4, stress: 3 },
       { id: 'refuse', label: '🙅 Refuse and say nothing', text: 'He shrugged. Someone else will.', perf: 0 },
-      { id: 'carry', label: '💸 Carry it', tone: 'danger', text: 'The money was easy. The next request wasn\'t optional.', money: 2000, moneyLabel: 'Cash', offense: 'bribery', offenseContext: 'smuggling contraband into a prison', discovery: 0.4 },
+      { id: 'carry', label: '💸 Carry it', tone: 'danger', text: 'The money was easy. The next request wasn\'t optional.', money: 2000, moneyLabel: 'Cash', offense: 'contraband', offenseContext: 'smuggling contraband into a prison', discovery: 0.4 },
     ]),
     C('suicide', '🆘', 'Count Doesn\'t Clear', 'At 3 a.m. count, a man in a single cell isn\'t answering. Policy says wait for a second officer before you open the door.', [
       { id: 'open', label: '🚪 Open it now', check: 40, text: 'He\'d tried to hang himself. You cut him down and he lived.', perf: 6, commend: 0.6, honor: { id: 'corr.lifesave', name: 'Corrections Lifesaving Award', icon: '❤️' }, fail: { text: 'You were too late. The review cleared you; your sleep didn\'t.', trauma: 10 } },

@@ -76,7 +76,7 @@ export const TRADE_CAREERS = {
     deck: [
       D('upsell', '💰', 'The Upsell', 'The company pays a spiff for every new system you sell. This one just needs a $40 capacitor.', [
         { id: 'honest', label: '🔧 Replace the capacitor', text: 'A $40 fix and a customer for life.', rep: 6 },
-        { id: 'sell', label: '💵 Tell them the system is shot', tone: 'danger', text: 'A $9,000 sale.', money: 600, moneyLabel: 'Sales spiff', offense: 'wireFraud', offenseContext: 'selling unnecessary repairs', discovery: 0.1 },
+        { id: 'sell', label: '💵 Tell them the system is shot', tone: 'danger', text: 'A $9,000 sale.', money: 600, moneyLabel: 'Sales spiff', offense: 'consumerFraud', offenseContext: 'selling unnecessary repairs', discovery: 0.1 },
       ]),
     ],
   },

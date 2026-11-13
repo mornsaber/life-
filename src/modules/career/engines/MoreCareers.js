@@ -194,7 +194,7 @@ Object.assign(SHIFT_CAREERS, {
       ]),
       D('crowd', '👥', 'The Crowd', 'A crowd surrounds your vehicle at a checkpoint. A teammate wants to fire warning shots.', [
         { id: 'restraint', label: '✋ Hold fire and reverse out', text: 'Tense, but nobody was hurt.', rep: 5 },
-        { id: 'fire', label: '🔫 Fire', tone: 'danger', text: 'Civilians were killed.', trauma: 16, offense: 'assault', offenseContext: 'firing on civilians while contracting abroad', discovery: 0.5 },
+        { id: 'fire', label: '🔫 Fire', tone: 'danger', text: 'Civilians were killed.', trauma: 16, offense: 'manslaughter', offenseContext: 'firing on civilians while contracting abroad', discovery: 0.5 },
       ]),
     ],
   },
@@ -384,7 +384,7 @@ Object.assign(PROJECT_CAREERS, {
     deck: [
       D('lobbyist', '🍷', 'Dinner With a Lobbyist', 'A lobbyist offers you dinner, a concert, and a few lines of bill language he\'s already written.', [
         { id: 'meet', label: '☕ Take the meeting, not the gifts', text: 'You used half his ideas and none of his tickets.', perf: 3, rep: 2 },
-        { id: 'gifts', label: '🎟️ Enjoy the evening', tone: 'danger', text: 'A wonderful night.', offense: 'illegalLobbying', offenseContext: 'accepting a lobbyist\'s gifts while drafting a bill', discovery: 0.2 },
+        { id: 'gifts', label: '🎟️ Enjoy the evening', tone: 'danger', text: 'A wonderful night.', offense: 'illegalGratuity', offenseContext: 'accepting a lobbyist\'s gifts while drafting a bill', discovery: 0.2 },
       ]),
     ],
   },
@@ -416,7 +416,7 @@ Object.assign(BOOK_CAREERS, {
       ]),
       D('deposit', '💵', 'Security Deposits', 'The owner wants every move-out deposit kept for "wear and tear."', [
         { id: 'fair', label: '⚖️ Return what\'s fair', text: 'The owner grumbled. Tenants left good reviews.', rep: 4 },
-        { id: 'keep', label: '💰 Keep them', tone: 'danger', text: 'The owner was pleased.', offense: 'wageTheft', offenseContext: 'withholding tenants\' deposits unlawfully', discovery: 0.15 },
+        { id: 'keep', label: '💰 Keep them', tone: 'danger', text: 'The owner was pleased.', offense: 'depositRetention', offenseContext: 'withholding tenants\' deposits unlawfully', discovery: 0.15 },
       ]),
     ],
   },

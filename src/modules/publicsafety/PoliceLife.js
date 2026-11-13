@@ -215,7 +215,7 @@ const TOWN_CALLS = [
   ] },
   { id: 'coach', icon: '🍺', title: 'A Familiar Face at a DUI Stop', text: 'The car weaving over the center line belongs to your kid\'s football coach. He blows a 0.12 and asks you to "do him a solid".', options: [
     { id: 'arrest', label: '⚖️ Arrest him like anyone else', text: 'It was all over town by noon. Half of it stopped speaking to you; the other half respected it.', perf: 4, arrest: 1 },
-    { id: 'drive', label: '🚗 Drive him home and forget it', text: 'He was grateful.', perf: -1, offense: 'falseStatement', risk: { chance: 0.2, text: 'A dashcam doesn\'t forget. The chief found out.', perf: -8, complaint: 1 } },
+    { id: 'drive', label: '🚗 Drive him home and forget it', text: 'He was grateful.', perf: -1, offense: 'officialMisconduct', risk: { chance: 0.2, text: 'A dashcam doesn\'t forget. The chief found out.', perf: -8, complaint: 1 } },
   ] },
   { id: 'methlab', icon: '⚗️', title: 'The Smell From the Barn', text: 'A neighbor reports a chemical smell from an old barn at the edge of town. A rusted pickup is parked outside.', options: [
     { id: 'secure', label: '🧯 Back off, secure the area and call the state drug task force', check: 45, text: 'The task force found a meth lab and two cooks. Your name was in the paper.', perf: 6, arrest: 2, commend: 0.4, fail: { text: 'The cooks slipped out the back before the task force arrived.', perf: 1 } },

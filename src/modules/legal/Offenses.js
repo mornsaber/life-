@@ -38,7 +38,7 @@ export const OFFENSES = {
   ucmjLarceny: { name: 'Larceny of Military Property (UCMJ Art. 121)', icon: '📦', severity: 'felony', fine: [0, 0], prison: [1, 5], federal: true, military: true },
   ucmjAssault: { name: 'Aggravated Assault (UCMJ Art. 128)', icon: '👊', severity: 'felony', fine: [0, 0], prison: [1, 4], federal: true, military: true, violent: true },
   ucmjFraternization: { name: 'Fraternization (UCMJ Art. 134)', icon: '💑', severity: 'misdemeanor', fine: [0, 0], prison: [0, 1], federal: true, military: true },
-  trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'infraction', fine: [100, 500] },
+  trespass: { name: 'Criminal Trespass', icon: '🚧', severity: 'misdemeanor', fine: [200, 1000] },
   childEndangerment: { name: 'Child Endangerment', icon: '🧒', severity: 'felony', fine: [2000, 10000], prison: [1, 4], probation: 3, jobRelated: true },
   disorderly: { name: 'Disorderly Conduct / Failure to Disperse', icon: '📢', severity: 'misdemeanor', fine: [200, 1000], probation: 1 },
   serviceRefusal: { name: 'Refusing military service (Military Service Act)', icon: '🏃', severity: 'felony', fine: [0, 0], prison: [1, 2], probation: 1 },
@@ -74,7 +74,7 @@ export const OFFENSES = {
   visaFraud: { name: 'Visa Fraud Conspiracy', icon: '🛂', severity: 'felony', fine: [20000, 80000], prison: [3, 8], probation: 3, jobRelated: true, federal: true },
   smuggling: { name: 'Smuggling via Diplomatic Pouch', icon: '🎒', severity: 'felony', fine: [10000, 50000], prison: [2, 6], probation: 2, jobRelated: true, federal: true },
   mortgageFraud: { name: 'Mortgage Fraud', icon: '🏦', severity: 'felony', fine: [10000, 50000], prison: [1, 4], probation: 3, federal: true },
-  arson: { name: 'Arson & Insurance Fraud', icon: '🔥', severity: 'felony', fine: [10000, 50000], prison: [2, 8], probation: 3 },
+  arson: { name: 'Arson', icon: '🔥', severity: 'felony', fine: [10000, 50000], prison: [2, 8], probation: 3 },
   contraband: { name: 'Smuggling Contraband into a Prison', icon: '📦', severity: 'felony', fine: [5000, 20000], prison: [1, 5], probation: 2, jobRelated: true },
   falsifiedRecords: { name: 'Falsifying Official Records', icon: '📝', severity: 'misdemeanor', fine: [2000, 8000], probation: 2, jobRelated: true },
   prosecutorialMisconduct: { name: 'Prosecutorial Misconduct (Brady Violation)', icon: '⚖️', severity: 'misdemeanor', fine: [5000, 20000], probation: 1, jobRelated: true },
@@ -94,7 +94,7 @@ export const OFFENSES = {
   forgery: { name: 'Forgery (Fake IDs)', icon: '🪪', severity: 'felony', fine: [1000, 5000], prison: [0, 2], probation: 2 },
   receivingStolen: { name: 'Receiving Stolen Property', icon: '📦', severity: 'felony', fine: [1000, 10000], prison: [0, 3], probation: 2 },
   identityTheft: { name: 'Aggravated Identity Theft', icon: '🪪', severity: 'felony', fine: [5000, 25000], prison: [2, 5], probation: 3, federal: true },
-  counterfeiting: { name: 'Counterfeiting U.S. Currency', icon: '💵', severity: 'felony', fine: [5000, 25000], prison: [2, 8], probation: 3, federal: true },
+  counterfeiting: { name: 'Counterfeiting Currency', icon: '💵', severity: 'felony', fine: [5000, 25000], prison: [2, 8], probation: 3, federal: true },
   counterfeitGoods: { name: 'Trafficking in Counterfeit Goods', icon: '👜', severity: 'felony', fine: [5000, 50000], prison: [0, 3], probation: 2, federal: true },
   computerIntrusion: { name: 'Computer Fraud & Abuse (Ransomware)', icon: '💻', severity: 'felony', fine: [10000, 100000], prison: [2, 10], probation: 3, federal: true },
   moneyLaundering: { name: 'Money Laundering', icon: '🧺', severity: 'felony', fine: [10000, 250000], prison: [2, 10], probation: 3, federal: true },
@@ -137,6 +137,15 @@ export const OFFENSES = {
   childSexualAbuse: { name: 'Sexual Abuse of a Child', icon: '⚠️', severity: 'felony', fine: [0, 0], prison: [10, 30], probation: 10, violent: true, sexual: true, registry: true, noSeal: true },
   domesticAbuse: { name: 'Domestic Abuse (Coercive Control and Assault)', icon: '⚠️', severity: 'felony', fine: [1000, 5000], prison: [1, 5], probation: 3, violent: true },
   unfairLaborPractice: { name: 'Unfair Labor Practice (NLRB)', icon: '⚖️', severity: 'civil', fine: [10000, 60000] },
+  // Offences that existing scenes were charging under the wrong name.
+  perjury: { name: 'Perjury (False Sworn Statement)', icon: '🤥', severity: 'felony', fine: [2000, 15000], prison: [0, 3], probation: 2, jobRelated: true },
+  evidenceTampering: { name: 'Tampering with Evidence', icon: '🧪', severity: 'felony', fine: [2000, 15000], prison: [1, 4], probation: 2, jobRelated: true },
+  officialMisconduct: { name: 'Official Misconduct', icon: '🚔', severity: 'misdemeanor', fine: [1000, 5000], probation: 1, jobRelated: true },
+  illegalGratuity: { name: 'Accepting an Illegal Gratuity', icon: '🎟️', severity: 'felony', fine: [5000, 25000], prison: [0, 2], probation: 2, jobRelated: true, federal: true },
+  consumerFraud: { name: 'Deceptive Business Practices', icon: '🧾', severity: 'misdemeanor', fine: [1000, 10000], probation: 1, jobRelated: true },
+  environmentalCrime: { name: 'Knowing Environmental Violation (Clean Air / Clean Water Acts)', icon: '☣️', severity: 'felony', fine: [25000, 250000], prison: [0, 3], probation: 2, jobRelated: true, federal: true },
+  riot: { name: 'Riot (in Custody)', icon: '🔥', severity: 'felony', fine: [0, 0], prison: [1, 3], probation: 0 },
+  depositRetention: { name: 'Bad-Faith Retention of Security Deposits', icon: '🏠', severity: 'civil', fine: [1000, 10000] },
 };
 
 export const SEVERITY_LABEL = { infraction: 'Infraction', misdemeanor: 'Misdemeanor', felony: 'Felony', civil: 'Civil violation' };

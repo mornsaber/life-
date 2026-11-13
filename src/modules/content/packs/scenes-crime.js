@@ -164,7 +164,7 @@ const riot = {
       if (sc.flags.includes('rioted')) {
         inc.goodBehavior = Math.max(0, (inc.goodBehavior ?? 0) - 4);
         inc.yearsLeft += 2; inc.total += 2;
-        s.legal.record.push({ offenseId: 'contraband', name: 'Prison Riot', severity: 'felony', age: s.character.age, sentence: '2 yr added' });
+        s.legal.record.push({ offenseId: 'riot', name: 'Riot (in Custody)', severity: 'felony', age: s.character.age, sentence: '2 yr added' });
       }
     },
   }),

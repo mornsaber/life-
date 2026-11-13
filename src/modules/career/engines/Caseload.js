@@ -115,7 +115,7 @@ export const CASE_CAREERS = {
       ]),
       D('pressure', '🧪', 'An Inconclusive Result', 'A detective is pushing you to call an inconclusive print a match.', [
         { id: 'honest', label: '📝 Report it as inconclusive', text: 'The detective was furious. The case was built another way.', perf: 2, rep: 6 },
-        { id: 'match', label: '✅ Call it a match', tone: 'danger', text: 'The detective was grateful.', perf: 2, offense: 'falseStatement', offenseContext: 'falsifying a forensic result', risk: { chance: 0.4, text: 'An independent review overturned your match. You\'re on the defense bar\'s list now.', perf: -20, fired: 'Falsified a forensic result' } },
+        { id: 'match', label: '✅ Call it a match', tone: 'danger', text: 'The detective was grateful.', perf: 2, offense: 'evidenceTampering', offenseContext: 'falsifying a forensic result', risk: { chance: 0.4, text: 'An independent review overturned your match. You\'re on the defense bar\'s list now.', perf: -20, fired: 'Falsified a forensic result' } },
       ]),
     ],
   },
