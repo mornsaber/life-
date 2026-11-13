@@ -12,6 +12,7 @@ import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
 import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
+import { crimePlan } from '../../modules/legal/CrimePlan.js';
 import { crimeInEra, drugInEra, labInEra, hasTech } from '../../modules/world/Eras.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
@@ -114,20 +115,58 @@ function streetCard(state) {
     ${c.straightSince != null ? `<p class="pos">🌅 Going straight since age ${c.straightSince}${state.character.age - c.straightSince >= 5 ? ' — reformed: employers weigh your past half as much' : ` (${5 - (state.character.age - c.straightSince)} more clean year${5 - (state.character.age - c.straightSince) === 1 ? '' : 's'} to be seen as reformed)`}.</p>` : ''}`, { icon: '🕶️' });
 }
 
-function crimesCard(state) {
+/** Why a crime can't be done right now, or null. */
+function crimeBlock(state, r) {
   const age = state.character.age;
   const partnered = (state.people?.list ?? []).some((p) => p.alive && ['spouse', 'partner', 'fiance'].includes(p.relation));
-  const crimeButton = (r) => {
-    const why = r.needs?.(state);
-    return button(`${r.icon} ${r.label}`, `legal.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]) || (r.needsPartner && !partnered) || Boolean(why), hint: why ?? (age < r.minAge ? `Age ${r.minAge}+` : r.desc) });
-  };
-  const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
-  const groups = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
-    const list = RISKY_ACTIONS.filter((r) => (r.group ?? 'personal') === gid && crimeInEra(state, r.id));
-    if (!list.length) return '';
-    const body = `<div class="action-grid">${list.map(crimeButton).join('')}</div>`;
-    return gid === 'personal' ? `<h4 class="sub">${g.icon} ${g.label}</h4>${body}` : disclosure(`crime.${gid}`, `${g.icon} ${g.label}`, body, { count: list.length });
+  if (age < r.minAge) return `Age ${r.minAge}+`;
+  if (r.needsPartner && !partnered) return 'You need a partner to cheat on';
+  const why = r.needs?.(state);
+  if (why) return why;
+  if (state.yearly[`risky.${r.id}`]) return 'Done this year: lay low';
+  return null;
+}
+
+/** One picker for every crime, and one panel: the take, the odds, the charge here, the sentence. */
+function crimePicker(state, ui) {
+  const list = RISKY_ACTIONS.filter((r) => crimeInEra(state, r.id));
+  const pick = list.find((r) => r.id === ui.crimePick) ?? null;
+  const options = Object.entries(CRIME_GROUPS).map(([gid, g]) => {
+    const items = list.filter((r) => (r.group ?? 'personal') === gid);
+    return items.length ? `<optgroup label="${esc(`${g.icon} ${g.label}`)}">${items.map((r) => `<option value="${r.id}"${r.id === pick?.id ? ' selected' : ''}>${r.icon} ${esc(r.label)}${crimeBlock(state, r) ? ' 🔒' : ''}</option>`).join('')}</optgroup>` : '';
   }).join('');
+  const picker = `<label class="country-pick">What to do<select data-ui-set="crimePick" aria-label="Choose a crime"><option value="">Choose…</option>${options}</select></label>`;
+  return `${picker}${pick ? crimePanel(state, pick) : '<p class="fine">Pick something to see what it pays, how likely you are to be caught, and what you would be charged with here.</p>'}`;
+}
+
+function crimePanel(state, r) {
+  const p = crimePlan(state, r);
+  const block = crimeBlock(state, r);
+  const c = p.charge;
+  const odds = (n) => `${Math.round(n * 100)}%`;
+  const rows = [
+    ['What it is', esc(r.desc)],
+    p.money ? ['Typical take', `$${p.money[0].toLocaleString()} – $${p.money[1].toLocaleString()}${p.skill ? ` <small class="muted">(practice: ${p.skill}/5)</small>` : ''}`] : null,
+    p.note ? ['Upside', esc(p.note)] : null,
+    p.caught ? ['Caught in the act', `<b class="${p.caught >= 0.3 ? 'neg' : ''}">${odds(p.caught)}</b>`] : null,
+    p.later ? ['Found out later', `${odds(p.later)} <small class="muted">(an investigation opens)</small>`] : null,
+    p.harm ? ['Other risk', esc(p.harm)] : null,
+    c ? ['Charged as', `${chip(c.grade, c.severity === 'felony' ? 'bad' : c.severity === 'misdemeanor' ? 'warn' : '')} ${esc(c.name)}${c.legalHere ? '' : ` ${chip('Not a crime here', 'good')}`}`] : ['Charged as', 'Nothing: it isn\'t a crime'],
+    c ? ['Sentence', esc(c.sentence)] : null,
+    c ? ['Follows you abroad', esc(c.abroad)] : null,
+  ].filter(Boolean);
+  return `<div class="country-panel" style="border-top:1px solid var(--line,#333);margin-top:10px;padding-top:8px">
+    <h3 style="margin:4px 0">${r.icon} ${esc(r.label)}</h3>
+    ${kv(rows)}
+    ${block ? `<p class="why">${esc(block)}</p>` : ''}
+    <div class="btn-row">${button(`${r.icon} Do it`, `legal.${r.id}`, { variant: 'danger', disabled: Boolean(block), hint: block ?? r.desc })}</div>
+  </div>`;
+}
+
+function crimesCard(state, ui = {}) {
+  const age = state.character.age;
+  const youth = age < 18 ? `<h4 class="sub">🧒 Growing up wrong</h4><div class="action-grid">${JUVENILE_CRIMES.map((r) => button(`${r.icon} ${r.label}`, `crime.${r.id}`, { variant: 'danger', disabled: age < r.minAge || Boolean(state.yearly[`risky.${r.id}`]), hint: age < r.minAge ? `Age ${r.minAge}+` : r.desc })).join('')}</div><p class="fine">Under 18 you go to the youth court: diversion for a first offence, juvenile probation, or youth detention. Most of it is sealed at 18.</p>` : '';
+  const groups = crimePicker(state, ui);
   const kidnapHere = ['MX', 'VE', 'BR', 'CO', 'NG', 'ZA', 'PH', 'HT', 'GT', 'PE', 'EC', 'IN', 'PK'].includes(state.character.countryId);
   const armed = state.legal.crime?.armed;
   const violence = disclosure('crime.violence', '🩸 Violence', `<div class="action-grid">
@@ -200,8 +239,8 @@ function schemesCard(state) {
   return card('White-Collar Schemes', `<p class="muted">They pay every year and they grow every year — and so does the paper trail. At 100 heat, it comes apart.</p>${rows}`, { icon: '📊', accent: 'red' });
 }
 
-export function crimeView(state) {
-  return `${schemesCard(state)}${streetCard(state)}${crimesCard(state)}${drugsCard(state)}${corruptionCard(state)}`;
+export function crimeView(state, ui = {}) {
+  return `${schemesCard(state)}${streetCard(state)}${crimesCard(state, ui)}${drugsCard(state)}${corruptionCard(state)}`;
 }
 
 export function underworldView(state) {

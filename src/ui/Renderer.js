@@ -199,7 +199,7 @@ export const VIEWS = {
   people: peopleView,
   legal: legalView,
   cases: casesView,
-  crime: crimeView,
+  crime: (state, ui) => crimeView(state, ui),
   underworld: (state, ui) => empireCard(state) + underworldView(state, ui),
   home: homeView,
   move: moveView,
