@@ -761,8 +761,10 @@ export const CrownModule = {
       if (!r?.working || r.reigning) return ctx.toast(r?.reigning ? 'A monarch abdicates; they don\'t step back.' : 'You are not a working royal.', 'warn');
       r.working = false;
       r.steppedBack = true;
+      r.steppedBackYear = currentYear(state);
       state.character.style = { ...(state.character.style ?? {}), prefix: null };
-      ctx.log('You stepped back from royal duties. No more grant and no more title in use — and no more obligations. The papers will follow you anyway.', '🚪', 'milestone');
+      for (const p of state.people?.list ?? []) if (p.alive !== false && ['mother', 'father', 'sibling', 'grandparent'].includes(p.relation)) p.relationship = Math.max(0, (p.relationship ?? 60) - 10);
+      ctx.log('You stepped back from royal duties. No more grant, no title in use, and no state protection officers — and no more obligations. The family took it badly; the papers will follow you anyway.', '🚪', 'milestone');
       return undefined;
     },
     abdicate(ctx) {

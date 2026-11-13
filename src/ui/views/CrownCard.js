@@ -20,6 +20,7 @@ import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennoble
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 import { titleInsignia, crownBadge } from '../Insignia.js';
 import { lineView, lawFor } from '../../modules/world/RoyalLine.js';
+import { protectionOf, threatOf, stateProtected, consentNeeded, PROTECTION_COST, PRESS_OFFICE, DEALS } from '../../modules/world/CourtLife.js';
 import { throneKind, GOVERNMENTS, BUDGETS, crownPrinceChoices, MY_STATES, rulerTitle } from '../../modules/world/Throne.js';
 import { diaryOptions, diaryBudget, daysUsed, diaryOpen } from '../../modules/world/RoyalDiary.js';
 
@@ -290,12 +291,12 @@ export function successionView(state) {
 /** 🎗️ Household: honours, patronages, the forces, titles. */
 export function householdView(state) {
   const x = crownParts(state);
-  return [x.honours, militaryCard(state), x.peerage, x.noble].filter(Boolean).join('') || card('Household', '<p class="muted">Honours and appointments come with a working royal life.</p>', { icon: '🎗️' });
+  return [consentCard(state), protectionCard(state), pressCard(state), x.honours, militaryCard(state), x.peerage, x.noble].filter(Boolean).join('') || card('Household', '<p class="muted">Honours and appointments come with a working royal life.</p>', { icon: '🎗️' });
 }
 /** 🏰 Estates: the house, its seat and lands, and the money. */
 export function estatesView(state) {
   const x = crownParts(state);
-  return `${moneyCard(state)}${state.royal ? x.house ?? '' : ''}`;
+  return `${moneyCard(state)}${afterDutyCard(state)}${state.royal ? x.house ?? '' : ''}`;
 }
 
 /** The forces' honorary appointments, on their own. */
@@ -445,4 +446,47 @@ function throneCard(state) {
   }
   if (kind === 'executive') return card('The Throne', '<p class="muted">An executive monarchy: the sovereign appoints the government and names the crown prince — not always the eldest son.</p>', { icon: '🏛️', summary: 'Executive' });
   return card('The Throne', `<p class="muted">A constitutional monarchy: ${r.reigning ? 'you reign; ministers rule. Your power is to be consulted, to encourage and to warn.' : 'the sovereign reigns; ministers rule.'}</p>`, { icon: '🏛️', summary: 'Constitutional' });
+}
+
+/** Protection officers: who pays, and how much danger there is. */
+function protectionCard(state) {
+  const r = state.royal;
+  if (!r) return '';
+  const p = protectionOf(state);
+  const t = Math.round(threatOf(state));
+  const label = { state: 'Protection officers, paid by the state', private: `Your own team · ${money(PROTECTION_COST)}/yr`, none: 'None' }[p];
+  return card('Protection', `${meter(t, { label: '⚠️ Threat', tone: t >= 50 ? 'bad' : 'mid' })}${kv([['Protection', label]])}
+    ${stateProtected(r) ? '<p class="fine">The sovereign and working royals near the throne are protected at public expense.</p>' : `<div class="action-grid">${p === 'private' ? button('🛡️ Let your team go', 'courtLife.protection', { arg: 'none', variant: 'danger', hint: 'Save the money' }) : button('🛡️ Hire your own protection', 'courtLife.protection', { arg: 'private', hint: `${money(PROTECTION_COST)} a year` })}</div>
+    <p class="fine">${r.steppedBack ? 'Stepping back cost you the state\'s protection; the threats did not step back with you.' : 'Away from the front of the line, the state doesn\'t pay for protection.'}</p>`}`, { icon: '🛡️', summary: p === 'none' ? 'Unprotected' : 'Protected' });
+}
+
+/** The palace press office. */
+function pressCard(state) {
+  const r = state.royal;
+  if (!r?.working || state.character.age < 18) return '';
+  const cur = r.pressOffice ?? 'silent';
+  return card('The Press Office', `<p class="muted">How your office handles the papers: ${esc(PRESS_OFFICE[cur].label.slice(3))}.</p>
+    <div class="enroll-form" data-collect-root>${select('po', Object.entries(PRESS_OFFICE).map(([value, x]) => ({ value, label: `${x.label} — ${x.note}` })), { value: cur })}${button('📰 Set the line', 'courtLife.pressOffice', { variant: 'small', collect: true })}</div>`, { icon: '📰' });
+}
+
+/** Consent to marry, for those near the throne. */
+function consentCard(state) {
+  const f = consentNeeded(state);
+  if (!f) return '';
+  const refused = f.royalConsent === 'refused';
+  return card('Consent to Marry', `<p>You are engaged to <b>${esc(f.firstName)} ${esc(f.lastName ?? '')}</b>. Those near the throne need the sovereign's consent to marry and stay in the line.</p>
+    ${refused ? '<p class="why">The sovereign has refused consent.</p>' : ''}
+    <div class="action-grid">${refused ? '' : button('📜 Ask the sovereign\'s consent', 'courtLife.askConsent', { hint: 'Once a year' })}
+    ${button('💍 Marry without consent', 'courtLife.marryWithout', { variant: 'danger', hint: 'You and your children leave the line' })}</div>`, { icon: '💍', accent: 'yellow' });
+}
+
+/** After stepping back: what you can sell, and what it costs. */
+function afterDutyCard(state) {
+  const r = state.royal;
+  if (!r?.steppedBack) return '';
+  const done = r.deals ?? [];
+  const rows = Object.entries(DEALS).map(([id, d]) => done.includes(id) ? '' : button(d.label, 'courtLife.deal', { arg: id, hint: `Up to ${money(d.earn)} · 📰 ${d.pop} · the family ${d.family}` })).join('');
+  return card('Life After Duty', `<p class="muted">Stepped back${r.steppedBackYear ? ` in ${r.steppedBackYear}` : ''}: no grant, no protection, and a story the world will pay for.</p>
+    ${rows ? `<div class="action-grid">${rows}</div>` : '<p>You have sold everything there was to sell.</p>'}
+    ${done.length ? `<p class="fine">Signed: ${done.map((k) => esc(DEALS[k].label.slice(3))).join(', ')}.</p>` : ''}`, { icon: '💼' });
 }

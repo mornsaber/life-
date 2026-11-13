@@ -77,7 +77,7 @@ function yearOf(ctx) {
     }
   }
   // The papers.
-  if ((royalHere(state) || houseOf(state)) && rng.chance(0.15)) {
+  if ((royalHere(state) || houseOf(state)) && rng.chance({ rebut: 0.1, cultivate: 0.12 }[state.royal?.pressOffice] ?? 0.15)) {
     ctx.prompt({ type: 'royalLife.press', icon: '📰', title: 'The Front Pages', text: `A tabloid splashes a story about ${rng.pick(STORIES)}. The palace press office wants a decision.`, options: [
       { id: 'ignore', label: '🤐 Never complain, never explain' },
       { id: 'sue', label: '⚖️ Sue for invasion of privacy', hint: 'Costly; could win big' },
