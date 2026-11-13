@@ -18,6 +18,7 @@
  * state.house = { cc, name, surname, rank: 'head'|'heir'|'cadet', holderId, renounced, conferred, campaigns }
  * state.world.monarchists = { [cc]: support % }; state.world.restored = { [cc]: { year, house } }
  */
+import { regimeOf, setRegimeOverrides } from './Regimes.js';
 import { addHonor, currentYear, yearlyCount, bumpYearly } from '../../core/State.js';
 import { clamp, Random } from '../../core/Random.js';
 import { CROWNS, ensureCrown, crownOf, monarchName } from './Crown.js';
@@ -119,10 +120,13 @@ function bornIntoHouse(state, rng) {
 /** The throne comes back. The head of the house reigns — you, if it's yours. */
 export function restore(ctx, cc) {
   const { state, rng } = ctx;
-  const def = FORMER_HOUSES[cc];
+  // A throne that fell in this life (not one of history's former houses) comes back under its own house.
+  const fellNow = state.world.republics?.[cc]?.year;
+  const def = FORMER_HOUSES[cc] ?? { name: (state.house?.cc === cc ? state.house.name : null) ?? state.world.crowns?.[cc]?.house?.replace(/^the /, '') ?? CROWNS[cc]?.houses?.[0] ?? 'the old royal house', fell: `The republic of ${fellNow ?? 'recent years'}` };
   state.world.restored ??= {};
   state.world.restored[cc] = { year: currentYear(state), house: def.name };
   if (state.world.republics?.[cc]) delete state.world.republics[cc];
+  if (state.world.juntas?.[cc]?.revolution) { delete state.world.juntas[cc]; setRegimeOverrides(state.world.juntas); }
   delete state.world.crowns?.[cc];
   const c = ensureCrown(state, cc);
   c.house = def.name;
@@ -168,11 +172,20 @@ export function restore(ctx, cc) {
 }
 
 /** The crown goes: a republic. A reigning family becomes a former ruling house. */
-export function abolish(ctx, cc) {
+export function abolish(ctx, cc, { period = false } = {}) {
   const { state } = ctx;
   const crownId = crownOf(state, cc);
   state.world.republics ??= {};
   state.world.republics[cc] = { year: currentYear(state) };
+  // Where the crown ruled (an absolute or executive monarchy), the republic is a new government
+  // altogether: free elections and a president (the same layer a won revolution sets).
+  // (History's own dated republics carry their government in the period data instead.)
+  if (!period && regimeOf(cc).kind !== 'democracy') {
+    state.world.juntas ??= {};
+    state.world.juntas[cc] = { since: currentYear(state), civilian: true, revolution: true };
+    setRegimeOverrides(state.world.juntas);
+    ctx.emit?.('world:regimeChanged', { cc });
+  }
   if (state.world.suspendedParliament) delete state.world.suspendedParliament[cc];
   if (state.world.restored?.[cc]) delete state.world.restored[cc];
   const r = state.royal;
@@ -186,12 +199,15 @@ export function abolish(ctx, cc) {
     state.character.style = { ...(state.character.style ?? {}), prefix: def.titles.royal[g(state)], peerage: null };
     if (state.character.peerage?.kind === 'royal') delete state.character.peerage;
     (state.world.monarchists ??= {})[cc] = 30;
+    ctx.log(REPUBLIC_NOTE, '🏛️', 'info');
     ctx.log(head ? 'The republic is proclaimed. You leave the palace as a private citizen — still, to your supporters, the rightful sovereign: head of a former ruling house.' : 'The republic is proclaimed. Your family is a former ruling house now: a claim, a following, no throne.', '🏛️', 'milestone');
     ctx.stat('happiness', -10);
     return;
   }
   ctx.log(`The republic is proclaimed: the monarchy in ${COUNTRIES[cc]?.name ?? cc} is abolished.`, '🏛️', 'milestone');
 }
+/** What the republic's head of state is, for the proclamation. */
+export const REPUBLIC_NOTE = 'A President of the Republic replaces the Crown; the governors-general and the Crown\'s posts go with it.';
 
 function referendumPrompt(ctx, cc, kind, called = false) {
   const { state } = ctx;

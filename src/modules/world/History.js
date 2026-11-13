@@ -103,7 +103,7 @@ function fallThrone(ctx, cc, headline) {
   const r = ctx.state.world?.restored?.[cc];
   if (!r?.period) return;
   news(ctx, headline, '👑', 'world', 8);
-  abolish(ctx, cc);
+  abolish(ctx, cc, { period: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -817,7 +817,7 @@ function thronesOnTheirDates(ctx) {
     const r = state.world.restored?.[cc];
     if (!EVENT_THRONES.includes(cc) && r?.period && reigns.some(([, until]) => until === y)) {
       news(ctx, `The monarchy falls in ${COUNTRIES[cc]?.name ?? cc}`, '👑', 'world', 6);
-      abolish(ctx, cc);
+      abolish(ctx, cc, { period: true });
     } else if (!r && reigns.some(([from]) => from === y && from > state.era.start)) {
       (state.world.restored ??= {})[cc] = { year: y, house: CROWNS[cc].houses[0], period: true };
       if (state.world.republics?.[cc]) delete state.world.republics[cc];
@@ -825,7 +825,7 @@ function thronesOnTheirDates(ctx) {
     }
   }
   for (const [cc, gaps] of Object.entries(REPUBLIC_GAPS)) {
-    if (gaps.some(([from]) => from === y) && !state.world.republics?.[cc]) { news(ctx, `${COUNTRIES[cc]?.name ?? cc} becomes a republic`, '🏛️', 'world', 6); abolish(ctx, cc); }
+    if (gaps.some(([from]) => from === y) && !state.world.republics?.[cc]) { news(ctx, `${COUNTRIES[cc]?.name ?? cc} becomes a republic`, '🏛️', 'world', 6); abolish(ctx, cc, { period: true }); }
     if (gaps.some(([, until]) => until === y) && state.world.republics?.[cc]) {
       delete state.world.republics[cc];
       delete state.world.crowns?.[cc];

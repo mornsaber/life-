@@ -18,7 +18,7 @@ import { seatsAt, layerExists } from './Vacancies.js';
 import { PLAYER, billetTitle } from './MilitaryUnits.js';
 import { regimeOf } from '../world/Regimes.js';
 import { OFFICES } from '../politics/Offices.js';
-import { LEGISLATURES, MONARCHIES, NATIONAL_OFFICES } from '../politics/NationalOffices.js';
+import { LEGISLATURES, MONARCHIES, NATIONAL_OFFICES, officeExistsNow } from '../politics/NationalOffices.js';
 import { crownOf, ensureCrown, monarchName, monarchTitles } from '../world/Crown.js';
 import { currentYear, randomName } from '../../core/State.js';
 import { Random } from '../../core/Random.js';
@@ -211,8 +211,8 @@ export function governmentChart(state) {
   }
   // A parliamentary or presidential state.
   const leg = LEGISLATURES[cc];
-  const monarchy = MONARCHIES.includes(cc);
-  const hos = Object.entries({ ...OFFICES, ...NATIONAL_OFFICES }).find(([, o]) => o.country === cc && o.headOfState && o.selection !== 'appointed' && !o.provincial)?.[0] ?? null;
+  const monarchy = MONARCHIES.includes(cc) && !state.world?.republics?.[cc];
+  const hos = Object.entries({ ...OFFICES, ...NATIONAL_OFFICES }).find(([, o]) => o.country === cc && o.headOfState && o.selection !== 'appointed' && !o.provincial && officeExistsNow(state, o))?.[0] ?? null;
   const crown = crownOf(state, cc);
   const crownTitle = crown ? monarchTitles(crown, currentYear(state))[ensureCrown(state, crown)?.monarch.gender === 'female' ? 1 : 0] : null;
   const hosTitle = cc === 'US' ? 'President of the United States' : monarchy ? (crownTitle ? `The ${crownTitle}` : 'The Crown') : hos ? (OFFICES[hos] ?? NATIONAL_OFFICES[hos]).name : 'Head of State';

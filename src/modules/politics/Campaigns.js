@@ -4,6 +4,7 @@
  * and which endorsements you can earn. The campaign itself is on the trail
  * (CampaignTrail).
  */
+import { officeExistsNow } from './NationalOffices.js';
 import { neighbourhoodVoteBonus } from '../life/Reputation.js';
 import { prestige, isOnActiveDuty, isIncarcerated } from '../../core/State.js';
 import { regimeOf } from '../world/Regimes.js';
@@ -31,6 +32,7 @@ export function runEligibility(state, officeId) {
   const euLocal = LOCAL_OFFICES.includes(officeId) && ['DE', 'IT'].includes(here) && ['DE', 'IT'].some((c) => isCitizen(state, c));
   if (!office.country && !isCitizen(state, here) && !euLocal) return { ok: false, reason: here === 'US' ? 'U.S. citizens only' : 'Citizens only' };
   if (office.provinces && !office.provinces.includes(stateIdOf(state))) return { ok: false, reason: 'Not in your part of the country' };
+  if (!officeExistsNow(state, office)) return { ok: false, reason: office.republicOnly ? 'Only in a republic' : 'Abolished with the monarchy' };
   if (office.headOfState && office.selection !== 'appointed' && !presidencyInEra(state, office.country)) return { ok: false, reason: 'No such office yet: the country isn\'t a republic of its own' };
   // Today's juntas and transitional councils: an earlier life has the government of its own day.
   if (office.presentOnly && state.era && yearNow(state) < PRESENT - 5) return { ok: false, reason: 'Not in this era: the country had a different government then' };
@@ -129,6 +131,7 @@ export function endorsementEligible(state, id) {
 export function appointmentEligibility(state, officeId) {
   const office = OFFICES[officeId];
   if (!office?.appointedBy) return { ok: false, reason: 'Not an appointed office' };
+  if (!officeExistsNow(state, office)) return { ok: false, reason: 'Abolished with the monarchy' };
   if ((state.character.countryId ?? 'US') !== 'US' && !LOCAL_OFFICES.includes(officeId)) return { ok: false, reason: US_ONLY.office };
   if (state.politics.office?.id === officeId) return { ok: false, reason: 'You hold this office' };
   if (office.cabinet) return { ok: false, reason: 'Nominated by the President, confirmed by the Senate' };

@@ -173,14 +173,40 @@ for (const cc of EU_STATES) {
 /** Countries whose head of state is a monarch (no office to hold; their representatives are above). */
 export const MONARCHIES = [...new Set(['GB', 'CA', 'AU', 'NZ', 'PG', 'SB', 'JM', 'BS', 'JP', 'SE', 'NO', 'DK', 'NL', 'BE', 'ES', 'TH', 'MY', 'BN', 'KH', 'JO', 'SA', 'MA', 'KW', 'QA', 'BH', 'AE', ...PACKS.filter((p) => p.monarchy).map((p) => p.id)])];
 
+/**
+ * When a monarchy falls, a republic needs a head of state. Each monarchy has one waiting:
+ * where the monarch reigned and ministers ruled, a president chosen by parliament; where the
+ * monarch governed (the Gulf, Brunei, Morocco, Jordan), a president elected by the people.
+ * They exist only once the republic is proclaimed (state.world.republics).
+ */
+const RULING_THRONES = ['SA', 'KW', 'QA', 'BH', 'AE', 'MA', 'BN', 'JO', 'OM'];
+for (const cc of MONARCHIES) {
+  const id = `${cc.toLowerCase()}_republicPresident`;
+  if (NATIONAL_OFFICES[id]) continue;
+  NATIONAL_OFFICES[id] = RULING_THRONES.includes(cc)
+    ? { country: cc, name: 'President of the Republic', icon: '🏛️', level: 5, term: 5, termLimit: 2, salary: 200000, minAge: 35, residency: 10, cost: 8000000, statewide: true, headOfState: true, republicOnly: true, ...executive }
+    : { ...ceremonial, country: cc, name: 'President of the Republic', icon: '🏛️', term: 7, termLimit: 2, salary: 200000, minAge: 40, cost: 0, selection: 'parliament', chosenBy: 'Parliament, by a two-thirds vote', stature: 4, republicOnly: true };
+}
+
+/** The Crown's own posts: governors-general, the lieutenancies, the provincial Crown. */
+export const crownOffice = (o) => Boolean(o && (o.viceRegal || o.kind === 'lieutenancy' || (o.selection === 'appointed' && /\b(King|Queen|Crown|monarch|Sovereign)\b/.test(o.chosenBy ?? ''))));
+/** Whether an office exists where it is, now: a republic's president only in a republic; the Crown's posts only under a crown. */
+export function officeExistsNow(state, o) {
+  if (!o?.country) return true;
+  const republic = Boolean(state?.world?.republics?.[o.country]);
+  if (o.republicOnly) return republic;
+  if (republic && crownOffice(o)) return false;
+  return true;
+}
+
 /** Local office (shared with the US list) that every country has. */
 export const LOCAL_OFFICE_IDS = ['schoolBoard', 'cityCouncil', 'mayor', 'cityManager'];
 
 /** The ladder shown on the Politics tab where you live. */
-export function officeOrderFor(countryId, provinceId, usOrder) {
+export function officeOrderFor(countryId, provinceId, usOrder, state = null) {
   if (countryId === 'US') return usOrder;
   const national = Object.entries(NATIONAL_OFFICES)
-    .filter(([, o]) => o.country === countryId && (!o.provinces || o.provinces.includes(provinceId)))
+    .filter(([, o]) => o.country === countryId && (!o.provinces || o.provinces.includes(provinceId)) && officeExistsNow(state, o))
     .sort((a, b) => a[1].level - b[1].level)
     .map(([id]) => id);
   return [...LOCAL_OFFICE_IDS, ...national];

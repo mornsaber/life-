@@ -218,7 +218,7 @@ function politicsParts(state) {
       ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
     </li>`;
   };
-  const order = officeOrderFor(state.character.countryId ?? 'US', stateIdOf(state), OFFICE_ORDER);
+  const order = officeOrderFor(state.character.countryId ?? 'US', stateIdOf(state), OFFICE_ORDER, state);
   const allRows = order.map((id) => [id, rowsFor(id)]);
   const openRows = allRows.filter(([id]) => openIds.has(id)).map(([, r]) => r).join('');
   const lockedRows = allRows.filter(([id]) => !openIds.has(id)).map(([, r]) => r).join('');
