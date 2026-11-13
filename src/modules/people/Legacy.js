@@ -29,6 +29,7 @@ import { houseTitle } from '../world/Houses.js';
 import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, stocksValue } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
+import { rememberedRecord } from './Remembered.js';
 import { SUCCESSION_DISCOUNT, successorOf, readiness, READY, heirFamily, heirStats, allBusinesses } from './Dynasty.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
 import { heirCitizenships } from '../world/Immigration.js';
@@ -294,6 +295,7 @@ export function ancestorRecord(old, heirId) {
     spouse,
     children: kids.map((k) => ({ name: k.firstName, heir: k.id === heirId, alive: k.alive !== false })),
     country: old.character.countryId ?? 'US',
+    ...rememberedRecord(old),
   };
 }
 

@@ -5,7 +5,7 @@
 import { militaryInsignia } from '../Insignia.js';
 import { rivalsCard, familyCard } from './CirclesView.js';
 import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
-import { esc, money, button, card, meter, kv, empty, disclosure, select } from '../Components.js';
+import { esc, money, button, card, meter, kv, empty, disclosure, select, chip } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
@@ -59,6 +59,7 @@ import { petsOf, SPECIES } from '../../modules/people/Pets.js';
 import { carrierOf, ivfCost, surrogacyLaw, surrogacyCost, ADOPTION } from '../../modules/people/Fertility.js';
 import { toned, personTone } from '../../modules/people/SkinTone.js';
 import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
+import { TEMPERAMENTS, epithetOf, standing, memoirEligibility } from '../../modules/people/Remembered.js';
 import { flagImg } from '../Flags.js';
 import { circlesNow } from '../../modules/life/Reputation.js';
 import { hasTech, eraYear, yearNow } from '../../modules/world/Eras.js';
@@ -440,11 +441,30 @@ function lineage(state) {
   const gens = l.ancestors.map((a) => {
     const kids = a.children?.length ? `<div class="tree-kids">${a.children.map((k) => `<span class="${k.heir ? 'tree-heir' : ''}">${k.heir ? '⬇️ ' : ''}${esc(k.name)}${k.alive ? '' : ' 🕯️'}</span>`).join(' · ')}</div>` : '';
     const facts = [a.career ? `💼 ${esc(a.career)}` : null, a.military ? `${a.rank ? militaryInsignia(a.rank.code, a.rank.nation, { branch: a.rank.branch }) : '🎖️'} ${esc(a.military)}` : null, a.education ? `🎓 ${esc(a.education)}` : null, a.honours?.length ? `🏅 ${esc(a.honours.join(', '))}` : null, a.businesses?.length ? `🏪 ${esc(a.businesses.join(', '))}` : null].filter(Boolean);
-    return `<li class="tree-gen"><div class="tree-head"><b>${esc(a.styled ?? a.name)}</b>${a.spouse ? ` <small>⚭ ${esc(a.spouse)}</small>` : ''}</div>
+    const named = (a.namedAfter ?? []).map((n) => `${n.removed ? '<s>' : ''}${esc(n.name)}${n.removed ? `</s> <small>(removed ${n.removed})</small>` : ''}`).join(', ');
+    facts.push(...[a.temperament ? `${a.temperament.map((t) => TEMPERAMENTS[t]?.icon ?? '').join('')} ${esc(a.temperament.map((t) => TEMPERAMENTS[t]?.label ?? t).join(', '))}` : null, named ? `🪧 ${named}` : null, a.memoir ? `📖 “${esc(a.memoir)}”` : null, a.funeral ? `⚱️ ${esc(a.funeral)}` : null].filter(Boolean));
+    return `<li class="tree-gen"><div class="tree-head"><b>${esc(a.styled ?? a.name)}</b>${a.epithet ? ` <i>${esc(a.epithet)}</i>` : ''}${a.spouse ? ` <small>⚭ ${esc(a.spouse)}</small>` : ''}</div>
       <small class="muted">Generation ${a.generation} · ${a.born}–${a.died} (${a.age}) · ${esc(a.cause ?? '')} · left ${money(a.netWorth)}</small>
       ${facts.length ? `<div class="tree-facts"><small>${facts.join('<br>')}</small></div>` : ''}${kids}</li>`;
   }).join('');
   return card(`Family Tree · Generation ${l.generation}`, `<ol class="family-tree">${gens}<li class="tree-gen tree-you"><div class="tree-head"><b>${esc(state.character.firstName)} ${esc(state.character.lastName)}</b> <small>(you)</small></div></ol><p class="fine">The ${esc(state.character.lastName)} family since ${l.founderYear ?? '—'}. ⬇️ marks the child who carried the line on.</p>`, { icon: '🌳' });
+}
+
+/** How you'll be remembered: temperament, epithet so far, memoirs, things named after you. */
+function rememberedCard(state) {
+  const r = state.remembered ?? {};
+  const t = r.temperament ?? [];
+  const m = memoirEligibility(state);
+  const named = (r.namedAfter ?? []).map((n) => `<li>🪧 ${esc(n.name)} <small class="muted">${esc(n.place ?? '')} · ${n.year}</small></li>`).join('');
+  return card('How You\'ll Be Remembered', `${kv([
+    ['Temperament', t.length ? t.map((id) => chip(`${TEMPERAMENTS[id].icon} ${TEMPERAMENTS[id].label}`)).join(' ') : '—'],
+    ['If you died today', `${esc(state.character.firstName)} <i>${esc(epithetOf(state))}</i>`],
+    ['Standing', `${standing(state)}/100`],
+    ['Memoirs', r.memoir ? `“${esc(r.memoir.title)}” (${r.memoir.year}) · ${r.memoir.sold.toLocaleString()} copies` : 'Unwritten'],
+  ])}
+    ${named ? `<h4 class="sub">Named after you</h4><ul class="history">${named}</ul>` : ''}
+    ${r.memoir ? '' : `<div class="action-grid">${button('📖 Write your memoirs', 'remembered.memoir', { arg: 'honest', variant: 'small', disabled: !m.ok, hint: m.ok ? 'Tell it straight' : m.reason })}${button('🗡️ A tell-all', 'remembered.memoir', { arg: 'tell', variant: 'small danger', disabled: !m.ok, hint: m.ok ? 'Sells better; someone in the family won\'t forgive you' : m.reason })}</div>`}
+    <p class="fine">Streets, schools, scholarships, statues and airports are named after the famous, the powerful and the generous, each in its day. Your temperament may pass to the next generation.</p>`, { icon: '🕯️' });
 }
 
 /** Pets: who lives with you, and getting another. */
@@ -489,7 +509,7 @@ export function peopleView(state, ui = {}) {
     ${group('Exes', '💔', by('ex'), state)}
     ${dynastyCard(state)}
     ${legacyCard(state)}
-    ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${lineage(state)}
+    ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${rememberedCard(state)}${lineage(state)}
     ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
 }
