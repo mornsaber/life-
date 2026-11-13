@@ -6,7 +6,7 @@ import { currentCountry } from '../../core/Locale.js';
 import { vettingForm } from '../../modules/world/MilitaryLocal.js';
 import { CLEARANCE_PREMIUM, sponsorEligibility } from '../../modules/career/ClearedWork.js';
 import { esc, button, card, chip, meter, kv, empty } from '../Components.js';
-import { COMPETITIONS, competitionCheck } from '../../modules/world/IntlOrgs.js';
+import { COMPETITIONS, competitionOpen, competitionCheck } from '../../modules/world/IntlOrgs.js';
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
 import { MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { professionsFor } from '../../modules/career/JobTrees.js';
@@ -57,7 +57,7 @@ export function govView(state) {
     <p class="fine">Public employers' training budgets rise and fall with these numbers.</p>`, { icon: '🦅', accent: 'blue' });
 
   // International organisations recruit through their own competitions (world/IntlOrgs).
-  const comps = Object.entries(COMPETITIONS).map(([id, c]) => {
+  const comps = Object.entries(COMPETITIONS).filter(([id]) => competitionOpen(state, id)).map(([id, c]) => {
     const s = state.intlOrgs?.competitions?.[id];
     const check = competitionCheck(state, id);
     if (!s?.passed && !check.ok && /citizens only|and under|From 21/.test(check.reason)) return '';

@@ -46,7 +46,7 @@ function planSection(state) {
   return `<h4 class="sub">Estate plan</h4>
     ${kv([
       ['Probate if you died today', probate ? `<span class="neg">≈${money(probate)}</span> in court and attorney fees` : 'None — your trust holds everything'],
-      ['401(k) & IRA beneficiary', `${payees.length ? payees.map((p) => esc(p.label)).join(', ') : 'Your estate (probate, faster forced withdrawals)'}${exTrap ? ' <span class="neg">— your ex still collects the 401(k)</span>' : ''}`],
+      !dcExists(state) ? null : ['401(k) & IRA beneficiary', `${payees.length ? payees.map((p) => esc(p.label)).join(', ') : 'Your estate (probate, faster forced withdrawals)'}${exTrap ? ' <span class="neg">— your ex still collects the 401(k)</span>' : ''}`],
       plan.exemptionUsed ? ['Lifetime exemption used', money(plan.exemptionUsed)] : null,
     ])}
     <div class="toggle-row">${trusts}</div>
@@ -62,7 +62,7 @@ import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.
 import { TEMPERAMENTS, epithetOf, standing, memoirEligibility } from '../../modules/people/Remembered.js';
 import { flagImg } from '../Flags.js';
 import { circlesNow } from '../../modules/life/Reputation.js';
-import { hasTech, eraYear, yearNow } from '../../modules/world/Eras.js';
+import { hasTech, eraYear, yearNow, dcExists } from '../../modules/world/Eras.js';
 
 const ICON = { mother: '👩', father: '👨', sibling: '🧑', partner: '💘', fiance: '💍', spouse: '💑', ex: '💔', child: '🧒', friend: '🤝' };
 /** A person's face: their relation's icon, or one for their age and gender, in their skin tone. */
@@ -372,15 +372,15 @@ function familyPlanning(state) {
     : f.surrogacy ? '<p class="fine">🤝 Surrogacy under way: matching and the embryo transfer.</p>' : '';
   const treatments = carrier ? `
       ${(f.tryingYears ?? 0) >= 1 && !f.workup ? button('🩺 Fertility workup', 'fertility.workup', { variant: 'small', hint: `${f.tryingYears} yr trying` }) : ''}
-      ${button('🧫 IVF cycle', 'fertility.ivf', { arg: 'own', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint() })}
+      ${yearNow(state) < 1978 ? '' : button('🧫 IVF cycle', 'fertility.ivf', { arg: 'own', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint() })}
       ${f.frozen?.eggs ? button(`❄️ IVF with eggs frozen at ${f.frozen.age}`, 'fertility.ivf', { arg: 'frozen', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: `${f.frozen.eggs} left` }) : ''}
-      ${button('🧬 IVF with donor eggs', 'fertility.ivf', { arg: 'donor', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint(15000) })}` : '';
-  return disclosure('family-planning', '👪 Fertility, surrogacy & adoption', `
+      ${yearNow(state) < 1984 ? '' : button('🧬 IVF with donor eggs', 'fertility.ivf', { arg: 'donor', variant: 'small', disabled: busy || Boolean(state.yearly['fertility.ivf']), hint: ivfHint(15000) })}` : '';
+  return disclosure('family-planning', yearNow(state) < 1978 ? '👪 Adoption' : '👪 Fertility, surrogacy & adoption', `
     ${status}
     ${f.workup ? `<p class="fine">🩺 Workup: ${esc(f.workup.route)}.</p>` : ''}
     <div class="toggle-row">${treatments}
-      ${state.character.gender === 'female' && age >= 25 && age <= 40 && !f.frozen ? button('❄️ Freeze your eggs', 'fertility.freezeEggs', { variant: 'small' }) : ''}
-      ${law !== 'banned' ? button('🤝 Surrogacy', 'fertility.surrogacy', { variant: 'small', disabled: busy, hint: `${law === 'commercial' ? 'Commercial' : 'Altruistic only'} · ~${money(surrogacyCost(state))}` }) : ''}
+      ${state.character.gender === 'female' && age >= 25 && age <= 40 && !f.frozen && yearNow(state) >= 2012 ? button('❄️ Freeze your eggs', 'fertility.freezeEggs', { variant: 'small' }) : ''}
+      ${law !== 'banned' && yearNow(state) >= 1985 ? button('🤝 Surrogacy', 'fertility.surrogacy', { variant: 'small', disabled: busy, hint: `${law === 'commercial' ? 'Commercial' : 'Altruistic only'} · ~${money(surrogacyCost(state))}` }) : ''}
     </div>
     <div class="toggle-row">${Object.entries(ADOPTION).map(([id, r]) => button(`🏠 Adopt: ${r.label.toLowerCase()}`, 'fertility.adopt', { arg: id, variant: 'small', disabled: busy || age < (id === 'foster' ? 21 : 25), hint: `${r.wait[0] === r.wait[1] ? r.wait[0] : `${r.wait[0]}–${r.wait[1]}`} yr wait` })).join('')}</div>
     ${law === 'banned' ? '<p class="fine">Surrogacy is illegal here.</p>' : ''}`);
@@ -464,7 +464,7 @@ function rememberedCard(state) {
   ])}
     ${named ? `<h4 class="sub">Named after you</h4><ul class="history">${named}</ul>` : ''}
     ${r.memoir ? '' : `<div class="action-grid">${button('📖 Write your memoirs', 'remembered.memoir', { arg: 'honest', variant: 'small', disabled: !m.ok, hint: m.ok ? 'Tell it straight' : m.reason })}${button('🗡️ A tell-all', 'remembered.memoir', { arg: 'tell', variant: 'small danger', disabled: !m.ok, hint: m.ok ? 'Sells better; someone in the family won\'t forgive you' : m.reason })}</div>`}
-    <p class="fine">Streets, schools, scholarships, statues and airports are named after the famous, the powerful and the generous, each in its day. Your temperament may pass to the next generation.</p>`, { icon: '🕯️' });
+    <p class="fine">Streets, schools, scholarships and statues${yearNow(state) >= 1950 ? ', even airports,' : ''} are named after the famous, the powerful and the generous. Your temperament may pass to the next generation.</p>`, { icon: '🕯️' });
 }
 
 /** Pets: who lives with you, and getting another. */

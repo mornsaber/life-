@@ -60,7 +60,7 @@ function foreignTaxCard(state) {
     t.audits.length ? ['Audits', t.audits.map((a) => `${a.age}: ${a.result}${a.owed ? ` (${money(a.owed)})` : ''}`).join(' · ')] : null,
   ])}
   ${t.debt ? `<div class="toggle-row">${button('💵 Pay the tax office', 'taxes.payDebt', { variant: 'small', disabled: f.cash <= 0 })}${t.plan ? '' : button('📅 Request a payment plan', 'taxes.requestPlan', { variant: 'small' })}</div>` : ''}
-  <p class="fine">${esc(c.name)}: income tax is withheld from pay, with social contributions on wages. No itemizing: allowances and the country's own deductions apply automatically.</p>`, { icon: '🧾' });
+  <p class="fine">${esc(c.name)}: ${eraTaxShare(state) === 0 ? 'there is no income tax yet: the state lives on customs, excise and taxes on land.' : yearNow(state) < 1944 ? 'income tax is assessed once a year on a return, and most people earn too little to pay it; nothing is taken from pay.' : 'income tax is withheld from pay, with social contributions on wages. No itemizing: allowances and the country\'s own deductions apply automatically.'}</p>`, { icon: '🧾' });
 }
 
 /** Last return, deductions, IRS debt and audits. */
@@ -174,7 +174,7 @@ export function moneyView(state) {
       ${statePensionExists(state) ? button((state.character.countryId ?? 'US') === 'US' ? '🇺🇸 Claim Social Security' : '🏦 Claim your state pension', 'retirement.claimSocialSecurity', { disabled: Boolean(r.socialSecurity) || age < 62, hint: 'Age 62–70; waiting raises it 8%/yr' }) : ''}
       ${dcExists(state) || r.dc ? button('🏧 Withdraw $10K', 'retirement.withdraw', { disabled: r.dc <= 0, hint: age < 60 ? '10% early penalty' : 'Penalty-free' }) : ''}
     </div>
-    <p class="fine">Plans: ${Object.values(PENSION_PLANS).map((p) => p.short).join(' · ')}. Medals raise military retired pay.</p>`, { icon: '🏦', accent: 'yellow' });
+    <p class="fine">${yearNow(state) >= 1950 ? `Plans: ${Object.values(PENSION_PLANS).map((p) => p.short).join(' · ')}. ` : 'Pensions of the day: the army and navy, the civil service, and a few railway and company schemes. '}Medals raise military retired pay.</p>`, { icon: '🏦', accent: 'yellow' });
 
   const here = regionOf(state);
   const rows = regionsHere(state).map((rg) => `<li class="region-row ${rg.id === here.id ? 'here' : ''}">

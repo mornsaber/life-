@@ -23,7 +23,7 @@ import { CampaignTrail, campaignYear } from './CampaignTrail.js';
 import { newCampaign, outsideCalendar, electorateOf, distance } from './Elections.js';
 import { platformOf, platformView, platformYear, recordStance, ISSUES, partyLine } from './Platform.js';
 import { currentYear } from '../../core/State.js';
-import { runsGovernment, executiveYear, headYear, offersYear, ticketYear, CABINET } from './Executive.js';
+import { runsGovernment, executiveYear, headYear, offersYear, ticketYear, CABINET, cabinetTitle } from './Executive.js';
 import { COUNTRIES } from '../world/Countries.js';
 
 function takeOffice(ctx, officeId, { appointed = false } = {}) {
@@ -191,7 +191,7 @@ export const PoliticsEngine = {
     bus.on('politics:take', ({ ctx, officeId, appointed, dept }) => {
       takeOffice(ctx, officeId, { appointed });
       const o = ctx.state.politics.office;
-      if (o && dept && CABINET[dept]) { o.dept = dept; o.title = CABINET[dept].title; }
+      if (o && dept && CABINET[dept]) { o.dept = dept; o.title = cabinetTitle(dept) ?? CABINET[dept].title; }
     });
     bus.on('legal:convicted', ({ ctx, severity, name }) => {
       const p = ctx.state.politics;

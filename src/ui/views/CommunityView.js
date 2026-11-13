@@ -2,6 +2,7 @@
  * Community tab: your faith and congregation, giving, ministry, volunteering
  * and mentoring.
  */
+import { schismIssue } from '../../modules/community/Religions.js';
 import { faithDayCard } from './FaithDayCard.js';
 import { esc, money, button, card, kv, chip, meter } from '../Components.js';
 import { TRADITIONS, ATTENDANCE, GIVING_LEVELS, VOLUNTEER_ORGS, volunteerInEra } from '../../modules/community/Community.js';
@@ -47,7 +48,7 @@ function faithCard(state) {
       ['Giving', c.giving ? `${c.giving}% of income${c.givenThisYear ? ` · ${money(c.givenThisYear)} this year` : ''}` : 'None'],
       orders ? ['Holy orders', `${esc({ deacon: 'Deacon', priest: 'Priest', bishop: 'Bishop', minister: 'Ordained minister' }[orders.grade])} since age ${orders.since}${orders.diocese ? ` · ${esc(orders.diocese)}` : ''} <small class="muted">(for life: you return to ministry at this order)</small>`] : ['Ordination', elig.ok ? `Eligible — apply for ${['catholic', 'tradCatholic'].includes(f.traditionId) ? 'Catholic Priesthood (seminary through your diocese)' : f.traditionId === 'anglican' ? 'Anglican Holy Orders (selection through your diocese)' : 'Clergy & Ministry'} on the Career tab` : `<span class="why">${esc(elig.reason)}</span>`],
     ])}
-    ${t.schism ? `<p class="fine">Tensions over ${esc(t.schism.issue)} could split this ${t.house.toLowerCase()}.</p>` : ''}
+    ${t.schism ? `<p class="fine">Tensions over ${esc(schismIssue(t, yearNow(state)))} could split this ${t.house.toLowerCase()}.</p>` : ''}
     ${t.fundamentalist ? '<p class="fine">Leaving a high-control group usually means being shunned by the congregation and by family who stay.</p>' : ''}
     <h4 class="sub">Attendance</h4><div class="toggle-row">${Object.entries(ATTENDANCE).map(([id, a]) => button(`${a.icon} ${a.label}`, 'community.attendance', { arg: id, variant: f.attendance === id ? 'small on' : 'small', hint: a.desc })).join('')}</div>
     <h4 class="sub">Giving</h4><div class="toggle-row">${GIVING_LEVELS.map((n) => button(n ? `${n}%${n === 10 ? ' (tithe)' : ''}` : 'None', 'community.give', { arg: String(n), variant: c.giving === n ? 'tiny on' : 'tiny' })).join('')}</div>

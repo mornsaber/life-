@@ -3,7 +3,7 @@
  * station and appointed term, and the Order of Malta.
  */
 import { esc, button, card, kv } from '../Components.js';
-import { COMPETITIONS, competitionCheck, maltaJoinCheck, maltaGradeName, MALTA_OFFICES } from '../../modules/world/IntlOrgs.js';
+import { COMPETITIONS, competitionOpen, competitionCheck, maltaJoinCheck, maltaGradeName, MALTA_OFFICES } from '../../modules/world/IntlOrgs.js';
 import { INTL_ORG_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { postingOf, postedHousing } from '../../modules/world/Posting.js';
 
@@ -13,7 +13,7 @@ export function intlOrgsCard(state) {
   const intl = job && INTL_ORG_PROFESSIONS[job.professionId];
   const p = postingOf(state);
   const comps = state.intlOrgs?.competitions ?? {};
-  const compRows = Object.entries(COMPETITIONS).map(([id, c]) => {
+  const compRows = Object.entries(COMPETITIONS).filter(([id]) => competitionOpen(state, id)).map(([id, c]) => {
     const s = comps[id];
     const check = competitionCheck(state, id);
     if (!s?.passed && !check.ok && /citizens only|and under|From 21/.test(check.reason)) return '';

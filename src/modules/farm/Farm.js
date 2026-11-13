@@ -34,6 +34,7 @@
  *   loan: { balance, payment, rate } | null, prices: { [commodity]: index },
  *   extras: { shop, solar: { acres, rent, until } }, lastYear, history: [{ age, net }] }
  */
+import { eraYear } from '../world/Eras.js';
 import { REGIONS } from '../life/Regions.js';
 import { PACKS } from '../world/packs/index.js';
 
@@ -103,7 +104,7 @@ export const FARM_COUNTRY = {
   JP: { price: 30000, unit: 'ha', plots: [1, 2, 5, 10, 20], lender: 'JA Bank (the farm co-op)', scheme: 'jp', insurance: 'subsidized', prod: 1, grass: 1, drought: 0.5, flood: 1.6, crops: ['rice', 'vegetables', 'soybeans', 'wheat', 'orchard', 'pasture'] },
   KR: { price: 60000, unit: 'ha', plots: [1, 2, 5, 10, 20], lender: 'NongHyup (the farm co-op)', scheme: 'jp', insurance: 'subsidized', prod: 1, grass: 0.9, drought: 0.6, flood: 1.5, crops: ['rice', 'vegetables', 'soybeans', 'orchard', 'pasture'] },
   CN: { price: null, rent: 300, unit: 'mu', plots: [10, 30, 100, 300, 1000], lender: 'the Agricultural Bank of China', scheme: 'cn', insurance: 'subsidized', prod: 0.8, grass: 0.8, drought: 1.2, flood: 1.3, crops: ['rice', 'wheat', 'corn', 'soybeans', 'cotton', 'vegetables', 'orchard', 'pasture'] },
-  IN: { price: 20000, unit: 'acre', plots: [2, 5, 10, 25, 50], lender: 'a cooperative bank (Kisan Credit Card)', scheme: 'in', insurance: 'subsidized', prod: 0.45, grass: 0.7, drought: 1.4, flood: 1.4, crops: ['rice', 'wheat', 'cotton', 'soybeans', 'potatoes', 'vegetables', 'pasture'] },
+  IN: { price: 20000, unit: 'acre', plots: [2, 5, 10, 25, 50], get lender() { return eraYear() >= 1998 ? 'a cooperative bank (Kisan Credit Card)' : eraYear() >= 1904 ? 'a cooperative credit society' : 'the village moneylender'; }, scheme: 'in', insurance: 'subsidized', prod: 0.45, grass: 0.7, drought: 1.4, flood: 1.4, crops: ['rice', 'wheat', 'cotton', 'soybeans', 'potatoes', 'vegetables', 'pasture'] },
   PH: { price: 8000, unit: 'ha', plots: [1, 3, 5, 10, 25], lender: 'Land Bank of the Philippines', scheme: 'none', insurance: 'subsidized', prod: 0.5, grass: 1, drought: 0.9, flood: 2, crops: ['rice', 'corn', 'vegetables', 'orchard', 'pasture'] },
   ID: { price: 7000, unit: 'ha', plots: [1, 3, 5, 10, 25], lender: 'Bank Rakyat Indonesia', scheme: 'none', insurance: 'private', prod: 0.6, grass: 1, drought: 0.9, flood: 1.5, crops: ['rice', 'corn', 'vegetables', 'orchard', 'pasture'] },
   BR: { price: 3000, unit: 'ha', plots: [50, 100, 500, 1000, 3000], lender: 'Banco do Brasil', scheme: 'none', insurance: 'subsidized', prod: 0.8, grass: 1.2, drought: 1, flood: 1, crops: ['soybeans', 'corn', 'cotton', 'vegetables', 'orchard', 'pasture'] },

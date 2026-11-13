@@ -35,7 +35,7 @@ import { createEmployer } from '../career/Employers.js';
 import { hire, bestEntryLevel } from '../career/CareerEngine.js';
 import { arrive } from './Migration.js';
 import { endPosting } from './Posting.js';
-import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow } from './Eras.js';
+import { eraWorkBlock, hasTech, colonyStage, RULER_CAPITAL, yearNow, eraYear } from './Eras.js';
 const RULER_CAPITAL_OF = (cc) => RULER_CAPITAL[cc] ?? 'abroad';
 
 /** Coups.js registers how the army takes power (it imports from here, so the call goes through a hook). */
@@ -129,7 +129,9 @@ export const SANCTIONS = {
   AF: { by: 'the UN (on Taliban leaders)', level: 1, note: 'Taliban leaders are sanctioned; the central bank\'s reserves are frozen abroad.' },
   SD: { by: 'the US and the UN', level: 1, note: 'An arms embargo and sanctions on both warring generals.' },
 };
-export const sanctionsOn = (cc) => SANCTION_OVERRIDES[cc] ?? SANCTIONS[cc] ?? null;
+/** When today's sanctions began (none before). */
+const SANCTIONS_FROM = { KP: 1950, IR: 1979, RU: 2014, SY: 2011, VE: 2017, MM: 1997, AF: 1999, SD: 1997 };
+export const sanctionsOn = (cc) => SANCTION_OVERRIDES[cc] ?? (SANCTIONS[cc] && !(SANCTIONS_FROM[cc] > eraYear()) ? (cc === 'RU' && eraYear() < 2022 ? { ...SANCTIONS.RU, level: 1, note: 'Targeted sanctions since the annexation of Crimea in 2014: some banks and officials.' } : SANCTIONS[cc]) : null);
 
 /* ------------------------------------------------------------------ */
 /* Rules other modules ask about                                       */

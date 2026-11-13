@@ -14,7 +14,7 @@
  */
 import { creditBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
-import { hasTech } from '../world/Eras.js';
+import { hasTech, yearNow } from '../world/Eras.js';
 
 export const CARD_TYPES = {
   secured: { name: 'Secured Card', icon: '🔒', apr: 0.26, fee: 0, rewards: 0, minScore: 300, deposit: 500, desc: 'A $500 deposit is your limit. Builds credit from nothing.' },
@@ -66,7 +66,7 @@ export function applyCheck(state, typeId) {
   if (heldCards(state).length >= MAX_CARDS) return { ok: false, reason: `${MAX_CARDS} cards is plenty` };
   if (heldCards(state).some((c) => c.typeId === typeId)) return { ok: false, reason: 'Already have one' };
   const score = state.housing?.credit?.score ?? 650;
-  if (score < t.minScore) return { ok: false, reason: `Needs a ${t.minScore}+ credit score` };
+  if (score < t.minScore) return { ok: false, reason: yearNow(state) >= 1989 ? `Needs a ${t.minScore}+ credit score` : 'The bank wants a better credit history' };
   if (t.deposit && state.finances.cash < t.deposit) return { ok: false, reason: `$${t.deposit} deposit` };
   return { ok: true };
 }

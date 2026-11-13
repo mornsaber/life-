@@ -78,7 +78,7 @@ function recruitingOffice(state) {
       ${purchaseNote(state, b)}
       <div class="branch-btns">
         ${b.officerOnly ? '' : `${b.reserveOnly ? '' : btn('enlisted', 'active', enlisted, abroad ? 'Enlist · Regular' : 'Enlist · Active')}${b.activeOnly || noReserve ? '' : btn('enlisted', 'reserve', enlisted, b.reserveOnly ? 'Enlist' : 'Enlist · Reserve')}`}
-        ${b.reserveOnly ? '' : btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : abroad ? 'Officer · Regular' : 'Officer · Active')}${b.activeOnly || noReserve ? '' : btn('officer', 'reserve', officer, b.reserveOnly ? 'Officer' : 'Officer · Reserve')}${b.id === 'army' && !abroad ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
+        ${b.reserveOnly ? '' : btn('officer', 'active', officer, b.officerOnly ? 'Apply for a commission' : abroad ? 'Officer · Regular' : 'Officer · Active')}${b.activeOnly || noReserve ? '' : btn('officer', 'reserve', officer, b.reserveOnly ? 'Officer' : 'Officer · Reserve')}${b.id === 'army' && !abroad && yearNow(state) >= 1949 ? btn('warrant', 'active', enlistmentEligibility(state, b.id, 'warrant', 'active'), 'Warrant · Flight School') : ''}
       </div>
       ${b.desc && abroad ? `<small>${esc(b.desc)}</small>` : b.nonCombat ? `<small>${b.id === 'usphs' ? 'Uniformed health professionals: physicians, nurses, pharmacists, engineers, scientists. Deploys to public-health emergencies, not combat.' : 'STEM officers who run NOAA\'s research ships and hurricane-hunter aircraft.'}</small>` : ''}
       <small class="why">${[!b.officerOnly && !enlisted.ok && `Enlisted: ${enlisted.reason}`, !officer.ok && `Officer: ${officer.reason}`].filter(Boolean).map(esc).join(' · ')}</small>

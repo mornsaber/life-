@@ -368,6 +368,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (track === 'warrant') {
     if (!b.warrant?.length) return { ok: false, reason: 'No warrant officers' };
+    if (yearNow(state) < 1949) return { ok: false, reason: 'Army aviation warrant officers begin in 1949' };
     if (branchId !== 'army' && branchId !== 'guard') return { ok: false, reason: 'Warrant officers come from the enlisted ranks' };
     if (age < 18 || age > 32) return { ok: false, reason: 'Flight school: age 18–32' };
     if (diplomaExpected(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };

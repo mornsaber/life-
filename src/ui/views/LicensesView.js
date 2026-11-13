@@ -9,7 +9,7 @@ import { pursueEligibility, hasCredential, findSponsor, transferStatus, validHer
 import { RECIPROCITY_LABEL, CREDENTIALS } from '../../modules/credentials/CredentialRegistry.js';
 import { careerCredentialsCard } from './JobLicensesView.js';
 import { proficiencyLanguage } from '../../modules/world/Languages.js';
-import { credentialExists } from '../../modules/world/Eras.js';
+import { credentialExists, yearNow } from '../../modules/world/Eras.js';
 
 function payerHint(state, cred) {
   const sponsor = findSponsor(state, cred);
@@ -105,7 +105,7 @@ export function licensesView(state, ui = {}) {
   return `${promoCard}${card('Licenses & Certifications', `
     <p><b>${held}</b> active · ${state.credentials.training.length} in training · ${left} of ${ATTEMPTS_PER_YEAR} new credentials left this year</p>
     <details class="fine"><summary>How credentials work</summary>
-      <p>One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their training budgets; police, fire, EMS, federal, airline and transit employers run funded academies for their own hires and put you through the licences your job requires (failed exams are retaken the next year). Certifications for a promotion are yours to pursue. Convictions can suspend or revoke credentials.</p>
+      <p>One registry for every license and certification. Employers, agencies and volunteer units pay for job-relevant credentials from their training budgets; police, fire, EMS, federal, ${yearNow(state) >= 1920 ? 'airline and transit' : 'railway'} employers run funded academies for their own hires and put you through the licences your job requires (failed exams are retaken the next year). Certifications for a promotion are yours to pursue. Convictions can suspend or revoke credentials.</p>
       <p>Exams can be failed — odds depend on your smarts (or fitness and health for physical tests). A prep course helps; failing a training program's final lets you retest without retraining for 2 years. Agency courses are open only to members, and pilots, drivers and academy recruits must pass a medical. State-issued licenses may need a transfer exam when you move.</p>
     </details>
     <div class="toggle-row chips-row">${tabs}</div>

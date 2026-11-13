@@ -955,8 +955,11 @@ export function eraTaxShare(state) {
   const cc = state.character.countryId ?? 'US';
   if (cc === 'US') return y < 1862 ? 0 : y < 1873 ? 0.15 : y < 1913 ? 0 : y < 1942 ? 0.3 : 0.8;
   if (cc === 'GB') return y < 1799 ? 0 : y < 1817 ? 0.2 : y < 1842 ? 0 : y < 1914 ? 0.25 : 0.6;
-  return y < 1890 ? 0.1 : y < 1914 ? 0.25 : 0.6;
+  // Elsewhere: nothing before the country's income tax (Italy 1864, Japan 1887, Prussia 1891, France 1914…).
+  if (y < (INCOME_TAX_FROM[cc] ?? 1890)) return 0;
+  return y < 1914 ? 0.25 : 0.6;
 }
+const INCOME_TAX_FROM = { IT: 1864, IN: 1886, JP: 1887, DE: 1891, NZ: 1891, AT: 1896, SE: 1902, NL: 1914, FR: 1914, AU: 1915, CH: 1915, RU: 1916, CA: 1917, MX: 1921, BR: 1922, ES: 1932, IE: 1922 };
 /** When a state pension first covered workers: Bismarck's in 1889, Britain's 1909/1925, Social Security from 1937. */
 const PENSION_FROM = { DE: 1889, GB: 1909, NZ: 1898, AU: 1909, FR: 1910, US: 1937, CA: 1927, SE: 1913, DK: 1891, JP: 1942, IT: 1919, NL: 1919 };
 export const statePensionExists = (state, cc = state.character.countryId ?? 'US') => !((PENSION_FROM[cc] ?? 1950) > yearNow(state));
@@ -1174,6 +1177,9 @@ export function innerBorder(state, fromRegion, toRegion) {
  * CHAMPUS before TRICARE, a crisis line before 988, the Dow before the S&P 500.
  */
 const RENAMES = [
+  [/Minist(?:è|&egrave;)re de l(?:'|&#39;)Europe et des Affaires (?:é|&eacute;)trang(?:è|&egrave;)res/g, 2017, () => 'Ministère des Affaires étrangères'],
+  [/Acting \(Film, TV (?:&|&amp;) Theater\)/g, 1950, (y) => (y >= 1910 ? 'Acting (Stage & Screen)' : 'Acting (the Stage)')],
+  [/Intelligence Analysis \(CIA · DIA · NGA\)/g, 1947, (y) => (y >= 1942 ? 'Intelligence Analysis (OSS · Army G-2)' : 'Intelligence Analysis (Army & Navy intelligence)')],
   [/\bIRS debt\b/g, 1953, () => 'tax debt'],
   [/\bIRS\b/g, 1953, (y) => (y >= 1862 ? 'Bureau of Internal Revenue' : 'tax collector')],
   [/\bFBI\b/g, 1935, (y) => (y >= 1908 ? 'Bureau of Investigation' : 'Pinkertons')],
@@ -1234,6 +1240,22 @@ export function periodEmployers(professionId, employers) {
 }
 
 /** Text as it would have read in the year being played (unchanged for today's lives). */
+/**
+ * The US cabinet department a title stands for, in its year (null: not yet created):
+ * the Secretary of War until 1947, Health, Education and Welfare 1953–79, Homeland Security 2003.
+ */
+export function usCabinetTitle(id, y) {
+  const T = {
+    foreign: 'Secretary of State', state: 'Secretary of State', finance: 'Secretary of the Treasury', treasury: 'Secretary of the Treasury', justice: 'Attorney General',
+    defence: y < 1947 ? 'Secretary of War' : 'Secretary of Defense', defense: y < 1947 ? 'Secretary of War' : 'Secretary of Defense',
+    interior: y < 2003 ? null : 'Secretary of Homeland Security', homeland: y < 2003 ? null : 'Secretary of Homeland Security',
+    health: y < 1953 ? null : y < 1980 ? 'Secretary of Health, Education, and Welfare' : 'Secretary of Health and Human Services',
+    education: y < 1980 ? null : 'Secretary of Education',
+    transport: y < 1967 ? null : 'Secretary of Transportation', transportation: y < 1967 ? null : 'Secretary of Transportation',
+    environment: y < 1849 ? null : 'Secretary of the Interior',
+  };
+  return T[id] === undefined ? null : T[id];
+}
 export function periodText(text) {
   if (ERA_YEAR >= PRESENT || typeof text !== 'string') return text;
   let t = text;

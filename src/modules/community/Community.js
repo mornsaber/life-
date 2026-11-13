@@ -17,6 +17,7 @@
  * Clergy careers live in the job tree (profession 'clergy'); ordination is
  * gated by clergyEligibility() and titles come from your tradition.
  */
+import { schismIssue } from './Religions.js';
 import { Random } from '../../core/Random.js';
 import { addHonor, hasFelony, isIncarcerated, bumpYearly, yearlyCount } from '../../core/State.js';
 import { TRADITIONS, upbringing, congregationName, membership, newCommunity, LAY_ROLE } from './Religions.js';
@@ -161,7 +162,7 @@ function faithTick(ctx) {
       type: 'community.schism',
       icon: '⚡',
       title: 'Your Congregation Is Splitting',
-      text: `After a bitter fight over ${t.schism.issue}, half of ${faith.congregation} is voting to leave ${t.name} and join ${b.name}.`,
+      text: `After a bitter fight over ${schismIssue(t, yearNow(state))}, half of ${faith.congregation} is voting to leave ${t.name} and join ${b.name}.`,
       options: [
         { id: 'stay', label: `${t.icon} Stay with ${t.name}`, hint: 'Some friends will leave' },
         { id: 'follow', label: `${b.icon} Go with the breakaway`, hint: b.fundamentalist ? 'Stricter rules; leaving later means shunning' : 'A new congregation' },

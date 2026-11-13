@@ -7,7 +7,7 @@ import { regionOf } from '../../modules/life/Regions.js';
 import { esc, money, button, card, kv, chip } from '../Components.js';
 import { vehicleInEra, VEHICLE_TYPES, CATEGORIES, vehiclesOf, typeOf, premiumFor, riskMultiplier, purchaseCheck, autoRate, loanPayment, leasePayment, canCharter } from '../../modules/vehicles/Vehicles.js';
 import { hasCredential } from '../../modules/credentials/LicensingEngine.js';
-import { yearNow } from '../../modules/world/Eras.js';
+import { yearNow, creditScoresExist } from '../../modules/world/Eras.js';
 
 function ownedCard(state) {
   const list = vehiclesOf(state);
@@ -55,7 +55,7 @@ function showroom(state, ui = {}) {
       ${lease ? button('Lease', 'vehicles.buy', { arg: `${id}:lease`, variant: 'tiny', disabled: !lease.ok, title: lease.reason ?? '', hint: lease.ok ? `${money(leasePayment(state, t).payment)}/yr` : '' }) : ''}</li>`;
   }).join('')}</ul>`).join('');
   const y = yearNow(state);
-  return card(y < 1905 ? 'Stables & Dealers' : 'Showroom', `${rows}<p class="fine">${y < 1920 ? 'Horses, carriages and machines are bought for cash.' : `Loans: 10% down over 5 years at a rate set by your credit score.${y >= 1990 ? ' Leases: 3 years, then turn it in or buy it out.' : ''}`}</p>`, { icon: y < 1905 ? '🐎' : '🏪' });
+  return card(y < 1905 ? 'Stables & Dealers' : 'Showroom', `${rows}<p class="fine">${y < 1920 ? 'Horses, carriages and machines are bought for cash.' : `Loans: 10% down over ${yearNow(state) < 1960 ? '2' : '5'} years at a rate set by ${creditScoresExist(state) ? 'your credit score' : 'what the dealer thinks of you'}.${y >= 1990 ? ' Leases: 3 years, then turn it in or buy it out.' : ''}`}</p>`, { icon: y < 1905 ? '🐎' : '🏪' });
 }
 
 export function garageView(state, ui = {}) {

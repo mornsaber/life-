@@ -21,6 +21,7 @@
  * Also here: being picked as a presidential running mate, a cabinet post offered
  * by a president of your party, and the vice president's succession.
  */
+import { usCabinetTitle, eraYear } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { OFFICES } from './Offices.js';
@@ -280,7 +281,7 @@ export function offersYear(ctx) {
       ctx.prompt({
         type: 'executive.cabinet', icon: '💼', title: 'A Call from the White House',
         text: `President ${nat.name} wants you in the cabinet. Which department?`,
-        options: [...Object.entries(CABINET).map(([id, c]) => ({ id, label: `${c.icon} ${c.title}` })), { id: 'decline', label: '🙅 Decline' }],
+        options: [...Object.entries(CABINET).filter(([id]) => cabinetTitle(id)).map(([id, c]) => ({ id, label: `${c.icon} ${cabinetTitle(id)}` })), { id: 'decline', label: '🙅 Decline' }],
       });
     }
   }
@@ -309,6 +310,8 @@ export function offersYear(ctx) {
 }
 const isFlag = (state) => [state.military.service, ...(state.military.history ?? [])].some((s) => s?.track === 'officer' && (s.grade ?? 0) >= 6);
 
+/** A department's title in its year (null before it existed). */
+export const cabinetTitle = (id) => (CABINET[id] ? usCabinetTitle(id, eraYear()) : null);
 /** Cabinet departments: the budget area a secretary fights for. */
 export const CABINET = {
   defense: { title: 'Secretary of Defense', icon: '🎖️', area: 'defense' },

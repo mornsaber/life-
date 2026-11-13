@@ -156,3 +156,16 @@ export function newCommunity(traditionId = null, congregation = null, age = 0) {
     former: [],
   };
 }
+
+/** What a congregation splits over in its day: the same fault line, the question of the time. */
+const ISSUE_OF_DAY = {
+  'the traditional Latin Mass': [[1870, 'papal infallibility'], [1965, 'modernism'], [9999, 'the traditional Latin Mass']],
+  'same-sex marriage and LGBTQ clergy': [[1866, 'slavery'], [1925, 'temperance and the social gospel'], [1960, 'modernism and the Bible'], [1990, 'the ordination of women'], [9999, 'same-sex marriage and LGBTQ clergy']],
+  'same-sex blessings': [[1900, 'ritualism and the Oxford Movement'], [1970, 'revising the Prayer Book'], [2000, 'women priests'], [9999, 'same-sex blessings']],
+  'modern education and the internet': [[1995, 'modern education and secular learning'], [9999, 'modern education and the internet']],
+  'women in ministry': [[1960, 'revivals and the holiness movement'], [9999, 'women in ministry']],
+};
+export function schismIssue(t, y) {
+  const list = ISSUE_OF_DAY[t?.schism?.issue];
+  return list ? list.find(([until]) => y < until)[1] : t?.schism?.issue;
+}

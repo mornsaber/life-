@@ -27,6 +27,7 @@
  * state.malta    = { grade, since, office, officeSince, vowsAt, conferred }
  * job.intlTerm   = age an appointed term ends
  */
+import { yearNow } from './Eras.js';
 import { DUTY_STATIONS, HARDSHIP, EU_MEMBERS, NATO_MEMBERS, P5, memberIn } from '../career/IntlOrgCareers.js';
 import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 import { getProfession } from '../career/JobTrees.js';
@@ -53,18 +54,21 @@ const anyOf = (state, list) => cits(state).some((c) => memberIn(list, c));
 /* ------------------------------------------------------------------ */
 
 export const COMPETITIONS = {
-  ypp: { name: 'UN Young Professionals Programme exam', icon: '🇺🇳', maxAge: 32, base: 0.04, needs: 'bachelor', desc: 'A written exam and interview; about 1 in 40 candidates pass.' },
-  epso: { name: 'EPSO open competition (AD5 concours)', icon: '🇪🇺', base: 0.05, needs: 'bachelor', eu: true, desc: 'Reasoning tests, a case study and an assessment centre; a few per cent pass.' },
-  wbYpp: { name: 'World Bank Group Young Professionals Program', icon: '🏦', maxAge: 32, base: 0.02, needs: 'master', desc: 'For economists and specialists with a master\'s or PhD; under 2% are selected.' },
+  ypp: { from: 1980, name: 'UN Young Professionals Programme exam', icon: '🇺🇳', maxAge: 32, base: 0.04, needs: 'bachelor', desc: 'A written exam and interview; about 1 in 40 candidates pass.' },
+  epso: { from: 1958, name: 'EPSO open competition (AD5 concours)', icon: '🇪🇺', base: 0.05, needs: 'bachelor', eu: true, desc: 'Reasoning tests, a case study and an assessment centre; a few per cent pass.' },
+  wbYpp: { from: 1963, name: 'World Bank Group Young Professionals Program', icon: '🏦', maxAge: 32, base: 0.02, needs: 'master', desc: 'For economists and specialists with a master\'s or PhD; under 2% are selected.' },
 };
 
 const degreeRank = { bachelor: 1, master: 2, doctorate: 3, professional: 3 };
 const bestDegree = (state) => state.education.degrees.reduce((m, d) => Math.max(m, degreeRank[d.type] ?? 0), 0);
 
+/** A competition in its day (the European Communities' concours from 1958, the World Bank's YPP from 1963). */
+export const competitionOpen = (state, id) => !(COMPETITIONS[id]?.from > yearNow(state));
 export function competitionCheck(state, id) {
   const c = COMPETITIONS[id];
   const s = state.intlOrgs?.competitions?.[id];
   if (!c) return { ok: false, reason: 'No such competition' };
+  if (!competitionOpen(state, id)) return { ok: false, reason: `Not yet (from ${c.from})` };
   if (s?.passed) return { ok: false, reason: 'Passed — you\'re on the reserve list' };
   if (state.character.age < 21) return { ok: false, reason: 'From 21' };
   if (c.maxAge && state.character.age > c.maxAge) return { ok: false, reason: `${c.maxAge} and under` };

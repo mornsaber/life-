@@ -11,6 +11,7 @@
  *
  * Node = { title, name?, meta?, you?, kind?, children?: Node[], levelId? (civilian rank), track?/grade? (military rank) }
  */
+import { usCabinetTitle, eraYear } from '../world/Eras.js';
 import { orgOf, chainOfCommand, orgType, supervises } from './Organizations.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor } from '../career/Ladder.js';
@@ -220,7 +221,7 @@ export function governmentChart(state) {
   const execTitle = cc === 'US' ? null : leg?.exec ?? 'Prime Minister';
   const execOffice = cc === 'US' ? 'president' : leg?.execOffice;
   const exec = executiveOf(state, 'national');
-  const cabinet = node('Cabinet', null, null, Object.entries(DEPTS).map(([id, d]) => mark(node(cc === 'US' ? ({ foreign: 'Secretary of State', finance: 'Secretary of the Treasury', defence: 'Secretary of Defense', interior: 'Secretary of Homeland Security', justice: 'Attorney General', health: 'Secretary of Health and Human Services', education: 'Secretary of Education', transport: 'Secretary of Transportation', environment: 'Secretary of the Interior' }[id]) : d[cc] ?? d.title, null, null), ministry?.dept === id && ministry?.rank === 'cabinet')), false);
+  const cabinet = node('Cabinet', null, null, Object.entries(DEPTS).filter(([id]) => cc !== 'US' || usCabinetTitle(id, eraYear())).map(([id, d]) => mark(node(cc === 'US' ? usCabinetTitle(id, eraYear()) : d[cc] ?? d.title, null, null), ministry?.dept === id && ministry?.rank === 'cabinet')), false);
   const chambers = cc === 'US'
     ? [mark(node('House of Representatives', null, '435 members'), office?.id === 'usRep'), mark(node('Senate', null, '100 senators'), office?.id === 'usSenator')]
     : [leg?.lower ? mark(node(leg.lower.name, null, `${leg.lower.seats} seats`), def?.kind === 'legislative' && office?.id === leg.lower.office) : null, leg?.upper ? mark(node(leg.upper.name, null, `${leg.upper.seats} seats${leg.upper.office ? '' : ' · not directly elected'}`), def?.kind === 'legislative' && office?.id === leg.upper.office) : null].filter(Boolean);
