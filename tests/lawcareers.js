@@ -43,6 +43,14 @@ function lawyer(professionId = 'law', { countryId, seed = 5, levelId } = {}) {
 const blocked = (state, programId) => ADMISSION_HOOKS.map((h) => h.eligibility?.(state, programId)).find(Boolean) ?? null;
 
 const tests = {
+  'no LSAT before 1948'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(2), modules: MODULES });
+    const state = engine.newLife({ countryId: 'US', startYear: 1910 });
+    state.character.age = 24;
+    state.education.degrees.push({ type: 'bachelor', programId: 'bachelor', major: 'history', year: 22 });
+    assert.ok(!/LSAT/.test(blocked(state, 'jd') ?? ''), 'law school admits on the college record');
+    assert.match(VIEWS.school(state, { admProgram: 'jd' }), /^(?![\s\S]*lawLife\.lsat)/);
+  },
   'a graduate out of school with any major can take the LSAT from the School tab'() {
     const { engine, state } = life({ age: 28 });
     state.education.degrees[1].major = 'biology';

@@ -42,7 +42,7 @@ import { reserveStanding, ssoEligibility } from '../../modules/military/Merchant
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
-import { orgInEra, branchExists } from '../../modules/world/Eras.js';
+import { orgInEra, branchExists, yearNow } from '../../modules/world/Eras.js';
 import { purchaseEra, REGIMENTS, firstCommissionPrice, familyPurse, PURCHASE_MIN_AGE } from '../../modules/military/Purchase.js';
 import { flagImg } from '../Flags.js';
 
@@ -127,10 +127,13 @@ function selectiveServiceCard(state) {
   if (isAbroad(state)) return conscriptionCard(state);
   const sss = state.military.sss;
   if (!sss || state.character.gender !== 'male' || state.character.age < 17) return '';
+  // Registration: 1917–18, then from 1940 (suspended 1975–80); online from 1998.
+  const y = yearNow(state);
+  if (y < 1917 || (y >= 1919 && y < 1940) || (y >= 1975 && y < 1980)) return '';
   if (sss.registered && state.character.age >= 26) return '';
-  if (sss.registered) return card('Selective Service', '<p class="muted">✅ You\'re registered. Men stay registered until 26; there has been no draft since 1973.</p>', { icon: '📋' });
+  if (sss.registered) return card('Selective Service', `<p class="muted">✅ You're registered. Men stay registered until 26${y > 1973 ? '; there has been no draft since 1973' : ''}.</p>`, { icon: '📋' });
   if (sss.missed) return card('Selective Service', `<p class="${sss.waived ? 'muted' : 'neg'}">${sss.waived ? '✅ OPM ruled your failure to register wasn\'t knowing and willful — federal jobs are open to you.' : 'You never registered before turning 26. You\'re barred from federal jobs unless OPM rules it wasn\'t knowing and willful.'}</p>${sss.waived ? '' : `<div class="action-grid">${button('📄 Request a status information letter', 'volunteering.sssLetter', { variant: 'small', hint: 'Explain why you didn\'t register' })}</div>`}`, { icon: '📋', accent: sss.waived ? '' : 'red' });
-  return card('Selective Service', `<p class="muted">Men must register between 18 and 26 (most are registered automatically with a driver's license). Never registering bars you from federal jobs.</p><div class="action-grid">${button('📋 Register', 'volunteering.sssRegister', { variant: 'small', disabled: state.character.age < 18, hint: state.character.age < 18 ? 'At 18' : 'Takes two minutes online' })}</div>`, { icon: '📋' });
+  return card('Selective Service', `<p class="muted">Men must register between 18 and 26${y >= 2000 ? ' (most are registered automatically with a driver\'s license)' : ''}.${y >= 1982 ? ' Never registering bars you from federal jobs.' : ''}</p><div class="action-grid">${button('📋 Register', 'volunteering.sssRegister', { variant: 'small', disabled: state.character.age < 18, hint: state.character.age < 18 ? 'At 18' : y >= 1998 ? 'Takes two minutes online' : y >= 1980 ? 'A form at the post office' : 'At your local draft board' })}</div>`, { icon: '📋' });
 }
 
 /** The Foreign Legion (from anywhere) and the Gurkha selection (in Nepal). */

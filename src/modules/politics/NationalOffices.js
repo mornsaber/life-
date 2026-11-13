@@ -1,4 +1,6 @@
 import { fromPacks, packRows, PACKS } from '../world/packs/index.js';
+import { yearNow } from '../world/Eras.js';
+import { euMemberIn } from '../world/EuMembership.js';
 /**
  * Elected offices abroad, on the same shape as Offices.js (salaries and
  * campaign costs in PPP dollars, 2025 pay scales). Local office (council,
@@ -193,6 +195,8 @@ export const crownOffice = (o) => Boolean(o && (o.viceRegal || o.kind === 'lieut
 /** Whether an office exists where it is, now: a republic's president only in a republic; the Crown's posts only under a crown. */
 export function officeExistsNow(state, o) {
   if (!o?.country) return true;
+  // The European Parliament was first directly elected in 1979, each country from when it joined.
+  if (o.european && (yearNow(state) < 1979 || !euMemberIn(o.country, yearNow(state)))) return false;
   const republic = Boolean(state?.world?.republics?.[o.country]);
   if (o.republicOnly) return republic;
   if (republic && crownOffice(o)) return false;

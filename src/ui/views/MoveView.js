@@ -20,7 +20,7 @@ import { IMMIGRATION, ASYLUM, nationalityCode, residencyOf, prYearsLeft, natural
 import { routesTo, departureBlock, LANGUAGE_CLASS_COST, regularizeOptions, keepsBerth } from '../../modules/world/Migration.js';
 import { optionRow, kv } from '../Components.js';
 import { regimeSummary } from '../../modules/world/Regimes.js';
-import { cityStateOfDay, innerBorder, getEraState } from '../../modules/world/Eras.js';
+import { cityStateOfDay, innerBorder, getEraState, hasTech } from '../../modules/world/Eras.js';
 import { CONTINENT, TRIPS, travelBlock, bestEntry, tripCost, advisory } from '../../modules/world/Travel.js';
 import { flagImg, flagFrom } from '../Flags.js';
 
@@ -125,7 +125,7 @@ function regimeCard(state) {
     ['Leaving', esc(REGIME_WORDS.exit[r.exit])],
     r.business !== 'free' ? ['Business', esc(REGIME_WORDS.business[r.business])] : null,
     r.religion !== 'free' ? ['Religion', esc(REGIME_WORDS.religion[r.religion])] : null,
-    r.internet !== 'open' ? ['Internet', esc(REGIME_WORDS.internet[r.internet])] : null,
+    r.internet !== 'open' && hasTech(state, 'internet') ? ['Internet', esc(REGIME_WORDS.internet[r.internet])] : null,
     r.women !== 'equal' ? ['Women', esc(REGIME_WORDS.women[r.women])] : null,
     r.banking !== 'open' ? ['Banking', esc(REGIME_WORDS.banking[r.banking])] : null,
     r.jobs === 'assigned' ? ['Work', 'Assigned by the state'] : null,

@@ -13,8 +13,9 @@ import { stateOf } from '../../modules/life/Regions.js';
 import { deathPenaltyHere } from '../../modules/legal/JusticeSystem.js';
 import { STATES } from '../../modules/life/States.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
-import { recordCountry, seenWhy } from '../../modules/legal/RecordAbroad.js';
-import { gradeIn, offenseNameIn } from '../../modules/legal/LocalLaw.js';
+import { recordCountry, seenWhy, sharingNote } from '../../modules/legal/RecordAbroad.js';
+import { yearNow } from '../../modules/world/Eras.js';
+import { gradeIn, offenseNameIn, recordYear } from '../../modules/legal/LocalLaw.js';
 import { visibleRecord } from '../../core/State.js';
 import { flagImg } from '../Flags.js';
 import { courtDef, courtTitle, courtsHere, benchHere, currentCourt, benchEligibility, benchYears, selectionFor, layEligibility, examEligibility, MANDATORY_RETIREMENT, caseTier } from '../../modules/legal/Judiciary.js';
@@ -178,15 +179,15 @@ export function legalView(state) {
       const from = recordCountry(state, r);
       const s = seenWhy(state, r, here);
       const local = r.sealed || r.pardoned ? '' : from === here ? '' : ` ${chip(s.seen ? `Counts here: ${s.why}` : `Not on your record here: ${s.why}`, s.seen ? 'warn' : 'good')}`;
-      return `<li>${flagImg(from) || ''} ${chip(gradeIn(from, r.severity), r.severity === 'felony' ? 'bad' : r.severity === 'misdemeanor' ? 'warn' : '')} <b>${esc(offenseNameIn(r.offenseId, from, r.name))}</b>${r.sealed ? ` ${chip(r.vacated ? 'Vacated' : 'Sealed', 'good')}` : ''}${r.pardoned ? ` ${chip('Pardoned', 'good')}` : ''} <small>age ${r.age} — ${esc(r.sentence || 'no sentence')}</small>${local}</li>`;
-    }).join('')}</ul>${l.record.some((r) => recordCountry(state, r) !== here) ? '<p class="fine">A conviction belongs to the country that handed it down. Abroad, employers see it only where records are shared (across the EU; between the US, UK, Canada, Australia and New Zealand for serious crimes) or for crimes that travel on Interpol notices. A visa or citizenship application asks about every conviction anywhere.</p>' : ''}`
+      return `<li>${flagImg(from) || ''} ${chip(gradeIn(from, r.severity, recordYear(state, r)), r.severity === 'felony' ? 'bad' : r.severity === 'misdemeanor' ? 'warn' : '')} <b>${esc(offenseNameIn(r.offenseId, from, r.name, recordYear(state, r)))}</b>${r.sealed ? ` ${chip(r.vacated ? 'Vacated' : 'Sealed', 'good')}` : ''}${r.pardoned ? ` ${chip('Pardoned', 'good')}` : ''} <small>age ${r.age} — ${esc(r.sentence || 'no sentence')}</small>${local}</li>`;
+    }).join('')}</ul>${l.record.some((r) => recordCountry(state, r) !== here) ? `<p class="fine">${esc(sharingNote(state))}</p>` : ''}`
     : empty('Clean record.');
   const seenHere = visibleRecord(state);
   const dp = deathPenaltyHere(state);
   const death = dp?.status;
   return `${card('Legal Status', `${status}${kv([
-    [`${gradeIn(here, 'felony')}s on your record here`, seenHere.filter((r) => r.severity === 'felony').length],
-    [`${gradeIn(here, 'misdemeanor')}s on your record here`, seenHere.filter((r) => r.severity === 'misdemeanor').length],
+    [`${gradeIn(here, 'felony', yearNow(state))}s on your record here`, seenHere.filter((r) => r.severity === 'felony').length],
+    [`${gradeIn(here, 'misdemeanor', yearNow(state))}s on your record here`, seenHere.filter((r) => r.severity === 'misdemeanor').length],
     l.record.length > seenHere.length ? ['Not counted here', `${l.record.filter((r) => !r.sealed && !r.pardoned).length - seenHere.length} (convictions abroad, sealed or spent)`] : null,
     ['Things that could still catch up with you', l.investigations.length ? `<span class="neg">${l.investigations.length}</span>` : '0'],
   ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(dp?.where ?? (state.character.countryId ? COUNTRY_NAME(state) : stateOf(state).name))} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}

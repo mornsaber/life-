@@ -10,7 +10,7 @@ import { COMPETITIONS, competitionCheck } from '../../modules/world/IntlOrgs.js'
 import { EXAMS, CLEARANCES, PASSING_SCORE, examStatus, veteranPreference, backgroundIssues, CLEARANCE_GRACE_YEARS } from '../../modules/publicservice/PublicServiceEngine.js';
 import { MUNICIPAL_PROFESSIONS, STATE_PROFESSIONS, FEDERAL_PROFESSIONS } from '../../modules/content/careerPacks.js';
 import { professionsFor } from '../../modules/career/JobTrees.js';
-import { examRequired } from '../../modules/world/Eras.js';
+import { examRequired, yearNow } from '../../modules/world/Eras.js';
 
 export function govView(state) {
   const ps = state.publicService;
@@ -45,7 +45,7 @@ export function govView(state) {
     ${((sp) => (state.career.job && (sp.ok || sp.reason !== 'Your field has no classified work') && !state.career.job.cleared ? `<div class="action-grid">${button('🔐 Ask for a classified program', 'cleared.requestSponsorship', { hint: sp.ok ? 'Your employer sponsors the clearance' : sp.reason, disabled: !sp.ok })}</div>` : ''))(sponsorEligibility(state))}
     <h4 class="sub">What an investigator would find</h4>
     ${issues.length ? `<ul class="history">${issues.map((i) => `<li>⚠️ ${esc(i.label)}</li>`).join('')}</ul>` : '<p class="pos">A clean background.</p>'}
-    <p class="fine">Disclosing problems mitigates them. Concealing them is ${currentCountry() === 'US' ? 'a federal crime (18 U.S.C. § 1001)' : 'a crime'} if discovered.</p>`, { icon: '🔐' });
+    <p class="fine">Disclosing problems mitigates them. Concealing them is ${currentCountry() === 'US' ? `a federal crime${yearNow(state) >= 1948 ? ' (18 U.S.C. § 1001)' : ''}` : 'a crime'} if discovered.</p>`, { icon: '🔐' });
   // A US clearance means nothing to a life abroad unless you already hold one.
   const showClearance = !abroad || Boolean(c);
 

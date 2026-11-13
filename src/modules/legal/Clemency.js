@@ -15,6 +15,7 @@
  *                          counting against you.
  *   Clemency               On death row, the governor can commute to life.
  */
+import { yearNow } from '../world/Eras.js';
 import { recordCountry } from './RecordAbroad.js';
 import { legalSystem } from './LocalLaw.js';
 import { COUNTRIES } from '../world/Countries.js';
@@ -82,7 +83,10 @@ export function spentStatus(state, r) {
   const offense = OFFENSES[r.offenseId] ?? {};
   if (r.sealed || r.pardoned || !SPENT_YEARS[r.severity] || offense.violent || offense.noSeal || offense.registry || offense.capital) return null;
   // The rules of the country that convicted you: how long, and how long a sentence can still be spent.
-  const rule = REHAB[legalSystem(recordCountry(state, r))] ?? REHAB.other;
+  const from = recordCountry(state, r);
+  const rule = REHAB[legalSystem(from)] ?? REHAB.other;
+  // No automatic rehabilitation before the law that brought it in.
+  if (yearNow(state) < (REHAB_FROM[from] ?? rule.from)) return null;
   const prison = /(\d+) yr prison/.test(r.sentence ?? '') ? Number(r.sentence.match(/(\d+) yr prison/)[1]) : 0;
   if (prison > rule.maxPrison) return null;
   const years = r.severity === 'felony' ? (prison > 4 ? rule.long : rule.felony) : rule.misdemeanor;
@@ -93,16 +97,18 @@ export function spentStatus(state, r) {
  * misdemeanor-grade or felony-grade conviction is spent, the wait after a long (4+ year)
  * sentence, and the longest prison term that can be spent at all.
  */
+/** When automatic rehabilitation began, where it differs from the legal system's own date. */
+const REHAB_FROM = { GB: 1975, IE: 2016, AU: 1990, NZ: 2004, CA: 1970, IN: 1975, ZA: 2009 };
 export const REHAB = {
-  us: { misdemeanor: 7, felony: 10, long: 10, maxPrison: 4, law: 'a clean-slate law' },
-  common: { misdemeanor: 2, felony: 4, long: 7, maxPrison: 10, law: 'the rehabilitation of offenders laws' },
-  fr: { misdemeanor: 3, felony: 5, long: 10, maxPrison: 10, law: 'réhabilitation de plein droit' },
-  de: { misdemeanor: 5, felony: 10, long: 15, maxPrison: 15, law: 'erasure from the Federal Central Register' },
-  it: { misdemeanor: 5, felony: 8, long: 10, maxPrison: 10, law: 'riabilitazione' },
-  es: { misdemeanor: 2, felony: 5, long: 10, maxPrison: 10, law: 'cancelación de antecedentes' },
-  nl: { misdemeanor: 5, felony: 10, long: 20, maxPrison: 15, law: 'the judicial documentation rules' },
-  pt: { misdemeanor: 5, felony: 7, long: 10, maxPrison: 10, law: 'cancelamento do registo' },
-  other: { misdemeanor: 5, felony: 7, long: 10, maxPrison: 4, law: 'the rehabilitation rules' },
+  us: { from: 2018, misdemeanor: 7, felony: 10, long: 10, maxPrison: 4, law: 'a clean-slate law' },
+  common: { from: 1975, misdemeanor: 2, felony: 4, long: 7, maxPrison: 10, law: 'the rehabilitation of offenders laws' },
+  fr: { from: 1899, misdemeanor: 3, felony: 5, long: 10, maxPrison: 10, law: 'réhabilitation de plein droit' },
+  de: { from: 1920, misdemeanor: 5, felony: 10, long: 15, maxPrison: 15, law: 'erasure from the Federal Central Register' },
+  it: { from: 1930, misdemeanor: 5, felony: 8, long: 10, maxPrison: 10, law: 'riabilitazione' },
+  es: { from: 1932, misdemeanor: 2, felony: 5, long: 10, maxPrison: 10, law: 'cancelación de antecedentes' },
+  nl: { from: 1955, misdemeanor: 5, felony: 10, long: 20, maxPrison: 15, law: 'the judicial documentation rules' },
+  pt: { from: 1936, misdemeanor: 5, felony: 7, long: 10, maxPrison: 10, law: 'cancelamento do registo' },
+  other: { from: 1960, misdemeanor: 5, felony: 7, long: 10, maxPrison: 4, law: 'the rehabilitation rules' },
 };
 export function spendOldConvictions(ctx) {
   const { state } = ctx;

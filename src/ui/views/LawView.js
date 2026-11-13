@@ -2,7 +2,7 @@
  * The law on screen: pre-law and law school (School tab), practice (Career tab).
  */
 import { esc, button, card, kv, chip, meter } from '../Components.js';
-import { LSAT, AREAS, HOURS, isLawyer, areaOf, lsatEligibility, partnerOdds, matterPool } from '../../modules/law/LegalPractice.js';
+import { LSAT, AREAS, HOURS, isLawyer, areaOf, lsatEligibility, lsatExists, partnerOdds, matterPool } from '../../modules/law/LegalPractice.js';
 import { lawSystem } from '../../modules/world/ProfessionStandards.js';
 
 const LAW_SCHOOL = ['jd', 'jdmba'];
@@ -29,7 +29,7 @@ export function lawTrainingCard(state) {
   }
   // Any college student or graduate can sit the LSAT — law schools take every major.
   const interested = l.lsat || e?.programId === 'bachelor' || state.education.degrees.some((d) => ['bachelor', 'master', 'doctorate', 'professional'].includes(d.type));
-  if (!interested || state.character.age < 18 || state.education.degrees.some((d) => LAW_SCHOOL.includes(d.programId))) return '';
+  if (!interested || !lsatExists(state) || state.character.age < 18 || state.education.degrees.some((d) => LAW_SCHOOL.includes(d.programId))) return '';
   const check = lsatEligibility(state);
   if (!check.ok && check.reason?.startsWith('Law is an undergraduate')) return '';
   const expired = l.lsat && state.character.age - (l.lsatAge ?? 0) > LSAT.validYears;

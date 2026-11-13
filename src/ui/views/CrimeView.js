@@ -12,7 +12,7 @@ import { underworldCard } from './UnderworldView.js';
 import { meOf } from '../../modules/legal/Underworld.js';
 import { partnerOf } from '../../modules/people/People.js';
 import { schemesOf, SCHEMES, regulatorsHere } from '../../modules/crime/WhiteCollar.js';
-import { crimePlan } from '../../modules/legal/CrimePlan.js';
+import { crimePlan, crimeDesc } from '../../modules/legal/CrimePlan.js';
 import { crimeInEra, drugInEra, labInEra, hasTech } from '../../modules/world/Eras.js';
 
 const pct = (n) => `${Math.round(n * 100)}%`;
@@ -145,7 +145,7 @@ function crimePanel(state, r) {
   const c = p.charge;
   const odds = (n) => `${Math.round(n * 100)}%`;
   const rows = [
-    ['What it is', esc(r.desc)],
+    ['What it is', esc(crimeDesc(state, r))],
     p.money ? ['Typical take', `$${p.money[0].toLocaleString()} – $${p.money[1].toLocaleString()}${p.skill ? ` <small class="muted">(practice: ${p.skill}/5)</small>` : ''}`] : null,
     p.note ? ['Upside', esc(p.note)] : null,
     p.caught ? ['Caught in the act', `<b class="${p.caught >= 0.3 ? 'neg' : ''}">${odds(p.caught)}</b>`] : null,
@@ -159,7 +159,7 @@ function crimePanel(state, r) {
     <h3 style="margin:4px 0">${r.icon} ${esc(r.label)}</h3>
     ${kv(rows)}
     ${block ? `<p class="why">${esc(block)}</p>` : ''}
-    <div class="btn-row">${button(`${r.icon} Do it`, `legal.${r.id}`, { variant: 'danger', disabled: Boolean(block), hint: block ?? r.desc })}</div>
+    <div class="btn-row">${button(`${r.icon} Do it`, `legal.${r.id}`, { variant: 'danger', disabled: Boolean(block), hint: block ?? crimeDesc(state, r) })}</div>
   </div>`;
 }
 

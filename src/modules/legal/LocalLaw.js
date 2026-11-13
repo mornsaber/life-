@@ -5,6 +5,7 @@
  * statute references abroad (no "18 U.S.C." in a Paris court; a DUI is drink-driving in Dublin).
  */
 import { OFFENSES } from './Offenses.js';
+import { PRESENT, yearNow } from '../world/Eras.js';
 
 const GRADES = {
   us: { felony: 'Felony', misdemeanor: 'Misdemeanor', infraction: 'Infraction', civil: 'Civil violation' },
@@ -27,12 +28,29 @@ const SYSTEM = {
   PT: 'pt', BR: 'pt',
 };
 export const legalSystem = (cc) => SYSTEM[cc] ?? 'other';
-/** A conviction's grade in the words of the country that handed it down. */
-export const gradeIn = (cc, severity) => GRADES[legalSystem(cc)]?.[severity] ?? GRADES.other[severity] ?? severity;
+/**
+ * The older grades. The common-law world graded felonies and misdemeanours until it abolished
+ * the distinction (Canada's Criminal Code 1892, New Zealand 1961, England 1967, Australia's
+ * states around 1981, Ireland 1997); Germany's petty offences were Übertretungen until 1975.
+ */
+const FELONY_UNTIL = { GB: 1967, IE: 1997, AU: 1981, NZ: 1961, CA: 1892 };
+const OLD_GRADES = {
+  common: { felony: 'Felony', misdemeanor: 'Misdemeanour', infraction: 'Petty offence', civil: 'Civil matter' },
+  de: { infraction: 'Übertretung' },
+};
+/** A conviction's grade in the words of the country that handed it down, in the year it was handed down. */
+export function gradeIn(cc, severity, year = PRESENT) {
+  const sys = legalSystem(cc);
+  if (sys === 'common' && year < (FELONY_UNTIL[cc] ?? 1967)) return OLD_GRADES.common[severity] ?? severity;
+  if (sys === 'de' && year < 1975 && OLD_GRADES.de[severity]) return OLD_GRADES.de[severity];
+  return GRADES[sys]?.[severity] ?? GRADES.other[severity] ?? severity;
+}
+/** The calendar year a conviction was handed down (today, for a record with no age). */
+export const recordYear = (state, r) => (state.character?.birthYear != null && r.age != null ? state.character.birthYear + r.age : yearNow(state));
 
 const DRINK_DRIVING = ['GB', 'IE', 'AU', 'NZ'];
 /** An offence's name in a country's courts: the American statute references stay at home. */
-export function offenseNameIn(offenseId, cc, fallback = null) {
+export function offenseNameIn(offenseId, cc, fallback = null, year = PRESENT) {
   const o = OFFENSES[offenseId];
   let name = fallback ?? o?.name ?? offenseId;
   if (cc === 'US') return name;
@@ -42,6 +60,8 @@ export function offenseNameIn(offenseId, cc, fallback = null) {
     .replace(/^Racketeering$/, 'Participation in a Criminal Organisation')
     .replace(/to Federal Investigators/, 'to Investigators')
     .replace(/Federal /, '');
+  // Before the breathalyser laws (Britain 1967) it was being drunk in charge of a motor vehicle.
+  if (DRINK_DRIVING.includes(cc) && year < 1967) name = name.replace(/^(Felony )?DUI$/, 'Drunk in Charge of a Motor Vehicle');
   if (DRINK_DRIVING.includes(cc)) name = name.replace(/^Felony DUI$/, 'Aggravated Drink-Driving').replace(/^DUI$/, 'Drink-Driving');
   else name = name.replace(/^Felony DUI$/, 'Aggravated Drunk Driving').replace(/^DUI$/, 'Drunk Driving');
   return name;

@@ -7,8 +7,8 @@
  */
 import { OFFENSES } from './Offenses.js';
 import { offenseNameIn, gradeIn } from './LocalLaw.js';
-import { drugLawOf } from '../crime/CrimeWorld.js';
-import { EU, FIVE_EYES } from './RecordAbroad.js';
+import { FIVE_EYES, SHARING_FROM, euMemberIn, conductIsCrime } from './RecordAbroad.js';
+import { yearNow, PRESENT } from '../world/Eras.js';
 
 /** Charge, take and odds for the actions that don't carry a `run`. caught: on the spot; later: found out afterwards. */
 const PLANS = {
@@ -37,16 +37,22 @@ const raw = (r) => {
   return PLANS[r.id] ?? { offenseId: null };
 };
 
-/** Whether a conviction for this offence would follow you abroad, in a few words. */
-export function followsAbroad(offenseId, cc) {
+/** Whether a conviction for this offence would follow you abroad, in a few words (by the rules of the year). */
+export function followsAbroad(offenseId, cc, y = PRESENT) {
   const o = OFFENSES[offenseId];
   if (!o || ['infraction', 'civil'].includes(o.severity)) return 'No — it stays where it was';
-  if (o.violent || o.sexual || o.registry || o.capital || o.drug === 'trafficking') return 'Everywhere — the kind of crime that travels';
+  const visa = y >= SHARING_FROM.border ? 'only on visa forms' : 'not at all — records don\'t cross borders yet';
+  if (o.political) return 'No — no free country counts a political conviction';
+  if (y >= SHARING_FROM.interpol && (o.violent || o.sexual || o.registry || o.capital || o.drug === 'trafficking')) return 'Everywhere — the kind of crime that travels';
   const parts = [];
-  if (EU.includes(cc)) parts.push('across the EU');
-  if (FIVE_EYES.includes(cc) && o.severity === 'felony') parts.push('to the US, UK, Canada, Australia and New Zealand');
-  return parts.length ? `To employers ${parts.join(' and ')}; elsewhere only on visa forms` : 'Only on visa forms abroad';
+  if (y >= SHARING_FROM.eu && euMemberIn(cc, y)) parts.push(y >= 1993 ? 'across the EU' : 'across the Community');
+  if (y >= SHARING_FROM.fiveEyes && FIVE_EYES.includes(cc) && o.severity === 'felony') parts.push('to the US, UK, Canada, Australia and New Zealand');
+  return parts.length ? `To employers ${parts.join(' and ')}; elsewhere ${visa}` : `Abroad, ${visa}`;
 }
+
+/** A crime's one-line description in the words of its day. */
+const DESC_OF_DAY = { bankRobbery: (y) => (y < 1934 ? 'Sheriffs, posses and Pinkerton detectives hunt bank robbers' : null) };
+export const crimeDesc = (state, r) => DESC_OF_DAY[r.id]?.(yearNow(state)) ?? r.desc;
 
 /** The plan for a crime the player can pick: odds already adjusted for heat and skill. */
 export function crimePlan(state, r) {
@@ -59,14 +65,14 @@ export function crimePlan(state, r) {
   const later = p.later ? Math.min(0.9, p.later * (1 + (c.heat ?? 0) / 150)) : 0;
   const money = p.money ? p.money.map((n) => Math.round(n * (1 + skill * 0.1))) : null;
   const o = p.offenseId ? OFFENSES[p.offenseId] : null;
-  const legalHere = p.offenseId !== 'drugPossession' || drugLawOf(cc).possession === 'crime';
+  const legalHere = !p.offenseId || conductIsCrime(cc, p.offenseId, yearNow(state));
   const charge = o ? {
     id: p.offenseId,
-    name: offenseNameIn(p.offenseId, cc),
-    grade: gradeIn(cc, o.severity),
+    name: offenseNameIn(p.offenseId, cc, null, yearNow(state)),
+    grade: gradeIn(cc, o.severity, yearNow(state)),
     severity: o.severity,
     sentence: o.capital ? 'Life, or death where the law allows it' : o.prison ? `${o.prison[0]}–${o.prison[1]} years in prison${o.probation ? `, or ${o.probation} year${o.probation === 1 ? '' : 's'} probation for a first offence` : ''}` : o.fine ? `A fine of $${o.fine[0].toLocaleString()}–$${o.fine[1].toLocaleString()}${o.probation ? ` and ${o.probation} year${o.probation === 1 ? '' : 's'} probation` : ''}` : 'A fine',
-    abroad: followsAbroad(p.offenseId, cc),
+    abroad: followsAbroad(p.offenseId, cc, yearNow(state)),
     legalHere,
   } : null;
   return { caught, later, money, skill, charge, harm: p.harm ?? null, note: p.note ?? null };

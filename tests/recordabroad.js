@@ -16,9 +16,9 @@ import { VIEWS } from '../src/ui/Renderer.js';
 import { spentStatus, sealStatus, pardonStatus } from '../src/modules/legal/Clemency.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const life = (cc = 'US') => {
+const life = (cc = 'US', year = null) => {
   const engine = new Engine({ store: new Store(memory()), rng: new Random(1), modules: MODULES });
-  const state = engine.newLife({ countryId: cc });
+  const state = engine.newLife({ countryId: cc, ...(year ? { startYear: year - 35 } : {}) });
   state.character.age = 35;
   return { engine, state };
 };
@@ -115,6 +115,50 @@ const tests = {
     const h = VIEWS.legal(state, {});
     assert.match(h, /Not on your record here/);
     assert.match(h, /Felony/, 'graded as the US court graded it');
+  },
+  'in its day: no Five Eyes sharing before 2009, no Community before it existed'() {
+    const { state } = life('US', 1990);
+    assert.equal(state.character.birthYear + state.character.age, 1990);
+    convict(state, 'burglary', 'felony', 'US');
+    moveTo(state, 'GB');
+    assert.ok(!hasFelony(state), 'a US burglary was not shared with British employers in 1990');
+    const { state: s2 } = life('ES', 1980);
+    convict(s2, 'shoplifting', 'misdemeanor', 'ES');
+    moveTo(s2, 'FR');
+    assert.equal(criminalRecord(s2).length, 0, 'Spain joined in 1986');
+    const { state: s3 } = life('GB', 2000);
+    convict(s3, 'shoplifting', 'misdemeanor', 'GB');
+    moveTo(s3, 'FR');
+    assert.equal(criminalRecord(s3).length, 1, 'Britain was a member in 2000');
+  },
+  'in its day: before Interpol and visa forms, a record stayed at home'() {
+    const { state } = life('GB', 1900);
+    convict(state, 'armedRobbery', 'felony', 'GB');
+    moveTo(state, 'US');
+    assert.equal(visibleRecord(state).length, 0);
+    assert.equal(visibleRecord(state, { purpose: 'border' }).length, 0);
+  },
+  'in its day: gross indecency counts where it is still a crime'() {
+    const { state } = life('GB', 1960);
+    convict(state, 'grossIndecency', 'felony', 'GB');
+    moveTo(state, 'CA');
+    assert.ok(hasFelony(state, { purpose: 'border' }), 'Canada criminalised it until 1969');
+    moveTo(state, 'DK');
+    assert.ok(!hasFelony(state, { purpose: 'border' }), 'Denmark did not');
+  },
+  'in its day: the old grades and names'() {
+    assert.equal(gradeIn('GB', 'felony', 1950), 'Felony');
+    assert.equal(gradeIn('GB', 'misdemeanor', 1950), 'Misdemeanour');
+    assert.equal(gradeIn('GB', 'felony', 1970), 'Indictable offence');
+    assert.equal(gradeIn('DE', 'infraction', 1960), 'Übertretung');
+    assert.equal(offenseNameIn('dui', 'GB', null, 1955), 'Drunk in Charge of a Motor Vehicle');
+  },
+  'in its day: no conviction is spent before the law that allowed it'() {
+    const { state } = life('GB', 1960);
+    const r = convict(state, 'burglary', 'felony', 'GB');
+    assert.equal(spentStatus(state, r), null, 'the Rehabilitation of Offenders Act came in 1975');
+    const { state: us } = life('US', 2000);
+    assert.equal(spentStatus(us, convict(us, 'burglary', 'felony', 'US')), null, 'no clean-slate laws yet');
   },
 };
 let failed = 0;

@@ -26,6 +26,7 @@
  *   clerkship, area, chambers, hours, book, reputation, wins, losses, settled, burnout,
  *   partnerVote, silk, proBono, seen: [ids] }
  */
+import { yearNow } from '../world/Eras.js';
 import { recordCase, gist } from '../crime/DocketRecord.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, addHonor, yearsInProfession } from '../../core/State.js';
@@ -39,7 +40,9 @@ import { getProfession } from '../career/JobTrees.js';
 import { recalcSalary } from '../career/Compensation.js';
 import { Random } from '../../core/Random.js';
 
-export const LSAT = { min: 120, max: 180, mean: 152, cost: 238, prepCost: 1500, validYears: 5 };
+export const LSAT = { min: 120, max: 180, mean: 152, cost: 238, prepCost: 1500, validYears: 5, from: 1948 };
+/** The LSAT was first given in 1948; before it, law schools admitted on college record alone. */
+export const lsatExists = (state) => yearNow(state) >= LSAT.from;
 export const LAWYERS = ['law', 'prosecution', 'publicDefender'];
 const LAW_SCHOOL = ['jd', 'jdmba'];
 export const isLawyer = (job) => Boolean(job && LAWYERS.includes(job.professionId));
@@ -229,6 +232,7 @@ export function resolveMatter(ctx, data, optionId) {
 
 export function lsatEligibility(state) {
   if (!gradEntry(state)) return { ok: false, reason: 'Law is an undergraduate degree here' };
+  if (!lsatExists(state)) return { ok: false, reason: 'The LSAT is first given in 1948' };
   if (state.character.age < 19) return { ok: false, reason: 'Age 19+' };
   if (!state.education.degrees.some((d) => DEGREE_LEVELS.includes(d.type) || DEGREE_LEVELS.includes(d.programId)) && state.education.enrolled?.programId !== 'bachelor') return { ok: false, reason: 'You need a bachelor\'s degree, or to be in your final years of one' };
   if (state.education.degrees.some((d) => LAW_SCHOOL.includes(d.programId)) || LAW_SCHOOL.includes(state.education.enrolled?.programId)) return { ok: false, reason: 'Already in law' };
@@ -260,14 +264,14 @@ export function takeLsat(ctx, mode = 'prep') {
 /** Law school admissions: the LSAT where law is a graduate degree. */
 ADMISSION_HOOKS.push({
   eligibility(state, programId) {
-    if (!LAW_SCHOOL.includes(programId) || undergradEntryYears(state.character.countryId, 'jd') || !gradEntry(state)) return null;
+    if (!LAW_SCHOOL.includes(programId) || undergradEntryYears(state.character.countryId, 'jd') || !gradEntry(state) || !lsatExists(state)) return null;
     const l = state.law;
     if (!l?.lsat) return 'Take the LSAT first';
     if (state.character.age - (l.lsatAge ?? 0) > LSAT.validYears) return 'Your LSAT score expired (5 years)';
     return null;
   },
   boost(state, programId) {
-    if (!LAW_SCHOOL.includes(programId) || undergradEntryYears(state.character.countryId, 'jd') || !gradEntry(state)) return 0;
+    if (!LAW_SCHOOL.includes(programId) || undergradEntryYears(state.character.countryId, 'jd') || !gradEntry(state) || !lsatExists(state)) return 0;
     return ((state.law?.lsat ?? LSAT.mean) - 158) / 18;
   },
 });

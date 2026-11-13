@@ -94,6 +94,10 @@ export const transportationHere = (state) => historic(state) && ['GB', 'IE'].inc
 const DEBTORS_UNTIL = { GB: 1869, IE: 1872, US: 1833, FR: 1867, DE: 1868, BE: 1871, NL: 1896, CA: 1870, AU: 1880 };
 export const debtorsPrisonHere = (state) => historic(state) && yearNow(state) < (DEBTORS_UNTIL[cc(state)] ?? 0);
 const PROHIBITION = { US: [1920, 1933], FI: [1919, 1932], NO: [1916, 1927], IS: [1915, 1935], RU: [1914, 1925] };
+/** Whether sex between men was a crime in a country in a year (for records abroad). */
+export const gayCrimeIn = (c, y) => DECRIMINALIZED[c] != null ? y < DECRIMINALIZED[c] : y < PRESENT;
+/** Whether a country had Prohibition in a year. */
+export const prohibitionIn = (c, y) => { const p = PROHIBITION[c]; return Boolean(p) && y >= p[0] && y < p[1]; };
 export const prohibitionHere = (state) => { const p = PROHIBITION[cc(state)]; const y = yearNow(state); return historic(state) && Boolean(p) && y >= p[0] && y < p[1]; };
 const POLICE_FROM = { GB: [1829, 'the Metropolitan Police'], IE: [1836, 'the Irish Constabulary'], US: [1845, 'the New York Police Department'], FR: [1800, 'the Prefecture of Police'], DE: [1848, 'the Berlin Schutzmannschaft'], AU: [1862, 'the New South Wales Police'], CA: [1873, 'the North-West Mounted Police'], NZ: [1886, 'the New Zealand Police Force'], JP: [1874, 'the Tokyo Metropolitan Police'], IN: [1861, 'the Indian police'], IT: [1814, 'the Carabinieri'], ES: [1844, 'the Guardia Civil'] };
 export const policeHere = (state) => { const p = POLICE_FROM[cc(state)]; return p ? { from: p[0], name: p[1], yet: yearNow(state) >= p[0] } : null; };

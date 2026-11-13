@@ -13,11 +13,11 @@ import { yearlyCount } from '../../core/State.js';
 import { yearNow } from '../world/Eras.js';
 
 /** When each country's national health care began (Bismarck's sickness insurance, the NHS, Medicare in Canada). */
-const NATIONAL_HEALTH_FROM = { DE: 1883, AT: 1888, JP: 1961, GB: 1948, FR: 1945, CA: 1966, AU: 1975, NZ: 1938, SE: 1955, NO: 1956, DK: 1960, IT: 1978, ES: 1986, KR: 1989, TW: 1995, CN: 2009, IN: 2018, MX: 2003, BR: 1988, IL: 1995, NL: 1941, BE: 1945, CH: 1996, IE: 1970 };
+// NATIONAL_HEALTH_FROM lives in HealthSystems.js.
 import { stateIdOf } from '../life/Regions.js';
 
 import { isAbroad, countryOf } from '../world/Countries.js';
-import { hasPrivateCover, systemHere, privatePremium } from './HealthSystems.js';
+import { hasPrivateCover, systemHere, privatePremium, NATIONAL_HEALTH_FROM } from './HealthSystems.js';
 
 export const MEDICAID_INCOME = 21000;
 /** States that did not expand Medicaid: only disabled adults qualify. */
