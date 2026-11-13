@@ -24,6 +24,7 @@
  * state.world.republics[cc]   = { year }
  * state.royal = { crownId, level, line, working, popularity, reigning, regnal, patronages[], since }
  */
+import { treeDemise, treeAccede, refreshLine } from './RoyalLine.js';
 import { clamp, Random } from '../../core/Random.js';
 import { OFFICES } from '../politics/Offices.js';
 import { currentYear, yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
@@ -314,6 +315,7 @@ export function demise(ctx, crownId, why) {
   // The player was the heir: the throne is theirs.
   if (r && r.crownId === crownId && r.line === 1 && !r.reigning) return accede(ctx, old, why);
   const sameName = Object.values(state.world.crowns).length && rng.chance(0.3);
+  if (r?.crownId === crownId) treeDemise(state, c.heir.nodeId);
   const next = { name: c.heir.name, gender: c.heir.gender, age: c.heir.age, number: sameName ? c.monarch.number + 1 : rng.int(1, 3) };
   c.monarch = next;
   c.heir = newHeir(rng, def, next);
@@ -343,6 +345,8 @@ function accede(ctx, old, why) {
   c.crowned = false;
   c.heir = { name: 'your eldest child', gender: 'male', age: Math.max(0, state.character.age - 28), relation: 'child' };
   Object.assign(r, { reigning: true, line: 0, working: true, regnal: number });
+  treeAccede(state);
+  refreshLine(state);
   state.character.style = { ...(state.character.style ?? {}), prefix: def.titles.monarch[genderIdx(state.character.gender)] };
   ctx.log(`${old} ${why}. You are now ${monarchName(state, r.crownId)}. The accession council proclaimed you this morning.`, '👑', 'milestone');
   ctx.stat('stress', 15);
@@ -532,6 +536,7 @@ function handOver(ctx) {
   const was = monarchName(state, r.crownId);
   const def = CROWNS[r.crownId];
   const g = c.heir.gender ?? 'male';
+  treeDemise(state, c.heir.nodeId);
   c.monarch = { name: c.heir.name === 'your eldest child' ? pickName(ctx.rng, def, g) : c.heir.name, gender: g, age: c.heir.age, number: 1 };
   c.heir = newHeir(ctx.rng, def, c.monarch);
   c.since = currentYear(state);
@@ -618,12 +623,7 @@ function royalYear(ctx) {
   }
   // Popularity drifts back toward the middle: the public's affection has to be earned every year.
   r.popularity = Math.round(clamp((r.popularity ?? 60) + (55 - (r.popularity ?? 60)) * 0.2 + rng.int(-4, 3), 0, 100));
-  // The line of succession moves: births ahead of you push you back, deaths bring you forward.
-  if (!r.reigning && r.line != null && r.line > 1) {
-    if (rng.chance(r.line <= 4 ? 0.05 : 0.1)) r.line += 1;
-    if (rng.chance(0.03)) r.line = Math.max(1, r.line - 1);
-    if (r.line === 1) ctx.log(`You are now first in line to the throne: heir to ${monarchName(state, r.crownId)}.`, '👑', 'milestone');
-  }
+  // The line of succession moves when the family does: births, deaths, renunciations (RoyalLine.js).
   // A working royal's life in the papers.
   if (r.working && age >= 16 && rng.chance(0.15) && !state.prompts.some((p) => ['crown.press', 'royalLife.press'].includes(p.type))) {
     const e = rng.pick(PRESS);
@@ -755,7 +755,8 @@ export const CrownModule = {
       const r = state.royal;
       if (!r?.reigning) return ctx.toast('Only a reigning monarch can abdicate.', 'warn');
       const was = handOver(ctx);
-      Object.assign(r, { reigning: false, line: 2, working: false, abdicated: true });
+      Object.assign(r, { reigning: false, line: null, working: false, abdicated: true });
+      refreshLine(state);
       state.character.style = { ...(state.character.style ?? {}), prefix: CROWNS[r.crownId].titles.royal[genderIdx(state.character.gender)] };
       ctx.log(`${was} abdicated. ${monarchName(state, r.crownId)} reigns; you keep your title and lose the throne.`, '👑', 'milestone');
       return undefined;

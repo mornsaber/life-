@@ -182,6 +182,14 @@ function syncHeir(ctx) {
     heir.royal = 'heir';
     h.heirId = heir.id;
   }
+  // The line and the heir come from the family tree (RoyalLine.js); this mark just follows it.
+  if (r.tree) {
+    const heirId = crown.heir?.personId;
+    for (const p of people(state)) if (p.royal === 'heir' && p.id !== heirId) delete p.royal;
+    const hp = heirId && people(state).find((p) => p.id === heirId && p.alive !== false);
+    if (hp && hp.royal !== 'monarch') hp.royal = 'heir';
+    return;
+  }
   if (r.reigning) {
     const kids = living(state).filter((p) => p.relation === 'child');
     const sibs = living(state).filter((p) => p.relation === 'sibling');
@@ -487,8 +495,11 @@ function confer(ctx, arg) {
 /* ------------------------------------------------------------------ */
 
 export const household = (state) => {
-  state.royal.household ??= { titled: {}, military: [], rank: null };
-  return state.royal.household;
+  const h = (state.royal.household ??= {});
+  h.titled ??= {};
+  h.military ??= [];
+  if (!('rank' in h)) h.rank = null;
+  return h;
 };
 
 export const RoyalHouseholdModule = {
