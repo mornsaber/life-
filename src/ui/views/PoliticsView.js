@@ -242,7 +242,9 @@ export function politicsView(state) {
 
 /** 🏛️ Chamber: who sits where, the laws, your seat, lobbying, the budgets. */
 export function chamberView(state) {
-  return `${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;
+  const seat = state.politics?.office;
+  const note = seat ? '' : `<p class="fine" style="margin:4px 2px 10px">🏛️ You hold no seat: this is the chamber as it stands. ${state.character.age >= 18 ? 'Stand for office from the Campaign tab, or join a party from the Party tab.' : 'You can stand for office from 18.'}</p>`;
+  return `${note}${chamberCard(state)}${legislatureCards(state)}${governmentCard(state)}${card('How the Country Is Governed', disclosure('gov.chart', '🗂️ Who answers to whom', orgTree(governmentChart(state))), { icon: '🏛️' })}`;
 }
 
 /** 🎗️ Party: your party, your platform, your votes. */

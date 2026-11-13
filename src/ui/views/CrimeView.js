@@ -51,7 +51,7 @@ export function casesView(state) {
   const list = state.legal.investigations ?? [];
   const body = list.length
     ? `<p class="muted">What the police have on you — and what you can still do about it. Every counter-move is once a year per case, and most of them are crimes too.</p>${list.map((inv, i) => caseCard(state, inv, caseRef(inv, i))).join('<hr>')}`
-    : empty('No open cases. As far as you know.');
+    : `${empty('No open cases. As far as you know.')}${pastCases(state)}`;
   const role = docketRole(state);
   const against = card(role ? 'Cases Against You' : 'Open Cases', body, { icon: '🗂️', accent: list.length ? 'red' : '' });
   // At work in the justice system, your own docket comes first (unless you're the one under investigation).
@@ -207,4 +207,12 @@ export function crimeView(state) {
 export function underworldView(state) {
   const card0 = underworldCard(state);
   return card0 || card('The Underworld', empty(meOf(state) ? '' : 'No outfit knows your name yet. Build a reputation on the street first.'), { icon: '🕴️' });
+}
+
+/** With nothing open: your record, and how earlier cases ended. */
+function pastCases(state) {
+  const rec = state.legal.record ?? [];
+  if (!rec.length) return '<p class="fine">Your record is clean.</p>';
+  const rows = [...rec].reverse().slice(0, 8).map((r) => `<li><small>age ${r.age}</small> ${esc(r.offense ?? r.charge ?? r.label ?? r.name ?? 'Offence')} <small class="muted">${esc(r.severity ?? '')}${r.sentence ? ` · ${esc(String(r.sentence))}` : ''}${r.sealed ? ' · sealed' : ''}${r.pardoned ? ' · pardoned' : ''}${r.spent ? ' · spent' : ''}</small></li>`).join('');
+  return `<h4 class="sub">On your record</h4><ul class="history">${rows}</ul><p class="fine">Expungement, sealing and pardons are on the Status tab.</p>`;
 }

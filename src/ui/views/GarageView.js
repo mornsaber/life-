@@ -33,10 +33,16 @@ function ownedCard(state) {
     <p class="fine">Points, at-fault accidents and DUIs raise your premiums for years. Lenders require full coverage, and repossess when you fall far behind — you still owe what the auction doesn't cover.</p>`, { icon: '🚗', accent: 'cyan' });
 }
 
-function showroom(state) {
+function showroom(state, ui = {}) {
   const groups = {};
-  for (const [id, t] of Object.entries(VEHICLE_TYPES)) if (vehicleInEra(state, t)) (groups[t.category] ??= []).push([id, t]);
-  const rows = Object.entries(groups).map(([cat, list]) => `<h4 class="sub">${esc(CATEGORIES[cat])}</h4><ul class="history">${list.map(([id, t]) => {
+  const afford = ui.showAfford === '1';
+  const canBuy = (id, t) => purchaseCheck(state, id, 'cash').ok || purchaseCheck(state, id, 'loan').ok || (t.lease && yearNow(state) >= 1990 && purchaseCheck(state, id, 'lease').ok);
+  for (const [id, t] of Object.entries(VEHICLE_TYPES)) if (vehicleInEra(state, t) && (!afford || canBuy(id, t))) (groups[t.category] ??= []).push([id, t]);
+  // One category at a time: the one you picked, else the first with something you can buy.
+  const cats = Object.keys(groups);
+  const cat = groups[ui.showCat] ? ui.showCat : cats.find((c) => groups[c].some(([id, t]) => canBuy(id, t))) ?? cats[0];
+  const tabs = `<div class="toggle-row chips-row">${cats.map((c) => button(`${esc(CATEGORIES[c])} (${groups[c].length})`, 'ui.set', { arg: `showCat=${c}`, variant: c === cat ? 'tiny on' : 'tiny' })).join('')}${button(afford ? '✅ Only what I can buy' : '💵 Only what I can buy', 'ui.set', { arg: `showAfford=${afford ? '' : '1'}`, variant: afford ? 'tiny on' : 'tiny ghost' })}</div>`;
+  const rows = tabs + (!cat ? '<p class="muted">Nothing you can buy right now.</p>' : '') + Object.entries(groups).filter(([c]) => c === cat).map(([c, list]) => `<h4 class="sub">${esc(CATEGORIES[c])}</h4><ul class="history">${list.map(([id, t]) => {
     const how = (h) => purchaseCheck(state, id, h);
     const cash = how('cash');
     const loan = how('loan');
@@ -52,9 +58,9 @@ function showroom(state) {
   return card(y < 1905 ? 'Stables & Dealers' : 'Showroom', `${rows}<p class="fine">${y < 1920 ? 'Horses, carriages and machines are bought for cash.' : `Loans: 10% down over 5 years at a rate set by your credit score.${y >= 1990 ? ' Leases: 3 years, then turn it in or buy it out.' : ''}`}</p>`, { icon: y < 1905 ? '🐎' : '🏪' });
 }
 
-export function garageView(state) {
+export function garageView(state, ui = {}) {
   if (!state.vehicles) return '';
-  return `${commuteCard(state)}${ownedCard(state)}${state.character.age >= 16 ? showroom(state) : ''}`;
+  return `${commuteCard(state)}${ownedCard(state)}${state.character.age >= 16 ? showroom(state, ui) : ''}`;
 }
 
 /** How you get to work or school, and what it costs. */
