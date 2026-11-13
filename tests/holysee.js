@@ -20,6 +20,8 @@ import { servicePassports } from '../src/modules/world/Passports.js';
 import { crownOf } from '../src/modules/world/Crown.js';
 import { restore } from '../src/modules/world/Houses.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+/** Politics and the Court, every tab. */
+const allTabs = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign', 'court', 'succession', 'household', 'estates'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -55,7 +57,7 @@ const tests = {
     const ch = life({ countryId: 'GB', royalLevel: 'child', gender: 'female' }, 4);
     year(ch.engine, ch.state, 30);
     assert.match(styledName(ch.state), /^Princess \S+, Duchess of /);
-    const html = VIEWS.politics(ch.state, {});
+    const html = allTabs(ch.state, {});
     assert.match(html, /Royal title/);
     assert.doesNotMatch(html, /Your Peerage/, 'a royal dukedom is part of the royal card');
     const duke = life({ countryId: 'GB', nobleRank: 'duke', nobleHeir: 'heir', gender: 'male' }, 4);
@@ -146,7 +148,7 @@ const tests = {
     year(engine, state, 1);
     assert.equal(state.house.rank, 'head');
     assert.match(styledName(state), /Duke of Savoy$/);
-    assert.match(VIEWS.politics(state, {}), /The House of Savoy/);
+    assert.match(allTabs(state, {}), /The House of Savoy/);
     state.world.monarchists.IT = 30;
     state.finances.cash = 1e6;
     state.prompts = [];

@@ -19,6 +19,7 @@ import { OFFICES } from '../../modules/politics/Offices.js';
 import { dynasticTitles, dynasticName, supportableHouse, ennobleOptions, ennobled } from '../../modules/world/DynasticTitles.js';
 import { FORMER_HOUSES, houseOf, monarchistSupport, leads, nobleBorn, houseStyledName, houseConferOptions } from '../../modules/world/Houses.js';
 import { titleInsignia, crownBadge } from '../Insignia.js';
+import { lineView, lawFor } from '../../modules/world/RoyalLine.js';
 
 /** The sovereign's honours: one row per person, with what you can give them. */
 function honoursCard(state) {
@@ -68,16 +69,16 @@ function powersCard(state) {
   return card('Sovereign Powers', `${constitutional}${decrees}${coup}`, { icon: '⚖️' });
 }
 
-export function crownCards(state) {
+export function crownParts(state) {
   const r = state.royal;
   const crownId = r?.crownId ?? crownOf(state);
   const c = crownId ? state.world?.crowns?.[crownId] : null;
   const def = crownId ? CROWNS[crownId] : null;
-  const cards = [];
+  const parts = {};
   if (c) {
     const realms = def.realms.filter((cc) => !state.world.republics?.[cc]);
     const crises = (state.world.crises ?? []).filter((x) => x.cc === (state.character.countryId ?? 'US'));
-    cards.push(card('The Crown', `${kv([
+    parts.crown = (card('The Crown', `${kv([
       ['Monarch', `${esc(monarchName(state, crownId))}${c.monarch.you ? ' (you)' : ''} · ${esc(houseTitle(c.house).replace(/^the /, ''))}`],
       ['Reigning since', `${c.since} (${currentYear(state) - c.since} yr)`],
       ['Heir', c.monarch.you ? esc(c.heir.name) : `${esc(c.heir.name)}, ${esc(def.titles.heir[c.heir.gender === 'female' ? 1 : 0])}${c.heir.you ? ' (you)' : ''}`],
@@ -95,7 +96,7 @@ export function crownCards(state) {
     const working = r.working && !r.reigning;
     const mil = militaryPosts(state);
     const reign = r.reigning && c ? currentYear(state) - c.since : 0;
-    cards.push(card(r.reigning ? 'Your Reign' : 'Royal Life', `
+    parts.royal = (card(r.reigning ? 'Your Reign' : 'Royal Life', `
       <div class="row-end" style="justify-content:flex-start;margin-top:0">${crownBadge(r.reigning ? 'sovereign' : r.line === 1 ? 'heir' : 'royal')}</div>
       ${meter(r.popularity ?? 60, { label: '📰 Popularity' })}
       ${r.reigning ? meter(r.influence ?? 30, { label: '🤝 Influence with the government', tone: 'mid' }) : ''}
@@ -126,11 +127,11 @@ export function crownCards(state) {
         ${r.reigning ? button('📜 Abdicate', 'crown.abdicate', { variant: 'danger', hint: 'The heir reigns' }) : ''}
         ${button(r.reigning ? '🚪 Abdicate and renounce everything' : '🚪 Renounce your rights and titles', 'crown.renounce', { variant: 'danger', hint: 'Titles, line, grant — for good' })}</div>`) : ''}
       <p class="fine">${r.reigning ? 'Assent, mercy, dissolutions and crises come to you through the year; the powers below are yours to use when you choose.' : 'Working royals live on the grant and in the papers. A commercial job makes headlines; stepping back frees you to have a career of your own.'}</p>`, { icon: '👑', accent: 'yellow' }));
-    if (r.reigning) cards.push(honoursCard(state), powersCard(state));
+    if (r.reigning) { parts.honours = honoursCard(state); parts.powers = powersCard(state); }
   }
   const p = state.character.peerage;
   if (p && !(r && p.kind === 'royal')) {
-    cards.push(card('Your Peerage', `${kv([
+    parts.peerage = (card('Your Peerage', `${kv([
       ['Title', esc(numberedTitle(state) ?? '')],
       p.subsidiary?.length ? ['Lesser titles', esc(p.subsidiary.join(', '))] : null,
       ['Rank', esc(rankLabel(p.rank, state.character.gender, p.cc ?? 'GB'))],
@@ -145,10 +146,10 @@ export function crownCards(state) {
     </div>`, { icon: '🏰' }));
   }
   const n = state.noble;
-  if (n) cards.push(nobleCard(state));
-  cards.push(houseCard(state));
-  if (state.royal || state.noble || houseOf(state) || state.character.peerage) cards.push(familyTreeCard(state));
-  return cards.join('');
+  if (n) parts.noble = nobleCard(state);
+  parts.house = houseCard(state);
+  if (state.royal || state.noble || houseOf(state) || state.character.peerage) parts.tree = familyTreeCard(state);
+  return parts;
 }
 
 /** The dynasty, generation by generation, with everyone's titles. */
@@ -270,4 +271,112 @@ function nobleCard(state) {
     </div>
     ${yours ? `<h4 class="sub">How the estate is run</h4><div class="toggle-row">${Object.entries(STRATEGIES).map(([id, s]) => button(s.label, 'nobility.strategy', { arg: id, variant: e.strategy === id ? 'tiny on' : 'tiny', hint: `${s.desc} · ≈${(s.yield * 100).toFixed(1)}%/yr before upkeep` })).join('')}</div>` : ''}
     <p class="fine">A title opens doors: county society, the lieutenancy, the boards of charities and companies. ${yours ? 'The house costs a fortune to keep; the estate has to pay for it.' : 'When the title passes to you, so do the estate — and its inheritance tax.'}</p>`, { icon: '🏰', accent: 'yellow' });
+}
+
+/** Whether this life has a court: a royal (reigning or not), or a member of a former ruling house. */
+export const hasCourt = (state) => Boolean(state.royal || houseOf(state));
+
+/** Politics → Office: the Crown where you live, and your peerage — the royal life itself has its own section. */
+export function crownCards(state) {
+  if (hasCourt(state)) return '';
+  const x = crownParts(state);
+  return [x.crown, x.peerage, x.noble, x.house].filter(Boolean).join('');
+}
+
+/** 👑 Court: your reign or royal life, the Crown, and the powers you use by choice. */
+export function courtView(state) {
+  const x = crownParts(state);
+  const out = [x.royal, x.powers, x.crown, state.royal ? '' : x.house].filter(Boolean).join('');
+  return out || card('No Court', '<p class="muted">You are not part of a royal house.</p>', { icon: '👑' });
+}
+/** 🌳 Succession: the line, drawn, and the family. */
+export function successionView(state) {
+  const x = crownParts(state);
+  return `${successionCard(state)}${x.tree ?? ''}`;
+}
+/** 🎗️ Household: honours, patronages, the forces, titles. */
+export function householdView(state) {
+  const x = crownParts(state);
+  return [x.honours, militaryCard(state), x.peerage, x.noble].filter(Boolean).join('') || card('Household', '<p class="muted">Honours and appointments come with a working royal life.</p>', { icon: '🎗️' });
+}
+/** 🏰 Estates: the house, its seat and lands, and the money. */
+export function estatesView(state) {
+  const x = crownParts(state);
+  return `${moneyCard(state)}${state.royal ? x.house ?? '' : ''}`;
+}
+
+/** The forces' honorary appointments, on their own. */
+function militaryCard(state) {
+  if (!state.royal) return '';
+  const mil = militaryPosts(state);
+  if (!mil.rank && !mil.posts.length) return '';
+  return card('The Armed Forces', `${mil.rank ? `<p>${titleInsignia(mil.rank, state.character.countryId ?? 'GB')} <b>${esc(mil.rank)}</b></p>` : ''}${mil.posts.length ? `<ul class="history">${mil.posts.map((p) => `<li>${esc(p)}</li>`).join('')}</ul>` : ''}`, { icon: '🎖️' });
+}
+
+/** What the royal life pays, and where it comes from. */
+function moneyCard(state) {
+  const r = state.royal;
+  if (!r) return '';
+  const def = CROWNS[r.crownId];
+  const lv = ROYAL_LEVELS[r.level];
+  const grant = r.reigning ? 20000000 : r.working ? (r.line === 1 ? ROYAL_LEVELS.heir.allowance : lv?.allowance ?? 0) : 0;
+  return card('The Money', kv([
+    ['From the state', grant ? `${money(grant)}/yr from the ${esc(def.grant)}` : 'Nothing: you are not a working royal'],
+    ['Family trust', r.reigning ? 'The private estates' : `${money(60000)}/yr`],
+    ['Palace', esc(def.palace)],
+  ]), { icon: '💰' });
+}
+
+/** How a relative is related to you, from the tree. */
+function relationTo(t, id) {
+  const chain = (x) => { const out = []; let n = t.nodes[x]; while (n) { out.push(n.id); n = t.nodes[n.parent]; } return out; };
+  const mine = chain('you');
+  const theirs = chain(id);
+  const lca = theirs.find((x) => mine.includes(x));
+  if (!lca) return 'relative';
+  const up = mine.indexOf(lca);
+  const down = theirs.indexOf(lca);
+  const f = t.nodes[id]?.gender === 'female';
+  const g = (m, w) => (f ? w : m);
+  if (up === 0) return ['you', g('son', 'daughter'), g('grandson', 'granddaughter'), g('great-grandson', 'great-granddaughter')][down] ?? 'descendant';
+  if (down === 0) return ['you', g('father', 'mother'), g('grandfather', 'grandmother'), g('great-grandfather', 'great-grandmother')][up] ?? 'ancestor';
+  if (up === 1 && down === 1) return g('brother', 'sister');
+  if (up === 1 && down === 2) return g('nephew', 'niece');
+  if (up === 1 && down === 3) return g('great-nephew', 'great-niece');
+  if (up === 2 && down === 1) return g('uncle', 'aunt');
+  if (up === 3 && down === 1) return g('great-uncle', 'great-aunt');
+  if (up === 2 && down === 2) return 'first cousin';
+  if (up === 2 && down === 3) return 'first cousin once removed';
+  if (up === 3 && down === 3) return 'second cousin';
+  return 'cousin';
+}
+const LAW_NAME = { absolute: 'equal primogeniture: the eldest child, son or daughter', malePreference: 'male preference: sons before daughters', agnatic: 'the male line only: no daughters, and none of their children' };
+
+/** The line of succession, drawn: the monarch, then everyone in order, you marked. */
+function successionCard(state) {
+  const r = state.royal;
+  const t = r?.tree;
+  if (!t) return '';
+  const y = currentYear(state);
+  const c = state.world?.crowns?.[r.crownId];
+  const m = t.nodes[t.monarchId];
+  const rows = lineView(state, 10);
+  const youRow = rows.find((x) => x.node.you);
+  const law = lawFor(r.crownId, y - state.character.age, y);
+  const why = r.reigning ? '' : r.line != null ? '' : t.nodes.you?.out ? `You are out of the line: ${t.nodes.you.out}.` : law === 'agnatic' && state.character.gender === 'female' ? 'Only men inherit this crown: you are not in the line.' : 'You are not in the line.';
+  let prev = 0;
+  const items = rows.map((x) => {
+    const gap = x.pos > prev + 1 ? '<li class="fine" style="list-style:none;padding-left:2.2em">⋮</li>' : '';
+    prev = x.to;
+    const n = x.node;
+    const pos = x.to !== x.pos ? `${x.pos}–${x.to}` : String(x.pos);
+    const label = n.block ? `<i>${esc(n.name)}</i>` : `${n.you ? '<b>You</b>' : esc(n.name)}`;
+    const meta = n.block ? '' : n.you ? '' : `<small class="muted">${esc(relationTo(t, n.id))}${n.born != null ? ` · ${Math.max(0, y - n.born)}` : ''}</small>`;
+    return `${gap}<li style="display:flex;gap:8px;align-items:baseline;${n.you ? 'font-weight:600;' : ''}"><span style="min-width:2.4em;text-align:right;font-variant-numeric:tabular-nums">${pos}</span><span>${n.you ? '➤ ' : ''}${label} ${meta}</span></li>`;
+  }).join('');
+  const top = `<li style="display:flex;gap:8px;align-items:baseline"><span style="min-width:2.4em;text-align:right">👑</span><span><b>${esc(r.reigning ? 'You' : monarchName(state, r.crownId))}</b> <small class="muted">${r.reigning ? 'reigning' : m ? `${esc(relationTo(t, m.id))}${m.born != null ? ` · ${y - m.born}` : ''}` : ''}</small></span></li>`;
+  const ahead = youRow ? rows.filter((x) => x.pos < youRow.pos && !x.node.block).length : 0;
+  return card('Line of Succession', `<p class="fine">${c?.house ? `${esc(houseTitle(c.house).replace(/^t/, 'T'))}. ` : ''}The law: ${esc(LAW_NAME[law] ?? law)}.</p>
+    <ol style="list-style:none;padding:0;margin:6px 0;display:grid;gap:3px">${top}${items}</ol>
+    ${why ? `<p class="why">${esc(why)}</p>` : youRow && youRow.pos > 1 ? `<p class="fine">${ahead} ${ahead === 1 ? 'person stands' : 'people stand'} ahead of you that you can see. A birth to anyone above you moves you down; a death or a renunciation moves you up.</p>` : r.line === 1 ? '<p class="fine">You are the heir.</p>' : ''}`, { icon: '🌳', summary: r.reigning ? 'Reigning' : r.line != null ? `${r.line}${['th', 'st', 'nd', 'rd'][(r.line % 100 >= 11 && r.line % 100 <= 13) ? 0 : r.line % 10] ?? 'th'} in line` : 'Not in line' });
 }

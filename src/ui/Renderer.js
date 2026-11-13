@@ -3,6 +3,7 @@
  * (no diffing, no animation delays — state → HTML in one pass), manages the
  * active tab and shows toasts. Each tab's body lives in ui/views/.
  */
+import { courtView, successionView, householdView, estatesView, hasCourt } from './views/CrownCard.js';
 import { courtTitle } from '../modules/legal/Judiciary.js';
 import { ceremonialPosts } from '../modules/world/Ceremonial.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
@@ -75,6 +76,7 @@ import { flagImg } from './Flags.js';
 export const SECTIONS = [
   { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }] },
+  { id: 'court', label: 'Court', icon: '👑', when: (st) => hasCourt(st), tabs: [{ id: 'court', label: 'Court', icon: '👑' }, { id: 'succession', label: 'Succession', icon: '🌳' }, { id: 'household', label: 'Household', icon: '🎗️' }, { id: 'estates', label: 'Estates', icon: '🏰' }] },
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
@@ -199,6 +201,10 @@ export const VIEWS = {
   move: moveView,
   politics: (state, ui) => governmentCard(state) + politicsView(state, ui),
   chamber: (state) => chamberView(state),
+  court: (state) => courtView(state),
+  succession: (state) => successionView(state),
+  household: (state) => householdView(state),
+  estates: (state) => estatesView(state),
   party: (state) => partyTabView(state),
   campaign: (state) => campaignView(state),
   achievements: achievementsView,
@@ -362,7 +368,8 @@ export class Renderer {
   /** Section bar plus (when the section has several screens) a compact sub-tab row. */
   tabNav() {
     const section = sectionOf(this.tab);
-    const top = SECTIONS.map((s) => {
+    const st = this.engine?.state;
+    const top = SECTIONS.filter((s) => !s.when || (st && s.when(st)) || s.id === section.id).map((s) => {
       const on = s.id === section.id;
       const target = this.lastTab?.[s.id] ?? s.tabs[0].id;
       return `<button role="tab" id="section-${s.id}" data-section="${s.id}" class="tab ${on ? 'active' : ''}" data-action="ui.tab" data-arg="${target}" aria-selected="${on}" aria-controls="tabpanel" tabindex="${on ? 0 : -1}" title="${s.label}"><span aria-hidden="true">${s.icon}</span><span class="tab-label">${s.label}</span></button>`;

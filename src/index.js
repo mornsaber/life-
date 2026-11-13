@@ -91,9 +91,10 @@ async function importLife(file) {
 
 /** Arrow keys on the section bar move between sections (remembering each section's screen). */
 function setSectionByOffset(offset, absolute = null) {
-  const ids = SECTIONS.map((s) => s.id);
+  const shown = SECTIONS.filter((s) => !s.when || (renderer.engine?.state && s.when(renderer.engine.state)));
+  const ids = shown.map((s) => s.id);
   const current = ids.indexOf(sectionOf(renderer.tab).id);
-  const next = SECTIONS[absolute ?? (current + offset + ids.length) % ids.length];
+  const next = shown[absolute != null ? Math.min(absolute, shown.length - 1) : (current + offset + ids.length) % ids.length];
   renderer.setTab(renderer.lastTab?.[next.id] ?? next.tabs[0].id);
   document.getElementById(`section-${next.id}`)?.focus();
 }

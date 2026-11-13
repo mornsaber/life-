@@ -19,6 +19,8 @@ import { conferOptions, familyTitle } from '../src/modules/world/RoyalHousehold.
 import { nobleStart, ROYAL_HOMES } from '../src/core/State.js';
 import { fullName } from '../src/modules/people/People.js';
 import { VIEWS, Renderer } from '../src/ui/Renderer.js';
+/** Politics and the Court, every tab. */
+const allTabs = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign', 'court', 'succession', 'household', 'estates'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 3) {
@@ -144,7 +146,7 @@ const tests = {
   },
   'the Politics tab shows the Crown and a royal life'() {
     const { state } = life({ difficulty: 'royal', royalLevel: 'grandchild' });
-    const html = VIEWS.politics(state);
+    const html = allTabs(state);
     assert.match(html, /The Crown/);
     assert.match(html, /Royal Life/);
   },
@@ -277,7 +279,7 @@ const tests = {
     const opts = conferOptions(state);
     assert.ok(opts.some((o) => o.person.id === 'f1' && o.id === 'peerage'));
     assert.ok(opts.some((o) => o.person.id === 'x11'), 'nobody falls off the list');
-    const html = VIEWS.politics(state, {});
+    const html = allTabs(state, {});
     assert.match(html, /class="honour-row"/);
     assert.match(html, /Tom Archer[\s\S]*?Create a hereditary Baron/);
     assert.match(html, /Sovereign Powers/);
@@ -294,7 +296,7 @@ const tests = {
     assert.equal(ann.peerage.title, 'Baroness Hale');
     const lords = state.legislature?.bodies?.['upper_GB:GB'];
     if (lords) assert.ok(lords.members.some((m) => m.personId === 'f2' && m.keep), 'a named member of the Lords');
-    assert.match(VIEWS.politics(state, {}), /0 of 3 left/);
+    assert.match(allTabs(state, {}), /0 of 3 left/);
   },
   'sovereign powers: audiences build influence; a royal coup, decrees and unrest; a failed bid brings a referendum'() {
     const { engine, state } = life({ countryId: 'GB', royalLevel: 'heir' }, 7);
@@ -322,7 +324,7 @@ const tests = {
     ctx.rng.chance = chance;
     assert.ok(state.royal.executive, 'ruling');
     assert.ok(state.world.suspendedParliament?.GB, 'parliament suspended');
-    assert.doesNotMatch(VIEWS.politics(state, {}), /Open Parliament/);
+    assert.doesNotMatch(allTabs(state, {}), /Open Parliament/);
     const unrest = state.royal.unrest;
     engine.dispatch('sovereign.decree', 'crackdown');
     assert.ok(state.royal.unrest > unrest);

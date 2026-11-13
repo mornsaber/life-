@@ -10,6 +10,8 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+/** Politics and the Court, every tab. */
+const allTabs = (st, ui = {}) => ['politics', 'chamber', 'party', 'campaign', 'court', 'succession', 'household', 'estates'].map((t) => VIEWS[t](st, ui)).join('');
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(opts = {}, seed = 5) {
@@ -66,7 +68,7 @@ const tests = {
     const { engine, state } = life({ royalLevel: 'heir' }, 5);
     year(engine, state, 30);
     state.royal.reigning = true;
-    const html = VIEWS.politics(state, {});
+    const html = allTabs(state, {});
     assert.match(html, /The House of /);
     assert.match(html, /Estate/);
     state.prompts = [];
@@ -87,7 +89,7 @@ const tests = {
     const before = state.world.monarchists?.IT ?? 0;
     engine.dispatch('royalLife.gathering');
     assert.ok((state.world.monarchists?.IT ?? 0) >= before);
-    assert.match(VIEWS.politics(state, {}), /Gather the house/);
+    assert.match(allTabs(state, {}), /Gather the house/);
   },
 };
 
