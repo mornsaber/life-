@@ -30,6 +30,7 @@ import { COUNTRIES, priceLevel } from './Countries.js';
 import { arrive } from './Migration.js';
 import { addHonor } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';
+import { WORLD_EPISODES } from './WorldEpisodes.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
 const side = (state, salt) => new Random(((state.world?.seed ?? 3) * 1597334677 + yearNow(state) * 7919 + salt) >>> 0);
@@ -186,6 +187,9 @@ export function epidemicOptions(state, e) {
   return o;
 }
 
+/** Britain and America's episodes, then the rest of the world's (WorldEpisodes.js). */
+export const ALL_EPISODES = [...EPISODES, ...WORLD_EPISODES];
+
 function record(state, id, text, icon) { livedOf(state).push({ id, year: yearNow(state), text, icon }); }
 
 function applyEffect(ctx, id, ef) {
@@ -215,7 +219,7 @@ function tick(ctx) {
   if (!state.era && yearNow(state) >= 2026) return;
   const y = yearNow(state);
   if (state.prompts.some((p) => p.type?.startsWith('livingHistory.'))) return;
-  const ep = EPISODES.find((e) => !seen(state, e.id) && e.when(state, y));
+  const ep = ALL_EPISODES.find((e) => !seen(state, e.id) && e.when(state, y));
   if (ep) return prompt(ctx, 'episode', ep, typeof ep.text === 'function' ? ep.text(state) : ep.text);
   const d = state.character.age >= 12 ? DISASTERS.find((e) => !seen(state, e.id) && y >= e.years[0] && y <= e.years[1] && e.where(state)) : null;
   if (d) return prompt(ctx, 'disaster', d, d.text);
@@ -253,7 +257,7 @@ function onMoved(ctx, { from, to }) {
 }
 
 export const LivingHistoryResolvers = {
-  episode(ctx, data, optionId) { const ep = EPISODES.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect); },
+  episode(ctx, data, optionId) { const ep = ALL_EPISODES.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect); },
   disaster(ctx, data, optionId) { const ep = DISASTERS.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect); },
   epidemic(ctx, data, optionId) {
     const { state } = ctx;
