@@ -23,6 +23,33 @@ import { personOf, sideRng, newPerson, orgType } from '../org/Organizations.js';
 import { getProfession } from '../career/JobTrees.js';
 
 export const DESIGN_CHANGES = 4;
+
+/** What a unit staffed by an occupation is called. */
+const UNIT_BY_FIELD = [
+  [/culinary|chef|cook/i, 'Kitchen Brigade'], [/hospitality|front/i, 'Guest Services'], [/sales|retail/i, 'Sales Team'],
+  [/marketing|advertis|media/i, 'Marketing Team'], [/account|finance|bank/i, 'Finance Office'], [/law|legal/i, 'Legal Team'],
+  [/tech|software|it\b|computing/i, 'Engineering Team'], [/nurs|medic|health|clinic/i, 'Care Team'], [/teach|educat|tutor/i, 'Training School'],
+  [/trades|electric|plumb|hvac|construct/i, 'Field Crew'], [/truck|driv|courier|transit|logist/i, 'Dispatch & Fleet'], [/secur|guard|police/i, 'Security Detail'],
+  [/clean|janitor|custod/i, 'Facilities Team'], [/fitness|sport/i, 'Coaching Team'], [/hr|human/i, 'People Team'],
+];
+const ORDINAL = ['', 'Second ', 'Third ', 'Fourth ', 'Fifth ', 'Sixth '];
+/** A name for a new unit from the occupation that staffs it; a second of the same kind is numbered. */
+export function autoUnitName(org, occ) {
+  const p = getProfession(occ);
+  const hay = `${occ ?? ''} ${p?.name ?? ''}`;
+  const base = UNIT_BY_FIELD.find(([re]) => re.test(hay))?.[1] ?? `${(p?.name ?? 'Special').replace(/ & .*$/, '').replace(/s$/, '')} Team`;
+  const taken = new Set(Object.values(org.departments).map((d) => d.name));
+  for (const o of ORDINAL) if (!taken.has(`${o}${base}`)) return `${o}${base}`;
+  return `${base} ${Object.keys(org.departments).length}`;
+}
+/** Standard posts a unit can add, most senior first (titles already in use are left out). */
+export function postTitles(org, deptId) {
+  const d = org.departments[deptId];
+  if (!d) return [];
+  const n = d.name.replace(/^The /, '');
+  const held = new Set(Object.values(org.people).filter((x) => x.deptId === deptId).map((x) => x.title));
+  return [`Head of ${n}`, `Deputy Head of ${n}`, `${n} Lead`, `${n} Coordinator`, `Senior Adviser, ${n}`].filter((t) => !held.has(t));
+}
 const clean = (s, max = 40) => String(s ?? '').replace(/[|:<>]/g, '').trim().slice(0, max);
 
 /** Occupations a unit of this business can be staffed with. */
@@ -70,10 +97,10 @@ export const OrgDesignActions = {
     if (!d) return;
     const { biz, org } = d;
     const [rawName, occupation] = String(arg ?? '').split(':');
-    const name = clean(rawName);
-    if (!name) return ctx.toast('Give the unit a name', 'warn');
     if (customUnits(org).length >= unitLimit(biz)) return ctx.toast(unitLimit(biz) ? `With ${biz.staff.headcount} staff you can run ${unitLimit(biz)} unit${unitLimit(biz) === 1 ? '' : 's'} of your own` : 'You need 5+ staff to create units', 'warn');
     const occ = unitOccupations(ctx.state, biz).includes(occupation) ? occupation : unitOccupations(ctx.state, biz)[0];
+    // Named for what it does, unless you named it yourself.
+    const name = clean(rawName) || autoUnitName(org, occ);
     const id = `u${Object.keys(org.departments).length}_${Math.round(ctx.state.character.age)}`;
     org.departments[id] = { id, name, head: null, headcount: 0, seats: {}, custom: true, occupation: occ, headTitle: `Head of ${name}` };
     used(ctx);
@@ -153,8 +180,8 @@ export const OrgDesignActions = {
     const { biz, org } = d;
     const [deptId, rawTitle] = String(arg ?? '').split(':');
     const dept = org.departments[deptId];
-    const title = clean(rawTitle);
-    if (!dept || !title) return ctx.toast('Pick a unit and a title', 'warn');
+    if (!dept) return ctx.toast('Pick a unit', 'warn');
+    const title = clean(rawTitle) || postTitles(org, deptId)[0];
     const rng = sideRng(ctx.state);
     const occ = dept.occupation ?? orgType(org.typeId)?.departments.find((x) => x.id === deptId)?.occupations[0] ?? null;
     const p = newPerson(rng, org, { title, deptId, professionId: occ, selection: 'hired', age: rng.int(28, 55), years: 0, performance: rng.int(55, 80) });

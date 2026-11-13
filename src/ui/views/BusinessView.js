@@ -9,7 +9,7 @@ import { DESIGNS, DIVISIONS, structureOf, canRestructure, ipoEligibility, ipoPri
 import { marketPosition, exposure, enforcement } from '../../modules/business/Regulation.js';
 import { businessUnionPanel } from './UnionView.js';
 import { esc, money, button, card, chip, kv, meter, select, empty, disclosure, orgTree } from '../Components.js';
-import { businessChart, customUnits, unitLimit, unitOccupations, movableStaff, DESIGN_CHANGES } from '../../modules/business/OrgDesign.js';
+import { businessChart, customUnits, unitLimit, unitOccupations, movableStaff, DESIGN_CHANGES, autoUnitName, postTitles } from '../../modules/business/OrgDesign.js';
 import { OPERATIONS, opsOf, capacity, contracted, offerEligibility, resaleValue, EQUIPMENT_LOAN, growthTier } from '../../modules/business/Operations.js';
 import { BUSINESS_TYPES, BUSINESS_GROUPS, ENTITIES, entitiesFor, entityName, MARKETING, ROUNDS, SBA, SIZE_OPTIONS, sizesFor, startupCostFor, businessesFor } from '../../modules/business/BusinessTypes.js';
 import { ownershipRules } from '../../modules/business/OwnershipRules.js';
@@ -226,10 +226,10 @@ function designCard(state, biz) {
     ${orgTree(businessChart(state, biz))}
     <p class="fine">${off ? 'No organisation changes left this year.' : `${left} organisation change${left === 1 ? '' : 's'} left this year.`} ${unitLimit(biz) ? `Units of your own: ${mine.length} of ${unitLimit(biz)}.` : 'Units of your own open up at 5 staff.'} ${free} staff not yet assigned to a unit.</p>
     ${disclosure(`biz.design.units.${biz.id}`, '🧩 Units', `${mine.length ? `<ul class="history">${unitRows}</ul>` : '<p class="muted">The departments above grow on their own. Add units of your own — a marketing team, a night shift, a training school.</p>'}
-      <div class="toggle-row" data-collect-root>${field('name', 'New unit name')}${select('occ', occs)}${button('➕ Create unit', 'business.createUnit', { variant: 'tiny', collect: true, disabled: off || mine.length >= unitLimit(biz) })}</div>
-      ${units.length > 1 ? `<div class="toggle-row" data-collect-root>${select('unit', unitOpts)}${field('name', 'Rename to')}${button('✏️ Rename', 'business.renameUnit', { variant: 'tiny', collect: true, disabled: off })}</div>` : ''}`, { count: units.length })}
-    ${disclosure(`biz.design.titles.${biz.id}`, '🏷️ Titles & posts', `${posts.length ? `<div class="toggle-row" data-collect-root>${select('post', posts)}${field('title', 'New title')}${button('🏷️ Retitle', 'business.retitle', { variant: 'tiny', collect: true, disabled: off })}</div>` : ''}
-      <div class="toggle-row" data-collect-root>${select('unit', unitOpts)}${field('title', 'New post (e.g. Head of Marketing)')}${button('🪑 Create post & hire', 'business.createPost', { variant: 'tiny', collect: true, disabled: off })}</div>
+      <div class="toggle-row" data-collect-root><input type="hidden" data-part="name" value="">${select('occ', occs.map((o) => ({ ...o, label: `${o.label} → “${autoUnitName(org, o.value)}”` })))}${button('➕ Create unit', 'business.createUnit', { variant: 'tiny', collect: true, disabled: off || mine.length >= unitLimit(biz), hint: 'Named for what it does' })}</div>
+      ${units.length > 1 ? disclosure(`biz.design.rename.${biz.id}`, '✏️ Rename a unit (optional)', `<div class="toggle-row" data-collect-root>${select('unit', unitOpts)}${field('name', 'Rename to')}${button('✏️ Rename', 'business.renameUnit', { variant: 'tiny', collect: true, disabled: off })}</div>`) : ''}`, { count: units.length })}
+    ${disclosure(`biz.design.titles.${biz.id}`, '🏷️ Titles & posts', `<div class="toggle-row" data-collect-root>${select('post', units.flatMap((d) => postTitles(org, d.id).map((t) => ({ value: `${d.id}:${t}`, label: `${d.name} — ${t}` }))))}${button('🪑 Create post & hire', 'business.createPost', { variant: 'tiny', collect: true, disabled: off })}</div>
+      ${posts.length ? disclosure(`biz.design.retitle.${biz.id}`, '✏️ Retitle a rank (optional)', `<div class="toggle-row" data-collect-root>${select('post', posts)}${field('title', 'New title')}${button('🏷️ Retitle', 'business.retitle', { variant: 'tiny', collect: true, disabled: off })}</div>`) : ''}
       ${created.length ? `<ul class="history">${postRows}</ul>` : ''}
       <p class="fine">A new post is a new hire on the payroll; abolishing it lets them go.</p>`, { count: created.length || null })}`, { icon: '🗂️', accent: 'cyan' });
 }

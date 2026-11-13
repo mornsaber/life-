@@ -66,13 +66,13 @@ import { publishingCard, adjunctCard } from './HigherEdView.js';
 import { labCard } from './LabView.js';
 import { POSTS } from '../../modules/business/OwnerJob.js';
 import { unionPanel, unionCards } from './UnionView.js';
-import { jobLicensesCard } from './JobLicensesView.js';
+import { careerCredentialsSummary } from './JobLicensesView.js';
 import { servedPopulation } from '../../modules/org/Staffing.js';
 import { regionsHere } from '../../modules/life/Regions.js';
 import { splitAgencySite } from '../../modules/career/Employers.js';
 import { contractMarketCard, merchantReserveCard } from './ServiceViews.js';
 import { periodDollars, yearNow } from '../../modules/world/Eras.js';
-import { hasTech, insigniaCountry } from '../../modules/world/Eras.js';
+import { hasTech, insigniaCountry, credentialRequired } from '../../modules/world/Eras.js';
 /** The employer as people say it: "Secret Intelligence Service (MI6) · Vauxhall Cross" (older saves kept the dash). */
 const employerLabel = (job) => {
   const { name, site } = job.employer.site ? { name: job.employer.name, site: job.employer.site } : splitAgencySite({ id: job.professionId, name: getProfession(job.professionId)?.name }, job.employer.name);
@@ -354,7 +354,7 @@ function jobRow(state, p, extra = false) {
         ${check.ok && (check.commute || check.note) ? `<small class="req">${check.commute ? `🚗 Commute to ${esc(check.commute.to)} · ${check.commute.minutes} min each way` : `📍 ${esc(check.note)}`}</small>` : ''}
         ${check.ok ? `<small class="req">${oddsChip(odds)} Entry: ${esc(check.level.title)} [${gradePrefix(p)}${check.level.grade}]${state.military.history.length || state.military.service ? ((note) => (note ? ` · 🎖️ ${esc(note)}` : ''))(veteranPlacementNote(state, p, p.sector === 'federal' ? 'large' : 'small')) : ''}</small>` : ''}</div>
       ${button(check.ok ? 'Apply' : '🔒', 'career.apply', { arg: p.id, disabled: !check.ok, variant: 'small', title: check.reason ?? '' })}
-      ${check.ok ? '' : `<span class="why">${esc(check.reason)}</span>`}
+      ${check.ok ? '' : `<span class="why">${esc(check.reason)}${(() => { const c = lockingCredential(state, p); return c ? ` ${button('🪪 Get it', 'ui.go', { arg: `licenses|licFocus=${c}`, variant: 'tiny ghost' })}` : ''; })()}</span>`}
     </li>`;
 }
 
@@ -468,7 +468,7 @@ export function careerView(state, ui = {}) {
   const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
-  return `${current}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${job ? jobLicensesCard(state) + organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${adjunctCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${careerCredentialsSummary(state)}${job ? organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${gigCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** No civilian job, but in work all the same: the services, the bench, office, the royal round. */
@@ -666,4 +666,10 @@ function promotionChecklist(state, job, status, profession, size) {
   const idx = ladder.findIndex((l) => l.id === job.levelId);
   const road = ladder.slice(idx + 1).filter((l) => l.track === 'shared' || l.track === job.track || job.track === 'shared').slice(0, 4);
   return `<div class="promo-check"><ul class="plain">${items.join('')}</ul>${road.length ? `<p class="fine">🪜 After that: ${road.map((l) => `${esc(l.title)} [${gradePrefix(job)}${l.grade}]`).join(' → ')}</p>` : ''}</div>`;
+}
+
+/** The one licence keeping you out of a job, if that's all that is. */
+function lockingCredential(state, p) {
+  const need = [...new Set([...(p.entry?.credentials ?? []), ...(p.levels[0]?.req?.credentials ?? [])])].filter((c) => credentialRequired(state, c) && !holds(state, c));
+  return need.length === 1 ? need[0] : null;
 }

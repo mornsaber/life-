@@ -102,7 +102,7 @@ const tests = {
     // What the next rank needs is listed for you to pursue.
     assert.ok(promotionCredentials(state).includes('ccrn'), `promotion certificates: ${promotionCredentials(state)}`);
     const html = licensesView(state);
-    assert.match(html, /For Your Next Promotion/);
+    assert.match(html, /Your Career: [\s\S]*Required to move up[\s\S]*ccrn|Your Career: [\s\S]*Required to move up/);
     assert.ok(!/undefined|NaN/.test(html));
     for (let i = 0; i < 3; i++) year(engine);
     assert.ok(!hasCredential(state, 'ccrn') && !state.credentials.training.some((t) => t.id === 'ccrn'), 'the ICU certificate is never auto-enrolled');

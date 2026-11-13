@@ -128,6 +128,12 @@ function handleAction(el) {
       renderer.ui[key] = value;
       return renderer.render(engine.state);
     }
+    case 'ui.go': {
+      const [tab, kv = ''] = String(arg).split('|');
+      const [key, value] = kv.split('=');
+      if (key) renderer.ui[key] = value;
+      return renderer.setTab(tab);
+    }
     case 'ui.jobField':
       renderer.ui.jobField = arg;
       renderer.ui.jobLimit = undefined;

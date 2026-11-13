@@ -188,12 +188,15 @@ const tests = {
     assert.ok(state.unions.mine.founder);
   },
 
-  'the job tab lists the licenses that matter for the job'() {
+  'the job\'s licences: a summary on the Career tab, the detail on Licenses & Certs'() {
     const { state } = teacher(8);
     const html = VIEWS.career(state);
     clean(html);
-    assert.ok(html.includes('Licenses for Your Job'), 'a job licenses card');
-    assert.ok(/credentials\.pursue|cert done/.test(html), 'with status or a way to pursue each');
+    assert.match(html, /Licenses &amp; Certs|Licenses & Certs/, 'a summary card');
+    assert.match(html, /data-action="ui\.tab" data-arg="licenses"|ui\.tab/, 'a way there');
+    const lic = VIEWS.licenses(state, {});
+    assert.match(lic, /Your Career: /);
+    assert.ok(/credentials\.pursue|cert done/.test(lic), 'with status or a way to pursue each');
   },
 
   'card check recognizes a signed majority without an election'() {
