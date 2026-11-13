@@ -28,15 +28,22 @@ const tests = {
     assert.match(h, /Best bets for you/);
     assert.match(h, /≈\d+% offer/);
   },
-  'in a job: a promotion checklist and the road after'() {
-    const { state } = adult(32);
-    if (!state.career.job) return;
+  async 'in a job: a promotion checklist and the road after'() {
+    const { state, engine } = adult(32);
+    if (!state.career.job) {
+      const { hire } = await import('../src/modules/career/CareerEngine.js');
+      const { getProfession } = await import('../src/modules/career/JobTrees.js');
+      const { createEmployer } = await import('../src/modules/career/Employers.js');
+      const p = getProfession('retail');
+      hire(engine.context(), { professionId: 'retail', levelId: p.levels[0].id, employer: createEmployer(engine.rng, state, p, state.character.regionId) });
+    }
+    assert.ok(state.career.job, 'employed');
     const h = VIEWS.career(state, {});
     assert.match(h, /A strong review: 70%\+ performance/);
   },
 };
 let failed = 0;
 for (const [name, fn] of Object.entries(tests)) {
-  try { fn(); console.log(`✓ ${name}`); } catch (e) { failed++; console.log(`✗ ${name}\n  ${e.stack.split('\n').slice(0, 5).join('\n  ')}`); }
+  try { await fn(); console.log(`✓ ${name}`); } catch (e) { failed++; console.log(`✗ ${name}\n  ${e.stack.split('\n').slice(0, 5).join('\n  ')}`); }
 }
 if (failed) process.exit(1);
