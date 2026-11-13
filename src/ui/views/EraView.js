@@ -75,6 +75,7 @@ export function eraCard(state) {
   const coming = Object.entries(TECH).filter(([id]) => !hasTech(state, id)).sort((a, b) => a[1] - b[1]).slice(0, 4);
   return card(`The World in ${y}`, `${kv(rows)}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
+    ${(state.lived ?? []).length ? `<p class="fine">What you lived through:</p><ul class="history">${(state.lived ?? []).slice(-8).map((l) => `<li>${l.icon} <b>${l.year}</b> ${esc(l.text)}</li>`).join('')}</ul>` : ''}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
     ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}.</p>` : ''}
     <p class="fine">${moneyOfTheDay(state) ? '💰 Money is shown as it was then: prices of the day, in the local currency.' : (state.character.countryId ?? 'US') === 'US' ? '💰 Money is in today\'s dollars.' : '💰 Money is today\'s value, in the local currency of the day.'}</p>`, { icon: '🕰️' });

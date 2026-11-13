@@ -201,7 +201,8 @@ function yourYear(ctx, rng) {
   }
   // The epidemic of the year.
   for (const e of epidemicsNow(state)) {
-    if (ph.had[e.id] != null || !rng.chance(e.attack)) continue;
+    // Precautions taken when it arrived (world/LivingHistory.js) change the odds of catching it.
+    if (ph.had[e.id] != null || !rng.chance(e.attack * (ph.guard?.[e.id] ?? 1))) continue;
     ph.had[e.id] = age;
     if (rng.chance(e.cfr(age) * (state.stats.health < 40 ? 1.6 : 1))) return void ctx.die(e.name.replace(/^the /, '').replace(/^./, (c) => c.toUpperCase()));
     ctx.stat('health', -(age < 15 ? rng.int(2, 5) : rng.int(4, 10)));
