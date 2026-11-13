@@ -6,9 +6,9 @@
  */
 export const OUTCOMES = {
   "foodTruck":{"median":35432,"low":-26922,"high":39815,"loss":0.17,"n":6},
-  "restaurant":{"median":-88785,"low":-182860,"high":-7419,"loss":1,"n":6},
+  "restaurant":{"median":142823,"low":-63811,"high":332534,"loss":0.33,"n":6},
   "salon":{"median":42793,"low":-44384,"high":108002,"loss":0.33,"n":6},
-  "retail":{"median":-71160,"low":-85108,"high":-57345,"loss":1,"n":6},
+  "retail":{"median":41717,"low":1778,"high":106354,"loss":0,"n":6},
   "electrical":{"median":76204,"low":52127,"high":119682,"loss":0,"n":6},
   "plumbing":{"median":82225,"low":33164,"high":97396,"loss":0,"n":6},
   "trucking":{"median":137085,"low":68680,"high":141107,"loss":0,"n":6},
