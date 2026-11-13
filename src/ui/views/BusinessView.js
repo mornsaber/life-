@@ -42,14 +42,16 @@ import { credentialName } from '../../modules/credentials/CredentialRegistry.js'
 import { equipmentCard } from './EquipmentView.js';
 import { FRANCHISE_BRANDS, FDD_COST, startupCost, franchiseEligibility, franchisorEligibility } from '../../modules/business/Franchising.js';
 import { regionsHere } from '../../modules/life/Regions.js';
+import { OUTCOMES } from '../../modules/business/Outcomes.js';
+import { priceLevel } from '../../modules/world/Countries.js';
 import { GOALS, MILESTONES, SECTORS, sectorOf, starRating, stars, ratingLabel, goalLabel } from '../../modules/business/BusinessLife.js';
 
 const MEAN_RNG = { float: (a, b) => (a + b) / 2, int: (a, b) => Math.round((a + b) / 2), chance: () => false, pick: (xs) => xs[0], id: () => 'probe' };
 const entityOptions = (state, value = 'llc') => entitiesFor(state).map(([id, e]) => ({ value: id, label: `${e.icon} ${e.name}` })).sort((a, b) => (a.value === value ? -1 : b.value === value ? 1 : 0));
 
 /** Typical profit at full ramp for a new owner-operator (deterministic estimate). */
-function estimate(state, typeId) {
-  const probe = newBusiness(MEAN_RNG, state, typeId, { years: 3, quality: 55, reputation: 50 });
+function estimate(state, typeId, scale = 1) {
+  const probe = newBusiness(MEAN_RNG, state, typeId, { years: 3, quality: 55, reputation: 50, scale });
   probe.role = 'operator';
   const ly = yearFinancials(state, probe, MEAN_RNG);
   return ly.netIncome + ly.ownerSalary;
@@ -60,69 +62,98 @@ function yourCareers(state) {
   return new Set([state.career.job?.professionId, ...state.career.history.map((h) => h.professionId)].filter(Boolean));
 }
 
-function startCard(state) {
+/**
+ * Founding a business, one step at a time: choose what kind (your career's first), then see
+ * one plan for it — what it costs by size, what it likely earns and how soon it pays back,
+ * the licences, whether you can fund it — and found it from there.
+ */
+function startCard(state, ui = {}) {
   const mine = yourCareers(state);
   const fromCareer = new Set([...mine].flatMap((p) => businessesFor(p)));
   const rules = ownershipRules(state);
-  const row = (id) => {
-    const t = BUSINESS_TYPES[id];
-    const cash = startEligibility(state, id, 'cash');
-    const sba = startEligibility(state, id, 'sba');
-    const sizes = sizesFor(t);
-    const costs = sizes.map((z) => money(startupCostFor(t, z))).join(' – ');
-    const blocked = !cash.ok && !sba.ok;
-    const lic = requiredLicenses(id).filter((l) => l !== 'businessLicense').map((l) => BUSINESS_LICENSES[l].name);
-    const personal = neededLicenses(state, t);
-    const needs = `${personal.length ? `You need ${personal.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal license needed'}${lic.length ? ` · the business needs a ${lic.join(' + ')}` : ''} · ${money(openingLicenseFees(id))} in license fees`;
-    const o = OPERATIONS[id];
-    const est = t.startup ? 'Venture-scale: most fail, a few get huge' : `≈${money(estimate(state, id))}/yr to the owner once established${o?.unit ? ` · starts with ${o.start} ${o.start === 1 ? o.unit.name : o.unit.plural}${t.startUsed ? ' (used)' : ''}; buy more and sign contracts` : o ? ' · sign contracts and hire to grow' : ''}`;
-    return `<li class="program ${blocked ? 'locked' : ''}" data-collect-root>
-      <div><b>${t.icon} ${esc(t.name)}</b> ${fromCareer.has(id) ? chip('From your career', 'cyan') : ''}<small>${costs} to start · ${esc(needs)} · ${esc(est)}</small>
-        ${blocked ? `<small class="why">${esc(cash.reason)}</small>` : ''}</div>
-      <div class="enroll-form">
-        <input type="hidden" data-part="type" value="${id}">
-        ${select('funding', [
-          ...(cash.ok || t.startup ? [{ value: 'cash', label: '💵 Pay cash' }] : []),
-          ...(!t.startup && smallBizLoansExist(state) ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
-        ])}
-        ${select('entity', entityOptions(state, t.startup ? 'ccorp' : 'llc'))}
-        ${select('size', sizes.map((z) => ({ value: z, label: `${SIZE_OPTIONS[z].label} · ${money(startupCostFor(t, z))}` })), { value: 'standard' })}
-        <input type="text" data-part="name" maxlength="40" placeholder="Business name (optional)" aria-label="Business name">
-        ${button('Start', 'business.start', { variant: 'small primary', collect: true, disabled: blocked })}
-      </div>
-    </li>`;
-  };
-  // Your careers' businesses first (open), then every category behind a click.
+  const canStart = (id) => startEligibility(state, id, 'cash').ok || startEligibility(state, id, 'sba').ok;
   const mineIds = Object.keys(BUSINESS_TYPES).filter((id) => fromCareer.has(id) && businessInEra(state, id));
-  const groups = Object.entries(BUSINESS_GROUPS).map(([gid, g]) => {
-    const ids = g.ids.filter((id) => !fromCareer.has(id) && businessInEra(state, id));
-    if (!ids.length) return '';
-    const open = ids.filter((id) => startEligibility(state, id, 'cash').ok || startEligibility(state, id, 'sba').ok).length;
-    return disclosure(`biz.group.${gid}`, `${g.icon} ${g.label}`, `<ul class="programs">${ids.map(row).join('')}</ul>`, { count: `${open} of ${ids.length} open to you` });
-  }).join('');
-  const rows = `${mineIds.length ? disclosure('biz.group.mine', '⭐ From your career', `<ul class="programs">${mineIds.map(row).join('')}</ul>`, { open: mineIds.length <= 2, count: mineIds.length }) : ''}${groups}`;
-  return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}${fromCareer.size ? '<p class="fine">Businesses that grow out of your career are listed first — your experience makes you a better owner.</p>' : ''}<p class="muted">Licensed trades and professions need the license. ${smallBizLoansExist(state) ? `Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee).` : 'Pay cash, or bring in a partner with money.'} Your legal structure decides taxes and how much of your life is on the line if it fails.</p>
-    ${rows}
-    <h4 class="sub">Legal structures</h4><ul class="history">${entitiesFor(state).map(([, e]) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`, { icon: '🏪', accent: 'green' });
+  const pickId = BUSINESS_TYPES[ui.bizType] && businessInEra(state, ui.bizType) ? ui.bizType : null;
+  const picker = `<label class="country-pick">What kind of business<select data-ui-set="bizType" aria-label="Kind of business"><option value="">Choose…</option>
+    ${mineIds.length ? `<optgroup label="⭐ From your career">${mineIds.map((id) => `<option value="${id}"${id === pickId ? ' selected' : ''}>${BUSINESS_TYPES[id].icon} ${esc(BUSINESS_TYPES[id].name)}${canStart(id) ? '' : ' 🔒'}</option>`).join('')}</optgroup>` : ''}
+    ${Object.entries(BUSINESS_GROUPS).map(([, g]) => {
+      const ids = g.ids.filter((id) => !fromCareer.has(id) && businessInEra(state, id));
+      return ids.length ? `<optgroup label="${esc(`${g.icon} ${g.label}`)}">${ids.map((id) => `<option value="${id}"${id === pickId ? ' selected' : ''}>${BUSINESS_TYPES[id].icon} ${esc(BUSINESS_TYPES[id].name)}${canStart(id) ? '' : ' 🔒'}</option>`).join('')}</optgroup>` : '';
+    }).join('')}</select></label>`;
+  // Quick picks: your career's businesses, or the best value you can start now.
+  const open = Object.keys(BUSINESS_TYPES).filter((id) => businessInEra(state, id) && canStart(id) && !BUSINESS_TYPES[id].startup);
+  const quick = (mineIds.length ? mineIds : open.sort((a, b) => BUSINESS_TYPES[a].cost - BUSINESS_TYPES[b].cost).slice(0, 4)).slice(0, 5);
+  const chips = quick.length ? `<p class="fine">${mineIds.length ? '⭐ From your career (your experience makes you a better owner):' : 'Cheapest to start, open to you now:'}</p><div class="btn-row">${quick.map((id) => button(`${BUSINESS_TYPES[id].icon} ${BUSINESS_TYPES[id].name}`, 'ui.set', { arg: `bizType=${id}`, variant: id === pickId ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '';
+  const legal = disclosure('biz.entities', '⚖️ Legal structures, compared', `<ul class="history">${entitiesFor(state).map(([, e]) => `<li>${e.icon} <b>${esc(e.name)}</b> <small>${esc(e.desc)}${e.admin ? ` · ${money(e.admin)}/yr in filings` : ''}</small></li>`).join('')}</ul>`);
+  return card('Start a Business', `${!rules.canOperate ? `<p class="fine">⚖️ ${esc(rules.notes.at(-1) ?? 'You can own a business but someone else will have to run it.')}</p>` : ''}
+    <p class="muted">Pick what you'd like to run and see the plan before you put money in. ${smallBizLoansExist(state) ? `Pay cash or take an SBA 7(a) loan (10% down, ${Math.round(SBA.rate * 1000) / 10}% for ${SBA.years} years, ${SBA.minScore}+ credit, personal guarantee).` : 'Pay cash, or bring in a partner with money.'}</p>
+    ${picker}${chips}${pickId ? planPanel(state, pickId, fromCareer.has(pickId)) : ''}${legal}`, { icon: '🏪', accent: 'green', summary: pickId ? esc(BUSINESS_TYPES[pickId].name) : '' });
 }
 
-function franchiseCard(state) {
+/** The plan for one kind of business: sizes, costs, likely earnings, payback, licences — and the form. */
+function planPanel(state, id, career) {
+  const t = BUSINESS_TYPES[id];
+  const cash = startEligibility(state, id, 'cash');
+  const sba = startEligibility(state, id, 'sba');
+  const blocked = !cash.ok && !sba.ok;
+  const sizes = sizesFor(t);
+  const lic = requiredLicenses(id).filter((l) => l !== 'businessLicense').map((l) => BUSINESS_LICENSES[l].name);
+  const personal = neededLicenses(state, t);
+  const o = OPERATIONS[id];
+  // Measured from real play (Outcomes.js), scaled by size and local prices; a guess where unmeasured.
+  const oc = OUTCOMES[id];
+  const level = priceLevel(state);
+  const rows = t.startup ? '' : sizes.map((z) => {
+    const cost = startupCostFor(t, z);
+    const earn = oc ? Math.round(oc.median * SIZE_OPTIONS[z].scale * level) : estimate(state, id, SIZE_OPTIONS[z].scale);
+    const payback = earn > 0 ? cost / earn : Infinity;
+    return `<tr><td>${esc(SIZE_OPTIONS[z].label)}${SIZE_OPTIONS[z].minExperience ? ` <small class="muted">(${SIZE_OPTIONS[z].minExperience}+ yrs)</small>` : ''}</td><td>${money(cost)}</td><td>${money(earn)}/yr</td><td>${payback === Infinity ? '—' : payback < 1 ? 'under a year' : `${payback.toFixed(1)} yrs`}</td></tr>`;
+  }).join('');
+  const table = t.startup ? `<p>🚀 Venture-scale: ${money(startupCostFor(t))} to start. Most fail; a few get huge.</p>` : `<table class="mini-table" style="width:100%;font-size:.9em"><thead><tr><th style="text-align:left">Size</th><th>To start</th><th>To you, once established</th><th>Pays back</th></tr></thead><tbody>${rows}</tbody></table>`;
+  return `<div class="country-panel" style="border-top:1px solid var(--line,#333);margin-top:10px;padding-top:8px" data-collect-root>
+    <h3 style="margin:4px 0">${t.icon} ${esc(t.name)} ${career ? chip('From your career', 'cyan') : ''}</h3>
+    ${table}
+    ${oc && !t.startup ? `<p class="fine">📊 From owners who tried it: a standard one typically brings in ${money(Math.round(oc.median * level))} a year once established (${money(Math.round(oc.low * level))} to ${money(Math.round(oc.high * level))}); <b class="${oc.loss >= 0.5 ? 'neg' : ''}">${Math.round(oc.loss * 10)} in 10 lost money or closed</b>.</p>` : ''}
+    ${kv([
+      ['You need', personal.length ? `${personal.map(credentialName).join(' or ')}${t.minExperience ? ` + ${t.minExperience} yrs experience` : ''}` : 'No personal licence'],
+      ['The business needs', `${lic.length ? `${lic.join(' + ')} · ` : ''}${money(openingLicenseFees(id))} in licence fees`],
+      o?.unit ? ['Starts with', `${o.start} ${o.start === 1 ? o.unit.name : o.unit.plural}${t.startUsed ? ' (used)' : ''}; buy more and sign contracts to grow`] : o ? ['Grows by', 'Signing contracts and hiring'] : null,
+      ['Funding', `${cash.ok ? '💵 You can pay cash' : `💵 ${esc(cash.reason)}`}${smallBizLoansExist(state) && !t.startup ? ` · ${sba.ok ? `🏦 SBA loan open (${money(t.cost * SBA.downPayment)} down)` : `🏦 ${esc(sba.reason)}`}` : ''}`],
+    ].filter(Boolean))}
+    ${blocked ? `<p class="why">${esc(cash.reason)}</p>` : ''}
+    <div class="enroll-form">
+      <input type="hidden" data-part="type" value="${id}">
+      ${select('funding', [
+        ...(cash.ok || t.startup ? [{ value: 'cash', label: '💵 Pay cash' }] : []),
+        ...(!t.startup && smallBizLoansExist(state) ? [{ value: 'sba', label: `🏦 SBA loan (${money(t.cost * SBA.downPayment)} down)` }] : []),
+      ])}
+      ${select('entity', entityOptions(state, t.startup ? 'ccorp' : 'llc'))}
+      ${select('size', sizes.map((z) => ({ value: z, label: `${SIZE_OPTIONS[z].label} · ${money(startupCostFor(t, z))}` })), { value: 'standard' })}
+      <input type="text" data-part="name" maxlength="40" placeholder="Business name (optional)" aria-label="Business name">
+      ${button('🏪 Found it', 'business.start', { variant: 'small primary', collect: true, disabled: blocked })}
+    </div></div>`;
+}
+
+/** Franchises: pick a brand, see its terms, buy in. */
+function franchisePicker(state, ui) {
   if (state.character.age < 21 || !franchisesExist(state)) return '';
-  const rows = Object.entries(FRANCHISE_BRANDS).map(([id, b]) => {
+  const id = FRANCHISE_BRANDS[ui.franchise] ? ui.franchise : null;
+  const picker = `<label class="country-pick">Brand<select data-ui-set="franchise" aria-label="Franchise brand"><option value="">Choose a brand…</option>${Object.entries(FRANCHISE_BRANDS).map(([fid, b]) => `<option value="${fid}"${fid === id ? ' selected' : ''}>${b.icon} ${esc(b.name)}${franchiseEligibility(state, fid).ok ? '' : ' 🔒'}</option>`).join('')}</select></label>`;
+  let panel = '';
+  if (id) {
+    const b = FRANCHISE_BRANDS[id];
     const t = BUSINESS_TYPES[b.typeId];
     const elig = franchiseEligibility(state, id);
     const price = startupCost(b);
     const cash = fundingCheck(state, price, 'cash', t);
     const sba = fundingCheck(state, price, 'sba', { ...t, credentials: ['franchise'] });
-    const blocked = !elig.ok || (!cash.ok && !sba.ok);
-    return `<li class="program ${blocked ? 'locked' : ''}">
-      <div><b>${b.icon} ${esc(b.name)}</b><small>${esc(t.name)} · ${money(price)} all-in (${money(b.fee)} fee) · royalties ${Math.round((b.royalty + b.adFund) * 1000) / 10}% of revenue · ${b.term}-yr term · ${money(b.minNetWorth)} net worth</small>
-        ${!elig.ok ? `<small class="why">${esc(elig.reason)}</small>` : !cash.ok && !sba.ok ? `<small class="why">${esc(sba.reason)}</small>` : ''}</div>
-      <div class="toggle-row">${button('💵 Cash', 'business.franchise', { arg: `${id}:cash:llc`, variant: 'tiny', disabled: !elig.ok || !cash.ok })}${button('🏦 SBA', 'business.franchise', { arg: `${id}:sba:llc`, variant: 'tiny', disabled: !elig.ok || !sba.ok, hint: sba.ok ? `${money(sba.down)} down` : '' })}</div>
-    </li>`;
-  }).join('');
-  return card('Buy a Franchise', `<p class="muted">A proven brand brings customers and a playbook — no industry experience needed — in exchange for a franchise fee, a pricier build-out, and royalties off the top of every sale. The franchisor inspects you, and the agreement runs a fixed term.</p><ul class="programs">${rows}</ul>`, { icon: '🍔' });
+    panel = `${kv([['Business', esc(t.name)], ['All-in', `${money(price)} (${money(b.fee)} franchise fee)`], ['Royalties', `${Math.round((b.royalty + b.adFund) * 1000) / 10}% of revenue`], ['Term', `${b.term} years`], ['Net worth needed', money(b.minNetWorth)]])}
+      ${!elig.ok ? `<p class="why">${esc(elig.reason)}</p>` : !cash.ok && !sba.ok ? `<p class="why">${esc(sba.reason)}</p>` : ''}
+      <div class="toggle-row">${button('💵 Buy in with cash', 'business.franchise', { arg: `${id}:cash:llc`, variant: 'small', disabled: !elig.ok || !cash.ok })}${button('🏦 With an SBA loan', 'business.franchise', { arg: `${id}:sba:llc`, variant: 'small', disabled: !elig.ok || !sba.ok, hint: sba.ok ? `${money(sba.down)} down` : '' })}</div>`;
+  }
+  return card('Buy a Franchise', `<p class="muted">A proven brand brings customers and a playbook — no industry experience needed — for a fee, a pricier build-out, and royalties off every sale.</p>${picker}${panel}`, { icon: '🍔' });
 }
+
 
 function franchiseStatus(state, biz) {
   if (biz.franchise) {
@@ -751,7 +782,7 @@ export function businessView(state, ui = {}) {
     return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${inventionsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
   }
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' }) + inventionsCard(state);
-  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state)}${inventionsCard(state)}${franchiseCard(state)}${listingsCard(state)}${historyCard(state)}`;
+  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state, ui)}${inventionsCard(state)}${franchisePicker(state, ui)}${listingsCard(state)}${historyCard(state)}`;
 }
 
 /** Regulators: your share of each market, antitrust exposure, open cases and recent findings. */
