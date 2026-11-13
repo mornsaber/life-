@@ -12,7 +12,7 @@ import { RITES, COMING_OF_AGE } from '../../modules/community/FaithBodies.js';
 import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/community/ReligiousOrders.js';
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
-import { CAUSES, TACTICS } from '../../modules/civic/Activism.js';
+import { CAUSES, causesNow, TACTICS } from '../../modules/civic/Activism.js';
 import { movementOf, STRATEGIES } from '../../modules/civic/Movements.js';
 import { sectOf, STYLES as SECT_STYLES } from '../../modules/community/Sects.js';
 import { MEASURES } from '../../modules/civic/Local.js';
@@ -255,7 +255,7 @@ function activismCard(state) {
   const a = state.civic?.activism;
   if (state.character.age < 14) return '';
   const war = atWar(state);
-  const causes = Object.entries(CAUSES).filter(([, c]) => (!c.warOnly || war) && !(c.from > yearNow(state))).map(([id, c]) => button(`${c.icon} ${c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
+  const causes = causesNow(state, yearNow(state), war).map(([id, c]) => button(`${c.icon} ${c.name}`, 'civic.joinCause', { arg: id, variant: a?.cause === id ? 'tiny on' : 'tiny' })).join('');
   const tactics = a?.cause ? Object.entries(TACTICS).map(([id, t]) => button(t.label, 'civic.protest', { arg: id, variant: 'small', hint: t.desc, disabled: (t.minInfluence && a.influence < t.minInfluence) || (state.yearly['civic.protest'] ?? 0) >= 2 })).join('') : '';
   return card('Causes & Protest', `
     ${a ? kv([['Cause', a.cause ? `${CAUSES[a.cause].icon} ${esc(CAUSES[a.cause].name)}` : '—'], ['Influence', `${a.influence}/100`], ['Protests', String(a.protests)], ['Arrests', a.arrests ? `<span class="neg">${a.arrests}</span>` : '0']]) : '<p class="muted">Pick a cause. Influence moves ballot measures, earns the activists\' endorsement and helps you on election day — and civil disobedience can get you arrested.</p>'}

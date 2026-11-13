@@ -16,7 +16,8 @@ import { clamp } from '../../core/Random.js';
 import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
 import { MORTGAGES } from '../world/CountryLaw.js';
 import { knob } from '../../core/Difficulty.js';
-import { loanInEra } from '../world/Eras.js';
+import { loanInEra, yearNow } from '../world/Eras.js';
+import { skinToneOf } from '../people/SkinTone.js';
 
 export const LOAN_TYPES = {
   // Before the 1930s: half down, a few years to pay, and a lump sum at the end (modelled as ten years).
@@ -157,6 +158,7 @@ export function existingDebtService(state) {
  * Quote a loan. `inflateIncome` models a fraudulent application.
  * Returns { ok, reason, rate, down, principal, payment, mip, fee, dti }.
  */
+export const redlined = (state) => (state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1934 && yearNow(state) < 1968 && skinToneOf(state) >= 4;
 export function quote(state, price, typeId, { downPct = null, inflateIncome = false, noi = 0 } = {}) {
   const t = LOAN_TYPES[typeId];
   const score = state.housing.credit.score;
@@ -184,6 +186,9 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   const reserves = Math.round((payment + mip) / 4);
   const base = { rate, down, principal, payment, mip, fee, dti, closing, reserves, cashNeeded: down + closing };
   if (t.va && !vaEligible(state)) return { ok: false, reason: 'VA loans need 2+ years of honorable service', ...base };
+  // Redlining: from the HOLC maps of the 1930s until the Fair Housing Act of 1968, Black families
+  // were refused mortgages in most of America, whatever their income.
+  if (redlined(state) && !t.commercial) return { ok: false, reason: 'Redlined: the bank won\'t lend to a Black family (until the Fair Housing Act, 1968)', ...base };
   if (score < t.minScore) return { ok: false, reason: `Needs a ${t.minScore}+ credit score`, ...base };
   if (t.formalJob && (state.career.job ? state.career.job.informal : !isEmployed(state))) return { ok: false, reason: 'Needs a formal job paying into the housing fund', ...base };
   if (state.finances.cash < down + closing + reserves) return { ok: false, reason: `Needs $${(down + closing + reserves).toLocaleString()} cash (down payment, closing, reserves)`, ...base };

@@ -19,7 +19,20 @@ export const CAUSES = {
   neighborhood: { name: 'Protect our neighborhood (NIMBY)', icon: '🏡', allies: ['party'], from: 1980 },
   veterans: { name: 'Veterans\' care', icon: '🎖️', allies: ['veterans'], from: 1918 },
   antiwar: { name: 'End the war', icon: '☮️', allies: ['editorial'], warOnly: true },
+  // The great causes of their day (from–until; where).
+  abolition: { name: 'Abolish slavery', icon: '⛓️', allies: ['editorial'], from: 1800, until: 1866, where: ['US', 'GB', 'FR', 'BR'] },
+  temperance: { name: 'Temperance', icon: '🚱', allies: ['party'], from: 1826, until: 1934 },
+  chartism: { name: 'The People\'s Charter', icon: '📜', allies: ['labor'], from: 1838, until: 1858, where: ['GB'] },
+  suffrage: { name: 'Votes for women', icon: '🗳️', allies: ['editorial'], from: 1848, until: 1929 },
+  eightHours: { name: 'The eight-hour day', icon: '⏰', allies: ['labor'], from: 1866, until: 1938 },
+  homeRule: { name: 'Irish Home Rule', icon: '☘️', allies: ['party'], from: 1870, until: 1922, where: ['IE', 'GB'] },
+  civilRights: { name: 'Civil rights', icon: '✊🏿', allies: ['editorial'], from: 1954, until: 1969, where: ['US'] },
+  disarmament: { name: 'Ban the Bomb', icon: '☮️', allies: ['editorial'], from: 1957, until: 1992 },
+  antiApartheid: { name: 'Anti-apartheid', icon: '✊', allies: ['editorial'], from: 1959, until: 1995 },
+  gayRights: { name: 'Gay liberation', icon: '🏳️‍🌈', allies: ['editorial'], from: 1969 },
 };
+/** The causes of the year and the country. */
+export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([, c]) => (!c.warOnly || war) && !(c.from > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')));
 
 /**
  * Protest tactics. arrest: chance of arrest; influence: what it builds;

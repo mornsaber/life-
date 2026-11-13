@@ -13,7 +13,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { PHASES } from '../economy/EconomyEngine.js';
 import { isAbroad } from '../world/Countries.js';
 import { regionsHere } from '../life/Regions.js';
-import { propertyInEra } from '../world/Eras.js';
+import { yearNow, propertyInEra } from '../world/Eras.js';
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -114,8 +114,11 @@ export function generateListings(ctx) {
     ...Array.from({ length: 5 }, () => listing(rng, state, pick(HOME_WEIGHTS), regionId)),
     ...Array.from({ length: 3 }, () => listing(side, state, sidePick(INVEST_WEIGHTS), regionId)),
   ];
+  // The Right to Buy (Britain, from 1980): a council tenant may buy their home at a discount.
+  if (rightToBuy(state)) listings.push({ ...listing(side, state, 'starter', regionId), id: `rtb_${state.character.age}`, price: Math.round(priceOf(state, 'starter', regionId) * 0.6 / 1000) * 1000, rightToBuy: true, condition: 70 });
   state.housing.listings = listings.sort((a, b) => a.price - b.price);
 }
+export const rightToBuy = (state) => ['GB'].includes(state.character.countryId ?? 'US') && yearNow(state) >= 1980 && state.housing?.rental?.tier === 'subsidized';
 
 /** Yearly market move: follows the economic cycle plus regional noise. */
 export function marketTick(ctx) {

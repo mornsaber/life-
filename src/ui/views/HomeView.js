@@ -57,7 +57,7 @@ function listings(state) {
     const best = quotes.find(([, q]) => q.ok);
     return `<li class="listing">
       <span class="listing-icon">${t.icon}</span>
-      <div class="job-info"><b>${esc(periodHomeName(state, l.type, t.name))}</b><small>${money(l.price)}${isLand(l.type) ? ` · zoned for ${esc(ZONING[l.type].map((id) => PROPERTY_TYPES[id].name.split(' (')[0].toLowerCase()).join(', '))}` : ` · condition ${l.condition}/100`}${t.units > 1 ? ` · ${t.units} ${t.kind === 'commercial' ? 'leasable spaces' : 'units'} (~${money(marketRent(state, l.type, l.regionId))}/mo each${noi ? `, NOI ≈${money(noi)}/yr` : ''})` : ''}${t.vacation ? ' · short-term rental or getaway' : ''}${t.hoa ? ` · HOA ${money(t.hoa)}/yr` : ''}</small>
+      <div class="job-info"><b>${l.rightToBuy ? "🏠 Your council house (Right to Buy, 40% off) — " : ""}${esc(periodHomeName(state, l.type, t.name))}</b><small>${money(l.price)}${isLand(l.type) ? ` · zoned for ${esc(ZONING[l.type].map((id) => PROPERTY_TYPES[id].name.split(' (')[0].toLowerCase()).join(', '))}` : ` · condition ${l.condition}/100`}${t.units > 1 ? ` · ${t.units} ${t.kind === 'commercial' ? 'leasable spaces' : 'units'} (~${money(marketRent(state, l.type, l.regionId))}/mo each${noi ? `, NOI ≈${money(noi)}/yr` : ''})` : ''}${t.vacation ? ' · short-term rental or getaway' : ''}${t.hoa ? ` · HOA ${money(t.hoa)}/yr` : ''}</small>
         <small class="${best ? 'req' : 'why'}">${best ? `✓ Pre-approved: ${LOAN_TYPES[best[0]].name} ${(best[1].rate * 100).toFixed(2)}%, ${money(best[1].cashNeeded)} down+closing, ${money(Math.round((best[1].payment + best[1].mip) / 12))}/mo` : `✗ ${esc(quotes.at(-1)[1].reason)}`}</small></div>
       ${button('Make offer', 'housing.buy', { arg: l.id, variant: 'small' })}
     </li>`;
