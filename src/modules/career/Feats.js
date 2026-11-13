@@ -87,7 +87,7 @@ export const EXPEDITIONS = {
 };
 export function expeditionOptions(state) {
   const y = yearNow(state);
-  const done = feats(state).expeditions.filter((e) => e.success).map((e) => e.id);
+  const done = featsOf(state).expeditions.filter((e) => e.success).map((e) => e.id);
   return Object.entries(EXPEDITIONS).filter(([id, e]) => y >= e.from && y < e.until && !done.includes(id)).map(([id, e]) => {
     const late = y > e.first && e.later;
     return { id, ...e, ...(late ? e.later : {}), firstYet: y <= e.first };

@@ -52,6 +52,8 @@ export const TEMPERAMENTS = {
 const IDS = Object.keys(TEMPERAMENTS);
 
 const side = (state, salt) => new Random(((state.world?.seed ?? 7) * 2654435761 + (state.character.birthYear ?? 0) * 97 + state.character.age * 131 + salt) >>> 0);
+/** Read without creating (views must not change the save). */
+const readR = (state) => state.remembered ?? { temperament: null, memoir: null, namedAfter: [], funeral: null, judged: [] };
 export const rememberedOf = (state) => (state.remembered ??= { temperament: null, memoir: null, namedAfter: [], funeral: null, judged: [] });
 const officeDef = (id) => OFFICES[id] ?? NATIONAL_OFFICES[id] ?? null;
 const town = (state) => (REGIONS[state.character.regionId]?.name ?? 'your town').split(',')[0];
@@ -97,7 +99,7 @@ export function epithetOf(state) {
   if (state.character.age >= 95) return 'the Long-Lived';
   if (kids >= 6) return female ? 'the Matriarch' : 'the Patriarch';
   if (worth < 0) return 'the Unlucky';
-  const t = rememberedOf(state).temperament?.[0];
+  const t = readR(state).temperament?.[0];
   return TEMPERAMENTS[t]?.epithet ?? 'the Quiet';
 }
 
@@ -148,7 +150,7 @@ function namingTick(ctx) {
 
 /** Memoirs: who can write them, and what they'd earn. */
 export function memoirEligibility(state) {
-  const r = rememberedOf(state);
+  const r = readR(state);
   if (r.memoir) return { ok: false, reason: `You published "${r.memoir.title}" in ${r.memoir.year}` };
   if (state.character.age < 45) return { ok: false, reason: 'Memoirs come later in life (45+)' };
   if (standing(state) < 30) return { ok: false, reason: 'No publisher thinks anyone would read them yet' };

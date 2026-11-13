@@ -53,6 +53,24 @@ const tests = {
       walk(engine, JSON.stringify(opts));
     }
   },
+  'looking at a screen never changes the save'() {
+    for (const [opts, age] of [[{}, 40], [{ countryId: 'GB', startYear: 1880 }, 40]]) {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(7), modules: MODULES });
+      const s = engine.newLife(opts);
+      for (let i = 0; i < age && s.character.alive; i++) { s.prompts = []; engine.ageUp(); }
+      s.prompts = [];
+      const before = JSON.stringify(engine.state);
+      const r = new Renderer({ root: null, toastRoot: null, engine });
+      for (const tab of Object.keys(VIEWS)) { r.tab = tab; r.html(engine.state); }
+      for (const gid of Object.keys(GROUPS)) { r.ui.menu = gid; r.html(engine.state); }
+      const after = JSON.stringify(engine.state);
+      if (before !== after) {
+        const a = JSON.parse(before); const b = JSON.parse(after);
+        const changed = Object.keys({ ...a, ...b }).filter((k) => JSON.stringify(a[k]) !== JSON.stringify(b[k]));
+        assert.fail(`rendering changed: ${changed.join(', ')}`);
+      }
+    }
+  },
   'every screen is reachable from a menu'() {
     const reachable = new Set(Object.values(GROUPS).flatMap((g) => g.items.map((i) => i.tab)));
     const extra = ['life', 'conditions', 'cover', 'wellbeing', 'chamber', 'party', 'campaign', 'succession', 'household', 'estates', 'cases', 'underworld'];
