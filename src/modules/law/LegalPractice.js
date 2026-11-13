@@ -230,7 +230,7 @@ export function resolveMatter(ctx, data, optionId) {
 export function lsatEligibility(state) {
   if (!gradEntry(state)) return { ok: false, reason: 'Law is an undergraduate degree here' };
   if (state.character.age < 19) return { ok: false, reason: 'Age 19+' };
-  if (!state.education.degrees.some((d) => DEGREE_LEVELS.includes(d.type)) && state.education.enrolled?.programId !== 'bachelor') return { ok: false, reason: 'In or after college' };
+  if (!state.education.degrees.some((d) => DEGREE_LEVELS.includes(d.type) || DEGREE_LEVELS.includes(d.programId)) && state.education.enrolled?.programId !== 'bachelor') return { ok: false, reason: 'You need a bachelor\'s degree, or to be in your final years of one' };
   if (state.education.degrees.some((d) => LAW_SCHOOL.includes(d.programId)) || LAW_SCHOOL.includes(state.education.enrolled?.programId)) return { ok: false, reason: 'Already in law' };
   if (yearlyCount(state, 'lawLife.lsat')) return { ok: false, reason: 'One sitting a year' };
   if ((law(state).lsatTries ?? 0) >= 5) return { ok: false, reason: 'Five attempts is the limit' };

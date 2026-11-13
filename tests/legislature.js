@@ -10,7 +10,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { bodiesHere, mySeat, myBody, ensureBodies } from '../src/modules/politics/Legislature.js';
+import { bodiesHere, mySeat, myBody, ensureBodies, postMinTerms } from '../src/modules/politics/Legislature.js';
 import { lawValue, levelValue, LAWS, enact } from '../src/modules/politics/Laws.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 /** The Politics section: Office, Chamber, Party and Campaign together. */
@@ -270,6 +270,19 @@ const tests = {
     engine.context().emit('politics:leave', { reason: 'Lost the general election' });
     assert.equal(state.politics.office?.id, 'gb_mp', 'back to being an MP');
     assert.equal(mySeat(state)?.bodyId, commons.id);
+  },
+  'leadership is reachable within a term limit (state senators serve two)'() {
+    const { engine, state } = life(4);
+    seat(engine, 'stateSenator', 1);
+    assert.equal(postMinTerms(state, 'presiding'), 2);
+    assert.equal(postMinTerms(state, 'chair'), 1);
+    seat(engine, 'stateRep', 1);
+    assert.equal(postMinTerms(state, 'presiding'), 4, 'a four-term limit keeps the usual bar');
+    for (const id of ['stateSenator', 'stateRep', 'cityCouncil']) {
+      seat(engine, id, 1);
+      const limit = { stateSenator: 2, stateRep: 4, cityCouncil: 3 }[id];
+      for (const post of ['chair', 'whip', 'majority', 'presiding']) assert.ok(postMinTerms(state, post) <= limit, `${id} ${post}`);
+    }
   },
 };
 

@@ -43,6 +43,16 @@ function lawyer(professionId = 'law', { countryId, seed = 5, levelId } = {}) {
 const blocked = (state, programId) => ADMISSION_HOOKS.map((h) => h.eligibility?.(state, programId)).find(Boolean) ?? null;
 
 const tests = {
+  'a graduate out of school with any major can take the LSAT from the School tab'() {
+    const { engine, state } = life({ age: 28 });
+    state.education.degrees[1].major = 'biology';
+    state.education.enrolled = null;
+    const h = VIEWS.school(state, { admProgram: 'jd' });
+    assert.match(h, /lawLife\.lsat/, 'the LSAT is offered');
+    assert.ok(!/lawLife\.lsat"[^>]*disabled/.test(h), 'and not locked');
+    engine.dispatch('lawLife.lsat', 'cold');
+    assert.ok(state.law?.lsat, 'took it');
+  },
   'law school wants an LSAT in the US, not where law is a first degree'() {
     const us = life();
     assert.match(blocked(us.state, 'jd'), /LSAT/);

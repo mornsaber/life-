@@ -27,7 +27,8 @@ export function lawTrainingCard(state) {
       </div>
       <p class="fine">1L grades set your class rank; the top tenth makes law review. Firms hire next year's associates from their 2L summer programs.</p>`, { icon: '⚖️', accent: 'cyan' });
   }
-  const interested = l.lsat || ['politicalScience', 'history', 'philosophy', 'english', 'criminalJustice', 'economics'].includes(e?.major) || state.education.degrees.some((d) => ['politicalScience', 'history', 'philosophy', 'english', 'criminalJustice'].includes(d.major));
+  // Any college student or graduate can sit the LSAT — law schools take every major.
+  const interested = l.lsat || e?.programId === 'bachelor' || state.education.degrees.some((d) => ['bachelor', 'master', 'doctorate', 'professional'].includes(d.type));
   if (!interested || state.character.age < 18 || state.education.degrees.some((d) => LAW_SCHOOL.includes(d.programId))) return '';
   const check = lsatEligibility(state);
   if (!check.ok && check.reason?.startsWith('Law is an undergraduate')) return '';

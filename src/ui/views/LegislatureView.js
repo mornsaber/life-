@@ -7,7 +7,7 @@ import { partyBar, partyTag } from './PartyVisuals.js';
 import { lawChangeCard } from './LawChangeCard.js';
 import { esc, button, card, chip, meter, kv, disclosure } from '../Components.js';
 import { staffTitle, staffBudget, BACKGROUNDS, positions, chiefOf } from '../../modules/politics/Staffers.js';
-import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, POST_STAFF, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority } from '../../modules/politics/Legislature.js';
+import { bodiesHere, mySeat, myBody, inMajority, billTitle, BODY_DEFS, lawHere, chambersFor, COMMITTEES, CAUCUSES, POSTS, POST_STAFF, STAFF_ROLES, legActionsPerYear, leanLabel, districtLabel, leaderTitle, seniority, postMinTerms } from '../../modules/politics/Legislature.js';
 import { partyName, myPartyName } from '../../modules/politics/Parties.js';
 import { LAWS, levelValue, lawValue, describeValue, proposedValue } from '../../modules/politics/Laws.js';
 import { isOfficer, myUnion } from '../../modules/career/LaborUnions.js';
@@ -78,7 +78,7 @@ function seatCard(state) {
   const used = state.yearly['legislature.act'] ?? 0;
   const left = legActionsPerYear(seat) - used;
   const terms = seniority(state);
-  const posts = Object.entries(POSTS).map(([id, P]) => button(seat.post === id ? `✓ ${P.title}` : `Run for ${P.title.toLowerCase()}`, 'legislature.runPost', { arg: id, variant: seat.post === id ? 'tiny on' : 'tiny', disabled: seat.post === id || terms < P.minTerms || (P.majority && !inMajority(state)) || Boolean(state.yearly['legislature.runPost']), hint: terms < P.minTerms ? `${P.minTerms} terms` : P.majority && !inMajority(state) ? 'Majority caucus only' : `+${Math.round(P.pay * 100)}% pay` })).join('');
+  const posts = Object.entries(POSTS).map(([id, P]) => button(seat.post === id ? `✓ ${P.title}` : `Run for ${P.title.toLowerCase()}`, 'legislature.runPost', { arg: id, variant: seat.post === id ? 'tiny on' : 'tiny', disabled: seat.post === id || terms < postMinTerms(state, id) || (P.majority && !inMajority(state)) || Boolean(state.yearly['legislature.runPost']), hint: terms < postMinTerms(state, id) ? `${postMinTerms(state, id)} term${postMinTerms(state, id) === 1 ? '' : 's'}` : P.majority && !inMajority(state) ? 'Majority caucus only' : `+${Math.round(P.pay * 100)}% pay` })).join('');
   const staff = seat.staff.map((p) => `<li class="report-row"><div><b>${esc(p.name)}</b> <small class="muted">${esc(staffTitle(p.role, state))} · skill ${p.skill}${p.bg ? ` · ${esc(BACKGROUNDS[p.bg]?.label ?? '')}` : ''}${p.salary ? ` · $${p.salary.toLocaleString()}/yr` : ''}</small></div>${button('Let go', 'legislature.fireStaff', { arg: p.id, variant: 'tiny danger' })}</li>`).join('');
   const allowance = staffBudget(seat);
   const pending = body.bills.filter((b) => b.stage === 'introduced');

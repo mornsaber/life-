@@ -15,6 +15,7 @@ import { universitiesFor, universityOf, universitiesIn, placeOf } from '../../mo
 import { phdCard } from './AcademiaView.js';
 import { medTrainingCard } from './MedicalView.js';
 import { lawTrainingCard } from './LawView.js';
+import { lsatEligibility, LSAT } from '../../modules/law/LegalPractice.js';
 import { higherEdCard, publishingCard } from './HigherEdView.js';
 import { edEligibility } from '../../modules/academia/HigherEd.js';
 
@@ -148,7 +149,12 @@ function admissionsPlan(state, id, ui) {
   const credit = transferCredit(state, id).years;
   const facts = `<p class="fine">${p.years} yr full-time${credit ? ` (−${credit} yr transfer credit)` : ''}${p.stipend ? ` · funded + ${money(p.stipend)} stipend` : ''}${p.minGpa ? ` · GPA ${p.minGpa}+` : ''}${p.minSmarts ? ` · smarts ${p.minSmarts}+` : ''}</p>`;
   const majorPick = majors[0] !== null ? `<label class="country-pick">Major<select data-ui-set="admMajor" aria-label="Major">${majors.map((m) => `<option value="${m}"${m === major ? ' selected' : ''}>${MAJORS[m].icon} ${esc(MAJORS[m].name)}</option>`).join('')}</select></label>` : '';
-  if (!ok.length) return `${facts}${majorPick}<p class="why">${esc(unis[0]?.c.reason ?? 'Not open to you yet')}</p>`;
+  if (!ok.length) {
+    const why = unis[0]?.c.reason ?? 'Not open to you yet';
+    // The LSAT is taken here, not only from a pre-law card: anyone with a degree can sit it.
+    const lsat = /LSAT/.test(why) ? (() => { const e = lsatEligibility(state); return `<div class="btn-row">${button('📝 Take the LSAT with a prep course', 'lawLife.lsat', { arg: 'prep', variant: 'small primary', disabled: !e.ok, hint: e.ok ? `$${(LSAT.cost + LSAT.prepCost).toLocaleString()}` : e.reason })}${button('📝 Take it cold', 'lawLife.lsat', { arg: 'cold', variant: 'small', disabled: !e.ok, hint: e.ok ? `$${LSAT.cost}` : e.reason })}</div>${e.ok ? '' : `<p class="fine">${esc(e.reason)}</p>`}`; })() : '';
+    return `${facts}${majorPick}<p class="why">${esc(why)}</p>${lsat}`;
+  }
   const label = (x) => `${uniLabel(state, x.u)} — ${Math.round(x.p * 100)}% · ${money(annualTuition(id, x.u.id, state))}/yr`;
   // Open admission: no shortlist, just enrol.
   if (ok.every((x) => x.p >= 1)) {

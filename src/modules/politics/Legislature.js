@@ -27,7 +27,7 @@ import { REGIONS } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { OFFICES } from './Offices.js';
 import { ballotPrompt, ballotSwing, ballotResult, dominantParty } from './Parties.js';
-import { LEGISLATURES } from './NationalOffices.js';
+import { LEGISLATURES, NATIONAL_OFFICES } from './NationalOffices.js';
 import { LAWS, levelValue, lawValue, enact, proposedValue, favorsLabor, describeValue, ensureLaws } from './Laws.js';
 import { unionsInState, myUnion, isOfficer, unionPower } from '../career/LaborUnions.js';
 import { recordVote, LAW_ISSUE } from './Platform.js';
@@ -434,6 +434,18 @@ export const seniority = (state) => {
   if (seat?.peer) return 1 + Math.floor((state.character.age - (seat.since ?? state.character.age)) / 4);
   return state.politics.office?.terms ?? 1;
 };
+/**
+ * Seniority a leadership post takes in your chamber. Where members are term-limited, leaders
+ * come from those in their later terms: the bar scales to the limit, so it is always reachable
+ * (with a two-term limit, a chair in the first term and the presiding officer in the second).
+ */
+export function postMinTerms(state, post) {
+  const P = POSTS[post];
+  const id = state.politics.office?.id;
+  const limit = (OFFICES[id] ?? NATIONAL_OFFICES[id])?.termLimit;
+  if (!P || !limit || mySeat(state)?.peer) return P?.minTerms ?? 1;
+  return Math.max(1, Math.min(P.minTerms, Math.ceil((P.minTerms * limit) / 4), limit));
+}
 export const myBody = (state) => (mySeat(state) ? state.legislature.bodies[state.legislature.seat.bodyId] ?? null : null);
 export const inMajority = (state) => {
   const s = mySeat(state);
@@ -1066,7 +1078,8 @@ export const Legislature = {
       if (!seat || !P) return;
       const o = { terms: seniority(state), approval: state.politics.office?.approval ?? 55 };
       if (yearlyCount(state, 'legislature.runPost')) return ctx.toast('Leadership races come once a year.', 'warn');
-      if (o.terms < P.minTerms) return ctx.toast(`${P.title} takes ${P.minTerms} terms of seniority.`, 'warn');
+      const need = postMinTerms(state, post);
+      if (o.terms < need) return ctx.toast(`${P.title} takes ${need} term${need === 1 ? '' : 's'} of seniority.`, 'warn');
       if (P.majority && !inMajority(state)) return ctx.toast('Your caucus is in the minority.', 'warn');
       bumpYearly(state, 'legislature.runPost');
       const odds = clamp(0.15 + o.terms * 0.06 + state.politics.recognition / 300 + (o.approval - 50) / 200 + (seat.post ? 0.1 : 0) - (post === 'presiding' ? 0.15 : 0), 0.05, 0.8);
