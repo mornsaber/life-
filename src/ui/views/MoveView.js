@@ -10,7 +10,7 @@ import { STATES, topStateRate, DISASTER_LABEL, stateIncomeTax } from '../../modu
 import { CREDENTIALS, RECIPROCITY_LABEL } from '../../modules/credentials/CredentialRegistry.js';
 import { PENSION_PLANS } from '../../modules/retirement/PensionPlans.js';
 import { tierRent } from '../../modules/realestate/index.js';
-import { regionsHere } from '../../modules/life/Regions.js';
+import { regionsHere, regionsIn } from '../../modules/life/Regions.js';
 import { isAbroad, COUNTRIES, citizenshipsOf } from '../../modules/world/Countries.js';
 import { GAP_YEAR, gapYearCheck } from '../../modules/world/Expat.js';
 import { livingAbroad, expatOf } from '../../modules/world/ExpatLife.js';
@@ -36,7 +36,7 @@ function licenseImpact(state, toState) {
   return out;
 }
 
-export function moveView(state) {
+export function moveView(state, ui = {}) {
   const here = regionOf(state);
   const job = state.career.job;
   const income = state.finances.lastYear?.gross ?? job?.salary ?? 0;
@@ -67,27 +67,18 @@ export function moveView(state) {
       ${impacts.length ? `<small class="fine">${impacts.map(esc).join(' · ')}</small>` : ''}
     </li>`;
   };
-  // Your state first, then the rest by name; each state folds open.
+  // Where you live, and one place to compare it with (picked from the list).
   const places = regionsHere(state);
   const states = [...new Set(places.map((r) => r.state))].sort((a, b) => (a === here.state ? -1 : b === here.state ? 1 : STATES[a].name.localeCompare(STATES[b].name)));
-  const rows = states.map((sid) => {
-    const list = places.filter((r) => r.state === sid);
-    return disclosure(`move.${sid}`, `${esc(STATES[sid].name)}`, () => `<ul class="move-list">${list.map(row).join('')}</ul>`, { open: sid === here.state, count: list.map((r) => r.icon).join(' ') });
-  }).join('');
-  return regimeCard(state) + passportCard(state) + card('Move', `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>${rows}`, { icon: '🗺️', accent: 'cyan' }) + cityCard(state) + expatLifeCard(state) + abroadCard(state) + travelCard(state) + gapYearCard(state) + retireAbroadCard(state);
+  const pick = places.find((r) => r.id === ui.moveRegion && r.id !== here.id);
+  const picker = `<label class="country-pick">Compare with<select data-ui-set="moveRegion" aria-label="A place to compare"><option value="">Choose a place…</option>${states.map((sid) => `<optgroup label="${esc(STATES[sid].name)}">${places.filter((r) => r.state === sid && r.id !== here.id).map((r) => `<option value="${esc(r.id)}"${r.id === pick?.id ? ' selected' : ''}>${esc(r.name)}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+  const cheaper = places.filter((r) => r.id !== here.id).sort((a, b) => a.col / a.market - b.col / b.market).slice(0, 3);
+  const quick = `<div class="btn-row">${cheaper.map((r) => button(`${r.icon} ${r.name}`, 'ui.set', { arg: `moveRegion=${r.id}`, variant: 'tiny ghost', hint: 'Good value' })).join('')}</div>`;
+  const body = `<p class="muted">You've lived in ${STATES[here.state].name} for ${residencyYears(state)} year${residencyYears(state) === 1 ? '' : 's'}. Moving between ${isAbroad(state) ? 'provinces and regions' : 'states'} changes your taxes, which licenses you can use, your tuition and your union protections.</p>
+    <ul class="move-list">${row(here)}${pick ? row(pick) : ''}</ul>${picker}${pick ? '' : `<p class="fine">Good value for what you'd earn:</p>${quick}`}`;
+  return regimeCard(state) + passportCard(state) + card(`Move within ${esc(COUNTRIES[state.character.countryId ?? 'US']?.name ?? 'the country')}`, body, { icon: '🗺️', accent: 'cyan', summary: pick ? `vs ${esc(pick.name)}` : '' }) + cityCard(state) + expatLifeCard(state) + worldCard(state, ui) + gapYearCard(state);
 }
 
-/** Where you could retire, and what follows you there. */
-function retireAbroadCard(state) {
-  if (state.character.age < 50) return '';
-  const here = state.character.countryId ?? 'US';
-  const rows = Object.values(COUNTRIES).filter((c) => c.id !== here && IMMIGRATION[c.id].visas.retiree).map((c) => {
-    const v = IMMIGRATION[c.id].visas.retiree;
-    return `<li>${flagImg(c.id)} <b>${esc(c.name)}</b> — ${esc(v.name)} <small class="fine">age ${v.minAge}+ · show ${money(v.amount)}${v.permanent ? ' · permanent' : ''}</small></li>`;
-  }).join('');
-  const ukFrozen = (state.retirement.records?.GB?.length || here === 'GB') ? `<p class="fine">🧊 A UK State Pension is frozen (never uprated) if you retire to ${UK_PENSION_FROZEN_IN.map((c) => COUNTRIES[c].name).join(', ')}.</p>` : '';
-  return card('Retiring Abroad', `<p class="muted">Public pensions follow you: each country you worked in pays its share wherever you live. Retiree visas need private health insurance — about ${money(2500 + Math.max(0, state.character.age - 45) * 220)} a year at your age.</p><ul class="history">${rows}</ul>${ukFrozen}`, { icon: '🌴' });
-}
 
 /** A year out between school and what comes next. */
 const CIRCLE_LABEL = { expat: '🍻 The expat crowd', local: '🏘️ Locals', exchange: '🗣️ Language exchange' };
@@ -153,28 +144,6 @@ function regimeCard(state) {
   return card(`Life in ${esc(c.name)}`, `${kv(rows.filter(Boolean))}${btns ? `<div class="action-grid">${btns}</div>` : ''}`, { icon: flagImg(c.id), accent: r.kind === 'democracy' ? 'yellow' : 'red', summary: esc(r.name ?? '') });
 }
 
-/** Holidays abroad, on your passports. */
-function travelCard(state) {
-  if (state.character.age < 18) return '';
-  const here = state.character.countryId ?? 'US';
-  const tr = state.travel ?? { countries: [] };
-  const KIND = { free: ['✅', 'good'], eta: ['📝', 'good'], evisa: ['💻', ''], tour: ['🚌', 'warn'], visa: ['🛂', 'warn'] };
-  const groups = Object.entries(CONTINENT).map(([name, list]) => {
-    const rows = () => list.filter((cc) => COUNTRIES[cc] && cc !== here).map((cc) => {
-      const c = COUNTRIES[cc];
-      const why = travelBlock(state, cc);
-      const e = why ? null : bestEntry(state, cc);
-      const warn = why ? null : advisory(state, cc);
-      const k = e ? KIND[e.kind] ?? ['🛂', ''] : null;
-      return `<li class="move-row"><div class="move-head">${flagImg(c.id)} <b>${esc(c.name)}</b>${tr.countries?.includes(cc) ? ' <small class="fine">✓ visited</small>' : ''}</div>
-        ${why ? `<small class="why">${esc(why)}</small>` : `<div class="chips">${chip(`${k[0]} ${flagImg(e.passport) || ''} ${e.note}${e.refusal >= 0.1 ? ` · ≈${Math.round(e.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2 })}`}
-      </li>`;
-    }).join('');
-    return disclosure(`travel.${name}`, esc(name), () => `<ul class="move-list">${rows()}</ul>`, { count: list.filter((cc) => cc !== here && COUNTRIES[cc] && !travelBlock(state, cc)).length });
-  }).join('');
-  const out = travelBlock(state, Object.keys(COUNTRIES).find((cc) => cc !== here));
-  return card('Travel Abroad', `<p class="muted">Holidays on your own passports — ${Object.keys(TRIPS).length} styles, up to two trips a year. Free movement, e-visas and visa-free deals depend on the passport; some countries refuse some passports outright.</p>${out && /leave|travel ban|Undocumented|asylum|custody/i.test(out) ? `<p class="why">${esc(out)}</p>` : groups}`, { icon: '✈️', accent: 'cyan', summary: tr.countries?.length ? `${tr.countries.length} countries visited` : '' });
-}
 
 function passportCard(state) {
   const here = state.character.countryId ?? 'US';
@@ -255,38 +224,79 @@ function sidesOf(c) {
   return seen.size > 1 ? [...seen.values()] : [];
 }
 
-/** Every other country, with each route in and your odds: your best options first, the rest by continent. */
-function abroadCard(state) {
+
+const KIND = { free: ['✅', 'good'], eta: ['📝', 'good'], evisa: ['💻', ''], tour: ['🚌', 'warn'], visa: ['🛂', 'warn'] };
+const RANK = { citizen: 0, resident: 1, freeMovement: 2 };
+/** A country's cost of living and pay, as the average of its places (for comparing). */
+const econ = (cc) => {
+  const rs = regionsIn(cc);
+  if (!rs.length) return null;
+  return { col: rs.reduce((a, r) => a + r.col, 0) / rs.length, market: rs.reduce((a, r) => a + r.market, 0) / rs.length };
+};
+/** Your easiest legal way into a country (null if none). */
+const bestRoute = (routes) => routes.filter((r) => r.ok && r.kind !== 'irregular' && r.kind !== 'asylum').sort((a, b) => (RANK[a.kind] ?? 3) - (RANK[b.kind] ?? 3) || (b.odds ?? 0) - (a.odds ?? 0))[0] ?? null;
+
+/**
+ * The world, one country at a time: pick a country (or one of your best options) and see
+ * everything about going there — a holiday, a move, retiring — in one panel.
+ */
+function worldCard(state, ui) {
   const here = state.character.countryId ?? 'US';
-  const block = departureBlock(state);
-  const routesFor = {};
-  const country = (c) => {
-    const routes = routesFor[c.id] ?? routesTo(state, c.id);
-    const sides = sidesOf(c);
-    const anyOk = routes.some((r) => r.ok);
-    const list = () => routes.map((r) => optionRow({
-      icon: '',
-      title: esc(r.label),
-      meta: r.ok ? (r.kind === 'irregular' ? `⚠️ Illegal · ${money(r.fee)} to a smuggler · caught: sent back and banned · then life without papers` : r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
-      tone: r.ok ? '' : 'why',
-      locked: !r.ok,
-      action: sides.length > 1 ? sides.map((sd) => button(`${r.kind === 'irregular' ? 'Cross' : 'Apply'}: ${sd.flag} ${sd.short}`, 'migration.emigrate', { arg: `${c.id}:${r.kind}:${sd.city}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) })).join(' ')
-        : button(r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: `${c.id}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${c.id}`]) }),
-    })).join('');
-    const notes = [speaksLocal(state, c.id) ? null : `🗣️ ${localLanguage(c.id)}`, IMMIGRATION[c.id].dualIn ? null : '🛂 No dual citizenship', IMMIGRATION[c.id].birthright === true ? '👶 Birthright citizenship' : null].filter(Boolean).join(' · ');
-    return disclosure(`abroad.${c.id}`, sides.length > 1 ? sides.map((sd) => `${sd.flag} ${esc(sd.name)}`).join(' · ') : `${flagImg(c.id)} ${esc(c.name)}`, () => `${notes ? `<small class="fine">${esc(notes)}</small>` : ''}<ul class="job-list">${list()}</ul>`, { count: anyOk ? '✓' : null });
-  };
   const others = Object.values(COUNTRIES).filter((c) => c.id !== here);
-  for (const c of others) routesFor[c.id] = routesTo(state, c.id);
-  // The easiest legal routes for you: home, free movement, then visas by their odds.
-  const RANK = { citizen: 0, resident: 1, freeMovement: 2 };
-  const best = others.map((c) => ({ c, r: routesFor[c.id].filter((r) => r.ok && r.kind !== 'irregular' && r.kind !== 'asylum').sort((a, b) => (RANK[a.kind] ?? 3) - (RANK[b.kind] ?? 3) || (b.odds ?? 0) - (a.odds ?? 0))[0] }))
-    .filter((x) => x.r).sort((a, b) => (RANK[a.r.kind] ?? 3) - (RANK[b.r.kind] ?? 3) || (b.r.odds ?? 0) - (a.r.odds ?? 0) || a.c.name.localeCompare(b.c.name)).slice(0, 8);
-  const top = best.length ? `<h4 class="sub">⭐ Your best options</h4>${best.map(({ c }) => country(c)).join('')}` : '<p class="muted">No legal route is open to you right now — study, a job offer, family or savings open most of them.</p>';
-  const groups = Object.entries(CONTINENT).map(([name, ids]) => {
-    const list = ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here).sort((a, b) => a.name.localeCompare(b.name));
-    const open = list.filter((c) => routesFor[c.id].some((r) => r.ok && r.kind !== 'irregular')).length;
-    return disclosure(`abroad.group.${name}`, esc(name), () => list.map(country).join(''), { count: `${open}/${list.length}` });
-  }).join('');
-  return card('Move Abroad', `<p class="muted">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>${keepsBerth(state.career.job) ? '<p class="fine">🚢 Seafarers live anywhere: you keep your berth and fly out from your new home to join each ship. STCW certificates are valid worldwide.</p>' : ''}${block ? `<p class="why">${esc(block)}</p>` : ''}${top}<h4 class="sub">🌍 Every country</h4>${groups}`, { icon: '✈️', accent: 'cyan' });
+  const routesFor = Object.fromEntries(others.map((c) => [c.id, routesTo(state, c.id)]));
+  const best = others.map((c) => ({ c, r: bestRoute(routesFor[c.id]) })).filter((x) => x.r)
+    .sort((a, b) => (RANK[a.r.kind] ?? 3) - (RANK[b.r.kind] ?? 3) || (b.r.odds ?? 0) - (a.r.odds ?? 0) || a.c.name.localeCompare(b.c.name)).slice(0, 8);
+  const visited = state.travel?.countries ?? [];
+  const cc = COUNTRIES[ui.place] && ui.place !== here ? ui.place : null;
+  const picker = `<label class="country-pick">Country<select data-ui-set="place" aria-label="Choose a country"><option value="">Choose a country…</option>${Object.entries(CONTINENT).map(([name, ids]) => `<optgroup label="${esc(name)}">${ids.map((id) => COUNTRIES[id]).filter((c) => c && c.id !== here).sort((a, b) => a.name.localeCompare(b.name)).map((c) => `<option value="${c.id}"${c.id === cc ? ' selected' : ''}>${c.flag} ${esc(c.name)}${bestRoute(routesFor[c.id]) ? ' ✓' : ''}${visited.includes(c.id) ? ' · visited' : ''}</option>`).join('')}</optgroup>`).join('')}</select></label>`;
+  const chips = best.length ? `<p class="fine">⭐ Your easiest moves:</p><div class="btn-row">${best.map(({ c }) => button(`${c.flag} ${c.name}`, 'ui.set', { arg: `place=${c.id}`, variant: c.id === cc ? 'tiny primary' : 'tiny ghost' })).join('')}</div>` : '<p class="muted">No legal route abroad is open to you right now — study, a job offer, family or savings open most of them.</p>';
+  const block = departureBlock(state);
+  return card('The World', `<p class="muted">Holidays, moving abroad and retiring abroad, one country at a time. ✓ marks countries with a legal route open to you.</p>
+    ${block ? `<p class="why">${esc(block)}</p>` : ''}${picker}${chips}${cc ? countryPanel(state, cc, routesFor[cc], here) : ''}`, { icon: '🌍', accent: 'cyan', summary: visited.length ? `${visited.length} visited` : '' });
 }
+
+/** Everything about one country: facts, a trip, the routes to move there, retiring there. */
+function countryPanel(state, cc, routes, here) {
+  const c = COUNTRIES[cc];
+  const age = state.character.age;
+  const imm = IMMIGRATION[cc];
+  // The facts, compared with home.
+  const e = econ(cc);
+  const h = econ(here);
+  const rel = (x, y) => (x && y ? `${x / y >= 1 ? '+' : ''}${Math.round((x / y - 1) * 100)}% vs home` : '—');
+  const facts = kv([
+    ['Language', `${esc(localLanguage(cc))}${speaksLocal(state, cc) ? ' ✓ you speak it' : ''}`],
+    ['Cost of living', e ? rel(e.col, h?.col) : '—'],
+    ['Pay', e ? rel(e.market, h?.market) : '—'],
+    ['Citizenship', `${imm.dualIn ? 'Dual citizenship allowed' : 'You must give up other passports'}${imm.birthright === true ? ' · children born there are citizens' : ''}`],
+    ['Your passports', citizenshipsOf(state).includes(cc) ? 'You are a citizen' : visitedNote(state, cc)],
+  ]);
+  // Visiting.
+  let visit = '';
+  if (age >= 18) {
+    const why = travelBlock(state, cc);
+    const en = why ? null : bestEntry(state, cc);
+    const warn = why ? null : advisory(state, cc);
+    const k = en ? KIND[en.kind] ?? ['🛂', ''] : null;
+    visit = why ? `<p class="why">${esc(why)}</p>` : `<div class="chips">${chip(`${k[0]} ${flagImg(en.passport) || ''} ${en.note}${en.refusal >= 0.1 ? ` · ≈${Math.round(en.refusal * 100)}% refused` : ''}`, k[1])}${warn ? ` ${chip(`⚠️ ${warn}`, 'bad')}` : ''} ${chip(`from ${money(tripCost(state, cc, 'budget'))}`)}</div>
+      <div class="btn-row">${button('✈️ Plan a trip', 'travel.plan', { arg: cc, variant: 'small', disabled: (state.yearly['travel.trip'] ?? 0) >= 2, hint: `${Object.keys(TRIPS).length} styles · two trips a year` })}</div>`;
+  }
+  // Moving.
+  const block = departureBlock(state);
+  const sides = sidesOf(c);
+  const moveRows = routes.map((r) => optionRow({
+    title: esc(r.label),
+    meta: r.ok ? (r.kind === 'irregular' ? `⚠️ Illegal · ${money(r.fee)} to a smuggler · caught: sent back and banned · then life without papers` : r.kind === 'asylum' ? `${r.temporary ? 'Granted on arrival' : `≈${Math.round(r.odds * 100)}% recognized`} · ${money(ASYLUM_COST)} to get out` : `${r.odds < 1 ? `${Math.round(r.odds * 100)}% approval · ` : ''}${money(EMIGRATION_COST + r.fee)} with the move`) : esc(r.reason),
+    tone: r.ok ? '' : 'why',
+    locked: !r.ok,
+    action: (sides.length > 1 ? sides : [null]).map((sd) => button(sd ? `${r.kind === 'irregular' ? 'Cross' : 'Apply'}: ${sd.flag} ${sd.short}` : r.kind === 'irregular' ? 'Cross' : 'Apply', 'migration.emigrate', { arg: sd ? `${cc}:${r.kind}:${sd.city}` : `${cc}:${r.kind}`, variant: r.kind === 'irregular' ? 'tiny danger' : 'tiny', disabled: !r.ok || Boolean(block) || Boolean(state.yearly[`migration.apply.${cc}`]) })).join(' '),
+  })).join('');
+  const move = `${keepsBerth(state.career.job) ? '<p class="fine">🚢 You keep your berth and fly out from your new home to join each ship.</p>' : ''}<ul class="job-list">${moveRows}</ul><p class="fine">Your job, home and office stay behind (an intra-company transfer keeps the job). Licenses need recognizing; pension records stay with each country and pay out together.</p>`;
+  // Retiring.
+  const v = imm.visas.retiree;
+  const retire = age >= 50 && v ? `<p>${esc(v.name)} <small class="fine">age ${v.minAge}+ · show ${money(v.amount)}${v.permanent ? ' · permanent' : ''} · private health cover about ${money(2500 + Math.max(0, age - 45) * 220)}/yr</small></p>${UK_PENSION_FROZEN_IN.includes(cc) && (state.retirement.records?.GB?.length || here === 'GB') ? '<p class="why">🧊 A UK State Pension is frozen (never uprated) here.</p>' : ''}` : '';
+  const sec = (t, b) => (b ? `<h4 class="sub">${t}</h4>${b}` : '');
+  return `<div class="country-panel" style="border-top:1px solid var(--line,#333);margin-top:10px;padding-top:8px">
+    <h3 style="margin:4px 0">${flagImg(cc)} ${esc(c.name)}</h3>${facts}${sec('✈️ Visit', visit)}${sec('🧳 Move there', move)}${sec('🌴 Retire there', retire)}</div>`;
+}
+const visitedNote = (state, cc) => ((state.travel?.countries ?? []).includes(cc) ? 'Visited before' : 'Not yet visited');

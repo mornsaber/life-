@@ -32,20 +32,19 @@ const tests = {
     assert.match(disclosure('x', 'X', body), /inside/);
     assert.match(card('Shop', '<p>wares</p>'), /wares/);
   },
-  'the Move tab is small until you open a country'() {
+  'the Move tab is small: one country at a time'() {
     const engine = new Engine({ store: new Store(memory()), rng: new Random(1), modules: MODULES });
     const state = engine.newLife({ countryId: 'US' });
     state.character.age = 30;
     try {
       setFolds({});
       const closed = VIEWS.move(state, {});
-      setFolds({ 'abroad.group.Europe': true, 'abroad.FR': true });
-      const open = VIEWS.move(state, {});
+      const open = VIEWS.move(state, { place: 'FR' });
       assert.ok(closed.length < 60000, `${Math.round(closed.length / 1024)} KB folded`);
       assert.ok(open.length > closed.length);
       assert.match(open, /migration\.emigrate/);
     } finally { setFolds(null); }
-    assert.ok(VIEWS.move(state, {}).length > 200000, 'without a screen, everything is there');
+    assert.ok(VIEWS.move(state, {}).length < 120000, 'one country at a time, folded or not');
   },
 };
 let failed = 0;

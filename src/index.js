@@ -214,6 +214,12 @@ function refreshCrowns(form) {
 document.addEventListener('change', (event) => {
   const el = event.target;
   if (el.id === 'import-file' && el.files?.[0]) return importLife(el.files[0]);
+  // A view filter or picker: <select data-ui-set="key"> stores its value on the renderer's UI state.
+  if (el.dataset?.uiSet) {
+    renderer.ui[el.dataset.uiSet] = el.value;
+    renderer.render(engine.state);
+    return undefined;
+  }
   if (el.name === 'startEra' && el.form?.id === 'new-life-form') {
     const year = el.form.querySelector('#start-year');
     if (year) { year.innerHTML = eraYearOptions(el.value); year.disabled = el.value === 'random' || el.value === 'today'; }
