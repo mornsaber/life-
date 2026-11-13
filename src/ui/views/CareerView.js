@@ -565,7 +565,7 @@ function progression(state, job, profession, size) {
   const currentId = job.headOf && !job.headOf.mapped ? null : job.levelId;
   // Each rung shows the rank insignia worn there (where the career wears rank).
   const cc = state.character.countryId ?? 'US';
-  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, insigniaCountry(state, profession)) ?? '');
+  let html = trackLadder(here, currentId ?? '__post__', undefined, gradePrefix(job), (l) => jobInsignia({ ...job, levelId: l.id, title: l.title }, profession, insigniaCountry(state, profession)) ?? '', job.appointedTitle ?? null);
   // What bigger (or smaller) agencies have that this one doesn't.
   const elsewhere = profession.levels.filter((l) => !here.includes(l));
   if (elsewhere.length) html += `<p class="fine">Not at this ${size === 'micro' ? 'small agency' : 'employer'}: ${elsewhere.map((l) => esc(l.title)).join(', ')}.</p>`;

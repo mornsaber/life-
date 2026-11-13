@@ -129,6 +129,8 @@ export function leavePost(state, job, { quiet = false } = {}) {
 export function syncPostForLevel(ctx, job) {
   const org = orgOf(ctx.state, job?.employer);
   if (!org) return;
+  // An appointed post (UN Secretary-General and the like) is not the ladder's department head.
+  if (job.appointedTitle) return;
   if (job.headOf?.mapped) {
     const still = mappedPostFor(org, job);
     if (!still || still.deptId !== job.headOf.deptId) leavePost(ctx.state, job);

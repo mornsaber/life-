@@ -434,7 +434,7 @@ export function birthOptions(data) {
 }
 
 export function newLifeForm(rngName) {
-  const crowns = crownPicker(startYearPicked(START_ERAS[0].id, ''), startListYear(START_ERAS[0].id, ''));
+  const crowns = crownPicker(startYearPicked('random', ''), startListYear('random', ''));
   const birth = (id, icon, title, sub, panel, checked = false) => `<label class="birth-opt"><input type="radio" name="birth" value="${id}"${checked ? ' checked' : ''}><span class="birth-head"><b>${icon} ${title}</b><small>${sub}</small></span><div class="birth-more">${panel}</div></label>`;
   return `<div class="splash">
     <div class="splash-card">
@@ -460,9 +460,9 @@ export function newLifeForm(rngName) {
         <h3 class="form-step">2 · Where you're born</h3>
         <label class="country-pick">Country<select name="countryId">${crowns.country}${Object.values(PLANNED).length ? `<optgroup label="Coming later">${Object.values(PLANNED).map((c) => `<option disabled>${c.flag} ${esc(c.name)}</option>`).join('')}</optgroup>` : ''}</select></label>
         <p class="fine">👑 a kingdom with a royal family · ⚜️ a former monarchy whose royal house still exists.</p>
-        <div class="form-row"><label class="country-pick">Era${sel('startEra', [...START_ERAS.map((e, i) => [e.id, e.from === e.to ? e.label : `${e.label} (${e.from}–${e.to})`, i === 0]), ['random', '🎲 Any era (1800 onwards)']])}</label>
-        <label class="country-pick">Year<select name="startYear" id="start-year">${eraYearOptions(START_ERAS[0].id)}</select></label></div>
-        <p class="fine" id="era-sub">${esc(eraSub(START_ERAS[0].id))}</p>
+        <div class="form-row"><label class="country-pick">Era${sel('startEra', [...START_ERAS.map((e, i) => [e.id, e.from === e.to ? e.label : `${e.label} (${e.from}–${e.to})`, false]), ['random', '🎲 Any year (1800 to today)', true]])}</label>
+        <label class="country-pick">Year<select name="startYear" id="start-year" disabled>${eraYearOptions('random')}</select></label></div>
+        <p class="fine" id="era-sub">${esc(eraSub('random'))}</p>
         <p class="fine">🕰️ An earlier start lives through history as it comes, loosely: wars, crashes, revolutions and the end of empires, on roughly their real dates. Some jobs don't exist yet, some are closed to women, and many countries are ruled by others. Money is shown in today's dollars.</p>
         <h3 class="form-step">3 · Born into</h3>
         <div class="birth-list">
@@ -526,15 +526,16 @@ export function select(part, options, { label = '', value = '' } = {}) {
  * Branching ladder: shared levels, then Specialist and Management rows.
  * `available(level)` → false greys out levels this employer doesn't have.
  */
-export function trackLadder(levels, currentId, available = () => true, prefix = 'G', badge = () => '') {
+export function trackLadder(levels, currentId, available = () => true, prefix = 'G', badge = () => '', nowTitle = null) {
   const row = (list, label) => {
     if (!list.length) return '';
     const currentIdx = list.findIndex((l) => l.id === currentId);
     return `<div class="track-row"><span class="track-label">${label}</span><ol class="ladder compact">${list
       .map((l, i) => {
         const cls = l.id === currentId ? 'now' : currentIdx > -1 && i < currentIdx ? 'done' : available(l) ? 'todo' : 'na';
-        return `<li class="${cls}" title="${esc(l.title)} [${prefix}${l.grade}]${available(l) ? '' : ' — not at this employer'}">
-          <span class="ladder-dot">${prefix}${l.grade}</span>${badge(l) ? `<span class="ladder-badge">${badge(l)}</span>` : ''}<span class="ladder-title">${esc(l.title)}</span></li>`;
+        const t = cls === 'now' && nowTitle ? nowTitle : l.title;
+        return `<li class="${cls}" title="${esc(t)} [${prefix}${l.grade}]${available(l) ? '' : ' — not at this employer'}">
+          <span class="ladder-dot">${prefix}${l.grade}</span>${badge(l) ? `<span class="ladder-badge">${badge(l)}</span>` : ''}<span class="ladder-title">${esc(t)}</span></li>`;
       })
       .join('')}</ol></div>`;
   };

@@ -271,7 +271,7 @@ function applyLevel(job, level) {
   job.peakGrade = Math.max(job.peakGrade ?? 0, level.grade);
 }
 
-export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0 }) {
+export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0, title = null }) {
   const { state } = ctx;
   // Full-time active duty is your job: offers that arrive while you're in uniform lapse.
   if (state.military.service?.component === 'active') {
@@ -325,6 +325,8 @@ export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0
       job.employer = { ...employer, benefits: { ...employer.benefits, health: false, pension: null, match: 0, dcPlan: null, tuition: 0 } };
     }
   }
+  // An appointed post above the ladder (Secretary-General, Commissioner): its own title, not the rung's.
+  if (title) { job.titleMap = { ...(job.titleMap ?? {}), [levelId]: title }; job.appointedTitle = title; }
   applyLevel(job, level);
   recalcSalary(state, job);
   ensureDepartment(job, level);

@@ -486,10 +486,8 @@ export const IntlOrgsModule = {
       const profession = getProfession(t.prof);
       const employer = createEmployer(rng, state, profession, state.character.regionId);
       employer.name = data.employer;
-      const job = hire(ctx, { professionId: t.prof, levelId: t.level, employer });
+      const job = hire(ctx, { professionId: t.prof, levelId: t.level, employer, title: postTitle(data.post, state) });
       if (!job) return undefined;
-      job.title = postTitle(data.post, state);
-      job.titleMap = { ...(job.titleMap ?? {}), [t.level]: job.title };
       job.intlPost = data.post;
       job.intlTerm = state.character.age + t.term;
       vacateSeat(state, job);
