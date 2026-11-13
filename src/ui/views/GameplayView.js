@@ -26,9 +26,13 @@ export function skillsCard(state) {
   const job = state.career.job ? jobSkills(state.career.job.professionId) : [];
   const known = Object.entries(s).filter(([, v]) => v >= 1).sort((a, b) => b[1] - a[1]);
   const rows = known.map(([id, v]) => meter(Math.round(v), { label: `${SKILLS[id].icon} ${SKILLS[id].label}${job.includes(id) ? ' · used at work' : ''}`, tone: v >= 70 ? 'good' : v >= 35 ? 'mid' : 'bad' })).join('');
-  const pick = Object.entries(SKILLS).filter(([id]) => skillInEra(state, id) || (state.skills?.[id] ?? 0) > 0).map(([id, k]) => button(`${k.icon} ${k.label}`, 'time.study', { arg: id, variant: t.study === id ? 'tiny on' : 'tiny' })).join('');
+  const all = Object.entries(SKILLS).filter(([id]) => skillInEra(state, id) || (state.skills?.[id] ?? 0) > 0);
+  // Worth learning: what your job uses and you haven't mastered, lowest first.
+  const useful = job.filter((id) => SKILLS[id] && (s[id] ?? 0) < 70).sort((a, b) => (s[a] ?? 0) - (s[b] ?? 0)).slice(0, 3);
+  const quick = useful.map((id) => button(`${SKILLS[id].icon} ${SKILLS[id].label}`, 'time.study', { arg: id, variant: t.study === id ? 'tiny on' : 'tiny', hint: `${Math.round(s[id] ?? 0)} · used at work` })).join('');
+  const pick = `<div class="enroll-form" data-collect-root><select data-part="skill" aria-label="Skill to learn">${all.map(([id, k]) => `<option value="${id}"${t.study === id ? ' selected' : ''}>${k.icon} ${esc(k.label)}${s[id] >= 1 ? ` (${Math.round(s[id])})` : ''}</option>`).join('')}</select>${button('📚 Learn this', 'time.study', { variant: 'small', collect: true })}</div>`;
   return card('Skills', `${rows || '<p class="muted">You\'ll pick up skills from work, hobbies and the hours you spend learning.</p>'}
-    <h4 class="sub">Spend your learning hours on</h4><div class="toggle-row chips-row">${pick}</div>
+    <h4 class="sub">Spend your learning hours on</h4>${t.study && SKILLS[t.study] ? `<p>Now learning: <b>${SKILLS[t.study].icon} ${esc(SKILLS[t.study].label)}</b></p>` : ''}${quick ? `<p class="fine">Useful for your job:</p><div class="toggle-row chips-row">${quick}</div>` : ''}${pick}
     <p class="fine">Employers hire for the skills a job needs, and life tests them now and then. Skills you stop using fade slowly.</p>`, { icon: '🧰', summary: known.length ? `${known.length} skills` : '' });
 }
 

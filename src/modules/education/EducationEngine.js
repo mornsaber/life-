@@ -582,6 +582,14 @@ export const EducationEngine = {
      * Apply (arg: 'programId:universityId:major:pace'). The decision comes straight back;
      * open-admission colleges take you without one.
      */
+    /** Send a shortlist at once (arg: 'program:major:pace:uni1:uni2:…'); each goes in as its own application. */
+    applyMany(ctx, arg) {
+      const [programId, major = '', pace = 'full', ...unis] = String(arg).split(':');
+      const list = [...new Set(unis.filter(Boolean))];
+      if (!list.length) return ctx.toast('Choose at least one university.', 'warn');
+      for (const u of list) EducationEngine.actions.apply(ctx, `${programId}:${u}:${major}:${pace}`);
+      return undefined;
+    },
     apply(ctx, arg) {
       const { state } = ctx;
       const [programId, schoolId, rawMajor, pace = 'full'] = String(arg).split(':');

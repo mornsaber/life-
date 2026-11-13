@@ -3,14 +3,14 @@
  * diplomas, associate's, bachelor's, graduate/professional) with school,
  * major and pace selectors, and earned diplomas.
  */
-import { esc, money, button, card, meter, kv, empty, select, disclosure } from '../Components.js';
+import { esc, money, button, card, meter, kv, empty, select, disclosure, chip } from '../Components.js';
 import { getProfession, professionsFor } from '../../modules/career/JobTrees.js';
 import { nationalProfessionId } from '../../modules/world/NationalAgencies.js';
 import { ENTRANCE_EXAMS, TRADES, apprenticeshipHere, apprenticeEligibility, expectedScore } from '../../modules/world/SchoolPaths.js';
 import { SCHOOLS, MAJORS, PROGRAMS, PROGRAM_GROUPS, majorsFor, degreeLabel } from '../../modules/education/Catalog.js';
 import { campusView } from './CampusView.js';
 import { k12View, academyCard } from './K12View.js';
-import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa, transferCredit, movesYou, applicationCap, applicationsThisCycle } from '../../modules/education/EducationEngine.js';
+import { enrollmentEligibility, admissionChance, annualTuition, giBillEligible, lastGpa, transferCredit, movesYou, applicationCap, applicationsThisCycle, APPLICATION_FEE } from '../../modules/education/EducationEngine.js';
 import { universitiesFor, universityOf, universitiesIn, placeOf } from '../../modules/education/Universities.js';
 import { phdCard } from './AcademiaView.js';
 import { medTrainingCard } from './MedicalView.js';
@@ -25,33 +25,6 @@ import { uniInEra, majorInEra, programInEra, programIdInEra } from '../../module
 import { flagImg } from '../Flags.js';
 import { schoolingCard } from './SchoolingCard.js';
 
-function programRow(state, id, page = {}) {
-  const p = PROGRAMS[id];
-  const majors = majorsFor(id).filter((m) => m === null || (majorInEra(state, m) && programInEra(state, MAJORS[m]?.name)));
-  const probeMajor = majors[0];
-  const unis = universitiesFor(state, id);
-  const probeSchool = unis.find((u) => enrollmentEligibility(state, id, u.id, probeMajor, { applying: true }).ok)?.id ?? unis[0]?.id ?? p.schools[0];
-  const check = enrollmentEligibility(state, id, probeSchool, probeMajor, { applying: true });
-  const blocking = !check.ok && !['Not offered there'].includes(check.reason);
-  // Abroad, the careers open here (national agencies stand in for US federal ones).
-  const open = state.character.countryId ? (page.open ??= new Set(professionsFor(state).map((x) => x.id))) : null;
-  const localId = (f) => (!open || open.has(f) ? f : open.has(nationalProfessionId(state.character.countryId, f)) ? nationalProfessionId(state.character.countryId, f) : null);
-  const fields = p.fields ? p.fields.map(localId).filter(Boolean) : [];
-  const fieldsText = fields.length ? ` · Prepares for: ${fields.map((f) => getProfession(f)?.name ?? f).join(', ')}` : '';
-  const credit = transferCredit(state, id).years;
-  return `<li class="program ${blocking ? 'locked' : ''}" data-collect-root>
-    <div><b>${esc(p.name)}</b><small>${p.years} yr full-time${credit ? ` (−${credit} yr transfer credit)` : ''}${p.stipend ? ` · funded + ${money(p.stipend)} stipend` : ''}${p.minGpa ? ` · GPA ${p.minGpa}+` : ''}${p.minSmarts ? ` · smarts ${p.minSmarts}+` : ''}${esc(fieldsText)}</small>
-      ${blocking ? `<small class="why">${esc(check.reason)}</small>` : ''}</div>
-    <div class="enroll-form">
-      <input type="hidden" data-part="program" value="${id}">
-      ${select('school', unis.map((u) => ({ value: u.id, label: `${uniLabel(state, u)} — ${money(annualTuition(id, u.id, state))}/yr · ${Math.round(admissionChance(state, id, u.id) * 100)}% odds` })))}
-      ${majors[0] !== null ? select('major', majors.map((m) => ({ value: m, label: `${MAJORS[m].icon} ${MAJORS[m].name}` }))) : '<input type="hidden" data-part="major" value="">'}
-      ${select('pace', [{ value: 'full', label: 'Full-time' }, { value: 'part', label: 'Part-time (½ speed)' }])}
-      ${button('Apply', 'education.apply', { variant: 'small primary', collect: true, disabled: blocking })}
-      ${id === 'bachelor' && edOpen(state) ? button('💌 Early Decision', 'higherEd.earlyDecision', { variant: 'small', collect: true, disabled: blocking, hint: 'Binding; better odds — the school and major you picked' }) : ''}
-    </div>
-  </li>`;
-}
 
 const STARS = ['', '★', '★★', '★★★'];
 /** "★★★ University of Oxford (Oxford) 🚚": prestige, name, city, and whether you'd move. */
@@ -112,7 +85,7 @@ function royalEducationCard(state) {
     <div class="toggle-row">${button('📚 A season with your tutors', 'royalLife.tutor', { variant: 'small', disabled: done, hint: done ? 'Done this year' : 'Once a year' })}</div>`, { icon: '👑', accent: 'yellow' });
 }
 
-export function schoolView(state) {
+export function schoolView(state, ui = {}) {
   // A reigning monarch: school as a child, then tutors; no applications, apprenticeships or academies.
   if (state.royal?.reigning && !state.royal.abdicated) {
     const diplomas = state.education.degrees.length ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b></li>`).join('')}</ul>` : empty('No diplomas yet.');
@@ -130,8 +103,6 @@ export function schoolView(state) {
   }
   // Abroad, programmes the country doesn't have (a two-year associate's in Germany) aren't listed.
   const offered = (id) => programInEra(state, PROGRAMS[id].name) && programIdInEra(state, id) && enrollmentEligibility(state, id, PROGRAMS[id].schools[0], majorsFor(id)[0]).reason !== 'Not offered in this country' && universitiesFor(state, id).length > 0;
-  const page = {};
-  const catalog = PROGRAM_GROUPS.map((g) => ({ ...g, ids: g.ids.filter(offered) })).filter((g) => g.ids.length).map((g) => disclosure(`programs.${g.label}`, g.label, () => `<ul class="programs">${g.ids.map((id) => programRow(state, id, page)).join('')}</ul>`, { count: g.ids.length })).join('');
   const degrees = state.education.degrees.length
     ? `<ul class="history">${state.education.degrees.map((d) => `<li>🎓 <b>${esc(degreeLabel(d))}</b>${d.schoolName ? ` · <span data-raw>${esc(d.schoolName)}</span>${d.country && d.country !== (state.character.countryId ?? 'US') ? ` ${flagImg(d.country) || ''}` : ''}` : d.schoolId ? ` · ${esc(SCHOOLS[d.schoolId].name)}` : ''}${d.gpa ? ` <small>GPA ${d.gpa.toFixed(2)}${d.honors ? `, ${d.honors}` : ''}${d.honorsCollege ? ' · Honors College' : ''}</small>` : ''}</li>`).join('')}</ul>`
     : empty('No diplomas yet.');
@@ -145,7 +116,67 @@ export function schoolView(state) {
     : '<p class="fine">While serving, civilian study is part-time through the forces\' tuition assistance; apprenticeships and the academies are for civilians.</p>', { icon: '🎖️', accent: 'green' }) : '';
   if (svc?.cadet) return `${uniform}${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
   return `${uniform}${schoolingCard(state)}${k12View(state)}${current}${entranceCard(state)}${svc ? '' : apprenticeCard(state)}${phdCard(state)}${state.academia?.phd ? publishingCard(state) : ''}${medTrainingCard(state)}${lawTrainingCard(state)}${higherEdCard(state)}${svc ? '' : academyCard(state)}${applicationsCard(state)}${campusView(state)}
-    ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : card('Programs', `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Earn as many degrees as you like. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>${catalog}`, { icon: '🏫' })}
-    ${state.character.age >= 15 ? card('Universities', guideCard(state), { icon: '🏛️' }) : ''}
+    ${kid ? card('College & Trade School', '<p class="muted">Colleges, trade schools and certificate programs open at 17. Your high-school GPA, activities and school will count.</p>', { icon: '🏛️' }) : admissionsCard(state, ui, offered)}
     ${card('Diplomas', `${degrees}${banked}`, { icon: '📜' })}`;
+}
+
+const TAG = (p) => (p >= 0.75 ? ['🛟 Safety', 'good'] : p >= 0.4 ? ['🎯 Match', ''] : ['🚀 Reach', 'warn']);
+
+/**
+ * Admissions, planned: pick a programme (and major), see a suggested shortlist — a reach, matches,
+ * a safety — with your odds at each and the chance of at least one offer, then send them together.
+ */
+function admissionsCard(state, ui, offered) {
+  const ids = PROGRAM_GROUPS.flatMap((g) => g.ids.filter(offered));
+  const pid = ids.includes(ui.admProgram) ? ui.admProgram : null;
+  const lock = (id) => {
+    const unis = universitiesFor(state, id);
+    const m = majorsFor(id)[0];
+    return !unis.some((u) => enrollmentEligibility(state, id, u.id, m, { applying: true }).ok);
+  };
+  const picker = `<label class="country-pick">Programme<select data-ui-set="admProgram" aria-label="Programme"><option value="">Choose a programme…</option>${PROGRAM_GROUPS.map((g) => { const gi = g.ids.filter(offered); return gi.length ? `<optgroup label="${esc(g.label)}">${gi.map((id) => `<option value="${id}"${id === pid ? ' selected' : ''}>${esc(PROGRAMS[id].name)}${lock(id) ? ' 🔒' : ''}</option>`).join('')}</optgroup>` : ''; }).join('')}</select></label>`;
+  const intro = `<p class="muted">Majors boost related careers but rarely lock you out — only real-world requirements (nursing → RN, engineering → PE, education → teaching license, pre-med → med school) are enforced. Your last GPA: ${lastGpa(state).toFixed(2)}.${giBillEligible(state) ? ' 🎖️ GI Bill eligible.' : ''}</p>`;
+  return card('Admissions', `${intro}${picker}${pid ? admissionsPlan(state, pid, ui) : ''}${state.character.age >= 15 ? guideCard(state) : ''}`, { icon: '🏫', summary: pid ? esc(PROGRAMS[pid].name) : '' });
+}
+
+function admissionsPlan(state, id, ui) {
+  const p = PROGRAMS[id];
+  const majors = majorsFor(id).filter((m) => m === null || (majorInEra(state, m) && programInEra(state, MAJORS[m]?.name)));
+  const major = majors.includes(ui.admMajor) ? ui.admMajor : majors[0];
+  const unis = universitiesFor(state, id).map((u) => ({ u, p: admissionChance(state, id, u.id), c: enrollmentEligibility(state, id, u.id, major, { applying: true }) })).filter((x) => x.c.ok || x.c.reason === 'Not offered there' ? x.c.ok : true);
+  const ok = unis.filter((x) => x.c.ok);
+  const credit = transferCredit(state, id).years;
+  const facts = `<p class="fine">${p.years} yr full-time${credit ? ` (−${credit} yr transfer credit)` : ''}${p.stipend ? ` · funded + ${money(p.stipend)} stipend` : ''}${p.minGpa ? ` · GPA ${p.minGpa}+` : ''}${p.minSmarts ? ` · smarts ${p.minSmarts}+` : ''}</p>`;
+  const majorPick = majors[0] !== null ? `<label class="country-pick">Major<select data-ui-set="admMajor" aria-label="Major">${majors.map((m) => `<option value="${m}"${m === major ? ' selected' : ''}>${MAJORS[m].icon} ${esc(MAJORS[m].name)}</option>`).join('')}</select></label>` : '';
+  if (!ok.length) return `${facts}${majorPick}<p class="why">${esc(unis[0]?.c.reason ?? 'Not open to you yet')}</p>`;
+  const label = (x) => `${uniLabel(state, x.u)} — ${Math.round(x.p * 100)}% · ${money(annualTuition(id, x.u.id, state))}/yr`;
+  // Open admission: no shortlist, just enrol.
+  if (ok.every((x) => x.p >= 1)) {
+    return `${facts}${majorPick}<div class="enroll-form" data-collect-root><input type="hidden" data-part="program" value="${id}">${select('school', ok.map((x) => ({ value: x.u.id, label: label(x) })))}<input type="hidden" data-part="major" value="${major ?? ''}">${select('pace', [{ value: 'full', label: 'Full-time' }, { value: 'part', label: 'Part-time (½ speed)' }])}${button('🎓 Enrol', 'education.apply', { variant: 'small primary', collect: true })}</div><p class="fine">Open admission: no application needed.</p>`;
+  }
+  // The suggested shortlist: the best reach, the best matches, a safety — as many as you can still send.
+  const left = Math.max(0, applicationCap(state, p.type === 'bachelor' ? 'bachelor' : p.type) - applicationsThisCycle(state));
+  if (!left) return `${facts}${majorPick}<p class="why">You've sent all your applications for this year.</p>`;
+  const byPrestige = [...ok].sort((a, b) => (b.u.prestige ?? 0) - (a.u.prestige ?? 0) || a.p - b.p);
+  const pick = [];
+  const take = (x) => { if (x && !pick.includes(x) && pick.length < left) pick.push(x); };
+  take(byPrestige.find((x) => x.p < 0.4 && x.p >= 0.05));
+  for (const x of byPrestige.filter((y) => y.p >= 0.4 && y.p < 0.75).slice(0, 2)) take(x);
+  take([...ok].sort((a, b) => b.p - a.p || (b.u.prestige ?? 0) - (a.u.prestige ?? 0))[0]);
+  // Then the best of the rest: good odds and a good name, at home before abroad; no long shots.
+  const home = state.character.countryId ?? 'US';
+  for (const x of ok.filter((y) => y.p >= 0.15).sort((a, b) => (a.u.country === home ? 0 : 1) - (b.u.country === home ? 0 : 1) || b.p * (1 + (b.u.prestige ?? 0)) - a.p * (1 + (a.u.prestige ?? 0)))) take(x);
+  const slots = Math.min(left, 5);
+  const options = (sel) => `<option value="">— none —</option>${ok.map((x) => `<option value="${x.u.id}"${x === sel ? ' selected' : ''}>${esc(label(x))}</option>`).join('')}`;
+  const anyOffer = 1 - pick.slice(0, slots).reduce((q, x) => q * (1 - x.p), 1);
+  const rows = pick.slice(0, slots).map((x) => `<li>${chip(TAG(x.p)[0], TAG(x.p)[1])} <b>${esc(x.u.name)}</b> <small class="muted">${Math.round(x.p * 100)}% · ${money(annualTuition(id, x.u.id, state))}/yr${movesYou(state, x.u) ? ' · 🚚 a move' : ''}</small></li>`).join('');
+  const ed = id === 'bachelor' && edOpen(state) ? `<div class="enroll-form" data-collect-root><input type="hidden" data-part="program" value="${id}">${select('school', byPrestige.map((x) => ({ value: x.u.id, label: label(x) })), { value: pick[0]?.u.id ?? '' })}<input type="hidden" data-part="major" value="${major ?? ''}"><input type="hidden" data-part="pace" value="full">${button('💌 Apply Early Decision', 'higherEd.earlyDecision', { variant: 'small', collect: true, hint: 'Binding; better odds at that one school' })}</div>` : '';
+  return `${facts}${majorPick}
+    <h4 class="sub">Suggested shortlist</h4><ul class="plain">${rows}</ul>
+    <p>Chance of at least one offer: <b>${Math.round(anyOffer * 100)}%</b> <small class="muted">(${left} application${left === 1 ? '' : 's'} left this year · ${money(APPLICATION_FEE)} each)</small></p>
+    <div data-collect-root><input type="hidden" data-part="program" value="${id}"><input type="hidden" data-part="major" value="${major ?? ''}">
+      <div class="enroll-form">${select('pace', [{ value: 'full', label: 'Full-time' }, { value: 'part', label: 'Part-time (½ speed)' }])}</div>
+      ${Array.from({ length: slots }, (_, i) => `<label class="country-pick">Choice ${i + 1}<select data-part="u${i}" aria-label="Choice ${i + 1}">${options(pick[i])}</select></label>`).join('')}
+      <div class="row-end">${button('✉️ Send applications', 'education.applyMany', { variant: 'small primary', collect: true, hint: 'Decisions come straight back' })}</div></div>
+    ${ed}<p class="fine">Hold offers while you apply elsewhere; they stand until next year. Universities in another city mean moving there (🚚); abroad, a student visa.</p>`;
 }

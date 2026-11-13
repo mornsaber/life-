@@ -158,8 +158,8 @@ const tests = {
   'the School tab lists real universities to apply to'() {
     const { state } = life({ countryId: 'FR' });
     graduateHS(state);
-    const html = VIEWS.school(state, {});
-    assert.ok(html.includes('Sorbonne') && html.includes('education.apply'));
+    const html = VIEWS.school(state, { admProgram: 'bachelor' });
+    assert.ok(html.includes('Sorbonne') && /education\.apply/.test(html));
     assert.ok(universitiesFor(state, 'bachelor').some((u) => u.country === 'US'), 'famous universities abroad are on the list');
     void PROGRAMS;
     void universityOf;
