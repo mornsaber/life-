@@ -61,12 +61,12 @@ export function nextSteps(state, max = 4) {
 export function tipsFor(state) {
   const age = state.character.age;
   const t = [
-    ['⏩', 'Press <b>Age +1</b> (or Space) to live the next year. Decisions pop up as they happen.'],
-    ['🗂️', 'The tabs across the top are where you act: <b>Work</b> for jobs, <b>School</b> for education, <b>Money</b> for savings and health.'],
+    ['⏩', 'Press the green <b>Age</b> button (or Space) to live the next year. Decisions pop up as they happen.'],
+    ['🗂️', 'The buttons along the bottom are where you act: <b>Occupation</b> for school and work, <b>Assets</b> for money and home, <b>Relationships</b> for the people in your life, <b>Activities</b> for everything else.'],
   ];
   if (age < 16) t.push(['🎒', 'Childhood is short: grades, friends and hobbies now shape what you can do later.']);
   else if (age < 25) t.push(['🎓', 'Your late teens decide a lot: a degree, a trade, or a first job. Each has its own path.']);
   else t.push(['💼', 'Most years pass on their own. Act when you want to change something: a new job, a home, a move abroad.']);
-  t.push(['🗓️', 'After each birthday, <b>The Year in Review</b> shows what changed. Your full story is below it.']);
+  t.push(['🗓️', 'After each birthday, <b>The Year in Review</b> shows what changed. Your full story is below it, newest year first.']);
   return t;
 }

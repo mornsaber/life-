@@ -154,7 +154,8 @@ function faithTick(ctx) {
     ctx.stat('happiness', 3);
   }
   // Schisms: congregations split over doctrine.
-  if (t.schism && rng.chance(t.schism.risk * 0.03) && !state.prompts.some((p) => p.type === 'community.schism')) {
+  // Children go where their parents go; the choice is an adult's (after the roll, so the year's dice don't shift).
+  if (t.schism && rng.chance(t.schism.risk * 0.03) && state.character.age >= 16 && !state.prompts.some((p) => p.type === 'community.schism')) {
     const b = TRADITIONS[t.schism.breakaway];
     ctx.prompt({
       type: 'community.schism',

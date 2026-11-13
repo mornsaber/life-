@@ -217,11 +217,12 @@ function tick(ctx) {
   if (state.prompts.some((p) => p.type?.startsWith('livingHistory.'))) return;
   const ep = EPISODES.find((e) => !seen(state, e.id) && e.when(state, y));
   if (ep) return prompt(ctx, 'episode', ep, typeof ep.text === 'function' ? ep.text(state) : ep.text);
-  const d = DISASTERS.find((e) => !seen(state, e.id) && y >= e.years[0] && y <= e.years[1] && e.where(state));
+  const d = state.character.age >= 12 ? DISASTERS.find((e) => !seen(state, e.id) && y >= e.years[0] && y <= e.years[1] && e.where(state)) : null;
   if (d) return prompt(ctx, 'disaster', d, d.text);
   const ph = state.periodHealth;
   const e = epidemicsNow(state).find((x) => !seen(state, `epi.${x.id}`));
-  if (e && ph) {
+  // Children don't decide how the household meets an epidemic.
+  if (e && ph && state.character.age >= 16) {
     ctx.prompt({ type: 'livingHistory.epidemic', icon: '🦠', title: `${e.name.replace(/^./, (c) => c.toUpperCase())} Is Here`, text: `${e.name.replace(/^./, (c) => c.toUpperCase())} has reached ${(REGIONS[state.character.regionId]?.name ?? 'your town').split(',')[0]}. What do you do?`, data: { id: e.id }, options: epidemicOptions(state, e).map(({ id, label, hint }) => ({ id, label, ...(hint ? { hint } : {}) })) });
   }
 }

@@ -112,6 +112,10 @@ function handleAction(el) {
   switch (action) {
     case 'ui.tab':
       return renderer.setTab(arg);
+    case 'ui.menu':
+      return renderer.openMenu(arg);
+    case 'ui.home':
+      return renderer.goHome();
     case 'ui.panel':
       return renderer.openPanel(arg);
     case 'ui.hideTips':
@@ -142,6 +146,10 @@ function handleAction(el) {
       renderer.ui.logLimit += 40;
       return renderer.render(engine.state);
     case 'engine.ageUp':
+      // Like turning a page: the new year opens on your story.
+      renderer.ui.menu = null;
+      if (renderer.tab !== 'life') renderer.tab = 'life';
+      window.scrollTo?.(0, 0);
       return engine.ageUp();
     case 'engine.continueAs':
       renderer.panel = null;

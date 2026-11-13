@@ -9,7 +9,7 @@ import { ceremonialPosts } from '../modules/world/Ceremonial.js';
 import { styledName, postNominals } from '../modules/world/Honours.js';
 import { OFFICES } from '../modules/politics/Offices.js';
 import { CROWNS } from '../modules/world/Crown.js';
-import { currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
+import { STAT_META, STAT_KEYS, currentYear, netWorth, commitmentLoad, getCommitments, prestige, randomName, hasFelony, fixMoneySigns, tidyText } from '../core/State.js';
 import { Random } from '../core/Random.js';
 import {
   flagEmojiInPage,
@@ -78,7 +78,7 @@ import { flagImg } from './Flags.js';
 
 /** Eight sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
-  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'world', label: 'The World', icon: '🌍' }, { id: 'goals', label: 'Goals', icon: '🎯' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'licenses', label: 'Licenses & Certs', icon: '🪪' }] },
   { id: 'court', label: 'Court', icon: '👑', when: (st) => hasCourt(st), tabs: [{ id: 'court', label: 'Court', icon: '👑' }, { id: 'succession', label: 'Succession', icon: '🌳' }, { id: 'household', label: 'Household', icon: '🎗️' }, { id: 'estates', label: 'Estates', icon: '🏰' }] },
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
@@ -89,6 +89,60 @@ export const SECTIONS = [
   { id: 'health', label: 'Health', icon: '🩺', tabs: [{ id: 'health', label: 'Overview', icon: '👩‍⚕️' }, { id: 'conditions', label: 'Conditions', icon: '🫀' }, { id: 'cover', label: 'Cover', icon: '🏥' }, { id: 'wellbeing', label: 'Lifestyle', icon: '🏃' }] },
   { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Status', icon: '⚖️' }, { id: 'cases', label: 'Cases', icon: '🗂️' }, { id: 'crime', label: 'Crime', icon: '🕶️' }, { id: 'underworld', label: 'Underworld', icon: '🕴️' }] },
 ];
+/**
+ * The dock: four menus around the Age button. Each row opens a screen (a VIEWS id); a screen
+ * that belongs to a SECTION with several tabs shows them as a small switcher at the top.
+ * sub(state) is the one-line summary under the row's title.
+ */
+export const GROUPS = {
+  occupation: {
+    label: (st) => (st && st.character.age < 18 ? 'School' : 'Occupation'), icon: '💼',
+    items: [
+      { tab: 'career', label: 'Job', icon: '💼', sub: (st) => (st.career.job ? `${st.career.job.title}` : st.character.age < 14 ? 'Too young to work' : 'Find work') },
+      { tab: 'school', label: 'Education', icon: '🎓', sub: (st) => (st.education.enrolled ? `Studying: ${PROGRAMS[st.education.enrolled.programId]?.name ?? 'enrolled'}` : 'Schools, colleges, apprenticeships') },
+      { tab: 'business', label: 'Business', icon: '🏪', sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
+      { tab: 'gov', label: 'Public Service', icon: '🏛️', sub: () => 'Government agencies and the civil service' },
+      { tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', sub: () => 'Qualifications that open jobs' },
+      { tab: 'military', label: 'Military', icon: '🎖️', sub: (st) => (st.military.service ? 'Serving' : 'Enlist or apply for a commission') },
+      { tab: 'emergency', label: 'Emergency Services', icon: '🚨', sub: () => 'Volunteer fire, rescue and reserves' },
+      { tab: 'politics', label: 'Politics', icon: '🗳️', sub: (st) => (st.politics.office ? 'In office' : 'Run for office, join a party') },
+      { tab: 'court', label: 'The Crown', icon: '👑', when: (st) => hasCourt(st), sub: () => 'Court, succession, household and estates' },
+    ],
+  },
+  assets: {
+    label: () => 'Assets', icon: '🏠',
+    items: [
+      { tab: 'money', label: 'Money', icon: '💰', sub: (st) => `${compactMoney(st.finances.cash)} cash · net worth ${compactMoney(netWorth(st))}` },
+      { tab: 'home', label: 'Home & Property', icon: '🏠', sub: (st) => `${STATUS_LABEL[housingStatus(st)]?.label ?? 'Home'}${st.housing.properties.length ? ` · ${st.housing.properties.length} propert${st.housing.properties.length === 1 ? 'y' : 'ies'}` : ''}` },
+      { tab: 'garage', label: 'Vehicles', icon: '🚗', sub: (st) => `${(st.vehicles?.owned ?? []).length || 'No'} vehicle${(st.vehicles?.owned ?? []).length === 1 ? '' : 's'}` },
+      { tab: 'farm', label: 'Farm', icon: '🚜', sub: () => 'Land, crops and livestock' },
+      { tab: 'move', label: 'Move & Travel', icon: '🗺️', sub: () => 'Another city, another country, a trip' },
+    ],
+  },
+  relationships: {
+    label: () => 'Relationships', icon: '❤️',
+    items: [
+      { tab: 'people', label: 'Family & Friends', icon: '👪', sub: (st) => `${(st.people?.list ?? []).filter((p) => p.alive).length} people in your life` },
+      { tab: 'community', label: 'Faith & Community', icon: '🙏', sub: () => 'Congregation, clubs and causes' },
+      { tab: 'goals', label: 'Goals & Reputation', icon: '🎯', sub: () => 'What you want, and what people think of you' },
+      { tab: 'honors', label: 'Honours', icon: '🏅', sub: (st) => `${(st.honors ?? []).length || 'No'} honour${(st.honors ?? []).length === 1 ? '' : 's'}` },
+      { tab: 'achievements', label: 'Achievements', icon: '🏆', sub: () => 'Milestones of this life and every life' },
+    ],
+  },
+  activities: {
+    label: () => 'Activities', icon: '🎭',
+    items: [
+      { tab: 'activities', label: 'Activities', icon: '🎟️', sub: () => 'Going out, hobbies, expeditions' },
+      { tab: 'health', label: 'Doctor & Health', icon: '🩺', sub: (st) => `Health ${Math.round(st.stats.health)}%` },
+      { tab: 'crime', label: 'Crime', icon: '🕶️', sub: () => 'If you must' },
+      { tab: 'legal', label: 'Legal', icon: '⚖️', sub: (st) => ((st.legal.record ?? []).length ? `${st.legal.record.length} conviction${st.legal.record.length === 1 ? '' : 's'} on record` : 'A clean record') },
+      { tab: 'civic', label: 'Civic Service', icon: '🤝', sub: () => 'Volunteering and national service' },
+      { tab: 'world', label: 'The World', icon: '🌍', sub: (st) => `${currentYear(st)}: news and the times` },
+    ],
+  },
+};
+export const groupOf = (tabId) => Object.entries(GROUPS).find(([, g]) => g.items.some((i) => i.tab === tabId || sectionOf(i.tab).tabs.some((t) => t.id === tabId)))?.[0] ?? null;
+
 /** Every screen, in section order (keyboard [ ] walks this list). */
 export const TABS = SECTIONS.flatMap((s) => s.tabs.map((t) => ({ ...t, section: s.id })));
 export const sectionOf = (tabId) => SECTIONS.find((s) => s.tabs.some((t) => t.id === tabId)) ?? SECTIONS[0];
@@ -179,6 +233,8 @@ function retirementLifeCard(state) {
 }
 
 export const VIEWS = {
+  world: (state) => eraCard(state) + frontPageCard(state) || '<p class="muted">Quiet times.</p>',
+  goals: (state) => aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
@@ -288,6 +344,18 @@ export class Renderer {
     this.settings = {};
   }
 
+  /** Open a dock menu (or close it if it's already open). */
+  openMenu(id) {
+    this.ui.menu = this.ui.menu === id || !GROUPS[id] ? null : id;
+    this.root?.ownerDocument?.defaultView?.scrollTo?.(0, 0);
+    this.render(this.engine.state);
+  }
+
+  goHome() {
+    this.ui.menu = null;
+    this.setTab('life');
+  }
+
   openPanel(panel) {
     this.panel = this.panel === panel ? null : panel;
     this.render(this.engine.state);
@@ -296,6 +364,8 @@ export class Renderer {
   setTab(tab) {
     if (!VIEWS[tab]) return;
     this.tab = tab;
+    this.ui.menu = null;
+    this.root?.ownerDocument?.defaultView?.scrollTo?.(0, 0);
     (this.lastTab ??= {})[sectionOf(tab).id] = tab;
     try {
       localStorage.setItem(TAB_KEY, tab);
@@ -360,17 +430,78 @@ export class Renderer {
       return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
+    const menu = this.ui.menu;
+    const body = menu ? this.menuHtml(state, menu) : this.tab === 'life' ? this.homeHtml(state) : this.pageHtml(state);
     return `
       <a class="skip-link" href="#tabpanel">Skip to content</a>
-      ${this.topbar(state)}
-      <main class="layout" id="main">
-        <aside class="sidebar" aria-label="Character">${this.ageButton(state, prompt)}${this.sidebar(state)}</aside>
-        <section class="main">
-          ${this.tabNav()}
-          <div class="tab-panel" id="tabpanel" role="tabpanel" aria-labelledby="${sectionOf(this.tab).tabs.length > 1 ? `tab-${this.tab}` : `section-${sectionOf(this.tab).id}`}" tabindex="-1">${periodText(VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips }))}</div>
-        </section>
-      </main>
+      ${this.appBar(state)}
+      <main class="phone" id="main">${body}</main>
+      <div class="bottom-chrome">${this.statBars(state)}${this.dock(state, prompt)}</div>
       ${prompt ? periodText(promptModal(prompt, state.prompts.length)) : panel}`;
+  }
+
+  /** The bar at the top: who you are, how old, what you do, and your cash. */
+  appBar(state) {
+    const c = state.character;
+    const year = c.birthYear != null && c.birthYear < PRESENT_YEAR ? ` · ${c.birthYear + c.age}` : '';
+    const role = this.statusLine(state).replace(/<\/li><li>/g, ' · ').replace(/<\/?li>/g, '').split(' · ')[0];
+    return `<header class="appbar">
+      <button class="appbar-who" data-action="ui.home" aria-label="Back to your story">${avatarHtml(state)}<span class="appbar-text"><b>${esc(styledName(state))}</b><small>Age ${c.age}${year} · ${role}</small></span></button>
+      <span class="appbar-cash ${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span>
+      <button class="btn ghost small appbar-menu" data-action="ui.panel" data-arg="menu" aria-haspopup="dialog" aria-label="Menu">☰</button>
+    </header>`;
+  }
+
+  /** Home: the story of the life, newest year first. */
+  homeHtml(state) {
+    const ui = { ...this.ui, tips: this.settings.tips };
+    const limit = ui.logLimit ?? 30;
+    const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
+    return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${periodText(tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
+  }
+
+  /** A dock menu: one row per screen, with a line saying where you stand. */
+  menuHtml(state, groupId) {
+    const g = GROUPS[groupId];
+    if (!g) return this.homeHtml(state);
+    const rows = g.items.filter((i) => VIEWS[i.tab] && (!i.when || i.when(state))).map((i) => {
+      let sub = '';
+      try { sub = i.sub?.(state) ?? ''; } catch { sub = ''; }
+      return `<li><button class="menu-row" data-action="ui.tab" data-arg="${i.tab}"><span class="menu-icon" aria-hidden="true">${i.icon}</span><span class="menu-text"><b>${esc(i.label)}</b><small>${esc(sub)}</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
+    }).join('');
+    return `<div class="sheet" id="tabpanel" tabindex="-1"><div class="sheet-head"><button class="btn ghost small" data-action="ui.home" aria-label="Close">✕</button><h2>${g.icon} ${esc(g.label(state))}</h2></div><ul class="menu-list">${rows}</ul></div>`;
+  }
+
+  /** A screen opened from a menu: a back button, the section's tabs if it has several, the view. */
+  pageHtml(state) {
+    const section = sectionOf(this.tab);
+    const groupId = groupOf(this.tab);
+    const item = GROUPS[groupId]?.items.find((i) => i.tab === this.tab || sectionOf(i.tab).id === section.id);
+    const title = item?.label ?? section.tabs.find((t) => t.id === this.tab)?.label ?? section.label;
+    const subs = section.tabs.length > 1 && section.id !== 'life'
+      ? `<nav class="subtabs" role="tablist" aria-label="${section.label}">${section.tabs.map((t) => `<button role="tab" id="tab-${t.id}" class="subtab ${t.id === this.tab ? 'active' : ''}" data-action="ui.tab" data-arg="${t.id}" aria-selected="${t.id === this.tab}" aria-controls="tabpanel"><span aria-hidden="true">${t.icon}</span> ${t.label}</button>`).join('')}</nav>`
+      : '';
+    return `<div class="page-head"><button class="btn ghost small" data-action="${groupId ? 'ui.menu' : 'ui.home'}" data-arg="${groupId ?? ''}" aria-label="Back">‹ ${esc(groupId ? GROUPS[groupId].label(state) : 'Story')}</button><h2>${item?.icon ?? section.icon} ${esc(title)}</h2></div>${subs}
+      <div class="tab-panel" id="tabpanel" role="tabpanel" tabindex="-1">${periodText(VIEWS[this.tab](state, { ...this.ui, tips: this.settings.tips }))}</div>`;
+  }
+
+  /** The six stats as bars, above the dock. */
+  statBars(state) {
+    return `<div class="stat-bars" role="group" aria-label="Your stats">${STAT_KEYS.map((k) => {
+      const meta = STAT_META[k];
+      const v = Math.round(state.stats[k] ?? 0);
+      const good = meta.inverse ? 100 - v : v;
+      const tone = good >= 70 ? 'good' : good >= 40 ? 'mid' : 'bad';
+      return `<div class="stat-bar ${tone}" title="${meta.label} ${v}%"><span class="stat-name"><span aria-hidden="true">${meta.icon}</span> ${meta.label}</span><span class="stat-track"><span style="width:${v}%"></span></span><b>${v}%</b></div>`;
+    }).join('')}</div>`;
+  }
+
+  /** The dock: four menus and the Age button in the middle. */
+  dock(state, prompt) {
+    const item = (id) => { const g = GROUPS[id]; const on = this.ui.menu === id || (!this.ui.menu && this.tab !== 'life' && groupOf(this.tab) === id); return `<button class="dock-btn ${on ? 'on' : ''}" data-action="ui.menu" data-arg="${id}" aria-pressed="${on}"><span aria-hidden="true">${g.icon}</span><small>${esc(g.label(state))}</small></button>`; };
+    return `<nav class="dock" aria-label="Menus">${item('occupation')}${item('assets')}
+      <button class="age-orb" data-action="engine.ageUp" aria-keyshortcuts="Space" aria-label="Age up to ${state.character.age + 1}"${this.engine.canAgeUp() ? '' : ' disabled'}><b>Age</b><small>${prompt ? 'Decide' : '+1'}</small></button>
+      ${item('relationships')}${item('activities')}</nav>`;
   }
 
   /** Section bar plus (when the section has several screens) a compact sub-tab row. */

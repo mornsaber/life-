@@ -1054,3 +1054,108 @@ img.flag { object-fit: cover; }
 .flag-picker .flag-picker-btn, .flag-picker .flag-picker-item { justify-content: flex-start !important; text-align: left !important; }
 .flag-picker .flag-picker-btn > span:not(.caret):not(.flag):not(.flag-symbol) { flex: 1 1 auto; }
 .flag-picker .flag, .flag-picker .flag-symbol { flex: 0 0 auto; }
+
+/* ==========================================================================
+   App shell (phone-first): app bar, story feed, dock menus, stat bars, Age orb.
+   One column at every width; the dock and stats stay pinned to the bottom.
+   ========================================================================== */
+.appbar {
+  position: sticky; top: 0; z-index: 20;
+  display: flex; align-items: center; gap: 10px;
+  max-width: 640px; margin: 0 auto; padding: 8px 12px;
+  background: var(--topbar); backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--line);
+}
+.appbar-who { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; background: none; border: 0; padding: 0; text-align: left; cursor: pointer; }
+.appbar-who .avatar { width: 40px; height: 40px; font-size: 26px; flex: none; }
+.appbar-text { display: flex; flex-direction: column; min-width: 0; }
+.appbar-text b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appbar-text small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.appbar-cash { font-weight: 800; font-size: 16px; white-space: nowrap; }
+.appbar-menu { font-size: 18px; padding: 4px 10px; }
+
+main.phone {
+  max-width: 640px; margin: 0 auto;
+  padding: 12px 12px calc(220px + env(safe-area-inset-bottom));
+}
+main.phone .card { margin-bottom: 12px; }
+main.phone .tab-panel > * + * { margin-top: 0; }
+
+/* The story feed. */
+.feed { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; }
+.feed .log-controls { margin-bottom: 8px; }
+
+/* Dock menus: a sheet of big rows. */
+.sheet-head, .page-head { display: flex; align-items: center; gap: 10px; margin: 2px 0 12px; }
+.sheet-head h2, .page-head h2 { font-size: 20px; font-weight: 800; font-family: var(--sans); }
+.menu-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.menu-row {
+  width: 100%; display: flex; align-items: center; gap: 14px;
+  padding: 14px 14px; border-radius: 14px; border: 1px solid var(--line);
+  background: var(--panel); text-align: left; cursor: pointer;
+}
+.menu-row:hover, .menu-row:focus-visible { border-color: var(--blue); }
+.menu-icon { font-size: 28px; width: 40px; text-align: center; flex: none; }
+.menu-text { display: flex; flex-direction: column; flex: 1; min-width: 0; }
+.menu-text b { font-size: 16px; }
+.menu-text small { color: var(--muted); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.menu-chev { font-size: 26px; color: var(--muted); }
+main.phone .subtabs { display: flex; gap: 6px; overflow-x: auto; margin: 0 0 12px; padding-bottom: 2px; scrollbar-width: none; }
+main.phone .subtabs::-webkit-scrollbar { display: none; }
+
+/* Bottom: stat bars and the dock. */
+.bottom-chrome {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  max-width: 640px; margin: 0 auto;
+  background: var(--topbar); backdrop-filter: blur(8px);
+  border-top: 1px solid var(--line);
+  padding: 6px 10px calc(6px + env(safe-area-inset-bottom));
+}
+.stat-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 3px 14px; margin-bottom: 6px; }
+.stat-bar { display: grid; grid-template-columns: 96px 1fr 38px; align-items: center; gap: 6px; font-size: 12px; }
+.stat-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--ink-soft); }
+.stat-track { height: 9px; border-radius: 9px; background: var(--inset); overflow: hidden; }
+.stat-track span { display: block; height: 100%; border-radius: 9px; background: var(--green); transition: width .3s; }
+.stat-bar.mid .stat-track span { background: var(--yellow); }
+.stat-bar.bad .stat-track span { background: var(--red); }
+.stat-bar b { text-align: right; font-variant-numeric: tabular-nums; }
+
+.dock { display: grid; grid-template-columns: 1fr 1fr 84px 1fr 1fr; align-items: end; gap: 4px; }
+.dock-btn {
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+  background: none; border: 0; padding: 4px 0; cursor: pointer; border-radius: 10px;
+  font-size: 24px; line-height: 1;
+}
+.dock-btn small { font-size: 11px; font-weight: 600; color: var(--muted); }
+.dock-btn.on { background: var(--panel-2); }
+.dock-btn.on small { color: var(--ink); }
+.age-orb {
+  width: 76px; height: 76px; margin: -26px auto 0; border-radius: 50%;
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--green); color: #fff; border: 4px solid var(--panel);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .25); cursor: pointer;
+}
+.age-orb b { font-size: 17px; font-weight: 800; letter-spacing: .5px; }
+.age-orb small { font-size: 12px; font-weight: 700; opacity: .9; }
+.age-orb:active:not(:disabled) { transform: scale(.96); }
+.age-orb:disabled { filter: grayscale(.6); opacity: .7; cursor: not-allowed; }
+
+@media (max-width: 380px) {
+  .stat-bar { grid-template-columns: 74px 1fr 34px; font-size: 11px; }
+}
+
+/* Cleaner cards inside the app shell: plain headings, soft corners, no pixel shadow. */
+main.phone .card { border-width: 1px; border-radius: 14px; box-shadow: 0 1px 3px rgba(0, 0, 0, .08); }
+main.phone .card-head { padding: 10px 14px; border-bottom-width: 1px; }
+main.phone .card-head h3 { font-family: var(--sans); font-size: 15px; font-weight: 800; letter-spacing: 0; text-transform: none; }
+main.phone summary.card-head { cursor: pointer; }
+/* The orb sits above the dock without covering the stats. */
+.stat-bars { margin-bottom: 14px; }
+.age-orb { margin-top: -18px; }
+.modal h2, .modal-title { font-family: var(--sans); font-weight: 800; font-size: 20px; letter-spacing: 0; text-transform: none; }
+/* Softer controls everywhere in the app shell and its pop-ups. */
+main.phone .btn, .modal .btn, .overlay .btn { box-shadow: none; border-width: 1px; border-radius: 10px; }
+main.phone .btn:active:not(:disabled), .modal .btn:active:not(:disabled) { transform: scale(.98); }
+.modal { border-width: 1px; border-radius: 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .3); }
+.modal-head h2, .modal h2 { font-family: var(--sans); }
+main.phone .subtab { border-radius: 999px; }
