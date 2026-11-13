@@ -48,6 +48,7 @@ import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
 import { eraCard } from './views/EraView.js';
 import { featsCard } from './views/FeatsView.js';
+import { pressCard } from './views/PressView.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
 const leisureCard = (state) => { const ls = leisureNow(state).filter((l) => state.character.age >= l.minAge); return ls.length ? card('Going Out', `<p class="muted">What people did for fun in ${state.era ? 'this day' : 'our day'}. Once a year each.</p><div class="action-grid">${ls.map((l) => button(`${l.icon} ${l.label}`, 'leisure.go', { arg: l.id, variant: 'small', disabled: Boolean(state.yearly[`leisure.${l.id}`]), hint: state.yearly[`leisure.${l.id}`] ? 'Done this year' : leisureCost(state, l) ? `$${leisureCost(state, l).toLocaleString()}` : 'Free' })).join('')}</div>`, { icon: '🎟️' }) : ''; };
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
@@ -184,7 +185,7 @@ export const VIEWS = {
     return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + aspirationsCard(state) + eraCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
-  business: businessView,
+  business: (state, ui) => businessView(state, ui) + pressCard(state),
   community: communityView,
   garage: garageView,
   farm: farmView,

@@ -31,6 +31,7 @@
 import { clamp, Random } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName, setNameCountry, currentYear } from '../../core/State.js';
 import { commitOffense } from './JusticeSystem.js';
+import { prohibitionHere } from './LawOfTheDay.js';
 import { crimeOf } from './StreetCrime.js';
 import { REGIONS, regionsHere, changeRegion } from '../life/Regions.js';
 import { leaveJob } from '../career/CareerEngine.js';
@@ -64,11 +65,14 @@ export const RACKETS = {
   loans: { label: 'Loan-sharking', icon: '🦈', income: [25000, 70000], heat: 5, violence: 0.05, rank: 1, offense: 'extortion' },
   counterfeit: { label: 'Counterfeit goods', icon: '👜', income: [20000, 80000], heat: 4, violence: 0.01, rank: 1, offense: 'counterfeitGoods' },
   protection: { label: 'Protection', icon: '🛡️', income: [30000, 90000], heat: 7, violence: 0.06, rank: 1, offense: 'extortion' },
-  cyber: { label: 'Online fraud', icon: '💻', income: [40000, 150000], heat: 5, violence: 0, rank: 1, offense: 'wireFraud' },
+  cyber: { label: 'Online fraud', icon: '💻', income: [40000, 150000], heat: 5, violence: 0, rank: 1, offense: 'wireFraud', from: 1995 },
+  bootlegging: { label: 'Bootlegging', icon: '🥃', income: [60000, 250000], heat: 9, violence: 0.08, rank: 1, offense: 'bootlegging', from: 1920, until: 1934, prohibition: true },
   cargo: { label: 'Cargo theft at the docks', icon: '🚢', income: [50000, 160000], heat: 8, violence: 0.03, rank: 2, offense: 'grandTheft' },
-  drugs: { label: 'Drug distribution', icon: '💊', income: [60000, 220000], heat: 12, violence: 0.1, rank: 2, offense: 'drugDistribution' },
+  drugs: { label: 'Drug distribution', icon: '💊', income: [60000, 220000], heat: 12, violence: 0.1, rank: 2, offense: 'drugDistribution', from: 1920 },
   construction: { label: 'Construction rackets', icon: '🏗️', income: [100000, 300000], heat: 8, violence: 0.03, rank: 3, offense: 'racketeering' },
 };
+/** A racket in its day: online fraud from 1995, the drug trade once there were drug laws, bootlegging under Prohibition. */
+export const racketOpen = (state, id) => { const r = RACKETS[id]; const y = currentYear(state); return Boolean(r) && !(r.from > y) && !(r.until <= y) && (!r.prohibition || prohibitionHere(state)); };
 
 export const SKIM = { 0: 'Kick up every cent', 10: 'Skim a little', 25: 'Skim a lot' };
 export const POLICIES = {
@@ -207,6 +211,9 @@ function myYear(ctx) {
     if (!state.prompts.some((p) => p.type === 'underworld.job') && rng.chance(0.7)) jobPrompt(ctx, o);
   } else {
     const crewBoost = 1 + Math.min(0.5, me.crew.filter((c) => !c.arrested).length * 0.05);
+    // A racket's day can end (bootlegging with Repeal in 1933).
+    const ended = me.rackets.filter((id) => !racketOpen(state, id));
+    if (ended.length) { me.rackets = me.rackets.filter((id) => racketOpen(state, id)); ctx.log(`${ended.map((id) => RACKETS[id].label).join(', ')}: that racket is finished — the law changed.`, '📉', 'info'); }
     for (const id of me.rackets) {
       const r = RACKETS[id];
       income += Math.round(rng.int(...r.income) * (0.5 + o.territory / 100) * crewBoost);
@@ -426,6 +433,7 @@ export const UnderworldModule = {
       const o = outfitOf(state);
       const r = RACKETS[id];
       if (!me || !o || !r || me.witsec || me.left) return ctx.toast('Not available', 'warn');
+      if (!racketOpen(state, id)) return ctx.toast('Not in this day', 'warn');
       if (me.rank < Math.max(1, r.rank)) return ctx.toast(`${rankTitle(o, Math.max(1, r.rank))} and up`, 'warn');
       if (me.rackets.includes(id)) { me.rackets = me.rackets.filter((x) => x !== id); return ctx.log(`You handed ${r.label.toLowerCase()} to someone else.`, r.icon, 'info'); }
       if (me.rackets.length >= me.rank + 1) return ctx.toast(`${me.rank + 1} rackets at your rank`, 'warn');

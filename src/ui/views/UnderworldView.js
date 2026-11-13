@@ -2,7 +2,7 @@
  * The Underworld card (Activities tab): your city's outfits, and your life inside one.
  */
 import { esc, money, button, card, kv, chip, meter, select, disclosure } from '../Components.js';
-import { OUTFIT_TYPES, RACKETS, SKIM, POLICIES, meOf, outfitsHere, rankTitle, approachCheck } from '../../modules/legal/Underworld.js';
+import { OUTFIT_TYPES, RACKETS, racketOpen, SKIM, POLICIES, meOf, outfitsHere, rankTitle, approachCheck } from '../../modules/legal/Underworld.js';
 
 export function underworldCard(state) {
   if (state.character.age < 16 || !state.underworld) return '';
@@ -20,7 +20,7 @@ export function underworldCard(state) {
   const t = OUTFIT_TYPES[mine.type];
   if (me.witsec) return card('Witness Protection', `<p>You testified against ${esc(mine.name)}. You live under a name the marshals gave you; ${esc(mine.name)} would still like to find you.</p>`, { icon: '🪪', accent: 'red' });
   const status = me.left ? (me.marked ? '<span class="neg">Out — and marked</span>' : 'Out, in peace') : `${esc(rankTitle(mine, me.rank))}${me.made ? ' (sworn)' : ''}`;
-  const rackets = Object.entries(RACKETS).filter(([, r]) => me.rank >= Math.max(1, r.rank)).map(([id, r]) => button(`${r.icon} ${r.label}`, 'underworld.racket', { arg: id, variant: me.rackets.includes(id) ? 'tiny on' : 'tiny', hint: `${money(r.income[0])}–${money(r.income[1])} · heat ${r.heat}` })).join('');
+  const rackets = Object.entries(RACKETS).filter(([id, r]) => me.rank >= Math.max(1, r.rank) && racketOpen(state, id)).map(([id, r]) => button(`${r.icon} ${r.label}`, 'underworld.racket', { arg: id, variant: me.rackets.includes(id) ? 'tiny on' : 'tiny', hint: `${money(r.income[0])}–${money(r.income[1])} · heat ${r.heat}` })).join('');
   const crew = me.crew.length ? `<ul class="history">${me.crew.map((c) => `<li>${esc(c.name)} <small>loyalty ${c.loyalty} · skill ${c.skill}${c.arrested ? ' · arrested' : ''}${c.flipped ? ' · <span class="neg">cooperating</span>' : ''}</small></li>`).join('')}</ul>` : '<p class="fine">No crew yet.</p>';
   const body = `${kv([
     ['Outfit', `${t.icon} ${esc(mine.name)}${mine.war ? ` ${chip('at war', 'bad')}` : ''}${mine.task ? ` ${chip('task force', 'bad')}` : ''}`],
