@@ -8,6 +8,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
+import { healthAll } from '../src/ui/views/HealthView.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { timeTick, freeHours, usedHours } from '../src/modules/life/TimeBudget.js';
 import { skillsTick, skill, practise, skillHireBonus } from '../src/modules/life/Skills.js';
@@ -83,7 +84,7 @@ const tests = {
     assert.ok(crisis, 'heavy drinking under stress reaches a crisis');
     assert.ok(state.health.conditions.some((c) => c.id === 'alcohol'), 'denial turns it into an addiction');
     assert.equal(state.health.routine.months.length, 12);
-    clean(VIEWS.health(state, {}));
+    clean(healthAll(state));
   },
   'a disabling condition closes physical jobs'() {
     const { state, ctx } = life('US', 7, 35);

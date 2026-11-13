@@ -22,6 +22,7 @@ import { pursueEligibility } from '../src/modules/credentials/LicensingEngine.js
 import { schoolAccess } from '../src/modules/education/K12.js';
 import { warMedals } from '../src/modules/military/WarMedals.js';
 import { LEGISLATURES } from '../src/modules/politics/NationalOffices.js';
+import { healthAll } from '../src/ui/views/HealthView.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { routesTo } from '../src/modules/world/Migration.js';
 import { hire } from '../src/modules/career/CareerEngine.js';
@@ -444,7 +445,7 @@ const tests = {
       assert.doesNotMatch(text, MODERN, tab);
     }
     assert.ok(VIEWS.garage(state, {}).includes('Riding Horse'), 'horses for sale');
-    assert.match(VIEWS.health(state, {}), /Charity ward|Sick club|Pay the doctor/);
+    assert.match(healthAll(state), /Charity ward|Sick club|Pay the doctor/);
   },
   'popes, thrones and governments of their time'() {
     const rome = life({ countryId: 'IT', startYear: 1850 }, 1);

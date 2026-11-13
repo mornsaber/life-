@@ -4,7 +4,7 @@
  * disability coverage and VA rating.
  */
 import { systemHere, privatePremium, goPrivateCost, levySurcharge } from '../../modules/health/HealthSystems.js';
-import { esc, money, button, card, chip, meter, kv, empty, select } from '../Components.js';
+import { esc, money, button, card, chip, meter, kv, empty, select, optionRow } from '../Components.js';
 import { genesOf, GENE_LABEL } from '../../modules/health/Genetics.js';
 import { medicineCard } from './MedicineCard.js';
 
@@ -132,9 +132,9 @@ function conditionRow(state, c) {
   </li>`;
 }
 
-export function healthView(state) {
+export function healthParts(state) {
   const h = state.health;
-  if (!h) return '';
+  if (!h) return null;
   const known = h.conditions.filter((c) => c.diagnosed);
   const active = known.filter((c) => !c.remission);
   const past = known.filter((c) => c.remission);
@@ -182,5 +182,88 @@ export function healthView(state) {
 
   const history = h.history.length ? card('Medical History', `<ul class="history">${[...h.history].reverse().slice(0, 12).map((e) => `<li><small>Age ${e.age}</small> ${esc(e.text)}</li>`).join('')}</ul>`, { icon: '📋' }) : '';
 
-  return `${coverageCard(state)}${medicineCard(state)}${conditions}${lifestyleCard(state)}${preventionCard(state)}${debt}${mind}${disability}${history}`;
+  return { coverage: coverageCard(state), medicine: medicineCard(state), conditions, lifestyle: lifestyleCard(state), prevention: preventionCard(state), debt, mind, disability, history };
+}
+
+/** 🩺 Overview: how you are, what your doctor would say, and what to do next. */
+export function healthOverview(state) {
+  if (!state.health) return '';
+  return doctorCard(state);
+}
+/** 🫀 Conditions: what you have, the care for each, the mind, the record. */
+export function conditionsTab(state) {
+  const x = healthParts(state);
+  return x ? `${x.conditions}${x.mind}${x.history}` : '';
+}
+/** 🏥 Cover: insurance or the national system, medicines, medical debt, disability. */
+export function coverTab(state) {
+  const x = healthParts(state);
+  return x ? `${x.coverage}${x.medicine}${x.debt}${x.disability}` : '';
+}
+/** 🏃 Lifestyle: habits, screenings, vaccines, planning. */
+export function lifestyleTab(state) {
+  const x = healthParts(state);
+  return x ? `${x.lifestyle}${x.prevention}` : '';
+}
+/** Every health card (for tests and the printout). */
+export function healthAll(state) {
+  const x = healthParts(state);
+  return x ? `${healthOverview(state)}${x.coverage}${x.medicine}${x.conditions}${x.lifestyle}${x.prevention}${x.debt}${x.mind}${x.disability}${x.history}` : '';
+}
+/** Kept for anything that asked for the whole tab. */
+export const healthView = healthAll;
+
+const BODY = [
+  { id: 'heart', icon: '🫀', label: 'Heart & blood', re: /heart|blood pressure|hypertension|stroke|cholesterol|cardio|arrhythm/i },
+  { id: 'lungs', icon: '🫁', label: 'Lungs', re: /lung|asthma|copd|pneumonia|bronch|emphysema|tubercul/i },
+  { id: 'metabolic', icon: '🩸', label: 'Metabolism', re: /diabet|thyroid|kidney|liver|obes/i },
+  { id: 'cancer', icon: '🎗️', label: 'Cancer', re: /cancer|tumou?r|leuk|lymph|melanoma/i },
+  { id: 'mind', icon: '🧠', label: 'Mind', kind: ['mental', 'addiction'], re: /dementia|alzheim|parkinson|depress|anxiety|ptsd|bipolar|schizo/i },
+  { id: 'body', icon: '🦴', label: 'Bones & joints', re: /bone|back|joint|arthritis|knee|hip|osteo|injur|fracture/i },
+];
+/** The body, system by system: clear, being treated, or a problem. */
+function bodyMap(state) {
+  const active = state.health.conditions.filter((c) => c.diagnosed && !c.remission);
+  return `<div class="chips">${BODY.map((b) => {
+    const here = active.filter((c) => b.kind?.includes(CONDITIONS[c.id]?.kind) || b.re.test(CONDITIONS[c.id]?.name ?? c.id));
+    const bad = here.some((c) => !(c.treated || c.care?.therapy || c.care?.meds));
+    return chip(`${b.icon} ${b.label}${here.length ? `: ${here.map((c) => CONDITIONS[c.id].name).join(', ')}` : ' ✓'}`, here.length ? (bad ? 'bad' : 'warn') : 'good');
+  }).join(' ')}</div>`;
+}
+
+/** What your doctor would say: the state of you, the risks, and the next three things to do. */
+function doctorCard(state) {
+  const h = state.health;
+  const age = state.character.age;
+  const st = state.stats.health;
+  const known = h.conditions.filter((c) => c.diagnosed && !c.remission);
+  const untreated = known.filter((c) => !c.treated && !(isMental(c) && (c.care?.therapy || c.care?.meds)) && c.waitUntil == null);
+  const l = peekLifestyle(state);
+  const risks = riskProfile(state).filter(([tone]) => tone !== 'good').slice(0, 4);
+  const plan = coverage(state);
+  // The next steps, most important first.
+  const steps = [];
+  for (const c of untreated.slice(0, 2)) {
+    const def = CONDITIONS[c.id];
+    if (def.kind === 'addiction') steps.push(['🏥', `Get help for ${def.name.toLowerCase()}`, button('Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']) }), 'Conditions']);
+    else if (isMental(c)) steps.push(['🧠', `Start care for ${def.name.toLowerCase()}`, button('See the options', 'ui.tab', { arg: 'conditions', variant: 'tiny' }), 'Conditions']);
+    else steps.push(['💊', `Treat your ${def.name.toLowerCase()} (${(conditionMortality(c) * 100).toFixed(1)}%/yr risk untreated)`, button('Treat', 'health.treat', { arg: c.id, variant: 'tiny' }), 'Conditions']);
+  }
+  for (const c of known.filter((x) => x.waitUntil != null).slice(0, 1)) steps.push(['⏳', `${CONDITIONS[c.id].name}: waiting until ${c.waitUntil}`, button(`Go private (${money(goPrivateCost(state, CONDITIONS[c.id]))})`, 'health.goPrivate', { arg: c.id, variant: 'tiny' }), 'Cover']);
+  if (!state.yearly['health.checkup'] && age >= 18) steps.push(['🩺', screeningsFor(state).length ? `A checkup: ${screeningsFor(state).map((s) => s.name.replace(/^An? /, '')).slice(0, 2).join(', ')} due` : 'An annual checkup catches silent conditions early', button('Book it', 'health.checkup', { variant: 'tiny' }), 'Cover']);
+  if (l?.smoking === 'current') steps.push(['🚬', 'Stop smoking: the single biggest thing you can do', button('Quit with support', 'health.quitSmoking', { arg: 'rx', variant: 'tiny', disabled: Boolean(state.yearly['health.quit']) }), 'Lifestyle']);
+  if (plan.id === 'none') steps.push(['🛡️', 'You have no health cover: one bad year could ruin you', button('See cover', 'ui.tab', { arg: 'cover', variant: 'tiny' }), 'Cover']);
+  if (l && l.exercise === 'none' && age >= 12) steps.push(['🏃', 'Get moving: exercise protects the heart, mood and memory', button('Exercise more', 'health.habit', { arg: 'exercise:moderate', variant: 'tiny' }), 'Lifestyle']);
+  const hab = h.routine?.habits ?? {};
+  for (const [k, icon, label] of [['drinking', '🍺', 'drinking'], ['gambling', '🎰', 'gambling']]) {
+    if ((hab[k] ?? 0) >= 45) steps.push([icon, `Your ${label} is becoming a habit (${hab[k]}%)${hab[k] >= 70 ? ': you are dependent' : ''}`, k === 'drinking' ? button('Stop drinking', 'health.habit', { arg: 'drinking:none', variant: 'tiny' }) : '', 'Lifestyle']);
+  }
+  if (h.medicalDebt) steps.push(['🧾', `Medical debt of ${money(h.medicalDebt)}`, button('Pay it down', 'health.payMedicalDebt', { variant: 'tiny', disabled: state.finances.cash <= 0 }), 'Cover']);
+  const verdict = st >= 85 ? 'You are in excellent shape.' : st >= 65 ? 'You are in good health.' : st >= 45 ? 'Your health needs some attention.' : st >= 25 ? 'You are not well. Treatment matters now.' : 'You are seriously ill.';
+  return card('Your Doctor Says', `${meter(st, { label: '❤️ Health', tone: st >= 65 ? 'good' : st >= 40 ? 'mid' : 'bad' })}
+    <p><b>${esc(verdict)}</b> ${known.length ? `${known.length} condition${known.length === 1 ? '' : 's'} on file${untreated.length ? `, ${untreated.length} untreated` : ''}.` : 'Nothing on file.'}</p>
+    ${bodyMap(state)}
+    ${risks.length ? `<p class="fine">Risks: ${risks.map(([, t]) => esc(t)).join(' · ')}</p>` : ''}
+    ${steps.length ? `<h4 class="sub">Next steps</h4><ul class="job-list">${steps.slice(0, 4).map(([icon, text, act, tab]) => optionRow({ icon, title: esc(text), meta: `In ${tab}`, action: act })).join('')}</ul>` : '<p class="muted">Nothing to do but keep it up.</p>'}
+    <p class="fine">${esc(plan.icon)} ${esc(plan.name)}${plan.premium ? ` · ${money(plan.premium)}/yr` : ''}</p>`, { icon: '👩‍⚕️', accent: st >= 65 ? 'green' : st >= 40 ? 'yellow' : 'red' });
 }

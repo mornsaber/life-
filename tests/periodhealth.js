@@ -11,6 +11,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { available, medicineLag, childMortality, maternalRisk, conditionEraFactor, treatedAcuteDeath, epidemicsNow, vaccinesOpen, threat, DISEASES } from '../src/modules/health/PeriodHealth.js';
+import { healthAll } from '../src/ui/views/HealthView.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
@@ -69,11 +70,11 @@ const tests = {
   },
   'the Health tab says what medicine can do'() {
     const { state } = life({ countryId: 'GB', startYear: 1918 });
-    const html = VIEWS.health(state, {});
+    const html = healthAll(state);
     assert.match(html, /Medicine of 1918/);
     assert.match(html, /Spanish flu/);
     assert.doesNotMatch(html, /undefined|NaN/);
-    assert.doesNotMatch(VIEWS.health(life({ countryId: 'GB', startYear: 2020 }).state, {}), /Medicine of/);
+    assert.doesNotMatch(healthAll(life({ countryId: 'GB', startYear: 2020 }).state), /Medicine of/);
   },
 };
 let failed = 0;

@@ -8,6 +8,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
+import { healthAll } from '../src/ui/views/HealthView.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { geneFactor, geneticsTick } from '../src/modules/health/Genetics.js';
 import { childEducationTick } from '../src/modules/people/ChildEducation.js';
@@ -47,7 +48,7 @@ const tests = {
     assert.ok(state.health.genes.known);
     engine.dispatch('health.prevent', 'cancer');
     assert.ok(Math.abs(geneFactor(state, 'cancer') - 2.4 * 0.35) < 1e-9);
-    clean(VIEWS.health(state, {}));
+    clean(healthAll(state));
   },
   'a child sits exams with tutors, then goes to university on your money'() {
     const { engine, state, ctx } = life('GB', 7, 45);

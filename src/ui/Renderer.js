@@ -39,7 +39,7 @@ import { civicServiceView } from './views/CivicServiceView.js';
 import { homeView } from './views/HomeView.js';
 import { moveView } from './views/MoveView.js';
 import { politicsView, chamberView, partyTabView, campaignView } from './views/PoliticsView.js';
-import { healthView } from './views/HealthView.js';
+import { healthOverview, conditionsTab, coverTab, lifestyleTab } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
 import { reputationCard, frontPageCard } from './views/CirclesView.js';
@@ -81,7 +81,8 @@ export const SECTIONS = [
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }, { id: 'licenses', label: 'Licenses', icon: '🪪' }] },
   { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
-  { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }, { id: 'health', label: 'Health', icon: '🩺' }] },
+  { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }] },
+  { id: 'health', label: 'Health', icon: '🩺', tabs: [{ id: 'health', label: 'Overview', icon: '👩‍⚕️' }, { id: 'conditions', label: 'Conditions', icon: '🫀' }, { id: 'cover', label: 'Cover', icon: '🏥' }, { id: 'wellbeing', label: 'Lifestyle', icon: '🏃' }] },
   { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Status', icon: '⚖️' }, { id: 'cases', label: 'Cases', icon: '🗂️' }, { id: 'crime', label: 'Crime', icon: '🕶️' }, { id: 'underworld', label: 'Underworld', icon: '🕴️' }] },
 ];
 /** Every screen, in section order (keyboard [ ] walks this list). */
@@ -191,7 +192,10 @@ export const VIEWS = {
   school: (state, ui) => schoolView(state, ui) + skillsCard(state),
   licenses: licensesView,
   money: moneyView,
-  health: (state, ui) => routineCard(state) + healthView(state, ui),
+  health: (state) => healthOverview(state) + routineCard(state),
+  conditions: (state) => conditionsTab(state),
+  cover: (state) => coverTab(state),
+  wellbeing: (state) => lifestyleTab(state),
   people: peopleView,
   legal: legalView,
   cases: casesView,

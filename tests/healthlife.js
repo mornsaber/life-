@@ -9,6 +9,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
+import { healthAll } from '../src/ui/views/HealthView.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { CONDITIONS, DEATH_CAUSE, getCondition } from '../src/modules/health/index.js';
 import { addCondition, screeningsFor } from '../src/modules/health/HealthEngine.js';
@@ -128,7 +129,7 @@ const tests = {
     const { state, ctx } = life({ age: 70 });
     lifestyleOf(state).smoking = 'current';
     addCondition(ctx, 'copd', { severity: 40, diagnosed: true });
-    const html = VIEWS.health(state, {});
+    const html = healthAll(state);
     clean(html);
     assert.match(html, /Lifestyle/);
     assert.match(html, /Prevention &amp; Planning|Prevention & Planning/);
