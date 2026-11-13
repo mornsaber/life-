@@ -33,7 +33,7 @@ import { localMos, milPensionPlan, joinAges } from '../world/MilitaryLocal.js';
 import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalForces.js';
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
 import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
-import { yearNow } from '../world/Eras.js';
+import { yearNow, diplomaExpected, degreesOptional } from '../world/Eras.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -370,7 +370,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     if (!b.warrant?.length) return { ok: false, reason: 'No warrant officers' };
     if (branchId !== 'army' && branchId !== 'guard') return { ok: false, reason: 'Warrant officers come from the enlisted ranks' };
     if (age < 18 || age > 32) return { ok: false, reason: 'Flight school: age 18–32' };
-    if (!meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
+    if (diplomaExpected(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   } else if (track === 'officer' && purchaseEra(state, { nation: isAbroad(state) ? countryOf(state).id : 'US', branch: branchId, track })) {
     // Before 1871 a British ensign bought his commission at sixteen: no degree, no selection board.
     if (age < PURCHASE_MIN_AGE || age > 35) return { ok: false, reason: `Commissions by purchase: age ${PURCHASE_MIN_AGE}–35` };
@@ -383,9 +383,11 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     // A direct commission (lawyers, doctors, chaplains) has its own, higher ceiling, passed in by the caller.
     const top = Math.max(hi + priorServiceYears(state), maxOfficerAge > 39 ? maxOfficerAge : 0);
     if (age < lo || age > top) return { ok: false, reason: `Officers: age ${lo}–${top}` };
-    if (!meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
+    // Before 1900 a commission came by nomination or patronage: no degree and no selection board.
+    const noDegrees = degreesOptional(state);
+    if (!noDegrees && !meetsEducation(state, { level: abroad ? 'highschool' : 'bachelor' })) return { ok: false, reason: abroad ? 'Officer cadets need school-leaving qualifications' : "Officers need a bachelor's" };
     // Without a degree, a school-leaver cadet has to get through the officer selection board.
-    if (maxOfficerAge <= 39 && !meetsEducation(state, { level: 'bachelor' })) {
+    if (!noDegrees && maxOfficerAge <= 39 && !meetsEducation(state, { level: 'bachelor' })) {
       if (age > CADET_MAX_AGE) return { ok: false, reason: `School-leaver officer cadets: age ${lo}–${CADET_MAX_AGE} (older candidates need a degree)` };
       if (state.stats.smarts < 60) return { ok: false, reason: 'The officer selection board needs aptitude (smarts 60+)' };
       if (state.stats.fitness < 50) return { ok: false, reason: 'The officer selection board needs fitness 50+' };
@@ -395,7 +397,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
     const top = hi + priorServiceYears(state);
     if (age < lo || age > top) return { ok: false, reason: `Enlistment: age ${lo}–${top}${priorServiceYears(state) ? ' (prior service counts)' : ''}` };
     // Only the US requires a high-school diploma to enlist; elsewhere aptitude tests decide.
-    if (age >= 18 && !isAbroad(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
+    if (age >= 18 && !isAbroad(state) && diplomaExpected(state) && !meetsEducation(state, { level: 'highschool' })) return { ok: false, reason: 'Needs diploma' };
   }
   if (state.stats.health < 40) return { ok: false, reason: isAbroad(state) ? 'Fails the medical' : 'Fails MEPS medical (health)' };
   if (state.stats.fitness < 30) return { ok: false, reason: 'Fails fitness test' };
@@ -405,7 +407,7 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
 /** The oldest school-leaver officer cadet (graduates are taken older). */
 export const CADET_MAX_AGE = 25;
 /** An officer candidate without a degree: selection board, then a year at the academy. */
-export const needsOfficerAcademy = (state, track, direct) => track === 'officer' && direct == null && !meetsEducation(state, { level: 'bachelor' });
+export const needsOfficerAcademy = (state, track, direct) => track === 'officer' && direct == null && !degreesOptional(state) && !meetsEducation(state, { level: 'bachelor' });
 /** Odds of passing the officer selection board (two days of tests, interviews and command tasks). */
 export const officerBoardOdds = (state) => clamp(0.35 + (state.stats.smarts - 60) / 100 + (state.stats.fitness - 50) / 200, 0.15, 0.8);
 

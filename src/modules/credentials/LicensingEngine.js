@@ -29,7 +29,7 @@ import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
-import { credentialExists, credentialRequired, diplomaExpected, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
+import { credentialExists, credentialRequired, diplomaExpected, degreesOptional, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
 export const ATTEMPTS_PER_YEAR = 2;
@@ -109,7 +109,9 @@ export function checkRequirements(state, req = {}) {
   if (req.age && state.character.age < req.age) missing.push(`age ${req.age}+`);
   // The era: no diploma asked before the 1940s, no licence that didn't exist yet (world/Eras.js).
   const diplomaOnly = req.education?.level === 'highschool' && !req.education.program && !req.education.major;
-  if (req.education && !(diplomaOnly && !diplomaExpected(state)) && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
+  // Before 1900 no job or licence asked for a degree: lawyers read law in an office, doctors
+  // and engineers learned under a master, clerks and officials were taken on by patronage.
+  if (req.education && !(diplomaOnly && !diplomaExpected(state)) && !degreesOptional(state) && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
   for (const c of req.credentials ?? []) if (credentialRequired(state, c) && !hasCredential(state, c)) missing.push(credentialName(c));
   if (req.experience && yearsInProfession(state, req.experience.professions) < req.experience.years) {
     missing.push(`${req.experience.years} yrs ${(PROFESSIONS[req.experience.professions[0]]?.name ?? req.experience.professions[0]).toLowerCase()} experience`);

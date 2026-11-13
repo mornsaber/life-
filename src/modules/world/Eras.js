@@ -688,6 +688,9 @@ Object.assign(CREDENTIAL_FROM, {
 export const credentialExists = (state, id) => !(CREDENTIAL_FROM[id] > yearNow(state)) && !(CREDENTIAL_UNTIL[id] <= yearNow(state));
 /** Before the 1940s most working people had left school at 14: a high-school diploma wasn't asked for. */
 export const diplomaExpected = (state) => yearNow(state) >= 1945;
+/** Before 1900 jobs and licences asked for no degree (apprenticeship, reading law, patronage). */
+export const DEGREES_FROM = 1900;
+export const degreesOptional = (state) => yearNow(state) < DEGREES_FROM;
 
 /* ------------------------------------------------------------------ */
 /* Schools and universities by era                                     */
