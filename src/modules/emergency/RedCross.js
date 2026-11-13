@@ -3,9 +3,11 @@
  * after a house fire with a debit card, a blanket and a plan, and who deploy
  * to hurricane and flood shelters nationwide.
  */
+import { eraYear } from '../world/Eras.js';
 export const RedCross = {
   id: 'redcross',
-  name: 'Red Cross Disaster Action Team',
+  // Disaster Action Teams date from the 1970s; before, the chapter's disaster relief committee.
+  get name() { return eraYear() < 1975 ? 'Red Cross Disaster Relief' : 'Red Cross Disaster Action Team'; },
   short: 'Red Cross',
   icon: '➕',
   minAge: 18,

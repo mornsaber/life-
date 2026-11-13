@@ -42,7 +42,7 @@ import { reserveStanding, ssoEligibility } from '../../modules/military/Merchant
 import { warIn } from '../../modules/world/War.js';
 import { MISSIONS, missionsFor, volunteerCheck } from '../../modules/military/Peacekeeping.js';
 import { forceSizeOf, SIZE_LABEL } from '../../modules/world/NationalForces.js';
-import { orgInEra, branchExists, yearNow } from '../../modules/world/Eras.js';
+import { orgInEra, branchExists, yearNow, credentialExists, CREDENTIAL_FROM } from '../../modules/world/Eras.js';
 import { purchaseEra, REGIMENTS, firstCommissionPrice, familyPurse, PURCHASE_MIN_AGE } from '../../modules/military/Purchase.js';
 import { flagImg } from '../Flags.js';
 
@@ -340,7 +340,10 @@ export function militaryView(state) {
 }
 
 function certList(state, serviceId) {
-  return SERVICES[serviceId].credentials.map((id) => {
+  // Certifications that don't exist yet aren't offered; a line says when the first comes.
+  const later = SERVICES[serviceId].credentials.filter((id) => !credentialExists(state, id));
+  const note = later.length ? `<li class="fine">${later.length === SERVICES[serviceId].credentials.length ? 'No formal certifications yet: you learn on the job' : `${later.length} more certification${later.length === 1 ? '' : 's'} to come`} (the first from about ${Math.min(...later.map((id) => CREDENTIAL_FROM[id] ?? 9999))}).</li>` : '';
+  return SERVICES[serviceId].credentials.filter((id) => credentialExists(state, id)).map((id) => {
     const c = getCredential(id);
     if (hasCredential(state, id)) return `<li class="cert done">${c.icon} ${esc(c.name)} ✓</li>`;
     const elig = pursueEligibility(state, id);
@@ -349,7 +352,7 @@ function certList(state, serviceId) {
     return `<li class="cert">${c.icon} ${esc(c.name)}
       ${button(c.trainingYears ? 'Enroll' : 'Train', 'credentials.pursue', { arg: id, disabled: !elig.ok, variant: 'tiny', title: elig.reason ?? '' })}
       <span class="${elig.ok ? 'fine' : 'why'}">${esc(payer)}</span></li>`;
-  }).join('');
+  }).join('') + note;
 }
 
 export function emergencyView(state) {
@@ -381,7 +384,7 @@ export function emergencyView(state) {
       ${ladder(svc.ranks.map((r) => ({ title: r.title, sub: `${r.xp} XP` })), member.rankIndex, { compact: true })}
       ${volunteerOrgSection(state, svc, member)}
       ${member.k9 ? `<div class="k9">🐕 <b>K9 ${esc(member.k9.name)}</b> · ${esc(member.k9.breed)}, age ${member.k9.age}</div>` : ''}
-      ${disclosure(`emergency.certs.${svc.id}`, '📜 Certifications', `<ul class="certs">${certList(state, svc.id)}</ul>`, { count: `${svc.credentials.filter((id) => hasCredential(state, id)).length}/${svc.credentials.length} earned` })}
+      ${disclosure(`emergency.certs.${svc.id}`, '📜 Certifications', `<ul class="certs">${certList(state, svc.id)}</ul>`, { count: `${svc.credentials.filter((id) => hasCredential(state, id)).length}/${svc.credentials.filter((id) => credentialExists(state, id)).length} earned` })}
       ${PATHWAYS[svc.id] ? `<p class="fine">💼 Experienced members get offered paid work${PATHWAYS[svc.id].gig ? ` (${esc(PATHWAYS[svc.id].gig.label.toLowerCase())})` : ''}${PATHWAYS[svc.id].jobs.length ? ` and job offers in ${PATHWAYS[svc.id].jobs.map((id) => esc(getProfession(id).name)).join(' or ')}` : ''}.</p>` : ''}
       <div class="action-grid">
         ${button('🏋️ Extra Training', 'emergency.train', { arg: svc.id, hint: '+25 XP, once/yr', disabled: member.onLeave })}

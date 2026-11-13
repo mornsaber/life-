@@ -40,7 +40,7 @@ import { RedCross } from './RedCross.js';
 import { SkiPatrol } from './SkiPatrol.js';
 import { MedicalReserveCorps } from './MedicalReserveCorps.js';
 import { ensureVolunteerOrg, volunteerOrgTick, releaseVolunteerOrg, seatOpen, takeSeat, isSeatRank, isElectedRank, resolveElection, leaderAction, LEADERSHIP } from '../org/VolunteerOrgs.js';
-import { orgInEra, orgFrom } from '../world/Eras.js';
+import { orgInEra, orgFrom, eraYear, credentialRequired } from '../world/Eras.js';
 
 export const SERVICES = {
   fire: FireVolunteer,
@@ -55,20 +55,44 @@ export const SERVICES = {
   skiPatrol: SkiPatrol,
   mrc: MedicalReserveCorps,
 };
-// Ranks follow the country you live in (a retained firefighter, a special constable…):
-// same steps and requirements, the local titles.
+/**
+ * Rank titles of their day, in force until the year given (the certification ladders —
+ * Firefighter I and II, EMT, FFT2, the Disaster Action Team — came in the 1970s). Before
+ * 1900 a volunteer company was run by its foreman and the town's chief engineer.
+ */
+const PERIOD_RANKS = {
+  fire: [
+    [1900, ['Probationary Fireman', 'Fireman', 'Hoseman', 'Engineer', 'Assistant Foreman', 'Foreman', 'Chief Engineer']],
+    [1975, ['Probationary Fireman', 'Fireman', 'Senior Fireman', 'Engine Driver', 'Lieutenant', 'Captain', 'Fire Chief']],
+  ],
+  ambulance: [[1970, ['Probationary Member', 'First Aider', 'Ambulance Attendant', 'Crew Chief', 'Lieutenant', 'Captain', 'Squad Chief']]],
+  redcross: [[1975, ['Disaster Volunteer', 'Disaster Supervisor', 'Shelter Manager', 'Chapter Disaster Chairman']]],
+  wildland: [[1975, ['Crew Member', 'Firefighter', 'Senior Firefighter', 'Squad Boss', 'Crew Boss', 'Fire Boss', 'Division Boss']]],
+  police: [[1960, ['Auxiliary Policeman', 'Special Policeman', 'Senior Special', 'Auxiliary Corporal', 'Auxiliary Sergeant', 'Auxiliary Lieutenant', 'Auxiliary Inspector']]],
+};
+const periodTitles = (serviceId, y) => (PERIOD_RANKS[serviceId] ?? []).find(([until]) => y < until)?.[1] ?? null;
+// Ranks follow the country you live in (a retained firefighter, a special constable…) and the
+// year: same steps and requirements, the local titles of the day.
 for (const svc of Object.values(SERVICES)) {
   const base = svc.ranks;
   const local = {};
   Object.defineProperty(svc, 'ranks', {
     get() {
-      const titles = volunteerRanks(currentCountry(), svc.id);
+      const cc = currentCountry();
+      const y = eraYear();
+      const own = volunteerRanks(cc, svc.id);
+      // The country's own titles where it has them; before the modern ladders, the titles of the day.
+      const period = (!own || (svc.id === 'fire' && y < 1938)) ? periodTitles(svc.id, y) : null;
+      const titles = period ?? own;
       if (!titles) return base;
-      return (local[currentCountry()] ??= base.map((r, i) => (titles[i] ? { ...r, title: titles[i] } : r)));
+      const key = `${cc}:${period ? (PERIOD_RANKS[svc.id].find(([until]) => y < until)[0]) : 'now'}`;
+      return (local[key] ??= base.map((r, i) => (titles[i] ? { ...r, title: titles[i] } : r)));
     },
     enumerable: true,
   });
 }
+/** A certification counts toward a rank or a call only once it exists (no Firefighter I before 1975). */
+const certMissing = (state, c) => Boolean(c) && credentialRequired(state, c) && !hasCredential(state, c);
 export const SERVICE_LIST = Object.values(SERVICES);
 
 export const rankOfMember = (serviceId, member) => SERVICES[serviceId].ranks[member.rankIndex];
@@ -102,7 +126,7 @@ export function nextRankStatus(state, serviceId, member) {
   if (!next) return { next: null, ready: false, reason: 'Top rank' };
   const missing = [];
   if (member.xp < next.xp) missing.push(`${next.xp - member.xp} XP`);
-  if (next.cert && !hasCredential(state, next.cert)) missing.push(credentialName(next.cert));
+  if (certMissing(state, next.cert)) missing.push(credentialName(next.cert));
   if (next.minYears && member.years < next.minYears) missing.push(`${next.minYears - member.years} yrs`);
   // Officer ranks are seats: elected by the membership, or open only when someone steps down.
   const idx = member.rankIndex + 1;
@@ -146,7 +170,7 @@ function checkPromotion(ctx, serviceId, member) {
 /* Dispatch                                                            */
 /* ------------------------------------------------------------------ */
 
-const optionLocked = (state, member, o) => (o.cert && !hasCredential(state, o.cert)) || (o.cert === 'k9Handler' && !member.k9);
+const optionLocked = (state, member, o) => certMissing(state, o.cert) || (o.cert === 'k9Handler' && !member.k9 && credentialRequired(state, 'k9Handler'));
 
 function dispatchPrompt(ctx, serviceId) {
   const { state } = ctx;
