@@ -13,6 +13,7 @@
  * svc.njp = [{ age, offense, punishment }], svc.reprimand (officers: a career
  * killer at boards), svc.courtsMartial.
  */
+import { addRecord } from '../../core/State.js';
 import { militaryJustice, summaryPunishment } from '../world/MilitaryLocal.js';
 import { clamp } from '../../core/Random.js';
 import { OFFENSES } from '../legal/Offenses.js';
@@ -181,7 +182,7 @@ function courtMartialVerdict(ctx, data, optionId) {
   ctx.stat('stress', 10);
   if (c.record) {
     const offense = OFFENSES[o.record];
-    state.legal.record.push({ offenseId: o.record, name: offense.name, severity: data.court === 'general' ? 'felony' : offense.severity, age: state.character.age, court: 'court-martial', sentence: sentenceText });
+    addRecord(state, { country: state.military.service?.nation ?? state.character.countryId ?? 'US', offenseId: o.record, name: offense.name, severity: data.court === 'general' ? 'felony' : offense.severity, age: state.character.age, court: 'court-martial', sentence: sentenceText });
     ctx.emit('legal:convicted', { offenseId: o.record, severity: data.court === 'general' ? 'felony' : offense.severity, name: offense.name, courtMartial: true });
   }
   if (!state.military.service) return; // already separated by a listener

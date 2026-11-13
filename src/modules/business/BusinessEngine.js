@@ -20,7 +20,7 @@ import { regulationYear, antitrustResolver } from './Regulation.js';
 import { StructureActions, PublicActions, structureYear } from './Structure.js';
 import { ensureGroupBoard, appointGroupDirector, removeGroupDirector } from './GroupBoard.js';
 import { REGIONS } from '../life/Regions.js';
-import { yearlyCount, bumpYearly, canAfford, currentYear } from '../../core/State.js';
+import { yearlyCount, bumpYearly, canAfford, currentYear, addRecord } from '../../core/State.js';
 import { setWorkforce, WORKFORCE_MODES } from '../career/ContractingSystem.js';
 import { DUTIES } from '../career/ManagementEngine.js';
 import { BUSINESS_TYPES, ENTITIES, ROUNDS, SBA, MARKETING, SIZE_OPTIONS, startupCostFor, entityAllowed, entityName } from './BusinessTypes.js';
@@ -1447,7 +1447,7 @@ export const BusinessEngine = {
           const fine = rng.int(10000, 60000);
           charge(biz, fine); // back pay is wages
           s.unionized = true;
-          state.legal.record.push({ offenseId: 'unfairLaborPractice', name: 'Unfair Labor Practice (NLRB)', severity: 'civil', age: state.character.age, sentence: `$${fine.toLocaleString()} back pay; union recognized` });
+          addRecord(state, { offenseId: 'unfairLaborPractice', name: 'Unfair Labor Practice (NLRB)', severity: 'civil', age: state.character.age, sentence: `$${fine.toLocaleString()} back pay; union recognized` });
           ctx.log(`The NLRB ruled you fired the organizers illegally: ${money(fine)} in back pay, reinstatement, and a union anyway.`, '⚖️', 'bad');
         } else ctx.log('You fired the organizers. The drive collapsed — for now.', '🔥', 'warn');
       }

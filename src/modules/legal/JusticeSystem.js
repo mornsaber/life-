@@ -16,6 +16,8 @@
  *
  * state.legal = { record[], investigations[], incarceration, probationYears, flags }
  */
+import { offenseNameIn } from './LocalLaw.js';
+import { addRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
 import { OFFENSES, DEFENSE, SEVERITY_LABEL } from './Offenses.js';
@@ -145,7 +147,7 @@ export function charge(ctx, { offenseId, context, evidence = 0.75, abroad = fals
   if (offense.severity === 'infraction') {
     const fine = Math.round(rng.int(...offense.fine) * priceLevel(state));
     ctx.spend(fine, offense.name, { allowDebt: true });
-    state.legal.record.push({ offenseId: id, name: offense.name, severity: offense.severity, age: state.character.age, sentence: `$${fine} fine` });
+    addRecord(state, { offenseId: id, name: offense.name, severity: offense.severity, age: state.character.age, sentence: `$${fine} fine` });
     ctx.log(`You got a ticket for ${offense.name.toLowerCase()}: $${fine}.`, offense.icon, 'warn');
     return;
   }
@@ -275,7 +277,7 @@ function civilPenalty(ctx, offenseId, context) {
   const { state, rng } = ctx;
   const offense = OFFENSES[offenseId];
   const fine = rng.int(...offense.fine);
-  state.legal.record.push({ offenseId, name: offense.name, severity: 'civil', age: state.character.age, sentence: `$${fine.toLocaleString()} settlement paid by employer` });
+  addRecord(state, { offenseId, name: offense.name, severity: 'civil', age: state.character.age, sentence: `$${fine.toLocaleString()} settlement paid by employer` });
   ctx.log(`The NLRB found your employer committed an unfair labor practice (${context}). The company paid a $${fine.toLocaleString()} settlement and reinstated the workers with back pay.`, offense.icon, 'bad');
   ctx.emit('career:adjust', { performance: -15, boss: -20, coworkers: -15 });
   if (rng.chance(0.35)) ctx.emit('career:resign', { reason: 'Terminated over the labor-law violation', fired: true });
@@ -307,9 +309,12 @@ function sentence(ctx, offenseId, { plea, abroad, factor = 1 }) {
   if (minor) prison = Math.min(prison, 20);
   delete state.legal.flags.tryAsAdult;
 
-  state.legal.record.push({
+  // Convicted at a posting abroad: the record belongs to that country.
+  const postedIn = abroad ? Object.values(COUNTRIES).find((c) => c.name === state.career.job?.posting?.country)?.id ?? 'XX' : undefined;
+  addRecord(state, {
+    ...(postedIn ? { country: postedIn } : {}),
     offenseId,
-    name: offense.name,
+    name: offenseNameIn(offenseId, postedIn ?? state.character.countryId ?? 'US'),
     severity: offense.severity,
     age: state.character.age,
     abroad,

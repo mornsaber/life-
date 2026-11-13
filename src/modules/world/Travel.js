@@ -145,8 +145,8 @@ export function travelBlock(state, dest) {
   if (w && w.phase !== 'ceasefire' && (w.homeFront ?? 0) >= 0.3) return 'At war: no flights in';
   const e = bestEntry(state, dest);
   if (e.kind === 'barred' || e.kind === 'closed') return `${COUNTRIES[dest].name}: ${e.note}`;
-  if (dest === 'CA' && criminalRecord(state).length) return 'Canada refuses entry with a criminal record';
-  if (['US', 'AU', 'NZ', 'JP'].includes(dest) && hasFelony(state)) return `${COUNTRIES[dest].name} refuses entry with a felony record`;
+  if (dest === 'CA' && criminalRecord(state, { cc: dest, purpose: 'border' }).length) return 'Canada refuses entry with a criminal record';
+  if (['US', 'AU', 'NZ', 'JP'].includes(dest) && hasFelony(state, { cc: dest, purpose: 'border' })) return `${COUNTRIES[dest].name} refuses entry with a felony record`;
   return null;
 }
 

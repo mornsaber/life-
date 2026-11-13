@@ -11,7 +11,7 @@
  * state.legal.accused = { kind, accuser, since, stage: 'investigation'|'charged', strength, lawyer, silent }
  */
 import { Random, clamp } from '../../core/Random.js';
-import { randomName } from '../../core/State.js';
+import { randomName, addRecord } from '../../core/State.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { OFFENSES } from '../legal/Offenses.js';
 import { priceLevel } from '../world/Countries.js';
@@ -91,7 +91,7 @@ export const FalseAccusationResolvers = {
     const k = KINDS[a.kind];
     if (optionId === 'plea') {
       state.legal.accused = null;
-      state.legal.record.push({ offenseId: 'disorderly', name: OFFENSES.disorderly?.name ?? 'A lesser offence', severity: 'misdemeanor', age: state.character.age, sentence: 'plea to a lesser offence', falsePlea: true });
+      addRecord(state, { offenseId: 'disorderly', name: OFFENSES.disorderly?.name ?? 'A lesser offence', severity: 'misdemeanor', age: state.character.age, sentence: 'plea to a lesser offence', falsePlea: true });
       ctx.stat('happiness', -10);
       return ctx.log('You pleaded to a lesser offence to make it stop. It\'s on your record for something you didn\'t do.', '📝', 'bad');
     }

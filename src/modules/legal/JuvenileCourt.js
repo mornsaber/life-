@@ -11,6 +11,7 @@
  *                 sentence is an adult one (but never death, and rarely life).
  *   Sealing       At 18, a juvenile record is sealed — except for serious violence.
  */
+import { addRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { OFFENSES } from './Offenses.js';
 import { regionOf } from '../life/Regions.js';
@@ -62,7 +63,7 @@ function dispose(ctx, data, { admitted }) {
     const years = clamp(Math.round(rng.int(1, 3) + priors * 0.5), 1, Math.max(1, 21 - Math.floor(state.character.age)));
     const city = regionOf(state).name.split(',')[0];
     rec.sentence = `${years} yr youth detention`;
-    state.legal.record.push(rec);
+    addRecord(state, rec);
     state.legal.incarceration = { yearsLeft: years, total: years, facility: `${city} Youth Detention Centre`, kind: 'juvenile', served: 0 };
     ctx.log(`The judge committed you to the ${city} Youth Detention Centre for ${years} year${years === 1 ? '' : 's'}.`, '🔒', 'death');
     ctx.stat('happiness', -18);
@@ -72,7 +73,7 @@ function dispose(ctx, data, { admitted }) {
   }
   const probation = offense.severity === 'felony' ? 2 : 1;
   rec.sentence = `${probation} yr juvenile probation`;
-  state.legal.record.push(rec);
+  addRecord(state, rec);
   state.legal.probationYears = Math.max(state.legal.probationYears, probation);
   ctx.log(`Adjudicated delinquent: ${offense.name}. ${probation} year${probation === 1 ? '' : 's'} of juvenile probation — curfew, school every day, a probation officer who calls your parents.`, '🧒', 'bad');
   ctx.stat('happiness', -8);

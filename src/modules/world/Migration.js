@@ -590,7 +590,7 @@ export const MigrationModule = {
       if (yearlyCount(state, 'migration.pr')) return ctx.toast('One application a year.', 'warn');
       bumpYearly(state, 'migration.pr');
       ctx.spend(law.pr.fee, `${law.pr.name} application`, { credit: true });
-      const odds = clamp(0.88 - visibleRecord(state).filter((r) => r.severity !== 'infraction').length * 0.15, 0.1, 0.95);
+      const odds = clamp(0.88 - visibleRecord(state, { purpose: 'border' }).filter((r) => r.severity !== 'infraction').length * 0.15, 0.1, 0.95);
       if (!rng.chance(odds)) return ctx.log(`Your ${law.pr.name} application was refused. You can reapply next year.`, '🛂', 'bad');
       Object.assign(res, { status: 'permanent', permanentSince: state.character.age });
       delete res.expires;
@@ -605,7 +605,7 @@ export const MigrationModule = {
       const law = IMMIGRATION[here];
       if (naturalizationYearsLeft(state) !== 0) return ctx.toast('Not eligible yet.', 'warn');
       if (!speaksLocal(state, here)) return ctx.toast(`Needs working ${localLanguage(here)}.`, 'warn');
-      if (visibleRecord(state).some((r) => r.severity === 'felony')) return ctx.toast('A felony record bars naturalization.', 'warn');
+      if (visibleRecord(state, { purpose: 'border' }).some((r) => r.severity === 'felony')) return ctx.toast('A felony record bars naturalization.', 'warn');
       if (yearlyCount(state, 'migration.nat')) return ctx.toast('One application a year.', 'warn');
       bumpYearly(state, 'migration.nat');
       ctx.spend(law.nat.fee, 'Naturalization application', { credit: true });

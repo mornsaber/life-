@@ -17,7 +17,7 @@
  * carry out executions — an execution date years later.
  */
 import { clamp } from '../../core/Random.js';
-import { yearlyCount, bumpYearly } from '../../core/State.js';
+import { yearlyCount, bumpYearly, addRecord } from '../../core/State.js';
 import { STATES } from '../life/States.js';
 import { deathPenaltyIn } from './JusticeSystem.js';
 import { OFFENSES } from './Offenses.js';
@@ -232,7 +232,7 @@ Release plan: ${plan.text}.`,
     inc.total += 2;
     inc.goodBehavior = 0;
     ctx.stat('health', -rng.int(5, 15));
-    state.legal.record.push({ offenseId: 'escape', name: 'Attempted Escape', severity: 'felony', age: state.character.age, sentence: '2 yr added' });
+    addRecord(state, { offenseId: 'escape', name: 'Attempted Escape', severity: 'felony', age: state.character.age, sentence: '2 yr added' });
     ctx.log('Guards caught you at the fence. Two years were added to your sentence.', '🚨', 'bad');
   },
 };

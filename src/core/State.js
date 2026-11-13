@@ -645,12 +645,28 @@ export function highestDegree(state) {
 }
 
 /** Convictions employers, licensing boards and recruiters can see: sealed records are hidden and pardons restore your rights. */
-export const visibleRecord = (state) => state.legal.record.filter((r) => !r.sealed && !r.pardoned);
+/**
+ * Where a conviction is seen: set by legal/RecordAbroad.js (another country sees it only where
+ * records are shared, or when you declare it at the border). Without it, everything is seen.
+ */
+export const RECORD_VIEW = { fn: null };
+/** Record a conviction, stamped with the country that handed it down. */
+export function addRecord(state, rec) {
+  rec.country ??= state.character.countryId ?? 'US';
+  state.legal.record.push(rec);
+  return rec;
+}
+/**
+ * The convictions that count against you: not sealed or pardoned, and seen in the country
+ * asking (where you live, unless `cc` says otherwise) by whoever is asking ('job' — employers,
+ * licensing boards, courts and offices; 'border' — visa, residence and citizenship applications).
+ */
+export const visibleRecord = (state, { cc = state.character.countryId ?? 'US', purpose = 'job' } = {}) => state.legal.record.filter((r) => !r.sealed && !r.pardoned && (RECORD_VIEW.fn ? RECORD_VIEW.fn(state, r, cc, purpose) : true));
 /** Convictions that count as a criminal record: tickets (infractions) and civil violations don't. */
-export const criminalRecord = (state) => visibleRecord(state).filter((r) => r.severity === 'misdemeanor' || r.severity === 'felony');
+export const criminalRecord = (state, opts) => visibleRecord(state, opts).filter((r) => r.severity === 'misdemeanor' || r.severity === 'felony');
 /** Tickets and civil violations drop off your record on their own after a few years. */
 export const SPENT_AFTER = 3;
-export const hasFelony = (state) => visibleRecord(state).some((r) => r.severity === 'felony');
+export const hasFelony = (state, opts) => visibleRecord(state, opts).some((r) => r.severity === 'felony');
 export const isIncarcerated = (state) => Boolean(state.legal.incarceration);
 
 /**
