@@ -74,7 +74,7 @@ const tests = {
     const { engine, state, ctx } = life(7, 40);
     const kid = makePerson(ctx, { relation: 'child', age: 8, relationship: 80, custody: 'ex' });
     state.people.list.push(kid);
-    assert.match(VIEWS.people(state, {}), /Petition for custody/);
+    assert.match(VIEWS.people(state, { person: kid.id }), /Petition for custody/);
     engine.dispatch('familyCourt.petition', kid.id);
     ctx.rng.chance = () => true;
     take(engine, state, 'familyCourt.custody', 'court');

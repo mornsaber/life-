@@ -5,7 +5,7 @@
 import { militaryInsignia } from '../Insignia.js';
 import { rivalsCard, familyCard } from './CirclesView.js';
 import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
-import { esc, money, button, card, meter, kv, empty, disclosure } from '../Components.js';
+import { esc, money, button, card, meter, kv, empty, disclosure, select } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
 } from '../../modules/people/index.js';
@@ -77,6 +77,8 @@ function personIcon(state, p) {
   })();
   return toned(face, personTone(state, p));
 }
+/** The person whose panel is open (set by peopleView for the rows it draws). */
+const PICKED = { id: null };
 const CUSTODY = { you: 'Lives with you', joint: 'Joint custody', ex: 'Lives with your ex' };
 
 function personRow(state, p) {
@@ -103,26 +105,42 @@ function personRow(state, p) {
   ].filter(Boolean).join(' · ');
   const traits = p.alive && p.relation === 'child' && p.traits ? childTraits(state, p) : '';
   const life = p.alive && p.life && age >= 5 ? lifeLine(p, age) : '';
-  const actions = !p.alive ? '' : [
-    button('🫶 Time', 'people.spendTime', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.time.${p.id}`]) }),
-    button('🎁 Gift', 'people.gift', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`people.gift.${p.id}`]) }),
-    ['mother', 'father'].includes(p.relation) && state.character.age >= 16 ? button('💵 Ask for help', 'people.askForMoney', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly['people.ask']) }) : '',
-    p.relation === 'partner' ? button('💍 Propose', 'people.propose', { arg: p.id, variant: 'tiny' }) : '',
-    p.relation === 'child' && age < 18 && ['ex', 'joint'].includes(p.custody) ? button('⚖️ Petition for custody', 'familyCourt.petition', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`familyCourt.${p.id}`]), hint: 'Mediation or a judge' }) : '',
-    ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'tiny danger' }) : '',
-    p.relation === 'child' ? nurtureButtons(state, p, age) : '',
-    helpButtons(state, p, age),
-    abroadButtons(state, p),
-    button('😤 Argue', 'people.argue', { arg: p.id, variant: 'tiny ghost' }),
-  ].join('');
-  const bond = p.alive && age >= 3 ? bondButtons(state, p) : '';
-  const memories = p.alive && p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length }) : '';
-  return `<li class="person-row ${p.alive ? '' : 'gone'}">
+  const on = PICKED.id === p.id;
+  return `<li class="person-row ${p.alive ? '' : 'gone'}${on ? ' on' : ''}">
     <span class="person-icon" aria-hidden="true">${p.alive ? personIcon(state, p) : '🕯️'}</span>
-    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${p.alive && p.service ? `<small class="traits">${militaryInsignia(rankCodeOf(p.service), p.service.nation, { branch: p.service.branch })} ${esc(serviceLabel(p.service))}${p.service.deployed ? ' · 🌍 deployed' : ''}</small>` : ''}${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}${memories}</div>
+    <div class="person-info"><b>${esc(fullName(p))}</b><small>${esc(facts)}</small>${p.alive && p.service ? `<small class="traits">${militaryInsignia(rankCodeOf(p.service), p.service.nation, { branch: p.service.branch })} ${esc(serviceLabel(p.service))}${p.service.deployed ? ' · 🌍 deployed' : ''}</small>` : ''}${life}${traits}${p.alive && age >= 3 ? `<small class="traits">${TRAITS[traitOf(p)].icon} ${TRAITS[traitOf(p)].name} · ${closeness(p.relationship)}</small>` : ''}</div>
     ${p.alive ? meter(p.relationship, { label: 'Relationship', suffix: '' }) : '<span></span>'}
-    <div class="person-actions">${bond}${actions}</div>
+    <div class="person-actions">${p.alive ? button(on ? '✓ Open' : 'Open', 'ui.set', { arg: `person=${on ? '' : p.id}`, variant: on ? 'tiny primary' : 'tiny' }) : ''}</div>
   </li>`;
+}
+
+/** The person you picked: everything you can do with them, in one place. */
+function personPanel(state, p) {
+  const age = ageOf(state, p);
+  const sec = (title, html) => (html.replace(/\s/g, '') ? `<h4 class="sub">${title}</h4><div class="action-grid">${html}</div>` : '');
+  const time = [
+    button('🫶 Time', 'people.spendTime', { arg: p.id, variant: 'small', disabled: Boolean(state.yearly[`people.time.${p.id}`]) }),
+    button('🎁 Gift', 'people.gift', { arg: p.id, variant: 'small', disabled: Boolean(state.yearly[`people.gift.${p.id}`]) }),
+    age >= 3 ? bondButtons(state, p) : '',
+  ].join('');
+  const help = [
+    ['mother', 'father'].includes(p.relation) && state.character.age >= 16 ? button('💵 Ask for help', 'people.askForMoney', { arg: p.id, variant: 'small', disabled: Boolean(state.yearly['people.ask']) }) : '',
+    helpButtons(state, p, age),
+  ].join('');
+  const raising = p.relation === 'child' ? [
+    nurtureButtons(state, p, age),
+    age < 18 && ['ex', 'joint'].includes(p.custody) ? button('⚖️ Petition for custody', 'familyCourt.petition', { arg: p.id, variant: 'small', disabled: Boolean(state.yearly[`familyCourt.${p.id}`]), hint: 'Mediation or a judge' }) : '',
+  ].join('') : '';
+  const us = [
+    p.relation === 'partner' ? button('💍 Propose', 'people.propose', { arg: p.id, variant: 'small' }) : '',
+    ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'small danger' }) : '',
+    button('😤 Argue', 'people.argue', { arg: p.id, variant: 'small ghost' }),
+  ].join('');
+  const memories = p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length, open: true }) : '';
+  return card(`${esc(fullName(p))}`, `<p class="muted">${esc(RELATION_LABEL[p.relation] ?? p.relation)} · age ${age}${age >= 3 ? ` · ${closeness(p.relationship)}` : ''}</p>
+    ${meter(p.relationship, { label: 'Relationship', suffix: '' })}
+    ${sec('🫶 Time together', time)}${sec('🤲 Help', help)}${sec('🌍 Far away', abroadButtons(state, p))}${sec('🧒 Raising them', raising)}${sec('💬 You two', us)}${memories}
+    <div class="row-end">${button('Close', 'ui.set', { arg: 'person=', variant: 'small ghost' })}</div>`, { icon: personIcon(state, p), accent: 'cyan' });
 }
 
 /** Ways to spend time with someone (three a year each). */
@@ -436,10 +454,11 @@ function petsCard(state) {
     const s = SPECIES[p.species];
     return `<li class="fund-row"><span><b>${s.icon} ${esc(p.name)}</b> <small>${esc(p.breed)} · age ${p.age} · bond ${p.bond}${p.adopted ? ' · rescue' : ''}</small></span>${button('Play', 'pets.play', { arg: p.id, variant: 'tiny', disabled: Boolean(state.yearly[`pets.play.${p.id}`]) })}${button('Rehome', 'pets.rehome', { arg: p.id, variant: 'tiny ghost' })}</li>`;
   }).join('');
-  const get = Object.entries(SPECIES).map(([id, s]) => `${button(`${s.icon} Adopt a ${s.label.toLowerCase()}`, 'pets.get', { arg: `${id}:adopt`, variant: 'tiny', hint: `Shelter fee ~$${s.adopt.toLocaleString()} · ~$${s.cost.toLocaleString()}/yr${s.rural ? ' · needs land or a livery yard' : ''}` })}${button('Breeder', 'pets.get', { arg: `${id}:buy`, variant: 'tiny ghost', hint: `~$${s.buy.toLocaleString()}` })}`).join('');
+  const opts = Object.entries(SPECIES).map(([id, s]) => ({ value: id, label: `${s.icon} ${s.label} — shelter ~$${s.adopt.toLocaleString()}, breeder ~$${s.buy.toLocaleString()}, ~$${s.cost.toLocaleString()}/yr${s.rural ? ' (needs land)' : ''}` }));
+  const get = `<div class="enroll-form" data-collect-root>${select('sp', opts)}${select('how', [{ value: 'adopt', label: '🏠 From a shelter' }, { value: 'buy', label: '🏷️ From a breeder' }])}${button('🐾 Bring one home', 'pets.get', { variant: 'small', collect: true })}</div>`;
   const past = (state.petsPast ?? []).slice(-4).map((p) => `${SPECIES[p.species]?.icon ?? ''} ${esc(p.name)} (${p.age})`).join(' · ');
   return card('Pets', `${list.length ? `<ul class="funds">${rows}</ul>` : '<p class="muted">No animals at home.</p>'}
-    <div class="toggle-row">${get}</div>
+    ${get}
     ${past ? `<p class="fine">Remembered: ${past}</p>` : ''}`, { icon: '🐾' });
 }
 
@@ -450,13 +469,15 @@ function familyHistoryCard(state) {
   return card('Your Family in History', `<ul class="history">${[...ev].reverse().slice(0, 12).map((e) => `<li>${e.icon} <b>${e.year}</b> ${esc(e.text)}</li>`).join('')}</ul>`, { icon: '📜', summary: `${ev.length}` });
 }
 
-export function peopleView(state) {
+export function peopleView(state, ui = {}) {
   if (!state.people) return '';
   const all = people(state);
+  const picked = all.find((p) => p.id === ui.person && p.alive);
+  PICKED.id = picked?.id ?? null;
   const by = (...rel) => all.filter((p) => rel.includes(p.relation) && ageOf(state, p) >= 0);
   const family = by('mother', 'father', 'sibling');
   const kids = by('child');
-  return `${romance(state)}${familyHistoryCard(state)}
+  return `${picked ? personPanel(state, picked) : ''}${romance(state)}${familyHistoryCard(state)}
     ${group('Partner', '💑', by('partner', 'fiance', 'spouse').filter((p) => p.alive), state)}
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${parentingCard(state)}

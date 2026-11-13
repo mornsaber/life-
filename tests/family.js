@@ -215,11 +215,11 @@ const tests = {
   'the People tab shows the Dynasty card, traits and nurture options'() {
     const { engine, state } = life(8, 50);
     startBusiness(engine, state, 'consulting');
-    kid(state, 12);
+    const twelve = kid(state, 12);
     kid(state, 25);
     years(engine, 1);
     const before = JSON.stringify(state);
-    const html = VIEWS.people(state, {});
+    const html = VIEWS.people(state, { person: twelve.id });
     assert.equal(JSON.stringify(state), before, 'rendering does not change state');
     assert.ok(html.includes('Dynasty') && html.includes('dynasty.nurture') && html.includes('dynasty.succession'));
     clean(html);

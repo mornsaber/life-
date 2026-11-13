@@ -91,7 +91,7 @@ const tests = {
   'the People tab offers letters and calls of the year'() {
     const { state } = grown('IE', 1880, 30);
     kin(state, 'US');
-    const html = VIEWS.people(state, {});
+    const html = VIEWS.people(state, { person: state.people.list.find((p) => p.livesIn && p.alive)?.id });
     assert.match(html, /travelDay\.write/);
     assert.doesNotMatch(html, /travelDay\.call/, 'no telephone yet');
     clean(html);
