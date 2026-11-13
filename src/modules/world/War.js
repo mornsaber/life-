@@ -173,7 +173,7 @@ function endWar(ctx, cc, outcome) {
     if (isCitizen(state, cc)) ctx.log(`📰 The war back home in ${COUNTRIES[cc]?.name ?? cc} is over: it ${outcome}.`, '🕊️', 'good');
     return;
   }
-  ctx.log(`📰 ${war.operation} ${outcome} after ${war.years} year${war.years === 1 ? '' : 's'} and ${war.casualties.toLocaleString()} military dead.${war.draft ? ' The draft ended with it.' : ''}${war.mobilized ? ' Mobilization was lifted.' : ''}`, '🕊️', 'milestone');
+  ctx.log(`📰 ${war.operation} ${outcome} after ${war.years} year${war.years === 1 ? '' : 's'} and ${(war.casualties ?? 0).toLocaleString()} military dead.${war.draft ? ' The draft ended with it.' : ''}${war.mobilized ? ' Mobilization was lifted.' : ''}`, '🕊️', 'milestone');
   ctx.stat('happiness', outcome.includes('defeat') ? -4 : 4);
   ctx.emit('world:peace', { war, outcome });
 }

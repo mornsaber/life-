@@ -186,6 +186,9 @@ const ours = (w, cc) => w.a.includes(cc) || w.b.includes(cc);
 /** Correlates of War wars starting in a year that a country fought (and history doesn't script). */
 export const warsStarting = (year) => WARS.filter((w) => w.from === year && !SCRIPTED.test(w.name));
 export const warsEnding = (year) => WARS.filter((w) => w.to === year && !SCRIPTED.test(w.name));
+/** A recorded war by its id (the game's war ids are `cow.<id>`). */
+const WAR_BY_ID = new Map(WARS.map((w) => [w.id, w]));
+export const recordedWar = (id) => WAR_BY_ID.get(Number(id)) ?? null;
 export const warFought = ours;
 /** How hard a war hit a country: its battle deaths, as the game's intensity (1–4). */
 export function warIntensity(w, cc) {

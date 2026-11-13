@@ -36,7 +36,7 @@ import { skinToneOf } from '../people/SkinTone.js';
 import { regimeHere } from './Regimes.js';
 import { periodCountryName, setEraState, colonialWorkOpen } from './Eras.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
-import { warsStarting, warsEnding, warIntensity, demographyAt } from './HistoricalData.js';
+import { warsStarting, recordedWar, warIntensity, demographyAt } from './HistoricalData.js';
 import { postAbroad, postingOf, endPosting, liveAtPosting, settleAtPosting } from './Posting.js';
 /** Your own country, while posted abroad too. */
 const homeCc = (state) => postingOf(state)?.home?.countryId ?? state.character.countryId ?? 'US';
@@ -713,10 +713,16 @@ function warTitle(w) {
 function dataWars(ctx) {
   const { state } = ctx;
   const y = yearNow(state);
-  if (y >= 1991) return;
-  for (const w of warsEnding(y - 1)) {
-    endAll(ctx, `cow.${w.id}`, (cc) => (w.kind === 'civil' ? 'ended' : w.won?.includes(cc) ? 'ended in victory' : (w.won ?? []).length ? 'ended in defeat' : 'ended in a stalemate'));
+  const outcome = (w) => (cc) => (w.kind === 'civil' ? 'ended' : w.won?.includes(cc) ? 'ended in victory' : (w.won ?? []).length ? 'ended in defeat' : 'ended in a stalemate');
+  // Every recorded war ends in the year after its last (the Gulf War, 1990–91, ends in 1992), even
+  // one a save carried past its date.
+  for (const w of Object.values(state.world?.wars ?? {})) {
+    if (!String(w?.id ?? '').startsWith('cow.')) continue;
+    const rec = recordedWar(w.id.slice(4));
+    if (rec && rec.to < y) endAll(ctx, w.id, outcome(rec));
   }
+  // New recorded wars start only up to 1990; later ones the world's own wars (War.js) tell.
+  if (y >= 1991) return;
   for (const w of warsStarting(y)) {
     const sides = [...w.a, ...w.b].filter((cc) => COUNTRIES[cc]);
     const dead = Object.values(w.deaths ?? {}).reduce((a, b) => a + b, 0);
