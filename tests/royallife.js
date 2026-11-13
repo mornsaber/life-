@@ -34,10 +34,15 @@ const tests = {
     const { engine, state } = life({ royalLevel: 'child' }, 3);
     year(engine, state, 25);
     state.royal.working = true;
-    state.prompts = [];
-    state.yearly = {};
-    mod.onAgeUp(engine.context());
-    const q = state.prompts.find((p) => p.type === 'royalLife.diary');
+    // The diary comes most years, not every year.
+    let q = null;
+    for (let i = 0; i < 10 && !q; i++) {
+      state.prompts = [];
+      state.yearly = {};
+      mod.onAgeUp(engine.context());
+      q = state.prompts.find((p) => p.type === 'royalLife.diary');
+      if (!q) { state.prompts = []; state.stats.health = 95; engine.ageUp(); state.prompts = []; }
+    }
     assert.ok(q, 'the diary');
     assert.equal(q.options.length, 3);
     const before = state.royal.popularity;

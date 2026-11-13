@@ -62,7 +62,7 @@ function yearOf(ctx) {
   }
   if (state.prompts.some((p) => p.type?.startsWith('royalLife.'))) return;
   // One defining engagement a year.
-  if (royalHere(state) && age >= 18 && !yearlyCount(state, 'royalLife.diary')) {
+  if (royalHere(state) && age >= 18 && !yearlyCount(state, 'royalLife.diary') && rng.chance(0.35)) {
     const picks = rng.shuffle([...DIARY]).slice(0, 3);
     ctx.prompt({ type: 'royalLife.diary', icon: '📅', title: 'The Year\'s Diary', text: 'The private secretary lays out the year. One engagement will define it: which?', options: picks.map((d) => ({ id: d.id, label: d.label })) });
     return;

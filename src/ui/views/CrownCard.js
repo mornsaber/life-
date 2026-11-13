@@ -2,6 +2,7 @@
  * The Crown on the Politics tab: the monarch and the heir where you live, a born royal's own
  * life (title, place in the line, popularity, duties), and a peer's title.
  */
+import { houseTitle } from '../../modules/world/Houses.js';
 import { esc, money, button, card, meter, kv, chip, disclosure, select } from '../Components.js';
 import { fullName, ageOf } from '../../modules/people/People.js';
 import { styledName } from '../../modules/world/Honours.js';
@@ -77,7 +78,7 @@ export function crownCards(state) {
     const realms = def.realms.filter((cc) => !state.world.republics?.[cc]);
     const crises = (state.world.crises ?? []).filter((x) => x.cc === (state.character.countryId ?? 'US'));
     cards.push(card('The Crown', `${kv([
-      ['Monarch', `${esc(monarchName(state, crownId))}${c.monarch.you ? ' (you)' : ''} · House of ${esc(c.house.replace(/^the /, ''))}`],
+      ['Monarch', `${esc(monarchName(state, crownId))}${c.monarch.you ? ' (you)' : ''} · ${esc(houseTitle(c.house).replace(/^the /, ''))}`],
       ['Reigning since', `${c.since} (${currentYear(state) - c.since} yr)`],
       ['Heir', c.monarch.you ? esc(c.heir.name) : `${esc(c.heir.name)}, ${esc(def.titles.heir[c.heir.gender === 'female' ? 1 : 0])}${c.heir.you ? ' (you)' : ''}`],
       realms.length > 1 ? ['Realms', realms.join(' · ')] : null,
@@ -179,13 +180,13 @@ function reigningHouseCard(state) {
   const est = royalEstate(state);
   const head = r.reigning;
   const rows = [
-    ['House', `The House of ${esc(c.house.replace(/^the /, ''))} · reigning`],
+    ['House', `${esc(houseTitle(c.house).replace(/^t/, 'T'))} · reigning`],
     ['Seat', esc(def.palace)],
     ['You', head ? 'Head of the house (the sovereign)' : r.line === 1 ? 'Heir to the head of the house' : r.line != null ? `${r.line}${['st', 'nd', 'rd'][((r.line + 90) % 100 - 10) % 10 - 1] ?? 'th'} in line` : 'A member of the house, outside the line'],
     est ? ['Estate', `${esc(est.name)} · ${money(est.value)} · ${esc(DUCHY_MODES[est.mode])}`] : null,
     head ? ['The heir', `${esc(c.heir.name)} · readiness ${r.heirReady ?? 30}/100`] : null,
   ].filter(Boolean);
-  return card(`The House of ${esc(c.house.replace(/^the /, ''))}`, `${kv(rows)}
+  return card(`${esc(houseTitle(c.house).replace(/^t/, 'T'))}`, `${kv(rows)}
     ${est ? `<div class="enroll-form" data-collect-root>${select('mode', Object.entries(DUCHY_MODES).map(([value, label]) => ({ value, label })), { value: est.mode })}${button('🏰 Set the estate\'s course', 'royalLife.estate', { variant: 'small', collect: true })}</div>` : ''}
     <div class="action-grid">
       ${head ? button('🎓 Prepare the heir', 'royalLife.mentorHeir', { hint: 'Once a year · steadies the succession' }) : ''}
@@ -215,14 +216,14 @@ function houseCard(state) {
     h.conferred ? ['Orders conferred', String(h.conferred)] : null,
     h.banned ? ['Exile', `Banned from ${esc(h.cc)} until ${h.banned}`] : null,
   ].filter(Boolean) : local ? [
-    ['Former ruling house', `The House of ${esc(local.name)} (the throne fell in ${local.fell})`],
+    ['Former ruling house', `${esc(houseTitle(local.name).replace(/^t/, 'T'))} (the throne fell in ${local.fell})`],
     ['Monarchists', `${monarchistSupport(state, cc)}%`],
   ] : [];
   if (titles.length) rows.push(['Your titles', titles.map((t) => `⚜️ ${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))} <small class="muted">(House of ${esc(t.house)}, ${t.age})</small>`).join('<br>')]);
   const revoked = (state.dynastic?.titles ?? []).filter((t) => t.revoked || t.returned);
   if (revoked.length) rows.push(['Former titles', revoked.map((t) => `${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))} (${t.revoked ? `revoked at ${t.revoked}` : `returned at ${t.returned}`})`).join(' · ')]);
   if (h?.rank === 'head' && ennobled(state).length) rows.push(['Titles you granted', ennobled(state).map((p) => `${esc(p.firstName)}: ${esc(p.dynasticTitle)}`).join(' · ')]);
-  return card(h ? `The House of ${esc(h.name)}` : 'The Monarchy Question', `${kv(rows)}
+  return card(h ? `${esc(houseTitle(h.name).replace(/^t/, 'T'))}` : 'The Monarchy Question', `${kv(rows)}
     <div class="action-grid">
       ${h && h.rank !== 'cadet' && !state.world?.restored?.[h.cc] && state.character.age >= 18 ? button('📣 Rally the monarchists', 'houses.campaign', { hint: '$25,000 · once a year' }) : ''}
       ${h?.rank === 'head' ? button('🏰 Gather the house at the old seat', 'royalLife.gathering', { hint: 'Once a year · $40,000' }) : ''}
@@ -231,7 +232,7 @@ function houseCard(state) {
       ${local && leader ? button('🗳️ Call a referendum on restoring the monarchy', 'houses.callRestoration', { hint: `Support ~${Math.round(monarchistSupport(state, cc))}%` }) : ''}
       ${crownOf(state, cc) && leader ? button('🏛️ Call a referendum on a republic', 'houses.callRepublic', { variant: 'danger', hint: 'Abolish the monarchy' }) : ''}
       ${constantinian ? button('⚜️ Seek admission to the Constantinian Order', 'houses.constantinian', { hint: nobleBorn(state) ? 'Justice class, on proofs of nobility' : 'Merit class' }) : ''}
-      ${support && state.character.age >= 18 ? button(`⚜️ Support the House of ${esc(support.def.name)}`, 'dynastic.support', { hint: '$10,000 · once a year · the house may honour loyal supporters with a title' }) : ''}
+      ${support && state.character.age >= 18 ? button(`⚜️ Support ${esc(houseTitle(support.def.name))}`, 'dynastic.support', { hint: '$10,000 · once a year · the house may honour loyal supporters with a title' }) : ''}
       ${titles.map((t) => button(`📜 Return ${esc(dynasticName(t.cc, t.rank, t.place, state.character.gender))}`, 'dynastic.returnTitle', { arg: t.cc, variant: 'tiny ghost' })).join('')}
       ${h?.rank === 'head' ? ennobleOptions(state).map((p) => button(`👑 Ennoble ${esc(p.firstName)}`, 'dynastic.ennoble', { arg: p.id, variant: 'tiny', hint: 'Once a year' })).join('') : ''}
       ${h?.rank === 'head' ? ennobled(state).map((p) => button(`✖ Revoke ${esc(p.firstName)}'s title`, 'dynastic.revokeGrant', { arg: p.id, variant: 'tiny ghost' })).join('') : ''}

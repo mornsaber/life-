@@ -467,7 +467,7 @@ export function newLifeForm(rngName) {
         <h3 class="form-step">3 · Born into</h3>
         <div class="birth-list">
           ${birth('ordinary', '👤', 'An ordinary family', 'Most lives start here.', '<label class="check"><input type="checkbox" name="noble"> 🏰 A very small chance of being born titled</label>', true)}
-          ${birth('royal', '👑', 'The royal family', 'A prince or princess in a kingdom.', `<label class="country-pick">Place in the family${sel('royalLevel', Object.entries(ROYAL_LEVELS).map(([id, l], i) => [id, l.name, i === 1]))}</label>
+          ${birth('royal', '👑', 'The royal family', 'A prince or princess in a kingdom.', `<label class="country-pick">Place in the family${sel('royalLevel', Object.entries(ROYAL_LEVELS).map(([id, l], i) => [id, l.name, i === 1]))}</label><small class="fine">Where only men inherit (Japan, Thailand, the Gulf, Jordan, Morocco), a daughter is born outside the line.</small>
             <p class="fine">${Object.values(ROYAL_LEVELS).map((l) => `<b>${esc(l.name)}</b>: ${esc(l.desc)}`).join(' ')}</p>
             <label class="country-pick">Kingdom<select name="royalCountry" id="royal-country">${crowns.royal}</select></label>
             <p class="fine" id="crown-note">${esc(crowns.note)}</p>`)}

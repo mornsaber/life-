@@ -42,134 +42,134 @@ export const CROWNS = {
   },
   JP: {
     name: 'the Imperial House', realms: ['JP'], rule: 'agnatic', houses: ['the Imperial House'],
-    names: { male: ['Akihiro', 'Masahito', 'Hironori', 'Takemaru', 'Yoshihito'], female: ['Akiko', 'Mako', 'Kazuko', 'Yuriko', 'Hisako'] },
+    names: { male: ['Akihiro', 'Hironori', 'Takemaru', 'Tadahito', 'Norihiro'], female: ['Haruka', 'Kiyoko', 'Tomoko', 'Sachiko', 'Emiko'] },
     titles: { monarch: ['Emperor', 'Empress'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] },
     palace: 'the Imperial Palace', grant: 'Imperial Household budget', dukedoms: [],
   },
   SE: {
     name: 'the Crown', realms: ['SE'], rule: 'absolute', houses: ['Östberg', 'Valdenholm'],
-    names: { male: ['Gustaf', 'Karl', 'Oskar', 'Erik', 'Fredrik'], female: ['Kristina', 'Ulrika', 'Désirée', 'Ingrid', 'Astrid'] },
+    names: { male: ['Gustaf', 'Karl', 'Oskar', 'Erik', 'Fredrik'], female: ['Kristina', 'Ulrika', 'Lovisa', 'Ingrid', 'Astrid'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Count', 'Countess'] },
     palace: 'the Royal Palace', grant: 'state allowance (apanage)', dukedoms: ['Dalarna', 'Uppland', 'Västergötland', 'Skåne'],
   },
   NL: {
     name: 'the Crown', realms: ['NL'], rule: 'absolute', houses: ['Nassenburg', 'Oranje-Velde'],
-    names: { male: ['Willem', 'Hendrik', 'Maurits', 'Frederik', 'Bernhard'], female: ['Juliana', 'Emma', 'Wilhelmina', 'Margriet', 'Irene'] },
+    names: { male: ['Willem', 'Hendrik', 'Frederik', 'Lodewijk', 'Johan'], female: ['Juliana', 'Emma', 'Wilhelmina', 'Sophie', 'Anna'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Prince of Orange', 'Princess of Orange'], royal: ['Prince', 'Princess'], distant: ['Jonkheer', 'Jonkvrouw'] },
     palace: 'Huis ten Bosch', grant: 'royal allowance', dukedoms: [],
   },
   ES: {
     name: 'the Crown', realms: ['ES'], rule: 'malePreference', houses: ['Valdemora', 'Castelnovo'],
-    names: { male: ['Alfonso', 'Fernando', 'Carlos', 'Juan', 'Felipe'], female: ['Isabel', 'Leonor', 'Sofía', 'Cristina', 'Mercedes'] },
+    names: { male: ['Alfonso', 'Fernando', 'Jaime', 'Gonzalo', 'Luis'], female: ['Isabel', 'Mercedes', 'Pilar', 'Beatriz', 'Eulalia'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Prince of Asturias', 'Princess of Asturias'], royal: ['Infante', 'Infanta'], distant: ['Duke', 'Duchess'] },
     palace: 'the Palacio de Oriente', grant: 'Royal Household budget', dukedoms: ['Lugo', 'Palma', 'Soria', 'Cádiz'],
   },  NO: {
     name: 'the Crown', realms: ['NO'], rule: 'absolute', houses: ['Glücksborg', 'Fjordheim'],
-    names: { male: ['Harald', 'Olav', 'Haakon', 'Sverre', 'Magnus'], female: ['Ingrid', 'Märtha', 'Astrid', 'Ragnhild', 'Sonja'] },
+    names: { male: ['Olav', 'Sverre', 'Magnus', 'Sigurd', 'Eirik'], female: ['Ingrid', 'Astrid', 'Ragnhild', 'Solveig', 'Kari'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Lord', 'Lady'] },
     palace: 'the Royal Palace, Oslo', grant: 'the appanage', dukedoms: [],
   },
   DK: {
     name: 'the Crown', realms: ['DK'], rule: 'absolute', houses: ['Glücksborg', 'Monpezat'],
-    names: { male: ['Frederik', 'Christian', 'Valdemar', 'Knud', 'Joachim'], female: ['Margrethe', 'Ingrid', 'Isabella', 'Josephine', 'Benedikte'] },
+    names: { male: ['Valdemar', 'Knud', 'Erik', 'Aksel', 'Christoffer'], female: ['Ingrid', 'Louise', 'Thyra', 'Dagmar', 'Karoline'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Count of Rosenborg', 'Countess of Rosenborg'] },
     palace: 'Amalienborg Palace', grant: 'the civil list (apanage)', dukedoms: [],
   },
   BE: {
     name: 'the Crown', realms: ['BE'], rule: 'absolute', houses: ['Saxe-Coburg', 'Laeken'],
-    names: { male: ['Philippe', 'Baudouin', 'Albert', 'Léopold', 'Gabriel'], female: ['Elisabeth', 'Éléonore', 'Astrid', 'Mathilde', 'Paola'] },
+    names: { male: ['Baudouin', 'Léopold', 'Charles', 'Antoine', 'Victor'], female: ['Joséphine', 'Marie-José', 'Clémentine', 'Henriette', 'Louise'] },
     titles: { monarch: ['King of the Belgians', 'Queen of the Belgians'], heir: ['Duke of Brabant', 'Duchess of Brabant'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] },
     palace: 'the Royal Palace of Laeken', grant: 'the civil list (dotation)', dukedoms: ['Brabant'],
   },
   LU: {
     name: 'the Grand Ducal Crown', realms: ['LU'], rule: 'absolute', houses: ['Nassau-Weilburg', 'Bourbon-Parme'],
-    names: { male: ['Henri', 'Guillaume', 'Jean', 'Félix', 'Louis'], female: ['Charlotte', 'Stéphanie', 'Maria Teresa', 'Alexandra', 'Amalia'] },
+    names: { male: ['Jean', 'Adolphe', 'Félix', 'Nicolas', 'Paul'], female: ['Charlotte', 'Marie-Adélaïde', 'Hilda', 'Élisabeth', 'Marie-Gabrielle'] },
     titles: { monarch: ['Grand Duke', 'Grand Duchess'], heir: ['Hereditary Grand Duke', 'Hereditary Grand Duchess'], royal: ['Prince of Luxembourg', 'Princess of Luxembourg'], distant: ['Prince of Nassau', 'Princess of Nassau'] },
     palace: 'the Grand Ducal Palace', grant: 'the civil list', dukedoms: [],
   },
   BT: {
     name: 'the Wangchuck dynasty', realms: ['BT'], rule: 'malePreference', houses: ['Wangchuck'],
-    names: { male: ['Jigme', 'Khesar', 'Ugyen', 'Dorji', 'Namgyel'], female: ['Pema', 'Ashi Sonam', 'Dechen', 'Kesang', 'Euphelma'] },
+    names: { male: ['Jigme', 'Tshering', 'Ugyen', 'Dorji', 'Namgyel'], female: ['Pema', 'Sonam', 'Dechen', 'Kesang', 'Choden'] },
     titles: { monarch: ['Druk Gyalpo (Dragon King)', 'Druk Gyaltsuen (Dragon Queen)'], heir: ['Gyalsey (Crown Prince)', 'Gyalsem (Princess)'], royal: ['Dasho', 'Ashi'], distant: ['Dasho', 'Ashi'] },
     palace: 'the Lingkana Palace, Thimphu', grant: 'the royal grant (kidu)', dukedoms: [],
   },
   TO: {
     name: 'the Crown of Tonga', realms: ['TO'], rule: 'malePreference', houses: ['Tupou'],
-    names: { male: ['Tupou', 'Siaosi', 'Ulukalala', 'Ahoʻeitu', 'Viliami'], female: ['Sālote', 'Nanasipauʻu', 'Pilolevu', 'Lātūfuipeka', 'Halaevalu'] },
+    names: { male: ['Siaosi', 'Viliami', 'Sione', 'Tevita', 'Semisi'], female: ['Mele', 'Lupe', 'Ana', 'Losana', 'Seini'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince (Tupouto\'a)', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Noble', 'Noble'] },
     palace: 'the Royal Palace, Nukuʻalofa', grant: 'the palace office budget', dukedoms: [],
   },
   OM: {
     name: 'the Al Said dynasty', realms: ['OM'], rule: 'agnatic', executive: true, houses: ['Al Said'],
-    names: { male: ['Haitham', 'Qaboos', 'Theyazin', 'Asaad', 'Shihab'], female: ['Ahd', 'Thuraya', 'Sayyida Sultana', 'Mayyan', 'Tania'] },
+    names: { male: ['Faisal', 'Turki', 'Asaad', 'Shihab', 'Hamad'], female: ['Ahd', 'Thuraya', 'Mayyan', 'Rawya', 'Salma'] },
     titles: { monarch: ['Sultan', 'Sultana'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Sayyid', 'Sayyida'], distant: ['Sayyid', 'Sayyida'] },
     palace: 'Al Alam Palace, Muscat', grant: 'the Diwan of the Royal Court', dukedoms: [],
   },
   TH: {
     name: 'the Chakri dynasty', realms: ['TH'], rule: 'agnatic', houses: ['Chakri'],
-    names: { male: ['Vajiralongkorn', 'Bhumibol', 'Dipangkorn', 'Prajadhipok', 'Mahidol'], female: ['Sirindhorn', 'Bajrakitiyabha', 'Sirivannavari', 'Ubol Ratana', 'Chulabhorn'] },
+    names: { male: ['Somchai', 'Chatchai', 'Anan', 'Thanakorn', 'Prasert'], female: ['Ratana', 'Siriporn', 'Kanya', 'Malee', 'Wanida'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince (Chao Fa)', 'Princess (Chao Fa)'], distant: ['Mom Chao', 'Mom Chao'] },
     palace: 'the Grand Palace, Bangkok', grant: 'the Crown Property Bureau', dukedoms: [],
   },
   MY: {
     name: 'the Malay Rulers', realms: ['MY'], rule: 'agnatic', houses: ['Johor', 'Pahang', 'Perak'],
-    names: { male: ['Ibrahim', 'Abdullah', 'Nazrin', 'Sharafuddin', 'Mizan'], female: ['Zarith', 'Azizah', 'Tuanku Aminah', 'Raja Zarith', 'Tunku Tun'] },
+    names: { male: ['Idris', 'Ismail', 'Hisham', 'Iskandar', 'Yusuf'], female: ['Aminah', 'Zainab', 'Rahimah', 'Fauziah', 'Salmah'] },
     titles: { monarch: ['Yang di-Pertuan Agong', 'Raja Permaisuri Agong'], heir: ['Tunku Mahkota', 'Tunku Mahkota'], royal: ['Tunku', 'Tunku'], distant: ['Tengku', 'Tengku'] },
     palace: 'Istana Negara, Kuala Lumpur', grant: 'the royal allowance', dukedoms: [],
     note: 'An elected monarchy: the nine state rulers choose the King from among themselves for five years.',
   },
   BN: {
     name: 'the Sultanate', realms: ['BN'], rule: 'agnatic', executive: true, houses: ['Bolkiah'],
-    names: { male: ['Hassanal', 'Al-Muhtadee', 'Abdul Mateen', 'Omar Ali', 'Jefri'], female: ['Rashidah', 'Majeedah', 'Hafizah', 'Azemah', 'Fadzilah'] },
+    names: { male: ['Abdul Rahman', 'Yusof', 'Ismail', 'Omar Ali', 'Hamid'], female: ['Rashidah', 'Majeedah', 'Hafizah', 'Azemah', 'Fadzilah'] },
     titles: { monarch: ['Sultan', 'Sultan'], heir: ['Crown Prince (Pengiran Muda Mahkota)', 'Crown Princess'], royal: ['Pengiran Muda', 'Pengiran Anak'], distant: ['Pengiran', 'Pengiran'] },
     palace: 'Istana Nurul Iman', grant: 'the oil revenues', dukedoms: [],
   },
   KH: {
     name: 'the Crown', realms: ['KH'], rule: 'agnatic', houses: ['Norodom', 'Sisowath'],
-    names: { male: ['Sihamoni', 'Sihanouk', 'Ranariddh', 'Sirivudh', 'Chakrapong'], female: ['Bopha Devi', 'Arunrasmy', 'Norleak', 'Marie', 'Soma'] },
+    names: { male: ['Sophal', 'Vannak', 'Rithy', 'Sokha', 'Visal'], female: ['Sophea', 'Chanthou', 'Kunthea', 'Srey Leak', 'Bopha'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Prince', 'Princess'], royal: ['Prince (Samdech)', 'Princess (Samdech)'], distant: ['Prince', 'Princess'] },
     palace: 'the Royal Palace, Phnom Penh', grant: 'the palace budget', dukedoms: [],
     note: 'The Royal Council of the Throne elects the King from among male descendants of the royal houses.',
   },
   JO: {
     name: 'the Hashemite Crown', realms: ['JO'], rule: 'agnatic', houses: ['Hashemite'],
-    names: { male: ['Abdullah', 'Hussein', 'Hashem', 'Faisal', 'Ali'], female: ['Rania', 'Iman', 'Salma', 'Noor', 'Haya'] },
+    names: { male: ['Zeid', 'Talal', 'Ghazi', 'Raad', 'Ali'], female: ['Dina', 'Lina', 'Farah', 'Yasmin', 'Nour'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Sharif', 'Sharifa'] },
     palace: 'Raghadan Palace, Amman', grant: 'the royal court budget', dukedoms: [],
   },
   SA: {
     name: 'the House of Saud', realms: ['SA'], rule: 'agnatic', executive: true, houses: ['Al Saud'],
-    names: { male: ['Salman', 'Mohammed', 'Abdulaziz', 'Faisal', 'Khalid'], female: ['Reema', 'Lolowah', 'Basmah', 'Hessa', 'Noura'] },
+    names: { male: ['Turki', 'Sultan', 'Abdulaziz', 'Faisal', 'Khalid'], female: ['Noura', 'Sara', 'Hessa', 'Al-Jawhara', 'Latifa'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Prince', 'Princess'], distant: ['Prince', 'Princess'] },
     palace: 'Al-Yamamah Palace, Riyadh', grant: 'the royal stipends', dukedoms: [],
   },
   MA: {
     name: 'the Alaouite Crown', realms: ['MA'], rule: 'agnatic', executive: true, houses: ['Alaouite'],
-    names: { male: ['Mohammed', 'Hassan', 'Moulay Rachid', 'Moulay Ismail', 'Moulay Hicham'], female: ['Lalla Khadija', 'Lalla Salma', 'Lalla Meryem', 'Lalla Asmaa', 'Lalla Hasna'] },
+    names: { male: ['Mohammed', 'Hassan', 'Moulay Youssef', 'Moulay Driss', 'Moulay Abdallah'], female: ['Lalla Fatima', 'Lalla Zineb', 'Lalla Amina', 'Lalla Aicha', 'Lalla Nouzha'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Moulay', 'Lalla'], distant: ['Sharif', 'Sharifa'] },
     palace: 'the Royal Palace, Rabat', grant: 'the royal household budget', dukedoms: [],
   },
   KW: {
     name: 'the Al Sabah', realms: ['KW'], rule: 'agnatic', executive: true, houses: ['Al Sabah'],
-    names: { male: ['Mishal', 'Nawaf', 'Sabah', 'Jaber', 'Sabah Al-Khalid'], female: ['Sharifa', 'Fatima', 'Amthal', 'Hessa', 'Latifa'] },
+    names: { male: ['Jaber', 'Sabah', 'Salem', 'Ahmad', 'Abdullah'], female: ['Sharifa', 'Fatima', 'Maryam', 'Hessa', 'Latifa'] },
     titles: { monarch: ['Emir', 'Emira'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Sheikh', 'Sheikha'], distant: ['Sheikh', 'Sheikha'] },
     palace: 'Bayan Palace, Kuwait City', grant: 'the Amiri Diwan', dukedoms: [],
   },
   QA: {
     name: 'the Al Thani', realms: ['QA'], rule: 'agnatic', executive: true, houses: ['Al Thani'],
-    names: { male: ['Tamim', 'Hamad', 'Jassim', 'Khalifa', 'Abdullah'], female: ['Moza', 'Al-Mayassa', 'Hind', 'Jawaher', 'Anoud'] },
+    names: { male: ['Hamad', 'Jassim', 'Khalifa', 'Abdullah', 'Thani'], female: ['Hind', 'Jawaher', 'Anoud', 'Noora', 'Aisha'] },
     titles: { monarch: ['Emir', 'Emira'], heir: ['Deputy Emir', 'Sheikha'], royal: ['Sheikh', 'Sheikha'], distant: ['Sheikh', 'Sheikha'] },
     palace: 'the Amiri Diwan, Doha', grant: 'the state budget', dukedoms: [],
   },
   BH: {
     name: 'the Al Khalifa', realms: ['BH'], rule: 'agnatic', executive: true, houses: ['Al Khalifa'],
-    names: { male: ['Hamad', 'Salman', 'Khalifa', 'Nasser', 'Khalid'], female: ['Sabika', 'Hessa', 'Mai', 'Noora', 'Lulwa'] },
+    names: { male: ['Khalifa', 'Nasser', 'Khalid', 'Isa', 'Abdullah'], female: ['Hessa', 'Mai', 'Noora', 'Lulwa', 'Mariam'] },
     titles: { monarch: ['King', 'Queen'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Sheikh', 'Sheikha'], distant: ['Sheikh', 'Sheikha'] },
     palace: 'Sakhir Palace', grant: 'the royal court budget', dukedoms: [],
   },
   AE: {
     name: 'the Al Nahyan', realms: ['AE'], rule: 'agnatic', executive: true, houses: ['Al Nahyan', 'Al Maktoum'],
-    names: { male: ['Mohamed', 'Khalifa', 'Zayed', 'Hamdan', 'Tahnoun'], female: ['Fatima', 'Mariam', 'Shamma', 'Hessa', 'Latifa'] },
+    names: { male: ['Saif', 'Khalid', 'Sultan', 'Rashid', 'Hazza'], female: ['Fatima', 'Mariam', 'Shamma', 'Hessa', 'Latifa'] },
     titles: { monarch: ['President and Ruler of Abu Dhabi', 'Ruler'], heir: ['Crown Prince', 'Crown Princess'], royal: ['Sheikh', 'Sheikha'], distant: ['Sheikh', 'Sheikha'] },
     palace: 'Qasr Al Watan, Abu Dhabi', grant: 'the federal and emirate budgets', dukedoms: [],
     note: 'A federation of seven emirates: the Ruler of Abu Dhabi is President, the Ruler of Dubai Vice-President and Prime Minister.',
@@ -546,9 +546,11 @@ function bornRoyal(state, rng) {
   r.crownId = crownId;
   const def = CROWNS[crownId];
   const c = ensureCrown(state, crownId);
+  // Where only men inherit (Japan, the Gulf, Thailand, Jordan…), a daughter can't be the heir: born
+  // the monarch's eldest child, with a younger brother first in line.
+  if (def.rule === 'agnatic' && state.character.gender === 'female' && r.level === 'heir') { r.level = 'child'; r.daughterOfAgnatic = true; }
   const lv = ROYAL_LEVELS[r.level] ?? ROYAL_LEVELS.child;
   r.line = rng.int(lv.line[0], lv.line[1]);
-  // Japan: only the male line inherits.
   if (def.rule === 'agnatic' && state.character.gender === 'female') r.line = null;
   if (def.rule === 'malePreference' && state.character.gender === 'female' && r.level === 'heir' && rng.chance(0.5)) r.line = 2;
   Object.assign(r, { working: r.level !== 'distant', popularity: 60, reigning: false, patronages: [], since: 0 });
@@ -623,7 +625,7 @@ function royalYear(ctx) {
     if (r.line === 1) ctx.log(`You are now first in line to the throne: heir to ${monarchName(state, r.crownId)}.`, '👑', 'milestone');
   }
   // A working royal's life in the papers.
-  if (r.working && age >= 16 && rng.chance(0.3) && !state.prompts.some((p) => p.type === 'crown.press')) {
+  if (r.working && age >= 16 && rng.chance(0.15) && !state.prompts.some((p) => ['crown.press', 'royalLife.press'].includes(p.type))) {
     const e = rng.pick(PRESS);
     ctx.prompt({ type: 'crown.press', icon: '📰', title: e.title, text: e.text, options: e.options, data: { id: e.id } });
   }

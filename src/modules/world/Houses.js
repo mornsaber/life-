@@ -26,6 +26,9 @@ import { COUNTRIES } from './Countries.js';
 import { living } from '../people/People.js';
 import { arrive } from './Migration.js';
 
+/** A house as it's named: "the House of Windsor", but "the Imperial House" (Japan's). */
+export const houseTitle = (name) => { const n = String(name ?? '').replace(/^the /, ''); return /\bHouse$/.test(n) ? `the ${n}` : `the House of ${n}`; };
+
 export const FORMER_HOUSES = {
   PT: { name: 'Braganza', surname: 'de Bragança', head: ['Duke of Braganza', 'Duchess of Braganza'], style: ['Prince', 'Princess'], fell: 1910, how: 'the 5 October Revolution', order: 'Order of Our Lady of the Conception', support: 3, legal: 'The Republic recognises no titles.' },
   TR: { name: 'Osman', surname: 'Osmanoğlu', head: ['Head of the House of Osman', 'Head of the House of Osman'], style: ['Şehzade', 'Sultan'], fell: 1922, how: 'the abolition of the sultanate', order: 'Order of the Medjidie', support: 2, legal: 'The family was exiled in 1924; titles have no legal standing.' },
@@ -84,7 +87,7 @@ export function houseStyledName(state) {
   const def = FORMER_HOUSES[h.cc];
   const style = houseStyle(state);
   const base = `${style ? `${style} ` : ''}${c.firstName} ${c.lastName}`;
-  return h.rank === 'head' ? `${base}, ${h.headTitle ?? def?.head?.[g(state)] ?? `Head of the House of ${h.name}`}` : base;
+  return h.rank === 'head' ? `${base}, ${h.headTitle ?? def?.head?.[g(state)] ?? `Head of ${houseTitle(h.name)}`}` : base;
 }
 
 /** Born into a former ruling house (the start screen). */
@@ -161,7 +164,7 @@ export function restore(ctx, cc) {
     ctx.stat('happiness', 15);
     return;
   }
-  ctx.log(`The monarchy is restored: the House of ${def.name} returns to ${CROWNS[cc].palace}. ${monarchName(state, cc)} is head of state.`, '👑', 'milestone');
+  ctx.log(`The monarchy is restored: ${houseTitle(def.name)} returns to ${CROWNS[cc].palace}. ${monarchName(state, cc)} is head of state.`, '👑', 'milestone');
 }
 
 /** The crown goes: a republic. A reigning family becomes a former ruling house. */
@@ -197,7 +200,7 @@ function referendumPrompt(ctx, cc, kind, called = false) {
   ctx.prompt({
     type: 'houses.referendum', icon: '🗳️', title: kind === 'restore' ? 'A Referendum on the Monarchy' : 'A Republic Referendum',
     text: kind === 'restore'
-      ? `${called ? 'Your government has called' : 'Monarchists gathered enough signatures for'} a referendum: should ${COUNTRIES[cc]?.name ?? cc} restore the monarchy under the House of ${def.name}? Polls put support near ${Math.round(monarchistSupport(state, cc))}%.`
+      ? `${called ? 'Your government has called' : 'Monarchists gathered enough signatures for'} a referendum: should ${COUNTRIES[cc]?.name ?? cc} restore the monarchy under ${houseTitle(def.name)}? Polls put support near ${Math.round(monarchistSupport(state, cc))}%.`
       : `${called ? 'Your government has called' : 'The country votes in'} a referendum: should ${COUNTRIES[cc]?.name ?? cc} abolish the monarchy and become a republic?`,
     options: [
       { id: 'campaignYes', label: kind === 'restore' ? '👑 Campaign for the crown' : '🏛️ Campaign for a republic' },
@@ -298,15 +301,15 @@ function houseYear(ctx) {
     if (!holder || holder.alive === false) {
       h.rank = 'head';
       h.holderId = null;
-      ctx.log(`Your father's death made you head of the House of ${h.name}${def ? `: ${def.head[g(state)]}` : ''}. Monarchists call you by a regnal name; the state calls you by your surname.`, '👑', 'milestone');
+      ctx.log(`Your father's death made you head of ${houseTitle(h.name)}${def ? `: ${def.head[g(state)]}` : ''}. Monarchists call you by a regnal name; the state calls you by your surname.`, '👑', 'milestone');
     }
   }
   // The house's own order, at 18.
   if (age === 18 && def?.order && !state.honors.some((x) => x.id === 'house.order')) {
-    addHonor(state, { id: 'house.order', source: 'foreign', order: def.order, from: `the House of ${h.name}`, name: `${state.character.gender === 'female' ? (h.rank === 'cadet' ? 'Dame' : 'Dame Grand Cross') : (h.rank === 'cadet' ? 'Knight' : 'Knight Grand Cross')} of the ${def.order} (dynastic)`, icon: '⚜️', prestige: 6, precedence: 12, citation: 'Conferred by the head of the house on coming of age.' });
+    addHonor(state, { id: 'house.order', source: 'foreign', order: def.order, from: `${houseTitle(h.name)}`, name: `${state.character.gender === 'female' ? (h.rank === 'cadet' ? 'Dame' : 'Dame Grand Cross') : (h.rank === 'cadet' ? 'Knight' : 'Knight Grand Cross')} of the ${def.order} (dynastic)`, icon: '⚜️', prestige: 6, precedence: 12, citation: 'Conferred by the head of the house on coming of age.' });
   }
   // A family trust, where there's still money.
-  if (age >= 18 && state.people?.wealth === 'upper') ctx.earn(h.rank === 'cadet' ? 15000 : 40000, `House of ${h.name} family trust`);
+  if (age >= 18 && state.people?.wealth === 'upper') ctx.earn(h.rank === 'cadet' ? 15000 : 40000, `${houseTitle(h.name).replace(/^the /, '')} family trust`);
   // Austria: the 1919 law still applies to using the title at home.
   if (def?.banned && state.character.countryId === h.cc && age >= 18 && rng.chance(0.03)) {
     ctx.spend(rng.int(100, 1500), 'Fine under the Nobility Abolition Act', { allowDebt: true });
@@ -329,10 +332,10 @@ function monarchistYear(ctx) {
   const h = houseOf(state);
   if (h?.banned && state.character.age >= h.banned) {
     h.banned = null;
-    ctx.log(`The exile law was repealed: the House of ${h.name} may come home.`, '🕊️', 'good');
+    ctx.log(`The exile law was repealed: ${houseTitle(h.name)} may come home.`, '🕊️', 'good');
   } else if (h && h.rank !== 'cadet' && !h.banned && FORMER_HOUSES[h.cc] && !state.world.restored?.[h.cc] && monarchistSupport(state, h.cc) >= 20 && rng.chance(0.04)) {
     h.banned = state.character.age + 10;
-    ctx.log(`Alarmed by the monarchist revival, parliament passed a law banning the head of the House of ${h.name} and their heirs from ${h.cc} for ten years.`, '🚫', 'bad');
+    ctx.log(`Alarmed by the monarchist revival, parliament passed a law banning the head of ${houseTitle(h.name)} and their heirs from ${h.cc} for ten years.`, '🚫', 'bad');
     if (state.character.countryId === h.cc) arrive(ctx, 'CH', { visa: 'resident', reason: 'You went into exile in Switzerland, like many dethroned houses before you.' });
   }
   const cc = state.character.countryId;
@@ -397,7 +400,7 @@ export const HousesModule = {
       if (yearlyCount(state, 'houses.confer') >= 2) return ctx.toast('Twice a year', 'warn');
       bumpYearly(state, 'houses.confer');
       h.conferred = (h.conferred ?? 0) + 1;
-      const order = FORMER_HOUSES[h.cc]?.order ?? `Order of the House of ${h.name}`;
+      const order = FORMER_HOUSES[h.cc]?.order ?? `Order of ${houseTitle(h.name)}`;
       const p = personId ? houseConferOptions(state).find((x) => x.id === personId) : null;
       if (p) {
         p.houseOrder = order;
@@ -405,7 +408,7 @@ export const HousesModule = {
         return ctx.log(`You invested ${p.firstName} ${p.lastName} in the ${order}.`, '⚜️', 'good');
       }
       (state.world.monarchists ??= {})[h.cc] = Math.min(80, monarchistSupport(state, h.cc) + 0.5);
-      return ctx.log(`You invested a loyal supporter in the ${FORMER_HOUSES[h.cc]?.order ?? `order of the House of ${h.name}`}. They will hear no word against you.`, '⚜️', 'good');
+      return ctx.log(`You invested a loyal supporter in the ${FORMER_HOUSES[h.cc]?.order ?? `order of ${houseTitle(h.name)}`}. They will hear no word against you.`, '⚜️', 'good');
     },
     /** Give up the claim for yourself and your heirs. */
     renounce(ctx) {
@@ -414,7 +417,7 @@ export const HousesModule = {
       if (!h) return undefined;
       h.renounced = true;
       state.character.style = { ...(state.character.style ?? {}), prefix: null };
-      return ctx.log(`You renounced your rights in the House of ${h.name}, for yourself and your descendants.`, '📜', 'milestone');
+      return ctx.log(`You renounced your rights in ${houseTitle(h.name)}, for yourself and your descendants.`, '📜', 'milestone');
     },
     /** Put the monarchy to the people, as head of government. */
     callRestoration(ctx) {

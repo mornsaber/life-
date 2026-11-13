@@ -25,6 +25,7 @@
  *   exemptionUsed  lifetime gift-tax exemption spent on gifts above the annual exclusion
  *   gifts        { [personId]: balance } given during your life
  */
+import { houseTitle } from '../world/Houses.js';
 import { newCommunity } from '../community/Religions.js';
 import { createInitialState, currentYear, addLog, START_YEAR, businessEquity, stocksValue } from '../../core/State.js';
 import { ageOf, livingChildren, spouseOf, living, fullName, clampRel } from './People.js';
@@ -593,6 +594,6 @@ function passCrownAndTitles(old, s, child, childAge) {
     const head = h.rank === 'head' && heir?.id === child.id;
     s.house = { ...structuredClone(h), rank: head ? 'head' : 'cadet', holderId: null, conferred: 0, campaigns: 0 };
     s.character.style = { ...(s.character.style ?? {}), prefix: houseStyle(s) };
-    if (head) addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as head of the House of ${h.name}.`, '👑', 'milestone');
+    if (head) addLog(s, `You succeed your ${old.character.gender === 'female' ? 'mother' : 'father'} as head of ${houseTitle(h.name)}.`, '👑', 'milestone');
   }
 }
