@@ -10,6 +10,7 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { LivingHistoryModule, ALL_EPISODES } from '../src/modules/world/LivingHistory.js';
 import { WORLD_EPISODES } from '../src/modules/world/WorldEpisodes.js';
+import { timesCard } from '../src/ui/views/EraView.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (year, cc, ageNow = 25, extra = {}) => {
@@ -87,6 +88,22 @@ const tests = {
       assert.ok(state.lived.some((l) => l.id === id && l.year === year), `${id}/${o.id}`);
       assert.ok(Number.isFinite(state.finances.cash), `${id}/${o.id} cash`);
     }
+  },
+  'Your Times sets what you lived through against the world, decade by decade'() {
+    const { engine, state, ctx } = life(1968, 'FR', 25);
+    only(state, 'mai68');
+    LivingHistoryModule.onAgeUp(ctx);
+    const p = state.prompts.find((x) => x.data?.id === 'mai68');
+    engine.resolvePrompt(p.id, 'strike');
+    state.era.events.ww2 = { year: 1939, past: true };
+    state.era.events.coldWar = { year: 1947, past: true };
+    const html = timesCard(state);
+    assert.match(html, /The 1960s/);
+    assert.match(html, /Grenelle/);
+    assert.match(html, /Cold War/);
+    assert.doesNotMatch(html, /Second World War/, 'before you were born');
+    const today = life(2026, 'US', 30);
+    assert.match(timesCard(today.state), /Your Times/);
   },
   'fleeing Spain takes you to France'() {
     const { engine, state, ctx } = life(1936, 'ES', 25, { events: { spanishCivilWar: 1936 } });

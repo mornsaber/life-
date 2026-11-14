@@ -112,8 +112,10 @@ function mount(ctx, id) {
   if (!sponsored) ctx.spend(el.cost, `${e.label} expedition`, { allowDebt: true });
   else ctx.log(`${y < 1920 ? 'A newspaper and the Royal Geographical Society' : 'Sponsors'} paid for the expedition.`, '📰', 'info');
   const skill = (state.stats.fitness ?? 50) / 200 + state.stats.smarts / 400;
-  if (rng.chance(e.death * (y < 1950 ? 1.3 : 1))) { ctx.log(`${e.label}: the expedition was lost.`, e.icon, 'bad'); return void ctx.die(`lost on an expedition to ${e.label.replace(/^The /, 'the ')}`); }
-  const success = rng.chance(clamp(e.odds + skill - 0.35, 0.05, 0.98));
+  // Fit, clever leaders bring their people home; and each attempt teaches the next one.
+  const tries = featsOf(state).expeditions.filter((x) => x.id === id).length;
+  if (rng.chance(e.death * (y < 1950 ? 1.3 : 1) * clamp(1.3 - skill, 0.5, 1))) { ctx.log(`${e.label}: the expedition was lost.`, e.icon, 'bad'); return void ctx.die(`lost on an expedition to ${e.label.replace(/^The /, 'the ')}`); }
+  const success = rng.chance(clamp(e.odds + skill - 0.35 + Math.min(tries, 3) * 0.08, 0.05, 0.98));
   const first = success && e.firstYet;
   feats(state).expeditions.push({ id, year: y, success, first });
   ctx.stat('health', -rng.int(4, 15));

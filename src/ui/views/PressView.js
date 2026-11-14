@@ -2,7 +2,7 @@
  * The press: owning a paper, a station or a channel, in the forms of the day.
  */
 import { esc, button, card, kv } from '../Components.js';
-import { outletsNow, LINES } from '../../modules/world/Institutions.js';
+import { outletsNow, LINES, salePrice } from '../../modules/world/Institutions.js';
 import { regimeHere } from '../../modules/world/Regimes.js';
 
 export function pressCard(state) {
@@ -16,7 +16,7 @@ export function pressCard(state) {
       ['Libel writs', p.writs],
     ])}
       <h4 class="sub">Editorial line</h4><div class="toggle-row">${Object.entries(LINES).map(([id, l]) => button(l, 'publicLife.line', { arg: id, variant: p.line === id ? 'tiny on' : 'tiny' })).join('')}</div>
-      <div class="action-grid">${button('💼 Sell it', 'publicLife.sellOutlet', { variant: 'small ghost' })}</div>
+      <div class="action-grid">${button(`💼 Sell it (about $${salePrice(state, p).toLocaleString()})`, 'publicLife.sellOutlet', { variant: 'small ghost' })}</div>
       <p class="fine">Scandal sells and draws libel writs; a crusade builds influence; influence helps anyone in politics you back — yourself included.</p>`, { icon: '📰' });
   }
   const outlets = outletsNow(state);

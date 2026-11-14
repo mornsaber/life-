@@ -14,6 +14,8 @@ import { EVENTS, jimCrowHere } from '../../modules/world/History.js';
 import { COUNTRIES } from '../../modules/world/Countries.js';
 import { demographyAt } from '../../modules/world/HistoricalData.js';
 import { moneyOfTheDay } from '../../modules/world/Eras.js';
+import { leisureNow } from '../../modules/life/LeisureOfTheDay.js';
+import { causesNow } from '../../modules/civic/Activism.js';
 
 /** America's own milestones: shown in an American life, not as world history. */
 const US_HOME_EVENTS = ['brownVBoard', 'civilRights'];
@@ -75,7 +77,6 @@ export function eraCard(state) {
   const coming = Object.entries(TECH).filter(([id]) => !hasTech(state, id)).sort((a, b) => a[1] - b[1]).slice(0, 4);
   return card(`The World in ${y}`, `${kv(rows)}
     ${recent.length ? `<p class="fine">In your lifetime:</p><ul class="job-board">${recent.map(line).join('')}</ul>` : `<p class="fine">History is on its way: ${esc(Object.entries(EVENTS).filter(([id, ev]) => !era.events[id] && ev.window[0] > y - 1).slice(0, 3).map(([id]) => EVENT_LABELS[id]).join(', ') || 'the present')}.</p>`}
-    ${(state.lived ?? []).length ? `<p class="fine">What you lived through:</p><ul class="history">${(state.lived ?? []).slice(-8).map((l) => `<li>${l.icon} <b>${l.year}</b> ${esc(l.text)}</li>`).join('')}</ul>` : ''}
     ${skipped.length ? `<p class="fine">🔀 This world went differently: ${esc(skipped.map((id) => EVENT_LABELS[id]).join(', '))} never happened.</p>` : ''}
     ${coming.length ? `<p class="fine">Not invented yet: ${esc(coming.map(([id, yr]) => `${TECH_LABELS[id] ?? id.replace(/([A-Z])/g, ' $1').toLowerCase()} (about ${yr})`).join(', '))}.</p>` : ''}
     <p class="fine">${moneyOfTheDay(state) ? '💰 Money is shown as it was then: prices of the day, in the local currency.' : (state.character.countryId ?? 'US') === 'US' ? '💰 Money is in today\'s dollars.' : '💰 Money is today\'s value, in the local currency of the day.'}</p>`, { icon: '🕰️' });
@@ -89,3 +90,34 @@ function futureCard(state, happened) {
   return card(`The World in ${y}`, `<p class="fine">What the future has brought so far:</p><ul class="job-board">${rows}</ul>${skipped.length ? `<p class="fine">🔀 It never came to pass: ${esc(skipped.join(', '))}.</p>` : ''}`, { icon: '🔭' });
 }
 
+
+/**
+ * Your Times: for any life, past, present or future — what people did with an evening, what
+ * they were marching for, and your whole life set against the history of your world, decade
+ * by decade.
+ */
+export function timesCard(state) {
+  const y = yearNow(state);
+  const born = state.character.birthYear ?? y - state.character.age;
+  const cc = state.character.countryId ?? 'US';
+  const decade = `the ${Math.floor(y / 10) * 10}s`;
+  const fun = leisureNow(state).sort((a, b) => b.from - a.from).slice(0, 6);
+  const causes = causesNow(state, y, warHere(state)).slice(0, 6);
+  const world = Object.entries(state.era?.events ?? {})
+    .filter(([id, e]) => EVENT_LABELS[id] && e.year >= born && e.year <= y && (cc === 'US' || !US_HOME_EVENTS.includes(id)))
+    .map(([id, e]) => ({ year: e.year, icon: '🌍', text: EVENT_LABELS[id].replace(/^./, (c) => c.toUpperCase()), world: true }));
+  const mine = (state.lived ?? []).filter((l) => l.year != null).map((l) => ({ year: l.year, icon: l.icon ?? '•', text: l.text }));
+  const byDecade = new Map();
+  for (const e of [...world, ...mine].sort((a, b) => a.year - b.year)) {
+    const d = Math.floor(e.year / 10) * 10;
+    if (!byDecade.has(d)) byDecade.set(d, []);
+    byDecade.get(d).push(e);
+  }
+  const timeline = [...byDecade.entries()].map(([d, list]) => `<h4 class="sub">The ${d}s${d <= born && born < d + 10 ? ' · you were born' : ''}</h4><ul class="history">${list.map((e) => `<li>${e.icon} <b>${e.year}</b> ${e.world ? `<i>${esc(e.text)}</i>` : esc(e.text)}</li>`).join('')}</ul>`).join('');
+  const rows = [
+    ['Born', `${born}, ${state.character.age} years ago`],
+    ...(fun.length ? [['People go to', esc(fun.map((l) => `${l.icon} ${l.label.replace(/^(An?|The) /, '').replace(/^./, (c) => c.toLowerCase())}`).join(', '))]] : []),
+    ...(causes.length ? [['Causes of the day', esc(causes.map(([, c]) => `${c.icon} ${c.name}`).join(', '))]] : []),
+  ];
+  return card('Your Times', `${kv(rows)}${timeline || '<p class="fine">Your story is only beginning.</p>'}`, { icon: '⏳', summary: `Living in ${decade}` });
+}

@@ -97,9 +97,15 @@ function buyOutlet(ctx, arg) {
   if ((state.finances?.cash ?? 0) < price) return ctx.toast(`Needs $${price.toLocaleString()}`, 'warn');
   ctx.spend(price, `Bought ${o.label}`);
   const name = `The ${rng.pick(['Morning', 'Evening', 'Daily', 'Weekly', 'Sunday', 'National'])} ${rng.pick(['Courier', 'Herald', 'Chronicle', 'Express', 'Gazette', 'Clarion', 'Post', 'Mirror'])}`;
-  state.press = { outlet: kind === 'paper' ? name : `${state.character.lastName} ${kind === 'radio' ? 'Radio' : kind === 'site' ? 'News' : 'Broadcasting'}`, kind, scale, line: 'sober', since: yearNow(state), price, readers: scale === 'national' ? 400000 : 20000, influence: scale === 'national' ? 30 : 8, writs: 0 };
+  state.press = { outlet: kind === 'paper' ? name : `${state.character.lastName} ${kind === 'radio' ? 'Radio' : kind === 'site' ? 'News' : 'Broadcasting'}`, kind, scale, line: 'sober', since: yearNow(state), price, readers: scale === 'national' ? 400000 : 20000, level: priceLevel(state), influence: scale === 'national' ? 30 : 8, writs: 0 };
   ctx.log(`You bought ${o.label}: ${state.press.outlet}. A ${scale} voice is yours.`, o.icon, 'milestone');
 }
+/** What the outlet is worth now: its price carried forward with the prices of the day. */
+const worth = (state, p) => p.price * (p.level ? priceLevel(state) / p.level : 1);
+/** A national paper tops out around four million readers, a local one at a quarter of a million. */
+const readerCap = (p) => (p.scale === 'national' ? 4000000 : 250000);
+/** Half its price for the presses and the name, the rest for its readers: up to 1.5×. */
+export const salePrice = (state, p) => Math.round(worth(state, p) * (0.5 + Math.min(p.readers, readerCap(p)) / readerCap(p)));
 function pressTick(ctx) {
   const { state } = ctx;
   const p = state.press;
@@ -109,18 +115,18 @@ function pressTick(ctx) {
     return ctx.log(`The new regime closed ${p.outlet} and took the presses. You got nothing.`, '🚫', 'bad');
   }
   const rng = side(state, 53);
-  const grow = { sober: 1.0, crusading: 1.05, scandal: 1.15, partisan: 1.03 }[p.line];
-  p.readers = Math.round(p.readers * grow * rng.float(0.9, 1.08));
+  const grow = { sober: 1.02, crusading: 1.05, scandal: 1.15, partisan: 1.04 }[p.line];
+  p.readers = Math.min(readerCap(p), Math.round(p.readers * grow * rng.float(0.9, 1.08)));
   p.influence = clamp(p.influence + { sober: 1, crusading: 3, scandal: 0, partisan: 2 }[p.line] - 1, 0, 100);
-  const margin = { sober: 0.06, crusading: 0.03, scandal: 0.1, partisan: 0.04 }[p.line];
-  const profit = Math.round(p.price * margin * rng.float(-0.6, 1.4));
+  const margin = { sober: 0.08, crusading: 0.05, scandal: 0.11, partisan: 0.06 }[p.line];
+  const profit = Math.round(worth(state, p) * margin * rng.float(-0.4, 1.4));
   if (profit >= 0) ctx.earn(profit, `${p.outlet}: profits`); else ctx.spend(-profit, `${p.outlet}: losses`, { allowDebt: true });
   if (state.politics?.office || state.politics?.campaign) state.politics.recognition = clamp((state.politics.recognition ?? 0) + Math.round(p.influence / 10), 0, 100);
   addBuzz(state, p.influence >= 50 ? 3 : 1);
   if (['scandal', 'crusading'].includes(p.line) && rng.chance(p.line === 'scandal' ? 0.18 : 0.08)) {
     p.writs += 1;
     const lost = rng.chance(0.45);
-    if (lost) ctx.spend(Math.round(p.price * 0.05), `Libel damages: ${p.outlet}`, { allowDebt: true });
+    if (lost) ctx.spend(Math.round(worth(state, p) * 0.05), `Libel damages: ${p.outlet}`, { allowDebt: true });
     ctx.log(lost ? `${p.outlet} lost a libel action and paid heavy damages.` : `${p.outlet} was sued for libel and won: the story was true.`, '⚖️', lost ? 'bad' : 'good');
   }
 }
@@ -173,7 +179,7 @@ export const PublicLifeModule = {
   actions: {
     buyOutlet,
     line(ctx, line) { if (ctx.state.press && LINES[line]) { ctx.state.press.line = line; ctx.log(`${ctx.state.press.outlet} is now ${LINES[line].toLowerCase()}.`, '🖋️', 'info'); } },
-    sellOutlet(ctx) { const p = ctx.state.press; if (!p) return; ctx.earn(Math.round(p.price * (0.6 + p.readers / (p.scale === 'national' ? 2000000 : 100000))), `Sold ${p.outlet}`); ctx.state.press = null; ctx.log(`You sold ${p.outlet}.`, '📰', 'info'); },
+    sellOutlet(ctx) { const p = ctx.state.press; if (!p) return; ctx.earn(salePrice(ctx.state, p), `Sold ${p.outlet}`); ctx.state.press = null; ctx.log(`You sold ${p.outlet}.`, '📰', 'info'); },
   },
   resolvers: PublicLifeResolvers,
 };

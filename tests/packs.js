@@ -77,7 +77,15 @@ const scan = (cc, text, where, seen) => {
 // Flags are images now: read them back as the flag emoji the checks key on (a drawn historical flag as 🇺🇳).
 const RI = (code) => String(code).toUpperCase().replace(/[A-Z]/g, (ch) => String.fromCodePoint(0x1f1e6 + ch.charCodeAt(0) - 65));
 const flagsBack = (html) => html.replace(/<img class="flag[^"]*" src="icons\/flags\/([a-z]{2})\.svg"[^>]*>/g, (_, c) => RI(c)).replace(/<span class="flag[^"]*">[\s\S]*?<\/svg><\/span>/g, RI('UN'));
-const strip = (html) => flagsBack(html).replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
+/** The world section of the front page reports other countries' news, so it may name them (and the card's summary repeats its lead). */
+const worldNews = (html) => {
+  const m = html.match(/<h4 class="sub">🌍 World<\/h4><ul class="history">([\s\S]*?)<\/ul>/);
+  if (!m) return html;
+  let out = html.replace(m[0], '');
+  for (const li of m[1].match(/<li>[\s\S]*?<\/li>/g) ?? []) { const t = li.replace(/<[^>]+>/g, '').replace(/^\S+\s/, '').trim(); if (t) out = out.split(t).join(''); }
+  return out;
+};
+const strip = (html) => flagsBack(worldNews(html)).replace(/<[^>]+>/g, ' ').replace(/&[a-z]+;/g, ' ').replace(/\s+/g, ' ');
 
 /* Tables: every pack country is fully wired. */
 for (const p of PACKS) {

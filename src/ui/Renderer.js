@@ -46,7 +46,7 @@ import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
-import { eraCard } from './views/EraView.js';
+import { eraCard, timesCard } from './views/EraView.js';
 import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
@@ -233,7 +233,7 @@ function retirementLifeCard(state) {
 }
 
 export const VIEWS = {
-  world: (state) => eraCard(state) + frontPageCard(state) || '<p class="muted">Quiet times.</p>',
+  world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state),
   goals: (state) => aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
