@@ -29,6 +29,8 @@ import { clericalPrefix, religiousPost } from '../community/ClericalStyle.js';
 import { houseStyledName } from './Houses.js';
 import { dynasticStyledName } from './DynasticTitles.js';
 import { councilLetters } from './PrivyCouncil.js';
+import { honoursSystem, ladderTiers, chivalryAt } from './HonoursOfTheDay.js';
+import { yearNow } from './Eras.js';
 
 /* ------------------------------------------------------------------ */
 /* Military decorations                                                */
@@ -223,7 +225,9 @@ for (const t of ORDERS.NZ?.tiers ?? []) if (t.id === 'knzm') t.knighthood = true
  * made keep their titles either way. state.world.knighthoods[cc] = true|false
  */
 export const KNIGHTHOODS_DEFAULT = { AU: false, NZ: true };
-export const knighthoodsOn = (state, cc) => state.world?.knighthoods?.[cc] ?? KNIGHTHOODS_DEFAULT[cc] ?? true;
+/** Until a government of this world changes it, the policy follows history's: Australian knights 1976–86 (and 2014–15), none in New Zealand 2000–09. */
+const knighthoodsByYear = (cc, y) => (cc === 'AU' ? (y >= 1976 && y < 1986) || (y >= 2014 && y < 2015) : cc === 'NZ' ? !(y >= 2000 && y < 2009) : KNIGHTHOODS_DEFAULT[cc] ?? true);
+export const knighthoodsOn = (state, cc) => state.world?.knighthoods?.[cc] ?? (state.character?.birthYear != null ? knighthoodsByYear(cc, yearNow(state)) : KNIGHTHOODS_DEFAULT[cc] ?? true);
 export function setKnighthoods(ctx, cc, on, who = 'The government') {
   const { state } = ctx;
   state.world ??= {};
@@ -281,15 +285,26 @@ const heldTiers = (state, cc) => state.honors.filter((h) => h.source === 'order'
 
 /** The yearly honours list: at most one new order a year. */
 export function honoursList(ctx, { offer = false } = {}) {
-  const { state, rng } = ctx;
-  const cc = state.character.countryId ?? 'US';
-  const orders = ORDERS[cc];
-  if (!orders?.tiers?.length || state.character.age < orders.minAge || hasFelony(state) || state.legal.incarceration) return null;
+  const { state } = ctx;
+  if (hasFelony(state) || state.legal.incarceration) return null;
   // The monarch is the fount of honours, not a recipient; royals get the monarch's personal orders.
   if (state.royal && (state.royal.reigning || state.royal.working)) return null;
+  // The honours of the day (HonoursOfTheDay.js): a dominion's people on the British list until their own.
+  for (const { via, ladder } of honoursSystem(state)) {
+    const t = fromLadder(ctx, via, ladder, offer);
+    if (t) return t;
+  }
+  return null;
+}
+
+function fromLadder(ctx, cc, orders, offer) {
+  const { state, rng } = ctx;
+  if (state.character.age < orders.minAge) return null;
   const score = eminence(state);
+  const home = state.character.countryId ?? 'US';
   // A foreigner who has made a mark here can be given an honorary award — no title, no prefix, once.
-  if (!isCitizen(state, cc)) {
+  // (A dominion's people on the British list were British subjects, not foreigners.)
+  if (cc === home && !isCitizen(state, cc)) {
     const t = orders.tiers[Math.min(1, orders.tiers.length - 1)];
     if (heldTiers(state, cc).length || score < t.min + 30 || !rng.chance(0.12)) return null;
     const name = `${tierName(t, state.character.gender)} (honorary)`;
@@ -308,7 +323,7 @@ export function honoursList(ctx, { offer = false } = {}) {
   if (next.peer && !(state.politics?.history ?? []).concat(state.politics?.office ? [state.politics.office] : []).some((h) => (OFFICES[h.officeId ?? h.id]?.level ?? 0) >= 4) && score < next.min + 60) return null;
   if (declinedRecently(state, cc, next)) return null;
   if (offer && titular(next, state.character.gender)) return offerHonour(ctx, cc, next, null);
-  return award(ctx, cc, next);
+  return award(ctx, cc, next, orders.tiers);
 }
 
 /* ------------------------------------------------------------------ */
@@ -316,17 +331,20 @@ export function honoursList(ctx, { offer = false } = {}) {
 /* ------------------------------------------------------------------ */
 
 /** Declined in the last ten years: the honours secretariat doesn't ask twice in a hurry. */
+/** An order of chivalry as it stands this year (HonoursOfTheDay.js), or as founded. */
+const chivalryOf = (state, cc, id) => (cc === 'GB' ? chivalryAt(state) ?? [] : []).find((o) => o.id === id) ?? CHIVALRY[cc]?.find((o) => o.id === id) ?? null;
 const declinedRecently = (state, cc, t) => (state.honoursDeclined ?? []).some((d) => d.cc === cc && d.tier === t.id && state.character.age - d.age < 10);
 
 /** A knighthood or peerage is offered first, in confidence: you can say no. */
 function offerHonour(ctx, cc, t, chivalryId) {
   const { state } = ctx;
   const gender = state.character.gender;
-  const tiers = chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).tiers : ORDERS[cc].tiers;
-  const ord = orderOf(cc, t, chivalryId ? CHIVALRY[cc].find((o) => o.id === chivalryId).name : undefined, gender);
+  const chiv = chivalryId ? chivalryOf(state, cc, chivalryId) : null;
+  const tiers = chiv ? chiv.tiers : ladderTiers(state, cc);
+  const ord = orderOf(cc, t, chiv ? chiv.name : undefined, gender);
   const lesser = lesserGrade(state, cc, t, tiers, ord);
   const name = tierName(t, gender);
-  ctx.prompt({ type: 'honours.offer', icon: t.peer ? '👑' : '⚔️', title: t.peer ? 'A Seat in the Lords' : 'A Letter in Confidence', text: `A letter marked "In Confidence" asks whether you would accept ${/^(Knight|Dame|Life)/.test(name) ? '' : 'appointment as '}${name}${tierPrefix(t, gender) ? `, styled ${tierPrefix(t, gender)}` : ''}. Nothing will be announced unless you agree.`, options: [
+  ctx.prompt({ type: 'honours.offer', icon: t.peer ? '👑' : '⚔️', title: t.peer ? 'A Seat in the Lords' : 'A Letter in Confidence', text: `A letter marked "In Confidence" asks whether you would accept ${/^(Knight|Dame|Life|A )/.test(name) ? '' : 'appointment as '}${name}${tierPrefix(t, gender) ? `, styled ${tierPrefix(t, gender)}` : ''}. Nothing will be announced unless you agree.`, options: [
     { id: 'accept', label: `✅ Accept${tierPrefix(t, gender) ? ` — become ${tierPrefix(t, gender)} ${tierPrefix(t, gender) === 'Lord' || tierPrefix(t, gender) === 'Baroness' ? state.character.lastName : state.character.firstName}` : ''}` },
     ...(lesser ? [{ id: 'lesser', label: `🎗️ Ask for ${tierName(lesser, gender).replace(/ \([A-Z]+\)$/, '')} instead`, hint: 'An honour without a title' }] : []),
     { id: 'decline', label: '🙅 Decline, privately', hint: 'Nobody will know, unless you tell them' },
@@ -399,13 +417,13 @@ export function award(ctx, cc, t, order = ORDERS[cc]?.tiers ?? [], orderName) {
   if (t.peer) {
     // A life barony: a seat in the Lords for life (Peerage.js). A hereditary peer keeps the higher title.
     const city = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? COUNTRIES[cc]?.capital ?? 'London';
-    if (!state.character.peerage) grantPeerage(ctx, { rank: 'baron', place: city, kind: 'life', seat: true });
+    if (!state.character.peerage) grantPeerage(ctx, { rank: 'baron', place: city, kind: t.hereditary ? 'hereditary' : 'life', seat: true });
     else if (!state.character.peerage.retiredLords) state.character.peerage.seat = true;
   } else if (prefix && !state.character.peerage && !state.royal) state.character.style = { ...(state.character.style ?? {}), prefix };
   // Standing that comes with it: a higher grade opens more doors.
   if (state.politics) state.politics.recognition = Math.min(100, (state.politics.recognition ?? 0) + Math.round(3 + g.level * 9));
   ctx.log(t.peer
-    ? `You were created a life peer: ${state.character.style.peerage}. You took your seat in the House of Lords.`
+    ? `You were ${t.hereditary ? 'raised to the peerage' : 'created a life peer'}: ${state.character.style.peerage}. You took your seat in the House of Lords.${t.hereditary ? ' The title will pass to your eldest son.' : ''}`
     : `${promotedFrom ? `You were promoted within the order, from ${promotedFrom} to ${name}` : `You were appointed ${name}`}, invested ${g.investiture}.${prefix && ['Sir', 'Dame'].includes(prefix) && !state.royal && !state.character.peerage ? ` You are now ${styledName(state)}.` : post ? ` You may now write ${post} after your name.` : ''}`, g.icon, 'honor');
   ctx.stat('happiness', Math.round(4 + g.level * 8));
   return t;
@@ -468,12 +486,12 @@ const K = (t) => ({ ...t, prefix: { male: 'Sir', female: 'Dame' } });
  */
 export const CHIVALRY = {
   GB: [
-    { id: 'bath', name: 'Order of the Bath', for: 'senior civil servants and flag officers', eligible: (s) => isFlagOfficer(s) || seniorPublicServant(s), tiers: [
+    { id: 'bath', name: 'Order of the Bath', for: 'senior civil servants and flag officers', eligible: (s) => isFlagOfficer(s) || seniorPublicServant(s), militaryOnly: (s) => isFlagOfficer(s), tiers: [
       { id: 'bath_cb', name: 'Companion of the Order of the Bath (CB)', post: 'CB', min: 90, ribbon: R('#c8102e') },
       K({ id: 'bath_kcb', name: { male: 'Knight Commander of the Order of the Bath (KCB)', female: 'Dame Commander of the Order of the Bath (DCB)' }, post: { male: 'KCB', female: 'DCB' }, min: 150, ribbon: R('#c8102e') }),
       K({ id: 'bath_gcb', name: 'Knight Grand Cross of the Order of the Bath (GCB)', post: 'GCB', min: 220, ribbon: R('#c8102e') }),
     ] },
-    { id: 'smg', name: 'Order of St Michael and St George', for: 'diplomats and the Crown\'s representatives overseas', eligible: (s) => diplomat(s) || heldOffice(s, /_gg$|_lg$|au_governor/), tiers: [
+    { id: 'smg', name: 'Order of St Michael and St George', for: 'diplomats and the Crown\'s representatives overseas', eligible: (s) => diplomat(s) || heldOffice(s, /_gg$|_lg$|au_governor/), overseas: (s) => seniorPublicServant(s) || heldOffice(s, /_pm$|premier|cabinet|minister|governor/), tiers: [
       { id: 'smg_cmg', name: 'Companion of the Order of St Michael and St George (CMG)', post: 'CMG', min: 80, ribbon: R('#1f5fbf', '#c8102e', '#1f5fbf') },
       K({ id: 'smg_kcmg', name: { male: 'Knight Commander of St Michael and St George (KCMG)', female: 'Dame Commander of St Michael and St George (DCMG)' }, post: { male: 'KCMG', female: 'DCMG' }, min: 140, ribbon: R('#1f5fbf', '#c8102e', '#1f5fbf') }),
       K({ id: 'smg_gcmg', name: 'Knight Grand Cross of St Michael and St George (GCMG)', post: 'GCMG', min: 200, ribbon: R('#1f5fbf', '#c8102e', '#1f5fbf') }),
@@ -488,6 +506,17 @@ export const CHIVALRY = {
     { id: 'om', name: 'Order of Merit', gift: true, for: 'the greatest achievement in the arts, science and public life (24 members)', eligible: () => true, tiers: [
       { id: 'om', name: 'Order of Merit (OM)', post: 'OM', min: 300, ribbon: R('#1f3f8f', '#c8102e', '#1f3f8f') },
     ] },
+    // The Raj's own orders, for princes, officials and notables in India until 1947.
+    { id: 'starOfIndia', name: 'Order of the Star of India', for: 'princes and the most senior officials of India', where: ['IN'], until: 1947, eligible: (s) => seniorPublicServant(s) || heldOffice(s, /./) || netWorth(s) >= 5e7, tiers: [
+      { id: 'soi_csi', name: 'Companion of the Order of the Star of India (CSI)', post: 'CSI', min: 100, ribbon: R('#fff', '#6fa8dc', '#6fa8dc', '#fff') },
+      K({ id: 'soi_kcsi', name: 'Knight Commander of the Order of the Star of India (KCSI)', post: 'KCSI', min: 160, ribbon: R('#fff', '#6fa8dc', '#6fa8dc', '#fff') }),
+      K({ id: 'soi_gcsi', name: 'Knight Grand Commander of the Order of the Star of India (GCSI)', post: 'GCSI', min: 230, ribbon: R('#fff', '#6fa8dc', '#6fa8dc', '#fff') }),
+    ] },
+    { id: 'indianEmpire', name: 'Order of the Indian Empire', for: 'officials and notables of India', where: ['IN'], until: 1947, eligible: (s) => seniorPublicServant(s) || heldOffice(s, /./) || netWorth(s) >= 1e7, tiers: [
+      { id: 'ie_cie', name: 'Companion of the Order of the Indian Empire (CIE)', post: 'CIE', min: 80, ribbon: R('#4b2a7b') },
+      K({ id: 'ie_kcie', name: 'Knight Commander of the Order of the Indian Empire (KCIE)', post: 'KCIE', min: 140, ribbon: R('#4b2a7b') }),
+      K({ id: 'ie_gcie', name: 'Knight Grand Commander of the Order of the Indian Empire (GCIE)', post: 'GCIE', min: 210, ribbon: R('#4b2a7b') }),
+    ] },
     { id: 'garter', name: 'Order of the Garter', gift: true, for: 'former prime ministers, great servants of the Crown and the heir (24 companions)', eligible: (s) => heldOffice(s, /^gb_pm$/) || s.royal?.line === 1 || s.royal?.reigning, tiers: [
       K({ id: 'garter', name: { male: 'Knight Companion of the Order of the Garter (KG)', female: 'Lady Companion of the Order of the Garter (LG)' }, post: { male: 'KG', female: 'LG' }, min: 230, ribbon: R('#1f3f8f') }),
     ] },
@@ -497,8 +526,9 @@ export const CHIVALRY = {
 /** The yearly chance at an order of chivalry you're eligible for (at most one a year). */
 export function chivalryList(ctx, { royalGift = false, offer = false } = {}) {
   const { state, rng } = ctx;
-  const cc = state.character.countryId ?? 'US';
-  const orders = CHIVALRY[cc];
+  // Britain's orders of chivalry, as founded by this year, for whoever is on the British list.
+  const cc = 'GB';
+  const orders = chivalryAt(state);
   if (!orders || state.character.age < 21 || hasFelony(state) || state.legal.incarceration || state.royal?.reigning) return null;
   const score = eminence(state) + (state.royal ? (state.royal.reigning ? 250 : state.royal.line === 1 ? 160 : 90) : 0);
   for (const o of orders) {
@@ -534,8 +564,8 @@ export const HonoursModule = {
     offer(ctx, data, optionId) {
       const { state } = ctx;
       const { cc, tier, chivalryId } = data;
-      const chiv = chivalryId ? CHIVALRY[cc]?.find((o) => o.id === chivalryId) : null;
-      const tiers = chiv ? chiv.tiers : ORDERS[cc]?.tiers ?? [];
+      const chiv = chivalryId ? chivalryOf(state, cc, chivalryId) : null;
+      const tiers = chiv ? chiv.tiers : ladderTiers(state, cc);
       const t = tiers.find((x) => x.id === tier);
       if (!t) return undefined;
       if (optionId === 'accept') return award(ctx, cc, t, tiers, chiv?.name);

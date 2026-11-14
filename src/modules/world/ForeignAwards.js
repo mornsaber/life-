@@ -16,6 +16,8 @@
  * Medal, the Charlemagne Prize for services to European unity, and the Nobel Peace Prize.
  */
 import { ORDERS, tierName, eminence } from './Honours.js';
+import { ordersAt } from './HonoursOfTheDay.js';
+import { yearNow as yearOf } from './Eras.js';
 import { addHonor, netWorth } from '../../core/State.js';
 import { COUNTRIES, citizenshipsOf } from './Countries.js';
 import { countryIdOfName } from './Posting.js';
@@ -57,13 +59,15 @@ function suitors(state) {
   if (svc?.track === 'officer' && svc.grade >= 6) for (const cc of allies.slice(0, 5)) out.push({ cc, why: 'service alongside its forces', weight: 1 });
   // Great benefactors.
   if (netWorth(state) >= 5e8) for (const cc of allies.slice(0, 4)) out.push({ cc, why: 'your investment and philanthropy in the country', weight: 1 });
-  return out.filter((s) => ORDERS[s.cc]?.tiers?.length && !citizenshipsOf(state).includes(s.cc));
+  // Only a country with its own honours that year (not a dominion still on the British list).
+  return out.filter((s) => ordersAt(s.cc, yearOf(state))?.via === s.cc && !citizenshipsOf(state).includes(s.cc));
 }
 
 /** A foreign state's order, at a grade matching your standing (one award per country, raised later if earned). */
 export function awardForeign(ctx, s) {
   const { state } = ctx;
-  const tiers = ORDERS[s.cc].tiers.filter((t) => !t.peer && !t.knighthood);
+  const own = ordersAt(s.cc, yearOf(state))?.ladder ?? ORDERS[s.cc];
+  const tiers = (own?.tiers ?? []).filter((t) => !t.peer && !t.knighthood && !t.hereditary && !t.only);
   if (!tiers.length) return false;
   const e = eminence(state) + (state.royal?.reigning ? 300 : state.royal ? 120 : 0);
   let idx = tiers.findLastIndex((t) => e >= t.min * 0.9);
@@ -73,7 +77,7 @@ export function awardForeign(ctx, s) {
   const t = tiers[idx];
   const name = `${tierName(t, state.character.gender)}`;
   if (prior) state.honors = state.honors.filter((h) => h !== prior);
-  addHonor(state, { id: `foreign.${s.cc}`, source: 'foreign', from: COUNTRIES[s.cc].name, country: s.cc, foreignTier: idx, order: ORDERS[s.cc].order === null ? null : t.order ?? ORDERS[s.cc].order ?? `${COUNTRIES[s.cc].name} order of merit`, name: `${name} (${COUNTRIES[s.cc].name}, honorary)`, icon: '🎖️', ribbon: t.ribbon, precedence: 8, prestige: Math.round(t.min / 4), citation: `Conferred by ${COUNTRIES[s.cc].name} for ${s.why}.` });
+  addHonor(state, { id: `foreign.${s.cc}`, source: 'foreign', from: COUNTRIES[s.cc].name, country: s.cc, foreignTier: idx, order: own.order === null ? null : t.order ?? own.order ?? `${COUNTRIES[s.cc].name} order of merit`, name: `${name} (${COUNTRIES[s.cc].name}, honorary)`, icon: '🎖️', ribbon: t.ribbon, precedence: 8, prestige: Math.round(t.min / 4), citation: `Conferred by ${COUNTRIES[s.cc].name} for ${s.why}.` });
   ctx.log(`${COUNTRIES[s.cc].flag} ${COUNTRIES[s.cc].name} ${prior ? 'raised you' : 'decorated you'}: ${name}, for ${s.why}. An honorary award — no title at home, but the insignia is yours.`, '🎖️', 'honor');
   ctx.stat('happiness', 4);
   return true;

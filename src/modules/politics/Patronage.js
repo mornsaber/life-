@@ -17,13 +17,15 @@
  * state.politics.patronage = { worthies: [..], year, resignationList: { left, maxTier } }
  */
 import { OFFICES } from './Offices.js';
-import { ORDERS, award, tierName, tierPrefix } from '../world/Honours.js';
+import { award, tierName, tierPrefix } from '../world/Honours.js';
+import { ordersAt, honoursSystem } from '../world/HonoursOfTheDay.js';
 import { currentYear, yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { living, ageOf } from '../people/People.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
-const tiersOf = (state) => ORDERS[cc(state)]?.tiers ?? [];
+/** The honours your recommendations can carry this year (a dominion's premier recommended British ones). */
+const tiersOf = (state) => ordersAt(cc(state), currentYear(state))?.ladder.tiers ?? [];
 const VICE_REGAL = /_gg$|_lg$|au_governor|gb_lordLieutenant|gb_deputyLieutenant/;
 
 /** What your office lets you do: { kind, label, perYear, maxTier (index), peers } or null. */
@@ -128,7 +130,10 @@ export function leavingHonours(ctx, officeId, reason, years) {
   const { state, rng } = ctx;
   const def = OFFICES[officeId];
   if (!def || DISGRACE.test(reason ?? '') || years < 1) return;
-  const tiers = tiersOf(state);
+  // Your own honours of the day (a dominion's premier on the British list, before its own).
+  const sys = honoursSystem(state)[0];
+  const tiers = sys?.ladder.tiers ?? [];
+  const via = sys?.via ?? cc(state);
   const level = def.level ?? 0;
   const head = !VICE_REGAL.test(officeId) && ((def.leader && level >= 5) || /president|_pm$/.test(officeId) || def.headOfState);
   // A leader who goes gets a resignation honours list.
@@ -145,10 +150,10 @@ export function leavingHonours(ctx, officeId, reason, years) {
   // Former heads of government and long-serving ministers in a house of peers: often a peerage.
   const peer = tiers.find((x) => x.peer);
   if (peer && (head || (level >= 4 && years >= 8)) && rng.chance(head ? 0.6 : 0.25) && !state.character.peerage) t = peer;
-  const held = state.honors.filter((h) => h.source === 'order' && h.country === cc(state)).map((h) => tiers.findIndex((x) => x.id === h.tier));
+  const held = state.honors.filter((h) => h.source === 'order' && h.country === via).map((h) => tiers.findIndex((x) => x.id === h.tier));
   if (held.some((i) => i >= tiers.indexOf(t))) return;
   ctx.log(`In recognition of your service as ${def.name}${reason === 'Resigned' ? ', on your resignation' : ''}:`, '🎗️', 'honor');
-  award(ctx, cc(state), t);
+  award(ctx, via, t, tiers);
 }
 
 export const PatronageModule = {

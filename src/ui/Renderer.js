@@ -47,6 +47,7 @@ import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
 import { eraCard, timesCard } from './views/EraView.js';
+import { honoursNote } from '../modules/world/HonoursOfTheDay.js';
 import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
@@ -290,7 +291,7 @@ export const VIEWS = {
     // Privy councils and executive councils (world/PrivyCouncil.js): for life, or while you serve.
     const councils = (state.privyCouncil ?? []).map((m) => `<li>📜 <b>${esc(m.name.replace(/^./, (c) => c.toUpperCase()))}</b>${m.letters ? ` (${esc(m.letters)})` : ''} <small class="muted">since ${m.since}${m.until ? `, until ${m.until}` : ', for life'} · ${esc(m.style ?? '')}</small></li>`).join('');
     const councilCard = councils ? card('Councils', `<ul class="history">${councils}</ul><p class="fine">A Privy Counsellor keeps the style for life, in office or out of it.</p>`, { icon: '📜' }) : '';
-    return `${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
+    return `${armsCard(state)}${duties}${councilCard}${card('Ribbon Rack', `${ribbonRack(state.honors)}${honoursNote(state) ? `<p class="fine">🏛️ ${esc(honoursNote(state))}</p>` : ''}${kv([['Total prestige', `⭐ ${prestige(state)}`], ['Military decorations', mil.length], ['Civil awards', state.honors.length - mil.length], ['Pension multiplier', `×${pensionMultiplier(state).toFixed(2)}`]])}`, { icon: '🎖️', accent: 'yellow' })}${ordersCard(state, inOrder)}${card('Medal Case', medalCase(state.honors.filter((h) => !inOrder(h))), { icon: '🏅' })}`;
   },
 };
 
