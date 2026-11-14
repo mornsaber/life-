@@ -290,7 +290,8 @@ function pickLeaders(body, rng) {
 export const BACKGROUNDS = ['Attorney', 'Small-business owner', 'Public-school teacher', 'Union electrician', 'Registered nurse', 'Farmer', 'Retired police officer', 'Army veteran', 'Physician', 'Real estate developer', 'Nonprofit director', 'Accountant', 'Firefighter', 'Pastor', 'Tech executive', 'Community organizer', 'Former city council aide', 'Restaurant owner', 'Professor', 'Banker'];
 /** How firmly a member holds the caucus line: moderates cross over; hardliners never do. */
 export const leanLabel = (m) => (Math.abs(m.lean) >= 75 ? 'Hardliner' : Math.abs(m.lean) >= 40 ? 'Firm' : 'Moderate');
-const PROFILE_LAWS = Object.keys(LAWS);
+// Members champion the issues of their day, not history's statutes (those are yours to raise).
+const PROFILE_LAWS = Object.keys(LAWS).filter((id) => !LAWS[id].statute);
 
 /** Fill in a member's profile (new members, and older saves). Never leaves undefined fields. */
 function fillProfile(m, rng, body) {

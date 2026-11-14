@@ -66,7 +66,7 @@ export const STATUTES = {
   fairHousing: { name: 'Fair housing (no redlining)', icon: '🏘️', lean: 'labor', where: (cc) => cc === 'US', from: 1934,
     history: (cc, y) => y >= 1968,
     effect: 'Bans race discrimination in lending and housing: no redlined districts.' },
-  imperialHonours: { name: 'British honours for citizens', icon: '🎖️', lean: 'business', where: (cc) => cc in DOMINION_HONOURS,
+  imperialHonours: { name: 'British honours for citizens', icon: '🎖️', lean: 'business', where: (cc) => ['CA', 'AU', 'NZ', 'ZA'].includes(cc),
     history: (cc, y) => ['british', 'britishNoTitles', 'dual'].includes(dominionMode(cc, y)),
     effect: 'Whether the government recommends its citizens for British honours, knighthoods and peerages.' },
   debtorsPrison: { name: 'Imprisonment for debt', icon: '⛓️', lean: 'business',
