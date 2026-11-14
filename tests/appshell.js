@@ -10,7 +10,7 @@ import { Engine } from '../src/core/Engine.js';
 import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
-import { Renderer, GROUPS, VIEWS } from '../src/ui/Renderer.js';
+import { Renderer, GROUPS, VIEWS, YOUR_LIFE } from '../src/ui/Renderer.js';
 
 const memory = (seed = {}) => { const m = new Map(Object.entries(seed)); return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) }; };
 const fixture = (name) => fs.readFileSync(new URL(`./fixtures/${name}`, import.meta.url), 'utf8');
@@ -72,9 +72,28 @@ const tests = {
     }
   },
   'every screen is reachable from a menu'() {
-    const reachable = new Set(Object.values(GROUPS).flatMap((g) => g.items.map((i) => i.tab)));
+    const reachable = new Set([...Object.values(GROUPS).flatMap((g) => g.items.map((i) => i.tab)), ...YOUR_LIFE.map((i) => i.tab)]);
     const extra = ['life', 'conditions', 'cover', 'wellbeing', 'chamber', 'party', 'campaign', 'succession', 'household', 'estates', 'cases', 'underworld'];
     for (const id of Object.keys(VIEWS)) assert.ok(reachable.has(id) || extra.includes(id), `${id} is in a menu or a section switcher`);
+  },
+  'menus are grouped, and a child sees only what a child can do'() {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
+    const s = engine.newLife({});
+    const r = new Renderer({ root: null, toastRoot: null, engine });
+    s.prompts = [];
+    s.character.age = 6;
+    r.ui.menu = 'occupation';
+    const kid = r.html(s);
+    assert.match(kid, /Education/);
+    assert.doesNotMatch(kid, /Business|Politics|Military|Licences/);
+    s.character.age = 30;
+    const adult = r.html(s);
+    for (const h of ['Study &amp; work', 'Service &amp; public life']) assert.match(adult, new RegExp(`menu-head">${h}<`));
+    r.ui.menu = 'relationships';
+    const rel = r.html(s);
+    assert.doesNotMatch(rel, /Honours|Achievements/, 'your record is on the story page, not with people');
+    const mum = s.people.list.find((p) => p.relation === 'mother' && p.alive);
+    if (mum) assert.match(rel, new RegExp(`person=${mum.id}`), 'your mother is listed, and opens');
   },
   'saves from past versions open in the new shell'() {
     for (const [file, key] of Object.entries(LEGACY)) {

@@ -74,6 +74,7 @@ import { armsOf, applicationFor } from '../modules/world/Heraldry.js';
 import { armsSvg } from './Arms.js';
 import { PRESENT as PRESENT_YEAR, periodCountryName, dcExists, creditScoresExist, periodText, hasTech } from '../modules/world/Eras.js';
 import { flagHtml } from './Flags.js';
+import { RELATION_LABEL } from '../modules/people/People.js';
 import { avatarHtml } from './Avatar.js';
 import { flagImg } from './Flags.js';
 
@@ -85,29 +86,34 @@ export const SECTIONS = [
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }] },
-  { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }, { id: 'move', label: 'Move', icon: '🗺️' }] },
+  { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }] },
+  { id: 'travel', label: 'Move & Travel', icon: '🗺️', tabs: [{ id: 'move', label: 'Move & Travel', icon: '🗺️' }] },
   { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }] },
   { id: 'health', label: 'Health', icon: '🩺', tabs: [{ id: 'health', label: 'Overview', icon: '👩‍⚕️' }, { id: 'conditions', label: 'Conditions', icon: '🫀' }, { id: 'cover', label: 'Cover', icon: '🏥' }, { id: 'wellbeing', label: 'Lifestyle', icon: '🏃' }] },
   { id: 'legal', label: 'Legal', icon: '⚖️', tabs: [{ id: 'legal', label: 'Status', icon: '⚖️' }, { id: 'cases', label: 'Cases', icon: '🗂️' }, { id: 'crime', label: 'Crime', icon: '🕶️' }, { id: 'underworld', label: 'Underworld', icon: '🕴️' }] },
 ];
 /**
- * The dock: four menus around the Age button. Each row opens a screen (a VIEWS id); a screen
- * that belongs to a SECTION with several tabs shows them as a small switcher at the top.
- * sub(state) is the one-line summary under the row's title.
+ * The dock: four menus around the Age button, each in headed groups. Each row opens a screen (a
+ * VIEWS id); a screen that belongs to a SECTION with several tabs shows them as a small switcher
+ * at the top. sub(state) is the one-line summary under the row's title; `when` hides a row that
+ * doesn't apply yet (a six-year-old has no business to run). Your record — goals, honours,
+ * achievements, the world — sits on the story page instead (YOUR_LIFE).
  */
+const age = (st) => st.character.age;
 export const GROUPS = {
   occupation: {
     label: (st) => (st && st.character.age < 18 ? 'School' : 'Occupation'), icon: '💼',
     items: [
-      { tab: 'career', label: 'Job', icon: '💼', sub: (st) => (st.career.job ? `${st.career.job.title}` : st.character.age < 14 ? 'Too young to work' : 'Find work') },
-      { tab: 'school', label: 'Education', icon: '🎓', sub: (st) => (st.education.enrolled ? `Studying: ${PROGRAMS[st.education.enrolled.programId]?.name ?? 'enrolled'}` : 'Schools, colleges, apprenticeships') },
-      { tab: 'business', label: 'Business', icon: '🏪', sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
-      { tab: 'gov', label: 'Public Service', icon: '🏛️', sub: () => 'Government agencies and the civil service' },
-      { tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', sub: () => 'Qualifications that open jobs' },
-      { tab: 'military', label: 'Military', icon: '🎖️', sub: (st) => (st.military.service ? 'Serving' : 'Enlist or apply for a commission') },
-      { tab: 'emergency', label: 'Emergency Services', icon: '🚨', sub: () => 'Volunteer fire, rescue and reserves' },
-      { tab: 'politics', label: 'Politics', icon: '🗳️', sub: (st) => (st.politics.office ? 'In office' : 'Run for office, join a party') },
-      { tab: 'court', label: 'The Crown', icon: '👑', when: (st) => hasCourt(st), sub: () => 'Court, succession, household and estates' },
+      { head: 'Study & work', tab: 'school', label: 'Education', icon: '🎓', sub: (st) => (st.education.enrolled ? `Studying: ${PROGRAMS[st.education.enrolled.programId]?.name ?? 'enrolled'}` : 'Schools, colleges, apprenticeships') },
+      { head: 'Study & work', tab: 'career', label: 'Job', icon: '💼', when: (st) => age(st) >= 12, sub: (st) => (st.career.job ? `${st.career.job.title}` : age(st) < 14 ? 'Odd jobs and paper rounds' : 'Find work') },
+      { head: 'Study & work', tab: 'business', label: 'Business', icon: '🏪', when: (st) => age(st) >= 16 || Boolean(st.business?.current), sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
+      { head: 'Study & work', tab: 'gov', label: 'Public Service', icon: '🏛️', when: (st) => age(st) >= 16, sub: () => 'Government agencies and the civil service' },
+      { head: 'Study & work', tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', when: (st) => age(st) >= 15, sub: () => 'Qualifications that open jobs' },
+      { head: 'Service & public life', tab: 'military', label: 'Military', icon: '🎖️', when: (st) => age(st) >= 15 || Boolean(st.military.service), sub: (st) => (st.military.service ? 'Serving' : 'Enlist or apply for a commission') },
+      { head: 'Service & public life', tab: 'emergency', label: 'Emergency Services', icon: '🚨', when: (st) => age(st) >= 14, sub: () => 'Volunteer fire, rescue and reserves' },
+      { head: 'Service & public life', tab: 'civic', label: 'Volunteering', icon: '🤝', when: (st) => age(st) >= 10, sub: () => 'Good causes and national service' },
+      { head: 'Service & public life', tab: 'politics', label: 'Politics', icon: '🗳️', when: (st) => age(st) >= 16 || Boolean(st.politics.office), sub: (st) => (st.politics.office ? 'In office' : 'Run for office, join a party') },
+      { head: 'Service & public life', tab: 'court', label: 'The Crown', icon: '👑', when: (st) => hasCourt(st), sub: () => 'Court, succession, household and estates' },
     ],
   },
   assets: {
@@ -115,34 +121,45 @@ export const GROUPS = {
     items: [
       { tab: 'money', label: 'Money', icon: '💰', sub: (st) => `${compactMoney(st.finances.cash)} cash · net worth ${compactMoney(netWorth(st))}` },
       { tab: 'home', label: 'Home & Property', icon: '🏠', sub: (st) => `${STATUS_LABEL[housingStatus(st)]?.label ?? 'Home'}${st.housing.properties.length ? ` · ${st.housing.properties.length} propert${st.housing.properties.length === 1 ? 'y' : 'ies'}` : ''}` },
-      { tab: 'garage', label: 'Vehicles', icon: '🚗', sub: (st) => `${(st.vehicles?.owned ?? []).length || 'No'} vehicle${(st.vehicles?.owned ?? []).length === 1 ? '' : 's'}` },
-      { tab: 'farm', label: 'Farm', icon: '🚜', sub: () => 'Land, crops and livestock' },
-      { tab: 'move', label: 'Move & Travel', icon: '🗺️', sub: () => 'Another city, another country, a trip' },
+      { tab: 'garage', label: 'Vehicles', icon: '🚗', when: (st) => age(st) >= 15 || (st.vehicles?.owned ?? []).length > 0, sub: (st) => `${(st.vehicles?.owned ?? []).length || 'No'} vehicle${(st.vehicles?.owned ?? []).length === 1 ? '' : 's'}` },
+      { tab: 'farm', label: 'Farm', icon: '🚜', when: (st) => age(st) >= 18 || Boolean(st.farm), sub: (st) => (st.farm?.acres ? `${st.farm.acres.toLocaleString()} acres` : 'Land, crops and livestock') },
     ],
   },
   relationships: {
-    label: () => 'Relationships', icon: '❤️',
+    label: () => 'Relationships', icon: '❤️', people: true,
     items: [
       { tab: 'people', label: 'Family & Friends', icon: '👪', sub: (st) => `${(st.people?.list ?? []).filter((p) => p.alive).length} people in your life` },
       { tab: 'community', label: 'Faith & Community', icon: '🙏', sub: () => 'Congregation, clubs and causes' },
-      { tab: 'goals', label: 'Goals & Reputation', icon: '🎯', sub: () => 'What you want, and what people think of you' },
-      { tab: 'honors', label: 'Honours', icon: '🏅', sub: (st) => `${(st.honors ?? []).length || 'No'} honour${(st.honors ?? []).length === 1 ? '' : 's'}` },
-      { tab: 'achievements', label: 'Achievements', icon: '🏆', sub: () => 'Milestones of this life and every life' },
     ],
   },
   activities: {
     label: () => 'Activities', icon: '🎭',
     items: [
-      { tab: 'activities', label: 'Activities', icon: '🎟️', sub: () => 'Going out, hobbies, expeditions' },
-      { tab: 'health', label: 'Doctor & Health', icon: '🩺', sub: (st) => `Health ${Math.round(st.stats.health)}%` },
-      { tab: 'crime', label: 'Crime', icon: '🕶️', sub: () => 'If you must' },
-      { tab: 'legal', label: 'Legal', icon: '⚖️', sub: (st) => ((st.legal.record ?? []).length ? `${st.legal.record.length} conviction${st.legal.record.length === 1 ? '' : 's'} on record` : 'A clean record') },
-      { tab: 'civic', label: 'Civic Service', icon: '🤝', sub: () => 'Volunteering and national service' },
-      { tab: 'world', label: 'The World', icon: '🌍', sub: (st) => `${currentYear(st)}: news and the times` },
+      { head: 'Leisure & health', tab: 'activities', label: 'Activities', icon: '🎟️', sub: () => 'Going out, hobbies, expeditions' },
+      { head: 'Leisure & health', tab: 'health', label: 'Doctor & Health', icon: '🩺', sub: (st) => `Health ${Math.round(st.stats.health)}%` },
+      { head: 'Leisure & health', tab: 'move', label: 'Move & Travel', icon: '🗺️', when: (st) => age(st) >= 16, sub: () => 'Another city, another country, a trip' },
+      { head: 'The law', tab: 'legal', label: 'Legal', icon: '⚖️', when: (st) => age(st) >= 10 || (st.legal.record ?? []).length > 0, sub: (st) => ((st.legal.record ?? []).length ? `${st.legal.record.length} conviction${st.legal.record.length === 1 ? '' : 's'} on record` : 'A clean record') },
+      { head: 'The law', tab: 'crime', label: 'Crime', icon: '🕶️', when: (st) => age(st) >= 10, sub: () => 'If you must' },
     ],
   },
 };
-export const groupOf = (tabId) => Object.entries(GROUPS).find(([, g]) => g.items.some((i) => i.tab === tabId || sectionOf(i.tab).tabs.some((t) => t.id === tabId)))?.[0] ?? null;
+/** The people closest to you, for the Relationships menu: partner first, then parents, children, siblings, friends. */
+const CLOSE_ORDER = ['spouse', 'fiance', 'partner', 'mother', 'father', 'guardian', 'child', 'sibling', 'friend'];
+export function closestPeople(state, n = 8) {
+  return (state.people?.list ?? []).filter((p) => p.alive && CLOSE_ORDER.includes(p.relation))
+    .sort((a, b) => CLOSE_ORDER.indexOf(a.relation) - CLOSE_ORDER.indexOf(b.relation) || (b.relationship ?? 0) - (a.relationship ?? 0))
+    .slice(0, n);
+}
+const PERSON_ICON = { spouse: '💍', fiance: '💍', partner: '❤️', mother: '👩', father: '👨', guardian: '🧑', child: '🧒', sibling: '🧑‍🤝‍🧑', friend: '🙂' };
+
+/** Your record, as a row of links on the story page. */
+export const YOUR_LIFE = [
+  { tab: 'goals', label: 'Goals', icon: '🎯' },
+  { tab: 'honors', label: 'Honours', icon: '🏅' },
+  { tab: 'achievements', label: 'Achievements', icon: '🏆' },
+  { tab: 'world', label: 'World', icon: '🌍' },
+];
+export const groupOf = (tabId) => Object.entries(GROUPS).find(([, g]) => g.items.some((i) => i.tab === tabId))?.[0] ?? Object.entries(GROUPS).find(([, g]) => g.items.some((i) => i.tab === tabId || sectionOf(i.tab).tabs.some((t) => t.id === tabId)))?.[0] ?? null;
 
 /** Every screen, in section order (keyboard [ ] walks this list). */
 export const TABS = SECTIONS.flatMap((s) => s.tabs.map((t) => ({ ...t, section: s.id })));
@@ -461,19 +478,28 @@ export class Renderer {
     const ui = { ...this.ui, tips: this.settings.tips };
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
-    return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${periodText(tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
+    const yours = `<nav class="your-life" aria-label="Your life">${YOUR_LIFE.map((i) => `<button class="chip-link" data-action="ui.tab" data-arg="${i.tab}"><span aria-hidden="true">${i.icon}</span> ${esc(i.label)}</button>`).join('')}</nav>`;
+    return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${yours}${periodText(tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
   }
 
   /** A dock menu: one row per screen, with a line saying where you stand. */
   menuHtml(state, groupId) {
     const g = GROUPS[groupId];
     if (!g) return this.homeHtml(state);
-    const rows = g.items.filter((i) => VIEWS[i.tab] && (!i.when || i.when(state))).map((i) => {
+    const shown = g.items.filter((i) => VIEWS[i.tab] && (!i.when || i.when(state)));
+    const rows = shown.map((i, n) => {
       let sub = '';
       try { sub = i.sub?.(state) ?? ''; } catch { sub = ''; }
-      return `<li><button class="menu-row" data-action="ui.tab" data-arg="${i.tab}"><span class="menu-icon" aria-hidden="true">${i.icon}</span><span class="menu-text"><b>${esc(i.label)}</b><small>${esc(sub)}</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
+      const head = new Set(shown.map((x) => x.head)).size > 1 && i.head && i.head !== shown[n - 1]?.head ? `<li class="menu-head">${esc(i.head)}</li>` : '';
+      return `${head}<li><button class="menu-row" data-action="ui.tab" data-arg="${i.tab}"><span class="menu-icon" aria-hidden="true">${i.icon}</span><span class="menu-text"><b>${esc(i.label)}</b><small>${esc(sub)}</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
     }).join('');
-    return `<div class="sheet" id="tabpanel" tabindex="-1"><div class="sheet-head"><button class="btn ghost small" data-action="ui.home" aria-label="Close">✕</button><h2>${g.icon} ${esc(g.label(state))}</h2></div><ul class="menu-list">${rows}</ul></div>`;
+    // Relationships lists the people themselves, as well as the screens.
+    const close = g.people ? closestPeople(state) : [];
+    const peopleRows = close.length ? `<li class="menu-head">Closest to you</li>${close.map((p) => {
+      const rel = Math.round(p.relationship ?? 0);
+      return `<li><button class="menu-row" data-action="ui.go" data-arg="people|person=${esc(p.id)}"><span class="menu-icon" aria-hidden="true">${PERSON_ICON[p.relation] ?? '🙂'}</span><span class="menu-text"><b>${esc(`${p.firstName} ${p.lastName}`)}</b><small>${esc(RELATION_LABEL[p.relation] ?? 'Friend')} · age ${state.character.age + (p.ageOffset ?? 0)} · ${rel >= 70 ? '❤️' : rel >= 40 ? '🙂' : '😐'} ${rel}%</small></span><span class="menu-chev" aria-hidden="true">›</span></button></li>`;
+    }).join('')}` : '';
+    return `<div class="sheet" id="tabpanel" tabindex="-1"><div class="sheet-head"><button class="btn ghost small" data-action="ui.home" aria-label="Close">✕</button><h2>${g.icon} ${esc(g.label(state))}</h2></div><ul class="menu-list">${rows}${peopleRows}</ul></div>`;
   }
 
   /** A screen opened from a menu: a back button, the section's tabs if it has several, the view. */

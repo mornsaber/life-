@@ -62,7 +62,7 @@ export function tipsFor(state) {
   const age = state.character.age;
   const t = [
     ['⏩', 'Press the green <b>Age</b> button (or Space) to live the next year. Decisions pop up as they happen.'],
-    ['🗂️', 'The buttons along the bottom are where you act: <b>Occupation</b> for school and work, <b>Assets</b> for money and home, <b>Relationships</b> for the people in your life, <b>Activities</b> for everything else.'],
+    ['🗂️', 'The buttons along the bottom are where you act: <b>Occupation</b> for school and work, <b>Assets</b> for money and home, <b>Relationships</b> for the people in your life, <b>Activities</b> for pastimes, health, travel and the law. The row at the top keeps your goals, honours, achievements and the news of the world.'],
   ];
   if (age < 16) t.push(['🎒', 'Childhood is short: grades, friends and hobbies now shape what you can do later.']);
   else if (age < 25) t.push(['🎓', 'Your late teens decide a lot: a degree, a trade, or a first job. Each has its own path.']);

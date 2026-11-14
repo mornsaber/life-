@@ -1159,3 +1159,11 @@ main.phone .btn:active:not(:disabled), .modal .btn:active:not(:disabled) { trans
 .modal { border-width: 1px; border-radius: 18px; box-shadow: 0 12px 40px rgba(0, 0, 0, .3); }
 .modal-head h2, .modal h2 { font-family: var(--sans); }
 main.phone .subtab { border-radius: 999px; }
+
+/* Menu headings, and the row of links to your record on the story page */
+.menu-head { font-size: 0.72rem; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin: 10px 4px 0; }
+.menu-head:first-child { margin-top: 0; }
+.your-life { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; scrollbar-width: none; }
+.your-life::-webkit-scrollbar { display: none; }
+.chip-link { flex: 1 1 0; min-width: 0; justify-content: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 4px; padding: 6px 6px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel); color: inherit; font: inherit; font-size: 0.78rem; cursor: pointer; }
+.chip-link:hover, .chip-link:focus-visible { border-color: var(--blue); }
