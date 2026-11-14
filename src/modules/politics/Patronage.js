@@ -25,7 +25,7 @@ import { living, ageOf } from '../people/People.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
 /** The honours your recommendations can carry this year (a dominion's premier recommended British ones). */
-const tiersOf = (state) => ordersAt(cc(state), currentYear(state))?.ladder.tiers ?? [];
+const tiersOf = (state) => ordersAt(cc(state), currentYear(state), state)?.ladder.tiers ?? [];
 const VICE_REGAL = /_gg$|_lg$|au_governor|gb_lordLieutenant|gb_deputyLieutenant/;
 
 /** What your office lets you do: { kind, label, perYear, maxTier (index), peers } or null. */

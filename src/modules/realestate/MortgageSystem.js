@@ -13,6 +13,7 @@
 import { isEmployed } from '../../core/State.js';
 import { spouseIncome } from '../people/People.js';
 import { clamp } from '../../core/Random.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 import { PROPERTY_TYPES, isResidential, isLand, marketRent } from './PropertyMarket.js';
 import { MORTGAGES } from '../world/CountryLaw.js';
 import { knob } from '../../core/Difficulty.js';
@@ -158,7 +159,8 @@ export function existingDebtService(state) {
  * Quote a loan. `inflateIncome` models a fraudulent application.
  * Returns { ok, reason, rate, down, principal, payment, mip, fee, dti }.
  */
-export const redlined = (state) => (state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1934 && yearNow(state) < 1968 && skinToneOf(state) >= 4;
+/** From the FHA maps of 1934 until the Fair Housing Act (1968), or a fair-housing law passed sooner in this world. */
+export const redlined = (state) => (state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1934 && !statuteIn(state, 'fairHousing', 'US') && skinToneOf(state) >= 4;
 export function quote(state, price, typeId, { downPct = null, inflateIncome = false, noi = 0 } = {}) {
   const t = LOAN_TYPES[typeId];
   const score = state.housing.credit.score;

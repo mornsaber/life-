@@ -58,7 +58,8 @@ export const CABINET_STYLES = {
 /** Laws an executive order could change now (national laws that exist here). */
 export function orderOptions(state) {
   const where = whereFor(state, 'federal');
-  return Object.entries(LAWS).filter(([id, l]) => l.levels.includes('federal') && lawHere(id, 'federal', where)).flatMap(([id]) => {
+  // History's statutes need an Act of the legislature, not a decree.
+  return Object.entries(LAWS).filter(([id, l]) => !l.statute && l.levels.includes('federal') && lawHere(id, 'federal', where)).flatMap(([id]) => {
     const cur = levelValue(state, id, 'federal', where);
     return ['up', 'down'].map((dir) => ({ id, dir, cur, to: proposedValue(id, cur ?? (LAWS[id].kind === 'number' ? LAWS[id].min : cur), dir) })).filter((x) => x.to !== null);
   });

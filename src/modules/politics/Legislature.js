@@ -104,8 +104,14 @@ export function chambersFor(level, where) {
 /** Laws that only exist in US law (union-security and card-check rules), and the national minimum wage abroad (set by province). */
 export const lawHere = (lawId, level, where) => {
   const cc = level === 'state' ? STATES[where]?.country ?? 'US' : level === 'federal' ? where ?? 'US' : REGIONS[where]?.country ?? 'US';
-  // Laws exist from their country's own date (a minimum wage in Britain from 1999; never in Sweden).
-  if (!lawExistsHere(lawId, cc)) return false;
+  const law = LAWS[lawId];
+  // A law can be proposed once the idea exists anywhere (no minimum-wage bills in 1820) — even
+  // before its country's own date: a British MP may bring in a minimum wage in 1950. The
+  // legislature's own majority waits for the country's date (npcBills).
+  const y = eraYear();
+  if (LAW_FROM[lawId] > y || (law?.from ?? 0) > y || (law?.to != null && y >= law.to)) return false;
+  // History's statutes apply where they did (no national death penalty bill in the US: that's the states').
+  if (law?.where && !law.where(cc)) return false;
   if (cc === 'US') return true;
   // American institutions: right-to-work and card-check, state income tax, privatized police,
   // ambulances and fire, occupational licensing boards, public-sector bargaining fights, non-competes.
@@ -685,7 +691,10 @@ const lawInEra = (id) => !(LAW_FROM[id] > eraYear());
 
 /** Bills the majority brings up on its own. */
 function npcBills(state, body, rng) {
-  const laws = Object.keys(LAWS).filter((id) => lawInEra(id) && LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where) && !(body.oneParty && NOT_IN_PARTY_STATES.includes(id)));
+  // The majority brings up the issues of its day, in its own country's time; history's statutes
+  // (Prohibition, the gallows, divorce…) change only when you bring the bill.
+  const cc = body.level === 'state' ? STATES[body.where]?.country ?? 'US' : body.level === 'federal' ? body.where ?? 'US' : REGIONS[body.where]?.country ?? 'US';
+  const laws = Object.keys(LAWS).filter((id) => !LAWS[id].statute && lawInEra(id) && lawExistsHere(id, cc) && LAWS[id].levels.includes(body.level) && lawHere(id, body.level, body.where) && !(body.oneParty && NOT_IN_PARTY_STATES.includes(id)));
   const laborMajority = body.labor * 2 > body.seats;
   const out = [];
   for (let i = rng.int(1, 3); i > 0; i--) {

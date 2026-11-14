@@ -36,13 +36,14 @@ const tests = {
     life('US');
     assert.equal(LAWS.corporateRate.name, 'Federal corporate tax rate');
   },
-  'a minimum wage from its country\'s date, and never in Sweden'() {
+  'a minimum wage on the books from its country\'s date (never in Sweden) — but you may bring one in'() {
     assert.equal(lawExistsHere('minWage', 'GB', 1980), false);
     assert.equal(lawExistsHere('minWage', 'GB', 2005), true);
     assert.equal(lawExistsHere('minWage', 'SE', 2020), false);
     assert.equal(lawExistsHere('cannabis', 'FR', 2020), false);
     life('SE');
-    assert.equal(lawHere('minWage', 'federal', 'SE'), false);
+    // History never gave Sweden one, and the background majority won't; a member can still table the bill.
+    assert.equal(lawHere('minWage', 'federal', 'SE'), true);
   },
   'a prime minister sends bills from one card, with the vote projected'() {
     const { engine, state } = life('GB');

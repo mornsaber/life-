@@ -31,19 +31,20 @@
  */
 import { ORDERS, CHIVALRY } from './Honours.js';
 import { yearNow, colonyHere } from './Eras.js';
+import { dominionMode as historyMode, statuteOverride, DOMINION_HONOURS as DOMINIONS } from '../politics/StatuteBook.js';
 
 const R = (...c) => c.map((x) => (Array.isArray(x) ? x : [x, 1]));
 
-/** How each dominion got its honours: [from, until, mode]. 'british' with titles, 'britishNoTitles', 'dual', 'national', 'none'. */
-export const DOMINION_HONOURS = {
-  CA: [[0, 1919, 'british'], [1919, 1933, 'none'], [1933, 1936, 'british'], [1936, 1943, 'none'], [1943, 1947, 'britishNoTitles'], [1947, 1967, 'none'], [1967, 9999, 'national']],
-  AU: [[0, 1975, 'british'], [1975, 1992, 'dual'], [1992, 9999, 'national']],
-  NZ: [[0, 1996, 'british'], [1996, 9999, 'national']],
-  ZA: [[0, 1925, 'british'], [1925, 2002, 'none'], [2002, 9999, 'national']],
-  IE: [[0, 1922, 'british'], [1922, 9999, 'national']],
-  IN: [[0, 1947, 'british'], [1947, 1954, 'none'], [1954, 9999, 'national']],
-};
-export const dominionMode = (cc, y) => (DOMINION_HONOURS[cc] ?? []).find(([a, b]) => y >= a && y < b)?.[2] ?? null;
+// History's dates for the dominions live in the statute book: a government in this world can change them.
+export { DOMINION_HONOURS } from '../politics/StatuteBook.js';
+/** The honours mode a dominion is in this year: history's, unless a bill changed whether citizens take British honours. */
+export function dominionMode(cc, y, state = null) {
+  const mode = historyMode(cc, y);
+  const o = state ? statuteOverride(state, 'imperialHonours', cc) : undefined;
+  if (o === true && !['british', 'britishNoTitles', 'dual'].includes(mode)) return ownOrders(cc, y) ? 'dual' : 'british';
+  if (o === false && ['british', 'britishNoTitles', 'dual'].includes(mode)) return ownOrders(cc, y) ? 'national' : 'none';
+  return mode;
+}
 
 /** Grades founded after their order: [country][tier] = year. */
 const TIER_FROM = {
@@ -109,8 +110,8 @@ function ownOrders(cc, y) {
  * The honours a country's people received in a year: { via, ladder } — via is the country whose
  * honours they are (GB for a dominion before its own). For honours lists, patronage and foreign awards.
  */
-export function ordersAt(cc, y) {
-  const mode = dominionMode(cc, y);
+export function ordersAt(cc, y, state = null) {
+  const mode = dominionMode(cc, y, state);
   if (mode === 'british' || mode === 'britishNoTitles') return { via: 'GB', ladder: britishLadder(y, { titles: mode === 'british' }) };
   if (mode === 'none') return null;
   const own = ownOrders(cc, y);
@@ -123,13 +124,13 @@ export function honoursSystem(state) {
   const y = yearNow(state);
   const forGender = (l) => (l ? { ...l, tiers: l.tiers.filter((t) => !t.only || (state.character.gender === 'female' ? t.only.female : t.only.male)) } : l);
   const out = [];
-  const mode = dominionMode(cc, y);
+  const mode = dominionMode(cc, y, state);
   if (mode === 'dual') {
     const own = ownOrders(cc, y);
     if (own) out.push({ via: cc, ladder: own });
     out.push({ via: 'GB', ladder: britishLadder(y) });
   } else if (mode) {
-    const o = ordersAt(cc, y);
+    const o = ordersAt(cc, y, state);
     if (o) out.push(o);
   } else {
     // A colony: the ruling power's honours.
@@ -184,9 +185,9 @@ export function honoursNote(state) {
   }
   const british = sys.find((x) => x.via === 'GB');
   if (british && cc !== 'GB') {
-    const mode = dominionMode(cc, y);
+    const mode = dominionMode(cc, y, state);
     const titles = british.ladder.tiers.some((t) => t.id === 'knight');
-    return `${mode === 'dual' ? 'Two lists: your own national order, and still ' : 'Your honours come from '}${name('GB')}${titles ? '' : ' (no titles: no knighthoods or peerages)'}${mode === 'dual' ? `, until ${DOMINION_HONOURS[cc].find(([, , m]) => m === 'dual')[1]}` : ''}.`;
+    return `${mode === 'dual' ? 'Two lists: your own national order, and still ' : 'Your honours come from '}${name('GB')}${titles ? '' : ' (no titles: no knighthoods or peerages)'}${mode === 'dual' ? (statuteOverride(state, 'imperialHonours', cc) != null ? ', by Act of your parliament' : `, until ${DOMINIONS[cc].find(([, , m]) => m === 'dual')?.[1]}`) : ''}.`;
   }
   return null;
 }

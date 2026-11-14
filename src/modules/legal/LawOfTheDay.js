@@ -32,6 +32,7 @@ import { partnerOf } from '../people/People.js';
 import { arrive } from '../world/Migration.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { stateOf } from '../life/Regions.js';
+import { statuteIn, statuteOverride, ABOLISHED, SUSPENDED, DECRIMINALIZED, SAME_SEX_MARRIAGE, DIVORCE_FROM, DEBTORS_UNTIL, PROHIBITION } from '../politics/StatuteBook.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
 const historic = (state) => Boolean(state?.era) && yearNow(state) < PRESENT;
@@ -40,8 +41,6 @@ const historic = (state) => Boolean(state?.era) && yearNow(state) < PRESENT;
 /* The death penalty by year                                           */
 /* ------------------------------------------------------------------ */
 /** The year capital punishment for murder ended, and the gaps when it was suspended. */
-const ABOLISHED = { GB: 1965, IE: 1990, FR: 1981, DE: 1949, AT: 1950, IT: 1948, ES: 1978, PT: 1867, NL: 1870, BE: 1996, SE: 1921, NO: 1905, DK: 1933, FI: 1949, CH: 1942, CA: 1976, AU: 1985, NZ: 1961, IS: 1928, LU: 1979, GR: 1993, ZA: 1995, MX: 1929, BR: 1889, AR: 1984, CO: 1910, VE: 1863, UY: 1907, CR: 1877, EC: 1906 };
-const SUSPENDED = { IT: [[1889, 1926]], NZ: [[1941, 1950]], RU: [[1947, 1950]], US: [[1972, 1976]] };
 /** When most of the condemned were executed rather than reprieved. */
 const ROUTINE_UNTIL = { GB: 1900, IE: 1900, FR: 1900, US: 1900, AU: 1900, CA: 1900, NZ: 1900, DE: 1900, RU: 1960, CN: 2026, JP: 1900, IN: 1950 };
 function methodOf(c, y) {
@@ -53,10 +52,14 @@ function methodOf(c, y) {
 }
 /** The death penalty in a historic year (undefined: today's law applies). */
 export function deathPenaltyThen(state) {
-  if (!historic(state)) return undefined;
   const y = yearNow(state);
   const c = cc(state);
   const where = c === 'US' ? stateOf(state)?.name ?? 'the state' : COUNTRIES[c]?.name ?? c;
+  // A bill in this world abolished it, or brought it back (politics/StatuteBook.js).
+  const o = c === 'US' ? undefined : statuteOverride(state, 'deathPenalty', c);
+  if (o === false) return null;
+  if (o === true) return { status: 'active', method: methodOf(c, y), where };
+  if (!historic(state)) return undefined;
   if ((SUSPENDED[c] ?? []).some(([a, b]) => y >= a && y < b)) return null;
   if (ABOLISHED[c] && y >= ABOLISHED[c]) return undefined;
   if (c === 'US' && y >= 1976) return undefined;
@@ -69,15 +72,16 @@ export function deathPenaltyThen(state) {
 /* The law of your private life                                        */
 /* ------------------------------------------------------------------ */
 /** When sex between men stopped being a crime. Unlisted countries: never criminal by statute, or today's law. */
-const DECRIMINALIZED = { GB: 1967, IE: 1993, US: 2003, CA: 1969, AU: 1990, NZ: 1986, DE: 1969, AT: 1971, CH: 1942, SE: 1944, DK: 1933, NO: 1972, FI: 1971, IS: 1940, ES: 1979, PT: 1982, IT: 1890, RU: 1993, UA: 1991, BY: 1994, PL: 1932, CZ: 1962, SK: 1962, HU: 1961, RO: 1996, BG: 1968, RS: 1994, HR: 1977, CN: 1997, IN: 2018, ZA: 1998, IL: 1988, CL: 1999, EC: 1997, CU: 1979, NI: 2008, SG: 2022, HK: 1991, TW: 1912 };
 /** When two men or two women could marry. */
-const SAME_SEX_MARRIAGE = { NL: 2001, BE: 2003, ES: 2005, CA: 2005, ZA: 2006, NO: 2009, SE: 2009, PT: 2010, IS: 2010, AR: 2010, DK: 2012, BR: 2013, FR: 2013, UY: 2013, NZ: 2013, GB: 2014, LU: 2015, US: 2015, IE: 2015, CO: 2016, FI: 2017, MT: 2017, DE: 2017, AU: 2017, AT: 2019, TW: 2019, EC: 2019, CR: 2020, CL: 2022, CH: 2022, SI: 2022, MX: 2022, CU: 2022, AD: 2023, EE: 2024, GR: 2024, LI: 2025, TH: 2025 };
 /** When divorce became lawful (before: none, or only by Act of Parliament). */
-const DIVORCE_FROM = { IE: 1996, IT: 1970, ES: 1981, PT: 1910, AR: 1987, BR: 1977, CL: 2004, MT: 2011, CO: 1976, GB: 1857, FR: 1884, PY: 1991 };
 
-export const sexBetweenMenCriminal = (state) => historic(state) && DECRIMINALIZED[cc(state)] != null && yearNow(state) < DECRIMINALIZED[cc(state)];
-export const sameSexMarriageLegal = (state) => !historic(state) || yearNow(state) >= (SAME_SEX_MARRIAGE[cc(state)] ?? Infinity);
+// These follow history's date unless a bill in this world changed the law (politics/StatuteBook.js).
+export const sexBetweenMenCriminal = (state) => (statuteOverride(state, 'sodomyLaw') != null || historic(state)) && statuteIn(state, 'sodomyLaw');
+export const sameSexMarriageLegal = (state) => (statuteOverride(state, 'sameSexMarriage') == null && !historic(state)) || statuteIn(state, 'sameSexMarriage');
 export function divorceBarred(state) {
+  const o = statuteOverride(state, 'divorce');
+  if (o === true) return null;
+  if (o === false) return 'Divorce has been abolished here by law';
   if (!historic(state)) return null;
   const from = DIVORCE_FROM[cc(state)];
   if (!from || yearNow(state) >= from) return null;
@@ -90,15 +94,13 @@ const sameSex = (state, p) => p && p.gender === state.character.gender;
 /* ------------------------------------------------------------------ */
 /* Transportation, debtors' prisons, Prohibition, police, prisons      */
 /* ------------------------------------------------------------------ */
-export const transportationHere = (state) => historic(state) && ['GB', 'IE'].includes(cc(state)) && yearNow(state) < 1857;
-const DEBTORS_UNTIL = { GB: 1869, IE: 1872, US: 1833, FR: 1867, DE: 1868, BE: 1871, NL: 1896, CA: 1870, AU: 1880 };
-export const debtorsPrisonHere = (state) => historic(state) && yearNow(state) < (DEBTORS_UNTIL[cc(state)] ?? 0);
-const PROHIBITION = { US: [1920, 1933], FI: [1919, 1932], NO: [1916, 1927], IS: [1915, 1935], RU: [1914, 1925] };
+export const transportationHere = (state) => ['GB', 'IE'].includes(cc(state)) && yearNow(state) < 1900 && (statuteOverride(state, 'transportation') != null || historic(state)) && statuteIn(state, 'transportation');
+export const debtorsPrisonHere = (state) => (statuteOverride(state, 'debtorsPrison') != null || historic(state)) && statuteIn(state, 'debtorsPrison');
 /** Whether sex between men was a crime in a country in a year (for records abroad). */
 export const gayCrimeIn = (c, y) => DECRIMINALIZED[c] != null ? y < DECRIMINALIZED[c] : y < PRESENT;
 /** Whether a country had Prohibition in a year. */
 export const prohibitionIn = (c, y) => { const p = PROHIBITION[c]; return Boolean(p) && y >= p[0] && y < p[1]; };
-export const prohibitionHere = (state) => { const p = PROHIBITION[cc(state)]; const y = yearNow(state); return historic(state) && Boolean(p) && y >= p[0] && y < p[1]; };
+export const prohibitionHere = (state) => (statuteOverride(state, 'prohibition') != null || historic(state)) && statuteIn(state, 'prohibition');
 const POLICE_FROM = { GB: [1829, 'the Metropolitan Police'], IE: [1836, 'the Irish Constabulary'], US: [1845, 'the New York Police Department'], FR: [1800, 'the Prefecture of Police'], DE: [1848, 'the Berlin Schutzmannschaft'], AU: [1862, 'the New South Wales Police'], CA: [1873, 'the North-West Mounted Police'], NZ: [1886, 'the New Zealand Police Force'], JP: [1874, 'the Tokyo Metropolitan Police'], IN: [1861, 'the Indian police'], IT: [1814, 'the Carabinieri'], ES: [1844, 'the Guardia Civil'] };
 export const policeHere = (state) => { const p = POLICE_FROM[cc(state)]; return p ? { from: p[0], name: p[1], yet: yearNow(state) >= p[0] } : null; };
 

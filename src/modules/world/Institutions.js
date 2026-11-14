@@ -23,6 +23,7 @@
  */
 import { Random, clamp } from '../../core/Random.js';
 import { yearNow } from './Eras.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 import { priceLevel } from './Countries.js';
 import { regimeHere } from './Regimes.js';
 import { addBuzz } from '../life/Fame.js';
@@ -50,8 +51,8 @@ export const BANK_PANICS = [
   { id: 'iceland', years: [2008, 2008], where: ['IS'], name: 'the collapse of the Icelandic banks', fail: 0.4 },
 ];
 /** When deposit insurance began. */
-const INSURED_FROM = { US: 1934, DE: 1966, GB: 1979, FR: 1980, IT: 1987, ES: 1977, NL: 1979, BE: 1974, JP: 1971, CA: 1967, IN: 1962, AU: 2008, NZ: 2024, AR: 1995, IS: 1985 };
-export const depositsInsured = (state) => yearNow(state) >= (INSURED_FROM[cc(state)] ?? 1995);
+/** Insured from history's date, or from the year a bill in this world brought it in (politics/StatuteBook.js). */
+export const depositsInsured = (state) => statuteIn(state, 'depositInsurance', cc(state));
 export const panicNow = (state) => { const y = yearNow(state); return BANK_PANICS.find((p) => y >= p.years[0] && y <= p.years[1] && p.where.includes(cc(state))) ?? null; };
 
 function bankTick(ctx) {

@@ -14,6 +14,7 @@ import { PHASES } from '../economy/EconomyEngine.js';
 import { isAbroad } from '../world/Countries.js';
 import { regionsHere } from '../life/Regions.js';
 import { yearNow, propertyInEra } from '../world/Eras.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -118,7 +119,8 @@ export function generateListings(ctx) {
   if (rightToBuy(state)) listings.push({ ...listing(side, state, 'starter', regionId), id: `rtb_${state.character.age}`, price: Math.round(priceOf(state, 'starter', regionId) * 0.6 / 1000) * 1000, rightToBuy: true, condition: 70 });
   state.housing.listings = listings.sort((a, b) => a.price - b.price);
 }
-export const rightToBuy = (state) => ['GB'].includes(state.character.countryId ?? 'US') && yearNow(state) >= 1980 && state.housing?.rental?.tier === 'subsidized';
+/** Britain's from 1980 — or wherever a legislature in this world passes one (politics/StatuteBook.js). */
+export const rightToBuy = (state) => statuteIn(state, 'rightToBuy') && state.housing?.rental?.tier === 'subsidized';
 
 /** Yearly market move: follows the economic cycle plus regional noise. */
 export function marketTick(ctx) {

@@ -18,6 +18,7 @@
 import { STATES } from '../life/States.js';
 import { REGIONS } from '../life/Regions.js';
 import { fromPacks } from '../world/packs/index.js';
+import { statuteLaws } from './StatuteBook.js';
 
 export const LAWS = {
   minWage: {
@@ -161,6 +162,9 @@ export const LAWS = {
     effect: 'A raise (or cut) for government employees at that level.',
   },
 };
+
+// History's statutes (Prohibition, the gallows, divorce…): national laws a legislature can change (StatuteBook.js).
+Object.assign(LAWS, statuteLaws());
 
 const LEVEL_ORDER = ['city', 'state', 'federal'];
 
