@@ -42,6 +42,7 @@ import { pickProfession, startCareer, homemakerOdds } from './NpcCareers.js';
 import { childMortality, childCause, maternalRisk, childbirthCause, periodRng } from '../health/PeriodHealth.js';
 import { longevityFactor } from '../world/Eras.js';
 import { parentsEstate, spouseDied } from './Succession.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -428,9 +429,16 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
   const { state, rng } = ctx;
   const p = state.people;
   const yearsMarried = state.character.age - (spouse.since ?? state.character.age);
-  ctx.spend(contested ? 25000 : 8000, 'Divorce legal fees', { allowDebt: true });
-  // Marital property splits 50/50 unless a prenup protects it.
-  const share = p.prenup ? 0.2 : 0.5;
+  // Before no-fault divorce (politics/StatuteBook.js) a divorce needs grounds — adultery,
+  // cruelty, desertion — and the one at fault comes off worse in the settlement.
+  const grounds = !statuteIn(state, 'noFaultDivorce');
+  const fault = grounds ? p.fault?.who ?? null : null;
+  ctx.spend(Math.round((contested ? 25000 : 8000) * (grounds && !fault ? 1.5 : 1)), 'Divorce legal fees', { allowDebt: true });
+  if (grounds) ctx.log(fault === 'you' ? 'With no divorce without fault, your adultery was the grounds: the court was not kind to you.' : fault === 'them' ? `With no divorce without fault, ${spouse.firstName}'s adultery was the grounds: the court took your side.` : 'With no divorce without fault, the lawyers had to prove grounds: months of private detectives and testimony.', '⚖️', fault === 'you' ? 'bad' : 'info');
+  // Marital property splits 50/50 unless a prenup protects it (and fault shifts it).
+  const share = (p.prenup ? 0.2 : 0.5) + (fault === 'you' ? 0.15 : fault === 'them' ? -0.15 : 0);
+  p.fault = null;
+  if (p.open?.partnerId === spouse.id) p.open = null;
   const cashSplit = Math.max(0, Math.round(state.finances.cash * share));
   state.finances.cash -= cashSplit;
   let assets = cashSplit;

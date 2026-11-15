@@ -5,6 +5,7 @@
 import { militaryInsignia } from '../Insignia.js';
 import { rivalsCard, familyCard } from './CirclesView.js';
 import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
+import { openWith, openEligibility, acceptOdds } from '../../modules/people/OpenMarriage.js';
 import { esc, money, button, card, meter, kv, empty, disclosure, select, chip } from '../Components.js';
 import {
   living, people, ageOf, partnerOf, spouseOf, livingChildren, RELATION_LABEL, fullName, spouseIncome, estateBalance, estateTax, heirShares, WILL_PLANS, WEDDINGS, ARREARS_HOLD,
@@ -347,7 +348,11 @@ function romance(state) {
         ${!partner.saidLove ? button('❤️ Say "I love you"', 'bonds.loveYou', { arg: partner.id, variant: 'small', hint: 'Are they ready?' }) : ''}
         ${['partner', 'fiance'].includes(partner.relation) && !partner.livingTogether && adults ? button('🗝️ Move in together', 'bonds.moveIn', { arg: partner.id, variant: 'small' }) : ''}
         ${adults ? button('🌙 Spend the night', 'bonds.intimacy', { arg: partner.id, variant: 'small', disabled: Boolean(state.yearly[`romance.night.${partner.id}`]) }) : ''}
-      </div>`;
+        ${adults ? (openWith(state, partner)
+    ? button(`🔒 Close the ${partner.relation === 'spouse' ? 'marriage' : 'relationship'}`, 'openMarriage.close', { variant: 'small' })
+    : button(`🔓 Ask for an open ${partner.relation === 'spouse' ? 'marriage' : 'relationship'}`, 'openMarriage.propose', { variant: 'small', disabled: !openEligibility(state).ok, hint: openEligibility(state).ok ? `${Math.round(acceptOdds(state, partner) * 100)}% they agree` : openEligibility(state).reason })) : ''}
+      </div>
+      ${openWith(state, partner) ? `<p class="fine">🔓 Open since you were ${state.people.open.since}${state.people.open.theirs ? ` · ${esc(partner.firstName)} is seeing ${esc(state.people.open.theirs)}` : ''}. Seeing other people isn't cheating — but jealousy happens.</p>` : ''}`;
   }
   const family = partner && ['spouse', 'fiance', 'partner'].includes(partner.relation)
     ? `<div class="toggle-row">${button(p.expecting ? '🤰 Baby on the way' : '👶 Try for a baby', 'people.tryForBaby', { variant: 'small', disabled: Boolean(p.expecting) || Boolean(state.yearly['people.baby']) })}</div>` : '';

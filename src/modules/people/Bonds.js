@@ -25,6 +25,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { ageOf, living, byId, clampRel, partnerOf } from './People.js';
+import { openWith, markFault } from './OpenMarriage.js';
 
 export const TRAITS = {
   adventurous: { name: 'Adventurous', icon: '🧗', likes: ['hike', 'trip', 'concert'] },
@@ -307,8 +308,8 @@ export function goOut(ctx) {
     text: `At a bar downtown you get talking to ${stranger.firstName}, ${age}. There's definitely something there.${partner ? ` You're with ${partner.firstName}, though.` : ''}`,
     options: [
       { id: 'number', label: '📱 Swap numbers', hint: partner ? 'Harmless? Maybe.' : 'Maybe a first date' },
-      { id: 'home', label: '🌙 Go home together', hint: partner ? `Cheating on ${partner.firstName}` : 'A one-night stand', tone: partner ? 'danger' : undefined },
-      { id: 'home_protected', label: '🛡️ Go home together — with protection', hint: partner ? `Still cheating on ${partner.firstName}` : 'Safer', tone: partner ? 'danger' : undefined },
+      { id: 'home', label: '🌙 Go home together', hint: partner && !openWith(state, partner) ? `Cheating on ${partner.firstName}` : 'A one-night stand', tone: partner && !openWith(state, partner) ? 'danger' : undefined },
+      { id: 'home_protected', label: '🛡️ Go home together — with protection', hint: partner && !openWith(state, partner) ? `Still cheating on ${partner.firstName}` : 'Safer', tone: partner && !openWith(state, partner) ? 'danger' : undefined },
       { id: 'leave', label: '🚕 Call it a night' },
     ],
   });
@@ -369,9 +370,11 @@ function romanceYear(ctx) {
       data: { personId: p.id },
     });
   }
-  // An ongoing affair may come out.
+  // An ongoing affair may come out (in an open marriage there's nothing to find out).
+  if (state.people.affair && openWith(state, p)) state.people.affair = null;
   if (state.people.affair && rng.chance(0.35)) {
     state.people.affair = null;
+    markFault(state, 'you');
     p.relationship = clampRel(p.relationship - 40);
     p.spark = clamp(p.spark - 30, 0, 100);
     ctx.stat('happiness', -15);
@@ -507,9 +510,11 @@ export const BondsModule = {
       state.people.list.push(s);
       ctx.stat('happiness', 5);
       ctx.log(`You went home with ${s.firstName}.`, '🌙');
-      if (partner) {
+      if (partner && openWith(state, partner)) ctx.log(`No secret to keep: you told ${partner.firstName} the next morning, as agreed.`, '🔓');
+      else if (partner) {
         partner.spark = clamp((partner.spark ?? 60) - 5, 0, 100);
         if (rng.chance(0.3)) {
+          markFault(state, 'you');
           partner.relationship = clampRel(partner.relationship - 35);
           ctx.stat('happiness', -12);
           ctx.log(`${partner.firstName} found out.`, '💔', 'bad');
@@ -577,6 +582,7 @@ export const BondsModule = {
         if (p) p.spark = clamp((p.spark ?? 60) + 3, 0, 100);
         return ctx.log(`You went home to ${p?.firstName ?? 'your partner'}.`, '🏠');
       }
+      if (openWith(state, p)) { ctx.stat('happiness', 4); return ctx.log(`You started seeing someone, and told ${p?.firstName ?? 'your partner'} about it, as agreed.`, '🔓', 'info'); }
       state.people.affair = { since: state.character.age };
       ctx.stat('happiness', 4);
       ctx.stat('stress', 8);

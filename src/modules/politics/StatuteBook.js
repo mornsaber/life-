@@ -23,6 +23,10 @@ export const DIVORCE_FROM = { IE: 1996, IT: 1970, ES: 1981, PT: 1910, AR: 1987, 
 export const INSURED_FROM = { US: 1934, DE: 1966, GB: 1979, FR: 1980, IT: 1987, ES: 1977, NL: 1979, BE: 1974, JP: 1971, CA: 1967, IN: 1962, AU: 2008, NZ: 2024, AR: 1995, IS: 1985 };
 export const PENSION_FROM = { DE: 1889, GB: 1909, NZ: 1898, AU: 1909, FR: 1910, US: 1937, CA: 1927, SE: 1913, DK: 1891, JP: 1942, IT: 1919, NL: 1919 };
 export const DEBTORS_UNTIL = { GB: 1869, IE: 1872, US: 1833, FR: 1867, DE: 1868, BE: 1871, NL: 1896, CA: 1870, AU: 1880 };
+/** Until when adultery was a crime (9999: still is). Unlisted: never a crime by statute, or a matter for the states (US). */
+export const ADULTERY_UNTIL = { IT: 1969, FR: 1975, ES: 1978, DE: 1969, AT: 1997, CH: 1989, KR: 2015, TW: 2020, JP: 1947, IN: 2018, BR: 2005, AR: 1995, MX: 2011, PT: 1982, GR: 1983, TR: 1996, PH: 9999, PK: 9999, SA: 9999, IR: 9999, AE: 9999, EG: 9999, ID: 9999 };
+/** From when a marriage could end without proving fault (adultery, cruelty, desertion). */
+export const NO_FAULT_FROM = { US: 1970, GB: 1969, CA: 1968, AU: 1975, NZ: 1980, FR: 1975, DE: 1977, SE: 1974, NL: 1971, IT: 1970, ES: 1981, IE: 1996, BE: 1974, DK: 1969, NO: 1918, JP: 1898, MX: 1917, RU: 1918, '*': 1975 };
 /** How each dominion got its honours: [from, until, mode]. 'british' with titles, 'britishNoTitles', 'dual', 'national', 'none'. */
 export const DOMINION_HONOURS = {
   CA: [[0, 1919, 'british'], [1919, 1933, 'none'], [1933, 1936, 'british'], [1936, 1943, 'none'], [1943, 1947, 'britishNoTitles'], [1947, 1967, 'none'], [1967, 9999, 'national']],
@@ -69,6 +73,12 @@ export const STATUTES = {
   imperialHonours: { name: 'British honours for citizens', icon: '🎖️', lean: 'business', where: (cc) => ['CA', 'AU', 'NZ', 'ZA'].includes(cc),
     history: (cc, y) => ['british', 'britishNoTitles', 'dual'].includes(dominionMode(cc, y)),
     effect: 'Whether the government recommends its citizens for British honours, knighthoods and peerages.' },
+  adultery: { name: 'Adultery as a crime', icon: '🚨', lean: 'business', where: (cc) => cc !== 'US',
+    history: (cc, y) => ADULTERY_UNTIL[cc] != null && y < ADULTERY_UNTIL[cc],
+    effect: 'A betrayed spouse can bring a criminal complaint for adultery.' },
+  noFaultDivorce: { name: 'No-fault divorce', icon: '📄', lean: 'labor',
+    history: (cc, y) => y >= (NO_FAULT_FROM[cc] ?? NO_FAULT_FROM['*']),
+    effect: 'A marriage can end without proving adultery, cruelty or desertion; without it, the one at fault comes off worse.' },
   debtorsPrison: { name: 'Imprisonment for debt', icon: '⛓️', lean: 'business',
     history: (cc, y) => y < (DEBTORS_UNTIL[cc] ?? 0),
     effect: 'Unpaid debts can land you in prison until they are paid.' },

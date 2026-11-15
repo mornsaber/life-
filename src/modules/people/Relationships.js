@@ -18,6 +18,7 @@ import { randomName } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';
 import { practise } from '../life/Skills.js';
 import { living, partnerOf, spouseOf, byId, clampRel, ageOf, parentsOf } from './People.js';
+import { openWith, markFault } from './OpenMarriage.js';
 
 const sideRng = (state, salt) => new Random((((state.world?.seed ?? 1) * 104729 + state.character.age * 389 + salt) >>> 0));
 const life = (state) => (state.relLife ??= {});
@@ -147,7 +148,8 @@ export const RelationshipsModule = {
       if (optionId === 'affair') {
         const p = partnerOf(state);
         ctx.stat('happiness', 4);
-        if (p && rng.chance(0.45)) { p.relationship = clampRel(p.relationship - 35); if (p.spark != null) p.spark = Math.max(0, p.spark - 30); ctx.stat('happiness', -10); return void ctx.log(`${p.firstName} found the messages from ${ex.firstName}.`, '💔', 'bad'); }
+        if (p && openWith(state, p)) return void ctx.log(`You and ${ex.firstName} picked up where you left off, with ${p.firstName}'s blessing.`, '🔓');
+        if (p && rng.chance(0.45)) { markFault(state, 'you'); p.relationship = clampRel(p.relationship - 35); if (p.spark != null) p.spark = Math.max(0, p.spark - 30); ctx.stat('happiness', -10); return void ctx.log(`${p.firstName} found the messages from ${ex.firstName}.`, '💔', 'bad'); }
         return void ctx.log(`You and ${ex.firstName} met in hotel rooms for a few months, and then it stopped. Nobody found out. You know.`, '🔥', 'warn');
       }
       ctx.log(`You didn't reply to ${ex.firstName}.`, '🙅');
