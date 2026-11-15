@@ -52,6 +52,8 @@ import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
 import { fundCard } from './views/FundView.js';
 import { clubCard } from './views/ClubView.js';
+import { societyView } from './views/SocietyView.js';
+import { inSociety } from '../modules/life/HighSociety.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
 const leisureCard = (state) => { const ls = leisureNow(state).filter((l) => state.character.age >= l.minAge); return ls.length ? card('Going Out', `<p class="muted">What people did for fun in ${state.era ? 'this day' : 'our day'}. Once a year each.</p><div class="action-grid">${ls.map((l) => button(`${l.icon} ${l.label}`, 'leisure.go', { arg: l.id, variant: 'small', disabled: Boolean(state.yearly[`leisure.${l.id}`]), hint: state.yearly[`leisure.${l.id}`] ? 'Done this year' : leisureCost(state, l) ? `$${leisureCost(state, l).toLocaleString()}` : 'Free' })).join('')}</div>`, { icon: '🎟️' }) : ''; };
 import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
@@ -82,7 +84,7 @@ import { flagImg } from './Flags.js';
 
 /** Eight sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
-  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'world', label: 'The World', icon: '🌍' }, { id: 'goals', label: 'Goals', icon: '🎯' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }] },
+  { id: 'life', label: 'Life', icon: '📜', tabs: [{ id: 'life', label: 'Story', icon: '📜' }, { id: 'world', label: 'The World', icon: '🌍' }, { id: 'goals', label: 'Goals', icon: '🎯' }, { id: 'people', label: 'People', icon: '👪' }, { id: 'community', label: 'Community', icon: '🙏' }, { id: 'activities', label: 'Activities', icon: '🏃' }, { id: 'honors', label: 'Honors', icon: '🏅' }, { id: 'achievements', label: 'Achievements', icon: '🏆' }, { id: 'society', label: 'Society', icon: '🥂' }] },
   { id: 'work', label: 'Work', icon: '💼', tabs: [{ id: 'career', label: 'Career', icon: '💼' }, { id: 'business', label: 'Business', icon: '🏪' }, { id: 'gov', label: 'Public Service', icon: '🏛️' }, { id: 'licenses', label: 'Licenses & Certs', icon: '🪪' }] },
   { id: 'court', label: 'Court', icon: '👑', when: (st) => hasCourt(st), tabs: [{ id: 'court', label: 'Court', icon: '👑' }, { id: 'succession', label: 'Succession', icon: '🌳' }, { id: 'household', label: 'Household', icon: '🎗️' }, { id: 'estates', label: 'Estates', icon: '🏰' }] },
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
@@ -138,6 +140,7 @@ export const GROUPS = {
     label: () => 'Activities', icon: '🎭',
     items: [
       { head: 'Leisure & health', tab: 'activities', label: 'Activities', icon: '🎟️', sub: () => 'Going out, hobbies, expeditions' },
+      { head: 'Leisure & health', tab: 'society', label: 'High Society', icon: '🥂', when: (st) => inSociety(st), sub: (st) => `Standing ${Math.round(st.society?.standing ?? (st.character.peerage || st.noble || st.royal ? 60 : 30))}` },
       { head: 'Leisure & health', tab: 'health', label: 'Doctor & Health', icon: '🩺', sub: (st) => `Health ${Math.round(st.stats.health)}%` },
       { head: 'Leisure & health', tab: 'move', label: 'Move & Travel', icon: '🗺️', when: (st) => age(st) >= 16, sub: () => 'Another city, another country, a trip' },
       { head: 'The law', tab: 'legal', label: 'Legal', icon: '⚖️', when: (st) => age(st) >= 10 || (st.legal.record ?? []).length > 0, sub: (st) => ((st.legal.record ?? []).length ? `${st.legal.record.length} conviction${st.legal.record.length === 1 ? '' : 's'} on record` : 'A clean record') },
@@ -261,6 +264,7 @@ export const VIEWS = {
     return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + aspirationsCard(state) + eraCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
+  society: (state) => societyView(state),
   business: (state, ui) => businessView(state, ui) + fundCard(state) + clubCard(state) + pressCard(state),
   community: communityView,
   garage: garageView,
