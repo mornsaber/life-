@@ -25,6 +25,7 @@ import { platformOf, platformView, platformYear, recordStance, ISSUES, partyLine
 import { currentYear } from '../../core/State.js';
 import { runsGovernment, executiveYear, headYear, offersYear, ticketYear, CABINET, cabinetTitle } from './Executive.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { showResult } from '../life/ResultCards.js';
 
 function takeOffice(ctx, officeId, { appointed = false } = {}) {
   const { state } = ctx;
@@ -465,8 +466,10 @@ export const PoliticsEngine = {
           o.terms += 1;
           o.termYearsLeft = office.term;
           ctx.log(`Re-elected as ${office.name} with ${Math.round(share * 1000) / 10}%!`, '🎉', 'good');
+          showResult(ctx, { icon: '🗳️', title: office.name, big: 'Re-elected', sub: `${Math.round(share * 1000) / 10}% of the vote`, tone: 'good' });
         } else {
           ctx.log(`You lost your re-election bid (${Math.round(share * 1000) / 10}%).`, '📉', 'bad');
+          showResult(ctx, { icon: '🗳️', title: office.name, big: 'Defeated', sub: `${Math.round(share * 1000) / 10}% of the vote`, tone: 'bad' });
           leaveOffice(ctx, 'Lost re-election');
         }
         return undefined;

@@ -26,6 +26,7 @@ import { yearNow } from '../world/Eras.js';
 import { priceLevel } from '../world/Countries.js';
 import { addBuzz } from './Fame.js';
 import { rep } from './Reputation.js';
+import { showResult } from './ResultCards.js';
 
 const local = (state, n) => Math.round(n * priceLevel(state));
 const cc = (state) => state.character.countryId ?? 'US';
@@ -193,6 +194,7 @@ function societyYear(ctx) {
     s.standing = clamp(s.standing + 8, 0, 100);
     addBuzz(state, 6);
     ctx.log(`Your horse won ${race}. You led it into the winner's enclosure to the cheers of the crowd.`, '🏆', 'milestone');
+    showResult(ctx, { icon: '🏆', title: race.replace(/^./, (x) => x.toUpperCase()), big: 'Winner', sub: `$${purse.toLocaleString()} purse`, tone: 'good' });
   }
   for (const a of s.art) a.value = Math.round(a.value * (1 + rng.float(-0.08, 0.14)));
   const went = (s.attended[y - 1] ?? []).length;

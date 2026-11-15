@@ -31,6 +31,7 @@ import { knob } from '../../core/Difficulty.js';
 import { juvenileCourt } from './JuvenileCourt.js';
 import { drugLawHere, corruptionHere } from '../crime/CrimeWorld.js';
 import { yearNow } from '../world/Eras.js';
+import { showResult } from '../life/ResultCards.js';
 
 /**
  * Hooks the crime modules set (crime/index.js), so they can shape what happens without the
@@ -229,6 +230,7 @@ function verdict(ctx, data, edge) {
   const convict = rng.chance(clamp(convictOdds(data.evidence, defense) - smarts - edge, 0.03, 0.95));
   if (!convict) {
     ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');
+    showResult(ctx, { icon: '🧑‍⚖️', title: OFFENSES[data.offenseId].name, big: 'Not guilty', tone: 'good' });
     ctx.toast('Acquitted!', 'good');
     ctx.stat('happiness', 10);
     if (data.custody) ctx.log('You walked out of the courtroom free, after months inside awaiting trial.', '🚪', 'info');
@@ -236,6 +238,7 @@ function verdict(ctx, data, edge) {
   }
   const trial = justiceHere(state)?.trial ?? 'jury';
   ctx.log(trial === 'jury' ? 'The jury returned a guilty verdict.' : 'The court found you guilty.', '🧑‍⚖️', 'bad');
+  showResult(ctx, { icon: '🧑‍⚖️', title: OFFENSES[data.offenseId].name, big: 'Guilty', sub: 'Sentencing next', tone: 'bad', popup: false });
   ctx.prompt({ type: 'legal.sentencing', icon: '⚖️', title: 'Sentencing', text: 'Before the judge passes sentence, you may speak.', options: [
     { id: 'remorse', label: '🙇 Express remorse and accept responsibility', hint: 'Lighter sentence' },
     { id: 'letters', label: '✉️ Letters from family, employers and your community' },
@@ -374,9 +377,11 @@ export const JusticeResolvers = {
     if (convict) {
       const trial = justiceHere(ctx.state)?.trial ?? 'jury';
       ctx.log(trial === 'jury' ? 'The jury returned a guilty verdict.' : trial === 'lay' ? 'The panel of judges and lay judges found you guilty.' : 'The judge found you guilty.', '🧑‍⚖️', 'bad');
+      showResult(ctx, { icon: '🧑‍⚖️', title: OFFENSES[data.offenseId].name, big: 'Guilty', tone: 'bad' });
       sentence(ctx, data.offenseId, { plea: false, abroad: data.abroad });
     } else {
       ctx.log(`Not guilty! You were acquitted of ${OFFENSES[data.offenseId].name}.`, '🧑‍⚖️', 'good');
+      showResult(ctx, { icon: '🧑‍⚖️', title: OFFENSES[data.offenseId].name, big: 'Not guilty', tone: 'good' });
       ctx.toast('Acquitted!', 'good');
       ctx.stat('happiness', 8);
     }

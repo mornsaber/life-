@@ -28,6 +28,7 @@ import { COUNTRIES, localizeTerms, isCitizen, citizenshipsOf } from '../world/Co
 import { universityOf, defaultUniversity, offers, placeOf } from './Universities.js';
 import { REGIONS, changeRegion } from '../life/Regions.js';
 import { arrive, bannedFrom } from '../world/Migration.js';
+import { showResult } from '../life/ResultCards.js';
 
 /** A university by id, or the local stand-in for one of the old school-type ids ('state', 'elite'…). */
 export function resolveSchool(state, id, programId = null, major = null) {
@@ -499,6 +500,7 @@ export const EducationEngine = {
         state.education.degrees.push(degree);
         ctx.log(`You graduated from ${uni?.name ?? SCHOOLS[e.schoolId].name}: ${label} (GPA ${e.gpa.toFixed(2)}${honors ? `, ${honors}` : ''})! 🎓`, '🎓', 'milestone');
         ctx.toast(`Graduated: ${label}`, 'good');
+        showResult(ctx, { icon: '🎓', title: uni?.name ?? SCHOOLS[e.schoolId].name, big: 'Graduated', sub: `${label}, GPA ${e.gpa.toFixed(2)}${honors ? `, ${honors}` : ''}`, tone: 'good' });
         ctx.stat('happiness', 10);
         ctx.emit('education:graduated', { degree });
       } else {

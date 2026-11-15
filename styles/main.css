@@ -1173,3 +1173,15 @@ main.phone .subtab { border-radius: 999px; }
 .result-card.good { border-color: var(--green, #16a34a); }
 .result-card.bad { border-color: var(--red, #dc2626); }
 .result-big { font-size: 2rem; font-weight: 800; min-width: 3.2ch; text-align: center; }
+
+/* Result cards (life/ResultCards.js) */
+.result-modal { text-align: center; }
+.result-modal .result-big { font-size: 2.6rem; font-weight: 800; line-height: 1.1; margin: 6px 0 4px; }
+.result-modal.good .result-big { color: var(--green, #16a34a); }
+.result-modal.bad .result-big { color: var(--red, #dc2626); }
+.yr-results { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin: 6px 0 10px; }
+.yr-result { border: 1px solid var(--line); border-radius: 12px; padding: 8px 10px; background: var(--panel); text-align: center; }
+.yr-result b { display: block; font-size: 1.3rem; }
+.yr-result.good b { color: var(--green, #16a34a); }
+.yr-result.bad b { color: var(--red, #dc2626); }
+.yr-result small { display: block; }

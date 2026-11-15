@@ -331,6 +331,20 @@ export function logControls({ query = '', kind = 'all' } = {}) {
 /* ------------------------------------------------------------------ */
 
 export function promptModal(prompt, queued) {
+  // A result card (life/ResultCards.js): the headline big, then one button.
+  if (prompt.type === 'results.card' && prompt.data?.card) {
+    const r = prompt.data.card;
+    return `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="prompt-title">
+    <div class="modal result-modal ${esc(r.tone)}">
+      <div class="modal-icon" aria-hidden="true">${r.icon}</div>
+      <h2 id="prompt-title">${flagEmojiToImg(esc(r.title))}</h2>
+      <div class="result-big">${esc(r.big)}</div>
+      ${r.sub ? `<p class="modal-text">${flagEmojiToImg(esc(r.sub))}</p>` : ''}
+      <div class="modal-options"><button class="option" data-action="engine.resolve" data-prompt="${esc(prompt.id)}" data-option="ok"><kbd aria-hidden="true">1</kbd><span class="option-label">Continue</span></button></div>
+      ${queued > 1 ? `<p class="modal-queue">${queued - 1} more decision${queued > 2 ? 's' : ''} waiting this year</p>` : ''}
+    </div>
+  </div>`;
+  }
   const [lead, ...rest] = String(prompt.text ?? '').split('\n');
   return `<div class="overlay" role="dialog" aria-modal="true" aria-labelledby="prompt-title" aria-describedby="prompt-text">
     <div class="modal">

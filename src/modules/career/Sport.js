@@ -21,6 +21,7 @@ import { addHonor, currentYear, yearlyCount, bumpYearly } from '../../core/State
 import { clamp } from '../../core/Random.js';
 import { leaveJob } from './CareerEngine.js';
 import { COUNTRIES } from '../world/Countries.js';
+import { showResult } from '../life/ResultCards.js';
 
 export const DISCIPLINES = {
   football: { label: '⚽ Football', cup: { name: 'FIFA World Cup', every: 2 }, olympic: false, strong: { BR: 1.5, AR: 1.5, FR: 1.5, DE: 1.3, ES: 1.4, GB: 1.2, IT: 1.2, NL: 1.2, PT: 1.2, MX: 0.8, US: 0.8, JP: 0.7, KR: 0.7 } },
@@ -117,6 +118,7 @@ function athleteYear(ctx) {
       ctx.emit('fame:buzz', { amount: place === 1 ? 20 : 12 });
       ctx.stat('happiness', 12);
       ctx.log(`${{ 1: 'GOLD', 2: 'Silver', 3: 'Bronze' }[place]} at the Olympic Games in ${city}. ${place === 1 ? 'Your anthem, your flag, and a crowd on its feet.' : 'An Olympic medal: nobody can take that away.'}`, { 1: '🥇', 2: '🥈', 3: '🥉' }[place], 'milestone');
+      showResult(ctx, { icon: { 1: '🥇', 2: '🥈', 3: '🥉' }[place], title: `The Olympic Games, ${city}`, big: { 1: 'Gold', 2: 'Silver', 3: 'Bronze' }[place], tone: 'good' });
       if (place === 1) job.performance = Math.min(100, (job.performance ?? 60) + 10);
     } else ctx.log(`You competed at the Olympic Games in ${city}: an Olympian for life, if not a medallist.`, '🏟️', 'good');
   }

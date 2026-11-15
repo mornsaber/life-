@@ -28,6 +28,7 @@ import { yearNow } from '../world/Eras.js';
 import { priceLevel, COUNTRIES } from '../world/Countries.js';
 import { addBuzz } from '../life/Fame.js';
 import { REGIONS } from '../life/Regions.js';
+import { showResult } from '../life/ResultCards.js';
 
 const local = (state, n) => Math.round(n * priceLevel(state));
 const side = (state, salt) => new Random(((state.world?.seed ?? 5) * 40503 + state.character.age * 3011 + salt) >>> 0);
@@ -159,6 +160,7 @@ function season(ctx) {
   c.seasons = [...c.seasons.slice(-9), { year: y, pos, of: teams, div, note, cup, net }];
   c.losses = [...(c.losses ?? []).slice(-2), net];
   if (note === 'champions' || cup) addBuzz(state, note === 'champions' ? 10 : 5);
+  showResult(ctx, { icon: s.icon, title: `${c.name}, ${y}`, big: ordinal(pos), sub: `${div}${note ? ` · ${note}` : ''}${cup ? ' · cup winners' : ''}`, tone: ['champions', 'promoted'].includes(note) || cup ? 'good' : note === 'relegated' ? 'bad' : 'info', popup: Boolean(note && note !== 'playoffs') || cup });
   ctx.log(`${c.name} finished ${ordinal(pos)} of ${teams} in ${div}${note === 'promoted' ? ' — promoted!' : note === 'relegated' ? ' — relegated.' : note === 'champions' ? ' — champions!' : note === 'playoffs' ? ', and made the playoffs' : ''}${cup ? ' And they won the cup.' : ''} The club ${net >= 0 ? `made $${net.toLocaleString()}` : `lost $${(-net).toLocaleString()}`}.`, s.icon, note === 'champions' || note === 'promoted' || cup ? 'milestone' : note === 'relegated' ? 'bad' : 'info');
   // Financial Fair Play (European football, from 2011): three years of big losses.
   if (!s.franchise && y >= 2011 && c.tier === 3 && c.losses.length === 3 && c.losses.reduce((a, b) => a + b, 0) < -clubPrice(state, c.sport, c.tier) * 0.1 && rng.chance(0.5)) {

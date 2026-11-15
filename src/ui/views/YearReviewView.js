@@ -3,6 +3,7 @@
  * Built by the engine (core/YearReview.js); this only draws it.
  */
 import { esc, money, card, chip, meter } from '../Components.js';
+import { resultsThisYear } from '../../modules/life/ResultCards.js';
 import { STAT_META } from '../../core/State.js';
 import { CONDITIONS } from '../../modules/health/Conditions.js';
 import { nextSteps, tipsFor } from '../../modules/life/Guide.js';
@@ -27,10 +28,12 @@ export function yearReviewCard(state) {
   const worthy = Math.abs(y.worth ?? 0) >= 100 || Math.abs(y.cash ?? 0) >= 100;
   const flows = [y.earned && y.earned.amount >= 100 ? `Most came from <b>${esc(y.earned.label)}</b> (${money(y.earned.amount)})` : '', y.spent && y.spent.amount >= 100 ? `most went on <b>${esc(y.spent.label)}</b> (${money(y.spent.amount)})` : ''].filter(Boolean).join('; ');
   const moneyLine = worthy && state.character.age >= 16 ? `<p class="yr-money">💵 Cash <b class="${y.cash >= 0 ? 'pos' : 'neg'}">${moneyDelta(y.cash)}</b> · Net worth <b class="${y.worth >= 0 ? 'pos' : 'neg'}">${moneyDelta(y.worth)}</b>${flows ? `<br><small class="muted">${flows.replace(/^m/, 'M')}.</small>` : ''}</p>` : '';
-  const quiet = !stats && !rows.length && !highlights && !moneyLine;
+  // The year's result cards (elections, verdicts, offers, finals, seasons).
+  const results = resultsThisYear(state).map((r) => `<div class="yr-result ${esc(r.tone)}"><small>${r.icon} ${esc(r.title)}</small><b>${esc(r.big)}</b>${r.sub ? `<small class="muted">${esc(r.sub)}</small>` : ''}</div>`).join('');
+  const quiet = !stats && !rows.length && !highlights && !moneyLine && !results;
   const body = quiet
     ? '<p class="muted">A quiet year. Nothing much changed.</p>'
-    : `${stats ? `<div class="chip-row">${stats}</div>` : ''}${moneyLine}${rows.length ? `<ul class="yr-list">${rows.join('')}</ul>` : ''}${highlights ? `<h4 class="sub">Moments</h4><ul class="yr-list">${highlights}</ul>` : ''}${y.entries > (y.highlights?.length ?? 0) ? '<p class="fine">The full year is in your Life Story below.</p>' : ''}`;
+    : `${results ? `<div class="yr-results">${results}</div>` : ''}${stats ? `<div class="chip-row">${stats}</div>` : ''}${moneyLine}${rows.length ? `<ul class="yr-list">${rows.join('')}</ul>` : ''}${highlights ? `<h4 class="sub">Moments</h4><ul class="yr-list">${highlights}</ul>` : ''}${y.entries > (y.highlights?.length ?? 0) ? '<p class="fine">The full year is in your Life Story below.</p>' : ''}`;
   return card(`Age ${y.age}: The Year in Review`, body, { icon: '🗓️', accent: 'blue', className: 'year-review', fold: false });
 }
 

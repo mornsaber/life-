@@ -21,6 +21,7 @@ import { runEligibility, voteShare, endorsementEligible } from './Campaigns.js';
 import { ISSUES, ISSUE_IDS, platformOf, setStance } from './Platform.js';
 import { executiveOf } from './Legislature.js';
 import { electorateOf, newCampaign, nextElectionYear, FILING_WINDOW, outsideCalendar, generalShare, primaryShare, takePoll, opponentLabel, distance } from './Elections.js';
+import { showResult } from '../life/ResultCards.js';
 
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 const abroad = (state) => (state.character.countryId ?? 'US') !== 'US';
@@ -61,10 +62,12 @@ function legacyElection(ctx) {
   settleDeposit(ctx, c, share);
   if (share > 0.5) {
     ctx.log(`🗳️ You won ${office.name} with ${pct(share)} of the vote!`, '🎉', 'good');
+    showResult(ctx, { icon: '🗳️', title: office.name, big: 'Elected', sub: `${pct(share)} of the vote`, tone: 'good' });
     ctx.emit('politics:take', { officeId: c.officeId });
   } else {
     p.recognition = Math.min(100, p.recognition + 4);
     ctx.log(`🗳️ You lost the race for ${office.name} (${pct(share)}).`, '📉', 'bad');
+    showResult(ctx, { icon: '🗳️', title: office.name, big: 'Defeated', sub: `${pct(share)} of the vote`, tone: 'bad' });
     ctx.stat('happiness', -8);
   }
 }

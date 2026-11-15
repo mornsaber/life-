@@ -26,6 +26,7 @@ import { yearNow } from '../world/Eras.js';
 import { priceLevel } from '../world/Countries.js';
 import { commitOffense } from '../legal/JusticeSystem.js';
 import { addBuzz } from '../life/Fame.js';
+import { showResult } from '../life/ResultCards.js';
 
 const local = (state, n) => Math.round(n * priceLevel(state));
 const side = (state, salt) => new Random(((state.world?.seed ?? 4) * 69621 + state.character.age * 1031 + salt) >>> 0);
@@ -126,6 +127,7 @@ function fundYear(ctx) {
     ctx.stat('happiness', -20);
     return void ctx.log(`${f.name} is finished: a ${Math.round(-r * 100)}% loss, and the lenders took what was left. The papers called it the blow-up of the year.`, '💀', 'bad');
   }
+  showResult(ctx, { icon: r >= 0 ? '📈' : '📉', title: `${f.name}, ${y}`, big: `${r >= 0 ? '+' : ''}${Math.round(r * 100)}%`, sub: fees > 0 ? `Your fees: $${fees.toLocaleString()}` : '', tone: r >= 0 ? 'good' : 'bad', popup: Math.abs(r) >= 0.25 });
   ctx.log(`${f.name} returned ${r >= 0 ? '+' : ''}${Math.round(r * 100)}% this year${fees > 0 ? `; your fees came to $${fees.toLocaleString()}` : ''}.`, r >= 0 ? '📈' : '📉', r >= 0 ? 'good' : 'warn');
   if (f.closedToOutside) return;
   // Investors follow performance (and the gates you put up).
