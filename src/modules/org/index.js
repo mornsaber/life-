@@ -17,6 +17,18 @@ import { ensureDepartment } from '../career/ManagementEngine.js';
 import { employerAt } from './Reentry.js';
 import { OfficeActions, officeTick, syncOfficeSeat } from './ElectedOffices.js';
 
+/** No post is held by someone who has left: people leave by many roads, so sweep once. */
+function clearDepartedHeads(state) {
+  const myOrg = state?.career?.job?.employer?.orgId ?? null;
+  for (const org of Object.values(state?.orgs?.byId ?? {})) {
+    if (!org?.people || org.military) continue;
+    // You no longer work there: you no longer head it (or any of its departments).
+    if (org.id !== myOrg) { if (org.playerHead) org.playerHead = false; for (const d of Object.values(org.departments ?? {})) if (d.playerHead) d.playerHead = false; }
+    for (const d of Object.values(org.departments ?? {})) if (d.head && !org.people[d.head]) d.head = null;
+    if (org.head && !org.people[org.head]) org.head = null;
+  }
+}
+
 export const OrgModule = {
   ...OrganizationsModule,
   actions: { ...ReentryActions, ...SupervisionActions, ...GovernmentActions, ...ExecutiveActions, ...OfficeActions },
@@ -24,6 +36,8 @@ export const OrgModule = {
   setup(engine) {
     // Winning or leaving office changes who runs the sheriff's office, the DA's office, the county or the city.
     engine.bus.on('politics:officeChanged', ({ ctx }) => syncOfficeSeat(ctx));
+    // …and after every decision, before it is saved.
+    engine.bus.on('beforeCommit', (state) => clearDepartedHeads(state));
   },
   resolvers: { ...ReentryResolvers, ...executiveResolvers({ hire, recalcSalary, employerAt, ensureDepartment }) },
 
@@ -34,5 +48,14 @@ export const OrgModule = {
     officeTick(ctx);
     npcBusinessesTick(ctx);
     refreshExecutiveSearch(ctx.state);
+  },
+
+  /**
+   * After everything else this year: no post is held by someone who has left. People leave by many
+   * roads (turnover, appointments, mergers), and a head can be filed under another department
+   * than the one they run, so sweep once rather than at each road.
+   */
+  onYearEnd(ctx) {
+    clearDepartedHeads(ctx.state);
   },
 };

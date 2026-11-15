@@ -495,6 +495,9 @@ export const IntlOrgsModule = {
       job.intlPost = data.post;
       job.intlTerm = state.character.age + t.term;
       vacateSeat(state, job);
+      // You head the organization now: nobody else sits above you in it.
+      const org = state.orgs?.byId?.[job.employer.orgId];
+      if (org) { if (org.head) delete org.people?.[org.head]; org.head = null; org.playerHead = true; }
       return ctx.log(`You were appointed ${job.title}, for ${t.term} years.`, profession.icon, 'honor');
     },
   },

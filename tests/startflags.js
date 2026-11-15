@@ -45,7 +45,10 @@ const tests = {
     state.prompts = []; state.stats.health = 95; engine.ageUp();
     assert.equal(state.career.job.title, 'Secretary-General of the United Nations');
     const html = Object.values(VIEWS).map((v) => { try { return v(state, {}); } catch { return ''; } }).join('');
-    assert.ok(!/Assistant Secretary-General/.test(html));
+    // Your own post and your boss: never an Assistant Secretary-General (the ASGs under you may be listed).
+    const text2 = html.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ');
+    assert.ok(!/Supervisor [^·]*Assistant Secretary-General/.test(text2), 'an ASG as your supervisor');
+    assert.ok(!/You (?:were|are) (?:appointed |promoted to )?(?:an )?Assistant Secretary-General/.test(text2), 'you as an ASG');
   },
 };
 let failed = 0;

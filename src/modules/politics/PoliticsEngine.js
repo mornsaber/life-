@@ -483,7 +483,7 @@ export const PoliticsEngine = {
       return undefined;
     },
     appointmentOffer(ctx, data, optionId) {
-      if (optionId !== 'accept') return ctx.log('You declined the governor\'s offer.', '🙅');
+      if (optionId !== 'accept') return ctx.log((ctx.state.character.countryId ?? 'US') === 'US' ? 'You declined the governor\'s offer.' : 'You declined the appointment.', '🙅');
       if (data.kind === 'judge') takeOffice(ctx, 'judge', { appointed: true });
       else ctx.emit('career:appoint', { levelId: data.levelId });
     },

@@ -360,8 +360,11 @@ fromPacks(UNIONS, 'UNIONS');
 /** The kind of union (police, fire, public, ...) a US union name in the game is. */
 export const unionKind = (usName) => (usName ? UNION_KIND[usName] ?? null : null);
 
+/** Plain names by kind, for countries without their own table: never an American union abroad. */
+const GENERIC_UNION = { police: 'Police union', fire: 'Firefighters\' union', ems: 'Ambulance workers\' union', health: 'Health workers\' union', education: 'Teachers\' union', public: 'Public service union', prisons: 'Prison officers\' union', transport: 'Transport workers\' union', rail: 'Railway workers\' union', pilots: 'Pilots\' association', aviation: 'Aviation workers\' union', trades: 'Building trades union', industry: 'Industrial workers\' union', retail: 'Retail workers\' union', hospitality: 'Hospitality workers\' union', services: 'Service workers\' union', media: 'Journalists\' union', tech: 'Tech workers\' union', arts: 'Performers\' union', postal: 'Postal workers\' union' };
 export function localUnionName(countryId, usName) {
-  if (!countryId || countryId === 'US' || !UNIONS[countryId]) return usName;
+  if (!countryId || countryId === 'US') return usName;
+  if (!UNIONS[countryId]) return usName in UNION_KIND ? (UNION_KIND[usName] ? GENERIC_UNION[UNION_KIND[usName]] ?? 'Workers\' union' : null) : usName;
   if (!(usName in UNION_KIND)) return Object.values(UNIONS[countryId]).includes(usName) ? usName : UNIONS[countryId].services ?? null;
   const kind = UNION_KIND[usName];
   return kind ? UNIONS[countryId][kind] ?? null : null;

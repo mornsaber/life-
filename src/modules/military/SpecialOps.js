@@ -109,8 +109,10 @@ export function graduate(ctx, svc, pipelineId) {
   state.military.selection = null;
   svc.sof = sofRecord(pipelineId, state.character.age, svc);
   const mos = p.mos?.[svc.track];
-  if (mos && MOS[mos]) svc.mos = mos;
-  else if (MOS[mos?.replace('army.', 'guard.')]) svc.mos = mos.replace('army.', 'guard.');
+  // Your own branch's version of the job first (a Guard soldier becomes guard.18X, not army.18X).
+  const own = mos?.replace(/^[a-z]+\./, `${svc.branch}.`);
+  if (own && MOS[own]) svc.mos = own;
+  else if (mos && MOS[mos] && MOS[mos].branch === svc.branch) svc.mos = mos;
   svc.specialty = p.specialty ?? svc.specialty;
   svc.eval = Math.min(100, svc.eval + 10);
   ctx.stat('happiness', 10);

@@ -81,6 +81,8 @@ function vacateHead(state, org, deptId, why) {
   if (p) {
     rememberDeparture(state, org, p, why);
     delete org.people[p.id];
+    // They may also be filed as another department's head: nobody heads anything after leaving.
+    for (const d of Object.values(org.departments ?? {})) if (d.head === p.id) d.head = null;
   }
   if (deptId) org.departments[deptId].head = null;
   else org.head = null;

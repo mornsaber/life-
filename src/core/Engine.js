@@ -417,6 +417,8 @@ export class Engine {
   }
 
   commit() {
+    // Modules tidy what they own before it is saved (e.g. org posts held by people who have left).
+    if (this.state) this.bus.emit('beforeCommit', this.state);
     // A refused save (storage full) mustn't fail silently: warn once, until a save works again.
     const saved = this.store.save() !== false;
     if (!saved && !this.saveWarned) this.toast('Your browser\'s storage is full, so this life isn\'t being saved. Export it (Menu → Saved Lives → Export this life) or delete an old save.', 'bad');

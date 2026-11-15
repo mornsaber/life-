@@ -562,7 +562,7 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   }
   const t = orgType(org.typeId);
   // The player holds the organization's top job: they answer to whoever appointed or elected them.
-  const isHead = t?.head.occupation === job.professionId && t.head.levelId === job.levelId;
+  const isHead = (t?.head.occupation === job.professionId && t.head.levelId === job.levelId) || Boolean(job.intlPost && org.playerHead);
   // In a small organization the department head and the boss are one level: show the boss.
   const tiny = Object.values(org.departments).reduce((n, d) => n + (d.headcount ?? 0), 0) < 15 && Boolean(org.head ?? org.ceo);
   const deptHead = isHead || tiny ? null : personOf(org, dept.head);

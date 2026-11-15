@@ -61,6 +61,9 @@ export function syncHeadSeat(org, deptId, profession, level) {
     else org.head = head.id;
   }
   for (const id of list) if (id !== head?.id) delete org.people[id];
+  // No department is left headed by someone who has just gone.
+  for (const d of Object.values(org.departments ?? {})) if (d.head && !org.people[d.head]) d.head = null;
+  if (org.head && !org.people[org.head]) org.head = null;
   dept.seats[profession.id] ??= {};
   dept.seats[profession.id][level.id] = head && !mine ? [head.id] : [];
   if (head) Object.assign(head, { professionId: profession.id, levelId: level.id, deptId });
@@ -133,6 +136,8 @@ function fillWithRival(state, org, deptId, profession, level, rival, size = org.
     const person = rival?.person ?? newPerson(rng, org, { selection: 'hired', years: 0, age: Math.min(62, 30 + level.grade * 3 + rng.int(0, 8)) });
     if (person.levelId) removeSeat(org.departments[person.deptId ?? deptId] ?? org.departments[deptId], person.professionId ?? profession.id, person.levelId, person.id);
     Object.assign(person, { professionId: profession.id, levelId: level.id, deptId, title: level.title, selection: rival?.person && !rival.external ? 'internal' : 'hired' });
+    // An outside winner joins the staff (they were on another organization's books).
+    org.people[person.id] ??= person;
     if (post.deptId) org.departments[post.deptId].head = person.id;
     else org.head = person.id;
     syncHeadSeat(org, deptId, profession, level);

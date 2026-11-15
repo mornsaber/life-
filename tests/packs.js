@@ -128,7 +128,8 @@ function life(cc, seed) {
   const country = COUNTRIES[cc];
   const tryDo = (fn, where) => { try { fn(); } catch (e) { flag(`threw: ${e.message.split('\n')[0]}`, `${where}\n${e.stack.split('\n').slice(1, 4).join('\n')}`); } };
   const solve = () => { for (let g = 0; g < 15 && state.prompts.length; g++) { const pr = state.prompts[0]; const opts = pr.options.filter((o) => !o.disabled && o.id !== 'cancel'); engine.resolvePrompt(pr.id, rng.pick(opts.length ? opts : pr.options).id); } };
-  const render = (where) => tryDo(() => {
+  // A life that emigrated reads its new country's words, rightly: scan only while still at home.
+  const render = (where) => (state.character.countryId ?? 'US') !== cc ? undefined : tryDo(() => {
     // (The move screen lists every other country, base included.)
     for (const [name, view] of Object.entries(VIEWS).filter(([n]) => n !== 'move')) {
       const text = strip(localizeHtml(view(state, {}), country));
