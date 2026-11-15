@@ -43,6 +43,7 @@ import { childMortality, childCause, maternalRisk, childbirthCause, periodRng } 
 import { longevityFactor } from '../world/Eras.js';
 import { parentsEstate, spouseDied } from './Succession.js';
 import { statuteIn } from '../politics/StatuteBook.js';
+import { eraScale } from '../economy/EraEconomy.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -64,7 +65,9 @@ export function makePerson(ctx, { relation, gender, age, lastName, relationship 
   const { rng, state } = ctx;
   const g = gender ?? rng.pick(['male', 'female']);
   const name = randomName(rng, g);
-  const [title, pay, sector] = rng.pick(JOBS);
+  const [title, modernPay, sector] = rng.pick(JOBS);
+  // Pay of the era (economy/EraEconomy.js): a clerk's wage in 1900 bought far less.
+  const pay = modernPay * eraScale(state, 'wage');
   const person = {
     id: rng.id('per_'), firstName: name.firstName, lastName: lastName ?? name.lastName, gender: g, relation,
     ageOffset: age - state.character.age, relationship: clampRel(relationship), alive: true,
@@ -229,7 +232,8 @@ function partnerTick(ctx) {
     partner.careerIncome = Math.round(partner.careerIncome * rng.float(1.0, 1.03));
     partner.income = partner.job ? partner.careerIncome : 0;
   } else if (age >= 65) {
-    partner.income = spouseSocialSecurity(partner) + (partner.sector === 'public' ? Math.round(partner.careerIncome * 0.3) : 0);
+    // A state pension only where one exists yet (from 1889 in Germany, 1908 in Britain, 1935 in the US).
+    partner.income = (statuteIn(state, 'statePension') ? spouseSocialSecurity(partner) : 0) + (partner.sector === 'public' ? Math.round(partner.careerIncome * 0.3) : 0);
     partner.job = null;
   }
   if (partner.relation === 'spouse' && partner.income > 0) {
@@ -277,8 +281,10 @@ function childrenTick(ctx) {
     }
     if (age === 18) ctx.log(`${child.firstName} turned 18${child.custody === 'ex' ? '' : ' and moved out'}.`, '🎓');
   }
-  if (costs) ctx.spend(Math.round(costs), 'Child expenses', { allowDebt: true });
-  if (childcare) ctx.spend(Math.round(childcare), 'Childcare', { allowDebt: true });
+  // Costs of their era (economy/EraEconomy.js): a child in 1880 cost a fraction of one today.
+  const era = eraScale(state, 'living');
+  if (costs) ctx.spend(Math.round(costs * era), 'Child expenses', { allowDebt: true });
+  if (childcare) ctx.spend(Math.round(childcare * era), 'Childcare', { allowDebt: true });
   // 529s grow with a balanced portfolio.
   const ret = realReturn(state.economy, profileReturn(state.economy, 'balanced'));
   for (const id of Object.keys(state.people.fund529)) state.people.fund529[id] = Math.max(0, Math.round(state.people.fund529[id] * (1 + ret)));

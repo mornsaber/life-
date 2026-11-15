@@ -49,13 +49,15 @@ const tests = {
   },
   'the great emigrations take brothers and sisters abroad'() {
     let gone = 0;
-    for (let seed = 1; seed <= 4; seed++) {
+    // Famine-era Ireland: about a quarter of siblings leave within eight years (some die first: adults
+    // died far younger then), so judge it over enough families.
+    for (let seed = 1; seed <= 8; seed++) {
       const { engine, state } = grown('IE', 1850, 20, {}, seed);
       const sibs = [kin(state, 'sibling', 1), kin(state, 'sibling', 3), kin(state, 'sibling', -2)];
       for (let i = 0; i < 8; i++) year(engine, state);
       gone += sibs.filter((s) => s.livesIn && s.livesIn !== 'IE').length;
     }
-    assert.ok(gone >= 3, `${gone}/12 emigrated`);
+    assert.ok(gone >= 5, `${gone}/24 emigrated`);
   },
   'Partition sends relatives across the new border'() {
     let crossed = 0;

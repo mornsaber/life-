@@ -117,7 +117,7 @@ function conditionRow(state, c) {
   const def = CONDITIONS[c.id];
   const cost = def.annualCost ? estimateOutOfPocket(state, def.annualCost, c) : 0;
   const addiction = def.kind === 'addiction';
-  const risk = conditionMortality(c);
+  const risk = conditionMortality(c, state);
   const action = c.remission ? '' : addiction
     ? button('🏥 Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']), hint: `~${money(estimateOutOfPocket(state, REHAB_COST, c))}` })
     : c.waitUntil != null ? button('🏥 Go private', 'health.goPrivate', { arg: c.id, variant: 'tiny', hint: money(goPrivateCost(state, def)) })
@@ -247,7 +247,7 @@ function doctorCard(state) {
     const def = CONDITIONS[c.id];
     if (def.kind === 'addiction') steps.push(['🏥', `Get help for ${def.name.toLowerCase()}`, button('Rehab', 'health.rehab', { arg: c.id, variant: 'tiny', disabled: Boolean(state.yearly['health.rehab']) }), 'Conditions']);
     else if (isMental(c)) steps.push(['🧠', `Start care for ${def.name.toLowerCase()}`, button('See the options', 'ui.tab', { arg: 'conditions', variant: 'tiny' }), 'Conditions']);
-    else steps.push(['💊', `Treat your ${def.name.toLowerCase()} (${(conditionMortality(c) * 100).toFixed(1)}%/yr risk untreated)`, button('Treat', 'health.treat', { arg: c.id, variant: 'tiny' }), 'Conditions']);
+    else steps.push(['💊', `Treat your ${def.name.toLowerCase()} (${(conditionMortality({ ...c, treated: false }, state) * 100).toFixed(1)}%/yr risk untreated)`, button('Treat', 'health.treat', { arg: c.id, variant: 'tiny' }), 'Conditions']);
   }
   for (const c of known.filter((x) => x.waitUntil != null).slice(0, 1)) steps.push(['⏳', `${CONDITIONS[c.id].name}: waiting until ${c.waitUntil}`, button(`Go private (${money(goPrivateCost(state, CONDITIONS[c.id]))})`, 'health.goPrivate', { arg: c.id, variant: 'tiny' }), 'Cover']);
   if (!state.yearly['health.checkup'] && age >= 18) steps.push(['🩺', screeningsFor(state).length ? `A checkup: ${screeningsFor(state).map((s) => s.name.replace(/^An? /, '')).slice(0, 2).join(', ')} due` : 'An annual checkup catches silent conditions early', button('Book it', 'health.checkup', { variant: 'tiny' }), 'Cover']);

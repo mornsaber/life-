@@ -19,7 +19,7 @@
  * ACUTE `inflicted`: only other systems inflict it (health:acute), never the random yearly event.
  */
 import { clamp } from '../../core/Random.js';
-import { conditionEraFactor } from './PeriodHealth.js';
+import { conditionEraFactor, treatmentWorks } from './PeriodHealth.js';
 
 export const KINDS = {
   acute: { name: 'Acute', icon: '🚑' },
@@ -86,11 +86,13 @@ export const hasCondition = (state, id) => activeConditions(state).some((c) => c
 export const getCondition = (state, id) => state.health?.conditions.find((c) => c.id === id);
 
 /** Yearly mortality contributed by a condition (risk at severity 100 untreated). */
-export function conditionMortality(c) {
+export function conditionMortality(c, state = null) {
   const def = CONDITIONS[c.id];
   if (c.remission || !def.mortality) return 0;
   const sev = c.severity / 100;
-  return def.mortality * sev * sev * (c.treated ? def.treatedFactor + 0.15 : 1);
+  // Treatment of its day (health/PeriodHealth.js): before the cure existed, it did far less.
+  const w = c.treated ? treatmentWorks(state, c.id) : 0;
+  return def.mortality * sev * sev * (1 - w * (1 - (def.treatedFactor + 0.15)));
 }
 
 /**
@@ -99,7 +101,7 @@ export function conditionMortality(c) {
  */
 export function healthMortality(state) {
   // Deadlier before their treatment existed (health/PeriodHealth.js).
-  const parts = activeConditions(state).map((c) => ({ id: c.id, risk: conditionMortality(c) * conditionEraFactor(state, c.id) })).filter((p) => p.risk > 0);
+  const parts = activeConditions(state).map((c) => ({ id: c.id, risk: conditionMortality(c, state) * conditionEraFactor(state, c.id) })).filter((p) => p.risk > 0);
   return { total: clamp(parts.reduce((s, p) => s + p.risk, 0), 0, 0.9), parts };
 }
 

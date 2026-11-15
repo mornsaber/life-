@@ -54,8 +54,24 @@ export const TREATMENTS = {
   ct: ['CT scans', 1977],
   statins: ['Statins', 1988],
   haart: ['HIV drugs that work', 1996],
+  antihypertensives: ['Blood-pressure pills', 1958],
+  antidepressants: ['Antidepressants', 1958],
+  inhalers: ['Asthma inhalers', 1960],
   hepCCure: ['A cure for hepatitis C', 2014],
 };
+/**
+ * The medicine that made each condition's treatment work. Before it, a doctor could ease a
+ * condition (rest, diet, nursing, laudanum) but rarely stop it: treatment does a fifth of what
+ * it does now. Conditions not listed are treated as well then as now.
+ */
+const CURE_FOR = { hypertension: 'antihypertensives', heartDisease: 'cardiacCare', stroke: 'cardiacCare', cancer: 'chemotherapy', diabetes: 'insulin', kidneyDisease: 'dialysis', copd: 'inhalers', asthma: 'inhalers', hiv: 'haart', hepatitisC: 'hepCCure', tuberculosis: 'streptomycin', syphilis: 'antibiotics', depression: 'antidepressants', anxiety: 'antidepressants', ptsd: 'antidepressants' };
+/** How much of today's treatment works for this condition here and now (1 = all of it). */
+export function treatmentWorks(state, id) {
+  const cure = CURE_FOR[id];
+  if (!cure || !state || (!state.era && yearNow(state) >= PRESENT)) return 1;
+  return available(state, cure) ? 1 : 0.2;
+}
+
 /** Is a treatment in general use here, this year? */
 export function available(state, id) {
   const t = TREATMENTS[id];

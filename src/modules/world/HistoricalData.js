@@ -145,13 +145,17 @@ const lifeNow = (cc) => [...(DEMOGRAPHY[cc]?.life ?? [])].reverse().find((v) => 
 
 /**
  * How much likelier an adult was to die in a given year than today, from life expectancy then and
- * now: roughly (now / then)², capped at 3 (most of the gap was children's deaths, not adults').
+ * now: roughly (now / then)^2.5, capped at 6. Much of the gap in life expectancy was children's
+ * deaths, but adults died far younger too: in 1860 a forty-year-old American was about six times
+ * likelier to die within the year than today, a seventy-year-old about three times
+ * (US and English life tables). Calibrated so a life that reaches twenty in 1850 lives to
+ * about 62 on average, in 1900 to about 68, in 1950 to about 75 (tests/erabalance.js).
  */
 export function eraMortality(cc, year, age) {
   if (age < 15) return 1;
   const then = demographyAt(cc, year)?.life;
   if (!then) return 1;
-  return Math.max(1, Math.min(3, (lifeNow(cc) / then) ** 2));
+  return Math.max(1, Math.min(6, (lifeNow(cc) / then) ** 2.5));
 }
 
 /* ---------------------------------------------------------------- names */

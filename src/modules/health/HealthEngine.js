@@ -30,7 +30,7 @@ import { discharge } from '../military/MilitaryEngine.js';
 import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } from './Lifestyle.js';
 import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
 import { fitsEra } from '../world/Eras.js';
-import { treatedAcuteDeath, available } from './PeriodHealth.js';
+import { treatedAcuteDeath, available, treatmentWorks } from './PeriodHealth.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -170,11 +170,13 @@ function progress(ctx) {
       c.treated = true;
       ctx.log(`Your turn came: treatment for your ${def.name.toLowerCase()} started.`, def.icon, 'good');
     }
+    // Treatment of its day takes only part of the time before its cure existed (PeriodHealth).
+    const works = c.treated && rng.chance(treatmentWorks(state, c.id));
     // Untreated mental illness waxes and wanes; physical disease and addiction march on.
-    const drift = c.treated ? def.progress * rng.float(-1.3, 0.35) : def.kind === 'mental' ? def.progress * rng.float(-0.9, 1.0) : def.progress * rng.float(0.4, 1.4);
+    const drift = works ? def.progress * rng.float(-1.3, 0.35) : def.kind === 'mental' ? def.progress * rng.float(-0.9, 1.0) : def.progress * rng.float(0.4, 1.4);
     c.severity = Math.round(clamp(c.severity + drift, 0, 100));
     // Treatment drives remission; mental illness and addiction sometimes lift on their own.
-    const remissionChance = c.treated ? def.remission : def.kind === 'mental' || def.kind === 'addiction' ? (def.remission ?? 0.1) * 0.3 : 0;
+    const remissionChance = works ? def.remission : def.kind === 'mental' || def.kind === 'addiction' ? (def.remission ?? 0.1) * 0.3 : 0;
     if (remissionChance && (c.severity <= 12 || rng.chance(remissionChance))) {
       c.remission = true;
       c.treated = false;
@@ -184,7 +186,7 @@ function progress(ctx) {
     }
     if (!c.diagnosed && c.severity >= 60) diagnose(ctx, c, 'Symptoms finally sent you to a doctor:');
     const weight = c.severity / 100;
-    const factor = c.treated ? def.treatedFactor : 1;
+    const factor = works ? def.treatedFactor : 1;
     if (def.drain) ctx.stat('health', -Math.round(def.drain * weight * factor));
     if (def.happiness) ctx.stat('happiness', Math.round(def.happiness * weight * (c.treated ? 0.3 : 1)));
     if (def.stress) ctx.stat('stress', Math.round(def.stress * weight * (c.treated ? 0.3 : 1)));

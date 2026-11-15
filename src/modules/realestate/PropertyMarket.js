@@ -15,6 +15,7 @@ import { isAbroad } from '../world/Countries.js';
 import { regionsHere } from '../life/Regions.js';
 import { yearNow, propertyInEra } from '../world/Eras.js';
 import { statuteIn } from '../politics/StatuteBook.js';
+import { eraScale } from '../economy/EraEconomy.js';
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -68,18 +69,18 @@ export const marketIndex = (state, regionId) => state.housing.market[regionId] ?
 const priceFactor = (regionId) => REGIONS[regionId].col ** 1.6;
 
 export function priceOf(state, type, regionId) {
-  return PROPERTY_TYPES[type].base * priceFactor(regionId) * marketIndex(state, regionId);
+  return PROPERTY_TYPES[type].base * priceFactor(regionId) * marketIndex(state, regionId) * eraScale(state, 'house');
 }
 
 /** Monthly market rent for one unit of a property type. */
 export function marketRent(state, type, regionId) {
-  return Math.round(PROPERTY_TYPES[type].rent * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5);
+  return Math.round(PROPERTY_TYPES[type].rent * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent'));
 }
 
 export function tierRent(state, tier, regionId) {
   // Housing vouchers cap rent at 30% of income.
   if (RENT_TIERS[tier].subsidized) return Math.round(((state.finances.lastYear?.gross ?? 0) * 0.3) / 12);
-  return Math.round(RENT_TIERS[tier].monthly * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5);
+  return Math.round(RENT_TIERS[tier].monthly * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent'));
 }
 
 /** Fraction of the sale price lost to agents and closing. */

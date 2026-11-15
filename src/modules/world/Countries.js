@@ -29,6 +29,7 @@ import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
 import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
+import { eraScale } from '../economy/EraEconomy.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
@@ -413,6 +414,10 @@ const PRICE_LEVELS = {};
  * average wage level. Goods and homes are priced through each city already.
  */
 export function priceLevel(state) {
+  return countryPriceLevel(state) * eraScale(state, 'living');
+}
+/** The country's price level alone, without the era (for converting between countries). */
+export function countryPriceLevel(state) {
   const cc = state?.character?.countryId;
   if (!cc) return 1;
   if (PRICE_LEVELS[cc] == null) {

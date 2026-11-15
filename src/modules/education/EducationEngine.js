@@ -29,6 +29,7 @@ import { universityOf, defaultUniversity, offers, placeOf } from './Universities
 import { REGIONS, changeRegion } from '../life/Regions.js';
 import { arrive, bannedFrom } from '../world/Migration.js';
 import { showResult } from '../life/ResultCards.js';
+import { yearNow } from '../world/Eras.js';
 
 /** A university by id, or the local stand-in for one of the old school-type ids ('state', 'elite'…). */
 export function resolveSchool(state, id, programId = null, major = null) {
@@ -280,7 +281,28 @@ export function applicantStrength(state, programId) {
   return clamp(state.stats.smarts * 0.55 + gpa * 11, 0, 100);
 }
 
+/**
+ * University places of the era: how many young people went to university then, against today's
+ * half (UK, US, France, loosely: 2–4% in 1900, 7% in 1930, 15% in 1950, 30% in 1970). Degree
+ * admissions are scaled by it; certificates and trade programmes are not.
+ */
+const UNI_SHARE = [[1800, 0.015], [1900, 0.035], [1930, 0.07], [1950, 0.15], [1970, 0.3], [1990, 0.42], [2005, 0.5]];
+const DEGREE_TYPES = ['bachelor', 'master', 'doctorate', 'phd', 'md', 'jd', 'jdmba', 'mba', 'dds', 'dvm', 'pharmd'];
+export function eraPlaces(state) {
+  const y = yearNow(state);
+  const i = UNI_SHARE.findIndex(([yr]) => yr > y);
+  if (i === -1) return 1;
+  if (i === 0) return UNI_SHARE[0][1] / 0.5;
+  const [y0, a] = UNI_SHARE[i - 1];
+  const [y1, b] = UNI_SHARE[i];
+  return Math.min(1, (a + ((b - a) * (y - y0)) / (y1 - y0)) / 0.5);
+}
+const eraDegree = (state, programId, chance) => (DEGREE_TYPES.includes(PROGRAMS[programId]?.type) ? chance * eraPlaces(state) : chance);
+
 export function admissionChance(state, programId, schoolId) {
+  return eraDegree(state, programId, admissionChanceToday(state, programId, schoolId));
+}
+function admissionChanceToday(state, programId, schoolId) {
   // A real university uses its own selectivity; a bare school type ('state', 'elite') the type's bar.
   const uni = universityOf(schoolId);
   if (uni?.accept != null) return universityChance(state, programId, uni);
