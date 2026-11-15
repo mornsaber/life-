@@ -18,6 +18,8 @@ import { depositsInsured } from '../src/modules/world/Institutions.js';
 import { statePensionExists, setEraYear } from '../src/modules/world/Eras.js';
 import { redlined } from '../src/modules/realestate/MortgageSystem.js';
 import { honoursSystem } from '../src/modules/world/HonoursOfTheDay.js';
+import { runEligibility } from '../src/modules/politics/Campaigns.js';
+import { successionLaw } from '../src/modules/world/SuccessionLaw.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (year, cc, ageNow = 40) => {
@@ -92,6 +94,28 @@ const tests = {
     const au = life(1960, 'AU');
     pass(au, 'imperialHonours', false);
     assert.deepEqual(honoursSystem(au), [], 'no Order of Australia yet either');
+  },
+  'votes for women: no standing for election before it, unless a bill brings it in'() {
+    const s = life(1910, 'GB');
+    s.character.gender = 'female';
+    assert.match(runEligibility(s, 'gb_mp').reason ?? '', /Women can't stand/);
+    pass(s, 'womensSuffrage', true);
+    assert.doesNotMatch(runEligibility(s, 'gb_mp').reason ?? '', /Women can't stand/);
+    const later = life(1950, 'GB');
+    later.character.gender = 'female';
+    assert.doesNotMatch(runEligibility(later, 'gb_mp').reason ?? '', /Women can't stand/);
+  },
+  'married women\'s property, conscientious objection and abortion follow their dates'() {
+    const s = life(1870, 'GB');
+    s.character.gender = 'female';
+    assert.equal(successionLaw(s).coverture, true);
+    pass(s, 'marriedWomensProperty', true);
+    assert.equal(successionLaw(s).coverture, false);
+    assert.equal(statuteIn(life(1910, 'GB'), 'conscientiousObjection'), false);
+    assert.equal(statuteIn(life(1920, 'GB'), 'conscientiousObjection'), true);
+    assert.equal(statuteIn(life(1960, 'GB'), 'abortion'), false);
+    assert.equal(statuteIn(life(1970, 'GB'), 'abortion'), true);
+    assert.equal(statuteIn(life(2010, 'IE'), 'abortion'), false);
   },
   'only a legislature changes them: not the background majority, not a decree'() {
     setEraYear?.(1950);

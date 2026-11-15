@@ -26,6 +26,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { ageOf, living, byId, clampRel, partnerOf } from './People.js';
 import { openWith, markFault } from './OpenMarriage.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 
 export const TRAITS = {
   adventurous: { name: 'Adventurous', icon: '🧗', likes: ['hike', 'trip', 'concert'] },
@@ -282,7 +283,7 @@ function casualPregnancy(ctx, p) {
     type: 'bonds.pregnancy', icon: '🤰', title: 'An Unexpected Pregnancy',
     text: you ? `You're pregnant — from your night with ${p.firstName}. It's your decision.` : `${p.firstName} called: she's pregnant, and it's yours.`,
     options: you
-      ? [{ id: 'keep', label: '👶 Have the baby' }, { id: 'end', label: '🏥 End the pregnancy' }, { id: 'adoption', label: '🏡 Carry it and place the baby for adoption' }]
+      ? [{ id: 'keep', label: '👶 Have the baby' }, statuteIn(state, 'abortion') ? { id: 'end', label: '🏥 End the pregnancy' } : { id: 'end', label: '🚪 End the pregnancy (illegal here)', hint: 'A back-street abortion: dangerous', tone: 'danger' }, { id: 'adoption', label: '🏡 Carry it and place the baby for adoption' }]
       : [{ id: 'involved', label: '🤝 Be part of the child\'s life', hint: 'Child support and a child' }, { id: 'distant', label: '💵 Pay support from a distance' }],
     data: { personId: p.id },
   });
@@ -540,6 +541,13 @@ export const BondsModule = {
     pregnancy(ctx, data, optionId) {
       const { state } = ctx;
       const p = byId(state, data.personId);
+      if (optionId === 'end' && !statuteIn(state, 'abortion')) {
+        // Before the law changed: in secret, from someone unqualified.
+        ctx.spend(300, 'An illegal abortion', { allowDebt: true });
+        if (ctx.rng.chance(0.25)) { ctx.stat('health', -25); ctx.stat('happiness', -10); return ctx.log('You ended the pregnancy in secret, in a back room. An infection followed; you nearly died.', '🚪', 'bad'); }
+        ctx.stat('stress', 8);
+        return ctx.log('You ended the pregnancy in secret. You told no one, for years.', '🚪', 'warn');
+      }
       if (optionId === 'end') return ctx.log('You ended the pregnancy. It was your choice to make.', '🏥');
       if (optionId === 'adoption') {
         ctx.stat('happiness', -4);

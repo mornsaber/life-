@@ -19,6 +19,7 @@ import { partyBonus } from './Parties.js';
 import { generalShare, scandalDrag } from './Elections.js';
 import { stateIdOf } from '../life/Regions.js';
 import { presidencyInEra, yearNow, PRESENT } from '../world/Eras.js';
+import { statuteIn } from './StatuteBook.js';
 
 export function runEligibility(state, officeId) {
   const office = OFFICES[officeId];
@@ -47,6 +48,8 @@ export function runEligibility(state, officeId) {
     return { ok: false, reason: 'No open elections: the Party nominates every candidate (senior cadres become deputies)' };
   }
   if (regimeOf(here).elections === 'none') return { ok: false, reason: 'There are no elections here: posts are appointed' };
+  // Before votes for women (politics/StatuteBook.js), women may neither vote nor stand.
+  if (state.character.gender === 'female' && !statuteIn(state, 'womensSuffrage')) return { ok: false, reason: 'Women can\'t stand for election here yet' };
   // Members of the House of Lords can't sit in the Commons.
   if (officeId === 'gb_mp' && state.character.style?.peerage) return { ok: false, reason: 'Peers can\'t sit in the Commons' };
   if (office.requires && !office.requires.includes(p.office?.id)) return { ok: false, reason: office.leader ? `Party leaders come from the house: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` : `Elected by local officials: hold ${office.requires.map((id) => OFFICES[id].name).join(' or ')} first` };

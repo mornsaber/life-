@@ -22,6 +22,7 @@ import { COUNTRIES, isCitizen } from './Countries.js';
 import { regionsIn, changeRegion, stateIdOf } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
 import { yearNow, tensionFactor } from './Eras.js';
+import { statuteIn } from '../politics/StatuteBook.js';
 
 /* ------------------------------------------------------------------ */
 /* Theaters: the wars each country could plausibly fight              */
@@ -450,7 +451,9 @@ export const WarModule = {
         return ctx.log('Your student deferment was granted for this school year.', '🎓', 'good');
       }
       if (optionId === 'objector') {
-        if (rng.chance(war?.mobilized ? 0.25 : 0.55)) {
+        // No right of conscientious objection here yet (politics/StatuteBook.js).
+        if (!statuteIn(state, 'conscientiousObjection', cc)) ctx.log('There is no right of conscientious objection here: the tribunal had no power to excuse you.', '📭', 'warn');
+        else if (rng.chance(war?.mobilized ? 0.25 : 0.55)) {
           ctx.stat('stress', 6);
           return ctx.log(us ? 'The draft board classified you 1-O: two years of alternative civilian service at a VA hospital instead of military service.' : 'Your objection was accepted: two years of alternative civilian service in hospitals and civil defence.', '🕊️', 'good');
         }

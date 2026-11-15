@@ -20,6 +20,7 @@
  *              Islamic law never had it: a wife kept her own property.
  */
 import { yearNow, PRESENT } from './Eras.js';
+import { statuteIn, WIVES_OWN } from '../politics/StatuteBook.js';
 
 const ISLAMIC = ['SA', 'IR', 'EG', 'PK', 'AF', 'IQ', 'JO', 'KW', 'QA', 'BH', 'AE', 'OM', 'YE', 'LY', 'DZ', 'MA', 'SD', 'MR', 'SY', 'BD', 'MY', 'BN', 'MV', 'KM', 'SO', 'DJ', 'PS', 'NE', 'TD', 'ML', 'SN', 'GN', 'GM', 'AZ', 'UZ', 'TJ', 'TM', 'KG', 'ID'];
 const CIVIL = ['FR', 'BE', 'LU', 'MC', 'ES', 'PT', 'IT', 'SM', 'AD', 'CH', 'LI', 'AT', 'DE', 'NL', 'DK', 'SE', 'NO', 'FI', 'IS', 'GR', 'TR', 'PL', 'CZ', 'SK', 'HU', 'RO', 'BG', 'HR', 'SI', 'RS', 'ME', 'MK', 'BA', 'AL', 'EE', 'LV', 'LT', 'JP', 'KR', 'TW', 'TH', 'CN', 'VN', 'LA', 'KH', 'BR', 'AR', 'CL', 'UY', 'PY', 'BO', 'PE', 'EC', 'CO', 'VE', 'MX', 'GT', 'HN', 'SV', 'NI', 'CR', 'PA', 'CU', 'DO', 'HT', 'LB', 'TN', 'CD', 'CG', 'CM', 'CI', 'BJ', 'BF', 'TG', 'GA', 'MG', 'CF', 'BI', 'RW', 'AO', 'MZ', 'CV', 'ST', 'GW', 'TL', 'GQ', 'SR', 'RU', 'UA', 'BY', 'MD', 'GE', 'AM', 'KZ', 'MN', 'PH'];
@@ -28,7 +29,6 @@ const SOVIET = ['RU', 'UA', 'BY', 'MD', 'GE', 'AM', 'AZ', 'KZ', 'KG', 'TJ', 'TM'
 const EAST_BLOC = ['PL', 'CZ', 'SK', 'HU', 'RO', 'BG', 'AL', 'MN', 'RS', 'HR', 'SI', 'BA', 'ME', 'MK', 'CN', 'VN', 'LA', 'KP', 'CU'];
 
 /** When a married woman could own her own property in law. */
-const WIVES_OWN = { GB: 1882, IE: 1882, US: 1880, CA: 1884, AU: 1890, NZ: 1884, ZA: 1953, IN: 1874, FR: 1965, BE: 1958, LU: 1972, IT: 1975, ES: 1975, PT: 1966, DE: 1958, AT: 1978, CH: 1988, NL: 1957, SE: 1921, NO: 1888, DK: 1925, FI: 1930, JP: 1947, KR: 1960, BR: 1962, AR: 1926, MX: 1928, CL: 1989, CN: 1950, RU: 1918 };
 /** When the reserved share for children came in (the Code civil and its copies). */
 const RESERVE_FROM = { FR: 1804, BE: 1804, LU: 1804, IT: 1865, ES: 1889, PT: 1867, DE: 1900, AT: 1811, CH: 1912, NL: 1838, JP: 1947, KR: 1977, BR: 1916, AR: 1871, CL: 1857, MX: 1884, PL: 1964, TR: 1926 };
 
@@ -52,7 +52,8 @@ export function successionLaw(state, country = cc(state)) {
     /** Children's reserved share of the estate, given how many there are. */
     reserved: (children) => (reserve ? reserveOf(children) : 0),
     primogeniture: era && ['GB', 'IE'].includes(country) && y < 1925,
-    coverture: Boolean(era && y < wivesFrom && family !== 'islamic'),
+    // Until a married women's property act (politics/StatuteBook.js: history's date, or a bill in your world).
+    coverture: Boolean(era && family !== 'islamic' && (state ? !statuteIn(state, 'marriedWomensProperty', country) : y < wivesFrom)),
     sonsDouble: family === 'islamic',
     willCap: family === 'islamic' ? 1 / 3 : null,
     stateLand: family === 'socialist',

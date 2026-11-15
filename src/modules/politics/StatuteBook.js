@@ -27,6 +27,14 @@ export const DEBTORS_UNTIL = { GB: 1869, IE: 1872, US: 1833, FR: 1867, DE: 1868,
 export const ADULTERY_UNTIL = { IT: 1969, FR: 1975, ES: 1978, DE: 1969, AT: 1997, CH: 1989, KR: 2015, TW: 2020, JP: 1947, IN: 2018, BR: 2005, AR: 1995, MX: 2011, PT: 1982, GR: 1983, TR: 1996, PH: 9999, PK: 9999, SA: 9999, IR: 9999, AE: 9999, EG: 9999, ID: 9999 };
 /** From when a marriage could end without proving fault (adultery, cruelty, desertion). */
 export const NO_FAULT_FROM = { US: 1970, GB: 1969, CA: 1968, AU: 1975, NZ: 1980, FR: 1975, DE: 1977, SE: 1974, NL: 1971, IT: 1970, ES: 1981, IE: 1996, BE: 1974, DK: 1969, NO: 1918, JP: 1898, MX: 1917, RU: 1918, '*': 1975 };
+/** When women could vote and stand in national elections (equal terms where it came in stages). */
+export const SUFFRAGE_FROM = { NZ: 1893, AU: 1902, FI: 1906, NO: 1913, DK: 1915, IS: 1915, RU: 1917, CA: 1918, DE: 1918, AT: 1918, PL: 1918, IE: 1922, GB: 1928, NL: 1919, SE: 1919, US: 1920, ES: 1931, BR: 1932, TR: 1934, FR: 1944, IT: 1945, JP: 1945, AR: 1947, BE: 1948, KR: 1948, CN: 1949, IN: 1950, GR: 1952, MX: 1953, CH: 1971, PT: 1974, ZA: 1994, SA: 2015, '*': 1950 };
+/** When a married woman could own her own property in law (the married women's property acts). */
+export const WIVES_OWN = { GB: 1882, IE: 1882, US: 1880, CA: 1884, AU: 1890, NZ: 1884, ZA: 1953, IN: 1874, FR: 1965, BE: 1958, LU: 1972, IT: 1975, ES: 1975, PT: 1966, DE: 1958, AT: 1978, CH: 1988, NL: 1957, SE: 1921, NO: 1888, DK: 1925, FI: 1930, JP: 1947, KR: 1960, BR: 1962, AR: 1926, MX: 1928, CL: 1989, CN: 1950, RU: 1918 };
+/** When conscientious objection to military service was recognised in law. */
+export const OBJECTION_FROM = { GB: 1916, US: 1917, NZ: 1918, AU: 1939, CA: 1940, DE: 1949, NL: 1923, DK: 1917, SE: 1920, NO: 1922, FR: 1963, BE: 1964, IT: 1972, AT: 1974, ES: 1984, PT: 1976, CH: 1996, GR: 1997, '*': 1990 };
+/** Abortion lawful on broad grounds: [from, until] (9999: still). Unlisted: from 1980. */
+export const ABORTION_LAWFUL = { GB: [1967, 9999], US: [1973, 9999], CA: [1969, 9999], AU: [1971, 9999], NZ: [1977, 9999], FR: [1975, 9999], DE: [1976, 9999], IT: [1978, 9999], ES: [1985, 9999], IE: [2018, 9999], NL: [1981, 9999], SE: [1938, 9999], DK: [1973, 9999], NO: [1978, 9999], JP: [1948, 9999], RU: [1955, 9999], CN: [1957, 9999], IN: [1971, 9999], BE: [1990, 9999], PT: [2007, 9999], AR: [2020, 9999], MX: [2021, 9999], BR: [9999, 9999], CL: [9999, 9999], PH: [9999, 9999], MT: [9999, 9999], PL: [1956, 1993], EG: [9999, 9999], NG: [9999, 9999], '*': [1980, 9999] };
 /** How each dominion got its honours: [from, until, mode]. 'british' with titles, 'britishNoTitles', 'dual', 'national', 'none'. */
 export const DOMINION_HONOURS = {
   CA: [[0, 1919, 'british'], [1919, 1933, 'none'], [1933, 1936, 'british'], [1936, 1943, 'none'], [1943, 1947, 'britishNoTitles'], [1947, 1967, 'none'], [1967, 9999, 'national']],
@@ -79,6 +87,18 @@ export const STATUTES = {
   noFaultDivorce: { name: 'No-fault divorce', icon: '📄', lean: 'labor',
     history: (cc, y) => y >= (NO_FAULT_FROM[cc] ?? NO_FAULT_FROM['*']),
     effect: 'A marriage can end without proving adultery, cruelty or desertion; without it, the one at fault comes off worse.' },
+  womensSuffrage: { name: 'Votes for women', icon: '🗳️', lean: 'labor',
+    history: (cc, y) => y >= (SUFFRAGE_FROM[cc] ?? SUFFRAGE_FROM['*']),
+    effect: 'Women may vote, and stand for election.' },
+  marriedWomensProperty: { name: 'Married women\'s property', icon: '👛', lean: 'labor',
+    history: (cc, y) => y >= (WIVES_OWN[cc] ?? 1900),
+    effect: 'A married woman owns her own property and earnings, instead of her husband holding them.' },
+  conscientiousObjection: { name: 'Conscientious objection', icon: '🕊️', lean: 'labor',
+    history: (cc, y) => y >= (OBJECTION_FROM[cc] ?? OBJECTION_FROM['*']),
+    effect: 'Those called up may refuse to bear arms on grounds of conscience, and serve another way.' },
+  abortion: { name: 'Legal abortion', icon: '🏥', lean: 'labor',
+    history: (cc, y) => { const [a, b] = ABORTION_LAWFUL[cc] ?? ABORTION_LAWFUL['*']; return y >= a && y < b; },
+    effect: 'A pregnancy may be ended lawfully, by a doctor.' },
   debtorsPrison: { name: 'Imprisonment for debt', icon: '⛓️', lean: 'business',
     history: (cc, y) => y < (DEBTORS_UNTIL[cc] ?? 0),
     effect: 'Unpaid debts can land you in prison until they are paid.' },
