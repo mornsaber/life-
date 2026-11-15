@@ -51,6 +51,7 @@ import { honoursNote } from '../modules/world/HonoursOfTheDay.js';
 import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
 import { venturesView } from './views/VenturesView.js';
+import { littleThingsCard } from './views/LittleThingsView.js';
 import { societyView } from './views/SocietyView.js';
 import { inSociety } from '../modules/life/HighSociety.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
@@ -158,7 +159,7 @@ const PERSON_ICON = { spouse: '💍', fiance: '💍', partner: '❤️', mother:
 
 /** Your record, as a row of links on the story page. */
 export const YOUR_LIFE = [
-  { tab: 'goals', label: 'Goals', icon: '🎯' },
+  { tab: 'goals', label: 'You', icon: '🎯' },
   { tab: 'honors', label: 'Honours', icon: '🏅' },
   { tab: 'achievements', label: 'Achievements', icon: '🏆' },
   { tab: 'world', label: 'World', icon: '🌍' },
@@ -256,7 +257,7 @@ function retirementLifeCard(state) {
 
 export const VIEWS = {
   world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state),
-  goals: (state) => aspirationsCard(state) + reputationCard(state),
+  goals: (state) => littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';

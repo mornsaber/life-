@@ -29,7 +29,7 @@ const tests = {
     assert.ok(state.pets[0].bond > 40);
     assert.match(VIEWS.people(state, {}), /Pets/);
     for (let y = 0; y < 20; y++) {
-      while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, state.prompts[0].options[0].id);
+      while (state.prompts.length) engine.resolvePrompt(state.prompts[0].id, (state.prompts[0].options.find((o) => !o.disabled) ?? state.prompts[0].options[0]).id);
       state.stats.health = 90;
       engine.ageUp();
     }
