@@ -59,9 +59,9 @@ export function investView(state) {
     <h4 class="sub">Holdings</h4>${rows ? `<ul class="history">${rows}</ul>` : empty('No investments yet.')}
     ${spec ? `<h4 class="sub">Speculative bets</h4><ul class="history">${spec}</ul>` : ''}
     ${buyForm}
+    <div class="toggle-row">${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}</div>
     ${disclosure('invest.settings', `⚙️ Risk profile, auto-invest, ${!iraExists(state) ? 'and auto-invest' : acc.shared ? (dcExists(state) ? 'IRAs & 401(k)' : 'IRAs') : 'savings accounts & pension'}`, `
     <h4 class="sub">Risk profile</h4><div class="toggle-row">${profiles}
-      ${button(inv.auto.enabled ? '🤖 Auto-invest: ON' : '🤖 Auto-invest: OFF', 'investing.toggleAuto', { variant: inv.auto.enabled ? 'small on' : 'small', hint: `Sweeps cash beyond ${inv.auto.keepMonths} months of expenses` })}
       ${button('⚖️ Rebalance', 'investing.rebalance', { variant: 'small', disabled: !rows, hint: 'Sells everything (taxable) and rebuys the mix' })}</div>
     ${iraExists(state) ? iraSection() : '<p class="fine">No tax-advantaged savings accounts yet (IRAs from 1974).</p>'}
     ${dcExists(state) ? dcSection() : ''}

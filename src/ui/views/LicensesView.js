@@ -97,7 +97,8 @@ export function licensesView(state, ui = {}) {
   } else {
     const list = view === 'mine' ? mine : available;
     const emptyText = view === 'mine' ? 'You don\'t hold any credentials yet. Check "Can pursue now".' : 'Nothing you can start right now — browse by category to see what each one needs.';
-    const showLog = view === 'mine' && (state.credentials.logbook.flightHours > 0 || list.some((c) => c.category === 'aviation'));
+    // Flying lessons sit with the pilot's licences you hold or could start, not only under Browse › Aviation.
+    const showLog = state.credentials.logbook.flightHours > 0 || list.some((c) => c.category === 'aviation') || (state.character.age >= 16 && CREDENTIAL_LIST.some((c) => c.category === 'aviation' && credentialExists(state, c.id)));
     body = `${showLog ? logbook(state) : ''}${list.length ? groupedList(state, list, { folded: view === 'available' && list.length > 8 }) : `<p class="muted">${emptyText}</p>`}`;
   }
 
