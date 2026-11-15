@@ -2,6 +2,7 @@
  * Community tab: your faith and congregation, giving, ministry, volunteering
  * and mentoring.
  */
+import { secretSocietiesCard } from './SecretSocietiesView.js';
 import { schismIssue } from '../../modules/community/Religions.js';
 import { faithDayCard } from './FaithDayCard.js';
 import { esc, money, button, card, kv, chip, meter } from '../Components.js';
@@ -140,7 +141,7 @@ function religiousCard(state) {
 
 export function communityView(state) {
   if (!state.community) return '';
-  return `${warCard(state)}${warRolesCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}`;
+  return `${warCard(state)}${warRolesCard(state)}${faithCard(state)}${institutionsCard(state)}${religiousCard(state)}${faithDayCard(state)}${civicView(state)}${serviceCard(state)}${joinCard(state)}${secretSocietiesCard(state)}`;
 }
 
 /** Party membership and how you've voted. */
