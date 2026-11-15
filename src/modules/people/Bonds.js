@@ -120,13 +120,17 @@ export function interact(ctx, p, kind) {
       break;
     }
     case 'apologize': {
-      const strained = p.relationship < 50;
+      const strained = p.relationship < 50 || Boolean(p.grudge);
       delta = strained ? (rng.chance(0.7) ? rng.int(8, 15) : 2) : 1;
       text = strained ? (delta > 5 ? `You apologized to ${p.firstName}. It took a while, but they forgave you.` : `You apologized. ${p.firstName} isn't ready to let it go.`) : `You apologized to ${p.firstName}, who wasn't sure what for.`;
       break;
     }
     default: return undefined;
   }
+  // A heartfelt apology that lands lets go of an old grudge (Conversations.js).
+  if (kind === 'apologize' && delta > 5) p.grudge = null;
+  // A grudge takes the warmth out of everything else.
+  if (p.grudge && delta > 0 && kind !== 'apologize') delta = Math.ceil(delta / 2);
   p.relationship = clampRel(p.relationship + delta);
   if (delta >= 5) remember(state, p, text);
   ctx.log(text, delta >= 0 ? '💬' : '😬', delta >= 5 ? 'good' : undefined);

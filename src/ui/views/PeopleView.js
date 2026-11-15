@@ -151,11 +151,12 @@ function bondButtons(state, p) {
   const opt = (label, arg, hint = '') => button(label, 'bonds.interact', { arg: `${p.id}:${arg}`, variant: 'tiny', disabled: !e.ok, hint: e.ok ? hint : e.reason });
   return [
     button('🎳 Hang out', 'bonds.hangOut', { arg: p.id, variant: 'tiny', disabled: !e.ok, hint: e.ok ? `Pick something they'd love` : e.reason }),
-    opt('💬 Talk', 'talk'),
+    button('🗣️ Talk about…', 'conversations.start', { arg: p.id, variant: 'tiny', disabled: !e.ok, hint: e.ok ? 'A real conversation' : e.reason }),
+    opt('💬 Chat', 'talk'),
     opt('😂 Joke around', 'joke'),
     opt('🌟 Compliment', 'compliment'),
     state.character.age >= 10 ? opt('🧭 Ask for advice', 'advice', 'Less stress') : '',
-    p.relationship < 50 ? opt('🙏 Apologize', 'apologize', 'Mend things') : '',
+    p.relationship < 50 || p.grudge ? opt('🙏 Apologize', 'apologize', p.grudge ? `For ${p.grudge.about}` : 'Mend things') : '',
   ].join('');
 }
 
