@@ -50,8 +50,7 @@ import { eraCard, timesCard } from './views/EraView.js';
 import { honoursNote } from '../modules/world/HonoursOfTheDay.js';
 import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
-import { fundCard } from './views/FundView.js';
-import { clubCard } from './views/ClubView.js';
+import { venturesView } from './views/VenturesView.js';
 import { societyView } from './views/SocietyView.js';
 import { inSociety } from '../modules/life/HighSociety.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
@@ -110,7 +109,7 @@ export const GROUPS = {
     items: [
       { head: 'Study & work', tab: 'school', label: 'Education', icon: '🎓', sub: (st) => (st.education.enrolled ? `Studying: ${PROGRAMS[st.education.enrolled.programId]?.name ?? 'enrolled'}` : 'Schools, colleges, apprenticeships') },
       { head: 'Study & work', tab: 'career', label: 'Job', icon: '💼', when: (st) => age(st) >= 12, sub: (st) => (st.career.job ? `${st.career.job.title}` : age(st) < 14 ? 'Odd jobs and paper rounds' : 'Find work') },
-      { head: 'Study & work', tab: 'business', label: 'Business', icon: '🏪', when: (st) => age(st) >= 16 || Boolean(st.business?.current), sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
+      { head: 'Study & work', tab: 'business', label: 'Business', icon: '🏪', when: (st) => age(st) >= 14 || Boolean(st.business?.current), sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
       { head: 'Study & work', tab: 'gov', label: 'Public Service', icon: '🏛️', when: (st) => age(st) >= 16, sub: () => 'Government agencies and the civil service' },
       { head: 'Study & work', tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', when: (st) => age(st) >= 15, sub: () => 'Qualifications that open jobs' },
       { head: 'Service & public life', tab: 'military', label: 'Military', icon: '🎖️', when: (st) => age(st) >= 15 || Boolean(st.military.service), sub: (st) => (st.military.service ? 'Serving' : 'Enlist or apply for a commission') },
@@ -265,7 +264,7 @@ export const VIEWS = {
   },
   career: careerView,
   society: (state) => societyView(state),
-  business: (state, ui) => businessView(state, ui) + fundCard(state) + clubCard(state) + pressCard(state),
+  business: (state, ui) => businessView(state, ui) + venturesView(state, ui),
   community: communityView,
   garage: garageView,
   farm: farmView,

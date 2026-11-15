@@ -51,7 +51,8 @@ const tests = {
   'buying a paper, and running it'() {
     const { engine, state, ctx } = life(1910);
     state.finances.cash = 1e9;
-    assert.match(VIEWS.business(state, {}), /The Press/);
+    // The press waits behind the Other Ventures picker until you own an outlet.
+    assert.match(VIEWS.business(state, { venture: 'press' }), /The Press/);
     engine.dispatch('publicLife.buyOutlet', 'paper:local');
     assert.ok(state.press);
     engine.dispatch('publicLife.line', 'scandal');
