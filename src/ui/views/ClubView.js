@@ -31,6 +31,7 @@ export function clubCard(state) {
     ['Value', money(c.value)],
     ['Wage budget', `${money(c.wages)} a year`],
     [s.franchise ? 'Head coach' : 'Manager', `${esc(c.manager.name)} (${c.manager.rating}/100)`],
+    ['Shirt sponsor', c.deal ? `${esc(c.deal.brand)} · $${c.deal.perYear.toLocaleString()}/yr · ${c.deal.years} yrs left` : 'None'],
     ['Ground', `${c.stadium.owned ? 'Owned' : 'Rented'} · ${c.stadium.capacity.toLocaleString()} seats${c.stadium.tenant ? ` · leased to a tenant club (${c.stadium.tenant.years} yrs; it can't be sold from under them)` : ''}`],
   ])}
     ${meter(c.squad, { label: '💪 Squad', tone: c.squad >= 65 ? 'good' : c.squad >= 45 ? 'mid' : 'bad' })}
@@ -43,6 +44,7 @@ export function clubCard(state) {
       ${button('⬇️ Cut the wage budget', 'clubOwnership.wages', { arg: 'down', variant: 'small' })}
       ${button(`🧑‍💼 New ${s.franchise ? 'head coach' : 'manager'}`, 'clubOwnership.manager', { variant: 'small', disabled: Boolean(state.yearly['club.manager']) })}
       ${button(c.stadium.owned ? '🏗️ Build a new stand' : '🏟️ Buy the ground', 'clubOwnership.expand', { variant: 'small' })}
+      ${c.deal ? '' : `${button('👕 Local sponsor', 'clubOwnership.sponsor', { arg: 'local', variant: 'small' })}${c.tier >= 2 ? button('👕 Global brand', 'clubOwnership.sponsor', { arg: 'global', variant: 'small' }) : ''}${button('🎰 Betting sponsor', 'clubOwnership.sponsor', { arg: 'betting', variant: 'small', hint: 'Pays most; the fans hate it' })}`}
       ${button('🤝 Sell the club', 'clubOwnership.sell', { variant: 'small ghost', hint: money(c.value) })}
     </div>
     ${history ? `<p class="fine">Earlier seasons:</p><ul class="history">${history}</ul>` : ''}`, { icon: s.icon, summary: last ? `${ord(last.pos)} in ${last.div}` : 'First season ahead' });

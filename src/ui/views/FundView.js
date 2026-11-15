@@ -29,6 +29,7 @@ export function fundCard(state) {
     ['Since', `${f.since}`],
   ])}
     ${record ? `<p class="fine">Recent years: ${record}</p>` : ''}
+    ${(f.rivals ?? []).length ? `<h4 class="sub">Rival funds</h4><ul class="history">${[{ name: f.name, aum: f.yours + f.outside, ret: f.record.at(-1)?.ret ?? 0, you: true }, ...f.rivals].sort((a, b) => b.ret - a.ret).map((x) => `<li>${x.you ? '<b>' : ''}${esc(x.name)}${x.you ? '</b>' : ''} · ${x.ret >= 0 ? '+' : ''}${Math.round(x.ret * 100)}% · ${money(x.aum)}</li>`).join('')}</ul>` : ''}
     <h4 class="sub">Strategy</h4><div class="toggle-row chips-row">${strategies}</div>
     <h4 class="sub">Borrowing</h4><div class="toggle-row chips-row">${lev}</div>
     <div class="action-grid">

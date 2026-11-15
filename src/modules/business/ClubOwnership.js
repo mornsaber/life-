@@ -144,7 +144,8 @@ function season(ctx) {
   const inc = income(state, { sport: c.sport, tier: c.tier, capacity: c.stadium.capacity, fans: c.fans, ticket: c.ticket });
   const gate = inc.gate;
   const tv = inc.tv;
-  const sponsor = Math.round(inc.sponsor * (note === 'champions' ? 1.5 : 1));
+  const sponsor = Math.round(inc.sponsor * (note === 'champions' ? 1.5 : 1)) + (c.deal ? c.deal.perYear : 0);
+  if (c.deal && (c.deal.years -= 1) <= 0) { ctx.log(`The ${c.deal.brand} shirt deal ended.`, '👕', 'info'); c.deal = null; }
   const prize = note === 'champions' || cup ? Math.round(clubPrice(state, c.sport, c.tier) * 0.05) : 0;
   const tenant = c.stadium.tenant ? c.stadium.tenant.rent : 0;
   // The ground: upkeep if you own it, rent if you don't.
@@ -231,6 +232,22 @@ export const ClubOwnershipModule = {
   actions: {
     buy,
     sell: (ctx) => sell(ctx),
+    /** A shirt sponsor: the club's name on someone's shirt, or their name on yours. */
+    sponsor(ctx, kind) {
+      const { state, rng } = ctx;
+      const c = state.club;
+      if (!c) return undefined;
+      if (c.deal) return ctx.toast(`Already sponsored by ${c.deal.brand}`, 'warn');
+      const y = yearNow(state);
+      if (y < 1976 && !CLUB_SPORTS[c.sport].franchise) return ctx.toast('No shirt sponsors yet: they come in the late 1970s', 'warn');
+      const kinds = { local: { brand: rng.pick(['a local brewery', 'the town\'s biggest car dealer', 'a regional building society']), mult: 1, fans: 0 }, global: { brand: rng.pick(['an airline', 'a carmaker', 'a sportswear giant', 'a bank']), mult: 2.2, fans: 0 }, betting: { brand: y >= 2000 ? 'an online betting firm' : 'a bookmaker', mult: 3, fans: -12 } };
+      const k = kinds[kind] ?? kinds.local;
+      if (kind === 'global' && c.tier < 2) return ctx.toast('Global brands only want the top divisions', 'warn');
+      const perYear = Math.round(income(state, { sport: c.sport, tier: c.tier }).sponsor * 0.5 * k.mult * (1 + c.fans / 200));
+      c.deal = { brand: k.brand, perYear, years: 3 };
+      c.fans = clamp(c.fans + k.fans, 0, 100);
+      return ctx.log(`${c.name} signed a three-year shirt deal with ${k.brand}: $${perYear.toLocaleString()} a year.${k.fans ? ' The supporters\' trust called it a disgrace.' : ''}`, '👕', k.fans ? 'warn' : 'good');
+    },
     wages(ctx, dir) {
       const c = ctx.state.club;
       if (!c) return undefined;

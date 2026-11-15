@@ -17,8 +17,11 @@
  *   Activism    take a stake in a listed company and push the board: a seat, a sale, a fight.
  *   Closing     return the outside money; what's left is your family office.
  *
+ * Rivals      three other funds run their own years; beat them and investors notice; they
+ *               try to poach your best people.
+ *
  * state.fund = { name, kind, strategy, leverage, yours, outside, nav, hwm, rep, staff, since,
- *                record: [{ year, ret }], gated, closedToOutside }
+ *                record: [{ year, ret }], gated, closedToOutside, rivals: [{ name, aum, ret }] }
  */
 import { Random, clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, yearsInProfession } from '../../core/State.js';
@@ -73,7 +76,8 @@ function launch(ctx, strategy = 'longShort') {
   const name = `${state.character.lastName} ${rng.pick(['Capital', 'Partners', 'Asset Management', 'Investors', 'Advisors'])}`;
   // Old colleagues and rich friends put in something at the start.
   const friends = local(state, rng.int(1, 4) * 1000000) * (yearsInProfession(state, ['finance', 'investment']) >= 5 ? 2 : 1);
-  state.fund = { name, strategy: s.id, leverage: 1, yours: e.seed, outside: friends, nav: 100, hwm: 100, rep: 30, staff: 1, since: yearNow(state), record: [], gated: false, closedToOutside: false };
+  const rivalNames = rng.shuffle(['Blackstone Ridge', 'Meridian Partners', 'Quill Capital', 'Hollins & Vane', 'Northgate Advisors', 'Sable Point', 'Corrigan Fund']).slice(0, 3);
+  state.fund = { name, strategy: s.id, leverage: 1, yours: e.seed, outside: friends, nav: 100, hwm: 100, rep: 30, staff: 1, since: yearNow(state), record: [], gated: false, closedToOutside: false, rivals: rivalNames.map((n) => ({ name: n, aum: (e.seed + friends) * rng.float(2, 15), ret: 0 })) };
   ctx.log(`You launched ${name}, a ${fundWord(state).replace('hedge fund', `${s.label.toLowerCase()} fund`)}, with $${e.seed.toLocaleString()} of your own and $${friends.toLocaleString()} from friends and old colleagues.`, '💼', 'milestone');
   return undefined;
 }
@@ -119,6 +123,19 @@ function fundYear(ctx) {
   const fees = mgmt + perf - costs;
   if (fees >= 0) ctx.earn(fees, `${f.name}: fees`); else ctx.spend(-fees, `${f.name}: running costs`, { allowDebt: true });
   f.record = [...f.record.slice(-9), { year: y, ret: Math.round(r * 1000) / 1000 }];
+  // The rivals' years, and where you finished among them.
+  for (const rv of (f.rivals ??= [])) {
+    rv.ret = Math.round((s.beta * market + rng.float(-0.05, 0.08) + rng.float(-1, 1) * 0.12) * 1000) / 1000;
+    rv.aum = Math.max(0, Math.round(rv.aum * (1 + rv.ret) * (1 + (rv.ret > 0.1 ? 0.15 : rv.ret < -0.1 ? -0.2 : 0))));
+  }
+  const beaten = f.rivals.filter((rv) => r > rv.ret).length;
+  if (f.rivals.length && beaten === f.rivals.length) { f.rep = clamp(f.rep + 3, 0, 100); ctx.log(`${f.name} beat every rival fund this year. The trade press noticed.`, '🏆', 'good'); }
+  // A rival tries to hire away your best trader.
+  if (f.staff > 1 && f.rivals.length && rng.chance(0.08) && !state.prompts.some((p) => p.type === 'hedgeFund.poach')) {
+    const rv = rng.pick(f.rivals);
+    ctx.prompt({ type: 'hedgeFund.poach', icon: '🎣', title: 'Poached', text: `${rv.name} has offered your best trader double. They've come to tell you before they sign.`, data: { rival: rv.name },
+      options: [{ id: 'match', label: '💰 Match the offer', hint: 'Keep them; costs more' }, { id: 'let', label: '👋 Wish them well' }] });
+  }
   f.rep = clamp(f.rep + (r > 0.2 ? 8 : r > 0.08 ? 4 : r > 0 ? 1 : r > -0.1 ? -4 : -12), 0, 100);
   if (r > 0.25) addBuzz(state, 4);
   // Wiped out.
@@ -144,6 +161,15 @@ function fundYear(ctx) {
 }
 
 export const HedgeFundResolvers = {
+  poach(ctx, data, optionId) {
+    const { state } = ctx;
+    const f = state.fund;
+    if (!f) return;
+    if (optionId === 'match') { ctx.spend(local(state, 400000), 'Keeping your best trader', { allowDebt: true }); return ctx.log(`You matched ${data.rival}'s offer. Your trader stayed.`, '💰', 'good'); }
+    f.staff = Math.max(1, f.staff - 1);
+    f.rep = clamp(f.rep - 2, 0, 100);
+    return ctx.log(`Your best trader left for ${data.rival}.`, '👋', 'warn');
+  },
   redemptions(ctx, data, optionId) {
     const f = ctx.state.fund;
     if (!f) return;
