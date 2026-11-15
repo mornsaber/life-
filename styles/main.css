@@ -1062,7 +1062,9 @@ img.flag { object-fit: cover; }
 .appbar {
   position: sticky; top: 0; z-index: 20;
   display: flex; align-items: center; gap: 10px;
-  max-width: 640px; margin: 0 auto; padding: 8px 12px;
+  max-width: 640px; margin: 0 auto;
+  /* Clear of the iPhone status bar and Dynamic Island (viewport-fit=cover, black-translucent). */
+  padding: calc(8px + env(safe-area-inset-top)) calc(12px + env(safe-area-inset-right)) 8px calc(12px + env(safe-area-inset-left));
   background: var(--topbar); backdrop-filter: blur(8px);
   border-bottom: 1px solid var(--line);
 }
@@ -1197,4 +1199,4 @@ main.phone .subtab { border-radius: 999px; }
 [data-look="classic"] .dock button span:not([aria-hidden]) { font-size: 0.7rem; }
 [data-look="classic"] .stat-bars { font-size: 0.8rem; }
 [data-look="classic"] .chip-link { padding: 4px 6px; }
-[data-look="classic"] .appbar { padding-top: 4px; padding-bottom: 4px; }
+[data-look="classic"] .appbar { padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; }
