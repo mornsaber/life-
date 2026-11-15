@@ -591,10 +591,10 @@ export function businessEquity(state) {
 /** Brokerage holdings, speculative positions and IRAs. */
 export function investmentsValue(state) {
   const inv = state.investing;
-  if (!inv) return 0;
+  if (!inv) return Math.max(0, state.fund?.yours ?? 0);
   const holdings = Object.values(inv.holdings).reduce((s, h) => s + h.value, 0);
   const spec = inv.speculative.reduce((s, p) => s + (p.value ?? 0), 0);
-  return holdings + spec + inv.ira.roth.value + inv.ira.traditional.value + stocksValue(state);
+  return holdings + spec + inv.ira.roth.value + inv.ira.traditional.value + stocksValue(state) + Math.max(0, state.fund?.yours ?? 0);
 }
 
 /** Named stocks, short positions (collateral plus or minus the result) and options. Mirrors investing/StockMarket.js. */
