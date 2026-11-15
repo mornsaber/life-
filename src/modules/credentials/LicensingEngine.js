@@ -27,7 +27,7 @@ import { recognitionRoute, speaksLocal, localLanguage } from '../world/Immigrati
 import { COUNTRIES } from '../world/Countries.js';
 import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
-import { MAJORS } from '../education/Catalog.js';
+import { MAJORS, PROGRAMS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
 import { credentialExists, credentialRequired, diplomaExpected, degreesOptional, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
 
@@ -145,7 +145,7 @@ const PROGRAM_LABEL = { mortuaryScience: 'mortuary science degree', mls: 'MLIS (
 export function describeEducation(req) {
   if (!req) return '';
   if (req.anyOf) return req.anyOf.map(describeEducation).join(' or ');
-  if (req.program) return PROGRAM_LABEL[req.program] ?? req.program;
+  if (req.program) return PROGRAM_LABEL[req.program] ?? PROGRAMS[req.program]?.name ?? req.program;
   return `${LEVEL_LABEL[req.level] ?? req.level}${req.majors?.length ? ` (${req.majors.map((m) => MAJORS[m]?.name ?? m).join('/')})` : ''}`;
 }
 

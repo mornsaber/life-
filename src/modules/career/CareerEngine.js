@@ -562,6 +562,7 @@ export function promote(ctx, levelId) {
   job.supervisorId = chainOfCommand(state, job)?.supervisor?.id ?? null;
   computeOpenings(state, job);
   ctx.log(`Promoted to ${job.title} [G${level.grade}]! New salary: $${job.salary.toLocaleString()}.`, '⬆️', 'good');
+  ctx.emit('career:promoted', { job });
   ctx.toast(`Promoted: ${job.title}`, 'good');
   ctx.stat('happiness', 10);
   return true;

@@ -1200,3 +1200,6 @@ main.phone .subtab { border-radius: 999px; }
 [data-look="classic"] .stat-bars { font-size: 0.8rem; }
 [data-look="classic"] .chip-link { padding: 4px 6px; }
 [data-look="classic"] .appbar { padding-top: calc(4px + env(safe-area-inset-top)); padding-bottom: 4px; }
+
+/* Your Year at Work (CareerPlayView): a label and its meter on one line. */
+.stat-line { display: grid; grid-template-columns: 9.5em 1fr; align-items: center; gap: 8px; margin: 4px 0; }
