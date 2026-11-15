@@ -48,14 +48,20 @@ const tests = {
     assert.equal(daysUsed(state), diaryBudget(state), 'full');
   },
   'a light year and the papers count your engagements'() {
-    const { engine, state } = adultRoyal('child', 2, 24);
-    engine.dispatch('royalDiary.plan', 'rest=1');
-    const before = state.royal.popularity;
-    state.stats.health = 95;
-    engine.ageUp();
-    const text = state.log.at(-1).entries.map((e) => e.text).join(' ');
-    assert.match(text, /counted your engagements/);
-    assert.ok(state.royal.popularity <= before);
+    // Popularity also drifts with the year's news, so judge the light year over several lives.
+    let total = 0;
+    for (const seed of [2, 3, 4, 5, 6, 7]) {
+      const { engine, state } = adultRoyal('child', seed, 24);
+      if (!state.royal || !state.character.alive) continue;
+      engine.dispatch('royalDiary.plan', 'rest=1');
+      const before = state.royal.popularity;
+      state.stats.health = 95;
+      engine.ageUp();
+      const text = state.log.at(-1).entries.map((e) => e.text).join(' ');
+      assert.match(text, /counted your engagements/);
+      total += state.royal.popularity - before;
+    }
+    assert.ok(total < 0, `a light year costs popularity on the whole (${total})`);
   },
   'the Court tab shows the planner with each line\'s likely effect'() {
     const { state } = adultRoyal();

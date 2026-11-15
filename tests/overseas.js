@@ -27,13 +27,16 @@ function life(opts = {}, seed = 4) {
 }
 const tests = {
   'a retired British general is offered Gibraltar or a Crown Dependency'() {
-    const { engine, state } = life();
-    state.military.history.push({ branch: 'army', nation: 'GB', track: 'officer', grade: 8, rankTitle: 'Lieutenant General', rankCode: 'OF-9', discharge: 'retired', yearsOfService: 35, startAge: 18, endAge: 53 });
-    const c = candidacy(state);
-    assert.equal(c.kind, 'military');
-    assert.ok(postsFor(c).includes('gibraltar'));
-    let offered = false;
-    for (let i = 0; i < 60 && !offered; i++) { engine.ageUp(); offered = state.prompts.some((p) => p.type === 'overseasPosts.offer'); if (!offered) state.prompts = []; }
+    // An offer is a one-in-ten chance a year: try a few lives until one comes.
+    let engine, state, offered = false;
+    for (let seed = 4; seed < 12 && !offered; seed++) {
+      ({ engine, state } = life({}, seed));
+      state.military.history.push({ branch: 'army', nation: 'GB', track: 'officer', grade: 8, rankTitle: 'Lieutenant General', rankCode: 'OF-9', discharge: 'retired', yearsOfService: 35, startAge: 18, endAge: 53 });
+      const c = candidacy(state);
+      assert.equal(c.kind, 'military');
+      assert.ok(postsFor(c).includes('gibraltar'));
+      for (let i = 0; i < 60 && !offered && state.character.alive; i++) { engine.ageUp(); offered = state.prompts.some((p) => p.type === 'overseasPosts.offer'); if (!offered) state.prompts = []; }
+    }
     assert.ok(offered, 'an offer came');
     const p = state.prompts.find((x) => x.type === 'overseasPosts.offer');
     state.prompts = [p];

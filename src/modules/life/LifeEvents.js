@@ -21,7 +21,7 @@ export const LIFE_EVENTS = PACK_EVENTS;
 const byId = (id) => LIFE_EVENTS.find((e) => e.id === id) ?? PACK_FOLLOW_UPS[id];
 
 /** How often something happens: kids and young adults have eventful years. */
-const yearlyChance = (age) => (age < 6 ? 0 : age < 18 ? 0.35 : age < 30 ? 0.4 : age < 65 ? 0.3 : 0.25);
+const yearlyChance = (age) => (age < 1 ? 0 : age < 6 ? 0.3 : age < 18 ? 0.4 : age < 30 ? 0.4 : age < 65 ? 0.3 : 0.25);
 
 /**
  * Life events are written in US prices. Abroad, scale what they cost and pay (and the

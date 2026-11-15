@@ -6,8 +6,12 @@ import { compileEvent, validateEvent } from './Rules.js';
 import lifeCore from './packs/life-core.js';
 import lifeDecades from './packs/life-decades.js';
 import lifeStages from './packs/life-stages.js';
+import lifeChildhood from './packs/life-childhood.js';
+import lifeVictorian from './packs/life-victorian.js';
+import lifeLater from './packs/life-later.js';
+import lifeLocal from './packs/life-local.js';
 
-export const CONTENT_PACKS = [lifeCore, lifeStages, lifeDecades];
+export const CONTENT_PACKS = [lifeCore, lifeStages, lifeDecades, lifeChildhood, lifeVictorian, lifeLater, lifeLocal];
 
 const ids = new Set();
 export const PACK_PROBLEMS = [];

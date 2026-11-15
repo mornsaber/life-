@@ -52,7 +52,7 @@ function enlist(engine, arg = 'army:enlisted:active') {
 const year = (engine) => {
   engine.state.prompts = [];
   engine.ageUp();
-  for (let i = 0; i < 10 && engine.state.prompts.length; i++) {
+  for (let i = 0; i < 40 && engine.state.prompts.length; i++) {
     const p = engine.state.prompts[0];
     engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled && o.tone !== 'danger') ?? p.options[0]).id);
   }
@@ -262,9 +262,11 @@ const tests = {
     year(engine);
     if (!state.military.service) return;
     const first = svc.unit.orgId;
-    for (let i = 0; i < 4 && state.military.service; i++) year(engine);
+    // Moved at least once (a tour abroad can bring you back to the same post).
+    let moved = false;
+    for (let i = 0; i < 4 && state.military.service; i++) { year(engine); const sv = state.military.service; if (sv && (sv.overseas || sv.unit?.orgId !== first)) moved = true; }
     if (!state.military.service) return;
-    assert.notEqual(state.military.service.unit.orgId, first, 'a new unit after PCS');
+    assert.ok(moved, 'a new unit after PCS');
   },
 
   'special operations: eligibility, phase-by-phase selection, washouts, and life on a team'() {
