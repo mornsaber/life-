@@ -3,7 +3,12 @@
  * theme, auto-resolving routine decisions and the debug undo button.
  */
 const KEY = 'lifesim.settings';
-export const DEFAULTS = { theme: 'auto', autoResolve: false, debugUndo: false, tips: true, decisions: 'focused' };
+export const DEFAULTS = { theme: 'auto', autoResolve: false, debugUndo: false, tips: true, decisions: 'focused', look: 'modern' };
+
+/** The look: today's cards and dock, or a compact classic list (<html data-look>). */
+export function applyLook(look, doc = globalThis.document) {
+  if (doc?.documentElement) doc.documentElement.dataset.look = look === 'classic' ? 'classic' : 'modern';
+}
 
 export function loadSettings(storage = globalThis.localStorage) {
   try {

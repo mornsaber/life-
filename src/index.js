@@ -15,9 +15,10 @@ import { Random } from './core/Random.js';
 import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
-import { loadSettings, saveSettings, applyTheme } from './ui/Settings.js';
+import { loadSettings, saveSettings, applyTheme, applyLook } from './ui/Settings.js';
 import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked, startListYear } from './ui/Components.js';
 import { enhanceFlagSelects, syncFlagSelects } from './ui/FlagPicker.js';
+import { scenarioOptions } from './modules/life/Scenarios.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
@@ -30,6 +31,7 @@ const renderer = new Renderer({
 let settings = loadSettings();
 function applySettings() {
   applyTheme(settings.theme);
+  applyLook(settings.look);
   engine.autoResolver = settings.autoResolve ? routineChoice : null;
   engine.promptBudget = (DECISION_LEVELS[settings.decisions] ?? DECISION_LEVELS.focused).budget;
   renderer.settings = settings;
@@ -52,6 +54,9 @@ function startNewLife(form) {
     skinTone: data.get('skinTone') || undefined,
     ...birthOptions(data),
     challenge: data.get('challenge') || null,
+    sandbox: data.get('sandbox') === 'on',
+    // A scenario fixes the start: country, year (and sometimes who you are).
+    ...scenarioOptions(data.get('challenge')),
     difficulty: data.get('difficulty') || 'normal',
     nobleHeir: data.get('nobleHeir') || 'random',
   });

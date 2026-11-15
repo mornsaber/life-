@@ -1185,3 +1185,16 @@ main.phone .subtab { border-radius: 999px; }
 .yr-result.good b { color: var(--green, #16a34a); }
 .yr-result.bad b { color: var(--red, #dc2626); }
 .yr-result small { display: block; }
+
+/* The classic look (Settings → Look): compact rows, tighter cards, more on screen. */
+[data-look="classic"] .menu-row { padding: 8px 10px; border-radius: 8px; gap: 10px; }
+[data-look="classic"] .menu-row .menu-icon { font-size: 1.1rem; }
+[data-look="classic"] .menu-row small { display: none; }
+[data-look="classic"] .menu-list { gap: 4px; }
+[data-look="classic"] .card { margin-bottom: 8px; border-radius: 8px; }
+[data-look="classic"] .card-body { padding: 8px 12px; }
+[data-look="classic"] .card-head { padding: 6px 12px; }
+[data-look="classic"] .dock button span:not([aria-hidden]) { font-size: 0.7rem; }
+[data-look="classic"] .stat-bars { font-size: 0.8rem; }
+[data-look="classic"] .chip-link { padding: 4px 6px; }
+[data-look="classic"] .appbar { padding-top: 4px; padding-bottom: 4px; }

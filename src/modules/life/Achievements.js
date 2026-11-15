@@ -17,6 +17,7 @@ import { OFFICES } from '../politics/Offices.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { scoreMultiplier, difficultyId, easeDifficulty, DIFFICULTIES } from '../../core/Difficulty.js';
 import { aspirationPoints } from './Aspirations.js';
+import { priceLevel } from '../world/Countries.js';
 
 const GOV = ['municipal', 'state', 'federal', 'public'];
 const POINTS = { bronze: 10, silver: 25, gold: 50 };
@@ -112,6 +113,15 @@ export const CHALLENGES = {
   warHero: { name: 'War Hero', icon: '🎖️', desc: 'Serve a combat tour and earn five honours.', won: (s) => tours(s).some((t) => (t.combatTours ?? 0) > 0) && honors(s).length >= 5, lost: () => null },
   dynasty: { name: 'Dynasty', icon: '👑', desc: 'Raise three children and live to meet a grandchild.', won: (s) => people(s).filter((p) => p.relation === 'child').length >= 3 && people(s).some((p) => p.relation === 'grandchild'), lost: () => null },
   centenarian: { name: 'Century', icon: '💯', desc: 'Live to 100.', won: (s) => s.character.age >= 100, lost: () => null },
+  // Scenarios: a fixed start (Scenarios.js), the same world for everyone.
+  ragsToRiches: { name: 'Rags to Riches', icon: '🏭', desc: 'Born poor in Manchester in 1850: become a millionaire (in today\'s money).', scenario: { countryId: 'GB', startYear: 1850, regionId: 'manchester', poor: true, worldSeed: 1850 },
+    won: (s) => netWorth(s) / Math.max(0.01, priceLevel(s)) >= 1e6, lost: () => null },
+  workhousePM: { name: 'From the Workhouse to Downing Street', icon: '🏚️', desc: 'Born poor in 1880s Britain: become Prime Minister.', scenario: { countryId: 'GB', startYear: 1880, regionId: 'birmingham', poor: true, worldSeed: 1880 },
+    won: (s) => officesHeld(s).includes('gb_pm'), lost: () => null },
+  survive: { name: 'Survive 1914–1945', icon: '🪖', desc: 'Born in Berlin in 1896: be alive in 1950.', scenario: { countryId: 'DE', startYear: 1896, regionId: 'berlin', gender: 'male', worldSeed: 1896 },
+    won: (s) => s.character.birthYear <= 1900 && currentYear(s) >= 1950, lost: () => null },
+  americanDream: { name: 'The American Dream', icon: '🗽', desc: 'Born poor in Naples in 1890: by 50, live in America in a home or business of your own.', scenario: { countryId: 'IT', startYear: 1890, regionId: 'naples', poor: true, worldSeed: 1890 },
+    won: (s) => (s.character.countryId === 'US') && ((s.housing?.properties ?? []).some((p) => p.use === 'primary') || Boolean(s.business?.current)), lost: (s) => (s.character.age > 50 ? 'Turned 51 without it' : null) },
 };
 
 /* ------------------------------------------------------------------ */
@@ -136,12 +146,13 @@ export function lifeScore(s) {
 }
 
 function enshrine(state) {
+  if (state.flags?.sandbox) return null;
   const c = state.character;
   const peak = jobsOf(state).sort((a, b) => (b.peakGrade ?? 0) - (a.peakGrade ?? 0))[0];
   const entry = {
     name: fullName(state), countryId: c.countryId ?? 'US', born: c.birthYear, died: currentYear(state), age: c.age, cause: c.causeOfDeath ?? '—',
     netWorth: Math.round(netWorth(state)), peak: peak?.title ?? null, achievements: Object.keys(state.achievements ?? {}).length, aspirations: (state.aspirations?.done ?? []).length,
-    challenge: state.challenge ? { id: state.challenge.id, status: state.challenge.status } : null, score: lifeScore(state),
+    challenge: state.challenge ? { id: state.challenge.id, status: state.challenge.status } : null, score: lifeScore(state), scenario: Boolean(CHALLENGES[state.challenge?.id]?.scenario),
     difficulty: difficultyId(state), assisted: Boolean(state.difficulty?.assisted),
   };
   const list = [...hallOfFame(), entry].sort((a, b) => b.score - a.score).slice(0, 100);

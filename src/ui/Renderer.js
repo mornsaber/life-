@@ -52,6 +52,9 @@ import { featsCard } from './views/FeatsView.js';
 import { pressCard } from './views/PressView.js';
 import { venturesView } from './views/VenturesView.js';
 import { littleThingsCard } from './views/LittleThingsView.js';
+import { sandboxCard } from './views/SandboxView.js';
+/** The scenario you're playing, and how it's going. */
+const scenarioCard = (state) => { const c = CHALLENGES[state.challenge?.id]; if (!c?.scenario) return ''; const st = state.challenge.status; return card(`Scenario: ${c.name}`, `<p>${esc(c.desc)}</p><p class="fine">${st === 'won' ? '🏆 Won!' : st === 'failed' ? `❌ ${esc(state.challenge.reason ?? 'Failed')}` : '⏳ In progress'}</p>`, { icon: c.icon }); };
 import { societyView } from './views/SocietyView.js';
 import { inSociety } from '../modules/life/HighSociety.js';
 import { leisureNow, leisureCost, activityLabel } from '../modules/life/LeisureOfTheDay.js';
@@ -257,7 +260,7 @@ function retirementLifeCard(state) {
 
 export const VIEWS = {
   world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state),
-  goals: (state) => littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
+  goals: (state) => sandboxCard(state) + scenarioCard(state) + littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';

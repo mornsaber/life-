@@ -497,7 +497,8 @@ export function newLifeForm(rngName) {
             <legend>Difficulty</legend>
             ${Object.entries(DIFFICULTIES).filter(([id]) => id !== 'royal').map(([id, d]) => `<label title="${esc(d.desc)}"><input type="radio" name="difficulty" value="${id}"${id === 'normal' ? ' checked' : ''}> ${d.icon} ${esc(d.name)}</label>`).join('')}
           </fieldset>
-          <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option>${Object.entries(CHALLENGES).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</select></label>
+          <label class="country-pick">Challenge<select name="challenge"><option value="">None — just live</option><optgroup label="Scenarios (a fixed start: overrides the choices above)">${Object.entries(CHALLENGES).filter(([, c]) => c.scenario).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</optgroup><optgroup label="Goals">${Object.entries(CHALLENGES).filter(([, c]) => !c.scenario).map(([id, c]) => `<option value="${id}">${c.icon} ${esc(c.name)}: ${esc(c.desc)}</option>`).join('')}</optgroup></select></label>
+          <label class="check"><input type="checkbox" name="sandbox"> 🧪 Sandbox: edit your money and stats as you play (not in the Hall of Fame)</label>
         </div></details>
         <button type="submit" class="btn primary huge" data-action="engine.newLife">▶ PRESS START</button>
       </form>

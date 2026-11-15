@@ -258,7 +258,7 @@ export function createInitialState(rng, options = {}) {
     yearly: {},
     prompts: [],
     log: [{ age: 0, year: startYear, entries: [{ text: `${firstName} ${lastName} was born. Welcome to the world!`, icon: '👶', kind: 'milestone' }] }],
-    flags: { promptSeq: 0, ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}), ...(house ? { houseStart: house.place } : {}) },
+    flags: { promptSeq: 0, ...(options.sandbox ? { sandbox: true } : {}), ...(options.noble ? { nobleOptIn: true } : {}), ...(noble ? { nobleStart: { rank: noble.rank, heir: noble.heir } } : {}), ...(house ? { houseStart: house.place } : {}) },
   };
 }
 
