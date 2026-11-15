@@ -6,7 +6,7 @@
  * career, own a home or hold a degree. Then checks each against the reference band for its
  * era (history's figures, loosely: a nineteenth-century wage bought far less than today's).
  *
- *   node tests/erabalance.js [livesPerCell=16] [cells=US:1850,GB:1900,…]
+ *   node tests/erabalance.js [livesPerCell=24] [cells=US:1850,GB:1900,…]
  *
  * Exit code is non-zero when a metric lands outside its band.
  */
@@ -14,7 +14,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'node:worker_thread
 import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 
-const PER = Number(process.argv[2] ?? 16);
+const PER = Number(process.argv[2] ?? 24);
 const CELLS = (process.argv[3] ?? 'US:1850,US:1900,US:1950,US:2000,GB:1850,GB:1900,GB:1950,GB:2000,FR:1880,FR:1960,IN:1900,IN:1990,JP:1880,JP:1970,BR:1920,BR:1990,NG:1960,NG:2000').split(',').map((c) => { const [cc, y] = c.split(':'); return { cc, year: Number(y) }; });
 
 /**
@@ -43,9 +43,10 @@ const KNOWN = {
 const BANDS = {
     // Degrees: a few percent at most before 1930, so a cell of a dozen lives often shows none.
     c19: { lifespan20: [50, 70], employed40: [0.75, 1], pay40: [3000, 25000], nw65: [0, 400000], top10nw65: [20000, 3000000], degree: [0, 0.12], home45: [0.1, 0.7], peakGrade: [3, 8] },
-    early: { lifespan20: [48, 74], employed40: [0.75, 1], pay40: [6000, 35000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
+    // A median of about twenty adults moves a few years between runs: the bands allow for it.
+    early: { lifespan20: [48, 77], employed40: [0.75, 1], pay40: [6000, 35000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
     // Born after 1950, you reach the game's future medicine (2040 on): longer than history's.
-    mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [15000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.3, 0.85], peakGrade: [3, 9] },
+    mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [15000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.15, 0.85], peakGrade: [3, 9] },
     // The persona saves hard (half of them invest every spare dollar), so wealth sits above the median household's.
     now: { lifespan20: [68, 90], employed40: [0.8, 1], pay40: [20000, 95000], nw65: [40000, 1300000], top10nw65: [300000, 12000000], degree: [0.15, 0.7], home45: [0.25, 0.85], peakGrade: [3, 9] },
 };

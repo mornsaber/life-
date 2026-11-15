@@ -497,7 +497,12 @@ export const IntlOrgsModule = {
       vacateSeat(state, job);
       // You head the organization now: nobody else sits above you in it.
       const org = state.orgs?.byId?.[job.employer.orgId];
-      if (org) { if (org.head) delete org.people?.[org.head]; org.head = null; org.playerHead = true; }
+      if (org) {
+        if (org.head) delete org.people?.[org.head];
+        org.head = null;
+        org.playerHead = true;
+        job.headOf = { orgId: org.id, deptId: null, title: job.title, selection: 'appointed', appointedBy: t.by, since: state.character.age, mapped: true, prev: null };
+      }
       return ctx.log(`You were appointed ${job.title}, for ${t.term} years.`, profession.icon, 'honor');
     },
   },
