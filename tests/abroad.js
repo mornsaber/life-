@@ -57,10 +57,17 @@ function life(cc, seed) {
     // (The move screen lists every other country, base included.)
     for (const [name, view] of Object.entries(VIEWS).filter(([n]) => n !== 'move')) {
       const text = strip(localizeHtml(view(state, {}), countryNow()));
-      for (const chunk of text.split(/(?<=[.!?])\s|\s{2,}/)) scan(here(), chunk, `${where} ${name} view`, seen);
+      // The life story re-shows years lived elsewhere: a line that reads right for a country you've lived in passes.
+      const past = name === 'life' ? [...livedIn].filter((c) => c !== here()) : [];
+      for (const chunk of text.split(/(?<=[.!?])\s|\s{2,}/)) {
+        if (past.includes('US') && usLeftovers(here(), chunk).length) continue;
+        const ok = past.some((c) => usLeftovers(c, chunk).length === 0 && usLeftovers(here(), chunk).length);
+        if (!ok) scan(here(), chunk, `${where} ${name} view`, seen);
+      }
     }
   }, `render ${where}`);
   let lastCountry = here();
+  const livedIn = new Set([here()]);
   while (state.character.alive && state.character.age < 70) {
     const age = state.character.age;
     if (age === 22 && state.character.alive) {
@@ -92,6 +99,7 @@ function life(cc, seed) {
       for (const e of block.entries ?? []) if (typeof e?.text === 'string') scan(where, shown(e.text, COUNTRIES[where]), `${cc} log @${state.character.age} seed ${seed}`, seen, moved);
     });
     lastCountry = here();
+    livedIn.add(here());
   }
   render(`${cc} end seed ${seed}`);
   // The death screen: as if this life ended now (with a spell in the army, so the service is named).
