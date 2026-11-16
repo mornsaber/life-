@@ -132,7 +132,7 @@ function careTick(ctx) {
     const a = ARRANGEMENTS[c.arrangement];
     const bill = careBill(state, c);
     if (bill.fromSavings) state.people.parentAssets = Math.max(0, state.people.parentAssets - bill.fromSavings);
-    if (bill.you) ctx.spend(Math.round(bill.you * eraScale(state, 'living')), `Elder care — ${parent.firstName}`, { allowDebt: true });
+    if (bill.you) ctx.spend(Math.round(bill.you * priceLevel(state)), `Elder care — ${parent.firstName}`, { allowDebt: true });
     if (bill.medicaid > 0 && !c.onMedicaid) {
       c.onMedicaid = true;
       ctx.log(`${parent.firstName}'s savings ran out; ${LONG_TERM_CARE[state.character.countryId]?.safetyNet ?? 'Medicaid'} now pays for the nursing home.`, '🏥');

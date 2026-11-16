@@ -31,6 +31,7 @@ import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } fr
 import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
 import { fitsEra } from '../world/Eras.js';
 import { treatedAcuteDeath, available, treatmentWorks } from './PeriodHealth.js';
+import { priceLevel } from '../world/Countries.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -232,6 +233,7 @@ function addictionEffects(ctx, c, def) {
 /** Run a bill through insurance. Pays what you can; the rest becomes medical debt. Returns out-of-pocket. */
 export function medicalBill(ctx, cost, reason, condition) {
   const { state } = ctx;
+  cost = Math.round(cost * priceLevel(state));
   const plan = coverage(state);
   const oop = outOfPocket(state, cost, { condition });
   if (oop <= 0) return 0;
@@ -256,7 +258,7 @@ function medicalDebtTick(ctx) {
   const { state } = ctx;
   const h = state.health;
   if (h.medicalDebt <= 0) return;
-  const payment = Math.min(h.medicalDebt, Math.max(1500, Math.round(h.medicalDebt * 0.1)));
+  const payment = Math.min(h.medicalDebt, Math.max(Math.round(1500 * priceLevel(state)), Math.round(h.medicalDebt * 0.1)));
   if (state.finances.cash >= payment) {
     ctx.spend(payment, 'Medical debt payment');
     h.medicalDebt -= payment;

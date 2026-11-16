@@ -24,7 +24,8 @@ import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from 
 import { knob } from '../../core/Difficulty.js';
 import { officialResidence } from '../world/Residences.js';
 import { hasTech, eraTaxShare } from '../world/Eras.js';
-import { eraScale } from '../economy/EraEconomy.js';
+import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
+import { priceLevel } from '../world/Countries.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 /**
@@ -188,7 +189,7 @@ export const Finances = {
       else if (dependant(state) && gross < 3000 && familySupports(state)) living = 0;
       else if (state.education.enrolled?.pace === 'full' && !state.career.job) {
         // Full-time students borrow for living costs — unless the GI Bill housing allowance covers them.
-        if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += Math.round(8000 * eraScale(state, 'living'));
+        if (!state.education.enrolled.giBillThisYear && state.campus?.housing !== 'dorm') f.loans += Math.round(8000 * priceLevel(state));
       }
       else {
         // Housing (rent, mortgage, upkeep) is charged by the housing module.
@@ -204,10 +205,10 @@ export const Finances = {
         const discretionary = base - tax * (base / Math.max(1, ordinary + informalPay)) - housing - cashDeductions - obligations;
         const atHome = state.housing.withParents && !state.housing.rental && !state.housing.properties.some((p) => p.use === 'primary');
         // The bare minimum is local: $6,000 in an average US city, far less in Lilongwe or Port-au-Prince.
-        const minimum = (atHome ? LIVING_AT_HOME : LIVING_MINIMUM) * (region.col ?? 1) * eraScale(state, 'living');
+        const minimum = (atHome ? LIVING_AT_HOME : LIVING_MINIMUM) * (region.col ?? 1) * eraScale(state, 'living') * countryWageFactor(state) ** 0.7;
         // A second adult adds about half again to household needs (OECD equivalence scale).
         const household = married ? 1.5 : 1;
-        const lifestyle = (LIVING_FLOOR * eraScale(state, 'living') * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
+        const lifestyle = (LIVING_FLOOR * eraScale(state, 'living') * countryWageFactor(state) ** 0.7 * household * Math.sqrt(region.col) + Math.max(0, discretionary) * LIFESTYLE_SHARE) * (1 + STATES[region.state].salesTax / 2);
         // Spending flexes down when money is tight (harder once the cards are carrying a balance),
         // but never below the bare minimum.
         const squeeze = cardDebt > 5000 ? 0.8 : 0.92;

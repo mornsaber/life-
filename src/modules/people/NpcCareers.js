@@ -22,9 +22,8 @@ import { nextLevels } from '../career/Ladder.js';
 import { eraWorkBlock, yearNow, periodTitle } from '../world/Eras.js';
 import { workBlock } from '../world/Regimes.js';
 import { crownOf } from '../world/Crown.js';
-import { COUNTRIES } from '../world/Countries.js';
+import { COUNTRIES, localWage } from '../world/Countries.js';
 import { packFor, VOCATIONS, vocationOf } from '../career/vocations/registry.js';
-import { eraScale } from '../economy/EraEconomy.js';
 
 /** Schooling a profession expects, as a rank: 0 none … 5 professional or doctorate. */
 const PROGRAM_RANK = { md: 5, jd: 5, dds: 5, od: 5, dc: 5, psyd: 5, phd: 5, paMaster: 4, mot: 4, slpMaster: 4 };
@@ -102,7 +101,7 @@ export function startCareer(rng, state, person, profession, { age = null, levelI
   person.career = { professionId: profession.id, levelId: level.id, years: 0, inField: Math.max(0, (age ?? 25) - 22), awards: [], postings: [], elite: null, record: [], packId: packFor(state, profession.id)?.id ?? null };
   person.job = periodTitle(level.title);
   person.sector = profession.sector === 'private' ? 'private' : 'public';
-  person.careerIncome = Math.round(npcPay(profession, level, rng) * eraScale(state, 'wage'));
+  person.careerIncome = Math.round(npcPay(profession, level, rng) * localWage(state));
   return person.career;
 }
 
@@ -161,9 +160,9 @@ export function careerYear(ctx, rng, person, { say = () => {}, rival = false } =
     c.levelId = to.id;
     c.years = 0;
     person.job = periodTitle(to.title);
-    person.careerIncome = Math.max(person.careerIncome ?? 0, Math.round(npcPay(profession, to, rng) * eraScale(state, 'wage')));
+    person.careerIncome = Math.max(person.careerIncome ?? 0, Math.round(npcPay(profession, to, rng) * localWage(state)));
     say(`${name} was promoted to ${person.job}.`, '📈', 'good');
-  } else person.careerIncome = Math.round((person.careerIncome ?? npcPay(profession, level) * eraScale(state, 'wage')) * rng.float(1.0, 1.035));
+  } else person.careerIncome = Math.round((person.careerIncome ?? npcPay(profession, level) * localWage(state)) * rng.float(1.0, 1.035));
   const pack = c.packId ? VOCATIONS[c.packId] : null;
   if (!pack) return false;
   const grade = (profession.levels.find((l) => l.id === c.levelId) ?? level).grade;

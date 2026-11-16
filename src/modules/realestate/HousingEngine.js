@@ -29,6 +29,7 @@ import { officialResidence } from '../world/Residences.js';
 import { aidName } from '../life/Disasters.js';
 import { propertyBlock } from '../world/Regimes.js';
 import { periodHomeName } from './HomesOfTheDay.js';
+import { priceLevel } from '../world/Countries.js';
 
 export const STATUS_LABEL = {
   incarcerated: { label: 'Incarcerated', icon: '🔒' },
@@ -234,7 +235,7 @@ function disasterDamage(ctx, { type, severity, stateId, name, stance }) {
   }
   const status = housingStatus(state);
   if (status === 'renting' || status === 'homeless') {
-    const cost = Math.round(rng.int(500, 3000) * severity * (stance === 'evacuate' ? 0.6 : 1));
+    const cost = Math.round(rng.int(500, 3000) * severity * (stance === 'evacuate' ? 0.6 : 1) * priceLevel(state));
     ctx.spend(cost, 'Disaster displacement', { allowDebt: true });
     ctx.log(`You were displaced for weeks and lost belongings ($${cost.toLocaleString()}).`, '🧳', 'warn');
   }

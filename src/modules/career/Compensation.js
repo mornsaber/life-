@@ -10,7 +10,7 @@ import { stateOf } from '../life/Regions.js';
 import { clearedPremium } from './ClearedWork.js';
 import { lawValue } from '../politics/Laws.js';
 import { knob } from '../../core/Difficulty.js';
-import { eraScale } from '../economy/EraEconomy.js';
+import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
 
 /**
  * Government command staff (grade 7+) are paid more at bigger agencies (a big-city chief vs a
@@ -43,13 +43,14 @@ export function recalcSalary(state, job) {
     exec: job.abilities.includes('exec'),
   });
   // State minimum wage floors full-time pay (2,080 hours).
-  const floor = Math.round((lawValue(state, 'minWage') ?? stateOf(state).minWage) * 2080 * eraScale(state, 'wage'));
+  // Abroad the minimum follows the country's wage level too; informal work has no legal minimum.
+  const floor = job.informal ? 0 : Math.round((lawValue(state, 'minWage') ?? stateOf(state).minWage) * 2080 * eraScale(state, 'wage') * countryWageFactor(state));
   // Legislated pay adjustments for government employees at that level.
   const adj = lawValue(state, 'publicPay');
   const publicAdj = job.sector === 'federal' ? adj?.federal : job.sector === 'state' ? adj?.state : job.sector === 'municipal' ? adj?.city : 0;
   // Difficulty: everyone's paid a little more (Story) or less (Hard, Brutal).
   // Pay of its era: a wage in 1850 bought far less, in today's money (economy/EraEconomy.js).
-  const era = eraScale(state, 'wage');
+  const era = eraScale(state, 'wage') * countryWageFactor(state);
   const total = Math.round(job.pay.total * knob(state, 'income') * era);
   // Government pay stops at the legal cap, however senior the post.
   const cap = Math.round(payCap(job, state.character.countryId) * knob(state, 'income'));

@@ -27,7 +27,7 @@ import { backgroundMortality } from '../life/Lifecycle.js';
 import { regionOf, stateIdOf, countryIdOf } from '../life/Regions.js';
 import { nationalityCode, nationalityName } from '../world/Immigration.js';
 import { settleNewborn } from '../world/Nationality.js';
-import { priceLevel, citizenshipsOf, COUNTRIES } from '../world/Countries.js';
+import { priceLevel, localWage, citizenshipsOf, COUNTRIES } from '../world/Countries.js';
 import { profileReturn, realReturn } from '../investing/Assets.js';
 import {
   ageOf, people, living, byId, spouseOf, partnerOf, livingChildren, minorChildren, parentsOf, clampRel, fullName, spouseSocialSecurity, RELATION_LABEL,
@@ -43,7 +43,6 @@ import { childMortality, childCause, maternalRisk, childbirthCause, periodRng } 
 import { longevityFactor } from '../world/Eras.js';
 import { parentsEstate, spouseDied } from './Succession.js';
 import { statuteIn } from '../politics/StatuteBook.js';
-import { eraScale } from '../economy/EraEconomy.js';
 
 /** Where a partner from abroad comes from: playable countries (with their own names) and a few others. */
 const NATIONALITIES = ['CA', 'MX', 'DE', 'IN', 'PH', 'BR', 'KR', 'NG', 'FR', 'CN', 'GB', 'Ukraine'];
@@ -67,7 +66,7 @@ export function makePerson(ctx, { relation, gender, age, lastName, relationship 
   const name = randomName(rng, g);
   const [title, modernPay, sector] = rng.pick(JOBS);
   // Pay of the era (economy/EraEconomy.js): a clerk's wage in 1900 bought far less.
-  const pay = modernPay * eraScale(state, 'wage');
+  const pay = modernPay * localWage(state);
   const person = {
     id: rng.id('per_'), firstName: name.firstName, lastName: lastName ?? name.lastName, gender: g, relation,
     ageOffset: age - state.character.age, relationship: clampRel(relationship), alive: true,
@@ -282,7 +281,7 @@ function childrenTick(ctx) {
     if (age === 18) ctx.log(`${child.firstName} turned 18${child.custody === 'ex' ? '' : ' and moved out'}.`, '🎓');
   }
   // Costs of their era (economy/EraEconomy.js): a child in 1880 cost a fraction of one today.
-  const era = eraScale(state, 'living');
+  const era = priceLevel(state);
   if (costs) ctx.spend(Math.round(costs * era), 'Child expenses', { allowDebt: true });
   if (childcare) ctx.spend(Math.round(childcare * era), 'Childcare', { allowDebt: true });
   // 529s grow with a balanced portfolio.
@@ -439,7 +438,7 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
   // cruelty, desertion — and the one at fault comes off worse in the settlement.
   const grounds = !statuteIn(state, 'noFaultDivorce');
   const fault = grounds ? p.fault?.who ?? null : null;
-  ctx.spend(Math.round((contested ? 25000 : 8000) * (grounds && !fault ? 1.5 : 1)), 'Divorce legal fees', { allowDebt: true });
+  ctx.spend(Math.round((contested ? 25000 : 8000) * (grounds && !fault ? 1.5 : 1) * priceLevel(state)), 'Divorce legal fees', { allowDebt: true });
   if (grounds) ctx.log(fault === 'you' ? 'With no divorce without fault, your adultery was the grounds: the court was not kind to you.' : fault === 'them' ? `With no divorce without fault, ${spouse.firstName}'s adultery was the grounds: the court took your side.` : 'With no divorce without fault, the lawyers had to prove grounds: months of private detectives and testimony.', '⚖️', fault === 'you' ? 'bad' : 'info');
   // Marital property splits 50/50 unless a prenup protects it (and fault shifts it).
   const share = (p.prenup ? 0.2 : 0.5) + (fault === 'you' ? 0.15 : fault === 'them' ? -0.15 : 0);

@@ -27,6 +27,7 @@ import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { ageOf, living, byId, clampRel, partnerOf } from './People.js';
 import { openWith, markFault } from './OpenMarriage.js';
 import { statuteIn } from '../politics/StatuteBook.js';
+import { priceLevel } from '../world/Countries.js';
 
 export const TRAITS = {
   adventurous: { name: 'Adventurous', icon: '🧗', likes: ['hike', 'trip', 'concert'] },
@@ -560,7 +561,7 @@ export const BondsModule = {
     anniversary(ctx, data, optionId) {
       const p = byId(ctx.state, data.personId);
       if (!p) return;
-      const cost = { trip: 2500, dinner: 150, renew: 4000, nothing: 0 }[optionId] ?? 0;
+      const cost = Math.round(({ trip: 2500, dinner: 150, renew: 4000, nothing: 0 }[optionId] ?? 0) * priceLevel(ctx.state));
       if (cost && !ctx.spend(cost, 'Anniversary', { credit: true })) return ctx.log('You couldn\'t afford it; you had a quiet night in.', '🛋️');
       const lift = { trip: 14, dinner: 8, renew: 18, nothing: 4 }[optionId] ?? 4;
       p.spark = clamp((p.spark ?? 60) + lift, 0, 100);
@@ -622,9 +623,10 @@ export const BondsModule = {
         case 'reconnect.go': return say(`Coffee with ${p.firstName} turned into three hours. It's like no time passed.`, 18, 'good');
         case 'reconnect.skip': return say(`You left ${p.firstName}'s message unanswered.`, -3);
         case 'loan.lend': {
-          ctx.spend(2000, `Loan to ${p.firstName}`, { allowDebt: true });
+          const lent = Math.round(2000 * priceLevel(ctx.state));
+          ctx.spend(lent, `Loan to ${p.firstName}`, { allowDebt: true });
           if (rng.chance(0.7)) {
-            ctx.earn(2000, `${p.firstName} paid you back`);
+            ctx.earn(lent, `${p.firstName} paid you back`);
             return say(`${p.firstName} paid you back right on time.`, 6);
           }
           return say(`${p.firstName} never paid you back, and now things are awkward.`, -10, 'warn');

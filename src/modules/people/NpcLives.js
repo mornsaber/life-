@@ -23,6 +23,7 @@ import { rentableUnits } from '../realestate/Landlording.js';
 import { yearNow, eraYear } from '../world/Eras.js';
 import { pickProfession, startCareer, careerYear, migrateJob, homemakerOdds } from './NpcCareers.js';
 import { spouseOf } from './People.js';
+import { localWage } from '../world/Countries.js';
 
 export const EDU_LABEL = {
   none: 'No diploma', highschool: 'High school', trade: 'Trade school', associate: "Associate's", bachelor: "Bachelor's", master: "Master's", professional: 'Professional degree', doctorate: 'PhD',
@@ -242,7 +243,7 @@ function yearOf(ctx, p) {
     p.retired = true;
     if (p.job) say(`${p.firstName} retired${life.employer ? ` from ${life.employer}` : ''}.`, '🏖️', 'good');
     p.job = null;
-    if (!isPartner(p)) p.income = Math.round(Math.min(45000, (p.careerIncome || 30000) * 0.4));
+    if (!isPartner(p)) p.income = Math.round(Math.min(45000 * localWage(state), (p.careerIncome || 30000 * localWage(state)) * 0.4));
   }
 
   // Money: people save a slice of what they earn; markets move what they have.

@@ -19,6 +19,7 @@ import { yearlyCount, bumpYearly, netWorth } from '../../core/State.js';
 import { peekLife } from '../career/engines/Kit.js';
 import { OFFICES } from '../politics/Offices.js';
 import { rankOf } from '../military/MilitaryEngine.js';
+import { localWage } from '../world/Countries.js';
 
 export const TIERS = [
   [0, 'Unknown', '🙂'], [10, 'Locally known', '🗞️'], [25, 'Well known', '📰'], [45, 'Famous', '⭐'], [70, 'A star', '🌟'], [90, 'An icon', '💫'],
@@ -140,7 +141,8 @@ function yearTick(ctx) {
   // One fame moment a year at most.
   if (!infamous && s >= 25 && f.deals.length < 3 && rng.chance(0.3)) {
     const brand = rng.pick(BRANDS);
-    const amount = Math.round(s * s * 40 / 1000) * 1000;
+    // Brands pay what fame is worth here and then (a star in 1920s Bombay signed for far less).
+    const amount = Math.max(100, Math.round(s * s * 40 * localWage(state) / 100) * 100);
     return ctx.prompt({ type: 'fame.endorse', icon: '🤝', title: 'An Endorsement Deal', text: `${brand[0].toUpperCase()}${brand.slice(1)} wants your face on its campaign: $${amount.toLocaleString()} a year for three years.`, options: [
       { id: 'accept', label: '✍️ Sign' }, { id: 'decline', label: '🙅 Decline' },
     ], data: { brand, amount } });

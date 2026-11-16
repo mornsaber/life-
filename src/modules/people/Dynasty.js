@@ -26,6 +26,7 @@
 import { clamp } from '../../core/Random.js';
 import { randomName, yearlyCount, bumpYearly } from '../../core/State.js';
 import { ageOf, livingChildren, byId, clampRel, fullName } from './People.js';
+import { localWage } from '../world/Countries.js';
 
 export const SUCCESSION_COST = 12000;
 export const SUCCESSION_CHANGE_COST = 1500;
@@ -220,7 +221,7 @@ export function heirFamily(rng, child, old) {
   const name = randomName(rng, gender);
   const spouse = {
     id: rng.id('per_'), firstName: name.firstName, lastName: child.lastName, gender, relation: 'spouse', ageOffset: rng.int(-3, 3),
-    relationship: 70, alive: true, income: heirAge < 65 ? rng.int(40000, 85000) : 0, careerIncome: rng.int(40000, 85000), job: heirAge < 65 ? 'Works locally' : null,
+    relationship: 70, alive: true, income: heirAge < 65 ? Math.round(rng.int(40000, 85000) * localWage(old)) : 0, careerIncome: Math.round(rng.int(40000, 85000) * localWage(old)), job: heirAge < 65 ? 'Works locally' : null,
     sector: 'private', nationality: old.character.countryId ?? 'US', compatibility: rng.int(55, 85), since: Math.max(18, heirAge - 6),
   };
   out.push(spouse);

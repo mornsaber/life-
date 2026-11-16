@@ -20,6 +20,7 @@ import { rep } from '../life/Reputation.js';
 import { hasTech } from '../world/Eras.js';
 import { startCareer, careerYear, careerTitle } from './NpcCareers.js';
 import { getProfession } from '../career/JobTrees.js';
+import { priceLevel } from '../world/Countries.js';
 
 export const MAX_RIVALS = 4;
 const ORIGIN = {
@@ -219,7 +220,7 @@ export const RivalsModule = {
           rep(ctx, 'neighbourhood', -6, `A public feud with ${r.name}`);
           return say(`You and ${r.name} traded insults in public. Nobody came out well.`, '🗣️', 'bad');
         case 'match':
-          ctx.spend(5000, 'Keeping up with a rival', { credit: true });
+          ctx.spend(Math.round(5000 * priceLevel(ctx.state)), 'Keeping up with a rival', { credit: true });
           ctx.stat('happiness', 2);
           return say(`You spent to keep up with ${r.name}.`, '🛍️', 'info');
         default:

@@ -11,6 +11,8 @@ import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { decadeInflation, hyperHere, priceThen, BASKET, livingStandard, CRASHES } from '../src/modules/economy/MoneyOfTheDay.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { countryWageFactor } from '../src/modules/economy/EraEconomy.js';
+import { localWage, priceLevel, countryPriceLevel } from '../src/modules/world/Countries.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const life = (opts, seed = 1) => {
@@ -26,6 +28,21 @@ const years = (engine, state, n, each) => {
 };
 
 const tests = {
+  'pay follows how rich the country is, for you and everyone around you'() {
+    const at = (cc) => ({ character: { countryId: cc } });
+    assert.equal(countryWageFactor(at('US')), 1);
+    assert.ok(countryWageFactor(at('IN')) < 0.35 && countryWageFactor(at('NG')) < 0.35, 'India and Nigeria well below');
+    assert.ok(countryWageFactor(at('DE')) > 0.8 && countryWageFactor(at('GB')) > 0.7, 'Germany and Britain near');
+    // Everyone else's pay carries the same three levels as yours: the era's, the country's and its cities'.
+    const india = life({ countryId: 'IN', startYear: 1995 }, 3);
+    years(india.engine, india.state, 30);
+    const real = (x) => x / countryPriceLevel(india.state);
+    const npcs = india.state.people.list.filter((p) => p.alive && p.careerIncome > 0).map((p) => real(p.careerIncome));
+    assert.ok(npcs.length, 'someone works');
+    const median = npcs.sort((a, b) => a - b)[Math.floor(npcs.length / 2)];
+    assert.ok(median < 30000, `an Indian family earns Indian wages ($${Math.round(median)} real)`);
+    assert.ok(localWage(india.state) < 0.1 && priceLevel(india.state) < 0.1, 'local wages and prices both low');
+  },
   'inflation of the time and place'() {
     assert.ok(decadeInflation(life({ countryId: 'GB', startYear: 1975 }).state) > 0.1, 'Britain in the 1970s');
     assert.ok(decadeInflation(life({ countryId: 'US', startYear: 1885 }).state) <= 0, 'the gold standard');

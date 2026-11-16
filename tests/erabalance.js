@@ -12,6 +12,7 @@
  */
 import { Worker, isMainThread, parentPort, workerData } from 'node:worker_threads';
 import os from 'node:os';
+import { countryWageFactor } from '../src/modules/economy/EraEconomy.js';
 import { fileURLToPath } from 'node:url';
 
 const PER = Number(process.argv[2] ?? 24);
@@ -25,10 +26,12 @@ const CELLS = (process.argv[3] ?? 'US:1850,US:1900,US:1950,US:2000,GB:1850,GB:19
  */
 const eraOf = (y) => (y < 1880 ? 'c19' : y < 1930 ? 'early' : y < 1980 ? 'mid' : 'now');
 /** Each metric judged by the era it's measured in: pay at 40 by the year you're 40, and so on. */
-export function bands(year) {
+export function bands(year, cc = 'US', factor = 1) {
   const at = (offset) => BANDS[eraOf(year + offset)];
   const b = BANDS[eraOf(year)];
-  return { lifespan20: b.lifespan20, degree: b.degree, peakGrade: b.peakGrade, employed40: at(40).employed40, pay40: at(40).pay40, home45: at(45).home45, nw65: at(65).nw65, top10nw65: at(65).top10nw65 };
+  // Real pay and wealth follow how rich the country is (economy/EraEconomy.countryWageFactor).
+  const k = (r) => r.map((x) => x * factor);
+  return { lifespan20: b.lifespan20, degree: b.degree, peakGrade: b.peakGrade, employed40: at(40).employed40, pay40: k(at(40).pay40), home45: at(45).home45, nw65: k(at(65).nw65), top10nw65: k(at(65).top10nw65) };
 }
 /**
  * Known gaps, reported but not failed: the game models them differently from history.
@@ -37,7 +40,7 @@ export function bands(year) {
  *   Degrees where universities were few: the era's places follow the rich world's.
  */
 const KNOWN = {
-  home45: { BR: 'most Brazilian homes were self-built or informal; the game only sells homes through a bank', NG: 'most Nigerian homes were family-built or informal; the game only sells homes through a bank' },
+  home45: { BR: 'most Brazilian homes were self-built or informal; the game only sells homes through a bank', NG: 'most Nigerian homes were family-built or informal; the game only sells homes through a bank', IN: 'most Indian homes were self-built or inherited; the game only sells homes through a bank' },
   degree: { NG: 'Nigeria had a few thousand university places in the 1960s, well under 1% of young people' },
 };
 const BANDS = {
@@ -143,7 +146,7 @@ async function playCell({ cc, year, per, seed }) {
       if (a === 40) { r.employed40 = Boolean(s.career.job || s.military.service || s.business?.current); r.pay40 = s.career.job ? s.career.job.salary / k : null; }
       if (a === 45) r.home45 = s.housing.properties.some((p) => p.use === 'primary');
       if (a === 65) r.nw65 = netWorth(s) / k;
-      if (a === 65 && process.env.ERA_DEBUG) console.error(JSON.stringify({ spent: Object.entries(r.out ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 10).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), top: Object.entries(r.src ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), cell: `${cc}:${year}`, nw: Math.round(netWorth(s) / k), cash: Math.round(s.finances.cash / k), homes: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0) / k), invest: Math.round(Object.values(s.investing?.holdings ?? {}).reduce((t, h) => t + (h.value ?? 0), 0) / k), dc: Math.round(Object.values(s.retirement?.dc ?? {}).reduce((t, v) => t + (typeof v === 'number' ? v : v?.balance ?? 0), 0) / k), pay: Math.round((s.career.job?.salary ?? 0) / k), inherited: Math.round((s.finances.ledger?.income ?? []).filter((x) => /inherit|estate|bequest|will/i.test(x.reason)).reduce((t, x) => t + x.amount, 0) / k) }));
+      if (a === 65 && process.env.ERA_DEBUG) r.dbg = ({ spent: Object.entries(r.out ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 10).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), top: Object.entries(r.src ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), cell: `${cc}:${year}`, nw: Math.round(netWorth(s) / k), cash: Math.round(s.finances.cash / k), homes: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0) / k), invest: Math.round(Object.values(s.investing?.holdings ?? {}).reduce((t, h) => t + (h.value ?? 0), 0) / k), dc: Math.round(Object.values(s.retirement?.dc ?? {}).reduce((t, v) => t + (typeof v === 'number' ? v : v?.balance ?? 0), 0) / k), pay: Math.round((s.career.job?.salary ?? 0) / k), inherited: Math.round((s.finances.ledger?.income ?? []).filter((x) => /inherit|estate|bequest|will/i.test(x.reason)).reduce((t, x) => t + x.amount, 0) / k) });
     }
     r.died = s.character.age;
     r.degree = s.education.degrees.some((d) => ['bachelor', 'master', 'doctorate', 'md', 'jd', 'phd'].includes(d.type));
@@ -163,6 +166,7 @@ export function summarize(lives) {
   const at65 = lives.filter((l) => l.died > 65);
   return {
     n: lives.length,
+    n65: at65.length,
     lifespan20: med(adults.map((l) => l.died)),
     employed40: share(at40.map((l) => l.employed40)),
     pay40: med(at40.map((l) => l.pay40)),
@@ -180,19 +184,21 @@ if (!isMainThread) {
 } else {
   const file = fileURLToPath(import.meta.url);
   const threads = Math.max(1, Math.min(CELLS.length, os.cpus().length));
-  const queue = CELLS.map((c, i) => ({ ...c, per: PER, seed: i + 1 }));
+  // Each cell's seed follows the cell itself, so a run of a few cells repeats the full run's lives.
+  const queue = CELLS.map((c) => ({ ...c, per: PER, seed: [...c.cc].reduce((t, ch) => t * 31 + ch.charCodeAt(0), 7) % 997 + c.year }));
   const results = [];
   const run = () => new Promise((done) => {
     const next = () => {
       const job = queue.shift();
       if (!job) return done();
       const w = new Worker(file, { workerData: job });
-      w.on('message', (lives) => { results.push({ ...job, s: summarize(lives) }); w.terminate(); next(); });
+      w.on('message', (lives) => { results.push({ ...job, s: summarize(lives), lives }); w.terminate(); next(); });
       w.on('error', (e) => { results.push({ ...job, error: e.message }); next(); });
     };
     next();
   });
   await Promise.all(Array.from({ length: threads }, run));
+  if (process.env.ERA_DEBUG) for (const r of results) { console.log(r.cc, r.year, 'lives', r.s?.n, 'at 65', r.s?.n65); for (const l of (r.lives ?? []).filter((x) => x.dbg).sort((a, b) => a.dbg.nw - b.dbg.nw)) console.log(' ', JSON.stringify(l.dbg)); }
   results.sort((a, b) => CELLS.findIndex((c) => c.cc === a.cc && c.year === a.year) - CELLS.findIndex((c) => c.cc === b.cc && c.year === b.year));
   const fmt = { lifespan20: (x) => x?.toFixed(0), employed40: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), pay40: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), nw65: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), top10nw65: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), degree: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), home45: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), peakGrade: (x) => x ?? '–' };
   const keys = Object.keys(fmt);
@@ -201,7 +207,7 @@ if (!isMainThread) {
   const notes = [];
   for (const r of results) {
     if (r.error) { console.log(`${r.cc}:${r.year}\tERROR ${r.error}`); off.push(`${r.cc}:${r.year} crashed`); continue; }
-    const b = bands(r.year);
+    const b = bands(r.year, r.cc, countryWageFactor({ character: { countryId: r.cc } }));
     console.log([`${r.cc}:${r.year}`, ...keys.map((k) => { const v = r.s[k]; const bad = v != null && b[k] && (v < b[k][0] || v > b[k][1]); const known = bad && KNOWN[k]?.[r.cc]; if (known) notes.push(`${r.cc}:${r.year} ${k} ${fmt[k](v)}: ${known}`); else if (bad) off.push(`${r.cc}:${r.year} ${k} ${fmt[k](v)} outside [${b[k].map((x) => fmt[k](x)).join(', ')}]`); return `${fmt[k](v)}${bad ? '✘' : ''}`; }), r.s.errors].join('\t'));
   }
   if (notes.length) console.log(`\n⚠ Known gaps (not failures):\n  ${[...new Set(notes)].join('\n  ')}`);

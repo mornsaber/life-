@@ -29,7 +29,7 @@ import { packCountries } from './packs/index.js';
 import { RURAL_TOWNS, ruralCities } from './RuralTowns.js';
 import { EDUCATION, educationTerms } from './Education.js';
 import { CREDIT, SMALL_BIZ_LOAN, VETERANS, STOCK_INDEX, CADETS, FOREIGN_SERVICE_EXAM, PROSECUTORS, JUSTICE, volunteerTerms, nationalServiceTerms, workplaceTerms, equipmentTerms, ENTRANCE_EXAMS, ACCOUNTS, AVIATION_AUTHORITY, COUNTY } from './CountryLaw.js';
-import { eraScale } from '../economy/EraEconomy.js';
+import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
 
 /** Credit, small-business lending, veterans' groups and the stock index, by their local names. */
 function lawTerms(cc) {
@@ -414,7 +414,14 @@ const PRICE_LEVELS = {};
  * average wage level. Goods and homes are priced through each city already.
  */
 export function priceLevel(state) {
-  return countryPriceLevel(state) * eraScale(state, 'living');
+  return countryPriceLevel(state) * eraScale(state, 'living') * countryWageFactor(state);
+}
+/**
+ * What a year's pay is worth here against the US today: the era's wage level, the country's, and
+ * its cities' (the same three a player's salary carries). Pay for everyone else follows it.
+ */
+export function localWage(state) {
+  return eraScale(state, 'wage') * countryWageFactor(state) * countryPriceLevel(state);
 }
 /** The country's price level alone, without the era (for converting between countries). */
 export function countryPriceLevel(state) {

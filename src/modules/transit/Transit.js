@@ -16,7 +16,7 @@ import { hasCredential } from '../credentials/LicensingEngine.js';
 import { VEHICLE_TYPES } from '../vehicles/Vehicles.js';
 import { getProfession } from '../career/JobTrees.js';
 import { yearNow, eraYear } from '../world/Eras.js';
-import { eraScale } from '../economy/EraEconomy.js';
+import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
 
 export const MODES = {
   drive: { label: 'Drive', icon: '🚗' },
@@ -103,7 +103,8 @@ export const TransitModule = {
     const job = state.career.job;
     let cost = 0;
     if (mode === 'transit') {
-      cost = Math.round(passCost(state) * eraScale(state, 'living'));
+      // Fares follow the era and how rich the country is (a metro pass in Delhi is a few dollars a month).
+      cost = Math.round(passCost(state) * eraScale(state, 'living') * countryWageFactor(state));
       if (cost) ctx.spend(cost, 'Transit pass', { allowDebt: true });
       if (job && ['large', 'enterprise'].includes(job.employer.size) && cost) ctx.deduct(Math.min(cost, COMMUTER_BENEFIT), 'Pre-tax commuter benefit');
       if (q >= 70) {
