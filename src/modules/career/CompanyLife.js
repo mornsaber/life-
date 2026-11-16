@@ -261,6 +261,8 @@ export const overlapOdds = (job) => clamp(0.3 + ((job.performance ?? 55) - 55) /
 export function corpLayoffRisk(state, job) {
   const c = isCorporate(job) ? corpOf(state, job) : null;
   if (!c) return 0;
+  // A no-layoffs guarantee won at the bargaining table (career/CompanyUnions.js).
+  if ((job.noLayoffUntil ?? 0) > state.character.age) return 0;
   return c.health < 25 ? 0.08 : c.health < 40 ? 0.03 : 0;
 }
 

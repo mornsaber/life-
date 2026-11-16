@@ -107,6 +107,13 @@ const tests = {
     const f = PROMO_FACTORS.reduce((a, fn) => a * (fn(state, job, senior) ?? 1), 1);
     assert.ok(f <= 0.6, `a heavy drag on promotion (${f})`);
   },
+  'American lives (no country id) get the US rules: equal pay in 1963, the teaching bar'() {
+    const { engine, state, job } = worker(undefined, 1925, 'corporate', 'analyst');
+    assert.ok(yearNow(state) < 1963);
+    assert.equal(job.womensRate, 0.75);
+    marry(engine, state);
+    assert.match(eraWorkBlock(state, getProfession('education')) ?? '', /marriage bar/);
+  },
   'men are untouched'() {
     const { engine, state, job } = worker('GB', 1905, 'education', firstLevel('education'), { gender: 'male' });
     marry(engine, state);

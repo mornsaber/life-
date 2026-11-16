@@ -22,7 +22,7 @@ const PUBLIC = ['municipal', 'state', 'federal', 'public'];
 
 /** The year your job paid women the men's rate. */
 export function equalPayYear(state, job) {
-  const cc = state.character.countryId;
+  const cc = (state.character.countryId ?? 'US');
   const law = EQUAL_PAY[cc] ?? 1975;
   return PUBLIC.includes(job?.sector) ? Math.min(law, PUBLIC_EQUAL_PAY[cc] ?? law) : law;
 }
@@ -32,7 +32,7 @@ export function womensRate(state, job) {
   if (state.character.gender !== 'female' || !job) return 1;
   const y = yearNow(state);
   const act = equalPayYear(state, job);
-  if (y < act) return LOW_RATE[state.character.countryId] ?? 0.75;
+  if (y < act) return LOW_RATE[(state.character.countryId ?? 'US')] ?? 0.75;
   // The law closed most of it at once; the rest went over a generation.
   return y - act >= 20 ? 1 : Math.round((0.9 + 0.1 * ((y - act) / 20)) * 100) / 100;
 }
@@ -56,7 +56,7 @@ const idOf = (p) => p?.template ?? p?.id;
 export function marriageBar(state, profession) {
   if (!profession) return null;
   const y = yearNow(state);
-  for (const b of BARS[state.character.countryId] ?? []) {
+  for (const b of BARS[(state.character.countryId ?? 'US')] ?? []) {
     if (y >= b.until || (b.from && y < b.from)) continue;
     if (b.ids?.includes(profession.id) || b.ids?.includes(idOf(profession)) || b.sectors?.includes(profession.sector)) return b;
   }
@@ -65,7 +65,7 @@ export function marriageBar(state, profession) {
 
 /** Japan and Korea's big firms: expected to retire on marriage (until the equal opportunity laws). */
 export function retireOnMarriageCustom(state, job) {
-  const until = CUSTOM_UNTIL[state.character.countryId];
+  const until = CUSTOM_UNTIL[(state.character.countryId ?? 'US')];
   return Boolean(until && yearNow(state) < until && job?.sector === 'private' && ['large', 'enterprise', 'mega'].includes(job.employer?.size));
 }
 
