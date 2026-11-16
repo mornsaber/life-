@@ -558,6 +558,8 @@ export function exitBusiness(ctx, price, outcome, { buyer = null } = {}) {
   if (e.taxable) ctx.earn(e.taxable, `Capital gain — sale of ${biz.name}`, { ltcg: true });
   ctx.log(`${outcome}: you received ${money(e.proceeds)} for your ${Math.round(biz.ownerPct * 100)}% of ${biz.name}${e.qsbs ? ` (${money(e.qsbs)} of the gain tax-free as qualified small business stock)` : ''}.`, '💰', 'milestone');
   retire(state, biz, outcome, e.proceeds, { buyer });
+  // career/FounderExits.js: a buyer may want you to stay on.
+  ctx.emit('business:sold', { name: biz.name, price, buyer, outcome });
 }
 
 /**

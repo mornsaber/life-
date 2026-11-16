@@ -24,6 +24,7 @@ export function companyCard(state) {
     ...(isBig(job) ? [['Head office', `${esc(hq?.name ?? '—')}${atHq ? ' · you work here' : ''}`]] : []),
     ...(eq.kind && eq.kind !== 'profit' ? [[eq.kind === 'options' ? 'Your options' : 'Your shares', `${eq.vested ? `${money(eq.vested)} vested · ` : ''}${money(eq.unvested)} still vesting${eq.unvested ? ' (lost if you leave)' : ''}`]] : []),
     ...(eq.kind === 'profit' ? [['Profit share', 'Paid in a record year']] : []),
+    ...(job.earnOut ? [['Earn-out', `💰 Up to ${money(job.earnOut.bonus)} at age ${job.earnOut.until}, on how ${esc(job.earnOut.name)} does (lost if you leave)`]] : []),
   ];
   const history = c.history.length ? `<h4 class="sub">What's happened</h4><ul class="history">${c.history.slice(0, 5).map((h) => `<li>${KIND[h.kind] ?? '•'} Age ${h.age}: ${esc(h.text)}</li>`).join('')}</ul>` : '';
   const move = isBig(job) && !atHq && (job.grade ?? 0) >= 5
