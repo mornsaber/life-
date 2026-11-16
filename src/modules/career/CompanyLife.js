@@ -71,6 +71,11 @@ export function corpOf(state, job = state.career?.job) {
   }
   return holder.corp;
 }
+/** The company, if it has one yet (for views: never creates). */
+export function corpPeek(state, job = state.career?.job) {
+  if (!isCorporate(job)) return null;
+  return (orgOf(state, job.employer) ?? job.employer).corp ?? null;
+}
 export const atHeadOffice = (state, job = state.career?.job) => { const c = corpOf(state, job); return !c || c.hq === state.character.regionId; };
 
 /* ------------------------------------------------------------------ */
@@ -97,7 +102,7 @@ export function grantEquity(state, job, reason = 'joining') {
 const jobAge = (state) => state.character.age;
 /** What your shares are worth now (vested and not), and what leaving would forfeit. */
 export function equityValue(state, job = state.career?.job) {
-  const c = corpOf(state, job);
+  const c = corpPeek(state, job);
   const e = job?.equity;
   if (!c || !e || e.kind === 'profit') return { vested: 0, unvested: 0, kind: e?.kind ?? null };
   const price = (g) => (e.kind === 'options' ? g.value : Math.round(g.value * (c.share / g.share)));
@@ -295,7 +300,8 @@ function year(ctx) {
 // Senior posts sit at head office.
 PROMO_GATES.push((state, job, level) => {
   if (!isCorporate(job) || !isBig(job) || (level.grade ?? 0) < 7) return null;
-  const c = corpOf(state, job);
+  // Read-only: views ask about promotions too.
+  const c = corpPeek(state, job);
   if (!c || c.hq === state.character.regionId) return null;
   return `${level.title} posts are at head office in ${REGIONS[c.hq]?.name.split(',')[0] ?? 'the capital'}: transfer there to compete`;
 });

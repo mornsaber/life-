@@ -4,7 +4,7 @@
  */
 import { button, card, esc, meter, kv } from '../Components.js';
 import { REGIONS } from '../../modules/life/Regions.js';
-import { corpOf, isCorporate, isBig, equityValue } from '../../modules/career/CompanyLife.js';
+import { corpPeek, isCorporate, isBig, equityValue } from '../../modules/career/CompanyLife.js';
 
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
 const KIND = { acquired: '🤝', merger: '⚖️', reorganized: '🔀', newCeo: '👔', spunOff: '🧬', floated: '🔔', collapsed: '📉' };
@@ -12,7 +12,7 @@ const KIND = { acquired: '🤝', merger: '⚖️', reorganized: '🔀', newCeo: 
 export function companyCard(state) {
   const job = state.career?.job;
   if (!isCorporate(job)) return '';
-  const c = corpOf(state, job);
+  const c = corpPeek(state, job);
   if (!c) return '';
   const eq = equityValue(state, job);
   const hq = REGIONS[c.hq];
@@ -70,11 +70,11 @@ export function ministryCard(state) {
 }
 
 /* ---- Boards and the top (career/Boardroom.js) ---- */
-import { boardsOf, atTheTop, STRATEGIES, MAX_SEATS } from '../../modules/career/Boardroom.js';
+import { atTheTop, STRATEGIES, MAX_SEATS } from '../../modules/career/Boardroom.js';
 
 export function boardroomCard(state) {
   const job = state.career?.job;
-  const seats = state.career ? boardsOf(state) : [];
+  const seats = state.career?.boards ?? [];
   const top = atTheTop(job);
   if (!seats.length && !top) return '';
   const list = seats.length ? `<h4 class="sub">Your boards (${seats.length} of ${MAX_SEATS})</h4><ul class="history">${seats.map((b) => `<li>${b.kind === 'charity' ? '💚' : b.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(b.name)}</b> <small>${b.fee ? `${money(b.fee)}/yr · ` : 'unpaid · '}term to age ${b.until}</small> ${button('Step down', 'boardroom.resign', { arg: b.id, variant: 'tiny ghost' })}</li>`).join('')}</ul>` : '';

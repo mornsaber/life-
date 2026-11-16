@@ -38,7 +38,8 @@ const tests = {
     const { engine, state, job } = executive('vp');
     assert.ok(peakGrade(state) >= 8);
     let p = null;
-    for (let i = 0; i < 30 && !p; i++) { year(engine, state); p = state.prompts.find((x) => x.type === 'boardroom.invite'); }
+    // Invitations are rare (a few a decade): try many years, staying of an age to be asked.
+    for (let i = 0; i < 120 && !p; i++) { if (state.character.age >= 75) { state.character.age = 50; state.world.seed = (state.world.seed ?? 1) + 1; } year(engine, state); p = state.prompts.find((x) => x.type === 'boardroom.invite'); }
     assert.ok(p, 'an invitation');
     engine.resolvePrompt(p.id, 'yes');
     const seat = boardsOf(state)[0];

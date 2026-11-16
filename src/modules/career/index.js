@@ -53,7 +53,12 @@ export const CareerModule = {
     bus.on('military:releasedFromActive', ({ ctx }) => offerReturn(ctx));
     // Gubernatorial appointment to an appointed post (superintendent, director...).
     bus.on('career:appoint', ({ ctx, levelId }) => {
-      if (ctx.state.career.job && promote(ctx, levelId)) ctx.log('The governor appointed you. The press release went out that afternoon.', '⭐', 'milestone');
+      const job = ctx.state.career.job;
+      const prof = job && getProfession(job.professionId);
+      const level = prof?.levels.find((l) => l.id === levelId);
+      // Who appoints: the level says (the President, the governor); a national service abroad, the government.
+      const by = prof?.country ? 'the government' : level?.appointedBy ?? 'the governor';
+      if (job && promote(ctx, levelId)) ctx.log(`${by.replace(/^./, (c) => c.toUpperCase())} appointed you. The press release went out that afternoon.`, '⭐', 'milestone');
     });
     // A union contract you bargained (LaborUnions).
     bus.on('career:raise', ({ ctx, pct }) => {

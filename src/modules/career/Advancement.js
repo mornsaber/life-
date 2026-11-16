@@ -42,7 +42,7 @@ const protectedJob = (job) => Boolean(job?.tenured || job?.abilities?.includes('
 /* Calibration                                                         */
 /* ------------------------------------------------------------------ */
 
-export const RATINGS = { top: { label: 'Top of the curve', icon: '🌟', factor: 1.25 }, meets: { label: 'Meets expectations', icon: '✔️', factor: 1 }, bottom: { label: 'Bottom of the curve', icon: '🔻', factor: 0.6 } };
+export const RATINGS = { top: { label: 'Top of the curve', icon: '🌟', factor: 1.15 }, meets: { label: 'Meets expectations', icon: '✔️', factor: 1 }, bottom: { label: 'Bottom of the curve', icon: '🔻', factor: 0.75 } };
 
 function calibrate(ctx, job, rng) {
   const { state } = ctx;

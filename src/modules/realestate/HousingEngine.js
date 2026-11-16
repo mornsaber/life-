@@ -138,7 +138,9 @@ function financingPrompt(ctx, listing) {
 function completePurchase(ctx, listing, loanType, q) {
   const { state } = ctx;
   const def = PROPERTY_TYPES[listing.type];
-  const canLiveHere = isResidential(listing.type) && !primaryHome(state) && !isOnActiveDuty(state) && !hasHousingBenefit(state);
+  // You live in it only if it's where you are and you have no home there already (a listing left over from
+  // before a move is in another city).
+  const canLiveHere = isResidential(listing.type) && listing.regionId === state.character.regionId && !state.housing.properties.some((p) => p.use === 'primary' && p.regionId === listing.regionId) && !isOnActiveDuty(state) && !hasHousingBenefit(state);
   const property = {
     id: ctx.rng.id('prop_'),
     type: listing.type,
@@ -391,6 +393,8 @@ export const HousingEngine = {
       const home = h.properties.find((p) => p.id === h.postedHomeId);
       delete h.postedHomeId;
       if (home && home.regionId === state.character.regionId && home.use !== 'primary') {
+        // One home to live in: any other there becomes a rental.
+        for (const q of h.properties) if (q !== home && q.use === 'primary' && q.regionId === home.regionId) q.use = 'rental';
         home.use = 'primary';
         return ctx.log(`You moved back into your ${home.typeName.toLowerCase()}.`, '🏠', 'info');
       }

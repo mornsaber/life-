@@ -25,7 +25,7 @@ import { reputationOf, addReputation } from './Reputation.js';
 
 const money = (n) => `$${Math.round(n).toLocaleString()}`;
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 1913 + state.character.age * 227 + 0xb0a) >>> 0);
-export const MAX_SEATS = 4;
+export const MAX_SEATS = 3;
 const PREFIX = ['Meridian', 'Northern', 'Atlas', 'Consolidated', 'Harbour', 'Crown', 'Union', 'Summit', 'Westbrook', 'Ironside'];
 const SUFFIX = ['Holdings', 'Group', 'Industries', 'Insurance', 'Utilities', 'Bank', 'Logistics', 'Foods'];
 const CHARITY = ['the Children\'s Hospital Trust', 'the City Orchestra', 'a housing charity', 'the University Council', 'the Museum Trustees', 'a medical research foundation'];
@@ -35,7 +35,8 @@ const PUBLIC = ['the Regional Health Board', 'the National Audit Board', 'the Ar
 export const peakGrade = (state) => Math.max(state.career?.job?.peakGrade ?? state.career?.job?.grade ?? 0, ...(state.career?.history ?? []).map((h) => h.peakGrade ?? 0));
 export const boardsOf = (state) => (state.career.boards ??= []);
 const nedWord = (state) => (yearNow(state) >= 1970 ? 'non-executive director' : 'director');
-const eligible = (state) => peakGrade(state) >= 8 || reputationOf(state) >= 60;
+/** Boards want the very senior, or a real name in the field. */
+const eligible = (state) => peakGrade(state) >= 9 || reputationOf(state) >= 75;
 
 /** At the very top: chief executive, or head of the whole organization. */
 export function atTheTop(job) {
@@ -54,7 +55,7 @@ function invite(ctx, rng) {
   const name = kind === 'company' ? `${rng.pick(PREFIX)} ${rng.pick(SUFFIX)}` : kind === 'charity' ? rng.pick(CHARITY) : rng.pick(PUBLIC);
   if (boardsOf(state).some((b) => b.name === name)) return;
   const wage = localWage(state);
-  const fee = kind === 'company' ? Math.round(rng.int(60, 220) * 1000 * wage / 1000) * 1000 : kind === 'public' ? Math.round(rng.int(10, 30) * 1000 * wage / 100) * 100 : 0;
+  const fee = kind === 'company' ? Math.round(rng.int(30, 120) * 1000 * wage / 1000) * 1000 : kind === 'public' ? Math.round(rng.int(10, 30) * 1000 * wage / 100) * 100 : 0;
   const role = kind === 'charity' ? 'a trustee' : kind === 'public' ? 'a board member' : `a ${nedWord(state)}`;
   ctx.prompt({ type: 'boardroom.invite', icon: '🪑', title: 'A Seat on the Board', text: `The chair of ${name} would like you to join as ${role}${fee ? `, for ${money(fee)} a year` : ''}: six meetings a year, a three-year term.${boardsOf(state).length >= MAX_SEATS - 1 ? ' You already sit on several boards.' : ''}`,
     options: [
@@ -84,7 +85,7 @@ function boardsYear(ctx, rng) {
     }
   }
   if (seats.length >= MAX_SEATS) ctx.stat('stress', 2);
-  if (eligible(state) && state.character.age >= 40 && state.character.age < 78 && seats.length < MAX_SEATS && rng.chance(0.12) && !state.prompts.some((p) => p.type === 'boardroom.invite')) invite(ctx, rng);
+  if (eligible(state) && state.character.age >= 40 && state.character.age < 78 && seats.length < MAX_SEATS && rng.chance(0.06) && !state.prompts.some((p) => p.type === 'boardroom.invite')) invite(ctx, rng);
 }
 
 /* ------------------------------------------------------------------ */

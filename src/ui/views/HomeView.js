@@ -150,7 +150,7 @@ function propertyCard(state, p) {
       ['Bought', `${money(p.purchasePrice)} all-in · since ${p.purchaseAge}`],
       land || p.project ? null : ['Condition', `${p.condition}/100`],
       m ? ['Mortgage', `${money(m.balance)} @ ${(m.rate * 100).toFixed(2)}% (${LOAN_TYPES[m.type]?.name ?? m.type}, ${m.yearsLeft} yrs)`] : ['Mortgage', 'Paid off'],
-      m ? ['Payment', `${money(Math.round((m.payment + m.mip) / 12))}/mo${m.mip ? ' incl. PMI/MIP' : ''}${m.delinquent ? ` · <span class="neg">${m.delinquent} yr delinquent</span>` : ''}`] : null,
+      m ? ['Payment', `${money(Math.round(((m.payment ?? 0) + (m.mip ?? 0)) / 12))}/mo${m.mip ? ' incl. PMI/MIP' : ''}${m.delinquent ? ` · <span class="neg">${m.delinquent} yr delinquent</span>` : ''}`] : null,
       p.heloc ? ['HELOC', `${money(p.heloc.balance)} @ ${(p.heloc.rate * 100).toFixed(2)}%`] : null,
       [land ? 'Property tax' : 'Tax + insurance + HOA', `${money(costs.tax + costs.insurance + costs.hoa)}/yr${t.kind === 'commercial' ? ' (tenants reimburse their share)' : ''}`],
       units ? ['Tenants', `${p.tenants.length}/${units} ${t.kind === 'commercial' ? 'spaces leased' : 'units'}${p.lastRent ? ` · ${money(p.lastRent)} collected` : ''}`] : null,

@@ -48,7 +48,8 @@ const BANDS = {
     c19: { lifespan20: [50, 70], employed40: [0.75, 1], pay40: [3000, 25000], nw65: [0, 400000], top10nw65: [20000, 3000000], degree: [0, 0.12], home45: [0.1, 0.7], peakGrade: [3, 8] },
     // A median of about twenty adults moves a few years between runs: the bands allow for it. Born in
     // the 1920s, an adult of twenty lives into the 2000s and its medicine, so the top runs to 80.
-    early: { lifespan20: [48, 80], employed40: [0.75, 1], pay40: [6000, 35000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
+    // Pay at 40 tops out a little higher than history's: acting up and partner tracks lift the able.
+    early: { lifespan20: [48, 80], employed40: [0.75, 1], pay40: [6000, 38000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
     // Born after 1950, you reach the game's future medicine (2040 on): longer than history's.
     mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [15000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.15, 0.85], peakGrade: [3, 9] },
     // The persona saves hard (half of them invest every spare dollar), so wealth sits above the median household's.
@@ -180,7 +181,8 @@ export function summarize(lives) {
     employed40: share(at40.map((l) => l.employed40)),
     pay40: med(at40.map((l) => l.pay40)),
     nw65: med(at65.map((l) => l.nw65)),
-    top10nw65: p90(at65.map((l) => l.nw65)),
+    // The top tenth of fewer than fifteen lives is just the richest one: not reported.
+    top10nw65: at65.length >= 15 ? p90(at65.map((l) => l.nw65)) : null,
     degree: share(adults.map((l) => l.degree)),
     home45: share(at45.map((l) => l.home45)),
     peakGrade: med(adults.map((l) => l.peakGrade)),
