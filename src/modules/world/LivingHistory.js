@@ -32,6 +32,7 @@ import { addHonor } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';
 import { WORLD_EPISODES } from './WorldEpisodes.js';
 import { REGIONAL_EPISODES } from './RegionalEpisodes.js';
+import { MORE_EPISODES, FOLLOW_UPS } from './MoreEpisodes.js';
 
 const cc = (state) => state.character.countryId ?? 'US';
 const side = (state, salt) => new Random(((state.world?.seed ?? 3) * 1597334677 + yearNow(state) * 7919 + salt) >>> 0);
@@ -189,17 +190,18 @@ export function epidemicOptions(state, e) {
 }
 
 /** Britain and America's episodes, then the rest of the world's (WorldEpisodes.js). */
-export const ALL_EPISODES = [...EPISODES, ...WORLD_EPISODES, ...REGIONAL_EPISODES];
+export const ALL_EPISODES = [...EPISODES, ...WORLD_EPISODES, ...REGIONAL_EPISODES, ...MORE_EPISODES, ...FOLLOW_UPS];
 
-function record(state, id, text, icon) { livedOf(state).push({ id, year: yearNow(state), text, icon }); }
+/** What you lived through, and the choice you made (follow-ups years later read it: MoreEpisodes.chose). */
+function record(state, id, text, icon, option = null) { livedOf(state).push({ id, year: yearNow(state), text, icon, ...(option ? { option } : {}) }); }
 
-function applyEffect(ctx, id, ef) {
+function applyEffect(ctx, id, ef, option = null) {
   const { state, rng } = ctx;
   if (ef.cost) ctx.spend(P(state, ef.cost), ef.log.slice(0, 40), { allowDebt: true });
   if (ef.earn) ctx.earn(P(state, ef.earn), 'War work');
   for (const [k, v] of Object.entries(ef.stats ?? {})) ctx.stat(k, v);
   ctx.log(ef.log, ef.icon ?? '•', ef.tone ?? 'info');
-  record(state, id, ef.log, ef.icon);
+  record(state, id, ef.log, ef.icon, option);
   if (ef.emigrate) arrive(ctx, ef.emigrate, { reason: 'Emigrated' });
   if (ef.risk && rng.chance(ef.risk[0])) {
     const [, text, stats, loss, extra] = ef.risk;
@@ -258,8 +260,8 @@ function onMoved(ctx, { from, to }) {
 }
 
 export const LivingHistoryResolvers = {
-  episode(ctx, data, optionId) { const ep = ALL_EPISODES.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect); },
-  disaster(ctx, data, optionId) { const ep = DISASTERS.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect); },
+  episode(ctx, data, optionId) { const ep = ALL_EPISODES.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect, o.id); },
+  disaster(ctx, data, optionId) { const ep = DISASTERS.find((e) => e.id === data.id); const o = ep?.options.find((x) => x.id === optionId); if (o) applyEffect(ctx, ep.id, o.effect, o.id); },
   epidemic(ctx, data, optionId) {
     const { state } = ctx;
     const e = epidemicsNow(state).find((x) => x.id === data.id) ?? { id: data.id, name: 'the epidemic' };
