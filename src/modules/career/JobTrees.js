@@ -75,7 +75,7 @@ export const JOB_FIELDS = {
   security: { label: 'Security, Parks & Wardens', icon: '🛡️', ids: ['tsa', 'privateSecurity', 'privateMilitary', 'gameWarden', 'parkService', 'animalControl'] },
   corrections: { label: 'Prisons & Investigations', icon: '🔐', ids: ['corrections', 'jail', 'federalPrisons', 'privatePrisons', 'probation', 'forensics', 'privateInvestigator', 'bailBonds'] },
   law: { label: 'Law & the Courts', icon: '⚖️', ids: ['legalSupport', 'law', 'courts', 'prosecution', 'publicDefender', 'oig'] },
-  government: { label: 'Civil Service & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'benefitsClaims', 'revenue', 'regulatory', 'dot', 'planning', 'foreignService'] },
+  government: { label: 'Civil Service & Diplomacy', icon: '🏛️', ids: ['municipalAdmin', 'councilInspector', 'legislativeStaff', 'benefitsClaims', 'revenue', 'regulatory', 'dot', 'planning', 'foreignService', 'ministry'] },
   federalLE: { label: 'Federal Law Enforcement', icon: '🦅', ids: ['fbi', 'dea', 'atf', 'usms', 'usss', 'borderPatrol'] },
   intel: { label: 'Intelligence', icon: '🕶️', ids: ['intelligence', 'caseOfficer', 'sigint'] },
   empire: { label: 'Empire & the Colonies', icon: '🌍', ids: ['colonialService', 'colonialPolice', 'colonialTroops', 'colonialMedical', 'gurkhaContingent'] },

@@ -48,6 +48,25 @@ const careers = {
       ['ambassador', 'Ambassador', 9, { track: 'mgmt', abilities: ['diplomatic', 'classified', 'supervise', 'budget', 'delegate', 'exec', 'policy'], reports: 400 }],
     ],
   },
+  ministry: {
+    ...FED, id: 'ministry', name: 'Federal Civil Service (Cabinet Departments)', icon: '🏛️', sector: 'federal', payMultiplier: 1.0, minAge: 21, background: 'standard', exam: 'federal',
+    union: { chance: 0.3, name: 'American Federation of Government Employees', strike: false },
+    employers: ['U.S. Department of the Treasury', 'U.S. Department of Commerce', 'U.S. Department of Labor', 'U.S. Department of Health and Human Services', 'U.S. Department of Education', 'U.S. Department of Housing and Urban Development'],
+    entry: { education: { level: 'bachelor' } },
+    valued: ['cgfm', 'pmp'],
+    ministry: true,
+    ladder: [
+      ['analyst', 'Program Analyst (GS-7)', 3, { abilities: ['policy'] }],
+      ['specialist', 'Management and Program Analyst (GS-11)', 4, { abilities: ['policy'] }],
+      ['senior', 'Senior Policy Analyst (GS-13)', 5, { abilities: ['policy', 'sign'] }],
+      ['expert', 'Senior Policy Advisor (GS-15)', 6, { track: 'ic', abilities: ['policy', 'sign'] }],
+      ['lead', 'Supervisory Policy Analyst (GS-14)', 6, { track: 'mgmt', abilities: ['supervise', 'policy', 'sign'], reports: 8 }],
+      ['chief', 'Division Director (GS-15)', 7, { track: 'mgmt', abilities: ['supervise', 'hire', 'budget', 'policy'], reports: 40 }],
+      ['das', 'Deputy Assistant Secretary (SES)', 8, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy'], reports: 300 }],
+      ['director', 'Principal Deputy Assistant Secretary (SES)', 9, { track: 'mgmt', minSize: 'enterprise', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 1500 }],
+      ['permSec', 'Deputy Secretary', 10, { track: 'mgmt', minSize: 'enterprise', appointed: true, appointedBy: 'the President', abilities: ['supervise', 'budget', 'delegate', 'policy', 'exec'], reports: 20000 }],
+    ],
+  },
   oig: {
     ...FED, id: 'oig', name: 'Office of Inspector General', icon: '🔍', sector: 'federal', payMultiplier: 1.0, minAge: 21, background: 'strict', exam: 'federal',
     // Criminal investigators are federal law-enforcement officers: LEO retirement, mandatory at 57.

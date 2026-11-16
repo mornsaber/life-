@@ -77,7 +77,7 @@ export function ladderFor(profession, size) {
 
 export const GOV_SECTORS = ['municipal', 'state', 'federal', 'public'];
 /** Careers whose ladders aren't agency rank structures (universities, labs, courts' judges). */
-const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts', 'colonialService', 'colonialPolice', 'colonialTroops', 'colonialMedical', 'gendarmerie'];
+const TIER_EXEMPT = ['college', 'university', 'nationalLab', 'research', 'courts', 'colonialService', 'colonialPolice', 'colonialTroops', 'colonialMedical', 'gendarmerie', 'ministry'];
 
 const POLICE = ['police', 'sheriff', 'statePolice', 'transitPolice', 'universityPolice', 'airportPolice', 'privatePolice'];
 const CORRECTIONS = ['jail', 'corrections', 'federalPrisons'];
@@ -101,7 +101,7 @@ export function megaRanks(profession) {
  * agency doesn't have, and insert the extra command ranks of a major agency.
  */
 export function addGovernmentTiers(profession) {
-  if (profession.tiered || !GOV_SECTORS.includes(profession.sector) || TIER_EXEMPT.includes(profession.id)) return;
+  if (profession.tiered || !GOV_SECTORS.includes(profession.sector) || TIER_EXEMPT.includes(profession.template ?? profession.id)) return;
   profession.tiered = true;
   const levels = profession.levels;
   // Supervisory differential: a supervisor out-earns the people at the same grade they supervise,

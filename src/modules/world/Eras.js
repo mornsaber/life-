@@ -105,7 +105,7 @@ export const PROFESSION_FROM = {
   nato: 1949, unSecretariat: 1920, unAgencies: 1919, euInstitutions: 1952, intlFinance: 1945, intlJustice: 1922, maltaRelief: 1953, icrc: 1863,
   caseOfficer: 1947, sigint: 1952, intelligence: 1947, nuclearEng: 1945, aerospaceEng: 1940, petroleumEng: 1915,
   flightAttendant: 1930, aviation: 1920, charterAviation: 1925, communityCollege: 1920, nationalLab: 1943, environmental: 1970,
-  oig: 1978, privateMilitary: 1990, borderPatrol: 1924, federalPrisons: 1930, usss: 1865, caregiving: 1965, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915,
+  oig: 1978, privateMilitary: 1990, borderPatrol: 1924, federalPrisons: 1930, usss: 1865, caregiving: 1965, benefitsClaims: 1935, counseling: 1960, psychology: 1920, regulatory: 1915, ministry: 1883,
   airportPolice: 1950, airportFire: 1950, cruise: 1970, privatePrisons: 1983, cps: 1974, publicDefender: 1914,
   gurkhaContingent: 1949, forensics: 1925, hvac: 1930, schoolBus: 1920, parkService: 1916, foreignService: 1924,
   humanResources: 1920, marketing: 1920, fitness: 1960, cosmetology: 1910, dietitian: 1920, optometry: 1910,

@@ -53,3 +53,18 @@ export function advancementCard(state) {
   if (!rows.length && !assess) return '';
   return card('Getting On', `${rows.length ? kv(rows) : ''}${assess}`, { icon: '🪜' });
 }
+
+/* ---- Life in a ministry (career/Ministries.js) ---- */
+import { isMinistry, ministerTitle } from '../../modules/career/Ministries.js';
+
+export function ministryCard(state) {
+  const job = state.career?.job;
+  if (!isMinistry(job) || !job.ministry) return '';
+  const m = job.ministry;
+  const rows = [
+    [`Your ${ministerTitle(state)}`, `${esc(m.minister.name)} (since age ${m.minister.since})`],
+    ...(m.privateOffice ? [['Private office', `🗝️ Private secretary until age ${m.privateOffice.until}`]] : []),
+    ['Next budget round', (job.grade ?? 1) >= 6 ? `In ${Math.max(0, 3 - (state.character.age - m.lastReview))} yr` : 'Above your grade'],
+  ];
+  return card(job.employer.name, `<div class="stat-line"><span>🤝 The minister's trust</span>${meter(m.minister.trust)}</div><div class="stat-line"><span>💷 Budget settlement</span>${meter(m.budget, { tone: m.budget >= 55 ? 'good' : m.budget >= 35 ? 'warn' : 'bad' })}</div>${kv(rows)}`, { icon: '🏛️' });
+}

@@ -12,7 +12,17 @@ import { fromPacks } from './packs/index.js';
 const POLICE_INVESTIGATOR = { trainee: 'Trainee Investigator', agent: 'Investigator', senior: 'Senior Investigator', ssa: 'Team Leader', asac: 'Unit Commander', sac: 'Director' };
 
 export const AGENCIES = {
+  SG: {
+    ministry: { name: 'Singapore Administrative Service', employers: ['Ministry of Finance', "Prime Minister's Office", 'Ministry of Trade and Industry'] },
+  },
+  IE: {
+    ministry: { name: 'Irish Civil Service', employers: ['Department of Finance', 'Department of the Taoiseach', 'Department of Social Protection'], titles: {'analyst': 'Executive Officer', 'specialist': 'Higher Executive Officer', 'senior': 'Administrative Officer', 'expert': 'Principal Officer (Adviser)', 'lead': 'Assistant Principal', 'chief': 'Principal Officer', 'das': 'Assistant Secretary', 'director': 'Deputy Secretary', 'permSec': 'Secretary General'} },
+  },
+  NZ: {
+    ministry: { name: 'New Zealand Public Service', employers: ['The Treasury', 'Department of the Prime Minister and Cabinet', 'Ministry of Social Development'] },
+  },
   CA: {
+    ministry: { name: 'Federal Public Service', employers: ['Finance Canada', 'Privy Council Office', 'Treasury Board Secretariat', 'Employment and Social Development Canada'], titles: {'analyst': 'Junior Policy Analyst', 'specialist': 'Policy Analyst', 'senior': 'Senior Policy Analyst', 'expert': 'Senior Policy Advisor', 'lead': 'Manager', 'chief': 'Director', 'das': 'Director General', 'director': 'Assistant Deputy Minister', 'permSec': 'Deputy Minister'} },
     fbi: { name: 'Royal Canadian Mounted Police', employers: ['RCMP — Federal Policing', 'RCMP — Major Crime Unit'], titles: { trainee: 'Cadet (Depot Division)', agent: 'Constable', senior: 'Corporal', ssa: 'Sergeant', asac: 'Inspector', sac: 'Chief Superintendent' } },
     usss: { name: 'RCMP Protective Policing', employers: ['RCMP — Protective Policing'], titles: { trainee: 'Cadet (Depot Division)', agent: 'Constable', senior: 'Corporal', ssa: 'Sergeant', asac: 'Inspector', sac: 'Chief Superintendent' } },
     borderPatrol: { name: 'Canada Border Services Agency', employers: ['CBSA — Port of Entry', 'CBSA — Inland Enforcement'] },
@@ -32,6 +42,7 @@ export const AGENCIES = {
     oig: { name: 'Office of the Auditor General', employers: ['Auditor General of Canada'] },
   },
   GB: {
+    ministry: { name: 'Home Civil Service', employers: ['HM Treasury', 'Home Office', 'Cabinet Office', 'Department for Education', 'Department of Health'], titles: {'analyst': 'Executive Officer', 'specialist': 'Higher Executive Officer', 'senior': 'Senior Executive Officer', 'expert': 'Senior Principal', 'lead': 'Principal', 'chief': 'Assistant Secretary', 'das': 'Director', 'director': 'Director General', 'permSec': 'Permanent Secretary'} },
     fbi: { name: 'National Crime Agency', employers: ['NCA — Investigations', 'NCA — Organised Crime'], titles: { trainee: 'Trainee NCA Officer', agent: 'NCA Officer', senior: 'Senior NCA Officer', ssa: 'Team Leader', asac: 'Branch Commander', sac: 'Director' } },
     borderPatrol: { name: 'UK Border Force', employers: ['Border Force — Heathrow', 'Border Force — Dover'] },
     federalPrisons: { name: 'HM Prison and Probation Service', employers: ['HMP Wandsworth', 'HMP Manchester'] },
@@ -49,6 +60,7 @@ export const AGENCIES = {
     oig: { name: 'National Audit Office', employers: ['National Audit Office'] },
   },
   DE: {
+    ministry: { name: 'Bundesverwaltung (Ministerien)', employers: ['Bundesministerium der Finanzen', 'Bundesministerium des Innern', 'Bundesministerium für Arbeit und Soziales', 'Bundesministerium für Wirtschaft'], titles: {'analyst': 'Regierungsinspektor', 'specialist': 'Regierungsamtmann', 'senior': 'Regierungsrat', 'expert': 'Oberregierungsrat', 'lead': 'Regierungsdirektor', 'chief': 'Ministerialrat (Referatsleiter)', 'das': 'Ministerialdirigent', 'director': 'Ministerialdirektor (Abteilungsleiter)', 'permSec': 'Staatssekretär'} },
     fbi: { name: 'Bundeskriminalamt (BKA)', employers: ['BKA — Wiesbaden', 'BKA — Berlin'], titles: { trainee: 'Kriminalkommissaranwärter', agent: 'Kriminalkommissar', senior: 'Kriminaloberkommissar', ssa: 'Kriminalhauptkommissar', asac: 'Kriminalrat', sac: 'Kriminaldirektor' } },
     usss: { name: 'BKA Sicherungsgruppe', employers: ['BKA — Sicherungsgruppe'], titles: { trainee: 'Kommissaranwärter', agent: 'Kommissar', senior: 'Oberkommissar', ssa: 'Hauptkommissar', asac: 'Polizeirat', sac: 'Polizeidirektor' } },
     borderPatrol: { name: 'Bundespolizei', employers: ['Bundespolizei — Flughafen Frankfurt', 'Bundespolizei — Grenzschutz'] },
@@ -66,6 +78,7 @@ export const AGENCIES = {
     oig: { name: 'Bundesrechnungshof', employers: ['Bundesrechnungshof — Bonn'] },
   },
   JP: {
+    ministry: { name: 'National Public Service (Kasumigaseki ministries)', employers: ['Ministry of Finance', 'Ministry of Economy, Trade and Industry', 'Ministry of Health, Labour and Welfare', 'Ministry of Land, Infrastructure and Transport'], titles: {'analyst': 'Kakari-in (Section Staff)', 'specialist': 'Kakarichō (Unit Chief)', 'senior': 'Kachō-hosa (Deputy Director)', 'expert': 'Kikakukan (Senior Planner)', 'lead': 'Shitsuchō (Office Director)', 'chief': 'Kachō (Division Director)', 'das': 'Shingikan (Deputy Director-General)', 'director': 'Kyokuchō (Director-General)', 'permSec': 'Jimu-jikan (Administrative Vice-Minister)'} },
     fbi: { name: 'National Police Agency', employers: ['NPA — Kasumigaseki'], titles: { trainee: 'Police Academy Trainee', agent: 'Assistant Inspector', senior: 'Inspector', ssa: 'Superintendent', asac: 'Senior Superintendent', sac: 'Chief Superintendent' } },
     usss: { name: 'Imperial Guard', employers: ['Imperial Guard Headquarters'] },
     borderPatrol: { name: 'Japan Coast Guard', employers: ['JCG — 3rd Regional Headquarters'] },
@@ -82,6 +95,7 @@ export const AGENCIES = {
     nationalLab: { name: 'RIKEN & JAXA', employers: ['RIKEN', 'JAXA — Tsukuba'] },
   },
   KR: {
+    ministry: { name: 'National Civil Service (Ministries)', employers: ['Ministry of Economy and Finance', 'Ministry of the Interior and Safety', 'Ministry of Education'] },
     fbi: { name: 'National Investigation Headquarters (KNPA)', employers: ['KNPA — National Investigation HQ'], titles: POLICE_INVESTIGATOR },
     usss: { name: 'Presidential Security Service', employers: ['Presidential Security Service'] },
     borderPatrol: { name: 'Korea Coast Guard', employers: ['KCG — Incheon'] },
@@ -145,6 +159,7 @@ export const AGENCIES = {
     parkService: { name: 'DENR Protected Areas', employers: ['Puerto Princesa Underground River', 'Mount Apo Natural Park'] },
   },
   AU: {
+    ministry: { name: 'Australian Public Service', employers: ['Department of the Treasury', 'Department of the Prime Minister and Cabinet', 'Department of Finance', 'Department of Social Services'], titles: {'analyst': 'APS 4 Officer', 'specialist': 'APS 6 Policy Officer', 'senior': 'Executive Level 1', 'expert': 'Executive Level 2 (Senior Adviser)', 'lead': 'Executive Level 2 (Director)', 'chief': 'Assistant Secretary', 'das': 'First Assistant Secretary', 'director': 'Deputy Secretary', 'permSec': 'Departmental Secretary'} },
     fbi: { name: 'Australian Federal Police', employers: ['AFP — Investigations', 'AFP — Counter Terrorism'], titles: { trainee: 'Recruit (AFP College)', agent: 'Federal Agent', senior: 'Senior Federal Agent', ssa: 'Detective Sergeant', asac: 'Superintendent', sac: 'Commander' } },
     usss: { name: 'AFP Protection', employers: ['AFP — Protection Operations'] },
     borderPatrol: { name: 'Australian Border Force', employers: ['ABF — Sydney Airport', 'ABF — Maritime Border Command'] },
@@ -163,6 +178,7 @@ export const AGENCIES = {
     oig: { name: 'Australian National Audit Office', employers: ['ANAO'] },
   },
   FR: {
+    ministry: { name: "Fonction publique d'État (administration centrale)", employers: ["Ministère de l'Économie et des Finances", "Ministère de l'Intérieur", "Ministère de l'Éducation nationale", 'Ministère du Travail'], titles: {'analyst': 'Secrétaire administratif', 'specialist': "Attaché d'administration", 'senior': 'Attaché principal', 'expert': 'Conseiller technique', 'lead': 'Administrateur civil', 'chief': 'Sous-directeur', 'das': 'Chef de service', 'director': "Directeur d'administration centrale", 'permSec': 'Secrétaire général du ministère'} },
     gendarmerie: { name: 'Gendarmerie nationale', employers: ['Groupement de gendarmerie départementale', 'Garde républicaine'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier-chef', sergeant: 'Maréchal des logis-chef', adjutant: 'Adjudant-chef', lieutenant: 'Lieutenant', captain: 'Capitaine', major: "Chef d'escadron", ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général d'armée" } },
     fbi: { name: 'Police judiciaire (DNPJ)', employers: ['Office central de lutte contre le crime organisé', 'Brigade criminelle, Paris'], titles: { trainee: 'Élève gardien de la paix', agent: 'Gardien de la paix', senior: 'Brigadier', ssa: 'Lieutenant de police', asac: 'Commandant de police', sac: 'Commissaire divisionnaire' } },
     dea: { name: 'Office anti-stupéfiants (OFAST)', employers: ['OFAST — Nanterre'] },
@@ -183,6 +199,7 @@ export const AGENCIES = {
     oig: { name: 'Cour des comptes', employers: ['Cour des comptes'] },
   },
   IN: {
+    ministry: { name: 'Indian Administrative Service', employers: ['Ministry of Finance', 'Ministry of Home Affairs', 'State Government Secretariat', 'District Administration'], titles: {'analyst': 'Assistant Collector (Probationer)', 'specialist': 'Sub-Divisional Magistrate', 'senior': 'Collector and District Magistrate', 'expert': 'Director, Government of India', 'lead': 'Special Secretary (State)', 'chief': 'Joint Secretary', 'das': 'Additional Secretary', 'director': 'Secretary to the Government of India', 'permSec': 'Cabinet Secretary'} },
     gendarmerie: { name: 'Central Reserve Police Force', employers: ['CRPF Battalion', 'CRPF Group Centre'], titles: { gendarme: 'Constable', corporal: 'Head Constable', sergeant: 'Assistant Sub-Inspector', adjutant: 'Sub-Inspector', lieutenant: 'Assistant Commandant', captain: 'Deputy Commandant', major: 'Second-in-Command', ltColonel: 'Commandant', colonel: 'Deputy Inspector General', general: 'Director General' } },
     fbi: { name: 'Central Bureau of Investigation', employers: ['CBI — New Delhi'], titles: { trainee: 'Sub-Inspector (trainee)', agent: 'Sub-Inspector', senior: 'Inspector', ssa: 'Deputy Superintendent', asac: 'Superintendent of Police', sac: 'Deputy Inspector General' } },
     dea: { name: 'Narcotics Control Bureau', employers: ['NCB — Zonal Unit'] },
@@ -245,6 +262,7 @@ export const AGENCIES = {
     gendarmerie: { name: "Gendarmerie nationale de Côte d'Ivoire", employers: ['Légion de gendarmerie'], titles: { gendarme: 'Gendarme', corporal: 'Brigadier', sergeant: 'Maréchal des logis', adjutant: 'Adjudant', lieutenant: 'Lieutenant', captain: 'Capitaine', major: "Chef d'escadron", ltColonel: 'Lieutenant-colonel', colonel: 'Colonel', general: "Général de corps d'armée" } },
   },
   CN: {
+    ministry: { name: 'Civil Service (State Council ministries)', employers: ['Ministry of Finance', 'National Development and Reform Commission', 'Ministry of Commerce', 'Ministry of Civil Affairs'], titles: {'analyst': 'Section Member (Keyuan)', 'specialist': 'Deputy Section Chief', 'senior': 'Section Chief (Kezhang)', 'expert': 'Researcher (Diaoyanyuan)', 'lead': 'Deputy Division Director', 'chief': 'Division Director (Chuzhang)', 'das': 'Deputy Bureau Director', 'director': 'Bureau Director (Sizhang)', 'permSec': 'Vice-Minister'} },
     gendarmerie: { name: "People's Armed Police", employers: ['PAP Provincial Corps'], titles: { gendarme: 'Private', corporal: 'Corporal', sergeant: 'Sergeant', adjutant: 'Master Sergeant', lieutenant: 'Lieutenant', captain: 'Captain', major: 'Major', ltColonel: 'Lieutenant Colonel', colonel: 'Senior Colonel', general: 'General' } },
   },
   IL: {
@@ -265,6 +283,7 @@ fromPacks(AGENCIES, 'AGENCIES');
  * a Federal Air Marshal). A country's own `titles` win over these.
  */
 export const NEUTRAL_TITLES = {
+  ministry: { analyst: 'Administrative Officer', specialist: 'Senior Administrative Officer', senior: 'Principal Officer', expert: 'Senior Adviser', lead: 'Assistant Director', chief: 'Director', das: 'Director-General', director: 'Deputy Secretary', permSec: 'Permanent Secretary' },
   fbi: { trainee: 'Trainee Investigator', agent: 'Investigator', senior: 'Senior Investigator', bau: 'Behavioural Analyst', ssa: 'Team Leader', asac: 'Deputy Head of Investigations', sac_cmd1: 'Head of Unit', sac_cmd2: 'Deputy Director', sac_cmd3: 'Director of Operations', sac: 'Director' },
   dea: { trainee: 'Trainee Drugs Investigator', agent: 'Drugs Investigator', senior: 'Senior Drugs Investigator', undercover: 'Undercover Officer', ssa: 'Team Leader', asac: 'Deputy Head of Investigations', sac_cmd1: 'Head of Unit', sac_cmd2: 'Deputy Director', sac_cmd3: 'Director of Operations', sac: 'Director' },
   usms: { trainee: 'Trainee Officer', agent: 'Officer', senior: 'Senior Officer', fugitive: 'Fugitive Task Force Officer', ssa: 'Team Leader', asac: 'Deputy Commander', sac: 'Commander', usMarshal_cmd1: 'Head of Unit', usMarshal_cmd2: 'Deputy Director', usMarshal: 'Director-General' },

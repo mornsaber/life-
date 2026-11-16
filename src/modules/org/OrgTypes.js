@@ -173,6 +173,8 @@ export const ORG_TYPES = {
     departments: [{ id: 'faa', name: 'Federal Aviation Administration — Air Traffic Organization', occupations: ['airTrafficControl'], head: { title: 'FAA Administrator', selection: 'appointed', appointedBy: 'the President' } }] },
   interior: { name: () => 'U.S. Department of the Interior', scope: 'nation', sector: 'federal', head: { title: 'Secretary of the Interior', selection: 'appointed', appointedBy: 'the President' },
     departments: [{ id: 'nps', name: 'National Park Service', occupations: ['parkService'], head: { title: 'Director of the National Park Service', selection: 'appointed', appointedBy: 'the President' } }] },
+  cabinetDept: { name: (ctx) => ctx?.rng?.pick?.(['U.S. Department of the Treasury', 'U.S. Department of Commerce', 'U.S. Department of Labor']) ?? 'U.S. Department of the Treasury', scope: 'nation', sector: 'federal', head: { title: 'Secretary', selection: 'appointed', appointedBy: 'the President' },
+    departments: [{ id: 'policy', name: 'Policy and Programs', occupations: ['ministry'], head: { title: 'Deputy Secretary', selection: 'appointed', appointedBy: 'the President' } }] },
   stateDept: { name: () => 'U.S. Department of State', scope: 'nation', sector: 'federal', head: { title: 'Secretary of State', selection: 'appointed', appointedBy: 'the President' },
     departments: [{ id: 'fs', name: 'Foreign Service', occupations: ['foreignService'], head: { title: 'Director General of the Foreign Service', selection: 'appointed', appointedBy: 'the President' } }] },
   intelCommunity: { name: () => 'U.S. Intelligence Community', scope: 'nation', sector: 'federal', head: { title: 'Director of National Intelligence', selection: 'appointed', appointedBy: 'the President' },
