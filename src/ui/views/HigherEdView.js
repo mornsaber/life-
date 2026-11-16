@@ -75,7 +75,8 @@ export function adjunctCard(state) {
   if (!state.education.degrees.some((d) => ['master', 'doctorate', 'professional'].includes(d.type))) return '';
   const rate = state.education.degrees.some((d) => d.type === 'doctorate') ? ADJUNCT_PAY.doctorate : ADJUNCT_PAY.masters;
   const h = state.higherEd;
-  return card('Adjunct Teaching', `<p class="muted">Teach a course or three on the side at ${money(rate)} per course: no benefits, no office, real teaching experience.${h?.adjunctCourses ? ` You've taught ${h.adjunctCourses} course${h.adjunctCourses > 1 ? 's' : ''}.` : ''}</p>
+  // "Adjunct" is American: elsewhere it's part-time or sessional teaching.
+  return card(state.character.countryId && state.character.countryId !== 'US' ? 'Part-time Teaching' : 'Adjunct Teaching', `<p class="muted">Teach a course or three on the side at ${money(rate)} per course: no benefits, no office, real teaching experience.${h?.adjunctCourses ? ` You've taught ${h.adjunctCourses} course${h.adjunctCourses > 1 ? 's' : ''}.` : ''}</p>
     <div class="action-grid">${[1, 2, 3].map((n) => btn(`🧑‍🏫 ${n} course${n > 1 ? 's' : ''}`, 'higherEd.adjunct', check, { arg: String(n), hint: money(rate * n) })).join('')}</div>`, { icon: '🧑‍🏫' });
 }
 

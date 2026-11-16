@@ -84,7 +84,9 @@ function movementCard(state) {
   if (!list.length) return '';
   const rtw = rightToWork(state);
   const rows = list.map((u) => `<li class="report-row"><div><b>${esc(u.name)}</b> <small class="muted">${u.members.toLocaleString()} members · ${pct(u.density)} density · president ${esc(u.president.name)}${u.onStrike ? ' · ✊ struck this year' : ''}</small></div><div>${chip(`Power ${unionPower(u)}`, tone(unionPower(u)) === 'good' ? 'green' : '')}</div></li>`).join('');
-  return card(`Labor in ${esc(stateOf(state).name)}`, `
+  // British spelling where the country spells it so.
+  const labour = ['GB', 'IE', 'AU', 'NZ', 'CA', 'IN', 'ZA', 'SG'].includes(state.character.countryId) ? 'Labour' : 'Labor';
+  return card(`${labour} in ${esc(stateOf(state).name)}`, `
     <p class="fine">${rtw ? '✊ Right-to-work state: no agency fees, weaker unions.' : '✊ Union-security clauses allowed.'} ${lawValue(state, 'cardCheck') ? '🗳️ Card-check recognition.' : ''}</p>
     ${disclosure('labor-movement', `${list.length} union locals`, `<ul class="history">${rows}</ul>`)}`, { icon: '🏭' });
 }

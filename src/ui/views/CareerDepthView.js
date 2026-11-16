@@ -40,7 +40,7 @@ export function advancementCard(state) {
   if (!job) return '';
   const rows = [];
   const rep = reputationOf(state);
-  if (rep > 0) rows.push(['Name in the field', `${reputationLabel(rep)} (${rep}/100): headhunters and better offers`]);
+  if (rep > 0) rows.push(['Name in the field', `${reputationLabel(rep)} (${rep}/100)${rep >= 30 ? ': headhunters call, offers pay more' : ''}`]);
   if (job.calibration) rows.push(['Calibration', `${RATINGS[job.calibration.rating].icon} ${RATINGS[job.calibration.rating].label} (age ${job.calibration.age})`]);
   if (job.pip) rows.push(['Improvement plan', `📋 Until age ${job.pip.until}: you need a record of 50+`]);
   if (job.acting) rows.push(['Acting', `🪪 ${esc(job.acting.title)} until age ${job.acting.until} · ${Math.round(confirmOdds(job) * 100)}% to be confirmed`]);
