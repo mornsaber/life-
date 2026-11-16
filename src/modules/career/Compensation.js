@@ -11,6 +11,7 @@ import { clearedPremium } from './ClearedWork.js';
 import { lawValue } from '../politics/Laws.js';
 import { knob } from '../../core/Difficulty.js';
 import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
+import { womensRate } from './EraPay.js';
 
 /**
  * Government command staff (grade 7+) are paid more at bigger agencies (a big-city chief vs a
@@ -51,7 +52,10 @@ export function recalcSalary(state, job) {
   // Difficulty: everyone's paid a little more (Story) or less (Hard, Brutal).
   // Pay of its era: a wage in 1850 bought far less, in today's money (economy/EraEconomy.js).
   const era = eraScale(state, 'wage') * countryWageFactor(state);
-  const total = Math.round(job.pay.total * knob(state, 'income') * era);
+  // The women's rate, before an equal pay law (career/EraPay.js).
+  const rate = womensRate(state, job);
+  if (rate < 1) job.womensRate = rate; else delete job.womensRate;
+  const total = Math.round(job.pay.total * knob(state, 'income') * era * rate);
   // Government pay stops at the legal cap, however senior the post.
   const cap = Math.round(payCap(job, state.character.countryId) * knob(state, 'income'));
   const capped = Math.min(publicAdj ? Math.round(total * (1 + publicAdj)) : total, cap);

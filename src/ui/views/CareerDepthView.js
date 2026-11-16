@@ -33,6 +33,9 @@ export function companyCard(state) {
 
 /* ---- How promotion happens (career/Advancement.js) ---- */
 import { reputationOf, reputationLabel } from '../../modules/career/Reputation.js';
+import { marriageBar, equalPayYear } from '../../modules/career/EraPay.js';
+import { getProfession } from '../../modules/career/JobTrees.js';
+import { yearNow } from '../../modules/world/Eras.js';
 import { RATINGS, upOrOutIn, partnerOdds, wantsAssessment, assessmentOdds, confirmOdds } from '../../modules/career/Advancement.js';
 
 export function advancementCard(state) {
@@ -45,6 +48,10 @@ export function advancementCard(state) {
   if (job.pip) rows.push(['Improvement plan', `📋 Until age ${job.pip.until}: you need a record of 50+`]);
   if (job.acting) rows.push(['Acting', `🪪 ${esc(job.acting.title)} until age ${job.acting.until} · ${Math.round(confirmOdds(job) * 100)}% to be confirmed`]);
   if (job.scheme && !job.scheme.done) rows.push(['Graduate scheme', `🚀 ${esc(job.scheme.name)} until age ${job.scheme.until}`]);
+  if (job.womensRate) rows.push(['Women\'s rate', `💷 ${Math.round(job.womensRate * 100)}% of a man's pay for the job${equalPayYear(state, job) > yearNow(state) ? '' : ' (equal pay is closing it)'}`]);
+  const bar = state.character.gender === 'female' ? marriageBar(state, getProfession(job.professionId)) : null;
+  if (bar) rows.push(['Marriage bar', `💍 Married women must leave ${esc(bar.what)} (until ${bar.until})`]);
+  if (job.stayedOnMarried) rows.push(['Stayed on', '💼 Married and still here: the firm holds it against you']);
   const uo = upOrOutIn(state, job);
   if (uo != null) rows.push(['Up or out', `🏛️ ${uo ? `Decision in ${uo} yr` : 'Decided this year'} · ${Math.round(partnerOdds(state, job) * 100)}% on today's record`]);
   if (job.upOrOut === 'counsel') rows.push(['Up or out', '📚 Counsel: no further rise here']);
