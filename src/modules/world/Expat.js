@@ -19,6 +19,9 @@ import { warIn } from './War.js';
 import { bodyOfJob } from '../org/Bodies.js';
 import { INTL_ORG_PROFESSIONS } from '../content/careerPacks.js';
 
+/** Country names that take "the" in a sentence (the Philippines, the United States, the Gambia). */
+const withThe = (n) => (/^(United |Czech Republic|Dominican Republic|Central African|Gambia|Netherlands)|(Islands|Emirates|Philippines|Bahamas|Maldives|Comoros|Seychelles)$/.test(n) ? `the ${n}` : n);
+
 /** International organisations post their own staff (IntlOrgs duty stations): no company assignments or moves. */
 const intlStaff = (job) => Boolean(job && INTL_ORG_PROFESSIONS[job.professionId]);
 
@@ -74,7 +77,7 @@ function offerAssignment(ctx) {
   }
   ctx.prompt({
     type: 'expat.offer', icon: '🌐', title: 'An Overseas Assignment',
-    text: `${job.employer.name} wants you to run part of its ${COUNTRIES[to].name} office for ${ASSIGNMENT_YEARS} years: same job, a ${Math.round(ASSIGNMENT_UPLIFT * 100)}% overseas allowance, housing paid, and your return guaranteed.${speaks(state, localLanguage(to)) ? '' : ` You don't speak ${localLanguage(to)}.`}`,
+    text: `${job.employer.name} wants to send you to ${withThe(COUNTRIES[to].name)} to run part of its office there for ${ASSIGNMENT_YEARS} years: same job, a ${Math.round(ASSIGNMENT_UPLIFT * 100)}% overseas allowance, housing paid, and your return guaranteed.${speaks(state, localLanguage(to)) ? '' : ` You don't speak ${localLanguage(to)}.`}`,
     options: [
       { id: 'accept', label: `${COUNTRIES[to].flag} Take the assignment`, hint: `${COUNTRIES[to].name}, ${ASSIGNMENT_YEARS} years` },
       { id: 'decline', label: '🏠 Stay home', hint: 'No hard feelings — mostly' },

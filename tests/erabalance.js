@@ -31,7 +31,10 @@ export function bands(year, cc = 'US', factor = 1) {
   const b = BANDS[eraOf(year)];
   // Real pay and wealth follow how rich the country is (economy/EraEconomy.countryWageFactor).
   const k = (r) => r.map((x) => x * factor);
-  return { lifespan20: b.lifespan20, degree: b.degree, peakGrade: b.peakGrade, employed40: at(40).employed40, pay40: k(at(40).pay40), home45: at(45).home45, nw65: k(at(65).nw65), top10nw65: k(at(65).top10nw65) };
+  // Wealth less so: homes are dear against pay in poorer countries (PropertyMarket follows the
+  // country factor at ^0.5), and wealth-to-income ratios there are no lower than in rich ones.
+  const w = (r) => r.map((x) => x * factor ** 0.85);
+  return { lifespan20: b.lifespan20, degree: b.degree, peakGrade: b.peakGrade, employed40: at(40).employed40, pay40: k(at(40).pay40), home45: at(45).home45, nw65: w(at(65).nw65), top10nw65: w(at(65).top10nw65) };
 }
 /**
  * Known gaps, reported but not failed: the game models them differently from history.
