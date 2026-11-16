@@ -32,12 +32,15 @@ export function companyCard(state) {
 }
 
 /* ---- How promotion happens (career/Advancement.js) ---- */
+import { reputationOf, reputationLabel } from '../../modules/career/Reputation.js';
 import { RATINGS, upOrOutIn, partnerOdds, wantsAssessment, assessmentOdds, confirmOdds } from '../../modules/career/Advancement.js';
 
 export function advancementCard(state) {
   const job = state.career?.job;
   if (!job) return '';
   const rows = [];
+  const rep = reputationOf(state);
+  if (rep > 0) rows.push(['Name in the field', `${reputationLabel(rep)} (${rep}/100): headhunters and better offers`]);
   if (job.calibration) rows.push(['Calibration', `${RATINGS[job.calibration.rating].icon} ${RATINGS[job.calibration.rating].label} (age ${job.calibration.age})`]);
   if (job.pip) rows.push(['Improvement plan', `📋 Until age ${job.pip.until}: you need a record of 50+`]);
   if (job.acting) rows.push(['Acting', `🪪 ${esc(job.acting.title)} until age ${job.acting.until} · ${Math.round(confirmOdds(job) * 100)}% to be confirmed`]);
