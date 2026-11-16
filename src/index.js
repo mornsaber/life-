@@ -16,6 +16,7 @@ import { routineChoice, DECISION_LEVELS } from './core/Routine.js';
 import { MODULES } from './modules/registry.js';
 import { Renderer, TABS, SECTIONS, sectionOf } from './ui/Renderer.js';
 import { loadSettings, saveSettings, applyTheme, applyLook } from './ui/Settings.js';
+import { markStep, lifeStoryText } from './ui/FirstLife.js';
 import { birthOptions, eraYearOptions, eraSub, crownPicker, startYearPicked, startListYear } from './ui/Components.js';
 import { enhanceFlagSelects, syncFlagSelects } from './ui/FlagPicker.js';
 import { scenarioOptions } from './modules/life/Scenarios.js';
@@ -111,10 +112,39 @@ function setTabByOffset(offset) {
   document.getElementById(`tab-${next}`)?.focus();
 }
 
+/** Share the life that just ended: the system share sheet, else the clipboard, else a text file. */
+async function shareLife() {
+  const state = engine.state;
+  if (!state) return;
+  const text = lifeStoryText(state, renderer.obituary(state));
+  const title = `The life of ${state.character.firstName} ${state.character.lastName}`;
+  try {
+    if (navigator.share) { await navigator.share({ title, text }); return; }
+  } catch (err) {
+    if (err?.name === 'AbortError') return;
+  }
+  try {
+    await navigator.clipboard.writeText(text);
+    renderer.toast('Life story copied: paste it anywhere.', 'good');
+  } catch {
+    const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));
+    const a = Object.assign(document.createElement('a'), { href: url, download: `${title.replace(/[^a-z0-9]+/gi, '_')}.txt` });
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+}
+
 function handleAction(el) {
   const action = el.dataset.action;
   const arg = el.hasAttribute('data-collect') ? collectArg(el) : el.dataset.arg;
+  // The first-life tour ticks off as you find your way round.
+  const toured = markStep(settings, action, arg);
+  if (toured) { settings = toured; saveSettings(settings); renderer.settings = settings; }
   switch (action) {
+    case 'ui.share':
+      return shareLife();
     case 'ui.tab':
       return renderer.setTab(arg);
     case 'ui.menu':

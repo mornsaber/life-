@@ -46,6 +46,7 @@ import { reputationCard, frontPageCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
+import { firstLifeCard, firstLifeDone } from './FirstLife.js';
 import { eraCard, timesCard } from './views/EraView.js';
 import { honoursNote } from '../modules/world/HonoursOfTheDay.js';
 import { featsCard } from './views/FeatsView.js';
@@ -457,7 +458,7 @@ export class Renderer {
       return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="row-end share-life">${button('📤 Share this life story', 'ui.share', { variant: 'small', hint: 'Copy or send a short account of this life' })}</div><div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
     const menu = this.ui.menu;
@@ -488,7 +489,7 @@ export class Renderer {
     const limit = ui.logLimit ?? 30;
     const more = state.log.length > limit ? `<div class="row-end">${button(`Show ${Math.min(40, state.log.length - limit)} older years`, 'ui.logMore', { variant: 'small ghost' })}</div>` : '';
     const yours = `<nav class="your-life" aria-label="Your life">${YOUR_LIFE.map((i) => `<button class="chip-link" data-action="ui.tab" data-arg="${i.tab}"><span aria-hidden="true">${i.icon}</span> ${esc(i.label)}</button>`).join('')}</nav>`;
-    return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${yours}${periodText(tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
+    return `<div class="tab-panel home" id="tabpanel" tabindex="-1">${yours}${periodText((firstLifeDone(this.settings ?? {}) ? tipsCard(state, ui.tips !== false) : firstLifeCard(state, this.settings ?? {})) + yearReviewCard(state) + thisYearCard(state) + `<section class="feed">${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}</section>`)}</div>`;
   }
 
   /** A dock menu: one row per screen, with a line saying where you stand. */
