@@ -12,7 +12,7 @@ import { STATES } from '../life/States.js';
 import { getProfession } from './JobTrees.js';
 import { lateralLevel, levelById, TRACK_LABEL } from './Ladder.js';
 import { MAX_STEP, onBands, BAND_MAX } from './PayGrades.js';
-import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast, PLATEAU_AFTER, PLATEAU_YEARS } from './CareerEngine.js';
+import { promotionStatus, openPromotionReview, promote, leaveJob, levelCheck, recalcSalary, hire, stepForAtLeast, PLATEAU_AFTER, PLATEAU_YEARS, PROMO_FACTORS } from './CareerEngine.js';
 import { regionsHere } from '../life/Regions.js';
 import { knob } from '../../core/Difficulty.js';
 
@@ -315,6 +315,7 @@ export const WorkplaceActions = {
       chance *= contest.factor;
       // Some fields have few management seats per worker (hotels, the trades).
       chance *= (getProfession(job.professionId).promotionOdds ?? 1) * knob(state, 'promotion');
+      for (const f of PROMO_FACTORS) chance *= f(state, job, target) ?? 1;
       if (status.options.some((o) => o.abilities.includes('supervise')) && state.credentials.held.leadershipProgram?.status === 'active') chance += 0.08;
       // Runner-up last time: a civil-service list ranks you first for the next opening; a company remembers.
       const listed = job.nextInLine?.levelId === target.id && job.performance >= 70;

@@ -30,3 +30,23 @@ export function companyCard(state) {
     ? `<div class="row-end">${button(`🏢 Transfer to head office in ${esc(hq?.name.split(',')[0] ?? 'the capital')}`, 'companyLife.headOffice', { variant: 'small', hint: 'The top posts are there: a move for you and the family' })}</div>` : '';
   return card(`${esc(job.employer.name)}`, `<div class="stat-line"><span>🏭 ${health}</span>${meter(c.health, { tone: c.health >= 55 ? 'good' : c.health >= 30 ? 'warn' : 'bad' })}</div>${kv(rows)}${history}${move}`, { icon: '🏢' });
 }
+
+/* ---- How promotion happens (career/Advancement.js) ---- */
+import { RATINGS, upOrOutIn, partnerOdds, wantsAssessment, assessmentOdds, confirmOdds } from '../../modules/career/Advancement.js';
+
+export function advancementCard(state) {
+  const job = state.career?.job;
+  if (!job) return '';
+  const rows = [];
+  if (job.calibration) rows.push(['Calibration', `${RATINGS[job.calibration.rating].icon} ${RATINGS[job.calibration.rating].label} (age ${job.calibration.age})`]);
+  if (job.pip) rows.push(['Improvement plan', `📋 Until age ${job.pip.until}: you need a record of 50+`]);
+  if (job.acting) rows.push(['Acting', `🪪 ${esc(job.acting.title)} until age ${job.acting.until} · ${Math.round(confirmOdds(job) * 100)}% to be confirmed`]);
+  if (job.scheme && !job.scheme.done) rows.push(['Graduate scheme', `🚀 ${esc(job.scheme.name)} until age ${job.scheme.until}`]);
+  const uo = upOrOutIn(state, job);
+  if (uo != null) rows.push(['Up or out', `🏛️ ${uo ? `Decision in ${uo} yr` : 'Decided this year'} · ${Math.round(partnerOdds(state, job) * 100)}% on today's record`]);
+  if (job.upOrOut === 'counsel') rows.push(['Up or out', '📚 Counsel: no further rise here']);
+  const assess = wantsAssessment(state, job)
+    ? `<div class="row-end">${button('🎯 Sit the senior assessment centre', 'advancement.assessment', { variant: 'small', hint: `${Math.round(assessmentOdds(state, job) * 100)}% · senior public posts are filled through it` })}</div>` : '';
+  if (!rows.length && !assess) return '';
+  return card('Getting On', `${rows.length ? kv(rows) : ''}${assess}`, { icon: '🪜' });
+}

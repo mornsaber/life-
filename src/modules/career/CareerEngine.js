@@ -104,6 +104,8 @@ export const levelYears = (job, level) => {
   return job.fastTrack && years ? Math.max(1, Math.ceil(years * 0.6)) : years;
 };
 
+/** What other modules make of your promotion case (career/Advancement.js: the calibration committee). Each returns a multiplier. */
+export const PROMO_FACTORS = [];
 /** Extra requirements other modules put on rungs (career/Vocations.js: courses, conditions on practice). */
 const LEVEL_GATES = [];
 export const addLevelGate = (fn) => { LEVEL_GATES.push(fn); };
