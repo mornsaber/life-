@@ -68,3 +68,17 @@ export function ministryCard(state) {
   ];
   return card(job.employer.name, `<div class="stat-line"><span>🤝 The minister's trust</span>${meter(m.minister.trust)}</div><div class="stat-line"><span>💷 Budget settlement</span>${meter(m.budget, { tone: m.budget >= 55 ? 'good' : m.budget >= 35 ? 'warn' : 'bad' })}</div>${kv(rows)}`, { icon: '🏛️' });
 }
+
+/* ---- Boards and the top (career/Boardroom.js) ---- */
+import { boardsOf, atTheTop, STRATEGIES, MAX_SEATS } from '../../modules/career/Boardroom.js';
+
+export function boardroomCard(state) {
+  const job = state.career?.job;
+  const seats = state.career ? boardsOf(state) : [];
+  const top = atTheTop(job);
+  if (!seats.length && !top) return '';
+  const list = seats.length ? `<h4 class="sub">Your boards (${seats.length} of ${MAX_SEATS})</h4><ul class="history">${seats.map((b) => `<li>${b.kind === 'charity' ? '💚' : b.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(b.name)}</b> <small>${b.fee ? `${money(b.fee)}/yr · ` : 'unpaid · '}term to age ${b.until}</small> ${button('Step down', 'boardroom.resign', { arg: b.id, variant: 'tiny ghost' })}</li>`).join('')}</ul>` : '';
+  const strategy = top ? `<h4 class="sub">This year's strategy</h4><div class="action-grid">${Object.entries(STRATEGIES).map(([id, s]) => button(`${s.icon} ${s.label}`, 'boardroom.strategy', { arg: id, variant: (job.strategy ?? 'quality') === id ? 'small on' : 'small ghost', hint: s.hint, disabled: (job.strategy ?? 'quality') === id })).join('')}</div>
+    <h4 class="sub">Succession${job.successor ? `: ${job.successor === 'insider' ? 'grooming an insider' : 'an outside search under way'}` : ''}</h4><div class="action-grid">${button('🧑‍💼 Groom an insider', 'boardroom.successor', { arg: 'insider', variant: 'small ghost' })}${button('🔎 Ask for an outside search', 'boardroom.successor', { arg: 'outsider', variant: 'small ghost' })}</div>` : '';
+  return card(top ? 'The Top Job' : 'Boards', `${strategy}${list}`, { icon: '🪑' });
+}
