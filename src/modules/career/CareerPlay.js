@@ -97,6 +97,9 @@ export const SHIFT_FAMILIES = [
   ] },
 ];
 
+/** The family of work a job belongs to (medical, legal, police, …, general). */
+export const familyOf = (job) => (job ? (SHIFT_FAMILIES.find((f) => f.re.test(job.professionId)) ?? SHIFT_FAMILIES.at(-1)).id : null);
+
 /** The actions for this job. */
 export function shiftActions(job) {
   if (!job) return [];

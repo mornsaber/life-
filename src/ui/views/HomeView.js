@@ -9,6 +9,7 @@ import {
   housingStatus, primaryHome, STATUS_LABEL, PROPERTY_TYPES, RENT_TIERS, tierRent, sellingCostRate, LOAN_TYPES, quote, creditBand, helocLimit,
   RENOVATIONS, carryingCosts, rentableUnits, diyFactor, marketRent, loansFor, expectedNoi, isLand, isResidential, ZONING, buildQuote, demolitionQuote,
   ownBuilder, canDiy, REZONE_COST, SUBDIVIDE_LOTS,
+  selfBuildHere, plotPrice, shackCost, stageCost, selfBuilds, nextStage, cantStart, stageLeft, minPayment, SELF_BUILD_STAGES, LIVABLE,
 } from '../../modules/realestate/index.js';
 
 import { cashOutAvailable } from '../../modules/realestate/MortgageSystem.js';
@@ -63,6 +64,25 @@ function listings(state) {
     </li>`;
   }).join('');
   return card('Listings', `<p class="fine">Five homes and three investment properties come up each year: apartment buildings and commercial property (commercial loans need 25% down and rents that cover the payment 1.25×) and land to build on.</p><p class="muted">Base mortgage rate ${(state.housing.rates.base * 100).toFixed(2)}% · economy in ${state.economy.phase}. Selling costs ${Math.round(sellingCostRate(state) * 100)}%${sellingCostRate(state) < 0.05 ? ' (you\'re a licensed agent)' : ''}.</p><ul class="job-board">${rows || '<li>No listings this year.</li>'}</ul>`, { icon: '🪧' });
+}
+
+/** Self-built homes: a plot, then a stage a year, paid in cash (realestate/SelfBuilt.js). */
+function selfBuild(state) {
+  if (state.character.age < 18 || !selfBuildHere(state)) return '';
+  const going = selfBuilds(state)[0];
+  if (going) {
+    const st = nextStage(going);
+    const done = going.selfBuild.stage;
+    const steps = SELF_BUILD_STAGES.map((x, i) => `<li class="${i < done ? 'here' : ''}">${x.icon} ${esc(x.name)}${i < done ? ' ✓' : i === done ? ' · next' : ''}</li>`).join('');
+    return card('Building Your House', `<p class="muted">${esc(going.typeName)} in ${esc(REGIONS[going.regionId].name)} · ${done}/${SELF_BUILD_STAGES.length} stages · ${money(going.selfBuild.spent)} spent so far${going.informal ? ' · no title yet' : ''}.</p>
+      <ul class="history">${steps}</ul>
+      ${done < LIVABLE ? `<p class="fine">You can move in once the roof is on (${LIVABLE} stages).</p>` : ''}
+      <div class="row-end">${button(`${st.icon} Put money into the ${st.name.toLowerCase()} (${money(Math.min(stageLeft(state, going), Math.max(0, Math.floor(state.finances.cash))))} of ${money(stageLeft(state, going))} left)`, 'selfBuild.stage', { arg: going.id, variant: 'small', disabled: Math.floor(state.finances.cash) < minPayment(state, going), hint: `Cash only, once a year · at least ${money(minPayment(state, going))} · stage costs ${money(stageCost(state, done))}` })}</div>`, { icon: '🏗️', accent: 'green' });
+  }
+  const why = cantStart(state);
+  return card('Build Your Own', `<p class="fine">Most homes here are built by the families who live in them: a plot bought for cash, then a stage a year (foundations, walls, roof, finishing) as the money comes in. No bank and no mortgage.</p>
+    <div class="toggle-row">${button(`🟫 Buy a plot (${money(plotPrice(state))})`, 'selfBuild.buyPlot', { variant: 'small', disabled: Boolean(why), hint: why ?? 'Cash only' })}
+    ${button(`🛖 Put up a room on unclaimed land (${money(shackCost(state))})`, 'selfBuild.shack', { variant: 'small ghost', disabled: Boolean(why) || Boolean(state.housing.properties.some((p) => p.use === 'primary')), hint: 'No rent and no title: a clearance can take it, a regularization can make it yours' })}</div>`, { icon: '🧱' });
 }
 
 const USE_CHIP = { primary: ['🏡 Your home', 'good'], rental: ['🔑 Rental', ''], vacant: ['🚪 Vacant', ''], vacation: ['🏖️ Your getaway', 'good'] };
@@ -170,7 +190,7 @@ export function homeView(state) {
   const worth = h.properties.reduce((n, p) => n + p.value, 0);
   return `${residence(state)}${titleCard(state)}
     ${card('Credit', `${creditGauge(h.credit.score)}${kv([['On-time payments', h.credit.onTime], ['Derogatory marks', h.credit.events.length ? h.credit.events.map((e) => `${e.type} (age ${e.age})`).join(', ') : 'None']])}<p class="fine">Built from on-time rent and mortgage payments; hurt by late payments, evictions, foreclosures, bankruptcy and credit-card debt. Marks fade after 3–10 years.</p>`, { icon: '📊' })}
-    ${listings(state)}
+    ${selfBuild(state)}${listings(state)}
     ${h.properties.length ? `${rentals ? card('Landlording', `<p class="muted">${rentals} rental propert${rentals > 1 ? 'ies' : 'y'}.</p>${h.empire?.company ? '' : button(h.manager ? '🧑‍💼 Property manager: ON (10% of rents)' : '🧑‍💼 Hire a property manager', 'housing.toggleManager', { variant: h.manager ? 'small on' : 'small', hint: 'Handles tenants, evictions and vacancies' })}${empireBlock(state)}`, { icon: '🔑' }) : ''}${h.properties.map((p) => propertyCard(state, p)).join('')}` : card('Portfolio', empty('You don\'t own any property yet.'), { icon: '🏘️' })}
     ${h.properties.length > 1 ? `<p class="fine">Portfolio: ${h.properties.length} properties worth ${money(worth)}.</p>` : ''}`;
 }

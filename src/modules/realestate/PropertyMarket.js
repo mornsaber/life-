@@ -15,7 +15,11 @@ import { isAbroad } from '../world/Countries.js';
 import { regionsHere } from '../life/Regions.js';
 import { yearNow, propertyInEra } from '../world/Eras.js';
 import { statuteIn } from '../politics/StatuteBook.js';
-import { eraScale } from '../economy/EraEconomy.js';
+import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
+
+/** Homes and rents follow what people earn here, more loosely than wages do (dear against pay in poorer countries). */
+const countryHouse = (state) => countryWageFactor(state) ** 0.5;
+const countryRent = (state) => countryWageFactor(state) ** 0.7;
 
 /**
  * kind     home (live in or rent out) · multi (apartments) · commercial
@@ -45,6 +49,10 @@ export const PROPERTY_TYPES = {
   warehouse: { name: 'Industrial Warehouse (2 bays)', icon: '🏭', kind: 'commercial', base: 3200000, hoa: 0, units: 2, rent: 12000, lot: 'commercialLot', build: { cost: 2200000, years: 1 } },
   lot: { name: 'Residential Lot', icon: '🟫', kind: 'land', base: 120000, hoa: 0, units: 0, rent: 0, zone: 'residential' },
   commercialLot: { name: 'Commercial Lot', icon: '🅿️', kind: 'land', base: 450000, hoa: 0, units: 0, rent: 0, zone: 'commercial' },
+  // Self-built and informal homes (SelfBuilt.js): never listed, only built.
+  plot: { name: 'Building Plot', icon: '🟫', kind: 'land', base: 30000, hoa: 0, units: 0, rent: 0, zone: 'residential', selfBuilt: true },
+  selfbuilt: { name: 'Self-Built House', icon: '🏠', kind: 'home', base: 160000, hoa: 0, units: 1, rent: 700, lot: 'plot', selfBuilt: true },
+  shack: { name: 'Settlement House', icon: '🛖', kind: 'home', base: 40000, hoa: 0, units: 1, rent: 200, lot: null, selfBuilt: true },
   acreage: { name: 'Raw Land (40 acres)', icon: '🌄', kind: 'land', base: 160000, hoa: 0, units: 0, rent: 0, zone: 'rural' },
 };
 /** What each kind of land is zoned for. */
@@ -52,6 +60,7 @@ export const ZONING = {
   lot: ['starter', 'townhouse', 'family', 'luxury', 'vacation', 'duplex', 'multiunit'],
   commercialLot: ['stripMall', 'office', 'warehouse', 'aptBuilding', 'aptComplex'],
   acreage: ['rural', 'family', 'luxury', 'mansion', 'vacation'],
+  plot: ['starter'],
 };
 export const isLand = (type) => PROPERTY_TYPES[type]?.kind === 'land';
 export const isCommercial = (type) => PROPERTY_TYPES[type]?.kind === 'commercial';
@@ -69,18 +78,18 @@ export const marketIndex = (state, regionId) => state.housing.market[regionId] ?
 const priceFactor = (regionId) => REGIONS[regionId].col ** 1.6;
 
 export function priceOf(state, type, regionId) {
-  return PROPERTY_TYPES[type].base * priceFactor(regionId) * marketIndex(state, regionId) * eraScale(state, 'house');
+  return PROPERTY_TYPES[type].base * priceFactor(regionId) * marketIndex(state, regionId) * eraScale(state, 'house') * countryHouse(state);
 }
 
 /** Monthly market rent for one unit of a property type. */
 export function marketRent(state, type, regionId) {
-  return Math.round(PROPERTY_TYPES[type].rent * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent'));
+  return Math.round(PROPERTY_TYPES[type].rent * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent') * countryRent(state));
 }
 
 export function tierRent(state, tier, regionId) {
   // Housing vouchers cap rent at 30% of income.
   if (RENT_TIERS[tier].subsidized) return Math.round(((state.finances.lastYear?.gross ?? 0) * 0.3) / 12);
-  return Math.round(RENT_TIERS[tier].monthly * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent'));
+  return Math.round(RENT_TIERS[tier].monthly * REGIONS[regionId].col ** 1.3 * marketIndex(state, regionId) ** 0.5 * eraScale(state, 'rent') * countryRent(state));
 }
 
 /** Fraction of the sale price lost to agents and closing. */

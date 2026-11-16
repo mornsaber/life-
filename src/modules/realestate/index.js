@@ -3,4 +3,5 @@ export { PROPERTY_TYPES, RENT_TIERS, ZONING, tierRent, marketRent, priceOf, sell
 export { LOAN_TYPES, loansFor, expectedNoi, quote, creditBand, helocLimit, vaEligible } from './MortgageSystem.js';
 export { RENOVATIONS, carryingCosts, diyFactor } from './Maintenance.js';
 export { rentableUnits, MANAGER_FEE } from './Landlording.js';
+export { SelfBuiltModule, selfBuildHere, plotPrice, shackCost, stageCost, selfBuilds, nextStage, cantStart, stageLeft, minPayment, STAGES as SELF_BUILD_STAGES, LIVABLE } from './SelfBuilt.js';
 export { buildQuote, demolitionQuote, ownBuilder, canDiy, REZONE_COST, SUBDIVIDE_LOTS } from './Construction.js';

@@ -51,6 +51,7 @@ export function buildQuote(state, land, target, contractor = 'gc') {
   if (!isLand(land.type)) return { ok: false, reason: 'Tear down what\'s there first' };
   if (!(ZONING[land.type] ?? []).includes(target)) return { ok: false, reason: `Not zoned for ${def.name.toLowerCase()}` };
   if (land.project) return { ok: false, reason: 'Already under construction' };
+  if (land.selfBuild?.stage) return { ok: false, reason: 'You\'re building on it yourself' };
   const factor = contractor === 'own' ? 0.82 : contractor === 'diy' ? 0.7 : 1;
   if (contractor === 'own' && !ownBuilder(state, target)) return { ok: false, reason: 'You don\'t own a builder that does this work' };
   if (contractor === 'diy' && !canDiy(state, target)) return { ok: false, reason: 'Only tradespeople can owner-build, and only small homes' };

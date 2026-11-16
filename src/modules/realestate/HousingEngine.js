@@ -61,7 +61,7 @@ export function housingStatus(state) {
 
 const isFirstHome = (state) => !state.housing.everOwned;
 
-function endLease(ctx, reason, { fee = true } = {}) {
+export function endLease(ctx, reason, { fee = true } = {}) {
   const r = ctx.state.housing.rental;
   if (!r) return;
   if (fee && r.leaseYearsLeft > 0) ctx.spend(r.rent, 'Lease break fee', { allowDebt: true });

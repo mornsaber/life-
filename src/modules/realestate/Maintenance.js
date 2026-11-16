@@ -44,7 +44,8 @@ export function carryingCosts(property, state = null) {
   if (PROPERTY_TYPES[property.type]?.kind === 'land') return { tax: Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)), insurance: 0, hoa: 0, upkeep: 0 };
   return {
     // Voter-approved local measures raise or cap the rate (civic/Local.js).
-    tax: Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)),
+    // No title, no tax (an informal settlement's houses aren't on the rolls).
+    tax: property.informal ? 0 : Math.round(property.value * st.propertyTax * localTaxMult(state, property.regionId)),
     insurance: property.insured ? insurancePremium(property) : 0,
     hoa: property.hoaDues ?? PROPERTY_TYPES[property.type].hoa,
     upkeep: Math.round(property.value * (property.condition < 50 ? 0.015 : 0.01)),

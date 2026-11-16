@@ -15,7 +15,7 @@ import os from 'node:os';
 import { countryWageFactor } from '../src/modules/economy/EraEconomy.js';
 import { fileURLToPath } from 'node:url';
 
-const PER = Number(process.argv[2] ?? 24);
+const PER = Number(process.argv[2] ?? 32);
 const CELLS = (process.argv[3] ?? 'US:1850,US:1900,US:1950,US:2000,GB:1850,GB:1900,GB:1950,GB:2000,FR:1880,FR:1960,IN:1900,IN:1990,JP:1880,JP:1970,BR:1920,BR:1990,NG:1960,NG:2000').split(',').map((c) => { const [cc, y] = c.split(':'); return { cc, year: Number(y) }; });
 
 /**
@@ -35,19 +35,17 @@ export function bands(year, cc = 'US', factor = 1) {
 }
 /**
  * Known gaps, reported but not failed: the game models them differently from history.
- *   Home ownership where most homes were self-built or informal (no mortgage at all): the game
- *   only sells homes through a bank, so ownership there runs far below the real rate.
  *   Degrees where universities were few: the era's places follow the rich world's.
  */
 const KNOWN = {
-  home45: { BR: 'most Brazilian homes were self-built or informal; the game only sells homes through a bank', NG: 'most Nigerian homes were family-built or informal; the game only sells homes through a bank', IN: 'most Indian homes were self-built or inherited; the game only sells homes through a bank' },
   degree: { NG: 'Nigeria had a few thousand university places in the 1960s, well under 1% of young people' },
 };
 const BANDS = {
     // Degrees: a few percent at most before 1930, so a cell of a dozen lives often shows none.
     c19: { lifespan20: [50, 70], employed40: [0.75, 1], pay40: [3000, 25000], nw65: [0, 400000], top10nw65: [20000, 3000000], degree: [0, 0.12], home45: [0.1, 0.7], peakGrade: [3, 8] },
-    // A median of about twenty adults moves a few years between runs: the bands allow for it.
-    early: { lifespan20: [48, 77], employed40: [0.75, 1], pay40: [6000, 35000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
+    // A median of about twenty adults moves a few years between runs: the bands allow for it. Born in
+    // the 1920s, an adult of twenty lives into the 2000s and its medicine, so the top runs to 80.
+    early: { lifespan20: [48, 80], employed40: [0.75, 1], pay40: [6000, 35000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
     // Born after 1950, you reach the game's future medicine (2040 on): longer than history's.
     mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [15000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.15, 0.85], peakGrade: [3, 9] },
     // The persona saves hard (half of them invest every spare dollar), so wealth sits above the median household's.
@@ -66,6 +64,7 @@ async function playCell({ cc, year, per, seed }) {
   const { routineChoice } = await import('../src/core/Routine.js');
   const { CONDITIONS } = await import('../src/modules/health/index.js');
   const { isResidential } = await import('../src/modules/realestate/PropertyMarket.js');
+  const { selfBuildHere, selfBuilds, plotPrice } = await import('../src/modules/realestate/SelfBuilt.js');
   const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
   const out = [];
   for (let i = 0; i < per; i++) {
@@ -119,6 +118,12 @@ async function playCell({ cc, year, per, seed }) {
       }
       const housed = s.housing.rental || s.housing.properties.some((p) => p.use === 'primary');
       if (age >= 21 && s.career.job && !housed && !s.housing.withParents) act('housing.rent', 'roommates');
+      // Where homes are self-built, would-be owners buy a plot and build a stage a year (or put up a room on unclaimed land).
+      if (persona.owner && age >= 22 && age <= 55 && selfBuildHere(s)) {
+        const going = selfBuilds(s)[0];
+        if (going) act('selfBuild.stage', going.id);
+        else if (!s.housing.properties.some((p) => p.use === 'primary')) act(s.finances.cash >= plotPrice(s) ? 'selfBuild.buyPlot' : age >= 26 && choose.chance(0.3) ? 'selfBuild.shack' : 'selfBuild.buyPlot');
+      }
       if (persona.owner && age >= 24 && age <= 55 && s.career.job && !s.housing.properties.some((p) => p.use === 'primary') && s.housing.listings?.length && choose.chance(0.5)) {
         const l = [...s.housing.listings].filter((x) => isResidential(x.type)).sort((a, b) => a.price - b.price)[0];
         if (l) act('housing.buy', l.id);
@@ -145,6 +150,7 @@ async function playCell({ cc, year, per, seed }) {
       if (s.career.job) r.peakGrade = Math.max(r.peakGrade, s.career.job.grade ?? 0);
       if (a === 40) { r.employed40 = Boolean(s.career.job || s.military.service || s.business?.current); r.pay40 = s.career.job ? s.career.job.salary / k : null; }
       if (a === 45) r.home45 = s.housing.properties.some((p) => p.use === 'primary');
+      if (a === 45 && process.env.ERA_DEBUG) r.h45 = { owner: persona.owner, cash: Math.round(s.finances.cash / k), props: s.housing.properties.map((p) => `${p.type}/${p.use}/${p.selfBuild?.stage ?? '-'}${p.regionId === s.character.regionId ? '' : '@away'}`).join(' '), rent: s.housing.rental?.tier ?? (s.housing.withParents ? 'parents' : '-'), job: Boolean(s.career.job) };
       if (a === 65) r.nw65 = netWorth(s) / k;
       if (a === 65 && process.env.ERA_DEBUG) r.dbg = ({ spent: Object.entries(r.out ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 10).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), top: Object.entries(r.src ?? {}).sort((x, y) => y[1] - x[1]).slice(0, 8).map(([k2, v]) => `${k2}=${Math.round(v / 1000)}k`).join(' | '), cell: `${cc}:${year}`, nw: Math.round(netWorth(s) / k), cash: Math.round(s.finances.cash / k), homes: Math.round(s.housing.properties.reduce((t, p) => t + p.value - (p.mortgage?.balance ?? 0), 0) / k), invest: Math.round(Object.values(s.investing?.holdings ?? {}).reduce((t, h) => t + (h.value ?? 0), 0) / k), dc: Math.round(Object.values(s.retirement?.dc ?? {}).reduce((t, v) => t + (typeof v === 'number' ? v : v?.balance ?? 0), 0) / k), pay: Math.round((s.career.job?.salary ?? 0) / k), inherited: Math.round((s.finances.ledger?.income ?? []).filter((x) => /inherit|estate|bequest|will/i.test(x.reason)).reduce((t, x) => t + x.amount, 0) / k) });
     }
@@ -198,7 +204,8 @@ if (!isMainThread) {
     next();
   });
   await Promise.all(Array.from({ length: threads }, run));
-  if (process.env.ERA_DEBUG) for (const r of results) { console.log(r.cc, r.year, 'lives', r.s?.n, 'at 65', r.s?.n65); for (const l of (r.lives ?? []).filter((x) => x.dbg).sort((a, b) => a.dbg.nw - b.dbg.nw)) console.log(' ', JSON.stringify(l.dbg)); }
+  if (process.env.ERA_DEBUG) for (const r of results) { console.log(r.cc, r.year, 'lives', r.s?.n, 'at 65', r.s?.n65); for (const l of (r.lives ?? []).filter((x) => x.h45)) console.log('  45:', JSON.stringify(l.h45));
+      for (const l of (r.lives ?? []).filter((x) => x.dbg).sort((a, b) => a.dbg.nw - b.dbg.nw)) console.log(' ', JSON.stringify(l.dbg)); }
   results.sort((a, b) => CELLS.findIndex((c) => c.cc === a.cc && c.year === a.year) - CELLS.findIndex((c) => c.cc === b.cc && c.year === b.year));
   const fmt = { lifespan20: (x) => x?.toFixed(0), employed40: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), pay40: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), nw65: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), top10nw65: (x) => (x == null ? '–' : `$${Math.round(x / 1000)}k`), degree: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), home45: (x) => (x == null ? '–' : `${Math.round(x * 100)}%`), peakGrade: (x) => x ?? '–' };
   const keys = Object.keys(fmt);

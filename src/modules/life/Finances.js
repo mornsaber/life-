@@ -54,7 +54,8 @@ export const LIFESTYLE_SHARE = 0.85;
 const LIVING_MINIMUM = 6000;
 /** Living at home: parents cover most of it. */
 const LIVING_AT_HOME = 2000;
-const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest)/;
+// Money put into a house you're building yourself comes out of what you'd otherwise spend (realestate/SelfBuilt).
+const HOUSING_EXPENSE = /^(Rent|Mortgage|Property costs|HELOC interest|Building: )/;
 /** Kids, support, premiums — and money you pour into your own business — come off the top before lifestyle spending. */
 const FAMILY_EXPENSE = /^(Child expenses|Childcare|Child support|Alimony paid|Life insurance premium|Capital injection|Self-employment tax|Self-employed contributions|Payroll tax \(FICA\)|Elder care|Vehicle|IRS)|personal spending$/;
 

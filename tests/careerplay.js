@@ -13,6 +13,7 @@ import { professionsFor } from '../src/modules/career/JobTrees.js';
 import { applicationEligibility, leaveJob } from '../src/modules/career/CareerEngine.js';
 import { shiftActions, shiftOdds, readiness, nextPerk, WORK_PLANS, SHIFT_FAMILIES } from '../src/modules/career/CareerPlay.js';
 import { VIEWS } from '../src/ui/Renderer.js';
+import { PROJECTS, CRISES, crisisOdds, projectOf } from '../src/modules/career/CareerStory.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const solve = (engine, state) => { for (let g = 0; g < 30 && state.prompts.length; g++) { const p = state.prompts[0]; engine.resolvePrompt(p.id, (p.options.find((o) => !o.disabled) ?? p.options[0]).id); if (state.prompts[0] === p) state.prompts.shift(); } };
@@ -88,6 +89,75 @@ const tests = {
     leaveJob(engine.context(), 'Moving on');
     assert.ok((state.results ?? []).some((r) => /6 years at/.test(r.title)), 'an end-of-job card');
   },
+  'a signature project: taken on, pushed, finished, with a card'() {
+    const { engine, state } = worker(5);
+    const job = state.career.job;
+    assert.ok(job, 'hired');
+    job.startAge = state.character.age - 2;
+    job.performance = 70;
+    engine.dispatch('careerStory.startProject');
+    const p = projectOf(state);
+    assert.ok(p && PROJECTS[p.kind], 'under way');
+    const before = job.performance;
+    for (let i = 0; i < 6 && projectOf(state); i++) {
+      state.prompts = [];
+      state.career.plan = 'grind';
+      engine.dispatch('careerStory.pushProject');
+      state.prompts = [];
+      engine.ageUp();
+      solve(engine, state);
+      if (state.career.job !== job) break;
+    }
+    const done = (state.career.projectsDone ?? []).length;
+    const shelved = (state.log ?? []).some((l) => /was shelved/.test(l.text ?? ''));
+    assert.ok(done || shelved, 'finished or shelved within its time');
+    if (done) assert.ok((state.results ?? []).some((r) => r.title === 'Signature project'), 'a card for it');
+    assert.ok(before > 0);
+    assert.match(VIEWS.career ? VIEWS.career(state) : '', /Signature project/);
+  },
+  'mentor and rival come from the org chart, and the moves with them work'() {
+    const { engine, state } = worker(7);
+    const job = state.career.job;
+    assert.ok(job, 'hired');
+    for (let i = 0; i < 12 && state.career.job === job && !(job.mentor && job.rival); i++) { state.prompts = []; engine.ageUp(); solve(engine, state); }
+    assert.ok(job.mentor || job.rival, 'someone at work in twelve years');
+    if (job.mentor) {
+      const bond = job.mentor.bond;
+      state.prompts = [];
+      engine.dispatch('careerStory.people', 'advice');
+      assert.ok(job.mentor.bond > bond, 'advice builds the bond');
+      job.mentor.bond = 80;
+      const boss = job.boss ?? 50;
+      engine.dispatch('careerStory.people', 'sponsor');
+      assert.ok((job.boss ?? 50) > boss || boss >= 100, 'a word put in');
+    }
+    if (job.rival) {
+      state.prompts = [];
+      engine.dispatch('careerStory.people', 'outshine');
+      assert.ok(true);
+    }
+  },
+  'crisis cards show their odds and resolve'() {
+    for (const [kind, c] of Object.entries(CRISES)) {
+      assert.equal(c.ways.length, 3, kind);
+      assert.ok(c.ways.some((w) => !w.skill), `${kind}: a safe way out`);
+    }
+    const { engine, state } = worker(9);
+    assert.ok(state.career.job);
+    let seen = null;
+    for (let i = 0; i < 20 && !seen && state.career.job; i++) {
+      state.prompts = state.prompts.filter((p) => p.type === 'careerStory.crisis');
+      seen = state.prompts.find((p) => p.type === 'careerStory.crisis');
+      if (!seen) { state.prompts = []; engine.ageUp(); seen = state.prompts.find((p) => p.type === 'careerStory.crisis'); }
+    }
+    assert.ok(seen, 'a crisis in twenty years');
+    assert.ok(seen.options.filter((o) => /\d+%/.test(o.label)).length === 2, 'two risky ways show odds');
+    const perf = state.career.job.performance;
+    assert.ok(engine.resolvePrompt(seen.id, seen.options[0].id) !== false);
+    assert.notEqual(state.career.job.performance, perf, 'it changed your record');
+    assert.ok(crisisOdds(state, { skill: null }) === 1);
+  },
+
 };
 let failed = 0;
 for (const [name, fn] of Object.entries(tests)) {

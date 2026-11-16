@@ -6,6 +6,26 @@
 import { button, card, esc, meter } from '../Components.js';
 import { yearlyCount } from '../../core/State.js';
 import { WORK_PLANS, planOf, shiftActions, shiftOdds, SHIFTS_PER_YEAR, readiness, nextPerk, MILESTONES } from '../../modules/career/CareerPlay.js';
+import { PROJECTS, storyKind, projectOf, cantStartProject, pushOdds, peopleOdds } from '../../modules/career/CareerStory.js';
+
+/** The signature project, and the mentor and rival from the org chart (career/CareerStory.js). */
+function storyBlock(state, job) {
+  const p = projectOf(state);
+  const def = PROJECTS[storyKind(state, job)] ?? PROJECTS.general;
+  const why = cantStartProject(state);
+  const project = p
+    ? `<p>${p.icon} <b>${esc(p.name)}</b> · ${Math.max(0, p.startAge + p.years - state.character.age)} yr left</p><div class="stat-line"><span>Progress</span>${meter(p.progress, { tone: p.progress >= 70 ? 'good' : 'warn' })}</div>
+       <div class="action-grid">${button('💪 Push it this year', 'careerStory.pushProject', { variant: 'small', disabled: Boolean(yearlyCount(state, 'careerStory.push')), hint: yearlyCount(state, 'careerStory.push') ? 'Pushed this year' : `${Math.round(pushOdds(state) * 100)}% to go well · your plan and record move it every year` })}</div>`
+    : `<div class="action-grid">${button(`${def.icon} Take on ${def.name.toLowerCase()}`, 'careerStory.startProject', { variant: 'small', disabled: Boolean(why), hint: why ?? `${def.years} years · finish it and make your name; miss the deadline and it's shelved` })}</div>`;
+  const m = job.mentor;
+  const r = job.rival;
+  const once = (k) => Boolean(yearlyCount(state, `careerStory.${k}`));
+  const mentor = m ? `<div class="stat-line"><span>🧭 ${esc(m.name)} <small>${esc(m.title)}</small></span>${meter(m.bond)}</div>
+    <div class="action-grid">${button('☕ Ask for advice', 'careerStory.people', { arg: 'advice', variant: 'small ghost', disabled: once('advice'), hint: 'Bond and performance up' })}${button('🗝️ Ask them to put in a word', 'careerStory.people', { arg: 'sponsor', variant: 'small ghost', disabled: once('sponsor') || m.bond < 70, hint: m.bond < 70 ? 'Needs a bond of 70' : 'Your boss warms to you' })}</div>` : '';
+  const rival = r ? `<div class="stat-line"><span>${r.mood === 'ally' ? '🤝' : '🥊'} ${esc(r.name)} <small>${r.mood === 'ally' ? 'an ally now' : 'your rival'}</small></span>${meter(r.standing, { tone: r.mood === 'ally' ? 'good' : r.standing > (job.performance ?? 55) ? 'bad' : 'warn' })}</div>
+    ${r.mood === 'ally' ? '' : `<div class="action-grid">${['outshine', 'peace', 'undercut'].map((k) => button({ outshine: '🌟 Outshine them', peace: '🤝 Make peace', undercut: '🗡️ Undercut them' }[k], 'careerStory.people', { arg: k, variant: 'small ghost', disabled: once(k), hint: `${Math.round(peopleOdds(state, k) * 100)}%` })).join('')}</div>`}` : '';
+  return `<h4 class="sub">Signature project</h4>${project}${m || r ? `<h4 class="sub">People at work</h4>${mentor}${rival}` : ''}`;
+}
 
 export function careerPlayCard(state) {
   const job = state.career?.job;
@@ -32,5 +52,6 @@ export function careerPlayCard(state) {
   return card('Your Year at Work', `${ladder}${record}
     <h4 class="sub">This year's plan</h4><div class="action-grid">${plans}</div>
     <h4 class="sub">On the job (${Math.max(0, SHIFTS_PER_YEAR - used)} of ${SHIFTS_PER_YEAR} left this year)</h4><div class="action-grid">${actions}</div>
+    ${storyBlock(state, job)}
     ${reached ? `<h4 class="sub">Milestones</h4><p>${reached}</p>` : ''}`, { icon: '🎮', accent: 'cyan' });
 }
