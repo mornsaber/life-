@@ -49,11 +49,12 @@ const BANDS = {
     // A median of about twenty adults moves a few years between runs: the bands allow for it. Born in
     // the 1920s, an adult of twenty lives into the 2000s and its medicine, so the top runs to 80.
     // Pay at 40 tops out a little higher than history's: acting up and partner tracks lift the able.
-    early: { lifespan20: [48, 80], employed40: [0.75, 1], pay40: [6000, 38000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.2, 0.75], peakGrade: [3, 8] },
+    early: { lifespan20: [48, 80], employed40: [0.75, 1], pay40: [6000, 38000], nw65: [2000, 400000], top10nw65: [40000, 12000000], degree: [0, 0.2], home45: [0.15, 0.75], peakGrade: [3, 8] },
+    // Pay at 40: women earned the women's rate before equal pay laws (career/EraPay.js), so the floor is lower.
     // Born after 1950, you reach the game's future medicine (2040 on): longer than history's.
-    mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [15000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.15, 0.85], peakGrade: [3, 9] },
+    mid: { lifespan20: [62, 88], employed40: [0.8, 1], pay40: [12000, 70000], nw65: [20000, 1000000], top10nw65: [150000, 12000000], degree: [0.05, 0.6], home45: [0.15, 0.85], peakGrade: [3, 9] },
     // The persona saves hard (half of them invest every spare dollar), so wealth sits above the median household's.
-    now: { lifespan20: [68, 90], employed40: [0.8, 1], pay40: [20000, 95000], nw65: [40000, 1300000], top10nw65: [300000, 12000000], degree: [0.15, 0.7], home45: [0.25, 0.85], peakGrade: [3, 9] },
+    now: { lifespan20: [68, 90], employed40: [0.8, 1], pay40: [20000, 95000], nw65: [40000, 1500000], top10nw65: [300000, 12000000], degree: [0.15, 0.7], home45: [0.25, 0.85], peakGrade: [3, 9] },
 };
 
 async function playCell({ cc, year, per, seed }) {
