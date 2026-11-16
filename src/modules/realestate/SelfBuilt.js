@@ -124,12 +124,12 @@ export function buildShack(ctx) {
 
 /** What's still owed on the stage under way. */
 export const stageLeft = (state, p) => Math.max(0, stageCost(state, p.selfBuild.stage) - (p.selfBuild.paid ?? 0));
-/** The least you can put in a year: a tenth of the stage (or what's left of it). */
-export const minPayment = (state, p) => Math.min(stageLeft(state, p), Math.round(stageCost(state, p.selfBuild.stage) * 0.1));
+/** The least you can put in a year: a twentieth of the stage (or what's left of it). Families build as the money comes. */
+export const minPayment = (state, p) => Math.min(stageLeft(state, p), Math.round(stageCost(state, p.selfBuild.stage) * 0.05));
 
 /**
  * Put money into the next stage, in cash: all of what's left on it if you have it, or whatever
- * you can (a tenth of the stage at least). One payment a year; a stage is done when it's paid.
+ * you can (a twentieth of the stage at least). One payment a year; a stage is done when it's paid.
  */
 export function buildStage(ctx, propertyId) {
   const { state } = ctx;
@@ -191,8 +191,12 @@ export const SelfBuiltModule = {
   id: 'selfBuild',
   order: 45.5,
   onAgeUp(ctx) {
-    if (!ctx.state.housing?.properties?.length) return;
+    const { state } = ctx;
+    if (!state.housing?.properties?.length) return;
     settlementYear(ctx);
+    // A house of your own standing empty where you live, and you renting or at your parents': you move in.
+    const own = state.housing.properties.find((p) => p.selfBuild && p.selfBuild.stage >= LIVABLE && p.use === 'vacant' && p.regionId === state.character.regionId && !p.tenants?.length);
+    if (own && !primaryHome(state) && state.character.age >= 18 && !isIncarcerated(state) && moveIn(ctx, own)) ctx.log(`You moved into the house you built in ${REGIONS[own.regionId].name}.`, '🏠', 'good');
   },
   actions: {
     buyPlot(ctx) { buyPlot(ctx); },
