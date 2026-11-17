@@ -60,9 +60,26 @@ export function detectiveRanks(ranks) {
   }));
 }
 
+/**
+ * Detective and fire-investigation rungs aren't a ladder of their own: they're postings within a
+ * rank (career/Assignments.js). The levels stay defined (for titles and old saves) but no one is
+ * promoted into them.
+ */
+const ASSIGNMENT_LEVELS = {
+  police: /^(detective|seniorDetective|investigator|majorCrimes|det[A-Z]\w*)$/,
+  fire: /^(inspector|investigator)$/,
+};
+const POLICE_IDS = ['police', 'transitPolice', 'airportPolice', 'universityPolice', 'sheriff', 'statePolice'];
+const FIRE_IDS = ['fire', 'airportFire', 'stateFire'];
+export function isAssignmentLevel(profession, level) {
+  const id = profession?.template ?? profession?.id;
+  const re = POLICE_IDS.includes(id) ? ASSIGNMENT_LEVELS.police : FIRE_IDS.includes(id) ? ASSIGNMENT_LEVELS.fire : null;
+  return Boolean(re && level && level.track === 'ic' && re.test(level.id));
+}
+
 export function ladderFor(profession, size) {
   // Owning the firm isn't a promotion: you found or buy a business for that (Business).
-  const levels = profession.levels.filter((l) => !l.founder);
+  const levels = profession.levels.filter((l) => !l.founder && !isAssignmentLevel(profession, l));
   // A tiny agency has no middle ranks: the core jobs, a first-line supervisor and the head.
   if (size === 'micro') return levels.filter((l) => !l.minSize && !l.microDrop);
   // A national agency is one employer, field office to headquarters: its whole chain of command is

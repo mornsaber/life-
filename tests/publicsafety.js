@@ -17,7 +17,7 @@ import { FireLifeModule, teamEligibility } from '../src/modules/publicsafety/Fir
 import { scopeOfType } from '../src/core/PromptScope.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 import { EXAM_RANKS, nextExam } from '../src/modules/publicsafety/CivilService.js';
-import { ladderFor, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
+import { ladderFor, isAssignmentLevel, nextLevels, SIZE_ORDER } from '../src/modules/career/Ladder.js';
 import { setCurrentCountry } from '../src/core/Locale.js';
 import { unitFor, assignmentFor } from '../src/modules/career/Units.js';
 import { NATIONAL_POLICE } from '../src/modules/career/Employers.js';
@@ -173,7 +173,7 @@ const tests = {
       const p = getProfession(id);
       for (const seed of [1, 2, 3]) {
         const emp = createEmployer(new Random(seed), state, p, state.character.regionId);
-        const absent = p.levels.filter((l) => !ladderFor(p, emp.size).includes(l));
+        const absent = p.levels.filter((l) => !isAssignmentLevel(p, l) && !ladderFor(p, emp.size).includes(l));
         if (absent.length) missing.push(`${cc} ${id} @${emp.size}: ${absent.map((l) => l.title).join(', ')}`);
       }
     }

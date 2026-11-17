@@ -188,12 +188,14 @@ if (s2.orgs.seed === before2.seed) flag('rng', 'org generation did not advance i
 // 8. Supervision: a sergeant manages named officers.
 {
   const { SupervisionActions, reportsOf } = await import('../src/modules/org/Supervision.js');
+  const { isAssignmentLevel } = await import('../src/modules/career/Ladder.js');
   const e3 = new Engine({ store: new Store(memory()), rng: new Random(21), modules: MODULES });
   const s = e3.newLife({ firstName: 'Sup', lastName: 'Visor', gender: 'female' });
   s.character.age = 40;
   const c3 = e3.context();
   const p = PROFESSIONS.police;
-  const sup = p.levels.find((l) => l.abilities.includes('supervise'));
+  // Detective ranks are postings now (career/Assignments.js): the first uniformed supervisor.
+  const sup = p.levels.find((l) => l.abilities.includes('supervise') && !isAssignmentLevel(p, l));
   const employer = createEmployer(e3.rng, s, p, s.character.regionId);
   employer.size = 'large';
   hire(c3, { professionId: 'police', levelId: sup.id, employer });

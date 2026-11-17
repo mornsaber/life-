@@ -36,7 +36,7 @@ export function recalcSalary(state, job) {
     merit: job.merit,
     // Job-specific adjustments (a physician's specialty) ride on top of the profession's market premium.
     // Cleared roles on classified programs pay a premium.
-    payMultiplier: profession.payMultiplier * (job.payAdjust ?? 1) * (1 + clearedPremium(job)) * rankPay * agencyScale,
+    payMultiplier: profession.payMultiplier * (job.payAdjust ?? 1) * (job.assignmentPay ?? 1) * (1 + clearedPremium(job)) * rankPay * agencyScale,
     sector: job.sector,
     size: job.employer.size,
     regionId: state.character.regionId,

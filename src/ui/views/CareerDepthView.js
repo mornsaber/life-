@@ -3,6 +3,7 @@
  * head office.
  */
 import { button, card, esc, meter, kv } from '../Components.js';
+import { assignmentsFor } from '../../modules/career/Assignments.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { corpPeek, isCorporate, isBig, equityValue } from '../../modules/career/CompanyLife.js';
 
@@ -142,4 +143,15 @@ export function chiefCard(state) {
   const rows = [['🏛️ Their confidence', c.confidence], ['🪧 The union', c.union], ['🗞️ The public', c.public], ['💷 Budget', c.budget]];
   const meters = rows.map(([label, v]) => `<div class="stat-line"><span>${label}</span>${meter(v, { tone: v >= 55 ? 'good' : v >= 30 ? 'warn' : 'bad' })}</div>`).join('');
   return card("The Chief's Office", `<p class="fine">You answer to ${esc(masterOf(state))}. Lose their confidence and you'll be asked to go.</p>${meters}`, { icon: '⭐' });
+}
+
+/** Postings within your rank: detective work, traffic, the dog section, fire investigation… (career/Assignments.js). */
+export function postingsCard(state) {
+  const job = state.career?.job;
+  const opts = assignmentsFor(state);
+  if (!job || !opts.length) return '';
+  const cur = job.assignment ? opts.find((o) => o.def.id === job.assignment.id) : null;
+  const rows = opts.map(({ def, ok, reason }) => (def.id === job.assignment?.id ? ''
+    : `<li class="fund-row"><span>${def.icon} <b>${esc(def.name(state))}</b><br><small class="muted">${esc(def.blurb)}</small></span>${button('Put in for it', 'assignments.request', { arg: def.id, variant: 'small', disabled: !ok, hint: reason ?? undefined })}</li>`)).join('');
+  return card('Postings', `${cur ? `<p>${cur.def.icon} Posted to <b>${esc(cur.def.name(state))}</b> since age ${job.assignment.since}: you're <b>${esc(job.title)}</b>. Your rank and its badge stay the same.</p><div class="toggle-row">${button('↩️ Back to general duties', 'assignments.leave', { variant: 'small ghost' })}</div>` : '<p class="fine">A posting changes the work, and sometimes the title, not your rank.</p>'}<ul class="history">${rows}</ul>`, { icon: '🗂️' });
 }

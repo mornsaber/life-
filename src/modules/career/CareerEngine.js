@@ -29,6 +29,7 @@ import { MAX_STEP, ratingLabel, onBands, scheduleYear, bandYear, bonusFor, bandF
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, nearestCareerRegion, cityName } from './Employers.js';
 import { checkRequirements, totalWorkYears } from '../credentials/LicensingEngine.js';
+import { setApplyLevel } from './Assignments.js';
 import { degreesOptional } from '../world/Eras.js';
 import { credentialRequired } from '../world/Eras.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
@@ -275,7 +276,7 @@ export function stepForAtLeast(state, job, minimum) {
 /* Job lifecycle                                                       */
 /* ------------------------------------------------------------------ */
 
-function applyLevel(job, level) {
+export function applyLevel(job, level) {
   job.levelId = level.id;
   job.title = periodTitle(job.titleMap?.[level.id] ?? level.title);
   job.track = level.track;
@@ -286,6 +287,8 @@ function applyLevel(job, level) {
   job.missedReviews = 0;
   job.peakGrade = Math.max(job.peakGrade ?? 0, level.grade);
 }
+
+setApplyLevel((job, level) => applyLevel(job, level));
 
 export function hire(ctx, { professionId, levelId, employer, step = 1, merit = 0, title = null }) {
   const { state } = ctx;
