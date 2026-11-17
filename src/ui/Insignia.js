@@ -11,7 +11,8 @@
  *                 more for the chiefs
  */
 import { localAgency } from '../modules/world/LocalAgencies.js';
-import { eraYear, PRESENT } from '../modules/world/Eras.js';
+import { eraYear, PRESENT, getEraState } from '../modules/world/Eras.js';
+import { colonialRuler } from '../modules/world/ColonialForces.js';
 import { PACKS } from '../modules/world/packs/index.js';
 const GOLD = '#d4a017';
 const SILVER = '#c9ced6';
@@ -365,6 +366,8 @@ function navalInsignia(kind, n, nation, branch) {
 
 /** Insignia for a military rank code (E-5, O-6, W-3, OR-6, OF-3), on its nation's pattern; naval branches wear sleeve lace. */
 export function militaryInsignia(code, nation = null, { branch = null } = {}) {
+  // A colony's force wears its ruler's badges of rank (the King's African Rifles wear British pips).
+  nation = (nation && colonialRuler(getEraState(), nation)) ?? nation;
   const m = /^(E|W|O|OR|OF)-(\d+)/.exec(code ?? '');
   if (!m) return '';
   const n = Number(m[2]);

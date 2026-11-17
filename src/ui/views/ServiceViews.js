@@ -3,6 +3,7 @@
  */
 import { wearCard, commandCard } from './CareerDepthView.js';
 import { battleStars } from '../../modules/military/Campaigns.js';
+import { colonialBranchBlock } from '../../modules/world/ColonialForces.js';
 import { foreignForcesOptions } from '../../modules/world/ForeignForces.js';
 import { royalGuardOptions } from '../../modules/military/RoyalGuards.js';
 import { reserveAfter } from '../../modules/military/Wartime.js';
@@ -60,7 +61,7 @@ function purchaseNote(state, b) {
 const gradeCode = (svc, track, grade) => `${svc.nation ? (track === 'enlisted' ? 'OR' : 'OF') : track === 'officer' ? 'O' : track === 'warrant' ? 'W' : 'E'}-${grade + 1}`;
 function recruitingOffice(state) {
   const abroad = isAbroad(state);
-  const branches = (abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES)).filter((b) => b && branchExists(state, abroad ? countryOf(state).id : 'US', b.id));
+  const branches = (abroad ? nationalBranchIds(countryOf(state).id).map((id) => branchFor(state, id)) : Object.values(BRANCHES)).filter((b) => b && !colonialBranchBlock(state, b.id) && branchExists(state, abroad ? countryOf(state).id : 'US', b.id));
   const rows = branches.map((b) => {
     const opts = { maxOfficerAge: hasDirectPath(state, b.id) ? DIRECT_MAX_AGE : 39 };
     const comp = b.reserveOnly ? 'reserve' : b.activeOnly ? 'active' : 'reserve';

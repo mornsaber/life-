@@ -16,6 +16,7 @@
  *
  * state.foreignForces = { legion: { realFirst, realLast, declared, since, citizen }, gurkha: 'GB'|'SG'|'IN'|null, gurkhaTries }
  */
+import { yearNow } from './Eras.js';
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, hasFelony, randomName, setNameCountry, addHonor } from '../../core/State.js';
 import { enlist } from '../military/MilitaryEngine.js';
@@ -44,13 +45,15 @@ export function legionCheck(state) {
   return { ok: true, odds: clamp(0.1 + (state.stats.fitness - 50) / 150 + (state.stats.smarts - 50) / 600 + (state.stats.happiness < 40 ? 0.03 : 0), 0.04, 0.45) };
 }
 
+/** Where Gurkhas were recruited: the Indian Army's depots before 1947, Dharan and Paklihawa, then Pokhara (from 1980). */
+export const gurkhaDepot = (state) => { const y = yearNow(state); return y < 1948 ? 'the recruiting depots at Gorakhpur and Ghoom' : y < 1980 ? 'Dharan' : 'Pokhara'; };
 /** Pokhara: the British Gurkha selection (Nepali men, 17½–21). */
 export function gurkhaCheck(state) {
   const c = state.character;
   if (!isCitizen(state, 'NP')) return { ok: false, reason: 'Nepali citizens only' };
   if (c.age < 17 || c.age > 21) return { ok: false, reason: 'Candidates are 17½ to 21' };
   if (state.military.service || ff(state).gurkha) return { ok: false, reason: 'Already serving' };
-  if (here(state) !== 'NP') return { ok: false, reason: 'Selection is held in Pokhara' };
+  if (here(state) !== 'NP') return { ok: false, reason: `Selection is held in ${gurkhaDepot(state)}` };
   if (yearlyCount(state, 'foreignForces.gurkha')) return { ok: false, reason: 'Once a year, in the recruiting season' };
   if (state.stats.health < 50) return { ok: false, reason: 'Fails the medical' };
   return { ok: true, odds: clamp(0.03 + Math.max(0, state.stats.fitness - 55) / 90 + (state.stats.smarts - 50) / 500, 0.01, 0.4) };
@@ -117,17 +120,30 @@ function joinGurkhas(ctx, where) {
     if ((state.people?.list ?? []).some((p) => p.alive !== false && p.relation === 'spouse')) ctx.log('Your family moved into the Contingent\'s cantonment at Mount Vernon: Nepali shops, a Hindu temple, and children who grow up speaking Singlish.', '👨‍👩‍👧', 'good');
     return ctx.log('You passed out of training as a Police Constable of the Gurkha Contingent: guarding the Istana, riot control, the most sensitive security jobs in Singapore. You live in the Contingent\'s cantonment at Mount Vernon.', '🗡️', 'milestone');
   }
+  const y = yearNow(state);
+  // Before 1948: a Gurkha regiment of the Indian Army, in its hill cantonments (Dehradun, Abbottabad, Shillong).
+  if (where === 'BIA') {
+    arrive(ctx, 'IN', { visa: 'military', reason: 'You went down to the regimental centre in the hills of India.' });
+    if (!enlist(ctx, { branch: 'army', track: 'enlisted', component: 'active', specialty: 'infantry' })) return undefined;
+    Object.assign(state.military.service, { gurkha: 'BIA', contractYearsLeft: 15 });
+    f.gurkha = 'BIA';
+    return ctx.log('You were sworn in as a Rifleman of the Gurkha Rifles, the Indian Army\'s: kukri at your belt, and the North-West Frontier ahead.', '🗡️', 'milestone');
+  }
   const cc = where === 'IN' ? 'IN' : 'GB';
-  arrive(ctx, cc, { visa: 'military', reason: cc === 'GB' ? 'You flew to Britain for recruit training at Catterick.' : 'You reported to the Gorkha Training Centre.' });
+  // British Gurkhas served in Malaya and Hong Kong until 1997, not in Britain; families came only from the 2000s.
+  const toBritain = cc === 'GB' && y >= 1997;
+  if (cc === 'IN' || toBritain) arrive(ctx, cc, { visa: 'military', reason: cc === 'GB' ? 'You flew to Britain for recruit training at Catterick.' : 'You reported to the Gorkha Training Centre.' });
   if (!enlist(ctx, { branch: 'army', track: 'enlisted', component: 'active', specialty: 'infantry' })) return undefined;
   const svc = state.military.service;
+  // Serving the Crown from Nepal (posted to Malaya, Singapore and Hong Kong): a British soldier still.
+  if (cc === 'GB' && !toBritain) svc.nation = 'GB';
   Object.assign(svc, { gurkha: cc, contractYearsLeft: cc === 'GB' ? 15 : 17 });
   f.gurkha = cc;
   // Since 2009 a British Gurkha's family can live with them in the UK.
   const family = (state.people?.list ?? []).filter((p) => p.alive !== false && ['spouse', 'child'].includes(p.relation));
-  if (cc === 'GB' && family.length) ctx.log(`Your ${family.some((p) => p.relation === 'spouse') ? 'spouse' : 'children'} joined you in Britain on dependants' visas — something earlier generations of Gurkhas were never allowed.`, '👨‍👩‍👧', 'good');
+  if (cc === 'GB' && toBritain && y >= 2004 && family.length) ctx.log(`Your ${family.some((p) => p.relation === 'spouse') ? 'spouse' : 'children'} joined you in Britain on dependants' visas — something earlier generations of Gurkhas were never allowed.`, '👨‍👩‍👧', 'good');
   return ctx.log(cc === 'GB'
-    ? 'You passed out of the Gurkha training company at Catterick as a Rifleman of the Brigade of Gurkhas, kukri at your belt: "Better to die than be a coward."'
+    ? (toBritain ? 'You passed out of the Gurkha training company at Catterick as a Rifleman of the Brigade of Gurkhas, kukri at your belt: "Better to die than be a coward."' : `You passed out of the Gurkha training depot ${y < 1971 ? 'at Sungei Patani in Malaya' : 'in Hong Kong'} as a Rifleman of the Brigade of Gurkhas, kukri at your belt: "Better to die than be a coward."`)
     : 'You were sworn in as a Rifleman of the Indian Army\'s Gorkha Rifles.', '🗡️', 'milestone');
 }
 
@@ -251,7 +267,7 @@ function separated(ctx, svc, type) {
       ctx.log('As a former Gurkha with four years\' service, you were granted settlement (indefinite leave to remain) in Britain.', '🪪', 'good');
     }
   }
-  if (svc.gurkha === 'IN') f.gurkha = null;
+  if (svc.gurkha === 'IN' || svc.gurkha === 'BIA') f.gurkha = null;
 }
 
 export const ForeignForcesModule = {
@@ -332,16 +348,20 @@ export const ForeignForcesModule = {
       if (rng.chance(check.odds)) {
         return ctx.prompt({
           type: 'foreignForces.gurkhaChoice', icon: '🗡️', title: 'Selected',
-          text: 'You finished the doko race with minutes to spare and came through the exams and interviews: one of a few hundred chosen from thousands. The top recruits choose their service.',
+          text: yearNow(state) < 1980 ? `The gallawalla (recruiter) brought you down from the hills to ${gurkhaDepot(state)}. You passed the medical and the tests: you were taken.` : 'You finished the doko race with minutes to spare and came through the exams and interviews: one of a few hundred chosen from thousands. The top recruits choose their service.',
           // Britain opened Gurkha selection to women; Singapore's Contingent and India's Gorkha Rifles take men.
-          options: [
-            { id: 'GB', label: '🇬🇧 The British Army — Brigade of Gurkhas', hint: 'Settle in Britain after four years' },
-            ...(state.character.gender === 'female' ? [] : [{ id: 'SG', label: '🇸🇬 The Singapore Police Gurkha Contingent', hint: 'Service to 45, then home' }]),
-          ],
+          // Before 1948 every Gurkha regiment was the Indian Army's; then four went to the British
+          // Army (based in Malaya and Hong Kong until 1997) and six stayed with India.
+          options: yearNow(state) < 1948
+            ? [{ id: 'BIA', label: '🗡️ A Gurkha Rifles regiment of the Indian Army', hint: 'Cantonments in the hills of India; the North-West Frontier' }]
+            : [
+              { id: 'GB', label: '🇬🇧 The British Army — Brigade of Gurkhas', hint: yearNow(state) < 1997 ? 'Stationed in Malaya and Hong Kong; home to Nepal at the end' : yearNow(state) >= 2004 ? 'Settle in Britain after four years' : 'Stationed in Britain and Brunei' },
+              ...(state.character.gender === 'female' || yearNow(state) < 1949 ? [] : [{ id: 'SG', label: '🇸🇬 The Singapore Police Gurkha Contingent', hint: 'Service to 45, then home' }]),
+            ],
           data: {},
         });
       }
-      if (state.character.gender !== 'female' && rng.chance(0.35)) {
+      if (state.character.gender !== 'female' && yearNow(state) >= 1948 && rng.chance(0.35)) {
         return ctx.prompt({
           type: 'foreignForces.gurkhaChoice', icon: '🗡️', title: 'The Gorkha Rifles',
           text: 'The British selection didn\'t take you, but the Indian Army\'s Gorkha Rifles will.',
@@ -349,7 +369,7 @@ export const ForeignForcesModule = {
           data: {},
         });
       }
-      return ctx.log('The doko race and the exams in Pokhara: you weren\'t among the few hundred selected this year.', '🗡️', 'bad');
+      return ctx.log(`The selection at ${gurkhaDepot(state)}: you weren't among those taken this year.`, '🗡️', 'bad');
     },
   },
   resolvers: {

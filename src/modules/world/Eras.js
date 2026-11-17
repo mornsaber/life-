@@ -133,6 +133,7 @@ export const addEraWorkRule = (fn) => { EXTRA_WORK.push(fn); };
 /** Why this work isn't open to you in this year, or null. */
 export function eraWorkBlock(state, profession) {
   const y = yearNow(state);
+  if (profession?.id === 'colonialTroops') return 'Soldiers enlist on the Military tab, in the colony\'s own force';
   const fb = futureWorkBlock(state, profession);
   if (fb) return fb;
   if (profession?.untilYear && y >= profession.untilYear) return 'This work has all but disappeared';
@@ -616,8 +617,13 @@ export function eraHidden(state, p) {
   if (p.untilYear && y >= p.untilYear) return true;
   if (p.futureNeeds && !futureOn(state, p.futureNeeds)) return true;
   if (p.colonial && !colonialWorkOpen(state)) return true;
+  // A colony's troops are soldiers: they enlist on the Military tab (world/ColonialForces.js).
+  if (p.id === 'colonialTroops') return true;
+  // A colony is policed by its own force (the Colonial Police), not by city departments.
+  if (COLONY_POLICED.includes(p.template ?? p.id) && colonialHere(state)) return true;
   return false;
 }
+const COLONY_POLICED = ['police', 'sheriff', 'statePolice', 'transitPolice', 'airportPolice', 'universityPolice', 'gendarmerie'];
 
 /* ------------------------------------------------------------------ */
 /* Money then: amounts stay in today's dollars; this says what they were */
@@ -799,8 +805,13 @@ const OLD_RANKS = [
   ['GB', 'army', 'enlisted', 0, 'Private', 1920], ['GB', 'airforce', 'officer', 0, 'Pilot Officer', 9999],
 ];
 /** A rank title in the words of its year (the year being played). */
+/** Colonial forces (world/ColonialForces.js) name a colony's branches and ranks: set at load to avoid an import cycle. */
+let COLONIAL_HOOKS = null;
+export const setColonialHooks = (hooks) => { COLONIAL_HOOKS = hooks; };
 export function periodRank(nation, branch, track, index, title) {
   if (ERA_YEAR >= PRESENT) return title;
+  const colonial = COLONIAL_HOOKS?.rank(nation, branch, track, index);
+  if (colonial) return colonial;
   const hit = OLD_RANKS.find(([n, b, t, i, , until]) => (n === (nation ?? 'US') || n === '*') && b === branch && t === track && i === index && ERA_YEAR < until);
   return hit ? hit[4] : title;
 }
@@ -816,6 +827,8 @@ const OLD_BRANCHES = [
 ];
 export function periodBranch(nation, branch, name) {
   if (ERA_YEAR >= PRESENT) return name;
+  const colonial = COLONIAL_HOOKS?.branch(nation, branch);
+  if (colonial) return colonial;
   return OLD_BRANCHES.find(([n, b, , until]) => n === (nation ?? 'US') && b === branch && ERA_YEAR < until)?.[2] ?? name;
 }
 /** When each branch existed: air forces from the 1910s–30s, the US Air Force from 1947, the Space Force from 2019. */

@@ -34,6 +34,7 @@ import { topOfficerGrade, forceSizeOf, SIZE_PROMOTION } from '../world/NationalF
 import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Eras.js';
 import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
 import { yearNow, diplomaExpected, degreesOptional } from '../world/Eras.js';
+import { colonialBranchBlock } from '../world/ColonialForces.js';
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -205,7 +206,13 @@ export const branchOf = (svc) => {
   return b && name !== b.name ? { ...b, name } : b;
 };
 /** The branch a recruit would join where they live. */
-export const branchFor = (state, branchId) => (isAbroad(state) ? (nationalBranch(countryOf(state).id, branchId) ? { ...BRANCHES[branchId], ...nationalBranch(countryOf(state).id, branchId), id: branchId } : null) : BRANCHES[branchId]);
+export const branchFor = (state, branchId) => {
+  if (!isAbroad(state)) return BRANCHES[branchId];
+  const cc = countryOf(state).id;
+  const nb = nationalBranch(cc, branchId);
+  // The name of its day (the Red Army, the Wehrmacht, a colony's own force).
+  return nb ? { ...BRANCHES[branchId], ...nb, id: branchId, name: periodBranch(cc, branchId, nb.name) } : null;
+};
 
 /** Rank tables for a service member's branch (both tracks). */
 export const ranksOf = (svc) => ({ enlisted: branchOf(svc).enlisted, officer: branchOf(svc).officer, warrant: branchOf(svc).warrant ?? [] });
@@ -354,6 +361,9 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   if (!isCitizen(state, isAbroad(state) ? countryOf(state).id : 'US') && !prOk && !b.openToForeigners) {
     return { ok: false, reason: isAbroad(state) ? `The ${b.name} recruits ${countryOf(state).demonym} citizens` : US_ONLY.military };
   }
+  // A colony has its own army (and seldom anything else): world/ColonialForces.js.
+  const colonialBlock = colonialBranchBlock(state, branchId);
+  if (colonialBlock) return { ok: false, reason: colonialBlock };
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
   if (!branchExists(state, isAbroad(state) ? countryOf(state).id : 'US', branchId)) return { ok: false, reason: `Doesn't exist yet (from ${branchFrom(isAbroad(state) ? countryOf(state).id : 'US', branchId)})` };
   if (isAbroad(state) && branchId === 'army' && component === 'reserve' && armyReserveIsGuard(countryOf(state).id)) return { ok: false, reason: `Part-time soldiers join the ${nationalBranch(countryOf(state).id, 'guard').name}` };
@@ -478,6 +488,7 @@ export function clearanceDenied(ctx, track, level) {
 export function enlist(ctx, { branch, track, component, specialty: wanted, mos: wantedMos = null, cleared = false, conscript = false }) {
   const { state } = ctx;
   // A recruit can't join a corps with no enlisted ranks: they go to the navy (survey) or the army.
+  if (colonialBranchBlock(state, branch)) branch = 'army';
   if (track === 'enlisted' && !((branchFor(state, branch) ?? BRANCHES[branch])?.enlisted?.length)) branch = branch === 'noaa' && branchFor(state, 'navy') ? 'navy' : 'army';
   const b = branchFor(state, branch) ?? BRANCHES[branch];
   const nation = isAbroad(state) ? countryOf(state).id : null;
