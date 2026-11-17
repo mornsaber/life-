@@ -10,6 +10,7 @@
  *   Fire          bugles: one for a lieutenant, two for a captain, two crossed for a battalion chief,
  *                 more for the chiefs
  */
+import { localAgency } from '../modules/world/LocalAgencies.js';
 import { eraYear, PRESENT } from '../modules/world/Eras.js';
 import { PACKS } from '../modules/world/packs/index.js';
 const GOLD = '#d4a017';
@@ -642,6 +643,65 @@ function colonialInsignia(key, id, country) {
   return (typeof r === 'function' ? r() : draw(r, country)) || null;
 }
 
+/* ------------------------------------------------------------------ */
+/* Police and fire ranks by country                                    */
+/* ------------------------------------------------------------------ */
+
+/** Crossed tipstaves in a wreath: a British chief police officer (with a pip or crown above for the senior two). */
+const tipstaves = (above = '') => svg(40, `${above ? `<text x="20" y="11" font-size="9" text-anchor="middle" fill="${SILVER}">${above}</text>` : ''}<path d="M10 14 L30 30 M30 14 L10 30" stroke="${SILVER}" stroke-width="2.4" stroke-linecap="round"/><path d="M6 20 Q4 30 14 33 M34 20 Q36 30 26 33" fill="none" stroke="${SILVER}" stroke-width="1.6"/>`);
+/** British police from sergeant to chief constable. */
+const GB_POLICE = {
+  sergeant: () => chevrons(3, 0, '', SILVER), detSergeant: () => chevrons(3, 0, '', SILVER),
+  lieutenant: () => pips(2, false, SILVER), detLieutenant: () => pips(2, false, SILVER),
+  captain: () => pips(3, false, SILVER), detCaptain: () => pips(3, false, SILVER),
+  deputyChief: () => pips(0, true, SILVER), major: () => pips(0, true, SILVER),
+  chief_cmd1: () => pips(1, true, SILVER), superintendent_cmd1: () => pips(1, true, SILVER),
+  chief_cmd2: () => tipstaves(), chief_cmd3: () => tipstaves(), superintendent_cmd2: () => tipstaves(), superintendent_cmd3: () => tipstaves(),
+  chief_cmd4: () => tipstaves('✦'), superintendent_cmd4: () => tipstaves('✦'),
+  chief: () => tipstaves('♛'), superintendent: () => tipstaves('♛'),
+};
+
+/** German police: blue stars for the middle grades, silver for the upper (gehobener Dienst), gold for the senior (höherer Dienst). */
+const DE_POLICE = {
+  trooper: () => deStars(1, BLUE), senior: () => deStars(2, BLUE), sergeant: () => deStars(3, BLUE),
+  lieutenant: () => deStars(1, SILVER), investigator: () => deStars(2, SILVER), captain: () => deStars(3, SILVER), majorCrimes: () => deStars(3, SILVER), detSergeant: () => deStars(4, SILVER),
+  major: () => deStars(1, GOLD), detLieutenant: () => deStars(1, GOLD), superintendent_cmd1: () => deStars(2, GOLD), superintendent_cmd2: () => deStars(3, GOLD), detCaptain: () => deStars(3, GOLD),
+  superintendent_cmd3: () => deStars(4, GOLD), superintendent_cmd4: () => DE_DRAW['4star'](), superintendent: () => DE_DRAW['4star'](),
+};
+
+/** Indian police below the gazetted ranks: stars. */
+const IN_POLICE = { investigator: () => stars(1, SILVER), sergeant: () => stars(2, SILVER), majorCrimes: () => stars(2, SILVER), lieutenant: () => stars(3, SILVER), detSergeant: () => stars(3, SILVER), detLieutenant: () => stars(3, SILVER) };
+
+/** A British fire officer's impellers (a wreath round them for principal officers; a bar beneath for an area manager). */
+const impellers = (n, wreath = false, bar = false) => svg(12 + n * 12 + (wreath ? 8 : 0), `${wreath ? `<path d="M4 12 Q2 28 12 32 M${8 + n * 12 + 12} 12 Q${10 + n * 12 + 14} 28 ${n * 12 + 8} 32" fill="none" stroke="${SILVER}" stroke-width="1.6"/>` : ''}${Array.from({ length: n }, (_, i) => `<text x="${(wreath ? 14 : 10) + i * 12}" y="22" font-size="13" text-anchor="middle" fill="${SILVER}">✲</text>`).join('')}${bar ? `<rect x="${wreath ? 8 : 4}" y="26" width="${n * 12 + 4}" height="2.5" fill="${SILVER}"/>` : ''}`);
+const epaulettebars = (n) => svg(30, Array.from({ length: n }, (_, i) => `<rect x="5" y="${10 + i * 7}" width="20" height="3.5" rx="1" fill="${SILVER}"/>`).join(''));
+/** British fire and rescue roles. */
+const GB_FIRE = {
+  lieutenant: () => epaulettebars(2), captain: () => impellers(2), battalion: () => impellers(3), deputyChief: () => impellers(1, true),
+  chief_cmd1: () => impellers(1, true, true), chief_cmd2: () => impellers(2, true), chief_cmd3: () => impellers(3, true), chief: () => impellers(4, true),
+};
+/** French, Italian and Spanish-pattern fire services: army galons, in silver. */
+const GALON_FIRE = {
+  engineer: () => chevrons(2), lieutenant: () => galons(1, SILVER), captain: () => galons(1, GOLD), battalion: () => galons(2, SILVER), deputyChief: () => galons(3, SILVER),
+  chief_cmd1: () => galons(4, SILVER), chief_cmd2: () => galons(5), chief_cmd3: () => galons(5, SILVER), chief: () => stars(2, SILVER),
+};
+/** German-speaking fire services: stars stepping from red (the middle grades) to silver and gold. */
+const DE_FIRE = {
+  firefighter: () => deStars(1, RED_CHEVRON), engineer: () => deStars(2, RED_CHEVRON), lieutenant: () => deStars(3, RED_CHEVRON), captain: () => deStars(1, SILVER), battalion: () => deStars(2, SILVER),
+  deputyChief: () => deStars(1, GOLD), chief_cmd1: () => deStars(2, GOLD), chief_cmd2: () => deStars(3, GOLD), chief_cmd3: () => deStars(4, GOLD), chief: () => deStars(4, GOLD),
+};
+/** Fire services that wear their country's police or army pattern (Japan, Korea, China, the former Soviet states, India). */
+const FIRE_AS_RANK = { lieutenant: 'sgt', captain: 'lt', battalion: 'capt', deputyChief: 'major', chief_cmd1: 'col', chief_cmd2: '1star', chief_cmd3: '2star', chief: '3star' };
+const RANKED_FIRE = ['JP', 'KR', 'CN', 'TW', 'IN', 'RU'];
+/** The fire insignia for a rung in this country (bugles are the American and Canadian pattern). */
+function fireInsignia(id, country) {
+  if (['GB', 'IE'].includes(country)) return GB_FIRE[id]?.() ?? null;
+  if (['DE', 'AT', 'CH'].includes(country)) return DE_FIRE[id]?.() ?? null;
+  if (GALONS.includes(country)) return GALON_FIRE[id]?.() ?? null;
+  if (RANKED_FIRE.includes(country) || SHOULDER.includes(country)) return draw(FIRE_AS_RANK[id], country) || null;
+  return fireRank(id) ? FIRE_DRAW[fireRank(id)]() : null;
+}
+
 /** Insignia for a job, if its people wear rank (null otherwise). */
 export function jobInsignia(job, profession, country = 'US') {
   const key = profession?.template ?? profession?.id ?? job?.professionId;
@@ -652,12 +712,21 @@ export function jobInsignia(job, profession, country = 'US') {
   if (own) return (typeof own === 'function' ? own() : draw(own, key === 'vaticanGendarmerie' ? 'VA' : country)) || null;
   if (OWN[key]) return null;
   if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], SILVER_STRIPES.includes(key) ? SILVER : GOLD, ENGINEERS.test(id) ? '#7b4fa0' : null) : null;
-  if (POLICE_LIKE.includes(key)) return draw(policeRank(id, key), country) || null;
-  if (FIRE_LIKE.includes(key)) {
-    // On the French/Italian pattern a driver or engineer is a caporal, with chevrons.
-    if (GALONS.includes(country) && /^(engineer|driver|heo)$/.test(id)) return chevrons(2);
-    return fireRank(id) ? FIRE_DRAW[fireRank(id)]() : null;
+  // British police: pips and crowns, then a chief officer's crossed tipstaves.
+  if (POLICE_LIKE.includes(key) && country === 'GB') return GB_POLICE[id]?.() ?? null;
+  if (POLICE_LIKE.includes(key) && ['DE', 'AT'].includes(country)) return DE_POLICE[id]?.() ?? null;
+  // Brazil's Civil Police (the detective rungs) wear no military rank; India's inspectors wear stars.
+  if (POLICE_LIKE.includes(key) && country === 'BR' && profession?.levels?.find((l) => l.id === id)?.track === 'ic') return null;
+  if (POLICE_LIKE.includes(key) && country === 'IN' && IN_POLICE[id]) return IN_POLICE[id]();
+  // A detective rung with a uniformed rank's title (France's Capitaine, Italy's Commissario) wears that rank.
+  if (POLICE_LIKE.includes(key)) {
+    const titles = localAgency(country, key)?.titles;
+    const base = (t) => String(t ?? '').replace(/\s*\(.*\)$/, '');
+    const twin = titles && profession?.levels?.find((l) => l.track === 'mgmt' && l.id !== id && base(titles[l.id]) && base(titles[l.id]) === base(titles[id]));
+    if (twin) return draw(policeRank(twin.id, key), country) || null;
   }
+  if (POLICE_LIKE.includes(key)) return draw(policeRank(id, key), country) || null;
+  if (FIRE_LIKE.includes(key)) return fireInsignia(id, country);
   if (EMS_LIKE.includes(key)) return draw(emsRank(id), country) || null;
   return null;
 }
