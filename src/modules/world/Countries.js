@@ -22,6 +22,7 @@
  *   closed     what non-citizens of the US can't do here (US federal jobs, US forces, US offices)
  */
 
+import { SERVICE_ABROAD, SERVICE_TERMS } from './ServiceTerms.js';
 import { KR, IT, MX, PH, IN } from './CountriesMore.js';
 import { AU, FR } from './CountriesAUFR.js';
 import { eraCountryName, eraCountryFlag, periodCurrency } from './Eras.js';
@@ -515,7 +516,8 @@ export function localizeTerms(text, country) {
   if (!country?.terms) return text;
   let out = text;
   // Longest phrases first, so "high-school diploma" wins over "high school".
-  const pairs = country.sortedTerms ??= Object.entries({ ...ABROAD_TERMS, ...country.terms }).sort((a, b) => b[0].length - a[0].length);
+  // Police, fire and veterans' words (world/ServiceTerms.js), under the country's own swaps.
+  const pairs = country.sortedTerms ??= Object.entries({ ...ABROAD_TERMS, ...SERVICE_ABROAD, ...SERVICE_TERMS[country.id], ...country.terms }).sort((a, b) => b[0].length - a[0].length);
   for (const [us, local] of pairs) if (out.includes(us)) out = out.split(us).join(local);
   // 911 as a number on its own (not inside an amount like 1,911).
   const dial = country.emergency ?? EMERGENCY_NUMBER[country.id];
