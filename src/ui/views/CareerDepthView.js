@@ -132,3 +132,14 @@ export function commandCard(state) {
   const pending = inq ? `<p class="fine">🔍 An inquiry into ${esc(inq.title.toLowerCase())} reports at age ${inq.age}.</p>` : '';
   return card('Command', `${meters}${pending}<p class="fine">How ready your people are when the big day comes. It fades if you neglect it; one preparation a year.</p><div class="action-grid">${buttons}</div>`, { icon: '🎛️' });
 }
+
+/* ---- The chief's office (publicsafety/ChiefsOffice.js) ---- */
+import { isServiceHead, masterOf } from '../../modules/publicsafety/ChiefsOffice.js';
+
+export function chiefCard(state) {
+  if (!isServiceHead(state) || !state.chief) return '';
+  const c = state.chief;
+  const rows = [['🏛️ Their confidence', c.confidence], ['🪧 The union', c.union], ['🗞️ The public', c.public], ['💷 Budget', c.budget]];
+  const meters = rows.map(([label, v]) => `<div class="stat-line"><span>${label}</span>${meter(v, { tone: v >= 55 ? 'good' : v >= 30 ? 'warn' : 'bad' })}</div>`).join('');
+  return card("The Chief's Office", `<p class="fine">You answer to ${esc(masterOf(state))}. Lose their confidence and you'll be asked to go.</p>${meters}`, { icon: '⭐' });
+}
