@@ -122,6 +122,19 @@ const tests = {
     assert.match(fire.employer('Marseille'), /Marine nationale/);
     assert.match(fire.employer('Lyon'), /SDIS/);
   },
+  'conscription of its day: British National Service, French service militaire, none in Britain after 1960'() {
+    const callUp = (countryId, startYear) => {
+      const engine = new Engine({ store: new Store(memory()), rng: new Random(4), modules: MODULES });
+      const state = engine.newLife({ countryId, startYear, gender: 'male' });
+      for (let i = 0; i < 18 && state.character.alive; i++) { state.prompts = []; state.stats.health = 90; engine.ageUp(); }
+      return state.prompts.find((p) => p.type.startsWith('conscription.'));
+    };
+    assert.match(callUp('GB', 1932)?.title ?? '', /National Service/);
+    assert.match(callUp('FR', 1960)?.title ?? '', /Service militaire/);
+    assert.match(callUp('DE', 1965)?.options.map((o) => o.label).join(' ') ?? '', /Zivildienst/);
+    assert.equal(callUp('GB', 1980), undefined, 'no call-up after 1960');
+    assert.equal(callUp('IL', 1920), undefined, 'no Israeli call-up before the state');
+  },
 };
 
 let failed = 0;

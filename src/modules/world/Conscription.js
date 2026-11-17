@@ -17,6 +17,7 @@
  */
 import { isAbroad, countryOf, isCitizen } from './Countries.js';
 import { FORCES } from './NationalForces.js';
+import { yearNow } from './Eras.js';
 import { recordNationalService, cityOf } from '../emergency/PaidOpportunities.js';
 
 /** Months of service by branch (Korea, 2025). */
@@ -24,7 +25,55 @@ export const KOREA_MONTHS = { army: 18, marines: 18, navy: 20, airforce: 21 };
 
 /** The age after which an unserved obligation lapses (Korea: 37; Mexico registers at 18). */
 const CONSCRIPTION_AGE_LIMIT = { korea: 37, smn: 40, questionnaire: 25, universal: 30, lottery: 30, graduate: 30 };
-const conscriptionOf = (state) => (isAbroad(state) ? FORCES[countryOf(state).id]?.conscription ?? null : null);
+/* Conscription of its day ------------------------------------------- */
+
+const male = (name, months, extra = {}) => ({ kind: 'universal', age: 18, months: { male: months }, genders: ['male'], name, ...extra });
+const ballot = (name, months, share, extra = {}) => ({ kind: 'lottery', age: 18, months, share, name, ...extra });
+const OBJECTOR = (label, months, desc) => ({ alternative: { label, months, desc } });
+/**
+ * Peacetime and wartime call-ups by period (from ≤ year < until). Outside these periods a country's
+ * present-day scheme (NationalForces) applies only from PRESENT_FROM.
+ */
+export const ERA_CONSCRIPTION = {
+  GB: [
+    { from: 1916, until: 1920, scheme: male('Conscription (the Military Service Act)', 36, { text: 'Every single man of military age is now deemed enlisted: the call-up papers have come.', ...OBJECTOR('Go before a tribunal as a conscientious objector', 36, 'Non-combatant work, or prison if the tribunal refuses you') }) },
+    { from: 1939, until: 1949, scheme: male('Call-up (National Service)', 36, { text: 'Your call-up papers have arrived: report for a medical and then your unit.', ...OBJECTOR('Register as a conscientious objector', 36, 'A tribunal; then farm, hospital or civil-defence work') }) },
+    { from: 1949, until: 1961, scheme: male('National Service', 24, { text: 'National Service: two years with the colours, then reserve liability. Every fit young man goes.', ...OBJECTOR('Register as a conscientious objector', 24, 'A tribunal; then farm or hospital work') }) },
+  ],
+  FR: [{ from: 1872, until: 1997, scheme: male('Service militaire', 12, { text: 'The conseil de révision has passed you fit: your service militaire begins.', ...OBJECTOR('Serve as an objecteur de conscience', 24, 'Civilian service, twice as long (from 1963)') }) }],
+  DE: [
+    { from: 1871, until: 1919, scheme: male('Militärdienst', 24, { text: 'Your year group is mustered: two years in the army.' }) },
+    { from: 1935, until: 1946, scheme: male('Wehrpflicht', 24, { text: 'The Wehrmacht has called up your year group.' }) },
+    { from: 1957, until: 2011, scheme: male('Wehrdienst', 12, { text: 'The Kreiswehrersatzamt has called you for Wehrdienst.', ...OBJECTOR('Do Zivildienst instead', 13, 'Civilian service in hospitals, care homes or ambulances') }) },
+  ],
+  IT: [{ from: 1861, until: 2005, scheme: male('Servizio di leva', 12, { text: 'The cartolina precetto has arrived: your servizio di leva begins.', ...OBJECTOR('Do servizio civile instead', 15, 'Civilian service (from 1972)') }) }],
+  ES: [{ from: 1912, until: 2002, scheme: male('Servicio militar (la mili)', 12, { text: 'Your quinta has been called up: la mili begins.', ...OBJECTOR('Do the prestación social sustitutoria', 13, 'Civilian service (from 1988)') }) }],
+  PT: [{ from: 1911, until: 2004, scheme: male('Serviço militar obrigatório', 18, { text: 'Your class has been called to the inspeção: military service begins.' }) }],
+  BE: [{ from: 1909, until: 1994, scheme: male('Service militaire', 12, { text: 'Your year has been called for military service.' }) }],
+  NL: [{ from: 1898, until: 1996, scheme: male('Dienstplicht', 18, { text: 'You have been called for military service.' }) }],
+  SE: [{ from: 1901, until: 2010, scheme: male('Värnplikt', 10, { text: 'Your mönstring is done: värnplikt begins.' }) }],
+  JP: [{ from: 1873, until: 1946, scheme: male('Conscription (Chōhei)', 24, { text: 'The conscription examination has passed you Class A: you report to your regiment.' }) }],
+  RU: [{ from: 1918, until: 1992, scheme: male('Military service (Soviet Army)', 24, { text: 'Your call-up notice from the voenkomat: two years in the Soviet Army.' }) }],
+  AU: [
+    { from: 1951, until: 1960, scheme: male('National Service ("Nashos")', 6, { text: 'National Service: 176 days of training, then the Citizen Military Forces.' }) },
+    { from: 1965, until: 1973, scheme: ballot('National Service ballot', 24, 0.15, { text: 'You registered at 20. Your birthday has been drawn in the ballot: two years, and possibly Vietnam.' }) },
+  ],
+  NZ: [
+    { from: 1949, until: 1959, scheme: male('Compulsory Military Training', 4, { text: 'Compulsory military training: fourteen weeks, then part-time service.' }) },
+    { from: 1962, until: 1973, scheme: ballot('National Service ballot', 3, 0.2, { text: 'Your birthday was drawn in the National Service ballot.' }) },
+  ],
+};
+/** When a country's present-day scheme began (or resumed): before it, no call-up. */
+const PRESENT_FROM = { IL: 1949, SG: 1967, KR: 1949, TW: 1951, NG: 1973, CN: 1955, AT: 1955, CH: 1874, FI: 1919, GR: 1911, TR: 1927, EG: 1955, DE: 2025, RU: 1992, LT: 2015, LV: 2024, UA: 2014, CY: 1964, AE: 2014, QA: 2013, KW: 2017, IR: 1925, VN: 1960, KP: 1958, MX: 1942, BR: 1946, CL: 1900, CO: 1900, NO: 1897, DK: 1849, EE: 1992, TH: 1905, MM: 2011, MA: 2019, DZ: 1969, CU: 1963, MN: 1921 };
+const conscriptionOf = (state) => {
+  if (!isAbroad(state)) return null;
+  const cc = countryOf(state).id;
+  const y = yearNow(state);
+  const era = ERA_CONSCRIPTION[cc]?.find((p) => y >= p.from && y < p.until);
+  if (era) return era.scheme;
+  if (y < (PRESENT_FROM[cc] ?? 0)) return null;
+  return FORCES[cc]?.conscription ?? null;
+};
 /** The kind of national service: 'korea', 'smn', 'questionnaire', or a declared scheme's kind ('universal', 'lottery'). */
 const kind = (state) => { const c = conscriptionOf(state); return typeof c === 'string' ? c : c?.kind ?? null; };
 const record = (state) => (state.military.conscription ??= { status: 'pending' });
