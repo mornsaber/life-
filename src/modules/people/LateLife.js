@@ -14,6 +14,7 @@
  * state.people.will = { plan, age, cutOut: [personId], favour: personId | null }
  */
 import { Random, clamp } from '../../core/Random.js';
+import { rememberOn } from './Grudges.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { yearNow } from '../world/Eras.js';
 import { eraScale } from '../economy/EraEconomy.js';
@@ -139,6 +140,7 @@ export const LateLifeModule = {
       w.cutOut = [...new Set([...(w.cutOut ?? []), personId])];
       if (w.favour === personId) w.favour = null;
       rel(p, -30);
+      rememberOn(state, p, 'cutOut', 'bad', 'You cut them out of your will.');
       for (const s of livingChildren(state)) if (s.id !== personId) rel(s, -3);
       ctx.log(`You cut ${p.firstName} out of your will. Word got round the family within a week.`, '✂️', 'warn');
     },
@@ -151,7 +153,7 @@ export const LateLifeModule = {
       w.favour = personId;
       w.cutOut = (w.cutOut ?? []).filter((id) => id !== personId);
       rel(p, 6);
-      for (const s of livingChildren(state)) if (s.id !== personId) rel(s, -5);
+      for (const s of livingChildren(state)) if (s.id !== personId) { rel(s, -5); rememberOn(state, s, 'favoured', 'bad', `You left ${p.firstName} more than them in your will.`); }
       ctx.log(`You changed your will to leave ${p.firstName} more than the others${state.elderCare?.caregiverYears || p.relationship >= 75 ? ', for everything they\'ve done' : ''}. The others noticed.`, '📜', 'info');
     },
     /** Make the will even again. */
@@ -170,6 +172,7 @@ export const LateLifeModule = {
       const kid = kidOf(state, data);
       if (optionId === 'yes') {
         bond(kid, 20); rel(parent, 10);
+        rememberOn(state, parent, 'childcare', 'good', `You minded ${kid?.firstName ?? 'the baby'} two days a week.`);
         ctx.stat('happiness', 5); ctx.stat('stress', 4);
         if (state.career?.job) state.career.job.performance = clamp((state.career.job.performance ?? 55) - 3, 0, 100);
         return ctx.log(`Two days a week with ${kid?.firstName ?? 'the baby'}: the park, the ducks, the naps you both needed.`, '🧸', 'good');
@@ -207,6 +210,7 @@ export const LateLifeModule = {
       }
       if (optionId === 'card') { bond(kid, 3); return ctx.log('You sent a card and a cheque.', '✉️', 'info'); }
       bond(kid, -10);
+      rememberOn(state, parent, 'missed', 'bad', `You missed ${kid?.firstName ?? 'your grandchild'}'s ${data.event}.`);
       ctx.log(`You missed ${kid?.firstName ?? 'your grandchild'}'s ${data.event}.`, '🛋️', 'warn');
     },
     barred(ctx, data, optionId) {

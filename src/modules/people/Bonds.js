@@ -23,6 +23,7 @@
  * person.livingTogether, person.lastAnniversary, person.casual.
  */
 import { clamp } from '../../core/Random.js';
+import { rememberOn } from './Grudges.js';
 import { yearlyCount, bumpYearly, randomName } from '../../core/State.js';
 import { ageOf, living, byId, clampRel, partnerOf } from './People.js';
 import { openWith, markFault } from './OpenMarriage.js';
@@ -608,6 +609,8 @@ export const BondsModule = {
       const say = (text, delta, kind) => {
         p.relationship = clampRel(p.relationship + delta);
         if (delta >= 8) remember(state, p, text);
+        const wound = { 'trouble.skip': 'noShow', 'loan.no': 'refused', 'birthday.skip': null }[`${data.momentId}.${optionId}`];
+        if (wound) rememberOn(state, p, wound, 'bad', text);
         ctx.log(text, delta >= 0 ? '🫶' : '😞', kind);
       };
       switch (`${data.momentId}.${optionId}`) {

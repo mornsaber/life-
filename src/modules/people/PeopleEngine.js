@@ -19,6 +19,7 @@
  * retirement:addPension, housing:sell).
  */
 import { currentCountry } from '../../core/Locale.js';
+import { rememberOn } from './Grudges.js';
 import { marriageBlock, isCivilPartnership, custodyTilt, jointCustodyExists } from '../legal/Rights.js';
 import { vettingForm } from '../world/MilitaryLocal.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
@@ -492,6 +493,8 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
     child.custody = roll < 0.35 ? 'you' : roll < 0.75 && jointCustodyExists(state) ? 'joint' : roll < 0.55 ? 'you' : 'ex';
     child.otherParentId = spouse.id;
   }
+  // The children remember it (people/Grudges.js).
+  for (const c of livingChildren(state).filter((k) => ageOf(state, k) >= 6 && (k.otherParentId === spouse.id || !k.otherParentId))) rememberOn(state, c, 'divorce', 'bad', `You and ${spouse.firstName} divorced.`);
   spouse.relation = 'ex';
   spouse.endedAge = state.character.age;
   p.divorces = (p.divorces ?? 0) + 1;

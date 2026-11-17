@@ -212,7 +212,8 @@ function start(ctx, personId) {
   const rng = side(state, p, 0x7a1);
   const pick = rng.shuffle(topics).slice(0, 4);
   const how = howYouTalk(state, p);
-  const memo = p.memories?.length && rng.chance(0.4) ? ` ${p.firstName} brings up something from years ago: "${p.memories.at(-1).text.replace(/\.$/, '')}." ` : ' ';
+  const fond = (p.memories ?? []).filter((m) => m.tone !== 'bad');
+  const memo = fond.length && rng.chance(0.4) ? ` ${p.firstName} brings up something from years ago: "${fond.at(-1).text.replace(/\.$/, '')}." ` : ' ';
   const grudge = p.grudge ? ` There's still a coldness about ${p.grudge.about}.` : '';
   ctx.prompt({ type: 'conversations.topic', icon: how.icon, title: `Talking with ${p.firstName}`, text: `You ${how.verb} ${p.firstName}.${memo}${grudge}`.replace(/\s+/g, ' ').trim(), data: { personId: p.id },
     options: [...pick.map((t) => ({ id: t.id, label: t.label })), ...(p.grudge ? [{ id: 'clear', label: `🙏 Clear the air about ${p.grudge.about}` }] : []), { id: 'none', label: '👋 Just catch up' }] });

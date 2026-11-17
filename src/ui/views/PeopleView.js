@@ -139,7 +139,7 @@ function personPanel(state, p) {
     ['partner', 'fiance'].includes(p.relation) ? button('💔 Break up', 'people.breakUp', { arg: p.id, variant: 'small danger' }) : '',
     button('😤 Argue', 'people.argue', { arg: p.id, variant: 'small ghost' }),
   ].join('');
-  const memories = p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li><small>age ${m.age}</small> ${esc(m.text)}</li>`).join('')}</ul>`, { count: p.memories.length, open: true }) : '';
+  const memories = p.memories?.length ? disclosure(`mem.${p.id}`, `📸 Memories with ${esc(p.firstName)}`, `<ul class="history">${[...p.memories].reverse().map((m) => `<li>${m.tone === 'bad' ? (m.forgiven ? '🕊️ ' : '🗯️ ') : ''}<small>age ${m.age}</small> <span class="${m.tone === 'bad' && !m.forgiven ? 'neg' : ''}">${esc(m.text)}</span></li>`).join('')}</ul>`, { count: p.memories.length, open: true }) : '';
   return card(`${esc(fullName(p))}`, `<p class="muted">${esc(RELATION_LABEL[p.relation] ?? p.relation)} · age ${age}${age >= 3 ? ` · ${closeness(p.relationship)}` : ''}</p>
     ${meter(p.relationship, { label: 'Relationship', suffix: '' })}
     ${sec('🫶 Time together', time)}${sec('🤲 Help', help)}${sec('🌍 Far away', abroadButtons(state, p))}${sec('🧒 Raising them', raising)}${sec('💬 You two', us)}${memories}
