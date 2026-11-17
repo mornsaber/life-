@@ -1073,7 +1073,9 @@ img.flag { object-fit: cover; }
 .appbar-text { display: flex; flex-direction: column; min-width: 0; }
 .appbar-text b { font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .appbar-text small { color: var(--muted); font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.appbar-cash { font-weight: 800; font-size: 16px; white-space: nowrap; }
+.appbar-cash { font-weight: 800; font-size: 16px; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.here-flag { display: inline-flex; align-items: center; margin-right: 4px; }
+.here-flag img, .here-flag svg { height: 14px; width: auto; border-radius: 2px; box-shadow: 0 0 0 1px rgba(0,0,0,.15); }
 .appbar-menu { font-size: 18px; padding: 4px 10px; }
 
 main.phone {

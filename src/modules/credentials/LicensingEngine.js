@@ -96,6 +96,23 @@ export function totalWorkYears(state) {
   return civ + mil;
 }
 
+/** Years of apprenticeship standing in for a degree before degrees were asked for. */
+const APPRENTICE_YEARS = { associate: 2, bachelor: 4, master: 6, professional: 6, doctorate: 8 };
+
+/** Years of training a credential stands for (its schooling and the credentials under it). */
+const trainingMemo = new Map();
+function trainingYears(id, depth = 0) {
+  if (trainingMemo.has(id)) return trainingMemo.get(id);
+  const r = CREDENTIALS[id]?.requires ?? {};
+  const ed = r.education;
+  const edYears = ed ? (APPRENTICE_YEARS[ed.level] ?? (ed.program ? 3 : 0)) : 0;
+  const under = depth < 4 ? Math.max(0, ...(r.credentials ?? []).map((c) => trainingYears(c, depth + 1))) : 0;
+  const exp = r.experience?.years ?? 0;
+  const years = Math.min(10, under + edYears + exp + (CREDENTIALS[id]?.kind === 'license' && !edYears && !under ? 1 : 0));
+  trainingMemo.set(id, years);
+  return years;
+}
+
 /** Recursive requirement check. Returns { ok, missing: [human-readable] }. */
 export function checkRequirements(state, req = {}) {
   if (!req) return { ok: true, missing: [] };
@@ -112,7 +129,19 @@ export function checkRequirements(state, req = {}) {
   // Before 1900 no job or licence asked for a degree: lawyers read law in an office, doctors
   // and engineers learned under a master, clerks and officials were taken on by patronage.
   if (req.education && !(diplomaOnly && !diplomaExpected(state)) && !degreesOptional(state) && !meetsEducation(state, req.education)) missing.push(describeEducation(req.education));
+  // A degree the era didn't ask for still stood for years of learning: articles, reading law,
+  // walking the wards, a clerkship. Without the degree you came to the post that much older.
+  if (req.education && degreesOptional(state) && !meetsEducation(state, req.education)) {
+    const years = APPRENTICE_YEARS[req.education.level] ?? (req.education.program ? 4 : 0);
+    if (years && state.character.age < 18 + years) missing.push(`age ${18 + years}+ (years learning the work: no degrees then)`);
+  }
   for (const c of req.credentials ?? []) if (credentialRequired(state, c) && !hasCredential(state, c)) missing.push(credentialName(c));
+  // A licence the era didn't have yet still stood for training: the post went to someone older.
+  const waived = (req.credentials ?? []).filter((c) => !credentialRequired(state, c) && !hasCredential(state, c));
+  if (waived.length) {
+    const years = Math.max(...waived.map((c) => trainingYears(c)));
+    if (years && state.character.age < 18 + years && !missing.some((m) => /^age /.test(m))) missing.push(`age ${18 + years}+ (years learning the work: no licence then)`);
+  }
   if (req.experience && yearsInProfession(state, req.experience.professions) < req.experience.years) {
     missing.push(`${req.experience.years} yrs ${(PROFESSIONS[req.experience.professions[0]]?.name ?? req.experience.professions[0]).toLowerCase()} experience`);
   }

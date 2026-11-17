@@ -28,7 +28,9 @@ import { stepFreeze } from '../politics/Budgets.js';
 import { MAX_STEP, ratingLabel, onBands, scheduleYear, bandYear, bonusFor, bandFromStep, BAND_MIN, BAND_MAX, payGradeLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, nearestCareerRegion, cityName } from './Employers.js';
-import { checkRequirements } from '../credentials/LicensingEngine.js';
+import { checkRequirements, totalWorkYears } from '../credentials/LicensingEngine.js';
+import { degreesOptional } from '../world/Eras.js';
+import { credentialRequired } from '../world/Eras.js';
 import { hasClearance, examStatus, adjudicate, CLEARANCES, EXAMS } from '../publicservice/PublicServiceEngine.js';
 import { educationFields } from '../education/Catalog.js';
 import { ensureDepartment, departmentTick } from './ManagementEngine.js';
@@ -109,6 +111,18 @@ export const PROMO_FACTORS = [];
 /** Extra requirements other modules put on rungs (career/Vocations.js: courses, conditions on practice). */
 const LEVEL_GATES = [];
 export const addLevelGate = (fn) => { LEVEL_GATES.push(fn); };
+/**
+ * Before degrees and licences were asked for, a senior post was still reached by years of work:
+ * nobody walked in at 18 or 25 as an anaesthetist or a city engineer. When the era waives a
+ * senior rung's schooling or licence, it asks for working years instead.
+ */
+addLevelGate((state, level) => {
+  const r = level.req ?? {};
+  const waived = (r.education && degreesOptional(state)) || (r.credentials ?? []).some((c) => !credentialRequired(state, c));
+  if (!waived || (level.grade ?? 0) < 5) return null;
+  const need = (level.grade - 4) * 2;
+  return totalWorkYears(state) >= need ? null : `${need} years' working experience (the way up before degrees and licences)`;
+});
 export function levelCheck(state, level) {
   const { clearance, ...rest } = level.req ?? {};
   const check = checkRequirements(state, rest);

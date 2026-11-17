@@ -85,6 +85,7 @@ import { flagHtml } from './Flags.js';
 import { RELATION_LABEL } from '../modules/people/People.js';
 import { avatarHtml } from './Avatar.js';
 import { flagImg } from './Flags.js';
+import { eraCountryName } from '../modules/world/Eras.js';
 
 /** Eight sections across the top; related screens sit in a compact sub-tab row. */
 export const SECTIONS = [
@@ -478,7 +479,7 @@ export class Renderer {
     const role = this.statusLine(state).replace(/<\/li><li>/g, ' · ').replace(/<\/?li>/g, '').split(' · ')[0];
     return `<header class="appbar">
       <button class="appbar-who" data-action="ui.home" aria-label="Back to your story">${avatarHtml(state)}<span class="appbar-text"><b>${esc(styledName(state))}</b><small>Age ${c.age}${year} · ${role}</small></span></button>
-      <span class="appbar-cash ${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span>
+      <span class="appbar-cash ${state.finances.cash < 0 ? 'neg' : 'pos'}">${this.hereFlag(state)}${compactMoney(state.finances.cash)}</span>
       <button class="btn ghost small appbar-menu" data-action="ui.panel" data-arg="menu" aria-haspopup="dialog" aria-label="Menu">☰</button>
     </header>`;
   }
@@ -647,12 +648,18 @@ export class Renderer {
     </button>`;
   }
 
+  /** The flag of the country you're in now (its flag of the day), beside your money. */
+  hereFlag(state) {
+    const cc = state.character.countryId ?? 'US';
+    const name = eraCountryName(cc, COUNTRIES[cc]?.name ?? cc);
+    return `<span class="here-flag" title="${esc(name)}" aria-label="In ${esc(name)}">${flagImg(cc)}</span>`;
+  }
   topbar(state) {
     const region = regionOf(state);
     return `<header class="topbar">
       <div class="logo">LIFE<span>//</span>SIM</div>
       <div class="topbar-mid">${chip(`📅 ${currentYear(state)}`)} ${chip(`${PHASES[state.economy.phase].icon} ${PHASES[state.economy.phase].label}${causeOf(state) ? ` (${causeOf(state).label})` : ''}${state.world?.pandemic?.active ? ' · 🦠 pandemic' : ''} · ${(state.economy.unemployment * 100).toFixed(1)}% unemp · S&P ${Math.round(state.economy.marketIndex)}`, state.economy.phase === 'recession' ? 'bad' : state.economy.phase === 'peak' ? 'warn' : 'cyan')} ${state.character.posting ? chip(`📍 ${esc(postingLabel(state.character.posting))}`, 'cyan') : chip(`${region.icon} ${esc(region.name)}`)} ${chip(`💵 ${compactMoney(state.finances.cash)}`, state.finances.cash < 0 ? 'bad' : 'good')} ${chip(`⭐ ${prestige(state)}`, 'honor')}${difficultyId(state) !== 'normal' ? ` ${chip(`${difficultyOf(state).icon} ${difficultyOf(state).name}${state.difficulty?.assisted ? ' (assisted)' : ''}`, difficultyId(state) === 'story' ? 'cyan' : 'bad')}` : ''}</div>
-      <div class="mobile-status" aria-hidden="true">${esc(state.character.firstName)} · ${state.character.age} · <span class="${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span></div>
+      <div class="mobile-status" aria-hidden="true">${esc(state.character.firstName)} · ${state.character.age} · ${this.hereFlag(state)}<span class="${state.finances.cash < 0 ? 'neg' : 'pos'}">${compactMoney(state.finances.cash)}</span></div>
       <nav class="topbar-actions" aria-label="Game">
         ${this.settings.debugUndo ? `<button class="btn ghost small" data-action="engine.undo"${this.engine.canUndo() ? '' : ' disabled'} title="Debug: rewind the last age-up">↶ Undo</button>` : ''}
         <button class="btn ghost small" data-action="ui.panel" data-arg="menu" aria-haspopup="dialog"><span aria-hidden="true">☰</span> Menu</button>
