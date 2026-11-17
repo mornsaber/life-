@@ -85,6 +85,7 @@ import { flagHtml } from './Flags.js';
 import { RELATION_LABEL } from '../modules/people/People.js';
 import { avatarHtml } from './Avatar.js';
 import { flagImg } from './Flags.js';
+import { sideWorkView } from './views/CareerView.js';
 import { eraCountryName } from '../modules/world/Eras.js';
 
 /** Eight sections across the top; related screens sit in a compact sub-tab row. */
@@ -115,6 +116,7 @@ export const GROUPS = {
     items: [
       { head: 'Study & work', tab: 'school', label: 'Education', icon: '🎓', sub: (st) => (st.education.enrolled ? `Studying: ${PROGRAMS[st.education.enrolled.programId]?.name ?? 'enrolled'}` : 'Schools, colleges, apprenticeships') },
       { head: 'Study & work', tab: 'career', label: 'Job', icon: '💼', when: (st) => age(st) >= 12, sub: (st) => (st.career.job ? `${st.career.job.title}` : age(st) < 14 ? 'Odd jobs and paper rounds' : 'Find work') },
+      { head: 'Study & work', tab: 'sidework', label: 'Part-time Work', icon: '🕐', when: (st) => age(st) >= 16, sub: (st) => (st.career?.boardOffers?.length ? `${st.career.boardOffers.length} board invitation${st.career.boardOffers.length > 1 ? 's' : ''}` : st.career?.boards?.length ? `${st.career.boards.length} board seat${st.career.boards.length > 1 ? 's' : ''}` : 'Boards, teaching, gig work') },
       { head: 'Study & work', tab: 'business', label: 'Business', icon: '🏪', when: (st) => age(st) >= 14 || Boolean(st.business?.current), sub: (st) => (st.business?.current ? st.business.current.name : 'Start or buy a business') },
       { head: 'Study & work', tab: 'gov', label: 'Public Service', icon: '🏛️', when: (st) => age(st) >= 16, sub: () => 'Government agencies and the civil service' },
       { head: 'Study & work', tab: 'licenses', label: 'Licences & Certificates', icon: '🪪', when: (st) => age(st) >= 15, sub: () => 'Qualifications that open jobs' },
@@ -269,6 +271,7 @@ export const VIEWS = {
     return tipsCard(state, ui.tips !== false) + yearReviewCard(state) + thisYearCard(state) + aspirationsCard(state) + eraCard(state) + frontPageCard(state) + card('Life Story', `${logControls(ui.logFilter)}<div id="life-log">${logView(state.log, { limit })}</div>${more}`, { icon: '📜' }) + reputationCard(state);
   },
   career: careerView,
+  sidework: (state) => sideWorkView(state),
   society: (state) => societyView(state),
   business: (state, ui) => businessView(state, ui) + venturesView(state, ui),
   community: communityView,

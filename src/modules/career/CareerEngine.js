@@ -20,7 +20,7 @@ import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
 import { getProfession, US_ONLY_PROFESSIONS } from './JobTrees.js';
-import { levelById, entryLevels, nextLevels, previousLevel, ladderFor } from './Ladder.js';
+import { levelById, entryLevels, nextLevels, previousLevel, ladderFor, GOV_SECTORS } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
 import { unitFor } from './Units.js';
@@ -28,6 +28,7 @@ import { stepFreeze } from '../politics/Budgets.js';
 import { MAX_STEP, ratingLabel, onBands, scheduleYear, bandYear, bonusFor, bandFromStep, BAND_MIN, BAND_MAX, payGradeLabel } from './PayGrades.js';
 import { recalcSalary } from './Compensation.js';
 import { resetBudget, resolveDutyStation, nationalBody, careerServiceHere, nearestCareerRegion, cityName } from './Employers.js';
+import { RECORD_VIEW } from '../../core/State.js';
 import { checkRequirements, totalWorkYears } from '../credentials/LicensingEngine.js';
 import { setApplyLevel } from './Assignments.js';
 import { degreesOptional } from '../world/Eras.js';
@@ -134,7 +135,9 @@ export function levelCheck(state, level) {
 export function backgroundCheck(state, profession) {
   const age = state.character.age;
   // Strict checks (police, teaching, care) see spent convictions too; sealed and pardoned ones are gone.
-  const record = state.legal.record.filter((r) => !r.pardoned && (!r.sealed || (r.spent && profession.background === 'strict' && ['misdemeanor', 'felony'].includes(r.severity))));
+  // Only convictions employers here can see: one handed down abroad usually stays there (legal/RecordAbroad.js).
+  const here = state.character.countryId ?? 'US';
+  const record = state.legal.record.filter((r) => (RECORD_VIEW.fn ? RECORD_VIEW.fn(state, r, here, 'job') : true) && !r.pardoned && (!r.sealed || (r.spent && profession.background === 'strict' && ['misdemeanor', 'felony'].includes(r.severity))));
   const felonies = record.filter((r) => r.severity === 'felony');
   const recentMisd = record.filter((r) => r.severity === 'misdemeanor' && age - r.age <= 5).length;
   if (profession.background === 'strict' && felonies.length) return { ok: false, reason: 'Fails background check (felony record)' };
@@ -154,7 +157,40 @@ export function bestEntryLevel(state, profession, size) {
   const base = candidates.sort((a, b) => b.grade - a.grade)[0] ?? null;
   // Related military service (or senior leadership) can start you higher.
   const vet = base && veteranLevel(state, profession, size, base, (l) => levelCheck(state, l).ok);
-  return vet && vet.level.grade >= base.grade ? vet.level : base;
+  const start = vet && vet.level.grade >= base.grade ? vet.level : base;
+  // Someone who left the same work in good standing comes back at (or near) the level they left.
+  const prior = priorLevel(state, profession, size);
+  return prior && (!start || prior.grade > start.grade) ? prior : start;
+}
+
+/**
+ * The level you left this line of work at, if you come back to it: the same rung within five
+ * years (one below in a ranked public service, where you rejoin behind those who stayed), one
+ * rung lower after longer, nothing after fifteen years away or if you were fired. Never a post
+ * that is appointed or runs the organisation.
+ */
+const getProfessionSafe = (id) => { try { return getProfession(id); } catch { return null; } };
+export function priorLevel(state, profession, size) {
+  const same = (h) => h.professionId === profession.id || (profession.template && getProfessionSafe(h.professionId)?.template === profession.template);
+  const last = [...(state.career?.history ?? [])].reverse().find(same);
+  if (!last || last.fired) return null;
+  // Holy orders decide a cleric's place, not the last parish (HolyOrders.js handles the ordained).
+  if (/clergy|religious|ministry/i.test(profession.template ?? profession.id)) return null;
+  const away = state.character.age - (last.endAge ?? state.character.age);
+  if (away > 15) return null;
+  const ladder = ladderFor(profession, size).filter((l) => !l.appointed && !l.abilities?.some((a) => ['exec', 'policy'].includes(a)));
+  const left = ladder.find((l) => l.id === last.levelId) ?? [...ladder].filter((l) => l.grade <= (last.peakGrade ?? 0)).sort((a, b) => b.grade - a.grade)[0];
+  if (!left) return null;
+  const ranked = GOV_SECTORS.includes(profession.sector);
+  const drop = (away > 5 ? 1 : 0) + (ranked ? 1 : 0);
+  // Step back down the same track (or the shared rungs) `drop` times.
+  let cur = left;
+  for (let i = 0; i < drop; i++) {
+    const below = ladder.slice(0, ladder.indexOf(cur)).reverse().find((l) => l.track === cur.track || l.track === 'shared');
+    if (!below) break;
+    cur = below;
+  }
+  return levelCheck(state, cur).ok && !/recruit|cadet|trainee/i.test(cur.id) ? cur : null;
 }
 
 /** Why you'd start above the normal entry level, if you would. */

@@ -57,15 +57,17 @@ function invite(ctx, rng) {
   const wage = localWage(state);
   const fee = kind === 'company' ? Math.round(rng.int(30, 120) * 1000 * wage / 1000) * 1000 : kind === 'public' ? Math.round(rng.int(10, 30) * 1000 * wage / 100) * 100 : 0;
   const role = kind === 'charity' ? 'a trustee' : kind === 'public' ? 'a board member' : `a ${nedWord(state)}`;
-  ctx.prompt({ type: 'boardroom.invite', icon: '🪑', title: 'A Seat on the Board', text: `The chair of ${name} would like you to join as ${role}${fee ? `, for ${money(fee)} a year` : ''}: six meetings a year, a three-year term.${boardsOf(state).length >= MAX_SEATS - 1 ? ' You already sit on several boards.' : ''}`,
-    options: [
-      { id: 'yes', label: '🪑 Accept', hint: fee ? 'Fees, prestige, and responsibility for what the board signs off' : 'Unpaid; good works and good company' },
-      { id: 'no', label: '🙅 Decline' },
-    ], data: { kind, name, fee } });
+  // The invitation waits on the Part-time Work tab for a year.
+  const offers = (state.career.boardOffers ??= []);
+  if (offers.some((o) => o.name === name)) return;
+  offers.push({ kind, name, fee, role, until: state.character.age + 1 });
+  ctx.log(`The chair of ${name} invited you to join as ${role}${fee ? ` (${money(fee)} a year)` : ''}. The offer is on your Part-time Work tab.`, '🪑', 'info');
 }
 
 function boardsYear(ctx, rng) {
   const { state } = ctx;
+  // Invitations not taken up lapse after a year.
+  if (state.career.boardOffers?.length) state.career.boardOffers = state.career.boardOffers.filter((o) => o.until >= state.character.age);
   const seats = boardsOf(state);
   for (const b of [...seats]) {
     if (b.fee) ctx.earn(b.fee, `Board fees — ${b.name}`);
@@ -85,7 +87,7 @@ function boardsYear(ctx, rng) {
     }
   }
   if (seats.length >= MAX_SEATS) ctx.stat('stress', 2);
-  if (eligible(state) && state.character.age >= 40 && state.character.age < 78 && seats.length < MAX_SEATS && rng.chance(0.06) && !state.prompts.some((p) => p.type === 'boardroom.invite')) invite(ctx, rng);
+  if (eligible(state) && state.character.age >= 40 && state.character.age < 78 && seats.length < MAX_SEATS && rng.chance(0.06)) invite(ctx, rng);
 }
 
 /* ------------------------------------------------------------------ */
@@ -183,6 +185,22 @@ export const BoardroomModule = {
     maybeHonour(ctx);
   },
   actions: {
+    /** Take up a board invitation. arg: index in state.career.boardOffers */
+    acceptOffer(ctx, i) {
+      const { state } = ctx;
+      const o = state.career.boardOffers?.[Number(i)];
+      if (!o) return;
+      if (boardsOf(state).length >= MAX_SEATS) return ctx.toast(`${MAX_SEATS} boards is plenty: step down from one first.`, 'warn');
+      state.career.boardOffers.splice(Number(i), 1);
+      BoardroomModule.resolvers.invite(ctx, o, 'yes');
+    },
+    declineOffer(ctx, i) {
+      const { state } = ctx;
+      const o = state.career.boardOffers?.[Number(i)];
+      if (!o) return;
+      state.career.boardOffers.splice(Number(i), 1);
+      BoardroomModule.resolvers.invite(ctx, o, 'no');
+    },
     /** Set the year's strategy, at the top. */
     strategy(ctx, id) {
       const job = ctx.state.career.job;

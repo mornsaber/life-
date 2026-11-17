@@ -635,7 +635,12 @@ export function priceIndex(year) {
   return (c0 + ((c1 - c0) * (year - y0)) / (y1 - y0)) / 330;
 }
 /** An amount in the money of the year you're living in, or null today. */
-export const periodDollars = (state, amount) => (yearNow(state) < PRESENT ? Math.round(amount * priceIndex(yearNow(state))) : null);
+/**
+ * An amount in US dollars of the day (American price index). Only meaningful in American lives:
+ * elsewhere the local currency of the day had its own history (and, often, its own currency), so
+ * it's not shown.
+ */
+export const periodDollars = (state, amount) => (yearNow(state) < PRESENT && (state.character?.countryId ?? 'US') === 'US' ? Math.round(amount * priceIndex(yearNow(state))) : null);
 
 
 /* ------------------------------------------------------------------ */

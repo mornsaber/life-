@@ -39,12 +39,14 @@ const tests = {
     assert.ok(peakGrade(state) >= 8);
     let p = null;
     // Invitations are rare (a few a decade): try many years, staying of an age to be asked.
-    for (let i = 0; i < 120 && !p; i++) { if (state.character.age >= 75) { state.character.age = 50; state.world.seed = (state.world.seed ?? 1) + 1; } year(engine, state); p = state.prompts.find((x) => x.type === 'boardroom.invite'); }
+    // They wait on the Part-time Work tab rather than popping up.
+    for (let i = 0; i < 120 && !p; i++) { if (state.character.age >= 75) { state.character.age = 50; state.world.seed = (state.world.seed ?? 1) + 1; } year(engine, state); p = state.career.boardOffers?.[0]; }
     assert.ok(p, 'an invitation');
-    engine.resolvePrompt(p.id, 'yes');
+    assert.match(VIEWS.sidework(state), /Invitations/);
+    engine.dispatch('boardroom.acceptOffer', 0);
     const seat = boardsOf(state)[0];
     assert.ok(seat && seat.until === seat.since + 3);
-    assert.match(VIEWS.career(state), /Your boards/);
+    assert.match(VIEWS.sidework(state), /Your boards/);
     engine.dispatch('boardroom.resign', seat.id);
     assert.equal(boardsOf(state).length, 0, 'stepped down');
     assert.ok(job);

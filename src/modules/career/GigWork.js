@@ -6,6 +6,7 @@
  *
  * state.gig = { active: { gigId, hours: 'side'|'full', rating, since } | null, lastYear: { gross, expenses, net } | null, history: [] }
  */
+import { visibleRecord } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { selfEmploymentTax } from '../world/CountryLaw.js';
 import { hasCredential } from '../credentials/LicensingEngine.js';
@@ -48,7 +49,7 @@ export function gigEligibility(state, gigId, hours = 'side') {
   if (hours === 'full' && state.career.job) return { ok: false, reason: 'You already have a full-time job' };
   if (g.needs === 'car' && !(state.vehicles?.owned ?? []).some((v) => RIDESHARE_CARS.includes(v.typeId) && v.insured)) return { ok: false, reason: 'An insured car (Garage)' };
   if (g.driving && !hasCredential(state, 'driverLicense')) return { ok: false, reason: "A driver's license" };
-  if (g.driving && (state.legal.record ?? []).some((r) => /dui/i.test(r.offenseId) && state.character.age - r.age < 7)) return { ok: false, reason: 'Background check: DUI in the last 7 years' };
+  if (g.driving && visibleRecord(state).some((r) => /dui/i.test(r.offenseId) && state.character.age - r.age < 7)) return { ok: false, reason: 'Background check: DUI in the last 7 years' };
   if (g.needs === 'degree' && !meetsEducation(state, { level: 'bachelor' })) return { ok: false, reason: "A bachelor's degree (or a portfolio you don't have)" };
   if (state.gig.deactivated?.[gigId] && state.character.age - state.gig.deactivated[gigId] < 3) return { ok: false, reason: 'Deactivated by the platform' };
   return { ok: true };

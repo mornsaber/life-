@@ -218,7 +218,8 @@ const careers = {
     ladder: [
       ['assembler', 'Assembler', 1],
       ['operator', 'Machine Operator', 2],
-      ['machinist', 'CNC Machinist', 4],
+      // A machining diploma starts you at the machine; without one, three years on the floor.
+      ['machinist', 'CNC Machinist', 4, { entry: true, req: { anyOf: [{ education: { program: 'machinistTech' } }, { experience: { professions: ['manufacturing'], years: 3 } }] } }],
       ['toolmaker', 'Tool & Die Maker', 6, { track: 'ic' }],
       ['quality', 'Quality Engineer', 6, { track: 'ic', req: { education: { level: 'bachelor' } } }],
       ['supervisor', 'Production Supervisor', 4, { track: 'mgmt', abilities: ['supervise'], reports: 25 }],

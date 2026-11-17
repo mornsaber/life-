@@ -36,7 +36,7 @@ import { hire, leaveJob } from '../career/CareerEngine.js';
 import { postAbroad, endPosting, postingOf } from './Posting.js';
 import { OFFICES } from '../politics/Offices.js';
 import { citizenshipsOf, COUNTRIES } from './Countries.js';
-import { addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
+import { addHonor, yearlyCount, bumpYearly, hasFelony } from '../../core/State.js';
 import { clamp } from '../../core/Random.js';
 import { living } from '../people/People.js';
 import { eminence } from './Honours.js';
@@ -234,7 +234,7 @@ export function maltaJoinCheck(state) {
   if (!catholic(state)) return { ok: false, reason: 'Practising Catholics only' };
   if (state.character.age < 21) return { ok: false, reason: 'From 21' };
   if (yearlyCount(state, 'intlOrgs.joinMalta')) return { ok: false, reason: 'One application a year' };
-  if (state.legal.record.some((r) => r.severity === 'felony')) return { ok: false, reason: 'Of good standing (no criminal record)' };
+  if (hasFelony(state)) return { ok: false, reason: 'Of good standing (no criminal record)' };
   const ownStaff = ['maltaRelief', 'maltaDiplomacy'].includes(state.career.job?.professionId) ? 0.3 : 0;
   return { ok: true, odds: clamp(ownStaff + 0.25 + ({ devout: 0.15, regular: 0.05 }[state.community?.faith?.attendance] ?? -0.1) + Math.min(0.3, (state.honors?.length ?? 0) * 0.03) + (noble(state) ? 0.2 : 0), 0.08, 0.85) };
 }

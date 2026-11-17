@@ -85,8 +85,9 @@ export function boardroomCard(state) {
   const job = state.career?.job;
   const seats = state.career?.boards ?? [];
   const top = atTheTop(job);
-  if (!seats.length && !top) return '';
-  const list = seats.length ? `<h4 class="sub">Your boards (${seats.length} of ${MAX_SEATS})</h4><ul class="history">${seats.map((b) => `<li>${b.kind === 'charity' ? '💚' : b.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(b.name)}</b> <small>${b.fee ? `${money(b.fee)}/yr · ` : 'unpaid · '}term to age ${b.until}</small> ${button('Step down', 'boardroom.resign', { arg: b.id, variant: 'tiny ghost' })}</li>`).join('')}</ul>` : '';
+  // Board seats live on the Part-time Work tab now; here only the top job's own decisions.
+  if (!top) return '';
+  const list = '' && seats.length ? `<h4 class="sub">Your boards (${seats.length} of ${MAX_SEATS})</h4><ul class="history">${seats.map((b) => `<li>${b.kind === 'charity' ? '💚' : b.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(b.name)}</b> <small>${b.fee ? `${money(b.fee)}/yr · ` : 'unpaid · '}term to age ${b.until}</small> ${button('Step down', 'boardroom.resign', { arg: b.id, variant: 'tiny ghost' })}</li>`).join('')}</ul>` : '';
   const strategy = top ? `<h4 class="sub">This year's strategy</h4><div class="action-grid">${Object.entries(STRATEGIES).map(([id, s]) => button(`${s.icon} ${s.label}`, 'boardroom.strategy', { arg: id, variant: (job.strategy ?? 'quality') === id ? 'small on' : 'small ghost', hint: s.hint, disabled: (job.strategy ?? 'quality') === id })).join('')}</div>
     <h4 class="sub">Succession${job.successor ? `: ${job.successor === 'insider' ? 'grooming an insider' : 'an outside search under way'}` : ''}</h4><div class="action-grid">${button('🧑‍💼 Groom an insider', 'boardroom.successor', { arg: 'insider', variant: 'small ghost' })}${button('🔎 Ask for an outside search', 'boardroom.successor', { arg: 'outsider', variant: 'small ghost' })}</div>` : '';
   return card(top ? 'The Top Job' : 'Boards', `${strategy}${list}`, { icon: '🪑' });
@@ -154,4 +155,14 @@ export function postingsCard(state) {
   const rows = opts.map(({ def, ok, reason }) => (def.id === job.assignment?.id ? ''
     : `<li class="fund-row"><span>${def.icon} <b>${esc(def.name(state))}</b><br><small class="muted">${esc(def.blurb)}</small></span>${button('Put in for it', 'assignments.request', { arg: def.id, variant: 'small', disabled: !ok, hint: reason ?? undefined })}</li>`)).join('');
   return card('Postings', `${cur ? `<p>${cur.def.icon} Posted to <b>${esc(cur.def.name(state))}</b> since age ${job.assignment.since}: you're <b>${esc(job.title)}</b>. Your rank and its badge stay the same.</p><div class="toggle-row">${button('↩️ Back to general duties', 'assignments.leave', { variant: 'small ghost' })}</div>` : '<p class="fine">A posting changes the work, and sometimes the title, not your rank.</p>'}<ul class="history">${rows}</ul>`, { icon: '🗂️' });
+}
+
+/** Board seats and invitations (career/Boardroom.js), for the Part-time Work tab. */
+export function boardSeatsCard(state) {
+  const seats = state.career?.boards ?? [];
+  const offers = state.career?.boardOffers ?? [];
+  if (!seats.length && !offers.length) return card('Boards', '<p class="muted">Boards invite the very senior, and people with a real name in their field: a company as a non-executive director (fees), a charity as a trustee (unpaid), a public body (a modest fee). Six meetings a year, three-year terms.</p>', { icon: '🪑' });
+  const offerRows = offers.map((o, i) => `<li class="fund-row"><span>${o.kind === 'charity' ? '💚' : o.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(o.name)}</b><br><small class="muted">as ${esc(o.role ?? 'a director')} · ${o.fee ? `${money(o.fee)}/yr` : 'unpaid'} · offer open until age ${o.until}</small></span><span>${button('Accept', 'boardroom.acceptOffer', { arg: i, variant: 'small', disabled: seats.length >= MAX_SEATS, hint: seats.length >= MAX_SEATS ? 'Step down from a board first' : undefined })}${button('Decline', 'boardroom.declineOffer', { arg: i, variant: 'small ghost' })}</span></li>`).join('');
+  const seatRows = seats.map((b) => `<li>${b.kind === 'charity' ? '💚' : b.kind === 'public' ? '🏛️' : '🪑'} <b>${esc(b.name)}</b> <small>${b.fee ? `${money(b.fee)}/yr · ` : 'unpaid · '}term to age ${b.until}</small> ${button('Step down', 'boardroom.resign', { arg: b.id, variant: 'tiny ghost' })}</li>`).join('');
+  return card('Boards', `${offers.length ? `<h4 class="sub">Invitations</h4><ul class="history">${offerRows}</ul>` : ''}${seats.length ? `<h4 class="sub">Your boards (${seats.length} of ${MAX_SEATS})</h4><ul class="history">${seatRows}</ul>` : ''}`, { icon: '🪑' });
 }

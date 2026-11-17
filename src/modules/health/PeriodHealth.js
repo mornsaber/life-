@@ -40,6 +40,8 @@ export const TREATMENTS = {
   antisepsis: ['Antiseptic surgery', 1870],
   sanitation: ['Clean water and sewers', 1890],
   xray: ['X-rays', 1897],
+  // BCG: first given in Paris in 1921 (Calmette and Guérin); routine for children later in most places.
+  bcgVaccine: ['BCG vaccine (tuberculosis)', 1921],
   diphtheriaVaccine: ['Diphtheria vaccine', 1925],
   insulin: ['Insulin', 1923],
   bloodBank: ['Blood transfusion', 1938],
@@ -116,7 +118,7 @@ export function treatedAcuteDeath(state, id) {
 export const DISEASES = {
   cholera: { name: 'Cholera', icon: '💧', until: 'sanitation', odds: (a) => 0.004, cfr: 0.45, treatedCfr: 0.3 },
   typhoid: { name: 'Typhoid fever', icon: '🌡️', until: 'sanitation', odds: (a) => (a < 40 ? 0.008 : 0.004), cfr: 0.12 },
-  tuberculosis: { name: 'Tuberculosis (consumption)', icon: '🫁', untilTreat: 'streptomycin', odds: (a) => (a >= 15 && a < 45 ? 0.006 : 0.002), chronic: 'tuberculosis', toNow: 2.5 },
+  tuberculosis: { name: 'Tuberculosis (consumption)', icon: '🫁', vaccine: 'bcgVaccine', vaccineEfficacy: 0.7, untilTreat: 'streptomycin', odds: (a) => (a >= 15 && a < 45 ? 0.006 : 0.002), chronic: 'tuberculosis', toNow: 2.5 },
   smallpox: { name: 'Smallpox', icon: '🔴', vaccine: 'vaccination', end: 1977, odds: (a) => (a < 15 ? 0.006 : 0.002), cfr: 0.3 },
   diphtheria: { name: 'Diphtheria', icon: '🫁', vaccine: 'diphtheriaVaccine', odds: (a) => (a < 12 ? 0.015 : 0.001), cfr: 0.15, treatedCfr: 0.08 },
   scarletFever: { name: 'Scarlet fever', icon: '🔴', untilTreat: 'antibiotics', odds: (a) => (a < 12 ? 0.012 : 0.0005), cfr: 0.12 },
@@ -199,7 +201,8 @@ function yourYear(ctx, rng) {
   for (const [id, d] of Object.entries(DISEASES)) if (d.vaccine && age < 6 && available(state, d.vaccine) && !ph.vaccinated[id] && rng.chance(0.85)) ph.vaccinated[id] = age;
   for (const [id, d] of Object.entries(DISEASES)) {
     const t = threat(state, d);
-    if (!t || ph.vaccinated[id] != null || ph.had[id] != null && !d.chronic) continue;
+    // BCG protects most, not all, of those it's given to.
+    if (!t || (ph.vaccinated[id] != null && (!d.vaccineEfficacy || ((ph.vaccinated[id] * 7 + id.length) % 10) / 10 < d.vaccineEfficacy)) || ph.had[id] != null && !d.chronic) continue;
     if (d.adultsOnly && age < 18) continue;
     if (!rng.chance(d.odds(age) * t)) continue;
     ph.had[id] = age;
