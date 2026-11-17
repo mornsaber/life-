@@ -11,6 +11,7 @@
  * state.careerLife.missions = { professionId, rep, files, seen: [], arc, flock }
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
 const D = (id, icon, title, text, options) => ({ id, icon, title, text, options });
@@ -282,8 +283,10 @@ export const MissionsModule = {
     arcYear(ctx, rec, cfg);
     if (state.prompts.some((p) => p.type === 'missions.event') || !rng.chance(0.7)) return;
     // A file you haven't had recently.
-    const fresh_ = cfg.deck.filter((d) => !rec.seen.includes(d.id));
-    const d = rng.pick(fresh_.length ? fresh_ : cfg.deck);
+    const era = cfg.deck.filter((d) => fitsEra(state, d));
+    if (!era.length) return;
+    const fresh_ = era.filter((d) => !rec.seen.includes(d.id));
+    const d = rng.pick(fresh_.length ? fresh_ : era);
     rec.seen = [...rec.seen.filter((x) => x !== d.id), d.id].slice(-Math.max(1, cfg.deck.length - 1));
     ctx.prompt({ type: 'missions.event', icon: d.icon, title: d.title, text: fill(state, d.text, rng), options: promptOptions(d.options), data: { deckId: d.id } });
   },

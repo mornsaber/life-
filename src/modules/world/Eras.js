@@ -45,7 +45,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 
 export const TECH = {
   railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905, airTravel: 1950, emergencyNumber: 1968, ged: 1942, highSchool: 1920, cctv: 1980, video: 1980, dna: 1987, doorbellCam: 2015,
-  radio: 1922, tv: 1950, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
+  radio: 1922, tv: 1950, supermarket: 1930, antibiotics: 1944, helicopter: 1955, ransomware: 2013, prom: 1900, interstate: 1956, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
   internet: 1995, onlineDating: 1997, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
@@ -64,17 +64,24 @@ const TECH_WORDS = [
   ['vaping', /\bvap(?:e|es|ed|ing)\b|e-cig/i],
   ['drones', /\bdrones?\b|\bUAVs?\b|Reaper|Predator strike/i],
   ['streaming', /Netflix|streaming|binge-watch|Spotify|podcast/i],
-  ['socialMedia', /social media|Facebook|Twitter|YouTube|followers online|went viral|\bposted (?:it|a|about|online)/i],
+  ['socialMedia', /social media|Facebook|Twitter|\btweet|YouTube|followers online|went viral|\bposted (?:it|a|about|online)/i],
   ['internet', /internet|video calls?|upload|\bonline\b|website|\be-?mails?\b|Google|Wi-?Fi|\bweb\b|download|\bblog|\bforums?\b|emoji|\bGPS\b|Amazon (?:order|package|delivery)|webcam|\bDMs?\b|\bDM'd/i],
   ['mobilePhone', /📱|phone maker|cell ?phone|mobile phone|\btext(?:ed|ing|s)? (?:you|me|him|her|them|back)|text message|voicemail|ringtone|on (?:your|her|his|their) phone|phone screen|\bphones? buzz/i],
   ['personalComputer', /laptop|\bPC\b|spreadsheet|video ?games?|PlayStation|Xbox|Nintendo|gaming|printer/i],
   ['creditCards', /credit card/i],
   ['tv', /\bTV\b|television|sitcom|reality show/i],
   ['radio', /\bradio\b|\bwireless set\b/i],
+  ['interstate', /\binterstate\b/i],
+  ['antibiotics', /antibiotic|penicillin/i],
+  ['helicopter', /helicopter|\bmedevac\b/i],
+  ['ransomware', /ransomware|encrypted the city/i],
+  ['supermarket', /supermarket/i],
+  ['prom', /\bprom\b|\bSAT\b/],
   ['ged', /\bGED\b/],
   ['highSchool', /high school reunion|reunion in the old gym/i],
   ['automobile', /\b(?:cars?|car park|parking|driveway|trucks?|motorway|highway|garage|petrol|gas station|traffic)\b/i],
   ['electricLight', /\blight switch|electric(?:ity)?\b|power cut|fridge|refrigerator|washing machine/i],
+  ['photography', /\bphotos?\b|photograph/i],
   ['telephone', /\bphoned?\b|telephone|rang (?:you|her|him|them)|on the phone|📞|\bcalls at \d|\bcall(?:ed)? (?:you|me|him|her|them) at\b/i],
 ];
 /** The newest technology a piece of content needs, or null (cached on the object). */
@@ -1196,6 +1203,19 @@ export function innerBorder(state, fromRegion, toRegion) {
  * CHAMPUS before TRICARE, a crisis line before 988, the Dow before the S&P 500.
  */
 const RENAMES = [
+  // Words of their day, wherever the text comes from.
+  [/\bthe interstate\b/g, 1956, (y) => (y >= 1920 ? 'the highway' : 'the turnpike')],
+  [/\bsupermarket labels\b/g, 1930, () => 'shop signs'],
+  [/\bwithout a selfie\b/g, 2010, () => 'without signing an autograph'],
+  [/\ban app redesign for\b/g, 2009, () => 'a catalogue for'],
+  [/\ba website for\b/g, 1995, () => 'a brochure for'],
+  [/\bembarrassing emails\b/g, 1995, () => 'embarrassing letters'],
+  [/\bEmail them\b/g, 1985, () => 'Write to them'],
+  [/\bthe airport road\b/g, 1925, () => 'the harbour road'],
+  [/\bCT \/ MRI Technologist\b/g, 1977, () => 'X-ray Technician'],
+  [/"Is that a crypto\?"/g, 2010, () => '"Is that a kind of bond?"'],
+  [/\bemails the\b/g, 1995, () => 'writes to the'],
+  [/\bemailed you\b/g, 1995, () => 'wrote to you'],
   [/Minist(?:è|&egrave;)re de l(?:'|&#39;)Europe et des Affaires (?:é|&eacute;)trang(?:è|&egrave;)res/g, 2017, () => 'Ministère des Affaires étrangères'],
   [/Acting \(Film, TV (?:&|&amp;) Theater\)/g, 1950, (y) => (y >= 1910 ? 'Acting (Stage & Screen)' : 'Acting (the Stage)')],
   [/Intelligence Analysis \(CIA · DIA · NGA\)/g, 1947, (y) => (y >= 1942 ? 'Intelligence Analysis (OSS · Army G-2)' : 'Intelligence Analysis (Army & Navy intelligence)')],

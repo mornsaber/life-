@@ -16,7 +16,7 @@ import { currentCourt } from './Judiciary.js';
 import { JUSTICE } from '../world/CountryLaw.js';
 import { priceLevel, isCitizen } from '../world/Countries.js';
 import { fitsEra } from '../world/Eras.js';
-import { eraYear } from '../world/Eras.js';
+import { eraYear, yearNow } from '../world/Eras.js';
 
 /** Things that get you sued, and how big they are. */
 const DEFENSE = {
@@ -26,7 +26,7 @@ const DEFENSE = {
   contract: { label: 'Contract dispute', icon: '📑', text: (s) => `A former client says you broke a contract and wants $${s.amount.toLocaleString()}.`, defense: 0.5 },
   malpractice: { label: 'Malpractice', icon: '🩺', text: (s) => `A former patient filed a malpractice suit seeking $${s.amount.toLocaleString()}.`, defense: 0.7, insurable: 'professional' },
   car: { label: 'Car accident lawsuit', icon: '🚗', text: (s) => `The other driver in your crash is suing for $${s.amount.toLocaleString()} — more than your policy covers.`, defense: 0.35 },
-  defamation: { label: 'Defamation', icon: '📱', text: (s) => `Someone you called a scammer online sued you for defamation: $${s.amount.toLocaleString()}.`, defense: 0.55 },
+  defamation: { label: 'Defamation', icon: '📱', text: (s, state) => (state && yearNow(state) < 1995 ? `Someone you called a swindler in a letter to the paper sued you for libel: $${s.amount.toLocaleString()}.` : `Someone you called a scammer online sued you for defamation: $${s.amount.toLocaleString()}.`), defense: 0.55 },
 };
 
 /** Things you can sue over. */
@@ -108,7 +108,7 @@ function suedTick(ctx) {
   const suit = { id: rng.id('suit_'), role: 'defendant', kind, amount, stage: 'filed', years: 0, covered };
   ctx.prompt({
     type: 'civil.sued', icon: d.icon, title: 'You\'ve Been Served',
-    text: `${d.text(suit)}${covered ? '\nYour insurance will defend you and pay any covered judgment (after the deductible).' : ''}`,
+    text: `${d.text(suit, state)}${covered ? '\nYour insurance will defend you and pay any covered judgment (after the deductible).' : ''}`,
     options: covered
       ? [{ id: 'insurer', label: '🛡️ Hand it to your insurer', hint: '$1,000 deductible' }]
       : [

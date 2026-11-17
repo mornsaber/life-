@@ -13,6 +13,7 @@
  * state.majorIncidents = [{ age, name, kind, role, outcome, mutualAid }]
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { addHonor } from '../../../core/State.js';
 import { skill, engineKey } from './Kit.js';
 import { activate } from './EmergencyMgmt.js';
@@ -97,7 +98,9 @@ export const MajorIncidentsModule = {
     const role = roleOf(state.career.job);
     // A man-made major incident nearby: rare for anyone, more likely to involve you if you respond for a living.
     if (rng.chance(role ? 0.06 : 0.015)) {
-      const m = rng.pick(MAN_MADE);
+      const fits = MAN_MADE.filter((x) => fitsEra(state, x.text));
+      if (!fits.length) return;
+      const m = rng.pick(fits);
       return void rolePrompt(ctx, { ...m, severity: rng.int(1, 3) });
     }
     // Mutual aid to a disaster in a neighbouring area.

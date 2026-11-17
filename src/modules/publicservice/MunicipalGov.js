@@ -9,6 +9,7 @@
  * staffing and community approval.
  */
 import { pickFresh } from '../../core/Pools.js';
+import { fitsEra } from '../world/Eras.js';
 import { L, detectiveRanks } from '../career/Ladder.js';
 import { clamp } from '../../core/Random.js';
 import { jobBudget } from '../politics/Budgets.js';
@@ -227,7 +228,9 @@ export const MunicipalGov = {
         options: BUDGET_CHOICES.map((c) => ({ id: c.id, label: c.label, hint: `Fiscal ${c.fiscal >= 0 ? '+' : ''}${c.fiscal} · Approval ${c.approval >= 0 ? '+' : ''}${c.approval}` })),
       });
     } else if (MUNICIPAL_EVENTS[job.professionId] && rng.chance(0.35)) {
-      const event = pickFresh(rng, state, `municipal.${job.professionId}`, municipalPool(job.professionId));
+      const pool = municipalPool(job.professionId).filter((e) => fitsEra(state, e));
+      const event = pool.length ? pickFresh(rng, state, `municipal.${job.professionId}`, pool) : null;
+      if (event) 
       ctx.prompt({
         type: 'municipal.event',
         icon: '🏙️',

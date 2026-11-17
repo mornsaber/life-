@@ -89,7 +89,7 @@ const EVENTS = [
   ] },
   { id: 'reunion', icon: '🎉', title: 'A Class Reunion', text: 'Fifty years since you finished school. The invitation is on the fridge.', options: [
     { id: 'go', label: '🎉 Go', text: 'Everyone had gone grey, and nobody had changed at all.', happiness: 5, friend: true },
-    { id: 'skip', label: '🏠 Skip it', text: 'You looked at the photos online instead.' },
+    { id: 'skip', label: '🏠 Skip it', text: 'You looked at the photographs afterwards instead.' },
   ] },
   { id: 'scare', icon: '🩺', title: 'A Health Scare', text: 'A routine check-up found something the doctor wants to look at more closely.', options: [
     { id: 'tests', label: '🔬 Have every test', text: 'It was caught early, and treated. You eat better now.', health: 3, stress: 4 },

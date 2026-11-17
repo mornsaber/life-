@@ -6,6 +6,7 @@
  * investigation, where honesty is a real choice.
  */
 import { workRepBonus } from '../life/Reputation.js';
+import { fitsEra } from '../world/Eras.js';
 import { cityJobsBonus } from '../life/Cities.js';
 import { skillHireBonus } from '../life/Skills.js';
 import { currentCountry } from '../../core/Locale.js';
@@ -173,10 +174,11 @@ const QUESTION_FIELD = {
   municipalAdmin: 'government', councilInspector: 'government', planning: 'government', regulatory: 'government', oig: 'government', foreignService: 'government',
 };
 
-function pickQuestions(rng, professionId) {
+function pickQuestions(rng, professionId, state = null) {
   const field = QUESTION_FIELD[professionId] ?? 'any';
-  const fieldPool = rng.shuffle(QUESTIONS.filter((q) => q.field === field));
-  const generic = rng.shuffle(QUESTIONS.filter((q) => q.field === 'any'));
+  const ok = (q) => !state || fitsEra(state, q);
+  const fieldPool = rng.shuffle(QUESTIONS.filter((q) => q.field === field && ok(q)));
+  const generic = rng.shuffle(QUESTIONS.filter((q) => q.field === 'any' && ok(q)));
   return [fieldPool[0] ?? generic[1], generic[0]].map((q) => q.id);
 }
 
@@ -318,7 +320,7 @@ export const InterviewSystem = {
         employer,
         step: lateral ?? 1 + Math.min(4, Math.floor(priorYears / 2)),
         merit: 0,
-        questions: pickQuestions(rng, professionId),
+        questions: pickQuestions(rng, professionId, state),
         q: 0,
         score: 0,
       });

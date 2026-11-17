@@ -29,7 +29,7 @@ import { highAverage } from '../retirement/PensionPlans.js';
 import { discharge } from '../military/MilitaryEngine.js';
 import { lifestyleRisk, lifestyleTick, LifestyleActions, LifestyleResolvers } from './Lifestyle.js';
 import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife.js';
-import { fitsEra } from '../world/Eras.js';
+import { fitsEra, yearNow } from '../world/Eras.js';
 import { treatedAcuteDeath, available, treatmentWorks } from './PeriodHealth.js';
 import { priceLevel } from '../world/Countries.js';
 import { serviceOfJob } from '../publicsafety/Uniformed.js';
@@ -774,7 +774,7 @@ export const HealthEngine = {
         if (far) {
           if (rng.chance(a.untreatedDeath * far)) return void ctx.die(`${a.name} (too far from a hospital)`);
           if (far >= 0.3) medicalBill(ctx, 12000, 'Air ambulance');
-          ctx.log(far >= 0.3 ? 'The nearest emergency room was too far to drive. A rescue helicopter flew you there.' : 'It was a long drive to the nearest emergency room.', '🚁', 'warn');
+          ctx.log(far >= 0.3 ? (yearNow(state) >= 1970 ? 'The nearest emergency room was too far to drive. A rescue helicopter flew you there.' : 'The nearest hospital was a long way off. They got you there by the fastest thing on wheels.') : 'It was a long drive to the nearest emergency room.', '🚁', 'warn');
         }
         // Before modern medicine, treatment itself often failed (health/PeriodHealth.js).
         if (rng.chance(treatedAcuteDeath(state, data.id))) return void ctx.die(`${a.name}${available(state, 'antisepsis') ? '' : ' (infection after the operation)'}`);

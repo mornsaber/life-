@@ -17,6 +17,7 @@
  * state.careerLife.caseload = { professionId, focus, cases: [{ id, name, kind, difficulty, stage, opened }], closed, good, bad, rep }
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { yearlyCount, bumpYearly, randomName } from '../../../core/State.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
@@ -230,8 +231,8 @@ export const CaseloadModule = {
     if (cfg.tragedy && bad && rng.chance(0.04 + (f === FOCUS.triage ? 0.04 : 0) + Math.max(0, over) / (cap * 8))) applyFx(ctx, rec, cfg.tragedy, '🕯️');
     if (rec.rep >= 85 && rng.chance(0.15)) applyFx(ctx, rec, { text: 'Your work was recognized with an award from your profession.', perf: 4, honor: { id: `case.${job.professionId}.award`, name: `${cfg.label === 'Your Bench' ? 'Analyst' : 'Practitioner'} of the Year`, icon: '🏆' } }, '🏆');
     if (cfg.deck?.length && rng.chance(0.65) && !state.prompts.some((p) => p.type === 'caseload.case')) {
-      const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'caseload.case', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
+      const d = rng.pick(cfg.deck.filter((x) => fitsEra(state, x)));
+      if (d) ctx.prompt({ type: 'caseload.case', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

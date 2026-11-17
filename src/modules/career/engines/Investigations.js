@@ -12,6 +12,7 @@
  * state.careerLife.investigations = { professionId, technique, case: { target, kind, evidence, years, heat } | null, closed: [...], arrests, convictions, rep }
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
@@ -187,8 +188,8 @@ export const InvestigationsModule = {
     } else if (c.evidence >= 100 || (cfg.fast && c.evidence >= 60)) takedown(ctx, cfg, rec);
     else ctx.log(`Your ${c.kind} case on ${c.target}: ${Math.min(99, c.evidence)}% of what a prosecutor needs.`, cfg.icon);
     if (rng.chance(0.6) && !state.prompts.some((x) => x.type === 'investigations.event')) {
-      const d = rng.pick([...cfg.deck, ...COMMON]);
-      ctx.prompt({ type: 'investigations.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
+      const d = rng.pick([...cfg.deck, ...COMMON].filter((x) => fitsEra(state, x)));
+      if (d) ctx.prompt({ type: 'investigations.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

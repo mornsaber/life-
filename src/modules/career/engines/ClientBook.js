@@ -16,6 +16,7 @@
  * state.careerLife.clientBook = { professionId, clients: [{ id, name, kind, value, loyalty, since }], won, lost, revenue, rep }
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { yearlyCount, bumpYearly, randomName } from '../../../core/State.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, skill, engineKey } from './Kit.js';
 
@@ -191,8 +192,8 @@ export const ClientBookModule = {
         options: [{ id: 'match', label: '💸 Match the price', hint: 'Keep them, earn less' }, { id: 'relationship', label: '☕ Lean on the relationship', hint: `Loyalty ${big.loyalty}%` }, { id: 'let', label: '👋 Let them go' }],
         data: { kind: 'poach', clientId: big.id, professionId: engineKey(job) } });
     } else if (cfg.deck?.length && rng.chance(0.5) && !state.prompts.some((p) => p.type === 'clientBook.event')) {
-      const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'clientBook.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
+      const d = rng.pick(cfg.deck.filter((x) => fitsEra(state, x)));
+      if (d) ctx.prompt({ type: 'clientBook.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {

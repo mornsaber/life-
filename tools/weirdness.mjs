@@ -19,6 +19,8 @@ import { WEDDINGS, WILL_PLANS } from '../src/modules/people/index.js';
 import { living, partnerOf, spouseOf, ageOf } from '../src/modules/people/People.js';
 import { marriageBlock } from '../src/modules/legal/Rights.js';
 import { writeFileSync } from 'node:fs';
+import { COUNTRIES as COUNTRY_DEFS, localizeHtml } from '../src/modules/world/Countries.js';
+import { periodCurrency, periodText } from '../src/modules/world/Eras.js';
 
 const args = process.argv.slice(2).filter((a) => !a.startsWith('--'));
 const LIVES = Number(args[0] ?? 400);
@@ -90,9 +92,40 @@ function checkState(state) {
   if (c.gender === 'female' && state.people?.expecting && age > 55 && !state.people.expecting.surrogate && !state.people.expecting.adoption) flag('pregnant over 55', `age ${age}`);
 }
 
+/** Words that can't appear before their year: [pattern, first year]. Checked in the story, prompts and titles. */
+const ANACHRONISMS = [
+  [/\bsmart ?phones?\b|\biPhone/i, 2007], [/\bUber\b|\brideshare\b|\bride-share\b/i, 2010], [/\bAirbnb\b/i, 2008],
+  [/\bonline\b|\bwebsites?\b|\bthe internet\b|\bweb page/i, 1993], [/\be-?mails?\b/i, 1985], [/\bsocial media\b|\bFacebook\b/i, 2004],
+  [/\bTwitter\b|\btweet(s|ed)?\b/i, 2006], [/\bInstagram\b|\bselfies?\b|\bhashtags?\b/i, 2010], [/\binfluencers?\b/i, 2008], [/\bTikTok\b/i, 2017],
+  [/\bYouTube\b|\bpodcasts?\b/i, 2005], [/\bGoogle(d)?\b/i, 1998], [/\bbitcoin|\bcrypto(currency)?\b/i, 2009], [/\btext(ed)? (message|you|them|him|her)\b|\btexting\b/i, 1995],
+  [/\bmobile phone|\bcell ?phone/i, 1985], [/\blaptops?\b/i, 1985], [/\bvideo ?games?\b/i, 1972], [/\btelevision\b|\bTV\b|\btelly\b/, 1938],
+  [/\bradio (show|station|broadcast|interview)/i, 1922], [/\bmovies?\b|\bthe pictures\b/i, 1910], [/\bairports?\b|\bairlines?\b|\bflew (to|home|back|out)\b/i, 1920],
+  [/\bhelicopters?\b/i, 1944], [/\bjet(liner|s| plane| engine)\b/i, 1952], [/\bcredit cards?\b/i, 1950], [/\bATMs?\b|\bcash machine/i, 1969],
+  [/\bsupermarkets?\b/i, 1930], [/\bmotorway|\bfreeway|\bthe interstate\b/i, 1940], [/\btelephone(d)?\b|\bphoned\b|\bon the phone\b/i, 1880],
+  [/\bphotograph|\bphotos?\b/i, 1840], [/\bDNA\b/, 1953], [/\bZoom call|\bCOVID\b/, 2020], [/\bNetflix\b|\bstreaming\b/i, 2007],
+  [/\bWi-?Fi\b/i, 1999], [/\bMRI\b|\bCT scans?\b/, 1977], [/\bIVF\b/, 1978], [/\bdrones?\b/i, 2001], [/\bGPS\b/, 1995], [/\bCCTV\b/, 1970],
+  [/\bpenicillin\b|\bantibiotics?\b/i, 1942], [/\bX-rays?\b/i, 1896], [/\bdating apps?\b|\bapps?\b(?! for)/i, 2009], [/\bspreadsheets?\b/i, 1979],
+];
+function anachronism(state, text, where) {
+  const y = yearNow(state);
+  if (y >= 2025 || !text) return;
+  for (const [re, from] of ANACHRONISMS) {
+    if (y >= from) continue;
+    const shown = periodText(String(text));
+    const m = shown.match(re);
+    // Explanations of what doesn't exist yet ("from 1960", "not until") are fine.
+    if (m && !/\b(from|until|yet|not invented|before)\b/i.test(shown)) { flag(`anachronism: "${m[0].toLowerCase()}" before ${from}`, `${where}: ${String(text).slice(0, 180)}`); return; }
+  }
+}
+
 function checkYearText(state) {
   const block = state.log.at(-1);
   for (const e of block?.entries ?? []) if (BAD_TEXT.test(e.text ?? '')) flag('bad text in life story', e.text);
+  for (const e of block?.entries ?? []) anachronism(state, e.text, 'life story');
+  for (const p of state.prompts ?? []) { anachronism(state, `${p.title} — ${p.text}`, `prompt ${p.type}`); for (const o of p.options ?? []) anachronism(state, o.label, `option in ${p.type}`); }
+  const job = state.career?.job;
+  if (job) anachronism(state, `${job.title} @ ${job.employer?.name ?? ''}`, 'your job');
+  for (const p of state.people?.list ?? []) if (p.alive && p.job?.title) anachronism(state, p.job.title, `${p.relation}'s job`);
   for (const p of state.prompts ?? []) {
     if (BAD_TEXT.test(`${p.title} ${p.text}`)) flag('bad text in a prompt', `${p.type}: ${p.title} — ${p.text}`);
     for (const o of p.options ?? []) if (BAD_TEXT.test(`${o.label} ${o.hint ?? ''}`)) flag('bad text in a prompt option', `${p.type}: ${o.label} ${o.hint ?? ''}`);
@@ -108,6 +141,20 @@ function checkViews(state) {
     const text = strip(html);
     const m = text.match(BAD_TEXT);
     if (m) flag(`bad text in view: ${id}`, text.slice(Math.max(0, m.index - 80), m.index + 60));
+    // Money in the wrong currency: after localising, no dollar amounts should be left where the money isn't dollars.
+    const cc = state.character.countryId ?? 'US';
+    const country = COUNTRY_DEFS[cc];
+    if (country && cc !== 'US') {
+      const cur = periodCurrency(cc, country.currency);
+      const shown = strip(localizeHtml(html, country));
+      if (cur?.symbol && !cur.symbol.includes('$')) {
+        const d = shown.match(/(?<![A-Za-z])\$\s?\d/);
+        // Figures given in (2011) US dollars on purpose are fine.
+        if (d && !/dollars/.test(shown.slice(d.index, d.index + 60))) flag(`dollars left in a non-dollar country: ${id}`, `${cc} ${cur.symbol}: ${shown.slice(Math.max(0, d.index - 80), d.index + 40)}`);
+      }
+      const us = shown.match(/US[^\s$A-Za-z]\d/);
+      if (us && !cur?.symbol?.includes('$')) flag(`"US" before a local currency sign: ${id}`, shown.slice(Math.max(0, us.index - 60), us.index + 30));
+    }
   }
 }
 

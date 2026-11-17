@@ -21,7 +21,7 @@ import { enlistmentEligibility, enlist } from '../military/MilitaryEngine.js';
 import { COUNTRIES, isCitizen } from './Countries.js';
 import { regionsIn, changeRegion, stateIdOf } from '../life/Regions.js';
 import { fromPacks } from './packs/index.js';
-import { yearNow, tensionFactor } from './Eras.js';
+import { yearNow, tensionFactor, fitsEra } from './Eras.js';
 import { statuteIn } from '../politics/StatuteBook.js';
 
 /* ------------------------------------------------------------------ */
@@ -260,7 +260,7 @@ function warYear(ctx, cc, war, rng) {
     const news = war.front > 25 ? ['the army broke through and retook a string of towns', 'the enemy\'s supply lines collapsed', 'a surprise offensive drove the front forward']
       : war.front < -25 ? ['the front gave way and units fell back', 'a major base was overrun', 'casualty lists filled the morning papers']
         : ['the front hasn\'t moved in months', 'another offensive bogged down in mud and mines', 'both sides traded drone strikes along a frozen line'];
-    ctx.log(`📰 ${war.operation}: ${rng.pick(news)}.`, '⚔️');
+    ctx.log(`📰 ${war.operation}: ${rng.pick(news.filter((t) => fitsEra(ctx.state, t)))}.`, '⚔️');
   }
 }
 
@@ -299,7 +299,7 @@ function homeFrontYear(ctx, war, rng) {
       ['Strikes on the power grid meant weeks of blackouts through the winter.', 'health', -2],
       ['Shelling damaged your building. The windows are boarded up.', 'property', 0.15],
       ['A drone strike destroyed the factory down the road. Half the street lost their jobs.', 'stress', 6],
-    ]);
+    ].filter(([t]) => fitsEra(state, t)));
     ctx.log(hit[0], '💥', 'bad');
     if (hit[1] === 'property') {
       const home = state.housing.properties.find((p) => p.use === 'primary');

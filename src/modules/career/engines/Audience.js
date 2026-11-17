@@ -10,6 +10,7 @@
  * state.careerLife.audience = { professionId, fans, pace, burnout, releases: [{ name, kind, reception, age, fans }], peak, rep }
  */
 import { clamp } from '../../../core/Random.js';
+import { fitsEra } from '../../world/Eras.js';
 import { yearlyCount, bumpYearly } from '../../../core/State.js';
 import { lifeOf, peekLife, resolveOption, promptOptions, applyFx, skill, engineKey } from './Kit.js';
 
@@ -171,8 +172,8 @@ export const AudienceModule = {
     rec.income = income >= 100 ? income : 0;
     if (rec.income) ctx.earn(income, cfg.payLabel, { wage: true });
     if (cfg.deck?.length && rng.chance(0.55) && !state.prompts.some((x) => x.type === 'audience.event')) {
-      const d = rng.pick(cfg.deck);
-      ctx.prompt({ type: 'audience.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
+      const d = rng.pick(cfg.deck.filter((x) => fitsEra(state, x)));
+      if (d) ctx.prompt({ type: 'audience.event', icon: d.icon, title: d.title, text: d.text, options: promptOptions(d.options), data: { deckId: d.id, professionId: engineKey(job) } });
     }
   },
   actions: {
