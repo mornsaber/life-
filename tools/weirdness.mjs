@@ -48,7 +48,7 @@ function checkState(state) {
   const age = c.age;
   const y = yearNow(state);
   for (const k of STAT_KEYS) { const v = state.stats[k]; if (!Number.isFinite(v) || v < 0 || v > 100) flag('stat out of range', `${k}=${v}`); }
-  if (!Number.isFinite(state.finances.cash)) flag('cash not a number', state.finances.cash);
+  if (!Number.isFinite(state.finances.cash)) flag('cash not a number', `${state.finances.cash} after: ${(state.log.at(-1)?.entries ?? []).map((e) => e.text).join(' | ')}`);
   if (c.alive && age > 122) flag('impossibly old', `age ${age}`);
   const people = state.people?.list ?? [];
   for (const p of people) {

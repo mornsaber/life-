@@ -58,7 +58,7 @@ export const RISK_LABEL = (risk) => (risk >= 0.8 ? 'Extreme risk' : risk >= 0.55
 
 function combatPrompt(ctx, svc, theaterName) {
   const branch = branchOf(svc);
-  const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, era(ctx.state, COMBAT_SCENARIOS[branch.theater]));
+  const scenario = pickFresh(ctx.rng, ctx.state, `combat.${branch.theater}`, era(ctx.state, COMBAT_SCENARIOS[branch.theater] ?? COMBAT_SCENARIOS.ground));
   const options = scenario.options
     .filter((o) => !o.medicOnly || isMedical(svc))
     .map((o) => ({
@@ -156,7 +156,7 @@ function resolveCombat(ctx, data, optionId) {
   const { state, rng } = ctx;
   const svc = state.military.service;
   if (!svc) return;
-  const scenario = COMBAT_SCENARIOS[data.theater].find((s) => s.id === data.scenarioId);
+  const scenario = (COMBAT_SCENARIOS[data.theater] ?? COMBAT_SCENARIOS.ground).find((s) => s.id === data.scenarioId);
   const option = scenario.options.find((o) => o.id === optionId);
 
   let successChance = option.success + (state.stats.fitness - 50) / 250 + (svc.eval - 50) / 400 + Math.min(svc.combatTours - 1, 3) * 0.03;

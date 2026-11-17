@@ -135,7 +135,7 @@ export const CoalitionsModule = {
     crisis(ctx, data, optionId) {
       const { state } = ctx;
       const c = state.coalition;
-      if (!c) return undefined;
+      if (!c || !state.politics.office) return undefined;
       c.crises += 1;
       const o = state.politics.office;
       if (optionId === 'concede') {

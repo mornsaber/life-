@@ -477,6 +477,8 @@ export function clearanceDenied(ctx, track, level) {
  */
 export function enlist(ctx, { branch, track, component, specialty: wanted, mos: wantedMos = null, cleared = false, conscript = false }) {
   const { state } = ctx;
+  // A recruit can't join a corps with no enlisted ranks: they go to the navy (survey) or the army.
+  if (track === 'enlisted' && !((branchFor(state, branch) ?? BRANCHES[branch])?.enlisted?.length)) branch = branch === 'noaa' && branchFor(state, 'navy') ? 'navy' : 'army';
   const b = branchFor(state, branch) ?? BRANCHES[branch];
   const nation = isAbroad(state) ? countryOf(state).id : null;
   // National vetting stands in for a US security clearance.

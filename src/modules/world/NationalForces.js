@@ -348,6 +348,13 @@ const OCEAN_CORPS = {
   IN: NAVY_SURVEY('IN', 'Indian Naval Hydrographic Department', 'Survey ships charting the Indian Ocean.'),
 };
 for (const [cc, def] of Object.entries(OCEAN_CORPS)) if (def && FORCES[cc]) FORCES[cc].branches.noaa = def;
+// Corps with no enlisted ranks (survey services, health corps) take commissioned officers only;
+// they fight, when they do, at sea (survey ships) or ashore (field hospitals).
+for (const f of Object.values(FORCES)) for (const b of Object.values(f?.branches ?? {})) {
+  if (Array.isArray(b.enlisted) && !b.enlisted.length && b.officer?.length) b.officerOnly = true;
+  if (b === f.branches.noaa) b.theater ??= 'naval';
+  if (b === f.branches.usphs) b.theater ??= 'ground';
+}
 
 /** The national branch laid over a template, or null. */
 export function nationalBranch(countryId, templateId) {

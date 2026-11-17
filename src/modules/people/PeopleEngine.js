@@ -728,6 +728,8 @@ export const PeopleEngine = {
       const person = partnerOf(state);
       const w = WEDDINGS[kind];
       if (!person || person.relation !== 'fiance' || !w) return;
+      const barred = marriageBlock(state, person);
+      if (barred) return ctx.toast(`${barred}.`, 'warn');
       if (!ctx.spend(w.cost, w.label, { credit: true })) return ctx.toast(`A ${w.label.toLowerCase()} costs $${w.cost.toLocaleString()} — more than your cash and credit.`, 'warn');
       person.relation = 'spouse';
       person.since = state.character.age;

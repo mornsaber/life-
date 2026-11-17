@@ -101,6 +101,7 @@ const MIL_STYLES = {
   },
   // India: Commonwealth pips (five-pointed stars) with the Ashoka lion emblem in place of the crown.
   IN: (k, n) => {
+    if (eraYear() < 1950) return undefined;
     const lion = '☸';
     // Sepoy plain; Lance Naik, Naik, Havildar chevrons; the junior commissioned officers stars, then the emblem.
     if (k !== 'O') return ['', chevrons(1), chevrons(2), chevrons(3), pips(1, false, GOLD, lion, '★'), pips(2, false, GOLD, lion, '★'), pips(0, true, GOLD, lion), pips(2, false, GOLD, lion, '★'), pips(3, false, GOLD, lion, '★')][Math.min(8, n - 1)];
@@ -159,7 +160,9 @@ const COMMONWEALTH = ['GB', 'AU', 'NZ', 'CA', 'IN', 'PK', 'ZA', 'IE', 'SG', 'MY'
  * place (Pakistan's crescent, Bangladesh's water lily, Malta's cross, Nigeria's eagle).
  */
 const CW_EMBLEM = { PK: '☪', ZA: '✵', IE: '✦', SG: '✶', NG: '🦅', KE: '⚔', GH: '★', MT: '✠', GM: '✵', MW: '☀', LK: '❂', BD: '✿', VU: '✵', NP: '⚔', BT: '☸', ET: '✵', SO: '★', SS: '✵' };
-const cwEmblem = (cc) => CW_EMBLEM[cc] ?? '♛';
+/** The year each became a republic (or took its own emblem): before it, the King's crown. */
+const CW_REPUBLIC = { PK: 1956, ZA: 1961, IE: 1922, SG: 1965, NG: 1963, KE: 1964, GH: 1960, MT: 1974, GM: 1970, MW: 1966, LK: 1972, BD: 1971, VU: 1980, SS: 2011 };
+const cwEmblem = (cc) => (CW_REPUBLIC[cc] && eraYear() < CW_REPUBLIC[cc] ? '♛' : CW_EMBLEM[cc] ?? '♛');
 
 /* --- national families ------------------------------------------------ */
 /*
@@ -445,6 +448,81 @@ const collarTab = (shape, count) => {
 /** Flip a drawing upside down: chevrons pointing down. */
 const pointDown = (html) => html.replace(/(<svg[^>]*viewBox="0 0 (\d+) (\d+)"[^>]*>)([\s\S]*)(<\/svg>)/, (_, open, w, h, body, close) => `${open}<g transform="translate(0 ${h}) scale(1 -1)">${body}</g>${close}`);
 
+/**
+ * The German shoulder strap, 1866–1945 (Prussia, the Kaiser's army, the Reichswehr, the Wehrmacht):
+ * flat braid for lieutenants and captains, twisted cord for field officers, gold-and-silver plaited
+ * cord for generals; rank told by the pips (zero, one or two; generals up to three), crossed batons
+ * for a field marshal. NCOs wore lace (Tresse) round the strap, and Feldwebel ranks pips on it.
+ */
+const germanStrap = (kind, pips = 0) => {
+  const base = '#5b6248';
+  let b = `<rect x="7" y="2" width="18" height="34" rx="8" fill="${base}"/>`;
+  if (kind === 'flat') for (let i = 0; i < 4; i++) b += `<rect x="${9 + i * 3.6}" y="4" width="2.4" height="30" rx="1.2" fill="${SILVER}"/>`;
+  if (kind === 'twist') for (let i = 0; i < 8; i++) b += `<path d="M9 ${5 + i * 3.8} Q16 ${2 + i * 3.8} 23 ${5 + i * 3.8}" stroke="${SILVER}" stroke-width="2.2" fill="none"/>`;
+  if (kind === 'general') for (let i = 0; i < 8; i++) b += `<path d="M9 ${5 + i * 3.8} Q16 ${2 + i * 3.8} 23 ${5 + i * 3.8}" stroke="${i % 2 ? SILVER : GOLD}" stroke-width="2.4" fill="none"/>`;
+  if (kind === 'tresse') b += `<rect x="7.5" y="2.5" width="17" height="33" rx="8" fill="none" stroke="${SILVER}" stroke-width="2.4"/>`;
+  if (kind === 'batons') b += `<path d="M10 30 L22 8 M22 30 L10 8" stroke="${SILVER}" stroke-width="2.4"/>`;
+  const at = [[16, 24], [16, 16], [16, 8]];
+  for (let i = 0; i < Math.min(3, pips); i++) b += `<rect x="${at[i][0] - 3}" y="${at[i][1] - 3}" width="6" height="6" transform="rotate(45 ${at[i][0]} ${at[i][1]})" fill="${kind === 'general' ? SILVER : GOLD}"/>`;
+  return svg(32, b, 40);
+};
+/** The Imperial Japanese Army's red collar patch: gold bands (none, one, two, or a gold field) and stars. */
+const ijaTab = (band, n) => {
+  const field = band === 3 ? GOLD : '#b3202a';
+  let b = `<rect x="2" y="7" width="36" height="20" rx="2" fill="${field}"/>`;
+  if (band === 1) b += `<rect x="2" y="15" width="36" height="4" fill="${GOLD}"/>`;
+  if (band === 2) b += `<rect x="2" y="11" width="36" height="3" fill="${GOLD}"/><rect x="2" y="20" width="36" height="3" fill="${GOLD}"/>`;
+  for (let i = 0; i < n; i++) b += `<text x="${11 + i * 9}" y="21" font-size="9" text-anchor="middle" fill="${band === 3 ? '#b3202a' : '#f1c40f'}">★</text>`;
+  return svg(40, b);
+};
+/** The Nationalist (ROC) army's collar tab, 1936–49: triangles, with bars for officers and a gold field for generals. */
+const rocTab = (bars, n, gold = false) => {
+  let b = `<rect x="2" y="7" width="36" height="20" rx="2" fill="${gold ? GOLD : '#b3202a'}" stroke="${GOLD}"/>`;
+  for (let i = 0; i < bars; i++) b += `<rect x="${4 + i * 4}" y="7" width="2" height="20" fill="${GOLD}"/>`;
+  for (let i = 0; i < n; i++) b += `<path d="M${14 + i * 8} 22 L${17 + i * 8} 13 L${20 + i * 8} 22 Z" fill="${gold ? '#b3202a' : GOLD}"/>`;
+  return svg(40, b);
+};
+/** The PLA's red collar tab without rank (1949–55 and 1965–88, when ranks were abolished). */
+const plaTab = () => svg(40, `<rect x="2" y="7" width="36" height="20" rx="2" fill="#c62828"/><text x="20" y="22" font-size="11" text-anchor="middle" fill="${GOLD}">★</text>`);
+/** Austria-Hungary's collar patch in the regiment's facing: stars, gold lace for field officers, the zigzag for generals. */
+const kukCollar = (n, lace = 0, star = '#f4f4f4') => {
+  let b = `<path d="M2 26 L34 26 L34 8 Z" fill="#b3202a"/>`;
+  if (lace === 1) b += `<path d="M2 26 L34 26" stroke="${GOLD}" stroke-width="3"/>`;
+  if (lace === 2) b += `<path d="M4 25 L8 22 L12 25 L16 22 L20 25 L24 22 L28 25 L32 22" stroke="${GOLD}" stroke-width="2" fill="none"/>`;
+  for (let i = 0; i < n; i++) b += `<text x="${18 + i * 6}" y="${22 - i * 3}" font-size="7" text-anchor="middle" fill="${star}">✶</text>`;
+  return svg(36, b);
+};
+/** Armies whose badges of rank changed with the times (army only; navies keep their lace). */
+const PERIOD_ARMY = {
+  DE: (kind, n, y) => {
+    if (y >= 1945) return undefined;
+    if (kind === 'O') return n >= 11 ? germanStrap('batons') : n >= 7 ? germanStrap('general', n - 7) : n >= 4 ? germanStrap('twist', n - 4) : germanStrap('flat', n - 1);
+    if (kind === 'W') return germanStrap('tresse', 3);
+    return ['', pointDown(chevrons(1, 0, '', SILVER)), pointDown(chevrons(2, 0, '', SILVER)), germanStrap('tresse'), germanStrap('tresse'), germanStrap('tresse', 1), germanStrap('tresse', 2), germanStrap('tresse', 3), germanStrap('tresse', 3)][Math.min(8, n - 1)];
+  },
+  JP: (kind, n, y) => {
+    if (y >= 1945) return undefined;
+    if (kind === 'O') return n >= 7 ? ijaTab(3, Math.min(3, n - 6)) : n >= 4 ? ijaTab(2, n - 3) : ijaTab(1, n);
+    if (kind === 'W') return ijaTab(1, 0);
+    return n <= 3 ? ijaTab(0, n) : ijaTab(1, Math.min(3, n - 3));
+  },
+  CN: (kind, n, y) => {
+    if (y < 1949) {
+      if (kind === 'O') return n >= 7 ? rocTab(0, Math.min(3, n - 6), true) : n >= 4 ? rocTab(2, n - 3) : rocTab(1, n);
+      return n <= 3 ? rocTab(0, n) : rocTab(0, Math.min(3, n - 3), false);
+    }
+    if (y < 1955 || (y >= 1965 && y < 1988)) return plaTab();
+    return undefined;
+  },
+  AT: (kind, n, y) => {
+    if (y >= 1918) return undefined;
+    if (kind === 'O') return n >= 7 ? kukCollar(Math.min(3, n - 6), 2, SILVER) : n >= 4 ? kukCollar(n - 3, 1, GOLD) : kukCollar(n, 0, GOLD);
+    if (kind === 'W') return kukCollar(3, 1, SILVER);
+    return n <= 1 ? kukCollar(0) : n <= 4 ? kukCollar(n - 1) : kukCollar(3, 1);
+  },
+};
+PERIOD_ARMY.HU = PERIOD_ARMY.AT;
+
 /** Historical insignia for a rank (kind E/W/O, grade n), or undefined to use today's. */
 export function periodInsignia(kind, n, nation, branch) {
   const y = eraYear();
@@ -462,6 +540,12 @@ export function periodInsignia(kind, n, nation, branch) {
       return [collarTab('square', 1), collarTab('square', 2), collarTab('square', 3), collarTab('bar', 1), collarTab('bar', 2), collarTab('bar', 3), collarTab('bar', 4), collarTab('diamond', 1), collarTab('diamond', 2), collarTab('diamond', 3), collarTab('diamond', 4)][Math.min(10, n - 1)];
     }
     return undefined;
+  }
+  // Armies whose badges changed with the times (Imperial Germany and the Wehrmacht, Imperial Japan,
+  // Nationalist China and the rankless PLA, Austria-Hungary).
+  if (!naval && PERIOD_ARMY[cc] && !(kind === 'O' && y < 1855)) {
+    const p = PERIOD_ARMY[cc](kind, n, y);
+    if (p !== undefined) return p;
   }
   // Epaulettes: the officer's badge of rank before shoulder straps and pips.
   if (kind === 'O' && !naval && y < (cc === 'US' ? 1832 : 1855)) return bullionEpaulette(n);
