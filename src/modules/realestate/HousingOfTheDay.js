@@ -20,6 +20,7 @@ import { REGIONS } from '../life/Regions.js';
 const cc = (state) => state.character.countryId ?? 'US';
 const sideRng = (state) => new Random((((state.world?.seed ?? 1) * 4409) ^ (state.character.age * 263 + 0x77d)) >>> 0);
 const BRIT = ['GB', 'IE'];
+const owned = (h) => h.properties.some((p) => p.use === 'primary');
 
 /** Is a private tenancy here protected by rent control this year? */
 export function rentControlled(state) {
@@ -77,6 +78,20 @@ export const HousingOfTheDayModule = {
         data: { town },
       });
     }
+    // Elsewhere: the moments housing changed.
+    const r = h.rental;
+    if (cc(state) === 'FR' && y === 1954 && !owned(h) && !d.abbePierre) {
+      d.abbePierre = true;
+      ctx.log('The coldest winter in memory: people are freezing in the streets of Paris, and the Abbé Pierre\'s appeal on the radio fills the churches with blankets. Next year the government promises the HLM.', '❄️', 'info');
+    }
+    if (cc(state) === 'SG' && y >= 1968 && r?.tier === 'subsidized' && !d.hdbOffered && rng.chance(0.25)) {
+      d.hdbOffered = true;
+      ctx.prompt({
+        type: 'housingDay.hdbBuy', icon: '🏢', title: 'Buy Your HDB Flat',
+        text: 'Under the Home Ownership for the People scheme you can buy the HDB flat you rent, paying for it from your CPF savings: a 99-year lease, and a stake in the country.',
+        options: [{ id: 'buy', label: '🏢 Buy the flat with your CPF', hint: 'Your rent stops; the flat is yours' }, { id: 'rent', label: '🧾 Keep renting' }],
+      });
+    }
   },
   actions: {
     /** Take in a lodger (or let them go). */
@@ -94,6 +109,15 @@ export const HousingOfTheDayModule = {
     },
   },
   resolvers: {
+    hdbBuy(ctx, data, optionId) {
+      const { state } = ctx;
+      if (optionId !== 'buy') return ctx.log('You kept renting from the HDB.', '🧾', 'info');
+      const r = state.housing.rental;
+      if (r) r.rent = Math.round(r.rent * 0.35);
+      state.housingDay.hdbOwner = true;
+      ctx.stat('happiness', 4);
+      ctx.log('You bought your HDB flat with your CPF savings. The monthly deduction is less than the rent was.', '🏢', 'good');
+    },
     newTown(ctx, data, optionId) {
       const { state } = ctx;
       if (optionId !== 'go') return ctx.log('You stayed put. Half the street went to the new towns that decade.', '🏙️', 'info');

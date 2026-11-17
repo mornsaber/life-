@@ -11,7 +11,7 @@
  * Its own random stream, so the rest of the year rolls as it always did.
  */
 import { Random } from '../../core/Random.js';
-import { yearNow, PRESENT, setRentNames } from '../world/Eras.js';
+import { yearNow, PRESENT, setRentNames, cityStateOfDay } from '../world/Eras.js';
 import { REGIONS } from '../life/Regions.js';
 
 const cc = (state) => state.character?.countryId ?? 'US';
@@ -24,6 +24,9 @@ export function periodHomeName(state, type, name) {
   const y = yearNow(state);
   if (!state?.era || y >= PRESENT - 15) return name;
   const c = cc(state);
+  const east = c === 'DE' && cityStateOfDay(state, state.character.regionId)?.kind === 'eastbloc';
+  if (east && ['condo', 'starter', 'townhouse', 'family'].includes(type)) return y < 1970 ? 'Altbau flat, allocated by the housing office' : 'Plattenbau flat (WBS 70)';
+  if (c === 'SG' && y >= 1964 && ['condo', 'starter', 'townhouse'].includes(type)) return type === 'townhouse' ? 'HDB executive flat' : `HDB ${type === 'condo' ? 3 : 4}-room flat`;
   if (BLOC.includes(c) && blocYears(c, y) && ['condo', 'starter', 'townhouse', 'family'].includes(type)) return y < 1960 ? 'Room in a communal flat' : type === 'family' ? 'Co-operative flat' : 'State flat (khrushchyovka)';
   if (BRIT.includes(c)) {
     if (type === 'starter') return y < 1900 ? 'Back-to-back terrace' : y < 1945 ? 'Two-up two-down terrace' : 'Terraced house';
@@ -58,6 +61,18 @@ export function periodRentNameHere(state, id, name) {
   // Before the flatshare, a single person lodged: a room in someone's house, with board.
   if (id === 'roommates' && y < 1965) return c === 'US' && y < 1930 ? 'A room in a tenement' : 'Lodgings (a room, with board)';
   if (id === 'apartment' && c === 'US' && y < 1930) return 'A cold-water flat';
+  // Social housing by its name.
+  if (id === 'subsidized') {
+    if (c === 'DE' && cityStateOfDay(state, state.character.regionId)?.kind === 'eastbloc') return 'A Plattenbau flat from the housing office (KWV)';
+    if (c === 'FR' && y >= 1950) return y < 1977 ? 'An HLM flat in the grands ensembles' : 'An HLM flat';
+    if (c === 'DE' && y >= 1950) return 'A Sozialwohnung (social housing flat)';
+    if (c === 'SE' && y >= 1965 && y < 1990) return 'A flat from the Million Programme';
+    if (c === 'SG' && y >= 1960) return 'An HDB rental flat';
+    if (c === 'AT' && y >= 1920) return 'A Gemeindebau flat (Red Vienna)';
+    if (c === 'NL' && y >= 1901) return 'A woningcorporatie flat';
+  }
+  // Before the estates, the shacks: Brazil's favelas.
+  if (id === 'roommates' && c === 'BR' && y >= 1940) return 'A room in a favela';
   if (id === 'subsidized' && c !== 'US') return y < 1945 ? 'A charity\'s model dwelling' : 'Social housing';
   return null;
 }

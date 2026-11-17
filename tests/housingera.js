@@ -42,6 +42,11 @@ const tests = {
     assert.match(periodRentNameHere(life('GB', 1950).state, 'roommates', 'Roommates'), /Lodgings/);
     assert.doesNotMatch(periodRentNameHere(life('GB', 1990).state, 'roommates', 'Roommates') ?? '', /Lodgings/);
   },
+  'social housing by its name abroad'() {
+    assert.match(periodRentNameHere(life('FR', 1965).state, 'subsidized', 'x'), /HLM/);
+    assert.match(periodRentNameHere(life('SE', 1970).state, 'subsidized', 'x'), /Million Programme/);
+    assert.match(periodRentNameHere(life('SG', 1970).state, 'subsidized', 'x'), /HDB/);
+  },
   'a 1960 conventional mortgage wants 20% down'() {
     const { state } = life('US', 1960);
     assert.equal(quote(state, 100000, 'conv30').down, 20000);
