@@ -167,7 +167,9 @@ export function quote(state, price, typeId, { downPct = null, inflateIncome = fa
   // Difficulty: lenders are kinder (Story) or stingier (Hard, Brutal) — on every score, not just poor ones.
   const credit = knob(state, 'credit');
   const rate = Math.max(0.005, Math.round((state.housing.rates.base + t.rateAdj + scoreSpread(score) * credit + (credit - 1) * 0.01) * 10000) / 10000);
-  let pct = Math.max(t.minDown, downPct ?? t.minDown);
+  // Post-war America: a conventional loan wanted 20% down until mortgage insurance spread in the 1980s.
+  const eraDown = (state.character?.countryId ?? 'US') === 'US' && ['conv30', 'conv15', 'arm'].includes(typeId) && yearNow(state) < 1985 ? 0.2 : 0;
+  let pct = Math.max(t.minDown, eraDown, downPct ?? t.minDown);
   // Commercial lenders size the loan so rents cover the payment 1.25× — thin rents mean a bigger down payment (up to 60%).
   if (t.commercial && noi > 0) {
     const perDollar = annualPayment(1000000, rate, t.years) / 1000000;

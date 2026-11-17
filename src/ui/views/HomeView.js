@@ -18,6 +18,7 @@ import { periodRentName } from '../../modules/world/Eras.js';
 import { propertyBlock } from '../../modules/world/Regimes.js';
 import { titleCard } from './TitleCard.js';
 import { periodHomeName } from '../../modules/realestate/HomesOfTheDay.js';
+import { rentControlled } from '../../modules/realestate/HousingOfTheDay.js';
 function creditGauge(score) {
   const pct = ((score - 300) / 550) * 100;
   const tone = score >= 740 ? 'good' : score >= 640 ? 'mid' : 'bad';
@@ -45,7 +46,9 @@ function residence(state) {
     ${status === 'employerProvided' ? '<p class="fine">Your employer provides housing (park quarters / embassy residence).</p>' : ''}
     ${status === 'official' ? `<p class="fine">${officialResidence(state).icon} You live at ${esc(officialResidence(state).name)}, provided by ${esc(officialResidence(state).by)}: no rent, no mortgage, staff and security. Your own home waits for you.</p>` : ''}
     <h4 class="sub">Rentals in ${esc(REGIONS[regionId].name)}</h4><ul class="history">${rentRows}</ul>
-    <div class="row-end">${button('🛋️ Move in with parents', 'housing.moveInWithParents', { variant: 'small ghost', disabled: status === 'parents' || state.character.age >= 45 })}</div>`, { icon: '🏠', accent: 'cyan' });
+    ${h.rental && rentControlled(state) && !h.rental.posted ? '<p class="fine">📜 Your rent is controlled by law: the landlord can\'t put it up.</p>' : ''}
+    ${state.housingDay?.lodger ? `<p class="fine">🧳 Your lodger, ${esc(state.housingDay.lodger.name)}, pays ${money(state.housingDay.lodger.rent)} a year.</p>` : ''}
+    <div class="row-end">${(h.properties.some((p) => p.use === 'primary') || h.rental?.tier === 'house') && state.character.age >= 18 ? button(state.housingDay?.lodger ? '🧳 Give the lodger notice' : '🧳 Take in a lodger', 'housingDay.lodger', { variant: 'small ghost' }) : ''}${button('🛋️ Move in with parents', 'housing.moveInWithParents', { variant: 'small ghost', disabled: status === 'parents' || state.character.age >= 45 })}</div>`, { icon: '🏠', accent: 'cyan' });
 }
 
 function listings(state) {

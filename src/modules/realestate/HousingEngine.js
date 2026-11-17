@@ -15,6 +15,8 @@
  *                   market, cycle, rates, homelessYears, manager }
  */
 import { isOnActiveDuty, yearlyCount, bumpYearly, canAfford } from '../../core/State.js';
+/** Set by realestate/HousingOfTheDay.js: a rent law that caps renewals. */
+export const RENT_CONTROL = { fn: null };
 import { REGIONS, regionOf } from '../life/Regions.js';
 import { STATES } from '../life/States.js';
 import { hasHousingBenefit } from '../life/Finances.js';
@@ -437,7 +439,9 @@ export const HousingEngine = {
         // Renewals track the local market (in today's dollars), with a little landlord drift.
         if (!RENT_TIERS[h.rental.tier].subsidized) {
           const market = tierRent(state, h.rental.tier, h.rental.regionId ?? state.character.regionId);
-          h.rental.rent = Math.round((h.rental.rent * 0.5 + market * 0.5) * (1 + rng.float(-0.01, 0.025)));
+          const renewed = Math.round((h.rental.rent * 0.5 + market * 0.5) * (1 + rng.float(-0.01, 0.025)));
+          // Rent control of its day caps the renewal (realestate/HousingOfTheDay.js).
+          h.rental.rent = RENT_CONTROL.fn ? RENT_CONTROL.fn(state, h.rental, renewed) : renewed;
         }
       } else if (downsize(ctx, h)) {
         // Moved somewhere cheaper before it came to an eviction.

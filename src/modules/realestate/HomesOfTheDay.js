@@ -55,6 +55,9 @@ export function periodRentNameHere(state, id, name) {
   const c = cc(state);
   if (BLOC.includes(c) && blocYears(c, y)) return { roommates: 'A bed in a workers\' hostel', apartment: 'A state flat, allocated by your workplace', house: 'A room in a communal flat', subsidized: 'A state flat' }[id] ?? name;
   if (id === 'subsidized' && BRIT.includes(c)) return y < 1919 ? 'Model dwellings (a charity\'s flat)' : 'A council house';
+  // Before the flatshare, a single person lodged: a room in someone's house, with board.
+  if (id === 'roommates' && y < 1965) return c === 'US' && y < 1930 ? 'A room in a tenement' : 'Lodgings (a room, with board)';
+  if (id === 'apartment' && c === 'US' && y < 1930) return 'A cold-water flat';
   if (id === 'subsidized' && c !== 'US') return y < 1945 ? 'A charity\'s model dwelling' : 'Social housing';
   return null;
 }
