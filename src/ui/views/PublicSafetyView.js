@@ -3,6 +3,7 @@ import { esc, button, card, chip, kv, disclosure } from '../Components.js';
 import { areaOk, AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility, unitName, bureauName, isDetective } from '../../modules/publicsafety/PoliceLife.js';
 import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, teamName, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
 import { nextExam, REACHABLE, systemOf, examName, schoolEligibility } from '../../modules/publicsafety/CivilService.js';
+import { eraNote } from '../../modules/publicsafety/ServiceEras.js';
 
 const n = (x) => Number(x ?? 0).toLocaleString();
 
@@ -48,6 +49,7 @@ export function policeCard(state) {
   return card('On the Street', `${kv([
     ['Assignment', `${area.icon} ${esc(area.name)}${unit ? ` · ${unit.icon} ${esc(unitName(state, p.unit))}` : ''}${p.bureau ? ` · ${BUREAUS[p.bureau].icon} ${esc(bureauName(state, p.bureau))}` : ''}`],
     ['Shift', `${PSHIFTS[p.shift]?.icon ?? ''} ${esc(PSHIFTS[p.shift]?.name ?? 'Days')}`],
+    ['The job now', esc(eraNote(state, 'police'))],
     p.brady ? ['Brady list', '<span class="neg">Yes — your credibility can be attacked in every case</span>'] : null,
   ])}
     ${tally ? `<div class="chip-row">${tally}</div>` : ''}
@@ -81,6 +83,7 @@ export function fireCard(state) {
   const tally = [['🚒', 'runs', f.runs], ['🔥', 'working fires', f.fires], ['🙌', 'saves', f.saves], ['🌲', 'strike-team deployments', f.strikeTeams], ['🤕', 'injuries', f.injuries]].filter(([, , v]) => v).map(([i, l, v]) => chip(`${i} ${n(v)} ${l}`)).join(' ');
   return card('The Firehouse', `${kv([
     ['Station', `${st.icon} ${esc(st.name)}`],
+    ['The job now', esc(eraNote(state, 'fire'))],
     ['Schedule', `${FSHIFTS[f.shift]?.icon ?? ''} ${esc(FSHIFTS[f.shift]?.name ?? '24/48')}`],
     ['Teams', Object.keys(f.teams).map((id) => `${TEAMS[id].icon} ${esc(teamName(state, id))}`).join(', ') || 'None'],
     ['Smoke exposure', `${f.exposure} · ${f.decon ? '🧼 clean-cab practices' : '<span class="neg">no decon</span>'}`],

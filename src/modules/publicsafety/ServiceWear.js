@@ -34,7 +34,9 @@ const has = (state, id) => (state.health?.conditions ?? []).some((c) => c.id ===
 /** Yearly exposure by service: [noise, smoke, lifting]. */
 function exposure(state, role) {
   const y = yearNow(state);
-  if (role === 'fire') return [3, y < 1975 ? 10 : y < 2005 ? 6 : 3, 5];
+  // Breathing apparatus worn every time halves the smoke; the old smoke-eaters took half as much again (ServiceEras.js).
+  const mask = state.wear?.mask === true ? 0.5 : state.wear?.mask === false ? 1.5 : 1;
+  if (role === 'fire') return [3, Math.round((y < 1975 ? 10 : y < 2005 ? 6 : 3) * mask), 5];
   if (role === 'police') return [2, 0, 2];
   if (role === 'ems') return [1, 0, 6];
   if (role === 'corrections') return [1, 0, 2];
