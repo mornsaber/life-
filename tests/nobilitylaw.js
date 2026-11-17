@@ -40,6 +40,7 @@ const tests = {
     if (!state.noble) return; // the start may have fallen back elsewhere
     estateOf(state);
     ageTo(engine, state, 1918);
+    if (!state.character.alive) return; // died before the Revolution (TB, war): nothing to test
     assert.equal(state.noble.law, 'abolished');
     assert.ok(state.noble.estate.value === 0 || state.noble.estate.owner === null);
   },

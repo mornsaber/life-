@@ -46,7 +46,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 export const TECH = {
   railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905, airTravel: 1950, emergencyNumber: 1968, ged: 1942, highSchool: 1920, cctv: 1980, video: 1980, dna: 1987, doorbellCam: 2015,
   radio: 1922, tv: 1950, supermarket: 1930, antibiotics: 1944, helicopter: 1955, ransomware: 2013, prom: 1900, interstate: 1956, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
-  internet: 1995, onlineDating: 1997, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
+  internet: 1995, onlineDating: 1997, sushiBar: 1980, councilTax: 1993, prepping: 1995, memeStocks: 2020, techBubble: 1999, littleLeague: 1939, learnerPermit: 1935, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
 
@@ -57,6 +57,12 @@ const TECH_WORDS = [
   ['dna', /\bDNA\b/],
   ['cctv', /\bCCTV\b|security camera|dashcam|body ?cam/i],
   ['video', /\bvideo\b|camcorder|\bVHS\b|\bDVD/i],
+  ['memeStocks', /\$MOON|meme stock/i],
+  ['techBubble', /tech bubble|dot-?com|startups? (?:are|is) folding/i],
+  ['councilTax', /council tax/i],
+  ['prepping', /go-bag|light search and rescue|CERT\b/i],
+  ['sushiBar', /sushi/i],
+  ['littleLeague', /Little League/i],
   ['emergencyNumber', /(?<![\d,.$])\b(?:911|999)\b(?![,.]?\d)|emergency number/i],
   ['airTravel', /\bairports?\b|\bflights?\b|airline|plane ticket|jet lag|budget airline|boarding pass/i],
   ['gigApps', /rideshare|\bUber\b|\bLyft\b|DoorDash|gig app|delivery app|Airbnb/i],
@@ -79,7 +85,8 @@ const TECH_WORDS = [
   ['prom', /\bprom\b|\bSAT\b/],
   ['ged', /\bGED\b/],
   ['highSchool', /high school reunion|reunion in the old gym/i],
-  ['automobile', /\b(?:cars?|car park|parking|driveway|trucks?|motorway|highway|garage|petrol|gas station|traffic)\b/i],
+  ['learnerPermit', /learner(?:'|\\')?s permit|driving test/i],
+  ['automobile', /driving lessons?|\b(?:cars?|car park|parking|driveway|trucks?|motorway|highway|garage|petrol|gas station|traffic)\b/i],
   ['electricLight', /\blight switch|electric(?:ity)?\b|power cut|fridge|refrigerator|washing machine/i],
   ['photography', /\bphotos?\b|photograph/i],
   ['telephone', /\bphoned?\b|telephone|rang (?:you|her|him|them)|on the phone|📞|\bcalls at \d|\bcall(?:ed)? (?:you|me|him|her|them) at\b/i],
@@ -102,6 +109,15 @@ export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNee
 
 /** Roughly when each line of work opens up (the US dates, loosely; elsewhere similar). */
 export const PROFESSION_FROM = {
+  // Modern ladders with no period equivalent of their own (the period ones: travelling salesman,
+  // clerk, shop assistant are separate careers).
+  sales: 1980, corporate: 1950, finance: 1975, childcare: 1965, nonprofit: 1960, research: 1945, acting: 1910,
+  legislativeStaff: 1946, municipalAdmin: 1900, waterUtility: 1900, animalControl: 1920, publicHealth: 1900,
+  hospitality: 1890, legalSupport: 1900, councilInspector: 1890,
+  // Country services by their own founding dates (the template's are America's).
+  gb_caseOfficer: 1909, gb_sigint: 1919, gb_intelligence: 1936, gb_parkService: 1951, gb_fbi: 1965, gb_borderPatrol: 1920,
+  gb_benefitsClaims: 1912, gb_nationalLab: 1900, gb_oig: 1866, gb_federalPrisons: 1878, gb_regulatory: 1890, gb_foreignService: 1800,
+  gb_airTrafficControl: 1922, gb_meteorology: 1854,
   police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1900, trades: 1882, electricalEng: 1882, nursing: 1860,
   railroad: 1830, transit: 1860, transitMaintenance: 1905, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
   mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
@@ -146,7 +162,7 @@ export function eraWorkBlock(state, profession) {
   if (profession?.untilYear && y >= profession.untilYear) return 'This work has all but disappeared';
   if (y >= PRESENT) return null;
   const id = profession?.id;
-  const from = PROFESSION_FROM[id] ?? profession?.fromYear;
+  const from = PROFESSION_FROM[id] ?? profession?.fromYear ?? PROFESSION_FROM[profession?.template];
   if (from && y < from) return `Doesn't exist yet (from about ${from})`;
   if (profession?.untilYear && y >= profession.untilYear) return 'This work has all but disappeared';
   const menUntil = MEN_ONLY_UNTIL[id] ?? MEN_ONLY_UNTIL[profession?.template];
@@ -619,7 +635,7 @@ export function futureWorkBlock(state, profession) {
 export function eraHidden(state, p) {
   if (p.templateOnly) return true;
   const y = yearNow(state);
-  const from = PROFESSION_FROM[p.id] ?? p.fromYear;
+  const from = PROFESSION_FROM[p.id] ?? p.fromYear ?? PROFESSION_FROM[p.template];
   if (from && y < from) return true;
   if (p.untilYear && y >= p.untilYear) return true;
   if (p.futureNeeds && !futureOn(state, p.futureNeeds)) return true;
@@ -759,8 +775,17 @@ const OLD_TITLES = [
   [/\bHuman Resources\b/, 'Personnel', 1985], [/\bCustodian\b/, 'Janitor', 1990], [/\bNursing Assistant\b/, 'Orderly', 1987],
 ];
 /** A job title in the words of its year. */
-export function periodTitle(title) {
-  if (!title || ERA_YEAR >= PRESENT) return title;
+/** Ladders that name a women's and a men's post on one rung ("Housemaid / Footman"): each person gets their own. */
+const GENDERED_RUNGS = new Set(['Scullery Maid / Hall Boy', 'Kitchen Maid / Boot Boy', 'Housemaid / Footman', 'Head Housemaid / First Footman', 'Lady\'s Maid / Valet', 'Cook / Under-Butler', 'Housekeeper / Butler']);
+export function genderedTitle(title, gender) {
+  if (!GENDERED_RUNGS.has(title) || !gender) return title;
+  const [f, m] = title.split(' / ');
+  return gender === 'female' ? f : m;
+}
+export function periodTitle(title, gender = getEraState()?.character?.gender) {
+  if (!title) return title;
+  title = genderedTitle(title, gender);
+  if (ERA_YEAR >= PRESENT) return title;
   let t = title;
   for (const [re, old, until] of OLD_TITLES) if (ERA_YEAR < until) t = t.replace(re, old);
   return t;
@@ -1227,7 +1252,7 @@ const RENAMES = [
   [/Acting \(Film, TV (?:&|&amp;) Theater\)/g, 1950, (y) => (y >= 1910 ? 'Acting (Stage & Screen)' : 'Acting (the Stage)')],
   [/Intelligence Analysis \(CIA · DIA · NGA\)/g, 1947, (y) => (y >= 1942 ? 'Intelligence Analysis (OSS · Army G-2)' : 'Intelligence Analysis (Army & Navy intelligence)')],
   [/\bIRS debt\b/g, 1953, () => 'tax debt'],
-  [/\bIRS\b/g, 1953, (y) => (y >= 1862 ? 'Bureau of Internal Revenue' : 'tax collector')],
+  [/\bIRS\b/g, 1953, (y) => ((getEraState()?.character?.countryId ?? 'US') !== 'US' ? 'tax office' : y >= 1862 ? 'Bureau of Internal Revenue' : 'tax collector')],
   [/\bFBI\b/g, 1935, (y) => (y >= 1908 ? 'Bureau of Investigation' : 'Pinkertons')],
   [/\bDEA\b/g, 1973, (y) => (y >= 1930 ? 'Federal Bureau of Narcotics' : 'narcotics')],
   [/\bATF\b/g, 1972, (y) => (y >= 1920 ? 'Prohibition Bureau' : 'revenue')],

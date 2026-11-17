@@ -35,7 +35,7 @@ const tests = {
         n++;
         const as = { ...state, character: { ...state.character, gender: p.gender } };
         assert.equal(eraWorkBlock(as, getProfession(p.career.professionId)), null, `${p.relation} ${p.job} (${p.career.professionId}) in 1890`);
-        assert.doesNotMatch(p.job, /software|data|cyber|developer|IT /i);
+        assert.doesNotMatch(p.job, /software|\bdata\b|cyber|developer|\bIT\b/i);
       }
     }
     assert.ok(n >= 6, `${n} working relatives`);

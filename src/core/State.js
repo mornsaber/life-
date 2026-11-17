@@ -13,7 +13,7 @@ import { DIASPORA, COMMUNITY_NAMES } from '../modules/world/Diaspora.js';
 import { COUNTRIES, localizeTerms } from '../modules/world/Countries.js';
 import { setCurrentCountry } from './Locale.js';
 import { DIFFICULTIES } from './Difficulty.js';
-import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText } from '../modules/world/Eras.js';
+import { validStartYear, periodThrone, republicGap, PERIOD_THRONE_YEARS, EARLIEST, PRESENT, periodText, fitsEra } from '../modules/world/Eras.js';
 import { eraFirstNames, dataYear, setDataYear } from '../modules/world/HistoricalData.js';
 import { OLD_FIRST_NAMES, US_OLD_SURNAMES } from '../modules/world/data/oldNames.js';
 import { decodePicks } from '../modules/world/StartPicks.js';
@@ -474,7 +474,15 @@ export function tidyText(text, icon = '') {
   return periodText(t);
 }
 
+/** Lines kept out of a period life's story because they give themselves away as modern (for tools/weirdness.mjs). */
+export const ERA_DROPPED = [];
 export function addLog(state, text, icon = '•', kind = 'info') {
+  // The last line of defence for era-correctness: a line that needs technology this year hasn't got
+  // (a learner's permit in 1895, a tech bubble in 1897) stays out of the story. Deaths are always told.
+  if (state.era && kind !== 'death' && typeof text === 'string' && !fitsEra(state, text)) {
+    if (ERA_DROPPED.length < 500) ERA_DROPPED.push({ year: state.character?.birthYear + state.character?.age, text });
+    return;
+  }
   const entries = currentYearBlock(state).entries;
   if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text: tidyText(text, icon), icon, kind });
 }

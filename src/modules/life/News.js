@@ -130,7 +130,7 @@ export function printPaper(ctx) {
   // You made the paper: a rival has something to say.
   const mine = stories.find((s) => s.you);
   const rival = rivalsOf(state).find((r) => !r.friend);
-  if (mine && rival && rng.chance(0.5)) ctx.log(`${rival.name} sent you the clipping — "${mine.headline}" — with a single raised-eyebrow emoji.`, '📰', 'info');
+  if (mine && rival && rng.chance(0.5)) ctx.log(`${rival.name} sent you the clipping — "${mine.headline}" — ${(state.character.birthYear ?? 0) + state.character.age < 2000 ? 'with a single exclamation mark in the margin' : 'with a single raised-eyebrow emoji'}.`, '📰', 'info');
   // A crash on the front page: what about your shares?
   if (stories.some((s) => /Recession confirmed/.test(s.headline)) && state.investing && portfolioValue(state).brokerage >= 5000 && !state.prompts.some((p) => p.type === 'news.crash')) {
     ctx.prompt({

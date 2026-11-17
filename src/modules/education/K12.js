@@ -153,7 +153,9 @@ function graduate(ctx) {
   const gpa = k.gpa ?? 3.0;
   state.education.degrees.push({ type: 'highschool', programId: 'highschool', major: null, year: state.character.age, gpa, k12: k.type });
   const honors = gpa >= 3.8 ? ' with honors' : '';
-  ctx.log(`You graduated from ${SCHOOL_TYPES[k.type].name.toLowerCase()}${honors}! 🎓 GPA ${gpa.toFixed(2)}. Your family chipped in $2,000 to get you started.`, '🎓', 'milestone');
+  // America grades in GPAs; elsewhere you simply finished school (and the leaving exams have their own line).
+  if ((state.character.countryId ?? 'US') === 'US') ctx.log(`You graduated from ${SCHOOL_TYPES[k.type].name.toLowerCase()}${honors}! 🎓 GPA ${gpa.toFixed(2)}. Your family chipped in $2,000 to get you started.`, '🎓', 'milestone');
+  else ctx.log(`You finished school${gpa >= 3.8 ? ' near the top of your year' : ''}. Your family put together a little money to get you started.`, '🎓', 'milestone');
   state.finances.cash += 2000;
   ctx.stat('happiness', 5);
 }
@@ -186,7 +188,7 @@ export const K12Engine = {
     if (!k.done && age > 18) k.done = true; // adults who skipped ahead (old saves)
     if (k.done || age < 6) {
       if (age >= 18) k.job = null;
-      if (age === 5) ctx.log('You started kindergarten.', '🎒', 'milestone');
+      if (age === 5) ctx.log(['GB', 'IE', 'AU', 'NZ'].includes(state.character.countryId) ? 'You started at the infant school.' : 'You started kindergarten.', '🎒', 'milestone');
       return;
     }
     if (state.legal.incarceration) {
@@ -250,7 +252,12 @@ export const K12Engine = {
           }
         }
       }
-      if (age === 14 && !k.dropout) ctx.log('You started high school.', '🏫', 'milestone');
+      if (age === 14 && !k.dropout) {
+        const c = state.character.countryId ?? 'US';
+        // In countries that sorted children at 10 or 11, the academic school started then (education/SchoolingOfTheDay.js).
+        if (c === 'US' || !state.era) ctx.log('You started high school.', '🏫', 'milestone');
+        else if (!state.schooling?.track) ctx.log(['GB', 'IE', 'AU', 'NZ'].includes(c) ? 'You moved up to the senior school.' : 'You moved up to secondary school.', '🏫', 'milestone');
+      }
     }
 
     // Part-time work.

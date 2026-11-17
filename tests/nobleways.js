@@ -16,7 +16,7 @@ function life(countryId, startYear, opts = {}) {
   const state = engine.newLife({ countryId, startYear, gender: 'male', ...opts });
   return { engine, state };
 }
-const ageTo = (engine, state, age) => { while (state.character.age < age) { state.prompts = state.prompts.filter((p) => p.type.startsWith('nobleWays.')); state.stats.health = 95; engine.ageUp(); } };
+const ageTo = (engine, state, age) => { while (state.character.alive && state.character.age < age) { state.prompts = state.prompts.filter((p) => p.type.startsWith('nobleWays.')); state.stats.health = 95; engine.ageUp(); } };
 
 const tests = {
   'a Prussian son of the house is expected in the regiment'() {
@@ -26,8 +26,9 @@ const tests = {
     assert.ok(state.prompts.some((p) => p.type === 'nobleWays.regiment'));
   },
   'a coffee baron of Imperial Brazil, for life'() {
-    const { engine, state } = life('BR', 1840);
-    ageTo(engine, state, 30);
+    const { engine, state } = life('BR', 1850);
+    ageTo(engine, state, 25);
+    assert.ok(state.character.alive, 'died before the test could run');
     state.finances.cash = 5e6;
     state.prompts = [];
     assert.match(VIEWS.society(state), /A Title from the Emperor/);

@@ -156,6 +156,13 @@ function coverShort(ctx, id, forced = false) {
   return pnl;
 }
 
+/** The new technology of its day that a mania gathers round: railways, radio, electronics, computers. */
+function bubbleName(state, sector) {
+  if (sector !== 'tech') return SECTORS[sector].name;
+  const y = yearNow(state);
+  return y < 1905 ? 'Railway' : y < 1922 ? 'Motor car' : y < 1940 ? 'Radio' : y < 1975 ? 'Electronics' : y < 1995 ? 'Computer' : SECTORS[sector].name;
+}
+
 /** The year on the exchange: bubbles, prices, earnings, collapses and IPOs. */
 export function stocksTick(ctx) {
   const { state } = ctx;
@@ -172,13 +179,13 @@ export function stocksTick(ctx) {
   if (!s.bubble && ['expansion', 'peak'].includes(e.phase) && rng.chance(0.07)) {
     const sector = rng.chance(0.55) ? 'tech' : rng.pick(Object.keys(SECTORS));
     s.bubble = { sector, years: 0 };
-    ctx.log(`📈 ${SECTORS[sector].name} mania: every ${SECTORS[sector].name.toLowerCase()} stock is "the next big thing", and valuations have stopped making sense.`, '🫧', 'warn');
+    ctx.log(`📈 ${bubbleName(state, sector)} mania: every ${bubbleName(state, sector).toLowerCase()} stock is "the next big thing", and valuations have stopped making sense.`, '🫧', 'warn');
   }
   if (s.bubble) {
     s.bubble.years += 1;
     if (e.phase === 'recession' || s.bubble.years > 4 || (s.bubble.years >= 2 && rng.chance(0.35))) {
       bubbleMove = { sector: s.bubble.sector, ret: -rng.float(0.45, 0.7) };
-      ctx.log(`💥 The ${SECTORS[s.bubble.sector].name.toLowerCase()} bubble burst. Paper fortunes vanished in weeks.`, '💥', 'bad');
+      ctx.log(`💥 The ${bubbleName(state, s.bubble.sector).toLowerCase()} bubble burst. Paper fortunes vanished in weeks.`, '💥', 'bad');
       s.bubble = null;
     } else bubbleMove = { sector: s.bubble.sector, ret: rng.float(0.25, 0.7) };
   }

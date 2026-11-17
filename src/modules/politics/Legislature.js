@@ -37,6 +37,16 @@ import { lawExistsHere } from './LawsByCountry.js';
 import { allocateSeats, assignMemberParties, electionMood, partySystem, bodyCountry, partyInfo } from './PartySystem.js';
 import { eraYear, PRESENT } from '../world/Eras.js';
 
+/** What a new law is called where you live: an ordinance and a federal law in America, a by-law and an Act of Parliament in Britain. */
+function lawKind(state, level) {
+  const c = state.character.countryId ?? 'US';
+  if (c === 'US') return level === 'city' ? 'city ordinance' : level === 'state' ? 'state law' : 'federal law';
+  const brit = ['GB', 'IE', 'AU', 'NZ', 'CA', 'IN', 'ZA'].includes(c);
+  if (level === 'city') return brit ? 'council by-law' : 'municipal law';
+  if (level === 'state') return c === 'GB' ? 'law of the devolved parliament' : ['DE', 'AT', 'CH', 'AU', 'CA', 'IN', 'BR', 'MX', 'AR'].includes(c) ? 'state law' : 'regional law';
+  return brit ? 'Act of Parliament' : 'national law';
+}
+
 const money = (x) => `$${Math.round(x).toLocaleString()}`;
 
 /** The bodies above a place, smallest first. */
@@ -645,7 +655,7 @@ function finish(ctx, bill, stage, outcome) {
     enact(state, { level: bill.level, where: bill.where === 'US' ? null : bill.where, lawId: bill.lawId, value: bill.value, sponsor: bill.sponsor, age });
     body.history = [...body.history.slice(-9), { age, text: `${billTitle(bill)} — ${outcome}${bill.sponsor === 'you' ? ' (your bill)' : ''}` }];
     const law = LAWS[bill.lawId];
-    ctx.log(`${law.icon} New ${bill.level === 'city' ? 'city ordinance' : bill.level === 'state' ? 'state law' : 'federal law'}: ${billTitle(bill)}.${bill.sponsor === 'you' ? ' Your bill!' : ''}`, '🏛️', bill.sponsor === 'you' ? 'good' : undefined);
+    ctx.log(`${law.icon} New ${lawKind(state, bill.level)}: ${billTitle(bill)}.${bill.sponsor === 'you' ? ' Your bill!' : ''}`, '🏛️', bill.sponsor === 'you' ? 'good' : undefined);
     if (bill.sponsor === 'you') {
       state.politics.recognition = Math.min(100, state.politics.recognition + 5);
       if (state.politics.office) state.politics.office.approval = Math.min(100, state.politics.office.approval + 3);

@@ -242,7 +242,7 @@ export const EVENTS = {
     end(ctx) { endAll(ctx, 'francoPrussianWar', (cc) => (cc === 'FR' ? 'ended in defeat and the loss of Alsace-Lorraine' : 'ended in victory')); if (hereIs(ctx, 'FR')) ctx.log('The Emperor has been captured at Sedan. France is a republic again.', '🏛️', 'milestone'); },
   },
   germanUnification: { at: 1871, window: [1866, 1872], start(ctx) { news(ctx, 'The German Empire is proclaimed at Versailles', '🦅', 'world', 8); if (hereIs(ctx, 'DE')) ctx.log('The King of Prussia is German Emperor now. There is one Germany.', '🦅', 'milestone'); } },
-  longDepression: { at: 1873, window: [1873, 1874], lasts: [6, 8], start(ctx) { news(ctx, 'Panic: banks fail from Vienna to New York', '📉', 'world', 8); recession(ctx, 'financial', 4, '📉 The Panic of 1873: banks have failed and the railways are bankrupt. The Long Depression has begun.'); } },
+  longDepression: { at: 1873, window: [1873, 1874], lasts: [6, 8], start(ctx) { news(ctx, 'Panic: banks fail from Vienna to New York', '📉', 'world', 8); recession(ctx, 'financial', 4, '📉 The Long Depression: since the Panic of 1873 banks have failed, railways gone bankrupt and wages fallen.'); } },
   scrambleForAfrica: { at: 1884, window: [1883, 1886], start(ctx) { news(ctx, 'The powers carve up Africa at Berlin', '🗺️', 'world', 8); } },
   brazilRepublic: { at: 1889, window: [1886, 1891], start(ctx) { fallThrone(ctx, 'BR', 'The Emperor of Brazil is deposed; a republic is proclaimed'); } },
   spanishAmericanWar: {

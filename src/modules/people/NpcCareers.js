@@ -99,7 +99,7 @@ export function startCareer(rng, state, person, profession, { age = null, levelI
   const idx = levelIdx ?? clamp(Math.floor(((age ?? 25) - 22) / 6 + rng.float(-0.6, 0.6)), 0, Math.max(0, ladder.length - 3));
   const level = ladder[clamp(idx, 0, ladder.length - 1)];
   person.career = { professionId: profession.id, levelId: level.id, years: 0, inField: Math.max(0, (age ?? 25) - 22), awards: [], postings: [], elite: null, record: [], packId: packFor(state, profession.id)?.id ?? null };
-  person.job = periodTitle(level.title);
+  person.job = periodTitle(level.title, person.gender);
   person.sector = profession.sector === 'private' ? 'private' : 'public';
   person.careerIncome = Math.round(npcPay(profession, level, rng) * localWage(state));
   return person.career;
@@ -111,7 +111,7 @@ export const careerTitle = (person) => {
   if (!c) return person.job ?? null;
   const p = getProfession(c.professionId);
   const l = p?.levels.find((x) => x.id === c.levelId);
-  return l ? periodTitle(l.title) : person.job ?? null;
+  return l ? periodTitle(l.title, person.gender) : person.job ?? null;
 };
 
 /** Does a pack item apply to this person (their profession, your year and country)? */
@@ -159,7 +159,7 @@ export function careerYear(ctx, rng, person, { say = () => {}, rival = false } =
     const to = rng.pick(next);
     c.levelId = to.id;
     c.years = 0;
-    person.job = periodTitle(to.title);
+    person.job = periodTitle(to.title, person.gender);
     person.careerIncome = Math.max(person.careerIncome ?? 0, Math.round(npcPay(profession, to, rng) * localWage(state)));
     say(`${name} was promoted to ${person.job}.`, '📈', 'good');
   } else person.careerIncome = Math.round((person.careerIncome ?? npcPay(profession, level) * localWage(state)) * rng.float(1.0, 1.035));

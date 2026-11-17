@@ -44,7 +44,7 @@ export const LAWS = {
   },
   businessTax: {
     name: 'State corporate tax surcharge', icon: '🏢', kind: 'number', levels: ['state'], step: 0.01, min: 0, max: 0.06, lean: 'labor', combine: 'state',
-    unit: (v) => `${(v * 100).toFixed(0)}% on C-corp profits`,
+    unit: (v) => `${(v * 100).toFixed(0)}% on company profits`,
     base: { state: () => 0 },
     effect: 'An extra state tax on corporate profits.',
   },

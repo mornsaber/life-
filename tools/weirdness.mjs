@@ -9,7 +9,7 @@
  * Exit code 1 when anything fired, so it can run in CI as a long test.
  */
 import { Engine } from '../src/core/Engine.js';
-import { Store, STAT_KEYS } from '../src/core/State.js';
+import { Store, STAT_KEYS, ERA_DROPPED } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { VIEWS } from '../src/ui/Renderer.js';
@@ -216,6 +216,14 @@ if (!sorted.length) console.log('✔ Nothing weird found.');
 for (const [id, f] of sorted) {
   console.log(`\n✘ ${id}: ${f.count} times in ${f.lives.size} lives`);
   for (const e of f.examples) console.log(`    seed ${e.seed} ${e.countryId} ${e.year} age ${e.age}: ${e.detail}`);
+}
+// Lines State.addLog kept out of period lives as too modern: not failures (the safety net held), but
+// each one points at content that should be dated at its source.
+if (ERA_DROPPED.length) {
+  const by = new Map();
+  for (const d of ERA_DROPPED) { const k = d.text.replace(/[\d$,.]+/g, '#').slice(0, 90); by.set(k, (by.get(k) ?? 0) + 1); }
+  console.log(`\nℹ ${ERA_DROPPED.length} too-modern lines held back (first 500 kept); most common:`);
+  for (const [k, n] of [...by].sort((a, b) => b[1] - a[1]).slice(0, 12)) console.log(`    ${n}× ${k}`);
 }
 if (JSON_OUT) writeFileSync(JSON_OUT, JSON.stringify(sorted.map(([id, f]) => ({ id, count: f.count, lives: f.lives.size, examples: f.examples })), null, 2));
 process.exit(sorted.length ? 1 : 0);

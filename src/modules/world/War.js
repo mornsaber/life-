@@ -517,7 +517,12 @@ export const WarModule = {
         ctx.stat('happiness', 2);
         return ctx.log('You donated to the refugee appeal.', '💵');
       }
-      ctx.log(['You watched it on the news.', 'You changed the channel. It was on every channel.', 'You followed it on your phone, late into the night.'][ctx.state.character.age % 3], '📺');
+      const yr = (ctx.state.character.birthYear ?? 0) + ctx.state.character.age;
+      const lines = yr < 1925 ? ['You read every word of it in the newspaper.', 'You queued for the late edition outside the newsagent\'s.', 'You argued about it in the pub until closing time.']
+        : yr < 1955 ? ['You listened to it on the wireless.', 'The whole family sat round the wireless for the news.', 'You read every edition of the paper that day.']
+        : yr < 2008 ? ['You watched it on the news.', 'You changed the channel. It was on every channel.', 'You stayed up for the late bulletin.']
+        : ['You watched it on the news.', 'You changed the channel. It was on every channel.', 'You followed it on your phone, late into the night.'];
+      ctx.log(lines[ctx.state.character.age % 3], yr < 1955 ? '📰' : '📺');
     },
   },
 };

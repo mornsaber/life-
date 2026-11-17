@@ -13,6 +13,10 @@
  */
 import { STANDARD_DEDUCTION } from '../career/CareerEngine.js';
 
+const US = (state) => (state.character.countryId ?? 'US') === 'US';
+/** Who collects: the IRS in America, the tax office elsewhere. */
+const taxman = (state) => (US(state) ? 'The IRS' : 'The tax office');
+
 /** 2025 law: $40,000 SALT cap, phased down by 30% of income over $500,000 to a $10,000 floor. */
 export const SALT_CAP = 40000;
 const SALT_FLOOR = 10000;
@@ -61,7 +65,7 @@ export function carryUnpaidTax(ctx, tax) {
   const unpaid = Math.min(tax, -f.cash);
   f.cash += unpaid;
   f.tax.debt += unpaid;
-  ctx.log(`You couldn't pay $${unpaid.toLocaleString()} of your taxes. The IRS adds penalties and interest until it's paid.`, '🧾', 'bad');
+  ctx.log(`You couldn't pay $${unpaid.toLocaleString()} of your taxes. ${taxman(ctx.state)} adds penalties and interest until it's paid.`, '🧾', 'bad');
   return unpaid;
 }
 
@@ -81,10 +85,10 @@ function debtTick(ctx) {
     t.debt -= pay;
     if (t.debt <= 0) {
       t.plan = null;
-      ctx.log('You made the last payment on your IRS installment plan.', '🧾', 'good');
+      ctx.log(`You made the last payment on your ${US(ctx.state) ? 'IRS installment plan' : 'tax payment plan'}.`, '🧾', 'good');
       if (t.lien != null) {
         t.lien = null;
-        ctx.log('The IRS released its tax lien.', '📜', 'good');
+        ctx.log(`${taxman(ctx.state)} released its claim on your property.`, '📜', 'good');
       }
     }
     return;
@@ -94,7 +98,7 @@ function debtTick(ctx) {
     const plan = Math.ceil(t.debt / PLAN_YEARS);
     const insolvent = state.finances.cash + (state.retirement.dc ?? 0) * 0.5 < t.debt;
     ctx.prompt({
-      type: 'taxes.debt', icon: '🏛️', title: 'You Owe the IRS',
+      type: 'taxes.debt', icon: '🏛️', title: US(state) ? 'You Owe the IRS' : 'You Owe the Tax Office',
       text: `You owe $${t.debt.toLocaleString()} in back taxes, penalties and interest.`,
       options: [
         { id: 'plan', label: `📅 Installment agreement ($${plan.toLocaleString()}/yr for ${PLAN_YEARS} yr)`, hint: `$${PLAN_FEE} setup fee; stops collection` },
@@ -109,7 +113,7 @@ function debtTick(ctx) {
   if (t.unpaidYears >= 2 && t.lien == null && t.debt > 10000) {
     t.lien = state.character.age;
     ctx.emit('credit:event', { type: 'lien' });
-    ctx.log(`The IRS filed a federal tax lien against you for $${t.debt.toLocaleString()}.`, '📜', 'bad');
+    ctx.log(`${taxman(ctx.state)} ${US(ctx.state) ? 'filed a federal tax lien' : 'registered a charge'} against you for $${t.debt.toLocaleString()}.`, '📜', 'bad');
   }
   if (t.unpaidYears >= 3) {
     const wages = state.career.job?.salary ?? 0;
@@ -121,7 +125,7 @@ function debtTick(ctx) {
     }
     if (t.debt > PASSPORT_THRESHOLD && !t.passport && rng.chance(0.5)) {
       t.passport = true;
-      ctx.log('The IRS certified you as seriously delinquent. The State Department can now refuse your passport.', '🛂', 'warn');
+      ctx.log(US(ctx.state) ? 'The IRS certified you as seriously delinquent. The State Department can now refuse your passport.' : 'The tax office has taken you to court for the arrears.', '🛂', 'warn');
     }
   }
 }
@@ -133,8 +137,8 @@ function auditTick(ctx) {
   if (!rng.chance(auditOdds(state))) return;
   const big = (ly.gross ?? 0) > 1000000;
   ctx.prompt({
-    type: 'taxes.audit', icon: '🔎', title: 'IRS Audit',
-    text: `The IRS is examining last year's return ($${(ly.gross ?? 0).toLocaleString()} reported income${ly.itemized ? ', itemized' : ''}).`,
+    type: 'taxes.audit', icon: '🔎', title: US(state) ? 'IRS Audit' : 'Tax Inspection',
+    text: `${taxman(state)} is examining last year's return ($${(ly.gross ?? 0).toLocaleString()} reported income${ly.itemized ? ', itemized' : ''}).`,
     options: [
       { id: 'cpa', label: `🧮 Hire a CPA ($${(big ? 12000 : 3000).toLocaleString()})`, hint: 'Lower penalties; better odds of a clean result' },
       { id: 'self', label: '📂 Handle it yourself', hint: 'Free, stressful, riskier' },
@@ -165,7 +169,7 @@ export const Taxes = {
       if (!pay) return ctx.toast('No cash to pay with.', 'warn');
       ctx.spend(pay, 'IRS payment');
       t.debt -= pay;
-      ctx.log(`You paid the IRS $${pay.toLocaleString()}.${t.debt ? ` $${t.debt.toLocaleString()} still owed.` : ' Your tax debt is cleared.'}`, '🧾', t.debt ? undefined : 'good');
+      ctx.log(`You paid ${US(ctx.state) ? 'the IRS' : 'the tax office'} $${pay.toLocaleString()}.${t.debt ? ` $${t.debt.toLocaleString()} still owed.` : ' Your tax debt is cleared.'}`, '🧾', t.debt ? undefined : 'good');
       if (!t.debt) {
         t.plan = null;
         t.unpaidYears = 0;
@@ -178,7 +182,7 @@ export const Taxes = {
       ctx.spend(PLAN_FEE, 'IRS installment setup fee', { allowDebt: true });
       t.plan = { annual: Math.ceil(t.debt / PLAN_YEARS) };
       t.unpaidYears = 0;
-      ctx.log(`You set up an IRS installment agreement: $${t.plan.annual.toLocaleString()}/yr.`, '📅');
+      ctx.log(`You set up ${US(ctx.state) ? 'an IRS installment agreement' : 'a payment plan with the tax office'}: $${t.plan.annual.toLocaleString()}/yr.`, '📅');
     },
   },
 
@@ -202,15 +206,15 @@ export const Taxes = {
         if (rng.chance(data.insolvent ? 0.45 : 0.05)) {
           const settle = Math.round(t.debt * rng.float(0.1, 0.3));
           ctx.spend(settle, 'Offer in compromise', { allowDebt: true });
-          ctx.log(`The IRS accepted your offer in compromise: $${settle.toLocaleString()} settles $${t.debt.toLocaleString()}. You must file and pay on time for five years.`, '🤝', 'good');
+          ctx.log(`${taxman(ctx.state)} accepted your offer in compromise: $${settle.toLocaleString()} settles $${t.debt.toLocaleString()}. You must file and pay on time for five years.`, '🤝', 'good');
           t.debt = 0;
           t.unpaidYears = 0;
           return;
         }
-        ctx.log('The IRS rejected your offer in compromise. You can still set up a payment plan.', '🙅', 'warn');
+        ctx.log(`${taxman(ctx.state)} rejected your offer in compromise. You can still set up a payment plan.`, '🙅', 'warn');
         return;
       }
-      ctx.log('You stopped opening the envelopes from the IRS.', '🙈', 'warn');
+      ctx.log(`You stopped opening the envelopes from ${US(ctx.state) ? 'the IRS' : 'the tax office'}.`, '🙈', 'warn');
     },
     audit(ctx, data, optionId) {
       const { state, rng } = ctx;
@@ -235,7 +239,7 @@ export const Taxes = {
         t.debt += owed;
         t.unpaidYears = 0;
       }
-      ctx.log(result === 'clean' ? 'The audit closed with no change. Your records held up.' : result === 'adjusted' ? `The IRS disallowed some deductions: $${owed.toLocaleString()} in back taxes, interest and penalties.` : `The IRS found the income you didn't report: $${owed.toLocaleString()} in back taxes and ${cpa ? 'accuracy' : 'fraud'} penalties.`, '🔎', result === 'clean' ? 'good' : 'bad');
+      ctx.log(result === 'clean' ? 'The audit closed with no change. Your records held up.' : result === 'adjusted' ? `${taxman(ctx.state)} disallowed some deductions: $${owed.toLocaleString()} in back taxes, interest and penalties.` : `The IRS found the income you didn't report: $${owed.toLocaleString()} in back taxes and ${cpa ? 'accuracy' : 'fraud'} penalties.`, '🔎', result === 'clean' ? 'good' : 'bad');
     },
   },
 };

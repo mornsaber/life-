@@ -89,7 +89,7 @@ const tests = {
     const { engine, state } = worker('IE', 1925, null, null);
     marry(engine, state);
     assert.match(eraWorkBlock(state, getProfession('education')) ?? '', /marriage bar/);
-    assert.equal(eraWorkBlock(state, getProfession('corporate')), null, 'private work is open');
+    assert.equal(eraWorkBlock(state, getProfession('retail')), null, 'private work is open');
     const later = worker('IE', 1960, null, null);
     marry(later.engine, later.state);
     assert.ok(yearNow(later.state) > 1973);

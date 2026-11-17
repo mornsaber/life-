@@ -22,7 +22,7 @@ const CHILDHOOD_EVENTS = [
   { minAge: 5, maxAge: 12, text: 'You won the class spelling bee.', icon: '🐝', stats: { smarts: 3, happiness: 3 } },
   { minAge: 6, maxAge: 14, text: 'You broke your arm falling off the monkey bars.', icon: '🩹', stats: { health: -6, happiness: -4 } },
   { minAge: 6, maxAge: 12, text: 'You started piano lessons. Your family endured them.', icon: '🎹', stats: { smarts: 2 } },
-  { minAge: 6, maxAge: 13, text: 'You joined a Little League team and hit your first home run.', icon: '⚾', stats: { fitness: 3, happiness: 4 } },
+  { minAge: 6, maxAge: 13, when: (s) => (s.character.countryId ?? 'US') === 'US', text: 'You joined a Little League team and hit your first home run.', icon: '⚾', stats: { fitness: 3, happiness: 4 } },
   { minAge: 7, maxAge: 12, text: 'You built a tree fort with the neighborhood kids.', icon: '🌳', stats: { happiness: 4, fitness: 1 } },
   { minAge: 7, maxAge: 13, text: 'Your grandparent passed away. You remember their kitchen.', icon: '🕯️', stats: { happiness: -6 } },
   { minAge: 8, maxAge: 17, text: 'You made the school sports team.', icon: '🏅', stats: { fitness: 5, happiness: 4 } },
