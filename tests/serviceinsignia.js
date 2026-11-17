@@ -5,7 +5,7 @@
  */
 import assert from 'node:assert/strict';
 import { jobInsignia } from '../src/ui/Insignia.js';
-import { getProfession } from '../src/modules/career/JobTrees.js';
+import { getProfession, NATIONAL_PROFESSIONS } from '../src/modules/career/JobTrees.js';
 
 const ins = (cc, pid, id) => jobInsignia({ professionId: pid, levelId: id }, getProfession(pid), cc) ?? '';
 
@@ -35,6 +35,15 @@ const tests = {
     assert.equal(ins('FR', 'statePolice', 'detSergeant'), ins('FR', 'statePolice', 'captain'));
     assert.equal(ins('BR', 'statePolice', 'detLieutenant'), '');
     assert.notEqual(ins('BR', 'statePolice', 'captain'), '');
+  },
+  'national forces on agency ladders wear rank: the RCMP, the Gendarmerie, the Carabinieri, the CRPF'() {
+    const nat = (id, title) => { const p = NATIONAL_PROFESSIONS[id]; const l = p.levels.find((x) => x.title === title); assert.ok(l, `${id}: ${title}`); return jobInsignia({ professionId: id, levelId: l.id }, p, p.country) ?? ''; };
+    assert.notEqual(nat('ca_fbi', 'Corporal'), '', 'an RCMP corporal');
+    assert.notEqual(nat('fr_usms', 'Capitaine'), '');
+    assert.notEqual(nat('it_usms', 'Maresciallo'), '');
+    assert.notEqual(nat('in_usms', 'Commander'), '');
+    assert.equal(nat('fr_usms', 'Fugitive Task Force Officer'), '', 'specialist rungs carry no extra rank');
+    assert.notEqual(nat('it_fbi', 'Ispettore'), nat('it_fbi', 'Commissario'), 'an Ispettore is not a Commissario');
   },
 };
 

@@ -672,6 +672,34 @@ const DE_POLICE = {
 /** Indian police below the gazetted ranks: stars. */
 const IN_POLICE = { investigator: () => stars(1, SILVER), sergeant: () => stars(2, SILVER), majorCrimes: () => stars(2, SILVER), lieutenant: () => stars(3, SILVER), detSergeant: () => stars(3, SILVER), detLieutenant: () => stars(3, SILVER) };
 
+/**
+ * National forces built on a plain-clothes agency's ladder (the RCMP, the Carabinieri, the Gendarmerie,
+ * Japan's National Police Agency and Imperial Guard, Italy's Polizia di Stato, the CRPF, the AFP, the UK
+ * Border Force): they wear rank, read from the rung's own title. Most specific titles first.
+ */
+const UNIFORMED_NATIONAL = new Set(['ca_fbi', 'jp_fbi', 'it_fbi', 'au_fbi', 'gb_borderPatrol', 'jp_usss', 'ps_usss', 'it_usms', 'fr_usms', 'in_usms']);
+const TITLE_RANK = [
+  [/Behavioural|Analyst|Task Force|Close Protection|Tactical Team|trainee|Trainee|Élève|Allievo/, null],
+  [/Director-General|Director General|Commissioner|Head of Protection|Chief Superintendent|Deputy Inspector General|Général|Generale|^Questore/, '2star'],
+  [/Deputy Director|Director of Operations/, '1star'],
+  [/Head of Unit|Colonel|Colonnello|Senior Superintendent|Vice Questore|Superintendent of Police|Deputy Head|^Commander/, 'col'],
+  [/Commandant|Chef d'escadron|Maggiore|Deputy Commander|Port Director|Superintendent(?! of)/, 'major'],
+  [/Deputy Superintendent|Capitaine|Capitano|Captain|Commissario|Duty Manager|Team Leader|Assistant Inspector|Sub-Inspector/, null],
+  [/Ispettore/, 'ssgt'],
+  [/Inspector/, 'capt'],
+  [/Lieutenant|Tenente|Supervisor/, 'lt'],
+  [/Adjudant|Maresciallo|Staff Sergeant|Maréchal des logis-chef|Senior (Border |Protection )?Officer/, 'ssgt'],
+  [/Sergeant|Brigadiere|Brigadier/, 'sgt'],
+  [/Corporal|Appuntato|Caporal/, 'cpl'],
+];
+/** Ranks for titles the list above leaves to a second look (company officers below the field ranks). */
+const TITLE_RANK_2 = [[/Deputy Superintendent|Capitaine|Capitano|Captain|Commissario|Duty Manager/, 'capt'], [/Team Leader|Assistant Inspector|Sub-Inspector/, 'lt']];
+function titleRank(title) {
+  const t = String(title ?? '');
+  for (const [re, rank] of TITLE_RANK) if (re.test(t)) return rank ?? TITLE_RANK_2.find(([r]) => r.test(t))?.[1] ?? null;
+  return null;
+}
+
 /** A British fire officer's impellers (a wreath round them for principal officers; a bar beneath for an area manager). */
 const impellers = (n, wreath = false, bar = false) => svg(12 + n * 12 + (wreath ? 8 : 0), `${wreath ? `<path d="M4 12 Q2 28 12 32 M${8 + n * 12 + 12} 12 Q${10 + n * 12 + 14} 28 ${n * 12 + 8} 32" fill="none" stroke="${SILVER}" stroke-width="1.6"/>` : ''}${Array.from({ length: n }, (_, i) => `<text x="${(wreath ? 14 : 10) + i * 12}" y="22" font-size="13" text-anchor="middle" fill="${SILVER}">✲</text>`).join('')}${bar ? `<rect x="${wreath ? 8 : 4}" y="26" width="${n * 12 + 4}" height="2.5" fill="${SILVER}"/>` : ''}`);
 const epaulettebars = (n) => svg(30, Array.from({ length: n }, (_, i) => `<rect x="5" y="${10 + i * 7}" width="20" height="3.5" rx="1" fill="${SILVER}"/>`).join(''));
@@ -713,6 +741,11 @@ export function jobInsignia(job, profession, country = 'US') {
   if (OWN[key]) return null;
   if (STRIPES[key]) return STRIPES[key][id] ? sleeve(STRIPES[key][id], SILVER_STRIPES.includes(key) ? SILVER : GOLD, ENGINEERS.test(id) ? '#7b4fa0' : null) : null;
   // British police: pips and crowns, then a chief officer's crossed tipstaves.
+  if (UNIFORMED_NATIONAL.has(profession?.id)) {
+    const rank = titleRank(profession.levels.find((l) => l.id === id)?.title);
+    // A police corporal wears two chevrons even where the army's corporal pattern draws none.
+    return draw(rank, profession.country ?? country) || (rank === 'cpl' ? chevrons(2, 0, '', SILVER) : null);
+  }
   if (POLICE_LIKE.includes(key) && country === 'GB') return GB_POLICE[id]?.() ?? null;
   if (POLICE_LIKE.includes(key) && ['DE', 'AT'].includes(country)) return DE_POLICE[id]?.() ?? null;
   // Brazil's Civil Police (the detective rungs) wear no military rank; India's inspectors wear stars.
