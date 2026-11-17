@@ -153,7 +153,7 @@ export function postingsCard(state) {
   if (!job || !opts.length) return '';
   const cur = job.assignment ? opts.find((o) => o.def.id === job.assignment.id) : null;
   const rows = opts.map(({ def, ok, reason }) => (def.id === job.assignment?.id ? ''
-    : `<li class="fund-row"><span>${def.icon} <b>${esc(def.name(state))}</b><br><small class="muted">${esc(def.blurb)}</small></span>${button('Put in for it', 'assignments.request', { arg: def.id, variant: 'small', disabled: !ok, hint: reason ?? undefined })}</li>`)).join('');
+    : `<li class="fund-row"><span>${def.icon} <b>${esc(def.name(state).replace(/^the /, ''))[0].toUpperCase()}${esc(def.name(state).replace(/^the /, '')).slice(1)}</b><br><small class="muted">${esc(def.blurb)}</small></span>${button('Put in for it', 'assignments.request', { arg: def.id, variant: 'small', disabled: !ok, hint: reason ?? undefined })}</li>`)).join('');
   return card('Postings', `${cur ? `<p>${cur.def.icon} Posted to <b>${esc(cur.def.name(state))}</b> since age ${job.assignment.since}: you're <b>${esc(job.title)}</b>. Your rank and its badge stay the same.</p><div class="toggle-row">${button('↩️ Back to general duties', 'assignments.leave', { variant: 'small ghost' })}</div>` : '<p class="fine">A posting changes the work, and sometimes the title, not your rank.</p>'}<ul class="history">${rows}</ul>`, { icon: '🗂️' });
 }
 

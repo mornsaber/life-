@@ -405,7 +405,9 @@ function legacyCard(state) {
   const spouse = spouseOf(state);
   const policy = (who, pol) => (pol ? `${money(pol.benefit)} (premium ${money(pol.premium)}/yr, until you're ${pol.endsAge})` : 'None');
   const amounts = [250000, 500000, 1000000];
-  const fundRows = kids.map((k) => `<li class="fund-row"><span>🎓 ${esc(k.firstName)}'s 529 · <b>${money(p.fund529[k.id] ?? 0)}</b></span>
+  // A 529 plan is American (from 1996); elsewhere, and earlier, it's simply money put by for their schooling.
+  const fundName = (state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1996 ? '529' : 'education fund';
+  const fundRows = kids.map((k) => `<li class="fund-row"><span>🎓 ${esc(k.firstName)}'s ${fundName} · <b>${money(p.fund529[k.id] ?? 0)}</b></span>
       ${[1000, 5000].map((a) => button(`+${money(a)}`, 'people.contribute529', { arg: `${k.id}:${a}`, variant: 'tiny', disabled: state.finances.cash < a })).join('')}</li>`).join('');
   return card('Legacy', `
     ${kv([
@@ -425,9 +427,9 @@ function legacyCard(state) {
       ${li.self ? button('Cancel your policy', 'people.lifeInsurance', { arg: 'self:0', variant: 'small ghost' }) : ''}
     </div>
     ${planSection(state)}`)}
-    ${fundRows ? `<h4 class="sub">College savings</h4><ul class="history">${fundRows}</ul>` : ''}
+    ${fundRows ? `<h4 class="sub">${(state.character.countryId ?? 'US') === 'US' ? 'College savings' : 'Savings for their education'}</h4><ul class="history">${fundRows}</ul>` : ''}
     ${p.arrears ? `<div class="toggle-row">${button('⚖️ Pay support arrears', 'people.payArrears', { variant: 'small', disabled: state.finances.cash <= 0 })}</div>` : ''}
-    <p class="fine">Estates pay the funeral, then debts, then probate, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
+    <p class="fine">Estates pay the funeral, then debts, then probate, then ${(state.character.countryId ?? 'US') === 'US' ? `estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own)` : 'any death duties or inheritance tax'}, then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
 }
 
 /** Who gets more and who gets nothing (people/LateLife.js). */
