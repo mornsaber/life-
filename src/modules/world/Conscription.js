@@ -165,7 +165,7 @@ function universalPrompt(ctx, scheme) {
   const months = scheme.months?.[state.character.gender] ?? scheme.months?.male ?? 24;
   const student = scheme.defer && Boolean(state.education.enrolled) && state.character.age < (scheme.deferUntil ?? 25);
   const forces = FORCES[countryOf(state).id];
-  const branches = (scheme.branches ?? Object.keys(forces?.branches ?? { army: 1 }).filter((b) => b !== 'guard')).filter((b) => forces?.branches?.[b]);
+  const branches = (scheme.branches ?? Object.keys(forces?.branches ?? { army: 1 }).filter((b) => b !== 'guard')).filter((b) => forces?.branches?.[b] && (forces.branches[b].enlisted?.length ?? 1) > 0);
   ctx.prompt({
     type: 'conscription.universal', icon: countryOf(state).flag ?? '🪖', title: scheme.name ?? 'National Service',
     text: `${scheme.text ?? `National service is compulsory: ${Math.round(months / 12 * 10) / 10} years for you, starting now.`}${student ? ' You can defer while you study.' : ''}`,

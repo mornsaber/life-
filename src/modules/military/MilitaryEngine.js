@@ -224,7 +224,7 @@ export function rankOf(svc) {
   // Five stars (Wartime.js) sit above the table; an acting rank says so.
   if (svc.fiveStar) return { code: `${prefix}-${svc.grade + 2}`, title: fiveStarTitle(svc), grade: svc.grade, max: titles.length - 1 };
   // A Gurkha private is a Rifleman.
-  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : periodRank(svc.nation, svc.branch, svc.track, svc.grade, titles[svc.grade]);
+  const title = svc.gurkha && svc.track === 'enlisted' && svc.grade === 0 ? 'Rifleman' : periodRank(svc.nation, svc.branch, svc.track, svc.grade, titles[svc.grade] ?? titles.at(-1) ?? (svc.track === 'enlisted' ? 'Private' : 'Officer'));
   return { code: `${prefix}-${svc.grade + 1}`, title: `${svc.acting ? 'Acting ' : ''}${title}`, grade: svc.grade, max: titles.length - 1 };
 }
 
