@@ -360,6 +360,7 @@ function births(ctx) {
     p.list.push(child);
     settleNewborn(ctx, child);
     born.push(child);
+    ctx.emit('people:born', { person: child, adopted });
   }
   // Childbirth, at the risk of its day, for whoever gave birth.
   const natural = !adopted && !p.expecting.via;

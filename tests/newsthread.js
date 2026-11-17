@@ -28,6 +28,25 @@ const tests = {
     assert.ok(t.every((x) => x.year >= 1911 && x.year <= 1950));
     assert.match(newsThreadCard(state), /Your Life in the News/);
   },
+  'the year you married someone is the year you married them'() {
+    const { engine, state } = life('GB', 1905, 33);
+    state.people.list.push({ id: 'per_tom', firstName: 'Tom', relation: 'spouse', gender: 'male', alive: true, ageOffset: 0 });
+    engine.context().emit('people:married', { personId: 'per_tom' });
+    assert.match(state.news.mine.text, /the year you married Tom/);
+    const before = state.news.thread.length;
+    state.prompts = [];
+    engine.ageUp();
+    if (state.news.thread.length > before) assert.match(state.news.thread.at(-1).text, /married Tom/);
+    assert.equal(state.news.mine, undefined);
+  },
+  'a married woman in 1930 keeps house'() {
+    const { state } = life('GB', 1900, 30);
+    state.character.gender = 'female';
+    state.career.job = null;
+    state.people.list = state.people.list.filter((p) => p.relation !== 'child');
+    state.people.list.push({ id: 'per_h', firstName: 'Bill', relation: 'spouse', gender: 'male', alive: true, ageOffset: 2 });
+    assert.match(whereYouWere(state), /keeping house/);
+  },
   'where you were: at school as a child'() {
     const { state } = life('US', 1950, 10);
     assert.match(whereYouWere(state), /you were 10/);

@@ -9,6 +9,9 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { caneHere, leavingExam } from '../src/modules/education/SchoolDays.js';
+import { candidateBonus } from '../src/modules/career/InterviewSystem.js';
+import { getProfession } from '../src/modules/career/JobTrees.js';
+import { schoolingCard } from '../src/ui/views/SchoolingCard.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, birth, age, seed = 4) {
@@ -20,6 +23,15 @@ function life(cc, birth, age, seed = 4) {
 const said = (state, re) => state.log.some((b) => b.entries.some((e) => re.test(e.text)));
 
 const tests = {
+  'O-levels passed help a school-leaver get hired, and show on the School tab'() {
+    const { state } = life('GB', 1950, 20);
+    const prof = getProfession('police');
+    state.schoolDays = { seen: {}, exams: [] };
+    const none = candidateBonus(state, prof);
+    state.schoolDays.exams = [{ name: 'O-levels', year: 1966, pass: true }];
+    assert.ok(candidateBonus(state, prof) > none);
+    assert.match(schoolingCard(state), /O-levels \(1966\): passed/);
+  },
   'the cane in a 1960 English school, not in a 1960 Swedish one'() {
     assert.equal(caneHere(life('GB', 1950, 10).state), true);
     assert.equal(caneHere(life('SE', 1950, 10).state), false);

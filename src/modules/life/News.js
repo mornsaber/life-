@@ -19,6 +19,13 @@ import { portfolioValue, sell } from '../investing/Brokerage.js';
 import { isOnActiveDuty } from '../../core/State.js';
 
 const MAX_THREAD = 120;
+const REL_WORD = { spouse: { male: 'your husband', female: 'your wife' }, mother: 'your mother', father: 'your father', child: { male: 'your son', female: 'your daughter' }, sibling: { male: 'your brother', female: 'your sister' } };
+const relWord = (p) => { const w = REL_WORD[p.relation]; return typeof w === 'string' ? w : w?.[p.gender] ?? (p.relation === 'spouse' ? 'your partner' : 'your child'); };
+/** The year's own moment in your life, kept for the news line (the heaviest wins). */
+function mine(state, weight, text) {
+  const n = ensure(state);
+  if (!n.mine || n.mine.weight < weight) n.mine = { weight, text };
+}
 /** Where you were in your own life this year, in a clause ("you were twelve, at school in Leeds"). */
 export function whereYouWere(state) {
   const c = state.character;
@@ -33,6 +40,14 @@ export function whereYouWere(state) {
   if (state.education?.enrolled) return `you were a student${at}`;
   if (job) return `you were ${/^[aeiou]/i.test(job.title) ? 'an' : 'a'} ${job.title}${job.employer?.name ? ` at ${job.employer.name}` : ''}`;
   if (state.retirement?.retired || c.age >= 66) return `you were ${c.age} and retired${at}`;
+  // At home: before the 1970s most married women kept house, and anyone with small children was busy.
+  const people = state.people?.list ?? [];
+  const married = people.some((p) => p.alive && p.relation === 'spouse');
+  const little = people.some((p) => p.alive && p.relation === 'child' && c.age + (p.ageOffset ?? 0) < 6);
+  const y = (c.birthYear ?? 0) + c.age;
+  if (little && (c.gender === 'female' || married)) return `you were at home with the children${at}`;
+  if (married && c.gender === 'female' && y < 1975) return `you were keeping house${at}`;
+  if ((state.health?.conditions ?? []).some((x) => (x.severity ?? 0) >= 70 && !x.remission)) return `you were ${c.age} and in poor health${at}`;
   return `you were ${c.age}, between jobs${at}`;
 }
 
@@ -106,11 +121,12 @@ export function printPaper(ctx) {
   if (big) {
     const year = (state.character.birthYear ?? 0) + state.character.age;
     const head = big.headline.replace(/[.!]$/, '');
-    const line = `${head[0].toUpperCase()}${head.slice(1)}; ${whereYouWere(state)}.`;
+    const line = `${head[0].toUpperCase()}${head.slice(1)}; ${n.mine?.text ?? whereYouWere(state)}.`;
     (n.thread ??= []).push({ year, age: state.character.age, icon: big.icon, text: line });
     if (n.thread.length > MAX_THREAD) n.thread.shift();
     ctx.log(`${year}: ${line}`, big.icon ?? '📰', 'info');
   }
+  delete n.mine;
   // You made the paper: a rival has something to say.
   const mine = stories.find((s) => s.you);
   const rival = rivalsOf(state).find((r) => !r.friend);
@@ -136,6 +152,18 @@ export const NewsModule = {
 
   setup(engine) {
     engine.bus.on('news:story', ({ ctx, ...story }) => addStory(ctx.state, story));
+    // Your own year, for the news line: "…; the year you married Tom."
+    const name = (s, id) => s.people?.list?.find((p) => p.id === id)?.firstName;
+    engine.bus.on('people:married', ({ ctx, personId }) => mine(ctx.state, 6, `the year you married ${name(ctx.state, personId) ?? 'your sweetheart'}`));
+    engine.bus.on('people:born', ({ ctx, person, adopted }) => mine(ctx.state, 6, adopted ? `the year you adopted ${person.firstName}` : `the year ${relWord(person)} ${person.firstName} was born`));
+    engine.bus.on('people:dies', ({ ctx, person }) => { if (['spouse', 'child', 'mother', 'father'].includes(person?.relation)) mine(ctx.state, person.relation === 'sibling' ? 4 : 7, `the year you lost ${relWord(person)}`); });
+    engine.bus.on('legal:incarcerated', ({ ctx }) => mine(ctx.state, 6, 'the year you went to prison'));
+    engine.bus.on('migration:moved', ({ ctx, to }) => mine(ctx.state, 5, `the year you emigrated to ${COUNTRIES[to]?.name ?? 'a new country'}`));
+    engine.bus.on('conscription:enlist', ({ ctx }) => mine(ctx.state, 5, 'the year you were called up'));
+    engine.bus.on('business:started', ({ ctx, biz }) => mine(ctx.state, 4, `the year you opened ${biz?.name ?? 'your own business'}`));
+    engine.bus.on('career:promoted', ({ ctx, job }) => mine(ctx.state, 3, `the year you were made ${job?.title ?? 'up'}`));
+    engine.bus.on('education:graduated', ({ ctx }) => mine(ctx.state, 3, 'the year you graduated'));
+    engine.bus.on('career:hired', ({ ctx, job, returning }) => { if (!returning && job?.title) mine(ctx.state, 2, `the year you started as ${/^[aeiou]/i.test(job.title) ? 'an' : 'a'} ${job.title}${job.employer?.name ? ` at ${job.employer.name}` : ''}`); });
     engine.bus.on('disaster:struck', ({ ctx, disaster }) => addStory(ctx.state, { tier: 'local', headline: `${disaster?.name ?? 'Disaster'} strikes ${REGIONS[ctx.state.character.regionId]?.name?.split(',')[0] ?? 'the region'}`, weight: 7, icon: '🌪️' }));
     engine.bus.on('fame:scandal', ({ ctx, headline }) => { if (fameScore(ctx.state) >= 15) addStory(ctx.state, { tier: fameScore(ctx.state) >= 50 ? 'national' : 'local', headline: `${ctx.state.character.firstName} ${ctx.state.character.lastName} in ${headline ?? 'scandal'}`.slice(0, 120), weight: 6, icon: '🗞️', you: true }); });
     engine.bus.on('politics:officeChanged', ({ ctx, officeId }) => { if (officeId) addStory(ctx.state, { tier: 'local', headline: `${ctx.state.character.firstName} ${ctx.state.character.lastName} takes office`, weight: 4, icon: '🏛️', you: true }); });

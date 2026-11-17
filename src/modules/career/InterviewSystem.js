@@ -217,8 +217,12 @@ export function candidateBonus(state, profession) {
   bonus += Math.min(0.08, prestige(state) / 800);
   if (profession.exam && examRequired(state, profession.exam)) {
     const exam = examStatus(state, profession.exam);
-    bonus += clamp((exam.rankedScore - 75) / 100, -0.05, 0.2);
+    bonus += clamp(((exam.rankedScore ?? exam.score ?? 0) - 75) / 100, -0.05, 0.2);
   }
+  // School-leaving exams (education/SchoolDays.js): before mass higher education, a School Certificate
+  // or O-levels were what an office, a bank or the civil service asked to see.
+  const exams = state.schoolDays?.exams ?? [];
+  if (exams.length && !state.education.degrees.some((d) => ['bachelor', 'master', 'phd', 'professional', 'jd', 'md'].includes(d.type))) bonus += exams.some((e) => e.pass) ? 0.06 : -0.03;
   // Teen part-time work counts as experience for a first real job.
   if (!state.career.history.length) bonus += Math.min(0.08, (state.k12?.jobYears ?? 0) * 0.02);
   bonus -= backgroundCheck(state, profession).penalty ?? 0;
