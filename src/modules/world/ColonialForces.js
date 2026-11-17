@@ -38,8 +38,9 @@ const INDOCHINA = ['VN', 'LA', 'KH'];
 const BRITISH_INDIA = ['IN', 'PK', 'BD', 'MM'];
 
 const RANKS = {
-  sepoy: { enlisted: ['Sepoy', 'Lance Naik', 'Naik', 'Havildar', 'Company Havildar-Major', 'Company Quartermaster Havildar', 'Regimental Havildar-Major', 'Regimental Quartermaster Havildar'], warrant: ['Jemadar', 'Subedar', 'Subedar-Major'] },
-  gurkha: { enlisted: ['Rifleman', 'Lance Naik', 'Naik', 'Havildar', 'Company Havildar-Major', 'Company Quartermaster Havildar', 'Regimental Havildar-Major', 'Regimental Quartermaster Havildar'], warrant: ['Jemadar', 'Subedar', 'Subedar-Major'] },
+  // The top of a sepoy's ladder is the Viceroy's commission: jemadar, subedar, subedar-major.
+  sepoy: { enlisted: ['Sepoy', 'Lance Naik', 'Naik', 'Havildar', 'Havildar-Major', 'Jemadar (VCO)', 'Subedar (VCO)', 'Subedar-Major (VCO)', 'Honorary Captain'], warrant: ['Jemadar', 'Subedar', 'Subedar-Major'] },
+  gurkha: { enlisted: ['Rifleman', 'Lance Naik', 'Naik', 'Havildar', 'Havildar-Major', 'Jemadar (VCO)', 'Subedar (VCO)', 'Subedar-Major (VCO)', 'Honorary Captain'], warrant: ['Jemadar', 'Subedar', 'Subedar-Major'] },
   askari: { enlisted: ['Askari', 'Lance Corporal', 'Corporal', 'Sergeant', 'Colour Sergeant', 'Company Sergeant-Major', 'Regimental Sergeant-Major'], warrant: ['Effendi', 'Effendi (Senior)', 'Effendi (Senior)'] },
   tirailleur: { enlisted: ['Tirailleur de 2e classe', 'Tirailleur de 1re classe', 'Caporal', 'Caporal-chef', 'Sergent', 'Sergent-chef', 'Adjudant', 'Adjudant-chef'], warrant: ['Sous-lieutenant indigène', 'Lieutenant indigène', 'Lieutenant indigène'] },
   knil: { enlisted: ['Soldaat', 'Soldaat der 1e klasse', 'Korporaal', 'Sergeant', 'Sergeant-majoor', 'Adjudant-onderofficier'], warrant: ['Adjudant', 'Adjudant', 'Adjudant'] },

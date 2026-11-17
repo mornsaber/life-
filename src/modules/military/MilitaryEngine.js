@@ -35,6 +35,8 @@ import { periodRank, periodBranch, branchExists, branchFrom } from '../world/Era
 import { PURCHASE_MIN_AGE, REGIMENTS, firstCommissionPrice, purchaseEra, purchaseMeans, purchaseYear, sellOut } from './Purchase.js';
 import { yearNow, diplomaExpected, degreesOptional } from '../world/Eras.js';
 import { colonialBranchBlock } from '../world/ColonialForces.js';
+/** Set by military/ColonialSoldiers.js (avoids an import cycle). */
+export const COMMISSION_BLOCK = { fn: null };
 
 const ARMY_OFFICERS = ['Second Lieutenant', 'First Lieutenant', 'Captain', 'Major', 'Lieutenant Colonel', 'Colonel', 'Brigadier General', 'Major General', 'Lieutenant General', 'General'];
 const NAVAL_OFFICERS = ['Ensign', 'Lieutenant (j.g.)', 'Lieutenant', 'Lieutenant Commander', 'Commander', 'Captain', 'Rear Admiral (LH)', 'Rear Admiral', 'Vice Admiral', 'Admiral'];
@@ -364,6 +366,8 @@ export function enlistmentEligibility(state, branchId, track, component = 'reser
   // A colony has its own army (and seldom anything else): world/ColonialForces.js.
   const colonialBlock = colonialBranchBlock(state, branchId);
   if (colonialBlock) return { ok: false, reason: colonialBlock };
+  // A colonial subject's commission came late (military/ColonialSoldiers.js).
+  if (track !== 'enlisted') { const cb = COMMISSION_BLOCK.fn?.(state); if (cb) return { ok: false, reason: cb }; }
   if (b.reserveOnly && component === 'active') return { ok: false, reason: `The ${b.name} is a part-time force` };
   if (!branchExists(state, isAbroad(state) ? countryOf(state).id : 'US', branchId)) return { ok: false, reason: `Doesn't exist yet (from ${branchFrom(isAbroad(state) ? countryOf(state).id : 'US', branchId)})` };
   if (isAbroad(state) && branchId === 'army' && component === 'reserve' && armyReserveIsGuard(countryOf(state).id)) return { ok: false, reason: `Part-time soldiers join the ${nationalBranch(countryOf(state).id, 'guard').name}` };

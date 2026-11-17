@@ -120,7 +120,7 @@ export function joinCampaign(ctx, svc, war, campaign) {
   svc.campaigns.push({ id: campaign.id, name: campaign.name, year: yearNow(state), war: war.id });
   if (first) ctx.log(campaign.text, '🎖️', 'info');
   const nation = svc.nation ?? 'US';
-  if (campaign.star && CW.includes(nation) && !state.honors.some((h) => h.name === campaign.star)) {
+  if (campaign.star && (CW.includes(nation) || svc.colonial?.ruler === 'GB') && !state.honors.some((h) => h.name === campaign.star)) {
     addHonor(state, { id: `campaign.${campaign.id}`, source: 'military', name: campaign.star, icon: '⭐', prestige: 3, precedence: 60, citation: `For service in ${campaign.name}.`, ribbon: STARS[campaign.star] });
     ctx.log(`You were awarded the ${campaign.star}.`, '⭐', 'honor');
   }
