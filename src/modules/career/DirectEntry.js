@@ -39,6 +39,8 @@ export const DIRECT_ENTRY = {
   },
   GB: {
     police: [
+      // Lord Trenchard's Hendon scheme (1934–39): graduates and public-school men straight in as Junior Station Inspectors.
+      route('hendon', 'Metropolitan Police College, Hendon (the Trenchard scheme)', 'lieutenant', { education: 'highschool', maxAge: 26, odds: 0.12, school: 'fifteen months at the Metropolitan Police College, Hendon' }),
       route('dei', 'Direct Entry Inspector', 'lieutenant', { odds: 0.15, school: 'a two-year direct-entry programme' }),
       route('des', 'Direct Entry Superintendent (Metropolitan Police)', 'deputyChief', { education: 'bachelor', workYears: 8, maxAge: 55, odds: 0.06, leadership: true, school: 'an 18-month direct-entry programme' }),
     ],
@@ -46,7 +48,7 @@ export const DIRECT_ENTRY = {
   FR: {
     statePolice: [
       route('lieutenant', 'Concours externe de lieutenant de police', 'lieutenant', { odds: 0.12, school: 'the École nationale supérieure de la police (ENSP)' }),
-      route('commissaire', 'Concours externe de commissaire de police', 'detCaptain', { education: 'master', odds: 0.04, smarts: 75, school: 'the ENSP, Saint-Cyr-au-Mont-d\'Or' }),
+      route('commissaire', 'Concours externe de commissaire de police', 'captain', { education: 'master', odds: 0.04, smarts: 75, school: 'the ENSP, Saint-Cyr-au-Mont-d\'Or' }),
     ],
   },
   DE: { statePolice: [route('gehoben', 'Gehobener Polizeivollzugsdienst (Bachelor, Hochschule der Polizei)', 'lieutenant', { education: 'highschool', maxAge: 32, odds: 0.3, school: 'three years at the Hochschule der Polizei' })] },
@@ -72,12 +74,14 @@ const attempts = (state, id) => state.career.directEntry?.[id] ?? 0;
 
 /** Can you sit this route's exam this year? */
 /** When each scheme began: India's IPS (1948, the Imperial Police before it), Britain's direct entry (2014–16). */
-export const DIRECT_FROM = { ips: 1948, dsp: 1950, si: 1950, dei: 2014, des: 2016 };
-export const directEntryInEra = (state, routeId) => !(DIRECT_FROM[routeId] > yearNow(state));
+export const DIRECT_FROM = { ips: 1948, dsp: 1950, si: 1950, dei: 2014, des: 2016, hendon: 1934, lieutenant: 1995, commissaire: 1941, gehoben: 1975, ispettore: 1981, commissario: 1981, inspector: 1986, gyeongwi: 1981, class1: 1948, pnpa: 1978 };
+/** Schemes that ended: Hendon closed with the war in 1939. */
+export const DIRECT_UNTIL = { hendon: 1940 };
+export const directEntryInEra = (state, routeId) => !(DIRECT_FROM[routeId] > yearNow(state)) && !(DIRECT_UNTIL[routeId] <= yearNow(state));
 export function directEntryEligibility(state, professionId, routeId) {
   const r = directEntryRoutes(state, professionId).find((x) => x.id === routeId);
   if (!r) return { ok: false, reason: 'No such route here' };
-  if (!directEntryInEra(state, routeId)) return { ok: false, reason: `No such scheme yet (from about ${DIRECT_FROM[routeId]})` };
+  if (!directEntryInEra(state, routeId)) return { ok: false, reason: DIRECT_UNTIL[routeId] <= yearNow(state) ? `The scheme closed in ${DIRECT_UNTIL[routeId]}` : `No such scheme yet (from about ${DIRECT_FROM[routeId]})` };
   const age = state.character.age;
   if (!isCitizen(state, countryOf(state))) return { ok: false, reason: 'Citizens only' };
   if (age < 18 || age > r.maxAge) return { ok: false, reason: `Ages 18–${r.maxAge}` };

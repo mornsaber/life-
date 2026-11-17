@@ -1204,6 +1204,13 @@ export function innerBorder(state, fromRegion, toRegion) {
  */
 const RENAMES = [
   // Words of their day, wherever the text comes from.
+  // British fire and ambulance services before the 2004 reforms, and the rank names they replaced.
+  [/Fire and Rescue Service/g, 2004, () => 'Fire Brigade'],
+  [/\bCrew Manager\b/g, 2006, () => 'Leading Firefighter'], [/\bWatch Manager\b/g, 2006, () => 'Sub-Officer'],
+  [/\bStation Manager\b/g, 2006, () => 'Station Officer'], [/\bGroup Manager\b/g, 2006, () => 'Divisional Officer'], [/\bArea Manager\b/g, 2006, () => 'Senior Divisional Officer'],
+  [/Ambulance Service NHS Trust/g, 1992, () => 'Ambulance Service'], [/\bEmergency Care Assistant\b/g, 2005, (y) => (y >= 1970 ? 'Ambulance Technician' : 'Ambulanceman')],
+  [/\bStudent Police Constable\b/g, 2006, () => 'Probationer Constable'], [/\bPolice Scotland\b/g, 2013, (y) => (y >= 1975 ? 'the regional police' : 'the burgh police')],
+  [/SDIS — centre de secours de/g, 1996, () => 'Corps de sapeurs-pompiers de'],
   [/\bthe interstate\b/g, 1956, (y) => (y >= 1920 ? 'the highway' : 'the turnpike')],
   [/\bsupermarket labels\b/g, 1930, () => 'shop signs'],
   [/\bwithout a selfie\b/g, 2010, () => 'without signing an autograph'],
