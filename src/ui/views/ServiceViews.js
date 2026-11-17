@@ -1,7 +1,7 @@
 /**
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
-import { wearCard } from './CareerDepthView.js';
+import { wearCard, commandCard } from './CareerDepthView.js';
 import { foreignForcesOptions } from '../../modules/world/ForeignForces.js';
 import { royalGuardOptions } from '../../modules/military/RoyalGuards.js';
 import { reserveAfter } from '../../modules/military/Wartime.js';
@@ -337,7 +337,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${wearCard(state)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${guardsCard(state)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${commandCard(state)}${wearCard(state)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${guardsCard(state)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {

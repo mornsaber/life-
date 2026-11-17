@@ -115,3 +115,20 @@ export function wearCard(state) {
   ];
   return card('What the Job Takes', `${meters}${kv(rows)}<p class="fine">Exposure adds up: past a point it turns into hearing loss, a bad back, and for firefighters heart disease and cancer. Trauma eases with time, peer support and counselling.</p>`, { icon: '🩹' });
 }
+
+/* ---- Command (career/Command.js) ---- */
+import { commanderKind, PREPS } from '../../modules/career/Command.js';
+
+export function commandCard(state) {
+  const kind = commanderKind(state);
+  if (!kind) return '';
+  const r = state.command?.readiness ?? { training: 40, kit: 40, plans: 40, mutualAid: 40 };
+  const NAMES = { training: '🏋️ Drills', kit: '🧰 Kit', plans: '🗂️ Plans', mutualAid: '🤝 Agreements' };
+  const keys = Object.keys(NAMES).filter((k) => PREPS[k][kind]);
+  const meters = keys.map((k) => `<div class="stat-line"><span>${NAMES[k]}</span>${meter(r[k], { tone: r[k] >= 60 ? 'good' : r[k] >= 30 ? 'warn' : 'bad' })}</div>`).join('');
+  const done = Boolean(state.yearly?.['command.prepare']);
+  const buttons = keys.map((k) => button(PREPS[k][kind].label, 'command.prepare', { arg: k, variant: 'small ghost', hint: PREPS[k][kind].hint, disabled: done })).join('');
+  const inq = state.command?.inquiry;
+  const pending = inq ? `<p class="fine">🔍 An inquiry into ${esc(inq.title.toLowerCase())} reports at age ${inq.age}.</p>` : '';
+  return card('Command', `${meters}${pending}<p class="fine">How ready your people are when the big day comes. It fades if you neglect it; one preparation a year.</p><div class="action-grid">${buttons}</div>`, { icon: '🎛️' });
+}

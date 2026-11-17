@@ -11,7 +11,7 @@ import { MODULES } from '../src/modules/registry.js';
 import { SCENES, startScene, tierOf, checkOdds, ScenesModule } from '../src/modules/career/Scenes.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
-const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'],
+const JOBS = { 'fire.houseFire': ['fire', 'Firefighter'], 'police.domestic': ['police', 'Police Officer'], 'ems.arrest': ['ems', 'Paramedic'], 'command.incident': ['fire', 'Fire Captain'], 'command.disorder': ['police', 'Police Captain'], 'command.siege': ['police', 'Police Captain'], 'command.battle': ['police', 'Police Captain'],
   'fire.crash': ['fire', 'Firefighter'], 'fire.wildland': ['stateFire', 'Firefighter'], 'police.pursuit': ['police', 'Police Officer'], 'police.missing': ['sheriff', 'Deputy'], 'police.stop': ['police', 'Police Officer'],
   'ems.overdose': ['ems', 'Paramedic'], 'ems.mci': ['privateEms', 'EMT'], 'dispatch.whisper': ['dispatch', 'Dispatcher'], 'police.ois': ['police', 'Police Sergeant'], 'partner.line': ['ems', 'Paramedic'],
   'fire.mayday': ['fire', 'Fire Lieutenant'], 'dispatch.cpr': ['dispatch', 'Dispatcher'], 'ems.birth': ['ems', 'Paramedic'],

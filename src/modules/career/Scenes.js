@@ -64,6 +64,9 @@ function promptStep(ctx, def, stepId) {
   ctx.prompt({ type: 'scenes.step', icon: step.icon ?? def.icon, title: `${def.title}${def.stepTitles === false ? '' : ` — ${step.title}`}`, text: fill(step.text, sc.data, state), options, data: { sceneId: def.id, step: stepId } });
 }
 
+/** Other modules shape a scene as it starts (career/Command.js: how prepared you were). fn(ctx, def, scene) */
+export const SCENE_START = [];
+
 /** Start a scene (if none is running). data: anything the text needs ({ name, place, severity }). */
 export function startScene(ctx, id, data = {}) {
   const { state } = ctx;
@@ -71,6 +74,7 @@ export function startScene(ctx, id, data = {}) {
   if (!def || sceneOf(state) || state.prompts.some((p) => p.type === 'scenes.step')) return false;
   if (def.partner) partnerOf(state, ctx.rng);
   state.scene = { id, step: null, score: Object.fromEntries(DIMS.map((d) => [d, 0])), flags: [], data: { severity: 2, ...(def.data?.(state, ctx.rng) ?? {}), ...data }, startedAge: state.character.age };
+  for (const fn of SCENE_START) fn(ctx, def, state.scene);
   promptStep(ctx, def, def.start ?? 'start');
   return true;
 }
