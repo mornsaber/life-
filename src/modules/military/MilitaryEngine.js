@@ -747,6 +747,7 @@ export function discharge(ctx, type, reason) {
     grade: svc.grade,
     yearsOfService: svc.yearsOfService,
     deployments: svc.deployments,
+    ...(svc.campaigns?.length ? { campaigns: svc.campaigns } : {}),
     combatTours: svc.combatTours,
     startAge: svc.joinedAge,
     endAge: state.character.age,

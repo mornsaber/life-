@@ -2,6 +2,7 @@
  * Military (Armed Forces) and Reserves (volunteer emergency services) tabs.
  */
 import { wearCard, commandCard } from './CareerDepthView.js';
+import { battleStars } from '../../modules/military/Campaigns.js';
 import { foreignForcesOptions } from '../../modules/world/ForeignForces.js';
 import { royalGuardOptions } from '../../modules/military/RoyalGuards.js';
 import { reserveAfter } from '../../modules/military/Wartime.js';
@@ -285,6 +286,16 @@ function kingmakerCard(state) {
     </div>`, { icon: '🪖', accent: 'red' });
 }
 
+/** The campaigns you served in (military/Campaigns.js). */
+function campaignsCard(state, svc) {
+  const list = [...(state.military.history ?? []).flatMap((h) => h.campaigns ?? []), ...(svc?.campaigns ?? [])];
+  if (!list.length) return '';
+  const seen = new Map();
+  for (const c of list) if (!seen.has(c.id)) seen.set(c.id, c);
+  const stars = (svc?.nation ?? 'US') === 'US' ? `<p class="fine">${battleStars({ campaigns: list })} battle star${battleStars({ campaigns: list }) === 1 ? '' : 's'} on your campaign medal.</p>` : '';
+  return card('Campaigns', `<ul class="history">${[...seen.values()].map((c) => `<li>🎖️ <b>${esc(c.name)}</b> <small>${c.year}</small></li>`).join('')}</ul>${stars}`, { icon: '🗺️' });
+}
+
 export function militaryView(state) {
   const svc = state.military.service;
   const history = state.military.history.length
@@ -337,7 +348,7 @@ export function militaryView(state) {
       ${button('🚪 Leave the Service', 'military.leaveService', { variant: 'danger', hint: 'Early separation, objector status or desertion', disabled: Boolean(state.yearly['military.leave']) })}
     </div>
     ${transferForm(state)}
-    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${commandCard(state)}${wearCard(state)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${guardsCard(state)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
+    <div class="rack-inline">${ribbonRack(militaryHonors(state))}</div>`, { icon: branch.icon, accent: 'green' })}${transitionCard(state, svc)}${campaignsCard(state, svc)}${commandCard(state)}${wearCard(state)}${unitCard(state, svc)}${equipmentCard(state, 'military')}${assignmentsCard(state, svc)}${peacekeepingCard(state, svc)}${guardsCard(state)}${juntaCard(state)}${careerFieldCard(state, svc)}${schoolsCard(state, svc)}${specialOpsCard(state, svc)}${history}`;
 }
 
 function certList(state, serviceId) {

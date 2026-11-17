@@ -28,6 +28,7 @@ import { combatTempo } from '../world/NationalForces.js';
 import { awardForAction, annualReview, endOfTourAwards, awardMedal } from './MedalEngine.js';
 import { deck } from '../content/decks.js';
 import { historicTheaters, historicNationalTheaters } from './MilitaryHistory.js';
+import { campaignsFor, joinCampaign } from './Campaigns.js';
 
 /** Peacetime deployments of other countries' forces: their standing missions abroad (garrisons you take your family to are postings, not deployments). */
 const NATIONAL_THEATERS = (svc) => {
@@ -105,7 +106,11 @@ export function runDeployment(ctx, svc, { mobilized = false } = {}) {
   // At war, your forces go to the war; otherwise to your country's standing missions abroad.
   const war = serviceWar(ctx.state, svc);
   const peacetime = svc.nation ? historicNationalTheaters(svc.nation, NATIONAL_THEATERS(svc)) : historicTheaters(branch.theater) ?? THEATERS[branch.theater];
-  const theaterName = war && rng.chance(0.85) ? `${war.operation} — ${war.name}` : rng.pick(svc.sof ? pipelineFor(svc, svc.sof.pipeline)?.deployments ?? peacetime : peacetime);
+  // In a war of history, a real campaign for your country, branch and year (Campaigns.js).
+  const campaigns = war ? campaignsFor(ctx.state, svc, war) : [];
+  const campaign = campaigns.length && rng.chance(0.85) ? rng.pick(campaigns) : null;
+  const theaterName = campaign ? `${war.operation} — ${campaign.name}` : war && rng.chance(0.85) ? `${war.operation} — ${war.name}` : rng.pick(svc.sof ? pipelineFor(svc, svc.sof.pipeline)?.deployments ?? peacetime : peacetime);
+  if (campaign) joinCampaign(ctx, svc, war, campaign);
   const months = mobilized ? rng.int(9, 12) : rng.int(6, 9);
   svc.deployedThisYear = true;
   svc.deploymentRequested = false;
