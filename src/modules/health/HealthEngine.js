@@ -32,6 +32,7 @@ import { endOfLifeTick, EndOfLifeActions, EndOfLifeResolvers } from './EndOfLife
 import { fitsEra } from '../world/Eras.js';
 import { treatedAcuteDeath, available, treatmentWorks } from './PeriodHealth.js';
 import { priceLevel } from '../world/Countries.js';
+import { serviceOfJob } from '../publicsafety/Uniformed.js';
 
 /** Yearly traumatic exposure by profession (before calls/combat added over the bus). */
 export const OCCUPATIONAL_TRAUMA = { police: 4, statePolice: 4, fire: 4, ems: 5, corrections: 4, cps: 4, gameWarden: 2, medical: 2, nursing: 2, intelligence: 1, prosecution: 1, publicDefender: 1 };
@@ -420,6 +421,8 @@ function fitnessForDuty(ctx) {
   const { state } = ctx;
   const c = dutyDisqualifier(state);
   if (!c || yearlyCount(state, 'health.dutyAsked')) return;
+  // On light duty the board waits until the posting ends (publicsafety/ServiceWear.js).
+  if ((state.career.job?.lightDuty?.until ?? 0) > state.character.age) return;
   bumpYearly(state, 'health.dutyAsked');
   const def = CONDITIONS[c.id];
   const military = Boolean(state.military.service);
@@ -448,6 +451,7 @@ function fitnessForDuty(ctx) {
     options: [
       { id: 'treat', label: addiction ? '🏥 Go to rehab on medical leave' : '🩺 Take medical leave for treatment', hint: 'Keep the job if treatment works' },
       { id: 'hide', label: '🤐 Downplay it to the doctor', hint: 'If they find out, you are fired', tone: 'danger' },
+      ...(!military && !addiction && serviceOfJob(state.career.job) && !state.career.job.lightDutyUsed ? [{ id: 'light', label: '🗂️ Go on light duty', hint: 'Two years on a desk while you recover; then back to full duty, or a medical retirement' }] : []),
       { id: 'retire', label: military ? '🎗️ Accept medical separation' : '♿ Take a medical retirement', hint: 'Disability benefits and VA/pension where eligible' },
     ],
     data: { conditionId: c.id },
@@ -793,6 +797,15 @@ export const HealthEngine = {
       const def = CONDITIONS[c.id];
       if (optionId === 'retire' && !(state.military.service && def.kind === 'addiction')) {
         goOnDisability(ctx, def.name.toLowerCase());
+        return;
+      }
+      if (optionId === 'light' && state.career.job) {
+        const job = state.career.job;
+        job.lightDuty = { until: state.character.age + 2, conditionId: c.id };
+        job.lightDutyUsed = true;
+        c.treated = true;
+        c.diagnosed = true;
+        ctx.log(`You went on light duty: a desk, a phone and the paperwork nobody else wants, while your ${def.name.toLowerCase()} is treated.`, '🗂️', 'info');
         return;
       }
       if (optionId === 'hide') {

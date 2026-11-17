@@ -277,6 +277,8 @@ const UNARMED_GUN = { id: 'gunUnarmed', icon: '🔫', title: 'Man With a Gun', t
 function callPrompt(ctx, job) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'police.call' || p.type === 'scenes.step')) return;
+  // On light duty you're at a desk, not on calls.
+  if ((job.lightDuty?.until ?? 0) > state.character.age) return;
   const u = pd(state).unit;
   const campus = ['campus', 'gameday'].includes(pd(state).area) && job.professionId === 'universityPolice';
   const town = ['smalltown', 'rural'].includes(pd(state).area);

@@ -90,3 +90,28 @@ export function boardroomCard(state) {
     <h4 class="sub">Succession${job.successor ? `: ${job.successor === 'insider' ? 'grooming an insider' : 'an outside search under way'}` : ''}</h4><div class="action-grid">${button('🧑‍💼 Groom an insider', 'boardroom.successor', { arg: 'insider', variant: 'small ghost' })}${button('🔎 Ask for an outside search', 'boardroom.successor', { arg: 'outsider', variant: 'small ghost' })}</div>` : '';
   return card(top ? 'The Top Job' : 'Boards', `${strategy}${list}`, { icon: '🪑' });
 }
+
+/* ---- What the job takes (publicsafety/ServiceWear.js) ---- */
+import { uniformedRole } from '../../modules/publicsafety/Uniformed.js';
+
+export function wearCard(state) {
+  const role = uniformedRole(state);
+  const w = state.wear;
+  if (!role || !w?.years) return '';
+  const pct = (x) => Math.min(100, Math.round(x));
+  const meters = [
+    ['🧠 Trauma', state.health?.trauma ?? 0],
+    ['👂 Noise', w.noise],
+    ...(w.smoke ? [['🌫️ Smoke', w.smoke]] : []),
+    ['🦴 Lifting and falls', w.lifting],
+  ].map(([label, v]) => `<div class="stat-line"><span>${label}</span>${meter(pct(v), { tone: v >= 60 ? 'bad' : v >= 30 ? 'warn' : 'good' })}</div>`).join('');
+  const job = state.career?.job;
+  const rows = [
+    ['Years in uniform', String(w.years)],
+    ...(w.fallen ? [['Colleagues lost', `🕯️ ${w.fallen}`]] : []),
+    ...(job?.lightDuty ? [['Light duty', `🗂️ On a desk until age ${job.lightDuty.until}`]] : []),
+    ...(w.flags?.agentOrange ? [['Exposure', 'Agent Orange (Vietnam era)']] : []),
+    ...(w.flags?.burnPits ? [['Exposure', 'Burn pits (Iraq and Afghanistan era)']] : []),
+  ];
+  return card('What the Job Takes', `${meters}${kv(rows)}<p class="fine">Exposure adds up: past a point it turns into hearing loss, a bad back, and for firefighters heart disease and cancer. Trauma eases with time, peer support and counselling.</p>`, { icon: '🩹' });
+}
