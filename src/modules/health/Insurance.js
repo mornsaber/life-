@@ -19,6 +19,10 @@ import { stateIdOf } from '../life/Regions.js';
 import { isAbroad, countryOf } from '../world/Countries.js';
 import { hasPrivateCover, systemHere, privatePremium, NATIONAL_HEALTH_FROM } from './HealthSystems.js';
 
+/** Workers' compulsory sickness insurance, before universal care. */
+export const SICKNESS_FUND_FROM = { DE: 1883, AT: 1888, HU: 1891, LU: 1901, NO: 1909, GB: 1911, IE: 1911, RU: 1912, NL: 1941, JP: 1927, FR: 1930, IT: 1943, BE: 1944, CH: 1911, PL: 1920, CZ: 1919, SE: 1931, DK: 1892 };
+const SICKNESS_FUND_NAME = { DE: 'Krankenkasse (statutory sickness fund)', AT: 'Krankenkasse (statutory sickness fund)', HU: 'Munkásbiztosító Pénztár', NO: 'Trygdekasse', JP: 'Kenkō hoken (workers\' health insurance)', FR: 'Assurances sociales', NL: 'Ziekenfonds', IT: 'Cassa mutua', BE: 'Mutualité', CH: 'Krankenkasse', PL: 'Kasa chorych', CZ: 'Nemocenská pokladna', SE: 'Sjukkassa', DK: 'Sygekasse', RU: 'Bolnichnaya kassa', LU: 'Caisse de maladie' };
+
 export const MEDICAID_INCOME = 21000;
 /** States that did not expand Medicaid: only disabled adults qualify. */
 export const NON_EXPANSION = new Set(['TX', 'FL']);
@@ -36,6 +40,10 @@ export const PLANS = {
   // Before health insurance: the lodge doctor your sick club paid, the charity ward, or the doctor's bill.
   friendlySociety: { name: 'Sick club (friendly society) doctor', icon: '🤝', premium: 250, deductible: 0, coinsurance: 0.35, oopMax: 5000 },
   charity: { name: 'Charity ward and dispensary', icon: '⛪', premium: 0, deductible: 0, coinsurance: 0.1, oopMax: 1500 },
+  // Workers' sickness insurance before national health care: Bismarck's Krankenkassen (1883) and
+  // their copies; Britain's 1911 National Insurance, which paid a 'panel' doctor for the worker only.
+  panel: { name: 'National Insurance panel doctor (workers only)', icon: '📮', premium: 0, deductible: 0, coinsurance: 0.3, oopMax: 4000 },
+  sicknessFund: { name: 'Statutory sickness fund', icon: '🏛️', premium: 0, deductible: 0, coinsurance: 0.12, oopMax: 2000 },
   feeForService: { name: 'Pay the doctor yourself', icon: '🩺', premium: 0, deductible: 0, coinsurance: 0.45, oopMax: 12000 },
   blueCross: { name: 'Blue Cross hospital plan', icon: '✚', premium: 2400, deductible: 800, coinsurance: 0.2, oopMax: 8000 },
   militaryMedical: { name: 'Military medical care', icon: '🎖️', premium: 0, deductible: 0, coinsurance: 0, oopMax: 0 },
@@ -65,14 +73,18 @@ export function coverageId(state, earned = income(state)) {
   const modern = cc === 'US' ? y >= 1945 : !(NATIONAL_HEALTH_FROM[cc] > y) && y >= 1950;
   if (!modern) {
     if ((state.health?.va?.rating ?? 0) >= 50 && y >= 1930) return 'va';
+    // A worker in a country with sickness insurance is covered by it (not, at first, the family).
+    if (state.career.job && !(SICKNESS_FUND_FROM[cc] > y) && SICKNESS_FUND_FROM[cc]) return cc === 'GB' || cc === 'IE' ? 'panel' : 'sicknessFund';
     if (earned < 20000) return 'charity';
     return state.career.job ? 'friendlySociety' : 'feeForService';
   }
   if (cc === 'US' && y < 1966) {
-    if (state.career.job?.employer.benefits.health) return 'employer';
+    // Employer plans spread in the war years (wage controls made benefits the way to pay more).
+    if (state.career.job?.employer.benefits.health && y >= 1942) return 'employer';
     if ((state.health?.va?.rating ?? 0) >= 50) return 'va';
     if (earned < 20000) return 'charity';
-    return 'blueCross';
+    // Blue Cross from 1929 (Baylor's teachers' plan); before it, the doctor's bill or the lodge doctor.
+    return y >= 1929 ? 'blueCross' : state.career.job ? 'friendlySociety' : 'feeForService';
   }
   if (isAbroad(state)) {
     const res = state.migration?.residences?.[state.character.countryId];
@@ -93,6 +105,7 @@ export function coverageId(state, earned = income(state)) {
 export function coverage(state, earned) {
   const id = coverageId(state, earned);
   const plan = { id, ...PLANS[id] };
+  if (id === 'sicknessFund') plan.name = SICKNESS_FUND_NAME[state.character.countryId ?? 'US'] ?? plan.name;
   if (id === 'national') {
     const h = countryOf(state).health;
     Object.assign(plan, { name: h.name, deductible: h.deductible, coinsurance: h.coinsurance, oopMax: h.oopMax });
