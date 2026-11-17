@@ -147,8 +147,26 @@ export function heirShares(state) {
     shares.push({ to: 'charity', label: 'Charity', share: 0.5 });
     family(0.5);
   } else family(1);
-  return lawfulHeirShares(state, shares);
+  return lawfulHeirShares(state, applyWishes(state, shares));
 }
+
+/**
+ * Your wishes on top of the plan (people/LateLife.js): a child cut out of the will gets nothing
+ * (where the law allows it: forced heirship still protects them), and a favoured child (often the
+ * one who cared for you) gets half as much again. The others' shares make up the difference.
+ */
+export function applyWishes(state, shares) {
+  const w = state.people?.will;
+  const cut = new Set(w?.cutOut ?? []);
+  if (!cut.size && !w?.favour) return shares;
+  const weighted = shares.map((s) => ({ ...s, share: cut.has(s.to) ? 0 : s.to === w.favour ? s.share * 1.5 : s.share }));
+  const total = weighted.reduce((a, s) => a + s.share, 0);
+  const orig = shares.reduce((a, s) => a + s.share, 0);
+  return total > 0 ? weighted.filter((s) => s.share > 0).map((s) => ({ ...s, share: (s.share * orig) / total })) : shares;
+}
+/** An uneven will is contested at probate: lawyers' fees out of the estate. */
+export const willContested = (state) => Boolean(state.people?.will && ((state.people.will.cutOut ?? []).some((id) => byIdAlive(state, id)) || state.people.will.favour));
+const byIdAlive = (state, id) => (state.people?.list ?? []).some((p) => p.id === id && p.alive);
 
 /** Retirement accounts and who they pass to by beneficiary designation (outside the will and probate). */
 export function retirementAccounts(state) {
@@ -198,7 +216,8 @@ export function settleEstate(state) {
   const plan = state.people?.plan ?? {};
   const funeral = Math.min(assets, FUNERAL_COST);
   const debtsPaid = Math.min(assets - funeral, debts);
-  const probate = Math.min(assets - funeral - debtsPaid, Math.round(probateAssets(state) * PROBATE_RATE));
+  // A contested will costs the estate a few per cent more in lawyers.
+  const probate = Math.min(assets - funeral - debtsPaid, Math.round(probateAssets(state) * (PROBATE_RATE + (willContested(state) ? 0.04 : 0))));
   const taxable = assets - funeral - debtsPaid - probate;
   const insurance = lifeInsurancePayouts(state);
   // Policies you own count toward estate tax (not probate) unless an ILIT owns them.

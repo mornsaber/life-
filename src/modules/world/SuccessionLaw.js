@@ -101,6 +101,22 @@ export function lawfulShares(state, { spouse = null, spouseGender = null, childr
       const otherTotal = others.reduce((a, s) => a + s.share, 0) || 1;
       shares = [...children.map((c) => ({ to: c.id, share: reserved / n })), ...others.map((s) => ({ to: s.to, share: (s.share / otherTotal) * (1 - reserved) }))];
     }
+    // Each child's own part of the reserve: a child cut out of the will still gets theirs,
+    // taken from what the will gave beyond it to everyone else.
+    const floor = reserved / n;
+    const shareOf = (id) => shares.filter((s) => s.to === id).reduce((a, s) => a + s.share, 0);
+    const short = children.filter((c) => shareOf(c.id) < floor - 1e-9);
+    if (short.length) {
+      const deficit = short.reduce((a, c) => a + floor - shareOf(c.id), 0);
+      const shortIds = new Set(short.map((c) => c.id));
+      const isKid = (id) => children.some((c) => c.id === id);
+      const excess = (s) => Math.max(0, s.share - (isKid(s.to) ? floor : 0));
+      const pool = shares.filter((s) => !shortIds.has(s.to)).reduce((a, s) => a + excess(s), 0) || 1;
+      shares = [
+        ...shares.filter((s) => !shortIds.has(s.to)).map((s) => ({ ...s, share: s.share - (excess(s) / pool) * deficit })),
+        ...short.map((c) => ({ to: c.id, share: floor })),
+      ].filter((s) => s.share > 1e-9);
+    }
   }
   return shares;
 }

@@ -22,7 +22,7 @@ import { contactThen, journey } from '../../modules/world/TravelOfTheDay.js';
 import { familyHistory } from '../../modules/people/FamilyInHistory.js';
 import { EDU_LABEL, homeLabel, canHouse, vacancies } from '../../modules/people/NpcLives.js';
 import { TRUSTS, TRUST_COSTS, exclusionFor, giftRecipients } from '../../modules/people/EstatePlanning.js';
-import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession } from '../../modules/people/Legacy.js';
+import { probateAssets, designatedPayees, PROBATE_RATE, plannedSuccession, willContested } from '../../modules/people/Legacy.js';
 import {
   NURTURE, readiness, readinessLabel, successorOf, ownsBusiness, allBusinesses, ordinal, READY, SUCCESSION_COST, SUCCESSION_CHANGE_COST, SUCCESSION_DISCOUNT,
 } from '../../modules/people/Dynasty.js';
@@ -62,6 +62,7 @@ import { toned, personTone } from '../../modules/people/SkinTone.js';
 import { familyPrestige, prestigeTier } from '../../modules/people/FamilyLegacy.js';
 import { TEMPERAMENTS, epithetOf, standing, memoirEligibility } from '../../modules/people/Remembered.js';
 import { flagImg } from '../Flags.js';
+import { grandchildrenOf, grandparentRights } from '../../modules/people/LateLife.js';
 import { circlesNow } from '../../modules/life/Reputation.js';
 import { hasTech, eraYear, yearNow, dcExists } from '../../modules/world/Eras.js';
 
@@ -417,7 +418,7 @@ function legacyCard(state) {
       p.arrears ? ['Child-support arrears', `<span class="neg">${money(p.arrears)}</span>${p.arrears >= ARREARS_HOLD ? ' · licenses suspended' : ''}`] : null,
       p.alimony ? ['Alimony', `${money(p.alimony.annual)}/yr ${p.alimony.pay ? 'paid' : 'received'} until ${p.alimony.untilAge}`] : null,
     ])}
-    ${disclosure('legacy.tools', '🧰 Will, life insurance & estate plan', `<h4 class="sub">Will</h4><div class="toggle-row">${Object.entries(WILL_PLANS).map(([id, w]) => button(`${w.icon} ${w.label}`, 'people.writeWill', { arg: id, variant: p.will?.plan === id ? 'small on' : 'small', hint: p.will ? '$300 to update' : '$1,500 attorney' })).join('')}</div>
+    ${disclosure('legacy.tools', '🧰 Will, life insurance & estate plan', `<h4 class="sub">Will</h4><div class="toggle-row">${Object.entries(WILL_PLANS).map(([id, w]) => button(`${w.icon} ${w.label}`, 'people.writeWill', { arg: id, variant: p.will?.plan === id ? 'small on' : 'small', hint: p.will ? '$300 to update' : '$1,500 attorney' })).join('')}</div>${willWishes(state)}
     <h4 class="sub">Term life insurance</h4><div class="toggle-row">
       ${amounts.map((a) => button(`🛡️ ${money(a)} on you`, 'people.lifeInsurance', { arg: `self:${a}`, variant: li.self?.benefit === a ? 'small on' : 'small' })).join('')}
       ${spouse ? amounts.slice(0, 2).map((a) => button(`🛡️ ${money(a)} on ${esc(spouse.firstName)}`, 'people.lifeInsurance', { arg: `spouse:${a}`, variant: li.spouse?.benefit === a ? 'small on' : 'small' })).join('') : ''}
@@ -427,6 +428,27 @@ function legacyCard(state) {
     ${fundRows ? `<h4 class="sub">College savings</h4><ul class="history">${fundRows}</ul>` : ''}
     ${p.arrears ? `<div class="toggle-row">${button('⚖️ Pay support arrears', 'people.payArrears', { variant: 'small', disabled: state.finances.cash <= 0 })}</div>` : ''}
     <p class="fine">Estates pay the funeral, then debts, then probate, then estate tax (federal over ${money(13990000)}; NY, IL, WA and D.C. have their own), then heirs. Life insurance goes straight to your beneficiaries. When you die, you can continue the story as one of your children.</p>`, { icon: '📜', accent: 'yellow' });
+}
+
+/** Who gets more and who gets nothing (people/LateLife.js). */
+function willWishes(state) {
+  const w = state.people?.will;
+  const kids = livingChildren(state);
+  if (!w || kids.length < 2) return '';
+  const cut = new Set(w.cutOut ?? []);
+  return `<h4 class="sub">Your wishes</h4><div class="toggle-row chips-row">${kids.map((k) => cut.has(k.id)
+    ? `<span class="chip">✂️ ${esc(k.firstName)}: cut out</span>`
+    : `${button(`⭐ More to ${esc(k.firstName)}`, 'lateLife.favour', { arg: k.id, variant: w.favour === k.id ? 'tiny on' : 'tiny' })}${button(`✂️ Cut out ${esc(k.firstName)}`, 'lateLife.cutOut', { arg: k.id, variant: 'tiny ghost' })}`).join('')}
+    ${cut.size || w.favour ? button('⚖️ Even shares again', 'lateLife.evenWill', { variant: 'tiny' }) : ''}</div>
+    ${willContested(state) ? '<p class="fine">An uneven will is likely to be contested: expect higher probate costs, and a family that remembers.</p>' : ''}`;
+}
+
+/** Your grandchildren and how close you are. */
+function grandchildrenCard(state) {
+  const gks = grandchildrenOf(state).filter((g) => g.age >= 0);
+  if (!gks.length) return '';
+  const rows = gks.map((g) => `<li>${g.kid.gender === 'female' ? '👧' : '👦'} <b>${esc(g.kid.firstName)}</b> <small class="muted">${g.age}, ${esc(g.parent.firstName)}'s${g.kid.fund ? ` · fund ${money(g.kid.fund)}` : ''}${g.parent.barred ? ' · kept away' : ''}</small> ${meter(g.kid.bond ?? 50, { label: 'Bond' })}</li>`).join('');
+  return card('Grandchildren', `<ul class="history">${rows}</ul><p class="fine">${grandparentRights(state) ? 'Here, grandparents can ask a court for the right to see their grandchildren.' : 'Here, the law gives grandparents no right to see their grandchildren: only the parents decide.'}</p>`, { icon: '👵' });
 }
 
 /** The family's standing, its heirlooms and its seat (people/FamilyLegacy.js). */
@@ -515,7 +537,7 @@ export function peopleView(state, ui = {}) {
     ${group('Exes', '💔', by('ex'), state)}
     ${dynastyCard(state)}
     ${legacyCard(state)}
-    ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${rememberedCard(state)}${lineage(state)}
+    ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${grandchildrenCard(state)}${rememberedCard(state)}${lineage(state)}
     ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
 }
