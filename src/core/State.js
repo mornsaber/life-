@@ -107,7 +107,7 @@ export function royalBirth(rng, options) {
 
 /** Countries whose peerages still pass titles (Peerage.js), and the ranks. */
 /** Countries with a nobility to be born into (Peerage.NOBLE_COUNTRIES). */
-export const PEERAGE_HOMES = ['GB', 'ES', 'FR', 'BE', 'NL', 'SE', 'DK', 'IT', 'DE', 'AT', 'PT'];
+export const PEERAGE_HOMES = ['GB', 'ES', 'FR', 'BE', 'NL', 'SE', 'DK', 'IT', 'DE', 'AT', 'PT', 'RU', 'JP', 'HU', 'PL'];
 export const NOBLE_RANK_IDS = ['baron', 'viscount', 'earl', 'marquess', 'duke'];
 
 /**

@@ -8,7 +8,8 @@ import { fullName, ageOf } from '../../modules/people/People.js';
 import { styledName } from '../../modules/world/Honours.js';
 import { CROWNS, crownOf, monarchName, ROYAL_LEVELS, royalStyledName } from '../../modules/world/Crown.js';
 import { currentYear, yearlyCount } from '../../core/State.js';
-import { peerAddress, RANKS, numberedTitle, subsidiaryTitles, rankLabel, peerTitle } from '../../modules/world/Peerage.js';
+import { peerAddress, RANKS, numberedTitle, subsidiaryTitles, rankLabel, peerTitle, nobilityLaw, nobleHouse } from '../../modules/world/Peerage.js';
+import { yearNow } from '../../modules/world/Eras.js';
 import { estateOf, STRATEGIES, nobleAllowance, isGrandee } from '../../modules/world/Nobility.js';
 import { knighthoodsOn, KNIGHTHOODS_DEFAULT } from '../../modules/world/Honours.js';
 import { conferOptions, militaryPosts, ROYAL_ORDERS, PEERAGE_GRANTS } from '../../modules/world/RoyalHousehold.js';
@@ -252,6 +253,7 @@ function nobleCard(state) {
     ['Family title', `${n.number && !yours ? `${n.number}${['th', 'st', 'nd', 'rd'][n.number % 10 > 3 || [11, 12, 13].includes(n.number % 100) ? 0 : n.number % 10]} ` : ''}${esc(parentTitle)}${isGrandee(state) ? ' · Grandee of Spain (Excelentísimo)' : ''}`],
     subsidiaryTitles(n.rank, n.place, 'male', cc).length ? ['Lesser titles', esc(subsidiaryTitles(n.rank, n.place, 'male', cc).join(', '))] : null,
     n.courtesyTitle ? ['Your courtesy title', `${esc(n.courtesyTitle)} — the heir uses the family's second title`] : null,
+    nobilityLaw(cc, yearNow(state)).status !== 'recognised' ? ['In law', { courtesy: 'Not recognised: a courtesy title, used socially', banned: 'Banned: using the title is an offence', abolished: 'Abolished', none: 'No nobility here' }[nobilityLaw(cc, yearNow(state)).status]] : nobleHouse(cc, yearNow(state)) ? ['In law', `A title in law; the holder sits in ${esc(nobleHouse(cc, yearNow(state)))}`] : null,
     ['You', yours ? 'Head of the family' : n.disclaimed ? 'You disclaimed the title' : n.heir ? 'The heir' : cc === 'GB' ? 'A younger child (courtesy style, no title to inherit)' : 'A younger child (no title to inherit)'],
     e ? ['Seat', `${esc(e.name)}${e.owner === null ? ' (sold)' : yours ? ` · worth ≈${money(e.value)}` : ''}`] : null,
     e && yours ? ['Run as', `${esc(STRATEGIES[e.strategy]?.label ?? '')}${e.exemptUntil ? ` · open to the public until ${e.exemptUntil} (tax exemption)` : ''}`] : null,

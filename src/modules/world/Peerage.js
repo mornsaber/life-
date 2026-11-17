@@ -27,6 +27,7 @@ import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { eminence } from './Honours.js';
 import { partyName } from '../politics/Parties.js';
+import { yearNow } from './Eras.js';
 
 export const RANKS = {
   baron: { order: 1, male: 'Baron', female: 'Baroness', style: { male: 'Lord', female: 'Lady' }, of: false },
@@ -57,7 +58,58 @@ export const NOBILITY = {
   DE: { ranks: { baron: ['Freiherr', 'Freifrau'], viscount: ['Freiherr', 'Freifrau'], earl: ['Graf', 'Gräfin'], marquess: ['Graf', 'Gräfin'], duke: ['Fürst', 'Fürstin'] }, of: 'von', places: ['Lindenau', 'Rosenfeld', 'Falkenstein', 'Waldeck', 'Eichberg', 'Stolberg'], estate: (p) => `Schloss ${p}`, recognised: false },
   AT: { ranks: { baron: ['Freiherr', 'Freifrau'], viscount: ['Freiherr', 'Freifrau'], earl: ['Graf', 'Gräfin'], marquess: ['Graf', 'Gräfin'], duke: ['Fürst', 'Fürstin'] }, of: 'von', places: ['Harrach', 'Khevenhüller', 'Starhemberg', 'Trauttmansdorff', 'Kinsky', 'Esterházy'], estate: (p) => `Schloss ${p}`, recognised: false },
   PT: { ranks: { baron: ['Barão', 'Baronesa'], viscount: ['Visconde', 'Viscondessa'], earl: ['Conde', 'Condessa'], marquess: ['Marquês', 'Marquesa'], duke: ['Duque', 'Duquesa'] }, of: 'de', places: ['Valença', 'Vila Real', 'Palmela', 'Lavradio', 'Belmonte', 'Murça'], estate: (p) => `Paço de ${p}`, recognised: false },
+  // The Tsar's nobility (to 1917): princes (Knyaz), counts and barons; titles go before the family name.
+  RU: { ranks: { baron: ['Baron', 'Baronessa'], viscount: ['Baron', 'Baronessa'], earl: ['Graf', 'Grafinya'], marquess: ['Graf', 'Grafinya'], duke: ['Knyaz', 'Knyaginya'] }, of: '', places: ['Volkonsky', 'Sheremetev', 'Golitsyn', 'Obolensky', 'Stroganov', 'Orlov', 'Trubetskoy'], estate: (p) => `the ${p} estate` },
+  // The kazoku (1869–1947): the five ranks of the Meiji peerage, after the Chinese model.
+  JP: { ranks: { baron: ['Danshaku', 'Danshaku Fujin'], viscount: ['Shishaku', 'Shishaku Fujin'], earl: ['Hakushaku', 'Hakushaku Fujin'], marquess: ['Kōshaku', 'Kōshaku Fujin'], duke: ['Kōshaku', 'Kōshaku Fujin'] }, of: '', places: ['Konoe', 'Saionji', 'Tokugawa', 'Matsudaira', 'Hosokawa', 'Kuroda', 'Nabeshima'], estate: (p) => `the ${p} residence` },
+  // Hungary's magnates (to 1947): báró, gróf, herceg.
+  HU: { ranks: { baron: ['Báró', 'Bárónő'], viscount: ['Báró', 'Bárónő'], earl: ['Gróf', 'Grófnő'], marquess: ['Gróf', 'Grófnő'], duke: ['Herceg', 'Hercegnő'] }, of: '', places: ['Andrássy', 'Károlyi', 'Apponyi', 'Széchenyi', 'Batthyány', 'Zichy'], estate: (p) => `the ${p} kastély` },
+  // The great Polish families (titles from the partitioning powers and the Holy See), to 1921.
+  PL: { ranks: { baron: ['Baron', 'Baronowa'], viscount: ['Baron', 'Baronowa'], earl: ['Hrabia', 'Hrabina'], marquess: ['Margrabia', 'Margrabina'], duke: ['Książę', 'Księżna'] }, of: '', places: ['Potocki', 'Zamoyski', 'Lubomirski', 'Czartoryski', 'Tarnowski', 'Krasiński'], estate: (p) => `the ${p} pałac` },
+  // The Empire of Brazil (1822–89): titles granted for life, not inherited (coffee barons).
+  BR: { ranks: { baron: ['Barão', 'Baronesa'], viscount: ['Visconde', 'Viscondessa'], earl: ['Conde', 'Condessa'], marquess: ['Marquês', 'Marquesa'], duke: ['Duque', 'Duquesa'] }, of: 'de', places: ['Mauá', 'Itamaraty', 'Rio Branco', 'Paranaguá', 'Cotegipe', 'Ouro Preto'], estate: (p) => `Fazenda ${p}`, lifeOnly: true },
 };
+/**
+ * Titles in law, by country and year: [from, status, creating, what changed]. status:
+ *   recognised  a title in law (and often a seat in a house of nobles)
+ *   courtesy    no longer recognised; used socially (and in Germany as part of the surname)
+ *   banned      using it is an offence (Austria from 1919)
+ *   abolished   swept away, often with the land (Russia 1917, Hungary and Japan 1947)
+ *   none        no nobility (Brazil before the Empire)
+ */
+export const NOBILITY_LAW = {
+  GB: [[0, 'recognised', true]],
+  ES: [[0, 'recognised', true], [1931, 'courtesy', false, 'The Second Republic has abolished titles of nobility.'], [1948, 'recognised', true, 'Franco has restored the titles of nobility.']],
+  FR: [[0, 'recognised', true], [1848, 'courtesy', false, 'The Second Republic has abolished titles of nobility.'], [1852, 'recognised', true, 'The Second Empire has restored them: the Emperor makes counts and barons again.'], [1870, 'courtesy', false, 'The Third Republic neither grants nor recognises titles: they are courtesy now.']],
+  BE: [[0, 'recognised', true]],
+  NL: [[0, 'recognised', true]],
+  DK: [[0, 'recognised', true]],
+  SE: [[0, 'recognised', true], [1903, 'recognised', false]],
+  IT: [[0, 'recognised', true], [1948, 'courtesy', false, 'The Republic\'s constitution does not recognise titles of nobility.']],
+  DE: [[0, 'recognised', true], [1919, 'courtesy', false, 'The Weimar constitution has abolished the privileges of nobility: your title is now just part of your surname.']],
+  AT: [[0, 'recognised', true], [1919, 'banned', false, 'The Republic has abolished the nobility outright: using a title, even "von", is now an offence.']],
+  PT: [[0, 'recognised', true], [1910, 'courtesy', false, 'The Republic has abolished titles of nobility.']],
+  RU: [[0, 'recognised', true], [1917, 'abolished', false, 'The Bolsheviks have abolished the nobility and seized its estates.'], [1991, 'courtesy', false, 'With the Soviet Union gone, the old families use their titles again, by courtesy.']],
+  JP: [[0, 'recognised', true], [1947, 'abolished', false, 'The new constitution has abolished the kazoku: no more peers.']],
+  HU: [[0, 'recognised', true], [1947, 'abolished', false, 'The Republic has abolished titles of nobility, and land reform has taken the estates.']],
+  PL: [[0, 'recognised', true], [1921, 'courtesy', false, 'The March Constitution has abolished privileges of birth and title.']],
+  BR: [[0, 'none', false], [1822, 'recognised', true, 'The Empire of Brazil grants titles, for life.'], [1889, 'courtesy', false, 'The Republic has abolished the imperial titles.']],
+};
+/** The law of titles in a country this year: { status, creating, note, since }. */
+export function nobilityLaw(cc, year) {
+  const rows = NOBILITY_LAW[cc];
+  if (!rows) return { status: NOBILITY[cc] ? 'courtesy' : 'none', creating: false, note: null, since: 0 };
+  const row = [...rows].reverse().find(([from]) => year >= from) ?? rows[0];
+  return { status: row[1], creating: row[2], note: row[3] ?? null, since: row[0] };
+}
+/** The houses of nobles of their day, where a title brought a seat: [from, until, name]. */
+export const NOBLE_HOUSES = {
+  GB: [1800, 9999, 'the House of Lords'], DE: [1854, 1918, 'the Prussian House of Lords (Herrenhaus)'], AT: [1861, 1918, 'the Herrenhaus of the Reichsrat'],
+  JP: [1890, 1947, 'the House of Peers'], HU: [1885, 1945, 'the House of Magnates'], ES: [1876, 1923, 'the Senate (as a senator by right)'],
+  IT: [1848, 1946, 'the Senate of the Kingdom'], PT: [1826, 1910, 'the Chamber of Peers'], FR: [1814, 1848, 'the Chamber of Peers'], RU: [1906, 1917, 'the State Council'],
+  SE: [1800, 1866, 'the House of Nobility in the Riksdag of the Estates'],
+};
+export const nobleHouse = (cc, year) => { const h = NOBLE_HOUSES[cc]; return h && year >= h[0] && year < h[1] ? h[2] : null; };
 export const NOBLE_COUNTRIES = ['GB', ...Object.keys(NOBILITY)];
 /** A rank's name in its own country ("Graf", "Contessa", "Earl"). */
 export const rankLabel = (rank, gender, cc = 'GB') => NOBILITY[cc]?.ranks[rank]?.[gender === 'female' ? 1 : 0] ?? RANKS[rank]?.[gender === 'female' ? 'female' : 'male'] ?? '';
@@ -67,7 +119,7 @@ const PLACES = ['Ashby', 'Harcourt', 'Wexley', 'Brantham', 'Coldmoor', 'Elvaston
 const gkey = (g) => (g === 'female' ? 'female' : 'male');
 export const peerTitle = (rank, place, gender, lastName, cc = 'GB') => {
   const n = NOBILITY[cc];
-  if (n) return `${rankLabel(rank, gender, cc)} ${n.of} ${place ?? lastName}`;
+  if (n) return n.of ? `${rankLabel(rank, gender, cc)} ${n.of} ${place ?? lastName}` : `${rankLabel(rank, gender, cc)} ${place ?? lastName}`;
   const r = RANKS[rank];
   return r.of ? `${r[gkey(gender)]} of ${place}` : `${r[gkey(gender)]} ${lastName ?? place}${rank === 'baron' && place ? `, of ${place}` : ''}`;
 };
@@ -132,13 +184,16 @@ export function nobleBirth(state, rng) {
   const cc = state.character.countryId ?? 'US';
   // Chosen on the start screen (a rank, heir or younger child), or the rare opt-in chance.
   const chosen = state.flags?.nobleStart;
-  if (!NOBLE_COUNTRIES.includes(cc) || state.royal) return false;
+  if (!NOBLE_COUNTRIES.includes(cc) || state.royal || NOBILITY[cc]?.lifeOnly) return false;
+  // Before a country had a nobility, there's none to be born into.
+  if (nobilityLaw(cc, yearNow(state)).status === 'none') return false;
   if (!chosen && (!state.flags?.nobleOptIn || !rng.chance(NOBLE_BIRTH_CHANCE))) return false;
   const rank = chosen?.rank ?? rng.weighted([['baron', 40], ['viscount', 22], ['earl', 26], ['marquess', 7], ['duke', 5]], ([, w]) => w)[0];
   const parents = (state.people?.list ?? []).filter((p) => p.relation === 'father' || p.relation === 'mother');
   const holder = parents.find((p) => p.relation === 'father') ?? parents[0];
   const heir = chosen?.heir ?? rng.chance(state.character.gender === 'male' ? 0.65 : 0.3);
   state.noble = { rank, place: rng.pick(cc === 'ES' ? PLACES_ES : NOBILITY[cc]?.places ?? PLACES), holderId: holder?.id ?? null, heir, number: rng.int(2, 11), cc };
+  state.noble.law = nobilityLaw(cc, yearNow(state)).status;
   if (holder) {
     holder.title = peerTitle(rank, state.noble.place, holder.gender, holder.lastName, cc);
     holder.titles = subsidiaryTitles(rank, state.noble.place, holder.gender, cc);
