@@ -263,6 +263,17 @@ const UNIT_EVENTS = {
   ] },
 };
 
+/**
+ * Countries whose patrol officers don't carry guns: firearms are for trained specialists
+ * (Britain outside Northern Ireland, Ireland, New Zealand, Norway, Iceland).
+ */
+const UNARMED = ['GB', 'IE', 'NZ', 'NO', 'IS'];
+export const unarmedPatrol = (state) => UNARMED.includes(state.character.countryId ?? 'US') && state.character.regionId !== 'belfast' && pd(state).unit !== 'swat';
+const UNARMED_GUN = { id: 'gunUnarmed', icon: '🔫', title: 'Man With a Gun', text: 'A caller reports a man waving a gun outside a shop. You have no gun of your own, and he turns toward you as you pull up.', options: [
+  { id: 'contain', label: '📻 Pull back, contain the street and call for armed officers', text: 'You cleared the street and held the cordon. The firearms team talked him out: the gun was a replica.', perf: 6, commend: 0.3, arrest: 1 },
+  { id: 'talk', label: '🗣️ Keep your distance and talk to him', check: 55, text: 'You kept him talking until he put it down. It was real, and loaded.', perf: 8, commend: 0.6, arrest: 1, fail: { text: 'He fired over your head and ran. Armed officers caught him two streets away. You shook for an hour.', trauma: 12 } },
+] };
+
 function callPrompt(ctx, job) {
   const { state, rng } = ctx;
   if (state.prompts.some((p) => p.type === 'police.call' || p.type === 'scenes.step')) return;
@@ -273,7 +284,9 @@ function callPrompt(ctx, job) {
     : campus && rng.chance(0.6) ? CAMPUS_CALLS
     : town && rng.chance(0.55) ? TOWN_CALLS
       : CALLS.filter((c) => (c.id !== 'shooter' || rng.chance(0.15)) && (!campus || c.id !== 'stop'));
-  const c = rng.pick(pool);
+  let c = rng.pick(pool);
+  // Unarmed patrol: the gun call is a containment job (and the Taser option is the era's kit).
+  if (c.id === 'gun' && unarmedPatrol(state)) c = UNARMED_GUN;
   ctx.prompt({ type: 'police.call', icon: c.icon, title: c.title, text: c.text, options: c.options.map(({ id, label, tone, offense }) => ({ id, label, tone, illegal: offense ? offenseName(offense) : undefined })), data: { callId: c.id } });
 }
 
@@ -456,7 +469,7 @@ export const PoliceLifeModule = {
     exam(ctx, prep) {
       const { state } = ctx;
       const job = state.career.job;
-      if (!isCop(job) || !nextExam(job)) return;
+      if (!isCop(job) || !nextExam(job, state)) return;
       if (yearlyCount(state, 'cs.exam')) return ctx.toast('Exams are given once a year', 'warn');
       bumpYearly(state, 'cs.exam');
       if (prep === 'prep') ctx.spend(800, 'Promotional exam prep course', { credit: true });
@@ -475,7 +488,7 @@ export const PoliceLifeModule = {
   resolvers: {
     call(ctx, data, optionId) {
       const { state, rng } = ctx;
-      const c = [...CALLS, ...TOWN_CALLS, ...CAMPUS_CALLS, ...Object.values(UNIT_EVENTS)].find((x) => x.id === data.callId);
+      const c = [...CALLS, ...TOWN_CALLS, ...CAMPUS_CALLS, ...Object.values(UNIT_EVENTS), UNARMED_GUN].find((x) => x.id === data.callId);
       const o = c?.options.find((x) => x.id === optionId);
       if (!o) return;
       let fx = o;

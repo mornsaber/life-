@@ -137,7 +137,8 @@ export const LOCAL_AGENCIES = {
       titles: { cadet: 'Élève gardien de la paix', trooper: 'Gardien de la paix', senior: 'Sous-brigadier', investigator: 'Officier de police judiciaire', majorCrimes: 'Enquêteur, brigade criminelle', detSergeant: 'Capitaine de police (chef de groupe)', detLieutenant: 'Commandant de police (chef de section, PJ)', detCaptain: 'Commissaire (chef de brigade, PJ)', sergeant: 'Brigadier-chef', lieutenant: 'Lieutenant de police', captain: 'Capitaine de police', major: 'Commandant de police', ...cmd('superintendent', ['Commissaire de police', 'Commissaire divisionnaire', 'Contrôleur général', 'Inspecteur général'], 'Directeur général de la Police nationale') },
     },
     fire: {
-      name: 'Sapeurs-pompiers professionnels (SDIS)', employer: (city) => `SDIS — centre de secours de ${city}`,
+      // Paris's fire brigade is an army unit and Marseille's a navy one: their firefighters are soldiers and sailors.
+      name: 'Sapeurs-pompiers professionnels (SDIS)', employer: (city) => (city === 'Paris' ? 'Brigade de sapeurs-pompiers de Paris (Armée de terre)' : city === 'Marseille' ? 'Bataillon de marins-pompiers de Marseille (Marine nationale)' : `SDIS — centre de secours de ${city}`),
       titles: { recruit: 'Sapeur stagiaire', firefighter: 'Sapeur', engineer: 'Caporal (conducteur)', inspector: 'Préventionniste', investigator: 'Enquêteur RCCI', lieutenant: 'Sergent', captain: 'Adjudant', battalion: 'Lieutenant', deputyChief: 'Capitaine', ...cmd('chief', ['Commandant', 'Lieutenant-colonel', 'Colonel'], 'Directeur départemental (contrôleur général)') },
     },
     ems: {

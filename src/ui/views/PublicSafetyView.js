@@ -2,18 +2,31 @@
 import { esc, button, card, chip, kv, disclosure } from '../Components.js';
 import { areaOk, AREAS, SHIFTS as PSHIFTS, UNITS, BUREAUS, isCop, unitEligibility, unitName, bureauName, isDetective } from '../../modules/publicsafety/PoliceLife.js';
 import { STATIONS, SHIFTS as FSHIFTS, TEAMS, MAX_TEAMS, teamName, isFirefighter, stationEligibility, teamEligibility, stationsFor } from '../../modules/publicsafety/FireLife.js';
-import { nextExam, REACHABLE } from '../../modules/publicsafety/CivilService.js';
+import { nextExam, REACHABLE, systemOf, examName, schoolEligibility } from '../../modules/publicsafety/CivilService.js';
 
 const n = (x) => Number(x ?? 0).toLocaleString();
 
+const HOW = {
+  list: 'Civil-service rule: you sit a written exam and an oral board, and promotions go down the ranked list. The list expires after three years.',
+  qualify: 'Pass the exam to qualify, then a selection board picks from those qualified when a post comes up.',
+  rankExam: 'Every rank has its own written exam, and most candidates fail it. Pass, and you can be promoted when a post opens.',
+  concours: 'A competitive exam with a fixed number of places. Win one and you go to the school for a year, then take the rank.',
+  track: 'Careers run in tracks. Within yours you rise by seniority and appraisal; the next track needs selection and a degree.',
+};
+
 function examBlock(state, job, action) {
-  const next = nextExam(job);
+  const sys = systemOf(job, state);
+  if (sys.kind === 'committee') return `<h4 class="sub">Promotion</h4><p class="fine">A departmental promotion committee goes by seniority. There's no exam: you wait your turn.</p>`;
+  if (job.schooling) return `<h4 class="sub">In training</h4><p class="fine">You take your new rank at age ${job.schooling.until}.</p>`;
+  const next = nextExam(job, state);
   if (!next) return '';
   const e = job.promoList?.[next.id];
   const taken = Boolean(state.yearly['cs.exam']);
-  return `<h4 class="sub">Promotional exam: ${esc(next.title)}</h4>
-    <p class="fine">${e ? `You're <b>#${e.rank}</b> on the ${esc(next.title.toLowerCase())}'s list (score ${e.score}), which expires at ${e.expiresAge}. Promotions go down the list as seats open; you're promoted at #${REACHABLE}.` : 'Civil-service rule: you sit a written exam and an oral board, and promotions go down the ranked list. The list expires after two years.'}</p>
-    <div class="action-grid">${button('📝 Sit the exam', action, { arg: 'self', variant: 'small', disabled: taken, hint: 'Your smarts and record decide the score' })}${button('📚 Prep course + exam ($800)', action, { arg: 'prep', variant: 'small', disabled: taken, hint: '+10 points' })}</div>`;
+  const school = ['concours', 'track'].includes(sys.kind) ? schoolEligibility(state, job) : { ok: true };
+  const name = examName(state, job, next);
+  return `<h4 class="sub">Next: ${esc(next.title)}</h4>
+    <p class="fine">${e ? `You're <b>#${e.rank}</b> on the ${esc(next.title.toLowerCase())}'s list (score ${e.score}), which expires at ${e.expiresAge}. Promotions go down the list as seats open; you're promoted at #${REACHABLE}.` : `${esc(HOW[sys.kind] ?? '')} <b>${esc(name.charAt(0).toUpperCase() + name.slice(1))}</b>.`}</p>
+    <div class="action-grid">${button(sys.kind === 'track' ? '📝 Apply for selection' : '📝 Sit the exam', action, { arg: 'self', variant: 'small', disabled: taken || !school.ok, hint: school.ok ? 'Your smarts and record decide the score' : school.reason })}${button('📚 Prep course + exam ($800)', action, { arg: 'prep', variant: 'small', disabled: taken || !school.ok, hint: '+10 points' })}</div>`;
 }
 
 export function policeCard(state) {

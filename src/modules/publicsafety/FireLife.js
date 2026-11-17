@@ -345,7 +345,7 @@ export const FireLifeModule = {
     exam(ctx, prep) {
       const { state } = ctx;
       const job = state.career.job;
-      if (!isFirefighter(job) || !nextExam(job)) return;
+      if (!isFirefighter(job) || !nextExam(job, state)) return;
       if (yearlyCount(state, 'cs.exam')) return ctx.toast('Exams are given once a year', 'warn');
       bumpYearly(state, 'cs.exam');
       if (prep === 'prep') ctx.spend(800, 'Promotional exam prep course', { credit: true });

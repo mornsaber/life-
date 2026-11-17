@@ -75,7 +75,14 @@ export function resolveDutyStation(rng, profession, regionId) {
  * company and the ambulance a volunteer or county one — there are no career posts to apply for.
  */
 export const CAREER_SERVICE_MIN = { fire: 15000, ems: 8000 };
-export const careerServiceHere = (regionId, professionId) => !CAREER_SERVICE_MIN[professionId] || cityPopulation(regionId) >= CAREER_SERVICE_MIN[professionId];
+/**
+ * Where the fire service is volunteer except in the big cities: Germany's Berufsfeuerwehren serve
+ * cities of about 100,000 and up (everywhere else the Freiwillige Feuerwehr), Austria's six cities,
+ * Switzerland's largest.
+ */
+const COUNTRY_SERVICE_MIN = { DE: { fire: 100000 }, AT: { fire: 150000 }, CH: { fire: 100000 } };
+export const careerServiceMin = (regionId, professionId) => COUNTRY_SERVICE_MIN[REGIONS[regionId]?.country]?.[professionId] ?? CAREER_SERVICE_MIN[professionId];
+export const careerServiceHere = (regionId, professionId) => !careerServiceMin(regionId, professionId) || cityPopulation(regionId) >= careerServiceMin(regionId, professionId);
 /** The nearest place that has one: in your state or province if possible, the smallest such town. */
 export function nearestCareerRegion(regionId, professionId) {
   const here = REGIONS[regionId] ?? REGIONS.midcity;
