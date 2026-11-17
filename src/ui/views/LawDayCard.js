@@ -3,6 +3,7 @@
  * the police, and the law of your private life (legal/LawOfTheDay.js).
  */
 import { card, button, esc } from '../Components.js';
+import { rightsSummary } from '../../modules/legal/Rights.js';
 import { yearNow, PRESENT } from '../../modules/world/Eras.js';
 import { deathPenaltyThen, transportationHere, debtorsPrisonHere, prohibitionHere, policeHere, sexBetweenMenCriminal, sameSexMarriageLegal, divorceBarred } from '../../modules/legal/LawOfTheDay.js';
 
@@ -25,4 +26,11 @@ export function lawDayCard(state) {
     ? `<div class="toggle-row">${button('🥃 Run liquor to the speakeasies', 'lawDay.bootleg', { variant: 'small danger', hint: 'Good money; raids happen' })}</div>` : '';
   if (!lines.length && !bootleg) return '';
   return card(`The Law in ${y}`, `<p>${esc(lines.join(' '))}</p>${bootleg}`, { icon: '⚖️' });
+}
+
+/** Your rights here and now, in one place (legal/Rights.js). */
+export function rightsCard(state) {
+  if (state.character.age < 12) return '';
+  const rows = rightsSummary(state);
+  return card(`Your Rights in ${yearNow(state)}`, `<ul class="history">${rows.map((r) => `<li>${r.icon} <b>${esc(r.label)}</b>: <span class="${r.bad ? 'neg' : ''}">${esc(r.text)}</span></li>`).join('')}</ul>`, { icon: '📜' });
 }

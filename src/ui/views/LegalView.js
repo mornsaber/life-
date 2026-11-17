@@ -3,7 +3,7 @@
  * life in prison (what to do with the year, appeals, parole, death row);
  * and second chances (sealing records, pardons).
  */
-import { lawDayCard } from './LawDayCard.js';
+import { lawDayCard, rightsCard } from './LawDayCard.js';
 import { esc, money, button, card, chip, kv, empty, meter, disclosure } from '../Components.js';
 import { lifeOf, judgeActions, SPECIAL_COURTS } from '../../modules/legal/JudicialLife.js';
 import { SEVERITY_LABEL } from '../../modules/legal/index.js';
@@ -191,7 +191,7 @@ export function legalView(state) {
     l.record.length > seenHere.length ? ['Not counted here', `${l.record.filter((r) => !r.sealed && !r.pardoned).length - seenHere.length} (convictions abroad, sealed or spent)`] : null,
     ['Things that could still catch up with you', l.investigations.length ? `<span class="neg">${l.investigations.length}</span>` : '0'],
   ])}<p class="fine">Felonies bar most licensed professions, clearances, police reserves and military enlistment. Diplomatic immunity only shields you from host-country law. ${esc(dp?.where ?? (state.character.countryId ? COUNTRY_NAME(state) : stateOf(state).name))} ${death ? DEATH_PENALTY_LABEL[death] : 'has no death penalty'}.</p>`, { icon: '⚖️', accent: 'red' })}
-  ${lawDayCard(state)}${prisonCard(state)}${reentryCard(state)}
+  ${rightsCard(state)}${lawDayCard(state)}${prisonCard(state)}${reentryCard(state)}
   ${civilCard(state)}
   ${benchCard(state)}
   ${secondChanceCard(state)}

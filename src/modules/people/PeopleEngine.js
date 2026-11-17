@@ -19,6 +19,7 @@
  * retirement:addPension, housing:sell).
  */
 import { currentCountry } from '../../core/Locale.js';
+import { marriageBlock, isCivilPartnership, custodyTilt, jointCustodyExists } from '../legal/Rights.js';
 import { vettingForm } from '../world/MilitaryLocal.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { randomName, yearlyCount, bumpYearly, isIncarcerated, hasFelony, isEmployed } from '../../core/State.js';
@@ -486,8 +487,9 @@ export function divorce(ctx, spouse, { contested = false } = {}) {
   for (const child of minorChildren(state).filter((c) => c.otherParentId === spouse.id || !c.otherParentId)) {
     const record = hasFelony(state) || isIncarcerated(state);
     const addiction = state.health?.conditions.some((c) => !c.remission && ['alcohol', 'opioids'].includes(c.id));
-    const roll = rng.float(0, 1) + (record || addiction ? 0.4 : 0) - (child.relationship - 70) / 200;
-    child.custody = roll < 0.35 ? 'you' : roll < 0.75 ? 'joint' : 'ex';
+    // The law of the day: the father's right, the tender years, or the child's best interests (legal/Rights.js).
+    const roll = rng.float(0, 1) + (record || addiction ? 0.4 : 0) - (child.relationship - 70) / 200 + custodyTilt(state);
+    child.custody = roll < 0.35 ? 'you' : roll < 0.75 && jointCustodyExists(state) ? 'joint' : roll < 0.55 ? 'you' : 'ex';
     child.otherParentId = spouse.id;
   }
   spouse.relation = 'ex';
@@ -696,11 +698,13 @@ export const PeopleEngine = {
       if (state.character.age < 18 || ageOf(state, person) < 18) return ctx.toast('You both need to be 18.', 'warn');
       if (state.character.age - (person.since ?? state.character.age) < 1) return ctx.toast('Give it at least a year.', 'warn');
       if (yearlyCount(state, 'people.propose')) return ctx.toast('You already proposed this year.', 'warn');
+      const barred = marriageBlock(state, person);
+      if (barred) return ctx.toast(`${barred}.`, 'warn');
       bumpYearly(state, 'people.propose');
       if (rng.chance(clamp((person.relationship - 40) / 50 + (person.compatibility ?? 60) / 300, 0.05, 0.95))) {
         person.relation = 'fiance';
         ctx.stat('happiness', 12);
-        ctx.log(`${person.firstName} said yes! 💍`, '💍', 'milestone');
+        ctx.log(`${person.firstName} said yes! 💍${isCivilPartnership(state, person) ? ' The law here only lets you register a civil partnership, not marry.' : ''}`, '💍', 'milestone');
         if (!citizenshipsOf(state).includes(nationalityCode(person))) foreignContactPrompt(ctx, person);
       } else {
         person.relationship = clampRel(person.relationship - 15);
