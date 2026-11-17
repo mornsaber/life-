@@ -42,7 +42,7 @@ import { politicsView, chamberView, partyTabView, campaignView } from './views/P
 import { healthOverview, conditionsTab, coverTab, lifestyleTab } from './views/HealthView.js';
 import { peopleView, heirChoices } from './views/PeopleView.js';
 import { achievementsView } from './views/AchievementsView.js';
-import { reputationCard, frontPageCard } from './views/CirclesView.js';
+import { reputationCard, frontPageCard, newsThreadCard } from './views/CirclesView.js';
 import { weekCard, skillsCard, routineCard } from './views/GameplayView.js';
 import { governmentCard, empireCard } from './views/PowerView.js';
 import { yearReviewCard, thisYearCard, tipsCard, aspirationsCard } from './views/YearReviewView.js';
@@ -263,7 +263,7 @@ function retirementLifeCard(state) {
 }
 
 export const VIEWS = {
-  world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state),
+  world: (state) => timesCard(state) + eraCard(state) + frontPageCard(state) + newsThreadCard(state),
   goals: (state) => sandboxCard(state) + scenarioCard(state) + littleThingsCard(state) + aspirationsCard(state) + reputationCard(state),
   life: (state, ui = {}) => {
     const limit = ui.logLimit ?? 30;

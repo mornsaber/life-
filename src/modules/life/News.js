@@ -16,6 +16,25 @@ import { REGIONS } from './Regions.js';
 import { fameScore } from './Fame.js';
 import { rivalsOf } from '../people/Rivals.js';
 import { portfolioValue, sell } from '../investing/Brokerage.js';
+import { isOnActiveDuty } from '../../core/State.js';
+
+const MAX_THREAD = 120;
+/** Where you were in your own life this year, in a clause ("you were twelve, at school in Leeds"). */
+export function whereYouWere(state) {
+  const c = state.character;
+  const city = REGIONS[c.regionId]?.name?.split(',')[0];
+  const at = city ? ` in ${city}` : '';
+  const job = state.career?.job;
+  if (state.legal?.incarceration) return 'you were in prison';
+  if (isOnActiveDuty(state)) return 'you were in uniform';
+  if (c.age < 5) return `you were ${c.age === 0 ? 'a newborn' : `${c.age}`}${at}`;
+  if (c.age < 18 && state.k12 && !state.k12.done && !state.k12.dropout && !state.schooling?.unschooled) return `you were ${c.age}, at school${at}`;
+  if (c.age < 16) return `you were ${c.age}${at}`;
+  if (state.education?.enrolled) return `you were a student${at}`;
+  if (job) return `you were ${/^[aeiou]/i.test(job.title) ? 'an' : 'a'} ${job.title}${job.employer?.name ? ` at ${job.employer.name}` : ''}`;
+  if (state.retirement?.retired || c.age >= 66) return `you were ${c.age} and retired${at}`;
+  return `you were ${c.age}, between jobs${at}`;
+}
 
 export const TIERS = { world: { label: 'World', icon: '🌍' }, national: { label: 'National', icon: '🏛️' }, local: { label: 'Local', icon: '🏘️' } };
 const MAX_PAGES = 30;
@@ -32,11 +51,11 @@ function ensure(state) {
 export const latestPage = (state) => state.news?.pages?.at(-1) ?? null;
 
 /** Add a story to this year's paper (any module, via the bus or directly). */
-export function addStory(state, { tier = 'national', headline, weight = 1, icon = '📰', you = false }) {
+export function addStory(state, { tier = 'national', headline, weight = 1, icon = '📰', you = false, auto = false }) {
   if (!headline || !TIERS[tier]) return;
   const n = ensure(state);
   if (n.current.some((s) => s.headline === headline)) return;
-  n.current.push({ tier, headline, weight, icon, you });
+  n.current.push(auto ? { tier, headline, weight, icon, you, auto } : { tier, headline, weight, icon, you });
 }
 
 /** What changed in the world since last year, seen by the newsroom. */
@@ -44,16 +63,16 @@ function worldWatch(state) {
   const n = ensure(state);
   const seen = n.seen;
   const wars = Object.keys(state.world?.wars ?? {});
-  for (const cc of wars) if (!(seen.wars ?? []).includes(cc)) addStory(state, { tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: `War breaks out in ${COUNTRIES[cc]?.name ?? cc}`, weight: 8, icon: '⚔️' });
-  for (const cc of seen.wars ?? []) if (!wars.includes(cc)) addStory(state, { tier: 'world', headline: `Ceasefire holds in ${COUNTRIES[cc]?.name ?? cc}`, weight: 5, icon: '🕊️' });
+  for (const cc of wars) if (!(seen.wars ?? []).includes(cc)) addStory(state, { auto: true, tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: `War breaks out in ${COUNTRIES[cc]?.name ?? cc}`, weight: 8, icon: '⚔️' });
+  for (const cc of seen.wars ?? []) if (!wars.includes(cc)) addStory(state, { auto: true, tier: 'world', headline: `Ceasefire holds in ${COUNTRIES[cc]?.name ?? cc}`, weight: 5, icon: '🕊️' });
   seen.wars = wars;
   const juntas = Object.keys(state.world?.juntas ?? {});
-  for (const cc of juntas) if (!(seen.juntas ?? []).includes(cc)) addStory(state, { tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: state.world.juntas[cc]?.revolution ? `Revolution topples the government of ${COUNTRIES[cc]?.name ?? cc}` : `Military seizes power in ${COUNTRIES[cc]?.name ?? cc}`, weight: 7, icon: '🪖' });
+  for (const cc of juntas) if (!(seen.juntas ?? []).includes(cc)) addStory(state, { auto: true, tier: cc === (state.character.countryId ?? 'US') ? 'national' : 'world', headline: state.world.juntas[cc]?.revolution ? `Revolution topples the government of ${COUNTRIES[cc]?.name ?? cc}` : `Military seizes power in ${COUNTRIES[cc]?.name ?? cc}`, weight: 7, icon: '🪖' });
   seen.juntas = juntas;
   const phase = state.economy?.phase;
   if (seen.phase && phase !== seen.phase) {
     const h = { recession: ['Recession confirmed as markets slump', 9, '📉'], recovery: ['Economy returns to growth', 5, '🌱'], peak: ['Boom times: jobs, prices and rates all up', 5, '🔥'], expansion: ['Economy expanding steadily', 3, '📈'] }[phase];
-    if (h) addStory(state, { tier: 'national', headline: h[0], weight: h[1], icon: h[2] });
+    if (h) addStory(state, { auto: true, tier: 'national', headline: h[0], weight: h[1], icon: h[2] });
   }
   seen.phase = phase;
 }
@@ -79,6 +98,19 @@ export function printPaper(ctx) {
   n.pages.push({ age: state.character.age, year: (state.character.birthYear ?? 0) + state.character.age, stories });
   if (n.pages.length > MAX_PAGES) n.pages.shift();
   n.current = [];
+  // Your life in the news: the year's big story, and where you were when it broke.
+  // History's own stories first; the newsroom's automatic ones (a war somewhere far off) only when
+  // they're about your own country or nothing else happened.
+  const rank = (x) => x.weight + (x.tier === 'national' ? 2 : 0) - (x.auto ? (x.tier === 'national' ? 2 : 6) : 0);
+  const big = stories.filter((x) => !x.you && x.weight >= 5 && x.tier !== 'local' && rank(x) >= 3).sort((a, b) => rank(b) - rank(a))[0];
+  if (big) {
+    const year = (state.character.birthYear ?? 0) + state.character.age;
+    const head = big.headline.replace(/[.!]$/, '');
+    const line = `${head[0].toUpperCase()}${head.slice(1)}; ${whereYouWere(state)}.`;
+    (n.thread ??= []).push({ year, age: state.character.age, icon: big.icon, text: line });
+    if (n.thread.length > MAX_THREAD) n.thread.shift();
+    ctx.log(`${year}: ${line}`, big.icon ?? '📰', 'info');
+  }
   // You made the paper: a rival has something to say.
   const mine = stories.find((s) => s.you);
   const rival = rivalsOf(state).find((r) => !r.friend);

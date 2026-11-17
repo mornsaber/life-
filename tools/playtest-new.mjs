@@ -52,9 +52,10 @@ page.on('pageerror', (e) => errors.push(e.message));
 page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
 await c.addInitScript((data) => { for (const [k, v] of Object.entries(data)) localStorage.setItem(k, v); }, saved);
 await page.goto('http://localhost:8765/', { waitUntil: 'networkidle' });
-for (const [group, tab] of [['occupation', 'career'], ['occupation', 'sidework'], ['relationships', 'people'], ['activities', 'legal']]) {
+for (const [group, tab] of [['occupation', 'career'], ['occupation', 'sidework'], ['relationships', 'people'], ['activities', 'legal'], ['home', 'world'], ['assets', 'home']]) {
   // As a player does it: open the group from the dock, then tap the row.
-  await page.click(`[data-action="ui.menu"][data-arg="${group}"]`).catch(() => {});
+  if (group === 'home') await page.click('[data-action="ui.home"]').catch(() => {});
+  else await page.click(`[data-action="ui.menu"][data-arg="${group}"]`).catch(() => {});
   await page.waitForTimeout(200);
   const row = page.locator(`[data-action="ui.tab"][data-arg="${tab}"]`).first();
   if (await row.count()) await row.click().catch(() => {});

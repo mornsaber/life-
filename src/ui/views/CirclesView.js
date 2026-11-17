@@ -10,6 +10,7 @@ import { byId } from '../../modules/people/People.js';
 import { TIERS, latestPage } from '../../modules/life/News.js';
 import { cityOf } from '../../modules/life/Cities.js';
 import { REGIONS } from '../../modules/life/Regions.js';
+import { periodText } from '../../modules/world/Eras.js';
 
 const tone = (v) => (v >= 65 ? 'good' : v >= 40 ? 'mid' : 'bad');
 
@@ -48,6 +49,14 @@ export function frontPageCard(state) {
     return s.length ? `<h4 class="sub">${t.icon} ${t.label}</h4><ul class="history">${s.map((x) => `<li>${x.icon} ${x.you ? '<b>' : ''}${esc(x.headline)}${x.you ? '</b>' : ''}</li>`).join('')}</ul>` : '';
   }).join('');
   return card(`Front Page · ${page.year}`, sections, { icon: '📰', summary: esc(page.stories[0].headline) });
+}
+
+/** Your life in the news: a line a year, the world's story and where you were (Life tab). */
+export function newsThreadCard(state) {
+  const t = state.news?.thread ?? [];
+  if (t.length < 2) return '';
+  const rows = t.slice(-12).reverse().map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(periodText(x.text))}</li>`).join('');
+  return card('Your Life in the News', `<ul class="history">${rows}</ul>${t.length > 12 ? `<p class="fine">${t.length} years in the thread; the latest twelve shown.</p>` : ''}`, { icon: '🗞️', summary: `${t.length} years` });
 }
 
 /** Where you live, and how it's changing (Move tab). */
