@@ -46,7 +46,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 export const TECH = {
   railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905, airTravel: 1950, emergencyNumber: 1968, ged: 1942, highSchool: 1920, cctv: 1980, video: 1980, dna: 1987, doorbellCam: 2015,
   radio: 1922, tv: 1950, supermarket: 1930, antibiotics: 1944, helicopter: 1955, ransomware: 2013, prom: 1900, interstate: 1956, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
-  internet: 1995, onlineDating: 1997, sushiBar: 1980, councilTax: 1993, prepping: 1995, memeStocks: 2020, techBubble: 1999, littleLeague: 1939, learnerPermit: 1935, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
+  internet: 1995, onlineDating: 1997, sushiBar: 1980, councilTax: 1993, prepping: 1995, memeStocks: 2020, techBubble: 1999, littleLeague: 1939, learnerPermit: 1930, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
 
@@ -64,7 +64,8 @@ const TECH_WORDS = [
   ['sushiBar', /sushi/i],
   ['littleLeague', /Little League/i],
   ['emergencyNumber', /(?<![\d,.$])\b(?:911|999)\b(?![,.]?\d)|emergency number/i],
-  ['airTravel', /\bairports?\b|\bflights?\b|airline|plane ticket|jet lag|budget airline|boarding pass/i],
+  // (A passenger's flight, not a flight of stairs or an RAF Flight Sergeant.)
+  ['airTravel', /\b[Aa]irports?\b|\bflights?\b(?! of stairs)|\b[Aa]irlines?\b|plane ticket|jet lag|budget airline|boarding pass/],
   ['gigApps', /rideshare|\bUber\b|\bLyft\b|DoorDash|gig app|delivery app|Airbnb/i],
   ['smartphone', /smartphone|\bapps?\b|app store|selfie|\bswip|Tinder|Instagram|TikTok|WhatsApp|FaceTime|group chat|Zoom call|influencer|viral|hashtag|doomscroll/i],
   ['vaping', /\bvap(?:e|es|ed|ing)\b|e-cig/i],
@@ -118,7 +119,7 @@ export const PROFESSION_FROM = {
   gb_caseOfficer: 1909, gb_sigint: 1919, gb_intelligence: 1936, gb_parkService: 1951, gb_fbi: 1965, gb_borderPatrol: 1920,
   gb_benefitsClaims: 1912, gb_nationalLab: 1900, gb_oig: 1866, gb_federalPrisons: 1878, gb_regulatory: 1890, gb_foreignService: 1800,
   gb_airTrafficControl: 1922, gb_meteorology: 1854,
-  police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1900, trades: 1882, electricalEng: 1882, nursing: 1860,
+  police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1915, trades: 1882, electricalEng: 1882, nursing: 1860,
   railroad: 1830, transit: 1860, transitMaintenance: 1905, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
   mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
   tech: 1955, cybersecurity: 1990, dataScience: 2010, contentCreator: 2006, gameDevelopment: 1975, design: 1930,
@@ -1236,6 +1237,13 @@ const RENAMES = [
   [/Ambulance Service NHS Trust/g, 1992, () => 'Ambulance Service'], [/\bEmergency Care Assistant\b/g, 2005, (y) => (y >= 1970 ? 'Ambulance Technician' : 'Ambulanceman')],
   [/\bStudent Police Constable\b/g, 2006, () => 'Probationer Constable'], [/\bPolice Scotland\b/g, 2013, (y) => (y >= 1975 ? 'the regional police' : 'the burgh police')],
   [/SDIS — centre de secours de/g, 1996, () => 'Corps de sapeurs-pompiers de'],
+  [/\bover a long video call\b/g, 2005, (y) => (y >= 1920 ? 'in a long telephone call' : 'in a long letter')],
+  [/A WhatsApp group, a few stickers in windows/g, 2012, () => 'A meeting in the church hall, a few cards in windows'],
+  [/\bwatched it on a phone with the sound off\b/g, 2008, (y) => (y >= 1950 ? 'watched it on the television with the sound down' : 'listened for news from the street')],
+  [/Early sepsis\. Antibiotics went in within the hour/g, 1944, () => 'Childbed fever. You kept her cool and clean and prayed'],
+  [/\bnew subdivisions, new schools, traffic\b/g, 1910, () => 'new streets, new schools, crowded trams'],
+  [/\. The body cam was running\b/g, 2014, () => '. A bystander saw it all'],
+  [/\bcouch up three flights of stairs\b/g, 1950, () => 'sideboard up three flights of stairs'],
   [/Missiles hit an apartment block across the street\. You spent the night in the subway\./g, 1955, () => 'Bombs fell on the block across the street. You spent the night in the shelter.'],
   [/\bwith permanent marker\b/g, 1960, () => 'with a lump of coal'],
   [/\ba county-lines investigation\b/g, 2012, () => 'a drugs investigation'],

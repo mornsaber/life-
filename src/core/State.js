@@ -479,12 +479,14 @@ export const ERA_DROPPED = [];
 export function addLog(state, text, icon = '•', kind = 'info') {
   // The last line of defence for era-correctness: a line that needs technology this year hasn't got
   // (a learner's permit in 1895, a tech bubble in 1897) stays out of the story. Deaths are always told.
-  if (state.era && kind !== 'death' && typeof text === 'string' && !fitsEra(state, text)) {
-    if (ERA_DROPPED.length < 500) ERA_DROPPED.push({ year: state.character?.birthYear + state.character?.age, text });
+  // (Judged after the period wording is applied: "a long video call" in 1930 reads "a long telephone call".)
+  const tidy = tidyText(text, icon);
+  if (state.era && kind !== 'death' && typeof tidy === 'string' && !fitsEra(state, tidy)) {
+    if (ERA_DROPPED.length < 500) ERA_DROPPED.push({ year: state.character?.birthYear + state.character?.age, text: tidy });
     return;
   }
   const entries = currentYearBlock(state).entries;
-  if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text: tidyText(text, icon), icon, kind });
+  if (entries.length < LOG_MAX_PER_YEAR) entries.push({ text: tidy, icon, kind });
 }
 
 /** Log growth caps: full detail for recent years; older years keep only their headline moments. */
