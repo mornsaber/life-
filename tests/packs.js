@@ -31,7 +31,11 @@ const PER = Number(process.argv[2] ?? 6);
 const SEED = Number(process.argv[3] ?? 1);
 /** Only these countries (comma-separated), to test one new pack quickly. */
 const ONLY = process.argv[4]?.split(',') ?? null;
-const TESTED = ONLY ? PACKS.filter((p) => ONLY.includes(p.id)) : PACKS;
+// The suite runs the countries as four shards in parallel (packs.js is shard 0; packs2–4.js import
+// it with ?shard=k/4). Run directly with arguments to test them all in one go.
+const SHARD_PARAM = new URL(import.meta.url).searchParams.get('shard');
+const [SHARD, SHARDS] = SHARD_PARAM ? SHARD_PARAM.split('/').map(Number) : [0, process.argv[2] ? 1 : 4];
+const TESTED = (ONLY ? PACKS.filter((p) => ONLY.includes(p.id)) : PACKS).filter((_, i) => i % SHARDS === SHARD);
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 const BAD_TEXT = /undefined|NaN|\[object |\bnull\b|Infinity/;
 /** Words that belong to each pack's base country, not to the pack's. */

@@ -41,6 +41,14 @@ export function leavingExam(state) {
   if (['DE', 'AT'].includes(c)) return 'the Abitur';
   if (c === 'JP') return y >= 1979 ? 'the university entrance exams' : y >= 1947 ? 'the entrance exams' : null;
   if (c === 'US') return y >= 1926 ? 'the SAT' : null;
+  if (c === 'IN' || c === 'PK' || c === 'BD') return y >= 1975 ? 'the Class 10 board exams' : y >= 1860 ? 'the Matriculation' : null;
+  if (['RU', 'UA', 'BY', 'PL', 'CZ', 'HU', 'RO', 'BG'].includes(c)) return y >= 1918 && y < 1991 ? 'the school-leaving exams (attestat)' : null;
+  if (c === 'CN') return (y >= 1952 && y < 1966) || y >= 1977 ? 'the gaokao' : null;
+  if (c === 'KR') return y >= 1994 ? 'the suneung' : y >= 1969 ? 'the college entrance exam' : null;
+  if (c === 'BR') return y >= 1911 ? 'the vestibular' : null;
+  if (c === 'IT') return y >= 1923 ? 'the maturità' : null;
+  if (c === 'ES') return y >= 1857 ? 'the bachillerato' : null;
+  if (['NG', 'GH', 'SL', 'GM'].includes(c)) return y >= 1952 ? 'the West African School Certificate' : null;
   return null;
 }
 
@@ -103,6 +111,11 @@ function schoolYear(ctx, rng) {
     ctx.log(`You got ${IMPLEMENT[c] ?? 'the cane'} for ${rng.pick(['talking in class', 'being late', 'cheek', 'a fight in the yard', 'blots in your copybook', 'something you didn\'t do'])}. ${rng.pick(['It stung for a day.', 'You didn\'t cry in front of them.', 'Your father gave you the same again at home.'])}`, '🪵', 'warn');
     ctx.stat('happiness', -2);
   }
+  // School days elsewhere.
+  if (['RU', 'UA', 'BY'].includes(c) && y >= 1935 && y < 1991 && age === 7 && once(state, 'sept1')) ctx.log('The first of September: your first day of school, in a brown uniform and white apron, carrying a bunch of gladioli for the teacher.', '💐', 'info');
+  if (c === 'JP' && y >= 1947 && age >= 7 && age <= 12 && once(state, 'souji')) ctx.log('After lunch, which you served to your classmates in white caps, the whole class cleans the school: desks pushed back, floors wiped by hand.', '🧹', 'info');
+  if (['IN', 'PK', 'BD', 'LK'].includes(c) && y >= 1900 && age >= 6 && age <= 12 && once(state, 'assembly')) ctx.log('Morning assembly in the yard: the prayer, the pledge, and the headmaster\'s announcements in the sun.', '🙏', 'info');
+  if (['BR', 'MX', 'AR', 'CO', 'PE'].includes(c) && y >= 1950 && y < 2010 && age >= 7 && age <= 13 && once(state, 'turno')) ctx.log('The school runs in shifts: you go in the afternoon, after the morning children leave, and the building is never quiet.', '🏫', 'info');
   // Japan's exam hell.
   if (c === 'JP' && y >= 1960 && y < PRESENT && age === 17 && once(state, 'juku')) {
     ctx.log('Juku every evening after school, cramming until midnight: "four hours\' sleep, pass; five hours, fail", they say.', '📝', 'info');
@@ -112,7 +125,7 @@ function schoolYear(ctx, rng) {
   // The leaving exams.
   const exam = leavingExam(state);
   const academic = state.schooling?.track !== 'general';
-  const examAge = c === 'GB' ? 16 : ['DE', 'AT', 'FR'].includes(c) ? 18 : c === 'IE' ? 15 : 17;
+  const examAge = c === 'GB' || ['IN', 'PK', 'BD', 'NG', 'GH', 'SL', 'GM'].includes(c) ? 16 : ['DE', 'AT', 'FR', 'IT', 'CN', 'KR', 'BR'].includes(c) ? 18 : c === 'IE' ? 15 : 17;
   if (exam && age === examAge && (academic || c === 'US' || c === 'GB' && y >= 1965) && once(state, 'exam')) {
     const score = state.stats.smarts + rng.int(-15, 15);
     const pass = score >= 50;
