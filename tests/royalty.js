@@ -394,6 +394,7 @@ const tests = {
     c.monarch.you = true;
     c.heir = { name: 'Arthur', gender: 'male', age: 1 };
     engine.dispatch('crown.abdicate');
+    state.honors = []; // only the honour under test (a long life may have earned grander ones that crowd it out)
     state.honors.push({ id: 'order.GB.kbe', source: 'order', name: 'Knight Commander of the Order of the British Empire', post: 'KBE', prestige: 30, citation: 'For services to charity.' });
     state.politics.history = [{ officeId: 'gb_pm', startAge: 40, endAge: 45 }];
     const ob = new Renderer({ root: null, toastRoot: null, engine }).obituary(state);

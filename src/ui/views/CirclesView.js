@@ -52,11 +52,12 @@ export function frontPageCard(state) {
 }
 
 /** Your life in the news: a line a year, the world's story and where you were (Life tab). */
-export function newsThreadCard(state) {
+export function newsThreadCard(state, { all = false } = {}) {
   const t = state.news?.thread ?? [];
   if (t.length < 2) return '';
-  const rows = t.slice(-12).reverse().map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(periodText(x.text))}</li>`).join('');
-  return card('Your Life in the News', `<ul class="history">${rows}</ul>${t.length > 12 ? `<p class="fine">${t.length} years in the thread; the latest twelve shown.</p>` : ''}`, { icon: '🗞️', summary: `${t.length} years` });
+  // On the World tab, the latest twelve years; at the end of a life, the whole thread from the start.
+  const rows = (all ? t : t.slice(-12).reverse()).map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(periodText(x.text))}</li>`).join('');
+  return card('Your Life in the News', `<ul class="history">${rows}</ul>${!all && t.length > 12 ? `<p class="fine">${t.length} years in the thread; the latest twelve shown.</p>` : ''}`, { icon: '🗞️', summary: `${t.length} years` });
 }
 
 /** Where you live, and how it's changing (Move tab). */

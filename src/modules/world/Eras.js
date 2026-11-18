@@ -111,7 +111,7 @@ export const fitsEra = (state, content) => yearNow(state) >= PRESENT || !techNee
 export const PROFESSION_FROM = {
   // Modern ladders with no period equivalent of their own (the period ones: travelling salesman,
   // clerk, shop assistant are separate careers).
-  sales: 1980, corporate: 1950, finance: 1975, childcare: 1965, nonprofit: 1960, research: 1945, acting: 1910,
+  sales: 1980, corporate: 1950, finance: 1975, music: 1900, childcare: 1965, nonprofit: 1960, research: 1945, acting: 1910,
   legislativeStaff: 1946, municipalAdmin: 1900, waterUtility: 1900, animalControl: 1920, publicHealth: 1900,
   hospitality: 1890, legalSupport: 1900, councilInspector: 1890,
   // Country services by their own founding dates (the template's are America's).
@@ -1236,6 +1236,17 @@ const RENAMES = [
   [/Ambulance Service NHS Trust/g, 1992, () => 'Ambulance Service'], [/\bEmergency Care Assistant\b/g, 2005, (y) => (y >= 1970 ? 'Ambulance Technician' : 'Ambulanceman')],
   [/\bStudent Police Constable\b/g, 2006, () => 'Probationer Constable'], [/\bPolice Scotland\b/g, 2013, (y) => (y >= 1975 ? 'the regional police' : 'the burgh police')],
   [/SDIS — centre de secours de/g, 1996, () => 'Corps de sapeurs-pompiers de'],
+  [/Missiles hit an apartment block across the street\. You spent the night in the subway\./g, 1955, () => 'Bombs fell on the block across the street. You spent the night in the shelter.'],
+  [/\bwith permanent marker\b/g, 1960, () => 'with a lump of coal'],
+  [/\ba county-lines investigation\b/g, 2012, () => 'a drugs investigation'],
+  [/\ba phone you weren't allowed to switch off\b/g, 1995, () => 'a message you weren\'t allowed to forget'],
+  [/\bthe older boys from the estate\b/g, 1950, () => 'the older boys from the yards'],
+  [/\bA documentary about the royal finances\b/g, 1955, () => 'A newspaper exposé of the royal finances'],
+  [/\bon a golf course\b/g, 1890, () => 'in an open field'],
+  [/\bwent to collections\b/g, 1950, () => 'were handed to a debt collector'],
+  [/\bafter high school\b/g, 1945, () => 'after leaving school'],
+  [/\bbought a condo\b/g, 1965, () => 'bought a flat'],
+  [/\btraumatic brain injury\b/g, 1960, () => 'a serious head injury'],
   [/\bthe interstate\b/g, 1956, (y) => (y >= 1920 ? 'the highway' : 'the turnpike')],
   [/\bsupermarket labels\b/g, 1930, () => 'shop signs'],
   [/\bwithout a selfie\b/g, 2010, () => 'without signing an autograph'],

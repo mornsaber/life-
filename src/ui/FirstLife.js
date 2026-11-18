@@ -46,6 +46,12 @@ export function lifeStoryText(state, obit) {
   const step = Math.max(1, Math.ceil(milestones.length / 10));
   const picked = milestones.filter((_, i) => i % step === 0).slice(0, 10);
   if (picked.length) lines.push('', 'A life in moments:', ...picked);
+  // Your life in the news: up to six years, spread across the life.
+  const thread = state.news?.thread ?? [];
+  if (thread.length >= 3) {
+    const every = Math.max(1, Math.ceil(thread.length / 6));
+    lines.push('', 'A life in the news:', ...thread.filter((_, i) => i % every === 0).slice(0, 6).map((x) => `${x.year}: ${plain(x.text)}`));
+  }
   if (obit.epitaph) lines.push('', `“${plain(obit.epitaph)}”`);
   return lines.join('\n');
 }

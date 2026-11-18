@@ -19,7 +19,7 @@
 import { clamp } from '../../core/Random.js';
 import { getProfession, professionsFor } from '../career/JobTrees.js';
 import { nextLevels } from '../career/Ladder.js';
-import { eraWorkBlock, yearNow, periodTitle } from '../world/Eras.js';
+import { eraWorkBlock, eraHidden, yearNow, periodTitle } from '../world/Eras.js';
 import { workBlock } from '../world/Regimes.js';
 import { crownOf } from '../world/Crown.js';
 import { COUNTRIES, localWage } from '../world/Countries.js';
@@ -61,7 +61,7 @@ function poolFor(state, gender, rank) {
     const need = needOf(p);
     if (need > rank || need < rank - 2) continue;
     let blocked = null;
-    try { blocked = eraWorkBlock(as, p) || workBlock(as, p); } catch { blocked = 'error'; }
+    try { blocked = eraHidden(as, p) || eraWorkBlock(as, p) || workBlock(as, p); } catch { blocked = 'error'; }
     if (blocked) continue;
     let w = RARE.has(p.id) ? 0.03 : COMMON[p.id] ?? 0.5;
     // Before the 1960s most women's work was a narrow list; the rest was rare (but not unknown).

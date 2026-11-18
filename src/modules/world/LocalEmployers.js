@@ -49,6 +49,7 @@ const T = {
     domesticService: (c) => [`a canal house in ${c}`],
   },
   IT: {
+    telegraph: () => ['Poste e Telegrafi'],
     millWork: (c) => [`Cotonificio di ${c}`, `Lanificio di ${c}`, 'Cotonificio Cantoni'],
     docks: () => ['Compagnia Unica del Porto di Genova', 'Porto di Napoli', 'Porto di Trieste'],
     coalMining: () => ['Miniere di Carbonia', 'Miniera di Sulcis'],
@@ -56,6 +57,7 @@ const T = {
     domesticService: (c) => [`a gentleman's household in ${c}`, 'a noble palazzo'],
   },
   ES: {
+    telegraph: () => ['Cuerpo de Telégrafos'],
     millWork: (c) => [`Fábrica textil de ${c}`, 'La España Industrial'],
     coalMining: () => ['Hulleras de Turón', 'Minas de Asturias'],
     steamRailway: (c, y) => (y < 1941 ? ['Compañía de los Caminos de Hierro del Norte de España', 'Compañía MZA'] : ['RENFE']),
@@ -65,6 +67,7 @@ const T = {
     millWork: (c) => [`${c} Cotton Mill`, 'Trekhgornaya Manufaktura', 'Nikolskaya Manufaktura'],
     coalMining: () => ['Donetsk coal trust', 'Donbass mines'],
     steamRailway: (c, y) => (y < 1918 ? ['Imperial Russian Railways'] : ['People\'s Commissariat of Railways']),
+    telegraph: (c, y) => (y < 1918 ? ['the Imperial Posts and Telegraphs'] : ['the People\'s Commissariat of Posts and Telegraphs']),
     domesticService: (c) => [`a merchant\'s household in ${c}`, 'a landowner\'s estate'],
   },
   IN: {
@@ -77,6 +80,7 @@ const T = {
     telegraph: () => ['Indian Posts and Telegraphs'],
   },
   JP: {
+    telegraph: () => ['the Ministry of Communications (telegraphs)'],
     millWork: (c) => [`${c} Bōseki`, 'Kanebō', 'Tomioka Silk Mill'],
     docks: () => ['Port of Yokohama', 'Port of Kobe'],
     coalMining: () => ['Miike mine (Mitsui)', 'Hashima mine (Mitsubishi)'],

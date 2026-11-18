@@ -188,10 +188,10 @@ export const RuralLifeModule = {
   },
   resolvers: {
     moment(ctx, data, optionId) {
-      const { rng } = ctx;
+      const { rng, state } = ctx;
       switch (`${data.id}.${optionId}`) {
         case 'show.enter': if (rng.chance(0.3)) { ctx.stat('happiness', 8); ctx.log('You won a blue ribbon. It\'s going on the fridge, then the wall.', '🏆', 'good'); } else { ctx.stat('happiness', 3); ctx.log('No ribbon this year, but the judges were complimentary. Mostly.', '🎡'); } break;
-        case 'show.go': ctx.stat('happiness', 5); ctx.log('Fairy floss, sheepdog trials, and everyone you know in one place.', '🎠', 'good'); break;
+        case 'show.go': ctx.stat('happiness', 5); ctx.log(['AU', 'NZ'].includes(state.character.countryId) ? 'Fairy floss, sheepdog trials, and everyone you know in one place.' : (state.character.countryId ?? 'US') === 'US' ? 'Cotton candy, the livestock judging, and everyone you know in one place.' : 'Toffee apples, the prize bull, the ploughing match, and everyone you know in one place.', '🎠', 'good'); break;
         case 'neighbour.help': ctx.stat('happiness', 6); ctx.stat('stress', 3); ctx.log('You brought the harvest in together. Next year, they\'ll be at your gate first.', '🚜', 'good'); break;
         case 'neighbour.meal': ctx.stat('happiness', 4); ctx.log('The whole street took turns. That\'s how it works out here.', '🍲', 'good'); break;
         case 'neighbour.no': ctx.stat('happiness', -2); ctx.log('Word got around that you didn\'t help.', '🗣️'); break;

@@ -462,7 +462,7 @@ export class Renderer {
       return `${newLifeForm(randomName(this.nameRng, this.nameRng.pick(['male', 'female'])))}<div class="layout single splash-saves">${savesPanel(this.engine.store, null, { inline: true })}</div>${panel}`;
     }
     if (!state.character.alive) {
-      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}<div class="row-end share-life">${button('📤 Share this life story', 'ui.share', { variant: 'small', hint: 'Copy or send a short account of this life' })}</div><div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
+      return `${this.topbar(state)}<main id="main">${tombstone(this.obituary(state), heirChoices(state))}${newsThreadCard(state, { all: true })}<div class="row-end share-life">${button('📤 Share this life story', 'ui.share', { variant: 'small', hint: 'Copy or send a short account of this life' })}</div><div class="layout single">${VIEWS.life(state, { ...this.ui, tips: false })}</div></main>${panel}`;
     }
     const prompt = state.prompts[0];
     const menu = this.ui.menu;

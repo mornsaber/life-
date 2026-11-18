@@ -22,9 +22,9 @@ import { fileURLToPath } from 'node:url';
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, '..');
 /** Fuzzers and long simulations: minutes each. */
-export const LONG = ['erabalance', 'abroad', 'milfuzz', 'milabroad', 'bizfuzz', 'orgfuzz', 'simulate', 'balance', 'clicker', 'content', 'countries', 'packs', 'nations', 'business', 'engines'];
+export const LONG = ['erabalance', 'abroad', 'milfuzz', 'milabroad', 'bizfuzz', 'orgfuzz', 'simulate', 'simulate2', 'simulate3', 'simulate4', 'balance', 'clicker', 'content', 'countries', 'packs', 'nations', 'business', 'engines'];
 /** Files that save and reload a life: they need real saves. */
-const NEEDS_SAVES = ['clicker', 'countries', 'holysee', 'orgfuzz', 'saves', 'scenarios', 'simulate'];
+const NEEDS_SAVES = ['clicker', 'countries', 'holysee', 'orgfuzz', 'saves', 'scenarios', 'simulate', 'simulate2', 'simulate3', 'simulate4'];
 /** Files nearly everything imports: a change to one of them runs every fast test. */
 const HUBS = ['src/core/Engine.js', 'src/core/State.js', 'src/core/Random.js', 'src/modules/registry.js', 'src/ui/Renderer.js', 'src/ui/Components.js'];
 

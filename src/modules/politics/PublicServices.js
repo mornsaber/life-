@@ -77,7 +77,7 @@ export const CATALOG = {
     options: { contracted: { provider: 'contract' }, volunteer: { name: 'a volunteer fire company', profession: null }, private: { name: 'a private fire company', profession: 'privateFire', law: ['privateFire', true] } } },
   ems: { level: 'city', area: 'ems', share: 1, profession: 'ems', icon: '🚑', label: 'Ambulance service', popular: 0.9,
     options: { merged: { name: 'the fire department (fire-based EMS)', profession: 'fire' }, private: { name: 'a private ambulance company', profession: 'privateEms', law: ['privateEms', 'open'] } } },
-  dispatch: { level: 'city', area: 'police', share: 0.08, profession: 'dispatch', icon: '📟', label: '911 dispatch', popular: 0.4,
+  dispatch: { us: true, level: 'city', area: 'police', share: 0.08, profession: 'dispatch', icon: '📟', label: '911 dispatch', popular: 0.4,
     options: { contracted: { name: 'the county\'s consolidated 911 center', profession: 'dispatch' } } },
   jail: { level: 'city', area: 'police', share: 0.12, profession: 'jail', icon: '🔐', label: 'The jail', popular: 0.2,
     options: { private: { name: 'a private jail operator', profession: 'privatePrisons', law: ['privatePrisons', 'state'] } } },

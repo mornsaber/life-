@@ -49,7 +49,8 @@ export const Disasters = {
       const softened = severity > 1 && mitigates(state, type);
       if (softened) severity -= 1;
       const label = DISASTER_LABEL[type];
-      const name = `${type === 'hurricane' ? `Hurricane ${rng.pick(['Alma', 'Bertrand', 'Celia', 'Dorian', 'Esme', 'Felix', 'Greta'])}` : label.name}`;
+      const named = yearNow(state) >= 1953;
+      const name = `${type === 'hurricane' ? (named ? `Hurricane ${rng.pick(yearNow(state) >= 1979 ? ['Alma', 'Bertrand', 'Celia', 'Dorian', 'Esme', 'Felix', 'Greta'] : ['Alma', 'Celia', 'Esme', 'Greta', 'Hazel', 'Carol'])}` : `the Great Storm of ${yearNow(state)}`) : label.name}`;
       const disaster = { type, severity, stateId, regionId: regionOf(state).id, name };
       ctx.log(`${label.icon} A ${SEVERITY[severity]} ${type} struck ${STATES[stateId].name}: ${name}.`, label.icon, 'warn');
       if (softened) ctx.log(`The ${type} mitigation you built held: it could have been much worse.`, '🏗️', 'good');

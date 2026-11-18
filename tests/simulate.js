@@ -4,7 +4,7 @@
  * military, volunteering, crime, retirement) choosing random prompt options,
  * and asserts the state stays valid throughout.
  *
- *   node tests/simulate.js [lives=300] [seed=1]
+ *   node tests/simulate.js [lives=300] [seed=1]   (no arguments: the first of four shards)
  */
 import { PROPERTY_TYPES } from '../src/modules/realestate/PropertyMarket.js';
 import { CAUSES, TACTICS } from '../src/modules/civic/Activism.js';
@@ -55,8 +55,14 @@ import { BUSINESS_TYPES, ENTITIES } from '../src/modules/business/BusinessTypes.
 import { CLUBS, ROTC_BRANCHES } from '../src/modules/campus/index.js';
 import { living, livingChildren, partnerOf, spouseOf, WEDDINGS, WILL_PLANS } from '../src/modules/people/index.js';
 
-const LIVES = Number(process.argv[2] ?? 300);
-const SEED = Number(process.argv[3] ?? 1);
+// The suite runs the 300 lives as four shards in parallel (simulate.js is shard 0; simulate2–4.js
+// import it with ?shard=k/4). Run directly with a count to play them all in one go.
+const SHARD_PARAM = new URL(import.meta.url).searchParams.get('shard');
+const [SHARD, SHARDS] = SHARD_PARAM ? SHARD_PARAM.split('/').map(Number) : [0, process.argv[2] ? 1 : 4];
+const ALL_LIVES = Number(process.argv[2] ?? 300);
+const LIVES = Math.ceil(ALL_LIVES / SHARDS);
+const FIRST_LIFE = SHARD * LIVES;
+const SEED = Number(process.argv[3] ?? 1) + SHARD * 7919;
 
 const memoryStorage = () => {
   const m = new Map();
@@ -591,7 +597,7 @@ function checkEstate(state) {
   assert.ok(l.bequests.every((b) => b.amount >= 0 && (b.heirTax ?? 0) <= b.amount) && l.probate >= 0 && l.tax >= 0 && l.debtsPaid <= l.debts, 'estate amounts sane');
 }
 
-for (let life = 0; life < LIVES; life++) {
+for (let life = FIRST_LIFE; life < FIRST_LIFE + LIVES; life++) {
   // Every 25th life is born royal (at each place in the family in turn); every 30th opts in to a noble birth.
   const royal = life % 25 === 24 ? { difficulty: 'royal', royalLevel: ['heir', 'child', 'grandchild', 'distant'][Math.floor(life / 25) % 4] } : {};
   const noble = life % 30 === 29 ? { noble: true } : {};

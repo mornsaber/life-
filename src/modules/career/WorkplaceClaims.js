@@ -6,6 +6,7 @@
  *
  * state.career.claims = { active: { kind, basis, stage, employer, salary, documented, retaliated, years } | null, history: [] }
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { minorChildren } from '../people/People.js';
 import { TRADITIONS } from '../community/Religions.js';
@@ -51,6 +52,8 @@ function incidentTick(ctx) {
   const job = state.career.job;
   const claims = state.career.claims;
   if (!job || claims.active || state.prompts.some((p) => p.type === 'claims.incident')) return;
+  // Title VII and the EEOC: America, from 1965. (Elsewhere, and before, there was nowhere to take it.)
+  if ((state.character.countryId ?? 'US') !== 'US' || yearNow(state) < 1965) return;
   const toxic = job.boss < 35 ? 2 : 1;
   if (!rng.chance(0.022 * toxic * (job.grade <= 3 ? 1.3 : 1))) return;
   const basis = rng.weighted(exposures(state), (x) => x.w).basis;
@@ -163,6 +166,7 @@ function accusedTick(ctx) {
   const { state, rng } = ctx;
   const job = state.career.job;
   if (!job?.abilities.includes('supervise') || state.prompts.some((p) => p.type === 'claims.accused')) return;
+  if ((state.character.countryId ?? 'US') !== 'US' || yearNow(state) < 1965) return;
   if (!rng.chance(0.012)) return;
   ctx.prompt({
     type: 'claims.accused', icon: '📨', title: 'A Complaint About You',
