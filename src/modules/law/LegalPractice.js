@@ -26,6 +26,7 @@
  *   clerkship, area, chambers, hours, book, reputation, wins, losses, settled, burnout,
  *   partnerVote, silk, proBono, seen: [ids] }
  */
+import { fitsEra } from '../world/Eras.js';
 import { yearNow } from '../world/Eras.js';
 import { recordCase, gist } from '../crime/DocketRecord.js';
 import { clamp } from '../../core/Random.js';
@@ -172,7 +173,7 @@ export function playMatter(state, matter, optionId, rng) {
 
 export function matterPool(state) {
   const area = areaOf(state);
-  return MATTERS.filter((m) => m.areas.includes(area));
+  return MATTERS.filter((m) => m.areas.includes(area) && fitsEra(state, m));
 }
 
 export function matterPrompt(ctx) {

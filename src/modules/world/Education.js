@@ -141,7 +141,12 @@ fromPacks(CREDENTIAL_LOCAL, 'CREDENTIAL_LOCAL');
 
 export function educationTerms(countryId) {
   const e = EDUCATION[countryId];
-  if (!e) return {};
+  // Countries without their own school data still don't issue American licences: use the neutral names.
+  if (!e) {
+    if (!countryId || countryId === 'US') return {};
+    const local = CREDENTIAL_LOCAL[countryId] ?? {};
+    return Object.fromEntries(Object.entries(CREDENTIAL_TERMS).map(([us, neutral]) => [us, local[neutral] ?? neutral]));
+  }
   const schools = Object.fromEntries(Object.entries(e.schools).map(([k, v]) => [US_SCHOOL_NAMES[k], v]).filter(([k]) => k));
   const pro = PROFESSIONAL_DEGREES[countryId];
   const degrees = pro ? { 'Juris Doctor (Law School)': pro.jd, 'Doctor of Medicine (Medical School)': pro.md } : {};

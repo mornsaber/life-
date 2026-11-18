@@ -15,6 +15,7 @@
  *   - Private prisons hold a large share of inmates in Montana, and some in
  *     Texas, Florida, Colorado and Ohio.
  */
+import { fitsEra } from '../world/Eras.js';
 import { L, detectiveRanks } from './Ladder.js';
 import { currentCountry } from '../../core/Locale.js';
 import { stateIdOf } from '../life/Regions.js';
@@ -138,7 +139,10 @@ export const JusticeJobs = {
     const job = state.career.job;
     const pool = job && JUSTICE_EVENTS[job.professionId];
     if (!pool || state.legal.incarceration || !job.paidThisYear || !rng.chance(0.35)) return;
-    const i = rng.int(0, pool.length - 1);
+    // Only the incidents its year could have (no televisions under the arm in 1921).
+    const fits = pool.map((e, n) => n).filter((n) => fitsEra(state, pool[n]));
+    if (!fits.length) return;
+    const i = rng.pick(fits);
     const ev = pool[i];
     ctx.prompt({
       type: 'justiceJobs.event', icon: INCIDENT_ICONS[job.professionId] ?? '💼', title: ev.title, text: ev.text,

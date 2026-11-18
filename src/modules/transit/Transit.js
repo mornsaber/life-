@@ -136,7 +136,7 @@ export const TransitModule = {
       ctx.stat('stress', 5);
       ctx.stat('happiness', -2);
       if (job) job.performance = Math.max(0, job.performance - 6);
-      ctx.log('Without a car or a bus line, getting to work meant begging rides and walking the shoulder of the highway.', '🚶', 'warn');
+      ctx.log(yearNow(ctx.state) < 1925 ? 'With no tram or omnibus near enough, getting to work meant an hour\'s walk each way, in all weathers.' : 'Without a car or a bus line, getting to work meant begging rides and walking the shoulder of the highway.', '🚶', 'warn');
     }
     state.transit.last = { mode, cost };
   },

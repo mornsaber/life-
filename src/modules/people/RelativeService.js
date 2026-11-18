@@ -7,6 +7,7 @@
  *
  * person.service = { branch, nation, track, grade, years, term, deployed, tours, wounded }
  */
+import { yearNow } from '../world/Eras.js';
 import { Random, clamp } from '../../core/Random.js';
 import { ageOf, living } from './People.js';
 import { personDies } from './PeopleEngine.js';
@@ -98,7 +99,7 @@ export function relativeServiceTick(main) {
       const where = fighting ? `to the war${war.name ? ` (${war.name})` : ''}` : rng.pick(['on a peacekeeping mission', 'to a base overseas', 'on a six-month sea deployment', 'to a training mission abroad']);
       ctx.prompt({ type: 'relativeService.deployed', icon: '🎖️', title: `${p.firstName} Is Deploying`, text: `${p.firstName} (${rankOf(s).title}) is being sent ${where}.${fighting ? ' Every night the news shows where.' : ''}`, data: { personId: p.id, fighting: Boolean(fighting) }, options: [
         { id: 'letters', label: '📦 Letters and care packages every week', hint: 'Closer; you worry more' },
-        { id: 'calls', label: '📱 Video calls when they can' },
+        { id: 'calls', label: yearNow(state) >= 2005 ? '📱 Video calls when they can' : yearNow(state) >= 1960 ? '☎️ A crackly phone call when they can' : '📮 A postcard every week' },
         { id: 'news', label: '📵 Stop watching the news', hint: 'Protect yourself' },
       ] });
     }
@@ -110,7 +111,7 @@ export const RelativeServiceResolvers = {
     const p = living(ctx.state).find((x) => x.id === data.personId);
     if (!p) return;
     if (optionId === 'letters') { p.relationship = clamp((p.relationship ?? 60) + 8, 0, 100); ctx.stat('stress', data.fighting ? 10 : 5); ctx.spend(Math.round(300 * priceLevel(ctx.state)), 'Care packages'); return ctx.log(`You wrote to ${p.firstName} every week. They read the letters to their whole unit.`, '📦', 'good'); }
-    if (optionId === 'calls') { p.relationship = clamp((p.relationship ?? 60) + 4, 0, 100); ctx.stat('stress', data.fighting ? 7 : 3); return ctx.log(`Grainy video calls at strange hours. You learned to read ${p.firstName}'s face.`, '📱', 'info'); }
+    if (optionId === 'calls') { p.relationship = clamp((p.relationship ?? 60) + 4, 0, 100); ctx.stat('stress', data.fighting ? 7 : 3); return ctx.log(yearNow(ctx.state) < 2005 ? (yearNow(ctx.state) >= 1960 ? 'Crackly long-distance calls, booked in advance, three minutes at a time.' : 'A postcard every week, and theirs back when the post allowed.') + ' You learned what they couldn\'t say.' : `Grainy video calls at strange hours. You learned to read ${p.firstName}'s face.`, '📱', 'info'); }
     ctx.stat('stress', data.fighting ? 3 : 1);
     ctx.log('You stopped watching the news. It helped, a little.', '📵', 'info');
   },

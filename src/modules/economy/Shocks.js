@@ -56,7 +56,7 @@ export function shocksTick(main) {
   // A new recession: what caused it.
   if (e.phase === 'recession' && !e.cause) {
     const y = yearNow(state);
-    const id = rng.weighted([['financial', 3], ['housing', y >= 1920 ? 3 : 0], ['oil', y >= 1970 ? 2 : 0], ['tech', y >= 1995 ? 2 : 0], ['pandemic', y >= 2019 ? 0.8 : 0]], ([, w]) => w)[0];
+    const id = rng.weighted([['financial', 3], ['housing', y >= 1920 ? 3 : 0], ['oil', y >= 1970 ? 2 : 0], ['tech', y >= 1999 ? 2 : 0], ['pandemic', y >= 2019 ? 0.8 : 0]], ([, w]) => w)[0];
     const c = CAUSES[id];
     e.cause = { id, since: state.character.age };
     main.log(`${c.icon} The recession began with ${c.label}. ${c.text}`, c.icon, 'warn');

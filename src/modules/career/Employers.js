@@ -7,6 +7,7 @@
  * fiscal health or federal political stability (owned by the public-service
  * module, read here).
  */
+import { localEmployer } from '../world/LocalEmployers.js';
 import { REGIONS } from '../life/Regions.js';
 import { EMPLOYER_SIZES } from './PayGrades.js';
 import { STATES } from '../life/States.js';
@@ -22,7 +23,7 @@ import { PENSION_PLANS, localPlanId } from '../retirement/PensionPlans.js';
 import { isNationalService } from '../world/LocalAgencies.js';
 import { UNIVERSITIES } from '../education/Universities.js';
 import { COUNTRIES } from '../world/Countries.js';
-import { periodEmployers } from '../world/Eras.js';
+import { periodEmployers, yearNow } from '../world/Eras.js';
 
 
 export const cityName = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
@@ -190,7 +191,7 @@ export function createEmployer(rng, state, profession, regionId) {
   let name;
   if (profession.campus && campusAt(regionId)) name = campusAt(regionId);
   else if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state, regionId, cc);
-  else name = rng.pick(headquartersHere(periodEmployers(profession.id, profession.employers), regionId));
+  else name = localEmployer(profession.id, cc, cityName(regionId), yearNow(state), rng) ?? rng.pick(headquartersHere(periodEmployers(profession.id, profession.employers), regionId));
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;

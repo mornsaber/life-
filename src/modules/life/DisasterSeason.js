@@ -96,8 +96,8 @@ export const DisasterSeasonResolvers = {
       return ctx.log(`You hardened the house against ${data.type}s. Your insurer knocked a little off the premium.`, '🏗️', 'good');
     }
     if (optionId === 'flood' && home) { home.floodInsured = true; return ctx.log('You added flood insurance.', '🌊', 'good'); }
-    if (optionId === 'kit') { ctx.spend(local(state, 300), 'Go-bag and emergency plan'); prepOf(state).kit = true; return ctx.log(`A go-bag by the door, a meeting place, ${hasTech(state, 'internet') ? 'documents in the cloud' : 'papers in a tin box'}.`, '🎒', 'good'); }
-    if (optionId === 'cert') { prepOf(state).cert = true; ctx.stat('smarts', 1); return ctx.log('Six Saturday sessions: triage, light search and rescue, shutting off the gas. You know your neighbours\' names now.', '🦺', 'good'); }
+    if (optionId === 'kit') { ctx.spend(local(state, 300), 'Go-bag and emergency plan'); prepOf(state).kit = true; return ctx.log(`${hasTech(state, 'internet') ? 'A go-bag' : 'A packed bag'} by the door, a meeting place, ${hasTech(state, 'internet') ? 'documents in the cloud' : 'papers in a tin box'}.`, '🎒', 'good'); }
+    if (optionId === 'cert') { prepOf(state).cert = true; ctx.stat('smarts', 1); return ctx.log(hasTech(state, 'internet') ? 'Six Saturday sessions: triage, light search and rescue, shutting off the gas. You know your neighbours\' names now.' : 'Six evenings of civil defence classes in the church hall: first aid, bandages and splints, and how to shut off the gas. You know your neighbours\' names now.', '🦺', 'good'); }
     ctx.log('You crossed your fingers.', '🤞', 'muted');
   },
   nonRenewal(ctx, data, optionId) {

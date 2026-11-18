@@ -14,6 +14,7 @@
  * morale), face organizing drives — where illegal union-busting is a real
  * legal risk — and handle disputes with organized staff.
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { recalcSalary } from './Compensation.js';
 import { unionFor, contractOffer, bargainingPrompt, isOfficer, strikeWinChance, syncMembership, unionPower } from './LaborUnions.js';
@@ -170,7 +171,7 @@ export const UnionResolvers = {
         ctx.log('The union expelled you for crossing the picket line.', '🚫', 'bad');
         syncMembership(ctx);
       }
-      ctx.log(`You crossed the picket line for ${weeks} weeks. "Scab" was spray-painted on your car.`, '🚶', 'warn');
+      ctx.log(`You crossed the picket line for ${weeks} weeks. ${yearNow(ctx.state) < 1960 ? '"Scab" was chalked on your front door.' : '"Scab" was spray-painted on your car.'}`, '🚶', 'warn');
     }
     applyRaise(ctx, job, raise);
     ctx.log(`The strike ended after ${weeks} weeks: ${won ? 'the union won' : 'the union settled'} a ${raise}% raise.`, '📜', won ? 'good' : 'info');

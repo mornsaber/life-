@@ -14,6 +14,7 @@
  *   auto: { enabled, profile, keepMonths }
  * }
  */
+import { yearNow } from '../world/Eras.js';
 import { yearlyCount, bumpYearly } from '../../core/State.js';
 import { ASSETS, PROFILES, profileReturn, realReturn, IRA_LIMIT, ROTH_INCOME_LIMIT } from './Assets.js';
 import { ACCOUNTS } from '../world/CountryLaw.js';
@@ -92,7 +93,8 @@ function buyProfile(ctx, profileId, amount) {
 function marketEvent(ctx) {
   const { state, rng } = ctx;
   if (state.character.age < 18 || !rng.chance(0.12)) return;
-  if (rng.chance(0.5) || state.economy.cryptoMania) {
+  // Meme stocks are a thing of the 2020s (and of crypto manias); before that, the tip is a share from a tipster.
+  if (yearNow(state) >= 2020 && (rng.chance(0.5) || state.economy.cryptoMania)) {
     const ticker = rng.pick(MEME_TICKERS);
     ctx.prompt({
       type: 'investing.meme',
