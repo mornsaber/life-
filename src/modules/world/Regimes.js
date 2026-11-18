@@ -233,7 +233,8 @@ function regimeYear(ctx) {
     assignJob(ctx);
   }
   // Women barred from school past twelve (the Taliban's edict).
-  if (r.women === 'barred' && state.character.gender === 'female' && age >= 12 && state.k12 && !state.k12.dropout && !state.k12.graduated) {
+  // (Only girls still at school: a woman who already finished keeps her diploma.)
+  if (r.women === 'barred' && state.character.gender === 'female' && age >= 12 && age < 18 && state.k12 && !state.k12.dropout && !state.k12.done && !state.education.degrees.some((d) => d.type === 'highschool')) {
     state.k12.dropout = true;
     ctx.log('Girls\' schooling ends at twelve here: the secondary schools are closed to you.', '🏫', 'bad');
   }

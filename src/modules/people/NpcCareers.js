@@ -189,7 +189,7 @@ export function careerYear(ctx, rng, person, { say = () => {}, rival = false } =
       c.postings.push({ id: p.id, until: c.inField + (p.years ?? 1), place });
       if (place) person.livesIn = place;
       const label = String(nameFor(state, p, person) ?? 'a posting').replace(/^(A|An|The) /, (m) => m.toLowerCase());
-      say(`${name} left for ${label}${place ? ` in ${COUNTRIES[place].name}` : ''}.`, p.icon ?? '🧳', 'info');
+      say(`${name} left for ${label}${place ? ` in ${COUNTRIES[place].flag ?? ''} ${COUNTRIES[place].name}` : ''}.`, p.icon ?? '🧳', 'info');
     }
   }
   // An award, by record.

@@ -1137,7 +1137,7 @@ export const HistoryModule = {
     leaveSchool(ctx, _data, optionId) {
       const { state } = ctx;
       const k = state.k12;
-      if (!k) return;
+      if (!k || k.done || state.education.degrees.some((d) => d.type === 'highschool')) return;
       if (optionId === 'leave') {
         k.dropout = true;
         k.leftEarly = true;
