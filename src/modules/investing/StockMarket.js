@@ -160,7 +160,7 @@ function coverShort(ctx, id, forced = false) {
 function bubbleName(state, sector) {
   if (sector !== 'tech') return SECTORS[sector].name;
   const y = yearNow(state);
-  return y < 1905 ? 'Railway' : y < 1922 ? 'Motor car' : y < 1940 ? 'Radio' : y < 1975 ? 'Electronics' : y < 1995 ? 'Computer' : SECTORS[sector].name;
+  return y < 1905 ? 'Railway' : y < 1922 ? 'Motor car' : y < 1940 ? 'Radio' : y < 1975 ? 'Electronics' : y < 1999 ? 'Computer' : SECTORS[sector].name;
 }
 
 /** The year on the exchange: bubbles, prices, earnings, collapses and IPOs. */
