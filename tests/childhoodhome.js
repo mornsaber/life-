@@ -29,6 +29,12 @@ const tests = {
     const s = seen(life('GB', 1990, 16));
     assert.ok(!s.includes('washday') && !s.includes('wireless') && !s.includes('tinbath'));
   },
+  'an Indian child of 1940 lives through Partition'() {
+    assert.ok(seen(life('IN', 1940, 10)).includes('partition'));
+  },
+  'a Nigerian child sees Independence Day in 1960'() {
+    assert.ok(seen(life('NG', 1952, 10)).includes('independenceDay'));
+  },
   'a childhood of 1900 has a handful of moments'() {
     assert.ok(seen(life('GB', 1900, 16)).length >= 3);
   },

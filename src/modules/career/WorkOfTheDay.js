@@ -45,6 +45,21 @@ export const MOMENTS = [
   ['smoking', 'office', (s, y) => y >= 1920 && y < 1990, 'Everyone smokes at their desk; the ashtray is emptied twice a day and the ceiling is yellow.', '🚬', { health: -1 }],
   ['terminal', 'office', (s, y) => y >= 1975 && y < 1992, 'A computer terminal arrived on your desk: green letters on a black screen, and a thick manual nobody reads.', '🖥️', { smarts: 1 }],
   ['fax', 'office', (s, y) => y >= 1983 && y < 1995, 'The office has a fax machine. People gather round to watch the first page come out, warm and curling.', '📠', {}],
+  // Japan's company man.
+  ['salaryman', null, (s, y, c) => c === 'JP' && y >= 1955 && y < 2000 && s.character.gender === 'male', 'You are a company man: the morning exercises, the company song, the drinks with your section chief until the last train. The company will keep you until you retire.', '👔', { stress: 3 }],
+  ['officeLady', null, (s, y, c) => c === 'JP' && y >= 1960 && y < 1995 && s.character.gender === 'female', 'You are an "office lady": tea for the section, copying, and the understanding that you will leave when you marry.', '🍵', {}],
+  // The Soviet factory.
+  ['plan', 'works', (s, y, c) => ['RU', 'UA', 'BY', 'PL', 'CZ', 'HU', 'RO', 'BG', 'DD', 'CN'].includes(c) && y >= 1930 && y < 1991, 'The plan must be met: three weeks of idling for want of parts, then a week of "storming" round the clock. Your brigade made 104%.', '📊', { stress: 3 }],
+  ['subbotnik', null, (s, y, c) => ['RU', 'UA', 'BY'].includes(c) && y >= 1920 && y < 1991, 'A subbotnik: a Saturday of "voluntary" unpaid work clearing the factory yard, with a brass band and a portrait of Lenin.', '🧹', {}],
+  ['danwei', null, (s, y, c) => c === 'CN' && y >= 1953 && y < 1995, 'Your work unit is your whole life: it gives you your flat, your ration coupons, your permission to marry and your place in the canteen.', '🏭', {}],
+  // India.
+  ['lifeJob', null, (s, y, c) => c === 'IN' && y >= 1950 && y < 1991, 'A government job: small pay, no chance of being sacked, a pension, and the respect of everyone in your street. Your mother lit a lamp in thanks.', '🪔', { happiness: 2 }],
+  ['tiffin', 'office', (s, y, c) => c === 'IN' && y >= 1890, 'At one o\'clock your lunch arrives in a tiffin box, carried across the city by a dabbawala from your own kitchen.', '🍱', { happiness: 1 }],
+  // Latin America.
+  ['siesta', null, (s, y, c) => ['MX', 'ES', 'AR', 'CL', 'PE', 'CO'].includes(c) && y < 1990, 'The shop shuts from two until five: lunch at home with the family, a siesta, and back to work until nine.', '😴', { happiness: 1, stress: -1 }],
+  ['bracero', 'works', (s, y, c) => c === 'MX' && y >= 1942 && y <= 1964 && s.character.gender === 'male', 'Half the men of your village have gone north as braceros to pick crops in California, sending dollars home in envelopes.', '🌾', {}],
+  // Africa.
+  ['minesMigrant', 'works', (s, y, c) => ['ZA', 'LS', 'MZ', 'MW', 'ZW'].includes(c) && y >= 1900 && y < 1994 && s.character.gender === 'male', 'Eleven months a year in the mine compound on the Reef, a bunk among strangers, and home to your family once a year at Christmas.', '⛏️', { stress: 4, happiness: -2 }],
   ['payPacket', null, (s, y) => y < 1975, 'Friday is pay day: a brown envelope with your name on it, counted out on the kitchen table, so much for the rent and so much for the week.', '✉️', { happiness: 1 }],
 ];
 
