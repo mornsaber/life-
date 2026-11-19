@@ -46,7 +46,7 @@ const over = (s, id) => s.era?.events?.[id]?.ended != null;
 export const TECH = {
   railway: 1830, photography: 1840, telegraph: 1845, telephone: 1880, electricLight: 1900, automobile: 1905, airTravel: 1950, emergencyNumber: 1968, ged: 1942, highSchool: 1920, cctv: 1980, video: 1980, dna: 1987, doorbellCam: 2015,
   radio: 1922, tv: 1950, supermarket: 1930, antibiotics: 1944, helicopter: 1955, ransomware: 2013, prom: 1900, interstate: 1956, creditCards: 1960, personalComputer: 1980, mobilePhone: 1990,
-  internet: 1995, onlineDating: 1997, sushiBar: 1980, councilTax: 1993, prepping: 1995, memeStocks: 2020, techBubble: 1999, littleLeague: 1939, learnerPermit: 1930, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
+  internet: 1995, onlineDating: 1997, shoppingCentre: 1956, sushiBar: 1980, councilTax: 1993, prepping: 1995, memeStocks: 2020, techBubble: 1999, littleLeague: 1939, learnerPermit: 1930, drones: 2001, vaping: 2010, socialMedia: 2006, streaming: 2007, smartphone: 2008, crypto: 2010, gigApps: 2012,
 };
 export const hasTech = (state, id) => !(TECH[id] > yearNow(state));
 
@@ -58,6 +58,7 @@ const TECH_WORDS = [
   ['cctv', /\bCCTV\b|security camera|dashcam|body ?cam/i],
   ['video', /\bvideo\b|camcorder|\bVHS\b|\bDVD/i],
   ['memeStocks', /\$MOON|meme stock/i],
+  ['shoppingCentre', /shopping (?:centre|center|mall)/i],
   ['techBubble', /tech bubble|dot-?com|startups? (?:are|is) folding/i],
   ['councilTax', /council tax/i],
   ['prepping', /go-bag|light search and rescue|CERT\b/i],
@@ -119,7 +120,7 @@ export const PROFESSION_FROM = {
   gb_caseOfficer: 1909, gb_sigint: 1919, gb_intelligence: 1936, gb_parkService: 1951, gb_fbi: 1965, gb_borderPatrol: 1920,
   gb_benefitsClaims: 1912, gb_nationalLab: 1900, gb_oig: 1866, gb_federalPrisons: 1878, gb_regulatory: 1890, gb_foreignService: 1800,
   gb_airTrafficControl: 1922, gb_meteorology: 1854,
-  police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1915, trades: 1882, electricalEng: 1882, nursing: 1860,
+  police: 1830, statePolice: 1905, fire: 1853, trucking: 1910, automotive: 1915, craneOperator: 1890, trades: 1882, electricalEng: 1882, nursing: 1860,
   railroad: 1830, transit: 1860, transitMaintenance: 1905, socialWork: 1900, accounting: 1850, journalism: 1800, pharmacy: 1820,
   mechanicalEng: 1850, chemicalEng: 1880, structuralEng: 1880, plumbing: 1870, insurance: 1850, realestate: 1850, sheriff: 1800, library: 1850,
   tech: 1955, cybersecurity: 1990, dataScience: 2010, contentCreator: 2006, gameDevelopment: 1975, design: 1930,
@@ -1243,6 +1244,8 @@ const RENAMES = [
   [/Ambulance Service NHS Trust/g, 1992, () => 'Ambulance Service'], [/\bEmergency Care Assistant\b/g, 2005, (y) => (y >= 1970 ? 'Ambulance Technician' : 'Ambulanceman')],
   [/\bStudent Police Constable\b/g, 2006, () => 'Probationer Constable'], [/\bPolice Scotland\b/g, 2013, (y) => (y >= 1975 ? 'the regional police' : 'the burgh police')],
   [/SDIS — centre de secours de/g, 1996, () => 'Corps de sapeurs-pompiers de'],
+  [/\bthe emergency department patched you up\b/g, 1960, (y) => (y >= 1900 ? 'the casualty ward patched you up' : 'the surgeon patched you up')],
+  [/\bmoved three states away\b/g, PRESENT, () => ((getEraState()?.character?.countryId ?? 'US') === 'US' ? 'moved three states away' : 'moved to the other end of the country')],
   // Youth courts and parole, by country (America's words otherwise).
   [/^Adjudicated delinquent: /g, PRESENT, () => { const c = getEraState()?.character?.countryId ?? 'US'; return c === 'US' ? 'Adjudicated delinquent: ' : ['GB', 'IE', 'AU', 'NZ'].includes(c) ? 'Found guilty in the juvenile court: ' : 'Found guilty in the children\'s court: '; }],
   [/The parole board granted you early release\./g, PRESENT, (y) => ((getEraState()?.character?.countryId ?? 'US') === 'US' ? (y >= 1910 ? 'The parole board granted you early release.' : 'The governor granted you an early pardon.') : y >= 1968 && ['GB', 'IE'].includes(getEraState()?.character?.countryId) ? 'The parole board granted you early release.' : 'You were let out early for good conduct.')],
@@ -1262,7 +1265,7 @@ const RENAMES = [
   [/\bon a golf course\b/g, 1890, () => 'in an open field'],
   [/\bwent to collections\b/g, 1950, () => 'were handed to a debt collector'],
   [/\bafter high school\b/g, 1945, () => 'after leaving school'],
-  [/\bbought a condo\b/g, 1965, () => 'bought a flat'],
+  [/\bbought a condo\b/g, 1965, () => ((getEraState()?.character?.countryId ?? 'US') === 'US' ? 'bought a row house' : 'bought a flat')],
   [/\btraumatic brain injury\b/g, 1960, () => 'a serious head injury'],
   [/\bthe interstate\b/g, 1956, (y) => (y >= 1920 ? 'the highway' : 'the turnpike')],
   [/\bsupermarket labels\b/g, 1930, () => 'shop signs'],
@@ -1315,6 +1318,8 @@ const RENAMES = [
  * keep the career's own list, less any body not founded yet (EMPLOYER_FROM).
  */
 const PERIOD_EMPLOYERS = {
+  // Before radio (1922) and television, news was the newspapers' and the wire services'.
+  journalism: [[1922, ['the Daily Courier', 'the Evening Gazette', 'the Morning Chronicle', 'the county Advertiser', 'Reuters\' telegraphic news agency']], [1950, ['the Daily Courier', 'the Evening Gazette', 'the national wireless service (news)', 'Reuters']]],
   unSecretariat: [[1946, ['the League of Nations Secretariat (Geneva)', 'the League of Nations Secretariat — Mandates Section', 'the League of Nations Secretariat — Minorities Section']]],
   unAgencies: [[1946, ['the International Labour Office (Geneva)', 'the League of Nations Health Organisation', 'the Nansen International Office for Refugees', 'the International Institute of Intellectual Co-operation (Paris)']]],
   intlJustice: [[1946, ['the Permanent Court of International Justice (The Hague)']], [1993, ['International Court of Justice']], [2002, ['International Court of Justice', 'the International Criminal Tribunal for the former Yugoslavia (The Hague)', 'the International Criminal Tribunal for Rwanda (Arusha)']]],

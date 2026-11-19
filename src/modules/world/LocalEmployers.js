@@ -91,7 +91,7 @@ const T = {
 
 export function localEmployer(professionId, cc, city, year, rng) {
   if (!cc || ANGLO.includes(cc)) return null;
-  const f = T[cc]?.[professionId];
+  const f = T[cc]?.[professionId] ?? (professionId === 'agriculture' ? (c, y) => (['RU', 'UA', 'BY'].includes(cc) && y >= 1930 && y < 1992 ? ['the collective farm (kolkhoz)', 'the state farm (sovkhoz)'] : cc === 'CN' && y >= 1958 && y < 1983 ? ['the people\'s commune'] : ['a family farm in the village', 'a landowner\'s estate', 'the big farm outside town']) : null);
   if (!f) return null;
   const names = f(city || 'the town', year);
   return names?.length ? rng.pick(names) : null;

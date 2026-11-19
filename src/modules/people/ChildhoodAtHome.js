@@ -28,7 +28,7 @@ const atWar = (state) => Object.keys(state.world?.wars ?? {}).includes(cc(state)
 export const MOMENTS = [
   ['pump', 5, 12, (s, y, c) => y < 1920 && poorish(s), 'Your job is the water: two buckets from the pump at the end of the street before school, and two after.', '🪣', { health: 1 }],
   ['coal', 6, 13, (s, y, c) => y < 1960 && ANGLO.concat(['US', 'DE', 'FR', 'BE', 'NL']).includes(c) && poorish(s), 'Every evening you carry the coal scuttle up from the cellar and lay the fire for the morning.', '🪨', {}],
-  ['washday', 6, 12, (s, y, c) => y < 1960 && poorish(s), 'Monday is washday: the copper boiling since dawn, and you turn the mangle until your arms ache.', '🧺', {}],
+  ['washday', 6, 12, (s, y, c) => EUROPE_US.includes(c) && y < 1960 && poorish(s), 'Monday is washday: the copper boiling since dawn, and you turn the mangle until your arms ache.', '🧺', {}],
   ['tinbath', 3, 9, (s, y, c) => y < 1960 && ANGLO.includes(c) && poorish(s), 'Friday night is bath night: the tin bath in front of the fire, youngest first, the same water for everyone.', '🛁', { happiness: 1 }],
   ['privy', 4, 10, (s, y, c) => y < 1955 && poorish(s) && EUROPE_US.includes(c), 'The toilet is a privy at the end of the yard, with squares of newspaper on a nail. You don\'t go at night.', '🚽', {}],
   ['blackout', 5, 15, (s, y, c) => atWar(s) && y >= 1939 && y <= 1945 && ['GB', 'DE', 'FR', 'NL', 'BE', 'IT', 'JP'].includes(c), 'Blackout every night: thick curtains, no street lamps, and the warden shouting "Put that light out!"', '🌑', { stress: 2 }],
@@ -69,7 +69,7 @@ export const MOMENTS = [
   ['independenceDay', 4, 16, (s, y, c) => ({ GH: 1957, NG: 1960, KE: 1963, TZ: 1961, UG: 1962, SN: 1960, CI: 1960, ZM: 1964 })[c] === y, 'Independence Day: the new flag went up at midnight, your parents cried, and you were given a little flag and a sweet at school.', '🎉', { happiness: 4 }],
   ['waterWalk', 5, 12, (s, y, c) => ['NG', 'KE', 'ET', 'TZ', 'UG', 'GH', 'SN', 'ML', 'NE'].includes(c) && y < 2000 && poorish(s), 'Before school, the walk to the borehole with a jerrycan on your head, and back again before the sun is high.', '🪣', { fitness: 2 }],
   ['tales', 4, 9, (s, y, c) => ['NG', 'GH', 'KE', 'SN', 'CI', 'ZA'].includes(c), 'In the evenings your grandmother tells stories of the tortoise and the hare by the light of the fire.', '🔥', { happiness: 2, smarts: 1 }],
-  ['handmedowns', 4, 12, (s, y, c) => y < 1970 && poorish(s), 'Everything you wear was your older cousin\'s first, darned at the elbows and taken up at the hem.', '🧥', {}],
+  ['handmedowns', 4, 12, (s, y, c) => EUROPE_US.includes(c) && y < 1970 && poorish(s), 'Everything you wear was your older cousin\'s first, darned at the elbows and taken up at the hem.', '🧥', {}],
 ];
 
 export const ChildhoodAtHomeModule = {

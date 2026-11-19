@@ -188,7 +188,8 @@ export const K12Engine = {
     if (!k.done && age > 18) k.done = true; // adults who skipped ahead (old saves)
     if (k.done || age < 6) {
       if (age >= 18) k.job = null;
-      if (age === 5) ctx.log(['GB', 'IE', 'AU', 'NZ'].includes(state.character.countryId) ? 'You started at the infant school.' : 'You started kindergarten.', '🎒', 'milestone');
+      // (Infant schools and kindergartens spread from the 1880s; before, school began at six, or not at all.)
+      if (age === 5 && yearNow(state) >= 1880) ctx.log(['GB', 'IE', 'AU', 'NZ'].includes(state.character.countryId) ? 'You started at the infant school.' : 'You started kindergarten.', '🎒', 'milestone');
       return;
     }
     if (state.legal.incarceration) {

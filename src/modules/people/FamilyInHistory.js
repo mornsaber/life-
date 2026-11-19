@@ -81,7 +81,7 @@ const MEMORIES = [
   [1917, ['RU', 'UA', 'BY'], 'the Revolution, and the civil war after it'],
   [1918, null, 'the Spanish flu, which took whole families in a week'],
   [1923, ['DE'], 'the inflation, when a wheelbarrow of notes wouldn\'t buy bread'],
-  [1932, null, 'the Depression: soup lines, and men selling apples on street corners'],
+  [1932, ['US', 'CA', 'AU', 'NZ', 'GB', 'IE', 'DE', 'AT', 'FR'], 'the Depression: soup lines, and men selling apples on street corners'],
   [1933, ['UA'], 'the Holodomor, the famine nobody was allowed to name'],
   [1937, ['ES'], 'the Civil War'],
   [1940, ['GB'], 'the Blitz, and nights in the Underground'],
