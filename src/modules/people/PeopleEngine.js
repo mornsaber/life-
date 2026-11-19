@@ -132,6 +132,8 @@ export function personDies(ctx, person, cause) {
   const { state } = ctx;
   person.alive = false;
   person.diedAge = ageOf(state, person);
+  // Every death, however it came (the people:dies event, epidemics, war, old age): for listeners.
+  ctx.emit('people:died', { person, cause });
   const label = RELATION_LABEL[person.relation]?.toLowerCase() ?? 'friend';
   ctx.log(`Your ${label} ${person.firstName} died at ${person.diedAge}${cause ? ` (${cause})` : ''}.`, '🕯️', 'bad');
   ctx.stat('happiness', person.relation === 'child' ? -35 : person.relation === 'spouse' ? -25 : ['mother', 'father'].includes(person.relation) ? -12 : -4);

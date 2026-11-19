@@ -24,7 +24,7 @@ const tests = {
     const { state } = life('GB', 1905, 45);
     const t = state.news.thread ?? [];
     assert.ok(t.length >= 3, `thread has ${t.length}`);
-    assert.ok(t.every((x) => /; you were /.test(x.text)));
+    assert.ok(t.every((x) => /; (you were|the year) /.test(x.text)));
     assert.ok(t.every((x) => x.year >= 1911 && x.year <= 1950));
     assert.match(newsThreadCard(state), /Your Life in the News/);
   },

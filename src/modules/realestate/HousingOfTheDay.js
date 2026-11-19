@@ -81,23 +81,23 @@ export const HousingOfTheDayModule = {
     // Elsewhere: the moments housing changed.
     const r = h.rental;
     // The Soviet communal flat, and the waiting list for one of your own.
-    if (['RU', 'UA', 'BY'].includes(cc(state)) && y >= 1925 && y < 1991 && !owned(h) && !d.kommunalka && rng.chance(0.25)) {
+    if (['RU', 'UA', 'BY'].includes(cc(state)) && y >= 1925 && y < 1991 && h.rental && !owned(h) && !d.kommunalka && rng.chance(0.25)) {
       d.kommunalka = y;
       ctx.log(y < 1960 ? 'Your family has one room in a kommunalka: six families, one kitchen with six stoves, one bathroom and a rota on the wall.' : 'You are on the waiting list for a flat of your own: ten years, they say, unless your factory builds one.', '🚪', 'info');
     }
-    if (['RU', 'UA', 'BY'].includes(cc(state)) && y >= 1957 && y < 1991 && d.kommunalka && !d.ownFlat && rng.chance(0.12)) {
+    if (['RU', 'UA', 'BY'].includes(cc(state)) && y >= 1957 && y < 1991 && d.kommunalka && y - d.kommunalka >= 3 && h.rental && !d.ownFlat && rng.chance(0.12)) {
       d.ownFlat = y;
       ctx.log('The keys at last: a two-room flat of your own in a new five-storey block, a khrushchyovka at the end of the bus line.', '🔑', 'good');
       ctx.stat('happiness', 5);
     }
     // Japan's danchi: the new concrete estates of the boom years.
-    if (cc(state) === 'JP' && y >= 1956 && y < 1975 && !owned(h) && !d.danchi && rng.chance(0.15)) {
+    if (cc(state) === 'JP' && y >= 1956 && y < 1975 && h.rental && ['apartment', 'roommates', 'subsidized'].includes(h.rental.tier) && !owned(h) && !d.danchi && rng.chance(0.15)) {
       d.danchi = y;
       ctx.log('You won the lottery for a flat in a danchi: steel doors, a flush toilet, a dining-kitchen with a table instead of a low table on tatami. Everyone wants one.', '🏢', 'good');
       ctx.stat('happiness', 3);
     }
     // Bombay's chawls.
-    if (cc(state) === 'IN' && y >= 1900 && y < 1990 && h.rental && ['roommates', 'apartment'].includes(h.rental.tier) && !d.chawl && rng.chance(0.15)) {
+    if (cc(state) === 'IN' && y >= 1900 && y < 1990 && /bombay|mumbai/i.test(String(state.character.regionId ?? '') + (REGIONS[state.character.regionId]?.name ?? '')) && h.rental && ['roommates', 'apartment'].includes(h.rental.tier) && !d.chawl && rng.chance(0.15)) {
       d.chawl = y;
       ctx.log('You live in a chawl: one room off a long open gallery, a tap and a toilet shared along the corridor, and every festival celebrated together.', '🏘️', 'info');
     }

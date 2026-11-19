@@ -42,7 +42,11 @@ export function leavingExam(state) {
   if (c === 'JP') return y >= 1979 ? 'the university entrance exams' : y >= 1947 ? 'the entrance exams' : null;
   if (c === 'US') return y >= 1926 ? 'the SAT' : null;
   if (c === 'IN' || c === 'PK' || c === 'BD') return y >= 1975 ? 'the Class 10 board exams' : y >= 1860 ? 'the Matriculation' : null;
-  if (['RU', 'UA', 'BY', 'PL', 'CZ', 'HU', 'RO', 'BG'].includes(c)) return y >= 1918 && y < 1991 ? 'the school-leaving exams (attestat)' : null;
+  if (['RU', 'UA', 'BY'].includes(c)) return y >= 2009 ? 'the EGE (unified state exam)' : y >= 1918 ? 'the school-leaving exams (attestat)' : null;
+  if (c === 'PL') return y >= 1918 ? 'the matura' : null;
+  if (c === 'CZ') return y >= 1918 ? 'the maturita' : null;
+  if (c === 'HU') return y >= 1851 ? 'the érettségi' : null;
+  if (['RO', 'BG'].includes(c)) return y >= 1925 ? 'the baccalaureate' : null;
   if (c === 'CN') return (y >= 1952 && y < 1966) || y >= 1977 ? 'the gaokao' : null;
   if (c === 'KR') return y >= 1994 ? 'the suneung' : y >= 1969 ? 'the college entrance exam' : null;
   if (c === 'BR') return y >= 1911 ? 'the vestibular' : null;
@@ -73,7 +77,9 @@ function schoolYear(ctx, rng) {
   if (!inSchool(state) || age < 5) return;
 
   // First day: what the classroom looked like.
-  if (age === (c === 'US' ? 6 : 5) && once(state, 'first')) {
+  // Soviet children start on 1 September at seven, Japanese children with their randoseru at six: those are told below.
+  const ownFirstDay = (['RU', 'UA', 'BY'].includes(c) && y >= 1937 && y < 1993) || (c === 'JP' && y >= 1954);
+  if (age === (c === 'US' ? 6 : 5) && !ownFirstDay && once(state, 'first')) {
     const rural = /rural/i.test(region?.type ?? '') && c === 'US';
     ctx.log(y < 1900 ? 'Your first day at school: a slate and a slate pencil, the whole class chanting the alphabet, the master with his cane on the desk.'
       : rural && y < 1945 ? 'Your first day at the one-room schoolhouse: eight grades and one teacher, a stove in the corner, and you carry in the wood.'
@@ -125,7 +131,8 @@ function schoolYear(ctx, rng) {
   // The leaving exams.
   const exam = leavingExam(state);
   const academic = state.schooling?.track !== 'general';
-  const examAge = c === 'GB' || ['IN', 'PK', 'BD', 'NG', 'GH', 'SL', 'GM'].includes(c) ? 16 : ['DE', 'AT', 'FR', 'IT', 'CN', 'KR', 'BR'].includes(c) ? 18 : c === 'IE' ? 15 : 17;
+  // (Sat in the final school year: school here ends at 18, and the year it ends you've already left.)
+  const examAge = c === 'GB' || ['IN', 'PK', 'BD', 'NG', 'GH', 'SL', 'GM'].includes(c) ? 16 : c === 'IE' ? 15 : 17;
   if (exam && age === examAge && (academic || c === 'US' || c === 'GB' && y >= 1965) && once(state, 'exam')) {
     const score = state.stats.smarts + rng.int(-15, 15);
     const pass = score >= 50;

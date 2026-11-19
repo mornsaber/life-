@@ -12,11 +12,11 @@ const T = {
     millWork: (c) => [`Baumwollspinnerei ${c} AG`, `Mechanische Weberei ${c}`, `Kammgarnspinnerei ${c}`],
     docks: () => ['Hamburger Hafen- und Lagerhaus-AG', 'Bremer Lagerhaus-Gesellschaft'],
     coalMining: () => ['Zeche Zollverein', 'Gelsenkirchener Bergwerks-AG', 'Harpener Bergbau AG', 'Zeche Hibernia'],
-    steamRailway: (c, y) => (y < 1920 ? ['the Royal State Railways'] : y < 1994 ? ['Deutsche Reichsbahn'] : ['Deutsche Bahn']),
+    steamRailway: (c, y) => (y < 1920 ? ['the Royal State Railways'] : y < 1949 ? ['Deutsche Reichsbahn'] : y < 1994 ? ['Deutsche Bundesbahn'] : ['Deutsche Bahn']),
     domesticService: (c) => [`a manufacturer's villa in ${c}`, 'a Junker estate in the country', `a professor's household in ${c}`],
     milkRound: (c) => [`Molkerei ${c}`],
     blacksmith: (c) => [`Hufschmiede ${c}`, 'the village smithy'],
-    telegraph: (c, y) => (y < 1920 ? ['Kaiserliche Reichspost und Telegraphie'] : ['Deutsche Reichspost']),
+    telegraph: (c, y) => (y < 1920 ? ['Kaiserliche Reichspost und Telegraphie'] : y < 1949 ? ['Deutsche Reichspost'] : ['Deutsche Bundespost']),
     travellingSales: (c) => [`Tuchhandlung ${c}`, `Kolonialwaren-Großhandel ${c}`],
   },
   AT: {

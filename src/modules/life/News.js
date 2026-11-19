@@ -156,7 +156,7 @@ export const NewsModule = {
     const name = (s, id) => s.people?.list?.find((p) => p.id === id)?.firstName;
     engine.bus.on('people:married', ({ ctx, personId }) => mine(ctx.state, 6, `the year you married ${name(ctx.state, personId) ?? 'your sweetheart'}`));
     engine.bus.on('people:born', ({ ctx, person, adopted }) => mine(ctx.state, 6, adopted ? `the year you adopted ${person.firstName}` : `the year ${relWord(person)} ${person.firstName} was born`));
-    engine.bus.on('people:dies', ({ ctx, person }) => { if (['spouse', 'child', 'mother', 'father'].includes(person?.relation)) mine(ctx.state, person.relation === 'sibling' ? 4 : 7, `the year you lost ${relWord(person)}`); });
+    engine.bus.on('people:died', ({ ctx, person }) => { if (['spouse', 'child', 'mother', 'father', 'sibling'].includes(person?.relation)) mine(ctx.state, person.relation === 'sibling' ? 4 : 7, `the year you lost ${relWord(person)}`); });
     engine.bus.on('legal:incarcerated', ({ ctx }) => mine(ctx.state, 6, 'the year you went to prison'));
     engine.bus.on('migration:moved', ({ ctx, to }) => mine(ctx.state, 5, `the year you emigrated to ${COUNTRIES[to]?.name ?? 'a new country'}`));
     engine.bus.on('conscription:enlist', ({ ctx }) => mine(ctx.state, 5, 'the year you were called up'));

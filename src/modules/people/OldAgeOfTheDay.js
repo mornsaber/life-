@@ -19,7 +19,8 @@ const cc = (state) => state.character.countryId ?? 'US';
 const sideRng = (state) => new Random((((state.world?.seed ?? 1) * 6907) ^ (state.character.age * 433 + 0x4b1)) >>> 0);
 const once = (state, id) => { const o = (state.oldAge ??= { seen: {} }); if (o.seen[id]) return false; o.seen[id] = true; return true; };
 const poor = (state) => (state.finances?.cash ?? 0) < 2000 && state.people?.wealth !== 'upper';
-const widowed = (state) => !(state.people?.list ?? []).some((p) => p.alive && p.relation === 'spouse');
+// Widowed: a spouse died (recorded when it happened) and you haven't remarried.
+const widowed = (state) => Boolean(state.oldAge?.widowed) && !(state.people?.list ?? []).some((p) => p.alive && p.relation === 'spouse');
 const childNear = (state) => (state.people?.list ?? []).some((p) => p.alive && p.relation === 'child');
 const BRIT = ['GB', 'IE', 'AU', 'NZ', 'CA'];
 
@@ -55,7 +56,9 @@ function oldAgeYear(ctx, rng) {
   }
   // With the family.
   if (widowed(state) && childNear(state) && y < 1970 && rng.chance(0.18) && once(state, 'withFamily')) {
-    ctx.log('You moved in with your daughter\'s family: the back bedroom, the grandchildren underfoot, and your chair by the fire.', '👵', 'info');
+    const kids = (state.people?.list ?? []).filter((p) => p.alive && p.relation === 'child');
+    const daughter = kids.some((k) => k.gender === 'female');
+    ctx.log(`You moved in with your ${daughter ? 'daughter' : 'son'}'s family: the back bedroom, the grandchildren underfoot, and your chair by the fire.`, '👵', 'info');
     ctx.stat('happiness', 3);
     return;
   }
@@ -68,6 +71,9 @@ function oldAgeYear(ctx, rng) {
 export const OldAgeOfTheDayModule = {
   id: 'oldAge',
   order: 9.6,
+  setup(engine) {
+    engine.bus.on('people:died', ({ ctx, person }) => { if (person?.relation === 'spouse') (ctx.state.oldAge ??= { seen: {} }).widowed = true; });
+  },
   onAgeUp(ctx) {
     const { state } = ctx;
     if (!state.era || yearNow(state) >= PRESENT || state.character.age < 60) return;
