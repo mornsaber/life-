@@ -23,7 +23,7 @@ import { cardObligation, settleCards } from './CreditCards.js';
 import { countryOf, nationalIncomeTax, socialContributions, childBenefit } from '../world/Countries.js';
 import { knob } from '../../core/Difficulty.js';
 import { officialResidence } from '../world/Residences.js';
-import { hasTech, eraTaxShare } from '../world/Eras.js';
+import { hasTech, eraTaxShare, statePensionExists } from '../world/Eras.js';
 import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
 import { priceLevel } from '../world/Countries.js';
 import { collectorsLine } from './DebtOfTheDay.js';
@@ -139,7 +139,8 @@ export const Finances = {
     const kidsCredit = abroad ? 0 : kids.filter((c) => ageOf(state, c) < 17).length * CHILD_TAX_CREDIT;
     // Payroll contributions fall on employment pay (the self-employed pay their own rate as they earn).
     const payroll = f.ledger.income.reduce((sum, i) => sum + (i.wage && !i.selfEmployed && !i.informal ? i.amount : 0), 0);
-    const contributions = abroad ? socialContributions(country, Math.max(0, payroll)) : 0;
+    // No contributions before the country's social insurance began (Bismarck's 1889, France's 1910/1930).
+    const contributions = abroad && statePensionExists(state) ? socialContributions(country, Math.max(0, payroll)) : 0;
     // Where contributions are deductible (Germany, Japan, part of Canada's), they come off taxable income.
     const deductible = abroad ? Math.round(contributions * (country.tax.contribDeductible ?? 0)) + (country.tax.workAllowance ?? 0) : 0;
     if (abroad) {

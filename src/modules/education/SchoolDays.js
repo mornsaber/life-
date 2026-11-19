@@ -79,7 +79,8 @@ function schoolYear(ctx, rng) {
   // First day: what the classroom looked like.
   // Soviet children start on 1 September at seven, Japanese children with their randoseru at six: those are told below.
   const ownFirstDay = (['RU', 'UA', 'BY'].includes(c) && y >= 1937 && y < 1993) || (c === 'JP' && y >= 1954);
-  if (age === (c === 'US' ? 6 : 5) && !ownFirstDay && once(state, 'first')) {
+  // At six, once it's settled whether there's a school for you at all (education/SchoolingOfTheDay.js).
+  if (age === 6 && !state.schooling?.unschooled && !ownFirstDay && once(state, 'first')) {
     const rural = /rural/i.test(region?.type ?? '') && c === 'US';
     ctx.log(y < 1900 ? 'Your first day at school: a slate and a slate pencil, the whole class chanting the alphabet, the master with his cane on the desk.'
       : rural && y < 1945 ? 'Your first day at the one-room schoolhouse: eight grades and one teacher, a stove in the corner, and you carry in the wood.'

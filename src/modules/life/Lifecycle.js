@@ -13,7 +13,7 @@ const CHILDHOOD_EVENTS = [
   { minAge: 1, maxAge: 3, text: 'You said your first word. It was "no."', icon: '🗣️', stats: { smarts: 2, happiness: 2 } },
   { minAge: 1, maxAge: 4, text: 'You took your first wobbly steps across the living room.', icon: '👣', stats: { fitness: 2, happiness: 2 } },
   { minAge: 2, maxAge: 5, text: 'You drew on the living room wall with permanent marker.', icon: '🖍️', stats: { happiness: 2 } },
-  { minAge: 2, maxAge: 6, text: 'You got the chickenpox and missed a week of preschool.', icon: '🤒', stats: { health: -3 } },
+  { minAge: 2, maxAge: 6, when: (s) => yearNow(s) >= 1965 && ['US', 'GB', 'IE', 'CA', 'AU', 'NZ', 'FR', 'DE', 'NL', 'SE', 'DK', 'NO', 'JP'].includes(s.character.countryId ?? 'US'), text: 'You got the chickenpox and missed a week of preschool.', icon: '🤒', stats: { health: -3 } },
   { minAge: 3, maxAge: 9, text: 'You learned to ride a bike after skinning both knees.', icon: '🚲', stats: { fitness: 3, happiness: 3 } },
   { minAge: 3, maxAge: 8, text: 'You learned to swim at the community pool.', icon: '🏊', stats: { fitness: 3, happiness: 2 } },
   { minAge: 4, maxAge: 12, when: (st) => yearNow(st) >= 1900, text: 'You read every book in the school library series.', icon: '📚', stats: { smarts: 4 } },

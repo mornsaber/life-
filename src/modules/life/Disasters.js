@@ -49,10 +49,13 @@ export const Disasters = {
       const softened = severity > 1 && mitigates(state, type);
       if (softened) severity -= 1;
       const label = DISASTER_LABEL[type];
-      const named = yearNow(state) >= 1953;
+      // A hurricane in the Atlantic, a typhoon in the western Pacific, a cyclone in the Indian Ocean.
+      const cc = state.character.countryId ?? 'US';
+      const storm = ['JP', 'CN', 'TW', 'KR', 'PH', 'VN'].includes(cc) ? 'typhoon' : ['IN', 'BD', 'PK', 'LK', 'MM', 'AU', 'MZ', 'MG'].includes(cc) ? 'cyclone' : ['US', 'MX', 'CU', 'JM', 'HT', 'DO', 'BS', 'PR', 'BZ', 'GT', 'HN', 'NI', 'CR', 'PA', 'CO', 'VE', 'BB', 'TT', 'CA'].includes(cc) ? 'hurricane' : 'storm';
+      const named = yearNow(state) >= 1953 && storm === 'hurricane';
       const name = `${type === 'hurricane' ? (named ? `Hurricane ${rng.pick(yearNow(state) >= 1979 ? ['Alma', 'Bertrand', 'Celia', 'Dorian', 'Esme', 'Felix', 'Greta'] : ['Alma', 'Celia', 'Esme', 'Greta', 'Hazel', 'Carol'])}` : `the Great Storm of ${yearNow(state)}`) : label.name}`;
       const disaster = { type, severity, stateId, regionId: regionOf(state).id, name };
-      ctx.log(`${label.icon} A ${SEVERITY[severity]} ${type} struck ${STATES[stateId].name}: ${name}.`, label.icon, 'warn');
+      ctx.log(`${label.icon} A ${SEVERITY[severity]} ${type === 'hurricane' ? storm : type} struck ${STATES[stateId].name}: ${type === 'hurricane' ? name.replace(/^Hurricane /, storm === 'hurricane' ? 'Hurricane ' : '') : name}.`, label.icon, 'warn');
       if (softened) ctx.log(`The ${type} mitigation you built held: it could have been much worse.`, '🏗️', 'good');
       if (state.legal.incarceration) {
         ctx.emit('disaster:struck', { disaster });

@@ -35,7 +35,8 @@ function local(ctx) {
   c.earn = (amount, ...rest) => ctx.earn(Math.round(amount * k), ...rest);
   // Other modules price their own consequences.
   c.emit = (event, payload) => ctx.emit(event, payload);
-  const round = (n) => (n < 1000 ? Math.round(n / 10) * 10 : n < 10000 ? Math.round(n / 100) * 100 : Math.round(n / 1000) * 1000);
+  // Small sums keep a few dollars rather than rounding to nothing.
+  const round = (n) => (n < 20 ? Math.max(1, Math.round(n)) : n < 1000 ? Math.round(n / 10) * 10 : n < 10000 ? Math.round(n / 100) * 100 : Math.round(n / 1000) * 1000);
   const text = (t) => (typeof t === 'string' ? t.replace(/\$([\d,]+)/g, (m, d) => `$${round(Number(d.replace(/,/g, '')) * k).toLocaleString('en-US')}`) : t);
   return { c, text };
 }

@@ -5,6 +5,8 @@
  *
  *   localEmployer(professionId, cc, city, year, rng) → a name, or null to keep the English one.
  */
+import { COUNTRIES } from './Countries.js';
+
 const ANGLO = ['US', 'GB', 'IE', 'CA', 'AU', 'NZ', 'ZA'];
 
 const T = {
@@ -89,9 +91,46 @@ const T = {
   },
 };
 
-export function localEmployer(professionId, cc, city, year, rng) {
+/**
+ * Any other private employer abroad: a hospital by its local name, or a firm named for a local
+ * family in the country's style (Maison Durand, Gebrüder Koch, Tanaka Shōten), where the game's
+ * own list is American (Mercy General, Meridian Hotel Group).
+ */
+const HEALTH = /nurs|medic|physician|surg|hospital|clinic|therap|anesth|radiolog|respirat|sonograph|phlebot|midwi|dietit|psychiatr/i;
+const SOVIET = ['RU', 'UA', 'BY', 'KZ', 'GE', 'AM', 'AZ', 'UZ', 'KG', 'TJ', 'TM', 'MD', 'EE', 'LV', 'LT'];
+function hospital(cc, c, y, rng) {
+  if (cc === 'FR' || cc === 'BE') return [`l'Hôtel-Dieu de ${c}`, `l'Hôpital de ${c}`];
+  if (cc === 'DE' || cc === 'AT' || cc === 'CH') return [`Städtisches Krankenhaus ${c}`, `St.-Josefs-Hospital ${c}`];
+  if (cc === 'IT') return [`Ospedale Maggiore di ${c}`, `Ospedale Civile di ${c}`];
+  if (cc === 'ES') return [`Hospital Provincial de ${c}`];
+  if (cc === 'PT' || cc === 'BR') return [`Santa Casa de Misericórdia de ${c}`];
+  if (cc === 'NL') return [`Gemeenteziekenhuis ${c}`];
+  if (cc === 'JP') return [`${c} Municipal Hospital`, `${c} Red Cross Hospital`];
+  if (cc === 'IN') return [`${c} Civil Hospital`, `the ${c} mission hospital`];
+  if (cc === 'CN') return y >= 1949 ? [`${c} People's Hospital No. ${rng.int(1, 6)}`] : [`the ${c} mission hospital`];
+  if (SOVIET.includes(cc)) return y >= 1918 && y < 1992 ? [`${c} City Hospital No. ${rng.int(1, 40)}`] : [`the ${c} zemstvo hospital`];
+  return [`${c} General Hospital`];
+}
+function firm(cc, c, y, rng) {
+  const S = rng.pick(COUNTRIES[cc]?.names?.last ?? ['Mendes']);
+  if (SOVIET.includes(cc) && y >= 1918 && y < 1992) return [`the ${c} state works No. ${rng.int(1, 30)}`, `the ${c} trust`];
+  if (cc === 'CN' && y >= 1956 && y < 1980) return [`${c} Municipal Works No. ${rng.int(1, 12)}`];
+  if (cc === 'FR' || cc === 'BE') return [`${S} et Fils`, `Maison ${S}`, `Établissements ${S}`];
+  if (cc === 'DE' || cc === 'AT' || cc === 'CH') return y < 1900 ? [`${S} & Söhne`, `Gebrüder ${S}`] : [`${S} GmbH`, `${S} & Co.`];
+  if (cc === 'IT') return [`${S} & Figli`, `Ditta ${S}`];
+  if (cc === 'ES' || cc === 'MX' || cc === 'AR' || cc === 'CL' || cc === 'CO' || cc === 'PE') return [`${S} e Hijos`, `${S} y Cía.`];
+  if (cc === 'PT' || cc === 'BR') return [`${S} & Filhos`, `Casa ${S}`];
+  if (cc === 'NL') return [`${S} & Zonen`, `Firma ${S}`];
+  if (cc === 'JP') return [`${S} Shōten`, `${S} Kōgyō`];
+  if (cc === 'IN' || cc === 'PK' || cc === 'BD') return [`${S} & Sons`, `${S} Brothers`];
+  return [`${S} & Co.`, `${S} Brothers`];
+}
+
+export function localEmployer(professionId, cc, city, year, rng, profession = null) {
   if (!cc || ANGLO.includes(cc)) return null;
-  const f = T[cc]?.[professionId] ?? (professionId === 'agriculture' ? (c, y) => (['RU', 'UA', 'BY'].includes(cc) && y >= 1930 && y < 1992 ? ['the collective farm (kolkhoz)', 'the state farm (sovkhoz)'] : cc === 'CN' && y >= 1958 && y < 1983 ? ['the people\'s commune'] : ['a family farm in the village', 'a landowner\'s estate', 'the big farm outside town']) : null);
+  const generic = profession && !['government', 'federal', 'state', 'municipal'].includes(profession.sector) && !profession.campus && !profession.intl && (profession.employers?.length ?? 0) >= 3
+    ? (c, y) => (HEALTH.test(professionId) ? hospital(cc, c, y, rng) : firm(cc, c, y, rng)) : null;
+  const f = T[cc]?.[professionId] ?? (professionId === 'agriculture' ? (c, y) => (['RU', 'UA', 'BY'].includes(cc) && y >= 1930 && y < 1992 ? ['the collective farm (kolkhoz)', 'the state farm (sovkhoz)'] : cc === 'CN' && y >= 1958 && y < 1983 ? ['the people\'s commune'] : ['a family farm in the village', 'a landowner\'s estate', 'the big farm outside town']) : generic);
   if (!f) return null;
   const names = f(city || 'the town', year);
   return names?.length ? rng.pick(names) : null;

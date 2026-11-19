@@ -187,7 +187,21 @@ export function funeralOf(state) {
   if (state.royal?.level === 'monarch') return 'A state funeral: the lying-in-state, the gun carriage, the crowned heads of the world behind the coffin.';
   if (headOf(state)) return y < 1900 ? 'A state funeral: black-draped streets and a procession a mile long.' : 'A state funeral, broadcast live: the flag on the coffin and every former leader in the front pews.';
   const parts = [];
-  if (y >= 1840 && y < 1915) parts.push('full Victorian mourning — black-plumed horses, mutes at the door, a year of crape for the widow');
+  // Funerals by faith: a pyre for a Hindu, burial before sundown for a Muslim, a Buddhist wake.
+  const trad = state.community?.faith?.traditionId ?? (['IN', 'NP'].includes(cc) ? 'hindu' : ['JP', 'TH', 'LK', 'MM', 'KH', 'LA'].includes(cc) ? 'buddhist' : ['CN', 'TW', 'VN'].includes(cc) ? 'chineseFolk' : ['PK', 'BD', 'ID', 'EG', 'SA', 'IR', 'IQ', 'TR', 'MA', 'DZ', 'AF', 'SY', 'JO', 'MY', 'SN', 'NG', 'SD', 'TN', 'LY', 'YE'].includes(cc) ? 'sunni' : null);
+  const other = trad === 'hindu' ? 'the pyre on the burning ghat, your eldest son walking round it with the flame, and your ashes given to the river'
+    : trad === 'sikh' ? 'the hymns of the Kirtan Sohila, cremation, and the ashes scattered on running water'
+      : ['sunni', 'shia', 'salafi'].includes(trad) ? 'washed and shrouded, prayers at the mosque, and burial before the next sunset, facing Mecca'
+        : ['reformJewish', 'conservativeJewish', 'orthodoxJewish', 'hasidic'].includes(trad) ? 'a plain pine coffin, burial within the day, and seven days of shiva'
+          : trad === 'buddhist' || (cc === 'JP' && trad === 'shinto') ? 'a wake with the monks chanting sutras, cremation, and your bones lifted into the urn with chopsticks'
+            : trad === 'chineseFolk' ? 'white mourning clothes, paper money burned for the journey, and a procession with gongs to the grave'
+              : null;
+  if (other) {
+    parts.push(other);
+    const big = standing(state) >= 50;
+    return `${big ? 'A crowded funeral' : 'A funeral'}: ${parts.join('; ')}.`;
+  }
+  if (y >= 1840 && y < 1915 && ['GB', 'IE', 'US', 'CA', 'AU', 'NZ'].includes(cc)) parts.push('full Victorian mourning — black-plumed horses, mutes at the door, a year of crape for the widow');
   else if (y >= 1990) parts.push('a celebration of life, with photographs and a playlist');
   else parts.push(y < 1840 ? 'a parish burial, the bell tolling once for every year' : 'a church service and a burial');
   if (served) parts.push(cc === 'US' ? (y >= 1891 ? 'Taps played over the grave and the flag folded for the family' : 'a volley fired over the grave') : y >= 1867 && ['GB', 'CA', 'AU', 'NZ', 'IE', 'ZA', 'IN'].includes(cc) ? 'the Last Post at the graveside' : 'a volley fired over the grave');

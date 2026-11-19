@@ -51,7 +51,12 @@ export function setNameCountry(countryId = 'US') {
   // Immigrant-background names, as common as they are in the country.
   const d = namePool ? DIASPORA[countryId] : null;
   mix = d?.share ? { share: d.share, pools: d.from.flatMap(([src, w]) => Array(w).fill(COMMUNITY_NAMES[src] ?? (src === 'US' ? { male: FIRST_NAMES.male, female: FIRST_NAMES.female, last: LAST_NAMES } : COUNTRIES[src]?.names)).filter(Boolean)) } : null;
+  // Before the post-war migrations, the country's old surnames only (no Yılmaz in 1910 Berlin).
+  const incomers = new Set((mix?.pools ?? []).flatMap((p) => p.last ?? []));
+  const oldLast = namePool?.last?.filter((n) => !incomers.has(n)) ?? [];
+  oldSurnames = oldLast.length >= 4 ? oldLast : namePool?.last ?? null;
 }
+let oldSurnames = null;
 
 export function randomName(rng, gender) {
   // The year people are being named in (HistoricalData): born about twenty years before.
@@ -63,7 +68,7 @@ export function randomName(rng, gender) {
     const old = born < 1950 ? OLD_FIRST_NAMES[nameCountry] : null;
     const share = born < 1920 ? 0.9 : born < 1950 ? 0.6 : 0;
     const first = old && pool === namePool && rng.chance(share) ? rng.pick(old[gender] ?? old.male) : rng.pick(pool[gender] ?? pool.male);
-    return { firstName: first, lastName: rng.pick(pool.last) };
+    return { firstName: first, lastName: rng.pick(born < 1950 && pool === namePool && oldSurnames ? oldSurnames : pool.last) };
   }
   // In the past, the first names of the day (the SSA's most popular names of the decade) and the
   // surnames of the older censuses.

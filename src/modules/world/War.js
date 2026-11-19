@@ -205,7 +205,7 @@ function warYear(ctx, cc, war, rng) {
   if (war.intensity < 4 && rng.chance(escalate)) {
     war.intensity += 1;
     if (war.homeFront > 0 && war.kind === 'interstate') war.homeFront = clamp(war.homeFront + rng.float(0.05, 0.2), 0, 1);
-    log(`📰 The war escalated: ${rng.pick(['new fronts opened', 'the adversary called up its reserves', 'missiles struck military bases', 'the air war widened', 'allies were drawn in'])}. ${INTENSITY_LABEL[war.intensity].replace(/ war$/, '')} war now.`, '🔥', 'warn');
+    log(`📰 The war escalated: ${rng.pick(['new fronts opened', 'the adversary called up its reserves', 'allies were drawn in', ...(yearNow(ctx.state) >= 1944 ? ['missiles struck military bases'] : []), ...(yearNow(ctx.state) >= 1915 ? ['the air war widened'] : [])])}. ${INTENSITY_LABEL[war.intensity].replace(/ war$/, '')} war now.`, '🔥', 'warn');
   } else if (war.intensity > 1 && (war.support < 35 || rng.chance(0.08))) {
     war.intensity -= 1;
     log('📰 The fighting cooled: both sides dug in and the front went quiet.', '🌫️');
@@ -299,6 +299,8 @@ function homeFrontYear(ctx, war, rng) {
       ['Strikes on the power grid meant weeks of blackouts through the winter.', 'health', -2],
       ['Shelling damaged your building. The windows are boarded up.', 'property', 0.15],
       ['A drone strike destroyed the factory down the road. Half the street lost their jobs.', 'stress', 6],
+      ['Soldiers were billeted in your house for a month and ate everything in it.', 'stress', 5],
+      ['Foragers took the harvest and the horse, and left a paper promising payment.', 'stress', 6],
     ].filter(([t]) => fitsEra(state, t)));
     ctx.log(hit[0], '💥', 'bad');
     if (hit[1] === 'property') {

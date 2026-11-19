@@ -109,6 +109,8 @@ function marketEvent(ctx) {
       data: { ticker },
     });
   } else {
+    // A Discord pump: from about 2015 (before then the boiler room rang you; see the cold-call scams).
+    if (yearNow(state) < 2015) return;
     ctx.prompt({
       type: 'investing.pump',
       icon: '📣',
@@ -117,7 +119,7 @@ function marketEvent(ctx) {
       options: [
         { id: 'buy', label: '💸 Buy $3,000 worth', tone: 'danger' },
         { id: 'promote', label: '📣 Join as a paid promoter', hint: 'Securities fraud', tone: 'danger' },
-        { id: 'report', label: '🚩 Report it to the SEC' },
+        { id: 'report', label: `🚩 Report it to ${(state.character.countryId ?? 'US') === 'US' ? 'the SEC' : 'the financial regulator'}` },
         { id: 'pass', label: '🙅 Ignore it' },
       ],
     });
@@ -324,7 +326,7 @@ export const BrokerageEngine = {
         ctx.emit('legal:offense', { offenseId: 'securitiesFraud', context: 'pump-and-dump promotion', discovery: 0.3, evidence: 0.8 });
         ctx.log('You hyped the stock to strangers and got paid as they bought.', '📣', 'warn');
       } else if (optionId === 'report') {
-        ctx.log('You tipped off the SEC. The ring was charged months later.', '🚩', 'good');
+        ctx.log(`You tipped off ${(state.character.countryId ?? 'US') === 'US' ? 'the SEC' : 'the financial regulator'}. The ring was charged months later.`, '🚩', 'good');
         ctx.stat('happiness', 2);
       }
     },

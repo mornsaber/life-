@@ -18,6 +18,7 @@
 import { clamp } from '../../core/Random.js';
 import { yearlyCount, bumpYearly, addHonor } from '../../core/State.js';
 import { TRAINING_LEVELS } from '../career/Medicine.js';
+import { fitsEra } from '../world/Eras.js';
 
 /** groups: which clinicians see it · critical: getting it right saves a life · rare: a "zebra" worth a case report */
 export const CASES = [
@@ -95,8 +96,10 @@ export function seesPatients(job) {
 
 export function casePool(state, job = state.career.job) {
   const groups = job?.professionId === 'medical' ? SPECIALTY_GROUPS[state.medicine?.specialty] ?? ['any'] : ['any', 'emergency'];
-  const pool = CASES.filter((c) => c.groups.some((g) => groups.includes(g)));
-  return pool.length >= 3 ? pool : CASES.filter((c) => c.groups.includes('any'));
+  // Only the cases a doctor of the day could meet and treat (no antibiotics in 1873, no scans in 1900).
+  const known = CASES.filter((c) => fitsEra(state, c));
+  const pool = known.filter((c) => c.groups.some((g) => groups.includes(g)));
+  return pool.length >= 3 ? pool : known.filter((c) => c.groups.includes('any'));
 }
 
 export const casesOf = (state) => (state.medicine.cases ??= { solved: 0, missed: 0, saved: 0, tested: 0, streak: 0, best: 0, seen: [] });

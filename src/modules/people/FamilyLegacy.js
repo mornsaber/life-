@@ -15,6 +15,8 @@
  * state.dynasty = { heirlooms: [{ id, name, icon, story, value, since }], seat: { name, propertyId, since } | null,
  *                   seatOffer: { property, value } | null, matchAsked }
  */
+import { mixedMarriageBlock } from '../legal/Rights.js';
+import { skinToneOf } from './SkinTone.js';
 import { clamp, Random } from '../../core/Random.js';
 import { currentYear } from '../../core/State.js';
 import { rep } from '../life/Reputation.js';
@@ -166,6 +168,8 @@ export const FamilyLegacyModule = {
       }
       const spouse = makePerson(ctx, { relation: optionId === 'accept' ? 'spouse' : 'partner', gender: p.gender, age: p.age, firstName: p.firstName, lastName: p.lastName, relationship: rng.int(40, 70), arranged: true });
       spouse.since = state.character.age;
+      // A family's match comes from its own community where the law bars marrying across the colour line.
+      if (mixedMarriageBlock(state, spouse)) spouse.skinTone = skinToneOf(state);
       state.people.list.push(spouse);
       if (optionId === 'accept') {
         spouse.dcAtMarriage = state.retirement?.dc ?? 0;

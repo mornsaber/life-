@@ -62,7 +62,7 @@ function equalPayYearEnd(ctx) {
     const before = job.salary;
     recalcSalary(state, job);
     ctx.stat('happiness', 5);
-    ctx.log(`Equal pay came in: the women's rate is gone. Your pay rose from ${money(before)} to ${money(job.salary)}. The men's jobs still pay more.`, '⚖️', 'good');
+    ctx.log(job.salary > before ? `Equal pay came in: the women's rate is gone. Your pay rose from ${money(before)} to ${money(job.salary)}. The men's jobs still pay more.` : 'Equal pay came in: the women\'s rate is gone, on paper. The men\'s jobs still pay more.', '⚖️', 'good');
   }
 }
 

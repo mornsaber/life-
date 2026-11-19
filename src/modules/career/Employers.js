@@ -191,7 +191,7 @@ export function createEmployer(rng, state, profession, regionId) {
   let name;
   if (profession.campus && campusAt(regionId)) name = campusAt(regionId);
   else if (profession.employerName) name = profession.employerName(cityName(regionId), rng, stateNameOf(regionId), REGIONS[regionId]?.state, regionId, cc);
-  else name = localEmployer(profession.id, cc, cityName(regionId), yearNow(state), rng) ?? rng.pick(headquartersHere(periodEmployers(profession.id, profession.employers), regionId));
+  else name = localEmployer(profession.id, cc, cityName(regionId), yearNow(state), rng, profession) ?? rng.pick(headquartersHere(periodEmployers(profession.id, profession.employers), regionId));
   // A service the government has merged hires under its new name.
   const merged = state.world?.serviceMergers?.[regionId]?.[profession.id]?.name;
   if (merged) name = merged;

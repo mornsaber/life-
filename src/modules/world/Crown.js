@@ -331,7 +331,10 @@ export function demise(ctx, crownId, why) {
   else if (r && r.crownId === crownId && r.line === 1 && !r.reigning) return accede(ctx, old, why);
   const sameName = Object.values(state.world.crowns).length && rng.chance(0.3);
   if (r?.crownId === crownId) treeDemise(state, c.heir.nodeId);
-  const next = { name: c.heir.name, gender: c.heir.gender, age: c.heir.age, number: sameName ? c.monarch.number + 1 : rng.int(1, 3) };
+  // A regnal name: often the old one again (then the next number), never the same name and number twice.
+  const name = sameName && c.heir.gender === c.monarch.gender ? c.monarch.name : c.heir.name;
+  const roll = rng.int(1, 3);
+  const next = { name, gender: c.heir.gender, age: c.heir.age, number: name === c.monarch.name ? c.monarch.number + 1 : roll };
   c.monarch = next;
   c.heir = newHeir(rng, def, next);
   c.since = currentYear(state);

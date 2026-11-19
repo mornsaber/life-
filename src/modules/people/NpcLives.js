@@ -211,7 +211,7 @@ function yearOf(ctx, p) {
         startCareer(rng, state, p, profession, { age, levelIdx: back ? was : age < 26 ? 0 : null });
         if (!isPartner(p)) p.income = p.careerIncome;
         life.employer = rng.pick(EMPLOYERS);
-        say(footsteps ? `${p.firstName} is following in your footsteps: ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.toLowerCase()}, like you.` : `${p.firstName} got a job as ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.toLowerCase()}.`, footsteps ? '👣' : '💼', 'good');
+        say(footsteps ? `${p.firstName} is following in your footsteps: ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.toLowerCase()}, like you.` : `${p.firstName} got a job as ${/^[AEIOU]/i.test(p.job) ? 'an' : 'a'} ${p.job.replace(/\s+(?:I{1,3}|IV|V)$/, '').toLowerCase()}.`, footsteps ? '👣' : '💼', 'good');
       }
     } else if (p.job && p.career) {
       // Their year in the job: promotion, postings, awards, discipline, elite posts.

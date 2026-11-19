@@ -220,7 +220,7 @@ export const CaseloadModule = {
       job.performance = Math.round(clamp(job.performance + (good - bad * 1.5) / Math.max(1, good + bad) * 6, 0, 100));
       rec.rep = Math.round(clamp(rec.rep + (good - bad * 2), 0, 100));
       const k = scaleOf(cfg);
-      ctx.log(`${cfg.label}: ${good * k} ${cfg.noun}${good * k === 1 ? '' : 's'} closed well, ${bad * k} badly; ${rec.cases.length * k} open.`, cfg.icon);
+      ctx.log(`${cfg.label}: ${good * k} ${good * k === 1 ? cfg.noun : cfg.noun.replace(/y$/, 'ie')}${good * k === 1 ? '' : 's'} closed well, ${bad * k} badly; ${rec.cases.length * k} open.`, cfg.icon);
     }
     // Too many open cases is burnout.
     const k = scaleOf(cfg);
