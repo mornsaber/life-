@@ -406,6 +406,10 @@ const TIMELINES = {
   VE: [[1908, AUTH('a republic of caudillos')], [1935, DICTATOR('Juan Vicente Gómez\'s dictatorship', 'General Gómez')], [1948, OLIGARCHY('a republic in transition')], [1958, JUNTA('Pérez Jiménez\'s dictatorship')], [1999, DEMO('the Punto Fijo democracy')]],
   CR: [[1948, OLIGARCHY('a coffee republic')]],
   LR: [[1980, OLIGARCHY('an Americo-Liberian republic, where only the settlers\' descendants rule')], [1990, JUNTA('Samuel Doe\'s regime')], [2003, WAR('the Liberian civil wars')]],
+  // Japan: the shogunate; the Meiji oligarchs under the Emperor; the Diet; the militarists; the occupation.
+  JP: [[1868, MONARCH('the Tokugawa shogunate, the Emperor a figure in Kyoto', 'the Shogun')], [1890, KING('an empire governed by the Meiji oligarchs in the Emperor\'s name', 'the Emperor')],
+    [1932, KING('a constitutional empire with an elected Diet', 'the Prime Minister')], [1945, JUNTA('an empire ruled by its generals and admirals', 'the Prime Minister (a general)')],
+    [1952, AUTH('Japan under Allied occupation, with a new constitution and the Emperor a symbol', 'the Supreme Commander for the Allied Powers')]],
   TH: [[1932, MONARCH('the Kingdom of Siam', 'the King')], [1973, JUNTA('a kingdom ruled by its generals', 'the Prime Minister (a field marshal)')], [1976, DEMO('a constitutional monarchy', 'the Prime Minister')],
     [1992, OLIGARCHY('a military-guided democracy', 'the Prime Minister')], [2006, DEMO('a constitutional monarchy', 'the Prime Minister')], [2023, JUNTA('a kingdom under military-backed government', 'the Prime Minister')]],
   NP: [[1846, MONARCH('the Kingdom of Nepal', 'the King')], [1951, DICTATOR('the Rana regime: hereditary prime ministers rule in the King\'s name', 'the Rana Prime Minister')], [1960, KING('a kingdom finding a constitution')],
@@ -475,10 +479,12 @@ export function dataRegimeAt(cc, y) {
   // Generals, dictators or one party ruling under a king (Thailand, Japan, Iran, Nepal…).
   const crowned = periodThrone(cc, y) || (TODAY_CROWNS.includes(cc) && !republicGap(cc, y) && !(cc === 'KH' && y >= 1970 && y < 1993));
   if (crowned && ['mil', 'pers', 'oneparty', 'multiauth', 'olig'].includes(d.cat)) {
-    if (d.cat === 'mil') return JUNTA('a kingdom ruled by its generals', 'the Prime Minister (a general)');
-    if (d.cat === 'pers') return KING(`a kingdom ruled by ${crown === 'the King' ? 'the King\'s strongman' : 'a strongman'}`, 'the Prime Minister');
-    if (d.cat === 'oneparty') return KING('a kingdom ruled by a single party', 'the Prime Minister');
-    return KING('a kingdom with a managed parliament', 'the Prime Minister');
+    // The realm by its crown: an empire under an emperor, a sultanate, an emirate; otherwise a kingdom.
+    const realm = /Emperor/.test(crown) ? 'an empire' : /Sultan/.test(crown) ? 'a sultanate' : /Emir/.test(crown) ? 'an emirate' : /Shah/.test(crown) ? 'a monarchy' : 'a kingdom';
+    if (d.cat === 'mil') return JUNTA(`${realm} ruled by its generals`, 'the Prime Minister (a general)');
+    if (d.cat === 'pers') return KING(`${realm} ruled by ${crown === 'the King' ? 'the King\'s strongman' : 'a strongman'}`, 'the Prime Minister');
+    if (d.cat === 'oneparty') return KING(`${realm} ruled by a single party`, 'the Prime Minister');
+    return KING(`${realm} with a managed parliament`, 'the Prime Minister');
   }
   switch (d.cat) {
     case 'parl': return d.democracy ? DEMO(d.monarchy ? 'a parliamentary monarchy' : 'a parliamentary republic', 'the Prime Minister') : d.monarchy ? KING('a monarchy whose parliament is chosen by a narrow electorate', 'the Prime Minister') : OLIGARCHY('a parliamentary republic with a narrow franchise', 'the Prime Minister');

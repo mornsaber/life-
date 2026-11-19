@@ -229,7 +229,7 @@ export function abolish(ctx, cc, { period = false } = {}) {
   const annexed = period && Math.abs((ANNEXED[cc] ?? -99) - currentYear(state)) <= 2;
   const by = name.match(/ under ([A-Z]\w*) rule/)?.[1] ?? name.match(/^(British|French|German|Dutch|Portuguese|Italian|Belgian|Spanish|Japanese)\b/)?.[1];
   const land = name.replace(/ under [A-Z]\w* rule/, '').replace(/^(?:British|French|German|Dutch|Portuguese|Italian|Belgian|Spanish|Japanese) /, '');
-  ctx.log(annexed ? `The monarchy is abolished: ${land} has been annexed${by ? ` by the ${by}` : ''}, and its ${cc === 'MG' ? 'queen' : cc === 'KR' ? 'emperor' : 'king'} deposed.` : period && /^(?:British|French|German|Dutch|Portuguese|Italian|Belgian|Spanish|Japanese)\b| under [A-Z]\w* rule/.test(name) ? `The monarchy in ${land} has come to an end.` : `The republic is proclaimed: the monarchy in ${name} is abolished.`, '🏛️', 'milestone');
+  ctx.log(annexed ? `The monarchy is abolished: ${land} has been annexed${by ? ` by the ${by}` : ''}, and its ${cc === 'MG' ? 'queen' : cc === 'KR' ? 'emperor' : 'king'} deposed.` : period && /^(?:British|French|German|Dutch|Portuguese|Italian|Belgian|Spanish|Japanese)\b| under [A-Z]\w* rule/.test(name) ? `The monarchy in ${land} has come to an end.` : (/Republic\b/.test(name) ? `The monarchy is abolished: ${name} is proclaimed.` : `The republic is proclaimed: the monarchy in ${name} is abolished.`), '🏛️', 'milestone');
 }
 /** What the republic's head of state is, for the proclamation. */
 export const REPUBLIC_NOTE = 'A President of the Republic replaces the Crown; the governors-general and the Crown\'s posts go with it.';

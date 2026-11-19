@@ -60,7 +60,7 @@ function guideCard(state) {
 function entranceCard(state) {
   const ent = state.education.entrance;
   const e = ENTRANCE_EXAMS[state.character.countryId];
-  if (!e || (!ent && state.character.age < 15)) return '';
+  if (!e || (!ent && (state.character.age < 15 || state.character.age > 19))) return '';
   if (!ent) return card(`The ${e.name}`, `<p class="muted">You sit it in your last school year (at 17). Universities admit on it${e.weight >= 0.9 ? ' almost entirely' : e.weight >= 0.6 ? ' heavily' : ' in part'}. Expected score now: about ${expectedScore(state)}/100.</p>`, { icon: '📝' });
   return card(`The ${e.name}`, `<p>Score <b>${ent.score}/100</b>${ent.sittings > 1 ? ` (best of ${ent.sittings} sittings)` : ''}. ${ent.score >= 80 ? 'Top universities are within reach.' : ent.score >= 60 ? 'Solid: most universities will take you.' : 'Low: selective universities are a long shot.'}</p>${ent.resitAt ? `<p class="fine">You can re-sit next year.</p>` : ''}`, { icon: '📝' });
 }
