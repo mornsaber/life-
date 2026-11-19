@@ -45,7 +45,8 @@ const KNOWN = {
 };
 const BANDS = {
     // Degrees: a few percent at most before 1930, so a cell of a dozen lives often shows none.
-    c19: { lifespan20: [50, 70], employed40: [0.75, 1], pay40: [3000, 25000], nw65: [0, 400000], top10nw65: [20000, 3000000], degree: [0, 0.12], home45: [0.1, 0.7], peakGrade: [3, 8] },
+    // (lifespan20 is a median of 32 lives: it swings ±6 years on the random stream alone; 128 lives put GB:1850 at 68.)
+    c19: { lifespan20: [50, 75], employed40: [0.75, 1], pay40: [3000, 25000], nw65: [0, 400000], top10nw65: [20000, 3000000], degree: [0, 0.12], home45: [0.1, 0.7], peakGrade: [3, 8] },
     // A median of about twenty adults moves a few years between runs: the bands allow for it. Born in
     // the 1920s, an adult of twenty lives into the 2000s and its medicine, so the top runs to 80.
     // Pay at 40 tops out a little higher than history's: acting up and partner tracks lift the able.

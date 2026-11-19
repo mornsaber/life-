@@ -26,7 +26,7 @@ const atWar = (state) => Object.keys(state.world?.wars ?? {}).includes(cc(state)
 
 /** [id, from age, to age, when(state, y, c), text, icon, stats] */
 export const MOMENTS = [
-  ['pump', 5, 12, (s, y, c) => y < 1920 && poorish(s), 'Your job is the water: two buckets from the pump at the end of the street before school, and two after.', '🪣', { health: 1 }],
+  ['pump', 5, 12, (s, y, c) => y < 1920 && poorish(s), 'Your job is the water: two buckets from the pump at the end of the street before school, and two after.', '🪣', {}],
   ['coal', 6, 13, (s, y, c) => y < 1960 && ANGLO.concat(['US', 'DE', 'FR', 'BE', 'NL']).includes(c) && poorish(s), 'Every evening you carry the coal scuttle up from the cellar and lay the fire for the morning.', '🪨', {}],
   ['washday', 6, 12, (s, y, c) => EUROPE_US.includes(c) && y < 1960 && poorish(s), 'Monday is washday: the copper boiling since dawn, and you turn the mangle until your arms ache.', '🧺', {}],
   ['tinbath', 3, 9, (s, y, c) => y < 1960 && ANGLO.includes(c) && poorish(s), 'Friday night is bath night: the tin bath in front of the fire, youngest first, the same water for everyone.', '🛁', { happiness: 1 }],
@@ -43,7 +43,7 @@ export const MOMENTS = [
   ['coronation', 3, 15, (s, y, c) => y === 1953 && ['GB', 'AU', 'NZ', 'CA'].includes(c), 'The Coronation: the whole street crowded into the one front room with a television to watch it, in grey and white, and then a party with trestle tables in the road.', '👑', { happiness: 3 }],
   ['moon', 4, 16, (s, y, c) => y === 1969 && (demographyAt(c, y)?.gdp ?? 0) > 4000, 'You were let up in the middle of the night to watch a man step onto the Moon, on a flickering television.', '🌕', { happiness: 3, smarts: 1 }],
   ['sundayschool', 5, 11, (s, y, c) => y < 1965 && ANGLO.concat(['US']).includes(c), 'Sunday school every week in your best clothes: a text to learn by heart and a picture stamp when you do.', '⛪', {}],
-  ['games', 5, 11, (s, y, c) => y < 1975, 'Out in the street until dark: hopscotch, marbles, skipping ropes, kick-the-can, and your name called from a doorway at bedtime.', '🪀', { happiness: 2, fitness: 1 }],
+  ['games', 5, 11, (s, y, c) => y < 1975, 'Out in the street until dark: hopscotch, marbles, skipping ropes, kick-the-can, and your name called from a doorway at bedtime.', '🪀', { happiness: 2 }],
   // India.
   ['jointFamily', 4, 12, (s, y, c) => c === 'IN' && y < 2000, 'Three generations under one roof: your grandmother rules the kitchen, your uncles\' children are your brothers and sisters, and nobody is ever alone.', '🏠', { happiness: 2 }],
   ['monsoon', 5, 13, (s, y, c) => ['IN', 'BD', 'PK', 'LK', 'MM'].includes(c), 'The monsoon broke: the whole street out in the first rain, paper boats in the gutters, and the smell of wet earth.', '🌧️', { happiness: 2 }],
