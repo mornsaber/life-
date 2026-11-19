@@ -43,7 +43,12 @@ export function dataRegime(cc, year) {
   let row = rows[0];
   for (const r of rows) if (r[0] <= year) row = r;
   const [, cat, democracy, monarchy] = row;
-  return { cat, democracy: Boolean(democracy), monarchy: Boolean(monarchy) || MONARCHIC.includes(cat) };
+  // A spell of personal rule between two monarchic periods is still a crown (Afghanistan's emirs
+  // fighting over the throne, 1823–80): no republic was ever proclaimed.
+  const i = rows.indexOf(row);
+  const crowned = (r) => Boolean(r?.[3]) || MONARCHIC.includes(r?.[1]);
+  const interregnum = cat === 'pers' && i > 0 && crowned(rows[i - 1]) && rows.slice(i + 1).some(crowned);
+  return { cat, democracy: Boolean(democracy), monarchy: Boolean(monarchy) || MONARCHIC.includes(cat) || interregnum };
 }
 /** Was the country an independent state in that year (Gleditsch & Ward; from 1816)? */
 export function sovereignIn(cc, year) {

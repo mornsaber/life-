@@ -96,7 +96,7 @@ const T = {
  * family in the country's style (Maison Durand, Gebrüder Koch, Tanaka Shōten), where the game's
  * own list is American (Mercy General, Meridian Hotel Group).
  */
-const HEALTH = /nurs|medic|physician|surg|hospital|clinic|therap|anesth|radiolog|respirat|sonograph|phlebot|midwi|dietit|psychiatr/i;
+const HEALTH = /nurs|medic|physician|surg|hospital(?!ity)|clinic|therap|anesth|radiolog|respirat|sonograph|phlebot|midwi|dietit|psychiatr/i;
 const SOVIET = ['RU', 'UA', 'BY', 'KZ', 'GE', 'AM', 'AZ', 'UZ', 'KG', 'TJ', 'TM', 'MD', 'EE', 'LV', 'LT'];
 function hospital(cc, c, y, rng) {
   if (cc === 'FR' || cc === 'BE') return [`l'Hôtel-Dieu de ${c}`, `l'Hôpital de ${c}`];
