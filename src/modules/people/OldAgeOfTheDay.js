@@ -36,6 +36,12 @@ function oldAgeYear(ctx, rng) {
   if (['CN', 'TW', 'KR'].includes(c) && age === 60 && once(state, 'sixty')) ctx.log('Your sixtieth birthday: longevity noodles, the whole family bowing, and a banquet your children could barely afford.', '🍜', 'milestone');
   if (crowned && age === 100 && y >= 1917 && once(state, 'telegram')) ctx.log(y >= 1999 ? 'On your hundredth birthday a card came from the Palace, with the monarch\'s portrait and good wishes.' : 'On your hundredth birthday a telegram came from the Palace: the monarch\'s congratulations. The mayor called, and the local paper.', '💌', 'honor');
 
+  // Old age elsewhere.
+  if (['IN', 'NP'].includes(c) && age >= 65 && once(state, 'pilgrimage')) ctx.log('Your sons took you on pilgrimage to Varanasi: a dip in the Ganges at dawn, the ghats, and the thought of ending your days by the river.', '🪔', 'milestone');
+  if (['RU', 'UA', 'BY'].includes(c) && y >= 1956 && y < 1992 && age >= 60 && once(state, 'babushka')) ctx.log('A babushka now: the state pension, the grandchildren while their parents work, and your place at the head of every queue in the neighbourhood.', '👵', 'info');
+  if (['RU', 'UA', 'BY'].includes(c) && y >= 1992 && y < 2000 && age >= 60 && once(state, 'pension90s')) ctx.log('Your pension, months late and worth almost nothing after the inflation: you sell pickles and old books at the metro entrance.', '🥒', 'bad');
+  if (['NG', 'GH', 'KE', 'SN', 'CI', 'TZ', 'UG', 'ET', 'ZA'].includes(c) && age >= 65 && once(state, 'elder')) ctx.log('You are an elder now: disputes are brought to you under the tree, and nothing is decided in the family without your word.', '🌳', 'info');
+  if (['MX', 'BR', 'AR', 'CO', 'PE', 'CL'].includes(c) && age >= 65 && once(state, 'abuela')) ctx.log('Sunday lunch is at your house: three generations round the table, and the grandchildren\'s friends too.', '🍲', 'good');
   // The first state pensions.
   if (c === 'DE' && y === 1891 && age >= 70 && once(state, 'pension')) ctx.log('Bismarck\'s old-age pension has begun: a few marks a month for workers who reach seventy. Few of your friends lived to see it.', '🏛️', 'milestone');
   if (c === 'GB' && y === 1909 && age >= 70 && once(state, 'pension')) ctx.log('The first old-age pension: five shillings a week at the post office, at seventy. Old women wept at the counter. "God bless Lloyd George."', '📮', 'milestone');

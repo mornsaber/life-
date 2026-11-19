@@ -21,7 +21,8 @@ import { isOnActiveDuty } from '../../core/State.js';
 const MAX_THREAD = 120;
 const REL_WORD = { spouse: { male: 'your husband', female: 'your wife' }, mother: 'your mother', father: 'your father', child: { male: 'your son', female: 'your daughter' }, sibling: { male: 'your brother', female: 'your sister' } };
 const relWord = (p) => { const w = REL_WORD[p.relation]; return typeof w === 'string' ? w : w?.[p.gender] ?? (p.relation === 'spouse' ? 'your partner' : 'your child'); };
-/** The year's own moment in your life, kept for the news line (the heaviest wins). */
+/** The year's own moment in your life, kept for the news line (the heaviest wins). Other modules: threadMoment. */
+export const threadMoment = (state, weight, text) => mine(state, weight, text);
 function mine(state, weight, text) {
   const n = ensure(state);
   if (!n.mine || n.mine.weight < weight) n.mine = { weight, text };

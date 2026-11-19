@@ -1243,6 +1243,9 @@ const RENAMES = [
   [/Ambulance Service NHS Trust/g, 1992, () => 'Ambulance Service'], [/\bEmergency Care Assistant\b/g, 2005, (y) => (y >= 1970 ? 'Ambulance Technician' : 'Ambulanceman')],
   [/\bStudent Police Constable\b/g, 2006, () => 'Probationer Constable'], [/\bPolice Scotland\b/g, 2013, (y) => (y >= 1975 ? 'the regional police' : 'the burgh police')],
   [/SDIS — centre de secours de/g, 1996, () => 'Corps de sapeurs-pompiers de'],
+  // Youth courts and parole, by country (America's words otherwise).
+  [/^Adjudicated delinquent: /g, PRESENT, () => { const c = getEraState()?.character?.countryId ?? 'US'; return c === 'US' ? 'Adjudicated delinquent: ' : ['GB', 'IE', 'AU', 'NZ'].includes(c) ? 'Found guilty in the juvenile court: ' : 'Found guilty in the children\'s court: '; }],
+  [/The parole board granted you early release\./g, PRESENT, (y) => ((getEraState()?.character?.countryId ?? 'US') === 'US' ? (y >= 1910 ? 'The parole board granted you early release.' : 'The governor granted you an early pardon.') : y >= 1968 && ['GB', 'IE'].includes(getEraState()?.character?.countryId) ? 'The parole board granted you early release.' : 'You were let out early for good conduct.')],
   [/\bover a long video call\b/g, 2005, (y) => (y >= 1920 ? 'in a long telephone call' : 'in a long letter')],
   [/A WhatsApp group, a few stickers in windows/g, 2012, () => 'A meeting in the church hall, a few cards in windows'],
   [/\bwatched it on a phone with the sound off\b/g, 2008, (y) => (y >= 1950 ? 'watched it on the television with the sound down' : 'listened for news from the street')],

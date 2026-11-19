@@ -16,6 +16,7 @@
  * state.familyHist = { seed, events: [{ year, text, icon }], kinds: { [cc]: regimeKind }, hyper, partition, told: [ages], waves: { [id]: year } }
  * Its own random stream: the rest of the year rolls as it always did.
  */
+import { threadMoment } from '../life/News.js';
 import { Random } from '../../core/Random.js';
 import { yearNow, PRESENT } from '../world/Eras.js';
 import { warIn } from '../world/War.js';
@@ -122,6 +123,7 @@ function callUp(ctx, rng) {
     if (!enlist(state, p, rng)) continue;
     const line = `${p.firstName} was called up for ${war.name ?? 'the war'}.`;
     ctx.log(line, '📨', 'warn');
+    threadMoment(state, 4, `the year ${p.firstName} was called up`);
     remember(state, line, '📨');
     ctx.stat('stress', 4);
   }
@@ -139,6 +141,7 @@ function hyperinflation(ctx) {
   if (!hit.length) return;
   const line = parents.length ? `Your parents' life savings were wiped out by the inflation. ${parents[0].firstName} still keeps the worthless bank book.` : `The inflation wiped out what your family had saved: ${hit.map((p) => p.firstName).slice(0, 3).join(', ')}.`;
   ctx.log(line, '💸', 'bad');
+  threadMoment(state, 4, 'the year the family\'s savings were wiped out');
   remember(state, line, '💸');
 }
 
@@ -159,6 +162,7 @@ function revolution(ctx, rng) {
       if (kind === 'totalitarian' && rng.chance(wealthy ? 0.2 : 0.06)) {
         const line = `${p.firstName} was arrested by the new regime's police${c !== cc(state) ? ` in ${nameOf(c)}` : ''}.`;
         ctx.log(line, '⛓️', 'bad');
+        threadMoment(state, 5, `the year they took ${p.firstName} away`);
         remember(state, line, '⛓️');
         ctx.stat('stress', 8);
         if (rng.chance(0.35)) personDies(ctx, p, 'died in a labour camp');
@@ -167,6 +171,7 @@ function revolution(ctx, rng) {
     if (wealthy) {
       const line = `The new regime${c !== cc(state) ? ` in ${nameOf(c)}` : ''} confiscated the family's land and houses. Your relatives are "former people" now.`;
       ctx.log(line, '🏚️', 'bad');
+      threadMoment(state, 4, 'the year the family lost its land');
       remember(state, line, '🏚️');
     }
   }
@@ -186,6 +191,7 @@ function partition(ctx, rng) {
     p.livesIn = other;
     const line = `${p.firstName} fled across the new border to ${nameOf(other)} in the Partition.`;
     ctx.log(line, '🚂', 'bad');
+    threadMoment(state, 5, `the year ${p.firstName} fled across the new border`);
     remember(state, line, '🚂');
   }
 }
@@ -204,6 +210,7 @@ function emigrations(ctx, rng) {
       p.livesIn = dest;
       const line = `${p.firstName} emigrated to ${nameOf(dest)}, ${how}.`;
       ctx.log(line, '🚢', 'info');
+      threadMoment(state, 3, `the year ${p.firstName} emigrated`);
       remember(state, line, '🚢');
       ctx.stat('happiness', -3);
     }
