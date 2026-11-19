@@ -26,6 +26,7 @@ import { officialResidence } from '../world/Residences.js';
 import { hasTech, eraTaxShare } from '../world/Eras.js';
 import { eraScale, countryWageFactor } from '../economy/EraEconomy.js';
 import { priceLevel } from '../world/Countries.js';
+import { collectorsLine } from './DebtOfTheDay.js';
 
 /** Child Tax Credit per child under 17 (non-refundable here). */
 /**
@@ -267,7 +268,7 @@ export const Finances = {
         ctx.stat('stress', 8);
         ctx.stat('happiness', -4);
         moneyStrain(state, 3);
-        ctx.log(`${hasTech(state, 'telephone') ? 'Debt collectors keep calling' : 'Your creditors keep sending round'}. You owe $${(-f.cash).toLocaleString()} ${debtWord(state)}.`, hasTech(state, 'telephone') ? '📞' : '📜', 'warn');
+        ctx.log(collectorsLine(state, -f.cash, debtWord(state)), hasTech(state, 'telephone') ? '📞' : '📜', 'warn');
       }
     }
 

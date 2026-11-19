@@ -16,6 +16,7 @@
  *   rehabs, boardSuspended: [credentialIds], history: [{ age, text }]
  * }
  */
+import { medicalDebtWords } from '../life/DebtOfTheDay.js';
 import { geneFactor, geneticsTick, GeneticsResolvers, GeneticsActions } from './Genetics.js';
 import { recoveryTick, RecoveryResolvers } from './Recovery.js';
 import { fileBankruptcy, insolvencyHere, routeName } from '../life/Bankruptcy.js';
@@ -266,7 +267,7 @@ function medicalDebtTick(ctx) {
   } else if (!h.collections) {
     h.collections = true;
     ctx.emit('credit:event', { type: 'default' });
-    ctx.log(`$${h.medicalDebt.toLocaleString()} in medical bills went to collections.`, '📞', 'bad');
+    ctx.log(medicalDebtWords(state).collections ?? `$${h.medicalDebt.toLocaleString()} in medical bills went to collections.`, '📞', 'bad');
   }
   const income = state.finances.lastYear?.gross ?? 0;
   // Charity care: nonprofit hospitals must run a financial-assistance policy, and most forgive
@@ -275,7 +276,7 @@ function medicalDebtTick(ctx) {
     h.charityCare = true;
     const forgiven = Math.round(h.medicalDebt * (income < 30000 ? 1 : ctx.rng.float(0.4, 0.75)));
     h.medicalDebt -= forgiven;
-    ctx.log(`You applied for the hospital's financial assistance programme: $${forgiven.toLocaleString()} of your bills ${h.medicalDebt <= 0 ? 'were' : 'was'} written off.`, '🏥', 'good');
+    ctx.log(medicalDebtWords(state).charity ?? `You applied for the hospital's financial assistance programme: $${forgiven.toLocaleString()} of your bills ${h.medicalDebt <= 0 ? 'were' : 'was'} written off.`, '🏥', 'good');
   }
   if (h.medicalDebt >= 30000 && h.medicalDebt > income * 0.6 && !yearlyCount(state, 'health.bankruptcyAsked')) {
     bumpYearly(state, 'health.bankruptcyAsked');

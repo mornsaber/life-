@@ -23,14 +23,14 @@ export function courtLine(state, { severity, offenseId, prison }) {
   const murder = /murder|homicide/i.test(offenseId ?? '');
   if (['GB', 'IE'].includes(c)) {
     const court = !serious ? 'the magistrates\' court' : y < 1972 ? 'the Assizes' : 'the Crown Court';
-    if (murder && y < 1965) return `Tried at ${court}. The judge put on the black cap: death by hanging, commuted at the last to penal servitude for life.`;
-    if (serious && prison >= 7 && y < 1868) return `Tried at ${court} and sentenced to transportation: ${y < 1853 ? 'Van Diemen\'s Land' : 'Western Australia'}, in the hold of a convict ship.`;
+    if (murder && y < (c === 'IE' ? 1964 : 1965) && age >= 18) return `Tried at ${court}. The judge put on the black cap: "…that you be taken from this place to a lawful prison, and thence to a place of execution, and that you be there hanged by the neck until you are dead."`;
+    if (serious && prison >= 2 && y < 1868) return `Tried at ${court} and sentenced to transportation beyond the seas.`;
     if (age < 21 && age >= 16 && prison > 0 && y >= 1902 && y < 1983) return `Tried at ${court} and sent to borstal: drill, trade training and a housemaster.`;
     return serious ? `Tried at ${court}${y < 1972 ? ', before a red-robed judge and a jury of twelve' : ''}.` : null;
   }
   if (c === 'FR') {
+    if (murder && y < 1981 && age >= 18) return 'The cour d\'assises sentenced you to the guillotine. Now you wait for the President\'s pardon, or the dawn.';
     if (serious && prison >= 8 && y >= 1852 && y < 1938) return 'Condemned by the cour d\'assises to the bagne: the convict ship to Guiana, and the penal colony at Saint-Laurent-du-Maroni.';
-    if (murder && y < 1981) return 'The cour d\'assises sentenced you to the guillotine; the President commuted it to life.';
     return serious ? 'Tried before the cour d\'assises, with its jury of citizens.' : 'Sentenced by the tribunal correctionnel.';
   }
   if (['RU', 'UA', 'BY'].includes(c)) {

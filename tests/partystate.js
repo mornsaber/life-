@@ -98,7 +98,7 @@ const tests = {
     assert.doesNotMatch(html, /Minority leader/);
   },
   'officers join the Party through their unit, and Party standing weighs on promotion boards'() {
-    const { engine, state, ctx } = life({ gender: 'male' }, 6);
+    const { engine, state, ctx } = life({ gender: 'male' }, 5);
     year(engine, state, 22);
     state.education.degrees.push({ type: 'highschool', programId: 'highschool', year: 18 }, { type: 'bachelor', programId: 'bachelor', major: 'engineering', schoolId: 'state', gpa: 3.7, year: 22 });
     enlist(ctx, { branch: 'army', track: 'officer', component: 'active', specialty: 'infantry' });

@@ -10,7 +10,7 @@ import { Store } from '../src/core/State.js';
 import { Random } from '../src/core/Random.js';
 import { MODULES } from '../src/modules/registry.js';
 import { deathPenaltyThen, transportationHere, prohibitionHere, divorceBarred, sexBetweenMenCriminal, sameSexMarriageLegal } from '../src/modules/legal/LawOfTheDay.js';
-import { deathPenaltyHere, assignFacility } from '../src/modules/legal/JusticeSystem.js';
+import { deathPenaltyHere, assignFacility, charge } from '../src/modules/legal/JusticeSystem.js';
 import { OFFENSES } from '../src/modules/legal/Offenses.js';
 import { VIEWS } from '../src/ui/Renderer.js';
 
@@ -56,6 +56,35 @@ const tests = {
     engine.resolvePrompt(p.id, 'stay');
     assert.equal(state.character.countryId, 'AU');
     assert.equal(transportationHere(grown('GB', 1870, 25).state), false);
+  },
+  'murder before 1965: the condemned cell, then the rope or a reprieve'() {
+    let hanged = 0, reprieved = 0;
+    for (let seed = 1; seed <= 12; seed++) {
+      const { engine, state } = grown('GB', 1930, 30, {}, seed);
+      state.legal.record = []; state.prompts = []; state.finances.cash = 1e5;
+      const ctx = engine.context();
+      charge(ctx, { offenseId: 'murder', context: 'test', evidence: 0.99 });
+      for (let i = 0; i < 6 && state.prompts.length; i++) { const q = state.prompts[0]; engine.resolvePrompt(q.id, q.options.find((o) => /plead|accept|custody|public/i.test(o.id))?.id ?? q.options[0].id); }
+      if (state.legal.record.at(-1)?.offenseId !== 'murder') continue;
+      assert.ok(state.legal.incarceration?.deathRow, 'condemned');
+      state.prompts = [];
+      engine.ageUp();
+      if (!state.character.alive && /Executed by hanging/.test(state.character.causeOfDeath ?? '')) hanged++;
+      else if (state.legal.incarceration && !state.legal.incarceration.deathRow) reprieved++;
+    }
+    assert.ok(hanged >= 1 && reprieved >= 1, `hanged ${hanged}, reprieved ${reprieved}`);
+  },
+  'the Gulag kills, transportation goes to Western Australia after 1853'() {
+    let died = 0;
+    for (let seed = 1; seed <= 20; seed++) {
+      const { engine, state } = grown('RU', 1942, 30, {}, seed);
+      state.legal.incarceration = { yearsLeft: 10, total: 10, facility: 'a Gulag labour camp', kind: 'state', served: 0, deadly: 'gulag' };
+      for (let i = 0; i < 3 && state.character.alive; i++) { state.prompts = []; engine.ageUp(); }
+      if (/Gulag/.test(state.character.causeOfDeath ?? '')) died++;
+    }
+    assert.ok(died >= 3 && died <= 16, `${died}/20 died in the camps`);
+    const { engine, state } = grown('GB', 1860, 25);
+    assert.match(assignFacility(state, engine.rng, { severity: 'felony' }, 7).facility, /Western Australia/);
   },
   'period prisons: Newgate, Sing Sing, Alcatraz'() {
     const { engine, state } = grown('GB', 1860, 30);

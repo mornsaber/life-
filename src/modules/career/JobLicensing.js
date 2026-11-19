@@ -13,7 +13,8 @@
  * a learner's permit, whether to take the driving test.
  */
 import { hasCredential, pursueEligibility, pursueCredential } from '../credentials/LicensingEngine.js';
-import { CREDENTIALS } from '../credentials/CredentialRegistry.js';
+import { CREDENTIALS, REQUIRED_BY } from '../credentials/CredentialRegistry.js';
+import { carInTheFamily, drivingTestHere } from '../vehicles/DrivingOfTheDay.js';
 import { getProfession } from './JobTrees.js';
 import { levelById, nextLevels } from './Ladder.js';
 import { credentialPlan, traineeProgram } from './Tenure.js';
@@ -64,7 +65,11 @@ export function employerLicensing(ctx) {
 function drivingPrompt(ctx) {
   const { state } = ctx;
   if (state.legal.incarceration || hasCredential(state, 'driverLicense') || state.prompts.some((p) => p.type === 'jobLicensing.driving')) return;
-  const permit = hasCredential(state, 'learnerPermit');
+  // Only where there's a car in the family to learn on, or one you own (most households had none
+  // until their country's motoring age: America's 1920s, Britain's 1960s, India's 2000s).
+  if (!carInTheFamily(state) && !REQUIRED_BY.driverLicense?.has(state.career.job?.professionId)) return;
+  const noTest = !drivingTestHere(state);
+  const permit = hasCredential(state, 'learnerPermit') || noTest;
   const id = permit ? 'driverLicense' : 'learnerPermit';
   // Ask once for each step, then again every few years if you said not yet.
   const asked = (state.driving ??= { asked: {} }).asked;
@@ -81,9 +86,9 @@ function drivingPrompt(ctx) {
   const cred = CREDENTIALS[id];
   ctx.prompt({
     type: 'jobLicensing.driving', icon: permit ? '🚗' : '🚦', title: permit ? 'Your Driving Test' : 'Learning to Drive',
-    text: permit ? `You've been practising on your ${CREDENTIALS.learnerPermit.name.toLowerCase()}. Book the test for your ${cred.name.toLowerCase()}?` : `You're old enough for a ${cred.name.toLowerCase()}. Start learning to drive?`,
+    text: noTest ? 'There\'s a car in the family, and no driving test yet: a licence is a form and a fee. Learn to drive?' : permit ? `You've been practising on your ${CREDENTIALS.learnerPermit.name.toLowerCase()}. Book the test for your ${cred.name.toLowerCase()}?` : `You're old enough for a ${cred.name.toLowerCase()}. Start learning to drive?`,
     options: [
-      { id: 'yes', label: permit ? `🚗 Take the test ($${cost.toLocaleString()})` : `🚦 Get your permit ($${cost.toLocaleString()})`, hint: parentsPay ? 'Your parents will pay' : '' },
+      { id: 'yes', label: noTest ? `🚗 Get a licence ($${cost.toLocaleString()})` : permit ? `🚗 Take the test ($${cost.toLocaleString()})` : `🚦 Get your permit ($${cost.toLocaleString()})`, hint: parentsPay ? 'Your parents will pay' : '' },
       { id: 'no', label: '🚌 Not yet' },
     ],
     data: { id, parentsPay, cost },
@@ -109,7 +114,7 @@ export const JobLicensingModule = {
     driving(ctx, data, optionId) {
       if (optionId !== 'yes') {
         const d = (ctx.state.driving ??= { asked: {} });
-        const id = hasCredential(ctx.state, 'learnerPermit') ? 'driverLicense' : 'learnerPermit';
+        const id = hasCredential(ctx.state, 'learnerPermit') || !drivingTestHere(ctx.state) ? 'driverLicense' : 'learnerPermit';
         (d.refusals ??= {})[id] = (d.refusals[id] ?? 0) + 1;
         return ctx.log(['You decided driving can wait.', 'Not yet. The bus is fine.', 'You\'ll learn to drive some other year.'][ctx.state.character.age % 3], '🚌');
       }

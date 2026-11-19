@@ -102,8 +102,8 @@ export const STATUTES = {
   debtorsPrison: { name: 'Imprisonment for debt', icon: '⛓️', lean: 'business',
     history: (cc, y) => y < (DEBTORS_UNTIL[cc] ?? 0),
     effect: 'Unpaid debts can land you in prison until they are paid.' },
-  transportation: { name: 'Transportation to the colonies', icon: '⛵', lean: 'business', where: (cc) => ['GB', 'IE'].includes(cc), to: 1900,
-    history: (cc, y) => y < 1857,
+  transportation: { name: 'Transportation to the colonies', icon: '⛵', lean: 'business', where: (cc) => ['GB', 'IE'].includes(cc), to: 1868,
+    history: (cc, y) => y < 1868,
     effect: 'Felons may be sentenced to transportation to Australia.' },
 };
 

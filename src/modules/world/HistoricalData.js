@@ -155,7 +155,11 @@ export function eraMortality(cc, year, age) {
   if (age < 15) return 1;
   const then = demographyAt(cc, year)?.life;
   if (!then) return 1;
-  return Math.max(1, Math.min(6, (lifeNow(cc) / then) ** 2.5));
+  // Measured against today's level here, but poorer countries' past also against the rich world's
+  // today (their adult death rates then were far above what the gap in lifespans now suggests),
+  // fading out towards 1990.
+  const gap = Math.max(0, lifeNow('US') - lifeNow(cc)) * Math.max(0, Math.min(1, (1990 - year) / 40));
+  return Math.max(1, Math.min(6, ((lifeNow(cc) + gap) / then) ** 2.5));
 }
 
 /* ---------------------------------------------------------------- names */

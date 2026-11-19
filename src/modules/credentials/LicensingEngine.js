@@ -29,6 +29,7 @@ import { STATES } from '../life/States.js';
 import { PROFESSIONS } from '../career/JobTrees.js';
 import { MAJORS, PROGRAMS } from '../education/Catalog.js';
 import { knob } from '../../core/Difficulty.js';
+import { drivingAge, drivingTestHere } from '../vehicles/DrivingOfTheDay.js';
 import { credentialExists, credentialRequired, diplomaExpected, degreesOptional, CREDENTIAL_FROM, CREDENTIAL_UNTIL, yearNow } from '../world/Eras.js';
 
 /** New credentials you can take on in a year (courses take time, not just money). */
@@ -226,11 +227,15 @@ export function pursueEligibility(state, id, { academy = false } = {}) {
   if (hasCredential(state, id)) return { ok: false, reason: 'Covered by a higher credential' };
   if (cred.grantedBy) return { ok: false, reason: cred.grantedBy };
   if (!credentialExists(state, id)) return { ok: false, reason: CREDENTIAL_UNTIL[id] <= yearNow(state) ? `No longer issued (abolished about ${CREDENTIAL_UNTIL[id]})` : `Doesn't exist yet (from about ${CREDENTIAL_FROM[id]})` };
+  // The driving age, and before the driving test no learner's permit (a licence was a form and a fee).
+  const driving = id === 'driverLicense' || id === 'learnerPermit';
+  if (driving && state.character.age < drivingAge(state) - (id === 'learnerPermit' && countryIdOf(state) === 'US' ? 1 : 0)) return { ok: false, reason: `The driving age here is ${drivingAge(state)}` };
+  if (id === 'learnerPermit' && !drivingTestHere(state)) return { ok: false, reason: 'No driving test here yet: just apply for the licence' };
   if (state.credentials.training.some((t) => t.id === id)) return { ok: false, reason: 'In training' };
   if (state.legal.incarceration) return { ok: false, reason: 'Incarcerated' };
   if (yearlyCount(state, `cred.${id}`)) return { ok: false, reason: 'One attempt per year' };
   if (!academy && yearlyCount(state, 'cred.attempts') >= ATTEMPTS_PER_YEAR) return { ok: false, reason: `No time for more than ${ATTEMPTS_PER_YEAR} new credentials a year` };
-  const check = checkRequirements(state, cred.requires);
+  const check = checkRequirements(state, id === 'driverLicense' && !drivingTestHere(state) ? { ...cred.requires, credentials: [], age: 0 } : cred.requires);
   if (!check.ok) return { ok: false, reason: `Needs ${check.missing.join(', ')}` };
   // Failed a training program's final exam recently: retest without retraining.
   const retake = state.credentials.retake?.[id];
@@ -320,6 +325,11 @@ export function pursueCredential(ctx, id, { academy = false, quiet = false } = {
     state.credentials.training.push({ id, name: cred.name, yearsLeft: cred.trainingYears, sponsor: payer });
     ctx.log(`You started training for your ${cred.name} (${cred.trainingYears} yr).${paidNote}`, cred.icon);
     ctx.toast(`Training started: ${cred.name}`, 'good');
+    return true;
+  }
+  if (id === 'driverLicense' && !drivingTestHere(state)) {
+    ctx.log('There was no test: you filled in a form, paid the fee, and the clerk handed you a licence. Nobody asked if you could drive.', '🚗', 'info');
+    grantCredential(ctx, id, { sponsor: payer });
     return true;
   }
   if (takeExam(ctx, cred)) {

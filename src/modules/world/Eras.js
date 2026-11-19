@@ -597,7 +597,9 @@ export function longevityFactor(state, age) {
   // The diseases of the day are rolled one by one now (health/PeriodHealth.js); the rest of the
   // past's excess deaths stays in this factor (about two-thirds of it).
   const raw = y < PRESENT - 10 ? eraMortality(state.character?.countryId ?? 'US', y, age) : 1;
-  const past = 1 + (raw - 1) * 0.65;
+  // (Middle and old age carry more of it: the 19th century's adults who survived youth still died in
+  // their early sixties, of chronic disease, accidents and work, more than of the named epidemics.)
+  const past = 1 + (raw - 1) * (age >= 40 ? 1 : 0.65);
   if (age < 50) return past;
   return past * (futureOn(state, 'longevity') ? 0.75 : 1) * (futureOn(state, 'agingTherapy') ? 0.6 : 1);
 }

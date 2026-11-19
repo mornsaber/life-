@@ -30,6 +30,7 @@ import { OFFENSES } from './Offenses.js';
 import { DIVORCE_BAR } from '../people/PeopleEngine.js';
 import { partnerOf } from '../people/People.js';
 import { arrive } from '../world/Migration.js';
+import { release } from './Prison.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { stateOf } from '../life/Regions.js';
 import { statuteIn, statuteOverride, ABOLISHED, SUSPENDED, DECRIMINALIZED, SAME_SEX_MARRIAGE, DIVORCE_FROM, DEBTORS_UNTIL, PROHIBITION } from '../politics/StatuteBook.js';
@@ -94,7 +95,7 @@ const sameSex = (state, p) => p && p.gender === state.character.gender;
 /* ------------------------------------------------------------------ */
 /* Transportation, debtors' prisons, Prohibition, police, prisons      */
 /* ------------------------------------------------------------------ */
-export const transportationHere = (state) => ['GB', 'IE'].includes(cc(state)) && yearNow(state) < 1900 && (statuteOverride(state, 'transportation') != null || historic(state)) && statuteIn(state, 'transportation');
+export const transportationHere = (state) => ['GB', 'IE'].includes(cc(state)) && yearNow(state) < 1868 && (statuteOverride(state, 'transportation') != null || historic(state)) && statuteIn(state, 'transportation');
 export const debtorsPrisonHere = (state) => (statuteOverride(state, 'debtorsPrison') != null || historic(state)) && statuteIn(state, 'debtorsPrison');
 /** Whether sex between men was a crime in a country in a year (for records abroad). */
 export const gayCrimeIn = (c, y) => DECRIMINALIZED[c] != null ? y < DECRIMINALIZED[c] : y < PRESENT;
@@ -116,6 +117,36 @@ function periodPrison(state, years) {
   if (c === 'AU' && y < 1900) return 'Port Arthur';
   return null;
 }
+/** Where the convict ships went in a year. */
+export const penalColony = (y) => (y < 1840 ? 'New South Wales' : y < 1853 ? 'Van Diemen\'s Land' : 'Western Australia');
+
+/**
+ * Hanging for murder before abolition, unless the Home Secretary reprieved you: about half were
+ * reprieved in the 20th century, more in its last years (GB 1965, Ireland 1964; France's guillotine
+ * to 1981, though after 1950 most were pardoned by the President). [until, odds of execution by year]
+ */
+const CONDEMNED = {
+  GB: [1965, (y) => (y < 1900 ? 0.6 : y < 1950 ? 0.55 : 0.35)],
+  IE: [1964, (y) => (y < 1900 ? 0.6 : y < 1923 ? 0.55 : 0.25)],
+  FR: [1981, (y) => (y < 1900 ? 0.5 : y < 1950 ? 0.4 : 0.1)],
+};
+export const condemnedFor = (state, offenseId) => {
+  const k = CONDEMNED[cc(state)];
+  return k && historic(state) && /murder/i.test(offenseId ?? '') && offenseId !== 'drugInducedHomicide' && yearNow(state) < k[0] && state.character.age >= 18 ? k[1](yearNow(state)) : null;
+};
+/**
+ * Places of punishment that killed: the Gulag (1930–56; the war years worst), the bagne of Guiana,
+ * the katorga of Siberia. A yearly chance of dying there, and hard labour.
+ */
+function deadlyPlace(state, inc) {
+  const y = yearNow(state);
+  const c = cc(state);
+  if (/Gulag/.test(inc.facility ?? '')) return { kind: 'gulag', risk: y >= 1941 && y <= 1944 ? 0.18 : y >= 1937 && y <= 1938 ? 0.08 : 0.04, cause: 'Died in a Gulag labour camp', work: 'Felling timber at forty below on a ration of bread and thin soup, the norm never met.' };
+  if (/Guiana|Devil/.test(inc.facility ?? '')) return { kind: 'bagne', risk: 0.08, cause: 'Died of fever in the penal colony of Guiana', work: 'Clearing jungle for a road that never got anywhere, with fever in every barracks.' };
+  if (['RU', 'UA', 'BY'].includes(c) && y < 1917 && inc.total >= 3) return { kind: 'katorga', risk: 0.04, cause: 'Died at katorga in Siberia', work: 'Katorga: the mines of Nerchinsk, in irons.' };
+  return null;
+}
+
 const hardLabour = (state) => historic(state) && ['GB', 'IE', 'AU', 'IN', 'NZ'].includes(cc(state)) && yearNow(state) < 1948;
 
 /* ------------------------------------------------------------------ */
@@ -161,7 +192,7 @@ OFFENSES.grossIndecency ??= { name: 'Gross Indecency', icon: '⚖️', severity:
 /** Where a sentence was served in an earlier year: { facility, kind } or null for today's prisons. */
 function facilityThen(state, offense, years) {
   if (!historic(state)) return null;
-  if (transportationHere(state) && years >= 2 && offense.severity === 'felony') return { facility: `a convict ship to ${yearNow(state) < 1840 ? 'New South Wales' : 'Van Diemen\'s Land'}`, kind: 'state' };
+  if (transportationHere(state) && years >= 2 && offense.severity === 'felony') return { facility: `a convict ship to ${penalColony(yearNow(state))}`, kind: 'state' };
   const named = periodPrison(state, years);
   return named ? { facility: named, kind: years <= 1 ? 'jail' : 'state' } : null;
 }
@@ -175,7 +206,22 @@ export const LawOfTheDayModule = {
     engine.bus.on('legal:incarcerated', ({ ctx, years }) => {
       const { state } = ctx;
       const inc = state.legal?.incarceration;
-      if (!inc || inc.deathRow || !historic(state)) return;
+      if (!inc || !historic(state)) return;
+      const offenseId = state.legal.record.at(-1)?.offenseId;
+      const hang = inc.deathRow ? null : condemnedFor(state, offenseId);
+      if (hang != null) {
+        const dp = deathPenaltyThen(state);
+        if (dp) {
+          inc.deathRow = { sentencedAge: state.character.age, routine: true, odds: hang, method: dp.method, where: dp.where };
+          inc.yearsLeft = inc.total = 99;
+          inc.facility = 'the condemned cell';
+          state.legal.record[state.legal.record.length - 1].sentence = 'death sentence';
+          ctx.log('You were taken to the condemned cell: two warders day and night, and three Sundays to wait for the Home Secretary\'s answer.'.replace(' the Home Secretary\'s', cc(state) === 'FR' ? ' the President\'s' : ' the Home Secretary\'s'), '⛓️', 'death');
+        }
+      }
+      if (inc.deathRow) return;
+      const deadly = deadlyPlace(state, inc);
+      if (deadly) { inc.deadly = deadly.kind; inc.hardLabour = true; ctx.log(deadly.work, '⛓️', 'bad'); }
       if (/^a convict ship to /.test(inc.facility)) {
         const where = inc.facility.replace('a convict ship to ', '');
         inc.transported = true;
@@ -206,12 +252,12 @@ export const LawOfTheDayModule = {
     const inc = state.legal.incarceration;
     // Condemned in the years of little mercy: hanged within weeks, or reprieved.
     if (inc?.deathRow?.routine) {
-      if (rng.chance(0.7)) return ctx.die(`Executed by ${inc.deathRow.method} in ${inc.deathRow.where}`);
+      if (rng.chance(inc.deathRow.odds ?? 0.7)) return ctx.die(`Executed by ${inc.deathRow.method} in ${inc.deathRow.where}`);
       delete inc.deathRow;
       inc.yearsLeft = inc.total = transportationHere(state) ? 14 : 25;
-      inc.facility = transportationHere(state) ? 'a convict ship to New South Wales' : periodPrison(state, 25) ?? 'a convict prison';
-      if (transportationHere(state)) { inc.transported = true; ld.transported = { where: 'New South Wales', age }; }
-      ctx.log(`Your sentence of death was commuted to ${transportationHere(state) ? 'transportation for life' : 'penal servitude'}.`, '⚖️', 'good');
+      inc.facility = transportationHere(state) ? `a convict ship to ${penalColony(y)}` : periodPrison(state, 25) ?? 'a convict prison';
+      if (transportationHere(state)) { inc.transported = true; ld.transported = { where: penalColony(y), age }; }
+      ctx.log(`Reprieved: your sentence of death was commuted to ${transportationHere(state) ? 'transportation for life' : y >= 1948 ? 'life imprisonment' : 'penal servitude for life'}.`, '⚖️', 'good');
     }
     // Abolition reaches death row.
     if (inc?.deathRow && deathPenaltyThen(state) == null && ABOLISHED[cc(state)] && y >= ABOLISHED[cc(state)]) {
@@ -221,6 +267,22 @@ export const LawOfTheDayModule = {
       ctx.log('The death penalty was abolished. Your sentence became life imprisonment.', '⚖️', 'good');
     }
     if (inc?.hardLabour) { ctx.stat('health', -2); ctx.stat('stress', 2); }
+    // The camps, the bagne and katorga killed many who were sent there.
+    if (inc?.deadly) {
+      const d = deadlyPlace(state, inc);
+      if (!d) delete inc.deadly;
+      else {
+        ctx.stat('health', -4);
+        if (rng.chance(d.risk)) return ctx.die(d.cause);
+      }
+    }
+    // A transported convict of good conduct got a ticket of leave about halfway through: free to work
+    // for wages in the colony, but not to leave it.
+    if (inc?.transported && !inc.deathRow && inc.total >= 4 && (inc.served ?? 0) >= Math.ceil(Math.min(inc.total, 20) / 2) && !inc.ticket) {
+      inc.ticket = true;
+      release(ctx, `A ticket of leave: you may work for wages in ${ld.transported?.where ?? 'the colony'}, report to the magistrate, and never leave the district.`);
+    }
+
     // A transported convict's sentence ends at the far side of the world.
     if (ld.transported && !inc && !ld.transported.freed) {
       ld.transported.freed = age;
@@ -281,7 +343,7 @@ export const LawOfTheDayModule = {
     freed(ctx, data, optionId) {
       const { state } = ctx;
       if (optionId === 'stay') {
-        arrive(ctx, 'AU', { visa: 'freeMovement', reason: 'You stayed on in Australia: a ticket of leave, then a free man\'s life.' });
+        arrive(ctx, 'AU', { visa: 'freeMovement', reason: 'You stayed on in Australia: a ticket of leave, then a free life.' });
         ctx.stat('happiness', 4);
       } else {
         ctx.spend(800, 'Passage home', { allowDebt: true });
