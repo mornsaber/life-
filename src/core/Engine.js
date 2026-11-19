@@ -20,6 +20,7 @@
  * Everything is synchronous: every call mutates state, saves and emits
  * 'change' in the same tick — there is no artificial latency anywhere.
  */
+import { tickCache } from '../modules/career/JobTrees.js';
 import { snapshot, review } from './YearReview.js';
 import { quietChoice } from './Routine.js';
 import { createInitialState, addLog, adjustStat, currentYear, compactLog, START_YEAR, canAfford, familyCovers, dependant, setNameCountry } from './State.js';
@@ -121,6 +122,7 @@ export class Engine {
 
   /* ---- save slots ---- */
   switchSlot(id) {
+    if (this.saveTimer) this.flushSave();
     const state = this.store.useSlot(id);
     if (state) this.hydrate(state, this.store.migratedFrom);
     this.undoStack = [];
@@ -129,10 +131,12 @@ export class Engine {
   }
 
   newSlot() {
+    if (this.saveTimer) this.flushSave();
     return this.switchSlot(this.store.newSlotId());
   }
 
   deleteSlot(id) {
+    if (this.saveTimer) this.flushSave();
     this.store.deleteSlot(id);
     return this.switchSlot(this.store.activeSlot);
   }
@@ -169,6 +173,7 @@ export class Engine {
   }
 
   newLife(options = {}) {
+    if (this.saveTimer) this.flushSave();
     const state = createInitialState(this.rng, options);
     this.undoStack = [];
     this.store.state = state;
@@ -199,14 +204,17 @@ export class Engine {
     state.yearly = {};
     state.log.push({ age: state.character.age, year: currentYear(state), entries: [] });
 
-    for (const m of this.modules) {
-      if (!state.character.alive) break;
-      m.onAgeUp?.(ctx);
-    }
-    for (const m of this.modules) {
-      if (!state.character.alive) break;
-      m.onYearEnd?.(ctx);
-    }
+    tickCache(true);
+    try {
+      for (const m of this.modules) {
+        if (!state.character.alive) break;
+        m.onAgeUp?.(ctx);
+      }
+      for (const m of this.modules) {
+        if (!state.character.alive) break;
+        m.onYearEnd?.(ctx);
+      }
+    } finally { tickCache(false); }
 
     pruneStalePrompts(state);
     this.autoResolve();
@@ -419,11 +427,22 @@ export class Engine {
   commit() {
     // Modules tidy what they own before it is saved (e.g. org posts held by people who have left).
     if (this.state) this.bus.emit('beforeCommit', this.state);
+    // In the browser, saves are coalesced: a burst of clicks (age up, age up, age up) writes the
+    // life once, a moment later, instead of serializing it after every click. index.js flushes
+    // on pagehide. Elsewhere (tests, tools) the save is immediate.
+    if (this.deferSaves) {
+      if (!this.saveTimer) this.saveTimer = setTimeout(() => this.flushSave(), 400);
+    } else this.flushSave();
+    this.bus.emit('change', this.state);
+  }
+
+  /** Write the life now (and cancel a pending coalesced save). */
+  flushSave() {
+    if (this.saveTimer) { clearTimeout(this.saveTimer); this.saveTimer = null; }
     // A refused save (storage full) mustn't fail silently: warn once, until a save works again.
     const saved = this.store.save() !== false;
     if (!saved && !this.saveWarned) this.toast('Your browser\'s storage is full, so this life isn\'t being saved. Export it (Menu → Saved Lives → Export this life) or delete an old save.', 'bad');
     this.saveWarned = !saved;
-    this.bus.emit('change', this.state);
   }
 }
 

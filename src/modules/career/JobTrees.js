@@ -183,7 +183,25 @@ const availabilityFilters = [];
 export const setAvailabilityFilter = (fn) => { availabilityFilters.push(fn); };
 const availabilityFilter = (state, p) => availabilityFilters.every((f) => f(state, p));
 
+/**
+ * While a year is being played (Engine.ageUp), the list is asked for dozens of times with nothing
+ * changed in between: remember it for the tick. Outside a tick it is always worked out afresh.
+ */
+const TICK = { on: false, memo: new Map() };
+export function tickCache(on) { TICK.on = on; TICK.memo.clear(); }
 export function professionsFor(state) {
+  if (TICK.on && state?.character) {
+    const c = state.character;
+    const key = `${c.age}|${c.countryId ?? 'US'}|${c.regionId}|${state.community?.faith?.traditionId ?? state.community?.orders?.tradition ?? ''}`;
+    const hit = TICK.memo.get(key);
+    if (hit && hit.state === state) return hit.list;
+    const list = professionsUncached(state);
+    TICK.memo.set(key, { state, list });
+    return list;
+  }
+  return professionsUncached(state);
+}
+function professionsUncached(state) {
   const cc = state?.character?.countryId ?? 'US';
   // One ministry per faith: your own church's clergy career, not three side by side.
   const ministry = state?.community ? clergyCareerFor(state.community.faith?.traditionId ?? state.community.orders?.tradition) : null;

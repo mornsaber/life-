@@ -23,6 +23,10 @@ import { scenarioOptions } from './modules/life/Scenarios.js';
 
 const store = new Store();
 const engine = new Engine({ store, rng: new Random(), modules: MODULES });
+// Coalesce saves while playing; write at once when the page is hidden or closed.
+engine.deferSaves = true;
+addEventListener('pagehide', () => engine.flushSave());
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') engine.flushSave(); });
 const renderer = new Renderer({
   root: document.getElementById('app'),
   toastRoot: document.getElementById('toasts'),
