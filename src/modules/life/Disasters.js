@@ -150,7 +150,9 @@ function afterStrike(ctx, disaster) {
   if (!state.character.alive || state.character.age < 16 || state.legal.incarceration) return;
   if (state.disasterPrep?.cert) {
     ctx.stat('happiness', 3);
-    ctx.log(`Your community emergency response team was activated for ${disaster.name}: you checked on the elderly neighbours, shut off gas mains and ran the street's first-aid point until the professionals got through.`, '🦺', 'good');
+    const y = yearNow(state);
+    const team = (state.character.countryId ?? 'US') === 'US' && y >= 1993 ? 'Your community emergency response team was activated' : y >= 1935 ? 'Your civil defence post was called out' : 'The neighbours you trained with turned out';
+    ctx.log(`${team} for ${disaster.name}: you checked on the elderly neighbours, ${y >= 1900 ? 'shut off gas mains' : 'put out the lamps and fires'} and ran the street's first-aid point until ${y >= 1900 ? 'the professionals got through' : 'the doctor came'}.`, '🦺', 'good');
   }
   if (state.prompts.some((p) => p.type === 'housing.disasterClaim' || p.type === 'disasters.help') || !rng.chance(0.6)) return;
   const gift = Math.max(50, Math.min(2000, Math.round(state.finances.cash * 0.02 / 50) * 50));

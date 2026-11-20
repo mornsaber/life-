@@ -15,7 +15,7 @@
  */
 import { currentYear } from '../../core/State.js';
 import { skinToneOf } from '../people/SkinTone.js';
-import { dataRegime, regionStateAt, eraMortality, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
+import { dataRegime, regionStateAt, eraMortality, presentGap, periodCurrency as dataCurrency, DATA_COUNTRIES, setDataYear } from './HistoricalData.js';
 import { PACKS } from './packs/index.js';
 import { statuteIn } from '../politics/StatuteBook.js';
 
@@ -619,7 +619,8 @@ export function longevityFactor(state, age) {
   const y = yearNow(state);
   // The diseases of the day are rolled one by one now (health/PeriodHealth.js); the rest of the
   // past's excess deaths stays in this factor (about two-thirds of it).
-  const raw = y < PRESENT - 10 ? eraMortality(state.character?.countryId ?? 'US', y, age) : 1;
+  const cc = state.character?.countryId ?? 'US';
+  const raw = y < PRESENT - 10 ? eraMortality(cc, y, age) : age < 15 ? 1 : presentGap(cc);
   // (Middle and old age carry more of it: the 19th century's adults who survived youth still died in
   // their early sixties, of chronic disease, accidents and work, more than of the named epidemics.)
   const past = 1 + (raw - 1) * (age >= 40 ? 1 : 0.65);

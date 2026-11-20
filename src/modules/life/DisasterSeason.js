@@ -17,7 +17,7 @@ import { stateIdOf } from './Regions.js';
 import { STATES, DISASTER_LABEL } from './States.js';
 import { REGIONS } from './Regions.js';
 import { priceLevel } from '../world/Countries.js';
-import { hasTech } from '../world/Eras.js';
+import { hasTech, yearNow } from '../world/Eras.js';
 
 export const HARDEN = {
   wildfire: { label: '🌲 Clear defensible space, ember-proof vents, a Class A roof', cost: 15000, season: 'Fire season is coming' },
@@ -57,7 +57,7 @@ export function seasonTick(main) {
   if (home && !(home.hardened ?? []).includes(hz.type)) options.push({ id: 'harden', label: h.label, hint: `$${local(state, h.cost).toLocaleString()} · about half the damage, a cheaper premium` });
   if (home && hz.type === 'flood' && !home.floodInsured) options.push({ id: 'flood', label: '🌊 Add flood insurance', hint: 'Standard policies exclude floods' });
   if (!prepOf(state).kit) options.push({ id: 'kit', label: '🎒 A go-bag, a plan, copies of your documents', hint: `$${local(state, 300).toLocaleString()} · safer and cheaper if you have to leave` });
-  if (!prepOf(state).cert) options.push({ id: 'cert', label: '🦺 Train with the community emergency response team', hint: 'Help your neighbours when it comes' });
+  if (!prepOf(state).cert) options.push({ id: 'cert', label: (state.character.countryId ?? 'US') === 'US' && yearNow(state) >= 1993 ? '🦺 Train with the community emergency response team' : yearNow(state) >= 1935 ? '🦺 Join the civil defence classes' : '🦺 Take the first-aid classes', hint: 'Help your neighbours when it comes' });
   // Nothing left to prepare: the season comes and goes without a decision.
   if (!options.length) return;
   options.push({ id: 'nothing', label: '🤞 It won\'t happen this year' });
@@ -97,7 +97,7 @@ export const DisasterSeasonResolvers = {
     }
     if (optionId === 'flood' && home) { home.floodInsured = true; return ctx.log('You added flood insurance.', '🌊', 'good'); }
     if (optionId === 'kit') { ctx.spend(local(state, 300), 'Go-bag and emergency plan'); prepOf(state).kit = true; return ctx.log(`${hasTech(state, 'internet') ? 'A go-bag' : 'A packed bag'} by the door, a meeting place, ${hasTech(state, 'internet') ? 'documents in the cloud' : 'papers in a tin box'}.`, '🎒', 'good'); }
-    if (optionId === 'cert') { prepOf(state).cert = true; ctx.stat('smarts', 1); return ctx.log(hasTech(state, 'internet') ? 'Six Saturday sessions: triage, light search and rescue, shutting off the gas. You know your neighbours\' names now.' : 'Six evenings of civil defence classes in the church hall: first aid, bandages and splints, and how to shut off the gas. You know your neighbours\' names now.', '🦺', 'good'); }
+    if (optionId === 'cert') { prepOf(state).cert = true; ctx.stat('smarts', 1); return ctx.log(hasTech(state, 'internet') ? 'Six Saturday sessions: triage, light search and rescue, shutting off the gas. You know your neighbours\' names now.' : yearNow(state) < 1935 ? 'Six evenings of first-aid classes in the church hall with the ambulance brigade: bandages, splints and the recovery position. You know your neighbours\' names now.' : 'Six evenings of civil defence classes in the church hall: first aid, bandages and splints, and how to shut off the gas. You know your neighbours\' names now.', '🦺', 'good'); }
     ctx.log('You crossed your fingers.', '🤞', 'muted');
   },
   nonRenewal(ctx, data, optionId) {

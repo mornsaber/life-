@@ -114,7 +114,7 @@ export const TransitModule = {
       else {
         ctx.stat('stress', 4);
         if (job) job.performance = Math.max(0, job.performance - 3);
-        if (rng.chance(0.4)) ctx.log('The bus came every 45 minutes — when it came. You were late more often than your boss liked.', '🚏', 'warn');
+        if (rng.chance(0.4)) ctx.log(yearNow(state) >= 1910 ? 'The bus came every 45 minutes — when it came. You were late more often than your boss liked.' : 'The omnibus was full again, and you walked. You were late more often than your master liked.', '🚏', 'warn');
       }
       if (rng.chance(0.12)) ctx.log(rng.pick(['A signal failure stranded your train for an hour.', 'You finished three novels on the train this year.', 'A stranger on the bus turned out to be from your hometown.', 'A track fire shut down your line for a week.', 'Someone threw up on your shoes on the late train.']), '🚇');
     } else if (mode === 'bike') {

@@ -24,6 +24,7 @@
  * state.world.republics[cc]   = { year }
  * state.royal = { crownId, level, line, working, popularity, reigning, regnal, patronages[], since }
  */
+import { realMonarch, previousReign, nameRecurs } from './RealReigns.js';
 import { treeDemise, treeAccede, refreshLine } from './RoyalLine.js';
 import { clamp, Random } from '../../core/Random.js';
 import { OFFICES } from '../politics/Offices.js';
@@ -224,7 +225,27 @@ export function crownOf(state, cc = state.character.countryId ?? 'US') {
 }
 export const isRealmAbroad = (state, cc) => crownOf(state, cc) === 'GB' && cc !== 'GB';
 
-const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X'];
+const ROMAN = ['', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII', 'XIII', 'XIV', 'XV', 'XVI', 'XVII', 'XVIII'];
+
+/**
+ * A life begun in the past, outside the royal family, sees the real sovereigns (world/RealReigns.js);
+ * a royal life, or one begun today, keeps the invented line.
+ */
+const followsHistory = (state, crownId) => Boolean(state.era) && (state.character.birthYear ?? 9999) < 1990
+  && state.royal?.crownId !== crownId && state.character.formerRoyal?.crownId !== crownId && !state.world?.crowns?.[crownId]?.monarch?.you;
+/** Put the real sovereign of this year on the throne; returns the reign (or null/undefined). */
+function syncRealReign(state, crownId, rng) {
+  if (!followsHistory(state, crownId)) return undefined;
+  const real = realMonarch(crownId, currentYear(state));
+  if (!real) return real;
+  const c = state.world.crowns[crownId];
+  if (c.monarch.realFrom === real.from) return real;
+  c.monarch = { name: real.name, number: real.number, gender: real.gender, age: currentYear(state) - real.born, realFrom: real.from, ...(real.title ? { title: real.title } : {}) };
+  c.since = real.from;
+  c.house = real.house;
+  c.heir = newHeir(rng, CROWNS[crownId], c.monarch);
+  return real;
+}
 const genderIdx = (g) => (g === 'female' ? 1 : 0);
 const pickName = (rng, def, gender) => rng.pick(def.names[gender]);
 
@@ -250,6 +271,7 @@ export function ensureCrown(state, crownId) {
     const monarch = newMonarch(rng, def);
     // A reign already under way: crowned years ago.
     state.world.crowns[crownId] = { house: rng.pick(def.houses), monarch, heir: newHeir(rng, def, monarch), since: currentYear(state) - rng.int(1, Math.max(2, monarch.age - 30)), crowned: true, events: [] };
+    syncRealReign(state, crownId, rng);
   }
   return state.world.crowns[crownId];
 }
@@ -261,7 +283,14 @@ export function monarchName(state, crownId) {
   const def = CROWNS[crownId];
   // Malaysia: the throne you inherit is your state's; the Agong is elected from the nine rulers.
   if (crownId === 'MY' && !(c.agong && c.agong.state === c.house)) return `${{ Perlis: 'Raja', 'Negeri Sembilan': 'Yang di-Pertuan Besar' }[c.house] ?? 'Sultan'} ${c.monarch.name} of ${c.house}`;
-  return `${monarchTitles(crownId, currentYear(state))[genderIdx(c.monarch.gender)]} ${c.monarch.name}${c.monarch.number > 1 ? ` ${ROMAN[c.monarch.number] ?? c.monarch.number}` : ''}`;
+  const titles = c.monarch.title ?? monarchTitles(crownId, currentYear(state));
+  // The Emperors of Japan are known by their era names ("the Meiji Emperor").
+  if (crownId === 'JP' && c.monarch.realFrom != null) return /\(/.test(c.monarch.name) ? `Emperor ${c.monarch.name}` : `the ${c.monarch.name} Emperor`;
+  const num = c.monarch.number > 1 || (c.monarch.realFrom != null && nameRecurs(crownId, c.monarch.name)) ? ` ${ROMAN[c.monarch.number] ?? c.monarch.number}` : '';
+  const title = titles[genderIdx(c.monarch.gender)];
+  // "Louis-Philippe, King of the French"; "Emperor Wilhelm I", not "German Emperor Wilhelm".
+  if (/ of /.test(title)) return `${c.monarch.name}${num}, ${title}`;
+  return `${title.replace(/^German /, '')} ${c.monarch.name}${num}`;
 }
 /** "the King" / "the Queen" for a country (null in a republic). */
 export function sovereign(state, cc) {
@@ -379,6 +408,16 @@ function reignYear(ctx, crownId) {
   const cc = state.character.countryId ?? 'US';
   c.monarch.age += 1;
   c.heir.age += 1;
+  // History's own succession, where the game follows it.
+  const was = c.monarch.realFrom != null ? monarchName(state, crownId) : null;
+  const wasReign = c.monarch.realFrom;
+  const real = syncRealReign(state, crownId, rng);
+  if (real && wasReign != null && wasReign !== real.from && here) {
+    const prev = previousReign(crownId, real);
+    const how = prev?.ended === 'abdicated' ? 'abdicated' : prev?.ended === 'deposed' ? 'was deposed' : 'died';
+    const yrs = real.from - (wasReign ?? real.from);
+    ctx.log(`${was} ${how} after ${yrs} year${yrs === 1 ? '' : 's'} on the throne. ${monarchName(state, crownId)} accedes. Long live the ${(c.monarch.title ?? monarchTitles(crownId, currentYear(state)))[genderIdx(c.monarch.gender)]}!`, '👑', 'milestone');
+  }
   // The coronation, a year after the accession.
   if (!c.crowned && currentYear(state) > c.since) {
     c.crowned = true;
@@ -397,7 +436,7 @@ function reignYear(ctx, crownId) {
     crownMedal(ctx, cc, 'jubilee', crownId);
   }
   // Mortality and abdication (the player as monarch dies with the player).
-  if (!c.monarch.you) {
+  if (!c.monarch.you && c.monarch.realFrom == null) {
     const death = c.monarch.age < 60 ? 0.004 : c.monarch.age < 75 ? 0.015 + (c.monarch.age - 60) * 0.003 : 0.06 + (c.monarch.age - 75) * 0.012;
     if (rng.chance(death)) return demise(ctx, crownId, 'died');
     if (crownId !== 'GB' && c.monarch.age >= 75 && rng.chance(0.04)) return demise(ctx, crownId, 'abdicated');

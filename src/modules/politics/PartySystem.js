@@ -336,7 +336,7 @@ export function bodyCountry(body) {
 export function partySystem(cc, y = eraYear(), regionId = null) {
   const r = regimeOf(cc);
   const gdr = regionId && regionStateAt(regionId, y);
-  const own = (PARTIES[cc] ?? []).filter((p) => inWindow(p, y));
+  const own = (PARTIES[cc] ?? []).filter((p) => inWindow(p, y)).map((p) => ({ ...p, weight: weightAt(cc, p, y) }));
   const base = own.length >= 2 ? own : familyParties(cc, y);
   const ruling = gdr?.kind === 'eastbloc' && /German Democratic/.test(gdr.name) ? GDR : RULING.find(([ccs, a, b]) => ccs.includes(cc) && y >= a && y < b)?.slice(3);
   const one = r?.party || r?.kind === 'oneParty' || r?.kind === 'totalitarian' || r?.elections === 'sham' || (ruling && r?.elections !== 'free');
@@ -351,6 +351,43 @@ export function partySystem(cc, y = eraYear(), regionId = null) {
   if (r?.elections === 'none') return { system: 'none', parties: own.map((p) => ({ ...p, status: 'banned' })) };
   const parties = base.map((p) => ({ ...p, status: bannedThen(p, y) ? 'banned' : 'legal' }));
   return { system: r?.elections === 'controlled' ? 'dominant' : 'multi', parties };
+}
+
+/**
+ * Vote shares through history for the parties whose fortunes swung most ([year, share], read
+ * between the points): the National Socialists from fringe to 37% in 1932; Labour overtaking the
+ * Liberals in the 1920s; the Communists' highs. Other parties start small in their first years
+ * and grow into their usual share, so no party founded last year takes the chamber.
+ */
+const CURVES = {
+  DE: {
+    spd: [[1890, 0.2], [1912, 0.35], [1919, 0.38], [1920, 0.22], [1928, 0.3], [1932, 0.2], [1949, 0.29], [1972, 0.46], [1998, 0.41], [2009, 0.23], [2021, 0.26]],
+    nsdap: [[1920, 0.002], [1924, 0.03], [1928, 0.026], [1930, 0.18], [1932, 0.37], [1933, 0.44]],
+    kpd: [[1919, 0.02], [1924, 0.12], [1928, 0.106], [1932, 0.168], [1949, 0.057], [1953, 0.022]],
+    zentrum: [[1871, 0.19], [1912, 0.16], [1919, 0.2], [1924, 0.13], [1932, 0.12]],
+    dnvp: [[1919, 0.1], [1924, 0.2], [1928, 0.14], [1932, 0.06]],
+    cdu: [[1949, 0.31], [1957, 0.5], [1972, 0.45], [1998, 0.35], [2021, 0.24]],
+    afd: [[2013, 0.047], [2017, 0.126], [2021, 0.103], [2025, 0.208]],
+  },
+  GB: {
+    lab: [[1900, 0.013], [1906, 0.048], [1918, 0.21], [1924, 0.33], [1929, 0.37], [1945, 0.48], [1983, 0.28], [1997, 0.43], [2010, 0.29], [2024, 0.34]],
+    lib: [[1859, 0.45], [1906, 0.49], [1918, 0.13], [1924, 0.18], [1929, 0.23], [1935, 0.06], [1951, 0.025], [1974, 0.18], [1983, 0.25], [1988, 0.2]],
+  },
+  FR: {
+    pcf: [[1920, 0.05], [1924, 0.1], [1936, 0.15], [1946, 0.28], [1981, 0.16], [2002, 0.05], [2017, 0.03]],
+  },
+};
+const along = (pts, y) => {
+  if (y <= pts[0][0]) return pts[0][1];
+  for (let i = 1; i < pts.length; i++) if (y <= pts[i][0]) { const [y0, v0] = pts[i - 1]; const [y1, v1] = pts[i]; return v0 + ((v1 - v0) * (y - y0)) / (y1 - y0); }
+  return pts.at(-1)[1];
+};
+/** A party's typical share in a year: its curve, or its usual weight once it has grown into it. */
+export function weightAt(cc, p, y) {
+  const curve = CURVES[cc]?.[p.id];
+  if (curve) return along(curve, y);
+  const age = y - (p.from ?? 0);
+  return p.from > 1830 && age >= 0 && age < 6 ? p.weight * (0.2 + (0.8 * age) / 6) : p.weight;
 }
 
 /** Split `n` seats by weights (largest remainder). */

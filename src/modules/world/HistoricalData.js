@@ -156,15 +156,18 @@ const lifeNow = (cc) => [...(DEMOGRAPHY[cc]?.life ?? [])].reverse().find((v) => 
  * (US and English life tables). Calibrated so a life that reaches twenty in 1850 lives to
  * about 62 on average, in 1900 to about 68, in 1950 to about 75 (tests/erabalance.js).
  */
+/**
+ * How far a country's adult death rates sit from America's today, by the gap in lifespans:
+ * Japan's a little lower, Nigeria's and India's well above. Applies in every year.
+ */
+export function presentGap(cc) {
+  return Math.max(0.7, Math.min(3.5, (lifeNow('US') / lifeNow(cc)) ** 2.5));
+}
 export function eraMortality(cc, year, age) {
   if (age < 15) return 1;
   const then = demographyAt(cc, year)?.life;
-  if (!then) return 1;
-  // Measured against today's level here, but poorer countries' past also against the rich world's
-  // today (their adult death rates then were far above what the gap in lifespans now suggests),
-  // fading out towards 1990.
-  const gap = Math.max(0, lifeNow('US') - lifeNow(cc)) * Math.max(0, Math.min(1, (1990 - year) / 40));
-  return Math.max(1, Math.min(6, ((lifeNow(cc) + gap) / then) ** 2.5));
+  const own = then ? (lifeNow(cc) / then) ** 2.5 : 1;
+  return Math.max(1, Math.min(6, own * Math.max(1, presentGap(cc))));
 }
 
 /* ---------------------------------------------------------------- names */

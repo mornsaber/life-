@@ -277,9 +277,10 @@ const tests = {
     assert.equal(automationRisk(state, 'nursing'), 0);
     assert.equal(gigEligibility(state, 'rideshare').ok, false);
     assert.equal(applicationEligibility(state, 'aiOps').reason !== "Doesn't exist yet", true);
-    assert.equal(longevityFactor(state, 70), 1);
+    const base = longevityFactor(state, 70);
+    assert.ok(base > 0.6 && base <= 1.5, `today's rate here (${base})`);
     state.era.events.longevity = { year: 2040 };
-    assert.ok(longevityFactor(state, 70) < 1);
+    assert.ok(longevityFactor(state, 70) < base);
   },
   'early eras have their own work, their own decade and their own money'() {
     const { engine, state } = life({ countryId: 'GB', startYear: 1910 });

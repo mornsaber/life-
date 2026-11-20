@@ -51,8 +51,9 @@ function calibrate(ctx, job, rng) {
   const rating = score >= 80 ? 'top' : score < 45 ? 'bottom' : 'meets';
   job.calibration = { rating, age: state.character.age };
   job.bottoms = rating === 'bottom' ? (job.bottoms ?? 0) + 1 : 0;
-  if (rating === 'top') ctx.log(`The calibration committee put you at the top of the curve for your level.`, '🌟', 'good');
-  else if (rating === 'bottom') ctx.log(`The calibration committee put you at the bottom of the curve. Your manager couldn't hold the line for you.`, '🔻', 'warn');
+  const modern = yearNow(ctx.state) >= 1975;
+  if (rating === 'top') ctx.log(modern ? 'The calibration committee put you at the top of the curve for your level.' : 'Word came down that the partners think highly of you: first in line when there\'s a step up.', '🌟', 'good');
+  else if (rating === 'bottom') ctx.log(!modern ? 'The manager had you in to say you\'d been noticed, and not in a good way.' : `The calibration committee put you at the bottom of the curve. Your manager couldn't hold the line for you.`, '🔻', 'warn');
 }
 PROMO_FACTORS.push((state, job) => RATINGS[job.calibration?.rating]?.factor ?? 1);
 

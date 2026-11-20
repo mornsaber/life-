@@ -26,6 +26,8 @@
  * Person = { id, name, gender, age, professionId, levelId, title, deptId, years, performance,
  *            rel (how they get along with the player), selection ('appointed'|'elected'|'board'|'internal'|'hired') }
  */
+import { eraYear } from '../world/Eras.js';
+import { localFirmName } from '../world/LocalEmployers.js';
 import { Random } from '../../core/Random.js';
 import { applyStaffing, STAFFING_VERSION, NATIONAL_POLICE } from './Staffing.js';
 import { randomName } from '../../core/State.js';
@@ -70,6 +72,8 @@ export function orgType(typeId) {
 }
 
 const stateOfRegion = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).state;
+/** Its own stream for a local firm's name, so naming draws nothing from the others. */
+const nameRng = (typeId, regionId) => new Random([...`${typeId}:${regionId}`].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7));
 const cityOf = (regionId) => (REGIONS[regionId] ?? REGIONS.midcity).name.split(',')[0];
 
 /** Organization types that employ this profession, matching its sector when possible. */
@@ -279,7 +283,7 @@ export function ensureOrgOfType(state, typeId, regionId, { size = 'medium' } = {
     const local = Object.values(state.orgs.byId).find((o) => o.typeId === typeId && o.regionId === regionId && !o.closed);
     if (local) return addMissingDepartments(state, local);
   }
-  const name = t.scope === 'market' && t.name ? t.name({ city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng }) : undefined;
+  const name = t.scope === 'market' && t.name ? (t.sector === 'private' && localFirmName(REGIONS[regionId]?.country, cityOf(regionId), eraYear(), nameRng(typeId, regionId), { health: /hospital|clinic|health/i.test(typeId) })) || t.name({ city: cityOf(regionId), state: STATES[stateId]?.name ?? 'the State', rng }) : undefined;
   const key = orgKey(typeId, t, regionId, stateId, name);
   if (state.orgs.byId[key]) return addMissingDepartments(state, state.orgs.byId[key]);
   const profession = getProfession(t.departments[0]?.occupations[0]);
@@ -333,6 +337,7 @@ function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, prof
   const org = {
     id: pick.key,
     typeId: pick.typeId,
+    // A private firm abroad is named in the country's style, not after the game's American ones.
     name: t.scope === 'market' || t.solo || !t.name ? name ?? profession?.name ?? 'Organization' : t.name(ctx),
     scope: t.scope,
     sector: t.sector,

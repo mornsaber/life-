@@ -14,6 +14,7 @@
 import { Random, clamp } from '../../core/Random.js';
 import { housingStatus } from '../realestate/HousingEngine.js';
 import { priceLevel } from '../world/Countries.js';
+import { yearNow } from '../world/Eras.js';
 
 const sideRng = (state) => new Random(((state.world?.seed ?? 1) * 70001 + state.character.age * 919 + 0x7a6) >>> 0);
 const local = (state, n) => Math.round(n * priceLevel(state));
@@ -78,7 +79,7 @@ export const NeighbourhoodResolvers = {
       case 'centre:campaign': ctx.stat('stress', 3); if (rng.chance(0.4 + voice)) { n.trend += 0.05; ctx.stat('happiness', 6); return ctx.log('The community centre opened with a ribbon, a brass band and your name in the mayor\'s speech.', '🏛️', 'good'); } return ctx.log('A year of meetings; the council spent the money elsewhere.', '🏛️', 'warn');
       case 'centre:skip': return undefined;
       case 'party:host': ctx.spend(local(state, 150), 'Block party'); ctx.stat('happiness', 5); return ctx.log('The street party went on until midnight. You know everyone\'s name now.', '🎉', 'good');
-      case 'party:attend': ctx.stat('happiness', 2); return ctx.log('Good burgers.', '🍔', 'info');
+      case 'party:attend': ctx.stat('happiness', 2); return ctx.log(yearNow(ctx.state) >= 1950 ? 'Good burgers.' : 'Good food, and a song at the end of it.', '🍔', 'info');
       case 'crime:watch': n.trend += 0.05; return ctx.log('A WhatsApp group, a few stickers in windows and a lot more eyes on the street.', '🔦', 'good');
       case 'crime:council': if (rng.chance(0.3 + voice)) { n.trend += 0.05; return ctx.log('After your fifth email, they fixed the streetlights and sent a patrol.', '📞', 'good'); } return ctx.log('The council acknowledged your complaint.', '📞', 'muted');
       case 'crime:move': return ctx.log('You started looking at other neighbourhoods.', '🚚', 'info');

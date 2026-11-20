@@ -15,6 +15,17 @@
  * state.business.rivalGroups = [{ name, style, treasury, founded, moves: [text], acquisitions }]
  * A group's companies are the NPC organizations whose business.parent is its name.
  */
+import { COUNTRIES } from '../world/Countries.js';
+/** A business group's name in the country's style (null in the English-speaking world). */
+function localGroupName(state, i) {
+  const cc = state.character?.countryId ?? 'US';
+  if (['US', 'GB', 'IE', 'CA', 'AU', 'NZ', 'ZA'].includes(cc)) return null;
+  const last = COUNTRIES[cc]?.names?.last ?? [];
+  const S = last[(i * 7 + 3) % Math.max(1, last.length)];
+  if (!S) return null;
+  const style = { FR: `Groupe ${S}`, BE: `Groupe ${S}`, DE: `${S}-Gruppe`, AT: `${S}-Gruppe`, CH: `${S} Holding`, IT: `Gruppo ${S}`, ES: `Grupo ${S}`, MX: `Grupo ${S}`, AR: `Grupo ${S}`, BR: `Grupo ${S}`, PT: `Grupo ${S}`, NL: `${S} Groep`, JP: `${S} Group`, KR: `${S} Group`, IN: `${S} Group`, SE: `${S}gruppen`, DK: `${S} Gruppen`, NO: `${S}-gruppen` }[cc];
+  return style ?? `${S} Holdings`;
+}
 import { BUSINESS_TYPES } from './BusinessTypes.js';
 import { GROUPS } from './Rivals.js';
 import { appraise, setContestingGroup, addToGroup, conglomerateOf, holdingsCap } from './Conglomerate.js';
@@ -32,7 +43,8 @@ const NEW_GROUPS = ['Crestline Partners', 'Harborview Capital', 'Pinnacle Brands
 
 export function rivalGroups(state) {
   state.business ??= {};
-  state.business.rivalGroups ??= GROUPS.map((name, i) => ({ name, style: STYLE_FOR[name] ?? 'diversified', treasury: 60_000_000 + i * 35_000_000, founded: 1950 + i * 9, moves: [], acquisitions: 0 }));
+  // Abroad, the groups carry local family names in the country's style (Groupe Durand, Koch-Gruppe).
+  state.business.rivalGroups ??= GROUPS.map((name, i) => ({ name: localGroupName(state, i) ?? name, style: STYLE_FOR[name] ?? 'diversified', treasury: 60_000_000 + i * 35_000_000, founded: 1950 + i * 9, moves: [], acquisitions: 0 }));
   return state.business.rivalGroups;
 }
 

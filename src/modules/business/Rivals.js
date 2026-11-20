@@ -27,6 +27,8 @@ export const RIVAL_STRATEGIES = {
   poacher: { label: 'Talent raider', icon: '🧲' },
   marketer: { label: 'Big advertiser', icon: '📣' },
 };
+/** The group names in play (the local roster abroad, world/RivalGroups.js). */
+const groupNames = (state) => (state.business?.rivalGroups?.length ? state.business.rivalGroups.map((g) => g.name).slice(0, GROUPS.length) : GROUPS);
 export const GROUPS = ['Summit Capital Partners', 'Northstar Holdings', 'Keystone Brands', 'Meridian Group', 'Ironwood Equity', 'Atlas Consolidated'];
 
 /** Fill in strategy and scale for rivals created before they had them. */
@@ -136,7 +138,7 @@ export function rivalsTick(ctx, biz, rivals, { rng, npc }) {
   const independents = rivals.filter((o) => !o.business.parent);
   if (independents.length && rng.chance(0.05)) {
     const target = rng.pick(independents);
-    const group = rng.pick(GROUPS);
+    const group = rng.pick(groupNames(state));
     target.business.parent = group;
     target.owner = { kind: 'npc', name: group, pct: 1 };
     target.business.reputation = Math.round(clamp(target.business.reputation + 5, 10, 95));
@@ -158,7 +160,7 @@ export function rivalsTick(ctx, biz, rivals, { rng, npc }) {
   }
   // A national chain moves into town.
   if (!type.startup && rng.chance(state.economy?.phase === 'recession' ? 0.01 : 0.03)) {
-    const group = rng.pick(GROUPS);
+    const group = rng.pick(groupNames(state));
     const o = npc();
     Object.assign(o.business, { parent: group, scale: rng.int(3, 6), reputation: rng.int(55, 75), strategy: rng.pick(['discounter', 'marketer', 'expander']), lastMove: 'entered your market' });
     o.business.staff = Math.round(type.staff * o.business.scale * 0.6);

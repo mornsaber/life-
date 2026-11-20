@@ -126,6 +126,13 @@ function firm(cc, c, y, rng) {
   return [`${S} & Co.`, `${S} Brothers`];
 }
 
+/** A private organisation's name in the country's style (null in the English-speaking world). */
+export function localFirmName(cc, city, year, rng, { health = false } = {}) {
+  if (!cc || ANGLO.includes(cc)) return null;
+  const names = health ? hospital(cc, city || 'the town', year, rng) : firm(cc, city || 'the town', year, rng);
+  return names?.length ? rng.pick(names) : null;
+}
+
 export function localEmployer(professionId, cc, city, year, rng, profession = null) {
   if (!cc || ANGLO.includes(cc)) return null;
   const generic = profession && !['government', 'federal', 'state', 'municipal'].includes(profession.sector) && !profession.campus && !profession.intl && (profession.employers?.length ?? 0) >= 3

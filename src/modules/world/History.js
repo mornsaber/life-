@@ -579,7 +579,7 @@ function seedPast(state) {
     if (era.events[id] || ev.window[1] >= era.start) continue;
     const lasts = ev.lasts ? Math.round((ev.lasts[0] + ev.lasts[1]) / 2) : null;
     const rec = (era.events[id] = { year: ev.at, past: true });
-    if (lasts != null) { rec.lasts = lasts; if (ev.at + lasts < era.start) rec.ended = ev.at + lasts; else rec.resume = true; }
+    if (lasts != null) { rec.lasts = lasts; if (ev.at + lasts <= era.start) rec.ended = ev.at + lasts; else rec.resume = true; }
   }
   for (const [cc, stages] of Object.entries(COLONIES)) {
     const rec = (era.colonies[cc] ??= { done: [], pressure: 0 });
@@ -1040,6 +1040,8 @@ export const HistoryModule = {
       if (rec) {
         if (rec.ended != null || rec.skipped) continue;
         // Still going when this life began (a 1970 start is born into Vietnam): pick it up.
+        // (One that would be over this very year ended before you can remember: nothing to announce.)
+        if (rec.resume && rec.lasts != null && y >= rec.year + rec.lasts) { delete rec.resume; rec.ended = rec.year + rec.lasts; continue; }
         if (rec.resume) { delete rec.resume; ev.start?.(ctx, rec, rng); }
         ev.tick?.(ctx, rec, rng);
         if (rec.lasts != null && y >= rec.year + rec.lasts) { rec.ended = y; ev.end?.(ctx, rec, rng); }

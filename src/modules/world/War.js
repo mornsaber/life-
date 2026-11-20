@@ -497,8 +497,8 @@ export const WarModule = {
         ctx.stat('stress', -4);
         return;
       }
-      if (optionId === 'flee') return ctx.log('You started looking for a way out. Asylum routes are on the Move tab.', '✈️', 'warn');
-      ctx.log('You stayed. Life went on between the sirens.', '🏠');
+      if (optionId === 'flee') return ctx.log(yearNow(ctx.state) >= 1951 ? 'You started looking for a way out. Asylum routes are on the Move tab.' : 'You started looking for a way out: a ship, a border, a cousin abroad. The Move tab has the routes.', '✈️', 'warn');
+      ctx.log(yearNow(ctx.state) >= 1915 ? 'You stayed. Life went on between the sirens.' : 'You stayed. Life went on between the alarms and the rumours.', '🏠');
     },
 
     refugees(ctx, data, optionId) {

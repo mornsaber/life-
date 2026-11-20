@@ -15,10 +15,13 @@ import { quote } from '../src/modules/realestate/MortgageSystem.js';
 
 const memory = () => { const m = new Map(); return { getItem: (k) => m.get(k) ?? null, setItem: (k, v) => m.set(k, v), removeItem: (k) => m.delete(k) }; };
 function life(cc, year, age = 30) {
-  const engine = new Engine({ store: new Store(memory()), rng: new Random(3), modules: MODULES });
-  engine.newLife({ countryId: cc, startYear: year - age });
-  for (let i = 0; i < age; i++) { engine.state.prompts = []; engine.state.stats.health = 90; engine.ageUp(); }
-  return { engine, state: engine.state };
+  // The first seed whose character is alive at that age.
+  for (let seed = 3; ; seed++) {
+    const engine = new Engine({ store: new Store(memory()), rng: new Random(seed), modules: MODULES });
+    engine.newLife({ countryId: cc, startYear: year - age });
+    for (let i = 0; i < age && engine.state.character.alive; i++) { engine.state.prompts = []; engine.state.stats.health = 90; engine.ageUp(); }
+    if (engine.state.character.alive || seed > 40) return { engine, state: engine.state };
+  }
 }
 
 const tests = {

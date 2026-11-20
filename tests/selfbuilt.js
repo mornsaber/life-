@@ -78,6 +78,7 @@ const tests = {
     let titled = 0;
     for (let seed = 1; seed <= 30; seed++) {
       const { engine, state } = adult('NG', 1995, seed);
+      if (!state.character.alive) continue;
       state.finances.cash += 50000;
       engine.dispatch('selfBuild.shack');
       const p = state.housing.properties.find((x) => x.type === 'shack');
