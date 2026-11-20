@@ -12,7 +12,7 @@
  * Node = { title, name?, meta?, you?, kind?, children?: Node[], levelId? (civilian rank), track?/grade? (military rank) }
  */
 import { usCabinetTitle, eraYear } from '../world/Eras.js';
-import { orgOf, chainOfCommand, orgType, supervises } from './Organizations.js';
+import { orgOf, chainOfCommand, orgType, supervises, deptCeiling } from './Organizations.js';
 import { getProfession } from '../career/JobTrees.js';
 import { ladderFor } from '../career/Ladder.js';
 import { seatsAt, layerExists } from './Vacancies.js';
@@ -58,7 +58,14 @@ export function workplaceChart(state, job) {
   const ladder = ladderFor(profession, size);
   const title = (l) => job.titleMap?.[l.id] ?? l.title;
   // Ranks the department really has: a layer of management it's too small for doesn't exist.
-  const present = myDept ? ladder.filter((l) => l.id === job.levelId || layerExists(org, myDept.id, profession, l, size) || (myDept.seats?.[job.professionId]?.[l.id] ?? []).length) : ladder;
+  // Ranks from the department head's post up are the department's head or the organisation's
+  // (the node above), not ranks inside it.
+  const dc = myDept ? deptCeiling(org, myDept.id, profession, size) : { ceiling: Infinity, orgTop: Infinity };
+  const ceil = dc.ceiling;
+  // Holding the organisation's top rank: you are the head at the top of the chart.
+  const youRunIt = ladder.findIndex((l) => l.id === job.levelId) >= dc.orgTop;
+  const inside = (l) => ladder.indexOf(l) < ceil || (l.id === job.levelId && !youRunIt);
+  const present = (myDept ? ladder.filter((l) => l.id === job.levelId || layerExists(org, myDept.id, profession, l, size) || (myDept.seats?.[job.professionId]?.[l.id] ?? []).length) : ladder).filter(inside);
   const order = (l) => present.indexOf(l);
   // Each rank's boss: the lowest supervising rank above it in grade (or above it on the ladder).
   const bossOf = (l) => present.filter((b) => b !== l && supervises(b) && (b.grade > l.grade || (b.grade === l.grade && order(b) > order(l)))).sort((a, b) => a.grade - b.grade || order(a) - order(b))[0] ?? null;
@@ -97,7 +104,9 @@ export function workplaceChart(state, job) {
   // Your department first, the rest after it.
   depts.sort((a, b) => Number(Boolean(b.open)) - Number(Boolean(a.open)));
   const t = orgType(org.typeId);
-  const top = { title: head?.title ?? (org.owner ? 'Owner' : 'Leadership'), name: head?.name ?? org.owner?.name ?? null, meta: org.name, kind: 'top', open: true, children: depts };
+  const top = youRunIt
+    ? { title: job.title, name: 'You', you: true, meta: org.name, kind: 'top', open: true, children: depts }
+    : { title: head?.title ?? (org.owner ? 'Owner' : 'Leadership'), name: head?.name ?? org.owner?.name ?? null, meta: org.name, kind: 'top', open: true, children: depts };
   // Who the organisation answers to: the government, a council, a board, the voters.
   const above = org.authority ?? t?.head?.appointedBy ?? (org.owner ? null : t?.head?.selection === 'elected' ? 'the voters' : t?.head?.selection === 'board' || org.business ? 'the board' : null);
   return above ? { title: 'Answers to', name: above[0].toUpperCase() + above.slice(1), kind: 'top', open: true, children: [top] } : top;

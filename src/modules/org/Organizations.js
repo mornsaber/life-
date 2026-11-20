@@ -303,6 +303,8 @@ function localLabels(state, occupations) {
  * A post as an organization abroad names it: a department's head takes the local
  * service's top rank, and an appointment by "the governor" is one by the government.
  */
+/** A council's chief officer abroad. */
+const CHIEF_OFFICER = { CA: 'Chief Administrative Officer', FR: 'Directeur général des services', DE: 'Stadtdirektor', IT: 'Segretario comunale', ES: 'Secretario municipal', NL: 'Gemeentesecretaris', JP: 'Deputy Mayor (fuku-shichō)', IN: 'Municipal Commissioner', BR: 'Secretário de Administração' };
 export function localizePost(org, deptId, def) {
   if (!def) return def;
   // A body with its own posts (an emergency service abroad) names them itself.
@@ -316,8 +318,12 @@ export function localizePost(org, deptId, def) {
   const appointedBy = def.appointedBy && /governor|President|Senate/i.test(def.appointedBy) ? 'the government' : def.appointedBy;
   // US elected posts (sheriff, district attorney) are career appointments abroad; local offices stay elected.
   const usElected = def.office && !['mayor', 'cityCouncil', 'schoolBoard', 'cityManager'].includes(def.office);
-  if (!local?.head && appointedBy === def.appointedBy && !usElected) return def;
-  return { ...def, title: local?.head ?? def.title, appointedBy: usElected ? 'the government' : appointedBy, ...(usElected ? { selection: 'appointed', office: undefined } : {}) };
+  // A council abroad is run by its chief executive (or the country's equivalent), not a city manager.
+  if (!deptId && def.office === 'cityManager') return { ...def, title: CHIEF_OFFICER[cc] ?? 'Chief Executive' };
+  // A department's head is never titled as the head of the whole organisation.
+  const deptTitle = deptId && local?.head && /chief executive|\bCEO\b/i.test(local.head) ? 'Director of Corporate Services' : local?.head;
+  if (!deptTitle && appointedBy === def.appointedBy && !usElected) return def;
+  return { ...def, title: deptTitle ?? def.title, appointedBy: usElected ? 'the government' : appointedBy, ...(usElected ? { selection: 'appointed', office: undefined } : {}) };
 }
 
 function buildOrg(state, rng, typeId, key, regionId, stateId, { size, name, profession, national = false, servedBy = null, primaryPolice = false }) {
@@ -485,6 +491,36 @@ export function seatHolders(state, org, deptId, professionId, levelId, count = 1
   return list.slice(0, count).map((id) => org.people[id]);
 }
 
+/** Titles that name the head of a whole organisation, not of a department. */
+const ORG_TOP = /chief executive|\bCEO\b|^president\b(?! of)|director-general|vice-chancellor|\bowner\b|city manager|chancellor\b|vice-minister|^executive director|secretary-general|managing director & ceo/i;
+const UNDER = /^(?:deputy|vice|assistant|associate|senior vice|executive vice)\b(?!-chancellor)/i;
+const sameTitle = (a, b) => Boolean(a && b) && a.trim().toLowerCase() === b.trim().toLowerCase();
+
+/**
+ * Where a department's own ranks stop on an occupation's ladder: { ceiling, orgTop }. Ranks from
+ * `ceiling` up are the department head's post or above it (the organisation's head: a CEO, a
+ * Director-General, a Vice-Chancellor), so they don't sit inside the department and nobody in it
+ * reports upward through them. `orgTop` is the first rank that is the organisation's own head.
+ */
+export function deptCeiling(org, deptId, profession, size) {
+  const ladder = ladderFor(profession, size);
+  const t = orgType(org?.typeId);
+  const def = t?.departments?.find((d) => d.id === deptId);
+  const orgHead = t ? localizePost(org, null, t.head) : null;
+  const deptHead = def ? localizePost(org, deptId, def.head) : null;
+  const at = (id) => (id ? ladder.findIndex((l) => l.id === id) : -1);
+  let orgTop = Infinity;
+  let ceiling = Infinity;
+  if (t?.head?.occupation === profession?.id && at(t.head.levelId) >= 0) orgTop = at(t.head.levelId);
+  if (def?.head?.occupation === profession?.id && at(def.head.levelId) >= 0) ceiling = at(def.head.levelId);
+  ladder.forEach((l, i) => {
+    if (i >= orgTop) return;
+    if (sameTitle(l.title, orgHead?.title) || (ORG_TOP.test(l.title) && !UNDER.test(l.title))) orgTop = i;
+    else if (sameTitle(l.title, deptHead?.title) && i < ceiling) ceiling = i;
+  });
+  return { ceiling: Math.min(ceiling, orgTop), orgTop, ladder };
+}
+
 /** Supervisory levels of this ladder above `levelId`, nearest first. */
 function levelsAbove(profession, size, levelId) {
   const ladder = ladderFor(profession, size);
@@ -553,8 +589,14 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   // A post that's vacant (waiting to be filled) has no holder: report to the next one up.
   const vacant = (levelId) => (dept.vacancies ?? []).some((v) => v.professionId === job.professionId && v.levelId === levelId);
   const chain = [];
-  for (const l of levelsAbove(profession, size, job.levelId)) {
+  // Ranks at the department head's post or above (up to the organisation's own head) aren't in the
+  // department: nobody in it reports through a "CEO" seat below the department manager.
+  const { ceiling, orgTop, ladder: rungs } = deptCeiling(org, dept.id, profession, size);
+  const myIdx = rungs.findIndex((l) => l.id === job.levelId);
+  const atTop = myIdx >= ceiling;
+  for (const l of atTop ? [] : levelsAbove(profession, size, job.levelId)) {
     if (chain.length >= 2) break;
+    if (rungs.indexOf(l) >= ceiling) break;
     // A layer of management the department is too small to have.
     if (!layerExists(org, dept.id, profession, l, size) && !seatHolders(state, org, dept.id, job.professionId, l.id, 1, false).length) continue;
     const holder = vacant(l.id) ? seatHolders(state, org, dept.id, job.professionId, l.id, 1, false)[0] : seatHolders(state, org, dept.id, job.professionId, l.id, 1, generate)[0];
@@ -562,10 +604,11 @@ export function chainOfCommand(state, job, { generate = true } = {}) {
   }
   const t = orgType(org.typeId);
   // The player holds the organization's top job: they answer to whoever appointed or elected them.
-  const isHead = (t?.head.occupation === job.professionId && t.head.levelId === job.levelId) || Boolean(job.intlPost && org.playerHead);
+  const isHead = (t?.head.occupation === job.professionId && t.head.levelId === job.levelId) || Boolean(job.intlPost && org.playerHead) || (myIdx >= orgTop && myIdx >= 0);
   // In a small organization the department head and the boss are one level: show the boss.
   const tiny = Object.values(org.departments).reduce((n, d) => n + (d.headcount ?? 0), 0) < 15 && Boolean(org.head ?? org.ceo);
-  const deptHead = isHead || tiny ? null : personOf(org, dept.head);
+  // Holding the department head's own rank: you answer to the organisation's head.
+  const deptHead = isHead || tiny || atTop ? null : personOf(org, dept.head);
   const orgHead = isHead ? overseer(t) : personOf(org, org.head) ?? personOf(org, org.ceo) ?? ownerOf(org);
   const supervisor = chain[0] ?? (deptHead && !job.abilities?.includes('exec') ? deptHead : orgHead);
   const manager = chain[1] ?? (chain[0] ? deptHead : supervisor === deptHead ? orgHead : null);
