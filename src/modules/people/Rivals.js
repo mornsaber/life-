@@ -67,7 +67,7 @@ function addRival(ctx, origin, extra = {}) {
     r.firstName = n.firstName;
   }
   (state.rivals ??= []).push(r);
-  ctx.log(`${r.name} has become your ${originLabel(r).label.toLowerCase()}.`, originLabel(r).icon, 'info');
+  ctx.log(`${r.name} has become ${/^your /i.test(originLabel(r).label) ? '' : 'your '}${originLabel(r).label.toLowerCase()}.`, originLabel(r).icon, 'info');
   return r;
 }
 

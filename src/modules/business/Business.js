@@ -17,6 +17,8 @@
  *   listings: [...businesses for sale],
  * }
  */
+import { Random } from '../../core/Random.js';
+import { randomName } from '../../core/State.js';
 import { businessShock } from '../economy/Shocks.js';
 import { businessBlock } from '../world/Regimes.js';
 import { clamp } from '../../core/Random.js';
@@ -246,7 +248,8 @@ export function yearFinancials(state, biz, rng) {
   // A business's numbers are an owner-operator's: the profit is the owner's own pay. Every location beyond the
   // first needs someone doing the owner's job there — a general manager, a chef, an associate dentist or attorney.
   const leads = type.startup ? 0 : Math.max(0, (biz.scale ?? 1) - 1) * siteLeadPay(type, col, biz.typeId);
-  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000, 90000)) : 0) + leads + qualifier;
+  // (The manager's pay floor and ceiling follow local wages: a Kolkata manager isn't paid a Chicago salary.)
+  const management = (hiredChief ? Math.round(clamp(revenue * 0.05, 40000 * Math.sqrt(col), 90000 * Math.sqrt(col))) : 0) + leads + qualifier;
   // Growing pains: past a single site's crew, a company needs supervisors, an office, HR, IT and finance —
   // overhead that rises with headcount (about 5% of revenue at ten shops' staff, capped at 8%).
   const corporate = type.startup ? 0 : Math.round(revenue * corporateOverheadRate(type, biz.staff.headcount))
@@ -389,7 +392,7 @@ const SELLER_NAMES = ['Kowalski', 'Nguyen', 'Romero', 'Okafor', 'Lindqvist', 'Ha
 
 export function businessName(rng, state, type, { seller = false } = {}) {
   if (type.startup) return `${rng.pick(STARTUP_WORDS)}${rng.pick(STARTUP_SUFFIX)}`;
-  const last = seller ? rng.pick(SELLER_NAMES) : state.character.lastName;
+  const last = seller ? randomName(new Random([...`${rng.pick(SELLER_NAMES)}${state.character.age}${state.character.regionId}`].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7)), 'male').lastName : state.character.lastName;
   return rng.pick([`${last}'s ${type.name}`, `${last} & Sons ${type.name}`, `${regionOf(state).name.split(',')[0]} ${type.name}`, `${rng.pick(['Blue Oak', 'Summit', 'Red Door', 'Keystone', 'Northstar', 'Golden Hour'])} ${type.name}`]);
 }
 

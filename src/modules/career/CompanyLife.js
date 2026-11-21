@@ -195,7 +195,7 @@ function event(ctx, job, c, rng) {
     const mult = c.young ? rng.float(0.5, 5) : 1;
     const paid = cashOptions(ctx, job, mult, 'sale');
     if (job.equity?.kind === 'shares') for (const g of job.equity.grants) g.share = c.share; // converted into the buyer's shares
-    rename(job, `${old} (part of ${parent})`);
+    rename(job, `${old.replace(/ \(part of [^)]*\)$/, '')} (part of ${parent})`);
     if (paid) ctx.log(`The sale accelerated your options: ${money(paid)}.`, '💵', 'good');
     if (grade >= 4 && rng.chance(0.4)) {
       return ctx.prompt({ type: 'companyLife.overlap', icon: '🤝', title: 'Bought', text: `${parent} has bought ${old}. They already have someone doing your job, and you've been asked to a meeting with the new owners' people.`,

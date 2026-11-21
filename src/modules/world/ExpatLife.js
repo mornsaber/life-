@@ -42,7 +42,7 @@ function arrived(ctx, cc) {
   // Moved here as a child: this is where you grew up, not somewhere new.
   const came = [...(m.history ?? [])].reverse().find((h) => h.to === cc);
   const grewUp = !came || came.age < 16;
-  m.expat = { cc, since: came?.age ?? 0, belonging: grewUp ? 75 : speaksLocal(state, cc) ? 40 : 15, circle: grewUp ? 'local' : null, settled: grewUp, askedAt: null, returnedAt: null, yearsAway: (prev?.yearsAway ?? 0) };
+  m.expat = { cc, since: came?.age ?? state.character.age, belonging: grewUp ? 75 : speaksLocal(state, cc) ? 40 : 15, circle: grewUp ? 'local' : null, settled: grewUp, askedAt: null, returnedAt: null, yearsAway: (prev?.yearsAway ?? 0) };
   return !grewUp;
 }
 
@@ -230,7 +230,7 @@ export const ExpatLifeModule = {
       const e = expatOf(state);
       if (e) e.belonging = clamp(e.belonging + 8);
       ctx.stat('happiness', 8);
-      ctx.log(`You started dating ${person.firstName}, who is showing you a ${COUNTRIES[person.nationality]?.name ?? 'country'} the guidebooks miss.`, '💘', 'good');
+      ctx.log(`You started dating ${person.firstName}, who is showing you the ${(COUNTRIES[person.nationality]?.name ?? 'country').replace(/^the /, '')} the guidebooks miss.`, '💘', 'good');
     },
     settle(ctx, data, optionId) {
       const { state, rng } = ctx;

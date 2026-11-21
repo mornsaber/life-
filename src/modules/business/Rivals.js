@@ -17,6 +17,7 @@
  * Rival data lives on org.business: { strategy, scale, price,
  * priceWarUntil, parent, lastMove }.
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { BUSINESS_TYPES } from './BusinessTypes.js';
 
@@ -136,7 +137,7 @@ export function rivalsTick(ctx, biz, rivals, { rng, npc }) {
 
   // Outside money: a group buys a rival and rolls it into something bigger.
   const independents = rivals.filter((o) => !o.business.parent);
-  if (independents.length && rng.chance(0.05)) {
+  if (independents.length && rng.chance(0.05) && yearNow(state) >= 1950) {
     const target = rng.pick(independents);
     const group = rng.pick(groupNames(state));
     target.business.parent = group;
@@ -159,7 +160,7 @@ export function rivalsTick(ctx, biz, rivals, { rng, npc }) {
     say(`${a.name} and ${b.name} merged into one bigger competitor.`, '🔗', 'warn');
   }
   // A national chain moves into town.
-  if (!type.startup && rng.chance(state.economy?.phase === 'recession' ? 0.01 : 0.03)) {
+  if (!type.startup && rng.chance(state.economy?.phase === 'recession' ? 0.01 : 0.03) && yearNow(state) >= 1950) {
     const group = rng.pick(groupNames(state));
     const o = npc();
     Object.assign(o.business, { parent: group, scale: rng.int(3, 6), reputation: rng.int(55, 75), strategy: rng.pick(['discounter', 'marketer', 'expander']), lastMove: 'entered your market' });

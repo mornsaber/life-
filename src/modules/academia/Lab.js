@@ -28,6 +28,7 @@
  *
  * state.lab = { active, funds, members: [...], alumni: [...], culture, tier, startedAge, buyout }
  */
+import { yearNow } from '../world/Eras.js';
 import { clamp } from '../../core/Random.js';
 import { randomName, addHonor, yearlyCount, bumpYearly } from '../../core/State.js';
 
@@ -315,9 +316,12 @@ export const AWARDS = {
   pulitzer: { name: 'Pulitzer Prize in History', icon: '📖', prestige: 35, cash: 15000, citation: 'For a distinguished book on American history.' },
 };
 
+/** When each prize was first given (none before its founding). */
+const AWARD_FROM = { sloan: 1955, packard: 1988, pecase: 1996, medalOfScience: 1962, breakthrough: 2012, wolf: 1978, pulitzer: 1917, mentoring: 1990, teaching: 1960 };
 function award(ctx, id) {
   const { state } = ctx;
   const a = AWARDS[id];
+  if (AWARD_FROM[id] > yearNow(state)) return;
   if (!a.repeat && state.honors.some((h) => h.id === `research.${id}`)) return;
   // Abroad the national honours are the country's own (names swap on screen; the flag can't).
   const icon = a.icon === '🇺🇸' && (state.character.countryId ?? 'US') !== 'US' ? '🏅' : a.icon;

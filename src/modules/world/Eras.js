@@ -806,7 +806,7 @@ const OLD_TITLES = [
   [/\bCNC Machinist\b/, 'Machinist', 1975], [/\bCNC Programmer\b/, 'Toolmaker', 1975], [/\bCertified Pharmacy Technician\b/, 'Senior Dispenser', 1975], [/\bPharmacy Technician\b/, "Dispenser", 1975],
   [/\bCertified Registered Nurse Anesthetist\b/, 'Nurse Anaesthetist', 1956], [/\bNurse Anaesthetist\b/, 'Theatre Sister', 1920], [/\bRegistered Nurse\b/, 'Trained Nurse', 1920],
   [/\bLube Technician\b/, 'Garage Hand', 1960], [/\bIT Support Technician\b/, 'Office Machine Mechanic', 1980], [/\bData Entry Clerk\b/, 'Clerk', 1965],
-  [/\bSurvey Technician\b/, "Surveyor's Assistant", 1960], [/\bInstrument Operator\b/, 'Chainman', 1920],
+  [/\bSurvey Technician\b/, "Surveyor's Assistant", 1960], [/\bVisual Merchandiser\b/, 'Window Dresser', 1960], [/\bStore Manager\b/, 'Shopkeeper', 1900], [/\bAssistant Store Manager\b/, 'Head Shopman', 1900], [/\bInstrument Operator\b/, 'Chainman', 1920],
   [/\bPolice Officer\b/, 'Patrolman', 1975], [/\bPolice Recruit\b/, 'Probationary Patrolman', 1975], [/\bFirefighter\b/, 'Fireman', 1975],
   [/\bFlight Attendant\b/, 'Stewardess', 1975], [/\bCDL Driver Trainee\b/, 'Driver\'s Mate', 1986], [/\bCDL /, '', 1986], [/\bPatrolman\b/, 'Constable', 1890], [/\bProbationary Patrolman\b/, 'Probationary Constable', 1890], [/\bServer\b/, 'Waiter', 1990], [/\bMail Carrier\b/, 'Mailman', 1980], [/\bLetter Carrier\b/, 'Postman', 1980],
   [/\bChief Executive Officer\b/, 'Managing Director', 1975], [/\bAdministrative Assistant\b/, 'Secretary', 1985], [/\bSanitation Worker\b/, 'Dustman', 1980],

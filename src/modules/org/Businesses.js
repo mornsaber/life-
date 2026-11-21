@@ -21,6 +21,7 @@
  * region), grow and fail; good employees sometimes leave to start rivals;
  * when you sell, the organization lives on under its new owner.
  */
+import { Random } from '../../core/Random.js';
 import { clamp } from '../../core/Random.js';
 import { REGIONS } from '../life/Regions.js';
 import { BUSINESS_TYPES } from '../business/BusinessTypes.js';
@@ -32,6 +33,7 @@ import { rivalsTick, effectiveReputation, underPriceWar, rivalProfile } from '..
 import { departure, seat } from './Vacancies.js';
 import { rememberDeparture } from './Churn.js';
 import { regionsIn } from '../life/Regions.js';
+import { periodTitle } from '../world/Eras.js';
 
 const SURNAMES = ['Kowalski', 'Nguyen', 'Romero', 'Okafor', 'Lindqvist', 'Haddad', 'Brennan', 'Castillo', 'Murphy', 'Takahashi', 'Patel', 'Reyes'];
 
@@ -359,7 +361,7 @@ export function businessStaffTick(ctx, biz) {
     if (!pick || pick.performance < 60) continue;
     seat(org, dept.id, gone.professionId, gone.levelId, pick, ladder[idx].title);
     pick.rel = Math.min(100, (pick.rel ?? 50) + 8);
-    promoted.push(`${pick.name} to ${ladder[idx].title}`);
+    promoted.push(`${pick.name} to ${periodTitle(ladder[idx].title, pick.gender)}`);
   }
   if (promoted.length) ctx.log(`${biz.name} promoted from within: ${promoted.slice(0, 3).join('; ')}${promoted.length > 3 ? `, and ${promoted.length - 3} more` : ''}.`, '⬆️', 'good');
   if (left.length) {
@@ -390,7 +392,12 @@ export function npcBusiness(state, typeId, regionId, { name, founder = null, rep
   const rng = sideRng(state);
   const type = BUSINESS_TYPES[typeId];
   const id = rng.id('nbz_');
-  const owner = founder?.name ?? `${rng.pick(['Dana', 'Luis', 'Priya', 'Sam', 'Grace', 'Omar', 'Hannah', 'Victor'])} ${rng.pick(SURNAMES)}`;
+  // The owner's name from the place and era's own pool (no Nguyen General Store in 1860s Manchester).
+  // (Its own stream, so naming draws nothing from the side stream.)
+  const nameRng = new Random([...id].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 11));
+  const local = randomName(nameRng, nameRng.chance(0.5) ? 'male' : 'female');
+  if (!founder?.name) { rng.pick(['a', 'b']); rng.pick(['a', 'b']); }
+  const owner = founder?.name ?? `${local.firstName} ${local.lastName}`;
   const org = {
     id: `biz:${id}`,
     typeId: `biz:${typeId}`,

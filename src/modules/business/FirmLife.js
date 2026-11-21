@@ -132,9 +132,9 @@ export const FirmLifeModule = {
         text: `You're ${age}. ${biz.name} needs someone after you.`,
         data: {},
         options: [
+          { id: 'keep', label: '⏳ Not yet' },
           ...(kids.length ? [{ id: 'child', label: `👪 Hand it to ${kids[0].firstName}`, hint: 'Keep it in the family' }] : []),
           { id: 'staff', label: y >= 1974 ? '🧑‍🤝‍🧑 Sell to the staff (an employee trust)' : '🧑‍🤝‍🧑 Sell to the foreman and the men', hint: 'About 70% of its value' },
-          { id: 'keep', label: '⏳ Not yet' },
         ],
       });
     }
@@ -164,7 +164,8 @@ export const FirmLifeModule = {
       const cost = Math.round(BUSINESS_TYPES[biz.typeId].cost * 0.15);
       biz.cash -= cost;
       biz.exporting = { since: state.character.age };
-      ctx.log(`${biz.name} took its first orders from abroad: an agent in the port, shipping crates and letters of credit (${money(cost)} to set up).`, '🚢', 'good');
+      const services = ['softwareShop', 'techStartup', 'indieGameStudio', 'productionCompany', 'recordingStudio'].includes(biz.typeId);
+      ctx.log(services ? `${biz.name} signed its first clients abroad: calls across the time zones, contracts in another currency (${money(cost)} to set up).` : `${biz.name} took its first orders from abroad: an agent in the port, shipping crates and letters of credit (${money(cost)} to set up).`, '🚢', 'good');
     },
     /** Set up on your own as a master of your trade. */
     master(ctx) {
