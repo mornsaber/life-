@@ -281,7 +281,7 @@ function year(ctx) {
   if (c.health >= 78) {
     const bonus = Math.round((job.salary ?? 0) * (job.equity?.kind === 'profit' ? 0.08 : 0.05));
     if (bonus) ctx.earn(bonus, 'Profit-share bonus', { wage: true });
-    if (rng.chance(0.5)) ctx.log(`A record year at ${job.employer.name}: a profit-share bonus for everyone.`, '📈', 'good');
+    if (rng.chance(0.5)) ctx.log(yearNow(state) >= 1950 ? `A record year at ${job.employer.name}: a profit-share bonus for everyone.` : `A record year at ${job.employer.name}: the master stood everyone a dinner and a sovereign apiece.`.replace('a sovereign', ['GB', 'IE', 'AU', 'NZ', 'CA'].includes(state.character.countryId ?? 'US') ? 'a sovereign' : 'a gold coin'), '📈', 'good');
   } else if (c.health <= 25 && rng.chance(0.6)) {
     ctx.stat('stress', 4);
     ctx.log(`A hard year at ${job.employer.name}: hiring frozen, bonuses cancelled, rumours of cuts.`, '📉', 'warn');

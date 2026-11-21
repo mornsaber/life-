@@ -1158,7 +1158,12 @@ export function entityInEra(state, id) {
   const cc = state.character.countryId ?? 'US';
   if (id === 'llc') return y >= (cc === 'GB' ? 2000 : 1977);
   if (id === 'scorp') return y >= 1958;
-  if (id === 'ccorp') return y >= (cc === 'GB' ? 1856 : cc === 'DE' ? 1892 : 1850);
+  // Incorporation by simple registration: Britain 1856, France 1867, Germany 1870, Italy 1882, Spain
+  // 1885, Japan 1893; none in the Soviet years.
+  if (id === 'ccorp') {
+    if (['RU', 'UA', 'BY'].includes(cc) && y >= 1918 && y < 1991) return false;
+    return y >= ({ GB: 1856, IE: 1856, FR: 1867, BE: 1873, DE: 1870, AT: 1899, IT: 1882, ES: 1885, PT: 1867, NL: 1838, JP: 1893, IN: 1850, CN: 1904, BR: 1882, RU: 1836 }[cc] ?? 1850);
+  }
   return true;
 }
 export const smallBizLoansExist = (state) => yearNow(state) >= 1953;

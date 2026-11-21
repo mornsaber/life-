@@ -123,12 +123,27 @@ export function shiftOdds(state, action) {
 /** What each grade brings (the first grade that has it). */
 export function perksAt(state, grade) {
   const y = yearNow(state);
+  const job = state.career?.job;
+  const id = job?.professionId ?? '';
+  // Work on the land, at sea and in the yards: perks in kind, not desks.
+  if (/fish|whal|sea|merchant|deck|sail|dock|mine|coal|mill|farm|agri|plantation|herd|forest|construct|labour|labor|rail|coach|blacksmith|domestic|milk|smith|quarry/i.test(id) || familyOf(job) === 'trades') {
+    const sea = /fish|whal|sea|merchant|deck|sail/i.test(id);
+    return [
+      [2, sea ? '🎣 A full share of the catch' : '🧰 Your own set of tools'],
+      [3, sea ? '🛏️ A bunk of your own aft' : y < 1950 ? '🏡 A tied cottage, rent free' : '🦺 First pick of the overtime'],
+      [4, sea ? '🧭 Your own watch to stand' : '🧑‍🤝‍🧑 A gang of your own to run'],
+      [5, y < 1940 ? '🍞 Board and lodging found, and a Christmas box' : '💵 A bonus at Christmas'],
+      [6, sea ? '⚓ The captain\'s table' : y >= 1915 ? '🚗 A van that comes with the job' : '🐎 A horse and cart on the firm'],
+      [7, '🏠 The manager\'s house'],
+      [8, '🎩 A seat at the top table'],
+    ].filter(([g]) => g <= grade);
+  }
   return [
-    [3, '🪪 A desk and a drawer of your own'],
+    [3, y < 1880 ? '🪶 A high stool and a ledger of your own' : '🪪 A desk and a drawer of your own'],
     [4, '🧑‍🤝‍🧑 People who report to you'],
-    [5, '💼 An expense account'],
+    [5, y < 1920 ? '💼 Your own office boy' : '💼 An expense account'],
     [6, y >= 1915 ? '🚗 A car that comes with the job' : '🐎 A horse and trap on the firm'],
-    [7, '🏢 A corner office and an assistant'],
+    [7, y < 1950 ? '🏢 A private office and a secretary' : '🏢 A corner office and an assistant'],
     [8, '🎩 A seat at the top table'],
   ].filter(([g]) => g <= grade);
 }

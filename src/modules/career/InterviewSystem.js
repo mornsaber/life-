@@ -5,6 +5,7 @@
  * public sector) and — for cleared positions — the SF-86 security
  * investigation, where honesty is a real choice.
  */
+import { referenceBonus } from './WorkLife.js';
 import { workRepBonus } from '../life/Reputation.js';
 import { fitsEra } from '../world/Eras.js';
 import { cityJobsBonus } from '../life/Cities.js';
@@ -204,6 +205,8 @@ export function candidateBonus(state, profession) {
   bonus += serviceHiringBonus(state, profession);
   bonus += clearanceHiringBonus(state, profession);
   bonus += transitionHiringBonus(state);
+  // Your last reference, and the blacklist after a strike (career/WorkLife.js).
+  bonus += referenceBonus(state, profession);
   if (profession.id === 'fire' && state.emergency.fire) bonus += 0.1;
   if (profession.id === 'police' && state.emergency.police) bonus += 0.1;
   if ((['parkService', 'ems', 'privateEms'].includes(profession.id)) && state.emergency.sar) bonus += 0.06;

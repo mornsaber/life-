@@ -3,6 +3,7 @@
  * delegation, benefits, marketing, funding (SBA, venture rounds), valuation
  * and exits.
  */
+import { firmCard, masterCard } from '../../modules/business/FirmLife.js';
 import { groupBoardSize, groupDirectorFee } from '../../modules/business/GroupBoard.js';
 import { EXPERTISE as BOARD_EXPERTISE, VERDICTS as BOARD_VERDICTS } from '../../modules/business/Board.js';
 import { DESIGNS, DIVISIONS, structureOf, canRestructure, ipoEligibility, ipoPrice, IPO_MIN_REVENUE } from '../../modules/business/Structure.js';
@@ -757,7 +758,7 @@ function ownedView(state, biz, ui = {}) {
     <div class="action-grid">${button('💼 Sell a 25% stake', 'business.sellStake', { arg: '0.25', disabled: biz.ownerPct < 0.45 || biz.valuation <= 0 })}${button('💼 Sell a 49% stake', 'business.sellStake', { arg: '0.49', disabled: biz.ownerPct < 0.69 || biz.valuation <= 0 })}${(state.people?.list ?? []).filter((p) => p.alive && ['spouse', 'partner', 'child', 'sibling'].includes(p.relation) && state.character.age + p.ageOffset >= 18).map((p) => button(`👪 Hand it to ${esc(p.firstName)}`, 'business.giveToFamily', { arg: p.id })).join('')}</div>
     <div class="action-grid">${button('🪧 Put it up for sale', 'business.sell', { disabled: Boolean(state.yearly['business.sell']) || biz.valuation <= 0, hint: `≈${money(biz.valuation * biz.ownerPct)} for your stake` })}${button('🔒 Close it', 'business.close', { variant: 'danger' })}${button('⚖️ Business bankruptcy', 'business.bankrupt', { variant: 'danger' })}</div>`, { icon: '🚪' });
   const sections = {
-    overview: () => `${overview}${pulseCard(state, biz)}${postCard(state, biz)}${advisorCard(state, biz)}`,
+    overview: () => `${overview}${pulseCard(state, biz)}${firmCard(state, biz)}${postCard(state, biz)}${advisorCard(state, biz)}`,
     people: () => `${designCard(state, biz)}${staffing}${orgCard(state, biz)}${structureCard(state, biz)}`,
     operations: () => `${ops}${managementCard(state, biz)}${fleetCard(state, biz)}${equipmentCard(state, 'business')}${leversCard(state, biz)}`,
     market: () => `${marketCard(state, biz)}${policyCard(state, biz)}${licensesCard(state, biz)}${regulatorsCard(state, biz)}`,
@@ -782,7 +783,7 @@ export function businessView(state, ui = {}) {
     return ui.bizTab === 'overview' ? `${page}${holdingsCard(state)}${inventionsCard(state)}${historyCard(state)}` : ui.bizTab === 'money' ? `${page}${conglomerateCard(state)}${rivalGroupsCard(state)}` : page;
   }
   if (state.character.age < 18) return card('Business', empty('You can start a business at 18. For now, try a part-time job.'), { icon: '🏪' }) + inventionsCard(state);
-  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${startCard(state, ui)}${inventionsCard(state)}${franchisePicker(state, ui)}${listingsCard(state)}${historyCard(state)}`;
+  return `${conglomerateCard(state)}${holdingsCard(state)}${rivalGroupsCard(state)}${masterCard(state)}${startCard(state, ui)}${inventionsCard(state)}${franchisePicker(state, ui)}${listingsCard(state)}${historyCard(state)}`;
 }
 
 /** Regulators: your share of each market, antitrust exposure, open cases and recent findings. */

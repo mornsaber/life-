@@ -3,6 +3,7 @@
  * union, branching ladder), management console (department, delegation,
  * workforce model), job board grouped by sector, and history.
  */
+import { workLifeCard } from '../../modules/career/WorkLife.js';
 import { MISSIONS, openMissions, missionEligibility } from '../../modules/career/IntlService.js';
 import { intlOrgsCard } from './IntlOrgsView.js';
 import { shipCard, bureauCard, sportCard } from './AbroadWorkCards.js';
@@ -470,7 +471,7 @@ export function careerView(state, ui = {}) {
   const commute = mins ? `<p>🚗 You commute <b>${mins} minutes</b> each way from ${esc(cityName(state.character.regionId))} to ${esc(job.employer.city)}: fuel, wear and long days. Working remotely (Job Market) ends it.</p>` : '';
   const systems = job ? `${commute}${engineSections(state)}${intlSection(state)}` : '';
   const thisYear = systems ? card('This Year at Work', `${systems}<p class="fine">Each section is one part of your job. Open one to make this year's choices; the headings show where things stand.</p>`, { icon: '📅', accent: 'cyan' }) : '';
-  return `${current}${careerPlayCard(state)}${advancementCard(state)}${companyCard(state)}${ministryCard(state)}${boardroomCard(state)}${chiefCard(state)}${postingsCard(state)}${commandCard(state)}${wearCard(state)}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${careerCredentialsSummary(state)}${job ? organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
+  return `${current}${workLifeCard(state)}${careerPlayCard(state)}${advancementCard(state)}${companyCard(state)}${ministryCard(state)}${boardroomCard(state)}${chiefCard(state)}${postingsCard(state)}${commandCard(state)}${wearCard(state)}${medPracticeCard(state)}${vocationCard(state)}${caseFilesCard(state)}${lawPracticeCard(state)}${policeCard(state)}${fireCard(state)}${emsCard(state)}${scenesCard(state)}${clinicalCard(state)}${sesCard(state)}${researchCard(state)}${labCard(state)}${publishingCard(state)}${emeritusCard(state)}${thisYear}${job ? '' : `${board}${fastPaths}`}${careerCredentialsSummary(state)}${job ? organizationCard(state, job) : ''}${unionCards(state)}${ownerSeatCard(state)}${fieldBusinessesCard(state)}${equipmentCard(state, 'job')}${gearCard(state)}${jobMarketCard(state)}${militaryLeaveCard(state)}${formerEmployersCard(state)}${executiveSearchCard(state)}${shipCard(state)}${bureauCard(state)}${sportCard(state)}${intlOrgsCard(state)}${holySeeCard(state)}${teenJobsCard(state)}${job ? `${board}${fastPaths}` : ''}${card('Career History', history, { icon: '🗂️' })}`;
 }
 
 /** No civilian job, but in work all the same: the services, the bench, office, the royal round. */

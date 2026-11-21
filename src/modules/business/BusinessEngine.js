@@ -11,6 +11,7 @@
  * Runs after the career module (order 31) so a year's work is in the ledger
  * before Finances settles taxes.
  */
+import { failureLine } from './FirmLife.js';
 import { OrgDesignActions } from './OrgDesign.js';
 import { SECTOR_EVENTS, sectorEventsFor } from './BusinessLife.js';
 import { clamp } from '../../core/Random.js';
@@ -587,6 +588,9 @@ export function closeBusiness(ctx, outcome, { liquidation = 0.5, bankruptcy = fa
     }
     ctx.log(`${biz.name} ${bankruptcy ? 'went through bankruptcy' : 'closed'} owing ${money(shortfall)}.${personal ? ` You're personally on the hook for ${money(personal)}${ENTITIES[biz.entity].liability ? ' you guaranteed' : ' (sole proprietors have no shield)'}.` : ' Your LLC/corporation shielded your personal assets.'}`, bankruptcy ? '⚖️' : '🔒', 'bad');
   }
+  // Failure in the country's own words and era (business/FirmLife.js).
+  const failed = bankruptcy || net < 0 ? failureLine(state, biz) : null;
+  if (failed) ctx.log(failed, '📰', 'bad');
   ctx.stat('happiness', -10);
   retire(state, biz, outcome, Math.max(0, net), { closed: true });
 }

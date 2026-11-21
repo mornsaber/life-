@@ -15,11 +15,11 @@ import { PHYSICAL, physicalWorkBarred } from '../health/Routine.js';
 import { shockFactor } from '../economy/Shocks.js';
 import { ordainedEntryLevel } from '../community/HolyOrders.js';
 import { workBlock } from '../world/Regimes.js';
-import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord } from '../../core/State.js';
+import { commitmentLoad, isDeployed, hasFelony, bumpYearly, visibleRecord, yearsInProfession } from '../../core/State.js';
 import { unemploymentBenefit, severancePay } from '../world/CountryLaw.js';
 import { sssBarred } from '../service/Volunteering.js';
 import { clamp } from '../../core/Random.js';
-import { getProfession, US_ONLY_PROFESSIONS } from './JobTrees.js';
+import { getProfession, US_ONLY_PROFESSIONS, PROFESSIONS } from './JobTrees.js';
 import { levelById, entryLevels, nextLevels, previousLevel, ladderFor, GOV_SECTORS } from './Ladder.js';
 import { veteranLevel } from './VeteranPlacement.js';
 import { publicRifTick, recallTick, rifResolvers } from './PublicRif.js';
@@ -123,8 +123,22 @@ addLevelGate((state, level) => {
   const waived = (r.education && degreesOptional(state)) || (r.credentials ?? []).some((c) => !credentialRequired(state, c));
   if (!waived || (level.grade ?? 0) < 5) return null;
   const need = (level.grade - 4) * 2;
-  return totalWorkYears(state) >= need ? null : `${need} years' working experience (the way up before degrees and licences)`;
+  // Years in this line of work (its own career, or one built on the same template) count in full;
+  // other work barely: thirty years at sea don't make a ship's hand an anaesthetist.
+  const p = professionOfLevel(level);
+  const family = p ? Object.values(PROFESSIONS).filter((x) => x.id === p.id || (p.template && (x.template === p.template || x.id === p.template)) || x.template === p.id).map((x) => x.id) : [];
+  const inField = family.length ? yearsInProfession(state, family) : totalWorkYears(state);
+  const years = inField + (totalWorkYears(state) - inField) * 0.15;
+  return years >= need ? null : `${need} years in the work (the way up before degrees and licences)`;
 });
+/** The career a ladder rung belongs to. */
+let LEVEL_OWNER = null;
+function professionOfLevel(level) {
+  // Ladders are copied per employer size, so match the rung by id, title and grade.
+  const key = (l) => `${l.id}|${l.title}|${l.grade}`;
+  if (!LEVEL_OWNER) { LEVEL_OWNER = new Map(); for (const p of Object.values(PROFESSIONS)) for (const l of p.levels ?? []) if (!LEVEL_OWNER.has(key(l))) LEVEL_OWNER.set(key(l), p); }
+  return LEVEL_OWNER.get(key(level)) ?? null;
+}
 export function levelCheck(state, level) {
   const { clearance, ...rest } = level.req ?? {};
   const check = checkRequirements(state, rest);
