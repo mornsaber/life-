@@ -15,7 +15,7 @@ import { RELIGIOUS_ORDERS, religiousSummary, entryCheck } from '../../modules/co
 import { TRAITS as NEIGHBOR_TRAITS } from '../../modules/civic/Neighbors.js';
 import { LIEN_AT as HOA_LIEN_AT } from '../../modules/civic/HOA.js';
 import { CAUSES, causesNow, TACTICS } from '../../modules/civic/Activism.js';
-import { movementOf, STRATEGIES } from '../../modules/civic/Movements.js';
+import { movementOf, STRATEGIES , STAGES, stageOf, strategyLabel } from '../../modules/civic/Movements.js';
 import { sectOf, STYLES as SECT_STYLES } from '../../modules/community/Sects.js';
 import { MEASURES } from '../../modules/civic/Local.js';
 import { schoolKids } from '../../modules/civic/index.js';
@@ -241,7 +241,7 @@ function schoolCard(state) {
 
 function movementBlock(state, a) {
   const m = movementOf(state);
-  if (m) return `<h4 class="sub">${esc(m.name)}</h4>${kv([['Members', m.members.toLocaleString()], ['Funds', money(m.funds)], ['Strength', `${m.strength}/100`], ['Campaign wins', String(m.wins)], ['Strategy', esc(STRATEGIES[m.strategy]?.label ?? '')]])}<p class="fine">Each year you choose a strategy; at strength 60+ campaigns start to win.</p>`;
+  if (m) return `<h4 class="sub">${esc(m.name)}</h4>${kv([['Size', esc(STAGES[stageOf(m.members)].label)], ['Members', m.members.toLocaleString()], ['Funds', money(m.funds)], ['Strength', `${m.strength}/100`], ['Campaign wins', String(m.wins)], ['Standing', m.underground ? '🕯️ Underground' : m.exile ? '✈️ Led from exile' : m.triumph ? `🏆 Won in ${m.triumph}` : m.fading ? '🍂 Fading' : 'In the open'], ['Strategy', esc(strategyLabel(m.strategy, yearNow(state)))]])}<p class="fine">Each year you choose a strategy; at strength 60+ campaigns start to win.</p>`;
   if (!a?.cause) return '';
   return `<div class="toggle-row">${button('🏛️ Found a movement', 'movements.found', { variant: 'small', disabled: (a.influence ?? 0) < 25, hint: (a.influence ?? 0) < 25 ? 'Needs influence 25+' : 'Members, money, strategy — and backlash' })}</div>`;
 }

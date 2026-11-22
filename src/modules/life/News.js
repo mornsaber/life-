@@ -10,6 +10,7 @@
  *
  * state.news = { current: [stories], pages: [{ age, year, stories }], seen: { wars, juntas, phase } }
  */
+import { regimeHere } from '../world/Regimes.js';
 import { Random } from '../../core/Random.js';
 import { COUNTRIES } from '../world/Countries.js';
 import { REGIONS } from './Regions.js';
@@ -60,6 +61,27 @@ const SPORT = ['{city} win the championship in extra time', 'Underdogs {city} st
 const CELEB = ['Pop star\'s surprise wedding breaks the internet', 'Film franchise\'s ninth instalment tops the box office', 'Reality star launches a political party', 'Chef\'s restaurant loses its stars', 'Celebrity couple announce split after nine years'];
 const LOCAL = ['New bypass opens three years late', 'Council approves {city} riverside housing', 'Beloved bakery closes after 60 years', 'Fire guts empty warehouse; nobody hurt', 'Schools rated above average in new report', 'Potholes: residents demand action'];
 
+/** The quiet corners of the paper, in the style of the day. */
+const ERA_FILL = [
+  { until: 1900, sport: ['{city} cricket club beats the county side', 'Prize fight draws ten thousand to a field outside town', 'The great sculling match: a win by two lengths', 'Outsider wins the big race at long odds'], celeb: ['Famous actress weds a lord', 'A new serial by the popular novelist begins this week', 'The celebrated tenor sings to a packed hall'], world: ['Steamship crosses the ocean in record time', 'Treaty signed in a European capital', 'Cholera reported in the eastern ports', 'Gold discovered in a far colony'], local: ['New gasworks proposed for {city}', 'Runaway horse injures three in the high street', 'Fire at the corn exchange', 'The guardians of the workhouse accused of meanness'] },
+  { until: 1950, sport: ['Cup final draws a record crowd', 'Boxing: the champion keeps his title', 'Olympic team sails for the Games', '{city} promoted after a thrilling season'], celeb: ['Film star\'s wedding stops the traffic', 'Wireless comedian signs a record contract', 'Aviator flies the ocean alone'], world: ['Airship crosses the ocean', 'Earthquake in the Far East', 'Expedition reaches the Pole', 'Statesmen meet to talk of peace'], local: ['New picture house opens in {city}', 'Tram fares to rise by a penny', 'Council approves a new housing scheme', 'Fire guts an empty warehouse; nobody hurt'] },
+  { until: 1995, sport: ['{city} win the championship in extra time', 'Underdogs {city} stun the league leaders', 'Marathon record falls by four seconds', 'National team crashes out on penalties'], celeb: ['Rock star\'s surprise wedding', 'Film star announces split after nine years', 'Television host\'s surprise exit', 'Chef\'s restaurant loses its stars'], world: ['Summit ends without agreement', 'Satellite launched into orbit', 'Oil prices climb again', 'Famine appeal raises millions'], local: ['New bypass opens three years late', 'Beloved bakery closes after 60 years', 'Fire guts empty warehouse; nobody hurt', 'Potholes: residents demand action'] },
+];
+const eraFill = (y) => ERA_FILL.find((e) => y < e.until) ?? null;
+
+/** The paper you read: its name, price and look in the year (state press under a one-party state). */
+export function paperOf(state, year = (state.character.birthYear ?? 0) + state.character.age) {
+  const cc = state.character.countryId ?? 'US';
+  const city = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? 'Local';
+  const h = [...String(state.character.regionId ?? 'x')].reduce((a, c) => (a * 31 + c.charCodeAt(0)) >>> 0, 7);
+  const EN = ['Gazette', 'Mercury', 'Courier', 'Herald', 'Chronicle', year >= 1880 ? 'Evening News' : 'Advertiser', 'Post'];
+  const name = { DE: `${city}er Zeitung`, AT: `${city}er Zeitung`, CH: `${city}er Tagblatt`, FR: `Le Courrier de ${city}`, BE: `Le Courrier de ${city}`, ES: `El Diario de ${city}`, MX: `El Diario de ${city}`, AR: `El Diario de ${city}`, IT: `Il Corriere di ${city}`, NL: `${city}sch Dagblad`, PT: `O Diário de ${city}`, BR: `O Diário de ${city}`, JP: `${city} Shimbun`, SE: `${city}s Tidning`, DK: `${city} Tidende`, NO: `${city} Tidende`, PL: `Kurier ${city}`, RU: `${city}skie Vedomosti` }[cc] ?? `The ${city} ${EN[h % EN.length]}`;
+  const look = year < 1890 ? 'eight close-printed columns, advertisements on the front page' : year < 1935 ? 'headlines across the page and the first photographs' : year < 1995 ? 'big headlines and photographs' : year < 2012 ? 'in print and online' : 'mostly read on a phone';
+  const price = cc === 'GB' ? (year < 1855 ? '7d (with the stamp duty)' : year < 1914 ? '1d' : year < 1971 ? `${year < 1940 ? '1d' : year < 1960 ? '2d' : '4d'}` : null) : cc === 'US' ? (year < 1833 ? 'six cents' : year < 1920 ? 'a penny' : year < 1960 ? 'five cents' : null) : null;
+  const state_ = ['totalitarian', 'oneParty'].includes(regimeHere(state).kind) || regimeHere(state).press === 'state';
+  return { name: state_ ? `${name} (the party paper)` : name, look, price, controlled: state_ };
+}
+
 function ensure(state) {
   state.news ??= { current: [], pages: [], seen: {} };
   return state.news;
@@ -98,9 +120,10 @@ function filler(state, rng) {
   const city = REGIONS[state.character.regionId]?.name?.split(',')[0] ?? 'Local';
   const n = ensure(state);
   const fill = (tier, pool, icon) => { if (!n.current.some((s) => s.tier === tier)) addStory(state, { tier, headline: rng.pick(pool).replace('{city}', city), weight: 1, icon }); };
-  fill('local', LOCAL, '🏘️');
-  fill('national', [...SPORT, ...CELEB], rng.chance(0.5) ? '⚽' : '🎬');
-  fill('world', ['Climate summit ends without a deal', 'Trade talks resume after a year of tariffs', 'Record heat across three continents', 'Space probe sends back first images', 'Global markets steady after a volatile week'], '🌍');
+  const e = eraFill((state.character.birthYear ?? 0) + state.character.age);
+  fill('local', e?.local ?? LOCAL, '🏘️');
+  fill('national', e ? [...e.sport, ...e.celeb] : [...SPORT, ...CELEB], rng.chance(0.5) ? '⚽' : '🎬');
+  fill('world', e?.world ?? ['Climate summit ends without a deal', 'Trade talks resume after a year of tariffs', 'Record heat across three continents', 'Space probe sends back first images', 'Global markets steady after a volatile week'], '🌍');
 }
 
 /** Close this year's paper: the front page is the heaviest stories in each tier. */

@@ -3,6 +3,8 @@
  * you farm (machinery, practices, organic, marketing), and see last season's
  * results with the country's farm-policy payments.
  */
+import { machineryWord, tractorFrom, tenureOf } from '../../modules/farm/FarmOfTheDay.js';
+import { yearNow } from '../../modules/world/Eras.js';
 import { esc, money, button, card, kv, empty, meter } from '../Components.js';
 import { CROPS, LIVESTOCK, COVERAGE, DOWN, FIELDS, buyCheck, leaseCheck, landValue, landPrice, leaseRent, canFarmHere, area, plotsFor, cropsHere, farmCountry, farmedAcres, ensureFarm, workload, ownLabour, capacity, pastureAcres, buildCost, herdValue, countryOf } from '../../modules/farm/Farm.js';
 import { regionOf } from '../../modules/life/Regions.js';
@@ -74,11 +76,12 @@ function runningCard(state) {
   return card('Running the Farm', `
     ${kv([
       ['Work', `${work} full-time ${work === 1 ? 'person' : 'people'} · you cover ${mine}${work > mine ? ` · hired help ≈${money((work - mine) * 42000)}/yr` : ''}`],
-      ['Machinery', f.machinery ? `Your own line, worth ${money(f.machinery.value)}` : 'Contractors (≈$55 an acre; sometimes late)'],
+      ['Machinery', f.machinery ? `Your own: ${machineryWord(yearNow(state), state.character.countryId ?? 'US')}, worth ${money(f.machinery.value)}` : yearNow(state) < tractorFrom(state.character.countryId ?? 'US') ? 'Hired teams and the threshing gang (sometimes late)' : 'Contractors (≈$55 an acre; sometimes late)'],
+      ...(tenureOf(state) ? [['You are', tenureOf(state).label]] : []),
       ['Grain', f.bins ? `Bins on the farm${f.stored ? ` · ${money(f.stored)} stored at today's price` : ''}` : 'No storage'],
       ['Organic', organic],
     ])}
-    <div class="toggle-row">${machinery ? button('🚜 Buy machinery', 'farm.build', { arg: 'machinery', variant: 'tiny', hint: money(machinery), disabled: state.finances.cash < machinery }) : button('Sell the machinery', 'farm.sellMachinery', { variant: 'tiny ghost', hint: money(f.machinery.value * 0.85) })}
+    <div class="toggle-row">${machinery ? button(yearNow(state) < tractorFrom(state.character.countryId ?? 'US') ? '🐴 Buy horses and implements' : '🚜 Buy machinery', 'farm.build', { arg: 'machinery', variant: 'tiny', hint: money(machinery), disabled: state.finances.cash < machinery }) : button('Sell the machinery', 'farm.sellMachinery', { variant: 'tiny ghost', hint: money(f.machinery.value * 0.85) })}
     ${!f.bins ? button('🛢️ Grain bins', 'farm.build', { arg: 'bins', variant: 'tiny', hint: money(buildCost(f, 'bins')), disabled: state.finances.cash < buildCost(f, 'bins') }) : ''}
     ${!f.extras.shop ? button('🧺 Farm shop', 'farm.build', { arg: 'shop', variant: 'tiny', hint: money(buildCost(f, 'shop')), disabled: state.finances.cash < buildCost(f, 'shop') }) : ''}</div>
     <h4 class="sub">Practices</h4><div class="toggle-row chips-row">

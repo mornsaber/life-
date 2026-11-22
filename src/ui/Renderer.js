@@ -65,6 +65,7 @@ import { ACHIEVEMENTS, CHALLENGES } from '../modules/life/Achievements.js';
 import { difficultyOf, difficultyId } from '../core/Difficulty.js';
 import { communityView } from './views/CommunityView.js';
 import { garageView } from './views/GarageView.js';
+import { propertyView } from './views/PropertyView.js';
 import { farmView } from './views/FarmView.js';
 import { housingStatus, STATUS_LABEL } from '../modules/realestate/index.js';
 import { homeEquity } from '../core/State.js';
@@ -97,7 +98,7 @@ export const SECTIONS = [
   { id: 'politics', label: 'Politics', icon: '🗳️', tabs: [{ id: 'politics', label: 'Office', icon: '🗳️' }, { id: 'chamber', label: 'Chamber', icon: '🏛️' }, { id: 'party', label: 'Party', icon: '🎗️' }, { id: 'campaign', label: 'Campaign', icon: '📣' }] },
   { id: 'service', label: 'Service', icon: '🎖️', tabs: [{ id: 'military', label: 'Military', icon: '🎖️' }, { id: 'emergency', label: 'Emergency Services', icon: '🚨' }, { id: 'civic', label: 'Civic Service', icon: '🤝' }] },
   { id: 'learn', label: 'School', icon: '🎓', tabs: [{ id: 'school', label: 'School', icon: '🎓' }] },
-  { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'farm', label: 'Farm', icon: '🚜' }] },
+  { id: 'home', label: 'Home', icon: '🏠', tabs: [{ id: 'home', label: 'Home', icon: '🏠' }, { id: 'garage', label: 'Garage', icon: '🚗' }, { id: 'property', label: 'Property', icon: '🗝️' }, { id: 'farm', label: 'Farm', icon: '🚜' }] },
   { id: 'travel', label: 'Move & Travel', icon: '🗺️', tabs: [{ id: 'move', label: 'Move & Travel', icon: '🗺️' }] },
   { id: 'money', label: 'Money', icon: '💰', tabs: [{ id: 'money', label: 'Money', icon: '💰' }] },
   { id: 'health', label: 'Health', icon: '🩺', tabs: [{ id: 'health', label: 'Overview', icon: '👩‍⚕️' }, { id: 'conditions', label: 'Conditions', icon: '🫀' }, { id: 'cover', label: 'Cover', icon: '🏥' }, { id: 'wellbeing', label: 'Lifestyle', icon: '🏃' }] },
@@ -134,6 +135,7 @@ export const GROUPS = {
       { tab: 'money', label: 'Money', icon: '💰', sub: (st) => `${compactMoney(st.finances.cash)} cash · net worth ${compactMoney(netWorth(st))}` },
       { tab: 'home', label: 'Home & Property', icon: '🏠', sub: (st) => `${STATUS_LABEL[housingStatus(st)]?.label ?? 'Home'}${st.housing.properties.length ? ` · ${st.housing.properties.length} propert${st.housing.properties.length === 1 ? 'y' : 'ies'}` : ''}` },
       { tab: 'garage', label: 'Vehicles', icon: '🚗', when: (st) => age(st) >= 15 || (st.vehicles?.owned ?? []).length > 0, sub: (st) => `${(st.vehicles?.owned ?? []).length || 'No'} vehicle${(st.vehicles?.owned ?? []).length === 1 ? '' : 's'}` },
+      { tab: 'property', label: 'Property & Staff', icon: '🗝️', when: (st) => age(st) >= 18, sub: (st) => `${(st.property?.staff ?? []).length || 'No'} in service` },
       { tab: 'farm', label: 'Farm', icon: '🚜', when: (st) => age(st) >= 18 || Boolean(st.farm), sub: (st) => (st.farm?.acres ? `${st.farm.acres.toLocaleString()} acres` : 'Land, crops and livestock') },
     ],
   },
@@ -277,6 +279,7 @@ export const VIEWS = {
   business: (state, ui) => businessView(state, ui) + venturesView(state, ui),
   community: communityView,
   garage: garageView,
+  property: propertyView,
   farm: farmView,
   gov: govView,
   military: militaryView,

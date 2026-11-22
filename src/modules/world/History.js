@@ -302,7 +302,7 @@ export const EVENTS = {
   fascismIT: { at: 1922, window: [1920, 1925], odds: 0.9, start(ctx) { news(ctx, 'Mussolini\'s Blackshirts march on Rome', '⚫'); if (hereIs(ctx, 'IT')) ctx.log('Mussolini is in power. The Blackshirts are on every street corner.', '⚫', 'warn'); } },
   depression: {
     at: 1929, window: [1927, 1932], lasts: [6, 10],
-    start(ctx) { news(ctx, 'Wall Street crashes; banks fail across the world', '📉', 'world', 9); recession(ctx, 'financial', 5, '📉 The stock market crashed and the banks followed. The Great Depression has begun: breadlines, shuttered factories, families on the road.'); },
+    start(ctx) { news(ctx, 'Wall Street crashes; banks fail across the world', '📉', 'world', 9); if (regimeHere(ctx.state).business === 'state') ctx.log('In the West the banks are failing and the factories are closing. Here the papers say it proves capitalism is dying; the Five-Year Plan goes on.', '📉', 'info'); else recession(ctx, 'financial', 5, '📉 The stock market crashed and the banks followed. The Great Depression has begun: breadlines, shuttered factories, families on the road.'); },
     end(ctx) { ctx.log('The Depression is lifting at last.', '🌱', 'info'); },
   },
   fascismDE: { at: 1933, window: [1930, 1935], odds: 0.85, needs: (s) => hap(s, 'depression'), start(ctx) { news(ctx, 'Hitler becomes Chancellor of Germany', '⚫', 'world', 8); if (hereIs(ctx, 'DE', 'AT')) ctx.log('The Nazis have taken power. Opponents are being arrested; Jewish families are being driven out of their jobs, and many are leaving while they can.', '⚫', 'bad'); } },

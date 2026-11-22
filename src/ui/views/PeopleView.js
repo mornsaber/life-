@@ -2,6 +2,7 @@
  * People tab: family, partner, children, friends and exes, dating, and the
  * Legacy card (will, life insurance, 529 plans, estate estimate, lineage).
  */
+import { lettersOf } from '../../modules/people/Letters.js';
 import { militaryInsignia } from '../Insignia.js';
 import { rivalsCard, familyCard } from './CirclesView.js';
 import { serviceLabel, rankCodeOf } from '../../modules/people/RelativeService.js';
@@ -532,6 +533,7 @@ export function peopleView(state, ui = {}) {
     ${group('Children', '🧒', kids, state, kids.length ? '' : '')}
     ${parentingCard(state)}
     ${group('Family', '🏡', family, state)}
+    ${lettersCard(state)}
     ${elderCareCard(state)}
     ${laterLifeCard(state)}
     ${petsCard(state)}
@@ -542,6 +544,13 @@ export function peopleView(state, ui = {}) {
     ${rivalsCard(state)}${familyCard(state)}${familyLegacyCard(state)}${grandchildrenCard(state)}${rememberedCard(state)}${lineage(state)}
     ${nameCard(state)}
     ${!living(state).length ? card('People', empty('Everyone you knew is gone.'), { icon: '🕯️' }) : ''}`;
+}
+
+/** Letters, calls and news from family far away. */
+function lettersCard(state) {
+  const box = lettersOf(state);
+  if (!box.length) return '';
+  return card('Letters', `<ul class="history">${box.slice(-8).reverse().map((l) => `<li><b>${l.year}</b> ${l.icon} ${esc(l.text)}</li>`).join('')}</ul>`, { icon: '✉️', summary: `${box.length} kept` });
 }
 
 /** Your name, any former names, and the deed poll. */

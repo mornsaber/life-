@@ -2,12 +2,13 @@
  * People you measure yourself against and what they all think of you: reputation by
  * circle (Life tab), rivals, family feuds and the dynasty (People tab).
  */
+import { townHistory } from '../../modules/life/TownStory.js';
 import { esc, money, button, card, chip, meter, kv } from '../Components.js';
 import { CIRCLES, reputationOf, circlesNow } from '../../modules/life/Reputation.js';
 import { rivalsOf, originLabel, rivalTitle, rivalAge } from '../../modules/people/Rivals.js';
 import { feudsOf, dynastyScore, dynastyLabel } from '../../modules/people/FamilyFeuds.js';
 import { byId } from '../../modules/people/People.js';
-import { TIERS, latestPage } from '../../modules/life/News.js';
+import { TIERS, latestPage, paperOf } from '../../modules/life/News.js';
 import { cityOf } from '../../modules/life/Cities.js';
 import { REGIONS } from '../../modules/life/Regions.js';
 import { periodText } from '../../modules/world/Eras.js';
@@ -48,7 +49,8 @@ export function frontPageCard(state) {
     const s = page.stories.filter((x) => x.tier === id);
     return s.length ? `<h4 class="sub">${t.icon} ${t.label}</h4><ul class="history">${s.map((x) => `<li>${x.icon} ${x.you ? '<b>' : ''}${esc(x.headline)}${x.you ? '</b>' : ''}</li>`).join('')}</ul>` : '';
   }).join('');
-  return card(`Front Page · ${page.year}`, sections, { icon: '📰', summary: esc(page.stories[0].headline) });
+  const paper = paperOf(state, page.year);
+  return card(`Front Page · ${page.year}`, `<p class="fine">🗞️ <i>${esc(paper.name)}</i>${paper.price ? ` · ${esc(paper.price)}` : ''} · ${esc(paper.look)}${paper.controlled ? '. It prints what it is told.' : ''}</p>${sections}`, { icon: '📰', summary: esc(page.stories[0].headline) });
 }
 
 /** Your life in the news: a line a year, the world's story and where you were (Life tab). */
@@ -60,6 +62,12 @@ export function newsThreadCard(state, { all = false } = {}) {
   return card('Your Life in the News', `<ul class="history">${rows}</ul>${!all && t.length > 12 ? `<p class="fine">${t.length} years in the thread; the latest twelve shown.</p>` : ''}`, { icon: '🗞️', summary: `${t.length} years` });
 }
 
+function townBlock(state) {
+  const h = townHistory(state);
+  if (!h.length) return '';
+  return `<h4 class="sub">The town's story</h4><ul class="history">${h.map((x) => `<li><b>${x.year}</b> ${x.icon} ${esc(x.text)}${x.yours ? ' <small>(in your time)</small>' : ''}</li>`).join('')}</ul>`;
+}
+
 /** Where you live, and how it's changing (Move tab). */
 export function cityCard(state) {
   const c = cityOf(state);
@@ -68,5 +76,6 @@ export function cityCard(state) {
   const arrow = (k) => { if (t.length < 2) return ''; const d = t.at(-1)[k] - t[Math.max(0, t.length - 5)][k]; return d > 2 ? ' ↑' : d < -2 ? ' ↓' : ' →'; };
   return card(`Your City: ${esc(name)}`, `${meter(c.jobs, { label: `💼 Jobs${arrow('jobs')}`, tone: c.jobs >= 55 ? 'good' : c.jobs >= 40 ? 'mid' : 'bad' })}${meter(c.crime, { label: `🚨 Crime${arrow('crime')}`, tone: c.crime <= 35 ? 'good' : c.crime <= 60 ? 'mid' : 'bad' })}${meter(c.mood, { label: '🙂 Mood', tone: c.mood >= 55 ? 'good' : c.mood >= 40 ? 'mid' : 'bad' })}
     ${kv([['House prices', `index ${c.prices}${arrow('prices')}`], ['Population', `index ${c.pop} (100 when you arrived)`]])}
+    ${townBlock(state)}
     <p class="fine">Cities change with the economy, disasters — and you: businesses you grow add jobs, a force you lead cuts crime, rental empires push up prices. A strong job market helps you get hired; high crime makes you likelier to be a victim.</p>`, { icon: '🏙️', summary: `Jobs ${c.jobs} · Crime ${c.crime}` });
 }

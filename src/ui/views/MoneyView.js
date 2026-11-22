@@ -3,6 +3,7 @@
  * vesting status, 401(k)/TSP, Social Security estimate, military/VA), and
  * where you live (cost of living, locality, relocation).
  */
+import { householdOf, tableLabel } from '../../modules/life/Household.js';
 import { empireCard } from './EmpireView.js';
 import { bankruptcyOptions, routeName, insolvencyHere } from '../../modules/life/Bankruptcy.js';
 import { CREDIT, ACCOUNTS } from '../../modules/world/CountryLaw.js';
@@ -64,6 +65,16 @@ function foreignTaxCard(state) {
 }
 
 /** Last return, deductions, IRS debt and audits. */
+/** Where the living money went, and what was on the table. */
+function householdCard(state) {
+  const h = householdOf(state);
+  if (!h?.lines) return '';
+  const L = { food: '🍞 Food', fuel: '🔥 Fuel and light', clothes: '👗 Clothes', drink: '🍺 Drink and tobacco', other: '🧺 Everything else', staff: '🤵 Servants\' wages' };
+  const total = Object.values(h.lines).reduce((s, v) => s + v, 0) || 1;
+  const rows = Object.entries(h.lines).map(([k, v]) => [L[k] ?? k, `${money(v)} · ${Math.round((v / total) * 100)}%`]);
+  return card('The Household', `${kv(rows)}<p class="fine">🍽️ On the table: ${esc(tableLabel(state) ?? '')}.${h.hard === h.year ? ' A hard year.' : ''} Rent and the mortgage are on the Home tab.</p>`, { icon: '🧺', summary: `${Math.round((h.lines.food / total) * 100)}% on food` });
+}
+
 function taxCard(state) {
   const f = state.finances;
   const t = f.tax;
@@ -187,5 +198,5 @@ export function moneyView(state) {
     <p class="fine">Moving costs ${money(MOVE_COST)} and ends jobs that can't follow you (remote jobs and big employers can transfer you instead).</p>
     ${disclosure('money.regions', 'All places', `<ul class="history">${rows}</ul>`, { count: regionsHere(state).length })}`, { icon: '🗺️' });
 
-  return `${finances}${moneyDayCard(state)}${empireCard(state)}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
+  return `${finances}${householdCard(state)}${moneyDayCard(state)}${empireCard(state)}${debtCard(state)}${taxCard(state)}${investView(state)}${retirement}`;
 }

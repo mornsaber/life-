@@ -34,7 +34,8 @@
  *   loan: { balance, payment, rate } | null, prices: { [commodity]: index },
  *   extras: { shop, solar: { acres, rent, until } }, lastYear, history: [{ age, net }] }
  */
-import { eraYear } from '../world/Eras.js';
+import { eraYear, yearNow } from '../world/Eras.js';
+import { machineryWord, tractorFrom } from './FarmOfTheDay.js';
 import { REGIONS } from '../life/Regions.js';
 import { PACKS } from '../world/packs/index.js';
 
@@ -734,7 +735,7 @@ export const FarmModule = {
       if (what === 'bins') f.bins = true;
       if (what === 'shop') f.extras.shop = true;
       if (what === 'parlour') f.parlour = Math.max(f.parlour, Math.max(60, f.herd.head));
-      ctx.log({ machinery: `You bought a line of machinery for $${cost.toLocaleString()}: no more waiting on contractors.`, bins: 'You put up grain bins: now you can hold a crop for a better price.', shop: 'You opened a farm shop at the gate.', parlour: `You built a milking parlour for ${f.parlour} cows.` }[what], '🏗️', 'milestone');
+      ctx.log({ machinery: `You bought ${machineryWord(yearNow(state), countryOf(state))} for $${cost.toLocaleString()}: no more waiting on ${yearNow(state) < tractorFrom(countryOf(state)) ? 'hired teams and the threshing gang' : 'contractors'}.`, bins: 'You put up grain bins: now you can hold a crop for a better price.', shop: 'You opened a farm shop at the gate.', parlour: `You built a milking parlour for ${f.parlour} cows.` }[what], '🏗️', 'milestone');
     },
     sellMachinery(ctx) {
       const f = ensureFarm(ctx.state.farm);

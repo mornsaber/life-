@@ -15,7 +15,7 @@
  */
 import { Random } from '../../core/Random.js';
 import { priceLevel } from '../world/Countries.js';
-import { inventionInEra } from '../world/Eras.js';
+import { inventionInEra, yearNow } from '../world/Eras.js';
 
 export const FIELDS = {
   kitchen: { label: '🍳 Kitchen gadget', cost: 3000, work: 1, ceiling: 55, smarts: 0, nouns: ['Peeler', 'Spatula', 'Lid', 'Blender Blade', 'Egg Timer'] },
@@ -25,6 +25,11 @@ export const FIELDS = {
   medical: { label: '🩺 Medical device', cost: 25000, work: 3, ceiling: 95, smarts: 65, nouns: ['Stent', 'Glucose Sensor', 'Inhaler', 'Surgical Clamp'] },
 };
 const ADJ = ['Flex', 'Quantum', 'Nimbus', 'Vela', 'Orbit', 'Kestrel', 'Lumen', 'Arc', 'Tidal', 'Halo'];
+// Before the brand-name age, inventions were 'improved' and 'patent' things.
+const OLD_ADJ = ['Improved', 'Patent', 'Universal', 'Excelsior', 'Victor', 'Empire', 'Reliance', 'Champion', 'Climax', 'Paragon'];
+const OLD_NOUNS = { kitchen: ['Apple Parer', 'Egg Beater', 'Mangle', 'Knife Cleaner', 'Butter Churn'], gadget: ['Electric Fan', 'Toaster', 'Wireless Set', 'Flashlamp', 'Vacuum Sweeper'], medical: ['Truss', 'Ear Trumpet', 'Splint', 'Clinical Thermometer', 'Surgical Clamp'] };
+const LICENSEES = ['Halvorsen Industries', 'Kitamura Electric', 'Brandt & Cole', 'Apex Consumer Goods', 'Medisure Devices', 'Northwind Manufacturing'];
+const OLD_LICENSEES = ['Brandt & Cole', 'Halvorsen & Sons', 'the Northwind Manufacturing Company', 'Kitamura & Co.', 'Ashby Brothers', 'the Union Novelty Works'];
 export const PATENT_YEARS = 20;
 export const patentFee = (state) => Math.round(12000 * priceLevel(state));
 const local = (state, n) => Math.round(n * priceLevel(state));
@@ -128,7 +133,7 @@ function inventionsAfterProjects(ctx, inv, rng, age) {
     if (['held', 'company'].includes(p.status) && rng.chance(0.05 + p.quality / 1500) && !pending(state, 'inventions.infringe')) {
       ctx.prompt({
         type: 'inventions.infringe', icon: '⚖️', title: 'They Copied It',
-        text: `A household-name manufacturer is selling something remarkably like your ${p.name}.`,
+        text: `${yearNow(state) < 1920 ? 'A big manufacturing concern' : 'A household-name manufacturer'} is selling something remarkably like your ${p.name}.`,
         options: [
           { id: 'sue', label: '⚖️ Sue for infringement', hint: `≈$${local(state, 150000).toLocaleString()} in legal fees; big damages if you win` },
           { id: 'license', label: '🤝 Offer them a licence' },
@@ -139,7 +144,7 @@ function inventionsAfterProjects(ctx, inv, rng, age) {
     }
   }
   // A patent troll: a shell company with a vague patent and a lawyer.
-  if ((livePatents(state).length || state.business?.current) && rng.chance(0.03) && !pending(state, 'inventions.troll')) {
+  if ((livePatents(state).length || state.business?.current) && rng.chance(0.03) && yearNow(state) >= 1990 && !pending(state, 'inventions.troll')) {
     ctx.prompt({
       type: 'inventions.troll', icon: '🧌', title: 'A Patent Troll',
       text: 'A company that makes nothing says your work infringes its patent on "a method of transmitting data". It offers to settle.',
@@ -152,7 +157,7 @@ function inventionsAfterProjects(ctx, inv, rng, age) {
   }
 }
 
-function commercialisePrompt(ctx, patent) {
+export function commercialisePrompt(ctx, patent) {
   const { state } = ctx;
   const rng = sideRng(state, 0xc0);
   const royalty = royaltyFor(state, patent.quality, rng);
@@ -206,7 +211,8 @@ export const InventionsModule = {
       if (inv.projects.filter((p) => p.pendingAt == null && !p.done).length >= 2) return ctx.toast('Two projects at once is plenty.', 'warn');
       if (state.stats.smarts < f.smarts) return ctx.toast(`That field needs more know-how (smarts ${f.smarts}+).`, 'warn');
       const rng = sideRng(state, inv.projects.length + inv.patents.length + 7);
-      const name = `${rng.pick(ADJ)} ${rng.pick(f.nouns)}`;
+      const old = yearNow(state) < 1950;
+      const name = `${rng.pick(old ? OLD_ADJ : ADJ)} ${rng.pick(old && OLD_NOUNS[field] && yearNow(state) < (field === 'gadget' ? 1945 : 1930) ? OLD_NOUNS[field] : f.nouns)}`;
       inv.projects.push({ id: `inv_${state.character.age}_${inv.projects.length + inv.patents.length}`, name, field, progress: 0, quality: 10, spent: 0, startedAge: state.character.age });
       ctx.log(`You started work on an invention: the ${name}.`, '💡', 'good');
     },
@@ -243,7 +249,7 @@ export const InventionsModule = {
         ctx.emit('fame:buzz', { amount: Math.round(pr.quality / 10) });
         return ctx.log(`You published the ${pr.name} design for anyone to build. Makers around the world did.`, '🌍', 'good');
       }
-      ctx.log(`You put the ${pr.name} in a box in the garage.`, '📦', 'muted');
+      ctx.log(`You put the ${pr.name} in a box in the ${yearNow(state) < 1920 ? 'shed' : 'garage'}.`, '📦', 'muted');
     },
     commercialise(ctx, data, optionId) {
       const { state, rng } = ctx;
@@ -252,7 +258,7 @@ export const InventionsModule = {
       if (optionId === 'license') {
         p.status = 'licensed';
         p.royalty = data.royalty;
-        p.licensee = rng.pick(['Halvorsen Industries', 'Kitamura Electric', 'Brandt & Cole', 'Apex Consumer Goods', 'Medisure Devices', 'Northwind Manufacturing']);
+        p.licensee = rng.pick(yearNow(state) < 1950 ? OLD_LICENSEES : LICENSEES);
         return ctx.log(`You licensed the ${p.name} to ${p.licensee}: about $${p.royalty.toLocaleString()} a year in royalties.`, '📃', 'good');
       }
       if (optionId === 'sell') {

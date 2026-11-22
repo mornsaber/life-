@@ -156,7 +156,7 @@ function buy(ctx, kind) {
   const price = local(state, l.price * (kind === 'art' ? rng.float(0.3, 3) : 1));
   if ((state.finances?.cash ?? 0) < price) return ctx.toast(`Needs $${price.toLocaleString()}`, 'warn');
   ctx.spend(price, l.label(y));
-  if (kind === 'art') s.art.push({ name: `${rng.pick(['A landscape', 'A portrait', 'A still life', 'An abstract'])} by ${rng.pick(['a Dutch master', 'an Impressionist', 'a Victorian painter', 'a modern master', 'an old master'])}`, paid: price, value: price, year: y });
+  if (kind === 'art') s.art.push({ name: `${rng.pick(['A landscape', 'A portrait', 'A still life', 'An abstract'])} by ${rng.pick(['a Dutch master', 'an old master', y >= 1874 ? 'an Impressionist' : 'a Romantic painter', y >= 1840 && y < 1950 ? 'a Victorian painter' : 'a fashionable portraitist', y >= 1910 ? 'a modern master' : 'a court painter'])}`, paid: price, value: price, year: y });
   else if (kind === 'horse') s.horses += 1;
   else s[kind] += 1;
   s.standing = clamp(s.standing + l.standing, 0, 100);

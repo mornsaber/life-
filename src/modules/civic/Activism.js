@@ -31,8 +31,19 @@ export const CAUSES = {
   antiApartheid: { name: 'Anti-apartheid', icon: '✊', allies: ['editorial'], from: 1959, until: 1995 },
   gayRights: { name: 'Gay liberation', icon: '🏳️‍🌈', allies: ['editorial'], from: 1969 },
 };
-/** The causes of the year and the country. */
-export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([, c]) => (!c.warOnly || war) && !(c.from > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')));
+/** When history won the cause, country by country (cause → { cc: year, '*': year }). */
+export const VICTORIES = {
+  abolition: { GB: 1833, FR: 1848, US: 1865, BR: 1888 },
+  suffrage: { NZ: 1893, AU: 1902, FI: 1906, NO: 1913, DK: 1915, RU: 1917, CA: 1918, DE: 1918, AT: 1918, PL: 1918, NL: 1919, SE: 1919, US: 1920, GB: 1928, IE: 1922, ES: 1931, BR: 1932, TR: 1934, FR: 1944, IT: 1946, JP: 1945, IN: 1950, CH: 1971 },
+  temperance: { US: 1919, FI: 1919, NO: 1916, IS: 1915, CA: 1918 },
+  eightHours: { FR: 1919, DE: 1918, ES: 1919, NL: 1919, US: 1938, GB: 1919, IT: 1923, AU: 1916, NZ: 1936, RU: 1917, MX: 1917 },
+  homeRule: { IE: 1922, GB: 1922 },
+  civilRights: { US: 1964 },
+  disarmament: { '*': 1987 },
+};
+export const victoryYear = (cause, cc) => VICTORIES[cause]?.[cc] ?? VICTORIES[cause]?.['*'] ?? null;
+/** The causes of the year and the country (not one already won here). */
+export const causesNow = (state, y, war) => Object.entries(CAUSES).filter(([id, c]) => (!c.warOnly || war) && !(c.from > y) && !(c.until <= y) && (!c.where || c.where.includes(state.character.countryId ?? 'US')) && !((victoryYear(id, state.character.countryId ?? 'US') ?? 9999) <= y));
 
 /**
  * Protest tactics. arrest: chance of arrest; influence: what it builds;
